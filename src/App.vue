@@ -15,7 +15,7 @@
             </div>
           </div>
 
-          <!-- League selector and dark mode toggle -->
+          <!-- League selector and controls -->
           <div class="flex items-center gap-4">
             <div v-if="!leagueStore.activeLeagueId" class="flex items-center gap-3">
               <input
@@ -45,6 +45,34 @@
                 {{ league.name }}
               </option>
             </select>
+
+            <!-- Auth Button -->
+            <div v-if="authStore.isConfigured">
+              <button
+                v-if="!authStore.isAuthenticated"
+                @click="showAuthModal = true"
+                class="px-4 py-2 rounded-xl bg-primary text-gray-900 font-semibold hover:bg-primary/90 transition-colors"
+              >
+                Sign In
+              </button>
+              <div v-else class="flex items-center gap-3">
+                <div class="flex items-center gap-2">
+                  <div class="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center">
+                    <span class="text-sm font-bold text-primary">{{ userInitials }}</span>
+                  </div>
+                  <span class="text-sm text-dark-text hidden sm:inline">{{ authStore.profile?.full_name || authStore.user?.email }}</span>
+                </div>
+                <button
+                  @click="handleSignOut"
+                  class="p-2 rounded-lg hover:bg-dark-border/50 transition-colors text-dark-textMuted hover:text-dark-text"
+                  title="Sign out"
+                >
+                  <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                  </svg>
+                </button>
+              </div>
+            </div>
 
             <button
               @click="darkModeStore.toggle"
@@ -102,21 +130,32 @@
 
       <router-view v-else />
     </main>
+
+    <!-- Auth Modal -->
+    <AuthModal 
+      :is-open="showAuthModal" 
+      @close="showAuthModal = false"
+      @success="showAuthModal = false"
+    />
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, nextTick } from 'vue'
+import { ref, computed, onMounted, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
 import { useLeagueStore } from '@/stores/league'
 import { useDarkModeStore } from '@/stores/darkMode'
+import { useAuthStore } from '@/stores/auth'
+import AuthModal from '@/components/AuthModal.vue'
 
 const router = useRouter()
 const leagueStore = useLeagueStore()
 const darkModeStore = useDarkModeStore()
+const authStore = useAuthStore()
 
 const username = ref('')
 const selectedLeague = ref('')
+const showAuthModal = ref(false)
 
 const tabs = [
   { name: 'Home', path: '/' },
@@ -128,6 +167,16 @@ const tabs = [
   { name: 'Compare', path: '/performance-comparison' },
   { name: 'Tools', path: '/tools' }
 ]
+
+const userInitials = computed(() => {
+  const name = authStore.profile?.full_name || authStore.user?.email || ''
+  if (!name) return '?'
+  const parts = name.split(' ')
+  if (parts.length >= 2) {
+    return (parts[0][0] + parts[1][0]).toUpperCase()
+  }
+  return name.substring(0, 2).toUpperCase()
+})
 
 async function loadLeagues() {
   if (!username.value.trim()) return
@@ -142,7 +191,6 @@ async function changeLeague() {
   if (!selectedLeague.value) return
   try {
     await leagueStore.setActiveLeague(selectedLeague.value)
-    // Force router refresh by navigating to home then back
     if (router.currentRoute.value.path !== '/') {
       const currentPath = router.currentRoute.value.path
       await router.push('/')
@@ -154,6 +202,12 @@ async function changeLeague() {
   }
 }
 
-// Initialize dark mode on mount
-darkModeStore.init()
+async function handleSignOut() {
+  await authStore.signOut()
+}
+
+onMounted(() => {
+  darkModeStore.init()
+  authStore.initialize()
+})
 </script>
