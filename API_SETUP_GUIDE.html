@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>OpenAI API Setup Guide</title>
+  <style>
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      max-width: 900px;
+      margin: 50px auto;
+      padding: 20px;
+      background: #1a1d29;
+      color: #f7f7ff;
+      line-height: 1.6;
+    }
+    
+    .container {
+      background: linear-gradient(135deg, rgba(19, 22, 32, 0.98), rgba(10, 12, 20, 0.98));
+      border: 1px solid #2a2f42;
+      border-radius: 16px;
+      padding: 40px;
+      box-shadow: 0 12px 40px rgba(0, 0, 0, 0.45);
+    }
+    
+    h1 {
+      color: #f5c451;
+      font-size: 32px;
+      margin-bottom: 10px;
+    }
+    
+    h2 {
+      color: #f5c451;
+      font-size: 24px;
+      margin-top: 40px;
+      margin-bottom: 15px;
+    }
+    
+    .step {
+      background: rgba(38, 42, 58, 0.5);
+      border-left: 4px solid #f5c451;
+      padding: 20px;
+      margin: 20px 0;
+      border-radius: 8px;
+    }
+    
+    .code-block {
+      background: #0a0c14;
+      border: 1px solid #262a3a;
+      border-radius: 8px;
+      padding: 20px;
+      margin: 15px 0;
+      overflow-x: auto;
+      font-family: 'Monaco', 'Courier New', monospace;
+      font-size: 14px;
+    }
+    
+    .fake-key {
+      color: #ef4444;
+      background: rgba(239, 68, 68, 0.1);
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-weight: bold;
+    }
+    
+    .real-example {
+      color: #10b981;
+      background: rgba(16, 185, 129, 0.1);
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-weight: bold;
+    }
+    
+    .warning {
+      background: rgba(239, 68, 68, 0.1);
+      border-left: 4px solid #ef4444;
+      padding: 15px;
+      margin: 20px 0;
+      border-radius: 8px;
+    }
+    
+    .success {
+      background: rgba(16, 185, 129, 0.1);
+      border-left: 4px solid #10b981;
+      padding: 15px;
+      margin: 20px 0;
+      border-radius: 8px;
+    }
+    
+    .highlight {
+      background: rgba(245, 196, 81, 0.2);
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-weight: 600;
+    }
+    
+    .copy-button {
+      background: #f5c451;
+      color: #1a1d29;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 8px;
+      font-weight: bold;
+      cursor: pointer;
+      margin-top: 10px;
+    }
+    
+    .copy-button:hover {
+      background: #ffd571;
+    }
+    
+    ul {
+      margin: 15px 0;
+      padding-left: 25px;
+    }
+    
+    li {
+      margin: 10px 0;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🔑 OpenAI API Setup Guide</h1>
+    <p style="color: #b0b3c2; font-size: 18px;">Follow these exact steps to enable AI features</p>
+
+    <h2>Step 1: Get Your API Key</h2>
+    <div class="step">
+      <ol>
+        <li>Go to <a href="https://platform.openai.com/api-keys" style="color: #f5c451;">https://platform.openai.com/api-keys</a></li>
+        <li>Click <strong>"Create new secret key"</strong></li>
+        <li>Copy the ENTIRE key</li>
+      </ol>
+      
+      <p style="margin-top: 20px;"><strong>Your key will look like this:</strong></p>
+      <div class="code-block">
+        <span class="real-example">sk-proj-Ab3dEf9GhIjKlMnOpQrStUvWxYz1234567890</span>
+      </div>
+    </div>
+
+    <h2>Step 2: Create the .env File</h2>
+    <div class="step">
+      <p><strong>Open Terminal and type these commands:</strong></p>
+      
+      <div class="code-block">
+        <div style="color: #7b7f92;"># Navigate to your project folder</div>
+        <div style="color: #fff;">cd fantasy-dashboard-v2</div>
+        <br>
+        <div style="color: #7b7f92;"># Create the .env file</div>
+        <div style="color: #fff;">echo 'VITE_OPENAI_API_KEY=<span class="fake-key">YOUR_KEY_HERE</span>' > .env</div>
+      </div>
+      
+      <div class="warning">
+        ⚠️ <strong>IMPORTANT:</strong> Replace <span class="fake-key">YOUR_KEY_HERE</span> with your actual OpenAI key!
+      </div>
+    </div>
+
+    <h2>Step 3: Real Example</h2>
+    <div class="step">
+      <p><strong>This is what your ACTUAL command should look like:</strong></p>
+      
+      <div class="code-block">
+        <div style="color: #fff;">echo 'VITE_OPENAI_API_KEY=<span class="real-example">sk-proj-Ab3dEf9GhIjKlMnOpQrStUvWxYz1234567890</span>' > .env</div>
+      </div>
+      
+      <p style="margin-top: 15px;"><strong>Copy this template and replace the red part:</strong></p>
+      <div class="code-block">
+        VITE_OPENAI_API_KEY=<span class="fake-key">sk-proj-PASTE_YOUR_ACTUAL_KEY_HERE</span>
+      </div>
+      
+      <button class="copy-button" onclick="copyTemplate()">📋 Copy Template</button>
+    </div>
+
+    <h2>Step 4: Verify It Works</h2>
+    <div class="step">
+      <p><strong>Check if your .env file was created:</strong></p>
+      
+      <div class="code-block">
+        <div style="color: #fff;">cat .env</div>
+      </div>
+      
+      <div class="success">
+        ✅ <strong>You should see:</strong> VITE_OPENAI_API_KEY=sk-proj-[your key here]
+      </div>
+    </div>
+
+    <h2>Step 5: Restart Server</h2>
+    <div class="step">
+      <p><strong>Stop your current server (Ctrl+C) and restart:</strong></p>
+      
+      <div class="code-block">
+        <div style="color: #fff;">npm run dev</div>
+      </div>
+      
+      <p style="margin-top: 15px;">Now go to <strong>Power Rankings</strong> → Click <strong>"Generate Analysis"</strong></p>
+    </div>
+
+    <h2>🎯 Quick Reference</h2>
+    <div class="step">
+      <table style="width: 100%; border-collapse: collapse;">
+        <tr style="border-bottom: 1px solid #262a3a;">
+          <td style="padding: 15px; color: #b0b3c2;">❌ Wrong</td>
+          <td style="padding: 15px;"><span class="fake-key">YOUR_KEY_HERE</span></td>
+        </tr>
+        <tr style="border-bottom: 1px solid #262a3a;">
+          <td style="padding: 15px; color: #b0b3c2;">❌ Wrong</td>
+          <td style="padding: 15px;"><span class="fake-key">FAKE_KEY_123</span></td>
+        </tr>
+        <tr style="border-bottom: 1px solid #262a3a;">
+          <td style="padding: 15px; color: #b0b3c2;">❌ Wrong</td>
+          <td style="padding: 15px;"><span class="fake-key">sk-123</span> (too short)</td>
+        </tr>
+        <tr>
+          <td style="padding: 15px; color: #b0b3c2;">✅ Correct</td>
+          <td style="padding: 15px;"><span class="real-example">sk-proj-Ab3dEf9GhIj...xyz</span> (50+ chars)</td>
+        </tr>
+      </table>
+    </div>
+
+    <h2>🆘 Troubleshooting</h2>
+    <div class="step">
+      <p><strong>If you get "API key not configured":</strong></p>
+      <ul>
+        <li>Make sure .env file is in <span class="highlight">fantasy-dashboard-v2/</span> folder (not inside src/)</li>
+        <li>Make sure you restarted the server after creating .env</li>
+        <li>Check that your key starts with <span class="highlight">sk-proj-</span> or <span class="highlight">sk-</span></li>
+        <li>No spaces, no quotes around the key</li>
+      </ul>
+      
+      <p style="margin-top: 20px;"><strong>Test in browser console (F12):</strong></p>
+      <div class="code-block">
+        <div style="color: #fff;">console.log(import.meta.env.VITE_OPENAI_API_KEY)</div>
+      </div>
+      <p>If this shows <span class="fake-key">undefined</span>, your .env file isn't loading.</p>
+    </div>
+
+    <div style="margin-top: 60px; padding-top: 30px; border-top: 1px solid #262a3a; text-align: center; color: #7b7f92;">
+      <p>Need more help? Check the console for error messages and let me know what you see!</p>
+    </div>
+  </div>
+
+  <script>
+    function copyTemplate() {
+      const template = "VITE_OPENAI_API_KEY=sk-proj-PASTE_YOUR_ACTUAL_KEY_HERE";
+      navigator.clipboard.writeText(template).then(() => {
+        alert('✅ Template copied! Now paste your actual key after sk-proj-');
+      });
+    }
+  </script>
+</body>
+</html>

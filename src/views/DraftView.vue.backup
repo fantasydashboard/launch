@@ -1,0 +1,1226 @@
+<template>
+  <div class="space-y-6">
+    <!-- Header -->
+    <div class="flex items-center justify-between flex-wrap gap-4">
+      <div>
+        <h1 class="text-3xl font-bold text-dark-text mb-2">Draft Analysis</h1>
+        <p class="text-base text-dark-textMuted">
+          Visual draft board with pick analysis and performance tracking
+        </p>
+      </div>
+      <div class="flex items-center gap-3">
+        <select v-model="selectedSeason" @change="onSeasonChange" class="select">
+          <option v-for="season in leagueStore.historicalSeasons" :key="season.season" :value="season.season">
+            {{ season.season }} Season
+          </option>
+        </select>
+        <select v-model="selectedWeek" class="select">
+          <option value="final">Final Results</option>
+          <option v-for="week in availableWeeks" :key="week" :value="week">
+            Through Week {{ week }}
+          </option>
+        </select>
+      </div>
+    </div>
+
+    <!-- Tab Navigation -->
+    <div class="flex gap-2">
+      <button
+        v-for="tab in tabOptions"
+        :key="tab.id"
+        @click="activeTab = tab.id"
+        :class="activeTab === tab.id ? 'bg-primary text-gray-900' : 'bg-dark-card text-dark-textSecondary hover:bg-dark-border/50'"
+        class="px-6 py-3 rounded-xl font-semibold transition-all flex items-center gap-2"
+      >
+        <span class="text-xl">{{ tab.icon }}</span>
+        {{ tab.name }}
+      </button>
+    </div>
+
+    <!-- Loading State -->
+    <div v-if="isLoading" class="flex items-center justify-center py-20">
+      <div class="text-center">
+        <div class="animate-spin rounded-full h-16 w-16 border-b-4 border-primary mx-auto mb-4"></div>
+        <p class="text-dark-textMuted">Loading draft data...</p>
+      </div>
+    </div>
+
+    <!-- DRAFT BOARD TAB -->
+    <template v-else-if="activeTab === 'board' && draftBoard.length > 0">
+      <!-- Controls Card -->
+      <div class="card">
+        <div class="card-body py-4">
+          <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+            <!-- Position Filters -->
+            <div class="flex items-center gap-2 flex-wrap">
+              <span class="text-dark-textMuted font-medium">Filter:</span>
+              <div class="flex gap-2">
+                <button
+                  v-for="pos in ['All', 'QB', 'RB', 'WR', 'TE']"
+                  :key="pos"
+                  @click="positionFilter = pos"
+                  :class="positionFilter === pos ? 'bg-primary text-gray-900' : 'bg-dark-border/50 text-dark-textSecondary'"
+                  class="px-4 py-2 rounded-lg font-medium transition-all text-sm"
+                >
+                  {{ pos }}
+                </button>
+              </div>
+            </div>
+            
+            <!-- View Toggle -->
+            <div class="flex items-center gap-4">
+              <label class="flex items-center gap-2 text-sm text-dark-textMuted cursor-pointer">
+                <input type="checkbox" v-model="showTradesOnly" class="rounded accent-primary w-4 h-4" />
+                <span>Show Traded Picks Only</span>
+              </label>
+              <div class="text-sm text-dark-textMuted">
+                {{ draftBoard.length }} teams • {{ totalPicks }} picks
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Legend Card -->
+      <div class="card">
+        <div class="card-body py-3">
+          <div class="flex items-center justify-between flex-wrap gap-4">
+            <div class="flex items-center gap-6 text-sm">
+              <div class="flex items-center gap-2">
+                <div class="w-4 h-4 rounded bg-green-500/30 border-l-2 border-green-500"></div>
+                <span class="text-dark-textMuted">Value Pick (+8 or better)</span>
+              </div>
+              <div class="flex items-center gap-2">
+                <div class="w-4 h-4 rounded bg-red-500/20 border-l-2 border-red-500"></div>
+                <span class="text-dark-textMuted">Reach (-8 or worse)</span>
+              </div>
+              <div class="flex items-center gap-2">
+                <div class="w-4 h-4 rounded bg-blue-500/20 border-l-2 border-blue-500"></div>
+                <span class="text-dark-textMuted">Traded Pick</span>
+              </div>
+            </div>
+            <div class="text-sm text-dark-textMuted">
+              Score weighted by finish tier (Elite=2.5x, S1=1.5x, S2=1x, Flex=0.7x) • Click any player for details
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Draft Board Grid - Compact View -->
+      <div class="overflow-x-auto pb-4">
+        <div class="grid gap-3" :style="{ gridTemplateColumns: `repeat(${draftBoard.length}, minmax(180px, 1fr))` }">
+          <div v-for="team in draftBoard" :key="team.roster_id" class="card overflow-hidden">
+            <!-- Team Header - More compact -->
+            <div class="card-header p-3" :class="getTeamHeaderClass(team.total_score)">
+              <div class="flex items-center gap-2">
+                <div class="relative">
+                  <div class="w-10 h-10 rounded-full overflow-hidden bg-dark-border flex-shrink-0 ring-2" :class="getTeamRingClass(team.total_score)">
+                    <img
+                      :src="team.avatar"
+                      :alt="team.team_name"
+                      class="w-full h-full object-cover"
+                      @error="handleImageError"
+                    />
+                  </div>
+                  <div class="absolute -bottom-1 -right-1 w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold shadow-lg"
+                       :class="team.total_score >= 0 ? 'bg-green-500 text-gray-900' : 'bg-red-500 text-white'">
+                    {{ team.draft_position }}
+                  </div>
+                </div>
+                <div class="flex-1 min-w-0">
+                  <div class="font-bold text-dark-text text-sm truncate">{{ team.team_name }}</div>
+                  <div class="text-[10px] text-dark-textMuted">{{ team.picks.length }} picks</div>
+                </div>
+                <div class="text-right">
+                  <span class="text-xl font-black" :class="getScoreClass(team.total_score)">
+                    {{ team.total_score >= 0 ? '+' : '' }}{{ team.total_score }}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Picks List - More compact -->
+            <div class="card-body p-2 space-y-1.5 max-h-[450px] overflow-y-auto">
+              <template v-for="pick in team.picks" :key="pick.pick_id">
+                <div 
+                  v-if="shouldShowPick(pick)"
+                  :class="getPickClass(pick)"
+                  class="p-2 rounded-lg transition-all cursor-pointer hover:ring-2 hover:ring-primary/50"
+                  @click="openPlayerModal(pick, team.team_name)"
+                >
+                  <div class="flex items-center justify-between gap-1 mb-1">
+                    <div class="flex-1 min-w-0">
+                      <div class="flex items-center gap-1">
+                        <span class="font-semibold text-dark-text text-xs truncate">{{ pick.player_name }}</span>
+                        <span v-if="pick.is_traded" class="text-blue-400 text-[10px]" title="Traded pick">🔄</span>
+                      </div>
+                      <div class="text-[10px] text-dark-textMuted flex items-center gap-1">
+                        <span class="px-1 py-0.5 rounded text-[9px] font-bold" :class="getPositionClass(pick.position)">
+                          {{ pick.position }}
+                        </span>
+                        <span>{{ pick.pick_label }}</span>
+                      </div>
+                    </div>
+                    <div class="text-right flex-shrink-0">
+                      <div class="text-sm font-bold" :class="getScoreClass(pick.score)">
+                        {{ pick.score >= 0 ? '+' : '' }}{{ pick.score }}
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <!-- Rank change indicator -->
+                  <div class="text-[9px] text-dark-textMuted text-right">
+                    {{ pick.position }}{{ pick.position_rank_drafted }} → {{ pick.current_position_rank < 900 ? pick.position + pick.current_position_rank : 'N/A' }}
+                  </div>
+                </div>
+              </template>
+            </div>
+          </div>
+        </div>
+      </div>
+    </template>
+
+    <!-- PLAYER GRADES TAB -->
+    <template v-else-if="activeTab === 'grades'">
+      <!-- Controls Card -->
+      <div class="card">
+        <div class="card-body py-4">
+          <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+            <!-- Team Filter -->
+            <div class="flex items-center gap-4">
+              <span class="text-dark-textMuted font-medium">Team:</span>
+              <select v-model="selectedGradeTeam" class="select">
+                <option value="">All Teams</option>
+                <option v-for="team in draftBoard" :key="team.roster_id" :value="team.roster_id">
+                  {{ team.team_name }}
+                </option>
+              </select>
+            </div>
+            
+            <!-- Sort Options -->
+            <div class="flex items-center gap-4">
+              <span class="text-dark-textMuted font-medium">Sort:</span>
+              <div class="flex gap-2">
+                <button
+                  v-for="sort in gradeSortOptions"
+                  :key="sort.id"
+                  @click="gradeSort = sort.id"
+                  :class="gradeSort === sort.id ? 'bg-primary text-gray-900' : 'bg-dark-border/50 text-dark-textSecondary'"
+                  class="px-3 py-1.5 rounded-lg font-medium transition-all text-sm"
+                >
+                  {{ sort.label }}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Grades Table -->
+      <div class="card">
+        <div class="card-header">
+          <div class="flex items-center gap-2">
+            <span class="text-2xl">📊</span>
+            <h2 class="card-title">Player Draft Grades</h2>
+          </div>
+          <div class="text-sm text-dark-textMuted">
+            {{ filteredPlayerGrades.length }} players
+          </div>
+        </div>
+        <div class="card-body p-0">
+          <div class="overflow-x-auto max-h-[70vh] overflow-y-auto">
+            <table class="w-full">
+              <thead class="bg-dark-border/30 sticky top-0 z-10">
+                <tr>
+                  <th class="px-4 py-3 text-left text-xs font-semibold text-dark-textMuted uppercase tracking-wider w-16">Grade</th>
+                  <th class="px-4 py-3 text-left text-xs font-semibold text-dark-textMuted uppercase tracking-wider">Player</th>
+                  <th class="px-4 py-3 text-center text-xs font-semibold text-dark-textMuted uppercase tracking-wider w-16">Pos</th>
+                  <th class="px-4 py-3 text-center text-xs font-semibold text-dark-textMuted uppercase tracking-wider w-24">Pick</th>
+                  <th class="px-4 py-3 text-center text-xs font-semibold text-dark-textMuted uppercase tracking-wider w-28">Drafted</th>
+                  <th class="px-4 py-3 text-center text-xs font-semibold text-dark-textMuted uppercase tracking-wider w-28">Actual</th>
+                  <th class="px-4 py-3 text-center text-xs font-semibold text-dark-textMuted uppercase tracking-wider w-20">Score</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-dark-border/30">
+                <tr 
+                  v-for="grade in filteredPlayerGrades" 
+                  :key="grade.pick_id"
+                  :class="getGradeRowClass(grade)"
+                  class="hover:bg-dark-border/20 transition-colors cursor-pointer"
+                  @click="openPlayerModal(grade, grade.team_name)"
+                >
+                  <td class="px-4 py-3">
+                    <span class="text-3xl font-black" :class="getGradeClass(grade.grade)">
+                      {{ grade.grade }}
+                    </span>
+                  </td>
+                  <td class="px-4 py-3">
+                    <div class="flex items-center gap-3">
+                      <div class="relative">
+                        <div class="w-10 h-10 rounded-full bg-dark-border overflow-hidden flex-shrink-0 ring-2" :class="getGradeRingClass(grade.grade)">
+                          <img :src="getPlayerImageUrl(grade.player_id)" :alt="grade.player_name" class="w-full h-full object-cover" @error="handleImageError" />
+                        </div>
+                      </div>
+                      <div>
+                        <div class="font-semibold text-dark-text">{{ grade.player_name }}</div>
+                        <div class="flex items-center gap-2 text-xs text-dark-textMuted">
+                          <span>{{ grade.nfl_team || 'FA' }}</span>
+                          <span class="text-dark-border">•</span>
+                          <span class="flex items-center gap-1">
+                            <img src="https://sleepercdn.com/images/v2/icons/league/league_avatar_mint.png" class="w-3 h-3" alt="Sleeper" />
+                            <span>{{ grade.team_name }}</span>
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  </td>
+                  <td class="px-4 py-3 text-center">
+                    <span class="px-2 py-1 rounded text-xs font-bold" :class="getPositionClass(grade.position)">
+                      {{ grade.position }}
+                    </span>
+                  </td>
+                  <td class="px-4 py-3 text-center">
+                    <span class="font-medium text-dark-text">{{ grade.pick_label }}</span>
+                  </td>
+                  <td class="px-4 py-3 text-center">
+                    <span class="font-medium text-dark-textMuted">{{ grade.position }}{{ grade.position_rank_drafted }}</span>
+                  </td>
+                  <td class="px-4 py-3 text-center">
+                    <span class="font-bold" :class="grade.score >= 0 ? 'text-green-400' : 'text-red-400'">
+                      {{ grade.position }}{{ grade.current_position_rank }}
+                    </span>
+                  </td>
+                  <td class="px-4 py-3 text-center">
+                    <span class="text-xl font-black" :class="getScoreClass(grade.score)">
+                      {{ grade.score >= 0 ? '+' : '' }}{{ grade.score }}
+                    </span>
+                  </td>
+                </tr>
+                <tr v-if="filteredPlayerGrades.length === 0">
+                  <td colspan="7" class="px-4 py-8 text-center text-dark-textMuted">
+                    No player grades available
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </template>
+
+    <!-- DEEP ANALYSIS TAB -->
+    <template v-else-if="activeTab === 'analysis'">
+      <!-- Team Draft Grades Card -->
+      <div class="card">
+        <div class="card-header">
+          <div class="flex items-center gap-2">
+            <span class="text-2xl">🎓</span>
+            <h2 class="card-title">Team Draft Grades</h2>
+          </div>
+          <p class="text-sm text-dark-textMuted">Overall draft performance based on player value vs draft position</p>
+        </div>
+        <div class="card-body p-0">
+          <div class="overflow-x-auto">
+            <table class="w-full">
+              <thead class="bg-dark-border/30">
+                <tr>
+                  <th class="px-4 py-3 text-left text-xs font-semibold text-dark-textMuted uppercase tracking-wider w-16">Rank</th>
+                  <th class="px-4 py-3 text-left text-xs font-semibold text-dark-textMuted uppercase tracking-wider">Team</th>
+                  <th class="px-4 py-3 text-center text-xs font-semibold text-dark-textMuted uppercase tracking-wider w-20">Grade</th>
+                  <th class="px-4 py-3 text-center text-xs font-semibold text-dark-textMuted uppercase tracking-wider w-24">Total Value</th>
+                  <th class="px-4 py-3 text-center text-xs font-semibold text-dark-textMuted uppercase tracking-wider w-20">Steals</th>
+                  <th class="px-4 py-3 text-center text-xs font-semibold text-dark-textMuted uppercase tracking-wider w-20">Reaches</th>
+                  <th class="px-4 py-3 text-left text-xs font-semibold text-dark-textMuted uppercase tracking-wider">Best Pick</th>
+                  <th class="px-4 py-3 text-left text-xs font-semibold text-dark-textMuted uppercase tracking-wider">Worst Pick</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-dark-border/30">
+                <tr 
+                  v-for="(grade, index) in teamDraftGrades" 
+                  :key="grade.roster_id"
+                  class="hover:bg-dark-border/20 transition-colors"
+                >
+                  <td class="px-4 py-3">
+                    <span class="font-bold text-lg" :class="index === 0 ? 'text-primary' : 'text-dark-text'">{{ index + 1 }}</span>
+                  </td>
+                  <td class="px-4 py-3">
+                    <div class="flex items-center gap-3">
+                      <img :src="getTeamAvatar(grade.roster_id)" class="w-10 h-10 rounded-full" @error="handleImageError" />
+                      <div>
+                        <div class="font-semibold text-dark-text">{{ grade.team_name }}</div>
+                        <div class="text-xs text-dark-textMuted">Score: {{ grade.gradeScore.toFixed(1) }}</div>
+                      </div>
+                    </div>
+                  </td>
+                  <td class="px-4 py-3 text-center">
+                    <span class="text-4xl font-black" :class="getGradeClass(grade.overallGrade)">
+                      {{ grade.overallGrade }}
+                    </span>
+                  </td>
+                  <td class="px-4 py-3 text-center">
+                    <span class="text-xl font-bold" :class="grade.totalValue > 0 ? 'text-green-400' : 'text-red-400'">
+                      {{ grade.totalValue > 0 ? '+' : '' }}{{ grade.totalValue.toFixed(1) }}
+                    </span>
+                  </td>
+                  <td class="px-4 py-3 text-center">
+                    <span class="px-2 py-1 rounded-full bg-green-500/20 text-green-400 font-bold text-sm">
+                      {{ grade.steals.length }}
+                    </span>
+                  </td>
+                  <td class="px-4 py-3 text-center">
+                    <span class="px-2 py-1 rounded-full bg-red-500/20 text-red-400 font-bold text-sm">
+                      {{ grade.reaches.length }}
+                    </span>
+                  </td>
+                  <td class="px-4 py-3">
+                    <span class="text-green-400 text-sm">{{ grade.bestPick?.player_name || '—' }}</span>
+                  </td>
+                  <td class="px-4 py-3">
+                    <span class="text-red-400 text-sm">{{ grade.worstPick?.player_name || '—' }}</span>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- Steals & Reaches Side by Side -->
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <!-- Steals -->
+        <div class="card">
+          <div class="card-header">
+            <div class="flex items-center gap-2">
+              <span class="text-2xl">💎</span>
+              <h2 class="card-title">Draft Steals</h2>
+            </div>
+            <p class="text-sm text-dark-textMuted">Late picks who significantly outperformed</p>
+          </div>
+          <div class="card-body p-0">
+            <div v-if="filteredSteals.length === 0" class="p-8 text-center text-dark-textMuted">
+              No clear steals in this draft
+            </div>
+            <div v-else class="divide-y divide-dark-border/30">
+              <div v-for="pick in filteredSteals.slice(0, 8)" :key="pick.player_id"
+                   class="p-4 flex items-center gap-4 hover:bg-green-500/5 transition-colors">
+                <div class="w-10 h-10 rounded-full bg-dark-border overflow-hidden flex-shrink-0 ring-2 ring-green-500/50">
+                  <img :src="getPlayerImageUrl(pick.player_id)" :alt="pick.player_name" class="w-full h-full object-cover" @error="handleImageError" />
+                </div>
+                <div class="flex-1 min-w-0">
+                  <div class="font-semibold text-dark-text">{{ pick.player_name }}</div>
+                  <div class="text-xs text-dark-textMuted">
+                    {{ pick.team_name }} • Pick #{{ pick.pick_no }} (Rd {{ pick.round }})
+                  </div>
+                </div>
+                <div class="text-right">
+                  <div class="text-xl font-bold text-green-400">{{ pick.pickGrade }}</div>
+                  <div class="text-xs text-green-400">+{{ Math.abs(pick.valueOverExpected) }}</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Reaches -->
+        <div class="card">
+          <div class="card-header">
+            <div class="flex items-center gap-2">
+              <span class="text-2xl">📉</span>
+              <h2 class="card-title">Draft Reaches</h2>
+            </div>
+            <p class="text-sm text-dark-textMuted">Early picks who significantly underperformed</p>
+          </div>
+          <div class="card-body p-0">
+            <div v-if="filteredReaches.length === 0" class="p-8 text-center text-dark-textMuted">
+              No significant reaches in this draft
+            </div>
+            <div v-else class="divide-y divide-dark-border/30">
+              <div v-for="pick in filteredReaches.slice(0, 8)" :key="pick.player_id"
+                   class="p-4 flex items-center gap-4 hover:bg-red-500/5 transition-colors">
+                <div class="w-10 h-10 rounded-full bg-dark-border overflow-hidden flex-shrink-0 ring-2 ring-red-500/50">
+                  <img :src="getPlayerImageUrl(pick.player_id)" :alt="pick.player_name" class="w-full h-full object-cover" @error="handleImageError" />
+                </div>
+                <div class="flex-1 min-w-0">
+                  <div class="font-semibold text-dark-text">{{ pick.player_name }}</div>
+                  <div class="text-xs text-dark-textMuted">
+                    {{ pick.team_name }} • Pick #{{ pick.pick_no }} (Rd {{ pick.round }})
+                  </div>
+                </div>
+                <div class="text-right">
+                  <div class="text-xl font-bold text-red-400">{{ pick.pickGrade }}</div>
+                  <div class="text-xs text-red-400">-{{ pick.valueOverExpected }}</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Round Analysis -->
+      <div class="card">
+        <div class="card-header">
+          <div class="flex items-center gap-2">
+            <span class="text-2xl">🔄</span>
+            <h2 class="card-title">Round-by-Round Analysis</h2>
+          </div>
+          <p class="text-sm text-dark-textMuted">Best and worst picks from each round</p>
+        </div>
+        <div class="card-body">
+          <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div v-for="round in roundAnalyses" :key="round.round" 
+                 class="p-4 bg-dark-border/20 rounded-xl">
+              <div class="flex items-center justify-between mb-4">
+                <span class="text-lg font-bold text-dark-text">Round {{ round.round }}</span>
+                <span class="text-sm font-semibold" :class="round.avgValue > 0 ? 'text-green-400' : 'text-red-400'">
+                  Avg: {{ round.avgValue > 0 ? '+' : '' }}{{ round.avgValue.toFixed(1) }}
+                </span>
+              </div>
+              
+              <div class="space-y-3">
+                <!-- Best Pick -->
+                <div class="flex items-center gap-2 p-2 bg-green-500/10 rounded-lg">
+                  <span class="text-green-400 text-lg">👑</span>
+                  <div class="flex-1 min-w-0">
+                    <div class="text-sm font-medium text-dark-text truncate">{{ round.bestPick?.player_name || 'N/A' }}</div>
+                    <div class="text-xs text-dark-textMuted">{{ round.bestPick?.team_name || '' }}</div>
+                  </div>
+                  <span class="text-green-400 font-bold text-sm">
+                    {{ round.bestPick ? `+${round.bestPick.score}` : '' }}
+                  </span>
+                </div>
+                
+                <!-- Worst Pick -->
+                <div class="flex items-center gap-2 p-2 bg-red-500/10 rounded-lg">
+                  <span class="text-red-400 text-lg">💀</span>
+                  <div class="flex-1 min-w-0">
+                    <div class="text-sm font-medium text-dark-text truncate">{{ round.worstPick?.player_name || 'N/A' }}</div>
+                    <div class="text-xs text-dark-textMuted">{{ round.worstPick?.team_name || '' }}</div>
+                  </div>
+                  <span class="text-red-400 font-bold text-sm">
+                    {{ round.worstPick ? round.worstPick.score : '' }}
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </template>
+
+    <!-- No Data State -->
+    <template v-else>
+      <div class="card">
+        <div class="card-body text-center py-12">
+          <div class="text-6xl mb-4">📋</div>
+          <h3 class="text-xl font-bold text-dark-text mb-2">No Draft Data Available</h3>
+          <p class="text-dark-textMuted">Select a season to view draft analysis</p>
+        </div>
+      </div>
+    </template>
+
+    <!-- Player Detail Modal -->
+    <Teleport to="body">
+      <div v-if="selectedPlayer" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70" @click.self="selectedPlayer = null">
+        <div class="bg-dark-card rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-hidden shadow-2xl">
+          <!-- Modal Header -->
+          <div class="p-6 border-b border-dark-border flex items-center justify-between">
+            <div class="flex items-center gap-4">
+              <div class="w-16 h-16 rounded-full bg-dark-border overflow-hidden ring-4" :class="getGradeRingClass(selectedPlayer.grade)">
+                <img :src="getPlayerImageUrl(selectedPlayer.player_id)" :alt="selectedPlayer.player_name" class="w-full h-full object-cover" @error="handleImageError" />
+              </div>
+              <div>
+                <h2 class="text-2xl font-bold text-dark-text">{{ selectedPlayer.player_name }}</h2>
+                <div class="flex items-center gap-2 text-sm text-dark-textMuted">
+                  <span class="px-2 py-0.5 rounded text-xs font-bold" :class="getPositionClass(selectedPlayer.position)">{{ selectedPlayer.position }}</span>
+                  <span>•</span>
+                  <span>{{ selectedPlayer.team_name }}</span>
+                </div>
+              </div>
+            </div>
+            <button @click="selectedPlayer = null" class="text-dark-textMuted hover:text-dark-text p-2">
+              <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+
+          <!-- Modal Content -->
+          <div class="p-6 overflow-y-auto max-h-[calc(90vh-120px)] space-y-6">
+            <!-- Draft Info & Grade -->
+            <div class="grid grid-cols-2 gap-4">
+              <div class="bg-dark-border/30 rounded-xl p-4">
+                <div class="text-sm text-dark-textMuted mb-1">Draft Pick</div>
+                <div class="text-2xl font-bold text-dark-text">{{ selectedPlayer.pick_label }}</div>
+                <div class="text-xs text-dark-textMuted">Round {{ selectedPlayer.round }}, Pick #{{ selectedPlayer.pick_no }}</div>
+              </div>
+              <div class="bg-dark-border/30 rounded-xl p-4 text-center">
+                <div class="text-sm text-dark-textMuted mb-1">Pick Grade</div>
+                <div class="text-5xl font-black" :class="getGradeClass(selectedPlayer.grade)">{{ selectedPlayer.grade }}</div>
+              </div>
+            </div>
+
+            <!-- Performance Summary -->
+            <div class="bg-dark-border/30 rounded-xl p-4">
+              <h3 class="text-lg font-bold text-dark-text mb-4">Season Performance</h3>
+              <div class="grid grid-cols-3 gap-4 text-center">
+                <div>
+                  <div class="text-2xl font-bold text-primary">{{ selectedPlayer.position }}{{ selectedPlayer.position_rank_drafted }}</div>
+                  <div class="text-xs text-dark-textMuted">Drafted As</div>
+                </div>
+                <div>
+                  <div class="text-2xl font-bold" :class="selectedPlayer.score >= 0 ? 'text-green-400' : 'text-red-400'">
+                    {{ selectedPlayer.current_position_rank < 900 ? selectedPlayer.position + selectedPlayer.current_position_rank : 'N/A' }}
+                  </div>
+                  <div class="text-xs text-dark-textMuted">Finished As</div>
+                </div>
+                <div>
+                  <div class="text-2xl font-bold" :class="selectedPlayer.score >= 0 ? 'text-green-400' : 'text-red-400'">
+                    {{ selectedPlayer.score >= 0 ? '+' : '' }}{{ selectedPlayer.score }}
+                  </div>
+                  <div class="text-xs text-dark-textMuted">Value Score</div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Transaction History -->
+            <div class="bg-dark-border/30 rounded-xl p-4">
+              <h3 class="text-lg font-bold text-dark-text mb-4">Transaction History</h3>
+              <div v-if="playerTransactionHistory.length === 0" class="text-center py-4 text-dark-textMuted">
+                No transactions - player stayed on original roster all season
+              </div>
+              <div v-else class="space-y-2">
+                <div v-for="(tx, idx) in playerTransactionHistory" :key="idx" 
+                     class="flex items-center gap-3 p-3 rounded-lg"
+                     :class="tx.type === 'trade' ? 'bg-blue-500/10' : tx.type === 'drop' ? 'bg-red-500/10' : 'bg-green-500/10'">
+                  <span class="text-xl">
+                    {{ tx.type === 'trade' ? '🔄' : tx.type === 'drop' ? '⬇️' : tx.type === 'waiver' ? '📋' : '➕' }}
+                  </span>
+                  <div class="flex-1">
+                    <div class="font-medium text-dark-text">
+                      {{ tx.type === 'trade' ? 'Traded' : tx.type === 'drop' ? 'Dropped' : tx.type === 'waiver' ? 'Waiver Claim' : 'Added' }}
+                    </div>
+                    <div class="text-xs text-dark-textMuted">
+                      Week {{ tx.week }}
+                      <span v-if="tx.fromTeam"> • From: {{ tx.fromTeam }}</span>
+                      <span v-if="tx.toTeam"> • To: {{ tx.toTeam }}</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Verdict -->
+            <div class="bg-dark-border/30 rounded-xl p-4">
+              <h3 class="text-lg font-bold text-dark-text mb-2">Verdict</h3>
+              <p class="text-dark-textMuted">
+                <template v-if="selectedPlayer.score >= 15">
+                  <span class="text-green-400 font-bold">💎 ELITE STEAL!</span> 
+                  Exceptional value - this player finished as an elite starter while being drafted much later.
+                </template>
+                <template v-else-if="selectedPlayer.score >= 8">
+                  <span class="text-green-400 font-bold">✨ Great Pick</span>
+                  Strong value that significantly outperformed draft position.
+                </template>
+                <template v-else-if="selectedPlayer.score >= 3">
+                  <span class="text-lime-400 font-bold">✓ Solid Hit</span>
+                  Good value pick that exceeded expectations.
+                </template>
+                <template v-else-if="selectedPlayer.score >= -3">
+                  <span class="text-blue-400 font-bold">➡️ As Expected</span>
+                  Performed roughly as drafted - no major gain or loss.
+                </template>
+                <template v-else-if="selectedPlayer.score >= -10">
+                  <span class="text-orange-400 font-bold">⚠️ Underperformed</span>
+                  Didn't live up to draft position - moderate miss.
+                </template>
+                <template v-else>
+                  <span class="text-red-400 font-bold">💀 Bust</span>
+                  Significant underperformance relative to draft capital spent.
+                </template>
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </Teleport>
+  </div>
+</template>
+
+<script setup lang="ts">
+import { ref, computed, watch, onMounted } from 'vue'
+import { useLeagueStore } from '@/stores/league'
+import { sleeperService } from '@/services/sleeper'
+import draftAnalysisService, { type DraftPickAnalysis, type TeamDraftGrade, type RoundAnalysis } from '@/services/draftAnalysis'
+
+const leagueStore = useLeagueStore()
+
+// Tab options
+const tabOptions = [
+  { id: 'board', name: 'Draft Board', icon: '📋' },
+  { id: 'grades', name: 'Player Grades', icon: '🎯' },
+  { id: 'analysis', name: 'Deep Analysis', icon: '📊' }
+]
+
+// State
+const activeTab = ref('board')
+const selectedSeason = ref('')
+const selectedWeek = ref('final')
+const positionFilter = ref('All')
+const showTradesOnly = ref(false)
+const selectedGradeTeam = ref('')
+const gradeSort = ref('grade')
+const isLoading = ref(false)
+
+// Analysis data
+const teamDraftGrades = ref<TeamDraftGrade[]>([])
+const roundAnalyses = ref<RoundAnalysis[]>([])
+const allSteals = ref<DraftPickAnalysis[]>([])
+const allReaches = ref<DraftPickAnalysis[]>([])
+
+// Player modal state
+const selectedPlayer = ref<any>(null)
+const playerTransactions = ref<Map<string, any[]>>(new Map())
+const transactionsLoaded = ref(false)
+
+// Computed: transaction history for selected player
+const playerTransactionHistory = computed(() => {
+  if (!selectedPlayer.value) return []
+  return playerTransactions.value.get(selectedPlayer.value.player_id) || []
+})
+
+// Sort options for grades
+const gradeSortOptions = [
+  { id: 'grade', label: 'By Grade' },
+  { id: 'pick', label: 'By Pick' },
+  { id: 'score', label: 'By Score' }
+]
+
+// Available weeks (1-17 for regular season)
+const availableWeeks = computed(() => {
+  return Array.from({ length: 17 }, (_, i) => i + 1)
+})
+
+// Total picks count
+const totalPicks = computed(() => {
+  return draftBoard.value.reduce((sum, team) => sum + team.picks.length, 0)
+})
+
+// Types
+interface DraftPick {
+  pick_id: string
+  player_id: string
+  player_name: string
+  position: string
+  pick_label: string
+  pick_no: number
+  round: number
+  is_traded: boolean
+  score: number
+  position_rank_drafted: number
+  current_position_rank: number
+}
+
+interface TeamDraft {
+  roster_id: number
+  team_name: string
+  avatar: string
+  draft_position: number
+  picks: DraftPick[]
+  total_score: number
+}
+
+// Draft board computed from store data
+const draftBoard = computed<TeamDraft[]>(() => {
+  if (!selectedSeason.value) return []
+  
+  const draft = leagueStore.historicalDrafts.get(selectedSeason.value)
+  if (!draft || !draft.picks) return []
+  
+  const rosters = leagueStore.historicalRosters.get(selectedSeason.value) || []
+  const users = leagueStore.historicalUsers.get(selectedSeason.value) || []
+  const matchups = leagueStore.historicalMatchups.get(selectedSeason.value)
+  const seasonInfo = leagueStore.historicalSeasons.find(s => s.season === selectedSeason.value)
+  
+  if (!matchups || !seasonInfo) return []
+  
+  // Build player positions map from draft picks
+  const playerPositions = new Map<string, string>()
+  draft.picks.forEach((pick: any) => {
+    const pos = pick.metadata?.position
+    if (pos && pick.player_id) {
+      playerPositions.set(pick.player_id, pos)
+    }
+  })
+  
+  // Calculate player stats with position data
+  const playoffStart = seasonInfo.settings?.playoff_week_start || 15
+  const maxWeek = selectedWeek.value === 'final' ? playoffStart - 1 : parseInt(selectedWeek.value as string)
+  const playerStats = draftAnalysisService.calculatePlayerSeasonStats(matchups, maxWeek, playerPositions)
+  
+  // Group picks by team
+  const teamPicks = new Map<number, any[]>()
+  const draftSlots = new Map<number, number>()
+  
+  draft.picks.forEach((pick: any) => {
+    if (!teamPicks.has(pick.roster_id)) {
+      teamPicks.set(pick.roster_id, [])
+    }
+    teamPicks.get(pick.roster_id)!.push(pick)
+    
+    if (pick.round === 1) {
+      draftSlots.set(pick.roster_id, pick.draft_slot)
+    }
+  })
+  
+  // Calculate position ranks at draft time
+  const positionDraftOrder: Record<string, string[]> = { QB: [], RB: [], WR: [], TE: [] }
+  draft.picks.forEach((pick: any) => {
+    const pos = pick.metadata?.position
+    if (pos && positionDraftOrder[pos]) {
+      positionDraftOrder[pos].push(pick.player_id)
+    }
+  })
+  
+  // Build team draft data
+  const teams: TeamDraft[] = []
+  const numTeams = rosters.length || 12
+  
+  rosters.forEach(roster => {
+    const picks = teamPicks.get(roster.roster_id) || []
+    if (picks.length === 0) return
+    
+    const user = users.find(u => u.user_id === roster.owner_id)
+    const teamName = sleeperService.getTeamName(roster, user)
+    const avatar = sleeperService.getAvatarUrl(roster, user, seasonInfo)
+    
+    const processedPicks: DraftPick[] = picks.map(pick => {
+      const position = pick.metadata?.position || 'Unknown'
+      const playerName = pick.metadata?.first_name && pick.metadata?.last_name
+        ? `${pick.metadata.first_name} ${pick.metadata.last_name}`
+        : `Player ${pick.player_id}`
+      
+      // Get drafted position rank
+      const draftedRank = (positionDraftOrder[position]?.indexOf(pick.player_id) ?? -1) + 1
+      
+      // Get current position rank from stats
+      const stats = playerStats.get(pick.player_id)
+      let currentRank = 999
+      if (stats) {
+        const samePositionPlayers = Array.from(playerStats.entries())
+          .filter(([, s]) => s.position === position)
+          .sort((a, b) => b[1].totalPoints - a[1].totalPoints)
+        currentRank = samePositionPlayers.findIndex(([id]) => id === pick.player_id) + 1
+        if (currentRank === 0) currentRank = 999
+      }
+      
+      // Calculate ADJUSTED score with positional value multiplier
+      // This rewards finishing in elite tiers much more than finishing in bench tiers
+      const adjustedScore = draftAnalysisService.calculateAdjustedScore(
+        draftedRank,
+        currentRank,
+        pick.round,
+        numTeams
+      )
+      
+      // A pick is traded if it appears in the draft's traded_picks
+      // The traded_picks array shows picks that were traded before/during the draft
+      // For now, we mark as traded only if picked_by exists AND differs from roster_id
+      // AND picked_by is a valid roster ID (not 0 or undefined)
+      const isTradedPick = typeof pick.picked_by === 'number' && 
+                          pick.picked_by > 0 && 
+                          pick.roster_id !== pick.picked_by
+      
+      return {
+        pick_id: `${pick.round}-${pick.pick_no}`,
+        player_id: pick.player_id,
+        player_name: playerName,
+        position,
+        pick_label: `${pick.round}.${String(pick.draft_slot).padStart(2, '0')}`,
+        pick_no: pick.pick_no,
+        round: pick.round,
+        is_traded: isTradedPick,
+        score: Math.round(adjustedScore * 10) / 10, // Use adjusted score, rounded to 1 decimal
+        position_rank_drafted: draftedRank,
+        current_position_rank: currentRank
+      }
+    })
+    
+    const totalScore = Math.round(processedPicks.reduce((sum, p) => sum + p.score, 0) * 10) / 10
+    
+    teams.push({
+      roster_id: roster.roster_id,
+      team_name: teamName,
+      avatar,
+      draft_position: draftSlots.get(roster.roster_id) || 0,
+      picks: processedPicks,
+      total_score: totalScore
+    })
+  })
+  
+  // Sort by draft position
+  teams.sort((a, b) => a.draft_position - b.draft_position)
+  
+  return teams
+})
+
+// Player grades from draft board - only include actually drafted players
+const playerGrades = computed(() => {
+  const grades: any[] = []
+  
+  draftBoard.value.forEach(team => {
+    team.picks.forEach(pick => {
+      // Only include players who were actually drafted and have valid stats
+      // Skip if current_position_rank is 999 (no stats/not on roster)
+      if (pick.current_position_rank >= 900) return
+      
+      grades.push({
+        ...pick,
+        team_name: team.team_name,
+        nfl_team: '',
+        grade: calculateGrade(pick.score, pick.position_rank_drafted, pick.round)
+      })
+    })
+  })
+  
+  return grades
+})
+
+// Filtered player grades
+const filteredPlayerGrades = computed(() => {
+  let filtered = playerGrades.value
+  
+  if (selectedGradeTeam.value) {
+    const team = draftBoard.value.find(t => t.roster_id === parseInt(selectedGradeTeam.value))
+    if (team) {
+      filtered = filtered.filter(g => g.team_name === team.team_name)
+    }
+  }
+  
+  // Sort
+  if (gradeSort.value === 'grade') {
+    filtered = [...filtered].sort((a, b) => {
+      const gradeOrder = ['A+', 'A', 'A-', 'B+', 'B', 'B-', 'C+', 'C', 'C-', 'D+', 'D', 'D-', 'F']
+      return gradeOrder.indexOf(a.grade) - gradeOrder.indexOf(b.grade)
+    })
+  } else if (gradeSort.value === 'pick') {
+    filtered = [...filtered].sort((a, b) => a.pick_no - b.pick_no)
+  } else if (gradeSort.value === 'score') {
+    filtered = [...filtered].sort((a, b) => b.score - a.score)
+  }
+  
+  return filtered
+})
+
+// Filtered steals/reaches
+const filteredSteals = computed(() => allSteals.value)
+const filteredReaches = computed(() => allReaches.value)
+
+// Calculate grade from score
+/**
+ * Calculate grade using adjusted score with positional value multiplier
+ * Elite finishes (RB1, WR1, etc.) are worth much more than bench finishes
+ */
+function calculateGrade(adjustedScore: number, draftedRank: number, round: number = 1): string {
+  // Adjusted score already accounts for:
+  // - Positional tier (elite = 2.5x, starter1 = 1.5x, starter2 = 1.0x, flex = 0.7x, bench = 0.4x)
+  // - Round bonus (late round hits get 1.2-1.4x)
+  // - Round penalty (early round busts get 1.15-1.3x penalty)
+  
+  // Grade thresholds calibrated for adjusted scoring
+  if (adjustedScore >= 20) return 'A+'
+  if (adjustedScore >= 15) return 'A'
+  if (adjustedScore >= 10) return 'A-'
+  if (adjustedScore >= 6) return 'B+'
+  if (adjustedScore >= 3) return 'B'
+  if (adjustedScore >= 0) return 'B-'
+  if (adjustedScore >= -3) return 'C+'
+  if (adjustedScore >= -6) return 'C'
+  if (adjustedScore >= -10) return 'C-'
+  if (adjustedScore >= -15) return 'D'
+  return 'F'
+}
+
+// Helper functions
+function shouldShowPick(pick: DraftPick): boolean {
+  if (showTradesOnly.value && !pick.is_traded) return false
+  if (positionFilter.value === 'All') return true
+  return pick.position === positionFilter.value
+}
+
+// Open player detail modal
+async function openPlayerModal(pick: any, teamName: string) {
+  // Add team_name and calculate grade for the modal
+  const grade = calculateGrade(pick.score, pick.position_rank_drafted, pick.round)
+  selectedPlayer.value = { ...pick, team_name: teamName, grade }
+  
+  // Load transactions if not already loaded
+  if (!transactionsLoaded.value && selectedSeason.value) {
+    const seasonInfo = leagueStore.historicalSeasons.find(s => s.season === selectedSeason.value)
+    if (seasonInfo?.league_id) {
+      try {
+        const txs = await draftAnalysisService.fetchLeagueTransactions(seasonInfo.league_id, 17)
+        
+        // Enrich with team names
+        const rosters = leagueStore.historicalRosters.get(selectedSeason.value) || []
+        const users = leagueStore.historicalUsers.get(selectedSeason.value) || []
+        const teamNameMap = new Map<number, string>()
+        
+        rosters.forEach(roster => {
+          const user = users.find(u => u.user_id === roster.owner_id)
+          teamNameMap.set(roster.roster_id, sleeperService.getTeamName(roster, user))
+        })
+        
+        // Add team names to transactions
+        txs.forEach((playerTxs, playerId) => {
+          playerTxs.forEach(tx => {
+            if (tx.fromRosterId) tx.fromTeam = teamNameMap.get(tx.fromRosterId)
+            if (tx.toRosterId) tx.toTeam = teamNameMap.get(tx.toRosterId)
+          })
+        })
+        
+        playerTransactions.value = txs
+        transactionsLoaded.value = true
+      } catch (err) {
+        console.warn('Failed to load transactions:', err)
+      }
+    }
+  }
+}
+
+function handleImageError(event: Event) {
+  const img = event.target as HTMLImageElement
+  img.src = 'https://sleepercdn.com/avatars/thumbs/default'
+}
+
+function getPlayerImageUrl(playerId: string): string {
+  return `https://sleepercdn.com/content/nfl/players/thumb/${playerId}.jpg`
+}
+
+function getScoreClass(score: number): string {
+  // Adjusted score ranges are wider (typically -20 to +25)
+  if (score >= 15) return 'text-green-400'
+  if (score >= 8) return 'text-green-300'
+  if (score >= 3) return 'text-lime-400'
+  if (score >= 0) return 'text-blue-400'
+  if (score >= -5) return 'text-yellow-400'
+  if (score >= -10) return 'text-orange-400'
+  return 'text-red-400'
+}
+
+function getScoreBarWidth(score: number): string {
+  const normalized = Math.min(100, Math.max(0, (score + 10) * 5))
+  return `${normalized}%`
+}
+
+function getGradeClass(grade: string): string {
+  if (grade.startsWith('A')) return 'text-green-400'
+  if (grade.startsWith('B')) return 'text-blue-400'
+  if (grade.startsWith('C')) return 'text-yellow-400'
+  if (grade.startsWith('D')) return 'text-orange-400'
+  return 'text-red-400'
+}
+
+function getGradeRingClass(grade: string): string {
+  if (grade.startsWith('A')) return 'ring-green-500/50'
+  if (grade.startsWith('B')) return 'ring-blue-500/50'
+  if (grade.startsWith('C')) return 'ring-yellow-500/50'
+  if (grade.startsWith('D')) return 'ring-orange-500/50'
+  return 'ring-red-500/50'
+}
+
+function getGradeRowClass(grade: any): string {
+  if (grade.score >= 5) return 'bg-green-500/5 border-l-2 border-green-500'
+  if (grade.score <= -5) return 'bg-red-500/5 border-l-2 border-red-500'
+  return ''
+}
+
+function getPositionClass(position: string): string {
+  const positionColors: Record<string, string> = {
+    'QB': 'bg-red-500/20 text-red-400',
+    'RB': 'bg-green-500/20 text-green-400',
+    'WR': 'bg-blue-500/20 text-blue-400',
+    'TE': 'bg-yellow-500/20 text-yellow-400',
+    'K': 'bg-purple-500/20 text-purple-400',
+    'DEF': 'bg-orange-500/20 text-orange-400'
+  }
+  return positionColors[position] || 'bg-gray-500/20 text-gray-400'
+}
+
+function getTeamHeaderClass(score: number): string {
+  if (score >= 10) return 'bg-green-500/10 border-b-2 border-green-500/30'
+  if (score >= 0) return 'bg-blue-500/5 border-b-2 border-blue-500/20'
+  if (score >= -10) return 'bg-yellow-500/5 border-b-2 border-yellow-500/20'
+  return 'bg-red-500/10 border-b-2 border-red-500/30'
+}
+
+function getTeamRingClass(score: number): string {
+  if (score >= 10) return 'ring-green-500'
+  if (score >= 0) return 'ring-blue-500'
+  if (score >= -10) return 'ring-yellow-500'
+  return 'ring-red-500'
+}
+
+function getPickClass(pick: DraftPick): string {
+  let base = 'border '
+  
+  if (pick.is_traded) {
+    base += 'border-blue-500/50 bg-blue-500/5 '
+  } else if (pick.score >= 8) {
+    base += 'border-green-500/30 bg-green-500/5 '
+  } else if (pick.score <= -8) {
+    base += 'border-red-500/30 bg-red-500/5 '
+  } else {
+    base += 'border-dark-border bg-dark-border/30 '
+  }
+  
+  return base
+}
+
+function getTeamAvatar(rosterId: number): string {
+  const seasonInfo = leagueStore.historicalSeasons.find(s => s.season === selectedSeason.value)
+  if (!seasonInfo) return 'https://sleepercdn.com/avatars/thumbs/default'
+  
+  const rosters = leagueStore.historicalRosters.get(selectedSeason.value) || []
+  const users = leagueStore.historicalUsers.get(selectedSeason.value) || []
+  
+  const roster = rosters.find(r => r.roster_id === rosterId)
+  if (!roster) return 'https://sleepercdn.com/avatars/thumbs/default'
+  
+  const user = users.find(u => u.user_id === roster.owner_id)
+  return sleeperService.getAvatarUrl(roster, user, seasonInfo)
+}
+
+async function loadDraft() {
+  if (!selectedSeason.value) return
+  isLoading.value = true
+  
+  try {
+    // Draft data is already loaded in store
+  } catch (error) {
+    console.error('Failed to load draft:', error)
+  } finally {
+    isLoading.value = false
+  }
+}
+
+function onSeasonChange() {
+  selectedWeek.value = 'final'
+  transactionsLoaded.value = false
+  playerTransactions.value = new Map()
+  selectedPlayer.value = null
+  loadDraft()
+  loadDraftAnalysis()
+}
+
+async function loadDraftAnalysis() {
+  if (!selectedSeason.value) return
+  
+  try {
+    const draft = leagueStore.historicalDrafts.get(selectedSeason.value)
+    if (!draft || !draft.picks) return
+    
+    const matchups = leagueStore.historicalMatchups.get(selectedSeason.value)
+    if (!matchups) return
+    
+    const seasonInfo = leagueStore.historicalSeasons.find(s => s.season === selectedSeason.value)
+    if (!seasonInfo) return
+    
+    const rosters = leagueStore.historicalRosters.get(selectedSeason.value) || []
+    const users = leagueStore.historicalUsers.get(selectedSeason.value) || []
+    const numTeams = rosters.length || 12
+    
+    // Build player positions map
+    const playerPositions = new Map<string, string>()
+    draft.picks.forEach((pick: any) => {
+      const pos = pick.metadata?.position
+      if (pos && pick.player_id) {
+        playerPositions.set(pick.player_id, pos)
+      }
+    })
+    
+    const playoffStart = seasonInfo.settings?.playoff_week_start || 15
+    const playerStats = draftAnalysisService.calculatePlayerSeasonStats(matchups, playoffStart, playerPositions)
+    
+    const playerNames = new Map<string, string>()
+    draft.picks.forEach((pick: any) => {
+      const name = pick.metadata?.first_name && pick.metadata?.last_name
+        ? `${pick.metadata.first_name} ${pick.metadata.last_name}`
+        : `Player ${pick.player_id}`
+      playerNames.set(pick.player_id, name)
+    })
+    
+    const teamNames = new Map<number, string>()
+    rosters.forEach(roster => {
+      const user = users.find(u => u.user_id === roster.owner_id)
+      teamNames.set(roster.roster_id, sleeperService.getTeamName(roster, user))
+    })
+    
+    const analyzed = draftAnalysisService.analyzeDraftPicks(
+      draft.picks,
+      playerStats,
+      playerNames,
+      teamNames,
+      numTeams
+    )
+    
+    teamDraftGrades.value = draftAnalysisService.calculateTeamDraftGrades(analyzed, teamNames, numTeams)
+    roundAnalyses.value = draftAnalysisService.analyzeRounds(analyzed)
+    
+    allSteals.value = analyzed
+      .filter(p => p.isSteal)
+      .sort((a, b) => b.adjustedScore - a.adjustedScore)
+    
+    allReaches.value = analyzed
+      .filter(p => p.isReach)
+      .sort((a, b) => a.adjustedScore - b.adjustedScore)
+    
+    console.log('✅ Draft analysis loaded:', {
+      teams: teamDraftGrades.value.length,
+      rounds: roundAnalyses.value.length,
+      steals: allSteals.value.length,
+      reaches: allReaches.value.length
+    })
+    
+  } catch (error) {
+    console.error('Failed to load draft analysis:', error)
+  }
+}
+
+watch(activeTab, (newTab) => {
+  if (newTab === 'analysis' && teamDraftGrades.value.length === 0) {
+    loadDraftAnalysis()
+  }
+})
+
+onMounted(() => {
+  if (leagueStore.historicalSeasons.length > 0) {
+    selectedSeason.value = leagueStore.historicalSeasons[0].season
+    loadDraft()
+  }
+})
+</script>
+
+<style scoped>
+.overflow-y-auto::-webkit-scrollbar,
+.overflow-x-auto::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+.overflow-y-auto::-webkit-scrollbar-track,
+.overflow-x-auto::-webkit-scrollbar-track {
+  background: rgba(42, 47, 66, 0.3);
+  border-radius: 3px;
+}
+
+.overflow-y-auto::-webkit-scrollbar-thumb,
+.overflow-x-auto::-webkit-scrollbar-thumb {
+  background: rgba(245, 196, 81, 0.3);
+  border-radius: 3px;
+}
+
+.overflow-y-auto::-webkit-scrollbar-thumb:hover,
+.overflow-x-auto::-webkit-scrollbar-thumb:hover {
+  background: rgba(245, 196, 81, 0.5);
+}
+</style>
