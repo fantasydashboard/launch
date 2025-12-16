@@ -155,11 +155,12 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, watch } from 'vue'
 import { useAuthStore } from '@/stores/auth'
 
-defineProps<{
+const props = defineProps<{
   isOpen: boolean
+  initialMode?: 'login' | 'signup'
 }>()
 
 const emit = defineEmits<{
@@ -170,13 +171,31 @@ const emit = defineEmits<{
 const authStore = useAuthStore()
 
 // Form state
-const mode = ref<'login' | 'signup'>('login')
+const mode = ref<'login' | 'signup'>(props.initialMode || 'login')
 const email = ref('')
 const password = ref('')
 const fullName = ref('')
 const loading = ref(false)
 const errorMessage = ref('')
 const successMessage = ref('')
+
+// Watch for initialMode changes
+watch(() => props.initialMode, (newMode) => {
+  if (newMode) {
+    mode.value = newMode
+  }
+})
+
+// Reset form when modal opens
+watch(() => props.isOpen, (isOpen) => {
+  if (isOpen) {
+    if (props.initialMode) {
+      mode.value = props.initialMode
+    }
+    errorMessage.value = ''
+    successMessage.value = ''
+  }
+})
 
 function toggleMode() {
   mode.value = mode.value === 'login' ? 'signup' : 'login'
