@@ -55,40 +55,96 @@
               </div>
               <div>
                 <h1 class="text-2xl font-bold text-dark-text">Fantasy Dashboard</h1>
-                <p class="text-xs text-dark-textMuted">League History & Analytics</p>
+                <p class="text-xs text-dark-textMuted">
+                  {{ leagueStore.isDemoMode ? 'Demo Mode' : 'League History & Analytics' }}
+                </p>
               </div>
             </div>
 
             <!-- League selector and controls -->
             <div class="flex items-center gap-4">
-              <div v-if="!leagueStore.activeLeagueId" class="flex items-center gap-3">
-                <input
-                  v-model="username"
-                  type="text"
-                  placeholder="Enter Sleeper Username"
-                  class="input w-56"
-                  @keyup.enter="loadLeagues"
-                />
+              <!-- League Dropdown -->
+              <div class="relative" ref="leagueDropdownRef">
                 <button
-                  @click="loadLeagues"
-                  :disabled="leagueStore.isLoading"
-                  class="btn-primary"
+                  @click="showLeagueDropdown = !showLeagueDropdown"
+                  class="flex items-center gap-2 px-4 py-2 rounded-xl bg-dark-card border border-dark-border hover:border-primary/50 transition-colors min-w-[200px]"
                 >
-                  {{ leagueStore.isLoading ? 'Loading...' : 'Load Leagues' }}
+                  <span v-if="leagueStore.currentLeague" class="text-dark-text font-medium truncate">
+                    {{ leagueStore.currentLeague.name }}
+                  </span>
+                  <span v-else-if="leagueStore.isDemoMode" class="text-primary font-medium">
+                    Demo League
+                  </span>
+                  <span v-else class="text-dark-textMuted">
+                    Select League
+                  </span>
+                  <svg class="w-4 h-4 text-dark-textMuted ml-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                  </svg>
                 </button>
+                
+                <!-- Dropdown Menu -->
+                <div 
+                  v-if="showLeagueDropdown"
+                  class="absolute top-full left-0 mt-2 w-72 bg-dark-card border border-dark-border rounded-xl shadow-xl z-50 overflow-hidden"
+                >
+                  <!-- Saved Leagues -->
+                  <div v-if="leagueStore.savedLeagues.length > 0" class="p-2">
+                    <div class="text-xs text-dark-textMuted uppercase tracking-wider px-2 py-1">Your Leagues</div>
+                    <button
+                      v-for="league in leagueStore.savedLeagues"
+                      :key="league.league_id"
+                      @click="selectLeague(league.league_id)"
+                      class="w-full flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-dark-border/50 transition-colors"
+                      :class="leagueStore.activeLeagueId === league.league_id ? 'bg-primary/10 border border-primary/30' : ''"
+                    >
+                      <div class="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center">
+                        <span class="text-xs font-bold text-primary">{{ league.league_name.substring(0, 2).toUpperCase() }}</span>
+                      </div>
+                      <div class="flex-1 text-left">
+                        <div class="font-medium text-dark-text text-sm truncate">{{ league.league_name }}</div>
+                        <div class="text-xs text-dark-textMuted">{{ league.season }} Season</div>
+                      </div>
+                      <span v-if="league.is_primary" class="text-xs text-primary">★</span>
+                    </button>
+                  </div>
+                  
+                  <!-- Divider -->
+                  <div v-if="leagueStore.savedLeagues.length > 0" class="border-t border-dark-border/50"></div>
+                  
+                  <!-- Add League Button -->
+                  <div class="p-2">
+                    <button
+                      @click="showAddLeagueModal = true; showLeagueDropdown = false"
+                      class="w-full flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-dark-border/50 transition-colors text-primary"
+                    >
+                      <div class="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                        </svg>
+                      </div>
+                      <span class="font-medium text-sm">Add Another League</span>
+                    </button>
+                  </div>
+                  
+                  <!-- Demo Mode Option -->
+                  <div class="border-t border-dark-border/50 p-2">
+                    <button
+                      @click="enableDemoMode"
+                      class="w-full flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-dark-border/50 transition-colors"
+                      :class="leagueStore.isDemoMode ? 'bg-cyan-500/10 border border-cyan-500/30' : ''"
+                    >
+                      <div class="w-8 h-8 rounded-full bg-cyan-500/20 flex items-center justify-center">
+                        <span class="text-sm">👀</span>
+                      </div>
+                      <div class="flex-1 text-left">
+                        <div class="font-medium text-dark-text text-sm">Demo Mode</div>
+                        <div class="text-xs text-dark-textMuted">Explore with sample data</div>
+                      </div>
+                    </button>
+                  </div>
+                </div>
               </div>
-
-              <select
-                v-if="leagueStore.leagues.length > 0"
-                v-model="selectedLeague"
-                @change="changeLeague"
-                class="select min-w-[200px]"
-              >
-                <option value="">Select League</option>
-                <option v-for="league in leagueStore.leagues" :key="league.league_id" :value="league.league_id">
-                  {{ league.name }}
-                </option>
-              </select>
 
               <!-- User Menu -->
               <div class="flex items-center gap-3">
@@ -126,8 +182,8 @@
         </div>
       </header>
 
-      <!-- Navigation Tabs -->
-      <nav v-if="leagueStore.activeLeagueId" class="border-b border-dark-border" style="background: linear-gradient(135deg, rgba(19, 22, 32, 0.98), rgba(10, 12, 20, 0.98)); border: 1px solid #2a2f42;">
+      <!-- Navigation Tabs - Always show when logged in -->
+      <nav class="border-b border-dark-border" style="background: linear-gradient(135deg, rgba(19, 22, 32, 0.98), rgba(10, 12, 20, 0.98)); border: 1px solid #2a2f42;">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3">
           <div class="inline-flex items-center gap-2 bg-dark-bg/50 rounded-full p-1.5 border border-dark-border">
             <router-link
@@ -144,6 +200,12 @@
               {{ tab.name }}
             </router-link>
           </div>
+          
+          <!-- Demo Mode Banner -->
+          <div v-if="leagueStore.isDemoMode" class="inline-flex items-center gap-2 ml-4 px-3 py-1 rounded-full bg-cyan-500/10 border border-cyan-500/30 text-cyan-400 text-xs font-medium">
+            <span>👀</span>
+            <span>Viewing Demo Data</span>
+          </div>
         </div>
       </nav>
 
@@ -153,17 +215,8 @@
           <p class="text-red-800 dark:text-red-200 font-medium">{{ leagueStore.error }}</p>
         </div>
 
-        <div v-if="!leagueStore.activeLeagueId" class="text-center py-24">
-          <div class="text-gray-300 dark:text-gray-700 mb-6">
-            <svg class="w-20 h-20 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-            </svg>
-          </div>
-          <h2 class="text-3xl font-bold text-gray-900 dark:text-white mb-3">Welcome, {{ displayName }}!</h2>
-          <p class="text-lg text-gray-600 dark:text-gray-400">Enter your Sleeper username above to get started</p>
-        </div>
-
-        <router-view v-else />
+        <!-- Show router view - it will handle demo mode vs real data -->
+        <router-view />
       </main>
     </template>
 
@@ -172,29 +225,38 @@
       :is-open="showAuthModal" 
       :initial-mode="authMode"
       @close="showAuthModal = false"
-      @success="showAuthModal = false"
+      @success="handleAuthSuccess"
+    />
+    
+    <!-- Add League Modal -->
+    <AddLeagueModal
+      :is-open="showAddLeagueModal"
+      @close="showAddLeagueModal = false"
+      @league-added="handleLeagueAdded"
     />
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, nextTick } from 'vue'
+import { ref, computed, onMounted, nextTick, watch, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useLeagueStore } from '@/stores/league'
 import { useDarkModeStore } from '@/stores/darkMode'
 import { useAuthStore } from '@/stores/auth'
 import AuthModal from '@/components/AuthModal.vue'
 import LandingPage from '@/components/LandingPage.vue'
+import AddLeagueModal from '@/components/AddLeagueModal.vue'
 
 const router = useRouter()
 const leagueStore = useLeagueStore()
 const darkModeStore = useDarkModeStore()
 const authStore = useAuthStore()
 
-const username = ref('')
-const selectedLeague = ref('')
 const showAuthModal = ref(false)
 const authMode = ref<'login' | 'signup'>('signup')
+const showLeagueDropdown = ref(false)
+const showAddLeagueModal = ref(false)
+const leagueDropdownRef = ref<HTMLElement | null>(null)
 
 const tabs = [
   { name: 'Home', path: '/' },
@@ -221,36 +283,80 @@ const userInitials = computed(() => {
   return name.substring(0, 2).toUpperCase()
 })
 
-async function loadLeagues() {
-  if (!username.value.trim()) return
-  try {
-    await leagueStore.fetchUserLeagues(username.value)
-  } catch (e) {
-    console.error('Failed to load leagues:', e)
+async function selectLeague(leagueId: string) {
+  showLeagueDropdown.value = false
+  leagueStore.disableDemoMode()
+  await leagueStore.setActiveLeague(leagueId)
+}
+
+function enableDemoMode() {
+  showLeagueDropdown.value = false
+  leagueStore.enableDemoMode()
+  leagueStore.activeLeagueId = null
+  leagueStore.currentLeague = null
+}
+
+async function handleAuthSuccess() {
+  showAuthModal.value = false
+  // Load saved leagues after login
+  if (authStore.user?.id) {
+    await leagueStore.loadSavedLeagues(authStore.user.id)
+    
+    // If no saved leagues, enable demo mode
+    if (!leagueStore.hasSavedLeagues) {
+      leagueStore.enableDemoMode()
+    }
   }
 }
 
-async function changeLeague() {
-  if (!selectedLeague.value) return
-  try {
-    await leagueStore.setActiveLeague(selectedLeague.value)
-    if (router.currentRoute.value.path !== '/') {
-      const currentPath = router.currentRoute.value.path
-      await router.push('/')
-      await nextTick()
-      await router.push(currentPath)
-    }
-  } catch (e) {
-    console.error('Failed to load league:', e)
+async function handleLeagueAdded(league: any) {
+  showAddLeagueModal.value = false
+  if (authStore.user?.id && leagueStore.currentUsername) {
+    await leagueStore.saveLeague(league, leagueStore.currentUsername, authStore.user.id)
+    await leagueStore.setActiveLeague(league.league_id)
   }
 }
 
 async function handleSignOut() {
   await authStore.signOut()
+  leagueStore.reset()
 }
 
-onMounted(() => {
+// Close dropdown when clicking outside
+function handleClickOutside(event: MouseEvent) {
+  if (leagueDropdownRef.value && !leagueDropdownRef.value.contains(event.target as Node)) {
+    showLeagueDropdown.value = false
+  }
+}
+
+onMounted(async () => {
   darkModeStore.init()
-  authStore.initialize()
+  await authStore.initialize()
+  
+  // Load saved leagues if authenticated
+  if (authStore.isAuthenticated && authStore.user?.id) {
+    await leagueStore.loadSavedLeagues(authStore.user.id)
+    
+    // If no saved leagues, enable demo mode
+    if (!leagueStore.hasSavedLeagues) {
+      leagueStore.enableDemoMode()
+    }
+  }
+  
+  document.addEventListener('click', handleClickOutside)
+})
+
+onUnmounted(() => {
+  document.removeEventListener('click', handleClickOutside)
+})
+
+// Watch for auth changes
+watch(() => authStore.isAuthenticated, async (isAuth) => {
+  if (isAuth && authStore.user?.id) {
+    await leagueStore.loadSavedLeagues(authStore.user.id)
+    if (!leagueStore.hasSavedLeagues) {
+      leagueStore.enableDemoMode()
+    }
+  }
 })
 </script>
