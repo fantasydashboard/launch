@@ -2752,13 +2752,20 @@ function buildInjuryReport() {
   injuryReport.value = injuries
 }
 
-// Generate AI matchup preview with detailed context
+// Generate AI matchup preview with COMPREHENSIVE context
 async function generateMatchupPreview() {
   if (!selectedMatchup.value) return
   
   isGeneratingPreview.value = true
   
   const matchup = selectedMatchup.value
+  
+  // Get season info for playoff detection
+  const seasonInfo = leagueStore.historicalSeasons.find(s => s.season === selectedSeason.value)
+  const playoffStart = seasonInfo?.settings?.playoff_week_start || 15
+  const weekNum = parseInt(selectedWeek.value)
+  const isPlayoffWeek = weekNum >= playoffStart
+  const playoffRound = isPlayoffWeek ? weekNum - playoffStart + 1 : 0
   
   // Build context for AI
   const team1Record = `${matchup.team1_stats.alltime_wins}-${matchup.team1_stats.alltime_losses}`
@@ -2774,6 +2781,13 @@ async function generateMatchupPreview() {
   const team2Form = scoutingReports.value.team2.recentForm.join('')
   const team1Streak = getStreakDescription(scoutingReports.value.team1.recentForm)
   const team2Streak = getStreakDescription(scoutingReports.value.team2.recentForm)
+  
+  // Calculate last 3 weeks average
+  const team1Last3Avg = calculateRecentAverage(matchup.team1_roster_id, 3)
+  const team2Last3Avg = calculateRecentAverage(matchup.team2_roster_id, 3)
+  
+  // Get playoff matchup history
+  const playoffHistory = getPlayoffMatchupHistory(matchup.team1_roster_id, matchup.team2_roster_id)
   
   // Find key injured players
   const team1InjuredStarters = team1Injuries.value.filter(i => i.status === 'Out' || i.status === 'Doubtful')
@@ -2800,32 +2814,57 @@ async function generateMatchupPreview() {
     return acc
   }, { team1: 0, team2: 0 })
 
-  const prompt = `Write a detailed 3-4 sentence fantasy football matchup preview for Week ${selectedWeek.value}. Be engaging, specific, and insightful:
+  // Build playoff context
+  let playoffContext = ''
+  if (isPlayoffWeek) {
+    const roundNames = ['Quarterfinals', 'Semifinals', 'Championship']
+    const roundName = roundNames[playoffRound - 1] || `Playoff Round ${playoffRound}`
+    playoffContext = `
+PLAYOFF CONTEXT:
+This is a ${roundName} matchup! The stakes couldn't be higher.
+${playoffHistory.totalGames > 0 
+  ? `Playoff history between these teams: ${playoffHistory.team1Wins}-${playoffHistory.team2Wins} (${playoffHistory.team1Wins > playoffHistory.team2Wins ? matchup.team1_name + ' leads' : playoffHistory.team2Wins > playoffHistory.team1Wins ? matchup.team2_name + ' leads' : 'tied'})`
+  : 'These teams have never met in the playoffs before!'}
+`
+  }
+
+  const prompt = `Write an engaging 4-5 sentence fantasy football matchup preview for Week ${selectedWeek.value}. Be specific, analytical, and build excitement:
+
+MATCHUP TYPE: ${isPlayoffWeek ? `🏆 PLAYOFF ${['QUARTERFINAL', 'SEMIFINAL', 'CHAMPIONSHIP'][playoffRound - 1] || 'GAME'}` : 'Regular Season'}
 
 TEAMS:
 ${matchup.team1_name} (${team1Record} season, ${team1Standing})
 vs 
 ${matchup.team2_name} (${team2Record} season, ${team2Standing})
+${playoffContext}
+RECENT PERFORMANCE (Last 3 Weeks):
+${matchup.team1_name}: ${team1Last3Avg.toFixed(1)} PPG, Form: ${team1Form} - ${team1Streak}
+${matchup.team2_name}: ${team2Last3Avg.toFixed(1)} PPG, Form: ${team2Form} - ${team2Streak}
 
-RECENT FORM:
-${matchup.team1_name}: ${team1Form} - ${team1Streak}
-${matchup.team2_name}: ${team2Form} - ${team2Streak}
-
-STATS:
+SEASON STATS:
 Season PPG: ${matchup.team1_stats.ppg.toFixed(1)} vs ${matchup.team2_stats.ppg.toFixed(1)}
-Head-to-Head all-time: ${h2hRecord} ${matchup.team1_stats.h2h_wins > matchup.team1_stats.h2h_losses ? `(${matchup.team1_name} leads)` : matchup.team1_stats.h2h_wins < matchup.team1_stats.h2h_losses ? `(${matchup.team2_name} leads)` : '(tied)'}
+Head-to-Head all-time: ${h2hRecord} (${historicalMatchups.value.games.length} total meetings)
+${matchup.team1_stats.h2h_wins > matchup.team1_stats.h2h_losses ? `${matchup.team1_name} leads the series` : matchup.team1_stats.h2h_wins < matchup.team1_stats.h2h_losses ? `${matchup.team2_name} leads the series` : 'Series is tied'}
 Championships: ${matchup.team1_stats.championships} vs ${matchup.team2_stats.championships}
 Position advantages: ${matchup.team1_name} has ${positionalAdvantages.team1}, ${matchup.team2_name} has ${positionalAdvantages.team2}
 
 KEY PLAYERS:
-${matchup.team1_name} star: ${team1TopPlayer?.team1Player?.name || 'N/A'} (${team1TopPlayer?.team1Player?.position || ''}, projected ${team1TopPlayer?.team1Player?.projected?.toFixed(1) || 0})
-${matchup.team2_name} star: ${team2TopPlayer?.team2Player?.name || 'N/A'} (${team2TopPlayer?.team2Player?.position || ''}, projected ${team2TopPlayer?.team2Player?.projected?.toFixed(1) || 0})
+${matchup.team1_name} star: ${team1TopPlayer?.team1Player?.name || 'N/A'} (${team1TopPlayer?.team1Player?.position || ''}, proj ${team1TopPlayer?.team1Player?.projected?.toFixed(1) || 0}, avg ${team1TopPlayer?.team1Player?.avg10?.toFixed(1) || 'N/A'})
+${matchup.team2_name} star: ${team2TopPlayer?.team2Player?.name || 'N/A'} (${team2TopPlayer?.team2Player?.position || ''}, proj ${team2TopPlayer?.team2Player?.projected?.toFixed(1) || 0}, avg ${team2TopPlayer?.team2Player?.avg10?.toFixed(1) || 'N/A'})
 
 INJURIES:
 ${matchup.team1_name}: ${team1InjuryNote}
 ${matchup.team2_name}: ${team2InjuryNote}
 
-Write about: streaks/momentum, playoff implications, star player matchups, injury impacts, historical rivalry. Be specific and analytical!`
+INSTRUCTIONS:
+${isPlayoffWeek 
+  ? '- EMPHASIZE the playoff stakes and what\'s on the line\n- Mention if this is a revenge game or rematch\n- Build drama and excitement for the elimination game'
+  : '- Mention playoff implications if relevant\n- Discuss who needs this win more'}
+- Reference the last 3 weeks performance and momentum
+- Highlight the key player matchup
+- Note any concerning injuries
+- Be specific with numbers and stats
+- Write in an engaging sports broadcast style`
 
   try {
     const response = await fetch('https://api.anthropic.com/v1/messages', {
@@ -2837,7 +2876,7 @@ Write about: streaks/momentum, playoff implications, star player matchups, injur
       },
       body: JSON.stringify({
         model: 'claude-sonnet-4-20250514',
-        max_tokens: 300,
+        max_tokens: 400,
         messages: [
           { role: 'user', content: prompt }
         ]
@@ -2857,11 +2896,11 @@ Write about: streaks/momentum, playoff implications, star player matchups, injur
           body: JSON.stringify({
             model: 'gpt-4o-mini',
             messages: [
-              { role: 'system', content: 'You are a witty, analytical fantasy football analyst who provides detailed matchup breakdowns.' },
+              { role: 'system', content: 'You are an exciting, analytical fantasy football broadcaster who provides detailed matchup previews with specific stats and drama.' },
               { role: 'user', content: prompt }
             ],
             temperature: 0.8,
-            max_tokens: 300
+            max_tokens: 400
           })
         })
         
@@ -2878,23 +2917,21 @@ Write about: streaks/momentum, playoff implications, star player matchups, injur
     matchupPreviewText.value = data.content[0]?.text || 'Unable to generate preview.'
   } catch (error) {
     console.error('Failed to generate preview:', error)
-    // Generate a detailed preview without AI
-    const streakText1 = team1Streak
-    const streakText2 = team2Streak
-    const injuryText = team1InjuredStarters.length > 0 || team2InjuredStarters.length > 0
-      ? ` Watch for injury impacts with ${team1InjuredStarters.length + team2InjuredStarters.length} key players questionable or out.`
+    // Generate a detailed fallback preview without AI
+    const playoffNote = isPlayoffWeek 
+      ? `This ${['Quarterfinal', 'Semifinal', 'Championship'][playoffRound - 1] || 'playoff'} matchup has everything on the line. ` 
       : ''
     
-    matchupPreviewText.value = `${matchup.team1_name} (${team1Record}, ${streakText1}) faces ${matchup.team2_name} (${team2Record}, ${streakText2}) in Week ${selectedWeek.value}. ` +
+    matchupPreviewText.value = `${playoffNote}${matchup.team1_name} (${team1Record}, averaging ${team1Last3Avg.toFixed(1)} over the last 3 weeks) faces ${matchup.team2_name} (${team2Record}, ${team2Last3Avg.toFixed(1)} PPG recently) in Week ${selectedWeek.value}. ` +
       `${matchup.team1_stats.h2h_wins > matchup.team1_stats.h2h_losses ? matchup.team1_name + ' leads' : matchup.team1_stats.h2h_wins < matchup.team1_stats.h2h_losses ? matchup.team2_name + ' leads' : 'The series is tied'} ` +
-      `the all-time series ${h2hRecord}. ` +
-      `${matchup.team1_name}'s ${team1TopPlayer?.team1Player?.name || 'top player'} will look to outperform ${matchup.team2_name}'s ${team2TopPlayer?.team2Player?.name || 'star'} in what projects to be a ${Math.abs(matchup.team1_stats.ppg - matchup.team2_stats.ppg) < 5 ? 'tight' : 'competitive'} matchup.${injuryText}`
+      `the all-time series ${h2hRecord} across ${historicalMatchups.value.games.length} meetings. ` +
+      `Watch for ${team1TopPlayer?.team1Player?.name || 'the top player'} vs ${team2TopPlayer?.team2Player?.name || 'the opposition'} as the key matchup that could decide this one.`
   } finally {
     isGeneratingPreview.value = false
   }
 }
 
-// Download matchup preview as PNG
+// Download matchup preview as PNG - MOBILE FRIENDLY, WIN PROBABILITY ONLY
 async function downloadMatchupPreview() {
   if (!selectedMatchup.value) return
   
@@ -2905,110 +2942,124 @@ async function downloadMatchupPreview() {
     
     const seasonInfo = leagueStore.historicalSeasons.find(s => s.season === selectedSeason.value)
     const leagueName = seasonInfo?.name || 'League'
+    const playoffStart = seasonInfo?.settings?.playoff_week_start || 15
+    const weekNum = parseInt(selectedWeek.value)
+    const isPlayoffWeek = weekNum >= playoffStart
     
-    // Create a container for the image
-    const WIDTH = 700
-    const HEIGHT = 800
+    // Mobile-optimized dimensions (fits phone screens well)
+    const WIDTH = 400
+    
+    // Load avatars as base64
+    const loadImageAsBase64 = async (url: string): Promise<string> => {
+      try {
+        const response = await fetch(url)
+        const blob = await response.blob()
+        return new Promise((resolve, reject) => {
+          const reader = new FileReader()
+          reader.onloadend = () => resolve(reader.result as string)
+          reader.onerror = reject
+          reader.readAsDataURL(blob)
+        })
+      } catch (e) {
+        return ''
+      }
+    }
+    
+    const [team1Avatar, team2Avatar] = await Promise.all([
+      loadImageAsBase64(selectedMatchup.value.team1_avatar),
+      loadImageAsBase64(selectedMatchup.value.team2_avatar)
+    ])
     
     const container = document.createElement('div')
     container.style.cssText = `
       position: absolute;
       left: -9999px;
       width: ${WIDTH}px;
-      background: linear-gradient(135deg, #1a1d2e 0%, #0d0f18 100%);
+      background: linear-gradient(145deg, #1a1d2e 0%, #0d0f18 100%);
       color: #f7f7ff;
       font-family: system-ui, -apple-system, sans-serif;
       padding: 24px;
       box-sizing: border-box;
     `
     
-    // Build player rows HTML
-    const playerRows = starterComparison.value.map(slot => `
-      <tr style="border-bottom: 1px solid rgba(58, 61, 82, 0.5);">
-        <td style="padding: 8px 4px; text-align: left;">
-          <span style="font-size: 10px; font-weight: bold; padding: 2px 6px; border-radius: 4px; background: ${getPositionColorForDownload(slot.position)}; color: white;">
-            ${slot.position}
-          </span>
-          <span style="font-size: 12px; margin-left: 8px; color: #f7f7ff;">${slot.team1Player?.name || '—'}</span>
-        </td>
-        <td style="padding: 8px 4px; text-align: center; font-weight: bold; color: #60a5fa;">${slot.team1Player?.projected?.toFixed(1) || '—'}</td>
-        <td style="padding: 8px 4px; text-align: center; color: #9ca3af;">${slot.team1Player?.avg10?.toFixed(1) || '—'}</td>
-        <td style="padding: 8px 4px; text-align: center; color: #9ca3af;">${slot.team1Player?.best10?.toFixed(1) || '—'}</td>
-        <td style="padding: 8px 4px; text-align: center; font-size: 16px; font-weight: bold; color: ${slot.advantage === 'team1' ? '#60a5fa' : slot.advantage === 'team2' ? '#f87171' : '#4a5568'};">
-          ${slot.advantage === 'team1' ? '◀' : slot.advantage === 'team2' ? '▶' : '•'}
-        </td>
-        <td style="padding: 8px 4px; text-align: center; color: #9ca3af;">${slot.team2Player?.best10?.toFixed(1) || '—'}</td>
-        <td style="padding: 8px 4px; text-align: center; color: #9ca3af;">${slot.team2Player?.avg10?.toFixed(1) || '—'}</td>
-        <td style="padding: 8px 4px; text-align: center; font-weight: bold; color: #f87171;">${slot.team2Player?.projected?.toFixed(1) || '—'}</td>
-        <td style="padding: 8px 4px; text-align: right; font-size: 12px; color: #f7f7ff;">${slot.team2Player?.name || '—'}</td>
-      </tr>
-    `).join('')
-    
-    // Calculate projected totals
+    // Calculate values
+    const winProb1 = liveWinProbability.value.team1
+    const winProb2 = liveWinProbability.value.team2
     const team1Projected = getTeamProjectedTotal(selectedMatchup.value.team1_roster_id)
     const team2Projected = getTeamProjectedTotal(selectedMatchup.value.team2_roster_id)
     
+    // Team colors for share (consistent)
+    const team1Color = '#06B6D4'
+    const team2Color = '#F97316'
+    
+    // Week label
+    const weekLabel = isPlayoffWeek 
+      ? `🏆 Playoff Week ${weekNum - playoffStart + 1}` 
+      : `Week ${selectedWeek.value}`
+    
     container.innerHTML = `
+      <!-- Header -->
       <div style="text-align: center; margin-bottom: 20px;">
-        <div style="font-size: 14px; color: #9ca3af; margin-bottom: 4px;">${leagueName} • Week ${selectedWeek.value}</div>
-        <div style="font-size: 24px; font-weight: bold; color: #f5c451;">⚔️ Matchup Preview</div>
+        <div style="font-size: 12px; color: #9ca3af; margin-bottom: 4px; text-transform: uppercase; letter-spacing: 1px;">${leagueName}</div>
+        <div style="font-size: 18px; font-weight: bold; color: #f5c451;">${weekLabel}</div>
       </div>
       
-      <!-- Team Headers -->
-      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; padding: 16px; background: rgba(38, 42, 58, 0.5); border-radius: 12px;">
-        <div style="display: flex; align-items: center; gap: 12px;">
-          <div style="width: 48px; height: 48px; border-radius: 50%; background: #3a3d52; border: 3px solid #60a5fa;"></div>
-          <div>
-            <div style="font-size: 18px; font-weight: bold; color: #60a5fa;">${selectedMatchup.value.team1_name}</div>
-            <div style="font-size: 12px; color: #9ca3af;">${selectedMatchup.value.team1_stats.alltime_wins}-${selectedMatchup.value.team1_stats.alltime_losses} this season</div>
-          </div>
+      <!-- Teams -->
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px;">
+        <!-- Team 1 -->
+        <div style="text-align: center; flex: 1;">
+          ${team1Avatar ? `<img src="${team1Avatar}" style="width: 64px; height: 64px; border-radius: 50%; border: 3px solid ${team1Color}; margin: 0 auto 8px;" />` : `<div style="width: 64px; height: 64px; border-radius: 50%; background: #3a3d52; border: 3px solid ${team1Color}; margin: 0 auto 8px;"></div>`}
+          <div style="font-size: 14px; font-weight: bold; color: ${team1Color}; margin-bottom: 2px;">${selectedMatchup.value.team1_name}</div>
+          <div style="font-size: 11px; color: #9ca3af;">${selectedMatchup.value.team1_stats.alltime_wins}-${selectedMatchup.value.team1_stats.alltime_losses}</div>
         </div>
-        <div style="font-size: 20px; color: #6b7280;">VS</div>
-        <div style="display: flex; align-items: center; gap: 12px;">
-          <div>
-            <div style="font-size: 18px; font-weight: bold; color: #f87171; text-align: right;">${selectedMatchup.value.team2_name}</div>
-            <div style="font-size: 12px; color: #9ca3af; text-align: right;">${selectedMatchup.value.team2_stats.alltime_wins}-${selectedMatchup.value.team2_stats.alltime_losses} this season</div>
-          </div>
-          <div style="width: 48px; height: 48px; border-radius: 50%; background: #3a3d52; border: 3px solid #f87171;"></div>
+        
+        <!-- VS -->
+        <div style="padding: 0 16px;">
+          <div style="font-size: 14px; font-weight: bold; color: #4b5563;">VS</div>
+        </div>
+        
+        <!-- Team 2 -->
+        <div style="text-align: center; flex: 1;">
+          ${team2Avatar ? `<img src="${team2Avatar}" style="width: 64px; height: 64px; border-radius: 50%; border: 3px solid ${team2Color}; margin: 0 auto 8px;" />` : `<div style="width: 64px; height: 64px; border-radius: 50%; background: #3a3d52; border: 3px solid ${team2Color}; margin: 0 auto 8px;"></div>`}
+          <div style="font-size: 14px; font-weight: bold; color: ${team2Color}; margin-bottom: 2px;">${selectedMatchup.value.team2_name}</div>
+          <div style="font-size: 11px; color: #9ca3af;">${selectedMatchup.value.team2_stats.alltime_wins}-${selectedMatchup.value.team2_stats.alltime_losses}</div>
         </div>
       </div>
       
-      <!-- Starter Comparison Table -->
-      <table style="width: 100%; border-collapse: collapse; margin-bottom: 20px;">
-        <thead>
-          <tr style="font-size: 11px; color: #6b7280; border-bottom: 1px solid rgba(58, 61, 82, 0.8);">
-            <th style="padding: 8px 4px; text-align: left; font-weight: 500;">Player</th>
-            <th style="padding: 8px 4px; text-align: center; font-weight: 500;">Proj</th>
-            <th style="padding: 8px 4px; text-align: center; font-weight: 500;">Avg</th>
-            <th style="padding: 8px 4px; text-align: center; font-weight: 500;">High</th>
-            <th style="padding: 8px 4px; text-align: center; font-weight: 500;">ADV</th>
-            <th style="padding: 8px 4px; text-align: center; font-weight: 500;">High</th>
-            <th style="padding: 8px 4px; text-align: center; font-weight: 500;">Avg</th>
-            <th style="padding: 8px 4px; text-align: center; font-weight: 500;">Proj</th>
-            <th style="padding: 8px 4px; text-align: right; font-weight: 500;">Player</th>
-          </tr>
-        </thead>
-        <tbody>
-          ${playerRows}
-        </tbody>
-      </table>
-      
-      <!-- Projected Totals -->
-      <div style="display: flex; justify-content: space-around; align-items: center; padding: 20px; background: rgba(38, 42, 58, 0.5); border-radius: 12px; margin-bottom: 16px;">
-        <div style="text-align: center;">
-          <div style="font-size: 32px; font-weight: bold; color: #60a5fa;">${team1Projected.toFixed(1)}</div>
-          <div style="font-size: 12px; color: #9ca3af;">Projected</div>
+      <!-- Win Probability -->
+      <div style="background: rgba(38, 42, 58, 0.5); border-radius: 16px; padding: 20px; margin-bottom: 16px;">
+        <div style="text-align: center; font-size: 12px; color: #9ca3af; margin-bottom: 12px; text-transform: uppercase; letter-spacing: 1px;">Win Probability</div>
+        
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+          <div style="text-align: center; flex: 1;">
+            <div style="font-size: 36px; font-weight: 900; color: ${team1Color};">${winProb1.toFixed(0)}%</div>
+          </div>
+          <div style="width: 1px; height: 40px; background: #374151;"></div>
+          <div style="text-align: center; flex: 1;">
+            <div style="font-size: 36px; font-weight: 900; color: ${team2Color};">${winProb2.toFixed(0)}%</div>
+          </div>
         </div>
-        <div style="font-size: 18px; color: #6b7280;">vs</div>
-        <div style="text-align: center;">
-          <div style="font-size: 32px; font-weight: bold; color: #f87171;">${team2Projected.toFixed(1)}</div>
-          <div style="font-size: 12px; color: #9ca3af;">Projected</div>
+        
+        <!-- Probability Bar -->
+        <div style="height: 12px; background: linear-gradient(to right, ${team1Color} 0%, ${team1Color} ${winProb1}%, ${team2Color} ${winProb1}%, ${team2Color} 100%); border-radius: 6px;"></div>
+      </div>
+      
+      <!-- Projected Scores -->
+      <div style="display: flex; justify-content: space-between; align-items: center; padding: 16px; background: rgba(38, 42, 58, 0.3); border-radius: 12px;">
+        <div style="text-align: center; flex: 1;">
+          <div style="font-size: 24px; font-weight: bold; color: ${team1Color};">${team1Projected.toFixed(1)}</div>
+          <div style="font-size: 10px; color: #9ca3af;">PROJECTED</div>
+        </div>
+        <div style="font-size: 12px; color: #4b5563;">vs</div>
+        <div style="text-align: center; flex: 1;">
+          <div style="font-size: 24px; font-weight: bold; color: ${team2Color};">${team2Projected.toFixed(1)}</div>
+          <div style="font-size: 10px; color: #9ca3af;">PROJECTED</div>
         </div>
       </div>
       
       <!-- Footer -->
-      <div style="text-align: center; font-size: 10px; color: #4a5568;">
-        Generated by Fantasy Dashboard
+      <div style="text-align: center; font-size: 9px; color: #4a5568; margin-top: 16px;">
+        Ultimate Fantasy Dashboard
       </div>
     `
     
@@ -3016,7 +3067,7 @@ async function downloadMatchupPreview() {
     
     const canvas = await html2canvas(container, {
       backgroundColor: '#0d0f18',
-      scale: 2,
+      scale: 3,
       logging: false,
       useCORS: true,
       allowTaint: true
@@ -3026,12 +3077,12 @@ async function downloadMatchupPreview() {
     
     // Download
     const link = document.createElement('a')
-    link.download = `matchup-preview-week-${selectedWeek.value}-${selectedMatchup.value.team1_name.replace(/[^a-z0-9]/gi, '-')}-vs-${selectedMatchup.value.team2_name.replace(/[^a-z0-9]/gi, '-')}.png`.toLowerCase()
+    link.download = `win-probability-week-${selectedWeek.value}-${selectedMatchup.value.team1_name.replace(/[^a-z0-9]/gi, '-')}-vs-${selectedMatchup.value.team2_name.replace(/[^a-z0-9]/gi, '-')}.png`.toLowerCase()
     link.href = canvas.toDataURL('image/png')
     link.click()
     
   } catch (error) {
-    console.error('Failed to generate matchup preview image:', error)
+    console.error('Failed to generate image:', error)
     alert('Failed to generate image. Please try again.')
   } finally {
     isDownloadingPreview.value = false
@@ -3413,6 +3464,69 @@ function getStreakDescription(recentForm: string[]): string {
   if (recentForm[0] === 'L' && recentForm[1] === 'L') return `lost 2 straight`
   if (recentForm[0] === 'W') return `coming off a win`
   return `coming off a loss`
+}
+
+// Calculate average points over last N weeks
+function calculateRecentAverage(rosterId: number, weeks: number): number {
+  const matchupsByWeek = leagueStore.historicalMatchups.get(selectedSeason.value) || new Map()
+  const selectedWeekNum = parseInt(selectedWeek.value)
+  
+  const recentScores: number[] = []
+  
+  // Get scores from recent weeks (excluding current week)
+  for (let week = selectedWeekNum - 1; week >= 1 && recentScores.length < weeks; week--) {
+    const weekMatchups = matchupsByWeek.get(week)
+    if (!weekMatchups) continue
+    
+    const matchup = weekMatchups.find((m: any) => m.roster_id === rosterId)
+    if (matchup && matchup.points > 0) {
+      recentScores.push(matchup.points)
+    }
+  }
+  
+  if (recentScores.length === 0) return 0
+  return recentScores.reduce((a, b) => a + b, 0) / recentScores.length
+}
+
+// Get playoff matchup history between two teams
+function getPlayoffMatchupHistory(roster1Id: number, roster2Id: number): { team1Wins: number, team2Wins: number, totalGames: number } {
+  let team1Wins = 0
+  let team2Wins = 0
+  
+  // Search through all seasons for playoff matchups
+  leagueStore.historicalSeasons.forEach(seasonInfo => {
+    const matchups = leagueStore.historicalMatchups.get(seasonInfo.season) || new Map()
+    const rosters = leagueStore.historicalRosters.get(seasonInfo.season) || []
+    
+    const playoffStart = seasonInfo.settings?.playoff_week_start || 15
+    
+    // Find the roster IDs for these users in this season
+    const roster1 = rosters.find(r => r.roster_id === roster1Id)
+    const roster2 = rosters.find(r => r.roster_id === roster2Id)
+    
+    if (!roster1 || !roster2) return
+    
+    // Check playoff weeks
+    matchups.forEach((weekMatchups, week) => {
+      if (week < playoffStart) return // Not a playoff week
+      
+      const match1 = weekMatchups.find((m: any) => m.roster_id === roster1.roster_id)
+      const match2 = weekMatchups.find((m: any) => m.roster_id === roster2.roster_id)
+      
+      if (!match1 || !match2) return
+      if (match1.matchup_id !== match2.matchup_id) return // Not playing each other
+      
+      const score1 = match1.points || 0
+      const score2 = match2.points || 0
+      
+      if (score1 === 0 && score2 === 0) return // Game not played
+      
+      if (score1 > score2) team1Wins++
+      else if (score2 > score1) team2Wins++
+    })
+  })
+  
+  return { team1Wins, team2Wins, totalGames: team1Wins + team2Wins }
 }
 
 // Get team's total projected points - LIVE: actual points scored + projections for remaining players
