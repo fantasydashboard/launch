@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia'
-import { ref, computed } from 'vue'
+import { ref, computed, watch } from 'vue'
 import { sleeperService } from '@/services/sleeper'
 import { supabase } from '@/lib/supabase'
 import type {
@@ -10,9 +10,10 @@ import type {
   SleeperPlayer
 } from '@/types/sleeper'
 
-// Saved league interface for Supabase
+// Saved league interface
 interface SavedLeague {
   id?: string
+  user_id?: string
   league_id: string
   league_name: string
   platform: 'sleeper'
@@ -33,6 +34,14 @@ interface LeagueCache {
   historicalDrafts: Map<string, any>
   historicalBrackets: Map<string, any[]>
   loadedAt: number
+}
+
+// LocalStorage keys
+const STORAGE_KEYS = {
+  SAVED_LEAGUES: 'fd_saved_leagues',
+  LEAGUE_CACHE: 'fd_league_cache',
+  CURRENT_USERNAME: 'fd_current_username',
+  ACTIVE_LEAGUE: 'fd_active_league'
 }
 
 export const useLeagueStore = defineStore('league', () => {
@@ -56,7 +65,7 @@ export const useLeagueStore = defineStore('league', () => {
   const historicalDrafts = ref<Map<string, any>>(new Map())
   const historicalBrackets = ref<Map<string, any[]>>(new Map())
 
-  // Cache for multiple leagues
+  // Cache for multiple leagues (in memory)
   const leagueCache = ref<Map<string, LeagueCache>>(new Map())
 
   // Computed
@@ -71,8 +80,106 @@ export const useLeagueStore = defineStore('league', () => {
   // Check if user has any saved leagues
   const hasSavedLeagues = computed(() => savedLeagues.value.length > 0)
 
-  // Load saved leagues from Supabase
+  // ============================================
+  // LOCAL STORAGE FUNCTIONS
+  // ============================================
+
+  function saveToLocalStorage() {
+    try {
+      localStorage.setItem(STORAGE_KEYS.SAVED_LEAGUES, JSON.stringify(savedLeagues.value))
+      if (currentUsername.value) {
+        localStorage.setItem(STORAGE_KEYS.CURRENT_USERNAME, currentUsername.value)
+      }
+      if (activeLeagueId.value) {
+        localStorage.setItem(STORAGE_KEYS.ACTIVE_LEAGUE, activeLeagueId.value)
+      }
+    } catch (e) {
+      console.warn('Failed to save to localStorage:', e)
+    }
+  }
+
+  function loadFromLocalStorage() {
+    try {
+      const savedLeaguesData = localStorage.getItem(STORAGE_KEYS.SAVED_LEAGUES)
+      if (savedLeaguesData) {
+        savedLeagues.value = JSON.parse(savedLeaguesData)
+      }
+      
+      const username = localStorage.getItem(STORAGE_KEYS.CURRENT_USERNAME)
+      if (username) {
+        currentUsername.value = username
+      }
+      
+      const activeLeague = localStorage.getItem(STORAGE_KEYS.ACTIVE_LEAGUE)
+      if (activeLeague) {
+        activeLeagueId.value = activeLeague
+      }
+    } catch (e) {
+      console.warn('Failed to load from localStorage:', e)
+    }
+  }
+
+  function saveCacheToLocalStorage(leagueId: string, cache: LeagueCache) {
+    try {
+      // Convert Maps to arrays for JSON serialization
+      const serializable = {
+        league: cache.league,
+        rosters: cache.rosters,
+        users: cache.users,
+        historicalSeasons: cache.historicalSeasons,
+        historicalRosters: Array.from(cache.historicalRosters.entries()),
+        historicalUsers: Array.from(cache.historicalUsers.entries()),
+        historicalMatchups: Array.from(cache.historicalMatchups.entries()).map(([k, v]) => [k, Array.from(v.entries())]),
+        historicalDrafts: Array.from(cache.historicalDrafts.entries()),
+        historicalBrackets: Array.from(cache.historicalBrackets.entries()),
+        loadedAt: cache.loadedAt
+      }
+      localStorage.setItem(`${STORAGE_KEYS.LEAGUE_CACHE}_${leagueId}`, JSON.stringify(serializable))
+    } catch (e) {
+      console.warn('Failed to save cache to localStorage:', e)
+    }
+  }
+
+  function loadCacheFromLocalStorage(leagueId: string): LeagueCache | null {
+    try {
+      const data = localStorage.getItem(`${STORAGE_KEYS.LEAGUE_CACHE}_${leagueId}`)
+      if (!data) return null
+      
+      const parsed = JSON.parse(data)
+      
+      // Check if cache is still valid (24 hours)
+      if (Date.now() - parsed.loadedAt > 24 * 60 * 60 * 1000) {
+        localStorage.removeItem(`${STORAGE_KEYS.LEAGUE_CACHE}_${leagueId}`)
+        return null
+      }
+      
+      // Convert arrays back to Maps
+      return {
+        league: parsed.league,
+        rosters: parsed.rosters,
+        users: parsed.users,
+        historicalSeasons: parsed.historicalSeasons,
+        historicalRosters: new Map(parsed.historicalRosters),
+        historicalUsers: new Map(parsed.historicalUsers),
+        historicalMatchups: new Map(parsed.historicalMatchups.map(([k, v]: [string, any]) => [k, new Map(v)])),
+        historicalDrafts: new Map(parsed.historicalDrafts),
+        historicalBrackets: new Map(parsed.historicalBrackets),
+        loadedAt: parsed.loadedAt
+      }
+    } catch (e) {
+      console.warn('Failed to load cache from localStorage:', e)
+      return null
+    }
+  }
+
+  // ============================================
+  // SUPABASE SYNC FUNCTIONS
+  // ============================================
+
   async function loadSavedLeagues(userId: string) {
+    // First, load from localStorage for instant display
+    loadFromLocalStorage()
+    
     if (!supabase) return
     
     try {
@@ -84,128 +191,145 @@ export const useLeagueStore = defineStore('league', () => {
       
       if (fetchError) throw fetchError
       
-      savedLeagues.value = data || []
+      if (data && data.length > 0) {
+        savedLeagues.value = data
+        saveToLocalStorage()
+      }
       
-      // Convert to SleeperLeague format for the dropdown
-      leagues.value = savedLeagues.value.map(sl => ({
-        league_id: sl.league_id,
-        name: sl.league_name,
-        season: sl.season,
-        // Add minimal required fields
-        status: 'in_season',
-        sport: 'nfl',
-        settings: {},
-        scoring_settings: {},
-        roster_positions: [],
-        total_rosters: 12
-      } as SleeperLeague))
-      
-      // If there's a primary league, load it automatically
+      // If there's a primary league and no active league, load it
       const primaryLeague = savedLeagues.value.find(l => l.is_primary)
-      if (primaryLeague) {
+      if (primaryLeague && !activeLeagueId.value) {
         currentUsername.value = primaryLeague.sleeper_username
         await setActiveLeague(primaryLeague.league_id)
+      } else if (activeLeagueId.value) {
+        // Load the previously active league
+        await setActiveLeague(activeLeagueId.value)
       }
     } catch (e) {
-      console.error('Failed to load saved leagues:', e)
+      console.error('Failed to load saved leagues from Supabase:', e)
     }
   }
 
-  // Save a league to Supabase
-  async function saveLeague(league: SleeperLeague, username: string, userId: string) {
-    if (!supabase) return
+  async function saveLeague(league: SleeperLeague, username: string, userId: string): Promise<SavedLeague | undefined> {
+    // Check if this league is already saved
+    const existing = savedLeagues.value.find(l => l.league_id === league.league_id)
+    if (existing) return existing
     
-    try {
-      // Check if this league is already saved
-      const existing = savedLeagues.value.find(l => l.league_id === league.league_id)
-      if (existing) return existing
-      
-      const isPrimary = savedLeagues.value.length === 0 // First league is primary
-      
-      const { data, error: saveError } = await supabase
-        .from('user_leagues')
-        .insert({
-          user_id: userId,
-          league_id: league.league_id,
-          league_name: league.name,
-          platform: 'sleeper',
-          season: league.season,
-          sleeper_username: username,
-          is_primary: isPrimary
-        })
-        .select()
-        .single()
-      
-      if (saveError) throw saveError
-      
-      savedLeagues.value.push(data)
-      
-      // Also add to leagues array if not present
-      if (!leagues.value.find(l => l.league_id === league.league_id)) {
-        leagues.value.push(league)
+    const isPrimary = savedLeagues.value.length === 0
+    
+    const newLeague: SavedLeague = {
+      league_id: league.league_id,
+      league_name: league.name,
+      platform: 'sleeper',
+      season: league.season,
+      sleeper_username: username,
+      is_primary: isPrimary
+    }
+    
+    // Add to local state immediately
+    savedLeagues.value.push(newLeague)
+    saveToLocalStorage()
+    
+    // Sync to Supabase in background
+    if (supabase) {
+      try {
+        const { data, error: saveError } = await supabase
+          .from('user_leagues')
+          .insert({
+            user_id: userId,
+            ...newLeague
+          })
+          .select()
+          .single()
+        
+        if (saveError) throw saveError
+        
+        // Update with server ID
+        const index = savedLeagues.value.findIndex(l => l.league_id === league.league_id)
+        if (index !== -1 && data) {
+          savedLeagues.value[index] = data
+          saveToLocalStorage()
+        }
+        
+        return data
+      } catch (e) {
+        console.error('Failed to save league to Supabase:', e)
       }
-      
-      return data
-    } catch (e) {
-      console.error('Failed to save league:', e)
     }
+    
+    return newLeague
   }
 
-  // Remove a saved league
-  async function removeLeague(leagueId: string, userId: string) {
-    if (!supabase) return
+  async function removeLeague(leagueId: string, userId?: string) {
+    // Remove from local state immediately
+    savedLeagues.value = savedLeagues.value.filter(l => l.league_id !== leagueId)
+    saveToLocalStorage()
     
-    try {
-      const { error: deleteError } = await supabase
-        .from('user_leagues')
-        .delete()
-        .eq('user_id', userId)
-        .eq('league_id', leagueId)
+    // Remove from localStorage cache
+    localStorage.removeItem(`${STORAGE_KEYS.LEAGUE_CACHE}_${leagueId}`)
+    
+    // Clear memory cache
+    leagueCache.value.delete(leagueId)
+    
+    // If we removed the active league, clear it
+    if (activeLeagueId.value === leagueId) {
+      activeLeagueId.value = null
+      currentLeague.value = null
+      localStorage.removeItem(STORAGE_KEYS.ACTIVE_LEAGUE)
       
-      if (deleteError) throw deleteError
-      
-      savedLeagues.value = savedLeagues.value.filter(l => l.league_id !== leagueId)
-      leagues.value = leagues.value.filter(l => l.league_id !== leagueId)
-      
-      // If we removed the active league, clear it
-      if (activeLeagueId.value === leagueId) {
-        activeLeagueId.value = null
-        currentLeague.value = null
+      // Switch to another league or demo mode
+      if (savedLeagues.value.length > 0) {
+        await setActiveLeague(savedLeagues.value[0].league_id)
+      } else {
+        enableDemoMode()
       }
-    } catch (e) {
-      console.error('Failed to remove league:', e)
     }
-  }
-
-  // Set primary league
-  async function setPrimaryLeague(leagueId: string, userId: string) {
-    if (!supabase) return
     
-    try {
-      // First, unset all as primary
-      await supabase
-        .from('user_leagues')
-        .update({ is_primary: false })
-        .eq('user_id', userId)
-      
-      // Then set the selected one as primary
-      await supabase
-        .from('user_leagues')
-        .update({ is_primary: true })
-        .eq('user_id', userId)
-        .eq('league_id', leagueId)
-      
-      // Update local state
-      savedLeagues.value = savedLeagues.value.map(l => ({
-        ...l,
-        is_primary: l.league_id === leagueId
-      }))
-    } catch (e) {
-      console.error('Failed to set primary league:', e)
+    // Sync to Supabase in background
+    if (supabase && userId) {
+      try {
+        await supabase
+          .from('user_leagues')
+          .delete()
+          .eq('user_id', userId)
+          .eq('league_id', leagueId)
+      } catch (e) {
+        console.error('Failed to remove league from Supabase:', e)
+      }
     }
   }
 
-  // Actions
+  async function setPrimaryLeague(leagueId: string, userId?: string) {
+    // Update local state immediately
+    savedLeagues.value = savedLeagues.value.map(l => ({
+      ...l,
+      is_primary: l.league_id === leagueId
+    }))
+    saveToLocalStorage()
+    
+    // Sync to Supabase in background
+    if (supabase && userId) {
+      try {
+        await supabase
+          .from('user_leagues')
+          .update({ is_primary: false })
+          .eq('user_id', userId)
+        
+        await supabase
+          .from('user_leagues')
+          .update({ is_primary: true })
+          .eq('user_id', userId)
+          .eq('league_id', leagueId)
+      } catch (e) {
+        console.error('Failed to set primary league in Supabase:', e)
+      }
+    }
+  }
+
+  // ============================================
+  // LEAGUE DATA FUNCTIONS
+  // ============================================
+
   async function fetchUserLeagues(username: string) {
     isLoading.value = true
     error.value = null
@@ -213,6 +337,8 @@ export const useLeagueStore = defineStore('league', () => {
       const user = await sleeperService.getUser(username)
       currentUserId.value = user.user_id
       currentUsername.value = username
+      saveToLocalStorage()
+      
       const fetchedLeagues = await sleeperService.getUserLeagues(user.user_id, currentSeason.value)
       
       // Merge with saved leagues (avoid duplicates)
@@ -220,7 +346,17 @@ export const useLeagueStore = defineStore('league', () => {
       const newLeagues = fetchedLeagues.filter(l => !savedIds.has(l.league_id))
       
       leagues.value = [
-        ...leagues.value,
+        ...savedLeagues.value.map(sl => ({
+          league_id: sl.league_id,
+          name: sl.league_name,
+          season: sl.season,
+          status: 'in_season',
+          sport: 'nfl',
+          settings: {},
+          scoring_settings: {},
+          roster_positions: [],
+          total_rosters: 12
+        } as SleeperLeague)),
         ...newLeagues
       ]
       
@@ -237,67 +373,142 @@ export const useLeagueStore = defineStore('league', () => {
     isLoading.value = true
     error.value = null
     activeLeagueId.value = leagueId
+    isDemoMode.value = false
+    saveToLocalStorage()
     
     try {
-      // Check if we have this league cached
-      const cached = leagueCache.value.get(leagueId)
-      const cacheAge = cached ? Date.now() - cached.loadedAt : Infinity
-      const cacheValid = cacheAge < 5 * 60 * 1000 // 5 minutes
+      // First, check localStorage cache for instant loading
+      const localCache = loadCacheFromLocalStorage(leagueId)
       
-      if (cached && cacheValid) {
-        console.log(`Loading league ${leagueId} from cache`)
-        // Restore from cache
-        currentLeague.value = cached.league
-        rosters.value = cached.rosters
-        users.value = cached.users
-        historicalSeasons.value = cached.historicalSeasons
-        historicalRosters.value = cached.historicalRosters
-        historicalUsers.value = cached.historicalUsers
-        historicalMatchups.value = cached.historicalMatchups
-        historicalDrafts.value = cached.historicalDrafts
-        historicalBrackets.value = cached.historicalBrackets || new Map()
+      // Then check memory cache
+      const memCache = leagueCache.value.get(leagueId)
+      const cacheAge = memCache ? Date.now() - memCache.loadedAt : Infinity
+      const memCacheValid = cacheAge < 5 * 60 * 1000 // 5 minutes for memory cache
+      
+      if (localCache && !memCache) {
+        // Use localStorage cache immediately
+        console.log(`Loading league ${leagueId} from localStorage cache`)
+        currentLeague.value = localCache.league
+        rosters.value = localCache.rosters
+        users.value = localCache.users
+        historicalSeasons.value = localCache.historicalSeasons
+        historicalRosters.value = localCache.historicalRosters
+        historicalUsers.value = localCache.historicalUsers
+        historicalMatchups.value = localCache.historicalMatchups
+        historicalDrafts.value = localCache.historicalDrafts
+        historicalBrackets.value = localCache.historicalBrackets
         
-        // Still fetch players if not loaded
+        // Store in memory cache too
+        leagueCache.value.set(leagueId, localCache)
+        
+        // Load players if needed
         if (Object.keys(players.value).length === 0) {
           players.value = await sleeperService.getPlayers()
         }
-      } else {
-        console.log(`Fetching fresh data for league ${leagueId}`)
-        // Fetch current league data
-        const [league, leagueRosters, leagueUsers, playersData] = await Promise.all([
-          sleeperService.getLeague(leagueId),
-          sleeperService.getLeagueRosters(leagueId),
-          sleeperService.getLeagueUsers(leagueId),
-          sleeperService.getPlayers()
-        ])
-
-        currentLeague.value = league
-        rosters.value = leagueRosters
-        users.value = leagueUsers
-        players.value = playersData
-
-        // Fetch historical data
-        await fetchHistoricalData(leagueId)
         
-        // Cache this league's data
-        leagueCache.value.set(leagueId, {
-          league,
-          rosters: leagueRosters,
-          users: leagueUsers,
-          historicalSeasons: historicalSeasons.value,
-          historicalRosters: historicalRosters.value,
-          historicalUsers: historicalUsers.value,
-          historicalMatchups: historicalMatchups.value,
-          historicalDrafts: historicalDrafts.value,
-          historicalBrackets: historicalBrackets.value,
-          loadedAt: Date.now()
-        })
+        isLoading.value = false
+        
+        // Refresh data in background
+        refreshLeagueData(leagueId)
+        return
       }
+      
+      if (memCache && memCacheValid) {
+        console.log(`Loading league ${leagueId} from memory cache`)
+        currentLeague.value = memCache.league
+        rosters.value = memCache.rosters
+        users.value = memCache.users
+        historicalSeasons.value = memCache.historicalSeasons
+        historicalRosters.value = memCache.historicalRosters
+        historicalUsers.value = memCache.historicalUsers
+        historicalMatchups.value = memCache.historicalMatchups
+        historicalDrafts.value = memCache.historicalDrafts
+        historicalBrackets.value = memCache.historicalBrackets
+        
+        if (Object.keys(players.value).length === 0) {
+          players.value = await sleeperService.getPlayers()
+        }
+        
+        return
+      }
+      
+      // No valid cache, fetch fresh data
+      console.log(`Fetching fresh data for league ${leagueId}`)
+      await loadFreshLeagueData(leagueId)
+      
     } catch (e) {
       error.value = e instanceof Error ? e.message : 'Failed to load league'
       throw e
     } finally {
       isLoading.value = false
+    }
+  }
+
+  async function loadFreshLeagueData(leagueId: string) {
+    const [league, leagueRosters, leagueUsers, playersData] = await Promise.all([
+      sleeperService.getLeague(leagueId),
+      sleeperService.getLeagueRosters(leagueId),
+      sleeperService.getLeagueUsers(leagueId),
+      sleeperService.getPlayers()
+    ])
+
+    currentLeague.value = league
+    rosters.value = leagueRosters
+    users.value = leagueUsers
+    players.value = playersData
+
+    // Fetch historical data
+    await fetchHistoricalData(leagueId)
+    
+    // Cache this league's data
+    const cache: LeagueCache = {
+      league,
+      rosters: leagueRosters,
+      users: leagueUsers,
+      historicalSeasons: historicalSeasons.value,
+      historicalRosters: historicalRosters.value,
+      historicalUsers: historicalUsers.value,
+      historicalMatchups: historicalMatchups.value,
+      historicalDrafts: historicalDrafts.value,
+      historicalBrackets: historicalBrackets.value,
+      loadedAt: Date.now()
+    }
+    
+    leagueCache.value.set(leagueId, cache)
+    saveCacheToLocalStorage(leagueId, cache)
+  }
+
+  async function refreshLeagueData(leagueId: string) {
+    try {
+      // Background refresh - don't set loading state
+      const [league, leagueRosters, leagueUsers] = await Promise.all([
+        sleeperService.getLeague(leagueId),
+        sleeperService.getLeagueRosters(leagueId),
+        sleeperService.getLeagueUsers(leagueId)
+      ])
+      
+      // Only update if this is still the active league
+      if (activeLeagueId.value === leagueId) {
+        currentLeague.value = league
+        rosters.value = leagueRosters
+        users.value = leagueUsers
+        
+        // Update cache
+        const existingCache = leagueCache.value.get(leagueId)
+        if (existingCache) {
+          const updatedCache = {
+            ...existingCache,
+            league,
+            rosters: leagueRosters,
+            users: leagueUsers,
+            loadedAt: Date.now()
+          }
+          leagueCache.value.set(leagueId, updatedCache)
+          saveCacheToLocalStorage(leagueId, updatedCache)
+        }
+      }
+    } catch (e) {
+      console.warn('Background refresh failed:', e)
     }
   }
 
@@ -316,7 +527,6 @@ export const useLeagueStore = defineStore('league', () => {
         try {
           const bracket = await sleeperService.getWinnersBracket(season.league_id)
           brackets.set(season.season, bracket)
-          console.log(`✓ Fetched bracket for ${season.season}`)
         } catch (e) {
           console.warn(`Could not fetch bracket for ${season.season}`)
         }
@@ -336,9 +546,28 @@ export const useLeagueStore = defineStore('league', () => {
     }
   }
 
+  // ============================================
+  // DEMO MODE FUNCTIONS
+  // ============================================
+
+  function enableDemoMode() {
+    isDemoMode.value = true
+    activeLeagueId.value = null
+    currentLeague.value = null
+  }
+
+  function disableDemoMode() {
+    isDemoMode.value = false
+  }
+
+  // ============================================
+  // RESET FUNCTION
+  // ============================================
+
   function reset() {
     activeLeagueId.value = null
     leagues.value = []
+    savedLeagues.value = []
     currentLeague.value = null
     rosters.value = []
     users.value = []
@@ -351,17 +580,22 @@ export const useLeagueStore = defineStore('league', () => {
     historicalBrackets.value = new Map()
     error.value = null
     isDemoMode.value = false
+    
+    // Clear localStorage
+    Object.values(STORAGE_KEYS).forEach(key => {
+      localStorage.removeItem(key)
+    })
+    
+    // Clear all league caches
+    for (const key of Object.keys(localStorage)) {
+      if (key.startsWith(STORAGE_KEYS.LEAGUE_CACHE)) {
+        localStorage.removeItem(key)
+      }
+    }
   }
 
-  // Enable demo mode
-  function enableDemoMode() {
-    isDemoMode.value = true
-  }
-
-  // Disable demo mode
-  function disableDemoMode() {
-    isDemoMode.value = false
-  }
+  // Initialize from localStorage on store creation
+  loadFromLocalStorage()
 
   return {
     // State

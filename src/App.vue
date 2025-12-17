@@ -56,7 +56,7 @@
               <div>
                 <h1 class="text-2xl font-bold text-dark-text">Fantasy Dashboard</h1>
                 <p class="text-xs text-dark-textMuted">
-                  {{ leagueStore.isDemoMode ? 'Demo Mode' : 'League History & Analytics' }}
+                  {{ leagueStore.isDemoMode ? 'Demo Mode - Explore the Dashboard' : 'League History & Analytics' }}
                 </p>
               </div>
             </div>
@@ -67,18 +67,31 @@
               <div class="relative" ref="leagueDropdownRef">
                 <button
                   @click="showLeagueDropdown = !showLeagueDropdown"
-                  class="flex items-center gap-2 px-4 py-2 rounded-xl bg-dark-card border border-dark-border hover:border-primary/50 transition-colors min-w-[200px]"
+                  class="flex items-center gap-2 px-4 py-2 rounded-xl bg-dark-card border border-dark-border hover:border-primary/50 transition-colors min-w-[220px]"
                 >
-                  <span v-if="leagueStore.currentLeague" class="text-dark-text font-medium truncate">
-                    {{ leagueStore.currentLeague.name }}
-                  </span>
-                  <span v-else-if="leagueStore.isDemoMode" class="text-primary font-medium">
-                    Demo League
-                  </span>
-                  <span v-else class="text-dark-textMuted">
-                    Select League
-                  </span>
-                  <svg class="w-4 h-4 text-dark-textMuted ml-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <template v-if="leagueStore.currentLeague">
+                    <div class="w-6 h-6 rounded-full bg-primary/20 flex items-center justify-center flex-shrink-0">
+                      <span class="text-xs font-bold text-primary">{{ leagueStore.currentLeague.name.substring(0, 2).toUpperCase() }}</span>
+                    </div>
+                    <span class="text-dark-text font-medium truncate">
+                      {{ leagueStore.currentLeague.name }}
+                    </span>
+                  </template>
+                  <template v-else-if="leagueStore.isDemoMode">
+                    <div class="w-6 h-6 rounded-full bg-cyan-500/20 flex items-center justify-center flex-shrink-0">
+                      <span class="text-sm">👀</span>
+                    </div>
+                    <span class="text-cyan-400 font-medium">Demo Mode</span>
+                  </template>
+                  <template v-else>
+                    <div class="w-6 h-6 rounded-full bg-primary/20 flex items-center justify-center flex-shrink-0">
+                      <svg class="w-3 h-3 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                      </svg>
+                    </div>
+                    <span class="text-primary font-medium">Connect Sleeper</span>
+                  </template>
+                  <svg class="w-4 h-4 text-dark-textMuted ml-auto flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
                   </svg>
                 </button>
@@ -86,27 +99,47 @@
                 <!-- Dropdown Menu -->
                 <div 
                   v-if="showLeagueDropdown"
-                  class="absolute top-full left-0 mt-2 w-72 bg-dark-card border border-dark-border rounded-xl shadow-xl z-50 overflow-hidden"
+                  class="absolute top-full right-0 mt-2 w-80 bg-dark-card border border-dark-border rounded-xl shadow-xl z-50 overflow-hidden"
                 >
                   <!-- Saved Leagues -->
                   <div v-if="leagueStore.savedLeagues.length > 0" class="p-2">
-                    <div class="text-xs text-dark-textMuted uppercase tracking-wider px-2 py-1">Your Leagues</div>
-                    <button
+                    <div class="text-xs text-dark-textMuted uppercase tracking-wider px-2 py-1 flex items-center justify-between">
+                      <span>Your Leagues</span>
+                      <span class="text-primary">{{ leagueStore.savedLeagues.length }}</span>
+                    </div>
+                    <div
                       v-for="league in leagueStore.savedLeagues"
                       :key="league.league_id"
-                      @click="selectLeague(league.league_id)"
-                      class="w-full flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-dark-border/50 transition-colors"
-                      :class="leagueStore.activeLeagueId === league.league_id ? 'bg-primary/10 border border-primary/30' : ''"
+                      class="group flex items-center gap-2 rounded-lg transition-colors"
+                      :class="leagueStore.activeLeagueId === league.league_id ? 'bg-primary/10' : 'hover:bg-dark-border/50'"
                     >
-                      <div class="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center">
-                        <span class="text-xs font-bold text-primary">{{ league.league_name.substring(0, 2).toUpperCase() }}</span>
-                      </div>
-                      <div class="flex-1 text-left">
-                        <div class="font-medium text-dark-text text-sm truncate">{{ league.league_name }}</div>
-                        <div class="text-xs text-dark-textMuted">{{ league.season }} Season</div>
-                      </div>
-                      <span v-if="league.is_primary" class="text-xs text-primary">★</span>
-                    </button>
+                      <button
+                        @click="selectLeague(league.league_id)"
+                        class="flex-1 flex items-center gap-3 px-3 py-2"
+                      >
+                        <div class="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center flex-shrink-0">
+                          <span class="text-xs font-bold text-primary">{{ league.league_name.substring(0, 2).toUpperCase() }}</span>
+                        </div>
+                        <div class="flex-1 text-left min-w-0">
+                          <div class="font-medium text-dark-text text-sm truncate">{{ league.league_name }}</div>
+                          <div class="text-xs text-dark-textMuted">{{ league.season }} • {{ league.sleeper_username }}</div>
+                        </div>
+                        <span v-if="league.is_primary" class="text-xs text-primary">★</span>
+                        <svg v-if="leagueStore.activeLeagueId === league.league_id" class="w-4 h-4 text-primary" fill="currentColor" viewBox="0 0 20 20">
+                          <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" />
+                        </svg>
+                      </button>
+                      <!-- Remove Button -->
+                      <button
+                        @click.stop="confirmRemoveLeague(league)"
+                        class="p-2 opacity-0 group-hover:opacity-100 hover:text-red-400 text-dark-textMuted transition-all"
+                        title="Remove league"
+                      >
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                        </svg>
+                      </button>
+                    </div>
                   </div>
                   
                   <!-- Divider -->
@@ -123,7 +156,10 @@
                           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
                         </svg>
                       </div>
-                      <span class="font-medium text-sm">Add Another League</span>
+                      <div class="text-left">
+                        <div class="font-medium text-sm">Connect Sleeper League</div>
+                        <div class="text-xs text-dark-textMuted">Add a new league to your dashboard</div>
+                      </div>
                     </button>
                   </div>
                   
@@ -132,7 +168,7 @@
                     <button
                       @click="enableDemoMode"
                       class="w-full flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-dark-border/50 transition-colors"
-                      :class="leagueStore.isDemoMode ? 'bg-cyan-500/10 border border-cyan-500/30' : ''"
+                      :class="leagueStore.isDemoMode ? 'bg-cyan-500/10' : ''"
                     >
                       <div class="w-8 h-8 rounded-full bg-cyan-500/20 flex items-center justify-center">
                         <span class="text-sm">👀</span>
@@ -141,6 +177,9 @@
                         <div class="font-medium text-dark-text text-sm">Demo Mode</div>
                         <div class="text-xs text-dark-textMuted">Explore with sample data</div>
                       </div>
+                      <svg v-if="leagueStore.isDemoMode" class="w-4 h-4 text-cyan-400" fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" />
+                      </svg>
                     </button>
                   </div>
                 </div>
@@ -164,19 +203,6 @@
                   </svg>
                 </button>
               </div>
-
-              <button
-                @click="darkModeStore.toggle"
-                class="p-3 rounded-xl hover:bg-gray-100 dark:hover:bg-dark-border transition-all duration-200"
-                title="Toggle dark mode"
-              >
-                <svg v-if="darkModeStore.isDark" class="w-6 h-6 text-yellow-400" fill="currentColor" viewBox="0 0 20 20">
-                  <path d="M10 2a1 1 0 011 1v1a1 1 0 11-2 0V3a1 1 0 011-1zm4 8a4 4 0 11-8 0 4 4 0 018 0zm-.464 4.95l.707.707a1 1 0 001.414-1.414l-.707-.707a1 1 0 00-1.414 1.414zm2.12-10.607a1 1 0 010 1.414l-.706.707a1 1 0 11-1.414-1.414l.707-.707a1 1 0 011.414 0zM17 11a1 1 0 100-2h-1a1 1 0 100 2h1zm-7 4a1 1 0 011 1v1a1 1 0 11-2 0v-1a1 1 0 011-1zM5.05 6.464A1 1 0 106.465 5.05l-.708-.707a1 1 0 00-1.414 1.414l.707.707zm1.414 8.486l-.707.707a1 1 0 01-1.414-1.414l.707-.707a1 1 0 011.414 1.414zM4 11a1 1 0 100-2H3a1 1 0 000 2h1z" />
-                </svg>
-                <svg v-else class="w-6 h-6 text-gray-600" fill="currentColor" viewBox="0 0 20 20">
-                  <path d="M17.293 13.293A8 8 0 016.707 2.707a8.001 8.001 0 1010.586 10.586z" />
-                </svg>
-              </button>
             </div>
           </div>
         </div>
@@ -202,9 +228,15 @@
           </div>
           
           <!-- Demo Mode Banner -->
-          <div v-if="leagueStore.isDemoMode" class="inline-flex items-center gap-2 ml-4 px-3 py-1 rounded-full bg-cyan-500/10 border border-cyan-500/30 text-cyan-400 text-xs font-medium">
-            <span>👀</span>
-            <span>Viewing Demo Data</span>
+          <div v-if="leagueStore.isDemoMode" class="inline-flex items-center gap-2 ml-4 px-3 py-1.5 rounded-full bg-cyan-500/10 border border-cyan-500/30">
+            <span class="text-sm">👀</span>
+            <span class="text-cyan-400 text-xs font-medium">Demo Mode</span>
+            <button 
+              @click="showAddLeagueModal = true"
+              class="text-xs text-cyan-300 hover:text-white underline ml-1"
+            >
+              Connect your league →
+            </button>
           </div>
         </div>
       </nav>
@@ -215,8 +247,16 @@
           <p class="text-red-800 dark:text-red-200 font-medium">{{ leagueStore.error }}</p>
         </div>
 
-        <!-- Show router view - it will handle demo mode vs real data -->
-        <router-view />
+        <!-- Loading State -->
+        <div v-if="leagueStore.isLoading" class="flex items-center justify-center py-24">
+          <div class="text-center">
+            <div class="animate-spin rounded-full h-12 w-12 border-b-4 border-primary mx-auto mb-4"></div>
+            <p class="text-dark-textMuted">Loading league data...</p>
+          </div>
+        </div>
+
+        <!-- Show router view -->
+        <router-view v-else />
       </main>
     </template>
 
@@ -234,11 +274,42 @@
       @close="showAddLeagueModal = false"
       @league-added="handleLeagueAdded"
     />
+    
+    <!-- Remove League Confirmation -->
+    <Teleport to="body">
+      <div 
+        v-if="leagueToRemove" 
+        class="fixed inset-0 z-50 flex items-center justify-center p-4"
+        @click.self="leagueToRemove = null"
+      >
+        <div class="absolute inset-0 bg-black/70 backdrop-blur-sm"></div>
+        <div class="relative bg-dark-card rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden border border-dark-border/50 p-6">
+          <h3 class="text-lg font-bold text-dark-text mb-2">Remove League?</h3>
+          <p class="text-dark-textMuted text-sm mb-4">
+            Are you sure you want to remove <span class="text-white font-medium">{{ leagueToRemove.league_name }}</span> from your dashboard?
+          </p>
+          <div class="flex gap-3">
+            <button
+              @click="leagueToRemove = null"
+              class="flex-1 px-4 py-2 rounded-lg bg-dark-border text-dark-text font-medium hover:bg-dark-border/70 transition-colors"
+            >
+              Cancel
+            </button>
+            <button
+              @click="removeLeague"
+              class="flex-1 px-4 py-2 rounded-lg bg-red-500 text-white font-medium hover:bg-red-600 transition-colors"
+            >
+              Remove
+            </button>
+          </div>
+        </div>
+      </div>
+    </Teleport>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, nextTick, watch, onUnmounted } from 'vue'
+import { ref, computed, onMounted, watch, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useLeagueStore } from '@/stores/league'
 import { useDarkModeStore } from '@/stores/darkMode'
@@ -257,6 +328,7 @@ const authMode = ref<'login' | 'signup'>('signup')
 const showLeagueDropdown = ref(false)
 const showAddLeagueModal = ref(false)
 const leagueDropdownRef = ref<HTMLElement | null>(null)
+const leagueToRemove = ref<any>(null)
 
 const tabs = [
   { name: 'Home', path: '/' },
@@ -292,18 +364,27 @@ async function selectLeague(leagueId: string) {
 function enableDemoMode() {
   showLeagueDropdown.value = false
   leagueStore.enableDemoMode()
-  leagueStore.activeLeagueId = null
-  leagueStore.currentLeague = null
+}
+
+function confirmRemoveLeague(league: any) {
+  leagueToRemove.value = league
+  showLeagueDropdown.value = false
+}
+
+async function removeLeague() {
+  if (!leagueToRemove.value) return
+  await leagueStore.removeLeague(leagueToRemove.value.league_id, authStore.user?.id)
+  leagueToRemove.value = null
 }
 
 async function handleAuthSuccess() {
   showAuthModal.value = false
-  // Load saved leagues after login
+  
   if (authStore.user?.id) {
     await leagueStore.loadSavedLeagues(authStore.user.id)
     
     // If no saved leagues, enable demo mode
-    if (!leagueStore.hasSavedLeagues) {
+    if (!leagueStore.hasSavedLeagues && !leagueStore.activeLeagueId) {
       leagueStore.enableDemoMode()
     }
   }
@@ -311,8 +392,10 @@ async function handleAuthSuccess() {
 
 async function handleLeagueAdded(league: any) {
   showAddLeagueModal.value = false
+  
   if (authStore.user?.id && leagueStore.currentUsername) {
     await leagueStore.saveLeague(league, leagueStore.currentUsername, authStore.user.id)
+    leagueStore.disableDemoMode()
     await leagueStore.setActiveLeague(league.league_id)
   }
 }
@@ -333,17 +416,17 @@ onMounted(async () => {
   darkModeStore.init()
   await authStore.initialize()
   
+  document.addEventListener('click', handleClickOutside)
+  
   // Load saved leagues if authenticated
   if (authStore.isAuthenticated && authStore.user?.id) {
     await leagueStore.loadSavedLeagues(authStore.user.id)
     
-    // If no saved leagues, enable demo mode
-    if (!leagueStore.hasSavedLeagues) {
+    // If no saved leagues and no active league, enable demo mode
+    if (!leagueStore.hasSavedLeagues && !leagueStore.activeLeagueId) {
       leagueStore.enableDemoMode()
     }
   }
-  
-  document.addEventListener('click', handleClickOutside)
 })
 
 onUnmounted(() => {
@@ -354,7 +437,7 @@ onUnmounted(() => {
 watch(() => authStore.isAuthenticated, async (isAuth) => {
   if (isAuth && authStore.user?.id) {
     await leagueStore.loadSavedLeagues(authStore.user.id)
-    if (!leagueStore.hasSavedLeagues) {
+    if (!leagueStore.hasSavedLeagues && !leagueStore.activeLeagueId) {
       leagueStore.enableDemoMode()
     }
   }
