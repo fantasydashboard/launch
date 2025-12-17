@@ -209,30 +209,29 @@
 
       <!-- Selected Matchup Analysis -->
       <template v-if="selectedMatchup && matchupAnalysis">
-        <!-- Share Matchup Button -->
-        <div class="flex justify-end">
-          <button 
-            @click="downloadFullMatchupAnalysis"
-            :disabled="isDownloadingFullAnalysis"
-            class="btn-primary flex items-center gap-2"
-          >
-            <svg v-if="!isDownloadingFullAnalysis" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
-            </svg>
-            <svg v-else class="w-5 h-5 animate-spin" fill="none" viewBox="0 0 24 24">
-              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-              <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-            </svg>
-            {{ isDownloadingFullAnalysis ? 'Generating...' : 'Share Matchup' }}
-          </button>
-        </div>
-
         <!-- Win Probability -->
         <div class="card">
           <div class="card-header">
-            <div class="flex items-center gap-2">
-              <span class="text-2xl">🎲</span>
-              <h2 class="card-title">Win Probability</h2>
+            <div class="flex items-center justify-between">
+              <div class="flex items-center gap-2">
+                <span class="text-2xl">🎲</span>
+                <h2 class="card-title">Win Probability</h2>
+              </div>
+              <!-- Share Matchup Button -->
+              <button 
+                @click="downloadFullMatchupAnalysis"
+                :disabled="isDownloadingFullAnalysis"
+                class="btn-primary flex items-center gap-2"
+              >
+                <svg v-if="!isDownloadingFullAnalysis" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
+                </svg>
+                <svg v-else class="w-5 h-5 animate-spin" fill="none" viewBox="0 0 24 24">
+                  <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                  <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                {{ isDownloadingFullAnalysis ? 'Generating...' : 'Share Matchup' }}
+              </button>
             </div>
             <p class="card-subtitle mt-2">Live probability based on current scores and projections</p>
           </div>
@@ -507,19 +506,20 @@
                 <span class="text-2xl">🔮</span>
                 <h2 class="card-title">Matchup Preview</h2>
               </div>
+              <!-- Share Preview Button - Yellow primary style -->
               <button 
                 @click="downloadMatchupPreview"
                 :disabled="isDownloadingPreview"
-                class="btn-secondary flex items-center gap-2 text-sm"
+                class="btn-primary flex items-center gap-2"
               >
-                <svg v-if="!isDownloadingPreview" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                <svg v-if="!isDownloadingPreview" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
                 </svg>
-                <svg v-else class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                <svg v-else class="w-5 h-5 animate-spin" fill="none" viewBox="0 0 24 24">
                   <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                   <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                 </svg>
-                {{ isDownloadingPreview ? 'Generating...' : 'Share' }}
+                {{ isDownloadingPreview ? 'Generating...' : 'Share Preview' }}
               </button>
             </div>
           </div>
@@ -2931,7 +2931,7 @@ ${isPlayoffWeek
   }
 }
 
-// Download matchup preview as PNG - MOBILE FRIENDLY, WIN PROBABILITY ONLY
+// Download MATCHUP PREVIEW as PNG - Shows player comparison table
 async function downloadMatchupPreview() {
   if (!selectedMatchup.value) return
   
@@ -2942,30 +2942,30 @@ async function downloadMatchupPreview() {
     
     const seasonInfo = leagueStore.historicalSeasons.find(s => s.season === selectedSeason.value)
     const leagueName = seasonInfo?.name || 'League'
-    const playoffStart = seasonInfo?.settings?.playoff_week_start || 15
-    const weekNum = parseInt(selectedWeek.value)
-    const isPlayoffWeek = weekNum >= playoffStart
     
-    // Mobile-optimized dimensions (fits phone screens well)
-    const WIDTH = 400
+    const WIDTH = 700
     
-    // Load avatars as base64
+    // Load avatars as base64 with proper CORS handling
     const loadImageAsBase64 = async (url: string): Promise<string> => {
+      if (!url) return ''
       try {
-        const response = await fetch(url)
+        // For Sleeper avatars, use their CDN directly
+        const response = await fetch(url, { mode: 'cors' })
+        if (!response.ok) return ''
         const blob = await response.blob()
         return new Promise((resolve, reject) => {
           const reader = new FileReader()
           reader.onloadend = () => resolve(reader.result as string)
-          reader.onerror = reject
+          reader.onerror = () => resolve('')
           reader.readAsDataURL(blob)
         })
       } catch (e) {
+        console.warn('Failed to load avatar:', url)
         return ''
       }
     }
     
-    const [team1Avatar, team2Avatar] = await Promise.all([
+    const [team1AvatarBase64, team2AvatarBase64] = await Promise.all([
       loadImageAsBase64(selectedMatchup.value.team1_avatar),
       loadImageAsBase64(selectedMatchup.value.team2_avatar)
     ])
@@ -2975,90 +2975,113 @@ async function downloadMatchupPreview() {
       position: absolute;
       left: -9999px;
       width: ${WIDTH}px;
-      background: linear-gradient(145deg, #1a1d2e 0%, #0d0f18 100%);
+      background: linear-gradient(135deg, #1a1d2e 0%, #0d0f18 100%);
       color: #f7f7ff;
       font-family: system-ui, -apple-system, sans-serif;
       padding: 24px;
       box-sizing: border-box;
     `
     
-    // Calculate values
-    const winProb1 = liveWinProbability.value.team1
-    const winProb2 = liveWinProbability.value.team2
-    const team1Projected = getTeamProjectedTotal(selectedMatchup.value.team1_roster_id)
-    const team2Projected = getTeamProjectedTotal(selectedMatchup.value.team2_roster_id)
-    
-    // Team colors for share (consistent)
+    // Team colors
     const team1Color = '#06B6D4'
     const team2Color = '#F97316'
     
-    // Week label
-    const weekLabel = isPlayoffWeek 
-      ? `🏆 Playoff Week ${weekNum - playoffStart + 1}` 
-      : `Week ${selectedWeek.value}`
+    // Build player rows HTML
+    const playerRows = starterComparison.value.map(slot => `
+      <tr style="border-bottom: 1px solid rgba(58, 61, 82, 0.5);">
+        <td style="padding: 8px 4px; text-align: left;">
+          <span style="font-size: 10px; font-weight: bold; padding: 2px 6px; border-radius: 4px; background: ${getPositionColorForDownload(slot.position)}; color: white;">
+            ${slot.position}
+          </span>
+          <span style="font-size: 12px; margin-left: 8px; color: #f7f7ff;">${slot.team1Player?.name || '—'}</span>
+        </td>
+        <td style="padding: 8px 4px; text-align: center; font-weight: bold; color: ${team1Color};">${slot.team1Player?.projected?.toFixed(1) || '—'}</td>
+        <td style="padding: 8px 4px; text-align: center; color: #9ca3af;">${slot.team1Player?.avg10?.toFixed(1) || '—'}</td>
+        <td style="padding: 8px 4px; text-align: center; font-size: 16px; font-weight: bold; color: ${slot.advantage === 'team1' ? team1Color : slot.advantage === 'team2' ? team2Color : '#4a5568'};">
+          ${slot.advantage === 'team1' ? '◀' : slot.advantage === 'team2' ? '▶' : '•'}
+        </td>
+        <td style="padding: 8px 4px; text-align: center; color: #9ca3af;">${slot.team2Player?.avg10?.toFixed(1) || '—'}</td>
+        <td style="padding: 8px 4px; text-align: center; font-weight: bold; color: ${team2Color};">${slot.team2Player?.projected?.toFixed(1) || '—'}</td>
+        <td style="padding: 8px 4px; text-align: right;">
+          <span style="font-size: 12px; color: #f7f7ff;">${slot.team2Player?.name || '—'}</span>
+          <span style="font-size: 10px; font-weight: bold; padding: 2px 6px; border-radius: 4px; background: ${getPositionColorForDownload(slot.position)}; color: white; margin-left: 8px;">
+            ${slot.position}
+          </span>
+        </td>
+      </tr>
+    `).join('')
+    
+    // Calculate projected totals
+    const team1Projected = getTeamProjectedTotal(selectedMatchup.value.team1_roster_id)
+    const team2Projected = getTeamProjectedTotal(selectedMatchup.value.team2_roster_id)
+    
+    // Generate avatar HTML with fallback
+    const team1AvatarHtml = team1AvatarBase64 
+      ? `<img src="${team1AvatarBase64}" style="width: 48px; height: 48px; border-radius: 50%; border: 3px solid ${team1Color};" />`
+      : `<div style="width: 48px; height: 48px; border-radius: 50%; background: linear-gradient(135deg, ${team1Color}, #0891b2); border: 3px solid ${team1Color}; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 14px; color: white;">${selectedMatchup.value.team1_name.substring(0, 2).toUpperCase()}</div>`
+    
+    const team2AvatarHtml = team2AvatarBase64 
+      ? `<img src="${team2AvatarBase64}" style="width: 48px; height: 48px; border-radius: 50%; border: 3px solid ${team2Color};" />`
+      : `<div style="width: 48px; height: 48px; border-radius: 50%; background: linear-gradient(135deg, ${team2Color}, #ea580c); border: 3px solid ${team2Color}; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 14px; color: white;">${selectedMatchup.value.team2_name.substring(0, 2).toUpperCase()}</div>`
     
     container.innerHTML = `
-      <!-- Header -->
       <div style="text-align: center; margin-bottom: 20px;">
-        <div style="font-size: 12px; color: #9ca3af; margin-bottom: 4px; text-transform: uppercase; letter-spacing: 1px;">${leagueName}</div>
-        <div style="font-size: 18px; font-weight: bold; color: #f5c451;">${weekLabel}</div>
+        <div style="font-size: 14px; color: #9ca3af; margin-bottom: 4px;">${leagueName} • Week ${selectedWeek.value}</div>
+        <div style="font-size: 24px; font-weight: bold; color: #f5c451;">🔮 Matchup Preview</div>
       </div>
       
-      <!-- Teams -->
-      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px;">
-        <!-- Team 1 -->
-        <div style="text-align: center; flex: 1;">
-          ${team1Avatar ? `<img src="${team1Avatar}" style="width: 64px; height: 64px; border-radius: 50%; border: 3px solid ${team1Color}; margin: 0 auto 8px;" />` : `<div style="width: 64px; height: 64px; border-radius: 50%; background: #3a3d52; border: 3px solid ${team1Color}; margin: 0 auto 8px;"></div>`}
-          <div style="font-size: 14px; font-weight: bold; color: ${team1Color}; margin-bottom: 2px;">${selectedMatchup.value.team1_name}</div>
-          <div style="font-size: 11px; color: #9ca3af;">${selectedMatchup.value.team1_stats.alltime_wins}-${selectedMatchup.value.team1_stats.alltime_losses}</div>
-        </div>
-        
-        <!-- VS -->
-        <div style="padding: 0 16px;">
-          <div style="font-size: 14px; font-weight: bold; color: #4b5563;">VS</div>
-        </div>
-        
-        <!-- Team 2 -->
-        <div style="text-align: center; flex: 1;">
-          ${team2Avatar ? `<img src="${team2Avatar}" style="width: 64px; height: 64px; border-radius: 50%; border: 3px solid ${team2Color}; margin: 0 auto 8px;" />` : `<div style="width: 64px; height: 64px; border-radius: 50%; background: #3a3d52; border: 3px solid ${team2Color}; margin: 0 auto 8px;"></div>`}
-          <div style="font-size: 14px; font-weight: bold; color: ${team2Color}; margin-bottom: 2px;">${selectedMatchup.value.team2_name}</div>
-          <div style="font-size: 11px; color: #9ca3af;">${selectedMatchup.value.team2_stats.alltime_wins}-${selectedMatchup.value.team2_stats.alltime_losses}</div>
-        </div>
-      </div>
-      
-      <!-- Win Probability -->
-      <div style="background: rgba(38, 42, 58, 0.5); border-radius: 16px; padding: 20px; margin-bottom: 16px;">
-        <div style="text-align: center; font-size: 12px; color: #9ca3af; margin-bottom: 12px; text-transform: uppercase; letter-spacing: 1px;">Win Probability</div>
-        
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
-          <div style="text-align: center; flex: 1;">
-            <div style="font-size: 36px; font-weight: 900; color: ${team1Color};">${winProb1.toFixed(0)}%</div>
-          </div>
-          <div style="width: 1px; height: 40px; background: #374151;"></div>
-          <div style="text-align: center; flex: 1;">
-            <div style="font-size: 36px; font-weight: 900; color: ${team2Color};">${winProb2.toFixed(0)}%</div>
+      <!-- Team Headers -->
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; padding: 16px; background: rgba(38, 42, 58, 0.5); border-radius: 12px;">
+        <div style="display: flex; align-items: center; gap: 12px;">
+          ${team1AvatarHtml}
+          <div>
+            <div style="font-size: 18px; font-weight: bold; color: ${team1Color};">${selectedMatchup.value.team1_name}</div>
+            <div style="font-size: 12px; color: #9ca3af;">${selectedMatchup.value.team1_stats.alltime_wins}-${selectedMatchup.value.team1_stats.alltime_losses} this season</div>
           </div>
         </div>
-        
-        <!-- Probability Bar -->
-        <div style="height: 12px; background: linear-gradient(to right, ${team1Color} 0%, ${team1Color} ${winProb1}%, ${team2Color} ${winProb1}%, ${team2Color} 100%); border-radius: 6px;"></div>
+        <div style="font-size: 20px; color: #6b7280;">VS</div>
+        <div style="display: flex; align-items: center; gap: 12px;">
+          <div>
+            <div style="font-size: 18px; font-weight: bold; color: ${team2Color}; text-align: right;">${selectedMatchup.value.team2_name}</div>
+            <div style="font-size: 12px; color: #9ca3af; text-align: right;">${selectedMatchup.value.team2_stats.alltime_wins}-${selectedMatchup.value.team2_stats.alltime_losses} this season</div>
+          </div>
+          ${team2AvatarHtml}
+        </div>
       </div>
       
-      <!-- Projected Scores -->
-      <div style="display: flex; justify-content: space-between; align-items: center; padding: 16px; background: rgba(38, 42, 58, 0.3); border-radius: 12px;">
-        <div style="text-align: center; flex: 1;">
-          <div style="font-size: 24px; font-weight: bold; color: ${team1Color};">${team1Projected.toFixed(1)}</div>
-          <div style="font-size: 10px; color: #9ca3af;">PROJECTED</div>
+      <!-- Starter Comparison Table -->
+      <table style="width: 100%; border-collapse: collapse; margin-bottom: 20px;">
+        <thead>
+          <tr style="font-size: 11px; color: #6b7280; border-bottom: 1px solid rgba(58, 61, 82, 0.8);">
+            <th style="padding: 8px 4px; text-align: left; font-weight: 500;">Player</th>
+            <th style="padding: 8px 4px; text-align: center; font-weight: 500;">Proj</th>
+            <th style="padding: 8px 4px; text-align: center; font-weight: 500;">Avg</th>
+            <th style="padding: 8px 4px; text-align: center; font-weight: 500;">ADV</th>
+            <th style="padding: 8px 4px; text-align: center; font-weight: 500;">Avg</th>
+            <th style="padding: 8px 4px; text-align: center; font-weight: 500;">Proj</th>
+            <th style="padding: 8px 4px; text-align: right; font-weight: 500;">Player</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${playerRows}
+        </tbody>
+      </table>
+      
+      <!-- Projected Totals -->
+      <div style="display: flex; justify-content: space-around; align-items: center; padding: 20px; background: rgba(38, 42, 58, 0.5); border-radius: 12px; margin-bottom: 16px;">
+        <div style="text-align: center;">
+          <div style="font-size: 32px; font-weight: bold; color: ${team1Color};">${team1Projected.toFixed(1)}</div>
+          <div style="font-size: 12px; color: #9ca3af;">Projected</div>
         </div>
-        <div style="font-size: 12px; color: #4b5563;">vs</div>
-        <div style="text-align: center; flex: 1;">
-          <div style="font-size: 24px; font-weight: bold; color: ${team2Color};">${team2Projected.toFixed(1)}</div>
-          <div style="font-size: 10px; color: #9ca3af;">PROJECTED</div>
+        <div style="font-size: 18px; color: #6b7280;">vs</div>
+        <div style="text-align: center;">
+          <div style="font-size: 32px; font-weight: bold; color: ${team2Color};">${team2Projected.toFixed(1)}</div>
+          <div style="font-size: 12px; color: #9ca3af;">Projected</div>
         </div>
       </div>
       
       <!-- Footer -->
-      <div style="text-align: center; font-size: 9px; color: #4a5568; margin-top: 16px;">
+      <div style="text-align: center; font-size: 10px; color: #4a5568;">
         Ultimate Fantasy Dashboard
       </div>
     `
@@ -3067,7 +3090,7 @@ async function downloadMatchupPreview() {
     
     const canvas = await html2canvas(container, {
       backgroundColor: '#0d0f18',
-      scale: 3,
+      scale: 2,
       logging: false,
       useCORS: true,
       allowTaint: true
@@ -3077,12 +3100,12 @@ async function downloadMatchupPreview() {
     
     // Download
     const link = document.createElement('a')
-    link.download = `win-probability-week-${selectedWeek.value}-${selectedMatchup.value.team1_name.replace(/[^a-z0-9]/gi, '-')}-vs-${selectedMatchup.value.team2_name.replace(/[^a-z0-9]/gi, '-')}.png`.toLowerCase()
+    link.download = `matchup-preview-week-${selectedWeek.value}-${selectedMatchup.value.team1_name.replace(/[^a-z0-9]/gi, '-')}-vs-${selectedMatchup.value.team2_name.replace(/[^a-z0-9]/gi, '-')}.png`.toLowerCase()
     link.href = canvas.toDataURL('image/png')
     link.click()
     
   } catch (error) {
-    console.error('Failed to generate image:', error)
+    console.error('Failed to generate matchup preview image:', error)
     alert('Failed to generate image. Please try again.')
   } finally {
     isDownloadingPreview.value = false
@@ -3120,15 +3143,18 @@ async function downloadFullMatchupAnalysis() {
     // Mobile-optimized width - wider for better readability on phones
     const WIDTH = 720
     
-    // Convert avatars to base64 for html2canvas
+    // Convert avatars to base64 for html2canvas with better CORS handling
     const loadImageAsBase64 = async (url: string): Promise<string> => {
+      if (!url) return ''
       try {
-        const response = await fetch(url)
+        // Use fetch with CORS mode
+        const response = await fetch(url, { mode: 'cors' })
+        if (!response.ok) return ''
         const blob = await response.blob()
-        return new Promise((resolve, reject) => {
+        return new Promise((resolve) => {
           const reader = new FileReader()
           reader.onloadend = () => resolve(reader.result as string)
-          reader.onerror = reject
+          reader.onerror = () => resolve('')
           reader.readAsDataURL(blob)
         })
       } catch (e) {
