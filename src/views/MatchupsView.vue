@@ -2951,16 +2951,44 @@ async function downloadMatchupPreview() {
     const team2Color = '#F97316'
     const team2ColorLight = '#fb923c'
     
-    // Generate avatar as SVG data URL using base64 (Sleeper CDN blocks CORS, so we use generated avatars)
-    const generateAvatarSvg = (name: string, color: string, colorLight: string): string => {
+    // Create canvas-based avatar (guaranteed to work with html2canvas)
+    const createAvatarDataUrl = (name: string, bgColor: string, borderColor: string): string => {
+      const canvas = document.createElement('canvas')
+      canvas.width = 100
+      canvas.height = 100
+      const ctx = canvas.getContext('2d')
+      if (!ctx) return ''
+      
+      // Draw gradient background
+      const gradient = ctx.createLinearGradient(0, 0, 100, 100)
+      gradient.addColorStop(0, borderColor)
+      gradient.addColorStop(1, bgColor)
+      
+      // Draw circle
+      ctx.beginPath()
+      ctx.arc(50, 50, 46, 0, Math.PI * 2)
+      ctx.fillStyle = gradient
+      ctx.fill()
+      
+      // Draw border
+      ctx.strokeStyle = borderColor
+      ctx.lineWidth = 4
+      ctx.stroke()
+      
+      // Draw initials
       const initials = name.split(' ').map(w => w[0]).join('').substring(0, 2).toUpperCase()
-      const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100" viewBox="0 0 100 100"><defs><linearGradient id="g${initials}" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" style="stop-color:${colorLight}"/><stop offset="100%" style="stop-color:${color}"/></linearGradient></defs><circle cx="50" cy="50" r="48" fill="url(#g${initials})" stroke="${colorLight}" stroke-width="3"/><text x="50" y="58" font-family="Arial,sans-serif" font-size="36" font-weight="bold" fill="white" text-anchor="middle">${initials}</text></svg>`
-      return `data:image/svg+xml;base64,${btoa(svg)}`
+      ctx.fillStyle = 'white'
+      ctx.font = 'bold 36px Arial, sans-serif'
+      ctx.textAlign = 'center'
+      ctx.textBaseline = 'middle'
+      ctx.fillText(initials, 50, 52)
+      
+      return canvas.toDataURL('image/png')
     }
     
-    // Use generated SVG avatars directly (Sleeper CDN doesn't support CORS)
-    const team1AvatarBase64 = generateAvatarSvg(selectedMatchup.value.team1_name, team1Color, team1ColorLight)
-    const team2AvatarBase64 = generateAvatarSvg(selectedMatchup.value.team2_name, team2Color, team2ColorLight)
+    // Generate avatars using canvas (100% reliable)
+    const team1AvatarBase64 = createAvatarDataUrl(selectedMatchup.value.team1_name, team1Color, team1ColorLight)
+    const team2AvatarBase64 = createAvatarDataUrl(selectedMatchup.value.team2_name, team2Color, team2ColorLight)
     
     const container = document.createElement('div')
     container.style.cssText = `
@@ -3127,22 +3155,49 @@ async function downloadFullMatchupAnalysis() {
     const WIDTH = 720
     
     // SHARE COLORS: Team 1 = Cyan (#06B6D4), Team 2 = Orange (#F97316)
-    // This ensures both teams always have different colors regardless of who's viewing
     const team1Color = '#06B6D4'
     const team1ColorLight = '#22d3ee'
     const team2Color = '#F97316'
     const team2ColorLight = '#fb923c'
     
-    // Generate avatar as SVG data URL using base64 (Sleeper CDN blocks CORS, so we use generated avatars)
-    const generateAvatarSvg = (name: string, color: string, colorLight: string): string => {
+    // Create canvas-based avatar (guaranteed to work with html2canvas)
+    const createAvatarDataUrl = (name: string, bgColor: string, borderColor: string): string => {
+      const canvas = document.createElement('canvas')
+      canvas.width = 100
+      canvas.height = 100
+      const ctx = canvas.getContext('2d')
+      if (!ctx) return ''
+      
+      // Draw gradient background
+      const gradient = ctx.createLinearGradient(0, 0, 100, 100)
+      gradient.addColorStop(0, borderColor)
+      gradient.addColorStop(1, bgColor)
+      
+      // Draw circle
+      ctx.beginPath()
+      ctx.arc(50, 50, 46, 0, Math.PI * 2)
+      ctx.fillStyle = gradient
+      ctx.fill()
+      
+      // Draw border
+      ctx.strokeStyle = borderColor
+      ctx.lineWidth = 4
+      ctx.stroke()
+      
+      // Draw initials
       const initials = name.split(' ').map(w => w[0]).join('').substring(0, 2).toUpperCase()
-      const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100" viewBox="0 0 100 100"><defs><linearGradient id="g${initials}" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" style="stop-color:${colorLight}"/><stop offset="100%" style="stop-color:${color}"/></linearGradient></defs><circle cx="50" cy="50" r="48" fill="url(#g${initials})" stroke="${colorLight}" stroke-width="3"/><text x="50" y="58" font-family="Arial,sans-serif" font-size="36" font-weight="bold" fill="white" text-anchor="middle">${initials}</text></svg>`
-      return `data:image/svg+xml;base64,${btoa(svg)}`
+      ctx.fillStyle = 'white'
+      ctx.font = 'bold 36px Arial, sans-serif'
+      ctx.textAlign = 'center'
+      ctx.textBaseline = 'middle'
+      ctx.fillText(initials, 50, 52)
+      
+      return canvas.toDataURL('image/png')
     }
     
-    // Use generated SVG avatars directly (Sleeper CDN doesn't support CORS)
-    const team1AvatarBase64 = generateAvatarSvg(selectedMatchup.value.team1_name, team1Color, team1ColorLight)
-    const team2AvatarBase64 = generateAvatarSvg(selectedMatchup.value.team2_name, team2Color, team2ColorLight)
+    // Generate avatars using canvas (100% reliable)
+    const team1AvatarBase64 = createAvatarDataUrl(selectedMatchup.value.team1_name, team1Color, team1ColorLight)
+    const team2AvatarBase64 = createAvatarDataUrl(selectedMatchup.value.team2_name, team2Color, team2ColorLight)
     
     const container = document.createElement('div')
     container.style.cssText = `
