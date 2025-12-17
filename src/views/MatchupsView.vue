@@ -2945,29 +2945,74 @@ async function downloadMatchupPreview() {
     
     const WIDTH = 700
     
-    // Load avatars as base64 with proper CORS handling
-    const loadImageAsBase64 = async (url: string): Promise<string> => {
-      if (!url) return ''
-      try {
-        // For Sleeper avatars, use their CDN directly
-        const response = await fetch(url, { mode: 'cors' })
-        if (!response.ok) return ''
-        const blob = await response.blob()
-        return new Promise((resolve, reject) => {
-          const reader = new FileReader()
-          reader.onloadend = () => resolve(reader.result as string)
-          reader.onerror = () => resolve('')
-          reader.readAsDataURL(blob)
-        })
-      } catch (e) {
-        console.warn('Failed to load avatar:', url)
-        return ''
-      }
+    // Team colors
+    const team1Color = '#06B6D4'
+    const team1ColorLight = '#22d3ee'
+    const team2Color = '#F97316'
+    const team2ColorLight = '#fb923c'
+    
+    // Generate avatar as SVG data URL (always works, no CORS issues)
+    const generateAvatarSvg = (name: string, color: string, colorLight: string): string => {
+      const initials = name.split(' ').map(w => w[0]).join('').substring(0, 2).toUpperCase()
+      return `data:image/svg+xml,${encodeURIComponent(`
+        <svg xmlns="http://www.w3.org/2000/svg" width="100" height="100" viewBox="0 0 100 100">
+          <defs>
+            <linearGradient id="grad" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" style="stop-color:${colorLight};stop-opacity:1" />
+              <stop offset="100%" style="stop-color:${color};stop-opacity:1" />
+            </linearGradient>
+          </defs>
+          <circle cx="50" cy="50" r="48" fill="url(#grad)" stroke="${colorLight}" stroke-width="3"/>
+          <text x="50" y="58" font-family="system-ui, -apple-system, sans-serif" font-size="36" font-weight="bold" fill="white" text-anchor="middle">${initials}</text>
+        </svg>
+      `)}`
+    }
+    
+    // Try to load avatar from URL, fall back to generated SVG
+    const loadImageAsBase64 = (url: string, name: string, color: string, colorLight: string): Promise<string> => {
+      return new Promise((resolve) => {
+        if (!url) {
+          resolve(generateAvatarSvg(name, color, colorLight))
+          return
+        }
+        
+        const img = new Image()
+        img.crossOrigin = 'anonymous'
+        
+        const timeoutId = setTimeout(() => {
+          resolve(generateAvatarSvg(name, color, colorLight))
+        }, 2000)
+        
+        img.onload = () => {
+          clearTimeout(timeoutId)
+          try {
+            const canvas = document.createElement('canvas')
+            canvas.width = img.naturalWidth || img.width || 100
+            canvas.height = img.naturalHeight || img.height || 100
+            const ctx = canvas.getContext('2d')
+            if (ctx) {
+              ctx.drawImage(img, 0, 0)
+              resolve(canvas.toDataURL('image/png'))
+            } else {
+              resolve(generateAvatarSvg(name, color, colorLight))
+            }
+          } catch (e) {
+            resolve(generateAvatarSvg(name, color, colorLight))
+          }
+        }
+        
+        img.onerror = () => {
+          clearTimeout(timeoutId)
+          resolve(generateAvatarSvg(name, color, colorLight))
+        }
+        
+        img.src = url
+      })
     }
     
     const [team1AvatarBase64, team2AvatarBase64] = await Promise.all([
-      loadImageAsBase64(selectedMatchup.value.team1_avatar),
-      loadImageAsBase64(selectedMatchup.value.team2_avatar)
+      loadImageAsBase64(selectedMatchup.value.team1_avatar, selectedMatchup.value.team1_name, team1Color, team1ColorLight),
+      loadImageAsBase64(selectedMatchup.value.team2_avatar, selectedMatchup.value.team2_name, team2Color, team2ColorLight)
     ])
     
     const container = document.createElement('div')
@@ -2981,10 +3026,6 @@ async function downloadMatchupPreview() {
       padding: 24px;
       box-sizing: border-box;
     `
-    
-    // Team colors
-    const team1Color = '#06B6D4'
-    const team2Color = '#F97316'
     
     // Build player rows HTML
     const playerRows = starterComparison.value.map(slot => `
@@ -3015,14 +3056,9 @@ async function downloadMatchupPreview() {
     const team1Projected = getTeamProjectedTotal(selectedMatchup.value.team1_roster_id)
     const team2Projected = getTeamProjectedTotal(selectedMatchup.value.team2_roster_id)
     
-    // Generate avatar HTML with fallback
-    const team1AvatarHtml = team1AvatarBase64 
-      ? `<img src="${team1AvatarBase64}" style="width: 48px; height: 48px; border-radius: 50%; border: 3px solid ${team1Color};" />`
-      : `<div style="width: 48px; height: 48px; border-radius: 50%; background: linear-gradient(135deg, ${team1Color}, #0891b2); border: 3px solid ${team1Color}; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 14px; color: white;">${selectedMatchup.value.team1_name.substring(0, 2).toUpperCase()}</div>`
-    
-    const team2AvatarHtml = team2AvatarBase64 
-      ? `<img src="${team2AvatarBase64}" style="width: 48px; height: 48px; border-radius: 50%; border: 3px solid ${team2Color};" />`
-      : `<div style="width: 48px; height: 48px; border-radius: 50%; background: linear-gradient(135deg, ${team2Color}, #ea580c); border: 3px solid ${team2Color}; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 14px; color: white;">${selectedMatchup.value.team2_name.substring(0, 2).toUpperCase()}</div>`
+    // Avatar HTML (always valid since we have fallback SVG)
+    const team1AvatarHtml = `<img src="${team1AvatarBase64}" style="width: 48px; height: 48px; border-radius: 50%; border: 3px solid ${team1Color};" />`
+    const team2AvatarHtml = `<img src="${team2AvatarBase64}" style="width: 48px; height: 48px; border-radius: 50%; border: 3px solid ${team2Color};" />`
     
     container.innerHTML = `
       <div style="text-align: center; margin-bottom: 20px;">
@@ -3143,30 +3179,79 @@ async function downloadFullMatchupAnalysis() {
     // Mobile-optimized width - wider for better readability on phones
     const WIDTH = 720
     
-    // Convert avatars to base64 for html2canvas with better CORS handling
-    const loadImageAsBase64 = async (url: string): Promise<string> => {
-      if (!url) return ''
-      try {
-        // Use fetch with CORS mode
-        const response = await fetch(url, { mode: 'cors' })
-        if (!response.ok) return ''
-        const blob = await response.blob()
-        return new Promise((resolve) => {
-          const reader = new FileReader()
-          reader.onloadend = () => resolve(reader.result as string)
-          reader.onerror = () => resolve('')
-          reader.readAsDataURL(blob)
-        })
-      } catch (e) {
-        console.warn('Failed to load image:', url)
-        return ''
-      }
+    // Generate avatar as SVG data URL (always works, no CORS issues)
+    // Uses team initials with a gradient background
+    const generateAvatarSvg = (name: string, color: string, colorLight: string): string => {
+      const initials = name.split(' ').map(w => w[0]).join('').substring(0, 2).toUpperCase()
+      return `data:image/svg+xml,${encodeURIComponent(`
+        <svg xmlns="http://www.w3.org/2000/svg" width="100" height="100" viewBox="0 0 100 100">
+          <defs>
+            <linearGradient id="grad" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" style="stop-color:${colorLight};stop-opacity:1" />
+              <stop offset="100%" style="stop-color:${color};stop-opacity:1" />
+            </linearGradient>
+          </defs>
+          <circle cx="50" cy="50" r="48" fill="url(#grad)" stroke="${colorLight}" stroke-width="3"/>
+          <text x="50" y="58" font-family="system-ui, -apple-system, sans-serif" font-size="36" font-weight="bold" fill="white" text-anchor="middle">${initials}</text>
+        </svg>
+      `)}`
     }
     
-    // Load both team avatars as base64
+    // Try to load avatar from URL, fall back to generated SVG
+    const loadImageAsBase64 = (url: string, name: string, color: string, colorLight: string): Promise<string> => {
+      return new Promise((resolve) => {
+        if (!url) {
+          resolve(generateAvatarSvg(name, color, colorLight))
+          return
+        }
+        
+        const img = new Image()
+        img.crossOrigin = 'anonymous'
+        
+        const timeoutId = setTimeout(() => {
+          // Timeout after 2 seconds, use fallback
+          resolve(generateAvatarSvg(name, color, colorLight))
+        }, 2000)
+        
+        img.onload = () => {
+          clearTimeout(timeoutId)
+          try {
+            const canvas = document.createElement('canvas')
+            canvas.width = img.naturalWidth || img.width || 100
+            canvas.height = img.naturalHeight || img.height || 100
+            const ctx = canvas.getContext('2d')
+            if (ctx) {
+              ctx.drawImage(img, 0, 0)
+              resolve(canvas.toDataURL('image/png'))
+            } else {
+              resolve(generateAvatarSvg(name, color, colorLight))
+            }
+          } catch (e) {
+            // Canvas tainted by CORS, use fallback
+            resolve(generateAvatarSvg(name, color, colorLight))
+          }
+        }
+        
+        img.onerror = () => {
+          clearTimeout(timeoutId)
+          resolve(generateAvatarSvg(name, color, colorLight))
+        }
+        
+        img.src = url
+      })
+    }
+    
+    // SHARE COLORS: Team 1 = Cyan (#06B6D4), Team 2 = Orange (#F97316)
+    // This ensures both teams always have different colors regardless of who's viewing
+    const team1Color = '#06B6D4'
+    const team1ColorLight = '#22d3ee'
+    const team2Color = '#F97316'
+    const team2ColorLight = '#fb923c'
+    
+    // Load both team avatars as base64 (with fallback to generated SVG)
     const [team1AvatarBase64, team2AvatarBase64] = await Promise.all([
-      loadImageAsBase64(selectedMatchup.value.team1_avatar),
-      loadImageAsBase64(selectedMatchup.value.team2_avatar)
+      loadImageAsBase64(selectedMatchup.value.team1_avatar, selectedMatchup.value.team1_name, team1Color, team1ColorLight),
+      loadImageAsBase64(selectedMatchup.value.team2_avatar, selectedMatchup.value.team2_name, team2Color, team2ColorLight)
     ])
     
     const container = document.createElement('div')
@@ -3195,13 +3280,6 @@ async function downloadFullMatchupAnalysis() {
     // Check if user's team is involved
     const isTeam1MyTeam = isMyTeam(selectedMatchup.value.team1_roster_id)
     const isTeam2MyTeam = isMyTeam(selectedMatchup.value.team2_roster_id)
-    
-    // SHARE COLORS: Team 1 = Cyan (#06B6D4), Team 2 = Orange (#F97316)
-    // This ensures both teams always have different colors regardless of who's viewing
-    const team1Color = '#06B6D4'
-    const team1ColorLight = '#22d3ee'
-    const team2Color = '#F97316'
-    const team2ColorLight = '#fb923c'
     
     // Build SVG chart for win probability progression
     const baseProb = matchupAnalysis.value?.team1WinProb || 50
@@ -3372,20 +3450,14 @@ async function downloadFullMatchupAnalysis() {
         <!-- Team Probabilities - Side by Side -->
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px;">
           <div style="text-align: center; flex: 1;">
-            ${team1AvatarBase64 
-              ? `<img src="${team1AvatarBase64}" style="width: 80px; height: 80px; border-radius: 50%; margin: 0 auto 12px; display: block; border: 4px solid ${team1ColorLight}; object-fit: cover;" />`
-              : `<div style="width: 80px; height: 80px; border-radius: 50%; background: linear-gradient(135deg, #0891b2, ${team1Color}); margin: 0 auto 12px; display: flex; align-items: center; justify-content: center; font-size: 38px; font-weight: 900; color: white; border: 4px solid ${team1ColorLight};">${selectedMatchup.value.team1_name.charAt(0).toUpperCase()}</div>`
-            }
+            <img src="${team1AvatarBase64}" style="width: 80px; height: 80px; border-radius: 50%; margin: 0 auto 12px; display: block; border: 4px solid ${team1ColorLight}; object-fit: cover;" />
             <div style="font-size: 18px; font-weight: 800; color: ${team1ColorLight}; margin-bottom: 6px;">${selectedMatchup.value.team1_name}</div>
             <div style="font-size: 48px; font-weight: 900; color: ${team1ColorLight}; line-height: 1;">${winProb1.toFixed(0)}%</div>
             <div style="font-size: 15px; color: #9ca3af; margin-top: 6px;">Proj: ${team1Projected.toFixed(1)}</div>
           </div>
           <div style="font-size: 32px; color: #4a5568; padding: 0 12px; font-weight: 900;">VS</div>
           <div style="text-align: center; flex: 1;">
-            ${team2AvatarBase64 
-              ? `<img src="${team2AvatarBase64}" style="width: 80px; height: 80px; border-radius: 50%; margin: 0 auto 12px; display: block; border: 4px solid ${team2ColorLight}; object-fit: cover;" />`
-              : `<div style="width: 80px; height: 80px; border-radius: 50%; background: linear-gradient(135deg, #c2410c, ${team2Color}); margin: 0 auto 12px; display: flex; align-items: center; justify-content: center; font-size: 38px; font-weight: 900; color: white; border: 4px solid ${team2ColorLight};">${selectedMatchup.value.team2_name.charAt(0).toUpperCase()}</div>`
-            }
+            <img src="${team2AvatarBase64}" style="width: 80px; height: 80px; border-radius: 50%; margin: 0 auto 12px; display: block; border: 4px solid ${team2ColorLight}; object-fit: cover;" />
             <div style="font-size: 18px; font-weight: 800; color: ${team2ColorLight}; margin-bottom: 6px;">${selectedMatchup.value.team2_name}</div>
             <div style="font-size: 48px; font-weight: 900; color: ${team2ColorLight}; line-height: 1;">${winProb2.toFixed(0)}%</div>
             <div style="font-size: 15px; color: #9ca3af; margin-top: 6px;">Proj: ${team2Projected.toFixed(1)}</div>
@@ -3418,35 +3490,9 @@ async function downloadFullMatchupAnalysis() {
         ${buildScoutingHtml(selectedMatchup.value.team2_name, scoutingReports.value.team2, team2ColorLight, 'rgba(249, 115, 22, 0.3)', 'rgba(249, 115, 22, 0.08)')}
       </div>
       
-      <!-- Matchup Preview Section -->
-      <div style="background: rgba(38, 42, 58, 0.6); border-radius: 20px; padding: 28px; border: 2px solid rgba(100, 116, 139, 0.2);">
-        <div style="text-align: center; margin-bottom: 20px;">
-          <span style="font-size: 28px;">🔮</span>
-          <span style="font-size: 22px; font-weight: 800; color: #f7f7ff; margin-left: 10px; vertical-align: middle;">Matchup Preview</span>
-        </div>
-        
-        <!-- Player Rows -->
-        <div style="margin-bottom: 20px;">
-          ${playerRows}
-        </div>
-        
-        <!-- Projected Totals -->
-        <div style="display: flex; justify-content: space-around; align-items: center; padding: 24px; background: rgba(13, 15, 24, 0.6); border-radius: 16px; border: 2px solid rgba(100, 116, 139, 0.15);">
-          <div style="text-align: center;">
-            <div style="font-size: 42px; font-weight: 900; color: ${team1ColorLight};">${team1Projected.toFixed(1)}</div>
-            <div style="font-size: 14px; color: #9ca3af; margin-top: 4px; font-weight: 600;">PROJECTED</div>
-          </div>
-          <div style="font-size: 24px; color: #4a5568; font-weight: 900;">vs</div>
-          <div style="text-align: center;">
-            <div style="font-size: 42px; font-weight: 900; color: ${team2ColorLight};">${team2Projected.toFixed(1)}</div>
-            <div style="font-size: 14px; color: #9ca3af; margin-top: 4px; font-weight: 600;">PROJECTED</div>
-          </div>
-        </div>
-      </div>
-      
       <!-- Footer -->
       <div style="text-align: center; font-size: 13px; color: #6b7280; margin-top: 20px; font-weight: 500;">
-        Generated by Fantasy Dashboard • ${new Date().toLocaleDateString()}
+        Ultimate Fantasy Dashboard • ${new Date().toLocaleDateString()}
       </div>
     `
     
