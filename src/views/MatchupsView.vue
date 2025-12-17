@@ -2951,31 +2951,26 @@ async function downloadMatchupPreview() {
     const team2Color = '#F97316'
     const team2ColorLight = '#fb923c'
     
-    // Create canvas-based avatar (guaranteed to work with html2canvas)
-    const createAvatarDataUrl = (name: string, bgColor: string, borderColor: string): string => {
+    // Create canvas-based avatar from initials (fallback)
+    const createFallbackAvatar = (name: string, bgColor: string, borderColor: string): string => {
       const canvas = document.createElement('canvas')
       canvas.width = 100
       canvas.height = 100
       const ctx = canvas.getContext('2d')
       if (!ctx) return ''
       
-      // Draw gradient background
       const gradient = ctx.createLinearGradient(0, 0, 100, 100)
       gradient.addColorStop(0, borderColor)
       gradient.addColorStop(1, bgColor)
       
-      // Draw circle
       ctx.beginPath()
       ctx.arc(50, 50, 46, 0, Math.PI * 2)
       ctx.fillStyle = gradient
       ctx.fill()
-      
-      // Draw border
       ctx.strokeStyle = borderColor
       ctx.lineWidth = 4
       ctx.stroke()
       
-      // Draw initials
       const initials = name.split(' ').map(w => w[0]).join('').substring(0, 2).toUpperCase()
       ctx.fillStyle = 'white'
       ctx.font = 'bold 36px Arial, sans-serif'
@@ -2986,9 +2981,40 @@ async function downloadMatchupPreview() {
       return canvas.toDataURL('image/png')
     }
     
-    // Generate avatars using canvas (100% reliable)
-    const team1AvatarBase64 = createAvatarDataUrl(selectedMatchup.value.team1_name, team1Color, team1ColorLight)
-    const team2AvatarBase64 = createAvatarDataUrl(selectedMatchup.value.team2_name, team2Color, team2ColorLight)
+    // Load avatar through our proxy API or use fallback
+    const loadAvatarAsBase64 = async (avatarUrl: string, name: string, bgColor: string, borderColor: string): Promise<string> => {
+      if (!avatarUrl) return createFallbackAvatar(name, bgColor, borderColor)
+      
+      try {
+        // Extract avatar ID from URL
+        const avatarId = avatarUrl.split('/').pop()
+        if (!avatarId) return createFallbackAvatar(name, bgColor, borderColor)
+        
+        // Use our proxy API
+        const proxyUrl = `/api/avatar?id=${avatarId}`
+        const response = await fetch(proxyUrl)
+        
+        if (!response.ok) {
+          return createFallbackAvatar(name, bgColor, borderColor)
+        }
+        
+        const blob = await response.blob()
+        return new Promise((resolve) => {
+          const reader = new FileReader()
+          reader.onloadend = () => resolve(reader.result as string)
+          reader.onerror = () => resolve(createFallbackAvatar(name, bgColor, borderColor))
+          reader.readAsDataURL(blob)
+        })
+      } catch (e) {
+        return createFallbackAvatar(name, bgColor, borderColor)
+      }
+    }
+    
+    // Load both avatars
+    const [team1AvatarBase64, team2AvatarBase64] = await Promise.all([
+      loadAvatarAsBase64(selectedMatchup.value.team1_avatar, selectedMatchup.value.team1_name, team1Color, team1ColorLight),
+      loadAvatarAsBase64(selectedMatchup.value.team2_avatar, selectedMatchup.value.team2_name, team2Color, team2ColorLight)
+    ])
     
     const container = document.createElement('div')
     container.style.cssText = `
@@ -3160,31 +3186,26 @@ async function downloadFullMatchupAnalysis() {
     const team2Color = '#F97316'
     const team2ColorLight = '#fb923c'
     
-    // Create canvas-based avatar (guaranteed to work with html2canvas)
-    const createAvatarDataUrl = (name: string, bgColor: string, borderColor: string): string => {
+    // Create canvas-based avatar from initials (fallback)
+    const createFallbackAvatar = (name: string, bgColor: string, borderColor: string): string => {
       const canvas = document.createElement('canvas')
       canvas.width = 100
       canvas.height = 100
       const ctx = canvas.getContext('2d')
       if (!ctx) return ''
       
-      // Draw gradient background
       const gradient = ctx.createLinearGradient(0, 0, 100, 100)
       gradient.addColorStop(0, borderColor)
       gradient.addColorStop(1, bgColor)
       
-      // Draw circle
       ctx.beginPath()
       ctx.arc(50, 50, 46, 0, Math.PI * 2)
       ctx.fillStyle = gradient
       ctx.fill()
-      
-      // Draw border
       ctx.strokeStyle = borderColor
       ctx.lineWidth = 4
       ctx.stroke()
       
-      // Draw initials
       const initials = name.split(' ').map(w => w[0]).join('').substring(0, 2).toUpperCase()
       ctx.fillStyle = 'white'
       ctx.font = 'bold 36px Arial, sans-serif'
@@ -3195,9 +3216,42 @@ async function downloadFullMatchupAnalysis() {
       return canvas.toDataURL('image/png')
     }
     
-    // Generate avatars using canvas (100% reliable)
-    const team1AvatarBase64 = createAvatarDataUrl(selectedMatchup.value.team1_name, team1Color, team1ColorLight)
-    const team2AvatarBase64 = createAvatarDataUrl(selectedMatchup.value.team2_name, team2Color, team2ColorLight)
+    // Load avatar through our proxy API or use fallback
+    const loadAvatarAsBase64 = async (avatarUrl: string, name: string, bgColor: string, borderColor: string): Promise<string> => {
+      if (!avatarUrl) return createFallbackAvatar(name, bgColor, borderColor)
+      
+      try {
+        // Extract avatar ID from URL (e.g., https://sleepercdn.com/avatars/thumbs/abc123 -> abc123)
+        const avatarId = avatarUrl.split('/').pop()
+        if (!avatarId) return createFallbackAvatar(name, bgColor, borderColor)
+        
+        // Use our proxy API
+        const proxyUrl = `/api/avatar?id=${avatarId}`
+        const response = await fetch(proxyUrl)
+        
+        if (!response.ok) {
+          console.warn('Proxy fetch failed, using fallback')
+          return createFallbackAvatar(name, bgColor, borderColor)
+        }
+        
+        const blob = await response.blob()
+        return new Promise((resolve) => {
+          const reader = new FileReader()
+          reader.onloadend = () => resolve(reader.result as string)
+          reader.onerror = () => resolve(createFallbackAvatar(name, bgColor, borderColor))
+          reader.readAsDataURL(blob)
+        })
+      } catch (e) {
+        console.warn('Failed to load avatar, using fallback:', e)
+        return createFallbackAvatar(name, bgColor, borderColor)
+      }
+    }
+    
+    // Load both avatars
+    const [team1AvatarBase64, team2AvatarBase64] = await Promise.all([
+      loadAvatarAsBase64(selectedMatchup.value.team1_avatar, selectedMatchup.value.team1_name, team1Color, team1ColorLight),
+      loadAvatarAsBase64(selectedMatchup.value.team2_avatar, selectedMatchup.value.team2_name, team2Color, team2ColorLight)
+    ])
     
     const container = document.createElement('div')
     container.style.cssText = `
