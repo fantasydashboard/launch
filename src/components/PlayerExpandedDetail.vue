@@ -318,21 +318,29 @@ const maxScore = computed(() => {
   return Math.max(max * 1.1, 10)
 })
 
-// Upcoming matchups
+// Upcoming matchups - simplified to show SOS for next games
 const upcomingMatchups = computed(() => {
   const matchups = []
+  
+  // Calculate per-week SOS if player has rosSOS data
+  // rosSOS is normalized (-0.5 to +0.5), multiply by 12 to get actual points
+  const avgSosPoints = (props.player.rosSOS || 0) * 12
+  
   for (let i = 0; i < 3; i++) {
     const week = props.currentWeek + i
     if (week > 17) break
     
-    const sos = i === 0 ? (props.player.next4SOS || 0) : (props.player.rosSOS || 0)
-    const difficulty = sos > 0.1 ? 'easy' : sos < -0.1 ? 'hard' : 'neutral'
+    // Use a slight variation for each week (simulating different opponents)
+    // In practice, this should pull actual schedule data
+    const weekVariance = (i - 1) * (avgSosPoints * 0.3)
+    const weekSos = avgSosPoints + weekVariance
+    const difficulty = weekSos > 1 ? 'easy' : weekSos < -1 ? 'hard' : 'neutral'
     
     matchups.push({
       week,
-      opponent: `Opponent`,
+      opponent: props.player.team ? `Week ${week} Opponent` : 'TBD',
       difficulty,
-      sosLabel: sos > 0 ? `+${(sos * 100).toFixed(0)}%` : `${(sos * 100).toFixed(0)}%`,
+      sosLabel: weekSos >= 0 ? `+${weekSos.toFixed(1)}` : weekSos.toFixed(1),
       defenseRank: `vs ${props.player.position}`
     })
   }

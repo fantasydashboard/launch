@@ -272,105 +272,51 @@
       
       <!-- ==================== REDRAFT MODE: Rest of Season ==================== -->
       <template v-else>
-      <!-- CSV Upload Card -->
-      <div class="card bg-dark-card/50">
+      <!-- Custom Rankings Indicator OR Customize Panel Header -->
+      <div v-if="hasCustomRankings" class="card bg-primary/10 border-primary/30">
         <div class="card-body py-4">
-          <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
-            <div class="flex-1">
-              <h3 class="font-semibold text-dark-text flex items-center gap-2 mb-1">
-                <span>📤</span> Upload Custom Rankings
-                <button @click="showRosCSVInstructions = !showRosCSVInstructions" class="text-xs text-primary underline ml-2">
-                  {{ showRosCSVInstructions ? 'Hide' : 'Show' }} Format Details
-                </button>
-              </h3>
-              <p class="text-sm text-dark-textMuted">
-                Upload a CSV to override rankings. Required columns: <span class="text-primary font-medium">Position Rank</span>, <span class="text-primary font-medium">Player Name</span>, <span class="text-primary font-medium">Tier</span>. 
-                Optional: <span class="text-yellow-400 font-medium">Overall Rank</span> (for FLEX sorting). Extra columns are ignored.
-              </p>
+          <div class="flex items-center justify-between">
+            <div class="flex items-center gap-3">
+              <span class="text-2xl">✓</span>
+              <div>
+                <h3 class="font-semibold text-primary">Using Custom Rankings</h3>
+                <p class="text-sm text-dark-textMuted">
+                  Week {{ customRankingsWeek }} • {{ customRankingsCount }} players loaded
+                </p>
+              </div>
             </div>
             <div class="flex items-center gap-3">
-              <select v-model="csvUploadWeek" class="select text-sm">
-                <option v-for="week in availableWeeks" :key="week" :value="week">
-                  Week {{ week }}
-                </option>
-              </select>
-              <label class="px-4 py-2 rounded-lg bg-primary/20 hover:bg-primary/30 text-primary font-medium cursor-pointer transition-colors flex items-center gap-2">
-                <span>📁</span>
-                <span>Choose File</span>
-                <input type="file" accept=".csv" @change="handleCsvUpload" class="hidden" />
-              </label>
-              <button v-if="hasCustomRankings" @click="clearCustomRankings" class="px-4 py-2 rounded-lg bg-red-500/20 hover:bg-red-500/30 text-red-400 font-medium transition-colors">
-                Clear Custom
+              <button @click="clearCustomRankings" class="px-4 py-2 rounded-lg bg-dark-card hover:bg-dark-border/50 text-dark-text font-medium transition-colors">
+                Reset to Default Rankings
+              </button>
+              <button @click="showProjectionSettings = true" class="p-2 rounded-lg hover:bg-dark-border/50 transition-colors" title="Projection Settings">
+                <svg class="w-5 h-5 text-dark-textMuted" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                </svg>
               </button>
             </div>
-          </div>
-          
-          <!-- Expanded CSV Instructions -->
-          <div v-if="showRosCSVInstructions" class="mt-4 p-4 bg-dark-border/20 rounded-lg">
-            <h4 class="font-bold text-dark-text mb-2">📄 CSV Format Instructions</h4>
-            <div class="overflow-x-auto">
-              <table class="text-sm border border-dark-border/30 rounded w-full">
-                <thead class="bg-dark-border/30">
-                  <tr>
-                    <th class="px-3 py-2 text-left text-dark-textMuted">Column</th>
-                    <th class="px-3 py-2 text-left text-dark-textMuted">Required</th>
-                    <th class="px-3 py-2 text-left text-dark-textMuted">Description</th>
-                  </tr>
-                </thead>
-                <tbody class="divide-y divide-dark-border/30">
-                  <tr>
-                    <td class="px-3 py-2 font-mono text-primary">Overall Rank</td>
-                    <td class="px-3 py-2 text-yellow-400">Optional</td>
-                    <td class="px-3 py-2 text-dark-textMuted">Overall rank across all positions (used for FLEX sorting if provided)</td>
-                  </tr>
-                  <tr>
-                    <td class="px-3 py-2 font-mono text-primary">Position Rank</td>
-                    <td class="px-3 py-2 text-green-400">Yes</td>
-                    <td class="px-3 py-2 text-dark-textMuted">Also accepts: "Rank", "#", "Ranking"</td>
-                  </tr>
-                  <tr>
-                    <td class="px-3 py-2 font-mono text-primary">Player Name</td>
-                    <td class="px-3 py-2 text-green-400">Yes</td>
-                    <td class="px-3 py-2 text-dark-textMuted">Also accepts: "Player", "Name" - matches to Sleeper data</td>
-                  </tr>
-                  <tr>
-                    <td class="px-3 py-2 font-mono text-primary">Tier</td>
-                    <td class="px-3 py-2 text-green-400">Yes</td>
-                    <td class="px-3 py-2 text-dark-textMuted">Tier grouping (1, 2, 3, etc.) for tier breaks in the list</td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-            <div class="mt-3 p-3 bg-dark-bg rounded text-xs font-mono text-dark-textMuted">
-              <div class="text-dark-textSecondary mb-1">Example CSV:</div>
-              Overall Rank,Position Rank,Player Name,Tier<br>
-              1,1,Patrick Mahomes,1<br>
-              2,1,Saquon Barkley,1<br>
-              3,2,Josh Allen,1<br>
-              4,2,Derrick Henry,1<br>
-              5,1,Ja'Marr Chase,1<br>
-              6,3,Lamar Jackson,2<br>
-              ...
-            </div>
-            <p class="mt-3 text-xs text-dark-textMuted">
-              💡 <strong>Tip:</strong> Player stats (PPG, VOR, SOS, Bye Week) are preserved from Sleeper data. Only the rank, tier, and order are updated from your CSV.
-            </p>
-          </div>
-          
-          <div v-if="hasCustomRankings" class="mt-3 p-2 bg-primary/10 rounded-lg">
-            <p class="text-sm text-primary">
-              ✓ Custom rankings loaded for Week {{ customRankingsWeek }} ({{ customRankingsCount }} players). Rankings will show changes compared to previous week's data.
-            </p>
           </div>
         </div>
       </div>
 
-      <!-- Ranking Customizer Panel -->
-      <RankingCustomizer 
-        v-if="!hasCustomRankings"
-        v-model="rankingFactors"
-        @apply="loadProjections"
-      />
+      <!-- Ranking Customizer Panel with Settings Gear -->
+      <div v-if="!hasCustomRankings" class="relative">
+        <button 
+          @click="showProjectionSettings = true" 
+          class="absolute top-4 right-4 p-2 rounded-lg hover:bg-dark-border/50 transition-colors z-10" 
+          title="Projection Settings"
+        >
+          <svg class="w-5 h-5 text-dark-textMuted" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+          </svg>
+        </button>
+        <RankingCustomizer 
+          v-model="rankingFactors"
+          @apply="loadProjections"
+        />
+      </div>
 
       <!-- Controls Card -->
       <div class="card">
@@ -1582,6 +1528,127 @@
         </div>
       </div>
     </template>
+
+    <!-- Projection Settings Modal -->
+    <div v-if="showProjectionSettings" class="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4" @click.self="showProjectionSettings = false">
+      <div class="bg-dark-card rounded-2xl border border-dark-border max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+        <div class="px-6 py-4 border-b border-dark-border/50 flex items-center justify-between sticky top-0 bg-dark-card">
+          <h2 class="text-xl font-bold text-dark-text flex items-center gap-2">
+            <svg class="w-6 h-6 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+            </svg>
+            Projection Settings
+          </h2>
+          <button @click="showProjectionSettings = false" class="p-2 hover:bg-dark-border/50 rounded-lg transition-colors">
+            <svg class="w-5 h-5 text-dark-textMuted" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+
+        <div class="p-6 space-y-6">
+          <!-- Upload Custom Rankings Section -->
+          <div class="bg-dark-bg/50 rounded-xl p-4 border border-dark-border/50">
+            <h3 class="font-semibold text-dark-text flex items-center gap-2 mb-3">
+              <span class="text-xl">📤</span> Upload Custom Rankings
+            </h3>
+            <p class="text-sm text-dark-textMuted mb-4">
+              Import rankings from your favorite fantasy analyst or your own custom rankings. Upload a CSV file with player rankings to override the default algorithm.
+            </p>
+            
+            <div class="flex flex-col sm:flex-row items-start sm:items-center gap-3 mb-4">
+              <div class="flex items-center gap-2">
+                <span class="text-sm text-dark-textMuted">Apply to:</span>
+                <select v-model="csvUploadWeek" class="select text-sm">
+                  <option v-for="week in availableWeeks" :key="week" :value="week">
+                    Week {{ week }}{{ week === currentWeek ? ' (Current)' : '' }}
+                  </option>
+                </select>
+              </div>
+              <label class="px-4 py-2 rounded-lg bg-primary hover:bg-primary/90 text-gray-900 font-medium cursor-pointer transition-colors flex items-center gap-2">
+                <span>📁</span>
+                <span>Choose CSV File</span>
+                <input type="file" accept=".csv" @change="handleCsvUpload" class="hidden" />
+              </label>
+            </div>
+
+            <div class="text-xs text-dark-textMuted space-y-1 p-3 bg-dark-border/20 rounded-lg">
+              <p class="font-medium text-dark-textSecondary">Required CSV Columns:</p>
+              <ul class="list-disc list-inside ml-2 space-y-0.5">
+                <li><span class="text-primary">Position Rank</span> - Rank within position (1, 2, 3...)</li>
+                <li><span class="text-primary">Player Name</span> - Full player name</li>
+                <li><span class="text-primary">Tier</span> - Tier grouping (1, 2, 3...)</li>
+              </ul>
+              <p class="mt-2">Optional: <span class="text-yellow-400">Overall Rank</span> for cross-position sorting</p>
+            </div>
+
+            <p class="text-xs text-dark-textMuted mt-3">
+              💡 Player stats (PPG, VOR, SOS) are preserved from live data. Only ranks and tiers are updated from your CSV.
+            </p>
+          </div>
+
+          <!-- Request Analyst Format Section -->
+          <div class="bg-dark-bg/50 rounded-xl p-4 border border-dark-border/50">
+            <h3 class="font-semibold text-dark-text flex items-center gap-2 mb-3">
+              <span class="text-xl">🎯</span> Request Analyst Format Support
+            </h3>
+            <p class="text-sm text-dark-textMuted mb-4">
+              Want to use rankings from a specific fantasy analyst? Submit a request and we may add automatic format detection for their CSV exports.
+            </p>
+
+            <div v-if="!analystRequestSubmitted" class="space-y-3">
+              <div>
+                <label class="block text-sm text-dark-textMuted mb-1">Analyst / Creator Name</label>
+                <input 
+                  v-model="analystRequestName" 
+                  type="text" 
+                  placeholder="e.g., Fantasy Pros, JJ Zachariason, etc."
+                  class="w-full px-4 py-2 rounded-lg bg-dark-border/30 border border-dark-border text-dark-text placeholder-dark-textMuted focus:outline-none focus:ring-2 focus:ring-primary/50"
+                />
+              </div>
+              <div>
+                <label class="block text-sm text-dark-textMuted mb-1">Example CSV (Optional)</label>
+                <label class="px-4 py-2 rounded-lg bg-dark-border/50 hover:bg-dark-border/70 text-dark-textMuted font-medium cursor-pointer transition-colors flex items-center gap-2 w-fit">
+                  <span>📎</span>
+                  <span>Attach Sample File</span>
+                  <input type="file" accept=".csv" @change="handleAnalystSampleUpload" class="hidden" />
+                </label>
+              </div>
+              <button 
+                @click="submitAnalystRequest"
+                :disabled="!analystRequestName.trim()"
+                class="px-4 py-2 rounded-lg bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-400 font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Submit Request
+              </button>
+            </div>
+
+            <div v-else class="p-4 bg-green-500/10 rounded-lg border border-green-500/30">
+              <p class="text-green-400 font-medium flex items-center gap-2">
+                <span>✓</span> Request submitted for {{ analystRequestName }}
+              </p>
+              <p class="text-sm text-dark-textMuted mt-1">
+                We'll review your request. This does not guarantee the format will be added.
+              </p>
+            </div>
+
+            <div class="mt-4 p-3 bg-yellow-500/10 rounded-lg border border-yellow-500/20">
+              <p class="text-xs text-yellow-400/80">
+                <strong>Note:</strong> Submitting a request is the first step. Not all submissions will be added. 
+                You will still need to manually upload ranking files each week - we will never provide a creator's rankings ourselves.
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <div class="px-6 py-4 border-t border-dark-border/30 flex justify-end">
+          <button @click="showProjectionSettings = false" class="px-4 py-2 rounded-lg bg-dark-border hover:bg-dark-border/70 text-dark-text font-medium transition-colors">
+            Close
+          </button>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -1797,6 +1864,9 @@ const customRankingsWeek = ref<number | null>(null)
 const customRankingsCount = ref(0)
 const customRankingsData = ref<Map<number, Map<string, { rank: number, tier: number }>>>(new Map())
 const showRosCSVInstructions = ref(false)
+const showProjectionSettings = ref(false)
+const analystRequestName = ref('')
+const analystRequestSubmitted = ref(false)
 
 // Filter state
 const selectedPositions = ref<string[]>(['QB', 'RB', 'WR', 'TE'])
@@ -1911,6 +1981,7 @@ interface RankedPlayer {
   recentPPG: number
   trendMultiplier: number
   trendIndicator: 'hot' | 'cold' | 'neutral'
+  weeklyScores: number[]
   consistency: number
   consistencyRating: 'elite' | 'stable' | 'volatile' | 'boom-bust'
   ceiling: number
@@ -2126,8 +2197,9 @@ function getSosTextClass(sos: number): string {
 }
 
 function formatSOS(sos: number): string {
-  const pct = (sos * 100).toFixed(0)
-  return sos >= 0 ? `+${pct}%` : `${pct}%`
+  // Convert back to points (multiply by 12 since we divided by 12 to normalize)
+  const points = sos * 12
+  return points >= 0 ? `+${points.toFixed(1)}` : points.toFixed(1)
 }
 
 function getPositionClass(pos: string): string {
@@ -2327,6 +2399,30 @@ function clearCustomRankings() {
   loadProjections()
 }
 
+// Handle analyst sample file upload (just for form - doesn't process)
+function handleAnalystSampleUpload(e: Event) {
+  const file = (e.target as HTMLInputElement).files?.[0]
+  if (file) {
+    console.log('Sample file attached:', file.name)
+    // In production, this would be sent to a server
+  }
+}
+
+// Submit analyst format request
+function submitAnalystRequest() {
+  if (!analystRequestName.value.trim()) return
+  
+  // In production, this would send to a server
+  console.log('Analyst request submitted:', analystRequestName.value)
+  analystRequestSubmitted.value = true
+  
+  // Reset after 10 seconds so they can submit another
+  setTimeout(() => {
+    analystRequestSubmitted.value = false
+    analystRequestName.value = ''
+  }, 10000)
+}
+
 // Toggle expanded player detail
 function togglePlayerExpanded(playerId: string) {
   if (expandedPlayerId.value === playerId) {
@@ -2513,7 +2609,7 @@ async function loadProjections() {
       const recentPPG = calculateRecentPPG(weeklyScores, 4)
       const trendMultiplier = calculateTrendMultiplier(recentPPG, seasonPPG > 0 ? seasonPPG : ppg)
       const consistency = calculateConsistency(weeklyScores)
-      const trendIndicator = getTrendIndicator(trendMultiplier)
+      // Trend indicator will be calculated after we have position ranks
       const consistencyRating = getConsistencyRating(consistency, seasonPPG > 0 ? seasonPPG : ppg)
       
       // Calculate ceiling/floor from historical data or estimate from PPG
@@ -2589,7 +2685,8 @@ async function loadProjections() {
         injury_status: playerData.injury_status || null,
         recentPPG: recentPPG > 0 ? recentPPG : ppg,
         trendMultiplier,
-        trendIndicator,
+        trendIndicator: 'neutral' as 'hot' | 'cold' | 'neutral', // Will be recalculated after position ranks
+        weeklyScores, // Store for recalculating trend
         consistency,
         consistencyRating,
         ceiling,
@@ -2616,6 +2713,14 @@ async function loadProjections() {
       player.rosRank = idx + 1
       positionCounts[player.position]++
       player.positionRank = positionCounts[player.position]
+      
+      // Now recalculate trend indicator with position rank
+      player.trendIndicator = getTrendIndicator(
+        player.trendMultiplier,
+        player.weeklyScores,
+        player.ppg,
+        player.positionRank
+      )
       
       if (prevWeekRanks?.has(player.player_id)) {
         const prevRank = prevWeekRanks.get(player.player_id)!

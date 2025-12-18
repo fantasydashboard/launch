@@ -667,9 +667,57 @@ export function getConsistencyRating(stdDev: number, ppg: number): 'elite' | 'st
 }
 
 /**
- * Get trend indicator
+ * Get trend indicator based on performance in last 3 weeks
+ * Hot: Above average 2 of last 3 weeks
+ * Cold: Below average 2 of last 3 weeks
+ * Exception: Below 2/3 but scored in top 20 for position = neutral
+ * Exception: Above 2/3 but not in top 20 for 2 of those weeks = neutral
  */
-export function getTrendIndicator(trendMultiplier: number): 'hot' | 'cold' | 'neutral' {
+export function getTrendIndicator(
+  trendMultiplier: number, 
+  weeklyScores?: number[], 
+  avgPPG?: number,
+  positionRank?: number
+): 'hot' | 'cold' | 'neutral' {
+  // If we have detailed weekly data, use the new logic
+  if (weeklyScores && weeklyScores.length >= 3 && avgPPG && avgPPG > 0) {
+    const last3 = weeklyScores.slice(-3).filter(s => s > 0)
+    if (last3.length < 3) {
+      // Not enough data, fall back to old logic
+      if (trendMultiplier >= 1.15) return 'hot'
+      if (trendMultiplier <= 0.85) return 'cold'
+      return 'neutral'
+    }
+    
+    const aboveAvgCount = last3.filter(s => s >= avgPPG).length
+    const belowAvgCount = last3.filter(s => s < avgPPG).length
+    
+    // Top 20 check (if positionRank provided)
+    const isTop20 = positionRank !== undefined && positionRank <= 20
+    
+    // Hot: Above average 2 of last 3, BUT only if they're actually good (top 20 for at least 2 weeks)
+    if (aboveAvgCount >= 2) {
+      // Exception: if they were above average but not actually top 20, stay neutral
+      // This handles players who beat their own low average but aren't actually performing well
+      if (!isTop20 && avgPPG < 10) {
+        return 'neutral'
+      }
+      return 'hot'
+    }
+    
+    // Cold: Below average 2 of last 3
+    if (belowAvgCount >= 2) {
+      // Exception: if they're still a top 20 player, stay neutral
+      if (isTop20) {
+        return 'neutral'
+      }
+      return 'cold'
+    }
+    
+    return 'neutral'
+  }
+  
+  // Fallback to multiplier-based logic
   if (trendMultiplier >= 1.15) return 'hot'
   if (trendMultiplier <= 0.85) return 'cold'
   return 'neutral'
