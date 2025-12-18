@@ -1609,11 +1609,14 @@
               </div>
               <div>
                 <label class="block text-sm text-dark-textMuted mb-1">Example CSV (Optional)</label>
-                <label class="px-4 py-2 rounded-lg bg-dark-border/50 hover:bg-dark-border/70 text-dark-textMuted font-medium cursor-pointer transition-colors flex items-center gap-2 w-fit">
-                  <span>📎</span>
-                  <span>Attach Sample File</span>
-                  <input type="file" accept=".csv" @change="handleAnalystSampleUpload" class="hidden" />
-                </label>
+                <div class="flex items-center gap-2">
+                  <label class="px-4 py-2 rounded-lg bg-dark-border/50 hover:bg-dark-border/70 text-dark-textMuted font-medium cursor-pointer transition-colors flex items-center gap-2 w-fit">
+                    <span>📎</span>
+                    <span>{{ analystSampleFileName || 'Attach Sample File' }}</span>
+                    <input type="file" accept=".csv" @change="handleAnalystSampleUpload" class="hidden" />
+                  </label>
+                  <span v-if="analystSampleFileName" class="text-green-400 text-sm">✓</span>
+                </div>
               </div>
               <button 
                 @click="submitAnalystRequest"
@@ -1655,6 +1658,8 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from 'vue'
 import { useLeagueStore } from '@/stores/league'
+import { useAuthStore } from '@/stores/auth'
+import { supabase } from '@/lib/supabase'
 import { sleeperService } from '@/services/sleeper'
 import { 
   type DynastyPlayerValue, 
@@ -2400,27 +2405,44 @@ function clearCustomRankings() {
 }
 
 // Handle analyst sample file upload (just for form - doesn't process)
+const analystSampleFileName = ref<string | null>(null)
+
 function handleAnalystSampleUpload(e: Event) {
   const file = (e.target as HTMLInputElement).files?.[0]
   if (file) {
-    console.log('Sample file attached:', file.name)
-    // In production, this would be sent to a server
+    analystSampleFileName.value = file.name
   }
 }
 
-// Submit analyst format request
-function submitAnalystRequest() {
+// Submit analyst format request to Supabase
+async function submitAnalystRequest() {
   if (!analystRequestName.value.trim()) return
   
-  // In production, this would send to a server
-  console.log('Analyst request submitted:', analystRequestName.value)
-  analystRequestSubmitted.value = true
+  const authStore = useAuthStore()
   
-  // Reset after 10 seconds so they can submit another
-  setTimeout(() => {
-    analystRequestSubmitted.value = false
-    analystRequestName.value = ''
-  }, 10000)
+  try {
+    const { error } = await supabase
+      .from('analyst_requests')
+      .insert({
+        analyst_name: analystRequestName.value.trim(),
+        user_email: authStore.user?.email || null,
+        sample_file_name: analystSampleFileName.value
+      })
+    
+    if (error) throw error
+    
+    analystRequestSubmitted.value = true
+    
+    // Reset after 10 seconds so they can submit another
+    setTimeout(() => {
+      analystRequestSubmitted.value = false
+      analystRequestName.value = ''
+      analystSampleFileName.value = null
+    }, 10000)
+  } catch (err) {
+    console.error('Failed to submit analyst request:', err)
+    alert('Failed to submit request. Please try again.')
+  }
 }
 
 // Toggle expanded player detail
