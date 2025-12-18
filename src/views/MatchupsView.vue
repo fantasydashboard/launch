@@ -217,7 +217,7 @@
                 <span class="text-2xl">🎲</span>
                 <h2 class="card-title">Win Probability</h2>
               </div>
-              <!-- Share Matchup Button -->
+              <!-- Share Probability Button -->
               <button 
                 @click="downloadFullMatchupAnalysis"
                 :disabled="isDownloadingFullAnalysis"
@@ -230,7 +230,7 @@
                   <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                   <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                 </svg>
-                {{ isDownloadingFullAnalysis ? 'Generating...' : 'Share Matchup' }}
+                {{ isDownloadingFullAnalysis ? 'Generating...' : 'Share Probability' }}
               </button>
             </div>
             <p class="card-subtitle mt-2">Live probability based on current scores and projections</p>
@@ -3093,12 +3093,17 @@ async function downloadMatchupPreview() {
     const team2AvatarHtml = `<img src="${team2AvatarBase64}" style="width: 48px; height: 48px; border-radius: 50%; border: 3px solid ${team2Color};" />`
     
     container.innerHTML = `
-      <!-- UFD Logo Header -->
-      <div style="text-align: center; margin-bottom: 20px;">
-        ${ufdLogoBase64 ? `<img src="${ufdLogoBase64}" style="width: 60px; height: 60px; object-fit: contain; margin-bottom: 8px;" />` : ''}
-        <div style="font-size: 14px; color: #9ca3af; margin-bottom: 4px;">${leagueName} • Week ${selectedWeek.value}</div>
-        <div style="font-size: 24px; font-weight: bold; color: #f5c451;">🔮 Matchup Preview</div>
+      <!-- Header with Logo and Title -->
+      <div style="display: flex; align-items: center; gap: 16px; margin-bottom: 8px;">
+        ${ufdLogoBase64 ? `<img src="${ufdLogoBase64}" style="width: 56px; height: 56px; object-fit: contain;" />` : ''}
+        <div>
+          <div style="font-size: 26px; font-weight: 800; color: #f7f7ff;">Matchup Preview</div>
+          <div style="font-size: 14px; color: #9ca3af;">${leagueName} • Week ${selectedWeek.value}</div>
+        </div>
       </div>
+      
+      <!-- Divider -->
+      <div style="height: 1px; background: linear-gradient(to right, rgba(245, 196, 81, 0.5), rgba(245, 196, 81, 0.1)); margin-bottom: 20px;"></div>
       
       <!-- Team Headers -->
       <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; padding: 16px; background: rgba(38, 42, 58, 0.5); border-radius: 12px;">
@@ -3473,20 +3478,17 @@ async function downloadFullMatchupAnalysis() {
     }
     
     container.innerHTML = `
-      <!-- UFD Logo Header -->
-      <div style="text-align: center; margin-bottom: 20px;">
-        ${ufdLogoBase64 ? `<img src="${ufdLogoBase64}" style="width: 70px; height: 70px; object-fit: contain; margin-bottom: 12px;" />` : ''}
+      <!-- Header with Logo and Title -->
+      <div style="display: flex; align-items: center; gap: 16px; margin-bottom: 8px;">
+        ${ufdLogoBase64 ? `<img src="${ufdLogoBase64}" style="width: 56px; height: 56px; object-fit: contain;" />` : ''}
+        <div>
+          <div style="font-size: 26px; font-weight: 800; color: #f7f7ff;">Win Probability</div>
+          <div style="font-size: 14px; color: #9ca3af;">${leagueName} • Week ${selectedWeek.value}</div>
+        </div>
       </div>
       
-      <!-- Header with League Badge -->
-      <div style="text-align: center; margin-bottom: 28px;">
-        <div style="display: inline-block; background: rgba(245, 196, 81, 0.15); border: 2px solid rgba(245, 196, 81, 0.4); border-radius: 14px; padding: 10px 24px; margin-bottom: 14px;">
-          <span style="font-size: 17px; color: #F5C451; font-weight: 700;">${leagueName}</span>
-          <span style="color: #6b7280; margin: 0 12px;">•</span>
-          <span style="font-size: 17px; color: #F5C451; font-weight: 700;">Week ${selectedWeek.value}</span>
-        </div>
-        <div style="font-size: 38px; font-weight: 900; color: #f7f7ff; letter-spacing: -1px;">⚔️ MATCHUP PREVIEW</div>
-      </div>
+      <!-- Divider -->
+      <div style="height: 1px; background: linear-gradient(to right, rgba(245, 196, 81, 0.5), rgba(245, 196, 81, 0.1)); margin-bottom: 24px;"></div>
       
       <!-- Win Probability Section -->
       <div style="background: rgba(38, 42, 58, 0.6); border-radius: 20px; padding: 28px; margin-bottom: 20px; border: 2px solid rgba(100, 116, 139, 0.2);">
@@ -3727,29 +3729,28 @@ async function downloadStatComparison() {
     const team2Leads = historicalMatchups.value.team2Wins > historicalMatchups.value.team1Wins
     
     container.innerHTML = `
-      <!-- UFD Logo Header -->
-      <div style="text-align: center; margin-bottom: 16px;">
-        ${ufdLogoBase64 ? `<img src="${ufdLogoBase64}" style="width: 60px; height: 60px; object-fit: contain;" />` : ''}
+      <!-- Header with Logo and Title -->
+      <div style="display: flex; align-items: center; gap: 16px; margin-bottom: 8px;">
+        ${ufdLogoBase64 ? `<img src="${ufdLogoBase64}" style="width: 56px; height: 56px; object-fit: contain;" />` : ''}
+        <div>
+          <div style="font-size: 26px; font-weight: 800; color: #f7f7ff;">Matchup Comparison</div>
+          <div style="font-size: 14px; color: #9ca3af;">${leagueName} • Week ${selectedWeek.value}</div>
+        </div>
       </div>
       
-      <!-- Header with Title and Both Logos -->
-      <div style="text-align: center; margin-bottom: 24px;">
-        <div style="font-size: 22px; font-weight: 800; color: #f7f7ff; margin-bottom: 16px;">
-          Matchup Comparison
+      <!-- Divider -->
+      <div style="height: 1px; background: linear-gradient(to right, rgba(245, 196, 81, 0.5), rgba(245, 196, 81, 0.1)); margin-bottom: 20px;"></div>
+      
+      <!-- Team Headers -->
+      <div style="display: flex; justify-content: center; align-items: center; gap: 24px; margin-bottom: 20px;">
+        <div style="text-align: center;">
+          <img src="${team1AvatarBase64}" style="width: 56px; height: 56px; border-radius: 50%; border: 3px solid ${team1ColorLight}; margin-bottom: 6px;" />
+          <div style="font-size: 13px; font-weight: 700; color: ${team1ColorLight};">${selectedMatchup.value.team1_name}</div>
         </div>
-        <div style="display: flex; justify-content: center; align-items: center; gap: 24px;">
-          <div style="text-align: center;">
-            <img src="${team1AvatarBase64}" style="width: 64px; height: 64px; border-radius: 50%; border: 3px solid ${team1ColorLight}; margin-bottom: 8px;" />
-            <div style="font-size: 14px; font-weight: 700; color: ${team1ColorLight};">${selectedMatchup.value.team1_name}</div>
-          </div>
-          <div style="font-size: 24px; color: #4a5568; font-weight: 900;">VS</div>
-          <div style="text-align: center;">
-            <img src="${team2AvatarBase64}" style="width: 64px; height: 64px; border-radius: 50%; border: 3px solid ${team2ColorLight}; margin-bottom: 8px;" />
-            <div style="font-size: 14px; font-weight: 700; color: ${team2ColorLight};">${selectedMatchup.value.team2_name}</div>
-          </div>
-        </div>
-        <div style="font-size: 12px; color: #6b7280; margin-top: 12px;">
-          ${leagueName} • ${selectedSeason.value} Season
+        <div style="font-size: 20px; color: #4a5568; font-weight: 900;">VS</div>
+        <div style="text-align: center;">
+          <img src="${team2AvatarBase64}" style="width: 56px; height: 56px; border-radius: 50%; border: 3px solid ${team2ColorLight}; margin-bottom: 6px;" />
+          <div style="font-size: 13px; font-weight: 700; color: ${team2ColorLight};">${selectedMatchup.value.team2_name}</div>
         </div>
       </div>
       
