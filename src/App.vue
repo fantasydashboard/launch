@@ -9,11 +9,9 @@
           <div class="flex items-center justify-between h-16">
             <!-- Logo -->
             <div class="flex items-center gap-3">
-              <div class="w-10 h-10 rounded-full flex items-center justify-center shadow-lg" style="background: radial-gradient(circle at 30% 20%, #ffe091, #f5c451 50%, #f09c1f); color: #1e1a0f;">
-                <span class="font-extrabold text-lg">FD</span>
-              </div>
+              <img src="/ufd-logo.png" alt="UFD Logo" class="w-10 h-10 object-contain" />
               <div>
-                <h1 class="text-lg font-bold text-dark-text">Fantasy Dashboard</h1>
+                <h1 class="text-lg font-bold text-dark-text">Ultimate Fantasy Dashboard</h1>
               </div>
             </div>
 
@@ -50,14 +48,9 @@
           <div class="flex items-center justify-between h-20">
             <!-- Logo -->
             <div class="flex items-center gap-4">
-              <div class="w-12 h-12 rounded-full flex items-center justify-center shadow-lg" style="background: radial-gradient(circle at 30% 20%, #ffe091, #f5c451 50%, #f09c1f); color: #1e1a0f; box-shadow: 0 0 0 2px rgba(245, 196, 81, 0.4);">
-                <span class="font-extrabold text-xl">FD</span>
-              </div>
+              <img src="/ufd-logo.png" alt="UFD Logo" class="w-12 h-12 object-contain" />
               <div>
-                <h1 class="text-2xl font-bold text-dark-text">Fantasy Dashboard</h1>
-                <p class="text-xs text-dark-textMuted">
-                  {{ leagueStore.isDemoMode ? 'Demo Mode - Explore the Dashboard' : 'League History & Analytics' }}
-                </p>
+                <h1 class="text-2xl font-bold text-dark-text">Ultimate Fantasy Dashboard</h1>
               </div>
             </div>
 
