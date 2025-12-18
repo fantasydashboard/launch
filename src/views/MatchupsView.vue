@@ -749,7 +749,7 @@
           <div class="card-header flex items-center justify-between">
             <div class="flex items-center gap-2">
               <span class="text-2xl">📊</span>
-              <h2 class="card-title">Statistical Comparison</h2>
+              <h2 class="card-title">Statistical Comparison ({{ selectedSeason }})</h2>
             </div>
             <!-- Share Comparison Button - Yellow primary style -->
             <button
@@ -2503,16 +2503,17 @@ function getRecentForm(weeklyScores: number[], rosterId: number): string[] {
   const recentWeeks = Array.from(matchupsByWeek.keys())
     .filter(w => w < selectedWeekNum && w < playoffStart)
     .sort((a, b) => b - a)
-    .slice(0, 3)
   
-  recentWeeks.forEach(week => {
+  // Process weeks until we have 3 valid results (skip bye weeks)
+  for (const week of recentWeeks) {
+    if (form.length >= 3) break
+    
     const weekMatchups = matchupsByWeek.get(week) || []
     
     // Find this team's matchup
     const myMatchup = weekMatchups.find(m => m.roster_id === rosterId)
     if (!myMatchup || !myMatchup.matchup_id) {
-      form.push('-')
-      return
+      continue // Skip - no matchup (bye week)
     }
     
     // Find opponent
@@ -2521,12 +2522,16 @@ function getRecentForm(weeklyScores: number[], rosterId: number): string[] {
     )
     
     if (!opponent) {
-      form.push('-')
-      return
+      continue // Skip - no opponent found
     }
     
     const myPoints = myMatchup.points || 0
     const oppPoints = opponent.points || 0
+    
+    // Skip bye weeks where points are 0
+    if (myPoints === 0 && oppPoints === 0) {
+      continue
+    }
     
     if (myPoints > oppPoints) {
       form.push('W')
@@ -2535,7 +2540,7 @@ function getRecentForm(weeklyScores: number[], rosterId: number): string[] {
     } else {
       form.push('T')
     }
-  })
+  }
   
   return form
 }
@@ -3063,7 +3068,7 @@ async function downloadMatchupPreview() {
     const playerRows = starterComparison.value.map(slot => `
       <tr style="border-bottom: 1px solid rgba(58, 61, 82, 0.5);">
         <td style="padding: 8px 4px; text-align: left;">
-          <span style="font-size: 10px; font-weight: bold; padding: 2px 6px; border-radius: 4px; background: ${getPositionColorForDownload(slot.position)}; color: white;">
+          <span style="display: inline-flex; align-items: center; justify-content: center; font-size: 10px; font-weight: bold; padding: 2px 6px; min-width: 28px; border-radius: 4px; background: ${getPositionColorForDownload(slot.position)}; color: white; text-align: center;">
             ${slot.position}
           </span>
           <span style="font-size: 12px; margin-left: 8px; color: #f7f7ff;">${slot.team1Player?.name || '—'}</span>
@@ -3077,7 +3082,7 @@ async function downloadMatchupPreview() {
         <td style="padding: 8px 4px; text-align: center; font-weight: bold; color: ${team2Color};">${slot.team2Player?.projected?.toFixed(1) || '—'}</td>
         <td style="padding: 8px 4px; text-align: right;">
           <span style="font-size: 12px; color: #f7f7ff;">${slot.team2Player?.name || '—'}</span>
-          <span style="font-size: 10px; font-weight: bold; padding: 2px 6px; border-radius: 4px; background: ${getPositionColorForDownload(slot.position)}; color: white; margin-left: 8px;">
+          <span style="display: inline-flex; align-items: center; justify-content: center; font-size: 10px; font-weight: bold; padding: 2px 6px; min-width: 28px; border-radius: 4px; background: ${getPositionColorForDownload(slot.position)}; color: white; margin-left: 8px; text-align: center;">
             ${slot.position}
           </span>
         </td>
@@ -3095,11 +3100,11 @@ async function downloadMatchupPreview() {
     container.innerHTML = `
       <!-- Header with Logo and Title - Centered as Group -->
       <div style="display: flex; justify-content: center; margin-bottom: 16px;">
-        <div style="display: flex; align-items: center; gap: 16px;">
-          ${ufdLogoBase64 ? `<img src="${ufdLogoBase64}" style="width: 56px; height: 56px; object-fit: contain;" />` : ''}
+        <div style="display: flex; align-items: center; gap: 20px;">
+          ${ufdLogoBase64 ? `<img src="${ufdLogoBase64}" style="width: 70px; height: 70px; object-fit: contain;" />` : ''}
           <div>
-            <div style="font-size: 26px; font-weight: 800; color: #f7f7ff;">Matchup Preview</div>
-            <div style="font-size: 14px; color: #9ca3af;">${leagueName} • Week ${selectedWeek.value}</div>
+            <div style="font-size: 32px; font-weight: 800; color: #f7f7ff;">Matchup Preview</div>
+            <div style="font-size: 16px; color: #9ca3af;">${leagueName} &bull; Week ${selectedWeek.value}</div>
           </div>
         </div>
       </div>
@@ -3402,10 +3407,11 @@ async function downloadFullMatchupAnalysis() {
         ${team2Points}
         ${xLabels}
         ${yLabels}
-        <circle cx="70" cy="16" r="8" fill="${team1Color}"/>
-        <text x="88" y="21" font-size="13" font-weight="700" fill="#d1d5db">${team1Name}</text>
-        <circle cx="${chartWidth - 70}" cy="16" r="8" fill="${team2Color}"/>
-        <text x="${chartWidth - 52}" y="21" font-size="13" font-weight="700" fill="#d1d5db" text-anchor="start">${team2Name}</text>
+        <!-- Legend - Centered -->
+        <circle cx="${chartWidth / 2 - 120}" cy="16" r="8" fill="${team1Color}"/>
+        <text x="${chartWidth / 2 - 102}" y="21" font-size="12" font-weight="700" fill="#d1d5db">${team1Name}</text>
+        <circle cx="${chartWidth / 2 + 60}" cy="16" r="8" fill="${team2Color}"/>
+        <text x="${chartWidth / 2 + 78}" y="21" font-size="12" font-weight="700" fill="#d1d5db">${team2Name}</text>
       </svg>
     `
     
@@ -3452,8 +3458,8 @@ async function downloadFullMatchupAnalysis() {
     
     // Build scouting HTML - HORIZONTAL layout with strengths/weaknesses on left, form on right
     const buildScoutingHtml = (teamName: string, report: any, color: string, borderColor: string, bgRgba: string) => {
-      const strengths = report.strengths.slice(0, 2).map((s: string) => `<div style="font-size: 14px; color: #d1d5db; margin-bottom: 6px; line-height: 1.3;">✓ ${s}</div>`).join('')
-      const weaknesses = report.weaknesses.slice(0, 2).map((w: string) => `<div style="font-size: 14px; color: #d1d5db; margin-bottom: 6px; line-height: 1.3;">✗ ${w}</div>`).join('')
+      const strengths = report.strengths.slice(0, 2).map((s: string) => `<div style="font-size: 14px; color: #d1d5db; margin-bottom: 6px; line-height: 1.4; letter-spacing: 0.3px; word-spacing: 2px;">✓ ${s}</div>`).join('')
+      const weaknesses = report.weaknesses.slice(0, 2).map((w: string) => `<div style="font-size: 14px; color: #d1d5db; margin-bottom: 6px; line-height: 1.4; letter-spacing: 0.3px; word-spacing: 2px;">✗ ${w}</div>`).join('')
       const form = report.recentForm.map((r: string) => `
         <span style="display: inline-flex; align-items: center; justify-content: center; width: 38px; height: 38px; border-radius: 8px; font-size: 18px; font-weight: bold; margin-right: 6px; background: ${r === 'W' ? 'rgba(34, 197, 94, 0.3)' : 'rgba(239, 68, 68, 0.3)'}; color: ${r === 'W' ? '#22c55e' : '#ef4444'};">${r}</span>
       `).join('')
@@ -3464,8 +3470,8 @@ async function downloadFullMatchupAnalysis() {
           <div style="display: flex; gap: 20px;">
             <!-- Strengths/Weaknesses on left -->
             <div style="flex: 1; min-width: 0;">
-              ${strengths ? `<div style="margin-bottom: 10px;"><div style="font-size: 11px; font-weight: 800; color: #22c55e; margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.5px;">Strengths</div>${strengths}</div>` : ''}
-              ${weaknesses ? `<div><div style="font-size: 11px; font-weight: 800; color: #ef4444; margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.5px;">Weaknesses</div>${weaknesses}</div>` : ''}
+              ${strengths ? `<div style="margin-bottom: 10px;"><div style="font-size: 11px; font-weight: 800; color: #22c55e; margin-bottom: 6px; text-transform: uppercase; letter-spacing: 1px;">Strengths</div>${strengths}</div>` : ''}
+              ${weaknesses ? `<div><div style="font-size: 11px; font-weight: 800; color: #ef4444; margin-bottom: 6px; text-transform: uppercase; letter-spacing: 1px;">Weaknesses</div>${weaknesses}</div>` : ''}
             </div>
             <!-- Recent Form on right -->
             <div style="flex-shrink: 0;">
@@ -3480,11 +3486,11 @@ async function downloadFullMatchupAnalysis() {
     container.innerHTML = `
       <!-- Header with Logo and Title - Centered as Group -->
       <div style="display: flex; justify-content: center; margin-bottom: 16px;">
-        <div style="display: flex; align-items: center; gap: 16px;">
-          ${ufdLogoBase64 ? `<img src="${ufdLogoBase64}" style="width: 56px; height: 56px; object-fit: contain;" />` : ''}
+        <div style="display: flex; align-items: center; gap: 20px;">
+          ${ufdLogoBase64 ? `<img src="${ufdLogoBase64}" style="width: 70px; height: 70px; object-fit: contain;" />` : ''}
           <div>
-            <div style="font-size: 26px; font-weight: 800; color: #f7f7ff;">Win Probability</div>
-            <div style="font-size: 14px; color: #9ca3af;">${leagueName} • Week ${selectedWeek.value}</div>
+            <div style="font-size: 32px; font-weight: 800; color: #f7f7ff;">Win Probability</div>
+            <div style="font-size: 16px; color: #9ca3af;">${leagueName} &bull; Week ${selectedWeek.value}</div>
           </div>
         </div>
       </div>
@@ -3733,11 +3739,11 @@ async function downloadStatComparison() {
     container.innerHTML = `
       <!-- Header with Logo and Title - Centered as Group -->
       <div style="display: flex; justify-content: center; margin-bottom: 16px;">
-        <div style="display: flex; align-items: center; gap: 16px;">
-          ${ufdLogoBase64 ? `<img src="${ufdLogoBase64}" style="width: 56px; height: 56px; object-fit: contain;" />` : ''}
+        <div style="display: flex; align-items: center; gap: 20px;">
+          ${ufdLogoBase64 ? `<img src="${ufdLogoBase64}" style="width: 70px; height: 70px; object-fit: contain;" />` : ''}
           <div>
-            <div style="font-size: 26px; font-weight: 800; color: #f7f7ff;">Matchup Comparison</div>
-            <div style="font-size: 14px; color: #9ca3af;">${leagueName} • Week ${selectedWeek.value}</div>
+            <div style="font-size: 32px; font-weight: 800; color: #f7f7ff;">Matchup Comparison</div>
+            <div style="font-size: 16px; color: #9ca3af;">${leagueName} &bull; Week ${selectedWeek.value}</div>
           </div>
         </div>
       </div>
@@ -3762,7 +3768,7 @@ async function downloadStatComparison() {
       <div style="background: rgba(38, 42, 58, 0.6); border-radius: 16px; padding: 20px; margin-bottom: 20px; border: 1px solid rgba(100, 116, 139, 0.2);">
         <div style="text-align: center; margin-bottom: 16px;">
           <span style="font-size: 20px;">📊</span>
-          <span style="font-size: 16px; font-weight: 700; color: #f7f7ff; margin-left: 8px; vertical-align: middle;">Statistical Comparison</span>
+          <span style="font-size: 16px; font-weight: 700; color: #f7f7ff; margin-left: 8px; vertical-align: middle;">Statistical Comparison (${selectedSeason.value})</span>
         </div>
         
         <table style="width: 100%; border-collapse: collapse;">
