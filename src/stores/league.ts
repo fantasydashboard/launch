@@ -20,6 +20,7 @@ interface SavedLeague {
   season: string
   sleeper_username: string
   is_primary: boolean
+  league_type?: number // 0 = redraft, 1 = keeper, 2 = dynasty
 }
 
 // Cache interface for storing league data
@@ -223,7 +224,8 @@ export const useLeagueStore = defineStore('league', () => {
       platform: 'sleeper',
       season: league.season,
       sleeper_username: username,
-      is_primary: isPrimary
+      is_primary: isPrimary,
+      league_type: league.settings?.type ?? 0 // 0 = redraft, 1 = keeper, 2 = dynasty
     }
     
     // Add to local state immediately

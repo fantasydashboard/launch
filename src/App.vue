@@ -63,9 +63,13 @@
                   class="flex items-center gap-2 px-4 py-2 rounded-xl bg-dark-card border border-dark-border hover:border-primary/50 transition-colors min-w-[220px]"
                 >
                   <template v-if="leagueStore.currentLeague">
-                    <div class="w-6 h-6 rounded-full bg-primary/20 flex items-center justify-center flex-shrink-0">
-                      <span class="text-xs font-bold text-primary">{{ leagueStore.currentLeague.name.substring(0, 2).toUpperCase() }}</span>
-                    </div>
+                    <svg class="w-6 h-6 flex-shrink-0" viewBox="0 0 24 24" fill="none">
+                      <path d="M12 2L3 7v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V7l-9-5z" 
+                        :fill="getLeagueTypeColor(leagueStore.currentLeague.settings?.type)" 
+                        fill-opacity="0.2" 
+                        :stroke="getLeagueTypeColor(leagueStore.currentLeague.settings?.type)" 
+                        stroke-width="1.5"/>
+                    </svg>
                     <span class="text-dark-text font-medium truncate">
                       {{ leagueStore.currentLeague.name }}
                     </span>
@@ -110,9 +114,13 @@
                         @click="selectLeague(league.league_id)"
                         class="flex-1 flex items-center gap-3 px-3 py-2"
                       >
-                        <div class="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center flex-shrink-0">
-                          <span class="text-xs font-bold text-primary">{{ league.league_name.substring(0, 2).toUpperCase() }}</span>
-                        </div>
+                        <svg class="w-8 h-8 flex-shrink-0" viewBox="0 0 24 24" fill="none">
+                          <path d="M12 2L3 7v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V7l-9-5z" 
+                            :fill="getLeagueTypeColor(league.league_type)" 
+                            fill-opacity="0.2" 
+                            :stroke="getLeagueTypeColor(league.league_type)" 
+                            stroke-width="1.5"/>
+                        </svg>
                         <div class="flex-1 text-left min-w-0">
                           <div class="font-medium text-dark-text text-sm truncate">{{ league.league_name }}</div>
                           <div class="text-xs text-dark-textMuted">{{ league.season }} • {{ league.sleeper_username }}</div>
@@ -174,6 +182,30 @@
                         <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" />
                       </svg>
                     </button>
+                  </div>
+                  
+                  <!-- League Type Legend -->
+                  <div v-if="leagueStore.savedLeagues.length > 0" class="border-t border-dark-border/50 px-3 py-2">
+                    <div class="flex items-center justify-center gap-4 text-xs text-dark-textMuted">
+                      <div class="flex items-center gap-1">
+                        <svg class="w-3 h-3" viewBox="0 0 24 24" fill="none">
+                          <path d="M12 2L3 7v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V7l-9-5z" fill="#f59e0b" fill-opacity="0.3" stroke="#f59e0b" stroke-width="2"/>
+                        </svg>
+                        <span>Redraft</span>
+                      </div>
+                      <div class="flex items-center gap-1">
+                        <svg class="w-3 h-3" viewBox="0 0 24 24" fill="none">
+                          <path d="M12 2L3 7v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V7l-9-5z" fill="#22c55e" fill-opacity="0.3" stroke="#22c55e" stroke-width="2"/>
+                        </svg>
+                        <span>Keeper</span>
+                      </div>
+                      <div class="flex items-center gap-1">
+                        <svg class="w-3 h-3" viewBox="0 0 24 24" fill="none">
+                          <path d="M12 2L3 7v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V7l-9-5z" fill="#a855f7" fill-opacity="0.3" stroke="#a855f7" stroke-width="2"/>
+                        </svg>
+                        <span>Dynasty</span>
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -347,6 +379,23 @@ const userInitials = computed(() => {
   }
   return name.substring(0, 2).toUpperCase()
 })
+
+// League type helpers - 0 = redraft, 1 = keeper, 2 = dynasty
+function getLeagueTypeColor(leagueType: number | undefined): string {
+  switch (leagueType) {
+    case 2: return '#a855f7' // Purple for dynasty
+    case 1: return '#22c55e' // Green for keeper
+    default: return '#f59e0b' // Amber/gold for redraft
+  }
+}
+
+function getLeagueTypeName(leagueType: number | undefined): string {
+  switch (leagueType) {
+    case 2: return 'Dynasty'
+    case 1: return 'Keeper'
+    default: return 'Redraft'
+  }
+}
 
 async function selectLeague(leagueId: string) {
   showLeagueDropdown.value = false

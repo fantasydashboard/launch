@@ -17,6 +17,7 @@ export interface SleeperLeague {
     playoff_teams: number
     leg: number
     divisions?: number
+    type?: number // 0 = redraft, 1 = keeper, 2 = dynasty
     [key: string]: any
   }
   scoring_settings: Record<string, number>
