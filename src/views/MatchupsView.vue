@@ -2943,6 +2943,24 @@ ${isPlayoffWeek
   }
 }
 
+// Helper function to load UFD logo as base64 for downloads
+async function loadUFDLogo(): Promise<string> {
+  try {
+    const response = await fetch('/ufd-logo.png')
+    if (!response.ok) return ''
+    const blob = await response.blob()
+    return new Promise((resolve) => {
+      const reader = new FileReader()
+      reader.onloadend = () => resolve(reader.result as string)
+      reader.onerror = () => resolve('')
+      reader.readAsDataURL(blob)
+    })
+  } catch (e) {
+    console.warn('Failed to load UFD logo:', e)
+    return ''
+  }
+}
+
 // Download MATCHUP PREVIEW as PNG - Shows player comparison table
 async function downloadMatchupPreview() {
   if (!selectedMatchup.value) return
@@ -3022,8 +3040,9 @@ async function downloadMatchupPreview() {
       }
     }
     
-    // Load both avatars
-    const [team1AvatarBase64, team2AvatarBase64] = await Promise.all([
+    // Load UFD logo and both avatars
+    const [ufdLogoBase64, team1AvatarBase64, team2AvatarBase64] = await Promise.all([
+      loadUFDLogo(),
       loadAvatarAsBase64(selectedMatchup.value.team1_avatar, selectedMatchup.value.team1_name, team1Color, team1ColorLight),
       loadAvatarAsBase64(selectedMatchup.value.team2_avatar, selectedMatchup.value.team2_name, team2Color, team2ColorLight)
     ])
@@ -3074,7 +3093,9 @@ async function downloadMatchupPreview() {
     const team2AvatarHtml = `<img src="${team2AvatarBase64}" style="width: 48px; height: 48px; border-radius: 50%; border: 3px solid ${team2Color};" />`
     
     container.innerHTML = `
+      <!-- UFD Logo Header -->
       <div style="text-align: center; margin-bottom: 20px;">
+        ${ufdLogoBase64 ? `<img src="${ufdLogoBase64}" style="width: 60px; height: 60px; object-fit: contain; margin-bottom: 8px;" />` : ''}
         <div style="font-size: 14px; color: #9ca3af; margin-bottom: 4px;">${leagueName} • Week ${selectedWeek.value}</div>
         <div style="font-size: 24px; font-weight: bold; color: #f5c451;">🔮 Matchup Preview</div>
       </div>
@@ -3131,11 +3152,16 @@ async function downloadMatchupPreview() {
       
       <!-- Footer with Promo -->
       <div style="text-align: center; padding-top: 16px; border-top: 1px solid rgba(58, 61, 82, 0.5);">
-        <div style="font-size: 11px; color: #6b7280; margin-bottom: 4px;">
-          See a complete breakdown of every matchup in your league at
-        </div>
-        <div style="font-size: 13px; font-weight: bold; color: #facc15;">
-          ultimatefantasydashboard.com/matchups
+        <div style="display: flex; align-items: center; justify-content: center; gap: 12px;">
+          ${ufdLogoBase64 ? `<img src="${ufdLogoBase64}" style="width: 32px; height: 32px; object-fit: contain;" />` : ''}
+          <div>
+            <div style="font-size: 11px; color: #6b7280;">
+              See a complete breakdown of every matchup in your league at
+            </div>
+            <div style="font-size: 13px; font-weight: bold; color: #facc15;">
+              ultimatefantasydashboard.com/matchups
+            </div>
+          </div>
         </div>
       </div>
     `
@@ -3264,8 +3290,9 @@ async function downloadFullMatchupAnalysis() {
       }
     }
     
-    // Load both avatars
-    const [team1AvatarBase64, team2AvatarBase64] = await Promise.all([
+    // Load UFD logo and both avatars
+    const [ufdLogoBase64, team1AvatarBase64, team2AvatarBase64] = await Promise.all([
+      loadUFDLogo(),
       loadAvatarAsBase64(selectedMatchup.value.team1_avatar, selectedMatchup.value.team1_name, team1Color, team1ColorLight),
       loadAvatarAsBase64(selectedMatchup.value.team2_avatar, selectedMatchup.value.team2_name, team2Color, team2ColorLight)
     ])
@@ -3446,6 +3473,11 @@ async function downloadFullMatchupAnalysis() {
     }
     
     container.innerHTML = `
+      <!-- UFD Logo Header -->
+      <div style="text-align: center; margin-bottom: 20px;">
+        ${ufdLogoBase64 ? `<img src="${ufdLogoBase64}" style="width: 70px; height: 70px; object-fit: contain; margin-bottom: 12px;" />` : ''}
+      </div>
+      
       <!-- Header with League Badge -->
       <div style="text-align: center; margin-bottom: 28px;">
         <div style="display: inline-block; background: rgba(245, 196, 81, 0.15); border: 2px solid rgba(245, 196, 81, 0.4); border-radius: 14px; padding: 10px 24px; margin-bottom: 14px;">
@@ -3508,11 +3540,16 @@ async function downloadFullMatchupAnalysis() {
       
       <!-- Footer with Promo -->
       <div style="text-align: center; padding-top: 20px; border-top: 1px solid rgba(58, 61, 82, 0.5); margin-top: 20px;">
-        <div style="font-size: 11px; color: #6b7280; margin-bottom: 4px;">
-          See a complete breakdown of every matchup in your league at
-        </div>
-        <div style="font-size: 13px; font-weight: bold; color: #facc15;">
-          ultimatefantasydashboard.com/matchups
+        <div style="display: flex; align-items: center; justify-content: center; gap: 12px;">
+          ${ufdLogoBase64 ? `<img src="${ufdLogoBase64}" style="width: 36px; height: 36px; object-fit: contain;" />` : ''}
+          <div>
+            <div style="font-size: 11px; color: #6b7280;">
+              See a complete breakdown of every matchup in your league at
+            </div>
+            <div style="font-size: 13px; font-weight: bold; color: #facc15;">
+              ultimatefantasydashboard.com/matchups
+            </div>
+          </div>
         </div>
       </div>
     `
@@ -3620,8 +3657,9 @@ async function downloadStatComparison() {
       }
     }
     
-    // Load both avatars
-    const [team1AvatarBase64, team2AvatarBase64] = await Promise.all([
+    // Load UFD logo and both avatars
+    const [ufdLogoBase64, team1AvatarBase64, team2AvatarBase64] = await Promise.all([
+      loadUFDLogo(),
       loadAvatarAsBase64(selectedMatchup.value.team1_avatar, selectedMatchup.value.team1_name, team1Color, team1ColorLight),
       loadAvatarAsBase64(selectedMatchup.value.team2_avatar, selectedMatchup.value.team2_name, team2Color, team2ColorLight)
     ])
@@ -3689,6 +3727,11 @@ async function downloadStatComparison() {
     const team2Leads = historicalMatchups.value.team2Wins > historicalMatchups.value.team1Wins
     
     container.innerHTML = `
+      <!-- UFD Logo Header -->
+      <div style="text-align: center; margin-bottom: 16px;">
+        ${ufdLogoBase64 ? `<img src="${ufdLogoBase64}" style="width: 60px; height: 60px; object-fit: contain;" />` : ''}
+      </div>
+      
       <!-- Header with Title and Both Logos -->
       <div style="text-align: center; margin-bottom: 24px;">
         <div style="font-size: 22px; font-weight: 800; color: #f7f7ff; margin-bottom: 16px;">
@@ -3769,11 +3812,16 @@ async function downloadStatComparison() {
       
       <!-- Footer with Promo -->
       <div style="text-align: center; padding-top: 16px; border-top: 1px solid rgba(58, 61, 82, 0.5);">
-        <div style="font-size: 11px; color: #6b7280; margin-bottom: 4px;">
-          See a complete breakdown of every matchup in your league at
-        </div>
-        <div style="font-size: 13px; font-weight: bold; color: #facc15;">
-          ultimatefantasydashboard.com/matchups
+        <div style="display: flex; align-items: center; justify-content: center; gap: 12px;">
+          ${ufdLogoBase64 ? `<img src="${ufdLogoBase64}" style="width: 32px; height: 32px; object-fit: contain;" />` : ''}
+          <div>
+            <div style="font-size: 11px; color: #6b7280;">
+              See a complete breakdown of every matchup in your league at
+            </div>
+            <div style="font-size: 13px; font-weight: bold; color: #facc15;">
+              ultimatefantasydashboard.com/matchups
+            </div>
+          </div>
         </div>
       </div>
     `
