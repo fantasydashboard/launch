@@ -3916,10 +3916,10 @@ function showWeeklyTierBreak(player: RankedPlayer & { weeklyTier?: number }, ind
 // Row class for This Week tab
 function getWeeklyRowClass(player: RankedPlayer): string {
   if (isMyPlayer(player.player_id)) {
-    return 'bg-primary/10 border-l-2 border-primary'
+    return 'bg-primary/20 border-l-4 border-l-primary'
   }
   if (isFreeAgent(player.player_id)) {
-    return 'bg-cyan-500/5 border-l-2 border-cyan-400'
+    return 'bg-cyan-500/10 border-l-4 border-l-cyan-400'
   }
   return ''
 }
