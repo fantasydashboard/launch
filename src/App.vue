@@ -63,36 +63,23 @@
                   class="flex items-center gap-2 px-4 py-2 rounded-xl bg-dark-card border border-dark-border hover:border-primary/50 transition-colors min-w-[220px]"
                 >
                   <template v-if="leagueStore.currentLeague">
-                    <svg class="w-5 h-5 flex-shrink-0" viewBox="0 0 24 24" fill="none">
-                      <defs>
-                        <linearGradient :id="'shield-grad-current'" x1="0%" y1="0%" x2="0%" y2="100%">
-                          <stop offset="0%" :stop-color="getLeagueTypeGradient(leagueStore.currentLeague.settings?.type).light"/>
-                          <stop offset="100%" :stop-color="getLeagueTypeGradient(leagueStore.currentLeague.settings?.type).dark"/>
-                        </linearGradient>
-                      </defs>
-                      <path d="M12 2L3 7v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V7l-9-5z" 
-                        fill="url(#shield-grad-current)" 
-                        fill-opacity="0.25"/>
-                      <path d="M12 2L3 7v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V7l-9-5z" 
-                        fill="none"
-                        :stroke="getLeagueTypeColor(leagueStore.currentLeague.settings?.type)" 
-                        stroke-width="1.5"/>
-                      <path d="M12 7l1.5 3 3.5.5-2.5 2.5.5 3.5-3-1.5-3 1.5.5-3.5-2.5-2.5 3.5-.5z" 
-                        :fill="getLeagueTypeColor(leagueStore.currentLeague.settings?.type)"
-                        fill-opacity="0.8"/>
-                    </svg>
+                    <div class="w-5 h-5 flex-shrink-0 rounded flex items-center justify-center" :style="{ background: getLeagueTypeColor(leagueStore.currentLeague.settings?.type) }">
+                      <svg class="w-3 h-3 text-white" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
+                      </svg>
+                    </div>
                     <span class="text-dark-text font-medium truncate">
                       {{ leagueStore.currentLeague.name }}
                     </span>
                   </template>
                   <template v-else-if="leagueStore.isDemoMode">
-                    <div class="w-6 h-6 rounded-full bg-cyan-500/20 flex items-center justify-center flex-shrink-0">
-                      <span class="text-sm">👀</span>
+                    <div class="w-5 h-5 rounded-full bg-cyan-500/20 flex items-center justify-center flex-shrink-0">
+                      <span class="text-xs">👀</span>
                     </div>
                     <span class="text-cyan-400 font-medium">Demo Mode</span>
                   </template>
                   <template v-else>
-                    <div class="w-6 h-6 rounded-full bg-primary/20 flex items-center justify-center flex-shrink-0">
+                    <div class="w-5 h-5 rounded-full bg-primary/20 flex items-center justify-center flex-shrink-0">
                       <svg class="w-3 h-3 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
                       </svg>
@@ -125,24 +112,11 @@
                         @click="selectLeague(league.league_id)"
                         class="flex-1 flex items-center gap-3 px-3 py-2"
                       >
-                        <svg class="w-6 h-6 flex-shrink-0" viewBox="0 0 24 24" fill="none">
-                          <defs>
-                            <linearGradient :id="'shield-grad-' + index" x1="0%" y1="0%" x2="0%" y2="100%">
-                              <stop offset="0%" :stop-color="getLeagueTypeGradient(league.league_type).light"/>
-                              <stop offset="100%" :stop-color="getLeagueTypeGradient(league.league_type).dark"/>
-                            </linearGradient>
-                          </defs>
-                          <path d="M12 2L3 7v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V7l-9-5z" 
-                            :fill="'url(#shield-grad-' + index + ')'" 
-                            fill-opacity="0.25"/>
-                          <path d="M12 2L3 7v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V7l-9-5z" 
-                            fill="none"
-                            :stroke="getLeagueTypeColor(league.league_type)" 
-                            stroke-width="1.5"/>
-                          <path d="M12 7l1.5 3 3.5.5-2.5 2.5.5 3.5-3-1.5-3 1.5.5-3.5-2.5-2.5 3.5-.5z" 
-                            :fill="getLeagueTypeColor(league.league_type)"
-                            fill-opacity="0.8"/>
-                        </svg>
+                        <div class="w-5 h-5 flex-shrink-0 rounded flex items-center justify-center" :style="{ background: getLeagueTypeColor(league.league_type) }">
+                          <svg class="w-3 h-3 text-white" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
+                          </svg>
+                        </div>
                         <div class="flex-1 text-left min-w-0">
                           <div class="font-medium text-dark-text text-sm truncate">{{ league.league_name }}</div>
                           <div class="text-xs text-dark-textMuted">{{ league.season }} • {{ league.sleeper_username }}</div>
@@ -210,42 +184,27 @@
                   <div v-if="leagueStore.savedLeagues.length > 0" class="border-t border-dark-border/50 px-3 py-2">
                     <div class="flex items-center justify-center gap-4 text-xs text-dark-textMuted">
                       <div class="flex items-center gap-1.5">
-                        <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none">
-                          <defs>
-                            <linearGradient id="legend-redraft" x1="0%" y1="0%" x2="0%" y2="100%">
-                              <stop offset="0%" stop-color="#22d3ee"/>
-                              <stop offset="100%" stop-color="#0891b2"/>
-                            </linearGradient>
-                          </defs>
-                          <path d="M12 2L3 7v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V7l-9-5z" fill="url(#legend-redraft)" fill-opacity="0.3" stroke="#06b6d4" stroke-width="1.5"/>
-                          <path d="M12 7l1.5 3 3.5.5-2.5 2.5.5 3.5-3-1.5-3 1.5.5-3.5-2.5-2.5 3.5-.5z" fill="#06b6d4" fill-opacity="0.8"/>
-                        </svg>
+                        <div class="w-3.5 h-3.5 rounded flex items-center justify-center" style="background: #06b6d4;">
+                          <svg class="w-2 h-2 text-white" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
+                          </svg>
+                        </div>
                         <span>Redraft</span>
                       </div>
                       <div class="flex items-center gap-1.5">
-                        <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none">
-                          <defs>
-                            <linearGradient id="legend-keeper" x1="0%" y1="0%" x2="0%" y2="100%">
-                              <stop offset="0%" stop-color="#fb923c"/>
-                              <stop offset="100%" stop-color="#ea580c"/>
-                            </linearGradient>
-                          </defs>
-                          <path d="M12 2L3 7v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V7l-9-5z" fill="url(#legend-keeper)" fill-opacity="0.3" stroke="#f97316" stroke-width="1.5"/>
-                          <path d="M12 7l1.5 3 3.5.5-2.5 2.5.5 3.5-3-1.5-3 1.5.5-3.5-2.5-2.5 3.5-.5z" fill="#f97316" fill-opacity="0.8"/>
-                        </svg>
+                        <div class="w-3.5 h-3.5 rounded flex items-center justify-center" style="background: #f97316;">
+                          <svg class="w-2 h-2 text-white" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
+                          </svg>
+                        </div>
                         <span>Keeper</span>
                       </div>
                       <div class="flex items-center gap-1.5">
-                        <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none">
-                          <defs>
-                            <linearGradient id="legend-dynasty" x1="0%" y1="0%" x2="0%" y2="100%">
-                              <stop offset="0%" stop-color="#c084fc"/>
-                              <stop offset="100%" stop-color="#7c3aed"/>
-                            </linearGradient>
-                          </defs>
-                          <path d="M12 2L3 7v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V7l-9-5z" fill="url(#legend-dynasty)" fill-opacity="0.3" stroke="#a855f7" stroke-width="1.5"/>
-                          <path d="M12 7l1.5 3 3.5.5-2.5 2.5.5 3.5-3-1.5-3 1.5.5-3.5-2.5-2.5 3.5-.5z" fill="#a855f7" fill-opacity="0.8"/>
-                        </svg>
+                        <div class="w-3.5 h-3.5 rounded flex items-center justify-center" style="background: #a855f7;">
+                          <svg class="w-2 h-2 text-white" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
+                          </svg>
+                        </div>
                         <span>Dynasty</span>
                       </div>
                     </div>
@@ -429,14 +388,6 @@ function getLeagueTypeColor(leagueType: number | undefined): string {
     case 2: return '#a855f7' // Purple for dynasty
     case 1: return '#f97316' // Orange for keeper
     default: return '#06b6d4' // Cyan/turquoise for redraft
-  }
-}
-
-function getLeagueTypeGradient(leagueType: number | undefined): { light: string, dark: string } {
-  switch (leagueType) {
-    case 2: return { light: '#c084fc', dark: '#7c3aed' } // Purple gradient for dynasty
-    case 1: return { light: '#fb923c', dark: '#ea580c' } // Orange gradient for keeper
-    default: return { light: '#22d3ee', dark: '#0891b2' } // Cyan gradient for redraft
   }
 }
 
