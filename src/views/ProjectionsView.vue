@@ -1097,12 +1097,51 @@
       <!-- ==================== REDRAFT MODE: This Week ==================== -->
       <template v-else>
       
-      <!-- Weekly Ranking Customizer -->
-      <WeeklyRankingCustomizer
-        v-if="!weeklyHasCustomRankings"
-        v-model="weeklyRankingFactors"
-        @apply="loadWeeklyProjections"
-      />
+      <!-- Custom Rankings Indicator OR Customize Panel Header -->
+      <div v-if="weeklyHasCustomRankings" class="card bg-primary/10 border-primary/30">
+        <div class="card-body py-4">
+          <div class="flex items-center justify-between">
+            <div class="flex items-center gap-3">
+              <span class="text-2xl">✓</span>
+              <div>
+                <h3 class="font-semibold text-primary">Using Custom Weekly Rankings</h3>
+                <p class="text-sm text-dark-textMuted">
+                  Week {{ currentWeek }} • {{ weeklyCustomRankingsCount }} players loaded
+                </p>
+              </div>
+            </div>
+            <div class="flex items-center gap-3">
+              <button @click="clearWeeklyCustomRankings" class="px-4 py-2 rounded-lg bg-dark-card hover:bg-dark-border/50 text-dark-text font-medium transition-colors">
+                Reset to Default Rankings
+              </button>
+              <button @click="showWeeklyProjectionSettings = true" class="p-2 rounded-lg hover:bg-dark-border/50 transition-colors" title="Weekly Projection Settings">
+                <svg class="w-5 h-5 text-dark-textMuted" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                </svg>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Weekly Ranking Customizer with Settings Gear -->
+      <div v-if="!weeklyHasCustomRankings" class="relative">
+        <button 
+          @click="showWeeklyProjectionSettings = true" 
+          class="absolute top-4 right-4 p-2 rounded-lg hover:bg-dark-border/50 transition-colors z-10" 
+          title="Weekly Projection Settings"
+        >
+          <svg class="w-5 h-5 text-dark-textMuted" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+          </svg>
+        </button>
+        <WeeklyRankingCustomizer
+          v-model="weeklyRankingFactors"
+          @apply="loadWeeklyProjections"
+        />
+      </div>
       
       <!-- Header Card -->
       <div class="card">
@@ -1113,77 +1152,12 @@
               <div>
                 <h2 class="text-xl font-bold text-dark-text">Week {{ currentWeek }} Start/Sit Helper</h2>
                 <p class="text-sm text-dark-textMuted mt-1">
-                  <span v-if="weeklyHasCustomRankings">Using custom weekly rankings</span>
+                  <span v-if="weeklyHasCustomRankings" class="text-primary">✓ Using custom weekly rankings</span>
                   <span v-else-if="weeklyProjectionsLoaded" class="text-green-400">✓ Using Sleeper weekly projections</span>
                   <span v-else-if="weeklyProjectionsLoading" class="text-primary animate-pulse">Loading Sleeper projections...</span>
                   <span v-else>Using season PPG averages</span>
                 </p>
               </div>
-            </div>
-            
-            <!-- CSV Upload for Weekly Rankings -->
-            <div class="flex items-center gap-3">
-              <button @click="showWeeklyCSVInstructions = !showWeeklyCSVInstructions" class="btn btn-ghost text-sm text-dark-textMuted">
-                📋 CSV Format
-              </button>
-              <label class="btn btn-outline text-sm cursor-pointer">
-                <span>📤 Upload Weekly CSV</span>
-                <input type="file" accept=".csv" class="hidden" @change="handleWeeklyCSVUpload" />
-              </label>
-              <button v-if="weeklyHasCustomRankings" @click="clearWeeklyCustomRankings" class="btn btn-ghost text-sm text-red-400">
-                Clear Custom
-              </button>
-            </div>
-          </div>
-          
-          <!-- CSV Instructions (collapsible) -->
-          <div v-if="showWeeklyCSVInstructions" class="mt-4 p-4 bg-dark-border/20 rounded-lg">
-            <h4 class="font-bold text-dark-text mb-2">📄 CSV Format Instructions</h4>
-            <p class="text-sm text-dark-textMuted mb-3">
-              Your CSV file should have the following columns (extra columns will be ignored):
-            </p>
-            <div class="overflow-x-auto">
-              <table class="text-sm border border-dark-border/30 rounded">
-                <thead class="bg-dark-border/30">
-                  <tr>
-                    <th class="px-3 py-2 text-left text-dark-textMuted">Column</th>
-                    <th class="px-3 py-2 text-left text-dark-textMuted">Required</th>
-                    <th class="px-3 py-2 text-left text-dark-textMuted">Description</th>
-                  </tr>
-                </thead>
-                <tbody class="divide-y divide-dark-border/30">
-                  <tr>
-                    <td class="px-3 py-2 font-mono text-primary">Overall Rank</td>
-                    <td class="px-3 py-2 text-yellow-400">For FLEX</td>
-                    <td class="px-3 py-2 text-dark-textMuted">Player's overall rank across all positions (used for FLEX sorting)</td>
-                  </tr>
-                  <tr>
-                    <td class="px-3 py-2 font-mono text-primary">Position Rank</td>
-                    <td class="px-3 py-2 text-green-400">Yes</td>
-                    <td class="px-3 py-2 text-dark-textMuted">Player's rank within their position (e.g., RB1, RB2)</td>
-                  </tr>
-                  <tr>
-                    <td class="px-3 py-2 font-mono text-primary">Player Name</td>
-                    <td class="px-3 py-2 text-green-400">Yes</td>
-                    <td class="px-3 py-2 text-dark-textMuted">Full player name (e.g., "Patrick Mahomes" or "P. Mahomes")</td>
-                  </tr>
-                  <tr>
-                    <td class="px-3 py-2 font-mono text-primary">Tier</td>
-                    <td class="px-3 py-2 text-green-400">Yes</td>
-                    <td class="px-3 py-2 text-dark-textMuted">Tier grouping (1, 2, 3, etc.) - shows tier breaks in the list</td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-            <div class="mt-3 p-3 bg-dark-bg rounded text-xs font-mono text-dark-textMuted">
-              <div class="text-dark-textSecondary mb-1">Example CSV:</div>
-              Overall Rank,Position Rank,Player Name,Tier<br>
-              1,1,Patrick Mahomes,1<br>
-              2,1,Saquon Barkley,1<br>
-              3,2,Josh Allen,1<br>
-              4,2,Derrick Henry,1<br>
-              5,1,Ja'Marr Chase,1<br>
-              ...
             </div>
           </div>
         </div>
@@ -1647,6 +1621,127 @@
 
         <div class="px-6 py-4 border-t border-dark-border/30 flex justify-end">
           <button @click="showProjectionSettings = false" class="px-4 py-2 rounded-lg bg-dark-border hover:bg-dark-border/70 text-dark-text font-medium transition-colors">
+            Close
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Weekly Projection Settings Modal -->
+    <div v-if="showWeeklyProjectionSettings" class="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4" @click.self="showWeeklyProjectionSettings = false">
+      <div class="bg-dark-card rounded-2xl border border-dark-border max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+        <div class="px-6 py-4 border-b border-dark-border/50 flex items-center justify-between sticky top-0 bg-dark-card">
+          <h2 class="text-xl font-bold text-dark-text flex items-center gap-2">
+            <svg class="w-6 h-6 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+            </svg>
+            Weekly Projection Settings
+          </h2>
+          <button @click="showWeeklyProjectionSettings = false" class="p-2 hover:bg-dark-border/50 rounded-lg transition-colors">
+            <svg class="w-5 h-5 text-dark-textMuted" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+
+        <div class="p-6 space-y-6">
+          <!-- Upload Custom Rankings Section -->
+          <div class="bg-dark-bg/50 rounded-xl p-4 border border-dark-border/50">
+            <h3 class="font-semibold text-dark-text flex items-center gap-2 mb-3">
+              <span class="text-xl">📤</span> Upload Weekly Rankings
+            </h3>
+            <p class="text-sm text-dark-textMuted mb-4">
+              Import this week's rankings from your favorite fantasy analyst. Upload a CSV file to override the default projections for Week {{ currentWeek }}.
+            </p>
+            
+            <div class="flex flex-col sm:flex-row items-start sm:items-center gap-3 mb-4">
+              <label class="px-4 py-2 rounded-lg bg-primary hover:bg-primary/90 text-gray-900 font-medium cursor-pointer transition-colors flex items-center gap-2">
+                <span>📁</span>
+                <span>Choose CSV File</span>
+                <input type="file" accept=".csv" @change="handleWeeklyCSVUpload" class="hidden" />
+              </label>
+            </div>
+
+            <div class="text-xs text-dark-textMuted space-y-1 p-3 bg-dark-border/20 rounded-lg">
+              <p class="font-medium text-dark-textSecondary">Required CSV Columns:</p>
+              <ul class="list-disc list-inside ml-2 space-y-0.5">
+                <li><span class="text-primary">Position Rank</span> - Rank within position (1, 2, 3...)</li>
+                <li><span class="text-primary">Player Name</span> - Full player name</li>
+                <li><span class="text-primary">Tier</span> - Tier grouping (1, 2, 3...)</li>
+              </ul>
+              <p class="mt-2">Optional: <span class="text-yellow-400">Overall Rank</span> for FLEX sorting</p>
+            </div>
+
+            <div class="mt-3 p-3 bg-dark-bg rounded text-xs font-mono text-dark-textMuted">
+              <div class="text-dark-textSecondary mb-1">Example CSV:</div>
+              Overall Rank,Position Rank,Player Name,Tier<br>
+              1,1,Patrick Mahomes,1<br>
+              2,1,Saquon Barkley,1<br>
+              3,2,Josh Allen,1<br>
+              ...
+            </div>
+          </div>
+
+          <!-- Request Analyst Format Section -->
+          <div class="bg-dark-bg/50 rounded-xl p-4 border border-dark-border/50">
+            <h3 class="font-semibold text-dark-text flex items-center gap-2 mb-3">
+              <span class="text-xl">🎯</span> Request Analyst Format Support
+            </h3>
+            <p class="text-sm text-dark-textMuted mb-4">
+              Want to use rankings from a specific fantasy analyst? Submit a request and we may add automatic format detection for their CSV exports.
+            </p>
+
+            <div v-if="!weeklyAnalystRequestSubmitted" class="space-y-3">
+              <div>
+                <label class="block text-sm text-dark-textMuted mb-1">Analyst / Creator Name</label>
+                <input 
+                  v-model="weeklyAnalystRequestName" 
+                  type="text" 
+                  placeholder="e.g., Fantasy Pros, JJ Zachariason, etc."
+                  class="w-full px-4 py-2 rounded-lg bg-dark-border/30 border border-dark-border text-dark-text placeholder-dark-textMuted focus:outline-none focus:ring-2 focus:ring-primary/50"
+                />
+              </div>
+              <div>
+                <label class="block text-sm text-dark-textMuted mb-1">Example CSV (Optional)</label>
+                <div class="flex items-center gap-2">
+                  <label class="px-4 py-2 rounded-lg bg-dark-border/50 hover:bg-dark-border/70 text-dark-textMuted font-medium cursor-pointer transition-colors flex items-center gap-2 w-fit">
+                    <span>📎</span>
+                    <span>{{ weeklyAnalystSampleFileName || 'Attach Sample File' }}</span>
+                    <input type="file" accept=".csv" @change="handleWeeklyAnalystSampleUpload" class="hidden" />
+                  </label>
+                  <span v-if="weeklyAnalystSampleFileName" class="text-green-400 text-sm">✓</span>
+                </div>
+              </div>
+              <button 
+                @click="submitWeeklyAnalystRequest"
+                :disabled="!weeklyAnalystRequestName.trim()"
+                class="px-4 py-2 rounded-lg bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-400 font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Submit Request
+              </button>
+            </div>
+
+            <div v-else class="p-4 bg-green-500/10 rounded-lg border border-green-500/30">
+              <p class="text-green-400 font-medium flex items-center gap-2">
+                <span>✓</span> Request submitted for {{ weeklyAnalystRequestName }}
+              </p>
+              <p class="text-sm text-dark-textMuted mt-1">
+                We'll review your request. This does not guarantee the format will be added.
+              </p>
+            </div>
+
+            <div class="mt-4 p-3 bg-yellow-500/10 rounded-lg border border-yellow-500/20">
+              <p class="text-xs text-yellow-400/80">
+                <strong>Note:</strong> Submitting a request is the first step. Not all submissions will be added. 
+                You will still need to manually upload ranking files each week - we will never provide a creator's rankings ourselves.
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <div class="px-6 py-4 border-t border-dark-border/30 flex justify-end">
+          <button @click="showWeeklyProjectionSettings = false" class="px-4 py-2 rounded-lg bg-dark-border hover:bg-dark-border/70 text-dark-text font-medium transition-colors">
             Close
           </button>
         </div>
@@ -3604,6 +3699,7 @@ const tradePartners = computed(() => {
 // Weekly custom rankings state
 const weeklyHasCustomRankings = ref(false)
 const weeklyCustomRankings = ref<Map<string, { rank: number, tier: number, overallRank?: number }>>(new Map())
+const weeklyCustomRankingsCount = ref(0)
 
 // Sleeper weekly projections
 const sleeperWeeklyProjections = ref<Map<string, number>>(new Map())
@@ -3618,6 +3714,12 @@ const nflSchedule = ref<any[]>([])
 
 // CSV instructions toggle
 const showWeeklyCSVInstructions = ref(false)
+
+// Weekly projection settings modal
+const showWeeklyProjectionSettings = ref(false)
+const weeklyAnalystRequestName = ref('')
+const weeklyAnalystSampleFileName = ref<string | null>(null)
+const weeklyAnalystRequestSubmitted = ref(false)
 
 // Position selector for This Week tab
 const selectedWeeklyPosition = ref<string>('QB')
@@ -4081,6 +4183,47 @@ function closeUnmatchedModal() {
 function applyWeeklyRankings(rankings: Map<string, { rank: number, tier: number }>) {
   weeklyCustomRankings.value = rankings
   weeklyHasCustomRankings.value = rankings.size > 0
+  weeklyCustomRankingsCount.value = rankings.size
+  showWeeklyProjectionSettings.value = false // Close modal after upload
+}
+
+// Handle weekly analyst sample file upload
+function handleWeeklyAnalystSampleUpload(e: Event) {
+  const file = (e.target as HTMLInputElement).files?.[0]
+  if (file) {
+    weeklyAnalystSampleFileName.value = file.name
+  }
+}
+
+// Submit weekly analyst format request to Supabase
+async function submitWeeklyAnalystRequest() {
+  if (!weeklyAnalystRequestName.value.trim()) return
+  
+  const authStore = useAuthStore()
+  
+  try {
+    const { error } = await supabase
+      .from('analyst_requests')
+      .insert({
+        analyst_name: weeklyAnalystRequestName.value.trim(),
+        user_email: authStore.user?.email || null,
+        sample_file_name: weeklyAnalystSampleFileName.value
+      })
+    
+    if (error) throw error
+    
+    weeklyAnalystRequestSubmitted.value = true
+    
+    // Reset after 10 seconds so they can submit another
+    setTimeout(() => {
+      weeklyAnalystRequestSubmitted.value = false
+      weeklyAnalystRequestName.value = ''
+      weeklyAnalystSampleFileName.value = null
+    }, 10000)
+  } catch (err) {
+    console.error('Failed to submit analyst request:', err)
+    alert('Failed to submit request. Please try again.')
+  }
 }
 
 // Pending ROS rankings for modal
@@ -4105,6 +4248,7 @@ function applyRosRankingsFromModal(rankings: Map<string, { rank: number, tier: n
 function clearWeeklyCustomRankings() {
   weeklyCustomRankings.value = new Map()
   weeklyHasCustomRankings.value = false
+  weeklyCustomRankingsCount.value = 0
 }
 
 // Get players for a position with weekly projection and tier info
