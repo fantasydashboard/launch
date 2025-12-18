@@ -787,13 +787,13 @@
                         'font-semibold',
                         getTeamColorClass(selectedMatchup.team1_roster_id, 'text')
                       ]">
-                        ◀ {{ selectedMatchup.team1_name.split(' ')[0] }}
+                        ◀ {{ selectedMatchup.team1_name }}
                       </div>
                       <div v-else-if="stat.team2Better" :class="[
                         'font-semibold',
                         getTeamColorClass(selectedMatchup.team2_roster_id, 'text')
                       ]">
-                        {{ selectedMatchup.team2_name.split(' ')[0] }} ▶
+                        {{ selectedMatchup.team2_name }} ▶
                       </div>
                       <div v-else class="text-dark-textMuted">
                         Even
@@ -829,14 +829,14 @@
                   <div class="text-3xl font-bold" :class="historicalMatchups.team1Wins > historicalMatchups.team2Wins ? 'text-green-400' : 'text-dark-textSecondary'">
                     {{ historicalMatchups.team1Wins }}
                   </div>
-                  <div class="text-xs text-dark-textMuted">{{ selectedMatchup.team1_name.split(' ')[0] }}</div>
+                  <div class="text-xs text-dark-textMuted">{{ selectedMatchup.team1_name }}</div>
                 </div>
                 <div class="text-2xl text-dark-textMuted">-</div>
                 <div class="text-center">
                   <div class="text-3xl font-bold" :class="historicalMatchups.team2Wins > historicalMatchups.team1Wins ? 'text-green-400' : 'text-dark-textSecondary'">
                     {{ historicalMatchups.team2Wins }}
                   </div>
-                  <div class="text-xs text-dark-textMuted">{{ selectedMatchup.team2_name.split(' ')[0] }}</div>
+                  <div class="text-xs text-dark-textMuted">{{ selectedMatchup.team2_name }}</div>
                 </div>
               </div>
               <div v-if="historicalMatchups.ties > 0" class="text-xs text-dark-textMuted mt-2">
@@ -864,10 +864,10 @@
                 </div>
                 <div class="grid grid-cols-2 gap-2">
                   <div class="text-sm" :class="game.team1Won ? 'text-green-400 font-bold' : 'text-dark-textSecondary'">
-                    {{ selectedMatchup.team1_name.split(' ')[0] }}: {{ game.team1Score.toFixed(1) }}
+                    {{ selectedMatchup.team1_name }}: {{ game.team1Score.toFixed(1) }}
                   </div>
                   <div class="text-sm text-right" :class="game.team2Won ? 'text-green-400 font-bold' : 'text-dark-textSecondary'">
-                    {{ selectedMatchup.team2_name.split(' ')[0] }}: {{ game.team2Score.toFixed(1) }}
+                    {{ selectedMatchup.team2_name }}: {{ game.team2Score.toFixed(1) }}
                   </div>
                 </div>
               </div>
@@ -1917,7 +1917,7 @@ const weekStats = computed(() => {
     const margin = Math.abs(matchup.team1_points - matchup.team2_points)
     if (margin < closestMargin) {
       closestMargin = margin
-      closestTeams = `${matchup.team1_name.split(' ')[0]} vs ${matchup.team2_name.split(' ')[0]}`
+      closestTeams = `${matchup.team1_name} vs ${matchup.team2_name}`
     }
   })
   
@@ -2452,7 +2452,7 @@ function buildScoutingReports(team1Stats: any, team2Stats: any, team1RosterId: n
   const team1Strengths: string[] = []
   const team1Weaknesses: string[] = []
   
-  if (team1Stats.avgPPG > 110) team1Strengths.push('High scoring offense')
+  if (team1Stats.avgPPG > 110) team1Strengths.push('Strong scoring average')
   if (team1Stats.stdDev < 15) team1Strengths.push('Consistent week-to-week')
   if (team1Stats.wins > team1Stats.losses + 2) team1Strengths.push('Strong win record')
   if (team1Stats.highScore > 140) team1Strengths.push('High scoring ceiling')
@@ -2465,7 +2465,7 @@ function buildScoutingReports(team1Stats: any, team2Stats: any, team1RosterId: n
   const team2Strengths: string[] = []
   const team2Weaknesses: string[] = []
   
-  if (team2Stats.avgPPG > 110) team2Strengths.push('High scoring offense')
+  if (team2Stats.avgPPG > 110) team2Strengths.push('Strong scoring average')
   if (team2Stats.stdDev < 15) team2Strengths.push('Consistent week-to-week')
   if (team2Stats.wins > team2Stats.losses + 2) team2Strengths.push('Strong win record')
   if (team2Stats.highScore > 140) team2Strengths.push('High scoring ceiling')
@@ -3093,12 +3093,14 @@ async function downloadMatchupPreview() {
     const team2AvatarHtml = `<img src="${team2AvatarBase64}" style="width: 48px; height: 48px; border-radius: 50%; border: 3px solid ${team2Color};" />`
     
     container.innerHTML = `
-      <!-- Header with Logo and Title -->
-      <div style="display: flex; align-items: center; gap: 16px; margin-bottom: 8px;">
-        ${ufdLogoBase64 ? `<img src="${ufdLogoBase64}" style="width: 56px; height: 56px; object-fit: contain;" />` : ''}
-        <div>
-          <div style="font-size: 26px; font-weight: 800; color: #f7f7ff;">Matchup Preview</div>
-          <div style="font-size: 14px; color: #9ca3af;">${leagueName} • Week ${selectedWeek.value}</div>
+      <!-- Header with Logo and Title - Centered as Group -->
+      <div style="display: flex; justify-content: center; margin-bottom: 16px;">
+        <div style="display: flex; align-items: center; gap: 16px;">
+          ${ufdLogoBase64 ? `<img src="${ufdLogoBase64}" style="width: 56px; height: 56px; object-fit: contain;" />` : ''}
+          <div>
+            <div style="font-size: 26px; font-weight: 800; color: #f7f7ff;">Matchup Preview</div>
+            <div style="font-size: 14px; color: #9ca3af;">${leagueName} • Week ${selectedWeek.value}</div>
+          </div>
         </div>
       </div>
       
@@ -3322,8 +3324,6 @@ async function downloadFullMatchupAnalysis() {
     
     const team1Name = selectedMatchup.value.team1_name
     const team2Name = selectedMatchup.value.team2_name
-    const team1Short = selectedMatchup.value.team1_name.split(' ')[0].substring(0, 12)
-    const team2Short = selectedMatchup.value.team2_name.split(' ')[0].substring(0, 12)
     
     // Check if user's team is involved
     const isTeam1MyTeam = isMyTeam(selectedMatchup.value.team1_roster_id)
@@ -3402,10 +3402,10 @@ async function downloadFullMatchupAnalysis() {
         ${team2Points}
         ${xLabels}
         ${yLabels}
-        <circle cx="${chartWidth / 2 - 80}" cy="16" r="8" fill="${team1Color}"/>
-        <text x="${chartWidth / 2 - 62}" y="21" font-size="15" font-weight="700" fill="#d1d5db">${team1Short}</text>
-        <circle cx="${chartWidth / 2 + 50}" cy="16" r="8" fill="${team2Color}"/>
-        <text x="${chartWidth / 2 + 68}" y="21" font-size="15" font-weight="700" fill="#d1d5db">${team2Short}</text>
+        <circle cx="70" cy="16" r="8" fill="${team1Color}"/>
+        <text x="88" y="21" font-size="13" font-weight="700" fill="#d1d5db">${team1Name}</text>
+        <circle cx="${chartWidth - 70}" cy="16" r="8" fill="${team2Color}"/>
+        <text x="${chartWidth - 52}" y="21" font-size="13" font-weight="700" fill="#d1d5db" text-anchor="start">${team2Name}</text>
       </svg>
     `
     
@@ -3478,12 +3478,14 @@ async function downloadFullMatchupAnalysis() {
     }
     
     container.innerHTML = `
-      <!-- Header with Logo and Title -->
-      <div style="display: flex; align-items: center; gap: 16px; margin-bottom: 8px;">
-        ${ufdLogoBase64 ? `<img src="${ufdLogoBase64}" style="width: 56px; height: 56px; object-fit: contain;" />` : ''}
-        <div>
-          <div style="font-size: 26px; font-weight: 800; color: #f7f7ff;">Win Probability</div>
-          <div style="font-size: 14px; color: #9ca3af;">${leagueName} • Week ${selectedWeek.value}</div>
+      <!-- Header with Logo and Title - Centered as Group -->
+      <div style="display: flex; justify-content: center; margin-bottom: 16px;">
+        <div style="display: flex; align-items: center; gap: 16px;">
+          ${ufdLogoBase64 ? `<img src="${ufdLogoBase64}" style="width: 56px; height: 56px; object-fit: contain;" />` : ''}
+          <div>
+            <div style="font-size: 26px; font-weight: 800; color: #f7f7ff;">Win Probability</div>
+            <div style="font-size: 14px; color: #9ca3af;">${leagueName} • Week ${selectedWeek.value}</div>
+          </div>
         </div>
       </div>
       
@@ -3714,10 +3716,10 @@ async function downloadStatComparison() {
           </div>
           <div style="display: flex; justify-content: space-between;">
             <div style="font-size: 13px; ${game.team1Won ? `color: #4ade80; font-weight: bold;` : 'color: #9ca3af;'}">
-              ${selectedMatchup.value.team1_name.split(' ')[0]}: ${game.team1Score.toFixed(1)}
+              ${selectedMatchup.value.team1_name}: ${game.team1Score.toFixed(1)}
             </div>
             <div style="font-size: 13px; ${game.team2Won ? `color: #4ade80; font-weight: bold;` : 'color: #9ca3af;'}">
-              ${selectedMatchup.value.team2_name.split(' ')[0]}: ${game.team2Score.toFixed(1)}
+              ${selectedMatchup.value.team2_name}: ${game.team2Score.toFixed(1)}
             </div>
           </div>
         </div>
@@ -3729,12 +3731,14 @@ async function downloadStatComparison() {
     const team2Leads = historicalMatchups.value.team2Wins > historicalMatchups.value.team1Wins
     
     container.innerHTML = `
-      <!-- Header with Logo and Title -->
-      <div style="display: flex; align-items: center; gap: 16px; margin-bottom: 8px;">
-        ${ufdLogoBase64 ? `<img src="${ufdLogoBase64}" style="width: 56px; height: 56px; object-fit: contain;" />` : ''}
-        <div>
-          <div style="font-size: 26px; font-weight: 800; color: #f7f7ff;">Matchup Comparison</div>
-          <div style="font-size: 14px; color: #9ca3af;">${leagueName} • Week ${selectedWeek.value}</div>
+      <!-- Header with Logo and Title - Centered as Group -->
+      <div style="display: flex; justify-content: center; margin-bottom: 16px;">
+        <div style="display: flex; align-items: center; gap: 16px;">
+          ${ufdLogoBase64 ? `<img src="${ufdLogoBase64}" style="width: 56px; height: 56px; object-fit: contain;" />` : ''}
+          <div>
+            <div style="font-size: 26px; font-weight: 800; color: #f7f7ff;">Matchup Comparison</div>
+            <div style="font-size: 14px; color: #9ca3af;">${leagueName} • Week ${selectedWeek.value}</div>
+          </div>
         </div>
       </div>
       
@@ -3765,9 +3769,9 @@ async function downloadStatComparison() {
           <thead>
             <tr style="font-size: 11px; color: #6b7280; border-bottom: 2px solid rgba(58, 61, 82, 0.8);">
               <th style="padding: 10px 8px; text-align: left; font-weight: 600;">Statistic</th>
-              <th style="padding: 10px 8px; text-align: center; font-weight: 600; color: ${team1ColorLight};">${selectedMatchup.value.team1_name.split(' ')[0]}</th>
+              <th style="padding: 10px 8px; text-align: center; font-weight: 600; color: ${team1ColorLight};">${selectedMatchup.value.team1_name}</th>
               <th style="padding: 10px 8px; text-align: center; font-weight: 600;">ADV</th>
-              <th style="padding: 10px 8px; text-align: center; font-weight: 600; color: ${team2ColorLight};">${selectedMatchup.value.team2_name.split(' ')[0]}</th>
+              <th style="padding: 10px 8px; text-align: center; font-weight: 600; color: ${team2ColorLight};">${selectedMatchup.value.team2_name}</th>
             </tr>
           </thead>
           <tbody>
@@ -3789,12 +3793,12 @@ async function downloadStatComparison() {
           <div style="display: flex; justify-content: center; align-items: center; gap: 20px;">
             <div style="text-align: center;">
               <div style="font-size: 36px; font-weight: 900; ${team1Leads ? 'color: #4ade80;' : 'color: #9ca3af;'}">${historicalMatchups.value.team1Wins}</div>
-              <div style="font-size: 11px; color: #6b7280;">${selectedMatchup.value.team1_name.split(' ')[0]}</div>
+              <div style="font-size: 11px; color: #6b7280;">${selectedMatchup.value.team1_name}</div>
             </div>
             <div style="font-size: 24px; color: #4a5568; font-weight: 900;">-</div>
             <div style="text-align: center;">
               <div style="font-size: 36px; font-weight: 900; ${team2Leads ? 'color: #4ade80;' : 'color: #9ca3af;'}">${historicalMatchups.value.team2Wins}</div>
-              <div style="font-size: 11px; color: #6b7280;">${selectedMatchup.value.team2_name.split(' ')[0]}</div>
+              <div style="font-size: 11px; color: #6b7280;">${selectedMatchup.value.team2_name}</div>
             </div>
           </div>
           ${historicalMatchups.value.ties > 0 ? `<div style="font-size: 11px; color: #6b7280; margin-top: 8px;">${historicalMatchups.value.ties} tie(s)</div>` : ''}
@@ -4144,8 +4148,8 @@ function buildWinProbChart() {
       winProbChartInstance = null
     }
     
-    const team1Name = selectedMatchup.value!.team1_name.split(' ')[0]
-    const team2Name = selectedMatchup.value!.team2_name.split(' ')[0]
+    const team1Name = selectedMatchup.value!.team1_name
+    const team2Name = selectedMatchup.value!.team2_name
     
     const baseProb = matchupAnalysis.value?.team1WinProb || 50
     const currentProb = liveWinProbability.value.team1
