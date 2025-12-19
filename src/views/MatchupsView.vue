@@ -4088,10 +4088,20 @@ function getLiveScore(rosterId: number, fallbackPoints: number): number {
 function getOptimalProjectedTotal(rosterId: number): number {
   const teamMatchup = matchupsData.value.find(m => m.roster_id === rosterId)
   if (!teamMatchup?.starters || !teamMatchup?.players) {
+    console.log(`⚠️ getOptimalProjectedTotal: No starters/players for roster ${rosterId}, falling back`)
     return getTeamProjectedTotal(rosterId)
   }
   
-  const rosterPositions = leagueStore.currentLeague?.roster_positions || []
+  // Get roster positions - fallback to inferring from starters if not available
+  let rosterPositions = leagueStore.currentLeague?.roster_positions || []
+  
+  // If roster positions not available, we can't do optimal calculation - use regular projection
+  if (rosterPositions.length === 0) {
+    console.log(`⚠️ getOptimalProjectedTotal: No roster positions available, falling back to regular projection`)
+    return getTeamProjectedTotal(rosterId)
+  }
+  
+  console.log(`🔍 Optimal calc for roster ${rosterId}: ${teamMatchup.starters.length} starters, ${rosterPositions.length} positions`)
   
   // Categorize starters by locked (played/playing) vs unlocked (yet to play)
   const lockedPlayers: { playerId: string, points: number, slotIndex: number }[] = []
@@ -4211,7 +4221,11 @@ function getOptimalProjectedTotal(rosterId: number): number {
     }
   })
   
-  return lockedPoints + optimalProjectedPoints
+  const total = lockedPoints + optimalProjectedPoints
+  console.log(`📊 Optimal for roster ${rosterId}: locked=${lockedPoints.toFixed(1)}, projected=${optimalProjectedPoints.toFixed(1)}, total=${total.toFixed(1)}`)
+  console.log(`   Locked players: ${lockedPlayers.length}, Unlocked slots: ${unlockedStarterSlots.length}, Available: ${availablePlayers.length}`)
+  
+  return total
 }
 
 // Get optimal win probability - uses optimal lineup projections
