@@ -53,8 +53,27 @@
               <span class="text-2xl">📊</span>
               <h2 class="card-title">Career Statistics</h2>
             </div>
-            <div class="text-sm text-dark-textMuted">
-              All-time regular season records (playoffs excluded)
+            <div class="flex items-center gap-4">
+              <div class="text-sm text-dark-textMuted">
+                All-time regular season records (playoffs excluded)
+              </div>
+              <div class="flex items-center gap-2">
+                <span class="text-xs text-dark-textMuted italic">Downloads in current sort order</span>
+                <button 
+                  @click="downloadCareerStats"
+                  :disabled="isDownloadingCareerStats"
+                  class="btn-primary flex items-center gap-2 text-sm"
+                >
+                  <svg v-if="!isDownloadingCareerStats" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
+                  </svg>
+                  <svg v-else class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                  {{ isDownloadingCareerStats ? 'Generating...' : 'Share League History' }}
+                </button>
+              </div>
             </div>
           </div>
         </div>
@@ -117,15 +136,6 @@
                     </span>
                   </div>
                 </th>
-                <th class="text-center py-3 px-4 font-semibold text-dark-textSecondary uppercase tracking-wider cursor-pointer hover:bg-dark-border/30 transition-colors" @click="sortBy('efficiency')">
-                  <div class="flex items-center justify-center gap-1">
-                    Efficiency
-                    <span class="inline-flex flex-col" style="font-size: 10px; line-height: 8px;">
-                      <span :class="sortColumn === 'efficiency' && sortDirection === 'asc' ? 'text-primary' : 'text-dark-textMuted'">▲</span>
-                      <span :class="sortColumn === 'efficiency' && sortDirection === 'desc' ? 'text-primary' : 'text-dark-textMuted'">▼</span>
-                    </span>
-                  </div>
-                </th>
               </tr>
             </thead>
             <tbody>
@@ -161,11 +171,6 @@
                 </td>
                 <td class="text-center py-3 px-4 text-dark-text">{{ stat.avg_ppg.toFixed(1) }}</td>
                 <td class="text-center py-3 px-4 text-dark-textMuted">{{ stat.total_pf.toFixed(0) }}</td>
-                <td class="text-center py-3 px-4">
-                  <span :class="getEfficiencyClass(stat.efficiency)">
-                    {{ (stat.efficiency * 100).toFixed(1) }}%
-                  </span>
-                </td>
               </tr>
             </tbody>
           </table>
@@ -175,9 +180,25 @@
       <!-- Season-by-Season Records -->
       <div class="card">
         <div class="card-header">
-          <div class="flex items-center gap-2">
-            <span class="text-2xl">📅</span>
-            <h2 class="card-title">Season-by-Season Records</h2>
+          <div class="flex items-center justify-between flex-wrap gap-4">
+            <div class="flex items-center gap-2">
+              <span class="text-2xl">📅</span>
+              <h2 class="card-title">Season-by-Season Records</h2>
+            </div>
+            <button 
+              @click="downloadSeasonHistory"
+              :disabled="isDownloadingSeasonHistory"
+              class="btn-primary flex items-center gap-2 text-sm"
+            >
+              <svg v-if="!isDownloadingSeasonHistory" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
+              </svg>
+              <svg v-else class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+              </svg>
+              {{ isDownloadingSeasonHistory ? 'Generating...' : 'Share Season History' }}
+            </button>
           </div>
           <p class="card-subtitle mt-2">Historical performance by year</p>
         </div>
@@ -222,9 +243,42 @@
       <!-- Head-to-Head Matrix -->
       <div class="card">
         <div class="card-header">
-          <div class="flex items-center gap-2">
-            <span class="text-2xl">🎯</span>
-            <h2 class="card-title">Head-to-Head Matrix</h2>
+          <div class="flex items-center justify-between flex-wrap gap-4">
+            <div class="flex items-center gap-2">
+              <span class="text-2xl">🎯</span>
+              <h2 class="card-title">Head-to-Head Matrix</h2>
+            </div>
+            <div class="flex items-center gap-4">
+              <!-- Toggle for current members only -->
+              <label class="flex items-center gap-2 cursor-pointer">
+                <span class="text-sm text-dark-textMuted">Current members only</span>
+                <div class="relative">
+                  <input type="checkbox" v-model="showCurrentMembersOnly" class="sr-only">
+                  <div :class="[
+                    'w-10 h-5 rounded-full transition-colors',
+                    showCurrentMembersOnly ? 'bg-primary' : 'bg-dark-border'
+                  ]"></div>
+                  <div :class="[
+                    'absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full transition-transform',
+                    showCurrentMembersOnly ? 'translate-x-5' : 'translate-x-0'
+                  ]"></div>
+                </div>
+              </label>
+              <button 
+                @click="downloadHeadToHead"
+                :disabled="isDownloadingH2H"
+                class="btn-primary flex items-center gap-2 text-sm"
+              >
+                <svg v-if="!isDownloadingH2H" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
+                </svg>
+                <svg v-else class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                  <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                  <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                {{ isDownloadingH2H ? 'Generating...' : 'Share Head to Head' }}
+              </button>
+            </div>
           </div>
           <p class="card-subtitle mt-2">All-time records between teams (read horizontally: each row shows that team's record against opponents)</p>
         </div>
@@ -234,7 +288,7 @@
               <tr>
                 <th class="sticky left-0 bg-dark-elevated z-10 px-3 py-2 text-left border border-dark-border">Team</th>
                 <th 
-                  v-for="team in h2hMatrixTeams" 
+                  v-for="team in filteredH2HTeams" 
                   :key="`header-${team.user_id}`"
                   class="px-3 py-2 text-center border border-dark-border font-semibold text-dark-textSecondary uppercase tracking-wider"
                   style="min-width: 80px;"
@@ -244,12 +298,12 @@
               </tr>
             </thead>
             <tbody>
-              <tr v-for="rowTeam in h2hMatrixTeams" :key="`row-${rowTeam.user_id}`">
+              <tr v-for="rowTeam in filteredH2HTeams" :key="`row-${rowTeam.user_id}`">
                 <td class="sticky left-0 bg-dark-elevated z-10 px-3 py-2 font-semibold text-dark-text border border-dark-border whitespace-nowrap">
                   {{ rowTeam.team_name }}
                 </td>
                 <td 
-                  v-for="colTeam in h2hMatrixTeams" 
+                  v-for="colTeam in filteredH2HTeams" 
                   :key="`cell-${rowTeam.user_id}-${colTeam.user_id}`"
                   class="px-3 py-2 text-center border border-dark-border"
                   :class="getH2HCellClass(rowTeam.user_id, colTeam.user_id)"
@@ -655,11 +709,20 @@ import { useLeagueStore } from '@/stores/league'
 import { sleeperService } from '@/services/sleeper'
 import { awardsService } from '@/services/awards'
 import type { AwardWinner, TradeAward, WaiverAward } from '@/services/awards'
+import html2canvas from 'html2canvas'
 
 const leagueStore = useLeagueStore()
 const isLoading = ref(false)
 const sortColumn = ref<string>('win_pct')
 const sortDirection = ref<'asc' | 'desc'>('desc')
+
+// Download state
+const isDownloadingCareerStats = ref(false)
+const isDownloadingSeasonHistory = ref(false)
+const isDownloadingH2H = ref(false)
+
+// H2H filter toggle
+const showCurrentMembersOnly = ref(false)
 
 // Awards state
 const selectedAwardTab = ref<'All-Time' | 'Season' | 'Weekly'>('All-Time')
@@ -1606,6 +1669,15 @@ watch(selectedAwardSeason, (newSeason) => {
 
 // ===== H2H MATRIX FUNCTIONS =====
 
+// Get current season's member user IDs
+const currentMemberIds = computed(() => {
+  const currentSeason = leagueStore.historicalSeasons[0]
+  if (!currentSeason) return new Set<string>()
+  
+  const rosters = leagueStore.historicalRosters.get(currentSeason.season) || []
+  return new Set(rosters.map(r => r.owner_id).filter(Boolean))
+})
+
 // Get all teams for H2H Matrix
 const h2hMatrixTeams = computed(() => {
   // Get all unique users across all seasons
@@ -1628,6 +1700,14 @@ const h2hMatrixTeams = computed(() => {
   })
   
   return Array.from(usersMap.values()).sort((a, b) => a.team_name.localeCompare(b.team_name))
+})
+
+// Filtered H2H teams based on toggle
+const filteredH2HTeams = computed(() => {
+  if (!showCurrentMembersOnly.value) {
+    return h2hMatrixTeams.value
+  }
+  return h2hMatrixTeams.value.filter(team => currentMemberIds.value.has(team.user_id))
 })
 
 // Get all-time H2H record between two users
@@ -1716,4 +1796,351 @@ onMounted(async () => {
     fetchSeasonTradeCounts()
   }
 })
+
+// ===== DOWNLOAD FUNCTIONS =====
+
+// Helper to get UFD logo as base64
+async function getUFDLogoBase64(): Promise<string> {
+  try {
+    const response = await fetch('/ufd-logo.png')
+    const blob = await response.blob()
+    return new Promise((resolve) => {
+      const reader = new FileReader()
+      reader.onloadend = () => resolve(reader.result as string)
+      reader.readAsDataURL(blob)
+    })
+  } catch {
+    return ''
+  }
+}
+
+// Download Career Statistics
+async function downloadCareerStats() {
+  isDownloadingCareerStats.value = true
+  
+  try {
+    const ufdLogoBase64 = await getUFDLogoBase64()
+    const leagueName = leagueStore.currentLeague?.name || 'Fantasy League'
+    
+    // Limit to 20 teams max for the download
+    const statsToShow = sortedCareerStats.value.slice(0, 20)
+    
+    const container = document.createElement('div')
+    container.style.cssText = `
+      position: fixed;
+      left: -9999px;
+      width: 800px;
+      padding: 40px;
+      background: #0d0f18;
+      font-family: system-ui, -apple-system, sans-serif;
+      color: #f7f7ff;
+    `
+    
+    const tableRows = statsToShow.map((stat, idx) => `
+      <tr style="border-bottom: 1px solid rgba(58, 61, 82, 0.5);">
+        <td style="padding: 12px 8px; text-align: left;">
+          <div style="display: flex; align-items: center; gap: 10px;">
+            <span style="color: #9ca3af; font-size: 12px; width: 20px;">${idx + 1}</span>
+            <span style="font-weight: 600;">${stat.team_name}</span>
+          </div>
+        </td>
+        <td style="padding: 12px 8px; text-align: center;">${stat.seasons}</td>
+        <td style="padding: 12px 8px; text-align: center; color: ${stat.championships > 0 ? '#facc15' : '#6b7280'};">
+          ${stat.championships > 0 ? '🏆 ' + stat.championships : '—'}
+        </td>
+        <td style="padding: 12px 8px; text-align: center; font-weight: 600;">${stat.wins}-${stat.losses}</td>
+        <td style="padding: 12px 8px; text-align: center; color: ${stat.win_pct >= 0.6 ? '#4ade80' : stat.win_pct <= 0.4 ? '#f87171' : '#f7f7ff'}; font-weight: ${stat.win_pct >= 0.6 ? '700' : '400'};">
+          ${(stat.win_pct * 100).toFixed(1)}%
+        </td>
+        <td style="padding: 12px 8px; text-align: center;">${stat.avg_ppg.toFixed(1)}</td>
+        <td style="padding: 12px 8px; text-align: center; color: #9ca3af;">${stat.total_pf.toFixed(0)}</td>
+      </tr>
+    `).join('')
+    
+    container.innerHTML = `
+      <!-- Header -->
+      <div style="display: flex; align-items: center; gap: 20px; margin-bottom: 24px;">
+        ${ufdLogoBase64 ? `<img src="${ufdLogoBase64}" style="width: 70px; height: 70px; object-fit: contain;" />` : ''}
+        <div>
+          <div style="font-size: 28px; font-weight: 800; color: #f7f7ff;">League History</div>
+          <div style="font-size: 16px; color: #9ca3af;">${leagueName} • Career Statistics</div>
+        </div>
+      </div>
+      
+      <!-- Divider -->
+      <div style="height: 1px; background: linear-gradient(to right, rgba(245, 196, 81, 0.5), rgba(245, 196, 81, 0.1)); margin-bottom: 24px;"></div>
+      
+      <!-- Table -->
+      <table style="width: 100%; border-collapse: collapse; font-size: 14px;">
+        <thead>
+          <tr style="border-bottom: 2px solid rgba(58, 61, 82, 0.8);">
+            <th style="padding: 12px 8px; text-align: left; color: #9ca3af; font-size: 11px; text-transform: uppercase; letter-spacing: 1px;">Team</th>
+            <th style="padding: 12px 8px; text-align: center; color: #9ca3af; font-size: 11px; text-transform: uppercase; letter-spacing: 1px;">Seasons</th>
+            <th style="padding: 12px 8px; text-align: center; color: #9ca3af; font-size: 11px; text-transform: uppercase; letter-spacing: 1px;">Champs</th>
+            <th style="padding: 12px 8px; text-align: center; color: #9ca3af; font-size: 11px; text-transform: uppercase; letter-spacing: 1px;">Record</th>
+            <th style="padding: 12px 8px; text-align: center; color: #9ca3af; font-size: 11px; text-transform: uppercase; letter-spacing: 1px;">Win %</th>
+            <th style="padding: 12px 8px; text-align: center; color: #9ca3af; font-size: 11px; text-transform: uppercase; letter-spacing: 1px;">Avg PPG</th>
+            <th style="padding: 12px 8px; text-align: center; color: #9ca3af; font-size: 11px; text-transform: uppercase; letter-spacing: 1px;">Total PF</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${tableRows}
+        </tbody>
+      </table>
+      
+      <!-- Footer -->
+      <div style="text-align: center; padding-top: 24px; margin-top: 24px; border-top: 1px solid rgba(58, 61, 82, 0.5);">
+        <div style="display: flex; align-items: center; justify-content: center; gap: 16px;">
+          ${ufdLogoBase64 ? `<img src="${ufdLogoBase64}" style="width: 48px; height: 48px; object-fit: contain;" />` : ''}
+          <div>
+            <div style="font-size: 14px; color: #9ca3af;">See complete league history at</div>
+            <div style="font-size: 18px; font-weight: bold; color: #facc15;">ultimatefantasydashboard.com/history</div>
+          </div>
+        </div>
+      </div>
+    `
+    
+    document.body.appendChild(container)
+    
+    const canvas = await html2canvas(container, {
+      backgroundColor: '#0d0f18',
+      scale: 2,
+      logging: false
+    })
+    
+    document.body.removeChild(container)
+    
+    const link = document.createElement('a')
+    link.download = `${leagueName.replace(/[^a-z0-9]/gi, '-')}-career-statistics.png`.toLowerCase()
+    link.href = canvas.toDataURL('image/png')
+    link.click()
+    
+  } catch (error) {
+    console.error('Failed to download career stats:', error)
+  } finally {
+    isDownloadingCareerStats.value = false
+  }
+}
+
+// Download Season History
+async function downloadSeasonHistory() {
+  isDownloadingSeasonHistory.value = true
+  
+  try {
+    const ufdLogoBase64 = await getUFDLogoBase64()
+    const leagueName = leagueStore.currentLeague?.name || 'Fantasy League'
+    
+    const container = document.createElement('div')
+    container.style.cssText = `
+      position: fixed;
+      left: -9999px;
+      width: 900px;
+      padding: 40px;
+      background: #0d0f18;
+      font-family: system-ui, -apple-system, sans-serif;
+      color: #f7f7ff;
+    `
+    
+    const tableRows = seasonRecords.value.map(season => `
+      <tr style="border-bottom: 1px solid rgba(58, 61, 82, 0.5);">
+        <td style="padding: 12px 8px; text-align: left; font-weight: 700;">${season.season}</td>
+        <td style="padding: 12px 8px; text-align: center;">${season.avg_ppg.toFixed(1)}</td>
+        <td style="padding: 12px 8px; text-align: center;">
+          <div style="color: #4ade80; font-weight: 600;">${season.high_score.toFixed(1)}</div>
+          <div style="color: #6b7280; font-size: 11px;">${season.high_scorer}</div>
+        </td>
+        <td style="padding: 12px 8px; text-align: center;">
+          <div style="color: #f87171;">${season.low_score.toFixed(1)}</div>
+          <div style="color: #6b7280; font-size: 11px;">${season.low_scorer}</div>
+        </td>
+        <td style="padding: 12px 8px; text-align: center;">${season.trade_count}</td>
+        <td style="padding: 12px 8px; text-align: center;">
+          <span style="color: #facc15; font-weight: 700;">🏆 ${season.champion}</span>
+        </td>
+      </tr>
+    `).join('')
+    
+    container.innerHTML = `
+      <!-- Header -->
+      <div style="display: flex; align-items: center; gap: 20px; margin-bottom: 24px;">
+        ${ufdLogoBase64 ? `<img src="${ufdLogoBase64}" style="width: 70px; height: 70px; object-fit: contain;" />` : ''}
+        <div>
+          <div style="font-size: 28px; font-weight: 800; color: #f7f7ff;">Season History</div>
+          <div style="font-size: 16px; color: #9ca3af;">${leagueName} • Year-by-Year Records</div>
+        </div>
+      </div>
+      
+      <!-- Divider -->
+      <div style="height: 1px; background: linear-gradient(to right, rgba(245, 196, 81, 0.5), rgba(245, 196, 81, 0.1)); margin-bottom: 24px;"></div>
+      
+      <!-- Table -->
+      <table style="width: 100%; border-collapse: collapse; font-size: 14px;">
+        <thead>
+          <tr style="border-bottom: 2px solid rgba(58, 61, 82, 0.8);">
+            <th style="padding: 12px 8px; text-align: left; color: #9ca3af; font-size: 11px; text-transform: uppercase; letter-spacing: 1px;">Season</th>
+            <th style="padding: 12px 8px; text-align: center; color: #9ca3af; font-size: 11px; text-transform: uppercase; letter-spacing: 1px;">Avg PPG</th>
+            <th style="padding: 12px 8px; text-align: center; color: #9ca3af; font-size: 11px; text-transform: uppercase; letter-spacing: 1px;">High Score</th>
+            <th style="padding: 12px 8px; text-align: center; color: #9ca3af; font-size: 11px; text-transform: uppercase; letter-spacing: 1px;">Low Score</th>
+            <th style="padding: 12px 8px; text-align: center; color: #9ca3af; font-size: 11px; text-transform: uppercase; letter-spacing: 1px;">Trades</th>
+            <th style="padding: 12px 8px; text-align: center; color: #9ca3af; font-size: 11px; text-transform: uppercase; letter-spacing: 1px;">Champion</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${tableRows}
+        </tbody>
+      </table>
+      
+      <!-- Footer -->
+      <div style="text-align: center; padding-top: 24px; margin-top: 24px; border-top: 1px solid rgba(58, 61, 82, 0.5);">
+        <div style="display: flex; align-items: center; justify-content: center; gap: 16px;">
+          ${ufdLogoBase64 ? `<img src="${ufdLogoBase64}" style="width: 48px; height: 48px; object-fit: contain;" />` : ''}
+          <div>
+            <div style="font-size: 14px; color: #9ca3af;">See complete league history at</div>
+            <div style="font-size: 18px; font-weight: bold; color: #facc15;">ultimatefantasydashboard.com/history</div>
+          </div>
+        </div>
+      </div>
+    `
+    
+    document.body.appendChild(container)
+    
+    const canvas = await html2canvas(container, {
+      backgroundColor: '#0d0f18',
+      scale: 2,
+      logging: false
+    })
+    
+    document.body.removeChild(container)
+    
+    const link = document.createElement('a')
+    link.download = `${leagueName.replace(/[^a-z0-9]/gi, '-')}-season-history.png`.toLowerCase()
+    link.href = canvas.toDataURL('image/png')
+    link.click()
+    
+  } catch (error) {
+    console.error('Failed to download season history:', error)
+  } finally {
+    isDownloadingSeasonHistory.value = false
+  }
+}
+
+// Download Head to Head Matrix (current members only)
+async function downloadHeadToHead() {
+  isDownloadingH2H.value = true
+  
+  try {
+    const ufdLogoBase64 = await getUFDLogoBase64()
+    const leagueName = leagueStore.currentLeague?.name || 'Fantasy League'
+    
+    // Always use current members for download
+    const teamsToShow = h2hMatrixTeams.value.filter(team => currentMemberIds.value.has(team.user_id))
+    
+    const container = document.createElement('div')
+    container.style.cssText = `
+      position: fixed;
+      left: -9999px;
+      width: ${Math.max(600, teamsToShow.length * 70 + 150)}px;
+      padding: 40px;
+      background: #0d0f18;
+      font-family: system-ui, -apple-system, sans-serif;
+      color: #f7f7ff;
+    `
+    
+    // Build header row
+    const headerCells = teamsToShow.map(team => 
+      `<th style="padding: 8px 4px; text-align: center; color: #9ca3af; font-size: 10px; text-transform: uppercase; border: 1px solid rgba(58, 61, 82, 0.5); min-width: 60px;">
+        <div style="max-width: 60px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${team.team_name}">${team.team_name.substring(0, 6)}</div>
+      </th>`
+    ).join('')
+    
+    // Build data rows
+    const dataRows = teamsToShow.map(rowTeam => {
+      const cells = teamsToShow.map(colTeam => {
+        if (rowTeam.user_id === colTeam.user_id) {
+          return `<td style="padding: 8px 4px; text-align: center; border: 1px solid rgba(58, 61, 82, 0.5); background: rgba(58, 61, 82, 0.3); color: #6b7280;">—</td>`
+        }
+        const record = getH2HRecord(rowTeam.user_id, colTeam.user_id)
+        const [wins, losses] = record.split('-').map(Number)
+        let bgColor = 'transparent'
+        let textColor = '#f7f7ff'
+        if (wins > losses) {
+          bgColor = 'rgba(74, 222, 128, 0.1)'
+          textColor = '#4ade80'
+        } else if (losses > wins) {
+          bgColor = 'rgba(248, 113, 113, 0.1)'
+          textColor = '#f87171'
+        }
+        return `<td style="padding: 8px 4px; text-align: center; border: 1px solid rgba(58, 61, 82, 0.5); background: ${bgColor}; color: ${textColor}; font-weight: 600; font-size: 12px;">${record}</td>`
+      }).join('')
+      
+      return `<tr>
+        <td style="padding: 8px; text-align: left; font-weight: 600; border: 1px solid rgba(58, 61, 82, 0.5); background: rgba(38, 42, 58, 0.5); white-space: nowrap;">${rowTeam.team_name}</td>
+        ${cells}
+      </tr>`
+    }).join('')
+    
+    container.innerHTML = `
+      <!-- Header -->
+      <div style="display: flex; align-items: center; gap: 20px; margin-bottom: 24px;">
+        ${ufdLogoBase64 ? `<img src="${ufdLogoBase64}" style="width: 70px; height: 70px; object-fit: contain;" />` : ''}
+        <div>
+          <div style="font-size: 28px; font-weight: 800; color: #f7f7ff;">Head-to-Head Matrix</div>
+          <div style="font-size: 16px; color: #9ca3af;">${leagueName} • All-Time Records</div>
+        </div>
+      </div>
+      
+      <!-- Divider -->
+      <div style="height: 1px; background: linear-gradient(to right, rgba(245, 196, 81, 0.5), rgba(245, 196, 81, 0.1)); margin-bottom: 24px;"></div>
+      
+      <!-- Instructions -->
+      <div style="font-size: 12px; color: #6b7280; margin-bottom: 16px; font-style: italic;">
+        Read horizontally: each row shows that team's record against opponents
+      </div>
+      
+      <!-- Table -->
+      <table style="width: 100%; border-collapse: collapse; font-size: 12px;">
+        <thead>
+          <tr>
+            <th style="padding: 8px; text-align: left; color: #9ca3af; font-size: 10px; text-transform: uppercase; border: 1px solid rgba(58, 61, 82, 0.5); background: rgba(38, 42, 58, 0.5);">Team</th>
+            ${headerCells}
+          </tr>
+        </thead>
+        <tbody>
+          ${dataRows}
+        </tbody>
+      </table>
+      
+      <!-- Footer -->
+      <div style="text-align: center; padding-top: 24px; margin-top: 24px; border-top: 1px solid rgba(58, 61, 82, 0.5);">
+        <div style="display: flex; align-items: center; justify-content: center; gap: 16px;">
+          ${ufdLogoBase64 ? `<img src="${ufdLogoBase64}" style="width: 48px; height: 48px; object-fit: contain;" />` : ''}
+          <div>
+            <div style="font-size: 14px; color: #9ca3af;">See complete league history at</div>
+            <div style="font-size: 18px; font-weight: bold; color: #facc15;">ultimatefantasydashboard.com/history</div>
+          </div>
+        </div>
+      </div>
+    `
+    
+    document.body.appendChild(container)
+    
+    const canvas = await html2canvas(container, {
+      backgroundColor: '#0d0f18',
+      scale: 2,
+      logging: false
+    })
+    
+    document.body.removeChild(container)
+    
+    const link = document.createElement('a')
+    link.download = `${leagueName.replace(/[^a-z0-9]/gi, '-')}-head-to-head.png`.toLowerCase()
+    link.href = canvas.toDataURL('image/png')
+    link.click()
+    
+  } catch (error) {
+    console.error('Failed to download H2H matrix:', error)
+  } finally {
+    isDownloadingH2H.value = false
+  }
+}
 </script>
