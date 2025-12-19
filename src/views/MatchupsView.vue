@@ -3106,9 +3106,9 @@ async function downloadMatchupPreview() {
       </tr>
     `).join('')
     
-    // Calculate projected totals
-    const team1Projected = getTeamProjectedTotal(selectedMatchup.value.team1_roster_id)
-    const team2Projected = getTeamProjectedTotal(selectedMatchup.value.team2_roster_id)
+    // Calculate projected totals using optimal lineup
+    const team1Projected = getOptimalProjectedTotal(selectedMatchup.value.team1_roster_id)
+    const team2Projected = getOptimalProjectedTotal(selectedMatchup.value.team2_roster_id)
     
     // Avatar HTML (always valid since we have fallback SVG)
     const team1AvatarHtml = `<img src="${team1AvatarBase64}" style="width: 48px; height: 48px; border-radius: 50%; border: 3px solid ${team1Color};" />`
@@ -3338,9 +3338,9 @@ async function downloadFullMatchupAnalysis() {
       box-sizing: border-box;
     `
     
-    // Calculate values
-    const team1Projected = getTeamProjectedTotal(selectedMatchup.value.team1_roster_id)
-    const team2Projected = getTeamProjectedTotal(selectedMatchup.value.team2_roster_id)
+    // Calculate values using optimal projections
+    const team1Projected = getOptimalProjectedTotal(selectedMatchup.value.team1_roster_id)
+    const team2Projected = getOptimalProjectedTotal(selectedMatchup.value.team2_roster_id)
     const winProb1 = liveWinProbability.value.team1
     const winProb2 = liveWinProbability.value.team2
     
