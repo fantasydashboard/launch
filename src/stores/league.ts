@@ -94,6 +94,9 @@ export const useLeagueStore = defineStore('league', () => {
       if (activeLeagueId.value) {
         localStorage.setItem(STORAGE_KEYS.ACTIVE_LEAGUE, activeLeagueId.value)
       }
+      if (currentUserId.value) {
+        localStorage.setItem('ufd_current_user_id', currentUserId.value)
+      }
     } catch (e) {
       console.warn('Failed to save to localStorage:', e)
     }
@@ -114,6 +117,11 @@ export const useLeagueStore = defineStore('league', () => {
       const activeLeague = localStorage.getItem(STORAGE_KEYS.ACTIVE_LEAGUE)
       if (activeLeague) {
         activeLeagueId.value = activeLeague
+      }
+      
+      const userId = localStorage.getItem('ufd_current_user_id')
+      if (userId) {
+        currentUserId.value = userId
       }
     } catch (e) {
       console.warn('Failed to load from localStorage:', e)
@@ -379,6 +387,19 @@ export const useLeagueStore = defineStore('league', () => {
     saveToLocalStorage()
     
     try {
+      // Get the saved league to find the username
+      const savedLeague = savedLeagues.value.find(l => l.league_id === leagueId)
+      if (savedLeague?.sleeper_username && !currentUserId.value) {
+        // Fetch the Sleeper user ID if we don't have it
+        try {
+          const user = await sleeperService.getUser(savedLeague.sleeper_username)
+          currentUserId.value = user.user_id
+          currentUsername.value = savedLeague.sleeper_username
+        } catch (e) {
+          console.warn('Failed to fetch Sleeper user ID:', e)
+        }
+      }
+      
       // First, check localStorage cache for instant loading
       const localCache = loadCacheFromLocalStorage(leagueId)
       
