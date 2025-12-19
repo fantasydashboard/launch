@@ -4096,9 +4096,7 @@ function getOptimalProjectedTotal(rosterId: number): number {
   // Categorize starters by locked (played/playing) vs unlocked (yet to play)
   const lockedPlayers: { playerId: string, points: number, slotIndex: number }[] = []
   const unlockedStarterSlots: { slotIndex: number, position: string }[] = []
-  
-  // Debug log for troubleshooting
-  console.log(`🔍 Optimal lineup analysis for roster ${rosterId}:`)
+  const unlockedStarterIds = new Set<string>()
   
   teamMatchup.starters.forEach((playerId, idx) => {
     if (!playerId || playerId === '0') {
@@ -4111,7 +4109,6 @@ function getOptimalProjectedTotal(rosterId: number): number {
     
     const actualPoints = teamMatchup.players_points?.[playerId]
     const player = leagueStore.players[playerId]
-    const playerName = player?.full_name || playerId
     const injuryStatus = player?.injury_status
     
     // Check if player is OUT or on IR
@@ -4123,35 +4120,33 @@ function getOptimalProjectedTotal(rosterId: number): number {
     const gameStarted = actualPoints !== undefined && actualPoints !== null
     const hasPositivePoints = gameStarted && actualPoints > 0
     
-    console.log(`  ${playerName}: actualPts=${actualPoints}, injury=${injuryStatus}, gameStarted=${gameStarted}`)
-    
     if (isOut && !hasPositivePoints) {
-      // Player is OUT and hasn't scored positive points
-      // This could be: OUT before game (bench them) or OUT during game with 0 (still use bench)
-      console.log(`    → UNLOCKED (OUT with no positive points)`)
+      // Player is OUT and hasn't scored positive points - use bench replacement
       if (idx < rosterPositions.length) {
         unlockedStarterSlots.push({ slotIndex: idx, position: rosterPositions[idx] })
       }
-    } else if (gameStarted) {
-      // Game has started (Sleeper is tracking points) - lock in actual points
-      // Even if 0, if the game started and they're not OUT, they played and got 0
-      console.log(`    → LOCKED (game started, pts: ${actualPoints})`)
+      // Don't add OUT players to available pool
+    } else if (hasPositivePoints) {
+      // Player has scored positive points - they're locked in
       lockedPlayers.push({ playerId, points: actualPoints, slotIndex: idx })
+    } else if (gameStarted && actualPoints === 0) {
+      // Game started but 0 points - could be early in game or player got 0
+      // Lock them in with 0 to be conservative
+      lockedPlayers.push({ playerId, points: 0, slotIndex: idx })
     } else {
       // Game hasn't started yet - slot is unlocked for optimal calculation
-      console.log(`    → UNLOCKED (game not started)`)
       if (idx < rosterPositions.length) {
         unlockedStarterSlots.push({ slotIndex: idx, position: rosterPositions[idx] })
+        unlockedStarterIds.add(playerId) // Add to available pool
       }
     }
   })
   
   // Calculate locked points
   const lockedPoints = lockedPlayers.reduce((sum, p) => sum + p.points, 0)
-  console.log(`  Total locked points: ${lockedPoints}`)
-  console.log(`  Unlocked slots: ${unlockedStarterSlots.length}`)
   
-  // Get all available players for unlocked slots (bench + current unlocked starters)
+  // Get all available players for unlocked slots
+  // Include: unlocked starters + bench players who haven't played and aren't OUT
   const usedPlayerIds = new Set(lockedPlayers.map(p => p.playerId))
   const availablePlayers: { playerId: string, position: string, projection: number }[] = []
   
@@ -4161,12 +4156,15 @@ function getOptimalProjectedTotal(rosterId: number): number {
     const player = leagueStore.players[playerId]
     if (!player) return
     
-    // Skip players who are OUT/IR
+    // Skip players who are OUT/IR (they can't play)
     if (player.injury_status === 'Out' || player.injury_status === 'IR') return
     
-    // Skip if player has already played (their points are locked even if on bench)
+    // Skip if player has already played (positive points means they played)
     const actualPoints = teamMatchup.players_points?.[playerId]
     if (actualPoints !== undefined && actualPoints !== null && actualPoints > 0) return
+    
+    // Skip if their game started and they scored 0 (they played but got 0)
+    if (actualPoints === 0) return
     
     const projection = calculatePlayerProjectedPoints(playerId)
     availablePlayers.push({
