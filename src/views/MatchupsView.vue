@@ -95,8 +95,12 @@
             <span class="text-2xl">⚔️</span>
             <h2 class="card-title">Select Matchup to Analyze</h2>
           </div>
-          <p class="text-sm text-dark-textMuted mt-2">
+          <p class="text-sm text-dark-textMuted mt-2 hidden md:block">
             💡 Click any matchup to see head-to-head history, win probability, and detailed analysis
+          </p>
+          <p class="text-sm text-primary mt-2 md:hidden flex items-center gap-1">
+            <span class="animate-pulse">👇</span>
+            <span>Tap a matchup below to see win probability analysis</span>
           </p>
         </div>
         <div class="card-body">
@@ -115,7 +119,8 @@
               <!-- Status Badge -->
               <div class="flex items-center justify-between mb-4">
                 <span class="text-xs font-semibold text-dark-textMuted uppercase tracking-wide">Matchup {{ matchup.matchup_id }}</span>
-                <span :class="getMatchupStatusClass(matchup)" class="text-xs px-2.5 py-1 rounded-full border font-medium">
+                <span :class="getMatchupStatusClass(matchup)" class="text-xs px-2.5 py-1 rounded-full border font-medium flex items-center gap-1">
+                  <span v-if="getMatchupStatusLabel(matchup) === 'Live'" class="w-2 h-2 bg-yellow-400 rounded-full animate-pulse"></span>
                   {{ getMatchupStatusLabel(matchup) }}
                 </span>
               </div>
@@ -146,10 +151,10 @@
                   </div>
                   <div class="text-right flex-shrink-0 ml-2">
                     <span class="text-lg font-bold text-dark-text">
-                      {{ matchup.team1_points.toFixed(1) }}
+                      {{ getLiveScore(matchup.team1_roster_id, matchup.team1_points).toFixed(1) }}
                     </span>
                     <div class="text-xs" :class="getTeamColorClassForMatchup(matchup.team1_roster_id, matchup, 'text')">
-                      proj {{ getTeamProjectedTotal(matchup.team1_roster_id).toFixed(1) }}
+                      proj {{ getOptimalProjectedTotal(matchup.team1_roster_id).toFixed(1) }}
                     </div>
                   </div>
                 </div>
@@ -191,10 +196,10 @@
                   </div>
                   <div class="text-right flex-shrink-0 ml-2">
                     <span class="text-lg font-bold text-dark-text">
-                      {{ matchup.team2_points.toFixed(1) }}
+                      {{ getLiveScore(matchup.team2_roster_id, matchup.team2_points).toFixed(1) }}
                     </span>
                     <div class="text-xs" :class="getTeamColorClassForMatchup(matchup.team2_roster_id, matchup, 'text')">
-                      proj {{ getTeamProjectedTotal(matchup.team2_roster_id).toFixed(1) }}
+                      proj {{ getOptimalProjectedTotal(matchup.team2_roster_id).toFixed(1) }}
                     </div>
                   </div>
                 </div>
@@ -210,7 +215,7 @@
       <!-- Selected Matchup Analysis -->
       <template v-if="selectedMatchup && matchupAnalysis">
         <!-- Win Probability -->
-        <div class="card">
+        <div id="matchup-analysis-section" ref="analysisSection" class="card scroll-mt-4">
           <div class="card-header">
             <div class="flex items-center justify-between">
               <div class="flex items-center gap-2">
@@ -268,8 +273,8 @@
                   getTeamColorClass(selectedMatchup.team1_roster_id, 'text')
                 ]">{{ liveWinProbability.team1.toFixed(1) }}%</div>
                 <div class="space-y-1 text-sm">
-                  <div class="text-dark-textMuted">Current: {{ selectedMatchup.team1_points.toFixed(1) }} pts</div>
-                  <div :class="getTeamColorClass(selectedMatchup.team1_roster_id, 'text')">Projected: {{ getTeamProjectedTotal(selectedMatchup.team1_roster_id).toFixed(1) }}</div>
+                  <div class="text-dark-textMuted">Current: {{ getLiveScore(selectedMatchup.team1_roster_id, selectedMatchup.team1_points).toFixed(1) }} pts</div>
+                  <div :class="getTeamColorClass(selectedMatchup.team1_roster_id, 'text')">Optimal Proj: {{ getOptimalProjectedTotal(selectedMatchup.team1_roster_id).toFixed(1) }}</div>
                 </div>
               </div>
 
@@ -306,8 +311,8 @@
                   getTeamColorClass(selectedMatchup.team2_roster_id, 'text')
                 ]">{{ liveWinProbability.team2.toFixed(1) }}%</div>
                 <div class="space-y-1 text-sm">
-                  <div class="text-dark-textMuted">Current: {{ selectedMatchup.team2_points.toFixed(1) }} pts</div>
-                  <div :class="getTeamColorClass(selectedMatchup.team2_roster_id, 'text')">Projected: {{ getTeamProjectedTotal(selectedMatchup.team2_roster_id).toFixed(1) }}</div>
+                  <div class="text-dark-textMuted">Current: {{ getLiveScore(selectedMatchup.team2_roster_id, selectedMatchup.team2_points).toFixed(1) }} pts</div>
+                  <div :class="getTeamColorClass(selectedMatchup.team2_roster_id, 'text')">Optimal Proj: {{ getOptimalProjectedTotal(selectedMatchup.team2_roster_id).toFixed(1) }}</div>
                 </div>
               </div>
             </div>
@@ -928,6 +933,9 @@ const showWinProbChart = ref(false)
 const winProbChartEl = ref<HTMLElement | null>(null)
 let winProbChartInstance: ApexCharts | null = null
 
+// Analysis section ref for mobile scrolling
+const analysisSection = ref<HTMLElement | null>(null)
+
 interface TeamStats {
   championships: number
   alltime_wins: number
@@ -973,22 +981,21 @@ const availableWeeks = computed(() => {
   return Array.from(matchups.keys()).sort((a, b) => a - b)
 })
 
-// Live win probability - updates based on current points and projected remaining
+// Live win probability - uses optimal lineup projections for more accurate predictions
 const liveWinProbability = computed(() => {
   if (!selectedMatchup.value || !matchupAnalysis.value) {
     return { team1: 50, team2: 50 }
   }
   
-  const team1Current = selectedMatchup.value.team1_points || 0
-  const team2Current = selectedMatchup.value.team2_points || 0
-  const team1Projected = getTeamProjectedTotal(selectedMatchup.value.team1_roster_id)
-  const team2Projected = getTeamProjectedTotal(selectedMatchup.value.team2_roster_id)
+  const team1Current = getLiveScore(selectedMatchup.value.team1_roster_id, selectedMatchup.value.team1_points)
+  const team2Current = getLiveScore(selectedMatchup.value.team2_roster_id, selectedMatchup.value.team2_points)
+  const team1Optimal = getOptimalProjectedTotal(selectedMatchup.value.team1_roster_id)
+  const team2Optimal = getOptimalProjectedTotal(selectedMatchup.value.team2_roster_id)
   
   // Check if matchup is complete (all players done)
-  // A matchup is complete if is_complete flag is set OR if current points >= projected (all played)
   const isComplete = selectedMatchup.value.is_complete || 
     (team1Current > 0 && team2Current > 0 && 
-     team1Current >= team1Projected * 0.95 && team2Current >= team2Projected * 0.95)
+     team1Current >= team1Optimal * 0.95 && team2Current >= team2Optimal * 0.95)
   
   // If game is complete, return 100/0 based on who won
   if (isComplete && team1Current !== team2Current) {
@@ -1000,9 +1007,8 @@ const liveWinProbability = computed(() => {
   }
   
   // Check if one team has no remaining players (all played)
-  // by comparing current to projected
-  const team1Done = team1Current > 0 && team1Current >= team1Projected * 0.98
-  const team2Done = team2Current > 0 && team2Current >= team2Projected * 0.98
+  const team1Done = team1Current > 0 && team1Current >= team1Optimal * 0.98
+  const team2Done = team2Current > 0 && team2Current >= team2Optimal * 0.98
   
   // If both teams are done, final result
   if (team1Done && team2Done) {
@@ -1013,11 +1019,11 @@ const liveWinProbability = computed(() => {
     }
   }
   
-  // Calculate expected final scores
-  const team1Expected = Math.max(team1Current, team1Projected)
-  const team2Expected = Math.max(team2Current, team2Projected)
+  // Calculate expected final scores using optimal projections
+  const team1Expected = Math.max(team1Current, team1Optimal)
+  const team2Expected = Math.max(team2Current, team2Optimal)
   
-  // Use the same formula as analyzeMatchup but with live data
+  // Use the same formula as analyzeMatchup but with optimal data
   const stdDev = matchupAnalysis.value.team1StdDev || 20
   const diff = team1Expected - team2Expected
   
@@ -1032,13 +1038,13 @@ const liveWinProbability = computed(() => {
     // If one team is done and the other isn't, adjust based on remaining projection
     if (team1Done && !team2Done) {
       // Team 1 done, team 2 needs to catch up
-      const team2Remaining = team2Projected - team2Current
+      const team2Remaining = team2Optimal - team2Current
       if (team1Current > team2Current + team2Remaining) {
         return { team1: 100, team2: 0 } // Team 2 can't catch up
       }
     } else if (team2Done && !team1Done) {
       // Team 2 done, team 1 needs to catch up
-      const team1Remaining = team1Projected - team1Current
+      const team1Remaining = team1Optimal - team1Current
       if (team2Current > team1Current + team1Remaining) {
         return { team1: 0, team2: 100 } // Team 1 can't catch up
       }
@@ -2195,6 +2201,17 @@ function selectMatchup(matchup: MatchupDisplay) {
   buildInjuryReport()
   // Auto-generate AI preview
   generateMatchupPreview()
+  
+  // On mobile, scroll to the analysis section after a brief delay
+  setTimeout(() => {
+    const isMobile = window.innerWidth < 768
+    if (isMobile) {
+      const analysisEl = document.getElementById('matchup-analysis-section')
+      if (analysisEl) {
+        analysisEl.scrollIntoView({ behavior: 'smooth', block: 'start' })
+      }
+    }
+  }, 100)
 }
 
 async function analyzeMatchup() {
@@ -4018,6 +4035,172 @@ function getMatchupLiveProjection(rosterId: number): number {
   const liveData = getLiveTeamProjection(rosterId)
   return liveData.total
 }
+
+// Get live score for matchup cards - uses Sleeper's actual matchup points if available
+function getLiveScore(rosterId: number, fallbackPoints: number): number {
+  const teamMatchup = matchupsData.value.find(m => m.roster_id === rosterId)
+  if (!teamMatchup) return fallbackPoints
+  
+  // Sleeper's points field is always the most up-to-date actual score
+  return teamMatchup.points || fallbackPoints
+}
+
+// Get optimal projected total - considers best possible lineup for players who haven't played yet
+// Locked players (already played) stay in their slot, but unplayed players can be swapped with bench
+function getOptimalProjectedTotal(rosterId: number): number {
+  const teamMatchup = matchupsData.value.find(m => m.roster_id === rosterId)
+  if (!teamMatchup?.starters || !teamMatchup?.players) {
+    return getTeamProjectedTotal(rosterId)
+  }
+  
+  const rosterPositions = leagueStore.currentLeague?.roster_positions || []
+  
+  // Categorize starters by locked (played/playing) vs unlocked (yet to play)
+  const lockedPlayers: { playerId: string, points: number, slotIndex: number }[] = []
+  const unlockedStarterSlots: { slotIndex: number, position: string }[] = []
+  
+  teamMatchup.starters.forEach((playerId, idx) => {
+    if (!playerId || playerId === '0') {
+      // Empty slot - mark as unlocked
+      if (idx < rosterPositions.length) {
+        unlockedStarterSlots.push({ slotIndex: idx, position: rosterPositions[idx] })
+      }
+      return
+    }
+    
+    const actualPoints = teamMatchup.players_points?.[playerId]
+    const hasPlayed = actualPoints !== undefined && actualPoints !== null && actualPoints > 0
+    const player = leagueStore.players[playerId]
+    
+    // Check if player is OUT or on IR and hasn't played
+    const isOut = player?.injury_status === 'Out' || player?.injury_status === 'IR'
+    
+    if (hasPlayed) {
+      // Player already played - locked in with actual points
+      lockedPlayers.push({ playerId, points: actualPoints, slotIndex: idx })
+    } else if (isOut) {
+      // Player is OUT and hasn't played - treat slot as unlocked
+      if (idx < rosterPositions.length) {
+        unlockedStarterSlots.push({ slotIndex: idx, position: rosterPositions[idx] })
+      }
+    } else {
+      // Player hasn't played yet but isn't marked OUT - could still be swapped
+      // For optimal, we'll consider them as "unlocked" to find best lineup
+      if (idx < rosterPositions.length) {
+        unlockedStarterSlots.push({ slotIndex: idx, position: rosterPositions[idx] })
+      }
+    }
+  })
+  
+  // Calculate locked points
+  const lockedPoints = lockedPlayers.reduce((sum, p) => sum + p.points, 0)
+  
+  // Get all available players for unlocked slots (bench + current unlocked starters)
+  const usedPlayerIds = new Set(lockedPlayers.map(p => p.playerId))
+  const availablePlayers: { playerId: string, position: string, projection: number }[] = []
+  
+  teamMatchup.players.forEach(playerId => {
+    if (!playerId || playerId === '0' || usedPlayerIds.has(playerId)) return
+    
+    const player = leagueStore.players[playerId]
+    if (!player) return
+    
+    // Skip players who are OUT/IR
+    if (player.injury_status === 'Out' || player.injury_status === 'IR') return
+    
+    // Skip if player has already played (their points are locked even if on bench)
+    const actualPoints = teamMatchup.players_points?.[playerId]
+    if (actualPoints !== undefined && actualPoints !== null && actualPoints > 0) return
+    
+    const projection = calculatePlayerProjectedPoints(playerId)
+    availablePlayers.push({
+      playerId,
+      position: player.position,
+      projection
+    })
+  })
+  
+  // Sort available players by projection descending
+  availablePlayers.sort((a, b) => b.projection - a.projection)
+  
+  // Greedily fill unlocked slots with best available players
+  let optimalProjectedPoints = 0
+  const assignedPlayers = new Set<string>()
+  
+  // Process each unlocked slot
+  unlockedStarterSlots.forEach(slot => {
+    const pos = slot.position
+    
+    // Find best available player for this slot
+    let bestPlayer = null
+    
+    for (const player of availablePlayers) {
+      if (assignedPlayers.has(player.playerId)) continue
+      
+      // Check position eligibility
+      const canFillSlot = 
+        player.position === pos ||
+        (pos === 'FLEX' && ['RB', 'WR', 'TE'].includes(player.position)) ||
+        (pos === 'SUPER_FLEX' && ['QB', 'RB', 'WR', 'TE'].includes(player.position)) ||
+        (pos === 'REC_FLEX' && ['WR', 'TE'].includes(player.position)) ||
+        (pos === 'WRRB_FLEX' && ['WR', 'RB'].includes(player.position))
+      
+      if (canFillSlot) {
+        bestPlayer = player
+        break
+      }
+    }
+    
+    if (bestPlayer) {
+      optimalProjectedPoints += bestPlayer.projection
+      assignedPlayers.add(bestPlayer.playerId)
+    }
+  })
+  
+  return lockedPoints + optimalProjectedPoints
+}
+
+// Get optimal win probability - uses optimal lineup projections
+const optimalWinProbability = computed(() => {
+  if (!selectedMatchup.value || !matchupAnalysis.value) {
+    return { team1: 50, team2: 50 }
+  }
+  
+  const team1Current = selectedMatchup.value.team1_points || 0
+  const team2Current = selectedMatchup.value.team2_points || 0
+  const team1Optimal = getOptimalProjectedTotal(selectedMatchup.value.team1_roster_id)
+  const team2Optimal = getOptimalProjectedTotal(selectedMatchup.value.team2_roster_id)
+  
+  // If matchup is complete, return based on actual scores
+  if (selectedMatchup.value.is_complete) {
+    if (team1Current > team2Current) {
+      return { team1: 100, team2: 0 }
+    } else if (team2Current > team1Current) {
+      return { team1: 0, team2: 100 }
+    }
+    return { team1: 50, team2: 50 }
+  }
+  
+  // Use optimal projections for probability calculation
+  const stdDev = matchupAnalysis.value.team1StdDev || 20
+  const diff = team1Optimal - team2Optimal
+  
+  // Normal distribution approximation
+  const zScore = diff / (stdDev * Math.sqrt(2))
+  let team1Prob = 0.5 * (1 + Math.tanh(zScore * 0.8))
+  
+  // Factor in current lead if game is in progress
+  if (team1Current > 0 || team2Current > 0) {
+    const currentLead = team1Current - team2Current
+    const leadBonus = currentLead / 100
+    team1Prob = Math.min(0.99, Math.max(0.01, team1Prob + leadBonus))
+  }
+  
+  return {
+    team1: team1Prob * 100,
+    team2: (1 - team1Prob) * 100
+  }
+})
 
 // Position badge styling
 function getPositionBadgeClass(position: string): string {
