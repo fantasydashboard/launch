@@ -1661,17 +1661,55 @@ async function refreshData() {
   isRefreshing.value = true
   
   try {
-    // Re-fetch matchups for current week
-    await loadMatchups()
-    
-    // Re-fetch rosters for updated standings
     const seasonInfo = leagueStore.historicalSeasons.find(s => s.season === selectedSeason.value)
-    if (seasonInfo) {
-      const freshRosters = await sleeperService.getLeagueRosters(seasonInfo.league_id)
-      leagueStore.historicalRosters.set(selectedSeason.value, freshRosters)
+    if (!seasonInfo) {
+      console.error('Season not found')
+      return
     }
     
-    console.log('✅ Data refreshed!')
+    const week = parseInt(selectedWeek.value)
+    
+    // Fetch FRESH matchup data from Sleeper API (not from cache)
+    console.log(`🔄 Fetching fresh matchup data for Week ${week}...`)
+    const freshMatchups = await sleeperService.getMatchups(seasonInfo.league_id, week)
+    
+    // Update the store with fresh data
+    const seasonMatchups = leagueStore.historicalMatchups.get(selectedSeason.value) || new Map()
+    seasonMatchups.set(week, freshMatchups)
+    leagueStore.historicalMatchups.set(selectedSeason.value, seasonMatchups)
+    
+    // Update local matchupsData
+    matchupsData.value = freshMatchups
+    
+    // Re-fetch projections for all players
+    await fetchProjectionsForMatchups(selectedSeason.value, week)
+    
+    // Re-fetch rosters for updated standings
+    const freshRosters = await sleeperService.getLeagueRosters(seasonInfo.league_id)
+    leagueStore.historicalRosters.set(selectedSeason.value, freshRosters)
+    
+    // Re-fetch player data to get updated injury statuses
+    console.log('🔄 Fetching fresh player data for injury statuses...')
+    const freshPlayers = await sleeperService.getPlayers()
+    // Update the store's players object
+    Object.assign(leagueStore.players, freshPlayers)
+    
+    // Clear debug logs so we can see fresh data
+    teamProjectionDebugLogged.clear()
+    
+    // If a matchup is selected, re-analyze it with fresh data
+    if (selectedMatchup.value) {
+      // Find the updated matchup data
+      const updatedMatchup = matchups.value.find(m => m.matchup_id === selectedMatchup.value!.matchup_id)
+      if (updatedMatchup) {
+        selectedMatchup.value = updatedMatchup
+        analyzeMatchup()
+        buildStarterComparison()
+        buildInjuryReport()
+      }
+    }
+    
+    console.log('✅ Data refreshed with fresh API data!')
   } catch (error) {
     console.error('Failed to refresh data:', error)
   } finally {
@@ -4059,6 +4097,9 @@ function getOptimalProjectedTotal(rosterId: number): number {
   const lockedPlayers: { playerId: string, points: number, slotIndex: number }[] = []
   const unlockedStarterSlots: { slotIndex: number, position: string }[] = []
   
+  // Debug log for troubleshooting
+  console.log(`🔍 Optimal lineup analysis for roster ${rosterId}:`)
+  
   teamMatchup.starters.forEach((playerId, idx) => {
     if (!playerId || playerId === '0') {
       // Empty slot - mark as unlocked
@@ -4069,23 +4110,36 @@ function getOptimalProjectedTotal(rosterId: number): number {
     }
     
     const actualPoints = teamMatchup.players_points?.[playerId]
-    const hasPlayed = actualPoints !== undefined && actualPoints !== null && actualPoints > 0
     const player = leagueStore.players[playerId]
+    const playerName = player?.full_name || playerId
+    const injuryStatus = player?.injury_status
     
-    // Check if player is OUT or on IR and hasn't played
-    const isOut = player?.injury_status === 'Out' || player?.injury_status === 'IR'
+    // Check if player is OUT or on IR
+    const isOut = injuryStatus === 'Out' || injuryStatus === 'IR'
     
-    if (hasPlayed) {
-      // Player already played - locked in with actual points
-      lockedPlayers.push({ playerId, points: actualPoints, slotIndex: idx })
-    } else if (isOut) {
-      // Player is OUT and hasn't played - treat slot as unlocked
+    // Determine if player's game has started/finished
+    // Key insight: If actualPoints is defined (even 0), Sleeper has started tracking this game
+    // If actualPoints is undefined/null, the game hasn't started yet
+    const gameStarted = actualPoints !== undefined && actualPoints !== null
+    const hasPositivePoints = gameStarted && actualPoints > 0
+    
+    console.log(`  ${playerName}: actualPts=${actualPoints}, injury=${injuryStatus}, gameStarted=${gameStarted}`)
+    
+    if (isOut && !hasPositivePoints) {
+      // Player is OUT and hasn't scored positive points
+      // This could be: OUT before game (bench them) or OUT during game with 0 (still use bench)
+      console.log(`    → UNLOCKED (OUT with no positive points)`)
       if (idx < rosterPositions.length) {
         unlockedStarterSlots.push({ slotIndex: idx, position: rosterPositions[idx] })
       }
+    } else if (gameStarted) {
+      // Game has started (Sleeper is tracking points) - lock in actual points
+      // Even if 0, if the game started and they're not OUT, they played and got 0
+      console.log(`    → LOCKED (game started, pts: ${actualPoints})`)
+      lockedPlayers.push({ playerId, points: actualPoints, slotIndex: idx })
     } else {
-      // Player hasn't played yet but isn't marked OUT - could still be swapped
-      // For optimal, we'll consider them as "unlocked" to find best lineup
+      // Game hasn't started yet - slot is unlocked for optimal calculation
+      console.log(`    → UNLOCKED (game not started)`)
       if (idx < rosterPositions.length) {
         unlockedStarterSlots.push({ slotIndex: idx, position: rosterPositions[idx] })
       }
@@ -4094,6 +4148,8 @@ function getOptimalProjectedTotal(rosterId: number): number {
   
   // Calculate locked points
   const lockedPoints = lockedPlayers.reduce((sum, p) => sum + p.points, 0)
+  console.log(`  Total locked points: ${lockedPoints}`)
+  console.log(`  Unlocked slots: ${unlockedStarterSlots.length}`)
   
   // Get all available players for unlocked slots (bench + current unlocked starters)
   const usedPlayerIds = new Set(lockedPlayers.map(p => p.playerId))
