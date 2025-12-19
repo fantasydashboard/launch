@@ -542,7 +542,12 @@
                 <span>Best of {{ selectedAwardSeason }}</span>
               </h3>
               <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div v-for="award in seasonBestAwards" :key="award.title" class="bg-dark-border/30 rounded-xl p-4">
+                <div 
+                  v-for="award in seasonBestAwards" 
+                  :key="award.title" 
+                  class="bg-dark-border/30 rounded-xl p-4 cursor-pointer hover:bg-dark-border/50 transition-colors"
+                  @click="openSeasonAwardModal(award, 'fame', selectedAwardSeason)"
+                >
                   <div class="text-sm text-dark-textMuted uppercase tracking-wide mb-2">{{ award.title }}</div>
                   <div v-if="award.winner" class="flex items-center gap-3 mb-2">
                     <div class="w-12 h-12 rounded-full overflow-hidden bg-dark-border flex-shrink-0">
@@ -563,6 +568,7 @@
                   </div>
                   <div v-if="award.winner" class="text-xs text-dark-textSecondary">{{ award.winner.details }}</div>
                   <div v-else class="text-sm text-dark-textMuted italic">No data available</div>
+                  <div v-if="award.winner" class="text-xs text-primary mt-2 opacity-70">Click for details →</div>
                 </div>
               </div>
             </div>
@@ -574,7 +580,12 @@
                 <span>Worst of {{ selectedAwardSeason }}</span>
               </h3>
               <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div v-for="award in seasonWorstAwards" :key="award.title" class="bg-dark-border/30 rounded-xl p-4">
+                <div 
+                  v-for="award in seasonWorstAwards" 
+                  :key="award.title" 
+                  class="bg-dark-border/30 rounded-xl p-4 cursor-pointer hover:bg-dark-border/50 transition-colors"
+                  @click="openSeasonAwardModal(award, 'shame', selectedAwardSeason)"
+                >
                   <div class="text-sm text-dark-textMuted uppercase tracking-wide mb-2">{{ award.title }}</div>
                   <div v-if="award.winner" class="flex items-center gap-3 mb-2">
                     <div class="w-12 h-12 rounded-full overflow-hidden bg-dark-border flex-shrink-0">
@@ -595,6 +606,7 @@
                   </div>
                   <div v-if="award.winner" class="text-xs text-dark-textSecondary">{{ award.winner.details }}</div>
                   <div v-else class="text-sm text-dark-textMuted italic">No data available</div>
+                  <div v-if="award.winner" class="text-xs text-primary mt-2 opacity-70">Click for details →</div>
                 </div>
               </div>
             </div>
@@ -667,7 +679,12 @@
                 <span>Best of Week {{ selectedWeeklyAwardWeek }}</span>
               </h3>
               <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div v-for="award in weeklyBestAwards" :key="award.title" class="bg-dark-border/30 rounded-xl p-4">
+                <div 
+                  v-for="award in weeklyBestAwards" 
+                  :key="award.title" 
+                  class="bg-dark-border/30 rounded-xl p-4 cursor-pointer hover:bg-dark-border/50 transition-colors"
+                  @click="openWeeklyAwardModal(award, 'fame', selectedWeeklyAwardSeason, selectedWeeklyAwardWeek)"
+                >
                   <div class="text-sm text-dark-textMuted uppercase tracking-wide mb-2">{{ award.title }}</div>
                   <div v-if="award.winner" class="flex items-center gap-3 mb-2">
                     <div class="w-12 h-12 rounded-full overflow-hidden bg-dark-border flex-shrink-0">
@@ -688,6 +705,7 @@
                   </div>
                   <div v-if="award.winner" class="text-xs text-dark-textSecondary">{{ award.winner.details }}</div>
                   <div v-else class="text-sm text-dark-textMuted italic">No data available</div>
+                  <div v-if="award.winner" class="text-xs text-primary mt-2 opacity-70">Click for details →</div>
                 </div>
               </div>
             </div>
@@ -699,7 +717,12 @@
                 <span>Worst of Week {{ selectedWeeklyAwardWeek }}</span>
               </h3>
               <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div v-for="award in weeklyWorstAwards" :key="award.title" class="bg-dark-border/30 rounded-xl p-4">
+                <div 
+                  v-for="award in weeklyWorstAwards" 
+                  :key="award.title" 
+                  class="bg-dark-border/30 rounded-xl p-4 cursor-pointer hover:bg-dark-border/50 transition-colors"
+                  @click="openWeeklyAwardModal(award, 'shame', selectedWeeklyAwardSeason, selectedWeeklyAwardWeek)"
+                >
                   <div class="text-sm text-dark-textMuted uppercase tracking-wide mb-2">{{ award.title }}</div>
                   <div v-if="award.winner" class="flex items-center gap-3 mb-2">
                     <div class="w-12 h-12 rounded-full overflow-hidden bg-dark-border flex-shrink-0">
@@ -720,6 +743,7 @@
                   </div>
                   <div v-if="award.winner" class="text-xs text-dark-textSecondary">{{ award.winner.details }}</div>
                   <div v-else class="text-sm text-dark-textMuted italic">No data available</div>
+                  <div v-if="award.winner" class="text-xs text-primary mt-2 opacity-70">Click for details →</div>
                 </div>
               </div>
             </div>
@@ -744,7 +768,11 @@
           <div class="sticky top-0 bg-dark-elevated border-b border-dark-border p-6 flex items-center justify-between">
             <div>
               <h2 class="text-xl font-bold text-dark-text">{{ selectedAward.title }}</h2>
-              <p class="text-sm text-dark-textMuted mt-1">All-Time Leaderboard</p>
+              <p class="text-sm text-dark-textMuted mt-1">
+                {{ awardModalContext === 'all-time' ? 'All-Time Leaderboard' : 
+                   awardModalContext === 'season' ? `${awardModalSeason} Season Leaderboard` :
+                   `Week ${awardModalWeek}, ${awardModalSeason} Leaderboard` }}
+              </p>
             </div>
             <button 
               @click="closeAwardModal"
@@ -878,8 +906,10 @@ const showCurrentMembersOnlyCareer = ref(false)
 const showAwardModal = ref(false)
 const selectedAward = ref<Award | null>(null)
 const awardModalType = ref<'fame' | 'shame'>('fame')
+const awardModalContext = ref<'all-time' | 'season' | 'weekly'>('all-time')
+const awardModalSeason = ref<string>('')
+const awardModalWeek = ref<number>(0)
 const awardComparisonData = ref<Array<{ team_name: string; avatar: string; value: number; season: string }>>([])
-
 interface Award {
   title: string
   winner: AwardWinner | null
@@ -1278,7 +1308,34 @@ function openAwardModal(award: Award, type: 'fame' | 'shame') {
   
   selectedAward.value = award
   awardModalType.value = type
-  awardComparisonData.value = buildComparisonData(award.title, type)
+  awardModalContext.value = 'all-time'
+  awardModalSeason.value = ''
+  awardModalWeek.value = 0
+  awardComparisonData.value = buildComparisonData(award.title, type, 'all-time')
+  showAwardModal.value = true
+}
+
+function openSeasonAwardModal(award: Award, type: 'fame' | 'shame', season: string) {
+  if (!award.winner) return
+  
+  selectedAward.value = award
+  awardModalType.value = type
+  awardModalContext.value = 'season'
+  awardModalSeason.value = season
+  awardModalWeek.value = 0
+  awardComparisonData.value = buildComparisonData(award.title, type, 'season', season)
+  showAwardModal.value = true
+}
+
+function openWeeklyAwardModal(award: Award, type: 'fame' | 'shame', season: string, week: number) {
+  if (!award.winner) return
+  
+  selectedAward.value = award
+  awardModalType.value = type
+  awardModalContext.value = 'weekly'
+  awardModalSeason.value = season
+  awardModalWeek.value = week
+  awardComparisonData.value = buildComparisonData(award.title, type, 'weekly', season, week)
   showAwardModal.value = true
 }
 
@@ -1309,10 +1366,21 @@ function getAwardSpread(): string {
   return (max - min).toFixed(1)
 }
 
-function buildComparisonData(title: string, type: 'fame' | 'shame'): Array<{ team_name: string; avatar: string; value: number; season: string }> {
+function buildComparisonData(
+  title: string, 
+  type: 'fame' | 'shame', 
+  context: 'all-time' | 'season' | 'weekly' = 'all-time',
+  filterSeason?: string,
+  filterWeek?: number
+): Array<{ team_name: string; avatar: string; value: number; season: string }> {
   const results: Array<{ team_name: string; avatar: string; value: number; season: string }> = []
   
-  leagueStore.historicalSeasons.forEach(seasonInfo => {
+  // Determine which seasons to process
+  const seasonsToProcess = context === 'all-time' 
+    ? leagueStore.historicalSeasons 
+    : leagueStore.historicalSeasons.filter(s => s.season === filterSeason)
+  
+  seasonsToProcess.forEach(seasonInfo => {
     const rosters = leagueStore.historicalRosters.get(seasonInfo.season) || []
     const users = leagueStore.historicalUsers.get(seasonInfo.season) || []
     const matchups = leagueStore.historicalMatchups.get(seasonInfo.season)
@@ -1320,8 +1388,62 @@ function buildComparisonData(title: string, type: 'fame' | 'shame'): Array<{ tea
     
     const playoffStart = seasonInfo.settings?.playoff_week_start || 15
     
-    // Handle different award types
-    if (title.includes('Season')) {
+    // For weekly context, only look at that specific week
+    if (context === 'weekly' && filterWeek) {
+      const weekMatchups = matchups.get(filterWeek)
+      if (!weekMatchups) return
+      
+      // Handle different award types for weekly
+      if (title.includes('Score') || title.includes('Points')) {
+        // Weekly scores - all teams in this week
+        weekMatchups.forEach(match => {
+          const roster = rosters.find(r => r.roster_id === match.roster_id)
+          const user = users.find(u => u.user_id === roster?.owner_id)
+          if (roster && match.points) {
+            results.push({
+              team_name: sleeperService.getTeamName(roster, user),
+              avatar: sleeperService.getAvatarUrl(roster, user, seasonInfo),
+              value: match.points,
+              season: `Week ${filterWeek}`
+            })
+          }
+        })
+      } else if (title.includes('Margin') || title.includes('Blowout') || title.includes('Loss')) {
+        // Margins for this week
+        const matchupGroups = new Map<number, typeof weekMatchups>()
+        weekMatchups.forEach(m => {
+          if (!matchupGroups.has(m.matchup_id)) {
+            matchupGroups.set(m.matchup_id, [])
+          }
+          matchupGroups.get(m.matchup_id)!.push(m)
+        })
+        
+        matchupGroups.forEach(pair => {
+          if (pair.length === 2) {
+            const [m1, m2] = pair
+            const margin = Math.abs((m1.points || 0) - (m2.points || 0))
+            const winner = (m1.points || 0) > (m2.points || 0) ? m1 : m2
+            const loser = (m1.points || 0) > (m2.points || 0) ? m2 : m1
+            const targetMatch = type === 'fame' ? winner : loser
+            const roster = rosters.find(r => r.roster_id === targetMatch.roster_id)
+            const user = users.find(u => u.user_id === roster?.owner_id)
+            
+            if (roster) {
+              results.push({
+                team_name: sleeperService.getTeamName(roster, user),
+                avatar: sleeperService.getAvatarUrl(roster, user, seasonInfo),
+                value: margin,
+                season: `Week ${filterWeek}`
+              })
+            }
+          }
+        })
+      }
+      return
+    }
+    
+    // Handle different award types for season/all-time context
+    if (title.includes('Season') || (context === 'season' && (title.includes('Points') || title.includes('Score')))) {
       // Season totals - get all teams for this season
       rosters.forEach(roster => {
         const user = users.find(u => u.user_id === roster.owner_id)
@@ -1346,11 +1468,12 @@ function buildComparisonData(title: string, type: 'fame' | 'shame'): Array<{ tea
           })
         }
       })
-    } else if (title.includes('Week')) {
-      // Weekly scores - get best/worst week per team
+    } else if (title.includes('Week') && context !== 'season') {
+      // Weekly scores - get best/worst week per team (for all-time)
       rosters.forEach(roster => {
         const user = users.find(u => u.user_id === roster.owner_id)
         let bestWeek = type === 'fame' ? 0 : Infinity
+        let bestWeekNum = 0
         
         matchups.forEach((weekMatchups, week) => {
           if (week >= playoffStart) return
@@ -1358,8 +1481,10 @@ function buildComparisonData(title: string, type: 'fame' | 'shame'): Array<{ tea
           if (match && match.points) {
             if (type === 'fame' && match.points > bestWeek) {
               bestWeek = match.points
+              bestWeekNum = week
             } else if (type === 'shame' && match.points < bestWeek) {
               bestWeek = match.points
+              bestWeekNum = week
             }
           }
         })
@@ -1369,7 +1494,7 @@ function buildComparisonData(title: string, type: 'fame' | 'shame'): Array<{ tea
             team_name: sleeperService.getTeamName(roster, user),
             avatar: sleeperService.getAvatarUrl(roster, user, seasonInfo),
             value: bestWeek,
-            season: seasonInfo.season
+            season: `${seasonInfo.season} Wk ${bestWeekNum}`
           })
         }
       })
@@ -1392,7 +1517,9 @@ function buildComparisonData(title: string, type: 'fame' | 'shame'): Array<{ tea
             const [m1, m2] = pair
             const margin = Math.abs((m1.points || 0) - (m2.points || 0))
             const winner = (m1.points || 0) > (m2.points || 0) ? m1 : m2
-            const roster = rosters.find(r => r.roster_id === winner.roster_id)
+            const loser = (m1.points || 0) > (m2.points || 0) ? m2 : m1
+            const targetMatch = type === 'fame' ? winner : loser
+            const roster = rosters.find(r => r.roster_id === targetMatch.roster_id)
             const user = users.find(u => u.user_id === roster?.owner_id)
             
             if (roster) {
@@ -1400,7 +1527,7 @@ function buildComparisonData(title: string, type: 'fame' | 'shame'): Array<{ tea
                 team_name: sleeperService.getTeamName(roster, user),
                 avatar: sleeperService.getAvatarUrl(roster, user, seasonInfo),
                 value: margin,
-                season: `${seasonInfo.season} Week ${week}`
+                season: `${seasonInfo.season} Wk ${week}`
               })
             }
           }
