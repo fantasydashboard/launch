@@ -1,5 +1,5 @@
 <template>
-  <div class="min-h-screen transition-colors" style="background: radial-gradient(circle at top, #1c2030, #05060a 55%);">
+  <div class="min-h-screen transition-colors overflow-x-hidden" style="background: radial-gradient(circle at top, #1c2030, #05060a 55%);">
     
     <!-- Show Landing Page for non-authenticated users -->
     <template v-if="!authStore.isAuthenticated">
@@ -8,26 +8,30 @@
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div class="flex items-center justify-between h-16">
             <!-- Logo -->
-            <div class="flex items-center gap-3">
-              <img src="/ufd-logo.png" alt="UFD Logo" class="w-10 h-10 object-contain" />
+            <div class="flex items-center gap-2 sm:gap-3">
+              <img src="/ufd-logo.png" alt="UFD Logo" class="w-8 h-8 sm:w-10 sm:h-10 object-contain" />
               <div>
-                <h1 class="text-lg font-bold text-dark-text">Ultimate Fantasy Dashboard</h1>
+                <h1 class="text-base sm:text-lg font-bold text-dark-text">
+                  <span class="hidden sm:inline">Ultimate Fantasy Dashboard</span>
+                  <span class="sm:hidden">UFD</span>
+                </h1>
               </div>
             </div>
 
             <!-- Auth Buttons -->
-            <div class="flex items-center gap-3">
+            <div class="flex items-center gap-2 sm:gap-3">
               <button
                 @click="showAuthModal = true; authMode = 'login'"
-                class="px-4 py-2 rounded-lg text-gray-300 hover:text-white font-medium transition-colors"
+                class="px-3 sm:px-4 py-2 rounded-lg text-gray-300 hover:text-white font-medium transition-colors text-sm sm:text-base"
               >
                 Sign In
               </button>
               <button
                 @click="showAuthModal = true; authMode = 'signup'"
-                class="px-4 py-2 rounded-lg bg-primary text-gray-900 font-semibold hover:bg-primary/90 transition-colors"
+                class="px-3 sm:px-4 py-2 rounded-lg bg-primary text-gray-900 font-semibold hover:bg-primary/90 transition-colors text-sm sm:text-base"
               >
-                Get Started
+                <span class="hidden sm:inline">Get Started</span>
+                <span class="sm:hidden">Start</span>
               </button>
             </div>
           </div>
@@ -45,22 +49,25 @@
       <!-- Header -->
       <header class="border-b border-dark-border shadow-soft" style="background: linear-gradient(135deg, rgba(19, 22, 32, 0.98), rgba(10, 12, 20, 0.98)); border: 1px solid #2a2f42;">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div class="flex items-center justify-between h-20">
+          <div class="flex items-center justify-between h-16 sm:h-20">
             <!-- Logo -->
-            <div class="flex items-center gap-4">
-              <img src="/ufd-logo.png" alt="UFD Logo" class="w-12 h-12 object-contain" />
-              <div>
-                <h1 class="text-2xl font-bold text-dark-text">Ultimate Fantasy Dashboard</h1>
+            <div class="flex items-center gap-2 sm:gap-4 flex-shrink-0">
+              <img src="/ufd-logo.png" alt="UFD Logo" class="w-10 h-10 sm:w-12 sm:h-12 object-contain" />
+              <div class="hidden sm:block">
+                <h1 class="text-xl lg:text-2xl font-bold text-dark-text">Ultimate Fantasy Dashboard</h1>
+              </div>
+              <div class="sm:hidden">
+                <h1 class="text-sm font-bold text-dark-text">UFD</h1>
               </div>
             </div>
 
             <!-- League selector and controls -->
-            <div class="flex items-center gap-4">
+            <div class="flex items-center gap-2 sm:gap-4">
               <!-- League Dropdown -->
               <div class="relative" ref="leagueDropdownRef">
                 <button
                   @click="showLeagueDropdown = !showLeagueDropdown"
-                  class="flex items-center gap-2 px-4 py-2 rounded-xl bg-dark-card border border-dark-border hover:border-primary/50 transition-colors min-w-[220px]"
+                  class="flex items-center gap-2 px-2 sm:px-4 py-2 rounded-xl bg-dark-card border border-dark-border hover:border-primary/50 transition-colors min-w-0 sm:min-w-[220px]"
                 >
                   <template v-if="leagueStore.currentLeague">
                     <div class="w-5 h-5 flex-shrink-0 rounded flex items-center justify-center" :style="{ background: getLeagueTypeColor(leagueStore.currentLeague.settings?.type) }">
@@ -68,7 +75,7 @@
                         <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
                       </svg>
                     </div>
-                    <span class="text-dark-text font-medium truncate">
+                    <span class="text-dark-text font-medium truncate max-w-[80px] sm:max-w-[150px]">
                       {{ leagueStore.currentLeague.name }}
                     </span>
                   </template>
@@ -76,7 +83,8 @@
                     <div class="w-5 h-5 rounded-full bg-cyan-500/20 flex items-center justify-center flex-shrink-0">
                       <span class="text-xs">👀</span>
                     </div>
-                    <span class="text-cyan-400 font-medium">Demo Mode</span>
+                    <span class="text-cyan-400 font-medium hidden sm:inline">Demo Mode</span>
+                    <span class="text-cyan-400 font-medium sm:hidden text-xs">Demo</span>
                   </template>
                   <template v-else>
                     <div class="w-5 h-5 rounded-full bg-primary/20 flex items-center justify-center flex-shrink-0">
@@ -84,9 +92,10 @@
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
                       </svg>
                     </div>
-                    <span class="text-primary font-medium">Connect Sleeper</span>
+                    <span class="text-primary font-medium hidden sm:inline">Connect Sleeper</span>
+                    <span class="text-primary font-medium sm:hidden text-xs">Connect</span>
                   </template>
-                  <svg class="w-4 h-4 text-dark-textMuted ml-auto flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <svg class="w-4 h-4 text-dark-textMuted ml-auto flex-shrink-0 hidden sm:block" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
                   </svg>
                 </button>
@@ -213,8 +222,8 @@
               </div>
 
               <!-- User Menu -->
-              <div class="flex items-center gap-3">
-                <div class="flex items-center gap-2">
+              <div class="flex items-center gap-2 sm:gap-3">
+                <div class="hidden sm:flex items-center gap-2">
                   <div class="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center">
                     <span class="text-sm font-bold text-primary">{{ userInitials }}</span>
                   </div>
@@ -222,11 +231,24 @@
                 </div>
                 <button
                   @click="handleSignOut"
-                  class="p-2 rounded-lg hover:bg-dark-border/50 transition-colors text-dark-textMuted hover:text-dark-text"
+                  class="hidden sm:block p-2 rounded-lg hover:bg-dark-border/50 transition-colors text-dark-textMuted hover:text-dark-text"
                   title="Sign out"
                 >
                   <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                  </svg>
+                </button>
+                
+                <!-- Mobile Hamburger Menu -->
+                <button
+                  @click="showMobileMenu = !showMobileMenu"
+                  class="sm:hidden p-2 rounded-lg hover:bg-dark-border/50 transition-colors text-dark-textMuted"
+                >
+                  <svg v-if="!showMobileMenu" class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
+                  </svg>
+                  <svg v-else class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
                   </svg>
                 </button>
               </div>
@@ -235,15 +257,68 @@
         </div>
       </header>
 
-      <!-- Navigation Tabs - Always show when logged in -->
-      <nav class="border-b border-dark-border" style="background: linear-gradient(135deg, rgba(19, 22, 32, 0.98), rgba(10, 12, 20, 0.98)); border: 1px solid #2a2f42;">
+      <!-- Mobile Navigation Menu -->
+      <div 
+        v-if="showMobileMenu" 
+        class="sm:hidden fixed inset-0 z-40 bg-black/50 backdrop-blur-sm"
+        @click="showMobileMenu = false"
+      >
+        <div 
+          class="absolute top-16 left-0 right-0 bg-dark-elevated border-b border-dark-border shadow-xl max-h-[calc(100vh-4rem)] overflow-y-auto"
+          @click.stop
+        >
+          <!-- Navigation Links -->
+          <nav class="p-4 space-y-1">
+            <router-link
+              v-for="tab in tabs"
+              :key="tab.path"
+              :to="tab.path"
+              @click="showMobileMenu = false"
+              class="flex items-center gap-3 px-4 py-3 rounded-xl text-base font-medium transition-colors"
+              :class="[
+                $route.path === tab.path
+                  ? 'bg-primary text-gray-900'
+                  : 'text-dark-textSecondary hover:text-dark-text hover:bg-dark-border/50'
+              ]"
+            >
+              <span>{{ getTabIcon(tab.name) }}</span>
+              <span>{{ tab.name }}</span>
+            </router-link>
+          </nav>
+          
+          <!-- User Info & Sign Out -->
+          <div class="border-t border-dark-border p-4">
+            <div class="flex items-center gap-3 px-4 py-2 mb-2">
+              <div class="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center">
+                <span class="text-lg font-bold text-primary">{{ userInitials }}</span>
+              </div>
+              <div>
+                <div class="font-medium text-dark-text">{{ displayName }}</div>
+                <div class="text-sm text-dark-textMuted">{{ authStore.user?.email }}</div>
+              </div>
+            </div>
+            <button
+              @click="handleSignOut; showMobileMenu = false"
+              class="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-red-400 hover:bg-red-500/10 transition-colors"
+            >
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+              </svg>
+              <span>Sign Out</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Navigation Tabs - Hidden on mobile (use hamburger menu) -->
+      <nav class="hidden sm:block border-b border-dark-border" style="background: linear-gradient(135deg, rgba(19, 22, 32, 0.98), rgba(10, 12, 20, 0.98)); border: 1px solid #2a2f42;">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3">
           <div class="inline-flex items-center gap-2 bg-dark-bg/50 rounded-full p-1.5 border border-dark-border">
             <router-link
               v-for="tab in tabs"
               :key="tab.path"
               :to="tab.path"
-              class="px-6 py-2.5 text-sm font-semibold rounded-full transition-all duration-200"
+              class="px-4 lg:px-6 py-2.5 text-sm font-semibold rounded-full transition-all duration-200"
               :class="[
                 $route.path === tab.path
                   ? 'bg-primary text-gray-900 shadow-md'
@@ -354,6 +429,7 @@ const showAuthModal = ref(false)
 const authMode = ref<'login' | 'signup'>('signup')
 const showLeagueDropdown = ref(false)
 const showAddLeagueModal = ref(false)
+const showMobileMenu = ref(false)
 const leagueDropdownRef = ref<HTMLElement | null>(null)
 const leagueToRemove = ref<any>(null)
 
@@ -397,6 +473,20 @@ function getLeagueTypeName(leagueType: number | undefined): string {
     case 1: return 'Keeper'
     default: return 'Redraft'
   }
+}
+
+function getTabIcon(tabName: string): string {
+  const icons: Record<string, string> = {
+    'Home': '🏠',
+    'Power Rankings': '📊',
+    'Matchups': '⚔️',
+    'Projections': '🎯',
+    'History': '📜',
+    'Draft': '📝',
+    'Compare': '⚖️',
+    'Tools': '🛠️'
+  }
+  return icons[tabName] || '📌'
 }
 
 async function selectLeague(leagueId: string) {
@@ -485,5 +575,10 @@ watch(() => authStore.isAuthenticated, async (isAuth) => {
       leagueStore.enableDemoMode()
     }
   }
+})
+
+// Close mobile menu on route change
+watch(() => router.currentRoute.value.path, () => {
+  showMobileMenu.value = false
 })
 </script>
