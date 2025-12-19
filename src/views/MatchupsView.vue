@@ -3178,14 +3178,14 @@ async function downloadMatchupPreview() {
       </div>
       
       <!-- Footer with Promo -->
-      <div style="text-align: center; padding-top: 16px; border-top: 1px solid rgba(58, 61, 82, 0.5);">
-        <div style="display: flex; align-items: center; justify-content: center; gap: 12px;">
-          ${ufdLogoBase64 ? `<img src="${ufdLogoBase64}" style="width: 32px; height: 32px; object-fit: contain;" />` : ''}
+      <div style="text-align: center; padding-top: 20px; border-top: 1px solid rgba(58, 61, 82, 0.5);">
+        <div style="display: flex; align-items: center; justify-content: center; gap: 16px;">
+          ${ufdLogoBase64 ? `<img src="${ufdLogoBase64}" style="width: 48px; height: 48px; object-fit: contain;" />` : ''}
           <div>
-            <div style="font-size: 11px; color: #6b7280;">
+            <div style="font-size: 14px; color: #9ca3af;">
               See a complete breakdown of every matchup in your league at
             </div>
-            <div style="font-size: 13px; font-weight: bold; color: #facc15;">
+            <div style="font-size: 18px; font-weight: bold; color: #facc15;">
               ultimatefantasydashboard.com/matchups
             </div>
           </div>
@@ -3564,14 +3564,14 @@ async function downloadFullMatchupAnalysis() {
       </div>
       
       <!-- Footer with Promo -->
-      <div style="text-align: center; padding-top: 20px; border-top: 1px solid rgba(58, 61, 82, 0.5); margin-top: 20px;">
-        <div style="display: flex; align-items: center; justify-content: center; gap: 12px;">
-          ${ufdLogoBase64 ? `<img src="${ufdLogoBase64}" style="width: 36px; height: 36px; object-fit: contain;" />` : ''}
+      <div style="text-align: center; padding-top: 24px; border-top: 1px solid rgba(58, 61, 82, 0.5); margin-top: 20px;">
+        <div style="display: flex; align-items: center; justify-content: center; gap: 16px;">
+          ${ufdLogoBase64 ? `<img src="${ufdLogoBase64}" style="width: 48px; height: 48px; object-fit: contain;" />` : ''}
           <div>
-            <div style="font-size: 11px; color: #6b7280;">
+            <div style="font-size: 14px; color: #9ca3af;">
               See a complete breakdown of every matchup in your league at
             </div>
-            <div style="font-size: 13px; font-weight: bold; color: #facc15;">
+            <div style="font-size: 18px; font-weight: bold; color: #facc15;">
               ultimatefantasydashboard.com/matchups
             </div>
           </div>
@@ -3837,14 +3837,14 @@ async function downloadStatComparison() {
       </div>
       
       <!-- Footer with Promo -->
-      <div style="text-align: center; padding-top: 16px; border-top: 1px solid rgba(58, 61, 82, 0.5);">
-        <div style="display: flex; align-items: center; justify-content: center; gap: 12px;">
-          ${ufdLogoBase64 ? `<img src="${ufdLogoBase64}" style="width: 32px; height: 32px; object-fit: contain;" />` : ''}
+      <div style="text-align: center; padding-top: 20px; border-top: 1px solid rgba(58, 61, 82, 0.5);">
+        <div style="display: flex; align-items: center; justify-content: center; gap: 16px;">
+          ${ufdLogoBase64 ? `<img src="${ufdLogoBase64}" style="width: 48px; height: 48px; object-fit: contain;" />` : ''}
           <div>
-            <div style="font-size: 11px; color: #6b7280;">
+            <div style="font-size: 14px; color: #9ca3af;">
               See a complete breakdown of every matchup in your league at
             </div>
-            <div style="font-size: 13px; font-weight: bold; color: #facc15;">
+            <div style="font-size: 18px; font-weight: bold; color: #facc15;">
               ultimatefantasydashboard.com/matchups
             </div>
           </div>
