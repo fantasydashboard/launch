@@ -185,7 +185,7 @@
                   </span>
                 </td>
                 <td class="text-center py-3 px-4 text-dark-text">{{ stat.avg_ppg.toFixed(1) }}</td>
-                <td class="text-center py-3 px-4 text-dark-textMuted">{{ stat.total_pf.toFixed(0) }}</td>
+                <td class="text-center py-3 px-4" :class="getPFRankClass(stat.owner_id)">{{ stat.total_pf.toFixed(0) }}</td>
               </tr>
             </tbody>
           </table>
@@ -1087,6 +1087,35 @@ function getRecordRankClass(ownerId: string): string {
   return 'text-dark-text'
 }
 
+// Get Total PF rankings for coloring (top 3 green, bottom 3 red)
+const pfRankings = computed(() => {
+  const stats = [...filteredCareerStats.value]
+  // Sort by total_pf descending
+  stats.sort((a, b) => b.total_pf - a.total_pf)
+  
+  const rankings = new Map<string, 'top' | 'bottom' | 'middle'>()
+  
+  stats.forEach((stat, idx) => {
+    if (idx < 3) {
+      rankings.set(stat.owner_id, 'top')
+    } else if (idx >= stats.length - 3) {
+      rankings.set(stat.owner_id, 'bottom')
+    } else {
+      rankings.set(stat.owner_id, 'middle')
+    }
+  })
+  
+  return rankings
+})
+
+// Get class for Total PF column based on ranking
+function getPFRankClass(ownerId: string): string {
+  const rank = pfRankings.value.get(ownerId)
+  if (rank === 'top') return 'text-green-400'
+  if (rank === 'bottom') return 'text-red-400'
+  return 'text-dark-textMuted'
+}
+
 const seasonRecords = computed((): SeasonRecord[] => {
   const records: SeasonRecord[] = []
   
@@ -1869,6 +1898,60 @@ async function getUFDLogoBase64(): Promise<string> {
   }
 }
 
+// Create fallback avatar from initials
+function createFallbackAvatar(name: string): string {
+  const canvas = document.createElement('canvas')
+  canvas.width = 100
+  canvas.height = 100
+  const ctx = canvas.getContext('2d')
+  if (!ctx) return ''
+  
+  // Background
+  ctx.fillStyle = '#3a3d52'
+  ctx.beginPath()
+  ctx.arc(50, 50, 50, 0, Math.PI * 2)
+  ctx.fill()
+  
+  // Text
+  ctx.fillStyle = '#f7f7ff'
+  ctx.font = 'bold 40px system-ui, sans-serif'
+  ctx.textAlign = 'center'
+  ctx.textBaseline = 'middle'
+  const initials = name.split(' ').map(w => w[0]).join('').substring(0, 2).toUpperCase()
+  ctx.fillText(initials, 50, 50)
+  
+  return canvas.toDataURL('image/png')
+}
+
+// Load avatar through proxy API or use fallback
+async function loadAvatarAsBase64(avatarUrl: string, name: string): Promise<string> {
+  if (!avatarUrl) return createFallbackAvatar(name)
+  
+  try {
+    // Extract avatar ID from URL
+    const avatarId = avatarUrl.split('/').pop()
+    if (!avatarId || avatarId === 'default') return createFallbackAvatar(name)
+    
+    // Use our proxy API
+    const proxyUrl = `/api/avatar?id=${avatarId}`
+    const response = await fetch(proxyUrl)
+    
+    if (!response.ok) {
+      return createFallbackAvatar(name)
+    }
+    
+    const blob = await response.blob()
+    return new Promise((resolve) => {
+      const reader = new FileReader()
+      reader.onloadend = () => resolve(reader.result as string)
+      reader.onerror = () => resolve(createFallbackAvatar(name))
+      reader.readAsDataURL(blob)
+    })
+  } catch (e) {
+    return createFallbackAvatar(name)
+  }
+}
+
 // Download Career Statistics
 async function downloadCareerStats() {
   isDownloadingCareerStats.value = true
@@ -1880,10 +1963,19 @@ async function downloadCareerStats() {
     // Use filtered stats (respects toggle), limit to 20 teams max
     const statsToShow = filteredCareerStats.value.slice(0, 20)
     
-    // Sort by wins to determine top/bottom 3 for coloring
+    // Sort by wins to determine top/bottom 3 for record coloring
     const sortedByWins = [...statsToShow].sort((a, b) => b.wins - a.wins)
-    const top3Ids = new Set(sortedByWins.slice(0, 3).map(s => s.owner_id))
-    const bottom3Ids = new Set(sortedByWins.slice(-3).map(s => s.owner_id))
+    const top3WinsIds = new Set(sortedByWins.slice(0, 3).map(s => s.owner_id))
+    const bottom3WinsIds = new Set(sortedByWins.slice(-3).map(s => s.owner_id))
+    
+    // Sort by total_pf to determine top/bottom 3 for total PF coloring
+    const sortedByPF = [...statsToShow].sort((a, b) => b.total_pf - a.total_pf)
+    const top3PFIds = new Set(sortedByPF.slice(0, 3).map(s => s.owner_id))
+    const bottom3PFIds = new Set(sortedByPF.slice(-3).map(s => s.owner_id))
+    
+    // Load all avatars as base64
+    const avatarPromises = statsToShow.map(stat => loadAvatarAsBase64(stat.avatar, stat.team_name))
+    const avatarBase64s = await Promise.all(avatarPromises)
     
     const container = document.createElement('div')
     container.style.cssText = `
@@ -1899,15 +1991,20 @@ async function downloadCareerStats() {
     const tableRows = statsToShow.map((stat, idx) => {
       // Determine record color
       let recordColor = '#f7f7ff'
-      if (top3Ids.has(stat.owner_id)) recordColor = '#4ade80'
-      else if (bottom3Ids.has(stat.owner_id)) recordColor = '#f87171'
+      if (top3WinsIds.has(stat.owner_id)) recordColor = '#4ade80'
+      else if (bottom3WinsIds.has(stat.owner_id)) recordColor = '#f87171'
+      
+      // Determine total PF color
+      let pfColor = '#9ca3af'
+      if (top3PFIds.has(stat.owner_id)) pfColor = '#4ade80'
+      else if (bottom3PFIds.has(stat.owner_id)) pfColor = '#f87171'
       
       return `
       <tr style="border-bottom: 1px solid rgba(58, 61, 82, 0.5);">
         <td style="padding: 14px 10px; text-align: left;">
           <div style="display: flex; align-items: center; gap: 12px;">
             <span style="color: #6b7280; font-size: 13px; min-width: 24px;">${idx + 1}</span>
-            <img src="${stat.avatar}" style="width: 32px; height: 32px; border-radius: 50%; object-fit: cover;" onerror="this.src='https://sleepercdn.com/avatars/thumbs/default'" />
+            <img src="${avatarBase64s[idx]}" style="width: 32px; height: 32px; border-radius: 50%; object-fit: cover;" />
             <span style="font-weight: 600; font-size: 14px;">${stat.team_name}</span>
           </div>
         </td>
@@ -1920,7 +2017,7 @@ async function downloadCareerStats() {
           ${(stat.win_pct * 100).toFixed(1)}%
         </td>
         <td style="padding: 14px 10px; text-align: center; font-size: 14px;">${stat.avg_ppg.toFixed(1)}</td>
-        <td style="padding: 14px 10px; text-align: center; color: #9ca3af; font-size: 14px;">${stat.total_pf.toFixed(0)}</td>
+        <td style="padding: 14px 10px; text-align: center; color: ${pfColor}; font-size: 14px;">${stat.total_pf.toFixed(0)}</td>
       </tr>
     `}).join('')
     
@@ -2106,6 +2203,16 @@ async function downloadHeadToHead() {
     // Always use current members for download
     const teamsToShow = h2hMatrixTeams.value.filter(team => currentMemberIds.value.has(team.user_id))
     
+    // Load all avatars as base64
+    const avatarPromises = teamsToShow.map(team => loadAvatarAsBase64(team.avatar, team.team_name))
+    const avatarBase64s = await Promise.all(avatarPromises)
+    
+    // Create a map for quick lookup
+    const avatarMap = new Map<string, string>()
+    teamsToShow.forEach((team, idx) => {
+      avatarMap.set(team.user_id, avatarBase64s[idx])
+    })
+    
     const container = document.createElement('div')
     container.style.cssText = `
       position: fixed;
@@ -2120,7 +2227,7 @@ async function downloadHeadToHead() {
     // Build header row with logos only (no names)
     const headerCells = teamsToShow.map(team => 
       `<th style="padding: 10px 6px; text-align: center; border: 1px solid rgba(58, 61, 82, 0.5); min-width: 50px;">
-        <img src="${team.avatar}" style="width: 36px; height: 36px; border-radius: 50%; object-fit: cover;" title="${team.team_name}" onerror="this.src='https://sleepercdn.com/avatars/thumbs/default'" />
+        <img src="${avatarMap.get(team.user_id)}" style="width: 36px; height: 36px; border-radius: 50%; object-fit: cover;" title="${team.team_name}" />
       </th>`
     ).join('')
     
@@ -2147,7 +2254,7 @@ async function downloadHeadToHead() {
       return `<tr>
         <td style="padding: 10px 12px; text-align: left; border: 1px solid rgba(58, 61, 82, 0.5); background: rgba(38, 42, 58, 0.5); white-space: nowrap;">
           <div style="display: flex; align-items: center; gap: 10px;">
-            <img src="${rowTeam.avatar}" style="width: 28px; height: 28px; border-radius: 50%; object-fit: cover;" onerror="this.src='https://sleepercdn.com/avatars/thumbs/default'" />
+            <img src="${avatarMap.get(rowTeam.user_id)}" style="width: 28px; height: 28px; border-radius: 50%; object-fit: cover;" />
             <span style="font-weight: 600; font-size: 13px;">${rowTeam.team_name}</span>
           </div>
         </td>
