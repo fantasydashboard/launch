@@ -405,7 +405,12 @@
                 <span>Hall of Fame</span>
               </h3>
               <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div v-for="award in allTimeHallOfFame" :key="award.title" class="bg-dark-border/30 rounded-xl p-4">
+                <div 
+                  v-for="award in allTimeHallOfFame" 
+                  :key="award.title" 
+                  class="bg-dark-border/30 rounded-xl p-4 cursor-pointer hover:bg-dark-border/50 transition-colors"
+                  @click="openAwardModal(award, 'fame')"
+                >
                   <div class="text-sm text-dark-textMuted uppercase tracking-wide mb-2">{{ award.title }}</div>
                   <div v-if="award.winner" class="flex items-center gap-3 mb-2">
                     <div class="w-12 h-12 rounded-full overflow-hidden bg-dark-border flex-shrink-0">
@@ -426,6 +431,7 @@
                   </div>
                   <div v-if="award.winner" class="text-xs text-dark-textSecondary">{{ award.winner.details }}</div>
                   <div v-else class="text-sm text-dark-textMuted italic">No data available</div>
+                  <div v-if="award.winner" class="text-xs text-primary mt-2 opacity-70">Click for details →</div>
                 </div>
               </div>
             </div>
@@ -437,7 +443,12 @@
                 <span>Hall of Shame</span>
               </h3>
               <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div v-for="award in allTimeHallOfShame" :key="award.title" class="bg-dark-border/30 rounded-xl p-4">
+                <div 
+                  v-for="award in allTimeHallOfShame" 
+                  :key="award.title" 
+                  class="bg-dark-border/30 rounded-xl p-4 cursor-pointer hover:bg-dark-border/50 transition-colors"
+                  @click="openAwardModal(award, 'shame')"
+                >
                   <div class="text-sm text-dark-textMuted uppercase tracking-wide mb-2">{{ award.title }}</div>
                   <div v-if="award.winner" class="flex items-center gap-3 mb-2">
                     <div class="w-12 h-12 rounded-full overflow-hidden bg-dark-border flex-shrink-0">
@@ -458,6 +469,7 @@
                   </div>
                   <div v-if="award.winner" class="text-xs text-dark-textSecondary">{{ award.winner.details }}</div>
                   <div v-else class="text-sm text-dark-textMuted italic">No data available</div>
+                  <div v-if="award.winner" class="text-xs text-primary mt-2 opacity-70">Click for details →</div>
                 </div>
               </div>
             </div>
@@ -715,6 +727,126 @@
         </div>
       </div>
     </template>
+    
+    <!-- Award Detail Modal -->
+    <Teleport to="body">
+      <div 
+        v-if="showAwardModal && selectedAward" 
+        class="fixed inset-0 z-50 flex items-center justify-center p-4"
+        @click.self="closeAwardModal"
+      >
+        <!-- Backdrop -->
+        <div class="absolute inset-0 bg-black/70 backdrop-blur-sm"></div>
+        
+        <!-- Modal Content -->
+        <div class="relative bg-dark-elevated rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto shadow-2xl border border-dark-border">
+          <!-- Header -->
+          <div class="sticky top-0 bg-dark-elevated border-b border-dark-border p-6 flex items-center justify-between">
+            <div>
+              <h2 class="text-xl font-bold text-dark-text">{{ selectedAward.title }}</h2>
+              <p class="text-sm text-dark-textMuted mt-1">All-Time Leaderboard</p>
+            </div>
+            <button 
+              @click="closeAwardModal"
+              class="w-10 h-10 rounded-full bg-dark-border/50 hover:bg-dark-border flex items-center justify-center transition-colors"
+            >
+              <svg class="w-5 h-5 text-dark-textMuted" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+          
+          <!-- Winner Highlight -->
+          <div class="p-6 border-b border-dark-border bg-gradient-to-r" :class="awardModalType === 'fame' ? 'from-green-500/10 to-transparent' : 'from-red-500/10 to-transparent'">
+            <div class="flex items-center gap-4">
+              <div class="w-16 h-16 rounded-full overflow-hidden bg-dark-border flex-shrink-0 ring-4" :class="awardModalType === 'fame' ? 'ring-green-500/30' : 'ring-red-500/30'">
+                <img
+                  :src="selectedAward.winner?.avatar"
+                  :alt="selectedAward.winner?.team_name"
+                  class="w-full h-full object-cover"
+                  @error="handleImageError"
+                />
+              </div>
+              <div class="flex-1">
+                <div class="text-xs text-dark-textMuted uppercase tracking-wider mb-1">🥇 Record Holder</div>
+                <div class="text-xl font-bold text-dark-text">{{ selectedAward.winner?.team_name }}</div>
+                <div class="text-sm text-dark-textMuted">{{ selectedAward.winner?.season }}</div>
+              </div>
+              <div class="text-right">
+                <div class="text-3xl font-black" :class="awardModalType === 'fame' ? 'text-green-400' : 'text-red-400'">
+                  {{ selectedAward.winner?.value.toFixed(1) }}
+                </div>
+                <div class="text-xs text-dark-textMuted">{{ getAwardUnit(selectedAward.title) }}</div>
+              </div>
+            </div>
+            <div class="mt-3 text-sm text-dark-textSecondary">{{ selectedAward.winner?.details }}</div>
+          </div>
+          
+          <!-- Comparison Bar Chart -->
+          <div class="p-6">
+            <h3 class="text-sm font-semibold text-dark-textMuted uppercase tracking-wider mb-4">Top Performers Comparison</h3>
+            <div class="space-y-3">
+              <div 
+                v-for="(item, idx) in awardComparisonData" 
+                :key="item.team_name"
+                class="flex items-center gap-3"
+              >
+                <div class="w-6 text-center text-sm font-semibold" :class="idx === 0 ? 'text-primary' : 'text-dark-textMuted'">
+                  {{ idx + 1 }}
+                </div>
+                <div class="w-8 h-8 rounded-full overflow-hidden bg-dark-border flex-shrink-0">
+                  <img
+                    :src="item.avatar"
+                    :alt="item.team_name"
+                    class="w-full h-full object-cover"
+                    @error="handleImageError"
+                  />
+                </div>
+                <div class="flex-1 min-w-0">
+                  <div class="flex items-center gap-2 mb-1">
+                    <span class="font-semibold text-dark-text truncate">{{ item.team_name }}</span>
+                    <span class="text-xs text-dark-textMuted">{{ item.season }}</span>
+                  </div>
+                  <div class="h-4 bg-dark-border/50 rounded-full overflow-hidden">
+                    <div 
+                      class="h-full rounded-full transition-all duration-500"
+                      :class="idx === 0 ? (awardModalType === 'fame' ? 'bg-green-500' : 'bg-red-500') : 'bg-primary/60'"
+                      :style="{ width: `${(item.value / awardComparisonData[0].value) * 100}%` }"
+                    ></div>
+                  </div>
+                </div>
+                <div class="w-16 text-right font-semibold" :class="idx === 0 ? (awardModalType === 'fame' ? 'text-green-400' : 'text-red-400') : 'text-dark-text'">
+                  {{ item.value.toFixed(1) }}
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          <!-- Additional Context -->
+          <div class="p-6 pt-0">
+            <div class="bg-dark-border/30 rounded-xl p-4">
+              <h4 class="text-sm font-semibold text-dark-textMuted uppercase tracking-wider mb-3">Quick Stats</h4>
+              <div class="grid grid-cols-3 gap-4 text-center">
+                <div>
+                  <div class="text-2xl font-bold text-primary">{{ awardComparisonData.length }}</div>
+                  <div class="text-xs text-dark-textMuted">Total Entries</div>
+                </div>
+                <div>
+                  <div class="text-2xl font-bold text-dark-text">{{ getAwardAverage() }}</div>
+                  <div class="text-xs text-dark-textMuted">Average</div>
+                </div>
+                <div>
+                  <div class="text-2xl font-bold" :class="awardModalType === 'fame' ? 'text-green-400' : 'text-red-400'">
+                    {{ getAwardSpread() }}
+                  </div>
+                  <div class="text-xs text-dark-textMuted">Spread</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </Teleport>
   </div>
 </template>
 
@@ -741,6 +873,17 @@ const showCurrentMembersOnly = ref(false)
 
 // Career stats filter toggle
 const showCurrentMembersOnlyCareer = ref(false)
+
+// Award modal state
+const showAwardModal = ref(false)
+const selectedAward = ref<Award | null>(null)
+const awardModalType = ref<'fame' | 'shame'>('fame')
+const awardComparisonData = ref<Array<{ team_name: string; avatar: string; value: number; season: string }>>([])
+
+interface Award {
+  title: string
+  winner: AwardWinner | null
+}
 
 // Awards state
 const selectedAwardTab = ref<'All-Time' | 'Season' | 'Weekly'>('All-Time')
@@ -1116,6 +1259,209 @@ function getPFRankClass(ownerId: string): string {
   return 'text-dark-textMuted'
 }
 
+// Get human-readable label for sort column
+function getSortLabel(): string {
+  const labels: Record<string, string> = {
+    'seasons': 'Seasons',
+    'championships': 'Championships',
+    'wins': 'Record (Wins)',
+    'win_pct': 'Win Percentage',
+    'avg_ppg': 'Average PPG',
+    'total_pf': 'Total Points For'
+  }
+  return labels[sortColumn.value] || sortColumn.value
+}
+
+// Award modal functions
+function openAwardModal(award: Award, type: 'fame' | 'shame') {
+  if (!award.winner) return
+  
+  selectedAward.value = award
+  awardModalType.value = type
+  awardComparisonData.value = buildComparisonData(award.title, type)
+  showAwardModal.value = true
+}
+
+function closeAwardModal() {
+  showAwardModal.value = false
+  selectedAward.value = null
+  awardComparisonData.value = []
+}
+
+function getAwardUnit(title: string): string {
+  if (title.includes('Season')) return 'points'
+  if (title.includes('Week')) return 'points'
+  if (title.includes('Blowout') || title.includes('Margin') || title.includes('Loss')) return 'point margin'
+  if (title.includes('Lucky') || title.includes('Unlucky')) return 'luck score'
+  return 'value'
+}
+
+function getAwardAverage(): string {
+  if (awardComparisonData.value.length === 0) return '0'
+  const sum = awardComparisonData.value.reduce((acc, item) => acc + item.value, 0)
+  return (sum / awardComparisonData.value.length).toFixed(1)
+}
+
+function getAwardSpread(): string {
+  if (awardComparisonData.value.length < 2) return '0'
+  const max = awardComparisonData.value[0].value
+  const min = awardComparisonData.value[awardComparisonData.value.length - 1].value
+  return (max - min).toFixed(1)
+}
+
+function buildComparisonData(title: string, type: 'fame' | 'shame'): Array<{ team_name: string; avatar: string; value: number; season: string }> {
+  const results: Array<{ team_name: string; avatar: string; value: number; season: string }> = []
+  
+  leagueStore.historicalSeasons.forEach(seasonInfo => {
+    const rosters = leagueStore.historicalRosters.get(seasonInfo.season) || []
+    const users = leagueStore.historicalUsers.get(seasonInfo.season) || []
+    const matchups = leagueStore.historicalMatchups.get(seasonInfo.season)
+    if (!matchups) return
+    
+    const playoffStart = seasonInfo.settings?.playoff_week_start || 15
+    
+    // Handle different award types
+    if (title.includes('Season')) {
+      // Season totals - get all teams for this season
+      rosters.forEach(roster => {
+        const user = users.find(u => u.user_id === roster.owner_id)
+        let total = 0
+        let games = 0
+        
+        matchups.forEach((weekMatchups, week) => {
+          if (week >= playoffStart) return
+          const match = weekMatchups.find(m => m.roster_id === roster.roster_id)
+          if (match && match.points) {
+            total += match.points
+            games++
+          }
+        })
+        
+        if (games > 0) {
+          results.push({
+            team_name: sleeperService.getTeamName(roster, user),
+            avatar: sleeperService.getAvatarUrl(roster, user, seasonInfo),
+            value: total,
+            season: seasonInfo.season
+          })
+        }
+      })
+    } else if (title.includes('Week')) {
+      // Weekly scores - get best/worst week per team
+      rosters.forEach(roster => {
+        const user = users.find(u => u.user_id === roster.owner_id)
+        let bestWeek = type === 'fame' ? 0 : Infinity
+        
+        matchups.forEach((weekMatchups, week) => {
+          if (week >= playoffStart) return
+          const match = weekMatchups.find(m => m.roster_id === roster.roster_id)
+          if (match && match.points) {
+            if (type === 'fame' && match.points > bestWeek) {
+              bestWeek = match.points
+            } else if (type === 'shame' && match.points < bestWeek) {
+              bestWeek = match.points
+            }
+          }
+        })
+        
+        if (bestWeek !== 0 && bestWeek !== Infinity) {
+          results.push({
+            team_name: sleeperService.getTeamName(roster, user),
+            avatar: sleeperService.getAvatarUrl(roster, user, seasonInfo),
+            value: bestWeek,
+            season: seasonInfo.season
+          })
+        }
+      })
+    } else if (title.includes('Blowout') || title.includes('Margin') || title.includes('Loss')) {
+      // Margins - find all matchups with margins
+      matchups.forEach((weekMatchups, week) => {
+        if (week >= playoffStart) return
+        
+        // Group by matchup_id
+        const matchupGroups = new Map<number, typeof weekMatchups>()
+        weekMatchups.forEach(m => {
+          if (!matchupGroups.has(m.matchup_id)) {
+            matchupGroups.set(m.matchup_id, [])
+          }
+          matchupGroups.get(m.matchup_id)!.push(m)
+        })
+        
+        matchupGroups.forEach(pair => {
+          if (pair.length === 2) {
+            const [m1, m2] = pair
+            const margin = Math.abs((m1.points || 0) - (m2.points || 0))
+            const winner = (m1.points || 0) > (m2.points || 0) ? m1 : m2
+            const roster = rosters.find(r => r.roster_id === winner.roster_id)
+            const user = users.find(u => u.user_id === roster?.owner_id)
+            
+            if (roster) {
+              results.push({
+                team_name: sleeperService.getTeamName(roster, user),
+                avatar: sleeperService.getAvatarUrl(roster, user, seasonInfo),
+                value: margin,
+                season: `${seasonInfo.season} Week ${week}`
+              })
+            }
+          }
+        })
+      })
+    } else if (title.includes('Lucky') || title.includes('Unlucky')) {
+      // Luck calculation - wins vs expected wins
+      rosters.forEach(roster => {
+        const user = users.find(u => u.user_id === roster.owner_id)
+        let actualWins = 0
+        let expectedWins = 0
+        let gamesPlayed = 0
+        
+        matchups.forEach((weekMatchups, week) => {
+          if (week >= playoffStart) return
+          
+          const myMatch = weekMatchups.find(m => m.roster_id === roster.roster_id)
+          if (!myMatch) return
+          
+          const myScore = myMatch.points || 0
+          
+          // Find opponent
+          const opponent = weekMatchups.find(m => 
+            m.matchup_id === myMatch.matchup_id && m.roster_id !== roster.roster_id
+          )
+          
+          if (opponent) {
+            gamesPlayed++
+            if (myScore > (opponent.points || 0)) actualWins++
+            
+            // Calculate expected wins (how many teams would I have beaten?)
+            const allScores = weekMatchups.map(m => m.points || 0).filter(p => p > 0)
+            const winsAgainstField = allScores.filter(s => myScore > s).length
+            expectedWins += winsAgainstField / (allScores.length - 1)
+          }
+        })
+        
+        if (gamesPlayed > 0) {
+          const luck = actualWins - expectedWins
+          results.push({
+            team_name: sleeperService.getTeamName(roster, user),
+            avatar: sleeperService.getAvatarUrl(roster, user, seasonInfo),
+            value: luck,
+            season: seasonInfo.season
+          })
+        }
+      })
+    }
+  })
+  
+  // Sort and limit
+  if (type === 'fame') {
+    results.sort((a, b) => b.value - a.value)
+  } else {
+    results.sort((a, b) => a.value - b.value)
+  }
+  
+  // Take top 10
+  return results.slice(0, 10)
+}
+
 const seasonRecords = computed((): SeasonRecord[] => {
   const records: SeasonRecord[] = []
   
@@ -1315,11 +1661,6 @@ const availableWeeksForAwards = computed(() => {
   const playoffStart = seasonInfo?.settings?.playoff_week_start || 15
   return Array.from(matchups.keys()).filter(w => w < playoffStart).sort((a, b) => a - b)
 })
-
-interface Award {
-  title: string
-  winner: AwardWinner | null
-}
 
 const allTimeHallOfFame = computed((): Award[] => {
   const awards: Award[] = []
@@ -2032,7 +2373,12 @@ async function downloadCareerStats() {
       </div>
       
       <!-- Divider -->
-      <div style="height: 2px; background: linear-gradient(to right, rgba(245, 196, 81, 0.6), rgba(245, 196, 81, 0.1)); margin-bottom: 28px;"></div>
+      <div style="height: 2px; background: linear-gradient(to right, rgba(245, 196, 81, 0.6), rgba(245, 196, 81, 0.1)); margin-bottom: 20px;"></div>
+      
+      <!-- Sort info -->
+      <div style="font-size: 13px; color: #9ca3af; margin-bottom: 20px; font-style: italic; letter-spacing: 0.3px;">
+        Sorted by: ${getSortLabel()} (${sortDirection.value === 'desc' ? 'highest first' : 'lowest first'})
+      </div>
       
       <!-- Table -->
       <table style="width: 100%; border-collapse: collapse;">
