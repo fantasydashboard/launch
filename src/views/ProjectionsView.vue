@@ -768,38 +768,6 @@
       
       <!-- ==================== REDRAFT MODE: Team Rankings ==================== -->
       <template v-else>
-      <!-- League Summary Cards -->
-      <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <div class="card bg-gradient-to-br from-primary/20 to-primary/5">
-          <div class="card-body py-4 text-center">
-            <div class="text-3xl mb-1">🏆</div>
-            <div class="text-2xl font-black text-primary">{{ leagueAvgGrade }}</div>
-            <div class="text-xs text-dark-textMuted">League Avg Grade</div>
-          </div>
-        </div>
-        <div class="card bg-gradient-to-br from-green-500/20 to-green-500/5">
-          <div class="card-body py-4 text-center">
-            <div class="text-3xl mb-1">👑</div>
-            <div class="text-lg font-bold text-green-400 truncate">{{ topRankedTeam?.teamName || 'N/A' }}</div>
-            <div class="text-xs text-dark-textMuted">Best Roster</div>
-          </div>
-        </div>
-        <div class="card bg-gradient-to-br from-cyan-500/20 to-cyan-500/5">
-          <div class="card-body py-4 text-center">
-            <div class="text-3xl mb-1">🎯</div>
-            <div class="text-2xl font-black text-cyan-400">{{ contenderTeamCount }}</div>
-            <div class="text-xs text-dark-textMuted">Contenders</div>
-          </div>
-        </div>
-        <div class="card bg-gradient-to-br from-red-500/20 to-red-500/5">
-          <div class="card-body py-4 text-center">
-            <div class="text-3xl mb-1">📉</div>
-            <div class="text-2xl font-black text-red-400">{{ rebuildingTeamCount }}</div>
-            <div class="text-xs text-dark-textMuted">Rebuilding</div>
-          </div>
-        </div>
-      </div>
-
       <!-- Roster Requirements Info -->
       <div class="card">
         <div class="card-body py-3">
@@ -822,9 +790,15 @@
             <span class="text-2xl">📊</span>
             <h2 class="card-title">Team Roster Rankings</h2>
           </div>
-          <span class="text-sm text-dark-textMuted">
-            Based on ROS projections • Graded on starter quality
-          </span>
+          <div class="text-right">
+            <span class="text-sm text-dark-textMuted">
+              Based on ROS projections • Graded on starter quality
+            </span>
+            <div class="text-xs text-primary mt-1 flex items-center justify-end gap-1">
+              <span>👆</span>
+              <span>Click any team row to see detailed breakdown</span>
+            </div>
+          </div>
         </div>
         <div class="card-body p-0">
           <div class="overflow-x-auto">
@@ -1006,44 +980,132 @@
         <div class="card-header">
           <div class="flex items-center gap-2">
             <span class="text-2xl">🔄</span>
-            <h2 class="card-title">Trade Partner Finder</h2>
+            <h2 class="card-title">Trade Ideas</h2>
           </div>
-          <span class="text-sm text-dark-textMuted">Teams with opposite strengths/weaknesses to yours</span>
+          <span class="text-sm text-dark-textMuted">Based on roster strengths, weaknesses, and player values</span>
         </div>
-        <div class="card-body">
-          <div v-if="tradePartners.length" class="space-y-3">
-            <div 
-              v-for="partner in tradePartners" 
-              :key="partner.odwnerId"
-              class="flex items-center justify-between p-4 rounded-lg hover:bg-dark-border/20 transition-colors"
-            >
-              <div class="flex items-center gap-3">
-                <div class="w-10 h-10 rounded-full bg-dark-border overflow-hidden">
-                  <img :src="partner.avatarUrl" :alt="partner.teamName" class="w-full h-full object-cover" @error="handleTeamImageError" />
+        <div class="card-body space-y-6">
+          <!-- 1-for-1 Trades -->
+          <div>
+            <h3 class="text-lg font-semibold text-dark-text mb-3 flex items-center gap-2">
+              <span class="w-8 h-8 rounded-full bg-green-500/20 flex items-center justify-center text-green-400 text-sm font-bold">1:1</span>
+              One-for-One Trades
+            </h3>
+            <p class="text-xs text-dark-textMuted mb-3">Swap similar-value players at positions where you and your trade partner have opposite needs</p>
+            <div v-if="oneForOneTrades.length" class="space-y-2">
+              <div 
+                v-for="(trade, idx) in oneForOneTrades" 
+                :key="'1for1-' + idx"
+                class="p-3 rounded-lg bg-dark-border/20 hover:bg-dark-border/30 transition-colors"
+              >
+                <div class="flex items-center justify-between gap-4">
+                  <div class="flex-1">
+                    <div class="flex items-center gap-2 mb-1">
+                      <span class="text-xs text-red-400">You give:</span>
+                      <span class="font-medium text-dark-text">{{ trade.youGive.name }}</span>
+                      <span class="px-1.5 py-0.5 rounded text-[10px] font-bold" :class="getPositionClass(trade.youGive.position)">{{ trade.youGive.position }}{{ trade.youGive.rank }}</span>
+                    </div>
+                    <div class="flex items-center gap-2">
+                      <span class="text-xs text-green-400">You get:</span>
+                      <span class="font-medium text-dark-text">{{ trade.youGet.name }}</span>
+                      <span class="px-1.5 py-0.5 rounded text-[10px] font-bold" :class="getPositionClass(trade.youGet.position)">{{ trade.youGet.position }}{{ trade.youGet.rank }}</span>
+                    </div>
+                  </div>
+                  <div class="text-right">
+                    <div class="text-sm text-dark-textMuted">{{ trade.partnerName }}</div>
+                    <div class="text-xs" :class="trade.valueDiff >= 0 ? 'text-green-400' : 'text-yellow-400'">
+                      {{ trade.valueDiff >= 0 ? '✓ Fair' : '⚠ Slight overpay' }}
+                    </div>
+                  </div>
                 </div>
-                <div>
-                  <div class="font-medium text-dark-text">{{ partner.teamName }}</div>
-                  <div class="text-xs text-dark-textMuted">{{ partner.username }}</div>
-                </div>
-              </div>
-              <div class="text-right">
-                <div class="text-sm">
-                  <span class="text-green-400">They need:</span>
-                  <span class="text-dark-text ml-1">{{ partner.theyNeed.join(', ') }}</span>
-                </div>
-                <div class="text-sm">
-                  <span class="text-primary">You need:</span>
-                  <span class="text-dark-text ml-1">{{ partner.youNeed.join(', ') }}</span>
-                </div>
-              </div>
-              <div class="text-center px-4">
-                <div class="text-xl font-bold text-primary">{{ partner.matchScore }}%</div>
-                <div class="text-xs text-dark-textMuted">Match</div>
               </div>
             </div>
+            <div v-else class="text-sm text-dark-textMuted italic py-2">No 1-for-1 trades identified</div>
           </div>
-          <div v-else class="text-center py-8 text-dark-textMuted">
-            <p>No strong trade matches found based on team needs.</p>
+
+          <!-- 2-for-1 Trades -->
+          <div>
+            <h3 class="text-lg font-semibold text-dark-text mb-3 flex items-center gap-2">
+              <span class="w-8 h-8 rounded-full bg-cyan-500/20 flex items-center justify-center text-cyan-400 text-sm font-bold">2:1</span>
+              Two-for-One Trades
+            </h3>
+            <p class="text-xs text-dark-textMuted mb-3">Consolidate two of your players into one upgrade, or buy low with depth</p>
+            <div v-if="twoForOneTrades.length" class="space-y-2">
+              <div 
+                v-for="(trade, idx) in twoForOneTrades" 
+                :key="'2for1-' + idx"
+                class="p-3 rounded-lg bg-dark-border/20 hover:bg-dark-border/30 transition-colors"
+              >
+                <div class="flex items-center justify-between gap-4">
+                  <div class="flex-1">
+                    <div class="flex items-center gap-2 mb-1 flex-wrap">
+                      <span class="text-xs text-red-400">You give:</span>
+                      <span v-for="(p, i) in trade.youGive" :key="i" class="flex items-center gap-1">
+                        <span class="font-medium text-dark-text">{{ p.name }}</span>
+                        <span class="px-1.5 py-0.5 rounded text-[10px] font-bold" :class="getPositionClass(p.position)">{{ p.position }}{{ p.rank }}</span>
+                        <span v-if="i < trade.youGive.length - 1" class="text-dark-textMuted">+</span>
+                      </span>
+                    </div>
+                    <div class="flex items-center gap-2">
+                      <span class="text-xs text-green-400">You get:</span>
+                      <span class="font-medium text-dark-text">{{ trade.youGet.name }}</span>
+                      <span class="px-1.5 py-0.5 rounded text-[10px] font-bold" :class="getPositionClass(trade.youGet.position)">{{ trade.youGet.position }}{{ trade.youGet.rank }}</span>
+                    </div>
+                  </div>
+                  <div class="text-right">
+                    <div class="text-sm text-dark-textMuted">{{ trade.partnerName }}</div>
+                    <div class="text-xs text-cyan-400">{{ trade.reason }}</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div v-else class="text-sm text-dark-textMuted italic py-2">No 2-for-1 trades identified</div>
+          </div>
+
+          <!-- 2-for-2 Trades -->
+          <div>
+            <h3 class="text-lg font-semibold text-dark-text mb-3 flex items-center gap-2">
+              <span class="w-8 h-8 rounded-full bg-purple-500/20 flex items-center justify-center text-purple-400 text-sm font-bold">2:2</span>
+              Two-for-Two Trades
+            </h3>
+            <p class="text-xs text-dark-textMuted mb-3">Multi-player swaps that address needs for both teams</p>
+            <div v-if="twoForTwoTrades.length" class="space-y-2">
+              <div 
+                v-for="(trade, idx) in twoForTwoTrades" 
+                :key="'2for2-' + idx"
+                class="p-3 rounded-lg bg-dark-border/20 hover:bg-dark-border/30 transition-colors"
+              >
+                <div class="flex items-center justify-between gap-4">
+                  <div class="flex-1">
+                    <div class="flex items-center gap-2 mb-1 flex-wrap">
+                      <span class="text-xs text-red-400">You give:</span>
+                      <span v-for="(p, i) in trade.youGive" :key="i" class="flex items-center gap-1">
+                        <span class="font-medium text-dark-text">{{ p.name }}</span>
+                        <span class="px-1.5 py-0.5 rounded text-[10px] font-bold" :class="getPositionClass(p.position)">{{ p.position }}{{ p.rank }}</span>
+                        <span v-if="i < trade.youGive.length - 1" class="text-dark-textMuted">+</span>
+                      </span>
+                    </div>
+                    <div class="flex items-center gap-2 flex-wrap">
+                      <span class="text-xs text-green-400">You get:</span>
+                      <span v-for="(p, i) in trade.youGet" :key="i" class="flex items-center gap-1">
+                        <span class="font-medium text-dark-text">{{ p.name }}</span>
+                        <span class="px-1.5 py-0.5 rounded text-[10px] font-bold" :class="getPositionClass(p.position)">{{ p.position }}{{ p.rank }}</span>
+                        <span v-if="i < trade.youGet.length - 1" class="text-dark-textMuted">+</span>
+                      </span>
+                    </div>
+                  </div>
+                  <div class="text-right">
+                    <div class="text-sm text-dark-textMuted">{{ trade.partnerName }}</div>
+                    <div class="text-xs text-purple-400">{{ trade.reason }}</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div v-else class="text-sm text-dark-textMuted italic py-2">No 2-for-2 trades identified</div>
+          </div>
+
+          <div class="text-xs text-dark-textMuted text-center pt-2 border-t border-dark-border/30">
+            💡 Trade suggestions are based on position rankings and roster composition. Always evaluate individual player situations before trading.
           </div>
         </div>
       </div>
@@ -3650,48 +3712,254 @@ function handleTeamImageError(e: Event) {
 }
 
 // Trade partner finder
-const tradePartners = computed(() => {
+// Trade player info type
+interface TradePlayer {
+  id: string
+  name: string
+  position: string
+  rank: number
+  value: number
+}
+
+// Get player trade info from ranked players
+function getPlayerTradeInfo(playerId: string): TradePlayer | null {
+  const player = rankedPlayers.value.find(p => p.player_id === playerId)
+  if (!player) return null
+  return {
+    id: player.player_id,
+    name: player.full_name,
+    position: player.position,
+    rank: player.positionRank,
+    value: 100 - player.rosRank // Higher rank = higher value
+  }
+}
+
+// Get my team's players by position with trade info
+function getMyPlayersByPosition(pos: string): TradePlayer[] {
+  const myPlayers = rankedPlayers.value.filter(p => 
+    p.position === pos && myPlayerIds.value.has(p.player_id)
+  )
+  return myPlayers.map(p => ({
+    id: p.player_id,
+    name: p.full_name,
+    position: p.position,
+    rank: p.positionRank,
+    value: 100 - p.rosRank
+  })).sort((a, b) => a.rank - b.rank)
+}
+
+// Get a team's players by position with trade info
+function getTeamPlayersByPosition(team: any, pos: string): TradePlayer[] {
+  const teamPlayers = rankedPlayers.value.filter(p => 
+    p.position === pos && team.players.some((tp: any) => tp.player_id === p.player_id)
+  )
+  return teamPlayers.map(p => ({
+    id: p.player_id,
+    name: p.full_name,
+    position: p.position,
+    rank: p.positionRank,
+    value: 100 - p.rosRank
+  })).sort((a, b) => a.rank - b.rank)
+}
+
+// 1-for-1 Trades: Swap similar-value players at positions where needs are opposite
+const oneForOneTrades = computed(() => {
   const myTeam = teamsWithRankings.value.find(t => t.odwnerId === leagueStore.currentUserId)
   if (!myTeam) return []
   
-  const partners: Array<{
-    odwnerId: string
-    teamName: string
-    username: string
-    avatarUrl: string
-    theyNeed: string[]
-    youNeed: string[]
-    matchScore: number
+  const trades: Array<{
+    youGive: TradePlayer
+    youGet: TradePlayer
+    partnerName: string
+    valueDiff: number
   }> = []
+  
+  const positions = ['QB', 'RB', 'WR', 'TE']
   
   teamsWithRankings.value.forEach(team => {
     if (team.odwnerId === leagueStore.currentUserId) return
     
-    // What positions do they need (where they're weak)?
-    const theyNeed = team.weaknesses.filter(pos => myTeam.strengths.includes(pos))
-    // What positions do you need (where you're weak) that they have?
-    const youNeed = myTeam.weaknesses.filter(pos => team.strengths.includes(pos))
-    
-    if (theyNeed.length > 0 && youNeed.length > 0) {
-      // Calculate match score (higher = better match)
-      const matchScore = Math.round(((theyNeed.length + youNeed.length) / 4) * 100)
+    positions.forEach(myWeakPos => {
+      // I'm weak at this position, they're strong
+      if (!myTeam.weaknesses.includes(myWeakPos)) return
+      if (!team.strengths.includes(myWeakPos)) return
       
-      partners.push({
-        odwnerId: team.odwnerId,
-        teamName: team.teamName,
-        username: team.username,
-        avatarUrl: team.avatarUrl,
-        theyNeed,
-        youNeed,
-        matchScore
+      positions.forEach(myStrongPos => {
+        // I'm strong at this position, they're weak
+        if (!myTeam.strengths.includes(myStrongPos)) return
+        if (!team.weaknesses.includes(myStrongPos)) return
+        if (myWeakPos === myStrongPos) return
+        
+        // Get players to potentially swap
+        const myPlayersToGive = getMyPlayersByPosition(myStrongPos)
+        const theirPlayersToGet = getTeamPlayersByPosition(team, myWeakPos)
+        
+        // Find similar-value players (within 15 rank spots)
+        myPlayersToGive.forEach(myPlayer => {
+          if (myPlayer.rank > 30) return // Don't trade bench players in 1-for-1
+          
+          theirPlayersToGet.forEach(theirPlayer => {
+            if (theirPlayer.rank > 30) return
+            
+            const rankDiff = Math.abs(myPlayer.rank - theirPlayer.rank)
+            if (rankDiff <= 12) { // Similar value threshold
+              const valueDiff = theirPlayer.value - myPlayer.value
+              
+              // Avoid duplicates
+              if (!trades.some(t => 
+                t.youGive.id === myPlayer.id && t.youGet.id === theirPlayer.id
+              )) {
+                trades.push({
+                  youGive: myPlayer,
+                  youGet: theirPlayer,
+                  partnerName: team.teamName,
+                  valueDiff
+                })
+              }
+            }
+          })
+        })
       })
-    }
+    })
   })
   
-  // Sort by match score descending
-  partners.sort((a, b) => b.matchScore - a.matchScore)
+  // Sort by value differential (best deals first)
+  trades.sort((a, b) => b.valueDiff - a.valueDiff)
+  return trades.slice(0, 5)
+})
+
+// 2-for-1 Trades: Trade depth for an upgrade
+const twoForOneTrades = computed(() => {
+  const myTeam = teamsWithRankings.value.find(t => t.odwnerId === leagueStore.currentUserId)
+  if (!myTeam) return []
   
-  return partners.slice(0, 5) // Top 5 matches
+  const trades: Array<{
+    youGive: TradePlayer[]
+    youGet: TradePlayer
+    partnerName: string
+    reason: string
+  }> = []
+  
+  const positions = ['QB', 'RB', 'WR', 'TE']
+  
+  teamsWithRankings.value.forEach(team => {
+    if (team.odwnerId === leagueStore.currentUserId) return
+    
+    // Find positions where I have depth but they have a stud I want
+    positions.forEach(targetPos => {
+      if (!myTeam.weaknesses.includes(targetPos) && !myTeam.strengths.includes(targetPos)) return
+      
+      const theirTopPlayers = getTeamPlayersByPosition(team, targetPos).filter(p => p.rank <= 15)
+      const myPlayersAtPos = getMyPlayersByPosition(targetPos)
+      
+      // I want their top player if they have depth or weak elsewhere
+      theirTopPlayers.forEach(theirStud => {
+        // Find what I can offer - a starter + bench piece
+        positions.forEach(offerPos => {
+          const myPlayersToOffer = getMyPlayersByPosition(offerPos)
+          
+          if (myPlayersToOffer.length >= 2) {
+            // Offer my #2 + a bench piece
+            const primary = myPlayersToOffer.find(p => p.rank <= 25 && p.rank > 10)
+            const secondary = myPlayersToOffer.find(p => p.rank > 25 && p.rank <= 50)
+            
+            if (primary && secondary) {
+              const totalValue = primary.value + secondary.value
+              const targetValue = theirStud.value
+              
+              // Check if trade is reasonably fair (within 20% value)
+              if (totalValue >= targetValue * 0.8 && totalValue <= targetValue * 1.3) {
+                // Check if they need depth at this position
+                if (team.weaknesses.includes(offerPos) || getTeamPlayersByPosition(team, offerPos).length < 3) {
+                  if (!trades.some(t => t.youGet.id === theirStud.id)) {
+                    trades.push({
+                      youGive: [primary, secondary],
+                      youGet: theirStud,
+                      partnerName: team.teamName,
+                      reason: `Upgrade your ${targetPos}`
+                    })
+                  }
+                }
+              }
+            }
+          }
+        })
+      })
+    })
+  })
+  
+  trades.sort((a, b) => b.youGet.value - a.youGet.value)
+  return trades.slice(0, 5)
+})
+
+// 2-for-2 Trades: Multi-player swaps addressing both teams' needs  
+const twoForTwoTrades = computed(() => {
+  const myTeam = teamsWithRankings.value.find(t => t.odwnerId === leagueStore.currentUserId)
+  if (!myTeam) return []
+  
+  const trades: Array<{
+    youGive: TradePlayer[]
+    youGet: TradePlayer[]
+    partnerName: string
+    reason: string
+  }> = []
+  
+  const positions = ['QB', 'RB', 'WR', 'TE']
+  
+  teamsWithRankings.value.forEach(team => {
+    if (team.odwnerId === leagueStore.currentUserId) return
+    
+    // Find complementary needs
+    const theyNeed = positions.filter(pos => team.weaknesses.includes(pos) && myTeam.strengths.includes(pos))
+    const iNeed = positions.filter(pos => myTeam.weaknesses.includes(pos) && team.strengths.includes(pos))
+    
+    if (theyNeed.length === 0 || iNeed.length === 0) return
+    
+    // Try to construct a 2-for-2 package
+    theyNeed.forEach(posTheyNeed => {
+      iNeed.forEach(posINeed => {
+        const myPlayersToGive = getMyPlayersByPosition(posTheyNeed)
+        const theirPlayersToGet = getTeamPlayersByPosition(team, posINeed)
+        
+        // Get second position for each side
+        const otherPosTheyNeed = theyNeed.find(p => p !== posTheyNeed) || posTheyNeed
+        const otherPosINeed = iNeed.find(p => p !== posINeed) || posINeed
+        
+        const mySecondaryToGive = getMyPlayersByPosition(otherPosTheyNeed)
+        const theirSecondaryToGet = getTeamPlayersByPosition(team, otherPosINeed)
+        
+        if (myPlayersToGive.length > 0 && theirPlayersToGet.length > 0 && 
+            mySecondaryToGive.length > 0 && theirSecondaryToGet.length > 0) {
+          
+          const give1 = myPlayersToGive.find(p => p.rank <= 30)
+          const give2 = mySecondaryToGive.find(p => p.rank <= 40 && p.id !== give1?.id)
+          const get1 = theirPlayersToGet.find(p => p.rank <= 30)
+          const get2 = theirSecondaryToGet.find(p => p.rank <= 40 && p.id !== get1?.id)
+          
+          if (give1 && give2 && get1 && get2) {
+            const myValue = give1.value + give2.value
+            const theirValue = get1.value + get2.value
+            
+            // Check for reasonable fairness
+            if (Math.abs(myValue - theirValue) <= 30) {
+              if (!trades.some(t => 
+                t.youGet.some(p => p.id === get1.id) || t.youGet.some(p => p.id === get2.id)
+              )) {
+                trades.push({
+                  youGive: [give1, give2],
+                  youGet: [get1, get2],
+                  partnerName: team.teamName,
+                  reason: `Address ${posINeed} & ${otherPosINeed}`
+                })
+              }
+            }
+          }
+        }
+      })
+    })
+  })
+  
+  return trades.slice(0, 5)
 })
 
 // ==================== THIS WEEK TAB LOGIC ====================
