@@ -3749,10 +3749,8 @@ function getMyPlayersByPosition(pos: string): TradePlayer[] {
 }
 
 // Get a team's players by position with trade info
-function getTeamPlayersByPosition(team: any, pos: string): TradePlayer[] {
-  const teamPlayers = rankedPlayers.value.filter(p => 
-    p.position === pos && team.players.some((tp: any) => tp.player_id === p.player_id)
-  )
+function getTeamPlayersByPosition(team: TeamWithRankings, pos: string): TradePlayer[] {
+  const teamPlayers = team.playersByPosition[pos] || []
   return teamPlayers.map(p => ({
     id: p.player_id,
     name: p.full_name,
