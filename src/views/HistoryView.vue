@@ -57,6 +57,21 @@
               <div class="text-sm text-dark-textMuted">
                 All-time regular season records (playoffs excluded)
               </div>
+              <!-- Toggle for current members only -->
+              <label class="flex items-center gap-2 cursor-pointer">
+                <span class="text-sm text-dark-textMuted">Current members only</span>
+                <div class="relative">
+                  <input type="checkbox" v-model="showCurrentMembersOnlyCareer" class="sr-only">
+                  <div :class="[
+                    'w-10 h-5 rounded-full transition-colors',
+                    showCurrentMembersOnlyCareer ? 'bg-primary' : 'bg-dark-border'
+                  ]"></div>
+                  <div :class="[
+                    'absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full transition-transform',
+                    showCurrentMembersOnlyCareer ? 'translate-x-5' : 'translate-x-0'
+                  ]"></div>
+                </div>
+              </label>
               <div class="flex items-center gap-2">
                 <span class="text-xs text-dark-textMuted italic">Downloads in current sort order</span>
                 <button 
@@ -139,7 +154,7 @@
               </tr>
             </thead>
             <tbody>
-              <tr v-for="(stat, idx) in sortedCareerStats" :key="stat.owner_id" 
+              <tr v-for="(stat, idx) in filteredCareerStats" :key="stat.owner_id" 
                   class="border-b border-dark-border hover:bg-dark-border/30 transition-colors">
                 <td class="py-3 px-4">
                   <div class="flex items-center gap-3">
@@ -161,7 +176,7 @@
                   </span>
                   <span v-else class="text-dark-textMuted">—</span>
                 </td>
-                <td class="text-center py-3 px-4 font-semibold text-dark-text">
+                <td class="text-center py-3 px-4 font-semibold" :class="getRecordRankClass(stat.owner_id)">
                   {{ stat.wins }}-{{ stat.losses }}
                 </td>
                 <td class="text-center py-3 px-4">
@@ -724,6 +739,9 @@ const isDownloadingH2H = ref(false)
 // H2H filter toggle
 const showCurrentMembersOnly = ref(false)
 
+// Career stats filter toggle
+const showCurrentMembersOnlyCareer = ref(false)
+
 // Awards state
 const selectedAwardTab = ref<'All-Time' | 'Season' | 'Weekly'>('All-Time')
 const selectedAwardSeason = ref<string>('')
@@ -1031,6 +1049,43 @@ const sortedCareerStats = computed((): CareerStat[] => {
   
   return stats
 })
+
+// Filtered career stats based on toggle
+const filteredCareerStats = computed((): CareerStat[] => {
+  if (!showCurrentMembersOnlyCareer.value) {
+    return sortedCareerStats.value
+  }
+  return sortedCareerStats.value.filter(stat => currentMemberIds.value.has(stat.owner_id))
+})
+
+// Get record rankings for coloring (top 3 green, bottom 3 red)
+const recordRankings = computed(() => {
+  const stats = [...filteredCareerStats.value]
+  // Sort by wins descending
+  stats.sort((a, b) => b.wins - a.wins)
+  
+  const rankings = new Map<string, 'top' | 'bottom' | 'middle'>()
+  
+  stats.forEach((stat, idx) => {
+    if (idx < 3) {
+      rankings.set(stat.owner_id, 'top')
+    } else if (idx >= stats.length - 3) {
+      rankings.set(stat.owner_id, 'bottom')
+    } else {
+      rankings.set(stat.owner_id, 'middle')
+    }
+  })
+  
+  return rankings
+})
+
+// Get class for record column based on ranking
+function getRecordRankClass(ownerId: string): string {
+  const rank = recordRankings.value.get(ownerId)
+  if (rank === 'top') return 'text-green-400'
+  if (rank === 'bottom') return 'text-red-400'
+  return 'text-dark-text'
+}
 
 const seasonRecords = computed((): SeasonRecord[] => {
   const records: SeasonRecord[] = []
@@ -1822,65 +1877,77 @@ async function downloadCareerStats() {
     const ufdLogoBase64 = await getUFDLogoBase64()
     const leagueName = leagueStore.currentLeague?.name || 'Fantasy League'
     
-    // Limit to 20 teams max for the download
-    const statsToShow = sortedCareerStats.value.slice(0, 20)
+    // Use filtered stats (respects toggle), limit to 20 teams max
+    const statsToShow = filteredCareerStats.value.slice(0, 20)
+    
+    // Sort by wins to determine top/bottom 3 for coloring
+    const sortedByWins = [...statsToShow].sort((a, b) => b.wins - a.wins)
+    const top3Ids = new Set(sortedByWins.slice(0, 3).map(s => s.owner_id))
+    const bottom3Ids = new Set(sortedByWins.slice(-3).map(s => s.owner_id))
     
     const container = document.createElement('div')
     container.style.cssText = `
       position: fixed;
       left: -9999px;
-      width: 800px;
+      width: 850px;
       padding: 40px;
       background: #0d0f18;
       font-family: system-ui, -apple-system, sans-serif;
       color: #f7f7ff;
     `
     
-    const tableRows = statsToShow.map((stat, idx) => `
+    const tableRows = statsToShow.map((stat, idx) => {
+      // Determine record color
+      let recordColor = '#f7f7ff'
+      if (top3Ids.has(stat.owner_id)) recordColor = '#4ade80'
+      else if (bottom3Ids.has(stat.owner_id)) recordColor = '#f87171'
+      
+      return `
       <tr style="border-bottom: 1px solid rgba(58, 61, 82, 0.5);">
-        <td style="padding: 12px 8px; text-align: left;">
-          <div style="display: flex; align-items: center; gap: 10px;">
-            <span style="color: #9ca3af; font-size: 12px; width: 20px;">${idx + 1}</span>
-            <span style="font-weight: 600;">${stat.team_name}</span>
+        <td style="padding: 14px 10px; text-align: left;">
+          <div style="display: flex; align-items: center; gap: 12px;">
+            <span style="color: #6b7280; font-size: 13px; min-width: 24px;">${idx + 1}</span>
+            <img src="${stat.avatar}" style="width: 32px; height: 32px; border-radius: 50%; object-fit: cover;" onerror="this.src='https://sleepercdn.com/avatars/thumbs/default'" />
+            <span style="font-weight: 600; font-size: 14px;">${stat.team_name}</span>
           </div>
         </td>
-        <td style="padding: 12px 8px; text-align: center;">${stat.seasons}</td>
-        <td style="padding: 12px 8px; text-align: center; color: ${stat.championships > 0 ? '#facc15' : '#6b7280'};">
+        <td style="padding: 14px 10px; text-align: center; font-size: 14px;">${stat.seasons}</td>
+        <td style="padding: 14px 10px; text-align: center; color: ${stat.championships > 0 ? '#facc15' : '#6b7280'}; font-size: 14px;">
           ${stat.championships > 0 ? '🏆 ' + stat.championships : '—'}
         </td>
-        <td style="padding: 12px 8px; text-align: center; font-weight: 600;">${stat.wins}-${stat.losses}</td>
-        <td style="padding: 12px 8px; text-align: center; color: ${stat.win_pct >= 0.6 ? '#4ade80' : stat.win_pct <= 0.4 ? '#f87171' : '#f7f7ff'}; font-weight: ${stat.win_pct >= 0.6 ? '700' : '400'};">
+        <td style="padding: 14px 10px; text-align: center; font-weight: 600; color: ${recordColor}; font-size: 14px;">${stat.wins}-${stat.losses}</td>
+        <td style="padding: 14px 10px; text-align: center; color: ${stat.win_pct >= 0.6 ? '#4ade80' : stat.win_pct <= 0.4 ? '#f87171' : '#f7f7ff'}; font-weight: ${stat.win_pct >= 0.6 ? '700' : '400'}; font-size: 14px;">
           ${(stat.win_pct * 100).toFixed(1)}%
         </td>
-        <td style="padding: 12px 8px; text-align: center;">${stat.avg_ppg.toFixed(1)}</td>
-        <td style="padding: 12px 8px; text-align: center; color: #9ca3af;">${stat.total_pf.toFixed(0)}</td>
+        <td style="padding: 14px 10px; text-align: center; font-size: 14px;">${stat.avg_ppg.toFixed(1)}</td>
+        <td style="padding: 14px 10px; text-align: center; color: #9ca3af; font-size: 14px;">${stat.total_pf.toFixed(0)}</td>
       </tr>
-    `).join('')
+    `}).join('')
     
     container.innerHTML = `
       <!-- Header -->
-      <div style="display: flex; align-items: center; gap: 20px; margin-bottom: 24px;">
+      <div style="display: flex; align-items: center; gap: 24px; margin-bottom: 28px;">
         ${ufdLogoBase64 ? `<img src="${ufdLogoBase64}" style="width: 70px; height: 70px; object-fit: contain;" />` : ''}
         <div>
-          <div style="font-size: 28px; font-weight: 800; color: #f7f7ff;">League History</div>
-          <div style="font-size: 16px; color: #9ca3af;">${leagueName} • Career Statistics</div>
+          <div style="font-size: 28px; font-weight: 800; color: #f7f7ff; margin-bottom: 6px;">League History</div>
+          <div style="font-size: 16px; color: #9ca3af; letter-spacing: 0.5px;">${leagueName} • Career Statistics</div>
         </div>
       </div>
       
       <!-- Divider -->
-      <div style="height: 1px; background: linear-gradient(to right, rgba(245, 196, 81, 0.5), rgba(245, 196, 81, 0.1)); margin-bottom: 24px;"></div>
+      <div style="height: 2px; background: linear-gradient(to right, rgba(245, 196, 81, 0.6), rgba(245, 196, 81, 0.1)); margin-bottom: 28px;"></div>
       
       <!-- Table -->
-      <table style="width: 100%; border-collapse: collapse; font-size: 14px;">
+      <table style="width: 100%; border-collapse: collapse;">
         <thead>
           <tr style="border-bottom: 2px solid rgba(58, 61, 82, 0.8);">
-            <th style="padding: 12px 8px; text-align: left; color: #9ca3af; font-size: 11px; text-transform: uppercase; letter-spacing: 1px;">Team</th>
-            <th style="padding: 12px 8px; text-align: center; color: #9ca3af; font-size: 11px; text-transform: uppercase; letter-spacing: 1px;">Seasons</th>
-            <th style="padding: 12px 8px; text-align: center; color: #9ca3af; font-size: 11px; text-transform: uppercase; letter-spacing: 1px;">Champs</th>
-            <th style="padding: 12px 8px; text-align: center; color: #9ca3af; font-size: 11px; text-transform: uppercase; letter-spacing: 1px;">Record</th>
-            <th style="padding: 12px 8px; text-align: center; color: #9ca3af; font-size: 11px; text-transform: uppercase; letter-spacing: 1px;">Win %</th>
-            <th style="padding: 12px 8px; text-align: center; color: #9ca3af; font-size: 11px; text-transform: uppercase; letter-spacing: 1px;">Avg PPG</th>
-            <th style="padding: 12px 8px; text-align: center; color: #9ca3af; font-size: 11px; text-transform: uppercase; letter-spacing: 1px;">Total PF</th>
+            <th style="padding: 14px 10px; text-align: left; color: #9ca3af; font-size: 12px; text-transform: uppercase; letter-spacing: 1.5px; font-weight: 600;">Team</th>
+            <th style="padding: 14px 10px; text-align: center; color: #9ca3af; font-size: 12px; text-transform: uppercase; letter-spacing: 1.5px; font-weight: 600;">Seasons</th>
+            <th style="padding: 14px 10px; text-align: center; color: #9ca3af; font-size: 12px; text-transform: uppercase; letter-spacing: 1.5px; font-weight: 600;">Champs</th>
+            <th style="padding: 14px 10px; text-align: center; color: #9ca3af; font-size: 12px; text-transform: uppercase; letter-spacing: 1.5px; font-weight: 600;">Record</th>
+            <th style="padding: 14px 10px; text-align: center; color: #9ca3af; font-size: 12px; text-transform: uppercase; letter-spacing: 1.5px; font-weight: 600;">Win %</th>
+            <th style="padding: 14px 10px; text-align: center; color: #9ca3af; font-size: 12px; text-transform: uppercase; letter-spacing: 1.5px; font-weight: 600;">Avg PPG</th>
+            <th style="padding: 14px 10px; text-align: center; color: #9ca3af; font-size: 12px; text-transform: uppercase; letter-spacing: 1.5px; font-weight: 600;">Total PF</th>
           </tr>
         </thead>
         <tbody>
@@ -1889,12 +1956,12 @@ async function downloadCareerStats() {
       </table>
       
       <!-- Footer -->
-      <div style="text-align: center; padding-top: 24px; margin-top: 24px; border-top: 1px solid rgba(58, 61, 82, 0.5);">
-        <div style="display: flex; align-items: center; justify-content: center; gap: 16px;">
+      <div style="text-align: center; padding-top: 28px; margin-top: 28px; border-top: 1px solid rgba(58, 61, 82, 0.5);">
+        <div style="display: flex; align-items: center; justify-content: center; gap: 20px;">
           ${ufdLogoBase64 ? `<img src="${ufdLogoBase64}" style="width: 48px; height: 48px; object-fit: contain;" />` : ''}
           <div>
-            <div style="font-size: 14px; color: #9ca3af;">See complete league history at</div>
-            <div style="font-size: 18px; font-weight: bold; color: #facc15;">ultimatefantasydashboard.com/history</div>
+            <div style="font-size: 15px; color: #9ca3af; margin-bottom: 4px; letter-spacing: 0.3px;">See complete league history at</div>
+            <div style="font-size: 19px; font-weight: bold; color: #facc15; letter-spacing: 0.5px;">ultimatefantasydashboard.com/history</div>
           </div>
         </div>
       </div>
@@ -1905,7 +1972,9 @@ async function downloadCareerStats() {
     const canvas = await html2canvas(container, {
       backgroundColor: '#0d0f18',
       scale: 2,
-      logging: false
+      logging: false,
+      useCORS: true,
+      allowTaint: true
     })
     
     document.body.removeChild(container)
@@ -1934,7 +2003,7 @@ async function downloadSeasonHistory() {
     container.style.cssText = `
       position: fixed;
       left: -9999px;
-      width: 900px;
+      width: 950px;
       padding: 40px;
       background: #0d0f18;
       font-family: system-ui, -apple-system, sans-serif;
@@ -1943,46 +2012,46 @@ async function downloadSeasonHistory() {
     
     const tableRows = seasonRecords.value.map(season => `
       <tr style="border-bottom: 1px solid rgba(58, 61, 82, 0.5);">
-        <td style="padding: 12px 8px; text-align: left; font-weight: 700;">${season.season}</td>
-        <td style="padding: 12px 8px; text-align: center;">${season.avg_ppg.toFixed(1)}</td>
-        <td style="padding: 12px 8px; text-align: center;">
-          <div style="color: #4ade80; font-weight: 600;">${season.high_score.toFixed(1)}</div>
-          <div style="color: #6b7280; font-size: 11px;">${season.high_scorer}</div>
+        <td style="padding: 14px 12px; text-align: left; font-weight: 700; font-size: 15px;">${season.season}</td>
+        <td style="padding: 14px 12px; text-align: center; font-size: 14px;">${season.avg_ppg.toFixed(1)}</td>
+        <td style="padding: 14px 12px; text-align: center;">
+          <div style="color: #4ade80; font-weight: 600; font-size: 14px;">${season.high_score.toFixed(1)}</div>
+          <div style="color: #9ca3af; font-size: 12px; margin-top: 2px;">${season.high_scorer}</div>
         </td>
-        <td style="padding: 12px 8px; text-align: center;">
-          <div style="color: #f87171;">${season.low_score.toFixed(1)}</div>
-          <div style="color: #6b7280; font-size: 11px;">${season.low_scorer}</div>
+        <td style="padding: 14px 12px; text-align: center;">
+          <div style="color: #f87171; font-size: 14px;">${season.low_score.toFixed(1)}</div>
+          <div style="color: #9ca3af; font-size: 12px; margin-top: 2px;">${season.low_scorer}</div>
         </td>
-        <td style="padding: 12px 8px; text-align: center;">${season.trade_count}</td>
-        <td style="padding: 12px 8px; text-align: center;">
-          <span style="color: #facc15; font-weight: 700;">🏆 ${season.champion}</span>
+        <td style="padding: 14px 12px; text-align: center; font-size: 14px;">${season.trade_count}</td>
+        <td style="padding: 14px 12px; text-align: center;">
+          <span style="color: #facc15; font-weight: 700; font-size: 14px;">🏆 ${season.champion}</span>
         </td>
       </tr>
     `).join('')
     
     container.innerHTML = `
       <!-- Header -->
-      <div style="display: flex; align-items: center; gap: 20px; margin-bottom: 24px;">
+      <div style="display: flex; align-items: center; gap: 24px; margin-bottom: 28px;">
         ${ufdLogoBase64 ? `<img src="${ufdLogoBase64}" style="width: 70px; height: 70px; object-fit: contain;" />` : ''}
         <div>
-          <div style="font-size: 28px; font-weight: 800; color: #f7f7ff;">Season History</div>
-          <div style="font-size: 16px; color: #9ca3af;">${leagueName} • Year-by-Year Records</div>
+          <div style="font-size: 28px; font-weight: 800; color: #f7f7ff; margin-bottom: 6px;">Season History</div>
+          <div style="font-size: 16px; color: #9ca3af; letter-spacing: 0.5px;">${leagueName} • Year-by-Year Records</div>
         </div>
       </div>
       
       <!-- Divider -->
-      <div style="height: 1px; background: linear-gradient(to right, rgba(245, 196, 81, 0.5), rgba(245, 196, 81, 0.1)); margin-bottom: 24px;"></div>
+      <div style="height: 2px; background: linear-gradient(to right, rgba(245, 196, 81, 0.6), rgba(245, 196, 81, 0.1)); margin-bottom: 28px;"></div>
       
       <!-- Table -->
-      <table style="width: 100%; border-collapse: collapse; font-size: 14px;">
+      <table style="width: 100%; border-collapse: collapse;">
         <thead>
           <tr style="border-bottom: 2px solid rgba(58, 61, 82, 0.8);">
-            <th style="padding: 12px 8px; text-align: left; color: #9ca3af; font-size: 11px; text-transform: uppercase; letter-spacing: 1px;">Season</th>
-            <th style="padding: 12px 8px; text-align: center; color: #9ca3af; font-size: 11px; text-transform: uppercase; letter-spacing: 1px;">Avg PPG</th>
-            <th style="padding: 12px 8px; text-align: center; color: #9ca3af; font-size: 11px; text-transform: uppercase; letter-spacing: 1px;">High Score</th>
-            <th style="padding: 12px 8px; text-align: center; color: #9ca3af; font-size: 11px; text-transform: uppercase; letter-spacing: 1px;">Low Score</th>
-            <th style="padding: 12px 8px; text-align: center; color: #9ca3af; font-size: 11px; text-transform: uppercase; letter-spacing: 1px;">Trades</th>
-            <th style="padding: 12px 8px; text-align: center; color: #9ca3af; font-size: 11px; text-transform: uppercase; letter-spacing: 1px;">Champion</th>
+            <th style="padding: 14px 12px; text-align: left; color: #9ca3af; font-size: 12px; text-transform: uppercase; letter-spacing: 1.5px; font-weight: 600;">Season</th>
+            <th style="padding: 14px 12px; text-align: center; color: #9ca3af; font-size: 12px; text-transform: uppercase; letter-spacing: 1.5px; font-weight: 600;">Avg PPG</th>
+            <th style="padding: 14px 12px; text-align: center; color: #9ca3af; font-size: 12px; text-transform: uppercase; letter-spacing: 1.5px; font-weight: 600;">High Score</th>
+            <th style="padding: 14px 12px; text-align: center; color: #9ca3af; font-size: 12px; text-transform: uppercase; letter-spacing: 1.5px; font-weight: 600;">Low Score</th>
+            <th style="padding: 14px 12px; text-align: center; color: #9ca3af; font-size: 12px; text-transform: uppercase; letter-spacing: 1.5px; font-weight: 600;">Trades</th>
+            <th style="padding: 14px 12px; text-align: center; color: #9ca3af; font-size: 12px; text-transform: uppercase; letter-spacing: 1.5px; font-weight: 600;">Champion</th>
           </tr>
         </thead>
         <tbody>
@@ -1991,12 +2060,12 @@ async function downloadSeasonHistory() {
       </table>
       
       <!-- Footer -->
-      <div style="text-align: center; padding-top: 24px; margin-top: 24px; border-top: 1px solid rgba(58, 61, 82, 0.5);">
-        <div style="display: flex; align-items: center; justify-content: center; gap: 16px;">
+      <div style="text-align: center; padding-top: 28px; margin-top: 28px; border-top: 1px solid rgba(58, 61, 82, 0.5);">
+        <div style="display: flex; align-items: center; justify-content: center; gap: 20px;">
           ${ufdLogoBase64 ? `<img src="${ufdLogoBase64}" style="width: 48px; height: 48px; object-fit: contain;" />` : ''}
           <div>
-            <div style="font-size: 14px; color: #9ca3af;">See complete league history at</div>
-            <div style="font-size: 18px; font-weight: bold; color: #facc15;">ultimatefantasydashboard.com/history</div>
+            <div style="font-size: 15px; color: #9ca3af; margin-bottom: 4px; letter-spacing: 0.3px;">See complete league history at</div>
+            <div style="font-size: 19px; font-weight: bold; color: #facc15; letter-spacing: 0.5px;">ultimatefantasydashboard.com/history</div>
           </div>
         </div>
       </div>
@@ -2007,7 +2076,9 @@ async function downloadSeasonHistory() {
     const canvas = await html2canvas(container, {
       backgroundColor: '#0d0f18',
       scale: 2,
-      logging: false
+      logging: false,
+      useCORS: true,
+      allowTaint: true
     })
     
     document.body.removeChild(container)
@@ -2039,25 +2110,25 @@ async function downloadHeadToHead() {
     container.style.cssText = `
       position: fixed;
       left: -9999px;
-      width: ${Math.max(600, teamsToShow.length * 70 + 150)}px;
+      width: ${Math.max(700, teamsToShow.length * 60 + 220)}px;
       padding: 40px;
       background: #0d0f18;
       font-family: system-ui, -apple-system, sans-serif;
       color: #f7f7ff;
     `
     
-    // Build header row
+    // Build header row with logos only (no names)
     const headerCells = teamsToShow.map(team => 
-      `<th style="padding: 8px 4px; text-align: center; color: #9ca3af; font-size: 10px; text-transform: uppercase; border: 1px solid rgba(58, 61, 82, 0.5); min-width: 60px;">
-        <div style="max-width: 60px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${team.team_name}">${team.team_name.substring(0, 6)}</div>
+      `<th style="padding: 10px 6px; text-align: center; border: 1px solid rgba(58, 61, 82, 0.5); min-width: 50px;">
+        <img src="${team.avatar}" style="width: 36px; height: 36px; border-radius: 50%; object-fit: cover;" title="${team.team_name}" onerror="this.src='https://sleepercdn.com/avatars/thumbs/default'" />
       </th>`
     ).join('')
     
-    // Build data rows
+    // Build data rows with logo + name in first column
     const dataRows = teamsToShow.map(rowTeam => {
       const cells = teamsToShow.map(colTeam => {
         if (rowTeam.user_id === colTeam.user_id) {
-          return `<td style="padding: 8px 4px; text-align: center; border: 1px solid rgba(58, 61, 82, 0.5); background: rgba(58, 61, 82, 0.3); color: #6b7280;">—</td>`
+          return `<td style="padding: 10px 6px; text-align: center; border: 1px solid rgba(58, 61, 82, 0.5); background: rgba(58, 61, 82, 0.3); color: #6b7280;">—</td>`
         }
         const record = getH2HRecord(rowTeam.user_id, colTeam.user_id)
         const [wins, losses] = record.split('-').map(Number)
@@ -2070,38 +2141,43 @@ async function downloadHeadToHead() {
           bgColor = 'rgba(248, 113, 113, 0.1)'
           textColor = '#f87171'
         }
-        return `<td style="padding: 8px 4px; text-align: center; border: 1px solid rgba(58, 61, 82, 0.5); background: ${bgColor}; color: ${textColor}; font-weight: 600; font-size: 12px;">${record}</td>`
+        return `<td style="padding: 10px 6px; text-align: center; border: 1px solid rgba(58, 61, 82, 0.5); background: ${bgColor}; color: ${textColor}; font-weight: 600; font-size: 13px;">${record}</td>`
       }).join('')
       
       return `<tr>
-        <td style="padding: 8px; text-align: left; font-weight: 600; border: 1px solid rgba(58, 61, 82, 0.5); background: rgba(38, 42, 58, 0.5); white-space: nowrap;">${rowTeam.team_name}</td>
+        <td style="padding: 10px 12px; text-align: left; border: 1px solid rgba(58, 61, 82, 0.5); background: rgba(38, 42, 58, 0.5); white-space: nowrap;">
+          <div style="display: flex; align-items: center; gap: 10px;">
+            <img src="${rowTeam.avatar}" style="width: 28px; height: 28px; border-radius: 50%; object-fit: cover;" onerror="this.src='https://sleepercdn.com/avatars/thumbs/default'" />
+            <span style="font-weight: 600; font-size: 13px;">${rowTeam.team_name}</span>
+          </div>
+        </td>
         ${cells}
       </tr>`
     }).join('')
     
     container.innerHTML = `
       <!-- Header -->
-      <div style="display: flex; align-items: center; gap: 20px; margin-bottom: 24px;">
+      <div style="display: flex; align-items: center; gap: 24px; margin-bottom: 28px;">
         ${ufdLogoBase64 ? `<img src="${ufdLogoBase64}" style="width: 70px; height: 70px; object-fit: contain;" />` : ''}
         <div>
-          <div style="font-size: 28px; font-weight: 800; color: #f7f7ff;">Head-to-Head Matrix</div>
-          <div style="font-size: 16px; color: #9ca3af;">${leagueName} • All-Time Records</div>
+          <div style="font-size: 28px; font-weight: 800; color: #f7f7ff; margin-bottom: 6px;">Head-to-Head Matrix</div>
+          <div style="font-size: 16px; color: #9ca3af; letter-spacing: 0.5px;">${leagueName} • All-Time Records</div>
         </div>
       </div>
       
       <!-- Divider -->
-      <div style="height: 1px; background: linear-gradient(to right, rgba(245, 196, 81, 0.5), rgba(245, 196, 81, 0.1)); margin-bottom: 24px;"></div>
+      <div style="height: 2px; background: linear-gradient(to right, rgba(245, 196, 81, 0.6), rgba(245, 196, 81, 0.1)); margin-bottom: 28px;"></div>
       
       <!-- Instructions -->
-      <div style="font-size: 12px; color: #6b7280; margin-bottom: 16px; font-style: italic;">
+      <div style="font-size: 13px; color: #9ca3af; margin-bottom: 20px; font-style: italic; letter-spacing: 0.3px;">
         Read horizontally: each row shows that team's record against opponents
       </div>
       
       <!-- Table -->
-      <table style="width: 100%; border-collapse: collapse; font-size: 12px;">
+      <table style="width: 100%; border-collapse: collapse;">
         <thead>
           <tr>
-            <th style="padding: 8px; text-align: left; color: #9ca3af; font-size: 10px; text-transform: uppercase; border: 1px solid rgba(58, 61, 82, 0.5); background: rgba(38, 42, 58, 0.5);">Team</th>
+            <th style="padding: 10px 12px; text-align: left; color: #9ca3af; font-size: 11px; text-transform: uppercase; letter-spacing: 1px; border: 1px solid rgba(58, 61, 82, 0.5); background: rgba(38, 42, 58, 0.5);">Team</th>
             ${headerCells}
           </tr>
         </thead>
@@ -2111,12 +2187,12 @@ async function downloadHeadToHead() {
       </table>
       
       <!-- Footer -->
-      <div style="text-align: center; padding-top: 24px; margin-top: 24px; border-top: 1px solid rgba(58, 61, 82, 0.5);">
-        <div style="display: flex; align-items: center; justify-content: center; gap: 16px;">
+      <div style="text-align: center; padding-top: 28px; margin-top: 28px; border-top: 1px solid rgba(58, 61, 82, 0.5);">
+        <div style="display: flex; align-items: center; justify-content: center; gap: 20px;">
           ${ufdLogoBase64 ? `<img src="${ufdLogoBase64}" style="width: 48px; height: 48px; object-fit: contain;" />` : ''}
           <div>
-            <div style="font-size: 14px; color: #9ca3af;">See complete league history at</div>
-            <div style="font-size: 18px; font-weight: bold; color: #facc15;">ultimatefantasydashboard.com/history</div>
+            <div style="font-size: 15px; color: #9ca3af; margin-bottom: 4px; letter-spacing: 0.3px;">See complete league history at</div>
+            <div style="font-size: 19px; font-weight: bold; color: #facc15; letter-spacing: 0.5px;">ultimatefantasydashboard.com/history</div>
           </div>
         </div>
       </div>
