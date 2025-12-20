@@ -266,7 +266,7 @@
                 ref="trendChart"
                 v-if="chartOptions"
                 type="line"
-                :height="isMobile ? 350 : 450"
+                :height="isMobile ? 400 : 450"
                 :options="getMobileChartOptions(chartOptions)"
                 :series="chartSeries"
               />
@@ -275,7 +275,7 @@
                 v-for="(team, idx) in powerRankings" 
                 :key="'avatar-' + team.roster_id"
                 class="absolute pointer-events-none"
-                :style="getAvatarPosition(team, idx)"
+                :style="getAvatarPosition(team, idx, isMobile ? 400 : 450)"
               >
                 <div class="relative">
                   <img 
@@ -1160,7 +1160,7 @@ function getMobileChartWidth(weekCount: number): string {
   return `${minWidth}px`
 }
 
-// Adjust chart options for mobile - disable zoom, adjust fonts
+// Adjust chart options for mobile - disable zoom, adjust fonts, hide legend (we use avatars)
 function getMobileChartOptions(options: any): any {
   if (!options) return options
   
@@ -1172,6 +1172,9 @@ function getMobileChartOptions(options: any): any {
       zoom: { enabled: false },
       selection: { enabled: false },
       pan: { enabled: false }
+    },
+    legend: {
+      show: false // Hide legend since we show team avatars at end of lines
     },
     xaxis: {
       ...options.xaxis,
@@ -1716,19 +1719,18 @@ function getPositionColor(position: string): string {
 }
 
 // Calculate avatar position for chart overlay
-function getAvatarPosition(team: any, teamIndex: number): Record<string, string> {
+function getAvatarPosition(team: any, teamIndex: number, chartHeight: number = 450): Record<string, string> {
   const ranks = historicalPowerRanks.value.get(team.roster_id) || []
   const lastRank = ranks[ranks.length - 1]
   if (!lastRank) return { display: 'none' }
   
   const totalTeams = powerRankings.value.length
-  const chartHeight = 450 // Same as chart height
-  const chartPadding = { top: 30, bottom: 70 } // Approximate ApexChart padding
+  const chartPadding = { top: 30, bottom: 50 } // Approximate ApexChart padding (reduced bottom since no legend)
   const usableHeight = chartHeight - chartPadding.top - chartPadding.bottom
   
   // Y position: rank 1 is at top, rank N is at bottom (reversed axis)
   const yPercent = (lastRank - 1) / (totalTeams - 1)
-  const yPos = chartPadding.top + (yPercent * usableHeight) - 14 // -14 to center the 28px avatar
+  const yPos = chartPadding.top + (yPercent * usableHeight) - 12 // -12 to center the avatar
   
   return {
     right: '15px',
