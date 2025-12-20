@@ -239,81 +239,67 @@
                   </svg>
                 </button>
                 
-                <!-- Mobile Hamburger Menu -->
+                <!-- Mobile User Menu Button -->
                 <button
-                  @click="showMobileMenu = !showMobileMenu"
-                  class="sm:hidden p-2 rounded-lg hover:bg-dark-border/50 transition-colors text-dark-textMuted"
+                  @click="showMobileUserMenu = !showMobileUserMenu"
+                  class="sm:hidden p-1.5 rounded-lg hover:bg-dark-border/50 transition-colors"
+                  data-mobile-user-menu
                 >
-                  <svg v-if="!showMobileMenu" class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
-                  </svg>
-                  <svg v-else class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-                  </svg>
+                  <div class="w-7 h-7 rounded-full bg-primary/20 flex items-center justify-center">
+                    <span class="text-xs font-bold text-primary">{{ userInitials }}</span>
+                  </div>
                 </button>
               </div>
             </div>
           </div>
         </div>
+        
+        <!-- Mobile User Dropdown -->
+        <div 
+          v-if="showMobileUserMenu" 
+          class="sm:hidden absolute right-4 top-14 bg-dark-elevated border border-dark-border rounded-xl shadow-xl z-50 w-48 overflow-hidden"
+          data-mobile-user-menu
+        >
+          <div class="p-3 border-b border-dark-border">
+            <div class="font-medium text-dark-text text-sm truncate">{{ displayName }}</div>
+            <div class="text-xs text-dark-textMuted truncate">{{ authStore.user?.email }}</div>
+          </div>
+          <button
+            @click="handleSignOut; showMobileUserMenu = false"
+            class="w-full flex items-center gap-2 px-3 py-2.5 text-red-400 hover:bg-red-500/10 transition-colors text-sm"
+          >
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+            </svg>
+            <span>Sign Out</span>
+          </button>
+        </div>
       </header>
 
-      <!-- Mobile Navigation Menu -->
-      <div 
-        v-if="showMobileMenu" 
-        class="sm:hidden fixed inset-0 z-40 bg-black/50 backdrop-blur-sm"
-        @click="showMobileMenu = false"
-      >
-        <div 
-          class="absolute top-16 left-0 right-0 bg-dark-elevated border-b border-dark-border shadow-xl max-h-[calc(100vh-4rem)] overflow-y-auto"
-          @click.stop
-        >
-          <!-- Navigation Links -->
-          <nav class="p-4 space-y-1">
-            <router-link
-              v-for="tab in tabs"
-              :key="tab.path"
-              :to="tab.path"
-              @click="showMobileMenu = false"
-              class="flex items-center gap-3 px-4 py-3 rounded-xl text-base font-medium transition-colors"
-              :class="[
-                $route.path === tab.path
-                  ? 'bg-primary text-gray-900'
-                  : 'text-dark-textSecondary hover:text-dark-text hover:bg-dark-border/50'
-              ]"
-            >
-              <span>{{ getTabIcon(tab.name) }}</span>
-              <span>{{ tab.name }}</span>
-            </router-link>
-          </nav>
-          
-          <!-- User Info & Sign Out -->
-          <div class="border-t border-dark-border p-4">
-            <div class="flex items-center gap-3 px-4 py-2 mb-2">
-              <div class="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center">
-                <span class="text-lg font-bold text-primary">{{ userInitials }}</span>
-              </div>
-              <div>
-                <div class="font-medium text-dark-text">{{ displayName }}</div>
-                <div class="text-sm text-dark-textMuted">{{ authStore.user?.email }}</div>
-              </div>
+      <!-- Navigation Tabs - Scrollable on mobile -->
+      <nav class="border-b border-dark-border sticky top-0 z-30" style="background: linear-gradient(135deg, rgba(19, 22, 32, 0.98), rgba(10, 12, 20, 0.98)); border: 1px solid #2a2f42;">
+        <div class="max-w-7xl mx-auto px-2 sm:px-6 lg:px-8 py-2 sm:py-3">
+          <!-- Mobile: Scrollable tabs -->
+          <div class="sm:hidden overflow-x-auto scrollbar-hide -mx-2 px-2">
+            <div class="flex items-center gap-1 min-w-max">
+              <router-link
+                v-for="tab in tabs"
+                :key="tab.path"
+                :to="tab.path"
+                class="flex-shrink-0 px-3 py-2 text-xs font-semibold rounded-full transition-all duration-200 whitespace-nowrap"
+                :class="[
+                  $route.path === tab.path
+                    ? 'bg-primary text-gray-900 shadow-md'
+                    : 'text-dark-textSecondary hover:text-dark-text bg-dark-border/30'
+                ]"
+              >
+                {{ tab.name }}
+              </router-link>
             </div>
-            <button
-              @click="handleSignOut; showMobileMenu = false"
-              class="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-red-400 hover:bg-red-500/10 transition-colors"
-            >
-              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-              </svg>
-              <span>Sign Out</span>
-            </button>
           </div>
-        </div>
-      </div>
-
-      <!-- Navigation Tabs - Hidden on mobile (use hamburger menu) -->
-      <nav class="hidden sm:block border-b border-dark-border" style="background: linear-gradient(135deg, rgba(19, 22, 32, 0.98), rgba(10, 12, 20, 0.98)); border: 1px solid #2a2f42;">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3">
-          <div class="inline-flex items-center gap-2 bg-dark-bg/50 rounded-full p-1.5 border border-dark-border">
+          
+          <!-- Desktop: Original pill-style tabs -->
+          <div class="hidden sm:inline-flex items-center gap-2 bg-dark-bg/50 rounded-full p-1.5 border border-dark-border">
             <router-link
               v-for="tab in tabs"
               :key="tab.path"
@@ -429,7 +415,7 @@ const showAuthModal = ref(false)
 const authMode = ref<'login' | 'signup'>('signup')
 const showLeagueDropdown = ref(false)
 const showAddLeagueModal = ref(false)
-const showMobileMenu = ref(false)
+const showMobileUserMenu = ref(false)
 const leagueDropdownRef = ref<HTMLElement | null>(null)
 const leagueToRemove = ref<any>(null)
 
@@ -544,6 +530,11 @@ function handleClickOutside(event: MouseEvent) {
   if (leagueDropdownRef.value && !leagueDropdownRef.value.contains(event.target as Node)) {
     showLeagueDropdown.value = false
   }
+  // Close mobile user menu when clicking outside
+  const target = event.target as HTMLElement
+  if (showMobileUserMenu.value && !target.closest('[data-mobile-user-menu]')) {
+    showMobileUserMenu.value = false
+  }
 }
 
 onMounted(async () => {
@@ -579,6 +570,6 @@ watch(() => authStore.isAuthenticated, async (isAuth) => {
 
 // Close mobile menu on route change
 watch(() => router.currentRoute.value.path, () => {
-  showMobileMenu.value = false
+  showMobileUserMenu.value = false
 })
 </script>

@@ -122,6 +122,16 @@
     @apply bg-gray-500 dark:bg-gray-500;
   }
   
+  /* Hide scrollbar but keep scroll functionality */
+  .scrollbar-hide {
+    -ms-overflow-style: none;  /* IE and Edge */
+    scrollbar-width: none;  /* Firefox */
+  }
+  
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;  /* Chrome, Safari and Opera */
+  }
+  
   /* Gradient text */
   .gradient-text {
     @apply bg-gradient-to-r from-primary to-yellow-600 bg-clip-text text-transparent;
