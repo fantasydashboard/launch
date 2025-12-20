@@ -9,6 +9,16 @@
         </p>
       </div>
       <div class="flex items-center gap-3">
+        <button 
+          @click="showPowerRankingSettings = true" 
+          class="p-2 rounded-lg hover:bg-dark-border/50 transition-colors" 
+          title="Customize Power Rankings"
+        >
+          <svg class="w-5 h-5 text-dark-textMuted" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+          </svg>
+        </button>
         <select v-model="selectedSeason" @change="onSeasonChange" class="select">
           <option v-for="season in leagueStore.historicalSeasons" :key="season.season" :value="season.season">
             {{ season.season }} Season
@@ -64,9 +74,17 @@
               <span class="text-2xl">⚡</span>
               <h2 class="card-title">Power Rankings - Week {{ selectedWeek }}</h2>
             </div>
-            <p class="card-subtitle mt-2">
-              Formula: Record (30%) + Points (20%) + All-Play (18%) + Recent (12%) + Projected (15%) + Consistency (5%)
-            </p>
+            <div class="flex items-center gap-2 mt-2">
+              <p class="card-subtitle">
+                {{ currentFormulaDisplay }}
+              </p>
+              <button 
+                @click="showPowerRankingSettings = true" 
+                class="text-primary hover:text-yellow-500 text-xs font-semibold transition-colors"
+              >
+                Customize →
+              </button>
+            </div>
           </div>
           <div class="flex items-center gap-2">
             <select v-model="downloadFormat" class="bg-dark-card border border-dark-border rounded px-3 py-2 text-sm text-dark-text">
@@ -859,6 +877,132 @@
         </div>
       </div>
     </Teleport>
+    
+    <!-- Power Rankings Settings Modal -->
+    <div v-if="showPowerRankingSettings" class="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4" @click.self="showPowerRankingSettings = false">
+      <div class="bg-dark-elevated rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-hidden border border-dark-border">
+        <!-- Header -->
+        <div class="px-6 py-4 border-b border-dark-border flex items-center justify-between">
+          <div>
+            <h3 class="text-xl font-bold text-dark-text">Power Rankings Settings</h3>
+            <p class="text-sm text-dark-textMuted">Customize how power rankings are calculated</p>
+          </div>
+          <button @click="showPowerRankingSettings = false" class="p-2 hover:bg-dark-border/50 rounded-lg transition-colors">
+            <svg class="w-5 h-5 text-dark-textMuted" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+        
+        <!-- Presets -->
+        <div class="px-6 py-4 border-b border-dark-border">
+          <h4 class="text-sm font-semibold text-dark-textMuted uppercase tracking-wider mb-3">Quick Presets</h4>
+          <div class="grid grid-cols-2 sm:grid-cols-3 gap-2">
+            <button
+              v-for="preset in powerRankingPresets"
+              :key="preset.id"
+              @click="applyPreset(preset)"
+              class="px-3 py-2 rounded-lg border transition-colors text-left"
+              :class="currentPresetId === preset.id 
+                ? 'border-primary bg-primary/10 text-primary' 
+                : 'border-dark-border hover:border-dark-textMuted text-dark-text'"
+            >
+              <div class="flex items-center gap-2">
+                <span class="text-lg">{{ preset.icon }}</span>
+                <div>
+                  <div class="text-sm font-medium">{{ preset.name }}</div>
+                  <div class="text-xs text-dark-textMuted truncate">{{ preset.description }}</div>
+                </div>
+              </div>
+            </button>
+          </div>
+        </div>
+        
+        <!-- Factors -->
+        <div class="px-6 py-4 overflow-y-auto max-h-[45vh]">
+          <div class="flex items-center justify-between mb-3">
+            <h4 class="text-sm font-semibold text-dark-textMuted uppercase tracking-wider">Ranking Factors</h4>
+            <span class="text-xs text-dark-textMuted">Total: {{ totalWeight }}%</span>
+          </div>
+          
+          <div class="space-y-4">
+            <div 
+              v-for="factor in powerRankingFactors" 
+              :key="factor.id"
+              class="bg-dark-border/20 rounded-xl p-4"
+            >
+              <div class="flex items-start justify-between mb-3">
+                <div class="flex items-center gap-3">
+                  <span class="text-2xl">{{ factor.icon }}</span>
+                  <div>
+                    <div class="font-medium text-dark-text">{{ factor.name }}</div>
+                    <div class="text-xs text-dark-textMuted">{{ factor.description }}</div>
+                  </div>
+                </div>
+                <label class="relative inline-flex items-center cursor-pointer">
+                  <input 
+                    type="checkbox" 
+                    v-model="factor.enabled" 
+                    @change="onFactorChange"
+                    class="sr-only peer"
+                  />
+                  <div class="w-11 h-6 bg-dark-border rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
+                </label>
+              </div>
+              
+              <div v-if="factor.enabled" class="flex items-center gap-4">
+                <input 
+                  type="range" 
+                  v-model.number="factor.weight" 
+                  min="0" 
+                  max="100" 
+                  step="5"
+                  @input="onFactorChange"
+                  class="flex-1 h-2 bg-dark-border rounded-lg appearance-none cursor-pointer accent-primary"
+                />
+                <div class="w-16 flex items-center gap-1">
+                  <input 
+                    type="number" 
+                    v-model.number="factor.weight" 
+                    min="0" 
+                    max="100"
+                    @input="onFactorChange"
+                    class="w-12 px-2 py-1 rounded bg-dark-bg border border-dark-border text-dark-text text-sm text-center"
+                  />
+                  <span class="text-dark-textMuted text-sm">%</span>
+                </div>
+              </div>
+              
+              <!-- Weight bar visualization -->
+              <div v-if="factor.enabled" class="mt-2 h-1.5 bg-dark-border rounded-full overflow-hidden">
+                <div 
+                  class="h-full rounded-full transition-all"
+                  :style="{ width: `${factor.weight}%`, backgroundColor: factor.color }"
+                ></div>
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Footer -->
+        <div class="px-6 py-4 border-t border-dark-border flex items-center justify-between">
+          <button 
+            @click="resetToDefault"
+            class="px-4 py-2 text-sm text-dark-textMuted hover:text-dark-text transition-colors"
+          >
+            Reset to Default
+          </button>
+          <div class="flex items-center gap-3">
+            <button @click="showPowerRankingSettings = false" class="px-4 py-2 rounded-lg bg-dark-border hover:bg-dark-border/70 text-dark-text font-medium transition-colors">
+              Cancel
+            </button>
+            <button @click="applySettings" class="px-4 py-2 rounded-lg bg-primary hover:bg-yellow-500 text-dark-bg font-semibold transition-colors">
+              Apply Changes
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -870,6 +1014,12 @@ import type { SleeperRoster, SleeperMatchup } from '@/types/sleeper'
 import { calculateAllPlayRecord } from '@/utils/calculations'
 import { getOptimalLineupProjection, calculateAverageProjection, getPositionProjections } from '@/utils/projections'
 import html2canvas from 'html2canvas'
+import { 
+  DEFAULT_POWER_FACTORS, 
+  POWER_RANKING_PRESETS,
+  type PowerRankingFactorConfig,
+  type PowerRankingPreset
+} from '@/services/powerRankingFactors'
 import ApexCharts from 'apexcharts'
 
 const leagueStore = useLeagueStore()
@@ -897,6 +1047,58 @@ const positionSortDirection = ref<'asc' | 'desc'>('desc')
 const downloadFormat = ref<'png' | 'gif'>('png')
 const isGeneratingDownload = ref(false)
 
+// Power Rankings Settings State
+const showPowerRankingSettings = ref(false)
+const powerRankingFactors = ref<PowerRankingFactorConfig[]>(JSON.parse(JSON.stringify(DEFAULT_POWER_FACTORS)))
+const powerRankingPresets = POWER_RANKING_PRESETS
+const currentPresetId = ref('balanced')
+
+const totalWeight = computed(() => {
+  return powerRankingFactors.value.filter(f => f.enabled).reduce((sum, f) => sum + f.weight, 0)
+})
+
+const currentFormulaDisplay = computed(() => {
+  const enabledFactors = powerRankingFactors.value.filter(f => f.enabled && f.weight > 0)
+  if (enabledFactors.length === 0) return 'No factors enabled'
+  
+  const totalWeight = enabledFactors.reduce((sum, f) => sum + f.weight, 0)
+  
+  return 'Formula: ' + enabledFactors.map(f => {
+    const normalizedWeight = Math.round((f.weight / totalWeight) * 100)
+    const shortName = f.name.replace('Win-Loss ', '').replace(' Scored', '').replace('Total ', '').replace(' (Last 3 Weeks)', '').replace('Projected ROS ', '')
+    return `${shortName} (${normalizedWeight}%)`
+  }).join(' + ')
+})
+
+function applyPreset(preset: PowerRankingPreset) {
+  currentPresetId.value = preset.id
+  powerRankingFactors.value.forEach(factor => {
+    const presetFactor = preset.factors[factor.id]
+    if (presetFactor) {
+      factor.enabled = presetFactor.enabled
+      factor.weight = presetFactor.weight
+    } else {
+      factor.enabled = false
+      factor.weight = 0
+    }
+  })
+}
+
+function onFactorChange() {
+  // Mark as custom if doesn't match any preset
+  currentPresetId.value = ''
+}
+
+function resetToDefault() {
+  powerRankingFactors.value = JSON.parse(JSON.stringify(DEFAULT_POWER_FACTORS))
+  currentPresetId.value = 'balanced'
+}
+
+function applySettings() {
+  showPowerRankingSettings.value = false
+  loadPowerRankings() // Recalculate with new settings
+}
+
 // Team Detail Modal State
 const showTeamDetailModal = ref(false)
 const selectedTeamDetail = ref<any>(null)
@@ -916,26 +1118,20 @@ function openTeamDetailModal(team: any, idx: number) {
   selectedTeamDetail.value = team
   teamDetailRank.value = idx + 1
   
-  // Calculate metrics breakdown
+  // Calculate metrics breakdown using custom factors
   const totalTeams = powerRankings.value.length
   const maxPointsFor = Math.max(...powerRankings.value.map(t => t.totalPointsFor))
   const maxRecentAvg = Math.max(...powerRankings.value.map(t => t.recentAvg))
   const maxStdDev = Math.max(...powerRankings.value.map(t => t.stdDev))
   const maxProjected = Math.max(...powerRankings.value.map(t => t.projectedPPG || 0))
+  const maxPointsAgainst = Math.max(...powerRankings.value.map(t => t.pointsAgainst || 0))
+  const minPointsAgainst = Math.min(...powerRankings.value.map(t => t.pointsAgainst || 0))
   
-  // Calculate individual scores for this team
-  const totalGames = team.wins + team.losses + team.ties
-  const winPct = totalGames > 0 ? (team.wins + team.ties * 0.5) / totalGames : 0
-  const recordScore = winPct * 100
-  const pointsScore = maxPointsFor > 0 ? (team.totalPointsFor / maxPointsFor) * 100 : 0
-  const allPlayTotal = team.allPlayWins + team.allPlayLosses
-  const allPlayPct = allPlayTotal > 0 ? team.allPlayWins / allPlayTotal : 0
-  const allPlayScore = allPlayPct * 100
-  const recentScore = maxRecentAvg > 0 ? (team.recentAvg / maxRecentAvg) * 100 : 0
-  const projectedScore = maxProjected > 0 && team.projectedPPG ? (team.projectedPPG / maxProjected) * 100 : 0
-  const consistencyScore = maxStdDev > 0 ? ((maxStdDev - team.stdDev) / maxStdDev) * 100 : 50
+  // Get enabled factors and their normalized weights
+  const enabledFactors = powerRankingFactors.value.filter(f => f.enabled && f.weight > 0)
+  const totalWeight = enabledFactors.reduce((sum, f) => sum + f.weight, 0)
   
-  // Calculate ranks for each metric
+  // Calculate individual scores and ranks for each enabled metric
   const sortedByRecord = [...powerRankings.value].sort((a, b) => {
     const aWinPct = (a.wins + a.losses + a.ties) > 0 ? (a.wins + a.ties * 0.5) / (a.wins + a.losses + a.ties) : 0
     const bWinPct = (b.wins + b.losses + b.ties) > 0 ? (b.wins + b.ties * 0.5) / (b.wins + b.losses + b.ties) : 0
@@ -946,57 +1142,73 @@ function openTeamDetailModal(team: any, idx: number) {
   const sortedByRecent = [...powerRankings.value].sort((a, b) => b.recentAvg - a.recentAvg)
   const sortedByProjected = [...powerRankings.value].sort((a, b) => (b.projectedPPG || 0) - (a.projectedPPG || 0))
   const sortedByConsistency = [...powerRankings.value].sort((a, b) => a.stdDev - b.stdDev) // Lower is better
+  const sortedByPointsAgainst = [...powerRankings.value].sort((a, b) => (a.pointsAgainst || 0) - (b.pointsAgainst || 0)) // Lower is better
   
-  teamDetailMetrics.value = [
-    {
-      name: 'Record',
-      weight: '30%',
-      value: `${team.wins}-${team.losses}${team.ties > 0 ? `-${team.ties}` : ''} (${(winPct * 100).toFixed(0)}%)`,
-      score: recordScore,
-      rank: sortedByRecord.findIndex(t => t.roster_id === team.roster_id) + 1,
-      color: '#22c55e'
-    },
-    {
-      name: 'Total Points',
-      weight: '20%',
-      value: team.totalPointsFor.toFixed(1),
-      score: pointsScore,
-      rank: sortedByPoints.findIndex(t => t.roster_id === team.roster_id) + 1,
-      color: '#f5c451'
-    },
-    {
-      name: 'All-Play Record',
-      weight: '18%',
-      value: `${team.allPlayWins}-${team.allPlayLosses} (${(allPlayPct * 100).toFixed(0)}%)`,
-      score: allPlayScore,
-      rank: sortedByAllPlay.findIndex(t => t.roster_id === team.roster_id) + 1,
-      color: '#3b82f6'
-    },
-    {
-      name: 'Recent Form (3 wks)',
-      weight: '12%',
-      value: `${team.recentAvg.toFixed(1)} PPG`,
-      score: recentScore,
-      rank: sortedByRecent.findIndex(t => t.roster_id === team.roster_id) + 1,
-      color: '#a855f7'
-    },
-    {
-      name: 'Projected Strength',
-      weight: '15%',
-      value: team.projectedPPG ? `${team.projectedPPG.toFixed(1)} PPG` : 'N/A',
-      score: projectedScore,
-      rank: team.projectedPPG ? sortedByProjected.findIndex(t => t.roster_id === team.roster_id) + 1 : totalTeams,
-      color: '#06b6d4'
-    },
-    {
-      name: 'Consistency',
-      weight: '5%',
-      value: `${team.stdDev.toFixed(1)} std dev`,
-      score: consistencyScore,
-      rank: sortedByConsistency.findIndex(t => t.roster_id === team.roster_id) + 1,
-      color: '#ec4899'
+  // Build metrics array based on enabled factors
+  teamDetailMetrics.value = enabledFactors.map(factor => {
+    const normalizedWeight = Math.round((factor.weight / totalWeight) * 100)
+    let value = ''
+    let score = 0
+    let rank = totalTeams
+    
+    const totalGames = team.wins + team.losses + team.ties
+    const winPct = totalGames > 0 ? (team.wins + team.ties * 0.5) / totalGames : 0
+    const allPlayTotal = team.allPlayWins + team.allPlayLosses
+    const allPlayPct = allPlayTotal > 0 ? team.allPlayWins / allPlayTotal : 0
+    
+    switch (factor.id) {
+      case 'record':
+        value = `${team.wins}-${team.losses}${team.ties > 0 ? `-${team.ties}` : ''} (${(winPct * 100).toFixed(0)}%)`
+        score = winPct * 100
+        rank = sortedByRecord.findIndex(t => t.roster_id === team.roster_id) + 1
+        break
+      case 'pointsFor':
+        value = team.totalPointsFor.toFixed(1)
+        score = maxPointsFor > 0 ? (team.totalPointsFor / maxPointsFor) * 100 : 0
+        rank = sortedByPoints.findIndex(t => t.roster_id === team.roster_id) + 1
+        break
+      case 'allPlay':
+        value = `${team.allPlayWins}-${team.allPlayLosses} (${(allPlayPct * 100).toFixed(0)}%)`
+        score = allPlayPct * 100
+        rank = sortedByAllPlay.findIndex(t => t.roster_id === team.roster_id) + 1
+        break
+      case 'recentForm':
+        value = `${team.recentAvg.toFixed(1)} PPG`
+        score = maxRecentAvg > 0 ? (team.recentAvg / maxRecentAvg) * 100 : 0
+        rank = sortedByRecent.findIndex(t => t.roster_id === team.roster_id) + 1
+        break
+      case 'projectedStrength':
+        value = team.projectedPPG ? `${team.projectedPPG.toFixed(1)} PPG` : 'N/A'
+        score = maxProjected > 0 && team.projectedPPG ? (team.projectedPPG / maxProjected) * 100 : 0
+        rank = team.projectedPPG ? sortedByProjected.findIndex(t => t.roster_id === team.roster_id) + 1 : totalTeams
+        break
+      case 'consistency':
+        value = `${team.stdDev.toFixed(1)} std dev`
+        score = maxStdDev > 0 ? ((maxStdDev - team.stdDev) / maxStdDev) * 100 : 50
+        rank = sortedByConsistency.findIndex(t => t.roster_id === team.roster_id) + 1
+        break
+      case 'pointsAgainst':
+        value = team.pointsAgainst?.toFixed(1) || 'N/A'
+        const range = maxPointsAgainst - minPointsAgainst
+        score = range > 0 && team.pointsAgainst !== undefined ? ((maxPointsAgainst - team.pointsAgainst) / range) * 100 : 50
+        rank = sortedByPointsAgainst.findIndex(t => t.roster_id === team.roster_id) + 1
+        break
+      case 'strengthOfSchedule':
+        value = 'N/A'
+        score = 50
+        rank = Math.ceil(totalTeams / 2)
+        break
     }
-  ]
+    
+    return {
+      name: factor.name,
+      weight: `${normalizedWeight}%`,
+      value,
+      score,
+      rank,
+      color: factor.color
+    }
+  })
   
   // Build trend chart for this team
   const teamHistory = historicalPowerRanks.value.get(team.roster_id) || []
@@ -1637,41 +1849,71 @@ async function calculatePowerScoreForWeek(
   const maxRecentAvg = Math.max(...rankings.map(r => r.recentAvg))
   const maxStdDev = Math.max(...rankings.map(r => r.stdDev))
   const maxProjected = Math.max(...rankings.map(r => r.projectedPPG || 0))
+  const maxPointsAgainst = Math.max(...rankings.map(r => r.pointsAgainst || 0))
+  const minPointsAgainst = Math.min(...rankings.map(r => r.pointsAgainst || 0))
+  
+  // Get enabled factors and normalize weights
+  const enabledFactors = powerRankingFactors.value.filter(f => f.enabled && f.weight > 0)
+  const totalWeight = enabledFactors.reduce((sum, f) => sum + f.weight, 0)
   
   rankings.forEach(team => {
-    // Component 1: Record Score (30% - REDUCED from 35%)
-    const totalGames = team.wins + team.losses + team.ties
-    const winPct = totalGames > 0 ? (team.wins + team.ties * 0.5) / totalGames : 0
-    const recordScore = winPct * 100
+    let powerScore = 0
     
-    // Component 2: Points For Score (20% - REDUCED from 25%)
-    const pointsScore = maxPointsFor > 0 ? (team.totalPointsFor / maxPointsFor) * 100 : 0
+    enabledFactors.forEach(factor => {
+      const normalizedWeight = factor.weight / totalWeight
+      let componentScore = 0
+      
+      switch (factor.id) {
+        case 'record': {
+          const totalGames = team.wins + team.losses + team.ties
+          const winPct = totalGames > 0 ? (team.wins + team.ties * 0.5) / totalGames : 0
+          componentScore = winPct * 100
+          break
+        }
+        case 'pointsFor': {
+          componentScore = maxPointsFor > 0 ? (team.totalPointsFor / maxPointsFor) * 100 : 0
+          break
+        }
+        case 'allPlay': {
+          const allPlayTotal = team.allPlayWins + team.allPlayLosses
+          const allPlayPct = allPlayTotal > 0 ? team.allPlayWins / allPlayTotal : 0
+          componentScore = allPlayPct * 100
+          break
+        }
+        case 'recentForm': {
+          componentScore = maxRecentAvg > 0 ? (team.recentAvg / maxRecentAvg) * 100 : 0
+          break
+        }
+        case 'projectedStrength': {
+          componentScore = maxProjected > 0 && team.projectedPPG 
+            ? (team.projectedPPG / maxProjected) * 100 
+            : 0
+          break
+        }
+        case 'consistency': {
+          // Lower stdDev is better
+          componentScore = maxStdDev > 0 ? ((maxStdDev - team.stdDev) / maxStdDev) * 100 : 50
+          break
+        }
+        case 'pointsAgainst': {
+          // Lower points against is better (luckier schedule)
+          const range = maxPointsAgainst - minPointsAgainst
+          if (range > 0 && team.pointsAgainst !== undefined) {
+            componentScore = ((maxPointsAgainst - team.pointsAgainst) / range) * 100
+          }
+          break
+        }
+        case 'strengthOfSchedule': {
+          // Placeholder - would need opponent data
+          componentScore = 50
+          break
+        }
+      }
+      
+      powerScore += componentScore * normalizedWeight
+    })
     
-    // Component 3: All-Play Record (18% - REDUCED from 20%)
-    const allPlayTotal = team.allPlayWins + team.allPlayLosses
-    const allPlayPct = allPlayTotal > 0 ? team.allPlayWins / allPlayTotal : 0
-    const allPlayScore = allPlayPct * 100
-    
-    // Component 4: Recent Form (12% - REDUCED from 15%)
-    const recentScore = maxRecentAvg > 0 ? (team.recentAvg / maxRecentAvg) * 100 : 0
-    
-    // Component 5: Projected Strength (15% - NEW!)
-    const projectedScore = maxProjected > 0 && team.projectedPPG 
-      ? (team.projectedPPG / maxProjected) * 100 
-      : 0
-    
-    // Component 6: Consistency (5% - SAME) - inverted, lower stdDev is better
-    const consistencyScore = maxStdDev > 0 ? ((maxStdDev - team.stdDev) / maxStdDev) * 100 : 50
-    
-    // Final Power Score with NEW WEIGHTS
-    team.powerScore = (
-      recordScore * 0.30 +       // Was 0.35
-      pointsScore * 0.20 +       // Was 0.25
-      allPlayScore * 0.18 +      // Was 0.20
-      recentScore * 0.12 +       // Was 0.15
-      projectedScore * 0.15 +    // NEW!
-      consistencyScore * 0.05    // Same
-    )
+    team.powerScore = powerScore
   })
   
   // Sort by power score
