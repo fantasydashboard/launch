@@ -160,7 +160,16 @@
               </div>
             </div>
           </div>
-          <div class="card-body overflow-x-auto">
+          
+          <!-- Mobile scroll hint -->
+          <div class="sm:hidden px-4 py-2 bg-dark-border/30 border-b border-dark-border flex items-center justify-center gap-2 text-xs text-dark-textMuted">
+            <svg class="w-4 h-4 animate-pulse" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
+            </svg>
+            <span>Swipe to see more columns</span>
+          </div>
+          
+          <div class="card-body overflow-x-auto scrollbar-thin">
             <template v-if="showDivisions && hasDivisions">
               <div v-for="(teams, divisionName) in teamsByDivision" :key="divisionName" class="mb-8 last:mb-0">
                 <div class="flex items-center gap-2 mb-4 pb-2 border-b border-primary/30">
@@ -307,6 +316,15 @@
         </div>
         <p class="text-sm text-dark-textMuted mt-1">Track how team rankings have changed throughout the season</p>
       </div>
+      
+      <!-- Mobile scroll hint -->
+      <div class="sm:hidden px-4 py-2 bg-dark-border/30 border-b border-dark-border flex items-center justify-center gap-2 text-xs text-dark-textMuted">
+        <svg class="w-4 h-4 animate-pulse" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
+        </svg>
+        <span>Swipe to see all weeks</span>
+      </div>
+      
       <div class="card-body">
         <template v-if="showDivisions && hasDivisions && divisionChartData.length > 0">
           <div class="space-y-6">
@@ -316,16 +334,19 @@
                   <span>●</span>{{ divData.division }}
                 </h3>
               </div>
-              <div class="relative">
-                <apexchart v-if="divData.options" type="line" height="350" :options="divData.options" :series="divData.series" />
-                <div v-for="(team, idx) in divData.teams" :key="'avatar-div-' + team.roster_id"
-                  class="absolute pointer-events-none" :style="getAvatarPositionForDivision(team, divData.division, 350)">
-                  <div class="relative">
-                    <img :src="team.avatar_url" :alt="team.team_name"
-                      :class="['w-7 h-7 rounded-full ring-2 object-cover', isMyTeam(team.roster_id) ? 'ring-primary' : 'ring-cyan-500/70']"
-                      @error="handleImageError" />
-                    <div v-if="isMyTeam(team.roster_id)" class="absolute -top-0.5 -right-0.5 w-3 h-3 bg-primary rounded-full flex items-center justify-center">
-                      <span class="text-[6px] text-gray-900 font-bold">★</span>
+              <!-- Mobile: Scrollable container with min-width -->
+              <div class="overflow-x-auto scrollbar-thin -mx-4 px-4 sm:mx-0 sm:px-0">
+                <div class="relative" :style="{ minWidth: getMobileChartWidth(divData.options?.xaxis?.categories?.length || 0) }">
+                  <apexchart v-if="divData.options" type="line" height="300" :options="getMobileChartOptions(divData.options)" :series="divData.series" />
+                  <div v-for="(team, idx) in divData.teams" :key="'avatar-div-' + team.roster_id"
+                    class="absolute pointer-events-none" :style="getAvatarPositionForDivision(team, divData.division, 300)">
+                    <div class="relative">
+                      <img :src="team.avatar_url" :alt="team.team_name"
+                        :class="['w-6 h-6 sm:w-7 sm:h-7 rounded-full ring-2 object-cover', isMyTeam(team.roster_id) ? 'ring-primary' : 'ring-cyan-500/70']"
+                        @error="handleImageError" />
+                      <div v-if="isMyTeam(team.roster_id)" class="absolute -top-0.5 -right-0.5 w-3 h-3 bg-primary rounded-full flex items-center justify-center">
+                        <span class="text-[6px] text-gray-900 font-bold">★</span>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -334,16 +355,19 @@
           </div>
         </template>
         <template v-else>
-          <div class="relative">
-            <apexchart v-if="chartOptions" type="line" height="400" :options="chartOptions" :series="chartSeries" />
-            <div v-for="(team, idx) in standingsTeams" :key="'avatar-' + team.roster_id"
-              class="absolute pointer-events-none" :style="getAvatarPosition(team, 400)">
-              <div class="relative">
-                <img :src="team.avatar_url" :alt="team.team_name"
-                  :class="['w-7 h-7 rounded-full ring-2 object-cover', isMyTeam(team.roster_id) ? 'ring-primary' : 'ring-cyan-500/70']"
-                  @error="handleImageError" />
-                <div v-if="isMyTeam(team.roster_id)" class="absolute -top-0.5 -right-0.5 w-3 h-3 bg-primary rounded-full flex items-center justify-center">
-                  <span class="text-[6px] text-gray-900 font-bold">★</span>
+          <!-- Mobile: Scrollable container with min-width -->
+          <div class="overflow-x-auto scrollbar-thin -mx-6 px-6 sm:mx-0 sm:px-0">
+            <div class="relative" :style="{ minWidth: getMobileChartWidth(chartOptions?.xaxis?.categories?.length || 0) }">
+              <apexchart v-if="chartOptions" type="line" :height="isMobile ? 300 : 400" :options="getMobileChartOptions(chartOptions)" :series="chartSeries" />
+              <div v-for="(team, idx) in standingsTeams" :key="'avatar-' + team.roster_id"
+                class="absolute pointer-events-none" :style="getAvatarPosition(team, isMobile ? 300 : 400)">
+                <div class="relative">
+                  <img :src="team.avatar_url" :alt="team.team_name"
+                    :class="['w-6 h-6 sm:w-7 sm:h-7 rounded-full ring-2 object-cover', isMyTeam(team.roster_id) ? 'ring-primary' : 'ring-cyan-500/70']"
+                    @error="handleImageError" />
+                  <div v-if="isMyTeam(team.roster_id)" class="absolute -top-0.5 -right-0.5 w-3 h-3 bg-primary rounded-full flex items-center justify-center">
+                    <span class="text-[6px] text-gray-900 font-bold">★</span>
+                  </div>
                 </div>
               </div>
             </div>
@@ -358,7 +382,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, computed, onMounted, watch, onUnmounted } from 'vue'
 import { useLeagueStore } from '@/stores/league'
 import { sleeperService } from '@/services/sleeper'
 import { useTeamCustomizations } from '@/composables/useTeamCustomizations'
@@ -376,6 +400,54 @@ const isGeneratingImage = ref(false)
 const isGeneratingNews = ref(false)
 const showDivisions = ref(true)
 const leagueNews = ref<string | null>(null)
+const isMobile = ref(false)
+
+// Check for mobile screen size
+function checkMobile() {
+  isMobile.value = window.innerWidth < 640
+}
+
+// Get minimum width for chart container on mobile (50px per week)
+function getMobileChartWidth(weekCount: number): string {
+  if (!isMobile.value) return 'auto'
+  const minWidth = Math.max(weekCount * 50, 300)
+  return `${minWidth}px`
+}
+
+// Adjust chart options for mobile
+function getMobileChartOptions(options: any): any {
+  if (!options) return options
+  
+  return {
+    ...options,
+    chart: {
+      ...options.chart,
+      toolbar: { show: false }
+    },
+    xaxis: {
+      ...options.xaxis,
+      labels: {
+        ...options.xaxis?.labels,
+        style: { 
+          colors: '#8b8ea1',
+          fontSize: isMobile.value ? '10px' : '12px'
+        },
+        rotate: isMobile.value ? -45 : 0,
+        rotateAlways: isMobile.value
+      }
+    },
+    yaxis: {
+      ...options.yaxis,
+      labels: {
+        ...options.yaxis?.labels,
+        style: { 
+          colors: '#8b8ea1',
+          fontSize: isMobile.value ? '10px' : '12px'
+        }
+      }
+    }
+  }
+}
 
 // Computed
 const leagueName = computed(() => leagueStore.historicalSeasons[0]?.name || 'Fantasy League')
@@ -938,7 +1010,15 @@ async function downloadStandingsImage() {
   } catch (e) { console.error('Failed:', e); alert('Failed to generate image.') } finally { isGeneratingImage.value = false }
 }
 
-onMounted(() => { if (leagueStore.historicalSeasons.length > 0) loadData() })
+onMounted(() => { 
+  checkMobile()
+  window.addEventListener('resize', checkMobile)
+  if (leagueStore.historicalSeasons.length > 0) loadData() 
+})
+
+onUnmounted(() => {
+  window.removeEventListener('resize', checkMobile)
+})
 watch(() => leagueStore.historicalSeasons.length, n => { if (n > 0) loadData() })
 watch(() => leagueStore.activeLeagueId, () => { if (leagueStore.historicalSeasons.length > 0) loadData() })
 </script>
