@@ -2,8 +2,8 @@
   <table class="table w-full">
     <thead>
       <tr>
-        <th class="sticky left-0 z-10 bg-dark-elevated w-10 sm:w-20">Rank</th>
-        <th class="sticky left-10 sm:left-20 z-10 bg-dark-elevated min-w-[120px] sm:min-w-[180px]">Team</th>
+        <th class="w-10 sm:w-20">Rank</th>
+        <th class="min-w-[140px] sm:min-w-[180px]">Team</th>
         <th class="w-24 sm:w-28">Record</th>
         <th class="w-28 sm:w-32">All Play</th>
         <th class="w-28 sm:w-36">Points For</th>
@@ -12,14 +12,14 @@
     </thead>
     <tbody>
       <tr v-for="team in teams" :key="team.roster_id">
-        <td class="sticky left-0 z-10 bg-dark-card">
+        <td>
           <div class="flex items-center justify-center">
             <span class="inline-flex items-center justify-center w-6 h-6 sm:w-8 sm:h-8 rounded-full bg-primary/10 text-primary font-bold text-xs sm:text-sm">
               {{ team.rank }}
             </span>
           </div>
         </td>
-        <td class="sticky left-10 sm:left-20 z-10 bg-dark-card">
+        <td>
           <div class="flex items-center gap-2 sm:gap-3">
             <div class="w-8 h-8 sm:w-12 sm:h-12 rounded-full overflow-hidden bg-dark-border flex-shrink-0">
               <img
@@ -29,7 +29,7 @@
                 @error="handleImageError"
               />
             </div>
-            <span class="font-semibold text-gray-900 dark:text-white text-xs sm:text-sm truncate max-w-[60px] sm:max-w-none">
+            <span class="font-semibold text-gray-900 dark:text-white text-xs sm:text-sm">
               {{ team.team_name }}
             </span>
           </div>
