@@ -346,6 +346,9 @@
         <!-- Show router view -->
         <router-view v-else />
       </main>
+      
+      <!-- Footer -->
+      <AppFooter />
     </template>
 
     <!-- Auth Modal -->
@@ -405,6 +408,7 @@ import { useAuthStore } from '@/stores/auth'
 import AuthModal from '@/components/AuthModal.vue'
 import LandingPage from '@/components/LandingPage.vue'
 import AddLeagueModal from '@/components/AddLeagueModal.vue'
+import AppFooter from '@/components/AppFooter.vue'
 
 const router = useRouter()
 const leagueStore = useLeagueStore()
