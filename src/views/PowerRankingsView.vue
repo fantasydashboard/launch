@@ -2837,20 +2837,6 @@ function onSeasonChange() {
   }
 }
 
-function getRankClass(rank: number): string {
-  const total = powerRankings.value.length
-  const topTier = Math.ceil(total * 0.25)
-  const bottomTier = Math.floor(total * 0.75)
-  
-  if (rank <= topTier) {
-    return 'bg-green-500/20 text-green-400 border border-green-500/40'
-  }
-  if (rank >= bottomTier) {
-    return 'bg-red-500/20 text-red-400 border border-red-500/40'
-  }
-  return 'bg-dark-border/50 text-dark-textSecondary border border-dark-border'
-}
-
 function getRankBadgeClass(rank: number | undefined): string {
   if (!rank) return 'bg-dark-border text-dark-textMuted'
   const total = powerRankings.value.length
