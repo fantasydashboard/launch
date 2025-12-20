@@ -899,21 +899,21 @@
         <!-- Presets -->
         <div class="px-6 py-4 border-b border-dark-border">
           <h4 class="text-sm font-semibold text-dark-textMuted uppercase tracking-wider mb-3">Quick Presets</h4>
-          <div class="grid grid-cols-2 sm:grid-cols-3 gap-2">
+          <div class="grid grid-cols-2 sm:grid-cols-3 gap-3">
             <button
               v-for="preset in powerRankingPresets"
               :key="preset.id"
               @click="applyPreset(preset)"
-              class="px-3 py-2 rounded-lg border transition-colors text-left"
+              class="p-3 rounded-xl border transition-colors text-left"
               :class="currentPresetId === preset.id 
-                ? 'border-primary bg-primary/10 text-primary' 
-                : 'border-dark-border hover:border-dark-textMuted text-dark-text'"
+                ? 'border-primary bg-primary/10' 
+                : 'border-dark-border hover:border-dark-textMuted bg-dark-border/20'"
             >
-              <div class="flex items-center gap-2">
-                <span class="text-lg">{{ preset.icon }}</span>
-                <div>
-                  <div class="text-sm font-medium">{{ preset.name }}</div>
-                  <div class="text-xs text-dark-textMuted truncate">{{ preset.description }}</div>
+              <div class="flex items-start gap-2">
+                <span class="text-xl flex-shrink-0">{{ preset.icon }}</span>
+                <div class="min-w-0 flex-1">
+                  <div class="text-sm font-semibold" :class="currentPresetId === preset.id ? 'text-primary' : 'text-dark-text'">{{ preset.name }}</div>
+                  <div class="text-xs text-dark-textMuted mt-0.5 leading-tight">{{ preset.description }}</div>
                 </div>
               </div>
             </button>
@@ -2142,6 +2142,24 @@ async function downloadRankingsImage() {
   const seasonInfo = leagueStore.historicalSeasons.find(s => s.season === selectedSeason.value)
   const leagueName = seasonInfo?.name || 'League'
   
+  // Load UFD logo
+  const loadUFDLogo = async (): Promise<string> => {
+    try {
+      const response = await fetch('/ufd-logo.png')
+      if (!response.ok) return ''
+      const blob = await response.blob()
+      return new Promise((resolve) => {
+        const reader = new FileReader()
+        reader.onloadend = () => resolve(reader.result as string)
+        reader.onerror = () => resolve('')
+        reader.readAsDataURL(blob)
+      })
+    } catch (e) {
+      console.warn('Failed to load UFD logo:', e)
+      return ''
+    }
+  }
+  
   // Helper to create placeholder avatar
   const createPlaceholder = (teamName: string): string => {
     const canvas = document.createElement('canvas')
@@ -2163,6 +2181,9 @@ async function downloadRankingsImage() {
     }
     return canvas.toDataURL('image/png')
   }
+  
+  // Load UFD logo
+  const ufdLogoBase64 = await loadUFDLogo()
   
   // Pre-load all team images as data URLs using a CORS proxy
   const imagePromises = powerRankings.value.map(team => {
@@ -2261,8 +2282,8 @@ async function downloadRankingsImage() {
     position: absolute;
     left: -9999px;
     width: 1200px;
-    padding: 40px;
-    background: radial-gradient(circle at top, #1c2030, #05060a 55%);
+    padding: 32px;
+    background: linear-gradient(135deg, #1a1d2e 0%, #0d0f18 100%);
     color: #f7f7ff;
     font-family: system-ui, -apple-system, sans-serif;
   `
@@ -2271,57 +2292,12 @@ async function downloadRankingsImage() {
   const firstHalf = powerRankings.value.slice(0, 5)
   const secondHalf = powerRankings.value.slice(5, 10)
   
-  // Build notable performers HTML
-  let notablePerformersHTML = ''
-  if (biggestClimber.value || biggestFaller.value || mostConsistent.value || mostVolatile.value) {
-    notablePerformersHTML = `
-      <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 24px;">
-        ${biggestClimber.value ? `
-          <div style="background: rgba(38, 42, 58, 0.5); border-radius: 12px; padding: 16px; text-align: center;">
-            <div style="font-size: 12px; color: #7b7f92; text-transform: uppercase; margin-bottom: 8px;">📈 Biggest Climber</div>
-            <img src="${imageMap.get(biggestClimber.value.roster_id) || ''}" style="width: 48px; height: 48px; border-radius: 50%; margin: 0 auto 8px; display: block;" />
-            <div style="font-size: 14px; color: #f7f7ff; margin-bottom: 4px; line-height: 1.4;">${biggestClimber.value.team_name}</div>
-            <div style="font-size: 24px; font-weight: bold; color: #10b981;">↑${biggestClimber.value.climb}</div>
-          </div>
-        ` : ''}
-        ${biggestFaller.value ? `
-          <div style="background: rgba(38, 42, 58, 0.5); border-radius: 12px; padding: 16px; text-align: center;">
-            <div style="font-size: 12px; color: #7b7f92; text-transform: uppercase; margin-bottom: 8px;">📉 Biggest Faller</div>
-            <img src="${imageMap.get(biggestFaller.value.roster_id) || ''}" style="width: 48px; height: 48px; border-radius: 50%; margin: 0 auto 8px; display: block;" />
-            <div style="font-size: 14px; color: #f7f7ff; margin-bottom: 4px; line-height: 1.4;">${biggestFaller.value.team_name}</div>
-            <div style="font-size: 24px; font-weight: bold; color: #ef4444;">↓${biggestFaller.value.fall}</div>
-          </div>
-        ` : ''}
-        ${mostConsistent.value ? `
-          <div style="background: rgba(38, 42, 58, 0.5); border-radius: 12px; padding: 16px; text-align: center;">
-            <div style="font-size: 12px; color: #7b7f92; text-transform: uppercase; margin-bottom: 8px;">🎯 Most Consistent</div>
-            <img src="${imageMap.get(mostConsistent.value.roster_id) || ''}" style="width: 48px; height: 48px; border-radius: 50%; margin: 0 auto 8px; display: block;" />
-            <div style="font-size: 14px; color: #f7f7ff; margin-bottom: 4px; line-height: 1.4;">${mostConsistent.value.team_name}</div>
-            <div style="font-size: 24px; font-weight: bold; color: #f5c451;">${mostConsistent.value.variance.toFixed(1)}</div>
-            <div style="font-size: 10px; color: #7b7f92;">variance</div>
-          </div>
-        ` : ''}
-        ${mostVolatile.value ? `
-          <div style="background: rgba(38, 42, 58, 0.5); border-radius: 12px; padding: 16px; text-align: center;">
-            <div style="font-size: 12px; color: #7b7f92; text-transform: uppercase; margin-bottom: 8px;">🎢 Most Volatile</div>
-            <img src="${imageMap.get(mostVolatile.value.roster_id) || ''}" style="width: 48px; height: 48px; border-radius: 50%; margin: 0 auto 8px; display: block;" />
-            <div style="font-size: 14px; color: #f7f7ff; margin-bottom: 4px; line-height: 1.4;">${mostVolatile.value.team_name}</div>
-            <div style="font-size: 24px; font-weight: bold; color: #f97316;">${mostVolatile.value.variance.toFixed(1)}</div>
-            <div style="font-size: 10px; color: #7b7f92;">variance</div>
-          </div>
-        ` : ''}
-      </div>
-    `
-  }
-  
   // Helper to generate a single ranking row
   const generateRankingRow = (team: any, rank: number) => `
-    <div style="display: flex; align-items: center; padding: 12px 20px; background: rgba(38, 42, 58, 0.5); border-radius: 12px; margin-bottom: 12px; height: 72px; box-sizing: border-box;">
-      <!-- Left section: Rank + Change - use fixed height matching logo -->
+    <div style="display: flex; align-items: center; padding: 14px 20px; background: rgba(38, 42, 58, 0.5); border-radius: 12px; margin-bottom: 10px; height: 76px; box-sizing: border-box;">
+      <!-- Left section: Rank + Change -->
       <div style="display: flex; align-items: center; justify-content: flex-start; margin-right: 12px; flex-shrink: 0; width: 65px; height: 48px;">
-        <!-- Rank Number - vertically centered -->
         <span style="font-size: 28px; font-weight: bold; color: #f5c451; display: flex; align-items: center; height: 48px;">${rank}</span>
-        <!-- Change indicator - also vertically centered -->
         ${team.change !== 0 ? `
           <span style="font-size: 13px; font-weight: 600; color: ${team.change > 0 ? '#10b981' : '#ef4444'}; margin-left: 6px; display: flex; align-items: center; height: 48px;">
             ${team.change > 0 ? '↑' : '↓'}${Math.abs(team.change)}
@@ -2330,32 +2306,40 @@ async function downloadRankingsImage() {
       </div>
       
       <!-- Team Logo -->
-      <img src="${imageMap.get(team.roster_id) || ''}" style="width: 48px; height: 48px; border-radius: 50%; margin-right: 14px; flex-shrink: 0; border: 2px solid #3a3d52; background: #262a3a; object-fit: cover;" />
+      <img src="${imageMap.get(team.roster_id) || ''}" style="width: 52px; height: 52px; border-radius: 50%; margin-right: 14px; flex-shrink: 0; border: 2px solid #3a3d52; background: #262a3a; object-fit: cover;" />
       
       <!-- Team Info -->
       <div style="flex: 1; min-width: 0; max-width: 220px;">
-        <div style="font-size: 15px; font-weight: 600; color: #f7f7ff; margin-bottom: 4px; white-space: nowrap; overflow: visible;">${team.team_name}</div>
-        <div style="font-size: 12px; color: #b0b3c2;">${team.wins}-${team.losses} • ${team.totalPointsFor.toFixed(0)} pts</div>
+        <div style="font-size: 16px; font-weight: 600; color: #f7f7ff; margin-bottom: 4px; white-space: nowrap; overflow: visible;">${team.team_name}</div>
+        <div style="font-size: 13px; color: #b0b3c2;">${team.wins}-${team.losses} • ${team.totalPointsFor.toFixed(0)} pts</div>
       </div>
       
       <!-- Power Score -->
       <div style="text-align: right; margin-left: auto; padding-left: 12px;">
-        <div style="font-size: 24px; font-weight: bold; color: #f5c451; line-height: 1;">${team.powerScore.toFixed(1)}</div>
+        <div style="font-size: 26px; font-weight: bold; color: #f5c451; line-height: 1;">${team.powerScore.toFixed(1)}</div>
         <div style="font-size: 10px; color: #7b7f92; text-transform: uppercase; margin-top: 2px;">Power</div>
       </div>
     </div>
   `
   
   container.innerHTML = `
-    <div style="background: linear-gradient(135deg, rgba(19, 22, 32, 0.98), rgba(10, 12, 20, 0.98)); border: 1px solid #2a2f42; border-radius: 16px; padding: 40px; box-shadow: 0 12px 40px rgba(0, 0, 0, 0.45);">
-      <!-- Header -->
-      <div style="text-align: center; margin-bottom: 32px;">
-        <h1 style="font-size: 36px; font-weight: bold; color: #f5c451; margin: 0 0 8px 0;">${leagueName}</h1>
-        <p style="font-size: 20px; color: #b0b3c2; margin: 0;">⚡ Power Rankings - Week ${selectedWeek.value}</p>
+    <div style="background: linear-gradient(135deg, rgba(19, 22, 32, 0.98), rgba(10, 12, 20, 0.98)); border: 1px solid #2a2f42; border-radius: 16px; padding: 32px; box-shadow: 0 12px 40px rgba(0, 0, 0, 0.45);">
+      <!-- Header with Logo and Title -->
+      <div style="display: flex; justify-content: center; margin-bottom: 20px;">
+        <div style="display: flex; align-items: center; gap: 20px;">
+          ${ufdLogoBase64 ? `<img src="${ufdLogoBase64}" style="width: 70px; height: 70px; object-fit: contain;" />` : ''}
+          <div>
+            <div style="font-size: 32px; font-weight: 800; color: #f7f7ff;">⚡ Power Rankings</div>
+            <div style="font-size: 16px; color: #9ca3af;">${leagueName} &bull; Week ${selectedWeek.value}</div>
+          </div>
+        </div>
       </div>
       
-      <!-- 1. POWER RANKINGS (Two Columns) -->
-      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-bottom: 32px;">
+      <!-- Divider -->
+      <div style="height: 1px; background: linear-gradient(to right, rgba(245, 196, 81, 0.5), rgba(245, 196, 81, 0.1)); margin-bottom: 24px;"></div>
+      
+      <!-- POWER RANKINGS (Two Columns) -->
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-bottom: 28px;">
         <!-- Left Column (1-5) -->
         <div>
           ${firstHalf.map((team, idx) => generateRankingRow(team, idx + 1)).join('')}
@@ -2367,17 +2351,30 @@ async function downloadRankingsImage() {
         </div>
       </div>
       
-      <!-- 2. POWER RANKINGS TREND (Line Chart) -->
-      <div style="background: rgba(38, 42, 58, 0.5); border-radius: 12px; padding: 24px; margin-bottom: 24px;">
+      <!-- POWER RANKINGS TREND (Line Chart) -->
+      <div style="background: rgba(38, 42, 58, 0.5); border-radius: 12px; padding: 24px; margin-bottom: 20px;">
         <h3 style="color: #f5c451; font-size: 18px; margin: 0 0 16px 0; text-align: center;">📈 Power Rankings Trend</h3>
         <div id="trend-chart-container" style="height: 300px; position: relative;"></div>
       </div>
       
-      <!-- 3. NOTABLE PERFORMERS (Four Boxes) -->
-      ${notablePerformersHTML}
+      <!-- Formula Display -->
+      <div style="text-align: center; font-size: 11px; color: #7b7f92; margin-bottom: 20px;">
+        ${currentFormulaDisplay.value}
+      </div>
       
-      <div style="margin-top: 24px; text-align: center; font-size: 12px; color: #7b7f92;">
-        Generated by Fantasy Dashboard • ${currentFormulaDisplay.value}
+      <!-- Footer with Promo -->
+      <div style="text-align: center; padding-top: 16px; border-top: 1px solid rgba(58, 61, 82, 0.5);">
+        <div style="display: flex; align-items: center; justify-content: center; gap: 16px;">
+          ${ufdLogoBase64 ? `<img src="${ufdLogoBase64}" style="width: 48px; height: 48px; object-fit: contain;" />` : ''}
+          <div>
+            <div style="font-size: 14px; color: #9ca3af;">
+              See a complete breakdown of every team in your league at
+            </div>
+            <div style="font-size: 18px; font-weight: bold; color: #facc15;">
+              ultimatefantasydashboard.com/power-rankings
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   `
@@ -2393,7 +2390,8 @@ async function downloadRankingsImage() {
         height: 300,
         background: 'transparent',
         toolbar: { show: false },
-        animations: { enabled: false }
+        animations: { enabled: false },
+        parentHeightOffset: 0
       },
       series: chartSeries.value,
       colors: powerRankings.value.map((_, idx) => getTeamColor(idx)),
@@ -2423,20 +2421,14 @@ async function downloadRankingsImage() {
         }
       },
       legend: {
-        show: true,
-        position: 'bottom',
-        labels: {
-          colors: '#9ca3af'
-        },
-        fontSize: '10px',
-        markers: {
-          width: 8,
-          height: 8
-        }
+        show: false // Hide legend, use avatars instead
       },
       grid: {
         borderColor: '#374151',
-        strokeDashArray: 4
+        strokeDashArray: 4,
+        padding: {
+          right: 50 // Make room for avatars
+        }
       },
       tooltip: {
         enabled: false
@@ -2445,11 +2437,57 @@ async function downloadRankingsImage() {
     
     trendChart.render()
     await new Promise(resolve => setTimeout(resolve, 500))
+    
+    // Add team avatars at the end of each line
+    // Get the chart's plot area dimensions
+    const chartWrapper = trendChartContainer as HTMLElement
+    const svgElement = chartWrapper.querySelector('.apexcharts-svg')
+    if (svgElement) {
+      const plotArea = svgElement.querySelector('.apexcharts-plot-series')
+      if (plotArea) {
+        const chartRect = svgElement.getBoundingClientRect()
+        const wrapperRect = chartWrapper.getBoundingClientRect()
+        
+        // Calculate positions for each team based on their current rank
+        powerRankings.value.forEach((team, idx) => {
+          const currentRank = idx + 1
+          const totalTeams = powerRankings.value.length
+          
+          // Y position: map rank (1 to N) to chart height
+          // Chart area is roughly from 10% to 85% of height
+          const topPadding = 25
+          const bottomPadding = 45
+          const usableHeight = 300 - topPadding - bottomPadding
+          const yPos = topPadding + ((currentRank - 1) / (totalTeams - 1)) * usableHeight
+          
+          // Create avatar element
+          const avatarDiv = document.createElement('div')
+          avatarDiv.style.cssText = `
+            position: absolute;
+            right: 8px;
+            top: ${yPos - 12}px;
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            overflow: hidden;
+            border: 2px solid ${getTeamColor(idx)};
+            background: #262a3a;
+          `
+          
+          const avatarImg = document.createElement('img')
+          avatarImg.src = imageMap.get(team.roster_id) as string || ''
+          avatarImg.style.cssText = 'width: 100%; height: 100%; object-fit: cover;'
+          avatarDiv.appendChild(avatarImg)
+          
+          chartWrapper.appendChild(avatarDiv)
+        })
+      }
+    }
   }
   
   try {
     const canvas = await html2canvas(container, {
-      backgroundColor: null,
+      backgroundColor: '#0d0f18',
       scale: 2,
       logging: false,
       useCORS: true,
