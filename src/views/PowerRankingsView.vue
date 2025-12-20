@@ -68,39 +68,41 @@
 
       <!-- Power Rankings Table (Full Width) -->
       <div class="card">
-        <div class="card-header flex items-center justify-between">
-          <div>
-            <div class="flex items-center gap-2">
-              <span class="text-2xl">⚡</span>
-              <h2 class="card-title">Power Rankings - Week {{ selectedWeek }}</h2>
+        <div class="card-header">
+          <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+            <div class="flex-1 min-w-0">
+              <div class="flex items-center gap-2">
+                <span class="text-2xl">⚡</span>
+                <h2 class="card-title">Power Rankings - Week {{ selectedWeek }}</h2>
+              </div>
+              <div class="mt-2">
+                <p class="card-subtitle text-sm leading-relaxed">
+                  {{ currentFormulaDisplay }}
+                </p>
+                <button 
+                  @click="showPowerRankingSettings = true" 
+                  class="text-primary hover:text-yellow-500 text-xs font-semibold transition-colors mt-1"
+                >
+                  Customize Formula →
+                </button>
+              </div>
             </div>
-            <div class="flex items-center gap-2 mt-2">
-              <p class="card-subtitle">
-                {{ currentFormulaDisplay }}
-              </p>
-              <button 
-                @click="showPowerRankingSettings = true" 
-                class="text-primary hover:text-yellow-500 text-xs font-semibold transition-colors"
-              >
-                Customize →
+            <div class="flex items-center gap-2 flex-shrink-0">
+              <select v-model="downloadFormat" class="bg-dark-card border border-dark-border rounded px-3 py-2 text-sm text-dark-text">
+                <option value="png">Static Image (PNG)</option>
+                <option value="gif">Animated GIF</option>
+              </select>
+              <button @click="downloadRankings" :disabled="isGeneratingDownload" class="btn-primary flex items-center gap-2">
+                <svg v-if="!isGeneratingDownload" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                </svg>
+                <svg v-else class="w-5 h-5 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                  <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                {{ isGeneratingDownload ? 'Generating...' : 'Share' }}
               </button>
             </div>
-          </div>
-          <div class="flex items-center gap-2">
-            <select v-model="downloadFormat" class="bg-dark-card border border-dark-border rounded px-3 py-2 text-sm text-dark-text">
-              <option value="png">Static Image (PNG)</option>
-              <option value="gif">Animated GIF</option>
-            </select>
-            <button @click="downloadRankings" :disabled="isGeneratingDownload" class="btn-primary flex items-center gap-2">
-              <svg v-if="!isGeneratingDownload" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-              </svg>
-              <svg v-else class="w-5 h-5 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-              </svg>
-              {{ isGeneratingDownload ? 'Generating...' : 'Share' }}
-            </button>
           </div>
         </div>
         <div class="card-body overflow-x-auto scrollbar-thin">
@@ -925,21 +927,21 @@
             <span class="text-xs text-dark-textMuted">Total: {{ totalWeight }}%</span>
           </div>
           
-          <div class="space-y-4">
+          <div class="space-y-3">
             <div 
               v-for="factor in powerRankingFactors" 
               :key="factor.id"
               class="bg-dark-border/20 rounded-xl p-4"
             >
-              <div class="flex items-start justify-between mb-3">
-                <div class="flex items-center gap-3">
-                  <span class="text-2xl">{{ factor.icon }}</span>
-                  <div>
-                    <div class="font-medium text-dark-text">{{ factor.name }}</div>
-                    <div class="text-xs text-dark-textMuted">{{ factor.description }}</div>
+              <div class="flex items-start justify-between gap-4 mb-2">
+                <div class="flex items-start gap-3 flex-1 min-w-0">
+                  <span class="text-2xl flex-shrink-0 mt-0.5">{{ factor.icon }}</span>
+                  <div class="flex-1 min-w-0">
+                    <div class="font-semibold text-dark-text text-sm">{{ factor.name }}</div>
+                    <p class="text-xs text-dark-textMuted mt-1 leading-relaxed">{{ factor.description }}</p>
                   </div>
                 </div>
-                <label class="relative inline-flex items-center cursor-pointer">
+                <label class="relative inline-flex items-center cursor-pointer flex-shrink-0 mt-1">
                   <input 
                     type="checkbox" 
                     v-model="factor.enabled" 
@@ -950,7 +952,7 @@
                 </label>
               </div>
               
-              <div v-if="factor.enabled" class="flex items-center gap-4">
+              <div v-if="factor.enabled" class="flex items-center gap-4 mt-3 pt-3 border-t border-dark-border/30">
                 <input 
                   type="range" 
                   v-model.number="factor.weight" 
@@ -960,7 +962,7 @@
                   @input="onFactorChange"
                   class="flex-1 h-2 bg-dark-border rounded-lg appearance-none cursor-pointer accent-primary"
                 />
-                <div class="w-16 flex items-center gap-1">
+                <div class="w-16 flex items-center gap-1 flex-shrink-0">
                   <input 
                     type="number" 
                     v-model.number="factor.weight" 
@@ -2374,14 +2376,8 @@ async function downloadRankingsImage() {
       <!-- 3. NOTABLE PERFORMERS (Four Boxes) -->
       ${notablePerformersHTML}
       
-      <!-- 4. REST OF SEASON PROJECTIONS (Stacked Bar Chart) -->
-      <div style="background: rgba(38, 42, 58, 0.5); border-radius: 12px; padding: 24px; margin-bottom: 24px;">
-        <h3 style="color: #f5c451; font-size: 18px; margin: 0 0 16px 0; text-align: center;">🔮 Rest of Season Projections</h3>
-        <div id="ros-chart-container" style="height: 400px; position: relative;"></div>
-      </div>
-      
       <div style="margin-top: 24px; text-align: center; font-size: 12px; color: #7b7f92;">
-        Generated by Fantasy Dashboard • Power Score Formula: Record (30%) + Points (20%) + All-Play (18%) + Recent (12%) + Projected (15%) + Consistency (5%)
+        Generated by Fantasy Dashboard • ${currentFormulaDisplay.value}
       </div>
     </div>
   `
@@ -2449,153 +2445,6 @@ async function downloadRankingsImage() {
     
     trendChart.render()
     await new Promise(resolve => setTimeout(resolve, 500))
-  }
-  
-  // Create ROS Stacked Bar chart
-  const rosChartContainer = container.querySelector('#ros-chart-container')
-  // Use powerRankings which has positionProjections, not positionRankings
-  const teamsWithProjections = powerRankings.value.filter(t => t.positionProjections)
-  
-  if (rosChartContainer && teamsWithProjections.length > 0) {
-    // Sort teams by total projected points
-    const sortedTeams = [...teamsWithProjections].sort((a, b) => {
-      const totalA = Object.values(a.positionProjections!).reduce((sum: number, v) => sum + (v as number), 0)
-      const totalB = Object.values(b.positionProjections!).reduce((sum: number, v) => sum + (v as number), 0)
-      return totalB - totalA
-    })
-    
-    console.log('ROS Chart - sortedTeams:', sortedTeams.length, sortedTeams[0]?.positionProjections)
-    
-    // Position colors for text inside bars (darker versions for contrast)
-    const positionTextColors = ['#78350f', '#064e3b', '#1e3a5f', '#4c1d95', '#831843']
-    
-    const rosChart = new ApexCharts(rosChartContainer, {
-      chart: {
-        type: 'bar',
-        height: 400,
-        stacked: true,
-        toolbar: { show: false },
-        background: 'transparent',
-        animations: { enabled: false }
-      },
-      series: [
-        {
-          name: 'QB',
-          data: sortedTeams.map(t => Math.round((t.positionProjections?.QB || 0) * 100) / 100)
-        },
-        {
-          name: 'RB',
-          data: sortedTeams.map(t => Math.round((t.positionProjections?.RB || 0) * 100) / 100)
-        },
-        {
-          name: 'WR',
-          data: sortedTeams.map(t => Math.round((t.positionProjections?.WR || 0) * 100) / 100)
-        },
-        {
-          name: 'TE',
-          data: sortedTeams.map(t => Math.round((t.positionProjections?.TE || 0) * 100) / 100)
-        },
-        {
-          name: 'FLEX',
-          data: sortedTeams.map(t => Math.round((t.positionProjections?.FLEX || 0) * 100) / 100)
-        }
-      ],
-      plotOptions: {
-        bar: {
-          horizontal: true,
-          borderRadius: 0,
-          barHeight: '70%',
-          dataLabels: {
-            total: {
-              enabled: true,
-              offsetX: 10,
-              style: {
-                fontSize: '11px',
-                fontWeight: 600,
-                color: '#f5c451'
-              },
-              formatter: function(val: number) {
-                return val.toFixed(2)
-              }
-            }
-          }
-        }
-      },
-      stroke: {
-        width: 1,
-        colors: ['#1f2937']
-      },
-      colors: ['#f59e0b', '#10b981', '#3b82f6', '#8b5cf6', '#ec4899'],
-      xaxis: {
-        categories: sortedTeams.map(t => t.team_name.length > 14 ? t.team_name.substring(0, 14) + '...' : t.team_name),
-        labels: {
-          style: {
-            colors: '#9ca3af',
-            fontSize: '10px'
-          },
-          formatter: function(val: number) {
-            if (typeof val === 'number') return val.toFixed(0)
-            return val
-          }
-        }
-      },
-      yaxis: {
-        labels: {
-          style: {
-            colors: '#f7f7ff',
-            fontSize: '11px'
-          }
-        }
-      },
-      grid: {
-        borderColor: '#374151',
-        strokeDashArray: 4
-      },
-      legend: {
-        position: 'top',
-        horizontalAlign: 'center',
-        labels: {
-          colors: '#9ca3af'
-        },
-        fontSize: '11px',
-        fontWeight: 500,
-        markers: {
-          width: 12,
-          height: 12,
-          radius: 2,
-          offsetY: 0,
-          offsetX: -4
-        },
-        itemMargin: {
-          horizontal: 12,
-          vertical: 4
-        }
-      },
-      dataLabels: {
-        enabled: true,
-        formatter: function(val: number) {
-          // Show value inside each bar segment
-          if (val < 20) return '' // Don't show if bar is too small
-          return val.toFixed(1)
-        },
-        style: {
-          fontSize: '10px',
-          fontWeight: 600,
-          colors: positionTextColors
-        },
-        dropShadow: {
-          enabled: false
-        }
-      },
-      tooltip: {
-        enabled: false
-      }
-    })
-    
-    rosChart.render()
-    await new Promise(resolve => setTimeout(resolve, 500))
-  } else {
-    console.log('ROS Chart skipped - container:', !!rosChartContainer, 'teams with projections:', teamsWithProjections.length)
   }
   
   try {
