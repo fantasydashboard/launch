@@ -46,39 +46,12 @@
               <div class="w-4 h-4 rounded-full ring-2 ring-cyan-500 bg-dark-card"></div>
               <span class="text-dark-textMuted">Other Teams</span>
             </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Power Rankings Breakdown (Full Width, Above Rankings) -->
-      <div class="card">
-        <div class="card-header">
-          <div class="flex items-center justify-between">
-            <div class="flex items-center gap-2">
-              <span class="text-2xl">📊</span>
-              <h2 class="card-title">Power Rankings Breakdown</h2>
+            <div class="hidden sm:flex items-center gap-2 text-dark-textMuted">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 15l-2 5L9 9l11 4-5 2zm0 0l5 5M7.188 2.239l.777 2.897M5.136 7.965l-2.898-.777M13.95 4.05l-2.122 2.122m-5.657 5.656l-2.12 2.122" />
+              </svg>
+              <span>Click team for details</span>
             </div>
-            <button 
-              v-if="aiBreakdown" 
-              @click="generateAIBreakdown" 
-              class="text-primary hover:text-yellow-600 text-sm font-semibold transition-colors"
-            >
-              Regenerate →
-            </button>
-          </div>
-        </div>
-        <div class="card-body">
-          <div v-if="aiBreakdown" class="text-base text-dark-text leading-relaxed font-semibold">
-            {{ aiBreakdown }}
-          </div>
-          <div v-else-if="isGeneratingAI" class="text-center py-8">
-            <div class="animate-spin rounded-full h-10 w-10 border-b-4 border-primary mx-auto mb-3"></div>
-            <p class="text-dark-textMuted text-sm">Generating breakdown...</p>
-          </div>
-          <div v-else class="text-center py-8">
-            <button @click="generateAIBreakdown" class="btn-primary">
-              Generate Power Rankings Breakdown
-            </button>
           </div>
         </div>
       </div>
@@ -131,8 +104,9 @@
               <tr 
                 v-for="(team, idx) in powerRankings" 
                 :key="team.roster_id"
+                @click="openTeamDetailModal(team, idx)"
                 :class="[
-                  'transition-colors',
+                  'transition-colors cursor-pointer',
                   isMyTeam(team.roster_id) 
                     ? 'bg-primary/10 hover:bg-primary/15 border-l-4 border-l-primary' 
                     : 'hover:bg-dark-border/20'
@@ -178,12 +152,17 @@
                         <span class="text-xs text-gray-900 font-bold">★</span>
                       </div>
                     </div>
-                    <span :class="[
-                      'font-semibold',
-                      isMyTeam(team.roster_id) ? 'text-primary' : 'text-dark-text'
-                    ]">
-                      {{ team.team_name }}
-                    </span>
+                    <div class="flex items-center gap-2">
+                      <span :class="[
+                        'font-semibold',
+                        isMyTeam(team.roster_id) ? 'text-primary' : 'text-dark-text'
+                      ]">
+                        {{ team.team_name }}
+                      </span>
+                      <svg class="w-4 h-4 text-dark-textMuted/50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+                      </svg>
+                    </div>
                   </div>
                 </td>
                 <td class="px-4 py-3 text-center">
@@ -736,6 +715,150 @@
         <p class="text-dark-textMuted">Select a season and week to view power rankings</p>
       </div>
     </div>
+    
+    <!-- Team Detail Modal -->
+    <Teleport to="body">
+      <div 
+        v-if="showTeamDetailModal" 
+        class="fixed inset-0 z-50 flex items-center justify-center p-4"
+        @click.self="closeTeamDetailModal"
+      >
+        <div class="absolute inset-0 bg-black/70 backdrop-blur-sm"></div>
+        <div class="relative bg-dark-elevated rounded-2xl shadow-2xl w-full max-w-3xl max-h-[90vh] overflow-y-auto border border-dark-border">
+          <!-- Header -->
+          <div class="sticky top-0 z-10 px-6 py-4 border-b border-dark-border bg-dark-elevated flex items-center justify-between">
+            <div class="flex items-center gap-4">
+              <img 
+                :src="selectedTeamDetail?.avatar_url" 
+                :alt="selectedTeamDetail?.team_name"
+                class="w-12 h-12 rounded-full ring-2 ring-primary"
+                @error="handleImageError"
+              />
+              <div>
+                <h3 class="text-xl font-bold text-dark-text">{{ selectedTeamDetail?.team_name }}</h3>
+                <p class="text-sm text-dark-textMuted">Power Ranking Details - Week {{ selectedWeek }}</p>
+              </div>
+            </div>
+            <button @click="closeTeamDetailModal" class="p-2 rounded-lg hover:bg-dark-border/50 transition-colors">
+              <svg class="w-5 h-5 text-dark-textMuted" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+          
+          <!-- Power Score Overview -->
+          <div class="p-6 border-b border-dark-border bg-gradient-to-r from-primary/10 to-transparent">
+            <div class="flex items-center justify-between mb-4">
+              <div>
+                <div class="text-sm text-dark-textMuted uppercase tracking-wider">Current Power Rank</div>
+                <div class="text-4xl font-black text-primary">#{{ teamDetailRank }}</div>
+              </div>
+              <div class="text-right">
+                <div class="text-sm text-dark-textMuted uppercase tracking-wider">Power Score</div>
+                <div class="text-4xl font-black text-cyan-400">{{ selectedTeamDetail?.powerScore?.toFixed(1) }}</div>
+              </div>
+            </div>
+            <div v-if="selectedTeamDetail?.change !== 0" class="flex items-center gap-2">
+              <span 
+                v-if="selectedTeamDetail?.change > 0" 
+                class="text-green-400 font-semibold flex items-center gap-1 bg-green-500/10 px-3 py-1 rounded-full"
+              >
+                ↑ {{ selectedTeamDetail.change }} from last week
+              </span>
+              <span 
+                v-else-if="selectedTeamDetail?.change < 0" 
+                class="text-red-400 font-semibold flex items-center gap-1 bg-red-500/10 px-3 py-1 rounded-full"
+              >
+                ↓ {{ Math.abs(selectedTeamDetail.change) }} from last week
+              </span>
+            </div>
+          </div>
+          
+          <!-- Power Rank Trend Chart -->
+          <div class="p-6 border-b border-dark-border">
+            <h4 class="text-sm font-semibold text-dark-textMuted uppercase tracking-wider mb-4">Power Rank Progress</h4>
+            <div class="h-48">
+              <apexchart 
+                v-if="teamDetailTrendChartOptions" 
+                type="line" 
+                height="100%" 
+                :options="teamDetailTrendChartOptions" 
+                :series="teamDetailTrendChartSeries" 
+              />
+            </div>
+          </div>
+          
+          <!-- Metrics Breakdown -->
+          <div class="p-6 border-b border-dark-border">
+            <h4 class="text-sm font-semibold text-dark-textMuted uppercase tracking-wider mb-4">Power Score Components</h4>
+            <div class="space-y-4">
+              <div v-for="metric in teamDetailMetrics" :key="metric.name" class="space-y-2">
+                <div class="flex items-center justify-between text-sm">
+                  <div class="flex items-center gap-2">
+                    <span class="text-dark-text font-medium">{{ metric.name }}</span>
+                    <span class="text-dark-textMuted">({{ metric.weight }})</span>
+                  </div>
+                  <div class="flex items-center gap-3">
+                    <span class="text-dark-textMuted">{{ metric.value }}</span>
+                    <span 
+                      class="px-2 py-0.5 rounded text-xs font-semibold"
+                      :class="getRankClass(metric.rank, powerRankings.length)"
+                    >
+                      #{{ metric.rank }}
+                    </span>
+                  </div>
+                </div>
+                <div class="h-2.5 bg-dark-border rounded-full overflow-hidden">
+                  <div 
+                    class="h-full rounded-full transition-all duration-500"
+                    :style="{ width: `${metric.score}%`, backgroundColor: metric.color }"
+                  ></div>
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          <!-- Quick Stats Grid -->
+          <div class="p-6">
+            <h4 class="text-sm font-semibold text-dark-textMuted uppercase tracking-wider mb-4">Season Stats</h4>
+            <div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
+              <div class="bg-dark-border/20 rounded-xl p-4 text-center">
+                <div class="text-lg font-bold text-dark-text">{{ selectedTeamDetail?.wins }}-{{ selectedTeamDetail?.losses }}</div>
+                <div class="text-xs text-dark-textMuted">Record</div>
+              </div>
+              <div class="bg-dark-border/20 rounded-xl p-4 text-center">
+                <div class="text-lg font-bold text-dark-text">{{ selectedTeamDetail?.totalPointsFor?.toFixed(1) }}</div>
+                <div class="text-xs text-dark-textMuted">Total Points</div>
+              </div>
+              <div class="bg-dark-border/20 rounded-xl p-4 text-center">
+                <div class="text-lg font-bold text-dark-text">{{ selectedTeamDetail?.allPlayWins }}-{{ selectedTeamDetail?.allPlayLosses }}</div>
+                <div class="text-xs text-dark-textMuted">All-Play Record</div>
+              </div>
+              <div class="bg-dark-border/20 rounded-xl p-4 text-center">
+                <div class="text-lg font-bold text-dark-text">{{ selectedTeamDetail?.avgScore?.toFixed(1) }}</div>
+                <div class="text-xs text-dark-textMuted">Avg Score</div>
+              </div>
+              <div class="bg-dark-border/20 rounded-xl p-4 text-center">
+                <div class="text-lg font-bold text-dark-text">{{ selectedTeamDetail?.recentAvg?.toFixed(1) }}</div>
+                <div class="text-xs text-dark-textMuted">Recent Avg</div>
+              </div>
+              <div class="bg-dark-border/20 rounded-xl p-4 text-center">
+                <div class="text-lg font-bold text-dark-text">{{ selectedTeamDetail?.projectedPPG?.toFixed(1) || '—' }}</div>
+                <div class="text-xs text-dark-textMuted">Projected PPG</div>
+              </div>
+              <div class="bg-dark-border/20 rounded-xl p-4 text-center">
+                <div class="text-lg font-bold text-dark-text">{{ selectedTeamDetail?.stdDev?.toFixed(1) }}</div>
+                <div class="text-xs text-dark-textMuted">Std Dev</div>
+              </div>
+              <div class="bg-dark-border/20 rounded-xl p-4 text-center">
+                <div class="text-lg font-bold text-dark-text">{{ selectedTeamDetail?.weekCount }}</div>
+                <div class="text-xs text-dark-textMuted">Weeks Played</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </Teleport>
   </div>
 </template>
 
@@ -765,8 +888,6 @@ const selectedWeek = ref('')
 const isLoading = ref(false)
 const powerRankings = ref<any[]>([])
 const historicalPowerRanks = ref<Map<number, number[]>>(new Map())
-const aiBreakdown = ref<string>('')
-const isGeneratingAI = ref(false)
 const rosProjectionsData = ref<any[]>([])
 const rosChartOptions = ref<any>(null)
 const rosChartSeries = ref<any[]>([])
@@ -775,6 +896,162 @@ const positionSortColumn = ref<string>('ROS_TOTAL')
 const positionSortDirection = ref<'asc' | 'desc'>('desc')
 const downloadFormat = ref<'png' | 'gif'>('png')
 const isGeneratingDownload = ref(false)
+
+// Team Detail Modal State
+const showTeamDetailModal = ref(false)
+const selectedTeamDetail = ref<any>(null)
+const teamDetailRank = ref(0)
+const teamDetailTrendChartOptions = ref<any>(null)
+const teamDetailTrendChartSeries = ref<any[]>([])
+const teamDetailMetrics = ref<{
+  name: string
+  weight: string
+  value: string
+  score: number
+  rank: number
+  color: string
+}[]>([])
+
+function openTeamDetailModal(team: any, idx: number) {
+  selectedTeamDetail.value = team
+  teamDetailRank.value = idx + 1
+  
+  // Calculate metrics breakdown
+  const totalTeams = powerRankings.value.length
+  const maxPointsFor = Math.max(...powerRankings.value.map(t => t.totalPointsFor))
+  const maxRecentAvg = Math.max(...powerRankings.value.map(t => t.recentAvg))
+  const maxStdDev = Math.max(...powerRankings.value.map(t => t.stdDev))
+  const maxProjected = Math.max(...powerRankings.value.map(t => t.projectedPPG || 0))
+  
+  // Calculate individual scores for this team
+  const totalGames = team.wins + team.losses + team.ties
+  const winPct = totalGames > 0 ? (team.wins + team.ties * 0.5) / totalGames : 0
+  const recordScore = winPct * 100
+  const pointsScore = maxPointsFor > 0 ? (team.totalPointsFor / maxPointsFor) * 100 : 0
+  const allPlayTotal = team.allPlayWins + team.allPlayLosses
+  const allPlayPct = allPlayTotal > 0 ? team.allPlayWins / allPlayTotal : 0
+  const allPlayScore = allPlayPct * 100
+  const recentScore = maxRecentAvg > 0 ? (team.recentAvg / maxRecentAvg) * 100 : 0
+  const projectedScore = maxProjected > 0 && team.projectedPPG ? (team.projectedPPG / maxProjected) * 100 : 0
+  const consistencyScore = maxStdDev > 0 ? ((maxStdDev - team.stdDev) / maxStdDev) * 100 : 50
+  
+  // Calculate ranks for each metric
+  const sortedByRecord = [...powerRankings.value].sort((a, b) => {
+    const aWinPct = (a.wins + a.losses + a.ties) > 0 ? (a.wins + a.ties * 0.5) / (a.wins + a.losses + a.ties) : 0
+    const bWinPct = (b.wins + b.losses + b.ties) > 0 ? (b.wins + b.ties * 0.5) / (b.wins + b.losses + b.ties) : 0
+    return bWinPct - aWinPct
+  })
+  const sortedByPoints = [...powerRankings.value].sort((a, b) => b.totalPointsFor - a.totalPointsFor)
+  const sortedByAllPlay = [...powerRankings.value].sort((a, b) => b.allPlayWins - a.allPlayWins)
+  const sortedByRecent = [...powerRankings.value].sort((a, b) => b.recentAvg - a.recentAvg)
+  const sortedByProjected = [...powerRankings.value].sort((a, b) => (b.projectedPPG || 0) - (a.projectedPPG || 0))
+  const sortedByConsistency = [...powerRankings.value].sort((a, b) => a.stdDev - b.stdDev) // Lower is better
+  
+  teamDetailMetrics.value = [
+    {
+      name: 'Record',
+      weight: '30%',
+      value: `${team.wins}-${team.losses}${team.ties > 0 ? `-${team.ties}` : ''} (${(winPct * 100).toFixed(0)}%)`,
+      score: recordScore,
+      rank: sortedByRecord.findIndex(t => t.roster_id === team.roster_id) + 1,
+      color: '#22c55e'
+    },
+    {
+      name: 'Total Points',
+      weight: '20%',
+      value: team.totalPointsFor.toFixed(1),
+      score: pointsScore,
+      rank: sortedByPoints.findIndex(t => t.roster_id === team.roster_id) + 1,
+      color: '#f5c451'
+    },
+    {
+      name: 'All-Play Record',
+      weight: '18%',
+      value: `${team.allPlayWins}-${team.allPlayLosses} (${(allPlayPct * 100).toFixed(0)}%)`,
+      score: allPlayScore,
+      rank: sortedByAllPlay.findIndex(t => t.roster_id === team.roster_id) + 1,
+      color: '#3b82f6'
+    },
+    {
+      name: 'Recent Form (3 wks)',
+      weight: '12%',
+      value: `${team.recentAvg.toFixed(1)} PPG`,
+      score: recentScore,
+      rank: sortedByRecent.findIndex(t => t.roster_id === team.roster_id) + 1,
+      color: '#a855f7'
+    },
+    {
+      name: 'Projected Strength',
+      weight: '15%',
+      value: team.projectedPPG ? `${team.projectedPPG.toFixed(1)} PPG` : 'N/A',
+      score: projectedScore,
+      rank: team.projectedPPG ? sortedByProjected.findIndex(t => t.roster_id === team.roster_id) + 1 : totalTeams,
+      color: '#06b6d4'
+    },
+    {
+      name: 'Consistency',
+      weight: '5%',
+      value: `${team.stdDev.toFixed(1)} std dev`,
+      score: consistencyScore,
+      rank: sortedByConsistency.findIndex(t => t.roster_id === team.roster_id) + 1,
+      color: '#ec4899'
+    }
+  ]
+  
+  // Build trend chart for this team
+  const teamHistory = historicalPowerRanks.value.get(team.roster_id) || []
+  const weeks = historicalWeeks.value
+  
+  teamDetailTrendChartSeries.value = [{
+    name: 'Power Rank',
+    data: teamHistory
+  }]
+  
+  teamDetailTrendChartOptions.value = {
+    chart: {
+      type: 'line',
+      background: 'transparent',
+      toolbar: { show: false },
+      zoom: { enabled: false }
+    },
+    stroke: { curve: 'smooth', width: 3 },
+    colors: ['#f5c451'],
+    markers: { size: 4, strokeWidth: 0 },
+    xaxis: {
+      categories: weeks.map(w => `Wk ${w}`),
+      labels: { style: { colors: '#8b8ea1' } }
+    },
+    yaxis: {
+      reversed: true,
+      min: 1,
+      max: totalTeams,
+      labels: { 
+        style: { colors: '#8b8ea1' },
+        formatter: (v: number) => Math.round(v).toString()
+      }
+    },
+    grid: { borderColor: '#3a3d52', strokeDashArray: 4 },
+    tooltip: { 
+      theme: 'dark',
+      y: { formatter: (v: number) => `#${v}` }
+    }
+  }
+  
+  showTeamDetailModal.value = true
+}
+
+function closeTeamDetailModal() {
+  showTeamDetailModal.value = false
+  selectedTeamDetail.value = null
+}
+
+function getRankClass(rank: number, total: number): string {
+  const percentile = rank / total
+  if (percentile <= 0.25) return 'bg-green-500/20 text-green-400'
+  if (percentile <= 0.5) return 'bg-blue-500/20 text-blue-400'
+  if (percentile <= 0.75) return 'bg-yellow-500/20 text-yellow-400'
+  return 'bg-red-500/20 text-red-400'
+}
 
 // Historical rankings computed properties
 const historicalWeeks = computed(() => {
@@ -1407,7 +1684,6 @@ async function loadPowerRankings() {
   if (!selectedSeason.value || !selectedWeek.value) return
   
   isLoading.value = true
-  aiBreakdown.value = '' // Clear AI breakdown when changing weeks
   
   try {
     const season = selectedSeason.value
@@ -1613,178 +1889,6 @@ function buildRankingsOverTimeChart() {
 function buildChart() {
   // Existing buildChart logic (if any)
   // This function might already exist elsewhere
-}
-
-async function generateAIBreakdown() {
-  if (!powerRankings.value.length) return
-  
-  isGeneratingAI.value = true
-  
-  try {
-    const seasonInfo = leagueStore.historicalSeasons.find(s => s.season === selectedSeason.value)
-    const leagueName = seasonInfo?.name || 'League'
-    
-    // Build detailed context
-    const topTeam = powerRankings.value[0]
-    const bottomTeam = powerRankings.value[powerRankings.value.length - 1]
-    const biggestRiser = powerRankings.value.reduce((best, t) => t.change > best.change ? t : best, { change: -99, team_name: 'N/A' })
-    const biggestFall = powerRankings.value.reduce((worst, t) => t.change < worst.change ? t : worst, { change: 99, team_name: 'N/A' })
-    
-    // Find playoff bubble teams (around 4th-6th place typically)
-    const playoffBubble = powerRankings.value.slice(3, 7)
-    
-    const prompt = `You are an expert fantasy football analyst. Write a detailed 4-6 sentence breakdown of these Week ${selectedWeek.value} Power Rankings for ${leagueName}. 
-
-RANKINGS:
-${powerRankings.value.map((team, idx) => 
-  `${idx + 1}. ${team.team_name} (${team.wins}-${team.losses}) - Score: ${team.powerScore.toFixed(1)}${team.change !== 0 ? ` [${team.change > 0 ? '↑' : '↓'}${Math.abs(team.change)}]` : ''} - PPG: ${team.recentAvg.toFixed(1)} recent, ${team.projectedPPG?.toFixed(1) || 'N/A'} proj`
-).join('\n')}
-
-KEY MOVEMENTS:
-- Biggest Riser: ${biggestRiser.team_name} (${biggestRiser.change > 0 ? '+' : ''}${biggestRiser.change})
-- Biggest Faller: ${biggestFall.team_name} (${biggestFall.change})
-- Top Team: ${topTeam.team_name} with ${topTeam.powerScore.toFixed(1)} power score
-- Playoff Bubble: ${playoffBubble.map(t => t.team_name).join(', ')}
-
-WRITE ABOUT:
-1. The #1 ranked team and why they're on top
-2. Any notable risers or fallers and what caused the movement
-3. Playoff implications - who's in danger, who's surging
-4. A prediction or observation about the coming weeks
-
-Make it engaging and insightful. Use specific team names and numbers. Write in paragraph form, no bullets or headers.`
-
-    // Try serverless function first (if configured)
-    const apiUrl = import.meta.env.VITE_API_URL
-    if (apiUrl) {
-      try {
-        const response = await fetch(`${apiUrl}/generate-analysis`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ prompt, type: 'powerrankings' })
-        })
-        
-        if (response.ok) {
-          const data = await response.json()
-          aiBreakdown.value = data.text
-          return
-        }
-      } catch (e) {
-        console.log('Serverless function failed, trying direct API...')
-      }
-    }
-    
-    // Try direct API calls (may have CORS issues in browser)
-    const apiKey = import.meta.env.VITE_OPENAI_API_KEY
-    const anthropicKey = import.meta.env.VITE_ANTHROPIC_API_KEY
-    
-    // Try Anthropic first
-    if (anthropicKey) {
-      try {
-        const response = await fetch('https://api.anthropic.com/v1/messages', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'anthropic-dangerous-direct-browser-access': 'true',
-            'x-api-key': anthropicKey
-          },
-          body: JSON.stringify({
-            model: 'claude-sonnet-4-20250514',
-            max_tokens: 500,
-            messages: [
-              { role: 'user', content: prompt }
-            ]
-          })
-        })
-        
-        if (response.ok) {
-          const data = await response.json()
-          aiBreakdown.value = data.content[0]?.text || 'Failed to generate analysis.'
-          return
-        }
-      } catch (e) {
-        console.log('Anthropic direct call failed:', e)
-      }
-    }
-    
-    // Try OpenAI
-    if (apiKey) {
-      try {
-        const response = await fetch('https://api.openai.com/v1/chat/completions', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${apiKey}`
-          },
-          body: JSON.stringify({
-            model: 'gpt-4o-mini',
-            messages: [
-              {
-                role: 'system',
-                content: 'You are an expert fantasy football analyst who provides detailed, engaging power rankings analysis.'
-              },
-              {
-                role: 'user',
-                content: prompt
-              }
-            ],
-            temperature: 0.8,
-            max_tokens: 500
-          })
-        })
-        
-        if (response.ok) {
-          const data = await response.json()
-          aiBreakdown.value = data.choices[0]?.message?.content || 'Failed to generate analysis.'
-          return
-        }
-      } catch (e) {
-        console.log('OpenAI direct call failed:', e)
-      }
-    }
-    
-    // Fallback: Generate local analysis without AI
-    aiBreakdown.value = generateLocalAnalysis(topTeam, biggestRiser, biggestFall, playoffBubble, leagueName)
-    
-  } catch (error) {
-    console.error('Failed to generate AI breakdown:', error)
-    // Generate fallback local analysis
-    const topTeam = powerRankings.value[0]
-    const biggestRiser = powerRankings.value.reduce((best, t) => t.change > best.change ? t : best, { change: -99, team_name: 'N/A' })
-    const biggestFall = powerRankings.value.reduce((worst, t) => t.change < worst.change ? t : worst, { change: 99, team_name: 'N/A' })
-    const playoffBubble = powerRankings.value.slice(3, 7)
-    const seasonInfo = leagueStore.historicalSeasons.find(s => s.season === selectedSeason.value)
-    aiBreakdown.value = generateLocalAnalysis(topTeam, biggestRiser, biggestFall, playoffBubble, seasonInfo?.name || 'League')
-  } finally {
-    isGeneratingAI.value = false
-  }
-}
-
-// Generate analysis locally without AI
-function generateLocalAnalysis(topTeam: any, biggestRiser: any, biggestFall: any, playoffBubble: any[], leagueName: string): string {
-  const parts: string[] = []
-  
-  // Top team sentence
-  parts.push(`${topTeam.team_name} sits atop the Week ${selectedWeek.value} Power Rankings with an impressive ${topTeam.powerScore.toFixed(1)} power score, backed by a ${topTeam.wins}-${topTeam.losses} record and ${topTeam.recentAvg.toFixed(1)} PPG over their recent games.`)
-  
-  // Movement sentences
-  if (biggestRiser.change > 0) {
-    parts.push(`The biggest mover this week is ${biggestRiser.team_name}, climbing ${biggestRiser.change} spots in the rankings.`)
-  }
-  if (biggestFall.change < 0) {
-    parts.push(`On the flip side, ${biggestFall.team_name} took a tumble, dropping ${Math.abs(biggestFall.change)} positions.`)
-  }
-  
-  // Playoff bubble sentence
-  if (playoffBubble.length > 0) {
-    const bubbleNames = playoffBubble.map(t => t.team_name).slice(0, 3).join(', ')
-    parts.push(`The playoff picture remains tight with ${bubbleNames} all jockeying for position on the bubble.`)
-  }
-  
-  // Closing prediction
-  parts.push(`With the regular season winding down, every matchup counts as teams fight for playoff positioning.`)
-  
-  return parts.join(' ')
 }
 
 async function downloadRankingsImage() {
