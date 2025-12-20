@@ -1,27 +1,27 @@
 <template>
-  <table class="table">
+  <table class="table w-full">
     <thead>
       <tr>
-        <th class="w-20">Rank</th>
-        <th>Team</th>
-        <th class="w-28">Record</th>
-        <th class="w-32">All Play</th>
-        <th class="w-36">Points For</th>
-        <th class="w-36">Points Against</th>
+        <th class="sticky left-0 z-10 bg-dark-elevated w-10 sm:w-20">Rank</th>
+        <th class="sticky left-10 sm:left-20 z-10 bg-dark-elevated min-w-[120px] sm:min-w-[180px]">Team</th>
+        <th class="w-24 sm:w-28">Record</th>
+        <th class="w-28 sm:w-32">All Play</th>
+        <th class="w-28 sm:w-36">Points For</th>
+        <th class="w-28 sm:w-36">Points Against</th>
       </tr>
     </thead>
     <tbody>
       <tr v-for="team in teams" :key="team.roster_id">
-        <td>
+        <td class="sticky left-0 z-10 bg-dark-card">
           <div class="flex items-center justify-center">
-            <span class="inline-flex items-center justify-center w-8 h-8 rounded-full bg-primary/10 text-primary font-bold text-sm">
+            <span class="inline-flex items-center justify-center w-6 h-6 sm:w-8 sm:h-8 rounded-full bg-primary/10 text-primary font-bold text-xs sm:text-sm">
               {{ team.rank }}
             </span>
           </div>
         </td>
-        <td>
-          <div class="flex items-center gap-3">
-            <div class="w-12 h-12 rounded-full overflow-hidden bg-dark-border flex-shrink-0">
+        <td class="sticky left-10 sm:left-20 z-10 bg-dark-card">
+          <div class="flex items-center gap-2 sm:gap-3">
+            <div class="w-8 h-8 sm:w-12 sm:h-12 rounded-full overflow-hidden bg-dark-border flex-shrink-0">
               <img
                 :src="team.avatar_url"
                 :alt="team.team_name"
@@ -29,28 +29,28 @@
                 @error="handleImageError"
               />
             </div>
-            <span class="font-semibold text-gray-900 dark:text-white">
+            <span class="font-semibold text-gray-900 dark:text-white text-xs sm:text-sm truncate max-w-[60px] sm:max-w-none">
               {{ team.team_name }}
             </span>
           </div>
         </td>
         <td>
-          <span class="font-semibold" :class="getRecordClass(team)">
+          <span class="font-semibold text-xs sm:text-sm" :class="getRecordClass(team)">
             {{ team.wins }}-{{ team.losses }}{{ team.ties > 0 ? `-${team.ties}` : '' }}
           </span>
         </td>
         <td>
-          <span :class="getAllPlayClass(team)">
+          <span class="text-xs sm:text-sm" :class="getAllPlayClass(team)">
             {{ team.all_play_wins }}-{{ team.all_play_losses }}
           </span>
         </td>
         <td>
-          <span class="font-semibold" :class="getPointsForClass(team)">
+          <span class="font-semibold text-xs sm:text-sm" :class="getPointsForClass(team)">
             {{ team.points_for.toFixed(2) }}
           </span>
         </td>
         <td>
-          <span class="font-semibold" :class="getPointsAgainstClass(team)">
+          <span class="font-semibold text-xs sm:text-sm" :class="getPointsAgainstClass(team)">
             {{ team.points_against.toFixed(2) }}
           </span>
         </td>

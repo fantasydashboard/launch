@@ -319,23 +319,26 @@
       
       <!-- Mobile scroll hint -->
       <div class="sm:hidden px-4 py-2 bg-dark-border/30 border-b border-dark-border flex items-center justify-center gap-2 text-xs text-dark-textMuted">
-        <svg class="w-4 h-4 animate-pulse" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
         </svg>
-        <span>Swipe to see all weeks</span>
+        <span>Swipe left to see earlier weeks</span>
       </div>
       
       <div class="card-body">
         <template v-if="showDivisions && hasDivisions && divisionChartData.length > 0">
           <div class="space-y-6">
-            <div v-for="divData in divisionChartData" :key="divData.division" class="border border-dark-border rounded-xl p-4">
+            <div v-for="(divData, divIdx) in divisionChartData" :key="divData.division" class="border border-dark-border rounded-xl p-4">
               <div class="mb-3 pb-2 border-b border-dark-border">
                 <h3 class="text-lg font-bold text-primary flex items-center gap-2">
                   <span>●</span>{{ divData.division }}
                 </h3>
               </div>
-              <!-- Mobile: Scrollable container with min-width -->
-              <div class="overflow-x-auto scrollbar-thin -mx-4 px-4 sm:mx-0 sm:px-0">
+              <!-- Mobile: Scrollable container - scrolls to right on mount -->
+              <div 
+                :ref="el => setDivisionChartRef(el, divIdx)"
+                class="overflow-x-auto scrollbar-thin -mx-4 px-4 sm:mx-0 sm:px-0"
+              >
                 <div class="relative" :style="{ minWidth: getMobileChartWidth(divData.options?.xaxis?.categories?.length || 0) }">
                   <apexchart v-if="divData.options" type="line" height="300" :options="getMobileChartOptions(divData.options)" :series="divData.series" />
                   <div v-for="(team, idx) in divData.teams" :key="'avatar-div-' + team.roster_id"
@@ -355,8 +358,11 @@
           </div>
         </template>
         <template v-else>
-          <!-- Mobile: Scrollable container with min-width -->
-          <div class="overflow-x-auto scrollbar-thin -mx-6 px-6 sm:mx-0 sm:px-0">
+          <!-- Mobile: Scrollable container - scrolls to right on mount -->
+          <div 
+            ref="mainChartScrollRef"
+            class="overflow-x-auto scrollbar-thin -mx-6 px-6 sm:mx-0 sm:px-0"
+          >
             <div class="relative" :style="{ minWidth: getMobileChartWidth(chartOptions?.xaxis?.categories?.length || 0) }">
               <apexchart v-if="chartOptions" type="line" :height="isMobile ? 300 : 400" :options="getMobileChartOptions(chartOptions)" :series="chartSeries" />
               <div v-for="(team, idx) in standingsTeams" :key="'avatar-' + team.roster_id"
@@ -402,9 +408,34 @@ const showDivisions = ref(true)
 const leagueNews = ref<string | null>(null)
 const isMobile = ref(false)
 
+// Chart scroll refs
+const mainChartScrollRef = ref<HTMLElement | null>(null)
+const divisionChartRefs = ref<(HTMLElement | null)[]>([])
+
+function setDivisionChartRef(el: any, index: number) {
+  divisionChartRefs.value[index] = el as HTMLElement
+}
+
 // Check for mobile screen size
 function checkMobile() {
   isMobile.value = window.innerWidth < 640
+}
+
+// Scroll all chart containers to the right (most recent weeks)
+function scrollChartsToRight() {
+  if (!isMobile.value) return
+  
+  // Use nextTick to ensure DOM is updated
+  setTimeout(() => {
+    if (mainChartScrollRef.value) {
+      mainChartScrollRef.value.scrollLeft = mainChartScrollRef.value.scrollWidth
+    }
+    divisionChartRefs.value.forEach(ref => {
+      if (ref) {
+        ref.scrollLeft = ref.scrollWidth
+      }
+    })
+  }, 100)
 }
 
 // Get minimum width for chart container on mobile (50px per week)
@@ -414,7 +445,7 @@ function getMobileChartWidth(weekCount: number): string {
   return `${minWidth}px`
 }
 
-// Adjust chart options for mobile
+// Adjust chart options for mobile - disable zoom, adjust fonts
 function getMobileChartOptions(options: any): any {
   if (!options) return options
   
@@ -422,7 +453,10 @@ function getMobileChartOptions(options: any): any {
     ...options,
     chart: {
       ...options.chart,
-      toolbar: { show: false }
+      toolbar: { show: false },
+      zoom: { enabled: false },
+      selection: { enabled: false },
+      pan: { enabled: false }
     },
     xaxis: {
       ...options.xaxis,
@@ -854,7 +888,11 @@ async function loadData() {
       divisionChartData.value = divCharts
     }
     
-  } catch (e) { console.error('Error loading home data:', e) } finally { isLoading.value = false }
+  } catch (e) { console.error('Error loading home data:', e) } finally { 
+    isLoading.value = false
+    // Scroll charts to show most recent weeks on mobile
+    scrollChartsToRight()
+  }
 }
 
 function handleImageError(e: Event) { (e.target as HTMLImageElement).src = 'https://sleepercdn.com/avatars/thumbs/default' }
@@ -1021,4 +1059,5 @@ onUnmounted(() => {
 })
 watch(() => leagueStore.historicalSeasons.length, n => { if (n > 0) loadData() })
 watch(() => leagueStore.activeLeagueId, () => { if (leagueStore.historicalSeasons.length > 0) loadData() })
+watch(() => showDivisions.value, () => { scrollChartsToRight() })
 </script>
