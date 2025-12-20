@@ -105,6 +105,15 @@
             </div>
           </div>
         </div>
+        
+        <!-- Mobile swipe hint -->
+        <div class="sm:hidden px-4 py-2 bg-dark-border/30 border-b border-dark-border flex items-center justify-center gap-2 text-xs text-dark-textMuted">
+          <svg class="w-4 h-4 animate-pulse" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
+          </svg>
+          <span>Swipe to see more columns</span>
+        </div>
+        
         <div class="card-body overflow-x-auto scrollbar-thin">
           <table class="w-full">
             <thead class="bg-dark-border/30">
@@ -237,35 +246,50 @@
           </div>
           <p class="card-subtitle">Track how power scores have evolved throughout the season</p>
         </div>
+        
+        <!-- Mobile scroll hint -->
+        <div class="sm:hidden px-4 py-2 bg-dark-border/30 border-b border-dark-border flex items-center justify-center gap-2 text-xs text-dark-textMuted">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+          </svg>
+          <span>Swipe left to see earlier weeks</span>
+        </div>
+        
         <div class="card-body relative">
-          <div class="relative">
-            <apexchart
-              ref="trendChart"
-              v-if="chartOptions"
-              type="line"
-              height="450"
-              :options="chartOptions"
-              :series="chartSeries"
-            />
-            <!-- Team avatar overlays at end of lines -->
-            <div 
-              v-for="(team, idx) in powerRankings" 
-              :key="'avatar-' + team.roster_id"
-              class="absolute pointer-events-none"
-              :style="getAvatarPosition(team, idx)"
-            >
-              <div class="relative">
-                <img 
-                  :src="team.avatar_url" 
-                  :alt="team.team_name"
-                  :class="[
-                    'w-7 h-7 rounded-full ring-2 object-cover',
-                    isMyTeam(team.roster_id) ? 'ring-primary' : 'ring-cyan-500/70'
-                  ]"
-                  @error="handleImageError"
-                />
-                <div v-if="isMyTeam(team.roster_id)" class="absolute -top-0.5 -right-0.5 w-3 h-3 bg-primary rounded-full flex items-center justify-center">
-                  <span class="text-[6px] text-gray-900 font-bold">★</span>
+          <!-- Mobile: Scrollable container - scrolls to right on mount -->
+          <div 
+            ref="trendChartScrollRef"
+            class="overflow-x-auto scrollbar-thin -mx-4 px-4 sm:mx-0 sm:px-0"
+          >
+            <div class="relative" :style="{ minWidth: getMobileChartWidth(historicalWeeks.length) }">
+              <apexchart
+                ref="trendChart"
+                v-if="chartOptions"
+                type="line"
+                :height="isMobile ? 350 : 450"
+                :options="getMobileChartOptions(chartOptions)"
+                :series="chartSeries"
+              />
+              <!-- Team avatar overlays at end of lines -->
+              <div 
+                v-for="(team, idx) in powerRankings" 
+                :key="'avatar-' + team.roster_id"
+                class="absolute pointer-events-none"
+                :style="getAvatarPosition(team, idx)"
+              >
+                <div class="relative">
+                  <img 
+                    :src="team.avatar_url" 
+                    :alt="team.team_name"
+                    :class="[
+                      'w-6 h-6 sm:w-7 sm:h-7 rounded-full ring-2 object-cover',
+                      isMyTeam(team.roster_id) ? 'ring-primary' : 'ring-cyan-500/70'
+                    ]"
+                    @error="handleImageError"
+                  />
+                  <div v-if="isMyTeam(team.roster_id)" class="absolute -top-0.5 -right-0.5 w-3 h-3 bg-primary rounded-full flex items-center justify-center">
+                    <span class="text-[6px] text-gray-900 font-bold">★</span>
+                  </div>
                 </div>
               </div>
             </div>
@@ -483,71 +507,137 @@
               v-for="(team, idx) in sortedRosTeams" 
               :key="team.roster_id"
               :class="[
-                'flex items-center gap-3 p-3 rounded-xl transition-all',
+                'p-3 rounded-xl transition-all',
                 isMyTeam(team.roster_id) 
                   ? 'bg-primary/10 border border-primary/30' 
                   : 'hover:bg-dark-border/20'
               ]"
             >
-              <!-- Rank -->
-              <div class="w-8 text-center">
-                <span :class="[
-                  'font-bold text-lg',
-                  isMyTeam(team.roster_id) ? 'text-primary' : 'text-dark-textMuted'
-                ]">{{ idx + 1 }}</span>
-              </div>
-              
-              <!-- Team Avatar & Name -->
-              <div class="flex items-center gap-2 w-40 flex-shrink-0">
-                <div class="relative">
-                  <img 
-                    :src="team.avatar_url" 
-                    :alt="team.team_name"
-                    :class="[
-                      'w-8 h-8 rounded-full ring-2',
-                      isMyTeam(team.roster_id) ? 'ring-primary' : 'ring-cyan-500/50'
-                    ]"
-                    @error="handleImageError"
-                  />
-                  <div v-if="isMyTeam(team.roster_id)" class="absolute -top-1 -right-1 w-4 h-4 bg-primary rounded-full flex items-center justify-center">
-                    <span class="text-[8px] text-gray-900 font-bold">★</span>
-                  </div>
+              <!-- Desktop: Horizontal layout -->
+              <div class="hidden sm:flex items-center gap-3">
+                <!-- Rank -->
+                <div class="w-8 text-center">
+                  <span :class="[
+                    'font-bold text-lg',
+                    isMyTeam(team.roster_id) ? 'text-primary' : 'text-dark-textMuted'
+                  ]">{{ idx + 1 }}</span>
                 </div>
-                <span :class="[
-                  'font-medium text-sm truncate',
-                  isMyTeam(team.roster_id) ? 'text-primary' : 'text-dark-text'
-                ]">{{ team.team_name }}</span>
-              </div>
-              
-              <!-- Stacked Bar Container - width varies based on team total relative to max -->
-              <div class="flex-1 flex items-center">
-                <div 
-                  class="h-8 bg-dark-border/30 rounded-lg overflow-hidden flex"
-                  :style="{ width: getTeamBarWidthPercent(team) + '%' }"
-                >
+                
+                <!-- Team Avatar & Name -->
+                <div class="flex items-center gap-2 w-40 flex-shrink-0">
+                  <div class="relative">
+                    <img 
+                      :src="team.avatar_url" 
+                      :alt="team.team_name"
+                      :class="[
+                        'w-8 h-8 rounded-full ring-2',
+                        isMyTeam(team.roster_id) ? 'ring-primary' : 'ring-cyan-500/50'
+                      ]"
+                      @error="handleImageError"
+                    />
+                    <div v-if="isMyTeam(team.roster_id)" class="absolute -top-1 -right-1 w-4 h-4 bg-primary rounded-full flex items-center justify-center">
+                      <span class="text-[8px] text-gray-900 font-bold">★</span>
+                    </div>
+                  </div>
+                  <span :class="[
+                    'font-medium text-sm truncate',
+                    isMyTeam(team.roster_id) ? 'text-primary' : 'text-dark-text'
+                  ]">{{ team.team_name }}</span>
+                </div>
+                
+                <!-- Stacked Bar Container - width varies based on team total relative to max -->
+                <div class="flex-1 flex items-center">
                   <div 
-                    v-for="pos in ['QB', 'RB', 'WR', 'TE', 'FLEX']"
-                    :key="pos"
-                    class="h-full flex items-center justify-center text-xs font-bold text-white transition-all"
-                    :style="{ 
-                      width: getPositionWidthPercent(team, pos) + '%',
-                      backgroundColor: getPositionColor(pos)
-                    }"
-                    :title="`${pos}: ${(team.positionProjections?.[pos] || 0).toFixed(1)}`"
+                    class="h-8 bg-dark-border/30 rounded-lg overflow-hidden flex"
+                    :style="{ width: getTeamBarWidthPercent(team) + '%' }"
                   >
-                    <span v-if="(team.positionProjections?.[pos] || 0) > 15">
-                      {{ (team.positionProjections?.[pos] || 0).toFixed(0) }}
-                    </span>
+                    <div 
+                      v-for="pos in ['QB', 'RB', 'WR', 'TE', 'FLEX']"
+                      :key="pos"
+                      class="h-full flex items-center justify-center text-xs font-bold text-white transition-all"
+                      :style="{ 
+                        width: getPositionWidthPercent(team, pos) + '%',
+                        backgroundColor: getPositionColor(pos)
+                      }"
+                      :title="`${pos}: ${(team.positionProjections?.[pos] || 0).toFixed(1)}`"
+                    >
+                      <span v-if="(team.positionProjections?.[pos] || 0) > 15">
+                        {{ (team.positionProjections?.[pos] || 0).toFixed(0) }}
+                      </span>
+                    </div>
                   </div>
+                </div>
+                
+                <!-- Total -->
+                <div class="w-20 text-right">
+                  <span :class="[
+                    'font-bold text-lg',
+                    isMyTeam(team.roster_id) ? 'text-primary' : 'text-cyan-400'
+                  ]">{{ getTeamRosTotal(team).toFixed(1) }}</span>
                 </div>
               </div>
               
-              <!-- Total -->
-              <div class="w-20 text-right">
-                <span :class="[
-                  'font-bold text-lg',
-                  isMyTeam(team.roster_id) ? 'text-primary' : 'text-cyan-400'
-                ]">{{ getTeamRosTotal(team).toFixed(1) }}</span>
+              <!-- Mobile: Stacked layout -->
+              <div class="sm:hidden">
+                <!-- Top row: Rank, Avatar, Name, Total -->
+                <div class="flex items-center gap-3 mb-3">
+                  <!-- Rank -->
+                  <div class="w-6 text-center">
+                    <span :class="[
+                      'font-bold text-base',
+                      isMyTeam(team.roster_id) ? 'text-primary' : 'text-dark-textMuted'
+                    ]">{{ idx + 1 }}</span>
+                  </div>
+                  
+                  <!-- Team Avatar & Name -->
+                  <div class="flex items-center gap-2 flex-1 min-w-0">
+                    <div class="relative flex-shrink-0">
+                      <img 
+                        :src="team.avatar_url" 
+                        :alt="team.team_name"
+                        :class="[
+                          'w-8 h-8 rounded-full ring-2',
+                          isMyTeam(team.roster_id) ? 'ring-primary' : 'ring-cyan-500/50'
+                        ]"
+                        @error="handleImageError"
+                      />
+                      <div v-if="isMyTeam(team.roster_id)" class="absolute -top-1 -right-1 w-4 h-4 bg-primary rounded-full flex items-center justify-center">
+                        <span class="text-[8px] text-gray-900 font-bold">★</span>
+                      </div>
+                    </div>
+                    <span :class="[
+                      'font-medium text-sm truncate',
+                      isMyTeam(team.roster_id) ? 'text-primary' : 'text-dark-text'
+                    ]">{{ team.team_name }}</span>
+                  </div>
+                  
+                  <!-- Total -->
+                  <div class="text-right flex-shrink-0">
+                    <span :class="[
+                      'font-bold text-lg',
+                      isMyTeam(team.roster_id) ? 'text-primary' : 'text-cyan-400'
+                    ]">{{ getTeamRosTotal(team).toFixed(1) }}</span>
+                  </div>
+                </div>
+                
+                <!-- Bottom row: Full-width stacked bar -->
+                <div class="ml-9">
+                  <div class="h-7 bg-dark-border/30 rounded-lg overflow-hidden flex w-full">
+                    <div 
+                      v-for="pos in ['QB', 'RB', 'WR', 'TE', 'FLEX']"
+                      :key="pos"
+                      class="h-full flex items-center justify-center text-xs font-bold text-white transition-all"
+                      :style="{ 
+                        width: getPositionWidthPercent(team, pos) + '%',
+                        backgroundColor: getPositionColor(pos)
+                      }"
+                    >
+                      <span v-if="(team.positionProjections?.[pos] || 0) > 10" class="text-[10px]">
+                        {{ pos }} {{ (team.positionProjections?.[pos] || 0).toFixed(0) }}
+                      </span>
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
@@ -563,6 +653,15 @@
           </div>
           <p class="card-subtitle">Rankings by projected points per position (1 = best)</p>
         </div>
+        
+        <!-- Mobile swipe hint -->
+        <div class="sm:hidden px-4 py-2 bg-dark-border/30 border-b border-dark-border flex items-center justify-center gap-2 text-xs text-dark-textMuted">
+          <svg class="w-4 h-4 animate-pulse" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
+          </svg>
+          <span>Swipe to see more columns</span>
+        </div>
+        
         <div class="card-body overflow-x-auto scrollbar-thin">
           <table class="table">
             <thead>
@@ -1009,7 +1108,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, computed, onMounted, watch, onUnmounted } from 'vue'
 import { useLeagueStore } from '@/stores/league'
 import { sleeperService } from '@/services/sleeper'
 import type { SleeperRoster, SleeperMatchup } from '@/types/sleeper'
@@ -1032,6 +1131,71 @@ function isMyTeam(rosterId: number): boolean {
   const roster = rosters.find(r => r.roster_id === rosterId)
   if (!roster) return false
   return roster.owner_id === leagueStore.currentUserId
+}
+
+// Mobile state
+const isMobile = ref(false)
+const trendChartScrollRef = ref<HTMLElement | null>(null)
+
+// Check for mobile screen size
+function checkMobile() {
+  isMobile.value = window.innerWidth < 640
+}
+
+// Scroll chart to the right (most recent weeks)
+function scrollChartToRight() {
+  if (!isMobile.value) return
+  
+  setTimeout(() => {
+    if (trendChartScrollRef.value) {
+      trendChartScrollRef.value.scrollLeft = trendChartScrollRef.value.scrollWidth
+    }
+  }, 100)
+}
+
+// Get minimum width for chart container on mobile (50px per week)
+function getMobileChartWidth(weekCount: number): string {
+  if (!isMobile.value) return 'auto'
+  const minWidth = Math.max(weekCount * 50, 300)
+  return `${minWidth}px`
+}
+
+// Adjust chart options for mobile - disable zoom, adjust fonts
+function getMobileChartOptions(options: any): any {
+  if (!options) return options
+  
+  return {
+    ...options,
+    chart: {
+      ...options.chart,
+      toolbar: { show: false },
+      zoom: { enabled: false },
+      selection: { enabled: false },
+      pan: { enabled: false }
+    },
+    xaxis: {
+      ...options.xaxis,
+      labels: {
+        ...options.xaxis?.labels,
+        style: { 
+          colors: '#8b8ea1',
+          fontSize: isMobile.value ? '10px' : '12px'
+        },
+        rotate: isMobile.value ? -45 : 0,
+        rotateAlways: isMobile.value
+      }
+    },
+    yaxis: {
+      ...options.yaxis,
+      labels: {
+        ...options.yaxis?.labels,
+        style: { 
+          colors: '#8b8ea1',
+          fontSize: isMobile.value ? '10px' : '12px'
+        }
+      }
+    }
+  }
 }
 
 // State
@@ -3208,10 +3372,18 @@ function sortPositionRankings(column: string) {
 
 // Initialize
 onMounted(() => {
+  // Check for mobile
+  checkMobile()
+  window.addEventListener('resize', checkMobile)
+  
   if (leagueStore.historicalSeasons.length > 0) {
     selectedSeason.value = leagueStore.historicalSeasons[0].season
     onSeasonChange()
   }
+})
+
+onUnmounted(() => {
+  window.removeEventListener('resize', checkMobile)
 })
 
 // Watch for league changes
@@ -3224,4 +3396,9 @@ watch(
     }
   }
 )
+
+// Scroll chart to right when power rankings load
+watch(powerRankings, () => {
+  scrollChartToRight()
+})
 </script>
