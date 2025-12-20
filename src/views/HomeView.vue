@@ -93,7 +93,11 @@
         <span class="text-2xl">👑</span>League Leaders
       </h2>
       <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div class="group relative overflow-hidden rounded-xl bg-dark-card border border-yellow-500/20 hover:border-yellow-500/40 transition-all">
+        <!-- Most Points -->
+        <div 
+          @click="openLeaderModal('mostPoints')"
+          class="group relative overflow-hidden rounded-xl bg-dark-card border border-yellow-500/20 hover:border-yellow-500/40 transition-all cursor-pointer"
+        >
           <div class="absolute top-0 right-0 w-24 h-24 bg-yellow-500/5 rounded-full -translate-y-1/2 translate-x-1/2 group-hover:scale-150 transition-transform duration-500"></div>
           <div class="relative p-5">
             <div class="text-xs uppercase tracking-wider text-yellow-400 font-bold mb-3">Most Points</div>
@@ -104,10 +108,18 @@
                 <div class="text-sm text-dark-textMuted">{{ leaders.mostPoints.record }}</div>
               </div>
             </div>
-            <div class="text-2xl font-black text-yellow-400">{{ leaders.mostPoints.points.toFixed(1) }}</div>
+            <div class="flex items-center justify-between">
+              <div class="text-2xl font-black text-yellow-400">{{ leaders.mostPoints.points.toFixed(1) }}</div>
+              <div class="text-xs text-yellow-400/70 group-hover:text-yellow-400 transition-colors">Click for details →</div>
+            </div>
           </div>
         </div>
-        <div class="group relative overflow-hidden rounded-xl bg-dark-card border border-green-500/20 hover:border-green-500/40 transition-all">
+        
+        <!-- Best Record -->
+        <div 
+          @click="openLeaderModal('bestRecord')"
+          class="group relative overflow-hidden rounded-xl bg-dark-card border border-green-500/20 hover:border-green-500/40 transition-all cursor-pointer"
+        >
           <div class="absolute top-0 right-0 w-24 h-24 bg-green-500/5 rounded-full -translate-y-1/2 translate-x-1/2 group-hover:scale-150 transition-transform duration-500"></div>
           <div class="relative p-5">
             <div class="text-xs uppercase tracking-wider text-green-400 font-bold mb-3">Best Record</div>
@@ -118,25 +130,258 @@
                 <div class="text-sm text-dark-textMuted">{{ leaders.bestRecord.ppg.toFixed(1) }} PPG</div>
               </div>
             </div>
-            <div class="text-2xl font-black text-green-400">{{ leaders.bestRecord.wins }}-{{ leaders.bestRecord.losses }}</div>
+            <div class="flex items-center justify-between">
+              <div class="text-2xl font-black text-green-400">{{ leaders.bestRecord.wins }}-{{ leaders.bestRecord.losses }}</div>
+              <div class="text-xs text-green-400/70 group-hover:text-green-400 transition-colors">Click for details →</div>
+            </div>
           </div>
         </div>
-        <div class="group relative overflow-hidden rounded-xl bg-dark-card border border-blue-500/20 hover:border-blue-500/40 transition-all">
+        
+        <!-- Best All-Play -->
+        <div 
+          @click="openLeaderModal('bestAllPlay')"
+          class="group relative overflow-hidden rounded-xl bg-dark-card border border-blue-500/20 hover:border-blue-500/40 transition-all cursor-pointer"
+        >
           <div class="absolute top-0 right-0 w-24 h-24 bg-blue-500/5 rounded-full -translate-y-1/2 translate-x-1/2 group-hover:scale-150 transition-transform duration-500"></div>
           <div class="relative p-5">
-            <div class="text-xs uppercase tracking-wider text-blue-400 font-bold mb-3">Highest Average</div>
+            <div class="text-xs uppercase tracking-wider text-blue-400 font-bold mb-3">Best All-Play</div>
             <div class="flex items-center gap-3 mb-3">
-              <img :src="leaders.highestPPG.avatar" :alt="leaders.highestPPG.name" class="w-12 h-12 rounded-full border-2 border-blue-500/50" @error="handleImageError" />
+              <img :src="leaders.bestAllPlay.avatar" :alt="leaders.bestAllPlay.name" class="w-12 h-12 rounded-full border-2 border-blue-500/50" @error="handleImageError" />
               <div class="flex-1 min-w-0">
-                <div class="font-bold text-lg text-dark-text truncate">{{ leaders.highestPPG.name }}</div>
-                <div class="text-sm text-dark-textMuted">{{ leaders.highestPPG.record }}</div>
+                <div class="font-bold text-lg text-dark-text truncate">{{ leaders.bestAllPlay.name }}</div>
+                <div class="text-sm text-dark-textMuted">{{ leaders.bestAllPlay.record }}</div>
               </div>
             </div>
-            <div class="text-2xl font-black text-blue-400">{{ leaders.highestPPG.ppg.toFixed(1) }}</div>
+            <div class="flex items-center justify-between">
+              <div class="text-2xl font-black text-blue-400">{{ leaders.bestAllPlay.allPlayWins }}-{{ leaders.bestAllPlay.allPlayLosses }}</div>
+              <div class="text-xs text-blue-400/70 group-hover:text-blue-400 transition-colors">Click for details →</div>
+            </div>
           </div>
         </div>
       </div>
     </div>
+    
+    <!-- Leader Comparison Modal -->
+    <Teleport to="body">
+      <div 
+        v-if="showLeaderModal" 
+        class="fixed inset-0 z-50 flex items-center justify-center p-4"
+        @click.self="closeLeaderModal"
+      >
+        <div class="absolute inset-0 bg-black/70 backdrop-blur-sm"></div>
+        <div class="relative bg-dark-elevated rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto border border-dark-border">
+          <!-- Header -->
+          <div class="sticky top-0 z-10 px-6 py-4 border-b border-dark-border bg-dark-elevated flex items-center justify-between">
+            <div>
+              <h3 class="text-xl font-bold text-dark-text">{{ leaderModalTitle }}</h3>
+              <p class="text-sm text-dark-textMuted">{{ currentSeason }} Season Leaderboard</p>
+            </div>
+            <button @click="closeLeaderModal" class="p-2 rounded-lg hover:bg-dark-border/50 transition-colors">
+              <svg class="w-5 h-5 text-dark-textMuted" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+          
+          <!-- Winner Highlight -->
+          <div class="p-6 border-b border-dark-border" :class="leaderModalGradient">
+            <div class="flex items-center gap-4">
+              <img 
+                :src="leaderModalData.leader?.avatar" 
+                :alt="leaderModalData.leader?.name"
+                class="w-16 h-16 rounded-full ring-4"
+                :class="leaderModalRingColor"
+                @error="handleImageError"
+              />
+              <div class="flex-1">
+                <div class="text-xl font-bold text-dark-text">{{ leaderModalData.leader?.name }}</div>
+                <div class="text-sm text-dark-textMuted">{{ leaderModalData.leader?.record }}</div>
+              </div>
+              <div class="text-right">
+                <div class="text-3xl font-black" :class="leaderModalTextColor">{{ leaderModalValue }}</div>
+                <div class="text-sm text-dark-textMuted">{{ leaderModalUnit }}</div>
+              </div>
+            </div>
+          </div>
+          
+          <!-- Comparison Bar Chart -->
+          <div class="p-6">
+            <h4 class="text-sm font-semibold text-dark-textMuted uppercase tracking-wider mb-4">All Teams Comparison</h4>
+            <div class="space-y-3">
+              <div 
+                v-for="(team, index) in leaderModalData.comparison" 
+                :key="team.roster_id"
+                class="flex items-center gap-3"
+              >
+                <div class="w-6 text-center">
+                  <span 
+                    class="text-sm font-bold"
+                    :class="index === 0 ? leaderModalTextColor : 'text-dark-textMuted'"
+                  >{{ index + 1 }}</span>
+                </div>
+                <img 
+                  :src="team.avatar" 
+                  :alt="team.name"
+                  class="w-8 h-8 rounded-full"
+                  @error="handleImageError"
+                />
+                <div class="flex-1 min-w-0">
+                  <div class="flex items-center gap-2 mb-1">
+                    <span class="text-sm font-medium text-dark-text truncate">{{ team.name }}</span>
+                  </div>
+                  <div class="h-2.5 bg-dark-border rounded-full overflow-hidden">
+                    <div 
+                      class="h-full rounded-full transition-all duration-500"
+                      :class="index === 0 ? leaderModalBarColor : 'bg-primary/60'"
+                      :style="{ width: `${(team.value / leaderModalData.maxValue) * 100}%` }"
+                    ></div>
+                  </div>
+                </div>
+                <div class="w-20 text-right">
+                  <span class="text-sm font-semibold" :class="index === 0 ? leaderModalTextColor : 'text-dark-text'">
+                    {{ formatLeaderValue(team.value) }}
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          <!-- Quick Stats -->
+          <div class="px-6 pb-6">
+            <div class="grid grid-cols-3 gap-4 p-4 bg-dark-border/30 rounded-xl">
+              <div class="text-center">
+                <div class="text-lg font-bold text-dark-text">{{ standingsTeams.length }}</div>
+                <div class="text-xs text-dark-textMuted">Teams</div>
+              </div>
+              <div class="text-center">
+                <div class="text-lg font-bold text-dark-text">{{ leaderModalData.average?.toFixed(1) }}</div>
+                <div class="text-xs text-dark-textMuted">Average</div>
+              </div>
+              <div class="text-center">
+                <div class="text-lg font-bold text-dark-text">{{ leaderModalData.spread?.toFixed(1) }}</div>
+                <div class="text-xs text-dark-textMuted">Spread</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </Teleport>
+    
+    <!-- Team Detail Modal -->
+    <Teleport to="body">
+      <div 
+        v-if="showTeamDetailModal" 
+        class="fixed inset-0 z-50 flex items-center justify-center p-4"
+        @click.self="closeTeamDetailModal"
+      >
+        <div class="absolute inset-0 bg-black/70 backdrop-blur-sm"></div>
+        <div class="relative bg-dark-elevated rounded-2xl shadow-2xl w-full max-w-3xl max-h-[90vh] overflow-y-auto border border-dark-border">
+          <!-- Header -->
+          <div class="sticky top-0 z-10 px-6 py-4 border-b border-dark-border bg-dark-elevated flex items-center justify-between">
+            <div class="flex items-center gap-4">
+              <img 
+                :src="selectedTeamDetail?.avatar_url" 
+                :alt="selectedTeamDetail?.team_name"
+                class="w-12 h-12 rounded-full ring-2 ring-primary"
+                @error="handleImageError"
+              />
+              <div>
+                <h3 class="text-xl font-bold text-dark-text">{{ selectedTeamDetail?.team_name }}</h3>
+                <p class="text-sm text-dark-textMuted">{{ currentSeason }} Season Details</p>
+              </div>
+            </div>
+            <button @click="closeTeamDetailModal" class="p-2 rounded-lg hover:bg-dark-border/50 transition-colors">
+              <svg class="w-5 h-5 text-dark-textMuted" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+          
+          <!-- Stats Overview -->
+          <div class="p-6 border-b border-dark-border">
+            <div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
+              <div class="bg-dark-border/30 rounded-xl p-4 text-center">
+                <div class="text-2xl font-black text-dark-text">{{ selectedTeamDetail?.wins }}-{{ selectedTeamDetail?.losses }}</div>
+                <div class="text-xs text-dark-textMuted">Record</div>
+              </div>
+              <div class="bg-dark-border/30 rounded-xl p-4 text-center">
+                <div class="text-2xl font-black text-primary">{{ selectedTeamDetail?.rank }}</div>
+                <div class="text-xs text-dark-textMuted">Rank</div>
+              </div>
+              <div class="bg-dark-border/30 rounded-xl p-4 text-center">
+                <div class="text-2xl font-black text-dark-text">{{ selectedTeamDetail?.all_play_wins }}-{{ selectedTeamDetail?.all_play_losses }}</div>
+                <div class="text-xs text-dark-textMuted">All-Play</div>
+              </div>
+              <div class="bg-dark-border/30 rounded-xl p-4 text-center">
+                <div class="text-2xl font-black text-dark-text">{{ teamDetailStats.ppg }}</div>
+                <div class="text-xs text-dark-textMuted">PPG</div>
+              </div>
+            </div>
+          </div>
+          
+          <!-- Weekly Scores Chart -->
+          <div class="p-6 border-b border-dark-border">
+            <h4 class="text-sm font-semibold text-dark-textMuted uppercase tracking-wider mb-4">Weekly Scores vs League Average</h4>
+            <div class="h-64">
+              <apexchart 
+                v-if="teamDetailChartOptions" 
+                type="line" 
+                height="100%" 
+                :options="teamDetailChartOptions" 
+                :series="teamDetailChartSeries" 
+              />
+            </div>
+          </div>
+          
+          <!-- Additional Stats -->
+          <div class="p-6">
+            <h4 class="text-sm font-semibold text-dark-textMuted uppercase tracking-wider mb-4">Season Breakdown</h4>
+            <div class="grid grid-cols-2 sm:grid-cols-3 gap-4">
+              <div class="bg-dark-border/20 rounded-xl p-4">
+                <div class="text-lg font-bold text-green-400">{{ teamDetailStats.highScore }}</div>
+                <div class="text-xs text-dark-textMuted">High Score</div>
+              </div>
+              <div class="bg-dark-border/20 rounded-xl p-4">
+                <div class="text-lg font-bold text-red-400">{{ teamDetailStats.lowScore }}</div>
+                <div class="text-xs text-dark-textMuted">Low Score</div>
+              </div>
+              <div class="bg-dark-border/20 rounded-xl p-4">
+                <div class="text-lg font-bold text-dark-text">{{ teamDetailStats.totalPoints }}</div>
+                <div class="text-xs text-dark-textMuted">Total Points</div>
+              </div>
+              <div class="bg-dark-border/20 rounded-xl p-4">
+                <div class="text-lg font-bold text-dark-text">{{ teamDetailStats.pointsAgainst }}</div>
+                <div class="text-xs text-dark-textMuted">Points Against</div>
+              </div>
+              <div class="bg-dark-border/20 rounded-xl p-4">
+                <div class="text-lg font-bold" :class="teamDetailStats.pointDiff >= 0 ? 'text-green-400' : 'text-red-400'">
+                  {{ teamDetailStats.pointDiff >= 0 ? '+' : '' }}{{ teamDetailStats.pointDiff }}
+                </div>
+                <div class="text-xs text-dark-textMuted">Point Differential</div>
+              </div>
+              <div class="bg-dark-border/20 rounded-xl p-4">
+                <div class="text-lg font-bold text-dark-text">{{ teamDetailStats.winStreak }}</div>
+                <div class="text-xs text-dark-textMuted">Current Streak</div>
+              </div>
+            </div>
+            
+            <!-- Week-by-Week Results -->
+            <h4 class="text-sm font-semibold text-dark-textMuted uppercase tracking-wider mt-6 mb-4">Week-by-Week Results</h4>
+            <div class="flex flex-wrap gap-2">
+              <div 
+                v-for="(result, idx) in teamDetailStats.weeklyResults" 
+                :key="idx"
+                class="w-10 h-10 rounded-lg flex items-center justify-center text-xs font-bold"
+                :class="result.won ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'"
+                :title="`Week ${idx + 1}: ${result.points.toFixed(1)} pts vs ${result.opponent}`"
+              >
+                {{ result.won ? 'W' : 'L' }}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </Teleport>
 
     <!-- Main Content Grid: Standings + Sidebar -->
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -176,11 +421,11 @@
                   <span class="text-primary">●</span>
                   <h3 class="text-lg font-bold text-dark-text">{{ divisionName }}</h3>
                 </div>
-                <StandingsTable :teams="teams" :show-highlights="true" />
+                <StandingsTable :teams="teams" :show-highlights="true" @team-click="openTeamDetailModal" />
               </div>
             </template>
             <template v-else>
-              <StandingsTable :teams="standingsTeams" :show-highlights="true" />
+              <StandingsTable :teams="standingsTeams" :show-highlights="true" @team-click="openTeamDetailModal" />
             </template>
           </div>
         </div>
@@ -519,6 +764,9 @@ interface Leader {
   losses: number
   record: string
   ppg: number
+  allPlayWins?: number
+  allPlayLosses?: number
+  roster_id?: number
 }
 
 interface TeamData {
@@ -543,11 +791,319 @@ const thisWeekMatchups = ref<Matchup[]>([])
 const playerProjections = ref<Map<string, any>>(new Map())
 
 // Leaders
-const leaders = ref<{ mostPoints: Leader; bestRecord: Leader; highestPPG: Leader }>({
+const leaders = ref<{ mostPoints: Leader; bestRecord: Leader; bestAllPlay: Leader }>({
   mostPoints: { name: '', avatar: '', points: 0, wins: 0, losses: 0, record: '', ppg: 0 },
   bestRecord: { name: '', avatar: '', points: 0, wins: 0, losses: 0, record: '', ppg: 0 },
-  highestPPG: { name: '', avatar: '', points: 0, wins: 0, losses: 0, record: '', ppg: 0 }
+  bestAllPlay: { name: '', avatar: '', points: 0, wins: 0, losses: 0, record: '', ppg: 0, allPlayWins: 0, allPlayLosses: 0 }
 })
+
+// Leader Modal State
+const showLeaderModal = ref(false)
+const selectedLeaderType = ref<'mostPoints' | 'bestRecord' | 'bestAllPlay'>('mostPoints')
+const leaderModalData = ref<{
+  leader: Leader | null
+  comparison: { roster_id: number; name: string; avatar: string; value: number }[]
+  maxValue: number
+  average: number
+  spread: number
+}>({
+  leader: null,
+  comparison: [],
+  maxValue: 0,
+  average: 0,
+  spread: 0
+})
+
+const leaderModalTitle = computed(() => {
+  switch (selectedLeaderType.value) {
+    case 'mostPoints': return 'Most Points'
+    case 'bestRecord': return 'Best Record'
+    case 'bestAllPlay': return 'Best All-Play Record'
+    default: return ''
+  }
+})
+
+const leaderModalGradient = computed(() => {
+  switch (selectedLeaderType.value) {
+    case 'mostPoints': return 'bg-gradient-to-r from-yellow-500/10 to-transparent'
+    case 'bestRecord': return 'bg-gradient-to-r from-green-500/10 to-transparent'
+    case 'bestAllPlay': return 'bg-gradient-to-r from-blue-500/10 to-transparent'
+    default: return ''
+  }
+})
+
+const leaderModalRingColor = computed(() => {
+  switch (selectedLeaderType.value) {
+    case 'mostPoints': return 'ring-yellow-500'
+    case 'bestRecord': return 'ring-green-500'
+    case 'bestAllPlay': return 'ring-blue-500'
+    default: return 'ring-primary'
+  }
+})
+
+const leaderModalTextColor = computed(() => {
+  switch (selectedLeaderType.value) {
+    case 'mostPoints': return 'text-yellow-400'
+    case 'bestRecord': return 'text-green-400'
+    case 'bestAllPlay': return 'text-blue-400'
+    default: return 'text-primary'
+  }
+})
+
+const leaderModalBarColor = computed(() => {
+  switch (selectedLeaderType.value) {
+    case 'mostPoints': return 'bg-yellow-500'
+    case 'bestRecord': return 'bg-green-500'
+    case 'bestAllPlay': return 'bg-blue-500'
+    default: return 'bg-primary'
+  }
+})
+
+const leaderModalValue = computed(() => {
+  const leader = leaderModalData.value.leader
+  if (!leader) return ''
+  switch (selectedLeaderType.value) {
+    case 'mostPoints': return leader.points.toFixed(1)
+    case 'bestRecord': return `${leader.wins}-${leader.losses}`
+    case 'bestAllPlay': return `${leader.allPlayWins}-${leader.allPlayLosses}`
+    default: return ''
+  }
+})
+
+const leaderModalUnit = computed(() => {
+  switch (selectedLeaderType.value) {
+    case 'mostPoints': return 'total points'
+    case 'bestRecord': return 'win-loss record'
+    case 'bestAllPlay': return 'all-play record'
+    default: return ''
+  }
+})
+
+function openLeaderModal(type: 'mostPoints' | 'bestRecord' | 'bestAllPlay') {
+  selectedLeaderType.value = type
+  
+  // Build comparison data
+  let comparison: { roster_id: number; name: string; avatar: string; value: number }[] = []
+  
+  if (type === 'mostPoints') {
+    comparison = standingsTeams.value.map(t => ({
+      roster_id: t.roster_id,
+      name: t.team_name,
+      avatar: t.avatar_url,
+      value: t.points_for
+    })).sort((a, b) => b.value - a.value)
+  } else if (type === 'bestRecord') {
+    comparison = standingsTeams.value.map(t => ({
+      roster_id: t.roster_id,
+      name: t.team_name,
+      avatar: t.avatar_url,
+      value: t.wins + (t.wins / (t.wins + t.losses + 0.001)) * 0.5 // wins + win% tiebreaker
+    })).sort((a, b) => b.value - a.value)
+    // Recalculate for display with just wins
+    comparison = standingsTeams.value.map(t => ({
+      roster_id: t.roster_id,
+      name: t.team_name,
+      avatar: t.avatar_url,
+      value: t.wins
+    })).sort((a, b) => {
+      if (b.value !== a.value) return b.value - a.value
+      const aTeam = standingsTeams.value.find(x => x.roster_id === a.roster_id)
+      const bTeam = standingsTeams.value.find(x => x.roster_id === b.roster_id)
+      return (bTeam?.points_for || 0) - (aTeam?.points_for || 0)
+    })
+  } else if (type === 'bestAllPlay') {
+    comparison = standingsTeams.value.map(t => ({
+      roster_id: t.roster_id,
+      name: t.team_name,
+      avatar: t.avatar_url,
+      value: t.all_play_wins
+    })).sort((a, b) => b.value - a.value)
+  }
+  
+  const values = comparison.map(c => c.value)
+  const maxValue = Math.max(...values)
+  const average = values.reduce((a, b) => a + b, 0) / values.length
+  const spread = maxValue - Math.min(...values)
+  
+  leaderModalData.value = {
+    leader: leaders.value[type],
+    comparison,
+    maxValue,
+    average,
+    spread
+  }
+  
+  showLeaderModal.value = true
+}
+
+function closeLeaderModal() {
+  showLeaderModal.value = false
+}
+
+function formatLeaderValue(value: number): string {
+  if (selectedLeaderType.value === 'mostPoints') {
+    return value.toFixed(1)
+  } else if (selectedLeaderType.value === 'bestRecord') {
+    const team = standingsTeams.value.find(t => t.wins === value)
+    if (team) return `${team.wins}-${team.losses}`
+    return value.toString()
+  } else if (selectedLeaderType.value === 'bestAllPlay') {
+    const team = standingsTeams.value.find(t => t.all_play_wins === value)
+    if (team) return `${team.all_play_wins}-${team.all_play_losses}`
+    return value.toString()
+  }
+  return value.toString()
+}
+
+// Team Detail Modal State
+const showTeamDetailModal = ref(false)
+const selectedTeamDetail = ref<TeamData | null>(null)
+const teamDetailChartOptions = ref<any>(null)
+const teamDetailChartSeries = ref<any[]>([])
+const teamDetailStats = ref({
+  ppg: '0.0',
+  highScore: '0.0',
+  lowScore: '0.0',
+  totalPoints: '0.0',
+  pointsAgainst: '0.0',
+  pointDiff: '0.0',
+  winStreak: '0',
+  weeklyResults: [] as { won: boolean; points: number; opponent: string }[]
+})
+
+function openTeamDetailModal(team: TeamData) {
+  selectedTeamDetail.value = team
+  
+  // Calculate detailed stats
+  const gamesPlayed = team.wins + team.losses + team.ties
+  const ppg = gamesPlayed > 0 ? team.points_for / gamesPlayed : 0
+  const pointDiff = team.points_for - team.points_against
+  
+  // Get weekly scores for this team
+  const weeklyScores: number[] = []
+  const weeklyResults: { won: boolean; points: number; opponent: string }[] = []
+  const leagueAverages: number[] = []
+  const weeks: number[] = []
+  
+  // Find this team's weekly matchups
+  for (let week = 1; week < playoffWeekStart.value; week++) {
+    const weekMatchups = matchupsByWeek.value.get(week) || []
+    
+    // Calculate league average for this week
+    let weekTotal = 0
+    let weekCount = 0
+    weekMatchups.forEach(m => {
+      if (m.points !== undefined && m.points !== null) {
+        weekTotal += m.points
+        weekCount++
+      }
+    })
+    const weekAvg = weekCount > 0 ? weekTotal / weekCount : 0
+    
+    // Find this team's matchup
+    const teamMatchup = weekMatchups.find(m => m.roster_id === team.roster_id)
+    if (teamMatchup && teamMatchup.points !== undefined && teamMatchup.points !== null) {
+      weeks.push(week)
+      weeklyScores.push(teamMatchup.points)
+      leagueAverages.push(weekAvg)
+      
+      // Find opponent
+      const opponentMatchup = weekMatchups.find(m => 
+        m.matchup_id === teamMatchup.matchup_id && m.roster_id !== team.roster_id
+      )
+      const opponentTeam = standingsTeams.value.find(t => t.roster_id === opponentMatchup?.roster_id)
+      const opponentPoints = opponentMatchup?.points || 0
+      
+      weeklyResults.push({
+        won: teamMatchup.points > opponentPoints,
+        points: teamMatchup.points,
+        opponent: opponentTeam?.team_name || 'Unknown'
+      })
+    }
+  }
+  
+  // Calculate streak
+  let streak = 0
+  let streakType = ''
+  for (let i = weeklyResults.length - 1; i >= 0; i--) {
+    if (i === weeklyResults.length - 1) {
+      streakType = weeklyResults[i].won ? 'W' : 'L'
+      streak = 1
+    } else if ((weeklyResults[i].won && streakType === 'W') || (!weeklyResults[i].won && streakType === 'L')) {
+      streak++
+    } else {
+      break
+    }
+  }
+  
+  const highScore = weeklyScores.length > 0 ? Math.max(...weeklyScores) : 0
+  const lowScore = weeklyScores.length > 0 ? Math.min(...weeklyScores) : 0
+  
+  teamDetailStats.value = {
+    ppg: ppg.toFixed(1),
+    highScore: highScore.toFixed(1),
+    lowScore: lowScore.toFixed(1),
+    totalPoints: team.points_for.toFixed(1),
+    pointsAgainst: team.points_against.toFixed(1),
+    pointDiff: pointDiff.toFixed(1),
+    winStreak: `${streakType}${streak}`,
+    weeklyResults
+  }
+  
+  // Build chart
+  teamDetailChartSeries.value = [
+    {
+      name: team.team_name,
+      data: weeklyScores,
+      color: '#f5c451'
+    },
+    {
+      name: 'League Average',
+      data: leagueAverages,
+      color: '#6b7280'
+    }
+  ]
+  
+  teamDetailChartOptions.value = {
+    chart: {
+      type: 'line',
+      toolbar: { show: false },
+      background: 'transparent',
+      animations: { enabled: true, speed: 500 }
+    },
+    stroke: { curve: 'smooth', width: [3, 2], dashArray: [0, 5] },
+    markers: { size: [5, 0], strokeWidth: 0 },
+    xaxis: {
+      categories: weeks.map(w => `Wk ${w}`),
+      labels: { style: { colors: '#8b8ea1' } },
+      axisBorder: { color: '#3a3d52' },
+      axisTicks: { color: '#3a3d52' }
+    },
+    yaxis: {
+      labels: { 
+        style: { colors: '#8b8ea1' },
+        formatter: (v: number) => v.toFixed(0)
+      }
+    },
+    grid: { borderColor: '#3a3d52', strokeDashArray: 4 },
+    legend: { 
+      show: true, 
+      position: 'top',
+      labels: { colors: '#8b8ea1' }
+    },
+    tooltip: { 
+      theme: 'dark',
+      y: { formatter: (v: number) => v.toFixed(1) + ' pts' }
+    }
+  }
+  
+  showTeamDetailModal.value = true
+}
+
+function closeTeamDetailModal() {
+  showTeamDetailModal.value = false
+  selectedTeamDetail.value = null
+}
 
 // Standings
 const standingsTeams = ref<TeamData[]>([])
@@ -855,23 +1411,19 @@ async function loadData() {
     // Leaders
     const byPts = [...teams].sort((a, b) => b.points_for - a.points_for)
     const byWins = [...teams].sort((a, b) => b.wins !== a.wins ? b.wins - a.wins : b.points_for - a.points_for)
-    const byPPG = [...teams].sort((a, b) => {
-      const aP = a.wins + a.losses > 0 ? a.points_for / (a.wins + a.losses) : 0
-      const bP = b.wins + b.losses > 0 ? b.points_for / (b.wins + b.losses) : 0
-      return bP - aP
-    })
+    const byAllPlay = [...teams].sort((a, b) => b.all_play_wins !== a.all_play_wins ? b.all_play_wins - a.all_play_wins : b.points_for - a.points_for)
     
     if (byPts[0]) {
       const t = byPts[0], ppg = t.wins + t.losses > 0 ? t.points_for / (t.wins + t.losses) : 0
-      leaders.value.mostPoints = { name: t.team_name, avatar: t.avatar_url, points: t.points_for, wins: t.wins, losses: t.losses, record: `${t.wins}-${t.losses}`, ppg }
+      leaders.value.mostPoints = { name: t.team_name, avatar: t.avatar_url, points: t.points_for, wins: t.wins, losses: t.losses, record: `${t.wins}-${t.losses}`, ppg, roster_id: t.roster_id }
     }
     if (byWins[0]) {
       const t = byWins[0], ppg = t.wins + t.losses > 0 ? t.points_for / (t.wins + t.losses) : 0
-      leaders.value.bestRecord = { name: t.team_name, avatar: t.avatar_url, points: t.points_for, wins: t.wins, losses: t.losses, record: `${t.wins}-${t.losses}`, ppg }
+      leaders.value.bestRecord = { name: t.team_name, avatar: t.avatar_url, points: t.points_for, wins: t.wins, losses: t.losses, record: `${t.wins}-${t.losses}`, ppg, roster_id: t.roster_id }
     }
-    if (byPPG[0]) {
-      const t = byPPG[0], ppg = t.wins + t.losses > 0 ? t.points_for / (t.wins + t.losses) : 0
-      leaders.value.highestPPG = { name: t.team_name, avatar: t.avatar_url, points: t.points_for, wins: t.wins, losses: t.losses, record: `${t.wins}-${t.losses}`, ppg }
+    if (byAllPlay[0]) {
+      const t = byAllPlay[0], ppg = t.wins + t.losses > 0 ? t.points_for / (t.wins + t.losses) : 0
+      leaders.value.bestAllPlay = { name: t.team_name, avatar: t.avatar_url, points: t.points_for, wins: t.wins, losses: t.losses, record: `${t.wins}-${t.losses}`, ppg, allPlayWins: t.all_play_wins, allPlayLosses: t.all_play_losses, roster_id: t.roster_id }
     }
     
     // Build overall chart

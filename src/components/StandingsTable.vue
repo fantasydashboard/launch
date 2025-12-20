@@ -11,7 +11,12 @@
       </tr>
     </thead>
     <tbody>
-      <tr v-for="team in teams" :key="team.roster_id">
+      <tr 
+        v-for="team in teams" 
+        :key="team.roster_id"
+        @click="$emit('team-click', team)"
+        class="cursor-pointer hover:bg-primary/5 transition-colors"
+      >
         <td>
           <div class="flex items-center justify-center">
             <span class="inline-flex items-center justify-center w-6 h-6 sm:w-8 sm:h-8 rounded-full bg-primary/10 text-primary font-bold text-xs sm:text-sm">
@@ -29,9 +34,14 @@
                 @error="handleImageError"
               />
             </div>
-            <span class="font-semibold text-gray-900 dark:text-white text-xs sm:text-sm">
-              {{ team.team_name }}
-            </span>
+            <div class="flex items-center gap-2">
+              <span class="font-semibold text-gray-900 dark:text-white text-xs sm:text-sm">
+                {{ team.team_name }}
+              </span>
+              <svg class="w-4 h-4 text-primary/50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+              </svg>
+            </div>
           </div>
         </td>
         <td>
@@ -79,6 +89,10 @@ interface Team {
 const props = defineProps<{
   teams: Team[]
   showHighlights?: boolean
+}>()
+
+defineEmits<{
+  (e: 'team-click', team: Team): void
 }>()
 
 // Find best and worst for each category
