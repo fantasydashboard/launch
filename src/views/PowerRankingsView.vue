@@ -507,91 +507,40 @@
               v-for="(team, idx) in sortedRosTeams" 
               :key="team.roster_id"
               :class="[
-                'p-3 rounded-xl transition-all',
+                'rounded-xl transition-all overflow-hidden',
                 isMyTeam(team.roster_id) 
                   ? 'bg-primary/10 border border-primary/30' 
-                  : 'hover:bg-dark-border/20'
+                  : 'border border-transparent hover:border-dark-border/50'
               ]"
             >
-              <!-- Desktop: Horizontal layout -->
-              <div class="hidden sm:flex items-center gap-3">
-                <!-- Rank -->
-                <div class="w-8 text-center">
-                  <span :class="[
-                    'font-bold text-lg',
-                    isMyTeam(team.roster_id) ? 'text-primary' : 'text-dark-textMuted'
-                  ]">{{ idx + 1 }}</span>
-                </div>
-                
-                <!-- Team Avatar & Name -->
-                <div class="flex items-center gap-2 w-40 flex-shrink-0">
-                  <div class="relative">
-                    <img 
-                      :src="team.avatar_url" 
-                      :alt="team.team_name"
-                      :class="[
-                        'w-8 h-8 rounded-full ring-2',
-                        isMyTeam(team.roster_id) ? 'ring-primary' : 'ring-cyan-500/50'
-                      ]"
-                      @error="handleImageError"
-                    />
-                    <div v-if="isMyTeam(team.roster_id)" class="absolute -top-1 -right-1 w-4 h-4 bg-primary rounded-full flex items-center justify-center">
-                      <span class="text-[8px] text-gray-900 font-bold">★</span>
-                    </div>
-                  </div>
-                  <span :class="[
-                    'font-medium text-sm truncate',
-                    isMyTeam(team.roster_id) ? 'text-primary' : 'text-dark-text'
-                  ]">{{ team.team_name }}</span>
-                </div>
-                
-                <!-- Stacked Bar Container - width varies based on team total relative to max -->
-                <div class="flex-1 flex items-center">
-                  <div 
-                    class="h-8 bg-dark-border/30 rounded-lg overflow-hidden flex"
-                    :style="{ width: getTeamBarWidthPercent(team) + '%' }"
-                  >
-                    <div 
-                      v-for="pos in ['QB', 'RB', 'WR', 'TE', 'FLEX']"
-                      :key="pos"
-                      class="h-full flex items-center justify-center text-xs font-bold text-white transition-all"
-                      :style="{ 
-                        width: getPositionWidthPercent(team, pos) + '%',
-                        backgroundColor: getPositionColor(pos)
-                      }"
-                      :title="`${pos}: ${(team.positionProjections?.[pos] || 0).toFixed(1)}`"
-                    >
-                      <span v-if="(team.positionProjections?.[pos] || 0) > 15">
-                        {{ (team.positionProjections?.[pos] || 0).toFixed(0) }}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-                
-                <!-- Total -->
-                <div class="w-20 text-right">
-                  <span :class="[
-                    'font-bold text-lg',
-                    isMyTeam(team.roster_id) ? 'text-primary' : 'text-cyan-400'
-                  ]">{{ getTeamRosTotal(team).toFixed(1) }}</span>
-                </div>
-              </div>
-              
-              <!-- Mobile: Stacked layout -->
-              <div class="sm:hidden">
-                <!-- Top row: Rank, Avatar, Name, Total -->
-                <div class="flex items-center gap-3 mb-3">
-                  <!-- Rank -->
+              <!-- Clickable Header Row -->
+              <div 
+                @click="toggleRosTeamExpanded(team)"
+                class="p-3 cursor-pointer hover:bg-dark-border/20 transition-colors"
+              >
+                <!-- Desktop: Horizontal layout -->
+                <div class="hidden sm:flex items-center gap-3">
+                  <!-- Expand indicator -->
                   <div class="w-6 text-center">
+                    <svg 
+                      :class="['w-4 h-4 transition-transform text-dark-textMuted', expandedRosTeams.has(team.roster_id) ? 'rotate-90' : '']" 
+                      fill="none" stroke="currentColor" viewBox="0 0 24 24"
+                    >
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+                    </svg>
+                  </div>
+                  
+                  <!-- Rank -->
+                  <div class="w-8 text-center">
                     <span :class="[
-                      'font-bold text-base',
+                      'font-bold text-lg',
                       isMyTeam(team.roster_id) ? 'text-primary' : 'text-dark-textMuted'
                     ]">{{ idx + 1 }}</span>
                   </div>
                   
                   <!-- Team Avatar & Name -->
-                  <div class="flex items-center gap-2 flex-1 min-w-0">
-                    <div class="relative flex-shrink-0">
+                  <div class="flex items-center gap-2 w-40 flex-shrink-0">
+                    <div class="relative">
                       <img 
                         :src="team.avatar_url" 
                         :alt="team.team_name"
@@ -611,8 +560,31 @@
                     ]">{{ team.team_name }}</span>
                   </div>
                   
+                  <!-- Stacked Bar Container - width varies based on team total relative to max -->
+                  <div class="flex-1 flex items-center">
+                    <div 
+                      class="h-8 bg-dark-border/30 rounded-lg overflow-hidden flex"
+                      :style="{ width: getTeamBarWidthPercent(team) + '%' }"
+                    >
+                      <div 
+                        v-for="pos in ['QB', 'RB', 'WR', 'TE', 'FLEX']"
+                        :key="pos"
+                        class="h-full flex items-center justify-center text-xs font-bold text-white transition-all"
+                        :style="{ 
+                          width: getPositionWidthPercent(team, pos) + '%',
+                          backgroundColor: getPositionColor(pos)
+                        }"
+                        :title="`${pos}: ${(team.positionProjections?.[pos] || 0).toFixed(1)}`"
+                      >
+                        <span v-if="(team.positionProjections?.[pos] || 0) > 15">
+                          {{ (team.positionProjections?.[pos] || 0).toFixed(0) }}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                  
                   <!-- Total -->
-                  <div class="text-right flex-shrink-0">
+                  <div class="w-20 text-right">
                     <span :class="[
                       'font-bold text-lg',
                       isMyTeam(team.roster_id) ? 'text-primary' : 'text-cyan-400'
@@ -620,24 +592,177 @@
                   </div>
                 </div>
                 
-                <!-- Bottom row: Stacked bar with variable width based on total -->
-                <div class="ml-9">
-                  <div 
-                    class="h-7 bg-dark-border/30 rounded-lg overflow-hidden flex"
-                    :style="{ width: getTeamBarWidthPercent(team) + '%' }"
-                  >
+                <!-- Mobile: Stacked layout -->
+                <div class="sm:hidden">
+                  <!-- Top row: Expand, Rank, Avatar, Name, Total -->
+                  <div class="flex items-center gap-2 mb-3">
+                    <!-- Expand indicator -->
+                    <div class="w-5">
+                      <svg 
+                        :class="['w-4 h-4 transition-transform text-dark-textMuted', expandedRosTeams.has(team.roster_id) ? 'rotate-90' : '']" 
+                        fill="none" stroke="currentColor" viewBox="0 0 24 24"
+                      >
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+                      </svg>
+                    </div>
+                    
+                    <!-- Rank -->
+                    <div class="w-6 text-center">
+                      <span :class="[
+                        'font-bold text-base',
+                        isMyTeam(team.roster_id) ? 'text-primary' : 'text-dark-textMuted'
+                      ]">{{ idx + 1 }}</span>
+                    </div>
+                    
+                    <!-- Team Avatar & Name -->
+                    <div class="flex items-center gap-2 flex-1 min-w-0">
+                      <div class="relative flex-shrink-0">
+                        <img 
+                          :src="team.avatar_url" 
+                          :alt="team.team_name"
+                          :class="[
+                            'w-8 h-8 rounded-full ring-2',
+                            isMyTeam(team.roster_id) ? 'ring-primary' : 'ring-cyan-500/50'
+                          ]"
+                          @error="handleImageError"
+                        />
+                        <div v-if="isMyTeam(team.roster_id)" class="absolute -top-1 -right-1 w-4 h-4 bg-primary rounded-full flex items-center justify-center">
+                          <span class="text-[8px] text-gray-900 font-bold">★</span>
+                        </div>
+                      </div>
+                      <span :class="[
+                        'font-medium text-sm truncate',
+                        isMyTeam(team.roster_id) ? 'text-primary' : 'text-dark-text'
+                      ]">{{ team.team_name }}</span>
+                    </div>
+                    
+                    <!-- Total -->
+                    <div class="text-right flex-shrink-0">
+                      <span :class="[
+                        'font-bold text-lg',
+                        isMyTeam(team.roster_id) ? 'text-primary' : 'text-cyan-400'
+                      ]">{{ getTeamRosTotal(team).toFixed(1) }}</span>
+                    </div>
+                  </div>
+                  
+                  <!-- Bottom row: Stacked bar with variable width based on total -->
+                  <div class="ml-11">
                     <div 
-                      v-for="pos in ['QB', 'RB', 'WR', 'TE', 'FLEX']"
-                      :key="pos"
-                      class="h-full flex items-center justify-center text-xs font-bold text-white transition-all"
-                      :style="{ 
-                        width: getPositionWidthPercent(team, pos) + '%',
-                        backgroundColor: getPositionColor(pos)
-                      }"
+                      class="h-7 bg-dark-border/30 rounded-lg overflow-hidden flex"
+                      :style="{ width: getTeamBarWidthPercent(team) + '%' }"
                     >
-                      <span v-if="(team.positionProjections?.[pos] || 0) > 12" class="text-[10px]">
-                        {{ (team.positionProjections?.[pos] || 0).toFixed(0) }}
-                      </span>
+                      <div 
+                        v-for="pos in ['QB', 'RB', 'WR', 'TE', 'FLEX']"
+                        :key="pos"
+                        class="h-full flex items-center justify-center text-xs font-bold text-white transition-all"
+                        :style="{ 
+                          width: getPositionWidthPercent(team, pos) + '%',
+                          backgroundColor: getPositionColor(pos)
+                        }"
+                      >
+                        <span v-if="(team.positionProjections?.[pos] || 0) > 12" class="text-[10px]">
+                          {{ (team.positionProjections?.[pos] || 0).toFixed(0) }}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              
+              <!-- Expanded Detail Section -->
+              <div 
+                v-if="expandedRosTeams.has(team.roster_id)"
+                class="border-t border-dark-border/30 bg-dark-bg/50"
+              >
+                <!-- Loading state -->
+                <div v-if="!teamDetailedProjections.has(team.roster_id)" class="p-6 text-center">
+                  <svg class="w-6 h-6 animate-spin mx-auto text-primary" fill="none" viewBox="0 0 24 24">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                  <p class="text-dark-textMuted text-sm mt-2">Loading player projections...</p>
+                </div>
+                
+                <!-- Detailed projections -->
+                <div v-else class="p-4">
+                  <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                    <!-- Starters by Position -->
+                    <div>
+                      <h4 class="text-sm font-semibold text-dark-textMuted uppercase tracking-wider mb-3 flex items-center gap-2">
+                        <span class="text-green-400">●</span> Projected Starters
+                      </h4>
+                      <div class="space-y-2">
+                        <div 
+                          v-for="position in ['QB', 'RB', 'WR', 'TE', 'FLEX']" 
+                          :key="position"
+                          class="space-y-1"
+                        >
+                          <div 
+                            v-for="player in (teamDetailedProjections.get(team.roster_id)?.byPosition[position] || []).filter(p => p.isStarter)"
+                            :key="player.playerId"
+                            class="flex items-center gap-2 p-2 rounded-lg bg-dark-border/20"
+                          >
+                            <span 
+                              class="text-[10px] font-bold px-1.5 py-0.5 rounded text-white"
+                              :style="{ backgroundColor: getPositionColor(position) }"
+                            >{{ player.slotPosition }}</span>
+                            <span class="flex-1 text-sm text-dark-text truncate">{{ player.name }}</span>
+                            <span class="text-xs text-dark-textMuted">{{ player.team }}</span>
+                            <div class="text-right">
+                              <span class="text-sm font-semibold text-cyan-400">{{ player.rosProjection }}</span>
+                              <span class="text-xs text-dark-textMuted ml-1">({{ player.weeklyAvg }}/wk)</span>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                    
+                    <!-- Bench & Stats -->
+                    <div>
+                      <h4 class="text-sm font-semibold text-dark-textMuted uppercase tracking-wider mb-3 flex items-center gap-2">
+                        <span class="text-yellow-400">●</span> Bench Depth
+                      </h4>
+                      <div class="space-y-1 max-h-48 overflow-y-auto">
+                        <div 
+                          v-for="player in (teamDetailedProjections.get(team.roster_id)?.bench || [])"
+                          :key="player.playerId"
+                          class="flex items-center gap-2 p-2 rounded-lg bg-dark-border/10"
+                        >
+                          <span 
+                            class="text-[10px] font-bold px-1.5 py-0.5 rounded text-white opacity-60"
+                            :style="{ backgroundColor: getPositionColor(player.position) }"
+                          >{{ player.position }}</span>
+                          <span class="flex-1 text-sm text-dark-textMuted truncate">{{ player.name }}</span>
+                          <span class="text-xs text-dark-textMuted">{{ player.team }}</span>
+                          <span class="text-sm text-dark-textMuted">{{ player.rosProjection }}</span>
+                        </div>
+                        <div v-if="(teamDetailedProjections.get(team.roster_id)?.bench || []).length === 0" class="text-sm text-dark-textMuted p-2">
+                          No bench players
+                        </div>
+                      </div>
+                      
+                      <!-- Position Summary -->
+                      <h4 class="text-sm font-semibold text-dark-textMuted uppercase tracking-wider mt-4 mb-3">
+                        Position Breakdown
+                      </h4>
+                      <div class="grid grid-cols-5 gap-2">
+                        <div 
+                          v-for="pos in ['QB', 'RB', 'WR', 'TE', 'FLEX']"
+                          :key="pos"
+                          class="text-center p-2 rounded-lg"
+                          :style="{ backgroundColor: getPositionColor(pos) + '20' }"
+                        >
+                          <div class="text-xs font-bold" :style="{ color: getPositionColor(pos) }">{{ pos }}</div>
+                          <div class="text-sm font-semibold text-dark-text">
+                            {{ (team.positionProjections?.[pos] || 0).toFixed(1) }}
+                          </div>
+                        </div>
+                      </div>
+                      
+                      <!-- Weeks remaining note -->
+                      <p class="text-xs text-dark-textMuted mt-3">
+                        📅 {{ teamDetailedProjections.get(team.roster_id)?.starters[0]?.weeksRemaining || 0 }} weeks remaining in regular season
+                      </p>
                     </div>
                   </div>
                 </div>
@@ -1116,7 +1241,7 @@ import { useLeagueStore } from '@/stores/league'
 import { sleeperService } from '@/services/sleeper'
 import type { SleeperRoster, SleeperMatchup } from '@/types/sleeper'
 import { calculateAllPlayRecord } from '@/utils/calculations'
-import { getOptimalLineupProjection, calculateAverageProjection, getPositionProjections } from '@/utils/projections'
+import { getOptimalLineupProjection, calculateAverageProjection, getPositionProjections, getDetailedPositionProjections, type DetailedPositionProjections } from '@/utils/projections'
 import html2canvas from 'html2canvas'
 import { 
   DEFAULT_POWER_FACTORS, 
@@ -1229,6 +1354,10 @@ const positionSortColumn = ref<string>('ROS_TOTAL')
 const positionSortDirection = ref<'asc' | 'desc'>('desc')
 const downloadFormat = ref<'png' | 'gif'>('png')
 const isGeneratingDownload = ref(false)
+
+// ROS Projections expanded team state
+const expandedRosTeams = ref<Set<number>>(new Set())
+const teamDetailedProjections = ref<Map<number, DetailedPositionProjections>>(new Map())
 
 // Power Rankings Settings State
 const showPowerRankingSettings = ref(false)
@@ -1709,6 +1838,68 @@ const sortedRosTeams = computed(() => {
 function getTeamRosTotal(team: any): number {
   if (!team.positionProjections) return 0
   return Object.values(team.positionProjections).reduce((sum: number, v) => sum + (v as number), 0)
+}
+
+// Toggle ROS team expansion
+async function toggleRosTeamExpanded(team: any) {
+  const rosterId = team.roster_id
+  
+  if (expandedRosTeams.value.has(rosterId)) {
+    expandedRosTeams.value.delete(rosterId)
+    expandedRosTeams.value = new Set(expandedRosTeams.value) // Trigger reactivity
+    return
+  }
+  
+  // Load detailed projections if not already cached
+  if (!teamDetailedProjections.value.has(rosterId)) {
+    try {
+      const rosters = leagueStore.historicalRosters.get(selectedSeason.value) || []
+      const roster = rosters.find(r => r.roster_id === rosterId)
+      
+      if (roster && roster.players) {
+        const league = leagueStore.leagues.find(l => l.league_id === leagueStore.activeLeagueId)
+        const players = leagueStore.players
+        const currentWeek = parseInt(selectedWeek.value)
+        const settings = league?.settings
+        const playoffStart = settings?.playoff_week_start || 15
+        const regularSeasonEnd = playoffStart - 1
+        
+        // Get remaining weeks for projections
+        const remainingWeeks: number[] = []
+        for (let w = currentWeek + 1; w <= regularSeasonEnd; w++) {
+          remainingWeeks.push(w)
+        }
+        
+        // Fetch projections for remaining weeks
+        const weekProjections = new Map<number, Map<string, any>>()
+        await Promise.all(remainingWeeks.map(async (week) => {
+          try {
+            const projections = await sleeperService.getProjections(selectedSeason.value, week)
+            weekProjections.set(week, projections)
+          } catch (e) {
+            console.warn(`Failed to get projections for week ${week}`)
+          }
+        }))
+        
+        // Calculate detailed projections
+        const detailed = getDetailedPositionProjections(
+          roster.players,
+          weekProjections,
+          players,
+          league?.roster_positions || [],
+          'pts_ppr'
+        )
+        
+        teamDetailedProjections.value.set(rosterId, detailed)
+        teamDetailedProjections.value = new Map(teamDetailedProjections.value) // Trigger reactivity
+      }
+    } catch (error) {
+      console.error('Error loading detailed projections:', error)
+    }
+  }
+  
+  expandedRosTeams.value.add(rosterId)
+  expandedRosTeams.value = new Set(expandedRosTeams.value) // Trigger reactivity
 }
 
 // Get width percentage for a position bar segment
