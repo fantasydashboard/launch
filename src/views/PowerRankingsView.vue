@@ -478,7 +478,7 @@
             <!-- Position color legend - below title on mobile -->
             <div class="flex flex-wrap items-center gap-3 sm:gap-4 text-xs">
               <div class="flex items-center gap-1.5">
-                <div class="w-3 h-3 rounded" style="background-color: #f59e0b;"></div>
+                <div class="w-3 h-3 rounded" style="background-color: #ef4444;"></div>
                 <span class="text-dark-textMuted">QB</span>
               </div>
               <div class="flex items-center gap-1.5">
@@ -490,7 +490,7 @@
                 <span class="text-dark-textMuted">WR</span>
               </div>
               <div class="flex items-center gap-1.5">
-                <div class="w-3 h-3 rounded" style="background-color: #8b5cf6;"></div>
+                <div class="w-3 h-3 rounded" style="background-color: #f59e0b;"></div>
                 <span class="text-dark-textMuted">TE</span>
               </div>
               <div class="flex items-center gap-1.5">
@@ -774,10 +774,10 @@
                             <span 
                               :class="[
                                 'text-[10px] font-bold px-2 py-0.5 rounded-full',
-                                getPlayerRankClass(getPlayerRankOnTeam(team.roster_id, player.playerId), teamDetailedProjections.get(team.roster_id)?.allPlayers?.length || 1)
+                                getPositionRankClass(player.positionRank || 1, getPositionPlayerCount(team.roster_id, player.position))
                               ]"
                             >
-                              #{{ getPlayerRankOnTeam(team.roster_id, player.playerId) }} on team
+                              {{ player.position }}{{ player.positionRank || '?' }}
                             </span>
                           </div>
                         </div>
@@ -1923,15 +1923,15 @@ async function toggleRosTeamExpanded(team: any) {
         const league = leagueStore.leagues.find(l => l.league_id === leagueStore.activeLeagueId)
         const players = leagueStore.players
         const currentWeek = parseInt(selectedWeek.value)
-        const settings = league?.settings
-        const playoffStart = settings?.playoff_week_start || 15
-        const regularSeasonEnd = playoffStart - 1
         
-        // Get remaining weeks for projections
+        // Get remaining weeks for projections (through week 17)
         const remainingWeeks: number[] = []
-        for (let w = currentWeek + 1; w <= regularSeasonEnd; w++) {
+        for (let w = currentWeek + 1; w <= 17; w++) {
           remainingWeeks.push(w)
         }
+        
+        console.log('Current week:', currentWeek)
+        console.log('Remaining weeks:', remainingWeeks)
         
         // Fetch projections for remaining weeks
         const weekProjections = new Map<number, Map<string, any>>()
@@ -1987,10 +1987,10 @@ function getPositionWidthPercent(team: any, position: string): number {
 // Get color for position in ROS chart
 function getPositionColor(position: string): string {
   const colors: Record<string, string> = {
-    'QB': '#f59e0b',   // amber-500
+    'QB': '#ef4444',   // red-500
     'RB': '#10b981',   // emerald-500
     'WR': '#3b82f6',   // blue-500
-    'TE': '#8b5cf6',   // violet-500
+    'TE': '#f59e0b',   // amber-500 (was QB's color)
     'FLEX': '#ec4899'  // pink-500
   }
   return colors[position] || '#6b7280'
@@ -2029,6 +2029,21 @@ function getPlayerRankClass(rank: number, total: number): string {
   if (percentile <= 0.5) return 'bg-blue-500/20 text-blue-400'
   if (percentile <= 0.75) return 'bg-yellow-500/20 text-yellow-400'
   return 'bg-dark-border text-dark-textMuted'
+}
+
+// Get class for position rank badge (simpler - top is green, rest graduated)
+function getPositionRankClass(rank: number, total: number): string {
+  if (rank === 1) return 'bg-green-500/20 text-green-400'
+  if (rank === 2) return 'bg-blue-500/20 text-blue-400'
+  if (rank === 3) return 'bg-yellow-500/20 text-yellow-400'
+  return 'bg-dark-border text-dark-textMuted'
+}
+
+// Get count of players at a position on a team
+function getPositionPlayerCount(rosterId: number, position: string): number {
+  const projections = teamDetailedProjections.value.get(rosterId)
+  if (!projections?.allPlayers) return 1
+  return projections.allPlayers.filter(p => p.position === position).length
 }
 
 // Handle player image error

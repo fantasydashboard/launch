@@ -290,6 +290,7 @@ export interface DetailedPlayerProjection {
   age?: number
   yearsExp?: number
   injuryStatus?: string
+  positionRank?: number // Rank among all players at this position on the team
 }
 
 export interface DetailedPositionProjections {
@@ -464,6 +465,25 @@ export function getDetailedPositionProjections(
   
   // Create allPlayers list sorted by projection (for ranking)
   const allPlayers = [...starters, ...bench].sort((a, b) => b.rosProjection - a.rosProjection)
+  
+  // Calculate position ranks for all players
+  const positionRankCounters: Record<string, number> = {}
+  
+  // Group all players by position and sort by projection
+  const allPlayersByPosition: Record<string, DetailedPlayerProjection[]> = {}
+  allPlayers.forEach(player => {
+    const pos = player.position
+    if (!allPlayersByPosition[pos]) allPlayersByPosition[pos] = []
+    allPlayersByPosition[pos].push(player)
+  })
+  
+  // Assign position ranks
+  Object.keys(allPlayersByPosition).forEach(pos => {
+    allPlayersByPosition[pos].sort((a, b) => b.rosProjection - a.rosProjection)
+    allPlayersByPosition[pos].forEach((player, idx) => {
+      player.positionRank = idx + 1
+    })
+  })
   
   return { starters, bench, byPosition, totals, allPlayers }
 }
