@@ -313,6 +313,10 @@ export function getDetailedPositionProjections(
   const weeks = Array.from(weekProjections.keys())
   const weeksRemaining = weeks.length
   
+  // Default roster positions if not provided
+  const defaultRosterPositions = ['QB', 'RB', 'RB', 'WR', 'WR', 'TE', 'FLEX', 'FLEX', 'BN', 'BN', 'BN', 'BN', 'BN', 'BN']
+  const effectiveRosterPositions = rosterPositions && rosterPositions.length > 0 ? rosterPositions : defaultRosterPositions
+  
   // Calculate total ROS projection per player
   const playerProjections = new Map<string, number>()
   
@@ -352,7 +356,7 @@ export function getDetailedPositionProjections(
   
   // Count required starters by position
   const positionCounts = new Map<string, number>()
-  rosterPositions.forEach(pos => {
+  effectiveRosterPositions.forEach(pos => {
     if (pos === 'BN' || pos === 'IR') return
     positionCounts.set(pos, (positionCounts.get(pos) || 0) + 1)
   })
@@ -368,7 +372,7 @@ export function getDetailedPositionProjections(
   }
   
   const createPlayerDetail = (
-    playerId: string, 
+    playerId: string,
     player: any, 
     projection: number, 
     isStarter: boolean,

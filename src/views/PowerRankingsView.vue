@@ -1944,6 +1944,11 @@ async function toggleRosTeamExpanded(team: any) {
           }
         }))
         
+        console.log('Roster positions:', league?.roster_positions)
+        console.log('Week projections size:', weekProjections.size)
+        console.log('Players count:', Object.keys(players).length)
+        console.log('Roster players:', roster.players)
+        
         // Calculate detailed projections
         const detailed = getDetailedPositionProjections(
           roster.players,
@@ -1952,6 +1957,11 @@ async function toggleRosTeamExpanded(team: any) {
           league?.roster_positions || [],
           'pts_ppr'
         )
+        
+        console.log('Detailed projections:', detailed)
+        console.log('Starters:', detailed.starters.length)
+        console.log('Bench:', detailed.bench.length)
+        console.log('byPosition:', detailed.byPosition)
         
         teamDetailedProjections.value.set(rosterId, detailed)
         teamDetailedProjections.value = new Map(teamDetailedProjections.value) // Trigger reactivity
