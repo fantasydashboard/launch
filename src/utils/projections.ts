@@ -286,6 +286,10 @@ export interface DetailedPlayerProjection {
   weeksRemaining: number
   isStarter: boolean
   slotPosition: string // QB, RB1, RB2, WR1, WR2, TE, FLEX, etc.
+  headshot?: string
+  age?: number
+  yearsExp?: number
+  injuryStatus?: string
 }
 
 export interface DetailedPositionProjections {
@@ -293,6 +297,7 @@ export interface DetailedPositionProjections {
   bench: DetailedPlayerProjection[]
   byPosition: Record<string, DetailedPlayerProjection[]>
   totals: Record<string, number>
+  allPlayers: DetailedPlayerProjection[] // All players sorted by projection
 }
 
 /**
@@ -370,14 +375,18 @@ export function getDetailedPositionProjections(
     slotPosition: string
   ): DetailedPlayerProjection => ({
     playerId,
-    name: player.full_name || player.first_name + ' ' + player.last_name || 'Unknown',
+    name: player.full_name || (player.first_name && player.last_name ? player.first_name + ' ' + player.last_name : 'Unknown'),
     position: player.position || 'UNKNOWN',
     team: player.team || 'FA',
     rosProjection: Math.round(projection * 10) / 10,
     weeklyAvg: weeksRemaining > 0 ? Math.round((projection / weeksRemaining) * 10) / 10 : 0,
     weeksRemaining,
     isStarter,
-    slotPosition
+    slotPosition,
+    headshot: playerId ? `https://sleepercdn.com/content/nfl/players/thumb/${playerId}.jpg` : undefined,
+    age: player.age,
+    yearsExp: player.years_exp,
+    injuryStatus: player.injury_status
   })
   
   // Fill specific positions first
@@ -449,5 +458,8 @@ export function getDetailedPositionProjections(
   // Sort bench by projection
   bench.sort((a, b) => b.rosProjection - a.rosProjection)
   
-  return { starters, bench, byPosition, totals }
+  // Create allPlayers list sorted by projection (for ranking)
+  const allPlayers = [...starters, ...bench].sort((a, b) => b.rosProjection - a.rosProjection)
+  
+  return { starters, bench, byPosition, totals, allPlayers }
 }

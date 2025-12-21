@@ -669,7 +669,7 @@
                 </div>
               </div>
               
-              <!-- Expanded Detail Section -->
+              <!-- Expanded Detail Section - Player Cards by Position -->
               <div 
                 v-if="expandedRosTeams.has(team.roster_id)"
                 class="border-t border-dark-border/30 bg-dark-bg/50"
@@ -683,86 +683,149 @@
                   <p class="text-dark-textMuted text-sm mt-2">Loading player projections...</p>
                 </div>
                 
-                <!-- Detailed projections -->
+                <!-- Player Cards by Position (matching stacked bar layout) -->
                 <div v-else class="p-4">
-                  <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                    <!-- Starters by Position -->
-                    <div>
-                      <h4 class="text-sm font-semibold text-dark-textMuted uppercase tracking-wider mb-3 flex items-center gap-2">
-                        <span class="text-green-400">●</span> Projected Starters
-                      </h4>
+                  <!-- Weeks remaining note -->
+                  <div class="flex items-center justify-between mb-4">
+                    <p class="text-sm text-dark-textMuted">
+                      📅 <span class="font-medium text-dark-text">{{ teamDetailedProjections.get(team.roster_id)?.starters[0]?.weeksRemaining || 0 }} weeks</span> remaining in regular season
+                    </p>
+                    <div class="flex items-center gap-2 text-xs text-dark-textMuted">
+                      <span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-green-500"></span> Starter</span>
+                      <span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-gray-500"></span> Bench</span>
+                    </div>
+                  </div>
+                  
+                  <!-- Position columns - same order as stacked bar -->
+                  <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3">
+                    <div 
+                      v-for="pos in ['QB', 'RB', 'WR', 'TE', 'FLEX']"
+                      :key="pos"
+                      class="space-y-2"
+                    >
+                      <!-- Position Header -->
+                      <div 
+                        class="text-center py-2 rounded-lg font-bold text-sm text-white"
+                        :style="{ backgroundColor: getPositionColor(pos) }"
+                      >
+                        {{ pos }}
+                        <span class="opacity-75 ml-1">({{ (team.positionProjections?.[pos] || 0).toFixed(0) }})</span>
+                      </div>
+                      
+                      <!-- Player Cards for this position -->
                       <div class="space-y-2">
                         <div 
-                          v-for="position in ['QB', 'RB', 'WR', 'TE', 'FLEX']" 
-                          :key="position"
-                          class="space-y-1"
+                          v-for="(player, playerIdx) in getPlayersForPosition(team.roster_id, pos)"
+                          :key="player.playerId"
+                          :class="[
+                            'rounded-lg p-2 transition-all',
+                            player.isStarter 
+                              ? 'bg-dark-card border border-dark-border' 
+                              : 'bg-dark-border/20 border border-transparent opacity-70'
+                          ]"
                         >
-                          <div 
-                            v-for="player in (teamDetailedProjections.get(team.roster_id)?.byPosition[position] || []).filter(p => p.isStarter)"
-                            :key="player.playerId"
-                            class="flex items-center gap-2 p-2 rounded-lg bg-dark-border/20"
-                          >
-                            <span 
-                              class="text-[10px] font-bold px-1.5 py-0.5 rounded text-white"
-                              :style="{ backgroundColor: getPositionColor(position) }"
-                            >{{ player.slotPosition }}</span>
-                            <span class="flex-1 text-sm text-dark-text truncate">{{ player.name }}</span>
-                            <span class="text-xs text-dark-textMuted">{{ player.team }}</span>
-                            <div class="text-right">
-                              <span class="text-sm font-semibold text-cyan-400">{{ player.rosProjection }}</span>
-                              <span class="text-xs text-dark-textMuted ml-1">({{ player.weeklyAvg }}/wk)</span>
+                          <!-- Player Photo & Basic Info -->
+                          <div class="flex items-center gap-2 mb-2">
+                            <div class="relative">
+                              <img 
+                                :src="player.headshot" 
+                                :alt="player.name"
+                                class="w-10 h-10 rounded-full object-cover bg-dark-border"
+                                @error="handlePlayerImageError"
+                              />
+                              <!-- Starter indicator -->
+                              <div 
+                                v-if="player.isStarter"
+                                class="absolute -top-1 -right-1 w-4 h-4 rounded-full flex items-center justify-center text-[8px] font-bold text-white"
+                                :style="{ backgroundColor: getPositionColor(pos) }"
+                              >
+                                {{ playerIdx + 1 }}
+                              </div>
+                            </div>
+                            <div class="flex-1 min-w-0">
+                              <div class="text-xs font-semibold text-dark-text truncate">{{ player.name }}</div>
+                              <div class="flex items-center gap-1 text-[10px] text-dark-textMuted">
+                                <span>{{ player.team }}</span>
+                                <span v-if="player.injuryStatus" :class="[
+                                  'px-1 rounded font-medium',
+                                  player.injuryStatus === 'Out' ? 'bg-red-500/20 text-red-400' :
+                                  player.injuryStatus === 'Doubtful' ? 'bg-orange-500/20 text-orange-400' :
+                                  player.injuryStatus === 'Questionable' ? 'bg-yellow-500/20 text-yellow-400' :
+                                  'bg-blue-500/20 text-blue-400'
+                                ]">{{ player.injuryStatus }}</span>
+                              </div>
                             </div>
                           </div>
+                          
+                          <!-- Projection Stats -->
+                          <div class="grid grid-cols-2 gap-1 text-center">
+                            <div class="bg-dark-bg/50 rounded p-1">
+                              <div class="text-[10px] text-dark-textMuted uppercase">ROS</div>
+                              <div class="text-sm font-bold text-cyan-400">{{ player.rosProjection }}</div>
+                            </div>
+                            <div class="bg-dark-bg/50 rounded p-1">
+                              <div class="text-[10px] text-dark-textMuted uppercase">Per Wk</div>
+                              <div class="text-sm font-semibold text-dark-text">{{ player.weeklyAvg }}</div>
+                            </div>
+                          </div>
+                          
+                          <!-- Rank Badge -->
+                          <div class="mt-2 flex items-center justify-center gap-1">
+                            <span 
+                              :class="[
+                                'text-[10px] font-bold px-2 py-0.5 rounded-full',
+                                getPlayerRankClass(getPlayerRankOnTeam(team.roster_id, player.playerId), teamDetailedProjections.get(team.roster_id)?.allPlayers?.length || 1)
+                              ]"
+                            >
+                              #{{ getPlayerRankOnTeam(team.roster_id, player.playerId) }} on team
+                            </span>
+                          </div>
+                        </div>
+                        
+                        <!-- Empty state for position -->
+                        <div 
+                          v-if="getPlayersForPosition(team.roster_id, pos).length === 0"
+                          class="text-center py-4 text-xs text-dark-textMuted"
+                        >
+                          No {{ pos }} players
                         </div>
                       </div>
                     </div>
-                    
-                    <!-- Bench & Stats -->
-                    <div>
-                      <h4 class="text-sm font-semibold text-dark-textMuted uppercase tracking-wider mb-3 flex items-center gap-2">
-                        <span class="text-yellow-400">●</span> Bench Depth
+                  </div>
+                  
+                  <!-- Bench Players Section -->
+                  <div class="mt-4 pt-4 border-t border-dark-border/30">
+                    <div class="flex items-center justify-between mb-3">
+                      <h4 class="text-sm font-semibold text-dark-textMuted uppercase tracking-wider">
+                        Bench Depth
                       </h4>
-                      <div class="space-y-1 max-h-48 overflow-y-auto">
-                        <div 
-                          v-for="player in (teamDetailedProjections.get(team.roster_id)?.bench || [])"
-                          :key="player.playerId"
-                          class="flex items-center gap-2 p-2 rounded-lg bg-dark-border/10"
-                        >
-                          <span 
-                            class="text-[10px] font-bold px-1.5 py-0.5 rounded text-white opacity-60"
-                            :style="{ backgroundColor: getPositionColor(player.position) }"
-                          >{{ player.position }}</span>
-                          <span class="flex-1 text-sm text-dark-textMuted truncate">{{ player.name }}</span>
-                          <span class="text-xs text-dark-textMuted">{{ player.team }}</span>
-                          <span class="text-sm text-dark-textMuted">{{ player.rosProjection }}</span>
-                        </div>
-                        <div v-if="(teamDetailedProjections.get(team.roster_id)?.bench || []).length === 0" class="text-sm text-dark-textMuted p-2">
-                          No bench players
-                        </div>
-                      </div>
-                      
-                      <!-- Position Summary -->
-                      <h4 class="text-sm font-semibold text-dark-textMuted uppercase tracking-wider mt-4 mb-3">
-                        Position Breakdown
-                      </h4>
-                      <div class="grid grid-cols-5 gap-2">
-                        <div 
-                          v-for="pos in ['QB', 'RB', 'WR', 'TE', 'FLEX']"
-                          :key="pos"
-                          class="text-center p-2 rounded-lg"
-                          :style="{ backgroundColor: getPositionColor(pos) + '20' }"
-                        >
-                          <div class="text-xs font-bold" :style="{ color: getPositionColor(pos) }">{{ pos }}</div>
-                          <div class="text-sm font-semibold text-dark-text">
-                            {{ (team.positionProjections?.[pos] || 0).toFixed(1) }}
+                      <span class="text-xs text-dark-textMuted">
+                        {{ (teamDetailedProjections.get(team.roster_id)?.bench || []).length }} players
+                      </span>
+                    </div>
+                    <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-2">
+                      <div 
+                        v-for="player in (teamDetailedProjections.get(team.roster_id)?.bench || []).slice(0, 12)"
+                        :key="player.playerId"
+                        class="flex items-center gap-2 p-2 rounded-lg bg-dark-border/20"
+                      >
+                        <img 
+                          :src="player.headshot" 
+                          :alt="player.name"
+                          class="w-8 h-8 rounded-full object-cover bg-dark-border"
+                          @error="handlePlayerImageError"
+                        />
+                        <div class="flex-1 min-w-0">
+                          <div class="text-xs font-medium text-dark-textMuted truncate">{{ player.name }}</div>
+                          <div class="flex items-center gap-1">
+                            <span 
+                              class="text-[10px] font-bold px-1 rounded text-white"
+                              :style="{ backgroundColor: getPositionColor(player.position) }"
+                            >{{ player.position }}</span>
+                            <span class="text-[10px] text-dark-textMuted">{{ player.rosProjection }} pts</span>
                           </div>
                         </div>
                       </div>
-                      
-                      <!-- Weeks remaining note -->
-                      <p class="text-xs text-dark-textMuted mt-3">
-                        📅 {{ teamDetailedProjections.get(team.roster_id)?.starters[0]?.weeksRemaining || 0 }} weeks remaining in regular season
-                      </p>
                     </div>
                   </div>
                 </div>
@@ -1921,6 +1984,47 @@ function getPositionColor(position: string): string {
     'FLEX': '#ec4899'  // pink-500
   }
   return colors[position] || '#6b7280'
+}
+
+// Get players for a specific position (starters first, then bench)
+function getPlayersForPosition(rosterId: number, position: string): any[] {
+  const projections = teamDetailedProjections.value.get(rosterId)
+  if (!projections) return []
+  
+  const positionPlayers = projections.byPosition[position] || []
+  
+  // For FLEX, we need to find the FLEX starters from all positions
+  if (position === 'FLEX') {
+    const flexStarters = projections.starters.filter(p => p.slotPosition === 'FLEX')
+    return flexStarters
+  }
+  
+  // Return starters for this position
+  return positionPlayers.filter(p => p.isStarter)
+}
+
+// Get player's rank on their team (by ROS projection)
+function getPlayerRankOnTeam(rosterId: number, playerId: string): number {
+  const projections = teamDetailedProjections.value.get(rosterId)
+  if (!projections?.allPlayers) return 0
+  
+  const index = projections.allPlayers.findIndex(p => p.playerId === playerId)
+  return index >= 0 ? index + 1 : 0
+}
+
+// Get class for player rank badge
+function getPlayerRankClass(rank: number, total: number): string {
+  const percentile = rank / total
+  if (percentile <= 0.25) return 'bg-green-500/20 text-green-400'
+  if (percentile <= 0.5) return 'bg-blue-500/20 text-blue-400'
+  if (percentile <= 0.75) return 'bg-yellow-500/20 text-yellow-400'
+  return 'bg-dark-border text-dark-textMuted'
+}
+
+// Handle player image error
+function handlePlayerImageError(event: Event) {
+  const img = event.target as HTMLImageElement
+  img.src = 'https://sleepercdn.com/images/v2/icons/player_default.webp'
 }
 
 // Calculate avatar position for chart overlay
