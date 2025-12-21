@@ -256,17 +256,17 @@
         </div>
         
         <div class="card-body relative">
-          <!-- Mobile: Scrollable container - scrolls to right on mount -->
+          <!-- Mobile: Scrollable container - scrolls to right on mount, NO vertical scroll -->
           <div 
             ref="trendChartScrollRef"
-            class="overflow-x-auto scrollbar-thin -mx-4 px-4 sm:mx-0 sm:px-0"
+            class="overflow-x-auto overflow-y-hidden scrollbar-thin -mx-4 px-4 sm:mx-0 sm:px-0"
           >
             <div class="relative" :style="{ minWidth: getMobileChartWidth(historicalWeeks.length) }">
               <apexchart
                 ref="trendChart"
                 v-if="chartOptions"
                 type="line"
-                :height="isMobile ? 400 : 450"
+                :height="getChartHeight()"
                 :options="getMobileChartOptions(chartOptions)"
                 :series="chartSeries"
               />
@@ -275,7 +275,7 @@
                 v-for="(team, idx) in powerRankings" 
                 :key="'avatar-' + team.roster_id"
                 class="absolute pointer-events-none"
-                :style="getAvatarPosition(team, idx, isMobile ? 400 : 450)"
+                :style="getAvatarPosition(team, idx, getChartHeight())"
               >
                 <div class="relative">
                   <img 
@@ -467,7 +467,7 @@
       <!-- Rest of Season Projections by Position -->
       <div v-if="rosProjectionsData.length > 0" class="card">
         <div class="card-header">
-          <div class="flex items-center justify-between">
+          <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
             <div>
               <div class="flex items-center gap-2 mb-2">
                 <span class="text-2xl">🔮</span>
@@ -475,8 +475,8 @@
               </div>
               <p class="card-subtitle">Total projected starter points for remaining regular season weeks</p>
             </div>
-            <!-- Position color legend -->
-            <div class="flex items-center gap-4 text-xs">
+            <!-- Position color legend - below title on mobile -->
+            <div class="flex flex-wrap items-center gap-3 sm:gap-4 text-xs">
               <div class="flex items-center gap-1.5">
                 <div class="w-3 h-3 rounded" style="background-color: #f59e0b;"></div>
                 <span class="text-dark-textMuted">QB</span>
@@ -620,9 +620,12 @@
                   </div>
                 </div>
                 
-                <!-- Bottom row: Full-width stacked bar -->
+                <!-- Bottom row: Stacked bar with variable width based on total -->
                 <div class="ml-9">
-                  <div class="h-7 bg-dark-border/30 rounded-lg overflow-hidden flex w-full">
+                  <div 
+                    class="h-7 bg-dark-border/30 rounded-lg overflow-hidden flex"
+                    :style="{ width: getTeamBarWidthPercent(team) + '%' }"
+                  >
                     <div 
                       v-for="pos in ['QB', 'RB', 'WR', 'TE', 'FLEX']"
                       :key="pos"
@@ -632,8 +635,8 @@
                         backgroundColor: getPositionColor(pos)
                       }"
                     >
-                      <span v-if="(team.positionProjections?.[pos] || 0) > 10" class="text-[10px]">
-                        {{ pos }} {{ (team.positionProjections?.[pos] || 0).toFixed(0) }}
+                      <span v-if="(team.positionProjections?.[pos] || 0) > 12" class="text-[10px]">
+                        {{ (team.positionProjections?.[pos] || 0).toFixed(0) }}
                       </span>
                     </div>
                   </div>
@@ -790,27 +793,27 @@
                   </div>
                 </td>
                 <td class="text-center">
-                  <span :class="getRankClass(team.rankings.QB)" class="inline-flex items-center justify-center w-8 h-8 rounded-full font-bold text-sm">
+                  <span :class="getRankClass(team.rankings.QB, positionRankings.length)" class="inline-flex items-center justify-center w-8 h-8 rounded-full font-bold text-sm">
                     {{ team.rankings.QB }}
                   </span>
                 </td>
                 <td class="text-center">
-                  <span :class="getRankClass(team.rankings.RB)" class="inline-flex items-center justify-center w-8 h-8 rounded-full font-bold text-sm">
+                  <span :class="getRankClass(team.rankings.RB, positionRankings.length)" class="inline-flex items-center justify-center w-8 h-8 rounded-full font-bold text-sm">
                     {{ team.rankings.RB }}
                   </span>
                 </td>
                 <td class="text-center">
-                  <span :class="getRankClass(team.rankings.WR)" class="inline-flex items-center justify-center w-8 h-8 rounded-full font-bold text-sm">
+                  <span :class="getRankClass(team.rankings.WR, positionRankings.length)" class="inline-flex items-center justify-center w-8 h-8 rounded-full font-bold text-sm">
                     {{ team.rankings.WR }}
                   </span>
                 </td>
                 <td class="text-center">
-                  <span :class="getRankClass(team.rankings.TE)" class="inline-flex items-center justify-center w-8 h-8 rounded-full font-bold text-sm">
+                  <span :class="getRankClass(team.rankings.TE, positionRankings.length)" class="inline-flex items-center justify-center w-8 h-8 rounded-full font-bold text-sm">
                     {{ team.rankings.TE }}
                   </span>
                 </td>
                 <td class="text-center">
-                  <span :class="getRankClass(team.rankings.FLEX)" class="inline-flex items-center justify-center w-8 h-8 rounded-full font-bold text-sm">
+                  <span :class="getRankClass(team.rankings.FLEX, positionRankings.length)" class="inline-flex items-center justify-center w-8 h-8 rounded-full font-bold text-sm">
                     {{ team.rankings.FLEX }}
                   </span>
                 </td>
@@ -1158,6 +1161,17 @@ function getMobileChartWidth(weekCount: number): string {
   if (!isMobile.value) return 'auto'
   const minWidth = Math.max(weekCount * 50, 300)
   return `${minWidth}px`
+}
+
+// Get chart height based on number of teams - ensure enough space for each team's avatar
+function getChartHeight(): number {
+  const teamCount = powerRankings.value.length || 10
+  // On mobile: 40px per team + 80px for padding (top/bottom axis labels)
+  // On desktop: 35px per team + 100px for padding
+  if (isMobile.value) {
+    return Math.max(teamCount * 40 + 80, 350)
+  }
+  return Math.max(teamCount * 35 + 100, 450)
 }
 
 // Adjust chart options for mobile - disable zoom, adjust fonts, hide legend (we use avatars)
