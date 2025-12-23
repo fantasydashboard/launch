@@ -3966,32 +3966,24 @@ function getTeamProjectedTotal(rosterId: number): number {
   }
   
   let total = 0
-  let actualTotal = 0
-  let projectedTotal = 0
   
   teamMatchup.starters.forEach(playerId => {
     if (!playerId || playerId === '0') return
     
-    // Check if player has actual points recorded in the matchup data
-    const actualPoints = teamMatchup.players_points?.[playerId]
-    const hasActualPoints = actualPoints !== undefined && actualPoints !== null && actualPoints > 0
-    
-    if (hasActualPoints) {
-      // Player has played - use their actual points
-      actualTotal += actualPoints
-      total += actualPoints
-    } else {
-      // Player hasn't played yet - use projection
-      const playerProj = calculatePlayerProjectedPoints(playerId)
-      projectedTotal += playerProj
-      total += playerProj
-    }
+    // Always use projection for projected total
+    // This gives us the expected final score based on Sleeper's projections
+    const playerProj = calculatePlayerProjectedPoints(playerId)
+    total += playerProj
   })
   
   // Log once per team
   if (!teamProjectionDebugLogged.has(rosterId)) {
     teamProjectionDebugLogged.add(rosterId)
-    console.log(`📊 Team ${rosterId} LIVE projection: ${total.toFixed(1)} (actual: ${actualTotal.toFixed(1)}, projected: ${projectedTotal.toFixed(1)})`)
+    const actualTotal = teamMatchup.starters.reduce((sum, playerId) => {
+      if (!playerId || playerId === '0') return sum
+      return sum + (teamMatchup.players_points?.[playerId] || 0)
+    }, 0)
+    console.log(`📊 Team ${rosterId} projection: ${total.toFixed(1)} (current actual: ${actualTotal.toFixed(1)})`)
   }
   
   return total
