@@ -1,5 +1,9 @@
 <template>
-  <div class="space-y-8">
+  <!-- Show Yahoo League Home if Yahoo league is active -->
+  <YahooLeagueHome v-if="leagueStore.activePlatform === 'yahoo'" />
+  
+  <!-- Show Sleeper League Home -->
+  <div v-else class="space-y-8">
     <!-- Settings Gear at Top -->
     <div class="flex justify-end">
       <router-link to="/settings" class="p-2 rounded-lg bg-dark-card border border-dark-border hover:border-primary transition-colors">
@@ -639,6 +643,7 @@ import { sleeperService } from '@/services/sleeper'
 import { useTeamCustomizations } from '@/composables/useTeamCustomizations'
 import PlayoffPredictor from '@/components/PlayoffPredictor.vue'
 import StandingsTable from '@/components/StandingsTable.vue'
+import YahooLeagueHome from '@/components/YahooLeagueHome.vue'
 import { calculateAllPlayRecord, calculateTransactionCount, getStandingsOverTime } from '@/utils/calculations'
 import type { SleeperMatchup } from '@/types/sleeper'
 

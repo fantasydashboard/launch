@@ -122,14 +122,24 @@
                         @click="selectLeague(league.league_id)"
                         class="flex-1 flex items-center gap-3 px-3 py-2"
                       >
-                        <div class="w-5 h-5 flex-shrink-0 rounded flex items-center justify-center" :style="{ background: getLeagueTypeColor(league.league_type) }">
-                          <svg class="w-3 h-3 text-white" viewBox="0 0 24 24" fill="currentColor">
+                        <!-- Platform Icon -->
+                        <div 
+                          class="w-5 h-5 flex-shrink-0 rounded flex items-center justify-center"
+                          :class="league.platform === 'yahoo' ? 'bg-purple-600' : ''"
+                          :style="league.platform !== 'yahoo' ? { background: getLeagueTypeColor(league.league_type) } : {}"
+                        >
+                          <span v-if="league.platform === 'yahoo'" class="text-[10px] font-bold text-white">Y!</span>
+                          <svg v-else class="w-3 h-3 text-white" viewBox="0 0 24 24" fill="currentColor">
                             <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
                           </svg>
                         </div>
                         <div class="flex-1 text-left min-w-0">
                           <div class="font-medium text-dark-text text-sm truncate">{{ league.league_name }}</div>
-                          <div class="text-xs text-dark-textMuted">{{ league.season }} • {{ league.sleeper_username }}</div>
+                          <div class="text-xs text-dark-textMuted">
+                            {{ league.season }} • 
+                            <span v-if="league.platform === 'yahoo'" class="text-purple-400">Yahoo</span>
+                            <span v-else>{{ league.sleeper_username }}</span>
+                          </div>
                         </div>
                         <span v-if="league.is_primary" class="text-xs text-primary">★</span>
                         <svg v-if="leagueStore.activeLeagueId === league.league_id" class="w-4 h-4 text-primary" fill="currentColor" viewBox="0 0 20 20">
@@ -365,6 +375,7 @@
       :is-open="showAddLeagueModal"
       @close="showAddLeagueModal = false"
       @league-added="handleLeagueAdded"
+      @yahoo-league-added="handleYahooLeagueAdded"
     />
     
     <!-- Remove League Confirmation -->
@@ -525,6 +536,28 @@ async function handleLeagueAdded(league: any) {
     await leagueStore.saveLeague(league, leagueStore.currentUsername, authStore.user.id)
     leagueStore.disableDemoMode()
     await leagueStore.setActiveLeague(league.league_id)
+  }
+}
+
+async function handleYahooLeagueAdded(league: any) {
+  showAddLeagueModal.value = false
+  
+  if (!authStore.user?.id) {
+    console.error('Not authenticated')
+    return
+  }
+  
+  try {
+    // Save the Yahoo league
+    await leagueStore.saveYahooLeague(league, authStore.user.id)
+    
+    // Set it as active
+    leagueStore.disableDemoMode()
+    await leagueStore.setActiveLeague(league.league_key)
+    
+    console.log('Yahoo league added and activated:', league.name)
+  } catch (err) {
+    console.error('Failed to add Yahoo league:', err)
   }
 }
 

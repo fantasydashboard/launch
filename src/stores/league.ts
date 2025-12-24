@@ -10,17 +10,20 @@ import type {
   SleeperPlayer
 } from '@/types/sleeper'
 
-// Saved league interface
+// Saved league interface - supports both Sleeper and Yahoo
 interface SavedLeague {
   id?: string
   user_id?: string
   league_id: string
   league_name: string
-  platform: 'sleeper'
+  platform: 'sleeper' | 'yahoo'
   season: string
-  sleeper_username: string
+  sleeper_username?: string
+  yahoo_league_key?: string
   is_primary: boolean
   league_type?: number // 0 = redraft, 1 = keeper, 2 = dynasty
+  num_teams?: number
+  scoring_type?: string
 }
 
 // Cache interface for storing league data
@@ -48,6 +51,7 @@ const STORAGE_KEYS = {
 export const useLeagueStore = defineStore('league', () => {
   // State
   const activeLeagueId = ref<string | null>(null)
+  const activePlatform = ref<'sleeper' | 'yahoo'>('sleeper')
   const leagues = ref<SleeperLeague[]>([])
   const savedLeagues = ref<SavedLeague[]>([])
   const currentLeague = ref<SleeperLeague | null>(null)
@@ -57,6 +61,12 @@ export const useLeagueStore = defineStore('league', () => {
   const isLoading = ref(false)
   const error = ref<string | null>(null)
   const isDemoMode = ref(false)
+  
+  // Yahoo-specific state
+  const yahooLeague = ref<any>(null)
+  const yahooTeams = ref<any[]>([])
+  const yahooStandings = ref<any[]>([])
+  const yahooMatchups = ref<any[]>([])
 
   // Historical data
   const historicalSeasons = ref<SleeperLeague[]>([])
@@ -270,6 +280,58 @@ export const useLeagueStore = defineStore('league', () => {
     return newLeague
   }
 
+  async function saveYahooLeague(league: any, userId: string): Promise<SavedLeague | undefined> {
+    // Check if this league is already saved (using league_key as unique identifier)
+    const existing = savedLeagues.value.find(l => l.league_id === league.league_key)
+    if (existing) return existing
+    
+    const isPrimary = savedLeagues.value.length === 0
+    
+    const newLeague: SavedLeague = {
+      league_id: league.league_key,
+      league_name: league.name,
+      platform: 'yahoo',
+      season: league.season,
+      yahoo_league_key: league.league_key,
+      is_primary: isPrimary,
+      num_teams: league.num_teams,
+      scoring_type: league.scoring_type
+    }
+    
+    // Add to local state immediately
+    savedLeagues.value.push(newLeague)
+    saveToLocalStorage()
+    
+    // Sync to Supabase in background
+    if (supabase) {
+      try {
+        const { data, error: saveError } = await supabase
+          .from('user_leagues')
+          .insert({
+            user_id: userId,
+            ...newLeague
+          })
+          .select()
+          .single()
+        
+        if (saveError) throw saveError
+        
+        // Update with server ID
+        const index = savedLeagues.value.findIndex(l => l.league_id === league.league_key)
+        if (index !== -1 && data) {
+          savedLeagues.value[index] = data
+          saveToLocalStorage()
+        }
+        
+        return data
+      } catch (e) {
+        console.error('Failed to save Yahoo league to Supabase:', e)
+      }
+    }
+    
+    return newLeague
+  }
+
   async function removeLeague(leagueId: string, userId?: string) {
     // Remove from local state immediately
     savedLeagues.value = savedLeagues.value.filter(l => l.league_id !== leagueId)
@@ -386,9 +448,21 @@ export const useLeagueStore = defineStore('league', () => {
     isDemoMode.value = false
     saveToLocalStorage()
     
+    // Check if this is a Yahoo league
+    const savedLeague = savedLeagues.value.find(l => l.league_id === leagueId)
+    
+    if (savedLeague?.platform === 'yahoo') {
+      // Handle Yahoo league
+      activePlatform.value = 'yahoo'
+      await loadYahooLeagueData(leagueId)
+      return
+    }
+    
+    // Handle Sleeper league (existing logic)
+    activePlatform.value = 'sleeper'
+    
     try {
       // Get the saved league to find the username
-      const savedLeague = savedLeagues.value.find(l => l.league_id === leagueId)
       if (savedLeague?.sleeper_username && !currentUserId.value) {
         // Fetch the Sleeper user ID if we don't have it
         try {
@@ -604,6 +678,12 @@ export const useLeagueStore = defineStore('league', () => {
     error.value = null
     isDemoMode.value = false
     
+    // Clear Yahoo state
+    yahooLeague.value = null
+    yahooTeams.value = []
+    yahooStandings.value = []
+    yahooMatchups.value = []
+    
     // Clear localStorage
     Object.values(STORAGE_KEYS).forEach(key => {
       localStorage.removeItem(key)
@@ -616,6 +696,70 @@ export const useLeagueStore = defineStore('league', () => {
       }
     }
   }
+  
+  // Load Yahoo league data
+  async function loadYahooLeagueData(leagueKey: string) {
+    isLoading.value = true
+    error.value = null
+    
+    try {
+      // Import Yahoo service dynamically to avoid circular dependencies
+      const { yahooService } = await import('@/services/yahoo')
+      const { useAuthStore } = await import('@/stores/auth')
+      const authStore = useAuthStore()
+      
+      if (!authStore.user?.id) {
+        throw new Error('Not authenticated')
+      }
+      
+      // Initialize Yahoo service
+      const initialized = await yahooService.initialize(authStore.user.id)
+      if (!initialized) {
+        throw new Error('Failed to initialize Yahoo connection')
+      }
+      
+      // Fetch league details
+      const leagueDetails = await yahooService.getLeagueDetails(leagueKey)
+      yahooLeague.value = leagueDetails
+      
+      // Fetch teams
+      const teams = await yahooService.getTeams(leagueKey)
+      yahooTeams.value = teams
+      
+      // Fetch standings
+      const standings = await yahooService.getStandings(leagueKey)
+      yahooStandings.value = standings
+      
+      // Create a currentLeague object that's compatible with the UI
+      const savedLeague = savedLeagues.value.find(l => l.league_id === leagueKey)
+      currentLeague.value = {
+        league_id: leagueKey,
+        name: savedLeague?.league_name || leagueDetails?.[0]?.name || 'Yahoo League',
+        season: savedLeague?.season || new Date().getFullYear().toString(),
+        status: 'in_season',
+        sport: 'nfl',
+        settings: {
+          leg: 1, // Current week - would need to get from Yahoo
+          playoff_week_start: 15
+        },
+        scoring_settings: {},
+        roster_positions: [],
+        total_rosters: savedLeague?.num_teams || teams.length || 12
+      } as any
+      
+      console.log('Yahoo league loaded:', {
+        league: yahooLeague.value,
+        teams: yahooTeams.value,
+        standings: yahooStandings.value
+      })
+      
+    } catch (e) {
+      console.error('Failed to load Yahoo league data:', e)
+      error.value = e instanceof Error ? e.message : 'Failed to load Yahoo league'
+    } finally {
+      isLoading.value = false
+    }
+  }
 
   // Initialize from localStorage on store creation
   loadFromLocalStorage()
@@ -623,6 +767,7 @@ export const useLeagueStore = defineStore('league', () => {
   return {
     // State
     activeLeagueId,
+    activePlatform,
     leagues,
     savedLeagues,
     currentLeague,
@@ -641,6 +786,12 @@ export const useLeagueStore = defineStore('league', () => {
     currentUserId,
     currentUsername,
     
+    // Yahoo state
+    yahooLeague,
+    yahooTeams,
+    yahooStandings,
+    yahooMatchups,
+    
     // Computed
     currentSeason,
     playoffWeekStart,
@@ -650,10 +801,12 @@ export const useLeagueStore = defineStore('league', () => {
     // Actions
     loadSavedLeagues,
     saveLeague,
+    saveYahooLeague,
     removeLeague,
     setPrimaryLeague,
     fetchUserLeagues,
     setActiveLeague,
+    loadYahooLeagueData,
     getTeamInfo,
     reset,
     enableDemoMode,
