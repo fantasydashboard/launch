@@ -24,12 +24,13 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, ref, watch } from 'vue'
-import { useRouter } from 'vue-router'
+import { onMounted, ref } from 'vue'
+import { useRouter, useRoute } from 'vue-router'
 import { supabase } from '@/lib/supabase'
 import { useAuthStore } from '@/stores/auth'
 
 const router = useRouter()
+const route = useRoute()
 const authStore = useAuthStore()
 const error = ref<string | null>(null)
 const debugInfo = ref<string | null>(null)
@@ -40,15 +41,15 @@ function goHome() {
 
 async function storeYahooTokens() {
   try {
-    // Parse tokens from URL hash
-    const hash = window.location.hash.substring(1)
-    const params = new URLSearchParams(hash)
+    console.log('Yahoo callback - processing...')
+    console.log('Query params:', route.query)
     
-    const accessToken = params.get('access_token')
-    const refreshToken = params.get('refresh_token')
-    const expiresIn = params.get('expires_in')
-    const yahooUserId = params.get('yahoo_user_id')
-    const returnTo = params.get('return_to') || '/'
+    // Read tokens from query params (not hash)
+    const accessToken = route.query.yahoo_access_token as string
+    const refreshToken = route.query.yahoo_refresh_token as string
+    const expiresIn = route.query.yahoo_expires_in as string
+    const yahooUserId = route.query.yahoo_user_id as string
+    const returnTo = (route.query.return_to as string) || '/'
 
     console.log('Yahoo callback - tokens received:', { 
       hasAccessToken: !!accessToken, 
@@ -71,7 +72,7 @@ async function storeYahooTokens() {
     })
 
     if (!authStore.isAuthenticated || !authStore.user?.id) {
-      error.value = 'You must be logged in to connect Yahoo'
+      error.value = 'You must be logged in to connect Yahoo. Please sign in first.'
       debugInfo.value = 'Auth state: not authenticated'
       return
     }

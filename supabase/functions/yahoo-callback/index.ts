@@ -72,19 +72,17 @@ serve(async (req) => {
 
     const tokens = await tokenResponse.json()
     
-    // Get Yahoo user GUID from the token response or make a separate call
+    // Get Yahoo user GUID from the token response
     let yahooUserId = tokens.xoauth_yahoo_guid || null
     
-    // Redirect back to the app with tokens in the URL hash (for client-side handling)
-    // The client will then store these tokens securely
+    // Redirect back to the app with tokens in QUERY STRING (not hash)
+    // Using "yahoo_" prefix to avoid conflicts with Supabase auth
     const callbackUrl = new URL(`${SITE_URL}/auth/yahoo-callback`)
-    callbackUrl.hash = new URLSearchParams({
-      access_token: tokens.access_token,
-      refresh_token: tokens.refresh_token,
-      expires_in: tokens.expires_in.toString(),
-      yahoo_user_id: yahooUserId || '',
-      return_to: returnTo
-    }).toString()
+    callbackUrl.searchParams.set('yahoo_access_token', tokens.access_token)
+    callbackUrl.searchParams.set('yahoo_refresh_token', tokens.refresh_token)
+    callbackUrl.searchParams.set('yahoo_expires_in', tokens.expires_in.toString())
+    callbackUrl.searchParams.set('yahoo_user_id', yahooUserId || '')
+    callbackUrl.searchParams.set('return_to', returnTo)
 
     return new Response(null, {
       status: 302,
