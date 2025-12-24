@@ -392,8 +392,10 @@ function connectYahoo() {
   platformsStore.connectYahoo()
 }
 
-function switchYahooAccount() {
-  // Disconnect and reconnect
+async function switchYahooAccount() {
+  // Disconnect current Yahoo account first
+  await platformsStore.disconnectPlatform('yahoo')
+  // Then redirect to Yahoo OAuth to connect new account
   emit('close')
   platformsStore.connectYahoo()
 }
