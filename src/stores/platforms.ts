@@ -9,7 +9,8 @@ import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import { supabase } from '@/lib/supabase'
 import { useAuthStore } from './auth'
-import type { ConnectedPlatform, Platform } from '@/types/supabase'
+import { yahooService } from '@/services/yahoo'
+import type { ConnectedPlatform, Platform, Sport, LeagueInsert } from '@/types/supabase'
 
 export const usePlatformsStore = defineStore('platforms', () => {
   // State
@@ -117,33 +118,10 @@ export const usePlatformsStore = defineStore('platforms', () => {
   }
 
   // Initiate Yahoo OAuth flow
-  // Note: Yahoo OAuth requires a backend to handle the token exchange
-  async function connectYahoo() {
-    const authStore = useAuthStore()
-    if (!authStore.user) {
-      return { success: false, error: 'Not authenticated' }
-    }
-
-    try {
-      // Yahoo OAuth flow will redirect to our backend
-      // The backend will handle the OAuth dance and store tokens
-      const redirectUrl = `${window.location.origin}/auth/yahoo/callback`
-      const state = btoa(JSON.stringify({ 
-        userId: authStore.user.id,
-        returnTo: window.location.pathname
-      }))
-
-      // This URL will be handled by a Supabase Edge Function or backend API
-      const yahooAuthUrl = `/api/auth/yahoo?redirect_uri=${encodeURIComponent(redirectUrl)}&state=${state}`
-      
-      window.location.href = yahooAuthUrl
-      
-      return { success: true }
-    } catch (err: any) {
-      console.error('Error initiating Yahoo OAuth:', err)
-      error.value = err.message
-      return { success: false, error: err.message }
-    }
+  function connectYahoo() {
+    // Redirect to Yahoo OAuth Edge Function
+    const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
+    window.location.href = `${supabaseUrl}/functions/v1/yahoo-auth`
   }
 
   // Store Yahoo tokens after OAuth callback (called by the callback handler)
@@ -188,6 +166,80 @@ export const usePlatformsStore = defineStore('platforms', () => {
       console.error('Error storing Yahoo tokens:', err)
       error.value = err.message
       return { success: false, error: err.message }
+    }
+  }
+
+  // Fetch Yahoo leagues and save to database
+  async function syncYahooLeagues(sport: Sport) {
+    const authStore = useAuthStore()
+    if (!supabase || !authStore.user) {
+      return { success: false, error: 'Not authenticated', leagues: [] }
+    }
+
+    try {
+      loading.value = true
+      error.value = null
+
+      // Initialize Yahoo service
+      const initialized = await yahooService.initialize(authStore.user.id)
+      if (!initialized) {
+        throw new Error('Failed to initialize Yahoo connection')
+      }
+
+      // Fetch leagues from Yahoo
+      const yahooLeagues = await yahooService.getLeagues(sport)
+      console.log(`Found ${yahooLeagues.length} Yahoo ${sport} leagues`)
+
+      const savedLeagues: any[] = []
+
+      // Save each league to database
+      for (const league of yahooLeagues) {
+        // Get user's team in this league
+        const myTeam = await yahooService.getMyTeam(league.league_key)
+
+        const leagueData: LeagueInsert = {
+          user_id: authStore.user.id,
+          platform: 'yahoo',
+          sport,
+          platform_league_id: league.league_key,
+          league_name: league.name,
+          season: league.season,
+          team_name: myTeam?.name || null,
+          team_id: myTeam?.team_key || null,
+          scoring_type: league.scoring_type,
+          league_size: league.num_teams,
+          is_active: !league.is_finished,
+          last_synced_at: new Date().toISOString(),
+          settings: {
+            league_type: league.league_type,
+            current_week: league.current_week,
+            start_week: league.start_week,
+            end_week: league.end_week
+          }
+        }
+
+        const { data, error: upsertError } = await supabase
+          .from('leagues')
+          .upsert(leagueData, {
+            onConflict: 'user_id,platform,platform_league_id,season'
+          })
+          .select()
+          .single()
+
+        if (upsertError) {
+          console.error('Error saving league:', upsertError)
+        } else {
+          savedLeagues.push(data)
+        }
+      }
+
+      return { success: true, leagues: savedLeagues }
+    } catch (err: any) {
+      console.error('Error syncing Yahoo leagues:', err)
+      error.value = err.message
+      return { success: false, error: err.message, leagues: [] }
+    } finally {
+      loading.value = false
     }
   }
 
@@ -247,7 +299,8 @@ export const usePlatformsStore = defineStore('platforms', () => {
     if (isYahooTokenExpired() && yahooConnection.refresh_token) {
       // Call backend to refresh token
       try {
-        const response = await fetch('/api/auth/yahoo/refresh', {
+        const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
+        const response = await fetch(`${supabaseUrl}/functions/v1/yahoo-refresh`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ 
@@ -295,6 +348,7 @@ export const usePlatformsStore = defineStore('platforms', () => {
     connectSleeper,
     connectYahoo,
     storeYahooTokens,
+    syncYahooLeagues,
     disconnectPlatform,
     isYahooTokenExpired,
     getYahooAccessToken,
