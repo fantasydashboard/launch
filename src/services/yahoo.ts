@@ -3,12 +3,13 @@
  * 
  * Handles all interactions with Yahoo Fantasy Sports API.
  * Supports Football, Baseball, Basketball, and Hockey.
+ * 
+ * All requests go through the yahoo-api Edge Function proxy
+ * to avoid CORS issues.
  */
 
 import { supabase } from '@/lib/supabase'
 import type { Sport } from '@/types/supabase'
-
-const YAHOO_API_BASE = 'https://fantasysports.yahooapis.com/fantasy/v2'
 
 // Yahoo sport keys
 const SPORT_KEYS: Record<Sport, string> = {
@@ -19,16 +20,11 @@ const SPORT_KEYS: Record<Sport, string> = {
 }
 
 // Current season game keys (these change each year)
-// Format: {sport_code}.l.{league_id}
 const GAME_KEYS_2024: Record<Sport, string> = {
   football: '449',  // NFL 2024
-  baseball: '450',  // MLB 2024 (approximate - verify)
-  basketball: '451', // NBA 2024-25 (approximate - verify)
-  hockey: '452'     // NHL 2024-25 (approximate - verify)
-}
-
-interface YahooApiResponse {
-  fantasy_content: any
+  baseball: '431',  // MLB 2024
+  basketball: '428', // NBA 2024-25
+  hockey: '427'     // NHL 2024-25
 }
 
 interface YahooLeague {
@@ -51,6 +47,7 @@ interface YahooTeam {
   name: string
   managers: { manager: { nickname: string; guid: string } }[]
   roster?: YahooPlayer[]
+  points?: number
 }
 
 interface YahooPlayer {
@@ -70,13 +67,15 @@ interface YahooMatchup {
 }
 
 export class YahooFantasyService {
-  private accessToken: string | null = null
   private userId: string | null = null
+  private supabaseUrl: string
 
-  constructor() {}
+  constructor() {
+    this.supabaseUrl = import.meta.env.VITE_SUPABASE_URL || ''
+  }
 
   /**
-   * Initialize the service with user's access token
+   * Initialize the service with user ID
    */
   async initialize(userId: string): Promise<boolean> {
     this.userId = userId
@@ -86,7 +85,7 @@ export class YahooFantasyService {
       return false
     }
 
-    // Get Yahoo tokens from database
+    // Verify Yahoo is connected
     const { data, error } = await supabase
       .from('connected_platforms')
       .select('*')
@@ -99,90 +98,38 @@ export class YahooFantasyService {
       return false
     }
 
-    // Check if token is expired
-    if (data.token_expires_at && new Date(data.token_expires_at) < new Date()) {
-      // Token expired, try to refresh
-      const refreshed = await this.refreshToken(data.refresh_token)
-      if (!refreshed) {
-        console.error('Failed to refresh Yahoo token')
-        return false
-      }
-    } else {
-      this.accessToken = data.access_token
-    }
-
     return true
   }
 
   /**
-   * Refresh the access token
-   */
-  private async refreshToken(refreshToken: string): Promise<boolean> {
-    try {
-      const response = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/yahoo-refresh`,
-        {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ refresh_token: refreshToken })
-        }
-      )
-
-      if (!response.ok) {
-        throw new Error('Token refresh failed')
-      }
-
-      const tokens = await response.json()
-      this.accessToken = tokens.access_token
-
-      // Update tokens in database
-      if (supabase && this.userId) {
-        const expiresAt = new Date(Date.now() + tokens.expires_in * 1000).toISOString()
-        
-        await supabase
-          .from('connected_platforms')
-          .update({
-            access_token: tokens.access_token,
-            refresh_token: tokens.refresh_token,
-            token_expires_at: expiresAt
-          })
-          .eq('user_id', this.userId)
-          .eq('platform', 'yahoo')
-      }
-
-      return true
-    } catch (error) {
-      console.error('Error refreshing Yahoo token:', error)
-      return false
-    }
-  }
-
-  /**
-   * Make an authenticated request to Yahoo Fantasy API
+   * Make an authenticated request to Yahoo Fantasy API via proxy
    */
   private async apiRequest(endpoint: string): Promise<any> {
-    if (!this.accessToken) {
-      throw new Error('Yahoo not authenticated')
+    if (!supabase) {
+      throw new Error('Supabase not configured')
     }
 
-    const url = `${YAHOO_API_BASE}${endpoint}`
+    // Get current session for auth header
+    const { data: { session } } = await supabase.auth.getSession()
+    if (!session) {
+      throw new Error('Not authenticated')
+    }
+
+    const proxyUrl = `${this.supabaseUrl}/functions/v1/yahoo-api`
     
-    const response = await fetch(url, {
+    const response = await fetch(proxyUrl, {
+      method: 'POST',
       headers: {
-        'Authorization': `Bearer ${this.accessToken}`,
-        'Accept': 'application/json'
-      }
+        'Authorization': `Bearer ${session.access_token}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ endpoint })
     })
 
-    if (response.status === 401) {
-      // Token might have expired mid-session, try to get fresh token
-      throw new Error('Yahoo authentication expired')
-    }
-
     if (!response.ok) {
-      const errorText = await response.text()
-      console.error('Yahoo API error:', response.status, errorText)
-      throw new Error(`Yahoo API error: ${response.status}`)
+      const errorData = await response.json().catch(() => ({ error: 'Unknown error' }))
+      console.error('Yahoo API proxy error:', response.status, errorData)
+      throw new Error(errorData.error || `Yahoo API error: ${response.status}`)
     }
 
     return response.json()
@@ -205,6 +152,7 @@ export class YahooFantasyService {
       // Parse the nested Yahoo response structure
       const fantasyContent = data.fantasy_content
       if (!fantasyContent?.users?.[0]?.user?.[1]?.games) {
+        console.log('No games found in response')
         return leagues
       }
 
@@ -412,7 +360,7 @@ export class YahooFantasyService {
           name: teamInfo[2]?.name,
           managers: [],
           points: parseFloat(teamPoints?.total || '0')
-        } as any)
+        })
       }
 
       matchups.push({
@@ -424,38 +372,6 @@ export class YahooFantasyService {
     }
 
     return matchups
-  }
-
-  /**
-   * Get player stats/projections
-   */
-  async getPlayerStats(leagueKey: string, playerKeys: string[], week?: number): Promise<any[]> {
-    const weekParam = week ? `;type=week;week=${week}` : ''
-    const data = await this.apiRequest(
-      `/league/${leagueKey}/players;player_keys=${playerKeys.join(',')}/stats${weekParam}?format=json`
-    )
-
-    const players: any[] = []
-    const playersData = data.fantasy_content?.league?.[1]?.players
-
-    if (!playersData) return players
-
-    for (const playerWrapper of Object.values(playersData) as any[]) {
-      if (typeof playerWrapper !== 'object' || !playerWrapper.player) continue
-      
-      const playerInfo = playerWrapper.player[0]
-      const playerStats = playerWrapper.player[1]?.player_stats
-      
-      players.push({
-        player_key: playerInfo[0]?.player_key,
-        player_id: playerInfo[1]?.player_id,
-        name: playerInfo[2]?.name?.full,
-        stats: playerStats?.stats || [],
-        total_points: parseFloat(playerStats?.total || '0')
-      })
-    }
-
-    return players
   }
 }
 
