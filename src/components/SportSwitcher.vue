@@ -64,8 +64,8 @@
             />
             <div class="flex-1 text-left">
               <div class="font-medium text-dark-text">{{ sport.label }}</div>
-              <div class="text-xs text-dark-textMuted">
-                {{ sport.available ? 'Available' : 'Coming Soon' }}
+              <div v-if="!sport.available" class="text-xs text-dark-textMuted">
+                Coming Soon
               </div>
             </div>
             <div 

@@ -17,6 +17,7 @@ interface SavedLeague {
   league_id: string
   league_name: string
   platform: 'sleeper' | 'yahoo'
+  sport: 'football' | 'baseball' | 'basketball' | 'hockey'
   season: string
   sleeper_username?: string
   yahoo_league_key?: string
@@ -87,9 +88,26 @@ export const useLeagueStore = defineStore('league', () => {
   // Current user info
   const currentUserId = ref<string | null>(null)
   const currentUsername = ref<string | null>(null)
+  
+  // Active sport for filtering (will be synced from sport store)
+  const activeSport = ref<'football' | 'baseball' | 'basketball' | 'hockey'>('football')
 
   // Check if user has any saved leagues
   const hasSavedLeagues = computed(() => savedLeagues.value.length > 0)
+  
+  // Filter saved leagues by active sport
+  const filteredLeaguesBySport = computed(() => {
+    return savedLeagues.value.filter(league => {
+      // If league doesn't have sport set, assume football for backwards compatibility
+      const leagueSport = league.sport || 'football'
+      return leagueSport === activeSport.value
+    })
+  })
+  
+  // Set active sport (called from App.vue when sport changes)
+  function setActiveSport(sport: 'football' | 'baseball' | 'basketball' | 'hockey') {
+    activeSport.value = sport
+  }
 
   // ============================================
   // LOCAL STORAGE FUNCTIONS
@@ -229,7 +247,7 @@ export const useLeagueStore = defineStore('league', () => {
     }
   }
 
-  async function saveLeague(league: SleeperLeague, username: string, userId: string): Promise<SavedLeague | undefined> {
+  async function saveLeague(league: SleeperLeague, username: string, userId: string, sport: 'football' | 'baseball' | 'basketball' | 'hockey' = 'football'): Promise<SavedLeague | undefined> {
     // Check if this league is already saved
     const existing = savedLeagues.value.find(l => l.league_id === league.league_id)
     if (existing) return existing
@@ -240,6 +258,7 @@ export const useLeagueStore = defineStore('league', () => {
       league_id: league.league_id,
       league_name: league.name,
       platform: 'sleeper',
+      sport: sport,
       season: league.season,
       sleeper_username: username,
       is_primary: isPrimary,
@@ -280,7 +299,7 @@ export const useLeagueStore = defineStore('league', () => {
     return newLeague
   }
 
-  async function saveYahooLeague(league: any, userId: string): Promise<SavedLeague | undefined> {
+  async function saveYahooLeague(league: any, userId: string, sport: 'football' | 'baseball' | 'basketball' | 'hockey'): Promise<SavedLeague | undefined> {
     // Check if this league is already saved (using league_key as unique identifier)
     const existing = savedLeagues.value.find(l => l.league_id === league.league_key)
     if (existing) return existing
@@ -291,6 +310,7 @@ export const useLeagueStore = defineStore('league', () => {
       league_id: league.league_key,
       league_name: league.name,
       platform: 'yahoo',
+      sport: sport,
       season: league.season,
       yahoo_league_key: league.league_key,
       is_primary: isPrimary,
@@ -768,6 +788,7 @@ export const useLeagueStore = defineStore('league', () => {
     // State
     activeLeagueId,
     activePlatform,
+    activeSport,
     leagues,
     savedLeagues,
     currentLeague,
@@ -797,6 +818,7 @@ export const useLeagueStore = defineStore('league', () => {
     playoffWeekStart,
     currentWeek,
     hasSavedLeagues,
+    filteredLeaguesBySport,
     
     // Actions
     loadSavedLeagues,
@@ -806,6 +828,7 @@ export const useLeagueStore = defineStore('league', () => {
     setPrimaryLeague,
     fetchUserLeagues,
     setActiveLeague,
+    setActiveSport,
     loadYahooLeagueData,
     getTeamInfo,
     reset,
