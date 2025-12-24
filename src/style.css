@@ -2,6 +2,12 @@
 @tailwind components;
 @tailwind utilities;
 
+/* CSS Variables for dynamic theming */
+:root {
+  --color-primary: #22c55e; /* Default to football green */
+  --color-primary-rgb: 34, 197, 94;
+}
+
 @layer base {
   body {
     @apply antialiased;

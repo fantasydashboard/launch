@@ -50,14 +50,15 @@
       <header class="border-b border-dark-border shadow-soft" style="background: linear-gradient(135deg, rgba(19, 22, 32, 0.98), rgba(10, 12, 20, 0.98)); border: 1px solid #2a2f42;">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div class="flex items-center justify-between h-16 sm:h-20">
-            <!-- Logo -->
+            <!-- Logo and Sport Switcher -->
             <div class="flex items-center gap-2 sm:gap-4 flex-shrink-0">
-              <img src="/ufd-logo.png" alt="UFD Logo" class="w-10 h-10 sm:w-12 sm:h-12 object-contain" />
-              <div class="hidden sm:block">
+              <!-- Sport Switcher -->
+              <SportSwitcher />
+              <div class="hidden lg:block">
                 <h1 class="text-xl lg:text-2xl font-bold text-dark-text">Ultimate Fantasy Dashboard</h1>
               </div>
-              <div class="sm:hidden">
-                <h1 class="text-sm font-bold text-dark-text">UFD</h1>
+              <div class="hidden sm:block lg:hidden">
+                <h1 class="text-lg font-bold text-dark-text">UFD</h1>
               </div>
             </div>
 
@@ -405,15 +406,18 @@ import { useRouter } from 'vue-router'
 import { useLeagueStore } from '@/stores/league'
 import { useDarkModeStore } from '@/stores/darkMode'
 import { useAuthStore } from '@/stores/auth'
+import { useSportStore } from '@/stores/sport'
 import AuthModal from '@/components/AuthModal.vue'
 import LandingPage from '@/components/LandingPage.vue'
 import AddLeagueModal from '@/components/AddLeagueModal.vue'
 import AppFooter from '@/components/AppFooter.vue'
+import SportSwitcher from '@/components/SportSwitcher.vue'
 
 const router = useRouter()
 const leagueStore = useLeagueStore()
 const darkModeStore = useDarkModeStore()
 const authStore = useAuthStore()
+const sportStore = useSportStore()
 
 const showAuthModal = ref(false)
 const authMode = ref<'login' | 'signup'>('signup')
