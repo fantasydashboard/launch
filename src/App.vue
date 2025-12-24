@@ -164,8 +164,8 @@
                         </svg>
                       </div>
                       <div class="text-left">
-                        <div class="font-medium text-sm">Connect Sleeper League</div>
-                        <div class="text-xs text-dark-textMuted">Add a new league to your dashboard</div>
+                        <div class="font-medium text-sm">Add a League</div>
+                        <div class="text-xs text-dark-textMuted">Connect Sleeper or Yahoo</div>
                       </div>
                     </button>
                   </div>
