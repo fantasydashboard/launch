@@ -21,8 +21,10 @@ const SPORT_KEYS: Record<Sport, string> = {
 
 // Game keys by sport and year
 // These change each season - format is typically a 3-digit number
+// 2025 keys are estimates based on pattern - may need updating
 const GAME_KEYS: Record<Sport, Record<number, string>> = {
   football: {
+    2025: '453',  // NFL 2025 - estimated
     2024: '449',
     2023: '414',
     2022: '390',
@@ -30,6 +32,7 @@ const GAME_KEYS: Record<Sport, Record<number, string>> = {
     2020: '399'
   },
   baseball: {
+    2025: '450',  // MLB 2025 - estimated
     2024: '431',
     2023: '422',
     2022: '412',
@@ -37,6 +40,7 @@ const GAME_KEYS: Record<Sport, Record<number, string>> = {
     2020: '398'
   },
   basketball: {
+    2025: '455',  // NBA 2025-26 - estimated
     2024: '428',  // 2024-25 season
     2023: '418',
     2022: '410',
@@ -44,6 +48,7 @@ const GAME_KEYS: Record<Sport, Record<number, string>> = {
     2020: '395'
   },
   hockey: {
+    2025: '454',  // NHL 2025-26 - estimated
     2024: '427',  // 2024-25 season
     2023: '419',
     2022: '411',
