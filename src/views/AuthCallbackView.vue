@@ -1,10 +1,21 @@
 <template>
   <div class="min-h-screen flex items-center justify-center" style="background: radial-gradient(circle at top, #1c2030, #05060a 55%);">
     <div class="text-center">
-      <div class="animate-spin rounded-full h-16 w-16 border-b-4 border-primary mx-auto mb-4"></div>
-      <h2 class="text-xl font-semibold text-dark-text mb-2">Completing sign in...</h2>
-      <p class="text-dark-textMuted">Please wait while we verify your account.</p>
-      <p v-if="error" class="text-red-400 mt-4">{{ error }}</p>
+      <div v-if="!error" class="animate-spin rounded-full h-16 w-16 border-b-4 border-primary mx-auto mb-4"></div>
+      <div v-else class="text-red-500 text-5xl mb-4">⚠️</div>
+      <h2 class="text-xl font-semibold text-dark-text mb-2">
+        {{ error ? 'Sign In Failed' : 'Completing sign in...' }}
+      </h2>
+      <p class="text-dark-textMuted">
+        {{ error ? error : 'Please wait while we verify your account.' }}
+      </p>
+      <button 
+        v-if="error"
+        @click="router.replace('/')"
+        class="mt-6 px-6 py-2 bg-primary text-gray-900 rounded-lg font-semibold hover:bg-primary/90 transition-colors"
+      >
+        Go Home
+      </button>
     </div>
   </div>
 </template>
@@ -21,14 +32,44 @@ const error = ref<string | null>(null)
 
 onMounted(async () => {
   try {
-    // Supabase automatically handles the token from the URL hash
-    // We just need to wait for it to complete and check the session
-    
     if (!supabase) {
       throw new Error('Supabase not configured')
     }
 
-    // Get the session - Supabase should have already processed the URL hash
+    console.log('Auth callback - checking URL hash...')
+    console.log('Current URL:', window.location.href)
+    console.log('Hash:', window.location.hash)
+
+    // Check if there's an access_token in the hash (OAuth redirect)
+    const hashParams = new URLSearchParams(window.location.hash.substring(1))
+    const accessToken = hashParams.get('access_token')
+    const refreshToken = hashParams.get('refresh_token')
+    
+    if (accessToken) {
+      console.log('Found access token in URL, setting session...')
+      
+      // Manually set the session from the URL hash
+      const { data, error: setSessionError } = await supabase.auth.setSession({
+        access_token: accessToken,
+        refresh_token: refreshToken || ''
+      })
+      
+      if (setSessionError) {
+        console.error('Error setting session:', setSessionError)
+        throw setSessionError
+      }
+      
+      console.log('Session set successfully:', data.session?.user?.email)
+      
+      // Initialize auth store
+      await authStore.initialize()
+      
+      // Clear the hash from URL and redirect
+      router.replace('/')
+      return
+    }
+
+    // No token in hash - check if we already have a session
     const { data: { session }, error: sessionError } = await supabase.auth.getSession()
     
     if (sessionError) {
@@ -36,31 +77,22 @@ onMounted(async () => {
     }
 
     if (session) {
-      // Successfully authenticated - initialize the auth store
+      console.log('Existing session found:', session.user?.email)
       await authStore.initialize()
-      
-      // Redirect to home page
       router.replace('/')
     } else {
-      // No session found - check if there's an error in the URL
-      const hashParams = new URLSearchParams(window.location.hash.substring(1))
+      // Check for error in URL
       const errorDescription = hashParams.get('error_description')
-      
       if (errorDescription) {
         throw new Error(errorDescription)
       }
       
-      // No session and no error - just redirect to home
+      console.log('No session found, redirecting home')
       router.replace('/')
     }
   } catch (err: any) {
     console.error('Auth callback error:', err)
     error.value = err.message || 'Authentication failed'
-    
-    // Redirect to home after showing error
-    setTimeout(() => {
-      router.replace('/')
-    }, 3000)
   }
 })
 </script>
