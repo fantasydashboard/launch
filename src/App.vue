@@ -123,6 +123,15 @@
                   >
                     {{ userInitials }}
                   </button>
+                  <button
+                    @click="handleSignOut"
+                    class="hidden sm:block p-2 rounded-lg hover:bg-dark-border/50 transition-colors text-dark-textMuted hover:text-dark-text"
+                    title="Sign out"
+                  >
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                    </svg>
+                  </button>
                 </div>
               </div>
               
@@ -310,36 +319,6 @@
                     </div>
                   </div>
                 </div>
-              </div>
-
-              <!-- User Menu -->
-              <div class="flex items-center gap-2 sm:gap-3">
-                <div class="hidden sm:flex items-center gap-2">
-                  <div class="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center">
-                    <span class="text-sm font-bold text-primary">{{ userInitials }}</span>
-                  </div>
-                  <span class="text-sm text-dark-text hidden sm:inline">{{ displayName }}</span>
-                </div>
-                <button
-                  @click="handleSignOut"
-                  class="hidden sm:block p-2 rounded-lg hover:bg-dark-border/50 transition-colors text-dark-textMuted hover:text-dark-text"
-                  title="Sign out"
-                >
-                  <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-                  </svg>
-                </button>
-                
-                <!-- Mobile User Menu Button -->
-                <button
-                  @click="showMobileUserMenu = !showMobileUserMenu"
-                  class="sm:hidden p-1.5 rounded-lg hover:bg-dark-border/50 transition-colors"
-                  data-mobile-user-menu
-                >
-                  <div class="w-7 h-7 rounded-full bg-primary/20 flex items-center justify-center">
-                    <span class="text-xs font-bold text-primary">{{ userInitials }}</span>
-                  </div>
-                </button>
               </div>
             </div>
           </div>
