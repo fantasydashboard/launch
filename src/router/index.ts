@@ -15,6 +15,16 @@ const router = createRouter({
       component: () => import('@/views/AuthCallbackView.vue')
     },
     {
+      path: '/auth/yahoo-callback',
+      name: 'yahoo-callback',
+      component: () => import('@/views/YahooCallbackView.vue')
+    },
+    {
+      path: '/auth/yahoo-error',
+      name: 'yahoo-error',
+      component: () => import('@/views/YahooErrorView.vue')
+    },
+    {
       path: '/standings',
       redirect: '/'
     },
