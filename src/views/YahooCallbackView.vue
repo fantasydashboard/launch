@@ -10,6 +10,7 @@
       <p class="text-dark-textMuted">
         {{ error ? error : 'Please wait while we connect your Yahoo account.' }}
       </p>
+      <p v-if="debugInfo" class="text-xs text-dark-textMuted mt-4 font-mono">{{ debugInfo }}</p>
       
       <button 
         v-if="error"
@@ -23,28 +24,22 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, ref } from 'vue'
+import { onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
+import { supabase } from '@/lib/supabase'
 import { useAuthStore } from '@/stores/auth'
-import { usePlatformsStore } from '@/stores/platforms'
 
 const router = useRouter()
 const authStore = useAuthStore()
-const platformsStore = usePlatformsStore()
 const error = ref<string | null>(null)
+const debugInfo = ref<string | null>(null)
 
 function goHome() {
   router.replace('/')
 }
 
-onMounted(async () => {
+async function storeYahooTokens() {
   try {
-    // Check if user is authenticated
-    if (!authStore.isAuthenticated) {
-      error.value = 'You must be logged in to connect Yahoo'
-      return
-    }
-
     // Parse tokens from URL hash
     const hash = window.location.hash.substring(1)
     const params = new URLSearchParams(hash)
@@ -55,29 +50,79 @@ onMounted(async () => {
     const yahooUserId = params.get('yahoo_user_id')
     const returnTo = params.get('return_to') || '/'
 
+    console.log('Yahoo callback - tokens received:', { 
+      hasAccessToken: !!accessToken, 
+      hasRefreshToken: !!refreshToken,
+      expiresIn,
+      yahooUserId 
+    })
+
     if (!accessToken || !refreshToken) {
       error.value = 'Missing tokens from Yahoo'
       return
     }
 
-    // Store the Yahoo tokens
-    const result = await platformsStore.storeYahooTokens({
-      access_token: accessToken,
-      refresh_token: refreshToken,
-      expires_in: parseInt(expiresIn || '3600'),
-      yahoo_user_id: yahooUserId || undefined
+    // Wait for auth to initialize
+    await authStore.initialize()
+    
+    console.log('Auth state:', { 
+      isAuthenticated: authStore.isAuthenticated, 
+      userId: authStore.user?.id 
     })
 
-    if (!result.success) {
-      error.value = result.error || 'Failed to save Yahoo connection'
+    if (!authStore.isAuthenticated || !authStore.user?.id) {
+      error.value = 'You must be logged in to connect Yahoo'
+      debugInfo.value = 'Auth state: not authenticated'
       return
     }
+
+    if (!supabase) {
+      error.value = 'Database not configured'
+      return
+    }
+
+    // Calculate token expiration
+    const expiresAt = new Date(Date.now() + parseInt(expiresIn || '3600') * 1000).toISOString()
+
+    console.log('Saving Yahoo tokens to database...')
+
+    // Store directly in Supabase
+    const { data, error: upsertError } = await supabase
+      .from('connected_platforms')
+      .upsert({
+        user_id: authStore.user.id,
+        platform: 'yahoo',
+        platform_user_id: yahooUserId || null,
+        platform_username: null,
+        access_token: accessToken,
+        refresh_token: refreshToken,
+        token_expires_at: expiresAt,
+        scopes: 'fspt-r'
+      }, {
+        onConflict: 'user_id,platform'
+      })
+      .select()
+      .single()
+
+    if (upsertError) {
+      console.error('Error saving Yahoo tokens:', upsertError)
+      error.value = `Failed to save: ${upsertError.message}`
+      debugInfo.value = JSON.stringify(upsertError)
+      return
+    }
+
+    console.log('Yahoo tokens saved successfully:', data)
 
     // Success! Redirect to return URL or home
     router.replace(returnTo)
   } catch (err: any) {
     console.error('Yahoo callback error:', err)
     error.value = err.message || 'Failed to connect Yahoo account'
+    debugInfo.value = err.stack || err.toString()
   }
+}
+
+onMounted(() => {
+  storeYahooTokens()
 })
 </script>
