@@ -19,12 +19,52 @@ const SPORT_KEYS: Record<Sport, string> = {
   hockey: 'nhl'
 }
 
-// Current season game keys (these change each year)
-const GAME_KEYS_2024: Record<Sport, string> = {
-  football: '449',  // NFL 2024
-  baseball: '431',  // MLB 2024
-  basketball: '428', // NBA 2024-25
-  hockey: '427'     // NHL 2024-25
+// Game keys by sport and year
+// These change each season - format is typically a 3-digit number
+const GAME_KEYS: Record<Sport, Record<number, string>> = {
+  football: {
+    2024: '449',
+    2023: '414',
+    2022: '390',
+    2021: '371',
+    2020: '399'
+  },
+  baseball: {
+    2024: '431',
+    2023: '422',
+    2022: '412',
+    2021: '404',
+    2020: '398'
+  },
+  basketball: {
+    2024: '428',  // 2024-25 season
+    2023: '418',
+    2022: '410',
+    2021: '402',
+    2020: '395'
+  },
+  hockey: {
+    2024: '427',  // 2024-25 season
+    2023: '419',
+    2022: '411',
+    2021: '403',
+    2020: '396'
+  }
+}
+
+// Get game keys for recent seasons
+function getRecentGameKeys(sport: Sport, numYears: number = 3): string[] {
+  const sportKeys = GAME_KEYS[sport]
+  const currentYear = new Date().getFullYear()
+  const keys: string[] = []
+  
+  for (let year = currentYear; year >= currentYear - numYears + 1; year--) {
+    if (sportKeys[year]) {
+      keys.push(sportKeys[year])
+    }
+  }
+  
+  return keys
 }
 
 interface YahooLeague {
@@ -136,15 +176,16 @@ export class YahooFantasyService {
   }
 
   /**
-   * Get all leagues for the current user
+   * Get all leagues for the current user across recent seasons
    */
   async getLeagues(sport: Sport): Promise<YahooLeague[]> {
-    const gameKey = GAME_KEYS_2024[sport]
+    const gameKeys = getRecentGameKeys(sport, 5) // Get last 5 years
     
     try {
-      // Get user's leagues for this game/sport
+      // Get user's leagues for all recent game keys
+      const allGameKeys = gameKeys.join(',')
       const data = await this.apiRequest(
-        `/users;use_login=1/games;game_keys=${gameKey}/leagues?format=json`
+        `/users;use_login=1/games;game_keys=${allGameKeys}/leagues?format=json`
       )
 
       const leagues: YahooLeague[] = []
@@ -158,13 +199,11 @@ export class YahooFantasyService {
 
       const games = fantasyContent.users[0].user[1].games
       
-      // Find the game matching our sport
+      // Iterate through all games (seasons)
       for (const game of Object.values(games) as any[]) {
         if (typeof game !== 'object' || !game.game) continue
         
         const gameData = game.game[0]
-        if (gameData.game_key !== gameKey) continue
-        
         const leaguesData = game.game[1]?.leagues
         if (!leaguesData) continue
 
@@ -187,6 +226,9 @@ export class YahooFantasyService {
           })
         }
       }
+
+      // Sort by season (newest first)
+      leagues.sort((a, b) => parseInt(b.season) - parseInt(a.season))
 
       return leagues
     } catch (error) {
