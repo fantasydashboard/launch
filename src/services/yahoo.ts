@@ -21,26 +21,30 @@ const SPORT_KEYS: Record<Sport, string> = {
 
 // Game keys by sport and year
 // These change each season - format is typically a 3-digit number
-// 2025 keys are estimates based on pattern - may need updating
+// Keys are confirmed from Yahoo's API - new seasons get new keys
 const GAME_KEYS: Record<Sport, Record<number, string>> = {
   football: {
-    2025: '453',  // NFL 2025 - estimated
-    2024: '449',
+    // NFL seasons (September - February)
+    2025: '449',  // NFL 2025 (current season - playoffs starting)
+    2024: '423',  
     2023: '414',
     2022: '390',
     2021: '371',
-    2020: '399'
+    2020: '399',
+    2019: '380'
   },
   baseball: {
-    2025: '450',  // MLB 2025 - estimated
-    2024: '431',
-    2023: '422',
-    2022: '412',
-    2021: '404',
-    2020: '398'
+    // MLB seasons (March - October)
+    2025: '431',  // MLB 2025 (season ended in October)
+    2024: '422',
+    2023: '412',
+    2022: '404',
+    2021: '398',
+    2020: '388'
   },
   basketball: {
-    2025: '455',  // NBA 2025-26 - estimated
+    // NBA seasons (October - June, spans 2 years)
+    2025: '445',  // 2025-26 season (current)
     2024: '428',  // 2024-25 season
     2023: '418',
     2022: '410',
@@ -48,7 +52,8 @@ const GAME_KEYS: Record<Sport, Record<number, string>> = {
     2020: '395'
   },
   hockey: {
-    2025: '454',  // NHL 2025-26 - estimated
+    // NHL seasons (October - June, spans 2 years)
+    2025: '444',  // 2025-26 season (current)
     2024: '427',  // 2024-25 season
     2023: '419',
     2022: '411',
@@ -58,12 +63,13 @@ const GAME_KEYS: Record<Sport, Record<number, string>> = {
 }
 
 // Get game keys for recent seasons
-function getRecentGameKeys(sport: Sport, numYears: number = 3): string[] {
+function getRecentGameKeys(sport: Sport, numYears: number = 6): string[] {
   const sportKeys = GAME_KEYS[sport]
   const currentYear = new Date().getFullYear()
   const keys: string[] = []
   
-  for (let year = currentYear; year >= currentYear - numYears + 1; year--) {
+  // Start from current year and go back
+  for (let year = currentYear; year >= currentYear - numYears; year--) {
     if (sportKeys[year]) {
       keys.push(sportKeys[year])
     }
@@ -196,11 +202,18 @@ export class YahooFantasyService {
    * Get all leagues for the current user across recent seasons
    */
   async getLeagues(sport: Sport): Promise<YahooLeague[]> {
-    const gameKeys = getRecentGameKeys(sport, 5) // Get last 5 years
+    const gameKeys = getRecentGameKeys(sport, 6) // Get last 6 years
+    
+    if (gameKeys.length === 0) {
+      console.log('No game keys available for sport:', sport)
+      return []
+    }
     
     try {
       // Get user's leagues for all recent game keys
       const allGameKeys = gameKeys.join(',')
+      console.log(`Fetching Yahoo leagues for ${sport} with game keys:`, allGameKeys)
+      
       const data = await this.apiRequest(
         `/users;use_login=1/games;game_keys=${allGameKeys}/leagues?format=json`
       )
