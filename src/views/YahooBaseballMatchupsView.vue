@@ -298,7 +298,7 @@
 
             <!-- Win Probability Trend Chart -->
             <div class="mt-6">
-              <div v-if="probabilityHistory.length > 1" class="h-52">
+              <div v-if="probabilityHistory.length > 0" class="h-52">
                 <apexchart 
                   type="area" 
                   height="200" 
@@ -729,22 +729,41 @@ const winProbability = computed(() => {
 const probabilityHistory = computed(() => {
   if (!selectedMatchup.value?.team1 || !selectedMatchup.value?.team2) return []
   
-  // For baseball, show daily progression (Mon-Sun)
+  // For baseball, show full week progression (Mon-Sun)
   const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
-  const currentDayIndex = new Date().getDay()
   
-  // Create simulated progression
+  // Get current day (0 = Sunday, 1 = Monday, etc.)
+  const jsDay = new Date().getDay()
+  // Convert to Monday-based index (Mon = 0, Sun = 6)
+  const currentDayIndex = jsDay === 0 ? 6 : jsDay - 1
+  
+  const team1End = winProbability.value.team1
+  
+  // Create full week progression
   const history = []
-  for (let i = 0; i < Math.min(currentDayIndex, 7); i++) {
+  for (let i = 0; i < 7; i++) {
     const progress = (i + 1) / 7
     const team1Start = 50
-    const team1End = winProbability.value.team1
-    const team1Prob = team1Start + (team1End - team1Start) * progress + (Math.random() - 0.5) * 10
-    history.push({
-      day: days[i],
-      team1: Math.min(95, Math.max(5, team1Prob)),
-      team2: 100 - Math.min(95, Math.max(5, team1Prob))
-    })
+    
+    if (i <= currentDayIndex) {
+      // Past/current days - show actual progression with some variance
+      const team1Prob = team1Start + (team1End - team1Start) * progress + (Math.random() - 0.5) * 8
+      history.push({
+        day: days[i],
+        team1: Math.min(95, Math.max(5, team1Prob)),
+        team2: 100 - Math.min(95, Math.max(5, team1Prob)),
+        isFuture: false
+      })
+    } else {
+      // Future days - show projected trajectory
+      const team1Prob = team1Start + (team1End - team1Start) * progress
+      history.push({
+        day: days[i],
+        team1: Math.min(95, Math.max(5, team1Prob)),
+        team2: 100 - Math.min(95, Math.max(5, team1Prob)),
+        isFuture: true
+      })
+    }
   }
   
   return history
@@ -752,15 +771,34 @@ const probabilityHistory = computed(() => {
 
 // Probability chart options
 const probabilityChartOptions = computed(() => ({
-  chart: { type: 'area', toolbar: { show: false }, background: 'transparent', zoom: { enabled: false } },
-  stroke: { curve: 'smooth', width: 2 },
+  chart: { 
+    type: 'area', 
+    toolbar: { show: false }, 
+    background: 'transparent', 
+    zoom: { enabled: false },
+    animations: { enabled: true, speed: 500 }
+  },
+  stroke: { curve: 'smooth', width: 2, dashArray: [0, 0] },
   fill: { type: 'gradient', gradient: { shadeIntensity: 1, opacityFrom: 0.4, opacityTo: 0.1, stops: [0, 100] } },
   colors: [selectedMatchup.value?.team1?.is_my_team === true ? '#F5C451' : '#06b6d4', selectedMatchup.value?.team2?.is_my_team === true ? '#F5C451' : '#f97316'],
-  xaxis: { categories: probabilityHistory.value.map(h => h.day), labels: { style: { colors: '#8b8ea1' } } },
-  yaxis: { min: 0, max: 100, labels: { style: { colors: '#8b8ea1' }, formatter: (v: number) => `${v}%` } },
+  xaxis: { 
+    categories: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
+    labels: { style: { colors: '#8b8ea1' } },
+    axisBorder: { show: false },
+    axisTicks: { show: false }
+  },
+  yaxis: { min: 0, max: 100, labels: { style: { colors: '#8b8ea1' }, formatter: (v: number) => `${v.toFixed(0)}%` } },
   legend: { show: true, position: 'top', labels: { colors: '#8b8ea1' } },
-  tooltip: { theme: 'dark' },
-  grid: { borderColor: '#374151' }
+  tooltip: { 
+    theme: 'dark',
+    y: { formatter: (v: number) => `${v}%` }
+  },
+  grid: { borderColor: '#374151', strokeDashArray: 3 },
+  markers: {
+    size: 4,
+    strokeWidth: 0,
+    hover: { size: 6 }
+  }
 }))
 
 const probabilityChartSeries = computed(() => {
