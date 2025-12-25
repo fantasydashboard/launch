@@ -1,6 +1,9 @@
 <template>
-  <!-- Show Yahoo League Home if Yahoo league is active -->
-  <YahooLeagueHome v-if="leagueStore.activePlatform === 'yahoo'" />
+  <!-- Show Yahoo Baseball Home if Yahoo baseball league is active -->
+  <YahooBaseballHome v-if="leagueStore.activePlatform === 'yahoo' && currentSport === 'baseball'" />
+  
+  <!-- Show Yahoo League Home for other Yahoo sports (football, etc.) -->
+  <YahooLeagueHome v-else-if="leagueStore.activePlatform === 'yahoo'" />
   
   <!-- Show Sleeper League Home -->
   <div v-else class="space-y-8">
@@ -639,16 +642,22 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, watch, onUnmounted } from 'vue'
 import { useLeagueStore } from '@/stores/league'
+import { useSportStore } from '@/stores/sport'
 import { sleeperService } from '@/services/sleeper'
 import { useTeamCustomizations } from '@/composables/useTeamCustomizations'
 import PlayoffPredictor from '@/components/PlayoffPredictor.vue'
 import StandingsTable from '@/components/StandingsTable.vue'
 import YahooLeagueHome from '@/components/YahooLeagueHome.vue'
+import YahooBaseballHome from '@/components/YahooBaseballHome.vue'
 import { calculateAllPlayRecord, calculateTransactionCount, getStandingsOverTime } from '@/utils/calculations'
 import type { SleeperMatchup } from '@/types/sleeper'
 
 const leagueStore = useLeagueStore()
+const sportStore = useSportStore()
 const { applyCustomizations } = useTeamCustomizations()
+
+// Current sport for routing
+const currentSport = computed(() => sportStore.activeSport)
 
 // State
 const isLoading = ref(true)

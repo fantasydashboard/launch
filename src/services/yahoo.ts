@@ -546,6 +546,105 @@ export class YahooFantasyService {
 
     return matchups
   }
+
+  /**
+   * Get league settings including scoring type, divisions, etc.
+   */
+  async getLeagueSettings(leagueKey: string): Promise<any> {
+    const data = await this.apiRequest(
+      `/league/${leagueKey}/settings?format=json`
+    )
+    
+    const settings = data.fantasy_content?.league?.[1]?.settings?.[0]
+    return settings
+  }
+
+  /**
+   * Get transactions for a league
+   */
+  async getTransactions(leagueKey: string): Promise<any[]> {
+    try {
+      const data = await this.apiRequest(
+        `/league/${leagueKey}/transactions?format=json`
+      )
+      
+      const transactions: any[] = []
+      const transData = data.fantasy_content?.league?.[1]?.transactions
+      
+      if (!transData) return transactions
+      
+      for (const transWrapper of Object.values(transData) as any[]) {
+        if (typeof transWrapper !== 'object' || !transWrapper.transaction) continue
+        
+        const trans = transWrapper.transaction[0]
+        transactions.push({
+          transaction_key: trans.transaction_key,
+          type: trans.type,
+          status: trans.status,
+          timestamp: trans.timestamp
+        })
+      }
+      
+      return transactions
+    } catch (e) {
+      console.error('Error fetching transactions:', e)
+      return []
+    }
+  }
+
+  /**
+   * Get transaction counts per team
+   */
+  async getTransactionCounts(leagueKey: string): Promise<Map<string, number>> {
+    try {
+      const data = await this.apiRequest(
+        `/league/${leagueKey}/teams;out=transactions?format=json`
+      )
+      
+      const counts = new Map<string, number>()
+      const teamsData = data.fantasy_content?.league?.[1]?.teams
+      
+      if (!teamsData) return counts
+      
+      for (const teamWrapper of Object.values(teamsData) as any[]) {
+        if (typeof teamWrapper !== 'object' || !teamWrapper.team) continue
+        
+        const teamInfo = teamWrapper.team[0]
+        const teamKey = teamInfo[0]?.team_key
+        
+        // Count transactions from team data
+        const transCount = teamInfo[9]?.number_of_moves || 0
+        const tradeCount = teamInfo[10]?.number_of_trades || 0
+        
+        counts.set(teamKey, parseInt(transCount) + parseInt(tradeCount))
+      }
+      
+      return counts
+    } catch (e) {
+      console.error('Error fetching transaction counts:', e)
+      return new Map()
+    }
+  }
+
+  /**
+   * Get all matchups for multiple weeks (for calculating all-play and standings over time)
+   */
+  async getAllMatchups(leagueKey: string, startWeek: number, endWeek: number): Promise<Map<number, any[]>> {
+    const allMatchups = new Map<number, any[]>()
+    
+    for (let week = startWeek; week <= endWeek; week++) {
+      try {
+        const matchups = await this.getMatchups(leagueKey, week)
+        if (matchups.length > 0) {
+          allMatchups.set(week, matchups)
+        }
+      } catch (e) {
+        console.error(`Error fetching week ${week} matchups:`, e)
+      }
+    }
+    
+    return allMatchups
+  }
 }
 
 // Export singleton instance
