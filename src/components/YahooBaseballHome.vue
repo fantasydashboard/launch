@@ -402,16 +402,16 @@
           </div>
           <div class="card-body">
             <div class="space-y-3">
-              <!-- Best All-Play -->
+              <!-- Luckiest Team -->
               <div class="flex items-center gap-3 p-2 rounded-lg hover:bg-dark-border/20 transition-colors">
                 <div class="w-9 h-9 rounded-full overflow-hidden bg-dark-border flex-shrink-0">
-                  <img v-if="bestAllPlayTeam" :src="bestAllPlayTeam.logo_url || defaultAvatar" class="w-full h-full object-cover" @error="handleImageError" />
+                  <img v-if="luckiestTeam" :src="luckiestTeam.logo_url || defaultAvatar" class="w-full h-full object-cover" @error="handleImageError" />
                 </div>
                 <div class="flex-1 min-w-0">
-                  <div class="text-xs text-dark-textMuted uppercase tracking-wide">Best All-Play</div>
-                  <div class="font-semibold text-dark-text truncate text-sm">{{ bestAllPlayTeam?.name || 'N/A' }}</div>
+                  <div class="text-xs text-dark-textMuted uppercase tracking-wide">🍀 Luckiest</div>
+                  <div class="font-semibold text-dark-text truncate text-sm">{{ luckiestTeam?.name || 'N/A' }}</div>
                 </div>
-                <div class="text-sm font-bold text-green-400">{{ bestAllPlayTeam ? bestAllPlayTeam.all_play_wins + '-' + bestAllPlayTeam.all_play_losses : '-' }}</div>
+                <div class="text-sm font-bold text-green-400">{{ luckiestTeam ? '+' + luckiestTeam.luckScore?.toFixed(0) : '-' }}</div>
               </div>
               <!-- Hottest Team -->
               <div class="flex items-center gap-3 p-2 rounded-lg hover:bg-dark-border/20 transition-colors">
@@ -433,21 +433,21 @@
                   <div class="text-xs text-dark-textMuted uppercase tracking-wide">Most Transactions</div>
                   <div class="font-semibold text-dark-text truncate text-sm">{{ mostActiveTeam?.name || 'N/A' }}</div>
                 </div>
-                <div class="text-sm font-bold text-blue-400">{{ mostActiveTeam?.transactions || '-' }}</div>
+                <div class="text-sm font-bold text-blue-400">{{ mostActiveTeam?.transactions ?? '-' }}</div>
               </div>
               
               <div class="border-t border-dark-border my-2"></div>
               
-              <!-- Worst All-Play -->
+              <!-- Unluckiest Team -->
               <div class="flex items-center gap-3 p-2 rounded-lg hover:bg-dark-border/20 transition-colors">
                 <div class="w-9 h-9 rounded-full overflow-hidden bg-dark-border flex-shrink-0">
-                  <img v-if="worstAllPlayTeam" :src="worstAllPlayTeam.logo_url || defaultAvatar" class="w-full h-full object-cover" @error="handleImageError" />
+                  <img v-if="unluckiestTeam" :src="unluckiestTeam.logo_url || defaultAvatar" class="w-full h-full object-cover" @error="handleImageError" />
                 </div>
                 <div class="flex-1 min-w-0">
-                  <div class="text-xs text-dark-textMuted uppercase tracking-wide">Worst All-Play</div>
-                  <div class="font-semibold text-dark-text truncate text-sm">{{ worstAllPlayTeam?.name || 'N/A' }}</div>
+                  <div class="text-xs text-dark-textMuted uppercase tracking-wide">😢 Unluckiest</div>
+                  <div class="font-semibold text-dark-text truncate text-sm">{{ unluckiestTeam?.name || 'N/A' }}</div>
                 </div>
-                <div class="text-sm font-bold text-red-400">{{ worstAllPlayTeam ? worstAllPlayTeam.all_play_wins + '-' + worstAllPlayTeam.all_play_losses : '-' }}</div>
+                <div class="text-sm font-bold text-red-400">{{ unluckiestTeam ? unluckiestTeam.luckScore?.toFixed(0) : '-' }}</div>
               </div>
               <!-- Coldest Team -->
               <div class="flex items-center gap-3 p-2 rounded-lg hover:bg-dark-border/20 transition-colors">
@@ -871,6 +871,41 @@ const coldestTeam = computed(() => {
 })
 const mostActiveTeam = computed(() => teamsWithStats.value.length ? [...teamsWithStats.value].sort((a, b) => (b.transactions || 0) - (a.transactions || 0))[0] : null)
 const leastActiveTeam = computed(() => teamsWithStats.value.length ? [...teamsWithStats.value].sort((a, b) => (a.transactions || 0) - (b.transactions || 0))[0] : null)
+
+// Luckiest Team: Best record relative to all-play (record better than expected based on all-play)
+// Formula: (actual win%) - (all-play win%) * 100
+// Higher positive = luckier (winning more than expected)
+const luckiestTeam = computed(() => {
+  const teams = teamsWithStats.value.filter(t => 
+    (t.wins || 0) + (t.losses || 0) > 0 && 
+    (t.all_play_wins || 0) + (t.all_play_losses || 0) > 0
+  )
+  if (!teams.length) return null
+  
+  return [...teams].map(t => {
+    const actualWinPct = (t.wins || 0) / Math.max((t.wins || 0) + (t.losses || 0), 1)
+    const allPlayWinPct = (t.all_play_wins || 0) / Math.max((t.all_play_wins || 0) + (t.all_play_losses || 0), 1)
+    const luckScore = (actualWinPct - allPlayWinPct) * 100
+    return { ...t, luckScore }
+  }).sort((a, b) => b.luckScore - a.luckScore)[0]
+})
+
+// Unluckiest Team: Worst record relative to all-play (record worse than expected)
+// Lowest (most negative) luck score = unluckiest
+const unluckiestTeam = computed(() => {
+  const teams = teamsWithStats.value.filter(t => 
+    (t.wins || 0) + (t.losses || 0) > 0 && 
+    (t.all_play_wins || 0) + (t.all_play_losses || 0) > 0
+  )
+  if (!teams.length) return null
+  
+  return [...teams].map(t => {
+    const actualWinPct = (t.wins || 0) / Math.max((t.wins || 0) + (t.losses || 0), 1)
+    const allPlayWinPct = (t.all_play_wins || 0) / Math.max((t.all_play_wins || 0) + (t.all_play_losses || 0), 1)
+    const luckScore = (actualWinPct - allPlayWinPct) * 100
+    return { ...t, luckScore }
+  }).sort((a, b) => a.luckScore - b.luckScore)[0]
+})
 
 // Best/Worst calculations for highlighting
 const bestRecord = computed(() => {

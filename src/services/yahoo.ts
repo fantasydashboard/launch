@@ -597,14 +597,18 @@ export class YahooFantasyService {
    */
   async getTransactionCounts(leagueKey: string): Promise<Map<string, number>> {
     try {
+      // Use the standings endpoint which includes transaction data
       const data = await this.apiRequest(
-        `/league/${leagueKey}/teams;out=transactions?format=json`
+        `/league/${leagueKey}/standings?format=json`
       )
       
       const counts = new Map<string, number>()
-      const teamsData = data.fantasy_content?.league?.[1]?.teams
+      const teamsData = data.fantasy_content?.league?.[1]?.standings?.[0]?.teams
       
-      if (!teamsData) return counts
+      if (!teamsData) {
+        console.log('No teams data found for transactions')
+        return counts
+      }
       
       for (const teamWrapper of Object.values(teamsData) as any[]) {
         if (typeof teamWrapper !== 'object' || !teamWrapper.team) continue
@@ -612,11 +616,21 @@ export class YahooFantasyService {
         const teamInfo = teamWrapper.team[0]
         const teamKey = teamInfo[0]?.team_key
         
-        // Count transactions from team data
-        const transCount = teamInfo[9]?.number_of_moves || 0
-        const tradeCount = teamInfo[10]?.number_of_trades || 0
+        // Look for number_of_moves and number_of_trades in the team info array
+        let moves = 0
+        let trades = 0
         
-        counts.set(teamKey, parseInt(transCount) + parseInt(tradeCount))
+        for (const item of teamInfo) {
+          if (item?.number_of_moves !== undefined) {
+            moves = parseInt(item.number_of_moves) || 0
+          }
+          if (item?.number_of_trades !== undefined) {
+            trades = parseInt(item.number_of_trades) || 0
+          }
+        }
+        
+        counts.set(teamKey, moves + trades)
+        console.log(`Team ${teamKey}: ${moves} moves, ${trades} trades = ${moves + trades} total`)
       }
       
       return counts
