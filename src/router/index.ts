@@ -31,7 +31,7 @@ const router = createRouter({
     {
       path: '/power-rankings',
       name: 'power-rankings',
-      component: () => import('@/views/PowerRankingsView.vue')
+      component: () => import('@/views/PowerRankingsWrapper.vue')
     },
     {
       path: '/matchups',
