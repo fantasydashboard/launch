@@ -220,30 +220,30 @@
               <!-- Team 1 Probability -->
               <div :class="[
                 'text-center p-6 rounded-xl border-2',
-                selectedMatchup.team1.is_my_team 
+                selectedMatchup?.team1?.is_my_team 
                   ? 'bg-gradient-to-br from-primary/15 to-primary/5 border-primary/40' 
                   : 'bg-gradient-to-br from-cyan-500/10 to-cyan-600/5 border-cyan-500/30'
               ]">
                 <div class="relative inline-block">
                   <img 
-                    :src="selectedMatchup.team1.logo_url || defaultAvatar" 
-                    :alt="selectedMatchup.team1.name" 
-                    :class="['w-20 h-20 rounded-full mx-auto mb-3 border-4', selectedMatchup.team1.is_my_team ? 'border-primary' : 'border-cyan-500']"
+                    :src="selectedMatchup?.team1?.logo_url || defaultAvatar" 
+                    :alt="selectedMatchup?.team1?.name || 'Team 1'" 
+                    :class="['w-20 h-20 rounded-full mx-auto mb-3 border-4', selectedMatchup?.team1?.is_my_team ? 'border-primary' : 'border-cyan-500']"
                     @error="handleImageError" 
                   />
-                  <div v-if="selectedMatchup.team1.is_my_team" class="absolute -top-1 -right-1 w-6 h-6 bg-primary rounded-full flex items-center justify-center shadow-lg">
+                  <div v-if="selectedMatchup?.team1?.is_my_team" class="absolute -top-1 -right-1 w-6 h-6 bg-primary rounded-full flex items-center justify-center shadow-lg">
                     <span class="text-sm text-gray-900">★</span>
                   </div>
                 </div>
-                <div :class="['font-bold text-xl mb-2', selectedMatchup.team1.is_my_team ? 'text-primary' : 'text-cyan-400']">
-                  {{ selectedMatchup.team1.name }}
+                <div :class="['font-bold text-xl mb-2', selectedMatchup?.team1?.is_my_team ? 'text-primary' : 'text-cyan-400']">
+                  {{ selectedMatchup?.team1?.name || 'Team 1' }}
                 </div>
-                <div :class="['text-5xl font-black mb-3', selectedMatchup.team1.is_my_team ? 'text-primary' : 'text-cyan-400']">
+                <div :class="['text-5xl font-black mb-3', selectedMatchup?.team1?.is_my_team ? 'text-primary' : 'text-cyan-400']">
                   {{ winProbability.team1.toFixed(1) }}%
                 </div>
                 <div class="space-y-1 text-sm">
-                  <div class="text-white">Current: {{ selectedMatchup.team1.points.toFixed(1) }} pts</div>
-                  <div v-if="selectedMatchup.team1.projected_points" :class="selectedMatchup.team1.is_my_team ? 'text-primary' : 'text-cyan-400'">
+                  <div class="text-white">Current: {{ (selectedMatchup?.team1?.points || 0).toFixed(1) }} pts</div>
+                  <div v-if="selectedMatchup?.team1?.projected_points" :class="selectedMatchup?.team1?.is_my_team ? 'text-primary' : 'text-cyan-400'">
                     Projected: {{ selectedMatchup.team1.projected_points.toFixed(1) }}
                   </div>
                 </div>
@@ -252,30 +252,30 @@
               <!-- Team 2 Probability -->
               <div :class="[
                 'text-center p-6 rounded-xl border-2',
-                selectedMatchup.team2.is_my_team 
+                selectedMatchup?.team2?.is_my_team 
                   ? 'bg-gradient-to-br from-primary/15 to-primary/5 border-primary/40' 
                   : 'bg-gradient-to-br from-orange-500/10 to-orange-600/5 border-orange-500/30'
               ]">
                 <div class="relative inline-block">
                   <img 
-                    :src="selectedMatchup.team2.logo_url || defaultAvatar" 
-                    :alt="selectedMatchup.team2.name" 
-                    :class="['w-20 h-20 rounded-full mx-auto mb-3 border-4', selectedMatchup.team2.is_my_team ? 'border-primary' : 'border-orange-500']"
+                    :src="selectedMatchup?.team2?.logo_url || defaultAvatar" 
+                    :alt="selectedMatchup?.team2?.name || 'Team 2'" 
+                    :class="['w-20 h-20 rounded-full mx-auto mb-3 border-4', selectedMatchup?.team2?.is_my_team ? 'border-primary' : 'border-orange-500']"
                     @error="handleImageError" 
                   />
-                  <div v-if="selectedMatchup.team2.is_my_team" class="absolute -top-1 -right-1 w-6 h-6 bg-primary rounded-full flex items-center justify-center shadow-lg">
+                  <div v-if="selectedMatchup?.team2?.is_my_team" class="absolute -top-1 -right-1 w-6 h-6 bg-primary rounded-full flex items-center justify-center shadow-lg">
                     <span class="text-sm text-gray-900">★</span>
                   </div>
                 </div>
-                <div :class="['font-bold text-xl mb-2', selectedMatchup.team2.is_my_team ? 'text-primary' : 'text-orange-400']">
-                  {{ selectedMatchup.team2.name }}
+                <div :class="['font-bold text-xl mb-2', selectedMatchup?.team2?.is_my_team ? 'text-primary' : 'text-orange-400']">
+                  {{ selectedMatchup?.team2?.name || 'Team 2' }}
                 </div>
-                <div :class="['text-5xl font-black mb-3', selectedMatchup.team2.is_my_team ? 'text-primary' : 'text-orange-400']">
+                <div :class="['text-5xl font-black mb-3', selectedMatchup?.team2?.is_my_team ? 'text-primary' : 'text-orange-400']">
                   {{ winProbability.team2.toFixed(1) }}%
                 </div>
                 <div class="space-y-1 text-sm">
-                  <div class="text-white">Current: {{ selectedMatchup.team2.points.toFixed(1) }} pts</div>
-                  <div v-if="selectedMatchup.team2.projected_points" :class="selectedMatchup.team2.is_my_team ? 'text-primary' : 'text-orange-400'">
+                  <div class="text-white">Current: {{ (selectedMatchup?.team2?.points || 0).toFixed(1) }} pts</div>
+                  <div v-if="selectedMatchup?.team2?.projected_points" :class="selectedMatchup?.team2?.is_my_team ? 'text-primary' : 'text-orange-400'">
                     Projected: {{ selectedMatchup.team2.projected_points.toFixed(1) }}
                   </div>
                 </div>
@@ -289,10 +289,10 @@
                 :style="gradientBarStyle"
               ></div>
               <div class="absolute left-0 top-0 h-full flex items-center justify-start px-4 z-10">
-                <span class="font-bold text-sm drop-shadow-md text-white">{{ selectedMatchup.team1.name }}</span>
+                <span class="font-bold text-sm drop-shadow-md text-white">{{ selectedMatchup?.team1?.name || 'Team 1' }}</span>
               </div>
               <div class="absolute right-0 top-0 h-full flex items-center justify-end px-4 z-10">
-                <span class="font-bold text-sm drop-shadow-md text-white">{{ selectedMatchup.team2.name }}</span>
+                <span class="font-bold text-sm drop-shadow-md text-white">{{ selectedMatchup?.team2?.name || 'Team 2' }}</span>
               </div>
             </div>
 
@@ -340,20 +340,20 @@
               <!-- Team 1 Report -->
               <div :class="[
                 'p-4 rounded-xl border',
-                selectedMatchup.team1.is_my_team 
+                selectedMatchup?.team1?.is_my_team 
                   ? 'bg-gradient-to-br from-primary/10 to-primary/5 border-primary/30' 
                   : 'bg-gradient-to-br from-cyan-500/10 to-cyan-600/5 border-cyan-500/30'
               ]">
                 <div class="flex items-center gap-3 mb-4">
                   <img 
-                    :src="selectedMatchup.team1.logo_url || defaultAvatar" 
-                    :alt="selectedMatchup.team1.name"
+                    :src="selectedMatchup?.team1?.logo_url || defaultAvatar" 
+                    :alt="selectedMatchup?.team1?.name || 'Team 1'"
                     class="w-10 h-10 rounded-full"
                     @error="handleImageError"
                   />
                   <div>
-                    <div class="font-bold text-dark-text">{{ selectedMatchup.team1.name }}</div>
-                    <div class="text-xs text-dark-textMuted">{{ getTeamRecord(selectedMatchup.team1.team_key) }}</div>
+                    <div class="font-bold text-dark-text">{{ selectedMatchup?.team1?.name || 'Team 1' }}</div>
+                    <div class="text-xs text-dark-textMuted">{{ getTeamRecord(selectedMatchup?.team1?.team_key) }}</div>
                   </div>
                 </div>
                 
@@ -388,20 +388,20 @@
               <!-- Team 2 Report -->
               <div :class="[
                 'p-4 rounded-xl border',
-                selectedMatchup.team2.is_my_team 
+                selectedMatchup?.team2?.is_my_team 
                   ? 'bg-gradient-to-br from-primary/10 to-primary/5 border-primary/30' 
                   : 'bg-gradient-to-br from-orange-500/10 to-orange-600/5 border-orange-500/30'
               ]">
                 <div class="flex items-center gap-3 mb-4">
                   <img 
-                    :src="selectedMatchup.team2.logo_url || defaultAvatar" 
-                    :alt="selectedMatchup.team2.name"
+                    :src="selectedMatchup?.team2?.logo_url || defaultAvatar" 
+                    :alt="selectedMatchup?.team2?.name || 'Team 2'"
                     class="w-10 h-10 rounded-full"
                     @error="handleImageError"
                   />
                   <div>
-                    <div class="font-bold text-dark-text">{{ selectedMatchup.team2.name }}</div>
-                    <div class="text-xs text-dark-textMuted">{{ getTeamRecord(selectedMatchup.team2.team_key) }}</div>
+                    <div class="font-bold text-dark-text">{{ selectedMatchup?.team2?.name || 'Team 2' }}</div>
+                    <div class="text-xs text-dark-textMuted">{{ getTeamRecord(selectedMatchup?.team2?.team_key) }}</div>
                   </div>
                 </div>
                 
@@ -460,12 +460,12 @@
                 <thead>
                   <tr class="border-b border-dark-border bg-dark-border/30">
                     <th class="text-left p-3 text-dark-textMuted font-semibold">Statistic</th>
-                    <th class="text-center p-3 font-semibold" :class="selectedMatchup.team1.is_my_team ? 'text-primary' : 'text-cyan-400'">
-                      {{ selectedMatchup.team1.name }}
+                    <th class="text-center p-3 font-semibold" :class="selectedMatchup?.team1?.is_my_team ? 'text-primary' : 'text-cyan-400'">
+                      {{ selectedMatchup?.team1?.name || 'Team 1' }}
                     </th>
                     <th class="text-center p-3 text-dark-textMuted font-semibold">Advantage</th>
-                    <th class="text-center p-3 font-semibold" :class="selectedMatchup.team2.is_my_team ? 'text-primary' : 'text-orange-400'">
-                      {{ selectedMatchup.team2.name }}
+                    <th class="text-center p-3 font-semibold" :class="selectedMatchup?.team2?.is_my_team ? 'text-primary' : 'text-orange-400'">
+                      {{ selectedMatchup?.team2?.name || 'Team 2' }}
                     </th>
                   </tr>
                 </thead>
@@ -473,21 +473,21 @@
                   <tr v-for="stat in comparisonStats" :key="stat.label" class="border-b border-dark-border/50 hover:bg-dark-border/10">
                     <td class="p-3 text-dark-text font-medium">{{ stat.label }}</td>
                     <td class="text-center p-3">
-                      <span :class="stat.team1Better ? (selectedMatchup.team1.is_my_team ? 'text-primary' : 'text-cyan-400') + ' font-bold' : 'text-dark-textMuted'">
+                      <span :class="stat.team1Better ? (selectedMatchup?.team1?.is_my_team ? 'text-primary' : 'text-cyan-400') + ' font-bold' : 'text-dark-textMuted'">
                         {{ stat.team1Value }}
                       </span>
                     </td>
                     <td class="text-center p-3">
-                      <div v-if="stat.team1Better" :class="selectedMatchup.team1.is_my_team ? 'text-primary' : 'text-cyan-400'" class="font-semibold">
-                        ◀ {{ selectedMatchup.team1.name }}
+                      <div v-if="stat.team1Better" :class="selectedMatchup?.team1?.is_my_team ? 'text-primary' : 'text-cyan-400'" class="font-semibold">
+                        ◀ {{ selectedMatchup?.team1?.name || 'Team 1' }}
                       </div>
-                      <div v-else-if="stat.team2Better" :class="selectedMatchup.team2.is_my_team ? 'text-primary' : 'text-orange-400'" class="font-semibold">
-                        {{ selectedMatchup.team2.name }} ▶
+                      <div v-else-if="stat.team2Better" :class="selectedMatchup?.team2?.is_my_team ? 'text-primary' : 'text-orange-400'" class="font-semibold">
+                        {{ selectedMatchup?.team2?.name || 'Team 2' }} ▶
                       </div>
                       <div v-else class="text-dark-textMuted">Even</div>
                     </td>
                     <td class="text-center p-3">
-                      <span :class="stat.team2Better ? (selectedMatchup.team2.is_my_team ? 'text-primary' : 'text-orange-400') + ' font-bold' : 'text-dark-textMuted'">
+                      <span :class="stat.team2Better ? (selectedMatchup?.team2?.is_my_team ? 'text-primary' : 'text-orange-400') + ' font-bold' : 'text-dark-textMuted'">
                         {{ stat.team2Value }}
                       </span>
                     </td>
@@ -516,14 +516,14 @@
                   <div class="text-3xl font-bold" :class="lifetimeSeries.team1Wins > lifetimeSeries.team2Wins ? 'text-green-400' : 'text-dark-textMuted'">
                     {{ lifetimeSeries.team1Wins }}
                   </div>
-                  <div class="text-xs text-dark-textMuted">{{ selectedMatchup.team1.name }}</div>
+                  <div class="text-xs text-dark-textMuted">{{ selectedMatchup?.team1?.name || 'Team 1' }}</div>
                 </div>
                 <div class="text-2xl text-dark-textMuted">-</div>
                 <div class="text-center">
                   <div class="text-3xl font-bold" :class="lifetimeSeries.team2Wins > lifetimeSeries.team1Wins ? 'text-green-400' : 'text-dark-textMuted'">
                     {{ lifetimeSeries.team2Wins }}
                   </div>
-                  <div class="text-xs text-dark-textMuted">{{ selectedMatchup.team2.name }}</div>
+                  <div class="text-xs text-dark-textMuted">{{ selectedMatchup?.team2?.name || 'Team 2' }}</div>
                 </div>
               </div>
               <div v-if="lifetimeSeries.ties > 0" class="text-xs text-dark-textMuted mt-2">
@@ -551,10 +551,10 @@
                 </div>
                 <div class="grid grid-cols-2 gap-2">
                   <div class="text-sm" :class="game.team1Won ? 'text-green-400 font-bold' : 'text-dark-textMuted'">
-                    {{ selectedMatchup.team1.name }}: {{ game.team1Score.toFixed(1) }}
+                    {{ selectedMatchup?.team1?.name || 'Team 1' }}: {{ game.team1Score.toFixed(1) }}
                   </div>
                   <div class="text-sm text-right" :class="game.team2Won ? 'text-green-400 font-bold' : 'text-dark-textMuted'">
-                    {{ selectedMatchup.team2.name }}: {{ game.team2Score.toFixed(1) }}
+                    {{ selectedMatchup?.team2?.name || 'Team 2' }}: {{ game.team2Score.toFixed(1) }}
                   </div>
                 </div>
               </div>
@@ -997,7 +997,29 @@ function generateScoutingReport(teamStats: any, opponentStats: any): any {
 }
 
 function selectMatchup(matchup: any) {
-  selectedMatchup.value = matchup
+  // Make sure we have team1 and team2 with all required properties
+  if (!matchup) {
+    selectedMatchup.value = null
+    return
+  }
+  
+  // If this is a raw matchup from API, transform it
+  if (matchup.teams && !matchup.team1) {
+    const team1 = matchup.teams?.[0] || { name: 'Team 1', points: 0, logo_url: '', is_my_team: false, team_key: '' }
+    const team2 = matchup.teams?.[1] || { name: 'Team 2', points: 0, logo_url: '', is_my_team: false, team_key: '' }
+    
+    selectedMatchup.value = {
+      matchup_id: matchup.matchup_id || 0,
+      team1: { ...team1, points: team1.points || 0, is_my_team: team1.is_my_team || false },
+      team2: { ...team2, points: team2.points || 0, is_my_team: team2.is_my_team || false },
+      status: matchup.is_playoffs ? 'playoffs' : (parseInt(selectedWeek.value) < currentWeek.value ? 'final' : 'live'),
+      is_playoffs: matchup.is_playoffs || false,
+      is_consolation: matchup.is_consolation || false
+    }
+  } else {
+    // Already transformed
+    selectedMatchup.value = matchup
+  }
 }
 
 async function loadMatchups() {
