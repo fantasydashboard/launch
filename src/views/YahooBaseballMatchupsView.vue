@@ -1210,16 +1210,6 @@ async function loadMatchups() {
     
     matchupsData.value = matchups
     
-    // Load existing snapshots for this week
-    const snapshots = await matchupSnapshotsService.getWeekSnapshots(leagueKey, week, currentSeason.value)
-    weekSnapshots.value = snapshots
-    console.log(`Loaded ${snapshots.size} matchups with snapshots`)
-    
-    // If this is the current week, take today's snapshot for all matchups
-    if (week === currentWeek.value && matchups.length > 0) {
-      await takeCurrentWeekSnapshots(matchups)
-    }
-    
     // Also load history for lifetime series
     await loadMatchupHistory()
     
@@ -1233,10 +1223,32 @@ async function loadMatchups() {
     } else {
       console.log('No matchups found')
     }
+    
+    // Load snapshots in background (non-blocking) - don't await
+    loadSnapshotsInBackground(leagueKey, week, matchups)
+    
   } catch (e) {
     console.error('Error loading matchups:', e)
   } finally {
     isLoading.value = false
+  }
+}
+
+// Load snapshots in background without blocking page load
+async function loadSnapshotsInBackground(leagueKey: string, week: number, matchups: any[]) {
+  try {
+    // Load existing snapshots for this week
+    const snapshots = await matchupSnapshotsService.getWeekSnapshots(leagueKey, week, currentSeason.value)
+    weekSnapshots.value = snapshots
+    console.log(`Loaded ${snapshots.size} matchups with snapshots`)
+    
+    // If this is the current week, take today's snapshot for all matchups
+    if (week === currentWeek.value && matchups.length > 0) {
+      await takeCurrentWeekSnapshots(matchups)
+    }
+  } catch (e) {
+    // Silently fail - snapshots are optional enhancement
+    console.log('Snapshots not available (table may not exist yet)')
   }
 }
 

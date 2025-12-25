@@ -1355,12 +1355,19 @@ async function loadHistoricalData() {
   
   try {
     const leagueKey = leagueStore.activeLeagueId
-    if (!leagueKey || !authStore.user?.id) return
+    console.log('Loading history for league:', leagueKey)
+    
+    if (!leagueKey || !authStore.user?.id) {
+      console.log('Missing leagueKey or userId, waiting...')
+      isLoading.value = false
+      return
+    }
     
     await yahooService.initialize(authStore.user.id)
     
     // Get current league info to find game key
     const gameKey = leagueKey.split('.')[0] // e.g., "431" from "431.l.136233"
+    console.log('Game key:', gameKey)
     
     // Baseball game keys by year
     const gameKeys: Record<string, string> = {
@@ -1377,9 +1384,12 @@ async function loadHistoricalData() {
     
     // Get league number from current league key
     const leagueNum = leagueKey.split('.l.')[1]
+    console.log('League number:', leagueNum)
     
-    // Try to load data for multiple seasons
-    const seasons = ['2025', '2024', '2023', '2022', '2021', '2020', '2019', '2018', '2017', '2016', '2015']
+    // Start with current season only for now to avoid rate limiting
+    const currentYear = yearsByKey[gameKey] || '2024'
+    const seasons = [currentYear]
+    console.log('Loading seasons:', seasons)
     
     for (const season of seasons) {
       const seasonGameKey = gameKeys[season]
@@ -1491,9 +1501,26 @@ watch(selectedWeeklyAwardSeason, () => {
   }
 })
 
-// Load data on mount
+// Watch for league changes
+watch(() => leagueStore.activeLeagueId, (newLeagueId) => {
+  if (newLeagueId) {
+    console.log('League changed, reloading history:', newLeagueId)
+    // Reset data
+    historicalData.value.clear()
+    allMatchups.value.clear()
+    allTeams.value.clear()
+    h2hRecords.value.clear()
+    currentMembers.value.clear()
+    // Reload
+    loadHistoricalData()
+  }
+}, { immediate: true })
+
+// Load data on mount (as backup)
 onMounted(() => {
-  loadHistoricalData()
+  if (leagueStore.activeLeagueId && historicalData.value.size === 0) {
+    loadHistoricalData()
+  }
 })
 </script>
 
