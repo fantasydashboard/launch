@@ -696,21 +696,21 @@ const weekStats = computed(() => {
 
 // Win probability calculation
 const winProbability = computed(() => {
-  if (!selectedMatchup.value) return { team1: 50, team2: 50 }
+  if (!selectedMatchup.value?.team1 || !selectedMatchup.value?.team2) return { team1: 50, team2: 50 }
   
   const team1 = selectedMatchup.value.team1
   const team2 = selectedMatchup.value.team2
   
   // For completed weeks, use actual results
   if (selectedMatchup.value.status === 'final') {
-    if (team1.points > team2.points) return { team1: 100, team2: 0 }
-    if (team2.points > team1.points) return { team1: 0, team2: 100 }
+    if ((team1.points || 0) > (team2.points || 0)) return { team1: 100, team2: 0 }
+    if ((team2.points || 0) > (team1.points || 0)) return { team1: 0, team2: 100 }
     return { team1: 50, team2: 50 }
   }
   
   // For live weeks, calculate based on current + projected
-  const team1Total = team1.projected_points || team1.points
-  const team2Total = team2.projected_points || team2.points
+  const team1Total = team1.projected_points || team1.points || 0
+  const team2Total = team2.projected_points || team2.points || 0
   
   if (team1Total === 0 && team2Total === 0) return { team1: 50, team2: 50 }
   
@@ -727,7 +727,7 @@ const winProbability = computed(() => {
 
 // Probability history (simulated for chart)
 const probabilityHistory = computed(() => {
-  if (!selectedMatchup.value) return []
+  if (!selectedMatchup.value?.team1 || !selectedMatchup.value?.team2) return []
   
   // For baseball, show daily progression (Mon-Sun)
   const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
@@ -784,7 +784,7 @@ const gradientBarStyle = computed(() => {
 
 // Scouting reports
 const scoutingReports = computed(() => {
-  if (!selectedMatchup.value) {
+  if (!selectedMatchup.value?.team1 || !selectedMatchup.value?.team2) {
     return { team1: { strengths: [], weaknesses: [], recentForm: [] }, team2: { strengths: [], weaknesses: [], recentForm: [] } }
   }
   
@@ -799,7 +799,7 @@ const scoutingReports = computed(() => {
 
 // Comparison stats
 const comparisonStats = computed(() => {
-  if (!selectedMatchup.value) return []
+  if (!selectedMatchup.value?.team1?.team_key || !selectedMatchup.value?.team2?.team_key) return []
   
   const team1Stats = getTeamStats(selectedMatchup.value.team1.team_key)
   const team2Stats = getTeamStats(selectedMatchup.value.team2.team_key)
@@ -828,7 +828,7 @@ const comparisonStats = computed(() => {
 
 // Lifetime series
 const lifetimeSeries = computed(() => {
-  if (!selectedMatchup.value) return { team1Wins: 0, team2Wins: 0, ties: 0, games: [] }
+  if (!selectedMatchup.value?.team1?.team_key || !selectedMatchup.value?.team2?.team_key) return { team1Wins: 0, team2Wins: 0, ties: 0, games: [] }
   
   const team1Key = selectedMatchup.value.team1.team_key
   const team2Key = selectedMatchup.value.team2.team_key
@@ -1007,12 +1007,19 @@ async function loadMatchups() {
   
   try {
     const leagueKey = leagueStore.activeLeagueId
-    if (!leagueKey || !authStore.user?.id) return
+    if (!leagueKey || !authStore.user?.id) {
+      console.log('Missing leagueKey or userId:', { leagueKey, userId: authStore.user?.id })
+      return
+    }
     
     await yahooService.initialize(authStore.user.id)
     
     const week = parseInt(selectedWeek.value)
+    console.log('Loading matchups for week:', week, 'league:', leagueKey)
+    
     const matchups = await yahooService.getMatchups(leagueKey, week)
+    console.log('Matchups received:', matchups.length, matchups)
+    
     matchupsData.value = matchups
     
     // Also load history for lifetime series
@@ -1021,9 +1028,12 @@ async function loadMatchups() {
     // Auto-select first matchup or user's matchup
     if (matchups.length > 0) {
       const myMatchup = matchups.find((m: any) => 
-        m.teams.some((t: any) => t.is_my_team)
+        m.teams && Array.isArray(m.teams) && m.teams.some((t: any) => t?.is_my_team)
       )
+      console.log('Selected matchup:', myMatchup || matchups[0])
       selectMatchup(myMatchup || matchups[0])
+    } else {
+      console.log('No matchups found')
     }
   } catch (e) {
     console.error('Error loading matchups:', e)
