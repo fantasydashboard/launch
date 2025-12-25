@@ -31,7 +31,16 @@ const GAME_KEYS: Record<Sport, Record<number, string>> = {
     2022: '390',
     2021: '371',
     2020: '399',
-    2019: '380'
+    2019: '380',
+    2018: '359',
+    2017: '348',
+    2016: '331',
+    2015: '314',
+    2014: '299',
+    2013: '273',
+    2012: '257',
+    2011: '242',
+    2010: '222'
   },
   baseball: {
     // MLB seasons (March - October)
@@ -40,7 +49,17 @@ const GAME_KEYS: Record<Sport, Record<number, string>> = {
     2023: '412',
     2022: '404',
     2021: '398',
-    2020: '388'
+    2020: '388',
+    2019: '378',
+    2018: '370',
+    2017: '357',
+    2016: '346',
+    2015: '328',
+    2014: '308',
+    2013: '283',
+    2012: '268',
+    2011: '253',
+    2010: '238'
   },
   basketball: {
     // NBA seasons (October - June, spans 2 years)
@@ -49,7 +68,17 @@ const GAME_KEYS: Record<Sport, Record<number, string>> = {
     2023: '418',
     2022: '410',
     2021: '402',
-    2020: '395'
+    2020: '395',
+    2019: '385',
+    2018: '375',
+    2017: '364',
+    2016: '353',
+    2015: '340',
+    2014: '322',
+    2013: '304',
+    2012: '282',
+    2011: '265',
+    2010: '249'
   },
   hockey: {
     // NHL seasons (October - June, spans 2 years)
@@ -58,12 +87,22 @@ const GAME_KEYS: Record<Sport, Record<number, string>> = {
     2023: '419',
     2022: '411',
     2021: '403',
-    2020: '396'
+    2020: '396',
+    2019: '386',
+    2018: '376',
+    2017: '365',
+    2016: '354',
+    2015: '341',
+    2014: '321',
+    2013: '303',
+    2012: '281',
+    2011: '263',
+    2010: '248'
   }
 }
 
 // Get game keys for recent seasons
-function getRecentGameKeys(sport: Sport, numYears: number = 6): string[] {
+function getRecentGameKeys(sport: Sport, numYears: number = 16): string[] {
   const sportKeys = GAME_KEYS[sport]
   const currentYear = new Date().getFullYear()
   const keys: string[] = []
