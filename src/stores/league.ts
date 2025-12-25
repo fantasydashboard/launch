@@ -492,7 +492,10 @@ export const useLeagueStore = defineStore('league', () => {
     // Check if this is a Yahoo league
     const savedLeague = savedLeagues.value.find(l => l.league_id === leagueId)
     
-    if (savedLeague?.platform === 'yahoo') {
+    // Detect Yahoo league by ID format (e.g., "431.l.136233" or "nfl.l.123456")
+    const isYahooLeagueId = /^\d+\.l\.\d+$/.test(leagueId) || /^[a-z]+\.l\.\d+$/.test(leagueId)
+    
+    if (savedLeague?.platform === 'yahoo' || isYahooLeagueId) {
       // Handle Yahoo league
       activePlatform.value = 'yahoo'
       await loadYahooLeagueData(leagueId)

@@ -625,20 +625,20 @@ const availableWeeks = computed(() => {
 // Transform matchups for display
 const matchups = computed(() => {
   return matchupsData.value.map(m => {
-    const team1 = m.teams[0] || {}
-    const team2 = m.teams[1] || {}
+    const team1 = m.teams?.[0] || { name: 'Team 1', points: 0, logo_url: '', is_my_team: false, team_key: '' }
+    const team2 = m.teams?.[1] || { name: 'Team 2', points: 0, logo_url: '', is_my_team: false, team_key: '' }
     const team1Points = team1.points || 0
     const team2Points = team2.points || 0
     
     return {
-      matchup_id: m.matchup_id,
-      team1: { ...team1, points: team1Points },
-      team2: { ...team2, points: team2Points },
+      matchup_id: m.matchup_id || 0,
+      team1: { ...team1, points: team1Points, is_my_team: team1.is_my_team || false },
+      team2: { ...team2, points: team2Points, is_my_team: team2.is_my_team || false },
       team1_won: team1Points > team2Points,
       team2_won: team2Points > team1Points,
       status: m.is_playoffs ? 'playoffs' : (parseInt(selectedWeek.value) < currentWeek.value ? 'final' : 'live'),
-      is_playoffs: m.is_playoffs,
-      is_consolation: m.is_consolation
+      is_playoffs: m.is_playoffs || false,
+      is_consolation: m.is_consolation || false
     }
   })
 })
@@ -755,7 +755,7 @@ const probabilityChartOptions = computed(() => ({
   chart: { type: 'area', toolbar: { show: false }, background: 'transparent', zoom: { enabled: false } },
   stroke: { curve: 'smooth', width: 2 },
   fill: { type: 'gradient', gradient: { shadeIntensity: 1, opacityFrom: 0.4, opacityTo: 0.1, stops: [0, 100] } },
-  colors: [selectedMatchup.value?.team1?.is_my_team ? '#F5C451' : '#06b6d4', selectedMatchup.value?.team2?.is_my_team ? '#F5C451' : '#f97316'],
+  colors: [selectedMatchup.value?.team1?.is_my_team === true ? '#F5C451' : '#06b6d4', selectedMatchup.value?.team2?.is_my_team === true ? '#F5C451' : '#f97316'],
   xaxis: { categories: probabilityHistory.value.map(h => h.day), labels: { style: { colors: '#8b8ea1' } } },
   yaxis: { min: 0, max: 100, labels: { style: { colors: '#8b8ea1' }, formatter: (v: number) => `${v}%` } },
   legend: { show: true, position: 'top', labels: { colors: '#8b8ea1' } },
@@ -764,18 +764,18 @@ const probabilityChartOptions = computed(() => ({
 }))
 
 const probabilityChartSeries = computed(() => {
-  if (!selectedMatchup.value) return []
+  if (!selectedMatchup.value?.team1 || !selectedMatchup.value?.team2) return []
   return [
-    { name: selectedMatchup.value.team1.name, data: probabilityHistory.value.map(h => h.team1.toFixed(1)) },
-    { name: selectedMatchup.value.team2.name, data: probabilityHistory.value.map(h => h.team2.toFixed(1)) }
+    { name: selectedMatchup.value.team1.name || 'Team 1', data: probabilityHistory.value.map(h => h.team1.toFixed(1)) },
+    { name: selectedMatchup.value.team2.name || 'Team 2', data: probabilityHistory.value.map(h => h.team2.toFixed(1)) }
   ]
 })
 
 // Gradient bar style
 const gradientBarStyle = computed(() => {
-  if (!selectedMatchup.value) return {}
-  const team1Color = selectedMatchup.value.team1.is_my_team ? '#F5C451' : '#06b6d4'
-  const team2Color = selectedMatchup.value.team2.is_my_team ? '#F5C451' : '#f97316'
+  if (!selectedMatchup.value?.team1 || !selectedMatchup.value?.team2) return {}
+  const team1Color = selectedMatchup.value.team1.is_my_team === true ? '#F5C451' : '#06b6d4'
+  const team2Color = selectedMatchup.value.team2.is_my_team === true ? '#F5C451' : '#f97316'
   const team1Pct = winProbability.value.team1
   return {
     background: `linear-gradient(to right, ${team1Color} 0%, ${team1Color} ${team1Pct}%, ${team2Color} ${team1Pct}%, ${team2Color} 100%)`
