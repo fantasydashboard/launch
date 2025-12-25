@@ -21,6 +21,7 @@ interface SavedLeague {
   season: string
   sleeper_username?: string
   yahoo_league_key?: string
+  yahoo_historical_seasons?: Array<{ league_key: string; season: string }>
   is_primary: boolean
   league_type?: number // 0 = redraft, 1 = keeper, 2 = dynasty
   num_teams?: number
@@ -300,19 +301,27 @@ export const useLeagueStore = defineStore('league', () => {
   }
 
   async function saveYahooLeague(league: any, userId: string, sport: 'football' | 'baseball' | 'basketball' | 'hockey'): Promise<SavedLeague | undefined> {
-    // Check if this league is already saved (using league_key as unique identifier)
-    const existing = savedLeagues.value.find(l => l.league_id === league.league_key)
+    // Use the league name as a more stable identifier for grouping
+    // Check if this league is already saved by name
+    const existing = savedLeagues.value.find(l => 
+      l.platform === 'yahoo' && 
+      l.league_name === league.name
+    )
     if (existing) return existing
     
     const isPrimary = savedLeagues.value.length === 0
     
+    // league.all_seasons contains all historical season keys for this league
+    const historicalSeasons = league.all_seasons || [{ league_key: league.league_key, season: league.season }]
+    
     const newLeague: SavedLeague = {
-      league_id: league.league_key,
+      league_id: league.league_key, // Most recent season's key
       league_name: league.name,
       platform: 'yahoo',
       sport: sport,
-      season: league.season,
+      season: league.season, // Most recent season
       yahoo_league_key: league.league_key,
+      yahoo_historical_seasons: historicalSeasons,
       is_primary: isPrimary,
       num_teams: league.num_teams,
       scoring_type: league.scoring_type
@@ -322,28 +331,40 @@ export const useLeagueStore = defineStore('league', () => {
     savedLeagues.value.push(newLeague)
     saveToLocalStorage()
     
-    // Sync to Supabase in background
+    // Sync to Supabase in background (store historical seasons as JSON)
     if (supabase) {
       try {
         const { data, error: saveError } = await supabase
           .from('user_leagues')
           .insert({
             user_id: userId,
-            ...newLeague
+            league_id: newLeague.league_id,
+            league_name: newLeague.league_name,
+            platform: newLeague.platform,
+            sport: newLeague.sport,
+            season: newLeague.season,
+            yahoo_league_key: newLeague.yahoo_league_key,
+            is_primary: newLeague.is_primary,
+            num_teams: newLeague.num_teams,
+            scoring_type: newLeague.scoring_type
+            // Note: yahoo_historical_seasons stored in localStorage only for now
           })
           .select()
           .single()
         
         if (saveError) throw saveError
         
-        // Update with server ID
+        // Update with server ID but keep historical seasons
         const index = savedLeagues.value.findIndex(l => l.league_id === league.league_key)
         if (index !== -1 && data) {
-          savedLeagues.value[index] = data
+          savedLeagues.value[index] = {
+            ...data,
+            yahoo_historical_seasons: historicalSeasons
+          }
           saveToLocalStorage()
         }
         
-        return data
+        return savedLeagues.value[index]
       } catch (e) {
         console.error('Failed to save Yahoo league to Supabase:', e)
       }

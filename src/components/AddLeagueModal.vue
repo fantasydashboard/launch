@@ -205,10 +205,10 @@
               <p class="text-sm text-dark-textMuted">Loading your Yahoo leagues...</p>
             </div>
             
-            <!-- Yahoo Leagues List -->
+            <!-- Yahoo Leagues List (grouped by league name) -->
             <div v-else class="space-y-2 max-h-64 overflow-y-auto">
               <button
-                v-for="league in yahooLeagues"
+                v-for="league in groupedYahooLeagues"
                 :key="league.league_key"
                 @click="selectYahooLeague(league)"
                 class="w-full flex items-center gap-3 p-3 rounded-xl bg-dark-bg/50 border border-dark-border/50 hover:border-purple-500/50 hover:bg-dark-border/30 transition-all text-left"
@@ -219,7 +219,9 @@
                 <div class="flex-1 min-w-0">
                   <div class="font-semibold text-dark-text truncate">{{ league.name }}</div>
                   <div class="text-xs text-dark-textMuted">
-                    {{ league.num_teams }} teams • {{ league.season }} Season
+                    {{ league.num_teams }} teams • 
+                    <span v-if="league.seasons_count > 1">{{ league.seasons_count }} seasons ({{ league.oldest_season }}-{{ league.season }})</span>
+                    <span v-else>{{ league.season }} Season</span>
                   </div>
                 </div>
                 <svg class="w-5 h-5 text-dark-textMuted" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -227,7 +229,7 @@
                 </svg>
               </button>
               
-              <div v-if="yahooLeagues.length === 0 && !loadingYahooLeagues" class="text-center py-8 text-dark-textMuted">
+              <div v-if="groupedYahooLeagues.length === 0 && !loadingYahooLeagues" class="text-center py-8 text-dark-textMuted">
                 <p>No {{ sportStore.sportLabel }} leagues found</p>
                 <p class="text-sm mt-1">Try syncing or check your Yahoo account</p>
                 <button
@@ -295,13 +297,24 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch, onMounted } from 'vue'
+import { ref, watch, onMounted, computed } from 'vue'
 import { useLeagueStore } from '@/stores/league'
 import { usePlatformsStore } from '@/stores/platforms'
 import { useSportStore } from '@/stores/sport'
 import { yahooService } from '@/services/yahoo'
 import { useAuthStore } from '@/stores/auth'
 import type { SleeperLeague } from '@/types/sleeper'
+
+interface GroupedYahooLeague {
+  name: string
+  league_key: string  // Most recent season's key
+  league_id: string
+  num_teams: number
+  season: string  // Most recent season
+  oldest_season: string
+  seasons_count: number
+  all_seasons: Array<{ league_key: string; season: string }>
+}
 
 const props = defineProps<{
   isOpen: boolean
@@ -310,7 +323,7 @@ const props = defineProps<{
 const emit = defineEmits<{
   (e: 'close'): void
   (e: 'league-added', league: SleeperLeague): void
-  (e: 'yahoo-league-added', league: any): void
+  (e: 'yahoo-league-added', league: GroupedYahooLeague): void
 }>()
 
 const leagueStore = useLeagueStore()
@@ -327,6 +340,50 @@ const errorMessage = ref('')
 const availableLeagues = ref<SleeperLeague[]>([])
 const yahooLeagues = ref<any[]>([])
 const showYahooAccountMenu = ref(false)
+
+// Group Yahoo leagues by name, showing only unique leagues with their history
+const groupedYahooLeagues = computed<GroupedYahooLeague[]>(() => {
+  const leaguesByName = new Map<string, any[]>()
+  
+  // Group all leagues by name
+  for (const league of yahooLeagues.value) {
+    const name = league.name
+    if (!leaguesByName.has(name)) {
+      leaguesByName.set(name, [])
+    }
+    leaguesByName.get(name)!.push(league)
+  }
+  
+  // Create grouped league objects
+  const grouped: GroupedYahooLeague[] = []
+  
+  for (const [name, seasons] of leaguesByName) {
+    // Sort by season descending (newest first)
+    seasons.sort((a, b) => parseInt(b.season) - parseInt(a.season))
+    
+    const mostRecent = seasons[0]
+    const oldest = seasons[seasons.length - 1]
+    
+    grouped.push({
+      name,
+      league_key: mostRecent.league_key,
+      league_id: mostRecent.league_id,
+      num_teams: mostRecent.num_teams,
+      season: mostRecent.season,
+      oldest_season: oldest.season,
+      seasons_count: seasons.length,
+      all_seasons: seasons.map(s => ({ 
+        league_key: s.league_key, 
+        season: s.season 
+      }))
+    })
+  }
+  
+  // Sort by most recent season
+  grouped.sort((a, b) => parseInt(b.season) - parseInt(a.season))
+  
+  return grouped
+})
 
 // Reset when modal opens
 watch(() => props.isOpen, async (isOpen) => {
