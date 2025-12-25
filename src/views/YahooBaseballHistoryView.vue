@@ -736,13 +736,22 @@ const careerRecords = computed(() => {
 const careerStats = computed((): CareerStat[] => {
   const statsMap = new Map<string, CareerStat>()
   
+  console.log('Computing career stats from historicalData:', historicalData.value.size, 'seasons')
+  
   // Aggregate stats across all seasons
   for (const [season, seasonData] of historicalData.value) {
     const standings = seasonData.standings || []
+    console.log(`Processing ${season} standings:`, standings.length, 'teams')
     
     for (const team of standings) {
       const teamKey = team.team_key
       const existing = statsMap.get(teamKey)
+      
+      // Get logo from allTeams (populated from matchups)
+      const teamInfo = allTeams.value.get(teamKey)
+      const logoUrl = teamInfo?.logo_url || team.logo_url || ''
+      
+      console.log(`Team ${team.name}: wins=${team.wins}, losses=${team.losses}, points_for=${team.points_for}, rank=${team.rank}, is_champion=${team.is_champion}`)
       
       if (existing) {
         existing.seasons++
@@ -751,11 +760,13 @@ const careerStats = computed((): CareerStat[] => {
         existing.total_pf += team.points_for || 0
         existing.total_weeks += (team.wins || 0) + (team.losses || 0)
         if (team.is_champion) existing.championships++
+        // Update logo if we have one
+        if (logoUrl && !existing.logo_url) existing.logo_url = logoUrl
       } else {
         statsMap.set(teamKey, {
           team_key: teamKey,
           team_name: team.name || 'Unknown Team',
-          logo_url: team.logo_url || '',
+          logo_url: logoUrl,
           seasons: 1,
           championships: team.is_champion ? 1 : 0,
           wins: team.wins || 0,
@@ -769,6 +780,8 @@ const careerStats = computed((): CareerStat[] => {
     }
   }
   
+  console.log('Career stats map size:', statsMap.size)
+  
   // Calculate derived stats
   const stats = Array.from(statsMap.values()).map(stat => {
     const totalGames = stat.wins + stat.losses
@@ -776,6 +789,8 @@ const careerStats = computed((): CareerStat[] => {
     stat.avg_ppw = stat.total_weeks > 0 ? stat.total_pf / stat.total_weeks : 0
     return stat
   })
+  
+  console.log('Final career stats:', stats)
   
   // Sort by current sort column
   return sortStats(stats)
@@ -1409,29 +1424,26 @@ async function loadHistoricalData() {
       try {
         // Get standings for this season
         const standings = await yahooService.getStandings(seasonLeagueKey)
+        console.log(`Got standings for ${season}:`, standings)
         if (standings.length === 0) continue
         
-        // Store season data
+        // Store season data - mark rank 1 as champion
+        const enhancedStandings = standings.map((team: any) => ({
+          ...team,
+          is_champion: team.rank === 1
+        }))
+        
         historicalData.value.set(season, {
-          standings,
+          standings: enhancedStandings,
           trade_count: 0 // Would need separate API call
         })
         
-        // Track all teams
-        for (const team of standings) {
-          if (!allTeams.value.has(team.team_key)) {
-            allTeams.value.set(team.team_key, team)
-          }
-          // Also map by name for lookups
-          allTeams.value.set(team.name, team)
-        }
-        
         // If this is the current season, track current members
         if (season === yearsByKey[gameKey]) {
-          standings.forEach((team: any) => currentMembers.value.add(team.team_key))
+          enhancedStandings.forEach((team: any) => currentMembers.value.add(team.team_key))
         }
         
-        // Load matchups for H2H calculation
+        // Load matchups for H2H calculation and to get team logos
         const seasonMatchups = new Map<number, any[]>()
         for (let week = 1; week <= 25; week++) {
           try {
@@ -1439,11 +1451,28 @@ async function loadHistoricalData() {
             if (weekMatchups.length > 0) {
               seasonMatchups.set(week, weekMatchups)
               
-              // Build H2H records
+              // Build H2H records and collect team info with logos
               for (const matchup of weekMatchups) {
                 const teams = matchup.teams || []
                 if (teams.length === 2) {
                   const [team1, team2] = teams
+                  
+                  // Store team info with logo (only by team_key, not by name)
+                  if (!allTeams.value.has(team1.team_key)) {
+                    allTeams.value.set(team1.team_key, {
+                      team_key: team1.team_key,
+                      name: team1.name,
+                      logo_url: team1.logo_url || ''
+                    })
+                  }
+                  if (!allTeams.value.has(team2.team_key)) {
+                    allTeams.value.set(team2.team_key, {
+                      team_key: team2.team_key,
+                      name: team2.name,
+                      logo_url: team2.logo_url || ''
+                    })
+                  }
+                  
                   const team1Won = (team1.points || 0) > (team2.points || 0)
                   
                   // Update team1's record vs team2
