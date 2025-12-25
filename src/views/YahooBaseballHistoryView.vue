@@ -1351,15 +1351,24 @@ async function downloadHeadToHead() {
 }
 
 async function loadHistoricalData() {
+  console.log('loadHistoricalData called')
   isLoading.value = true
   
   try {
     const leagueKey = leagueStore.activeLeagueId
     console.log('Loading history for league:', leagueKey)
+    console.log('User ID:', authStore.user?.id)
     
-    if (!leagueKey || !authStore.user?.id) {
-      console.log('Missing leagueKey or userId, waiting...')
+    if (!leagueKey) {
+      console.log('Missing leagueKey, waiting...')
       isLoading.value = false
+      return
+    }
+    
+    if (!authStore.user?.id) {
+      console.log('Missing userId, retrying in 1 second...')
+      isLoading.value = false
+      setTimeout(() => loadHistoricalData(), 1000)
       return
     }
     
@@ -1503,6 +1512,7 @@ watch(selectedWeeklyAwardSeason, () => {
 
 // Watch for league changes
 watch(() => leagueStore.activeLeagueId, (newLeagueId) => {
+  console.log('YahooBaseballHistoryView - League watcher triggered:', newLeagueId)
   if (newLeagueId) {
     console.log('League changed, reloading history:', newLeagueId)
     // Reset data
@@ -1518,6 +1528,7 @@ watch(() => leagueStore.activeLeagueId, (newLeagueId) => {
 
 // Load data on mount (as backup)
 onMounted(() => {
+  console.log('YahooBaseballHistoryView mounted - activeLeagueId:', leagueStore.activeLeagueId)
   if (leagueStore.activeLeagueId && historicalData.value.size === 0) {
     loadHistoricalData()
   }
