@@ -453,7 +453,7 @@ export class YahooFantasyService {
       `/league/${leagueKey}/standings?format=json`
     )
 
-    console.log('Raw standings response:', JSON.stringify(data, null, 2).substring(0, 2000))
+    console.log('Raw standings response (full):', JSON.stringify(data, null, 2))
 
     const standings: any[] = []
     const teamsData = data.fantasy_content?.league?.[1]?.standings?.[0]?.teams
@@ -467,19 +467,14 @@ export class YahooFantasyService {
       if (typeof teamWrapper !== 'object' || !teamWrapper.team) continue
       
       const teamArray = teamWrapper.team
-      console.log('Team array structure:', JSON.stringify(teamArray, null, 2).substring(0, 1000))
       
-      // teamArray[0] contains team info as array of objects
-      // teamArray[1] contains team_standings, team_points, etc.
-      const teamInfoArray = teamArray[0]
-      const teamStats = teamArray[1]
-      
-      // Extract team info from the array
+      // Extract team info from the first element (array of objects)
       let team_key = ''
       let team_id = ''
       let name = ''
       let logo_url = ''
       
+      const teamInfoArray = teamArray[0]
       if (Array.isArray(teamInfoArray)) {
         for (const item of teamInfoArray) {
           if (item?.team_key) team_key = item.team_key
@@ -489,19 +484,36 @@ export class YahooFantasyService {
         }
       }
       
-      // Get standings data - could be in team_standings or directly
-      const teamStandings = teamStats?.team_standings
-      console.log('Team standings for', name, ':', JSON.stringify(teamStandings, null, 2))
+      // Look for team_standings in ALL elements of teamArray (not just index 1)
+      let teamStandings: any = null
+      let teamPoints: any = null
       
-      // Points leagues may have points_for directly, or in outcome_totals
+      for (let i = 1; i < teamArray.length; i++) {
+        const element = teamArray[i]
+        if (element?.team_standings) {
+          teamStandings = element.team_standings
+          console.log(`Found team_standings at index ${i} for ${name}:`, JSON.stringify(teamStandings))
+        }
+        if (element?.team_points) {
+          teamPoints = element.team_points
+          console.log(`Found team_points at index ${i} for ${name}:`, JSON.stringify(teamPoints))
+        }
+      }
+      
+      // If still no team_standings, log what we have
+      if (!teamStandings) {
+        console.log(`No team_standings found for ${name}. Full teamArray:`, JSON.stringify(teamArray))
+      }
+      
+      // Parse standings data
       const rank = parseInt(teamStandings?.rank || '0')
       const wins = parseInt(teamStandings?.outcome_totals?.wins || '0')
       const losses = parseInt(teamStandings?.outcome_totals?.losses || '0')
       const ties = parseInt(teamStandings?.outcome_totals?.ties || '0')
-      const points_for = parseFloat(teamStandings?.points_for || '0')
+      const points_for = parseFloat(teamStandings?.points_for || teamPoints?.total || '0')
       const points_against = parseFloat(teamStandings?.points_against || '0')
       
-      console.log(`Parsed ${name}: rank=${rank}, wins=${wins}, losses=${losses}, pf=${points_for}`)
+      console.log(`Final parsed ${name}: rank=${rank}, wins=${wins}, losses=${losses}, pf=${points_for}`)
       
       standings.push({
         team_key,
