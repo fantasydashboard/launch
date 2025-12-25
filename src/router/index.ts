@@ -36,7 +36,7 @@ const router = createRouter({
     {
       path: '/matchups',
       name: 'matchups',
-      component: () => import('@/views/MatchupsView.vue')
+      component: () => import('@/views/MatchupsWrapper.vue')
     },
     {
       path: '/projections',
