@@ -14,12 +14,12 @@ const leagueStore = useLeagueStore()
 const sportStore = useSportStore()
 
 const isYahooBaseball = computed(() => {
-  const result = leagueStore.activePlatform === 'yahoo' && sportStore.currentSport === 'baseball'
-  console.log('HistoryWrapper - isYahooBaseball:', result, 'platform:', leagueStore.activePlatform, 'sport:', sportStore.currentSport)
+  const result = leagueStore.activePlatform === 'yahoo' && sportStore.activeSport === 'baseball'
+  console.log('HistoryWrapper - isYahooBaseball:', result, 'platform:', leagueStore.activePlatform, 'sport:', sportStore.activeSport)
   return result
 })
 
 onMounted(() => {
-  console.log('HistoryWrapper mounted - platform:', leagueStore.activePlatform, 'sport:', sportStore.currentSport)
+  console.log('HistoryWrapper mounted - platform:', leagueStore.activePlatform, 'sport:', sportStore.activeSport)
 })
 </script>
