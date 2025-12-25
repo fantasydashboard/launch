@@ -453,27 +453,67 @@ export class YahooFantasyService {
       `/league/${leagueKey}/standings?format=json`
     )
 
+    console.log('Raw standings response:', JSON.stringify(data, null, 2).substring(0, 2000))
+
     const standings: any[] = []
     const teamsData = data.fantasy_content?.league?.[1]?.standings?.[0]?.teams
 
-    if (!teamsData) return standings
+    if (!teamsData) {
+      console.log('No teamsData found in standings response')
+      return standings
+    }
 
     for (const teamWrapper of Object.values(teamsData) as any[]) {
       if (typeof teamWrapper !== 'object' || !teamWrapper.team) continue
       
-      const teamInfo = teamWrapper.team[0]
-      const teamStandings = teamWrapper.team[1]?.team_standings
+      const teamArray = teamWrapper.team
+      console.log('Team array structure:', JSON.stringify(teamArray, null, 2).substring(0, 1000))
+      
+      // teamArray[0] contains team info as array of objects
+      // teamArray[1] contains team_standings, team_points, etc.
+      const teamInfoArray = teamArray[0]
+      const teamStats = teamArray[1]
+      
+      // Extract team info from the array
+      let team_key = ''
+      let team_id = ''
+      let name = ''
+      let logo_url = ''
+      
+      if (Array.isArray(teamInfoArray)) {
+        for (const item of teamInfoArray) {
+          if (item?.team_key) team_key = item.team_key
+          if (item?.team_id) team_id = item.team_id
+          if (item?.name) name = item.name
+          if (item?.team_logos) logo_url = item.team_logos[0]?.team_logo?.url || ''
+        }
+      }
+      
+      // Get standings data - could be in team_standings or directly
+      const teamStandings = teamStats?.team_standings
+      console.log('Team standings for', name, ':', JSON.stringify(teamStandings, null, 2))
+      
+      // Points leagues may have points_for directly, or in outcome_totals
+      const rank = parseInt(teamStandings?.rank || '0')
+      const wins = parseInt(teamStandings?.outcome_totals?.wins || '0')
+      const losses = parseInt(teamStandings?.outcome_totals?.losses || '0')
+      const ties = parseInt(teamStandings?.outcome_totals?.ties || '0')
+      const points_for = parseFloat(teamStandings?.points_for || '0')
+      const points_against = parseFloat(teamStandings?.points_against || '0')
+      
+      console.log(`Parsed ${name}: rank=${rank}, wins=${wins}, losses=${losses}, pf=${points_for}`)
       
       standings.push({
-        team_key: teamInfo[0]?.team_key,
-        team_id: teamInfo[1]?.team_id,
-        name: teamInfo[2]?.name,
-        rank: parseInt(teamStandings?.rank || '0'),
-        wins: parseInt(teamStandings?.outcome_totals?.wins || '0'),
-        losses: parseInt(teamStandings?.outcome_totals?.losses || '0'),
-        ties: parseInt(teamStandings?.outcome_totals?.ties || '0'),
-        points_for: parseFloat(teamStandings?.points_for || '0'),
-        points_against: parseFloat(teamStandings?.points_against || '0')
+        team_key,
+        team_id,
+        name,
+        logo_url,
+        rank,
+        wins,
+        losses,
+        ties,
+        points_for,
+        points_against
       })
     }
 
