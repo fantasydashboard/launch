@@ -738,11 +738,14 @@ export const useLeagueStore = defineStore('league', () => {
         throw new Error('Failed to initialize Yahoo connection')
       }
       
+      // Fetch league metadata (includes current week)
+      const metadata = await yahooService.getLeagueMetadata(leagueKey)
+      
       // Fetch league details
       const leagueDetails = await yahooService.getLeagueDetails(leagueKey)
       yahooLeague.value = leagueDetails
       
-      // Fetch teams
+      // Fetch teams with standings info
       const teams = await yahooService.getTeams(leagueKey)
       yahooTeams.value = teams
       
@@ -750,17 +753,23 @@ export const useLeagueStore = defineStore('league', () => {
       const standings = await yahooService.getStandings(leagueKey)
       yahooStandings.value = standings
       
+      // Fetch current week matchups
+      const matchups = await yahooService.getMatchups(leagueKey, metadata.currentWeek)
+      yahooMatchups.value = matchups
+      
       // Create a currentLeague object that's compatible with the UI
       const savedLeague = savedLeagues.value.find(l => l.league_id === leagueKey)
       currentLeague.value = {
         league_id: leagueKey,
         name: savedLeague?.league_name || leagueDetails?.[0]?.name || 'Yahoo League',
         season: savedLeague?.season || new Date().getFullYear().toString(),
-        status: 'in_season',
+        status: metadata.isFinished ? 'complete' : 'in_season',
         sport: 'nfl',
         settings: {
-          leg: 1, // Current week - would need to get from Yahoo
-          playoff_week_start: 15
+          leg: metadata.currentWeek,
+          playoff_week_start: 15, // TODO: Get from Yahoo settings
+          start_week: metadata.startWeek,
+          end_week: metadata.endWeek
         },
         scoring_settings: {},
         roster_positions: [],
@@ -768,9 +777,11 @@ export const useLeagueStore = defineStore('league', () => {
       } as any
       
       console.log('Yahoo league loaded:', {
+        metadata,
         league: yahooLeague.value,
         teams: yahooTeams.value,
-        standings: yahooStandings.value
+        standings: yahooStandings.value,
+        matchups: yahooMatchups.value
       })
       
     } catch (e) {

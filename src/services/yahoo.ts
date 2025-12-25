@@ -90,9 +90,18 @@ interface YahooTeam {
   team_key: string
   team_id: string
   name: string
-  managers: { manager: { nickname: string; guid: string } }[]
+  managers: { manager: { nickname: string; guid: string; is_current_login?: boolean } }[]
   roster?: YahooPlayer[]
   points?: number
+  logo_url?: string
+  wins?: number
+  losses?: number
+  ties?: number
+  points_for?: number
+  points_against?: number
+  rank?: number
+  projected_points?: number
+  is_my_team?: boolean
 }
 
 interface YahooPlayer {
@@ -106,9 +115,12 @@ interface YahooPlayer {
 
 interface YahooMatchup {
   week: number
+  matchup_id: number
   teams: YahooTeam[]
   is_playoffs: boolean
   is_consolation: boolean
+  winner_team_key?: string
+  is_tied?: boolean
 }
 
 export class YahooFantasyService {
@@ -254,11 +266,29 @@ export class YahooFantasyService {
   }
 
   /**
-   * Get all teams in a league
+   * Get current week and league metadata
+   */
+  async getLeagueMetadata(leagueKey: string): Promise<{ currentWeek: number; startWeek: number; endWeek: number; isFinished: boolean }> {
+    const data = await this.apiRequest(
+      `/league/${leagueKey}/metadata?format=json`
+    )
+    
+    const league = data.fantasy_content?.league?.[0]
+    
+    return {
+      currentWeek: parseInt(league?.current_week || '1'),
+      startWeek: parseInt(league?.start_week || '1'),
+      endWeek: parseInt(league?.end_week || '16'),
+      isFinished: league?.is_finished === '1'
+    }
+  }
+
+  /**
+   * Get all teams in a league with full details
    */
   async getTeams(leagueKey: string): Promise<YahooTeam[]> {
     const data = await this.apiRequest(
-      `/league/${leagueKey}/teams?format=json`
+      `/league/${leagueKey}/teams;out=standings?format=json`
     )
 
     const teams: YahooTeam[] = []
@@ -270,11 +300,34 @@ export class YahooFantasyService {
       if (typeof teamWrapper !== 'object' || !teamWrapper.team) continue
       
       const teamInfo = teamWrapper.team[0]
+      const teamStandings = teamWrapper.team[1]?.team_standings
+      
+      // Check if this is the current user's team
+      const managers = teamInfo[19]?.managers || teamInfo.managers || []
+      const isMyTeam = managers.some((m: any) => m.manager?.is_current_login === '1')
+      
+      // Get team logo
+      let logoUrl = ''
+      for (const item of teamInfo) {
+        if (item?.team_logos) {
+          logoUrl = item.team_logos[0]?.team_logo?.url || ''
+          break
+        }
+      }
+      
       teams.push({
         team_key: teamInfo[0]?.team_key,
         team_id: teamInfo[1]?.team_id,
         name: teamInfo[2]?.name,
-        managers: teamInfo[19]?.managers || []
+        logo_url: logoUrl,
+        managers: managers,
+        is_my_team: isMyTeam,
+        wins: parseInt(teamStandings?.outcome_totals?.wins || '0'),
+        losses: parseInt(teamStandings?.outcome_totals?.losses || '0'),
+        ties: parseInt(teamStandings?.outcome_totals?.ties || '0'),
+        points_for: parseFloat(teamStandings?.points_for || '0'),
+        points_against: parseFloat(teamStandings?.points_against || '0'),
+        rank: parseInt(teamStandings?.rank || '0')
       })
     }
 
@@ -388,6 +441,7 @@ export class YahooFantasyService {
 
     if (!scoreboardData) return matchups
 
+    let matchupId = 1
     for (const matchupWrapper of Object.values(scoreboardData) as any[]) {
       if (typeof matchupWrapper !== 'object' || !matchupWrapper.matchup) continue
       
@@ -400,21 +454,41 @@ export class YahooFantasyService {
         
         const teamInfo = teamWrapper.team[0]
         const teamPoints = teamWrapper.team[1]?.team_points
+        const teamProjected = teamWrapper.team[1]?.team_projected_points
+        
+        // Get team logo
+        let logoUrl = ''
+        for (const item of teamInfo) {
+          if (item?.team_logos) {
+            logoUrl = item.team_logos[0]?.team_logo?.url || ''
+            break
+          }
+        }
+        
+        // Check if my team
+        const managers = teamInfo[19]?.managers || []
+        const isMyTeam = managers.some((m: any) => m.manager?.is_current_login === '1')
         
         parsedTeams.push({
           team_key: teamInfo[0]?.team_key,
           team_id: teamInfo[1]?.team_id,
           name: teamInfo[2]?.name,
-          managers: [],
-          points: parseFloat(teamPoints?.total || '0')
+          logo_url: logoUrl,
+          managers: managers,
+          points: parseFloat(teamPoints?.total || '0'),
+          projected_points: parseFloat(teamProjected?.total || '0'),
+          is_my_team: isMyTeam
         })
       }
 
       matchups.push({
         week,
+        matchup_id: matchupId++,
         teams: parsedTeams,
         is_playoffs: matchupInfo.is_playoffs === '1',
-        is_consolation: matchupInfo.is_consolation === '1'
+        is_consolation: matchupInfo.is_consolation === '1',
+        winner_team_key: matchupInfo.winner_team_key,
+        is_tied: matchupInfo.is_tied === '1'
       })
     }
 
