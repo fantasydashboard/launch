@@ -711,6 +711,176 @@ export class YahooFantasyService {
     
     return allMatchups
   }
+
+  /**
+   * Get draft results for a league
+   */
+  async getDraftResults(leagueKey: string): Promise<any> {
+    try {
+      const data = await this.apiRequest(
+        `/league/${leagueKey}/draftresults?format=json`
+      )
+      
+      console.log('Draft results response:', JSON.stringify(data, null, 2).substring(0, 3000))
+      
+      const draftResults: any[] = []
+      const resultsData = data.fantasy_content?.league?.[1]?.draft_results
+      
+      if (!resultsData) {
+        console.log('No draft_results found in response')
+        return { picks: [], type: 'unknown' }
+      }
+      
+      // Get draft type from league info
+      const leagueInfo = data.fantasy_content?.league?.[0] || {}
+      const draftType = leagueInfo.draft_status || 'unknown'
+      
+      for (const resultWrapper of Object.values(resultsData) as any[]) {
+        if (typeof resultWrapper !== 'object' || !resultWrapper.draft_result) continue
+        
+        const result = resultWrapper.draft_result
+        draftResults.push({
+          pick: parseInt(result.pick || '0'),
+          round: parseInt(result.round || '0'),
+          team_key: result.team_key,
+          player_key: result.player_key,
+          // Note: Player details need separate API call
+        })
+      }
+      
+      return {
+        picks: draftResults.sort((a, b) => a.pick - b.pick),
+        type: draftType
+      }
+    } catch (e) {
+      console.error('Error fetching draft results:', e)
+      return { picks: [], type: 'unknown' }
+    }
+  }
+
+  /**
+   * Get player details for multiple player keys
+   */
+  async getPlayers(playerKeys: string[]): Promise<Map<string, any>> {
+    const players = new Map<string, any>()
+    
+    // Yahoo API limits to 25 players per request
+    const chunks: string[][] = []
+    for (let i = 0; i < playerKeys.length; i += 25) {
+      chunks.push(playerKeys.slice(i, i + 25))
+    }
+    
+    for (const chunk of chunks) {
+      try {
+        const keysParam = chunk.join(',')
+        const data = await this.apiRequest(
+          `/players;player_keys=${keysParam}?format=json`
+        )
+        
+        const playersData = data.fantasy_content?.players
+        if (!playersData) continue
+        
+        for (const playerWrapper of Object.values(playersData) as any[]) {
+          if (typeof playerWrapper !== 'object' || !playerWrapper.player) continue
+          
+          const playerInfo = playerWrapper.player[0]
+          if (!Array.isArray(playerInfo)) continue
+          
+          let player_key = ''
+          let player_id = ''
+          let name = ''
+          let team = ''
+          let position = ''
+          let headshot = ''
+          
+          for (const item of playerInfo) {
+            if (item?.player_key) player_key = item.player_key
+            if (item?.player_id) player_id = item.player_id
+            if (item?.name) name = item.name.full || item.name.first + ' ' + item.name.last
+            if (item?.editorial_team_abbr) team = item.editorial_team_abbr
+            if (item?.display_position) position = item.display_position
+            if (item?.headshot) headshot = item.headshot.url || ''
+          }
+          
+          players.set(player_key, {
+            player_key,
+            player_id,
+            name,
+            team,
+            position,
+            headshot
+          })
+        }
+      } catch (e) {
+        console.error('Error fetching player chunk:', e)
+      }
+    }
+    
+    return players
+  }
+
+  /**
+   * Get player season stats for draft analysis
+   * For baseball, this would be batting/pitching stats
+   */
+  async getPlayerStats(leagueKey: string, playerKeys: string[]): Promise<Map<string, any>> {
+    const stats = new Map<string, any>()
+    
+    // Yahoo API limits to 25 players per request
+    const chunks: string[][] = []
+    for (let i = 0; i < playerKeys.length; i += 25) {
+      chunks.push(playerKeys.slice(i, i + 25))
+    }
+    
+    const gameKey = leagueKey.split('.')[0]
+    
+    for (const chunk of chunks) {
+      try {
+        const keysParam = chunk.join(',')
+        const data = await this.apiRequest(
+          `/players;player_keys=${keysParam}/stats?format=json`
+        )
+        
+        const playersData = data.fantasy_content?.players
+        if (!playersData) continue
+        
+        for (const playerWrapper of Object.values(playersData) as any[]) {
+          if (typeof playerWrapper !== 'object' || !playerWrapper.player) continue
+          
+          const playerArray = playerWrapper.player
+          const playerInfo = playerArray[0]
+          const playerStats = playerArray[1]?.player_stats
+          
+          if (!Array.isArray(playerInfo)) continue
+          
+          let player_key = ''
+          for (const item of playerInfo) {
+            if (item?.player_key) player_key = item.player_key
+          }
+          
+          // Parse stats
+          const statValues: Record<string, number> = {}
+          if (playerStats?.stats) {
+            for (const stat of playerStats.stats) {
+              if (stat?.stat) {
+                statValues[stat.stat.stat_id] = parseFloat(stat.stat.value || '0')
+              }
+            }
+          }
+          
+          stats.set(player_key, {
+            player_key,
+            stats: statValues,
+            total_points: playerStats?.total || 0
+          })
+        }
+      } catch (e) {
+        console.error('Error fetching player stats chunk:', e)
+      }
+    }
+    
+    return stats
+  }
 }
 
 // Export singleton instance

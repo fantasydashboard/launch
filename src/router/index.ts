@@ -51,7 +51,7 @@ const router = createRouter({
     {
       path: '/draft',
       name: 'draft',
-      component: () => import('@/views/DraftView.vue')
+      component: () => import('@/views/DraftWrapper.vue')
     },
     {
       path: '/dynasty',
