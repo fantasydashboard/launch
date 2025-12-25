@@ -220,7 +220,8 @@
               <tr 
                 v-for="team in sortedTeams" 
                 :key="team.team_key"
-                class="border-b border-dark-border/50 hover:bg-dark-border/20 transition-colors"
+                @click="openTeamDetailModal(team)"
+                class="border-b border-dark-border/50 hover:bg-dark-border/20 transition-colors cursor-pointer"
                 :class="{ 'bg-primary/5': team.is_my_team }"
               >
                 <td class="py-3 px-4">
@@ -241,26 +242,35 @@
                       class="w-8 h-8 rounded-full border border-dark-border object-cover"
                       @error="handleImageError"
                     />
-                    <div>
-                      <div class="font-semibold text-dark-text flex items-center gap-2">
-                        {{ team.name }}
-                        <span v-if="team.is_my_team" class="text-xs bg-primary/20 text-primary px-1.5 py-0.5 rounded">You</span>
-                      </div>
+                    <div class="flex items-center gap-2">
+                      <span class="font-semibold text-dark-text">{{ team.name }}</span>
+                      <span v-if="team.is_my_team" class="text-xs bg-primary/20 text-primary px-1.5 py-0.5 rounded">You</span>
+                      <svg class="w-4 h-4 text-primary/50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+                      </svg>
                     </div>
                   </div>
                 </td>
                 <td class="py-3 px-4 text-center">
-                  <span class="font-bold" :class="team.wins > team.losses ? 'text-green-400' : team.wins < team.losses ? 'text-red-400' : 'text-dark-text'">
+                  <span class="font-bold" :class="getRecordClass(team)">
                     {{ team.wins }}-{{ team.losses }}{{ team.ties > 0 ? `-${team.ties}` : '' }}
                   </span>
                 </td>
                 <td class="py-3 px-4 text-center hidden sm:table-cell">
-                  <span class="text-dark-textMuted">
+                  <span :class="getAllPlayClass(team)">
                     {{ team.all_play_wins }}-{{ team.all_play_losses }}
                   </span>
                 </td>
-                <td class="py-3 px-4 text-right font-medium text-dark-text hidden sm:table-cell">{{ team.points_for?.toFixed(1) || '0.0' }}</td>
-                <td class="py-3 px-4 text-right text-dark-textMuted hidden md:table-cell">{{ team.points_against?.toFixed(1) || '0.0' }}</td>
+                <td class="py-3 px-4 text-right hidden sm:table-cell">
+                  <span class="font-medium" :class="getPointsForClass(team)">
+                    {{ team.points_for?.toFixed(1) || '0.0' }}
+                  </span>
+                </td>
+                <td class="py-3 px-4 text-right hidden md:table-cell">
+                  <span :class="getPointsAgainstClass(team)">
+                    {{ team.points_against?.toFixed(1) || '0.0' }}
+                  </span>
+                </td>
               </tr>
             </tbody>
           </table>
@@ -381,6 +391,108 @@
         </div>
       </div>
     </Teleport>
+
+    <!-- Team Detail Modal -->
+    <Teleport to="body">
+      <div 
+        v-if="showTeamDetailModal" 
+        class="fixed inset-0 z-50 flex items-center justify-center p-4"
+        @click.self="closeTeamDetailModal"
+      >
+        <div class="absolute inset-0 bg-black/70 backdrop-blur-sm"></div>
+        <div class="relative bg-dark-elevated rounded-2xl shadow-2xl w-full max-w-3xl max-h-[90vh] overflow-y-auto border border-dark-border">
+          <!-- Header -->
+          <div class="sticky top-0 z-10 px-6 py-4 border-b border-dark-border bg-dark-elevated flex items-center justify-between">
+            <div class="flex items-center gap-4">
+              <img 
+                :src="selectedTeam?.logo_url || defaultAvatar" 
+                :alt="selectedTeam?.name"
+                class="w-12 h-12 rounded-full ring-2 ring-primary object-cover"
+                @error="handleImageError"
+              />
+              <div>
+                <h3 class="text-xl font-bold text-dark-text">{{ selectedTeam?.name }}</h3>
+                <p class="text-sm text-dark-textMuted">{{ currentSeason }} Season Details</p>
+              </div>
+            </div>
+            <button @click="closeTeamDetailModal" class="p-2 rounded-lg hover:bg-dark-border/50 transition-colors">
+              <svg class="w-5 h-5 text-dark-textMuted" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+          
+          <!-- Stats Overview -->
+          <div class="p-6 border-b border-dark-border">
+            <div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
+              <div class="bg-dark-border/30 rounded-xl p-4 text-center">
+                <div class="text-2xl font-black text-dark-text">{{ selectedTeam?.wins }}-{{ selectedTeam?.losses }}</div>
+                <div class="text-xs text-dark-textMuted">Record</div>
+              </div>
+              <div class="bg-dark-border/30 rounded-xl p-4 text-center">
+                <div class="text-2xl font-black text-primary">{{ selectedTeam?.rank }}</div>
+                <div class="text-xs text-dark-textMuted">Rank</div>
+              </div>
+              <div class="bg-dark-border/30 rounded-xl p-4 text-center">
+                <div class="text-2xl font-black text-dark-text">{{ selectedTeam?.all_play_wins }}-{{ selectedTeam?.all_play_losses }}</div>
+                <div class="text-xs text-dark-textMuted">All-Play</div>
+              </div>
+              <div class="bg-dark-border/30 rounded-xl p-4 text-center">
+                <div class="text-2xl font-black text-dark-text">{{ teamDetailStats.ppg }}</div>
+                <div class="text-xs text-dark-textMuted">PPG</div>
+              </div>
+            </div>
+          </div>
+          
+          <!-- Additional Stats -->
+          <div class="p-6">
+            <h4 class="text-sm font-semibold text-dark-textMuted uppercase tracking-wider mb-4">Season Breakdown</h4>
+            <div class="grid grid-cols-2 sm:grid-cols-3 gap-4">
+              <div class="bg-dark-border/20 rounded-xl p-4">
+                <div class="text-lg font-bold text-green-400">{{ teamDetailStats.highScore }}</div>
+                <div class="text-xs text-dark-textMuted">High Score</div>
+              </div>
+              <div class="bg-dark-border/20 rounded-xl p-4">
+                <div class="text-lg font-bold text-red-400">{{ teamDetailStats.lowScore }}</div>
+                <div class="text-xs text-dark-textMuted">Low Score</div>
+              </div>
+              <div class="bg-dark-border/20 rounded-xl p-4">
+                <div class="text-lg font-bold text-dark-text">{{ teamDetailStats.totalPoints }}</div>
+                <div class="text-xs text-dark-textMuted">Total Points</div>
+              </div>
+              <div class="bg-dark-border/20 rounded-xl p-4">
+                <div class="text-lg font-bold text-dark-text">{{ teamDetailStats.pointsAgainst }}</div>
+                <div class="text-xs text-dark-textMuted">Points Against</div>
+              </div>
+              <div class="bg-dark-border/20 rounded-xl p-4">
+                <div class="text-lg font-bold" :class="parseFloat(teamDetailStats.pointDiff) >= 0 ? 'text-green-400' : 'text-red-400'">
+                  {{ parseFloat(teamDetailStats.pointDiff) >= 0 ? '+' : '' }}{{ teamDetailStats.pointDiff }}
+                </div>
+                <div class="text-xs text-dark-textMuted">Point Differential</div>
+              </div>
+              <div class="bg-dark-border/20 rounded-xl p-4">
+                <div class="text-lg font-bold text-dark-text">{{ teamDetailStats.winStreak }}</div>
+                <div class="text-xs text-dark-textMuted">Current Streak</div>
+              </div>
+            </div>
+            
+            <!-- Week-by-Week Results -->
+            <h4 class="text-sm font-semibold text-dark-textMuted uppercase tracking-wider mt-6 mb-4">Week-by-Week Results</h4>
+            <div class="flex flex-wrap gap-2">
+              <div 
+                v-for="(result, idx) in teamDetailStats.weeklyResults" 
+                :key="idx"
+                class="w-10 h-10 rounded-lg flex items-center justify-center text-xs font-bold"
+                :class="result.won ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'"
+                :title="`Week ${idx + 1}: ${result.points.toFixed(1)} pts`"
+              >
+                {{ result.won ? 'W' : 'L' }}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </Teleport>
   </div>
 </template>
 
@@ -397,10 +509,13 @@ const defaultAvatar = 'https://s.yimg.com/cv/apiv2/default/nfl/nfl_1_100.png'
 
 // Modal state
 const showLeaderModal = ref(false)
+const showTeamDetailModal = ref(false)
 const activeLeaderType = ref<'mostPoints' | 'bestRecord' | 'bestAllPlay'>('mostPoints')
+const selectedTeam = ref<any>(null)
 
 // All-play data (calculated from matchups)
 const allPlayRecords = ref<Map<string, { wins: number; losses: number }>>(new Map())
+const weeklyScoresMap = ref<Map<string, { week: number; points: number; won: boolean }[]>>(new Map())
 const isLoadingAllPlay = ref(false)
 
 const leagueName = computed(() => leagueStore.currentLeague?.name || 'Yahoo League')
@@ -443,6 +558,65 @@ const sortedTeams = computed(() => {
   return [...teamsWithAllPlay.value].sort((a, b) => (a.rank || 99) - (b.rank || 99))
 })
 
+// Best/Worst calculations for highlighting
+const bestRecord = computed(() => {
+  if (!teamsWithAllPlay.value.length) return null
+  return teamsWithAllPlay.value.reduce((best, team) => 
+    ((team.wins || 0) > (best.wins || 0) || ((team.wins || 0) === (best.wins || 0) && (team.losses || 0) < (best.losses || 0))) ? team : best
+  )
+})
+
+const worstRecord = computed(() => {
+  if (!teamsWithAllPlay.value.length) return null
+  return teamsWithAllPlay.value.reduce((worst, team) => 
+    ((team.wins || 0) < (worst.wins || 0) || ((team.wins || 0) === (worst.wins || 0) && (team.losses || 0) > (worst.losses || 0))) ? team : worst
+  )
+})
+
+const bestAllPlay = computed(() => {
+  if (!teamsWithAllPlay.value.length) return null
+  return teamsWithAllPlay.value.reduce((best, team) => 
+    (team.all_play_wins || 0) > (best.all_play_wins || 0) ? team : best
+  )
+})
+
+const worstAllPlay = computed(() => {
+  if (!teamsWithAllPlay.value.length) return null
+  return teamsWithAllPlay.value.reduce((worst, team) => 
+    (team.all_play_wins || 0) < (worst.all_play_wins || 0) ? team : worst
+  )
+})
+
+const bestPointsFor = computed(() => {
+  if (!teamsWithAllPlay.value.length) return null
+  return teamsWithAllPlay.value.reduce((best, team) => 
+    (team.points_for || 0) > (best.points_for || 0) ? team : best
+  )
+})
+
+const worstPointsFor = computed(() => {
+  if (!teamsWithAllPlay.value.length) return null
+  return teamsWithAllPlay.value.reduce((worst, team) => 
+    (team.points_for || 0) < (worst.points_for || 0) ? team : worst
+  )
+})
+
+const bestPointsAgainst = computed(() => {
+  // Best = LOWEST points against (lucky)
+  if (!teamsWithAllPlay.value.length) return null
+  return teamsWithAllPlay.value.reduce((best, team) => 
+    (team.points_against || 999999) < (best.points_against || 999999) ? team : best
+  )
+})
+
+const worstPointsAgainst = computed(() => {
+  // Worst = HIGHEST points against (unlucky)
+  if (!teamsWithAllPlay.value.length) return null
+  return teamsWithAllPlay.value.reduce((worst, team) => 
+    (team.points_against || 0) > (worst.points_against || 0) ? team : worst
+  )
+})
+
 // Calculate leaders from teams data
 const leaders = computed(() => {
   const teams = teamsWithAllPlay.value
@@ -455,7 +629,7 @@ const leaders = computed(() => {
   const mostPoints = [...teams].sort((a, b) => (b.points_for || 0) - (a.points_for || 0))[0]
   
   // Best Record (by win %, then PF)
-  const bestRecord = [...teams].sort((a, b) => {
+  const bestRecordTeam = [...teams].sort((a, b) => {
     const aWinPct = (a.wins || 0) / Math.max((a.wins || 0) + (a.losses || 0), 1)
     const bWinPct = (b.wins || 0) / Math.max((b.wins || 0) + (b.losses || 0), 1)
     if (bWinPct !== aWinPct) return bWinPct - aWinPct
@@ -463,14 +637,59 @@ const leaders = computed(() => {
   })[0]
   
   // Best All-Play
-  const bestAllPlay = [...teams].sort((a, b) => {
+  const bestAllPlayTeam = [...teams].sort((a, b) => {
     const aWinPct = (a.all_play_wins || 0) / Math.max((a.all_play_wins || 0) + (a.all_play_losses || 0), 1)
     const bWinPct = (b.all_play_wins || 0) / Math.max((b.all_play_wins || 0) + (b.all_play_losses || 0), 1)
     if (bWinPct !== aWinPct) return bWinPct - aWinPct
     return (b.all_play_wins || 0) - (a.all_play_wins || 0)
   })[0]
   
-  return { mostPoints, bestRecord, bestAllPlay }
+  return { mostPoints, bestRecord: bestRecordTeam, bestAllPlay: bestAllPlayTeam }
+})
+
+// Team detail stats
+const teamDetailStats = computed(() => {
+  if (!selectedTeam.value) {
+    return { ppg: '0.0', highScore: '0.0', lowScore: '0.0', totalPoints: '0.0', pointsAgainst: '0.0', pointDiff: '0.0', winStreak: '-', weeklyResults: [] }
+  }
+  
+  const team = selectedTeam.value
+  const weeklyData = weeklyScoresMap.value.get(team.team_key) || []
+  const scores = weeklyData.map(w => w.points)
+  
+  const gamesPlayed = Math.max((team.wins || 0) + (team.losses || 0), 1)
+  const ppg = ((team.points_for || 0) / gamesPlayed).toFixed(1)
+  const highScore = scores.length > 0 ? Math.max(...scores).toFixed(1) : '0.0'
+  const lowScore = scores.length > 0 ? Math.min(...scores).toFixed(1) : '0.0'
+  const totalPoints = (team.points_for || 0).toFixed(1)
+  const pointsAgainst = (team.points_against || 0).toFixed(1)
+  const pointDiff = ((team.points_for || 0) - (team.points_against || 0)).toFixed(1)
+  
+  // Calculate streak
+  let streak = 0
+  let streakType = ''
+  for (let i = weeklyData.length - 1; i >= 0; i--) {
+    if (i === weeklyData.length - 1) {
+      streakType = weeklyData[i].won ? 'W' : 'L'
+      streak = 1
+    } else if ((weeklyData[i].won && streakType === 'W') || (!weeklyData[i].won && streakType === 'L')) {
+      streak++
+    } else {
+      break
+    }
+  }
+  const winStreak = weeklyData.length > 0 ? `${streakType}${streak}` : '-'
+  
+  return {
+    ppg,
+    highScore,
+    lowScore,
+    totalPoints,
+    pointsAgainst,
+    pointDiff,
+    winStreak,
+    weeklyResults: weeklyData.map(w => ({ won: w.won, points: w.points }))
+  }
 })
 
 // Leader modal computed properties
@@ -597,6 +816,47 @@ function getRankClass(rank: number): string {
   return 'bg-dark-border text-dark-textMuted'
 }
 
+function getRecordClass(team: any): string {
+  if (bestRecord.value && team.team_key === bestRecord.value.team_key) {
+    return 'text-green-400'
+  }
+  if (worstRecord.value && team.team_key === worstRecord.value.team_key) {
+    return 'text-red-400'
+  }
+  return 'text-dark-text'
+}
+
+function getAllPlayClass(team: any): string {
+  if (bestAllPlay.value && team.team_key === bestAllPlay.value.team_key) {
+    return 'text-green-400 font-semibold'
+  }
+  if (worstAllPlay.value && team.team_key === worstAllPlay.value.team_key) {
+    return 'text-red-400 font-semibold'
+  }
+  return 'text-dark-textMuted'
+}
+
+function getPointsForClass(team: any): string {
+  if (bestPointsFor.value && team.team_key === bestPointsFor.value.team_key) {
+    return 'text-green-400'
+  }
+  if (worstPointsFor.value && team.team_key === worstPointsFor.value.team_key) {
+    return 'text-red-400'
+  }
+  return 'text-dark-text'
+}
+
+function getPointsAgainstClass(team: any): string {
+  // Best = lowest (green), Worst = highest (red)
+  if (bestPointsAgainst.value && team.team_key === bestPointsAgainst.value.team_key) {
+    return 'text-green-400'
+  }
+  if (worstPointsAgainst.value && team.team_key === worstPointsAgainst.value.team_key) {
+    return 'text-red-400'
+  }
+  return 'text-dark-textMuted'
+}
+
 function handleImageError(e: Event) {
   const img = e.target as HTMLImageElement
   img.src = defaultAvatar
@@ -611,6 +871,16 @@ function closeLeaderModal() {
   showLeaderModal.value = false
 }
 
+function openTeamDetailModal(team: any) {
+  selectedTeam.value = team
+  showTeamDetailModal.value = true
+}
+
+function closeTeamDetailModal() {
+  showTeamDetailModal.value = false
+  selectedTeam.value = null
+}
+
 function formatLeaderValue(value: number): string {
   switch (activeLeaderType.value) {
     case 'mostPoints': return value.toFixed(1)
@@ -620,17 +890,19 @@ function formatLeaderValue(value: number): string {
   }
 }
 
-// Calculate all-play records from historical matchups
+// Calculate all-play records and weekly scores from historical matchups
 async function calculateAllPlayRecords() {
   const leagueKey = leagueStore.activeLeagueId
   if (!leagueKey || leagueStore.activePlatform !== 'yahoo') return
   
   isLoadingAllPlay.value = true
   const records = new Map<string, { wins: number; losses: number }>()
+  const weeklyScores = new Map<string, { week: number; points: number; won: boolean }[]>()
   
   // Initialize all teams
   for (const team of leagueStore.yahooTeams) {
     records.set(team.team_key, { wins: 0, losses: 0 })
+    weeklyScores.set(team.team_key, [])
   }
   
   try {
@@ -647,10 +919,36 @@ async function calculateAllPlayRecords() {
         const matchups = await yahooService.getMatchups(leagueKey, week)
         
         // Get all team scores for this week
-        const weekScores: { team_key: string; points: number }[] = []
+        const weekScoresData: { team_key: string; points: number }[] = []
+        
+        // Track who beat who this week
         for (const matchup of matchups) {
+          if (matchup.teams.length >= 2) {
+            const team1 = matchup.teams[0]
+            const team2 = matchup.teams[1]
+            
+            // Record weekly results
+            const team1Scores = weeklyScores.get(team1.team_key)
+            const team2Scores = weeklyScores.get(team2.team_key)
+            
+            if (team1Scores) {
+              team1Scores.push({
+                week,
+                points: team1.points || 0,
+                won: (team1.points || 0) > (team2.points || 0)
+              })
+            }
+            if (team2Scores) {
+              team2Scores.push({
+                week,
+                points: team2.points || 0,
+                won: (team2.points || 0) > (team1.points || 0)
+              })
+            }
+          }
+          
           for (const team of matchup.teams) {
-            weekScores.push({
+            weekScoresData.push({
               team_key: team.team_key,
               points: team.points || 0
             })
@@ -658,11 +956,11 @@ async function calculateAllPlayRecords() {
         }
         
         // Calculate all-play for each team
-        for (const team of weekScores) {
+        for (const team of weekScoresData) {
           const record = records.get(team.team_key)
           if (!record) continue
           
-          for (const opponent of weekScores) {
+          for (const opponent of weekScoresData) {
             if (opponent.team_key === team.team_key) continue
             
             if (team.points > opponent.points) {
@@ -679,6 +977,7 @@ async function calculateAllPlayRecords() {
     }
     
     allPlayRecords.value = records
+    weeklyScoresMap.value = weeklyScores
   } catch (e) {
     console.error('Error calculating all-play records:', e)
   } finally {
