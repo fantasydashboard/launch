@@ -309,8 +309,17 @@
               <div v-else class="text-center py-8 text-dark-textMuted">
                 <p>Win probability trend will show as the week progresses</p>
               </div>
-              <div class="text-[10px] text-dark-textMuted text-center mt-1">
-                Win probability changes throughout the week based on game results
+              <div class="flex items-center justify-center gap-2 mt-1">
+                <div v-if="hasRealSnapshots" class="flex items-center gap-1">
+                  <span class="w-2 h-2 rounded-full bg-green-500"></span>
+                  <span class="text-[10px] text-green-400">Real Data</span>
+                </div>
+                <div v-else class="flex items-center gap-1">
+                  <span class="w-2 h-2 rounded-full bg-yellow-500"></span>
+                  <span class="text-[10px] text-yellow-400">Simulated</span>
+                </div>
+                <span class="text-[10px] text-dark-textMuted">•</span>
+                <span class="text-[10px] text-dark-textMuted">Win probability changes throughout the week based on game results</span>
               </div>
             </div>
 
@@ -589,6 +598,7 @@ import { ref, computed, onMounted, watch } from 'vue'
 import { useLeagueStore } from '@/stores/league'
 import { yahooService } from '@/services/yahoo'
 import { useAuthStore } from '@/stores/auth'
+import { matchupSnapshotsService, type MatchupSnapshot } from '@/services/matchupSnapshots'
 import html2canvas from 'html2canvas'
 
 const leagueStore = useLeagueStore()
@@ -605,6 +615,10 @@ const isDownloadingComparison = ref(false)
 const matchupsData = ref<any[]>([])
 const selectedMatchup = ref<any>(null)
 const allMatchupsHistory = ref<Map<number, any[]>>(new Map())
+
+// Snapshot state
+const weekSnapshots = ref<Map<number, MatchupSnapshot[]>>(new Map())
+const isSnapshotting = ref(false)
 
 // Refs for download
 const winProbRef = ref<HTMLElement | null>(null)
@@ -725,44 +739,158 @@ const winProbability = computed(() => {
   return { team1: adjustedTeam1, team2: adjustedTeam2 }
 })
 
-// Probability history (simulated for chart)
+// Get snapshots for the currently selected matchup
+const matchupSnapshots = computed(() => {
+  if (!selectedMatchup.value) return []
+  const matchupId = selectedMatchup.value.matchup_id
+  return weekSnapshots.value.get(matchupId) || []
+})
+
+// Check if we have real snapshot data (not simulated)
+const hasRealSnapshots = computed(() => matchupSnapshots.value.length > 0)
+
+// Probability history for chart - uses REAL data when available, simulation otherwise
 const probabilityHistory = computed(() => {
   if (!selectedMatchup.value?.team1 || !selectedMatchup.value?.team2) return []
   
-  // For baseball, show full week progression (Mon-Sun)
   const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
+  const matchup = selectedMatchup.value
+  const isCompleted = matchup.status === 'final'
+  const snapshots = matchupSnapshots.value
+  
+  // If we have real snapshot data, use it!
+  if (snapshots.length > 0) {
+    console.log(`Using ${snapshots.length} real snapshots for matchup ${matchup.matchup_id}`)
+    
+    const history = []
+    
+    for (let i = 0; i < 7; i++) {
+      // Find snapshot for this day
+      const snapshot = snapshots.find(s => s.day_of_week === i)
+      
+      if (snapshot) {
+        // Use real data
+        history.push({
+          day: days[i],
+          team1: snapshot.team1_win_prob,
+          team2: snapshot.team2_win_prob,
+          isFuture: false,
+          isReal: true,
+          points: {
+            team1: snapshot.team1_points,
+            team2: snapshot.team2_points
+          }
+        })
+      } else {
+        // No snapshot for this day yet - either future or missing
+        const lastSnapshot = snapshots[snapshots.length - 1]
+        const jsDay = new Date().getDay()
+        const currentDayIndex = jsDay === 0 ? 6 : jsDay - 1
+        
+        if (i > currentDayIndex && !isCompleted) {
+          // Future day - project from last known
+          const lastProb = lastSnapshot?.team1_win_prob || 50
+          history.push({
+            day: days[i],
+            team1: lastProb,
+            team2: 100 - lastProb,
+            isFuture: true,
+            isReal: false
+          })
+        } else {
+          // Missing historical day - interpolate or use placeholder
+          history.push({
+            day: days[i],
+            team1: 50,
+            team2: 50,
+            isFuture: false,
+            isReal: false
+          })
+        }
+      }
+    }
+    
+    return history
+  }
+  
+  // No snapshots available - use simulation (for historical data before we started tracking)
+  console.log(`Using simulated data for matchup ${matchup.matchup_id} (no snapshots found)`)
   
   // Get current day (0 = Sunday, 1 = Monday, etc.)
   const jsDay = new Date().getDay()
   // Convert to Monday-based index (Mon = 0, Sun = 6)
   const currentDayIndex = jsDay === 0 ? 6 : jsDay - 1
   
-  const team1End = winProbability.value.team1
+  // Get team scores
+  const team1Score = matchup.team1.points || 0
+  const team2Score = matchup.team2.points || 0
+  const totalScore = team1Score + team2Score
   
-  // Create full week progression
+  // Calculate current win probability based on actual scores
+  let currentProb = 50
+  if (totalScore > 0) {
+    currentProb = (team1Score / totalScore) * 100
+  }
+  
+  // For completed matchups, final day should be 100/0
+  const finalTeam1Prob = isCompleted 
+    ? (team1Score > team2Score ? 100 : (team1Score < team2Score ? 0 : 50))
+    : currentProb
+  
   const history = []
+  
   for (let i = 0; i < 7; i++) {
-    const progress = (i + 1) / 7
-    const team1Start = 50
+    const dayProgress = (i + 1) / 7
     
-    if (i <= currentDayIndex) {
-      // Past/current days - show actual progression with some variance
-      const team1Prob = team1Start + (team1End - team1Start) * progress + (Math.random() - 0.5) * 8
+    if (isCompleted) {
+      // Completed week - simulate progression toward final result
+      // Start at 50%, end at 100/0/50
+      const team1Prob = 50 + (finalTeam1Prob - 50) * dayProgress
+      
+      // Add some variance for days 1-5 to make it look realistic
+      const variance = i < 6 ? (Math.sin(i * 1.5) * 15 * (1 - dayProgress)) : 0
+      const adjustedProb = i === 6 ? finalTeam1Prob : Math.min(95, Math.max(5, team1Prob + variance))
+      
       history.push({
         day: days[i],
-        team1: Math.min(95, Math.max(5, team1Prob)),
-        team2: 100 - Math.min(95, Math.max(5, team1Prob)),
-        isFuture: false
+        team1: adjustedProb,
+        team2: 100 - adjustedProb,
+        isFuture: false,
+        isReal: false
       })
     } else {
-      // Future days - show projected trajectory
-      const team1Prob = team1Start + (team1End - team1Start) * progress
-      history.push({
-        day: days[i],
-        team1: Math.min(95, Math.max(5, team1Prob)),
-        team2: 100 - Math.min(95, Math.max(5, team1Prob)),
-        isFuture: true
-      })
+      // Live week
+      if (i <= currentDayIndex) {
+        // Past/current days - show progression from 50 to current
+        const progressToNow = (i + 1) / (currentDayIndex + 1)
+        const team1Prob = 50 + (currentProb - 50) * progressToNow
+        
+        // Add slight variance for past days
+        const variance = i < currentDayIndex ? (Math.sin(i * 2) * 8) : 0
+        const adjustedProb = Math.min(95, Math.max(5, team1Prob + variance))
+        
+        history.push({
+          day: days[i],
+          team1: adjustedProb,
+          team2: 100 - adjustedProb,
+          isFuture: false,
+          isReal: false
+        })
+      } else {
+        // Future days - project toward current trajectory
+        // Assume current trend continues but with diminishing certainty
+        const futureProgress = (i - currentDayIndex) / (6 - currentDayIndex)
+        const projectedProb = currentProb + (currentProb - 50) * futureProgress * 0.3
+        const adjustedProb = Math.min(90, Math.max(10, projectedProb))
+        
+        history.push({
+          day: days[i],
+          team1: adjustedProb,
+          team2: 100 - adjustedProb,
+          isFuture: true,
+          isReal: false
+        })
+      }
     }
   }
   
@@ -1082,6 +1210,16 @@ async function loadMatchups() {
     
     matchupsData.value = matchups
     
+    // Load existing snapshots for this week
+    const snapshots = await matchupSnapshotsService.getWeekSnapshots(leagueKey, week, currentSeason.value)
+    weekSnapshots.value = snapshots
+    console.log(`Loaded ${snapshots.size} matchups with snapshots`)
+    
+    // If this is the current week, take today's snapshot for all matchups
+    if (week === currentWeek.value && matchups.length > 0) {
+      await takeCurrentWeekSnapshots(matchups)
+    }
+    
     // Also load history for lifetime series
     await loadMatchupHistory()
     
@@ -1099,6 +1237,57 @@ async function loadMatchups() {
     console.error('Error loading matchups:', e)
   } finally {
     isLoading.value = false
+  }
+}
+
+// Take snapshots for current week matchups
+async function takeCurrentWeekSnapshots(matchups: any[]) {
+  const leagueKey = leagueStore.activeLeagueId
+  if (!leagueKey) return
+  
+  isSnapshotting.value = true
+  
+  try {
+    const transformedMatchups = matchups.map(m => {
+      const team1 = m.teams?.[0] || {}
+      const team2 = m.teams?.[1] || {}
+      return {
+        matchup_id: m.matchup_id,
+        team1: {
+          team_key: team1.team_key || '',
+          name: team1.name || 'Team 1',
+          points: team1.points || 0,
+          projected_points: team1.projected_points || 0
+        },
+        team2: {
+          team_key: team2.team_key || '',
+          name: team2.name || 'Team 2',
+          points: team2.points || 0,
+          projected_points: team2.projected_points || 0
+        },
+        status: parseInt(selectedWeek.value) < currentWeek.value ? 'final' : 'live'
+      }
+    })
+    
+    const savedCount = await matchupSnapshotsService.takeWeekSnapshots(
+      leagueKey,
+      'yahoo',
+      'baseball',
+      currentSeason.value,
+      parseInt(selectedWeek.value),
+      transformedMatchups
+    )
+    
+    if (savedCount > 0) {
+      // Reload snapshots to get the updated data
+      const snapshots = await matchupSnapshotsService.getWeekSnapshots(leagueKey, parseInt(selectedWeek.value), currentSeason.value)
+      weekSnapshots.value = snapshots
+      console.log(`Took ${savedCount} new snapshots for week ${selectedWeek.value}`)
+    }
+  } catch (e) {
+    console.error('Error taking snapshots:', e)
+  } finally {
+    isSnapshotting.value = false
   }
 }
 
