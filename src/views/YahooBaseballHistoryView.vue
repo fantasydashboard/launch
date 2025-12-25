@@ -627,10 +627,10 @@ const seasonTableRef = ref<HTMLElement | null>(null)
 const h2hTableRef = ref<HTMLElement | null>(null)
 
 // Data
-const historicalData = ref<Map<string, any>>(new Map())
-const allMatchups = ref<Map<string, Map<number, any[]>>>(new Map()) // season -> week -> matchups
-const allTeams = ref<Map<string, any>>(new Map()) // team_key -> team info
-const currentMembers = ref<Set<string>>(new Set())
+const historicalData = ref<Record<string, any>>({})
+const allMatchups = ref<Record<string, Record<number, any[]>>>({}) // season -> week -> matchups
+const allTeams = ref<Record<string, any>>({}) // team_key -> team info
+const currentMembers = ref<string[]>([])
 
 // Interfaces
 interface CareerStat {
@@ -681,13 +681,13 @@ interface Award {
 
 // Computed: Available seasons
 const availableSeasons = computed(() => {
-  return Array.from(historicalData.value.keys()).sort((a, b) => parseInt(b) - parseInt(a))
+  return Object.keys(historicalData.value).sort((a, b) => parseInt(b) - parseInt(a))
 })
 
 const availableWeeksForAwards = computed(() => {
-  const seasonMatchups = allMatchups.value.get(selectedWeeklyAwardSeason.value)
+  const seasonMatchups = allMatchups.value[selectedWeeklyAwardSeason.value]
   if (!seasonMatchups) return []
-  return Array.from(seasonMatchups.keys()).sort((a, b) => a - b)
+  return Object.keys(seasonMatchups).map(w => parseInt(w)).sort((a, b) => a - b)
 })
 
 // Computed: Career Records (4 cards)
@@ -734,21 +734,21 @@ const careerRecords = computed(() => {
 
 // Computed: Career Stats
 const careerStats = computed((): CareerStat[] => {
-  const statsMap = new Map<string, CareerStat>()
+  const statsMap: Record<string, CareerStat> = {}
   
-  console.log('Computing career stats from historicalData:', historicalData.value.size, 'seasons')
+  console.log('Computing career stats from historicalData:', Object.keys(historicalData.value).length, 'seasons')
   
   // Aggregate stats across all seasons
-  for (const [season, seasonData] of historicalData.value) {
+  for (const [season, seasonData] of Object.entries(historicalData.value)) {
     const standings = seasonData.standings || []
     console.log(`Processing ${season} standings:`, standings.length, 'teams')
     
     for (const team of standings) {
       const teamKey = team.team_key
-      const existing = statsMap.get(teamKey)
+      const existing = statsMap[teamKey]
       
       // Get logo from allTeams (populated from matchups)
-      const teamInfo = allTeams.value.get(teamKey)
+      const teamInfo = allTeams.value[teamKey]
       const logoUrl = teamInfo?.logo_url || team.logo_url || ''
       
       console.log(`Team ${team.name}: wins=${team.wins}, losses=${team.losses}, points_for=${team.points_for}, rank=${team.rank}, is_champion=${team.is_champion}`)
@@ -763,7 +763,7 @@ const careerStats = computed((): CareerStat[] => {
         // Update logo if we have one
         if (logoUrl && !existing.logo_url) existing.logo_url = logoUrl
       } else {
-        statsMap.set(teamKey, {
+        statsMap[teamKey] = {
           team_key: teamKey,
           team_name: team.name || 'Unknown Team',
           logo_url: logoUrl,
@@ -775,15 +775,15 @@ const careerStats = computed((): CareerStat[] => {
           avg_ppw: 0,
           total_pf: team.points_for || 0,
           total_weeks: (team.wins || 0) + (team.losses || 0)
-        })
+        }
       }
     }
   }
   
-  console.log('Career stats map size:', statsMap.size)
+  console.log('Career stats map size:', Object.keys(statsMap).length)
   
   // Calculate derived stats
-  const stats = Array.from(statsMap.values()).map(stat => {
+  const stats = Object.values(statsMap).map(stat => {
     const totalGames = stat.wins + stat.losses
     stat.win_pct = totalGames > 0 ? stat.wins / totalGames : 0
     stat.avg_ppw = stat.total_weeks > 0 ? stat.total_pf / stat.total_weeks : 0
@@ -799,15 +799,15 @@ const careerStats = computed((): CareerStat[] => {
 // Computed: Filtered career stats (current members only toggle)
 const filteredCareerStats = computed(() => {
   if (!showCurrentMembersOnlyCareer.value) return careerStats.value
-  return careerStats.value.filter(stat => currentMembers.value.has(stat.team_key))
+  return careerStats.value.filter(stat => currentMembers.value.includes(stat.team_key))
 })
 
 // Computed: Season Records
 const seasonRecords = computed((): SeasonRecord[] => {
   const records: SeasonRecord[] = []
   
-  for (const [season, seasonData] of historicalData.value) {
-    const matchups = allMatchups.value.get(season) || new Map()
+  for (const [season, seasonData] of Object.entries(historicalData.value)) {
+    const matchups = allMatchups.value[season] || {}
     const standings = seasonData.standings || []
     
     let totalPoints = 0
@@ -818,8 +818,8 @@ const seasonRecords = computed((): SeasonRecord[] => {
     let lowScorer = ''
     
     // Find high/low scores from matchups
-    for (const [week, weekMatchups] of matchups) {
-      for (const matchup of weekMatchups) {
+    for (const [week, weekMatchups] of Object.entries(matchups)) {
+      for (const matchup of weekMatchups as any[]) {
         for (const team of matchup.teams || []) {
           const points = team.points || 0
           totalPoints += points
@@ -857,7 +857,7 @@ const seasonRecords = computed((): SeasonRecord[] => {
 
 // Computed: H2H Teams
 const h2hTeams = computed((): H2HTeam[] => {
-  return Array.from(allTeams.value.values()).map(team => ({
+  return Object.values(allTeams.value).map(team => ({
     team_key: team.team_key,
     team_name: team.name || 'Unknown',
     logo_url: team.logo_url || ''
@@ -866,11 +866,11 @@ const h2hTeams = computed((): H2HTeam[] => {
 
 const filteredH2HTeams = computed(() => {
   if (!showCurrentMembersOnlyH2H.value) return h2hTeams.value
-  return h2hTeams.value.filter(team => currentMembers.value.has(team.team_key))
+  return h2hTeams.value.filter(team => currentMembers.value.includes(team.team_key))
 })
 
 // H2H Records Map
-const h2hRecords = ref<Map<string, Map<string, { wins: number; losses: number }>>>(new Map())
+const h2hRecords = ref<Record<string, Record<string, { wins: number; losses: number }>>>({})
 
 // Computed: All-Time Awards
 const allTimeHallOfFame = computed((): Award[] => {
@@ -884,16 +884,16 @@ const allTimeHallOfFame = computed((): Award[] => {
   let bestWinPct = { value: 0, team: '', logo: '', record: '' }
   
   // Scan all matchups for highest single-week score
-  for (const [season, seasonMatchups] of allMatchups.value) {
-    for (const [week, matchups] of seasonMatchups) {
-      for (const matchup of matchups) {
+  for (const [season, seasonMatchups] of Object.entries(allMatchups.value)) {
+    for (const [week, matchups] of Object.entries(seasonMatchups)) {
+      for (const matchup of matchups as any[]) {
         for (const team of matchup.teams || []) {
           if ((team.points || 0) > highestScore.value) {
             highestScore = {
               value: team.points,
               team: team.name,
               season,
-              week
+              week: parseInt(week)
             }
           }
         }
@@ -911,7 +911,7 @@ const allTimeHallOfFame = computed((): Award[] => {
       title: 'Highest Single-Week Score',
       winner: highestScore.value > 0 ? {
         team_name: highestScore.team,
-        logo_url: allTeams.value.get(highestScore.team)?.logo_url || '',
+        logo_url: allTeams.value[highestScore.team]?.logo_url || '',
         value: highestScore.value.toFixed(1),
         season: `${highestScore.season} Week ${highestScore.week}`,
         details: 'All-time best single-week performance'
@@ -954,16 +954,16 @@ const allTimeHallOfShame = computed((): Award[] => {
   // Find worst performers
   let lowestScore = { value: Infinity, team: '', season: '', week: 0 }
   
-  for (const [season, seasonMatchups] of allMatchups.value) {
-    for (const [week, matchups] of seasonMatchups) {
-      for (const matchup of matchups) {
+  for (const [season, seasonMatchups] of Object.entries(allMatchups.value)) {
+    for (const [week, matchups] of Object.entries(seasonMatchups)) {
+      for (const matchup of matchups as any[]) {
         for (const team of matchup.teams || []) {
           if ((team.points || 0) > 0 && (team.points || 0) < lowestScore.value) {
             lowestScore = {
               value: team.points,
               team: team.name,
               season,
-              week
+              week: parseInt(week)
             }
           }
         }
@@ -980,7 +980,7 @@ const allTimeHallOfShame = computed((): Award[] => {
       title: 'Lowest Single-Week Score',
       winner: lowestScore.value < Infinity ? {
         team_name: lowestScore.team,
-        logo_url: allTeams.value.get(lowestScore.team)?.logo_url || '',
+        logo_url: allTeams.value[lowestScore.team]?.logo_url || '',
         value: lowestScore.value.toFixed(1),
         season: `${lowestScore.season} Week ${lowestScore.week}`,
         details: 'All-time worst single-week performance'
@@ -1021,19 +1021,19 @@ const seasonHallOfFame = computed((): Award[] => {
   const season = selectedAwardSeason.value
   if (!season) return []
   
-  const seasonData = historicalData.value.get(season)
-  const matchups = allMatchups.value.get(season)
+  const seasonData = historicalData.value[season]
+  const matchups = allMatchups.value[season]
   if (!seasonData || !matchups) return []
   
   const standings = seasonData.standings || []
   
   // Find high score for season
   let highScore = { value: 0, team: '', week: 0 }
-  for (const [week, weekMatchups] of matchups) {
-    for (const matchup of weekMatchups) {
+  for (const [week, weekMatchups] of Object.entries(matchups)) {
+    for (const matchup of weekMatchups as any[]) {
       for (const team of matchup.teams || []) {
         if ((team.points || 0) > highScore.value) {
-          highScore = { value: team.points, team: team.name, week }
+          highScore = { value: team.points, team: team.name, week: parseInt(week) }
         }
       }
     }
@@ -1047,7 +1047,7 @@ const seasonHallOfFame = computed((): Award[] => {
       title: 'Season High Score',
       winner: highScore.value > 0 ? {
         team_name: highScore.team,
-        logo_url: allTeams.value.get(highScore.team)?.logo_url || '',
+        logo_url: allTeams.value[highScore.team]?.logo_url || '',
         value: highScore.value.toFixed(1),
         details: `Week ${highScore.week}`
       } : null
@@ -1077,19 +1077,19 @@ const seasonHallOfShame = computed((): Award[] => {
   const season = selectedAwardSeason.value
   if (!season) return []
   
-  const seasonData = historicalData.value.get(season)
-  const matchups = allMatchups.value.get(season)
+  const seasonData = historicalData.value[season]
+  const matchups = allMatchups.value[season]
   if (!seasonData || !matchups) return []
   
   const standings = seasonData.standings || []
   
   // Find low score for season
   let lowScore = { value: Infinity, team: '', week: 0 }
-  for (const [week, weekMatchups] of matchups) {
-    for (const matchup of weekMatchups) {
+  for (const [week, weekMatchups] of Object.entries(matchups)) {
+    for (const matchup of weekMatchups as any[]) {
       for (const team of matchup.teams || []) {
         if ((team.points || 0) > 0 && (team.points || 0) < lowScore.value) {
-          lowScore = { value: team.points, team: team.name, week }
+          lowScore = { value: team.points, team: team.name, week: parseInt(week) }
         }
       }
     }
@@ -1103,7 +1103,7 @@ const seasonHallOfShame = computed((): Award[] => {
       title: 'Season Low Score',
       winner: lowScore.value < Infinity ? {
         team_name: lowScore.team,
-        logo_url: allTeams.value.get(lowScore.team)?.logo_url || '',
+        logo_url: allTeams.value[lowScore.team]?.logo_url || '',
         value: lowScore.value.toFixed(1),
         details: `Week ${lowScore.week}`
       } : null
@@ -1135,10 +1135,10 @@ const weeklyAwards = computed((): Award[] => {
   const week = selectedWeeklyAwardWeek.value
   if (!season || !week) return []
   
-  const seasonMatchups = allMatchups.value.get(season)
+  const seasonMatchups = allMatchups.value[season]
   if (!seasonMatchups) return []
   
-  const weekMatchups = seasonMatchups.get(week) || []
+  const weekMatchups = seasonMatchups[week] || []
   
   let highScore = { value: 0, team: '', logo: '' }
   let lowScore = { value: Infinity, team: '', logo: '' }
@@ -1289,9 +1289,9 @@ function getRecordClass(stat: CareerStat, field: string): string {
 }
 
 function getH2HRecord(team1Key: string, team2Key: string): string {
-  const team1Records = h2hRecords.value.get(team1Key)
+  const team1Records = h2hRecords.value[team1Key]
   if (!team1Records) return '0-0'
-  const record = team1Records.get(team2Key)
+  const record = team1Records[team2Key]
   if (!record) return '0-0'
   return `${record.wins}-${record.losses}`
 }
@@ -1299,9 +1299,9 @@ function getH2HRecord(team1Key: string, team2Key: string): string {
 function getH2HCellClass(team1Key: string, team2Key: string): string {
   if (team1Key === team2Key) return 'bg-dark-border/50'
   
-  const team1Records = h2hRecords.value.get(team1Key)
+  const team1Records = h2hRecords.value[team1Key]
   if (!team1Records) return ''
-  const record = team1Records.get(team2Key)
+  const record = team1Records[team2Key]
   if (!record) return ''
   
   if (record.wins > record.losses) return 'bg-green-500/20 text-green-400'
@@ -1433,23 +1433,27 @@ async function loadHistoricalData() {
           is_champion: team.rank === 1
         }))
         
-        historicalData.value.set(season, {
+        historicalData.value[season] = {
           standings: enhancedStandings,
           trade_count: 0 // Would need separate API call
-        })
+        }
         
         // If this is the current season, track current members
         if (season === yearsByKey[gameKey]) {
-          enhancedStandings.forEach((team: any) => currentMembers.value.add(team.team_key))
+          enhancedStandings.forEach((team: any) => {
+            if (!currentMembers.value.includes(team.team_key)) {
+              currentMembers.value.push(team.team_key)
+            }
+          })
         }
         
         // Load matchups for H2H calculation and to get team logos
-        const seasonMatchups = new Map<number, any[]>()
+        const seasonMatchupsObj: Record<number, any[]> = {}
         for (let week = 1; week <= 25; week++) {
           try {
             const weekMatchups = await yahooService.getMatchups(seasonLeagueKey, week)
             if (weekMatchups.length > 0) {
-              seasonMatchups.set(week, weekMatchups)
+              seasonMatchupsObj[week] = weekMatchups
               
               // Build H2H records and collect team info with logos
               for (const matchup of weekMatchups) {
@@ -1458,46 +1462,42 @@ async function loadHistoricalData() {
                   const [team1, team2] = teams
                   
                   // Store team info with logo (only by team_key, not by name)
-                  if (!allTeams.value.has(team1.team_key)) {
-                    allTeams.value.set(team1.team_key, {
+                  if (!allTeams.value[team1.team_key]) {
+                    allTeams.value[team1.team_key] = {
                       team_key: team1.team_key,
                       name: team1.name,
                       logo_url: team1.logo_url || ''
-                    })
+                    }
                   }
-                  if (!allTeams.value.has(team2.team_key)) {
-                    allTeams.value.set(team2.team_key, {
+                  if (!allTeams.value[team2.team_key]) {
+                    allTeams.value[team2.team_key] = {
                       team_key: team2.team_key,
                       name: team2.name,
                       logo_url: team2.logo_url || ''
-                    })
+                    }
                   }
                   
                   const team1Won = (team1.points || 0) > (team2.points || 0)
                   
                   // Update team1's record vs team2
-                  if (!h2hRecords.value.has(team1.team_key)) {
-                    h2hRecords.value.set(team1.team_key, new Map())
+                  if (!h2hRecords.value[team1.team_key]) {
+                    h2hRecords.value[team1.team_key] = {}
                   }
-                  const t1Records = h2hRecords.value.get(team1.team_key)!
-                  if (!t1Records.has(team2.team_key)) {
-                    t1Records.set(team2.team_key, { wins: 0, losses: 0 })
+                  if (!h2hRecords.value[team1.team_key][team2.team_key]) {
+                    h2hRecords.value[team1.team_key][team2.team_key] = { wins: 0, losses: 0 }
                   }
-                  const t1VsT2 = t1Records.get(team2.team_key)!
-                  if (team1Won) t1VsT2.wins++
-                  else t1VsT2.losses++
+                  if (team1Won) h2hRecords.value[team1.team_key][team2.team_key].wins++
+                  else h2hRecords.value[team1.team_key][team2.team_key].losses++
                   
                   // Update team2's record vs team1
-                  if (!h2hRecords.value.has(team2.team_key)) {
-                    h2hRecords.value.set(team2.team_key, new Map())
+                  if (!h2hRecords.value[team2.team_key]) {
+                    h2hRecords.value[team2.team_key] = {}
                   }
-                  const t2Records = h2hRecords.value.get(team2.team_key)!
-                  if (!t2Records.has(team1.team_key)) {
-                    t2Records.set(team1.team_key, { wins: 0, losses: 0 })
+                  if (!h2hRecords.value[team2.team_key][team1.team_key]) {
+                    h2hRecords.value[team2.team_key][team1.team_key] = { wins: 0, losses: 0 }
                   }
-                  const t2VsT1 = t2Records.get(team1.team_key)!
-                  if (!team1Won) t2VsT1.wins++
-                  else t2VsT1.losses++
+                  if (!team1Won) h2hRecords.value[team2.team_key][team1.team_key].wins++
+                  else h2hRecords.value[team2.team_key][team1.team_key].losses++
                 }
               }
             }
@@ -1507,11 +1507,11 @@ async function loadHistoricalData() {
           }
         }
         
-        if (seasonMatchups.size > 0) {
-          allMatchups.value.set(season, seasonMatchups)
+        if (Object.keys(seasonMatchupsObj).length > 0) {
+          allMatchups.value[season] = seasonMatchupsObj
         }
         
-        console.log(`Loaded ${season} season data: ${standings.length} teams, ${seasonMatchups.size} weeks`)
+        console.log(`Loaded ${season} season data: ${standings.length} teams, ${Object.keys(seasonMatchupsObj).length} weeks`)
       } catch (e) {
         // Season doesn't exist for this league
         console.log(`No data for ${season} season`)
@@ -1545,11 +1545,11 @@ watch(() => leagueStore.activeLeagueId, (newLeagueId) => {
   if (newLeagueId) {
     console.log('League changed, reloading history:', newLeagueId)
     // Reset data
-    historicalData.value.clear()
-    allMatchups.value.clear()
-    allTeams.value.clear()
-    h2hRecords.value.clear()
-    currentMembers.value.clear()
+    historicalData.value = {}
+    allMatchups.value = {}
+    allTeams.value = {}
+    h2hRecords.value = {}
+    currentMembers.value = []
     // Reload
     loadHistoricalData()
   }
@@ -1558,7 +1558,7 @@ watch(() => leagueStore.activeLeagueId, (newLeagueId) => {
 // Load data on mount (as backup)
 onMounted(() => {
   console.log('YahooBaseballHistoryView mounted - activeLeagueId:', leagueStore.activeLeagueId)
-  if (leagueStore.activeLeagueId && historicalData.value.size === 0) {
+  if (leagueStore.activeLeagueId && Object.keys(historicalData.value).length === 0) {
     loadHistoricalData()
   }
 })
