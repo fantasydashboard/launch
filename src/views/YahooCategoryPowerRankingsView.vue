@@ -773,23 +773,27 @@ async function downloadRankings() {
     const secondHalf = powerRankings.value.slice(midpoint)
     
     const generateRankingRow = (team: any, rank: number) => `
-      <div style="display: flex; align-items: center; padding: 12px 16px; background: ${rank <= 3 ? 'rgba(59, 159, 232, 0.1)' : 'rgba(38, 42, 58, 0.5)'}; border-radius: 10px; margin-bottom: 8px; border: 1px solid ${rank <= 3 ? 'rgba(59, 159, 232, 0.3)' : 'rgba(58, 61, 82, 0.5)'};">
-        <div style="display: flex; align-items: center; width: 50px;">
-          <span style="font-size: 28px; font-weight: bold; color: #3B9FE8;">${rank}</span>
+      <div style="display: flex; align-items: center; height: 76px; padding: 0 16px; background: ${rank <= 3 ? 'rgba(59, 159, 232, 0.1)' : 'rgba(38, 42, 58, 0.5)'}; border-radius: 10px; margin-bottom: 8px; border: 1px solid ${rank <= 3 ? 'rgba(59, 159, 232, 0.3)' : 'rgba(58, 61, 82, 0.5)'};">
+        <!-- Rank Number - Centered vertically -->
+        <div style="display: flex; align-items: center; justify-content: center; width: 50px; height: 100%;">
+          <span style="font-size: 32px; font-weight: bold; color: #3B9FE8; line-height: 1;">${rank}</span>
           ${team.change !== 0 ? `
-            <span style="font-size: 13px; font-weight: 600; color: ${team.change > 0 ? '#10b981' : '#ef4444'}; margin-left: 6px;">
+            <span style="font-size: 12px; font-weight: 600; color: ${team.change > 0 ? '#10b981' : '#ef4444'}; margin-left: 4px;">
               ${team.change > 0 ? '↑' : '↓'}${Math.abs(team.change)}
             </span>
           ` : ''}
         </div>
-        <img src="${imageMap.get(team.team_key) || ''}" style="width: 52px; height: 52px; border-radius: 50%; margin-right: 14px; border: 2px solid #3a3d52; background: #262a3a;" />
-        <div style="flex: 1; min-width: 0;">
-          <div style="font-size: 16px; font-weight: 600; color: #f7f7ff; margin-bottom: 4px;">${team.name}</div>
-          <div style="font-size: 13px; color: #b0b3c2;">${team.totalCatWins}-${team.totalCatLosses}-${team.totalCatTies} • ${(team.catWinPct * 100).toFixed(1)}%</div>
+        <!-- Team Logo -->
+        <img src="${imageMap.get(team.team_key) || ''}" style="width: 48px; height: 48px; border-radius: 50%; margin-right: 12px; border: 2px solid #3a3d52; background: #262a3a; flex-shrink: 0;" />
+        <!-- Team Info - Fixed width with ellipsis -->
+        <div style="flex: 1; min-width: 0; max-width: 180px; overflow: hidden;">
+          <div style="font-size: 15px; font-weight: 600; color: #f7f7ff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${team.name}</div>
+          <div style="font-size: 12px; color: #b0b3c2; margin-top: 2px;">${team.totalCatWins}-${team.totalCatLosses}-${team.totalCatTies} • ${(team.catWinPct * 100).toFixed(1)}%</div>
         </div>
-        <div style="text-align: right; margin-left: auto; padding-left: 12px;">
-          <div style="font-size: 26px; font-weight: bold; color: #3B9FE8; line-height: 1;">${team.powerScore.toFixed(1)}</div>
-          <div style="font-size: 10px; color: #7b7f92; text-transform: uppercase; margin-top: 2px;">Power</div>
+        <!-- Power Score -->
+        <div style="text-align: right; margin-left: auto; padding-left: 12px; flex-shrink: 0;">
+          <div style="font-size: 24px; font-weight: bold; color: #3B9FE8; line-height: 1;">${team.powerScore.toFixed(1)}</div>
+          <div style="font-size: 9px; color: #7b7f92; text-transform: uppercase; margin-top: 2px;">Power</div>
         </div>
       </div>
     `
@@ -797,14 +801,9 @@ async function downloadRankings() {
     container.innerHTML = `
       <div style="background: linear-gradient(135deg, rgba(19, 22, 32, 0.98), rgba(10, 12, 20, 0.98)); border: 1px solid #2a2f42; border-radius: 16px; padding: 32px; box-shadow: 0 12px 40px rgba(0, 0, 0, 0.45);">
         <!-- Header -->
-        <div style="display: flex; justify-content: center; margin-bottom: 20px;">
-          <div style="display: flex; align-items: center; gap: 20px;">
-            ${logoBase64 ? `<img src="${logoBase64}" style="width: 70px; height: 70px; object-fit: contain;" />` : ''}
-            <div>
-              <div style="font-size: 32px; font-weight: 800; color: #f7f7ff;">⚡ Category Power Rankings</div>
-              <div style="font-size: 16px; color: #9ca3af;">${leagueName} • Week ${selectedWeek.value}</div>
-            </div>
-          </div>
+        <div style="text-align: center; margin-bottom: 20px;">
+          <div style="font-size: 42px; font-weight: 900; color: #f7f7ff; text-transform: uppercase; letter-spacing: 2px;">POWER RANKINGS</div>
+          <div style="font-size: 18px; color: #9ca3af; margin-top: 8px;">${leagueName} • Week ${selectedWeek.value}</div>
         </div>
         
         <!-- Divider -->
@@ -822,14 +821,14 @@ async function downloadRankings() {
         </div>
         
         <!-- Footer with Logo and Link (Extra Large) -->
-        <div style="text-align: center; padding-top: 20px; border-top: 1px solid rgba(58, 61, 82, 0.5);">
-          <div style="display: flex; flex-direction: column; align-items: center; gap: 16px;">
-            ${logoBase64 ? `<img src="${logoBase64}" style="width: 100px; height: 100px; object-fit: contain;" />` : ''}
-            <div>
-              <div style="font-size: 16px; color: #9ca3af; margin-bottom: 8px;">
+        <div style="text-align: center; padding-top: 24px; border-top: 1px solid rgba(58, 61, 82, 0.5);">
+          <div style="display: flex; flex-direction: column; align-items: center; gap: 20px;">
+            ${logoBase64 ? `<img src="${logoBase64}" style="width: 160px; height: 160px; object-fit: contain;" />` : ''}
+            <div style="max-width: 100%; padding: 0 20px;">
+              <div style="font-size: 14px; color: #9ca3af; margin-bottom: 10px;">
                 See a complete breakdown of every team in your league at
               </div>
-              <div style="font-size: 28px; font-weight: bold; color: #3B9FE8;">
+              <div style="font-size: 26px; font-weight: bold; color: #3B9FE8; word-wrap: break-word;">
                 ultimatefantasydashboard.com
               </div>
             </div>
