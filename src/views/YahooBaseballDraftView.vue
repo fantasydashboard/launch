@@ -898,14 +898,14 @@ async function loadDraftData() {
     
     // Get game key and build league key for selected season
     const gameKeys: Record<string, string> = {
-      '2025': '431', '2024': '422', '2023': '412', '2022': '404',
-      '2021': '398', '2020': '388', '2019': '378'
+      '2025': '458', '2024': '431', '2023': '422', '2022': '412',
+      '2021': '404', '2020': '398', '2019': '388'
     }
     
     const currentGameKey = leagueKey.split('.')[0]
     const leagueNum = leagueKey.split('.l.')[1]
-    const seasonGameKey = gameKeys[selectedSeason.value] || currentGameKey
-    const seasonLeagueKey = `${seasonGameKey}.l.${leagueNum}`
+    // Use current league's game key to maintain consistency
+    const seasonLeagueKey = leagueKey
     
     console.log('Loading draft for league:', seasonLeagueKey)
     
@@ -921,12 +921,24 @@ async function loadDraftData() {
     
     // Get player details
     const playerKeys = draftResults.picks.map((p: any) => p.player_key).filter(Boolean)
+    console.log('Fetching details for', playerKeys.length, 'players')
     const players = await yahooService.getPlayers(playerKeys)
     playerData.value = players
+    console.log('Got player details:', players.size)
     
     // Get player stats
     const stats = await yahooService.getPlayerStats(seasonLeagueKey, playerKeys)
     playerStats.value = stats
+    console.log('Got player stats:', stats.size)
+    
+    // Debug: log a few player stats
+    let debugCount = 0
+    for (const [key, stat] of stats) {
+      if (debugCount < 5) {
+        console.log(`Player ${key} total_points:`, stat.total_points)
+        debugCount++
+      }
+    }
     
     // Get teams for mapping
     const standings = await yahooService.getStandings(seasonLeagueKey)
@@ -938,13 +950,25 @@ async function loadDraftData() {
       teamLookup.set(team.team_key, team)
     }
     
-    // Calculate average points per pick position for scoring
-    const pickPoints: number[] = []
+    // Calculate points for each pick and sort to get rankings
+    const pickPointsData: { pick: number, points: number, playerKey: string }[] = []
     for (const pick of draftResults.picks) {
       const stat = stats.get(pick.player_key)
-      pickPoints.push(stat?.total_points || 0)
+      pickPointsData.push({
+        pick: pick.pick,
+        points: stat?.total_points || 0,
+        playerKey: pick.player_key
+      })
     }
-    const avgPoints = pickPoints.reduce((a, b) => a + b, 0) / pickPoints.length || 0
+    
+    // Sort by points descending to get actual rank
+    const sortedByPoints = [...pickPointsData].sort((a, b) => b.points - a.points)
+    const actualRankMap = new Map<string, number>()
+    sortedByPoints.forEach((p, idx) => {
+      actualRankMap.set(p.playerKey, idx + 1)
+    })
+    
+    console.log('Top 5 players by points:', sortedByPoints.slice(0, 5))
     
     // Process draft picks with player info and scores
     const numTeams = standings.length || 12
@@ -957,9 +981,10 @@ async function loadDraftData() {
       const totalPoints = stat.total_points || 0
       
       // Calculate score based on expected value vs actual
-      // Higher picks should score more, so we compare to expected
+      // Positive = player finished higher than drafted (good pick)
+      // Negative = player finished lower than drafted (bad pick)
       const expectedRank = pick.pick
-      const actualRank = pickPoints.filter(p => p > totalPoints).length + 1
+      const actualRank = actualRankMap.get(pick.player_key) || expectedRank
       const score = expectedRank - actualRank
       
       return {

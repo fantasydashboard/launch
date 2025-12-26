@@ -821,7 +821,7 @@ export class YahooFantasyService {
 
   /**
    * Get player season stats for draft analysis
-   * For baseball, this would be batting/pitching stats
+   * For baseball, this would be batting/pitching stats with fantasy points
    */
   async getPlayerStats(leagueKey: string, playerKeys: string[]): Promise<Map<string, any>> {
     const stats = new Map<string, any>()
@@ -832,17 +832,23 @@ export class YahooFantasyService {
       chunks.push(playerKeys.slice(i, i + 25))
     }
     
-    const gameKey = leagueKey.split('.')[0]
+    console.log(`Fetching player stats for ${playerKeys.length} players in ${chunks.length} chunks`)
     
     for (const chunk of chunks) {
       try {
         const keysParam = chunk.join(',')
+        // Use league context to get fantasy points, not just raw stats
         const data = await this.apiRequest(
-          `/players;player_keys=${keysParam}/stats?format=json`
+          `/league/${leagueKey}/players;player_keys=${keysParam}/stats?format=json`
         )
         
-        const playersData = data.fantasy_content?.players
-        if (!playersData) continue
+        console.log('Player stats response sample:', JSON.stringify(data, null, 2).substring(0, 2000))
+        
+        const playersData = data.fantasy_content?.league?.[1]?.players
+        if (!playersData) {
+          console.log('No players data in response')
+          continue
+        }
         
         for (const playerWrapper of Object.values(playersData) as any[]) {
           if (typeof playerWrapper !== 'object' || !playerWrapper.player) continue
@@ -850,6 +856,7 @@ export class YahooFantasyService {
           const playerArray = playerWrapper.player
           const playerInfo = playerArray[0]
           const playerStats = playerArray[1]?.player_stats
+          const playerPoints = playerArray[1]?.player_points
           
           if (!Array.isArray(playerInfo)) continue
           
@@ -868,16 +875,27 @@ export class YahooFantasyService {
             }
           }
           
+          // Get total fantasy points - check both player_stats.total and player_points.total
+          const totalPoints = parseFloat(playerPoints?.total || playerStats?.total || '0')
+          
           stats.set(player_key, {
             player_key,
             stats: statValues,
-            total_points: playerStats?.total || 0
+            total_points: totalPoints
           })
+          
+          if (stats.size <= 3) {
+            console.log(`Player ${player_key} stats:`, { totalPoints, hasPlayerPoints: !!playerPoints, hasPlayerStats: !!playerStats })
+          }
         }
       } catch (e) {
         console.error('Error fetching player stats chunk:', e)
       }
     }
+    
+    console.log(`Got stats for ${stats.size} players`)
+    return stats
+  }
     
     return stats
   }
