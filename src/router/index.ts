@@ -41,7 +41,7 @@ const router = createRouter({
     {
       path: '/projections',
       name: 'projections',
-      component: () => import('@/views/ProjectionsView.vue')
+      component: () => import('@/views/ProjectionsWrapper.vue')
     },
     {
       path: '/history',
