@@ -60,7 +60,7 @@ const router = createRouter({
     {
       path: '/performance-comparison',
       name: 'performance-comparison',
-      component: () => import('@/views/PerformanceComparisonView.vue')
+      component: () => import('@/views/CompareWrapper.vue')
     },
     {
       path: '/tools',
