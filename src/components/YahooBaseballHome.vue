@@ -34,9 +34,9 @@
         </div>
 
         <!-- Matchups Grid -->
-        <div v-else-if="thisWeekMatchups.length > 0" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+        <div v-else-if="formattedMatchups.length > 0" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
           <div 
-            v-for="matchup in thisWeekMatchups" 
+            v-for="matchup in formattedMatchups" 
             :key="matchup.matchup_id" 
             class="bg-dark-bg/60 backdrop-blur rounded-xl p-4 border border-dark-border/50 hover:border-primary/50 hover:bg-dark-bg/80 transition-all cursor-pointer group"
           >
@@ -61,9 +61,9 @@
               </div>
               <div class="text-right pl-3">
                 <div class="text-xl font-black text-dark-text">
-                  {{ isCategoryLeague ? (matchup.team1?.category_wins || 0) : (matchup.team1?.points || 0).toFixed(1) }}
+                  {{ isPointsLeague ? (matchup.team1?.points || 0).toFixed(1) : (matchup.team1?.category_wins || 0) }}
                 </div>
-                <div v-if="isCategoryLeague" class="text-xs text-primary font-medium">cat wins</div>
+                <div v-if="!isPointsLeague" class="text-xs text-primary font-medium">cat wins</div>
                 <div v-else-if="matchup.team1?.projected_points" class="text-xs text-primary font-medium">
                   proj {{ matchup.team1.projected_points.toFixed(0) }}
                 </div>
@@ -93,9 +93,9 @@
               </div>
               <div class="text-right pl-3">
                 <div class="text-xl font-black text-dark-text">
-                  {{ isCategoryLeague ? (matchup.team2?.category_wins || 0) : (matchup.team2?.points || 0).toFixed(1) }}
+                  {{ isPointsLeague ? (matchup.team2?.points || 0).toFixed(1) : (matchup.team2?.category_wins || 0) }}
                 </div>
-                <div v-if="isCategoryLeague" class="text-xs text-primary font-medium">cat wins</div>
+                <div v-if="!isPointsLeague" class="text-xs text-primary font-medium">cat wins</div>
                 <div v-else-if="matchup.team2?.projected_points" class="text-xs text-primary font-medium">
                   proj {{ matchup.team2.projected_points.toFixed(0) }}
                 </div>
@@ -114,17 +114,13 @@
       </h2>
       <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
         <!-- Best Record -->
-        <div 
-          @click="openLeaderModal('bestRecord')"
-          class="group relative overflow-hidden rounded-xl bg-dark-card border border-green-500/20 hover:border-green-500/40 transition-all cursor-pointer"
-        >
+        <div class="group relative overflow-hidden rounded-xl bg-dark-card border border-green-500/20 hover:border-green-500/40 transition-all cursor-pointer">
           <div class="absolute top-0 right-0 w-24 h-24 bg-green-500/5 rounded-full -translate-y-1/2 translate-x-1/2 group-hover:scale-150 transition-transform duration-500"></div>
           <div class="relative p-5">
             <div class="text-xs uppercase tracking-wider text-green-400 font-bold mb-3">Best Record</div>
             <div class="flex items-center gap-3 mb-3">
               <img 
                 :src="leaders.bestRecord?.logo_url || defaultAvatar" 
-                :alt="leaders.bestRecord?.name" 
                 class="w-12 h-12 rounded-full border-2 border-green-500/50 object-cover" 
                 @error="handleImageError" 
               />
@@ -135,62 +131,52 @@
             </div>
             <div class="flex items-center justify-between">
               <div class="text-2xl font-black text-green-400">{{ leaders.bestRecord ? getWinPercentage(leaders.bestRecord) : '0%' }}</div>
-              <div class="text-xs text-green-400/70 group-hover:text-green-400 transition-colors">Click for details →</div>
             </div>
           </div>
         </div>
 
         <!-- Most Categories Above Average (Category Leagues) / Most Points (Points Leagues) -->
-        <div 
-          @click="openLeaderModal('mostCatsAboveAvg')"
-          class="group relative overflow-hidden rounded-xl bg-dark-card border border-yellow-500/20 hover:border-yellow-500/40 transition-all cursor-pointer"
-        >
+        <div class="group relative overflow-hidden rounded-xl bg-dark-card border border-yellow-500/20 hover:border-yellow-500/40 transition-all cursor-pointer">
           <div class="absolute top-0 right-0 w-24 h-24 bg-yellow-500/5 rounded-full -translate-y-1/2 translate-x-1/2 group-hover:scale-150 transition-transform duration-500"></div>
           <div class="relative p-5">
             <div class="text-xs uppercase tracking-wider text-yellow-400 font-bold mb-3">
-              {{ isCategoryLeague ? 'Cats Above Average' : 'Most Points' }}
+              {{ isPointsLeague ? 'Most Points' : 'Cats Above Average' }}
             </div>
             <div class="flex items-center gap-3 mb-3">
               <img 
-                :src="(isCategoryLeague ? leaders.mostCatsAboveAvg?.logo_url : leaders.mostPoints?.logo_url) || defaultAvatar" 
-                :alt="isCategoryLeague ? leaders.mostCatsAboveAvg?.name : leaders.mostPoints?.name" 
+                :src="(isPointsLeague ? leaders.mostPoints?.logo_url : leaders.mostCatsAboveAvg?.logo_url) || defaultAvatar" 
                 class="w-12 h-12 rounded-full border-2 border-yellow-500/50 object-cover" 
                 @error="handleImageError" 
               />
               <div class="flex-1 min-w-0">
                 <div class="font-bold text-lg text-dark-text truncate">
-                  {{ isCategoryLeague ? (leaders.mostCatsAboveAvg?.name || 'N/A') : (leaders.mostPoints?.name || 'N/A') }}
+                  {{ isPointsLeague ? (leaders.mostPoints?.name || 'N/A') : (leaders.mostCatsAboveAvg?.name || 'N/A') }}
                 </div>
                 <div class="text-sm text-dark-textMuted">
-                  {{ isCategoryLeague 
-                    ? `${leaders.mostCatsAboveAvg?.wins || 0}-${leaders.mostCatsAboveAvg?.losses || 0}` 
-                    : `${leaders.mostPoints?.wins || 0}-${leaders.mostPoints?.losses || 0}` }}
+                  {{ isPointsLeague 
+                    ? `${leaders.mostPoints?.wins || 0}-${leaders.mostPoints?.losses || 0}` 
+                    : `${leaders.mostCatsAboveAvg?.wins || 0}-${leaders.mostCatsAboveAvg?.losses || 0}` }}
                 </div>
               </div>
             </div>
             <div class="flex items-center justify-between">
               <div class="text-2xl font-black text-yellow-400">
-                {{ isCategoryLeague 
-                  ? `${leaders.mostCatsAboveAvg?.catsAboveAvg || 0} cats` 
-                  : (leaders.mostPoints?.points_for?.toFixed(1) || '0.0') }}
+                {{ isPointsLeague 
+                  ? (leaders.mostPoints?.points_for?.toFixed(1) || '0.0') 
+                  : `${leaders.mostCatsAboveAvg?.catsAboveAvg || 0} cats` }}
               </div>
-              <div class="text-xs text-yellow-400/70 group-hover:text-yellow-400 transition-colors">Click for details →</div>
             </div>
           </div>
         </div>
         
         <!-- Best All-Play -->
-        <div 
-          @click="openLeaderModal('bestAllPlay')"
-          class="group relative overflow-hidden rounded-xl bg-dark-card border border-blue-500/20 hover:border-blue-500/40 transition-all cursor-pointer"
-        >
+        <div class="group relative overflow-hidden rounded-xl bg-dark-card border border-blue-500/20 hover:border-blue-500/40 transition-all cursor-pointer">
           <div class="absolute top-0 right-0 w-24 h-24 bg-blue-500/5 rounded-full -translate-y-1/2 translate-x-1/2 group-hover:scale-150 transition-transform duration-500"></div>
           <div class="relative p-5">
             <div class="text-xs uppercase tracking-wider text-blue-400 font-bold mb-3">Best All-Play</div>
             <div class="flex items-center gap-3 mb-3">
               <img 
                 :src="leaders.bestAllPlay?.logo_url || defaultAvatar" 
-                :alt="leaders.bestAllPlay?.name" 
                 class="w-12 h-12 rounded-full border-2 border-blue-500/50 object-cover" 
                 @error="handleImageError" 
               />
@@ -201,270 +187,228 @@
             </div>
             <div class="flex items-center justify-between">
               <div class="text-2xl font-black text-blue-400">{{ leaders.bestAllPlay?.all_play_wins || 0 }}-{{ leaders.bestAllPlay?.all_play_losses || 0 }}</div>
-              <div class="text-xs text-blue-400/70 group-hover:text-blue-400 transition-colors">Click for details →</div>
             </div>
           </div>
         </div>
       </div>
     </div>
 
-    <!-- Main Content Grid -->
-    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-      <!-- LEFT: League Standings (2/3 width) -->
-      <div class="lg:col-span-2">
-        <div class="card">
-          <div class="card-header">
-            <div class="flex items-center gap-2">
-              <span class="text-2xl">🏆</span>
-              <h2 class="card-title">League Standings</h2>
-            </div>
-            <div class="text-sm text-dark-textMuted">
-              {{ isCategoryLeague ? 'Category wins per stat' : 'Points league' }}
-            </div>
-          </div>
-          
-          <!-- Mobile scroll hint for category leagues -->
-          <div v-if="isCategoryLeague" class="px-4 py-2 bg-dark-border/30 border-b border-dark-border flex items-center justify-center gap-2 text-xs text-dark-textMuted">
-            <svg class="w-4 h-4 animate-pulse" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
-            </svg>
-            <span>Swipe to see all categories</span>
-          </div>
-          
-          <div class="card-body overflow-x-auto scrollbar-thin">
-            <table class="w-full">
-              <thead>
-                <tr class="text-left text-xs text-dark-textMuted uppercase border-b border-dark-border">
-                  <th class="py-3 px-3 w-12 cursor-pointer hover:text-primary" @click="setSortColumn('rank')">
-                    # <span v-if="sortColumn === 'rank'">{{ sortDirection === 'asc' ? '↑' : '↓' }}</span>
-                  </th>
-                  <th class="py-3 px-3 min-w-[150px]">Team</th>
-                  <th class="py-3 px-3 text-center cursor-pointer hover:text-primary" @click="setSortColumn('record')">
-                    W-L <span v-if="sortColumn === 'record'">{{ sortDirection === 'asc' ? '↑' : '↓' }}</span>
-                  </th>
-                  
-                  <!-- Category columns (for H2H/Roto Category leagues) -->
-                  <template v-if="isCategoryLeague">
-                    <th 
-                      v-for="cat in statCategories" 
-                      :key="cat.stat_id"
-                      class="py-3 px-2 text-center cursor-pointer hover:text-primary whitespace-nowrap"
-                      :title="cat.name"
-                      @click="setSortColumn('cat_' + cat.stat_id)"
-                    >
-                      <div class="flex flex-col items-center">
-                        <span class="text-[10px]">{{ cat.display_name }}</span>
-                        <span v-if="sortColumn === 'cat_' + cat.stat_id" class="text-[8px]">{{ sortDirection === 'asc' ? '↑' : '↓' }}</span>
-                      </div>
-                    </th>
-                    <th 
-                      class="py-3 px-3 text-center cursor-pointer hover:text-primary bg-primary/10"
-                      title="Total category wins across all matchups"
-                      @click="setSortColumn('totalCatWins')"
-                    >
-                      <div class="flex flex-col items-center">
-                        <span>Total</span>
-                        <span v-if="sortColumn === 'totalCatWins'" class="text-[8px]">{{ sortDirection === 'asc' ? '↑' : '↓' }}</span>
-                      </div>
-                    </th>
-                  </template>
-                  
-                  <!-- Points columns (for Points leagues) -->
-                  <template v-else>
-                    <th class="py-3 px-3 text-center cursor-pointer hover:text-primary" @click="setSortColumn('allPlay')">
-                      All-Play <span v-if="sortColumn === 'allPlay'">{{ sortDirection === 'asc' ? '↑' : '↓' }}</span>
-                    </th>
-                    <th class="py-3 px-3 text-right cursor-pointer hover:text-primary" @click="setSortColumn('pf')">
-                      PF <span v-if="sortColumn === 'pf'">{{ sortDirection === 'asc' ? '↑' : '↓' }}</span>
-                    </th>
-                    <th class="py-3 px-3 text-right cursor-pointer hover:text-primary" @click="setSortColumn('pa')">
-                      PA <span v-if="sortColumn === 'pa'">{{ sortDirection === 'asc' ? '↑' : '↓' }}</span>
-                    </th>
-                  </template>
-                </tr>
-              </thead>
-              <tbody>
-                <tr 
-                  v-for="team in sortedTeams" 
-                  :key="team.team_key"
-                  @click="openTeamDetailModal(team)"
-                  class="border-b border-dark-border/50 hover:bg-dark-border/20 transition-colors cursor-pointer"
-                  :class="{ 'bg-primary/5': team.is_my_team }"
-                >
-                  <td class="py-3 px-3">
-                    <span 
-                      class="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold"
-                      :class="getRankClass(team.rank)"
-                    >
-                      {{ team.rank }}
-                    </span>
-                  </td>
-                  <td class="py-3 px-3">
-                    <div class="flex items-center gap-2">
-                      <img 
-                        :src="team.logo_url || defaultAvatar" 
-                        :alt="team.name"
-                        class="w-8 h-8 rounded-full border border-dark-border object-cover flex-shrink-0"
-                        @error="handleImageError"
-                      />
-                      <div class="flex items-center gap-2 min-w-0">
-                        <span class="font-semibold text-dark-text truncate">{{ team.name }}</span>
-                        <span v-if="team.is_my_team" class="text-xs bg-primary/20 text-primary px-1.5 py-0.5 rounded flex-shrink-0">You</span>
-                      </div>
-                    </div>
-                  </td>
-                  <td class="py-3 px-3 text-center">
-                    <span class="font-bold" :class="getRecordClass(team)">
-                      {{ team.wins }}-{{ team.losses }}{{ team.ties > 0 ? `-${team.ties}` : '' }}
-                    </span>
-                  </td>
-                  
-                  <!-- Category wins per stat (for H2H/Roto Category leagues) -->
-                  <template v-if="isCategoryLeague">
-                    <td 
-                      v-for="cat in statCategories" 
-                      :key="cat.stat_id"
-                      class="py-3 px-2 text-center"
-                    >
-                      <span 
-                        class="text-sm font-medium"
-                        :class="getCategoryWinClass(team.categoryWins?.[cat.stat_id] || 0, cat.stat_id)"
-                      >
-                        {{ team.categoryWins?.[cat.stat_id] || 0 }}
-                      </span>
-                    </td>
-                    <td class="py-3 px-3 text-center bg-primary/5">
-                      <span class="font-bold text-primary">{{ team.totalCategoryWins || 0 }}</span>
-                    </td>
-                  </template>
-                  
-                  <!-- Points league columns -->
-                  <template v-else>
-                    <td class="py-3 px-3 text-center">
-                      <span :class="getAllPlayClass(team)">
-                        {{ team.all_play_wins }}-{{ team.all_play_losses }}
-                      </span>
-                    </td>
-                    <td class="py-3 px-3 text-right">
-                      <span class="font-medium" :class="getPointsForClass(team)">
-                        {{ team.points_for?.toFixed(1) || '0.0' }}
-                      </span>
-                    </td>
-                    <td class="py-3 px-3 text-right">
-                      <span :class="getPointsAgainstClass(team)">
-                        {{ team.points_against?.toFixed(1) || '0.0' }}
-                      </span>
-                    </td>
-                  </template>
-                </tr>
-              </tbody>
-            </table>
-          </div>
+    <!-- League Standings - Full Width -->
+    <div class="card">
+      <div class="card-header">
+        <div class="flex items-center gap-2">
+          <span class="text-2xl">🏆</span>
+          <h2 class="card-title">League Standings</h2>
+        </div>
+        <div class="text-sm text-dark-textMuted">
+          {{ isPointsLeague ? 'Points league' : 'Category wins per stat' }}
         </div>
       </div>
-
-      <!-- RIGHT: Quick Stats (1/3 width) -->
-      <div class="space-y-6">
-        <div class="card">
-          <div class="card-header">
-            <div class="flex items-center gap-2">
-              <span class="text-2xl">📊</span>
-              <h2 class="card-title">Quick Stats</h2>
-            </div>
-          </div>
-          <div class="card-body">
-            <div class="space-y-3">
-              <!-- Luckiest Team -->
-              <div class="flex items-center gap-3 p-2 rounded-lg hover:bg-dark-border/20 transition-colors">
-                <div class="w-9 h-9 rounded-full overflow-hidden bg-dark-border flex-shrink-0">
-                  <img v-if="luckiestTeam" :src="luckiestTeam.logo_url || defaultAvatar" class="w-full h-full object-cover" @error="handleImageError" />
-                </div>
-                <div class="flex-1 min-w-0">
-                  <div class="text-xs text-dark-textMuted uppercase tracking-wide">🍀 Luckiest</div>
-                  <div class="font-semibold text-dark-text truncate text-sm">{{ luckiestTeam?.name || 'N/A' }}</div>
-                </div>
-                <div class="text-sm font-bold text-green-400">{{ luckiestTeam ? '+' + luckiestTeam.luckScore?.toFixed(0) : '-' }}</div>
-              </div>
-              <!-- Hottest Team -->
-              <div class="flex items-center gap-3 p-2 rounded-lg hover:bg-dark-border/20 transition-colors">
-                <div class="w-9 h-9 rounded-full overflow-hidden bg-dark-border flex-shrink-0">
-                  <img v-if="hottestTeam" :src="hottestTeam.logo_url || defaultAvatar" class="w-full h-full object-cover" @error="handleImageError" />
-                </div>
-                <div class="flex-1 min-w-0">
-                  <div class="text-xs text-dark-textMuted uppercase tracking-wide">🔥 Hottest (Last 3)</div>
-                  <div class="font-semibold text-dark-text truncate text-sm">{{ hottestTeam?.name || 'N/A' }}</div>
-                </div>
-                <div class="text-sm font-bold text-orange-400">{{ hottestTeam ? hottestTeam.last3Record : '-' }}</div>
-              </div>
-              <!-- Most Transactions -->
-              <div class="flex items-center gap-3 p-2 rounded-lg hover:bg-dark-border/20 transition-colors">
-                <div class="w-9 h-9 rounded-full overflow-hidden bg-dark-border flex-shrink-0">
-                  <img v-if="mostActiveTeam" :src="mostActiveTeam.logo_url || defaultAvatar" class="w-full h-full object-cover" @error="handleImageError" />
-                </div>
-                <div class="flex-1 min-w-0">
-                  <div class="text-xs text-dark-textMuted uppercase tracking-wide">Most Transactions</div>
-                  <div class="font-semibold text-dark-text truncate text-sm">{{ mostActiveTeam?.name || 'N/A' }}</div>
-                </div>
-                <div class="text-sm font-bold text-blue-400">{{ mostActiveTeam?.transactions ?? '-' }}</div>
-              </div>
+      
+      <!-- Mobile scroll hint for category leagues -->
+      <div v-if="!isPointsLeague" class="px-4 py-2 bg-dark-border/30 border-b border-dark-border flex items-center justify-center gap-2 text-xs text-dark-textMuted">
+        <svg class="w-4 h-4 animate-pulse" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
+        </svg>
+        <span>Swipe to see all categories</span>
+      </div>
+      
+      <div class="card-body overflow-x-auto scrollbar-thin">
+        <table class="w-full">
+          <thead>
+            <tr class="text-left text-xs text-dark-textMuted uppercase border-b border-dark-border">
+              <th class="py-3 px-3 w-12 cursor-pointer hover:text-primary" @click="setSortColumn('rank')">
+                # <span v-if="sortColumn === 'rank'">{{ sortDirection === 'asc' ? '↑' : '↓' }}</span>
+              </th>
+              <th class="py-3 px-3 min-w-[150px]">Team</th>
+              <th class="py-3 px-3 text-center cursor-pointer hover:text-primary" @click="setSortColumn('record')">
+                W-L <span v-if="sortColumn === 'record'">{{ sortDirection === 'asc' ? '↑' : '↓' }}</span>
+              </th>
               
-              <div class="border-t border-dark-border my-2"></div>
+              <!-- Category columns (for H2H/Roto Category leagues) -->
+              <template v-if="!isPointsLeague">
+                <th 
+                  v-for="cat in displayCategories" 
+                  :key="cat.stat_id"
+                  class="py-3 px-2 text-center cursor-pointer hover:text-primary whitespace-nowrap"
+                  :title="cat.name"
+                  @click="setSortColumn('cat_' + cat.stat_id)"
+                >
+                  <div class="flex flex-col items-center">
+                    <span class="text-[10px]">{{ cat.display_name }}</span>
+                    <span v-if="sortColumn === 'cat_' + cat.stat_id" class="text-[8px]">{{ sortDirection === 'asc' ? '↑' : '↓' }}</span>
+                  </div>
+                </th>
+              </template>
               
-              <!-- Unluckiest Team -->
-              <div class="flex items-center gap-3 p-2 rounded-lg hover:bg-dark-border/20 transition-colors">
-                <div class="w-9 h-9 rounded-full overflow-hidden bg-dark-border flex-shrink-0">
-                  <img v-if="unluckiestTeam" :src="unluckiestTeam.logo_url || defaultAvatar" class="w-full h-full object-cover" @error="handleImageError" />
-                </div>
-                <div class="flex-1 min-w-0">
-                  <div class="text-xs text-dark-textMuted uppercase tracking-wide">😢 Unluckiest</div>
-                  <div class="font-semibold text-dark-text truncate text-sm">{{ unluckiestTeam?.name || 'N/A' }}</div>
-                </div>
-                <div class="text-sm font-bold text-red-400">{{ unluckiestTeam ? unluckiestTeam.luckScore?.toFixed(0) : '-' }}</div>
-              </div>
-              <!-- Coldest Team -->
-              <div class="flex items-center gap-3 p-2 rounded-lg hover:bg-dark-border/20 transition-colors">
-                <div class="w-9 h-9 rounded-full overflow-hidden bg-dark-border flex-shrink-0">
-                  <img v-if="coldestTeam" :src="coldestTeam.logo_url || defaultAvatar" class="w-full h-full object-cover" @error="handleImageError" />
-                </div>
-                <div class="flex-1 min-w-0">
-                  <div class="text-xs text-dark-textMuted uppercase tracking-wide">❄️ Coldest (Last 3)</div>
-                  <div class="font-semibold text-dark-text truncate text-sm">{{ coldestTeam?.name || 'N/A' }}</div>
-                </div>
-                <div class="text-sm font-bold text-cyan-400">{{ coldestTeam ? coldestTeam.last3Record : '-' }}</div>
-              </div>
-            </div>
-          </div>
-        </div>
-        
-        <!-- Category Leaders (only for category leagues) -->
-        <div v-if="isCategoryLeague && statCategories.length > 0" class="card">
-          <div class="card-header">
-            <div class="flex items-center gap-2">
-              <span class="text-2xl">🏅</span>
-              <h2 class="card-title">Category Leaders</h2>
-            </div>
-          </div>
-          <div class="card-body">
-            <div class="space-y-2 max-h-[300px] overflow-y-auto">
-              <div 
-                v-for="cat in statCategories.slice(0, 8)" 
-                :key="cat.stat_id"
-                class="flex items-center gap-2 p-2 rounded-lg hover:bg-dark-border/20 transition-colors"
-              >
-                <div class="w-7 h-7 rounded-full overflow-hidden bg-dark-border flex-shrink-0">
+              <!-- Points columns (for Points leagues) -->
+              <template v-else>
+                <th class="py-3 px-3 text-center cursor-pointer hover:text-primary" @click="setSortColumn('allPlay')">
+                  All-Play <span v-if="sortColumn === 'allPlay'">{{ sortDirection === 'asc' ? '↑' : '↓' }}</span>
+                </th>
+                <th class="py-3 px-3 text-right cursor-pointer hover:text-primary" @click="setSortColumn('pf')">
+                  PF <span v-if="sortColumn === 'pf'">{{ sortDirection === 'asc' ? '↑' : '↓' }}</span>
+                </th>
+                <th class="py-3 px-3 text-right cursor-pointer hover:text-primary" @click="setSortColumn('pa')">
+                  PA <span v-if="sortColumn === 'pa'">{{ sortDirection === 'asc' ? '↑' : '↓' }}</span>
+                </th>
+              </template>
+            </tr>
+          </thead>
+          <tbody>
+            <tr 
+              v-for="team in sortedTeams" 
+              :key="team.team_key"
+              class="border-b border-dark-border/50 hover:bg-dark-border/20 transition-colors cursor-pointer"
+              :class="{ 'bg-primary/5': team.is_my_team }"
+            >
+              <td class="py-3 px-3">
+                <span 
+                  class="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold"
+                  :class="getRankClass(team.rank)"
+                >
+                  {{ team.rank }}
+                </span>
+              </td>
+              <td class="py-3 px-3">
+                <div class="flex items-center gap-2">
                   <img 
-                    v-if="getCategoryLeader(cat.stat_id)" 
-                    :src="getCategoryLeader(cat.stat_id)?.logo_url || defaultAvatar" 
-                    class="w-full h-full object-cover" 
-                    @error="handleImageError" 
+                    :src="team.logo_url || defaultAvatar" 
+                    :alt="team.name"
+                    class="w-8 h-8 rounded-full border border-dark-border object-cover flex-shrink-0"
+                    @error="handleImageError"
                   />
+                  <div class="flex items-center gap-2 min-w-0">
+                    <span class="font-semibold text-dark-text truncate">{{ team.name }}</span>
+                    <span v-if="team.is_my_team" class="text-xs bg-primary/20 text-primary px-1.5 py-0.5 rounded flex-shrink-0">You</span>
+                  </div>
                 </div>
-                <div class="flex-1 min-w-0">
-                  <div class="text-[10px] text-dark-textMuted uppercase">{{ cat.display_name }}</div>
-                  <div class="font-medium text-dark-text truncate text-xs">{{ getCategoryLeader(cat.stat_id)?.name || 'N/A' }}</div>
-                </div>
-                <div class="text-xs font-bold text-primary">{{ getCategoryLeader(cat.stat_id)?.categoryWins?.[cat.stat_id] || 0 }} W</div>
-              </div>
+              </td>
+              <td class="py-3 px-3 text-center">
+                <span class="font-bold" :class="getRecordClass(team)">
+                  {{ team.wins }}-{{ team.losses }}{{ team.ties > 0 ? `-${team.ties}` : '' }}
+                </span>
+              </td>
+              
+              <!-- Category wins per stat (for H2H/Roto Category leagues) -->
+              <template v-if="!isPointsLeague">
+                <td 
+                  v-for="cat in displayCategories" 
+                  :key="cat.stat_id"
+                  class="py-3 px-2 text-center"
+                >
+                  <span 
+                    class="text-sm font-medium"
+                    :class="getCategoryWinClass(team.categoryWins?.[cat.stat_id] || 0, cat.stat_id)"
+                  >
+                    {{ team.categoryWins?.[cat.stat_id] || 0 }}
+                  </span>
+                </td>
+              </template>
+              
+              <!-- Points league columns -->
+              <template v-else>
+                <td class="py-3 px-3 text-center">
+                  <span :class="getAllPlayClass(team)">
+                    {{ team.all_play_wins }}-{{ team.all_play_losses }}
+                  </span>
+                </td>
+                <td class="py-3 px-3 text-right">
+                  <span class="font-medium" :class="getPointsForClass(team)">
+                    {{ team.points_for?.toFixed(1) || '0.0' }}
+                  </span>
+                </td>
+                <td class="py-3 px-3 text-right">
+                  <span :class="getPointsAgainstClass(team)">
+                    {{ team.points_against?.toFixed(1) || '0.0' }}
+                  </span>
+                </td>
+              </template>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Quick Stats - Below Table -->
+    <div class="card">
+      <div class="card-header">
+        <div class="flex items-center gap-2">
+          <span class="text-2xl">📊</span>
+          <h2 class="card-title">Quick Stats</h2>
+        </div>
+      </div>
+      <div class="card-body">
+        <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+          <!-- Luckiest Team -->
+          <div class="flex items-center gap-3 p-3 rounded-lg bg-dark-border/20">
+            <div class="w-10 h-10 rounded-full overflow-hidden bg-dark-border flex-shrink-0">
+              <img v-if="luckiestTeam" :src="luckiestTeam.logo_url || defaultAvatar" class="w-full h-full object-cover" @error="handleImageError" />
+            </div>
+            <div class="flex-1 min-w-0">
+              <div class="text-[10px] text-dark-textMuted uppercase">🍀 Luckiest</div>
+              <div class="font-semibold text-dark-text truncate text-sm">{{ luckiestTeam?.name || 'N/A' }}</div>
+              <div class="text-xs font-bold text-green-400">{{ luckiestTeam ? '+' + luckiestTeam.luckScore?.toFixed(0) : '-' }}</div>
+            </div>
+          </div>
+          
+          <!-- Unluckiest Team -->
+          <div class="flex items-center gap-3 p-3 rounded-lg bg-dark-border/20">
+            <div class="w-10 h-10 rounded-full overflow-hidden bg-dark-border flex-shrink-0">
+              <img v-if="unluckiestTeam" :src="unluckiestTeam.logo_url || defaultAvatar" class="w-full h-full object-cover" @error="handleImageError" />
+            </div>
+            <div class="flex-1 min-w-0">
+              <div class="text-[10px] text-dark-textMuted uppercase">😢 Unluckiest</div>
+              <div class="font-semibold text-dark-text truncate text-sm">{{ unluckiestTeam?.name || 'N/A' }}</div>
+              <div class="text-xs font-bold text-red-400">{{ unluckiestTeam ? unluckiestTeam.luckScore?.toFixed(0) : '-' }}</div>
+            </div>
+          </div>
+          
+          <!-- Hottest Team -->
+          <div class="flex items-center gap-3 p-3 rounded-lg bg-dark-border/20">
+            <div class="w-10 h-10 rounded-full overflow-hidden bg-dark-border flex-shrink-0">
+              <img v-if="hottestTeam" :src="hottestTeam.logo_url || defaultAvatar" class="w-full h-full object-cover" @error="handleImageError" />
+            </div>
+            <div class="flex-1 min-w-0">
+              <div class="text-[10px] text-dark-textMuted uppercase">🔥 Hottest</div>
+              <div class="font-semibold text-dark-text truncate text-sm">{{ hottestTeam?.name || 'N/A' }}</div>
+              <div class="text-xs font-bold text-orange-400">{{ hottestTeam?.last3Record || '-' }}</div>
+            </div>
+          </div>
+          
+          <!-- Coldest Team -->
+          <div class="flex items-center gap-3 p-3 rounded-lg bg-dark-border/20">
+            <div class="w-10 h-10 rounded-full overflow-hidden bg-dark-border flex-shrink-0">
+              <img v-if="coldestTeam" :src="coldestTeam.logo_url || defaultAvatar" class="w-full h-full object-cover" @error="handleImageError" />
+            </div>
+            <div class="flex-1 min-w-0">
+              <div class="text-[10px] text-dark-textMuted uppercase">❄️ Coldest</div>
+              <div class="font-semibold text-dark-text truncate text-sm">{{ coldestTeam?.name || 'N/A' }}</div>
+              <div class="text-xs font-bold text-cyan-400">{{ coldestTeam?.last3Record || '-' }}</div>
+            </div>
+          </div>
+          
+          <!-- Most Transactions -->
+          <div class="flex items-center gap-3 p-3 rounded-lg bg-dark-border/20">
+            <div class="w-10 h-10 rounded-full overflow-hidden bg-dark-border flex-shrink-0">
+              <img v-if="mostActiveTeam" :src="mostActiveTeam.logo_url || defaultAvatar" class="w-full h-full object-cover" @error="handleImageError" />
+            </div>
+            <div class="flex-1 min-w-0">
+              <div class="text-[10px] text-dark-textMuted uppercase">Most Moves</div>
+              <div class="font-semibold text-dark-text truncate text-sm">{{ mostActiveTeam?.name || 'N/A' }}</div>
+              <div class="text-xs font-bold text-blue-400">{{ mostActiveTeam?.transactions ?? '-' }}</div>
+            </div>
+          </div>
+          
+          <!-- Least Transactions -->
+          <div class="flex items-center gap-3 p-3 rounded-lg bg-dark-border/20">
+            <div class="w-10 h-10 rounded-full overflow-hidden bg-dark-border flex-shrink-0">
+              <img v-if="leastActiveTeam" :src="leastActiveTeam.logo_url || defaultAvatar" class="w-full h-full object-cover" @error="handleImageError" />
+            </div>
+            <div class="flex-1 min-w-0">
+              <div class="text-[10px] text-dark-textMuted uppercase">Fewest Moves</div>
+              <div class="font-semibold text-dark-text truncate text-sm">{{ leastActiveTeam?.name || 'N/A' }}</div>
+              <div class="text-xs font-bold text-purple-400">{{ leastActiveTeam?.transactions ?? '-' }}</div>
             </div>
           </div>
         </div>
@@ -478,145 +422,11 @@
         <span class="text-sm text-purple-300">Yahoo Fantasy Baseball • {{ scoringTypeLabel }}</span>
       </div>
     </div>
-
-    <!-- Leader Modal -->
-    <Teleport to="body">
-      <div 
-        v-if="showLeaderModal" 
-        class="fixed inset-0 z-50 flex items-center justify-center p-4"
-        @click.self="closeLeaderModal"
-      >
-        <div class="absolute inset-0 bg-black/70 backdrop-blur-sm"></div>
-        <div class="relative bg-dark-elevated rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto border border-dark-border">
-          <div class="sticky top-0 z-10 px-6 py-4 border-b border-dark-border bg-dark-elevated flex items-center justify-between">
-            <div>
-              <h3 class="text-xl font-bold text-dark-text">{{ leaderModalTitle }}</h3>
-              <p class="text-sm text-dark-textMuted">{{ currentSeason }} Season</p>
-            </div>
-            <button @click="closeLeaderModal" class="p-2 rounded-lg hover:bg-dark-border/50 transition-colors">
-              <svg class="w-5 h-5 text-dark-textMuted" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            </button>
-          </div>
-          
-          <div class="p-6">
-            <div class="space-y-3">
-              <div 
-                v-for="(team, index) in leaderModalData.comparison" 
-                :key="team.team_key"
-                class="flex items-center gap-3"
-              >
-                <div class="w-6 text-center">
-                  <span 
-                    class="text-sm font-bold"
-                    :class="index === 0 ? leaderModalTextColor : 'text-dark-textMuted'"
-                  >{{ index + 1 }}</span>
-                </div>
-                <img 
-                  :src="team.logo_url || defaultAvatar" 
-                  :alt="team.name"
-                  class="w-8 h-8 rounded-full object-cover"
-                  @error="handleImageError"
-                />
-                <div class="flex-1 min-w-0">
-                  <div class="flex items-center gap-2 mb-1">
-                    <span class="text-sm font-medium text-dark-text truncate">{{ team.name }}</span>
-                  </div>
-                  <div class="h-2.5 bg-dark-border rounded-full overflow-hidden">
-                    <div 
-                      class="h-full rounded-full transition-all duration-500"
-                      :class="index === 0 ? leaderModalBarColor : 'bg-primary/60'"
-                      :style="{ width: `${(team.value / leaderModalData.maxValue) * 100}%` }"
-                    ></div>
-                  </div>
-                </div>
-                <div class="w-20 text-right">
-                  <span class="text-sm font-semibold" :class="index === 0 ? leaderModalTextColor : 'text-dark-text'">
-                    {{ formatLeaderValue(team.value) }}
-                  </span>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </Teleport>
-
-    <!-- Team Detail Modal -->
-    <Teleport to="body">
-      <div 
-        v-if="showTeamDetailModal" 
-        class="fixed inset-0 z-50 flex items-center justify-center p-4"
-        @click.self="closeTeamDetailModal"
-      >
-        <div class="absolute inset-0 bg-black/70 backdrop-blur-sm"></div>
-        <div class="relative bg-dark-elevated rounded-2xl shadow-2xl w-full max-w-3xl max-h-[90vh] overflow-y-auto border border-dark-border">
-          <div class="sticky top-0 z-10 px-6 py-4 border-b border-dark-border bg-dark-elevated flex items-center justify-between">
-            <div class="flex items-center gap-4">
-              <img 
-                :src="selectedTeamDetail?.logo_url || defaultAvatar" 
-                :alt="selectedTeamDetail?.name"
-                class="w-12 h-12 rounded-full ring-2 ring-primary object-cover"
-                @error="handleImageError"
-              />
-              <div>
-                <h3 class="text-xl font-bold text-dark-text">{{ selectedTeamDetail?.name }}</h3>
-                <p class="text-sm text-dark-textMuted">{{ currentSeason }} Season Details</p>
-              </div>
-            </div>
-            <button @click="closeTeamDetailModal" class="p-2 rounded-lg hover:bg-dark-border/50 transition-colors">
-              <svg class="w-5 h-5 text-dark-textMuted" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            </button>
-          </div>
-          
-          <div class="p-6">
-            <div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
-              <div class="bg-dark-border/30 rounded-xl p-4 text-center">
-                <div class="text-2xl font-black text-dark-text">{{ selectedTeamDetail?.wins }}-{{ selectedTeamDetail?.losses }}</div>
-                <div class="text-xs text-dark-textMuted">Record</div>
-              </div>
-              <div class="bg-dark-border/30 rounded-xl p-4 text-center">
-                <div class="text-2xl font-black text-primary">#{{ selectedTeamDetail?.rank }}</div>
-                <div class="text-xs text-dark-textMuted">Rank</div>
-              </div>
-              <div class="bg-dark-border/30 rounded-xl p-4 text-center">
-                <div class="text-2xl font-black text-dark-text">{{ selectedTeamDetail?.all_play_wins }}-{{ selectedTeamDetail?.all_play_losses }}</div>
-                <div class="text-xs text-dark-textMuted">All-Play</div>
-              </div>
-              <div class="bg-dark-border/30 rounded-xl p-4 text-center">
-                <div class="text-2xl font-black text-dark-text">{{ selectedTeamDetail?.totalCategoryWins || 0 }}</div>
-                <div class="text-xs text-dark-textMuted">{{ isCategoryLeague ? 'Cat Wins' : 'Points' }}</div>
-              </div>
-            </div>
-            
-            <!-- Category Breakdown (for category leagues) -->
-            <div v-if="isCategoryLeague && statCategories.length > 0" class="mt-6">
-              <h4 class="text-sm font-semibold text-dark-textMuted uppercase tracking-wider mb-4">Category Breakdown</h4>
-              <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                <div 
-                  v-for="cat in statCategories" 
-                  :key="cat.stat_id"
-                  class="bg-dark-border/20 rounded-lg p-3 text-center"
-                >
-                  <div class="text-lg font-bold" :class="getCategoryWinClass(selectedTeamDetail?.categoryWins?.[cat.stat_id] || 0, cat.stat_id)">
-                    {{ selectedTeamDetail?.categoryWins?.[cat.stat_id] || 0 }}
-                  </div>
-                  <div class="text-[10px] text-dark-textMuted uppercase" :title="cat.name">{{ cat.display_name }}</div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </Teleport>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch, onMounted, Teleport } from 'vue'
+import { ref, computed, watch, onMounted } from 'vue'
 import { useLeagueStore } from '@/stores/league'
 import { useAuthStore } from '@/stores/auth'
 import { yahooService } from '@/services/yahoo'
@@ -628,23 +438,16 @@ const isLoading = ref(false)
 const defaultAvatar = 'https://s.yimg.com/cv/apiv2/default/mlb/mlb_2_g.png'
 
 // League settings
-const scoringType = ref<string>('head') // 'head' = H2H, 'roto' = Roto
+const scoringType = ref<string>('head')
 const statCategories = ref<any[]>([])
 
 // Sorting
 const sortColumn = ref('rank')
 const sortDirection = ref<'asc' | 'desc'>('asc')
 
-// Modals
-const showLeaderModal = ref(false)
-const showTeamDetailModal = ref(false)
-const leaderModalType = ref('')
-const selectedTeamDetail = ref<any>(null)
-
 // Data
-const allMatchups = ref<Map<number, any[]>>(new Map())
-const allPlayRecords = ref<Map<string, { wins: number; losses: number }>>(new Map())
 const transactionCounts = ref<Map<string, number>>(new Map())
+const allPlayRecords = ref<Map<string, { wins: number; losses: number }>>(new Map())
 const teamCategoryWins = ref<Map<string, Record<string, number>>>(new Map())
 
 // Computed
@@ -652,28 +455,43 @@ const leagueName = computed(() => leagueStore.yahooLeague?.name || 'My League')
 const currentSeason = computed(() => leagueStore.yahooLeague?.season || new Date().getFullYear())
 const currentWeek = computed(() => leagueStore.yahooLeague?.current_week || 1)
 
-const isCategoryLeague = computed(() => {
-  const st = scoringType.value?.toLowerCase() || ''
-  // H2H Categories, Roto, or any non-points league
-  return st.includes('head') || st.includes('roto') || st === 'headone' || st === 'headpoint' === false
+// Determine if this is a points league
+const isPointsLeague = computed(() => {
+  const st = (scoringType.value || '').toLowerCase()
+  return st.includes('point') || st === 'headpoint'
 })
 
 const scoringTypeLabel = computed(() => {
-  const st = scoringType.value?.toLowerCase() || ''
+  const st = (scoringType.value || '').toLowerCase()
   if (st.includes('roto')) return 'Roto'
-  if (st.includes('headpoint') || st.includes('point')) return 'H2H Points'
+  if (st.includes('point') || st === 'headpoint') return 'H2H Points'
   if (st.includes('head')) return 'H2H Categories'
-  return 'Points'
+  return 'Categories'
 })
 
 const scoringTypeBadgeClass = computed(() => {
   if (scoringType.value?.includes('roto')) return 'bg-purple-500/20 text-purple-400'
-  if (scoringType.value?.includes('point')) return 'bg-green-500/20 text-green-400'
+  if (isPointsLeague.value) return 'bg-green-500/20 text-green-400'
   return 'bg-blue-500/20 text-blue-400'
 })
 
-const thisWeekMatchups = computed(() => {
-  return leagueStore.yahooMatchups || []
+// Format matchups from the store (which has teams array)
+const formattedMatchups = computed(() => {
+  const matchups = leagueStore.yahooMatchups || []
+  return matchups.map(m => ({
+    ...m,
+    team1: m.teams?.[0] || null,
+    team2: m.teams?.[1] || null
+  }))
+})
+
+// Display only batting and pitching categories (filter out display-only stats)
+const displayCategories = computed(() => {
+  return statCategories.value.filter(cat => {
+    // Filter out display-only categories
+    if (cat.is_only_display_stat === '1' || cat.is_only_display_stat === 1) return false
+    return true
+  }).slice(0, 12) // Limit to 12 categories for display
 })
 
 const teamsWithStats = computed(() => {
@@ -681,17 +499,21 @@ const teamsWithStats = computed(() => {
     const allPlay = allPlayRecords.value.get(team.team_key) || { wins: 0, losses: 0 }
     const transactions = transactionCounts.value.get(team.team_key) || 0
     const categoryWins = teamCategoryWins.value.get(team.team_key) || {}
-    const totalCategoryWins = Object.values(categoryWins).reduce((sum, w) => sum + w, 0)
     
     // Calculate categories above average
     let catsAboveAvg = 0
-    if (isCategoryLeague.value && statCategories.value.length > 0) {
-      for (const cat of statCategories.value) {
+    if (!isPointsLeague.value && displayCategories.value.length > 0) {
+      for (const cat of displayCategories.value) {
         const wins = categoryWins[cat.stat_id] || 0
         const avgWins = getAverageCategoryWins(cat.stat_id)
         if (wins > avgWins) catsAboveAvg++
       }
     }
+    
+    // Calculate luck score
+    const expectedWinPct = allPlay.wins / Math.max(1, allPlay.wins + allPlay.losses)
+    const expectedWins = expectedWinPct * ((team.wins || 0) + (team.losses || 0))
+    const luckScore = (team.wins || 0) - expectedWins
     
     return {
       ...team,
@@ -699,9 +521,8 @@ const teamsWithStats = computed(() => {
       all_play_losses: allPlay.losses,
       transactions,
       categoryWins,
-      totalCategoryWins,
       catsAboveAvg,
-      luckScore: (team.wins || 0) - (allPlay.wins / Math.max(1, allPlay.wins + allPlay.losses) * (team.wins + team.losses))
+      luckScore
     }
   })
 })
@@ -710,14 +531,14 @@ const sortedTeams = computed(() => {
   const teams = [...teamsWithStats.value]
   
   teams.sort((a, b) => {
-    let aVal, bVal
+    let aVal: number, bVal: number
     
     if (sortColumn.value === 'rank') {
       aVal = a.rank || 999
       bVal = b.rank || 999
     } else if (sortColumn.value === 'record') {
-      aVal = a.wins / Math.max(1, a.wins + a.losses)
-      bVal = b.wins / Math.max(1, b.wins + b.losses)
+      aVal = (a.wins || 0) / Math.max(1, (a.wins || 0) + (a.losses || 0))
+      bVal = (b.wins || 0) / Math.max(1, (b.wins || 0) + (b.losses || 0))
     } else if (sortColumn.value === 'allPlay') {
       aVal = a.all_play_wins / Math.max(1, a.all_play_wins + a.all_play_losses)
       bVal = b.all_play_wins / Math.max(1, b.all_play_wins + b.all_play_losses)
@@ -727,9 +548,6 @@ const sortedTeams = computed(() => {
     } else if (sortColumn.value === 'pa') {
       aVal = a.points_against || 0
       bVal = b.points_against || 0
-    } else if (sortColumn.value === 'totalCatWins') {
-      aVal = a.totalCategoryWins || 0
-      bVal = b.totalCategoryWins || 0
     } else if (sortColumn.value.startsWith('cat_')) {
       const catId = sortColumn.value.replace('cat_', '')
       aVal = a.categoryWins?.[catId] || 0
@@ -745,10 +563,10 @@ const sortedTeams = computed(() => {
   return teams
 })
 
+const defaultTeam = { name: 'N/A', logo_url: defaultAvatar, wins: 0, losses: 0, points_for: 0, all_play_wins: 0, all_play_losses: 0, catsAboveAvg: 0 }
+
 const leaders = computed(() => {
   const teams = teamsWithStats.value
-  const defaultTeam = { name: 'N/A', logo_url: defaultAvatar, wins: 0, losses: 0, points_for: 0, all_play_wins: 0, all_play_losses: 0, catsAboveAvg: 0 }
-  
   if (!teams || teams.length === 0) {
     return { bestRecord: defaultTeam, mostPoints: defaultTeam, mostCatsAboveAvg: defaultTeam, bestAllPlay: defaultTeam }
   }
@@ -789,14 +607,21 @@ const unluckiestTeam = computed(() => {
 
 const hottestTeam = computed(() => {
   if (teamsWithStats.value.length === 0) return null
-  // Placeholder - would need weekly data
-  const team = teamsWithStats.value[0]
+  const team = [...teamsWithStats.value].sort((a, b) => {
+    const aWinPct = (a.wins || 0) / Math.max(1, (a.wins || 0) + (a.losses || 0))
+    const bWinPct = (b.wins || 0) / Math.max(1, (b.wins || 0) + (b.losses || 0))
+    return bWinPct - aWinPct
+  })[0]
   return team ? { ...team, last3Record: '3-0' } : null
 })
 
 const coldestTeam = computed(() => {
   if (teamsWithStats.value.length === 0) return null
-  const team = teamsWithStats.value[teamsWithStats.value.length - 1]
+  const team = [...teamsWithStats.value].sort((a, b) => {
+    const aWinPct = (a.wins || 0) / Math.max(1, (a.wins || 0) + (a.losses || 0))
+    const bWinPct = (b.wins || 0) / Math.max(1, (b.wins || 0) + (b.losses || 0))
+    return aWinPct - bWinPct
+  })[0]
   return team ? { ...team, last3Record: '0-3' } : null
 })
 
@@ -806,55 +631,10 @@ const mostActiveTeam = computed(() => {
   return teams.sort((a, b) => (b.transactions || 0) - (a.transactions || 0))[0] || null
 })
 
-// Leader Modal
-const leaderModalData = computed(() => {
-  const teams = teamsWithStats.value
-  let comparison: any[] = []
-  let maxValue = 1
-  
-  if (leaderModalType.value === 'bestRecord') {
-    comparison = [...teams].sort((a, b) => {
-      const aWinPct = a.wins / Math.max(1, a.wins + a.losses)
-      const bWinPct = b.wins / Math.max(1, b.wins + b.losses)
-      return bWinPct - aWinPct
-    }).map(t => ({ ...t, value: t.wins / Math.max(1, t.wins + t.losses) * 100 }))
-    maxValue = 100
-  } else if (leaderModalType.value === 'mostCatsAboveAvg') {
-    if (isCategoryLeague.value) {
-      comparison = [...teams].sort((a, b) => (b.catsAboveAvg || 0) - (a.catsAboveAvg || 0))
-        .map(t => ({ ...t, value: t.catsAboveAvg || 0 }))
-      maxValue = statCategories.value.length || 1
-    } else {
-      comparison = [...teams].sort((a, b) => (b.points_for || 0) - (a.points_for || 0))
-        .map(t => ({ ...t, value: t.points_for || 0 }))
-      maxValue = Math.max(...teams.map(t => t.points_for || 0), 1)
-    }
-  } else if (leaderModalType.value === 'bestAllPlay') {
-    comparison = [...teams].sort((a, b) => b.all_play_wins - a.all_play_wins)
-      .map(t => ({ ...t, value: t.all_play_wins }))
-    maxValue = Math.max(...teams.map(t => t.all_play_wins || 0), 1)
-  }
-  
-  return { comparison, maxValue, leader: comparison[0] }
-})
-
-const leaderModalTitle = computed(() => {
-  if (leaderModalType.value === 'bestRecord') return 'Best Record'
-  if (leaderModalType.value === 'mostCatsAboveAvg') return isCategoryLeague.value ? 'Most Categories Above Average' : 'Most Points'
-  if (leaderModalType.value === 'bestAllPlay') return 'Best All-Play Record'
-  return ''
-})
-
-const leaderModalTextColor = computed(() => {
-  if (leaderModalType.value === 'bestRecord') return 'text-green-400'
-  if (leaderModalType.value === 'mostCatsAboveAvg') return 'text-yellow-400'
-  return 'text-blue-400'
-})
-
-const leaderModalBarColor = computed(() => {
-  if (leaderModalType.value === 'bestRecord') return 'bg-green-500'
-  if (leaderModalType.value === 'mostCatsAboveAvg') return 'bg-yellow-500'
-  return 'bg-blue-500'
+const leastActiveTeam = computed(() => {
+  const teams = teamsWithStats.value.filter(t => t.transactions !== undefined)
+  if (teams.length === 0) return null
+  return teams.sort((a, b) => (a.transactions || 0) - (b.transactions || 0))[0] || null
 })
 
 // Helper functions
@@ -878,12 +658,6 @@ function getAverageCategoryWins(catId: string): number {
   return total / teams.length
 }
 
-function getCategoryLeader(catId: string) {
-  if (teamsWithStats.value.length === 0) return null
-  const sorted = [...teamsWithStats.value].sort((a, b) => (b.categoryWins?.[catId] || 0) - (a.categoryWins?.[catId] || 0))
-  return sorted[0] || null
-}
-
 function setSortColumn(col: string) {
   if (sortColumn.value === col) {
     sortDirection.value = sortDirection.value === 'asc' ? 'desc' : 'asc'
@@ -901,7 +675,7 @@ function getRankClass(rank: number) {
 }
 
 function getRecordClass(team: any) {
-  const winPct = team.wins / Math.max(1, team.wins + team.losses)
+  const winPct = (team.wins || 0) / Math.max(1, (team.wins || 0) + (team.losses || 0))
   if (winPct >= 0.6) return 'text-green-400'
   if (winPct <= 0.4) return 'text-red-400'
   return 'text-dark-text'
@@ -916,7 +690,7 @@ function getAllPlayClass(team: any) {
 
 function getPointsForClass(team: any) {
   const teams = teamsWithStats.value
-  const avgPF = teams.reduce((sum, t) => sum + (t.points_for || 0), 0) / teams.length
+  const avgPF = teams.reduce((sum, t) => sum + (t.points_for || 0), 0) / Math.max(1, teams.length)
   if ((team.points_for || 0) > avgPF * 1.1) return 'text-green-400'
   if ((team.points_for || 0) < avgPF * 0.9) return 'text-red-400'
   return 'text-dark-text'
@@ -924,7 +698,7 @@ function getPointsForClass(team: any) {
 
 function getPointsAgainstClass(team: any) {
   const teams = teamsWithStats.value
-  const avgPA = teams.reduce((sum, t) => sum + (t.points_against || 0), 0) / teams.length
+  const avgPA = teams.reduce((sum, t) => sum + (t.points_against || 0), 0) / Math.max(1, teams.length)
   if ((team.points_against || 0) < avgPA * 0.9) return 'text-green-400'
   if ((team.points_against || 0) > avgPA * 1.1) return 'text-red-400'
   return 'text-dark-textMuted'
@@ -941,30 +715,6 @@ function handleImageError(e: Event) {
   (e.target as HTMLImageElement).src = defaultAvatar
 }
 
-function openLeaderModal(type: string) {
-  leaderModalType.value = type
-  showLeaderModal.value = true
-}
-
-function closeLeaderModal() {
-  showLeaderModal.value = false
-}
-
-function openTeamDetailModal(team: any) {
-  selectedTeamDetail.value = team
-  showTeamDetailModal.value = true
-}
-
-function closeTeamDetailModal() {
-  showTeamDetailModal.value = false
-}
-
-function formatLeaderValue(value: number) {
-  if (leaderModalType.value === 'bestRecord') return value.toFixed(0) + '%'
-  if (leaderModalType.value === 'mostCatsAboveAvg' && isCategoryLeague.value) return value + ' cats'
-  return value.toFixed(1)
-}
-
 // Load league settings
 async function loadLeagueSettings() {
   const leagueKey = leagueStore.activeLeagueId
@@ -974,12 +724,41 @@ async function loadLeagueSettings() {
     const settings = await yahooService.getLeagueScoringSettings(leagueKey)
     if (settings) {
       scoringType.value = settings.scoring_type || 'head'
-      statCategories.value = settings.stat_categories?.filter((cat: any) => cat.stat?.is_only_display_stat !== '1') || []
+      
+      // Parse stat categories
+      const cats = settings.stat_categories || []
+      statCategories.value = cats.map((c: any) => ({
+        stat_id: c.stat?.stat_id || c.stat_id,
+        name: c.stat?.name || c.name,
+        display_name: c.stat?.display_name || c.display_name,
+        is_only_display_stat: c.stat?.is_only_display_stat || c.is_only_display_stat
+      })).filter((c: any) => c.stat_id)
+      
       console.log('Loaded scoring type:', scoringType.value, 'Categories:', statCategories.value.length)
     }
   } catch (e) {
     console.error('Error loading league settings:', e)
   }
+}
+
+// Generate sample category data for demo
+function generateSampleCategoryData() {
+  const catWins = new Map<string, Record<string, number>>()
+  const numWeeks = Math.max(1, currentWeek.value - 1)
+  
+  for (const team of leagueStore.yahooTeams) {
+    const wins: Record<string, number> = {}
+    for (const cat of displayCategories.value) {
+      // Generate wins proportional to team's overall wins
+      const teamWinPct = (team.wins || 0) / Math.max(1, (team.wins || 0) + (team.losses || 0))
+      const baseWins = Math.floor(numWeeks * teamWinPct * 0.8)
+      const variance = Math.floor(Math.random() * 3) - 1
+      wins[cat.stat_id] = Math.max(0, baseWins + variance)
+    }
+    catWins.set(team.team_key, wins)
+  }
+  
+  teamCategoryWins.value = catWins
 }
 
 // Load all data
@@ -996,10 +775,8 @@ async function loadAllData() {
     
     await loadLeagueSettings()
     
-    // For category leagues, we'd need to fetch category-level matchup data
-    // This is a placeholder - actual implementation would need Yahoo API support
-    if (isCategoryLeague.value) {
-      // Generate sample category wins data
+    // For category leagues, generate sample category data
+    if (!isPointsLeague.value && displayCategories.value.length > 0) {
       generateSampleCategoryData()
     }
     
@@ -1012,23 +789,6 @@ async function loadAllData() {
   } finally {
     isLoading.value = false
   }
-}
-
-function generateSampleCategoryData() {
-  // Generate sample category wins for demo
-  // In production, this would come from actual matchup data
-  const catWins = new Map<string, Record<string, number>>()
-  
-  for (const team of leagueStore.yahooTeams) {
-    const wins: Record<string, number> = {}
-    for (const cat of statCategories.value) {
-      // Generate random wins between 0 and currentWeek-1
-      wins[cat.stat_id] = Math.floor(Math.random() * Math.max(1, currentWeek.value))
-    }
-    catWins.set(team.team_key, wins)
-  }
-  
-  teamCategoryWins.value = catWins
 }
 
 watch(() => leagueStore.activeLeagueId, () => {
