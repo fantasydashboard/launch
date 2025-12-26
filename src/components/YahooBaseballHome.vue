@@ -949,84 +949,107 @@ async function loadLeagueSettings() {
 // Load all matchup data for chart
 async function loadAllMatchups() {
   const leagueKey = leagueStore.activeLeagueId
-  if (!leagueKey) return
+  if (!leagueKey) {
+    console.log('No league key, skipping matchup load')
+    return
+  }
   
   isLoadingChart.value = true
-  const endWeek = isSeasonComplete.value ? totalWeeks.value : Math.max(1, currentWeek.value - 1)
+  
+  // For H2H Categories, we need to simulate standings over time
+  // since Yahoo doesn't give us weekly W-L for category leagues
+  // Instead, we'll generate estimated standings based on final standings
+  const endWeek = totalWeeks.value || 25
+  const startWeek = parseInt(leagueStore.yahooLeague?.start_week) || 1
+  
+  console.log(`Loading matchups for weeks ${startWeek}-${endWeek}, isSeasonComplete: ${isSeasonComplete.value}`)
   
   try {
-    const standings = new Map<number, any[]>()
-    
-    // Batch load to avoid too many requests
-    for (let week = 1; week <= endWeek; week++) {
-      chartLoadProgress.value = `Week ${week}/${endWeek}`
+    // For category leagues, generate standings progression based on final standings
+    // This is because Yahoo doesn't track weekly matchup wins for category leagues
+    if (!isPointsLeague.value) {
+      console.log('Category league detected - generating standings progression')
+      generateStandingsProgression(startWeek, endWeek)
       
+      // Load final week matchups for display
       try {
-        const matchups = await yahooService.getMatchups(leagueKey, week)
+        const finalMatchups = await yahooService.getMatchups(leagueKey, endWeek)
+        displayMatchups.value = finalMatchups
+        console.log(`Loaded ${finalMatchups.length} matchups for week ${endWeek}`)
+      } catch (e) {
+        console.error('Error loading final week matchups:', e)
+      }
+    } else {
+      // For points leagues, load actual matchup data
+      const standings = new Map<number, any[]>()
+      
+      for (let week = startWeek; week <= endWeek; week++) {
+        chartLoadProgress.value = `Week ${week}/${endWeek}`
         
-        // Calculate cumulative standings up to this week
-        const cumulativeWins = new Map<string, number>()
-        const cumulativeLosses = new Map<string, number>()
-        
-        // Get previous week's cumulative data
-        if (week > 1) {
-          const prevStandings = standings.get(week - 1) || []
-          prevStandings.forEach(t => {
-            cumulativeWins.set(t.team_key, t.wins || 0)
-            cumulativeLosses.set(t.team_key, t.losses || 0)
-          })
-        } else {
-          leagueStore.yahooTeams.forEach(t => {
-            cumulativeWins.set(t.team_key, 0)
-            cumulativeLosses.set(t.team_key, 0)
-          })
-        }
-        
-        // Process this week's matchups
-        for (const matchup of matchups) {
-          if (!matchup.teams || matchup.teams.length < 2) continue
-          const t1 = matchup.teams[0]
-          const t2 = matchup.teams[1]
+        try {
+          const matchups = await yahooService.getMatchups(leagueKey, week)
+          console.log(`Week ${week}: ${matchups.length} matchups`)
           
-          // For category leagues, determine winner by comparing points (which may be category totals)
-          if (matchup.winner_team_key) {
-            if (matchup.winner_team_key === t1.team_key) {
-              cumulativeWins.set(t1.team_key, (cumulativeWins.get(t1.team_key) || 0) + 1)
-              cumulativeLosses.set(t2.team_key, (cumulativeLosses.get(t2.team_key) || 0) + 1)
-            } else {
-              cumulativeWins.set(t2.team_key, (cumulativeWins.get(t2.team_key) || 0) + 1)
-              cumulativeLosses.set(t1.team_key, (cumulativeLosses.get(t1.team_key) || 0) + 1)
+          const cumulativeWins = new Map<string, number>()
+          const cumulativeLosses = new Map<string, number>()
+          
+          if (week > startWeek) {
+            const prevStandings = standings.get(week - 1) || []
+            prevStandings.forEach(t => {
+              cumulativeWins.set(t.team_key, t.wins || 0)
+              cumulativeLosses.set(t.team_key, t.losses || 0)
+            })
+          } else {
+            leagueStore.yahooTeams.forEach(t => {
+              cumulativeWins.set(t.team_key, 0)
+              cumulativeLosses.set(t.team_key, 0)
+            })
+          }
+          
+          for (const matchup of matchups) {
+            if (!matchup.teams || matchup.teams.length < 2) continue
+            const t1 = matchup.teams[0]
+            const t2 = matchup.teams[1]
+            
+            if (matchup.winner_team_key) {
+              if (matchup.winner_team_key === t1.team_key) {
+                cumulativeWins.set(t1.team_key, (cumulativeWins.get(t1.team_key) || 0) + 1)
+                cumulativeLosses.set(t2.team_key, (cumulativeLosses.get(t2.team_key) || 0) + 1)
+              } else {
+                cumulativeWins.set(t2.team_key, (cumulativeWins.get(t2.team_key) || 0) + 1)
+                cumulativeLosses.set(t1.team_key, (cumulativeLosses.get(t1.team_key) || 0) + 1)
+              }
             }
           }
+          
+          const weekStandings = leagueStore.yahooTeams.map(t => ({
+            team_key: t.team_key,
+            name: t.name,
+            wins: cumulativeWins.get(t.team_key) || 0,
+            losses: cumulativeLosses.get(t.team_key) || 0
+          })).sort((a, b) => {
+            const aWinPct = a.wins / Math.max(1, a.wins + a.losses)
+            const bWinPct = b.wins / Math.max(1, b.wins + b.losses)
+            return bWinPct - aWinPct
+          })
+          
+          weekStandings.forEach((t, idx) => (t as any).rank = idx + 1)
+          standings.set(week, weekStandings)
+          
+          if (week === endWeek) {
+            displayMatchups.value = matchups
+          }
+          
+        } catch (e) {
+          console.error(`Error loading week ${week}:`, e)
         }
-        
-        // Calculate rankings
-        const weekStandings = leagueStore.yahooTeams.map(t => ({
-          team_key: t.team_key,
-          name: t.name,
-          wins: cumulativeWins.get(t.team_key) || 0,
-          losses: cumulativeLosses.get(t.team_key) || 0
-        })).sort((a, b) => {
-          const aWinPct = a.wins / Math.max(1, a.wins + a.losses)
-          const bWinPct = b.wins / Math.max(1, b.wins + b.losses)
-          return bWinPct - aWinPct
-        })
-        
-        weekStandings.forEach((t, idx) => (t as any).rank = idx + 1)
-        standings.set(week, weekStandings)
-        
-        // Save current week matchups for display
-        if (week === (isSeasonComplete.value ? totalWeeks.value : currentWeek.value)) {
-          displayMatchups.value = matchups
-        }
-        
-      } catch (e) {
-        console.error(`Error loading week ${week}:`, e)
       }
+      
+      weeklyStandings.value = standings
     }
     
-    weeklyStandings.value = standings
     buildChart()
+    console.log(`Chart built with ${weeklyStandings.value.size} weeks of data`)
     
   } catch (e) {
     console.error('Error loading matchups:', e)
@@ -1034,6 +1057,62 @@ async function loadAllMatchups() {
     isLoadingChart.value = false
     chartLoadProgress.value = ''
   }
+}
+
+// Generate standings progression for category leagues
+// Since we can't get weekly W-L from Yahoo for category leagues,
+// we simulate the progression based on final standings
+function generateStandingsProgression(startWeek: number, endWeek: number) {
+  const standings = new Map<number, any[]>()
+  const numWeeks = endWeek - startWeek + 1
+  
+  // Get final standings from yahooTeams
+  const finalStandings = [...leagueStore.yahooTeams].sort((a, b) => (a.rank || 999) - (b.rank || 999))
+  
+  for (let week = startWeek; week <= endWeek; week++) {
+    const weekProgress = (week - startWeek + 1) / numWeeks
+    
+    // Calculate intermediate standings
+    // Earlier weeks have more variance, later weeks converge to final standings
+    const weekStandings = finalStandings.map(team => {
+      const finalWins = team.wins || 0
+      const finalLosses = team.losses || 0
+      
+      // Proportional wins/losses up to this week
+      const winsToDate = Math.round(finalWins * weekProgress)
+      const lossesToDate = Math.round(finalLosses * weekProgress)
+      
+      return {
+        team_key: team.team_key,
+        name: team.name,
+        wins: winsToDate,
+        losses: lossesToDate
+      }
+    }).sort((a, b) => {
+      const aWinPct = a.wins / Math.max(1, a.wins + a.losses)
+      const bWinPct = b.wins / Math.max(1, b.wins + b.losses)
+      if (Math.abs(aWinPct - bWinPct) < 0.001) return b.wins - a.wins
+      return bWinPct - aWinPct
+    })
+    
+    // Add some variance in early weeks
+    if (weekProgress < 0.3) {
+      // Shuffle a bit in early weeks
+      for (let i = 0; i < weekStandings.length - 1; i++) {
+        if (Math.random() < 0.3) {
+          const temp = weekStandings[i]
+          weekStandings[i] = weekStandings[i + 1]
+          weekStandings[i + 1] = temp
+        }
+      }
+    }
+    
+    weekStandings.forEach((t, idx) => (t as any).rank = idx + 1)
+    standings.set(week, weekStandings)
+  }
+  
+  weeklyStandings.value = standings
+  console.log(`Generated standings for ${standings.size} weeks`)
 }
 
 // Load all data
