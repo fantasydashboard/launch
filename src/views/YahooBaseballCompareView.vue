@@ -377,7 +377,12 @@ async function loadTeams() {
 
 async function loadAllMatchups() {
   const leagueKey = leagueStore.activeLeagueId
-  if (!leagueKey) return
+  if (!leagueKey) {
+    console.log('No active league key')
+    return
+  }
+  
+  console.log('Loading matchups for league:', leagueKey)
   
   const currentGameKey = leagueKey.split('.')[0]
   const leagueNum = leagueKey.split('.l.')[1]
@@ -391,6 +396,8 @@ async function loadAllMatchups() {
     }
   }
   
+  console.log('Current season:', currentSeason, 'game key:', currentGameKey)
+  
   // Load matchups for current season (all weeks up to current)
   const seasonMatchups = new Map<number, any[]>()
   
@@ -398,14 +405,17 @@ async function loadAllMatchups() {
   const leagueInfo = leagueStore.yahooLeagues.find(l => l.league_key === leagueKey)
   const currentWeek = leagueInfo?.current_week || 25
   
+  console.log('Loading weeks 1 through', currentWeek)
+  
   for (let week = 1; week <= currentWeek; week++) {
     try {
       const matchups = await yahooService.getMatchups(leagueKey, week)
+      console.log(`Week ${week} matchups:`, matchups?.length || 0)
       if (matchups && matchups.length > 0) {
         seasonMatchups.set(week, matchups)
       }
     } catch (e) {
-      console.log(`No matchups for week ${week}`)
+      console.log(`No matchups for week ${week}:`, e)
     }
   }
   
@@ -421,11 +431,20 @@ async function loadComparison() {
     return
   }
   
+  // Make sure allTeams is populated
+  if (!allTeams.value || allTeams.value.length === 0) {
+    console.log('Teams not loaded yet, waiting...')
+    return
+  }
+  
   team1Data.value = allTeams.value.find(t => t.team_key === team1Key.value) || null
   team2Data.value = allTeams.value.find(t => t.team_key === team2Key.value) || null
   
+  console.log('Loading comparison for:', team1Data.value?.name, 'vs', team2Data.value?.name)
+  
   // Make sure we have matchup data
   if (allMatchupsData.value.size === 0) {
+    console.log('Loading all matchups...')
     await loadAllMatchups()
   }
   
@@ -433,6 +452,10 @@ async function loadComparison() {
   const team1Stats = calculateTeamStats(team1Key.value)
   const team2Stats = calculateTeamStats(team2Key.value)
   const h2hStats = calculateH2H(team1Key.value, team2Key.value)
+  
+  console.log('Team 1 stats:', team1Stats)
+  console.log('Team 2 stats:', team2Stats)
+  console.log('H2H stats:', h2hStats)
   
   comparisonData.value = {
     team1: team1Stats,
@@ -442,6 +465,7 @@ async function loadComparison() {
   
   // Build rivalry history
   buildRivalryHistory(team1Key.value, team2Key.value)
+  console.log('Rivalry history:', rivalryHistory.value.length, 'matchups')
   
   // Calculate highlights
   calculateRivalryHighlights()
