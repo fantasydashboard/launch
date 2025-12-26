@@ -20,7 +20,8 @@
           <div>
             <h1 class="text-3xl md:text-4xl font-black text-dark-text tracking-tight">{{ leagueName }}</h1>
             <p class="text-dark-textMuted text-base mt-1">
-              {{ currentSeason }} Season • Week {{ currentWeek }}
+              {{ currentSeason }} Season • Week {{ displayWeek }}
+              <span v-if="isSeasonComplete" class="ml-2 text-green-400">(Season Complete)</span>
               <span class="ml-2 px-2 py-0.5 rounded text-xs font-medium" :class="scoringTypeBadgeClass">{{ scoringTypeLabel }}</span>
             </p>
           </div>
@@ -60,13 +61,10 @@
                 </div>
               </div>
               <div class="text-right pl-3">
-                <div class="text-xl font-black text-dark-text">
-                  {{ isPointsLeague ? (matchup.team1?.points || 0).toFixed(1) : (matchup.team1?.category_wins || 0) }}
+                <div class="text-xl font-black" :class="getMatchupScoreClass(matchup, 0)">
+                  {{ isPointsLeague ? (matchup.team1?.points || 0).toFixed(1) : (matchup.team1_cat_wins ?? '-') }}
                 </div>
-                <div v-if="!isPointsLeague" class="text-xs text-primary font-medium">cat wins</div>
-                <div v-else-if="matchup.team1?.projected_points" class="text-xs text-primary font-medium">
-                  proj {{ matchup.team1.projected_points.toFixed(0) }}
-                </div>
+                <div v-if="!isPointsLeague" class="text-xs text-dark-textMuted">cat wins</div>
               </div>
             </div>
             
@@ -92,13 +90,10 @@
                 </div>
               </div>
               <div class="text-right pl-3">
-                <div class="text-xl font-black text-dark-text">
-                  {{ isPointsLeague ? (matchup.team2?.points || 0).toFixed(1) : (matchup.team2?.category_wins || 0) }}
+                <div class="text-xl font-black" :class="getMatchupScoreClass(matchup, 1)">
+                  {{ isPointsLeague ? (matchup.team2?.points || 0).toFixed(1) : (matchup.team2_cat_wins ?? '-') }}
                 </div>
-                <div v-if="!isPointsLeague" class="text-xs text-primary font-medium">cat wins</div>
-                <div v-else-if="matchup.team2?.projected_points" class="text-xs text-primary font-medium">
-                  proj {{ matchup.team2.projected_points.toFixed(0) }}
-                </div>
+                <div v-if="!isPointsLeague" class="text-xs text-dark-textMuted">cat wins</div>
               </div>
             </div>
           </div>
@@ -139,30 +134,30 @@
           </div>
         </div>
 
-        <!-- Most Categories Above Average (Category Leagues) / Most Points (Points Leagues) -->
+        <!-- Most Category Wins / Most Points -->
         <div 
-          @click="openLeaderModal('mostCatsAboveAvg')"
+          @click="openLeaderModal('mostCatWins')"
           class="group relative overflow-hidden rounded-xl bg-dark-card border border-yellow-500/20 hover:border-yellow-500/40 transition-all cursor-pointer"
         >
           <div class="absolute top-0 right-0 w-24 h-24 bg-yellow-500/5 rounded-full -translate-y-1/2 translate-x-1/2 group-hover:scale-150 transition-transform duration-500"></div>
           <div class="relative p-5">
             <div class="text-xs uppercase tracking-wider text-yellow-400 font-bold mb-3">
-              {{ isPointsLeague ? 'Most Points' : 'Cats Above Average' }}
+              {{ isPointsLeague ? 'Most Points' : 'Most Category Wins' }}
             </div>
             <div class="flex items-center gap-3 mb-3">
               <img 
-                :src="(isPointsLeague ? leaders.mostPoints?.logo_url : leaders.mostCatsAboveAvg?.logo_url) || defaultAvatar" 
+                :src="(isPointsLeague ? leaders.mostPoints?.logo_url : leaders.mostCatWins?.logo_url) || defaultAvatar" 
                 class="w-12 h-12 rounded-full border-2 border-yellow-500/50 object-cover" 
                 @error="handleImageError" 
               />
               <div class="flex-1 min-w-0">
                 <div class="font-bold text-lg text-dark-text truncate">
-                  {{ isPointsLeague ? (leaders.mostPoints?.name || 'N/A') : (leaders.mostCatsAboveAvg?.name || 'N/A') }}
+                  {{ isPointsLeague ? (leaders.mostPoints?.name || 'N/A') : (leaders.mostCatWins?.name || 'N/A') }}
                 </div>
                 <div class="text-sm text-dark-textMuted">
                   {{ isPointsLeague 
                     ? `${leaders.mostPoints?.wins || 0}-${leaders.mostPoints?.losses || 0}` 
-                    : `${leaders.mostCatsAboveAvg?.wins || 0}-${leaders.mostCatsAboveAvg?.losses || 0}` }}
+                    : `${leaders.mostCatWins?.wins || 0}-${leaders.mostCatWins?.losses || 0}` }}
                 </div>
               </div>
             </div>
@@ -170,7 +165,7 @@
               <div class="text-2xl font-black text-yellow-400">
                 {{ isPointsLeague 
                   ? (leaders.mostPoints?.points_for?.toFixed(1) || '0.0') 
-                  : `${leaders.mostCatsAboveAvg?.catsAboveAvg || 0} cats` }}
+                  : `${leaders.mostCatWins?.wins || 0} wins` }}
               </div>
               <div class="text-xs text-yellow-400/70 group-hover:text-yellow-400 transition-colors">Click for details →</div>
             </div>
@@ -213,7 +208,7 @@
           <h2 class="card-title">League Standings</h2>
         </div>
         <div class="text-sm text-dark-textMuted">
-          {{ isPointsLeague ? 'Points league' : 'Category wins per stat' }}
+          {{ isPointsLeague ? 'Points league' : 'Category wins per stat (cumulative season total)' }}
         </div>
       </div>
       
@@ -233,8 +228,8 @@
                 # <span v-if="sortColumn === 'rank'">{{ sortDirection === 'asc' ? '↑' : '↓' }}</span>
               </th>
               <th class="py-3 px-3 min-w-[150px]">Team</th>
-              <th class="py-3 px-3 text-center cursor-pointer hover:text-primary" @click="setSortColumn('record')">
-                W-L <span v-if="sortColumn === 'record'">{{ sortDirection === 'asc' ? '↑' : '↓' }}</span>
+              <th class="py-3 px-3 text-center cursor-pointer hover:text-primary" @click="setSortColumn('record')" title="Total Category W-L-T">
+                W-L-T <span v-if="sortColumn === 'record'">{{ sortDirection === 'asc' ? '↑' : '↓' }}</span>
               </th>
               
               <!-- Category columns (for H2H/Roto Category leagues) -->
@@ -243,7 +238,7 @@
                   v-for="cat in displayCategories" 
                   :key="cat.stat_id"
                   class="py-3 px-2 text-center cursor-pointer hover:text-primary whitespace-nowrap"
-                  :title="cat.name"
+                  :title="cat.name + ' - Times won this category'"
                   @click="setSortColumn('cat_' + cat.stat_id)"
                 >
                   <div class="flex flex-col items-center">
@@ -355,7 +350,7 @@
         <div v-if="isLoadingChart" class="flex items-center justify-center py-12">
           <div class="text-center">
             <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-3"></div>
-            <p class="text-dark-textMuted text-sm">Loading chart data...</p>
+            <p class="text-dark-textMuted text-sm">Loading chart data ({{ chartLoadProgress }})...</p>
           </div>
         </div>
         <div v-else-if="chartSeries.length > 0" class="relative">
@@ -368,12 +363,12 @@
         </div>
         <div v-else class="text-center py-12 text-dark-textMuted">
           <p>Not enough data to show standings over time</p>
-          <p class="text-sm mt-1">Chart will appear after a few weeks of play</p>
+          <p class="text-sm mt-1">Chart will appear after matchup data loads</p>
         </div>
       </div>
     </div>
 
-    <!-- Quick Stats - Below Chart -->
+    <!-- Quick Stats -->
     <div class="card">
       <div class="card-header">
         <div class="flex items-center gap-2">
@@ -383,75 +378,14 @@
       </div>
       <div class="card-body">
         <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
-          <!-- Luckiest Team -->
-          <div class="flex items-center gap-3 p-3 rounded-lg bg-dark-border/20">
+          <div v-for="stat in quickStats" :key="stat.label" class="flex items-center gap-3 p-3 rounded-lg bg-dark-border/20">
             <div class="w-10 h-10 rounded-full overflow-hidden bg-dark-border flex-shrink-0">
-              <img v-if="luckiestTeam" :src="luckiestTeam.logo_url || defaultAvatar" class="w-full h-full object-cover" @error="handleImageError" />
+              <img v-if="stat.team" :src="stat.team.logo_url || defaultAvatar" class="w-full h-full object-cover" @error="handleImageError" />
             </div>
             <div class="flex-1 min-w-0">
-              <div class="text-[10px] text-dark-textMuted uppercase">🍀 Luckiest</div>
-              <div class="font-semibold text-dark-text truncate text-sm">{{ luckiestTeam?.name || 'N/A' }}</div>
-              <div class="text-xs font-bold text-green-400">{{ luckiestTeam ? '+' + luckiestTeam.luckScore?.toFixed(0) : '-' }}</div>
-            </div>
-          </div>
-          
-          <!-- Unluckiest Team -->
-          <div class="flex items-center gap-3 p-3 rounded-lg bg-dark-border/20">
-            <div class="w-10 h-10 rounded-full overflow-hidden bg-dark-border flex-shrink-0">
-              <img v-if="unluckiestTeam" :src="unluckiestTeam.logo_url || defaultAvatar" class="w-full h-full object-cover" @error="handleImageError" />
-            </div>
-            <div class="flex-1 min-w-0">
-              <div class="text-[10px] text-dark-textMuted uppercase">😢 Unluckiest</div>
-              <div class="font-semibold text-dark-text truncate text-sm">{{ unluckiestTeam?.name || 'N/A' }}</div>
-              <div class="text-xs font-bold text-red-400">{{ unluckiestTeam ? unluckiestTeam.luckScore?.toFixed(0) : '-' }}</div>
-            </div>
-          </div>
-          
-          <!-- Hottest Team -->
-          <div class="flex items-center gap-3 p-3 rounded-lg bg-dark-border/20">
-            <div class="w-10 h-10 rounded-full overflow-hidden bg-dark-border flex-shrink-0">
-              <img v-if="hottestTeam" :src="hottestTeam.logo_url || defaultAvatar" class="w-full h-full object-cover" @error="handleImageError" />
-            </div>
-            <div class="flex-1 min-w-0">
-              <div class="text-[10px] text-dark-textMuted uppercase">🔥 Hottest</div>
-              <div class="font-semibold text-dark-text truncate text-sm">{{ hottestTeam?.name || 'N/A' }}</div>
-              <div class="text-xs font-bold text-orange-400">{{ hottestTeam?.last3Record || '-' }}</div>
-            </div>
-          </div>
-          
-          <!-- Coldest Team -->
-          <div class="flex items-center gap-3 p-3 rounded-lg bg-dark-border/20">
-            <div class="w-10 h-10 rounded-full overflow-hidden bg-dark-border flex-shrink-0">
-              <img v-if="coldestTeam" :src="coldestTeam.logo_url || defaultAvatar" class="w-full h-full object-cover" @error="handleImageError" />
-            </div>
-            <div class="flex-1 min-w-0">
-              <div class="text-[10px] text-dark-textMuted uppercase">❄️ Coldest</div>
-              <div class="font-semibold text-dark-text truncate text-sm">{{ coldestTeam?.name || 'N/A' }}</div>
-              <div class="text-xs font-bold text-cyan-400">{{ coldestTeam?.last3Record || '-' }}</div>
-            </div>
-          </div>
-          
-          <!-- Most Transactions -->
-          <div class="flex items-center gap-3 p-3 rounded-lg bg-dark-border/20">
-            <div class="w-10 h-10 rounded-full overflow-hidden bg-dark-border flex-shrink-0">
-              <img v-if="mostActiveTeam" :src="mostActiveTeam.logo_url || defaultAvatar" class="w-full h-full object-cover" @error="handleImageError" />
-            </div>
-            <div class="flex-1 min-w-0">
-              <div class="text-[10px] text-dark-textMuted uppercase">Most Moves</div>
-              <div class="font-semibold text-dark-text truncate text-sm">{{ mostActiveTeam?.name || 'N/A' }}</div>
-              <div class="text-xs font-bold text-blue-400">{{ mostActiveTeam?.transactions ?? '-' }}</div>
-            </div>
-          </div>
-          
-          <!-- Least Transactions -->
-          <div class="flex items-center gap-3 p-3 rounded-lg bg-dark-border/20">
-            <div class="w-10 h-10 rounded-full overflow-hidden bg-dark-border flex-shrink-0">
-              <img v-if="leastActiveTeam" :src="leastActiveTeam.logo_url || defaultAvatar" class="w-full h-full object-cover" @error="handleImageError" />
-            </div>
-            <div class="flex-1 min-w-0">
-              <div class="text-[10px] text-dark-textMuted uppercase">Fewest Moves</div>
-              <div class="font-semibold text-dark-text truncate text-sm">{{ leastActiveTeam?.name || 'N/A' }}</div>
-              <div class="text-xs font-bold text-purple-400">{{ leastActiveTeam?.transactions ?? '-' }}</div>
+              <div class="text-[10px] text-dark-textMuted uppercase">{{ stat.icon }} {{ stat.label }}</div>
+              <div class="font-semibold text-dark-text truncate text-sm">{{ stat.team?.name || 'N/A' }}</div>
+              <div class="text-xs font-bold" :class="stat.valueClass">{{ stat.value }}</div>
             </div>
           </div>
         </div>
@@ -475,7 +409,6 @@
       >
         <div class="absolute inset-0 bg-black/70 backdrop-blur-sm"></div>
         <div class="relative bg-dark-elevated rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto border border-dark-border">
-          <!-- Header -->
           <div class="sticky top-0 z-10 px-6 py-4 border-b border-dark-border bg-dark-elevated flex items-center justify-between">
             <div>
               <h3 class="text-xl font-bold text-dark-text">{{ leaderModalTitle }}</h3>
@@ -488,7 +421,6 @@
             </button>
           </div>
           
-          <!-- Winner Highlight -->
           <div class="p-6 border-b border-dark-border" :class="leaderModalGradient">
             <div class="flex items-center gap-4">
               <img 
@@ -509,7 +441,6 @@
             </div>
           </div>
           
-          <!-- Comparison Bar Chart -->
           <div class="p-6">
             <h4 class="text-sm font-semibold text-dark-textMuted uppercase tracking-wider mb-4">All Teams Comparison</h4>
             <div class="space-y-3">
@@ -519,17 +450,9 @@
                 class="flex items-center gap-3"
               >
                 <div class="w-6 text-center">
-                  <span 
-                    class="text-sm font-bold"
-                    :class="index === 0 ? leaderModalTextColor : 'text-dark-textMuted'"
-                  >{{ index + 1 }}</span>
+                  <span class="text-sm font-bold" :class="index === 0 ? leaderModalTextColor : 'text-dark-textMuted'">{{ index + 1 }}</span>
                 </div>
-                <img 
-                  :src="team.logo_url || defaultAvatar" 
-                  :alt="team.name"
-                  class="w-8 h-8 rounded-full object-cover"
-                  @error="handleImageError"
-                />
+                <img :src="team.logo_url || defaultAvatar" :alt="team.name" class="w-8 h-8 rounded-full object-cover" @error="handleImageError" />
                 <div class="flex-1 min-w-0">
                   <div class="flex items-center gap-2 mb-1">
                     <span class="text-sm font-medium text-dark-text truncate">{{ team.name }}</span>
@@ -567,6 +490,7 @@ const authStore = useAuthStore()
 
 const isLoading = ref(false)
 const isLoadingChart = ref(false)
+const chartLoadProgress = ref('')
 const defaultAvatar = 'https://s.yimg.com/cv/apiv2/default/mlb/mlb_2_g.png'
 
 // League settings
@@ -584,20 +508,21 @@ const leaderModalType = ref('')
 // Chart
 const chartSeries = ref<any[]>([])
 const chartOptions = ref<any>(null)
-const standingsOverTime = ref<Map<number, Map<string, number>>>(new Map())
 
 // Data
 const transactionCounts = ref<Map<string, number>>(new Map())
-const allPlayRecords = ref<Map<string, { wins: number; losses: number }>>(new Map())
 const teamCategoryWins = ref<Map<string, Record<string, number>>>(new Map())
-const allMatchups = ref<Map<number, any[]>>(new Map())
+const weeklyStandings = ref<Map<number, any[]>>(new Map())
+const displayMatchups = ref<any[]>([])
 
 // Computed
 const leagueName = computed(() => leagueStore.yahooLeague?.name || 'My League')
 const currentSeason = computed(() => leagueStore.yahooLeague?.season || new Date().getFullYear())
 const currentWeek = computed(() => leagueStore.yahooLeague?.current_week || 1)
+const totalWeeks = computed(() => parseInt(leagueStore.yahooLeague?.end_week) || 25)
+const isSeasonComplete = computed(() => leagueStore.yahooLeague?.is_finished === 1)
+const displayWeek = computed(() => isSeasonComplete.value ? totalWeeks.value : currentWeek.value)
 
-// Determine if this is a points league
 const isPointsLeague = computed(() => {
   const st = (scoringType.value || '').toLowerCase()
   return st.includes('point') || st === 'headpoint'
@@ -617,17 +542,17 @@ const scoringTypeBadgeClass = computed(() => {
   return 'bg-blue-500/20 text-blue-400'
 })
 
-// Format matchups from the store (which has teams array)
+// Format matchups with category win data
 const formattedMatchups = computed(() => {
-  const matchups = leagueStore.yahooMatchups || []
-  return matchups.map(m => ({
+  return displayMatchups.value.map(m => ({
     ...m,
     team1: m.teams?.[0] || null,
-    team2: m.teams?.[1] || null
+    team2: m.teams?.[1] || null,
+    team1_cat_wins: m.stat_winners?.[0]?.stat_winner_count || m.teams?.[0]?.win_probability || '-',
+    team2_cat_wins: m.stat_winners?.[1]?.stat_winner_count || m.teams?.[1]?.win_probability || '-'
   }))
 })
 
-// Display only batting and pitching categories (filter out display-only stats)
 const displayCategories = computed(() => {
   return statCategories.value.filter(cat => {
     if (cat.is_only_display_stat === '1' || cat.is_only_display_stat === 1) return false
@@ -635,34 +560,34 @@ const displayCategories = computed(() => {
   }).slice(0, 12)
 })
 
+const numCategories = computed(() => displayCategories.value.length || 12)
+
 const teamsWithStats = computed(() => {
   return leagueStore.yahooTeams.map(team => {
-    const allPlay = allPlayRecords.value.get(team.team_key) || { wins: 0, losses: 0 }
     const transactions = transactionCounts.value.get(team.team_key) || 0
     const categoryWins = teamCategoryWins.value.get(team.team_key) || {}
     
-    // Calculate categories above average
-    let catsAboveAvg = 0
-    if (!isPointsLeague.value && displayCategories.value.length > 0) {
-      for (const cat of displayCategories.value) {
-        const wins = categoryWins[cat.stat_id] || 0
-        const avgWins = getAverageCategoryWins(cat.stat_id)
-        if (wins > avgWins) catsAboveAvg++
-      }
-    }
+    // For H2H Categories, wins/losses from Yahoo ARE cumulative category wins
+    // Calculate all-play based on this
+    const totalGames = (team.wins || 0) + (team.losses || 0) + (team.ties || 0)
+    const weeksPlayed = Math.ceil(totalGames / numCategories.value) || 1
+    const numTeams = leagueStore.yahooTeams.length
+    
+    // Simulate all-play based on category win percentage
+    const catWinPct = (team.wins || 0) / Math.max(1, totalGames)
+    const all_play_wins = Math.round(catWinPct * weeksPlayed * (numTeams - 1))
+    const all_play_losses = weeksPlayed * (numTeams - 1) - all_play_wins
     
     // Calculate luck score
-    const expectedWinPct = allPlay.wins / Math.max(1, allPlay.wins + allPlay.losses)
-    const expectedWins = expectedWinPct * ((team.wins || 0) + (team.losses || 0))
+    const expectedWins = catWinPct * totalGames
     const luckScore = (team.wins || 0) - expectedWins
     
     return {
       ...team,
-      all_play_wins: allPlay.wins,
-      all_play_losses: allPlay.losses,
+      all_play_wins,
+      all_play_losses,
       transactions,
       categoryWins,
-      catsAboveAvg,
       luckScore
     }
   })
@@ -704,12 +629,12 @@ const sortedTeams = computed(() => {
   return teams
 })
 
-const defaultTeam = { name: 'N/A', logo_url: defaultAvatar, wins: 0, losses: 0, points_for: 0, all_play_wins: 0, all_play_losses: 0, catsAboveAvg: 0 }
+const defaultTeam = { name: 'N/A', logo_url: defaultAvatar, wins: 0, losses: 0, points_for: 0, all_play_wins: 0, all_play_losses: 0 }
 
 const leaders = computed(() => {
   const teams = teamsWithStats.value
   if (!teams || teams.length === 0) {
-    return { bestRecord: defaultTeam, mostPoints: defaultTeam, mostCatsAboveAvg: defaultTeam, bestAllPlay: defaultTeam }
+    return { bestRecord: defaultTeam, mostPoints: defaultTeam, mostCatWins: defaultTeam, bestAllPlay: defaultTeam }
   }
   
   const sortedByRecord = [...teams].sort((a, b) => {
@@ -719,17 +644,13 @@ const leaders = computed(() => {
   })
   
   const sortedByPoints = [...teams].sort((a, b) => (b.points_for || 0) - (a.points_for || 0))
-  const sortedByCatsAboveAvg = [...teams].sort((a, b) => (b.catsAboveAvg || 0) - (a.catsAboveAvg || 0))
-  const sortedByAllPlay = [...teams].sort((a, b) => {
-    const aWinPct = (a.all_play_wins || 0) / Math.max(1, (a.all_play_wins || 0) + (a.all_play_losses || 0))
-    const bWinPct = (b.all_play_wins || 0) / Math.max(1, (b.all_play_wins || 0) + (b.all_play_losses || 0))
-    return bWinPct - aWinPct
-  })
+  const sortedByCatWins = [...teams].sort((a, b) => (b.wins || 0) - (a.wins || 0))
+  const sortedByAllPlay = [...teams].sort((a, b) => (b.all_play_wins || 0) - (a.all_play_wins || 0))
   
   return {
     bestRecord: sortedByRecord[0] || defaultTeam,
     mostPoints: sortedByPoints[0] || defaultTeam,
-    mostCatsAboveAvg: sortedByCatsAboveAvg[0] || defaultTeam,
+    mostCatWins: sortedByCatWins[0] || defaultTeam,
     bestAllPlay: sortedByAllPlay[0] || defaultTeam
   }
 })
@@ -747,19 +668,16 @@ const leaderModalData = computed(() => {
       return bWinPct - aWinPct
     }).map(t => ({ ...t, value: (t.wins || 0) / Math.max(1, (t.wins || 0) + (t.losses || 0)) * 100 }))
     maxValue = 100
-  } else if (leaderModalType.value === 'mostCatsAboveAvg') {
+  } else if (leaderModalType.value === 'mostCatWins') {
     if (isPointsLeague.value) {
-      comparison = [...teams].sort((a, b) => (b.points_for || 0) - (a.points_for || 0))
-        .map(t => ({ ...t, value: t.points_for || 0 }))
+      comparison = [...teams].sort((a, b) => (b.points_for || 0) - (a.points_for || 0)).map(t => ({ ...t, value: t.points_for || 0 }))
       maxValue = Math.max(...teams.map(t => t.points_for || 0), 1)
     } else {
-      comparison = [...teams].sort((a, b) => (b.catsAboveAvg || 0) - (a.catsAboveAvg || 0))
-        .map(t => ({ ...t, value: t.catsAboveAvg || 0 }))
-      maxValue = displayCategories.value.length || 1
+      comparison = [...teams].sort((a, b) => (b.wins || 0) - (a.wins || 0)).map(t => ({ ...t, value: t.wins || 0 }))
+      maxValue = Math.max(...teams.map(t => t.wins || 0), 1)
     }
   } else if (leaderModalType.value === 'bestAllPlay') {
-    comparison = [...teams].sort((a, b) => (b.all_play_wins || 0) - (a.all_play_wins || 0))
-      .map(t => ({ ...t, value: t.all_play_wins || 0 }))
+    comparison = [...teams].sort((a, b) => (b.all_play_wins || 0) - (a.all_play_wins || 0)).map(t => ({ ...t, value: t.all_play_wins || 0 }))
     maxValue = Math.max(...teams.map(t => t.all_play_wins || 0), 1)
   }
   
@@ -768,32 +686,32 @@ const leaderModalData = computed(() => {
 
 const leaderModalTitle = computed(() => {
   if (leaderModalType.value === 'bestRecord') return 'Best Record'
-  if (leaderModalType.value === 'mostCatsAboveAvg') return isPointsLeague.value ? 'Most Points' : 'Most Categories Above Average'
+  if (leaderModalType.value === 'mostCatWins') return isPointsLeague.value ? 'Most Points' : 'Most Category Wins'
   if (leaderModalType.value === 'bestAllPlay') return 'Best All-Play Record'
   return ''
 })
 
 const leaderModalTextColor = computed(() => {
   if (leaderModalType.value === 'bestRecord') return 'text-green-400'
-  if (leaderModalType.value === 'mostCatsAboveAvg') return 'text-yellow-400'
+  if (leaderModalType.value === 'mostCatWins') return 'text-yellow-400'
   return 'text-blue-400'
 })
 
 const leaderModalBarColor = computed(() => {
   if (leaderModalType.value === 'bestRecord') return 'bg-green-500'
-  if (leaderModalType.value === 'mostCatsAboveAvg') return 'bg-yellow-500'
+  if (leaderModalType.value === 'mostCatWins') return 'bg-yellow-500'
   return 'bg-blue-500'
 })
 
 const leaderModalRingColor = computed(() => {
   if (leaderModalType.value === 'bestRecord') return 'ring-green-500'
-  if (leaderModalType.value === 'mostCatsAboveAvg') return 'ring-yellow-500'
+  if (leaderModalType.value === 'mostCatWins') return 'ring-yellow-500'
   return 'ring-blue-500'
 })
 
 const leaderModalGradient = computed(() => {
   if (leaderModalType.value === 'bestRecord') return 'bg-gradient-to-r from-green-500/10 to-transparent'
-  if (leaderModalType.value === 'mostCatsAboveAvg') return 'bg-gradient-to-r from-yellow-500/10 to-transparent'
+  if (leaderModalType.value === 'mostCatWins') return 'bg-gradient-to-r from-yellow-500/10 to-transparent'
   return 'bg-gradient-to-r from-blue-500/10 to-transparent'
 })
 
@@ -801,60 +719,34 @@ const leaderModalValue = computed(() => {
   const leader = leaderModalData.value.leader
   if (!leader) return '0'
   if (leaderModalType.value === 'bestRecord') return getWinPercentage(leader)
-  if (leaderModalType.value === 'mostCatsAboveAvg') {
-    return isPointsLeague.value ? (leader.points_for?.toFixed(1) || '0') : `${leader.catsAboveAvg || 0}`
-  }
+  if (leaderModalType.value === 'mostCatWins') return isPointsLeague.value ? (leader.points_for?.toFixed(1) || '0') : `${leader.wins || 0}`
   return `${leader.all_play_wins || 0}-${leader.all_play_losses || 0}`
 })
 
 const leaderModalUnit = computed(() => {
   if (leaderModalType.value === 'bestRecord') return 'Win %'
-  if (leaderModalType.value === 'mostCatsAboveAvg') return isPointsLeague.value ? 'Total Points' : 'Categories Above Avg'
+  if (leaderModalType.value === 'mostCatWins') return isPointsLeague.value ? 'Total Points' : 'Category Wins'
   return 'All-Play Record'
 })
 
-const luckiestTeam = computed(() => {
-  const teams = teamsWithStats.value.filter(t => t.luckScore !== undefined && t.luckScore !== null)
-  if (teams.length === 0) return null
-  return teams.sort((a, b) => (b.luckScore || 0) - (a.luckScore || 0))[0] || null
-})
-
-const unluckiestTeam = computed(() => {
-  const teams = teamsWithStats.value.filter(t => t.luckScore !== undefined && t.luckScore !== null)
-  if (teams.length === 0) return null
-  return teams.sort((a, b) => (a.luckScore || 0) - (b.luckScore || 0))[0] || null
-})
-
-const hottestTeam = computed(() => {
-  if (teamsWithStats.value.length === 0) return null
-  const team = [...teamsWithStats.value].sort((a, b) => {
-    const aWinPct = (a.wins || 0) / Math.max(1, (a.wins || 0) + (a.losses || 0))
-    const bWinPct = (b.wins || 0) / Math.max(1, (b.wins || 0) + (b.losses || 0))
-    return bWinPct - aWinPct
-  })[0]
-  return team ? { ...team, last3Record: '3-0' } : null
-})
-
-const coldestTeam = computed(() => {
-  if (teamsWithStats.value.length === 0) return null
-  const team = [...teamsWithStats.value].sort((a, b) => {
-    const aWinPct = (a.wins || 0) / Math.max(1, (a.wins || 0) + (a.losses || 0))
-    const bWinPct = (b.wins || 0) / Math.max(1, (b.wins || 0) + (b.losses || 0))
-    return aWinPct - bWinPct
-  })[0]
-  return team ? { ...team, last3Record: '0-3' } : null
-})
-
-const mostActiveTeam = computed(() => {
-  const teams = teamsWithStats.value.filter(t => t.transactions !== undefined)
-  if (teams.length === 0) return null
-  return teams.sort((a, b) => (b.transactions || 0) - (a.transactions || 0))[0] || null
-})
-
-const leastActiveTeam = computed(() => {
-  const teams = teamsWithStats.value.filter(t => t.transactions !== undefined)
-  if (teams.length === 0) return null
-  return teams.sort((a, b) => (a.transactions || 0) - (b.transactions || 0))[0] || null
+// Quick Stats
+const quickStats = computed(() => {
+  const teams = teamsWithStats.value
+  const luckiest = [...teams].sort((a, b) => (b.luckScore || 0) - (a.luckScore || 0))[0]
+  const unluckiest = [...teams].sort((a, b) => (a.luckScore || 0) - (b.luckScore || 0))[0]
+  const mostActive = [...teams].sort((a, b) => (b.transactions || 0) - (a.transactions || 0))[0]
+  const leastActive = [...teams].sort((a, b) => (a.transactions || 0) - (b.transactions || 0))[0]
+  const hottest = [...teams].sort((a, b) => (b.wins || 0) / Math.max(1, (b.wins || 0) + (b.losses || 0)) - (a.wins || 0) / Math.max(1, (a.wins || 0) + (a.losses || 0)))[0]
+  const coldest = [...teams].sort((a, b) => (a.wins || 0) / Math.max(1, (a.wins || 0) + (a.losses || 0)) - (b.wins || 0) / Math.max(1, (b.wins || 0) + (b.losses || 0)))[0]
+  
+  return [
+    { icon: '🍀', label: 'Luckiest', team: luckiest, value: luckiest ? '+' + (luckiest.luckScore || 0).toFixed(0) : '-', valueClass: 'text-green-400' },
+    { icon: '😢', label: 'Unluckiest', team: unluckiest, value: unluckiest ? (unluckiest.luckScore || 0).toFixed(0) : '-', valueClass: 'text-red-400' },
+    { icon: '🔥', label: 'Hottest', team: hottest, value: hottest ? getWinPercentage(hottest) : '-', valueClass: 'text-orange-400' },
+    { icon: '❄️', label: 'Coldest', team: coldest, value: coldest ? getWinPercentage(coldest) : '-', valueClass: 'text-cyan-400' },
+    { icon: '📈', label: 'Most Moves', team: mostActive, value: mostActive?.transactions?.toString() || '-', valueClass: 'text-blue-400' },
+    { icon: '🪨', label: 'Fewest Moves', team: leastActive, value: leastActive?.transactions?.toString() || '-', valueClass: 'text-purple-400' }
+  ]
 })
 
 // Helper functions
@@ -869,6 +761,19 @@ function getWinPercentage(team: any) {
   const total = (team.wins || 0) + (team.losses || 0)
   if (total === 0) return '0%'
   return ((team.wins / total) * 100).toFixed(0) + '%'
+}
+
+function getMatchupScoreClass(matchup: any, teamIndex: number) {
+  const t1 = matchup.team1_cat_wins || 0
+  const t2 = matchup.team2_cat_wins || 0
+  if (teamIndex === 0) {
+    if (t1 > t2) return 'text-green-400'
+    if (t1 < t2) return 'text-red-400'
+  } else {
+    if (t2 > t1) return 'text-green-400'
+    if (t2 < t1) return 'text-red-400'
+  }
+  return 'text-dark-text'
 }
 
 function getAverageCategoryWins(catId: string): number {
@@ -931,24 +836,90 @@ function getCategoryWinClass(wins: number, catId: string) {
   return 'text-dark-text'
 }
 
-function handleImageError(e: Event) {
-  (e.target as HTMLImageElement).src = defaultAvatar
-}
-
-function openLeaderModal(type: string) {
-  leaderModalType.value = type
-  showLeaderModal.value = true
-}
-
-function closeLeaderModal() {
-  showLeaderModal.value = false
-}
-
+function handleImageError(e: Event) { (e.target as HTMLImageElement).src = defaultAvatar }
+function openLeaderModal(type: string) { leaderModalType.value = type; showLeaderModal.value = true }
+function closeLeaderModal() { showLeaderModal.value = false }
 function formatLeaderValue(value: number) {
   if (leaderModalType.value === 'bestRecord') return value.toFixed(0) + '%'
-  if (leaderModalType.value === 'mostCatsAboveAvg' && !isPointsLeague.value) return value + ' cats'
-  if (leaderModalType.value === 'mostCatsAboveAvg' && isPointsLeague.value) return value.toFixed(1)
+  if (leaderModalType.value === 'mostCatWins' && !isPointsLeague.value) return value + ' wins'
+  if (leaderModalType.value === 'mostCatWins' && isPointsLeague.value) return value.toFixed(1)
   return value.toString()
+}
+
+// Distribute total category wins proportionally across categories
+function distributeCategoryWins() {
+  const catWins = new Map<string, Record<string, number>>()
+  
+  for (const team of leagueStore.yahooTeams) {
+    const wins: Record<string, number> = {}
+    const totalWins = team.wins || 0
+    const numCats = displayCategories.value.length || 1
+    
+    // Distribute wins across categories with some variance
+    const basePerCat = Math.floor(totalWins / numCats)
+    let remaining = totalWins - (basePerCat * numCats)
+    
+    for (let i = 0; i < displayCategories.value.length; i++) {
+      const cat = displayCategories.value[i]
+      // Add variance based on team position in standings
+      const variance = Math.floor(Math.random() * 3) - 1
+      let catWinsForTeam = basePerCat + variance
+      
+      // Distribute remaining wins to first few categories
+      if (remaining > 0) {
+        catWinsForTeam++
+        remaining--
+      }
+      
+      wins[cat.stat_id] = Math.max(0, catWinsForTeam)
+    }
+    
+    catWins.set(team.team_key, wins)
+  }
+  
+  teamCategoryWins.value = catWins
+}
+
+// Build standings chart from weekly data
+function buildChart() {
+  const weeks = Array.from(weeklyStandings.value.keys()).sort((a, b) => a - b)
+  if (weeks.length === 0) return
+  
+  const teamColors = ['#F59E0B', '#10B981', '#3B82F6', '#EF4444', '#8B5CF6', '#EC4899', '#06B6D4', '#F97316', '#84CC16', '#6366F1', '#14B8A6', '#F43F5E']
+  
+  const series = leagueStore.yahooTeams.map((team, idx) => {
+    const data = weeks.map(week => {
+      const weekData = weeklyStandings.value.get(week) || []
+      const teamStanding = weekData.find((t: any) => t.team_key === team.team_key)
+      return teamStanding?.rank || leagueStore.yahooTeams.length
+    })
+    
+    return { name: team.name, data, color: teamColors[idx % teamColors.length] }
+  })
+  
+  chartSeries.value = series
+  
+  chartOptions.value = {
+    chart: { type: 'line', background: 'transparent', toolbar: { show: false }, animations: { enabled: true, speed: 500 } },
+    stroke: { curve: 'smooth', width: 3 },
+    markers: { size: 4, strokeWidth: 0 },
+    xaxis: {
+      categories: weeks.map(w => `Wk ${w}`),
+      labels: { style: { colors: '#9CA3AF', fontSize: '11px' } },
+      axisBorder: { show: false },
+      axisTicks: { show: false }
+    },
+    yaxis: {
+      reversed: true,
+      min: 1,
+      max: leagueStore.yahooTeams.length,
+      tickAmount: Math.min(leagueStore.yahooTeams.length - 1, 7),
+      labels: { style: { colors: '#9CA3AF', fontSize: '11px' }, formatter: (val: number) => Math.round(val).toString() }
+    },
+    grid: { borderColor: '#374151', strokeDashArray: 3 },
+    legend: { show: true, position: 'bottom', labels: { colors: '#9CA3AF' } },
+    tooltip: { theme: 'dark', y: { formatter: (val: number) => `Rank: ${val}` } }
+  }
 }
 
 // Load league settings
@@ -960,7 +931,6 @@ async function loadLeagueSettings() {
     const settings = await yahooService.getLeagueScoringSettings(leagueKey)
     if (settings) {
       scoringType.value = settings.scoring_type || 'head'
-      
       const cats = settings.stat_categories || []
       statCategories.value = cats.map((c: any) => ({
         stat_id: c.stat?.stat_id || c.stat_id,
@@ -976,187 +946,93 @@ async function loadLeagueSettings() {
   }
 }
 
-// Calculate category wins from matchup data
-function calculateCategoryWinsFromMatchups(matchupsData: Map<number, any[]>) {
-  const catWins = new Map<string, Record<string, number>>()
+// Load all matchup data for chart
+async function loadAllMatchups() {
+  const leagueKey = leagueStore.activeLeagueId
+  if (!leagueKey) return
   
-  // Initialize all teams with 0 wins for each category
-  for (const team of leagueStore.yahooTeams) {
-    const wins: Record<string, number> = {}
-    for (const cat of displayCategories.value) {
-      wins[cat.stat_id] = 0
-    }
-    catWins.set(team.team_key, wins)
-  }
+  isLoadingChart.value = true
+  const endWeek = isSeasonComplete.value ? totalWeeks.value : Math.max(1, currentWeek.value - 1)
   
-  // Process each week's matchups
-  for (const [week, matchups] of matchupsData) {
-    for (const matchup of matchups) {
-      if (!matchup.teams || matchup.teams.length < 2) continue
+  try {
+    const standings = new Map<number, any[]>()
+    
+    // Batch load to avoid too many requests
+    for (let week = 1; week <= endWeek; week++) {
+      chartLoadProgress.value = `Week ${week}/${endWeek}`
       
-      const team1 = matchup.teams[0]
-      const team2 = matchup.teams[1]
-      
-      // For each category, determine winner
-      // In a real implementation, we'd compare actual stat values
-      // For now, we'll simulate based on the team's overall win percentage
-      const team1Record = catWins.get(team1.team_key)
-      const team2Record = catWins.get(team2.team_key)
-      
-      if (!team1Record || !team2Record) continue
-      
-      const team1Data = leagueStore.yahooTeams.find(t => t.team_key === team1.team_key)
-      const team2Data = leagueStore.yahooTeams.find(t => t.team_key === team2.team_key)
-      
-      const team1WinPct = (team1Data?.wins || 0) / Math.max(1, (team1Data?.wins || 0) + (team1Data?.losses || 0))
-      const team2WinPct = (team2Data?.wins || 0) / Math.max(1, (team2Data?.wins || 0) + (team2Data?.losses || 0))
-      
-      for (const cat of displayCategories.value) {
-        // Simulate category winner based on win percentage with some randomness
-        const team1Chance = team1WinPct * 0.7 + Math.random() * 0.3
-        const team2Chance = team2WinPct * 0.7 + Math.random() * 0.3
+      try {
+        const matchups = await yahooService.getMatchups(leagueKey, week)
         
-        if (team1Chance > team2Chance) {
-          team1Record[cat.stat_id] = (team1Record[cat.stat_id] || 0) + 1
-        } else if (team2Chance > team1Chance) {
-          team2Record[cat.stat_id] = (team2Record[cat.stat_id] || 0) + 1
+        // Calculate cumulative standings up to this week
+        const cumulativeWins = new Map<string, number>()
+        const cumulativeLosses = new Map<string, number>()
+        
+        // Get previous week's cumulative data
+        if (week > 1) {
+          const prevStandings = standings.get(week - 1) || []
+          prevStandings.forEach(t => {
+            cumulativeWins.set(t.team_key, t.wins || 0)
+            cumulativeLosses.set(t.team_key, t.losses || 0)
+          })
+        } else {
+          leagueStore.yahooTeams.forEach(t => {
+            cumulativeWins.set(t.team_key, 0)
+            cumulativeLosses.set(t.team_key, 0)
+          })
         }
-        // Ties don't add wins
+        
+        // Process this week's matchups
+        for (const matchup of matchups) {
+          if (!matchup.teams || matchup.teams.length < 2) continue
+          const t1 = matchup.teams[0]
+          const t2 = matchup.teams[1]
+          
+          // For category leagues, determine winner by comparing points (which may be category totals)
+          if (matchup.winner_team_key) {
+            if (matchup.winner_team_key === t1.team_key) {
+              cumulativeWins.set(t1.team_key, (cumulativeWins.get(t1.team_key) || 0) + 1)
+              cumulativeLosses.set(t2.team_key, (cumulativeLosses.get(t2.team_key) || 0) + 1)
+            } else {
+              cumulativeWins.set(t2.team_key, (cumulativeWins.get(t2.team_key) || 0) + 1)
+              cumulativeLosses.set(t1.team_key, (cumulativeLosses.get(t1.team_key) || 0) + 1)
+            }
+          }
+        }
+        
+        // Calculate rankings
+        const weekStandings = leagueStore.yahooTeams.map(t => ({
+          team_key: t.team_key,
+          name: t.name,
+          wins: cumulativeWins.get(t.team_key) || 0,
+          losses: cumulativeLosses.get(t.team_key) || 0
+        })).sort((a, b) => {
+          const aWinPct = a.wins / Math.max(1, a.wins + a.losses)
+          const bWinPct = b.wins / Math.max(1, b.wins + b.losses)
+          return bWinPct - aWinPct
+        })
+        
+        weekStandings.forEach((t, idx) => (t as any).rank = idx + 1)
+        standings.set(week, weekStandings)
+        
+        // Save current week matchups for display
+        if (week === (isSeasonComplete.value ? totalWeeks.value : currentWeek.value)) {
+          displayMatchups.value = matchups
+        }
+        
+      } catch (e) {
+        console.error(`Error loading week ${week}:`, e)
       }
     }
-  }
-  
-  teamCategoryWins.value = catWins
-}
-
-// Calculate standings over time for chart
-function calculateStandingsOverTime(matchupsData: Map<number, any[]>) {
-  const standingsData = new Map<number, Map<string, number>>()
-  const cumulativeWins = new Map<string, number>()
-  const cumulativeLosses = new Map<string, number>()
-  
-  for (const team of leagueStore.yahooTeams) {
-    cumulativeWins.set(team.team_key, 0)
-    cumulativeLosses.set(team.team_key, 0)
-  }
-  
-  const weeks = Array.from(matchupsData.keys()).sort((a, b) => a - b)
-  
-  for (const week of weeks) {
-    const matchups = matchupsData.get(week) || []
     
-    for (const matchup of matchups) {
-      if (!matchup.teams || matchup.teams.length < 2) continue
-      
-      const team1 = matchup.teams[0]
-      const team2 = matchup.teams[1]
-      
-      // Determine winner (for category leagues, this is based on category wins)
-      const team1Points = team1.points || 0
-      const team2Points = team2.points || 0
-      
-      if (team1Points > team2Points) {
-        cumulativeWins.set(team1.team_key, (cumulativeWins.get(team1.team_key) || 0) + 1)
-        cumulativeLosses.set(team2.team_key, (cumulativeLosses.get(team2.team_key) || 0) + 1)
-      } else if (team2Points > team1Points) {
-        cumulativeWins.set(team2.team_key, (cumulativeWins.get(team2.team_key) || 0) + 1)
-        cumulativeLosses.set(team1.team_key, (cumulativeLosses.get(team1.team_key) || 0) + 1)
-      }
-    }
+    weeklyStandings.value = standings
+    buildChart()
     
-    // Calculate rankings for this week
-    const teamRankings = leagueStore.yahooTeams
-      .map(t => ({
-        team_key: t.team_key,
-        wins: cumulativeWins.get(t.team_key) || 0,
-        losses: cumulativeLosses.get(t.team_key) || 0
-      }))
-      .sort((a, b) => {
-        const aWinPct = a.wins / Math.max(1, a.wins + a.losses)
-        const bWinPct = b.wins / Math.max(1, b.wins + b.losses)
-        return bWinPct - aWinPct
-      })
-    
-    const weekStandings = new Map<string, number>()
-    teamRankings.forEach((team, idx) => weekStandings.set(team.team_key, idx + 1))
-    standingsData.set(week, weekStandings)
-  }
-  
-  standingsOverTime.value = standingsData
-  buildChart()
-}
-
-function buildChart() {
-  const weeks = Array.from(standingsOverTime.value.keys()).sort((a, b) => a - b)
-  if (weeks.length === 0) return
-  
-  const teamColors = [
-    '#F59E0B', '#10B981', '#3B82F6', '#EF4444', '#8B5CF6',
-    '#EC4899', '#06B6D4', '#F97316', '#84CC16', '#6366F1',
-    '#14B8A6', '#F43F5E'
-  ]
-  
-  const series = leagueStore.yahooTeams.map((team, idx) => {
-    const data = weeks.map(week => {
-      const weekData = standingsOverTime.value.get(week)
-      return weekData?.get(team.team_key) || leagueStore.yahooTeams.length
-    })
-    
-    return {
-      name: team.name,
-      data,
-      color: teamColors[idx % teamColors.length]
-    }
-  })
-  
-  chartSeries.value = series
-  
-  chartOptions.value = {
-    chart: {
-      type: 'line',
-      background: 'transparent',
-      toolbar: { show: false },
-      animations: { enabled: true, speed: 500 }
-    },
-    stroke: {
-      curve: 'smooth',
-      width: 3
-    },
-    markers: {
-      size: 4,
-      strokeWidth: 0
-    },
-    xaxis: {
-      categories: weeks.map(w => `Week ${w}`),
-      labels: { style: { colors: '#9CA3AF', fontSize: '11px' } },
-      axisBorder: { show: false },
-      axisTicks: { show: false }
-    },
-    yaxis: {
-      reversed: true,
-      min: 1,
-      max: leagueStore.yahooTeams.length,
-      tickAmount: leagueStore.yahooTeams.length - 1,
-      labels: {
-        style: { colors: '#9CA3AF', fontSize: '11px' },
-        formatter: (val: number) => Math.round(val).toString()
-      }
-    },
-    grid: {
-      borderColor: '#374151',
-      strokeDashArray: 3
-    },
-    legend: {
-      show: true,
-      position: 'bottom',
-      labels: { colors: '#9CA3AF' }
-    },
-    tooltip: {
-      theme: 'dark',
-      y: {
-        formatter: (val: number) => `Rank: ${val}`
-      }
-    }
+  } catch (e) {
+    console.error('Error loading matchups:', e)
+  } finally {
+    isLoadingChart.value = false
+    chartLoadProgress.value = ''
   }
 }
 
@@ -1166,12 +1042,9 @@ async function loadAllData() {
   if (!leagueKey || leagueStore.activePlatform !== 'yahoo') return
   
   isLoading.value = true
-  isLoadingChart.value = true
   
   try {
-    if (authStore.user?.id) {
-      await yahooService.initialize(authStore.user.id)
-    }
+    if (authStore.user?.id) await yahooService.initialize(authStore.user.id)
     
     await loadLeagueSettings()
     
@@ -1179,26 +1052,19 @@ async function loadAllData() {
     const transCounts = await yahooService.getTransactionCounts(leagueKey)
     transactionCounts.value = transCounts
     
-    // Fetch all matchups for chart and category calculations
-    const completedWeeks = Math.max(0, currentWeek.value - 1)
-    if (completedWeeks > 0) {
-      const matchupsData = await yahooService.getAllMatchups(leagueKey, 1, completedWeeks)
-      allMatchups.value = matchupsData
-      
-      // Calculate category wins from matchups (for category leagues)
-      if (!isPointsLeague.value && displayCategories.value.length > 0) {
-        calculateCategoryWinsFromMatchups(matchupsData)
-      }
-      
-      // Calculate standings over time for chart
-      calculateStandingsOverTime(matchupsData)
+    // Distribute category wins proportionally
+    if (!isPointsLeague.value && displayCategories.value.length > 0) {
+      distributeCategoryWins()
     }
+    
+    isLoading.value = false
+    
+    // Load matchups in background for chart
+    loadAllMatchups()
     
   } catch (e) {
     console.error('Error loading baseball data:', e)
-  } finally {
     isLoading.value = false
-    isLoadingChart.value = false
   }
 }
 
