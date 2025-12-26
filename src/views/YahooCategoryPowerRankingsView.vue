@@ -46,7 +46,29 @@
                 <span class="text-2xl">⚡</span>
                 <h2 class="card-title">Power Rankings - Week {{ selectedWeek }}</h2>
               </div>
-              <p class="card-subtitle text-sm mt-1">Based on {{ totalWeeksLoaded }} weeks of category data</p>
+              <div class="mt-2">
+                <p class="card-subtitle text-sm leading-relaxed">
+                  {{ currentFormulaDisplay }}
+                </p>
+                <button 
+                  @click="showSettings = true" 
+                  class="text-primary hover:text-blue-400 text-xs font-semibold transition-colors mt-1"
+                >
+                  Customize Formula →
+                </button>
+              </div>
+            </div>
+            <div class="flex items-center gap-2 flex-shrink-0">
+              <button @click="downloadRankings" :disabled="isGeneratingDownload" class="btn-primary flex items-center gap-2">
+                <svg v-if="!isGeneratingDownload" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                </svg>
+                <svg v-else class="w-5 h-5 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                  <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                {{ isGeneratingDownload ? 'Generating...' : 'Share' }}
+              </button>
             </div>
           </div>
         </div>
@@ -615,9 +637,22 @@ const powerPresets = [
 ]
 
 const currentPresetId = ref('balanced')
+const isGeneratingDownload = ref(false)
 
 const totalWeight = computed(() => {
   return powerFactors.value.filter(f => f.enabled).reduce((sum, f) => sum + f.weight, 0)
+})
+
+const currentFormulaDisplay = computed(() => {
+  const enabledFactors = powerFactors.value.filter(f => f.enabled && f.weight > 0)
+  if (enabledFactors.length === 0) return 'No factors enabled'
+  
+  const total = enabledFactors.reduce((sum, f) => sum + f.weight, 0)
+  
+  return 'Formula: ' + enabledFactors.map(f => {
+    const pct = Math.round((f.weight / total) * 100)
+    return `${f.icon} ${f.name}: ${pct}%`
+  }).join(' • ')
 })
 
 function applyPreset(preset: any) {
@@ -642,6 +677,195 @@ function resetFactors() {
 function applySettings() {
   showSettings.value = false
   loadPowerRankings()
+}
+
+// Download/Share functionality
+async function downloadRankings() {
+  isGeneratingDownload.value = true
+  
+  try {
+    const html2canvas = (await import('html2canvas')).default
+    
+    const leagueName = leagueInfo.value?.name || 'League'
+    
+    // Load baseball logo
+    const loadLogo = async (): Promise<string> => {
+      try {
+        const response = await fetch('/logos/UFD_Baseball.png')
+        if (!response.ok) return ''
+        const blob = await response.blob()
+        return new Promise((resolve) => {
+          const reader = new FileReader()
+          reader.onloadend = () => resolve(reader.result as string)
+          reader.onerror = () => resolve('')
+          reader.readAsDataURL(blob)
+        })
+      } catch (e) {
+        console.warn('Failed to load logo:', e)
+        return ''
+      }
+    }
+    
+    // Helper to create placeholder avatar
+    const createPlaceholder = (teamName: string): string => {
+      const canvas = document.createElement('canvas')
+      canvas.width = 64
+      canvas.height = 64
+      const ctx = canvas.getContext('2d')
+      if (ctx) {
+        ctx.fillStyle = '#3a3d52'
+        ctx.beginPath()
+        ctx.arc(32, 32, 32, 0, Math.PI * 2)
+        ctx.fill()
+        ctx.fillStyle = '#3B9FE8'
+        ctx.font = 'bold 28px sans-serif'
+        ctx.textAlign = 'center'
+        ctx.textBaseline = 'middle'
+        ctx.fillText(teamName.charAt(0).toUpperCase(), 32, 34)
+      }
+      return canvas.toDataURL('image/png')
+    }
+    
+    const logoBase64 = await loadLogo()
+    
+    // Pre-load all team images
+    const imageMap = new Map<string, string>()
+    for (const team of powerRankings.value) {
+      try {
+        const img = new Image()
+        img.crossOrigin = 'anonymous'
+        const loadPromise = new Promise<string>((resolve) => {
+          img.onload = () => {
+            try {
+              const canvas = document.createElement('canvas')
+              canvas.width = 64
+              canvas.height = 64
+              const ctx = canvas.getContext('2d')
+              if (ctx) {
+                ctx.beginPath()
+                ctx.arc(32, 32, 32, 0, Math.PI * 2)
+                ctx.closePath()
+                ctx.clip()
+                ctx.drawImage(img, 0, 0, 64, 64)
+              }
+              resolve(canvas.toDataURL('image/png'))
+            } catch {
+              resolve(createPlaceholder(team.name))
+            }
+          }
+          img.onerror = () => resolve(createPlaceholder(team.name))
+          setTimeout(() => resolve(createPlaceholder(team.name)), 3000)
+        })
+        img.src = team.logo_url || ''
+        imageMap.set(team.team_key, await loadPromise)
+      } catch {
+        imageMap.set(team.team_key, createPlaceholder(team.name))
+      }
+    }
+    
+    // Create container
+    const container = document.createElement('div')
+    container.style.cssText = 'position: absolute; left: -9999px; top: 0; width: 800px; font-family: system-ui, -apple-system, sans-serif;'
+    
+    // Split teams for two columns
+    const midpoint = Math.ceil(powerRankings.value.length / 2)
+    const firstHalf = powerRankings.value.slice(0, midpoint)
+    const secondHalf = powerRankings.value.slice(midpoint)
+    
+    const generateRankingRow = (team: any, rank: number) => `
+      <div style="display: flex; align-items: center; padding: 12px 16px; background: ${rank <= 3 ? 'rgba(59, 159, 232, 0.1)' : 'rgba(38, 42, 58, 0.5)'}; border-radius: 10px; margin-bottom: 8px; border: 1px solid ${rank <= 3 ? 'rgba(59, 159, 232, 0.3)' : 'rgba(58, 61, 82, 0.5)'};">
+        <div style="display: flex; align-items: center; width: 50px;">
+          <span style="font-size: 28px; font-weight: bold; color: #3B9FE8;">${rank}</span>
+          ${team.change !== 0 ? `
+            <span style="font-size: 13px; font-weight: 600; color: ${team.change > 0 ? '#10b981' : '#ef4444'}; margin-left: 6px;">
+              ${team.change > 0 ? '↑' : '↓'}${Math.abs(team.change)}
+            </span>
+          ` : ''}
+        </div>
+        <img src="${imageMap.get(team.team_key) || ''}" style="width: 52px; height: 52px; border-radius: 50%; margin-right: 14px; border: 2px solid #3a3d52; background: #262a3a;" />
+        <div style="flex: 1; min-width: 0;">
+          <div style="font-size: 16px; font-weight: 600; color: #f7f7ff; margin-bottom: 4px;">${team.name}</div>
+          <div style="font-size: 13px; color: #b0b3c2;">${team.totalCatWins}-${team.totalCatLosses}-${team.totalCatTies} • ${(team.catWinPct * 100).toFixed(1)}%</div>
+        </div>
+        <div style="text-align: right; margin-left: auto; padding-left: 12px;">
+          <div style="font-size: 26px; font-weight: bold; color: #3B9FE8; line-height: 1;">${team.powerScore.toFixed(1)}</div>
+          <div style="font-size: 10px; color: #7b7f92; text-transform: uppercase; margin-top: 2px;">Power</div>
+        </div>
+      </div>
+    `
+    
+    container.innerHTML = `
+      <div style="background: linear-gradient(135deg, rgba(19, 22, 32, 0.98), rgba(10, 12, 20, 0.98)); border: 1px solid #2a2f42; border-radius: 16px; padding: 32px; box-shadow: 0 12px 40px rgba(0, 0, 0, 0.45);">
+        <!-- Header -->
+        <div style="display: flex; justify-content: center; margin-bottom: 20px;">
+          <div style="display: flex; align-items: center; gap: 20px;">
+            ${logoBase64 ? `<img src="${logoBase64}" style="width: 70px; height: 70px; object-fit: contain;" />` : ''}
+            <div>
+              <div style="font-size: 32px; font-weight: 800; color: #f7f7ff;">⚡ Category Power Rankings</div>
+              <div style="font-size: 16px; color: #9ca3af;">${leagueName} • Week ${selectedWeek.value}</div>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Divider -->
+        <div style="height: 1px; background: linear-gradient(to right, rgba(59, 159, 232, 0.5), rgba(59, 159, 232, 0.1)); margin-bottom: 24px;"></div>
+        
+        <!-- Rankings (Two Columns) -->
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-bottom: 28px;">
+          <div>${firstHalf.map((team, idx) => generateRankingRow(team, idx + 1)).join('')}</div>
+          <div>${secondHalf.map((team, idx) => generateRankingRow(team, idx + midpoint + 1)).join('')}</div>
+        </div>
+        
+        <!-- Formula Display -->
+        <div style="text-align: center; font-size: 11px; color: #7b7f92; margin-bottom: 24px;">
+          ${currentFormulaDisplay.value}
+        </div>
+        
+        <!-- Footer with Logo and Link (Extra Large) -->
+        <div style="text-align: center; padding-top: 20px; border-top: 1px solid rgba(58, 61, 82, 0.5);">
+          <div style="display: flex; flex-direction: column; align-items: center; gap: 16px;">
+            ${logoBase64 ? `<img src="${logoBase64}" style="width: 100px; height: 100px; object-fit: contain;" />` : ''}
+            <div>
+              <div style="font-size: 16px; color: #9ca3af; margin-bottom: 8px;">
+                See a complete breakdown of every team in your league at
+              </div>
+              <div style="font-size: 28px; font-weight: bold; color: #3B9FE8;">
+                ultimatefantasydashboard.com
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    `
+    
+    document.body.appendChild(container)
+    
+    // Wait for images to render
+    await new Promise(resolve => setTimeout(resolve, 500))
+    
+    // Capture the image
+    const canvas = await html2canvas(container, {
+      backgroundColor: '#0a0c14',
+      scale: 2,
+      logging: false,
+      useCORS: true,
+      allowTaint: true
+    })
+    
+    document.body.removeChild(container)
+    
+    // Download the image
+    const link = document.createElement('a')
+    link.download = `category-power-rankings-week-${selectedWeek.value}.png`
+    link.href = canvas.toDataURL('image/png')
+    link.click()
+    
+  } catch (e) {
+    console.error('Error generating image:', e)
+    alert('Failed to generate image. Please try again.')
+  } finally {
+    isGeneratingDownload.value = false
+  }
 }
 
 // Calculate avatar position for chart overlay
