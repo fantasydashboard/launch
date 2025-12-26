@@ -717,41 +717,59 @@ async function calculateRankingsForWeek(throughWeek: number): Promise<TeamCatego
   const rankings: TeamCategoryStats[] = []
   const numTeams = teams.length
   const numCategories = displayCategories.value.length || 12
+  const endWeek = totalWeeks.value || 25
+  
+  console.log(`Calculating rankings for week ${throughWeek}/${endWeek}, ${teams.length} teams, ${numCategories} categories`)
   
   teams.forEach(team => {
-    // Use the cumulative W-L-T from Yahoo standings (these ARE category records)
-    const totalCatWins = team.wins || 0
-    const totalCatLosses = team.losses || 0
-    const totalCatTies = team.ties || 0
-    const totalGames = totalCatWins + totalCatLosses + totalCatTies
+    // Use the cumulative W-L-T from Yahoo standings (these ARE category records for the full season)
+    const fullSeasonWins = team.wins || 0
+    const fullSeasonLosses = team.losses || 0
+    const fullSeasonTies = team.ties || 0
+    const fullSeasonTotal = fullSeasonWins + fullSeasonLosses + fullSeasonTies
     
-    // Scale by week progress (simulate through selected week)
-    const weekProgress = throughWeek / totalWeeks.value
-    const scaledWins = Math.round(totalCatWins * weekProgress)
-    const scaledLosses = Math.round(totalCatLosses * weekProgress)
-    const scaledTies = Math.round(totalCatTies * weekProgress)
+    // Scale proportionally based on week progress through the season
+    const weekProgress = throughWeek / endWeek
+    const scaledWins = Math.round(fullSeasonWins * weekProgress)
+    const scaledLosses = Math.round(fullSeasonLosses * weekProgress)
+    const scaledTies = Math.round(fullSeasonTies * weekProgress)
+    const scaledTotal = scaledWins + scaledLosses + scaledTies
     
-    const catWinPct = totalGames > 0 ? totalCatWins / totalGames : 0
+    const catWinPct = scaledTotal > 0 ? scaledWins / scaledTotal : 0
     
     // Distribute wins across categories proportionally with variance
     const categoryWins: Record<string, number> = {}
     const categoryLosses: Record<string, number> = {}
-    const baseWinsPerCat = Math.floor(scaledWins / numCategories)
-    let remainingWins = scaledWins - (baseWinsPerCat * numCategories)
     
-    displayCategories.value.forEach((cat, idx) => {
-      // Add variance based on team rank and category index
-      const variance = Math.floor((Math.random() - 0.5) * 4)
-      let wins = baseWinsPerCat + variance
+    if (numCategories > 0 && scaledWins > 0) {
+      const baseWinsPerCat = Math.floor(scaledWins / numCategories)
+      let remainingWins = scaledWins - (baseWinsPerCat * numCategories)
       
-      if (remainingWins > 0 && Math.random() > 0.5) {
-        wins++
-        remainingWins--
-      }
+      // Seed random based on team key for consistent results
+      const teamSeed = team.team_key.split('.').pop() || '1'
+      let seedVal = parseInt(teamSeed) * throughWeek
       
-      categoryWins[cat.stat_id] = Math.max(0, wins)
-      categoryLosses[cat.stat_id] = Math.max(0, Math.floor(scaledLosses / numCategories))
-    })
+      displayCategories.value.forEach((cat, idx) => {
+        // Deterministic variance based on team and category
+        seedVal = (seedVal * 9301 + 49297) % 233280
+        const variance = Math.floor((seedVal / 233280 - 0.5) * 6)
+        
+        let wins = baseWinsPerCat + variance
+        
+        if (remainingWins > 0) {
+          wins++
+          remainingWins--
+        }
+        
+        categoryWins[cat.stat_id] = Math.max(0, Math.min(wins, throughWeek))
+        categoryLosses[cat.stat_id] = Math.max(0, Math.floor(scaledLosses / numCategories))
+      })
+    } else {
+      displayCategories.value.forEach(cat => {
+        categoryWins[cat.stat_id] = 0
+        categoryLosses[cat.stat_id] = 0
+      })
+    }
     
     rankings.push({
       team_key: team.team_key,
@@ -785,7 +803,7 @@ async function calculateRankingsForWeek(throughWeek: number): Promise<TeamCatego
     })
   })
   
-  // Calculate category ranks
+  // Calculate category ranks for each category
   displayCategories.value.forEach(cat => {
     const sorted = [...rankings].sort((a, b) => 
       (b.categoryWins[cat.stat_id] || 0) - (a.categoryWins[cat.stat_id] || 0)
@@ -796,7 +814,7 @@ async function calculateRankingsForWeek(throughWeek: number): Promise<TeamCatego
     })
   })
   
-  // Calculate derived metrics
+  // Calculate derived metrics for each team
   rankings.forEach(team => {
     // Count dominant (top 3) and weak (bottom 3) categories
     let dominant = 0, weak = 0
@@ -811,50 +829,50 @@ async function calculateRankingsForWeek(throughWeek: number): Promise<TeamCatego
     // Category balance
     team.categoryBalance = calculateCategoryBalance(team.categoryWins)
     
-    // Average cats won per matchup (estimate)
-    const weeksPlayed = throughWeek
-    team.avgCatsWonPerMatchup = weeksPlayed > 0 ? team.totalCatWins / weeksPlayed : 0
+    // Average cats won per matchup
+    team.avgCatsWonPerMatchup = throughWeek > 0 ? team.totalCatWins / throughWeek : 0
     
     // Batting vs Pitching split
     let battingWins = 0, pitchingWins = 0
-    let battingTotal = 0, pitchingTotal = 0
+    let battingCatCount = 0, pitchingCatCount = 0
     
     displayCategories.value.forEach(cat => {
       const wins = team.categoryWins[cat.stat_id] || 0
       if (BATTING_STAT_IDS.includes(cat.stat_id)) {
         battingWins += wins
-        battingTotal++
+        battingCatCount++
       } else if (PITCHING_STAT_IDS.includes(cat.stat_id)) {
         pitchingWins += wins
-        pitchingTotal++
+        pitchingCatCount++
       }
     })
     
     team.battingCatWins = battingWins
     team.pitchingCatWins = pitchingWins
     
-    // Calculate strength as percentage of max possible
-    const maxWinsPerCat = throughWeek
-    team.battingStrength = battingTotal > 0 && maxWinsPerCat > 0 
-      ? Math.min(100, (battingWins / (battingTotal * maxWinsPerCat)) * 100)
+    // Calculate strength as percentage (max possible = throughWeek per category)
+    const maxPossiblePerCat = throughWeek
+    team.battingStrength = battingCatCount > 0 && maxPossiblePerCat > 0 
+      ? Math.min(100, (battingWins / (battingCatCount * maxPossiblePerCat)) * 100)
       : 50
-    team.pitchingStrength = pitchingTotal > 0 && maxWinsPerCat > 0 
-      ? Math.min(100, (pitchingWins / (pitchingTotal * maxWinsPerCat)) * 100)
+    team.pitchingStrength = pitchingCatCount > 0 && maxPossiblePerCat > 0 
+      ? Math.min(100, (pitchingWins / (pitchingCatCount * maxPossiblePerCat)) * 100)
       : 50
     
-    // Recent form (last 3 weeks estimate)
+    // Recent form - use overall win pct with slight variance for last 3 weeks
     const recentWeeks = Math.min(3, throughWeek)
-    const recentPct = team.catWinPct * (1 + (Math.random() - 0.5) * 0.2) // Add variance
-    team.recentCatWinPct = Math.min(1, Math.max(0, recentPct))
-    team.recentCatWins = Math.round(team.recentCatWinPct * numCategories * recentWeeks)
+    team.recentCatWinPct = team.catWinPct
+    team.recentCatWins = Math.round(team.catWinPct * numCategories * recentWeeks)
     team.recentCatLosses = numCategories * recentWeeks - team.recentCatWins
     
-    // Calculate power score
+    // Calculate power score using custom factors
     team.powerScore = calculateCategoryPowerScore(team, rankings, factors.value)
   })
   
   // Sort by power score
   rankings.sort((a, b) => b.powerScore - a.powerScore)
+  
+  console.log(`Week ${throughWeek} rankings calculated. Top team: ${rankings[0]?.name} with ${rankings[0]?.totalCatWins} wins`)
   
   return rankings
 }
@@ -965,9 +983,17 @@ watch(() => leagueStore.yahooTeams, async () => {
   if (leagueStore.yahooTeams.length > 0) {
     await loadLeagueSettings()
     
-    const week = isSeasonComplete.value ? totalWeeks.value : currentWeek.value
-    if (week >= 1) {
-      selectedWeek.value = week.toString()
+    // Default to current week or end of season if finished
+    const endWeek = parseInt(leagueStore.yahooLeague?.end_week) || 25
+    const currWeek = leagueStore.yahooLeague?.current_week || 1
+    const isFinished = leagueStore.yahooLeague?.is_finished === 1
+    
+    const defaultWeek = isFinished ? endWeek : currWeek
+    
+    console.log(`Initializing power rankings: endWeek=${endWeek}, currentWeek=${currWeek}, isFinished=${isFinished}, defaultWeek=${defaultWeek}`)
+    
+    if (defaultWeek >= 1) {
+      selectedWeek.value = defaultWeek.toString()
       loadPowerRankings()
     }
   }
