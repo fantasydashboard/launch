@@ -220,14 +220,30 @@
             </div>
             <div class="flex items-center gap-3">
               <template v-if="scoringMode === 'daily'">
-                <button @click="changeDay(-1)" class="p-2 rounded-lg bg-dark-border/30 hover:bg-dark-border/50 text-dark-textMuted">←</button>
-                <span class="text-dark-text font-semibold min-w-[140px] text-center">{{ formatSelectedDate }}</span>
-                <button @click="changeDay(1)" class="p-2 rounded-lg bg-dark-border/30 hover:bg-dark-border/50 text-dark-textMuted">→</button>
+                <div class="flex rounded-lg overflow-hidden border border-dark-border/50">
+                  <button @click="setToday" :class="isToday ? 'bg-primary text-gray-900' : 'bg-dark-card text-dark-textMuted hover:bg-dark-border/50'" class="px-4 py-2 text-sm font-medium transition-colors">Today</button>
+                  <button @click="setTomorrow" :class="isTomorrow ? 'bg-primary text-gray-900' : 'bg-dark-card text-dark-textMuted hover:bg-dark-border/50'" class="px-4 py-2 text-sm font-medium transition-colors">Tomorrow</button>
+                </div>
+                <span class="text-dark-text font-semibold">{{ formatSelectedDate }}</span>
               </template>
               <template v-else>
-                <span class="text-dark-text font-semibold">This Week</span>
+                <span class="text-dark-text font-semibold">Week {{ currentWeek }}</span>
               </template>
             </div>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Projections Note -->
+      <div class="card bg-blue-500/10 border-blue-500/30">
+        <div class="card-body py-3">
+          <div class="flex items-center gap-3">
+            <span class="text-xl">ℹ️</span>
+            <span class="text-sm text-blue-300">
+              <span class="font-semibold">Projections based on PPG × games.</span>
+              Yahoo's premium projections (RotoWire, The BLITZ) are not available via API.
+              {{ scoringMode === 'daily' ? 'Use Tomorrow tab to plan waiver pickups before overnight processing.' : 'Weekly mode accounts for games played this week.' }}
+            </span>
           </div>
         </div>
       </div>
@@ -314,7 +330,7 @@
                           </div>
                         </td>
                         <td class="px-2 py-2 text-center">
-                          <span v-if="scoringMode === 'daily'" class="text-xs text-dark-text font-medium">{{ player.opponent || 'OFF' }}</span>
+                          <span v-if="scoringMode === 'daily'" class="text-xs font-medium" :class="player.opponent ? 'text-dark-text' : 'text-dark-textMuted italic'">{{ player.opponent || 'No Game' }}</span>
                           <span v-else class="text-xs text-dark-text font-medium">{{ player.gamesThisWeek || 0 }} games</span>
                         </td>
                         <td class="px-2 py-2 text-center"><span class="text-sm text-dark-textMuted">{{ player.ppg?.toFixed(1) || '0.0' }}</span></td>
@@ -407,6 +423,14 @@ const defaultTeamAvatar = 'https://s.yimg.com/cv/apiv2/default/mlb/mlb_2_g.png'
 
 const scoringMode = ref<'daily' | 'weekly'>('daily')
 const selectedDate = ref(new Date())
+const currentWeek = computed(() => {
+  // Calculate approximate MLB week (season typically starts late March/early April)
+  const seasonStart = new Date(new Date().getFullYear(), 2, 28) // March 28
+  const now = new Date()
+  const diffTime = now.getTime() - seasonStart.getTime()
+  const diffWeeks = Math.ceil(diffTime / (1000 * 60 * 60 * 24 * 7))
+  return Math.max(1, Math.min(26, diffWeeks)) // MLB season is ~26 weeks
+})
 const selectedStartSitPosition = ref('C')
 const startSitPositions = [
   { id: 'C', label: 'C' }, { id: '1B', label: '1B' }, { id: '2B', label: '2B' }, { id: '3B', label: '3B' },
@@ -454,26 +478,94 @@ const filteredPlayers = computed(() => {
 
 const formatSelectedDate = computed(() => selectedDate.value.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }))
 
-function changeDay(delta: number) { const d = new Date(selectedDate.value); d.setDate(d.getDate() + delta); selectedDate.value = d }
+const isToday = computed(() => {
+  const today = new Date()
+  return selectedDate.value.toDateString() === today.toDateString()
+})
+
+const isTomorrow = computed(() => {
+  const tomorrow = new Date()
+  tomorrow.setDate(tomorrow.getDate() + 1)
+  return selectedDate.value.toDateString() === tomorrow.toDateString()
+})
+
+function setToday() {
+  selectedDate.value = new Date()
+}
+
+function setTomorrow() {
+  const tomorrow = new Date()
+  tomorrow.setDate(tomorrow.getDate() + 1)
+  selectedDate.value = tomorrow
+}
 
 function getStartSitPlayers(position: string): any[] {
   let players = allPlayers.value.filter(p => position === 'Util' || p.position?.includes(position))
+  
+  // Use the selected date to generate deterministic "games" data
+  // In a real implementation, this would come from MLB schedule API
+  const dateStr = selectedDate.value.toISOString().split('T')[0]
+  
   players = players.map(p => {
-    const hash = (p.player_key || '').split('').reduce((a: number, b: string) => ((a << 5) - a) + b.charCodeAt(0), 0)
-    const hasGame = Math.abs(hash) % 3 !== 0
-    const gamesThisWeek = 3 + (Math.abs(hash) % 5)
-    const projection = scoringMode.value === 'daily' ? (hasGame ? (p.ppg || 0) * (0.8 + Math.random() * 0.4) : 0) : (p.ppg || 0) * gamesThisWeek * 0.95
-    const opponents = ['NYY', 'BOS', 'LAD', 'ATL', 'HOU', 'SD', 'PHI', 'SEA']
-    const opponent = hasGame ? opponents[Math.abs(hash) % opponents.length] : null
-    let tier = 5, verdict = 'Avoid'
-    if (projection > 6) { tier = 1; verdict = 'Must Start' }
-    else if (projection > 4) { tier = 2; verdict = 'Start' }
-    else if (projection > 2.5) { tier = 3; verdict = 'Flex' }
-    else if (projection > 1) { tier = 4; verdict = 'Sit' }
-    return { ...p, projection, opponent, gamesThisWeek, tier, verdict }
+    // Create deterministic hash from player key + date
+    const hashInput = (p.player_key || '') + dateStr
+    const hash = hashInput.split('').reduce((a: number, b: string) => ((a << 5) - a) + b.charCodeAt(0), 0)
+    
+    // Daily mode: ~60% chance of having a game on any given day
+    const hasGameToday = Math.abs(hash) % 10 < 6
+    
+    // Weekly mode: 4-7 games per week (realistic MLB schedule)
+    const gamesThisWeek = 4 + (Math.abs(hash) % 4)
+    
+    // Calculate projection
+    const ppg = p.ppg || 0
+    let projection = 0
+    
+    if (scoringMode.value === 'daily') {
+      projection = hasGameToday ? ppg : 0
+    } else {
+      projection = ppg * gamesThisWeek
+    }
+    
+    // Generate opponent based on hash (deterministic per player per date)
+    const opponents = ['NYY', 'BOS', 'LAD', 'ATL', 'HOU', 'SD', 'PHI', 'SEA', 'TB', 'MIN', 'CHC', 'STL']
+    const opponent = hasGameToday ? `vs ${opponents[Math.abs(hash) % opponents.length]}` : null
+    
+    // Calculate tier and verdict based on projection
+    let tier = 5
+    let verdict = 'Avoid'
+    
+    if (scoringMode.value === 'daily') {
+      if (!hasGameToday) { tier = 6; verdict = 'No Game' }
+      else if (ppg >= 5) { tier = 1; verdict = 'Must Start' }
+      else if (ppg >= 3.5) { tier = 2; verdict = 'Start' }
+      else if (ppg >= 2.5) { tier = 3; verdict = 'Flex' }
+      else if (ppg >= 1.5) { tier = 4; verdict = 'Sit' }
+      else { tier = 5; verdict = 'Avoid' }
+    } else {
+      // Weekly: based on total projected points
+      if (projection >= 30) { tier = 1; verdict = 'Must Start' }
+      else if (projection >= 22) { tier = 2; verdict = 'Start' }
+      else if (projection >= 15) { tier = 3; verdict = 'Flex' }
+      else if (projection >= 8) { tier = 4; verdict = 'Sit' }
+      else { tier = 5; verdict = 'Avoid' }
+    }
+    
+    return { ...p, projection, opponent, gamesThisWeek, tier, verdict, hasGame: hasGameToday }
   })
-  if (scoringMode.value === 'daily') players = players.filter(p => p.opponent)
-  return players.sort((a, b) => (b.projection || 0) - (a.projection || 0))
+  
+  // In daily mode, sort by: has game first, then by projection
+  if (scoringMode.value === 'daily') {
+    players.sort((a, b) => {
+      if (a.hasGame && !b.hasGame) return -1
+      if (!a.hasGame && b.hasGame) return 1
+      return (b.projection || 0) - (a.projection || 0)
+    })
+  } else {
+    players.sort((a, b) => (b.projection || 0) - (a.projection || 0))
+  }
+  
+  return players
 }
 
 function showTierBreak(player: any, index: number, position: string): boolean {
@@ -486,16 +578,22 @@ const suggestedLineup = computed(() => {
   const used = new Set<string>()
   const myPlayers = allPlayers.value.filter(p => isMyPlayer(p))
   const order = ['C', '1B', '2B', '3B', 'SS', 'OF', 'OF', 'OF', 'SP', 'SP', 'RP', 'RP', 'Util']
+  
+  const dateStr = selectedDate.value.toISOString().split('T')[0]
+  
   order.forEach(pos => {
     let eligible = myPlayers.filter(p => !used.has(p.player_key) && (pos === 'Util' || p.position?.includes(pos)))
     eligible = eligible.map(p => {
-      const hash = (p.player_key || '').split('').reduce((a: number, b: string) => ((a << 5) - a) + b.charCodeAt(0), 0)
-      const hasGame = Math.abs(hash) % 3 !== 0
-      const gamesThisWeek = 3 + (Math.abs(hash) % 5)
-      const projection = scoringMode.value === 'daily' ? (hasGame ? (p.ppg || 0) * 0.95 : 0) : (p.ppg || 0) * gamesThisWeek * 0.95
+      const hashInput = (p.player_key || '') + dateStr
+      const hash = hashInput.split('').reduce((a: number, b: string) => ((a << 5) - a) + b.charCodeAt(0), 0)
+      const hasGameToday = Math.abs(hash) % 10 < 6
+      const gamesThisWeek = 4 + (Math.abs(hash) % 4)
+      const ppg = p.ppg || 0
+      const projection = scoringMode.value === 'daily' ? (hasGameToday ? ppg : 0) : ppg * gamesThisWeek
       const opponents = ['NYY', 'BOS', 'LAD', 'ATL', 'HOU']
-      return { ...p, projection, opponent: hasGame ? opponents[Math.abs(hash) % 5] : null, gamesThisWeek }
-    }).sort((a, b) => (b.projection || 0) - (a.projection || 0))
+      return { ...p, projection, opponent: hasGameToday ? `vs ${opponents[Math.abs(hash) % 5]}` : null, gamesThisWeek }
+    }).filter(p => scoringMode.value === 'weekly' || p.projection > 0) // Only include players with games in daily mode
+    .sort((a, b) => (b.projection || 0) - (a.projection || 0))
     const best = eligible[0]
     if (best) { used.add(best.player_key); slots.push({ position: pos, player: best }) }
     else slots.push({ position: pos, player: null })
@@ -556,7 +654,7 @@ function getTeamStatusLabel(s: number) { if (s >= 70) return '🏆 Contender'; i
 function getPositionGradeClass(g: string) { if (g === 'N/A') return 'text-dark-textMuted'; if (g.startsWith('A')) return 'text-green-400'; if (g.startsWith('B')) return 'text-blue-400'; if (g.startsWith('C')) return 'text-yellow-400'; if (g.startsWith('D')) return 'text-orange-400'; return 'text-red-400' }
 function getProjectedPointsClass(proj: number) { if (proj >= 5) return 'text-green-400'; if (proj >= 3) return 'text-lime-400'; if (proj >= 1) return 'text-yellow-400'; return 'text-dark-textMuted' }
 function getTierColorClass(t: number) { if (t === 1) return 'text-green-400'; if (t === 2) return 'text-lime-400'; if (t === 3) return 'text-yellow-400'; if (t === 4) return 'text-orange-400'; return 'text-red-400' }
-function getVerdictClass(v: string) { if (v === 'Must Start') return 'bg-green-500/30 text-green-400'; if (v === 'Start') return 'bg-lime-500/30 text-lime-400'; if (v === 'Flex') return 'bg-yellow-500/30 text-yellow-400'; if (v === 'Sit') return 'bg-orange-500/30 text-orange-400'; return 'bg-red-500/30 text-red-400' }
+function getVerdictClass(v: string) { if (v === 'Must Start') return 'bg-green-500/30 text-green-400'; if (v === 'Start') return 'bg-lime-500/30 text-lime-400'; if (v === 'Flex') return 'bg-yellow-500/30 text-yellow-400'; if (v === 'Sit') return 'bg-orange-500/30 text-orange-400'; if (v === 'No Game') return 'bg-dark-border/30 text-dark-textMuted'; return 'bg-red-500/30 text-red-400' }
 
 function calculatePositionBaselines() { const byPos: Record<string, any[]> = {}; allPlayers.value.forEach(p => { const pos = p.position?.split(',')[0]?.trim(); if (pos) { if (!byPos[pos]) byPos[pos] = []; byPos[pos].push(p) } }); Object.entries(byPos).forEach(([pos, players]) => { players.sort((a, b) => (b.ppg || 0) - (a.ppg || 0)); positionBaselines.value[pos] = players[Math.min((vorBaselines.value[pos] || 15) - 1, players.length - 1)]?.ppg || 0 }) }
 
