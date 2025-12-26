@@ -45,26 +45,26 @@
               <div class="flex items-center gap-3 flex-1 min-w-0">
                 <div class="relative">
                   <img 
-                    :src="matchup.team1.logo_url || defaultAvatar" 
-                    :alt="matchup.team1.name" 
-                    :class="['w-10 h-10 rounded-full border-2 transition-colors object-cover', matchup.team1.is_my_team ? 'border-primary ring-2 ring-primary/30' : 'border-dark-border group-hover:border-primary/50']"
+                    :src="matchup.team1?.logo_url || defaultAvatar" 
+                    :alt="matchup.team1?.name || 'Team 1'" 
+                    :class="['w-10 h-10 rounded-full border-2 transition-colors object-cover', matchup.team1?.is_my_team ? 'border-primary ring-2 ring-primary/30' : 'border-dark-border group-hover:border-primary/50']"
                     @error="handleImageError" 
                   />
-                  <div v-if="matchup.team1.is_my_team" class="absolute -top-0.5 -left-0.5 w-4 h-4 bg-primary rounded-full flex items-center justify-center shadow">
+                  <div v-if="matchup.team1?.is_my_team" class="absolute -top-0.5 -left-0.5 w-4 h-4 bg-primary rounded-full flex items-center justify-center shadow">
                     <span class="text-[8px] text-gray-900 font-bold">★</span>
                   </div>
                 </div>
                 <div class="flex-1 min-w-0">
-                  <div class="font-bold text-sm text-dark-text truncate">{{ matchup.team1.name }}</div>
-                  <div class="text-xs text-dark-textMuted">{{ getTeamRecord(matchup.team1.team_key) }}</div>
+                  <div class="font-bold text-sm text-dark-text truncate">{{ matchup.team1?.name || 'TBD' }}</div>
+                  <div class="text-xs text-dark-textMuted">{{ getTeamRecord(matchup.team1?.team_key) }}</div>
                 </div>
               </div>
               <div class="text-right pl-3">
                 <div class="text-xl font-black text-dark-text">
-                  {{ isCategoryLeague ? matchup.team1.category_wins || 0 : (matchup.team1.points || 0).toFixed(1) }}
+                  {{ isCategoryLeague ? (matchup.team1?.category_wins || 0) : (matchup.team1?.points || 0).toFixed(1) }}
                 </div>
                 <div v-if="isCategoryLeague" class="text-xs text-primary font-medium">cat wins</div>
-                <div v-else-if="matchup.team1.projected_points" class="text-xs text-primary font-medium">
+                <div v-else-if="matchup.team1?.projected_points" class="text-xs text-primary font-medium">
                   proj {{ matchup.team1.projected_points.toFixed(0) }}
                 </div>
               </div>
@@ -77,26 +77,26 @@
               <div class="flex items-center gap-3 flex-1 min-w-0">
                 <div class="relative">
                   <img 
-                    :src="matchup.team2.logo_url || defaultAvatar" 
-                    :alt="matchup.team2.name" 
-                    :class="['w-10 h-10 rounded-full border-2 transition-colors object-cover', matchup.team2.is_my_team ? 'border-primary ring-2 ring-primary/30' : 'border-dark-border group-hover:border-primary/50']"
+                    :src="matchup.team2?.logo_url || defaultAvatar" 
+                    :alt="matchup.team2?.name || 'Team 2'" 
+                    :class="['w-10 h-10 rounded-full border-2 transition-colors object-cover', matchup.team2?.is_my_team ? 'border-primary ring-2 ring-primary/30' : 'border-dark-border group-hover:border-primary/50']"
                     @error="handleImageError" 
                   />
-                  <div v-if="matchup.team2.is_my_team" class="absolute -top-0.5 -left-0.5 w-4 h-4 bg-primary rounded-full flex items-center justify-center shadow">
+                  <div v-if="matchup.team2?.is_my_team" class="absolute -top-0.5 -left-0.5 w-4 h-4 bg-primary rounded-full flex items-center justify-center shadow">
                     <span class="text-[8px] text-gray-900 font-bold">★</span>
                   </div>
                 </div>
                 <div class="flex-1 min-w-0">
-                  <div class="font-bold text-sm text-dark-text truncate">{{ matchup.team2.name }}</div>
-                  <div class="text-xs text-dark-textMuted">{{ getTeamRecord(matchup.team2.team_key) }}</div>
+                  <div class="font-bold text-sm text-dark-text truncate">{{ matchup.team2?.name || 'TBD' }}</div>
+                  <div class="text-xs text-dark-textMuted">{{ getTeamRecord(matchup.team2?.team_key) }}</div>
                 </div>
               </div>
               <div class="text-right pl-3">
                 <div class="text-xl font-black text-dark-text">
-                  {{ isCategoryLeague ? matchup.team2.category_wins || 0 : (matchup.team2.points || 0).toFixed(1) }}
+                  {{ isCategoryLeague ? (matchup.team2?.category_wins || 0) : (matchup.team2?.points || 0).toFixed(1) }}
                 </div>
                 <div v-if="isCategoryLeague" class="text-xs text-primary font-medium">cat wins</div>
-                <div v-else-if="matchup.team2.projected_points" class="text-xs text-primary font-medium">
+                <div v-else-if="matchup.team2?.projected_points" class="text-xs text-primary font-medium">
                   proj {{ matchup.team2.projected_points.toFixed(0) }}
                 </div>
               </div>
@@ -152,7 +152,7 @@
             </div>
             <div class="flex items-center gap-3 mb-3">
               <img 
-                :src="isCategoryLeague ? leaders.mostCatsAboveAvg?.logo_url : leaders.mostPoints?.logo_url || defaultAvatar" 
+                :src="(isCategoryLeague ? leaders.mostCatsAboveAvg?.logo_url : leaders.mostPoints?.logo_url) || defaultAvatar" 
                 :alt="isCategoryLeague ? leaders.mostCatsAboveAvg?.name : leaders.mostPoints?.name" 
                 class="w-12 h-12 rounded-full border-2 border-yellow-500/50 object-cover" 
                 @error="handleImageError" 
@@ -858,10 +858,11 @@ const leaderModalBarColor = computed(() => {
 })
 
 // Helper functions
-function getTeamRecord(teamKey: string) {
+function getTeamRecord(teamKey: string | undefined) {
+  if (!teamKey) return '0-0'
   const team = leagueStore.yahooTeams.find(t => t.team_key === teamKey)
   if (!team) return '0-0'
-  return `${team.wins}-${team.losses}${team.ties > 0 ? `-${team.ties}` : ''}`
+  return `${team.wins || 0}-${team.losses || 0}${team.ties > 0 ? `-${team.ties}` : ''}`
 }
 
 function getWinPercentage(team: any) {
