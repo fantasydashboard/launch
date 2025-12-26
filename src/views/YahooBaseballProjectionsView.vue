@@ -4,17 +4,13 @@
     <div class="flex items-center justify-between flex-wrap gap-4">
       <div>
         <h1 class="text-3xl font-bold text-dark-text mb-2">Player Projections</h1>
-        <p class="text-base text-dark-textMuted">
-          Rest of season rankings with position-adjusted value analysis
-        </p>
+        <p class="text-base text-dark-textMuted">Rest of season rankings with position-adjusted value analysis</p>
       </div>
       <div class="flex items-center gap-3">
-        <!-- Settings Gear -->
-        <button 
-          @click="showSettingsModal = true" 
-          class="p-2 rounded-lg hover:bg-dark-border/50 transition-colors" 
-          title="Projection Settings"
-        >
+        <button @click="loadProjections" :disabled="isLoading" class="px-4 py-2 rounded-lg bg-dark-card hover:bg-dark-border/50 text-dark-textMuted transition-all flex items-center gap-2">
+          <span :class="{ 'animate-spin': isLoading }">🔄</span> Refresh
+        </button>
+        <button @click="showSettingsModal = true" class="p-2 rounded-lg hover:bg-dark-border/50 transition-colors" title="Settings">
           <svg class="w-6 h-6 text-dark-textMuted" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
@@ -25,15 +21,10 @@
 
     <!-- Tab Navigation -->
     <div class="flex gap-2">
-      <button
-        v-for="tab in tabs"
-        :key="tab.id"
-        @click="activeTab = tab.id"
+      <button v-for="tab in tabs" :key="tab.id" @click="activeTab = tab.id"
         :class="activeTab === tab.id ? 'bg-primary text-gray-900' : 'bg-dark-card text-dark-textSecondary hover:bg-dark-border/50'"
-        class="px-6 py-3 rounded-xl font-semibold transition-all flex items-center gap-2"
-      >
-        <span class="text-xl">{{ tab.icon }}</span>
-        {{ tab.name }}
+        class="px-6 py-3 rounded-xl font-semibold transition-all flex items-center gap-2">
+        <span class="text-xl">{{ tab.icon }}</span> {{ tab.name }}
       </button>
     </div>
 
@@ -41,230 +32,93 @@
     <div v-if="isLoading" class="flex items-center justify-center py-20">
       <div class="text-center">
         <div class="animate-spin rounded-full h-16 w-16 border-b-4 border-primary mx-auto mb-4"></div>
-        <p class="text-dark-textMuted">Loading projections...</p>
+        <p class="text-dark-textMuted">{{ loadingMessage }}</p>
       </div>
     </div>
 
     <!-- REST OF SEASON TAB -->
     <template v-else-if="activeTab === 'ros'">
-      <!-- Custom Rankings Indicator -->
-      <div v-if="hasCustomRankings" class="card bg-primary/10 border-primary/30">
-        <div class="card-body py-4">
-          <div class="flex items-center justify-between">
-            <div class="flex items-center gap-3">
-              <span class="text-2xl">✓</span>
-              <div>
-                <h3 class="font-semibold text-primary">Using Custom Rankings</h3>
-                <p class="text-sm text-dark-textMuted">
-                  {{ customRankingsCount }} players loaded
-                </p>
-              </div>
-            </div>
-            <button @click="clearCustomRankings" class="px-4 py-2 rounded-lg bg-dark-card hover:bg-dark-border/50 text-dark-text font-medium transition-colors">
-              Reset to Default Rankings
-            </button>
+      <!-- Data Source Info -->
+      <div class="card bg-green-500/10 border-green-500/30">
+        <div class="card-body py-3">
+          <div class="flex items-center gap-3">
+            <span class="text-xl">✓</span>
+            <span class="font-semibold text-green-400">Live Yahoo Data</span>
+            <span class="text-dark-textMuted">{{ allPlayers.length }} players • Your league scoring</span>
           </div>
         </div>
       </div>
 
-      <!-- Ranking Customizer Panel -->
-      <div v-if="!hasCustomRankings" class="card bg-gradient-to-br from-dark-card to-dark-border/30 border border-primary/20">
+      <!-- Ranking Customizer -->
+      <div class="card bg-gradient-to-br from-dark-card to-dark-border/30 border border-primary/20">
         <div class="card-header cursor-pointer" @click="isCustomizerExpanded = !isCustomizerExpanded">
-          <div class="flex items-center justify-between">
-            <div class="flex items-center gap-3">
-              <span class="text-2xl">🎛️</span>
-              <div>
-                <h2 class="card-title text-lg">Customize Your Rankings</h2>
-                <p class="text-sm text-dark-textMuted">
-                  {{ enabledFactorCount }} factors enabled • {{ activePresetName }}
-                </p>
-              </div>
+          <div class="flex items-center gap-3">
+            <span class="text-2xl">🎛️</span>
+            <div>
+              <h2 class="card-title text-lg">Customize Rankings</h2>
+              <p class="text-sm text-dark-textMuted">{{ enabledFactorCount }} factors • {{ activePresetName }}</p>
             </div>
-            <div class="flex items-center gap-3">
-              <div class="flex gap-1">
-                <button
-                  v-for="preset in presets.slice(0, 4)"
-                  :key="preset.id"
-                  @click.stop="applyPreset(preset)"
-                  :class="activePresetId === preset.id ? 'bg-primary text-gray-900' : 'bg-dark-border/50 text-dark-textMuted hover:bg-dark-border'"
-                  class="px-3 py-1.5 rounded-lg text-xs font-medium transition-all"
-                >
-                  {{ preset.icon }} {{ preset.name }}
-                </button>
-              </div>
-              <svg 
-                class="w-5 h-5 text-dark-textMuted transition-transform" 
-                :class="{ 'rotate-180': isCustomizerExpanded }"
-                fill="none" stroke="currentColor" viewBox="0 0 24 24"
-              >
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
-              </svg>
+          </div>
+          <div class="flex items-center gap-3">
+            <div class="flex gap-1">
+              <button v-for="preset in presets.slice(0,4)" :key="preset.id" @click.stop="applyPreset(preset)"
+                :class="activePresetId === preset.id ? 'bg-primary text-gray-900' : 'bg-dark-border/50 text-dark-textMuted'"
+                class="px-3 py-1.5 rounded-lg text-xs font-medium">
+                {{ preset.icon }} {{ preset.name }}
+              </button>
             </div>
+            <svg class="w-5 h-5 text-dark-textMuted transition-transform" :class="{ 'rotate-180': isCustomizerExpanded }" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+            </svg>
           </div>
         </div>
-        
-        <div v-if="isCustomizerExpanded" class="card-body pt-0 space-y-6">
-          <!-- Factor Categories Grid -->
-          <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            <!-- Core Factors -->
-            <div class="bg-dark-bg/50 rounded-xl p-4">
-              <h3 class="font-semibold text-dark-text mb-3 flex items-center gap-2">
-                <span class="w-2 h-2 rounded-full bg-green-500"></span>
-                Core
-              </h3>
+        <div v-if="isCustomizerExpanded" class="card-body pt-0 space-y-4">
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div v-for="(group, gIdx) in [coreFactors, performanceFactors, contextFactors]" :key="gIdx" class="bg-dark-bg/50 rounded-xl p-4">
+              <h3 class="font-semibold text-dark-text mb-3">{{ ['Core', 'Performance', 'Context'][gIdx] }}</h3>
               <div class="space-y-3">
-                <div v-for="factor in coreFactors" :key="factor.id" class="flex items-center justify-between">
-                  <label class="flex items-center gap-2 cursor-pointer">
-                    <input 
-                      type="checkbox" 
-                      :checked="factor.enabled" 
-                      @change="toggleFactor(factor.id)"
-                      :disabled="factor.id === 'baseProjection'"
-                      class="rounded accent-primary w-4 h-4"
-                    />
-                    <span class="text-sm text-dark-text">{{ factor.name }}</span>
-                  </label>
-                  <input 
-                    v-if="factor.enabled"
-                    type="range" 
-                    :value="factor.weight" 
-                    @input="updateWeight(factor.id, Number(($event.target as HTMLInputElement).value))"
-                    min="0" max="100" 
-                    class="w-16 h-1 accent-primary"
-                  />
-                </div>
-              </div>
-            </div>
-
-            <!-- Performance Factors -->
-            <div class="bg-dark-bg/50 rounded-xl p-4">
-              <h3 class="font-semibold text-dark-text mb-3 flex items-center gap-2">
-                <span class="w-2 h-2 rounded-full bg-blue-500"></span>
-                Performance
-              </h3>
-              <div class="space-y-3">
-                <div v-for="factor in performanceFactors" :key="factor.id" class="flex items-center justify-between">
-                  <label class="flex items-center gap-2 cursor-pointer">
-                    <input 
-                      type="checkbox" 
-                      :checked="factor.enabled" 
-                      @change="toggleFactor(factor.id)"
-                      class="rounded accent-primary w-4 h-4"
-                    />
-                    <span class="text-sm text-dark-text">{{ factor.name }}</span>
-                  </label>
-                  <input 
-                    v-if="factor.enabled"
-                    type="range" 
-                    :value="factor.weight" 
-                    @input="updateWeight(factor.id, Number(($event.target as HTMLInputElement).value))"
-                    min="0" max="100" 
-                    class="w-16 h-1 accent-primary"
-                  />
-                </div>
-              </div>
-            </div>
-
-            <!-- Schedule Factors -->
-            <div class="bg-dark-bg/50 rounded-xl p-4">
-              <h3 class="font-semibold text-dark-text mb-3 flex items-center gap-2">
-                <span class="w-2 h-2 rounded-full bg-yellow-500"></span>
-                Schedule
-              </h3>
-              <div class="space-y-3">
-                <div v-for="factor in scheduleFactors" :key="factor.id" class="flex items-center justify-between">
-                  <label class="flex items-center gap-2 cursor-pointer">
-                    <input 
-                      type="checkbox" 
-                      :checked="factor.enabled" 
-                      @change="toggleFactor(factor.id)"
-                      class="rounded accent-primary w-4 h-4"
-                    />
-                    <span class="text-sm text-dark-text">{{ factor.name }}</span>
-                  </label>
-                  <input 
-                    v-if="factor.enabled"
-                    type="range" 
-                    :value="factor.weight" 
-                    @input="updateWeight(factor.id, Number(($event.target as HTMLInputElement).value))"
-                    min="0" max="100" 
-                    class="w-16 h-1 accent-primary"
-                  />
+                <div v-for="factor in group" :key="factor.id" class="space-y-1">
+                  <div class="flex items-center justify-between">
+                    <label class="flex items-center gap-2 cursor-pointer">
+                      <input type="checkbox" :checked="factor.enabled" @change="toggleFactor(factor.id)" class="rounded accent-primary w-4 h-4" />
+                      <span class="text-sm text-dark-text">{{ factor.name }}</span>
+                    </label>
+                    <span v-if="factor.enabled" class="text-xs text-primary">{{ factor.weight }}%</span>
+                  </div>
+                  <input v-if="factor.enabled" type="range" :value="factor.weight" @input="updateWeight(factor.id, Number(($event.target as HTMLInputElement).value))" min="0" max="100" class="w-full h-1 accent-primary" />
                 </div>
               </div>
             </div>
           </div>
-
-          <!-- Action Buttons -->
-          <div class="flex items-center justify-between pt-2 border-t border-dark-border/30">
-            <div class="text-sm text-dark-textMuted">
-              <span class="text-primary font-semibold">{{ enabledFactorCount }}</span> factors will influence rankings
-            </div>
-            <div class="flex items-center gap-3">
-              <button @click="resetFactors" class="px-4 py-2 rounded-lg bg-dark-border/50 text-dark-textMuted hover:bg-dark-border transition-colors">
-                Reset
-              </button>
-              <button @click="applyRankings" class="px-6 py-2 rounded-lg bg-primary text-gray-900 font-semibold hover:bg-primary/90 transition-colors">
-                Apply Rankings
-              </button>
+          <div class="flex justify-between pt-2 border-t border-dark-border/30">
+            <span class="text-sm text-dark-textMuted"><span class="text-primary font-semibold">{{ enabledFactorCount }}</span> factors active</span>
+            <div class="flex gap-3">
+              <button @click="resetFactors" class="px-4 py-2 rounded-lg bg-dark-border/50 text-dark-textMuted">Reset</button>
+              <button @click="applyRankings" class="px-6 py-2 rounded-lg bg-primary text-gray-900 font-semibold">Apply</button>
             </div>
           </div>
         </div>
       </div>
 
-      <!-- Controls Card -->
+      <!-- Filters -->
       <div class="card">
         <div class="card-body py-4">
-          <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-            <!-- Position Filters -->
+          <div class="flex flex-wrap items-center justify-between gap-4">
             <div class="flex items-center gap-2 flex-wrap">
               <span class="text-dark-textMuted font-medium">Positions:</span>
-              <div class="flex gap-2">
-                <button
-                  v-for="pos in positionFilters"
-                  :key="pos.id"
-                  @click="togglePositionFilter(pos.id)"
-                  :class="selectedPositions.includes(pos.id) ? 'bg-primary text-gray-900' : 'bg-dark-border/50 text-dark-textSecondary'"
-                  class="px-4 py-2 rounded-lg font-medium transition-all text-sm"
-                >
-                  {{ pos.label }}
-                </button>
-              </div>
+              <button @click="selectAllPositions" :class="selectedPositions.length === positionFilters.length ? 'bg-primary text-gray-900' : 'bg-dark-border/50 text-dark-textSecondary'" class="px-3 py-1.5 rounded-lg text-sm font-medium">All</button>
+              <button v-for="pos in positionFilters" :key="pos.id" @click="togglePositionFilter(pos.id)"
+                :class="selectedPositions.includes(pos.id) ? 'bg-primary text-gray-900' : 'bg-dark-border/50 text-dark-textSecondary'"
+                class="px-3 py-1.5 rounded-lg text-sm font-medium">{{ pos.label }}</button>
             </div>
-            
-            <!-- View Toggle & Filters -->
-            <div class="flex items-center gap-4 flex-wrap">
+            <div class="flex items-center gap-4">
               <label class="flex items-center gap-2 text-sm text-dark-textMuted cursor-pointer">
-                <input type="checkbox" v-model="showOnlyMyPlayers" class="rounded accent-primary w-4 h-4" />
-                <span>My Players Only</span>
+                <input type="checkbox" v-model="showOnlyMyPlayers" class="rounded accent-primary w-4 h-4" /> My Players
               </label>
-              
               <label class="flex items-center gap-2 text-sm text-dark-textMuted cursor-pointer">
-                <input type="checkbox" v-model="showOnlyFreeAgents" class="rounded accent-cyan-400 w-4 h-4" />
-                <span>Free Agents Only</span>
+                <input type="checkbox" v-model="showOnlyFreeAgents" class="rounded accent-cyan-400 w-4 h-4" /> Free Agents
               </label>
-              
-              <div class="text-sm text-dark-textMuted">
-                {{ filteredPlayers.length }} players
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Legend Card -->
-      <div class="card">
-        <div class="card-body py-3">
-          <div class="flex items-center justify-between flex-wrap gap-4">
-            <div class="flex items-center gap-6 text-sm">
-              <div class="flex items-center gap-2">
-                <div class="w-4 h-4 rounded bg-primary/30 border-l-2 border-primary"></div>
-                <span class="text-dark-textMuted">My Players</span>
-              </div>
-              <div class="flex items-center gap-2">
-                <div class="w-4 h-4 rounded bg-cyan-500/20 border-l-2 border-cyan-400"></div>
-                <span class="text-dark-textMuted">Free Agents</span>
-              </div>
+              <span class="text-sm text-dark-textMuted">{{ filteredPlayers.length }} players</span>
             </div>
           </div>
         </div>
@@ -275,226 +129,57 @@
         <div class="card-header">
           <div class="flex items-center gap-2">
             <span class="text-2xl">📊</span>
-            <h2 class="card-title">
-              Rest of Season Rankings
-            </h2>
+            <h2 class="card-title">Rest of Season Rankings</h2>
           </div>
-          <div v-if="lastUpdated" class="text-sm text-dark-textMuted">
-            Updated: {{ lastUpdated }}
-          </div>
+          <span v-if="lastUpdated" class="text-sm text-dark-textMuted">Updated: {{ lastUpdated }}</span>
         </div>
         <div class="card-body p-0">
           <div class="overflow-x-auto max-h-[70vh] overflow-y-auto">
             <table class="w-full">
               <thead class="bg-dark-border/30 sticky top-0 z-10">
                 <tr>
-                  <th class="px-4 py-3 text-left text-xs font-semibold text-dark-textMuted uppercase tracking-wider w-16">Rank</th>
-                  <th class="px-4 py-3 text-left text-xs font-semibold text-dark-textMuted uppercase tracking-wider">Player</th>
-                  <th class="px-4 py-3 text-left text-xs font-semibold text-dark-textMuted uppercase tracking-wider w-32">Team Owner</th>
-                  <th class="px-4 py-3 text-center text-xs font-semibold text-dark-textMuted uppercase tracking-wider w-16">Pos</th>
-                  <th class="px-4 py-3 text-center text-xs font-semibold text-dark-textMuted uppercase tracking-wider w-20">Pos Rank</th>
-                  <th class="px-4 py-3 text-center text-xs font-semibold text-dark-textMuted uppercase tracking-wider w-16">Δ</th>
-                  <th class="px-4 py-3 text-center text-xs font-semibold text-dark-textMuted uppercase tracking-wider w-24 cursor-pointer hover:text-dark-text" @click="sortBy('rosSOS')">
-                    ROS SOS
-                    <span v-if="sortColumn === 'rosSOS'" class="ml-1">{{ sortDirection === 'asc' ? '↑' : '↓' }}</span>
-                  </th>
-                  <th class="px-4 py-3 text-center text-xs font-semibold text-dark-textMuted uppercase tracking-wider w-24 cursor-pointer hover:text-dark-text" @click="sortBy('next4SOS')">
-                    Next 4
-                    <span v-if="sortColumn === 'next4SOS'" class="ml-1">{{ sortDirection === 'asc' ? '↑' : '↓' }}</span>
-                  </th>
-                  <th class="px-4 py-3 text-center text-xs font-semibold text-dark-textMuted uppercase tracking-wider w-20 cursor-pointer hover:text-dark-text" @click="sortBy('ppg')">
-                    PPG
-                    <span v-if="sortColumn === 'ppg'" class="ml-1">{{ sortDirection === 'asc' ? '↑' : '↓' }}</span>
-                  </th>
-                  <th class="px-4 py-3 text-center text-xs font-semibold text-dark-textMuted uppercase tracking-wider w-20 cursor-pointer hover:text-dark-text" @click="sortBy('vor')">
-                    VOR
-                    <span v-if="sortColumn === 'vor'" class="ml-1">{{ sortDirection === 'asc' ? '↑' : '↓' }}</span>
-                  </th>
+                  <th class="px-3 py-3 text-left text-xs font-semibold text-dark-textMuted uppercase w-14">Rank</th>
+                  <th class="px-3 py-3 text-left text-xs font-semibold text-dark-textMuted uppercase">Player</th>
+                  <th class="px-3 py-3 text-left text-xs font-semibold text-dark-textMuted uppercase w-28">Owner</th>
+                  <th class="px-3 py-3 text-center text-xs font-semibold text-dark-textMuted uppercase w-14">Pos</th>
+                  <th class="px-3 py-3 text-center text-xs font-semibold text-dark-textMuted uppercase w-14">Pos Rk</th>
+                  <th @click="sortBy('total_points')" class="px-3 py-3 text-center text-xs font-semibold text-dark-textMuted uppercase w-16 cursor-pointer hover:text-dark-text">Pts</th>
+                  <th @click="sortBy('ppg')" class="px-3 py-3 text-center text-xs font-semibold text-dark-textMuted uppercase w-14 cursor-pointer hover:text-dark-text">PPG</th>
+                  <th @click="sortBy('vor')" class="px-3 py-3 text-center text-xs font-semibold text-dark-textMuted uppercase w-14 cursor-pointer hover:text-dark-text">VOR</th>
                 </tr>
               </thead>
               <tbody class="divide-y divide-dark-border/30">
-                <template v-for="(player, index) in filteredPlayers" :key="player.player_id">
-                  <!-- Player Row -->
-                  <tr
-                    :class="[getRowClass(player), expandedPlayerId === player.player_id ? 'bg-dark-border/30' : '']"
-                    class="hover:bg-dark-border/20 transition-colors cursor-pointer"
-                    @click="togglePlayerExpanded(player.player_id)"
-                  >
-                    <td class="px-4 py-3">
-                      <span class="font-bold text-lg text-dark-text">{{ player.rosRank }}</span>
-                    </td>
-                    <td class="px-4 py-3">
-                      <div class="flex items-center gap-3">
-                        <div class="relative">
-                          <div class="w-10 h-10 rounded-full bg-dark-border overflow-hidden flex-shrink-0 ring-2" :class="getAvatarRingClass(player)">
-                            <img :src="getPlayerImageUrl(player.player_id)" :alt="player.full_name" class="w-full h-full object-cover" @error="handleImageError" />
-                          </div>
-                          <div v-if="isMyPlayer(player.player_id)" class="absolute -top-1 -right-1 w-5 h-5 bg-primary rounded-full flex items-center justify-center shadow-lg">
-                            <span class="text-xs text-gray-900 font-bold">★</span>
-                          </div>
-                          <div v-else-if="isFreeAgent(player.player_id)" class="absolute -top-1 -right-1 w-5 h-5 bg-cyan-400 rounded-full flex items-center justify-center shadow-lg">
-                            <span class="text-xs text-gray-900 font-bold">+</span>
-                          </div>
+                <tr v-for="(player, idx) in filteredPlayers" :key="player.player_key"
+                  :class="[getRowClass(player), expandedPlayerId === player.player_key ? 'bg-dark-border/30' : '']"
+                  class="hover:bg-dark-border/20 transition-colors cursor-pointer"
+                  @click="togglePlayerExpanded(player.player_key)">
+                  <td class="px-3 py-3"><span class="font-bold text-lg text-dark-text">{{ player.rosRank }}</span></td>
+                  <td class="px-3 py-3">
+                    <div class="flex items-center gap-3">
+                      <div class="relative">
+                        <div class="w-10 h-10 rounded-full bg-dark-border overflow-hidden ring-2" :class="getAvatarRingClass(player)">
+                          <img :src="player.headshot || defaultHeadshot" :alt="player.full_name" class="w-full h-full object-cover" @error="handleImageError" />
                         </div>
-                        <div>
-                          <div class="flex items-center gap-2">
-                            <span class="font-semibold" :class="getPlayerNameClass(player)">{{ player.full_name }}</span>
-                            <span v-if="player.injury_status" class="text-xs px-1.5 py-0.5 rounded font-medium" :class="getInjuryClass(player.injury_status)">
-                              {{ player.injury_status }}
-                            </span>
-                          </div>
-                          <div class="text-xs text-dark-textMuted">
-                            {{ player.mlb_team || 'FA' }}
-                          </div>
-                        </div>
+                        <div v-if="isMyPlayer(player)" class="absolute -top-1 -right-1 w-5 h-5 bg-primary rounded-full flex items-center justify-center"><span class="text-xs text-gray-900 font-bold">★</span></div>
+                        <div v-else-if="isFreeAgent(player)" class="absolute -top-1 -right-1 w-5 h-5 bg-cyan-400 rounded-full flex items-center justify-center"><span class="text-xs text-gray-900 font-bold">+</span></div>
                       </div>
-                    </td>
-                    <td class="px-4 py-3">
-                      <span v-if="getFantasyOwner(player.player_id)" class="text-sm text-dark-textMuted">
-                        {{ getFantasyOwner(player.player_id) }}
-                      </span>
-                      <span v-else class="text-sm text-cyan-400">Free Agent</span>
-                    </td>
-                    <td class="px-4 py-3 text-center">
-                      <span class="px-2 py-1 rounded text-xs font-bold" :class="getPositionClass(player.position)">
-                        {{ player.position }}
-                      </span>
-                    </td>
-                    <td class="px-4 py-3 text-center">
-                      <span class="font-medium text-dark-text">{{ player.positionRank }}</span>
-                    </td>
-                    <td class="px-4 py-3 text-center">
-                      <span v-if="player.rankChange !== 0" :class="player.rankChange > 0 ? 'text-green-400' : 'text-red-400'" class="font-medium">
-                        {{ player.rankChange > 0 ? '↑' : '↓' }}{{ Math.abs(player.rankChange) }}
-                      </span>
-                      <span v-else class="text-dark-textMuted">—</span>
-                    </td>
-                    <td class="px-4 py-3 text-center">
-                      <div class="flex items-center justify-center gap-1">
-                        <div class="w-14 h-2 rounded-full bg-dark-border/50 overflow-hidden">
-                          <div class="h-full rounded-full transition-all" :class="getSosBarClass(player.rosSOS)" :style="{ width: getSosBarWidth(player.rosSOS) }"></div>
-                        </div>
-                        <span class="text-xs font-medium w-10 text-right" :class="getSosTextClass(player.rosSOS)">
-                          {{ formatSOS(player.rosSOS) }}
-                        </span>
+                      <div>
+                        <span class="font-semibold" :class="getPlayerNameClass(player)">{{ player.full_name }}</span>
+                        <div class="text-xs text-dark-textMuted">{{ player.mlb_team || 'FA' }}</div>
                       </div>
-                    </td>
-                    <td class="px-4 py-3 text-center">
-                      <div class="flex items-center justify-center gap-1">
-                        <div class="w-14 h-2 rounded-full bg-dark-border/50 overflow-hidden">
-                          <div class="h-full rounded-full transition-all" :class="getSosBarClass(player.next4SOS)" :style="{ width: getSosBarWidth(player.next4SOS) }"></div>
-                        </div>
-                        <span class="text-xs font-medium w-10 text-right" :class="getSosTextClass(player.next4SOS)">
-                          {{ formatSOS(player.next4SOS) }}
-                        </span>
-                      </div>
-                    </td>
-                    <td class="px-4 py-3 text-center">
-                      <span class="font-bold text-dark-text">{{ player.ppg.toFixed(1) }}</span>
-                    </td>
-                    <td class="px-4 py-3 text-center">
-                      <span class="font-bold" :class="player.vor > 0 ? 'text-green-400' : player.vor < -2 ? 'text-red-400' : 'text-primary'">
-                        {{ player.vor >= 0 ? '+' : '' }}{{ player.vor.toFixed(1) }}
-                      </span>
-                    </td>
-                  </tr>
-                  
-                  <!-- Expanded Player Detail -->
-                  <tr v-if="expandedPlayerId === player.player_id" class="bg-dark-bg/80">
-                    <td colspan="10" class="p-0">
-                      <div class="p-4 space-y-4 border-y border-primary/30">
-                        <!-- Header Row -->
-                        <div class="flex items-start justify-between">
-                          <div class="flex items-center gap-4">
-                            <div class="w-16 h-16 rounded-full bg-dark-border overflow-hidden ring-2 ring-primary/50">
-                              <img :src="getPlayerImageUrl(player.player_id)" :alt="player.full_name" class="w-full h-full object-cover" @error="handleImageError" />
-                            </div>
-                            <div>
-                              <h3 class="text-xl font-bold text-dark-text">{{ player.full_name }}</h3>
-                              <div class="flex items-center gap-3 text-sm text-dark-textMuted">
-                                <span class="px-2 py-0.5 rounded text-xs font-bold" :class="getPositionClass(player.position)">{{ player.position }}</span>
-                                <span>{{ player.mlb_team || 'FA' }}</span>
-                              </div>
-                            </div>
-                          </div>
-                          <button @click.stop="expandedPlayerId = null" class="p-2 hover:bg-dark-border/50 rounded-lg transition-colors">
-                            <svg class="w-5 h-5 text-dark-textMuted" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-                            </svg>
-                          </button>
-                        </div>
-
-                        <!-- Stats Grid -->
-                        <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3">
-                          <div class="bg-dark-card rounded-lg p-3 text-center">
-                            <div class="text-2xl font-bold text-primary">#{{ player.rosRank }}</div>
-                            <div class="text-xs text-dark-textMuted">Overall Rank</div>
-                          </div>
-                          <div class="bg-dark-card rounded-lg p-3 text-center">
-                            <div class="text-2xl font-bold text-dark-text">{{ player.positionRank }}</div>
-                            <div class="text-xs text-dark-textMuted">{{ player.position }} Rank</div>
-                          </div>
-                          <div class="bg-dark-card rounded-lg p-3 text-center">
-                            <div class="text-2xl font-bold" :class="player.rankChange > 0 ? 'text-green-400' : player.rankChange < 0 ? 'text-red-400' : 'text-dark-textMuted'">
-                              {{ player.rankChange > 0 ? '↑' : player.rankChange < 0 ? '↓' : '—' }}{{ player.rankChange !== 0 ? Math.abs(player.rankChange) : '' }}
-                            </div>
-                            <div class="text-xs text-dark-textMuted">vs Last Week</div>
-                          </div>
-                          <div class="bg-dark-card rounded-lg p-3 text-center">
-                            <div class="text-2xl font-bold text-dark-text">{{ player.ppg.toFixed(1) }}</div>
-                            <div class="text-xs text-dark-textMuted">Season PPG</div>
-                          </div>
-                          <div class="bg-dark-card rounded-lg p-3 text-center">
-                            <div class="text-2xl font-bold text-dark-text">{{ player.totalPoints?.toFixed(0) || '—' }}</div>
-                            <div class="text-xs text-dark-textMuted">Total Points</div>
-                          </div>
-                          <div class="bg-dark-card rounded-lg p-3 text-center">
-                            <div class="text-2xl font-bold" :class="player.vor > 0 ? 'text-green-400' : 'text-red-400'">
-                              {{ player.vor >= 0 ? '+' : '' }}{{ player.vor.toFixed(1) }}
-                            </div>
-                            <div class="text-xs text-dark-textMuted">VOR</div>
-                          </div>
-                        </div>
-
-                        <!-- Additional Info -->
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                          <div class="bg-dark-card rounded-xl p-4">
-                            <h4 class="font-semibold text-dark-text mb-3 flex items-center gap-2">
-                              <span>📅</span> Schedule Strength
-                            </h4>
-                            <div class="space-y-3">
-                              <div class="flex items-center justify-between">
-                                <span class="text-dark-textMuted">ROS SOS:</span>
-                                <span class="font-bold" :class="getSosTextClass(player.rosSOS)">{{ formatSOS(player.rosSOS) }}</span>
-                              </div>
-                              <div class="flex items-center justify-between">
-                                <span class="text-dark-textMuted">Next 4 Weeks:</span>
-                                <span class="font-bold" :class="getSosTextClass(player.next4SOS)">{{ formatSOS(player.next4SOS) }}</span>
-                              </div>
-                            </div>
-                          </div>
-                          
-                          <div class="bg-dark-card rounded-xl p-4">
-                            <h4 class="font-semibold text-dark-text mb-3 flex items-center gap-2">
-                              <span>📋</span> Ownership
-                            </h4>
-                            <div class="space-y-3">
-                              <div class="flex items-center justify-between">
-                                <span class="text-dark-textMuted">Fantasy Team:</span>
-                                <span v-if="getFantasyOwner(player.player_id)" class="font-medium text-dark-text">{{ getFantasyOwner(player.player_id) }}</span>
-                                <span v-else class="text-cyan-400 font-medium">Free Agent</span>
-                              </div>
-                              <div class="flex items-center justify-between">
-                                <span class="text-dark-textMuted">MLB Team:</span>
-                                <span class="font-medium text-dark-text">{{ player.mlb_team || 'N/A' }}</span>
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    </td>
-                  </tr>
-                </template>
+                    </div>
+                  </td>
+                  <td class="px-3 py-3">
+                    <span v-if="player.fantasy_team" class="text-sm text-dark-textMuted truncate block max-w-[100px]">{{ player.fantasy_team }}</span>
+                    <span v-else class="text-sm text-cyan-400">FA</span>
+                  </td>
+                  <td class="px-3 py-3 text-center"><span class="px-2 py-1 rounded text-xs font-bold" :class="getPositionClass(player.position)">{{ player.position?.split(',')[0] }}</span></td>
+                  <td class="px-3 py-3 text-center text-dark-text font-medium">{{ player.positionRank }}</td>
+                  <td class="px-3 py-3 text-center font-bold text-dark-text">{{ player.total_points?.toFixed(1) || '0' }}</td>
+                  <td class="px-3 py-3 text-center font-bold text-dark-text">{{ player.ppg?.toFixed(2) || '0' }}</td>
+                  <td class="px-3 py-3 text-center font-bold" :class="player.vor > 0 ? 'text-green-400' : player.vor < -3 ? 'text-red-400' : 'text-dark-textMuted'">{{ player.vor >= 0 ? '+' : '' }}{{ player.vor?.toFixed(1) || '0' }}</td>
+                </tr>
+                <tr v-if="filteredPlayers.length === 0"><td colspan="8" class="px-4 py-8 text-center text-dark-textMuted">No players match filters</td></tr>
               </tbody>
             </table>
           </div>
@@ -504,56 +189,37 @@
 
     <!-- TEAMS TAB -->
     <template v-else-if="activeTab === 'teams'">
-      <div class="card">
-        <div class="card-body py-8 text-center">
-          <div class="text-4xl mb-3">🏗️</div>
-          <h3 class="text-xl font-bold text-dark-text mb-2">Teams Tab Coming Soon</h3>
-          <p class="text-dark-textMuted">Team roster rankings and analysis</p>
-        </div>
-      </div>
+      <div class="card"><div class="card-body py-8 text-center"><div class="text-4xl mb-3">🏗️</div><h3 class="text-xl font-bold text-dark-text mb-2">Teams Tab Coming Soon</h3></div></div>
     </template>
 
     <!-- THIS WEEK TAB -->
     <template v-else-if="activeTab === 'week'">
-      <div class="card">
-        <div class="card-body py-8 text-center">
-          <div class="text-4xl mb-3">🏗️</div>
-          <h3 class="text-xl font-bold text-dark-text mb-2">This Week Tab Coming Soon</h3>
-          <p class="text-dark-textMuted">Weekly start/sit recommendations</p>
-        </div>
-      </div>
+      <div class="card"><div class="card-body py-8 text-center"><div class="text-4xl mb-3">🏗️</div><h3 class="text-xl font-bold text-dark-text mb-2">This Week Coming Soon</h3></div></div>
     </template>
 
     <!-- Settings Modal -->
     <div v-if="showSettingsModal" class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" @click="showSettingsModal = false">
       <div class="bg-dark-card rounded-2xl max-w-lg w-full p-6 space-y-6" @click.stop>
         <div class="flex items-center justify-between">
-          <h2 class="text-xl font-bold text-dark-text">Projection Settings</h2>
-          <button @click="showSettingsModal = false" class="p-2 hover:bg-dark-border/50 rounded-lg transition-colors">
-            <svg class="w-5 h-5 text-dark-textMuted" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          </button>
+          <h2 class="text-xl font-bold text-dark-text">Settings</h2>
+          <button @click="showSettingsModal = false" class="p-2 hover:bg-dark-border/50 rounded-lg">✕</button>
         </div>
-        
-        <!-- Upload Custom Rankings -->
         <div class="space-y-3">
-          <h3 class="font-semibold text-dark-text">Upload Custom Rankings</h3>
-          <p class="text-sm text-dark-textMuted">Upload a CSV file with your own player rankings. Format: player_name, rank, position</p>
-          <div class="flex items-center gap-3">
-            <input 
-              type="file" 
-              accept=".csv"
-              @change="handleFileUpload"
-              class="flex-1 text-sm text-dark-textMuted file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:bg-primary file:text-gray-900 file:font-medium hover:file:bg-primary/90"
-            />
+          <h3 class="font-semibold text-dark-text">Upload Custom Rankings (CSV)</h3>
+          <input type="file" accept=".csv" @change="handleFileUpload" class="text-sm text-dark-textMuted file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:bg-primary file:text-gray-900" />
+        </div>
+        <div class="space-y-3">
+          <h3 class="font-semibold text-dark-text">VOR Baselines</h3>
+          <div class="grid grid-cols-4 gap-2">
+            <div v-for="pos in ['C', '1B', 'OF', 'SP']" :key="pos">
+              <label class="text-xs text-dark-textMuted">{{ pos }}</label>
+              <input type="number" v-model.number="vorBaselines[pos]" min="1" max="50" class="w-full px-2 py-1 rounded bg-dark-border/30 text-dark-text text-sm" />
+            </div>
           </div>
         </div>
-        
-        <div class="pt-4 border-t border-dark-border/30 flex justify-end gap-3">
-          <button @click="showSettingsModal = false" class="px-4 py-2 rounded-lg bg-dark-border/50 text-dark-textMuted hover:bg-dark-border transition-colors">
-            Close
-          </button>
+        <div class="flex justify-end gap-3 pt-4 border-t border-dark-border/30">
+          <button @click="showSettingsModal = false" class="px-4 py-2 rounded-lg bg-dark-border/50 text-dark-textMuted">Close</button>
+          <button @click="applySettings" class="px-4 py-2 rounded-lg bg-primary text-gray-900 font-medium">Apply</button>
         </div>
       </div>
     </div>
@@ -577,440 +243,171 @@ import { yahooService } from '@/services/yahoo'
 const leagueStore = useLeagueStore()
 const authStore = useAuthStore()
 
-// Tabs
 const tabs = [
   { id: 'ros', name: 'Rest of Season', icon: '📊' },
   { id: 'teams', name: 'Teams', icon: '👥' },
   { id: 'week', name: 'This Week', icon: '📅' }
 ]
 const activeTab = ref('ros')
-
-// State
 const isLoading = ref(true)
+const loadingMessage = ref('Loading...')
 const showSettingsModal = ref(false)
 const isCustomizerExpanded = ref(false)
 const expandedPlayerId = ref<string | null>(null)
 const lastUpdated = ref('')
-
-// Rankings data
 const allPlayers = ref<any[]>([])
-const myPlayerIds = ref<Set<string>>(new Set())
-const playerOwnerMap = ref<Map<string, string>>(new Map())
-
-// Custom rankings
+const myTeamKey = ref<string | null>(null)
 const hasCustomRankings = ref(false)
 const customRankingsCount = ref(0)
-
-// Sorting
 const sortColumn = ref('')
 const sortDirection = ref<'asc' | 'desc'>('desc')
-
-// Filters
 const selectedPositions = ref<string[]>(['C', '1B', '2B', '3B', 'SS', 'OF', 'SP', 'RP'])
 const showOnlyMyPlayers = ref(false)
 const showOnlyFreeAgents = ref(false)
+const defaultHeadshot = 'https://a.espncdn.com/combiner/i?img=/i/headshots/nophoto.png&w=200&h=145'
 
 const positionFilters = [
-  { id: 'C', label: 'C' },
-  { id: '1B', label: '1B' },
-  { id: '2B', label: '2B' },
-  { id: '3B', label: '3B' },
-  { id: 'SS', label: 'SS' },
-  { id: 'OF', label: 'OF' },
-  { id: 'SP', label: 'SP' },
-  { id: 'RP', label: 'RP' }
+  { id: 'C', label: 'C' }, { id: '1B', label: '1B' }, { id: '2B', label: '2B' }, { id: '3B', label: '3B' },
+  { id: 'SS', label: 'SS' }, { id: 'OF', label: 'OF' }, { id: 'SP', label: 'SP' }, { id: 'RP', label: 'RP' }
 ]
 
-// Ranking factors
-interface RankingFactor {
-  id: string
-  name: string
-  enabled: boolean
-  weight: number
-}
+const vorBaselines = ref<Record<string, number>>({ C: 12, '1B': 15, '2B': 15, '3B': 15, SS: 15, OF: 40, SP: 50, RP: 25 })
 
+interface RankingFactor { id: string; name: string; enabled: boolean; weight: number }
 const rankingFactors = ref<RankingFactor[]>([
-  // Core
-  { id: 'baseProjection', name: 'Base Projection', enabled: true, weight: 50 },
-  { id: 'seasonPPG', name: 'Season PPG', enabled: true, weight: 30 },
-  { id: 'recentPerformance', name: 'Recent Performance', enabled: true, weight: 20 },
-  // Performance
+  { id: 'totalPoints', name: 'Total Points', enabled: true, weight: 40 },
+  { id: 'ppg', name: 'Points/Game', enabled: true, weight: 30 },
   { id: 'consistency', name: 'Consistency', enabled: false, weight: 15 },
-  { id: 'upside', name: 'Upside Potential', enabled: false, weight: 10 },
-  // Schedule
-  { id: 'rosSOS', name: 'ROS Schedule', enabled: true, weight: 15 },
-  { id: 'next4SOS', name: 'Next 4 Weeks', enabled: false, weight: 10 }
+  { id: 'recentTrend', name: 'Recent Trend', enabled: true, weight: 15 },
+  { id: 'percentOwned', name: 'Ownership %', enabled: false, weight: 10 },
+  { id: 'positionScarcity', name: 'Position Scarcity', enabled: true, weight: 15 }
 ])
 
-const coreFactors = computed(() => rankingFactors.value.filter(f => ['baseProjection', 'seasonPPG', 'recentPerformance'].includes(f.id)))
-const performanceFactors = computed(() => rankingFactors.value.filter(f => ['consistency', 'upside'].includes(f.id)))
-const scheduleFactors = computed(() => rankingFactors.value.filter(f => ['rosSOS', 'next4SOS'].includes(f.id)))
-
+const coreFactors = computed(() => rankingFactors.value.filter(f => ['totalPoints', 'ppg'].includes(f.id)))
+const performanceFactors = computed(() => rankingFactors.value.filter(f => ['consistency', 'recentTrend'].includes(f.id)))
+const contextFactors = computed(() => rankingFactors.value.filter(f => ['percentOwned', 'positionScarcity'].includes(f.id)))
 const enabledFactorCount = computed(() => rankingFactors.value.filter(f => f.enabled).length)
 
-// Presets
 const presets = [
-  { id: 'balanced', name: 'Balanced', icon: '⚖️', factors: { baseProjection: 50, seasonPPG: 30, recentPerformance: 20, rosSOS: 15 } },
-  { id: 'hot-hand', name: 'Hot Hand', icon: '🔥', factors: { baseProjection: 30, seasonPPG: 20, recentPerformance: 50, upside: 20 } },
-  { id: 'consistency', name: 'Consistency', icon: '📈', factors: { baseProjection: 40, seasonPPG: 40, consistency: 30 } },
-  { id: 'schedule', name: 'Schedule', icon: '📅', factors: { baseProjection: 40, seasonPPG: 25, rosSOS: 25, next4SOS: 20 } }
+  { id: 'balanced', name: 'Balanced', icon: '⚖️', factors: { totalPoints: 40, ppg: 30, recentTrend: 15, positionScarcity: 15 } },
+  { id: 'hot-hand', name: 'Hot Hand', icon: '🔥', factors: { totalPoints: 25, ppg: 25, recentTrend: 35, positionScarcity: 15 } },
+  { id: 'volume', name: 'Volume', icon: '📈', factors: { totalPoints: 60, ppg: 20, positionScarcity: 20 } },
+  { id: 'efficiency', name: 'Efficiency', icon: '🎯', factors: { totalPoints: 20, ppg: 50, consistency: 20, positionScarcity: 10 } }
 ]
 const activePresetId = ref('balanced')
 const activePresetName = computed(() => presets.find(p => p.id === activePresetId.value)?.name || 'Custom')
+const positionBaselines = ref<Record<string, number>>({})
 
-// Player filtering
 const filteredPlayers = computed(() => {
   let players = [...allPlayers.value]
-  
-  // Position filter
-  if (selectedPositions.value.length > 0) {
-    players = players.filter(p => selectedPositions.value.includes(p.position))
+  if (selectedPositions.value.length > 0 && selectedPositions.value.length < positionFilters.length) {
+    players = players.filter(p => {
+      const positions = p.position?.split(',').map((pos: string) => pos.trim()) || []
+      return positions.some((pos: string) => selectedPositions.value.includes(pos))
+    })
   }
-  
-  // My players filter
-  if (showOnlyMyPlayers.value) {
-    players = players.filter(p => myPlayerIds.value.has(p.player_id))
-  }
-  
-  // Free agents filter
-  if (showOnlyFreeAgents.value) {
-    players = players.filter(p => !playerOwnerMap.value.has(p.player_id))
-  }
-  
-  // Sorting
+  if (showOnlyMyPlayers.value) players = players.filter(p => isMyPlayer(p))
+  if (showOnlyFreeAgents.value) players = players.filter(p => isFreeAgent(p))
   if (sortColumn.value) {
     players.sort((a, b) => {
-      const aVal = a[sortColumn.value] || 0
-      const bVal = b[sortColumn.value] || 0
+      const aVal = a[sortColumn.value] || 0, bVal = b[sortColumn.value] || 0
       return sortDirection.value === 'asc' ? aVal - bVal : bVal - aVal
     })
   }
-  
   return players
 })
 
-// Methods
-function togglePositionFilter(pos: string) {
-  const idx = selectedPositions.value.indexOf(pos)
-  if (idx >= 0) {
-    selectedPositions.value.splice(idx, 1)
-  } else {
-    selectedPositions.value.push(pos)
-  }
-}
-
-function sortBy(column: string) {
-  if (sortColumn.value === column) {
-    sortDirection.value = sortDirection.value === 'asc' ? 'desc' : 'asc'
-  } else {
-    sortColumn.value = column
-    sortDirection.value = 'desc'
-  }
-}
-
-function toggleFactor(factorId: string) {
-  const factor = rankingFactors.value.find(f => f.id === factorId)
-  if (factor && factorId !== 'baseProjection') {
-    factor.enabled = !factor.enabled
-    activePresetId.value = ''
-  }
-}
-
-function updateWeight(factorId: string, weight: number) {
-  const factor = rankingFactors.value.find(f => f.id === factorId)
-  if (factor) {
-    factor.weight = weight
-    activePresetId.value = ''
-  }
-}
-
+function selectAllPositions() { selectedPositions.value = selectedPositions.value.length === positionFilters.length ? [] : positionFilters.map(p => p.id) }
+function togglePositionFilter(pos: string) { const idx = selectedPositions.value.indexOf(pos); idx >= 0 ? selectedPositions.value.splice(idx, 1) : selectedPositions.value.push(pos) }
+function sortBy(col: string) { sortColumn.value === col ? sortDirection.value = sortDirection.value === 'asc' ? 'desc' : 'asc' : (sortColumn.value = col, sortDirection.value = 'desc') }
+function toggleFactor(id: string) { const f = rankingFactors.value.find(f => f.id === id); if (f) f.enabled = !f.enabled; activePresetId.value = '' }
+function updateWeight(id: string, w: number) { const f = rankingFactors.value.find(f => f.id === id); if (f) f.weight = w; activePresetId.value = '' }
 function applyPreset(preset: typeof presets[0]) {
   activePresetId.value = preset.id
-  
-  // Reset all factors
-  rankingFactors.value.forEach(f => {
-    f.enabled = false
-    f.weight = 0
-  })
-  
-  // Apply preset factors
-  for (const [id, weight] of Object.entries(preset.factors)) {
-    const factor = rankingFactors.value.find(f => f.id === id)
-    if (factor) {
-      factor.enabled = true
-      factor.weight = weight as number
-    }
+  rankingFactors.value.forEach(f => { f.enabled = false; f.weight = 0 })
+  for (const [id, weight] of Object.entries(preset.factors)) { const f = rankingFactors.value.find(f => f.id === id); if (f) { f.enabled = true; f.weight = weight as number } }
+}
+function resetFactors() { applyPreset(presets[0]) }
+function applyRankings() { recalculateRankings(); isCustomizerExpanded.value = false }
+function applySettings() { recalculateRankings(); showSettingsModal.value = false }
+function clearCustomRankings() { hasCustomRankings.value = false; loadProjections() }
+function handleFileUpload(e: Event) { const f = (e.target as HTMLInputElement).files?.[0]; if (f) { hasCustomRankings.value = true; showSettingsModal.value = false } }
+function togglePlayerExpanded(key: string) { expandedPlayerId.value = expandedPlayerId.value === key ? null : key }
+function isMyPlayer(p: any) { return p.fantasy_team_key === myTeamKey.value }
+function isFreeAgent(p: any) { return !p.fantasy_team }
+function handleImageError(e: Event) { (e.target as HTMLImageElement).src = defaultHeadshot }
+function getRowClass(p: any) { return isMyPlayer(p) ? 'bg-primary/10 border-l-2 border-primary' : isFreeAgent(p) ? 'bg-cyan-500/5 border-l-2 border-cyan-400' : '' }
+function getAvatarRingClass(p: any) { return isMyPlayer(p) ? 'ring-primary' : isFreeAgent(p) ? 'ring-cyan-400' : 'ring-dark-border' }
+function getPlayerNameClass(p: any) { return isMyPlayer(p) ? 'text-primary' : isFreeAgent(p) ? 'text-cyan-400' : 'text-dark-text' }
+function getPositionClass(pos: string) {
+  const p = pos?.split(',')?.[0]?.trim() || pos
+  const c: Record<string, string> = { C: 'bg-purple-500/30 text-purple-400', '1B': 'bg-red-500/30 text-red-400', '2B': 'bg-orange-500/30 text-orange-400', '3B': 'bg-yellow-500/30 text-yellow-400', SS: 'bg-green-500/30 text-green-400', OF: 'bg-blue-500/30 text-blue-400', SP: 'bg-cyan-500/30 text-cyan-400', RP: 'bg-pink-500/30 text-pink-400' }
+  return c[p] || 'bg-dark-border/50 text-dark-textMuted'
+}
+
+function calculatePositionBaselines() {
+  const byPos: Record<string, any[]> = {}
+  for (const p of allPlayers.value) { const pos = p.position?.split(',')?.[0]?.trim(); if (pos) { if (!byPos[pos]) byPos[pos] = []; byPos[pos].push(p) } }
+  for (const [pos, players] of Object.entries(byPos)) {
+    players.sort((a, b) => (b.ppg || 0) - (a.ppg || 0))
+    const baseRank = vorBaselines.value[pos] || 15
+    positionBaselines.value[pos] = players[Math.min(baseRank - 1, players.length - 1)]?.ppg || 0
   }
-}
-
-function resetFactors() {
-  applyPreset(presets[0])
-}
-
-function applyRankings() {
-  recalculateRankings()
-  isCustomizerExpanded.value = false
-}
-
-function clearCustomRankings() {
-  hasCustomRankings.value = false
-  customRankingsCount.value = 0
-  loadProjections()
-}
-
-function handleFileUpload(event: Event) {
-  const file = (event.target as HTMLInputElement).files?.[0]
-  if (!file) return
-  
-  const reader = new FileReader()
-  reader.onload = (e) => {
-    try {
-      const text = e.target?.result as string
-      const lines = text.split('\n').filter(l => l.trim())
-      // TODO: Parse CSV and apply custom rankings
-      console.log('Uploaded', lines.length, 'lines')
-      hasCustomRankings.value = true
-      customRankingsCount.value = lines.length - 1 // minus header
-      showSettingsModal.value = false
-    } catch (err) {
-      console.error('Error parsing CSV:', err)
-    }
-  }
-  reader.readAsText(file)
-}
-
-function togglePlayerExpanded(playerId: string) {
-  expandedPlayerId.value = expandedPlayerId.value === playerId ? null : playerId
-}
-
-function isMyPlayer(playerId: string): boolean {
-  return myPlayerIds.value.has(playerId)
-}
-
-function isFreeAgent(playerId: string): boolean {
-  return !playerOwnerMap.value.has(playerId)
-}
-
-function getFantasyOwner(playerId: string): string | null {
-  return playerOwnerMap.value.get(playerId) || null
-}
-
-function getPlayerImageUrl(playerId: string): string {
-  // MLB headshot URL pattern
-  return `https://img.mlbstatic.com/mlb-photos/image/upload/d_people:generic:headshot:67:current.png/w_213,q_auto:best/v1/people/${playerId}/headshot/67/current`
-}
-
-function handleImageError(event: Event) {
-  const img = event.target as HTMLImageElement
-  img.src = 'https://img.mlbstatic.com/mlb-photos/image/upload/d_people:generic:headshot:67:current.png/w_213,q_auto:best/v1/people/0/headshot/67/current'
-}
-
-function getRowClass(player: any): string {
-  if (isMyPlayer(player.player_id)) return 'bg-primary/10 border-l-2 border-primary'
-  if (isFreeAgent(player.player_id)) return 'bg-cyan-500/5 border-l-2 border-cyan-400'
-  return ''
-}
-
-function getAvatarRingClass(player: any): string {
-  if (isMyPlayer(player.player_id)) return 'ring-primary'
-  if (isFreeAgent(player.player_id)) return 'ring-cyan-400'
-  return 'ring-dark-border'
-}
-
-function getPlayerNameClass(player: any): string {
-  if (isMyPlayer(player.player_id)) return 'text-primary'
-  if (isFreeAgent(player.player_id)) return 'text-cyan-400'
-  return 'text-dark-text'
-}
-
-function getPositionClass(position: string): string {
-  const classes: Record<string, string> = {
-    'C': 'bg-purple-500/30 text-purple-400',
-    '1B': 'bg-red-500/30 text-red-400',
-    '2B': 'bg-orange-500/30 text-orange-400',
-    '3B': 'bg-yellow-500/30 text-yellow-400',
-    'SS': 'bg-green-500/30 text-green-400',
-    'OF': 'bg-blue-500/30 text-blue-400',
-    'SP': 'bg-cyan-500/30 text-cyan-400',
-    'RP': 'bg-pink-500/30 text-pink-400'
-  }
-  return classes[position] || 'bg-dark-border/50 text-dark-textMuted'
-}
-
-function getInjuryClass(status: string): string {
-  if (status === 'IR' || status === 'IL' || status === 'Out') return 'bg-red-500/20 text-red-400'
-  if (status === 'DTD' || status === 'Day-To-Day') return 'bg-yellow-500/20 text-yellow-400'
-  return 'bg-dark-border/50 text-dark-textMuted'
-}
-
-function getSosBarClass(sos: number): string {
-  if (sos >= 0.6) return 'bg-green-500'
-  if (sos >= 0.4) return 'bg-yellow-500'
-  return 'bg-red-500'
-}
-
-function getSosBarWidth(sos: number): string {
-  return `${Math.max(10, sos * 100)}%`
-}
-
-function getSosTextClass(sos: number): string {
-  if (sos >= 0.6) return 'text-green-400'
-  if (sos >= 0.4) return 'text-yellow-400'
-  return 'text-red-400'
-}
-
-function formatSOS(sos: number): string {
-  if (sos >= 0.6) return 'Easy'
-  if (sos >= 0.4) return 'Avg'
-  return 'Hard'
 }
 
 function recalculateRankings() {
-  // Calculate weighted scores based on enabled factors
-  const enabledFactors = rankingFactors.value.filter(f => f.enabled)
-  const totalWeight = enabledFactors.reduce((sum, f) => sum + f.weight, 0)
-  
-  allPlayers.value.forEach(player => {
+  calculatePositionBaselines()
+  for (const p of allPlayers.value) { const pos = p.position?.split(',')?.[0]?.trim(); p.vor = (p.ppg || 0) - (positionBaselines.value[pos] || 0) }
+  const enabled = rankingFactors.value.filter(f => f.enabled)
+  const totalW = enabled.reduce((s, f) => s + f.weight, 0)
+  const maxPts = Math.max(...allPlayers.value.map(p => p.total_points || 0))
+  const maxPPG = Math.max(...allPlayers.value.map(p => p.ppg || 0))
+  const maxVOR = Math.max(...allPlayers.value.map(p => p.vor || 0))
+  const minVOR = Math.min(...allPlayers.value.map(p => p.vor || 0))
+  allPlayers.value.forEach(p => {
     let score = 0
-    
-    enabledFactors.forEach(factor => {
-      const normalizedWeight = factor.weight / totalWeight
-      
-      switch (factor.id) {
-        case 'baseProjection':
-          score += (player.projectedPoints || player.ppg * 10) * normalizedWeight
-          break
-        case 'seasonPPG':
-          score += player.ppg * 10 * normalizedWeight
-          break
-        case 'recentPerformance':
-          score += (player.recentPPG || player.ppg) * 10 * normalizedWeight
-          break
-        case 'consistency':
-          score += (1 - (player.stdDev || 0.3)) * 30 * normalizedWeight
-          break
-        case 'upside':
-          score += (player.maxScore || player.ppg * 1.5) * normalizedWeight
-          break
-        case 'rosSOS':
-          score += player.rosSOS * 20 * normalizedWeight
-          break
-        case 'next4SOS':
-          score += player.next4SOS * 20 * normalizedWeight
-          break
-      }
+    enabled.forEach(f => {
+      const nw = f.weight / (totalW || 1)
+      if (f.id === 'totalPoints') score += ((p.total_points || 0) / (maxPts || 1)) * 100 * nw
+      else if (f.id === 'ppg') score += ((p.ppg || 0) / (maxPPG || 1)) * 100 * nw
+      else if (f.id === 'recentTrend') score += 50 * nw
+      else if (f.id === 'consistency') score += 50 * nw
+      else if (f.id === 'percentOwned') score += (p.percent_owned || 0) * nw
+      else if (f.id === 'positionScarcity') { const vr = (maxVOR - minVOR) || 1; score += (((p.vor || 0) - minVOR) / vr) * 100 * nw }
     })
-    
-    player.compositeScore = score
+    p.compositeScore = score
   })
-  
-  // Sort by composite score
-  allPlayers.value.sort((a, b) => b.compositeScore - a.compositeScore)
-  
-  // Assign ranks
-  allPlayers.value.forEach((player, idx) => {
-    player.rosRank = idx + 1
-  })
-  
-  // Calculate position ranks
-  const positionCounts: Record<string, number> = {}
-  allPlayers.value.forEach(player => {
-    positionCounts[player.position] = (positionCounts[player.position] || 0) + 1
-    player.positionRank = positionCounts[player.position]
-  })
+  allPlayers.value.sort((a, b) => (b.compositeScore || 0) - (a.compositeScore || 0))
+  allPlayers.value.forEach((p, i) => { p.rosRank = i + 1 })
+  const posCounts: Record<string, number> = {}
+  allPlayers.value.forEach(p => { const pos = p.position?.split(',')?.[0]?.trim() || 'X'; posCounts[pos] = (posCounts[pos] || 0) + 1; p.positionRank = posCounts[pos] })
+  lastUpdated.value = new Date().toLocaleString()
 }
 
 async function loadProjections() {
   isLoading.value = true
-  
+  loadingMessage.value = 'Connecting to Yahoo...'
   try {
     const leagueKey = leagueStore.activeLeagueId
-    if (!leagueKey || !authStore.user?.id) {
-      console.log('Missing league or user')
-      return
-    }
-    
+    if (!leagueKey || !authStore.user?.id) { isLoading.value = false; return }
     await yahooService.initialize(authStore.user.id)
-    
-    // Get all team rosters to build player ownership map
-    const standings = await yahooService.getStandings(leagueKey)
-    
-    // For now, create mock projection data
-    // In a real implementation, you'd fetch actual player stats from Yahoo
-    const mockPlayers = generateMockPlayers()
-    
-    allPlayers.value = mockPlayers
+    loadingMessage.value = 'Finding your team...'
+    const myTeam = await yahooService.getMyTeam(leagueKey)
+    myTeamKey.value = myTeam?.team_key || null
+    loadingMessage.value = 'Loading rostered players...'
+    const rostered = await yahooService.getAllRosteredPlayers(leagueKey)
+    loadingMessage.value = 'Loading free agents...'
+    const fa = await yahooService.getTopFreeAgents(leagueKey, 100)
+    const combined = [...rostered, ...fa]
+    const weeks = 25
+    combined.forEach(p => { p.ppg = p.total_points > 0 ? p.total_points / weeks : 0 })
+    allPlayers.value = combined
+    applyPreset(presets[0])
     recalculateRankings()
-    
-    lastUpdated.value = new Date().toLocaleString()
-    
-  } catch (e) {
-    console.error('Error loading projections:', e)
-  } finally {
-    isLoading.value = false
-  }
+  } catch (e) { console.error('Error:', e); loadingMessage.value = 'Error loading data' }
+  finally { isLoading.value = false }
 }
 
-function generateMockPlayers(): any[] {
-  // Generate sample baseball players for demonstration
-  const positions = ['C', '1B', '2B', '3B', 'SS', 'OF', 'SP', 'RP']
-  const players: any[] = []
-  
-  const samplePlayers = [
-    { name: 'Shohei Ohtani', pos: 'OF', team: 'LAD', ppg: 8.5 },
-    { name: 'Mookie Betts', pos: 'OF', team: 'LAD', ppg: 7.2 },
-    { name: 'Corey Seager', pos: 'SS', team: 'TEX', ppg: 6.8 },
-    { name: 'Freddie Freeman', pos: '1B', team: 'LAD', ppg: 6.5 },
-    { name: 'Ronald Acuña Jr.', pos: 'OF', team: 'ATL', ppg: 7.8 },
-    { name: 'Trea Turner', pos: 'SS', team: 'PHI', ppg: 6.2 },
-    { name: 'Marcus Semien', pos: '2B', team: 'TEX', ppg: 5.8 },
-    { name: 'Matt Olson', pos: '1B', team: 'ATL', ppg: 6.1 },
-    { name: 'Austin Riley', pos: '3B', team: 'ATL', ppg: 5.9 },
-    { name: 'J.T. Realmuto', pos: 'C', team: 'PHI', ppg: 4.8 },
-    { name: 'Gerrit Cole', pos: 'SP', team: 'NYY', ppg: 15.2 },
-    { name: 'Zack Wheeler', pos: 'SP', team: 'PHI', ppg: 14.5 },
-    { name: 'Spencer Strider', pos: 'SP', team: 'ATL', ppg: 14.8 },
-    { name: 'Josh Hader', pos: 'RP', team: 'HOU', ppg: 8.5 },
-    { name: 'Emmanuel Clase', pos: 'RP', team: 'CLE', ppg: 9.2 },
-    { name: 'Julio Rodríguez', pos: 'OF', team: 'SEA', ppg: 6.4 },
-    { name: 'Bobby Witt Jr.', pos: 'SS', team: 'KC', ppg: 6.6 },
-    { name: 'Adley Rutschman', pos: 'C', team: 'BAL', ppg: 5.2 },
-    { name: 'Corbin Carroll', pos: 'OF', team: 'ARI', ppg: 5.8 },
-    { name: 'Yordan Alvarez', pos: 'OF', team: 'HOU', ppg: 6.9 }
-  ]
-  
-  samplePlayers.forEach((p, idx) => {
-    players.push({
-      player_id: `mlb_${idx + 1}`,
-      full_name: p.name,
-      position: p.pos,
-      mlb_team: p.team,
-      ppg: p.ppg + (Math.random() * 2 - 1),
-      totalPoints: p.ppg * 22 + (Math.random() * 50 - 25),
-      rosRank: idx + 1,
-      positionRank: 0,
-      rankChange: Math.floor(Math.random() * 10 - 5),
-      rosSOS: 0.3 + Math.random() * 0.5,
-      next4SOS: 0.3 + Math.random() * 0.5,
-      vor: (Math.random() * 10 - 3),
-      injury_status: Math.random() > 0.9 ? 'DTD' : null,
-      compositeScore: 0
-    })
-  })
-  
-  return players
-}
-
-// Watch for league changes
-watch(() => leagueStore.activeLeagueId, (newId) => {
-  if (newId && leagueStore.activePlatform === 'yahoo') {
-    loadProjections()
-  }
-}, { immediate: true })
-
-onMounted(() => {
-  if (leagueStore.activeLeagueId && leagueStore.activePlatform === 'yahoo') {
-    loadProjections()
-  }
-})
+watch(() => leagueStore.activeLeagueId, (id) => { if (id && leagueStore.activePlatform === 'yahoo') loadProjections() }, { immediate: true })
+onMounted(() => { if (leagueStore.activeLeagueId && leagueStore.activePlatform === 'yahoo') loadProjections() })
 </script>

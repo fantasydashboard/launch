@@ -50,21 +50,6 @@ class SleeperService {
     return response.json()
   }
 
-  async getTransactions(leagueId: string, week: number): Promise<SleeperTransaction[]> {
-    const response = await fetch(`${BASE_URL}/league/${leagueId}/transactions/${week}`)
-    if (!response.ok) throw new Error('Failed to fetch transactions')
-    return response.json()
-  }
-
-  async getAllTransactions(leagueId: string, totalWeeks: number): Promise<SleeperTransaction[]> {
-    const promises = []
-    for (let week = 1; week <= totalWeeks; week++) {
-      promises.push(this.getTransactions(leagueId, week))
-    }
-    const results = await Promise.all(promises)
-    return results.flat()
-  }
-
   async getPlayers(): Promise<Record<string, SleeperPlayer>> {
     if (this.playersCache) return this.playersCache
     

@@ -896,6 +896,255 @@ export class YahooFantasyService {
     console.log(`Got stats for ${stats.size} players`)
     return stats
   }
+
+  /**
+   * Get all rostered players across all teams in a league with their stats
+   * Returns player info, ownership, and season stats
+   */
+  async getAllRosteredPlayers(leagueKey: string): Promise<any[]> {
+    const allPlayers: any[] = []
+    const playerOwnership = new Map<string, { teamKey: string; teamName: string; managerName: string }>()
+    
+    try {
+      // First get all teams and their rosters
+      const teamsData = await this.apiRequest(
+        `/league/${leagueKey}/teams/roster?format=json`
+      )
+      
+      console.log('Teams roster response:', JSON.stringify(teamsData, null, 2).substring(0, 2000))
+      
+      const teams = teamsData.fantasy_content?.league?.[1]?.teams
+      if (!teams) {
+        console.log('No teams found')
+        return allPlayers
+      }
+      
+      const playerKeys: string[] = []
+      
+      // Extract all player keys and build ownership map
+      for (const teamWrapper of Object.values(teams) as any[]) {
+        if (typeof teamWrapper !== 'object' || !teamWrapper.team) continue
+        
+        const teamArray = teamWrapper.team
+        const teamInfo = teamArray[0]
+        const rosterData = teamArray[1]?.roster?.[0]?.players
+        
+        // Get team details
+        let teamKey = ''
+        let teamName = ''
+        let managerName = ''
+        
+        if (Array.isArray(teamInfo)) {
+          for (const item of teamInfo) {
+            if (item?.team_key) teamKey = item.team_key
+            if (item?.name) teamName = item.name
+            if (item?.managers?.[0]?.manager?.nickname) {
+              managerName = item.managers[0].manager.nickname
+            }
+          }
+        }
+        
+        if (!rosterData) continue
+        
+        for (const playerWrapper of Object.values(rosterData) as any[]) {
+          if (typeof playerWrapper !== 'object' || !playerWrapper.player) continue
+          
+          const playerInfo = playerWrapper.player[0]
+          if (!Array.isArray(playerInfo)) continue
+          
+          let playerKey = ''
+          for (const item of playerInfo) {
+            if (item?.player_key) playerKey = item.player_key
+          }
+          
+          if (playerKey) {
+            playerKeys.push(playerKey)
+            playerOwnership.set(playerKey, { teamKey, teamName, managerName })
+          }
+        }
+      }
+      
+      console.log(`Found ${playerKeys.length} rostered players across all teams`)
+      
+      // Now get detailed stats for all players
+      const playerStats = await this.getPlayerStats(leagueKey, playerKeys)
+      const playerDetails = await this.getPlayers(playerKeys)
+      
+      // Combine all data
+      for (const playerKey of playerKeys) {
+        const details = playerDetails.get(playerKey)
+        const stats = playerStats.get(playerKey)
+        const ownership = playerOwnership.get(playerKey)
+        
+        if (details) {
+          allPlayers.push({
+            player_key: playerKey,
+            player_id: details.player_id,
+            full_name: details.name,
+            position: details.position,
+            mlb_team: details.team,
+            headshot: details.headshot,
+            total_points: stats?.total_points || 0,
+            stats: stats?.stats || {},
+            fantasy_team: ownership?.teamName || null,
+            fantasy_team_key: ownership?.teamKey || null,
+            manager_name: ownership?.managerName || null
+          })
+        }
+      }
+      
+      return allPlayers
+      
+    } catch (e) {
+      console.error('Error fetching all rostered players:', e)
+      return allPlayers
+    }
+  }
+
+  /**
+   * Get top available free agents in a league
+   */
+  async getTopFreeAgents(leagueKey: string, count: number = 100): Promise<any[]> {
+    const freeAgents: any[] = []
+    
+    try {
+      // Get free agents sorted by percent owned (most owned first)
+      const data = await this.apiRequest(
+        `/league/${leagueKey}/players;status=FA;sort=OR;count=${count}?format=json`
+      )
+      
+      console.log('Free agents response:', JSON.stringify(data, null, 2).substring(0, 2000))
+      
+      const playersData = data.fantasy_content?.league?.[1]?.players
+      if (!playersData) return freeAgents
+      
+      const playerKeys: string[] = []
+      
+      for (const playerWrapper of Object.values(playersData) as any[]) {
+        if (typeof playerWrapper !== 'object' || !playerWrapper.player) continue
+        
+        const playerInfo = playerWrapper.player[0]
+        if (!Array.isArray(playerInfo)) continue
+        
+        let playerKey = ''
+        let playerId = ''
+        let name = ''
+        let team = ''
+        let position = ''
+        let headshot = ''
+        let percentOwned = 0
+        
+        for (const item of playerInfo) {
+          if (item?.player_key) playerKey = item.player_key
+          if (item?.player_id) playerId = item.player_id
+          if (item?.name) name = item.name.full || `${item.name.first} ${item.name.last}`
+          if (item?.editorial_team_abbr) team = item.editorial_team_abbr
+          if (item?.display_position) position = item.display_position
+          if (item?.headshot) headshot = item.headshot.url || ''
+          if (item?.percent_owned) percentOwned = parseFloat(item.percent_owned.value || '0')
+        }
+        
+        if (playerKey) {
+          playerKeys.push(playerKey)
+          freeAgents.push({
+            player_key: playerKey,
+            player_id: playerId,
+            full_name: name,
+            position,
+            mlb_team: team,
+            headshot,
+            percent_owned: percentOwned,
+            fantasy_team: null,
+            fantasy_team_key: null,
+            manager_name: null
+          })
+        }
+      }
+      
+      // Get stats for free agents
+      if (playerKeys.length > 0) {
+        const playerStats = await this.getPlayerStats(leagueKey, playerKeys)
+        
+        for (const player of freeAgents) {
+          const stats = playerStats.get(player.player_key)
+          player.total_points = stats?.total_points || 0
+          player.stats = stats?.stats || {}
+        }
+      }
+      
+      return freeAgents
+      
+    } catch (e) {
+      console.error('Error fetching free agents:', e)
+      return freeAgents
+    }
+  }
+
+  /**
+   * Get player weekly stats for multiple weeks (for calculating recent performance)
+   */
+  async getPlayerWeeklyStats(leagueKey: string, playerKey: string, weeks: number[]): Promise<Map<number, any>> {
+    const weeklyStats = new Map<number, any>()
+    
+    for (const week of weeks) {
+      try {
+        const data = await this.apiRequest(
+          `/league/${leagueKey}/players;player_keys=${playerKey}/stats;type=week;week=${week}?format=json`
+        )
+        
+        const playerData = data.fantasy_content?.league?.[1]?.players?.[0]?.player
+        if (!playerData) continue
+        
+        const statsData = playerData[1]?.player_stats
+        const pointsData = playerData[1]?.player_points
+        
+        weeklyStats.set(week, {
+          week,
+          points: parseFloat(pointsData?.total || statsData?.total || '0'),
+          stats: statsData?.stats || []
+        })
+      } catch (e) {
+        console.error(`Error fetching week ${week} stats for ${playerKey}:`, e)
+      }
+    }
+    
+    return weeklyStats
+  }
+
+  /**
+   * Get league scoring settings to understand point values
+   */
+  async getLeagueScoringSettings(leagueKey: string): Promise<any> {
+    try {
+      const data = await this.apiRequest(
+        `/league/${leagueKey}/settings?format=json`
+      )
+      
+      const settings = data.fantasy_content?.league?.[1]?.settings?.[0]
+      
+      // Extract stat categories and their point values
+      const statCategories = settings?.stat_categories?.stats || []
+      const statModifiers = settings?.stat_modifiers?.stats || []
+      
+      // Build a map of stat_id to point value
+      const scoringMap = new Map<string, number>()
+      for (const mod of statModifiers) {
+        if (mod?.stat) {
+          scoringMap.set(mod.stat.stat_id, parseFloat(mod.stat.value || '0'))
+        }
+      }
+      
+      return {
+        scoring_type: settings?.scoring_type,
+        stat_categories: statCategories,
+        stat_modifiers: scoringMap,
+        roster_positions: settings?.roster_positions || []
+      }
+    } catch (e) {
+      console.error('Error fetching league settings:', e)
+      return null
+    }
+  }
 }
 
 // Export singleton instance
