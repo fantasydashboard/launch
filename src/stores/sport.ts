@@ -35,7 +35,7 @@ const SPORT_CONFIGS: Record<Sport, SportConfig> = {
     icon: '⚾',
     color: '#3B9FE8', // Bright Blue (matching UFD Baseball logo)
     colorRgb: '59, 159, 232',
-    logo: '/images/UFD_Baseball.png',
+    logo: '/logos/UFD_Baseball.png',
     available: true
   },
   basketball: {
