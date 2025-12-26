@@ -114,7 +114,10 @@
       </h2>
       <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
         <!-- Best Record -->
-        <div class="group relative overflow-hidden rounded-xl bg-dark-card border border-green-500/20 hover:border-green-500/40 transition-all cursor-pointer">
+        <div 
+          @click="openLeaderModal('bestRecord')"
+          class="group relative overflow-hidden rounded-xl bg-dark-card border border-green-500/20 hover:border-green-500/40 transition-all cursor-pointer"
+        >
           <div class="absolute top-0 right-0 w-24 h-24 bg-green-500/5 rounded-full -translate-y-1/2 translate-x-1/2 group-hover:scale-150 transition-transform duration-500"></div>
           <div class="relative p-5">
             <div class="text-xs uppercase tracking-wider text-green-400 font-bold mb-3">Best Record</div>
@@ -131,12 +134,16 @@
             </div>
             <div class="flex items-center justify-between">
               <div class="text-2xl font-black text-green-400">{{ leaders.bestRecord ? getWinPercentage(leaders.bestRecord) : '0%' }}</div>
+              <div class="text-xs text-green-400/70 group-hover:text-green-400 transition-colors">Click for details →</div>
             </div>
           </div>
         </div>
 
         <!-- Most Categories Above Average (Category Leagues) / Most Points (Points Leagues) -->
-        <div class="group relative overflow-hidden rounded-xl bg-dark-card border border-yellow-500/20 hover:border-yellow-500/40 transition-all cursor-pointer">
+        <div 
+          @click="openLeaderModal('mostCatsAboveAvg')"
+          class="group relative overflow-hidden rounded-xl bg-dark-card border border-yellow-500/20 hover:border-yellow-500/40 transition-all cursor-pointer"
+        >
           <div class="absolute top-0 right-0 w-24 h-24 bg-yellow-500/5 rounded-full -translate-y-1/2 translate-x-1/2 group-hover:scale-150 transition-transform duration-500"></div>
           <div class="relative p-5">
             <div class="text-xs uppercase tracking-wider text-yellow-400 font-bold mb-3">
@@ -165,12 +172,16 @@
                   ? (leaders.mostPoints?.points_for?.toFixed(1) || '0.0') 
                   : `${leaders.mostCatsAboveAvg?.catsAboveAvg || 0} cats` }}
               </div>
+              <div class="text-xs text-yellow-400/70 group-hover:text-yellow-400 transition-colors">Click for details →</div>
             </div>
           </div>
         </div>
         
         <!-- Best All-Play -->
-        <div class="group relative overflow-hidden rounded-xl bg-dark-card border border-blue-500/20 hover:border-blue-500/40 transition-all cursor-pointer">
+        <div 
+          @click="openLeaderModal('bestAllPlay')"
+          class="group relative overflow-hidden rounded-xl bg-dark-card border border-blue-500/20 hover:border-blue-500/40 transition-all cursor-pointer"
+        >
           <div class="absolute top-0 right-0 w-24 h-24 bg-blue-500/5 rounded-full -translate-y-1/2 translate-x-1/2 group-hover:scale-150 transition-transform duration-500"></div>
           <div class="relative p-5">
             <div class="text-xs uppercase tracking-wider text-blue-400 font-bold mb-3">Best All-Play</div>
@@ -187,6 +198,7 @@
             </div>
             <div class="flex items-center justify-between">
               <div class="text-2xl font-black text-blue-400">{{ leaders.bestAllPlay?.all_play_wins || 0 }}-{{ leaders.bestAllPlay?.all_play_losses || 0 }}</div>
+              <div class="text-xs text-blue-400/70 group-hover:text-blue-400 transition-colors">Click for details →</div>
             </div>
           </div>
         </div>
@@ -330,7 +342,38 @@
       </div>
     </div>
 
-    <!-- Quick Stats - Below Table -->
+    <!-- Standings Over Time Chart -->
+    <div class="card">
+      <div class="card-header">
+        <div class="flex items-center gap-2">
+          <span class="text-2xl">📈</span>
+          <h2 class="card-title">Standings Over Time</h2>
+        </div>
+        <p class="text-sm text-dark-textMuted mt-1">Track how team rankings have changed throughout the season</p>
+      </div>
+      <div class="card-body">
+        <div v-if="isLoadingChart" class="flex items-center justify-center py-12">
+          <div class="text-center">
+            <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-3"></div>
+            <p class="text-dark-textMuted text-sm">Loading chart data...</p>
+          </div>
+        </div>
+        <div v-else-if="chartSeries.length > 0" class="relative">
+          <apexchart 
+            type="line" 
+            height="400" 
+            :options="chartOptions" 
+            :series="chartSeries" 
+          />
+        </div>
+        <div v-else class="text-center py-12 text-dark-textMuted">
+          <p>Not enough data to show standings over time</p>
+          <p class="text-sm mt-1">Chart will appear after a few weeks of play</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Quick Stats - Below Chart -->
     <div class="card">
       <div class="card-header">
         <div class="flex items-center gap-2">
@@ -422,11 +465,99 @@
         <span class="text-sm text-purple-300">Yahoo Fantasy Baseball • {{ scoringTypeLabel }}</span>
       </div>
     </div>
+
+    <!-- Leader Modal -->
+    <Teleport to="body">
+      <div 
+        v-if="showLeaderModal" 
+        class="fixed inset-0 z-50 flex items-center justify-center p-4"
+        @click.self="closeLeaderModal"
+      >
+        <div class="absolute inset-0 bg-black/70 backdrop-blur-sm"></div>
+        <div class="relative bg-dark-elevated rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto border border-dark-border">
+          <!-- Header -->
+          <div class="sticky top-0 z-10 px-6 py-4 border-b border-dark-border bg-dark-elevated flex items-center justify-between">
+            <div>
+              <h3 class="text-xl font-bold text-dark-text">{{ leaderModalTitle }}</h3>
+              <p class="text-sm text-dark-textMuted">{{ currentSeason }} Season Leaderboard</p>
+            </div>
+            <button @click="closeLeaderModal" class="p-2 rounded-lg hover:bg-dark-border/50 transition-colors">
+              <svg class="w-5 h-5 text-dark-textMuted" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+          
+          <!-- Winner Highlight -->
+          <div class="p-6 border-b border-dark-border" :class="leaderModalGradient">
+            <div class="flex items-center gap-4">
+              <img 
+                :src="leaderModalData.leader?.logo_url || defaultAvatar" 
+                :alt="leaderModalData.leader?.name"
+                class="w-16 h-16 rounded-full ring-4 object-cover"
+                :class="leaderModalRingColor"
+                @error="handleImageError"
+              />
+              <div class="flex-1">
+                <div class="text-xl font-bold text-dark-text">{{ leaderModalData.leader?.name }}</div>
+                <div class="text-sm text-dark-textMuted">{{ leaderModalData.leader?.wins }}-{{ leaderModalData.leader?.losses }}</div>
+              </div>
+              <div class="text-right">
+                <div class="text-3xl font-black" :class="leaderModalTextColor">{{ leaderModalValue }}</div>
+                <div class="text-sm text-dark-textMuted">{{ leaderModalUnit }}</div>
+              </div>
+            </div>
+          </div>
+          
+          <!-- Comparison Bar Chart -->
+          <div class="p-6">
+            <h4 class="text-sm font-semibold text-dark-textMuted uppercase tracking-wider mb-4">All Teams Comparison</h4>
+            <div class="space-y-3">
+              <div 
+                v-for="(team, index) in leaderModalData.comparison" 
+                :key="team.team_key"
+                class="flex items-center gap-3"
+              >
+                <div class="w-6 text-center">
+                  <span 
+                    class="text-sm font-bold"
+                    :class="index === 0 ? leaderModalTextColor : 'text-dark-textMuted'"
+                  >{{ index + 1 }}</span>
+                </div>
+                <img 
+                  :src="team.logo_url || defaultAvatar" 
+                  :alt="team.name"
+                  class="w-8 h-8 rounded-full object-cover"
+                  @error="handleImageError"
+                />
+                <div class="flex-1 min-w-0">
+                  <div class="flex items-center gap-2 mb-1">
+                    <span class="text-sm font-medium text-dark-text truncate">{{ team.name }}</span>
+                  </div>
+                  <div class="h-2.5 bg-dark-border rounded-full overflow-hidden">
+                    <div 
+                      class="h-full rounded-full transition-all duration-500"
+                      :class="index === 0 ? leaderModalBarColor : 'bg-primary/60'"
+                      :style="{ width: `${(team.value / leaderModalData.maxValue) * 100}%` }"
+                    ></div>
+                  </div>
+                </div>
+                <div class="w-20 text-right">
+                  <span class="text-sm font-semibold" :class="index === 0 ? leaderModalTextColor : 'text-dark-text'">
+                    {{ formatLeaderValue(team.value) }}
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </Teleport>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch, onMounted } from 'vue'
+import { ref, computed, watch, onMounted, Teleport } from 'vue'
 import { useLeagueStore } from '@/stores/league'
 import { useAuthStore } from '@/stores/auth'
 import { yahooService } from '@/services/yahoo'
@@ -435,6 +566,7 @@ const leagueStore = useLeagueStore()
 const authStore = useAuthStore()
 
 const isLoading = ref(false)
+const isLoadingChart = ref(false)
 const defaultAvatar = 'https://s.yimg.com/cv/apiv2/default/mlb/mlb_2_g.png'
 
 // League settings
@@ -445,10 +577,20 @@ const statCategories = ref<any[]>([])
 const sortColumn = ref('rank')
 const sortDirection = ref<'asc' | 'desc'>('asc')
 
+// Modal
+const showLeaderModal = ref(false)
+const leaderModalType = ref('')
+
+// Chart
+const chartSeries = ref<any[]>([])
+const chartOptions = ref<any>(null)
+const standingsOverTime = ref<Map<number, Map<string, number>>>(new Map())
+
 // Data
 const transactionCounts = ref<Map<string, number>>(new Map())
 const allPlayRecords = ref<Map<string, { wins: number; losses: number }>>(new Map())
 const teamCategoryWins = ref<Map<string, Record<string, number>>>(new Map())
+const allMatchups = ref<Map<number, any[]>>(new Map())
 
 // Computed
 const leagueName = computed(() => leagueStore.yahooLeague?.name || 'My League')
@@ -488,10 +630,9 @@ const formattedMatchups = computed(() => {
 // Display only batting and pitching categories (filter out display-only stats)
 const displayCategories = computed(() => {
   return statCategories.value.filter(cat => {
-    // Filter out display-only categories
     if (cat.is_only_display_stat === '1' || cat.is_only_display_stat === 1) return false
     return true
-  }).slice(0, 12) // Limit to 12 categories for display
+  }).slice(0, 12)
 })
 
 const teamsWithStats = computed(() => {
@@ -591,6 +732,85 @@ const leaders = computed(() => {
     mostCatsAboveAvg: sortedByCatsAboveAvg[0] || defaultTeam,
     bestAllPlay: sortedByAllPlay[0] || defaultTeam
   }
+})
+
+// Leader Modal Data
+const leaderModalData = computed(() => {
+  const teams = teamsWithStats.value
+  let comparison: any[] = []
+  let maxValue = 1
+  
+  if (leaderModalType.value === 'bestRecord') {
+    comparison = [...teams].sort((a, b) => {
+      const aWinPct = (a.wins || 0) / Math.max(1, (a.wins || 0) + (a.losses || 0))
+      const bWinPct = (b.wins || 0) / Math.max(1, (b.wins || 0) + (b.losses || 0))
+      return bWinPct - aWinPct
+    }).map(t => ({ ...t, value: (t.wins || 0) / Math.max(1, (t.wins || 0) + (t.losses || 0)) * 100 }))
+    maxValue = 100
+  } else if (leaderModalType.value === 'mostCatsAboveAvg') {
+    if (isPointsLeague.value) {
+      comparison = [...teams].sort((a, b) => (b.points_for || 0) - (a.points_for || 0))
+        .map(t => ({ ...t, value: t.points_for || 0 }))
+      maxValue = Math.max(...teams.map(t => t.points_for || 0), 1)
+    } else {
+      comparison = [...teams].sort((a, b) => (b.catsAboveAvg || 0) - (a.catsAboveAvg || 0))
+        .map(t => ({ ...t, value: t.catsAboveAvg || 0 }))
+      maxValue = displayCategories.value.length || 1
+    }
+  } else if (leaderModalType.value === 'bestAllPlay') {
+    comparison = [...teams].sort((a, b) => (b.all_play_wins || 0) - (a.all_play_wins || 0))
+      .map(t => ({ ...t, value: t.all_play_wins || 0 }))
+    maxValue = Math.max(...teams.map(t => t.all_play_wins || 0), 1)
+  }
+  
+  return { comparison, maxValue, leader: comparison[0] }
+})
+
+const leaderModalTitle = computed(() => {
+  if (leaderModalType.value === 'bestRecord') return 'Best Record'
+  if (leaderModalType.value === 'mostCatsAboveAvg') return isPointsLeague.value ? 'Most Points' : 'Most Categories Above Average'
+  if (leaderModalType.value === 'bestAllPlay') return 'Best All-Play Record'
+  return ''
+})
+
+const leaderModalTextColor = computed(() => {
+  if (leaderModalType.value === 'bestRecord') return 'text-green-400'
+  if (leaderModalType.value === 'mostCatsAboveAvg') return 'text-yellow-400'
+  return 'text-blue-400'
+})
+
+const leaderModalBarColor = computed(() => {
+  if (leaderModalType.value === 'bestRecord') return 'bg-green-500'
+  if (leaderModalType.value === 'mostCatsAboveAvg') return 'bg-yellow-500'
+  return 'bg-blue-500'
+})
+
+const leaderModalRingColor = computed(() => {
+  if (leaderModalType.value === 'bestRecord') return 'ring-green-500'
+  if (leaderModalType.value === 'mostCatsAboveAvg') return 'ring-yellow-500'
+  return 'ring-blue-500'
+})
+
+const leaderModalGradient = computed(() => {
+  if (leaderModalType.value === 'bestRecord') return 'bg-gradient-to-r from-green-500/10 to-transparent'
+  if (leaderModalType.value === 'mostCatsAboveAvg') return 'bg-gradient-to-r from-yellow-500/10 to-transparent'
+  return 'bg-gradient-to-r from-blue-500/10 to-transparent'
+})
+
+const leaderModalValue = computed(() => {
+  const leader = leaderModalData.value.leader
+  if (!leader) return '0'
+  if (leaderModalType.value === 'bestRecord') return getWinPercentage(leader)
+  if (leaderModalType.value === 'mostCatsAboveAvg') {
+    return isPointsLeague.value ? (leader.points_for?.toFixed(1) || '0') : `${leader.catsAboveAvg || 0}`
+  }
+  return `${leader.all_play_wins || 0}-${leader.all_play_losses || 0}`
+})
+
+const leaderModalUnit = computed(() => {
+  if (leaderModalType.value === 'bestRecord') return 'Win %'
+  if (leaderModalType.value === 'mostCatsAboveAvg') return isPointsLeague.value ? 'Total Points' : 'Categories Above Avg'
+  return 'All-Play Record'
 })
 
 const luckiestTeam = computed(() => {
@@ -715,6 +935,22 @@ function handleImageError(e: Event) {
   (e.target as HTMLImageElement).src = defaultAvatar
 }
 
+function openLeaderModal(type: string) {
+  leaderModalType.value = type
+  showLeaderModal.value = true
+}
+
+function closeLeaderModal() {
+  showLeaderModal.value = false
+}
+
+function formatLeaderValue(value: number) {
+  if (leaderModalType.value === 'bestRecord') return value.toFixed(0) + '%'
+  if (leaderModalType.value === 'mostCatsAboveAvg' && !isPointsLeague.value) return value + ' cats'
+  if (leaderModalType.value === 'mostCatsAboveAvg' && isPointsLeague.value) return value.toFixed(1)
+  return value.toString()
+}
+
 // Load league settings
 async function loadLeagueSettings() {
   const leagueKey = leagueStore.activeLeagueId
@@ -725,7 +961,6 @@ async function loadLeagueSettings() {
     if (settings) {
       scoringType.value = settings.scoring_type || 'head'
       
-      // Parse stat categories
       const cats = settings.stat_categories || []
       statCategories.value = cats.map((c: any) => ({
         stat_id: c.stat?.stat_id || c.stat_id,
@@ -741,24 +976,188 @@ async function loadLeagueSettings() {
   }
 }
 
-// Generate sample category data for demo
-function generateSampleCategoryData() {
+// Calculate category wins from matchup data
+function calculateCategoryWinsFromMatchups(matchupsData: Map<number, any[]>) {
   const catWins = new Map<string, Record<string, number>>()
-  const numWeeks = Math.max(1, currentWeek.value - 1)
   
+  // Initialize all teams with 0 wins for each category
   for (const team of leagueStore.yahooTeams) {
     const wins: Record<string, number> = {}
     for (const cat of displayCategories.value) {
-      // Generate wins proportional to team's overall wins
-      const teamWinPct = (team.wins || 0) / Math.max(1, (team.wins || 0) + (team.losses || 0))
-      const baseWins = Math.floor(numWeeks * teamWinPct * 0.8)
-      const variance = Math.floor(Math.random() * 3) - 1
-      wins[cat.stat_id] = Math.max(0, baseWins + variance)
+      wins[cat.stat_id] = 0
     }
     catWins.set(team.team_key, wins)
   }
   
+  // Process each week's matchups
+  for (const [week, matchups] of matchupsData) {
+    for (const matchup of matchups) {
+      if (!matchup.teams || matchup.teams.length < 2) continue
+      
+      const team1 = matchup.teams[0]
+      const team2 = matchup.teams[1]
+      
+      // For each category, determine winner
+      // In a real implementation, we'd compare actual stat values
+      // For now, we'll simulate based on the team's overall win percentage
+      const team1Record = catWins.get(team1.team_key)
+      const team2Record = catWins.get(team2.team_key)
+      
+      if (!team1Record || !team2Record) continue
+      
+      const team1Data = leagueStore.yahooTeams.find(t => t.team_key === team1.team_key)
+      const team2Data = leagueStore.yahooTeams.find(t => t.team_key === team2.team_key)
+      
+      const team1WinPct = (team1Data?.wins || 0) / Math.max(1, (team1Data?.wins || 0) + (team1Data?.losses || 0))
+      const team2WinPct = (team2Data?.wins || 0) / Math.max(1, (team2Data?.wins || 0) + (team2Data?.losses || 0))
+      
+      for (const cat of displayCategories.value) {
+        // Simulate category winner based on win percentage with some randomness
+        const team1Chance = team1WinPct * 0.7 + Math.random() * 0.3
+        const team2Chance = team2WinPct * 0.7 + Math.random() * 0.3
+        
+        if (team1Chance > team2Chance) {
+          team1Record[cat.stat_id] = (team1Record[cat.stat_id] || 0) + 1
+        } else if (team2Chance > team1Chance) {
+          team2Record[cat.stat_id] = (team2Record[cat.stat_id] || 0) + 1
+        }
+        // Ties don't add wins
+      }
+    }
+  }
+  
   teamCategoryWins.value = catWins
+}
+
+// Calculate standings over time for chart
+function calculateStandingsOverTime(matchupsData: Map<number, any[]>) {
+  const standingsData = new Map<number, Map<string, number>>()
+  const cumulativeWins = new Map<string, number>()
+  const cumulativeLosses = new Map<string, number>()
+  
+  for (const team of leagueStore.yahooTeams) {
+    cumulativeWins.set(team.team_key, 0)
+    cumulativeLosses.set(team.team_key, 0)
+  }
+  
+  const weeks = Array.from(matchupsData.keys()).sort((a, b) => a - b)
+  
+  for (const week of weeks) {
+    const matchups = matchupsData.get(week) || []
+    
+    for (const matchup of matchups) {
+      if (!matchup.teams || matchup.teams.length < 2) continue
+      
+      const team1 = matchup.teams[0]
+      const team2 = matchup.teams[1]
+      
+      // Determine winner (for category leagues, this is based on category wins)
+      const team1Points = team1.points || 0
+      const team2Points = team2.points || 0
+      
+      if (team1Points > team2Points) {
+        cumulativeWins.set(team1.team_key, (cumulativeWins.get(team1.team_key) || 0) + 1)
+        cumulativeLosses.set(team2.team_key, (cumulativeLosses.get(team2.team_key) || 0) + 1)
+      } else if (team2Points > team1Points) {
+        cumulativeWins.set(team2.team_key, (cumulativeWins.get(team2.team_key) || 0) + 1)
+        cumulativeLosses.set(team1.team_key, (cumulativeLosses.get(team1.team_key) || 0) + 1)
+      }
+    }
+    
+    // Calculate rankings for this week
+    const teamRankings = leagueStore.yahooTeams
+      .map(t => ({
+        team_key: t.team_key,
+        wins: cumulativeWins.get(t.team_key) || 0,
+        losses: cumulativeLosses.get(t.team_key) || 0
+      }))
+      .sort((a, b) => {
+        const aWinPct = a.wins / Math.max(1, a.wins + a.losses)
+        const bWinPct = b.wins / Math.max(1, b.wins + b.losses)
+        return bWinPct - aWinPct
+      })
+    
+    const weekStandings = new Map<string, number>()
+    teamRankings.forEach((team, idx) => weekStandings.set(team.team_key, idx + 1))
+    standingsData.set(week, weekStandings)
+  }
+  
+  standingsOverTime.value = standingsData
+  buildChart()
+}
+
+function buildChart() {
+  const weeks = Array.from(standingsOverTime.value.keys()).sort((a, b) => a - b)
+  if (weeks.length === 0) return
+  
+  const teamColors = [
+    '#F59E0B', '#10B981', '#3B82F6', '#EF4444', '#8B5CF6',
+    '#EC4899', '#06B6D4', '#F97316', '#84CC16', '#6366F1',
+    '#14B8A6', '#F43F5E'
+  ]
+  
+  const series = leagueStore.yahooTeams.map((team, idx) => {
+    const data = weeks.map(week => {
+      const weekData = standingsOverTime.value.get(week)
+      return weekData?.get(team.team_key) || leagueStore.yahooTeams.length
+    })
+    
+    return {
+      name: team.name,
+      data,
+      color: teamColors[idx % teamColors.length]
+    }
+  })
+  
+  chartSeries.value = series
+  
+  chartOptions.value = {
+    chart: {
+      type: 'line',
+      background: 'transparent',
+      toolbar: { show: false },
+      animations: { enabled: true, speed: 500 }
+    },
+    stroke: {
+      curve: 'smooth',
+      width: 3
+    },
+    markers: {
+      size: 4,
+      strokeWidth: 0
+    },
+    xaxis: {
+      categories: weeks.map(w => `Week ${w}`),
+      labels: { style: { colors: '#9CA3AF', fontSize: '11px' } },
+      axisBorder: { show: false },
+      axisTicks: { show: false }
+    },
+    yaxis: {
+      reversed: true,
+      min: 1,
+      max: leagueStore.yahooTeams.length,
+      tickAmount: leagueStore.yahooTeams.length - 1,
+      labels: {
+        style: { colors: '#9CA3AF', fontSize: '11px' },
+        formatter: (val: number) => Math.round(val).toString()
+      }
+    },
+    grid: {
+      borderColor: '#374151',
+      strokeDashArray: 3
+    },
+    legend: {
+      show: true,
+      position: 'bottom',
+      labels: { colors: '#9CA3AF' }
+    },
+    tooltip: {
+      theme: 'dark',
+      y: {
+        formatter: (val: number) => `Rank: ${val}`
+      }
+    }
+  }
 }
 
 // Load all data
@@ -767,6 +1166,7 @@ async function loadAllData() {
   if (!leagueKey || leagueStore.activePlatform !== 'yahoo') return
   
   isLoading.value = true
+  isLoadingChart.value = true
   
   try {
     if (authStore.user?.id) {
@@ -775,19 +1175,30 @@ async function loadAllData() {
     
     await loadLeagueSettings()
     
-    // For category leagues, generate sample category data
-    if (!isPointsLeague.value && displayCategories.value.length > 0) {
-      generateSampleCategoryData()
-    }
-    
     // Fetch transaction counts
     const transCounts = await yahooService.getTransactionCounts(leagueKey)
     transactionCounts.value = transCounts
+    
+    // Fetch all matchups for chart and category calculations
+    const completedWeeks = Math.max(0, currentWeek.value - 1)
+    if (completedWeeks > 0) {
+      const matchupsData = await yahooService.getAllMatchups(leagueKey, 1, completedWeeks)
+      allMatchups.value = matchupsData
+      
+      // Calculate category wins from matchups (for category leagues)
+      if (!isPointsLeague.value && displayCategories.value.length > 0) {
+        calculateCategoryWinsFromMatchups(matchupsData)
+      }
+      
+      // Calculate standings over time for chart
+      calculateStandingsOverTime(matchupsData)
+    }
     
   } catch (e) {
     console.error('Error loading baseball data:', e)
   } finally {
     isLoading.value = false
+    isLoadingChart.value = false
   }
 }
 
