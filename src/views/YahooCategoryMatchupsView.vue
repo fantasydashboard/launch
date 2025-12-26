@@ -244,7 +244,9 @@
                   <th class="text-center py-2 px-1">Current</th>
                   <th class="text-center py-2 px-1">Avg</th>
                   <th class="text-center py-2 px-1">High</th>
+                  <th class="text-center py-2 px-1">Win%</th>
                   <th class="text-center py-2 px-1 w-10">ADV</th>
+                  <th class="text-center py-2 px-1">Win%</th>
                   <th class="text-center py-2 px-1">High</th>
                   <th class="text-center py-2 px-1">Avg</th>
                   <th class="text-center py-2 px-1">Current</th>
@@ -255,31 +257,19 @@
                     <td class="text-center py-2 px-1" :class="getCategoryLeader(selectedMatchup, cat.stat_id) === 1 ? 'text-cyan-400 font-bold' : 'text-dark-textMuted'">{{ formatStat(getCategoryStat(selectedMatchup, cat.stat_id, 1), cat.stat_id) }}</td>
                     <td class="text-center py-2 px-1 text-dark-textMuted">{{ formatStat(getCategoryAvg(selectedMatchup.team1.team_key, cat.stat_id), cat.stat_id) }}</td>
                     <td class="text-center py-2 px-1 text-dark-textMuted">{{ formatStat(getCategoryHigh(selectedMatchup.team1.team_key, cat.stat_id), cat.stat_id) }}</td>
+                    <td class="text-center py-2 px-1" :class="getCategoryWinProbClass(getCategoryWinProb(selectedMatchup, cat.stat_id, 1))">{{ getCategoryWinProb(selectedMatchup, cat.stat_id, 1).toFixed(0) }}%</td>
                     <td class="text-center py-2 px-1">
                       <span v-if="getCategoryLeader(selectedMatchup, cat.stat_id) === 1" class="text-cyan-400 text-lg font-bold">◀</span>
                       <span v-else-if="getCategoryLeader(selectedMatchup, cat.stat_id) === 2" class="text-orange-400 text-lg font-bold">▶</span>
                       <span v-else class="text-dark-textMuted">—</span>
                     </td>
+                    <td class="text-center py-2 px-1" :class="getCategoryWinProbClass(getCategoryWinProb(selectedMatchup, cat.stat_id, 2))">{{ getCategoryWinProb(selectedMatchup, cat.stat_id, 2).toFixed(0) }}%</td>
                     <td class="text-center py-2 px-1 text-dark-textMuted">{{ formatStat(getCategoryHigh(selectedMatchup.team2.team_key, cat.stat_id), cat.stat_id) }}</td>
                     <td class="text-center py-2 px-1 text-dark-textMuted">{{ formatStat(getCategoryAvg(selectedMatchup.team2.team_key, cat.stat_id), cat.stat_id) }}</td>
                     <td class="text-center py-2 px-1" :class="getCategoryLeader(selectedMatchup, cat.stat_id) === 2 ? 'text-orange-400 font-bold' : 'text-dark-textMuted'">{{ formatStat(getCategoryStat(selectedMatchup, cat.stat_id, 2), cat.stat_id) }}</td>
                   </tr>
                 </tbody>
               </table>
-            </div>
-            <!-- Category Win Probabilities -->
-            <div class="mt-6 p-4 bg-dark-border/20 rounded-xl">
-              <h4 class="text-sm font-semibold text-dark-textMuted mb-3">Category Win Probabilities</h4>
-              <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
-                <div v-for="cat in allCategories" :key="'prob-'+cat.stat_id" class="bg-dark-border/30 rounded-lg p-2 text-center">
-                  <div class="text-xs text-dark-textMuted mb-1">{{ cat.display_name }}</div>
-                  <div class="flex items-center justify-center gap-1">
-                    <span :class="getCategoryWinProbClass(getCategoryWinProb(selectedMatchup, cat.stat_id, 1))" class="text-sm font-bold">{{ getCategoryWinProb(selectedMatchup, cat.stat_id, 1).toFixed(0) }}%</span>
-                    <span class="text-dark-textMuted text-xs">-</span>
-                    <span :class="getCategoryWinProbClass(getCategoryWinProb(selectedMatchup, cat.stat_id, 2))" class="text-sm font-bold">{{ getCategoryWinProb(selectedMatchup, cat.stat_id, 2).toFixed(0) }}%</span>
-                  </div>
-                </div>
-              </div>
             </div>
           </div>
         </div>
@@ -470,6 +460,100 @@ function calcOverallWinProb(probs: Record<string, { team1: number, team2: number
   return { team1: Math.min(95, Math.max(5, p1)), team2: Math.min(95, Math.max(5, 100 - p1)) }
 }
 
+// Load historical category data to calculate avg and high per team per category
+async function loadTeamSeasonStats(leagueKey: string, currentWeek: number) {
+  try {
+    // Get all teams
+    const teams = leagueStore.yahooTeams
+    const newStats = new Map<string, any>()
+    
+    // Load matchups from all previous weeks
+    const weeksToLoad = Math.min(currentWeek - 1, 10) // Load up to 10 weeks of history
+    const weekPromises: Promise<any>[] = []
+    
+    for (let w = Math.max(1, currentWeek - weeksToLoad); w < currentWeek; w++) {
+      weekPromises.push(yahooService.getCategoryMatchups(leagueKey, w))
+    }
+    
+    const allWeeksData = await Promise.all(weekPromises)
+    
+    // Process each team's historical stats
+    for (const team of teams) {
+      const categoryTotals: Record<string, number[]> = {}
+      let totalCatsWon = 0
+      let weeksPlayed = 0
+      const weeklyWins: number[] = []
+      
+      // Go through each week's matchups
+      for (const weekMatchups of allWeeksData) {
+        for (const matchup of weekMatchups) {
+          if (!matchup.teams || matchup.teams.length < 2) continue
+          
+          const teamData = matchup.teams.find((t: any) => t.team_key === team.team_key)
+          if (!teamData) continue
+          
+          weeksPlayed++
+          let catsWonThisWeek = 0
+          
+          // Count category wins
+          for (const sw of (matchup.stat_winners || [])) {
+            if (!sw.is_tied && sw.winner_team_key === team.team_key) {
+              catsWonThisWeek++
+            }
+          }
+          totalCatsWon += catsWonThisWeek
+          weeklyWins.push(catsWonThisWeek)
+          
+          // Track each category value
+          if (teamData.stats) {
+            for (const [statId, value] of Object.entries(teamData.stats)) {
+              if (!categoryTotals[statId]) categoryTotals[statId] = []
+              categoryTotals[statId].push(parseFloat(value as string) || 0)
+            }
+          }
+        }
+      }
+      
+      // Calculate averages and highs
+      const categoryAvgs: Record<string, number> = {}
+      const categoryHighs: Record<string, number> = {}
+      
+      for (const [statId, values] of Object.entries(categoryTotals)) {
+        if (values.length > 0) {
+          categoryAvgs[statId] = values.reduce((a, b) => a + b, 0) / values.length
+          // For inverse stats (ERA, WHIP), high is actually the lowest value
+          if (INVERSE_STATS.includes(statId)) {
+            categoryHighs[statId] = Math.min(...values)
+          } else {
+            categoryHighs[statId] = Math.max(...values)
+          }
+        }
+      }
+      
+      // Calculate consistency (standard deviation of weekly wins)
+      const avgWins = weeklyWins.length > 0 ? weeklyWins.reduce((a, b) => a + b, 0) / weeklyWins.length : 0
+      const variance = weeklyWins.length > 0 ? weeklyWins.reduce((sum, w) => sum + Math.pow(w - avgWins, 2), 0) / weeklyWins.length : 0
+      const stdDev = Math.sqrt(variance)
+      
+      newStats.set(team.team_key, {
+        record: `${team.wins || 0}-${team.losses || 0}`,
+        wins: team.wins || 0,
+        avgCatsPerWeek: weeksPlayed > 0 ? totalCatsWon / weeksPlayed : 0,
+        mostCatsWon: weeklyWins.length > 0 ? Math.max(...weeklyWins) : 0,
+        leastCatsWon: weeklyWins.length > 0 ? Math.min(...weeklyWins) : 0,
+        consistency: stdDev < 1.5 ? 'High' : stdDev < 2.5 ? 'Medium' : 'Low',
+        consistencyScore: 10 - stdDev,
+        categoryAvgs,
+        categoryHighs
+      })
+    }
+    
+    teamSeasonStats.value = newStats
+  } catch (e) {
+    console.error('Error loading team season stats:', e)
+  }
+}
+
 async function loadCategories() {
   const k = leagueStore.activeLeagueId; if (!k) return
   try {
@@ -488,6 +572,10 @@ async function loadMatchups() {
     const raw = await yahooService.getCategoryMatchups(k, week)
     const isCurrent = week === currentWeek.value && !isSeasonComplete.value
     const days = isCurrent ? 3 : 0
+    
+    // Load historical data to calculate avg/high for each team
+    await loadTeamSeasonStats(k, week)
+    
     const processed: any[] = []
     for (const m of raw) {
       if (!m.teams || m.teams.length < 2) continue
@@ -540,7 +628,7 @@ function buildWinProbChart() {
     yaxis: { min: 0, max: 100, labels: { style: { colors: '#9ca3af', fontSize: '10px' }, formatter: (v: number) => `${v}%` } },
     legend: { show: true, position: 'top', labels: { colors: '#9ca3af' }, fontSize: '11px' },
     grid: { borderColor: '#374151', strokeDashArray: 3 },
-    tooltip: { theme: 'dark', y: { formatter: (v: number) => `${v.toFixed(0)}%` } }
+    tooltip: { theme: 'dark', y: { formatter: (v: number) => `${v.toFixed(2)}%` } }
   })
   winProbChart.render()
 }
