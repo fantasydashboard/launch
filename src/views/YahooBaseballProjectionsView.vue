@@ -390,7 +390,7 @@
                   <th class="px-3 py-3 text-left text-xs font-semibold text-dark-textMuted uppercase">Team</th>
                   <th class="px-3 py-3 text-center text-xs font-semibold text-dark-textMuted uppercase w-16" title="Overall team grade based on starter quality">Grade</th>
                   <th class="px-3 py-3 text-center text-xs font-semibold text-dark-textMuted uppercase w-24" title="Team status: Contender, Competitive, Pretender, Rebuilding">Status</th>
-                  <th v-for="pos in uniquePositions" :key="pos" class="px-3 py-3 text-center text-xs font-semibold uppercase w-12" :class="getPositionClass(pos)" :title="`${pos} position grade`">
+                  <th v-for="pos in uniquePositions" :key="pos" class="px-3 py-3 text-center text-xs font-semibold uppercase w-12" :class="getPositionTextClass(pos)" :title="`${pos} position grade`">
                     {{ pos }}
                   </th>
                   <th class="px-3 py-3 text-left text-xs font-semibold text-dark-textMuted uppercase hidden lg:table-cell">Top Assets</th>
@@ -635,11 +635,16 @@ const displayRosterPositions = computed(() => {
 })
 
 const uniquePositions = computed(() => {
-  // Get positions that have roster slots (excluding bench)
-  return ['C', '1B', '2B', '3B', 'SS', 'OF', 'SP', 'RP'].filter(pos => {
-    const reqs = rosterRequirements.value
-    return reqs[pos] > 0 || allPlayers.value.some(p => p.position?.includes(pos))
+  // Get positions that have players (based on actual player data)
+  const positionsWithPlayers = new Set<string>()
+  allPlayers.value.forEach(p => {
+    const pos = p.position?.split(',')[0]?.trim()
+    if (pos) positionsWithPlayers.add(pos)
   })
+  
+  // Return in a logical order, filtered to positions that exist
+  const order = ['C', '1B', '2B', '3B', 'SS', 'OF', 'SP', 'RP']
+  return order.filter(pos => positionsWithPlayers.has(pos))
 })
 
 const filteredPlayers = computed(() => {
@@ -768,24 +773,48 @@ const rankedTeams = computed<TeamRanking[]>(() => {
 // Helper functions
 function getRosterSlotCount(pos: string): number {
   const reqs = rosterRequirements.value
-  return reqs[pos] || 0
+  // If Yahoo provided roster settings, use them
+  if (reqs[pos] !== undefined && reqs[pos] > 0) return reqs[pos]
+  // Otherwise use reasonable baseball defaults
+  const defaults: Record<string, number> = { C: 1, '1B': 1, '2B': 1, '3B': 1, SS: 1, OF: 3, SP: 2, RP: 2, P: 0, Util: 1 }
+  return defaults[pos] || 1
+}
+
+function getPositionTextClass(pos: string): string {
+  const p = pos?.split(',')?.[0]?.trim() || pos
+  const c: Record<string, string> = { 
+    C: 'text-purple-400', '1B': 'text-red-400', '2B': 'text-orange-400', '3B': 'text-yellow-400', 
+    SS: 'text-green-400', OF: 'text-blue-400', SP: 'text-cyan-400', RP: 'text-pink-400', 
+    P: 'text-teal-400', Util: 'text-gray-400' 
+  }
+  return c[p] || 'text-dark-textMuted'
 }
 
 function calculateStarterGrade(players: any[], numStarters: number, position: string): string {
-  if (!players.length || numStarters === 0) return 'N/A'
+  if (!players.length) return 'F'
+  if (numStarters === 0) numStarters = 1 // Default to 1 starter if not specified
   
   const starters = players.slice(0, numStarters)
-  const n = numTeams.value
+  const n = numTeams.value || 12
   
   // Calculate average position rank of starters
   const validStarters = starters.filter(p => p.positionRank)
-  if (!validStarters.length) return 'C'
+  if (!validStarters.length) {
+    // No position ranks yet - grade based on PPG relative to others
+    const avgPpg = starters.reduce((sum, p) => sum + (p.ppg || 0), 0) / starters.length
+    if (avgPpg >= 5) return 'A'
+    if (avgPpg >= 4) return 'B+'
+    if (avgPpg >= 3) return 'B'
+    if (avgPpg >= 2) return 'C+'
+    if (avgPpg >= 1) return 'C'
+    return 'D'
+  }
   
   const avgRank = validStarters.reduce((sum, p) => sum + p.positionRank, 0) / validStarters.length
   const threshold = n * numStarters
   
   // Grade based on where starters rank relative to league
-  const pct = avgRank / threshold
+  const pct = avgRank / Math.max(threshold, 1)
   
   if (pct <= 0.25) return 'A+'
   if (pct <= 0.40) return 'A'
