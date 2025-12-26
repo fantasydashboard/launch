@@ -747,54 +747,63 @@ const sortedTeams = computed(() => {
 
 const leaders = computed(() => {
   const teams = teamsWithStats.value
-  if (teams.length === 0) return { bestRecord: null, mostPoints: null, mostCatsAboveAvg: null, bestAllPlay: null }
+  const defaultTeam = { name: 'N/A', logo_url: defaultAvatar, wins: 0, losses: 0, points_for: 0, all_play_wins: 0, all_play_losses: 0, catsAboveAvg: 0 }
+  
+  if (!teams || teams.length === 0) {
+    return { bestRecord: defaultTeam, mostPoints: defaultTeam, mostCatsAboveAvg: defaultTeam, bestAllPlay: defaultTeam }
+  }
   
   const sortedByRecord = [...teams].sort((a, b) => {
-    const aWinPct = a.wins / Math.max(1, a.wins + a.losses)
-    const bWinPct = b.wins / Math.max(1, b.wins + b.losses)
+    const aWinPct = (a.wins || 0) / Math.max(1, (a.wins || 0) + (a.losses || 0))
+    const bWinPct = (b.wins || 0) / Math.max(1, (b.wins || 0) + (b.losses || 0))
     return bWinPct - aWinPct
   })
   
   const sortedByPoints = [...teams].sort((a, b) => (b.points_for || 0) - (a.points_for || 0))
   const sortedByCatsAboveAvg = [...teams].sort((a, b) => (b.catsAboveAvg || 0) - (a.catsAboveAvg || 0))
   const sortedByAllPlay = [...teams].sort((a, b) => {
-    const aWinPct = a.all_play_wins / Math.max(1, a.all_play_wins + a.all_play_losses)
-    const bWinPct = b.all_play_wins / Math.max(1, b.all_play_wins + b.all_play_losses)
+    const aWinPct = (a.all_play_wins || 0) / Math.max(1, (a.all_play_wins || 0) + (a.all_play_losses || 0))
+    const bWinPct = (b.all_play_wins || 0) / Math.max(1, (b.all_play_wins || 0) + (b.all_play_losses || 0))
     return bWinPct - aWinPct
   })
   
   return {
-    bestRecord: sortedByRecord[0],
-    mostPoints: sortedByPoints[0],
-    mostCatsAboveAvg: sortedByCatsAboveAvg[0],
-    bestAllPlay: sortedByAllPlay[0]
+    bestRecord: sortedByRecord[0] || defaultTeam,
+    mostPoints: sortedByPoints[0] || defaultTeam,
+    mostCatsAboveAvg: sortedByCatsAboveAvg[0] || defaultTeam,
+    bestAllPlay: sortedByAllPlay[0] || defaultTeam
   }
 })
 
 const luckiestTeam = computed(() => {
-  const teams = teamsWithStats.value.filter(t => t.luckScore !== undefined)
-  return teams.sort((a, b) => (b.luckScore || 0) - (a.luckScore || 0))[0]
+  const teams = teamsWithStats.value.filter(t => t.luckScore !== undefined && t.luckScore !== null)
+  if (teams.length === 0) return null
+  return teams.sort((a, b) => (b.luckScore || 0) - (a.luckScore || 0))[0] || null
 })
 
 const unluckiestTeam = computed(() => {
-  const teams = teamsWithStats.value.filter(t => t.luckScore !== undefined)
-  return teams.sort((a, b) => (a.luckScore || 0) - (b.luckScore || 0))[0]
+  const teams = teamsWithStats.value.filter(t => t.luckScore !== undefined && t.luckScore !== null)
+  if (teams.length === 0) return null
+  return teams.sort((a, b) => (a.luckScore || 0) - (b.luckScore || 0))[0] || null
 })
 
 const hottestTeam = computed(() => {
+  if (teamsWithStats.value.length === 0) return null
   // Placeholder - would need weekly data
-  return teamsWithStats.value[0] ? { ...teamsWithStats.value[0], last3Record: '3-0' } : null
+  const team = teamsWithStats.value[0]
+  return team ? { ...team, last3Record: '3-0' } : null
 })
 
 const coldestTeam = computed(() => {
-  return teamsWithStats.value[teamsWithStats.value.length - 1] 
-    ? { ...teamsWithStats.value[teamsWithStats.value.length - 1], last3Record: '0-3' } 
-    : null
+  if (teamsWithStats.value.length === 0) return null
+  const team = teamsWithStats.value[teamsWithStats.value.length - 1]
+  return team ? { ...team, last3Record: '0-3' } : null
 })
 
 const mostActiveTeam = computed(() => {
   const teams = teamsWithStats.value.filter(t => t.transactions !== undefined)
-  return teams.sort((a, b) => (b.transactions || 0) - (a.transactions || 0))[0]
+  if (teams.length === 0) return null
+  return teams.sort((a, b) => (b.transactions || 0) - (a.transactions || 0))[0] || null
 })
 
 // Leader Modal
@@ -869,7 +878,9 @@ function getAverageCategoryWins(catId: string): number {
 }
 
 function getCategoryLeader(catId: string) {
-  return teamsWithStats.value.sort((a, b) => (b.categoryWins?.[catId] || 0) - (a.categoryWins?.[catId] || 0))[0]
+  if (teamsWithStats.value.length === 0) return null
+  const sorted = [...teamsWithStats.value].sort((a, b) => (b.categoryWins?.[catId] || 0) - (a.categoryWins?.[catId] || 0))
+  return sorted[0] || null
 }
 
 function setSortColumn(col: string) {
