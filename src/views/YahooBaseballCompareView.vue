@@ -99,7 +99,15 @@
               
               <div class="space-y-3 text-left">
                 <div class="flex justify-between">
-                  <span class="text-dark-textMuted">Record:</span>
+                  <span class="text-dark-textMuted">🏆 Championships:</span>
+                  <span class="font-bold text-dark-text">{{ comparisonData.team1.championships || 0 }}</span>
+                </div>
+                <div class="flex justify-between">
+                  <span class="text-dark-textMuted">🎯 Playoff Apps:</span>
+                  <span class="font-bold text-dark-text">{{ comparisonData.team1.playoffAppearances || 0 }}</span>
+                </div>
+                <div class="flex justify-between">
+                  <span class="text-dark-textMuted">All-Time Record:</span>
                   <span class="font-bold text-dark-text">{{ comparisonData.team1.wins }}-{{ comparisonData.team1.losses }}</span>
                 </div>
                 <div class="flex justify-between">
@@ -110,13 +118,9 @@
                   <span class="text-dark-textMuted">Avg PPW:</span>
                   <span class="font-bold text-dark-text">{{ comparisonData.team1.avgPPW.toFixed(1) }}</span>
                 </div>
-                <div class="flex justify-between border-t border-dark-border pt-2 mt-2">
-                  <span class="text-dark-textMuted">Total Points:</span>
-                  <span class="font-bold text-dark-text">{{ comparisonData.team1.totalPoints.toFixed(0) }}</span>
-                </div>
                 <div class="flex justify-between">
-                  <span class="text-dark-textMuted">Standing:</span>
-                  <span class="font-bold text-primary">#{{ comparisonData.team1.rank }}</span>
+                  <span class="text-dark-textMuted">Total Points:</span>
+                  <span class="font-bold text-dark-text">{{ comparisonData.team1.totalPoints.toLocaleString() }}</span>
                 </div>
               </div>
             </div>
@@ -174,7 +178,15 @@
               
               <div class="space-y-3 text-left">
                 <div class="flex justify-between">
-                  <span class="text-dark-textMuted">Record:</span>
+                  <span class="text-dark-textMuted">🏆 Championships:</span>
+                  <span class="font-bold text-dark-text">{{ comparisonData.team2.championships || 0 }}</span>
+                </div>
+                <div class="flex justify-between">
+                  <span class="text-dark-textMuted">🎯 Playoff Apps:</span>
+                  <span class="font-bold text-dark-text">{{ comparisonData.team2.playoffAppearances || 0 }}</span>
+                </div>
+                <div class="flex justify-between">
+                  <span class="text-dark-textMuted">All-Time Record:</span>
                   <span class="font-bold text-dark-text">{{ comparisonData.team2.wins }}-{{ comparisonData.team2.losses }}</span>
                 </div>
                 <div class="flex justify-between">
@@ -185,13 +197,9 @@
                   <span class="text-dark-textMuted">Avg PPW:</span>
                   <span class="font-bold text-dark-text">{{ comparisonData.team2.avgPPW.toFixed(1) }}</span>
                 </div>
-                <div class="flex justify-between border-t border-dark-border pt-2 mt-2">
-                  <span class="text-dark-textMuted">Total Points:</span>
-                  <span class="font-bold text-dark-text">{{ comparisonData.team2.totalPoints.toFixed(0) }}</span>
-                </div>
                 <div class="flex justify-between">
-                  <span class="text-dark-textMuted">Standing:</span>
-                  <span class="font-bold text-primary">#{{ comparisonData.team2.rank }}</span>
+                  <span class="text-dark-textMuted">Total Points:</span>
+                  <span class="font-bold text-dark-text">{{ comparisonData.team2.totalPoints.toLocaleString() }}</span>
                 </div>
               </div>
             </div>
@@ -380,16 +388,19 @@ async function loadInitialData() {
       wins: parseInt(team.wins) || 0,
       losses: parseInt(team.losses) || 0,
       points_for: parseFloat(team.points_for) || 0,
-      rank: parseInt(team.rank) || 0
+      rank: parseInt(team.rank) || 0,
+      playoff_seed: team.playoff_seed || null
     }))
     
     console.log('Parsed teams:', allTeams.value.length)
     console.log('First team:', allTeams.value[0])
     
-    // Get league info for current week
-    const leagueInfo = leagueStore.yahooLeagues.find(l => l.league_key === leagueKey)
+    // Get league info for current week - handle if yahooLeagues not loaded yet
+    const yahooLeagues = leagueStore.yahooLeagues || []
+    console.log('Yahoo leagues available:', yahooLeagues.length)
+    const leagueInfo = yahooLeagues.find((l: any) => l.league_key === leagueKey)
     const currentWeek = leagueInfo?.current_week || 25
-    console.log('Current week:', currentWeek)
+    console.log('Current week:', currentWeek, 'from league info:', leagueInfo?.name)
     
     // Load all matchups
     console.log('Loading matchups for weeks 1-' + currentWeek)
@@ -452,7 +463,17 @@ async function loadComparison() {
     const t1 = team1Data.value
     const t2 = team2Data.value
     
+    // Determine playoff appearances (if they have playoff_seed, they made playoffs)
+    const t1PlayoffApp = t1.playoff_seed ? 1 : 0
+    const t2PlayoffApp = t2.playoff_seed ? 1 : 0
+    
+    // Championship = rank 1 with playoff seed 1 (simplified for single season)
+    const t1Champ = (t1.rank === 1 && t1.playoff_seed === '1') ? 1 : 0
+    const t2Champ = (t2.rank === 1 && t2.playoff_seed === '1') ? 1 : 0
+    
     const team1Stats = {
+      championships: t1Champ,
+      playoffAppearances: t1PlayoffApp,
       wins: t1.wins,
       losses: t1.losses,
       winPct: (t1.wins + t1.losses) > 0 ? (t1.wins / (t1.wins + t1.losses)) * 100 : 0,
@@ -462,6 +483,8 @@ async function loadComparison() {
     }
     
     const team2Stats = {
+      championships: t2Champ,
+      playoffAppearances: t2PlayoffApp,
       wins: t2.wins,
       losses: t2.losses,
       winPct: (t2.wins + t2.losses) > 0 ? (t2.wins / (t2.wins + t2.losses)) * 100 : 0,
