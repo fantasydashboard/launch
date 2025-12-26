@@ -124,6 +124,27 @@
         </div>
       </div>
 
+      <!-- Legend -->
+      <div class="card">
+        <div class="card-body py-3">
+          <div class="flex items-center justify-between flex-wrap gap-4">
+            <div class="flex items-center gap-6 text-sm">
+              <div class="flex items-center gap-2">
+                <div class="w-4 h-4 rounded bg-primary/30 border-l-2 border-primary"></div>
+                <span class="text-dark-textMuted">My Players</span>
+              </div>
+              <div class="flex items-center gap-2">
+                <div class="w-4 h-4 rounded bg-cyan-500/20 border-l-2 border-cyan-400"></div>
+                <span class="text-dark-textMuted">Free Agents</span>
+              </div>
+            </div>
+            <div class="text-sm text-dark-textMuted">
+              SOS: <span class="text-green-400">Easy</span> / <span class="text-yellow-400">Avg</span> / <span class="text-red-400">Hard</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <!-- Rankings Table -->
       <div class="card">
         <div class="card-header">
@@ -138,14 +159,16 @@
             <table class="w-full">
               <thead class="bg-dark-border/30 sticky top-0 z-10">
                 <tr>
-                  <th class="px-3 py-3 text-left text-xs font-semibold text-dark-textMuted uppercase w-14">Rank</th>
+                  <th class="px-3 py-3 text-left text-xs font-semibold text-dark-textMuted uppercase w-12">Rank</th>
+                  <th class="px-2 py-3 text-center text-xs font-semibold text-dark-textMuted uppercase w-12">Δ</th>
                   <th class="px-3 py-3 text-left text-xs font-semibold text-dark-textMuted uppercase">Player</th>
-                  <th class="px-3 py-3 text-left text-xs font-semibold text-dark-textMuted uppercase w-28">Owner</th>
-                  <th class="px-3 py-3 text-center text-xs font-semibold text-dark-textMuted uppercase w-14">Pos</th>
-                  <th class="px-3 py-3 text-center text-xs font-semibold text-dark-textMuted uppercase w-14">Pos Rk</th>
-                  <th @click="sortBy('total_points')" class="px-3 py-3 text-center text-xs font-semibold text-dark-textMuted uppercase w-16 cursor-pointer hover:text-dark-text">Pts</th>
-                  <th @click="sortBy('ppg')" class="px-3 py-3 text-center text-xs font-semibold text-dark-textMuted uppercase w-14 cursor-pointer hover:text-dark-text">PPG</th>
-                  <th @click="sortBy('vor')" class="px-3 py-3 text-center text-xs font-semibold text-dark-textMuted uppercase w-14 cursor-pointer hover:text-dark-text">VOR</th>
+                  <th class="px-2 py-3 text-center text-xs font-semibold text-dark-textMuted uppercase w-12">Pos</th>
+                  <th class="px-2 py-3 text-center text-xs font-semibold text-dark-textMuted uppercase w-14">Pos Rk</th>
+                  <th class="px-2 py-3 text-center text-xs font-semibold text-dark-textMuted uppercase w-20">ROS SOS</th>
+                  <th class="px-2 py-3 text-center text-xs font-semibold text-dark-textMuted uppercase w-20">Next 4</th>
+                  <th @click="sortBy('total_points')" class="px-2 py-3 text-center text-xs font-semibold text-dark-textMuted uppercase w-14 cursor-pointer hover:text-dark-text">Pts</th>
+                  <th @click="sortBy('ppg')" class="px-2 py-3 text-center text-xs font-semibold text-dark-textMuted uppercase w-14 cursor-pointer hover:text-dark-text">PPG</th>
+                  <th @click="sortBy('vor')" class="px-2 py-3 text-center text-xs font-semibold text-dark-textMuted uppercase w-14 cursor-pointer hover:text-dark-text">VOR</th>
                 </tr>
               </thead>
               <tbody class="divide-y divide-dark-border/30">
@@ -154,6 +177,11 @@
                   class="hover:bg-dark-border/20 transition-colors cursor-pointer"
                   @click="togglePlayerExpanded(player.player_key)">
                   <td class="px-3 py-3"><span class="font-bold text-lg text-dark-text">{{ player.rosRank }}</span></td>
+                  <td class="px-2 py-3 text-center">
+                    <span v-if="player.rankChange > 0" class="text-green-400 font-medium text-sm">↑{{ player.rankChange }}</span>
+                    <span v-else-if="player.rankChange < 0" class="text-red-400 font-medium text-sm">↓{{ Math.abs(player.rankChange) }}</span>
+                    <span v-else class="text-dark-textMuted text-sm">—</span>
+                  </td>
                   <td class="px-3 py-3">
                     <div class="flex items-center gap-3">
                       <div class="relative">
@@ -165,21 +193,46 @@
                       </div>
                       <div>
                         <span class="font-semibold" :class="getPlayerNameClass(player)">{{ player.full_name }}</span>
-                        <div class="text-xs text-dark-textMuted">{{ player.mlb_team || 'FA' }}</div>
+                        <div class="flex items-center gap-2 text-xs text-dark-textMuted">
+                          <span>{{ player.mlb_team || 'FA' }}</span>
+                          <template v-if="player.fantasy_team">
+                            <span class="text-dark-border">•</span>
+                            <span class="flex items-center gap-1">
+                              <span class="text-purple-400">⛨</span>
+                              <span :class="isMyPlayer(player) ? 'text-primary' : 'text-dark-textMuted'">{{ player.fantasy_team }}</span>
+                            </span>
+                          </template>
+                          <template v-else>
+                            <span class="text-dark-border">•</span>
+                            <span class="text-cyan-400">Free Agent</span>
+                          </template>
+                        </div>
                       </div>
                     </div>
                   </td>
-                  <td class="px-3 py-3">
-                    <span v-if="player.fantasy_team" class="text-sm text-dark-textMuted truncate block max-w-[100px]">{{ player.fantasy_team }}</span>
-                    <span v-else class="text-sm text-cyan-400">FA</span>
+                  <td class="px-2 py-3 text-center"><span class="px-2 py-1 rounded text-xs font-bold" :class="getPositionClass(player.position)">{{ player.position?.split(',')[0] }}</span></td>
+                  <td class="px-2 py-3 text-center text-dark-text font-medium">{{ player.positionRank }}</td>
+                  <td class="px-2 py-3 text-center">
+                    <div class="flex items-center justify-center gap-1">
+                      <div class="w-10 h-2 rounded-full bg-dark-border/50 overflow-hidden">
+                        <div class="h-full rounded-full" :class="getSosBarClass(player.rosSOS)" :style="{ width: getSosBarWidth(player.rosSOS) }"></div>
+                      </div>
+                      <span class="text-xs font-medium w-8" :class="getSosTextClass(player.rosSOS)">{{ formatSOS(player.rosSOS) }}</span>
+                    </div>
                   </td>
-                  <td class="px-3 py-3 text-center"><span class="px-2 py-1 rounded text-xs font-bold" :class="getPositionClass(player.position)">{{ player.position?.split(',')[0] }}</span></td>
-                  <td class="px-3 py-3 text-center text-dark-text font-medium">{{ player.positionRank }}</td>
-                  <td class="px-3 py-3 text-center font-bold text-dark-text">{{ player.total_points?.toFixed(1) || '0' }}</td>
-                  <td class="px-3 py-3 text-center font-bold text-dark-text">{{ player.ppg?.toFixed(2) || '0' }}</td>
-                  <td class="px-3 py-3 text-center font-bold" :class="player.vor > 0 ? 'text-green-400' : player.vor < -3 ? 'text-red-400' : 'text-dark-textMuted'">{{ player.vor >= 0 ? '+' : '' }}{{ player.vor?.toFixed(1) || '0' }}</td>
+                  <td class="px-2 py-3 text-center">
+                    <div class="flex items-center justify-center gap-1">
+                      <div class="w-10 h-2 rounded-full bg-dark-border/50 overflow-hidden">
+                        <div class="h-full rounded-full" :class="getSosBarClass(player.next4SOS)" :style="{ width: getSosBarWidth(player.next4SOS) }"></div>
+                      </div>
+                      <span class="text-xs font-medium w-8" :class="getSosTextClass(player.next4SOS)">{{ formatSOS(player.next4SOS) }}</span>
+                    </div>
+                  </td>
+                  <td class="px-2 py-3 text-center font-bold text-dark-text">{{ player.total_points?.toFixed(1) || '0' }}</td>
+                  <td class="px-2 py-3 text-center font-bold text-dark-text">{{ player.ppg?.toFixed(2) || '0' }}</td>
+                  <td class="px-2 py-3 text-center font-bold" :class="player.vor > 0 ? 'text-green-400' : player.vor < -3 ? 'text-red-400' : 'text-dark-textMuted'">{{ player.vor >= 0 ? '+' : '' }}{{ player.vor?.toFixed(1) || '0' }}</td>
                 </tr>
-                <tr v-if="filteredPlayers.length === 0"><td colspan="8" class="px-4 py-8 text-center text-dark-textMuted">No players match filters</td></tr>
+                <tr v-if="filteredPlayers.length === 0"><td colspan="10" class="px-4 py-8 text-center text-dark-textMuted">No players match filters</td></tr>
               </tbody>
             </table>
           </div>
@@ -266,6 +319,10 @@ const showOnlyMyPlayers = ref(false)
 const showOnlyFreeAgents = ref(false)
 const defaultHeadshot = 'https://a.espncdn.com/combiner/i?img=/i/headshots/nophoto.png&w=200&h=145'
 
+// Previous rankings for tracking changes
+const previousRankings = ref<Map<string, number>>(new Map())
+const RANKINGS_STORAGE_KEY = 'yahoo_baseball_previous_rankings'
+
 const positionFilters = [
   { id: 'C', label: 'C' }, { id: '1B', label: '1B' }, { id: '2B', label: '2B' }, { id: '3B', label: '3B' },
   { id: 'SS', label: 'SS' }, { id: 'OF', label: 'OF' }, { id: 'SP', label: 'SP' }, { id: 'RP', label: 'RP' }
@@ -317,6 +374,32 @@ const filteredPlayers = computed(() => {
   return players
 })
 
+// Load previous rankings from localStorage
+function loadPreviousRankings() {
+  try {
+    const stored = localStorage.getItem(RANKINGS_STORAGE_KEY)
+    if (stored) {
+      const data = JSON.parse(stored)
+      previousRankings.value = new Map(Object.entries(data))
+    }
+  } catch (e) {
+    console.error('Error loading previous rankings:', e)
+  }
+}
+
+// Save current rankings to localStorage for next comparison
+function saveCurrentRankings() {
+  try {
+    const rankingsObj: Record<string, number> = {}
+    allPlayers.value.forEach(p => {
+      if (p.rosRank) rankingsObj[p.player_key] = p.rosRank
+    })
+    localStorage.setItem(RANKINGS_STORAGE_KEY, JSON.stringify(rankingsObj))
+  } catch (e) {
+    console.error('Error saving rankings:', e)
+  }
+}
+
 function selectAllPositions() { selectedPositions.value = selectedPositions.value.length === positionFilters.length ? [] : positionFilters.map(p => p.id) }
 function togglePositionFilter(pos: string) { const idx = selectedPositions.value.indexOf(pos); idx >= 0 ? selectedPositions.value.splice(idx, 1) : selectedPositions.value.push(pos) }
 function sortBy(col: string) { sortColumn.value === col ? sortDirection.value = sortDirection.value === 'asc' ? 'desc' : 'asc' : (sortColumn.value = col, sortDirection.value = 'desc') }
@@ -345,6 +428,40 @@ function getPositionClass(pos: string) {
   return c[p] || 'bg-dark-border/50 text-dark-textMuted'
 }
 
+// SOS Helper Functions
+function getSosBarClass(sos: number): string {
+  if (sos >= 0.6) return 'bg-green-500'
+  if (sos >= 0.4) return 'bg-yellow-500'
+  return 'bg-red-500'
+}
+function getSosBarWidth(sos: number): string {
+  return `${Math.max(10, sos * 100)}%`
+}
+function getSosTextClass(sos: number): string {
+  if (sos >= 0.6) return 'text-green-400'
+  if (sos >= 0.4) return 'text-yellow-400'
+  return 'text-red-400'
+}
+function formatSOS(sos: number): string {
+  if (sos >= 0.6) return 'Easy'
+  if (sos >= 0.4) return 'Avg'
+  return 'Hard'
+}
+
+// Generate SOS based on team and position (simulated for now since Yahoo doesn't provide this)
+function generatePlayerSOS(mlbTeam: string, position: string): { ros: number; next4: number } {
+  // Use a hash of team + position to generate consistent but varied SOS values
+  // In production, this would come from actual schedule/opponent data
+  const hash = (mlbTeam || 'FA').split('').reduce((a, b) => { a = ((a << 5) - a) + b.charCodeAt(0); return a & a }, 0)
+  const posHash = (position || 'U').split('').reduce((a, b) => { a = ((a << 5) - a) + b.charCodeAt(0); return a & a }, 0)
+  
+  // Generate values between 0.2 and 0.8
+  const ros = 0.2 + (Math.abs(hash) % 60) / 100
+  const next4 = 0.2 + (Math.abs(hash + posHash) % 60) / 100
+  
+  return { ros, next4 }
+}
+
 function calculatePositionBaselines() {
   const byPos: Record<string, any[]> = {}
   for (const p of allPlayers.value) { const pos = p.position?.split(',')?.[0]?.trim(); if (pos) { if (!byPos[pos]) byPos[pos] = []; byPos[pos].push(p) } }
@@ -357,13 +474,25 @@ function calculatePositionBaselines() {
 
 function recalculateRankings() {
   calculatePositionBaselines()
-  for (const p of allPlayers.value) { const pos = p.position?.split(',')?.[0]?.trim(); p.vor = (p.ppg || 0) - (positionBaselines.value[pos] || 0) }
+  
+  // Calculate VOR and SOS for each player
+  for (const p of allPlayers.value) {
+    const pos = p.position?.split(',')?.[0]?.trim()
+    p.vor = (p.ppg || 0) - (positionBaselines.value[pos] || 0)
+    
+    // Generate SOS values
+    const sos = generatePlayerSOS(p.mlb_team, p.position)
+    p.rosSOS = sos.ros
+    p.next4SOS = sos.next4
+  }
+  
   const enabled = rankingFactors.value.filter(f => f.enabled)
   const totalW = enabled.reduce((s, f) => s + f.weight, 0)
   const maxPts = Math.max(...allPlayers.value.map(p => p.total_points || 0))
   const maxPPG = Math.max(...allPlayers.value.map(p => p.ppg || 0))
   const maxVOR = Math.max(...allPlayers.value.map(p => p.vor || 0))
   const minVOR = Math.min(...allPlayers.value.map(p => p.vor || 0))
+  
   allPlayers.value.forEach(p => {
     let score = 0
     enabled.forEach(f => {
@@ -377,16 +506,38 @@ function recalculateRankings() {
     })
     p.compositeScore = score
   })
+  
   allPlayers.value.sort((a, b) => (b.compositeScore || 0) - (a.compositeScore || 0))
-  allPlayers.value.forEach((p, i) => { p.rosRank = i + 1 })
+  
+  // Assign ranks and calculate changes
+  allPlayers.value.forEach((p, i) => {
+    p.rosRank = i + 1
+    // Calculate rank change from previous
+    const prevRank = previousRankings.value.get(p.player_key)
+    if (prevRank !== undefined) {
+      p.rankChange = prevRank - p.rosRank // Positive = moved up, negative = moved down
+    } else {
+      p.rankChange = 0 // New player
+    }
+  })
+  
+  // Calculate position ranks
   const posCounts: Record<string, number> = {}
   allPlayers.value.forEach(p => { const pos = p.position?.split(',')?.[0]?.trim() || 'X'; posCounts[pos] = (posCounts[pos] || 0) + 1; p.positionRank = posCounts[pos] })
+  
   lastUpdated.value = new Date().toLocaleString()
+  
+  // Save current rankings for next comparison
+  saveCurrentRankings()
 }
 
 async function loadProjections() {
   isLoading.value = true
   loadingMessage.value = 'Connecting to Yahoo...'
+  
+  // Load previous rankings first
+  loadPreviousRankings()
+  
   try {
     const leagueKey = leagueStore.activeLeagueId
     if (!leagueKey || !authStore.user?.id) { isLoading.value = false; return }
