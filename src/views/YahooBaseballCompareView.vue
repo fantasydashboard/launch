@@ -10,6 +10,18 @@
       </div>
     </div>
 
+    <!-- Debug Info -->
+    <div class="card bg-yellow-900/20 border-yellow-500/30">
+      <div class="card-body text-xs text-yellow-300">
+        <div>Teams loaded: {{ allTeams.length }}</div>
+        <div>Matchups loaded: {{ allMatchups.length }}</div>
+        <div>Team 1 selected: {{ team1Key || 'none' }}</div>
+        <div>Team 2 selected: {{ team2Key || 'none' }}</div>
+        <div>Comparison data: {{ comparisonData ? 'YES' : 'NO' }}</div>
+        <div>Loading: {{ isLoading ? 'YES' : 'NO' }}</div>
+      </div>
+    </div>
+
     <!-- Team Selector -->
     <div class="card">
       <div class="card-header">
@@ -42,6 +54,17 @@
             </select>
           </div>
         </div>
+        
+        <!-- Manual Load Button -->
+        <div class="mt-4">
+          <button 
+            @click="loadComparison" 
+            class="btn btn-primary"
+            :disabled="!team1Key || !team2Key || isLoading"
+          >
+            {{ isLoading ? 'Loading...' : 'Compare Teams' }}
+          </button>
+        </div>
       </div>
     </div>
 
@@ -51,7 +74,7 @@
     </div>
 
     <!-- Comparison Results -->
-    <template v-else-if="team1Key && team2Key && comparisonData">
+    <template v-if="!isLoading && comparisonData">
       <!-- Tale of the Tape -->
       <div class="card">
         <div class="card-header">
@@ -277,13 +300,6 @@
       </div>
     </template>
 
-    <!-- No Selection -->
-    <div v-else-if="!isLoading && (!team1Key || !team2Key)" class="card">
-      <div class="card-body text-center py-12">
-        <p class="text-dark-textMuted">Select two teams above to compare their head-to-head history</p>
-      </div>
-    </div>
-
     <!-- Platform Badge -->
     <div class="flex justify-center mt-8">
       <div class="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-purple-600/10 border border-purple-600/30">
@@ -311,7 +327,7 @@ const isLoading = ref(false)
 const team1Key = ref('')
 const team2Key = ref('')
 const allTeams = ref<any[]>([])
-const allMatchups = ref<any[]>([]) // All matchups for the season
+const allMatchups = ref<any[]>([])
 
 const team1Data = ref<any>(null)
 const team2Data = ref<any>(null)
@@ -332,66 +348,88 @@ function getShortName(name: string | undefined): string {
   return name.split(' ')[0]
 }
 
-async function loadTeamsAndMatchups() {
+async function loadInitialData() {
+  console.log('=== COMPARE PAGE: loadInitialData START ===')
   const leagueKey = leagueStore.activeLeagueId
-  if (!leagueKey || !authStore.user?.id) return
+  console.log('League key:', leagueKey)
+  console.log('User ID:', authStore.user?.id)
+  
+  if (!leagueKey || !authStore.user?.id) {
+    console.log('Missing league key or user ID, aborting')
+    return
+  }
   
   try {
     await yahooService.initialize(authStore.user.id)
     
-    // Get standings (has all team data)
+    // Get standings
+    console.log('Fetching standings...')
     const standings = await yahooService.getStandings(leagueKey)
-    console.log('Loaded standings:', standings.length, 'teams')
+    console.log('Got standings:', standings?.length || 0, 'teams')
+    
+    if (!standings || standings.length === 0) {
+      console.error('No standings data returned')
+      return
+    }
     
     allTeams.value = standings.map((team: any) => ({
       team_key: team.team_key,
       name: team.name,
       manager: team.manager_name || team.managers?.[0]?.nickname || 'Manager',
       logo_url: team.logo_url,
-      wins: team.wins || 0,
-      losses: team.losses || 0,
-      points_for: team.points_for || 0,
-      rank: team.rank || 0
+      wins: parseInt(team.wins) || 0,
+      losses: parseInt(team.losses) || 0,
+      points_for: parseFloat(team.points_for) || 0,
+      rank: parseInt(team.rank) || 0
     }))
+    
+    console.log('Parsed teams:', allTeams.value.length)
+    console.log('First team:', allTeams.value[0])
     
     // Get league info for current week
     const leagueInfo = leagueStore.yahooLeagues.find(l => l.league_key === leagueKey)
     const currentWeek = leagueInfo?.current_week || 25
+    console.log('Current week:', currentWeek)
     
-    console.log('Loading all matchups through week', currentWeek)
-    
-    // Load all matchups for the season
+    // Load all matchups
+    console.log('Loading matchups for weeks 1-' + currentWeek)
     const matchupsList: any[] = []
+    
     for (let week = 1; week <= currentWeek; week++) {
       try {
         const weekMatchups = await yahooService.getMatchups(leagueKey, week)
         if (weekMatchups && weekMatchups.length > 0) {
           matchupsList.push(...weekMatchups)
+          console.log(`Week ${week}: ${weekMatchups.length} matchups`)
         }
       } catch (e) {
-        // Week may not exist
+        // Week may not have data
       }
     }
     
     allMatchups.value = matchupsList
-    console.log('Loaded total matchups:', matchupsList.length)
+    console.log('Total matchups loaded:', allMatchups.value.length)
+    console.log('=== COMPARE PAGE: loadInitialData COMPLETE ===')
     
   } catch (e) {
-    console.error('Error loading teams:', e)
+    console.error('Error in loadInitialData:', e)
   }
 }
 
 async function loadComparison() {
+  console.log('=== loadComparison START ===')
+  console.log('team1Key:', team1Key.value)
+  console.log('team2Key:', team2Key.value)
+  console.log('allTeams.length:', allTeams.value?.length)
+  
   if (!team1Key.value || !team2Key.value) {
-    comparisonData.value = null
-    rivalryHistory.value = []
-    rivalryHighlights.value = null
+    console.log('Missing team selection')
     return
   }
   
-  if (allTeams.value.length === 0) {
-    console.log('Teams not loaded yet')
-    return
+  if (!allTeams.value || allTeams.value.length === 0) {
+    console.log('No teams loaded yet, loading now...')
+    await loadInitialData()
   }
   
   isLoading.value = true
@@ -401,61 +439,63 @@ async function loadComparison() {
     team1Data.value = allTeams.value.find(t => t.team_key === team1Key.value)
     team2Data.value = allTeams.value.find(t => t.team_key === team2Key.value)
     
-    console.log('Comparing:', team1Data.value?.name, 'vs', team2Data.value?.name)
+    console.log('team1Data:', team1Data.value)
+    console.log('team2Data:', team2Data.value)
     
     if (!team1Data.value || !team2Data.value) {
-      console.error('Could not find team data')
+      console.error('Could not find team data!')
       isLoading.value = false
       return
     }
     
-    // Calculate team stats from standings data
+    // Calculate team stats
+    const t1 = team1Data.value
+    const t2 = team2Data.value
+    
     const team1Stats = {
-      wins: team1Data.value.wins,
-      losses: team1Data.value.losses,
-      winPct: (team1Data.value.wins + team1Data.value.losses) > 0 
-        ? (team1Data.value.wins / (team1Data.value.wins + team1Data.value.losses)) * 100 
-        : 0,
-      totalPoints: team1Data.value.points_for,
-      avgPPW: (team1Data.value.wins + team1Data.value.losses) > 0
-        ? team1Data.value.points_for / (team1Data.value.wins + team1Data.value.losses)
-        : 0,
-      rank: team1Data.value.rank
+      wins: t1.wins,
+      losses: t1.losses,
+      winPct: (t1.wins + t1.losses) > 0 ? (t1.wins / (t1.wins + t1.losses)) * 100 : 0,
+      totalPoints: t1.points_for,
+      avgPPW: (t1.wins + t1.losses) > 0 ? t1.points_for / (t1.wins + t1.losses) : 0,
+      rank: t1.rank
     }
     
     const team2Stats = {
-      wins: team2Data.value.wins,
-      losses: team2Data.value.losses,
-      winPct: (team2Data.value.wins + team2Data.value.losses) > 0 
-        ? (team2Data.value.wins / (team2Data.value.wins + team2Data.value.losses)) * 100 
-        : 0,
-      totalPoints: team2Data.value.points_for,
-      avgPPW: (team2Data.value.wins + team2Data.value.losses) > 0
-        ? team2Data.value.points_for / (team2Data.value.wins + team2Data.value.losses)
-        : 0,
-      rank: team2Data.value.rank
+      wins: t2.wins,
+      losses: t2.losses,
+      winPct: (t2.wins + t2.losses) > 0 ? (t2.wins / (t2.wins + t2.losses)) * 100 : 0,
+      totalPoints: t2.points_for,
+      avgPPW: (t2.wins + t2.losses) > 0 ? t2.points_for / (t2.wins + t2.losses) : 0,
+      rank: t2.rank
     }
     
-    // Find head-to-head matchups
+    console.log('team1Stats:', team1Stats)
+    console.log('team2Stats:', team2Stats)
+    
+    // Find H2H matchups
     const h2hMatchups: any[] = []
+    
+    console.log('Searching through', allMatchups.value.length, 'matchups for H2H')
     
     for (const matchup of allMatchups.value) {
       const teams = matchup.teams || []
-      const t1 = teams.find((t: any) => t.team_key === team1Key.value)
-      const t2 = teams.find((t: any) => t.team_key === team2Key.value)
+      const t1Match = teams.find((t: any) => t.team_key === team1Key.value)
+      const t2Match = teams.find((t: any) => t.team_key === team2Key.value)
       
-      if (t1 && t2) {
+      if (t1Match && t2Match) {
+        console.log('Found H2H matchup week', matchup.week, ':', t1Match.points, 'vs', t2Match.points)
         h2hMatchups.push({
           week: matchup.week,
-          team1Score: t1.points || 0,
-          team2Score: t2.points || 0,
-          margin: Math.abs((t1.points || 0) - (t2.points || 0)),
+          team1Score: t1Match.points || 0,
+          team2Score: t2Match.points || 0,
+          margin: Math.abs((t1Match.points || 0) - (t2Match.points || 0)),
           isPlayoff: matchup.is_playoffs
         })
       }
     }
     
-    console.log('Found H2H matchups:', h2hMatchups.length)
+    console.log('Found', h2hMatchups.length, 'H2H matchups')
     
     // Calculate H2H stats
     let team1Wins = 0
@@ -478,13 +518,18 @@ async function loadComparison() {
       avgMargin: h2hMatchups.length > 0 ? totalMargin / h2hMatchups.length : 0
     }
     
+    console.log('h2hStats:', h2hStats)
+    
+    // Set comparison data
     comparisonData.value = {
       team1: team1Stats,
       team2: team2Stats,
       h2h: h2hStats
     }
     
-    // Store rivalry history (sorted by week descending)
+    console.log('comparisonData set:', comparisonData.value)
+    
+    // Store rivalry history
     rivalryHistory.value = h2hMatchups.sort((a, b) => b.week - a.week)
     
     // Calculate highlights
@@ -496,25 +541,19 @@ async function loadComparison() {
       for (const game of h2hMatchups) {
         if (game.margin > biggestBlowout.margin) biggestBlowout = game
         if (game.margin < closestGame.margin) closestGame = game
-        
-        const totalPoints = game.team1Score + game.team2Score
-        if (totalPoints > (highestScoring.team1Score + highestScoring.team2Score)) {
+        if ((game.team1Score + game.team2Score) > (highestScoring.team1Score + highestScoring.team2Score)) {
           highestScoring = game
         }
       }
       
       rivalryHighlights.value = {
         biggestBlowout: {
-          winner: biggestBlowout.team1Score > biggestBlowout.team2Score 
-            ? team1Data.value?.name 
-            : team2Data.value?.name,
+          winner: biggestBlowout.team1Score > biggestBlowout.team2Score ? t1.name : t2.name,
           margin: biggestBlowout.margin,
           week: biggestBlowout.week
         },
         closestGame: {
-          winner: closestGame.team1Score > closestGame.team2Score 
-            ? team1Data.value?.name 
-            : team2Data.value?.name,
+          winner: closestGame.team1Score > closestGame.team2Score ? t1.name : t2.name,
           margin: closestGame.margin,
           week: closestGame.week
         },
@@ -532,8 +571,10 @@ async function loadComparison() {
     await nextTick()
     renderChart()
     
+    console.log('=== loadComparison COMPLETE ===')
+    
   } catch (e) {
-    console.error('Error loading comparison:', e)
+    console.error('Error in loadComparison:', e)
   } finally {
     isLoading.value = false
   }
@@ -542,101 +583,57 @@ async function loadComparison() {
 function renderChart() {
   if (!chartContainer.value || rivalryHistory.value.length === 0) return
   
-  // Destroy existing chart
   if (chartInstance) {
     chartInstance.destroy()
     chartInstance = null
   }
   
-  // Get matchups in chronological order
   const recentMatchups = [...rivalryHistory.value].reverse().slice(-10)
-  
-  const categories = recentMatchups.map(m => `W${m.week}`)
-  const team1Scores = recentMatchups.map(m => m.team1Score)
-  const team2Scores = recentMatchups.map(m => m.team2Score)
   
   const options = {
     chart: {
       type: 'bar',
       height: 350,
       background: 'transparent',
-      toolbar: { show: false },
-      fontFamily: 'inherit'
+      toolbar: { show: false }
     },
     series: [
-      {
-        name: team1Data.value?.name || 'Team 1',
-        data: team1Scores
-      },
-      {
-        name: team2Data.value?.name || 'Team 2',
-        data: team2Scores
-      }
+      { name: team1Data.value?.name || 'Team 1', data: recentMatchups.map(m => m.team1Score) },
+      { name: team2Data.value?.name || 'Team 2', data: recentMatchups.map(m => m.team2Score) }
     ],
     colors: ['#06b6d4', '#f97316'],
-    plotOptions: {
-      bar: {
-        horizontal: false,
-        columnWidth: '55%',
-        borderRadius: 4
-      }
-    },
-    dataLabels: {
-      enabled: true,
-      formatter: (val: number) => val.toFixed(0),
-      style: { colors: ['#fff'], fontSize: '10px' },
-      offsetY: -20
-    },
     xaxis: {
-      categories,
-      labels: { style: { colors: '#94a3b8', fontSize: '11px' } },
-      axisBorder: { color: '#334155' },
-      axisTicks: { color: '#334155' }
+      categories: recentMatchups.map(m => `W${m.week}`),
+      labels: { style: { colors: '#94a3b8' } }
     },
-    yaxis: {
-      labels: { 
-        style: { colors: '#94a3b8' },
-        formatter: (val: number) => val.toFixed(0)
-      }
-    },
-    grid: { borderColor: '#334155', strokeDashArray: 4 },
-    legend: {
-      position: 'top',
-      horizontalAlign: 'center',
-      labels: { colors: '#e2e8f0' }
-    },
-    tooltip: {
-      theme: 'dark',
-      y: { formatter: (val: number) => val.toFixed(1) + ' pts' }
-    }
+    yaxis: { labels: { style: { colors: '#94a3b8' } } },
+    grid: { borderColor: '#334155' },
+    legend: { labels: { colors: '#e2e8f0' } },
+    tooltip: { theme: 'dark' }
   }
   
   chartInstance = new ApexCharts(chartContainer.value, options)
   chartInstance.render()
 }
 
-// Watch for team selection changes
-watch([team1Key, team2Key], () => {
-  if (team1Key.value && team2Key.value) {
-    loadComparison()
-  }
-})
-
-// Watch for league changes
+// Load data when league changes
 watch(() => leagueStore.activeLeagueId, async (newId) => {
   if (newId && leagueStore.activePlatform === 'yahoo') {
+    console.log('League changed, loading initial data...')
     team1Key.value = ''
     team2Key.value = ''
     comparisonData.value = null
     rivalryHistory.value = []
+    allTeams.value = []
     allMatchups.value = []
-    await loadTeamsAndMatchups()
+    await loadInitialData()
   }
 }, { immediate: true })
 
 onMounted(async () => {
+  console.log('Compare page mounted')
   if (leagueStore.activeLeagueId && leagueStore.activePlatform === 'yahoo') {
-    await loadTeamsAndMatchups()
+    await loadInitialData()
   }
 })
 </script>
