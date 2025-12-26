@@ -878,9 +878,15 @@ async function calculateRankingsForWeek(throughWeek: number): Promise<TeamCatego
 }
 
 // Build chart
-function buildChart() {
-  const weeks = Array.from(historicalRanks.value.values())[0]?.length || 0
-  if (weeks < 2) return
+function buildChart(weeks: number[] = []) {
+  if (weeks.length < 2) {
+    // Generate week labels from historical data
+    const numWeeks = Array.from(historicalRanks.value.values())[0]?.length || 0
+    if (numWeeks < 2) return
+    for (let i = 1; i <= numWeeks; i++) {
+      weeks.push(i * 3) // Approximate
+    }
+  }
   
   const teamColors = ['#F59E0B', '#10B981', '#3B82F6', '#EF4444', '#8B5CF6', '#EC4899', '#06B6D4', '#F97316', '#84CC16', '#6366F1', '#14B8A6', '#F43F5E']
   
@@ -895,17 +901,12 @@ function buildChart() {
   
   chartSeries.value = series
   
-  const weekLabels = []
-  for (let w = 3; w <= parseInt(selectedWeek.value); w++) {
-    weekLabels.push(`Wk ${w}`)
-  }
-  
   chartOptions.value = {
     chart: { type: 'line', background: 'transparent', toolbar: { show: false } },
     stroke: { curve: 'smooth', width: 3 },
     markers: { size: 4, strokeWidth: 0 },
     xaxis: {
-      categories: weekLabels,
+      categories: weeks.map(w => `Wk ${w}`),
       labels: { style: { colors: '#9CA3AF', fontSize: '11px' } }
     },
     yaxis: {
@@ -923,19 +924,67 @@ function buildChart() {
 
 // Main load function
 async function loadPowerRankings() {
-  if (!selectedWeek.value) return
+  if (!selectedWeek.value) {
+    console.log('No week selected, skipping load')
+    return
+  }
   
   isLoading.value = true
   loadingMessage.value = 'Loading power rankings...'
   
   try {
     const throughWeek = parseInt(selectedWeek.value)
+    const endWeek = parseInt(leagueStore.yahooLeague?.end_week) || 25
+    
+    console.log('=== POWER RANKINGS LOAD START ===')
+    console.log(`Selected week: ${throughWeek}, End week: ${endWeek}`)
+    console.log(`Teams loaded: ${leagueStore.yahooTeams.length}`)
+    console.log(`Categories loaded: ${displayCategories.value.length}`)
+    
+    // Debug: show sample team's data
+    if (leagueStore.yahooTeams.length > 0) {
+      const sampleTeam = leagueStore.yahooTeams[0]
+      console.log(`Sample team: ${sampleTeam.name} - W:${sampleTeam.wins} L:${sampleTeam.losses} T:${sampleTeam.ties}`)
+    }
+    
+    // Ensure we have categories loaded
+    if (displayCategories.value.length === 0) {
+      console.log('No categories loaded, fetching...')
+      await loadLeagueSettings()
+      console.log(`Categories after load: ${displayCategories.value.length}`)
+      
+      // If still no categories, use default 12
+      if (displayCategories.value.length === 0) {
+        console.log('Using fallback categories')
+        displayCategories.value = [
+          { stat_id: '7', name: 'Runs', display_name: 'R' },
+          { stat_id: '12', name: 'Home Runs', display_name: 'HR' },
+          { stat_id: '13', name: 'RBI', display_name: 'RBI' },
+          { stat_id: '16', name: 'Stolen Bases', display_name: 'SB' },
+          { stat_id: '3', name: 'Batting Average', display_name: 'AVG' },
+          { stat_id: '55', name: 'On-base Pct', display_name: 'OBP' },
+          { stat_id: '28', name: 'Wins', display_name: 'W' },
+          { stat_id: '32', name: 'Strikeouts', display_name: 'K' },
+          { stat_id: '42', name: 'Saves', display_name: 'SV' },
+          { stat_id: '26', name: 'ERA', display_name: 'ERA' },
+          { stat_id: '27', name: 'WHIP', display_name: 'WHIP' },
+          { stat_id: '48', name: 'Holds', display_name: 'HLD' }
+        ]
+      }
+    }
     
     // Calculate current rankings
     const currentRankings = await calculateRankingsForWeek(throughWeek)
     
-    // Calculate previous week for change
-    if (throughWeek > 3) {
+    console.log('=== RANKINGS CALCULATED ===')
+    currentRankings.slice(0, 3).forEach((t, i) => {
+      console.log(`#${i+1}: ${t.name} - CatWins: ${t.totalCatWins}, Power: ${t.powerScore.toFixed(1)}`)
+      const catWinValues = Object.values(t.categoryWins)
+      console.log(`   Per-cat wins: [${catWinValues.join(', ')}]`)
+    })
+    
+    // Calculate previous week for change indicator
+    if (throughWeek > 1) {
       loadingMessage.value = 'Calculating changes...'
       const prevRankings = await calculateRankingsForWeek(throughWeek - 1)
       
@@ -948,11 +997,21 @@ async function loadPowerRankings() {
       })
     }
     
-    // Calculate historical for chart
+    // Calculate historical data for chart
     loadingMessage.value = 'Building historical data...'
     const historical = new Map<string, number[]>()
     
-    for (let week = 3; week <= throughWeek; week++) {
+    // Calculate for weeks 1, then every 3 weeks, plus final week
+    const chartWeeks: number[] = []
+    for (let week = 1; week <= throughWeek; week++) {
+      if (week === 1 || week === throughWeek || week % 3 === 0) {
+        chartWeeks.push(week)
+      }
+    }
+    
+    console.log(`Building chart for weeks: ${chartWeeks.join(', ')}`)
+    
+    for (const week of chartWeeks) {
       const weekRankings = await calculateRankingsForWeek(week)
       
       weekRankings.forEach((team, idx) => {
@@ -964,7 +1023,9 @@ async function loadPowerRankings() {
     
     powerRankings.value = currentRankings
     historicalRanks.value = historical
-    buildChart()
+    buildChart(chartWeeks)
+    
+    console.log('=== POWER RANKINGS LOAD COMPLETE ===')
     
   } catch (e) {
     console.error('Error loading power rankings:', e)
