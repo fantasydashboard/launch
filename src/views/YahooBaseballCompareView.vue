@@ -10,18 +10,6 @@
       </div>
     </div>
 
-    <!-- Debug Info -->
-    <div class="card bg-yellow-900/20 border-yellow-500/30">
-      <div class="card-body text-xs text-yellow-300">
-        <div>Teams loaded: {{ allTeams.length }}</div>
-        <div>Matchups loaded: {{ allMatchups.length }}</div>
-        <div>Team 1 selected: {{ team1Key || 'none' }}</div>
-        <div>Team 2 selected: {{ team2Key || 'none' }}</div>
-        <div>Comparison data: {{ comparisonData ? 'YES' : 'NO' }}</div>
-        <div>Loading: {{ isLoading ? 'YES' : 'NO' }}</div>
-      </div>
-    </div>
-
     <!-- Team Selector -->
     <div class="card">
       <div class="card-header">
@@ -37,7 +25,7 @@
             <label class="block text-sm font-semibold text-dark-text mb-2">Team 1</label>
             <select v-model="team1Key" class="select w-full">
               <option value="">Select Team...</option>
-              <option v-for="team in allTeams" :key="team.team_key" :value="team.team_key">
+              <option v-for="team in availableTeams1" :key="team.team_key" :value="team.team_key">
                 {{ team.name }} ({{ team.manager }})
               </option>
             </select>
@@ -48,22 +36,11 @@
             <label class="block text-sm font-semibold text-dark-text mb-2">Team 2</label>
             <select v-model="team2Key" class="select w-full">
               <option value="">Select Team...</option>
-              <option v-for="team in allTeams" :key="team.team_key" :value="team.team_key">
+              <option v-for="team in availableTeams2" :key="team.team_key" :value="team.team_key">
                 {{ team.name }} ({{ team.manager }})
               </option>
             </select>
           </div>
-        </div>
-        
-        <!-- Manual Load Button -->
-        <div class="mt-4">
-          <button 
-            @click="loadComparison" 
-            class="btn btn-primary"
-            :disabled="!team1Key || !team2Key || isLoading"
-          >
-            {{ isLoading ? 'Loading...' : 'Compare Teams' }}
-          </button>
         </div>
       </div>
     </div>
@@ -107,7 +84,7 @@
                   <span class="font-bold text-dark-text">{{ comparisonData.team1.playoffAppearances || 0 }}</span>
                 </div>
                 <div class="flex justify-between">
-                  <span class="text-dark-textMuted">All-Time Record:</span>
+                  <span class="text-dark-textMuted">Record:</span>
                   <span class="font-bold text-dark-text">{{ comparisonData.team1.wins }}-{{ comparisonData.team1.losses }}</span>
                 </div>
                 <div class="flex justify-between">
@@ -186,7 +163,7 @@
                   <span class="font-bold text-dark-text">{{ comparisonData.team2.playoffAppearances || 0 }}</span>
                 </div>
                 <div class="flex justify-between">
-                  <span class="text-dark-textMuted">All-Time Record:</span>
+                  <span class="text-dark-textMuted">Record:</span>
                   <span class="font-bold text-dark-text">{{ comparisonData.team2.wins }}-{{ comparisonData.team2.losses }}</span>
                 </div>
                 <div class="flex justify-between">
@@ -319,7 +296,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch, onMounted, nextTick } from 'vue'
+import { ref, watch, onMounted, nextTick, computed } from 'vue'
 import { useLeagueStore } from '@/stores/league'
 import { useAuthStore } from '@/stores/auth'
 import { yahooService } from '@/services/yahoo'
@@ -332,6 +309,7 @@ const defaultAvatar = 'https://s.yimg.com/cv/apiv2/default/mlb/mlb_1_y.png'
 
 // State
 const isLoading = ref(false)
+const isInitialLoading = ref(true)
 const team1Key = ref('')
 const team2Key = ref('')
 const allTeams = ref<any[]>([])
@@ -345,6 +323,15 @@ const rivalryHighlights = ref<any>(null)
 
 const chartContainer = ref<HTMLElement | null>(null)
 let chartInstance: ApexCharts | null = null
+
+// Computed: Filter dropdowns so you can't select the same team twice
+const availableTeams1 = computed(() => {
+  return allTeams.value.filter(t => t.team_key !== team2Key.value)
+})
+
+const availableTeams2 = computed(() => {
+  return allTeams.value.filter(t => t.team_key !== team1Key.value)
+})
 
 function handleImageError(event: Event) {
   const img = event.target as HTMLImageElement
@@ -364,6 +351,7 @@ async function loadInitialData() {
   
   if (!leagueKey || !authStore.user?.id) {
     console.log('Missing league key or user ID, aborting')
+    isInitialLoading.value = false
     return
   }
   
@@ -377,6 +365,7 @@ async function loadInitialData() {
     
     if (!standings || standings.length === 0) {
       console.error('No standings data returned')
+      isInitialLoading.value = false
       return
     }
     
@@ -389,11 +378,14 @@ async function loadInitialData() {
       losses: parseInt(team.losses) || 0,
       points_for: parseFloat(team.points_for) || 0,
       rank: parseInt(team.rank) || 0,
-      playoff_seed: team.playoff_seed || null
+      playoff_seed: team.playoff_seed || null,
+      clinched_playoffs: team.clinched_playoffs || null
     }))
     
     console.log('Parsed teams:', allTeams.value.length)
-    console.log('First team:', allTeams.value[0])
+    if (allTeams.value[0]) {
+      console.log('First team:', allTeams.value[0].name, 'playoff_seed:', allTeams.value[0].playoff_seed)
+    }
     
     // Get league info for current week - handle if yahooLeagues not loaded yet
     const yahooLeagues = leagueStore.yahooLeagues || []
@@ -420,10 +412,19 @@ async function loadInitialData() {
     
     allMatchups.value = matchupsList
     console.log('Total matchups loaded:', allMatchups.value.length)
+    
+    // Auto-select first two teams for immediate comparison
+    if (allTeams.value.length >= 2) {
+      team1Key.value = allTeams.value[0].team_key
+      team2Key.value = allTeams.value[1].team_key
+    }
+    
     console.log('=== COMPARE PAGE: loadInitialData COMPLETE ===')
     
   } catch (e) {
     console.error('Error in loadInitialData:', e)
+  } finally {
+    isInitialLoading.value = false
   }
 }
 
@@ -432,6 +433,7 @@ async function loadComparison() {
   console.log('team1Key:', team1Key.value)
   console.log('team2Key:', team2Key.value)
   console.log('allTeams.length:', allTeams.value?.length)
+  console.log('allMatchups.length:', allMatchups.value?.length)
   
   if (!team1Key.value || !team2Key.value) {
     console.log('Missing team selection')
@@ -441,6 +443,7 @@ async function loadComparison() {
   if (!allTeams.value || allTeams.value.length === 0) {
     console.log('No teams loaded yet, loading now...')
     await loadInitialData()
+    return // Will be called again after data loads
   }
   
   isLoading.value = true
@@ -450,8 +453,8 @@ async function loadComparison() {
     team1Data.value = allTeams.value.find(t => t.team_key === team1Key.value)
     team2Data.value = allTeams.value.find(t => t.team_key === team2Key.value)
     
-    console.log('team1Data:', team1Data.value)
-    console.log('team2Data:', team2Data.value)
+    console.log('team1Data:', team1Data.value?.name, 'playoff_seed:', team1Data.value?.playoff_seed)
+    console.log('team2Data:', team2Data.value?.name, 'playoff_seed:', team2Data.value?.playoff_seed)
     
     if (!team1Data.value || !team2Data.value) {
       console.error('Could not find team data!')
@@ -463,17 +466,22 @@ async function loadComparison() {
     const t1 = team1Data.value
     const t2 = team2Data.value
     
-    // Determine playoff appearances (if they have playoff_seed, they made playoffs)
-    const t1PlayoffApp = t1.playoff_seed ? 1 : 0
-    const t2PlayoffApp = t2.playoff_seed ? 1 : 0
+    // Playoff appearance: if playoff_seed exists (any truthy value), they made playoffs
+    // playoff_seed is a string like "1", "2", etc. for playoff teams, null/undefined for non-playoff
+    const t1MadePlayoffs = t1.playoff_seed !== null && t1.playoff_seed !== undefined
+    const t2MadePlayoffs = t2.playoff_seed !== null && t2.playoff_seed !== undefined
     
-    // Championship = rank 1 with playoff seed 1 (simplified for single season)
-    const t1Champ = (t1.rank === 1 && t1.playoff_seed === '1') ? 1 : 0
-    const t2Champ = (t2.rank === 1 && t2.playoff_seed === '1') ? 1 : 0
+    // Championship = finished rank 1 (for completed season)
+    // Looking at the data, rank 1 appears to be final standings rank
+    const t1Champ = t1.rank === 1 ? 1 : 0
+    const t2Champ = t2.rank === 1 ? 1 : 0
+    
+    console.log('t1MadePlayoffs:', t1MadePlayoffs, 't1Champ:', t1Champ)
+    console.log('t2MadePlayoffs:', t2MadePlayoffs, 't2Champ:', t2Champ)
     
     const team1Stats = {
       championships: t1Champ,
-      playoffAppearances: t1PlayoffApp,
+      playoffAppearances: t1MadePlayoffs ? 1 : 0,
       wins: t1.wins,
       losses: t1.losses,
       winPct: (t1.wins + t1.losses) > 0 ? (t1.wins / (t1.wins + t1.losses)) * 100 : 0,
@@ -484,7 +492,7 @@ async function loadComparison() {
     
     const team2Stats = {
       championships: t2Champ,
-      playoffAppearances: t2PlayoffApp,
+      playoffAppearances: t2MadePlayoffs ? 1 : 0,
       wins: t2.wins,
       losses: t2.losses,
       winPct: (t2.wins + t2.losses) > 0 ? (t2.wins / (t2.wins + t2.losses)) * 100 : 0,
@@ -507,12 +515,14 @@ async function loadComparison() {
       const t2Match = teams.find((t: any) => t.team_key === team2Key.value)
       
       if (t1Match && t2Match) {
-        console.log('Found H2H matchup week', matchup.week, ':', t1Match.points, 'vs', t2Match.points)
+        const t1Score = parseFloat(t1Match.points) || 0
+        const t2Score = parseFloat(t2Match.points) || 0
+        console.log('Found H2H matchup week', matchup.week, ':', t1Score, 'vs', t2Score)
         h2hMatchups.push({
           week: matchup.week,
-          team1Score: t1Match.points || 0,
-          team2Score: t2Match.points || 0,
-          margin: Math.abs((t1Match.points || 0) - (t2Match.points || 0)),
+          team1Score: t1Score,
+          team2Score: t2Score,
+          margin: Math.abs(t1Score - t2Score),
           isPlayoff: matchup.is_playoffs
         })
       }
@@ -552,7 +562,7 @@ async function loadComparison() {
     
     console.log('comparisonData set:', comparisonData.value)
     
-    // Store rivalry history
+    // Store rivalry history (sorted by week descending for display)
     rivalryHistory.value = h2hMatchups.sort((a, b) => b.week - a.week)
     
     // Calculate highlights
@@ -590,9 +600,9 @@ async function loadComparison() {
       rivalryHighlights.value = null
     }
     
-    // Render chart
+    // Render chart after DOM updates
     await nextTick()
-    renderChart()
+    setTimeout(() => renderChart(), 100)
     
     console.log('=== loadComparison COMPLETE ===')
     
@@ -604,40 +614,84 @@ async function loadComparison() {
 }
 
 function renderChart() {
-  if (!chartContainer.value || rivalryHistory.value.length === 0) return
+  console.log('renderChart called, container:', !!chartContainer.value, 'history:', rivalryHistory.value.length)
+  
+  if (!chartContainer.value || rivalryHistory.value.length === 0) {
+    console.log('Cannot render chart - missing container or no history')
+    return
+  }
   
   if (chartInstance) {
     chartInstance.destroy()
     chartInstance = null
   }
   
-  const recentMatchups = [...rivalryHistory.value].reverse().slice(-10)
+  // Sort by week ascending for chart (chronological order)
+  const recentMatchups = [...rivalryHistory.value].sort((a, b) => a.week - b.week).slice(-10)
+  
+  console.log('Chart data:', recentMatchups.map(m => ({ week: m.week, t1: m.team1Score, t2: m.team2Score })))
   
   const options = {
     chart: {
-      type: 'bar',
+      type: 'line' as const,
       height: 350,
       background: 'transparent',
-      toolbar: { show: false }
+      toolbar: { show: false },
+      animations: { enabled: true }
     },
     series: [
-      { name: team1Data.value?.name || 'Team 1', data: recentMatchups.map(m => m.team1Score) },
-      { name: team2Data.value?.name || 'Team 2', data: recentMatchups.map(m => m.team2Score) }
+      { 
+        name: team1Data.value?.name || 'Team 1', 
+        data: recentMatchups.map(m => m.team1Score) 
+      },
+      { 
+        name: team2Data.value?.name || 'Team 2', 
+        data: recentMatchups.map(m => m.team2Score) 
+      }
     ],
     colors: ['#06b6d4', '#f97316'],
+    stroke: {
+      width: 3,
+      curve: 'smooth' as const
+    },
+    markers: {
+      size: 6,
+      strokeWidth: 2,
+      hover: { size: 8 }
+    },
     xaxis: {
       categories: recentMatchups.map(m => `W${m.week}`),
       labels: { style: { colors: '#94a3b8' } }
     },
-    yaxis: { labels: { style: { colors: '#94a3b8' } } },
+    yaxis: { 
+      labels: { 
+        style: { colors: '#94a3b8' },
+        formatter: (val: number) => val.toFixed(0)
+      },
+      title: { text: 'Points', style: { color: '#94a3b8' } }
+    },
     grid: { borderColor: '#334155' },
-    legend: { labels: { colors: '#e2e8f0' } },
-    tooltip: { theme: 'dark' }
+    legend: { 
+      labels: { colors: '#e2e8f0' },
+      position: 'top' as const
+    },
+    tooltip: { 
+      theme: 'dark',
+      y: { formatter: (val: number) => val.toFixed(1) + ' pts' }
+    }
   }
   
   chartInstance = new ApexCharts(chartContainer.value, options)
   chartInstance.render()
+  console.log('Chart rendered')
 }
+
+// Watch for team selection changes - auto-compare when both selected
+watch([team1Key, team2Key], ([t1, t2]) => {
+  if (t1 && t2 && !isInitialLoading.value) {
+    loadComparison()
+  }
+})
 
 // Load data when league changes
 watch(() => leagueStore.activeLeagueId, async (newId) => {
@@ -647,8 +701,10 @@ watch(() => leagueStore.activeLeagueId, async (newId) => {
     team2Key.value = ''
     comparisonData.value = null
     rivalryHistory.value = []
+    rivalryHighlights.value = null
     allTeams.value = []
     allMatchups.value = []
+    isInitialLoading.value = true
     await loadInitialData()
   }
 }, { immediate: true })
