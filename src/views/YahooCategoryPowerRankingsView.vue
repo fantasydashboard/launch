@@ -216,8 +216,29 @@
           </div>
         </div>
         <div class="card-body">
-          <div v-if="chartSeries.length > 0">
-            <apexchart type="line" height="400" :options="chartOptions" :series="chartSeries" />
+          <div v-if="chartSeries.length > 0" class="relative">
+            <apexchart type="line" :height="chartHeight" :options="chartOptions" :series="chartSeries" />
+            
+            <!-- Team avatar overlays at end of lines -->
+            <div 
+              v-for="(team, idx) in powerRankings" 
+              :key="'avatar-' + team.team_key"
+              class="absolute pointer-events-none"
+              :style="getAvatarPosition(team)"
+            >
+              <div class="relative">
+                <img 
+                  :src="team.logo_url || defaultAvatar" 
+                  :alt="team.name"
+                  class="w-6 h-6 rounded-full ring-2 object-cover"
+                  :class="team.is_my_team ? 'ring-primary' : 'ring-cyan-500/70'"
+                  @error="handleImageError"
+                />
+                <div v-if="team.is_my_team" class="absolute -top-0.5 -right-0.5 w-3 h-3 bg-primary rounded-full flex items-center justify-center">
+                  <span class="text-[6px] text-gray-900 font-bold">★</span>
+                </div>
+              </div>
+            </div>
           </div>
           <div v-else class="text-center py-12 text-dark-textMuted">
             Not enough data for chart
@@ -241,18 +262,126 @@
         @click.self="showSettings = false"
       >
         <div class="absolute inset-0 bg-black/70 backdrop-blur-sm"></div>
-        <div class="relative bg-dark-elevated rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto border border-dark-border">
+        <div class="relative bg-dark-elevated rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-hidden border border-dark-border">
+          <!-- Header -->
           <div class="px-6 py-4 border-b border-dark-border flex items-center justify-between">
-            <h3 class="text-xl font-bold text-dark-text">Customize Rankings</h3>
-            <button @click="showSettings = false" class="p-2 rounded-lg hover:bg-dark-border/50">
+            <div>
+              <h3 class="text-xl font-bold text-dark-text">Power Rankings Settings</h3>
+              <p class="text-sm text-dark-textMuted">Customize how category power rankings are calculated</p>
+            </div>
+            <button @click="showSettings = false" class="p-2 hover:bg-dark-border/50 rounded-lg transition-colors">
               <svg class="w-5 h-5 text-dark-textMuted" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
               </svg>
             </button>
           </div>
-          <div class="p-6">
-            <p class="text-dark-textMuted mb-4">Factor customization coming soon...</p>
-            <button @click="showSettings = false" class="btn-primary">Close</button>
+          
+          <!-- Presets -->
+          <div class="px-6 py-4 border-b border-dark-border">
+            <h4 class="text-sm font-semibold text-dark-textMuted uppercase tracking-wider mb-3">Quick Presets</h4>
+            <div class="grid grid-cols-2 sm:grid-cols-3 gap-3">
+              <button
+                v-for="preset in powerPresets"
+                :key="preset.id"
+                @click="applyPreset(preset)"
+                class="p-3 rounded-xl border transition-colors text-left"
+                :class="currentPresetId === preset.id 
+                  ? 'border-primary bg-primary/10' 
+                  : 'border-dark-border hover:border-dark-textMuted bg-dark-border/20'"
+              >
+                <div class="flex items-start gap-2">
+                  <span class="text-xl flex-shrink-0">{{ preset.icon }}</span>
+                  <div class="min-w-0 flex-1">
+                    <div class="text-sm font-semibold" :class="currentPresetId === preset.id ? 'text-primary' : 'text-dark-text'">{{ preset.name }}</div>
+                    <div class="text-xs text-dark-textMuted mt-0.5 leading-tight">{{ preset.description }}</div>
+                  </div>
+                </div>
+              </button>
+            </div>
+          </div>
+          
+          <!-- Factors -->
+          <div class="px-6 py-4 overflow-y-auto max-h-[45vh]">
+            <div class="flex items-center justify-between mb-3">
+              <h4 class="text-sm font-semibold text-dark-textMuted uppercase tracking-wider">Ranking Factors</h4>
+              <span class="text-xs text-dark-textMuted">Total: {{ totalWeight }}%</span>
+            </div>
+            
+            <div class="space-y-3">
+              <div 
+                v-for="factor in powerFactors" 
+                :key="factor.id"
+                class="bg-dark-border/20 rounded-xl p-4"
+              >
+                <div class="flex items-start justify-between gap-4 mb-2">
+                  <div class="flex items-start gap-3 flex-1 min-w-0">
+                    <span class="text-2xl flex-shrink-0 mt-0.5">{{ factor.icon }}</span>
+                    <div class="flex-1 min-w-0">
+                      <div class="font-semibold text-dark-text text-sm">{{ factor.name }}</div>
+                      <p class="text-xs text-dark-textMuted mt-1 leading-relaxed">{{ factor.description }}</p>
+                    </div>
+                  </div>
+                  <label class="relative inline-flex items-center cursor-pointer flex-shrink-0 mt-1">
+                    <input 
+                      type="checkbox" 
+                      v-model="factor.enabled" 
+                      @change="onFactorChange"
+                      class="sr-only peer"
+                    />
+                    <div class="w-11 h-6 bg-dark-border rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
+                  </label>
+                </div>
+                
+                <div v-if="factor.enabled" class="flex items-center gap-4 mt-3 pt-3 border-t border-dark-border/30">
+                  <input 
+                    type="range" 
+                    v-model.number="factor.weight" 
+                    min="0" 
+                    max="100" 
+                    step="5"
+                    @input="onFactorChange"
+                    class="flex-1 h-2 bg-dark-border rounded-lg appearance-none cursor-pointer accent-primary"
+                  />
+                  <div class="w-16 flex items-center gap-1 flex-shrink-0">
+                    <input 
+                      type="number" 
+                      v-model.number="factor.weight" 
+                      min="0" 
+                      max="100"
+                      @input="onFactorChange"
+                      class="w-12 px-2 py-1 rounded bg-dark-bg border border-dark-border text-dark-text text-sm text-center"
+                    />
+                    <span class="text-dark-textMuted text-sm">%</span>
+                  </div>
+                </div>
+                
+                <!-- Weight bar visualization -->
+                <div v-if="factor.enabled" class="mt-2 h-1.5 bg-dark-border rounded-full overflow-hidden">
+                  <div 
+                    class="h-full rounded-full transition-all"
+                    :style="{ width: `${factor.weight}%`, backgroundColor: factor.color }"
+                  ></div>
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          <!-- Footer -->
+          <div class="px-6 py-4 border-t border-dark-border flex items-center justify-between">
+            <button 
+              @click="resetFactors"
+              class="px-4 py-2 text-sm text-dark-textMuted hover:text-dark-text transition-colors"
+            >
+              Reset to Default
+            </button>
+            <div class="flex items-center gap-3">
+              <button @click="showSettings = false" class="px-4 py-2 rounded-lg bg-dark-border hover:bg-dark-border/70 text-dark-text font-medium transition-colors">
+                Cancel
+              </button>
+              <button @click="applySettings" class="btn-primary">
+                Apply & Recalculate
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -346,12 +475,193 @@ const chartSeries = ref<any[]>([])
 const chartOptions = ref<any>(null)
 const historicalRanks = ref<Map<string, number[]>>(new Map())
 const chartWeeks = ref<number[]>([])
+const chartHeight = 400
 
 // Team colors
 const teamColors = ['#F59E0B', '#10B981', '#3B82F6', '#EF4444', '#8B5CF6', '#EC4899', '#06B6D4', '#F97316', '#84CC16', '#6366F1', '#14B8A6', '#F43F5E']
 
 function getTeamColor(index: number) {
   return teamColors[index % teamColors.length]
+}
+
+// Power ranking factors for H2H Categories
+const powerFactors = ref([
+  {
+    id: 'catWinPct',
+    name: 'Category Win %',
+    description: 'Overall category win percentage across all matchups',
+    enabled: true,
+    weight: 35,
+    icon: '🏆',
+    color: '#22c55e'
+  },
+  {
+    id: 'dominantCategories',
+    name: 'Category Dominance',
+    description: 'Number of categories where team ranks in top 2',
+    enabled: true,
+    weight: 25,
+    icon: '💪',
+    color: '#f5c451'
+  },
+  {
+    id: 'categoryBalance',
+    name: 'Category Balance',
+    description: 'How evenly wins are distributed across categories',
+    enabled: true,
+    weight: 15,
+    icon: '⚖️',
+    color: '#3b82f6'
+  },
+  {
+    id: 'weakCategories',
+    name: 'Weak Category Penalty',
+    description: 'Penalty for categories where team ranks in bottom 2',
+    enabled: true,
+    weight: 15,
+    icon: '📉',
+    color: '#ef4444'
+  },
+  {
+    id: 'avgCatsPerWeek',
+    name: 'Avg Cats Won/Week',
+    description: 'Average number of categories won each week',
+    enabled: true,
+    weight: 10,
+    icon: '📊',
+    color: '#a855f7'
+  }
+])
+
+const powerPresets = [
+  {
+    id: 'balanced',
+    name: 'Balanced',
+    description: 'Default balanced approach',
+    icon: '⚖️',
+    factors: {
+      catWinPct: { enabled: true, weight: 35 },
+      dominantCategories: { enabled: true, weight: 25 },
+      categoryBalance: { enabled: true, weight: 15 },
+      weakCategories: { enabled: true, weight: 15 },
+      avgCatsPerWeek: { enabled: true, weight: 10 }
+    }
+  },
+  {
+    id: 'dominator',
+    name: 'Category Dominator',
+    description: 'Rewards owning specific categories',
+    icon: '💪',
+    factors: {
+      catWinPct: { enabled: true, weight: 25 },
+      dominantCategories: { enabled: true, weight: 45 },
+      categoryBalance: { enabled: false, weight: 0 },
+      weakCategories: { enabled: true, weight: 20 },
+      avgCatsPerWeek: { enabled: true, weight: 10 }
+    }
+  },
+  {
+    id: 'wellRounded',
+    name: 'Well-Rounded',
+    description: 'Favors balanced production',
+    icon: '🎯',
+    factors: {
+      catWinPct: { enabled: true, weight: 25 },
+      dominantCategories: { enabled: true, weight: 15 },
+      categoryBalance: { enabled: true, weight: 40 },
+      weakCategories: { enabled: true, weight: 15 },
+      avgCatsPerWeek: { enabled: true, weight: 5 }
+    }
+  },
+  {
+    id: 'winPctFocused',
+    name: 'Win % Focused',
+    description: 'Pure category win rate',
+    icon: '🏆',
+    factors: {
+      catWinPct: { enabled: true, weight: 60 },
+      dominantCategories: { enabled: true, weight: 15 },
+      categoryBalance: { enabled: true, weight: 10 },
+      weakCategories: { enabled: true, weight: 10 },
+      avgCatsPerWeek: { enabled: true, weight: 5 }
+    }
+  },
+  {
+    id: 'noWeakness',
+    name: 'No Weaknesses',
+    description: 'Heavy penalty for weak categories',
+    icon: '🛡️',
+    factors: {
+      catWinPct: { enabled: true, weight: 30 },
+      dominantCategories: { enabled: true, weight: 15 },
+      categoryBalance: { enabled: true, weight: 15 },
+      weakCategories: { enabled: true, weight: 35 },
+      avgCatsPerWeek: { enabled: true, weight: 5 }
+    }
+  },
+  {
+    id: 'simple',
+    name: 'Simple',
+    description: 'Just win percentage',
+    icon: '📈',
+    factors: {
+      catWinPct: { enabled: true, weight: 100 },
+      dominantCategories: { enabled: false, weight: 0 },
+      categoryBalance: { enabled: false, weight: 0 },
+      weakCategories: { enabled: false, weight: 0 },
+      avgCatsPerWeek: { enabled: false, weight: 0 }
+    }
+  }
+]
+
+const currentPresetId = ref('balanced')
+
+const totalWeight = computed(() => {
+  return powerFactors.value.filter(f => f.enabled).reduce((sum, f) => sum + f.weight, 0)
+})
+
+function applyPreset(preset: any) {
+  currentPresetId.value = preset.id
+  powerFactors.value.forEach(factor => {
+    const presetFactor = preset.factors[factor.id]
+    if (presetFactor) {
+      factor.enabled = presetFactor.enabled
+      factor.weight = presetFactor.weight
+    }
+  })
+}
+
+function onFactorChange() {
+  currentPresetId.value = ''
+}
+
+function resetFactors() {
+  applyPreset(powerPresets[0])
+}
+
+function applySettings() {
+  showSettings.value = false
+  loadPowerRankings()
+}
+
+// Calculate avatar position for chart overlay
+function getAvatarPosition(team: any): Record<string, string> {
+  const ranks = historicalRanks.value.get(team.team_key) || []
+  const lastRank = ranks[ranks.length - 1]
+  if (!lastRank) return { display: 'none' }
+  
+  const totalTeams = powerRankings.value.length
+  const chartPadding = { top: 30, bottom: 80 } // ApexChart padding (bottom includes legend)
+  const usableHeight = chartHeight - chartPadding.top - chartPadding.bottom
+  
+  // Y position: rank 1 is at top, rank N is at bottom (reversed axis)
+  const yPercent = (lastRank - 1) / Math.max(1, totalTeams - 1)
+  const yPos = chartPadding.top + (yPercent * usableHeight) - 12 // -12 to center the avatar
+  
+  return {
+    right: '15px',
+    top: `${yPos}px`
+  }
 }
 
 // Computed
@@ -608,7 +918,7 @@ async function loadPowerRankings() {
   }
 }
 
-// Calculate power scores for current team stats state
+// Calculate power scores for current team stats state using customizable factors
 function calculatePowerScores(teamStats: Map<string, any>, currentWeek: number): any[] {
   const rankings: any[] = []
   const numTeams = leagueStore.yahooTeams.length
@@ -669,17 +979,53 @@ function calculatePowerScores(teamStats: Map<string, any>, currentWeek: number):
     team.categoryBalance = calculateCategoryBalance(team.categoryWins)
   }
   
-  // Calculate power scores
-  const maxCatWinPct = Math.max(...rankings.map(t => t.catWinPct), 0.01)
-  const maxDominant = Math.max(...rankings.map(t => t.dominantCategories), 1)
+  // Get enabled factors and calculate normalized weights
+  const enabledFactors = powerFactors.value.filter(f => f.enabled && f.weight > 0)
+  const totalWeight = enabledFactors.reduce((sum, f) => sum + f.weight, 0)
   
-  for (const team of rankings) {
-    const catWinScore = (team.catWinPct / maxCatWinPct) * 40
-    const dominantScore = (team.dominantCategories / maxDominant) * 25
-    const balanceScore = team.categoryBalance * 0.2
-    const weakPenalty = team.weakCategories * 3
+  if (totalWeight === 0 || enabledFactors.length === 0) {
+    // Fallback: just use cat win pct
+    for (const team of rankings) {
+      team.powerScore = team.catWinPct * 100
+    }
+  } else {
+    // Calculate max values for normalization
+    const maxCatWinPct = Math.max(...rankings.map(t => t.catWinPct), 0.01)
+    const maxDominant = Math.max(...rankings.map(t => t.dominantCategories), 1)
+    const maxAvgCats = Math.max(...rankings.map(t => t.avgCatsWonPerWeek), 1)
+    const maxWeak = Math.max(...rankings.map(t => t.weakCategories), 1)
     
-    team.powerScore = Math.max(0, Math.min(100, catWinScore + dominantScore + balanceScore - weakPenalty))
+    for (const team of rankings) {
+      let score = 0
+      
+      for (const factor of enabledFactors) {
+        const normalizedWeight = factor.weight / totalWeight
+        let componentScore = 0
+        
+        switch (factor.id) {
+          case 'catWinPct':
+            componentScore = (team.catWinPct / maxCatWinPct) * 100
+            break
+          case 'dominantCategories':
+            componentScore = (team.dominantCategories / maxDominant) * 100
+            break
+          case 'categoryBalance':
+            componentScore = team.categoryBalance
+            break
+          case 'weakCategories':
+            // Inverse: fewer weak categories = higher score
+            componentScore = ((maxWeak - team.weakCategories) / Math.max(maxWeak, 1)) * 100
+            break
+          case 'avgCatsPerWeek':
+            componentScore = (team.avgCatsWonPerWeek / maxAvgCats) * 100
+            break
+        }
+        
+        score += componentScore * normalizedWeight
+      }
+      
+      team.powerScore = Math.max(0, Math.min(100, score))
+    }
   }
   
   // Sort by power score
@@ -749,9 +1095,7 @@ function buildChart() {
       }
     },
     legend: {
-      show: true,
-      position: 'bottom',
-      labels: { colors: '#9ca3af' }
+      show: false // Hide legend since we show team avatars at end of lines
     },
     tooltip: {
       theme: 'dark',
@@ -763,7 +1107,10 @@ function buildChart() {
     },
     grid: {
       borderColor: '#374151',
-      strokeDashArray: 3
+      strokeDashArray: 3,
+      padding: {
+        right: 50 // Add padding for avatars
+      }
     }
   }
 }
