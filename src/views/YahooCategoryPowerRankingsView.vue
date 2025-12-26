@@ -346,13 +346,38 @@ const chartSeries = ref<any[]>([])
 const chartOptions = ref<any>(null)
 
 // Computed
-const currentWeek = computed(() => leagueStore.yahooLeague?.current_week || 1)
-const totalWeeks = computed(() => parseInt(leagueStore.yahooLeague?.end_week) || 25)
-const isSeasonComplete = computed(() => leagueStore.yahooLeague?.is_finished === 1)
+// yahooLeague is an array - index 0 contains league metadata
+const leagueInfo = computed(() => {
+  const league = leagueStore.yahooLeague
+  if (Array.isArray(league)) {
+    return league[0] || {}
+  }
+  return league || {}
+})
+
+const currentWeek = computed(() => {
+  const week = leagueInfo.value?.current_week
+  console.log('currentWeek computed:', week, 'from leagueInfo:', leagueInfo.value)
+  return parseInt(week) || 1
+})
+
+const totalWeeks = computed(() => {
+  const endWeek = leagueInfo.value?.end_week
+  console.log('totalWeeks computed:', endWeek)
+  return parseInt(endWeek) || 25
+})
+
+const isSeasonComplete = computed(() => {
+  const finished = leagueInfo.value?.is_finished
+  console.log('isSeasonComplete computed:', finished)
+  return finished === 1 || finished === '1'
+})
+
 const numCategories = computed(() => displayCategories.value.length || 12)
 
 const availableWeeks = computed(() => {
   const endWeek = isSeasonComplete.value ? totalWeeks.value : currentWeek.value
+  console.log(`availableWeeks: isComplete=${isSeasonComplete.value}, totalWeeks=${totalWeeks.value}, currentWeek=${currentWeek.value}, endWeek=${endWeek}`)
   return Array.from({ length: endWeek }, (_, i) => i + 1)
 })
 
@@ -640,12 +665,14 @@ watch(() => leagueStore.yahooTeams, async () => {
   if (leagueStore.yahooTeams.length > 0) {
     await loadCategories()
     
-    const endWeek = parseInt(leagueStore.yahooLeague?.end_week) || 25
-    const currWeek = leagueStore.yahooLeague?.current_week || 1
-    const isFinished = leagueStore.yahooLeague?.is_finished === 1
+    // Use the computed values which now correctly parse the array
+    const endWeek = totalWeeks.value
+    const currWeek = currentWeek.value
+    const isFinished = isSeasonComplete.value
     const defaultWeek = isFinished ? endWeek : currWeek
     
     console.log(`Init: endWeek=${endWeek}, currWeek=${currWeek}, isFinished=${isFinished}, default=${defaultWeek}`)
+    console.log('yahooLeague raw:', leagueStore.yahooLeague)
     
     if (defaultWeek >= 1) {
       selectedWeek.value = defaultWeek.toString()
