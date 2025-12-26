@@ -815,6 +815,12 @@ async function downloadRankings() {
           <div>${secondHalf.map((team, idx) => generateRankingRow(team, idx + midpoint + 1)).join('')}</div>
         </div>
         
+        <!-- Trend Chart -->
+        <div style="background: rgba(38, 42, 58, 0.5); border-radius: 12px; padding: 20px; margin-bottom: 24px;">
+          <h3 style="color: #3B9FE8; font-size: 16px; margin: 0 0 16px 0; text-align: center; font-weight: 600;">📈 Power Rankings Trend</h3>
+          <div id="trend-chart-container" style="height: 280px; position: relative;"></div>
+        </div>
+        
         <!-- Formula Display -->
         <div style="text-align: center; font-size: 11px; color: #7b7f92; margin-bottom: 24px;">
           ${currentFormulaDisplay.value}
@@ -839,8 +845,89 @@ async function downloadRankings() {
     
     document.body.appendChild(container)
     
-    // Wait for images to render
-    await new Promise(resolve => setTimeout(resolve, 500))
+    // Create trend chart if we have historical data
+    const trendChartContainer = container.querySelector('#trend-chart-container')
+    if (trendChartContainer && chartWeeks.value.length >= 2) {
+      const ApexCharts = (await import('apexcharts')).default
+      
+      // Get last 7 weeks of data
+      const maxWeeksToShow = 7
+      const startIdx = Math.max(0, chartWeeks.value.length - maxWeeksToShow)
+      const weeksToShow = chartWeeks.value.slice(startIdx)
+      
+      // Build series with last 7 weeks
+      const trendSeries = powerRankings.value.map((team, idx) => {
+        const allRanks = historicalRanks.value.get(team.team_key) || []
+        const ranksToShow = allRanks.slice(startIdx)
+        return {
+          name: team.name,
+          data: ranksToShow
+        }
+      })
+      
+      const trendChart = new ApexCharts(trendChartContainer, {
+        chart: {
+          type: 'line',
+          height: 280,
+          background: 'transparent',
+          toolbar: { show: false },
+          animations: { enabled: false }
+        },
+        series: trendSeries,
+        colors: powerRankings.value.map((team, idx) => 
+          team.is_my_team ? '#F5C451' : getTeamColor(idx)
+        ),
+        stroke: {
+          width: powerRankings.value.map(team => team.is_my_team ? 4 : 2),
+          curve: 'smooth'
+        },
+        markers: {
+          size: 4,
+          strokeWidth: 0
+        },
+        xaxis: {
+          categories: weeksToShow.map(w => `Wk ${w}`),
+          labels: {
+            style: {
+              colors: '#9ca3af',
+              fontSize: '11px'
+            }
+          }
+        },
+        yaxis: {
+          reversed: true,
+          min: 1,
+          max: powerRankings.value.length,
+          labels: {
+            style: {
+              colors: '#9ca3af',
+              fontSize: '11px'
+            },
+            formatter: (value: number) => `#${Math.round(value)}`
+          }
+        },
+        legend: {
+          show: true,
+          position: 'bottom',
+          labels: { colors: '#9ca3af' },
+          fontSize: '10px',
+          markers: { width: 8, height: 8 }
+        },
+        grid: {
+          borderColor: '#374151',
+          strokeDashArray: 3
+        },
+        tooltip: { enabled: false }
+      })
+      
+      await trendChart.render()
+      
+      // Wait for chart to fully render
+      await new Promise(resolve => setTimeout(resolve, 800))
+    } else {
+      // No chart data - wait for images only
+      await new Promise(resolve => setTimeout(resolve, 500))
+    }
     
     // Capture the image
     const canvas = await html2canvas(container, {
