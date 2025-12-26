@@ -773,10 +773,10 @@ async function downloadRankings() {
     const secondHalf = powerRankings.value.slice(midpoint)
     
     const generateRankingRow = (team: any, rank: number) => `
-      <div style="display: flex; align-items: center; height: 80px; padding: 0 16px; background: ${rank <= 3 ? 'rgba(59, 159, 232, 0.1)' : 'rgba(38, 42, 58, 0.5)'}; border-radius: 10px; margin-bottom: 8px; border: 1px solid ${rank <= 3 ? 'rgba(59, 159, 232, 0.3)' : 'rgba(58, 61, 82, 0.5)'}; box-sizing: border-box;">
+      <div style="display: flex; align-items: center; height: 80px; padding: 0 16px; background: ${rank <= 3 ? 'rgba(59, 159, 232, 0.1)' : 'rgba(38, 42, 58, 0.5)'}; border-radius: 10px; margin-bottom: 8px; border: 1px solid ${rank <= 3 ? 'rgba(59, 159, 232, 0.3)' : 'rgba(58, 61, 82, 0.5)'}; box-sizing: border-box; overflow: visible;">
         <!-- Rank Number - Centered with logo -->
         <div style="display: flex; align-items: center; width: 50px; flex-shrink: 0;">
-          <span style="font-size: 32px; font-weight: bold; color: #3B9FE8; line-height: 1;">${rank}</span>
+          <span style="font-size: 32px; font-weight: bold; color: #3B9FE8;">${rank}</span>
           ${team.change !== 0 ? `
             <span style="font-size: 12px; font-weight: 600; color: ${team.change > 0 ? '#10b981' : '#ef4444'}; margin-left: 4px;">
               ${team.change > 0 ? '↑' : '↓'}${Math.abs(team.change)}
@@ -785,15 +785,15 @@ async function downloadRankings() {
         </div>
         <!-- Team Logo -->
         <img src="${imageMap.get(team.team_key) || ''}" style="width: 48px; height: 48px; border-radius: 50%; margin-right: 12px; border: 2px solid #3a3d52; background: #262a3a; flex-shrink: 0; object-fit: cover;" />
-        <!-- Team Info - Fixed width with ellipsis, no cutoff -->
-        <div style="flex: 1; min-width: 0; max-width: 180px; display: flex; flex-direction: column; justify-content: center;">
-          <div style="font-size: 15px; font-weight: 600; color: #f7f7ff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; line-height: 1.3;">${team.name}</div>
-          <div style="font-size: 12px; color: #b0b3c2; margin-top: 4px; line-height: 1.3;">${team.totalCatWins}-${team.totalCatLosses}-${team.totalCatTies} • ${(team.catWinPct * 100).toFixed(1)}%</div>
+        <!-- Team Info -->
+        <div style="flex: 1; min-width: 0; max-width: 180px;">
+          <div style="font-size: 15px; font-weight: 600; color: #f7f7ff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding-bottom: 2px;">${team.name}</div>
+          <div style="font-size: 12px; color: #b0b3c2; padding-bottom: 2px;">${team.totalCatWins}-${team.totalCatLosses}-${team.totalCatTies} • ${(team.catWinPct * 100).toFixed(1)}%</div>
         </div>
         <!-- Power Score -->
-        <div style="text-align: right; margin-left: auto; padding-left: 12px; flex-shrink: 0; display: flex; flex-direction: column; justify-content: center;">
-          <div style="font-size: 24px; font-weight: bold; color: #3B9FE8; line-height: 1;">${team.powerScore.toFixed(1)}</div>
-          <div style="font-size: 9px; color: #7b7f92; text-transform: uppercase; margin-top: 4px; line-height: 1;">Power</div>
+        <div style="text-align: right; margin-left: auto; padding-left: 12px; flex-shrink: 0;">
+          <div style="font-size: 24px; font-weight: bold; color: #3B9FE8;">${team.powerScore.toFixed(1)}</div>
+          <div style="font-size: 9px; color: #7b7f92; text-transform: uppercase; margin-top: 4px;">Power</div>
         </div>
       </div>
     `
