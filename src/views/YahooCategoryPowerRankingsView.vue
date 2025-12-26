@@ -773,9 +773,9 @@ async function downloadRankings() {
     const secondHalf = powerRankings.value.slice(midpoint)
     
     const generateRankingRow = (team: any, rank: number) => `
-      <div style="display: flex; align-items: center; height: 76px; padding: 0 16px; background: ${rank <= 3 ? 'rgba(59, 159, 232, 0.1)' : 'rgba(38, 42, 58, 0.5)'}; border-radius: 10px; margin-bottom: 8px; border: 1px solid ${rank <= 3 ? 'rgba(59, 159, 232, 0.3)' : 'rgba(58, 61, 82, 0.5)'};">
-        <!-- Rank Number - Centered vertically -->
-        <div style="display: flex; align-items: center; justify-content: center; width: 50px; height: 100%;">
+      <div style="display: flex; align-items: center; height: 80px; padding: 0 16px; background: ${rank <= 3 ? 'rgba(59, 159, 232, 0.1)' : 'rgba(38, 42, 58, 0.5)'}; border-radius: 10px; margin-bottom: 8px; border: 1px solid ${rank <= 3 ? 'rgba(59, 159, 232, 0.3)' : 'rgba(58, 61, 82, 0.5)'}; box-sizing: border-box;">
+        <!-- Rank Number - Centered with logo -->
+        <div style="display: flex; align-items: center; width: 50px; flex-shrink: 0;">
           <span style="font-size: 32px; font-weight: bold; color: #3B9FE8; line-height: 1;">${rank}</span>
           ${team.change !== 0 ? `
             <span style="font-size: 12px; font-weight: 600; color: ${team.change > 0 ? '#10b981' : '#ef4444'}; margin-left: 4px;">
@@ -784,16 +784,16 @@ async function downloadRankings() {
           ` : ''}
         </div>
         <!-- Team Logo -->
-        <img src="${imageMap.get(team.team_key) || ''}" style="width: 48px; height: 48px; border-radius: 50%; margin-right: 12px; border: 2px solid #3a3d52; background: #262a3a; flex-shrink: 0;" />
-        <!-- Team Info - Fixed width with ellipsis -->
-        <div style="flex: 1; min-width: 0; max-width: 180px; overflow: hidden;">
-          <div style="font-size: 15px; font-weight: 600; color: #f7f7ff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${team.name}</div>
-          <div style="font-size: 12px; color: #b0b3c2; margin-top: 2px;">${team.totalCatWins}-${team.totalCatLosses}-${team.totalCatTies} • ${(team.catWinPct * 100).toFixed(1)}%</div>
+        <img src="${imageMap.get(team.team_key) || ''}" style="width: 48px; height: 48px; border-radius: 50%; margin-right: 12px; border: 2px solid #3a3d52; background: #262a3a; flex-shrink: 0; object-fit: cover;" />
+        <!-- Team Info - Fixed width with ellipsis, no cutoff -->
+        <div style="flex: 1; min-width: 0; max-width: 180px; display: flex; flex-direction: column; justify-content: center;">
+          <div style="font-size: 15px; font-weight: 600; color: #f7f7ff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; line-height: 1.3;">${team.name}</div>
+          <div style="font-size: 12px; color: #b0b3c2; margin-top: 4px; line-height: 1.3;">${team.totalCatWins}-${team.totalCatLosses}-${team.totalCatTies} • ${(team.catWinPct * 100).toFixed(1)}%</div>
         </div>
         <!-- Power Score -->
-        <div style="text-align: right; margin-left: auto; padding-left: 12px; flex-shrink: 0;">
+        <div style="text-align: right; margin-left: auto; padding-left: 12px; flex-shrink: 0; display: flex; flex-direction: column; justify-content: center;">
           <div style="font-size: 24px; font-weight: bold; color: #3B9FE8; line-height: 1;">${team.powerScore.toFixed(1)}</div>
-          <div style="font-size: 9px; color: #7b7f92; text-transform: uppercase; margin-top: 2px;">Power</div>
+          <div style="font-size: 9px; color: #7b7f92; text-transform: uppercase; margin-top: 4px; line-height: 1;">Power</div>
         </div>
       </div>
     `
@@ -822,10 +822,10 @@ async function downloadRankings() {
         
         <!-- Footer with Logo and Link (Extra Large) -->
         <div style="text-align: center; padding-top: 24px; border-top: 1px solid rgba(58, 61, 82, 0.5);">
-          <div style="display: flex; flex-direction: column; align-items: center; gap: 20px;">
+          <div style="display: flex; flex-direction: column; align-items: center; gap: 10px;">
             ${logoBase64 ? `<img src="${logoBase64}" style="width: 160px; height: 160px; object-fit: contain;" />` : ''}
             <div style="max-width: 100%; padding: 0 20px;">
-              <div style="font-size: 14px; color: #9ca3af; margin-bottom: 10px;">
+              <div style="font-size: 14px; color: #9ca3af; margin-bottom: 6px;">
                 See a complete breakdown of every team in your league at
               </div>
               <div style="font-size: 26px; font-weight: bold; color: #3B9FE8; word-wrap: break-word;">
