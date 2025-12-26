@@ -600,6 +600,94 @@ export class YahooFantasyService {
   }
 
   /**
+   * Get detailed matchup data including stat winners for H2H Category leagues
+   * This returns which team won each category in each matchup
+   */
+  async getCategoryMatchups(leagueKey: string, week: number): Promise<any[]> {
+    const data = await this.apiRequest(
+      `/league/${leagueKey}/scoreboard;week=${week}?format=json`
+    )
+    
+    console.log(`Week ${week} scoreboard raw:`, JSON.stringify(data).substring(0, 2000))
+    
+    const matchups: any[] = []
+    const scoreboardData = data.fantasy_content?.league?.[1]?.scoreboard?.[0]?.matchups
+    
+    if (!scoreboardData) {
+      console.log(`No scoreboard data for week ${week}`)
+      return matchups
+    }
+    
+    for (const matchupWrapper of Object.values(scoreboardData) as any[]) {
+      if (typeof matchupWrapper !== 'object' || !matchupWrapper.matchup) continue
+      
+      const matchupInfo = matchupWrapper.matchup
+      
+      // Get stat_winners - this contains which team won each category
+      const statWinners = matchupInfo.stat_winners || []
+      
+      // Get teams with their stats
+      const teams = matchupInfo[0]?.teams || {}
+      const parsedTeams: any[] = []
+      
+      for (const teamWrapper of Object.values(teams) as any[]) {
+        if (typeof teamWrapper !== 'object' || !teamWrapper.team) continue
+        
+        const teamData = teamWrapper.team
+        const teamInfo = teamData[0] || []
+        const teamStats = teamData[1]?.team_stats?.stats || []
+        
+        // Parse team info
+        let teamKey = '', teamName = '', logoUrl = ''
+        for (const item of teamInfo) {
+          if (item?.team_key) teamKey = item.team_key
+          if (item?.name) teamName = item.name
+          if (item?.team_logos) logoUrl = item.team_logos[0]?.team_logo?.url || ''
+        }
+        
+        // Parse stats into a map
+        const stats: Record<string, string> = {}
+        for (const statWrapper of teamStats) {
+          if (statWrapper?.stat) {
+            stats[statWrapper.stat.stat_id] = statWrapper.stat.value
+          }
+        }
+        
+        parsedTeams.push({
+          team_key: teamKey,
+          name: teamName,
+          logo_url: logoUrl,
+          stats
+        })
+      }
+      
+      // Parse stat winners
+      const categoryResults: any[] = []
+      for (const sw of statWinners) {
+        if (sw?.stat_winner) {
+          categoryResults.push({
+            stat_id: sw.stat_winner.stat_id,
+            winner_team_key: sw.stat_winner.winner_team_key,
+            is_tied: sw.stat_winner.is_tied === '1'
+          })
+        }
+      }
+      
+      matchups.push({
+        week,
+        teams: parsedTeams,
+        stat_winners: categoryResults,
+        winner_team_key: matchupInfo.winner_team_key,
+        is_tied: matchupInfo.is_tied === '1'
+      })
+    }
+    
+    console.log(`Week ${week}: ${matchups.length} matchups, first has ${matchups[0]?.stat_winners?.length || 0} stat winners`)
+    
+    return matchups
+  }
+
+  /**
    * Get league settings including scoring type, divisions, etc.
    */
   async getLeagueSettings(leagueKey: string): Promise<any> {
