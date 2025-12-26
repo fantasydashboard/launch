@@ -896,9 +896,6 @@ export class YahooFantasyService {
     console.log(`Got stats for ${stats.size} players`)
     return stats
   }
-    
-    return stats
-  }
 }
 
 // Export singleton instance
