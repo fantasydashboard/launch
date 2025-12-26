@@ -344,6 +344,15 @@ const selectedTeam = ref<any>(null)
 // Chart
 const chartSeries = ref<any[]>([])
 const chartOptions = ref<any>(null)
+const historicalRanks = ref<Map<string, number[]>>(new Map())
+const chartWeeks = ref<number[]>([])
+
+// Team colors
+const teamColors = ['#F59E0B', '#10B981', '#3B82F6', '#EF4444', '#8B5CF6', '#EC4899', '#06B6D4', '#F97316', '#84CC16', '#6366F1', '#14B8A6', '#F43F5E']
+
+function getTeamColor(index: number) {
+  return teamColors[index % teamColors.length]
+}
 
 // Computed
 // yahooLeague is an array - index 0 contains league metadata
@@ -459,7 +468,7 @@ async function loadPowerRankings() {
       await loadCategories()
     }
     
-    // Initialize team stats
+    // Initialize team stats - we'll track cumulative stats as we go through each week
     const teamStats = new Map<string, any>()
     for (const team of leagueStore.yahooTeams) {
       const categoryWins: Record<string, number> = {}
@@ -482,23 +491,29 @@ async function loadPowerRankings() {
         categoryTies,
         totalCatWins: 0,
         totalCatLosses: 0,
-        totalCatTies: 0,
-        matchupWins: 0,
-        matchupLosses: 0,
-        matchupTies: 0
+        totalCatTies: 0
       })
     }
     
-    // Load each week's matchup data
+    // Track historical rankings for chart
+    const rankHistory = new Map<string, number[]>()
+    const weeksForChart: number[] = []
+    
+    // Initialize rank history for each team
+    for (const team of leagueStore.yahooTeams) {
+      rankHistory.set(team.team_key, [])
+    }
+    
     console.log(`=== Loading ${throughWeek} weeks of matchup data ===`)
     
+    // Load each week's matchup data and calculate running rankings
     for (let week = 1; week <= throughWeek; week++) {
       loadingMessage.value = `Loading week ${week}/${throughWeek}...`
       
       try {
-        // Try the category matchups method
         const matchups = await yahooService.getCategoryMatchups(leagueKey, week)
         
+        // Process this week's matchups
         for (const matchup of matchups) {
           if (!matchup.teams || matchup.teams.length < 2) continue
           
@@ -535,98 +550,55 @@ async function loadPowerRankings() {
               }
             }
           }
-          
-          // Track matchup W-L
-          if (matchup.winner_team_key === team1Key) {
-            team1Stats.matchupWins++
-            team2Stats.matchupLosses++
-          } else if (matchup.winner_team_key === team2Key) {
-            team2Stats.matchupWins++
-            team1Stats.matchupLosses++
-          } else if (matchup.is_tied) {
-            team1Stats.matchupTies++
-            team2Stats.matchupTies++
-          }
         }
+        
+        // Calculate power rankings at this point in the season (every 2 weeks for chart)
+        if (week >= 2 && (week % 2 === 0 || week === throughWeek)) {
+          weeksForChart.push(week)
+          
+          // Calculate current power scores for all teams
+          const weekRankings = calculatePowerScores(teamStats, week)
+          
+          // Store each team's rank for this week
+          weekRankings.forEach((team, idx) => {
+            const ranks = rankHistory.get(team.team_key) || []
+            ranks.push(idx + 1)
+            rankHistory.set(team.team_key, ranks)
+          })
+        }
+        
       } catch (e) {
         console.error(`Error loading week ${week}:`, e)
       }
     }
     
     totalWeeksLoaded.value = throughWeek
+    historicalRanks.value = rankHistory
+    chartWeeks.value = weeksForChart
     
-    // Calculate derived stats and power scores
-    loadingMessage.value = 'Calculating power scores...'
+    // Calculate final rankings
+    loadingMessage.value = 'Calculating final rankings...'
+    const finalRankings = calculatePowerScores(teamStats, throughWeek)
     
-    const rankings: any[] = []
-    const numTeams = leagueStore.yahooTeams.length
-    
-    for (const [teamKey, stats] of teamStats) {
-      const totalGames = stats.totalCatWins + stats.totalCatLosses + stats.totalCatTies
-      const catWinPct = totalGames > 0 ? stats.totalCatWins / totalGames : 0
-      const avgCatsWonPerWeek = throughWeek > 0 ? stats.totalCatWins / throughWeek : 0
-      
-      // Category balance
-      stats.categoryBalance = calculateCategoryBalance(stats.categoryWins)
-      
-      rankings.push({
-        ...stats,
-        catWinPct,
-        avgCatsWonPerWeek,
-        powerScore: 0,
-        change: 0,
-        prevRank: 0,
-        dominantCategories: 0,
-        weakCategories: 0,
-        categoryRanks: {}
+    // Calculate change from previous week
+    if (throughWeek > 1) {
+      finalRankings.forEach((team, idx) => {
+        const ranks = rankHistory.get(team.team_key) || []
+        if (ranks.length >= 2) {
+          const prevRank = ranks[ranks.length - 2] || idx + 1
+          team.change = prevRank - (idx + 1)
+          team.prevRank = prevRank
+        }
       })
     }
-    
-    // Calculate category ranks for each category
-    for (const cat of displayCategories.value) {
-      const sorted = [...rankings].sort((a, b) => 
-        (b.categoryWins[cat.stat_id] || 0) - (a.categoryWins[cat.stat_id] || 0)
-      )
-      sorted.forEach((team, idx) => {
-        team.categoryRanks[cat.stat_id] = idx + 1
-      })
-    }
-    
-    // Count dominant/weak categories
-    for (const team of rankings) {
-      let dominant = 0, weak = 0
-      for (const cat of displayCategories.value) {
-        const rank = team.categoryRanks[cat.stat_id] || numTeams
-        if (rank <= 2) dominant++
-        if (rank >= numTeams - 1) weak++
-      }
-      team.dominantCategories = dominant
-      team.weakCategories = weak
-    }
-    
-    // Calculate power scores
-    const maxCatWinPct = Math.max(...rankings.map(t => t.catWinPct), 0.01)
-    const maxDominant = Math.max(...rankings.map(t => t.dominantCategories), 1)
-    
-    for (const team of rankings) {
-      const catWinScore = (team.catWinPct / maxCatWinPct) * 40
-      const dominantScore = (team.dominantCategories / maxDominant) * 25
-      const balanceScore = team.categoryBalance * 0.2
-      const weakPenalty = team.weakCategories * 3
-      
-      team.powerScore = Math.max(0, Math.min(100, catWinScore + dominantScore + balanceScore - weakPenalty))
-    }
-    
-    // Sort by power score
-    rankings.sort((a, b) => b.powerScore - a.powerScore)
     
     // Log results
     console.log('=== POWER RANKINGS COMPLETE ===')
-    rankings.slice(0, 3).forEach((t, i) => {
+    finalRankings.slice(0, 3).forEach((t, i) => {
       console.log(`#${i+1}: ${t.name} - Score: ${t.powerScore.toFixed(1)}, Cat W-L: ${t.totalCatWins}-${t.totalCatLosses}`)
     })
     
-    powerRankings.value = rankings
+    powerRankings.value = finalRankings
     buildChart()
     
   } catch (e) {
@@ -636,27 +608,163 @@ async function loadPowerRankings() {
   }
 }
 
+// Calculate power scores for current team stats state
+function calculatePowerScores(teamStats: Map<string, any>, currentWeek: number): any[] {
+  const rankings: any[] = []
+  const numTeams = leagueStore.yahooTeams.length
+  
+  for (const [teamKey, stats] of teamStats) {
+    const totalGames = stats.totalCatWins + stats.totalCatLosses + stats.totalCatTies
+    const catWinPct = totalGames > 0 ? stats.totalCatWins / totalGames : 0
+    const avgCatsWonPerWeek = currentWeek > 0 ? stats.totalCatWins / currentWeek : 0
+    
+    // Deep copy category data
+    const categoryWins = { ...stats.categoryWins }
+    const categoryLosses = { ...stats.categoryLosses }
+    const categoryTies = { ...stats.categoryTies }
+    
+    rankings.push({
+      team_key: stats.team_key,
+      name: stats.name,
+      logo_url: stats.logo_url,
+      is_my_team: stats.is_my_team,
+      categoryWins,
+      categoryLosses,
+      categoryTies,
+      totalCatWins: stats.totalCatWins,
+      totalCatLosses: stats.totalCatLosses,
+      totalCatTies: stats.totalCatTies,
+      catWinPct,
+      avgCatsWonPerWeek,
+      powerScore: 0,
+      change: 0,
+      prevRank: 0,
+      dominantCategories: 0,
+      weakCategories: 0,
+      categoryRanks: {},
+      categoryBalance: 0
+    })
+  }
+  
+  // Calculate category ranks for each category
+  for (const cat of displayCategories.value) {
+    const sorted = [...rankings].sort((a, b) => 
+      (b.categoryWins[cat.stat_id] || 0) - (a.categoryWins[cat.stat_id] || 0)
+    )
+    sorted.forEach((team, idx) => {
+      team.categoryRanks[cat.stat_id] = idx + 1
+    })
+  }
+  
+  // Count dominant/weak categories and calculate balance
+  for (const team of rankings) {
+    let dominant = 0, weak = 0
+    for (const cat of displayCategories.value) {
+      const rank = team.categoryRanks[cat.stat_id] || numTeams
+      if (rank <= 2) dominant++
+      if (rank >= numTeams - 1) weak++
+    }
+    team.dominantCategories = dominant
+    team.weakCategories = weak
+    team.categoryBalance = calculateCategoryBalance(team.categoryWins)
+  }
+  
+  // Calculate power scores
+  const maxCatWinPct = Math.max(...rankings.map(t => t.catWinPct), 0.01)
+  const maxDominant = Math.max(...rankings.map(t => t.dominantCategories), 1)
+  
+  for (const team of rankings) {
+    const catWinScore = (team.catWinPct / maxCatWinPct) * 40
+    const dominantScore = (team.dominantCategories / maxDominant) * 25
+    const balanceScore = team.categoryBalance * 0.2
+    const weakPenalty = team.weakCategories * 3
+    
+    team.powerScore = Math.max(0, Math.min(100, catWinScore + dominantScore + balanceScore - weakPenalty))
+  }
+  
+  // Sort by power score
+  rankings.sort((a, b) => b.powerScore - a.powerScore)
+  
+  return rankings
+}
+
 function buildChart() {
-  if (powerRankings.value.length === 0) return
+  if (powerRankings.value.length === 0 || chartWeeks.value.length < 2) {
+    chartSeries.value = []
+    chartOptions.value = null
+    return
+  }
   
-  const teamColors = ['#F59E0B', '#10B981', '#3B82F6', '#EF4444', '#8B5CF6', '#EC4899', '#06B6D4', '#F97316']
-  
-  // For now, just show current standings as a bar chart
-  const series = [{
-    name: 'Power Score',
-    data: powerRankings.value.map(t => ({ x: t.name, y: t.powerScore, fillColor: teamColors[powerRankings.value.indexOf(t) % teamColors.length] }))
-  }]
+  // Build series data for each team
+  const series = powerRankings.value.map((team, idx) => {
+    const ranks = historicalRanks.value.get(team.team_key) || []
+    return {
+      name: team.name,
+      data: ranks
+    }
+  })
   
   chartSeries.value = series
+  
   chartOptions.value = {
-    chart: { type: 'bar', background: 'transparent', toolbar: { show: false } },
-    plotOptions: { bar: { horizontal: true, borderRadius: 4, distributed: true } },
-    dataLabels: { enabled: true, formatter: (v: number) => v.toFixed(1), style: { colors: ['#fff'] } },
-    xaxis: { labels: { style: { colors: '#9CA3AF' } } },
-    yaxis: { labels: { style: { colors: '#9CA3AF' } } },
-    grid: { borderColor: '#374151' },
-    legend: { show: false },
-    tooltip: { theme: 'dark' }
+    chart: {
+      type: 'line',
+      background: 'transparent',
+      toolbar: { show: false },
+      zoom: { enabled: false }
+    },
+    theme: { mode: 'dark' },
+    colors: powerRankings.value.map((team, idx) => 
+      team.is_my_team ? '#F5C451' : getTeamColor(idx)
+    ),
+    stroke: {
+      width: powerRankings.value.map(team => team.is_my_team ? 4 : 2),
+      curve: 'smooth'
+    },
+    markers: {
+      size: 0,
+      hover: { size: 6 }
+    },
+    xaxis: {
+      categories: chartWeeks.value.map(w => `Wk ${w}`),
+      labels: {
+        style: { colors: '#9ca3af' }
+      },
+      title: {
+        text: 'Week',
+        style: { color: '#9ca3af' }
+      }
+    },
+    yaxis: {
+      reversed: true,
+      min: 1,
+      max: powerRankings.value.length,
+      labels: {
+        style: { colors: '#9ca3af' },
+        formatter: (value: number) => `#${Math.round(value)}`
+      },
+      title: {
+        text: 'Power Rank',
+        style: { color: '#9ca3af' }
+      }
+    },
+    legend: {
+      show: true,
+      position: 'bottom',
+      labels: { colors: '#9ca3af' }
+    },
+    tooltip: {
+      theme: 'dark',
+      shared: true,
+      intersect: false,
+      y: {
+        formatter: (val: number) => `#${val}`
+      }
+    },
+    grid: {
+      borderColor: '#374151',
+      strokeDashArray: 3
+    }
   }
 }
 
