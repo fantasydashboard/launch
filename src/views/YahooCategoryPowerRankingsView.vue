@@ -803,12 +803,13 @@ async function downloadRankings() {
         <!-- Decorative blue glow at top -->
         <div style="position: absolute; top: -100px; left: 50%; transform: translateX(-50%); width: 400px; height: 200px; background: radial-gradient(ellipse, rgba(59, 159, 232, 0.3) 0%, transparent 70%); pointer-events: none;"></div>
         
-        <!-- Header - More impactful -->
-        <div style="text-align: center; margin-bottom: 16px; position: relative; z-index: 1;">
-          <div style="display: inline-block; background: linear-gradient(135deg, rgba(59, 159, 232, 0.2), rgba(59, 159, 232, 0.05)); border: 1px solid rgba(59, 159, 232, 0.3); border-radius: 12px; padding: 16px 32px;">
-            <div style="font-size: 36px; font-weight: 900; color: #ffffff; text-transform: uppercase; letter-spacing: 3px; text-shadow: 0 0 30px rgba(59, 159, 232, 0.5);">⚡ POWER RANKINGS</div>
-            <div style="font-size: 14px; color: #3B9FE8; margin-top: 4px; font-weight: 600;">${leagueName} • Week ${selectedWeek.value}</div>
+        <!-- Header - Two-tone style like Yahoo Sports -->
+        <div style="text-align: center; margin-bottom: 20px; position: relative; z-index: 1;">
+          <div style="display: inline-flex; align-items: center; gap: 0;">
+            <span style="font-size: 48px; font-weight: 900; color: #ffffff; text-transform: uppercase; font-family: 'Impact', 'Arial Black', sans-serif; letter-spacing: 2px; line-height: 1;">POWER</span>
+            <span style="font-size: 48px; font-weight: 900; color: #ffffff; text-transform: uppercase; font-family: 'Impact', 'Arial Black', sans-serif; letter-spacing: 2px; line-height: 1; background: #3B9FE8; padding: 4px 12px; margin-left: 8px; border-radius: 4px;">RANKINGS</span>
           </div>
+          <div style="font-size: 14px; color: #9ca3af; margin-top: 10px; font-weight: 500;">${leagueName} • Week ${selectedWeek.value}</div>
         </div>
         
         <!-- Rankings (Two Columns) - Compact -->
