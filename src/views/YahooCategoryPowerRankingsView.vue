@@ -779,11 +779,11 @@ async function downloadRankings() {
       const barColor = team.powerScore >= 70 ? '#10b981' : (team.powerScore >= 40 ? '#f59e0b' : '#ef4444')
       return `
       <div style="display: flex; align-items: center; height: 80px; padding: 0 12px; background: rgba(38, 42, 58, 0.4); border-radius: 10px; margin-bottom: 6px; border: 1px solid rgba(58, 61, 82, 0.4); box-sizing: border-box; overflow: visible;">
-        <!-- Rank Number -->
+        <!-- Rank Number - pull up with negative margin to center visually -->
         <div style="display: flex; align-items: center; width: 44px; flex-shrink: 0; overflow: visible;">
-          <span style="font-size: 36px; font-weight: 900; color: #3B9FE8; font-family: 'Impact', 'Arial Black', sans-serif; letter-spacing: -2px; line-height: 1;">${rank}</span>
+          <span style="font-size: 36px; font-weight: 900; color: #3B9FE8; font-family: 'Impact', 'Arial Black', sans-serif; letter-spacing: -2px; line-height: 0.8; margin-top: -6px;">${rank}</span>
           ${team.change !== 0 ? `
-            <span style="font-size: 10px; font-weight: 700; color: ${team.change > 0 ? '#10b981' : '#ef4444'}; margin-left: 2px;">
+            <span style="font-size: 10px; font-weight: 700; color: ${team.change > 0 ? '#10b981' : '#ef4444'}; margin-left: 2px; margin-top: -6px;">
               ${team.change > 0 ? '▲' : '▼'}${Math.abs(team.change)}
             </span>
           ` : ''}
