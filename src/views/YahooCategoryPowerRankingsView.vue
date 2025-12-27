@@ -775,9 +775,9 @@ async function downloadRankings() {
     // More compact ranking row with modern rank number font
     const generateRankingRow = (team: any, rank: number) => `
       <div style="display: flex; align-items: center; height: 64px; padding: 0 12px; background: ${rank <= 3 ? 'linear-gradient(135deg, rgba(59, 159, 232, 0.15), rgba(59, 159, 232, 0.05))' : 'rgba(38, 42, 58, 0.4)'}; border-radius: 10px; margin-bottom: 6px; border: 1px solid ${rank <= 3 ? 'rgba(59, 159, 232, 0.4)' : 'rgba(58, 61, 82, 0.4)'}; box-sizing: border-box; ${rank === 1 ? 'box-shadow: 0 0 20px rgba(59, 159, 232, 0.3);' : ''}">
-        <!-- Rank Number - Modern bold style -->
-        <div style="display: flex; align-items: center; width: 44px; flex-shrink: 0;">
-          <span style="font-size: 36px; font-weight: 900; color: ${rank <= 3 ? '#3B9FE8' : '#6b7280'}; font-family: 'Impact', 'Arial Black', sans-serif; letter-spacing: -2px; line-height: 1;">${rank}</span>
+        <!-- Rank Number - Larger modern bold style -->
+        <div style="display: flex; align-items: center; width: 50px; flex-shrink: 0;">
+          <span style="font-size: 42px; font-weight: 900; color: ${rank <= 3 ? '#3B9FE8' : '#6b7280'}; font-family: 'Impact', 'Arial Black', sans-serif; letter-spacing: -2px; line-height: 1;">${rank}</span>
           ${team.change !== 0 ? `
             <span style="font-size: 10px; font-weight: 700; color: ${team.change > 0 ? '#10b981' : '#ef4444'}; margin-left: 2px; background: ${team.change > 0 ? 'rgba(16, 185, 129, 0.2)' : 'rgba(239, 68, 68, 0.2)'}; padding: 2px 4px; border-radius: 4px;">
               ${team.change > 0 ? '▲' : '▼'}${Math.abs(team.change)}
@@ -788,12 +788,12 @@ async function downloadRankings() {
         <img src="${imageMap.get(team.team_key) || ''}" style="width: 40px; height: 40px; border-radius: 50%; margin-right: 10px; border: 2px solid ${rank <= 3 ? '#3B9FE8' : '#3a3d52'}; background: #262a3a; flex-shrink: 0; object-fit: cover;" />
         <!-- Team Info -->
         <div style="flex: 1; min-width: 0; max-width: 140px;">
-          <div style="font-size: 13px; font-weight: 700; color: #f7f7ff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${team.name}</div>
-          <div style="font-size: 10px; color: #9ca3af;">${team.totalCatWins}-${team.totalCatLosses} • ${(team.catWinPct * 100).toFixed(0)}%</div>
+          <div style="font-size: 14px; font-weight: 700; color: #f7f7ff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${team.name}</div>
+          <div style="font-size: 11px; color: #9ca3af;">${team.totalCatWins}-${team.totalCatLosses} • ${(team.catWinPct * 100).toFixed(0)}%</div>
         </div>
         <!-- Power Score - More prominent -->
         <div style="text-align: right; margin-left: auto; padding-left: 8px; flex-shrink: 0;">
-          <div style="font-size: 22px; font-weight: 900; color: ${rank <= 3 ? '#3B9FE8' : '#f7f7ff'}; font-family: 'Impact', 'Arial Black', sans-serif;">${team.powerScore.toFixed(1)}</div>
+          <div style="font-size: 24px; font-weight: 900; color: ${rank <= 3 ? '#3B9FE8' : '#f7f7ff'}; font-family: 'Impact', 'Arial Black', sans-serif;">${team.powerScore.toFixed(1)}</div>
         </div>
       </div>
     `
@@ -803,13 +803,12 @@ async function downloadRankings() {
         <!-- Decorative blue glow at top -->
         <div style="position: absolute; top: -100px; left: 50%; transform: translateX(-50%); width: 400px; height: 200px; background: radial-gradient(ellipse, rgba(59, 159, 232, 0.3) 0%, transparent 70%); pointer-events: none;"></div>
         
-        <!-- Header - Two-tone style like Yahoo Sports -->
-        <div style="text-align: center; margin-bottom: 20px; position: relative; z-index: 1;">
-          <div style="display: inline-flex; align-items: center; gap: 0;">
-            <span style="font-size: 48px; font-weight: 900; color: #ffffff; text-transform: uppercase; font-family: 'Impact', 'Arial Black', sans-serif; letter-spacing: 2px; line-height: 1;">POWER</span>
-            <span style="font-size: 48px; font-weight: 900; color: #ffffff; text-transform: uppercase; font-family: 'Impact', 'Arial Black', sans-serif; letter-spacing: 2px; line-height: 1; background: #3B9FE8; padding: 4px 12px; margin-left: 8px; border-radius: 4px;">RANKINGS</span>
+        <!-- Header - Impactful with larger text -->
+        <div style="text-align: center; margin-bottom: 16px; position: relative; z-index: 1;">
+          <div style="display: inline-block; background: linear-gradient(135deg, rgba(59, 159, 232, 0.2), rgba(59, 159, 232, 0.05)); border: 1px solid rgba(59, 159, 232, 0.3); border-radius: 12px; padding: 16px 32px;">
+            <div style="font-size: 44px; font-weight: 900; color: #ffffff; text-transform: uppercase; letter-spacing: 3px; text-shadow: 0 0 30px rgba(59, 159, 232, 0.5);">⚡ POWER RANKINGS</div>
+            <div style="font-size: 18px; color: #3B9FE8; margin-top: 6px; font-weight: 600;">${leagueName} • Week ${selectedWeek.value}</div>
           </div>
-          <div style="font-size: 14px; color: #9ca3af; margin-top: 10px; font-weight: 500;">${leagueName} • Week ${selectedWeek.value}</div>
         </div>
         
         <!-- Rankings (Two Columns) - Compact -->
@@ -829,13 +828,13 @@ async function downloadRankings() {
           ${currentFormulaDisplay.value}
         </div>
         
-        <!-- Footer - Logo left, text right, centered together -->
+        <!-- Footer - Logo on left, text on right, both centered together -->
         <div style="border-top: 1px solid rgba(59, 159, 232, 0.2); padding-top: 16px; position: relative; z-index: 1;">
-          <div style="display: flex; align-items: center; justify-content: center; gap: 16px;">
-            ${logoBase64 ? `<img src="${logoBase64}" style="width: 60px; height: 60px; object-fit: contain; flex-shrink: 0;" />` : ''}
+          <div style="display: flex; align-items: center; justify-content: center; gap: 20px;">
+            ${logoBase64 ? `<img src="${logoBase64}" style="width: 160px; height: 160px; object-fit: contain; flex-shrink: 0;" />` : ''}
             <div style="text-align: left;">
-              <div style="font-size: 11px; color: #9ca3af;">Get the full breakdown at</div>
-              <div style="font-size: 18px; font-weight: 800; color: #3B9FE8;">ultimatefantasydashboard.com</div>
+              <div style="font-size: 14px; color: #9ca3af; margin-bottom: 6px;">See a complete breakdown of every team in your league at</div>
+              <div style="font-size: 26px; font-weight: bold; color: #3B9FE8;">ultimatefantasydashboard.com</div>
             </div>
           </div>
         </div>
@@ -921,20 +920,26 @@ async function downloadRankings() {
       await new Promise(resolve => setTimeout(resolve, 600))
       
       // Add team logos at the final data point of each line
-      const chartArea = trendChartContainer.querySelector('.apexcharts-inner')
-      if (chartArea) {
-        const chartWidth = (chartArea as HTMLElement).offsetWidth || 600
-        const chartHeight = 220
-        const numTeams = powerRankings.value.length
-        const numWeeks = weeksToShow.length
+      // Get the actual chart dimensions from ApexCharts
+      const chartEl = trendChartContainer.querySelector('.apexcharts-inner') as HTMLElement
+      const plotArea = trendChartContainer.querySelector('.apexcharts-plot-series') as HTMLElement
+      
+      if (chartEl && plotArea) {
+        // Get the actual plot area bounds
+        const plotRect = plotArea.getBoundingClientRect()
+        const containerRect = (trendChartContainer as HTMLElement).getBoundingClientRect()
         
-        // Calculate x position for last data point
-        const xPadding = 40 // Left padding for y-axis labels
-        const xEnd = chartWidth - 20 // Right edge with some margin
+        // Calculate relative positions
+        const plotLeft = plotRect.left - containerRect.left
+        const plotTop = plotRect.top - containerRect.top
+        const plotHeight = plotRect.height
+        const plotWidth = plotRect.width
+        
+        const numTeams = powerRankings.value.length
         
         // Create a container for the logos
         const logoContainer = document.createElement('div')
-        logoContainer.style.cssText = 'position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none;'
+        logoContainer.style.cssText = 'position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 10;'
         
         for (const team of powerRankings.value) {
           const ranks = historicalRanks.value.get(team.team_key) || []
@@ -943,18 +948,24 @@ async function downloadRankings() {
           
           const lastRank = ranksToShow[ranksToShow.length - 1]
           
-          // Calculate y position based on rank (inverted axis)
-          const yPadding = 20
-          const yUsable = chartHeight - yPadding * 2 - 30 // Account for x-axis labels
-          const yPos = yPadding + ((lastRank - 1) / (numTeams - 1)) * yUsable
+          // Calculate y position based on rank (inverted axis: rank 1 at top, rank N at bottom)
+          // The y-axis goes from 1 to numTeams, reversed
+          const yPercent = (lastRank - 1) / (numTeams - 1)
+          const yPos = plotTop + (yPercent * plotHeight)
+          
+          // X position is at the right edge of the plot area
+          const xPos = plotLeft + plotWidth
+          
+          // Logo size
+          const logoSize = 20
           
           const logoDiv = document.createElement('div')
           logoDiv.style.cssText = `
             position: absolute;
-            right: 8px;
-            top: ${yPos - 10}px;
-            width: 20px;
-            height: 20px;
+            left: ${xPos - logoSize / 2 + 4}px;
+            top: ${yPos - logoSize / 2}px;
+            width: ${logoSize}px;
+            height: ${logoSize}px;
             border-radius: 50%;
             overflow: hidden;
             border: 2px solid ${team.is_my_team ? '#F5C451' : getTeamColor(powerRankings.value.indexOf(team))};
