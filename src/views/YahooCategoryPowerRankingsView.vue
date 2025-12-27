@@ -772,32 +772,34 @@ async function downloadRankings() {
     const firstHalf = powerRankings.value.slice(0, midpoint)
     const secondHalf = powerRankings.value.slice(midpoint)
     
-    // Ranking row - MUCH taller, rank at TOP, text with OVERFLOW VISIBLE, power score smaller with big gap to bar
+    // Ranking row - TALLER with centered content, conditional bar colors
     const generateRankingRow = (team: any, rank: number) => {
       const powerPct = Math.min(100, Math.max(0, team.powerScore)) // 0-100 scale
+      // Conditional bar color: green for 70+, yellow for 40-69, red for below 40
+      const barColor = team.powerScore >= 70 ? '#10b981' : (team.powerScore >= 40 ? '#f59e0b' : '#ef4444')
       return `
-      <div style="display: flex; align-items: flex-start; height: 72px; padding: 8px 12px; background: rgba(38, 42, 58, 0.4); border-radius: 10px; margin-bottom: 6px; border: 1px solid rgba(58, 61, 82, 0.4); box-sizing: border-box; overflow: visible;">
-        <!-- Rank Number - At the TOP of the box -->
-        <div style="display: flex; align-items: flex-start; width: 44px; flex-shrink: 0;">
-          <span style="font-size: 36px; font-weight: 900; color: #3B9FE8; font-family: 'Impact', 'Arial Black', sans-serif; letter-spacing: -2px; line-height: 0.9;">${rank}</span>
+      <div style="display: flex; align-items: center; height: 80px; padding: 0 12px; background: rgba(38, 42, 58, 0.4); border-radius: 10px; margin-bottom: 6px; border: 1px solid rgba(58, 61, 82, 0.4); box-sizing: border-box;">
+        <!-- Rank Number -->
+        <div style="display: flex; align-items: center; width: 44px; flex-shrink: 0;">
+          <span style="font-size: 36px; font-weight: 900; color: #3B9FE8; font-family: 'Impact', 'Arial Black', sans-serif; letter-spacing: -2px; line-height: 1;">${rank}</span>
           ${team.change !== 0 ? `
-            <span style="font-size: 10px; font-weight: 700; color: ${team.change > 0 ? '#10b981' : '#ef4444'}; margin-left: 2px; margin-top: 4px;">
+            <span style="font-size: 10px; font-weight: 700; color: ${team.change > 0 ? '#10b981' : '#ef4444'}; margin-left: 2px;">
               ${team.change > 0 ? '▲' : '▼'}${Math.abs(team.change)}
             </span>
           ` : ''}
         </div>
-        <!-- Team Logo - centered vertically -->
-        <img src="${imageMap.get(team.team_key) || ''}" style="width: 44px; height: 44px; border-radius: 50%; margin-right: 10px; margin-top: 4px; border: 2px solid #3a3d52; background: #262a3a; flex-shrink: 0; object-fit: cover;" />
-        <!-- Team Info - overflow visible, no clipping -->
-        <div style="flex: 1; min-width: 0; padding-top: 8px; overflow: visible;">
-          <div style="font-size: 14px; font-weight: 700; color: #f7f7ff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; line-height: 1.2;">${team.name}</div>
-          <div style="font-size: 11px; color: #9ca3af; line-height: 1.2; margin-top: 6px;">${team.totalCatWins}-${team.totalCatLosses} • ${(team.catWinPct * 100).toFixed(0)}%</div>
+        <!-- Team Logo -->
+        <img src="${imageMap.get(team.team_key) || ''}" style="width: 48px; height: 48px; border-radius: 50%; margin-right: 12px; border: 2px solid #3a3d52; background: #262a3a; flex-shrink: 0; object-fit: cover;" />
+        <!-- Team Info - centered vertically with flex -->
+        <div style="flex: 1; min-width: 0; display: flex; flex-direction: column; justify-content: center;">
+          <div style="font-size: 14px; font-weight: 700; color: #f7f7ff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${team.name}</div>
+          <div style="font-size: 11px; color: #9ca3af; margin-top: 4px;">${team.totalCatWins}-${team.totalCatLosses} • ${(team.catWinPct * 100).toFixed(0)}%</div>
         </div>
-        <!-- Power Score with bar - score smaller, BIG gap to bar -->
-        <div style="text-align: center; margin-left: auto; padding-left: 8px; flex-shrink: 0; width: 55px; padding-top: 6px;">
+        <!-- Power Score with conditional bar -->
+        <div style="text-align: center; margin-left: auto; padding-left: 8px; flex-shrink: 0; width: 55px; display: flex; flex-direction: column; justify-content: center;">
           <div style="font-size: 18px; font-weight: bold; color: #3B9FE8; line-height: 1;">${team.powerScore.toFixed(1)}</div>
-          <div style="width: 100%; height: 5px; background: rgba(58, 61, 82, 0.8); border-radius: 3px; overflow: hidden; margin-top: 10px;">
-            <div style="width: ${powerPct}%; height: 100%; background: #3B9FE8; border-radius: 3px;"></div>
+          <div style="width: 100%; height: 5px; background: rgba(58, 61, 82, 0.8); border-radius: 3px; overflow: hidden; margin-top: 8px;">
+            <div style="width: ${powerPct}%; height: 100%; background: ${barColor}; border-radius: 3px;"></div>
           </div>
         </div>
       </div>
@@ -811,7 +813,7 @@ async function downloadRankings() {
         <!-- Header - Evenly spaced with more top padding -->
         <div style="text-align: center; margin-bottom: 16px; position: relative; z-index: 1;">
           <div style="font-size: 44px; font-weight: 900; color: #ffffff; text-transform: uppercase; letter-spacing: 3px; text-shadow: 0 0 30px rgba(59, 159, 232, 0.5); line-height: 1;">POWER RANKING</div>
-          <div style="font-size: 18px; margin-top: 6px; font-weight: 600;"><span style="color: #9ca3af;">${leagueName}</span> <span style="color: #9ca3af;">•</span> <span style="color: #F5C451; font-weight: 700;">Week ${selectedWeek.value}</span></div>
+          <div style="font-size: 18px; margin-top: 6px; font-weight: 600;"><span style="color: #9ca3af;">${leagueName}</span> <span style="color: #9ca3af;">•</span> <span style="color: #3B9FE8; font-weight: 700;">Week ${selectedWeek.value}</span></div>
         </div>
         
         <!-- Rankings (Two Columns) -->
