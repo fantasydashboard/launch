@@ -772,11 +772,11 @@ async function downloadRankings() {
     const firstHalf = powerRankings.value.slice(0, midpoint)
     const secondHalf = powerRankings.value.slice(midpoint)
     
-    // Ranking row - MUCH taller, rank at TOP, text with lots of room, power score smaller with big gap to bar
+    // Ranking row - MUCH taller, rank at TOP, text with OVERFLOW VISIBLE, power score smaller with big gap to bar
     const generateRankingRow = (team: any, rank: number) => {
       const powerPct = Math.min(100, Math.max(0, team.powerScore)) // 0-100 scale
       return `
-      <div style="display: flex; align-items: flex-start; height: 72px; padding: 8px 12px; background: rgba(38, 42, 58, 0.4); border-radius: 10px; margin-bottom: 6px; border: 1px solid rgba(58, 61, 82, 0.4); box-sizing: border-box;">
+      <div style="display: flex; align-items: flex-start; height: 72px; padding: 8px 12px; background: rgba(38, 42, 58, 0.4); border-radius: 10px; margin-bottom: 6px; border: 1px solid rgba(58, 61, 82, 0.4); box-sizing: border-box; overflow: visible;">
         <!-- Rank Number - At the TOP of the box -->
         <div style="display: flex; align-items: flex-start; width: 44px; flex-shrink: 0;">
           <span style="font-size: 36px; font-weight: 900; color: #3B9FE8; font-family: 'Impact', 'Arial Black', sans-serif; letter-spacing: -2px; line-height: 0.9;">${rank}</span>
@@ -788,10 +788,10 @@ async function downloadRankings() {
         </div>
         <!-- Team Logo - centered vertically -->
         <img src="${imageMap.get(team.team_key) || ''}" style="width: 44px; height: 44px; border-radius: 50%; margin-right: 10px; margin-top: 4px; border: 2px solid #3a3d52; background: #262a3a; flex-shrink: 0; object-fit: cover;" />
-        <!-- Team Info - LOTS of vertical space -->
-        <div style="flex: 1; min-width: 0; padding-top: 6px;">
-          <div style="font-size: 15px; font-weight: 700; color: #f7f7ff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; line-height: 1.5; margin-bottom: 4px;">${team.name}</div>
-          <div style="font-size: 12px; color: #9ca3af; line-height: 1.5;">${team.totalCatWins}-${team.totalCatLosses} • ${(team.catWinPct * 100).toFixed(0)}%</div>
+        <!-- Team Info - overflow visible, no clipping -->
+        <div style="flex: 1; min-width: 0; padding-top: 8px; overflow: visible;">
+          <div style="font-size: 14px; font-weight: 700; color: #f7f7ff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; line-height: 1.2;">${team.name}</div>
+          <div style="font-size: 11px; color: #9ca3af; line-height: 1.2; margin-top: 6px;">${team.totalCatWins}-${team.totalCatLosses} • ${(team.catWinPct * 100).toFixed(0)}%</div>
         </div>
         <!-- Power Score with bar - score smaller, BIG gap to bar -->
         <div style="text-align: center; margin-left: auto; padding-left: 8px; flex-shrink: 0; width: 55px; padding-top: 6px;">
@@ -804,14 +804,14 @@ async function downloadRankings() {
     `}
     
     container.innerHTML = `
-      <div style="background: linear-gradient(160deg, #0f1219 0%, #0a0c14 50%, #0d1117 100%); border-radius: 16px; padding: 8px 24px 12px 24px; box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5); position: relative; overflow: hidden;">
+      <div style="background: linear-gradient(160deg, #0f1219 0%, #0a0c14 50%, #0d1117 100%); border-radius: 16px; padding: 16px 24px 12px 24px; box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5); position: relative; overflow: hidden;">
         <!-- Decorative blue glow at top -->
         <div style="position: absolute; top: -100px; left: 50%; transform: translateX(-50%); width: 400px; height: 200px; background: radial-gradient(ellipse, rgba(59, 159, 232, 0.3) 0%, transparent 70%); pointer-events: none;"></div>
         
-        <!-- Header - MINIMAL top space -->
-        <div style="text-align: center; margin-bottom: 10px; position: relative; z-index: 1;">
-          <div style="font-size: 44px; font-weight: 900; color: #ffffff; text-transform: uppercase; letter-spacing: 3px; text-shadow: 0 0 30px rgba(59, 159, 232, 0.5); line-height: 1;">POWER RANKINGS</div>
-          <div style="font-size: 18px; color: #3B9FE8; margin-top: 2px; font-weight: 600;">${leagueName} • Week ${selectedWeek.value}</div>
+        <!-- Header - Evenly spaced with more top padding -->
+        <div style="text-align: center; margin-bottom: 16px; position: relative; z-index: 1;">
+          <div style="font-size: 44px; font-weight: 900; color: #ffffff; text-transform: uppercase; letter-spacing: 3px; text-shadow: 0 0 30px rgba(59, 159, 232, 0.5); line-height: 1;">POWER RANKING</div>
+          <div style="font-size: 18px; margin-top: 6px; font-weight: 600;"><span style="color: #9ca3af;">${leagueName}</span> <span style="color: #9ca3af;">•</span> <span style="color: #F5C451; font-weight: 700;">Week ${selectedWeek.value}</span></div>
         </div>
         
         <!-- Rankings (Two Columns) -->
