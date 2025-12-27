@@ -763,80 +763,78 @@ async function downloadRankings() {
       }
     }
     
-    // Create container
+    // Create container - narrower for mobile
     const container = document.createElement('div')
-    container.style.cssText = 'position: absolute; left: -9999px; top: 0; width: 800px; font-family: system-ui, -apple-system, sans-serif;'
+    container.style.cssText = 'position: absolute; left: -9999px; top: 0; width: 700px; font-family: system-ui, -apple-system, sans-serif;'
     
     // Split teams for two columns
     const midpoint = Math.ceil(powerRankings.value.length / 2)
     const firstHalf = powerRankings.value.slice(0, midpoint)
     const secondHalf = powerRankings.value.slice(midpoint)
     
+    // More compact ranking row with modern rank number font
     const generateRankingRow = (team: any, rank: number) => `
-      <div style="display: flex; align-items: center; height: 80px; padding: 0 16px; background: ${rank <= 3 ? 'rgba(59, 159, 232, 0.1)' : 'rgba(38, 42, 58, 0.5)'}; border-radius: 10px; margin-bottom: 8px; border: 1px solid ${rank <= 3 ? 'rgba(59, 159, 232, 0.3)' : 'rgba(58, 61, 82, 0.5)'}; box-sizing: border-box; overflow: visible;">
-        <!-- Rank Number - Centered with logo -->
-        <div style="display: flex; align-items: center; width: 50px; flex-shrink: 0;">
-          <span style="font-size: 32px; font-weight: bold; color: #3B9FE8;">${rank}</span>
+      <div style="display: flex; align-items: center; height: 64px; padding: 0 12px; background: ${rank <= 3 ? 'linear-gradient(135deg, rgba(59, 159, 232, 0.15), rgba(59, 159, 232, 0.05))' : 'rgba(38, 42, 58, 0.4)'}; border-radius: 10px; margin-bottom: 6px; border: 1px solid ${rank <= 3 ? 'rgba(59, 159, 232, 0.4)' : 'rgba(58, 61, 82, 0.4)'}; box-sizing: border-box; ${rank === 1 ? 'box-shadow: 0 0 20px rgba(59, 159, 232, 0.3);' : ''}">
+        <!-- Rank Number - Modern bold style -->
+        <div style="display: flex; align-items: center; width: 44px; flex-shrink: 0;">
+          <span style="font-size: 36px; font-weight: 900; color: ${rank <= 3 ? '#3B9FE8' : '#6b7280'}; font-family: 'Impact', 'Arial Black', sans-serif; letter-spacing: -2px; line-height: 1;">${rank}</span>
           ${team.change !== 0 ? `
-            <span style="font-size: 12px; font-weight: 600; color: ${team.change > 0 ? '#10b981' : '#ef4444'}; margin-left: 4px;">
-              ${team.change > 0 ? '↑' : '↓'}${Math.abs(team.change)}
+            <span style="font-size: 10px; font-weight: 700; color: ${team.change > 0 ? '#10b981' : '#ef4444'}; margin-left: 2px; background: ${team.change > 0 ? 'rgba(16, 185, 129, 0.2)' : 'rgba(239, 68, 68, 0.2)'}; padding: 2px 4px; border-radius: 4px;">
+              ${team.change > 0 ? '▲' : '▼'}${Math.abs(team.change)}
             </span>
           ` : ''}
         </div>
         <!-- Team Logo -->
-        <img src="${imageMap.get(team.team_key) || ''}" style="width: 48px; height: 48px; border-radius: 50%; margin-right: 12px; border: 2px solid #3a3d52; background: #262a3a; flex-shrink: 0; object-fit: cover;" />
+        <img src="${imageMap.get(team.team_key) || ''}" style="width: 40px; height: 40px; border-radius: 50%; margin-right: 10px; border: 2px solid ${rank <= 3 ? '#3B9FE8' : '#3a3d52'}; background: #262a3a; flex-shrink: 0; object-fit: cover;" />
         <!-- Team Info -->
-        <div style="flex: 1; min-width: 0; max-width: 180px;">
-          <div style="font-size: 15px; font-weight: 600; color: #f7f7ff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding-bottom: 2px;">${team.name}</div>
-          <div style="font-size: 12px; color: #b0b3c2; padding-bottom: 2px;">${team.totalCatWins}-${team.totalCatLosses}-${team.totalCatTies} • ${(team.catWinPct * 100).toFixed(1)}%</div>
+        <div style="flex: 1; min-width: 0; max-width: 140px;">
+          <div style="font-size: 13px; font-weight: 700; color: #f7f7ff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${team.name}</div>
+          <div style="font-size: 10px; color: #9ca3af;">${team.totalCatWins}-${team.totalCatLosses} • ${(team.catWinPct * 100).toFixed(0)}%</div>
         </div>
-        <!-- Power Score -->
-        <div style="text-align: right; margin-left: auto; padding-left: 12px; flex-shrink: 0;">
-          <div style="font-size: 24px; font-weight: bold; color: #3B9FE8;">${team.powerScore.toFixed(1)}</div>
-          <div style="font-size: 9px; color: #7b7f92; text-transform: uppercase; margin-top: 4px;">Power</div>
+        <!-- Power Score - More prominent -->
+        <div style="text-align: right; margin-left: auto; padding-left: 8px; flex-shrink: 0;">
+          <div style="font-size: 22px; font-weight: 900; color: ${rank <= 3 ? '#3B9FE8' : '#f7f7ff'}; font-family: 'Impact', 'Arial Black', sans-serif;">${team.powerScore.toFixed(1)}</div>
         </div>
       </div>
     `
     
     container.innerHTML = `
-      <div style="background: linear-gradient(135deg, rgba(19, 22, 32, 0.98), rgba(10, 12, 20, 0.98)); border: 1px solid #2a2f42; border-radius: 16px; padding: 32px; box-shadow: 0 12px 40px rgba(0, 0, 0, 0.45);">
-        <!-- Header -->
-        <div style="text-align: center; margin-bottom: 20px;">
-          <div style="font-size: 42px; font-weight: 900; color: #f7f7ff; text-transform: uppercase; letter-spacing: 2px;">POWER RANKINGS</div>
-          <div style="font-size: 18px; color: #9ca3af; margin-top: 8px;">${leagueName} • Week ${selectedWeek.value}</div>
+      <div style="background: linear-gradient(160deg, #0f1219 0%, #0a0c14 50%, #0d1117 100%); border-radius: 16px; padding: 24px; box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5); position: relative; overflow: hidden;">
+        <!-- Decorative blue glow at top -->
+        <div style="position: absolute; top: -100px; left: 50%; transform: translateX(-50%); width: 400px; height: 200px; background: radial-gradient(ellipse, rgba(59, 159, 232, 0.3) 0%, transparent 70%); pointer-events: none;"></div>
+        
+        <!-- Header - More impactful -->
+        <div style="text-align: center; margin-bottom: 16px; position: relative; z-index: 1;">
+          <div style="display: inline-block; background: linear-gradient(135deg, rgba(59, 159, 232, 0.2), rgba(59, 159, 232, 0.05)); border: 1px solid rgba(59, 159, 232, 0.3); border-radius: 12px; padding: 16px 32px;">
+            <div style="font-size: 36px; font-weight: 900; color: #ffffff; text-transform: uppercase; letter-spacing: 3px; text-shadow: 0 0 30px rgba(59, 159, 232, 0.5);">⚡ POWER RANKINGS</div>
+            <div style="font-size: 14px; color: #3B9FE8; margin-top: 4px; font-weight: 600;">${leagueName} • Week ${selectedWeek.value}</div>
+          </div>
         </div>
         
-        <!-- Divider -->
-        <div style="height: 1px; background: linear-gradient(to right, rgba(59, 159, 232, 0.5), rgba(59, 159, 232, 0.1)); margin-bottom: 24px;"></div>
-        
-        <!-- Rankings (Two Columns) -->
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-bottom: 28px;">
+        <!-- Rankings (Two Columns) - Compact -->
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 20px; position: relative; z-index: 1;">
           <div>${firstHalf.map((team, idx) => generateRankingRow(team, idx + 1)).join('')}</div>
           <div>${secondHalf.map((team, idx) => generateRankingRow(team, idx + midpoint + 1)).join('')}</div>
         </div>
         
-        <!-- Trend Chart -->
-        <div style="background: rgba(38, 42, 58, 0.5); border-radius: 12px; padding: 20px; margin-bottom: 24px;">
-          <h3 style="color: #3B9FE8; font-size: 16px; margin: 0 0 16px 0; text-align: center; font-weight: 600;">📈 Power Rankings Trend</h3>
-          <div id="trend-chart-container" style="height: 280px; position: relative;"></div>
+        <!-- Trend Chart - More compact -->
+        <div style="background: rgba(38, 42, 58, 0.3); border-radius: 12px; padding: 16px; margin-bottom: 16px; border: 1px solid rgba(59, 159, 232, 0.2); position: relative; z-index: 1;">
+          <h3 style="color: #3B9FE8; font-size: 14px; margin: 0 0 12px 0; text-align: center; font-weight: 700; text-transform: uppercase; letter-spacing: 1px;">📈 Rankings Trend</h3>
+          <div id="trend-chart-container" style="height: 220px; position: relative;"></div>
         </div>
         
-        <!-- Formula Display -->
-        <div style="text-align: center; font-size: 11px; color: #7b7f92; margin-bottom: 24px;">
+        <!-- Formula Display - Smaller -->
+        <div style="text-align: center; font-size: 9px; color: #6b7280; margin-bottom: 16px; position: relative; z-index: 1;">
           ${currentFormulaDisplay.value}
         </div>
         
-        <!-- Footer with Logo and Link (Extra Large) -->
-        <div style="text-align: center; padding-top: 24px; border-top: 1px solid rgba(58, 61, 82, 0.5);">
-          <div style="display: flex; flex-direction: column; align-items: center; gap: 10px;">
-            ${logoBase64 ? `<img src="${logoBase64}" style="width: 160px; height: 160px; object-fit: contain;" />` : ''}
-            <div style="max-width: 100%; padding: 0 20px;">
-              <div style="font-size: 14px; color: #9ca3af; margin-bottom: 6px;">
-                See a complete breakdown of every team in your league at
-              </div>
-              <div style="font-size: 26px; font-weight: bold; color: #3B9FE8; word-wrap: break-word;">
-                ultimatefantasydashboard.com
-              </div>
+        <!-- Footer - Logo left, text right, centered together -->
+        <div style="border-top: 1px solid rgba(59, 159, 232, 0.2); padding-top: 16px; position: relative; z-index: 1;">
+          <div style="display: flex; align-items: center; justify-content: center; gap: 16px;">
+            ${logoBase64 ? `<img src="${logoBase64}" style="width: 60px; height: 60px; object-fit: contain; flex-shrink: 0;" />` : ''}
+            <div style="text-align: left;">
+              <div style="font-size: 11px; color: #9ca3af;">Get the full breakdown at</div>
+              <div style="font-size: 18px; font-weight: 800; color: #3B9FE8;">ultimatefantasydashboard.com</div>
             </div>
           </div>
         </div>
@@ -845,7 +843,7 @@ async function downloadRankings() {
     
     document.body.appendChild(container)
     
-    // Create trend chart if we have historical data
+    // Create trend chart with team logos at endpoints
     const trendChartContainer = container.querySelector('#trend-chart-container')
     if (trendChartContainer && chartWeeks.value.length >= 2) {
       const ApexCharts = (await import('apexcharts')).default
@@ -868,7 +866,7 @@ async function downloadRankings() {
       const trendChart = new ApexCharts(trendChartContainer, {
         chart: {
           type: 'line',
-          height: 280,
+          height: 220,
           background: 'transparent',
           toolbar: { show: false },
           animations: { enabled: false }
@@ -882,7 +880,7 @@ async function downloadRankings() {
           curve: 'smooth'
         },
         markers: {
-          size: 4,
+          size: 0, // Hide default markers, we'll add logo images
           strokeWidth: 0
         },
         xaxis: {
@@ -890,7 +888,7 @@ async function downloadRankings() {
           labels: {
             style: {
               colors: '#9ca3af',
-              fontSize: '11px'
+              fontSize: '10px'
             }
           }
         },
@@ -901,17 +899,13 @@ async function downloadRankings() {
           labels: {
             style: {
               colors: '#9ca3af',
-              fontSize: '11px'
+              fontSize: '10px'
             },
             formatter: (value: number) => `#${Math.round(value)}`
           }
         },
         legend: {
-          show: true,
-          position: 'bottom',
-          labels: { colors: '#9ca3af' },
-          fontSize: '10px',
-          markers: { width: 8, height: 8 }
+          show: false // Hide legend, logos will identify teams
         },
         grid: {
           borderColor: '#374151',
@@ -922,8 +916,60 @@ async function downloadRankings() {
       
       await trendChart.render()
       
-      // Wait for chart to fully render
-      await new Promise(resolve => setTimeout(resolve, 800))
+      // Wait for chart to render, then add team logos at endpoints
+      await new Promise(resolve => setTimeout(resolve, 600))
+      
+      // Add team logos at the final data point of each line
+      const chartArea = trendChartContainer.querySelector('.apexcharts-inner')
+      if (chartArea) {
+        const chartWidth = (chartArea as HTMLElement).offsetWidth || 600
+        const chartHeight = 220
+        const numTeams = powerRankings.value.length
+        const numWeeks = weeksToShow.length
+        
+        // Calculate x position for last data point
+        const xPadding = 40 // Left padding for y-axis labels
+        const xEnd = chartWidth - 20 // Right edge with some margin
+        
+        // Create a container for the logos
+        const logoContainer = document.createElement('div')
+        logoContainer.style.cssText = 'position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none;'
+        
+        for (const team of powerRankings.value) {
+          const ranks = historicalRanks.value.get(team.team_key) || []
+          const ranksToShow = ranks.slice(startIdx)
+          if (ranksToShow.length === 0) continue
+          
+          const lastRank = ranksToShow[ranksToShow.length - 1]
+          
+          // Calculate y position based on rank (inverted axis)
+          const yPadding = 20
+          const yUsable = chartHeight - yPadding * 2 - 30 // Account for x-axis labels
+          const yPos = yPadding + ((lastRank - 1) / (numTeams - 1)) * yUsable
+          
+          const logoDiv = document.createElement('div')
+          logoDiv.style.cssText = `
+            position: absolute;
+            right: 8px;
+            top: ${yPos - 10}px;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            overflow: hidden;
+            border: 2px solid ${team.is_my_team ? '#F5C451' : getTeamColor(powerRankings.value.indexOf(team))};
+            background: #262a3a;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+          `
+          logoDiv.innerHTML = `<img src="${imageMap.get(team.team_key) || ''}" style="width: 100%; height: 100%; object-fit: cover;" />`
+          logoContainer.appendChild(logoDiv)
+        }
+        
+        ;(trendChartContainer as HTMLElement).style.position = 'relative'
+        trendChartContainer.appendChild(logoContainer)
+      }
+      
+      // Wait for logos to render
+      await new Promise(resolve => setTimeout(resolve, 300))
     } else {
       // No chart data - wait for images only
       await new Promise(resolve => setTimeout(resolve, 500))
