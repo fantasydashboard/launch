@@ -178,7 +178,8 @@
             <div class="bg-dark-border/30 rounded-xl p-4">
               <h4 class="text-sm font-semibold text-dark-textMuted mb-3">Win Probability Trend</h4>
               <div ref="winProbChartEl" class="h-48"></div>
-              <p class="text-xs text-dark-textMuted mt-2 text-center">Win probability changes throughout the week</p>
+              <p class="text-xs text-dark-textMuted mt-2 text-center">Win probability changes throughout the week based on daily stat updates</p>
+              <p class="text-xs text-dark-textMuted mt-1 text-center italic">Win probability is calculated by analyzing each category's current values, historical volatility, and days remaining in the matchup week.</p>
             </div>
           </div>
         </div>
@@ -426,7 +427,46 @@ const comparisonStats = computed(() => {
   ]
 })
 
-const lifetimeSeries = computed(() => ({ team1Wins: 3, team2Wins: 2, ties: 0, games: [{ week: 10, team1Score: 8, team2Score: 5, team1Won: true, team2Won: false }] }))
+// Store historical matchup data between teams
+const historicalMatchupData = ref<Map<string, any[]>>(new Map())
+
+const lifetimeSeries = computed(() => {
+  if (!selectedMatchup.value) return { team1Wins: 0, team2Wins: 0, ties: 0, games: [] }
+  
+  const team1Key = selectedMatchup.value.team1.team_key
+  const team2Key = selectedMatchup.value.team2.team_key
+  const pairKey = [team1Key, team2Key].sort().join('-')
+  
+  const games = historicalMatchupData.value.get(pairKey) || []
+  
+  let team1Wins = 0, team2Wins = 0, ties = 0
+  
+  for (const game of games) {
+    if (game.team1Score > game.team2Score) {
+      if (game.team1Key === team1Key) team1Wins++
+      else team2Wins++
+    } else if (game.team2Score > game.team1Score) {
+      if (game.team2Key === team1Key) team1Wins++
+      else team2Wins++
+    } else {
+      ties++
+    }
+  }
+  
+  // Format games for display (swap if needed so team1/team2 match selected matchup)
+  const formattedGames = games.map(g => {
+    const isSwapped = g.team1Key !== team1Key
+    return {
+      week: g.week,
+      team1Score: isSwapped ? g.team2Score : g.team1Score,
+      team2Score: isSwapped ? g.team1Score : g.team2Score,
+      team1Won: isSwapped ? g.team2Score > g.team1Score : g.team1Score > g.team2Score,
+      team2Won: isSwapped ? g.team1Score > g.team2Score : g.team2Score > g.team1Score
+    }
+  }).sort((a, b) => b.week - a.week) // Most recent first
+  
+  return { team1Wins, team2Wins, ties, games: formattedGames }
+})
 
 function handleImageError(e: Event) { (e.target as HTMLImageElement).src = defaultAvatar }
 function getTeamRecord(k: string) { const t = leagueStore.yahooTeams.find(x => x.team_key === k); return t ? `${t.wins||0}-${t.losses||0}` : '0-0' }
@@ -466,16 +506,53 @@ async function loadTeamSeasonStats(leagueKey: string, currentWeek: number) {
     // Get all teams
     const teams = leagueStore.yahooTeams
     const newStats = new Map<string, any>()
+    const newMatchupHistory = new Map<string, any[]>()
     
     // Load matchups from all previous weeks
-    const weeksToLoad = Math.min(currentWeek - 1, 10) // Load up to 10 weeks of history
+    const weeksToLoad = Math.min(currentWeek - 1, 20) // Load up to 20 weeks of history for lifetime series
     const weekPromises: Promise<any>[] = []
     
     for (let w = Math.max(1, currentWeek - weeksToLoad); w < currentWeek; w++) {
-      weekPromises.push(yahooService.getCategoryMatchups(leagueKey, w))
+      weekPromises.push(yahooService.getCategoryMatchups(leagueKey, w).then(data => ({ week: w, data })))
     }
     
     const allWeeksData = await Promise.all(weekPromises)
+    
+    // Track matchups between team pairs for lifetime series
+    for (const weekResult of allWeeksData) {
+      const weekNum = weekResult.week
+      const weekMatchups = weekResult.data
+      
+      for (const matchup of weekMatchups) {
+        if (!matchup.teams || matchup.teams.length < 2) continue
+        
+        const t1 = matchup.teams[0]
+        const t2 = matchup.teams[1]
+        
+        // Count category wins for each team
+        let t1Wins = 0, t2Wins = 0
+        for (const sw of (matchup.stat_winners || [])) {
+          if (sw.is_tied) continue
+          if (sw.winner_team_key === t1.team_key) t1Wins++
+          else t2Wins++
+        }
+        
+        // Store in matchup history (use sorted key so we find it regardless of order)
+        const pairKey = [t1.team_key, t2.team_key].sort().join('-')
+        if (!newMatchupHistory.has(pairKey)) {
+          newMatchupHistory.set(pairKey, [])
+        }
+        newMatchupHistory.get(pairKey)!.push({
+          week: weekNum,
+          team1Key: t1.team_key,
+          team2Key: t2.team_key,
+          team1Score: t1Wins,
+          team2Score: t2Wins
+        })
+      }
+    }
+    
+    historicalMatchupData.value = newMatchupHistory
     
     // Process each team's historical stats
     for (const team of teams) {
@@ -485,7 +562,8 @@ async function loadTeamSeasonStats(leagueKey: string, currentWeek: number) {
       const weeklyWins: number[] = []
       
       // Go through each week's matchups
-      for (const weekMatchups of allWeeksData) {
+      for (const weekResult of allWeeksData) {
+        const weekMatchups = weekResult.data
         for (const matchup of weekMatchups) {
           if (!matchup.teams || matchup.teams.length < 2) continue
           
@@ -624,7 +702,7 @@ function buildWinProbChart() {
     fill: { type: 'gradient', gradient: { shadeIntensity: 1, opacityFrom: 0.4, opacityTo: 0.1, stops: [0, 100] } },
     stroke: { width: 2, curve: 'smooth' },
     xaxis: { categories: days, labels: { style: { colors: '#9ca3af', fontSize: '10px' } } },
-    yaxis: { min: 0, max: 100, labels: { style: { colors: '#9ca3af', fontSize: '10px' }, formatter: (v: number) => `${v}%` } },
+    yaxis: { min: 0, max: 100, labels: { style: { colors: '#9ca3af', fontSize: '10px' }, formatter: (v: number) => `${v.toFixed(2)}%` } },
     legend: { show: true, position: 'top', labels: { colors: '#9ca3af' }, fontSize: '11px' },
     grid: { borderColor: '#374151', strokeDashArray: 3 },
     tooltip: { theme: 'dark', y: { formatter: (v: number) => `${v.toFixed(2)}%` } }
