@@ -222,9 +222,9 @@
           </div>
         </div>
 
-        <!-- Category Preview -->
+        <!-- Category Breakdown -->
         <div class="card">
-          <div class="card-header"><div class="flex items-center gap-2"><span class="text-2xl">🔮</span><h2 class="card-title">Category Preview</h2></div></div>
+          <div class="card-header"><div class="flex items-center gap-2"><span class="text-2xl">📊</span><h2 class="card-title">Category Breakdown</h2></div></div>
           <div class="card-body">
             <div class="grid grid-cols-7 items-center text-sm font-semibold pb-3 border-b border-dark-border">
               <div class="col-span-3 flex items-center gap-2">
@@ -241,20 +241,20 @@
               <table class="w-full text-sm">
                 <thead><tr class="text-xs text-dark-textMuted border-b border-dark-border/50">
                   <th class="text-left py-2 px-1">Category</th>
-                  <th class="text-center py-2 px-1">Current</th>
-                  <th class="text-center py-2 px-1">Avg</th>
-                  <th class="text-center py-2 px-1">High</th>
-                  <th class="text-center py-2 px-1">Win%</th>
-                  <th class="text-center py-2 px-1 w-10">ADV</th>
-                  <th class="text-center py-2 px-1">Win%</th>
-                  <th class="text-center py-2 px-1">High</th>
-                  <th class="text-center py-2 px-1">Avg</th>
-                  <th class="text-center py-2 px-1">Current</th>
+                  <th class="text-center py-2 px-1 cursor-help" title="Current week's stat total for this category">Current</th>
+                  <th class="text-center py-2 px-1 cursor-help" title="Average weekly total for this category this season">Avg</th>
+                  <th class="text-center py-2 px-1 cursor-help" title="Best single-week total for this category this season">High</th>
+                  <th class="text-center py-2 px-1 cursor-help" title="Probability of winning this category by end of week">Win%</th>
+                  <th class="text-center py-2 px-1 w-10 cursor-help" title="Current category leader">ADV</th>
+                  <th class="text-center py-2 px-1 cursor-help" title="Probability of winning this category by end of week">Win%</th>
+                  <th class="text-center py-2 px-1 cursor-help" title="Best single-week total for this category this season">High</th>
+                  <th class="text-center py-2 px-1 cursor-help" title="Average weekly total for this category this season">Avg</th>
+                  <th class="text-center py-2 px-1 cursor-help" title="Current week's stat total for this category">Current</th>
                 </tr></thead>
                 <tbody>
                   <tr v-for="cat in allCategories" :key="cat.stat_id" class="border-b border-dark-border/30 hover:bg-dark-border/10">
                     <td class="py-2 px-1 text-dark-text font-medium">{{ cat.display_name }}</td>
-                    <td class="text-center py-2 px-1" :class="getCategoryLeader(selectedMatchup, cat.stat_id) === 1 ? 'text-cyan-400 font-bold' : 'text-dark-textMuted'">{{ formatStat(getCategoryStat(selectedMatchup, cat.stat_id, 1), cat.stat_id) }}</td>
+                    <td class="text-center py-2 px-1 text-white font-bold">{{ formatStat(getCategoryStat(selectedMatchup, cat.stat_id, 1), cat.stat_id) }}</td>
                     <td class="text-center py-2 px-1 text-dark-textMuted">{{ formatStat(getCategoryAvg(selectedMatchup.team1.team_key, cat.stat_id), cat.stat_id) }}</td>
                     <td class="text-center py-2 px-1 text-dark-textMuted">{{ formatStat(getCategoryHigh(selectedMatchup.team1.team_key, cat.stat_id), cat.stat_id) }}</td>
                     <td class="text-center py-2 px-1" :class="getCategoryWinProbClass(getCategoryWinProb(selectedMatchup, cat.stat_id, 1))">{{ getCategoryWinProb(selectedMatchup, cat.stat_id, 1).toFixed(0) }}%</td>
@@ -266,7 +266,7 @@
                     <td class="text-center py-2 px-1" :class="getCategoryWinProbClass(getCategoryWinProb(selectedMatchup, cat.stat_id, 2))">{{ getCategoryWinProb(selectedMatchup, cat.stat_id, 2).toFixed(0) }}%</td>
                     <td class="text-center py-2 px-1 text-dark-textMuted">{{ formatStat(getCategoryHigh(selectedMatchup.team2.team_key, cat.stat_id), cat.stat_id) }}</td>
                     <td class="text-center py-2 px-1 text-dark-textMuted">{{ formatStat(getCategoryAvg(selectedMatchup.team2.team_key, cat.stat_id), cat.stat_id) }}</td>
-                    <td class="text-center py-2 px-1" :class="getCategoryLeader(selectedMatchup, cat.stat_id) === 2 ? 'text-orange-400 font-bold' : 'text-dark-textMuted'">{{ formatStat(getCategoryStat(selectedMatchup, cat.stat_id, 2), cat.stat_id) }}</td>
+                    <td class="text-center py-2 px-1 text-white font-bold">{{ formatStat(getCategoryStat(selectedMatchup, cat.stat_id, 2), cat.stat_id) }}</td>
                   </tr>
                 </tbody>
               </table>
@@ -422,7 +422,7 @@ const comparisonStats = computed(() => {
     { label: 'Avg Cats/Week', team1Value: (s1.avgCatsPerWeek||0).toFixed(1), team2Value: (s2.avgCatsPerWeek||0).toFixed(1), team1Better: (s1.avgCatsPerWeek||0) > (s2.avgCatsPerWeek||0), team2Better: (s2.avgCatsPerWeek||0) > (s1.avgCatsPerWeek||0) },
     { label: 'Most Cats Won', team1Value: s1.mostCatsWon||0, team2Value: s2.mostCatsWon||0, team1Better: (s1.mostCatsWon||0) > (s2.mostCatsWon||0), team2Better: (s2.mostCatsWon||0) > (s1.mostCatsWon||0) },
     { label: 'Least Cats Won', team1Value: s1.leastCatsWon||0, team2Value: s2.leastCatsWon||0, team1Better: (s1.leastCatsWon||0) > (s2.leastCatsWon||0), team2Better: (s2.leastCatsWon||0) > (s1.leastCatsWon||0) },
-    { label: 'Consistency', team1Value: s1.consistency||'N/A', team2Value: s2.consistency||'N/A', team1Better: (s1.consistencyScore||0) > (s2.consistencyScore||0), team2Better: (s2.consistencyScore||0) > (s1.consistencyScore||0) }
+    { label: 'Consistency (σ)', team1Value: `±${(s1.stdDev||0).toFixed(1)}`, team2Value: `±${(s2.stdDev||0).toFixed(1)}`, team1Better: (s1.stdDev||99) < (s2.stdDev||99), team2Better: (s2.stdDev||99) < (s1.stdDev||99) }
   ]
 })
 
@@ -541,8 +541,7 @@ async function loadTeamSeasonStats(leagueKey: string, currentWeek: number) {
         avgCatsPerWeek: weeksPlayed > 0 ? totalCatsWon / weeksPlayed : 0,
         mostCatsWon: weeklyWins.length > 0 ? Math.max(...weeklyWins) : 0,
         leastCatsWon: weeklyWins.length > 0 ? Math.min(...weeklyWins) : 0,
-        consistency: stdDev < 1.5 ? 'High' : stdDev < 2.5 ? 'Medium' : 'Low',
-        consistencyScore: 10 - stdDev,
+        stdDev: stdDev,
         categoryAvgs,
         categoryHighs
       })
