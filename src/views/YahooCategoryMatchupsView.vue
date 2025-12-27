@@ -179,7 +179,7 @@
               <h4 class="text-sm font-semibold text-dark-textMuted mb-3">Win Probability Trend</h4>
               <div ref="winProbChartEl" class="h-48"></div>
               <p class="text-xs text-dark-textMuted mt-2 text-center">Win probability changes throughout the week based on daily stat updates</p>
-              <p class="text-xs text-dark-textMuted mt-1 text-center italic">Win probability is calculated by analyzing each category's current values, historical volatility, and days remaining in the matchup week.</p>
+              <p class="text-xs text-dark-textMuted mt-1 text-center italic">Based on 10,000 Monte Carlo simulations using current stats and historical category volatility.</p>
             </div>
           </div>
         </div>
@@ -479,25 +479,110 @@ function getCategoryHigh(k: string, id: string) { return teamSeasonStats.value.g
 function formatStat(v: number, id: string) { return ['3','55','56'].includes(id) ? v.toFixed(3).replace(/^0/,'') : ['26','27'].includes(id) ? v.toFixed(2) : Math.round(v).toString() }
 function generateScoutingReport(k: string) { return { recentForm: ['W','L','W','W','L'], strengths: ['Strong in HR (top tier)', 'Excellent K rate'], weaknesses: ['Below average in SB'] } }
 
-function calcCatWinProb(v1: number, v2: number, id: string, days: number) {
-  const inv = INVERSE_STATS.includes(id)
-  const vol: Record<string,number> = { '60':8,'7':3,'12':8,'16':2,'3':0.02,'55':0.02,'56':0.03,'28':0.5,'32':0.5,'42':15,'26':0.5,'27':0.15,'48':0.5 }
-  const sd = (vol[id]||5) * Math.sqrt(Math.max(1, days))
-  let diff = v1 - v2; if (inv) diff = -diff
-  if (sd === 0) { if (diff > 0) return { team1: 100, team2: 0 }; if (diff < 0) return { team1: 0, team2: 100 }; return { team1: 50, team2: 50 } }
-  const z = diff / (sd * Math.sqrt(2))
-  let p1 = 0.5 * (1 + Math.tanh(z * 0.8))
-  p1 = Math.min(0.99, Math.max(0.01, p1))
-  return { team1: p1 * 100, team2: (1 - p1) * 100 }
+// Box-Muller transform to generate normally distributed random numbers
+function randomNormal(mean: number, stdDev: number): number {
+  const u1 = Math.random()
+  const u2 = Math.random()
+  const z = Math.sqrt(-2 * Math.log(u1)) * Math.cos(2 * Math.PI * u2)
+  return mean + z * stdDev
 }
 
-function calcOverallWinProb(probs: Record<string, { team1: number, team2: number }>) {
-  let e1 = 0, e2 = 0
-  for (const p of Object.values(probs)) { e1 += p.team1 / 100; e2 += p.team2 / 100 }
-  const total = e1 + e2; if (total === 0) return { team1: 50, team2: 50 }
-  let p1 = (e1 / total) * 100
-  if (Math.abs(e1 - e2) < 1) p1 = p1 * 0.7 + 50 * 0.3
-  return { team1: Math.min(95, Math.max(5, p1)), team2: Math.min(95, Math.max(5, 100 - p1)) }
+// Calculate per-category win probability using simulation
+function calcCatWinProb(v1: number, v2: number, id: string, days: number) {
+  const inv = INVERSE_STATS.includes(id)
+  // Volatility per day remaining (standard deviation)
+  const vol: Record<string,number> = { '60':8,'7':3,'12':8,'16':2,'3':0.02,'55':0.02,'56':0.03,'28':0.5,'32':0.5,'42':15,'26':0.5,'27':0.15,'48':0.5 }
+  const dailyVol = vol[id] || 5
+  const totalVol = dailyVol * Math.sqrt(Math.max(0.5, days))
+  
+  // If no days remaining, just compare current values
+  if (days <= 0) {
+    if (inv) {
+      if (v1 < v2) return { team1: 100, team2: 0 }
+      if (v2 < v1) return { team1: 0, team2: 100 }
+    } else {
+      if (v1 > v2) return { team1: 100, team2: 0 }
+      if (v2 > v1) return { team1: 0, team2: 100 }
+    }
+    return { team1: 50, team2: 50 }
+  }
+  
+  // Run 1000 mini-simulations per category (faster than 10k per cat)
+  const SIMS = 1000
+  let team1Wins = 0
+  
+  for (let i = 0; i < SIMS; i++) {
+    const final1 = v1 + randomNormal(0, totalVol)
+    const final2 = v2 + randomNormal(0, totalVol)
+    
+    if (inv) {
+      if (final1 < final2) team1Wins++
+      else if (final1 === final2) team1Wins += 0.5
+    } else {
+      if (final1 > final2) team1Wins++
+      else if (final1 === final2) team1Wins += 0.5
+    }
+  }
+  
+  const p1 = (team1Wins / SIMS) * 100
+  return { team1: Math.round(p1 * 100) / 100, team2: Math.round((100 - p1) * 100) / 100 }
+}
+
+// Monte Carlo simulation for overall matchup win probability (10,000 simulations)
+function calcOverallWinProb(
+  team1Stats: Record<string, number>,
+  team2Stats: Record<string, number>,
+  categoryIds: string[],
+  days: number
+): { team1: number, team2: number } {
+  const SIMULATIONS = 10000
+  let team1Wins = 0
+  let team2Wins = 0
+  let ties = 0
+  
+  // Volatility per category
+  const vol: Record<string,number> = { '60':8,'7':3,'12':8,'16':2,'3':0.02,'55':0.02,'56':0.03,'28':0.5,'32':0.5,'42':15,'26':0.5,'27':0.15,'48':0.5 }
+  
+  for (let sim = 0; sim < SIMULATIONS; sim++) {
+    let t1CatsWon = 0
+    let t2CatsWon = 0
+    
+    for (const catId of categoryIds) {
+      const v1 = team1Stats[catId] || 0
+      const v2 = team2Stats[catId] || 0
+      const dailyVol = vol[catId] || 5
+      const totalVol = dailyVol * Math.sqrt(Math.max(0.5, days))
+      const isInverse = INVERSE_STATS.includes(catId)
+      
+      // Project final values with random variance
+      const final1 = v1 + randomNormal(0, totalVol)
+      const final2 = v2 + randomNormal(0, totalVol)
+      
+      // Determine category winner
+      if (isInverse) {
+        if (final1 < final2) t1CatsWon++
+        else if (final2 < final1) t2CatsWon++
+        // Ties don't count for either
+      } else {
+        if (final1 > final2) t1CatsWon++
+        else if (final2 > final1) t2CatsWon++
+      }
+    }
+    
+    // Determine matchup winner
+    if (t1CatsWon > t2CatsWon) team1Wins++
+    else if (t2CatsWon > t1CatsWon) team2Wins++
+    else ties++
+  }
+  
+  // Calculate win probability (ties split evenly)
+  const t1Prob = ((team1Wins + ties / 2) / SIMULATIONS) * 100
+  const t2Prob = ((team2Wins + ties / 2) / SIMULATIONS) * 100
+  
+  return { 
+    team1: Math.round(t1Prob * 100) / 100, 
+    team2: Math.round(t2Prob * 100) / 100 
+  }
 }
 
 // Load historical category data to calculate avg and high per team per category
@@ -659,14 +744,29 @@ async function loadMatchups() {
       const t1 = m.teams[0], t2 = m.teams[1]
       let w1 = 0, w2 = 0, ties = 0
       const catProbs: Record<string, { team1: number, team2: number }> = {}
+      
+      // Get category IDs from stat_winners
+      const categoryIds: string[] = []
       for (const sw of (m.stat_winners || [])) {
         const id = String(sw.stat_id)
+        categoryIds.push(id)
         if (sw.is_tied) { ties++; catProbs[id] = { team1: 50, team2: 50 } }
         else if (sw.winner_team_key === t1.team_key) w1++
         else w2++
         catProbs[id] = calcCatWinProb(parseFloat(t1.stats?.[id]||0), parseFloat(t2.stats?.[id]||0), id, days)
       }
-      const op = calcOverallWinProb(catProbs)
+      
+      // Convert stats to number records for Monte Carlo
+      const t1StatsNum: Record<string, number> = {}
+      const t2StatsNum: Record<string, number> = {}
+      for (const id of categoryIds) {
+        t1StatsNum[id] = parseFloat(t1.stats?.[id] || 0)
+        t2StatsNum[id] = parseFloat(t2.stats?.[id] || 0)
+      }
+      
+      // Run Monte Carlo simulation for overall win probability
+      const op = calcOverallWinProb(t1StatsNum, t2StatsNum, categoryIds, days)
+      
       let pj1 = 0, pj2 = 0, pjt = 0
       for (const p of Object.values(catProbs)) { if (p.team1 > 55) pj1++; else if (p.team2 > 55) pj2++; else pjt++ }
       processed.push({
@@ -691,8 +791,17 @@ function buildWinProbChart() {
   if (winProbChart) { winProbChart.destroy(); winProbChart = null }
   const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
   const p1 = selectedMatchup.value.team1WinProb
-  const d1 = [50, 48 + Math.random()*10, 50 + Math.random()*15, p1*0.7+15, p1*0.85+7, p1*0.95+2, p1]
-  const d2 = d1.map(x => 100 - x)
+  // Round all data points to 2 decimal places
+  const d1 = [
+    Math.round(50 * 100) / 100,
+    Math.round((48 + Math.random() * 10) * 100) / 100,
+    Math.round((50 + Math.random() * 15) * 100) / 100,
+    Math.round((p1 * 0.7 + 15) * 100) / 100,
+    Math.round((p1 * 0.85 + 7) * 100) / 100,
+    Math.round((p1 * 0.95 + 2) * 100) / 100,
+    Math.round(p1 * 100) / 100
+  ]
+  const d2 = d1.map(x => Math.round((100 - x) * 100) / 100)
   const c1 = selectedMatchup.value.team1.is_my_team ? '#f5c451' : '#06b6d4'
   const c2 = selectedMatchup.value.team2.is_my_team ? '#f5c451' : '#f97316'
   winProbChart = new ApexCharts(winProbChartEl.value, {
