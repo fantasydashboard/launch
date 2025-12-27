@@ -772,28 +772,29 @@ async function downloadRankings() {
     const firstHalf = powerRankings.value.slice(0, midpoint)
     const secondHalf = powerRankings.value.slice(midpoint)
     
-    // More compact ranking row with modern rank number font
+    // Ranking row - all same background, rank number aligned higher, no colored boxes on change
     const generateRankingRow = (team: any, rank: number) => `
-      <div style="display: flex; align-items: center; height: 64px; padding: 0 12px; background: ${rank <= 3 ? 'linear-gradient(135deg, rgba(59, 159, 232, 0.15), rgba(59, 159, 232, 0.05))' : 'rgba(38, 42, 58, 0.4)'}; border-radius: 10px; margin-bottom: 6px; border: 1px solid ${rank <= 3 ? 'rgba(59, 159, 232, 0.4)' : 'rgba(58, 61, 82, 0.4)'}; box-sizing: border-box; ${rank === 1 ? 'box-shadow: 0 0 20px rgba(59, 159, 232, 0.3);' : ''}">
-        <!-- Rank Number - Larger modern bold style -->
-        <div style="display: flex; align-items: center; width: 50px; flex-shrink: 0;">
-          <span style="font-size: 42px; font-weight: 900; color: ${rank <= 3 ? '#3B9FE8' : '#6b7280'}; font-family: 'Impact', 'Arial Black', sans-serif; letter-spacing: -2px; line-height: 1;">${rank}</span>
+      <div style="display: flex; align-items: center; height: 64px; padding: 0 12px; background: rgba(38, 42, 58, 0.4); border-radius: 10px; margin-bottom: 6px; border: 1px solid rgba(58, 61, 82, 0.4); box-sizing: border-box;">
+        <!-- Rank Number - Higher position with align-items: flex-start -->
+        <div style="display: flex; align-items: flex-start; width: 50px; flex-shrink: 0; padding-top: 8px;">
+          <span style="font-size: 42px; font-weight: 900; color: #3B9FE8; font-family: 'Impact', 'Arial Black', sans-serif; letter-spacing: -2px; line-height: 0.85;">${rank}</span>
           ${team.change !== 0 ? `
-            <span style="font-size: 10px; font-weight: 700; color: ${team.change > 0 ? '#10b981' : '#ef4444'}; margin-left: 2px; background: ${team.change > 0 ? 'rgba(16, 185, 129, 0.2)' : 'rgba(239, 68, 68, 0.2)'}; padding: 2px 4px; border-radius: 4px;">
+            <span style="font-size: 11px; font-weight: 700; color: ${team.change > 0 ? '#10b981' : '#ef4444'}; margin-left: 3px; margin-top: 2px;">
               ${team.change > 0 ? '▲' : '▼'}${Math.abs(team.change)}
             </span>
           ` : ''}
         </div>
         <!-- Team Logo -->
-        <img src="${imageMap.get(team.team_key) || ''}" style="width: 40px; height: 40px; border-radius: 50%; margin-right: 10px; border: 2px solid ${rank <= 3 ? '#3B9FE8' : '#3a3d52'}; background: #262a3a; flex-shrink: 0; object-fit: cover;" />
-        <!-- Team Info -->
-        <div style="flex: 1; min-width: 0; max-width: 140px;">
+        <img src="${imageMap.get(team.team_key) || ''}" style="width: 40px; height: 40px; border-radius: 50%; margin-right: 10px; border: 2px solid #3a3d52; background: #262a3a; flex-shrink: 0; object-fit: cover;" />
+        <!-- Team Info - Wider max-width to prevent text cutoff -->
+        <div style="flex: 1; min-width: 0;">
           <div style="font-size: 14px; font-weight: 700; color: #f7f7ff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${team.name}</div>
           <div style="font-size: 11px; color: #9ca3af;">${team.totalCatWins}-${team.totalCatLosses} • ${(team.catWinPct * 100).toFixed(0)}%</div>
         </div>
-        <!-- Power Score - More prominent -->
-        <div style="text-align: right; margin-left: auto; padding-left: 8px; flex-shrink: 0;">
-          <div style="font-size: 24px; font-weight: 900; color: ${rank <= 3 ? '#3B9FE8' : '#f7f7ff'}; font-family: 'Impact', 'Arial Black', sans-serif;">${team.powerScore.toFixed(1)}</div>
+        <!-- Power Score with "Power" label -->
+        <div style="text-align: center; margin-left: auto; padding-left: 8px; flex-shrink: 0; min-width: 50px;">
+          <div style="font-size: 24px; font-weight: 900; color: #f7f7ff; font-family: 'Impact', 'Arial Black', sans-serif; line-height: 1;">${team.powerScore.toFixed(1)}</div>
+          <div style="font-size: 8px; color: #6b7280; text-transform: uppercase; letter-spacing: 1px; margin-top: 2px;">Power</div>
         </div>
       </div>
     `
@@ -803,12 +804,10 @@ async function downloadRankings() {
         <!-- Decorative blue glow at top -->
         <div style="position: absolute; top: -100px; left: 50%; transform: translateX(-50%); width: 400px; height: 200px; background: radial-gradient(ellipse, rgba(59, 159, 232, 0.3) 0%, transparent 70%); pointer-events: none;"></div>
         
-        <!-- Header - Impactful with larger text -->
-        <div style="text-align: center; margin-bottom: 16px; position: relative; z-index: 1;">
-          <div style="display: inline-block; background: linear-gradient(135deg, rgba(59, 159, 232, 0.2), rgba(59, 159, 232, 0.05)); border: 1px solid rgba(59, 159, 232, 0.3); border-radius: 12px; padding: 16px 32px;">
-            <div style="font-size: 44px; font-weight: 900; color: #ffffff; text-transform: uppercase; letter-spacing: 3px; text-shadow: 0 0 30px rgba(59, 159, 232, 0.5);">⚡ POWER RANKINGS</div>
-            <div style="font-size: 18px; color: #3B9FE8; margin-top: 6px; font-weight: 600;">${leagueName} • Week ${selectedWeek.value}</div>
-          </div>
+        <!-- Header - Clean without emoji or box -->
+        <div style="text-align: center; margin-bottom: 20px; position: relative; z-index: 1;">
+          <div style="font-size: 44px; font-weight: 900; color: #ffffff; text-transform: uppercase; letter-spacing: 3px; text-shadow: 0 0 30px rgba(59, 159, 232, 0.5);">POWER RANKINGS</div>
+          <div style="font-size: 18px; color: #3B9FE8; margin-top: 6px; font-weight: 600;">${leagueName} • Week ${selectedWeek.value}</div>
         </div>
         
         <!-- Rankings (Two Columns) - Compact -->
@@ -833,8 +832,8 @@ async function downloadRankings() {
           <div style="display: flex; align-items: center; justify-content: center; gap: 20px;">
             ${logoBase64 ? `<img src="${logoBase64}" style="width: 160px; height: 160px; object-fit: contain; flex-shrink: 0;" />` : ''}
             <div style="text-align: left;">
-              <div style="font-size: 14px; color: #9ca3af; margin-bottom: 6px;">See a complete breakdown of every team in your league at</div>
-              <div style="font-size: 26px; font-weight: bold; color: #3B9FE8;">ultimatefantasydashboard.com</div>
+              <div style="font-size: 14px; color: #9ca3af; margin-bottom: 6px; font-family: 'Georgia', serif; font-style: italic;">The Ultimate Fantasy Baseball Experience</div>
+              <div style="font-size: 26px; font-weight: bold; color: #3B9FE8; font-family: 'Impact', 'Arial Black', sans-serif;">ultimatefantasydashboard.com</div>
             </div>
           </div>
         </div>
