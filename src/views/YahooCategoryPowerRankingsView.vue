@@ -779,11 +779,11 @@ async function downloadRankings() {
       const barColor = team.powerScore >= 70 ? '#10b981' : (team.powerScore >= 40 ? '#f59e0b' : '#ef4444')
       return `
       <div style="display: flex; align-items: center; height: 80px; padding: 0 12px; background: rgba(38, 42, 58, 0.4); border-radius: 10px; margin-bottom: 6px; border: 1px solid rgba(58, 61, 82, 0.4); box-sizing: border-box; overflow: visible;">
-        <!-- Rank Number - pull up with negative margin to center visually -->
+        <!-- Rank Number - use position relative to move up significantly -->
         <div style="display: flex; align-items: center; width: 44px; flex-shrink: 0; overflow: visible;">
-          <span style="font-size: 36px; font-weight: 900; color: #3B9FE8; font-family: 'Impact', 'Arial Black', sans-serif; letter-spacing: -2px; line-height: 0.8; margin-top: -6px;">${rank}</span>
+          <span style="font-size: 36px; font-weight: 900; color: #3B9FE8; font-family: 'Impact', 'Arial Black', sans-serif; letter-spacing: -2px; position: relative; top: -4px;">${rank}</span>
           ${team.change !== 0 ? `
-            <span style="font-size: 10px; font-weight: 700; color: ${team.change > 0 ? '#10b981' : '#ef4444'}; margin-left: 2px; margin-top: -6px;">
+            <span style="font-size: 10px; font-weight: 700; color: ${team.change > 0 ? '#10b981' : '#ef4444'}; margin-left: 2px; position: relative; top: -4px;">
               ${team.change > 0 ? '▲' : '▼'}${Math.abs(team.change)}
             </span>
           ` : ''}
@@ -795,10 +795,10 @@ async function downloadRankings() {
           <div style="font-size: 14px; font-weight: 700; color: #f7f7ff; white-space: nowrap; overflow: visible; text-overflow: ellipsis; line-height: 1.4; padding: 2px 0;">${team.name}</div>
           <div style="font-size: 11px; color: #9ca3af; line-height: 1.4; padding: 2px 0;">${team.totalCatWins}-${team.totalCatLosses} • ${(team.catWinPct * 100).toFixed(0)}%</div>
         </div>
-        <!-- Power Score with conditional bar -->
+        <!-- Power Score with conditional bar - MORE space between score and bar -->
         <div style="text-align: center; margin-left: auto; padding-left: 8px; flex-shrink: 0; width: 55px; display: flex; flex-direction: column; justify-content: center; overflow: visible;">
           <div style="font-size: 18px; font-weight: bold; color: #3B9FE8; line-height: 1;">${team.powerScore.toFixed(1)}</div>
-          <div style="width: 100%; height: 5px; background: rgba(58, 61, 82, 0.8); border-radius: 3px; overflow: hidden; margin-top: 8px;">
+          <div style="width: 100%; height: 5px; background: rgba(58, 61, 82, 0.8); border-radius: 3px; overflow: hidden; margin-top: 14px;">
             <div style="width: ${powerPct}%; height: 100%; background: ${barColor}; border-radius: 3px;"></div>
           </div>
         </div>
