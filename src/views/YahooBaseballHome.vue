@@ -228,8 +228,8 @@
         </div>
       </div>
       
-      <!-- Mobile scroll hint for category leagues -->
-      <div v-if="!isPointsLeague" class="px-4 py-2 bg-dark-border/30 border-b border-dark-border flex items-center justify-center gap-2 text-xs text-dark-textMuted">
+      <!-- Mobile scroll hint for category leagues - only on mobile -->
+      <div v-if="!isPointsLeague" class="md:hidden px-4 py-2 bg-dark-border/30 border-b border-dark-border flex items-center justify-center gap-2 text-xs text-dark-textMuted">
         <svg class="w-4 h-4 animate-pulse" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
         </svg>
@@ -917,7 +917,7 @@ function buildChart() {
   chartSeries.value = series
   
   chartOptions.value = {
-    chart: { type: 'line', background: 'transparent', toolbar: { show: false }, animations: { enabled: true, speed: 500 } },
+    chart: { type: 'line', background: 'transparent', toolbar: { show: false }, zoom: { enabled: false }, animations: { enabled: true, speed: 500 } },
     stroke: { curve: 'smooth', width: 3 },
     markers: { size: 4, strokeWidth: 0 },
     xaxis: {
