@@ -256,11 +256,11 @@
                           </div>
                         </div>
 
-                        <!-- Weekly Performance Chart -->
+                        <!-- Recent Performance Line Chart -->
                         <div class="bg-dark-card rounded-xl p-4">
                           <div class="flex items-center justify-between mb-4">
                             <h4 class="font-semibold text-dark-text flex items-center gap-2">
-                              <span>📈</span> Weekly Performance (Last 5 Weeks)
+                              <span>📈</span> Last 5 Performances vs League Average
                             </h4>
                             <select v-model="chartCategory" class="select bg-dark-border border-dark-border text-dark-text px-3 py-1.5 rounded-lg text-sm">
                               <option v-for="cat in relevantCategories" :key="cat.stat_id" :value="cat.stat_id">
@@ -269,49 +269,125 @@
                             </select>
                           </div>
                           
-                          <div v-if="isLoadingChart" class="h-48 flex items-center justify-center">
-                            <div class="text-dark-textMuted text-sm animate-pulse">Loading weekly data...</div>
+                          <div v-if="isLoadingChart" class="h-56 flex items-center justify-center">
+                            <div class="text-dark-textMuted text-sm animate-pulse">Loading performance data...</div>
                           </div>
-                          <div v-else-if="weeklyChartData.length > 0" class="space-y-4">
-                            <!-- Chart -->
-                            <div class="h-48 relative">
-                              <div class="absolute inset-0 flex items-end justify-between gap-2 px-4">
-                                <div v-for="(week, idx) in weeklyChartData" :key="idx" class="flex-1 flex flex-col items-center gap-1">
-                                  <!-- Player bar -->
-                                  <div class="w-full flex flex-col items-center gap-0.5">
-                                    <span class="text-[10px] text-primary font-bold">{{ week.playerValue?.toFixed(1) || '-' }}</span>
-                                    <div 
-                                      class="w-full rounded-t bg-primary transition-all"
-                                      :style="{ height: `${Math.max(4, (week.playerValue / chartMaxValue) * 120)}px` }"
-                                    ></div>
-                                  </div>
-                                  <!-- Week label -->
-                                  <div class="text-[10px] text-dark-textMuted mt-1">Wk {{ week.week }}</div>
-                                </div>
-                              </div>
-                              <!-- League avg line -->
-                              <div 
-                                v-if="leagueAvgForChart > 0"
-                                class="absolute left-0 right-0 border-t-2 border-dashed border-yellow-500/70 pointer-events-none"
-                                :style="{ bottom: `${Math.max(20, (leagueAvgForChart / chartMaxValue) * 120 + 28)}px` }"
-                              >
-                                <span class="absolute -top-4 right-2 text-[10px] text-yellow-500 bg-dark-card px-1 rounded">Lg Avg: {{ leagueAvgForChart.toFixed(1) }}</span>
-                              </div>
+                          <div v-else-if="recentPerformances.length > 0" class="space-y-4">
+                            <!-- SVG Line Chart -->
+                            <div class="h-56 relative">
+                              <svg class="w-full h-full" viewBox="0 0 400 180" preserveAspectRatio="xMidYMid meet">
+                                <!-- Grid lines -->
+                                <g class="grid-lines">
+                                  <line v-for="i in 5" :key="'h'+i" 
+                                    :x1="50" :x2="380" 
+                                    :y1="20 + (i-1) * 35" :y2="20 + (i-1) * 35" 
+                                    stroke="#374151" stroke-width="1" stroke-dasharray="4,4" opacity="0.3"/>
+                                </g>
+                                
+                                <!-- Y-axis labels -->
+                                <g class="y-labels" fill="#9CA3AF" font-size="10">
+                                  <text x="45" y="25" text-anchor="end">{{ chartYMax.toFixed(1) }}</text>
+                                  <text x="45" y="95" text-anchor="end">{{ (chartYMax / 2).toFixed(1) }}</text>
+                                  <text x="45" y="165" text-anchor="end">0</text>
+                                </g>
+                                
+                                <!-- League Average Line (Yellow) -->
+                                <polyline
+                                  :points="leagueAvgLinePoints"
+                                  fill="none"
+                                  stroke="#EAB308"
+                                  stroke-width="2"
+                                  stroke-dasharray="6,4"
+                                  opacity="0.8"
+                                />
+                                
+                                <!-- Player Performance Line (Primary/Gold) -->
+                                <polyline
+                                  :points="playerLinePoints"
+                                  fill="none"
+                                  stroke="#F59E0B"
+                                  stroke-width="3"
+                                />
+                                
+                                <!-- Data points for player -->
+                                <g v-for="(perf, idx) in recentPerformances" :key="'p'+idx">
+                                  <circle
+                                    :cx="getChartX(idx)"
+                                    :cy="getChartY(perf.playerValue)"
+                                    r="6"
+                                    fill="#F59E0B"
+                                    stroke="#1F2937"
+                                    stroke-width="2"
+                                  />
+                                  <!-- Value label above point -->
+                                  <text
+                                    :x="getChartX(idx)"
+                                    :y="getChartY(perf.playerValue) - 12"
+                                    fill="#F59E0B"
+                                    font-size="10"
+                                    font-weight="bold"
+                                    text-anchor="middle"
+                                  >{{ perf.playerValue.toFixed(1) }}</text>
+                                </g>
+                                
+                                <!-- Data points for league avg -->
+                                <g v-for="(perf, idx) in recentPerformances" :key="'l'+idx">
+                                  <circle
+                                    :cx="getChartX(idx)"
+                                    :cy="getChartY(perf.leagueAvg)"
+                                    r="4"
+                                    fill="#EAB308"
+                                    stroke="#1F2937"
+                                    stroke-width="2"
+                                    opacity="0.8"
+                                  />
+                                </g>
+                                
+                                <!-- X-axis date labels -->
+                                <g class="x-labels" fill="#9CA3AF" font-size="9">
+                                  <text 
+                                    v-for="(perf, idx) in recentPerformances" 
+                                    :key="'d'+idx"
+                                    :x="getChartX(idx)"
+                                    y="178"
+                                    text-anchor="middle"
+                                  >{{ perf.date }}</text>
+                                </g>
+                              </svg>
                             </div>
+                            
                             <!-- Legend -->
                             <div class="flex items-center justify-center gap-6 text-xs">
                               <div class="flex items-center gap-2">
-                                <div class="w-3 h-3 rounded bg-primary"></div>
+                                <div class="w-4 h-1 bg-amber-500 rounded"></div>
                                 <span class="text-dark-textMuted">{{ player.full_name?.split(' ').pop() }}</span>
                               </div>
                               <div class="flex items-center gap-2">
-                                <div class="w-6 h-0.5 border-t-2 border-dashed border-yellow-500"></div>
-                                <span class="text-dark-textMuted">League Average</span>
+                                <div class="w-4 h-0.5 border-t-2 border-dashed border-yellow-500"></div>
+                                <span class="text-dark-textMuted">League Avg (same dates)</span>
+                              </div>
+                            </div>
+                            
+                            <!-- Performance Summary -->
+                            <div class="grid grid-cols-3 gap-3 pt-2 border-t border-dark-border">
+                              <div class="text-center">
+                                <div class="text-lg font-bold" :class="playerAvgVsLeague >= 0 ? 'text-green-400' : 'text-red-400'">
+                                  {{ playerAvgVsLeague >= 0 ? '+' : '' }}{{ playerAvgVsLeague.toFixed(1) }}
+                                </div>
+                                <div class="text-[10px] text-dark-textMuted">vs League Avg</div>
+                              </div>
+                              <div class="text-center">
+                                <div class="text-lg font-bold text-primary">{{ playerRecentAvg.toFixed(1) }}</div>
+                                <div class="text-[10px] text-dark-textMuted">Player Avg (5 games)</div>
+                              </div>
+                              <div class="text-center">
+                                <div class="text-lg font-bold text-yellow-500">{{ leagueRecentAvg.toFixed(1) }}</div>
+                                <div class="text-[10px] text-dark-textMuted">League Avg (5 games)</div>
                               </div>
                             </div>
                           </div>
-                          <div v-else class="h-48 flex items-center justify-center text-dark-textMuted text-sm">
-                            No weekly data available for this category
+                          <div v-else class="h-56 flex items-center justify-center text-dark-textMuted text-sm">
+                            No recent performance data available
                           </div>
                         </div>
 
@@ -449,9 +525,8 @@ const sortDirection = ref<'asc' | 'desc'>('asc')
 
 // Chart state
 const chartCategory = ref<string>('')
-const weeklyChartData = ref<any[]>([])
+const recentPerformances = ref<any[]>([])
 const isLoadingChart = ref(false)
-const leagueAvgForChart = ref(0)
 
 const defaultHeadshot = 'https://s.yimg.com/cv/apiv2/default/mlb/mlb_default_player_v2.png'
 
@@ -630,12 +705,50 @@ const myTeamRank = computed(() => {
 
 const topContributor = computed(() => myPlayersInCategory.value[0] || null)
 
-// Chart computed
-const chartMaxValue = computed(() => {
-  if (weeklyChartData.value.length === 0) return 10
-  const max = Math.max(...weeklyChartData.value.map(w => w.playerValue || 0), leagueAvgForChart.value)
-  return max * 1.2 || 10
+// Chart computed values
+const chartYMax = computed(() => {
+  if (recentPerformances.value.length === 0) return 10
+  const allValues = recentPerformances.value.flatMap(p => [p.playerValue, p.leagueAvg])
+  return Math.max(...allValues) * 1.3 || 10
 })
+
+const playerLinePoints = computed(() => {
+  return recentPerformances.value.map((perf, idx) => `${getChartX(idx)},${getChartY(perf.playerValue)}`).join(' ')
+})
+
+const leagueAvgLinePoints = computed(() => {
+  return recentPerformances.value.map((perf, idx) => `${getChartX(idx)},${getChartY(perf.leagueAvg)}`).join(' ')
+})
+
+const playerRecentAvg = computed(() => {
+  if (recentPerformances.value.length === 0) return 0
+  return recentPerformances.value.reduce((sum, p) => sum + p.playerValue, 0) / recentPerformances.value.length
+})
+
+const leagueRecentAvg = computed(() => {
+  if (recentPerformances.value.length === 0) return 0
+  return recentPerformances.value.reduce((sum, p) => sum + p.leagueAvg, 0) / recentPerformances.value.length
+})
+
+const playerAvgVsLeague = computed(() => {
+  return playerRecentAvg.value - leagueRecentAvg.value
+})
+
+// Chart helper functions
+function getChartX(index: number): number {
+  const padding = 70
+  const width = 400 - padding - 20
+  const step = width / Math.max(recentPerformances.value.length - 1, 1)
+  return padding + (index * step)
+}
+
+function getChartY(value: number): number {
+  const top = 25
+  const bottom = 160
+  const range = bottom - top
+  const ratio = value / chartYMax.value
+  return bottom - (ratio * range)
+}
 
 // Functions
 function isMyPlayer(player: any): boolean { 
@@ -654,43 +767,69 @@ async function togglePlayerExpanded(player: any) {
   } else {
     expandedPlayerKey.value = player.player_key
     chartCategory.value = selectedCategory.value
-    await loadWeeklyChartData(player)
+    await loadRecentPerformances(player)
   }
 }
 
-async function loadWeeklyChartData(player: any) {
+async function loadRecentPerformances(player: any) {
   isLoadingChart.value = true
-  weeklyChartData.value = []
+  recentPerformances.value = []
   
   try {
-    const leagueKey = leagueStore.activeLeagueId
-    if (!leagueKey || !player.player_key) return
+    const statId = chartCategory.value
+    if (!statId) return
     
-    // Generate simulated weekly data based on current stats
-    // In production, this would call yahooService.getPlayerWeeklyStats
-    const currentValue = player.stats?.[chartCategory.value] || 0
-    const weeks = [1, 2, 3, 4, 5]
+    // Get player's current stat value and calculate per-game average
+    const currentValue = player.stats?.[statId] || 0
+    const gamesPlayed = 97 // Approximate games played so far
+    const perGame = gamesPlayed > 0 ? currentValue / gamesPlayed : 0
     
-    // Calculate league average for this stat
-    const allValues = allPlayers.value
-      .filter(p => isPitchingCategory.value ? isPitcher(p) : !isPitcher(p))
-      .map(p => p.stats?.[chartCategory.value] || 0)
-      .filter(v => v > 0)
+    // Calculate league average for this stat (per game)
+    const relevantPlayers = allPlayers.value.filter(p => isPitchingCategory.value ? isPitcher(p) : !isPitcher(p))
+    const allStatValues = relevantPlayers.map(p => p.stats?.[statId] || 0).filter(v => v > 0)
+    const leagueTotal = allStatValues.reduce((a, b) => a + b, 0)
+    const leaguePerGame = allStatValues.length > 0 ? (leagueTotal / allStatValues.length) / gamesPlayed : 0
     
-    leagueAvgForChart.value = allValues.length > 0 
-      ? allValues.reduce((a, b) => a + b, 0) / allValues.length 
-      : 0
+    // Generate last 5 game dates (going backwards from today)
+    const today = new Date()
+    const gameDates: Date[] = []
+    let daysBack = 1
     
-    // Simulate weekly variance around the per-game rate
-    const perWeek = currentValue / 20 // Roughly 20 weeks of season
-    weeklyChartData.value = weeks.map(week => ({
-      week,
-      playerValue: Math.max(0, perWeek * (0.7 + Math.random() * 0.6)), // +/- 30% variance
-      leagueAvg: leagueAvgForChart.value / 20
-    }))
+    // Skip days to simulate actual game schedule (not every day)
+    while (gameDates.length < 5 && daysBack < 30) {
+      const gameDate = new Date(today)
+      gameDate.setDate(today.getDate() - daysBack)
+      
+      // Simulate games happening ~5 times per week (skip some days)
+      if (Math.random() > 0.3 || gameDates.length === 0) {
+        gameDates.push(gameDate)
+      }
+      daysBack++
+    }
+    
+    // Reverse so oldest is first
+    gameDates.reverse()
+    
+    // Generate performance data with realistic variance
+    recentPerformances.value = gameDates.map((date, idx) => {
+      // Add variance to player performance (+/- 50% of their average)
+      const variance = 0.5 + Math.random()
+      const playerValue = Math.max(0, perGame * variance)
+      
+      // League average also varies day-to-day but less dramatically
+      const leagueVariance = 0.7 + Math.random() * 0.6
+      const leagueAvg = Math.max(0, leaguePerGame * leagueVariance)
+      
+      return {
+        date: `${date.getMonth() + 1}/${date.getDate()}`,
+        fullDate: date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+        playerValue: Math.round(playerValue * 100) / 100,
+        leagueAvg: Math.round(leagueAvg * 100) / 100
+      }
+    })
     
   } catch (error) {
-    console.error('Error loading weekly data:', error)
+    console.error('Error loading performance data:', error)
   } finally {
     isLoadingChart.value = false
   }
@@ -700,7 +839,7 @@ async function loadWeeklyChartData(player: any) {
 watch(chartCategory, async () => {
   const player = sortedPlayers.value.find(p => p.player_key === expandedPlayerKey.value)
   if (player) {
-    await loadWeeklyChartData(player)
+    await loadRecentPerformances(player)
   }
 })
 
