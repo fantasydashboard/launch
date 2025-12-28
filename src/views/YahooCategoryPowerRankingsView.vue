@@ -772,35 +772,35 @@ async function downloadRankings() {
     const firstHalf = powerRankings.value.slice(0, midpoint)
     const secondHalf = powerRankings.value.slice(midpoint)
     
-    // Ranking row - TALLER with centered content, conditional bar colors
+    // Ranking row - manual padding to align everything at same vertical center
     const generateRankingRow = (team: any, rank: number) => {
       const powerPct = Math.min(100, Math.max(0, team.powerScore)) // 0-100 scale
       // Conditional bar color: green for 70+, yellow for 40-69, red for below 40
       const barColor = team.powerScore >= 70 ? '#10b981' : (team.powerScore >= 40 ? '#f59e0b' : '#ef4444')
       return `
-      <div style="display: table; width: 100%; height: 80px; padding: 0 12px; background: rgba(38, 42, 58, 0.4); border-radius: 10px; margin-bottom: 6px; border: 1px solid rgba(58, 61, 82, 0.4); box-sizing: border-box;">
-        <!-- Rank Number - table-cell with vertical-align middle -->
-        <div style="display: table-cell; width: 44px; height: 80px; vertical-align: middle;">
-          <span style="font-size: 36px; font-weight: 900; color: #3B9FE8; font-family: 'Impact', 'Arial Black', sans-serif; letter-spacing: -2px;">${rank}</span>
+      <div style="display: flex; height: 80px; padding: 0 12px; background: rgba(38, 42, 58, 0.4); border-radius: 10px; margin-bottom: 6px; border: 1px solid rgba(58, 61, 82, 0.4); box-sizing: border-box;">
+        <!-- Rank Number - manual padding to center the 36px text in 80px row -->
+        <div style="width: 44px; flex-shrink: 0; padding-top: 18px;">
+          <span style="font-size: 36px; font-weight: 900; color: #3B9FE8; font-family: 'Impact', 'Arial Black', sans-serif; letter-spacing: -2px; line-height: 1;">${rank}</span>
           ${team.change !== 0 ? `
             <span style="font-size: 10px; font-weight: 700; color: ${team.change > 0 ? '#10b981' : '#ef4444'}; margin-left: 2px;">
               ${team.change > 0 ? '▲' : '▼'}${Math.abs(team.change)}
             </span>
           ` : ''}
         </div>
-        <!-- Team Logo -->
-        <div style="display: table-cell; width: 60px; vertical-align: middle;">
+        <!-- Team Logo - 48px logo centered in 80px = 16px padding top -->
+        <div style="width: 60px; flex-shrink: 0; padding-top: 16px;">
           <img src="${imageMap.get(team.team_key) || ''}" style="width: 48px; height: 48px; border-radius: 50%; border: 2px solid #3a3d52; background: #262a3a; object-fit: cover;" />
         </div>
-        <!-- Team Info -->
-        <div style="display: table-cell; vertical-align: middle;">
-          <div style="font-size: 14px; font-weight: 700; color: #f7f7ff; white-space: nowrap; overflow: visible; text-overflow: ellipsis; line-height: 1.4; padding: 2px 0;">${team.name}</div>
-          <div style="font-size: 11px; color: #9ca3af; line-height: 1.4; padding: 2px 0;">${team.totalCatWins}-${team.totalCatLosses} • ${(team.catWinPct * 100).toFixed(0)}%</div>
+        <!-- Team Info - two lines of text, padded to align with logo center -->
+        <div style="flex: 1; min-width: 0; padding-top: 20px;">
+          <div style="font-size: 14px; font-weight: 700; color: #f7f7ff; white-space: nowrap; overflow: visible; text-overflow: ellipsis; line-height: 1.2;">${team.name}</div>
+          <div style="font-size: 11px; color: #9ca3af; line-height: 1.2; margin-top: 4px;">${team.totalCatWins}-${team.totalCatLosses} • ${(team.catWinPct * 100).toFixed(0)}%</div>
         </div>
         <!-- Power Score with conditional bar -->
-        <div style="display: table-cell; width: 55px; vertical-align: middle; text-align: center;">
+        <div style="width: 55px; flex-shrink: 0; text-align: center; padding-top: 18px;">
           <div style="font-size: 18px; font-weight: bold; color: #3B9FE8; line-height: 1;">${team.powerScore.toFixed(1)}</div>
-          <div style="width: 100%; height: 5px; background: rgba(58, 61, 82, 0.8); border-radius: 3px; overflow: hidden; margin-top: 14px;">
+          <div style="width: 100%; height: 5px; background: rgba(58, 61, 82, 0.8); border-radius: 3px; overflow: hidden; margin-top: 12px;">
             <div style="width: ${powerPct}%; height: 100%; background: ${barColor}; border-radius: 3px;"></div>
           </div>
         </div>
