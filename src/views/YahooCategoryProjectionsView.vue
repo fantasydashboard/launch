@@ -497,13 +497,19 @@ async function loadProjections() {
     }
     loadingMessage.value = 'Loading teams...'
     const teams = await yahooService.getTeams(leagueKey); teamsData.value = teams || []
-    const myTeam = teamsData.value.find((t: any) => t.is_owned_by_current_login || t.is_my_team); myTeamKey.value = myTeam?.team_key || null
+    const myTeam = teamsData.value.find((t: any) => t.is_owned_by_current_login || t.is_my_team)
+    myTeamKey.value = myTeam?.team_key || null
+    console.log('Teams loaded:', teamsData.value.length, 'My team:', myTeam?.name, 'Key:', myTeamKey.value)
     loadingMessage.value = 'Loading player data...'
     const rosteredPlayers = await yahooService.getAllRosteredPlayers(leagueKey)
     const freeAgents = await yahooService.getTopFreeAgents(leagueKey, 100)
     const rostered = (rosteredPlayers || []).map((p: any) => ({ ...p, player_key: p.player_key, full_name: p.full_name || p.name || 'Unknown', position: p.position || 'Util', mlb_team: p.mlb_team || '', headshot: p.headshot || '', fantasy_team: p.fantasy_team, fantasy_team_key: p.fantasy_team_key, stats: p.stats || {}, total_points: p.total_points || 0 }))
     const fas = (freeAgents || []).map((p: any) => ({ ...p, player_key: p.player_key, full_name: p.full_name || p.name || 'Unknown', position: p.position || 'Util', mlb_team: p.mlb_team || '', headshot: p.headshot || '', fantasy_team: null, fantasy_team_key: null, stats: p.stats || {}, total_points: p.total_points || 0 }))
     allPlayers.value = [...rostered, ...fas]; selectAllPositions()
+    
+    // Debug: Check if any players match myTeamKey
+    const myPlayers = allPlayers.value.filter(p => p.fantasy_team_key === myTeamKey.value)
+    console.log('Players on my team:', myPlayers.length, 'Sample keys:', allPlayers.value.slice(0, 3).map(p => p.fantasy_team_key))
   } catch (error) { console.error('Error loading projections:', error); loadingMessage.value = 'Error loading data' }
   finally { isLoading.value = false }
 }
