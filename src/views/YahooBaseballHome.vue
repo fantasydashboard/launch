@@ -376,6 +376,27 @@
             :options="chartOptions" 
             :series="chartSeries" 
           />
+          
+          <!-- Team avatar overlays at end of lines -->
+          <div 
+            v-for="(team, idx) in sortedTeams" 
+            :key="'avatar-' + team.team_key"
+            class="absolute pointer-events-none"
+            :style="getStandingsAvatarPosition(team)"
+          >
+            <div class="relative">
+              <img 
+                :src="team.logo_url || defaultAvatar" 
+                :alt="team.name"
+                class="w-6 h-6 rounded-full ring-2 object-cover"
+                :class="team.is_my_team ? 'ring-primary' : 'ring-cyan-500/70'"
+                @error="handleImageError"
+              />
+              <div v-if="team.is_my_team" class="absolute -top-0.5 -right-0.5 w-3 h-3 bg-primary rounded-full flex items-center justify-center">
+                <span class="text-[6px] text-gray-900 font-bold">★</span>
+              </div>
+            </div>
+          </div>
         </div>
         <div v-else class="text-center py-12 text-dark-textMuted">
           <p>Not enough data to show standings over time</p>
@@ -394,7 +415,12 @@
       </div>
       <div class="card-body">
         <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
-          <div v-for="stat in quickStats" :key="stat.label" class="flex items-center gap-3 p-3 rounded-lg bg-dark-border/20">
+          <div 
+            v-for="stat in quickStats" 
+            :key="stat.label" 
+            @click="openQuickStatModal(stat.type)"
+            class="flex items-center gap-3 p-3 rounded-lg bg-dark-border/20 hover:bg-dark-border/40 cursor-pointer transition-colors group"
+          >
             <div class="w-10 h-10 rounded-full overflow-hidden bg-dark-border flex-shrink-0">
               <img v-if="stat.team" :src="stat.team.logo_url || defaultAvatar" class="w-full h-full object-cover" @error="handleImageError" />
             </div>
@@ -402,6 +428,11 @@
               <div class="text-[10px] text-dark-textMuted uppercase">{{ stat.icon }} {{ stat.label }}</div>
               <div class="font-semibold text-dark-text truncate text-sm">{{ stat.team?.name || 'N/A' }}</div>
               <div class="text-xs font-bold" :class="stat.valueClass">{{ stat.value }}</div>
+            </div>
+            <div class="text-dark-textMuted/50 group-hover:text-primary transition-colors">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+              </svg>
             </div>
           </div>
         </div>
@@ -678,7 +709,7 @@ const leaderModalData = computed(() => {
   let comparison: any[] = []
   let maxValue = 1
   
-  if (leaderModalType.value === 'bestRecord') {
+  if (leaderModalType.value === 'bestRecord' || leaderModalType.value === 'hottest' || leaderModalType.value === 'coldest') {
     comparison = [...teams].sort((a, b) => {
       const aWinPct = (a.wins || 0) / Math.max(1, (a.wins || 0) + (a.losses || 0))
       const bWinPct = (b.wins || 0) / Math.max(1, (b.wins || 0) + (b.losses || 0))
@@ -696,6 +727,13 @@ const leaderModalData = computed(() => {
   } else if (leaderModalType.value === 'bestAllPlay') {
     comparison = [...teams].sort((a, b) => (b.all_play_wins || 0) - (a.all_play_wins || 0)).map(t => ({ ...t, value: t.all_play_wins || 0 }))
     maxValue = Math.max(...teams.map(t => t.all_play_wins || 0), 1)
+  } else if (leaderModalType.value === 'luckiest' || leaderModalType.value === 'unluckiest') {
+    comparison = [...teams].sort((a, b) => (b.luckScore || 0) - (a.luckScore || 0)).map(t => ({ ...t, value: t.luckScore || 0 }))
+    const scores = teams.map(t => Math.abs(t.luckScore || 0))
+    maxValue = Math.max(...scores, 1)
+  } else if (leaderModalType.value === 'mostMoves' || leaderModalType.value === 'fewestMoves') {
+    comparison = [...teams].sort((a, b) => (b.transactions || 0) - (a.transactions || 0)).map(t => ({ ...t, value: t.transactions || 0 }))
+    maxValue = Math.max(...teams.map(t => t.transactions || 0), 1)
   }
   
   return { comparison, maxValue, leader: comparison[0] }
@@ -705,44 +743,72 @@ const leaderModalTitle = computed(() => {
   if (leaderModalType.value === 'bestRecord') return 'Best Record'
   if (leaderModalType.value === 'mostCatWins') return isPointsLeague.value ? 'Most Points' : 'Most Category Wins'
   if (leaderModalType.value === 'bestAllPlay') return 'Best All-Play Record'
+  if (leaderModalType.value === 'luckiest') return '🍀 Luckiest Teams'
+  if (leaderModalType.value === 'unluckiest') return '😢 Unluckiest Teams'
+  if (leaderModalType.value === 'hottest') return '🔥 Hottest Teams'
+  if (leaderModalType.value === 'coldest') return '❄️ Coldest Teams'
+  if (leaderModalType.value === 'mostMoves') return '📈 Most Active Teams'
+  if (leaderModalType.value === 'fewestMoves') return '🪨 Least Active Teams'
   return ''
 })
 
 const leaderModalTextColor = computed(() => {
-  if (leaderModalType.value === 'bestRecord') return 'text-green-400'
-  if (leaderModalType.value === 'mostCatWins') return 'text-yellow-400'
+  if (leaderModalType.value === 'bestRecord' || leaderModalType.value === 'luckiest') return 'text-green-400'
+  if (leaderModalType.value === 'mostCatWins' || leaderModalType.value === 'hottest') return 'text-yellow-400'
+  if (leaderModalType.value === 'bestAllPlay' || leaderModalType.value === 'mostMoves') return 'text-blue-400'
+  if (leaderModalType.value === 'unluckiest') return 'text-red-400'
+  if (leaderModalType.value === 'coldest') return 'text-cyan-400'
+  if (leaderModalType.value === 'fewestMoves') return 'text-purple-400'
   return 'text-blue-400'
 })
 
 const leaderModalBarColor = computed(() => {
-  if (leaderModalType.value === 'bestRecord') return 'bg-green-500'
-  if (leaderModalType.value === 'mostCatWins') return 'bg-yellow-500'
+  if (leaderModalType.value === 'bestRecord' || leaderModalType.value === 'luckiest') return 'bg-green-500'
+  if (leaderModalType.value === 'mostCatWins' || leaderModalType.value === 'hottest') return 'bg-yellow-500'
+  if (leaderModalType.value === 'bestAllPlay' || leaderModalType.value === 'mostMoves') return 'bg-blue-500'
+  if (leaderModalType.value === 'unluckiest') return 'bg-red-500'
+  if (leaderModalType.value === 'coldest') return 'bg-cyan-500'
+  if (leaderModalType.value === 'fewestMoves') return 'bg-purple-500'
   return 'bg-blue-500'
 })
 
 const leaderModalRingColor = computed(() => {
-  if (leaderModalType.value === 'bestRecord') return 'ring-green-500'
-  if (leaderModalType.value === 'mostCatWins') return 'ring-yellow-500'
+  if (leaderModalType.value === 'bestRecord' || leaderModalType.value === 'luckiest') return 'ring-green-500'
+  if (leaderModalType.value === 'mostCatWins' || leaderModalType.value === 'hottest') return 'ring-yellow-500'
+  if (leaderModalType.value === 'bestAllPlay' || leaderModalType.value === 'mostMoves') return 'ring-blue-500'
+  if (leaderModalType.value === 'unluckiest') return 'ring-red-500'
+  if (leaderModalType.value === 'coldest') return 'ring-cyan-500'
+  if (leaderModalType.value === 'fewestMoves') return 'ring-purple-500'
   return 'ring-blue-500'
 })
 
 const leaderModalGradient = computed(() => {
-  if (leaderModalType.value === 'bestRecord') return 'bg-gradient-to-r from-green-500/10 to-transparent'
-  if (leaderModalType.value === 'mostCatWins') return 'bg-gradient-to-r from-yellow-500/10 to-transparent'
+  if (leaderModalType.value === 'bestRecord' || leaderModalType.value === 'luckiest') return 'bg-gradient-to-r from-green-500/10 to-transparent'
+  if (leaderModalType.value === 'mostCatWins' || leaderModalType.value === 'hottest') return 'bg-gradient-to-r from-yellow-500/10 to-transparent'
+  if (leaderModalType.value === 'bestAllPlay' || leaderModalType.value === 'mostMoves') return 'bg-gradient-to-r from-blue-500/10 to-transparent'
+  if (leaderModalType.value === 'unluckiest') return 'bg-gradient-to-r from-red-500/10 to-transparent'
+  if (leaderModalType.value === 'coldest') return 'bg-gradient-to-r from-cyan-500/10 to-transparent'
+  if (leaderModalType.value === 'fewestMoves') return 'bg-gradient-to-r from-purple-500/10 to-transparent'
   return 'bg-gradient-to-r from-blue-500/10 to-transparent'
 })
 
 const leaderModalValue = computed(() => {
   const leader = leaderModalData.value.leader
   if (!leader) return '0'
-  if (leaderModalType.value === 'bestRecord') return getWinPercentage(leader)
+  if (leaderModalType.value === 'bestRecord' || leaderModalType.value === 'hottest' || leaderModalType.value === 'coldest') return getWinPercentage(leader)
   if (leaderModalType.value === 'mostCatWins') return isPointsLeague.value ? (leader.points_for?.toFixed(1) || '0') : `${leader.wins || 0}`
+  if (leaderModalType.value === 'bestAllPlay') return `${leader.all_play_wins || 0}-${leader.all_play_losses || 0}`
+  if (leaderModalType.value === 'luckiest' || leaderModalType.value === 'unluckiest') return (leader.luckScore > 0 ? '+' : '') + (leader.luckScore || 0).toFixed(0)
+  if (leaderModalType.value === 'mostMoves' || leaderModalType.value === 'fewestMoves') return leader.transactions?.toString() || '0'
   return `${leader.all_play_wins || 0}-${leader.all_play_losses || 0}`
 })
 
 const leaderModalUnit = computed(() => {
-  if (leaderModalType.value === 'bestRecord') return 'Win %'
+  if (leaderModalType.value === 'bestRecord' || leaderModalType.value === 'hottest' || leaderModalType.value === 'coldest') return 'Win %'
   if (leaderModalType.value === 'mostCatWins') return isPointsLeague.value ? 'Total Points' : 'Category Wins'
+  if (leaderModalType.value === 'bestAllPlay') return 'All-Play Record'
+  if (leaderModalType.value === 'luckiest' || leaderModalType.value === 'unluckiest') return 'Luck Score'
+  if (leaderModalType.value === 'mostMoves' || leaderModalType.value === 'fewestMoves') return 'Transactions'
   return 'All-Play Record'
 })
 
@@ -757,14 +823,47 @@ const quickStats = computed(() => {
   const coldest = [...teams].sort((a, b) => (a.wins || 0) / Math.max(1, (a.wins || 0) + (a.losses || 0)) - (b.wins || 0) / Math.max(1, (b.wins || 0) + (b.losses || 0)))[0]
   
   return [
-    { icon: '🍀', label: 'Luckiest', team: luckiest, value: luckiest ? '+' + (luckiest.luckScore || 0).toFixed(0) : '-', valueClass: 'text-green-400' },
-    { icon: '😢', label: 'Unluckiest', team: unluckiest, value: unluckiest ? (unluckiest.luckScore || 0).toFixed(0) : '-', valueClass: 'text-red-400' },
-    { icon: '🔥', label: 'Hottest', team: hottest, value: hottest ? getWinPercentage(hottest) : '-', valueClass: 'text-orange-400' },
-    { icon: '❄️', label: 'Coldest', team: coldest, value: coldest ? getWinPercentage(coldest) : '-', valueClass: 'text-cyan-400' },
-    { icon: '📈', label: 'Most Moves', team: mostActive, value: mostActive?.transactions?.toString() || '-', valueClass: 'text-blue-400' },
-    { icon: '🪨', label: 'Fewest Moves', team: leastActive, value: leastActive?.transactions?.toString() || '-', valueClass: 'text-purple-400' }
+    { icon: '🍀', label: 'Luckiest', team: luckiest, value: luckiest ? '+' + (luckiest.luckScore || 0).toFixed(0) : '-', valueClass: 'text-green-400', type: 'luckiest' },
+    { icon: '😢', label: 'Unluckiest', team: unluckiest, value: unluckiest ? (unluckiest.luckScore || 0).toFixed(0) : '-', valueClass: 'text-red-400', type: 'unluckiest' },
+    { icon: '🔥', label: 'Hottest', team: hottest, value: hottest ? getWinPercentage(hottest) : '-', valueClass: 'text-orange-400', type: 'hottest' },
+    { icon: '❄️', label: 'Coldest', team: coldest, value: coldest ? getWinPercentage(coldest) : '-', valueClass: 'text-cyan-400', type: 'coldest' },
+    { icon: '📈', label: 'Most Moves', team: mostActive, value: mostActive?.transactions?.toString() || '-', valueClass: 'text-blue-400', type: 'mostMoves' },
+    { icon: '🪨', label: 'Fewest Moves', team: leastActive, value: leastActive?.transactions?.toString() || '-', valueClass: 'text-purple-400', type: 'fewestMoves' }
   ]
 })
+
+// Calculate avatar position for standings chart overlay
+function getStandingsAvatarPosition(team: any): Record<string, string> {
+  const weeks = Array.from(weeklyStandings.value.keys()).sort((a, b) => a - b)
+  if (weeks.length === 0) return { display: 'none' }
+  
+  const lastWeek = weeks[weeks.length - 1]
+  const weekData = weeklyStandings.value.get(lastWeek) || []
+  const teamStanding = weekData.find((t: any) => t.team_key === team.team_key)
+  const lastRank = teamStanding?.rank || sortedTeams.value.length
+  
+  if (!lastRank) return { display: 'none' }
+  
+  const totalTeams = sortedTeams.value.length
+  const chartPadding = { top: 30, bottom: 80 } // ApexChart padding (bottom includes legend)
+  const chartHeight = 400
+  const usableHeight = chartHeight - chartPadding.top - chartPadding.bottom
+  
+  // Y position: rank 1 is at top, rank N is at bottom (reversed axis)
+  const yPercent = (lastRank - 1) / Math.max(1, totalTeams - 1)
+  const yPos = chartPadding.top + (yPercent * usableHeight) - 12 // -12 to center the avatar
+  
+  return {
+    right: '15px',
+    top: `${yPos}px`
+  }
+}
+
+// Open quick stat modal - reuses the leader modal
+function openQuickStatModal(type: string) {
+  leaderModalType.value = type
+  showLeaderModal.value = true
+}
 
 // Helper functions
 function getTeamRecord(teamKey: string | undefined) {
@@ -933,8 +1032,8 @@ function buildChart() {
       tickAmount: Math.min(leagueStore.yahooTeams.length - 1, 7),
       labels: { style: { colors: '#9CA3AF', fontSize: '11px' }, formatter: (val: number) => Math.round(val).toString() }
     },
-    grid: { borderColor: '#374151', strokeDashArray: 3 },
-    legend: { show: true, position: 'bottom', labels: { colors: '#9CA3AF' } },
+    grid: { borderColor: '#374151', strokeDashArray: 3, padding: { right: 40 } },
+    legend: { show: false },
     tooltip: { theme: 'dark', y: { formatter: (val: number) => `Rank: ${val}` } }
   }
 }
