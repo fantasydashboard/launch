@@ -374,6 +374,10 @@ const categoryRankedPlayers = computed(() => {
     return []
   }
   
+  // Define constants at the top level so they're accessible everywhere
+  const gamesRemaining = 65 // Approximate games left
+  const gamesPlayed = 97 // Approximate games played
+  
   const statId = catInfo.stat_id
   console.log('Ranking by category:', catInfo.name, 'stat_id:', statId)
   
@@ -392,12 +396,6 @@ const categoryRankedPlayers = computed(() => {
   players = players.map(p => {
     // Get the actual stat value for this category from Yahoo
     const currentValue = p.stats?.[statId] || 0
-    
-    // For ROS projection, we estimate based on current production rate
-    // Assuming ~60% of season complete, project remaining 40%
-    const seasonProgress = 0.6 // Approximate - could be calculated from dates
-    const gamesRemaining = 65 // Approximate games left
-    const gamesPlayed = 97 // Approximate games played
     
     let projectedValue = 0
     let perGameValue = 0
@@ -544,9 +542,6 @@ const categoryRankedPlayers = computed(() => {
   
   return players
 })
-
-// Helper constant for games played (used in calculation above)
-const gamesPlayed = 97
 
 const filteredPlayers = computed(() => {
   let players = [...categoryRankedPlayers.value]
