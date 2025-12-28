@@ -812,23 +812,44 @@ async function downloadRankings() {
         <!-- Decorative blue glow at top -->
         <div style="position: absolute; top: -100px; left: 50%; transform: translateX(-50%); width: 400px; height: 200px; background: radial-gradient(ellipse, rgba(59, 159, 232, 0.3) 0%, transparent 70%); pointer-events: none;"></div>
         
-        <!-- Ghosted baseball SVG background - bottom right -->
-        <div style="position: absolute; bottom: -60px; right: -60px; width: 350px; height: 350px; opacity: 0.06; pointer-events: none;">
-          <svg viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <circle cx="50" cy="50" r="48" stroke="#3B9FE8" stroke-width="2"/>
-            <path d="M50 2C50 2 35 20 35 50C35 80 50 98 50 98" stroke="#3B9FE8" stroke-width="2"/>
-            <path d="M50 2C50 2 65 20 65 50C65 80 50 98 50 98" stroke="#3B9FE8" stroke-width="2"/>
-            <path d="M30 8C30 8 25 25 25 50C25 75 30 92 30 92" stroke="#3B9FE8" stroke-width="1.5" stroke-dasharray="4 3"/>
-            <path d="M70 8C70 8 75 25 75 50C75 75 70 92 70 92" stroke="#3B9FE8" stroke-width="1.5" stroke-dasharray="4 3"/>
+        <!-- Ghosted baseball diamond field SVG background - bottom right -->
+        <div style="position: absolute; bottom: -100px; right: -100px; width: 500px; height: 500px; opacity: 0.07; pointer-events: none;">
+          <svg viewBox="0 0 200 200" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <!-- Outfield arc -->
+            <path d="M100 20 Q20 20 20 100 Q20 140 60 170 L100 130 L140 170 Q180 140 180 100 Q180 20 100 20" stroke="#3B9FE8" stroke-width="1.5" fill="none"/>
+            <!-- Infield arc -->
+            <path d="M100 50 Q55 50 55 100 Q55 120 75 140 L100 115 L125 140 Q145 120 145 100 Q145 50 100 50" stroke="#3B9FE8" stroke-width="1.5" fill="none"/>
+            <!-- Diamond -->
+            <path d="M100 70 L130 100 L100 130 L70 100 Z" stroke="#3B9FE8" stroke-width="1.5" fill="none"/>
+            <!-- Pitcher's mound -->
+            <circle cx="100" cy="100" r="8" stroke="#3B9FE8" stroke-width="1.5" fill="none"/>
+            <!-- Home plate area -->
+            <path d="M95 130 L100 140 L105 130 L105 125 L95 125 Z" stroke="#3B9FE8" stroke-width="1.5" fill="none"/>
+            <!-- Batter's boxes -->
+            <rect x="82" y="132" width="8" height="12" stroke="#3B9FE8" stroke-width="1" fill="none"/>
+            <rect x="110" y="132" width="8" height="12" stroke="#3B9FE8" stroke-width="1" fill="none"/>
+            <!-- Bases -->
+            <rect x="97" y="67" width="6" height="6" stroke="#3B9FE8" stroke-width="1" fill="none" transform="rotate(45 100 70)"/>
+            <rect x="127" y="97" width="6" height="6" stroke="#3B9FE8" stroke-width="1" fill="none" transform="rotate(45 130 100)"/>
+            <rect x="67" y="97" width="6" height="6" stroke="#3B9FE8" stroke-width="1" fill="none" transform="rotate(45 70 100)"/>
+            <!-- Foul lines -->
+            <line x1="100" y1="130" x2="40" y2="190" stroke="#3B9FE8" stroke-width="1.5"/>
+            <line x1="100" y1="130" x2="160" y2="190" stroke="#3B9FE8" stroke-width="1.5"/>
+            <!-- On-deck circles -->
+            <circle cx="55" cy="155" r="5" stroke="#3B9FE8" stroke-width="1" fill="none"/>
+            <circle cx="145" cy="155" r="5" stroke="#3B9FE8" stroke-width="1" fill="none"/>
           </svg>
         </div>
         
-        <!-- Ghosted baseball SVG background - top left -->
-        <div style="position: absolute; top: -40px; left: -40px; width: 200px; height: 200px; opacity: 0.04; pointer-events: none;">
-          <svg viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <circle cx="50" cy="50" r="48" stroke="#3B9FE8" stroke-width="2"/>
-            <path d="M50 2C50 2 35 20 35 50C35 80 50 98 50 98" stroke="#3B9FE8" stroke-width="2"/>
-            <path d="M50 2C50 2 65 20 65 50C65 80 50 98 50 98" stroke="#3B9FE8" stroke-width="2"/>
+        <!-- Smaller ghosted diamond - top left -->
+        <div style="position: absolute; top: -60px; left: -60px; width: 250px; height: 250px; opacity: 0.04; pointer-events: none; transform: rotate(15deg);">
+          <svg viewBox="0 0 200 200" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <!-- Outfield arc -->
+            <path d="M100 20 Q20 20 20 100 Q20 140 60 170 L100 130 L140 170 Q180 140 180 100 Q180 20 100 20" stroke="#3B9FE8" stroke-width="2" fill="none"/>
+            <!-- Diamond -->
+            <path d="M100 70 L130 100 L100 130 L70 100 Z" stroke="#3B9FE8" stroke-width="2" fill="none"/>
+            <!-- Pitcher's mound -->
+            <circle cx="100" cy="100" r="8" stroke="#3B9FE8" stroke-width="2" fill="none"/>
           </svg>
         </div>
         
@@ -858,13 +879,13 @@ async function downloadRankings() {
           ${currentFormulaDisplay.value}
         </div>
         
-        <!-- Footer - Smaller URL text, proper spacing -->
-        <div style="border-top: 1px solid rgba(59, 159, 232, 0.2); padding-top: 10px; padding-bottom: 4px; position: relative; z-index: 1;">
+        <!-- Footer - text moved up, URL bigger -->
+        <div style="border-top: 1px solid rgba(59, 159, 232, 0.2); padding-top: 8px; padding-bottom: 2px; position: relative; z-index: 1;">
           <div style="display: flex; align-items: center; justify-content: center; gap: 16px;">
             ${logoBase64 ? `<img src="${logoBase64}" style="width: 100px; height: 100px; object-fit: contain; flex-shrink: 0;" />` : ''}
-            <div style="text-align: left;">
-              <div style="font-size: 12px; color: #9ca3af; margin-bottom: 4px;">Shareable Dashboards, Smart Projections, League History, & so Much More</div>
-              <div style="font-size: 20px; font-weight: bold; color: #3B9FE8; letter-spacing: -0.5px;">ultimatefantasydashboard.com</div>
+            <div style="text-align: left; padding-bottom: 8px;">
+              <div style="font-size: 12px; color: #9ca3af; margin-bottom: 4px;">Shareable Dashboards, Smart Projections, League History, & So Much More</div>
+              <div style="font-size: 24px; font-weight: bold; color: #3B9FE8; letter-spacing: -0.5px;">ultimatefantasydashboard.com</div>
             </div>
           </div>
         </div>
