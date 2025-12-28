@@ -294,10 +294,15 @@ const lowerIsBetterStats = ['ERA', 'WHIP'] // Stats where lower is better
 
 // Category display
 const displayCategories = computed(() => {
-  return statCategories.value.filter(cat => {
-    if (cat.is_only_display_stat === '1' || cat.is_only_display_stat === 1) return false
-    return true
+  const filtered = statCategories.value.filter(cat => {
+    // Filter out display-only stats
+    const isDisplayOnly = cat.is_only_display_stat === '1' || 
+                          cat.is_only_display_stat === 1 || 
+                          cat.is_only_display_stat === true
+    return !isDisplayOnly
   })
+  console.log('Display categories computed:', filtered.length, 'from', statCategories.value.length, 'total')
+  return filtered
 })
 
 const hittingCategories = computed(() => {
@@ -628,18 +633,22 @@ async function loadProjections() {
     
     // Load scoring settings to get categories
     const settings = await yahooService.getLeagueScoringSettings(leagueKey)
+    console.log('Scoring settings:', settings)
     if (settings) {
       const cats = settings.stat_categories || []
       statCategories.value = cats.map((c: any) => ({
-        stat_id: c.stat_id,
-        name: c.name,
-        display_name: c.display_name || c.abbr || c.name,
-        is_only_display_stat: c.is_only_display_stat
-      }))
+        stat_id: c.stat?.stat_id || c.stat_id,
+        name: c.stat?.name || c.name,
+        display_name: c.stat?.display_name || c.display_name || c.stat?.abbr || c.abbr,
+        is_only_display_stat: c.stat?.is_only_display_stat || c.is_only_display_stat
+      })).filter((c: any) => c.stat_id)
+      
+      console.log('Loaded categories:', statCategories.value.length, statCategories.value)
       
       // Set default category
       if (displayCategories.value.length > 0 && !selectedCategory.value) {
         selectedCategory.value = displayCategories.value[0].stat_id
+        console.log('Selected default category:', selectedCategory.value)
       }
     }
     
