@@ -808,10 +808,32 @@ async function downloadRankings() {
     `}
     
     container.innerHTML = `
-      <div style="background: linear-gradient(160deg, #0f1219 0%, #0a0c14 50%, #0d1117 100%); border-radius: 16px; padding: 8px 24px 12px 24px; box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5); position: relative; overflow: visible;">
+      <div style="background: linear-gradient(160deg, #0f1219 0%, #0a0c14 50%, #0d1117 100%); border-radius: 16px; padding: 8px 24px 12px 24px; box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5); position: relative; overflow: hidden;">
         <!-- Decorative blue glow at top -->
-
         <div style="position: absolute; top: -100px; left: 50%; transform: translateX(-50%); width: 400px; height: 200px; background: radial-gradient(ellipse, rgba(59, 159, 232, 0.3) 0%, transparent 70%); pointer-events: none;"></div>
+        
+        <!-- Ghosted baseball SVG background - bottom right -->
+        <div style="position: absolute; bottom: -60px; right: -60px; width: 350px; height: 350px; opacity: 0.06; pointer-events: none;">
+          <svg viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <circle cx="50" cy="50" r="48" stroke="#3B9FE8" stroke-width="2"/>
+            <path d="M50 2C50 2 35 20 35 50C35 80 50 98 50 98" stroke="#3B9FE8" stroke-width="2"/>
+            <path d="M50 2C50 2 65 20 65 50C65 80 50 98 50 98" stroke="#3B9FE8" stroke-width="2"/>
+            <path d="M30 8C30 8 25 25 25 50C25 75 30 92 30 92" stroke="#3B9FE8" stroke-width="1.5" stroke-dasharray="4 3"/>
+            <path d="M70 8C70 8 75 25 75 50C75 75 70 92 70 92" stroke="#3B9FE8" stroke-width="1.5" stroke-dasharray="4 3"/>
+          </svg>
+        </div>
+        
+        <!-- Ghosted baseball SVG background - top left -->
+        <div style="position: absolute; top: -40px; left: -40px; width: 200px; height: 200px; opacity: 0.04; pointer-events: none;">
+          <svg viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <circle cx="50" cy="50" r="48" stroke="#3B9FE8" stroke-width="2"/>
+            <path d="M50 2C50 2 35 20 35 50C35 80 50 98 50 98" stroke="#3B9FE8" stroke-width="2"/>
+            <path d="M50 2C50 2 65 20 65 50C65 80 50 98 50 98" stroke="#3B9FE8" stroke-width="2"/>
+          </svg>
+        </div>
+        
+        <!-- Blue diagonal lines pattern overlay -->
+        <div style="position: absolute; top: 0; left: 0; right: 0; bottom: 0; opacity: 0.03; pointer-events: none; background: repeating-linear-gradient(45deg, transparent, transparent 20px, #3B9FE8 20px, #3B9FE8 21px);"></div>
         
         <!-- Header - Moved up with less padding -->
         <div style="text-align: center; margin-bottom: 12px; position: relative; z-index: 1;">
@@ -841,7 +863,7 @@ async function downloadRankings() {
           <div style="display: flex; align-items: center; justify-content: center; gap: 16px;">
             ${logoBase64 ? `<img src="${logoBase64}" style="width: 100px; height: 100px; object-fit: contain; flex-shrink: 0;" />` : ''}
             <div style="text-align: left;">
-              <div style="font-size: 13px; color: #9ca3af; margin-bottom: 4px;">The Ultimate Fantasy Baseball Experience</div>
+              <div style="font-size: 12px; color: #9ca3af; margin-bottom: 4px;">Shareable Dashboards, Smart Projections, League History, & so Much More</div>
               <div style="font-size: 20px; font-weight: bold; color: #3B9FE8; letter-spacing: -0.5px;">ultimatefantasydashboard.com</div>
             </div>
           </div>
