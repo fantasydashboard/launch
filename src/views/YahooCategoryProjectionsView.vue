@@ -129,84 +129,98 @@
                   </th>
                   <th class="px-2 py-3 text-center text-xs font-semibold text-dark-textMuted uppercase w-16">Current</th>
                   <th class="px-2 py-3 text-center text-xs font-semibold text-dark-textMuted uppercase w-16">Per Game</th>
-                  <th class="px-2 py-3 text-center text-xs font-semibold text-dark-textMuted uppercase w-20">Tier</th>
                   <th class="px-2 py-3 text-center text-xs font-semibold text-dark-textMuted uppercase w-24">Value</th>
                 </tr>
               </thead>
               <tbody class="divide-y divide-dark-border/30">
-                <tr 
-                  v-for="(player, idx) in filteredPlayers" 
-                  :key="player.player_key" 
-                  :class="getRowClass(player)" 
-                  class="hover:bg-dark-border/20 transition-colors"
-                >
-                  <td class="px-3 py-3">
-                    <span 
-                      class="w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold"
-                      :class="getRankBadgeClass(idx + 1)"
-                    >
-                      {{ idx + 1 }}
-                    </span>
-                  </td>
-                  <td class="px-3 py-3">
-                    <div class="flex items-center gap-3">
-                      <div class="relative">
-                        <div class="w-10 h-10 rounded-full bg-dark-border overflow-hidden ring-2" :class="getAvatarRingClass(player)">
-                          <img :src="player.headshot || defaultHeadshot" :alt="player.full_name" class="w-full h-full object-cover" @error="handleImageError" />
-                        </div>
-                        <div v-if="isMyPlayer(player)" class="absolute -top-1 -right-1 w-5 h-5 bg-primary rounded-full flex items-center justify-center">
-                          <span class="text-xs text-gray-900 font-bold">★</span>
-                        </div>
-                        <div v-else-if="isFreeAgent(player)" class="absolute -top-1 -right-1 w-5 h-5 bg-cyan-400 rounded-full flex items-center justify-center">
-                          <span class="text-xs text-gray-900 font-bold">+</span>
-                        </div>
+                <template v-for="(player, idx) in filteredPlayers" :key="player.player_key">
+                  <!-- Tier Break Row -->
+                  <tr v-if="showTierBreak(player, idx)" class="bg-dark-border/10">
+                    <td colspan="7" class="px-4 py-2">
+                      <div class="flex items-center gap-2">
+                        <div class="h-px flex-1 bg-primary/30"></div>
+                        <span class="text-xs font-bold text-primary uppercase tracking-wider">{{ getTierLabel(player.tier) }}</span>
+                        <div class="h-px flex-1 bg-primary/30"></div>
                       </div>
-                      <div>
-                        <span class="font-semibold" :class="getPlayerNameClass(player)">{{ player.full_name }}</span>
-                        <div class="flex items-center gap-2 text-xs text-dark-textMuted">
-                          <span>{{ player.mlb_team || 'FA' }}</span>
-                          <span class="text-dark-border">•</span>
-                          <span v-if="player.fantasy_team" :class="isMyPlayer(player) ? 'text-primary' : ''">{{ player.fantasy_team }}</span>
-                          <span v-else class="text-cyan-400">Free Agent</span>
-                        </div>
-                      </div>
-                    </div>
-                  </td>
-                  <td class="px-2 py-3 text-center">
-                    <span class="px-2 py-1 rounded text-xs font-bold" :class="getPositionClass(player.position)">
-                      {{ player.position?.split(',')[0] }}
-                    </span>
-                  </td>
-                  <td class="px-2 py-3 text-center">
-                    <span class="text-lg font-bold text-primary">{{ formatStatValue(player.projectedValue) }}</span>
-                  </td>
-                  <td class="px-2 py-3 text-center text-dark-text font-medium">
-                    {{ formatStatValue(player.currentValue) }}
-                  </td>
-                  <td class="px-2 py-3 text-center text-dark-textMuted">
-                    {{ formatStatValue(player.perGameValue, 3) }}
-                  </td>
-                  <td class="px-2 py-3 text-center">
-                    <span 
-                      class="px-2 py-1 rounded-full text-xs font-bold"
-                      :class="getTierClass(player.tier)"
-                    >
-                      {{ player.tierLabel }}
-                    </span>
-                  </td>
-                  <td class="px-2 py-3 text-center">
-                    <div class="flex items-center justify-center gap-1">
+                    </td>
+                  </tr>
+                  <!-- Player Row -->
+                  <tr 
+                    :class="getRowClass(player)" 
+                    class="hover:bg-dark-border/20 transition-colors"
+                  >
+                    <td class="px-3 py-3">
                       <span 
-                        v-for="i in 5" 
-                        :key="i"
-                        class="w-2 h-2 rounded-full"
-                        :class="i <= player.valueRating ? 'bg-primary' : 'bg-dark-border'"
-                      ></span>
-                    </div>
-                  </td>
-                </tr>
+                        class="w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold"
+                        :class="getRankBadgeClass(idx + 1)"
+                      >
+                        {{ idx + 1 }}
+                      </span>
+                    </td>
+                    <td class="px-3 py-3">
+                      <div class="flex items-center gap-3">
+                        <div class="relative">
+                          <div class="w-10 h-10 rounded-full bg-dark-border overflow-hidden ring-2" :class="getAvatarRingClass(player)">
+                            <img :src="player.headshot || defaultHeadshot" :alt="player.full_name" class="w-full h-full object-cover" @error="handleImageError" />
+                          </div>
+                          <div v-if="isMyPlayer(player)" class="absolute -top-1 -right-1 w-5 h-5 bg-primary rounded-full flex items-center justify-center">
+                            <span class="text-xs text-gray-900 font-bold">★</span>
+                          </div>
+                          <div v-else-if="isFreeAgent(player)" class="absolute -top-1 -right-1 w-5 h-5 bg-cyan-400 rounded-full flex items-center justify-center">
+                            <span class="text-xs text-gray-900 font-bold">+</span>
+                          </div>
+                        </div>
+                        <div>
+                          <span class="font-semibold" :class="getPlayerNameClass(player)">{{ player.full_name }}</span>
+                          <div class="flex items-center gap-2 text-xs text-dark-textMuted">
+                            <span>{{ player.mlb_team || 'FA' }}</span>
+                            <span class="text-dark-border">•</span>
+                            <template v-if="player.fantasy_team">
+                              <span class="flex items-center gap-1" :class="isMyPlayer(player) ? 'text-primary' : ''">
+                                <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                                  <path fill-rule="evenodd" d="M2.166 4.999A11.954 11.954 0 0010 1.944 11.954 11.954 0 0017.834 5c.11.65.166 1.32.166 2.001 0 5.225-3.34 9.67-8 11.317C5.34 16.67 2 12.225 2 7c0-.682.057-1.35.166-2.001zm11.541 3.708a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
+                                </svg>
+                                {{ player.fantasy_team }}
+                              </span>
+                            </template>
+                            <span v-else class="text-cyan-400 font-medium">Free Agent</span>
+                          </div>
+                        </div>
+                      </div>
+                    </td>
+                    <td class="px-2 py-3 text-center">
+                      <span class="px-2 py-1 rounded text-xs font-bold" :class="getPositionClass(player.position)">
+                        {{ player.position?.split(',')[0] }}
+                      </span>
+                    </td>
+                    <td class="px-2 py-3 text-center">
+                      <span class="text-lg font-bold text-primary">{{ formatStatValue(player.projectedValue) }}</span>
+                    </td>
+                    <td class="px-2 py-3 text-center text-dark-text font-medium">
+                      {{ formatStatValue(player.currentValue) }}
+                    </td>
+                    <td class="px-2 py-3 text-center text-dark-textMuted">
+                      {{ formatStatValue(player.perGameValue, 3) }}
+                    </td>
+                    <td class="px-2 py-3 text-center">
+                      <div class="flex flex-col items-center gap-1">
+                        <span class="text-lg font-black" :class="getValueClass(player.overallValue)">
+                          {{ player.overallValue?.toFixed(1) || '-' }}
+                        </span>
+                        <div class="flex items-center gap-0.5">
+                          <span 
+                            v-for="i in 5" 
+                            :key="i"
+                            class="w-1.5 h-1.5 rounded-full"
+                            :class="i <= Math.ceil(player.overallValue / 20) ? getValueDotClass(player.overallValue) : 'bg-dark-border'"
+                          ></span>
+                        </div>
+                      </div>
+                    </td>
+                  </tr>
+                </template>
                 <tr v-if="filteredPlayers.length === 0">
-                  <td colspan="8" class="px-4 py-8 text-center text-dark-textMuted">
+                  <td colspan="7" class="px-4 py-8 text-center text-dark-textMuted">
                     No players match filters
                   </td>
                 </tr>
@@ -423,33 +437,116 @@ const categoryRankedPlayers = computed(() => {
   }
   
   // Calculate tiers based on percentiles
-  const maxValue = players.length > 0 ? Math.max(...players.map(p => p.projectedValue)) : 1
+  const maxValue = players.length > 0 ? Math.max(...players.filter(p => p.projectedValue > 0).map(p => p.projectedValue)) : 1
+  const minValue = players.length > 0 ? Math.min(...players.filter(p => p.projectedValue > 0).map(p => p.projectedValue)) : 0
+  
+  // Calculate positional scarcity - how many players at each position
+  const positionCounts: Record<string, number> = {}
+  players.forEach(p => {
+    const pos = p.position?.split(',')[0]?.trim() || 'Util'
+    positionCounts[pos] = (positionCounts[pos] || 0) + 1
+  })
+  const avgPositionCount = Object.values(positionCounts).reduce((a, b) => a + b, 0) / Object.keys(positionCounts).length
+  
+  // Calculate multi-category contribution for each player
+  // We check how well they contribute to OTHER categories too
+  const allCatIds = displayCategories.value.map(c => c.stat_id)
   
   players = players.map((p, index) => {
     const percentile = players.length > 0 ? index / players.length : 1
     
+    // Tier calculation
     let tier = 5
     let tierLabel = 'Below Avg'
-    let valueRating = 1
     
-    if (percentile <= 0.05) { tier = 1; tierLabel = 'Elite'; valueRating = 5 }
-    else if (percentile <= 0.15) { tier = 2; tierLabel = 'Great'; valueRating = 4 }
-    else if (percentile <= 0.35) { tier = 3; tierLabel = 'Good'; valueRating = 3 }
-    else if (percentile <= 0.60) { tier = 4; tierLabel = 'Average'; valueRating = 2 }
-    else { tier = 5; tierLabel = 'Below Avg'; valueRating = 1 }
+    if (percentile <= 0.05) { tier = 1; tierLabel = 'Elite' }
+    else if (percentile <= 0.15) { tier = 2; tierLabel = 'Great' }
+    else if (percentile <= 0.35) { tier = 3; tierLabel = 'Good' }
+    else if (percentile <= 0.60) { tier = 4; tierLabel = 'Average' }
+    else { tier = 5; tierLabel = 'Below Avg' }
     
-    return { ...p, tier, tierLabel, valueRating }
+    // === OVERALL VALUE CALCULATION ===
+    // This combines multiple factors to give a comprehensive value score (0-100)
+    
+    // 1. Category Rank Score (40% weight) - How good are they in the selected category
+    const categoryRankScore = (1 - percentile) * 100
+    
+    // 2. Multi-Category Bonus (25% weight) - How many categories do they contribute to?
+    let multiCatScore = 0
+    let categoriesContributing = 0
+    const relevantCats = isPitchingCategory.value 
+      ? pitchingCategories.value 
+      : hittingCategories.value
+    
+    relevantCats.forEach(cat => {
+      const catValue = p.stats?.[cat.stat_id] || 0
+      if (catValue > 0) {
+        // Check if this is above average for the category
+        const allCatValues = players.map(pl => pl.stats?.[cat.stat_id] || 0).filter(v => v > 0)
+        const avgCatValue = allCatValues.length > 0 
+          ? allCatValues.reduce((a, b) => a + b, 0) / allCatValues.length 
+          : 0
+        
+        if (catValue > avgCatValue * 0.8) { // Within 80% of average counts
+          categoriesContributing++
+        }
+      }
+    })
+    multiCatScore = relevantCats.length > 0 
+      ? (categoriesContributing / relevantCats.length) * 100 
+      : 50
+    
+    // 3. Positional Scarcity (20% weight) - Rare positions are more valuable
+    const playerPos = p.position?.split(',')[0]?.trim() || 'Util'
+    const posCount = positionCounts[playerPos] || avgPositionCount
+    const scarcityScore = posCount < avgPositionCount 
+      ? Math.min(100, (avgPositionCount / posCount) * 50) // Scarce = higher value
+      : Math.max(0, 50 - ((posCount - avgPositionCount) / avgPositionCount) * 30) // Common = lower value
+    
+    // 4. Consistency Bonus (15% weight) - Based on per-game rate vs projection
+    // Higher per-game with good projection = more consistent
+    let consistencyScore = 50
+    if (p.projectedValue > 0 && !isRatioCategory.value) {
+      const expectedPerGame = p.projectedValue / (gamesPlayed + gamesRemaining)
+      const actualPerGame = p.perGameValue
+      if (actualPerGame > 0 && expectedPerGame > 0) {
+        const ratio = actualPerGame / expectedPerGame
+        consistencyScore = Math.min(100, Math.max(0, ratio * 50))
+      }
+    }
+    
+    // Combine all factors
+    const overallValue = (
+      (categoryRankScore * 0.40) +
+      (multiCatScore * 0.25) +
+      (scarcityScore * 0.20) +
+      (consistencyScore * 0.15)
+    )
+    
+    return { 
+      ...p, 
+      tier, 
+      tierLabel, 
+      overallValue: Math.round(overallValue * 10) / 10,
+      categoriesContributing,
+      scarcityScore: Math.round(scarcityScore)
+    }
   })
   
   console.log('Ranked players sample:', players.slice(0, 3).map(p => ({ 
     name: p.full_name, 
     current: p.currentValue, 
     projected: p.projectedValue,
-    tier: p.tierLabel
+    tier: p.tierLabel,
+    value: p.overallValue,
+    multiCat: p.categoriesContributing
   })))
   
   return players
 })
+
+// Helper constant for games played (used in calculation above)
+const gamesPlayed = 97
 
 const filteredPlayers = computed(() => {
   let players = [...categoryRankedPlayers.value]
@@ -552,14 +649,18 @@ function handleImageError(e: Event) {
 }
 
 function getRowClass(player: any): string {
-  if (isMyPlayer(player)) return 'bg-primary/10 border-l-2 border-primary'
-  if (isFreeAgent(player)) return 'bg-cyan-500/5 border-l-2 border-cyan-400'
+  if (isMyPlayer(player)) {
+    return 'bg-primary/20 border-l-4 border-l-primary'
+  }
+  if (isFreeAgent(player)) {
+    return 'bg-cyan-500/10 border-l-4 border-l-cyan-400'
+  }
   return ''
 }
 
 function getAvatarRingClass(player: any): string {
-  if (isMyPlayer(player)) return 'ring-primary'
-  if (isFreeAgent(player)) return 'ring-cyan-400'
+  if (isMyPlayer(player)) return 'ring-primary ring-offset-2 ring-offset-dark-card'
+  if (isFreeAgent(player)) return 'ring-cyan-400 ring-offset-2 ring-offset-dark-card'
   return 'ring-dark-border'
 }
 
@@ -601,6 +702,41 @@ function getTierClass(tier: number): string {
     5: 'bg-red-500/20 text-red-400'
   }
   return classes[tier] || 'bg-dark-border text-dark-textMuted'
+}
+
+// Tier break functionality
+function showTierBreak(player: any, index: number): boolean {
+  if (index === 0) return true
+  const prevPlayer = filteredPlayers.value[index - 1]
+  return prevPlayer && player.tier !== prevPlayer.tier
+}
+
+function getTierLabel(tier: number): string {
+  const labels: Record<number, string> = {
+    1: 'Tier 1: Elite',
+    2: 'Tier 2: Great',
+    3: 'Tier 3: Good',
+    4: 'Tier 4: Average',
+    5: 'Tier 5: Below Average'
+  }
+  return labels[tier] || `Tier ${tier}`
+}
+
+// Value color classes based on overall value score
+function getValueClass(value: number): string {
+  if (value >= 80) return 'text-green-400'
+  if (value >= 60) return 'text-lime-400'
+  if (value >= 40) return 'text-yellow-400'
+  if (value >= 20) return 'text-orange-400'
+  return 'text-red-400'
+}
+
+function getValueDotClass(value: number): string {
+  if (value >= 80) return 'bg-green-400'
+  if (value >= 60) return 'bg-lime-400'
+  if (value >= 40) return 'bg-yellow-400'
+  if (value >= 20) return 'bg-orange-400'
+  return 'bg-red-400'
 }
 
 const getCategoryCardClass = computed(() => {
