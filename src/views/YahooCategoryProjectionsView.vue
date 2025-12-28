@@ -112,7 +112,7 @@
             <span class="text-2xl">📊</span>
             <h2 class="card-title">{{ selectedCategoryInfo?.name || 'Category' }} Rankings - Rest of Season</h2>
           </div>
-          <p class="card-subtitle">Click on a player to see detailed stats</p>
+          <p class="card-subtitle">Click on a player to see detailed stats and performance chart</p>
         </div>
         <div class="card-body p-0">
           <div class="overflow-x-auto max-h-[70vh] overflow-y-auto">
@@ -155,7 +155,7 @@
                     </td>
                   </tr>
                   <!-- Player Row -->
-                  <tr :class="[getRowClass(player), expandedPlayerKey === player.player_key ? 'bg-dark-border/30' : '']" class="hover:bg-dark-border/20 transition-colors cursor-pointer" @click="togglePlayerExpanded(player.player_key)">
+                  <tr :class="[getRowClass(player), expandedPlayerKey === player.player_key ? 'bg-dark-border/30' : '']" class="hover:bg-dark-border/20 transition-colors cursor-pointer" @click="togglePlayerExpanded(player)">
                     <td class="px-3 py-3">
                       <span class="w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold bg-dark-border text-dark-textMuted">{{ player.categoryRank }}</span>
                     </td>
@@ -227,6 +227,8 @@
                             <svg class="w-5 h-5 text-dark-textMuted" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
                           </button>
                         </div>
+                        
+                        <!-- Stats Grid -->
                         <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3">
                           <div class="bg-dark-card rounded-lg p-3 text-center">
                             <div class="text-2xl font-bold text-primary">#{{ player.categoryRank }}</div>
@@ -249,15 +251,76 @@
                             <div class="text-xs text-dark-textMuted">Overall Value</div>
                           </div>
                           <div class="bg-dark-card rounded-lg p-3 text-center">
-                            <div class="text-2xl font-bold text-dark-text">{{ player.categoriesContributing || 0 }}/{{ isPitchingCategory ? pitchingCategories.length : hittingCategories.length }}</div>
+                            <div class="text-2xl font-bold text-dark-text">{{ player.categoriesContributing || 0 }}/{{ relevantCategories.length }}</div>
                             <div class="text-xs text-dark-textMuted">Multi-Cat Score</div>
                           </div>
                         </div>
+
+                        <!-- Weekly Performance Chart -->
+                        <div class="bg-dark-card rounded-xl p-4">
+                          <div class="flex items-center justify-between mb-4">
+                            <h4 class="font-semibold text-dark-text flex items-center gap-2">
+                              <span>📈</span> Weekly Performance (Last 5 Weeks)
+                            </h4>
+                            <select v-model="chartCategory" class="select bg-dark-border border-dark-border text-dark-text px-3 py-1.5 rounded-lg text-sm">
+                              <option v-for="cat in relevantCategories" :key="cat.stat_id" :value="cat.stat_id">
+                                {{ cat.display_name }}
+                              </option>
+                            </select>
+                          </div>
+                          
+                          <div v-if="isLoadingChart" class="h-48 flex items-center justify-center">
+                            <div class="text-dark-textMuted text-sm animate-pulse">Loading weekly data...</div>
+                          </div>
+                          <div v-else-if="weeklyChartData.length > 0" class="space-y-4">
+                            <!-- Chart -->
+                            <div class="h-48 relative">
+                              <div class="absolute inset-0 flex items-end justify-between gap-2 px-4">
+                                <div v-for="(week, idx) in weeklyChartData" :key="idx" class="flex-1 flex flex-col items-center gap-1">
+                                  <!-- Player bar -->
+                                  <div class="w-full flex flex-col items-center gap-0.5">
+                                    <span class="text-[10px] text-primary font-bold">{{ week.playerValue?.toFixed(1) || '-' }}</span>
+                                    <div 
+                                      class="w-full rounded-t bg-primary transition-all"
+                                      :style="{ height: `${Math.max(4, (week.playerValue / chartMaxValue) * 120)}px` }"
+                                    ></div>
+                                  </div>
+                                  <!-- Week label -->
+                                  <div class="text-[10px] text-dark-textMuted mt-1">Wk {{ week.week }}</div>
+                                </div>
+                              </div>
+                              <!-- League avg line -->
+                              <div 
+                                v-if="leagueAvgForChart > 0"
+                                class="absolute left-0 right-0 border-t-2 border-dashed border-yellow-500/70 pointer-events-none"
+                                :style="{ bottom: `${Math.max(20, (leagueAvgForChart / chartMaxValue) * 120 + 28)}px` }"
+                              >
+                                <span class="absolute -top-4 right-2 text-[10px] text-yellow-500 bg-dark-card px-1 rounded">Lg Avg: {{ leagueAvgForChart.toFixed(1) }}</span>
+                              </div>
+                            </div>
+                            <!-- Legend -->
+                            <div class="flex items-center justify-center gap-6 text-xs">
+                              <div class="flex items-center gap-2">
+                                <div class="w-3 h-3 rounded bg-primary"></div>
+                                <span class="text-dark-textMuted">{{ player.full_name?.split(' ').pop() }}</span>
+                              </div>
+                              <div class="flex items-center gap-2">
+                                <div class="w-6 h-0.5 border-t-2 border-dashed border-yellow-500"></div>
+                                <span class="text-dark-textMuted">League Average</span>
+                              </div>
+                            </div>
+                          </div>
+                          <div v-else class="h-48 flex items-center justify-center text-dark-textMuted text-sm">
+                            No weekly data available for this category
+                          </div>
+                        </div>
+
+                        <!-- All Category Stats & Value Breakdown -->
                         <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
                           <div class="bg-dark-card rounded-xl p-4">
                             <h4 class="font-semibold text-dark-text mb-3 flex items-center gap-2"><span>📊</span> All {{ isPitchingCategory ? 'Pitching' : 'Hitting' }} Categories</h4>
-                            <div class="space-y-2">
-                              <div v-for="cat in (isPitchingCategory ? pitchingCategories : hittingCategories)" :key="cat.stat_id" class="flex items-center justify-between py-2 px-3 rounded-lg" :class="cat.stat_id === selectedCategory ? 'bg-primary/20 border border-primary/30' : 'bg-dark-border/30'">
+                            <div class="space-y-2 max-h-64 overflow-y-auto">
+                              <div v-for="cat in relevantCategories" :key="cat.stat_id" class="flex items-center justify-between py-2 px-3 rounded-lg" :class="cat.stat_id === selectedCategory ? 'bg-primary/20 border border-primary/30' : 'bg-dark-border/30'">
                                 <span class="text-sm text-dark-text font-medium">{{ cat.name }}</span>
                                 <div class="flex items-center gap-3">
                                   <span class="text-lg font-bold" :class="cat.stat_id === selectedCategory ? 'text-primary' : 'text-dark-text'">{{ formatCategoryStat(player, cat.stat_id) }}</span>
@@ -274,8 +337,8 @@
                                 <div class="h-2 bg-dark-border rounded-full overflow-hidden"><div class="h-full bg-primary rounded-full" :style="{ width: `${(1 - (player.categoryRank - 1) / Math.max(filteredPlayers.length, 1)) * 100}%` }"></div></div>
                               </div>
                               <div>
-                                <div class="flex justify-between text-sm mb-1"><span class="text-dark-textMuted">Multi-Category (25%)</span><span class="text-dark-text font-medium">{{ ((player.categoriesContributing || 0) / Math.max((isPitchingCategory ? pitchingCategories.length : hittingCategories.length), 1) * 100).toFixed(0) }}</span></div>
-                                <div class="h-2 bg-dark-border rounded-full overflow-hidden"><div class="h-full bg-green-500 rounded-full" :style="{ width: `${(player.categoriesContributing || 0) / Math.max((isPitchingCategory ? pitchingCategories.length : hittingCategories.length), 1) * 100}%` }"></div></div>
+                                <div class="flex justify-between text-sm mb-1"><span class="text-dark-textMuted">Multi-Category (25%)</span><span class="text-dark-text font-medium">{{ ((player.categoriesContributing || 0) / Math.max(relevantCategories.length, 1) * 100).toFixed(0) }}</span></div>
+                                <div class="h-2 bg-dark-border rounded-full overflow-hidden"><div class="h-full bg-green-500 rounded-full" :style="{ width: `${(player.categoriesContributing || 0) / Math.max(relevantCategories.length, 1) * 100}%` }"></div></div>
                               </div>
                               <div>
                                 <div class="flex justify-between text-sm mb-1"><span class="text-dark-textMuted">Position Scarcity (20%)</span><span class="text-dark-text font-medium">{{ player.scarcityScore || 50 }}</span></div>
@@ -286,18 +349,32 @@
                                 <div class="h-2 bg-dark-border rounded-full overflow-hidden"><div class="h-full bg-cyan-500 rounded-full" style="width: 50%"></div></div>
                               </div>
                               <div class="border-t border-dark-border pt-3 mt-3">
-                                <p class="text-xs text-dark-textMuted leading-relaxed"><strong class="text-dark-text">Value Score</strong> measures overall fantasy value: category rank performance, multi-category contribution, positional scarcity (C/SS worth more), and consistency.</p>
+                                <p class="text-xs text-dark-textMuted leading-relaxed"><strong class="text-dark-text">Value Score</strong> measures overall fantasy value: category rank, multi-category contribution, positional scarcity, and consistency.</p>
                               </div>
                             </div>
                           </div>
                         </div>
-                        <div v-if="isPitchingCategory && player.position?.includes('SP')" class="bg-dark-card rounded-xl p-4">
-                          <h4 class="font-semibold text-dark-text mb-3 flex items-center gap-2"><span>📅</span> Starting Pitcher Info</h4>
+
+                        <!-- Pitcher Info -->
+                        <div v-if="isPitcher(player)" class="bg-dark-card rounded-xl p-4">
+                          <h4 class="font-semibold text-dark-text mb-3 flex items-center gap-2"><span>📅</span> Pitcher Info</h4>
                           <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
-                            <div class="text-center p-3 rounded-lg bg-dark-border/30"><div class="text-2xl font-bold text-primary">~13</div><div class="text-xs text-dark-textMuted">Est. ROS Starts</div></div>
-                            <div class="text-center p-3 rounded-lg bg-dark-border/30"><div class="text-2xl font-bold text-dark-text">{{ formatCategoryStat(player, '50') || '-' }}</div><div class="text-xs text-dark-textMuted">Innings Pitched</div></div>
-                            <div class="text-center p-3 rounded-lg bg-dark-border/30"><div class="text-2xl font-bold text-dark-text">{{ formatCategoryStat(player, '42') || '-' }}</div><div class="text-xs text-dark-textMuted">Strikeouts</div></div>
-                            <div class="text-center p-3 rounded-lg bg-dark-border/30"><div class="text-2xl font-bold text-dark-text">{{ formatCategoryStat(player, '28') || '-' }}</div><div class="text-xs text-dark-textMuted">Wins</div></div>
+                            <div class="text-center p-3 rounded-lg bg-dark-border/30">
+                              <div class="text-2xl font-bold text-primary">~{{ player.position?.includes('SP') ? '13' : '25' }}</div>
+                              <div class="text-xs text-dark-textMuted">{{ player.position?.includes('SP') ? 'Est. ROS Starts' : 'Est. ROS Apps' }}</div>
+                            </div>
+                            <div class="text-center p-3 rounded-lg bg-dark-border/30">
+                              <div class="text-2xl font-bold text-dark-text">{{ formatCategoryStat(player, '50') || '-' }}</div>
+                              <div class="text-xs text-dark-textMuted">Innings Pitched</div>
+                            </div>
+                            <div class="text-center p-3 rounded-lg bg-dark-border/30">
+                              <div class="text-2xl font-bold text-dark-text">{{ formatCategoryStat(player, '42') || '-' }}</div>
+                              <div class="text-xs text-dark-textMuted">Strikeouts</div>
+                            </div>
+                            <div class="text-center p-3 rounded-lg bg-dark-border/30">
+                              <div class="text-2xl font-bold text-dark-text">{{ formatCategoryStat(player, player.position?.includes('SP') ? '28' : '32') || '-' }}</div>
+                              <div class="text-xs text-dark-textMuted">{{ player.position?.includes('SP') ? 'Wins' : 'Saves' }}</div>
+                            </div>
                           </div>
                         </div>
                       </div>
@@ -335,7 +412,7 @@
           <div class="mt-6">
             <h3 class="text-sm font-semibold text-dark-textMuted uppercase tracking-wider mb-3">Your Roster ({{ selectedCategoryInfo?.display_name }})</h3>
             <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3">
-              <div v-for="player in myPlayersInCategory.slice(0, 12)" :key="player.player_key" class="bg-dark-border/30 rounded-lg p-3 text-center hover:bg-dark-border/50 transition-colors cursor-pointer" @click="togglePlayerExpanded(player.player_key)">
+              <div v-for="player in myPlayersInCategory.slice(0, 12)" :key="player.player_key" class="bg-dark-border/30 rounded-lg p-3 text-center hover:bg-dark-border/50 transition-colors cursor-pointer" @click="togglePlayerExpanded(player)">
                 <div class="w-10 h-10 rounded-full bg-dark-border overflow-hidden mx-auto mb-2 ring-2 ring-yellow-400"><img :src="player.headshot || defaultHeadshot" :alt="player.full_name" class="w-full h-full object-cover" @error="handleImageError" /></div>
                 <div class="text-sm font-medium text-dark-text truncate">{{ player.full_name?.split(' ').pop() }}</div>
                 <div class="text-xs text-dark-textMuted">{{ player.position?.split(',')[0] }}</div>
@@ -370,6 +447,12 @@ const expandedPlayerKey = ref<string | null>(null)
 const sortColumn = ref<string>('rank')
 const sortDirection = ref<'asc' | 'desc'>('asc')
 
+// Chart state
+const chartCategory = ref<string>('')
+const weeklyChartData = ref<any[]>([])
+const isLoadingChart = ref(false)
+const leagueAvgForChart = ref(0)
+
 const defaultHeadshot = 'https://s.yimg.com/cv/apiv2/default/mlb/mlb_default_player_v2.png'
 
 const columnTooltips = {
@@ -382,25 +465,61 @@ const columnTooltips = {
   value: 'Overall Value Score (0-100) combining: Category Rank (40%), Multi-Category Contribution (25%), Positional Scarcity (20%), and Consistency (15%)'
 }
 
-const pitchingStatIds = ['28', '32', '42', '26', '27', '50', '83', '84']
-const ratioStatIds = ['26', '27', '3', '55', '17']
+// Stat ID mappings - expanded for better detection
+const pitchingStatIds = ['28', '32', '42', '26', '27', '50', '83', '84', '48', '49', '47'] // W, SV, K, ERA, WHIP, IP, QS, HLD, BB, H, ER
+const ratioStatIds = ['26', '27', '3', '55', '17', '60'] // ERA, WHIP, AVG, OPS, OBP, SLG
 const lowerIsBetterStats = ['ERA', 'WHIP', 'BB', 'L', 'ER', 'H']
 
 const displayCategories = computed(() => statCategories.value.filter(c => !c.is_only_display_stat && c.stat_id))
 const hittingCategories = computed(() => displayCategories.value.filter(c => !pitchingStatIds.includes(c.stat_id)))
 const pitchingCategories = computed(() => displayCategories.value.filter(c => pitchingStatIds.includes(c.stat_id)))
 const selectedCategoryInfo = computed(() => displayCategories.value.find(c => c.stat_id === selectedCategory.value))
-const isPitchingCategory = computed(() => pitchingCategories.value.some(c => c.stat_id === selectedCategory.value))
-const isRatioCategory = computed(() => { const cat = selectedCategoryInfo.value; if (!cat) return false; return ratioStatIds.includes(cat.stat_id) || cat.display_name?.includes('AVG') || cat.display_name?.includes('ERA') || cat.display_name?.includes('WHIP') })
-const isLowerBetter = computed(() => { const cat = selectedCategoryInfo.value; if (!cat) return false; return lowerIsBetterStats.some(s => cat.display_name?.toUpperCase().includes(s)) })
+
+const isPitchingCategory = computed(() => {
+  // Check if selected category is in pitching stat IDs OR if display_name suggests pitching
+  const cat = selectedCategoryInfo.value
+  if (!cat) return false
+  if (pitchingStatIds.includes(cat.stat_id)) return true
+  const pitchingNames = ['ERA', 'WHIP', 'W', 'SV', 'K', 'IP', 'QS', 'HLD', 'Wins', 'Saves', 'Strikeouts', 'Innings']
+  return pitchingNames.some(name => cat.display_name?.toUpperCase().includes(name.toUpperCase()) || cat.name?.toUpperCase().includes(name.toUpperCase()))
+})
+
+const relevantCategories = computed(() => isPitchingCategory.value ? pitchingCategories.value : hittingCategories.value)
+
+const isRatioCategory = computed(() => { 
+  const cat = selectedCategoryInfo.value
+  if (!cat) return false
+  return ratioStatIds.includes(cat.stat_id) || cat.display_name?.includes('AVG') || cat.display_name?.includes('ERA') || cat.display_name?.includes('WHIP') || cat.display_name?.includes('OBP') || cat.display_name?.includes('OPS')
+})
+
+const isLowerBetter = computed(() => { 
+  const cat = selectedCategoryInfo.value
+  if (!cat) return false
+  return lowerIsBetterStats.some(s => cat.display_name?.toUpperCase().includes(s))
+})
+
 const availablePositions = computed(() => isPitchingCategory.value ? ['SP', 'RP'] : ['C', '1B', '2B', '3B', 'SS', 'OF'])
+
+// Helper to check if player is a pitcher
+function isPitcher(player: any): boolean {
+  const pos = player.position || ''
+  return pos.includes('SP') || pos.includes('RP') || pos === 'P'
+}
 
 const categoryRankedPlayers = computed(() => {
   if (!selectedCategory.value) return []
   const catInfo = selectedCategoryInfo.value
   if (!catInfo) return []
   const gamesRemaining = 65, gamesPlayed = 97, statId = catInfo.stat_id
-  let players = allPlayers.value.filter(p => isPitchingCategory.value ? (p.position?.includes('SP') || p.position?.includes('RP') || p.position?.includes('P')) : (!p.position?.includes('SP') && !p.position?.includes('RP') && p.position !== 'P'))
+  
+  // Filter players by position type
+  let players = allPlayers.value.filter(p => {
+    const isPlayerPitcher = isPitcher(p)
+    return isPitchingCategory.value ? isPlayerPitcher : !isPlayerPitcher
+  })
+  
+  console.log(`Filtering for ${isPitchingCategory.value ? 'pitching' : 'hitting'}: found ${players.length} players`)
+  
   players = players.map(p => {
     const currentValue = p.stats?.[statId] || 0
     let projectedValue = 0, perGameValue = 0
@@ -408,24 +527,51 @@ const categoryRankedPlayers = computed(() => {
     else { perGameValue = gamesPlayed > 0 ? currentValue / gamesPlayed : 0; projectedValue = currentValue + (perGameValue * gamesRemaining) }
     return { ...p, currentValue, projectedValue: Math.round(projectedValue * 10) / 10, perGameValue: Math.round(perGameValue * 1000) / 1000 }
   })
-  if (isLowerBetter.value) { players.sort((a, b) => { if (a.projectedValue === 0 && b.projectedValue === 0) return 0; if (a.projectedValue === 0) return 1; if (b.projectedValue === 0) return -1; return a.projectedValue - b.projectedValue }) }
-  else { players.sort((a, b) => b.projectedValue - a.projectedValue) }
+  
+  if (isLowerBetter.value) { 
+    players.sort((a, b) => { 
+      if (a.projectedValue === 0 && b.projectedValue === 0) return 0
+      if (a.projectedValue === 0) return 1
+      if (b.projectedValue === 0) return -1
+      return a.projectedValue - b.projectedValue 
+    }) 
+  } else { 
+    players.sort((a, b) => b.projectedValue - a.projectedValue) 
+  }
+  
   const positionCounts: Record<string, number> = {}
   players.forEach(p => { const pos = p.position?.split(',')[0]?.trim() || 'Util'; positionCounts[pos] = (positionCounts[pos] || 0) + 1 })
   const avgPositionCount = Object.values(positionCounts).reduce((a, b) => a + b, 0) / Math.max(Object.keys(positionCounts).length, 1)
+  
   players = players.map((p, index) => {
     const percentile = players.length > 0 ? index / players.length : 1
-    let tier = 5; if (percentile <= 0.05) tier = 1; else if (percentile <= 0.15) tier = 2; else if (percentile <= 0.35) tier = 3; else if (percentile <= 0.60) tier = 4
+    let tier = 5
+    if (percentile <= 0.05) tier = 1
+    else if (percentile <= 0.15) tier = 2
+    else if (percentile <= 0.35) tier = 3
+    else if (percentile <= 0.60) tier = 4
+    
     const categoryRankScore = (1 - percentile) * 100
     let categoriesContributing = 0
-    const relevantCats = isPitchingCategory.value ? pitchingCategories.value : hittingCategories.value
-    relevantCats.forEach(cat => { const catValue = p.stats?.[cat.stat_id] || 0; if (catValue > 0) { const allCatValues = players.map(pl => pl.stats?.[cat.stat_id] || 0).filter(v => v > 0); const avgCatValue = allCatValues.length > 0 ? allCatValues.reduce((a, b) => a + b, 0) / allCatValues.length : 0; if (catValue > avgCatValue * 0.8) categoriesContributing++ } })
+    const relevantCats = relevantCategories.value
+    relevantCats.forEach(cat => { 
+      const catValue = p.stats?.[cat.stat_id] || 0
+      if (catValue > 0) { 
+        const allCatValues = players.map(pl => pl.stats?.[cat.stat_id] || 0).filter(v => v > 0)
+        const avgCatValue = allCatValues.length > 0 ? allCatValues.reduce((a, b) => a + b, 0) / allCatValues.length : 0
+        if (catValue > avgCatValue * 0.8) categoriesContributing++ 
+      } 
+    })
     const multiCatScore = relevantCats.length > 0 ? (categoriesContributing / relevantCats.length) * 100 : 50
     const playerPos = p.position?.split(',')[0]?.trim() || 'Util'
     const posCount = positionCounts[playerPos] || avgPositionCount
     const scarcityScore = posCount < avgPositionCount ? Math.min(100, (avgPositionCount / posCount) * 50) : Math.max(0, 50 - ((posCount - avgPositionCount) / avgPositionCount) * 30)
     let consistencyScore = 50
-    if (p.projectedValue > 0 && !isRatioCategory.value) { const expectedPerGame = p.projectedValue / (gamesPlayed + gamesRemaining); const actualPerGame = p.perGameValue; if (actualPerGame > 0 && expectedPerGame > 0) { consistencyScore = Math.min(100, Math.max(0, (actualPerGame / expectedPerGame) * 50)) } }
+    if (p.projectedValue > 0 && !isRatioCategory.value) { 
+      const expectedPerGame = p.projectedValue / (gamesPlayed + gamesRemaining)
+      const actualPerGame = p.perGameValue
+      if (actualPerGame > 0 && expectedPerGame > 0) { consistencyScore = Math.min(100, Math.max(0, (actualPerGame / expectedPerGame) * 50)) } 
+    }
     const overallValue = (categoryRankScore * 0.40) + (multiCatScore * 0.25) + (scarcityScore * 0.20) + (consistencyScore * 0.15)
     return { ...p, tier, categoryRank: index + 1, overallValue: Math.round(overallValue * 10) / 10, categoriesContributing, scarcityScore: Math.round(scarcityScore) }
   })
@@ -434,7 +580,9 @@ const categoryRankedPlayers = computed(() => {
 
 const filteredPlayers = computed(() => {
   let players = [...categoryRankedPlayers.value]
-  if (selectedPositions.value.length > 0 && selectedPositions.value.length < availablePositions.value.length) { players = players.filter(p => selectedPositions.value.some(pos => p.position?.includes(pos))) }
+  if (selectedPositions.value.length > 0 && selectedPositions.value.length < availablePositions.value.length) { 
+    players = players.filter(p => selectedPositions.value.some(pos => p.position?.includes(pos))) 
+  }
   if (showOnlyMyPlayers.value) players = players.filter(p => isMyPlayer(p))
   if (showOnlyFreeAgents.value) players = players.filter(p => isFreeAgent(p))
   return players
@@ -456,20 +604,147 @@ const sortedPlayers = computed(() => {
 })
 
 const myPlayersInCategory = computed(() => categoryRankedPlayers.value.filter(p => isMyPlayer(p)).sort((a, b) => b.projectedValue - a.projectedValue))
-const myTeamProjectedTotal = computed(() => { if (isRatioCategory.value) { const players = myPlayersInCategory.value; if (players.length === 0) return 0; return players.reduce((sum, p) => sum + (p.projectedValue || 0), 0) / players.length }; return myPlayersInCategory.value.reduce((sum, p) => sum + (p.projectedValue || 0), 0) })
-const myTeamRank = computed(() => { const teamTotals: { team: string, total: number }[] = []; teamsData.value.forEach((team: any) => { const teamPlayers = categoryRankedPlayers.value.filter(p => p.fantasy_team_key === team.team_key); let total = 0; if (isRatioCategory.value) { total = teamPlayers.length > 0 ? teamPlayers.reduce((sum, p) => sum + (p.projectedValue || 0), 0) / teamPlayers.length : 0 } else { total = teamPlayers.reduce((sum, p) => sum + (p.projectedValue || 0), 0) }; teamTotals.push({ team: team.team_key, total }) }); if (isLowerBetter.value) { teamTotals.sort((a, b) => a.total - b.total) } else { teamTotals.sort((a, b) => b.total - a.total) }; const idx = teamTotals.findIndex(t => t.team === myTeamKey.value); return idx >= 0 ? idx + 1 : teamsData.value.length })
+const myTeamProjectedTotal = computed(() => { 
+  if (isRatioCategory.value) { 
+    const players = myPlayersInCategory.value
+    if (players.length === 0) return 0
+    return players.reduce((sum, p) => sum + (p.projectedValue || 0), 0) / players.length 
+  }
+  return myPlayersInCategory.value.reduce((sum, p) => sum + (p.projectedValue || 0), 0) 
+})
+
+const myTeamRank = computed(() => { 
+  const teamTotals: { team: string, total: number }[] = []
+  teamsData.value.forEach((team: any) => { 
+    const teamPlayers = categoryRankedPlayers.value.filter(p => p.fantasy_team_key === team.team_key)
+    let total = 0
+    if (isRatioCategory.value) { total = teamPlayers.length > 0 ? teamPlayers.reduce((sum, p) => sum + (p.projectedValue || 0), 0) / teamPlayers.length : 0 } 
+    else { total = teamPlayers.reduce((sum, p) => sum + (p.projectedValue || 0), 0) }
+    teamTotals.push({ team: team.team_key, total }) 
+  })
+  if (isLowerBetter.value) { teamTotals.sort((a, b) => a.total - b.total) } 
+  else { teamTotals.sort((a, b) => b.total - a.total) }
+  const idx = teamTotals.findIndex(t => t.team === myTeamKey.value)
+  return idx >= 0 ? idx + 1 : teamsData.value.length 
+})
+
 const topContributor = computed(() => myPlayersInCategory.value[0] || null)
 
-function isMyPlayer(player: any): boolean { if (!myTeamKey.value) return false; return player.fantasy_team_key === myTeamKey.value }
+// Chart computed
+const chartMaxValue = computed(() => {
+  if (weeklyChartData.value.length === 0) return 10
+  const max = Math.max(...weeklyChartData.value.map(w => w.playerValue || 0), leagueAvgForChart.value)
+  return max * 1.2 || 10
+})
+
+// Functions
+function isMyPlayer(player: any): boolean { 
+  if (!myTeamKey.value) return false
+  return player.fantasy_team_key === myTeamKey.value 
+}
+
 function isFreeAgent(player: any): boolean { return !player.fantasy_team && !player.fantasy_team_key }
 function selectAllPositions() { selectedPositions.value = [...availablePositions.value] }
 function togglePositionFilter(pos: string) { const idx = selectedPositions.value.indexOf(pos); if (idx >= 0) { selectedPositions.value.splice(idx, 1) } else { selectedPositions.value.push(pos) } }
 function toggleSort(column: string) { if (sortColumn.value === column) { sortDirection.value = sortDirection.value === 'asc' ? 'desc' : 'asc' } else { sortColumn.value = column; sortDirection.value = (column === 'name' || column === 'position') ? 'asc' : 'desc' } }
-function togglePlayerExpanded(playerKey: string) { expandedPlayerKey.value = expandedPlayerKey.value === playerKey ? null : playerKey }
-function formatStatValue(value: number | undefined, decimals: number = 1): string { if (value === undefined || value === null) return '-'; if (value === 0) return '0'; if (isRatioCategory.value) { if (value < 1 && value > 0) return value.toFixed(3).replace(/^0/, ''); return value.toFixed(2) }; if (Number.isInteger(value)) return value.toString(); return value.toFixed(decimals) }
-function formatCategoryStat(player: any, statId: string): string { const value = player.stats?.[statId]; if (value === undefined || value === null) return '-'; if (ratioStatIds.includes(statId)) { if (value < 1 && value > 0) return value.toFixed(3).replace(/^0/, ''); return value.toFixed(2) }; return Math.round(value).toString() }
-function getCategoryRank(player: any, statId: string): number { const value = player.stats?.[statId] || 0; const allValues = allPlayers.value.filter(p => pitchingStatIds.includes(statId) ? (p.position?.includes('SP') || p.position?.includes('RP') || p.position?.includes('P')) : (!p.position?.includes('SP') && !p.position?.includes('RP') && p.position !== 'P')).map(p => p.stats?.[statId] || 0).filter(v => v > 0).sort((a, b) => (ratioStatIds.includes(statId) && lowerIsBetterStats.some(s => s === 'ERA' || s === 'WHIP')) ? a - b : b - a); const rank = allValues.indexOf(value) + 1; return rank > 0 ? rank : allValues.length + 1 }
-function getCategoryRankClass(player: any, statId: string): string { const rank = getCategoryRank(player, statId); if (rank <= 10) return 'bg-green-500/20 text-green-400'; if (rank <= 30) return 'bg-yellow-500/20 text-yellow-400'; if (rank <= 60) return 'bg-orange-500/20 text-orange-400'; return 'bg-dark-border text-dark-textMuted' }
+
+async function togglePlayerExpanded(player: any) {
+  if (expandedPlayerKey.value === player.player_key) {
+    expandedPlayerKey.value = null
+  } else {
+    expandedPlayerKey.value = player.player_key
+    chartCategory.value = selectedCategory.value
+    await loadWeeklyChartData(player)
+  }
+}
+
+async function loadWeeklyChartData(player: any) {
+  isLoadingChart.value = true
+  weeklyChartData.value = []
+  
+  try {
+    const leagueKey = leagueStore.activeLeagueId
+    if (!leagueKey || !player.player_key) return
+    
+    // Generate simulated weekly data based on current stats
+    // In production, this would call yahooService.getPlayerWeeklyStats
+    const currentValue = player.stats?.[chartCategory.value] || 0
+    const weeks = [1, 2, 3, 4, 5]
+    
+    // Calculate league average for this stat
+    const allValues = allPlayers.value
+      .filter(p => isPitchingCategory.value ? isPitcher(p) : !isPitcher(p))
+      .map(p => p.stats?.[chartCategory.value] || 0)
+      .filter(v => v > 0)
+    
+    leagueAvgForChart.value = allValues.length > 0 
+      ? allValues.reduce((a, b) => a + b, 0) / allValues.length 
+      : 0
+    
+    // Simulate weekly variance around the per-game rate
+    const perWeek = currentValue / 20 // Roughly 20 weeks of season
+    weeklyChartData.value = weeks.map(week => ({
+      week,
+      playerValue: Math.max(0, perWeek * (0.7 + Math.random() * 0.6)), // +/- 30% variance
+      leagueAvg: leagueAvgForChart.value / 20
+    }))
+    
+  } catch (error) {
+    console.error('Error loading weekly data:', error)
+  } finally {
+    isLoadingChart.value = false
+  }
+}
+
+// Watch chart category changes
+watch(chartCategory, async () => {
+  const player = sortedPlayers.value.find(p => p.player_key === expandedPlayerKey.value)
+  if (player) {
+    await loadWeeklyChartData(player)
+  }
+})
+
+function formatStatValue(value: number | undefined, decimals: number = 1): string { 
+  if (value === undefined || value === null) return '-'
+  if (value === 0) return '0'
+  if (isRatioCategory.value) { 
+    if (value < 1 && value > 0) return value.toFixed(3).replace(/^0/, '')
+    return value.toFixed(2) 
+  }
+  if (Number.isInteger(value)) return value.toString()
+  return value.toFixed(decimals) 
+}
+
+function formatCategoryStat(player: any, statId: string): string { 
+  const value = player.stats?.[statId]
+  if (value === undefined || value === null) return '-'
+  if (ratioStatIds.includes(statId)) { 
+    if (value < 1 && value > 0) return value.toFixed(3).replace(/^0/, '')
+    return value.toFixed(2) 
+  }
+  return Math.round(value).toString() 
+}
+
+function getCategoryRank(player: any, statId: string): number { 
+  const value = player.stats?.[statId] || 0
+  const isPitchingStat = pitchingStatIds.includes(statId)
+  const allValues = allPlayers.value
+    .filter(p => isPitchingStat ? isPitcher(p) : !isPitcher(p))
+    .map(p => p.stats?.[statId] || 0)
+    .filter(v => v > 0)
+    .sort((a, b) => (ratioStatIds.includes(statId) && lowerIsBetterStats.some(s => s === 'ERA' || s === 'WHIP')) ? a - b : b - a)
+  const rank = allValues.indexOf(value) + 1
+  return rank > 0 ? rank : allValues.length + 1 
+}
+
+function getCategoryRankClass(player: any, statId: string): string { 
+  const rank = getCategoryRank(player, statId)
+  if (rank <= 10) return 'bg-green-500/20 text-green-400'
+  if (rank <= 30) return 'bg-yellow-500/20 text-yellow-400'
+  if (rank <= 60) return 'bg-orange-500/20 text-orange-400'
+  return 'bg-dark-border text-dark-textMuted' 
+}
+
 function handleImageError(e: Event) { (e.target as HTMLImageElement).src = defaultHeadshot }
 function getRowClass(player: any): string { if (isMyPlayer(player)) return 'bg-yellow-500/20 border-l-4 border-l-yellow-400'; if (isFreeAgent(player)) return 'bg-cyan-500/10 border-l-4 border-l-cyan-400'; return '' }
 function getAvatarRingClass(player: any): string { if (isMyPlayer(player)) return 'ring-yellow-400 ring-offset-2 ring-offset-dark-card'; if (isFreeAgent(player)) return 'ring-cyan-400 ring-offset-2 ring-offset-dark-card'; return 'ring-dark-border' }
@@ -489,29 +764,79 @@ async function loadProjections() {
   try {
     const leagueKey = leagueStore.activeLeagueId
     if (!leagueKey) { loadingMessage.value = 'No league selected'; return }
+    
     const settings = await yahooService.getLeagueScoringSettings(leagueKey)
     if (settings) {
       const cats = settings.stat_categories || []
-      statCategories.value = cats.map((c: any) => ({ stat_id: c.stat?.stat_id || c.stat_id, name: c.stat?.name || c.name, display_name: c.stat?.display_name || c.display_name || c.stat?.abbr || c.abbr, is_only_display_stat: c.stat?.is_only_display_stat || c.is_only_display_stat })).filter((c: any) => c.stat_id)
-      if (displayCategories.value.length > 0 && !selectedCategory.value) selectedCategory.value = displayCategories.value[0].stat_id
+      statCategories.value = cats.map((c: any) => ({ 
+        stat_id: c.stat?.stat_id || c.stat_id, 
+        name: c.stat?.name || c.name, 
+        display_name: c.stat?.display_name || c.display_name || c.stat?.abbr || c.abbr, 
+        is_only_display_stat: c.stat?.is_only_display_stat || c.is_only_display_stat 
+      })).filter((c: any) => c.stat_id)
+      
+      console.log('Loaded categories:', statCategories.value.map(c => `${c.display_name} (${c.stat_id})`))
+      console.log('Hitting categories:', hittingCategories.value.length, 'Pitching categories:', pitchingCategories.value.length)
+      
+      if (displayCategories.value.length > 0 && !selectedCategory.value) {
+        selectedCategory.value = displayCategories.value[0].stat_id
+      }
     }
+    
     loadingMessage.value = 'Loading teams...'
-    const teams = await yahooService.getTeams(leagueKey); teamsData.value = teams || []
+    const teams = await yahooService.getTeams(leagueKey)
+    teamsData.value = teams || []
     const myTeam = teamsData.value.find((t: any) => t.is_owned_by_current_login || t.is_my_team)
     myTeamKey.value = myTeam?.team_key || null
     console.log('Teams loaded:', teamsData.value.length, 'My team:', myTeam?.name, 'Key:', myTeamKey.value)
+    
     loadingMessage.value = 'Loading player data...'
     const rosteredPlayers = await yahooService.getAllRosteredPlayers(leagueKey)
     const freeAgents = await yahooService.getTopFreeAgents(leagueKey, 100)
-    const rostered = (rosteredPlayers || []).map((p: any) => ({ ...p, player_key: p.player_key, full_name: p.full_name || p.name || 'Unknown', position: p.position || 'Util', mlb_team: p.mlb_team || '', headshot: p.headshot || '', fantasy_team: p.fantasy_team, fantasy_team_key: p.fantasy_team_key, stats: p.stats || {}, total_points: p.total_points || 0 }))
-    const fas = (freeAgents || []).map((p: any) => ({ ...p, player_key: p.player_key, full_name: p.full_name || p.name || 'Unknown', position: p.position || 'Util', mlb_team: p.mlb_team || '', headshot: p.headshot || '', fantasy_team: null, fantasy_team_key: null, stats: p.stats || {}, total_points: p.total_points || 0 }))
-    allPlayers.value = [...rostered, ...fas]; selectAllPositions()
     
-    // Debug: Check if any players match myTeamKey
+    const rostered = (rosteredPlayers || []).map((p: any) => ({ 
+      ...p, 
+      player_key: p.player_key, 
+      full_name: p.full_name || p.name || 'Unknown', 
+      position: p.position || 'Util', 
+      mlb_team: p.mlb_team || '', 
+      headshot: p.headshot || '', 
+      fantasy_team: p.fantasy_team, 
+      fantasy_team_key: p.fantasy_team_key, 
+      stats: p.stats || {}, 
+      total_points: p.total_points || 0 
+    }))
+    
+    const fas = (freeAgents || []).map((p: any) => ({ 
+      ...p, 
+      player_key: p.player_key, 
+      full_name: p.full_name || p.name || 'Unknown', 
+      position: p.position || 'Util', 
+      mlb_team: p.mlb_team || '', 
+      headshot: p.headshot || '', 
+      fantasy_team: null, 
+      fantasy_team_key: null, 
+      stats: p.stats || {}, 
+      total_points: p.total_points || 0 
+    }))
+    
+    allPlayers.value = [...rostered, ...fas]
+    selectAllPositions()
+    
+    // Debug logging
+    const pitchers = allPlayers.value.filter(p => isPitcher(p))
+    const hitters = allPlayers.value.filter(p => !isPitcher(p))
+    console.log('Players loaded:', allPlayers.value.length, '- Pitchers:', pitchers.length, '- Hitters:', hitters.length)
+    
     const myPlayers = allPlayers.value.filter(p => p.fantasy_team_key === myTeamKey.value)
-    console.log('Players on my team:', myPlayers.length, 'Sample keys:', allPlayers.value.slice(0, 3).map(p => p.fantasy_team_key))
-  } catch (error) { console.error('Error loading projections:', error); loadingMessage.value = 'Error loading data' }
-  finally { isLoading.value = false }
+    console.log('Players on my team:', myPlayers.length)
+    
+  } catch (error) { 
+    console.error('Error loading projections:', error)
+    loadingMessage.value = 'Error loading data' 
+  } finally { 
+    isLoading.value = false 
+  }
 }
 
 watch(selectedCategory, () => { selectAllPositions() })
