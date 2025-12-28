@@ -166,70 +166,7 @@
         </div>
       </div>
 
-      <!-- Category Breakdown Grid -->
-      <div class="card">
-        <div class="card-header">
-          <div class="flex items-center gap-2">
-            <span class="text-2xl">📊</span>
-            <h2 class="card-title">Category Wins by Team</h2>
-          </div>
-          <p class="card-subtitle">Total category wins across {{ totalWeeksLoaded }} weeks</p>
-        </div>
-        <div class="card-body overflow-x-auto">
-          <table class="w-full text-sm">
-            <thead>
-              <tr class="text-xs text-dark-textMuted uppercase border-b border-dark-border">
-                <th class="py-2 px-3 text-left sticky left-0 bg-dark-card z-10">Team</th>
-                <th 
-                  v-for="cat in displayCategories" 
-                  :key="cat.stat_id"
-                  class="py-2 px-2 text-center whitespace-nowrap"
-                  :title="cat.name"
-                >
-                  {{ cat.display_name }}
-                </th>
-                <th class="py-2 px-2 text-center font-bold">Total</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr 
-                v-for="team in powerRankings" 
-                :key="team.team_key"
-                class="border-b border-dark-border/50 hover:bg-dark-border/20"
-                :class="{ 'bg-primary/5': team.is_my_team }"
-              >
-                <td class="py-2 px-3 sticky left-0 bg-dark-card z-10">
-                  <div class="flex items-center gap-2">
-                    <img 
-                      :src="team.logo_url || defaultAvatar" 
-                      class="w-6 h-6 rounded-full object-cover"
-                      @error="handleImageError"
-                    />
-                    <span class="font-medium text-dark-text truncate max-w-[100px]">{{ team.name }}</span>
-                  </div>
-                </td>
-                <td 
-                  v-for="cat in displayCategories" 
-                  :key="cat.stat_id"
-                  class="py-2 px-2 text-center"
-                >
-                  <span 
-                    class="text-sm font-medium"
-                    :class="getCategoryClass(team.categoryRanks[cat.stat_id])"
-                  >
-                    {{ team.categoryWins[cat.stat_id] || 0 }}
-                  </span>
-                </td>
-                <td class="py-2 px-2 text-center font-bold text-primary">
-                  {{ team.totalCatWins }}
-                </td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-      </div>
-
-      <!-- Historical Chart -->
+      <!-- Historical Chart (Power Rankings Over Time) -->
       <div class="card">
         <div class="card-header">
           <div class="flex items-center gap-2">
@@ -265,6 +202,85 @@
           <div v-else class="text-center py-12 text-dark-textMuted">
             Not enough data for chart
           </div>
+        </div>
+      </div>
+
+      <!-- Category Breakdown Grid -->
+      <div class="card">
+        <div class="card-header">
+          <div class="flex items-center gap-2">
+            <span class="text-2xl">📊</span>
+            <h2 class="card-title">Category Wins by Team</h2>
+          </div>
+          <p class="card-subtitle">Total category wins across {{ totalWeeksLoaded }} weeks (click column headers to sort)</p>
+        </div>
+        <div class="card-body overflow-x-auto">
+          <table class="w-full text-sm">
+            <thead>
+              <tr class="text-xs text-dark-textMuted uppercase border-b border-dark-border">
+                <th class="py-2 px-3 text-left sticky left-0 bg-dark-card z-10">Team</th>
+                <th 
+                  v-for="cat in displayCategories" 
+                  :key="cat.stat_id"
+                  class="py-2 px-2 text-center whitespace-nowrap cursor-pointer hover:text-primary transition-colors"
+                  :title="'Sort by ' + cat.name"
+                  @click="sortCategoryTable(cat.stat_id)"
+                >
+                  <div class="flex items-center justify-center gap-1">
+                    {{ cat.display_name }}
+                    <span v-if="categorySortColumn === cat.stat_id" class="text-primary">
+                      {{ categorySortDirection === 'desc' ? '▼' : '▲' }}
+                    </span>
+                  </div>
+                </th>
+                <th 
+                  class="py-2 px-2 text-center font-bold cursor-pointer hover:text-primary transition-colors"
+                  @click="sortCategoryTable('total')"
+                >
+                  <div class="flex items-center justify-center gap-1">
+                    Total
+                    <span v-if="categorySortColumn === 'total'" class="text-primary">
+                      {{ categorySortDirection === 'desc' ? '▼' : '▲' }}
+                    </span>
+                  </div>
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr 
+                v-for="team in sortedCategoryTeams" 
+                :key="team.team_key"
+                class="border-b border-dark-border/50 hover:bg-dark-border/20"
+                :class="{ 'bg-primary/5': team.is_my_team }"
+              >
+                <td class="py-2 px-3 sticky left-0 bg-dark-card z-10">
+                  <div class="flex items-center gap-2">
+                    <img 
+                      :src="team.logo_url || defaultAvatar" 
+                      class="w-6 h-6 rounded-full object-cover"
+                      @error="handleImageError"
+                    />
+                    <span class="font-medium text-dark-text truncate max-w-[100px]">{{ team.name }}</span>
+                  </div>
+                </td>
+                <td 
+                  v-for="cat in displayCategories" 
+                  :key="cat.stat_id"
+                  class="py-2 px-2 text-center"
+                >
+                  <span 
+                    class="text-sm font-medium"
+                    :class="getCategoryClass(team.categoryRanks[cat.stat_id])"
+                  >
+                    {{ team.categoryWins[cat.stat_id] || 0 }}
+                  </span>
+                </td>
+                <td class="py-2 px-2 text-center font-bold text-primary">
+                  {{ team.totalCatWins }}
+                </td>
+              </tr>
+            </tbody>
+          </table>
         </div>
       </div>
     </template>
@@ -486,6 +502,10 @@ const powerRankings = ref<any[]>([])
 const displayCategories = ref<any[]>([])
 const totalWeeksLoaded = ref(0)
 const defaultAvatar = 'https://s.yimg.com/cv/apiv2/default/mlb/mlb_2_g.png'
+
+// Category table sorting
+const categorySortColumn = ref<string>('total')
+const categorySortDirection = ref<'asc' | 'desc'>('desc')
 
 // Modals
 const showSettings = ref(false)
@@ -1129,6 +1149,45 @@ const maxCategoryWins = computed(() => {
   return max
 })
 
+// Sorted teams for Category Wins table
+const sortedCategoryTeams = computed(() => {
+  const teams = [...powerRankings.value]
+  const col = categorySortColumn.value
+  const dir = categorySortDirection.value
+  
+  teams.sort((a, b) => {
+    let aVal: number, bVal: number
+    
+    if (col === 'total') {
+      aVal = a.totalCatWins || 0
+      bVal = b.totalCatWins || 0
+    } else {
+      aVal = a.categoryWins?.[col] || 0
+      bVal = b.categoryWins?.[col] || 0
+    }
+    
+    if (dir === 'desc') {
+      return bVal - aVal
+    } else {
+      return aVal - bVal
+    }
+  })
+  
+  return teams
+})
+
+// Sort category table
+function sortCategoryTable(column: string) {
+  if (categorySortColumn.value === column) {
+    // Toggle direction
+    categorySortDirection.value = categorySortDirection.value === 'desc' ? 'asc' : 'desc'
+  } else {
+    // New column, default to descending
+    categorySortColumn.value = column
+    categorySortDirection.value = 'desc'
+  }
+}
+
 // Helpers
 function handleImageError(e: Event) { (e.target as HTMLImageElement).src = defaultAvatar }
 function getRankClass(rank: number) {
@@ -1520,8 +1579,34 @@ function buildChart() {
       theme: 'dark',
       shared: true,
       intersect: false,
-      y: {
-        formatter: (val: number) => `#${val}`
+      custom: function({ series, seriesIndex, dataPointIndex, w }: any) {
+        // Get all teams with their ranks at this data point
+        const teamsWithRanks = powerRankings.value.map((team, idx) => ({
+          name: team.name,
+          rank: series[idx]?.[dataPointIndex] || 0,
+          color: w.globals.colors[idx],
+          isMyTeam: team.is_my_team
+        })).filter(t => t.rank > 0)
+        
+        // Sort by rank (ascending - #1 first)
+        teamsWithRanks.sort((a, b) => a.rank - b.rank)
+        
+        const weekLabel = w.globals.categoryLabels?.[dataPointIndex] || `Week ${dataPointIndex + 1}`
+        
+        let html = `<div class="apexcharts-tooltip-title" style="font-weight: bold; padding: 6px 10px; background: #1f2937; border-bottom: 1px solid #374151;">${weekLabel}</div>`
+        html += `<div style="padding: 6px 10px; max-height: 300px; overflow-y: auto;">`
+        
+        teamsWithRanks.forEach((team, idx) => {
+          const highlight = team.isMyTeam ? 'font-weight: bold; color: #F5C451;' : ''
+          html += `<div style="display: flex; align-items: center; gap: 8px; padding: 3px 0; ${highlight}">
+            <span style="color: ${team.color}; font-size: 16px;">●</span>
+            <span style="min-width: 24px; color: #9ca3af;">#${team.rank}</span>
+            <span>${team.name}</span>
+          </div>`
+        })
+        
+        html += `</div>`
+        return html
       }
     },
     grid: {
