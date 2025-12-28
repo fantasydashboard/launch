@@ -645,41 +645,33 @@ async function loadProjections() {
     
     // Load teams
     loadingMessage.value = 'Loading teams...'
-    teamsData.value = leagueStore.yahooTeams || []
-    const myTeam = teamsData.value.find(t => t.is_my_team)
+    const teams = await yahooService.getTeams(leagueKey)
+    teamsData.value = teams || []
+    const myTeam = teamsData.value.find((t: any) => t.is_owned_by_current_login || t.is_my_team)
     myTeamKey.value = myTeam?.team_key || null
+    console.log('Loaded teams:', teamsData.value.length, 'my team:', myTeam?.name)
     
-    // Load all players
+    // Load all players using correct method names
     loadingMessage.value = 'Loading player data...'
-    const rosters = await yahooService.getLeagueRosters(leagueKey)
-    const freeAgents = await yahooService.getFreeAgents(leagueKey, 'B', 50)
-    const freeAgentPitchers = await yahooService.getFreeAgents(leagueKey, 'P', 50)
+    const rosteredPlayers = await yahooService.getAllRosteredPlayers(leagueKey)
+    const freeAgents = await yahooService.getTopFreeAgents(leagueKey, 100)
     
-    const rostered: any[] = []
-    if (rosters) {
-      for (const team of rosters) {
-        const teamName = team.name
-        const teamKey = team.team_key
-        const isMyTeam = team.is_my_team
-        
-        for (const player of team.roster || []) {
-          rostered.push({
-            ...player,
-            player_key: player.player_key,
-            full_name: player.name?.full || player.full_name || 'Unknown',
-            position: player.display_position || player.position || 'Util',
-            mlb_team: player.editorial_team_abbr || player.team_abbr || '',
-            headshot: player.image_url || player.headshot_url,
-            fantasy_team: teamName,
-            fantasy_team_key: teamKey,
-            is_my_team: isMyTeam,
-            ppg: parseFloat(player.player_points?.total || 0) / Math.max(1, parseInt(player.player_stats?.games_played || 0) || 50)
-          })
-        }
-      }
-    }
+    // Process rostered players
+    const rostered = (rosteredPlayers || []).map((p: any) => ({
+      ...p,
+      player_key: p.player_key,
+      full_name: p.name?.full || p.full_name || 'Unknown',
+      position: p.display_position || p.position || 'Util',
+      mlb_team: p.editorial_team_abbr || p.team_abbr || '',
+      headshot: p.image_url || p.headshot_url,
+      fantasy_team: p.fantasy_team || p.team_name,
+      fantasy_team_key: p.fantasy_team_key || p.team_key,
+      is_my_team: p.is_my_team,
+      ppg: parseFloat(p.player_points?.total || p.total_points || 0) / Math.max(1, parseInt(p.player_stats?.games_played || p.games_played || 0) || 50)
+    }))
     
-    const fas = [...(freeAgents || []), ...(freeAgentPitchers || [])].map(p => ({
+    // Process free agents
+    const fas = (freeAgents || []).map((p: any) => ({
       ...p,
       player_key: p.player_key,
       full_name: p.name?.full || p.full_name || 'Unknown',
@@ -688,10 +680,11 @@ async function loadProjections() {
       headshot: p.image_url || p.headshot_url,
       fantasy_team: null,
       fantasy_team_key: null,
-      ppg: parseFloat(p.player_points?.total || 0) / Math.max(1, parseInt(p.player_stats?.games_played || 0) || 50)
+      ppg: parseFloat(p.player_points?.total || p.total_points || 0) / Math.max(1, parseInt(p.player_stats?.games_played || p.games_played || 0) || 50)
     }))
     
     allPlayers.value = [...rostered, ...fas]
+    console.log('Loaded players:', allPlayers.value.length, 'rostered:', rostered.length, 'free agents:', fas.length)
     
     // Set default positions
     selectAllPositions()
