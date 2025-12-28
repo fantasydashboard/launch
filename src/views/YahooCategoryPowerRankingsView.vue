@@ -779,11 +779,11 @@ async function downloadRankings() {
       const barColor = team.powerScore >= 70 ? '#10b981' : (team.powerScore >= 40 ? '#f59e0b' : '#ef4444')
       return `
       <div style="display: flex; align-items: center; height: 80px; padding: 0 12px; background: rgba(38, 42, 58, 0.4); border-radius: 10px; margin-bottom: 6px; border: 1px solid rgba(58, 61, 82, 0.4); box-sizing: border-box; overflow: visible;">
-        <!-- Rank Number - use position relative to move up significantly -->
-        <div style="display: flex; align-items: center; width: 44px; flex-shrink: 0; overflow: visible;">
-          <span style="font-size: 36px; font-weight: 900; color: #3B9FE8; font-family: 'Impact', 'Arial Black', sans-serif; letter-spacing: -2px; position: relative; top: -4px;">${rank}</span>
+        <!-- Rank Number - fixed height container matching row, pure flex centering -->
+        <div style="width: 44px; height: 48px; flex-shrink: 0; display: flex; align-items: center; justify-content: flex-start; overflow: visible;">
+          <span style="font-size: 36px; font-weight: 900; color: #3B9FE8; font-family: 'Impact', 'Arial Black', sans-serif; letter-spacing: -2px; display: block; height: 36px; line-height: 36px;">${rank}</span>
           ${team.change !== 0 ? `
-            <span style="font-size: 10px; font-weight: 700; color: ${team.change > 0 ? '#10b981' : '#ef4444'}; margin-left: 2px; position: relative; top: -4px;">
+            <span style="font-size: 10px; font-weight: 700; color: ${team.change > 0 ? '#10b981' : '#ef4444'}; margin-left: 2px;">
               ${team.change > 0 ? '▲' : '▼'}${Math.abs(team.change)}
             </span>
           ` : ''}
@@ -791,7 +791,7 @@ async function downloadRankings() {
         <!-- Team Logo -->
         <img src="${imageMap.get(team.team_key) || ''}" style="width: 48px; height: 48px; border-radius: 50%; margin-right: 12px; border: 2px solid #3a3d52; background: #262a3a; flex-shrink: 0; object-fit: cover;" />
         <!-- Team Info - explicit height and padding to prevent clipping -->
-        <div style="flex: 1; min-width: 0; height: 50px; display: flex; flex-direction: column; justify-content: center; overflow: visible;">
+        <div style="flex: 1; min-width: 0; height: 48px; display: flex; flex-direction: column; justify-content: center; overflow: visible;">
           <div style="font-size: 14px; font-weight: 700; color: #f7f7ff; white-space: nowrap; overflow: visible; text-overflow: ellipsis; line-height: 1.4; padding: 2px 0;">${team.name}</div>
           <div style="font-size: 11px; color: #9ca3af; line-height: 1.4; padding: 2px 0;">${team.totalCatWins}-${team.totalCatLosses} • ${(team.catWinPct * 100).toFixed(0)}%</div>
         </div>
@@ -806,15 +806,15 @@ async function downloadRankings() {
     `}
     
     container.innerHTML = `
-      <div style="background: linear-gradient(160deg, #0f1219 0%, #0a0c14 50%, #0d1117 100%); border-radius: 16px; padding: 16px 24px 12px 24px; box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5); position: relative; overflow: visible;">
+      <div style="background: linear-gradient(160deg, #0f1219 0%, #0a0c14 50%, #0d1117 100%); border-radius: 16px; padding: 8px 24px 12px 24px; box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5); position: relative; overflow: visible;">
         <!-- Decorative blue glow at top -->
 
         <div style="position: absolute; top: -100px; left: 50%; transform: translateX(-50%); width: 400px; height: 200px; background: radial-gradient(ellipse, rgba(59, 159, 232, 0.3) 0%, transparent 70%); pointer-events: none;"></div>
         
-        <!-- Header - Evenly spaced with more top padding -->
-        <div style="text-align: center; margin-bottom: 16px; position: relative; z-index: 1;">
-          <div style="font-size: 44px; font-weight: 900; color: #ffffff; text-transform: uppercase; letter-spacing: 3px; text-shadow: 0 0 30px rgba(59, 159, 232, 0.5); line-height: 1;">POWER RANKING</div>
-          <div style="font-size: 18px; margin-top: 6px; font-weight: 600;"><span style="color: #9ca3af;">${leagueName}</span> <span style="color: #9ca3af;">•</span> <span style="color: #3B9FE8; font-weight: 700;">Week ${selectedWeek.value}</span></div>
+        <!-- Header - Moved up with less padding -->
+        <div style="text-align: center; margin-bottom: 12px; position: relative; z-index: 1;">
+          <div style="font-size: 44px; font-weight: 900; color: #ffffff; text-transform: uppercase; letter-spacing: 3px; text-shadow: 0 0 30px rgba(59, 159, 232, 0.5); line-height: 1;">POWER RANKINGS</div>
+          <div style="font-size: 18px; margin-top: 4px; font-weight: 600;"><span style="color: #9ca3af;">${leagueName}</span> <span style="color: #9ca3af;">•</span> <span style="color: #3B9FE8; font-weight: 700;">Week ${selectedWeek.value}</span></div>
         </div>
         
         <!-- Rankings (Two Columns) -->
