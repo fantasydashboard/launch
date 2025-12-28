@@ -349,10 +349,19 @@ const availablePositions = computed(() => {
 
 // Category-ranked players
 const categoryRankedPlayers = computed(() => {
-  if (!selectedCategory.value) return []
+  if (!selectedCategory.value) {
+    console.log('No category selected')
+    return []
+  }
   
   const catInfo = selectedCategoryInfo.value
-  if (!catInfo) return []
+  if (!catInfo) {
+    console.log('No category info found for:', selectedCategory.value)
+    return []
+  }
+  
+  const statId = catInfo.stat_id
+  console.log('Ranking by category:', catInfo.name, 'stat_id:', statId)
   
   // Filter players by position type (hitters vs pitchers)
   let players = allPlayers.value.filter(p => {
@@ -363,83 +372,64 @@ const categoryRankedPlayers = computed(() => {
     }
   })
   
-  // Calculate category-specific projections
+  console.log('Filtered to', players.length, 'players for', isPitchingCategory.value ? 'pitching' : 'hitting')
+  
+  // Calculate category-specific values using actual stats
   players = players.map(p => {
-    // Simulate projected value based on player's overall stats
-    // In reality, this would come from actual projection data
-    const gamesRemaining = 80 // Approximate games left in season
-    const ppg = p.ppg || 0
+    // Get the actual stat value for this category from Yahoo
+    const currentValue = p.stats?.[statId] || 0
     
-    // Generate category-specific projection based on position and PPG
+    // For ROS projection, we estimate based on current production rate
+    // Assuming ~60% of season complete, project remaining 40%
+    const seasonProgress = 0.6 // Approximate - could be calculated from dates
+    const gamesRemaining = 65 // Approximate games left
+    const gamesPlayed = 97 // Approximate games played
+    
     let projectedValue = 0
-    let currentValue = 0
     let perGameValue = 0
     
-    // Use player key hash for deterministic "projections"
-    const hash = (p.player_key || '').split('').reduce((a: number, b: string) => ((a << 5) - a) + b.charCodeAt(0), 0)
-    const variance = (Math.abs(hash) % 40) / 100 // 0-40% variance
-    
-    const catName = catInfo.display_name?.toUpperCase() || ''
-    
-    if (catName.includes('HR')) {
-      perGameValue = (ppg / 15) * (0.8 + variance)
-      projectedValue = perGameValue * gamesRemaining
-      currentValue = Math.round(projectedValue * 0.4) // ~40% of season done
-    } else if (catName.includes('R') && !catName.includes('HR') && !catName.includes('ER')) {
-      perGameValue = (ppg / 8) * (0.8 + variance)
-      projectedValue = perGameValue * gamesRemaining
-      currentValue = Math.round(projectedValue * 0.4)
-    } else if (catName.includes('RBI')) {
-      perGameValue = (ppg / 10) * (0.8 + variance)
-      projectedValue = perGameValue * gamesRemaining
-      currentValue = Math.round(projectedValue * 0.4)
-    } else if (catName.includes('SB')) {
-      perGameValue = (ppg / 25) * (0.5 + variance)
-      projectedValue = perGameValue * gamesRemaining
-      currentValue = Math.round(projectedValue * 0.4)
-    } else if (catName.includes('AVG') || catName.includes('OBP')) {
-      perGameValue = 0.250 + (ppg / 100) + (variance * 0.1)
-      projectedValue = Math.min(0.350, perGameValue)
-      currentValue = projectedValue - (variance * 0.02)
-    } else if (catName.includes('W')) {
-      perGameValue = (ppg / 20) * (0.6 + variance)
-      projectedValue = perGameValue * (gamesRemaining / 5) // Starts
-      currentValue = Math.round(projectedValue * 0.4)
-    } else if (catName.includes('SV') || catName.includes('HD')) {
-      perGameValue = (ppg / 15) * (0.7 + variance)
-      projectedValue = perGameValue * gamesRemaining * 0.3
-      currentValue = Math.round(projectedValue * 0.4)
-    } else if (catName.includes('K') || catName.includes('SO')) {
-      perGameValue = (ppg / 5) * (1 + variance)
-      projectedValue = perGameValue * (gamesRemaining / 5) * 6 // K per start
-      currentValue = Math.round(projectedValue * 0.4)
-    } else if (catName.includes('ERA')) {
-      perGameValue = 4.50 - (ppg / 20) - (variance * 0.5)
-      projectedValue = Math.max(2.00, perGameValue)
-      currentValue = projectedValue + (variance * 0.3)
-    } else if (catName.includes('WHIP')) {
-      perGameValue = 1.30 - (ppg / 50) - (variance * 0.15)
-      projectedValue = Math.max(0.90, perGameValue)
-      currentValue = projectedValue + (variance * 0.05)
+    if (isRatioCategory.value) {
+      // For ratio stats (AVG, ERA, WHIP), the projection IS the current value
+      // These don't accumulate
+      projectedValue = currentValue
+      perGameValue = currentValue
     } else {
-      // Default calculation
-      perGameValue = ppg * (0.5 + variance)
-      projectedValue = perGameValue * gamesRemaining * 0.5
-      currentValue = Math.round(projectedValue * 0.4)
+      // For counting stats, project based on current rate
+      perGameValue = gamesPlayed > 0 ? currentValue / gamesPlayed : 0
+      // ROS projection = current + (rate * remaining games)
+      projectedValue = currentValue + (perGameValue * gamesRemaining)
     }
     
-    // Calculate tier (1-5)
-    const allValues = allPlayers.value.map(pl => {
-      const h = (pl.player_key || '').split('').reduce((a: number, b: string) => ((a << 5) - a) + b.charCodeAt(0), 0)
-      const v = (Math.abs(h) % 40) / 100
-      return (pl.ppg || 0) * (0.5 + v) * gamesRemaining * 0.5
-    }).sort((a, b) => b - a)
-    
-    const playerIndex = allValues.indexOf(projectedValue)
-    const percentile = playerIndex / allValues.length
+    return {
+      ...p,
+      currentValue,
+      projectedValue: Math.round(projectedValue * 10) / 10, // Round to 1 decimal
+      perGameValue: Math.round(perGameValue * 1000) / 1000 // Round to 3 decimals
+    }
+  })
+  
+  // Sort by projected value
+  if (isLowerBetter.value) {
+    // For ERA/WHIP, lower is better, but 0 means no data - put those at end
+    players.sort((a, b) => {
+      if (a.projectedValue === 0 && b.projectedValue === 0) return 0
+      if (a.projectedValue === 0) return 1
+      if (b.projectedValue === 0) return -1
+      return a.projectedValue - b.projectedValue
+    })
+  } else {
+    // For counting stats, higher is better
+    players.sort((a, b) => b.projectedValue - a.projectedValue)
+  }
+  
+  // Calculate tiers based on percentiles
+  const maxValue = players.length > 0 ? Math.max(...players.map(p => p.projectedValue)) : 1
+  
+  players = players.map((p, index) => {
+    const percentile = players.length > 0 ? index / players.length : 1
     
     let tier = 5
-    let tierLabel = 'Tier 5'
+    let tierLabel = 'Below Avg'
     let valueRating = 1
     
     if (percentile <= 0.05) { tier = 1; tierLabel = 'Elite'; valueRating = 5 }
@@ -448,23 +438,15 @@ const categoryRankedPlayers = computed(() => {
     else if (percentile <= 0.60) { tier = 4; tierLabel = 'Average'; valueRating = 2 }
     else { tier = 5; tierLabel = 'Below Avg'; valueRating = 1 }
     
-    return {
-      ...p,
-      projectedValue,
-      currentValue,
-      perGameValue,
-      tier,
-      tierLabel,
-      valueRating
-    }
+    return { ...p, tier, tierLabel, valueRating }
   })
   
-  // Sort by projected value (descending for counting stats, ascending for ERA/WHIP)
-  if (isLowerBetter.value) {
-    players.sort((a, b) => a.projectedValue - b.projectedValue)
-  } else {
-    players.sort((a, b) => b.projectedValue - a.projectedValue)
-  }
+  console.log('Ranked players sample:', players.slice(0, 3).map(p => ({ 
+    name: p.full_name, 
+    current: p.currentValue, 
+    projected: p.projectedValue,
+    tier: p.tierLabel
+  })))
   
   return players
 })
@@ -547,10 +529,22 @@ function togglePositionFilter(pos: string) {
 
 function formatStatValue(value: number | undefined, decimals: number = 1): string {
   if (value === undefined || value === null) return '-'
+  if (value === 0) return '0'
+  
   if (isRatioCategory.value) {
-    return value.toFixed(3).replace(/^0/, '')
+    // For AVG, OBP, etc - show as .XXX format
+    if (value < 1 && value > 0) {
+      return value.toFixed(3).replace(/^0/, '')
+    }
+    // For ERA, WHIP - show with 2 decimals
+    return value.toFixed(2)
   }
-  return Math.round(value).toString()
+  
+  // For counting stats, show whole numbers or 1 decimal
+  if (Number.isInteger(value)) {
+    return value.toString()
+  }
+  return value.toFixed(decimals)
 }
 
 function handleImageError(e: Event) {
@@ -665,35 +659,42 @@ async function loadProjections() {
     const rosteredPlayers = await yahooService.getAllRosteredPlayers(leagueKey)
     const freeAgents = await yahooService.getTopFreeAgents(leagueKey, 100)
     
-    // Process rostered players
+    console.log('Sample rostered player:', rosteredPlayers?.[0])
+    console.log('Sample free agent:', freeAgents?.[0])
+    
+    // Process rostered players - use correct field names from yahooService
     const rostered = (rosteredPlayers || []).map((p: any) => ({
       ...p,
       player_key: p.player_key,
-      full_name: p.name?.full || p.full_name || 'Unknown',
-      position: p.display_position || p.position || 'Util',
-      mlb_team: p.editorial_team_abbr || p.team_abbr || '',
-      headshot: p.image_url || p.headshot_url,
-      fantasy_team: p.fantasy_team || p.team_name,
-      fantasy_team_key: p.fantasy_team_key || p.team_key,
-      is_my_team: p.is_my_team,
-      ppg: parseFloat(p.player_points?.total || p.total_points || 0) / Math.max(1, parseInt(p.player_stats?.games_played || p.games_played || 0) || 50)
+      full_name: p.full_name || p.name || 'Unknown',
+      position: p.position || 'Util',
+      mlb_team: p.mlb_team || '',
+      headshot: p.headshot || '', // yahooService returns 'headshot' directly
+      fantasy_team: p.fantasy_team,
+      fantasy_team_key: p.fantasy_team_key,
+      stats: p.stats || {}, // Include raw stats by stat_id
+      total_points: p.total_points || 0
     }))
     
     // Process free agents
     const fas = (freeAgents || []).map((p: any) => ({
       ...p,
       player_key: p.player_key,
-      full_name: p.name?.full || p.full_name || 'Unknown',
-      position: p.display_position || p.position || 'Util',
-      mlb_team: p.editorial_team_abbr || p.team_abbr || '',
-      headshot: p.image_url || p.headshot_url,
+      full_name: p.full_name || p.name || 'Unknown',
+      position: p.position || 'Util',
+      mlb_team: p.mlb_team || '',
+      headshot: p.headshot || '',
       fantasy_team: null,
       fantasy_team_key: null,
-      ppg: parseFloat(p.player_points?.total || p.total_points || 0) / Math.max(1, parseInt(p.player_stats?.games_played || p.games_played || 0) || 50)
+      stats: p.stats || {},
+      total_points: p.total_points || 0
     }))
     
     allPlayers.value = [...rostered, ...fas]
     console.log('Loaded players:', allPlayers.value.length, 'rostered:', rostered.length, 'free agents:', fas.length)
+    if (allPlayers.value.length > 0) {
+      console.log('First player stats:', allPlayers.value[0].stats)
+    }
     
     // Set default positions
     selectAllPositions()
