@@ -987,19 +987,57 @@ const liveWinProbability = computed(() => {
     return { team1: 50, team2: 50 }
   }
   
-  // Get live projections: actual points scored + projections for players yet to play
+  // Get the matchup data directly from Sleeper
+  const team1Matchup = matchupsData.value.find(m => m.roster_id === selectedMatchup.value!.team1_roster_id)
+  const team2Matchup = matchupsData.value.find(m => m.roster_id === selectedMatchup.value!.team2_roster_id)
+  
+  // Use Sleeper's official points (most accurate)
+  const team1SleeperPoints = team1Matchup?.points || 0
+  const team2SleeperPoints = team2Matchup?.points || 0
+  
+  // Get live projections for remaining player calculations
   const team1Live = getLiveTeamProjection(selectedMatchup.value.team1_roster_id)
   const team2Live = getLiveTeamProjection(selectedMatchup.value.team2_roster_id)
   
-  console.log('🎲 Monte Carlo inputs:', {
-    team1: { actual: team1Live.actual.toFixed(1), remaining: team1Live.projected.toFixed(1), total: team1Live.total.toFixed(1) },
-    team2: { actual: team2Live.actual.toFixed(1), remaining: team2Live.projected.toFixed(1), total: team2Live.total.toFixed(1) }
+  console.log('🎲 Monte Carlo Debug:', {
+    team1: { 
+      name: selectedMatchup.value.team1_name,
+      sleeperPoints: team1SleeperPoints,
+      liveActual: team1Live.actual.toFixed(1), 
+      liveRemaining: team1Live.projected.toFixed(1), 
+      liveTotal: team1Live.total.toFixed(1),
+      debug: team1Live.debugInfo
+    },
+    team2: { 
+      name: selectedMatchup.value.team2_name,
+      sleeperPoints: team2SleeperPoints,
+      liveActual: team2Live.actual.toFixed(1), 
+      liveRemaining: team2Live.projected.toFixed(1), 
+      liveTotal: team2Live.total.toFixed(1),
+      debug: team2Live.debugInfo
+    }
   })
   
-  // Check if matchup is truly complete (no remaining projections for either team)
-  if (selectedMatchup.value.is_complete || (team1Live.projected < 0.5 && team2Live.projected < 0.5)) {
-    if (team1Live.actual > team2Live.actual) return { team1: 100, team2: 0 }
-    if (team2Live.actual > team1Live.actual) return { team1: 0, team2: 100 }
+  // Determine remaining points to be scored
+  // If Sleeper points > our calculated actual, use Sleeper as the "actual" floor
+  const team1Actual = Math.max(team1SleeperPoints, team1Live.actual)
+  const team2Actual = Math.max(team2SleeperPoints, team2Live.actual)
+  
+  // Remaining = total projection - actual scored
+  // If projection < actual (player exceeded projection), remaining = 0
+  const team1Remaining = Math.max(0, team1Live.total - team1Actual)
+  const team2Remaining = Math.max(0, team2Live.total - team2Actual)
+  
+  console.log('🎲 Adjusted values:', {
+    team1: { actual: team1Actual.toFixed(1), remaining: team1Remaining.toFixed(1) },
+    team2: { actual: team2Actual.toFixed(1), remaining: team2Remaining.toFixed(1) }
+  })
+  
+  // Check if matchup is complete (no remaining projections)
+  if (selectedMatchup.value.is_complete || (team1Remaining < 0.5 && team2Remaining < 0.5)) {
+    console.log('🎲 Matchup complete - using actual scores')
+    if (team1Actual > team2Actual) return { team1: 100, team2: 0 }
+    if (team2Actual > team1Actual) return { team1: 0, team2: 100 }
     return { team1: 50, team2: 50 }
   }
   
@@ -1007,23 +1045,21 @@ const liveWinProbability = computed(() => {
   const simulations = 10000
   let team1Wins = 0
   
-  // Standard deviation as a percentage of remaining projected points
-  // ~30% volatility is typical for fantasy football
+  // Standard deviation as percentage of remaining projected points (~30% volatility)
   const volatilityFactor = 0.30
   
   for (let i = 0; i < simulations; i++) {
     // Team 1: actual points + simulated remaining (with variance)
-    const team1StdDev = Math.max(1, team1Live.projected * volatilityFactor)
-    const team1Simulated = team1Live.actual + team1Live.projected + gaussianRandom() * team1StdDev
+    const team1StdDev = Math.max(1, team1Remaining * volatilityFactor)
+    const team1Simulated = team1Actual + team1Remaining + gaussianRandom() * team1StdDev
     
     // Team 2: actual points + simulated remaining (with variance)
-    const team2StdDev = Math.max(1, team2Live.projected * volatilityFactor)
-    const team2Simulated = team2Live.actual + team2Live.projected + gaussianRandom() * team2StdDev
+    const team2StdDev = Math.max(1, team2Remaining * volatilityFactor)
+    const team2Simulated = team2Actual + team2Remaining + gaussianRandom() * team2StdDev
     
     if (team1Simulated > team2Simulated) {
       team1Wins++
     } else if (Math.abs(team1Simulated - team2Simulated) < 0.01) {
-      // Effective tie - split 50/50
       team1Wins += 0.5
     }
   }
@@ -4016,33 +4052,61 @@ function getTeamProjectedTotal(rosterId: number): number {
 }
 
 // Get live team projection: actual points for completed players + projections for remaining
-function getLiveTeamProjection(rosterId: number): { total: number, actual: number, projected: number } {
+function getLiveTeamProjection(rosterId: number): { total: number, actual: number, projected: number, debugInfo: any } {
   const teamMatchup = matchupsData.value.find(m => m.roster_id === rosterId)
-  if (!teamMatchup?.starters) return { total: 0, actual: 0, projected: 0 }
+  if (!teamMatchup?.starters) return { total: 0, actual: 0, projected: 0, debugInfo: { error: 'no matchup data' } }
   
   let actualTotal = 0
   let projectedTotal = 0
+  const playerBreakdown: any[] = []
+  
+  // First, get the official team total from Sleeper (this is the most accurate)
+  const sleeperTotal = teamMatchup.points || 0
   
   teamMatchup.starters.forEach(playerId => {
-    if (!playerId || playerId === '0') return
+    if (!playerId || playerId === '0') {
+      playerBreakdown.push({ playerId, status: 'empty slot' })
+      return
+    }
     
     // Check if player has actual points recorded
     const actualPoints = teamMatchup.players_points?.[playerId]
     const hasActualPoints = actualPoints !== undefined && actualPoints !== null
+    const projectedPoints = calculatePlayerProjectedPoints(playerId)
     
     if (hasActualPoints) {
-      // Use actual points for players who have scored
       actualTotal += actualPoints
+      playerBreakdown.push({ 
+        playerId, 
+        actual: actualPoints, 
+        projected: projectedPoints,
+        status: 'has actual',
+        usedValue: actualPoints
+      })
     } else {
-      // Use projection for players who haven't played yet
-      projectedTotal += calculatePlayerProjectedPoints(playerId)
+      projectedTotal += projectedPoints
+      playerBreakdown.push({ 
+        playerId, 
+        actual: null, 
+        projected: projectedPoints,
+        status: 'using projection',
+        usedValue: projectedPoints
+      })
     }
   })
   
   return {
     total: actualTotal + projectedTotal,
     actual: actualTotal,
-    projected: projectedTotal
+    projected: projectedTotal,
+    debugInfo: {
+      rosterId,
+      sleeperTotal,
+      calculatedTotal: actualTotal + projectedTotal,
+      startersCount: teamMatchup.starters.length,
+      playersWithActual: playerBreakdown.filter(p => p.status === 'has actual').length,
+      playersWithProjection: playerBreakdown.filter(p => p.status === 'using projection').length
+    }
   }
 }
 
