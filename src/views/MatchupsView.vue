@@ -981,35 +981,25 @@ const availableWeeks = computed(() => {
   return Array.from(matchups.keys()).sort((a, b) => a - b)
 })
 
-// Monte Carlo win probability using Sleeper's live projected scores
+// Monte Carlo win probability using actual scores + projections for remaining players
 const liveWinProbability = computed(() => {
   if (!selectedMatchup.value) {
     return { team1: 50, team2: 50 }
   }
   
-  // Get team projected totals from Sleeper (these are live/updated projections)
-  const team1Projected = getTeamProjectedTotal(selectedMatchup.value.team1_roster_id)
-  const team2Projected = getTeamProjectedTotal(selectedMatchup.value.team2_roster_id)
+  // Get live projections: actual points scored + projections for players yet to play
+  const team1Live = getLiveTeamProjection(selectedMatchup.value.team1_roster_id)
+  const team2Live = getLiveTeamProjection(selectedMatchup.value.team2_roster_id)
   
-  // Get current actual scores
-  const team1Actual = getLiveScore(selectedMatchup.value.team1_roster_id, selectedMatchup.value.team1_points)
-  const team2Actual = getLiveScore(selectedMatchup.value.team2_roster_id, selectedMatchup.value.team2_points)
+  console.log('🎲 Monte Carlo inputs:', {
+    team1: { actual: team1Live.actual.toFixed(1), remaining: team1Live.projected.toFixed(1), total: team1Live.total.toFixed(1) },
+    team2: { actual: team2Live.actual.toFixed(1), remaining: team2Live.projected.toFixed(1), total: team2Live.total.toFixed(1) }
+  })
   
-  // Check if matchup is truly complete (projected equals actual for both, or is_complete flag)
-  if (selectedMatchup.value.is_complete) {
-    if (team1Actual > team2Actual) return { team1: 100, team2: 0 }
-    if (team2Actual > team1Actual) return { team1: 0, team2: 100 }
-    return { team1: 50, team2: 50 }
-  }
-  
-  // If projections are 0 or very close to actuals, the week might be over
-  const team1Remaining = Math.max(0, team1Projected - team1Actual)
-  const team2Remaining = Math.max(0, team2Projected - team2Actual)
-  
-  if (team1Remaining < 0.5 && team2Remaining < 0.5) {
-    // Both teams essentially done
-    if (team1Actual > team2Actual) return { team1: 100, team2: 0 }
-    if (team2Actual > team1Actual) return { team1: 0, team2: 100 }
+  // Check if matchup is truly complete (no remaining projections for either team)
+  if (selectedMatchup.value.is_complete || (team1Live.projected < 0.5 && team2Live.projected < 0.5)) {
+    if (team1Live.actual > team2Live.actual) return { team1: 100, team2: 0 }
+    if (team2Live.actual > team1Live.actual) return { team1: 0, team2: 100 }
     return { team1: 50, team2: 50 }
   }
   
@@ -1017,31 +1007,30 @@ const liveWinProbability = computed(() => {
   const simulations = 10000
   let team1Wins = 0
   
-  // Standard deviation as a percentage of remaining points (typically 25-35% for fantasy)
-  // Higher percentage = more variance/uncertainty
+  // Standard deviation as a percentage of remaining projected points
+  // ~30% volatility is typical for fantasy football
   const volatilityFactor = 0.30
   
   for (let i = 0; i < simulations; i++) {
-    // Simulate final score for each team
-    // Start with actual points, add simulated remaining points
+    // Team 1: actual points + simulated remaining (with variance)
+    const team1StdDev = Math.max(1, team1Live.projected * volatilityFactor)
+    const team1Simulated = team1Live.actual + team1Live.projected + gaussianRandom() * team1StdDev
     
-    // Team 1: actual + randomized remaining
-    const team1StdDev = team1Remaining * volatilityFactor
-    const team1Simulated = team1Actual + team1Remaining + gaussianRandom() * team1StdDev
-    
-    // Team 2: actual + randomized remaining
-    const team2StdDev = team2Remaining * volatilityFactor
-    const team2Simulated = team2Actual + team2Remaining + gaussianRandom() * team2StdDev
+    // Team 2: actual points + simulated remaining (with variance)
+    const team2StdDev = Math.max(1, team2Live.projected * volatilityFactor)
+    const team2Simulated = team2Live.actual + team2Live.projected + gaussianRandom() * team2StdDev
     
     if (team1Simulated > team2Simulated) {
       team1Wins++
-    } else if (team1Simulated === team2Simulated) {
-      // Tie goes 50/50
+    } else if (Math.abs(team1Simulated - team2Simulated) < 0.01) {
+      // Effective tie - split 50/50
       team1Wins += 0.5
     }
   }
   
   const team1Prob = Math.round((team1Wins / simulations) * 100)
+  
+  console.log('🎲 Monte Carlo result:', { team1Prob, team2Prob: 100 - team1Prob })
   
   return {
     team1: team1Prob,
