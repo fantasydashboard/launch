@@ -540,38 +540,53 @@ const columnTooltips = {
   value: 'Overall Value Score (0-100) combining: Category Rank (40%), Multi-Category Contribution (25%), Positional Scarcity (20%), and Consistency (15%)'
 }
 
-// Stat ID mappings - expanded for better detection
-const pitchingStatIds = ['28', '32', '42', '26', '27', '50', '83', '84', '48', '49', '47'] // W, SV, K, ERA, WHIP, IP, QS, HLD, BB, H, ER
-const ratioStatIds = ['26', '27', '3', '55', '17', '60'] // ERA, WHIP, AVG, OPS, OBP, SLG
-const lowerIsBetterStats = ['ERA', 'WHIP', 'BB', 'L', 'ER', 'H']
+// Stat detection - use names instead of hardcoded IDs since IDs vary by league
+const pitchingStatNames = ['ERA', 'WHIP', 'W', 'SV', 'K', 'IP', 'QS', 'HLD', 'Wins', 'Saves', 'Strikeouts', 'Innings', 'Quality', 'Holds', 'L', 'Losses', 'BB', 'Walks', 'CG', 'SHO', 'BSV', 'Blown']
+const ratioStatNames = ['ERA', 'WHIP', 'AVG', 'OPS', 'OBP', 'SLG', 'BABIP', 'K/9', 'BB/9', 'K/BB']
+const lowerIsBetterNames = ['ERA', 'WHIP', 'BB', 'L', 'ER', 'H', 'Losses', 'Walks']
 
+function isPitchingStat(cat: any): boolean {
+  if (!cat) return false
+  const name = (cat.name || '').toUpperCase()
+  const display = (cat.display_name || '').toUpperCase()
+  return pitchingStatNames.some(pn => name.includes(pn.toUpperCase()) || display.includes(pn.toUpperCase()))
+}
+
+function isRatioStat(cat: any): boolean {
+  if (!cat) return false
+  const name = (cat.name || '').toUpperCase()
+  const display = (cat.display_name || '').toUpperCase()
+  return ratioStatNames.some(rn => name.includes(rn.toUpperCase()) || display.includes(rn.toUpperCase()))
+}
+
+function isLowerBetterStat(cat: any): boolean {
+  if (!cat) return false
+  const name = (cat.name || '').toUpperCase()
+  const display = (cat.display_name || '').toUpperCase()
+  return lowerIsBetterNames.some(ln => name.includes(ln.toUpperCase()) || display.includes(ln.toUpperCase()))
+}
+
+const hittingCategories = computed(() => displayCategories.value.filter(c => !isPitchingStat(c)))
+const pitchingCategories = computed(() => displayCategories.value.filter(c => isPitchingStat(c)))
 const displayCategories = computed(() => statCategories.value.filter(c => !c.is_only_display_stat && c.stat_id))
-const hittingCategories = computed(() => displayCategories.value.filter(c => !pitchingStatIds.includes(c.stat_id)))
-const pitchingCategories = computed(() => displayCategories.value.filter(c => pitchingStatIds.includes(c.stat_id)))
 const selectedCategoryInfo = computed(() => displayCategories.value.find(c => c.stat_id === selectedCategory.value))
 
 const isPitchingCategory = computed(() => {
-  // Check if selected category is in pitching stat IDs OR if display_name suggests pitching
   const cat = selectedCategoryInfo.value
-  if (!cat) return false
-  if (pitchingStatIds.includes(cat.stat_id)) return true
-  const pitchingNames = ['ERA', 'WHIP', 'W', 'SV', 'K', 'IP', 'QS', 'HLD', 'Wins', 'Saves', 'Strikeouts', 'Innings']
-  return pitchingNames.some(name => cat.display_name?.toUpperCase().includes(name.toUpperCase()) || cat.name?.toUpperCase().includes(name.toUpperCase()))
+  return isPitchingStat(cat)
 })
-
-const relevantCategories = computed(() => isPitchingCategory.value ? pitchingCategories.value : hittingCategories.value)
 
 const isRatioCategory = computed(() => { 
   const cat = selectedCategoryInfo.value
-  if (!cat) return false
-  return ratioStatIds.includes(cat.stat_id) || cat.display_name?.includes('AVG') || cat.display_name?.includes('ERA') || cat.display_name?.includes('WHIP') || cat.display_name?.includes('OBP') || cat.display_name?.includes('OPS')
+  return isRatioStat(cat)
 })
 
 const isLowerBetter = computed(() => { 
   const cat = selectedCategoryInfo.value
-  if (!cat) return false
-  return lowerIsBetterStats.some(s => cat.display_name?.toUpperCase().includes(s))
+  return isLowerBetterStat(cat)
 })
+
+const relevantCategories = computed(() => isPitchingCategory.value ? pitchingCategories.value : hittingCategories.value)
 
 const availablePositions = computed(() => isPitchingCategory.value ? ['SP', 'RP'] : ['C', '1B', '2B', '3B', 'SS', 'OF'])
 
@@ -916,12 +931,17 @@ function formatCategoryStat(player: any, statId: string): string {
 
 function getCategoryRank(player: any, statId: string): number { 
   const value = player.stats?.[statId] || 0
-  const isPitchingStat = pitchingStatIds.includes(statId)
+  // Find the category info to check if it's pitching/ratio
+  const cat = displayCategories.value.find(c => c.stat_id === statId)
+  const isPitchingStatCat = isPitchingStat(cat)
+  const isRatioStatCat = isRatioStat(cat)
+  const isLowerBetterCat = isLowerBetterStat(cat)
+  
   const allValues = allPlayers.value
-    .filter(p => isPitchingStat ? isPitcher(p) : !isPitcher(p))
+    .filter(p => isPitchingStatCat ? isPitcher(p) : !isPitcher(p))
     .map(p => p.stats?.[statId] || 0)
     .filter(v => v > 0)
-    .sort((a, b) => (ratioStatIds.includes(statId) && lowerIsBetterStats.some(s => s === 'ERA' || s === 'WHIP')) ? a - b : b - a)
+    .sort((a, b) => isLowerBetterCat ? a - b : b - a)
   const rank = allValues.indexOf(value) + 1
   return rank > 0 ? rank : allValues.length + 1 
 }
@@ -965,7 +985,8 @@ async function loadProjections() {
       })).filter((c: any) => c.stat_id)
       
       console.log('Loaded categories:', statCategories.value.map(c => `${c.display_name} (${c.stat_id})`))
-      console.log('Hitting categories:', hittingCategories.value.length, 'Pitching categories:', pitchingCategories.value.length)
+      console.log('Hitting categories:', hittingCategories.value.map(c => c.display_name))
+      console.log('Pitching categories:', pitchingCategories.value.map(c => c.display_name))
       
       if (displayCategories.value.length > 0 && !selectedCategory.value) {
         selectedCategory.value = displayCategories.value[0].stat_id
@@ -1016,6 +1037,13 @@ async function loadProjections() {
     const pitchers = allPlayers.value.filter(p => isPitcher(p))
     const hitters = allPlayers.value.filter(p => !isPitcher(p))
     console.log('Players loaded:', allPlayers.value.length, '- Pitchers:', pitchers.length, '- Hitters:', hitters.length)
+    
+    // Log sample player stats to verify data
+    if (allPlayers.value.length > 0) {
+      const samplePlayer = allPlayers.value[0]
+      console.log('Sample player stats:', samplePlayer.full_name, samplePlayer.stats)
+      console.log('Available stat IDs:', Object.keys(samplePlayer.stats || {}))
+    }
     
     const myPlayers = allPlayers.value.filter(p => p.fantasy_team_key === myTeamKey.value)
     console.log('Players on my team:', myPlayers.length)
