@@ -776,63 +776,113 @@ async function loadRecentPerformances(player: any) {
   recentPerformances.value = []
   
   try {
+    const leagueKey = leagueStore.activeLeagueId
     const statId = chartCategory.value
-    if (!statId) return
+    if (!leagueKey || !statId || !player.player_key) return
     
-    // Get player's current stat value and calculate per-game average
-    const currentValue = player.stats?.[statId] || 0
-    const gamesPlayed = 97 // Approximate games played so far
-    const perGame = gamesPlayed > 0 ? currentValue / gamesPlayed : 0
+    // For now, we'll use the weekly stats endpoint which is more reliable
+    // The date-based endpoint requires additional Yahoo service methods
+    // Try to get real weekly stats from Yahoo API
+    const weeklyData = await loadWeeklyStatsFromYahoo(leagueKey, player.player_key, statId)
     
-    // Calculate league average for this stat (per game)
-    const relevantPlayers = allPlayers.value.filter(p => isPitchingCategory.value ? isPitcher(p) : !isPitcher(p))
-    const allStatValues = relevantPlayers.map(p => p.stats?.[statId] || 0).filter(v => v > 0)
-    const leagueTotal = allStatValues.reduce((a, b) => a + b, 0)
-    const leaguePerGame = allStatValues.length > 0 ? (leagueTotal / allStatValues.length) / gamesPlayed : 0
-    
-    // Generate last 5 game dates (going backwards from today)
-    const today = new Date()
-    const gameDates: Date[] = []
-    let daysBack = 1
-    
-    // Skip days to simulate actual game schedule (not every day)
-    while (gameDates.length < 5 && daysBack < 30) {
-      const gameDate = new Date(today)
-      gameDate.setDate(today.getDate() - daysBack)
-      
-      // Simulate games happening ~5 times per week (skip some days)
-      if (Math.random() > 0.3 || gameDates.length === 0) {
-        gameDates.push(gameDate)
-      }
-      daysBack++
+    if (weeklyData.length > 0) {
+      recentPerformances.value = weeklyData
+    } else {
+      // Fall back to simulated data if no real data available
+      await loadSimulatedPerformances(player, statId)
     }
-    
-    // Reverse so oldest is first
-    gameDates.reverse()
-    
-    // Generate performance data with realistic variance
-    recentPerformances.value = gameDates.map((date, idx) => {
-      // Add variance to player performance (+/- 50% of their average)
-      const variance = 0.5 + Math.random()
-      const playerValue = Math.max(0, perGame * variance)
-      
-      // League average also varies day-to-day but less dramatically
-      const leagueVariance = 0.7 + Math.random() * 0.6
-      const leagueAvg = Math.max(0, leaguePerGame * leagueVariance)
-      
-      return {
-        date: `${date.getMonth() + 1}/${date.getDate()}`,
-        fullDate: date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
-        playerValue: Math.round(playerValue * 100) / 100,
-        leagueAvg: Math.round(leagueAvg * 100) / 100
-      }
-    })
     
   } catch (error) {
     console.error('Error loading performance data:', error)
+    // Fall back to simulated data on error
+    const statId = chartCategory.value
+    if (statId) await loadSimulatedPerformances(player, statId)
   } finally {
     isLoadingChart.value = false
   }
+}
+
+// Helper: Load weekly stats from Yahoo API
+async function loadWeeklyStatsFromYahoo(leagueKey: string, playerKey: string, statId: string): Promise<any[]> {
+  const performances: any[] = []
+  
+  try {
+    // Get the last 5 weeks of stats
+    const currentWeek = 25 // Approximate current week - could be dynamic
+    const weeks = [currentWeek - 4, currentWeek - 3, currentWeek - 2, currentWeek - 1, currentWeek].filter(w => w > 0)
+    
+    const weeklyStats = await yahooService.getPlayerWeeklyStats(leagueKey, playerKey, weeks)
+    
+    // Calculate league average per week
+    const relevantPlayers = allPlayers.value.filter(p => isPitchingCategory.value ? isPitcher(p) : !isPitcher(p)).slice(0, 10)
+    
+    for (const week of weeks) {
+      const playerWeekData = weeklyStats.get(week)
+      if (!playerWeekData) continue
+      
+      // Find the specific stat value
+      const statEntry = playerWeekData.stats?.find((s: any) => s.stat?.stat_id === statId)
+      const playerValue = statEntry ? parseFloat(statEntry.stat?.value || '0') : 0
+      
+      // Calculate league average for this week (simplified - use season avg divided by weeks)
+      const allStatValues = relevantPlayers.map(p => (p.stats?.[statId] || 0) / 25).filter(v => v > 0)
+      const leagueAvg = allStatValues.length > 0 ? allStatValues.reduce((a, b) => a + b, 0) / allStatValues.length : 0
+      
+      performances.push({
+        date: `Wk ${week}`,
+        fullDate: `Week ${week}`,
+        playerValue: Math.round(playerValue * 100) / 100,
+        leagueAvg: Math.round(leagueAvg * 100) / 100
+      })
+    }
+  } catch (e) {
+    console.error('Error loading weekly stats:', e)
+  }
+  
+  return performances
+}
+
+// Fallback: Simulated data based on season stats
+async function loadSimulatedPerformances(player: any, statId: string) {
+  const currentValue = player.stats?.[statId] || 0
+  const gamesPlayed = 97
+  const perGame = gamesPlayed > 0 ? currentValue / gamesPlayed : 0
+  
+  // Calculate league average
+  const relevantPlayers = allPlayers.value.filter(p => isPitchingCategory.value ? isPitcher(p) : !isPitcher(p))
+  const allStatValues = relevantPlayers.map(p => p.stats?.[statId] || 0).filter(v => v > 0)
+  const leagueTotal = allStatValues.reduce((a, b) => a + b, 0)
+  const leaguePerGame = allStatValues.length > 0 ? (leagueTotal / allStatValues.length) / gamesPlayed : 0
+  
+  // Generate last 5 game dates
+  const today = new Date()
+  const gameDates: Date[] = []
+  let daysBack = 1
+  
+  while (gameDates.length < 5 && daysBack < 30) {
+    const gameDate = new Date(today)
+    gameDate.setDate(today.getDate() - daysBack)
+    if (Math.random() > 0.3 || gameDates.length === 0) {
+      gameDates.push(gameDate)
+    }
+    daysBack++
+  }
+  
+  gameDates.reverse()
+  
+  recentPerformances.value = gameDates.map(date => {
+    const variance = 0.5 + Math.random()
+    const playerValue = Math.max(0, perGame * variance)
+    const leagueVariance = 0.7 + Math.random() * 0.6
+    const leagueAvg = Math.max(0, leaguePerGame * leagueVariance)
+    
+    return {
+      date: `${date.getMonth() + 1}/${date.getDate()}`,
+      fullDate: date.toISOString().split('T')[0],
+      playerValue: Math.round(playerValue * 100) / 100,
+      leagueAvg: Math.round(leagueAvg * 100) / 100
+    }
+  })
 }
 
 // Watch chart category changes
