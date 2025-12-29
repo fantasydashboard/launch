@@ -1,25 +1,47 @@
 <template>
-  <YahooBaseballHistoryView v-if="isYahooBaseball" />
+  <!-- Yahoo Baseball H2H Categories -->
+  <YahooCategoryHistoryView v-if="isYahooCategoryBaseball" />
+  
+  <!-- Yahoo Baseball Points -->
+  <YahooBaseballHistoryView v-else-if="isYahooBaseball" />
+  
+  <!-- Sleeper Football (default) -->
   <HistoryView v-else />
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted } from 'vue'
+import { computed, defineAsyncComponent } from 'vue'
 import { useLeagueStore } from '@/stores/league'
 import { useSportStore } from '@/stores/sport'
-import HistoryView from './HistoryView.vue'
-import YahooBaseballHistoryView from './YahooBaseballHistoryView.vue'
 
 const leagueStore = useLeagueStore()
 const sportStore = useSportStore()
 
-const isYahooBaseball = computed(() => {
-  const result = leagueStore.activePlatform === 'yahoo' && sportStore.activeSport === 'baseball'
-  console.log('HistoryWrapper - isYahooBaseball:', result, 'platform:', leagueStore.activePlatform, 'sport:', sportStore.activeSport)
-  return result
-})
+// Lazy load components
+const YahooCategoryHistoryView = defineAsyncComponent(() => 
+  import('@/views/YahooCategoryHistoryView.vue')
+)
 
-onMounted(() => {
-  console.log('HistoryWrapper mounted - platform:', leagueStore.activePlatform, 'sport:', sportStore.activeSport)
+const YahooBaseballHistoryView = defineAsyncComponent(() => 
+  import('@/views/YahooBaseballHistoryView.vue')
+)
+
+const HistoryView = defineAsyncComponent(() => 
+  import('@/views/HistoryView.vue')
+)
+
+const isYahooBaseball = computed(() => 
+  leagueStore.activePlatform === 'yahoo' && sportStore.activeSport === 'baseball'
+)
+
+// Check if it's a H2H Category league (scoring_type: 'head')
+const isYahooCategoryBaseball = computed(() => {
+  if (!isYahooBaseball.value) return false
+  
+  const league = leagueStore.yahooLeague
+  if (Array.isArray(league) && league[0]) {
+    return league[0].scoring_type === 'head'
+  }
+  return false
 })
 </script>
