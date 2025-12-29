@@ -981,42 +981,90 @@ const availableWeeks = computed(() => {
   return Array.from(matchups.keys()).sort((a, b) => a - b)
 })
 
-// Live win probability - based on projected scores for current roster
+// Live win probability - based on current scores and remaining player projections
 const liveWinProbability = computed(() => {
   if (!selectedMatchup.value || !matchupAnalysis.value) {
     return { team1: 50, team2: 50 }
   }
   
-  const team1Current = getLiveScore(selectedMatchup.value.team1_roster_id, selectedMatchup.value.team1_points)
-  const team2Current = getLiveScore(selectedMatchup.value.team2_roster_id, selectedMatchup.value.team2_points)
-  const team1Projected = getTeamProjectedTotal(selectedMatchup.value.team1_roster_id)
-  const team2Projected = getTeamProjectedTotal(selectedMatchup.value.team2_roster_id)
+  // Get live projections (actual points + remaining player projections)
+  const team1Live = getLiveTeamProjection(selectedMatchup.value.team1_roster_id)
+  const team2Live = getLiveTeamProjection(selectedMatchup.value.team2_roster_id)
   
-  // Check if matchup is complete
-  if (selectedMatchup.value.is_complete) {
-    if (team1Current > team2Current) {
+  // Check if matchup is complete (no remaining projections)
+  const matchupComplete = team1Live.projected === 0 && team2Live.projected === 0
+  
+  if (matchupComplete || selectedMatchup.value.is_complete) {
+    // All players have played - use actual scores
+    if (team1Live.actual > team2Live.actual) {
       return { team1: 100, team2: 0 }
-    } else if (team2Current > team1Current) {
+    } else if (team2Live.actual > team1Live.actual) {
       return { team1: 0, team2: 100 }
     }
-    return { team1: 50, team2: 50 }
+    return { team1: 50, team2: 50 } // Tie
   }
   
-  // Use projected scores for probability calculation
-  // The projection includes actual points already scored + projections for remaining players
-  const stdDev = matchupAnalysis.value.team1StdDev || 20
-  const diff = team1Projected - team2Projected
+  // Calculate the point differential based on projected totals
+  const diff = team1Live.total - team2Live.total
+  
+  // Calculate uncertainty based on remaining projections
+  // More remaining points = more uncertainty
+  const totalRemaining = team1Live.projected + team2Live.projected
+  
+  // If one team has no players left, their score is locked
+  // The other team just needs to outscore the difference
+  if (team1Live.projected === 0) {
+    // Team 1 is done - Team 2 needs to make up the difference
+    const pointsNeeded = team1Live.actual - team2Live.actual
+    if (pointsNeeded <= 0) {
+      // Team 2 already winning or tied with players left
+      return { team1: 0, team2: 100 }
+    }
+    // Team 2 needs pointsNeeded from their remaining projected
+    if (team2Live.projected >= pointsNeeded * 1.5) {
+      return { team1: 5, team2: 95 }
+    } else if (team2Live.projected >= pointsNeeded) {
+      const prob = Math.min(90, 50 + (team2Live.projected - pointsNeeded) / pointsNeeded * 40)
+      return { team1: 100 - prob, team2: prob }
+    } else {
+      const prob = Math.max(10, 50 - (pointsNeeded - team2Live.projected) / pointsNeeded * 40)
+      return { team1: 100 - prob, team2: prob }
+    }
+  }
+  
+  if (team2Live.projected === 0) {
+    // Team 2 is done - Team 1 needs to make up the difference
+    const pointsNeeded = team2Live.actual - team1Live.actual
+    if (pointsNeeded <= 0) {
+      // Team 1 already winning or tied with players left
+      return { team1: 100, team2: 0 }
+    }
+    // Team 1 needs pointsNeeded from their remaining projected
+    if (team1Live.projected >= pointsNeeded * 1.5) {
+      return { team1: 95, team2: 5 }
+    } else if (team1Live.projected >= pointsNeeded) {
+      const prob = Math.min(90, 50 + (team1Live.projected - pointsNeeded) / pointsNeeded * 40)
+      return { team1: prob, team2: 100 - prob }
+    } else {
+      const prob = Math.max(10, 50 - (pointsNeeded - team1Live.projected) / pointsNeeded * 40)
+      return { team1: prob, team2: 100 - prob }
+    }
+  }
+  
+  // Both teams have players remaining
+  // Standard deviation scales with remaining points (roughly 15-20% of projection)
+  const stdDev = Math.max(10, totalRemaining * 0.18)
   
   // Normal distribution approximation for win probability
   const zScore = diff / (stdDev * Math.sqrt(2))
   let team1Prob = 0.5 * (1 + Math.tanh(zScore * 0.8))
   
   // Clamp to reasonable bounds
-  team1Prob = Math.min(0.99, Math.max(0.01, team1Prob))
+  team1Prob = Math.min(0.95, Math.max(0.05, team1Prob))
   
   return {
-    team1: team1Prob * 100,
-    team2: (1 - team1Prob) * 100
+    team1: Math.round(team1Prob * 100),
+    team2: Math.round((1 - team1Prob) * 100)
   }
 })
 
