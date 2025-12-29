@@ -30,12 +30,11 @@
         <span>👥</span> Teams
       </button>
       <button 
-        disabled
-        class="px-5 py-2.5 rounded-lg text-sm font-semibold bg-dark-card/50 text-dark-textMuted/50 cursor-not-allowed flex items-center gap-2"
-        title="Coming Soon"
+        @click="activeTab = 'startsit'"
+        :class="activeTab === 'startsit' ? 'bg-primary text-gray-900' : 'bg-dark-card text-dark-textMuted hover:bg-dark-border'"
+        class="px-5 py-2.5 rounded-lg text-sm font-semibold transition-all flex items-center gap-2"
       >
         <span>🎯</span> Start/Sit
-        <span class="text-[10px] bg-dark-border px-1.5 py-0.5 rounded">Soon</span>
       </button>
     </div>
 
@@ -851,6 +850,278 @@
         </div>
       </template>
 
+      <!-- START/SIT TAB -->
+      <template v-if="activeTab === 'startsit'">
+        <div class="space-y-4">
+          
+          <!-- Current Matchup Context -->
+          <div class="card bg-gradient-to-r from-purple-500/10 to-pink-500/10 border-purple-500/30">
+            <div class="card-body py-4">
+              <div class="flex items-center justify-between flex-wrap gap-4">
+                <div class="flex items-center gap-4">
+                  <div class="text-center">
+                    <div class="text-xs text-dark-textMuted uppercase mb-1">Your Matchup</div>
+                    <div class="flex items-center gap-3">
+                      <div class="text-right">
+                        <div class="font-bold text-dark-text">{{ myTeamName }}</div>
+                        <div class="text-2xl font-black text-green-400">{{ matchupWins }}</div>
+                      </div>
+                      <div class="text-dark-textMuted font-bold">vs</div>
+                      <div class="text-left">
+                        <div class="font-bold text-dark-text">{{ opponentName }}</div>
+                        <div class="text-2xl font-black text-red-400">{{ matchupLosses }}</div>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="h-12 w-px bg-dark-border mx-2"></div>
+                  <div class="text-center">
+                    <div class="text-xs text-dark-textMuted uppercase mb-1">Tied</div>
+                    <div class="text-2xl font-black text-yellow-400">{{ matchupTies }}</div>
+                  </div>
+                </div>
+                <div class="flex flex-wrap gap-1.5">
+                  <span 
+                    v-for="cat in displayCategories" 
+                    :key="cat.stat_id"
+                    class="px-2 py-1 rounded text-xs font-bold"
+                    :class="getCategoryMatchupClass(cat.stat_id)"
+                    :title="getCategoryMatchupTooltip(cat.stat_id)"
+                  >
+                    {{ cat.display_name }}
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Date & Mode Toggle -->
+          <div class="card">
+            <div class="card-body py-3">
+              <div class="flex items-center justify-between flex-wrap gap-4">
+                <div class="flex items-center gap-3">
+                  <span class="text-dark-textMuted font-medium">View:</span>
+                  <div class="flex rounded-lg overflow-hidden border border-dark-border/50">
+                    <button @click="startSitMode = 'daily'" :class="startSitMode === 'daily' ? 'bg-primary text-gray-900' : 'bg-dark-card text-dark-textMuted'" class="px-4 py-2 text-sm font-medium transition-colors">📅 Daily</button>
+                    <button @click="startSitMode = 'weekly'" :class="startSitMode === 'weekly' ? 'bg-primary text-gray-900' : 'bg-dark-card text-dark-textMuted'" class="px-4 py-2 text-sm font-medium transition-colors">📆 Weekly</button>
+                  </div>
+                </div>
+                <div class="flex items-center gap-3">
+                  <template v-if="startSitMode === 'daily'">
+                    <div class="flex rounded-lg overflow-hidden border border-dark-border/50">
+                      <button @click="startSitDay = 'today'" :class="startSitDay === 'today' ? 'bg-primary text-gray-900' : 'bg-dark-card text-dark-textMuted hover:bg-dark-border/50'" class="px-4 py-2 text-sm font-medium transition-colors">Today</button>
+                      <button @click="startSitDay = 'tomorrow'" :class="startSitDay === 'tomorrow' ? 'bg-primary text-gray-900' : 'bg-dark-card text-dark-textMuted hover:bg-dark-border/50'" class="px-4 py-2 text-sm font-medium transition-colors">Tomorrow</button>
+                    </div>
+                    <span class="text-dark-text font-semibold">{{ formatStartSitDate }}</span>
+                  </template>
+                  <template v-else>
+                    <span class="text-dark-text font-semibold">Week {{ currentMatchupWeek }}</span>
+                  </template>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Legend -->
+          <div class="card">
+            <div class="card-body py-3">
+              <div class="flex items-center justify-between flex-wrap gap-4">
+                <div class="flex items-center gap-6 text-sm">
+                  <div class="flex items-center gap-2"><div class="w-4 h-4 rounded bg-yellow-500/30 border-l-2 border-yellow-400"></div><span class="text-dark-textMuted">My Players</span></div>
+                  <div class="flex items-center gap-2"><div class="w-4 h-4 rounded bg-cyan-500/20 border-l-2 border-cyan-400"></div><span class="text-dark-textMuted">Free Agents</span></div>
+                </div>
+                <div class="flex items-center gap-4 text-sm">
+                  <span class="text-dark-textMuted">Category Status:</span>
+                  <span class="px-2 py-0.5 rounded bg-green-500/20 text-green-400 text-xs font-bold">Winning</span>
+                  <span class="px-2 py-0.5 rounded bg-yellow-500/20 text-yellow-400 text-xs font-bold">Close</span>
+                  <span class="px-2 py-0.5 rounded bg-red-500/20 text-red-400 text-xs font-bold">Losing</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Main Content: Position Tabs + Player List + Sidebar -->
+          <div class="flex gap-6">
+            <!-- Left: Position List -->
+            <div class="flex-1 min-w-0">
+              <!-- Position Selector -->
+              <div class="flex items-center gap-2 mb-4 flex-wrap">
+                <button 
+                  v-for="pos in startSitPositions" 
+                  :key="pos.id" 
+                  @click="selectedStartSitPosition = pos.id"
+                  :class="selectedStartSitPosition === pos.id ? 'bg-primary text-gray-900' : 'bg-dark-border/30 text-dark-textSecondary hover:text-dark-text'"
+                  class="px-4 py-2 rounded-lg text-sm font-medium transition-all"
+                >
+                  {{ pos.label }}
+                </button>
+              </div>
+
+              <!-- Player List -->
+              <div class="card">
+                <div class="card-header">
+                  <div class="flex items-center gap-3">
+                    <span class="px-3 py-1 rounded text-sm font-bold" :class="getStartSitPositionClass(selectedStartSitPosition)">{{ selectedStartSitPosition }}</span>
+                    <h2 class="card-title">{{ startSitMode === 'daily' ? (startSitDay === 'today' ? "Today's" : "Tomorrow's") : "This Week's" }} Players</h2>
+                  </div>
+                  <div class="text-sm text-dark-textMuted">{{ getStartSitPlayersForPosition(selectedStartSitPosition).filter(p => p.fantasy_team_key === myTeamKey).length }} rostered</div>
+                </div>
+                <div class="card-body p-0">
+                  <div class="overflow-x-auto max-h-[60vh] overflow-y-auto">
+                    <table class="w-full">
+                      <thead class="bg-dark-border/30 sticky top-0 z-10">
+                        <tr>
+                          <th class="px-3 py-3 text-left text-xs font-semibold text-dark-textMuted uppercase w-12">#</th>
+                          <th class="px-3 py-3 text-left text-xs font-semibold text-dark-textMuted uppercase">Player</th>
+                          <th class="px-2 py-3 text-center text-xs font-semibold text-dark-textMuted uppercase w-24">{{ startSitMode === 'daily' ? 'Matchup' : 'Games' }}</th>
+                          <th 
+                            v-for="cat in relevantStartSitCategories" 
+                            :key="cat.stat_id" 
+                            class="px-2 py-3 text-center text-xs font-semibold uppercase w-14"
+                            :class="getCategoryHeaderClass(cat.stat_id)"
+                            :title="cat.name"
+                          >
+                            {{ cat.display_name }}
+                          </th>
+                          <th class="px-2 py-3 text-center text-xs font-semibold text-dark-textMuted uppercase w-20">Impact</th>
+                        </tr>
+                      </thead>
+                      <tbody class="divide-y divide-dark-border/30">
+                        <tr 
+                          v-for="(player, index) in getStartSitPlayersForPosition(selectedStartSitPosition)" 
+                          :key="player.player_key"
+                          :class="getStartSitRowClass(player)"
+                          class="hover:bg-dark-border/20 transition-colors"
+                        >
+                          <td class="px-3 py-3">
+                            <span class="font-bold text-lg text-dark-text">{{ index + 1 }}</span>
+                          </td>
+                          <td class="px-3 py-3">
+                            <div class="flex items-center gap-3">
+                              <div class="relative">
+                                <div class="w-10 h-10 rounded-full bg-dark-border overflow-hidden ring-2" :class="getStartSitAvatarClass(player)">
+                                  <img :src="player.headshot || defaultHeadshot" :alt="player.full_name" class="w-full h-full object-cover" @error="handleImageError" />
+                                </div>
+                                <div v-if="player.fantasy_team_key === myTeamKey" class="absolute -top-1 -right-1 w-5 h-5 bg-yellow-400 rounded-full flex items-center justify-center">
+                                  <span class="text-xs text-gray-900 font-bold">★</span>
+                                </div>
+                                <div v-else-if="!player.fantasy_team_key" class="absolute -top-1 -right-1 w-5 h-5 bg-cyan-400 rounded-full flex items-center justify-center">
+                                  <span class="text-xs text-gray-900 font-bold">+</span>
+                                </div>
+                              </div>
+                              <div>
+                                <span class="font-semibold" :class="getStartSitPlayerNameClass(player)">{{ player.full_name }}</span>
+                                <div class="flex items-center gap-2 text-xs text-dark-textMuted">
+                                  <span>{{ player.mlb_team || 'FA' }}</span>
+                                  <span class="text-dark-border">•</span>
+                                  <span v-if="player.fantasy_team" :class="player.fantasy_team_key === myTeamKey ? 'text-yellow-400' : ''">{{ player.fantasy_team }}</span>
+                                  <span v-else class="text-cyan-400">Free Agent</span>
+                                </div>
+                              </div>
+                            </div>
+                          </td>
+                          <td class="px-2 py-3 text-center">
+                            <span v-if="startSitMode === 'daily'" class="text-xs font-medium" :class="player.hasGame ? 'text-dark-text' : 'text-dark-textMuted italic'">
+                              {{ player.opponent || 'No Game' }}
+                            </span>
+                            <span v-else class="text-xs text-dark-text font-medium">{{ player.gamesThisWeek || 0 }} games</span>
+                          </td>
+                          <td 
+                            v-for="cat in relevantStartSitCategories" 
+                            :key="cat.stat_id" 
+                            class="px-2 py-3 text-center"
+                          >
+                            <div class="flex flex-col items-center">
+                              <span class="text-sm font-bold" :class="getCategoryProjectionClass(player, cat)">
+                                {{ formatCategoryProjection(player, cat) }}
+                              </span>
+                              <span class="text-[10px] text-dark-textMuted">
+                                {{ getCategoryPerGame(player, cat) }}/g
+                              </span>
+                            </div>
+                          </td>
+                          <td class="px-2 py-3 text-center">
+                            <div class="flex flex-col items-center gap-1">
+                              <span class="px-2 py-1 rounded text-xs font-bold" :class="getImpactClass(player)">
+                                {{ getImpactLabel(player) }}
+                              </span>
+                              <span class="text-[10px] text-dark-textMuted">{{ getImpactCategoryCount(player) }} cats</span>
+                            </div>
+                          </td>
+                        </tr>
+                        <tr v-if="getStartSitPlayersForPosition(selectedStartSitPosition).length === 0">
+                          <td :colspan="4 + relevantStartSitCategories.length" class="px-4 py-8 text-center text-dark-textMuted">
+                            No {{ selectedStartSitPosition }} players found{{ startSitMode === 'daily' ? ' with games ' + (startSitDay === 'today' ? 'today' : 'tomorrow') : '' }}
+                          </td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Right Sidebar: Category Goals -->
+            <div class="w-80 flex-shrink-0">
+              <div class="card sticky top-4">
+                <div class="card-header py-3">
+                  <div class="flex items-center gap-2">
+                    <span class="text-xl">🎯</span>
+                    <h2 class="text-base font-bold text-dark-text">Category Targets</h2>
+                  </div>
+                </div>
+                <div class="card-body p-0">
+                  <div class="divide-y divide-dark-border/30">
+                    <!-- Categories you're losing but close -->
+                    <div class="p-3">
+                      <div class="text-xs text-dark-textMuted uppercase tracking-wider mb-2">🔥 Focus Categories (Close/Losing)</div>
+                      <div class="space-y-2">
+                        <div v-for="cat in closeOrLosingCategories" :key="cat.stat_id" class="flex items-center justify-between bg-dark-border/20 rounded-lg px-3 py-2">
+                          <div class="flex items-center gap-2">
+                            <span class="w-2 h-2 rounded-full" :class="cat.status === 'losing' ? 'bg-red-400' : 'bg-yellow-400'"></span>
+                            <span class="text-sm font-medium text-dark-text">{{ cat.display_name }}</span>
+                          </div>
+                          <div class="text-right">
+                            <div class="text-xs text-dark-textMuted">{{ cat.myValue }} vs {{ cat.oppValue }}</div>
+                            <div class="text-xs" :class="cat.status === 'losing' ? 'text-red-400' : 'text-yellow-400'">
+                              {{ cat.status === 'losing' ? 'Down ' + cat.diff : 'Within ' + cat.diff }}
+                            </div>
+                          </div>
+                        </div>
+                        <div v-if="closeOrLosingCategories.length === 0" class="text-sm text-dark-textMuted italic text-center py-2">
+                          You're winning all categories! 🎉
+                        </div>
+                      </div>
+                    </div>
+                    
+                    <!-- Categories you're winning -->
+                    <div class="p-3">
+                      <div class="text-xs text-dark-textMuted uppercase tracking-wider mb-2">✓ Winning Categories</div>
+                      <div class="flex flex-wrap gap-1">
+                        <span v-for="cat in winningCategories" :key="cat.stat_id" class="px-2 py-1 bg-green-500/20 text-green-400 rounded text-xs font-medium">
+                          {{ cat.display_name }}
+                        </span>
+                        <span v-if="winningCategories.length === 0" class="text-sm text-dark-textMuted italic">None yet</span>
+                      </div>
+                    </div>
+
+                    <!-- Today's Projected Totals -->
+                    <div class="p-3">
+                      <div class="text-xs text-dark-textMuted uppercase tracking-wider mb-2">📊 {{ startSitMode === 'daily' ? "Today's" : "Week's" }} Projected Adds</div>
+                      <div class="grid grid-cols-3 gap-2">
+                        <div v-for="cat in relevantStartSitCategories.slice(0, 6)" :key="cat.stat_id" class="bg-dark-border/20 rounded-lg p-2 text-center">
+                          <div class="text-xs text-dark-textMuted">{{ cat.display_name }}</div>
+                          <div class="text-sm font-bold text-primary">+{{ getProjectedCategoryTotal(cat) }}</div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </template>
+
     </template>
   </div>
 </template>
@@ -877,9 +1148,27 @@ const sortColumn = ref<string>('rank')
 const sortDirection = ref<'asc' | 'desc'>('asc')
 
 // Tab state
-const activeTab = ref<'ros' | 'teams'>('ros')
+const activeTab = ref<'ros' | 'teams' | 'startsit'>('ros')
 const teamsViewMode = ref<'grid' | 'table'>('grid')
 const expandedTeamKey = ref<string | null>(null)
+
+// Start/Sit state
+const startSitMode = ref<'daily' | 'weekly'>('daily')
+const startSitDay = ref<'today' | 'tomorrow'>('today')
+const selectedStartSitPosition = ref('C')
+const currentMatchupWeek = ref(1)
+const currentMatchup = ref<any>(null)
+
+const startSitPositions = [
+  { id: 'C', label: 'C' },
+  { id: '1B', label: '1B' },
+  { id: '2B', label: '2B' },
+  { id: '3B', label: '3B' },
+  { id: 'SS', label: 'SS' },
+  { id: 'OF', label: 'OF' },
+  { id: 'SP', label: 'SP' },
+  { id: 'RP', label: 'RP' }
+]
 
 // Chart state
 const chartCategory = ref<string>('')
@@ -1757,6 +2046,286 @@ function formatTeamCategoryStat(value: any, cat: any): string {
 
 function refreshData() {
   loadProjections()
+}
+
+// ==================== START/SIT TAB FUNCTIONS ====================
+
+// Computed: My team name
+const myTeamName = computed(() => {
+  const myTeam = teamsData.value.find(t => t.team_key === myTeamKey.value)
+  return myTeam?.name || 'My Team'
+})
+
+// Computed: Opponent name (simulated for now)
+const opponentName = computed(() => {
+  if (currentMatchup.value?.opponent) return currentMatchup.value.opponent.name
+  // Find a different team as placeholder
+  const opponent = teamsData.value.find(t => t.team_key !== myTeamKey.value)
+  return opponent?.name || 'Opponent'
+})
+
+// Computed: Matchup category wins/losses/ties (simulated)
+const matchupCategoryStatus = computed(() => {
+  const status: Record<string, { myValue: number, oppValue: number, status: 'winning' | 'losing' | 'tied' | 'close' }> = {}
+  
+  for (const cat of displayCategories.value) {
+    const statId = cat.stat_id
+    // Simulate matchup values based on team totals
+    const myTeam = teamsData.value.find(t => t.team_key === myTeamKey.value)
+    const oppTeam = teamsData.value.find(t => t.team_key !== myTeamKey.value)
+    
+    const myValue = myTeam?.categoryTotals?.[statId] || Math.random() * 100
+    const oppValue = oppTeam?.categoryTotals?.[statId] || Math.random() * 100
+    
+    const isLowerBetter = isLowerBetterStat(cat)
+    const diff = Math.abs(myValue - oppValue)
+    const threshold = Math.max(myValue, oppValue) * 0.1 // 10% threshold for "close"
+    
+    let catStatus: 'winning' | 'losing' | 'tied' | 'close'
+    if (isLowerBetter) {
+      if (myValue < oppValue - threshold) catStatus = 'winning'
+      else if (myValue > oppValue + threshold) catStatus = 'losing'
+      else if (Math.abs(myValue - oppValue) < threshold) catStatus = 'close'
+      else catStatus = 'tied'
+    } else {
+      if (myValue > oppValue + threshold) catStatus = 'winning'
+      else if (myValue < oppValue - threshold) catStatus = 'losing'
+      else if (Math.abs(myValue - oppValue) < threshold) catStatus = 'close'
+      else catStatus = 'tied'
+    }
+    
+    status[statId] = { myValue, oppValue, status: catStatus }
+  }
+  
+  return status
+})
+
+const matchupWins = computed(() => Object.values(matchupCategoryStatus.value).filter(s => s.status === 'winning').length)
+const matchupLosses = computed(() => Object.values(matchupCategoryStatus.value).filter(s => s.status === 'losing').length)
+const matchupTies = computed(() => Object.values(matchupCategoryStatus.value).filter(s => s.status === 'tied' || s.status === 'close').length)
+
+// Computed: Categories by status
+const winningCategories = computed(() => {
+  return displayCategories.value.filter(cat => matchupCategoryStatus.value[cat.stat_id]?.status === 'winning')
+})
+
+const closeOrLosingCategories = computed(() => {
+  return displayCategories.value
+    .filter(cat => {
+      const status = matchupCategoryStatus.value[cat.stat_id]?.status
+      return status === 'losing' || status === 'close'
+    })
+    .map(cat => {
+      const status = matchupCategoryStatus.value[cat.stat_id]
+      return {
+        ...cat,
+        myValue: formatTeamCategoryStat(status?.myValue, cat),
+        oppValue: formatTeamCategoryStat(status?.oppValue, cat),
+        diff: Math.abs((status?.myValue || 0) - (status?.oppValue || 0)).toFixed(1),
+        status: status?.status
+      }
+    })
+})
+
+// Computed: Relevant categories for current position type
+const relevantStartSitCategories = computed(() => {
+  const isPitching = ['SP', 'RP'].includes(selectedStartSitPosition.value)
+  return isPitching ? pitchingCategories.value : hittingCategories.value
+})
+
+// Computed: Format date for display
+const formatStartSitDate = computed(() => {
+  const date = new Date()
+  if (startSitDay.value === 'tomorrow') date.setDate(date.getDate() + 1)
+  return date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })
+})
+
+// Get players for a position in Start/Sit
+function getStartSitPlayersForPosition(position: string): any[] {
+  let players = allPlayers.value.filter(p => {
+    const pos = p.position || ''
+    if (position === 'OF') return pos.includes('OF') || pos.includes('LF') || pos.includes('CF') || pos.includes('RF')
+    return pos.includes(position)
+  })
+  
+  // Add simulated game info
+  players = players.map(p => ({
+    ...p,
+    hasGame: Math.random() > 0.2, // 80% chance of having a game
+    opponent: Math.random() > 0.2 ? ['vs NYY', 'vs BOS', '@ LAD', '@ CHC', 'vs HOU', '@ ATL'][Math.floor(Math.random() * 6)] : null,
+    gamesThisWeek: Math.floor(Math.random() * 4) + 3, // 3-6 games
+    impactScore: calculatePlayerImpact(p)
+  }))
+  
+  // Filter by game availability in daily mode
+  if (startSitMode.value === 'daily') {
+    players = players.filter(p => p.hasGame)
+  }
+  
+  // Sort by impact score
+  return players.sort((a, b) => b.impactScore - a.impactScore)
+}
+
+// Calculate player impact score based on matchup needs
+function calculatePlayerImpact(player: any): number {
+  let impact = 0
+  const cats = ['SP', 'RP'].includes(selectedStartSitPosition.value) ? pitchingCategories.value : hittingCategories.value
+  
+  for (const cat of cats) {
+    const statId = cat.stat_id
+    const playerValue = parseFloat(player.stats?.[statId] || 0)
+    const catStatus = matchupCategoryStatus.value[statId]?.status
+    
+    // Higher weight for categories we're losing or close in
+    if (catStatus === 'losing') impact += playerValue * 3
+    else if (catStatus === 'close') impact += playerValue * 2
+    else if (catStatus === 'winning') impact += playerValue * 0.5
+  }
+  
+  return impact
+}
+
+// Get impact label
+function getImpactLabel(player: any): string {
+  const score = player.impactScore || 0
+  if (score >= 50) return 'HIGH'
+  if (score >= 25) return 'MED'
+  if (score >= 10) return 'LOW'
+  return 'MIN'
+}
+
+// Get impact category count
+function getImpactCategoryCount(player: any): number {
+  let count = 0
+  const cats = ['SP', 'RP'].includes(selectedStartSitPosition.value) ? pitchingCategories.value : hittingCategories.value
+  
+  for (const cat of cats) {
+    const statId = cat.stat_id
+    const playerValue = parseFloat(player.stats?.[statId] || 0)
+    const catStatus = matchupCategoryStatus.value[statId]?.status
+    
+    if (playerValue > 0 && (catStatus === 'losing' || catStatus === 'close')) {
+      count++
+    }
+  }
+  return count
+}
+
+function getImpactClass(player: any): string {
+  const label = getImpactLabel(player)
+  if (label === 'HIGH') return 'bg-green-500/30 text-green-400'
+  if (label === 'MED') return 'bg-yellow-500/30 text-yellow-400'
+  if (label === 'LOW') return 'bg-orange-500/30 text-orange-400'
+  return 'bg-dark-border text-dark-textMuted'
+}
+
+function getCategoryMatchupClass(statId: string): string {
+  const status = matchupCategoryStatus.value[statId]?.status
+  if (status === 'winning') return 'bg-green-500/30 text-green-400'
+  if (status === 'losing') return 'bg-red-500/30 text-red-400'
+  if (status === 'close') return 'bg-yellow-500/30 text-yellow-400'
+  return 'bg-dark-border text-dark-textMuted'
+}
+
+function getCategoryMatchupTooltip(statId: string): string {
+  const cat = displayCategories.value.find(c => c.stat_id === statId)
+  const status = matchupCategoryStatus.value[statId]
+  if (!status) return cat?.name || ''
+  return `${cat?.name}: ${status.myValue.toFixed(1)} vs ${status.oppValue.toFixed(1)}`
+}
+
+function getCategoryHeaderClass(statId: string): string {
+  const status = matchupCategoryStatus.value[statId]?.status
+  if (status === 'winning') return 'text-green-400'
+  if (status === 'losing') return 'text-red-400'
+  if (status === 'close') return 'text-yellow-400'
+  return 'text-dark-textMuted'
+}
+
+function getCategoryProjectionClass(player: any, cat: any): string {
+  const value = parseFloat(player.stats?.[cat.stat_id] || 0)
+  if (value <= 0) return 'text-dark-textMuted'
+  
+  const status = matchupCategoryStatus.value[cat.stat_id]?.status
+  if (status === 'losing' || status === 'close') return 'text-primary'
+  return 'text-dark-text'
+}
+
+function formatCategoryProjection(player: any, cat: any): string {
+  const seasonValue = parseFloat(player.stats?.[cat.stat_id] || 0)
+  if (seasonValue <= 0) return '-'
+  
+  const games = startSitMode.value === 'daily' ? 1 : (player.gamesThisWeek || 4)
+  const gamesPlayed = isPitcher(player) ? 30 : 140
+  const perGame = seasonValue / gamesPlayed
+  const projected = perGame * games
+  
+  if (isRatioStat(cat)) {
+    if (projected < 1) return projected.toFixed(3).replace(/^0/, '')
+    return projected.toFixed(2)
+  }
+  return projected.toFixed(1)
+}
+
+function getCategoryPerGame(player: any, cat: any): string {
+  const seasonValue = parseFloat(player.stats?.[cat.stat_id] || 0)
+  const gamesPlayed = isPitcher(player) ? 30 : 140
+  const perGame = seasonValue / gamesPlayed
+  
+  if (isRatioStat(cat)) {
+    if (perGame < 1) return perGame.toFixed(3).replace(/^0/, '')
+    return perGame.toFixed(2)
+  }
+  return perGame.toFixed(2)
+}
+
+function getProjectedCategoryTotal(cat: any): string {
+  const players = getStartSitPlayersForPosition(selectedStartSitPosition.value)
+    .filter(p => p.fantasy_team_key === myTeamKey.value)
+  
+  let total = 0
+  for (const player of players) {
+    const seasonValue = parseFloat(player.stats?.[cat.stat_id] || 0)
+    const games = startSitMode.value === 'daily' ? 1 : (player.gamesThisWeek || 4)
+    const gamesPlayed = isPitcher(player) ? 30 : 140
+    const perGame = seasonValue / gamesPlayed
+    total += perGame * games
+  }
+  
+  if (isRatioStat(cat)) return total.toFixed(2)
+  return total.toFixed(1)
+}
+
+function getStartSitPositionClass(position: string): string {
+  const colors: Record<string, string> = {
+    'C': 'bg-purple-500/30 text-purple-300',
+    '1B': 'bg-red-500/30 text-red-300',
+    '2B': 'bg-green-500/30 text-green-300',
+    '3B': 'bg-blue-500/30 text-blue-300',
+    'SS': 'bg-yellow-500/30 text-yellow-300',
+    'OF': 'bg-orange-500/30 text-orange-300',
+    'SP': 'bg-cyan-500/30 text-cyan-300',
+    'RP': 'bg-pink-500/30 text-pink-300'
+  }
+  return colors[position] || 'bg-dark-border text-dark-textMuted'
+}
+
+function getStartSitRowClass(player: any): string {
+  if (player.fantasy_team_key === myTeamKey.value) return 'bg-yellow-500/10 border-l-4 border-l-yellow-400'
+  if (!player.fantasy_team_key) return 'bg-cyan-500/5 border-l-4 border-l-cyan-400'
+  return ''
+}
+
+function getStartSitAvatarClass(player: any): string {
+  if (player.fantasy_team_key === myTeamKey.value) return 'ring-yellow-400'
+  if (!player.fantasy_team_key) return 'ring-cyan-400'
+  return 'ring-dark-border'
+}
+
+function getStartSitPlayerNameClass(player: any): string {
+  if (player.fantasy_team_key === myTeamKey.value) return 'text-yellow-400'
+  if (!player.fantasy_team_key) return 'text-cyan-300'
+  return 'text-dark-text'
 }
 
 watch(selectedCategory, () => { selectAllPositions() })
