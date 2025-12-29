@@ -1002,7 +1002,7 @@
                           >
                             {{ cat.display_name }}
                           </th>
-                          <th class="px-2 py-3 text-center text-xs font-semibold text-dark-textMuted uppercase w-20">Impact</th>
+                          <th class="px-2 py-3 text-center text-xs font-semibold text-dark-textMuted uppercase w-32">Recommendation</th>
                         </tr>
                       </thead>
                       <tbody class="divide-y divide-dark-border/30">
@@ -1068,10 +1068,10 @@
                           </td>
                           <td class="px-2 py-3 text-center">
                             <div class="flex flex-col items-center gap-1">
-                              <span class="px-2 py-1 rounded text-xs font-bold" :class="getImpactClass(player)">
-                                {{ getImpactLabel(player) }}
+                              <span class="px-2 py-1 rounded text-xs font-bold whitespace-nowrap" :class="getRecommendationClass(player)">
+                                {{ getRecommendation(player).verdict }}
                               </span>
-                              <span class="text-[10px] text-dark-textMuted">{{ getImpactCategoryCount(player) }} cats</span>
+                              <span class="text-[10px] text-dark-textMuted whitespace-nowrap">{{ getRecommendation(player).reason }}</span>
                             </div>
                           </td>
                         </tr>
@@ -1211,6 +1211,38 @@
                       </div>
                       <div v-else class="text-sm text-dark-textMuted italic text-center py-2">
                         No close categories to flip
+                      </div>
+                    </div>
+
+                    <!-- Pickup Suggestions -->
+                    <div class="p-3 bg-cyan-500/5">
+                      <div class="text-xs text-cyan-400 uppercase tracking-wider mb-2 flex items-center gap-1">
+                        <span>🎯</span> Pickup Suggestions
+                      </div>
+                      <div v-if="pickupSuggestions.length > 0" class="space-y-2">
+                        <div v-for="suggestion in pickupSuggestions" :key="suggestion.player_key" class="bg-dark-border/30 rounded-lg px-3 py-2">
+                          <div class="flex items-center gap-2">
+                            <img :src="suggestion.headshot || defaultHeadshot" class="w-8 h-8 rounded-full" @error="handleImageError" />
+                            <div class="flex-1 min-w-0">
+                              <div class="font-medium text-cyan-300 text-sm truncate">{{ suggestion.full_name }}</div>
+                              <div class="text-[10px] text-dark-textMuted">{{ suggestion.position?.split(',')[0] }} • {{ suggestion.mlb_team }}</div>
+                            </div>
+                          </div>
+                          <div class="mt-2 flex items-center justify-between">
+                            <div class="flex flex-wrap gap-1">
+                              <span v-for="cat in suggestion.helpsWith" :key="cat" class="px-1.5 py-0.5 bg-cyan-500/20 text-cyan-400 rounded text-[10px] font-medium">
+                                {{ cat }}
+                              </span>
+                            </div>
+                            <span class="text-[10px] text-cyan-400 font-medium">+{{ suggestion.impactScore }} impact</span>
+                          </div>
+                          <div class="text-[10px] text-dark-textMuted mt-1">
+                            {{ suggestion.reason }}
+                          </div>
+                        </div>
+                      </div>
+                      <div v-else class="text-sm text-dark-textMuted italic text-center py-2">
+                        No high-impact pickups available
                       </div>
                     </div>
                   </div>
@@ -2325,6 +2357,135 @@ function getImpactClass(player: any): string {
   if (label === 'LOW') return 'bg-orange-500/30 text-orange-400'
   return 'bg-dark-border text-dark-textMuted'
 }
+
+// Smart recommendation based on matchup context
+function getRecommendation(player: any): { verdict: string; reason: string } {
+  const isPitcherPlayer = isPitcher(player)
+  const cats = isPitcherPlayer ? pitchingCategories.value : hittingCategories.value
+  
+  // Count which categories this player helps that we need
+  const helpsCats: string[] = []
+  const helpsWinningCats: string[] = []
+  
+  for (const cat of cats) {
+    const statId = cat.stat_id
+    const playerValue = parseFloat(player.stats?.[statId] || 0)
+    if (playerValue <= 0) continue
+    
+    const catStatus = matchupCategoryStatus.value[statId]?.status
+    if (catStatus === 'losing' || catStatus === 'close') {
+      helpsCats.push(cat.display_name)
+    } else if (catStatus === 'winning') {
+      helpsWinningCats.push(cat.display_name)
+    }
+  }
+  
+  const isFreeAgent = !player.fantasy_team_key
+  const isMyPlayer = player.fantasy_team_key === myTeamKey.value
+  
+  // Generate smart recommendation
+  if (isFreeAgent) {
+    if (helpsCats.length >= 3) {
+      return { verdict: '🔥 PICKUP', reason: `Helps ${helpsCats.slice(0, 3).join(', ')}` }
+    } else if (helpsCats.length >= 1) {
+      return { verdict: '📈 Consider', reason: `Boosts ${helpsCats[0]}` }
+    }
+    return { verdict: '➖ Pass', reason: 'Low impact on needs' }
+  }
+  
+  if (isMyPlayer) {
+    if (helpsCats.length >= 4) {
+      return { verdict: '🔥 MUST START', reason: `Helps ${helpsCats.length} categories` }
+    } else if (helpsCats.length >= 2) {
+      return { verdict: '✅ Start', reason: `For ${helpsCats.slice(0, 2).join(', ')}` }
+    } else if (helpsCats.length === 1) {
+      return { verdict: '🟡 Flex', reason: `Start for ${helpsCats[0]}` }
+    } else if (helpsWinningCats.length >= 2) {
+      return { verdict: '⚪ Sit OK', reason: `Already winning ${helpsWinningCats[0]}` }
+    }
+    return { verdict: '🔻 Sit', reason: "Won't help matchup" }
+  }
+  
+  // Other team's player
+  if (helpsCats.length >= 3) {
+    return { verdict: '⚠️ Threat', reason: `Strong in ${helpsCats.length} cats` }
+  }
+  return { verdict: '—', reason: 'Opponent' }
+}
+
+function getRecommendationClass(player: any): string {
+  const rec = getRecommendation(player)
+  if (rec.verdict.includes('MUST START') || rec.verdict.includes('PICKUP')) return 'bg-green-500/30 text-green-400'
+  if (rec.verdict.includes('Start') || rec.verdict.includes('Consider')) return 'bg-lime-500/30 text-lime-400'
+  if (rec.verdict.includes('Flex')) return 'bg-yellow-500/30 text-yellow-400'
+  if (rec.verdict.includes('Sit OK')) return 'bg-dark-border text-dark-textMuted'
+  if (rec.verdict.includes('Sit') || rec.verdict.includes('Pass')) return 'bg-orange-500/30 text-orange-400'
+  if (rec.verdict.includes('Threat')) return 'bg-red-500/30 text-red-400'
+  return 'bg-dark-border text-dark-textMuted'
+}
+
+// Pickup suggestions - free agents who can help flip categories
+const pickupSuggestions = computed(() => {
+  const freeAgents = allPlayers.value.filter(p => !p.fantasy_team_key)
+  const isPitchingPosition = ['SP', 'RP'].includes(selectedStartSitPosition.value)
+  
+  // Filter to relevant position
+  const relevantFAs = freeAgents.filter(p => {
+    const pos = p.position || ''
+    if (selectedStartSitPosition.value === 'OF') {
+      return pos.includes('OF') || pos.includes('LF') || pos.includes('CF') || pos.includes('RF')
+    }
+    if (isPitchingPosition) {
+      return pos.includes('SP') || pos.includes('RP') || pos.includes('P')
+    }
+    return pos.includes(selectedStartSitPosition.value)
+  })
+  
+  // Score each FA by how much they help losing/close categories
+  const scored = relevantFAs.map(player => {
+    const cats = isPitchingPosition ? pitchingCategories.value : hittingCategories.value
+    const helpsWith: string[] = []
+    let impactScore = 0
+    
+    for (const cat of cats) {
+      const statId = cat.stat_id
+      const playerValue = parseFloat(player.stats?.[statId] || 0)
+      if (playerValue <= 0) continue
+      
+      const catStatus = matchupCategoryStatus.value[statId]?.status
+      if (catStatus === 'losing') {
+        helpsWith.push(cat.display_name)
+        impactScore += playerValue * 3
+      } else if (catStatus === 'close') {
+        helpsWith.push(cat.display_name)
+        impactScore += playerValue * 2
+      }
+    }
+    
+    // Generate reason
+    let reason = ''
+    if (helpsWith.length >= 3) {
+      reason = `Could flip ${helpsWith[0]} and boost ${helpsWith.length - 1} more categories`
+    } else if (helpsWith.length >= 1) {
+      reason = `Available to help with ${helpsWith.join(', ')}`
+    } else {
+      reason = 'Depth add'
+    }
+    
+    return {
+      ...player,
+      helpsWith: helpsWith.slice(0, 3),
+      impactScore: Math.round(impactScore),
+      reason
+    }
+  })
+  
+  // Sort by impact and return top 3
+  return scored
+    .filter(p => p.impactScore > 0)
+    .sort((a, b) => b.impactScore - a.impactScore)
+    .slice(0, 3)
+})
 
 function getCategoryMatchupClass(statId: string): string {
   const status = matchupCategoryStatus.value[statId]?.status
