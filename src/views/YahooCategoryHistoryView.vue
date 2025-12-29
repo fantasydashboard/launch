@@ -133,21 +133,21 @@
                     </span>
                   </div>
                 </th>
-                <th class="text-center py-3 px-4 font-semibold text-dark-textSecondary uppercase tracking-wider cursor-pointer hover:bg-dark-border/30 transition-colors" @click="sortBy('avg_cat_wins')">
+                <th class="text-center py-3 px-4 font-semibold text-dark-textSecondary uppercase tracking-wider cursor-pointer hover:bg-dark-border/30 transition-colors" @click="sortBy('hitting_cat_wins')">
                   <div class="flex items-center justify-center gap-1">
-                    Avg Cat W/Wk
+                    Hitting Cat W
                     <span class="inline-flex flex-col" style="font-size: 10px; line-height: 8px;">
-                      <span :class="sortColumn === 'avg_cat_wins' && sortDirection === 'asc' ? 'text-primary' : 'text-dark-textMuted'">▲</span>
-                      <span :class="sortColumn === 'avg_cat_wins' && sortDirection === 'desc' ? 'text-primary' : 'text-dark-textMuted'">▼</span>
+                      <span :class="sortColumn === 'hitting_cat_wins' && sortDirection === 'asc' ? 'text-primary' : 'text-dark-textMuted'">▲</span>
+                      <span :class="sortColumn === 'hitting_cat_wins' && sortDirection === 'desc' ? 'text-primary' : 'text-dark-textMuted'">▼</span>
                     </span>
                   </div>
                 </th>
-                <th class="text-center py-3 px-4 font-semibold text-dark-textSecondary uppercase tracking-wider cursor-pointer hover:bg-dark-border/30 transition-colors" @click="sortBy('total_cat_wins')">
+                <th class="text-center py-3 px-4 font-semibold text-dark-textSecondary uppercase tracking-wider cursor-pointer hover:bg-dark-border/30 transition-colors" @click="sortBy('pitching_cat_wins')">
                   <div class="flex items-center justify-center gap-1">
-                    Total Cat W
+                    Pitching Cat W
                     <span class="inline-flex flex-col" style="font-size: 10px; line-height: 8px;">
-                      <span :class="sortColumn === 'total_cat_wins' && sortDirection === 'asc' ? 'text-primary' : 'text-dark-textMuted'">▲</span>
-                      <span :class="sortColumn === 'total_cat_wins' && sortDirection === 'desc' ? 'text-primary' : 'text-dark-textMuted'">▼</span>
+                      <span :class="sortColumn === 'pitching_cat_wins' && sortDirection === 'asc' ? 'text-primary' : 'text-dark-textMuted'">▲</span>
+                      <span :class="sortColumn === 'pitching_cat_wins' && sortDirection === 'desc' ? 'text-primary' : 'text-dark-textMuted'">▼</span>
                     </span>
                   </div>
                 </th>
@@ -195,11 +195,11 @@
                     {{ (stat.matchup_win_pct * 100).toFixed(1) }}%
                   </span>
                 </td>
-                <td class="text-center py-3 px-4" :class="getRecordClass(stat, 'avg_cat_wins')">
-                  {{ stat.avg_cat_wins.toFixed(1) }}
+                <td class="text-center py-3 px-4" :class="getRecordClass(stat, 'hitting_cat_wins')">
+                  {{ stat.hitting_cat_wins }}
                 </td>
-                <td class="text-center py-3 px-4" :class="getRecordClass(stat, 'total_cat_wins')">
-                  {{ stat.total_cat_wins }}
+                <td class="text-center py-3 px-4" :class="getRecordClass(stat, 'pitching_cat_wins')">
+                  {{ stat.pitching_cat_wins }}
                 </td>
                 <td class="text-center py-3 px-4">
                   <span :class="stat.cat_diff >= 0 ? 'text-green-400' : 'text-red-400'" class="font-semibold">
@@ -297,10 +297,10 @@
               <tr class="border-b border-dark-border">
                 <th class="text-left py-3 px-4 font-semibold text-dark-textSecondary uppercase tracking-wider">Season</th>
                 <th class="text-center py-3 px-4 font-semibold text-dark-textSecondary uppercase tracking-wider">Teams</th>
-                <th class="text-center py-3 px-4 font-semibold text-dark-textSecondary uppercase tracking-wider">Avg Cat W/Wk</th>
                 <th class="text-center py-3 px-4 font-semibold text-dark-textSecondary uppercase tracking-wider">Most Dominant</th>
+                <th class="text-center py-3 px-4 font-semibold text-dark-textSecondary uppercase tracking-wider">Most Categories Won</th>
+                <th class="text-center py-3 px-4 font-semibold text-dark-textSecondary uppercase tracking-wider">Fewest Categories Won</th>
                 <th class="text-center py-3 px-4 font-semibold text-dark-textSecondary uppercase tracking-wider">Closest Matchup</th>
-                <th class="text-center py-3 px-4 font-semibold text-dark-textSecondary uppercase tracking-wider">Biggest Blowout</th>
                 <th class="text-center py-3 px-4 font-semibold text-dark-textSecondary uppercase tracking-wider">Champion</th>
               </tr>
             </thead>
@@ -309,7 +309,6 @@
                   class="border-b border-dark-border hover:bg-dark-border/30 transition-colors">
                 <td class="py-3 px-4 font-bold text-dark-text text-lg">{{ season.year }}</td>
                 <td class="text-center py-3 px-4 text-dark-text">{{ season.teamCount }}</td>
-                <td class="text-center py-3 px-4 text-dark-text">{{ season.avgCatWins.toFixed(1) }}</td>
                 <td class="text-center py-3 px-4">
                   <div class="flex items-center justify-center gap-2">
                     <div class="w-6 h-6 rounded-full overflow-hidden bg-dark-border flex-shrink-0">
@@ -320,12 +319,26 @@
                   <div class="text-xs text-dark-textMuted">{{ season.mostDominant?.record || '' }}</div>
                 </td>
                 <td class="text-center py-3 px-4">
-                  <div class="text-yellow-400 font-semibold">{{ season.closestMatchup?.score || 'N/A' }}</div>
-                  <div class="text-xs text-dark-textMuted">{{ season.closestMatchup?.teams || '' }}</div>
+                  <div class="flex items-center justify-center gap-2">
+                    <div class="w-6 h-6 rounded-full overflow-hidden bg-dark-border flex-shrink-0">
+                      <img :src="season.mostCatWins?.logo_url || defaultAvatar" class="w-full h-full object-cover" @error="handleImageError" />
+                    </div>
+                    <span class="font-semibold text-green-400">{{ season.mostCatWins?.name || 'N/A' }}</span>
+                  </div>
+                  <div class="text-xs text-dark-textMuted">{{ season.mostCatWins?.value || '' }} cat wins</div>
                 </td>
                 <td class="text-center py-3 px-4">
-                  <div class="text-red-400 font-semibold">{{ season.biggestBlowout?.score || 'N/A' }}</div>
-                  <div class="text-xs text-dark-textMuted">{{ season.biggestBlowout?.teams || '' }}</div>
+                  <div class="flex items-center justify-center gap-2">
+                    <div class="w-6 h-6 rounded-full overflow-hidden bg-dark-border flex-shrink-0">
+                      <img :src="season.fewestCatWins?.logo_url || defaultAvatar" class="w-full h-full object-cover" @error="handleImageError" />
+                    </div>
+                    <span class="font-semibold text-red-400">{{ season.fewestCatWins?.name || 'N/A' }}</span>
+                  </div>
+                  <div class="text-xs text-dark-textMuted">{{ season.fewestCatWins?.value || '' }} cat wins</div>
+                </td>
+                <td class="text-center py-3 px-4">
+                  <div class="text-yellow-400 font-semibold">{{ season.closestMatchup?.score || 'N/A' }}</div>
+                  <div class="text-xs text-dark-textMuted">{{ season.closestMatchup?.teams || '' }}</div>
                 </td>
                 <td class="text-center py-3 px-4">
                   <div class="flex items-center justify-center gap-2">
@@ -486,6 +499,8 @@ interface CareerStat {
   matchup_win_pct: number
   total_cat_wins: number
   total_cat_losses: number
+  hitting_cat_wins: number
+  pitching_cat_wins: number
   avg_cat_wins: number
   cat_diff: number
   total_matchups: number
@@ -521,14 +536,9 @@ const careerRecords = computed(() => {
   if (stats.length === 0) return []
   
   const mostChampionships = [...stats].sort((a, b) => b.championships - a.championships)[0]
-  const bestWinPct = [...stats].filter(s => s.total_matchups >= 10).sort((a, b) => b.matchup_win_pct - a.matchup_win_pct)[0]
   const mostCatWins = [...stats].sort((a, b) => b.total_cat_wins - a.total_cat_wins)[0]
-  const mostBalanced = [...stats].filter(s => s.total_matchups >= 10).sort((a, b) => {
-    // Calculate variance in category win rates
-    const aVariance = calculateCategoryVariance(a)
-    const bVariance = calculateCategoryVariance(b)
-    return aVariance - bVariance // Lower variance = more balanced
-  })[0]
+  const mostHittingWins = [...stats].sort((a, b) => b.hitting_cat_wins - a.hitting_cat_wins)[0]
+  const mostPitchingWins = [...stats].sort((a, b) => b.pitching_cat_wins - a.pitching_cat_wins)[0]
   
   return [
     {
@@ -539,25 +549,25 @@ const careerRecords = computed(() => {
       detail: `${mostChampionships?.seasons || 0} season(s) played`
     },
     {
-      label: 'Best Category Win Rate',
-      team: bestWinPct?.team_name || 'N/A',
-      value: bestWinPct ? `${(bestWinPct.matchup_win_pct * 100).toFixed(0)}%` : '0%',
-      icon: '📊',
-      detail: `${bestWinPct?.matchup_wins || 0}-${bestWinPct?.matchup_losses || 0}-${bestWinPct?.matchup_ties || 0} record`
-    },
-    {
-      label: 'Most Category Wins',
+      label: 'Total Categories Won',
       team: mostCatWins?.team_name || 'N/A',
       value: mostCatWins?.total_cat_wins || 0,
       icon: '🎯',
       detail: `+${mostCatWins?.cat_diff || 0} category differential`
     },
     {
-      label: 'Most Balanced',
-      team: mostBalanced?.team_name || 'N/A',
-      value: mostBalanced?.avg_cat_wins?.toFixed(1) || '0',
-      icon: '⚖️',
-      detail: `Avg cats won per matchup`
+      label: 'Hitting Categories Won',
+      team: mostHittingWins?.team_name || 'N/A',
+      value: mostHittingWins?.hitting_cat_wins || 0,
+      icon: '⚾',
+      detail: `${mostHittingWins?.seasons || 0} season(s) played`
+    },
+    {
+      label: 'Pitching Categories Won',
+      team: mostPitchingWins?.team_name || 'N/A',
+      value: mostPitchingWins?.pitching_cat_wins || 0,
+      icon: '💪',
+      detail: `${mostPitchingWins?.seasons || 0} season(s) played`
     }
   ]
 })
@@ -615,6 +625,8 @@ const careerStats = computed((): CareerStat[] => {
           matchup_win_pct: 0,
           total_cat_wins: 0,
           total_cat_losses: 0,
+          hitting_cat_wins: 0,
+          pitching_cat_wins: 0,
           avg_cat_wins: 0,
           cat_diff: 0,
           total_matchups: wins + losses + ties,
@@ -642,17 +654,25 @@ const careerStats = computed((): CareerStat[] => {
         stat.total_cat_wins += catWins
         stat.total_cat_losses += catLosses
         
-        // Track category-specific records
+        // Track category-specific records and hitting/pitching splits
         for (const catResult of team.stat_winners || []) {
-          const catName = catResult.stat_id // We'll need to map this to display name
-          if (!stat.category_records[catName]) {
-            stat.category_records[catName] = { wins: 0, losses: 0 }
+          const catId = catResult.stat_id
+          const catName = getCategoryDisplayName(catId)
+          
+          if (!stat.category_records[catId]) {
+            stat.category_records[catId] = { wins: 0, losses: 0 }
           }
           if (catResult.is_tied === '0') {
             if (catResult.winner_team_key === teamKey) {
-              stat.category_records[catName].wins++
+              stat.category_records[catId].wins++
+              // Track hitting vs pitching
+              if (isHittingCategory(catName)) {
+                stat.hitting_cat_wins++
+              } else {
+                stat.pitching_cat_wins++
+              }
             } else {
-              stat.category_records[catName].losses++
+              stat.category_records[catId].losses++
             }
           }
         }
@@ -788,6 +808,23 @@ const seasonRecords = computed(() => {
       }
     }
     
+    // Calculate category wins per team for the season
+    const teamCatWins: Record<string, number> = {}
+    for (const matchup of matchups) {
+      if (!matchup.teams || matchup.teams.length < 2) continue
+      for (const team of matchup.teams) {
+        const teamKey = team.team_key
+        if (!teamKey) continue
+        const catWins = team.stat_winners?.filter((w: any) => w.winner_team_key === teamKey && w.is_tied === '0').length || 0
+        teamCatWins[teamKey] = (teamCatWins[teamKey] || 0) + catWins
+      }
+    }
+    
+    // Find most and fewest category wins
+    const catWinEntries = Object.entries(teamCatWins).sort((a, b) => b[1] - a[1])
+    const mostCatWinsTeam = catWinEntries[0]
+    const fewestCatWinsTeam = catWinEntries[catWinEntries.length - 1]
+    
     records.push({
       year,
       teamCount: standings.length,
@@ -801,8 +838,17 @@ const seasonRecords = computed(() => {
         logo_url: allTeams.value[mostDominant.team_key]?.logo_url || mostDominant.logo_url,
         record: `${mostDominant.wins || 0}-${mostDominant.losses || 0}-${mostDominant.ties || 0}`
       } : null,
-      closestMatchup: closestMatchup || { score: 'N/A', teams: '' },
-      biggestBlowout: biggestBlowout || { score: 'N/A', teams: '' }
+      mostCatWins: mostCatWinsTeam ? {
+        name: allTeams.value[mostCatWinsTeam[0]]?.name || standings.find((t: any) => t.team_key === mostCatWinsTeam[0])?.name || 'Unknown',
+        logo_url: allTeams.value[mostCatWinsTeam[0]]?.logo_url || '',
+        value: mostCatWinsTeam[1]
+      } : null,
+      fewestCatWins: fewestCatWinsTeam ? {
+        name: allTeams.value[fewestCatWinsTeam[0]]?.name || standings.find((t: any) => t.team_key === fewestCatWinsTeam[0])?.name || 'Unknown',
+        logo_url: allTeams.value[fewestCatWinsTeam[0]]?.logo_url || '',
+        value: fewestCatWinsTeam[1]
+      } : null,
+      closestMatchup: closestMatchup || { score: 'N/A', teams: '' }
     })
   }
   
@@ -910,6 +956,11 @@ function getCategoryDisplayName(statId: string): string {
     '60': 'OPS', '8': 'H', '55': 'OBP', '56': 'SLG'
   }
   return mapping[statId] || statId
+}
+
+function isHittingCategory(catName: string): boolean {
+  const hittingCats = ['HR', 'RBI', 'R', 'SB', 'AVG', 'OPS', 'OBP', 'SLG', 'H', 'TB', 'BB', 'XBH', 'AB', 'PA']
+  return hittingCats.includes(catName)
 }
 
 function getCategoryColorClass(cat: string): string {
