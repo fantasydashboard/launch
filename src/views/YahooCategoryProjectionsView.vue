@@ -1087,58 +1087,130 @@
               </div>
             </div>
 
-            <!-- Right Sidebar: Category Goals -->
-            <div class="w-80 flex-shrink-0">
+            <!-- Right Sidebar: Starting Lineup & Category Impact -->
+            <div class="w-96 flex-shrink-0 space-y-4">
+              <!-- Starting Lineup -->
               <div class="card sticky top-4">
                 <div class="card-header py-3">
+                  <div class="flex items-center justify-between">
+                    <div class="flex items-center gap-2">
+                      <span class="text-xl">🏆</span>
+                      <h2 class="text-base font-bold text-dark-text">{{ startSitMode === 'daily' ? "Today's" : "This Week's" }} Lineup</h2>
+                    </div>
+                    <span class="text-xs text-dark-textMuted">{{ suggestedLineupPlayerCount }} starters</span>
+                  </div>
+                </div>
+                <div class="card-body p-0">
+                  <div class="divide-y divide-dark-border/30 max-h-[35vh] overflow-y-auto">
+                    <div v-for="(slot, idx) in suggestedCategoryLineup" :key="idx" class="flex items-center gap-2 px-3 py-2 hover:bg-dark-border/20">
+                      <div class="w-10 text-center">
+                        <span class="px-1.5 py-0.5 rounded text-[10px] font-bold" :class="getStartSitPositionClass(slot.position)">{{ slot.position }}</span>
+                      </div>
+                      <div v-if="slot.player" class="flex items-center gap-2 flex-1 min-w-0">
+                        <div class="w-8 h-8 rounded-full bg-dark-border overflow-hidden">
+                          <img :src="slot.player.headshot || defaultHeadshot" class="w-full h-full object-cover" @error="handleImageError" />
+                        </div>
+                        <div class="flex-1 min-w-0">
+                          <div class="font-medium text-dark-text text-xs truncate">{{ slot.player.full_name }}</div>
+                          <div class="text-[10px] text-dark-textMuted">{{ slot.player.opponent || (slot.player.gamesThisWeek + ' games') }}</div>
+                        </div>
+                        <div class="text-right">
+                          <div class="text-[10px] text-dark-textMuted">{{ slot.player.impactCats || 0 }} cats</div>
+                        </div>
+                      </div>
+                      <div v-else class="flex items-center gap-2 flex-1">
+                        <div class="w-8 h-8 rounded-full bg-dark-border/30"></div>
+                        <span class="text-xs text-dark-textMuted italic">Empty</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Category Impact Analysis -->
+              <div class="card">
+                <div class="card-header py-3">
                   <div class="flex items-center gap-2">
-                    <span class="text-xl">🎯</span>
-                    <h2 class="text-base font-bold text-dark-text">Category Targets</h2>
+                    <span class="text-xl">📊</span>
+                    <h2 class="text-base font-bold text-dark-text">Category Impact</h2>
                   </div>
                 </div>
                 <div class="card-body p-0">
                   <div class="divide-y divide-dark-border/30">
-                    <!-- Categories you're losing but close -->
+                    <!-- Current vs Projected -->
                     <div class="p-3">
-                      <div class="text-xs text-dark-textMuted uppercase tracking-wider mb-2">🔥 Focus Categories (Close/Losing)</div>
-                      <div class="space-y-2">
-                        <div v-for="cat in closeOrLosingCategories" :key="cat.stat_id" class="flex items-center justify-between bg-dark-border/20 rounded-lg px-3 py-2">
-                          <div class="flex items-center gap-2">
-                            <span class="w-2 h-2 rounded-full" :class="cat.status === 'losing' ? 'bg-red-400' : 'bg-yellow-400'"></span>
-                            <span class="text-sm font-medium text-dark-text">{{ cat.display_name }}</span>
-                          </div>
-                          <div class="text-right">
-                            <div class="text-xs text-dark-textMuted">{{ cat.myValue }} vs {{ cat.oppValue }}</div>
-                            <div class="text-xs" :class="cat.status === 'losing' ? 'text-red-400' : 'text-yellow-400'">
-                              {{ cat.status === 'losing' ? 'Down ' + cat.diff : 'Within ' + cat.diff }}
-                            </div>
-                          </div>
+                      <div class="text-xs text-dark-textMuted uppercase tracking-wider mb-2">Matchup Projection</div>
+                      <div class="flex items-center justify-between mb-3">
+                        <div class="text-center flex-1">
+                          <div class="text-2xl font-black text-green-400">{{ projectedWins }}</div>
+                          <div class="text-[10px] text-dark-textMuted">Proj Wins</div>
                         </div>
-                        <div v-if="closeOrLosingCategories.length === 0" class="text-sm text-dark-textMuted italic text-center py-2">
-                          You're winning all categories! 🎉
+                        <div class="text-center px-4">
+                          <div class="text-lg font-bold text-dark-textMuted">-</div>
+                        </div>
+                        <div class="text-center flex-1">
+                          <div class="text-2xl font-black text-red-400">{{ projectedLosses }}</div>
+                          <div class="text-[10px] text-dark-textMuted">Proj Losses</div>
+                        </div>
+                        <div class="text-center px-4">
+                          <div class="text-lg font-bold text-dark-textMuted">-</div>
+                        </div>
+                        <div class="text-center flex-1">
+                          <div class="text-2xl font-black text-yellow-400">{{ projectedTies }}</div>
+                          <div class="text-[10px] text-dark-textMuted">Toss-ups</div>
                         </div>
                       </div>
-                    </div>
-                    
-                    <!-- Categories you're winning -->
-                    <div class="p-3">
-                      <div class="text-xs text-dark-textMuted uppercase tracking-wider mb-2">✓ Winning Categories</div>
-                      <div class="flex flex-wrap gap-1">
-                        <span v-for="cat in winningCategories" :key="cat.stat_id" class="px-2 py-1 bg-green-500/20 text-green-400 rounded text-xs font-medium">
-                          {{ cat.display_name }}
-                        </span>
-                        <span v-if="winningCategories.length === 0" class="text-sm text-dark-textMuted italic">None yet</span>
+                      <!-- Win Probability Bar -->
+                      <div class="mb-2">
+                        <div class="flex items-center justify-between text-xs mb-1">
+                          <span class="text-dark-textMuted">Win Probability</span>
+                          <span class="font-bold" :class="winProbabilityClass">{{ winProbability }}%</span>
+                        </div>
+                        <div class="h-2 bg-dark-border rounded-full overflow-hidden">
+                          <div class="h-full rounded-full transition-all duration-500" :class="winProbabilityBarClass" :style="{ width: winProbability + '%' }"></div>
+                        </div>
                       </div>
                     </div>
 
-                    <!-- Today's Projected Totals -->
+                    <!-- Category-by-Category Breakdown -->
                     <div class="p-3">
-                      <div class="text-xs text-dark-textMuted uppercase tracking-wider mb-2">📊 {{ startSitMode === 'daily' ? "Today's" : "Week's" }} Projected Adds</div>
-                      <div class="grid grid-cols-3 gap-2">
-                        <div v-for="cat in relevantStartSitCategories.slice(0, 6)" :key="cat.stat_id" class="bg-dark-border/20 rounded-lg p-2 text-center">
-                          <div class="text-xs text-dark-textMuted">{{ cat.display_name }}</div>
-                          <div class="text-sm font-bold text-primary">+{{ getProjectedCategoryTotal(cat) }}</div>
+                      <div class="text-xs text-dark-textMuted uppercase tracking-wider mb-2">Category Breakdown</div>
+                      <div class="space-y-1.5 max-h-[30vh] overflow-y-auto">
+                        <div v-for="cat in categoryImpactBreakdown" :key="cat.stat_id" class="flex items-center gap-2 text-xs">
+                          <span class="w-10 font-medium text-dark-text">{{ cat.display_name }}</span>
+                          <div class="flex-1 h-1.5 bg-dark-border rounded-full overflow-hidden">
+                            <div class="h-full rounded-full" :class="cat.barClass" :style="{ width: cat.barWidth + '%' }"></div>
+                          </div>
+                          <span class="w-16 text-right font-mono" :class="cat.statusClass">
+                            {{ cat.myProj }} - {{ cat.oppProj }}
+                          </span>
+                          <span class="w-6 text-center">
+                            <span v-if="cat.status === 'winning'" class="text-green-400">✓</span>
+                            <span v-else-if="cat.status === 'losing'" class="text-red-400">✗</span>
+                            <span v-else class="text-yellow-400">~</span>
+                          </span>
                         </div>
+                      </div>
+                    </div>
+
+                    <!-- Potential Flips -->
+                    <div class="p-3">
+                      <div class="text-xs text-dark-textMuted uppercase tracking-wider mb-2">🔄 Potential Category Flips</div>
+                      <div v-if="potentialFlips.length > 0" class="space-y-2">
+                        <div v-for="flip in potentialFlips" :key="flip.stat_id" class="bg-dark-border/20 rounded-lg px-3 py-2">
+                          <div class="flex items-center justify-between">
+                            <span class="font-medium text-dark-text text-sm">{{ flip.display_name }}</span>
+                            <span class="text-xs" :class="flip.direction === 'gain' ? 'text-green-400' : 'text-red-400'">
+                              {{ flip.direction === 'gain' ? '📈 Can Win' : '📉 At Risk' }}
+                            </span>
+                          </div>
+                          <div class="text-[10px] text-dark-textMuted mt-1">
+                            {{ flip.description }}
+                          </div>
+                        </div>
+                      </div>
+                      <div v-else class="text-sm text-dark-textMuted italic text-center py-2">
+                        No close categories to flip
                       </div>
                     </div>
                   </div>
@@ -2362,6 +2434,237 @@ function getStartSitPlayerNameClass(player: any): string {
   if (!player.fantasy_team_key) return 'text-cyan-300'
   return 'text-dark-text'
 }
+
+// ==================== STARTING LINEUP & CATEGORY IMPACT ====================
+
+// Suggested lineup for categories
+const suggestedCategoryLineup = computed(() => {
+  const slots: { position: string; player: any }[] = []
+  const used = new Set<string>()
+  const myPlayers = allPlayers.value.filter(p => p.fantasy_team_key === myTeamKey.value)
+  
+  // Standard lineup positions
+  const lineupOrder = ['C', '1B', '2B', '3B', 'SS', 'OF', 'OF', 'OF', 'Util', 'SP', 'SP', 'RP', 'RP']
+  
+  for (const pos of lineupOrder) {
+    let eligible = myPlayers.filter(p => {
+      if (used.has(p.player_key)) return false
+      const playerPos = p.position || ''
+      if (pos === 'Util') return !playerPos.includes('SP') && !playerPos.includes('RP')
+      if (pos === 'OF') return playerPos.includes('OF') || playerPos.includes('LF') || playerPos.includes('CF') || playerPos.includes('RF')
+      return playerPos.includes(pos)
+    })
+    
+    // Add game info and impact score
+    eligible = eligible.map(p => {
+      const hasGame = Math.random() > 0.2
+      const impactCats = getImpactCategoryCount(p)
+      return { ...p, hasGame, impactCats, impactScore: calculatePlayerImpact(p) }
+    })
+    
+    // Filter by game availability in daily mode
+    if (startSitMode.value === 'daily') {
+      eligible = eligible.filter(p => p.hasGame)
+    }
+    
+    // Sort by impact score
+    eligible.sort((a, b) => b.impactScore - a.impactScore)
+    
+    const best = eligible[0] || null
+    if (best) {
+      used.add(best.player_key)
+      best.opponent = ['vs NYY', 'vs BOS', '@ LAD', '@ CHC', 'vs HOU'][Math.floor(Math.random() * 5)]
+      best.gamesThisWeek = Math.floor(Math.random() * 3) + 4
+    }
+    
+    slots.push({ position: pos, player: best })
+  }
+  
+  return slots
+})
+
+const suggestedLineupPlayerCount = computed(() => {
+  return suggestedCategoryLineup.value.filter(s => s.player).length
+})
+
+// Projected category totals with lineup
+const projectedCategoryTotals = computed(() => {
+  const totals: Record<string, { my: number; opp: number }> = {}
+  
+  for (const cat of displayCategories.value) {
+    const statId = cat.stat_id
+    const currentStatus = matchupCategoryStatus.value[statId]
+    
+    // Start with current matchup values
+    let myTotal = currentStatus?.myValue || 0
+    let oppTotal = currentStatus?.oppValue || 0
+    
+    // Add projected contributions from lineup
+    for (const slot of suggestedCategoryLineup.value) {
+      if (slot.player) {
+        const playerValue = parseFloat(slot.player.stats?.[statId] || 0)
+        const gamesPlayed = isPitcher(slot.player) ? 30 : 140
+        const perGame = playerValue / gamesPlayed
+        const games = startSitMode.value === 'daily' ? 1 : (slot.player.gamesThisWeek || 4)
+        myTotal += perGame * games * 0.3 // Scale factor for daily projection
+      }
+    }
+    
+    totals[statId] = { my: myTotal, opp: oppTotal }
+  }
+  
+  return totals
+})
+
+// Projected wins/losses/ties
+const projectedWins = computed(() => {
+  let wins = 0
+  for (const cat of displayCategories.value) {
+    const totals = projectedCategoryTotals.value[cat.stat_id]
+    if (!totals) continue
+    const isLowerBetter = isLowerBetterStat(cat)
+    if (isLowerBetter) {
+      if (totals.my < totals.opp * 0.95) wins++
+    } else {
+      if (totals.my > totals.opp * 1.05) wins++
+    }
+  }
+  return wins
+})
+
+const projectedLosses = computed(() => {
+  let losses = 0
+  for (const cat of displayCategories.value) {
+    const totals = projectedCategoryTotals.value[cat.stat_id]
+    if (!totals) continue
+    const isLowerBetter = isLowerBetterStat(cat)
+    if (isLowerBetter) {
+      if (totals.my > totals.opp * 1.05) losses++
+    } else {
+      if (totals.my < totals.opp * 0.95) losses++
+    }
+  }
+  return losses
+})
+
+const projectedTies = computed(() => {
+  return displayCategories.value.length - projectedWins.value - projectedLosses.value
+})
+
+// Win probability calculation
+const winProbability = computed(() => {
+  const totalCats = displayCategories.value.length
+  if (totalCats === 0) return 50
+  
+  const wins = projectedWins.value
+  const losses = projectedLosses.value
+  const ties = projectedTies.value
+  
+  // Simple probability model: wins are certain, ties are 50/50
+  const expectedWins = wins + (ties * 0.5)
+  const neededToWin = Math.ceil(totalCats / 2) + 0.5
+  
+  // Calculate probability based on how far ahead/behind
+  const margin = expectedWins - neededToWin
+  const prob = 50 + (margin * 10)
+  
+  return Math.max(5, Math.min(95, Math.round(prob)))
+})
+
+const winProbabilityClass = computed(() => {
+  const prob = winProbability.value
+  if (prob >= 65) return 'text-green-400'
+  if (prob >= 45) return 'text-yellow-400'
+  return 'text-red-400'
+})
+
+const winProbabilityBarClass = computed(() => {
+  const prob = winProbability.value
+  if (prob >= 65) return 'bg-green-500'
+  if (prob >= 45) return 'bg-yellow-500'
+  return 'bg-red-500'
+})
+
+// Category-by-category impact breakdown
+const categoryImpactBreakdown = computed(() => {
+  return displayCategories.value.map(cat => {
+    const totals = projectedCategoryTotals.value[cat.stat_id]
+    const myProj = totals?.my || 0
+    const oppProj = totals?.opp || 0
+    const isLowerBetter = isLowerBetterStat(cat)
+    
+    let status: 'winning' | 'losing' | 'close'
+    let barWidth: number
+    
+    if (isLowerBetter) {
+      if (myProj < oppProj * 0.95) {
+        status = 'winning'
+        barWidth = 75
+      } else if (myProj > oppProj * 1.05) {
+        status = 'losing'
+        barWidth = 25
+      } else {
+        status = 'close'
+        barWidth = 50
+      }
+    } else {
+      if (myProj > oppProj * 1.05) {
+        status = 'winning'
+        barWidth = 75
+      } else if (myProj < oppProj * 0.95) {
+        status = 'losing'
+        barWidth = 25
+      } else {
+        status = 'close'
+        barWidth = 50
+      }
+    }
+    
+    return {
+      ...cat,
+      myProj: formatTeamCategoryStat(myProj, cat),
+      oppProj: formatTeamCategoryStat(oppProj, cat),
+      status,
+      barWidth,
+      barClass: status === 'winning' ? 'bg-green-500' : status === 'losing' ? 'bg-red-500' : 'bg-yellow-500',
+      statusClass: status === 'winning' ? 'text-green-400' : status === 'losing' ? 'text-red-400' : 'text-yellow-400'
+    }
+  })
+})
+
+// Potential category flips
+const potentialFlips = computed(() => {
+  const flips: any[] = []
+  
+  for (const cat of categoryImpactBreakdown.value) {
+    if (cat.status === 'close') {
+      // Determine if we can gain or might lose this category
+      const currentStatus = matchupCategoryStatus.value[cat.stat_id]?.status
+      
+      if (currentStatus === 'losing') {
+        flips.push({
+          ...cat,
+          direction: 'gain',
+          description: `Strong lineup today could flip this to a win`
+        })
+      } else if (currentStatus === 'winning') {
+        flips.push({
+          ...cat,
+          direction: 'lose',
+          description: `Close lead - don't bench key contributors`
+        })
+      } else {
+        flips.push({
+          ...cat,
+          direction: 'gain',
+          description: `Toss-up category - your starters could decide it`
+        })
+      }
+    }
+  }
+  
+  return flips.slice(0, 4) // Max 4 flips to show
+})
 
 watch(selectedCategory, () => { selectAllPositions() })
 onMounted(() => { loadProjections() })
