@@ -473,6 +473,168 @@
         </div>
       </div>
 
+      <!-- League Awards -->
+      <div class="card">
+        <div class="card-header">
+          <div class="flex items-center justify-between flex-wrap gap-4">
+            <div class="flex items-center gap-2">
+              <span class="text-2xl">🏆</span>
+              <h2 class="card-title">League Awards</h2>
+            </div>
+          </div>
+          <p class="card-subtitle mt-2">All-time records and achievements</p>
+        </div>
+        <div class="card-body">
+          <!-- Hall of Fame -->
+          <div class="mb-8">
+            <h3 class="text-xl font-bold text-dark-text mb-4 flex items-center gap-2">
+              <span>🏅</span>
+              <span>Hall of Fame</span>
+            </h3>
+            
+            <!-- Overall Dominance Awards -->
+            <div class="mb-6">
+              <h4 class="text-sm font-semibold text-dark-textMuted uppercase tracking-wider mb-3">Overall Dominance</h4>
+              <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                <div v-for="award in hallOfFameOverall" :key="award.title" class="bg-gradient-to-br from-yellow-500/10 to-yellow-600/5 rounded-xl p-4 border border-yellow-500/20">
+                  <div class="text-sm text-yellow-400 uppercase tracking-wide mb-2 font-semibold">{{ award.title }}</div>
+                  <div v-if="award.winner" class="flex items-center gap-3 mb-2">
+                    <div class="w-10 h-10 rounded-full overflow-hidden bg-dark-border flex-shrink-0 ring-2 ring-yellow-500/50">
+                      <img :src="award.winner.logo_url || defaultAvatar" :alt="award.winner.team_name" class="w-full h-full object-cover" @error="handleImageError" />
+                    </div>
+                    <div class="flex-1">
+                      <div class="font-bold text-dark-text">{{ award.winner.team_name }}</div>
+                      <div class="text-xs text-dark-textMuted">{{ award.winner.season || 'All-Time' }}</div>
+                    </div>
+                  </div>
+                  <div v-if="award.winner" class="flex items-center justify-between">
+                    <div class="text-2xl font-black text-yellow-400">{{ award.winner.value }}</div>
+                    <div class="text-xs text-dark-textMuted">{{ award.winner.detail }}</div>
+                  </div>
+                  <div v-else class="text-sm text-dark-textMuted italic">No data available</div>
+                </div>
+              </div>
+            </div>
+            
+            <!-- Category Kings - Hitting -->
+            <div class="mb-6">
+              <h4 class="text-sm font-semibold text-dark-textMuted uppercase tracking-wider mb-3">👑 Hitting Category Kings (Best Single Season)</h4>
+              <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+                <div v-for="award in hallOfFameHitting" :key="award.category" class="bg-gradient-to-br from-blue-500/10 to-blue-600/5 rounded-xl p-4 border border-blue-500/20">
+                  <div class="text-center mb-2">
+                    <span class="px-3 py-1 rounded-full text-xs font-bold bg-blue-500/30 text-blue-400">{{ award.category }}</span>
+                  </div>
+                  <div v-if="award.winner" class="text-center">
+                    <div class="w-10 h-10 rounded-full overflow-hidden bg-dark-border mx-auto mb-2 ring-2 ring-blue-500/50">
+                      <img :src="award.winner.logo_url || defaultAvatar" class="w-full h-full object-cover" @error="handleImageError" />
+                    </div>
+                    <div class="font-semibold text-dark-text text-sm truncate">{{ award.winner.team_name }}</div>
+                    <div class="text-2xl font-black text-blue-400">{{ award.winner.value }}</div>
+                    <div class="text-xs text-dark-textMuted">wins in {{ award.winner.season }}</div>
+                  </div>
+                  <div v-else class="text-center text-sm text-dark-textMuted italic py-4">No data</div>
+                </div>
+              </div>
+            </div>
+            
+            <!-- Category Kings - Pitching -->
+            <div class="mb-6">
+              <h4 class="text-sm font-semibold text-dark-textMuted uppercase tracking-wider mb-3">👑 Pitching Category Kings (Best Single Season)</h4>
+              <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+                <div v-for="award in hallOfFamePitching" :key="award.category" class="bg-gradient-to-br from-purple-500/10 to-purple-600/5 rounded-xl p-4 border border-purple-500/20">
+                  <div class="text-center mb-2">
+                    <span class="px-3 py-1 rounded-full text-xs font-bold bg-purple-500/30 text-purple-400">{{ award.category }}</span>
+                  </div>
+                  <div v-if="award.winner" class="text-center">
+                    <div class="w-10 h-10 rounded-full overflow-hidden bg-dark-border mx-auto mb-2 ring-2 ring-purple-500/50">
+                      <img :src="award.winner.logo_url || defaultAvatar" class="w-full h-full object-cover" @error="handleImageError" />
+                    </div>
+                    <div class="font-semibold text-dark-text text-sm truncate">{{ award.winner.team_name }}</div>
+                    <div class="text-2xl font-black text-purple-400">{{ award.winner.value }}</div>
+                    <div class="text-xs text-dark-textMuted">wins in {{ award.winner.season }}</div>
+                  </div>
+                  <div v-else class="text-center text-sm text-dark-textMuted italic py-4">No data</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Hall of Shame -->
+          <div>
+            <h3 class="text-xl font-bold text-dark-text mb-4 flex items-center gap-2">
+              <span>💩</span>
+              <span>Hall of Shame</span>
+            </h3>
+            
+            <!-- Overall Struggles -->
+            <div class="mb-6">
+              <h4 class="text-sm font-semibold text-dark-textMuted uppercase tracking-wider mb-3">Overall Struggles</h4>
+              <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                <div v-for="award in hallOfShameOverall" :key="award.title" class="bg-gradient-to-br from-red-500/10 to-red-600/5 rounded-xl p-4 border border-red-500/20">
+                  <div class="text-sm text-red-400 uppercase tracking-wide mb-2 font-semibold">{{ award.title }}</div>
+                  <div v-if="award.winner" class="flex items-center gap-3 mb-2">
+                    <div class="w-10 h-10 rounded-full overflow-hidden bg-dark-border flex-shrink-0 ring-2 ring-red-500/50">
+                      <img :src="award.winner.logo_url || defaultAvatar" :alt="award.winner.team_name" class="w-full h-full object-cover" @error="handleImageError" />
+                    </div>
+                    <div class="flex-1">
+                      <div class="font-bold text-dark-text">{{ award.winner.team_name }}</div>
+                      <div class="text-xs text-dark-textMuted">{{ award.winner.season || 'All-Time' }}</div>
+                    </div>
+                  </div>
+                  <div v-if="award.winner" class="flex items-center justify-between">
+                    <div class="text-2xl font-black text-red-400">{{ award.winner.value }}</div>
+                    <div class="text-xs text-dark-textMuted">{{ award.winner.detail }}</div>
+                  </div>
+                  <div v-else class="text-sm text-dark-textMuted italic">No data available</div>
+                </div>
+              </div>
+            </div>
+            
+            <!-- Category Struggles - Hitting -->
+            <div class="mb-6">
+              <h4 class="text-sm font-semibold text-dark-textMuted uppercase tracking-wider mb-3">💀 Hitting Category Struggles (Worst Single Season)</h4>
+              <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+                <div v-for="award in hallOfShameHitting" :key="award.category" class="bg-gradient-to-br from-gray-500/10 to-gray-600/5 rounded-xl p-4 border border-gray-500/20">
+                  <div class="text-center mb-2">
+                    <span class="px-3 py-1 rounded-full text-xs font-bold bg-gray-500/30 text-gray-400">{{ award.category }}</span>
+                  </div>
+                  <div v-if="award.winner" class="text-center">
+                    <div class="w-10 h-10 rounded-full overflow-hidden bg-dark-border mx-auto mb-2 ring-2 ring-gray-500/50">
+                      <img :src="award.winner.logo_url || defaultAvatar" class="w-full h-full object-cover" @error="handleImageError" />
+                    </div>
+                    <div class="font-semibold text-dark-text text-sm truncate">{{ award.winner.team_name }}</div>
+                    <div class="text-2xl font-black text-gray-400">{{ award.winner.value }}</div>
+                    <div class="text-xs text-dark-textMuted">wins in {{ award.winner.season }}</div>
+                  </div>
+                  <div v-else class="text-center text-sm text-dark-textMuted italic py-4">No data</div>
+                </div>
+              </div>
+            </div>
+            
+            <!-- Category Struggles - Pitching -->
+            <div>
+              <h4 class="text-sm font-semibold text-dark-textMuted uppercase tracking-wider mb-3">💀 Pitching Category Struggles (Worst Single Season)</h4>
+              <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+                <div v-for="award in hallOfShamePitching" :key="award.category" class="bg-gradient-to-br from-gray-500/10 to-gray-600/5 rounded-xl p-4 border border-gray-500/20">
+                  <div class="text-center mb-2">
+                    <span class="px-3 py-1 rounded-full text-xs font-bold bg-gray-500/30 text-gray-400">{{ award.category }}</span>
+                  </div>
+                  <div v-if="award.winner" class="text-center">
+                    <div class="w-10 h-10 rounded-full overflow-hidden bg-dark-border mx-auto mb-2 ring-2 ring-gray-500/50">
+                      <img :src="award.winner.logo_url || defaultAvatar" class="w-full h-full object-cover" @error="handleImageError" />
+                    </div>
+                    <div class="font-semibold text-dark-text text-sm truncate">{{ award.winner.team_name }}</div>
+                    <div class="text-2xl font-black text-gray-400">{{ award.winner.value }}</div>
+                    <div class="text-xs text-dark-textMuted">wins in {{ award.winner.season }}</div>
+                  </div>
+                  <div v-else class="text-center text-sm text-dark-textMuted italic py-4">No data</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
     </template>
   </div>
 </template>
@@ -853,6 +1015,310 @@ const seasonRecords = computed(() => {
   }
   
   return records.sort((a, b) => parseInt(b.year) - parseInt(a.year))
+})
+
+// Build season-level category data for awards
+const seasonCategoryData = computed(() => {
+  const data: any[] = []
+  
+  for (const [year, seasonData] of Object.entries(historicalData.value)) {
+    const matchups = seasonData.matchups || []
+    const standings = seasonData.standings || []
+    
+    // Track category wins per team for this season
+    const teamCatWins: Record<string, Record<string, number>> = {}
+    const teamTotalCatWins: Record<string, number> = {}
+    
+    for (const matchup of matchups) {
+      if (!matchup.teams || matchup.teams.length < 2) continue
+      
+      for (const team of matchup.teams) {
+        const teamKey = team.team_key
+        if (!teamKey) continue
+        
+        if (!teamCatWins[teamKey]) teamCatWins[teamKey] = {}
+        if (!teamTotalCatWins[teamKey]) teamTotalCatWins[teamKey] = 0
+        
+        for (const catResult of team.stat_winners || []) {
+          const catId = catResult.stat_id
+          const catName = getCategoryDisplayName(catId)
+          
+          if (catResult.is_tied === '0' && catResult.winner_team_key === teamKey) {
+            if (!teamCatWins[teamKey][catName]) teamCatWins[teamKey][catName] = 0
+            teamCatWins[teamKey][catName]++
+            teamTotalCatWins[teamKey]++
+          }
+        }
+      }
+    }
+    
+    // Get team info
+    for (const [teamKey, catWins] of Object.entries(teamCatWins)) {
+      const teamInfo = allTeams.value[teamKey] || standings.find((t: any) => t.team_key === teamKey) || {}
+      const teamStanding = standings.find((t: any) => t.team_key === teamKey)
+      
+      data.push({
+        year,
+        team_key: teamKey,
+        team_name: teamInfo.name || 'Unknown',
+        logo_url: teamInfo.logo_url || '',
+        category_wins: catWins,
+        total_cat_wins: teamTotalCatWins[teamKey] || 0,
+        matchup_wins: teamStanding?.wins || 0,
+        matchup_losses: teamStanding?.losses || 0,
+        matchup_ties: teamStanding?.ties || 0
+      })
+    }
+  }
+  
+  return data
+})
+
+// Get all unique categories from the data
+const allCategories = computed(() => {
+  const cats = new Set<string>()
+  for (const season of seasonCategoryData.value) {
+    for (const cat of Object.keys(season.category_wins || {})) {
+      cats.add(cat)
+    }
+  }
+  return Array.from(cats)
+})
+
+// Hall of Fame - Overall Dominance
+const hallOfFameOverall = computed(() => {
+  const stats = careerStats.value
+  const seasonData = seasonCategoryData.value
+  
+  // Most Championships
+  const mostChamps = [...stats].sort((a, b) => b.championships - a.championships)[0]
+  
+  // Most Category Wins in a Single Season
+  const bestCatSeason = [...seasonData].sort((a, b) => b.total_cat_wins - a.total_cat_wins)[0]
+  
+  // Best Single Season Win Rate
+  const bestWinRate = [...seasonData]
+    .filter(s => (s.matchup_wins + s.matchup_losses + s.matchup_ties) >= 10)
+    .sort((a, b) => {
+      const aRate = a.matchup_wins / (a.matchup_wins + a.matchup_losses + a.matchup_ties)
+      const bRate = b.matchup_wins / (b.matchup_wins + b.matchup_losses + b.matchup_ties)
+      return bRate - aRate
+    })[0]
+  
+  // Most Total Category Wins All-Time
+  const mostTotalCats = [...stats].sort((a, b) => b.total_cat_wins - a.total_cat_wins)[0]
+  
+  return [
+    {
+      title: '🏆 Dynasty Builder',
+      winner: mostChamps ? {
+        team_name: mostChamps.team_name,
+        logo_url: mostChamps.logo_url,
+        value: mostChamps.championships,
+        detail: 'championships',
+        season: 'All-Time'
+      } : null
+    },
+    {
+      title: '🎯 Category Machine',
+      winner: bestCatSeason ? {
+        team_name: bestCatSeason.team_name,
+        logo_url: bestCatSeason.logo_url,
+        value: bestCatSeason.total_cat_wins,
+        detail: 'cat wins',
+        season: bestCatSeason.year
+      } : null
+    },
+    {
+      title: '📊 Mr. Perfect',
+      winner: bestWinRate ? {
+        team_name: bestWinRate.team_name,
+        logo_url: bestWinRate.logo_url,
+        value: `${((bestWinRate.matchup_wins / (bestWinRate.matchup_wins + bestWinRate.matchup_losses + bestWinRate.matchup_ties)) * 100).toFixed(0)}%`,
+        detail: `${bestWinRate.matchup_wins}-${bestWinRate.matchup_losses}-${bestWinRate.matchup_ties}`,
+        season: bestWinRate.year
+      } : null
+    },
+    {
+      title: '💎 Category King',
+      winner: mostTotalCats ? {
+        team_name: mostTotalCats.team_name,
+        logo_url: mostTotalCats.logo_url,
+        value: mostTotalCats.total_cat_wins,
+        detail: 'all-time cat wins',
+        season: 'All-Time'
+      } : null
+    }
+  ]
+})
+
+// Hall of Fame - Hitting Categories (Best Single Season)
+const hallOfFameHitting = computed(() => {
+  const hittingCats = allCategories.value.filter(cat => isHittingCategory(cat))
+  
+  return hittingCats.map(cat => {
+    let bestSeason: any = null
+    let bestValue = 0
+    
+    for (const season of seasonCategoryData.value) {
+      const catWins = season.category_wins[cat] || 0
+      if (catWins > bestValue) {
+        bestValue = catWins
+        bestSeason = {
+          team_name: season.team_name,
+          logo_url: season.logo_url,
+          value: catWins,
+          season: season.year
+        }
+      }
+    }
+    
+    return { category: cat, winner: bestSeason }
+  })
+})
+
+// Hall of Fame - Pitching Categories (Best Single Season)
+const hallOfFamePitching = computed(() => {
+  const pitchingCats = allCategories.value.filter(cat => !isHittingCategory(cat))
+  
+  return pitchingCats.map(cat => {
+    let bestSeason: any = null
+    let bestValue = 0
+    
+    for (const season of seasonCategoryData.value) {
+      const catWins = season.category_wins[cat] || 0
+      if (catWins > bestValue) {
+        bestValue = catWins
+        bestSeason = {
+          team_name: season.team_name,
+          logo_url: season.logo_url,
+          value: catWins,
+          season: season.year
+        }
+      }
+    }
+    
+    return { category: cat, winner: bestSeason }
+  })
+})
+
+// Hall of Shame - Overall Struggles
+const hallOfShameOverall = computed(() => {
+  const seasonData = seasonCategoryData.value
+  
+  // Worst Single Season Record
+  const worstRecord = [...seasonData]
+    .filter(s => (s.matchup_wins + s.matchup_losses + s.matchup_ties) >= 10)
+    .sort((a, b) => {
+      const aRate = a.matchup_wins / (a.matchup_wins + a.matchup_losses + a.matchup_ties)
+      const bRate = b.matchup_wins / (b.matchup_wins + b.matchup_losses + b.matchup_ties)
+      return aRate - bRate
+    })[0]
+  
+  // Fewest Category Wins in a Season
+  const fewestCats = [...seasonData]
+    .filter(s => s.total_cat_wins > 0)
+    .sort((a, b) => a.total_cat_wins - b.total_cat_wins)[0]
+  
+  // Most Ties in a Season
+  const mostTies = [...seasonData].sort((a, b) => b.matchup_ties - a.matchup_ties)[0]
+  
+  // Worst Category Differential All-Time
+  const stats = careerStats.value
+  const worstDiff = [...stats].sort((a, b) => a.cat_diff - b.cat_diff)[0]
+  
+  return [
+    {
+      title: '💩 Basement Dweller',
+      winner: worstRecord ? {
+        team_name: worstRecord.team_name,
+        logo_url: worstRecord.logo_url,
+        value: `${((worstRecord.matchup_wins / (worstRecord.matchup_wins + worstRecord.matchup_losses + worstRecord.matchup_ties)) * 100).toFixed(0)}%`,
+        detail: `${worstRecord.matchup_wins}-${worstRecord.matchup_losses}-${worstRecord.matchup_ties}`,
+        season: worstRecord.year
+      } : null
+    },
+    {
+      title: '📉 Category Crater',
+      winner: fewestCats ? {
+        team_name: fewestCats.team_name,
+        logo_url: fewestCats.logo_url,
+        value: fewestCats.total_cat_wins,
+        detail: 'cat wins',
+        season: fewestCats.year
+      } : null
+    },
+    {
+      title: '😢 Mr. Indecisive',
+      winner: mostTies && mostTies.matchup_ties > 0 ? {
+        team_name: mostTies.team_name,
+        logo_url: mostTies.logo_url,
+        value: mostTies.matchup_ties,
+        detail: 'ties',
+        season: mostTies.year
+      } : null
+    },
+    {
+      title: '🕳️ Category Hole',
+      winner: worstDiff ? {
+        team_name: worstDiff.team_name,
+        logo_url: worstDiff.logo_url,
+        value: worstDiff.cat_diff,
+        detail: 'cat differential',
+        season: 'All-Time'
+      } : null
+    }
+  ]
+})
+
+// Hall of Shame - Hitting Categories (Worst Single Season)
+const hallOfShameHitting = computed(() => {
+  const hittingCats = allCategories.value.filter(cat => isHittingCategory(cat))
+  
+  return hittingCats.map(cat => {
+    let worstSeason: any = null
+    let worstValue = Infinity
+    
+    for (const season of seasonCategoryData.value) {
+      const catWins = season.category_wins[cat]
+      if (catWins !== undefined && catWins < worstValue) {
+        worstValue = catWins
+        worstSeason = {
+          team_name: season.team_name,
+          logo_url: season.logo_url,
+          value: catWins,
+          season: season.year
+        }
+      }
+    }
+    
+    return { category: cat, winner: worstSeason }
+  })
+})
+
+// Hall of Shame - Pitching Categories (Worst Single Season)
+const hallOfShamePitching = computed(() => {
+  const pitchingCats = allCategories.value.filter(cat => !isHittingCategory(cat))
+  
+  return pitchingCats.map(cat => {
+    let worstSeason: any = null
+    let worstValue = Infinity
+    
+    for (const season of seasonCategoryData.value) {
+      const catWins = season.category_wins[cat]
+      if (catWins !== undefined && catWins < worstValue) {
+        worstValue = catWins
+        worstSeason = {
+          team_name: season.team_name,
+          logo_url: season.logo_url,
+          value: catWins,
+          season: season.year
+        }
+      }
+    }
+    
+    return { category: cat, winner: worstSeason }
+  })
 })
 
 // H2H Teams list
