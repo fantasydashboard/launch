@@ -893,9 +893,17 @@ async function loadWeeklyStatsFromYahoo(leagueKey: string, playerKey: string, st
 
 // Fallback: Simulated data based on season stats
 async function loadSimulatedPerformances(player: any, statId: string) {
+  console.log('=== loadSimulatedPerformances DEBUG ===')
+  console.log('Player:', player.full_name)
+  console.log('Stat ID:', statId)
+  console.log('Player stats object:', player.stats)
+  console.log('Value for statId:', player.stats?.[statId])
+  
   const currentValue = player.stats?.[statId] || 0
   const gamesPlayed = 140 // Full season approximately
   const perGame = gamesPlayed > 0 ? currentValue / gamesPlayed : 0
+  
+  console.log('Current value:', currentValue, 'Per game:', perGame)
   
   // Calculate league average for this stat (per game)
   const relevantPlayers = allPlayers.value.filter(p => isPitchingCategory.value ? isPitcher(p) : !isPitcher(p))
@@ -903,9 +911,13 @@ async function loadSimulatedPerformances(player: any, statId: string) {
   const leagueTotal = allStatValues.reduce((a, b) => a + b, 0)
   const leaguePerGame = allStatValues.length > 0 ? (leagueTotal / allStatValues.length) / gamesPlayed : 0
   
+  console.log('League stat values count:', allStatValues.length, 'Total:', leagueTotal, 'Per game:', leaguePerGame)
+  
   // If both values are 0, use default values to show something
   const basePlayerValue = perGame > 0 ? perGame : 1
   const baseLeagueValue = leaguePerGame > 0 ? leaguePerGame : 0.8
+  
+  console.log('Base player value:', basePlayerValue, 'Base league value:', baseLeagueValue)
   
   // Generate last 5 game dates
   const today = new Date()
