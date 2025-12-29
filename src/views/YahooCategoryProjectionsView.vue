@@ -566,9 +566,9 @@ function isLowerBetterStat(cat: any): boolean {
   return lowerIsBetterNames.some(ln => name.includes(ln.toUpperCase()) || display.includes(ln.toUpperCase()))
 }
 
+const displayCategories = computed(() => statCategories.value.filter(c => !c.is_only_display_stat && c.stat_id))
 const hittingCategories = computed(() => displayCategories.value.filter(c => !isPitchingStat(c)))
 const pitchingCategories = computed(() => displayCategories.value.filter(c => isPitchingStat(c)))
-const displayCategories = computed(() => statCategories.value.filter(c => !c.is_only_display_stat && c.stat_id))
 const selectedCategoryInfo = computed(() => displayCategories.value.find(c => c.stat_id === selectedCategory.value))
 
 const isPitchingCategory = computed(() => {
@@ -922,7 +922,9 @@ function formatStatValue(value: number | undefined, decimals: number = 1): strin
 function formatCategoryStat(player: any, statId: string): string { 
   const value = player.stats?.[statId]
   if (value === undefined || value === null) return '-'
-  if (ratioStatIds.includes(statId)) { 
+  // Check if this is a ratio stat by looking up the category
+  const cat = displayCategories.value.find(c => c.stat_id === statId)
+  if (isRatioStat(cat)) { 
     if (value < 1 && value > 0) return value.toFixed(3).replace(/^0/, '')
     return value.toFixed(2) 
   }
