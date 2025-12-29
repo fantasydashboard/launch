@@ -921,10 +921,30 @@
             </div>
           </div>
 
-          <!-- Legend -->
+          <!-- Legend & Filters -->
           <div class="card">
             <div class="card-body py-3">
               <div class="flex items-center justify-between flex-wrap gap-4">
+                <div class="flex items-center gap-4">
+                  <span class="text-dark-textMuted text-sm font-medium">Show:</span>
+                  <div class="flex rounded-lg overflow-hidden border border-dark-border/50">
+                    <button 
+                      @click="startSitPlayerFilter = 'all'" 
+                      :class="startSitPlayerFilter === 'all' ? 'bg-primary text-gray-900' : 'bg-dark-card text-dark-textMuted hover:bg-dark-border/50'" 
+                      class="px-3 py-1.5 text-sm font-medium transition-colors"
+                    >All Players</button>
+                    <button 
+                      @click="startSitPlayerFilter = 'mine'" 
+                      :class="startSitPlayerFilter === 'mine' ? 'bg-yellow-500 text-gray-900' : 'bg-dark-card text-dark-textMuted hover:bg-dark-border/50'" 
+                      class="px-3 py-1.5 text-sm font-medium transition-colors"
+                    >My Team + FA</button>
+                    <button 
+                      @click="startSitPlayerFilter = 'fa'" 
+                      :class="startSitPlayerFilter === 'fa' ? 'bg-cyan-500 text-gray-900' : 'bg-dark-card text-dark-textMuted hover:bg-dark-border/50'" 
+                      class="px-3 py-1.5 text-sm font-medium transition-colors"
+                    >Free Agents</button>
+                  </div>
+                </div>
                 <div class="flex items-center gap-6 text-sm">
                   <div class="flex items-center gap-2"><div class="w-4 h-4 rounded bg-yellow-500/30 border-l-2 border-yellow-400"></div><span class="text-dark-textMuted">My Players</span></div>
                   <div class="flex items-center gap-2"><div class="w-4 h-4 rounded bg-cyan-500/20 border-l-2 border-cyan-400"></div><span class="text-dark-textMuted">Free Agents</span></div>
@@ -1013,8 +1033,15 @@
                                 <div class="flex items-center gap-2 text-xs text-dark-textMuted">
                                   <span>{{ player.mlb_team || 'FA' }}</span>
                                   <span class="text-dark-border">•</span>
-                                  <span v-if="player.fantasy_team" :class="player.fantasy_team_key === myTeamKey ? 'text-yellow-400' : ''">{{ player.fantasy_team }}</span>
-                                  <span v-else class="text-cyan-400">Free Agent</span>
+                                  <template v-if="player.fantasy_team">
+                                    <div class="flex items-center gap-1" :class="player.fantasy_team_key === myTeamKey ? 'text-yellow-400' : 'text-dark-textMuted'">
+                                      <svg class="w-3 h-3" viewBox="0 0 24 24" fill="currentColor"><path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4z"/></svg>
+                                      <span>{{ player.fantasy_team }}</span>
+                                    </div>
+                                  </template>
+                                  <span v-else class="text-cyan-400 flex items-center gap-1">
+                                    <span>+</span> Free Agent
+                                  </span>
                                 </div>
                               </div>
                             </div>
@@ -1158,6 +1185,7 @@ const startSitDay = ref<'today' | 'tomorrow'>('today')
 const selectedStartSitPosition = ref('C')
 const currentMatchupWeek = ref(1)
 const currentMatchup = ref<any>(null)
+const startSitPlayerFilter = ref<'all' | 'mine' | 'fa'>('all')
 
 const startSitPositions = [
   { id: 'C', label: 'C' },
@@ -2147,6 +2175,13 @@ function getStartSitPlayersForPosition(position: string): any[] {
     if (position === 'OF') return pos.includes('OF') || pos.includes('LF') || pos.includes('CF') || pos.includes('RF')
     return pos.includes(position)
   })
+  
+  // Apply player filter
+  if (startSitPlayerFilter.value === 'mine') {
+    players = players.filter(p => p.fantasy_team_key === myTeamKey.value || !p.fantasy_team_key)
+  } else if (startSitPlayerFilter.value === 'fa') {
+    players = players.filter(p => !p.fantasy_team_key)
+  }
   
   // Add simulated game info
   players = players.map(p => ({

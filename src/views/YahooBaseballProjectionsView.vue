@@ -248,12 +248,32 @@
         </div>
       </div>
 
-      <!-- Legend -->
+      <!-- Legend & Filters -->
       <div class="card">
         <div class="card-body py-3">
           <div class="flex items-center justify-between flex-wrap gap-4">
+            <div class="flex items-center gap-4">
+              <span class="text-dark-textMuted text-sm font-medium">Show:</span>
+              <div class="flex rounded-lg overflow-hidden border border-dark-border/50">
+                <button 
+                  @click="startSitPlayerFilter = 'all'" 
+                  :class="startSitPlayerFilter === 'all' ? 'bg-primary text-gray-900' : 'bg-dark-card text-dark-textMuted hover:bg-dark-border/50'" 
+                  class="px-3 py-1.5 text-sm font-medium transition-colors"
+                >All Players</button>
+                <button 
+                  @click="startSitPlayerFilter = 'mine'" 
+                  :class="startSitPlayerFilter === 'mine' ? 'bg-yellow-500 text-gray-900' : 'bg-dark-card text-dark-textMuted hover:bg-dark-border/50'" 
+                  class="px-3 py-1.5 text-sm font-medium transition-colors"
+                >My Team + FA</button>
+                <button 
+                  @click="startSitPlayerFilter = 'fa'" 
+                  :class="startSitPlayerFilter === 'fa' ? 'bg-cyan-500 text-gray-900' : 'bg-dark-card text-dark-textMuted hover:bg-dark-border/50'" 
+                  class="px-3 py-1.5 text-sm font-medium transition-colors"
+                >Free Agents</button>
+              </div>
+            </div>
             <div class="flex items-center gap-6 text-sm">
-              <div class="flex items-center gap-2"><div class="w-4 h-4 rounded bg-primary/30 border-l-2 border-primary"></div><span class="text-dark-textMuted">My Players</span></div>
+              <div class="flex items-center gap-2"><div class="w-4 h-4 rounded bg-yellow-500/30 border-l-2 border-yellow-400"></div><span class="text-dark-textMuted">My Players</span></div>
               <div class="flex items-center gap-2"><div class="w-4 h-4 rounded bg-cyan-500/20 border-l-2 border-cyan-400"></div><span class="text-dark-textMuted">Free Agents</span></div>
             </div>
             <div class="text-sm text-dark-textMuted">
@@ -307,24 +327,31 @@
                           </div>
                         </td>
                       </tr>
-                      <tr :class="getRowClass(player)" class="hover:bg-dark-border/20 transition-colors">
+                      <tr :class="getStartSitRowClass(player)" class="hover:bg-dark-border/20 transition-colors">
                         <td class="px-3 py-2"><span class="font-bold text-lg text-dark-text">{{ index + 1 }}</span></td>
                         <td class="px-3 py-2">
                           <div class="flex items-center gap-3">
                             <div class="relative">
-                              <div class="w-10 h-10 rounded-full bg-dark-border overflow-hidden ring-2" :class="getAvatarRingClass(player)">
+                              <div class="w-10 h-10 rounded-full bg-dark-border overflow-hidden ring-2" :class="getStartSitAvatarRingClass(player)">
                                 <img :src="player.headshot || defaultHeadshot" :alt="player.full_name" class="w-full h-full object-cover" @error="handleImageError" />
                               </div>
-                              <div v-if="isMyPlayer(player)" class="absolute -top-1 -right-1 w-5 h-5 bg-primary rounded-full flex items-center justify-center"><span class="text-xs text-gray-900 font-bold">★</span></div>
+                              <div v-if="isMyPlayer(player)" class="absolute -top-1 -right-1 w-5 h-5 bg-yellow-400 rounded-full flex items-center justify-center"><span class="text-xs text-gray-900 font-bold">★</span></div>
                               <div v-else-if="isFreeAgent(player)" class="absolute -top-1 -right-1 w-5 h-5 bg-cyan-400 rounded-full flex items-center justify-center"><span class="text-xs text-gray-900 font-bold">+</span></div>
                             </div>
                             <div>
-                              <span class="font-semibold" :class="getPlayerNameClass(player)">{{ player.full_name }}</span>
+                              <span class="font-semibold" :class="getStartSitPlayerNameClass(player)">{{ player.full_name }}</span>
                               <div class="flex items-center gap-2 text-xs text-dark-textMuted">
                                 <span>{{ player.mlb_team || 'FA' }}</span>
                                 <span class="text-dark-border">•</span>
-                                <span v-if="player.fantasy_team" :class="isMyPlayer(player) ? 'text-primary' : ''">{{ player.fantasy_team }}</span>
-                                <span v-else class="text-cyan-400">FA</span>
+                                <template v-if="player.fantasy_team">
+                                  <div class="flex items-center gap-1" :class="isMyPlayer(player) ? 'text-yellow-400' : 'text-dark-textMuted'">
+                                    <svg class="w-3 h-3" viewBox="0 0 24 24" fill="currentColor"><path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4z"/></svg>
+                                    <span>{{ player.fantasy_team }}</span>
+                                  </div>
+                                </template>
+                                <span v-else class="text-cyan-400 flex items-center gap-1">
+                                  <span>+</span> Free Agent
+                                </span>
                               </div>
                             </div>
                           </div>
@@ -432,6 +459,7 @@ const currentWeek = computed(() => {
   return Math.max(1, Math.min(26, diffWeeks)) // MLB season is ~26 weeks
 })
 const selectedStartSitPosition = ref('C')
+const startSitPlayerFilter = ref<'all' | 'mine' | 'fa'>('all')
 const startSitPositions = [
   { id: 'C', label: 'C' }, { id: '1B', label: '1B' }, { id: '2B', label: '2B' }, { id: '3B', label: '3B' },
   { id: 'SS', label: 'SS' }, { id: 'OF', label: 'OF' }, { id: 'SP', label: 'SP' }, { id: 'RP', label: 'RP' }, { id: 'Util', label: 'UTIL' }
@@ -501,6 +529,13 @@ function setTomorrow() {
 
 function getStartSitPlayers(position: string): any[] {
   let players = allPlayers.value.filter(p => position === 'Util' || p.position?.includes(position))
+  
+  // Apply player filter
+  if (startSitPlayerFilter.value === 'mine') {
+    players = players.filter(p => isMyPlayer(p) || isFreeAgent(p))
+  } else if (startSitPlayerFilter.value === 'fa') {
+    players = players.filter(p => isFreeAgent(p))
+  }
   
   // Use the selected date to generate deterministic "games" data
   // In a real implementation, this would come from MLB schedule API
@@ -646,6 +681,9 @@ function handleImageError(e: Event) { (e.target as HTMLImageElement).src = defau
 function getRowClass(p: any) { return isMyPlayer(p) ? 'bg-primary/10 border-l-2 border-primary' : isFreeAgent(p) ? 'bg-cyan-500/5 border-l-2 border-cyan-400' : '' }
 function getAvatarRingClass(p: any) { return isMyPlayer(p) ? 'ring-primary' : isFreeAgent(p) ? 'ring-cyan-400' : 'ring-dark-border' }
 function getPlayerNameClass(p: any) { return isMyPlayer(p) ? 'text-primary' : isFreeAgent(p) ? 'text-cyan-400' : 'text-dark-text' }
+function getStartSitRowClass(p: any) { return isMyPlayer(p) ? 'bg-yellow-500/10 border-l-4 border-yellow-400' : isFreeAgent(p) ? 'bg-cyan-500/5 border-l-4 border-cyan-400' : '' }
+function getStartSitAvatarRingClass(p: any) { return isMyPlayer(p) ? 'ring-yellow-400' : isFreeAgent(p) ? 'ring-cyan-400' : 'ring-dark-border' }
+function getStartSitPlayerNameClass(p: any) { return isMyPlayer(p) ? 'text-yellow-400' : isFreeAgent(p) ? 'text-cyan-400' : 'text-dark-text' }
 function getPositionClass(pos: string) { const p = pos?.split(',')[0]?.trim() || pos; const c: Record<string, string> = { C: 'bg-purple-500/30 text-purple-400', '1B': 'bg-red-500/30 text-red-400', '2B': 'bg-orange-500/30 text-orange-400', '3B': 'bg-yellow-500/30 text-yellow-400', SS: 'bg-green-500/30 text-green-400', OF: 'bg-blue-500/30 text-blue-400', SP: 'bg-cyan-500/30 text-cyan-400', RP: 'bg-pink-500/30 text-pink-400', Util: 'bg-gray-500/30 text-gray-400' }; return c[p] || 'bg-dark-border/50 text-dark-textMuted' }
 function getPositionTextClass(pos: string) { const c: Record<string, string> = { C: 'text-purple-400', '1B': 'text-red-400', '2B': 'text-orange-400', '3B': 'text-yellow-400', SS: 'text-green-400', OF: 'text-blue-400', SP: 'text-cyan-400', RP: 'text-pink-400', Util: 'text-gray-400' }; return c[pos] || 'text-dark-textMuted' }
 function getTeamGradeClass(g: string) { if (g.startsWith('A')) return 'text-green-400'; if (g.startsWith('B')) return 'text-blue-400'; if (g.startsWith('C')) return 'text-yellow-400'; if (g.startsWith('D')) return 'text-orange-400'; return 'text-red-400' }
