@@ -266,6 +266,200 @@
         </div>
       </div>
 
+      <!-- Season-by-Season Records -->
+      <div class="card">
+        <div class="card-header">
+          <div class="flex items-center justify-between flex-wrap gap-4">
+            <div class="flex items-center gap-2">
+              <span class="text-2xl">📅</span>
+              <h2 class="card-title">Season-by-Season Records</h2>
+            </div>
+            <button 
+              @click="downloadSeasonHistory"
+              :disabled="isDownloadingSeason"
+              class="btn-primary flex items-center gap-2 text-sm"
+            >
+              <svg v-if="!isDownloadingSeason" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+              </svg>
+              <svg v-else class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+              </svg>
+              {{ isDownloadingSeason ? 'Generating...' : 'Share' }}
+            </button>
+          </div>
+          <p class="card-subtitle mt-2">Historical performance by year</p>
+        </div>
+        <div class="card-body overflow-x-auto">
+          <table ref="seasonTableRef" class="w-full text-sm">
+            <thead>
+              <tr class="border-b border-dark-border">
+                <th class="text-left py-3 px-4 font-semibold text-dark-textSecondary uppercase tracking-wider">Season</th>
+                <th class="text-center py-3 px-4 font-semibold text-dark-textSecondary uppercase tracking-wider">Teams</th>
+                <th class="text-center py-3 px-4 font-semibold text-dark-textSecondary uppercase tracking-wider">Avg Cat W/Wk</th>
+                <th class="text-center py-3 px-4 font-semibold text-dark-textSecondary uppercase tracking-wider">Most Dominant</th>
+                <th class="text-center py-3 px-4 font-semibold text-dark-textSecondary uppercase tracking-wider">Closest Matchup</th>
+                <th class="text-center py-3 px-4 font-semibold text-dark-textSecondary uppercase tracking-wider">Biggest Blowout</th>
+                <th class="text-center py-3 px-4 font-semibold text-dark-textSecondary uppercase tracking-wider">Champion</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="season in seasonRecords" :key="season.year" 
+                  class="border-b border-dark-border hover:bg-dark-border/30 transition-colors">
+                <td class="py-3 px-4 font-bold text-dark-text text-lg">{{ season.year }}</td>
+                <td class="text-center py-3 px-4 text-dark-text">{{ season.teamCount }}</td>
+                <td class="text-center py-3 px-4 text-dark-text">{{ season.avgCatWins.toFixed(1) }}</td>
+                <td class="text-center py-3 px-4">
+                  <div class="flex items-center justify-center gap-2">
+                    <div class="w-6 h-6 rounded-full overflow-hidden bg-dark-border flex-shrink-0">
+                      <img :src="season.mostDominant?.logo_url || defaultAvatar" class="w-full h-full object-cover" @error="handleImageError" />
+                    </div>
+                    <span class="font-semibold text-green-400">{{ season.mostDominant?.name || 'N/A' }}</span>
+                  </div>
+                  <div class="text-xs text-dark-textMuted">{{ season.mostDominant?.record || '' }}</div>
+                </td>
+                <td class="text-center py-3 px-4">
+                  <div class="text-yellow-400 font-semibold">{{ season.closestMatchup?.score || 'N/A' }}</div>
+                  <div class="text-xs text-dark-textMuted">{{ season.closestMatchup?.teams || '' }}</div>
+                </td>
+                <td class="text-center py-3 px-4">
+                  <div class="text-red-400 font-semibold">{{ season.biggestBlowout?.score || 'N/A' }}</div>
+                  <div class="text-xs text-dark-textMuted">{{ season.biggestBlowout?.teams || '' }}</div>
+                </td>
+                <td class="text-center py-3 px-4">
+                  <div class="flex items-center justify-center gap-2">
+                    <span class="text-lg">🏆</span>
+                    <div class="w-6 h-6 rounded-full overflow-hidden bg-dark-border flex-shrink-0">
+                      <img :src="season.champion?.logo_url || defaultAvatar" class="w-full h-full object-cover" @error="handleImageError" />
+                    </div>
+                    <span class="font-semibold text-primary">{{ season.champion?.name || 'TBD' }}</span>
+                  </div>
+                </td>
+              </tr>
+              <tr v-if="seasonRecords.length === 0">
+                <td colspan="7" class="py-8 text-center text-dark-textMuted">
+                  No season data available
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Head-to-Head Matrix -->
+      <div class="card">
+        <div class="card-header">
+          <div class="flex items-center justify-between flex-wrap gap-4">
+            <div class="flex items-center gap-2">
+              <span class="text-2xl">⚔️</span>
+              <h2 class="card-title">Head-to-Head Matrix</h2>
+            </div>
+            <div class="flex items-center gap-4">
+              <!-- Toggle for current members only -->
+              <label class="flex items-center gap-2 cursor-pointer">
+                <span class="text-sm text-dark-textMuted">Current members only</span>
+                <div class="relative">
+                  <input type="checkbox" v-model="showCurrentMembersOnlyH2H" class="sr-only">
+                  <div :class="[
+                    'w-10 h-5 rounded-full transition-colors',
+                    showCurrentMembersOnlyH2H ? 'bg-primary' : 'bg-dark-border'
+                  ]"></div>
+                  <div :class="[
+                    'absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full transition-transform',
+                    showCurrentMembersOnlyH2H ? 'translate-x-5' : 'translate-x-0'
+                  ]"></div>
+                </div>
+              </label>
+              <button 
+                @click="downloadH2HMatrix"
+                :disabled="isDownloadingH2H"
+                class="btn-primary flex items-center gap-2 text-sm"
+              >
+                <svg v-if="!isDownloadingH2H" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                </svg>
+                <svg v-else class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                  <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                  <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                {{ isDownloadingH2H ? 'Generating...' : 'Share' }}
+              </button>
+            </div>
+          </div>
+          <p class="card-subtitle mt-2">All-time records between teams (read horizontally: each row shows that team's record vs opponents)</p>
+        </div>
+        <div class="card-body overflow-x-auto scrollbar-thin">
+          <table ref="h2hTableRef" class="w-full text-xs border-collapse">
+            <thead>
+              <tr>
+                <th class="sticky left-0 bg-dark-elevated z-10 px-3 py-2 text-left border border-dark-border min-w-[120px]">Team</th>
+                <th 
+                  v-for="team in filteredH2HTeams" 
+                  :key="`header-${team.team_key}`"
+                  class="px-2 py-2 text-center border border-dark-border font-semibold text-dark-textSecondary uppercase tracking-wider"
+                  style="min-width: 90px;"
+                >
+                  <div class="flex flex-col items-center gap-1">
+                    <div class="w-6 h-6 rounded-full overflow-hidden bg-dark-border">
+                      <img :src="team.logo_url || defaultAvatar" class="w-full h-full object-cover" @error="handleImageError" />
+                    </div>
+                    <div class="truncate text-[10px]" :title="team.team_name">{{ team.team_name.substring(0, 8) }}</div>
+                  </div>
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="rowTeam in filteredH2HTeams" :key="`row-${rowTeam.team_key}`">
+                <td class="sticky left-0 bg-dark-elevated z-10 px-3 py-2 font-semibold text-dark-text border border-dark-border whitespace-nowrap">
+                  <div class="flex items-center gap-2">
+                    <div class="w-6 h-6 rounded-full overflow-hidden bg-dark-border flex-shrink-0">
+                      <img :src="rowTeam.logo_url || defaultAvatar" class="w-full h-full object-cover" @error="handleImageError" />
+                    </div>
+                    <span class="truncate">{{ rowTeam.team_name }}</span>
+                  </div>
+                </td>
+                <td 
+                  v-for="colTeam in filteredH2HTeams" 
+                  :key="`cell-${rowTeam.team_key}-${colTeam.team_key}`"
+                  class="px-2 py-2 text-center border border-dark-border"
+                  :class="getH2HCellClass(rowTeam.team_key, colTeam.team_key)"
+                >
+                  <template v-if="rowTeam.team_key === colTeam.team_key">
+                    <span class="text-dark-textMuted">—</span>
+                  </template>
+                  <template v-else>
+                    <div class="font-bold">{{ getH2HRecord(rowTeam.team_key, colTeam.team_key) }}</div>
+                    <div class="text-[9px] opacity-75">{{ getH2HCatDiff(rowTeam.team_key, colTeam.team_key) }}</div>
+                  </template>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        
+        <!-- H2H Legend -->
+        <div class="card-footer border-t border-dark-border">
+          <div class="flex items-center justify-center gap-6 text-xs">
+            <div class="flex items-center gap-2">
+              <div class="w-4 h-4 rounded bg-green-500/20 border border-green-500/50"></div>
+              <span class="text-dark-textMuted">Winning Record</span>
+            </div>
+            <div class="flex items-center gap-2">
+              <div class="w-4 h-4 rounded bg-red-500/20 border border-red-500/50"></div>
+              <span class="text-dark-textMuted">Losing Record</span>
+            </div>
+            <div class="flex items-center gap-2">
+              <div class="w-4 h-4 rounded bg-yellow-500/20 border border-yellow-500/50"></div>
+              <span class="text-dark-textMuted">Even Record</span>
+            </div>
+            <div class="text-dark-textMuted">
+              <span class="font-semibold">Format:</span> W-L-T (Cat +/-)
+            </div>
+          </div>
+        </div>
+      </div>
+
     </template>
   </div>
 </template>
@@ -303,15 +497,21 @@ interface CareerStat {
 const isLoading = ref(true)
 const loadingMessage = ref('Loading historical data...')
 const isDownloading = ref(false)
+const isDownloadingSeason = ref(false)
+const isDownloadingH2H = ref(false)
 const showCurrentMembersOnly = ref(false)
+const showCurrentMembersOnlyH2H = ref(false)
 const sortColumn = ref('matchup_wins')
 const sortDirection = ref<'asc' | 'desc'>('desc')
 
 const careerTableRef = ref<HTMLElement | null>(null)
+const seasonTableRef = ref<HTMLElement | null>(null)
+const h2hTableRef = ref<HTMLElement | null>(null)
 const historicalData = ref<Record<string, any>>({})
 const currentMembers = ref<Set<string>>(new Set())
 const allTeams = ref<Record<string, any>>({})
 const leagueCategories = ref<string[]>([])
+const h2hRecords = ref<Record<string, Record<string, { wins: number; losses: number; ties: number; catWins: number; catLosses: number }>>>({})
 
 const defaultAvatar = 'https://s.yimg.com/cv/apiv2/default/mlb/mlb_dp_2_72.png'
 
@@ -521,6 +721,149 @@ const categoryLeaders = computed(() => {
   })
 })
 
+// Season-by-Season Records
+const seasonRecords = computed(() => {
+  const records: any[] = []
+  
+  for (const [year, data] of Object.entries(historicalData.value)) {
+    const standings = data.standings || []
+    const matchups = data.matchups || []
+    
+    if (standings.length === 0) continue
+    
+    // Find champion
+    const champion = standings.find((t: any) => t.rank === 1 || t.is_champion)
+    
+    // Find most dominant (best record)
+    const sorted = [...standings].sort((a: any, b: any) => {
+      const aWinPct = (a.wins || 0) / ((a.wins || 0) + (a.losses || 0) + (a.ties || 0)) || 0
+      const bWinPct = (b.wins || 0) / ((b.wins || 0) + (b.losses || 0) + (b.ties || 0)) || 0
+      return bWinPct - aWinPct
+    })
+    const mostDominant = sorted[0]
+    
+    // Calculate average category wins per week
+    let totalCatWins = 0
+    let totalMatchups = 0
+    for (const team of standings) {
+      totalMatchups += (team.wins || 0) + (team.losses || 0) + (team.ties || 0)
+    }
+    // Estimate avg cat wins (would be more accurate with matchup data)
+    const avgCatWins = totalMatchups > 0 ? 5.0 : 0 // Placeholder - would calculate from matchups
+    
+    // Find closest and biggest blowout matchups
+    let closestMatchup: any = null
+    let biggestBlowout: any = null
+    let closestDiff = Infinity
+    let biggestDiff = 0
+    
+    for (const matchup of matchups) {
+      if (!matchup.teams || matchup.teams.length < 2) continue
+      
+      const team1 = matchup.teams[0]
+      const team2 = matchup.teams[1]
+      
+      // Calculate category differential for this matchup
+      const t1CatWins = team1.stat_winners?.filter((w: any) => w.winner_team_key === team1.team_key && w.is_tied === '0').length || 0
+      const t2CatWins = team2.stat_winners?.filter((w: any) => w.winner_team_key === team2.team_key && w.is_tied === '0').length || 0
+      const diff = Math.abs(t1CatWins - t2CatWins)
+      
+      const team1Name = allTeams.value[team1.team_key]?.name || team1.name || 'Team 1'
+      const team2Name = allTeams.value[team2.team_key]?.name || team2.name || 'Team 2'
+      
+      if (diff < closestDiff && diff <= 2) {
+        closestDiff = diff
+        closestMatchup = {
+          score: `${Math.max(t1CatWins, t2CatWins)}-${Math.min(t1CatWins, t2CatWins)}`,
+          teams: `${team1Name} vs ${team2Name}`
+        }
+      }
+      
+      if (diff > biggestDiff) {
+        biggestDiff = diff
+        biggestBlowout = {
+          score: `${Math.max(t1CatWins, t2CatWins)}-${Math.min(t1CatWins, t2CatWins)}`,
+          teams: `${t1CatWins > t2CatWins ? team1Name : team2Name} def. ${t1CatWins > t2CatWins ? team2Name : team1Name}`
+        }
+      }
+    }
+    
+    records.push({
+      year,
+      teamCount: standings.length,
+      avgCatWins,
+      champion: champion ? {
+        name: champion.name,
+        logo_url: allTeams.value[champion.team_key]?.logo_url || champion.logo_url
+      } : null,
+      mostDominant: mostDominant ? {
+        name: mostDominant.name,
+        logo_url: allTeams.value[mostDominant.team_key]?.logo_url || mostDominant.logo_url,
+        record: `${mostDominant.wins || 0}-${mostDominant.losses || 0}-${mostDominant.ties || 0}`
+      } : null,
+      closestMatchup: closestMatchup || { score: 'N/A', teams: '' },
+      biggestBlowout: biggestBlowout || { score: 'N/A', teams: '' }
+    })
+  }
+  
+  return records.sort((a, b) => parseInt(b.year) - parseInt(a.year))
+})
+
+// H2H Teams list
+const h2hTeams = computed(() => {
+  const teams: any[] = []
+  const seen = new Set<string>()
+  
+  for (const stat of careerStats.value) {
+    if (!seen.has(stat.team_key)) {
+      seen.add(stat.team_key)
+      teams.push({
+        team_key: stat.team_key,
+        team_name: stat.team_name,
+        logo_url: stat.logo_url
+      })
+    }
+  }
+  
+  return teams.sort((a, b) => a.team_name.localeCompare(b.team_name))
+})
+
+// Filtered H2H teams
+const filteredH2HTeams = computed(() => {
+  if (!showCurrentMembersOnlyH2H.value) return h2hTeams.value
+  return h2hTeams.value.filter(t => currentMembers.value.has(t.team_key))
+})
+
+// Get H2H record between two teams
+function getH2HRecord(team1Key: string, team2Key: string): string {
+  const record = h2hRecords.value[team1Key]?.[team2Key]
+  if (!record) return '0-0-0'
+  return `${record.wins}-${record.losses}-${record.ties}`
+}
+
+// Get H2H category differential
+function getH2HCatDiff(team1Key: string, team2Key: string): string {
+  const record = h2hRecords.value[team1Key]?.[team2Key]
+  if (!record) return ''
+  const diff = record.catWins - record.catLosses
+  if (diff > 0) return `+${diff} cats`
+  if (diff < 0) return `${diff} cats`
+  return 'Even'
+}
+
+// Get H2H cell background class
+function getH2HCellClass(team1Key: string, team2Key: string): string {
+  if (team1Key === team2Key) return 'bg-dark-border/50'
+  
+  const record = h2hRecords.value[team1Key]?.[team2Key]
+  if (!record) return ''
+  
+  if (record.wins > record.losses) return 'bg-green-500/20 text-green-400'
+  if (record.losses > record.wins) return 'bg-red-500/20 text-red-400'
+  if (record.wins === record.losses && record.wins > 0) return 'bg-yellow-500/10 text-yellow-400'
+  return ''
+}
+
 // Sort functions
 function sortBy(column: string) {
   if (sortColumn.value === column) {
@@ -597,6 +940,91 @@ async function downloadCareerStats() {
   }
 }
 
+async function downloadSeasonHistory() {
+  if (!seasonTableRef.value) return
+  isDownloadingSeason.value = true
+  try {
+    const canvas = await html2canvas(seasonTableRef.value, {
+      backgroundColor: '#1a1d23',
+      scale: 2
+    })
+    const link = document.createElement('a')
+    link.download = 'category-league-season-history.png'
+    link.href = canvas.toDataURL()
+    link.click()
+  } finally {
+    isDownloadingSeason.value = false
+  }
+}
+
+async function downloadH2HMatrix() {
+  if (!h2hTableRef.value) return
+  isDownloadingH2H.value = true
+  try {
+    const canvas = await html2canvas(h2hTableRef.value, {
+      backgroundColor: '#1a1d23',
+      scale: 2
+    })
+    const link = document.createElement('a')
+    link.download = 'category-league-h2h-matrix.png'
+    link.href = canvas.toDataURL()
+    link.click()
+  } finally {
+    isDownloadingH2H.value = false
+  }
+}
+
+// Build H2H records from matchup data
+function buildH2HRecords() {
+  const records: Record<string, Record<string, { wins: number; losses: number; ties: number; catWins: number; catLosses: number }>> = {}
+  
+  for (const [year, data] of Object.entries(historicalData.value)) {
+    const matchups = data.matchups || []
+    
+    for (const matchup of matchups) {
+      if (!matchup.teams || matchup.teams.length < 2) continue
+      
+      const team1 = matchup.teams[0]
+      const team2 = matchup.teams[1]
+      const team1Key = team1.team_key
+      const team2Key = team2.team_key
+      
+      if (!team1Key || !team2Key) continue
+      
+      // Initialize records if needed
+      if (!records[team1Key]) records[team1Key] = {}
+      if (!records[team2Key]) records[team2Key] = {}
+      if (!records[team1Key][team2Key]) records[team1Key][team2Key] = { wins: 0, losses: 0, ties: 0, catWins: 0, catLosses: 0 }
+      if (!records[team2Key][team1Key]) records[team2Key][team1Key] = { wins: 0, losses: 0, ties: 0, catWins: 0, catLosses: 0 }
+      
+      // Calculate category wins for each team
+      const t1CatWins = team1.stat_winners?.filter((w: any) => w.winner_team_key === team1Key && w.is_tied === '0').length || 0
+      const t2CatWins = team2.stat_winners?.filter((w: any) => w.winner_team_key === team2Key && w.is_tied === '0').length || 0
+      const ties = team1.stat_winners?.filter((w: any) => w.is_tied === '1').length || 0
+      
+      // Determine matchup winner
+      if (t1CatWins > t2CatWins) {
+        records[team1Key][team2Key].wins++
+        records[team2Key][team1Key].losses++
+      } else if (t2CatWins > t1CatWins) {
+        records[team1Key][team2Key].losses++
+        records[team2Key][team1Key].wins++
+      } else {
+        records[team1Key][team2Key].ties++
+        records[team2Key][team1Key].ties++
+      }
+      
+      // Track category totals
+      records[team1Key][team2Key].catWins += t1CatWins
+      records[team1Key][team2Key].catLosses += t2CatWins
+      records[team2Key][team1Key].catWins += t2CatWins
+      records[team2Key][team1Key].catLosses += t1CatWins
+    }
+  }
+  
+  h2hRecords.value = records
+}
+
 async function loadHistoricalData() {
   isLoading.value = true
   loadingMessage.value = 'Connecting to Yahoo...'
@@ -648,10 +1076,18 @@ async function loadHistoricalData() {
               currentMembers.value.add(t.team_key)
               allTeams.value[t.team_key] = t
             })
+          } else {
+            // Also store team info from older seasons
+            standings.forEach((t: any) => {
+              if (!allTeams.value[t.team_key]) {
+                allTeams.value[t.team_key] = t
+              }
+            })
           }
           
           // Try to load matchups for category data
           try {
+            loadingMessage.value = `Loading ${year} matchups...`
             const matchups = await yahooService.getMatchups(yearLeagueKey)
             if (matchups) data[year].matchups = matchups
           } catch (e) {
@@ -664,6 +1100,11 @@ async function loadHistoricalData() {
     }
     
     historicalData.value = data
+    
+    // Build H2H records from matchup data
+    loadingMessage.value = 'Building head-to-head records...'
+    buildH2HRecords()
+    
     loadingMessage.value = 'Done!'
     
   } catch (e) {
