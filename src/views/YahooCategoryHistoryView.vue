@@ -511,7 +511,7 @@
               <h2 class="card-title">League Awards</h2>
             </div>
           </div>
-          <p class="card-subtitle mt-2">All-time records and achievements</p>
+          <p class="card-subtitle mt-2">Best and worst single-season performances by category • Click to expand</p>
         </div>
         <div class="card-body">
           <!-- Hall of Fame -->
@@ -521,53 +521,50 @@
               <span>Hall of Fame</span>
             </h3>
             
-            <!-- Overall Dominance Awards -->
+            <!-- Category Kings - Hitting -->
             <div class="mb-6">
-              <h4 class="text-sm font-semibold text-dark-textMuted uppercase tracking-wider mb-3">Overall Dominance • Click to expand</h4>
-              <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                <div v-for="award in hallOfFameOverall" :key="award.title" 
+              <h4 class="text-sm font-semibold text-dark-textMuted uppercase tracking-wider mb-3">👑 Hitting Category Kings (Best Single Season)</h4>
+              <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+                <div v-for="award in hallOfFameHitting" :key="award.category" 
                      class="cursor-pointer"
-                     @click="toggleAwardCard(award.title)">
-                  <div class="bg-gradient-to-br from-yellow-500/10 to-yellow-600/5 rounded-xl p-4 border border-yellow-500/20 hover:border-yellow-500/40 transition-all">
-                    <div class="text-sm text-yellow-400 uppercase tracking-wide mb-2 font-semibold">{{ award.title }}</div>
-                    <div v-if="award.winner" class="flex items-center gap-3 mb-2">
-                      <div class="w-10 h-10 rounded-full overflow-hidden bg-dark-border flex-shrink-0 ring-2 ring-yellow-500/50">
-                        <img :src="award.winner.logo_url || defaultAvatar" :alt="award.winner.team_name" class="w-full h-full object-cover" @error="handleImageError" />
-                      </div>
-                      <div class="flex-1">
-                        <div class="font-bold text-dark-text">{{ award.winner.team_name }}</div>
-                        <div class="text-xs text-dark-textMuted">{{ award.winner.season || 'All-Time' }}</div>
-                      </div>
+                     @click="toggleAwardCard(`fame-hitting-${award.category}`)">
+                  <div class="bg-gradient-to-br from-blue-500/10 to-blue-600/5 rounded-xl p-4 border border-blue-500/20 hover:border-blue-500/40 transition-all">
+                    <div class="text-center mb-2">
+                      <span class="px-3 py-1 rounded-full text-xs font-bold bg-blue-500/30 text-blue-400">{{ award.category }}</span>
                     </div>
-                    <div v-if="award.winner" class="flex items-center justify-between">
-                      <div class="text-2xl font-black text-yellow-400">{{ award.winner.value }}</div>
-                      <div class="text-xs text-dark-textMuted">{{ award.winner.detail }}</div>
+                    <div v-if="award.winner" class="text-center">
+                      <div class="w-10 h-10 rounded-full overflow-hidden bg-dark-border mx-auto mb-2 ring-2 ring-blue-500/50">
+                        <img :src="award.winner.logo_url || defaultAvatar" class="w-full h-full object-cover" @error="handleImageError" />
+                      </div>
+                      <div class="font-semibold text-dark-text text-sm truncate">{{ award.winner.team_name }}</div>
+                      <div class="text-2xl font-black text-blue-400">{{ award.winner.value }}</div>
+                      <div class="text-xs text-dark-textMuted">wins in {{ award.winner.season }}</div>
+                      <div class="text-xs text-blue-400/70 mt-1">Click for rankings →</div>
                     </div>
-                    <div v-else class="text-sm text-dark-textMuted italic">No data available</div>
-                    <div v-if="award.winner" class="text-xs text-yellow-400/70 mt-2">Click for rankings →</div>
+                    <div v-else class="text-center text-sm text-dark-textMuted italic py-4">No data</div>
                   </div>
                   
                   <!-- Expanded Rankings -->
                   <transition name="expand">
-                    <div v-if="expandedAwardCard === award.title" 
+                    <div v-if="expandedAwardCard === `fame-hitting-${award.category}`" 
                          class="mt-2 bg-dark-elevated rounded-xl border border-dark-border p-4 max-h-80 overflow-y-auto">
-                      <div class="text-sm font-semibold text-dark-textMuted mb-3 uppercase tracking-wider">All-Time Rankings</div>
+                      <div class="text-sm font-semibold text-dark-textMuted mb-3 uppercase tracking-wider">{{ award.category }} - All-Time Best Seasons</div>
                       <div class="space-y-2">
-                        <div v-for="(team, idx) in getAwardRankings(award.title, 'fame')" :key="`${team.team_name}-${team.season}`"
+                        <div v-for="(team, idx) in getCategoryRankings(award.category, 'best')" :key="`${team.team_name}-${team.season}`"
                              class="flex items-center gap-3 p-2 rounded-lg"
-                             :class="idx === 0 ? 'bg-yellow-500/20' : 'hover:bg-dark-border/30'">
-                          <div class="w-6 text-center font-bold" :class="idx === 0 ? 'text-yellow-400' : 'text-dark-textMuted'">
-                            {{ team.rank }}
+                             :class="idx === 0 ? 'bg-blue-500/20' : 'hover:bg-dark-border/30'">
+                          <div class="w-6 text-center font-bold" :class="idx === 0 ? 'text-blue-400' : 'text-dark-textMuted'">
+                            {{ idx + 1 }}
                           </div>
                           <div class="w-8 h-8 rounded-full overflow-hidden bg-dark-border flex-shrink-0">
                             <img :src="team.logo_url || defaultAvatar" class="w-full h-full object-cover" @error="handleImageError" />
                           </div>
                           <div class="flex-1 min-w-0">
                             <div class="font-semibold text-dark-text truncate">{{ team.team_name }}</div>
-                            <div class="text-xs text-dark-textMuted">{{ team.season }} • {{ team.detail }}</div>
+                            <div class="text-xs text-dark-textMuted">{{ team.season }}</div>
                           </div>
-                          <div class="font-bold" :class="idx === 0 ? 'text-yellow-400' : 'text-dark-text'">
-                            {{ team.value }}
+                          <div class="font-bold" :class="idx === 0 ? 'text-blue-400' : 'text-dark-text'">
+                            {{ team.value }} wins
                           </div>
                         </div>
                       </div>
@@ -577,44 +574,55 @@
               </div>
             </div>
             
-            <!-- Category Kings - Hitting -->
-            <div class="mb-6">
-              <h4 class="text-sm font-semibold text-dark-textMuted uppercase tracking-wider mb-3">👑 Hitting Category Kings (Best Single Season)</h4>
-              <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
-                <div v-for="award in hallOfFameHitting" :key="award.category" class="bg-gradient-to-br from-blue-500/10 to-blue-600/5 rounded-xl p-4 border border-blue-500/20">
-                  <div class="text-center mb-2">
-                    <span class="px-3 py-1 rounded-full text-xs font-bold bg-blue-500/30 text-blue-400">{{ award.category }}</span>
-                  </div>
-                  <div v-if="award.winner" class="text-center">
-                    <div class="w-10 h-10 rounded-full overflow-hidden bg-dark-border mx-auto mb-2 ring-2 ring-blue-500/50">
-                      <img :src="award.winner.logo_url || defaultAvatar" class="w-full h-full object-cover" @error="handleImageError" />
-                    </div>
-                    <div class="font-semibold text-dark-text text-sm truncate">{{ award.winner.team_name }}</div>
-                    <div class="text-2xl font-black text-blue-400">{{ award.winner.value }}</div>
-                    <div class="text-xs text-dark-textMuted">wins in {{ award.winner.season }}</div>
-                  </div>
-                  <div v-else class="text-center text-sm text-dark-textMuted italic py-4">No data</div>
-                </div>
-              </div>
-            </div>
-            
             <!-- Category Kings - Pitching -->
             <div class="mb-6">
               <h4 class="text-sm font-semibold text-dark-textMuted uppercase tracking-wider mb-3">👑 Pitching Category Kings (Best Single Season)</h4>
               <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
-                <div v-for="award in hallOfFamePitching" :key="award.category" class="bg-gradient-to-br from-purple-500/10 to-purple-600/5 rounded-xl p-4 border border-purple-500/20">
-                  <div class="text-center mb-2">
-                    <span class="px-3 py-1 rounded-full text-xs font-bold bg-purple-500/30 text-purple-400">{{ award.category }}</span>
-                  </div>
-                  <div v-if="award.winner" class="text-center">
-                    <div class="w-10 h-10 rounded-full overflow-hidden bg-dark-border mx-auto mb-2 ring-2 ring-purple-500/50">
-                      <img :src="award.winner.logo_url || defaultAvatar" class="w-full h-full object-cover" @error="handleImageError" />
+                <div v-for="award in hallOfFamePitching" :key="award.category"
+                     class="cursor-pointer"
+                     @click="toggleAwardCard(`fame-pitching-${award.category}`)">
+                  <div class="bg-gradient-to-br from-purple-500/10 to-purple-600/5 rounded-xl p-4 border border-purple-500/20 hover:border-purple-500/40 transition-all">
+                    <div class="text-center mb-2">
+                      <span class="px-3 py-1 rounded-full text-xs font-bold bg-purple-500/30 text-purple-400">{{ award.category }}</span>
                     </div>
-                    <div class="font-semibold text-dark-text text-sm truncate">{{ award.winner.team_name }}</div>
-                    <div class="text-2xl font-black text-purple-400">{{ award.winner.value }}</div>
-                    <div class="text-xs text-dark-textMuted">wins in {{ award.winner.season }}</div>
+                    <div v-if="award.winner" class="text-center">
+                      <div class="w-10 h-10 rounded-full overflow-hidden bg-dark-border mx-auto mb-2 ring-2 ring-purple-500/50">
+                        <img :src="award.winner.logo_url || defaultAvatar" class="w-full h-full object-cover" @error="handleImageError" />
+                      </div>
+                      <div class="font-semibold text-dark-text text-sm truncate">{{ award.winner.team_name }}</div>
+                      <div class="text-2xl font-black text-purple-400">{{ award.winner.value }}</div>
+                      <div class="text-xs text-dark-textMuted">wins in {{ award.winner.season }}</div>
+                      <div class="text-xs text-purple-400/70 mt-1">Click for rankings →</div>
+                    </div>
+                    <div v-else class="text-center text-sm text-dark-textMuted italic py-4">No data</div>
                   </div>
-                  <div v-else class="text-center text-sm text-dark-textMuted italic py-4">No data</div>
+                  
+                  <!-- Expanded Rankings -->
+                  <transition name="expand">
+                    <div v-if="expandedAwardCard === `fame-pitching-${award.category}`" 
+                         class="mt-2 bg-dark-elevated rounded-xl border border-dark-border p-4 max-h-80 overflow-y-auto">
+                      <div class="text-sm font-semibold text-dark-textMuted mb-3 uppercase tracking-wider">{{ award.category }} - All-Time Best Seasons</div>
+                      <div class="space-y-2">
+                        <div v-for="(team, idx) in getCategoryRankings(award.category, 'best')" :key="`${team.team_name}-${team.season}`"
+                             class="flex items-center gap-3 p-2 rounded-lg"
+                             :class="idx === 0 ? 'bg-purple-500/20' : 'hover:bg-dark-border/30'">
+                          <div class="w-6 text-center font-bold" :class="idx === 0 ? 'text-purple-400' : 'text-dark-textMuted'">
+                            {{ idx + 1 }}
+                          </div>
+                          <div class="w-8 h-8 rounded-full overflow-hidden bg-dark-border flex-shrink-0">
+                            <img :src="team.logo_url || defaultAvatar" class="w-full h-full object-cover" @error="handleImageError" />
+                          </div>
+                          <div class="flex-1 min-w-0">
+                            <div class="font-semibold text-dark-text truncate">{{ team.team_name }}</div>
+                            <div class="text-xs text-dark-textMuted">{{ team.season }}</div>
+                          </div>
+                          <div class="font-bold" :class="idx === 0 ? 'text-purple-400' : 'text-dark-text'">
+                            {{ team.value }} wins
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </transition>
                 </div>
               </div>
             </div>
@@ -627,53 +635,50 @@
               <span>Hall of Shame</span>
             </h3>
             
-            <!-- Overall Struggles -->
+            <!-- Category Struggles - Hitting -->
             <div class="mb-6">
-              <h4 class="text-sm font-semibold text-dark-textMuted uppercase tracking-wider mb-3">Overall Struggles • Click to expand</h4>
-              <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                <div v-for="award in hallOfShameOverall" :key="award.title"
+              <h4 class="text-sm font-semibold text-dark-textMuted uppercase tracking-wider mb-3">💀 Hitting Category Struggles (Worst Single Season)</h4>
+              <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+                <div v-for="award in hallOfShameHitting" :key="award.category"
                      class="cursor-pointer"
-                     @click="toggleAwardCard(award.title)">
-                  <div class="bg-gradient-to-br from-red-500/10 to-red-600/5 rounded-xl p-4 border border-red-500/20 hover:border-red-500/40 transition-all">
-                    <div class="text-sm text-red-400 uppercase tracking-wide mb-2 font-semibold">{{ award.title }}</div>
-                    <div v-if="award.winner" class="flex items-center gap-3 mb-2">
-                      <div class="w-10 h-10 rounded-full overflow-hidden bg-dark-border flex-shrink-0 ring-2 ring-red-500/50">
-                        <img :src="award.winner.logo_url || defaultAvatar" :alt="award.winner.team_name" class="w-full h-full object-cover" @error="handleImageError" />
-                      </div>
-                      <div class="flex-1">
-                        <div class="font-bold text-dark-text">{{ award.winner.team_name }}</div>
-                        <div class="text-xs text-dark-textMuted">{{ award.winner.season || 'All-Time' }}</div>
-                      </div>
+                     @click="toggleAwardCard(`shame-hitting-${award.category}`)">
+                  <div class="bg-gradient-to-br from-gray-500/10 to-gray-600/5 rounded-xl p-4 border border-gray-500/20 hover:border-gray-500/40 transition-all">
+                    <div class="text-center mb-2">
+                      <span class="px-3 py-1 rounded-full text-xs font-bold bg-gray-500/30 text-gray-400">{{ award.category }}</span>
                     </div>
-                    <div v-if="award.winner" class="flex items-center justify-between">
-                      <div class="text-2xl font-black text-red-400">{{ award.winner.value }}</div>
-                      <div class="text-xs text-dark-textMuted">{{ award.winner.detail }}</div>
+                    <div v-if="award.winner" class="text-center">
+                      <div class="w-10 h-10 rounded-full overflow-hidden bg-dark-border mx-auto mb-2 ring-2 ring-gray-500/50">
+                        <img :src="award.winner.logo_url || defaultAvatar" class="w-full h-full object-cover" @error="handleImageError" />
+                      </div>
+                      <div class="font-semibold text-dark-text text-sm truncate">{{ award.winner.team_name }}</div>
+                      <div class="text-2xl font-black text-gray-400">{{ award.winner.value }}</div>
+                      <div class="text-xs text-dark-textMuted">wins in {{ award.winner.season }}</div>
+                      <div class="text-xs text-gray-400/70 mt-1">Click for rankings →</div>
                     </div>
-                    <div v-else class="text-sm text-dark-textMuted italic">No data available</div>
-                    <div v-if="award.winner" class="text-xs text-red-400/70 mt-2">Click for rankings →</div>
+                    <div v-else class="text-center text-sm text-dark-textMuted italic py-4">No data</div>
                   </div>
                   
                   <!-- Expanded Rankings -->
                   <transition name="expand">
-                    <div v-if="expandedAwardCard === award.title" 
+                    <div v-if="expandedAwardCard === `shame-hitting-${award.category}`" 
                          class="mt-2 bg-dark-elevated rounded-xl border border-dark-border p-4 max-h-80 overflow-y-auto">
-                      <div class="text-sm font-semibold text-dark-textMuted mb-3 uppercase tracking-wider">All-Time Rankings</div>
+                      <div class="text-sm font-semibold text-dark-textMuted mb-3 uppercase tracking-wider">{{ award.category }} - All-Time Worst Seasons</div>
                       <div class="space-y-2">
-                        <div v-for="(team, idx) in getAwardRankings(award.title, 'shame')" :key="`${team.team_name}-${team.season}`"
+                        <div v-for="(team, idx) in getCategoryRankings(award.category, 'worst')" :key="`${team.team_name}-${team.season}`"
                              class="flex items-center gap-3 p-2 rounded-lg"
                              :class="idx === 0 ? 'bg-red-500/20' : 'hover:bg-dark-border/30'">
                           <div class="w-6 text-center font-bold" :class="idx === 0 ? 'text-red-400' : 'text-dark-textMuted'">
-                            {{ team.rank }}
+                            {{ idx + 1 }}
                           </div>
                           <div class="w-8 h-8 rounded-full overflow-hidden bg-dark-border flex-shrink-0">
                             <img :src="team.logo_url || defaultAvatar" class="w-full h-full object-cover" @error="handleImageError" />
                           </div>
                           <div class="flex-1 min-w-0">
                             <div class="font-semibold text-dark-text truncate">{{ team.team_name }}</div>
-                            <div class="text-xs text-dark-textMuted">{{ team.season }} • {{ team.detail }}</div>
+                            <div class="text-xs text-dark-textMuted">{{ team.season }}</div>
                           </div>
                           <div class="font-bold" :class="idx === 0 ? 'text-red-400' : 'text-dark-text'">
-                            {{ team.value }}
+                            {{ team.value }} wins
                           </div>
                         </div>
                       </div>
@@ -683,44 +688,55 @@
               </div>
             </div>
             
-            <!-- Category Struggles - Hitting -->
-            <div class="mb-6">
-              <h4 class="text-sm font-semibold text-dark-textMuted uppercase tracking-wider mb-3">💀 Hitting Category Struggles (Worst Single Season)</h4>
-              <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
-                <div v-for="award in hallOfShameHitting" :key="award.category" class="bg-gradient-to-br from-gray-500/10 to-gray-600/5 rounded-xl p-4 border border-gray-500/20">
-                  <div class="text-center mb-2">
-                    <span class="px-3 py-1 rounded-full text-xs font-bold bg-gray-500/30 text-gray-400">{{ award.category }}</span>
-                  </div>
-                  <div v-if="award.winner" class="text-center">
-                    <div class="w-10 h-10 rounded-full overflow-hidden bg-dark-border mx-auto mb-2 ring-2 ring-gray-500/50">
-                      <img :src="award.winner.logo_url || defaultAvatar" class="w-full h-full object-cover" @error="handleImageError" />
-                    </div>
-                    <div class="font-semibold text-dark-text text-sm truncate">{{ award.winner.team_name }}</div>
-                    <div class="text-2xl font-black text-gray-400">{{ award.winner.value }}</div>
-                    <div class="text-xs text-dark-textMuted">wins in {{ award.winner.season }}</div>
-                  </div>
-                  <div v-else class="text-center text-sm text-dark-textMuted italic py-4">No data</div>
-                </div>
-              </div>
-            </div>
-            
             <!-- Category Struggles - Pitching -->
             <div>
               <h4 class="text-sm font-semibold text-dark-textMuted uppercase tracking-wider mb-3">💀 Pitching Category Struggles (Worst Single Season)</h4>
               <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
-                <div v-for="award in hallOfShamePitching" :key="award.category" class="bg-gradient-to-br from-gray-500/10 to-gray-600/5 rounded-xl p-4 border border-gray-500/20">
-                  <div class="text-center mb-2">
-                    <span class="px-3 py-1 rounded-full text-xs font-bold bg-gray-500/30 text-gray-400">{{ award.category }}</span>
-                  </div>
-                  <div v-if="award.winner" class="text-center">
-                    <div class="w-10 h-10 rounded-full overflow-hidden bg-dark-border mx-auto mb-2 ring-2 ring-gray-500/50">
-                      <img :src="award.winner.logo_url || defaultAvatar" class="w-full h-full object-cover" @error="handleImageError" />
+                <div v-for="award in hallOfShamePitching" :key="award.category"
+                     class="cursor-pointer"
+                     @click="toggleAwardCard(`shame-pitching-${award.category}`)">
+                  <div class="bg-gradient-to-br from-gray-500/10 to-gray-600/5 rounded-xl p-4 border border-gray-500/20 hover:border-gray-500/40 transition-all">
+                    <div class="text-center mb-2">
+                      <span class="px-3 py-1 rounded-full text-xs font-bold bg-gray-500/30 text-gray-400">{{ award.category }}</span>
                     </div>
-                    <div class="font-semibold text-dark-text text-sm truncate">{{ award.winner.team_name }}</div>
-                    <div class="text-2xl font-black text-gray-400">{{ award.winner.value }}</div>
-                    <div class="text-xs text-dark-textMuted">wins in {{ award.winner.season }}</div>
+                    <div v-if="award.winner" class="text-center">
+                      <div class="w-10 h-10 rounded-full overflow-hidden bg-dark-border mx-auto mb-2 ring-2 ring-gray-500/50">
+                        <img :src="award.winner.logo_url || defaultAvatar" class="w-full h-full object-cover" @error="handleImageError" />
+                      </div>
+                      <div class="font-semibold text-dark-text text-sm truncate">{{ award.winner.team_name }}</div>
+                      <div class="text-2xl font-black text-gray-400">{{ award.winner.value }}</div>
+                      <div class="text-xs text-dark-textMuted">wins in {{ award.winner.season }}</div>
+                      <div class="text-xs text-gray-400/70 mt-1">Click for rankings →</div>
+                    </div>
+                    <div v-else class="text-center text-sm text-dark-textMuted italic py-4">No data</div>
                   </div>
-                  <div v-else class="text-center text-sm text-dark-textMuted italic py-4">No data</div>
+                  
+                  <!-- Expanded Rankings -->
+                  <transition name="expand">
+                    <div v-if="expandedAwardCard === `shame-pitching-${award.category}`" 
+                         class="mt-2 bg-dark-elevated rounded-xl border border-dark-border p-4 max-h-80 overflow-y-auto">
+                      <div class="text-sm font-semibold text-dark-textMuted mb-3 uppercase tracking-wider">{{ award.category }} - All-Time Worst Seasons</div>
+                      <div class="space-y-2">
+                        <div v-for="(team, idx) in getCategoryRankings(award.category, 'worst')" :key="`${team.team_name}-${team.season}`"
+                             class="flex items-center gap-3 p-2 rounded-lg"
+                             :class="idx === 0 ? 'bg-red-500/20' : 'hover:bg-dark-border/30'">
+                          <div class="w-6 text-center font-bold" :class="idx === 0 ? 'text-red-400' : 'text-dark-textMuted'">
+                            {{ idx + 1 }}
+                          </div>
+                          <div class="w-8 h-8 rounded-full overflow-hidden bg-dark-border flex-shrink-0">
+                            <img :src="team.logo_url || defaultAvatar" class="w-full h-full object-cover" @error="handleImageError" />
+                          </div>
+                          <div class="flex-1 min-w-0">
+                            <div class="font-semibold text-dark-text truncate">{{ team.team_name }}</div>
+                            <div class="text-xs text-dark-textMuted">{{ team.season }}</div>
+                          </div>
+                          <div class="font-bold" :class="idx === 0 ? 'text-red-400' : 'text-dark-text'">
+                            {{ team.value }} wins
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </transition>
                 </div>
               </div>
             </div>
@@ -797,6 +813,32 @@ function toggleRecordCard(label: string) {
 // Toggle award expansion
 function toggleAwardCard(title: string) {
   expandedAwardCard.value = expandedAwardCard.value === title ? null : title
+}
+
+// Get rankings for a specific category (best or worst seasons)
+function getCategoryRankings(category: string, type: 'best' | 'worst'): any[] {
+  const results: any[] = []
+  
+  for (const season of seasonCategoryData.value) {
+    const catWins = season.category_wins[category]
+    if (catWins !== undefined) {
+      results.push({
+        team_name: season.team_name,
+        logo_url: season.logo_url,
+        value: catWins,
+        season: season.year
+      })
+    }
+  }
+  
+  // Sort by value - descending for best, ascending for worst
+  if (type === 'best') {
+    results.sort((a, b) => b.value - a.value)
+  } else {
+    results.sort((a, b) => a.value - b.value)
+  }
+  
+  return results.slice(0, 10)
 }
 
 // Get all teams ranked for a specific record type
@@ -1342,6 +1384,9 @@ const seasonCategoryData = computed(() => {
           const catId = catResult.stat_id
           const catName = getCategoryDisplayName(catId)
           
+          // Skip unknown/invalid categories
+          if (!catName) continue
+          
           if (!catResult.is_tied && catResult.winner_team_key === teamKey) {
             if (!teamCatWins[teamKey][catName]) teamCatWins[teamKey][catName] = 0
             teamCatWins[teamKey][catName]++
@@ -1378,7 +1423,11 @@ const allCategories = computed(() => {
   const cats = new Set<string>()
   for (const season of seasonCategoryData.value) {
     for (const cat of Object.keys(season.category_wins || {})) {
-      cats.add(cat)
+      // Only include categories that have valid display names
+      if (isValidCategory(cat)) {
+        const displayName = getCategoryDisplayName(cat)
+        if (displayName) cats.add(displayName)
+      }
     }
   }
   return Array.from(cats)
@@ -1714,17 +1763,29 @@ function getRecordClass(stat: CareerStat, column: string): string {
 }
 
 function getCategoryDisplayName(statId: string): string {
-  // Map stat IDs to display names (this would ideally come from league settings)
+  // Map stat IDs to display names - comprehensive Yahoo baseball stat IDs
   const mapping: Record<string, string> = {
-    '7': 'R', '12': 'HR', '13': 'RBI', '16': 'SB', '3': 'AVG',
-    '28': 'W', '32': 'SV', '42': 'K', '26': 'ERA', '27': 'WHIP',
-    '60': 'OPS', '8': 'H', '55': 'OBP', '56': 'SLG'
+    // Hitting
+    '3': 'AVG', '7': 'R', '8': 'H', '12': 'HR', '13': 'RBI', '16': 'SB',
+    '55': 'OBP', '56': 'SLG', '60': 'OPS', '2': 'AB', '4': 'BB', '6': 'TB',
+    '17': 'CS', '18': 'BB', '21': '2B', '22': '3B', '23': 'SF', '24': 'GDP',
+    // Pitching  
+    '26': 'ERA', '27': 'WHIP', '28': 'W', '29': 'L', '32': 'SV', '42': 'K',
+    '34': 'IP', '37': 'H', '38': 'ER', '39': 'HR', '40': 'BB', '41': 'HBP',
+    '48': 'QS', '50': 'HD', '57': 'K/9', '58': 'BB/9', '83': 'K/BB',
+    // Additional
+    '84': 'SVHD', '33': 'BS', '25': 'CG', '30': 'SO', '31': 'GS'
   }
-  return mapping[statId] || statId
+  return mapping[statId] || null // Return null for unknown stat IDs
+}
+
+// Check if a stat ID is valid/known
+function isValidCategory(statId: string): boolean {
+  return getCategoryDisplayName(statId) !== null
 }
 
 function isHittingCategory(catName: string): boolean {
-  const hittingCats = ['HR', 'RBI', 'R', 'SB', 'AVG', 'OPS', 'OBP', 'SLG', 'H', 'TB', 'BB', 'XBH', 'AB', 'PA']
+  const hittingCats = ['HR', 'RBI', 'R', 'SB', 'AVG', 'OPS', 'OBP', 'SLG', 'H', 'TB', 'BB', 'XBH', 'AB', 'PA', '2B', '3B', 'CS', 'SF', 'GDP']
   return hittingCats.includes(catName)
 }
 
