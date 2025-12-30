@@ -101,23 +101,42 @@
       <!-- Legend -->
       <div class="card">
         <div class="card-body py-3">
-          <div class="flex items-center justify-between flex-wrap gap-4">
-            <div class="flex items-center gap-6 text-sm">
-              <div class="flex items-center gap-2">
-                <div class="w-4 h-4 rounded bg-green-500/30 border-l-2 border-green-500"></div>
-                <span class="text-dark-textMuted">Elite Category Producer (Top 25%)</span>
+          <div class="flex flex-col gap-3">
+            <div class="flex items-center justify-between flex-wrap gap-4">
+              <div class="flex items-center gap-6 text-sm flex-wrap">
+                <div class="flex items-center gap-2">
+                  <div class="w-4 h-4 rounded bg-green-500/30 border-l-2 border-green-500"></div>
+                  <span class="text-dark-textMuted">Elite Category Producer (Top 25%)</span>
+                </div>
+                <div class="flex items-center gap-2">
+                  <div class="w-4 h-4 rounded bg-red-500/20 border-l-2 border-red-500"></div>
+                  <span class="text-dark-textMuted">Category Underperformer (Bottom 25%)</span>
+                </div>
+                <div class="flex items-center gap-2">
+                  <span class="px-1.5 py-0.5 rounded text-xs bg-blue-500/20 text-blue-400">HR</span>
+                  <span class="text-dark-textMuted">= Best category contribution</span>
+                </div>
               </div>
-              <div class="flex items-center gap-2">
-                <div class="w-4 h-4 rounded bg-red-500/20 border-l-2 border-red-500"></div>
-                <span class="text-dark-textMuted">Category Underperformer (Bottom 25%)</span>
-              </div>
-              <div class="flex items-center gap-2">
-                <span class="px-1.5 py-0.5 rounded text-xs bg-blue-500/20 text-blue-400">HR</span>
-                <span class="text-dark-textMuted">= Best category contribution</span>
+              <div class="text-sm text-dark-textMuted">
+                Click any player for full category breakdown
               </div>
             </div>
-            <div class="text-sm text-dark-textMuted">
-              Click any player for full category breakdown
+            <!-- Value Score Explanation -->
+            <div class="flex items-center gap-4 pt-2 border-t border-dark-border/50 text-sm flex-wrap">
+              <div class="flex items-center gap-2">
+                <span class="font-bold text-dark-text">Value Score:</span>
+                <span class="text-dark-textMuted">Draft Position − Actual Rank by Category Production</span>
+              </div>
+              <div class="flex items-center gap-4">
+                <div class="flex items-center gap-1">
+                  <span class="px-1.5 py-0.5 rounded text-xs font-bold bg-green-500/20 text-green-400">+20</span>
+                  <span class="text-dark-textMuted">= Steal (outperformed)</span>
+                </div>
+                <div class="flex items-center gap-1">
+                  <span class="px-1.5 py-0.5 rounded text-xs font-bold bg-red-500/20 text-red-400">-15</span>
+                  <span class="text-dark-textMuted">= Bust (underperformed)</span>
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -165,8 +184,19 @@
                 class="bg-dark-card rounded-lg p-2 cursor-pointer hover:ring-2 hover:ring-primary transition-all h-full"
                 :class="getPickClassWithHighlight(getPickForRound(team.team_key, round))"
               >
-                <div class="text-xs font-medium text-dark-text truncate">
-                  {{ getPickForRound(team.team_key, round)?.player_name || 'Unknown' }}
+                <div class="flex items-center justify-between">
+                  <div class="text-xs font-medium text-dark-text truncate flex-1 mr-1">
+                    {{ getPickForRound(team.team_key, round)?.player_name || 'Unknown' }}
+                  </div>
+                  <!-- Value Score Badge -->
+                  <span 
+                    v-if="getPickForRound(team.team_key, round)?.valueScore !== undefined"
+                    class="text-[10px] font-bold px-1 py-0.5 rounded flex-shrink-0"
+                    :class="getValueScoreClass(getPickForRound(team.team_key, round)?.valueScore)"
+                    :title="`Value Score: ${getPickForRound(team.team_key, round)?.valueScore >= 0 ? '+' : ''}${getPickForRound(team.team_key, round)?.valueScore?.toFixed(0)} (Draft Position vs Actual Performance)`"
+                  >
+                    {{ getPickForRound(team.team_key, round)?.valueScore >= 0 ? '+' : '' }}{{ getPickForRound(team.team_key, round)?.valueScore?.toFixed(0) }}
+                  </span>
                 </div>
                 <div class="flex items-center justify-between mt-1">
                   <span 
@@ -748,34 +778,55 @@
               <div class="bg-dark-border/30 rounded-xl p-4 text-center">
                 <div class="text-sm text-dark-textMuted mb-1">Draft Pick</div>
                 <div class="text-2xl font-bold text-dark-text">R{{ selectedPick.round }}.{{ selectedPick.pickInRound }}</div>
+                <div class="text-xs text-dark-textMuted mt-1">Overall #{{ selectedPick.pick }}</div>
               </div>
               <div class="bg-dark-border/30 rounded-xl p-4 text-center">
                 <div class="text-sm text-dark-textMuted mb-1">Category Score</div>
                 <div class="text-2xl font-bold" :class="getCategoryScoreClass(selectedPick.categoryScore)">
                   {{ selectedPick.categoryScore?.toFixed(0) || '0' }}
                 </div>
+                <div class="text-xs text-dark-textMuted mt-1">Avg percentile</div>
               </div>
               <div class="bg-dark-border/30 rounded-xl p-4 text-center">
                 <div class="text-sm text-dark-textMuted mb-1">Value Score</div>
                 <div class="text-2xl font-bold" :class="selectedPick.valueScore >= 0 ? 'text-green-400' : 'text-red-400'">
                   {{ selectedPick.valueScore >= 0 ? '+' : '' }}{{ selectedPick.valueScore?.toFixed(0) || '0' }}
                 </div>
+                <div class="text-xs text-dark-textMuted mt-1">
+                  {{ selectedPick.valueScore >= 10 ? 'Steal!' : selectedPick.valueScore <= -10 ? 'Bust' : 'As expected' }}
+                </div>
               </div>
             </div>
 
-            <!-- Category Breakdown -->
+            <!-- Category Breakdown with Value -->
             <div class="bg-dark-border/30 rounded-xl p-4">
-              <h3 class="text-lg font-bold text-dark-text mb-4">Season Stats</h3>
+              <div class="flex items-center justify-between mb-4">
+                <h3 class="text-lg font-bold text-dark-text">Category Performance</h3>
+                <div class="text-xs text-dark-textMuted">
+                  Value = Expected Rank − Actual Rank in each category
+                </div>
+              </div>
               <div class="grid grid-cols-5 gap-3">
                 <div 
                   v-for="cat in leagueCategories" 
                   :key="cat"
-                  class="text-center p-2 rounded-lg"
-                  :class="getCategoryColorClass(cat)"
+                  class="text-center p-3 rounded-lg bg-dark-border/30"
                 >
-                  <div class="text-xs font-bold mb-1">{{ cat }}</div>
-                  <div class="text-lg font-black">
+                  <div class="text-xs font-bold mb-1" :class="getCategoryColorClass(cat).replace('bg-', 'text-').replace('/20', '')">{{ cat }}</div>
+                  <div class="text-lg font-black text-dark-text">
                     {{ formatStatValue(selectedPick.stats?.[getStatIdForCategory(cat)] || 0, cat) }}
+                  </div>
+                  <!-- Category Rank & Value -->
+                  <div class="mt-1 flex items-center justify-center gap-1">
+                    <span class="text-xs text-dark-textMuted">
+                      #{{ getCategoryRank(selectedPick, cat) }}
+                    </span>
+                    <span 
+                      class="text-xs font-bold px-1 rounded"
+                      :class="getCategoryValueClass(selectedPick, cat)"
+                    >
+                      {{ formatCategoryValue(selectedPick, cat) }}
+                    </span>
                   </div>
                 </div>
               </div>
@@ -1228,6 +1279,66 @@ function getPickClassWithHighlight(pick: any) {
   if (percentile >= 75) return 'bg-green-500/20 border-l-2 border-green-500'
   if (percentile <= 25) return 'bg-red-500/20 border-l-2 border-red-500'
   return ''
+}
+
+// Get value score class for display on cards
+function getValueScoreClass(valueScore: number) {
+  if (valueScore >= 20) return 'bg-green-500/30 text-green-400'
+  if (valueScore >= 10) return 'bg-green-500/20 text-green-400'
+  if (valueScore >= 0) return 'bg-dark-border/30 text-dark-textMuted'
+  if (valueScore >= -10) return 'bg-orange-500/20 text-orange-400'
+  return 'bg-red-500/20 text-red-400'
+}
+
+// Get a player's rank in a specific category
+function getCategoryRank(pick: any, cat: string): number {
+  const statId = getStatIdForCategory(cat)
+  const isLowerBetter = ['ERA', 'WHIP', 'L', 'BS'].includes(cat)
+  const playerValue = pick.stats?.[statId] || 0
+  
+  if (playerValue === 0) return draftPicks.value.length
+  
+  // Sort all players by this category
+  const sorted = [...draftPicks.value]
+    .filter(p => p.stats?.[statId] > 0)
+    .sort((a, b) => {
+      const aVal = a.stats?.[statId] || (isLowerBetter ? Infinity : 0)
+      const bVal = b.stats?.[statId] || (isLowerBetter ? Infinity : 0)
+      return isLowerBetter ? aVal - bVal : bVal - aVal
+    })
+  
+  const rank = sorted.findIndex(p => p.pick === pick.pick)
+  return rank >= 0 ? rank + 1 : sorted.length
+}
+
+// Get category-specific value score (expected rank - actual rank)
+function getCategoryValue(pick: any, cat: string): number {
+  const actualRank = getCategoryRank(pick, cat)
+  const expectedRank = pick.pick // Draft position
+  return expectedRank - actualRank
+}
+
+// Format category value with +/- sign
+function formatCategoryValue(pick: any, cat: string): string {
+  const statId = getStatIdForCategory(cat)
+  if (!pick.stats?.[statId] || pick.stats[statId] === 0) return '-'
+  
+  const value = getCategoryValue(pick, cat)
+  if (value >= 0) return `+${value}`
+  return `${value}`
+}
+
+// Get class for category value display
+function getCategoryValueClass(pick: any, cat: string): string {
+  const statId = getStatIdForCategory(cat)
+  if (!pick.stats?.[statId] || pick.stats[statId] === 0) return 'text-dark-textMuted'
+  
+  const value = getCategoryValue(pick, cat)
+  if (value >= 20) return 'bg-green-500/30 text-green-400'
+  if (value >= 10) return 'bg-green-500/20 text-green-400'
+  if (value >= 0) return 'text-green-400/70'
+  if (value >= -10) return 'text-orange-400/70'
+  return 'bg-red-500/20 text-red-400'
 }
 
 // Get highlighted stat class based on percentile
