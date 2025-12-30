@@ -1693,11 +1693,8 @@ const allCategories = computed(() => {
   const cats = new Set<string>()
   for (const season of seasonCategoryData.value) {
     for (const cat of Object.keys(season.category_wins || {})) {
-      // Only include categories that have valid display names
-      if (isValidCategory(cat)) {
-        const displayName = getCategoryDisplayName(cat)
-        if (displayName) cats.add(displayName)
-      }
+      // Keys are already display names from seasonCategoryData
+      cats.add(cat)
     }
   }
   return Array.from(cats)
