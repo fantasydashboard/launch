@@ -60,15 +60,16 @@
         
         <div class="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div class="flex items-center justify-between h-10 sm:h-11">
-            <!-- Title - with left margin for logo on mobile -->
-            <div class="flex items-center ml-20 sm:ml-0">
-              <h1 class="text-[10px] sm:text-sm lg:text-base font-bold text-white tracking-wider uppercase">
+            <!-- Left side: Title + League Dropdown -->
+            <div class="flex items-center gap-3 sm:gap-4 ml-20 sm:ml-24 lg:ml-28">
+              <!-- Title -->
+              <h1 class="hidden sm:block text-sm lg:text-base font-bold text-white tracking-wider uppercase whitespace-nowrap">
                 ULTIMATE FANTASY DASHBOARD
               </h1>
-            </div>
-
-            <!-- Right side: League Dropdown + User Menu -->
-            <div class="flex items-center gap-2 sm:gap-4">
+              <h1 class="sm:hidden text-[10px] font-bold text-white tracking-wider uppercase">
+                UFD
+              </h1>
+              
               <!-- League Dropdown -->
               <div class="relative" ref="leagueDropdownRef">
                 <button
@@ -283,25 +284,25 @@
                   </div>
                 </div>
               </div>
+            </div>
 
-              <!-- User Menu -->
-              <div class="flex items-center gap-2 sm:gap-3">
-                <div class="hidden sm:flex items-center gap-2">
-                  <div class="w-6 h-6 rounded-full bg-white/20 flex items-center justify-center">
-                    <span class="text-[10px] font-bold text-white">{{ userInitials }}</span>
-                  </div>
-                  <span class="text-xs text-white/80 hidden md:inline">{{ displayName }}</span>
+            <!-- Right side: User Menu only -->
+            <div class="flex items-center gap-2 sm:gap-3">
+              <div class="hidden sm:flex items-center gap-2">
+                <div class="w-6 h-6 rounded-full bg-white/20 flex items-center justify-center">
+                  <span class="text-[10px] font-bold text-white">{{ userInitials }}</span>
                 </div>
-                <button
-                  @click="handleSignOut"
-                  class="hidden sm:block p-1.5 rounded-lg hover:bg-white/10 transition-colors text-white/60 hover:text-white"
-                  title="Sign out"
-                >
-                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-                  </svg>
-                </button>
+                <span class="text-xs text-white/80 hidden md:inline">{{ displayName }}</span>
               </div>
+              <button
+                @click="handleSignOut"
+                class="hidden sm:block p-1.5 rounded-lg hover:bg-white/10 transition-colors text-white/60 hover:text-white"
+                title="Sign out"
+              >
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                </svg>
+              </button>
             </div>
           </div>
         </div>
@@ -325,19 +326,19 @@
         
         <div class="relative z-10 h-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div class="flex items-center justify-end h-full">
-            <!-- Mobile: Menu Button -->
+            <!-- Mobile/Tablet: Menu Button (shows below lg breakpoint) -->
             <button
               @click="showMobileMenu = true"
-              class="sm:hidden flex items-center gap-2 px-4 py-2 bg-black/20 rounded-full text-white font-semibold text-sm"
+              class="lg:hidden flex items-center gap-2 px-4 py-2 bg-black/20 rounded-full text-white font-semibold text-sm"
             >
               <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
               </svg>
-              <span>Menu</span>
+              <span>Dashboards</span>
             </button>
             
-            <!-- Desktop: Right-aligned pill-style tabs -->
-            <div class="hidden sm:flex items-center gap-4">
+            <!-- Desktop: Right-aligned pill-style tabs (lg and up) -->
+            <div class="hidden lg:flex items-center gap-4">
               <!-- Demo Mode Banner -->
               <div v-if="leagueStore.isDemoMode" class="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-black/30">
                 <span class="text-sm">👀</span>
@@ -504,15 +505,17 @@
                   :key="tab.path"
                   :to="tab.path"
                   @click="showMobileMenu = false"
-                  class="flex items-center gap-4 p-4 rounded-xl transition-colors"
+                  class="flex items-center justify-between p-4 rounded-xl transition-colors"
                   :class="[
                     $route.path === tab.path
                       ? 'bg-primary text-gray-900'
                       : 'bg-dark-card text-white hover:bg-dark-border/50'
                   ]"
                 >
-                  <span class="text-2xl">{{ getTabIcon(tab.name) }}</span>
                   <span class="text-lg font-bold">{{ tab.name }}</span>
+                  <svg class="w-5 h-5" :class="$route.path === tab.path ? 'text-gray-900' : 'text-dark-textMuted'" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+                  </svg>
                 </router-link>
               </div>
             </div>
@@ -635,14 +638,6 @@ const footballLeagues = computed(() => leagueStore.savedLeagues.filter(l => (l.s
 const baseballLeagues = computed(() => leagueStore.savedLeagues.filter(l => l.sport === 'baseball'))
 const basketballLeagues = computed(() => leagueStore.savedLeagues.filter(l => l.sport === 'basketball'))
 const hockeyLeagues = computed(() => leagueStore.savedLeagues.filter(l => l.sport === 'hockey'))
-
-function getTabIcon(tabName: string): string {
-  const icons: Record<string, string> = {
-    'Home': '🏠', 'Power Rankings': '📊', 'Matchups': '⚔️', 'Projections': '🎯',
-    'History': '📜', 'Draft': '📝', 'Compare': '⚖️', 'Tools': '🛠️'
-  }
-  return icons[tabName] || '📌'
-}
 
 function getPlatformName(platform: string | undefined): string {
   switch (platform) {
