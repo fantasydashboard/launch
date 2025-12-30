@@ -46,429 +46,458 @@
     
     <!-- Show Full App for authenticated users -->
     <template v-else>
-      <!-- Combined Header Container - Fixed/Sticky -->
-      <div class="fixed top-0 left-0 right-0 z-40">
-        <!-- Top Header (Black) - Title and Controls -->
-        <header class="relative bg-black">
-          <div class="max-w-7xl mx-auto pr-4 sm:pr-6 lg:pr-8">
-            <div class="flex items-center justify-between h-14 sm:h-16 pl-32 sm:pl-40 lg:pl-48">
-              <!-- Title -->
-              <div class="flex items-center">
-                <h1 class="text-sm sm:text-base lg:text-lg font-bold text-white tracking-wider uppercase">
-                  <span class="hidden sm:inline">ULTIMATE FANTASY DASHBOARD</span>
-                  <span class="sm:hidden">UFD</span>
-                </h1>
-              </div>
+      <!-- Top Header (Dark card color) - Slides away on scroll -->
+      <header 
+        class="fixed top-0 left-0 right-0 z-30 transition-transform duration-300"
+        :class="isScrolled ? '-translate-y-full' : 'translate-y-0'"
+        style="background: #11131a;"
+      >
+        <!-- Gradient overlay behind content - lowest layer -->
+        <div 
+          class="absolute left-0 top-0 bottom-0 pointer-events-none"
+          style="width: 220px; background: linear-gradient(to right, #11131a 0%, #11131a 140px, transparent 220px); z-index: 1;"
+        ></div>
+        
+        <div class="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div class="flex items-center justify-between h-10 sm:h-11 pl-28 sm:pl-36 lg:pl-44">
+            <!-- Title -->
+            <div class="flex items-center">
+              <h1 class="text-xs sm:text-sm lg:text-base font-bold text-white tracking-wider uppercase">
+                <span class="hidden sm:inline">ULTIMATE FANTASY DASHBOARD</span>
+                <span class="sm:hidden">UFD</span>
+              </h1>
+            </div>
 
-              <!-- League selector and controls -->
-              <div class="flex items-center gap-2 sm:gap-4">
-                <!-- League Dropdown -->
-                <div class="relative" ref="leagueDropdownRef">
-                  <button
-                    @click="showLeagueDropdown = !showLeagueDropdown"
-                    class="flex items-center gap-2 px-2 sm:px-3 py-1.5 rounded-lg bg-white/10 border border-white/20 hover:border-white/40 transition-colors min-w-0 sm:min-w-[200px]"
-                  >
-                    <template v-if="leagueStore.currentLeague">
-                      <!-- Platform Icon -->
-                      <div 
-                        class="w-5 h-5 flex-shrink-0 rounded flex items-center justify-center"
-                        :class="leagueStore.activePlatform === 'yahoo' ? 'bg-purple-600' : ''"
-                        :style="leagueStore.activePlatform !== 'yahoo' ? { background: getLeagueTypeColor(leagueStore.currentLeague.settings?.type) } : {}"
-                      >
-                        <span v-if="leagueStore.activePlatform === 'yahoo'" class="text-[10px] font-bold text-white">Y!</span>
-                        <svg v-else class="w-3 h-3 text-white" viewBox="0 0 24 24" fill="currentColor">
-                          <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
-                        </svg>
-                      </div>
-                      <span class="text-white font-medium truncate max-w-[80px] sm:max-w-[140px] text-sm">
-                        {{ leagueStore.currentLeague.name }}
-                      </span>
-                    </template>
-                    <template v-else-if="leagueStore.isDemoMode">
-                      <div class="w-5 h-5 rounded-full bg-cyan-500/30 flex items-center justify-center flex-shrink-0">
-                        <span class="text-xs">👀</span>
-                      </div>
-                      <span class="text-cyan-400 font-medium hidden sm:inline text-sm">Demo Mode</span>
-                      <span class="text-cyan-400 font-medium sm:hidden text-xs">Demo</span>
-                    </template>
-                    <template v-else>
-                      <div class="w-5 h-5 rounded-full bg-primary/30 flex items-center justify-center flex-shrink-0">
-                        <svg class="w-3 h-3 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
-                        </svg>
-                      </div>
-                      <span class="text-primary font-medium hidden sm:inline text-sm">Add League</span>
-                      <span class="text-primary font-medium sm:hidden text-xs">Add</span>
-                    </template>
-                    <svg class="w-4 h-4 text-white/60 ml-auto flex-shrink-0 hidden sm:block" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
-                    </svg>
-                  </button>
-                  
-                  <!-- Dropdown Menu -->
-                  <div 
-                    v-if="showLeagueDropdown"
-                    class="absolute top-full right-0 mt-2 w-80 bg-dark-card border border-dark-border rounded-xl shadow-xl z-50 overflow-hidden"
-                  >
-                    <!-- All Leagues (grouped by sport) -->
-                    <div v-if="leagueStore.savedLeagues.length > 0" class="max-h-80 overflow-y-auto">
-                      <!-- Football Leagues -->
-                      <div v-if="footballLeagues.length > 0" class="p-2">
-                        <div class="text-xs text-dark-textMuted uppercase tracking-wider px-2 py-1 flex items-center gap-2">
-                          <span class="w-4 h-4 rounded-full" style="background: #22c55e;"></span>
-                          <span>Football</span>
-                          <span class="text-primary ml-auto">{{ footballLeagues.length }}</span>
-                        </div>
-                        <div
-                          v-for="league in footballLeagues"
-                          :key="league.league_id"
-                          class="group flex items-center gap-2 rounded-lg transition-colors"
-                          :class="leagueStore.activeLeagueId === league.league_id ? 'bg-primary/10' : 'hover:bg-dark-border/50'"
-                        >
-                          <button
-                            @click="selectLeagueWithSport(league)"
-                            class="flex-1 flex items-center gap-3 px-3 py-2"
-                          >
-                            <div 
-                              class="w-5 h-5 flex-shrink-0 rounded flex items-center justify-center"
-                              :class="league.platform === 'yahoo' ? 'bg-purple-600' : ''"
-                              :style="league.platform !== 'yahoo' ? { background: getLeagueTypeColor(league.league_type) } : {}"
-                            >
-                              <span v-if="league.platform === 'yahoo'" class="text-[10px] font-bold text-white">Y!</span>
-                              <svg v-else class="w-3 h-3 text-white" viewBox="0 0 24 24" fill="currentColor">
-                                <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
-                              </svg>
-                            </div>
-                            <div class="flex-1 text-left min-w-0">
-                              <div class="font-medium text-dark-text text-sm truncate">{{ league.league_name }}</div>
-                              <div class="text-xs text-dark-textMuted">
-                                {{ league.season }} • 
-                                <span v-if="league.platform === 'yahoo'" class="text-purple-400">Yahoo</span>
-                                <span v-else>{{ league.sleeper_username }}</span>
-                              </div>
-                            </div>
-                            <svg v-if="leagueStore.activeLeagueId === league.league_id" class="w-4 h-4 text-primary" fill="currentColor" viewBox="0 0 20 20">
-                              <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" />
-                            </svg>
-                          </button>
-                          <button
-                            @click.stop="confirmRemoveLeague(league)"
-                            class="p-2 opacity-0 group-hover:opacity-100 hover:text-red-400 text-dark-textMuted transition-all"
-                            title="Remove league"
-                          >
-                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                            </svg>
-                          </button>
-                        </div>
-                      </div>
-                      
-                      <!-- Baseball Leagues -->
-                      <div v-if="baseballLeagues.length > 0" class="p-2 border-t border-dark-border/50">
-                        <div class="text-xs text-dark-textMuted uppercase tracking-wider px-2 py-1 flex items-center gap-2">
-                          <span class="w-4 h-4 rounded-full" style="background: #3B9FE8;"></span>
-                          <span>Baseball</span>
-                          <span class="text-primary ml-auto">{{ baseballLeagues.length }}</span>
-                        </div>
-                        <div
-                          v-for="league in baseballLeagues"
-                          :key="league.league_id"
-                          class="group flex items-center gap-2 rounded-lg transition-colors"
-                          :class="leagueStore.activeLeagueId === league.league_id ? 'bg-primary/10' : 'hover:bg-dark-border/50'"
-                        >
-                          <button
-                            @click="selectLeagueWithSport(league)"
-                            class="flex-1 flex items-center gap-3 px-3 py-2"
-                          >
-                            <div 
-                              class="w-5 h-5 flex-shrink-0 rounded flex items-center justify-center"
-                              :class="league.platform === 'yahoo' ? 'bg-purple-600' : ''"
-                              :style="league.platform !== 'yahoo' ? { background: getLeagueTypeColor(league.league_type) } : {}"
-                            >
-                              <span v-if="league.platform === 'yahoo'" class="text-[10px] font-bold text-white">Y!</span>
-                              <svg v-else class="w-3 h-3 text-white" viewBox="0 0 24 24" fill="currentColor">
-                                <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
-                              </svg>
-                            </div>
-                            <div class="flex-1 text-left min-w-0">
-                              <div class="font-medium text-dark-text text-sm truncate">{{ league.league_name }}</div>
-                              <div class="text-xs text-dark-textMuted">
-                                {{ league.season }} • 
-                                <span v-if="league.platform === 'yahoo'" class="text-purple-400">Yahoo</span>
-                                <span v-else>{{ league.sleeper_username }}</span>
-                              </div>
-                            </div>
-                            <svg v-if="leagueStore.activeLeagueId === league.league_id" class="w-4 h-4 text-primary" fill="currentColor" viewBox="0 0 20 20">
-                              <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" />
-                            </svg>
-                          </button>
-                          <button
-                            @click.stop="confirmRemoveLeague(league)"
-                            class="p-2 opacity-0 group-hover:opacity-100 hover:text-red-400 text-dark-textMuted transition-all"
-                            title="Remove league"
-                          >
-                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                            </svg>
-                          </button>
-                        </div>
-                      </div>
-                      
-                      <!-- Basketball Leagues -->
-                      <div v-if="basketballLeagues.length > 0" class="p-2 border-t border-dark-border/50">
-                        <div class="text-xs text-dark-textMuted uppercase tracking-wider px-2 py-1 flex items-center gap-2">
-                          <span class="w-4 h-4 rounded-full" style="background: #f97316;"></span>
-                          <span>Basketball</span>
-                          <span class="text-primary ml-auto">{{ basketballLeagues.length }}</span>
-                        </div>
-                        <div
-                          v-for="league in basketballLeagues"
-                          :key="league.league_id"
-                          class="group flex items-center gap-2 rounded-lg transition-colors"
-                          :class="leagueStore.activeLeagueId === league.league_id ? 'bg-primary/10' : 'hover:bg-dark-border/50'"
-                        >
-                          <button
-                            @click="selectLeagueWithSport(league)"
-                            class="flex-1 flex items-center gap-3 px-3 py-2"
-                          >
-                            <div class="w-5 h-5 flex-shrink-0 rounded bg-purple-600 flex items-center justify-center">
-                              <span class="text-[10px] font-bold text-white">Y!</span>
-                            </div>
-                            <div class="flex-1 text-left min-w-0">
-                              <div class="font-medium text-dark-text text-sm truncate">{{ league.league_name }}</div>
-                              <div class="text-xs text-dark-textMuted">{{ league.season }}</div>
-                            </div>
-                            <svg v-if="leagueStore.activeLeagueId === league.league_id" class="w-4 h-4 text-primary" fill="currentColor" viewBox="0 0 20 20">
-                              <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" />
-                            </svg>
-                          </button>
-                          <button
-                            @click.stop="confirmRemoveLeague(league)"
-                            class="p-2 opacity-0 group-hover:opacity-100 hover:text-red-400 text-dark-textMuted transition-all"
-                            title="Remove league"
-                          >
-                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                            </svg>
-                          </button>
-                        </div>
-                      </div>
-                      
-                      <!-- Hockey Leagues -->
-                      <div v-if="hockeyLeagues.length > 0" class="p-2 border-t border-dark-border/50">
-                        <div class="text-xs text-dark-textMuted uppercase tracking-wider px-2 py-1 flex items-center gap-2">
-                          <span class="w-4 h-4 rounded-full" style="background: #3b82f6;"></span>
-                          <span>Hockey</span>
-                          <span class="text-primary ml-auto">{{ hockeyLeagues.length }}</span>
-                        </div>
-                        <div
-                          v-for="league in hockeyLeagues"
-                          :key="league.league_id"
-                          class="group flex items-center gap-2 rounded-lg transition-colors"
-                          :class="leagueStore.activeLeagueId === league.league_id ? 'bg-primary/10' : 'hover:bg-dark-border/50'"
-                        >
-                          <button
-                            @click="selectLeagueWithSport(league)"
-                            class="flex-1 flex items-center gap-3 px-3 py-2"
-                          >
-                            <div class="w-5 h-5 flex-shrink-0 rounded bg-purple-600 flex items-center justify-center">
-                              <span class="text-[10px] font-bold text-white">Y!</span>
-                            </div>
-                            <div class="flex-1 text-left min-w-0">
-                              <div class="font-medium text-dark-text text-sm truncate">{{ league.league_name }}</div>
-                              <div class="text-xs text-dark-textMuted">{{ league.season }}</div>
-                            </div>
-                            <svg v-if="leagueStore.activeLeagueId === league.league_id" class="w-4 h-4 text-primary" fill="currentColor" viewBox="0 0 20 20">
-                              <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" />
-                            </svg>
-                          </button>
-                          <button
-                            @click.stop="confirmRemoveLeague(league)"
-                            class="p-2 opacity-0 group-hover:opacity-100 hover:text-red-400 text-dark-textMuted transition-all"
-                            title="Remove league"
-                          >
-                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                            </svg>
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                    
-                    <!-- Divider -->
-                    <div v-if="leagueStore.savedLeagues.length > 0" class="border-t border-dark-border/50"></div>
-                    
-                    <!-- Add League Button -->
-                    <div class="p-2">
-                      <button
-                        @click="showAddLeagueModal = true; showLeagueDropdown = false"
-                        class="w-full flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-dark-border/50 transition-colors text-primary"
-                      >
-                        <div class="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
-                          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
-                          </svg>
-                        </div>
-                        <div class="text-left">
-                          <div class="font-medium text-sm">Add a League</div>
-                          <div class="text-xs text-dark-textMuted">Connect Sleeper or Yahoo</div>
-                        </div>
-                      </button>
-                    </div>
-                    
-                    <!-- Demo Mode Option -->
-                    <div class="border-t border-dark-border/50 p-2">
-                      <button
-                        @click="enableDemoMode"
-                        class="w-full flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-dark-border/50 transition-colors"
-                        :class="leagueStore.isDemoMode ? 'bg-cyan-500/10' : ''"
-                      >
-                        <div class="w-8 h-8 rounded-full bg-cyan-500/20 flex items-center justify-center">
-                          <span class="text-sm">👀</span>
-                        </div>
-                        <div class="text-left">
-                          <div class="font-medium text-sm text-cyan-400">Demo Mode</div>
-                          <div class="text-xs text-dark-textMuted">Preview with sample data</div>
-                        </div>
-                        <svg v-if="leagueStore.isDemoMode" class="w-4 h-4 text-cyan-400 ml-auto" fill="currentColor" viewBox="0 0 20 20">
-                          <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" />
-                        </svg>
-                      </button>
-                    </div>
-                  </div>
+            <!-- User Menu -->
+            <div class="flex items-center gap-2 sm:gap-3">
+              <div class="hidden sm:flex items-center gap-2">
+                <div class="w-6 h-6 rounded-full bg-white/20 flex items-center justify-center">
+                  <span class="text-[10px] font-bold text-white">{{ userInitials }}</span>
                 </div>
-
-                <!-- User Menu -->
-                <div class="flex items-center gap-2 sm:gap-3">
-                  <div class="hidden sm:flex items-center gap-2">
-                    <div class="w-7 h-7 rounded-full bg-white/20 flex items-center justify-center">
-                      <span class="text-xs font-bold text-white">{{ userInitials }}</span>
-                    </div>
-                    <span class="text-sm text-white/80 hidden md:inline">{{ displayName }}</span>
-                  </div>
-                  <button
-                    @click="handleSignOut"
-                    class="hidden sm:block p-2 rounded-lg hover:bg-white/10 transition-colors text-white/60 hover:text-white"
-                    title="Sign out"
-                  >
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-                    </svg>
-                  </button>
-                  
-                  <!-- Mobile User Menu Button -->
-                  <button
-                    @click="showMobileUserMenu = !showMobileUserMenu"
-                    class="sm:hidden p-1.5 rounded-lg hover:bg-white/10 transition-colors"
-                    data-mobile-user-menu
-                  >
-                    <div class="w-7 h-7 rounded-full bg-white/20 flex items-center justify-center">
-                      <span class="text-xs font-bold text-white">{{ userInitials }}</span>
-                    </div>
-                  </button>
-                </div>
+                <span class="text-xs text-white/80 hidden md:inline">{{ displayName }}</span>
               </div>
+              <button
+                @click="handleSignOut"
+                class="hidden sm:block p-1.5 rounded-lg hover:bg-white/10 transition-colors text-white/60 hover:text-white"
+                title="Sign out"
+              >
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                </svg>
+              </button>
+              
+              <!-- Mobile User Menu Button -->
+              <button
+                @click="showMobileUserMenu = !showMobileUserMenu"
+                class="sm:hidden p-1 rounded-lg hover:bg-white/10 transition-colors"
+                data-mobile-user-menu
+              >
+                <div class="w-6 h-6 rounded-full bg-white/20 flex items-center justify-center">
+                  <span class="text-[10px] font-bold text-white">{{ userInitials }}</span>
+                </div>
+              </button>
             </div>
           </div>
-          
-          <!-- Mobile User Dropdown -->
-          <div 
-            v-if="showMobileUserMenu" 
-            class="sm:hidden absolute right-4 top-12 bg-dark-elevated border border-dark-border rounded-xl shadow-xl z-50 w-48 overflow-hidden"
-            data-mobile-user-menu
-          >
-            <div class="p-3 border-b border-dark-border">
-              <div class="font-medium text-dark-text text-sm truncate">{{ displayName }}</div>
-              <div class="text-xs text-dark-textMuted truncate">{{ authStore.user?.email }}</div>
-            </div>
-            <button
-              @click="handleSignOut; showMobileUserMenu = false"
-              class="w-full flex items-center gap-2 px-3 py-2.5 text-red-400 hover:bg-red-500/10 transition-colors text-sm"
-            >
-              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-              </svg>
-              <span>Sign Out</span>
-            </button>
-          </div>
-        </header>
-
-        <!-- Navigation Menu (Sport-colored) -->
-        <nav 
-          class="relative"
-          :style="{ backgroundColor: sportStore.primaryColor }"
+        </div>
+        
+        <!-- Mobile User Dropdown -->
+        <div 
+          v-if="showMobileUserMenu" 
+          class="sm:hidden absolute right-4 top-10 bg-dark-elevated border border-dark-border rounded-xl shadow-xl z-50 w-48 overflow-hidden"
+          data-mobile-user-menu
         >
-          <div class="max-w-7xl mx-auto pr-4 sm:pr-6 lg:pr-8 py-2 sm:py-2.5 pl-32 sm:pl-40 lg:pl-48">
-            <!-- Mobile: Scrollable tabs -->
-            <div class="sm:hidden overflow-x-auto scrollbar-hide -mr-4 pr-4">
-              <div class="flex items-center gap-1 min-w-max">
-                <router-link
-                  v-for="tab in tabs"
-                  :key="tab.path"
-                  :to="tab.path"
-                  class="flex-shrink-0 px-3 py-1.5 text-xs font-semibold rounded-full transition-all duration-200 whitespace-nowrap"
-                  :class="[
-                    $route.path === tab.path
-                      ? 'bg-white text-gray-900 shadow-md'
-                      : 'text-white/80 hover:text-white hover:bg-white/20'
-                  ]"
-                >
-                  {{ tab.name }}
-                </router-link>
+          <div class="p-3 border-b border-dark-border">
+            <div class="font-medium text-dark-text text-sm truncate">{{ displayName }}</div>
+            <div class="text-xs text-dark-textMuted truncate">{{ authStore.user?.email }}</div>
+          </div>
+          <button
+            @click="handleSignOut; showMobileUserMenu = false"
+            class="w-full flex items-center gap-2 px-3 py-2.5 text-red-400 hover:bg-red-500/10 transition-colors text-sm"
+          >
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+            </svg>
+            <span>Sign Out</span>
+          </button>
+        </div>
+      </header>
+
+      <!-- Navigation Menu (Sport-colored) - Always sticky -->
+      <nav 
+        class="fixed left-0 right-0 z-40 transition-all duration-300"
+        :class="isScrolled ? 'top-0' : 'top-10 sm:top-11'"
+        :style="{ backgroundColor: sportStore.primaryColor }"
+      >
+        <!-- Gradient overlay behind content - lowest layer -->
+        <div 
+          class="absolute left-0 top-0 bottom-0 pointer-events-none transition-all duration-300"
+          :style="{
+            width: '220px',
+            background: `linear-gradient(to right, #11131a 0%, #11131a ${isScrolled ? '100px' : '140px'}, transparent 220px)`,
+            zIndex: 1
+          }"
+        ></div>
+        
+        <div class="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div 
+            class="flex items-center justify-between transition-all duration-300 pl-28 sm:pl-36 lg:pl-44"
+            :class="isScrolled ? 'h-14 sm:h-16' : 'h-12 sm:h-14'"
+          >
+            <!-- Navigation Tabs -->
+            <div class="flex-1 overflow-hidden">
+              <!-- Mobile: Scrollable tabs -->
+              <div class="sm:hidden overflow-x-auto scrollbar-hide -mr-4 pr-4">
+                <div class="flex items-center gap-1 min-w-max">
+                  <router-link
+                    v-for="tab in tabs"
+                    :key="tab.path"
+                    :to="tab.path"
+                    class="flex-shrink-0 px-3 py-1.5 text-xs font-semibold rounded-full transition-all duration-200 whitespace-nowrap"
+                    :class="[
+                      $route.path === tab.path
+                        ? 'bg-white text-gray-900 shadow-md'
+                        : 'text-white/80 hover:text-white hover:bg-white/20'
+                    ]"
+                  >
+                    {{ tab.name }}
+                  </router-link>
+                </div>
+              </div>
+              
+              <!-- Desktop: Pill-style tabs -->
+              <div class="hidden sm:flex items-center gap-4">
+                <div class="inline-flex items-center gap-1 bg-black/20 rounded-full p-1">
+                  <router-link
+                    v-for="tab in tabs"
+                    :key="tab.path"
+                    :to="tab.path"
+                    class="px-3 lg:px-4 py-1.5 text-sm font-semibold rounded-full transition-all duration-200"
+                    :class="[
+                      $route.path === tab.path
+                        ? 'bg-white text-gray-900 shadow-md'
+                        : 'text-white/80 hover:text-white hover:bg-white/20'
+                    ]"
+                  >
+                    {{ tab.name }}
+                  </router-link>
+                </div>
+                
+                <!-- Demo Mode Banner -->
+                <div v-if="leagueStore.isDemoMode" class="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-black/30">
+                  <span class="text-sm">👀</span>
+                  <span class="text-white text-xs font-medium">Demo Mode</span>
+                  <button 
+                    @click="showAddLeagueModal = true"
+                    class="text-xs text-white/80 hover:text-white underline ml-1"
+                  >
+                    Connect →
+                  </button>
+                </div>
               </div>
             </div>
             
-            <!-- Desktop: Pill-style tabs -->
-            <div class="hidden sm:flex items-center justify-between">
-              <div class="inline-flex items-center gap-1 bg-black/20 rounded-full p-1">
-                <router-link
-                  v-for="tab in tabs"
-                  :key="tab.path"
-                  :to="tab.path"
-                  class="px-3 lg:px-5 py-2 text-sm font-semibold rounded-full transition-all duration-200"
-                  :class="[
-                    $route.path === tab.path
-                      ? 'bg-white text-gray-900 shadow-md'
-                      : 'text-white/80 hover:text-white hover:bg-white/20'
-                  ]"
-                >
-                  {{ tab.name }}
-                </router-link>
-              </div>
+            <!-- League Dropdown - Right side of nav -->
+            <div class="relative ml-2 sm:ml-4" ref="leagueDropdownRef">
+              <button
+                @click="showLeagueDropdown = !showLeagueDropdown"
+                class="flex items-center gap-2 px-2 sm:px-3 py-1.5 rounded-lg bg-black/20 border border-white/20 hover:border-white/40 transition-colors min-w-0 sm:min-w-[180px]"
+              >
+                <template v-if="leagueStore.currentLeague">
+                  <!-- Platform Icon -->
+                  <div 
+                    class="w-5 h-5 flex-shrink-0 rounded flex items-center justify-center"
+                    :class="leagueStore.activePlatform === 'yahoo' ? 'bg-purple-600' : ''"
+                    :style="leagueStore.activePlatform !== 'yahoo' ? { background: getLeagueTypeColor(leagueStore.currentLeague.settings?.type) } : {}"
+                  >
+                    <span v-if="leagueStore.activePlatform === 'yahoo'" class="text-[10px] font-bold text-white">Y!</span>
+                    <svg v-else class="w-3 h-3 text-white" viewBox="0 0 24 24" fill="currentColor">
+                      <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
+                    </svg>
+                  </div>
+                  <span class="text-white font-medium truncate max-w-[60px] sm:max-w-[120px] text-sm">
+                    {{ leagueStore.currentLeague.name }}
+                  </span>
+                </template>
+                <template v-else-if="leagueStore.isDemoMode">
+                  <div class="w-5 h-5 rounded-full bg-cyan-500/30 flex items-center justify-center flex-shrink-0">
+                    <span class="text-xs">👀</span>
+                  </div>
+                  <span class="text-cyan-300 font-medium hidden sm:inline text-sm">Demo</span>
+                </template>
+                <template v-else>
+                  <div class="w-5 h-5 rounded-full bg-white/30 flex items-center justify-center flex-shrink-0">
+                    <svg class="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                    </svg>
+                  </div>
+                  <span class="text-white font-medium hidden sm:inline text-sm">Add League</span>
+                </template>
+                <svg class="w-4 h-4 text-white/60 ml-auto flex-shrink-0 hidden sm:block" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                </svg>
+              </button>
               
-              <!-- Demo Mode Banner -->
-              <div v-if="leagueStore.isDemoMode" class="inline-flex items-center gap-2 ml-4 px-3 py-1.5 rounded-full bg-black/30">
-                <span class="text-sm">👀</span>
-                <span class="text-white text-xs font-medium">Demo Mode</span>
-                <button 
-                  @click="showAddLeagueModal = true"
-                  class="text-xs text-white/80 hover:text-white underline ml-1"
-                >
-                  Connect your league →
-                </button>
+              <!-- Dropdown Menu -->
+              <div 
+                v-if="showLeagueDropdown"
+                class="absolute top-full right-0 mt-2 w-80 bg-dark-card border border-dark-border rounded-xl shadow-xl z-50 overflow-hidden"
+              >
+                <!-- All Leagues (grouped by sport) -->
+                <div v-if="leagueStore.savedLeagues.length > 0" class="max-h-80 overflow-y-auto">
+                  <!-- Football Leagues -->
+                  <div v-if="footballLeagues.length > 0" class="p-2">
+                    <div class="text-xs text-dark-textMuted uppercase tracking-wider px-2 py-1 flex items-center gap-2">
+                      <span class="w-4 h-4 rounded-full" style="background: #22c55e;"></span>
+                      <span>Football</span>
+                      <span class="text-primary ml-auto">{{ footballLeagues.length }}</span>
+                    </div>
+                    <div
+                      v-for="league in footballLeagues"
+                      :key="league.league_id"
+                      class="group flex items-center gap-2 rounded-lg transition-colors"
+                      :class="leagueStore.activeLeagueId === league.league_id ? 'bg-primary/10' : 'hover:bg-dark-border/50'"
+                    >
+                      <button
+                        @click="selectLeagueWithSport(league)"
+                        class="flex-1 flex items-center gap-3 px-3 py-2"
+                      >
+                        <div 
+                          class="w-5 h-5 flex-shrink-0 rounded flex items-center justify-center"
+                          :class="league.platform === 'yahoo' ? 'bg-purple-600' : ''"
+                          :style="league.platform !== 'yahoo' ? { background: getLeagueTypeColor(league.league_type) } : {}"
+                        >
+                          <span v-if="league.platform === 'yahoo'" class="text-[10px] font-bold text-white">Y!</span>
+                          <svg v-else class="w-3 h-3 text-white" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
+                          </svg>
+                        </div>
+                        <div class="flex-1 text-left min-w-0">
+                          <div class="font-medium text-dark-text text-sm truncate">{{ league.league_name }}</div>
+                          <div class="text-xs text-dark-textMuted">
+                            {{ league.season }} • 
+                            <span v-if="league.platform === 'yahoo'" class="text-purple-400">Yahoo</span>
+                            <span v-else>{{ league.sleeper_username }}</span>
+                          </div>
+                        </div>
+                        <svg v-if="leagueStore.activeLeagueId === league.league_id" class="w-4 h-4 text-primary" fill="currentColor" viewBox="0 0 20 20">
+                          <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" />
+                        </svg>
+                      </button>
+                      <button
+                        @click.stop="confirmRemoveLeague(league)"
+                        class="p-2 opacity-0 group-hover:opacity-100 hover:text-red-400 text-dark-textMuted transition-all"
+                        title="Remove league"
+                      >
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                        </svg>
+                      </button>
+                    </div>
+                  </div>
+                  
+                  <!-- Baseball Leagues -->
+                  <div v-if="baseballLeagues.length > 0" class="p-2 border-t border-dark-border/50">
+                    <div class="text-xs text-dark-textMuted uppercase tracking-wider px-2 py-1 flex items-center gap-2">
+                      <span class="w-4 h-4 rounded-full" style="background: #3B9FE8;"></span>
+                      <span>Baseball</span>
+                      <span class="text-primary ml-auto">{{ baseballLeagues.length }}</span>
+                    </div>
+                    <div
+                      v-for="league in baseballLeagues"
+                      :key="league.league_id"
+                      class="group flex items-center gap-2 rounded-lg transition-colors"
+                      :class="leagueStore.activeLeagueId === league.league_id ? 'bg-primary/10' : 'hover:bg-dark-border/50'"
+                    >
+                      <button
+                        @click="selectLeagueWithSport(league)"
+                        class="flex-1 flex items-center gap-3 px-3 py-2"
+                      >
+                        <div 
+                          class="w-5 h-5 flex-shrink-0 rounded flex items-center justify-center"
+                          :class="league.platform === 'yahoo' ? 'bg-purple-600' : ''"
+                          :style="league.platform !== 'yahoo' ? { background: getLeagueTypeColor(league.league_type) } : {}"
+                        >
+                          <span v-if="league.platform === 'yahoo'" class="text-[10px] font-bold text-white">Y!</span>
+                          <svg v-else class="w-3 h-3 text-white" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
+                          </svg>
+                        </div>
+                        <div class="flex-1 text-left min-w-0">
+                          <div class="font-medium text-dark-text text-sm truncate">{{ league.league_name }}</div>
+                          <div class="text-xs text-dark-textMuted">
+                            {{ league.season }} • 
+                            <span v-if="league.platform === 'yahoo'" class="text-purple-400">Yahoo</span>
+                            <span v-else>{{ league.sleeper_username }}</span>
+                          </div>
+                        </div>
+                        <svg v-if="leagueStore.activeLeagueId === league.league_id" class="w-4 h-4 text-primary" fill="currentColor" viewBox="0 0 20 20">
+                          <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" />
+                        </svg>
+                      </button>
+                      <button
+                        @click.stop="confirmRemoveLeague(league)"
+                        class="p-2 opacity-0 group-hover:opacity-100 hover:text-red-400 text-dark-textMuted transition-all"
+                        title="Remove league"
+                      >
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                        </svg>
+                      </button>
+                    </div>
+                  </div>
+                  
+                  <!-- Basketball Leagues -->
+                  <div v-if="basketballLeagues.length > 0" class="p-2 border-t border-dark-border/50">
+                    <div class="text-xs text-dark-textMuted uppercase tracking-wider px-2 py-1 flex items-center gap-2">
+                      <span class="w-4 h-4 rounded-full" style="background: #f97316;"></span>
+                      <span>Basketball</span>
+                      <span class="text-primary ml-auto">{{ basketballLeagues.length }}</span>
+                    </div>
+                    <div
+                      v-for="league in basketballLeagues"
+                      :key="league.league_id"
+                      class="group flex items-center gap-2 rounded-lg transition-colors"
+                      :class="leagueStore.activeLeagueId === league.league_id ? 'bg-primary/10' : 'hover:bg-dark-border/50'"
+                    >
+                      <button
+                        @click="selectLeagueWithSport(league)"
+                        class="flex-1 flex items-center gap-3 px-3 py-2"
+                      >
+                        <div class="w-5 h-5 flex-shrink-0 rounded bg-purple-600 flex items-center justify-center">
+                          <span class="text-[10px] font-bold text-white">Y!</span>
+                        </div>
+                        <div class="flex-1 text-left min-w-0">
+                          <div class="font-medium text-dark-text text-sm truncate">{{ league.league_name }}</div>
+                          <div class="text-xs text-dark-textMuted">{{ league.season }}</div>
+                        </div>
+                        <svg v-if="leagueStore.activeLeagueId === league.league_id" class="w-4 h-4 text-primary" fill="currentColor" viewBox="0 0 20 20">
+                          <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" />
+                        </svg>
+                      </button>
+                      <button
+                        @click.stop="confirmRemoveLeague(league)"
+                        class="p-2 opacity-0 group-hover:opacity-100 hover:text-red-400 text-dark-textMuted transition-all"
+                        title="Remove league"
+                      >
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                        </svg>
+                      </button>
+                    </div>
+                  </div>
+                  
+                  <!-- Hockey Leagues -->
+                  <div v-if="hockeyLeagues.length > 0" class="p-2 border-t border-dark-border/50">
+                    <div class="text-xs text-dark-textMuted uppercase tracking-wider px-2 py-1 flex items-center gap-2">
+                      <span class="w-4 h-4 rounded-full" style="background: #3b82f6;"></span>
+                      <span>Hockey</span>
+                      <span class="text-primary ml-auto">{{ hockeyLeagues.length }}</span>
+                    </div>
+                    <div
+                      v-for="league in hockeyLeagues"
+                      :key="league.league_id"
+                      class="group flex items-center gap-2 rounded-lg transition-colors"
+                      :class="leagueStore.activeLeagueId === league.league_id ? 'bg-primary/10' : 'hover:bg-dark-border/50'"
+                    >
+                      <button
+                        @click="selectLeagueWithSport(league)"
+                        class="flex-1 flex items-center gap-3 px-3 py-2"
+                      >
+                        <div class="w-5 h-5 flex-shrink-0 rounded bg-purple-600 flex items-center justify-center">
+                          <span class="text-[10px] font-bold text-white">Y!</span>
+                        </div>
+                        <div class="flex-1 text-left min-w-0">
+                          <div class="font-medium text-dark-text text-sm truncate">{{ league.league_name }}</div>
+                          <div class="text-xs text-dark-textMuted">{{ league.season }}</div>
+                        </div>
+                        <svg v-if="leagueStore.activeLeagueId === league.league_id" class="w-4 h-4 text-primary" fill="currentColor" viewBox="0 0 20 20">
+                          <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" />
+                        </svg>
+                      </button>
+                      <button
+                        @click.stop="confirmRemoveLeague(league)"
+                        class="p-2 opacity-0 group-hover:opacity-100 hover:text-red-400 text-dark-textMuted transition-all"
+                        title="Remove league"
+                      >
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                        </svg>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+                
+                <!-- Divider -->
+                <div v-if="leagueStore.savedLeagues.length > 0" class="border-t border-dark-border/50"></div>
+                
+                <!-- Add League Button -->
+                <div class="p-2">
+                  <button
+                    @click="showAddLeagueModal = true; showLeagueDropdown = false"
+                    class="w-full flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-dark-border/50 transition-colors text-primary"
+                  >
+                    <div class="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
+                      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                      </svg>
+                    </div>
+                    <div class="text-left">
+                      <div class="font-medium text-sm">Add a League</div>
+                      <div class="text-xs text-dark-textMuted">Connect Sleeper or Yahoo</div>
+                    </div>
+                  </button>
+                </div>
+                
+                <!-- Demo Mode Option -->
+                <div class="border-t border-dark-border/50 p-2">
+                  <button
+                    @click="enableDemoMode"
+                    class="w-full flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-dark-border/50 transition-colors"
+                    :class="leagueStore.isDemoMode ? 'bg-cyan-500/10' : ''"
+                  >
+                    <div class="w-8 h-8 rounded-full bg-cyan-500/20 flex items-center justify-center">
+                      <span class="text-sm">👀</span>
+                    </div>
+                    <div class="text-left">
+                      <div class="font-medium text-sm text-cyan-400">Demo Mode</div>
+                      <div class="text-xs text-dark-textMuted">Preview with sample data</div>
+                    </div>
+                    <svg v-if="leagueStore.isDemoMode" class="w-4 h-4 text-cyan-400 ml-auto" fill="currentColor" viewBox="0 0 20 20">
+                      <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" />
+                    </svg>
+                  </button>
+                </div>
               </div>
             </div>
           </div>
-        </nav>
-        
-        <!-- Black gradient overlay - covers full height of both headers, fades after logo -->
-        <div 
-          class="absolute left-0 top-0 bottom-0 z-40 pointer-events-none"
-          style="width: 280px; background: linear-gradient(to right, #000000 0%, #000000 180px, transparent 280px);"
-        ></div>
-        
-        <!-- Sport Logo - Floating on top of everything -->
-        <div class="absolute left-4 sm:left-5 lg:left-6 top-1/2 -translate-y-1/2 z-50 pointer-events-none">
-          <img 
-            :src="sportStore.sportLogo" 
-            :alt="sportStore.sportLabel"
-            class="w-24 h-24 sm:w-28 sm:h-28 lg:w-36 lg:h-36 object-contain drop-shadow-lg"
-          />
         </div>
+      </nav>
+      
+      <!-- Sport Logo - Floating on top, shrinks on scroll -->
+      <div 
+        class="fixed z-50 pointer-events-none transition-all duration-300"
+        :class="isScrolled ? 'left-3 sm:left-4 lg:left-5' : 'left-4 sm:left-5 lg:left-6'"
+        :style="{
+          top: isScrolled ? '50%' : 'calc((40px + 56px) / 2)',
+          transform: isScrolled ? 'translateY(-50%)' : 'translateY(-50%)'
+        }"
+      >
+        <img 
+          :src="sportStore.sportLogo" 
+          :alt="sportStore.sportLabel"
+          class="object-contain drop-shadow-lg transition-all duration-300"
+          :class="isScrolled ? 'w-12 h-12 sm:w-14 sm:h-14 lg:w-16 lg:h-16' : 'w-24 h-24 sm:w-28 sm:h-28 lg:w-36 lg:h-36'"
+        />
       </div>
       
       <!-- Spacer for fixed header -->
-      <div class="h-[112px] sm:h-[128px]"></div>
+      <div class="h-[88px] sm:h-[100px]"></div>
+      
+      <!-- Content fade gradient -->
+      <div 
+        class="h-8 w-full pointer-events-none -mb-8 relative z-10"
+        style="background: linear-gradient(to bottom, #11131a, transparent);"
+      ></div>
 
       <!-- Main Content -->
       <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -567,6 +596,9 @@ const showAddLeagueModal = ref(false)
 const showMobileUserMenu = ref(false)
 const leagueDropdownRef = ref<HTMLElement | null>(null)
 const leagueToRemove = ref<any>(null)
+
+// Scroll state
+const isScrolled = ref(false)
 
 const tabs = [
   { name: 'Home', path: '/' },
@@ -697,6 +729,11 @@ async function handleSignOut() {
   leagueStore.reset()
 }
 
+// Scroll handler
+function handleScroll() {
+  isScrolled.value = window.scrollY > 20
+}
+
 // Close dropdown when clicking outside
 function handleClickOutside(event: MouseEvent) {
   if (leagueDropdownRef.value && !leagueDropdownRef.value.contains(event.target as Node)) {
@@ -714,6 +751,7 @@ onMounted(async () => {
   await authStore.initialize()
   
   document.addEventListener('click', handleClickOutside)
+  window.addEventListener('scroll', handleScroll, { passive: true })
   
   // Load saved leagues if authenticated
   if (authStore.isAuthenticated && authStore.user?.id) {
@@ -728,6 +766,7 @@ onMounted(async () => {
 
 onUnmounted(() => {
   document.removeEventListener('click', handleClickOutside)
+  window.removeEventListener('scroll', handleScroll)
 })
 
 // Watch for auth changes
