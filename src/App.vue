@@ -204,15 +204,24 @@
               >
                 <template v-if="leagueStore.currentLeague">
                   <!-- Platform Icon -->
-                  <div 
-                    class="w-5 h-5 flex-shrink-0 rounded flex items-center justify-center"
-                    :class="leagueStore.activePlatform === 'yahoo' ? 'bg-purple-600' : ''"
-                    :style="leagueStore.activePlatform !== 'yahoo' ? { background: getLeagueTypeColor(leagueStore.currentLeague.settings?.type) } : {}"
-                  >
-                    <span v-if="leagueStore.activePlatform === 'yahoo'" class="text-[10px] font-bold text-white">Y!</span>
-                    <svg v-else class="w-3 h-3 text-white" viewBox="0 0 24 24" fill="currentColor">
-                      <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
-                    </svg>
+                  <div class="w-5 h-5 flex-shrink-0">
+                    <img 
+                      v-if="leagueStore.activePlatform === 'yahoo'" 
+                      src="/logos/yahoo-fantasy.svg" 
+                      alt="Yahoo" 
+                      class="w-5 h-5 object-contain"
+                      @error="(e) => (e.target as HTMLImageElement).style.display = 'none'"
+                    />
+                    <img 
+                      v-else-if="leagueStore.activePlatform === 'sleeper'" 
+                      src="/logos/sleeper.svg" 
+                      alt="Sleeper" 
+                      class="w-5 h-5 object-contain"
+                      @error="(e) => (e.target as HTMLImageElement).style.display = 'none'"
+                    />
+                    <div v-else class="w-5 h-5 rounded bg-gray-600 flex items-center justify-center">
+                      <span class="text-[8px] font-bold text-white">ESPN</span>
+                    </div>
                   </div>
                   <span class="text-white font-medium truncate max-w-[60px] sm:max-w-[120px] text-sm">
                     {{ leagueStore.currentLeague.name }}
@@ -243,13 +252,13 @@
                 class="absolute top-full right-0 mt-2 w-80 bg-dark-card border border-dark-border rounded-xl shadow-xl z-50 overflow-hidden"
               >
                 <!-- All Leagues (grouped by sport) -->
-                <div v-if="leagueStore.savedLeagues.length > 0" class="max-h-80 overflow-y-auto">
+                <div v-if="leagueStore.savedLeagues.length > 0" class="max-h-96 overflow-y-auto">
                   <!-- Football Leagues -->
                   <div v-if="footballLeagues.length > 0" class="p-2">
                     <div class="text-xs text-dark-textMuted uppercase tracking-wider px-2 py-1 flex items-center gap-2">
-                      <span class="w-4 h-4 rounded-full" style="background: #22c55e;"></span>
+                      <img src="/logos/UFD_Football.png" alt="Football" class="w-5 h-5 object-contain" />
                       <span>Football</span>
-                      <span class="text-primary ml-auto">{{ footballLeagues.length }}</span>
+                      <span class="text-green-400 ml-auto">{{ footballLeagues.length }}</span>
                     </div>
                     <div
                       v-for="league in footballLeagues"
@@ -261,22 +270,28 @@
                         @click="selectLeagueWithSport(league)"
                         class="flex-1 flex items-center gap-3 px-3 py-2"
                       >
-                        <div 
-                          class="w-5 h-5 flex-shrink-0 rounded flex items-center justify-center"
-                          :class="league.platform === 'yahoo' ? 'bg-purple-600' : ''"
-                          :style="league.platform !== 'yahoo' ? { background: getLeagueTypeColor(league.league_type) } : {}"
-                        >
-                          <span v-if="league.platform === 'yahoo'" class="text-[10px] font-bold text-white">Y!</span>
-                          <svg v-else class="w-3 h-3 text-white" viewBox="0 0 24 24" fill="currentColor">
-                            <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
-                          </svg>
+                        <!-- Platform Logo -->
+                        <div class="w-6 h-6 flex-shrink-0 flex items-center justify-center">
+                          <img 
+                            v-if="league.platform === 'yahoo'" 
+                            src="/logos/yahoo-fantasy.svg" 
+                            alt="Yahoo" 
+                            class="w-6 h-6 object-contain"
+                          />
+                          <img 
+                            v-else-if="league.platform === 'sleeper'" 
+                            src="/logos/sleeper.svg" 
+                            alt="Sleeper" 
+                            class="w-6 h-6 object-contain"
+                          />
+                          <div v-else class="w-6 h-6 rounded bg-red-600 flex items-center justify-center">
+                            <span class="text-[8px] font-bold text-white">ESPN</span>
+                          </div>
                         </div>
                         <div class="flex-1 text-left min-w-0">
                           <div class="font-medium text-dark-text text-sm truncate">{{ league.league_name }}</div>
                           <div class="text-xs text-dark-textMuted">
-                            {{ league.season }} • 
-                            <span v-if="league.platform === 'yahoo'" class="text-purple-400">Yahoo</span>
-                            <span v-else>{{ league.sleeper_username }}</span>
+                            {{ league.season }} • {{ getPlatformName(league.platform) }}
                           </div>
                         </div>
                         <svg v-if="leagueStore.activeLeagueId === league.league_id" class="w-4 h-4 text-primary" fill="currentColor" viewBox="0 0 20 20">
@@ -296,11 +311,11 @@
                   </div>
                   
                   <!-- Baseball Leagues -->
-                  <div v-if="baseballLeagues.length > 0" class="p-2 border-t border-dark-border/50">
+                  <div v-if="baseballLeagues.length > 0" class="p-2" :class="footballLeagues.length > 0 ? 'border-t border-dark-border/50' : ''">
                     <div class="text-xs text-dark-textMuted uppercase tracking-wider px-2 py-1 flex items-center gap-2">
-                      <span class="w-4 h-4 rounded-full" style="background: #3B9FE8;"></span>
+                      <img src="/logos/UFD_Baseball.png" alt="Baseball" class="w-5 h-5 object-contain" />
                       <span>Baseball</span>
-                      <span class="text-primary ml-auto">{{ baseballLeagues.length }}</span>
+                      <span class="text-blue-400 ml-auto">{{ baseballLeagues.length }}</span>
                     </div>
                     <div
                       v-for="league in baseballLeagues"
@@ -312,22 +327,27 @@
                         @click="selectLeagueWithSport(league)"
                         class="flex-1 flex items-center gap-3 px-3 py-2"
                       >
-                        <div 
-                          class="w-5 h-5 flex-shrink-0 rounded flex items-center justify-center"
-                          :class="league.platform === 'yahoo' ? 'bg-purple-600' : ''"
-                          :style="league.platform !== 'yahoo' ? { background: getLeagueTypeColor(league.league_type) } : {}"
-                        >
-                          <span v-if="league.platform === 'yahoo'" class="text-[10px] font-bold text-white">Y!</span>
-                          <svg v-else class="w-3 h-3 text-white" viewBox="0 0 24 24" fill="currentColor">
-                            <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
-                          </svg>
+                        <div class="w-6 h-6 flex-shrink-0 flex items-center justify-center">
+                          <img 
+                            v-if="league.platform === 'yahoo'" 
+                            src="/logos/yahoo-fantasy.svg" 
+                            alt="Yahoo" 
+                            class="w-6 h-6 object-contain"
+                          />
+                          <img 
+                            v-else-if="league.platform === 'sleeper'" 
+                            src="/logos/sleeper.svg" 
+                            alt="Sleeper" 
+                            class="w-6 h-6 object-contain"
+                          />
+                          <div v-else class="w-6 h-6 rounded bg-red-600 flex items-center justify-center">
+                            <span class="text-[8px] font-bold text-white">ESPN</span>
+                          </div>
                         </div>
                         <div class="flex-1 text-left min-w-0">
                           <div class="font-medium text-dark-text text-sm truncate">{{ league.league_name }}</div>
                           <div class="text-xs text-dark-textMuted">
-                            {{ league.season }} • 
-                            <span v-if="league.platform === 'yahoo'" class="text-purple-400">Yahoo</span>
-                            <span v-else>{{ league.sleeper_username }}</span>
+                            {{ league.season }} • {{ getPlatformName(league.platform) }}
                           </div>
                         </div>
                         <svg v-if="leagueStore.activeLeagueId === league.league_id" class="w-4 h-4 text-primary" fill="currentColor" viewBox="0 0 20 20">
@@ -347,11 +367,11 @@
                   </div>
                   
                   <!-- Basketball Leagues -->
-                  <div v-if="basketballLeagues.length > 0" class="p-2 border-t border-dark-border/50">
+                  <div v-if="basketballLeagues.length > 0" class="p-2" :class="(footballLeagues.length > 0 || baseballLeagues.length > 0) ? 'border-t border-dark-border/50' : ''">
                     <div class="text-xs text-dark-textMuted uppercase tracking-wider px-2 py-1 flex items-center gap-2">
-                      <span class="w-4 h-4 rounded-full" style="background: #f97316;"></span>
+                      <img src="/logos/UFD_Basketball.png" alt="Basketball" class="w-5 h-5 object-contain" />
                       <span>Basketball</span>
-                      <span class="text-primary ml-auto">{{ basketballLeagues.length }}</span>
+                      <span class="text-orange-400 ml-auto">{{ basketballLeagues.length }}</span>
                     </div>
                     <div
                       v-for="league in basketballLeagues"
@@ -363,12 +383,28 @@
                         @click="selectLeagueWithSport(league)"
                         class="flex-1 flex items-center gap-3 px-3 py-2"
                       >
-                        <div class="w-5 h-5 flex-shrink-0 rounded bg-purple-600 flex items-center justify-center">
-                          <span class="text-[10px] font-bold text-white">Y!</span>
+                        <div class="w-6 h-6 flex-shrink-0 flex items-center justify-center">
+                          <img 
+                            v-if="league.platform === 'yahoo'" 
+                            src="/logos/yahoo-fantasy.svg" 
+                            alt="Yahoo" 
+                            class="w-6 h-6 object-contain"
+                          />
+                          <img 
+                            v-else-if="league.platform === 'sleeper'" 
+                            src="/logos/sleeper.svg" 
+                            alt="Sleeper" 
+                            class="w-6 h-6 object-contain"
+                          />
+                          <div v-else class="w-6 h-6 rounded bg-red-600 flex items-center justify-center">
+                            <span class="text-[8px] font-bold text-white">ESPN</span>
+                          </div>
                         </div>
                         <div class="flex-1 text-left min-w-0">
                           <div class="font-medium text-dark-text text-sm truncate">{{ league.league_name }}</div>
-                          <div class="text-xs text-dark-textMuted">{{ league.season }}</div>
+                          <div class="text-xs text-dark-textMuted">
+                            {{ league.season }} • {{ getPlatformName(league.platform) }}
+                          </div>
                         </div>
                         <svg v-if="leagueStore.activeLeagueId === league.league_id" class="w-4 h-4 text-primary" fill="currentColor" viewBox="0 0 20 20">
                           <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" />
@@ -387,11 +423,11 @@
                   </div>
                   
                   <!-- Hockey Leagues -->
-                  <div v-if="hockeyLeagues.length > 0" class="p-2 border-t border-dark-border/50">
+                  <div v-if="hockeyLeagues.length > 0" class="p-2" :class="(footballLeagues.length > 0 || baseballLeagues.length > 0 || basketballLeagues.length > 0) ? 'border-t border-dark-border/50' : ''">
                     <div class="text-xs text-dark-textMuted uppercase tracking-wider px-2 py-1 flex items-center gap-2">
-                      <span class="w-4 h-4 rounded-full" style="background: #3b82f6;"></span>
+                      <img src="/logos/UFD_Hockey.png" alt="Hockey" class="w-5 h-5 object-contain" />
                       <span>Hockey</span>
-                      <span class="text-primary ml-auto">{{ hockeyLeagues.length }}</span>
+                      <span class="text-blue-500 ml-auto">{{ hockeyLeagues.length }}</span>
                     </div>
                     <div
                       v-for="league in hockeyLeagues"
@@ -403,12 +439,28 @@
                         @click="selectLeagueWithSport(league)"
                         class="flex-1 flex items-center gap-3 px-3 py-2"
                       >
-                        <div class="w-5 h-5 flex-shrink-0 rounded bg-purple-600 flex items-center justify-center">
-                          <span class="text-[10px] font-bold text-white">Y!</span>
+                        <div class="w-6 h-6 flex-shrink-0 flex items-center justify-center">
+                          <img 
+                            v-if="league.platform === 'yahoo'" 
+                            src="/logos/yahoo-fantasy.svg" 
+                            alt="Yahoo" 
+                            class="w-6 h-6 object-contain"
+                          />
+                          <img 
+                            v-else-if="league.platform === 'sleeper'" 
+                            src="/logos/sleeper.svg" 
+                            alt="Sleeper" 
+                            class="w-6 h-6 object-contain"
+                          />
+                          <div v-else class="w-6 h-6 rounded bg-red-600 flex items-center justify-center">
+                            <span class="text-[8px] font-bold text-white">ESPN</span>
+                          </div>
                         </div>
                         <div class="flex-1 text-left min-w-0">
                           <div class="font-medium text-dark-text text-sm truncate">{{ league.league_name }}</div>
-                          <div class="text-xs text-dark-textMuted">{{ league.season }}</div>
+                          <div class="text-xs text-dark-textMuted">
+                            {{ league.season }} • {{ getPlatformName(league.platform) }}
+                          </div>
                         </div>
                         <svg v-if="leagueStore.activeLeagueId === league.league_id" class="w-4 h-4 text-primary" fill="currentColor" viewBox="0 0 20 20">
                           <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" />
@@ -637,12 +689,13 @@ const hockeyLeagues = computed(() =>
   leagueStore.savedLeagues.filter(l => l.sport === 'hockey')
 )
 
-// League type helpers - 0 = redraft, 1 = keeper, 2 = dynasty
-function getLeagueTypeColor(leagueType: number | undefined): string {
-  switch (leagueType) {
-    case 2: return '#a855f7' // Purple for dynasty
-    case 1: return '#f97316' // Orange for keeper
-    default: return '#06b6d4' // Cyan/turquoise for redraft
+// Platform name helper
+function getPlatformName(platform: string | undefined): string {
+  switch (platform) {
+    case 'yahoo': return 'Yahoo'
+    case 'sleeper': return 'Sleeper'
+    case 'espn': return 'ESPN'
+    default: return 'Unknown'
   }
 }
 
@@ -694,7 +747,7 @@ async function handleLeagueAdded(league: any) {
   showAddLeagueModal.value = false
   
   if (authStore.user?.id && leagueStore.currentUsername) {
-    await leagueStore.saveLeague(league, leagueStore.currentUsername, authStore.user.id)
+    await leagueStore.saveLeague(league, leagueStore.currentUsername, authStore.user.id, sportStore.activeSport)
     leagueStore.disableDemoMode()
     await leagueStore.setActiveLeague(league.league_id)
   }
