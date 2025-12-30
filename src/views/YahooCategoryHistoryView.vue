@@ -523,24 +523,56 @@
             
             <!-- Overall Dominance Awards -->
             <div class="mb-6">
-              <h4 class="text-sm font-semibold text-dark-textMuted uppercase tracking-wider mb-3">Overall Dominance</h4>
+              <h4 class="text-sm font-semibold text-dark-textMuted uppercase tracking-wider mb-3">Overall Dominance • Click to expand</h4>
               <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                <div v-for="award in hallOfFameOverall" :key="award.title" class="bg-gradient-to-br from-yellow-500/10 to-yellow-600/5 rounded-xl p-4 border border-yellow-500/20">
-                  <div class="text-sm text-yellow-400 uppercase tracking-wide mb-2 font-semibold">{{ award.title }}</div>
-                  <div v-if="award.winner" class="flex items-center gap-3 mb-2">
-                    <div class="w-10 h-10 rounded-full overflow-hidden bg-dark-border flex-shrink-0 ring-2 ring-yellow-500/50">
-                      <img :src="award.winner.logo_url || defaultAvatar" :alt="award.winner.team_name" class="w-full h-full object-cover" @error="handleImageError" />
+                <div v-for="award in hallOfFameOverall" :key="award.title" 
+                     class="cursor-pointer"
+                     @click="toggleAwardCard(award.title)">
+                  <div class="bg-gradient-to-br from-yellow-500/10 to-yellow-600/5 rounded-xl p-4 border border-yellow-500/20 hover:border-yellow-500/40 transition-all">
+                    <div class="text-sm text-yellow-400 uppercase tracking-wide mb-2 font-semibold">{{ award.title }}</div>
+                    <div v-if="award.winner" class="flex items-center gap-3 mb-2">
+                      <div class="w-10 h-10 rounded-full overflow-hidden bg-dark-border flex-shrink-0 ring-2 ring-yellow-500/50">
+                        <img :src="award.winner.logo_url || defaultAvatar" :alt="award.winner.team_name" class="w-full h-full object-cover" @error="handleImageError" />
+                      </div>
+                      <div class="flex-1">
+                        <div class="font-bold text-dark-text">{{ award.winner.team_name }}</div>
+                        <div class="text-xs text-dark-textMuted">{{ award.winner.season || 'All-Time' }}</div>
+                      </div>
                     </div>
-                    <div class="flex-1">
-                      <div class="font-bold text-dark-text">{{ award.winner.team_name }}</div>
-                      <div class="text-xs text-dark-textMuted">{{ award.winner.season || 'All-Time' }}</div>
+                    <div v-if="award.winner" class="flex items-center justify-between">
+                      <div class="text-2xl font-black text-yellow-400">{{ award.winner.value }}</div>
+                      <div class="text-xs text-dark-textMuted">{{ award.winner.detail }}</div>
                     </div>
+                    <div v-else class="text-sm text-dark-textMuted italic">No data available</div>
+                    <div v-if="award.winner" class="text-xs text-yellow-400/70 mt-2">Click for rankings →</div>
                   </div>
-                  <div v-if="award.winner" class="flex items-center justify-between">
-                    <div class="text-2xl font-black text-yellow-400">{{ award.winner.value }}</div>
-                    <div class="text-xs text-dark-textMuted">{{ award.winner.detail }}</div>
-                  </div>
-                  <div v-else class="text-sm text-dark-textMuted italic">No data available</div>
+                  
+                  <!-- Expanded Rankings -->
+                  <transition name="expand">
+                    <div v-if="expandedAwardCard === award.title" 
+                         class="mt-2 bg-dark-elevated rounded-xl border border-dark-border p-4 max-h-80 overflow-y-auto">
+                      <div class="text-sm font-semibold text-dark-textMuted mb-3 uppercase tracking-wider">All-Time Rankings</div>
+                      <div class="space-y-2">
+                        <div v-for="(team, idx) in getAwardRankings(award.title, 'fame')" :key="`${team.team_name}-${team.season}`"
+                             class="flex items-center gap-3 p-2 rounded-lg"
+                             :class="idx === 0 ? 'bg-yellow-500/20' : 'hover:bg-dark-border/30'">
+                          <div class="w-6 text-center font-bold" :class="idx === 0 ? 'text-yellow-400' : 'text-dark-textMuted'">
+                            {{ team.rank }}
+                          </div>
+                          <div class="w-8 h-8 rounded-full overflow-hidden bg-dark-border flex-shrink-0">
+                            <img :src="team.logo_url || defaultAvatar" class="w-full h-full object-cover" @error="handleImageError" />
+                          </div>
+                          <div class="flex-1 min-w-0">
+                            <div class="font-semibold text-dark-text truncate">{{ team.team_name }}</div>
+                            <div class="text-xs text-dark-textMuted">{{ team.season }} • {{ team.detail }}</div>
+                          </div>
+                          <div class="font-bold" :class="idx === 0 ? 'text-yellow-400' : 'text-dark-text'">
+                            {{ team.value }}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </transition>
                 </div>
               </div>
             </div>
@@ -597,24 +629,56 @@
             
             <!-- Overall Struggles -->
             <div class="mb-6">
-              <h4 class="text-sm font-semibold text-dark-textMuted uppercase tracking-wider mb-3">Overall Struggles</h4>
+              <h4 class="text-sm font-semibold text-dark-textMuted uppercase tracking-wider mb-3">Overall Struggles • Click to expand</h4>
               <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                <div v-for="award in hallOfShameOverall" :key="award.title" class="bg-gradient-to-br from-red-500/10 to-red-600/5 rounded-xl p-4 border border-red-500/20">
-                  <div class="text-sm text-red-400 uppercase tracking-wide mb-2 font-semibold">{{ award.title }}</div>
-                  <div v-if="award.winner" class="flex items-center gap-3 mb-2">
-                    <div class="w-10 h-10 rounded-full overflow-hidden bg-dark-border flex-shrink-0 ring-2 ring-red-500/50">
-                      <img :src="award.winner.logo_url || defaultAvatar" :alt="award.winner.team_name" class="w-full h-full object-cover" @error="handleImageError" />
+                <div v-for="award in hallOfShameOverall" :key="award.title"
+                     class="cursor-pointer"
+                     @click="toggleAwardCard(award.title)">
+                  <div class="bg-gradient-to-br from-red-500/10 to-red-600/5 rounded-xl p-4 border border-red-500/20 hover:border-red-500/40 transition-all">
+                    <div class="text-sm text-red-400 uppercase tracking-wide mb-2 font-semibold">{{ award.title }}</div>
+                    <div v-if="award.winner" class="flex items-center gap-3 mb-2">
+                      <div class="w-10 h-10 rounded-full overflow-hidden bg-dark-border flex-shrink-0 ring-2 ring-red-500/50">
+                        <img :src="award.winner.logo_url || defaultAvatar" :alt="award.winner.team_name" class="w-full h-full object-cover" @error="handleImageError" />
+                      </div>
+                      <div class="flex-1">
+                        <div class="font-bold text-dark-text">{{ award.winner.team_name }}</div>
+                        <div class="text-xs text-dark-textMuted">{{ award.winner.season || 'All-Time' }}</div>
+                      </div>
                     </div>
-                    <div class="flex-1">
-                      <div class="font-bold text-dark-text">{{ award.winner.team_name }}</div>
-                      <div class="text-xs text-dark-textMuted">{{ award.winner.season || 'All-Time' }}</div>
+                    <div v-if="award.winner" class="flex items-center justify-between">
+                      <div class="text-2xl font-black text-red-400">{{ award.winner.value }}</div>
+                      <div class="text-xs text-dark-textMuted">{{ award.winner.detail }}</div>
                     </div>
+                    <div v-else class="text-sm text-dark-textMuted italic">No data available</div>
+                    <div v-if="award.winner" class="text-xs text-red-400/70 mt-2">Click for rankings →</div>
                   </div>
-                  <div v-if="award.winner" class="flex items-center justify-between">
-                    <div class="text-2xl font-black text-red-400">{{ award.winner.value }}</div>
-                    <div class="text-xs text-dark-textMuted">{{ award.winner.detail }}</div>
-                  </div>
-                  <div v-else class="text-sm text-dark-textMuted italic">No data available</div>
+                  
+                  <!-- Expanded Rankings -->
+                  <transition name="expand">
+                    <div v-if="expandedAwardCard === award.title" 
+                         class="mt-2 bg-dark-elevated rounded-xl border border-dark-border p-4 max-h-80 overflow-y-auto">
+                      <div class="text-sm font-semibold text-dark-textMuted mb-3 uppercase tracking-wider">All-Time Rankings</div>
+                      <div class="space-y-2">
+                        <div v-for="(team, idx) in getAwardRankings(award.title, 'shame')" :key="`${team.team_name}-${team.season}`"
+                             class="flex items-center gap-3 p-2 rounded-lg"
+                             :class="idx === 0 ? 'bg-red-500/20' : 'hover:bg-dark-border/30'">
+                          <div class="w-6 text-center font-bold" :class="idx === 0 ? 'text-red-400' : 'text-dark-textMuted'">
+                            {{ team.rank }}
+                          </div>
+                          <div class="w-8 h-8 rounded-full overflow-hidden bg-dark-border flex-shrink-0">
+                            <img :src="team.logo_url || defaultAvatar" class="w-full h-full object-cover" @error="handleImageError" />
+                          </div>
+                          <div class="flex-1 min-w-0">
+                            <div class="font-semibold text-dark-text truncate">{{ team.team_name }}</div>
+                            <div class="text-xs text-dark-textMuted">{{ team.season }} • {{ team.detail }}</div>
+                          </div>
+                          <div class="font-bold" :class="idx === 0 ? 'text-red-400' : 'text-dark-text'">
+                            {{ team.value }}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </transition>
                 </div>
               </div>
             </div>
@@ -721,12 +785,18 @@ const h2hRecords = ref<Record<string, Record<string, { wins: number; losses: num
 
 // Expandable card state
 const expandedRecordCard = ref<string | null>(null)
+const expandedAwardCard = ref<string | null>(null)
 
 const defaultAvatar = 'https://s.yimg.com/cv/apiv2/default/mlb/mlb_dp_2_72.png'
 
 // Toggle card expansion
 function toggleRecordCard(label: string) {
   expandedRecordCard.value = expandedRecordCard.value === label ? null : label
+}
+
+// Toggle award expansion
+function toggleAwardCard(title: string) {
+  expandedAwardCard.value = expandedAwardCard.value === title ? null : title
 }
 
 // Get all teams ranked for a specific record type
@@ -775,6 +845,132 @@ function getRecordRankings(recordType: string): any[] {
       }))
     default:
       return []
+  }
+}
+
+// Get all rankings for Hall of Fame/Shame awards
+function getAwardRankings(awardTitle: string, awardType: 'fame' | 'shame'): any[] {
+  const stats = careerStats.value
+  const seasonData = seasonCategoryData.value
+  
+  if (awardType === 'fame') {
+    switch (awardTitle) {
+      case '🏆 Dynasty Builder':
+        return [...stats]
+          .sort((a, b) => b.championships - a.championships)
+          .slice(0, 10)
+          .map((s, idx) => ({
+            rank: idx + 1,
+            team_name: s.team_name,
+            logo_url: s.logo_url,
+            value: s.championships,
+            detail: `${s.seasons} seasons`,
+            season: 'All-Time'
+          }))
+      case '🎯 Category Machine':
+        return [...seasonData]
+          .sort((a, b) => b.total_cat_wins - a.total_cat_wins)
+          .slice(0, 10)
+          .map((s, idx) => ({
+            rank: idx + 1,
+            team_name: s.team_name,
+            logo_url: s.logo_url,
+            value: s.total_cat_wins,
+            detail: 'cat wins',
+            season: s.year
+          }))
+      case '📊 Mr. Perfect':
+        return [...seasonData]
+          .filter(s => (s.matchup_wins + s.matchup_losses + s.matchup_ties) >= 10)
+          .sort((a, b) => {
+            const aRate = a.matchup_wins / (a.matchup_wins + a.matchup_losses + a.matchup_ties)
+            const bRate = b.matchup_wins / (b.matchup_wins + b.matchup_losses + b.matchup_ties)
+            return bRate - aRate
+          })
+          .slice(0, 10)
+          .map((s, idx) => ({
+            rank: idx + 1,
+            team_name: s.team_name,
+            logo_url: s.logo_url,
+            value: `${((s.matchup_wins / (s.matchup_wins + s.matchup_losses + s.matchup_ties)) * 100).toFixed(0)}%`,
+            detail: `${s.matchup_wins}-${s.matchup_losses}-${s.matchup_ties}`,
+            season: s.year
+          }))
+      case '💎 Category King':
+        return [...stats]
+          .sort((a, b) => b.total_cat_wins - a.total_cat_wins)
+          .slice(0, 10)
+          .map((s, idx) => ({
+            rank: idx + 1,
+            team_name: s.team_name,
+            logo_url: s.logo_url,
+            value: s.total_cat_wins,
+            detail: `+${s.cat_diff} diff`,
+            season: 'All-Time'
+          }))
+      default:
+        return []
+    }
+  } else {
+    // Hall of Shame
+    switch (awardTitle) {
+      case '💩 Basement Dweller':
+        return [...seasonData]
+          .filter(s => (s.matchup_wins + s.matchup_losses + s.matchup_ties) >= 10)
+          .sort((a, b) => {
+            const aRate = a.matchup_wins / (a.matchup_wins + a.matchup_losses + a.matchup_ties)
+            const bRate = b.matchup_wins / (b.matchup_wins + b.matchup_losses + b.matchup_ties)
+            return aRate - bRate
+          })
+          .slice(0, 10)
+          .map((s, idx) => ({
+            rank: idx + 1,
+            team_name: s.team_name,
+            logo_url: s.logo_url,
+            value: `${((s.matchup_wins / (s.matchup_wins + s.matchup_losses + s.matchup_ties)) * 100).toFixed(0)}%`,
+            detail: `${s.matchup_wins}-${s.matchup_losses}-${s.matchup_ties}`,
+            season: s.year
+          }))
+      case '📉 Category Crater':
+        return [...seasonData]
+          .filter(s => s.total_cat_wins > 0)
+          .sort((a, b) => a.total_cat_wins - b.total_cat_wins)
+          .slice(0, 10)
+          .map((s, idx) => ({
+            rank: idx + 1,
+            team_name: s.team_name,
+            logo_url: s.logo_url,
+            value: s.total_cat_wins,
+            detail: 'cat wins',
+            season: s.year
+          }))
+      case '😢 Mr. Indecisive':
+        return [...seasonData]
+          .sort((a, b) => b.matchup_ties - a.matchup_ties)
+          .slice(0, 10)
+          .map((s, idx) => ({
+            rank: idx + 1,
+            team_name: s.team_name,
+            logo_url: s.logo_url,
+            value: s.matchup_ties,
+            detail: 'ties',
+            season: s.year
+          }))
+      case '🕳️ Category Hole':
+        return [...stats]
+          .sort((a, b) => a.cat_diff - b.cat_diff)
+          .slice(0, 10)
+          .map((s, idx) => ({
+            rank: idx + 1,
+            team_name: s.team_name,
+            logo_url: s.logo_url,
+            value: s.cat_diff,
+            detail: 'cat differential',
+            season: 'All-Time'
+          }))
+      default:
+        return []
+    }
   }
 }
 
