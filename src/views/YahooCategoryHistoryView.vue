@@ -17,19 +17,20 @@
     </div>
 
     <template v-else>
-      <!-- Career Records (4 Cards) -->
+      <!-- Career Records (4 Cards) - Expandable -->
       <div class="card">
         <div class="card-header">
           <div class="flex items-center gap-2">
             <span class="text-2xl">👑</span>
             <h2 class="card-title">Career Records</h2>
           </div>
-          <p class="card-subtitle mt-2">All-time league leaders</p>
+          <p class="card-subtitle mt-2">All-time league leaders • Click to expand</p>
         </div>
         <div class="card-body">
           <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
             <div v-for="record in careerRecords" :key="record.label" 
-                 class="relative overflow-hidden">
+                 class="relative overflow-hidden cursor-pointer"
+                 @click="toggleRecordCard(record.label)">
               <div class="p-6 bg-gradient-to-br from-primary/10 to-primary/5 rounded-xl border-2 border-primary/20 hover:border-primary/40 transition-all">
                 <div class="flex items-start justify-between mb-4">
                   <div class="text-4xl">{{ record.icon }}</div>
@@ -42,7 +43,35 @@
                   <div class="font-bold text-lg text-dark-text">{{ record.team }}</div>
                   <div class="text-xs text-dark-textMuted">{{ record.detail }}</div>
                 </div>
+                <div class="text-xs text-primary mt-2 opacity-70">Click for full rankings →</div>
               </div>
+              
+              <!-- Expanded Rankings -->
+              <transition name="expand">
+                <div v-if="expandedRecordCard === record.label" 
+                     class="mt-2 bg-dark-elevated rounded-xl border border-dark-border p-4 max-h-80 overflow-y-auto">
+                  <div class="text-sm font-semibold text-dark-textMuted mb-3 uppercase tracking-wider">All-Time Rankings</div>
+                  <div class="space-y-2">
+                    <div v-for="(team, idx) in getRecordRankings(record.label)" :key="team.team_name"
+                         class="flex items-center gap-3 p-2 rounded-lg"
+                         :class="idx === 0 ? 'bg-primary/20' : 'hover:bg-dark-border/30'">
+                      <div class="w-6 text-center font-bold" :class="idx === 0 ? 'text-primary' : 'text-dark-textMuted'">
+                        {{ team.rank }}
+                      </div>
+                      <div class="w-8 h-8 rounded-full overflow-hidden bg-dark-border flex-shrink-0">
+                        <img :src="team.logo_url || defaultAvatar" class="w-full h-full object-cover" @error="handleImageError" />
+                      </div>
+                      <div class="flex-1 min-w-0">
+                        <div class="font-semibold text-dark-text truncate">{{ team.team_name }}</div>
+                        <div class="text-xs text-dark-textMuted">{{ team.detail }}</div>
+                      </div>
+                      <div class="font-bold" :class="idx === 0 ? 'text-primary' : 'text-dark-text'">
+                        {{ team.value }}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </transition>
             </div>
           </div>
         </div>
@@ -690,7 +719,64 @@ const allTeams = ref<Record<string, any>>({})
 const leagueCategories = ref<string[]>([])
 const h2hRecords = ref<Record<string, Record<string, { wins: number; losses: number; ties: number; catWins: number; catLosses: number }>>>({})
 
+// Expandable card state
+const expandedRecordCard = ref<string | null>(null)
+
 const defaultAvatar = 'https://s.yimg.com/cv/apiv2/default/mlb/mlb_dp_2_72.png'
+
+// Toggle card expansion
+function toggleRecordCard(label: string) {
+  expandedRecordCard.value = expandedRecordCard.value === label ? null : label
+}
+
+// Get all teams ranked for a specific record type
+function getRecordRankings(recordType: string): any[] {
+  const stats = careerStats.value
+  if (stats.length === 0) return []
+  
+  let sorted: CareerStat[] = []
+  
+  switch (recordType) {
+    case 'Most Championships':
+      sorted = [...stats].sort((a, b) => b.championships - a.championships)
+      return sorted.map((s, idx) => ({
+        rank: idx + 1,
+        team_name: s.team_name,
+        logo_url: s.logo_url,
+        value: s.championships,
+        detail: `${s.seasons} season(s)`
+      }))
+    case 'Total Categories Won':
+      sorted = [...stats].sort((a, b) => b.total_cat_wins - a.total_cat_wins)
+      return sorted.map((s, idx) => ({
+        rank: idx + 1,
+        team_name: s.team_name,
+        logo_url: s.logo_url,
+        value: s.total_cat_wins,
+        detail: `+${s.cat_diff} diff`
+      }))
+    case 'Hitting Categories Won':
+      sorted = [...stats].sort((a, b) => b.hitting_cat_wins - a.hitting_cat_wins)
+      return sorted.map((s, idx) => ({
+        rank: idx + 1,
+        team_name: s.team_name,
+        logo_url: s.logo_url,
+        value: s.hitting_cat_wins,
+        detail: `${s.seasons} season(s)`
+      }))
+    case 'Pitching Categories Won':
+      sorted = [...stats].sort((a, b) => b.pitching_cat_wins - a.pitching_cat_wins)
+      return sorted.map((s, idx) => ({
+        rank: idx + 1,
+        team_name: s.team_name,
+        logo_url: s.logo_url,
+        value: s.pitching_cat_wins,
+        detail: `${s.seasons} season(s)`
+      }))
+    default:
+      return []
+  }
+}
 
 // Career Records - top 4 stats
 const careerRecords = computed(() => {
@@ -880,15 +966,24 @@ const filteredCareerStats = computed(() => {
 
 // Category leaders
 const categoryLeaders = computed(() => {
-  const categories = leagueCategories.value.length > 0 ? leagueCategories.value : ['HR', 'RBI', 'R', 'SB', 'AVG', 'W', 'K', 'ERA', 'WHIP', 'SV']
+  // Get all unique category IDs from the career stats data
+  const allCatIds = new Set<string>()
+  for (const stat of careerStats.value) {
+    for (const catId of Object.keys(stat.category_records || {})) {
+      allCatIds.add(catId)
+    }
+  }
   
-  return categories.slice(0, 10).map(cat => {
+  // Convert to array and map each category
+  return Array.from(allCatIds).slice(0, 12).map(catId => {
+    const catName = getCategoryDisplayName(catId)
+    
     // Find team with best win rate in this category
     let bestTeam: any = null
     let bestRate = 0
     
     for (const stat of careerStats.value) {
-      const record = stat.category_records[cat]
+      const record = stat.category_records[catId]
       if (!record || record.wins + record.losses < 5) continue
       
       const rate = record.wins / (record.wins + record.losses)
@@ -904,8 +999,8 @@ const categoryLeaders = computed(() => {
       }
     }
     
-    return { name: cat, leader: bestTeam }
-  })
+    return { name: catName, leader: bestTeam }
+  }).filter(cat => cat.leader !== null) // Only show categories with data
 })
 
 // Season-by-Season Records
@@ -1672,3 +1767,25 @@ onMounted(() => {
   }
 })
 </script>
+
+<style scoped>
+.expand-enter-active,
+.expand-leave-active {
+  transition: all 0.3s ease;
+  overflow: hidden;
+}
+
+.expand-enter-from,
+.expand-leave-to {
+  opacity: 0;
+  max-height: 0;
+  margin-top: 0;
+}
+
+.expand-enter-to,
+.expand-leave-from {
+  opacity: 1;
+  max-height: 400px;
+  margin-top: 0.5rem;
+}
+</style>
