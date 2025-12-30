@@ -4,7 +4,7 @@
     <div>
       <h1 class="text-3xl font-bold text-dark-text mb-2">League History</h1>
       <p class="text-base text-dark-textMuted">
-        Career statistics, championship records, and category dominance
+        Career statistics, championship records, and historical league data
       </p>
     </div>
 
@@ -253,45 +253,6 @@
               </tr>
             </tbody>
           </table>
-        </div>
-      </div>
-
-      <!-- Category Dominance Leaders -->
-      <div class="card">
-        <div class="card-header">
-          <div class="flex items-center gap-2">
-            <span class="text-2xl">🎯</span>
-            <h2 class="card-title">Category Dominance</h2>
-          </div>
-          <p class="card-subtitle mt-2">All-time category leaders by win rate</p>
-        </div>
-        <div class="card-body">
-          <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
-            <div v-for="cat in categoryLeaders" :key="cat.name" class="bg-dark-border/20 rounded-xl p-4">
-              <div class="text-center mb-3">
-                <span class="px-3 py-1 rounded-full text-sm font-bold" :class="getCategoryColorClass(cat.name)">
-                  {{ cat.name }}
-                </span>
-              </div>
-              <div v-if="cat.leader" class="space-y-2">
-                <div class="flex items-center gap-2">
-                  <div class="w-8 h-8 rounded-full overflow-hidden bg-dark-border flex-shrink-0">
-                    <img :src="cat.leader.logo_url || defaultAvatar" class="w-full h-full object-cover" @error="handleImageError" />
-                  </div>
-                  <div class="flex-1 min-w-0">
-                    <div class="font-semibold text-dark-text text-sm truncate">{{ cat.leader.team_name }}</div>
-                  </div>
-                </div>
-                <div class="text-center">
-                  <div class="text-2xl font-black text-primary">{{ (cat.leader.win_rate * 100).toFixed(0) }}%</div>
-                  <div class="text-xs text-dark-textMuted">{{ cat.leader.wins }}-{{ cat.leader.losses }} in {{ cat.name }}</div>
-                </div>
-              </div>
-              <div v-else class="text-center text-sm text-dark-textMuted italic py-4">
-                No data
-              </div>
-            </div>
-          </div>
         </div>
       </div>
 
@@ -553,7 +514,8 @@
                   <div v-for="award in hallOfFameHitting" :key="award.category" 
                        class="cursor-pointer"
                        @click="toggleAwardCard(`fame-hitting-${award.category}`)">
-                    <div class="bg-gradient-to-br from-blue-500/10 to-blue-600/5 rounded-xl p-4 border border-blue-500/20 hover:border-blue-500/40 transition-all">
+                    <div class="bg-gradient-to-br from-blue-500/10 to-blue-600/5 rounded-xl p-4 border border-blue-500/20 hover:border-blue-500/40 transition-all"
+                         :class="expandedAwardCard === `fame-hitting-${award.category}` ? 'ring-2 ring-blue-500' : ''">
                       <div class="text-center mb-2">
                         <span class="px-3 py-1 rounded-full text-xs font-bold bg-blue-500/30 text-blue-400">{{ award.category }}</span>
                       </div>
@@ -568,35 +530,51 @@
                       </div>
                       <div v-else class="text-center text-sm text-dark-textMuted italic py-4">No data</div>
                     </div>
-                    
-                    <!-- Expanded Rankings -->
-                    <transition name="expand">
-                      <div v-if="expandedAwardCard === `fame-hitting-${award.category}`" 
-                           class="mt-2 bg-dark-elevated rounded-xl border border-dark-border p-4 max-h-80 overflow-y-auto">
-                        <div class="text-sm font-semibold text-dark-textMuted mb-3 uppercase tracking-wider">{{ award.category }} - All-Time Best Seasons</div>
-                        <div class="space-y-2">
-                          <div v-for="(team, idx) in getCategoryRankings(award.category, 'best')" :key="`${team.team_name}-${team.season}`"
-                               class="flex items-center gap-3 p-2 rounded-lg"
-                               :class="idx === 0 ? 'bg-blue-500/20' : 'hover:bg-dark-border/30'">
-                            <div class="w-6 text-center font-bold" :class="idx === 0 ? 'text-blue-400' : 'text-dark-textMuted'">
-                              {{ idx + 1 }}
+                  </div>
+                </div>
+                
+                <!-- Expanded Rankings Panel (outside grid for full width) -->
+                <transition name="expand">
+                  <div v-if="expandedAwardCard?.startsWith('fame-hitting-')" 
+                       class="mt-4 bg-dark-elevated rounded-xl border border-blue-500/30 p-6">
+                    <div class="flex items-center justify-between mb-4">
+                      <div class="text-lg font-bold text-blue-400">{{ expandedAwardCard?.replace('fame-hitting-', '') }} - All-Time Best Seasons</div>
+                      <button @click="expandedAwardCard = null" class="text-dark-textMuted hover:text-dark-text">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                      </button>
+                    </div>
+                    <div class="space-y-3">
+                      <div v-for="(team, idx) in getCategoryRankings(expandedAwardCard?.replace('fame-hitting-', '') || '', 'best')" 
+                           :key="`${team.team_name}-${team.season}`"
+                           class="relative">
+                        <div class="flex items-center gap-4">
+                          <div class="w-8 text-center font-bold text-lg" :class="idx === 0 ? 'text-blue-400' : 'text-dark-textMuted'">
+                            {{ idx + 1 }}
+                          </div>
+                          <div class="w-10 h-10 rounded-full overflow-hidden bg-dark-border flex-shrink-0 ring-2" 
+                               :class="idx === 0 ? 'ring-blue-500' : 'ring-dark-border'">
+                            <img :src="team.logo_url || defaultAvatar" class="w-full h-full object-cover" @error="handleImageError" />
+                          </div>
+                          <div class="w-40 flex-shrink-0">
+                            <div class="font-semibold text-dark-text">{{ team.team_name }}</div>
+                            <div class="text-xs text-dark-textMuted">{{ team.season }}</div>
+                          </div>
+                          <div class="flex-1 relative h-8 bg-dark-border/30 rounded-lg overflow-hidden">
+                            <div class="absolute inset-y-0 left-0 rounded-lg transition-all duration-500"
+                                 :class="idx === 0 ? 'bg-gradient-to-r from-blue-600 to-blue-400' : 'bg-blue-500/50'"
+                                 :style="{ width: getBarWidth(team.value, getCategoryRankings(expandedAwardCard?.replace('fame-hitting-', '') || '', 'best')) }">
                             </div>
-                            <div class="w-8 h-8 rounded-full overflow-hidden bg-dark-border flex-shrink-0">
-                              <img :src="team.logo_url || defaultAvatar" class="w-full h-full object-cover" @error="handleImageError" />
-                            </div>
-                            <div class="flex-1 min-w-0">
-                              <div class="font-semibold text-dark-text truncate">{{ team.team_name }}</div>
-                              <div class="text-xs text-dark-textMuted">{{ team.season }}</div>
-                            </div>
-                            <div class="font-bold" :class="idx === 0 ? 'text-blue-400' : 'text-dark-text'">
-                              {{ team.value }} wins
+                            <div class="absolute inset-0 flex items-center justify-end pr-3">
+                              <span class="font-bold text-sm" :class="idx === 0 ? 'text-white' : 'text-dark-text'">{{ team.value }} wins</span>
                             </div>
                           </div>
                         </div>
                       </div>
-                    </transition>
+                    </div>
                   </div>
-                </div>
+                </transition>
               </div>
               
               <!-- Category Kings - Pitching -->
@@ -606,7 +584,8 @@
                   <div v-for="award in hallOfFamePitching" :key="award.category"
                        class="cursor-pointer"
                        @click="toggleAwardCard(`fame-pitching-${award.category}`)">
-                    <div class="bg-gradient-to-br from-purple-500/10 to-purple-600/5 rounded-xl p-4 border border-purple-500/20 hover:border-purple-500/40 transition-all">
+                    <div class="bg-gradient-to-br from-purple-500/10 to-purple-600/5 rounded-xl p-4 border border-purple-500/20 hover:border-purple-500/40 transition-all"
+                         :class="expandedAwardCard === `fame-pitching-${award.category}` ? 'ring-2 ring-purple-500' : ''">
                       <div class="text-center mb-2">
                         <span class="px-3 py-1 rounded-full text-xs font-bold bg-purple-500/30 text-purple-400">{{ award.category }}</span>
                       </div>
@@ -621,35 +600,51 @@
                       </div>
                       <div v-else class="text-center text-sm text-dark-textMuted italic py-4">No data</div>
                     </div>
-                    
-                    <!-- Expanded Rankings -->
-                    <transition name="expand">
-                      <div v-if="expandedAwardCard === `fame-pitching-${award.category}`" 
-                           class="mt-2 bg-dark-elevated rounded-xl border border-dark-border p-4 max-h-80 overflow-y-auto">
-                        <div class="text-sm font-semibold text-dark-textMuted mb-3 uppercase tracking-wider">{{ award.category }} - All-Time Best Seasons</div>
-                        <div class="space-y-2">
-                          <div v-for="(team, idx) in getCategoryRankings(award.category, 'best')" :key="`${team.team_name}-${team.season}`"
-                               class="flex items-center gap-3 p-2 rounded-lg"
-                               :class="idx === 0 ? 'bg-purple-500/20' : 'hover:bg-dark-border/30'">
-                            <div class="w-6 text-center font-bold" :class="idx === 0 ? 'text-purple-400' : 'text-dark-textMuted'">
-                              {{ idx + 1 }}
+                  </div>
+                </div>
+                
+                <!-- Expanded Rankings Panel -->
+                <transition name="expand">
+                  <div v-if="expandedAwardCard?.startsWith('fame-pitching-')" 
+                       class="mt-4 bg-dark-elevated rounded-xl border border-purple-500/30 p-6">
+                    <div class="flex items-center justify-between mb-4">
+                      <div class="text-lg font-bold text-purple-400">{{ expandedAwardCard?.replace('fame-pitching-', '') }} - All-Time Best Seasons</div>
+                      <button @click="expandedAwardCard = null" class="text-dark-textMuted hover:text-dark-text">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                      </button>
+                    </div>
+                    <div class="space-y-3">
+                      <div v-for="(team, idx) in getCategoryRankings(expandedAwardCard?.replace('fame-pitching-', '') || '', 'best')" 
+                           :key="`${team.team_name}-${team.season}`"
+                           class="relative">
+                        <div class="flex items-center gap-4">
+                          <div class="w-8 text-center font-bold text-lg" :class="idx === 0 ? 'text-purple-400' : 'text-dark-textMuted'">
+                            {{ idx + 1 }}
+                          </div>
+                          <div class="w-10 h-10 rounded-full overflow-hidden bg-dark-border flex-shrink-0 ring-2" 
+                               :class="idx === 0 ? 'ring-purple-500' : 'ring-dark-border'">
+                            <img :src="team.logo_url || defaultAvatar" class="w-full h-full object-cover" @error="handleImageError" />
+                          </div>
+                          <div class="w-40 flex-shrink-0">
+                            <div class="font-semibold text-dark-text">{{ team.team_name }}</div>
+                            <div class="text-xs text-dark-textMuted">{{ team.season }}</div>
+                          </div>
+                          <div class="flex-1 relative h-8 bg-dark-border/30 rounded-lg overflow-hidden">
+                            <div class="absolute inset-y-0 left-0 rounded-lg transition-all duration-500"
+                                 :class="idx === 0 ? 'bg-gradient-to-r from-purple-600 to-purple-400' : 'bg-purple-500/50'"
+                                 :style="{ width: getBarWidth(team.value, getCategoryRankings(expandedAwardCard?.replace('fame-pitching-', '') || '', 'best')) }">
                             </div>
-                            <div class="w-8 h-8 rounded-full overflow-hidden bg-dark-border flex-shrink-0">
-                              <img :src="team.logo_url || defaultAvatar" class="w-full h-full object-cover" @error="handleImageError" />
-                            </div>
-                            <div class="flex-1 min-w-0">
-                              <div class="font-semibold text-dark-text truncate">{{ team.team_name }}</div>
-                              <div class="text-xs text-dark-textMuted">{{ team.season }}</div>
-                            </div>
-                            <div class="font-bold" :class="idx === 0 ? 'text-purple-400' : 'text-dark-text'">
-                              {{ team.value }} wins
+                            <div class="absolute inset-0 flex items-center justify-end pr-3">
+                              <span class="font-bold text-sm" :class="idx === 0 ? 'text-white' : 'text-dark-text'">{{ team.value }} wins</span>
                             </div>
                           </div>
                         </div>
                       </div>
-                    </transition>
+                    </div>
                   </div>
-                </div>
+                </transition>
               </div>
             </div>
 
@@ -667,7 +662,8 @@
                   <div v-for="award in hallOfShameHitting" :key="award.category"
                        class="cursor-pointer"
                        @click="toggleAwardCard(`shame-hitting-${award.category}`)">
-                    <div class="bg-gradient-to-br from-gray-500/10 to-gray-600/5 rounded-xl p-4 border border-gray-500/20 hover:border-gray-500/40 transition-all">
+                    <div class="bg-gradient-to-br from-gray-500/10 to-gray-600/5 rounded-xl p-4 border border-gray-500/20 hover:border-gray-500/40 transition-all"
+                         :class="expandedAwardCard === `shame-hitting-${award.category}` ? 'ring-2 ring-red-500' : ''">
                       <div class="text-center mb-2">
                         <span class="px-3 py-1 rounded-full text-xs font-bold bg-gray-500/30 text-gray-400">{{ award.category }}</span>
                       </div>
@@ -682,35 +678,51 @@
                       </div>
                       <div v-else class="text-center text-sm text-dark-textMuted italic py-4">No data</div>
                     </div>
-                    
-                    <!-- Expanded Rankings -->
-                    <transition name="expand">
-                      <div v-if="expandedAwardCard === `shame-hitting-${award.category}`" 
-                           class="mt-2 bg-dark-elevated rounded-xl border border-dark-border p-4 max-h-80 overflow-y-auto">
-                        <div class="text-sm font-semibold text-dark-textMuted mb-3 uppercase tracking-wider">{{ award.category }} - All-Time Worst Seasons</div>
-                        <div class="space-y-2">
-                          <div v-for="(team, idx) in getCategoryRankings(award.category, 'worst')" :key="`${team.team_name}-${team.season}`"
-                               class="flex items-center gap-3 p-2 rounded-lg"
-                               :class="idx === 0 ? 'bg-red-500/20' : 'hover:bg-dark-border/30'">
-                            <div class="w-6 text-center font-bold" :class="idx === 0 ? 'text-red-400' : 'text-dark-textMuted'">
-                              {{ idx + 1 }}
+                  </div>
+                </div>
+                
+                <!-- Expanded Rankings Panel -->
+                <transition name="expand">
+                  <div v-if="expandedAwardCard?.startsWith('shame-hitting-')" 
+                       class="mt-4 bg-dark-elevated rounded-xl border border-red-500/30 p-6">
+                    <div class="flex items-center justify-between mb-4">
+                      <div class="text-lg font-bold text-red-400">{{ expandedAwardCard?.replace('shame-hitting-', '') }} - All-Time Worst Seasons</div>
+                      <button @click="expandedAwardCard = null" class="text-dark-textMuted hover:text-dark-text">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                      </button>
+                    </div>
+                    <div class="space-y-3">
+                      <div v-for="(team, idx) in getCategoryRankings(expandedAwardCard?.replace('shame-hitting-', '') || '', 'worst')" 
+                           :key="`${team.team_name}-${team.season}`"
+                           class="relative">
+                        <div class="flex items-center gap-4">
+                          <div class="w-8 text-center font-bold text-lg" :class="idx === 0 ? 'text-red-400' : 'text-dark-textMuted'">
+                            {{ idx + 1 }}
+                          </div>
+                          <div class="w-10 h-10 rounded-full overflow-hidden bg-dark-border flex-shrink-0 ring-2" 
+                               :class="idx === 0 ? 'ring-red-500' : 'ring-dark-border'">
+                            <img :src="team.logo_url || defaultAvatar" class="w-full h-full object-cover" @error="handleImageError" />
+                          </div>
+                          <div class="w-40 flex-shrink-0">
+                            <div class="font-semibold text-dark-text">{{ team.team_name }}</div>
+                            <div class="text-xs text-dark-textMuted">{{ team.season }}</div>
+                          </div>
+                          <div class="flex-1 relative h-8 bg-dark-border/30 rounded-lg overflow-hidden">
+                            <div class="absolute inset-y-0 left-0 rounded-lg transition-all duration-500"
+                                 :class="idx === 0 ? 'bg-gradient-to-r from-red-600 to-red-400' : 'bg-red-500/50'"
+                                 :style="{ width: getBarWidthWorst(team.value, getCategoryRankings(expandedAwardCard?.replace('shame-hitting-', '') || '', 'worst')) }">
                             </div>
-                            <div class="w-8 h-8 rounded-full overflow-hidden bg-dark-border flex-shrink-0">
-                              <img :src="team.logo_url || defaultAvatar" class="w-full h-full object-cover" @error="handleImageError" />
-                            </div>
-                            <div class="flex-1 min-w-0">
-                              <div class="font-semibold text-dark-text truncate">{{ team.team_name }}</div>
-                              <div class="text-xs text-dark-textMuted">{{ team.season }}</div>
-                            </div>
-                            <div class="font-bold" :class="idx === 0 ? 'text-red-400' : 'text-dark-text'">
-                              {{ team.value }} wins
+                            <div class="absolute inset-0 flex items-center justify-end pr-3">
+                              <span class="font-bold text-sm" :class="idx === 0 ? 'text-white' : 'text-dark-text'">{{ team.value }} wins</span>
                             </div>
                           </div>
                         </div>
                       </div>
-                    </transition>
+                    </div>
                   </div>
-                </div>
+                </transition>
               </div>
               
               <!-- Category Struggles - Pitching -->
@@ -720,7 +732,8 @@
                   <div v-for="award in hallOfShamePitching" :key="award.category"
                        class="cursor-pointer"
                        @click="toggleAwardCard(`shame-pitching-${award.category}`)">
-                    <div class="bg-gradient-to-br from-gray-500/10 to-gray-600/5 rounded-xl p-4 border border-gray-500/20 hover:border-gray-500/40 transition-all">
+                    <div class="bg-gradient-to-br from-gray-500/10 to-gray-600/5 rounded-xl p-4 border border-gray-500/20 hover:border-gray-500/40 transition-all"
+                         :class="expandedAwardCard === `shame-pitching-${award.category}` ? 'ring-2 ring-red-500' : ''">
                       <div class="text-center mb-2">
                         <span class="px-3 py-1 rounded-full text-xs font-bold bg-gray-500/30 text-gray-400">{{ award.category }}</span>
                       </div>
@@ -735,35 +748,51 @@
                       </div>
                       <div v-else class="text-center text-sm text-dark-textMuted italic py-4">No data</div>
                     </div>
-                    
-                    <!-- Expanded Rankings -->
-                    <transition name="expand">
-                      <div v-if="expandedAwardCard === `shame-pitching-${award.category}`" 
-                           class="mt-2 bg-dark-elevated rounded-xl border border-dark-border p-4 max-h-80 overflow-y-auto">
-                        <div class="text-sm font-semibold text-dark-textMuted mb-3 uppercase tracking-wider">{{ award.category }} - All-Time Worst Seasons</div>
-                        <div class="space-y-2">
-                          <div v-for="(team, idx) in getCategoryRankings(award.category, 'worst')" :key="`${team.team_name}-${team.season}`"
-                               class="flex items-center gap-3 p-2 rounded-lg"
-                               :class="idx === 0 ? 'bg-red-500/20' : 'hover:bg-dark-border/30'">
-                            <div class="w-6 text-center font-bold" :class="idx === 0 ? 'text-red-400' : 'text-dark-textMuted'">
-                              {{ idx + 1 }}
+                  </div>
+                </div>
+                
+                <!-- Expanded Rankings Panel -->
+                <transition name="expand">
+                  <div v-if="expandedAwardCard?.startsWith('shame-pitching-')" 
+                       class="mt-4 bg-dark-elevated rounded-xl border border-red-500/30 p-6">
+                    <div class="flex items-center justify-between mb-4">
+                      <div class="text-lg font-bold text-red-400">{{ expandedAwardCard?.replace('shame-pitching-', '') }} - All-Time Worst Seasons</div>
+                      <button @click="expandedAwardCard = null" class="text-dark-textMuted hover:text-dark-text">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                      </button>
+                    </div>
+                    <div class="space-y-3">
+                      <div v-for="(team, idx) in getCategoryRankings(expandedAwardCard?.replace('shame-pitching-', '') || '', 'worst')" 
+                           :key="`${team.team_name}-${team.season}`"
+                           class="relative">
+                        <div class="flex items-center gap-4">
+                          <div class="w-8 text-center font-bold text-lg" :class="idx === 0 ? 'text-red-400' : 'text-dark-textMuted'">
+                            {{ idx + 1 }}
+                          </div>
+                          <div class="w-10 h-10 rounded-full overflow-hidden bg-dark-border flex-shrink-0 ring-2" 
+                               :class="idx === 0 ? 'ring-red-500' : 'ring-dark-border'">
+                            <img :src="team.logo_url || defaultAvatar" class="w-full h-full object-cover" @error="handleImageError" />
+                          </div>
+                          <div class="w-40 flex-shrink-0">
+                            <div class="font-semibold text-dark-text">{{ team.team_name }}</div>
+                            <div class="text-xs text-dark-textMuted">{{ team.season }}</div>
+                          </div>
+                          <div class="flex-1 relative h-8 bg-dark-border/30 rounded-lg overflow-hidden">
+                            <div class="absolute inset-y-0 left-0 rounded-lg transition-all duration-500"
+                                 :class="idx === 0 ? 'bg-gradient-to-r from-red-600 to-red-400' : 'bg-red-500/50'"
+                                 :style="{ width: getBarWidthWorst(team.value, getCategoryRankings(expandedAwardCard?.replace('shame-pitching-', '') || '', 'worst')) }">
                             </div>
-                            <div class="w-8 h-8 rounded-full overflow-hidden bg-dark-border flex-shrink-0">
-                              <img :src="team.logo_url || defaultAvatar" class="w-full h-full object-cover" @error="handleImageError" />
-                            </div>
-                            <div class="flex-1 min-w-0">
-                              <div class="font-semibold text-dark-text truncate">{{ team.team_name }}</div>
-                              <div class="text-xs text-dark-textMuted">{{ team.season }}</div>
-                            </div>
-                            <div class="font-bold" :class="idx === 0 ? 'text-red-400' : 'text-dark-text'">
-                              {{ team.value }} wins
+                            <div class="absolute inset-0 flex items-center justify-end pr-3">
+                              <span class="font-bold text-sm" :class="idx === 0 ? 'text-white' : 'text-dark-text'">{{ team.value }} wins</span>
                             </div>
                           </div>
                         </div>
                       </div>
-                    </transition>
+                    </div>
                   </div>
-                </div>
+                </transition>
               </div>
             </div>
           </template>
@@ -793,7 +822,8 @@
                   <div v-for="award in seasonHallOfFameHitting" :key="award.category" 
                        class="cursor-pointer"
                        @click="toggleSeasonAwardCard(`season-fame-hitting-${award.category}`)">
-                    <div class="bg-gradient-to-br from-blue-500/10 to-blue-600/5 rounded-xl p-4 border border-blue-500/20 hover:border-blue-500/40 transition-all">
+                    <div class="bg-gradient-to-br from-blue-500/10 to-blue-600/5 rounded-xl p-4 border border-blue-500/20 hover:border-blue-500/40 transition-all"
+                         :class="expandedSeasonAwardCard === `season-fame-hitting-${award.category}` ? 'ring-2 ring-blue-500' : ''">
                       <div class="text-center mb-2">
                         <span class="px-3 py-1 rounded-full text-xs font-bold bg-blue-500/30 text-blue-400">{{ award.category }}</span>
                       </div>
@@ -808,34 +838,50 @@
                       </div>
                       <div v-else class="text-center text-sm text-dark-textMuted italic py-4">No data</div>
                     </div>
-                    
-                    <!-- Expanded Rankings -->
-                    <transition name="expand">
-                      <div v-if="expandedSeasonAwardCard === `season-fame-hitting-${award.category}`" 
-                           class="mt-2 bg-dark-elevated rounded-xl border border-dark-border p-4 max-h-80 overflow-y-auto">
-                        <div class="text-sm font-semibold text-dark-textMuted mb-3 uppercase tracking-wider">{{ award.category }} - {{ selectedAwardsSeason }} Rankings</div>
-                        <div class="space-y-2">
-                          <div v-for="(team, idx) in getSeasonCategoryRankings(award.category, 'best')" :key="`${team.team_name}`"
-                               class="flex items-center gap-3 p-2 rounded-lg"
-                               :class="idx === 0 ? 'bg-blue-500/20' : 'hover:bg-dark-border/30'">
-                            <div class="w-6 text-center font-bold" :class="idx === 0 ? 'text-blue-400' : 'text-dark-textMuted'">
-                              {{ idx + 1 }}
+                  </div>
+                </div>
+                
+                <!-- Expanded Rankings Panel -->
+                <transition name="expand">
+                  <div v-if="expandedSeasonAwardCard?.startsWith('season-fame-hitting-')" 
+                       class="mt-4 bg-dark-elevated rounded-xl border border-blue-500/30 p-6">
+                    <div class="flex items-center justify-between mb-4">
+                      <div class="text-lg font-bold text-blue-400">{{ expandedSeasonAwardCard?.replace('season-fame-hitting-', '') }} - {{ selectedAwardsSeason }} Rankings</div>
+                      <button @click="expandedSeasonAwardCard = null" class="text-dark-textMuted hover:text-dark-text">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                      </button>
+                    </div>
+                    <div class="space-y-3">
+                      <div v-for="(team, idx) in getSeasonCategoryRankings(expandedSeasonAwardCard?.replace('season-fame-hitting-', '') || '', 'best')" 
+                           :key="`${team.team_name}`"
+                           class="relative">
+                        <div class="flex items-center gap-4">
+                          <div class="w-8 text-center font-bold text-lg" :class="idx === 0 ? 'text-blue-400' : 'text-dark-textMuted'">
+                            {{ idx + 1 }}
+                          </div>
+                          <div class="w-10 h-10 rounded-full overflow-hidden bg-dark-border flex-shrink-0 ring-2" 
+                               :class="idx === 0 ? 'ring-blue-500' : 'ring-dark-border'">
+                            <img :src="team.logo_url || defaultAvatar" class="w-full h-full object-cover" @error="handleImageError" />
+                          </div>
+                          <div class="w-40 flex-shrink-0">
+                            <div class="font-semibold text-dark-text">{{ team.team_name }}</div>
+                          </div>
+                          <div class="flex-1 relative h-8 bg-dark-border/30 rounded-lg overflow-hidden">
+                            <div class="absolute inset-y-0 left-0 rounded-lg transition-all duration-500"
+                                 :class="idx === 0 ? 'bg-gradient-to-r from-blue-600 to-blue-400' : 'bg-blue-500/50'"
+                                 :style="{ width: getBarWidth(team.value, getSeasonCategoryRankings(expandedSeasonAwardCard?.replace('season-fame-hitting-', '') || '', 'best')) }">
                             </div>
-                            <div class="w-8 h-8 rounded-full overflow-hidden bg-dark-border flex-shrink-0">
-                              <img :src="team.logo_url || defaultAvatar" class="w-full h-full object-cover" @error="handleImageError" />
-                            </div>
-                            <div class="flex-1 min-w-0">
-                              <div class="font-semibold text-dark-text truncate">{{ team.team_name }}</div>
-                            </div>
-                            <div class="font-bold" :class="idx === 0 ? 'text-blue-400' : 'text-dark-text'">
-                              {{ team.value }} wins
+                            <div class="absolute inset-0 flex items-center justify-end pr-3">
+                              <span class="font-bold text-sm" :class="idx === 0 ? 'text-white' : 'text-dark-text'">{{ team.value }} wins</span>
                             </div>
                           </div>
                         </div>
                       </div>
-                    </transition>
+                    </div>
                   </div>
-                </div>
+                </transition>
               </div>
               
               <!-- Pitching Category Leaders -->
@@ -845,7 +891,8 @@
                   <div v-for="award in seasonHallOfFamePitching" :key="award.category"
                        class="cursor-pointer"
                        @click="toggleSeasonAwardCard(`season-fame-pitching-${award.category}`)">
-                    <div class="bg-gradient-to-br from-purple-500/10 to-purple-600/5 rounded-xl p-4 border border-purple-500/20 hover:border-purple-500/40 transition-all">
+                    <div class="bg-gradient-to-br from-purple-500/10 to-purple-600/5 rounded-xl p-4 border border-purple-500/20 hover:border-purple-500/40 transition-all"
+                         :class="expandedSeasonAwardCard === `season-fame-pitching-${award.category}` ? 'ring-2 ring-purple-500' : ''">
                       <div class="text-center mb-2">
                         <span class="px-3 py-1 rounded-full text-xs font-bold bg-purple-500/30 text-purple-400">{{ award.category }}</span>
                       </div>
@@ -860,34 +907,50 @@
                       </div>
                       <div v-else class="text-center text-sm text-dark-textMuted italic py-4">No data</div>
                     </div>
-                    
-                    <!-- Expanded Rankings -->
-                    <transition name="expand">
-                      <div v-if="expandedSeasonAwardCard === `season-fame-pitching-${award.category}`" 
-                           class="mt-2 bg-dark-elevated rounded-xl border border-dark-border p-4 max-h-80 overflow-y-auto">
-                        <div class="text-sm font-semibold text-dark-textMuted mb-3 uppercase tracking-wider">{{ award.category }} - {{ selectedAwardsSeason }} Rankings</div>
-                        <div class="space-y-2">
-                          <div v-for="(team, idx) in getSeasonCategoryRankings(award.category, 'best')" :key="`${team.team_name}`"
-                               class="flex items-center gap-3 p-2 rounded-lg"
-                               :class="idx === 0 ? 'bg-purple-500/20' : 'hover:bg-dark-border/30'">
-                            <div class="w-6 text-center font-bold" :class="idx === 0 ? 'text-purple-400' : 'text-dark-textMuted'">
-                              {{ idx + 1 }}
+                  </div>
+                </div>
+                
+                <!-- Expanded Rankings Panel -->
+                <transition name="expand">
+                  <div v-if="expandedSeasonAwardCard?.startsWith('season-fame-pitching-')" 
+                       class="mt-4 bg-dark-elevated rounded-xl border border-purple-500/30 p-6">
+                    <div class="flex items-center justify-between mb-4">
+                      <div class="text-lg font-bold text-purple-400">{{ expandedSeasonAwardCard?.replace('season-fame-pitching-', '') }} - {{ selectedAwardsSeason }} Rankings</div>
+                      <button @click="expandedSeasonAwardCard = null" class="text-dark-textMuted hover:text-dark-text">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                      </button>
+                    </div>
+                    <div class="space-y-3">
+                      <div v-for="(team, idx) in getSeasonCategoryRankings(expandedSeasonAwardCard?.replace('season-fame-pitching-', '') || '', 'best')" 
+                           :key="`${team.team_name}`"
+                           class="relative">
+                        <div class="flex items-center gap-4">
+                          <div class="w-8 text-center font-bold text-lg" :class="idx === 0 ? 'text-purple-400' : 'text-dark-textMuted'">
+                            {{ idx + 1 }}
+                          </div>
+                          <div class="w-10 h-10 rounded-full overflow-hidden bg-dark-border flex-shrink-0 ring-2" 
+                               :class="idx === 0 ? 'ring-purple-500' : 'ring-dark-border'">
+                            <img :src="team.logo_url || defaultAvatar" class="w-full h-full object-cover" @error="handleImageError" />
+                          </div>
+                          <div class="w-40 flex-shrink-0">
+                            <div class="font-semibold text-dark-text">{{ team.team_name }}</div>
+                          </div>
+                          <div class="flex-1 relative h-8 bg-dark-border/30 rounded-lg overflow-hidden">
+                            <div class="absolute inset-y-0 left-0 rounded-lg transition-all duration-500"
+                                 :class="idx === 0 ? 'bg-gradient-to-r from-purple-600 to-purple-400' : 'bg-purple-500/50'"
+                                 :style="{ width: getBarWidth(team.value, getSeasonCategoryRankings(expandedSeasonAwardCard?.replace('season-fame-pitching-', '') || '', 'best')) }">
                             </div>
-                            <div class="w-8 h-8 rounded-full overflow-hidden bg-dark-border flex-shrink-0">
-                              <img :src="team.logo_url || defaultAvatar" class="w-full h-full object-cover" @error="handleImageError" />
-                            </div>
-                            <div class="flex-1 min-w-0">
-                              <div class="font-semibold text-dark-text truncate">{{ team.team_name }}</div>
-                            </div>
-                            <div class="font-bold" :class="idx === 0 ? 'text-purple-400' : 'text-dark-text'">
-                              {{ team.value }} wins
+                            <div class="absolute inset-0 flex items-center justify-end pr-3">
+                              <span class="font-bold text-sm" :class="idx === 0 ? 'text-white' : 'text-dark-text'">{{ team.value }} wins</span>
                             </div>
                           </div>
                         </div>
                       </div>
-                    </transition>
+                    </div>
                   </div>
-                </div>
+                </transition>
               </div>
             </div>
 
@@ -905,7 +968,8 @@
                   <div v-for="award in seasonHallOfShameHitting" :key="award.category"
                        class="cursor-pointer"
                        @click="toggleSeasonAwardCard(`season-shame-hitting-${award.category}`)">
-                    <div class="bg-gradient-to-br from-gray-500/10 to-gray-600/5 rounded-xl p-4 border border-gray-500/20 hover:border-gray-500/40 transition-all">
+                    <div class="bg-gradient-to-br from-gray-500/10 to-gray-600/5 rounded-xl p-4 border border-gray-500/20 hover:border-gray-500/40 transition-all"
+                         :class="expandedSeasonAwardCard === `season-shame-hitting-${award.category}` ? 'ring-2 ring-red-500' : ''">
                       <div class="text-center mb-2">
                         <span class="px-3 py-1 rounded-full text-xs font-bold bg-gray-500/30 text-gray-400">{{ award.category }}</span>
                       </div>
@@ -920,34 +984,50 @@
                       </div>
                       <div v-else class="text-center text-sm text-dark-textMuted italic py-4">No data</div>
                     </div>
-                    
-                    <!-- Expanded Rankings -->
-                    <transition name="expand">
-                      <div v-if="expandedSeasonAwardCard === `season-shame-hitting-${award.category}`" 
-                           class="mt-2 bg-dark-elevated rounded-xl border border-dark-border p-4 max-h-80 overflow-y-auto">
-                        <div class="text-sm font-semibold text-dark-textMuted mb-3 uppercase tracking-wider">{{ award.category }} - {{ selectedAwardsSeason }} Rankings (Worst)</div>
-                        <div class="space-y-2">
-                          <div v-for="(team, idx) in getSeasonCategoryRankings(award.category, 'worst')" :key="`${team.team_name}`"
-                               class="flex items-center gap-3 p-2 rounded-lg"
-                               :class="idx === 0 ? 'bg-red-500/20' : 'hover:bg-dark-border/30'">
-                            <div class="w-6 text-center font-bold" :class="idx === 0 ? 'text-red-400' : 'text-dark-textMuted'">
-                              {{ idx + 1 }}
+                  </div>
+                </div>
+                
+                <!-- Expanded Rankings Panel -->
+                <transition name="expand">
+                  <div v-if="expandedSeasonAwardCard?.startsWith('season-shame-hitting-')" 
+                       class="mt-4 bg-dark-elevated rounded-xl border border-red-500/30 p-6">
+                    <div class="flex items-center justify-between mb-4">
+                      <div class="text-lg font-bold text-red-400">{{ expandedSeasonAwardCard?.replace('season-shame-hitting-', '') }} - {{ selectedAwardsSeason }} Rankings (Worst)</div>
+                      <button @click="expandedSeasonAwardCard = null" class="text-dark-textMuted hover:text-dark-text">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                      </button>
+                    </div>
+                    <div class="space-y-3">
+                      <div v-for="(team, idx) in getSeasonCategoryRankings(expandedSeasonAwardCard?.replace('season-shame-hitting-', '') || '', 'worst')" 
+                           :key="`${team.team_name}`"
+                           class="relative">
+                        <div class="flex items-center gap-4">
+                          <div class="w-8 text-center font-bold text-lg" :class="idx === 0 ? 'text-red-400' : 'text-dark-textMuted'">
+                            {{ idx + 1 }}
+                          </div>
+                          <div class="w-10 h-10 rounded-full overflow-hidden bg-dark-border flex-shrink-0 ring-2" 
+                               :class="idx === 0 ? 'ring-red-500' : 'ring-dark-border'">
+                            <img :src="team.logo_url || defaultAvatar" class="w-full h-full object-cover" @error="handleImageError" />
+                          </div>
+                          <div class="w-40 flex-shrink-0">
+                            <div class="font-semibold text-dark-text">{{ team.team_name }}</div>
+                          </div>
+                          <div class="flex-1 relative h-8 bg-dark-border/30 rounded-lg overflow-hidden">
+                            <div class="absolute inset-y-0 left-0 rounded-lg transition-all duration-500"
+                                 :class="idx === 0 ? 'bg-gradient-to-r from-red-600 to-red-400' : 'bg-red-500/50'"
+                                 :style="{ width: getBarWidthWorst(team.value, getSeasonCategoryRankings(expandedSeasonAwardCard?.replace('season-shame-hitting-', '') || '', 'worst')) }">
                             </div>
-                            <div class="w-8 h-8 rounded-full overflow-hidden bg-dark-border flex-shrink-0">
-                              <img :src="team.logo_url || defaultAvatar" class="w-full h-full object-cover" @error="handleImageError" />
-                            </div>
-                            <div class="flex-1 min-w-0">
-                              <div class="font-semibold text-dark-text truncate">{{ team.team_name }}</div>
-                            </div>
-                            <div class="font-bold" :class="idx === 0 ? 'text-red-400' : 'text-dark-text'">
-                              {{ team.value }} wins
+                            <div class="absolute inset-0 flex items-center justify-end pr-3">
+                              <span class="font-bold text-sm" :class="idx === 0 ? 'text-white' : 'text-dark-text'">{{ team.value }} wins</span>
                             </div>
                           </div>
                         </div>
                       </div>
-                    </transition>
+                    </div>
                   </div>
-                </div>
+                </transition>
               </div>
               
               <!-- Pitching Category Struggles -->
@@ -957,7 +1037,8 @@
                   <div v-for="award in seasonHallOfShamePitching" :key="award.category"
                        class="cursor-pointer"
                        @click="toggleSeasonAwardCard(`season-shame-pitching-${award.category}`)">
-                    <div class="bg-gradient-to-br from-gray-500/10 to-gray-600/5 rounded-xl p-4 border border-gray-500/20 hover:border-gray-500/40 transition-all">
+                    <div class="bg-gradient-to-br from-gray-500/10 to-gray-600/5 rounded-xl p-4 border border-gray-500/20 hover:border-gray-500/40 transition-all"
+                         :class="expandedSeasonAwardCard === `season-shame-pitching-${award.category}` ? 'ring-2 ring-red-500' : ''">
                       <div class="text-center mb-2">
                         <span class="px-3 py-1 rounded-full text-xs font-bold bg-gray-500/30 text-gray-400">{{ award.category }}</span>
                       </div>
@@ -972,34 +1053,50 @@
                       </div>
                       <div v-else class="text-center text-sm text-dark-textMuted italic py-4">No data</div>
                     </div>
-                    
-                    <!-- Expanded Rankings -->
-                    <transition name="expand">
-                      <div v-if="expandedSeasonAwardCard === `season-shame-pitching-${award.category}`" 
-                           class="mt-2 bg-dark-elevated rounded-xl border border-dark-border p-4 max-h-80 overflow-y-auto">
-                        <div class="text-sm font-semibold text-dark-textMuted mb-3 uppercase tracking-wider">{{ award.category }} - {{ selectedAwardsSeason }} Rankings (Worst)</div>
-                        <div class="space-y-2">
-                          <div v-for="(team, idx) in getSeasonCategoryRankings(award.category, 'worst')" :key="`${team.team_name}`"
-                               class="flex items-center gap-3 p-2 rounded-lg"
-                               :class="idx === 0 ? 'bg-red-500/20' : 'hover:bg-dark-border/30'">
-                            <div class="w-6 text-center font-bold" :class="idx === 0 ? 'text-red-400' : 'text-dark-textMuted'">
-                              {{ idx + 1 }}
+                  </div>
+                </div>
+                
+                <!-- Expanded Rankings Panel -->
+                <transition name="expand">
+                  <div v-if="expandedSeasonAwardCard?.startsWith('season-shame-pitching-')" 
+                       class="mt-4 bg-dark-elevated rounded-xl border border-red-500/30 p-6">
+                    <div class="flex items-center justify-between mb-4">
+                      <div class="text-lg font-bold text-red-400">{{ expandedSeasonAwardCard?.replace('season-shame-pitching-', '') }} - {{ selectedAwardsSeason }} Rankings (Worst)</div>
+                      <button @click="expandedSeasonAwardCard = null" class="text-dark-textMuted hover:text-dark-text">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                      </button>
+                    </div>
+                    <div class="space-y-3">
+                      <div v-for="(team, idx) in getSeasonCategoryRankings(expandedSeasonAwardCard?.replace('season-shame-pitching-', '') || '', 'worst')" 
+                           :key="`${team.team_name}`"
+                           class="relative">
+                        <div class="flex items-center gap-4">
+                          <div class="w-8 text-center font-bold text-lg" :class="idx === 0 ? 'text-red-400' : 'text-dark-textMuted'">
+                            {{ idx + 1 }}
+                          </div>
+                          <div class="w-10 h-10 rounded-full overflow-hidden bg-dark-border flex-shrink-0 ring-2" 
+                               :class="idx === 0 ? 'ring-red-500' : 'ring-dark-border'">
+                            <img :src="team.logo_url || defaultAvatar" class="w-full h-full object-cover" @error="handleImageError" />
+                          </div>
+                          <div class="w-40 flex-shrink-0">
+                            <div class="font-semibold text-dark-text">{{ team.team_name }}</div>
+                          </div>
+                          <div class="flex-1 relative h-8 bg-dark-border/30 rounded-lg overflow-hidden">
+                            <div class="absolute inset-y-0 left-0 rounded-lg transition-all duration-500"
+                                 :class="idx === 0 ? 'bg-gradient-to-r from-red-600 to-red-400' : 'bg-red-500/50'"
+                                 :style="{ width: getBarWidthWorst(team.value, getSeasonCategoryRankings(expandedSeasonAwardCard?.replace('season-shame-pitching-', '') || '', 'worst')) }">
                             </div>
-                            <div class="w-8 h-8 rounded-full overflow-hidden bg-dark-border flex-shrink-0">
-                              <img :src="team.logo_url || defaultAvatar" class="w-full h-full object-cover" @error="handleImageError" />
-                            </div>
-                            <div class="flex-1 min-w-0">
-                              <div class="font-semibold text-dark-text truncate">{{ team.team_name }}</div>
-                            </div>
-                            <div class="font-bold" :class="idx === 0 ? 'text-red-400' : 'text-dark-text'">
-                              {{ team.value }} wins
+                            <div class="absolute inset-0 flex items-center justify-end pr-3">
+                              <span class="font-bold text-sm" :class="idx === 0 ? 'text-white' : 'text-dark-text'">{{ team.value }} wins</span>
                             </div>
                           </div>
                         </div>
                       </div>
-                    </transition>
+                    </div>
                   </div>
-                </div>
+                </transition>
               </div>
             </div>
           </template>
@@ -1470,45 +1567,6 @@ const careerStats = computed((): CareerStat[] => {
 const filteredCareerStats = computed(() => {
   if (!showCurrentMembersOnly.value) return careerStats.value
   return careerStats.value.filter(stat => currentMembers.value.has(stat.team_key))
-})
-
-// Category leaders
-const categoryLeaders = computed(() => {
-  // Get all unique category IDs from the career stats data
-  const allCatIds = new Set<string>()
-  for (const stat of careerStats.value) {
-    for (const catId of Object.keys(stat.category_records || {})) {
-      allCatIds.add(catId)
-    }
-  }
-  
-  // Convert to array and map each category
-  return Array.from(allCatIds).slice(0, 12).map(catId => {
-    const catName = getCategoryDisplayName(catId)
-    
-    // Find team with best win rate in this category
-    let bestTeam: any = null
-    let bestRate = 0
-    
-    for (const stat of careerStats.value) {
-      const record = stat.category_records[catId]
-      if (!record || record.wins + record.losses < 5) continue
-      
-      const rate = record.wins / (record.wins + record.losses)
-      if (rate > bestRate) {
-        bestRate = rate
-        bestTeam = {
-          team_name: stat.team_name,
-          logo_url: stat.logo_url,
-          win_rate: rate,
-          wins: record.wins,
-          losses: record.losses
-        }
-      }
-    }
-    
-    return { name: catName, leader: bestTeam }
-  }).filter(cat => cat.leader !== null) // Only show categories with data
 })
 
 // Season-by-Season Records
@@ -2207,6 +2265,26 @@ function getCategoryColorClass(cat: string): string {
   const hittingCats = ['HR', 'RBI', 'R', 'SB', 'AVG', 'OPS', 'OBP', 'SLG', 'H']
   if (hittingCats.includes(cat)) return 'bg-blue-500/30 text-blue-400'
   return 'bg-purple-500/30 text-purple-400'
+}
+
+// Get bar width as percentage - for "best" rankings (highest = 100%)
+function getBarWidth(value: number, rankings: any[]): string {
+  if (!rankings || rankings.length === 0) return '0%'
+  const maxValue = Math.max(...rankings.map(r => r.value || 0))
+  if (maxValue === 0) return '0%'
+  return `${(value / maxValue) * 100}%`
+}
+
+// Get bar width for "worst" rankings - lowest is worst so it gets 100%
+function getBarWidthWorst(value: number, rankings: any[]): string {
+  if (!rankings || rankings.length === 0) return '0%'
+  const maxValue = Math.max(...rankings.map(r => r.value || 0))
+  const minValue = Math.min(...rankings.map(r => r.value || 0))
+  if (maxValue === minValue) return '100%'
+  // Invert the scale - lowest value gets longest bar
+  const range = maxValue - minValue
+  const invertedPercent = 100 - ((value - minValue) / range) * 100
+  return `${Math.max(20, invertedPercent)}%` // Minimum 20% to show something
 }
 
 function handleImageError(e: Event) {
