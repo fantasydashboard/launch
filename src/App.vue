@@ -46,20 +46,20 @@
     
     <!-- Show Full App for authenticated users -->
     <template v-else>
-      <!-- Top Header (Dark card color) - Slides away on scroll -->
+      <!-- Top Header (Darker color) - Slides away on scroll -->
       <header 
         class="fixed top-0 left-0 right-0 z-30 transition-transform duration-300"
         :class="isScrolled ? '-translate-y-full' : 'translate-y-0'"
-        style="background: #11131a;"
+        style="background: #0a0b10;"
       >
         <!-- Gradient overlay behind content - lowest layer -->
         <div 
           class="absolute left-0 top-0 bottom-0 pointer-events-none"
-          style="width: 280px; background: linear-gradient(to right, #11131a 0%, #11131a 200px, transparent 280px); z-index: 1;"
+          style="width: 350px; background: linear-gradient(to right, #0a0b10 0%, #0a0b10 120px, transparent 350px); z-index: 1;"
         ></div>
         
         <div class="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div class="flex items-center justify-between h-10 sm:h-11 pl-20 sm:pl-24 lg:pl-28">
+          <div class="flex items-center justify-between h-10 sm:h-11 pl-24 sm:pl-28 lg:pl-32">
             <!-- Title -->
             <div class="flex items-center">
               <h1 class="text-xs sm:text-sm lg:text-base font-bold text-white tracking-wider uppercase">
@@ -128,39 +128,60 @@
         :class="isScrolled ? 'top-0' : 'top-10 sm:top-11'"
         :style="{ backgroundColor: sportStore.primaryColor }"
       >
-        <!-- Gradient overlay behind content - lowest layer -->
+        <!-- Gradient overlay behind content - lowest layer, longer transition -->
         <div 
           class="absolute left-0 top-0 bottom-0 pointer-events-none transition-all duration-300"
           :style="{
-            width: '280px',
-            background: `linear-gradient(to right, #11131a 0%, #11131a ${isScrolled ? '160px' : '200px'}, transparent 280px)`,
+            width: '350px',
+            background: `linear-gradient(to right, #0a0b10 0%, #0a0b10 ${isScrolled ? '80px' : '120px'}, transparent 350px)`,
             zIndex: 1
           }"
         ></div>
         
         <div class="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div 
-            class="flex items-center justify-between transition-all duration-300 pl-20 sm:pl-24 lg:pl-28"
+            class="flex items-center justify-between transition-all duration-300 pl-24 sm:pl-28 lg:pl-32"
             :class="isScrolled ? 'h-16 sm:h-18 lg:h-20' : 'h-14 sm:h-16'"
           >
             <!-- Navigation Tabs -->
             <div class="flex-1 overflow-hidden">
-              <!-- Mobile: Scrollable tabs -->
-              <div class="sm:hidden overflow-x-auto scrollbar-hide -mr-4 pr-4">
-                <div class="flex items-center gap-1 min-w-max">
-                  <router-link
-                    v-for="tab in tabs"
-                    :key="tab.path"
-                    :to="tab.path"
-                    class="flex-shrink-0 px-3 py-1.5 text-xs font-semibold rounded-full transition-all duration-200 whitespace-nowrap"
-                    :class="[
-                      $route.path === tab.path
-                        ? 'bg-white text-gray-900 shadow-md'
-                        : 'text-white/80 hover:text-white hover:bg-white/20'
-                    ]"
-                  >
-                    {{ tab.name }}
-                  </router-link>
+              <!-- Mobile: Dashboard Button -->
+              <div class="sm:hidden relative" ref="mobileMenuRef">
+                <button
+                  @click="showMobileMenu = !showMobileMenu"
+                  class="flex items-center gap-2 px-4 py-2 bg-black/20 rounded-full text-white font-semibold text-sm"
+                >
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
+                  </svg>
+                  <span>Dashboards</span>
+                  <svg class="w-3 h-3" :class="showMobileMenu ? 'rotate-180' : ''" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                  </svg>
+                </button>
+                
+                <!-- Mobile Menu Dropdown -->
+                <div 
+                  v-if="showMobileMenu"
+                  class="absolute top-full left-0 mt-2 w-56 bg-dark-card border border-dark-border rounded-xl shadow-xl z-50 overflow-hidden"
+                >
+                  <div class="p-2">
+                    <router-link
+                      v-for="tab in tabs"
+                      :key="tab.path"
+                      :to="tab.path"
+                      @click="showMobileMenu = false"
+                      class="flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors"
+                      :class="[
+                        $route.path === tab.path
+                          ? 'bg-primary/20 text-primary'
+                          : 'text-dark-text hover:bg-dark-border/50'
+                      ]"
+                    >
+                      <span class="text-lg">{{ getTabIcon(tab.name) }}</span>
+                      <span class="font-medium text-sm">{{ tab.name }}</span>
+                    </router-link>
+                  </div>
                 </div>
               </div>
               
@@ -187,7 +208,7 @@
                   <span class="text-sm">👀</span>
                   <span class="text-white text-xs font-medium">Demo Mode</span>
                   <button 
-                    @click="showAddLeagueModal = true"
+                    @click="openAddLeagueModal"
                     class="text-xs text-white/80 hover:text-white underline ml-1"
                   >
                     Connect →
@@ -210,14 +231,12 @@
                       src="/logos/yahoo-fantasy.svg" 
                       alt="Yahoo" 
                       class="w-5 h-5 object-contain"
-                      @error="(e) => (e.target as HTMLImageElement).style.display = 'none'"
                     />
                     <img 
                       v-else-if="leagueStore.activePlatform === 'sleeper'" 
                       src="/logos/sleeper.svg" 
                       alt="Sleeper" 
                       class="w-5 h-5 object-contain"
-                      @error="(e) => (e.target as HTMLImageElement).style.display = 'none'"
                     />
                     <div v-else class="w-5 h-5 rounded bg-gray-600 flex items-center justify-center">
                       <span class="text-[8px] font-bold text-white">ESPN</span>
@@ -485,7 +504,7 @@
                 <!-- Add League Button -->
                 <div class="p-2">
                   <button
-                    @click="showAddLeagueModal = true; showLeagueDropdown = false"
+                    @click="openAddLeagueModal"
                     class="w-full flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-dark-border/50 transition-colors text-primary"
                   >
                     <div class="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
@@ -525,18 +544,18 @@
         </div>
       </nav>
       
-      <!-- Sport Logo - Floating on top, shrinks on scroll -->
+      <!-- Sport Logo - Floating on top, shrinks on scroll, stays within header bounds -->
       <div 
-        class="fixed left-4 sm:left-5 lg:left-6 z-50 pointer-events-none transition-all duration-300"
+        class="fixed left-3 sm:left-4 lg:left-5 z-50 pointer-events-none transition-all duration-300"
         :style="{
-          top: isScrolled ? '8px' : '4px'
+          top: isScrolled ? '4px' : '2px'
         }"
       >
         <img 
           :src="sportStore.sportLogo" 
           :alt="sportStore.sportLabel"
           class="object-contain drop-shadow-lg transition-all duration-300"
-          :class="isScrolled ? 'w-12 h-12 sm:w-14 sm:h-14 lg:w-16 lg:h-16' : 'w-16 h-16 sm:w-20 sm:h-20 lg:w-24 lg:h-24'"
+          :class="isScrolled ? 'w-14 h-14 sm:w-16 sm:h-16 lg:w-18 lg:h-18' : 'w-20 h-20 sm:w-24 sm:h-24 lg:w-[104px] lg:h-[104px]'"
         />
       </div>
       
@@ -546,7 +565,7 @@
       <!-- Content fade gradient -->
       <div 
         class="h-8 w-full pointer-events-none -mb-8 relative z-10"
-        style="background: linear-gradient(to bottom, #11131a, transparent);"
+        style="background: linear-gradient(to bottom, #0a0b10, transparent);"
       ></div>
 
       <!-- Main Content -->
@@ -571,7 +590,7 @@
       <AppFooter />
     </template>
 
-    <!-- Auth Modal -->
+    <!-- Auth Modal - Outside template blocks so it's always available -->
     <AuthModal 
       :show="showAuthModal" 
       :mode="authMode"
@@ -580,19 +599,21 @@
       @switch-mode="authMode = authMode === 'login' ? 'signup' : 'login'"
     />
 
-    <!-- Add League Modal -->
-    <AddLeagueModal 
-      v-if="showAddLeagueModal" 
-      @close="showAddLeagueModal = false"
-      @league-added="handleLeagueAdded"
-      @yahoo-league-added="handleYahooLeagueAdded"
-    />
+    <!-- Add League Modal - Using Teleport to ensure it renders at body level -->
+    <Teleport to="body">
+      <AddLeagueModal 
+        v-if="showAddLeagueModal" 
+        @close="showAddLeagueModal = false"
+        @league-added="handleLeagueAdded"
+        @yahoo-league-added="handleYahooLeagueAdded"
+      />
+    </Teleport>
     
     <!-- Remove League Confirmation -->
     <Teleport to="body">
       <div 
         v-if="leagueToRemove"
-        class="fixed inset-0 z-50 flex items-center justify-center p-4"
+        class="fixed inset-0 z-[100] flex items-center justify-center p-4"
         @click.self="leagueToRemove = null"
       >
         <div class="absolute inset-0 bg-black/70 backdrop-blur-sm"></div>
@@ -644,7 +665,9 @@ const authMode = ref<'login' | 'signup'>('signup')
 const showLeagueDropdown = ref(false)
 const showAddLeagueModal = ref(false)
 const showMobileUserMenu = ref(false)
+const showMobileMenu = ref(false)
 const leagueDropdownRef = ref<HTMLElement | null>(null)
+const mobileMenuRef = ref<HTMLElement | null>(null)
 const leagueToRemove = ref<any>(null)
 
 // Scroll state
@@ -689,6 +712,21 @@ const hockeyLeagues = computed(() =>
   leagueStore.savedLeagues.filter(l => l.sport === 'hockey')
 )
 
+// Tab icons for mobile menu
+function getTabIcon(tabName: string): string {
+  const icons: Record<string, string> = {
+    'Home': '🏠',
+    'Power Rankings': '📊',
+    'Matchups': '⚔️',
+    'Projections': '🎯',
+    'History': '📜',
+    'Draft': '📝',
+    'Compare': '⚖️',
+    'Tools': '🛠️'
+  }
+  return icons[tabName] || '📌'
+}
+
 // Platform name helper
 function getPlatformName(platform: string | undefined): string {
   switch (platform) {
@@ -697,6 +735,13 @@ function getPlatformName(platform: string | undefined): string {
     case 'espn': return 'ESPN'
     default: return 'Unknown'
   }
+}
+
+// Open Add League Modal
+function openAddLeagueModal() {
+  console.log('Opening add league modal')
+  showLeagueDropdown.value = false
+  showAddLeagueModal.value = true
 }
 
 // Select league AND switch sport automatically
@@ -790,6 +835,9 @@ function handleClickOutside(event: MouseEvent) {
   if (leagueDropdownRef.value && !leagueDropdownRef.value.contains(event.target as Node)) {
     showLeagueDropdown.value = false
   }
+  if (mobileMenuRef.value && !mobileMenuRef.value.contains(event.target as Node)) {
+    showMobileMenu.value = false
+  }
   // Close mobile user menu when clicking outside
   const target = event.target as HTMLElement
   if (showMobileUserMenu.value && !target.closest('[data-mobile-user-menu]')) {
@@ -833,5 +881,6 @@ watch(() => authStore.isAuthenticated, async (isAuth) => {
 // Close mobile menu on route change
 watch(() => router.currentRoute.value.path, () => {
   showMobileUserMenu.value = false
+  showMobileMenu.value = false
 })
 </script>
