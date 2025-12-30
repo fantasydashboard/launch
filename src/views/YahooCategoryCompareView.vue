@@ -339,21 +339,59 @@ async function loadInitialData() {
   
   try {
     const leagueKey = leagueStore.activeLeagueId
-    if (!leagueKey) return
+    console.log('League key:', leagueKey)
+    if (!leagueKey) {
+      console.log('No league key, returning early')
+      isInitialLoading.value = false
+      return
+    }
     
-    // Load teams
-    const standings = await yahooService.getStandings(leagueKey)
-    allTeams.value = standings.map((team: any) => ({
-      team_key: team.team_key,
-      name: team.name,
-      manager: team.managers?.[0]?.nickname || 'Unknown',
-      logo_url: team.logo_url,
-      wins: team.wins || 0,
-      losses: team.losses || 0,
-      ties: team.ties || 0,
-      rank: team.rank
-    }))
-    console.log('Loaded', allTeams.value.length, 'teams')
+    // First try to use teams from the currentLeague store (already loaded)
+    console.log('Checking currentLeague for teams...', leagueStore.currentLeague)
+    
+    if (leagueStore.currentLeague?.teams && leagueStore.currentLeague.teams.length > 0) {
+      console.log('Using teams from currentLeague store')
+      allTeams.value = leagueStore.currentLeague.teams.map((team: any) => ({
+        team_key: team.team_key,
+        name: team.name,
+        manager: team.managers?.[0]?.nickname || team.manager || 'Unknown',
+        logo_url: team.logo_url,
+        wins: parseInt(team.wins) || 0,
+        losses: parseInt(team.losses) || 0,
+        ties: parseInt(team.ties) || 0,
+        rank: team.rank
+      }))
+      console.log('Loaded', allTeams.value.length, 'teams from store:', allTeams.value.map(t => t.name))
+    } else {
+      // Fall back to API call
+      console.log('No teams in store, fetching from API...')
+      try {
+        const standings = await yahooService.getStandings(leagueKey)
+        console.log('API standings response:', standings)
+        
+        if (standings && standings.length > 0) {
+          allTeams.value = standings.map((team: any) => ({
+            team_key: team.team_key,
+            name: team.name,
+            manager: team.managers?.[0]?.nickname || team.manager || 'Unknown',
+            logo_url: team.logo_url,
+            wins: parseInt(team.wins) || 0,
+            losses: parseInt(team.losses) || 0,
+            ties: parseInt(team.ties) || 0,
+            rank: team.rank
+          }))
+          console.log('Loaded', allTeams.value.length, 'teams from API')
+        }
+      } catch (err) {
+        console.error('Error fetching standings from API:', err)
+      }
+    }
+    
+    if (allTeams.value.length === 0) {
+      console.error('No teams loaded from any source')
+      isInitialLoading.value = false
+      return
+    }
     
     // Load league settings to get number of categories
     try {
@@ -367,14 +405,20 @@ async function loadInitialData() {
     }
     
     // Load all matchups for the season
-    const matchups = await yahooService.getAllMatchups(leagueKey)
-    allMatchups.value = matchups
-    console.log('Loaded', allMatchups.value.length, 'weeks of matchups')
+    try {
+      const matchups = await yahooService.getAllMatchups(leagueKey)
+      allMatchups.value = matchups || []
+      console.log('Loaded', allMatchups.value.length, 'weeks of matchups')
+    } catch (err) {
+      console.error('Error loading matchups:', err)
+      allMatchups.value = []
+    }
     
   } catch (e) {
     console.error('Error loading initial data:', e)
   } finally {
     isInitialLoading.value = false
+    console.log('Initial loading complete. Teams:', allTeams.value.length)
   }
 }
 
@@ -663,23 +707,25 @@ watch([team1Key, team2Key], ([t1, t2]) => {
 })
 
 // Load data when league changes
-watch(() => leagueStore.activeLeagueId, async (newId) => {
-  if (newId && leagueStore.activePlatform === 'yahoo') {
-    console.log('League changed, loading initial data...')
+watch(() => leagueStore.activeLeagueId, async (newId, oldId) => {
+  // Only reload if league actually changed
+  if (newId && newId !== oldId && leagueStore.activePlatform === 'yahoo') {
+    console.log('League changed from', oldId, 'to', newId, '- loading initial data...')
     team1Key.value = ''
     team2Key.value = ''
     comparisonData.value = null
     rivalryHistory.value = []
     allTeams.value = []
     allMatchups.value = []
-    isInitialLoading.value = true
     await loadInitialData()
   }
-}, { immediate: true })
+}, { immediate: false }) // Don't run immediately, let onMounted handle initial load
 
 onMounted(async () => {
   console.log('Category Compare page mounted')
   if (leagueStore.activeLeagueId && leagueStore.activePlatform === 'yahoo') {
+    // Small delay to ensure store is ready
+    await new Promise(resolve => setTimeout(resolve, 100))
     await loadInitialData()
   }
 })
