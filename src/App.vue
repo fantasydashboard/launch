@@ -52,15 +52,15 @@
         :class="isScrolled ? '-translate-y-full' : 'translate-y-0'"
         style="background: #0a0b10;"
       >
-        <!-- Gradient overlay behind content - lowest layer -->
+        <!-- Gradient overlay behind content - for logo area only -->
         <div 
           class="absolute left-0 top-0 bottom-0 pointer-events-none"
-          style="width: 350px; background: linear-gradient(to right, #0a0b10 0%, #0a0b10 120px, transparent 350px); z-index: 1;"
+          style="width: 200px; background: linear-gradient(to right, #0a0b10 0%, #0a0b10 80px, transparent 200px); z-index: 1;"
         ></div>
         
         <div class="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div class="flex items-center justify-between h-10 sm:h-11 pl-24 sm:pl-28 lg:pl-32">
-            <!-- Title -->
+          <div class="flex items-center justify-between h-10 sm:h-11">
+            <!-- Title - aligns with page content -->
             <div class="flex items-center">
               <h1 class="text-xs sm:text-sm lg:text-base font-bold text-white tracking-wider uppercase">
                 <span class="hidden sm:inline">ULTIMATE FANTASY DASHBOARD</span>
@@ -128,19 +128,19 @@
         :class="isScrolled ? 'top-0' : 'top-10 sm:top-11'"
         :style="{ backgroundColor: sportStore.primaryColor }"
       >
-        <!-- Gradient overlay behind content - lowest layer, longer transition -->
+        <!-- Gradient overlay behind content - for logo area only -->
         <div 
           class="absolute left-0 top-0 bottom-0 pointer-events-none transition-all duration-300"
           :style="{
-            width: '350px',
-            background: `linear-gradient(to right, #0a0b10 0%, #0a0b10 ${isScrolled ? '80px' : '120px'}, transparent 350px)`,
+            width: '200px',
+            background: `linear-gradient(to right, #0a0b10 0%, #0a0b10 ${isScrolled ? '60px' : '80px'}, transparent 200px)`,
             zIndex: 1
           }"
         ></div>
         
         <div class="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div 
-            class="flex items-center justify-between transition-all duration-300 pl-24 sm:pl-28 lg:pl-32"
+            class="flex items-center justify-between transition-all duration-300"
             :class="isScrolled ? 'h-16 sm:h-18 lg:h-20' : 'h-14 sm:h-16'"
           >
             <!-- Navigation Tabs -->
@@ -546,7 +546,7 @@
       
       <!-- Sport Logo - Floating on top, shrinks on scroll, stays within header bounds -->
       <div 
-        class="fixed left-3 sm:left-4 lg:left-5 z-50 pointer-events-none transition-all duration-300"
+        class="fixed left-1 sm:left-2 lg:left-3 z-50 pointer-events-none transition-all duration-300"
         :style="{
           top: isScrolled ? '4px' : '2px'
         }"
@@ -599,15 +599,13 @@
       @switch-mode="authMode = authMode === 'login' ? 'signup' : 'login'"
     />
 
-    <!-- Add League Modal - Using Teleport to ensure it renders at body level -->
-    <Teleport to="body">
-      <AddLeagueModal 
-        v-if="showAddLeagueModal" 
-        @close="showAddLeagueModal = false"
-        @league-added="handleLeagueAdded"
-        @yahoo-league-added="handleYahooLeagueAdded"
-      />
-    </Teleport>
+    <!-- Add League Modal - Component has its own Teleport -->
+    <AddLeagueModal 
+      :isOpen="showAddLeagueModal"
+      @close="showAddLeagueModal = false"
+      @league-added="handleLeagueAdded"
+      @yahoo-league-added="handleYahooLeagueAdded"
+    />
     
     <!-- Remove League Confirmation -->
     <Teleport to="body">
