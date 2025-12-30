@@ -26,7 +26,7 @@
             <select v-model="team1Key" class="select w-full">
               <option value="">Select Team...</option>
               <option v-for="team in availableTeams1" :key="team.team_key" :value="team.team_key">
-                {{ team.name }} ({{ team.manager }})
+                {{ team.name }}
               </option>
             </select>
           </div>
@@ -37,7 +37,7 @@
             <select v-model="team2Key" class="select w-full">
               <option value="">Select Team...</option>
               <option v-for="team in availableTeams2" :key="team.team_key" :value="team.team_key">
-                {{ team.name }} ({{ team.manager }})
+                {{ team.name }}
               </option>
             </select>
           </div>
@@ -71,8 +71,7 @@
                 class="w-24 h-24 rounded-full mx-auto mb-4 border-4 border-cyan-500 object-cover" 
                 @error="handleImageError" 
               />
-              <div class="font-bold text-2xl text-dark-text mb-1">{{ team1Data?.name }}</div>
-              <div class="text-sm text-dark-textMuted mb-4">{{ team1Data?.manager }}</div>
+              <div class="font-bold text-2xl text-dark-text mb-4">{{ team1Data?.name }}</div>
               
               <div class="space-y-3 text-left">
                 <div class="flex justify-between">
@@ -156,8 +155,7 @@
                 class="w-24 h-24 rounded-full mx-auto mb-4 border-4 border-orange-500 object-cover" 
                 @error="handleImageError" 
               />
-              <div class="font-bold text-2xl text-dark-text mb-1">{{ team2Data?.name }}</div>
-              <div class="text-sm text-dark-textMuted mb-4">{{ team2Data?.manager }}</div>
+              <div class="font-bold text-2xl text-dark-text mb-4">{{ team2Data?.name }}</div>
               
               <div class="space-y-3 text-left">
                 <div class="flex justify-between">
@@ -299,7 +297,7 @@ const isInitialLoading = ref(true)
 const team1Key = ref('')
 const team2Key = ref('')
 const allTeams = ref<any[]>([])
-const allMatchups = ref<any[]>([])
+const allMatchups = ref<any[]>([]) // Flat array of matchups (like points view)
 const numCategories = ref(10) // Default, will be updated from league settings
 
 const team1Data = ref<any>(null)
@@ -334,7 +332,7 @@ function getShortName(name: string | undefined): string {
 }
 
 async function loadInitialData() {
-  console.log('Loading initial data for category compare...')
+  console.log('=== CATEGORY COMPARE: loadInitialData START ===')
   isInitialLoading.value = true
   
   try {
@@ -346,49 +344,26 @@ async function loadInitialData() {
       return
     }
     
-    // First try to use teams from the currentLeague store (already loaded)
-    console.log('Checking currentLeague for teams...', leagueStore.currentLeague)
+    // Load teams from API with full data
+    console.log('Fetching standings from API...')
+    const standings = await yahooService.getStandings(leagueKey)
+    console.log('Raw standings:', standings)
     
-    if (leagueStore.currentLeague?.teams && leagueStore.currentLeague.teams.length > 0) {
-      console.log('Using teams from currentLeague store')
-      allTeams.value = leagueStore.currentLeague.teams.map((team: any) => ({
+    if (standings && standings.length > 0) {
+      allTeams.value = standings.map((team: any) => ({
         team_key: team.team_key,
         name: team.name,
-        manager: team.managers?.[0]?.nickname || team.manager || 'Unknown',
         logo_url: team.logo_url,
         wins: parseInt(team.wins) || 0,
         losses: parseInt(team.losses) || 0,
         ties: parseInt(team.ties) || 0,
-        rank: team.rank
+        rank: parseInt(team.rank) || 0,
+        playoff_seed: team.playoff_seed,
+        clinched_playoffs: team.clinched_playoffs
       }))
-      console.log('Loaded', allTeams.value.length, 'teams from store:', allTeams.value.map(t => t.name))
+      console.log('Loaded', allTeams.value.length, 'teams:', allTeams.value.map(t => t.name))
     } else {
-      // Fall back to API call
-      console.log('No teams in store, fetching from API...')
-      try {
-        const standings = await yahooService.getStandings(leagueKey)
-        console.log('API standings response:', standings)
-        
-        if (standings && standings.length > 0) {
-          allTeams.value = standings.map((team: any) => ({
-            team_key: team.team_key,
-            name: team.name,
-            manager: team.managers?.[0]?.nickname || team.manager || 'Unknown',
-            logo_url: team.logo_url,
-            wins: parseInt(team.wins) || 0,
-            losses: parseInt(team.losses) || 0,
-            ties: parseInt(team.ties) || 0,
-            rank: team.rank
-          }))
-          console.log('Loaded', allTeams.value.length, 'teams from API')
-        }
-      } catch (err) {
-        console.error('Error fetching standings from API:', err)
-      }
-    }
-    
-    if (allTeams.value.length === 0) {
-      console.error('No teams loaded from any source')
+      console.error('No standings data from API')
       isInitialLoading.value = false
       return
     }
@@ -404,56 +379,100 @@ async function loadInitialData() {
       console.log('Could not load league settings, using default 10 categories')
     }
     
-    // Load all matchups for the season
-    try {
-      const matchups = await yahooService.getAllMatchups(leagueKey)
-      allMatchups.value = matchups || []
-      console.log('Loaded', allMatchups.value.length, 'weeks of matchups')
-    } catch (err) {
-      console.error('Error loading matchups:', err)
-      allMatchups.value = []
+    // Get current week from league info
+    const yahooLeagues = leagueStore.yahooLeagues || []
+    const leagueInfo = yahooLeagues.find((l: any) => l.league_key === leagueKey)
+    const currentWeek = leagueInfo?.current_week || 25
+    console.log('Current week:', currentWeek)
+    
+    // Load all matchups week by week (like points view does)
+    console.log('Loading matchups for weeks 1-' + currentWeek)
+    const matchupsList: any[] = []
+    
+    for (let week = 1; week <= currentWeek; week++) {
+      try {
+        // Use getCategoryMatchups to get stat_winners data
+        const weekMatchups = await yahooService.getCategoryMatchups(leagueKey, week)
+        if (weekMatchups && weekMatchups.length > 0) {
+          matchupsList.push(...weekMatchups)
+          console.log(`Week ${week}: ${weekMatchups.length} matchups`)
+        }
+      } catch (e) {
+        // Week may not have data
+        console.log(`Week ${week}: no data`)
+      }
     }
+    
+    allMatchups.value = matchupsList
+    console.log('Total matchups loaded:', allMatchups.value.length)
+    
+    // Auto-select first two teams
+    if (allTeams.value.length >= 2) {
+      team1Key.value = allTeams.value[0].team_key
+      team2Key.value = allTeams.value[1].team_key
+    }
+    
+    console.log('=== CATEGORY COMPARE: loadInitialData COMPLETE ===')
     
   } catch (e) {
     console.error('Error loading initial data:', e)
   } finally {
     isInitialLoading.value = false
-    console.log('Initial loading complete. Teams:', allTeams.value.length)
   }
 }
 
 async function loadComparison() {
-  if (!team1Key.value || !team2Key.value) return
-  
   console.log('=== loadComparison START ===')
-  console.log('Team1:', team1Key.value)
-  console.log('Team2:', team2Key.value)
+  console.log('team1Key:', team1Key.value)
+  console.log('team2Key:', team2Key.value)
+  
+  if (!team1Key.value || !team2Key.value) {
+    console.log('Missing team selection')
+    return
+  }
+  
+  if (!allTeams.value || allTeams.value.length === 0) {
+    console.log('No teams loaded yet')
+    return
+  }
   
   isLoading.value = true
   
   try {
+    // Find team data
     const t1 = allTeams.value.find(t => t.team_key === team1Key.value)
     const t2 = allTeams.value.find(t => t.team_key === team2Key.value)
     
     if (!t1 || !t2) {
       console.error('Could not find team data')
+      isLoading.value = false
       return
     }
     
     team1Data.value = t1
     team2Data.value = t2
     
-    console.log('Team1 data:', t1)
-    console.log('Team2 data:', t2)
+    console.log('Team1:', t1.name, 'rank:', t1.rank, 'playoff_seed:', t1.playoff_seed)
+    console.log('Team2:', t2.name, 'rank:', t2.rank, 'playoff_seed:', t2.playoff_seed)
     
-    // Calculate season stats for each team
-    // For category leagues: wins/losses/ties are category wins
+    // Calculate season stats
     const team1TotalGames = (t1.wins || 0) + (t1.losses || 0) + (t1.ties || 0)
     const team2TotalGames = (t2.wins || 0) + (t2.losses || 0) + (t2.ties || 0)
     
-    // Count weeks played (total category decisions / categories per week)
+    // Weeks played = total category results / categories per week
     const team1WeeksPlayed = team1TotalGames > 0 ? Math.ceil(team1TotalGames / numCategories.value) : 1
     const team2WeeksPlayed = team2TotalGames > 0 ? Math.ceil(team2TotalGames / numCategories.value) : 1
+    
+    // Championship = rank 1 (final standings)
+    const t1Champ = t1.rank === 1 ? 1 : 0
+    const t2Champ = t2.rank === 1 ? 1 : 0
+    
+    // Playoff appearance = has playoff_seed
+    const t1MadePlayoffs = t1.playoff_seed !== null && t1.playoff_seed !== undefined && t1.playoff_seed !== ''
+    const t2MadePlayoffs = t2.playoff_seed !== null && t2.playoff_seed !== undefined && t2.playoff_seed !== ''
+    
+    console.log('t1Champ:', t1Champ, 't1MadePlayoffs:', t1MadePlayoffs)
+    console.log('t2Champ:', t2Champ, 't2MadePlayoffs:', t2MadePlayoffs)
     
     const team1Stats = {
       wins: t1.wins || 0,
@@ -462,8 +481,8 @@ async function loadComparison() {
       winPct: team1TotalGames > 0 ? ((t1.wins || 0) / team1TotalGames) * 100 : 0,
       avgCatPerWeek: team1WeeksPlayed > 0 ? (t1.wins || 0) / team1WeeksPlayed : 0,
       totalCategories: t1.wins || 0,
-      championships: 0,
-      playoffAppearances: 0
+      championships: t1Champ,
+      playoffAppearances: t1MadePlayoffs ? 1 : 0
     }
     
     const team2Stats = {
@@ -473,113 +492,79 @@ async function loadComparison() {
       winPct: team2TotalGames > 0 ? ((t2.wins || 0) / team2TotalGames) * 100 : 0,
       avgCatPerWeek: team2WeeksPlayed > 0 ? (t2.wins || 0) / team2WeeksPlayed : 0,
       totalCategories: t2.wins || 0,
-      championships: 0,
-      playoffAppearances: 0
+      championships: t2Champ,
+      playoffAppearances: t2MadePlayoffs ? 1 : 0
     }
     
     console.log('team1Stats:', team1Stats)
     console.log('team2Stats:', team2Stats)
     
-    // Find head-to-head matchups
+    // Find head-to-head matchups using stat_winners
     const h2hMatchups: any[] = []
     
-    for (const week of allMatchups.value) {
-      if (!week.matchups) continue
+    console.log('Searching through', allMatchups.value.length, 'matchups for H2H')
+    
+    for (const matchup of allMatchups.value) {
+      const teams = matchup.teams || []
+      const t1Match = teams.find((t: any) => t.team_key === team1Key.value)
+      const t2Match = teams.find((t: any) => t.team_key === team2Key.value)
       
-      for (const matchup of week.matchups) {
-        if (!matchup.teams || matchup.teams.length < 2) continue
+      if (t1Match && t2Match) {
+        // Count category wins from stat_winners
+        let team1CatsWon = 0
+        let team2CatsWon = 0
+        let tiedCats = 0
         
-        const t1Match = matchup.teams.find((t: any) => t.team_key === team1Key.value)
-        const t2Match = matchup.teams.find((t: any) => t.team_key === team2Key.value)
+        const statWinners = matchup.stat_winners || []
+        console.log(`Week ${matchup.week}: Found H2H matchup with ${statWinners.length} stat winners`)
         
-        if (t1Match && t2Match) {
-          // For category leagues, we need to look at win/loss/tie counts
-          // The 'points' field might not exist, so we use win_probability or team stats
-          const t1Wins = parseInt(t1Match.team_stats?.wins) || parseInt(t1Match.wins) || 0
-          const t1Losses = parseInt(t1Match.team_stats?.losses) || parseInt(t1Match.losses) || 0
-          const t1Ties = parseInt(t1Match.team_stats?.ties) || parseInt(t1Match.ties) || 0
-          
-          const t2Wins = parseInt(t2Match.team_stats?.wins) || parseInt(t2Match.wins) || 0
-          const t2Losses = parseInt(t2Match.team_stats?.losses) || parseInt(t2Match.losses) || 0
-          const t2Ties = parseInt(t2Match.team_stats?.ties) || parseInt(t2Match.ties) || 0
-          
-          // In a H2H matchup, t1's wins should equal t2's losses
-          // But we may not have per-matchup category breakdowns, so we estimate
-          // If we have matchup-level data, use it; otherwise estimate from overall
-          let team1CatsWon = 0
-          let team2CatsWon = 0
-          let tiedCats = 0
-          
-          // Check if we have matchup-specific category data
-          if (t1Match.matchup_stats || t2Match.matchup_stats) {
-            // Use matchup-specific stats if available
-            team1CatsWon = parseInt(t1Match.matchup_stats?.wins) || 0
-            team2CatsWon = parseInt(t2Match.matchup_stats?.wins) || 0
-            tiedCats = parseInt(t1Match.matchup_stats?.ties) || 0
-          } else {
-            // For Yahoo H2H Categories, the team with higher points usually won more cats
-            // But we need the actual category breakdown - check different data sources
-            const t1Points = parseFloat(t1Match.points) || 0
-            const t2Points = parseFloat(t2Match.points) || 0
-            
-            // Yahoo sometimes stores category results differently
-            // Try to find the actual category win/loss/tie for this matchup
-            if (matchup.winner_team_key) {
-              // We know who won the matchup
-              if (matchup.winner_team_key === team1Key.value) {
-                // Team 1 won more categories
-                team1CatsWon = Math.ceil(numCategories.value / 2) + 1
-                team2CatsWon = Math.floor(numCategories.value / 2) - 1
-              } else if (matchup.winner_team_key === team2Key.value) {
-                team2CatsWon = Math.ceil(numCategories.value / 2) + 1
-                team1CatsWon = Math.floor(numCategories.value / 2) - 1
-              }
-              tiedCats = numCategories.value - team1CatsWon - team2CatsWon
-            } else if (t1Points > 0 || t2Points > 0) {
-              // Use points as proxy for categories won (not ideal but fallback)
-              const total = t1Points + t2Points
-              if (total > 0) {
-                team1CatsWon = Math.round((t1Points / total) * numCategories.value)
-                team2CatsWon = numCategories.value - team1CatsWon
-              }
-            }
+        for (const sw of statWinners) {
+          if (sw.is_tied) {
+            tiedCats++
+          } else if (sw.winner_team_key === team1Key.value) {
+            team1CatsWon++
+          } else if (sw.winner_team_key === team2Key.value) {
+            team2CatsWon++
           }
-          
-          console.log('Found H2H matchup week', week.week, ':', team1CatsWon, 'vs', team2CatsWon)
-          h2hMatchups.push({
-            week: week.week,
-            team1Cats: team1CatsWon,
-            team2Cats: team2CatsWon,
-            tiedCats: tiedCats,
-            margin: Math.abs(team1CatsWon - team2CatsWon),
-            isPlayoff: matchup.is_playoffs || week.is_playoffs
-          })
         }
+        
+        console.log(`Week ${matchup.week}: ${t1Match.name} ${team1CatsWon} - ${team2CatsWon} ${t2Match.name} (${tiedCats} tied)`)
+        
+        h2hMatchups.push({
+          week: matchup.week,
+          team1Cats: team1CatsWon,
+          team2Cats: team2CatsWon,
+          tiedCats: tiedCats,
+          margin: Math.abs(team1CatsWon - team2CatsWon),
+          isPlayoff: matchup.is_playoffs
+        })
       }
     }
     
     console.log('Found', h2hMatchups.length, 'H2H matchups')
     
     // Calculate H2H stats
-    let team1Wins = 0
-    let team2Wins = 0
+    let team1MatchupWins = 0
+    let team2MatchupWins = 0
     let ties = 0
     let totalMargin = 0
     let team1TotalCats = 0
     let team2TotalCats = 0
     
     for (const m of h2hMatchups) {
-      if (m.team1Cats > m.team2Cats) team1Wins++
-      else if (m.team2Cats > m.team1Cats) team2Wins++
+      // Matchup win = won more categories
+      if (m.team1Cats > m.team2Cats) team1MatchupWins++
+      else if (m.team2Cats > m.team1Cats) team2MatchupWins++
       else ties++
+      
       totalMargin += m.margin
       team1TotalCats += m.team1Cats
       team2TotalCats += m.team2Cats
     }
     
     const h2hStats = {
-      team1Wins,
-      team2Wins,
+      team1Wins: team1MatchupWins,
+      team2Wins: team2MatchupWins,
       ties,
       totalGames: h2hMatchups.length,
       avgMargin: h2hMatchups.length > 0 ? totalMargin / h2hMatchups.length : 0,
@@ -595,8 +580,6 @@ async function loadComparison() {
       team2: team2Stats,
       h2h: h2hStats
     }
-    
-    console.log('comparisonData set:', comparisonData.value)
     
     // Store rivalry history (sorted by week descending for display)
     rivalryHistory.value = h2hMatchups.sort((a, b) => b.week - a.week)
@@ -708,9 +691,8 @@ watch([team1Key, team2Key], ([t1, t2]) => {
 
 // Load data when league changes
 watch(() => leagueStore.activeLeagueId, async (newId, oldId) => {
-  // Only reload if league actually changed
   if (newId && newId !== oldId && leagueStore.activePlatform === 'yahoo') {
-    console.log('League changed from', oldId, 'to', newId, '- loading initial data...')
+    console.log('League changed from', oldId, 'to', newId)
     team1Key.value = ''
     team2Key.value = ''
     comparisonData.value = null
@@ -719,13 +701,11 @@ watch(() => leagueStore.activeLeagueId, async (newId, oldId) => {
     allMatchups.value = []
     await loadInitialData()
   }
-}, { immediate: false }) // Don't run immediately, let onMounted handle initial load
+}, { immediate: false })
 
 onMounted(async () => {
   console.log('Category Compare page mounted')
   if (leagueStore.activeLeagueId && leagueStore.activePlatform === 'yahoo') {
-    // Small delay to ensure store is ready
-    await new Promise(resolve => setTimeout(resolve, 100))
     await loadInitialData()
   }
 })
