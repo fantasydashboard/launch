@@ -64,9 +64,35 @@
                   <option v-for="pos in availablePositions" :key="pos" :value="pos">{{ pos }}</option>
                 </select>
               </div>
+              <div class="flex items-center gap-2">
+                <label class="text-sm text-dark-textMuted">Highlight Category:</label>
+                <select v-model="highlightCategory" class="select text-sm py-1.5">
+                  <option value="">All Categories</option>
+                  <option v-for="cat in leagueCategories" :key="cat" :value="cat">{{ cat }}</option>
+                </select>
+              </div>
             </div>
             <div class="text-sm text-dark-textMuted">
               {{ filteredPicks.length }} picks shown
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Category Quick Stats -->
+      <div class="card" v-if="highlightCategory">
+        <div class="card-body py-3">
+          <div class="flex items-center justify-between flex-wrap gap-4">
+            <div class="flex items-center gap-2">
+              <span class="text-lg">🎯</span>
+              <span class="font-bold text-dark-text">{{ highlightCategory }} Leaders:</span>
+            </div>
+            <div class="flex items-center gap-4">
+              <div v-for="(leader, idx) in getCategoryTopPicks(highlightCategory, 5)" :key="leader.pick" class="flex items-center gap-2">
+                <span class="text-xs font-bold" :class="idx === 0 ? 'text-primary' : 'text-dark-textMuted'">#{{ idx + 1 }}</span>
+                <span class="text-sm text-dark-text">{{ leader.player_name }}</span>
+                <span class="text-xs font-bold text-primary">{{ formatStatValue(leader.stats?.[getStatIdForCategory(highlightCategory)], highlightCategory) }}</span>
+              </div>
             </div>
           </div>
         </div>
@@ -137,7 +163,7 @@
                 v-if="getPickForRound(team.team_key, round)"
                 @click="selectPick(getPickForRound(team.team_key, round))"
                 class="bg-dark-card rounded-lg p-2 cursor-pointer hover:ring-2 hover:ring-primary transition-all h-full"
-                :class="getPickClass(getPickForRound(team.team_key, round))"
+                :class="getPickClassWithHighlight(getPickForRound(team.team_key, round))"
               >
                 <div class="text-xs font-medium text-dark-text truncate">
                   {{ getPickForRound(team.team_key, round)?.player_name || 'Unknown' }}
@@ -153,23 +179,35 @@
                     #{{ getPickForRound(team.team_key, round)?.pick }}
                   </span>
                 </div>
-                <!-- Best Categories for this player -->
-                <div class="mt-1.5 flex flex-wrap gap-1">
-                  <span 
-                    v-for="cat in getPickForRound(team.team_key, round)?.bestCategories?.slice(0, 3)" 
-                    :key="cat.category"
-                    class="text-[10px] px-1.5 py-0.5 rounded font-bold"
-                    :class="getCategoryColorClass(cat.category)"
-                    :title="`${cat.category}: ${formatStatValue(cat.value, cat.category)} (${cat.percentile}%)`"
-                  >
-                    {{ cat.category }}
-                  </span>
-                  <span 
-                    v-if="!getPickForRound(team.team_key, round)?.bestCategories?.length"
-                    class="text-[10px] text-dark-textMuted italic"
-                  >
-                    No stats
-                  </span>
+                <!-- Show highlighted category stat OR best categories -->
+                <div class="mt-1.5">
+                  <!-- When a category is highlighted, show that stat prominently -->
+                  <div v-if="highlightCategory" class="flex items-center justify-between">
+                    <span class="text-[10px] px-1.5 py-0.5 rounded font-bold" :class="getCategoryColorClass(highlightCategory)">
+                      {{ highlightCategory }}
+                    </span>
+                    <span class="text-sm font-bold" :class="getHighlightedStatClass(getPickForRound(team.team_key, round))">
+                      {{ formatStatValue(getPickForRound(team.team_key, round)?.stats?.[getStatIdForCategory(highlightCategory)] || 0, highlightCategory) }}
+                    </span>
+                  </div>
+                  <!-- Otherwise show best categories -->
+                  <div v-else class="flex flex-wrap gap-1">
+                    <span 
+                      v-for="cat in getPickForRound(team.team_key, round)?.bestCategories?.slice(0, 3)" 
+                      :key="cat.category"
+                      class="text-[10px] px-1.5 py-0.5 rounded font-bold"
+                      :class="getCategoryColorClass(cat.category)"
+                      :title="`${cat.category}: ${formatStatValue(cat.value, cat.category)} (${cat.percentile}%)`"
+                    >
+                      {{ cat.category }}
+                    </span>
+                    <span 
+                      v-if="!getPickForRound(team.team_key, round)?.bestCategories?.length"
+                      class="text-[10px] text-dark-textMuted italic"
+                    >
+                      No stats
+                    </span>
+                  </div>
                 </div>
               </div>
               <div v-else class="bg-dark-border/20 rounded-lg p-2 h-full flex items-center justify-center">
@@ -225,6 +263,71 @@
               </div>
               <div v-else class="text-center text-sm text-dark-textMuted italic py-4">
                 No data
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Category Value by Round -->
+      <div class="card mt-6">
+        <div class="card-header">
+          <div class="flex items-center gap-2">
+            <span class="text-2xl">📈</span>
+            <h2 class="card-title">Category Value by Draft Round</h2>
+          </div>
+          <p class="card-subtitle mt-1">Where was value found in each category?</p>
+        </div>
+        <div class="card-body">
+          <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <!-- Hitting Categories -->
+            <div>
+              <div class="text-sm font-bold text-blue-400 mb-3 flex items-center gap-2">
+                <span>⚾</span> Hitting Categories
+              </div>
+              <div class="space-y-3">
+                <div v-for="cat in categoryValueByRound.hitting" :key="cat.category" class="bg-dark-border/20 rounded-lg p-3">
+                  <div class="flex items-center justify-between mb-2">
+                    <span class="font-bold text-dark-text">{{ cat.category }}</span>
+                    <span class="text-xs text-dark-textMuted">Best value: R{{ cat.bestValueRound }}</span>
+                  </div>
+                  <div class="flex gap-1">
+                    <div 
+                      v-for="round in cat.rounds" 
+                      :key="round.round"
+                      class="flex-1 h-8 rounded flex items-center justify-center text-xs font-bold cursor-pointer hover:ring-1 hover:ring-primary"
+                      :class="getRoundValueClass(round.avgPercentile)"
+                      :title="`R${round.round}: ${round.avgPercentile.toFixed(0)}% avg percentile (${round.count} players)`"
+                    >
+                      {{ round.round }}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <!-- Pitching Categories -->
+            <div>
+              <div class="text-sm font-bold text-purple-400 mb-3 flex items-center gap-2">
+                <span>🎯</span> Pitching Categories
+              </div>
+              <div class="space-y-3">
+                <div v-for="cat in categoryValueByRound.pitching" :key="cat.category" class="bg-dark-border/20 rounded-lg p-3">
+                  <div class="flex items-center justify-between mb-2">
+                    <span class="font-bold text-dark-text">{{ cat.category }}</span>
+                    <span class="text-xs text-dark-textMuted">Best value: R{{ cat.bestValueRound }}</span>
+                  </div>
+                  <div class="flex gap-1">
+                    <div 
+                      v-for="round in cat.rounds" 
+                      :key="round.round"
+                      class="flex-1 h-8 rounded flex items-center justify-center text-xs font-bold cursor-pointer hover:ring-1 hover:ring-primary"
+                      :class="getRoundValueClass(round.avgPercentile)"
+                      :title="`R${round.round}: ${round.avgPercentile.toFixed(0)}% avg percentile (${round.count} players)`"
+                    >
+                      {{ round.round }}
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
@@ -517,11 +620,63 @@
         </div>
       </div>
 
-      <!-- Category-Specific Leaders -->
+      <!-- Category-Specific Steals -->
+      <div class="card mt-6">
+        <div class="card-header">
+          <div class="flex items-center justify-between">
+            <div class="flex items-center gap-2">
+              <span class="text-2xl">🎯</span>
+              <h2 class="card-title">Category-Specific Steals</h2>
+            </div>
+            <div class="flex items-center gap-2">
+              <label class="text-sm text-dark-textMuted">Category:</label>
+              <select v-model="selectedStealCategory" class="select text-sm py-1.5">
+                <option v-for="cat in leagueCategories" :key="cat" :value="cat">{{ cat }}</option>
+              </select>
+            </div>
+          </div>
+          <p class="card-subtitle mt-1">Best value picks for {{ selectedStealCategory || 'each category' }}</p>
+        </div>
+        <div class="card-body">
+          <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div 
+              v-for="(steal, idx) in categorySteals" 
+              :key="steal.pick"
+              class="bg-dark-border/20 rounded-xl p-4 cursor-pointer hover:ring-2 hover:ring-primary transition-all"
+              @click="selectPick(steal)"
+            >
+              <div class="flex items-center gap-3">
+                <div class="text-lg font-bold w-6" :class="idx < 3 ? 'text-green-400' : 'text-dark-textMuted'">
+                  {{ idx + 1 }}
+                </div>
+                <div class="w-10 h-10 rounded-full bg-dark-border overflow-hidden flex-shrink-0">
+                  <img :src="steal.headshot || defaultAvatar" class="w-full h-full object-cover" @error="handleImageError" />
+                </div>
+                <div class="flex-1 min-w-0">
+                  <div class="font-semibold text-dark-text">{{ steal.player_name }}</div>
+                  <div class="text-xs text-dark-textMuted">
+                    R{{ steal.round }} • {{ steal.team_name }}
+                  </div>
+                </div>
+                <div class="text-right">
+                  <div class="text-xl font-black text-primary">
+                    {{ formatStatValue(steal.stats?.[getStatIdForCategory(selectedStealCategory)], selectedStealCategory) }}
+                  </div>
+                  <div class="text-xs font-bold" :class="steal.categoryValueScore >= 0 ? 'text-green-400' : 'text-red-400'">
+                    {{ steal.categoryValueScore >= 0 ? '+' : '' }}{{ steal.categoryValueScore?.toFixed(0) }} value
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Late Round Gems by Category -->
       <div class="card mt-6">
         <div class="card-header">
           <div class="flex items-center gap-2">
-            <span class="text-2xl">🎯</span>
+            <span class="text-2xl">💎</span>
             <h2 class="card-title">Late Round Gems by Category</h2>
           </div>
           <p class="card-subtitle mt-1">Best performers drafted after round 10</p>
@@ -662,10 +817,12 @@ const activeTab = ref('board')
 const selectedSeason = ref('2024')
 const availableSeasons = ref(['2024', '2023', '2022'])
 const positionFilter = ref('All')
+const highlightCategory = ref('')
 const selectedTeamFilter = ref('')
 const impactSort = ref('pick')
 const selectedBalanceTeam = ref<string | null>(null)
 const selectedPick = ref<any>(null)
+const selectedStealCategory = ref('HR')
 
 // Data
 const draftPicks = ref<any[]>([])
@@ -796,6 +953,62 @@ const sortedImpactPicks = computed(() => {
   }
   
   return picks
+})
+
+// Category Value by Round - shows where value was found for each category
+const categoryValueByRound = computed(() => {
+  const maxRounds = Math.min(totalRounds.value, 15) // Limit to first 15 rounds
+  
+  const calculateForCategory = (cat: string) => {
+    const statId = getStatIdForCategory(cat)
+    const isLowerBetter = ['ERA', 'WHIP', 'L', 'BS'].includes(cat)
+    
+    // Get all values for percentile calculation
+    const allValues = draftPicks.value
+      .map(p => p.stats?.[statId] || 0)
+      .filter(v => v > 0)
+      .sort((a, b) => isLowerBetter ? a - b : b - a)
+    
+    const getPercentileForValue = (value: number) => {
+      if (value === 0 || allValues.length === 0) return 0
+      const rank = allValues.findIndex(v => isLowerBetter ? v >= value : v <= value)
+      if (rank === -1) return isLowerBetter ? 100 : 0
+      return Math.round((1 - rank / allValues.length) * 100)
+    }
+    
+    // Calculate average percentile per round
+    const rounds: Array<{round: number, avgPercentile: number, count: number}> = []
+    let bestValueRound = 1
+    let bestAvgPercentile = 0
+    
+    for (let r = 1; r <= maxRounds; r++) {
+      const roundPicks = draftPicks.value.filter(p => p.round === r)
+      const percentiles = roundPicks
+        .map(p => getPercentileForValue(p.stats?.[statId] || 0))
+        .filter(p => p > 0)
+      
+      const avgPercentile = percentiles.length > 0 
+        ? percentiles.reduce((a, b) => a + b, 0) / percentiles.length 
+        : 0
+      
+      rounds.push({ round: r, avgPercentile, count: percentiles.length })
+      
+      if (avgPercentile > bestAvgPercentile) {
+        bestAvgPercentile = avgPercentile
+        bestValueRound = r
+      }
+    }
+    
+    return { category: cat, rounds, bestValueRound }
+  }
+  
+  const hittingCats = leagueCategories.value.filter(c => isHittingCategory(c))
+  const pitchingCats = leagueCategories.value.filter(c => !isHittingCategory(c))
+  
+  return {
+    hitting: hittingCats.map(calculateForCategory),
+    pitching: pitchingCats.map(calculateForCategory)
+  }
 })
 
 // Team Balance Data
@@ -949,6 +1162,38 @@ const lateRoundGems = computed(() => {
   })
 })
 
+// Category-specific steals - best value for selected category
+const categorySteals = computed(() => {
+  const cat = selectedStealCategory.value
+  if (!cat) return []
+  
+  const statId = getStatIdForCategory(cat)
+  const isLowerBetter = ['ERA', 'WHIP', 'L', 'BS'].includes(cat)
+  
+  // Get all values for this category to calculate expected rank
+  const allValues = draftPicks.value
+    .map(p => ({ pick: p.pick, value: p.stats?.[statId] || 0 }))
+    .filter(p => p.value > 0)
+    .sort((a, b) => isLowerBetter ? a.value - b.value : b.value - a.value)
+  
+  // Calculate value score for each pick in this category
+  return draftPicks.value
+    .filter(p => p.stats?.[statId] > 0)
+    .map(p => {
+      const value = p.stats?.[statId] || 0
+      const actualRank = allValues.findIndex(v => v.pick === p.pick) + 1
+      const expectedRank = p.pick // Draft position is expected rank
+      const categoryValueScore = expectedRank - actualRank // Positive = outperformed
+      
+      return {
+        ...p,
+        categoryValueScore
+      }
+    })
+    .sort((a, b) => b.categoryValueScore - a.categoryValueScore)
+    .slice(0, 12)
+})
+
 // Helper functions
 function getPickForRound(teamKey: string, round: number) {
   return draftPicks.value.find(p => p.team_key === teamKey && p.round === round)
@@ -961,6 +1206,55 @@ function getPickClass(pick: any) {
   if (percentile >= 75) return 'bg-green-500/20 border-l-2 border-green-500'
   if (percentile <= 25) return 'bg-red-500/20 border-l-2 border-red-500'
   return ''
+}
+
+// Get pick class with category highlight support
+function getPickClassWithHighlight(pick: any) {
+  if (!pick) return ''
+  
+  // If a category is highlighted, color based on that category's percentile
+  if (highlightCategory.value) {
+    const catPerf = pick.bestCategories?.find((c: any) => c.category === highlightCategory.value)
+    const percentile = catPerf?.percentile || 0
+    if (percentile >= 75) return 'bg-green-500/20 border-l-2 border-green-500'
+    if (percentile >= 50) return 'bg-yellow-500/20 border-l-2 border-yellow-500'
+    if (percentile >= 25) return 'bg-orange-500/20 border-l-2 border-orange-500'
+    if (percentile > 0) return 'bg-red-500/20 border-l-2 border-red-500'
+    return 'opacity-40' // No contribution to this category
+  }
+  
+  // Default behavior
+  const percentile = pick.categoryPercentile || 50
+  if (percentile >= 75) return 'bg-green-500/20 border-l-2 border-green-500'
+  if (percentile <= 25) return 'bg-red-500/20 border-l-2 border-red-500'
+  return ''
+}
+
+// Get highlighted stat class based on percentile
+function getHighlightedStatClass(pick: any) {
+  if (!pick || !highlightCategory.value) return 'text-dark-textMuted'
+  const catPerf = pick.bestCategories?.find((c: any) => c.category === highlightCategory.value)
+  const percentile = catPerf?.percentile || 0
+  if (percentile >= 75) return 'text-green-400'
+  if (percentile >= 50) return 'text-yellow-400'
+  if (percentile >= 25) return 'text-orange-400'
+  if (percentile > 0) return 'text-red-400'
+  return 'text-dark-textMuted'
+}
+
+// Get top picks for a specific category
+function getCategoryTopPicks(cat: string, limit: number = 5) {
+  const statId = getStatIdForCategory(cat)
+  const isLowerBetter = ['ERA', 'WHIP', 'L', 'BS'].includes(cat)
+  
+  return [...draftPicks.value]
+    .filter(p => p.stats?.[statId] > 0)
+    .sort((a, b) => {
+      const aVal = a.stats?.[statId] || (isLowerBetter ? Infinity : 0)
+      const bVal = b.stats?.[statId] || (isLowerBetter ? Infinity : 0)
+      return isLowerBetter ? aVal - bVal : bVal - aVal
+    })
+    .slice(0, limit)
 }
 
 function getPositionClass(position: string) {
@@ -1001,6 +1295,16 @@ function getCategoryStrengthClass(percentile: number) {
   if (percentile >= 50) return 'bg-yellow-500/30 text-yellow-400'
   if (percentile >= 25) return 'bg-orange-500/30 text-orange-400'
   return 'bg-red-500/30 text-red-400'
+}
+
+// Get class for round value heatmap
+function getRoundValueClass(avgPercentile: number) {
+  if (avgPercentile >= 70) return 'bg-green-500 text-white'
+  if (avgPercentile >= 55) return 'bg-green-500/60 text-white'
+  if (avgPercentile >= 45) return 'bg-yellow-500/60 text-white'
+  if (avgPercentile >= 30) return 'bg-orange-500/60 text-white'
+  if (avgPercentile > 0) return 'bg-red-500/40 text-white'
+  return 'bg-dark-border/30 text-dark-textMuted'
 }
 
 function getStatCellClass(value: number, cat: string) {
@@ -1099,9 +1403,15 @@ async function loadDraftData() {
         // Default categories if none found
         leagueCategories.value = ['R', 'HR', 'RBI', 'SB', 'AVG', 'W', 'SV', 'K', 'ERA', 'WHIP']
       }
+      
+      // Set default steal category to first hitting category
+      if (leagueCategories.value.length > 0) {
+        selectedStealCategory.value = leagueCategories.value[0]
+      }
     } catch (e) {
       console.log('Could not load league settings, using defaults')
       leagueCategories.value = ['R', 'HR', 'RBI', 'SB', 'AVG', 'W', 'SV', 'K', 'ERA', 'WHIP']
+      selectedStealCategory.value = 'HR'
     }
     
     // Get player details and stats
