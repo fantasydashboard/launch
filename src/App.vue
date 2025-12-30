@@ -55,11 +55,11 @@
         <!-- Gradient overlay behind content - lowest layer -->
         <div 
           class="absolute left-0 top-0 bottom-0 pointer-events-none"
-          style="width: 220px; background: linear-gradient(to right, #11131a 0%, #11131a 140px, transparent 220px); z-index: 1;"
+          style="width: 280px; background: linear-gradient(to right, #11131a 0%, #11131a 200px, transparent 280px); z-index: 1;"
         ></div>
         
         <div class="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div class="flex items-center justify-between h-10 sm:h-11 pl-28 sm:pl-36 lg:pl-44">
+          <div class="flex items-center justify-between h-10 sm:h-11 pl-20 sm:pl-24 lg:pl-28">
             <!-- Title -->
             <div class="flex items-center">
               <h1 class="text-xs sm:text-sm lg:text-base font-bold text-white tracking-wider uppercase">
@@ -132,16 +132,16 @@
         <div 
           class="absolute left-0 top-0 bottom-0 pointer-events-none transition-all duration-300"
           :style="{
-            width: '220px',
-            background: `linear-gradient(to right, #11131a 0%, #11131a ${isScrolled ? '100px' : '140px'}, transparent 220px)`,
+            width: '280px',
+            background: `linear-gradient(to right, #11131a 0%, #11131a ${isScrolled ? '160px' : '200px'}, transparent 280px)`,
             zIndex: 1
           }"
         ></div>
         
         <div class="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div 
-            class="flex items-center justify-between transition-all duration-300 pl-28 sm:pl-36 lg:pl-44"
-            :class="isScrolled ? 'h-14 sm:h-16' : 'h-12 sm:h-14'"
+            class="flex items-center justify-between transition-all duration-300 pl-20 sm:pl-24 lg:pl-28"
+            :class="isScrolled ? 'h-16 sm:h-18 lg:h-20' : 'h-14 sm:h-16'"
           >
             <!-- Navigation Tabs -->
             <div class="flex-1 overflow-hidden">
@@ -475,23 +475,21 @@
       
       <!-- Sport Logo - Floating on top, shrinks on scroll -->
       <div 
-        class="fixed z-50 pointer-events-none transition-all duration-300"
-        :class="isScrolled ? 'left-3 sm:left-4 lg:left-5' : 'left-4 sm:left-5 lg:left-6'"
+        class="fixed left-4 sm:left-5 lg:left-6 z-50 pointer-events-none transition-all duration-300"
         :style="{
-          top: isScrolled ? '50%' : 'calc((40px + 56px) / 2)',
-          transform: isScrolled ? 'translateY(-50%)' : 'translateY(-50%)'
+          top: isScrolled ? '8px' : '4px'
         }"
       >
         <img 
           :src="sportStore.sportLogo" 
           :alt="sportStore.sportLabel"
           class="object-contain drop-shadow-lg transition-all duration-300"
-          :class="isScrolled ? 'w-12 h-12 sm:w-14 sm:h-14 lg:w-16 lg:h-16' : 'w-24 h-24 sm:w-28 sm:h-28 lg:w-36 lg:h-36'"
+          :class="isScrolled ? 'w-12 h-12 sm:w-14 sm:h-14 lg:w-16 lg:h-16' : 'w-16 h-16 sm:w-20 sm:h-20 lg:w-24 lg:h-24'"
         />
       </div>
       
       <!-- Spacer for fixed header -->
-      <div class="h-[88px] sm:h-[100px]"></div>
+      <div class="h-[96px] sm:h-[108px]"></div>
       
       <!-- Content fade gradient -->
       <div 
