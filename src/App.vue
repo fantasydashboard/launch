@@ -59,14 +59,14 @@
         ></div>
         
         <div class="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div class="flex items-center justify-between h-10 sm:h-11">
-            <!-- Left side: Title + League Dropdown -->
-            <div class="flex items-center gap-3 sm:gap-4 ml-20 sm:ml-24 lg:ml-28">
+          <div class="flex items-center justify-end h-10 sm:h-11">
+            <!-- Right side: Title + League Dropdown + User Menu -->
+            <div class="flex items-center gap-3 sm:gap-4">
               <!-- Title -->
-              <h1 class="hidden sm:block text-sm lg:text-base font-bold text-white tracking-wider uppercase whitespace-nowrap">
+              <h1 class="hidden md:block text-sm lg:text-base font-bold text-white tracking-wider uppercase whitespace-nowrap">
                 ULTIMATE FANTASY DASHBOARD
               </h1>
-              <h1 class="sm:hidden text-[10px] font-bold text-white tracking-wider uppercase">
+              <h1 class="hidden sm:block md:hidden text-xs font-bold text-white tracking-wider uppercase">
                 UFD
               </h1>
               
@@ -284,10 +284,8 @@
                   </div>
                 </div>
               </div>
-            </div>
 
-            <!-- Right side: User Menu only -->
-            <div class="flex items-center gap-2 sm:gap-3">
+              <!-- User Menu -->
               <div class="hidden sm:flex items-center gap-2">
                 <div class="w-6 h-6 rounded-full bg-white/20 flex items-center justify-center">
                   <span class="text-[10px] font-bold text-white">{{ userInitials }}</span>
@@ -329,7 +327,7 @@
             <!-- Mobile/Tablet: Menu Button (shows below lg breakpoint) -->
             <button
               @click="showMobileMenu = true"
-              class="lg:hidden flex items-center gap-2 px-4 py-2 bg-black/20 rounded-full text-white font-semibold text-sm"
+              class="lg:hidden flex items-center gap-2 px-4 py-2 bg-black/40 rounded-full text-white font-semibold text-sm"
             >
               <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
@@ -346,7 +344,7 @@
                 <button @click="openAddLeagueModal" class="text-xs text-white/80 hover:text-white underline ml-1">Connect →</button>
               </div>
               
-              <div class="inline-flex items-center gap-1 bg-black/20 rounded-full p-1">
+              <div class="inline-flex items-center gap-1 bg-black/40 rounded-full p-1">
                 <router-link
                   v-for="tab in tabs"
                   :key="tab.path"
