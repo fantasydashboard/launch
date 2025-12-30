@@ -1611,11 +1611,32 @@ async function loadHistoricalData() {
             })
           }
           
-          // Try to load matchups for category data
+          // Try to load matchups for category data - need to load each week
           try {
             loadingMessage.value = `Loading ${year} matchups...`
-            const matchups = await yahooService.getMatchups(yearLeagueKey)
-            if (matchups) data[year].matchups = matchups
+            const allMatchups: any[] = []
+            
+            // Get total weeks from standings or default to 25 for baseball
+            const totalWeeks = 25 // Baseball regular season typically has ~25 weeks
+            
+            // Load matchups for each week (this takes a while)
+            for (let week = 1; week <= totalWeeks; week++) {
+              try {
+                loadingMessage.value = `Loading ${year} week ${week}...`
+                const weekMatchups = await yahooService.getCategoryMatchups(yearLeagueKey, week)
+                if (weekMatchups && weekMatchups.length > 0) {
+                  allMatchups.push(...weekMatchups)
+                }
+              } catch (weekError) {
+                // Week might not exist (playoffs, etc) - continue
+                console.log(`Week ${week} not available for ${year}`)
+              }
+            }
+            
+            console.log(`Loaded ${allMatchups.length} total matchups for ${year}`)
+            if (allMatchups.length > 0) {
+              data[year].matchups = allMatchups
+            }
           } catch (e) {
             console.log(`Could not load matchups for ${year}`)
           }
