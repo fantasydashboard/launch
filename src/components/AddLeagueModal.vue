@@ -12,7 +12,7 @@
       <div class="relative bg-dark-card rounded-2xl shadow-2xl w-full max-w-md overflow-hidden border border-dark-border/50">
         <!-- Header -->
         <div class="p-6 text-center border-b border-dark-border/30">
-          <div class="text-4xl mb-2">{{ sportStore.sportIcon }}</div>
+          <div class="text-4xl mb-2">🏆</div>
           <h2 class="text-2xl font-bold text-dark-text">Add a League</h2>
           <p class="text-sm text-dark-textMuted mt-1">
             Connect your fantasy league to get started
@@ -101,30 +101,26 @@
             <input
               v-model="username"
               type="text"
-              class="w-full px-4 py-3 rounded-xl bg-dark-bg border border-dark-border/50 text-dark-text placeholder-dark-textMuted focus:border-primary focus:outline-none"
               placeholder="Enter your Sleeper username"
+              class="w-full px-4 py-3 rounded-xl bg-dark-bg border border-dark-border focus:border-primary focus:ring-1 focus:ring-primary transition-colors text-dark-text"
               @keyup.enter="searchSleeperLeagues"
             />
-            <p class="text-xs text-dark-textMuted mt-2">
-              This is your username on the Sleeper app
-            </p>
             
-            <!-- Error Message -->
-            <div v-if="errorMessage" class="mt-3 p-3 rounded-lg bg-red-500/10 border border-red-500/30">
-              <p class="text-sm text-red-400">{{ errorMessage }}</p>
+            <div v-if="errorMessage" class="text-red-400 text-sm mt-2">
+              {{ errorMessage }}
             </div>
             
             <button
               @click="searchSleeperLeagues"
-              :disabled="loading || !username.trim()"
-              class="w-full mt-4 px-4 py-3 rounded-xl bg-primary text-gray-900 font-semibold hover:bg-primary/90 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+              :disabled="!username.trim() || loading"
+              class="w-full mt-4 px-4 py-3 rounded-xl bg-primary text-gray-900 font-semibold hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2"
             >
-              <span v-if="loading" class="animate-spin rounded-full h-5 w-5 border-b-2 border-gray-900"></span>
-              <span v-else>Find My Leagues</span>
+              <span v-if="loading">Searching...</span>
+              <span v-else>Find Leagues</span>
             </button>
           </div>
           
-          <!-- Step 1: Yahoo - Not Connected -->
+          <!-- Step 1: Yahoo - Not connected -->
           <div v-if="step === 1 && selectedPlatform === 'yahoo' && !platformsStore.isYahooConnected">
             <div class="flex items-center gap-2 mb-4">
               <button @click="step = 0" class="p-1 hover:bg-dark-border/50 rounded-lg transition-colors">
@@ -138,15 +134,10 @@
               <span class="text-sm text-dark-textMuted">Connect Yahoo</span>
             </div>
             
-            <div class="text-center py-6">
-              <div class="w-16 h-16 rounded-2xl bg-purple-600 flex items-center justify-center mx-auto mb-4">
-                <span class="text-3xl font-bold text-white">Y!</span>
-              </div>
-              <h3 class="text-lg font-semibold text-dark-text mb-2">Sign in with Yahoo</h3>
-              <p class="text-sm text-dark-textMuted mb-6">
-                You'll be redirected to Yahoo to sign in securely. We'll only access your fantasy leagues.
+            <div class="text-center py-4">
+              <p class="text-sm text-dark-textMuted mb-4">
+                Sign in with Yahoo to view and connect your fantasy leagues
               </p>
-              
               <button
                 @click="connectYahoo"
                 class="w-full px-4 py-3 rounded-xl bg-purple-600 text-white font-semibold hover:bg-purple-500 transition-colors flex items-center justify-center gap-2"
@@ -159,7 +150,7 @@
             </div>
           </div>
           
-          <!-- Step 1: Yahoo - Connected, show leagues -->
+          <!-- Step 1: Yahoo - Connected, show leagues grouped by sport -->
           <div v-if="step === 1 && selectedPlatform === 'yahoo' && platformsStore.isYahooConnected">
             <div class="flex items-center justify-between mb-4">
               <div class="flex items-center gap-2">
@@ -205,32 +196,131 @@
               <p class="text-sm text-dark-textMuted">Loading your Yahoo leagues...</p>
             </div>
             
-            <!-- Yahoo Leagues List (grouped by league name) -->
-            <div v-else class="space-y-2 max-h-64 overflow-y-auto">
-              <button
-                v-for="league in groupedYahooLeagues"
-                :key="league.league_key"
-                @click="selectYahooLeague(league)"
-                class="w-full flex items-center gap-3 p-3 rounded-xl bg-dark-bg/50 border border-dark-border/50 hover:border-purple-500/50 hover:bg-dark-border/30 transition-all text-left"
-              >
-                <div class="w-10 h-10 rounded-full bg-purple-500/20 flex items-center justify-center flex-shrink-0">
-                  <span class="text-sm font-bold text-purple-400">{{ league.name.substring(0, 2).toUpperCase() }}</span>
+            <!-- Yahoo Leagues List (grouped by sport) -->
+            <div v-else class="space-y-3 max-h-80 overflow-y-auto">
+              <!-- Football Leagues -->
+              <div v-if="footballYahooLeagues.length > 0">
+                <div class="text-xs text-dark-textMuted uppercase tracking-wider px-2 py-1 flex items-center gap-2 sticky top-0 bg-dark-card">
+                  <span class="text-base">🏈</span>
+                  <span>Football</span>
+                  <span class="text-green-400 ml-auto">{{ footballYahooLeagues.length }}</span>
                 </div>
-                <div class="flex-1 min-w-0">
-                  <div class="font-semibold text-dark-text truncate">{{ league.name }}</div>
-                  <div class="text-xs text-dark-textMuted">
-                    {{ league.num_teams }} teams • 
-                    <span v-if="league.seasons_count > 1">{{ league.seasons_count }} seasons ({{ league.oldest_season }}-{{ league.season }})</span>
-                    <span v-else>{{ league.season }} Season</span>
+                <button
+                  v-for="league in footballYahooLeagues"
+                  :key="league.league_key"
+                  @click="selectYahooLeague(league, 'football')"
+                  class="w-full flex items-center gap-3 p-3 rounded-xl bg-dark-bg/50 border border-dark-border/50 hover:border-purple-500/50 hover:bg-dark-border/30 transition-all text-left"
+                >
+                  <div class="w-10 h-10 rounded-full bg-green-500/20 flex items-center justify-center flex-shrink-0">
+                    <span class="text-sm font-bold text-green-400">{{ league.name.substring(0, 2).toUpperCase() }}</span>
                   </div>
-                </div>
-                <svg class="w-5 h-5 text-dark-textMuted" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
-                </svg>
-              </button>
+                  <div class="flex-1 min-w-0">
+                    <div class="font-semibold text-dark-text truncate">{{ league.name }}</div>
+                    <div class="text-xs text-dark-textMuted">
+                      {{ league.num_teams }} teams • 
+                      <span v-if="league.seasons_count > 1">{{ league.seasons_count }} seasons</span>
+                      <span v-else>{{ league.season }}</span>
+                    </div>
+                  </div>
+                  <svg class="w-5 h-5 text-dark-textMuted" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+                  </svg>
+                </button>
+              </div>
               
-              <div v-if="groupedYahooLeagues.length === 0 && !loadingYahooLeagues" class="text-center py-8 text-dark-textMuted">
-                <p>No {{ sportStore.sportLabel }} leagues found</p>
+              <!-- Baseball Leagues -->
+              <div v-if="baseballYahooLeagues.length > 0" :class="footballYahooLeagues.length > 0 ? 'border-t border-dark-border/50 pt-3' : ''">
+                <div class="text-xs text-dark-textMuted uppercase tracking-wider px-2 py-1 flex items-center gap-2 sticky top-0 bg-dark-card">
+                  <span class="text-base">⚾</span>
+                  <span>Baseball</span>
+                  <span class="text-blue-400 ml-auto">{{ baseballYahooLeagues.length }}</span>
+                </div>
+                <button
+                  v-for="league in baseballYahooLeagues"
+                  :key="league.league_key"
+                  @click="selectYahooLeague(league, 'baseball')"
+                  class="w-full flex items-center gap-3 p-3 rounded-xl bg-dark-bg/50 border border-dark-border/50 hover:border-purple-500/50 hover:bg-dark-border/30 transition-all text-left"
+                >
+                  <div class="w-10 h-10 rounded-full bg-blue-500/20 flex items-center justify-center flex-shrink-0">
+                    <span class="text-sm font-bold text-blue-400">{{ league.name.substring(0, 2).toUpperCase() }}</span>
+                  </div>
+                  <div class="flex-1 min-w-0">
+                    <div class="font-semibold text-dark-text truncate">{{ league.name }}</div>
+                    <div class="text-xs text-dark-textMuted">
+                      {{ league.num_teams }} teams • 
+                      <span v-if="league.seasons_count > 1">{{ league.seasons_count }} seasons</span>
+                      <span v-else>{{ league.season }}</span>
+                    </div>
+                  </div>
+                  <svg class="w-5 h-5 text-dark-textMuted" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+                  </svg>
+                </button>
+              </div>
+              
+              <!-- Basketball Leagues -->
+              <div v-if="basketballYahooLeagues.length > 0" :class="(footballYahooLeagues.length > 0 || baseballYahooLeagues.length > 0) ? 'border-t border-dark-border/50 pt-3' : ''">
+                <div class="text-xs text-dark-textMuted uppercase tracking-wider px-2 py-1 flex items-center gap-2 sticky top-0 bg-dark-card">
+                  <span class="text-base">🏀</span>
+                  <span>Basketball</span>
+                  <span class="text-orange-400 ml-auto">{{ basketballYahooLeagues.length }}</span>
+                </div>
+                <button
+                  v-for="league in basketballYahooLeagues"
+                  :key="league.league_key"
+                  @click="selectYahooLeague(league, 'basketball')"
+                  class="w-full flex items-center gap-3 p-3 rounded-xl bg-dark-bg/50 border border-dark-border/50 hover:border-purple-500/50 hover:bg-dark-border/30 transition-all text-left"
+                >
+                  <div class="w-10 h-10 rounded-full bg-orange-500/20 flex items-center justify-center flex-shrink-0">
+                    <span class="text-sm font-bold text-orange-400">{{ league.name.substring(0, 2).toUpperCase() }}</span>
+                  </div>
+                  <div class="flex-1 min-w-0">
+                    <div class="font-semibold text-dark-text truncate">{{ league.name }}</div>
+                    <div class="text-xs text-dark-textMuted">
+                      {{ league.num_teams }} teams • 
+                      <span v-if="league.seasons_count > 1">{{ league.seasons_count }} seasons</span>
+                      <span v-else>{{ league.season }}</span>
+                    </div>
+                  </div>
+                  <svg class="w-5 h-5 text-dark-textMuted" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+                  </svg>
+                </button>
+              </div>
+              
+              <!-- Hockey Leagues -->
+              <div v-if="hockeyYahooLeagues.length > 0" :class="(footballYahooLeagues.length > 0 || baseballYahooLeagues.length > 0 || basketballYahooLeagues.length > 0) ? 'border-t border-dark-border/50 pt-3' : ''">
+                <div class="text-xs text-dark-textMuted uppercase tracking-wider px-2 py-1 flex items-center gap-2 sticky top-0 bg-dark-card">
+                  <span class="text-base">🏒</span>
+                  <span>Hockey</span>
+                  <span class="text-blue-500 ml-auto">{{ hockeyYahooLeagues.length }}</span>
+                </div>
+                <button
+                  v-for="league in hockeyYahooLeagues"
+                  :key="league.league_key"
+                  @click="selectYahooLeague(league, 'hockey')"
+                  class="w-full flex items-center gap-3 p-3 rounded-xl bg-dark-bg/50 border border-dark-border/50 hover:border-purple-500/50 hover:bg-dark-border/30 transition-all text-left"
+                >
+                  <div class="w-10 h-10 rounded-full bg-blue-600/20 flex items-center justify-center flex-shrink-0">
+                    <span class="text-sm font-bold text-blue-500">{{ league.name.substring(0, 2).toUpperCase() }}</span>
+                  </div>
+                  <div class="flex-1 min-w-0">
+                    <div class="font-semibold text-dark-text truncate">{{ league.name }}</div>
+                    <div class="text-xs text-dark-textMuted">
+                      {{ league.num_teams }} teams • 
+                      <span v-if="league.seasons_count > 1">{{ league.seasons_count }} seasons</span>
+                      <span v-else>{{ league.season }}</span>
+                    </div>
+                  </div>
+                  <svg class="w-5 h-5 text-dark-textMuted" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+                  </svg>
+                </button>
+              </div>
+              
+              <!-- No leagues found -->
+              <div v-if="totalYahooLeagues === 0 && !loadingYahooLeagues" class="text-center py-8 text-dark-textMuted">
+                <p>No Yahoo leagues found</p>
                 <p class="text-sm mt-1">Try syncing or check your Yahoo account</p>
                 <button
                   @click="syncYahooLeagues"
@@ -250,7 +340,9 @@
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
                 </svg>
               </button>
-              <span class="text-sm text-dark-textMuted">Select a league for <span class="text-primary font-medium">{{ username }}</span></span>
+              <span class="text-sm text-dark-textMuted">
+                Found {{ availableLeagues.length }} league{{ availableLeagues.length !== 1 ? 's' : '' }} for <span class="text-primary">{{ username }}</span>
+              </span>
             </div>
             
             <div class="space-y-2 max-h-64 overflow-y-auto">
@@ -273,47 +365,43 @@
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
                 </svg>
               </button>
-              
-              <div v-if="availableLeagues.length === 0" class="text-center py-8 text-dark-textMuted">
-                <p>No leagues found for this season</p>
-                <p class="text-sm mt-1">Try a different username</p>
-              </div>
             </div>
           </div>
         </div>
 
-        <!-- Close Button -->
-        <button
-          @click="$emit('close')"
-          class="absolute top-4 right-4 p-2 rounded-lg hover:bg-dark-border/50 transition-colors"
-        >
-          <svg class="w-5 h-5 text-dark-textMuted" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-          </svg>
-        </button>
+        <!-- Footer -->
+        <div class="px-6 py-4 border-t border-dark-border/30 flex justify-end">
+          <button
+            @click="$emit('close')"
+            class="px-4 py-2 text-sm font-medium text-dark-textMuted hover:text-dark-text transition-colors"
+          >
+            Cancel
+          </button>
+        </div>
       </div>
     </div>
   </Teleport>
 </template>
 
 <script setup lang="ts">
-import { ref, watch, onMounted, computed } from 'vue'
+import { ref, watch, computed } from 'vue'
 import { useLeagueStore } from '@/stores/league'
 import { usePlatformsStore } from '@/stores/platforms'
-import { useSportStore } from '@/stores/sport'
+import { useSportStore, type Sport } from '@/stores/sport'
 import { yahooService } from '@/services/yahoo'
 import { useAuthStore } from '@/stores/auth'
 import type { SleeperLeague } from '@/types/sleeper'
 
 interface GroupedYahooLeague {
   name: string
-  league_key: string  // Most recent season's key
+  league_key: string
   league_id: string
   num_teams: number
-  season: string  // Most recent season
+  season: string
   oldest_season: string
   seasons_count: number
   all_seasons: Array<{ league_key: string; season: string }>
+  sport?: Sport
 }
 
 const props = defineProps<{
@@ -323,7 +411,7 @@ const props = defineProps<{
 const emit = defineEmits<{
   (e: 'close'): void
   (e: 'league-added', league: SleeperLeague): void
-  (e: 'yahoo-league-added', league: GroupedYahooLeague): void
+  (e: 'yahoo-league-added', league: GroupedYahooLeague & { sport: Sport }): void
 }>()
 
 const leagueStore = useLeagueStore()
@@ -338,15 +426,21 @@ const loading = ref(false)
 const loadingYahooLeagues = ref(false)
 const errorMessage = ref('')
 const availableLeagues = ref<SleeperLeague[]>([])
-const yahooLeagues = ref<any[]>([])
 const showYahooAccountMenu = ref(false)
 
-// Group Yahoo leagues by name, showing only unique leagues with their history
-const groupedYahooLeagues = computed<GroupedYahooLeague[]>(() => {
+// Store leagues by sport
+const yahooLeaguesBySport = ref<Record<Sport, any[]>>({
+  football: [],
+  baseball: [],
+  basketball: [],
+  hockey: []
+})
+
+// Group leagues by name for each sport
+function groupLeagues(leagues: any[]): GroupedYahooLeague[] {
   const leaguesByName = new Map<string, any[]>()
   
-  // Group all leagues by name
-  for (const league of yahooLeagues.value) {
+  for (const league of leagues) {
     const name = league.name
     if (!leaguesByName.has(name)) {
       leaguesByName.set(name, [])
@@ -354,11 +448,9 @@ const groupedYahooLeagues = computed<GroupedYahooLeague[]>(() => {
     leaguesByName.get(name)!.push(league)
   }
   
-  // Create grouped league objects
   const grouped: GroupedYahooLeague[] = []
   
   for (const [name, seasons] of leaguesByName) {
-    // Sort by season descending (newest first)
     seasons.sort((a, b) => parseInt(b.season) - parseInt(a.season))
     
     const mostRecent = seasons[0]
@@ -379,11 +471,22 @@ const groupedYahooLeagues = computed<GroupedYahooLeague[]>(() => {
     })
   }
   
-  // Sort by most recent season
   grouped.sort((a, b) => parseInt(b.season) - parseInt(a.season))
-  
   return grouped
-})
+}
+
+// Computed grouped leagues by sport
+const footballYahooLeagues = computed(() => groupLeagues(yahooLeaguesBySport.value.football))
+const baseballYahooLeagues = computed(() => groupLeagues(yahooLeaguesBySport.value.baseball))
+const basketballYahooLeagues = computed(() => groupLeagues(yahooLeaguesBySport.value.basketball))
+const hockeyYahooLeagues = computed(() => groupLeagues(yahooLeaguesBySport.value.hockey))
+
+const totalYahooLeagues = computed(() => 
+  footballYahooLeagues.value.length + 
+  baseballYahooLeagues.value.length + 
+  basketballYahooLeagues.value.length + 
+  hockeyYahooLeagues.value.length
+)
 
 // Reset when modal opens
 watch(() => props.isOpen, async (isOpen) => {
@@ -393,7 +496,12 @@ watch(() => props.isOpen, async (isOpen) => {
     username.value = ''
     errorMessage.value = ''
     availableLeagues.value = []
-    yahooLeagues.value = []
+    yahooLeaguesBySport.value = {
+      football: [],
+      baseball: [],
+      basketball: [],
+      hockey: []
+    }
     showYahooAccountMenu.value = false
     
     // Fetch platforms status
@@ -408,7 +516,7 @@ function selectPlatform(platform: 'sleeper' | 'yahoo') {
   step.value = 1
   
   if (platform === 'yahoo' && platformsStore.isYahooConnected) {
-    loadYahooLeagues()
+    loadAllYahooLeagues()
   }
 }
 
@@ -419,21 +527,42 @@ async function searchSleeperLeagues() {
   errorMessage.value = ''
   
   try {
-    const leagues = await leagueStore.fetchUserLeagues(username.value)
-    
-    // Filter out leagues that are already saved
-    const savedIds = new Set(leagueStore.savedLeagues.map(l => l.league_id))
-    availableLeagues.value = leagues.filter(l => !savedIds.has(l.league_id))
-    
-    if (availableLeagues.value.length === 0 && leagues.length > 0) {
-      errorMessage.value = 'All your leagues are already added!'
-    } else if (leagues.length === 0) {
-      errorMessage.value = 'No leagues found for this username'
-    } else {
-      step.value = 2
+    const response = await fetch(`https://api.sleeper.app/v1/user/${username.value}`)
+    if (!response.ok) {
+      errorMessage.value = 'User not found'
+      return
     }
+    
+    const user = await response.json()
+    if (!user?.user_id) {
+      errorMessage.value = 'User not found'
+      return
+    }
+    
+    // Save username for later
+    leagueStore.setCurrentUsername(username.value)
+    
+    // Get leagues for current NFL season
+    const leaguesResponse = await fetch(
+      `https://api.sleeper.app/v1/user/${user.user_id}/leagues/nfl/2024`
+    )
+    
+    if (!leaguesResponse.ok) {
+      errorMessage.value = 'Failed to fetch leagues'
+      return
+    }
+    
+    availableLeagues.value = await leaguesResponse.json()
+    
+    if (availableLeagues.value.length === 0) {
+      errorMessage.value = 'No leagues found for this user in the 2024 season'
+      return
+    }
+    
+    step.value = 2
   } catch (err) {
-    errorMessage.value = 'Could not find user. Check the username and try again.'
+    console.error('Error searching leagues:', err)
+    errorMessage.value = 'An error occurred. Please try again.'
   } finally {
     loading.value = false
   }
@@ -444,35 +573,45 @@ function selectSleeperLeague(league: SleeperLeague) {
 }
 
 function connectYahoo() {
-  // Close modal and redirect to Yahoo OAuth
   emit('close')
   platformsStore.connectYahoo()
 }
 
 async function switchYahooAccount() {
-  // Disconnect current Yahoo account first
   await platformsStore.disconnectPlatform('yahoo')
-  // Then redirect to Yahoo OAuth to connect new account
   emit('close')
   platformsStore.connectYahoo()
 }
 
-async function loadYahooLeagues() {
+async function loadAllYahooLeagues() {
   if (!authStore.user?.id) return
   
   loadingYahooLeagues.value = true
   
   try {
-    // Initialize Yahoo service
     const initialized = await yahooService.initialize(authStore.user.id)
     if (!initialized) {
       console.error('Failed to initialize Yahoo service')
       return
     }
     
-    // Fetch leagues for current sport
-    const sport = sportStore.activeSport
-    yahooLeagues.value = await yahooService.getLeagues(sport)
+    // Load leagues for all sports in parallel
+    const sports: Sport[] = ['football', 'baseball', 'basketball', 'hockey']
+    const results = await Promise.allSettled(
+      sports.map(sport => yahooService.getLeagues(sport))
+    )
+    
+    // Process results
+    sports.forEach((sport, index) => {
+      const result = results[index]
+      if (result.status === 'fulfilled') {
+        yahooLeaguesBySport.value[sport] = result.value
+        console.log(`Loaded ${result.value.length} ${sport} leagues`)
+      } else {
+        console.error(`Failed to load ${sport} leagues:`, result.reason)
+        yahooLeaguesBySport.value[sport] = []
+      }
+    })
   } catch (err) {
     console.error('Error loading Yahoo leagues:', err)
   } finally {
@@ -483,14 +622,18 @@ async function loadYahooLeagues() {
 async function syncYahooLeagues() {
   loadingYahooLeagues.value = true
   try {
-    await platformsStore.syncYahooLeagues(sportStore.activeSport)
-    await loadYahooLeagues()
+    // Sync all sports
+    const sports: Sport[] = ['football', 'baseball', 'basketball', 'hockey']
+    await Promise.allSettled(
+      sports.map(sport => platformsStore.syncYahooLeagues(sport))
+    )
+    await loadAllYahooLeagues()
   } finally {
     loadingYahooLeagues.value = false
   }
 }
 
-function selectYahooLeague(league: any) {
-  emit('yahoo-league-added', league)
+function selectYahooLeague(league: GroupedYahooLeague, sport: Sport) {
+  emit('yahoo-league-added', { ...league, sport })
 }
 </script>

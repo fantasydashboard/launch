@@ -548,14 +548,14 @@
       <div 
         class="fixed left-1 sm:left-2 lg:left-3 z-50 pointer-events-none transition-all duration-300"
         :style="{
-          top: isScrolled ? '4px' : '2px'
+          top: isScrolled ? '2px' : '2px'
         }"
       >
         <img 
           :src="sportStore.sportLogo" 
           :alt="sportStore.sportLabel"
           class="object-contain drop-shadow-lg transition-all duration-300"
-          :class="isScrolled ? 'w-14 h-14 sm:w-16 sm:h-16 lg:w-18 lg:h-18' : 'w-20 h-20 sm:w-24 sm:h-24 lg:w-[104px] lg:h-[104px]'"
+          :class="isScrolled ? 'w-[60px] h-[60px] sm:w-[68px] sm:h-[68px] lg:w-[76px] lg:h-[76px]' : 'w-20 h-20 sm:w-24 sm:h-24 lg:w-[104px] lg:h-[104px]'"
         />
       </div>
       
@@ -805,14 +805,23 @@ async function handleYahooLeagueAdded(league: any) {
   }
   
   try {
-    // Save the Yahoo league with current sport
-    await leagueStore.saveYahooLeague(league, authStore.user.id, sportStore.activeSport)
+    // Get sport from the league object (passed from modal)
+    const leagueSport = league.sport || sportStore.activeSport
+    
+    // Save the Yahoo league with its sport
+    await leagueStore.saveYahooLeague(league, authStore.user.id, leagueSport)
+    
+    // Switch to the league's sport
+    if (leagueSport !== sportStore.activeSport) {
+      sportStore.setSport(leagueSport)
+      leagueStore.setActiveSport(leagueSport)
+    }
     
     // Set it as active
     leagueStore.disableDemoMode()
     await leagueStore.setActiveLeague(league.league_key)
     
-    console.log('Yahoo league added and activated:', league.name)
+    console.log('Yahoo league added and activated:', league.name, 'sport:', leagueSport)
   } catch (err) {
     console.error('Failed to add Yahoo league:', err)
   }
