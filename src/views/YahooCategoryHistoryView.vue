@@ -803,28 +803,33 @@ const careerStats = computed((): CareerStat[] => {
     for (const matchup of matchups) {
       if (!matchup.teams || matchup.teams.length < 2) continue
       
+      // stat_winners is on the matchup level, not team level
+      const statWinners = matchup.stat_winners || []
+      
       for (const team of matchup.teams) {
         const teamKey = team.team_key
         if (!statsMap[teamKey]) continue
         
         const stat = statsMap[teamKey]
         
-        // Category wins/losses from matchup
-        const catWins = team.stat_winners?.filter((w: any) => w.is_tied === '0' && w.winner_team_key === teamKey).length || 0
-        const catLosses = team.stat_winners?.filter((w: any) => w.is_tied === '0' && w.winner_team_key !== teamKey).length || 0
+        // Category wins/losses from matchup - is_tied is a boolean now
+        const catWins = statWinners.filter((w: any) => !w.is_tied && w.winner_team_key === teamKey).length || 0
+        const catLosses = statWinners.filter((w: any) => !w.is_tied && w.winner_team_key && w.winner_team_key !== teamKey).length || 0
         
         stat.total_cat_wins += catWins
         stat.total_cat_losses += catLosses
         
         // Track category-specific records and hitting/pitching splits
-        for (const catResult of team.stat_winners || []) {
+        for (const catResult of statWinners) {
           const catId = catResult.stat_id
           const catName = getCategoryDisplayName(catId)
           
           if (!stat.category_records[catId]) {
             stat.category_records[catId] = { wins: 0, losses: 0 }
           }
-          if (catResult.is_tied === '0') {
+          
+          // is_tied is a boolean (false = not tied, true = tied)
+          if (!catResult.is_tied) {
             if (catResult.winner_team_key === teamKey) {
               stat.category_records[catId].wins++
               // Track hitting vs pitching
@@ -833,7 +838,7 @@ const careerStats = computed((): CareerStat[] => {
               } else {
                 stat.pitching_cat_wins++
               }
-            } else {
+            } else if (catResult.winner_team_key) {
               stat.category_records[catId].losses++
             }
           }
@@ -944,10 +949,11 @@ const seasonRecords = computed(() => {
       
       const team1 = matchup.teams[0]
       const team2 = matchup.teams[1]
+      const statWinners = matchup.stat_winners || []
       
-      // Calculate category differential for this matchup
-      const t1CatWins = team1.stat_winners?.filter((w: any) => w.winner_team_key === team1.team_key && w.is_tied === '0').length || 0
-      const t2CatWins = team2.stat_winners?.filter((w: any) => w.winner_team_key === team2.team_key && w.is_tied === '0').length || 0
+      // Calculate category differential for this matchup - use matchup.stat_winners
+      const t1CatWins = statWinners.filter((w: any) => w.winner_team_key === team1.team_key && !w.is_tied).length || 0
+      const t2CatWins = statWinners.filter((w: any) => w.winner_team_key === team2.team_key && !w.is_tied).length || 0
       const diff = Math.abs(t1CatWins - t2CatWins)
       
       const team1Name = allTeams.value[team1.team_key]?.name || team1.name || 'Team 1'
@@ -974,10 +980,11 @@ const seasonRecords = computed(() => {
     const teamCatWins: Record<string, number> = {}
     for (const matchup of matchups) {
       if (!matchup.teams || matchup.teams.length < 2) continue
+      const statWinners = matchup.stat_winners || []
       for (const team of matchup.teams) {
         const teamKey = team.team_key
         if (!teamKey) continue
-        const catWins = team.stat_winners?.filter((w: any) => w.winner_team_key === teamKey && w.is_tied === '0').length || 0
+        const catWins = statWinners.filter((w: any) => w.winner_team_key === teamKey && !w.is_tied).length || 0
         teamCatWins[teamKey] = (teamCatWins[teamKey] || 0) + catWins
       }
     }
@@ -1031,6 +1038,7 @@ const seasonCategoryData = computed(() => {
     
     for (const matchup of matchups) {
       if (!matchup.teams || matchup.teams.length < 2) continue
+      const statWinners = matchup.stat_winners || []
       
       for (const team of matchup.teams) {
         const teamKey = team.team_key
@@ -1039,11 +1047,11 @@ const seasonCategoryData = computed(() => {
         if (!teamCatWins[teamKey]) teamCatWins[teamKey] = {}
         if (!teamTotalCatWins[teamKey]) teamTotalCatWins[teamKey] = 0
         
-        for (const catResult of team.stat_winners || []) {
+        for (const catResult of statWinners) {
           const catId = catResult.stat_id
           const catName = getCategoryDisplayName(catId)
           
-          if (catResult.is_tied === '0' && catResult.winner_team_key === teamKey) {
+          if (!catResult.is_tied && catResult.winner_team_key === teamKey) {
             if (!teamCatWins[teamKey][catName]) teamCatWins[teamKey][catName] = 0
             teamCatWins[teamKey][catName]++
             teamTotalCatWins[teamKey]++
@@ -1505,6 +1513,7 @@ function buildH2HRecords() {
       const team2 = matchup.teams[1]
       const team1Key = team1.team_key
       const team2Key = team2.team_key
+      const statWinners = matchup.stat_winners || []
       
       if (!team1Key || !team2Key) continue
       
@@ -1514,10 +1523,10 @@ function buildH2HRecords() {
       if (!records[team1Key][team2Key]) records[team1Key][team2Key] = { wins: 0, losses: 0, ties: 0, catWins: 0, catLosses: 0 }
       if (!records[team2Key][team1Key]) records[team2Key][team1Key] = { wins: 0, losses: 0, ties: 0, catWins: 0, catLosses: 0 }
       
-      // Calculate category wins for each team
-      const t1CatWins = team1.stat_winners?.filter((w: any) => w.winner_team_key === team1Key && w.is_tied === '0').length || 0
-      const t2CatWins = team2.stat_winners?.filter((w: any) => w.winner_team_key === team2Key && w.is_tied === '0').length || 0
-      const ties = team1.stat_winners?.filter((w: any) => w.is_tied === '1').length || 0
+      // Calculate category wins for each team - use matchup.stat_winners
+      const t1CatWins = statWinners.filter((w: any) => w.winner_team_key === team1Key && !w.is_tied).length || 0
+      const t2CatWins = statWinners.filter((w: any) => w.winner_team_key === team2Key && !w.is_tied).length || 0
+      const ties = statWinners.filter((w: any) => w.is_tied).length || 0
       
       // Determine matchup winner
       if (t1CatWins > t2CatWins) {
