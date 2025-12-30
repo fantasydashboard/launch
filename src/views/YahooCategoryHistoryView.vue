@@ -744,6 +744,252 @@
         </div>
       </div>
 
+      <!-- Season Awards -->
+      <div class="card">
+        <div class="card-header">
+          <div class="flex items-center justify-between flex-wrap gap-4">
+            <div class="flex items-center gap-2">
+              <span class="text-2xl">🗓️</span>
+              <h2 class="card-title">Season Awards</h2>
+            </div>
+            <!-- Season Dropdown -->
+            <div class="flex items-center gap-2">
+              <label class="text-sm text-dark-textMuted">Season:</label>
+              <select v-model="selectedAwardsSeason" 
+                      class="bg-dark-elevated border border-dark-border rounded-lg px-3 py-2 text-dark-text focus:outline-none focus:ring-2 focus:ring-primary">
+                <option v-for="year in availableSeasons" :key="year" :value="year">{{ year }}</option>
+              </select>
+            </div>
+          </div>
+          <p class="card-subtitle mt-2">Category leaders for {{ selectedAwardsSeason }} season • Click to expand</p>
+        </div>
+        <div class="card-body">
+          <!-- Season Hall of Fame -->
+          <div class="mb-8">
+            <h3 class="text-xl font-bold text-dark-text mb-4 flex items-center gap-2">
+              <span>🏅</span>
+              <span>{{ selectedAwardsSeason }} Hall of Fame</span>
+            </h3>
+            
+            <!-- Hitting Category Leaders -->
+            <div class="mb-6">
+              <h4 class="text-sm font-semibold text-dark-textMuted uppercase tracking-wider mb-3">👑 Hitting Category Leaders</h4>
+              <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+                <div v-for="award in seasonHallOfFameHitting" :key="award.category" 
+                     class="cursor-pointer"
+                     @click="toggleSeasonAwardCard(`season-fame-hitting-${award.category}`)">
+                  <div class="bg-gradient-to-br from-blue-500/10 to-blue-600/5 rounded-xl p-4 border border-blue-500/20 hover:border-blue-500/40 transition-all">
+                    <div class="text-center mb-2">
+                      <span class="px-3 py-1 rounded-full text-xs font-bold bg-blue-500/30 text-blue-400">{{ award.category }}</span>
+                    </div>
+                    <div v-if="award.winner" class="text-center">
+                      <div class="w-10 h-10 rounded-full overflow-hidden bg-dark-border mx-auto mb-2 ring-2 ring-blue-500/50">
+                        <img :src="award.winner.logo_url || defaultAvatar" class="w-full h-full object-cover" @error="handleImageError" />
+                      </div>
+                      <div class="font-semibold text-dark-text text-sm truncate">{{ award.winner.team_name }}</div>
+                      <div class="text-2xl font-black text-blue-400">{{ award.winner.value }}</div>
+                      <div class="text-xs text-dark-textMuted">category wins</div>
+                      <div class="text-xs text-blue-400/70 mt-1">Click for rankings →</div>
+                    </div>
+                    <div v-else class="text-center text-sm text-dark-textMuted italic py-4">No data</div>
+                  </div>
+                  
+                  <!-- Expanded Rankings -->
+                  <transition name="expand">
+                    <div v-if="expandedSeasonAwardCard === `season-fame-hitting-${award.category}`" 
+                         class="mt-2 bg-dark-elevated rounded-xl border border-dark-border p-4 max-h-80 overflow-y-auto">
+                      <div class="text-sm font-semibold text-dark-textMuted mb-3 uppercase tracking-wider">{{ award.category }} - {{ selectedAwardsSeason }} Rankings</div>
+                      <div class="space-y-2">
+                        <div v-for="(team, idx) in getSeasonCategoryRankings(award.category, 'best')" :key="`${team.team_name}`"
+                             class="flex items-center gap-3 p-2 rounded-lg"
+                             :class="idx === 0 ? 'bg-blue-500/20' : 'hover:bg-dark-border/30'">
+                          <div class="w-6 text-center font-bold" :class="idx === 0 ? 'text-blue-400' : 'text-dark-textMuted'">
+                            {{ idx + 1 }}
+                          </div>
+                          <div class="w-8 h-8 rounded-full overflow-hidden bg-dark-border flex-shrink-0">
+                            <img :src="team.logo_url || defaultAvatar" class="w-full h-full object-cover" @error="handleImageError" />
+                          </div>
+                          <div class="flex-1 min-w-0">
+                            <div class="font-semibold text-dark-text truncate">{{ team.team_name }}</div>
+                          </div>
+                          <div class="font-bold" :class="idx === 0 ? 'text-blue-400' : 'text-dark-text'">
+                            {{ team.value }} wins
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </transition>
+                </div>
+              </div>
+            </div>
+            
+            <!-- Pitching Category Leaders -->
+            <div class="mb-6">
+              <h4 class="text-sm font-semibold text-dark-textMuted uppercase tracking-wider mb-3">👑 Pitching Category Leaders</h4>
+              <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+                <div v-for="award in seasonHallOfFamePitching" :key="award.category"
+                     class="cursor-pointer"
+                     @click="toggleSeasonAwardCard(`season-fame-pitching-${award.category}`)">
+                  <div class="bg-gradient-to-br from-purple-500/10 to-purple-600/5 rounded-xl p-4 border border-purple-500/20 hover:border-purple-500/40 transition-all">
+                    <div class="text-center mb-2">
+                      <span class="px-3 py-1 rounded-full text-xs font-bold bg-purple-500/30 text-purple-400">{{ award.category }}</span>
+                    </div>
+                    <div v-if="award.winner" class="text-center">
+                      <div class="w-10 h-10 rounded-full overflow-hidden bg-dark-border mx-auto mb-2 ring-2 ring-purple-500/50">
+                        <img :src="award.winner.logo_url || defaultAvatar" class="w-full h-full object-cover" @error="handleImageError" />
+                      </div>
+                      <div class="font-semibold text-dark-text text-sm truncate">{{ award.winner.team_name }}</div>
+                      <div class="text-2xl font-black text-purple-400">{{ award.winner.value }}</div>
+                      <div class="text-xs text-dark-textMuted">category wins</div>
+                      <div class="text-xs text-purple-400/70 mt-1">Click for rankings →</div>
+                    </div>
+                    <div v-else class="text-center text-sm text-dark-textMuted italic py-4">No data</div>
+                  </div>
+                  
+                  <!-- Expanded Rankings -->
+                  <transition name="expand">
+                    <div v-if="expandedSeasonAwardCard === `season-fame-pitching-${award.category}`" 
+                         class="mt-2 bg-dark-elevated rounded-xl border border-dark-border p-4 max-h-80 overflow-y-auto">
+                      <div class="text-sm font-semibold text-dark-textMuted mb-3 uppercase tracking-wider">{{ award.category }} - {{ selectedAwardsSeason }} Rankings</div>
+                      <div class="space-y-2">
+                        <div v-for="(team, idx) in getSeasonCategoryRankings(award.category, 'best')" :key="`${team.team_name}`"
+                             class="flex items-center gap-3 p-2 rounded-lg"
+                             :class="idx === 0 ? 'bg-purple-500/20' : 'hover:bg-dark-border/30'">
+                          <div class="w-6 text-center font-bold" :class="idx === 0 ? 'text-purple-400' : 'text-dark-textMuted'">
+                            {{ idx + 1 }}
+                          </div>
+                          <div class="w-8 h-8 rounded-full overflow-hidden bg-dark-border flex-shrink-0">
+                            <img :src="team.logo_url || defaultAvatar" class="w-full h-full object-cover" @error="handleImageError" />
+                          </div>
+                          <div class="flex-1 min-w-0">
+                            <div class="font-semibold text-dark-text truncate">{{ team.team_name }}</div>
+                          </div>
+                          <div class="font-bold" :class="idx === 0 ? 'text-purple-400' : 'text-dark-text'">
+                            {{ team.value }} wins
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </transition>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Season Hall of Shame -->
+          <div>
+            <h3 class="text-xl font-bold text-dark-text mb-4 flex items-center gap-2">
+              <span>💩</span>
+              <span>{{ selectedAwardsSeason }} Hall of Shame</span>
+            </h3>
+            
+            <!-- Hitting Category Struggles -->
+            <div class="mb-6">
+              <h4 class="text-sm font-semibold text-dark-textMuted uppercase tracking-wider mb-3">💀 Hitting Category Struggles</h4>
+              <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+                <div v-for="award in seasonHallOfShameHitting" :key="award.category"
+                     class="cursor-pointer"
+                     @click="toggleSeasonAwardCard(`season-shame-hitting-${award.category}`)">
+                  <div class="bg-gradient-to-br from-gray-500/10 to-gray-600/5 rounded-xl p-4 border border-gray-500/20 hover:border-gray-500/40 transition-all">
+                    <div class="text-center mb-2">
+                      <span class="px-3 py-1 rounded-full text-xs font-bold bg-gray-500/30 text-gray-400">{{ award.category }}</span>
+                    </div>
+                    <div v-if="award.winner" class="text-center">
+                      <div class="w-10 h-10 rounded-full overflow-hidden bg-dark-border mx-auto mb-2 ring-2 ring-gray-500/50">
+                        <img :src="award.winner.logo_url || defaultAvatar" class="w-full h-full object-cover" @error="handleImageError" />
+                      </div>
+                      <div class="font-semibold text-dark-text text-sm truncate">{{ award.winner.team_name }}</div>
+                      <div class="text-2xl font-black text-gray-400">{{ award.winner.value }}</div>
+                      <div class="text-xs text-dark-textMuted">category wins</div>
+                      <div class="text-xs text-gray-400/70 mt-1">Click for rankings →</div>
+                    </div>
+                    <div v-else class="text-center text-sm text-dark-textMuted italic py-4">No data</div>
+                  </div>
+                  
+                  <!-- Expanded Rankings -->
+                  <transition name="expand">
+                    <div v-if="expandedSeasonAwardCard === `season-shame-hitting-${award.category}`" 
+                         class="mt-2 bg-dark-elevated rounded-xl border border-dark-border p-4 max-h-80 overflow-y-auto">
+                      <div class="text-sm font-semibold text-dark-textMuted mb-3 uppercase tracking-wider">{{ award.category }} - {{ selectedAwardsSeason }} Rankings (Worst)</div>
+                      <div class="space-y-2">
+                        <div v-for="(team, idx) in getSeasonCategoryRankings(award.category, 'worst')" :key="`${team.team_name}`"
+                             class="flex items-center gap-3 p-2 rounded-lg"
+                             :class="idx === 0 ? 'bg-red-500/20' : 'hover:bg-dark-border/30'">
+                          <div class="w-6 text-center font-bold" :class="idx === 0 ? 'text-red-400' : 'text-dark-textMuted'">
+                            {{ idx + 1 }}
+                          </div>
+                          <div class="w-8 h-8 rounded-full overflow-hidden bg-dark-border flex-shrink-0">
+                            <img :src="team.logo_url || defaultAvatar" class="w-full h-full object-cover" @error="handleImageError" />
+                          </div>
+                          <div class="flex-1 min-w-0">
+                            <div class="font-semibold text-dark-text truncate">{{ team.team_name }}</div>
+                          </div>
+                          <div class="font-bold" :class="idx === 0 ? 'text-red-400' : 'text-dark-text'">
+                            {{ team.value }} wins
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </transition>
+                </div>
+              </div>
+            </div>
+            
+            <!-- Pitching Category Struggles -->
+            <div>
+              <h4 class="text-sm font-semibold text-dark-textMuted uppercase tracking-wider mb-3">💀 Pitching Category Struggles</h4>
+              <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+                <div v-for="award in seasonHallOfShamePitching" :key="award.category"
+                     class="cursor-pointer"
+                     @click="toggleSeasonAwardCard(`season-shame-pitching-${award.category}`)">
+                  <div class="bg-gradient-to-br from-gray-500/10 to-gray-600/5 rounded-xl p-4 border border-gray-500/20 hover:border-gray-500/40 transition-all">
+                    <div class="text-center mb-2">
+                      <span class="px-3 py-1 rounded-full text-xs font-bold bg-gray-500/30 text-gray-400">{{ award.category }}</span>
+                    </div>
+                    <div v-if="award.winner" class="text-center">
+                      <div class="w-10 h-10 rounded-full overflow-hidden bg-dark-border mx-auto mb-2 ring-2 ring-gray-500/50">
+                        <img :src="award.winner.logo_url || defaultAvatar" class="w-full h-full object-cover" @error="handleImageError" />
+                      </div>
+                      <div class="font-semibold text-dark-text text-sm truncate">{{ award.winner.team_name }}</div>
+                      <div class="text-2xl font-black text-gray-400">{{ award.winner.value }}</div>
+                      <div class="text-xs text-dark-textMuted">category wins</div>
+                      <div class="text-xs text-gray-400/70 mt-1">Click for rankings →</div>
+                    </div>
+                    <div v-else class="text-center text-sm text-dark-textMuted italic py-4">No data</div>
+                  </div>
+                  
+                  <!-- Expanded Rankings -->
+                  <transition name="expand">
+                    <div v-if="expandedSeasonAwardCard === `season-shame-pitching-${award.category}`" 
+                         class="mt-2 bg-dark-elevated rounded-xl border border-dark-border p-4 max-h-80 overflow-y-auto">
+                      <div class="text-sm font-semibold text-dark-textMuted mb-3 uppercase tracking-wider">{{ award.category }} - {{ selectedAwardsSeason }} Rankings (Worst)</div>
+                      <div class="space-y-2">
+                        <div v-for="(team, idx) in getSeasonCategoryRankings(award.category, 'worst')" :key="`${team.team_name}`"
+                             class="flex items-center gap-3 p-2 rounded-lg"
+                             :class="idx === 0 ? 'bg-red-500/20' : 'hover:bg-dark-border/30'">
+                          <div class="w-6 text-center font-bold" :class="idx === 0 ? 'text-red-400' : 'text-dark-textMuted'">
+                            {{ idx + 1 }}
+                          </div>
+                          <div class="w-8 h-8 rounded-full overflow-hidden bg-dark-border flex-shrink-0">
+                            <img :src="team.logo_url || defaultAvatar" class="w-full h-full object-cover" @error="handleImageError" />
+                          </div>
+                          <div class="flex-1 min-w-0">
+                            <div class="font-semibold text-dark-text truncate">{{ team.team_name }}</div>
+                          </div>
+                          <div class="font-bold" :class="idx === 0 ? 'text-red-400' : 'text-dark-text'">
+                            {{ team.value }} wins
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </transition>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
     </template>
   </div>
 </template>
@@ -802,6 +1048,8 @@ const h2hRecords = ref<Record<string, Record<string, { wins: number; losses: num
 // Expandable card state
 const expandedRecordCard = ref<string | null>(null)
 const expandedAwardCard = ref<string | null>(null)
+const expandedSeasonAwardCard = ref<string | null>(null)
+const selectedAwardsSeason = ref<string>('')
 
 const defaultAvatar = 'https://s.yimg.com/cv/apiv2/default/mlb/mlb_dp_2_72.png'
 
@@ -813,6 +1061,11 @@ function toggleRecordCard(label: string) {
 // Toggle award expansion
 function toggleAwardCard(title: string) {
   expandedAwardCard.value = expandedAwardCard.value === title ? null : title
+}
+
+// Toggle season award expansion
+function toggleSeasonAwardCard(title: string) {
+  expandedSeasonAwardCard.value = expandedSeasonAwardCard.value === title ? null : title
 }
 
 // Get rankings for a specific category (best or worst seasons)
@@ -1668,6 +1921,153 @@ const hallOfShamePitching = computed(() => {
     return { category: cat, winner: worstSeason }
   })
 })
+
+// Available seasons for dropdown
+const availableSeasons = computed(() => {
+  const years = Object.keys(historicalData.value).sort((a, b) => parseInt(b) - parseInt(a))
+  // Initialize selectedAwardsSeason if not set
+  if (!selectedAwardsSeason.value && years.length > 0) {
+    selectedAwardsSeason.value = years[0]
+  }
+  return years
+})
+
+// Get season data for selected season
+const selectedSeasonData = computed(() => {
+  return seasonCategoryData.value.filter(s => s.year === selectedAwardsSeason.value)
+})
+
+// Get categories available in selected season
+const selectedSeasonCategories = computed(() => {
+  const cats = new Set<string>()
+  for (const team of selectedSeasonData.value) {
+    for (const cat of Object.keys(team.category_wins || {})) {
+      cats.add(cat)
+    }
+  }
+  return Array.from(cats)
+})
+
+// Season Hall of Fame - Hitting
+const seasonHallOfFameHitting = computed(() => {
+  const hittingCats = selectedSeasonCategories.value.filter(cat => isHittingCategory(cat))
+  
+  return hittingCats.map(cat => {
+    let bestTeam: any = null
+    let bestValue = 0
+    
+    for (const team of selectedSeasonData.value) {
+      const catWins = team.category_wins[cat] || 0
+      if (catWins > bestValue) {
+        bestValue = catWins
+        bestTeam = {
+          team_name: team.team_name,
+          logo_url: team.logo_url,
+          value: catWins
+        }
+      }
+    }
+    
+    return { category: cat, winner: bestTeam }
+  })
+})
+
+// Season Hall of Fame - Pitching
+const seasonHallOfFamePitching = computed(() => {
+  const pitchingCats = selectedSeasonCategories.value.filter(cat => !isHittingCategory(cat))
+  
+  return pitchingCats.map(cat => {
+    let bestTeam: any = null
+    let bestValue = 0
+    
+    for (const team of selectedSeasonData.value) {
+      const catWins = team.category_wins[cat] || 0
+      if (catWins > bestValue) {
+        bestValue = catWins
+        bestTeam = {
+          team_name: team.team_name,
+          logo_url: team.logo_url,
+          value: catWins
+        }
+      }
+    }
+    
+    return { category: cat, winner: bestTeam }
+  })
+})
+
+// Season Hall of Shame - Hitting
+const seasonHallOfShameHitting = computed(() => {
+  const hittingCats = selectedSeasonCategories.value.filter(cat => isHittingCategory(cat))
+  
+  return hittingCats.map(cat => {
+    let worstTeam: any = null
+    let worstValue = Infinity
+    
+    for (const team of selectedSeasonData.value) {
+      const catWins = team.category_wins[cat]
+      if (catWins !== undefined && catWins < worstValue) {
+        worstValue = catWins
+        worstTeam = {
+          team_name: team.team_name,
+          logo_url: team.logo_url,
+          value: catWins
+        }
+      }
+    }
+    
+    return { category: cat, winner: worstTeam }
+  })
+})
+
+// Season Hall of Shame - Pitching
+const seasonHallOfShamePitching = computed(() => {
+  const pitchingCats = selectedSeasonCategories.value.filter(cat => !isHittingCategory(cat))
+  
+  return pitchingCats.map(cat => {
+    let worstTeam: any = null
+    let worstValue = Infinity
+    
+    for (const team of selectedSeasonData.value) {
+      const catWins = team.category_wins[cat]
+      if (catWins !== undefined && catWins < worstValue) {
+        worstValue = catWins
+        worstTeam = {
+          team_name: team.team_name,
+          logo_url: team.logo_url,
+          value: catWins
+        }
+      }
+    }
+    
+    return { category: cat, winner: worstTeam }
+  })
+})
+
+// Get season category rankings for a specific category
+function getSeasonCategoryRankings(category: string, type: 'best' | 'worst'): any[] {
+  const results: any[] = []
+  
+  for (const team of selectedSeasonData.value) {
+    const catWins = team.category_wins[category]
+    if (catWins !== undefined) {
+      results.push({
+        team_name: team.team_name,
+        logo_url: team.logo_url,
+        value: catWins
+      })
+    }
+  }
+  
+  // Sort by value - descending for best, ascending for worst
+  if (type === 'best') {
+    results.sort((a, b) => b.value - a.value)
+  } else {
+    results.sort((a, b) => a.value - b.value)
+  }
+  
+  return results
+}
 
 // H2H Teams list
 const h2hTeams = computed(() => {
