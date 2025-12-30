@@ -46,29 +46,12 @@
     
     <!-- Show Full App for authenticated users -->
     <template v-else>
-      <!-- Combined Header Container -->
-      <div class="relative">
-        <!-- Sport Logo - Spanning both headers -->
-        <div class="absolute left-0 top-0 bottom-0 z-20 flex items-center pl-4 sm:pl-6 lg:pl-8">
-          <!-- Gradient background behind logo -->
-          <div 
-            class="absolute inset-0 pointer-events-none"
-            :style="{
-              background: `linear-gradient(to right, #000000 0%, #000000 60px, transparent 140px)`
-            }"
-          ></div>
-          <!-- Sport Logo -->
-          <img 
-            :src="sportStore.sportLogo" 
-            :alt="sportStore.sportLabel"
-            class="relative w-16 h-16 sm:w-20 sm:h-20 lg:w-24 lg:h-24 object-contain z-10"
-          />
-        </div>
-
+      <!-- Combined Header Container - Fixed/Sticky -->
+      <div class="fixed top-0 left-0 right-0 z-40">
         <!-- Top Header (Black) - Title and Controls -->
         <header class="relative bg-black">
           <div class="max-w-7xl mx-auto pr-4 sm:pr-6 lg:pr-8">
-            <div class="flex items-center justify-between h-12 sm:h-14 pl-24 sm:pl-28 lg:pl-36">
+            <div class="flex items-center justify-between h-14 sm:h-16 pl-28 sm:pl-36 lg:pl-44">
               <!-- Title -->
               <div class="flex items-center">
                 <h1 class="text-sm sm:text-base lg:text-lg font-bold text-white tracking-wider uppercase">
@@ -412,19 +395,10 @@
 
         <!-- Navigation Menu (Sport-colored) -->
         <nav 
-          class="relative sticky top-0 z-30"
+          class="relative"
           :style="{ backgroundColor: sportStore.primaryColor }"
         >
-          <!-- Gradient overlay for logo area -->
-          <div 
-            class="absolute inset-y-0 left-0 pointer-events-none z-10"
-            :style="{
-              background: `linear-gradient(to right, #000000 0%, #000000 60px, transparent 140px)`,
-              width: '180px'
-            }"
-          ></div>
-          
-          <div class="max-w-7xl mx-auto pr-4 sm:pr-6 lg:pr-8 py-2 sm:py-2.5 pl-24 sm:pl-28 lg:pl-36">
+          <div class="max-w-7xl mx-auto pr-4 sm:pr-6 lg:pr-8 py-2 sm:py-2.5 pl-28 sm:pl-36 lg:pl-44">
             <!-- Mobile: Scrollable tabs -->
             <div class="sm:hidden overflow-x-auto scrollbar-hide -mr-4 pr-4">
               <div class="flex items-center gap-1 min-w-max">
@@ -476,7 +450,38 @@
             </div>
           </div>
         </nav>
+        
+        <!-- Sport Logo - Floating on top of both headers -->
+        <div class="absolute left-4 sm:left-6 lg:left-8 top-1/2 -translate-y-1/2 z-50 pointer-events-none">
+          <!-- Gradient background behind/after logo -->
+          <div 
+            class="absolute inset-y-0 left-0 pointer-events-none"
+            :style="{
+              background: `linear-gradient(to right, #000000 0%, #000000 100%, transparent 100%)`,
+              width: '100%',
+              right: '-40px',
+              paddingRight: '40px'
+            }"
+          ></div>
+          <div 
+            class="absolute top-0 bottom-0 pointer-events-none"
+            :style="{
+              left: '100%',
+              width: '60px',
+              background: `linear-gradient(to right, #000000, transparent)`
+            }"
+          ></div>
+          <!-- Sport Logo -->
+          <img 
+            :src="sportStore.sportLogo" 
+            :alt="sportStore.sportLabel"
+            class="relative w-20 h-20 sm:w-24 sm:h-24 lg:w-28 lg:h-28 object-contain"
+          />
+        </div>
       </div>
+      
+      <!-- Spacer for fixed header -->
+      <div class="h-[104px] sm:h-[120px]"></div>
 
       <!-- Main Content -->
       <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
