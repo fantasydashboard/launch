@@ -51,7 +51,7 @@
         <!-- Top Header (Black) - Title and Controls -->
         <header class="relative bg-black">
           <div class="max-w-7xl mx-auto pr-4 sm:pr-6 lg:pr-8">
-            <div class="flex items-center justify-between h-14 sm:h-16 pl-28 sm:pl-36 lg:pl-44">
+            <div class="flex items-center justify-between h-14 sm:h-16 pl-32 sm:pl-40 lg:pl-48">
               <!-- Title -->
               <div class="flex items-center">
                 <h1 class="text-sm sm:text-base lg:text-lg font-bold text-white tracking-wider uppercase">
@@ -398,7 +398,7 @@
           class="relative"
           :style="{ backgroundColor: sportStore.primaryColor }"
         >
-          <div class="max-w-7xl mx-auto pr-4 sm:pr-6 lg:pr-8 py-2 sm:py-2.5 pl-28 sm:pl-36 lg:pl-44">
+          <div class="max-w-7xl mx-auto pr-4 sm:pr-6 lg:pr-8 py-2 sm:py-2.5 pl-32 sm:pl-40 lg:pl-48">
             <!-- Mobile: Scrollable tabs -->
             <div class="sm:hidden overflow-x-auto scrollbar-hide -mr-4 pr-4">
               <div class="flex items-center gap-1 min-w-max">
@@ -451,37 +451,24 @@
           </div>
         </nav>
         
-        <!-- Sport Logo - Floating on top of both headers -->
-        <div class="absolute left-4 sm:left-6 lg:left-8 top-1/2 -translate-y-1/2 z-50 pointer-events-none">
-          <!-- Gradient background behind/after logo -->
-          <div 
-            class="absolute inset-y-0 left-0 pointer-events-none"
-            :style="{
-              background: `linear-gradient(to right, #000000 0%, #000000 100%, transparent 100%)`,
-              width: '100%',
-              right: '-40px',
-              paddingRight: '40px'
-            }"
-          ></div>
-          <div 
-            class="absolute top-0 bottom-0 pointer-events-none"
-            :style="{
-              left: '100%',
-              width: '60px',
-              background: `linear-gradient(to right, #000000, transparent)`
-            }"
-          ></div>
-          <!-- Sport Logo -->
+        <!-- Black gradient overlay - covers full height of both headers, fades after logo -->
+        <div 
+          class="absolute left-0 top-0 bottom-0 z-40 pointer-events-none"
+          style="width: 280px; background: linear-gradient(to right, #000000 0%, #000000 180px, transparent 280px);"
+        ></div>
+        
+        <!-- Sport Logo - Floating on top of everything -->
+        <div class="absolute left-4 sm:left-5 lg:left-6 top-1/2 -translate-y-1/2 z-50 pointer-events-none">
           <img 
             :src="sportStore.sportLogo" 
             :alt="sportStore.sportLabel"
-            class="relative w-20 h-20 sm:w-24 sm:h-24 lg:w-28 lg:h-28 object-contain"
+            class="w-24 h-24 sm:w-28 sm:h-28 lg:w-36 lg:h-36 object-contain drop-shadow-lg"
           />
         </div>
       </div>
       
       <!-- Spacer for fixed header -->
-      <div class="h-[104px] sm:h-[120px]"></div>
+      <div class="h-[112px] sm:h-[128px]"></div>
 
       <!-- Main Content -->
       <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
