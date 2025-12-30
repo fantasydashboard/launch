@@ -79,15 +79,19 @@
             <div class="flex items-center gap-6 text-sm">
               <div class="flex items-center gap-2">
                 <div class="w-4 h-4 rounded bg-green-500/30 border-l-2 border-green-500"></div>
-                <span class="text-dark-textMuted">Elite Producer (Top 25%)</span>
+                <span class="text-dark-textMuted">Elite Category Producer (Top 25%)</span>
               </div>
               <div class="flex items-center gap-2">
                 <div class="w-4 h-4 rounded bg-red-500/20 border-l-2 border-red-500"></div>
-                <span class="text-dark-textMuted">Underperformer (Bottom 25%)</span>
+                <span class="text-dark-textMuted">Category Underperformer (Bottom 25%)</span>
+              </div>
+              <div class="flex items-center gap-2">
+                <span class="px-1.5 py-0.5 rounded text-xs bg-blue-500/20 text-blue-400">HR</span>
+                <span class="text-dark-textMuted">= Best category contribution</span>
               </div>
             </div>
             <div class="text-sm text-dark-textMuted">
-              Click any player for category details
+              Click any player for full category breakdown
             </div>
           </div>
         </div>
@@ -102,7 +106,7 @@
             <div 
               v-for="team in draftBoard" 
               :key="team.team_key"
-              class="w-36 flex-shrink-0 bg-dark-card rounded-t-lg p-2 text-center"
+              class="w-44 flex-shrink-0 bg-dark-card rounded-t-lg p-2 text-center"
             >
               <div class="w-8 h-8 rounded-full bg-dark-border mx-auto mb-1 overflow-hidden">
                 <img v-if="team.logo_url" :src="team.logo_url" class="w-full h-full object-cover" @error="handleImageError" />
@@ -127,7 +131,7 @@
             <div 
               v-for="team in draftBoard" 
               :key="`${round}-${team.team_key}`"
-              class="w-36 flex-shrink-0"
+              class="w-44 flex-shrink-0"
             >
               <div 
                 v-if="getPickForRound(team.team_key, round)"
@@ -149,13 +153,22 @@
                     #{{ getPickForRound(team.team_key, round)?.pick }}
                   </span>
                 </div>
-                <!-- Category Impact Score -->
-                <div v-if="getPickForRound(team.team_key, round)?.categoryScore !== undefined" class="mt-1">
+                <!-- Best Categories for this player -->
+                <div class="mt-1.5 flex flex-wrap gap-1">
                   <span 
-                    class="text-xs font-bold"
-                    :class="getCategoryScoreClass(getPickForRound(team.team_key, round)?.categoryScore)"
+                    v-for="cat in getPickForRound(team.team_key, round)?.bestCategories?.slice(0, 3)" 
+                    :key="cat.category"
+                    class="text-[10px] px-1.5 py-0.5 rounded font-bold"
+                    :class="getCategoryColorClass(cat.category)"
+                    :title="`${cat.category}: ${formatStatValue(cat.value, cat.category)} (${cat.percentile}%)`"
                   >
-                    {{ getPickForRound(team.team_key, round)?.categoryScore?.toFixed(0) }} pts
+                    {{ cat.category }}
+                  </span>
+                  <span 
+                    v-if="!getPickForRound(team.team_key, round)?.bestCategories?.length"
+                    class="text-[10px] text-dark-textMuted italic"
+                  >
+                    No stats
                   </span>
                 </div>
               </div>
@@ -1156,10 +1169,11 @@ async function loadDraftData() {
       
       const pickInRound = ((pick.pick - 1) % numTeams) + 1
       
-      // Calculate category score (sum of percentiles)
+      // Calculate category score (sum of percentiles) and find best categories
       let categoryScore = 0
       let catCount = 0
       const playerStats = stat.stats || {}
+      const categoryPerformance: Array<{category: string, value: number, percentile: number}> = []
       
       for (const cat of leagueCategories.value) {
         const statId = getStatIdForCategory(cat)
@@ -1168,8 +1182,14 @@ async function loadDraftData() {
           const percentile = getPercentile(cat, value)
           categoryScore += percentile
           catCount++
+          categoryPerformance.push({ category: cat, value, percentile })
         }
       }
+      
+      // Sort by percentile to find best categories
+      const bestCategories = [...categoryPerformance]
+        .sort((a, b) => b.percentile - a.percentile)
+        .slice(0, 5) // Top 5 categories
       
       const avgPercentile = catCount > 0 ? categoryScore / catCount : 0
       
@@ -1208,6 +1228,7 @@ async function loadDraftData() {
         stats: playerStats,
         categoryScore: avgPercentile,
         categoryPercentile: avgPercentile,
+        bestCategories,
         valueScore,
         grade: calculateGrade(valueScore / 5)
       }
