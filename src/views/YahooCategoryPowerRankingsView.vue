@@ -831,16 +831,16 @@ async function downloadRankings() {
       <div style="background: linear-gradient(160deg, #0f1219 0%, #0a0c14 50%, #0d1117 100%); border-radius: 16px; box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5); position: relative; overflow: hidden;">
         
         <!-- Top Blue Bar with site name -->
-        <div style="background: linear-gradient(90deg, #1e3a5f 0%, #2563eb 30%, #3b82f6 100%); padding: 8px 24px;">
-          <span style="font-size: 14px; font-weight: 700; color: #0a0c14; text-transform: uppercase; letter-spacing: 3px;">Ultimate Fantasy Dashboard</span>
+        <div style="background: #3B9FE8; padding: 10px 24px; text-align: center;">
+          <span style="font-size: 16px; font-weight: 700; color: #0a0c14; text-transform: uppercase; letter-spacing: 3px;">Ultimate Fantasy Dashboard</span>
         </div>
         
         <!-- HEADER - Logo on left with text next to it -->
-        <div style="display: flex; align-items: center; padding: 20px 24px; border-bottom: 1px solid rgba(59, 159, 232, 0.2); position: relative; z-index: 10;">
+        <div style="display: flex; align-items: center; padding: 12px 24px; border-bottom: 1px solid rgba(59, 159, 232, 0.2); position: relative; z-index: 10;">
           <!-- Baseball Logo -->
           ${logoBase64 ? `<img src="${logoBase64}" style="width: 105px; height: 105px; object-fit: contain; flex-shrink: 0; margin-right: 20px;" />` : ''}
-          <!-- Title and League Info - Left justified -->
-          <div style="flex: 1;">
+          <!-- Title and League Info - Left justified, vertically centered -->
+          <div style="flex: 1; display: flex; flex-direction: column; justify-content: center;">
             <div style="font-size: 42px; font-weight: 900; color: #ffffff; text-transform: uppercase; letter-spacing: 2px; text-shadow: 0 2px 8px rgba(59, 159, 232, 0.4); line-height: 1;">Power Rankings</div>
             <div style="font-size: 20px; margin-top: 8px; font-weight: 600;">
               <span style="color: #e5e7eb;">${leagueName}</span>
@@ -908,7 +908,7 @@ async function downloadRankings() {
         </div>
         
         <!-- Footer - Simple centered text -->
-        <div style="border-top: 1px solid rgba(59, 159, 232, 0.2); padding: 10px 24px; text-align: center; position: relative; z-index: 1;">
+        <div style="border-top: 1px solid rgba(59, 159, 232, 0.2); padding: 6px 24px; text-align: center; position: relative; z-index: 1;">
           <div style="font-size: 24px; font-weight: bold; color: #3B9FE8; letter-spacing: -0.5px;">ultimatefantasydashboard.com</div>
         </div>
       </div>
