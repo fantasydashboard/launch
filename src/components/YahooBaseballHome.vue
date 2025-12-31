@@ -380,27 +380,6 @@
             :options="chartOptions" 
             :series="chartSeries" 
           />
-          
-          <!-- Team avatar overlays at end of lines -->
-          <div 
-            v-for="(team, idx) in sortedTeams" 
-            :key="'avatar-' + team.team_key"
-            class="absolute pointer-events-none"
-            :style="getStandingsAvatarPosition(team)"
-          >
-            <div class="relative">
-              <img 
-                :src="team.logo_url || defaultAvatar" 
-                :alt="team.name"
-                class="w-6 h-6 rounded-full ring-2 object-cover"
-                :class="team.is_my_team ? 'ring-primary' : 'ring-cyan-500/70'"
-                @error="handleImageError"
-              />
-              <div v-if="team.is_my_team" class="absolute -top-0.5 -right-0.5 w-3 h-3 bg-primary rounded-full flex items-center justify-center">
-                <span class="text-[6px] text-gray-900 font-bold">★</span>
-              </div>
-            </div>
-          </div>
         </div>
         <div v-else class="text-center py-12 text-dark-textMuted">
           <p>Not enough data to show standings over time</p>
@@ -1048,48 +1027,6 @@ const quickStats = computed(() => {
   ]
 })
 
-// Calculate avatar position for standings chart overlay
-// This positions team logos at the exact last data point on the chart
-function getStandingsAvatarPosition(team: any): Record<string, string> {
-  const weeks = Array.from(weeklyStandings.value.keys()).sort((a, b) => a - b)
-  if (weeks.length === 0) return { display: 'none' }
-  
-  const lastWeek = weeks[weeks.length - 1]
-  const weekData = weeklyStandings.value.get(lastWeek) || []
-  const teamStanding = weekData.find((t: any) => t.team_key === team.team_key)
-  const lastRank = teamStanding?.rank || sortedTeams.value.length
-  
-  if (!lastRank) return { display: 'none' }
-  
-  const totalTeams = sortedTeams.value.length
-  
-  // ApexCharts with height=400, no toolbar, no legend has approximately:
-  // - Top padding for y-axis title/labels: ~15px
-  // - Bottom padding for x-axis labels: ~30px
-  // - Y-axis goes from min (1) at top to max (totalTeams) at bottom (reversed)
-  // The actual plot area where data points are drawn is roughly 355px
-  const chartHeight = 400
-  const topPadding = 15
-  const bottomPadding = 30
-  const plotHeight = chartHeight - topPadding - bottomPadding // ~355px
-  
-  // For reversed y-axis: rank 1 is at top (y = topPadding), rank N is at bottom
-  // Linear interpolation within the plot area
-  const rankRange = totalTeams - 1 // e.g., for 10 teams: 0-9 positions
-  const normalizedRank = lastRank - 1 // 0-indexed: rank 1 -> 0, rank 10 -> 9
-  const yPosition = topPadding + (normalizedRank / Math.max(rankRange, 1)) * plotHeight
-  
-  // Center the 24px avatar on the point
-  const avatarSize = 24
-  const centeredY = yPosition - (avatarSize / 2)
-  
-  // Position from right edge, accounting for chart right padding (~40px from grid config)
-  return {
-    right: '42px',
-    top: `${Math.round(centeredY)}px`
-  }
-}
-
 // Open quick stat modal - reuses the leader modal
 function openQuickStatModal(type: string) {
   leaderModalType.value = type
@@ -1343,10 +1280,36 @@ function buildChart() {
   
   chartSeries.value = series
   
+  // Build point annotations for team logos at end of each line
+  const lastWeekIndex = weeks.length - 1
+  const pointAnnotations = leagueStore.yahooTeams.map((team, idx) => {
+    const lastWeek = weeks[lastWeekIndex]
+    const weekData = weeklyStandings.value.get(lastWeek) || []
+    const teamStanding = weekData.find((t: any) => t.team_key === team.team_key)
+    const lastRank = teamStanding?.rank || leagueStore.yahooTeams.length
+    
+    return {
+      x: `Wk ${lastWeek}`,
+      y: lastRank,
+      seriesIndex: idx,
+      marker: { size: 0 },
+      image: {
+        path: team.logo_url || defaultAvatar,
+        width: 24,
+        height: 24,
+        offsetX: 20,
+        offsetY: 0
+      }
+    }
+  })
+  
   chartOptions.value = {
     chart: { type: 'line', background: 'transparent', toolbar: { show: false }, zoom: { enabled: false }, animations: { enabled: true, speed: 500 } },
     stroke: { curve: 'smooth', width: 3 },
     markers: { size: 4, strokeWidth: 0 },
+    annotations: {
+      points: pointAnnotations
+    },
     xaxis: {
       categories: weeks.map(w => `Wk ${w}`),
       labels: { style: { colors: '#9CA3AF', fontSize: '11px' } },
@@ -1360,7 +1323,7 @@ function buildChart() {
       tickAmount: Math.min(leagueStore.yahooTeams.length - 1, 7),
       labels: { style: { colors: '#9CA3AF', fontSize: '11px' }, formatter: (val: number) => Math.round(val).toString() }
     },
-    grid: { borderColor: '#374151', strokeDashArray: 3, padding: { right: 40 } },
+    grid: { borderColor: '#374151', strokeDashArray: 3, padding: { right: 50 } },
     legend: { show: false },
     tooltip: {
       theme: 'dark',
