@@ -723,17 +723,26 @@ const leaders = computed(() => {
   }
 })
 
-// Leader Modal Data
+// Leader Modal Data - Top 5 only
 const leaderModalData = computed(() => {
   const teams = teamsWithStats.value
   let comparison: any[] = []
   let maxValue = 1
   
-  if (leaderModalType.value === 'bestRecord' || leaderModalType.value === 'hottest' || leaderModalType.value === 'coldest') {
+  if (leaderModalType.value === 'bestRecord' || leaderModalType.value === 'hottest') {
+    // Best to worst (highest win % first)
     comparison = [...teams].sort((a, b) => {
       const aWinPct = (a.wins || 0) / Math.max(1, (a.wins || 0) + (a.losses || 0))
       const bWinPct = (b.wins || 0) / Math.max(1, (b.wins || 0) + (b.losses || 0))
       return bWinPct - aWinPct
+    }).map(t => ({ ...t, value: (t.wins || 0) / Math.max(1, (t.wins || 0) + (t.losses || 0)) * 100 }))
+    maxValue = 100
+  } else if (leaderModalType.value === 'coldest') {
+    // Worst to best (lowest win % first)
+    comparison = [...teams].sort((a, b) => {
+      const aWinPct = (a.wins || 0) / Math.max(1, (a.wins || 0) + (a.losses || 0))
+      const bWinPct = (b.wins || 0) / Math.max(1, (b.wins || 0) + (b.losses || 0))
+      return aWinPct - bWinPct
     }).map(t => ({ ...t, value: (t.wins || 0) / Math.max(1, (t.wins || 0) + (t.losses || 0)) * 100 }))
     maxValue = 100
   } else if (leaderModalType.value === 'mostCatWins') {
@@ -747,14 +756,18 @@ const leaderModalData = computed(() => {
   } else if (leaderModalType.value === 'bestAllPlay') {
     comparison = [...teams].sort((a, b) => (b.all_play_wins || 0) - (a.all_play_wins || 0)).map(t => ({ ...t, value: t.all_play_wins || 0 }))
     maxValue = Math.max(...teams.map(t => t.all_play_wins || 0), 1)
-  } else if (leaderModalType.value === 'luckiest' || leaderModalType.value === 'unluckiest') {
-    comparison = [...teams].sort((a, b) => (b.luckScore || 0) - (a.luckScore || 0)).map(t => ({ ...t, value: t.luckScore || 0 }))
-    const scores = teams.map(t => Math.abs(t.luckScore || 0))
-    maxValue = Math.max(...scores, 1)
-  } else if (leaderModalType.value === 'mostMoves' || leaderModalType.value === 'fewestMoves') {
+  } else if (leaderModalType.value === 'mostMoves') {
+    // Most to fewest
     comparison = [...teams].sort((a, b) => (b.transactions || 0) - (a.transactions || 0)).map(t => ({ ...t, value: t.transactions || 0 }))
     maxValue = Math.max(...teams.map(t => t.transactions || 0), 1)
+  } else if (leaderModalType.value === 'fewestMoves') {
+    // Fewest to most
+    comparison = [...teams].sort((a, b) => (a.transactions || 0) - (b.transactions || 0)).map(t => ({ ...t, value: t.transactions || 0 }))
+    maxValue = Math.max(...teams.map(t => t.transactions || 0), 1)
   }
+  
+  // Limit to top 5
+  comparison = comparison.slice(0, 5)
   
   return { comparison, maxValue, leader: comparison[0] }
 })
@@ -832,19 +845,15 @@ const leaderModalUnit = computed(() => {
   return 'All-Play Record'
 })
 
-// Quick Stats
+// Quick Stats - without luckiest/unluckiest
 const quickStats = computed(() => {
   const teams = teamsWithStats.value
-  const luckiest = [...teams].sort((a, b) => (b.luckScore || 0) - (a.luckScore || 0))[0]
-  const unluckiest = [...teams].sort((a, b) => (a.luckScore || 0) - (b.luckScore || 0))[0]
   const mostActive = [...teams].sort((a, b) => (b.transactions || 0) - (a.transactions || 0))[0]
   const leastActive = [...teams].sort((a, b) => (a.transactions || 0) - (b.transactions || 0))[0]
   const hottest = [...teams].sort((a, b) => (b.wins || 0) / Math.max(1, (b.wins || 0) + (b.losses || 0)) - (a.wins || 0) / Math.max(1, (a.wins || 0) + (a.losses || 0)))[0]
   const coldest = [...teams].sort((a, b) => (a.wins || 0) / Math.max(1, (a.wins || 0) + (a.losses || 0)) - (b.wins || 0) / Math.max(1, (b.wins || 0) + (b.losses || 0)))[0]
   
   return [
-    { icon: '🍀', label: 'Luckiest', team: luckiest, value: luckiest ? '+' + (luckiest.luckScore || 0).toFixed(0) : '-', valueClass: 'text-green-400', type: 'luckiest' },
-    { icon: '😢', label: 'Unluckiest', team: unluckiest, value: unluckiest ? (unluckiest.luckScore || 0).toFixed(0) : '-', valueClass: 'text-red-400', type: 'unluckiest' },
     { icon: '🔥', label: 'Hottest', team: hottest, value: hottest ? getWinPercentage(hottest) : '-', valueClass: 'text-orange-400', type: 'hottest' },
     { icon: '❄️', label: 'Coldest', team: coldest, value: coldest ? getWinPercentage(coldest) : '-', valueClass: 'text-cyan-400', type: 'coldest' },
     { icon: '📈', label: 'Most Moves', team: mostActive, value: mostActive?.transactions?.toString() || '-', valueClass: 'text-blue-400', type: 'mostMoves' },
@@ -865,16 +874,18 @@ function getStandingsAvatarPosition(team: any): Record<string, string> {
   if (!lastRank) return { display: 'none' }
   
   const totalTeams = sortedTeams.value.length
-  const chartPadding = { top: 30, bottom: 80 } // ApexChart padding (bottom includes legend)
+  // ApexChart default paddings - adjusted for better alignment
+  const chartPadding = { top: 35, bottom: 55 } // Reduced bottom since legend is hidden
   const chartHeight = 400
   const usableHeight = chartHeight - chartPadding.top - chartPadding.bottom
   
   // Y position: rank 1 is at top, rank N is at bottom (reversed axis)
+  // The yAxis goes from 1 to totalTeams, so we map lastRank to the chart height
   const yPercent = (lastRank - 1) / Math.max(1, totalTeams - 1)
-  const yPos = chartPadding.top + (yPercent * usableHeight) - 12 // -12 to center the avatar
+  const yPos = chartPadding.top + (yPercent * usableHeight) - 12 // -12 to center the 24px avatar
   
   return {
-    right: '15px',
+    right: '12px',
     top: `${yPos}px`
   }
 }
