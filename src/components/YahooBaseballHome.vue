@@ -373,13 +373,31 @@
             <p class="text-dark-textMuted text-sm">Loading chart data ({{ chartLoadProgress }})...</p>
           </div>
         </div>
-        <div v-else-if="chartSeries.length > 0" class="relative">
+        <div v-else-if="chartSeries.length > 0" class="relative" ref="standingsChartRef">
           <apexchart 
+            ref="apexChartRef"
             type="line" 
             height="400" 
             :options="chartOptions" 
-            :series="chartSeries" 
+            :series="chartSeries"
+            @updated="onChartUpdated"
           />
+          
+          <!-- Team avatar overlays at end of lines - positioned after chart renders -->
+          <div 
+            v-for="(team, idx) in sortedTeams" 
+            :key="'avatar-' + team.team_key"
+            class="absolute pointer-events-none transition-all duration-300"
+            :style="getChartAvatarStyle(team)"
+          >
+            <img 
+              :src="team.logo_url || defaultAvatar" 
+              :alt="team.name"
+              class="w-6 h-6 rounded-full ring-2 object-cover"
+              :class="team.is_my_team ? 'ring-primary' : 'ring-dark-border'"
+              @error="handleImageError"
+            />
+          </div>
         </div>
         <div v-else class="text-center py-12 text-dark-textMuted">
           <p>Not enough data to show standings over time</p>
@@ -662,6 +680,11 @@ const teamDetailWeeklyResults = ref<any[]>([])
 // Scroll hint - show only when table overflows
 const showScrollHint = ref(false)
 const standingsTableRef = ref<HTMLElement | null>(null)
+
+// Chart refs for avatar positioning
+const standingsChartRef = ref<HTMLElement | null>(null)
+const apexChartRef = ref<any>(null)
+const avatarPositions = ref<Map<string, { top: number, right: number }>>(new Map())
 
 // Chart
 const chartSeries = ref<any[]>([])
@@ -1033,6 +1056,86 @@ function openQuickStatModal(type: string) {
   showLeaderModal.value = true
 }
 
+// Chart updated event handler
+function onChartUpdated() {
+  setTimeout(updateAvatarPositions, 100)
+}
+
+// Update avatar positions based on actual chart rendering
+function updateAvatarPositions() {
+  if (!apexChartRef.value?.chart) return
+  
+  const chart = apexChartRef.value.chart
+  const weeks = Array.from(weeklyStandings.value.keys()).sort((a, b) => a - b)
+  if (weeks.length === 0) return
+  
+  const lastWeek = weeks[weeks.length - 1]
+  const lastDataPointIndex = weeks.length - 1
+  
+  const newPositions = new Map<string, { top: number, right: number }>()
+  
+  leagueStore.yahooTeams.forEach((team, seriesIndex) => {
+    const weekData = weeklyStandings.value.get(lastWeek) || []
+    const teamStanding = weekData.find((t: any) => t.team_key === team.team_key)
+    const lastRank = teamStanding?.rank || leagueStore.yahooTeams.length
+    
+    // Get the actual Y position from ApexCharts
+    try {
+      const w = chart.w
+      const yaxis = w.globals.yAxisScale[0]
+      const plotHeight = w.globals.gridHeight
+      const plotTop = w.globals.translateY
+      
+      // Calculate Y position - reversed axis means rank 1 is at top
+      const totalTeams = leagueStore.yahooTeams.length
+      const yPercent = (lastRank - 1) / Math.max(1, totalTeams - 1)
+      const yPos = plotTop + (yPercent * plotHeight) - 12 // -12 to center 24px avatar
+      
+      // X position - right edge of plot
+      const rightPadding = 8
+      
+      newPositions.set(team.team_key, { top: yPos, right: rightPadding })
+    } catch (e) {
+      // Fallback positioning
+      const totalTeams = leagueStore.yahooTeams.length
+      const yPercent = (lastRank - 1) / Math.max(1, totalTeams - 1)
+      const yPos = 15 + (yPercent * 340) - 12
+      newPositions.set(team.team_key, { top: yPos, right: 8 })
+    }
+  })
+  
+  avatarPositions.value = newPositions
+}
+
+// Get avatar style for a team
+function getChartAvatarStyle(team: any): Record<string, string> {
+  const pos = avatarPositions.value.get(team.team_key)
+  if (pos) {
+    return {
+      top: `${pos.top}px`,
+      right: `${pos.right}px`
+    }
+  }
+  
+  // Fallback: calculate position
+  const weeks = Array.from(weeklyStandings.value.keys()).sort((a, b) => a - b)
+  if (weeks.length === 0) return { display: 'none' }
+  
+  const lastWeek = weeks[weeks.length - 1]
+  const weekData = weeklyStandings.value.get(lastWeek) || []
+  const teamStanding = weekData.find((t: any) => t.team_key === team.team_key)
+  const lastRank = teamStanding?.rank || sortedTeams.value.length
+  
+  const totalTeams = sortedTeams.value.length
+  const yPercent = (lastRank - 1) / Math.max(1, totalTeams - 1)
+  const yPos = 15 + (yPercent * 340) - 12
+  
+  return {
+    top: `${yPos}px`,
+    right: '8px'
+  }
+}
+
 // Open team detail modal
 function openTeamDetailModal(team: any) {
   selectedTeamDetail.value = team
@@ -1280,36 +1383,20 @@ function buildChart() {
   
   chartSeries.value = series
   
-  // Build point annotations for team logos at end of each line
-  const lastWeekIndex = weeks.length - 1
-  const pointAnnotations = leagueStore.yahooTeams.map((team, idx) => {
-    const lastWeek = weeks[lastWeekIndex]
-    const weekData = weeklyStandings.value.get(lastWeek) || []
-    const teamStanding = weekData.find((t: any) => t.team_key === team.team_key)
-    const lastRank = teamStanding?.rank || leagueStore.yahooTeams.length
-    
-    return {
-      x: `Wk ${lastWeek}`,
-      y: lastRank,
-      seriesIndex: idx,
-      marker: { size: 0 },
-      image: {
-        path: team.logo_url || defaultAvatar,
-        width: 24,
-        height: 24,
-        offsetX: 20,
-        offsetY: 0
-      }
-    }
-  })
-  
   chartOptions.value = {
-    chart: { type: 'line', background: 'transparent', toolbar: { show: false }, zoom: { enabled: false }, animations: { enabled: true, speed: 500 } },
+    chart: { 
+      type: 'line', 
+      background: 'transparent', 
+      toolbar: { show: false }, 
+      zoom: { enabled: false }, 
+      animations: { enabled: true, speed: 500 },
+      events: {
+        mounted: () => setTimeout(updateAvatarPositions, 100),
+        updated: () => setTimeout(updateAvatarPositions, 100)
+      }
+    },
     stroke: { curve: 'smooth', width: 3 },
     markers: { size: 4, strokeWidth: 0 },
-    annotations: {
-      points: pointAnnotations
-    },
     xaxis: {
       categories: weeks.map(w => `Wk ${w}`),
       labels: { style: { colors: '#9CA3AF', fontSize: '11px' } },
