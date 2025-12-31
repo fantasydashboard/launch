@@ -1543,9 +1543,9 @@ async function downloadStandings() {
       // H2H record with ties
       const h2hRecord = `${team.wins || 0}-${team.losses || 0}-${team.ties || 0}`
       
-      // Win percentage
-      const winPct = team.catWinPct ? (team.catWinPct * 100).toFixed(0) : '0'
-      const winPctNum = parseFloat(winPct)
+      // Calculate win percentage from wins and losses
+      const totalGames = (team.wins || 0) + (team.losses || 0) + (team.ties || 0)
+      const winPct = totalGames > 0 ? ((team.wins || 0) / totalGames * 100).toFixed(0) : '0'
       
       // Conditional color: green for top third, yellow for middle, red for bottom third
       let pctColor = '#f59e0b' // yellow default (middle)
@@ -1633,29 +1633,28 @@ async function downloadStandings() {
     
     // Create trend chart with team logos at endpoints
     const trendChartContainer = container.querySelector('#standings-trend-chart')
-    const weeks = Array.from(weeklyStandings.value.keys()).sort((a, b) => a - b)
     
-    console.log('Chart debug - weeks available:', weeks.length, weeks)
-    console.log('Chart debug - weeklyStandings size:', weeklyStandings.value.size)
+    // Use the existing chartSeries data which is already built
+    console.log('Chart debug - chartSeries length:', chartSeries.value.length)
     
-    if (trendChartContainer && weeks.length >= 1) {
+    if (trendChartContainer && chartSeries.value.length > 0) {
       const ApexCharts = (await import('apexcharts')).default
       
+      // Get weeks from the chart options
+      const allWeeks = chartOptions.value?.xaxis?.categories || []
       const maxWeeksToShow = 7
-      const startIdx = Math.max(0, weeks.length - maxWeeksToShow)
-      const weeksToShow = weeks.slice(startIdx)
+      const startIdx = Math.max(0, allWeeks.length - maxWeeksToShow)
+      const weeksToShow = allWeeks.slice(startIdx)
       
       console.log('Chart debug - weeksToShow:', weeksToShow)
       
-      const trendSeries = sortedTeams.value.map((team, idx) => {
-        const data = weeksToShow.map(week => {
-          const weekData = weeklyStandings.value.get(week) || []
-          const teamStanding = weekData.find((t: any) => t.team_key === team.team_key)
-          return teamStanding?.rank || sortedTeams.value.length
-        })
-        console.log('Chart debug - team:', team.name, 'data:', data)
-        return { name: team.name, data }
-      })
+      // Slice the series data to match the weeks shown
+      const trendSeries = chartSeries.value.map((series: any) => ({
+        name: series.name,
+        data: series.data.slice(startIdx)
+      }))
+      
+      console.log('Chart debug - trendSeries:', trendSeries)
       
       const trendChart = new ApexCharts(trendChartContainer, {
         chart: {
@@ -1675,7 +1674,7 @@ async function downloadStandings() {
         },
         markers: { size: 0, strokeWidth: 0 },
         xaxis: {
-          categories: weeksToShow.map(w => `Wk ${w}`),
+          categories: weeksToShow,
           labels: { style: { colors: '#9ca3af', fontSize: '10px' } },
           axisBorder: { show: false },
           axisTicks: { show: false }
@@ -1718,22 +1717,22 @@ async function downloadStandings() {
         const logoContainer = document.createElement('div')
         logoContainer.style.cssText = 'position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 10;'
         
-        for (const team of sortedTeams.value) {
-          // Get the last rank for this team
-          const lastWeek = weeksToShow[weeksToShow.length - 1]
-          const weekData = weeklyStandings.value.get(lastWeek) || []
-          const teamStanding = weekData.find((t: any) => t.team_key === team.team_key)
-          const lastRank = teamStanding?.rank || numTeams
+        // Use trendSeries to get the last rank for each team
+        trendSeries.forEach((series: any, idx: number) => {
+          const team = sortedTeams.value[idx]
+          if (!team) return
+          
+          // Get the last rank from the series data
+          const lastRank = series.data[series.data.length - 1] || numTeams
           
           // Calculate y position based on rank
-          const yPercent = (lastRank - 1) / (numTeams - 1)
+          const yPercent = (lastRank - 1) / Math.max(1, numTeams - 1)
           const yPos = plotTop + (yPercent * plotHeight)
           
           // X position is at the right edge of the plot area
           const xPos = plotLeft + plotWidth
           
           const logoSize = 20
-          const teamIdx = sortedTeams.value.indexOf(team)
           
           const logoDiv = document.createElement('div')
           logoDiv.style.cssText = `
@@ -1744,13 +1743,13 @@ async function downloadStandings() {
             height: ${logoSize}px;
             border-radius: 50%;
             overflow: hidden;
-            border: 2px solid ${team.is_my_team ? '#F5C451' : getTeamColor(teamIdx)};
+            border: 2px solid ${team.is_my_team ? '#F5C451' : getTeamColor(idx)};
             background: #262a3a;
             box-shadow: 0 2px 4px rgba(0,0,0,0.3);
           `
           logoDiv.innerHTML = `<img src="${imageMap.get(team.team_key) || ''}" style="width: 100%; height: 100%; object-fit: cover;" />`
           logoContainer.appendChild(logoDiv)
-        }
+        })
         
         ;(trendChartContainer as HTMLElement).style.position = 'relative'
         trendChartContainer.appendChild(logoContainer)
@@ -1759,6 +1758,7 @@ async function downloadStandings() {
       // Wait for logos to render
       await new Promise(resolve => setTimeout(resolve, 300))
     } else {
+      console.log('Chart debug - no chart data, skipping chart')
       // No chart data - wait for images only
       await new Promise(resolve => setTimeout(resolve, 500))
     }
