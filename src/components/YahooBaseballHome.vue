@@ -1555,7 +1555,7 @@ async function downloadStandings() {
               </div>
               <!-- Blue sport color section with main title -->
               <div style="height: 35px; background: linear-gradient(90deg, #1e3a5f 0%, #2563eb 30%, #3b82f6 100%); display: flex; align-items: center; padding-left: 16px;">
-                <span style="font-size: 22px; font-weight: 900; color: #ffffff; text-transform: uppercase; letter-spacing: 2px; text-shadow: 0 2px 4px rgba(0,0,0,0.3);">League Standings</span>
+                <span style="font-size: 22px; font-weight: 900; color: #ffffff; text-transform: uppercase; letter-spacing: 2px; text-shadow: 0 2px 4px rgba(0,0,0,0.3);">Power Rankings</span>
               </div>
             </div>
           </div>
