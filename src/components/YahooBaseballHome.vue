@@ -417,7 +417,7 @@
         </div>
       </div>
       <div class="card-body">
-        <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+        <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
           <div 
             v-for="stat in quickStats" 
             :key="stat.label" 
@@ -874,19 +874,25 @@ function getStandingsAvatarPosition(team: any): Record<string, string> {
   if (!lastRank) return { display: 'none' }
   
   const totalTeams = sortedTeams.value.length
-  // ApexChart default paddings - adjusted for better alignment
-  const chartPadding = { top: 35, bottom: 55 } // Reduced bottom since legend is hidden
+  // ApexChart has internal padding - these values work for height=400, no legend
+  // The chart area starts ~10px from top for the first gridline and ends ~45px from bottom
+  const chartTopOffset = 10
+  const chartBottomOffset = 45
   const chartHeight = 400
-  const usableHeight = chartHeight - chartPadding.top - chartPadding.bottom
+  const plotAreaHeight = chartHeight - chartTopOffset - chartBottomOffset
   
-  // Y position: rank 1 is at top, rank N is at bottom (reversed axis)
-  // The yAxis goes from 1 to totalTeams, so we map lastRank to the chart height
+  // Y position: rank 1 is at top (min), rank N is at bottom (max) due to reversed axis
+  // Map rank to position within plot area
   const yPercent = (lastRank - 1) / Math.max(1, totalTeams - 1)
-  const yPos = chartPadding.top + (yPercent * usableHeight) - 12 // -12 to center the 24px avatar
+  const yPos = chartTopOffset + (yPercent * plotAreaHeight)
+  
+  // Avatar is 24px, center it by subtracting half
+  const avatarSize = 24
+  const centeredY = yPos - (avatarSize / 2)
   
   return {
-    right: '12px',
-    top: `${yPos}px`
+    right: '8px',
+    top: `${centeredY}px`
   }
 }
 
