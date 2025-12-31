@@ -839,8 +839,8 @@ async function downloadRankings() {
         <div style="display: flex; padding: 12px 24px 12px 24px; border-bottom: 1px solid rgba(59, 159, 232, 0.2); position: relative; z-index: 10;">
           <!-- Baseball Logo -->
           ${logoBase64 ? `<img src="${logoBase64}" style="width: 90px; height: 90px; object-fit: contain; flex-shrink: 0; margin-right: 20px; display: block;" />` : ''}
-          <!-- Title and League Info - negative margin to pull up -->
-          <div style="flex: 1; margin-top: -27px;">
+          <!-- Title and League Info - adjusted margin to center with logo -->
+          <div style="flex: 1; margin-top: -5px;">
             <div style="font-size: 42px; font-weight: 900; color: #ffffff; text-transform: uppercase; letter-spacing: 2px; text-shadow: 0 2px 8px rgba(59, 159, 232, 0.4); line-height: 42px; display: block;">Power Rankings</div>
             <div style="font-size: 20px; margin-top: 6px; font-weight: 600; line-height: 20px; display: block;">
               <span style="color: #e5e7eb;">${leagueName}</span>
