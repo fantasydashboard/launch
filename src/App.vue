@@ -66,8 +66,8 @@
               <h1 class="hidden md:block text-sm lg:text-base font-bold text-white tracking-wider uppercase whitespace-nowrap">
                 ULTIMATE FANTASY DASHBOARD
               </h1>
-              <h1 class="hidden sm:block md:hidden text-xs font-bold text-white tracking-wider uppercase">
-                UFD
+              <h1 class="block md:hidden text-[9px] sm:text-xs font-bold text-white tracking-wider uppercase whitespace-nowrap">
+                ULTIMATE FANTASY DASHBOARD
               </h1>
               
               <!-- League Dropdown -->
@@ -323,17 +323,44 @@
         ></div>
         
         <div class="relative z-10 h-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div class="flex items-center justify-end h-full">
-            <!-- Mobile/Tablet: Menu Button (shows below lg breakpoint) -->
-            <button
-              @click="showMobileMenu = true"
-              class="lg:hidden flex items-center gap-2 px-4 py-2 bg-black/40 rounded-full text-white font-semibold text-sm"
-            >
-              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
-              </svg>
-              <span>Dashboards</span>
-            </button>
+          <div class="flex items-center justify-end h-full gap-2">
+            <!-- Mobile/Tablet: League Dropdown + Menu Button (shows below lg breakpoint) -->
+            <div class="lg:hidden flex items-center gap-2">
+              <!-- Mobile League Dropdown -->
+              <button
+                @click="showMobileMenu = true"
+                class="flex items-center gap-1.5 px-2.5 py-1.5 bg-black/40 rounded-full text-white text-xs font-medium max-w-[140px] sm:max-w-[180px]"
+              >
+                <template v-if="leagueStore.currentLeague">
+                  <div class="w-4 h-4 flex-shrink-0">
+                    <img v-if="leagueStore.activePlatform === 'yahoo'" src="/logos/yahoo-fantasy.svg" alt="Yahoo" class="w-4 h-4 object-contain" />
+                    <img v-else-if="leagueStore.activePlatform === 'sleeper'" src="/logos/sleeper.svg" alt="Sleeper" class="w-4 h-4 object-contain" />
+                    <div v-else class="w-4 h-4 rounded bg-gray-600 flex items-center justify-center"><span class="text-[6px] font-bold text-white">ESPN</span></div>
+                  </div>
+                  <span class="truncate">{{ leagueStore.currentLeague.name }}</span>
+                </template>
+                <template v-else-if="leagueStore.isDemoMode">
+                  <span class="text-cyan-300">👀 Demo</span>
+                </template>
+                <template v-else>
+                  <span class="text-white/70">Select League</span>
+                </template>
+                <svg class="w-3 h-3 text-white/60 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                </svg>
+              </button>
+              
+              <!-- Dashboards Button -->
+              <button
+                @click="showMobileMenu = true"
+                class="flex items-center gap-1.5 px-3 py-1.5 bg-black/40 rounded-full text-white font-semibold text-sm"
+              >
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
+                </svg>
+                <span>Dashboards</span>
+              </button>
+            </div>
             
             <!-- Desktop: Right-aligned pill-style tabs (lg and up) -->
             <div class="hidden lg:flex items-center gap-4">
