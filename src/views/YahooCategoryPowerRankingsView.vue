@@ -831,8 +831,10 @@ async function downloadRankings() {
       <div style="background: linear-gradient(160deg, #0f1219 0%, #0a0c14 50%, #0d1117 100%); border-radius: 16px; box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5); position: relative; overflow: hidden;">
         
         <!-- Top Blue Bar with site name -->
-        <div style="background: #3B9FE8; height: 36px; position: relative;">
-          <span style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: 16px; font-weight: 700; color: #0a0c14; text-transform: uppercase; letter-spacing: 3px; margin: 0; padding: 0; line-height: 1;">Ultimate Fantasy Dashboard</span>
+        <div style="background: #3B9FE8; height: 36px; display: table; width: 100%;">
+          <div style="display: table-cell; vertical-align: middle; text-align: center;">
+            <span style="font-size: 16px; font-weight: 700; color: #0a0c14; text-transform: uppercase; letter-spacing: 3px;">Ultimate Fantasy Dashboard</span>
+          </div>
         </div>
         
         <!-- HEADER - Logo on left with text next to it, both vertically centered -->
