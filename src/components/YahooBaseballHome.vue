@@ -694,6 +694,9 @@ const teamCategoryWins = ref<Map<string, Record<string, number>>>(new Map())
 const weeklyStandings = ref<Map<number, any[]>>(new Map())
 const displayMatchups = ref<any[]>([])
 
+// Store weekly matchup results per team: team_key -> week -> { catWins, catLosses, opponent, won, tied }
+const weeklyMatchupResults = ref<Map<string, Map<number, any>>>(new Map())
+
 // Computed
 const leagueName = computed(() => {
   const league = leagueStore.yahooLeague
@@ -1113,79 +1116,76 @@ function buildTeamDetailChart(team: any) {
     return
   }
   
-  // Calculate team's category wins per week and league average
+  // Get team's weekly matchup data
+  const teamMatchups = weeklyMatchupResults.value.get(team.team_key)
+  
   const teamWeeklyCatWins: number[] = []
-  const leagueAvgWeeklyCatWins: number[] = []
+  const opponentWeeklyCatWins: number[] = []
   
   weeks.forEach(week => {
-    const weekData = weeklyStandings.value.get(week) || []
-    const teamWeek = weekData.find((t: any) => t.team_key === team.team_key)
-    const teamCatWins = teamWeek?.weekCatWins || (team.categoryWins ? Object.values(team.categoryWins).reduce((a: number, b: any) => a + (b || 0), 0) / weeks.length : 0)
-    teamWeeklyCatWins.push(teamCatWins)
-    
-    // League average for this week
-    const allWins = weekData.map((t: any) => t.weekCatWins || 0)
-    const avg = allWins.length > 0 ? allWins.reduce((a: number, b: number) => a + b, 0) / allWins.length : 0
-    leagueAvgWeeklyCatWins.push(avg)
+    const matchup = teamMatchups?.get(week)
+    if (matchup) {
+      teamWeeklyCatWins.push(matchup.catWins || 0)
+      opponentWeeklyCatWins.push(matchup.catLosses || 0) // catLosses = opponent's wins
+    } else {
+      // Fallback: estimate from totals
+      const avgPerWeek = (team.wins || 0) / weeks.length
+      teamWeeklyCatWins.push(avgPerWeek)
+      opponentWeeklyCatWins.push(avgPerWeek)
+    }
   })
   
-  // If we don't have weekly breakdowns, estimate from total
-  if (teamWeeklyCatWins.every(w => w === 0) && team.wins > 0) {
-    const avgPerWeek = team.wins / weeks.length
-    weeks.forEach((_, idx) => {
-      teamWeeklyCatWins[idx] = avgPerWeek
-      leagueAvgWeeklyCatWins[idx] = avgPerWeek
-    })
-  }
-  
   teamDetailChartSeries.value = [
-    { name: team.name, data: teamWeeklyCatWins },
-    { name: 'League Avg', data: leagueAvgWeeklyCatWins }
+    { name: 'Your Cats Won', data: teamWeeklyCatWins },
+    { name: 'Opponent Cats Won', data: opponentWeeklyCatWins }
   ]
   
   teamDetailChartOptions.value = {
     chart: { type: 'line', background: 'transparent', toolbar: { show: false }, zoom: { enabled: false } },
-    stroke: { curve: 'smooth', width: [3, 2], dashArray: [0, 5] },
-    colors: ['#F5C451', '#6b7280'],
-    markers: { size: [4, 0] },
+    stroke: { curve: 'smooth', width: [3, 3] },
+    colors: ['#22c55e', '#ef4444'], // Green for team, Red for opponent
+    markers: { size: [5, 5] },
     xaxis: {
       categories: weeks.map(w => `Wk ${w}`),
       labels: { style: { colors: '#9CA3AF', fontSize: '10px' } }
     },
     yaxis: {
+      min: 0,
       labels: { style: { colors: '#9CA3AF', fontSize: '10px' }, formatter: (val: number) => val.toFixed(0) }
     },
     grid: { borderColor: '#374151', strokeDashArray: 3 },
     legend: { show: true, position: 'top', horizontalAlign: 'right', labels: { colors: '#9CA3AF' } },
-    tooltip: { theme: 'dark' }
+    tooltip: { 
+      theme: 'dark',
+      y: { formatter: (val: number) => `${val} categories` }
+    }
   }
 }
 
 function buildTeamDetailWeeklyResults(team: any) {
-  // Get weekly matchup results for this team
   const weeks = Array.from(weeklyStandings.value.keys()).sort((a, b) => a - b)
+  const teamMatchups = weeklyMatchupResults.value.get(team.team_key)
+  
   const results: any[] = []
   
   weeks.forEach(week => {
-    const weekData = weeklyStandings.value.get(week) || []
-    const teamWeek = weekData.find((t: any) => t.team_key === team.team_key)
-    
-    if (teamWeek?.matchupResult) {
+    const matchup = teamMatchups?.get(week)
+    if (matchup) {
       results.push({
-        won: teamWeek.matchupResult === 'W',
-        tied: teamWeek.matchupResult === 'T',
-        catWins: teamWeek.weekCatWins || 0,
-        catLosses: teamWeek.weekCatLosses || 0,
-        opponent: teamWeek.opponent || 'Unknown'
+        won: matchup.won,
+        tied: matchup.tied,
+        catWins: matchup.catWins || 0,
+        catLosses: matchup.catLosses || 0,
+        opponent: matchup.opponentName || 'Unknown'
       })
     } else {
-      // Placeholder - we'll need to get this data from matchups
+      // No data available
       results.push({
         won: false,
         tied: false,
         catWins: 0,
         catLosses: 0,
-        opponent: 'TBD'
+        opponent: 'Unknown'
       })
     }
   })
@@ -1673,20 +1673,139 @@ async function loadAllMatchups() {
   console.log(`Loading matchups for weeks ${startWeek}-${endWeek}, isSeasonComplete: ${isSeasonComplete.value}`)
   
   try {
-    // For category leagues, generate standings progression based on final standings
-    // This is because Yahoo doesn't track weekly matchup wins for category leagues
+    // For category leagues, load actual matchup data per week
     if (!isPointsLeague.value) {
-      console.log('Category league detected - generating standings progression')
-      generateStandingsProgression(startWeek, endWeek)
+      console.log('Category league detected - loading weekly matchup data')
       
-      // Load final week matchups for display
-      try {
-        const finalMatchups = await yahooService.getMatchups(leagueKey, endWeek)
-        displayMatchups.value = finalMatchups
-        console.log(`Loaded ${finalMatchups.length} matchups for week ${endWeek}`)
-      } catch (e) {
-        console.error('Error loading final week matchups:', e)
+      const standings = new Map<number, any[]>()
+      const allMatchupResults = new Map<string, Map<number, any>>()
+      
+      // Initialize matchup results map for each team
+      leagueStore.yahooTeams.forEach(t => {
+        allMatchupResults.set(t.team_key, new Map())
+      })
+      
+      // Cumulative category wins per team
+      const cumulativeCatWins = new Map<string, number>()
+      const cumulativeCatLosses = new Map<string, number>()
+      const cumulativeMatchupWins = new Map<string, number>()
+      const cumulativeMatchupLosses = new Map<string, number>()
+      
+      leagueStore.yahooTeams.forEach(t => {
+        cumulativeCatWins.set(t.team_key, 0)
+        cumulativeCatLosses.set(t.team_key, 0)
+        cumulativeMatchupWins.set(t.team_key, 0)
+        cumulativeMatchupLosses.set(t.team_key, 0)
+      })
+      
+      for (let week = startWeek; week <= endWeek; week++) {
+        chartLoadProgress.value = `Week ${week}/${endWeek}`
+        
+        try {
+          const matchups = await yahooService.getCategoryMatchups(leagueKey, week)
+          console.log(`Week ${week}: ${matchups.length} matchups`)
+          
+          for (const matchup of matchups) {
+            if (!matchup.teams || matchup.teams.length < 2) continue
+            
+            const t1 = matchup.teams[0]
+            const t2 = matchup.teams[1]
+            const t1Key = t1?.team_key
+            const t2Key = t2?.team_key
+            
+            if (!t1Key || !t2Key) continue
+            
+            // Count category wins from stat_winners
+            let t1CatWins = 0
+            let t2CatWins = 0
+            let ties = 0
+            
+            if (matchup.stat_winners && matchup.stat_winners.length > 0) {
+              for (const sw of matchup.stat_winners) {
+                if (sw.is_tied === '1') {
+                  ties++
+                } else if (sw.winner_team_key === t1Key) {
+                  t1CatWins++
+                } else if (sw.winner_team_key === t2Key) {
+                  t2CatWins++
+                }
+              }
+            }
+            
+            // Determine matchup winner
+            const t1Won = t1CatWins > t2CatWins
+            const t2Won = t2CatWins > t1CatWins
+            const tied = t1CatWins === t2CatWins
+            
+            // Update cumulative stats
+            cumulativeCatWins.set(t1Key, (cumulativeCatWins.get(t1Key) || 0) + t1CatWins)
+            cumulativeCatLosses.set(t1Key, (cumulativeCatLosses.get(t1Key) || 0) + t2CatWins)
+            cumulativeCatWins.set(t2Key, (cumulativeCatWins.get(t2Key) || 0) + t2CatWins)
+            cumulativeCatLosses.set(t2Key, (cumulativeCatLosses.get(t2Key) || 0) + t1CatWins)
+            
+            if (t1Won) {
+              cumulativeMatchupWins.set(t1Key, (cumulativeMatchupWins.get(t1Key) || 0) + 1)
+              cumulativeMatchupLosses.set(t2Key, (cumulativeMatchupLosses.get(t2Key) || 0) + 1)
+            } else if (t2Won) {
+              cumulativeMatchupWins.set(t2Key, (cumulativeMatchupWins.get(t2Key) || 0) + 1)
+              cumulativeMatchupLosses.set(t1Key, (cumulativeMatchupLosses.get(t1Key) || 0) + 1)
+            }
+            
+            // Store matchup result for each team
+            const t1TeamData = leagueStore.yahooTeams.find(t => t.team_key === t1Key)
+            const t2TeamData = leagueStore.yahooTeams.find(t => t.team_key === t2Key)
+            
+            allMatchupResults.get(t1Key)?.set(week, {
+              catWins: t1CatWins,
+              catLosses: t2CatWins,
+              won: t1Won,
+              tied: tied,
+              opponentKey: t2Key,
+              opponentName: t2TeamData?.name || 'Unknown'
+            })
+            
+            allMatchupResults.get(t2Key)?.set(week, {
+              catWins: t2CatWins,
+              catLosses: t1CatWins,
+              won: t2Won,
+              tied: tied,
+              opponentKey: t1Key,
+              opponentName: t1TeamData?.name || 'Unknown'
+            })
+          }
+          
+          // Build week standings
+          const weekStandings = leagueStore.yahooTeams.map(t => ({
+            team_key: t.team_key,
+            name: t.name,
+            wins: cumulativeCatWins.get(t.team_key) || 0,
+            losses: cumulativeCatLosses.get(t.team_key) || 0,
+            matchupWins: cumulativeMatchupWins.get(t.team_key) || 0,
+            matchupLosses: cumulativeMatchupLosses.get(t.team_key) || 0
+          })).sort((a, b) => {
+            // Sort by matchup wins first, then cat win %
+            if (b.matchupWins !== a.matchupWins) return b.matchupWins - a.matchupWins
+            const aWinPct = a.wins / Math.max(1, a.wins + a.losses)
+            const bWinPct = b.wins / Math.max(1, b.wins + b.losses)
+            return bWinPct - aWinPct
+          })
+          
+          weekStandings.forEach((t, idx) => (t as any).rank = idx + 1)
+          standings.set(week, weekStandings)
+          
+          if (week === endWeek) {
+            displayMatchups.value = matchups
+          }
+          
+        } catch (e) {
+          console.error(`Error loading week ${week}:`, e)
+        }
       }
+      
+      weeklyStandings.value = standings
+      weeklyMatchupResults.value = allMatchupResults
+      console.log(`Loaded ${standings.size} weeks of category matchup data`)
+      
     } else {
       // For points leagues, load actual matchup data
       const standings = new Map<number, any[]>()
