@@ -1525,9 +1525,9 @@ async function downloadStandings() {
       console.log('Could not load logo')
     }
     
-    // Create container
+    // Create container - initially visible for chart rendering
     const container = document.createElement('div')
-    container.style.cssText = 'position: absolute; left: -9999px; top: 0; width: 700px; font-family: system-ui, -apple-system, sans-serif;'
+    container.style.cssText = 'position: fixed; left: 0; top: 0; width: 700px; font-family: system-ui, -apple-system, sans-serif; z-index: -1; opacity: 0.01;'
     
     // Team colors for chart
     const teamColors = ['#F59E0B', '#10B981', '#3B82F6', '#EF4444', '#8B5CF6', '#EC4899', '#06B6D4', '#F97316', '#84CC16', '#6366F1', '#14B8A6', '#F43F5E']
@@ -1634,27 +1634,34 @@ async function downloadStandings() {
     // Create trend chart with team logos at endpoints
     const trendChartContainer = container.querySelector('#standings-trend-chart')
     
-    // Use the existing chartSeries data which is already built
-    console.log('Chart debug - chartSeries length:', chartSeries.value.length)
+    // Get weeks from weeklyStandings
+    const weeks = Array.from(weeklyStandings.value.keys()).sort((a, b) => a - b)
     
-    if (trendChartContainer && chartSeries.value.length > 0) {
+    console.log('Chart debug - weeklyStandings size:', weeklyStandings.value.size)
+    console.log('Chart debug - weeks:', weeks)
+    console.log('Chart debug - sortedTeams length:', sortedTeams.value.length)
+    
+    if (trendChartContainer && weeks.length >= 1 && sortedTeams.value.length > 0) {
       const ApexCharts = (await import('apexcharts')).default
       
-      // Get weeks from the chart options
-      const allWeeks = chartOptions.value?.xaxis?.categories || []
+      // Get last 7 weeks
       const maxWeeksToShow = 7
-      const startIdx = Math.max(0, allWeeks.length - maxWeeksToShow)
-      const weeksToShow = allWeeks.slice(startIdx)
+      const startIdx = Math.max(0, weeks.length - maxWeeksToShow)
+      const weeksToShow = weeks.slice(startIdx)
       
       console.log('Chart debug - weeksToShow:', weeksToShow)
       
-      // Slice the series data to match the weeks shown
-      const trendSeries = chartSeries.value.map((series: any) => ({
-        name: series.name,
-        data: series.data.slice(startIdx)
-      }))
+      // Build series data from weeklyStandings
+      const trendSeries = sortedTeams.value.map((team) => {
+        const data = weeksToShow.map(week => {
+          const weekData = weeklyStandings.value.get(week) || []
+          const teamStanding = weekData.find((t: any) => t.team_key === team.team_key)
+          return teamStanding?.rank || sortedTeams.value.length
+        })
+        return { name: team.name, data }
+      })
       
-      console.log('Chart debug - trendSeries:', trendSeries)
+      console.log('Chart debug - trendSeries first team:', trendSeries[0])
       
       const trendChart = new ApexCharts(trendChartContainer, {
         chart: {
@@ -1674,7 +1681,7 @@ async function downloadStandings() {
         },
         markers: { size: 0, strokeWidth: 0 },
         xaxis: {
-          categories: weeksToShow,
+          categories: weeksToShow.map(w => `Wk ${w}`),
           labels: { style: { colors: '#9ca3af', fontSize: '10px' } },
           axisBorder: { show: false },
           axisTicks: { show: false }
@@ -1694,7 +1701,7 @@ async function downloadStandings() {
       })
       
       await trendChart.render()
-      console.log('Chart debug - chart rendered')
+      console.log('Chart debug - chart rendered successfully')
       
       // Wait for chart to render, then add team logos at endpoints
       await new Promise(resolve => setTimeout(resolve, 600))
@@ -1717,13 +1724,14 @@ async function downloadStandings() {
         const logoContainer = document.createElement('div')
         logoContainer.style.cssText = 'position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 10;'
         
-        // Use trendSeries to get the last rank for each team
-        trendSeries.forEach((series: any, idx: number) => {
-          const team = sortedTeams.value[idx]
-          if (!team) return
-          
-          // Get the last rank from the series data
-          const lastRank = series.data[series.data.length - 1] || numTeams
+        // Get the last week's standings for positioning
+        const lastWeek = weeksToShow[weeksToShow.length - 1]
+        const lastWeekData = weeklyStandings.value.get(lastWeek) || []
+        
+        sortedTeams.value.forEach((team, idx) => {
+          // Get the last rank from weeklyStandings
+          const teamStanding = lastWeekData.find((t: any) => t.team_key === team.team_key)
+          const lastRank = teamStanding?.rank || numTeams
           
           // Calculate y position based on rank
           const yPercent = (lastRank - 1) / Math.max(1, numTeams - 1)
@@ -1758,7 +1766,7 @@ async function downloadStandings() {
       // Wait for logos to render
       await new Promise(resolve => setTimeout(resolve, 300))
     } else {
-      console.log('Chart debug - no chart data, skipping chart')
+      console.log('Chart debug - skipping chart. Container:', !!trendChartContainer, 'weeks:', weeks.length, 'teams:', sortedTeams.value.length)
       // No chart data - wait for images only
       await new Promise(resolve => setTimeout(resolve, 500))
     }
