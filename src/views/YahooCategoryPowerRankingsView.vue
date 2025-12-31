@@ -828,86 +828,83 @@ async function downloadRankings() {
     `}
     
     container.innerHTML = `
-      <div style="background: linear-gradient(160deg, #0f1219 0%, #0a0c14 50%, #0d1117 100%); border-radius: 16px; padding: 8px 24px 12px 24px; box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5); position: relative; overflow: hidden;">
-        <!-- Decorative blue glow at top -->
-        <div style="position: absolute; top: -100px; left: 50%; transform: translateX(-50%); width: 400px; height: 200px; background: radial-gradient(ellipse, rgba(59, 159, 232, 0.3) 0%, transparent 70%); pointer-events: none;"></div>
+      <div style="background: linear-gradient(160deg, #0f1219 0%, #0a0c14 50%, #0d1117 100%); border-radius: 16px; box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5); position: relative; overflow: hidden;">
         
-        <!-- Ghosted baseball diamond field SVG background - bottom right -->
-        <div style="position: absolute; bottom: -100px; right: -100px; width: 500px; height: 500px; opacity: 0.07; pointer-events: none;">
-          <svg viewBox="0 0 200 200" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <!-- Outfield arc -->
-            <path d="M100 20 Q20 20 20 100 Q20 140 60 170 L100 130 L140 170 Q180 140 180 100 Q180 20 100 20" stroke="#3B9FE8" stroke-width="1.5" fill="none"/>
-            <!-- Infield arc -->
-            <path d="M100 50 Q55 50 55 100 Q55 120 75 140 L100 115 L125 140 Q145 120 145 100 Q145 50 100 50" stroke="#3B9FE8" stroke-width="1.5" fill="none"/>
-            <!-- Diamond -->
-            <path d="M100 70 L130 100 L100 130 L70 100 Z" stroke="#3B9FE8" stroke-width="1.5" fill="none"/>
-            <!-- Pitcher's mound -->
-            <circle cx="100" cy="100" r="8" stroke="#3B9FE8" stroke-width="1.5" fill="none"/>
-            <!-- Home plate area -->
-            <path d="M95 130 L100 140 L105 130 L105 125 L95 125 Z" stroke="#3B9FE8" stroke-width="1.5" fill="none"/>
-            <!-- Batter's boxes -->
-            <rect x="82" y="132" width="8" height="12" stroke="#3B9FE8" stroke-width="1" fill="none"/>
-            <rect x="110" y="132" width="8" height="12" stroke="#3B9FE8" stroke-width="1" fill="none"/>
-            <!-- Bases -->
-            <rect x="97" y="67" width="6" height="6" stroke="#3B9FE8" stroke-width="1" fill="none" transform="rotate(45 100 70)"/>
-            <rect x="127" y="97" width="6" height="6" stroke="#3B9FE8" stroke-width="1" fill="none" transform="rotate(45 130 100)"/>
-            <rect x="67" y="97" width="6" height="6" stroke="#3B9FE8" stroke-width="1" fill="none" transform="rotate(45 70 100)"/>
-            <!-- Foul lines -->
-            <line x1="100" y1="130" x2="40" y2="190" stroke="#3B9FE8" stroke-width="1.5"/>
-            <line x1="100" y1="130" x2="160" y2="190" stroke="#3B9FE8" stroke-width="1.5"/>
-            <!-- On-deck circles -->
-            <circle cx="55" cy="155" r="5" stroke="#3B9FE8" stroke-width="1" fill="none"/>
-            <circle cx="145" cy="155" r="5" stroke="#3B9FE8" stroke-width="1" fill="none"/>
-          </svg>
-        </div>
-        
-        <!-- Smaller ghosted diamond - top left -->
-        <div style="position: absolute; top: -60px; left: -60px; width: 250px; height: 250px; opacity: 0.04; pointer-events: none; transform: rotate(15deg);">
-          <svg viewBox="0 0 200 200" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <!-- Outfield arc -->
-            <path d="M100 20 Q20 20 20 100 Q20 140 60 170 L100 130 L140 170 Q180 140 180 100 Q180 20 100 20" stroke="#3B9FE8" stroke-width="2" fill="none"/>
-            <!-- Diamond -->
-            <path d="M100 70 L130 100 L100 130 L70 100 Z" stroke="#3B9FE8" stroke-width="2" fill="none"/>
-            <!-- Pitcher's mound -->
-            <circle cx="100" cy="100" r="8" stroke="#3B9FE8" stroke-width="2" fill="none"/>
-          </svg>
-        </div>
-        
-        <!-- Blue diagonal lines pattern overlay -->
-        <div style="position: absolute; top: 0; left: 0; right: 0; bottom: 0; opacity: 0.03; pointer-events: none; background: repeating-linear-gradient(45deg, transparent, transparent 20px, #3B9FE8 20px, #3B9FE8 21px);"></div>
-        
-        <!-- Header - Moved up with less padding -->
-        <div style="text-align: center; margin-bottom: 12px; position: relative; z-index: 1;">
-          <div style="font-size: 44px; font-weight: 900; color: #ffffff; text-transform: uppercase; letter-spacing: 3px; text-shadow: 0 0 30px rgba(59, 159, 232, 0.5); line-height: 1;">POWER RANKINGS</div>
-          <div style="font-size: 18px; margin-top: 4px; font-weight: 600;"><span style="color: #9ca3af;">${leagueName}</span> <span style="color: #9ca3af;">•</span> <span style="color: #3B9FE8; font-weight: 700;">Week ${selectedWeek.value}</span></div>
-        </div>
-        
-        <!-- Rankings (Two Columns) -->
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px; position: relative; z-index: 1;">
-          <div>${firstHalf.map((team, idx) => generateRankingRow(team, idx + 1)).join('')}</div>
-          <div>${secondHalf.map((team, idx) => generateRankingRow(team, idx + midpoint + 1)).join('')}</div>
-        </div>
-        
-        <!-- Trend Chart -->
-        <div style="background: rgba(38, 42, 58, 0.3); border-radius: 12px; padding: 16px; margin-bottom: 12px; border: 1px solid rgba(59, 159, 232, 0.2); position: relative; z-index: 1;">
-          <h3 style="color: #3B9FE8; font-size: 14px; margin: 0 0 12px 0; text-align: center; font-weight: 700; text-transform: uppercase; letter-spacing: 1px;">📈 Rankings Trend</h3>
-          <div id="trend-chart-container" style="height: 220px; position: relative;"></div>
-        </div>
-        
-        <!-- Formula Display -->
-        <div style="text-align: center; font-size: 9px; color: #6b7280; margin-bottom: 8px; position: relative; z-index: 1;">
-          ${currentFormulaDisplay.value}
-        </div>
-        
-        <!-- Footer - text moved up, URL bigger -->
-        <div style="border-top: 1px solid rgba(59, 159, 232, 0.2); padding-top: 8px; padding-bottom: 2px; position: relative; z-index: 1;">
-          <div style="display: flex; align-items: center; justify-content: center; gap: 16px;">
-            ${logoBase64 ? `<img src="${logoBase64}" style="width: 100px; height: 100px; object-fit: contain; flex-shrink: 0;" />` : ''}
-            <div style="text-align: left; padding-bottom: 8px;">
-              <div style="font-size: 12px; color: #9ca3af; margin-bottom: 4px;">Shareable Dashboards, Smart Projections, League History, & So Much More</div>
-              <div style="font-size: 24px; font-weight: bold; color: #3B9FE8; letter-spacing: -0.5px;">ultimatefantasydashboard.com</div>
+        <!-- HEADER - Logo on left with text next to it -->
+        <div style="display: flex; align-items: center; padding: 16px 24px; border-bottom: 1px solid rgba(59, 159, 232, 0.2); position: relative; z-index: 10;">
+          <!-- Baseball Logo -->
+          ${logoBase64 ? `<img src="${logoBase64}" style="width: 70px; height: 70px; object-fit: contain; flex-shrink: 0; margin-right: 16px;" />` : ''}
+          <!-- Title and League Info - Left justified -->
+          <div style="flex: 1;">
+            <div style="font-size: 32px; font-weight: 900; color: #ffffff; text-transform: uppercase; letter-spacing: 2px; text-shadow: 0 2px 8px rgba(59, 159, 232, 0.4); line-height: 1;">Power Rankings</div>
+            <div style="font-size: 16px; margin-top: 6px; font-weight: 600;">
+              <span style="color: #e5e7eb;">${leagueName}</span>
+              <span style="color: #6b7280; margin: 0 8px;">•</span>
+              <span style="color: #3B9FE8; font-weight: 700;">Week ${selectedWeek.value}</span>
             </div>
           </div>
+        </div>
+        
+        <!-- Main content area -->
+        <div style="padding: 16px 24px 12px 24px; position: relative;">
+          <!-- Decorative blue glow at top -->
+          <div style="position: absolute; top: -50px; left: 50%; transform: translateX(-50%); width: 400px; height: 200px; background: radial-gradient(ellipse, rgba(59, 159, 232, 0.15) 0%, transparent 70%); pointer-events: none;"></div>
+          
+          <!-- Ghosted baseball diamond field SVG background - bottom right -->
+          <div style="position: absolute; bottom: -100px; right: -100px; width: 500px; height: 500px; opacity: 0.07; pointer-events: none;">
+            <svg viewBox="0 0 200 200" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <!-- Outfield arc -->
+              <path d="M100 20 Q20 20 20 100 Q20 140 60 170 L100 130 L140 170 Q180 140 180 100 Q180 20 100 20" stroke="#3B9FE8" stroke-width="1.5" fill="none"/>
+              <!-- Infield arc -->
+              <path d="M100 50 Q55 50 55 100 Q55 120 75 140 L100 115 L125 140 Q145 120 145 100 Q145 50 100 50" stroke="#3B9FE8" stroke-width="1.5" fill="none"/>
+              <!-- Diamond -->
+              <path d="M100 70 L130 100 L100 130 L70 100 Z" stroke="#3B9FE8" stroke-width="1.5" fill="none"/>
+              <!-- Pitcher's mound -->
+              <circle cx="100" cy="100" r="8" stroke="#3B9FE8" stroke-width="1.5" fill="none"/>
+              <!-- Home plate area -->
+              <path d="M95 130 L100 140 L105 130 L105 125 L95 125 Z" stroke="#3B9FE8" stroke-width="1.5" fill="none"/>
+              <!-- Foul lines -->
+              <line x1="100" y1="130" x2="40" y2="190" stroke="#3B9FE8" stroke-width="1.5"/>
+              <line x1="100" y1="130" x2="160" y2="190" stroke="#3B9FE8" stroke-width="1.5"/>
+            </svg>
+          </div>
+          
+          <!-- Smaller ghosted diamond - top left -->
+          <div style="position: absolute; top: -60px; left: -60px; width: 250px; height: 250px; opacity: 0.04; pointer-events: none; transform: rotate(15deg);">
+            <svg viewBox="0 0 200 200" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <!-- Outfield arc -->
+              <path d="M100 20 Q20 20 20 100 Q20 140 60 170 L100 130 L140 170 Q180 140 180 100 Q180 20 100 20" stroke="#3B9FE8" stroke-width="2" fill="none"/>
+              <!-- Diamond -->
+              <path d="M100 70 L130 100 L100 130 L70 100 Z" stroke="#3B9FE8" stroke-width="2" fill="none"/>
+              <!-- Pitcher's mound -->
+              <circle cx="100" cy="100" r="8" stroke="#3B9FE8" stroke-width="2" fill="none"/>
+            </svg>
+          </div>
+          
+          <!-- Blue diagonal lines pattern overlay -->
+          <div style="position: absolute; top: 0; left: 0; right: 0; bottom: 0; opacity: 0.03; pointer-events: none; background: repeating-linear-gradient(45deg, transparent, transparent 20px, #3B9FE8 20px, #3B9FE8 21px);"></div>
+          
+          <!-- Rankings (Two Columns) -->
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px; position: relative; z-index: 1;">
+            <div>${firstHalf.map((team, idx) => generateRankingRow(team, idx + 1)).join('')}</div>
+            <div>${secondHalf.map((team, idx) => generateRankingRow(team, idx + midpoint + 1)).join('')}</div>
+          </div>
+          
+          <!-- Trend Chart -->
+          <div style="background: rgba(38, 42, 58, 0.3); border-radius: 12px; padding: 16px; margin-bottom: 12px; border: 1px solid rgba(59, 159, 232, 0.2); position: relative; z-index: 1;">
+            <h3 style="color: #3B9FE8; font-size: 18px; margin: 0 0 12px 0; text-align: center; font-weight: 700; text-transform: uppercase; letter-spacing: 1px;">Rankings Trend</h3>
+            <div id="trend-chart-container" style="height: 220px; position: relative;"></div>
+          </div>
+          
+          <!-- Formula Display -->
+          <div style="text-align: center; font-size: 9px; color: #6b7280; margin-bottom: 8px; position: relative; z-index: 1;">
+            ${currentFormulaDisplay.value}
+          </div>
+        </div>
+        
+        <!-- Footer - Simple centered text -->
+        <div style="border-top: 1px solid rgba(59, 159, 232, 0.2); padding: 12px 24px; text-align: center; position: relative; z-index: 1;">
+          <div style="font-size: 20px; font-weight: bold; color: #3B9FE8; letter-spacing: -0.5px;">ultimatefantasydashboard.com</div>
         </div>
       </div>
     `
