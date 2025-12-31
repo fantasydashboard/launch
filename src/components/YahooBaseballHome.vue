@@ -1456,6 +1456,27 @@ async function downloadStandings() {
   try {
     const html2canvas = (await import('html2canvas')).default
     
+    // Team colors for chart
+    const teamColors = ['#F59E0B', '#10B981', '#3B82F6', '#EF4444', '#8B5CF6', '#EC4899', '#06B6D4', '#F97316', '#84CC16', '#6366F1', '#14B8A6', '#F43F5E']
+    const getTeamColor = (idx: number) => teamColors[idx % teamColors.length]
+    
+    // Helper to load logo
+    const loadLogo = async (): Promise<string> => {
+      try {
+        const response = await fetch('/logos/UFD_Baseball.png')
+        const blob = await response.blob()
+        return new Promise((resolve) => {
+          const reader = new FileReader()
+          reader.onloadend = () => resolve(reader.result as string)
+          reader.onerror = () => resolve('')
+          reader.readAsDataURL(blob)
+        })
+      } catch (e) {
+        console.warn('Failed to load logo:', e)
+        return ''
+      }
+    }
+    
     // Helper to create placeholder avatar
     const createPlaceholder = (teamName: string): string => {
       const canvas = document.createElement('canvas')
@@ -1476,7 +1497,9 @@ async function downloadStandings() {
       return canvas.toDataURL('image/png')
     }
     
-    // Preload team images
+    const logoBase64 = await loadLogo()
+    
+    // Pre-load all team images
     const imageMap = new Map<string, string>()
     for (const team of sortedTeams.value) {
       try {
@@ -1511,35 +1534,22 @@ async function downloadStandings() {
       }
     }
     
-    // Load baseball logo
-    let logoBase64 = ''
-    try {
-      const logoResponse = await fetch('/logos/UFD_Baseball.png')
-      const logoBlob = await logoResponse.blob()
-      logoBase64 = await new Promise<string>((resolve) => {
-        const reader = new FileReader()
-        reader.onloadend = () => resolve(reader.result as string)
-        reader.readAsDataURL(logoBlob)
-      })
-    } catch (e) {
-      console.log('Could not load logo')
-    }
-    
-    // Create container - initially visible for chart rendering
+    // Create container
     const container = document.createElement('div')
-    container.style.cssText = 'position: fixed; left: 0; top: 0; width: 700px; font-family: system-ui, -apple-system, sans-serif; z-index: -1; opacity: 0.01;'
+    container.style.cssText = 'position: absolute; left: -9999px; top: 0; width: 700px; font-family: system-ui, -apple-system, sans-serif;'
     
-    // Team colors for chart
-    const teamColors = ['#F59E0B', '#10B981', '#3B82F6', '#EF4444', '#8B5CF6', '#EC4899', '#06B6D4', '#F97316', '#84CC16', '#6366F1', '#14B8A6', '#F43F5E']
-    const getTeamColor = (idx: number) => teamColors[idx % teamColors.length]
+    // Split teams for two columns
+    const midpoint = Math.ceil(sortedTeams.value.length / 2)
+    const firstHalf = sortedTeams.value.slice(0, midpoint)
+    const secondHalf = sortedTeams.value.slice(midpoint)
     
     // Calculate number of teams for percentage color thresholds
     const numTeams = sortedTeams.value.length
     const topThird = Math.ceil(numTeams / 3)
     const bottomThird = numTeams - Math.ceil(numTeams / 3)
     
-    // Generate standings row - matching power rankings style with big blue numbers
-    const generateStandingsRow = (team: any, rank: number, teamIdx: number) => {
+    // Generate standings row - matching power rankings style
+    const generateStandingsRow = (team: any, rank: number) => {
       // H2H record with ties
       const h2hRecord = `${team.wins || 0}-${team.losses || 0}-${team.ties || 0}`
       
@@ -1577,12 +1587,6 @@ async function downloadStandings() {
       </div>
     `}
     
-    // Split teams into two columns
-    const teams = sortedTeams.value
-    const midpoint = Math.ceil(teams.length / 2)
-    const firstHalf = teams.slice(0, midpoint)
-    const secondHalf = teams.slice(midpoint)
-    
     container.innerHTML = `
       <div style="background: linear-gradient(160deg, #0f1219 0%, #0a0c14 50%, #0d1117 100%); border-radius: 16px; box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5); position: relative; overflow: hidden;">
         
@@ -1611,8 +1615,8 @@ async function downloadStandings() {
           
           <!-- Standings (Two Columns) -->
           <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px; position: relative; z-index: 1;">
-            <div>${firstHalf.map((team, idx) => generateStandingsRow(team, idx + 1, idx)).join('')}</div>
-            <div>${secondHalf.map((team, idx) => generateStandingsRow(team, idx + midpoint + 1, idx + midpoint)).join('')}</div>
+            <div>${firstHalf.map((team, idx) => generateStandingsRow(team, idx + 1)).join('')}</div>
+            <div>${secondHalf.map((team, idx) => generateStandingsRow(team, idx + midpoint + 1)).join('')}</div>
           </div>
           
           <!-- Trend Chart -->
@@ -1622,7 +1626,7 @@ async function downloadStandings() {
           </div>
         </div>
         
-        <!-- Footer - negative margin to pull up -->
+        <!-- Footer -->
         <div style="padding: 20px 24px 20px 24px; text-align: center; position: relative; z-index: 1;">
           <span style="font-size: 24px; font-weight: bold; color: #3B9FE8; letter-spacing: -0.5px; display: block; margin-top: -35px;">ultimatefantasydashboard.com</span>
         </div>
@@ -1632,36 +1636,30 @@ async function downloadStandings() {
     document.body.appendChild(container)
     
     // Create trend chart with team logos at endpoints
+    // Get weeks from weeklyStandings (same pattern as power rankings uses chartWeeks)
+    const weeks = Array.from(weeklyStandings.value.keys()).sort((a, b) => a - b)
     const trendChartContainer = container.querySelector('#standings-trend-chart')
     
-    // Get weeks from weeklyStandings
-    const weeks = Array.from(weeklyStandings.value.keys()).sort((a, b) => a - b)
-    
-    console.log('Chart debug - weeklyStandings size:', weeklyStandings.value.size)
-    console.log('Chart debug - weeks:', weeks)
-    console.log('Chart debug - sortedTeams length:', sortedTeams.value.length)
-    
-    if (trendChartContainer && weeks.length >= 1 && sortedTeams.value.length > 0) {
+    if (trendChartContainer && weeks.length >= 2) {
       const ApexCharts = (await import('apexcharts')).default
       
-      // Get last 7 weeks
+      // Get last 7 weeks of data
       const maxWeeksToShow = 7
       const startIdx = Math.max(0, weeks.length - maxWeeksToShow)
       const weeksToShow = weeks.slice(startIdx)
       
-      console.log('Chart debug - weeksToShow:', weeksToShow)
-      
-      // Build series data from weeklyStandings
+      // Build series with last 7 weeks (same pattern as power rankings uses historicalRanks)
       const trendSeries = sortedTeams.value.map((team) => {
         const data = weeksToShow.map(week => {
           const weekData = weeklyStandings.value.get(week) || []
           const teamStanding = weekData.find((t: any) => t.team_key === team.team_key)
           return teamStanding?.rank || sortedTeams.value.length
         })
-        return { name: team.name, data }
+        return {
+          name: team.name,
+          data: data
+        }
       })
-      
-      console.log('Chart debug - trendSeries first team:', trendSeries[0])
       
       const trendChart = new ApexCharts(trendChartContainer, {
         chart: {
@@ -1679,29 +1677,42 @@ async function downloadStandings() {
           width: sortedTeams.value.map(team => team.is_my_team ? 4 : 2),
           curve: 'smooth'
         },
-        markers: { size: 0, strokeWidth: 0 },
+        markers: {
+          size: 0,
+          strokeWidth: 0
+        },
         xaxis: {
           categories: weeksToShow.map(w => `Wk ${w}`),
-          labels: { style: { colors: '#9ca3af', fontSize: '10px' } },
-          axisBorder: { show: false },
-          axisTicks: { show: false }
+          labels: {
+            style: {
+              colors: '#9ca3af',
+              fontSize: '10px'
+            }
+          }
         },
         yaxis: {
           reversed: true,
           min: 1,
           max: sortedTeams.value.length,
           labels: {
-            style: { colors: '#9ca3af', fontSize: '10px' },
-            formatter: (val: number) => `#${Math.round(val)}`
+            style: {
+              colors: '#9ca3af',
+              fontSize: '10px'
+            },
+            formatter: (value: number) => `#${Math.round(value)}`
           }
         },
-        legend: { show: false },
-        tooltip: { enabled: false },
-        grid: { borderColor: '#374151', strokeDashArray: 3 }
+        legend: {
+          show: false
+        },
+        grid: {
+          borderColor: '#374151',
+          strokeDashArray: 3
+        },
+        tooltip: { enabled: false }
       })
       
       await trendChart.render()
-      console.log('Chart debug - chart rendered successfully')
       
       // Wait for chart to render, then add team logos at endpoints
       await new Promise(resolve => setTimeout(resolve, 600))
@@ -1719,22 +1730,18 @@ async function downloadStandings() {
         const plotHeight = plotRect.height
         const plotWidth = plotRect.width
         
-        const numTeams = sortedTeams.value.length
-        
         const logoContainer = document.createElement('div')
         logoContainer.style.cssText = 'position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 10;'
         
-        // Get the last week's standings for positioning
-        const lastWeek = weeksToShow[weeksToShow.length - 1]
-        const lastWeekData = weeklyStandings.value.get(lastWeek) || []
-        
-        sortedTeams.value.forEach((team, idx) => {
-          // Get the last rank from weeklyStandings
-          const teamStanding = lastWeekData.find((t: any) => t.team_key === team.team_key)
-          const lastRank = teamStanding?.rank || numTeams
+        for (let i = 0; i < sortedTeams.value.length; i++) {
+          const team = sortedTeams.value[i]
+          const seriesData = trendSeries[i]?.data || []
+          if (seriesData.length === 0) continue
+          
+          const lastRank = seriesData[seriesData.length - 1]
           
           // Calculate y position based on rank
-          const yPercent = (lastRank - 1) / Math.max(1, numTeams - 1)
+          const yPercent = (lastRank - 1) / (numTeams - 1)
           const yPos = plotTop + (yPercent * plotHeight)
           
           // X position is at the right edge of the plot area
@@ -1751,13 +1758,13 @@ async function downloadStandings() {
             height: ${logoSize}px;
             border-radius: 50%;
             overflow: hidden;
-            border: 2px solid ${team.is_my_team ? '#F5C451' : getTeamColor(idx)};
+            border: 2px solid ${team.is_my_team ? '#F5C451' : getTeamColor(i)};
             background: #262a3a;
             box-shadow: 0 2px 4px rgba(0,0,0,0.3);
           `
           logoDiv.innerHTML = `<img src="${imageMap.get(team.team_key) || ''}" style="width: 100%; height: 100%; object-fit: cover;" />`
           logoContainer.appendChild(logoDiv)
-        })
+        }
         
         ;(trendChartContainer as HTMLElement).style.position = 'relative'
         trendChartContainer.appendChild(logoContainer)
@@ -1766,23 +1773,22 @@ async function downloadStandings() {
       // Wait for logos to render
       await new Promise(resolve => setTimeout(resolve, 300))
     } else {
-      console.log('Chart debug - skipping chart. Container:', !!trendChartContainer, 'weeks:', weeks.length, 'teams:', sortedTeams.value.length)
       // No chart data - wait for images only
       await new Promise(resolve => setTimeout(resolve, 500))
     }
     
-    // Generate image
+    // Capture the image
     const canvas = await html2canvas(container, {
       backgroundColor: '#0a0c14',
       scale: 2,
+      logging: false,
       useCORS: true,
-      allowTaint: true,
-      logging: false
+      allowTaint: true
     })
     
     document.body.removeChild(container)
     
-    // Download
+    // Download the image
     const link = document.createElement('a')
     link.download = `standings-week-${displayWeek.value}.png`
     link.href = canvas.toDataURL('image/png')
@@ -1795,7 +1801,6 @@ async function downloadStandings() {
     isGeneratingDownload.value = false
   }
 }
-
 // Load league settings
 async function loadLeagueSettings() {
   const leagueKey = leagueStore.activeLeagueId
