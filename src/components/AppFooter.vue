@@ -6,13 +6,13 @@
         <!-- Brand Column -->
         <div class="lg:col-span-1">
           <div class="flex items-center gap-3 mb-4">
-            <img src="/ufd-logo.png" alt="UFD Logo" class="w-10 h-10 object-contain" />
+            <img src="/logos/UFD_Logo.png" alt="UFD Logo" class="w-10 h-10 object-contain" />
             <div>
               <h3 class="text-lg font-bold text-dark-text">Ultimate Fantasy Dashboard</h3>
             </div>
           </div>
           <p class="text-sm text-dark-textMuted leading-relaxed mb-4">
-            Your all-in-one fantasy football analytics platform. Power rankings, projections, history, and more.
+            Your all-in-one fantasy sports analytics platform. Power rankings, projections, history, and more.
           </p>
           <div class="flex items-center gap-3">
             <a href="https://twitter.com" target="_blank" class="w-9 h-9 rounded-full bg-dark-border/50 flex items-center justify-center hover:bg-primary/20 hover:text-primary transition-colors text-dark-textMuted">
@@ -36,15 +36,14 @@
           </ul>
         </div>
 
-        <!-- Resources -->
+        <!-- Sports -->
         <div>
-          <h4 class="text-sm font-semibold text-dark-text uppercase tracking-wider mb-4">Resources</h4>
+          <h4 class="text-sm font-semibold text-dark-text uppercase tracking-wider mb-4">Sports</h4>
           <ul class="space-y-2">
-            <li><router-link to="/tools" class="text-sm text-dark-textMuted hover:text-primary transition-colors">Tools</router-link></li>
-            <li><router-link to="/draft" class="text-sm text-dark-textMuted hover:text-primary transition-colors">Draft Analysis</router-link></li>
-            <li><router-link to="/settings" class="text-sm text-dark-textMuted hover:text-primary transition-colors">Settings</router-link></li>
-            <li><a href="#" class="text-sm text-dark-textMuted hover:text-primary transition-colors">Privacy Policy</a></li>
-            <li><a href="#" class="text-sm text-dark-textMuted hover:text-primary transition-colors">Terms of Service</a></li>
+            <li><a href="#" class="text-sm text-dark-textMuted hover:text-primary transition-colors">Football</a></li>
+            <li><a href="#" class="text-sm text-dark-textMuted hover:text-primary transition-colors">Baseball</a></li>
+            <li><a href="#" class="text-sm text-dark-textMuted hover:text-primary transition-colors">Basketball</a></li>
+            <li><a href="#" class="text-sm text-dark-textMuted hover:text-primary transition-colors">Hockey</a></li>
           </ul>
         </div>
 

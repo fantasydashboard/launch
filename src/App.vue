@@ -60,18 +60,15 @@
         
         <div class="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div class="flex items-center justify-end h-10 sm:h-11">
-            <!-- Right side: Title + League Dropdown + User Menu -->
+            <!-- Right side: Title + League Dropdown (lg only) + User Menu -->
             <div class="flex items-center gap-3 sm:gap-4">
-              <!-- Title -->
-              <h1 class="hidden md:block text-sm lg:text-base font-bold text-white tracking-wider uppercase whitespace-nowrap">
-                ULTIMATE FANTASY DASHBOARD
-              </h1>
-              <h1 class="block md:hidden text-[9px] sm:text-xs font-bold text-white tracking-wider uppercase whitespace-nowrap">
+              <!-- Title - always visible, bigger on mobile -->
+              <h1 class="text-[11px] sm:text-sm lg:text-base font-bold text-white tracking-wider uppercase whitespace-nowrap">
                 ULTIMATE FANTASY DASHBOARD
               </h1>
               
-              <!-- League Dropdown -->
-              <div class="relative" ref="leagueDropdownRef">
+              <!-- League Dropdown - hidden on mobile/tablet, shown on lg+ -->
+              <div class="relative hidden lg:block" ref="leagueDropdownRef">
                 <button
                   @click="showLeagueDropdown = !showLeagueDropdown"
                   class="flex items-center gap-2 px-2 sm:px-3 py-1.5 rounded-lg bg-white/10 border border-white/20 hover:border-white/40 transition-colors min-w-0 sm:min-w-[180px]"
@@ -393,14 +390,14 @@
       
       <!-- Sport Logo - Floating on top, shrinks on scroll -->
       <div 
-        class="fixed left-1 sm:left-2 lg:left-3 z-50 pointer-events-none transition-all duration-300"
-        :style="{ top: isScrolled ? '2px' : '2px' }"
+        class="fixed left-2 sm:left-2 lg:left-3 z-50 pointer-events-none transition-all duration-300"
+        :style="{ top: isScrolled ? '2px' : '0px' }"
       >
         <img 
           :src="sportStore.sportLogo" 
           :alt="sportStore.sportLabel"
           class="object-contain drop-shadow-lg transition-all duration-300"
-          :class="isScrolled ? 'w-[52px] h-[52px] sm:w-[56px] sm:h-[56px] lg:w-[60px] lg:h-[60px]' : 'w-20 h-20 sm:w-24 sm:h-24 lg:w-[104px] lg:h-[104px]'"
+          :class="isScrolled ? 'w-[52px] h-[52px] sm:w-[56px] sm:h-[56px] lg:w-[60px] lg:h-[60px]' : 'w-[88px] h-[88px] sm:w-24 sm:h-24 lg:w-[104px] lg:h-[104px]'"
         />
       </div>
       
@@ -411,7 +408,7 @@
       <div class="h-8 w-full pointer-events-none -mb-8 relative z-10" style="background: linear-gradient(to bottom, #0a0b10, transparent);"></div>
 
       <!-- Main Content -->
-      <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <main class="px-4 sm:px-6 lg:px-8 py-8">
         <div v-if="leagueStore.error" class="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl p-4 mb-6 shadow-lg">
           <p class="text-red-800 dark:text-red-200 font-medium">{{ leagueStore.error }}</p>
         </div>
