@@ -831,20 +831,18 @@ async function downloadRankings() {
       <div style="background: linear-gradient(160deg, #0f1219 0%, #0a0c14 50%, #0d1117 100%); border-radius: 16px; box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5); position: relative; overflow: hidden;">
         
         <!-- Top Blue Bar with site name -->
-        <div style="background: #3B9FE8; height: 36px; display: table; width: 100%;">
-          <div style="display: table-cell; vertical-align: middle; text-align: center;">
-            <span style="font-size: 16px; font-weight: 700; color: #0a0c14; text-transform: uppercase; letter-spacing: 3px;">Ultimate Fantasy Dashboard</span>
-          </div>
+        <div style="background: #3B9FE8; padding: 10px 24px; text-align: center; box-sizing: border-box;">
+          <span style="font-size: 16px; font-weight: 700; color: #0a0c14; text-transform: uppercase; letter-spacing: 3px; display: inline-block; vertical-align: middle;">Ultimate Fantasy Dashboard</span>
         </div>
         
         <!-- HEADER - Logo on left with text next to it, both vertically centered -->
-        <div style="display: flex; align-items: center; padding: 10px 24px; border-bottom: 1px solid rgba(59, 159, 232, 0.2); position: relative; z-index: 10;">
+        <div style="display: flex; align-items: center; padding: 16px 24px; border-bottom: 1px solid rgba(59, 159, 232, 0.2); position: relative; z-index: 10; box-sizing: border-box;">
           <!-- Baseball Logo -->
-          ${logoBase64 ? `<img src="${logoBase64}" style="width: 105px; height: 105px; object-fit: contain; flex-shrink: 0; margin-right: 20px;" />` : ''}
+          ${logoBase64 ? `<img src="${logoBase64}" style="width: 90px; height: 90px; object-fit: contain; flex-shrink: 0; margin-right: 20px; display: block;" />` : ''}
           <!-- Title and League Info - vertically centered with logo -->
-          <div style="flex: 1;">
+          <div style="flex: 1; display: flex; flex-direction: column; justify-content: center;">
             <div style="font-size: 42px; font-weight: 900; color: #ffffff; text-transform: uppercase; letter-spacing: 2px; text-shadow: 0 2px 8px rgba(59, 159, 232, 0.4); line-height: 1;">Power Rankings</div>
-            <div style="font-size: 20px; margin-top: 8px; font-weight: 600;">
+            <div style="font-size: 20px; margin-top: 8px; font-weight: 600; line-height: 1;">
               <span style="color: #e5e7eb;">${leagueName}</span>
               <span style="color: #6b7280; margin: 0 8px;">•</span>
               <span style="color: #3B9FE8; font-weight: 700;">Week ${selectedWeek.value}</span>
@@ -874,8 +872,8 @@ async function downloadRankings() {
         </div>
         
         <!-- Footer - Simple centered text -->
-        <div style="padding: 0px 24px 6px 24px; text-align: center; position: relative; z-index: 1;">
-          <div style="font-size: 24px; font-weight: bold; color: #3B9FE8; letter-spacing: -0.5px;">ultimatefantasydashboard.com</div>
+        <div style="padding: 16px 24px; text-align: center; position: relative; z-index: 1; box-sizing: border-box;">
+          <span style="font-size: 24px; font-weight: bold; color: #3B9FE8; letter-spacing: -0.5px; display: inline-block; vertical-align: middle;">ultimatefantasydashboard.com</span>
         </div>
       </div>
     `
