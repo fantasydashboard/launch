@@ -833,11 +833,11 @@ async function downloadRankings() {
         <!-- HEADER - Logo on left with text next to it -->
         <div style="display: flex; align-items: center; padding: 16px 24px; border-bottom: 1px solid rgba(59, 159, 232, 0.2); position: relative; z-index: 10;">
           <!-- Baseball Logo -->
-          ${logoBase64 ? `<img src="${logoBase64}" style="width: 70px; height: 70px; object-fit: contain; flex-shrink: 0; margin-right: 16px;" />` : ''}
+          ${logoBase64 ? `<img src="${logoBase64}" style="width: 105px; height: 105px; object-fit: contain; flex-shrink: 0; margin-right: 20px;" />` : ''}
           <!-- Title and League Info - Left justified -->
           <div style="flex: 1;">
-            <div style="font-size: 32px; font-weight: 900; color: #ffffff; text-transform: uppercase; letter-spacing: 2px; text-shadow: 0 2px 8px rgba(59, 159, 232, 0.4); line-height: 1;">Power Rankings</div>
-            <div style="font-size: 16px; margin-top: 6px; font-weight: 600;">
+            <div style="font-size: 42px; font-weight: 900; color: #ffffff; text-transform: uppercase; letter-spacing: 2px; text-shadow: 0 2px 8px rgba(59, 159, 232, 0.4); line-height: 1;">Power Rankings</div>
+            <div style="font-size: 20px; margin-top: 8px; font-weight: 600;">
               <span style="color: #e5e7eb;">${leagueName}</span>
               <span style="color: #6b7280; margin: 0 8px;">•</span>
               <span style="color: #3B9FE8; font-weight: 700;">Week ${selectedWeek.value}</span>
@@ -903,8 +903,8 @@ async function downloadRankings() {
         </div>
         
         <!-- Footer - Simple centered text -->
-        <div style="border-top: 1px solid rgba(59, 159, 232, 0.2); padding: 12px 24px; text-align: center; position: relative; z-index: 1;">
-          <div style="font-size: 20px; font-weight: bold; color: #3B9FE8; letter-spacing: -0.5px;">ultimatefantasydashboard.com</div>
+        <div style="border-top: 1px solid rgba(59, 159, 232, 0.2); padding: 14px 24px; text-align: center; position: relative; z-index: 1;">
+          <div style="font-size: 24px; font-weight: bold; color: #3B9FE8; letter-spacing: -0.5px;">ultimatefantasydashboard.com</div>
         </div>
       </div>
     `
