@@ -1533,11 +1533,27 @@ async function downloadStandings() {
     const teamColors = ['#F59E0B', '#10B981', '#3B82F6', '#EF4444', '#8B5CF6', '#EC4899', '#06B6D4', '#F97316', '#84CC16', '#6366F1', '#14B8A6', '#F43F5E']
     const getTeamColor = (idx: number) => teamColors[idx % teamColors.length]
     
+    // Calculate number of teams for percentage color thresholds
+    const numTeams = sortedTeams.value.length
+    const topThird = Math.ceil(numTeams / 3)
+    const bottomThird = numTeams - Math.ceil(numTeams / 3)
+    
     // Generate standings row - matching power rankings style with big blue numbers
     const generateStandingsRow = (team: any, rank: number, teamIdx: number) => {
-      // Category record format: totalCatWins-totalCatLosses-totalCatTies
-      const recordText = `${team.totalCatWins || 0}-${team.totalCatLosses || 0}-${team.totalCatTies || 0}`
-      const catWinPct = team.catWinPct ? (team.catWinPct * 100).toFixed(0) : '0'
+      // H2H record with ties
+      const h2hRecord = `${team.wins || 0}-${team.losses || 0}-${team.ties || 0}`
+      
+      // Win percentage
+      const winPct = team.catWinPct ? (team.catWinPct * 100).toFixed(0) : '0'
+      const winPctNum = parseFloat(winPct)
+      
+      // Conditional color: green for top third, yellow for middle, red for bottom third
+      let pctColor = '#f59e0b' // yellow default (middle)
+      if (rank <= topThird) {
+        pctColor = '#10b981' // green for top
+      } else if (rank > bottomThird) {
+        pctColor = '#ef4444' // red for bottom
+      }
       
       return `
       <div style="display: flex; height: 80px; padding: 0 12px; background: rgba(38, 42, 58, 0.4); border-radius: 10px; margin-bottom: 6px; border: 1px solid rgba(58, 61, 82, 0.4); box-sizing: border-box;">
@@ -1552,12 +1568,11 @@ async function downloadStandings() {
         <!-- Team Info -->
         <div style="flex: 1; min-width: 0; padding-top: 16px;">
           <div style="font-size: 14px; font-weight: 700; color: #f7f7ff; white-space: nowrap; overflow: visible; line-height: 1.2;">${team.name}</div>
-          <div style="font-size: 11px; color: #9ca3af; line-height: 1.2; margin-top: 4px;">${recordText} • ${catWinPct}%</div>
+          <div style="font-size: 11px; color: #9ca3af; line-height: 1.2; margin-top: 4px;">${h2hRecord}</div>
         </div>
-        <!-- Matchup Record -->
-        <div style="width: 70px; flex-shrink: 0; text-align: center; padding-top: 20px;">
-          <div style="font-size: 16px; font-weight: bold; color: #f7f7ff; line-height: 1;">${team.wins || 0}-${team.losses || 0}</div>
-          <div style="font-size: 9px; color: #6b7280; margin-top: 2px;">H2H</div>
+        <!-- Win Percentage - big and colorful -->
+        <div style="width: 55px; flex-shrink: 0; text-align: center; padding-top: 18px;">
+          <div style="font-size: 22px; font-weight: bold; color: ${pctColor}; line-height: 1;">${winPct}%</div>
         </div>
       </div>
     `}
@@ -1620,12 +1635,17 @@ async function downloadStandings() {
     const trendChartContainer = container.querySelector('#standings-trend-chart')
     const weeks = Array.from(weeklyStandings.value.keys()).sort((a, b) => a - b)
     
-    if (trendChartContainer && weeks.length >= 2) {
+    console.log('Chart debug - weeks available:', weeks.length, weeks)
+    console.log('Chart debug - weeklyStandings size:', weeklyStandings.value.size)
+    
+    if (trendChartContainer && weeks.length >= 1) {
       const ApexCharts = (await import('apexcharts')).default
       
       const maxWeeksToShow = 7
       const startIdx = Math.max(0, weeks.length - maxWeeksToShow)
       const weeksToShow = weeks.slice(startIdx)
+      
+      console.log('Chart debug - weeksToShow:', weeksToShow)
       
       const trendSeries = sortedTeams.value.map((team, idx) => {
         const data = weeksToShow.map(week => {
@@ -1633,6 +1653,7 @@ async function downloadStandings() {
           const teamStanding = weekData.find((t: any) => t.team_key === team.team_key)
           return teamStanding?.rank || sortedTeams.value.length
         })
+        console.log('Chart debug - team:', team.name, 'data:', data)
         return { name: team.name, data }
       })
       
@@ -1674,6 +1695,7 @@ async function downloadStandings() {
       })
       
       await trendChart.render()
+      console.log('Chart debug - chart rendered')
       
       // Wait for chart to render, then add team logos at endpoints
       await new Promise(resolve => setTimeout(resolve, 600))
