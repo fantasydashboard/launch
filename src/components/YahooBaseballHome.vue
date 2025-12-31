@@ -203,24 +203,43 @@
     <!-- League Standings - Full Width -->
     <div class="card">
       <div class="card-header">
-        <div class="flex items-center gap-2">
-          <span class="text-2xl">🏆</span>
-          <h2 class="card-title">League Standings</h2>
-        </div>
-        <div class="text-sm text-dark-textMuted">
-          {{ isPointsLeague ? 'Points league' : 'Category wins per stat (cumulative season total)' }}
+        <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+          <div class="flex-1 min-w-0">
+            <div class="flex items-center gap-2">
+              <span class="text-2xl">🏆</span>
+              <h2 class="card-title">League Standings</h2>
+            </div>
+            <div class="text-sm text-dark-textMuted">
+              {{ isPointsLeague ? 'Points league' : 'Category wins per stat (cumulative season total)' }}
+            </div>
+          </div>
+          <div class="flex items-center gap-2 flex-shrink-0">
+            <button @click="downloadStandings" :disabled="isGeneratingDownload" class="btn-primary flex items-center gap-2">
+              <svg v-if="!isGeneratingDownload" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+              </svg>
+              <svg v-else class="w-5 h-5 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+              </svg>
+              {{ isGeneratingDownload ? 'Generating...' : 'Share' }}
+            </button>
+          </div>
         </div>
       </div>
       
-      <!-- Mobile scroll hint for category leagues -->
-      <div v-if="!isPointsLeague" class="px-4 py-2 bg-dark-border/30 border-b border-dark-border flex items-center justify-center gap-2 text-xs text-dark-textMuted">
+      <!-- Mobile scroll hint for category leagues - only when content overflows -->
+      <div 
+        v-if="!isPointsLeague && showScrollHint" 
+        class="px-4 py-2 bg-dark-border/30 border-b border-dark-border flex items-center justify-center gap-2 text-xs text-dark-textMuted"
+      >
         <svg class="w-4 h-4 animate-pulse" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
         </svg>
         <span>Swipe to see all categories</span>
       </div>
       
-      <div class="card-body overflow-x-auto scrollbar-thin">
+      <div class="card-body overflow-x-auto scrollbar-thin" ref="standingsTableRef" @scroll="checkScrollHint">
         <table class="w-full">
           <thead>
             <tr class="text-left text-xs text-dark-textMuted uppercase border-b border-dark-border">
@@ -360,6 +379,27 @@
             :options="chartOptions" 
             :series="chartSeries" 
           />
+          
+          <!-- Team avatar overlays at end of lines -->
+          <div 
+            v-for="(team, idx) in sortedTeams" 
+            :key="'avatar-' + team.team_key"
+            class="absolute pointer-events-none"
+            :style="getStandingsAvatarPosition(team)"
+          >
+            <div class="relative">
+              <img 
+                :src="team.logo_url || defaultAvatar" 
+                :alt="team.name"
+                class="w-6 h-6 rounded-full ring-2 object-cover"
+                :class="team.is_my_team ? 'ring-primary' : 'ring-cyan-500/70'"
+                @error="handleImageError"
+              />
+              <div v-if="team.is_my_team" class="absolute -top-0.5 -right-0.5 w-3 h-3 bg-primary rounded-full flex items-center justify-center">
+                <span class="text-[6px] text-gray-900 font-bold">★</span>
+              </div>
+            </div>
+          </div>
         </div>
         <div v-else class="text-center py-12 text-dark-textMuted">
           <p>Not enough data to show standings over time</p>
@@ -378,7 +418,12 @@
       </div>
       <div class="card-body">
         <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
-          <div v-for="stat in quickStats" :key="stat.label" class="flex items-center gap-3 p-3 rounded-lg bg-dark-border/20">
+          <div 
+            v-for="stat in quickStats" 
+            :key="stat.label" 
+            @click="openQuickStatModal(stat.type)"
+            class="flex items-center gap-3 p-3 rounded-lg bg-dark-border/20 hover:bg-dark-border/40 cursor-pointer transition-colors group"
+          >
             <div class="w-10 h-10 rounded-full overflow-hidden bg-dark-border flex-shrink-0">
               <img v-if="stat.team" :src="stat.team.logo_url || defaultAvatar" class="w-full h-full object-cover" @error="handleImageError" />
             </div>
@@ -386,6 +431,11 @@
               <div class="text-[10px] text-dark-textMuted uppercase">{{ stat.icon }} {{ stat.label }}</div>
               <div class="font-semibold text-dark-text truncate text-sm">{{ stat.team?.name || 'N/A' }}</div>
               <div class="text-xs font-bold" :class="stat.valueClass">{{ stat.value }}</div>
+            </div>
+            <div class="text-dark-textMuted/50 group-hover:text-primary transition-colors">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+              </svg>
             </div>
           </div>
         </div>
@@ -490,6 +540,7 @@ const authStore = useAuthStore()
 
 const isLoading = ref(false)
 const isLoadingChart = ref(false)
+const isGeneratingDownload = ref(false)
 const chartLoadProgress = ref('')
 const defaultAvatar = 'https://s.yimg.com/cv/apiv2/default/mlb/mlb_2_g.png'
 
@@ -505,6 +556,10 @@ const sortDirection = ref<'asc' | 'desc'>('asc')
 const showLeaderModal = ref(false)
 const leaderModalType = ref('')
 
+// Scroll hint - show only when table overflows
+const showScrollHint = ref(false)
+const standingsTableRef = ref<HTMLElement | null>(null)
+
 // Chart
 const chartSeries = ref<any[]>([])
 const chartOptions = ref<any>(null)
@@ -516,7 +571,14 @@ const weeklyStandings = ref<Map<number, any[]>>(new Map())
 const displayMatchups = ref<any[]>([])
 
 // Computed
-const leagueName = computed(() => leagueStore.yahooLeague?.name || 'My League')
+const leagueName = computed(() => {
+  const league = leagueStore.yahooLeague
+  // yahooLeague could be an array where index 0 has league info
+  if (Array.isArray(league)) {
+    return league[0]?.name || 'League'
+  }
+  return league?.name || 'League'
+})
 const currentSeason = computed(() => leagueStore.yahooLeague?.season || new Date().getFullYear())
 const currentWeek = computed(() => leagueStore.yahooLeague?.current_week || 1)
 const totalWeeks = computed(() => parseInt(leagueStore.yahooLeague?.end_week) || 25)
@@ -578,9 +640,15 @@ const teamsWithStats = computed(() => {
     const all_play_wins = Math.round(catWinPct * weeksPlayed * (numTeams - 1))
     const all_play_losses = weeksPlayed * (numTeams - 1) - all_play_wins
     
-    // Calculate luck score
-    const expectedWins = catWinPct * totalGames
-    const luckScore = (team.wins || 0) - expectedWins
+    // Calculate luck score based on all-play vs actual matchup wins
+    // For H2H categories: actual matchup record is in standings (rank)
+    // Use team rank to estimate matchup wins
+    const matchupWins = team.matchup_wins ?? 0
+    const matchupLosses = team.matchup_losses ?? 0
+    const totalMatchups = matchupWins + matchupLosses
+    const expectedMatchupWinPct = totalMatchups > 0 ? all_play_wins / Math.max(1, all_play_wins + all_play_losses) : 0.5
+    const expectedMatchupWins = expectedMatchupWinPct * totalMatchups
+    const luckScore = matchupWins - expectedMatchupWins
     
     return {
       ...team,
@@ -661,7 +729,7 @@ const leaderModalData = computed(() => {
   let comparison: any[] = []
   let maxValue = 1
   
-  if (leaderModalType.value === 'bestRecord') {
+  if (leaderModalType.value === 'bestRecord' || leaderModalType.value === 'hottest' || leaderModalType.value === 'coldest') {
     comparison = [...teams].sort((a, b) => {
       const aWinPct = (a.wins || 0) / Math.max(1, (a.wins || 0) + (a.losses || 0))
       const bWinPct = (b.wins || 0) / Math.max(1, (b.wins || 0) + (b.losses || 0))
@@ -679,6 +747,13 @@ const leaderModalData = computed(() => {
   } else if (leaderModalType.value === 'bestAllPlay') {
     comparison = [...teams].sort((a, b) => (b.all_play_wins || 0) - (a.all_play_wins || 0)).map(t => ({ ...t, value: t.all_play_wins || 0 }))
     maxValue = Math.max(...teams.map(t => t.all_play_wins || 0), 1)
+  } else if (leaderModalType.value === 'luckiest' || leaderModalType.value === 'unluckiest') {
+    comparison = [...teams].sort((a, b) => (b.luckScore || 0) - (a.luckScore || 0)).map(t => ({ ...t, value: t.luckScore || 0 }))
+    const scores = teams.map(t => Math.abs(t.luckScore || 0))
+    maxValue = Math.max(...scores, 1)
+  } else if (leaderModalType.value === 'mostMoves' || leaderModalType.value === 'fewestMoves') {
+    comparison = [...teams].sort((a, b) => (b.transactions || 0) - (a.transactions || 0)).map(t => ({ ...t, value: t.transactions || 0 }))
+    maxValue = Math.max(...teams.map(t => t.transactions || 0), 1)
   }
   
   return { comparison, maxValue, leader: comparison[0] }
@@ -688,44 +763,72 @@ const leaderModalTitle = computed(() => {
   if (leaderModalType.value === 'bestRecord') return 'Best Record'
   if (leaderModalType.value === 'mostCatWins') return isPointsLeague.value ? 'Most Points' : 'Most Category Wins'
   if (leaderModalType.value === 'bestAllPlay') return 'Best All-Play Record'
+  if (leaderModalType.value === 'luckiest') return '🍀 Luckiest Teams'
+  if (leaderModalType.value === 'unluckiest') return '😢 Unluckiest Teams'
+  if (leaderModalType.value === 'hottest') return '🔥 Hottest Teams'
+  if (leaderModalType.value === 'coldest') return '❄️ Coldest Teams'
+  if (leaderModalType.value === 'mostMoves') return '📈 Most Active Teams'
+  if (leaderModalType.value === 'fewestMoves') return '🪨 Least Active Teams'
   return ''
 })
 
 const leaderModalTextColor = computed(() => {
-  if (leaderModalType.value === 'bestRecord') return 'text-green-400'
-  if (leaderModalType.value === 'mostCatWins') return 'text-yellow-400'
+  if (leaderModalType.value === 'bestRecord' || leaderModalType.value === 'luckiest') return 'text-green-400'
+  if (leaderModalType.value === 'mostCatWins' || leaderModalType.value === 'hottest') return 'text-yellow-400'
+  if (leaderModalType.value === 'bestAllPlay' || leaderModalType.value === 'mostMoves') return 'text-blue-400'
+  if (leaderModalType.value === 'unluckiest') return 'text-red-400'
+  if (leaderModalType.value === 'coldest') return 'text-cyan-400'
+  if (leaderModalType.value === 'fewestMoves') return 'text-purple-400'
   return 'text-blue-400'
 })
 
 const leaderModalBarColor = computed(() => {
-  if (leaderModalType.value === 'bestRecord') return 'bg-green-500'
-  if (leaderModalType.value === 'mostCatWins') return 'bg-yellow-500'
+  if (leaderModalType.value === 'bestRecord' || leaderModalType.value === 'luckiest') return 'bg-green-500'
+  if (leaderModalType.value === 'mostCatWins' || leaderModalType.value === 'hottest') return 'bg-yellow-500'
+  if (leaderModalType.value === 'bestAllPlay' || leaderModalType.value === 'mostMoves') return 'bg-blue-500'
+  if (leaderModalType.value === 'unluckiest') return 'bg-red-500'
+  if (leaderModalType.value === 'coldest') return 'bg-cyan-500'
+  if (leaderModalType.value === 'fewestMoves') return 'bg-purple-500'
   return 'bg-blue-500'
 })
 
 const leaderModalRingColor = computed(() => {
-  if (leaderModalType.value === 'bestRecord') return 'ring-green-500'
-  if (leaderModalType.value === 'mostCatWins') return 'ring-yellow-500'
+  if (leaderModalType.value === 'bestRecord' || leaderModalType.value === 'luckiest') return 'ring-green-500'
+  if (leaderModalType.value === 'mostCatWins' || leaderModalType.value === 'hottest') return 'ring-yellow-500'
+  if (leaderModalType.value === 'bestAllPlay' || leaderModalType.value === 'mostMoves') return 'ring-blue-500'
+  if (leaderModalType.value === 'unluckiest') return 'ring-red-500'
+  if (leaderModalType.value === 'coldest') return 'ring-cyan-500'
+  if (leaderModalType.value === 'fewestMoves') return 'ring-purple-500'
   return 'ring-blue-500'
 })
 
 const leaderModalGradient = computed(() => {
-  if (leaderModalType.value === 'bestRecord') return 'bg-gradient-to-r from-green-500/10 to-transparent'
-  if (leaderModalType.value === 'mostCatWins') return 'bg-gradient-to-r from-yellow-500/10 to-transparent'
+  if (leaderModalType.value === 'bestRecord' || leaderModalType.value === 'luckiest') return 'bg-gradient-to-r from-green-500/10 to-transparent'
+  if (leaderModalType.value === 'mostCatWins' || leaderModalType.value === 'hottest') return 'bg-gradient-to-r from-yellow-500/10 to-transparent'
+  if (leaderModalType.value === 'bestAllPlay' || leaderModalType.value === 'mostMoves') return 'bg-gradient-to-r from-blue-500/10 to-transparent'
+  if (leaderModalType.value === 'unluckiest') return 'bg-gradient-to-r from-red-500/10 to-transparent'
+  if (leaderModalType.value === 'coldest') return 'bg-gradient-to-r from-cyan-500/10 to-transparent'
+  if (leaderModalType.value === 'fewestMoves') return 'bg-gradient-to-r from-purple-500/10 to-transparent'
   return 'bg-gradient-to-r from-blue-500/10 to-transparent'
 })
 
 const leaderModalValue = computed(() => {
   const leader = leaderModalData.value.leader
   if (!leader) return '0'
-  if (leaderModalType.value === 'bestRecord') return getWinPercentage(leader)
+  if (leaderModalType.value === 'bestRecord' || leaderModalType.value === 'hottest' || leaderModalType.value === 'coldest') return getWinPercentage(leader)
   if (leaderModalType.value === 'mostCatWins') return isPointsLeague.value ? (leader.points_for?.toFixed(1) || '0') : `${leader.wins || 0}`
+  if (leaderModalType.value === 'bestAllPlay') return `${leader.all_play_wins || 0}-${leader.all_play_losses || 0}`
+  if (leaderModalType.value === 'luckiest' || leaderModalType.value === 'unluckiest') return (leader.luckScore > 0 ? '+' : '') + (leader.luckScore || 0).toFixed(0)
+  if (leaderModalType.value === 'mostMoves' || leaderModalType.value === 'fewestMoves') return leader.transactions?.toString() || '0'
   return `${leader.all_play_wins || 0}-${leader.all_play_losses || 0}`
 })
 
 const leaderModalUnit = computed(() => {
-  if (leaderModalType.value === 'bestRecord') return 'Win %'
+  if (leaderModalType.value === 'bestRecord' || leaderModalType.value === 'hottest' || leaderModalType.value === 'coldest') return 'Win %'
   if (leaderModalType.value === 'mostCatWins') return isPointsLeague.value ? 'Total Points' : 'Category Wins'
+  if (leaderModalType.value === 'bestAllPlay') return 'All-Play Record'
+  if (leaderModalType.value === 'luckiest' || leaderModalType.value === 'unluckiest') return 'Luck Score'
+  if (leaderModalType.value === 'mostMoves' || leaderModalType.value === 'fewestMoves') return 'Transactions'
   return 'All-Play Record'
 })
 
@@ -740,14 +843,47 @@ const quickStats = computed(() => {
   const coldest = [...teams].sort((a, b) => (a.wins || 0) / Math.max(1, (a.wins || 0) + (a.losses || 0)) - (b.wins || 0) / Math.max(1, (b.wins || 0) + (b.losses || 0)))[0]
   
   return [
-    { icon: '🍀', label: 'Luckiest', team: luckiest, value: luckiest ? '+' + (luckiest.luckScore || 0).toFixed(0) : '-', valueClass: 'text-green-400' },
-    { icon: '😢', label: 'Unluckiest', team: unluckiest, value: unluckiest ? (unluckiest.luckScore || 0).toFixed(0) : '-', valueClass: 'text-red-400' },
-    { icon: '🔥', label: 'Hottest', team: hottest, value: hottest ? getWinPercentage(hottest) : '-', valueClass: 'text-orange-400' },
-    { icon: '❄️', label: 'Coldest', team: coldest, value: coldest ? getWinPercentage(coldest) : '-', valueClass: 'text-cyan-400' },
-    { icon: '📈', label: 'Most Moves', team: mostActive, value: mostActive?.transactions?.toString() || '-', valueClass: 'text-blue-400' },
-    { icon: '🪨', label: 'Fewest Moves', team: leastActive, value: leastActive?.transactions?.toString() || '-', valueClass: 'text-purple-400' }
+    { icon: '🍀', label: 'Luckiest', team: luckiest, value: luckiest ? '+' + (luckiest.luckScore || 0).toFixed(0) : '-', valueClass: 'text-green-400', type: 'luckiest' },
+    { icon: '😢', label: 'Unluckiest', team: unluckiest, value: unluckiest ? (unluckiest.luckScore || 0).toFixed(0) : '-', valueClass: 'text-red-400', type: 'unluckiest' },
+    { icon: '🔥', label: 'Hottest', team: hottest, value: hottest ? getWinPercentage(hottest) : '-', valueClass: 'text-orange-400', type: 'hottest' },
+    { icon: '❄️', label: 'Coldest', team: coldest, value: coldest ? getWinPercentage(coldest) : '-', valueClass: 'text-cyan-400', type: 'coldest' },
+    { icon: '📈', label: 'Most Moves', team: mostActive, value: mostActive?.transactions?.toString() || '-', valueClass: 'text-blue-400', type: 'mostMoves' },
+    { icon: '🪨', label: 'Fewest Moves', team: leastActive, value: leastActive?.transactions?.toString() || '-', valueClass: 'text-purple-400', type: 'fewestMoves' }
   ]
 })
+
+// Calculate avatar position for standings chart overlay
+function getStandingsAvatarPosition(team: any): Record<string, string> {
+  const weeks = Array.from(weeklyStandings.value.keys()).sort((a, b) => a - b)
+  if (weeks.length === 0) return { display: 'none' }
+  
+  const lastWeek = weeks[weeks.length - 1]
+  const weekData = weeklyStandings.value.get(lastWeek) || []
+  const teamStanding = weekData.find((t: any) => t.team_key === team.team_key)
+  const lastRank = teamStanding?.rank || sortedTeams.value.length
+  
+  if (!lastRank) return { display: 'none' }
+  
+  const totalTeams = sortedTeams.value.length
+  const chartPadding = { top: 30, bottom: 80 } // ApexChart padding (bottom includes legend)
+  const chartHeight = 400
+  const usableHeight = chartHeight - chartPadding.top - chartPadding.bottom
+  
+  // Y position: rank 1 is at top, rank N is at bottom (reversed axis)
+  const yPercent = (lastRank - 1) / Math.max(1, totalTeams - 1)
+  const yPos = chartPadding.top + (yPercent * usableHeight) - 12 // -12 to center the avatar
+  
+  return {
+    right: '15px',
+    top: `${yPos}px`
+  }
+}
+
+// Open quick stat modal - reuses the leader modal
+function openQuickStatModal(type: string) {
+  leaderModalType.value = type
+  showLeaderModal.value = true
+}
 
 // Helper functions
 function getTeamRecord(teamKey: string | undefined) {
@@ -900,7 +1036,7 @@ function buildChart() {
   chartSeries.value = series
   
   chartOptions.value = {
-    chart: { type: 'line', background: 'transparent', toolbar: { show: false }, animations: { enabled: true, speed: 500 } },
+    chart: { type: 'line', background: 'transparent', toolbar: { show: false }, zoom: { enabled: false }, animations: { enabled: true, speed: 500 } },
     stroke: { curve: 'smooth', width: 3 },
     markers: { size: 4, strokeWidth: 0 },
     xaxis: {
@@ -916,9 +1052,273 @@ function buildChart() {
       tickAmount: Math.min(leagueStore.yahooTeams.length - 1, 7),
       labels: { style: { colors: '#9CA3AF', fontSize: '11px' }, formatter: (val: number) => Math.round(val).toString() }
     },
-    grid: { borderColor: '#374151', strokeDashArray: 3 },
-    legend: { show: true, position: 'bottom', labels: { colors: '#9CA3AF' } },
-    tooltip: { theme: 'dark', y: { formatter: (val: number) => `Rank: ${val}` } }
+    grid: { borderColor: '#374151', strokeDashArray: 3, padding: { right: 40 } },
+    legend: { show: false },
+    tooltip: {
+      theme: 'dark',
+      shared: true,
+      intersect: false,
+      custom: function({ series: seriesData, dataPointIndex, w }: any) {
+        // Get all teams with their ranks at this week
+        const teamsWithRanks = leagueStore.yahooTeams.map((team: any, idx: number) => ({
+          name: team.name,
+          rank: seriesData[idx]?.[dataPointIndex] || leagueStore.yahooTeams.length,
+          color: w.globals.colors[idx],
+          isMyTeam: team.is_my_team
+        }))
+        
+        // Sort by rank (ascending - #1 first)
+        teamsWithRanks.sort((a: any, b: any) => a.rank - b.rank)
+        
+        const weekLabel = w.globals.categoryLabels?.[dataPointIndex] || `Week ${dataPointIndex + 1}`
+        
+        let html = `<div class="apexcharts-tooltip-title" style="font-weight: bold; padding: 6px 10px; background: #1f2937; border-bottom: 1px solid #374151;">${weekLabel}</div>`
+        html += `<div style="padding: 6px 10px; max-height: 300px; overflow-y: auto;">`
+        
+        teamsWithRanks.forEach((team: any) => {
+          const highlight = team.isMyTeam ? 'font-weight: bold; color: #F5C451;' : ''
+          html += `<div style="display: flex; align-items: center; gap: 8px; padding: 3px 0; ${highlight}">
+            <span style="color: ${team.color}; font-size: 16px;">●</span>
+            <span style="min-width: 24px; color: #9ca3af;">#${team.rank}</span>
+            <span>${team.name}</span>
+          </div>`
+        })
+        
+        html += `</div>`
+        return html
+      }
+    }
+  }
+}
+
+// Download standings as shareable image
+async function downloadStandings() {
+  isGeneratingDownload.value = true
+  
+  try {
+    const html2canvas = (await import('html2canvas')).default
+    
+    // Preload team images
+    const imageMap = new Map<string, string>()
+    await Promise.all(sortedTeams.value.map(async (team) => {
+      if (team.logo_url) {
+        try {
+          const response = await fetch(team.logo_url)
+          const blob = await response.blob()
+          const base64 = await new Promise<string>((resolve) => {
+            const reader = new FileReader()
+            reader.onloadend = () => resolve(reader.result as string)
+            reader.readAsDataURL(blob)
+          })
+          imageMap.set(team.team_key, base64)
+        } catch {
+          imageMap.set(team.team_key, defaultAvatar)
+        }
+      }
+    }))
+    
+    // Load logo
+    let logoBase64 = ''
+    try {
+      const logoResponse = await fetch('/img/logo.png')
+      const logoBlob = await logoResponse.blob()
+      logoBase64 = await new Promise<string>((resolve) => {
+        const reader = new FileReader()
+        reader.onloadend = () => resolve(reader.result as string)
+        reader.readAsDataURL(logoBlob)
+      })
+    } catch (e) {
+      console.log('Could not load logo')
+    }
+    
+    // Create container
+    const container = document.createElement('div')
+    container.style.cssText = 'position: absolute; left: -9999px; top: 0; width: 700px; font-family: system-ui, -apple-system, sans-serif;'
+    
+    // Generate table rows
+    const generateStandingsRow = (team: any, rank: number) => {
+      const recordText = `${team.wins}-${team.losses}${team.ties > 0 ? `-${team.ties}` : ''}`
+      const winPct = ((team.wins || 0) / Math.max(1, (team.wins || 0) + (team.losses || 0) + (team.ties || 0)) * 100).toFixed(0)
+      
+      // Rank badge color
+      let rankBg = 'rgba(58, 61, 82, 0.6)'
+      let rankColor = '#9ca3af'
+      if (rank === 1) { rankBg = 'rgba(234, 179, 8, 0.3)'; rankColor = '#fbbf24' }
+      else if (rank === 2) { rankBg = 'rgba(156, 163, 175, 0.3)'; rankColor = '#d1d5db' }
+      else if (rank === 3) { rankBg = 'rgba(249, 115, 22, 0.3)'; rankColor = '#fb923c' }
+      
+      return `
+      <div style="display: flex; height: 56px; padding: 0 12px; background: rgba(38, 42, 58, 0.4); border-radius: 8px; margin-bottom: 4px; border: 1px solid rgba(58, 61, 82, 0.4);">
+        <!-- Rank -->
+        <div style="width: 36px; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+          <span style="width: 28px; height: 28px; border-radius: 50%; background: ${rankBg}; display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: 700; color: ${rankColor};">${rank}</span>
+        </div>
+        <!-- Team Logo -->
+        <div style="width: 48px; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+          <img src="${imageMap.get(team.team_key) || defaultAvatar}" style="width: 36px; height: 36px; border-radius: 50%; border: 2px solid #3a3d52; object-fit: cover;" />
+        </div>
+        <!-- Team Name -->
+        <div style="flex: 1; min-width: 0; display: flex; align-items: center; padding-left: 8px;">
+          <span style="font-size: 14px; font-weight: 600; color: #f7f7ff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${team.name}</span>
+        </div>
+        <!-- Record -->
+        <div style="width: 70px; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+          <span style="font-size: 14px; font-weight: 700; color: ${rank <= 3 ? '#10b981' : '#f7f7ff'};">${recordText}</span>
+        </div>
+        <!-- Win % -->
+        <div style="width: 50px; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+          <span style="font-size: 13px; color: #9ca3af;">${winPct}%</span>
+        </div>
+      </div>
+    `}
+    
+    // Split teams into two columns
+    const teams = sortedTeams.value
+    const midpoint = Math.ceil(teams.length / 2)
+    const firstHalf = teams.slice(0, midpoint)
+    const secondHalf = teams.slice(midpoint)
+    
+    container.innerHTML = `
+      <div style="background: linear-gradient(160deg, #0f1219 0%, #0a0c14 50%, #0d1117 100%); border-radius: 16px; padding: 8px 24px 12px 24px; box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5); position: relative; overflow: hidden;">
+        <!-- Decorative blue glow at top -->
+        <div style="position: absolute; top: -100px; left: 50%; transform: translateX(-50%); width: 400px; height: 200px; background: radial-gradient(ellipse, rgba(59, 159, 232, 0.3) 0%, transparent 70%); pointer-events: none;"></div>
+        
+        <!-- Ghosted baseball diamond field SVG background - bottom right -->
+        <div style="position: absolute; bottom: -100px; right: -100px; width: 500px; height: 500px; opacity: 0.07; pointer-events: none;">
+          <svg viewBox="0 0 200 200" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M100 20 Q20 20 20 100 Q20 140 60 170 L100 130 L140 170 Q180 140 180 100 Q180 20 100 20" stroke="#3B9FE8" stroke-width="1.5" fill="none"/>
+            <path d="M100 50 Q55 50 55 100 Q55 120 75 140 L100 115 L125 140 Q145 120 145 100 Q145 50 100 50" stroke="#3B9FE8" stroke-width="1.5" fill="none"/>
+            <path d="M100 70 L130 100 L100 130 L70 100 Z" stroke="#3B9FE8" stroke-width="1.5" fill="none"/>
+            <circle cx="100" cy="100" r="8" stroke="#3B9FE8" stroke-width="1.5" fill="none"/>
+            <path d="M95 130 L100 140 L105 130 L105 125 L95 125 Z" stroke="#3B9FE8" stroke-width="1.5" fill="none"/>
+            <line x1="100" y1="130" x2="40" y2="190" stroke="#3B9FE8" stroke-width="1.5"/>
+            <line x1="100" y1="130" x2="160" y2="190" stroke="#3B9FE8" stroke-width="1.5"/>
+          </svg>
+        </div>
+        
+        <!-- Smaller ghosted diamond - top left -->
+        <div style="position: absolute; top: -60px; left: -60px; width: 250px; height: 250px; opacity: 0.04; pointer-events: none; transform: rotate(15deg);">
+          <svg viewBox="0 0 200 200" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M100 20 Q20 20 20 100 Q20 140 60 170 L100 130 L140 170 Q180 140 180 100 Q180 20 100 20" stroke="#3B9FE8" stroke-width="2" fill="none"/>
+            <path d="M100 70 L130 100 L100 130 L70 100 Z" stroke="#3B9FE8" stroke-width="2" fill="none"/>
+            <circle cx="100" cy="100" r="8" stroke="#3B9FE8" stroke-width="2" fill="none"/>
+          </svg>
+        </div>
+        
+        <!-- Blue diagonal lines pattern overlay -->
+        <div style="position: absolute; top: 0; left: 0; right: 0; bottom: 0; opacity: 0.03; pointer-events: none; background: repeating-linear-gradient(45deg, transparent, transparent 20px, #3B9FE8 20px, #3B9FE8 21px);"></div>
+        
+        <!-- Header -->
+        <div style="text-align: center; margin-bottom: 12px; position: relative; z-index: 1;">
+          <div style="font-size: 44px; font-weight: 900; color: #ffffff; text-transform: uppercase; letter-spacing: 3px; text-shadow: 0 0 30px rgba(59, 159, 232, 0.5); line-height: 1;">LEAGUE STANDINGS</div>
+          <div style="font-size: 18px; margin-top: 4px; font-weight: 600;"><span style="color: #9ca3af;">${leagueName.value}</span> <span style="color: #9ca3af;">•</span> <span style="color: #3B9FE8; font-weight: 700;">Week ${displayWeek.value}</span></div>
+        </div>
+        
+        <!-- Table Header -->
+        <div style="display: flex; padding: 0 12px 8px 12px; position: relative; z-index: 1;">
+          <div style="width: 36px; flex-shrink: 0;"></div>
+          <div style="width: 48px; flex-shrink: 0;"></div>
+          <div style="flex: 1; padding-left: 8px; font-size: 10px; color: #6b7280; text-transform: uppercase; letter-spacing: 1px;">Team</div>
+          <div style="width: 70px; text-align: center; font-size: 10px; color: #6b7280; text-transform: uppercase; letter-spacing: 1px; flex-shrink: 0;">Record</div>
+          <div style="width: 50px; text-align: center; font-size: 10px; color: #6b7280; text-transform: uppercase; letter-spacing: 1px; flex-shrink: 0;">Win%</div>
+        </div>
+        
+        <!-- Standings (Two Columns) -->
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 16px; position: relative; z-index: 1;">
+          <div>${firstHalf.map((team, idx) => generateStandingsRow(team, idx + 1)).join('')}</div>
+          <div>${secondHalf.map((team, idx) => generateStandingsRow(team, idx + midpoint + 1)).join('')}</div>
+        </div>
+        
+        <!-- Trend Chart -->
+        <div style="background: rgba(38, 42, 58, 0.3); border-radius: 12px; padding: 16px; margin-bottom: 12px; border: 1px solid rgba(59, 159, 232, 0.2); position: relative; z-index: 1;">
+          <h3 style="color: #3B9FE8; font-size: 14px; margin: 0 0 12px 0; text-align: center; font-weight: 700; text-transform: uppercase; letter-spacing: 1px;">📈 Standings Trend</h3>
+          <div id="standings-trend-chart" style="height: 220px; position: relative;"></div>
+        </div>
+        
+        <!-- Footer -->
+        <div style="border-top: 1px solid rgba(59, 159, 232, 0.2); padding-top: 8px; padding-bottom: 2px; position: relative; z-index: 1;">
+          <div style="display: flex; align-items: center; justify-content: center; gap: 16px;">
+            ${logoBase64 ? `<img src="${logoBase64}" style="width: 100px; height: 100px; object-fit: contain; flex-shrink: 0;" />` : ''}
+            <div style="text-align: left; padding-bottom: 8px;">
+              <div style="font-size: 12px; color: #9ca3af; margin-bottom: 4px;">Shareable Dashboards, Smart Projections, League History, & So Much More</div>
+              <div style="font-size: 24px; font-weight: bold; color: #3B9FE8; letter-spacing: -0.5px;">ultimatefantasydashboard.com</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    `
+    
+    document.body.appendChild(container)
+    
+    // Create trend chart
+    const trendChartContainer = container.querySelector('#standings-trend-chart')
+    if (trendChartContainer && chartSeries.value.length > 0) {
+      const ApexCharts = (await import('apexcharts')).default
+      
+      const weeks = Array.from(weeklyStandings.value.keys()).sort((a, b) => a - b)
+      const maxWeeksToShow = 7
+      const startIdx = Math.max(0, weeks.length - maxWeeksToShow)
+      const weeksToShow = weeks.slice(startIdx)
+      
+      const trendSeries = sortedTeams.value.map((team, idx) => {
+        const data = weeksToShow.map(week => {
+          const weekData = weeklyStandings.value.get(week) || []
+          const teamStanding = weekData.find((t: any) => t.team_key === team.team_key)
+          return teamStanding?.rank || sortedTeams.value.length
+        })
+        return { name: team.name, data }
+      })
+      
+      const teamColors = ['#F59E0B', '#10B981', '#3B82F6', '#EF4444', '#8B5CF6', '#EC4899', '#06B6D4', '#F97316', '#84CC16', '#6366F1', '#14B8A6', '#F43F5E']
+      
+      const trendChart = new ApexCharts(trendChartContainer, {
+        chart: { type: 'line', height: 220, background: 'transparent', toolbar: { show: false }, animations: { enabled: false } },
+        colors: teamColors.slice(0, sortedTeams.value.length),
+        stroke: { width: 2, curve: 'smooth' },
+        markers: { size: 0 },
+        xaxis: {
+          categories: weeksToShow.map(w => `Wk ${w}`),
+          labels: { style: { colors: '#9ca3af', fontSize: '10px' } },
+          axisBorder: { show: false },
+          axisTicks: { show: false }
+        },
+        yaxis: {
+          reversed: true,
+          min: 1,
+          max: sortedTeams.value.length,
+          labels: { style: { colors: '#9ca3af', fontSize: '10px' }, formatter: (val: number) => `#${Math.round(val)}` }
+        },
+        legend: { show: false },
+        tooltip: { enabled: false },
+        grid: { borderColor: '#374151', strokeDashArray: 3, padding: { right: 10 } }
+      })
+      
+      await trendChart.render()
+      await new Promise(resolve => setTimeout(resolve, 500))
+    }
+    
+    // Generate image
+    const canvas = await html2canvas(container, {
+      backgroundColor: '#0a0c14',
+      scale: 2,
+      useCORS: true,
+      allowTaint: true,
+      logging: false
+    })
+    
+    document.body.removeChild(container)
+    
+    // Download
+    const link = document.createElement('a')
+    link.download = `standings-week-${displayWeek.value}.png`
+    link.href = canvas.toDataURL('image/png')
+    link.click()
+    
+  } catch (error) {
+    console.error('Error generating standings image:', error)
+    alert('Failed to generate image. Please try again.')
+  } finally {
+    isGeneratingDownload.value = false
   }
 }
 
@@ -1155,7 +1555,18 @@ watch(() => leagueStore.yahooTeams, () => {
   if (leagueStore.yahooTeams.length > 0 && leagueStore.activePlatform === 'yahoo') loadAllData()
 }, { immediate: true })
 
+function checkScrollHint() {
+  if (standingsTableRef.value) {
+    const { scrollWidth, clientWidth } = standingsTableRef.value
+    showScrollHint.value = scrollWidth > clientWidth
+  }
+}
+
 onMounted(() => {
   if (leagueStore.yahooTeams.length > 0) loadAllData()
+  
+  // Check scroll hint after a delay for DOM to settle
+  setTimeout(checkScrollHint, 500)
+  window.addEventListener('resize', checkScrollHint)
 })
 </script>
