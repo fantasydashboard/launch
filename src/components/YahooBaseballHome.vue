@@ -285,6 +285,7 @@
             <tr 
               v-for="team in sortedTeams" 
               :key="team.team_key"
+              @click="openTeamDetailModal(team)"
               class="border-b border-dark-border/50 hover:bg-dark-border/20 transition-colors cursor-pointer"
               :class="{ 'bg-primary/5': team.is_my_team }"
             >
@@ -526,6 +527,122 @@
         </div>
       </div>
     </Teleport>
+
+    <!-- Team Detail Modal -->
+    <Teleport to="body">
+      <div 
+        v-if="showTeamDetailModal" 
+        class="fixed inset-0 z-50 flex items-center justify-center p-4"
+        @click.self="showTeamDetailModal = false"
+      >
+        <div class="absolute inset-0 bg-black/70 backdrop-blur-sm"></div>
+        <div class="relative bg-dark-elevated rounded-2xl shadow-2xl w-full max-w-3xl max-h-[90vh] overflow-y-auto border border-dark-border">
+          <!-- Header -->
+          <div class="sticky top-0 z-10 px-6 py-4 border-b border-dark-border bg-dark-elevated flex items-center justify-between">
+            <div class="flex items-center gap-4">
+              <img 
+                :src="selectedTeamDetail?.logo_url || defaultAvatar" 
+                :alt="selectedTeamDetail?.name"
+                class="w-12 h-12 rounded-full ring-2 ring-primary object-cover"
+                @error="handleImageError"
+              />
+              <div>
+                <h3 class="text-xl font-bold text-dark-text">{{ selectedTeamDetail?.name }}</h3>
+                <p class="text-sm text-dark-textMuted">Team Details - {{ currentSeason }} Season</p>
+              </div>
+            </div>
+            <button @click="showTeamDetailModal = false" class="p-2 rounded-lg hover:bg-dark-border/50 transition-colors">
+              <svg class="w-5 h-5 text-dark-textMuted" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+          
+          <!-- Top Stats Cards -->
+          <div class="p-6 border-b border-dark-border">
+            <div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
+              <div class="bg-dark-border/20 rounded-xl p-4 text-center">
+                <div class="text-2xl font-black text-dark-text">{{ selectedTeamDetail?.wins }}-{{ selectedTeamDetail?.losses }}{{ selectedTeamDetail?.ties > 0 ? `-${selectedTeamDetail.ties}` : '' }}</div>
+                <div class="text-xs text-dark-textMuted mt-1">Record</div>
+              </div>
+              <div class="bg-dark-border/20 rounded-xl p-4 text-center">
+                <div class="text-2xl font-black text-primary">#{{ selectedTeamDetail?.rank }}</div>
+                <div class="text-xs text-dark-textMuted mt-1">Rank</div>
+              </div>
+              <div class="bg-dark-border/20 rounded-xl p-4 text-center">
+                <div class="text-2xl font-black text-cyan-400">{{ selectedTeamDetail?.all_play_wins }}-{{ selectedTeamDetail?.all_play_losses }}</div>
+                <div class="text-xs text-dark-textMuted mt-1">All-Play</div>
+              </div>
+              <div class="bg-dark-border/20 rounded-xl p-4 text-center">
+                <div class="text-2xl font-black text-green-400">{{ teamDetailAvgCatsPerWeek }}</div>
+                <div class="text-xs text-dark-textMuted mt-1">Cats/Week</div>
+              </div>
+            </div>
+          </div>
+          
+          <!-- Category Performance Chart -->
+          <div class="p-6 border-b border-dark-border">
+            <h4 class="text-sm font-semibold text-dark-textMuted uppercase tracking-wider mb-4">Weekly Category Wins vs League Average</h4>
+            <div class="h-48">
+              <apexchart 
+                v-if="teamDetailChartOptions" 
+                type="line" 
+                height="100%" 
+                :options="teamDetailChartOptions" 
+                :series="teamDetailChartSeries" 
+              />
+            </div>
+          </div>
+          
+          <!-- Category Breakdown -->
+          <div class="p-6 border-b border-dark-border">
+            <h4 class="text-sm font-semibold text-dark-textMuted uppercase tracking-wider mb-4">Category Breakdown</h4>
+            <div class="grid grid-cols-2 sm:grid-cols-3 gap-3">
+              <div 
+                v-for="cat in teamDetailCategories" 
+                :key="cat.stat_id"
+                class="bg-dark-border/20 rounded-xl p-3"
+              >
+                <div class="flex items-center justify-between mb-2">
+                  <span class="text-xs text-dark-textMuted font-medium">{{ cat.display_name }}</span>
+                  <span 
+                    class="text-xs px-1.5 py-0.5 rounded font-bold"
+                    :class="cat.rankClass"
+                  >
+                    #{{ cat.rank }}
+                  </span>
+                </div>
+                <div class="text-lg font-bold" :class="cat.valueClass">{{ cat.wins }}</div>
+                <div class="h-1.5 bg-dark-border rounded-full overflow-hidden mt-2">
+                  <div 
+                    class="h-full rounded-full transition-all"
+                    :class="cat.barClass"
+                    :style="{ width: `${cat.pct}%` }"
+                  ></div>
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          <!-- Week-by-Week Results -->
+          <div class="p-6">
+            <h4 class="text-sm font-semibold text-dark-textMuted uppercase tracking-wider mb-4">Week-by-Week Results</h4>
+            <div class="flex flex-wrap gap-2">
+              <div 
+                v-for="(result, idx) in teamDetailWeeklyResults" 
+                :key="idx"
+                class="w-10 h-10 rounded-lg flex items-center justify-center text-xs font-bold"
+                :class="result.won ? 'bg-green-500/20 text-green-400' : (result.tied ? 'bg-yellow-500/20 text-yellow-400' : 'bg-red-500/20 text-red-400')"
+                :title="`Week ${idx + 1}: ${result.catWins}-${result.catLosses} vs ${result.opponent}`"
+              >
+                {{ result.won ? 'W' : (result.tied ? 'T' : 'L') }}
+              </div>
+            </div>
+            <p class="text-xs text-dark-textMuted mt-3">Hover over a week to see category score and opponent</p>
+          </div>
+        </div>
+      </div>
+    </Teleport>
   </div>
 </template>
 
@@ -555,6 +672,13 @@ const sortDirection = ref<'asc' | 'desc'>('asc')
 // Modal
 const showLeaderModal = ref(false)
 const leaderModalType = ref('')
+
+// Team Detail Modal
+const showTeamDetailModal = ref(false)
+const selectedTeamDetail = ref<any>(null)
+const teamDetailChartSeries = ref<any[]>([])
+const teamDetailChartOptions = ref<any>(null)
+const teamDetailWeeklyResults = ref<any[]>([])
 
 // Scroll hint - show only when table overflows
 const showScrollHint = ref(false)
@@ -845,6 +969,66 @@ const leaderModalUnit = computed(() => {
   return 'All-Play Record'
 })
 
+// Team Detail Modal Computed
+const teamDetailAvgCatsPerWeek = computed(() => {
+  if (!selectedTeamDetail.value) return '0.0'
+  const totalCatWins = selectedTeamDetail.value.wins || 0
+  const weeks = Array.from(weeklyStandings.value.keys()).length || 1
+  return (totalCatWins / weeks).toFixed(1)
+})
+
+const teamDetailCategories = computed(() => {
+  if (!selectedTeamDetail.value || displayCategories.value.length === 0) return []
+  
+  const team = selectedTeamDetail.value
+  const cats = displayCategories.value.map(cat => {
+    const wins = team.categoryWins?.[cat.stat_id] || 0
+    
+    // Calculate rank for this category
+    const allTeamWins = teamsWithStats.value.map(t => ({
+      teamKey: t.team_key,
+      wins: t.categoryWins?.[cat.stat_id] || 0
+    })).sort((a, b) => b.wins - a.wins)
+    
+    const rank = allTeamWins.findIndex(t => t.teamKey === team.team_key) + 1
+    const maxWins = Math.max(...allTeamWins.map(t => t.wins), 1)
+    const pct = (wins / maxWins) * 100
+    
+    // Color classes based on rank
+    let rankClass = 'bg-dark-border text-dark-textMuted'
+    let valueClass = 'text-dark-text'
+    let barClass = 'bg-dark-textMuted'
+    
+    const totalTeams = teamsWithStats.value.length
+    if (rank <= Math.ceil(totalTeams * 0.25)) {
+      rankClass = 'bg-green-500/20 text-green-400'
+      valueClass = 'text-green-400'
+      barClass = 'bg-green-500'
+    } else if (rank <= Math.ceil(totalTeams * 0.5)) {
+      rankClass = 'bg-cyan-500/20 text-cyan-400'
+      valueClass = 'text-cyan-400'
+      barClass = 'bg-cyan-500'
+    } else if (rank > totalTeams - Math.ceil(totalTeams * 0.25)) {
+      rankClass = 'bg-red-500/20 text-red-400'
+      valueClass = 'text-red-400'
+      barClass = 'bg-red-500'
+    }
+    
+    return {
+      ...cat,
+      wins,
+      rank,
+      pct,
+      rankClass,
+      valueClass,
+      barClass
+    }
+  })
+  
+  // Sort by wins descending (best categories first)
+  return cats.sort((a, b) => b.wins - a.wins)
+})
+
 // Quick Stats - without luckiest/unluckiest
 const quickStats = computed(() => {
   const teams = teamsWithStats.value
@@ -862,6 +1046,7 @@ const quickStats = computed(() => {
 })
 
 // Calculate avatar position for standings chart overlay
+// This positions team logos at the exact last data point on the chart
 function getStandingsAvatarPosition(team: any): Record<string, string> {
   const weeks = Array.from(weeklyStandings.value.keys()).sort((a, b) => a - b)
   if (weeks.length === 0) return { display: 'none' }
@@ -874,25 +1059,31 @@ function getStandingsAvatarPosition(team: any): Record<string, string> {
   if (!lastRank) return { display: 'none' }
   
   const totalTeams = sortedTeams.value.length
-  // ApexChart has internal padding - these values work for height=400, no legend
-  // The chart area starts ~10px from top for the first gridline and ends ~45px from bottom
-  const chartTopOffset = 10
-  const chartBottomOffset = 45
+  
+  // ApexCharts with height=400, no toolbar, no legend has approximately:
+  // - Top padding for y-axis title/labels: ~15px
+  // - Bottom padding for x-axis labels: ~30px
+  // - Y-axis goes from min (1) at top to max (totalTeams) at bottom (reversed)
+  // The actual plot area where data points are drawn is roughly 355px
   const chartHeight = 400
-  const plotAreaHeight = chartHeight - chartTopOffset - chartBottomOffset
+  const topPadding = 15
+  const bottomPadding = 30
+  const plotHeight = chartHeight - topPadding - bottomPadding // ~355px
   
-  // Y position: rank 1 is at top (min), rank N is at bottom (max) due to reversed axis
-  // Map rank to position within plot area
-  const yPercent = (lastRank - 1) / Math.max(1, totalTeams - 1)
-  const yPos = chartTopOffset + (yPercent * plotAreaHeight)
+  // For reversed y-axis: rank 1 is at top (y = topPadding), rank N is at bottom
+  // Linear interpolation within the plot area
+  const rankRange = totalTeams - 1 // e.g., for 10 teams: 0-9 positions
+  const normalizedRank = lastRank - 1 // 0-indexed: rank 1 -> 0, rank 10 -> 9
+  const yPosition = topPadding + (normalizedRank / Math.max(rankRange, 1)) * plotHeight
   
-  // Avatar is 24px, center it by subtracting half
+  // Center the 24px avatar on the point
   const avatarSize = 24
-  const centeredY = yPos - (avatarSize / 2)
+  const centeredY = yPosition - (avatarSize / 2)
   
+  // Position from right edge, accounting for chart right padding (~40px from grid config)
   return {
-    right: '8px',
-    top: `${centeredY}px`
+    right: '42px',
+    top: `${Math.round(centeredY)}px`
   }
 }
 
@@ -900,6 +1091,106 @@ function getStandingsAvatarPosition(team: any): Record<string, string> {
 function openQuickStatModal(type: string) {
   leaderModalType.value = type
   showLeaderModal.value = true
+}
+
+// Open team detail modal
+function openTeamDetailModal(team: any) {
+  selectedTeamDetail.value = team
+  showTeamDetailModal.value = true
+  
+  // Build the weekly chart data
+  buildTeamDetailChart(team)
+  
+  // Build weekly results
+  buildTeamDetailWeeklyResults(team)
+}
+
+function buildTeamDetailChart(team: any) {
+  const weeks = Array.from(weeklyStandings.value.keys()).sort((a, b) => a - b)
+  if (weeks.length === 0) {
+    teamDetailChartSeries.value = []
+    teamDetailChartOptions.value = null
+    return
+  }
+  
+  // Calculate team's category wins per week and league average
+  const teamWeeklyCatWins: number[] = []
+  const leagueAvgWeeklyCatWins: number[] = []
+  
+  weeks.forEach(week => {
+    const weekData = weeklyStandings.value.get(week) || []
+    const teamWeek = weekData.find((t: any) => t.team_key === team.team_key)
+    const teamCatWins = teamWeek?.weekCatWins || (team.categoryWins ? Object.values(team.categoryWins).reduce((a: number, b: any) => a + (b || 0), 0) / weeks.length : 0)
+    teamWeeklyCatWins.push(teamCatWins)
+    
+    // League average for this week
+    const allWins = weekData.map((t: any) => t.weekCatWins || 0)
+    const avg = allWins.length > 0 ? allWins.reduce((a: number, b: number) => a + b, 0) / allWins.length : 0
+    leagueAvgWeeklyCatWins.push(avg)
+  })
+  
+  // If we don't have weekly breakdowns, estimate from total
+  if (teamWeeklyCatWins.every(w => w === 0) && team.wins > 0) {
+    const avgPerWeek = team.wins / weeks.length
+    weeks.forEach((_, idx) => {
+      teamWeeklyCatWins[idx] = avgPerWeek
+      leagueAvgWeeklyCatWins[idx] = avgPerWeek
+    })
+  }
+  
+  teamDetailChartSeries.value = [
+    { name: team.name, data: teamWeeklyCatWins },
+    { name: 'League Avg', data: leagueAvgWeeklyCatWins }
+  ]
+  
+  teamDetailChartOptions.value = {
+    chart: { type: 'line', background: 'transparent', toolbar: { show: false }, zoom: { enabled: false } },
+    stroke: { curve: 'smooth', width: [3, 2], dashArray: [0, 5] },
+    colors: ['#F5C451', '#6b7280'],
+    markers: { size: [4, 0] },
+    xaxis: {
+      categories: weeks.map(w => `Wk ${w}`),
+      labels: { style: { colors: '#9CA3AF', fontSize: '10px' } }
+    },
+    yaxis: {
+      labels: { style: { colors: '#9CA3AF', fontSize: '10px' }, formatter: (val: number) => val.toFixed(0) }
+    },
+    grid: { borderColor: '#374151', strokeDashArray: 3 },
+    legend: { show: true, position: 'top', horizontalAlign: 'right', labels: { colors: '#9CA3AF' } },
+    tooltip: { theme: 'dark' }
+  }
+}
+
+function buildTeamDetailWeeklyResults(team: any) {
+  // Get weekly matchup results for this team
+  const weeks = Array.from(weeklyStandings.value.keys()).sort((a, b) => a - b)
+  const results: any[] = []
+  
+  weeks.forEach(week => {
+    const weekData = weeklyStandings.value.get(week) || []
+    const teamWeek = weekData.find((t: any) => t.team_key === team.team_key)
+    
+    if (teamWeek?.matchupResult) {
+      results.push({
+        won: teamWeek.matchupResult === 'W',
+        tied: teamWeek.matchupResult === 'T',
+        catWins: teamWeek.weekCatWins || 0,
+        catLosses: teamWeek.weekCatLosses || 0,
+        opponent: teamWeek.opponent || 'Unknown'
+      })
+    } else {
+      // Placeholder - we'll need to get this data from matchups
+      results.push({
+        won: false,
+        tied: false,
+        catWins: 0,
+        catLosses: 0,
+        opponent: 'TBD'
+      })
+    }
+  })
+  
+  teamDetailWeeklyResults.value = results
 }
 
 // Helper functions
