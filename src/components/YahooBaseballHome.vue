@@ -1475,10 +1475,10 @@ async function downloadStandings() {
       }
     }))
     
-    // Load logo
+    // Load baseball logo
     let logoBase64 = ''
     try {
-      const logoResponse = await fetch('/img/logo.png')
+      const logoResponse = await fetch('/logos/UFD_Baseball.png')
       const logoBlob = await logoResponse.blob()
       logoBase64 = await new Promise<string>((resolve) => {
         const reader = new FileReader()
@@ -1539,29 +1539,19 @@ async function downloadStandings() {
     container.innerHTML = `
       <div style="background: linear-gradient(160deg, #0f1219 0%, #0a0c14 50%, #0d1117 100%); border-radius: 16px; box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5); position: relative; overflow: hidden;">
         
-        <!-- HEADER - Website Style -->
-        <div style="position: relative; z-index: 10;">
-          <!-- Top bar with logo and gradient -->
-          <div style="display: flex; height: 70px;">
-            <!-- Logo section with dark bg -->
-            <div style="width: 90px; height: 70px; background: #0a0c14; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
-              ${logoBase64 ? `<img src="${logoBase64}" style="width: 60px; height: 60px; object-fit: contain;" />` : ''}
-            </div>
-            <!-- Gradient transition + Header text area -->
-            <div style="flex: 1; position: relative; display: flex; flex-direction: column;">
-              <!-- Dark top section with site name -->
-              <div style="height: 35px; background: linear-gradient(90deg, #0a0c14 0%, #12151f 20%, #1a1d2e 100%); display: flex; align-items: center; padding-left: 16px;">
-                <span style="font-size: 13px; font-weight: 700; color: #6b7280; text-transform: uppercase; letter-spacing: 2px;">Ultimate Fantasy Dashboard</span>
-              </div>
-              <!-- Blue sport color section with main title -->
-              <div style="height: 35px; background: linear-gradient(90deg, #1e3a5f 0%, #2563eb 30%, #3b82f6 100%); display: flex; align-items: center; padding-left: 16px;">
-                <span style="font-size: 22px; font-weight: 900; color: #ffffff; text-transform: uppercase; letter-spacing: 2px; text-shadow: 0 2px 4px rgba(0,0,0,0.3);">Power Rankings</span>
-              </div>
-            </div>
-          </div>
-          <!-- Sub-header with league info -->
-          <div style="background: rgba(15, 18, 25, 0.9); padding: 8px 24px; border-bottom: 1px solid rgba(59, 159, 232, 0.2);">
-            <div style="font-size: 16px; font-weight: 600; text-align: center;">
+        <!-- Top Blue Bar with site name -->
+        <div style="background: #3B9FE8; padding: 10px 24px 10px 24px; text-align: center; overflow: visible;">
+          <span style="font-size: 16px; font-weight: 700; color: #0a0c14; text-transform: uppercase; letter-spacing: 3px; display: block; margin-top: -17px;">Ultimate Fantasy Dashboard</span>
+        </div>
+        
+        <!-- HEADER - Logo on left with text next to it -->
+        <div style="display: flex; padding: 12px 24px 12px 24px; border-bottom: 1px solid rgba(59, 159, 232, 0.2); position: relative; z-index: 10;">
+          <!-- Baseball Logo -->
+          ${logoBase64 ? `<img src="${logoBase64}" style="width: 90px; height: 90px; object-fit: contain; flex-shrink: 0; margin-right: 20px; display: block;" />` : ''}
+          <!-- Title and League Info - adjusted margin to center with logo -->
+          <div style="flex: 1; margin-top: -5px;">
+            <div style="font-size: 42px; font-weight: 900; color: #ffffff; text-transform: uppercase; letter-spacing: 2px; text-shadow: 0 2px 8px rgba(59, 159, 232, 0.4); line-height: 42px; display: block;">League Standings</div>
+            <div style="font-size: 20px; margin-top: 6px; font-weight: 600; line-height: 20px; display: block;">
               <span style="color: #e5e7eb;">${leagueName.value}</span>
               <span style="color: #6b7280; margin: 0 8px;">•</span>
               <span style="color: #3B9FE8; font-weight: 700;">Week ${displayWeek.value}</span>
@@ -1569,35 +1559,8 @@ async function downloadStandings() {
           </div>
         </div>
         
-        <!-- Main content area with padding -->
+        <!-- Main content area -->
         <div style="padding: 16px 24px 12px 24px; position: relative;">
-          <!-- Decorative blue glow at top -->
-          <div style="position: absolute; top: -50px; left: 50%; transform: translateX(-50%); width: 400px; height: 200px; background: radial-gradient(ellipse, rgba(59, 159, 232, 0.15) 0%, transparent 70%); pointer-events: none;"></div>
-          
-          <!-- Ghosted baseball diamond field SVG background - bottom right -->
-          <div style="position: absolute; bottom: -100px; right: -100px; width: 500px; height: 500px; opacity: 0.07; pointer-events: none;">
-            <svg viewBox="0 0 200 200" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <path d="M100 20 Q20 20 20 100 Q20 140 60 170 L100 130 L140 170 Q180 140 180 100 Q180 20 100 20" stroke="#3B9FE8" stroke-width="1.5" fill="none"/>
-              <path d="M100 50 Q55 50 55 100 Q55 120 75 140 L100 115 L125 140 Q145 120 145 100 Q145 50 100 50" stroke="#3B9FE8" stroke-width="1.5" fill="none"/>
-              <path d="M100 70 L130 100 L100 130 L70 100 Z" stroke="#3B9FE8" stroke-width="1.5" fill="none"/>
-              <circle cx="100" cy="100" r="8" stroke="#3B9FE8" stroke-width="1.5" fill="none"/>
-              <path d="M95 130 L100 140 L105 130 L105 125 L95 125 Z" stroke="#3B9FE8" stroke-width="1.5" fill="none"/>
-              <line x1="100" y1="130" x2="40" y2="190" stroke="#3B9FE8" stroke-width="1.5"/>
-              <line x1="100" y1="130" x2="160" y2="190" stroke="#3B9FE8" stroke-width="1.5"/>
-            </svg>
-          </div>
-          
-          <!-- Smaller ghosted diamond - top left -->
-          <div style="position: absolute; top: -60px; left: -60px; width: 250px; height: 250px; opacity: 0.04; pointer-events: none; transform: rotate(15deg);">
-            <svg viewBox="0 0 200 200" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <path d="M100 20 Q20 20 20 100 Q20 140 60 170 L100 130 L140 170 Q180 140 180 100 Q180 20 100 20" stroke="#3B9FE8" stroke-width="2" fill="none"/>
-              <path d="M100 70 L130 100 L100 130 L70 100 Z" stroke="#3B9FE8" stroke-width="2" fill="none"/>
-              <circle cx="100" cy="100" r="8" stroke="#3B9FE8" stroke-width="2" fill="none"/>
-            </svg>
-          </div>
-          
-          <!-- Blue diagonal lines pattern overlay -->
-          <div style="position: absolute; top: 0; left: 0; right: 0; bottom: 0; opacity: 0.03; pointer-events: none; background: repeating-linear-gradient(45deg, transparent, transparent 20px, #3B9FE8 20px, #3B9FE8 21px);"></div>
           
           <!-- Table Header -->
           <div style="display: flex; padding: 0 12px 8px 12px; position: relative; z-index: 1;">
@@ -1616,14 +1579,14 @@ async function downloadStandings() {
           
           <!-- Trend Chart -->
           <div style="background: rgba(38, 42, 58, 0.3); border-radius: 12px; padding: 16px; margin-bottom: 12px; border: 1px solid rgba(59, 159, 232, 0.2); position: relative; z-index: 1;">
-            <h3 style="color: #3B9FE8; font-size: 14px; margin: 0 0 12px 0; text-align: center; font-weight: 700; text-transform: uppercase; letter-spacing: 1px;">📈 Standings Trend</h3>
+            <h3 style="color: #3B9FE8; font-size: 18px; margin: 0 0 12px 0; text-align: center; font-weight: 700; text-transform: uppercase; letter-spacing: 1px;">Standings Trend</h3>
             <div id="standings-trend-chart" style="height: 220px; position: relative;"></div>
           </div>
         </div>
         
-        <!-- Footer - Simple centered text -->
-        <div style="border-top: 1px solid rgba(59, 159, 232, 0.2); padding: 12px 24px; text-align: center; position: relative; z-index: 1;">
-          <div style="font-size: 20px; font-weight: bold; color: #3B9FE8; letter-spacing: -0.5px;">ultimatefantasydashboard.com</div>
+        <!-- Footer - negative margin to pull up -->
+        <div style="padding: 20px 24px 20px 24px; text-align: center; position: relative; z-index: 1;">
+          <span style="font-size: 24px; font-weight: bold; color: #3B9FE8; letter-spacing: -0.5px; display: block; margin-top: -35px;">ultimatefantasydashboard.com</span>
         </div>
       </div>
     `
