@@ -1550,12 +1550,12 @@ async function downloadStandings() {
     
     // Generate standings row - matching power rankings style
     const generateStandingsRow = (team: any, rank: number) => {
-      // H2H record with ties
-      const h2hRecord = `${team.wins || 0}-${team.losses || 0}-${team.ties || 0}`
+      // Category record (wins-losses-ties)
+      const catRecord = `${team.wins || 0}-${team.losses || 0}-${team.ties || 0}`
       
-      // Calculate win percentage from wins and losses
-      const totalGames = (team.wins || 0) + (team.losses || 0) + (team.ties || 0)
-      const winPct = totalGames > 0 ? ((team.wins || 0) / totalGames * 100).toFixed(0) : '0'
+      // Calculate category win percentage (this is what Yahoo uses to determine standings)
+      const totalCats = (team.wins || 0) + (team.losses || 0) + (team.ties || 0)
+      const catWinPct = totalCats > 0 ? ((team.wins || 0) / totalCats * 100).toFixed(0) : '0'
       
       // Conditional color: green for top third, yellow for middle, red for bottom third
       let pctColor = '#f59e0b' // yellow default (middle)
@@ -1578,11 +1578,12 @@ async function downloadStandings() {
         <!-- Team Info -->
         <div style="flex: 1; min-width: 0; padding-top: 16px;">
           <div style="font-size: 14px; font-weight: 700; color: #f7f7ff; white-space: nowrap; overflow: visible; line-height: 1.2;">${team.name}</div>
-          <div style="font-size: 11px; color: #9ca3af; line-height: 1.2; margin-top: 4px;">${h2hRecord}</div>
+          <div style="font-size: 11px; color: #9ca3af; line-height: 1.2; margin-top: 4px;">${catRecord}</div>
         </div>
-        <!-- Win Percentage - big and colorful -->
-        <div style="width: 55px; flex-shrink: 0; text-align: center; padding-top: 18px;">
-          <div style="font-size: 22px; font-weight: bold; color: ${pctColor}; line-height: 1;">${winPct}%</div>
+        <!-- Category Win Percentage - big and colorful with label -->
+        <div style="width: 65px; flex-shrink: 0; text-align: center; padding-top: 14px;">
+          <div style="font-size: 22px; font-weight: bold; color: ${pctColor}; line-height: 1;">${catWinPct}%</div>
+          <div style="font-size: 9px; color: #6b7280; margin-top: 2px; text-transform: uppercase;">Cat Win %</div>
         </div>
       </div>
     `}
@@ -1611,18 +1612,12 @@ async function downloadStandings() {
         </div>
         
         <!-- Main content area -->
-        <div style="padding: 16px 24px 12px 24px; position: relative;">
+        <div style="padding: 16px 24px 16px 24px; position: relative;">
           
           <!-- Standings (Two Columns) -->
-          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px; position: relative; z-index: 1;">
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; position: relative; z-index: 1;">
             <div>${firstHalf.map((team, idx) => generateStandingsRow(team, idx + 1)).join('')}</div>
             <div>${secondHalf.map((team, idx) => generateStandingsRow(team, idx + midpoint + 1)).join('')}</div>
-          </div>
-          
-          <!-- Trend Chart -->
-          <div style="background: rgba(38, 42, 58, 0.3); border-radius: 12px; padding: 16px; margin-bottom: 12px; border: 1px solid rgba(59, 159, 232, 0.2); position: relative; z-index: 1;">
-            <h3 style="color: #3B9FE8; font-size: 18px; margin: 0 0 12px 0; text-align: center; font-weight: 700; text-transform: uppercase; letter-spacing: 1px;">Standings Trend</h3>
-            <div id="standings-trend-chart" style="height: 220px; position: relative;"></div>
           </div>
         </div>
         
@@ -1635,147 +1630,8 @@ async function downloadStandings() {
     
     document.body.appendChild(container)
     
-    // Create trend chart with team logos at endpoints
-    // Get weeks from weeklyStandings (same pattern as power rankings uses chartWeeks)
-    const weeks = Array.from(weeklyStandings.value.keys()).sort((a, b) => a - b)
-    const trendChartContainer = container.querySelector('#standings-trend-chart')
-    
-    if (trendChartContainer && weeks.length >= 2) {
-      const ApexCharts = (await import('apexcharts')).default
-      
-      // Get last 7 weeks of data
-      const maxWeeksToShow = 7
-      const startIdx = Math.max(0, weeks.length - maxWeeksToShow)
-      const weeksToShow = weeks.slice(startIdx)
-      
-      // Build series with last 7 weeks (same pattern as power rankings uses historicalRanks)
-      const trendSeries = sortedTeams.value.map((team) => {
-        const data = weeksToShow.map(week => {
-          const weekData = weeklyStandings.value.get(week) || []
-          const teamStanding = weekData.find((t: any) => t.team_key === team.team_key)
-          return teamStanding?.rank || sortedTeams.value.length
-        })
-        return {
-          name: team.name,
-          data: data
-        }
-      })
-      
-      const trendChart = new ApexCharts(trendChartContainer, {
-        chart: {
-          type: 'line',
-          height: 220,
-          background: 'transparent',
-          toolbar: { show: false },
-          animations: { enabled: false }
-        },
-        series: trendSeries,
-        colors: sortedTeams.value.map((team, idx) => 
-          team.is_my_team ? '#F5C451' : getTeamColor(idx)
-        ),
-        stroke: {
-          width: sortedTeams.value.map(team => team.is_my_team ? 4 : 2),
-          curve: 'smooth'
-        },
-        markers: {
-          size: 0,
-          strokeWidth: 0
-        },
-        xaxis: {
-          categories: weeksToShow.map(w => `Wk ${w}`),
-          labels: {
-            style: {
-              colors: '#9ca3af',
-              fontSize: '10px'
-            }
-          }
-        },
-        yaxis: {
-          reversed: true,
-          min: 1,
-          max: sortedTeams.value.length,
-          labels: {
-            style: {
-              colors: '#9ca3af',
-              fontSize: '10px'
-            },
-            formatter: (value: number) => `#${Math.round(value)}`
-          }
-        },
-        legend: {
-          show: false
-        },
-        grid: {
-          borderColor: '#374151',
-          strokeDashArray: 3
-        },
-        tooltip: { enabled: false }
-      })
-      
-      await trendChart.render()
-      
-      // Wait for chart to render, then add team logos at endpoints
-      await new Promise(resolve => setTimeout(resolve, 600))
-      
-      // Add team logos at the final data point of each line
-      const chartEl = trendChartContainer.querySelector('.apexcharts-inner') as HTMLElement
-      const plotArea = trendChartContainer.querySelector('.apexcharts-plot-series') as HTMLElement
-      
-      if (chartEl && plotArea) {
-        const plotRect = plotArea.getBoundingClientRect()
-        const containerRect = (trendChartContainer as HTMLElement).getBoundingClientRect()
-        
-        const plotLeft = plotRect.left - containerRect.left
-        const plotTop = plotRect.top - containerRect.top
-        const plotHeight = plotRect.height
-        const plotWidth = plotRect.width
-        
-        const logoContainer = document.createElement('div')
-        logoContainer.style.cssText = 'position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 10;'
-        
-        for (let i = 0; i < sortedTeams.value.length; i++) {
-          const team = sortedTeams.value[i]
-          const seriesData = trendSeries[i]?.data || []
-          if (seriesData.length === 0) continue
-          
-          const lastRank = seriesData[seriesData.length - 1]
-          
-          // Calculate y position based on rank
-          const yPercent = (lastRank - 1) / (numTeams - 1)
-          const yPos = plotTop + (yPercent * plotHeight)
-          
-          // X position is at the right edge of the plot area
-          const xPos = plotLeft + plotWidth
-          
-          const logoSize = 20
-          
-          const logoDiv = document.createElement('div')
-          logoDiv.style.cssText = `
-            position: absolute;
-            left: ${xPos - logoSize / 2 + 4}px;
-            top: ${yPos - logoSize / 2}px;
-            width: ${logoSize}px;
-            height: ${logoSize}px;
-            border-radius: 50%;
-            overflow: hidden;
-            border: 2px solid ${team.is_my_team ? '#F5C451' : getTeamColor(i)};
-            background: #262a3a;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.3);
-          `
-          logoDiv.innerHTML = `<img src="${imageMap.get(team.team_key) || ''}" style="width: 100%; height: 100%; object-fit: cover;" />`
-          logoContainer.appendChild(logoDiv)
-        }
-        
-        ;(trendChartContainer as HTMLElement).style.position = 'relative'
-        trendChartContainer.appendChild(logoContainer)
-      }
-      
-      // Wait for logos to render
-      await new Promise(resolve => setTimeout(resolve, 300))
-    } else {
-      // No chart data - wait for images only
-      await new Promise(resolve => setTimeout(resolve, 500))
-    }
+    // Wait for images to load
+    await new Promise(resolve => setTimeout(resolve, 500))
     
     // Capture the image
     const canvas = await html2canvas(container, {
