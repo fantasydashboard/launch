@@ -887,27 +887,45 @@ export const useLeagueStore = defineStore('league', () => {
         return
       }
       
-      // Get unique sports from saved Yahoo leagues
+      // Get saved Yahoo leagues
       const yahooLeagues = savedLeagues.value.filter(l => l.platform === 'yahoo')
-      const sports = new Set<'football' | 'baseball' | 'basketball' | 'hockey'>()
-      for (const league of yahooLeagues) {
-        if (league.sport === 'football' || league.sport === 'baseball' || 
-            league.sport === 'basketball' || league.sport === 'hockey') {
-          sports.add(league.sport)
+      if (yahooLeagues.length === 0) {
+        console.log('No saved Yahoo leagues to refresh')
+        return
+      }
+      
+      console.log(`Found ${yahooLeagues.length} saved Yahoo leagues to check:`, yahooLeagues.map(l => `${l.league_name} (${l.league_id}, sport: ${l.sport})`))
+      
+      // Always check both baseball and football
+      // We fetch leagues from Yahoo for these sports regardless of what's saved
+      const sportsToCheck: Array<'football' | 'baseball' | 'basketball' | 'hockey'> = ['baseball', 'football']
+      
+      console.log('Will check sports:', sportsToCheck)
+      
+      // Fetch all current leagues from Yahoo for each sport using Promise.all for speed
+      const results = await Promise.allSettled(
+        sportsToCheck.map(async sport => {
+          console.log(`Fetching ${sport} leagues from Yahoo...`)
+          const leagues = await yahooService.getLeagues(sport)
+          console.log(`Found ${leagues.length} ${sport} leagues`)
+          return { sport, leagues }
+        })
+      )
+      
+      const allCurrentLeagues: any[] = []
+      for (const result of results) {
+        if (result.status === 'fulfilled') {
+          allCurrentLeagues.push(...result.value.leagues)
+        } else {
+          console.warn('Failed to fetch leagues:', result.reason)
         }
       }
       
-      // Fetch all current leagues from Yahoo for each sport
-      const allCurrentLeagues: any[] = []
-      for (const sport of sports) {
-        try {
-          console.log(`Refreshing Yahoo ${sport} leagues...`)
-          const leagues = await yahooService.getLeagues(sport)
-          allCurrentLeagues.push(...leagues)
-          console.log(`Found ${leagues.length} ${sport} leagues from Yahoo`)
-        } catch (e) {
-          console.warn(`Failed to fetch ${sport} leagues:`, e)
-        }
+      console.log(`Total leagues fetched from Yahoo: ${allCurrentLeagues.length}`)
+      
+      if (allCurrentLeagues.length === 0) {
+        console.log('No leagues found from Yahoo API')
+        return
       }
       
       // Group by league name to find the latest season for each
