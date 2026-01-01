@@ -44,22 +44,23 @@ const GAME_KEYS: Record<Sport, Record<number, string>> = {
   },
   baseball: {
     // MLB seasons (March - October)
-    2025: '431',  // MLB 2025 (season ended in October)
-    2024: '422',
-    2023: '412',
-    2022: '404',
-    2021: '398',
-    2020: '388',
-    2019: '378',
-    2018: '370',
-    2017: '357',
-    2016: '346',
-    2015: '328',
-    2014: '308',
-    2013: '283',
-    2012: '268',
-    2011: '253',
-    2010: '238'
+    // NOTE: Keys were off by 1 year - corrected mapping below
+    2025: '458',  // MLB 2025 - verify this key when league becomes available
+    2024: '431',  // MLB 2024
+    2023: '422',  // MLB 2023
+    2022: '412',  // MLB 2022
+    2021: '404',  // MLB 2021
+    2020: '398',  // MLB 2020
+    2019: '388',  // MLB 2019
+    2018: '378',  // MLB 2018
+    2017: '370',  // MLB 2017
+    2016: '357',  // MLB 2016
+    2015: '346',  // MLB 2015
+    2014: '328',  // MLB 2014
+    2013: '308',  // MLB 2013
+    2012: '283',  // MLB 2012
+    2011: '268',  // MLB 2011
+    2010: '253',  // MLB 2010
   },
   basketball: {
     // NBA seasons (October - June, spans 2 years)
