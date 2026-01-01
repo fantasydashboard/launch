@@ -2410,22 +2410,23 @@ async function loadHistoricalData() {
     
     const gameKey = leagueKey.split('.')[0]
     
-    // Baseball game keys by year
+    // Baseball game keys by year - includes all available years
     const gameKeys: Record<string, string> = {
       '2025': '458', '2024': '431', '2023': '422', '2022': '412',
       '2021': '404', '2020': '398', '2019': '388', '2018': '378',
-      '2017': '370', '2016': '357', '2015': '346', '2014': '328'
+      '2017': '370', '2016': '357', '2015': '346', '2014': '328',
+      '2013': '308', '2012': '283', '2011': '268', '2010': '253'
     }
     
     // Extract league ID from current league key
     const leagueId = leagueKey.split('.l.')[1]
     loadingMessage.value = `Loading league ${leagueId} history...`
     
-    // Try to load multiple seasons
+    // Try to load ALL seasons (no limit) - will skip years where league didn't exist
     const data: Record<string, any> = {}
     const years = Object.keys(gameKeys).sort((a, b) => parseInt(b) - parseInt(a))
     
-    for (const year of years.slice(0, 5)) { // Load last 5 years max
+    for (const year of years) { // Load all available years
       const yearGameKey = gameKeys[year]
       const yearLeagueKey = `${yearGameKey}.l.${leagueId}`
       

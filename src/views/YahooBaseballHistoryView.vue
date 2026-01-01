@@ -9,8 +9,9 @@
     </div>
 
     <!-- Loading State -->
-    <div v-if="isLoading" class="flex items-center justify-center py-20">
-      <div class="animate-spin rounded-full h-16 w-16 border-b-4 border-primary"></div>
+    <div v-if="isLoading" class="flex flex-col items-center justify-center py-20">
+      <div class="animate-spin rounded-full h-16 w-16 border-b-4 border-primary mb-4"></div>
+      <p class="text-dark-textMuted text-sm">{{ loadingMessage }}</p>
     </div>
 
     <template v-else>
@@ -602,6 +603,7 @@ const defaultAvatar = 'https://s.yimg.com/cv/apiv2/default/mlb/mlb_1_100.png'
 
 // State
 const isLoading = ref(true)
+const loadingMessage = ref('Loading historical data...')
 const isDownloadingCareerStats = ref(false)
 const isDownloadingSeasonHistory = ref(false)
 const isDownloadingH2H = ref(false)
@@ -1410,9 +1412,9 @@ async function loadHistoricalData() {
     const leagueNum = leagueKey.split('.l.')[1]
     console.log('League number:', leagueNum)
     
-    // Start with current season only for now to avoid rate limiting
+    // Load ALL available seasons (will skip years where league didn't exist)
     const currentYear = yearsByKey[gameKey] || '2024'
-    const seasons = [currentYear]
+    const seasons = Object.keys(gameKeys).sort((a, b) => parseInt(b) - parseInt(a))
     console.log('Loading seasons:', seasons)
     
     for (const season of seasons) {
@@ -1420,6 +1422,7 @@ async function loadHistoricalData() {
       if (!seasonGameKey) continue
       
       const seasonLeagueKey = `${seasonGameKey}.l.${leagueNum}`
+      loadingMessage.value = `Loading ${season} season...`
       
       try {
         // Get standings for this season
@@ -1450,6 +1453,7 @@ async function loadHistoricalData() {
         // Load matchups for H2H calculation and to get team logos
         const seasonMatchupsObj: Record<number, any[]> = {}
         for (let week = 1; week <= 25; week++) {
+          loadingMessage.value = `Loading ${season} week ${week}...`
           try {
             const weekMatchups = await yahooService.getMatchups(seasonLeagueKey, week)
             if (weekMatchups.length > 0) {
