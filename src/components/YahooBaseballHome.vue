@@ -290,12 +290,18 @@
               :class="{ 'bg-primary/5': team.is_my_team }"
             >
               <td class="py-3 px-3">
-                <span 
-                  class="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold"
-                  :class="getRankClass(team.rank)"
-                >
-                  {{ team.rank }}
-                </span>
+                <div class="flex items-center gap-1">
+                  <span 
+                    class="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold"
+                    :class="getRankClass(team.regularSeasonRank)"
+                  >
+                    {{ team.regularSeasonRank }}
+                  </span>
+                  <!-- Playoff finish trophy icons -->
+                  <span v-if="team.playoffFinish === 1" class="text-yellow-400 text-base" title="League Champion">🏆</span>
+                  <span v-else-if="team.playoffFinish === 2" class="text-gray-300 text-sm" title="Runner-up">🥈</span>
+                  <span v-else-if="team.playoffFinish === 3" class="text-amber-600 text-sm" title="Third Place">🥉</span>
+                </div>
               </td>
               <td class="py-3 px-3">
                 <div class="flex items-center gap-2">
@@ -563,7 +569,12 @@
                 <div class="text-xs text-dark-textMuted mt-1">Record</div>
               </div>
               <div class="bg-dark-border/20 rounded-xl p-4 text-center">
-                <div class="text-2xl font-black text-primary">#{{ selectedTeamDetail?.rank }}</div>
+                <div class="flex items-center justify-center gap-1">
+                  <span class="text-2xl font-black text-primary">#{{ selectedTeamDetail?.regularSeasonRank }}</span>
+                  <span v-if="selectedTeamDetail?.playoffFinish === 1" class="text-yellow-400 text-xl" title="League Champion">🏆</span>
+                  <span v-else-if="selectedTeamDetail?.playoffFinish === 2" class="text-gray-300 text-lg" title="Runner-up">🥈</span>
+                  <span v-else-if="selectedTeamDetail?.playoffFinish === 3" class="text-amber-600 text-lg" title="Third Place">🥉</span>
+                </div>
                 <div class="text-xs text-dark-textMuted mt-1">Rank</div>
               </div>
               <div class="bg-dark-border/20 rounded-xl p-4 text-center">
@@ -696,6 +707,23 @@ const teamCategoryWins = ref<Map<string, Record<string, number>>>(new Map())
 const weeklyStandings = ref<Map<number, any[]>>(new Map())
 const displayMatchups = ref<any[]>([])
 
+// Computed: Get regular season ranks from the last week of weeklyStandings
+// This ensures the table matches the chart (both use regular season standings only)
+const regularSeasonRanks = computed(() => {
+  const ranks = new Map<string, number>()
+  const weeks = Array.from(weeklyStandings.value.keys()).sort((a, b) => a - b)
+  if (weeks.length === 0) return ranks
+  
+  const lastWeek = weeks[weeks.length - 1]
+  const lastWeekStandings = weeklyStandings.value.get(lastWeek) || []
+  
+  lastWeekStandings.forEach((team: any) => {
+    ranks.set(team.team_key, team.rank || 999)
+  })
+  
+  return ranks
+})
+
 // Store weekly matchup results per team: team_key -> week -> { catWins, catLosses, opponent, won, tied }
 const weeklyMatchupResults = ref<Map<string, Map<number, any>>>(new Map())
 
@@ -779,13 +807,23 @@ const teamsWithStats = computed(() => {
     const expectedMatchupWins = expectedMatchupWinPct * totalMatchups
     const luckScore = matchupWins - expectedMatchupWins
     
+    // Use regular season rank from computed weeklyStandings (matches chart)
+    // Falls back to Yahoo's rank if weeklyStandings hasn't loaded yet
+    const regularSeasonRank = regularSeasonRanks.value.get(team.team_key) || team.rank || 999
+    
+    // Playoff finish: Only set if season is complete, based on Yahoo's final rank
+    // 1 = Champion (🏆), 2 = Runner-up (🥈), 3 = Third place (🥉)
+    const playoffFinish = isSeasonComplete.value && team.rank && team.rank <= 3 ? team.rank : null
+    
     return {
       ...team,
       all_play_wins,
       all_play_losses,
       transactions,
       categoryWins,
-      luckScore
+      luckScore,
+      regularSeasonRank,
+      playoffFinish
     }
   })
 })
@@ -797,8 +835,9 @@ const sortedTeams = computed(() => {
     let aVal: number, bVal: number
     
     if (sortColumn.value === 'rank') {
-      aVal = a.rank || 999
-      bVal = b.rank || 999
+      // Use regular season rank (matches chart) instead of Yahoo's final rank
+      aVal = a.regularSeasonRank || 999
+      bVal = b.regularSeasonRank || 999
     } else if (sortColumn.value === 'record') {
       aVal = (a.wins || 0) / Math.max(1, (a.wins || 0) + (a.losses || 0))
       bVal = (b.wins || 0) / Math.max(1, (b.wins || 0) + (b.losses || 0))
@@ -816,8 +855,9 @@ const sortedTeams = computed(() => {
       aVal = a.categoryWins?.[catId] || 0
       bVal = b.categoryWins?.[catId] || 0
     } else {
-      aVal = a.rank || 999
-      bVal = b.rank || 999
+      // Default fallback uses regular season rank
+      aVal = a.regularSeasonRank || 999
+      bVal = b.regularSeasonRank || 999
     }
     
     return sortDirection.value === 'asc' ? aVal - bVal : bVal - aVal
