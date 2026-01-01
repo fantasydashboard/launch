@@ -887,30 +887,58 @@ export const useLeagueStore = defineStore('league', () => {
         return
       }
       
-      // Fetch all current leagues from Yahoo
-      const currentLeagues = await yahooService.getUserLeagues()
+      // Get unique sports from saved Yahoo leagues
+      const yahooLeagues = savedLeagues.value.filter(l => l.platform === 'yahoo')
+      const sports = new Set<'football' | 'baseball' | 'basketball' | 'hockey'>()
+      for (const league of yahooLeagues) {
+        if (league.sport === 'football' || league.sport === 'baseball' || 
+            league.sport === 'basketball' || league.sport === 'hockey') {
+          sports.add(league.sport)
+        }
+      }
+      
+      // Fetch all current leagues from Yahoo for each sport
+      const allCurrentLeagues: any[] = []
+      for (const sport of sports) {
+        try {
+          console.log(`Refreshing Yahoo ${sport} leagues...`)
+          const leagues = await yahooService.getLeagues(sport)
+          allCurrentLeagues.push(...leagues)
+          console.log(`Found ${leagues.length} ${sport} leagues from Yahoo`)
+        } catch (e) {
+          console.warn(`Failed to fetch ${sport} leagues:`, e)
+        }
+      }
       
       // Group by league name to find the latest season for each
       const latestByName = new Map<string, any>()
-      for (const league of currentLeagues) {
+      for (const league of allCurrentLeagues) {
         const existing = latestByName.get(league.name)
         if (!existing || parseInt(league.season) > parseInt(existing.season)) {
           latestByName.set(league.name, league)
         }
       }
       
+      console.log('Latest leagues by name:', Array.from(latestByName.entries()).map(([name, l]) => `${name}: ${l.season} (${l.league_key})`))
+      
       // Update saved leagues if needed
+      let updatedCount = 0
       for (const savedLeague of savedLeagues.value) {
         if (savedLeague.platform !== 'yahoo') continue
         
         const latest = latestByName.get(savedLeague.league_name)
-        if (!latest) continue
+        if (!latest) {
+          console.log(`No matching Yahoo league found for "${savedLeague.league_name}"`)
+          continue
+        }
         
         const savedSeason = parseInt(savedLeague.season || '0')
         const latestSeason = parseInt(latest.season || '0')
         
+        console.log(`Checking "${savedLeague.league_name}": saved=${savedSeason} (${savedLeague.league_id}), latest=${latestSeason} (${latest.league_key})`)
+        
         if (latestSeason > savedSeason || savedLeague.league_id !== latest.league_key) {
-          console.log(`Auto-updating "${savedLeague.league_name}" from ${savedSeason} (${savedLeague.league_id}) to ${latestSeason} (${latest.league_key})`)
+          console.log(`🔄 Auto-updating "${savedLeague.league_name}" from ${savedSeason} (${savedLeague.league_id}) to ${latestSeason} (${latest.league_key})`)
           
           // Update the saved league
           savedLeague.league_id = latest.league_key
@@ -918,6 +946,7 @@ export const useLeagueStore = defineStore('league', () => {
           savedLeague.yahoo_league_key = latest.league_key
           savedLeague.num_teams = latest.num_teams
           savedLeague.scoring_type = latest.scoring_type
+          updatedCount++
           
           // Update Supabase if we have an ID
           if (supabase && savedLeague.id) {
@@ -939,7 +968,22 @@ export const useLeagueStore = defineStore('league', () => {
         }
       }
       
-      saveToLocalStorage()
+      if (updatedCount > 0) {
+        console.log(`✅ Updated ${updatedCount} Yahoo league(s) to latest season`)
+        saveToLocalStorage()
+        
+        // If the active league was updated, reload its data
+        if (activeLeagueId.value && activePlatform.value === 'yahoo') {
+          const activeLeague = savedLeagues.value.find(l => l.league_name === savedLeagues.value.find(sl => sl.league_id === activeLeagueId.value)?.league_name)
+          if (activeLeague && activeLeague.league_id !== activeLeagueId.value) {
+            console.log('Active league was updated, reloading data...')
+            activeLeagueId.value = activeLeague.league_id
+            await loadYahooLeagueData(activeLeague.league_id)
+          }
+        }
+      } else {
+        console.log('All Yahoo leagues are already up to date')
+      }
       
     } catch (e) {
       console.error('Failed to refresh Yahoo leagues:', e)
