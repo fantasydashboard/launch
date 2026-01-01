@@ -303,11 +303,71 @@ export const useLeagueStore = defineStore('league', () => {
   async function saveYahooLeague(league: any, userId: string, sport: 'football' | 'baseball' | 'basketball' | 'hockey'): Promise<SavedLeague | undefined> {
     // Use the league name as a more stable identifier for grouping
     // Check if this league is already saved by name
-    const existing = savedLeagues.value.find(l => 
+    const existingIndex = savedLeagues.value.findIndex(l => 
       l.platform === 'yahoo' && 
       l.league_name === league.name
     )
-    if (existing) return existing
+    
+    // If exists, check if incoming season is newer and update it
+    if (existingIndex !== -1) {
+      const existing = savedLeagues.value[existingIndex]
+      const existingSeason = parseInt(existing.season || '0')
+      const newSeason = parseInt(league.season || '0')
+      
+      // If the new season is newer (or same but different key), update the league
+      if (newSeason > existingSeason || (newSeason === existingSeason && existing.league_id !== league.league_key)) {
+        console.log(`Updating Yahoo league "${league.name}" from season ${existingSeason} to ${newSeason}`)
+        
+        // Build updated historical seasons
+        const existingHistorical = existing.yahoo_historical_seasons || []
+        const newHistorical = league.all_seasons || [{ league_key: league.league_key, season: league.season }]
+        
+        // Merge historical seasons, avoiding duplicates
+        const mergedHistorical = [...existingHistorical]
+        for (const season of newHistorical) {
+          if (!mergedHistorical.some(s => s.league_key === season.league_key)) {
+            mergedHistorical.push(season)
+          }
+        }
+        // Sort by season descending
+        mergedHistorical.sort((a, b) => parseInt(b.season) - parseInt(a.season))
+        
+        // Update the existing league
+        savedLeagues.value[existingIndex] = {
+          ...existing,
+          league_id: league.league_key, // Update to new season's key
+          season: league.season,
+          yahoo_league_key: league.league_key,
+          yahoo_historical_seasons: mergedHistorical,
+          num_teams: league.num_teams,
+          scoring_type: league.scoring_type
+        }
+        saveToLocalStorage()
+        
+        // Update in Supabase
+        if (supabase && existing.id) {
+          try {
+            await supabase
+              .from('user_leagues')
+              .update({
+                league_id: league.league_key,
+                season: league.season,
+                yahoo_league_key: league.league_key,
+                num_teams: league.num_teams,
+                scoring_type: league.scoring_type
+              })
+              .eq('id', existing.id)
+          } catch (e) {
+            console.error('Failed to update Yahoo league in Supabase:', e)
+          }
+        }
+        
+        return savedLeagues.value[existingIndex]
+      }
+      
+      // Existing league is same or newer season, return it as-is
+      return existing
+    }
     
     const isPrimary = savedLeagues.value.length === 0
     
@@ -816,6 +876,76 @@ export const useLeagueStore = defineStore('league', () => {
     }
   }
 
+  // Refresh all saved Yahoo leagues to ensure they have the latest season
+  async function refreshYahooLeagues(userId: string) {
+    try {
+      const { yahooService } = await import('@/services/yahoo')
+      
+      const initialized = await yahooService.initialize(userId)
+      if (!initialized) {
+        console.warn('Yahoo not connected, skipping league refresh')
+        return
+      }
+      
+      // Fetch all current leagues from Yahoo
+      const currentLeagues = await yahooService.getUserLeagues()
+      
+      // Group by league name to find the latest season for each
+      const latestByName = new Map<string, any>()
+      for (const league of currentLeagues) {
+        const existing = latestByName.get(league.name)
+        if (!existing || parseInt(league.season) > parseInt(existing.season)) {
+          latestByName.set(league.name, league)
+        }
+      }
+      
+      // Update saved leagues if needed
+      for (const savedLeague of savedLeagues.value) {
+        if (savedLeague.platform !== 'yahoo') continue
+        
+        const latest = latestByName.get(savedLeague.league_name)
+        if (!latest) continue
+        
+        const savedSeason = parseInt(savedLeague.season || '0')
+        const latestSeason = parseInt(latest.season || '0')
+        
+        if (latestSeason > savedSeason || savedLeague.league_id !== latest.league_key) {
+          console.log(`Auto-updating "${savedLeague.league_name}" from ${savedSeason} (${savedLeague.league_id}) to ${latestSeason} (${latest.league_key})`)
+          
+          // Update the saved league
+          savedLeague.league_id = latest.league_key
+          savedLeague.season = latest.season
+          savedLeague.yahoo_league_key = latest.league_key
+          savedLeague.num_teams = latest.num_teams
+          savedLeague.scoring_type = latest.scoring_type
+          
+          // Update Supabase if we have an ID
+          if (supabase && savedLeague.id) {
+            try {
+              await supabase
+                .from('user_leagues')
+                .update({
+                  league_id: latest.league_key,
+                  season: latest.season,
+                  yahoo_league_key: latest.league_key,
+                  num_teams: latest.num_teams,
+                  scoring_type: latest.scoring_type
+                })
+                .eq('id', savedLeague.id)
+            } catch (e) {
+              console.error('Failed to update league in Supabase:', e)
+            }
+          }
+        }
+      }
+      
+      saveToLocalStorage()
+      
+    } catch (e) {
+      console.error('Failed to refresh Yahoo leagues:', e)
+    }
+  }
+
   // Initialize from localStorage on store creation
   loadFromLocalStorage()
 
@@ -865,6 +995,7 @@ export const useLeagueStore = defineStore('league', () => {
     setActiveLeague,
     setActiveSport,
     loadYahooLeagueData,
+    refreshYahooLeagues,
     getTeamInfo,
     reset,
     enableDemoMode,
