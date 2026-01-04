@@ -12,7 +12,9 @@
     <div v-if="isLoading" class="flex items-center justify-center py-20">
       <div class="text-center">
         <div class="animate-spin rounded-full h-16 w-16 border-b-4 border-primary mx-auto mb-4"></div>
-        <div class="text-dark-textMuted">{{ loadingMessage }}</div>
+        <div class="text-lg font-semibold text-dark-text mb-2">Loading League History</div>
+        <div class="text-dark-textMuted text-sm">{{ loadingMessage }}</div>
+        <div class="text-xs text-dark-textMuted/70 mt-2">This may take a minute for leagues with many seasons</div>
       </div>
     </div>
 
@@ -1139,7 +1141,7 @@ interface CareerStat {
   category_records: Record<string, { wins: number; losses: number }>
 }
 
-const isLoading = ref(true)
+const isLoading = ref(false)
 const loadingMessage = ref('Loading historical data...')
 const isDownloading = ref(false)
 const isDownloadingSeason = ref(false)
