@@ -48,10 +48,10 @@
                   <img 
                     :src="matchup.team1?.logo_url || defaultAvatar" 
                     :alt="matchup.team1?.name || 'Team 1'" 
-                    :class="['w-10 h-10 rounded-full border-2 transition-colors object-cover', matchup.team1?.is_my_team ? 'border-primary ring-2 ring-primary/30' : 'border-dark-border group-hover:border-primary/50']"
+                    :class="['w-10 h-10 rounded-full border-2 transition-colors object-cover', matchup.team1?.is_my_team ? 'border-yellow-500 ring-2 ring-yellow-500/30' : 'border-dark-border group-hover:border-primary/50']"
                     @error="handleImageError" 
                   />
-                  <div v-if="matchup.team1?.is_my_team" class="absolute -top-0.5 -left-0.5 w-4 h-4 bg-primary rounded-full flex items-center justify-center shadow">
+                  <div v-if="matchup.team1?.is_my_team" class="absolute -top-0.5 -left-0.5 w-4 h-4 bg-yellow-500 rounded-full flex items-center justify-center shadow">
                     <span class="text-[8px] text-gray-900 font-bold">★</span>
                   </div>
                 </div>
@@ -77,10 +77,10 @@
                   <img 
                     :src="matchup.team2?.logo_url || defaultAvatar" 
                     :alt="matchup.team2?.name || 'Team 2'" 
-                    :class="['w-10 h-10 rounded-full border-2 transition-colors object-cover', matchup.team2?.is_my_team ? 'border-primary ring-2 ring-primary/30' : 'border-dark-border group-hover:border-primary/50']"
+                    :class="['w-10 h-10 rounded-full border-2 transition-colors object-cover', matchup.team2?.is_my_team ? 'border-yellow-500 ring-2 ring-yellow-500/30' : 'border-dark-border group-hover:border-primary/50']"
                     @error="handleImageError" 
                   />
-                  <div v-if="matchup.team2?.is_my_team" class="absolute -top-0.5 -left-0.5 w-4 h-4 bg-primary rounded-full flex items-center justify-center shadow">
+                  <div v-if="matchup.team2?.is_my_team" class="absolute -top-0.5 -left-0.5 w-4 h-4 bg-yellow-500 rounded-full flex items-center justify-center shadow">
                     <span class="text-[8px] text-gray-900 font-bold">★</span>
                   </div>
                 </div>
@@ -300,19 +300,24 @@
               </td>
               <td class="py-3 px-3">
                 <div class="flex items-center gap-2">
-                  <img 
-                    :src="team.logo_url || defaultAvatar" 
-                    :alt="team.name"
-                    class="w-8 h-8 rounded-full border border-dark-border object-cover flex-shrink-0"
-                    @error="handleImageError"
-                  />
+                  <div class="relative flex-shrink-0">
+                    <img 
+                      :src="team.logo_url || defaultAvatar" 
+                      :alt="team.name"
+                      class="w-8 h-8 rounded-full object-cover ring-2"
+                      :class="team.is_my_team ? 'ring-yellow-500' : 'ring-dark-border'"
+                      @error="handleImageError"
+                    />
+                    <div v-if="team.is_my_team" class="absolute -top-1 -right-1 w-4 h-4 bg-yellow-500 rounded-full flex items-center justify-center">
+                      <span class="text-[8px] text-gray-900 font-bold">★</span>
+                    </div>
+                  </div>
                   <div class="flex items-center gap-2 min-w-0">
                     <span class="font-semibold text-dark-text truncate">{{ team.name }}</span>
                     <!-- Playoff finish trophy icons next to team name -->
                     <span v-if="team.playoffFinish === 1" class="text-yellow-400 text-base flex-shrink-0" title="League Champion">🏆</span>
                     <span v-else-if="team.playoffFinish === 2" class="text-gray-300 text-sm flex-shrink-0" title="Runner-up">🥈</span>
                     <span v-else-if="team.playoffFinish === 3" class="text-amber-600 text-sm flex-shrink-0" title="Third Place">🥉</span>
-                    <span v-if="team.is_my_team" class="text-xs bg-primary/20 text-primary px-1.5 py-0.5 rounded flex-shrink-0">You</span>
                   </div>
                 </div>
               </td>
@@ -395,13 +400,18 @@
             class="absolute pointer-events-none transition-all duration-300"
             :style="getChartAvatarStyle(team)"
           >
-            <img 
-              :src="team.logo_url || defaultAvatar" 
-              :alt="team.name"
-              class="w-6 h-6 rounded-full ring-2 object-cover"
-              :class="team.is_my_team ? 'ring-primary' : 'ring-dark-border'"
-              @error="handleImageError"
-            />
+            <div class="relative">
+              <img 
+                :src="team.logo_url || defaultAvatar" 
+                :alt="team.name"
+                class="w-6 h-6 rounded-full ring-2 object-cover"
+                :class="team.is_my_team ? 'ring-yellow-500' : 'ring-dark-border'"
+                @error="handleImageError"
+              />
+              <div v-if="team.is_my_team" class="absolute -top-0.5 -right-0.5 w-3 h-3 bg-yellow-500 rounded-full flex items-center justify-center">
+                <span class="text-[6px] text-gray-900 font-bold">★</span>
+              </div>
+            </div>
           </div>
         </div>
         <div v-else class="text-center py-12 text-dark-textMuted">

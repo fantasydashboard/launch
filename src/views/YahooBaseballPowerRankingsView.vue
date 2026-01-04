@@ -145,12 +145,12 @@
                         <img 
                           :src="team.logo_url || defaultAvatar" 
                           :alt="team.name"
-                          class="w-8 h-8 rounded-full object-cover"
-                          :class="team.is_my_team ? 'ring-2 ring-primary' : 'ring-2 ring-cyan-500/50'"
+                          class="w-8 h-8 rounded-full object-cover ring-2"
+                          :class="team.is_my_team ? 'ring-yellow-500' : 'ring-cyan-500/50'"
                           @error="handleImageError"
                         />
-                        <div v-if="team.is_my_team" class="absolute -top-0.5 -right-0.5 w-3 h-3 bg-primary rounded-full flex items-center justify-center">
-                          <span class="text-[6px] text-gray-900 font-bold">★</span>
+                        <div v-if="team.is_my_team" class="absolute -top-1 -right-1 w-4 h-4 bg-yellow-500 rounded-full flex items-center justify-center">
+                          <span class="text-[8px] text-gray-900 font-bold">★</span>
                         </div>
                       </div>
                       <div class="flex items-center gap-2">
@@ -221,10 +221,10 @@
                 <img 
                   :src="team.logo_url || defaultAvatar" 
                   :alt="team.name"
-                  :class="['w-6 h-6 rounded-full ring-2 object-cover', team.is_my_team ? 'ring-primary' : 'ring-cyan-500/70']"
+                  :class="['w-6 h-6 rounded-full ring-2 object-cover', team.is_my_team ? 'ring-yellow-500' : 'ring-cyan-500/70']"
                   @error="handleImageError" 
                 />
-                <div v-if="team.is_my_team" class="absolute -top-0.5 -right-0.5 w-3 h-3 bg-primary rounded-full flex items-center justify-center">
+                <div v-if="team.is_my_team" class="absolute -top-0.5 -right-0.5 w-3 h-3 bg-yellow-500 rounded-full flex items-center justify-center">
                   <span class="text-[6px] text-gray-900 font-bold">★</span>
                 </div>
               </div>

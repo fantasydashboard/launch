@@ -115,13 +115,18 @@
                   </td>
                   <td class="py-3 px-4">
                     <div class="flex items-center gap-3">
-                      <img 
-                        :src="team.logo_url || defaultAvatar" 
-                        :alt="team.name"
-                        class="w-8 h-8 rounded-full object-cover ring-2"
-                        :class="team.is_my_team ? 'ring-primary' : 'ring-cyan-500/50'"
-                        @error="handleImageError"
-                      />
+                      <div class="relative">
+                        <img 
+                          :src="team.logo_url || defaultAvatar" 
+                          :alt="team.name"
+                          class="w-8 h-8 rounded-full object-cover ring-2"
+                          :class="team.is_my_team ? 'ring-yellow-500' : 'ring-cyan-500/50'"
+                          @error="handleImageError"
+                        />
+                        <div v-if="team.is_my_team" class="absolute -top-1 -right-1 w-4 h-4 bg-yellow-500 rounded-full flex items-center justify-center">
+                          <span class="text-[8px] text-gray-900 font-bold">★</span>
+                        </div>
+                      </div>
                       <span class="font-semibold text-dark-text">{{ team.name }}</span>
                     </div>
                   </td>
@@ -192,10 +197,10 @@
                   :src="team.logo_url || defaultAvatar" 
                   :alt="team.name"
                   class="w-6 h-6 rounded-full ring-2 object-cover"
-                  :class="team.is_my_team ? 'ring-primary' : 'ring-cyan-500/70'"
+                  :class="team.is_my_team ? 'ring-yellow-500' : 'ring-cyan-500/70'"
                   @error="handleImageError"
                 />
-                <div v-if="team.is_my_team" class="absolute -top-0.5 -right-0.5 w-3 h-3 bg-primary rounded-full flex items-center justify-center">
+                <div v-if="team.is_my_team" class="absolute -top-0.5 -right-0.5 w-3 h-3 bg-yellow-500 rounded-full flex items-center justify-center">
                   <span class="text-[6px] text-gray-900 font-bold">★</span>
                 </div>
               </div>
@@ -948,7 +953,8 @@ async function downloadRankings() {
         },
         grid: {
           borderColor: '#374151',
-          strokeDashArray: 3
+          strokeDashArray: 3,
+          padding: { right: 50 }
         },
         tooltip: { enabled: false }
       })
@@ -959,16 +965,13 @@ async function downloadRankings() {
       await new Promise(resolve => setTimeout(resolve, 600))
       
       // Add team logos at the final data point of each line
-      // Get the actual chart dimensions from ApexCharts
       const chartEl = trendChartContainer.querySelector('.apexcharts-inner') as HTMLElement
       const plotArea = trendChartContainer.querySelector('.apexcharts-plot-series') as HTMLElement
       
       if (chartEl && plotArea) {
-        // Get the actual plot area bounds
         const plotRect = plotArea.getBoundingClientRect()
         const containerRect = (trendChartContainer as HTMLElement).getBoundingClientRect()
         
-        // Calculate relative positions
         const plotLeft = plotRect.left - containerRect.left
         const plotTop = plotRect.top - containerRect.top
         const plotHeight = plotRect.height
@@ -976,26 +979,23 @@ async function downloadRankings() {
         
         const numTeams = powerRankings.value.length
         
-        // Create a container for the logos
         const logoContainer = document.createElement('div')
         logoContainer.style.cssText = 'position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 10;'
         
-        for (const team of powerRankings.value) {
-          const ranks = historicalRanks.value.get(team.team_key) || []
-          const ranksToShow = ranks.slice(startIdx)
-          if (ranksToShow.length === 0) continue
+        for (let i = 0; i < powerRankings.value.length; i++) {
+          const team = powerRankings.value[i]
+          const seriesData = trendSeries[i]?.data || []
+          if (seriesData.length === 0) continue
           
-          const lastRank = ranksToShow[ranksToShow.length - 1]
+          const lastRank = seriesData[seriesData.length - 1]
           
           // Calculate y position based on rank (inverted axis: rank 1 at top, rank N at bottom)
-          // The y-axis goes from 1 to numTeams, reversed
           const yPercent = (lastRank - 1) / (numTeams - 1)
           const yPos = plotTop + (yPercent * plotHeight)
           
           // X position is at the right edge of the plot area
           const xPos = plotLeft + plotWidth
           
-          // Logo size
           const logoSize = 20
           
           const logoDiv = document.createElement('div')
@@ -1007,7 +1007,7 @@ async function downloadRankings() {
             height: ${logoSize}px;
             border-radius: 50%;
             overflow: hidden;
-            border: 2px solid ${team.is_my_team ? '#F5C451' : getTeamColor(powerRankings.value.indexOf(team))};
+            border: 2px solid ${team.is_my_team ? '#F5C451' : getTeamColor(i)};
             background: #262a3a;
             box-shadow: 0 2px 4px rgba(0,0,0,0.3);
           `
