@@ -1663,7 +1663,7 @@ async function downloadStandings() {
           <!-- Trend Chart -->
           <div style="background: rgba(38, 42, 58, 0.3); border-radius: 12px; padding: 16px; margin-bottom: 12px; border: 1px solid rgba(59, 159, 232, 0.2); position: relative; z-index: 1;">
             <h3 style="color: #3B9FE8; font-size: 18px; margin: 0 0 12px 0; text-align: center; font-weight: 700; text-transform: uppercase; letter-spacing: 1px;">Standings Trend</h3>
-            <div id="standings-trend-chart" style="height: 220px; position: relative;"></div>
+            <div id="standings-trend-chart" style="height: 220px; width: 100%; min-width: 400px; position: relative;"></div>
           </div>
         </div>
         
@@ -1680,8 +1680,12 @@ async function downloadStandings() {
     const trendChartContainer = container.querySelector('#standings-trend-chart')
     const weeks = Array.from(weeklyStandings.value.keys()).sort((a, b) => a - b)
     
+    console.log('Download chart: weeks available =', weeks.length, 'trendChartContainer =', !!trendChartContainer)
+    
     if (trendChartContainer && weeks.length >= 2) {
-      const ApexCharts = (await import('apexcharts')).default
+      try {
+        const ApexCharts = (await import('apexcharts')).default
+        console.log('ApexCharts loaded successfully')
       
       // Get last 7 weeks of data
       const maxWeeksToShow = 7
@@ -1705,6 +1709,7 @@ async function downloadStandings() {
         chart: {
           type: 'line',
           height: 220,
+          width: '100%',
           background: 'transparent',
           toolbar: { show: false },
           animations: { enabled: false }
@@ -1747,7 +1752,8 @@ async function downloadStandings() {
         },
         grid: {
           borderColor: '#374151',
-          strokeDashArray: 3
+          strokeDashArray: 3,
+          padding: { right: 50 }
         },
         tooltip: { enabled: false }
       })
@@ -1755,13 +1761,18 @@ async function downloadStandings() {
       await trendChart.render()
       
       // Wait for chart to render, then add team logos at endpoints
-      await new Promise(resolve => setTimeout(resolve, 600))
+      // Use longer wait for larger leagues
+      const waitTime = sortedTeams.value.length > 8 ? 800 : 600
+      await new Promise(resolve => setTimeout(resolve, waitTime))
+      
+      console.log('Chart rendered, adding logos...')
       
       // Add team logos at the final data point of each line
       const chartEl = trendChartContainer.querySelector('.apexcharts-inner') as HTMLElement
       const plotArea = trendChartContainer.querySelector('.apexcharts-plot-series') as HTMLElement
       
       if (chartEl && plotArea) {
+        console.log('Adding logos to chart - plotArea found')
         const plotRect = plotArea.getBoundingClientRect()
         const containerRect = (trendChartContainer as HTMLElement).getBoundingClientRect()
         
@@ -1812,8 +1823,12 @@ async function downloadStandings() {
       
       // Wait for logos to render
       await new Promise(resolve => setTimeout(resolve, 300))
+      } catch (chartError) {
+        console.error('Error rendering chart:', chartError)
+      }
     } else {
       // No chart data - wait for images only
+      console.log('Skipping chart render - weeks:', weeks.length, 'container:', !!trendChartContainer)
       await new Promise(resolve => setTimeout(resolve, 500))
     }
     
