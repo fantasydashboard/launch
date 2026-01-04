@@ -290,17 +290,12 @@
               :class="{ 'bg-primary/5': team.is_my_team }"
             >
               <td class="py-3 px-3">
-                <div class="flex items-center gap-1">
+                <div class="flex items-center justify-center">
                   <span 
-                    class="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold"
-                    :class="getRankClass(team.regularSeasonRank)"
+                    class="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold bg-dark-border text-dark-textMuted"
                   >
                     {{ team.regularSeasonRank }}
                   </span>
-                  <!-- Playoff finish trophy icons -->
-                  <span v-if="team.playoffFinish === 1" class="text-yellow-400 text-base" title="League Champion">🏆</span>
-                  <span v-else-if="team.playoffFinish === 2" class="text-gray-300 text-sm" title="Runner-up">🥈</span>
-                  <span v-else-if="team.playoffFinish === 3" class="text-amber-600 text-sm" title="Third Place">🥉</span>
                 </div>
               </td>
               <td class="py-3 px-3">
@@ -313,6 +308,10 @@
                   />
                   <div class="flex items-center gap-2 min-w-0">
                     <span class="font-semibold text-dark-text truncate">{{ team.name }}</span>
+                    <!-- Playoff finish trophy icons next to team name -->
+                    <span v-if="team.playoffFinish === 1" class="text-yellow-400 text-base flex-shrink-0" title="League Champion">🏆</span>
+                    <span v-else-if="team.playoffFinish === 2" class="text-gray-300 text-sm flex-shrink-0" title="Runner-up">🥈</span>
+                    <span v-else-if="team.playoffFinish === 3" class="text-amber-600 text-sm flex-shrink-0" title="Third Place">🥉</span>
                     <span v-if="team.is_my_team" class="text-xs bg-primary/20 text-primary px-1.5 py-0.5 rounded flex-shrink-0">You</span>
                   </div>
                 </div>
@@ -550,7 +549,12 @@
                 @error="handleImageError"
               />
               <div>
-                <h3 class="text-xl font-bold text-dark-text">{{ selectedTeamDetail?.name }}</h3>
+                <div class="flex items-center gap-2">
+                  <h3 class="text-xl font-bold text-dark-text">{{ selectedTeamDetail?.name }}</h3>
+                  <span v-if="selectedTeamDetail?.playoffFinish === 1" class="text-yellow-400 text-xl" title="League Champion">🏆</span>
+                  <span v-else-if="selectedTeamDetail?.playoffFinish === 2" class="text-gray-300 text-lg" title="Runner-up">🥈</span>
+                  <span v-else-if="selectedTeamDetail?.playoffFinish === 3" class="text-amber-600 text-lg" title="Third Place">🥉</span>
+                </div>
                 <p class="text-sm text-dark-textMuted">Team Details - {{ currentSeason }} Season</p>
               </div>
             </div>
@@ -569,11 +573,8 @@
                 <div class="text-xs text-dark-textMuted mt-1">Record</div>
               </div>
               <div class="bg-dark-border/20 rounded-xl p-4 text-center">
-                <div class="flex items-center justify-center gap-1">
+                <div class="flex items-center justify-center">
                   <span class="text-2xl font-black text-primary">#{{ selectedTeamDetail?.regularSeasonRank }}</span>
-                  <span v-if="selectedTeamDetail?.playoffFinish === 1" class="text-yellow-400 text-xl" title="League Champion">🏆</span>
-                  <span v-else-if="selectedTeamDetail?.playoffFinish === 2" class="text-gray-300 text-lg" title="Runner-up">🥈</span>
-                  <span v-else-if="selectedTeamDetail?.playoffFinish === 3" class="text-amber-600 text-lg" title="Third Place">🥉</span>
                 </div>
                 <div class="text-xs text-dark-textMuted mt-1">Rank</div>
               </div>
@@ -1615,6 +1616,16 @@ async function downloadStandings() {
         pctColor = '#ef4444' // red for bottom
       }
       
+      // Trophy icon for playoff finishers
+      let trophyIcon = ''
+      if (team.playoffFinish === 1) {
+        trophyIcon = '<span style="margin-left: 6px; font-size: 16px;" title="League Champion">🏆</span>'
+      } else if (team.playoffFinish === 2) {
+        trophyIcon = '<span style="margin-left: 6px; font-size: 14px;" title="Runner-up">🥈</span>'
+      } else if (team.playoffFinish === 3) {
+        trophyIcon = '<span style="margin-left: 6px; font-size: 14px;" title="Third Place">🥉</span>'
+      }
+      
       return `
       <div style="display: flex; height: 80px; padding: 0 12px; background: rgba(38, 42, 58, 0.4); border-radius: 10px; margin-bottom: 6px; border: 1px solid rgba(58, 61, 82, 0.4); box-sizing: border-box;">
         <!-- Rank Number - big blue number -->
@@ -1625,9 +1636,9 @@ async function downloadStandings() {
         <div style="width: 60px; flex-shrink: 0; padding-top: 16px;">
           <img src="${imageMap.get(team.team_key) || ''}" style="width: 48px; height: 48px; border-radius: 50%; border: 2px solid #3a3d52; background: #262a3a; object-fit: cover;" />
         </div>
-        <!-- Team Info -->
+        <!-- Team Info with trophy -->
         <div style="flex: 1; min-width: 0; padding-top: 16px;">
-          <div style="font-size: 14px; font-weight: 700; color: #f7f7ff; white-space: nowrap; overflow: visible; line-height: 1.2;">${team.name}</div>
+          <div style="font-size: 14px; font-weight: 700; color: #f7f7ff; white-space: nowrap; overflow: visible; line-height: 1.2; display: flex; align-items: center;">${team.name}${trophyIcon}</div>
           <div style="font-size: 11px; color: #9ca3af; line-height: 1.2; margin-top: 4px;">${catRecord}</div>
         </div>
         <!-- Category Win Percentage - big and colorful with label -->
