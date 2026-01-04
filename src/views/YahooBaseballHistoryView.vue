@@ -1415,20 +1415,28 @@ async function loadHistoricalData() {
     // Load ALL available seasons (will skip years where league didn't exist)
     const currentYear = yearsByKey[gameKey] || '2024'
     const seasons = Object.keys(gameKeys).sort((a, b) => parseInt(b) - parseInt(a))
-    console.log('Loading seasons:', seasons)
+    console.log('Will attempt to load seasons:', seasons)
+    
+    let successCount = 0
+    let failCount = 0
     
     for (const season of seasons) {
       const seasonGameKey = gameKeys[season]
       if (!seasonGameKey) continue
       
       const seasonLeagueKey = `${seasonGameKey}.l.${leagueNum}`
-      loadingMessage.value = `Loading ${season} season...`
+      loadingMessage.value = `Loading ${season} season... (${successCount} loaded)`
       
       try {
         // Get standings for this season
         const standings = await yahooService.getStandings(seasonLeagueKey)
-        console.log(`Got standings for ${season}:`, standings)
-        if (standings.length === 0) continue
+        console.log(`Got standings for ${season}:`, standings?.length || 0, 'teams')
+        if (!standings || standings.length === 0) {
+          failCount++
+          continue
+        }
+        
+        successCount++
         
         // Store season data - mark rank 1 as champion
         const enhancedStandings = standings.map((team: any) => ({
@@ -1442,7 +1450,7 @@ async function loadHistoricalData() {
         }
         
         // If this is the current season, track current members
-        if (season === yearsByKey[gameKey]) {
+        if (season === currentYear) {
           enhancedStandings.forEach((team: any) => {
             if (!currentMembers.value.includes(team.team_key)) {
               currentMembers.value.push(team.team_key)
@@ -1452,11 +1460,14 @@ async function loadHistoricalData() {
         
         // Load matchups for H2H calculation and to get team logos
         const seasonMatchupsObj: Record<number, any[]> = {}
+        let consecutiveFailures = 0
+        
         for (let week = 1; week <= 25; week++) {
-          loadingMessage.value = `Loading ${season} week ${week}...`
+          loadingMessage.value = `Loading ${season} week ${week}/25...`
           try {
             const weekMatchups = await yahooService.getMatchups(seasonLeagueKey, week)
-            if (weekMatchups.length > 0) {
+            if (weekMatchups && weekMatchups.length > 0) {
+              consecutiveFailures = 0
               seasonMatchupsObj[week] = weekMatchups
               
               // Build H2H records and collect team info with logos
@@ -1504,9 +1515,17 @@ async function loadHistoricalData() {
                   else h2hRecords.value[team2.team_key][team1.team_key].losses++
                 }
               }
+            } else {
+              consecutiveFailures++
             }
           } catch (e) {
-            // Week doesn't exist or error, continue
+            // Week doesn't exist or error
+            consecutiveFailures++
+          }
+          
+          // If 3 consecutive failures, season has likely ended
+          if (consecutiveFailures >= 3 && Object.keys(seasonMatchupsObj).length > 0) {
+            console.log(`Stopping at week ${week} for ${season} - season appears to have ended`)
             break
           }
         }
@@ -1515,18 +1534,27 @@ async function loadHistoricalData() {
           allMatchups.value[season] = seasonMatchupsObj
         }
         
-        console.log(`Loaded ${season} season data: ${standings.length} teams, ${Object.keys(seasonMatchupsObj).length} weeks`)
+        console.log(`✓ Loaded ${season}: ${standings.length} teams, ${Object.keys(seasonMatchupsObj).length} weeks`)
+        
+        // Small delay between seasons to avoid rate limiting
+        await new Promise(resolve => setTimeout(resolve, 100))
       } catch (e) {
         // Season doesn't exist for this league
-        console.log(`No data for ${season} season`)
+        console.log(`✗ Could not load ${season} season`)
+        failCount++
       }
     }
+    
+    console.log(`Finished loading: ${successCount} seasons loaded, ${failCount} not found`)
+    console.log('Loaded seasons:', Object.keys(historicalData.value))
     
     // Set default award season
     if (availableSeasons.value.length > 0) {
       selectedAwardSeason.value = availableSeasons.value[0]
       selectedWeeklyAwardSeason.value = availableSeasons.value[0]
     }
+    
+    loadingMessage.value = `Done! Loaded ${successCount} seasons.`
     
   } catch (e) {
     console.error('Error loading historical data:', e)

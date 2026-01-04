@@ -1582,15 +1582,22 @@ async function loadHistoricalData() {
     const data: Record<string, any> = {}
     const years = Object.keys(gameKeys).sort((a, b) => parseInt(b) - parseInt(a))
     
+    console.log('Will attempt to load seasons:', years)
+    let successCount = 0
+    let failCount = 0
+    
     for (const year of years) { // Load all available years
       const yearGameKey = gameKeys[year]
       const yearLeagueKey = `${yearGameKey}.l.${leagueId}`
       
-      loadingMessage.value = `Loading ${year} season...`
+      loadingMessage.value = `Loading ${year} season... (${successCount} loaded)`
       
       try {
         const standings = await yahooService.getStandings(yearLeagueKey)
         if (standings && standings.length > 0) {
+          console.log(`✓ Loaded ${year} season: ${standings.length} teams`)
+          successCount++
+          
           // Determine champion (rank 1 at end of playoffs)
           const champion = standings.find((t: any) => t.rank === 1)
           if (champion) champion.is_champion = true
@@ -1620,11 +1627,20 @@ async function loadHistoricalData() {
           } catch (e) {
             console.log(`Could not load matchups for ${year}`)
           }
+          
+          // Small delay between seasons to avoid rate limiting
+          await new Promise(resolve => setTimeout(resolve, 100))
+        } else {
+          failCount++
         }
       } catch (e) {
-        console.log(`Could not load ${year} season`)
+        console.log(`✗ Could not load ${year} season`)
+        failCount++
       }
     }
+    
+    console.log(`Finished loading: ${successCount} seasons loaded, ${failCount} not found`)
+    console.log('Loaded seasons:', Object.keys(data))
     
     historicalData.value = data
     
@@ -1632,7 +1648,7 @@ async function loadHistoricalData() {
     loadingMessage.value = 'Building head-to-head records...'
     buildH2HRecords()
     
-    loadingMessage.value = 'Done!'
+    loadingMessage.value = `Done! Loaded ${successCount} seasons.`
     
   } catch (e) {
     console.error('Error loading history:', e)

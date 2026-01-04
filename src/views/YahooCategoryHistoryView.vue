@@ -1440,10 +1440,13 @@ function calculateCategoryVariance(stat: CareerStat): number {
 const careerStats = computed((): CareerStat[] => {
   const statsMap: Record<string, CareerStat> = {}
   
+  console.log('careerStats computing... historicalData has', Object.keys(historicalData.value).length, 'seasons:', Object.keys(historicalData.value))
+  
   // Aggregate stats across all seasons
   for (const [season, seasonData] of Object.entries(historicalData.value)) {
     const standings = seasonData.standings || []
     const matchups = seasonData.matchups || []
+    console.log(`Processing ${season}: ${standings.length} teams, ${matchups.length} matchups`)
     
     for (const team of standings) {
       const teamKey = team.team_key
@@ -1573,9 +1576,12 @@ const filteredCareerStats = computed(() => {
 const seasonRecords = computed(() => {
   const records: any[] = []
   
+  console.log('seasonRecords computing... historicalData has', Object.keys(historicalData.value).length, 'seasons')
+  
   for (const [year, data] of Object.entries(historicalData.value)) {
     const standings = data.standings || []
     const matchups = data.matchups || []
+    console.log(`seasonRecords processing ${year}: ${standings.length} teams`)
     
     if (standings.length === 0) continue
     
@@ -2426,15 +2432,27 @@ async function loadHistoricalData() {
     const data: Record<string, any> = {}
     const years = Object.keys(gameKeys).sort((a, b) => parseInt(b) - parseInt(a))
     
+    console.log('=== Starting History Load ===')
+    console.log('League ID:', leagueId)
+    console.log('Will attempt to load seasons:', years)
+    let successCount = 0
+    let failCount = 0
+    
     for (const year of years) { // Load all available years
       const yearGameKey = gameKeys[year]
       const yearLeagueKey = `${yearGameKey}.l.${leagueId}`
       
-      loadingMessage.value = `Loading ${year} season...`
+      loadingMessage.value = `Loading ${year} season... (${successCount} loaded, ${failCount} not found)`
+      console.log(`Attempting to load ${year} with key: ${yearLeagueKey}`)
       
       try {
         const standings = await yahooService.getStandings(yearLeagueKey)
+        console.log(`${year} standings response:`, standings?.length || 0, 'teams')
+        
         if (standings && standings.length > 0) {
+          console.log(`✓ Loaded ${year} season: ${standings.length} teams`)
+          successCount++
+          
           // Determine champion (rank 1 at end of playoffs)
           const champion = standings.find((t: any) => t.rank === 1)
           if (champion) champion.is_champion = true
@@ -2463,18 +2481,28 @@ async function loadHistoricalData() {
             
             // Get total weeks from standings or default to 25 for baseball
             const totalWeeks = 25 // Baseball regular season typically has ~25 weeks
+            let consecutiveFailures = 0
             
-            // Load matchups for each week (this takes a while)
+            // Load matchups for each week (break early if season seems to have ended)
             for (let week = 1; week <= totalWeeks; week++) {
               try {
-                loadingMessage.value = `Loading ${year} week ${week}...`
+                loadingMessage.value = `Loading ${year} week ${week}/${totalWeeks}...`
                 const weekMatchups = await yahooService.getCategoryMatchups(yearLeagueKey, week)
                 if (weekMatchups && weekMatchups.length > 0) {
                   allMatchups.push(...weekMatchups)
+                  consecutiveFailures = 0
+                } else {
+                  consecutiveFailures++
                 }
               } catch (weekError) {
-                // Week might not exist (playoffs, etc) - continue
-                console.log(`Week ${week} not available for ${year}`)
+                // Week might not exist (playoffs, etc)
+                consecutiveFailures++
+              }
+              
+              // If we get 3 consecutive failures, the season has likely ended
+              if (consecutiveFailures >= 3 && allMatchups.length > 0) {
+                console.log(`Stopping at week ${week} for ${year} - season appears to have ended`)
+                break
               }
             }
             
@@ -2483,15 +2511,29 @@ async function loadHistoricalData() {
               data[year].matchups = allMatchups
             }
           } catch (e) {
-            console.log(`Could not load matchups for ${year}`)
+            console.log(`Could not load matchups for ${year}:`, e)
           }
+          
+          // Small delay between seasons to avoid rate limiting
+          await new Promise(resolve => setTimeout(resolve, 100))
+        } else {
+          console.log(`✗ ${year} - No standings data returned`)
+          failCount++
         }
-      } catch (e) {
-        console.log(`Could not load ${year} season`)
+      } catch (e: any) {
+        console.log(`✗ Could not load ${year} season:`, e?.message || e)
+        failCount++
       }
     }
     
+    console.log('=== History Load Complete ===')
+    console.log(`Finished loading: ${successCount} seasons loaded, ${failCount} not found`)
+    console.log('Loaded seasons:', Object.keys(data))
+    console.log('Data keys:', Object.keys(data).length)
+    
+    // IMPORTANT: Assign data to reactive ref
     historicalData.value = data
+    console.log('historicalData.value now has:', Object.keys(historicalData.value).length, 'seasons')
     
     // Build H2H records from matchup data
     loadingMessage.value = 'Building head-to-head records...'
@@ -2508,14 +2550,12 @@ async function loadHistoricalData() {
 }
 
 watch(() => leagueStore.activeLeagueId, (id) => {
-  if (id && leagueStore.activePlatform === 'yahoo') loadHistoricalData()
-}, { immediate: true })
-
-onMounted(() => {
-  if (leagueStore.activeLeagueId && leagueStore.activePlatform === 'yahoo') {
+  if (id && leagueStore.activePlatform === 'yahoo' && !isLoading.value) {
     loadHistoricalData()
   }
-})
+}, { immediate: true })
+
+// Removed duplicate onMounted call - the watch with immediate: true handles initial load
 </script>
 
 <style scoped>
