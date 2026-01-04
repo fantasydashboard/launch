@@ -1574,9 +1574,9 @@ async function downloadStandings() {
       }
     }
     
-    // Create container
+    // Create container - use fixed width of 800px for consistent downloads regardless of team count
     const container = document.createElement('div')
-    container.style.cssText = 'position: absolute; left: -9999px; top: 0; width: 700px; font-family: system-ui, -apple-system, sans-serif;'
+    container.style.cssText = 'position: absolute; left: -9999px; top: 0; width: 800px; font-family: system-ui, -apple-system, sans-serif;'
     
     // Split teams for two columns
     const midpoint = Math.ceil(sortedTeams.value.length / 2)
@@ -1817,13 +1817,14 @@ async function downloadStandings() {
       await new Promise(resolve => setTimeout(resolve, 500))
     }
     
-    // Capture the image
+    // Capture the image with fixed width
     const canvas = await html2canvas(container, {
       backgroundColor: '#0a0c14',
       scale: 2,
       logging: false,
       useCORS: true,
-      allowTaint: true
+      allowTaint: true,
+      width: 800
     })
     
     document.body.removeChild(container)
