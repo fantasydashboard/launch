@@ -707,18 +707,28 @@ const teamCategoryWins = ref<Map<string, Record<string, number>>>(new Map())
 const weeklyStandings = ref<Map<number, any[]>>(new Map())
 const displayMatchups = ref<any[]>([])
 
-// Computed: Get regular season ranks from the last week of weeklyStandings
-// This ensures the table matches the chart (both use regular season standings only)
+// Computed: Get regular season ranks based on category win percentage
+// This ensures teams are ranked by regular season performance, not playoff results
 const regularSeasonRanks = computed(() => {
   const ranks = new Map<string, number>()
-  const weeks = Array.from(weeklyStandings.value.keys()).sort((a, b) => a - b)
-  if (weeks.length === 0) return ranks
   
-  const lastWeek = weeks[weeks.length - 1]
-  const lastWeekStandings = weeklyStandings.value.get(lastWeek) || []
+  // Sort teams by category win percentage (this is how H2H Categories leagues rank)
+  const sortedTeams = [...leagueStore.yahooTeams].sort((a, b) => {
+    const aTotal = (a.wins || 0) + (a.losses || 0)
+    const bTotal = (b.wins || 0) + (b.losses || 0)
+    const aWinPct = aTotal > 0 ? (a.wins || 0) / aTotal : 0
+    const bWinPct = bTotal > 0 ? (b.wins || 0) / bTotal : 0
+    
+    // Sort by win percentage descending
+    if (bWinPct !== aWinPct) return bWinPct - aWinPct
+    
+    // Tiebreaker: more total games played
+    return bTotal - aTotal
+  })
   
-  lastWeekStandings.forEach((team: any) => {
-    ranks.set(team.team_key, team.rank || 999)
+  // Assign ranks
+  sortedTeams.forEach((team, idx) => {
+    ranks.set(team.team_key, idx + 1)
   })
   
   return ranks
@@ -1364,7 +1374,7 @@ function handleImageError(e: Event) { (e.target as HTMLImageElement).src = defau
 function openLeaderModal(type: string) { leaderModalType.value = type; showLeaderModal.value = true }
 function closeLeaderModal() { showLeaderModal.value = false }
 function formatLeaderValue(value: number) {
-  if (leaderModalType.value === 'bestRecord') return value.toFixed(0) + '%'
+  if (leaderModalType.value === 'bestRecord' || leaderModalType.value === 'hottest' || leaderModalType.value === 'coldest') return value.toFixed(0) + '%'
   if (leaderModalType.value === 'mostCatWins' && !isPointsLeague.value) return value + ' wins'
   if (leaderModalType.value === 'mostCatWins' && isPointsLeague.value) return value.toFixed(1)
   return value.toString()
