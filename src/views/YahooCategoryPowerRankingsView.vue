@@ -94,7 +94,9 @@
                   :key="team.team_key"
                   @click="openTeamModal(team)"
                   class="border-b border-dark-border/50 hover:bg-dark-border/20 transition-colors cursor-pointer"
-                  :class="{ 'bg-primary/5': team.is_my_team }"
+                  :class="{ 
+                    'bg-yellow-500/10 ring-2 ring-yellow-500/50 ring-inset': team.is_my_team 
+                  }"
                 >
                   <td class="py-3 px-4">
                     <span 
@@ -251,7 +253,7 @@
                 v-for="team in sortedCategoryTeams" 
                 :key="team.team_key"
                 class="border-b border-dark-border/50 hover:bg-dark-border/20"
-                :class="{ 'bg-primary/5': team.is_my_team }"
+                :class="{ 'bg-yellow-500/10 ring-2 ring-yellow-500/50 ring-inset': team.is_my_team }"
               >
                 <td class="py-2 px-3 sticky left-0 bg-dark-card z-10">
                   <div class="flex items-center gap-2">
@@ -785,7 +787,7 @@ async function downloadRankings() {
     
     // Create container - narrower for mobile
     const container = document.createElement('div')
-    container.style.cssText = 'position: absolute; left: -9999px; top: 0; width: 700px; font-family: system-ui, -apple-system, sans-serif;'
+    container.style.cssText = 'position: absolute; left: -9999px; top: 0; width: 800px; font-family: system-ui, -apple-system, sans-serif;'
     
     // Split teams for two columns
     const midpoint = Math.ceil(powerRankings.value.length / 2)
@@ -1024,13 +1026,14 @@ async function downloadRankings() {
       await new Promise(resolve => setTimeout(resolve, 500))
     }
     
-    // Capture the image
+    // Capture the image with fixed width
     const canvas = await html2canvas(container, {
       backgroundColor: '#0a0c14',
       scale: 2,
       logging: false,
       useCORS: true,
-      allowTaint: true
+      allowTaint: true,
+      width: 800
     })
     
     document.body.removeChild(container)

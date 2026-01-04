@@ -287,7 +287,7 @@
               :key="team.team_key"
               @click="openTeamDetailModal(team)"
               class="border-b border-dark-border/50 hover:bg-dark-border/20 transition-colors cursor-pointer"
-              :class="{ 'bg-primary/5': team.is_my_team }"
+              :class="{ 'bg-yellow-500/10 ring-2 ring-yellow-500/50 ring-inset': team.is_my_team }"
             >
               <td class="py-3 px-3">
                 <div class="flex items-center justify-center">
