@@ -214,7 +214,10 @@
 
       <!-- Selected Matchup Analysis -->
       <template v-if="selectedMatchup && matchupAnalysis">
-        <!-- Win Probability -->
+        <!-- Simulated Data Banner for free users -->
+        <SimulatedDataBanner v-if="!hasLeagueAccess" class="mb-6" />
+          
+          <!-- Win Probability -->
         <div id="matchup-analysis-section" ref="analysisSection" class="card scroll-mt-4">
           <div class="card-header">
             <div class="flex items-center justify-between">
@@ -380,8 +383,12 @@
           </div>
         </div>
 
-        <!-- Scouting Reports Section (Full Width, Above Matchup Preview) -->
-        <div class="card">
+        <!-- Gated Sections (Scouting Reports onwards) -->
+        <div class="relative">
+          <!-- Content (visible but blurred for free users) -->
+          <div :class="!hasLeagueAccess ? 'blur-sm select-none pointer-events-none' : ''">
+            <!-- Scouting Reports Section (Full Width, Above Matchup Preview) -->
+            <div class="card">
           <div class="card-header">
             <div class="flex items-center gap-2">
               <span class="text-2xl">🔍</span>
@@ -883,6 +890,31 @@
             </div>
           </div>
         </div>
+          </div><!-- End blur wrapper -->
+          
+          <!-- Upgrade Overlay for Free Users -->
+          <div 
+            v-if="!hasLeagueAccess" 
+            class="absolute inset-0 flex items-center justify-center bg-gradient-to-t from-dark-bg via-dark-bg/80 to-transparent"
+          >
+            <div class="text-center p-8 max-w-md">
+              <div class="text-5xl mb-4">🔒</div>
+              <h3 class="text-2xl font-bold text-dark-text mb-3">Unlock Full Analysis</h3>
+              <p class="text-dark-textMuted mb-6">
+                Get access to scouting reports, matchup previews, statistical comparisons, and historical head-to-head records.
+              </p>
+              <div class="space-y-3">
+                <button 
+                  @click="$router.push('/pricing')"
+                  class="w-full px-6 py-3 bg-gradient-to-r from-yellow-500 to-orange-500 hover:from-yellow-400 hover:to-orange-400 text-gray-900 font-bold rounded-xl transition-all transform hover:scale-105 shadow-lg"
+                >
+                  Get League Pass
+                </button>
+                <p class="text-xs text-dark-textMuted">One-time payment • Your whole league gets access</p>
+              </div>
+            </div>
+          </div>
+        </div><!-- End relative container -->
       </template>
     </template>
 
@@ -900,8 +932,11 @@ import { useLeagueStore } from '@/stores/league'
 import { sleeperService } from '@/services/sleeper'
 import type { SleeperRoster, SleeperMatchup, SleeperUser } from '@/types/sleeper'
 import ApexCharts from 'apexcharts'
+import { useFeatureAccess } from '@/composables/useFeatureAccess'
+import SimulatedDataBanner from '@/components/SimulatedDataBanner.vue'
 
 const leagueStore = useLeagueStore()
+const { hasLeagueAccess } = useFeatureAccess()
 
 // State
 const selectedSeason = ref('')
