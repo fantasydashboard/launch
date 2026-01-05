@@ -95,7 +95,7 @@
                 class="absolute top-full right-0 mt-2 w-80 bg-dark-card border border-dark-border rounded-xl shadow-xl z-50 overflow-hidden"
               >
                 <!-- All Leagues grouped by sport -->
-                <div v-if="leagueStore.allLeagues.length > 0" class="max-h-80 overflow-y-auto">
+                <div v-if="leagueStore.allLeagues && leagueStore.allLeagues.length > 0" class="max-h-80 overflow-y-auto">
                   <template v-for="sport in availableSports" :key="sport">
                     <div v-if="getLeaguesBySport(sport).length > 0" class="p-2">
                       <div class="text-xs text-dark-textMuted uppercase tracking-wider px-2 py-1 flex items-center gap-2">
@@ -619,6 +619,9 @@ const currentSportName = computed(() => {
 
 // Get leagues by sport
 function getLeaguesBySport(sport: string) {
+  if (!leagueStore.allLeagues || !Array.isArray(leagueStore.allLeagues)) {
+    return []
+  }
   return leagueStore.allLeagues.filter(league => {
     // Determine league sport from platform or stored sport
     const leagueSport = league.sport || (league.platform === 'sleeper' ? 'football' : 'baseball')
