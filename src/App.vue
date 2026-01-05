@@ -226,12 +226,12 @@
           :class="isScrolled ? 'fixed top-0 left-0 right-0' : 'relative'"
           style="background: #22c55e; height: 56px;"
         >
-          <!-- Logo Container - Large when not scrolled, fits in nav when scrolled -->
+          <!-- Logo Container - Fits within combined headers, never goes below green menu -->
           <div 
             class="absolute left-0 z-50 hidden lg:flex items-center pl-4 xl:pl-6 transition-all duration-300 ease-out"
             :style="{ 
-              top: isScrolled ? '4px' : '-60px',
-              height: isScrolled ? '48px' : '170px'
+              top: isScrolled ? '4px' : '-32px',
+              height: isScrolled ? '48px' : '88px'
             }"
           >
             <!-- Dark gradient behind logo - full height coverage -->
@@ -239,15 +239,15 @@
               class="absolute top-0 bottom-0 -left-4 xl:-left-6 transition-all duration-300 ease-out"
               :style="{ 
                 background: 'linear-gradient(to right, #0a0c14 0%, #0a0c14 60%, transparent 100%)', 
-                width: isScrolled ? '300px' : '680px',
-                height: isScrolled ? '56px' : '170px'
+                width: isScrolled ? '300px' : '420px',
+                height: isScrolled ? '56px' : '92px'
               }"
             ></div>
             <img 
               src="/ufd-logo-full.png" 
               alt="Ultimate Fantasy Dashboard" 
               class="relative z-10 object-contain transition-all duration-300 ease-out"
-              :style="{ height: isScrolled ? '44px' : '160px' }"
+              :style="{ height: isScrolled ? '44px' : '82px' }"
             />
           </div>
 
@@ -259,18 +259,48 @@
           ></div>
           
           <div class="flex items-center justify-end h-14 px-4 xl:px-8 relative">
-            <!-- Mobile/Tablet: Logo + Dashboards Button -->
+            <!-- Mobile/Tablet: Logo + Dashboards Button + League Dropdown -->
             <div class="lg:hidden flex items-center justify-between w-full">
               <img src="/ufd-logo-full.png" alt="UFD" class="h-10 object-contain" />
-              <button 
-                @click="showMobileMenu = true"
-                class="flex items-center gap-2 px-4 py-2 bg-black/20 rounded-lg text-white font-semibold text-sm"
-              >
-                <span>Dashboards</span>
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
-                </svg>
-              </button>
+              <div class="flex items-center gap-2">
+                <button 
+                  @click="showMobileMenu = true"
+                  class="flex items-center gap-2 px-3 py-2 bg-black/20 rounded-lg text-white font-semibold text-sm"
+                >
+                  <span>Dashboards</span>
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
+                  </svg>
+                </button>
+                <!-- Mobile League Dropdown -->
+                <button
+                  @click="showLeagueDropdown = !showLeagueDropdown"
+                  class="flex items-center gap-1.5 px-3 py-2 bg-black/20 rounded-lg text-white text-sm"
+                >
+                  <template v-if="leagueStore.currentLeague">
+                    <div 
+                      class="w-4 h-4 flex-shrink-0 rounded flex items-center justify-center"
+                      :class="leagueStore.activePlatform === 'yahoo' ? 'bg-purple-600' : ''"
+                      :style="leagueStore.activePlatform !== 'yahoo' ? { background: getLeagueTypeColor(leagueStore.currentLeague.settings?.type) } : {}"
+                    >
+                      <span v-if="leagueStore.activePlatform === 'yahoo'" class="text-[8px] font-bold text-white">Y!</span>
+                      <svg v-else class="w-2.5 h-2.5 text-white" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
+                      </svg>
+                    </div>
+                    <span class="font-medium truncate max-w-[80px]">{{ leagueStore.currentLeague.name }}</span>
+                  </template>
+                  <template v-else-if="leagueStore.isDemoMode">
+                    <span class="text-cyan-400 font-medium">Demo</span>
+                  </template>
+                  <template v-else>
+                    <span class="text-primary font-medium">Add</span>
+                  </template>
+                  <svg class="w-3 h-3 text-white/70 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                  </svg>
+                </button>
+              </div>
             </div>
             
             <!-- Desktop: Menu Items in rounded container with proper spacing -->
