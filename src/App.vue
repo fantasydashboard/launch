@@ -313,12 +313,16 @@
                 :to="tab.path"
                 class="flex-shrink-0 px-3 py-2 text-xs font-semibold rounded-full transition-all duration-200 whitespace-nowrap"
                 :class="[
-                  $route.path === tab.path
-                    ? 'bg-primary text-gray-900 shadow-md'
-                    : 'text-dark-textSecondary hover:text-dark-text bg-dark-border/30'
+                  tab.isUltimate 
+                    ? ($route.path === tab.path 
+                        ? 'bg-gradient-to-r from-yellow-500 to-orange-500 text-gray-900 shadow-md shadow-yellow-500/25' 
+                        : 'text-yellow-500 bg-yellow-500/10 border border-yellow-500/30 hover:bg-yellow-500/20')
+                    : ($route.path === tab.path
+                        ? 'bg-primary text-gray-900 shadow-md'
+                        : 'text-dark-textSecondary hover:text-dark-text bg-dark-border/30')
                 ]"
               >
-                {{ tab.name }}
+                <span v-if="tab.isUltimate">⭐ </span>{{ tab.name }}
               </router-link>
             </div>
           </div>
@@ -331,12 +335,16 @@
               :to="tab.path"
               class="px-4 lg:px-6 py-2.5 text-sm font-semibold rounded-full transition-all duration-200"
               :class="[
-                $route.path === tab.path
-                  ? 'bg-primary text-gray-900 shadow-md'
-                  : 'text-dark-textSecondary hover:text-dark-text hover:bg-dark-border/50'
+                tab.isUltimate 
+                  ? ($route.path === tab.path 
+                      ? 'bg-gradient-to-r from-yellow-500 to-orange-500 text-gray-900 shadow-md shadow-yellow-500/25' 
+                      : 'text-yellow-500 border border-yellow-500/40 hover:bg-yellow-500/10')
+                  : ($route.path === tab.path
+                      ? 'bg-primary text-gray-900 shadow-md'
+                      : 'text-dark-textSecondary hover:text-dark-text hover:bg-dark-border/50')
               ]"
             >
-              {{ tab.name }}
+              <span v-if="tab.isUltimate">⭐ </span>{{ tab.name }}
             </router-link>
           </div>
           
@@ -462,11 +470,11 @@ const tabs = [
   { name: 'Home', path: '/' },
   { name: 'Power Rankings', path: '/power-rankings' },
   { name: 'Matchups', path: '/matchups' },
-  { name: 'Ultimate Tools', path: '/ultimate-tools' },
   { name: 'History', path: '/history' },
   { name: 'Draft', path: '/draft' },
   { name: 'Compare', path: '/performance-comparison' },
-  { name: 'Free Tools', path: '/free-tools' }
+  { name: 'Free Tools', path: '/free-tools' },
+  { name: 'Ultimate Tools', path: '/ultimate-tools', isUltimate: true }
 ]
 
 const displayName = computed(() => {
