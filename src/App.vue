@@ -1,5 +1,5 @@
 <template>
-  <div class="min-h-screen transition-colors overflow-x-hidden" style="background: radial-gradient(circle at top, #1c2030, #05060a 55%);">
+  <div class="min-h-screen transition-colors overflow-x-hidden overscroll-none" style="background: radial-gradient(circle at top, #1c2030, #05060a 55%);">
     
     <!-- Show Landing Page for non-authenticated users -->
     <template v-if="!authStore.isAuthenticated">
@@ -42,40 +42,16 @@
     <template v-else>
       <!-- Combined Header Container -->
       <div class="relative z-40">
-        <!-- Logo Container - Positioned to overlap both headers, shrinks on scroll -->
-        <div 
-          class="fixed left-0 z-50 hidden lg:block transition-all duration-300"
-          :style="{ height: isScrolled ? '56px' : '104px', top: 0 }"
-        >
-          <div class="relative h-full flex items-center pl-4 xl:pl-8">
-            <img 
-              src="/ufd-logo-full.png" 
-              alt="Ultimate Fantasy Dashboard" 
-              class="object-contain relative z-10 transition-all duration-300"
-              :style="{ height: isScrolled ? '44px' : '88px' }"
-            />
-            <!-- Dark gradient background under logo - extends full height of both headers -->
-            <div 
-              class="absolute top-0 -left-4 xl:-left-8 transition-all duration-300"
-              :style="{ 
-                background: 'linear-gradient(to right, #0a0c14 0%, #0a0c14 65%, transparent 100%)', 
-                width: isScrolled ? '320px' : '450px',
-                height: isScrolled ? '56px' : '104px'
-              }"
-            ></div>
-          </div>
-        </div>
-
-        <!-- Top Header Bar (Dark) - Hides on scroll -->
+        <!-- Top Header Bar (Dark) - Scrolls away with page -->
         <header 
           class="relative transition-all duration-300 hidden lg:block overflow-hidden"
-          :style="{ height: isScrolled ? '0px' : '48px', opacity: isScrolled ? 0 : 1, background: '#0a0c14' }"
+          :style="{ height: isScrolled ? '0px' : '84px', opacity: isScrolled ? 0 : 1, background: '#0a0c14' }"
         >
-          <div class="flex items-center justify-end h-12 px-4 xl:px-8">
+          <div class="flex items-center justify-end h-[84px] px-4 xl:px-8">
             <!-- Sport Title (Desktop) -->
             <div class="flex items-center gap-6">
               <h1 class="text-xs xl:text-sm font-bold tracking-wide">
-                <span style="color: #3aac01;">FANTASY {{ currentSportName.toUpperCase() }}</span>
+                <span style="color: #22c55e;">FANTASY {{ currentSportName.toUpperCase() }}</span>
                 <span class="text-dark-textMuted mx-2">—</span>
                 <span class="text-dark-text">ULTIMATE DASHBOARD</span>
               </h1>
@@ -244,18 +220,45 @@
           </div>
         </header>
 
-        <!-- Menu Header Bar (Green) - Sticky on scroll -->
+        <!-- Menu Header Bar (Green) - Always sticky at top -->
         <nav 
-          class="relative transition-all duration-300"
-          :class="isScrolled ? 'fixed top-0 left-0 right-0 z-40' : ''"
-          style="background: #3aac01;"
+          class="sticky top-0 z-40 transition-all duration-300 overflow-visible"
+          style="background: #22c55e;"
         >
-          <!-- Dark gradient overlay on left (under logo area) - Desktop only -->
+          <!-- Logo Container - Inside nav so it moves with sticky behavior -->
+          <div 
+            class="absolute left-0 z-50 hidden lg:flex items-end transition-all duration-300"
+            :style="{ 
+              bottom: '4px',
+              height: isScrolled ? '48px' : '130px',
+              transform: isScrolled ? 'none' : 'translateY(-76px)'
+            }"
+          >
+            <div class="relative h-full flex items-center pl-4 xl:pl-8">
+              <img 
+                src="/ufd-logo-full.png" 
+                alt="Ultimate Fantasy Dashboard" 
+                class="object-contain relative z-10 transition-all duration-300"
+                :style="{ height: isScrolled ? '44px' : '120px' }"
+              />
+              <!-- Dark gradient background under logo -->
+              <div 
+                class="absolute bottom-0 -left-4 xl:-left-8 transition-all duration-300"
+                :style="{ 
+                  background: 'linear-gradient(to right, #0a0c14 0%, #0a0c14 65%, transparent 100%)', 
+                  width: isScrolled ? '320px' : '520px',
+                  height: isScrolled ? '56px' : '140px'
+                }"
+              ></div>
+            </div>
+          </div>
+
+          <!-- Dark gradient overlay on left for the nav itself -->
           <div 
             class="absolute left-0 top-0 bottom-0 hidden lg:block pointer-events-none transition-all duration-300"
             :style="{ 
-              background: 'linear-gradient(to right, #0a0c14 0%, #0a0c14 60%, transparent 100%)', 
-              width: isScrolled ? '300px' : '420px'
+              background: isScrolled ? 'linear-gradient(to right, #0a0c14 0%, #0a0c14 60%, transparent 100%)' : 'transparent', 
+              width: '320px'
             }"
           ></div>
           
@@ -343,8 +346,6 @@
           </div>
         </nav>
         
-        <!-- Spacer when nav is fixed (same height as nav - h-14 = 56px) -->
-        <div v-if="isScrolled" class="h-14 hidden lg:block"></div>
       </div>
 
       <!-- Mobile Full-Screen Menu Overlay -->
@@ -453,7 +454,7 @@
       </Teleport>
 
       <!-- Main Content -->
-      <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <main class="max-w-[1800px] mx-auto px-4 sm:px-6 lg:px-8 xl:px-12 py-8">
         <div v-if="leagueStore.error" class="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl p-4 mb-6 shadow-lg">
           <p class="text-red-800 dark:text-red-200 font-medium">{{ leagueStore.error }}</p>
         </div>
