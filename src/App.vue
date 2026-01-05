@@ -234,11 +234,12 @@
           >
             <!-- Dark gradient behind logo - full height coverage -->
             <div 
-              class="absolute top-0 bottom-0 -left-4 xl:-left-6 transition-all duration-300 ease-out"
+              class="absolute -left-4 xl:-left-6 transition-all duration-300 ease-out"
               :style="{ 
                 background: 'linear-gradient(to right, #0a0c14 0%, #0a0c14 60%, transparent 100%)', 
                 width: isScrolled ? '300px' : '420px',
-                height: isScrolled ? '56px' : '92px'
+                height: isScrolled ? '56px' : '92px',
+                top: isScrolled ? '-4px' : '0'
               }"
             ></div>
             <img 
