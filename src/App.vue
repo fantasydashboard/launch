@@ -51,7 +51,7 @@
             <!-- Sport Title (Desktop) -->
             <div class="flex items-center gap-6">
               <h1 class="text-xs xl:text-sm font-bold tracking-wide">
-                <span style="color: #22c55e;">FANTASY {{ currentSportName.toUpperCase() }}</span>
+                <span :style="{ color: sportColor }">FANTASY {{ currentSportName.toUpperCase() }}</span>
                 <span class="text-dark-textMuted mx-2">—</span>
                 <span class="text-dark-text">ULTIMATE DASHBOARD</span>
               </h1>
@@ -218,11 +218,11 @@
           </div>
         </header>
 
-        <!-- Menu Header Bar (Green) - Fixed at top when scrolled -->
+        <!-- Menu Header Bar - Fixed at top when scrolled -->
         <nav 
           class="z-40 overflow-visible transition-all duration-300"
           :class="isScrolled ? 'fixed top-0 left-0 right-0' : 'relative'"
-          style="background: #22c55e; height: 56px;"
+          :style="{ background: sportColor, height: '56px' }"
         >
           <!-- Logo Container - Fits within combined headers, never goes below green menu -->
           <div 
@@ -366,7 +366,7 @@
           
           <!-- Sport Title -->
           <div class="px-4 py-3 border-b border-dark-border/50">
-            <span class="text-primary font-bold">{{ currentSportName.toUpperCase() }}</span>
+            <span class="font-bold" :style="{ color: sportColor }">{{ currentSportName.toUpperCase() }}</span>
             <span class="text-dark-textMuted mx-2">—</span>
             <span class="text-dark-text font-medium">DASHBOARD</span>
           </div>
@@ -573,6 +573,17 @@ const currentSportName = computed(() => {
   }
   // Fallback to sport store
   return sportStore.activeSport || 'football'
+})
+
+// Get color based on active sport
+const sportColor = computed(() => {
+  const colors: Record<string, string> = {
+    football: '#22c55e',   // Green
+    baseball: '#ef4444',   // Red
+    basketball: '#f97316', // Orange
+    hockey: '#3b82f6'      // Blue
+  }
+  return colors[currentSportName.value] || '#22c55e'
 })
 
 // Get leagues by sport
