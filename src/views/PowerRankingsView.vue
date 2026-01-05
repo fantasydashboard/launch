@@ -1570,19 +1570,34 @@ const hiddenPositionRankingsCount = computed(() => {
   return Math.max(0, sortedPositionRankings.value.length - FREE_TIER_PREVIEW_COUNT)
 })
 
-// Simulated chart data for free users
+// Simulated chart data for free users - ensures no duplicate ranks per week
 const simulatedChartSeries = computed(() => {
   const teamCount = powerRankings.value.length || 10
   const weeks = historicalWeeks.value.length || 8
   
-  return powerRankings.value.map((team, idx) => {
-    // Generate random-ish but consistent looking trend data
-    const baseRank = idx + 1
-    const data = Array.from({ length: weeks }, (_, weekIdx) => {
-      // Add some variance but keep it within reasonable range
-      const variance = Math.sin(weekIdx * 0.5 + idx) * 3
-      return Math.max(1, Math.min(teamCount, Math.round(baseRank + variance)))
-    })
+  // Generate a valid ranking for each week (shuffled positions)
+  const weeklyRankings: number[][] = []
+  
+  for (let week = 0; week < weeks; week++) {
+    // Start with base rankings [1, 2, 3, ..., teamCount]
+    const ranks = Array.from({ length: teamCount }, (_, i) => i + 1)
+    
+    // Shuffle with some consistency - teams near top stay near top, etc.
+    // Use a seeded shuffle based on week to keep it deterministic
+    for (let i = ranks.length - 1; i > 0; i--) {
+      // Limit swap range to create more realistic movement (max 3 positions)
+      const maxSwap = Math.min(3, i)
+      const j = i - Math.floor((Math.sin(week * 7 + i * 3) + 1) / 2 * maxSwap)
+      if (j !== i && j >= 0) {
+        [ranks[i], ranks[j]] = [ranks[j], ranks[i]]
+      }
+    }
+    weeklyRankings.push(ranks)
+  }
+  
+  // Convert to series format - each team gets their rank for each week
+  return powerRankings.value.map((team, teamIdx) => {
+    const data = weeklyRankings.map(weekRanks => weekRanks[teamIdx])
     
     return {
       name: team.team_name,
