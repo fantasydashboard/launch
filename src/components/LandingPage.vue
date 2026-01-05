@@ -11,8 +11,27 @@
           <img src="/ufd-logo.png" alt="Ultimate Fantasy Dashboard" class="w-28 h-28 sm:w-36 sm:h-36" />
         </div>
         
+        <!-- Sport Selector -->
+        <div class="flex flex-wrap items-center justify-center gap-3 mb-8">
+          <span class="text-gray-400 text-sm">Available for:</span>
+          <router-link
+            v-for="sport in sports"
+            :key="sport.id"
+            :to="'/' + sport.id"
+            class="flex items-center gap-2 px-4 py-2 rounded-full border transition-all hover:scale-105"
+            :class="[
+              sport.id === 'football' 
+                ? 'bg-primary/20 border-primary text-primary' 
+                : 'bg-dark-card/50 border-dark-border text-gray-300 hover:border-primary/50'
+            ]"
+          >
+            <span class="text-lg">{{ sport.emoji }}</span>
+            <span class="font-medium">{{ sport.name }}</span>
+          </router-link>
+        </div>
+        
         <h1 class="text-4xl sm:text-5xl md:text-6xl font-extrabold text-white mb-6 leading-tight">
-          The Ultimate Fantasy Football<br />
+          The Ultimate Fantasy Sports<br />
           <span class="text-transparent bg-clip-text bg-gradient-to-r from-primary via-yellow-300 to-primary">Dashboard Experience</span>
         </h1>
         
@@ -345,6 +364,13 @@
 import { ref } from 'vue'
 
 defineEmits<{ (e: 'openSignup'): void }>()
+
+const sports = [
+  { id: 'football', name: 'Football', emoji: '🏈' },
+  { id: 'baseball', name: 'Baseball', emoji: '⚾' },
+  { id: 'basketball', name: 'Basketball', emoji: '🏀' },
+  { id: 'hockey', name: 'Hockey', emoji: '🏒' }
+]
 
 const activeDemoView = ref('home')
 

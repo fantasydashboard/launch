@@ -462,11 +462,11 @@ const tabs = [
   { name: 'Home', path: '/' },
   { name: 'Power Rankings', path: '/power-rankings' },
   { name: 'Matchups', path: '/matchups' },
-  { name: 'Projections', path: '/projections' },
+  { name: 'Ultimate Tools', path: '/ultimate-tools' },
   { name: 'History', path: '/history' },
   { name: 'Draft', path: '/draft' },
   { name: 'Compare', path: '/performance-comparison' },
-  { name: 'Tools', path: '/tools' }
+  { name: 'Free Tools', path: '/free-tools' }
 ]
 
 const displayName = computed(() => {
