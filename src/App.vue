@@ -100,11 +100,11 @@
                         </div>
                         <div
                           v-for="league in getLeaguesBySport(sport)"
-                          :key="league.league_id || league.league_key"
-                          @click="selectLeague(league.league_id || league.league_key)"
+                          :key="league.league_id"
+                          @click="selectLeague(league.league_id)"
                           :class="[
                             'flex items-center gap-3 px-3 py-2.5 rounded-lg cursor-pointer transition-colors group',
-                            (leagueStore.activeLeagueId === league.league_id || leagueStore.activeLeagueId === league.league_key)
+                            leagueStore.activeLeagueId === league.league_id
                               ? 'bg-primary/10 border border-primary/30' 
                               : 'hover:bg-dark-border/30'
                           ]"
@@ -117,7 +117,7 @@
                           />
                           <div class="flex-1 min-w-0">
                             <div class="flex items-center gap-2">
-                              <span class="font-medium text-dark-text text-sm truncate">{{ league.name }}</span>
+                              <span class="font-medium text-dark-text text-sm truncate">{{ league.league_name || league.name }}</span>
                               <!-- League Pass indicator -->
                               <span 
                                 v-if="hasLeaguePass(league)" 
@@ -127,7 +127,7 @@
                               </span>
                             </div>
                             <div class="text-xs text-dark-textMuted">
-                              {{ league.season }} · {{ league.total_rosters || league.num_teams }} teams
+                              {{ league.season }} · {{ league.num_teams || league.total_rosters }} teams
                             </div>
                           </div>
                           <button
@@ -481,7 +481,7 @@
         <div class="bg-dark-card border border-dark-border rounded-xl p-6 max-w-sm w-full shadow-xl">
           <h3 class="text-lg font-bold text-dark-text mb-2">Remove League?</h3>
           <p class="text-dark-textMuted mb-4">
-            Are you sure you want to remove <span class="text-dark-text font-medium">{{ leagueToRemove?.name }}</span>? You can always add it back later.
+            Are you sure you want to remove <span class="text-dark-text font-medium">{{ leagueToRemove?.league_name || leagueToRemove?.name }}</span>? You can always add it back later.
           </p>
           <div class="flex gap-3">
             <button
@@ -621,11 +621,9 @@ async function selectLeague(leagueId: string) {
   await leagueStore.setActiveLeague(leagueId)
   
   // Auto-detect sport from selected league and update sport store
-  const league = leagueStore.allLeagues.find(l => 
-    l.league_id === leagueId || l.league_key === leagueId
-  )
+  const league = leagueStore.allLeagues.find(l => l.league_id === leagueId)
   if (league) {
-    const sport = league.sport || (league.platform === 'sleeper' ? 'football' : 'baseball')
+    const sport = league.sport || 'football'
     sportStore.setSport(sport as Sport)
     leagueStore.setActiveSport(sport as Sport)
   }
@@ -638,8 +636,7 @@ function confirmRemoveLeague(league: any) {
 
 async function removeLeague() {
   if (!leagueToRemove.value) return
-  const leagueId = leagueToRemove.value.league_id || leagueToRemove.value.league_key
-  await leagueStore.removeLeague(leagueId, authStore.user?.id)
+  await leagueStore.removeLeague(leagueToRemove.value.league_id, authStore.user?.id)
   leagueToRemove.value = null
 }
 

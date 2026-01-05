@@ -96,6 +96,9 @@ export const useLeagueStore = defineStore('league', () => {
   // Check if user has any saved leagues
   const hasSavedLeagues = computed(() => savedLeagues.value.length > 0)
   
+  // Alias for savedLeagues for easier template access
+  const allLeagues = computed(() => savedLeagues.value)
+  
   // Filter saved leagues by active sport
   const filteredLeaguesBySport = computed(() => {
     return savedLeagues.value.filter(league => {
@@ -263,7 +266,8 @@ export const useLeagueStore = defineStore('league', () => {
       season: league.season,
       sleeper_username: username,
       is_primary: isPrimary,
-      league_type: league.settings?.type ?? 0 // 0 = redraft, 1 = keeper, 2 = dynasty
+      league_type: league.settings?.type ?? 0, // 0 = redraft, 1 = keeper, 2 = dynasty
+      num_teams: league.total_rosters || league.settings?.num_teams
     }
     
     // Add to local state immediately
@@ -1045,6 +1049,7 @@ export const useLeagueStore = defineStore('league', () => {
     playoffWeekStart,
     currentWeek,
     hasSavedLeagues,
+    allLeagues,
     filteredLeaguesBySport,
     
     // Actions
