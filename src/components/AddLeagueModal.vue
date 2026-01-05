@@ -527,42 +527,60 @@ async function searchSleeperLeagues() {
   errorMessage.value = ''
   
   try {
+    console.log('Searching for Sleeper user:', username.value)
     const response = await fetch(`https://api.sleeper.app/v1/user/${username.value}`)
+    console.log('User response status:', response.status)
+    
     if (!response.ok) {
-      errorMessage.value = 'User not found'
+      errorMessage.value = 'User not found. Please check the username and try again.'
       return
     }
     
     const user = await response.json()
+    console.log('User data:', user)
+    
     if (!user?.user_id) {
-      errorMessage.value = 'User not found'
+      errorMessage.value = 'User not found. Please check the username and try again.'
       return
     }
     
     // Save username for later
     leagueStore.setCurrentUsername(username.value)
     
-    // Get leagues for current NFL season
+    // Get leagues for current NFL season (use current year, or previous year if before September)
+    const now = new Date()
+    const currentYear = now.getFullYear()
+    const currentMonth = now.getMonth() // 0-indexed
+    // NFL season starts in September, so before September use previous year
+    const seasonYear = currentMonth < 8 ? currentYear - 1 : currentYear
+    
+    console.log('Fetching Sleeper leagues for season:', seasonYear, 'user_id:', user.user_id)
+    
     const leaguesResponse = await fetch(
-      `https://api.sleeper.app/v1/user/${user.user_id}/leagues/nfl/2024`
+      `https://api.sleeper.app/v1/user/${user.user_id}/leagues/nfl/${seasonYear}`
     )
     
+    console.log('Leagues response status:', leaguesResponse.status)
+    
     if (!leaguesResponse.ok) {
-      errorMessage.value = 'Failed to fetch leagues'
+      errorMessage.value = 'Failed to fetch leagues. Please try again.'
       return
     }
     
-    availableLeagues.value = await leaguesResponse.json()
+    const leaguesData = await leaguesResponse.json()
+    console.log('Leagues data:', leaguesData)
+    
+    availableLeagues.value = leaguesData || []
     
     if (availableLeagues.value.length === 0) {
-      errorMessage.value = 'No leagues found for this user in the 2024 season'
+      errorMessage.value = `No leagues found for this user in the ${seasonYear} NFL season`
       return
     }
     
     step.value = 2
-  } catch (err) {
+  } catch (err: any) {
     console.error('Error searching leagues:', err)
-    errorMessage.value = 'An error occurred. Please try again.'
+    errorMessage.value = err?.message || 'An error occurred while connecting to Sleeper. Please try again.'
   } finally {
     loading.value = false
   }

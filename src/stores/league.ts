@@ -1061,6 +1061,10 @@ export const useLeagueStore = defineStore('league', () => {
     getTeamInfo,
     reset,
     enableDemoMode,
-    disableDemoMode
+    disableDemoMode,
+    setCurrentUsername: (username: string) => {
+      currentUsername.value = username
+      saveToLocalStorage()
+    }
   }
 })
