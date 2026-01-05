@@ -42,28 +42,41 @@
     <template v-else>
       <!-- Combined Header Container -->
       <div class="relative z-40">
-        <!-- Logo - Positioned to overlap both headers -->
-        <div class="absolute left-0 top-0 z-50 hidden sm:block" style="height: 100px;">
-          <div class="relative h-full flex items-center pl-4 lg:pl-8">
+        <!-- Logo Container - Positioned to overlap both headers, shrinks on scroll -->
+        <div 
+          class="fixed left-0 z-50 hidden lg:block transition-all duration-300"
+          :class="isScrolled ? 'top-0' : 'top-0'"
+          :style="{ height: isScrolled ? '52px' : '90px' }"
+        >
+          <div class="relative h-full flex items-center pl-4 xl:pl-8">
             <img 
               src="/ufd-logo-full.png" 
               alt="Ultimate Fantasy Dashboard" 
-              class="h-16 lg:h-20 object-contain relative z-10"
+              class="object-contain relative z-10 transition-all duration-300"
+              :class="isScrolled ? 'h-10' : 'h-20 xl:h-24'"
             />
-            <!-- Dark gradient background under logo -->
+            <!-- Dark gradient background under logo - extends full height -->
             <div 
-              class="absolute inset-0 -left-4 lg:-left-8"
-              style="background: linear-gradient(to right, #0a0c14 0%, #0a0c14 60%, transparent 100%); width: 350px;"
+              class="absolute top-0 -left-4 xl:-left-8 transition-all duration-300"
+              :style="{ 
+                background: 'linear-gradient(to right, #0a0c14 0%, #0a0c14 70%, transparent 100%)', 
+                width: isScrolled ? '280px' : '400px',
+                height: isScrolled ? '52px' : '90px'
+              }"
             ></div>
           </div>
         </div>
 
-        <!-- Top Header Bar (Dark) -->
-        <header class="relative" style="background: #0a0c14;">
-          <div class="flex items-center justify-end h-12 sm:h-14 px-4 sm:px-6 lg:px-8">
+        <!-- Top Header Bar (Dark) - Hides on scroll -->
+        <header 
+          class="relative transition-all duration-300 hidden lg:block"
+          :class="isScrolled ? 'h-0 overflow-hidden opacity-0' : 'h-10'"
+          style="background: #0a0c14;"
+        >
+          <div class="flex items-center justify-end h-10 px-4 xl:px-8">
             <!-- Sport Title (Desktop) -->
-            <div class="hidden sm:flex items-center gap-6">
-              <h1 class="text-sm lg:text-base font-bold tracking-wide">
+            <div class="flex items-center gap-6">
+              <h1 class="text-xs xl:text-sm font-bold tracking-wide">
                 <span class="text-primary">{{ currentSportName.toUpperCase() }}</span>
                 <span class="text-dark-textMuted mx-2">—</span>
                 <span class="text-dark-text">ULTIMATE DASHBOARD</span>
@@ -74,39 +87,30 @@
             <div class="relative ml-6" ref="leagueDropdownRef">
               <button
                 @click="showLeagueDropdown = !showLeagueDropdown"
-                class="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-dark-card/50 border border-dark-border/50 hover:border-primary/50 transition-colors"
+                class="flex items-center gap-2 px-2 py-1 rounded-lg bg-dark-card/50 border border-dark-border/50 hover:border-primary/50 transition-colors"
               >
                 <template v-if="leagueStore.currentLeague">
-                  <!-- Platform Icon -->
                   <div 
-                    class="w-5 h-5 flex-shrink-0 rounded flex items-center justify-center"
+                    class="w-4 h-4 flex-shrink-0 rounded flex items-center justify-center"
                     :class="leagueStore.activePlatform === 'yahoo' ? 'bg-purple-600' : ''"
                     :style="leagueStore.activePlatform !== 'yahoo' ? { background: getLeagueTypeColor(leagueStore.currentLeague.settings?.type) } : {}"
                   >
-                    <span v-if="leagueStore.activePlatform === 'yahoo'" class="text-[10px] font-bold text-white">Y!</span>
-                    <svg v-else class="w-3 h-3 text-white" viewBox="0 0 24 24" fill="currentColor">
+                    <span v-if="leagueStore.activePlatform === 'yahoo'" class="text-[8px] font-bold text-white">Y!</span>
+                    <svg v-else class="w-2.5 h-2.5 text-white" viewBox="0 0 24 24" fill="currentColor">
                       <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
                     </svg>
                   </div>
-                  <span class="text-dark-text font-medium text-sm truncate max-w-[120px] lg:max-w-[180px]">
+                  <span class="text-dark-text font-medium text-xs truncate max-w-[100px] xl:max-w-[150px]">
                     {{ leagueStore.currentLeague.name }}
                   </span>
                 </template>
                 <template v-else-if="leagueStore.isDemoMode">
-                  <div class="w-5 h-5 rounded-full bg-cyan-500/20 flex items-center justify-center flex-shrink-0">
-                    <span class="text-xs">👀</span>
-                  </div>
-                  <span class="text-cyan-400 font-medium text-sm">Demo Mode</span>
+                  <span class="text-cyan-400 font-medium text-xs">Demo</span>
                 </template>
                 <template v-else>
-                  <div class="w-5 h-5 rounded-full bg-primary/20 flex items-center justify-center flex-shrink-0">
-                    <svg class="w-3 h-3 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
-                    </svg>
-                  </div>
-                  <span class="text-primary font-medium text-sm">Add League</span>
+                  <span class="text-primary font-medium text-xs">Add League</span>
                 </template>
-                <svg class="w-4 h-4 text-dark-textMuted ml-1 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg class="w-3 h-3 text-dark-textMuted flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
                 </svg>
               </button>
@@ -118,7 +122,6 @@
               >
                 <!-- All Leagues grouped by sport -->
                 <div v-if="leagueStore.allLeagues.length > 0" class="max-h-80 overflow-y-auto">
-                  <!-- Group leagues by sport -->
                   <template v-for="sport in availableSports" :key="sport">
                     <div v-if="getLeaguesBySport(sport).length > 0" class="p-2">
                       <div class="text-xs text-dark-textMuted uppercase tracking-wider px-2 py-1 flex items-center gap-2">
@@ -131,7 +134,7 @@
                         :key="league.league_id"
                         @click="selectLeague(league.league_id)"
                         :class="[
-                          'flex items-center gap-3 px-3 py-2.5 rounded-lg cursor-pointer transition-colors',
+                          'flex items-center gap-3 px-3 py-2.5 rounded-lg cursor-pointer transition-colors group',
                           leagueStore.activeLeagueId === league.league_id 
                             ? 'bg-primary/10 border border-primary/30' 
                             : 'hover:bg-dark-border/30'
@@ -209,18 +212,15 @@
             </div>
 
             <!-- User Menu -->
-            <div class="relative ml-4">
+            <div class="relative ml-3" data-user-menu>
               <button 
                 @click="showUserMenu = !showUserMenu"
-                class="flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-dark-border/30 transition-colors"
+                class="flex items-center gap-2 px-2 py-1 rounded-lg hover:bg-dark-border/30 transition-colors"
               >
-                <div class="w-8 h-8 rounded-full bg-gradient-to-br from-primary to-cyan-500 flex items-center justify-center">
-                  <span class="text-xs font-bold text-gray-900">{{ userInitials }}</span>
+                <div class="w-6 h-6 rounded-full bg-gradient-to-br from-primary to-cyan-500 flex items-center justify-center">
+                  <span class="text-[10px] font-bold text-gray-900">{{ userInitials }}</span>
                 </div>
-                <span class="hidden lg:inline text-sm text-dark-text font-medium">{{ displayName }}</span>
-                <svg class="w-4 h-4 text-dark-textMuted hidden lg:block" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
-                </svg>
+                <span class="hidden xl:inline text-xs text-dark-text font-medium">{{ displayName }}</span>
               </button>
               
               <!-- User Dropdown -->
@@ -246,52 +246,94 @@
           </div>
         </header>
 
-        <!-- Menu Header Bar (Green) -->
-        <nav class="relative" style="background: #3aac01;">
-          <!-- Dark gradient overlay on left (under logo area) -->
+        <!-- Menu Header Bar (Primary Green) - Sticky on scroll -->
+        <nav 
+          class="relative transition-all duration-300"
+          :class="isScrolled ? 'fixed top-0 left-0 right-0 z-40' : ''"
+          style="background: #22c55e;"
+        >
+          <!-- Dark gradient overlay on left (under logo area) - Desktop only -->
           <div 
-            class="absolute left-0 top-0 bottom-0 hidden sm:block pointer-events-none"
-            style="background: linear-gradient(to right, #0a0c14 0%, #0a0c14 50%, transparent 100%); width: 320px;"
+            class="absolute left-0 top-0 bottom-0 hidden lg:block pointer-events-none transition-all duration-300"
+            :style="{ 
+              background: 'linear-gradient(to right, #0a0c14 0%, #0a0c14 60%, transparent 100%)', 
+              width: isScrolled ? '260px' : '380px'
+            }"
           ></div>
           
-          <div class="flex items-center justify-end h-12 sm:h-14 px-4 sm:px-6 lg:px-8 relative">
-            <!-- Mobile: Logo + Dashboards Button -->
-            <div class="sm:hidden flex items-center justify-between w-full">
-              <img src="/ufd-logo-full.png" alt="UFD" class="h-8 object-contain" />
+          <div class="flex items-center justify-end h-[52px] px-4 xl:px-8 relative">
+            <!-- Mobile/Tablet: Logo + Dashboards Button -->
+            <div class="lg:hidden flex items-center justify-between w-full">
+              <img src="/ufd-logo-full.png" alt="UFD" class="h-9 object-contain" />
               <button 
                 @click="showMobileMenu = true"
-                class="flex items-center gap-2 px-4 py-2 bg-white/10 rounded-lg text-white font-semibold"
+                class="flex items-center gap-2 px-4 py-2 bg-black/20 rounded-lg text-white font-semibold text-sm"
               >
                 <span>Dashboards</span>
-                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
                 </svg>
               </button>
             </div>
             
-            <!-- Desktop: Menu Items -->
-            <div class="hidden sm:flex items-center gap-1 lg:gap-2">
-              <router-link
-                v-for="tab in tabs"
-                :key="tab.path"
-                :to="tab.path"
-                class="px-3 lg:px-5 py-2 text-sm font-semibold rounded-lg transition-all duration-200"
-                :class="[
-                  tab.isUltimate 
-                    ? ($route.path === tab.path 
-                        ? 'bg-gradient-to-r from-yellow-500 to-orange-500 text-gray-900 shadow-md' 
-                        : 'text-yellow-300 border border-yellow-400/50 hover:bg-yellow-500/20')
-                    : ($route.path === tab.path
-                        ? 'bg-white/20 text-white shadow-md'
-                        : 'text-white/80 hover:text-white hover:bg-white/10')
-                ]"
-              >
-                {{ tab.name }}
-              </router-link>
+            <!-- Desktop: Menu Items in rounded container -->
+            <div class="hidden lg:flex items-center">
+              <div class="inline-flex items-center gap-1 bg-black/25 rounded-full p-1.5">
+                <router-link
+                  v-for="tab in tabs"
+                  :key="tab.path"
+                  :to="tab.path"
+                  class="px-3 xl:px-5 py-2 text-sm font-semibold rounded-full transition-all duration-200"
+                  :class="[
+                    tab.isUltimate 
+                      ? ($route.path === tab.path 
+                          ? 'bg-gradient-to-r from-yellow-500 to-orange-500 text-gray-900 shadow-md' 
+                          : 'text-yellow-300 border border-yellow-400/50 hover:bg-yellow-500/20')
+                      : ($route.path === tab.path
+                          ? 'bg-white text-gray-900 shadow-md'
+                          : 'text-white hover:bg-white/15')
+                  ]"
+                >
+                  {{ tab.name }}
+                </router-link>
+              </div>
+              
+              <!-- Demo Mode Banner (Desktop) - shown when scrolled since top header is hidden -->
+              <div v-if="leagueStore.isDemoMode && isScrolled" class="ml-4 flex items-center gap-2 px-3 py-1.5 rounded-full bg-black/20">
+                <span class="text-white text-xs font-medium">Demo</span>
+                <button 
+                  @click="showAddLeagueModal = true"
+                  class="text-xs text-yellow-300 hover:text-white underline"
+                >
+                  Connect →
+                </button>
+              </div>
+              
+              <!-- League & User controls when scrolled (since top header is hidden) -->
+              <div v-if="isScrolled" class="ml-4 flex items-center gap-2">
+                <!-- Compact League Selector -->
+                <button
+                  @click="showLeagueDropdown = !showLeagueDropdown"
+                  class="flex items-center gap-2 px-3 py-1.5 rounded-full bg-black/20 text-white text-xs font-medium hover:bg-black/30 transition-colors"
+                >
+                  <span class="truncate max-w-[100px]">{{ leagueStore.currentLeague?.name || 'Demo' }}</span>
+                  <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                  </svg>
+                </button>
+                
+                <!-- Compact User -->
+                <button 
+                  @click="showUserMenu = !showUserMenu"
+                  class="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center hover:bg-white/30 transition-colors"
+                >
+                  <span class="text-xs font-bold text-white">{{ userInitials }}</span>
+                </button>
+              </div>
             </div>
             
-            <!-- Demo Mode Banner (Desktop) -->
-            <div v-if="leagueStore.isDemoMode" class="hidden sm:inline-flex items-center gap-2 ml-4 px-3 py-1.5 rounded-full bg-white/10">
+            <!-- Demo Mode Banner (Desktop, not scrolled) -->
+            <div v-if="leagueStore.isDemoMode && !isScrolled" class="hidden lg:inline-flex items-center gap-2 ml-4 px-3 py-1.5 rounded-full bg-black/20">
               <span class="text-white text-xs font-medium">Demo Mode</span>
               <button 
                 @click="showAddLeagueModal = true"
@@ -302,6 +344,9 @@
             </div>
           </div>
         </nav>
+        
+        <!-- Spacer when nav is fixed -->
+        <div v-if="isScrolled" class="h-[52px] hidden lg:block"></div>
       </div>
 
       <!-- Mobile Full-Screen Menu Overlay -->
@@ -505,6 +550,7 @@ const showAddLeagueModal = ref(false)
 const showMobileMenu = ref(false)
 const leagueDropdownRef = ref<HTMLElement | null>(null)
 const leagueToRemove = ref<any>(null)
+const isScrolled = ref(false)
 
 const tabs = [
   { name: 'Home', path: '/' },
@@ -660,6 +706,11 @@ async function handleSignOut() {
   leagueStore.reset()
 }
 
+// Handle scroll for header shrinking
+function handleScroll() {
+  isScrolled.value = window.scrollY > 20
+}
+
 // Close dropdowns when clicking outside
 function handleClickOutside(event: MouseEvent) {
   const target = event.target as HTMLElement
@@ -678,6 +729,7 @@ onMounted(async () => {
   await authStore.initialize()
   
   document.addEventListener('click', handleClickOutside)
+  window.addEventListener('scroll', handleScroll)
   
   if (authStore.isAuthenticated && authStore.user?.id) {
     await leagueStore.loadSavedLeagues(authStore.user.id)
@@ -691,6 +743,7 @@ onMounted(async () => {
 
 onUnmounted(() => {
   document.removeEventListener('click', handleClickOutside)
+  window.removeEventListener('scroll', handleScroll)
 })
 
 // Watch for auth changes
