@@ -220,12 +220,13 @@
           </div>
         </header>
 
-        <!-- Menu Header Bar (Green) - STICKY at top -->
+        <!-- Menu Header Bar (Green) - Fixed at top when scrolled -->
         <nav 
-          class="sticky top-0 z-40 overflow-visible"
+          class="z-40 overflow-visible transition-all duration-300"
+          :class="isScrolled ? 'fixed top-0 left-0 right-0' : 'relative'"
           style="background: #22c55e; height: 56px;"
         >
-          <!-- Logo Container - Centered across both headers when not scrolled -->
+          <!-- Logo Container - Large when not scrolled, fits in nav when scrolled -->
           <div 
             class="absolute left-0 z-50 hidden lg:flex items-center pl-4 xl:pl-6 transition-all duration-300 ease-out"
             :style="{ 
@@ -238,7 +239,7 @@
               class="absolute top-0 bottom-0 -left-4 xl:-left-6 transition-all duration-300 ease-out"
               :style="{ 
                 background: 'linear-gradient(to right, #0a0c14 0%, #0a0c14 60%, transparent 100%)', 
-                width: isScrolled ? '280px' : '480px',
+                width: isScrolled ? '300px' : '520px',
                 height: isScrolled ? '56px' : '92px'
               }"
             ></div>
@@ -246,7 +247,7 @@
               src="/ufd-logo-full.png" 
               alt="Ultimate Fantasy Dashboard" 
               class="relative z-10 object-contain transition-all duration-300 ease-out"
-              :style="{ height: isScrolled ? '40px' : '80px' }"
+              :style="{ height: isScrolled ? '44px' : '85px' }"
             />
           </div>
 
@@ -254,7 +255,7 @@
           <div 
             class="absolute left-0 top-0 bottom-0 hidden lg:block pointer-events-none transition-opacity duration-300"
             :class="isScrolled ? 'opacity-100' : 'opacity-0'"
-            style="background: linear-gradient(to right, #0a0c14 0%, #0a0c14 55%, transparent 100%); width: 280px;"
+            style="background: linear-gradient(to right, #0a0c14 0%, #0a0c14 55%, transparent 100%); width: 300px;"
           ></div>
           
           <div class="flex items-center justify-end h-14 px-4 xl:px-8 relative">
@@ -341,6 +342,8 @@
           </div>
         </nav>
         
+        <!-- Spacer when nav is fixed to prevent content jump -->
+        <div v-if="isScrolled" class="h-14 hidden lg:block"></div>
       </div>
 
       <!-- Mobile Full-Screen Menu Overlay -->
