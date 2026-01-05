@@ -225,35 +225,36 @@
           class="sticky top-0 z-40 overflow-visible"
           style="background: #22c55e; height: 56px;"
         >
-          <!-- Logo Container - Extends up into dark header space via negative margin -->
+          <!-- Logo Container - Much larger when not scrolled, shrinks when menu becomes sticky -->
           <div 
-            class="absolute left-0 bottom-0 z-50 hidden lg:flex items-end pl-4 xl:pl-6 transition-all duration-300"
+            class="absolute left-0 z-50 hidden lg:flex items-end pl-4 xl:pl-6 transition-all duration-300 ease-out"
             :style="{ 
-              marginTop: isScrolled ? '0' : '-36px',
-              height: isScrolled ? '56px' : '92px'
+              bottom: '4px',
+              height: isScrolled ? '48px' : '140px',
+              marginTop: isScrolled ? '0' : '-88px'
             }"
           >
-            <!-- Dark gradient behind logo -->
+            <!-- Dark gradient behind logo - covers both headers when large -->
             <div 
-              class="absolute inset-0 -left-4 xl:-left-6 transition-all duration-300"
+              class="absolute inset-0 -left-4 xl:-left-6 transition-all duration-300 ease-out"
               :style="{ 
-                background: 'linear-gradient(to right, #0a0c14 0%, #0a0c14 65%, transparent 100%)', 
-                width: isScrolled ? '260px' : '380px'
+                background: 'linear-gradient(to right, #0a0c14 0%, #0a0c14 60%, transparent 100%)', 
+                width: isScrolled ? '280px' : '520px'
               }"
             ></div>
             <img 
               src="/ufd-logo-full.png" 
               alt="Ultimate Fantasy Dashboard" 
-              class="relative z-10 object-contain mb-1 transition-all duration-300"
-              :style="{ height: isScrolled ? '44px' : '82px' }"
+              class="relative z-10 object-contain mb-1 transition-all duration-300 ease-out"
+              :style="{ height: isScrolled ? '42px' : '130px' }"
             />
           </div>
 
-          <!-- Dark gradient on left when scrolled -->
+          <!-- Dark gradient on left when scrolled (for nav background) -->
           <div 
-            v-if="isScrolled"
-            class="absolute left-0 top-0 bottom-0 hidden lg:block pointer-events-none"
-            style="background: linear-gradient(to right, #0a0c14 0%, #0a0c14 60%, transparent 100%); width: 260px;"
+            class="absolute left-0 top-0 bottom-0 hidden lg:block pointer-events-none transition-opacity duration-300"
+            :class="isScrolled ? 'opacity-100' : 'opacity-0'"
+            style="background: linear-gradient(to right, #0a0c14 0%, #0a0c14 55%, transparent 100%); width: 280px;"
           ></div>
           
           <div class="flex items-center justify-end h-14 px-4 xl:px-8 relative">
@@ -699,9 +700,9 @@ async function handleSignOut() {
   leagueStore.reset()
 }
 
-// Handle scroll for header shrinking
+// Handle scroll for header behavior - triggers when top header scrolls away
 function handleScroll() {
-  isScrolled.value = window.scrollY > 20
+  isScrolled.value = window.scrollY > 36
 }
 
 // Close dropdowns when clicking outside
