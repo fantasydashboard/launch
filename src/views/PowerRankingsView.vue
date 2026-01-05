@@ -283,81 +283,67 @@
       </div>
 
       <!-- Power Score Trend Chart -->
-      <BlurredPreview feature-type="league" :show-price="true">
-        <template #preview>
-          <div class="card">
-            <div class="card-header">
-              <div class="flex items-center gap-2 mb-2">
-                <span class="text-2xl">📊</span>
-                <h2 class="card-title">Power Score Trends</h2>
-              </div>
-              <p class="card-subtitle">Track how power scores have evolved throughout the season</p>
-            </div>
-            <div class="card-body h-64 flex items-center justify-center">
-              <div class="text-dark-textMuted">Chart preview...</div>
-            </div>
+      <div class="card">
+        <div class="card-header">
+          <div class="flex items-center gap-2 mb-2">
+            <span class="text-2xl">📊</span>
+            <h2 class="card-title">Power Score Trends</h2>
           </div>
-        </template>
+          <p class="card-subtitle">Track how power scores have evolved throughout the season</p>
+        </div>
         
-        <div class="card">
-          <div class="card-header">
-            <div class="flex items-center gap-2 mb-2">
-              <span class="text-2xl">📊</span>
-              <h2 class="card-title">Power Score Trends</h2>
-            </div>
-            <p class="card-subtitle">Track how power scores have evolved throughout the season</p>
-          </div>
-          
-          <!-- Mobile scroll hint -->
-          <div class="sm:hidden px-4 py-2 bg-dark-border/30 border-b border-dark-border flex items-center justify-center gap-2 text-xs text-dark-textMuted">
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
-            </svg>
-            <span>Swipe left to see earlier weeks</span>
-          </div>
-          
-          <div class="card-body relative">
-            <!-- Mobile: Scrollable container - scrolls to right on mount, NO vertical scroll -->
-            <div 
-              ref="trendChartScrollRef"
-              class="overflow-x-auto overflow-y-hidden scrollbar-thin -mx-4 px-4 sm:mx-0 sm:px-0"
-            >
-              <div class="relative" :style="{ minWidth: getMobileChartWidth(historicalWeeks.length) }">
-                <apexchart
-                  ref="trendChart"
-                  v-if="chartOptions"
-                  type="line"
-                  :height="getChartHeight()"
-                  :options="getMobileChartOptions(chartOptions)"
-                  :series="chartSeries"
-                />
-                <!-- Team avatar overlays at end of lines -->
-                <div 
-                  v-for="(team, idx) in powerRankings" 
-                  :key="'avatar-' + team.roster_id"
-                  class="absolute pointer-events-none"
-                  :style="getAvatarPosition(team, idx, getChartHeight())"
-                >
-                  <div class="relative">
-                    <img 
-                      :src="team.avatar_url" 
-                      :alt="team.team_name"
-                      :class="[
-                        'w-6 h-6 sm:w-7 sm:h-7 rounded-full ring-2 object-cover',
-                        isMyTeam(team.roster_id) ? 'ring-primary' : 'ring-cyan-500/70'
-                      ]"
-                      @error="handleImageError"
-                    />
-                    <div v-if="isMyTeam(team.roster_id)" class="absolute -top-0.5 -right-0.5 w-3 h-3 bg-primary rounded-full flex items-center justify-center">
-                      <span class="text-[6px] text-gray-900 font-bold">★</span>
-                    </div>
+        <!-- Simulated Data Banner for free users -->
+        <SimulatedDataBanner v-if="!hasLeagueAccess && chartSeries.length > 0" class="mx-4 mt-4" />
+        
+        <!-- Mobile scroll hint -->
+        <div class="sm:hidden px-4 py-2 bg-dark-border/30 border-b border-dark-border flex items-center justify-center gap-2 text-xs text-dark-textMuted">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+          </svg>
+          <span>Swipe left to see earlier weeks</span>
+        </div>
+        
+        <div class="card-body relative">
+          <!-- Mobile: Scrollable container - scrolls to right on mount, NO vertical scroll -->
+          <div 
+            ref="trendChartScrollRef"
+            class="overflow-x-auto overflow-y-hidden scrollbar-thin -mx-4 px-4 sm:mx-0 sm:px-0"
+          >
+            <div class="relative" :style="{ minWidth: getMobileChartWidth(historicalWeeks.length) }">
+              <apexchart
+                ref="trendChart"
+                v-if="chartOptions"
+                type="line"
+                :height="getChartHeight()"
+                :options="getMobileChartOptions(chartOptions)"
+                :series="effectiveChartSeries"
+              />
+              <!-- Team avatar overlays at end of lines -->
+              <div 
+                v-for="(team, idx) in powerRankings" 
+                :key="'avatar-' + team.roster_id"
+                class="absolute pointer-events-none"
+                :style="getAvatarPosition(team, idx, getChartHeight())"
+              >
+                <div class="relative">
+                  <img 
+                    :src="team.avatar_url" 
+                    :alt="team.team_name"
+                    :class="[
+                      'w-6 h-6 sm:w-7 sm:h-7 rounded-full ring-2 object-cover',
+                      isMyTeam(team.roster_id) ? 'ring-primary' : 'ring-cyan-500/70'
+                    ]"
+                    @error="handleImageError"
+                  />
+                  <div v-if="isMyTeam(team.roster_id)" class="absolute -top-0.5 -right-0.5 w-3 h-3 bg-primary rounded-full flex items-center justify-center">
+                    <span class="text-[6px] text-gray-900 font-bold">★</span>
                   </div>
                 </div>
               </div>
             </div>
           </div>
         </div>
-      </BlurredPreview>
+      </div>
 
       <!-- Rankings Insights (moved under chart) -->
       <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -566,7 +552,7 @@
           <!-- Custom stacked bar visualization -->
           <div class="space-y-2 p-4">
             <div 
-              v-for="(team, idx) in sortedRosTeams" 
+              v-for="(team, idx) in visibleRosTeams" 
               :key="team.roster_id"
               :class="[
                 'rounded-xl transition-all overflow-hidden',
@@ -893,6 +879,36 @@
                 </div>
               </div>
             </div>
+            
+            <!-- Locked Teams Overlay -->
+            <div v-if="hiddenRosTeamsCount > 0" class="relative mt-4">
+              <!-- Blurred preview rows -->
+              <div class="blur-sm select-none pointer-events-none opacity-40">
+                <div v-for="i in Math.min(hiddenRosTeamsCount, 3)" :key="'ros-preview-' + i" class="flex items-center gap-4 py-3 px-3 border-b border-dark-border/20">
+                  <div class="w-8 h-8 rounded-full bg-dark-border/50"></div>
+                  <div class="flex-1 space-y-2">
+                    <div class="h-4 w-32 bg-dark-border/40 rounded"></div>
+                    <div class="h-2 w-full bg-dark-border/30 rounded"></div>
+                  </div>
+                  <div class="h-6 w-16 bg-dark-border/30 rounded"></div>
+                </div>
+              </div>
+              
+              <!-- Upgrade overlay -->
+              <div class="absolute inset-0 flex items-center justify-center bg-gradient-to-t from-dark-bg via-dark-bg/90 to-transparent">
+                <div class="text-center p-6">
+                  <div class="text-3xl mb-2">🔮</div>
+                  <h3 class="text-lg font-bold text-dark-text mb-2">{{ hiddenRosTeamsCount }} More Teams</h3>
+                  <p class="text-sm text-dark-textMuted mb-4">See projections for all teams in your league</p>
+                  <button 
+                    @click="$router.push('/pricing')"
+                    class="px-6 py-2.5 bg-primary hover:bg-primary/90 text-gray-900 font-bold rounded-lg transition-all transform hover:scale-105"
+                  >
+                    Get League Pass
+                  </button>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -1008,7 +1024,7 @@
             </thead>
             <tbody>
               <tr 
-                v-for="team in sortedPositionRankings" 
+                v-for="team in visiblePositionRankings" 
                 :key="team.roster_id"
                 :class="[
                   'transition-colors',
@@ -1078,6 +1094,42 @@
               </tr>
             </tbody>
           </table>
+          
+          <!-- Locked Teams Overlay for Position Rankings -->
+          <div v-if="hiddenPositionRankingsCount > 0" class="relative mt-4 px-4 pb-4">
+            <!-- Blurred preview rows -->
+            <div class="blur-sm select-none pointer-events-none opacity-40">
+              <div v-for="i in Math.min(hiddenPositionRankingsCount, 3)" :key="'pos-preview-' + i" class="flex items-center gap-4 py-3 border-b border-dark-border/20">
+                <div class="w-10 h-10 rounded-full bg-dark-border/50"></div>
+                <div class="flex-1">
+                  <div class="h-4 w-28 bg-dark-border/40 rounded"></div>
+                </div>
+                <div class="flex gap-4">
+                  <div class="w-8 h-8 rounded-full bg-dark-border/30"></div>
+                  <div class="w-8 h-8 rounded-full bg-dark-border/30"></div>
+                  <div class="w-8 h-8 rounded-full bg-dark-border/30"></div>
+                  <div class="w-8 h-8 rounded-full bg-dark-border/30"></div>
+                  <div class="w-8 h-8 rounded-full bg-dark-border/30"></div>
+                  <div class="w-12 h-6 bg-dark-border/30 rounded"></div>
+                </div>
+              </div>
+            </div>
+            
+            <!-- Upgrade overlay -->
+            <div class="absolute inset-0 flex items-center justify-center bg-gradient-to-t from-dark-bg via-dark-bg/90 to-transparent">
+              <div class="text-center p-6">
+                <div class="text-3xl mb-2">📊</div>
+                <h3 class="text-lg font-bold text-dark-text mb-2">{{ hiddenPositionRankingsCount }} More Teams</h3>
+                <p class="text-sm text-dark-textMuted mb-4">See position rankings for your entire league</p>
+                <button 
+                  @click="$router.push('/pricing')"
+                  class="px-6 py-2.5 bg-primary hover:bg-primary/90 text-gray-900 font-bold rounded-lg transition-all transform hover:scale-105"
+                >
+                  Get League Pass
+                </button>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     </template>
@@ -1366,6 +1418,8 @@ import { useLeagueStore } from '@/stores/league'
 import { sleeperService } from '@/services/sleeper'
 import { useFeatureAccess } from '@/composables/useFeatureAccess'
 import BlurredPreview from '@/components/BlurredPreview.vue'
+import LockedContentOverlay from '@/components/LockedContentOverlay.vue'
+import SimulatedDataBanner from '@/components/SimulatedDataBanner.vue'
 
 // Feature access for subscription gating
 const { hasLeagueAccess, canDownloadGraphics } = useFeatureAccess()
@@ -1494,6 +1548,53 @@ const visibleRankings = computed(() => {
 const hiddenRankingsCount = computed(() => {
   if (hasLeagueAccess.value) return 0
   return Math.max(0, powerRankings.value.length - FREE_TIER_PREVIEW_COUNT)
+})
+
+// ROS Projections - show top 3 for free users
+const visibleRosTeams = computed(() => {
+  if (hasLeagueAccess.value) return sortedRosTeams.value
+  return sortedRosTeams.value.slice(0, FREE_TIER_PREVIEW_COUNT)
+})
+const hiddenRosTeamsCount = computed(() => {
+  if (hasLeagueAccess.value) return 0
+  return Math.max(0, sortedRosTeams.value.length - FREE_TIER_PREVIEW_COUNT)
+})
+
+// Position Strength Rankings - show top 3 for free users
+const visiblePositionRankings = computed(() => {
+  if (hasLeagueAccess.value) return sortedPositionRankings.value
+  return sortedPositionRankings.value.slice(0, FREE_TIER_PREVIEW_COUNT)
+})
+const hiddenPositionRankingsCount = computed(() => {
+  if (hasLeagueAccess.value) return 0
+  return Math.max(0, sortedPositionRankings.value.length - FREE_TIER_PREVIEW_COUNT)
+})
+
+// Simulated chart data for free users
+const simulatedChartSeries = computed(() => {
+  const teamCount = powerRankings.value.length || 10
+  const weeks = historicalWeeks.value.length || 8
+  
+  return powerRankings.value.map((team, idx) => {
+    // Generate random-ish but consistent looking trend data
+    const baseRank = idx + 1
+    const data = Array.from({ length: weeks }, (_, weekIdx) => {
+      // Add some variance but keep it within reasonable range
+      const variance = Math.sin(weekIdx * 0.5 + idx) * 3
+      return Math.max(1, Math.min(teamCount, Math.round(baseRank + variance)))
+    })
+    
+    return {
+      name: team.team_name,
+      data
+    }
+  })
+})
+
+// Use simulated or real chart series based on access
+const effectiveChartSeries = computed(() => {
+  if (hasLeagueAccess.value) return chartSeries.value
+  return simulatedChartSeries.value
 })
 
 // ROS Projections expanded team state
