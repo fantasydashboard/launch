@@ -45,23 +45,22 @@
         <!-- Logo Container - Positioned to overlap both headers, shrinks on scroll -->
         <div 
           class="fixed left-0 z-50 hidden lg:block transition-all duration-300"
-          :class="isScrolled ? 'top-0' : 'top-0'"
-          :style="{ height: isScrolled ? '52px' : '90px' }"
+          :style="{ height: isScrolled ? '56px' : '104px', top: 0 }"
         >
           <div class="relative h-full flex items-center pl-4 xl:pl-8">
             <img 
               src="/ufd-logo-full.png" 
               alt="Ultimate Fantasy Dashboard" 
               class="object-contain relative z-10 transition-all duration-300"
-              :class="isScrolled ? 'h-10' : 'h-20 xl:h-24'"
+              :style="{ height: isScrolled ? '44px' : '88px' }"
             />
-            <!-- Dark gradient background under logo - extends full height -->
+            <!-- Dark gradient background under logo - extends full height of both headers -->
             <div 
               class="absolute top-0 -left-4 xl:-left-8 transition-all duration-300"
               :style="{ 
-                background: 'linear-gradient(to right, #0a0c14 0%, #0a0c14 70%, transparent 100%)', 
-                width: isScrolled ? '280px' : '400px',
-                height: isScrolled ? '52px' : '90px'
+                background: 'linear-gradient(to right, #0a0c14 0%, #0a0c14 65%, transparent 100%)', 
+                width: isScrolled ? '320px' : '450px',
+                height: isScrolled ? '56px' : '104px'
               }"
             ></div>
           </div>
@@ -69,15 +68,14 @@
 
         <!-- Top Header Bar (Dark) - Hides on scroll -->
         <header 
-          class="relative transition-all duration-300 hidden lg:block"
-          :class="isScrolled ? 'h-0 overflow-hidden opacity-0' : 'h-10'"
-          style="background: #0a0c14;"
+          class="relative transition-all duration-300 hidden lg:block overflow-hidden"
+          :style="{ height: isScrolled ? '0px' : '48px', opacity: isScrolled ? 0 : 1, background: '#0a0c14' }"
         >
-          <div class="flex items-center justify-end h-10 px-4 xl:px-8">
+          <div class="flex items-center justify-end h-12 px-4 xl:px-8">
             <!-- Sport Title (Desktop) -->
             <div class="flex items-center gap-6">
               <h1 class="text-xs xl:text-sm font-bold tracking-wide">
-                <span class="text-primary">{{ currentSportName.toUpperCase() }}</span>
+                <span style="color: #3aac01;">FANTASY {{ currentSportName.toUpperCase() }}</span>
                 <span class="text-dark-textMuted mx-2">—</span>
                 <span class="text-dark-text">ULTIMATE DASHBOARD</span>
               </h1>
@@ -246,25 +244,25 @@
           </div>
         </header>
 
-        <!-- Menu Header Bar (Primary Green) - Sticky on scroll -->
+        <!-- Menu Header Bar (Green) - Sticky on scroll -->
         <nav 
           class="relative transition-all duration-300"
           :class="isScrolled ? 'fixed top-0 left-0 right-0 z-40' : ''"
-          style="background: #22c55e;"
+          style="background: #3aac01;"
         >
           <!-- Dark gradient overlay on left (under logo area) - Desktop only -->
           <div 
             class="absolute left-0 top-0 bottom-0 hidden lg:block pointer-events-none transition-all duration-300"
             :style="{ 
               background: 'linear-gradient(to right, #0a0c14 0%, #0a0c14 60%, transparent 100%)', 
-              width: isScrolled ? '260px' : '380px'
+              width: isScrolled ? '300px' : '420px'
             }"
           ></div>
           
-          <div class="flex items-center justify-end h-[52px] px-4 xl:px-8 relative">
+          <div class="flex items-center justify-end h-14 px-4 xl:px-8 relative">
             <!-- Mobile/Tablet: Logo + Dashboards Button -->
             <div class="lg:hidden flex items-center justify-between w-full">
-              <img src="/ufd-logo-full.png" alt="UFD" class="h-9 object-contain" />
+              <img src="/ufd-logo-full.png" alt="UFD" class="h-10 object-contain" />
               <button 
                 @click="showMobileMenu = true"
                 class="flex items-center gap-2 px-4 py-2 bg-black/20 rounded-lg text-white font-semibold text-sm"
@@ -276,14 +274,14 @@
               </button>
             </div>
             
-            <!-- Desktop: Menu Items in rounded container -->
+            <!-- Desktop: Menu Items in rounded container with proper spacing -->
             <div class="hidden lg:flex items-center">
-              <div class="inline-flex items-center gap-1 bg-black/25 rounded-full p-1.5">
+              <div class="inline-flex items-center gap-1 bg-black/30 rounded-full px-2 py-1.5">
                 <router-link
                   v-for="tab in tabs"
                   :key="tab.path"
                   :to="tab.path"
-                  class="px-3 xl:px-5 py-2 text-sm font-semibold rounded-full transition-all duration-200"
+                  class="px-3 xl:px-4 py-1.5 text-sm font-semibold rounded-full transition-all duration-200"
                   :class="[
                     tab.isUltimate 
                       ? ($route.path === tab.path 
@@ -345,8 +343,8 @@
           </div>
         </nav>
         
-        <!-- Spacer when nav is fixed -->
-        <div v-if="isScrolled" class="h-[52px] hidden lg:block"></div>
+        <!-- Spacer when nav is fixed (same height as nav - h-14 = 56px) -->
+        <div v-if="isScrolled" class="h-14 hidden lg:block"></div>
       </div>
 
       <!-- Mobile Full-Screen Menu Overlay -->
