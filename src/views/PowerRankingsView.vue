@@ -274,7 +274,7 @@
                   @click="$router.push('/upgrade/league')"
                   class="px-6 py-2.5 bg-primary hover:bg-primary/90 text-gray-900 font-bold rounded-lg transition-all transform hover:scale-105"
                 >
-                  Unlock League - $39/season
+                  Unlock League Pass
                 </button>
               </div>
             </div>
@@ -1575,29 +1575,36 @@ const simulatedChartSeries = computed(() => {
   const teamCount = powerRankings.value.length || 10
   const weeks = historicalWeeks.value.length || 8
   
-  // Generate a valid ranking for each week (shuffled positions)
-  const weeklyRankings: number[][] = []
+  // Start with initial rankings based on current order
+  let currentRanks = Array.from({ length: teamCount }, (_, i) => i + 1)
+  const weeklyRankings: number[][] = [currentRanks.slice()]
   
-  for (let week = 0; week < weeks; week++) {
-    // Start with base rankings [1, 2, 3, ..., teamCount]
-    const ranks = Array.from({ length: teamCount }, (_, i) => i + 1)
+  // Generate subsequent weeks with small movements (1-2 positions max)
+  for (let week = 1; week < weeks; week++) {
+    const newRanks = currentRanks.slice()
     
-    // Shuffle with some consistency - teams near top stay near top, etc.
-    // Use a seeded shuffle based on week to keep it deterministic
-    for (let i = ranks.length - 1; i > 0; i--) {
-      // Limit swap range to create more realistic movement (max 3 positions)
-      const maxSwap = Math.min(3, i)
-      const j = i - Math.floor((Math.sin(week * 7 + i * 3) + 1) / 2 * maxSwap)
-      if (j !== i && j >= 0) {
-        [ranks[i], ranks[j]] = [ranks[j], ranks[i]]
+    // Make 2-3 small swaps per week for realistic movement
+    const numSwaps = 2 + (week % 2)
+    for (let s = 0; s < numSwaps; s++) {
+      // Pick a random position (not first or last to allow swap room)
+      const pos = 1 + ((week * 3 + s * 7) % (teamCount - 2))
+      // Swap with adjacent position (1 spot movement)
+      const swapWith = pos + (((week + s) % 2) === 0 ? 1 : -1)
+      if (swapWith >= 0 && swapWith < teamCount) {
+        [newRanks[pos], newRanks[swapWith]] = [newRanks[swapWith], newRanks[pos]]
       }
     }
-    weeklyRankings.push(ranks)
+    
+    weeklyRankings.push(newRanks)
+    currentRanks = newRanks.slice()
   }
   
   // Convert to series format - each team gets their rank for each week
   return powerRankings.value.map((team, teamIdx) => {
-    const data = weeklyRankings.map(weekRanks => weekRanks[teamIdx])
+    // Find where this team's original rank (teamIdx + 1) appears each week
+    const data = weeklyRankings.map(weekRanks => {
+      return weekRanks.indexOf(teamIdx + 1) + 1
+    })
     
     return {
       name: team.team_name,

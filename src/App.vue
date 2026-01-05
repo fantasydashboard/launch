@@ -322,7 +322,7 @@
                         : 'text-dark-textSecondary hover:text-dark-text bg-dark-border/30')
                 ]"
               >
-                <span v-if="tab.isUltimate">⭐ </span>{{ tab.name }}
+                {{ tab.name }}
               </router-link>
             </div>
           </div>
@@ -344,7 +344,7 @@
                       : 'text-dark-textSecondary hover:text-dark-text hover:bg-dark-border/50')
               ]"
             >
-              <span v-if="tab.isUltimate">⭐ </span>{{ tab.name }}
+              {{ tab.name }}
             </router-link>
           </div>
           
