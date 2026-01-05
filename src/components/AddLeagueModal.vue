@@ -509,7 +509,7 @@ watch(() => props.isOpen, async (isOpen) => {
       await platformsStore.fetchConnectedPlatforms()
     }
   }
-})
+}, { immediate: true })
 
 function selectPlatform(platform: 'sleeper' | 'yahoo') {
   selectedPlatform.value = platform

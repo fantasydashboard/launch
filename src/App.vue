@@ -513,6 +513,7 @@
     <!-- Add League Modal -->
     <AddLeagueModal 
       v-if="showAddLeagueModal"
+      :isOpen="showAddLeagueModal"
       @close="showAddLeagueModal = false"
       @league-added="handleLeagueAdded"
       @yahoo-league-added="handleYahooLeagueAdded"
