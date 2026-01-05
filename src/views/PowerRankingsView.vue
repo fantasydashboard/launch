@@ -1579,20 +1579,47 @@ const simulatedChartSeries = computed(() => {
   let currentRanks = Array.from({ length: teamCount }, (_, i) => i + 1)
   const weeklyRankings: number[][] = [currentRanks.slice()]
   
-  // Generate subsequent weeks with small movements (1-2 positions max)
+  // Pseudo-random number generator (seeded for consistency)
+  const seededRandom = (seed: number) => {
+    const x = Math.sin(seed * 9999) * 10000
+    return x - Math.floor(x)
+  }
+  
+  // Generate subsequent weeks with varied but realistic movement
   for (let week = 1; week < weeks; week++) {
     const newRanks = currentRanks.slice()
     
-    // Make 2-3 small swaps per week for realistic movement
-    const numSwaps = 2 + (week % 2)
+    // Vary number of swaps per week (1-4)
+    const numSwaps = 1 + Math.floor(seededRandom(week * 17) * 4)
+    
+    // Track which positions we've already moved this week
+    const movedThisWeek = new Set<number>()
+    
     for (let s = 0; s < numSwaps; s++) {
-      // Pick a random position (not first or last to allow swap room)
-      const pos = 1 + ((week * 3 + s * 7) % (teamCount - 2))
-      // Swap with adjacent position (1 spot movement)
-      const swapWith = pos + (((week + s) % 2) === 0 ? 1 : -1)
-      if (swapWith >= 0 && swapWith < teamCount) {
-        [newRanks[pos], newRanks[swapWith]] = [newRanks[swapWith], newRanks[pos]]
-      }
+      // Pick a position using seeded random
+      const seed = week * 100 + s * 13
+      let pos = Math.floor(seededRandom(seed) * (teamCount - 1))
+      
+      // Skip if already moved
+      if (movedThisWeek.has(pos)) continue
+      
+      // Decide movement: 70% chance move 1 spot, 30% chance move 2 spots
+      const moveAmount = seededRandom(seed + 7) < 0.7 ? 1 : 2
+      
+      // Decide direction based on another seed
+      const direction = seededRandom(seed + 3) < 0.5 ? 1 : -1
+      let swapWith = pos + (direction * moveAmount)
+      
+      // Keep in bounds
+      swapWith = Math.max(0, Math.min(teamCount - 1, swapWith))
+      
+      // Skip if same position or target already moved
+      if (swapWith === pos || movedThisWeek.has(swapWith)) continue
+      
+      // Perform swap
+      [newRanks[pos], newRanks[swapWith]] = [newRanks[swapWith], newRanks[pos]]
+      movedThisWeek.add(pos)
+      movedThisWeek.add(swapWith)
     }
     
     weeklyRankings.push(newRanks)
