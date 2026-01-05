@@ -422,6 +422,9 @@
         </div>
       </div>
     </Teleport>
+    
+    <!-- Dev Mode Panel (Admin Only) -->
+    <DevModePanel />
   </div>
 </template>
 
@@ -437,6 +440,7 @@ import LandingPage from '@/components/LandingPage.vue'
 import AddLeagueModal from '@/components/AddLeagueModal.vue'
 import AppFooter from '@/components/AppFooter.vue'
 import SportSwitcher from '@/components/SportSwitcher.vue'
+import DevModePanel from '@/components/DevModePanel.vue'
 
 const router = useRouter()
 const leagueStore = useLeagueStore()
