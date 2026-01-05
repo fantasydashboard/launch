@@ -64,22 +64,14 @@
                 class="flex items-center gap-2 px-2 py-1 rounded-lg bg-dark-card/50 border border-dark-border/50 hover:border-primary/50 transition-colors"
               >
                 <template v-if="leagueStore.currentLeague">
-                  <div 
-                    class="w-4 h-4 flex-shrink-0 rounded flex items-center justify-center"
-                    :class="leagueStore.activePlatform === 'yahoo' ? 'bg-purple-600' : ''"
-                    :style="leagueStore.activePlatform !== 'yahoo' ? { background: getLeagueTypeColor(leagueStore.currentLeague.settings?.type) } : {}"
-                  >
-                    <span v-if="leagueStore.activePlatform === 'yahoo'" class="text-[8px] font-bold text-white">Y!</span>
-                    <svg v-else class="w-2.5 h-2.5 text-white" viewBox="0 0 24 24" fill="currentColor">
-                      <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
-                    </svg>
-                  </div>
+                  <img 
+                    :src="leagueStore.activePlatform === 'yahoo' ? '/yahoo-fantasy.svg' : '/sleeper.svg'" 
+                    :alt="leagueStore.activePlatform"
+                    class="w-5 h-5 rounded flex-shrink-0"
+                  />
                   <span class="text-dark-text font-medium text-xs truncate max-w-[100px] xl:max-w-[150px]">
                     {{ leagueStore.currentLeague.name }}
                   </span>
-                </template>
-                <template v-else-if="leagueStore.isDemoMode">
-                  <span class="text-cyan-400 font-medium text-xs">Demo</span>
                 </template>
                 <template v-else>
                   <span class="text-primary font-medium text-xs">Add League</span>
@@ -95,91 +87,97 @@
                 class="absolute top-full right-0 mt-2 w-80 bg-dark-card border border-dark-border rounded-xl shadow-xl z-50 overflow-hidden"
               >
                 <!-- All Leagues grouped by sport -->
-                <div v-if="leagueStore.allLeagues && leagueStore.allLeagues.length > 0" class="max-h-80 overflow-y-auto">
-                  <template v-for="sport in availableSports" :key="sport">
-                    <div v-if="getLeaguesBySport(sport).length > 0" class="p-2">
-                      <div class="text-xs text-dark-textMuted uppercase tracking-wider px-2 py-1 flex items-center gap-2">
-                        <span>{{ getSportEmoji(sport) }}</span>
-                        <span>{{ sport }} Leagues</span>
-                        <span class="text-primary ml-auto">{{ getLeaguesBySport(sport).length }}</span>
-                      </div>
-                      <div
-                        v-for="league in getLeaguesBySport(sport)"
-                        :key="league.league_id"
-                        @click="selectLeague(league.league_id)"
-                        :class="[
-                          'flex items-center gap-3 px-3 py-2.5 rounded-lg cursor-pointer transition-colors group',
-                          leagueStore.activeLeagueId === league.league_id 
-                            ? 'bg-primary/10 border border-primary/30' 
-                            : 'hover:bg-dark-border/30'
-                        ]"
-                      >
-                        <div 
-                          class="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
-                          :class="league.platform === 'yahoo' ? 'bg-purple-600' : ''"
-                          :style="league.platform !== 'yahoo' ? { background: getLeagueTypeColor(league.settings?.type) } : {}"
-                        >
-                          <span v-if="league.platform === 'yahoo'" class="text-xs font-bold text-white">Y!</span>
-                          <svg v-else class="w-4 h-4 text-white" viewBox="0 0 24 24" fill="currentColor">
-                            <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
-                          </svg>
+                <div v-if="leagueStore.allLeagues && leagueStore.allLeagues.length > 0" class="max-h-96 overflow-y-auto">
+                  <template v-for="(sport, sportIndex) in sportOrder" :key="sport">
+                    <template v-if="getLeaguesBySport(sport).length > 0">
+                      <!-- Sport divider (not before first sport) -->
+                      <div v-if="sportIndex > 0 && hasPreviousSportLeagues(sportIndex)" class="border-t border-dark-border"></div>
+                      
+                      <div class="p-2">
+                        <div class="text-xs text-dark-textMuted uppercase tracking-wider px-2 py-1 flex items-center gap-2">
+                          <span>{{ getSportEmoji(sport) }}</span>
+                          <span>{{ sport }}</span>
                         </div>
-                        <div class="flex-1 min-w-0">
-                          <div class="font-medium text-dark-text text-sm truncate">{{ league.name }}</div>
-                          <div class="text-xs text-dark-textMuted">
-                            {{ league.season }} · {{ league.total_rosters || league.num_teams }} teams
+                        <div
+                          v-for="league in getLeaguesBySport(sport)"
+                          :key="league.league_id || league.league_key"
+                          @click="selectLeague(league.league_id || league.league_key)"
+                          :class="[
+                            'flex items-center gap-3 px-3 py-2.5 rounded-lg cursor-pointer transition-colors group',
+                            (leagueStore.activeLeagueId === league.league_id || leagueStore.activeLeagueId === league.league_key)
+                              ? 'bg-primary/10 border border-primary/30' 
+                              : 'hover:bg-dark-border/30'
+                          ]"
+                        >
+                          <!-- Platform Icon -->
+                          <img 
+                            :src="league.platform === 'yahoo' ? '/yahoo-fantasy.svg' : '/sleeper.svg'" 
+                            :alt="league.platform"
+                            class="w-8 h-8 rounded-lg flex-shrink-0"
+                          />
+                          <div class="flex-1 min-w-0">
+                            <div class="flex items-center gap-2">
+                              <span class="font-medium text-dark-text text-sm truncate">{{ league.name }}</span>
+                              <!-- League Pass indicator -->
+                              <span 
+                                v-if="hasLeaguePass(league)" 
+                                class="px-1.5 py-0.5 text-[10px] font-bold bg-gradient-to-r from-yellow-500 to-orange-500 text-gray-900 rounded"
+                              >
+                                PASS
+                              </span>
+                            </div>
+                            <div class="text-xs text-dark-textMuted">
+                              {{ league.season }} · {{ league.total_rosters || league.num_teams }} teams
+                            </div>
                           </div>
+                          <button
+                            @click.stop="confirmRemoveLeague(league)"
+                            class="p-1.5 rounded-lg text-dark-textMuted hover:text-red-400 hover:bg-red-500/10 transition-colors opacity-0 group-hover:opacity-100"
+                            title="Remove league"
+                          >
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                            </svg>
+                          </button>
                         </div>
-                        <button
-                          @click.stop="confirmRemoveLeague(league)"
-                          class="p-1.5 rounded-lg text-dark-textMuted hover:text-red-400 hover:bg-red-500/10 transition-colors opacity-0 group-hover:opacity-100"
-                          title="Remove league"
-                        >
-                          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                          </svg>
-                        </button>
                       </div>
-                    </div>
+                    </template>
                   </template>
+                  
+                  <!-- Add League (at bottom when leagues exist) -->
+                  <div class="border-t border-dark-border p-2">
+                    <button
+                      @click="showAddLeagueModal = true; showLeagueDropdown = false"
+                      class="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-primary/10 transition-colors"
+                    >
+                      <div class="w-8 h-8 rounded-lg bg-primary/20 flex items-center justify-center">
+                        <svg class="w-4 h-4 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                        </svg>
+                      </div>
+                      <div class="text-left">
+                        <div class="font-medium text-primary text-sm">Add League</div>
+                        <div class="text-xs text-dark-textMuted">Connect Sleeper or Yahoo</div>
+                      </div>
+                    </button>
+                  </div>
                 </div>
                 
-                <!-- Demo Mode -->
-                <div class="border-t border-dark-border p-2">
-                  <button
-                    @click="enableDemoMode"
-                    :class="[
-                      'w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors',
-                      leagueStore.isDemoMode 
-                        ? 'bg-cyan-500/10 border border-cyan-500/30' 
-                        : 'hover:bg-dark-border/30'
-                    ]"
-                  >
-                    <div class="w-8 h-8 rounded-lg bg-cyan-500/20 flex items-center justify-center">
-                      <span class="text-sm">👀</span>
-                    </div>
-                    <div class="text-left">
-                      <div class="font-medium text-cyan-400 text-sm">Demo Mode</div>
-                      <div class="text-xs text-dark-textMuted">Explore with sample data</div>
-                    </div>
-                  </button>
-                </div>
-                
-                <!-- Add League -->
-                <div class="border-t border-dark-border p-2">
+                <!-- No leagues - just show Add League -->
+                <div v-else class="p-4">
+                  <div class="text-center mb-4">
+                    <div class="text-4xl mb-2">🏆</div>
+                    <div class="text-dark-text font-medium">No Leagues Connected</div>
+                    <div class="text-xs text-dark-textMuted">Add your first league to get started</div>
+                  </div>
                   <button
                     @click="showAddLeagueModal = true; showLeagueDropdown = false"
-                    class="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-primary/10 transition-colors"
+                    class="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-lg bg-primary hover:bg-primary/90 transition-colors"
                   >
-                    <div class="w-8 h-8 rounded-lg bg-primary/20 flex items-center justify-center">
-                      <svg class="w-4 h-4 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
-                      </svg>
-                    </div>
-                    <div class="text-left">
-                      <div class="font-medium text-primary text-sm">Add League</div>
-                      <div class="text-xs text-dark-textMuted">Connect Sleeper or Yahoo</div>
-                    </div>
+                    <svg class="w-5 h-5 text-gray-900" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                    </svg>
+                    <span class="font-semibold text-gray-900">Add League</span>
                   </button>
                 </div>
               </div>
@@ -278,20 +276,12 @@
                   class="flex items-center gap-1.5 px-3 py-2 bg-black/20 rounded-lg text-white text-sm"
                 >
                   <template v-if="leagueStore.currentLeague">
-                    <div 
-                      class="w-4 h-4 flex-shrink-0 rounded flex items-center justify-center"
-                      :class="leagueStore.activePlatform === 'yahoo' ? 'bg-purple-600' : ''"
-                      :style="leagueStore.activePlatform !== 'yahoo' ? { background: getLeagueTypeColor(leagueStore.currentLeague.settings?.type) } : {}"
-                    >
-                      <span v-if="leagueStore.activePlatform === 'yahoo'" class="text-[8px] font-bold text-white">Y!</span>
-                      <svg v-else class="w-2.5 h-2.5 text-white" viewBox="0 0 24 24" fill="currentColor">
-                        <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
-                      </svg>
-                    </div>
+                    <img 
+                      :src="leagueStore.activePlatform === 'yahoo' ? '/yahoo-fantasy.svg' : '/sleeper.svg'" 
+                      :alt="leagueStore.activePlatform"
+                      class="w-5 h-5 rounded flex-shrink-0"
+                    />
                     <span class="font-medium truncate max-w-[80px]">{{ leagueStore.currentLeague.name }}</span>
-                  </template>
-                  <template v-else-if="leagueStore.isDemoMode">
-                    <span class="text-cyan-400 font-medium">Demo</span>
                   </template>
                   <template v-else>
                     <span class="text-primary font-medium">Add</span>
@@ -325,17 +315,6 @@
                 </router-link>
               </div>
               
-              <!-- Demo Mode Banner (Desktop) - shown when scrolled since top header is hidden -->
-              <div v-if="leagueStore.isDemoMode && isScrolled" class="ml-4 flex items-center gap-2 px-3 py-1.5 rounded-full bg-black/20">
-                <span class="text-white text-xs font-medium">Demo</span>
-                <button 
-                  @click="showAddLeagueModal = true"
-                  class="text-xs text-yellow-300 hover:text-white underline"
-                >
-                  Connect →
-                </button>
-              </div>
-              
               <!-- League & User controls when scrolled (since top header is hidden) -->
               <div v-if="isScrolled" class="ml-4 flex items-center gap-2">
                 <!-- Compact League Selector -->
@@ -357,17 +336,6 @@
                   <span class="text-xs font-bold text-white">{{ userInitials }}</span>
                 </button>
               </div>
-            </div>
-            
-            <!-- Demo Mode Banner (Desktop, not scrolled) -->
-            <div v-if="leagueStore.isDemoMode && !isScrolled" class="hidden lg:inline-flex items-center gap-2 ml-4 px-3 py-1.5 rounded-full bg-black/20">
-              <span class="text-white text-xs font-medium">Demo Mode</span>
-              <button 
-                @click="showAddLeagueModal = true"
-                class="text-xs text-yellow-300 hover:text-white underline"
-              >
-                Connect league →
-              </button>
             </div>
           </div>
         </nav>
@@ -444,18 +412,6 @@
           </div>
           
           <!-- Demo Mode Banner (Mobile) -->
-          <div v-if="leagueStore.isDemoMode" class="mx-4 p-4 rounded-xl bg-cyan-500/10 border border-cyan-500/30">
-            <div class="flex items-center gap-2 mb-2">
-              <span class="text-cyan-400 font-bold">Demo Mode</span>
-            </div>
-            <button 
-              @click="showAddLeagueModal = true; showMobileMenu = false"
-              class="text-sm text-cyan-300 hover:text-white underline"
-            >
-              Connect your league →
-            </button>
-          </div>
-          
           <!-- User Info at Bottom -->
           <div class="absolute bottom-0 left-0 right-0 p-4 border-t border-dark-border">
             <div class="flex items-center justify-between">
@@ -592,7 +548,8 @@ const tabs = [
 ]
 
 // Available sports for grouping leagues
-const availableSports = ['football', 'baseball', 'basketball', 'hockey']
+const sportOrder = ['football', 'basketball', 'baseball', 'hockey']
+const availableSports = ['football', 'basketball', 'baseball', 'hockey']
 
 const displayName = computed(() => {
   return authStore.profile?.full_name || authStore.user?.email?.split('@')[0] || 'User'
@@ -630,6 +587,23 @@ function getLeaguesBySport(sport: string) {
   })
 }
 
+// Check if any previous sports in order have leagues (for divider logic)
+function hasPreviousSportLeagues(currentIndex: number): boolean {
+  for (let i = 0; i < currentIndex; i++) {
+    if (getLeaguesBySport(sportOrder[i]).length > 0) {
+      return true
+    }
+  }
+  return false
+}
+
+// Check if league has League Pass subscription
+function hasLeaguePass(league: any): boolean {
+  // TODO: Integrate with useFeatureAccess composable for real subscription check
+  // For now, return false - will be implemented with subscription system
+  return false
+}
+
 // Get sport emoji
 function getSportEmoji(sport: string): string {
   const emojis: Record<string, string> = {
@@ -641,32 +615,20 @@ function getSportEmoji(sport: string): string {
   return emojis[sport] || '🏆'
 }
 
-// League type helpers
-function getLeagueTypeColor(leagueType: number | undefined): string {
-  switch (leagueType) {
-    case 2: return '#a855f7' // Purple for dynasty
-    case 1: return '#f97316' // Orange for keeper
-    default: return '#06b6d4' // Cyan for redraft
-  }
-}
-
 async function selectLeague(leagueId: string) {
   showLeagueDropdown.value = false
   leagueStore.disableDemoMode()
   await leagueStore.setActiveLeague(leagueId)
   
   // Auto-detect sport from selected league and update sport store
-  const league = leagueStore.allLeagues.find(l => l.league_id === leagueId)
+  const league = leagueStore.allLeagues.find(l => 
+    l.league_id === leagueId || l.league_key === leagueId
+  )
   if (league) {
     const sport = league.sport || (league.platform === 'sleeper' ? 'football' : 'baseball')
     sportStore.setSport(sport as Sport)
     leagueStore.setActiveSport(sport as Sport)
   }
-}
-
-function enableDemoMode() {
-  showLeagueDropdown.value = false
-  leagueStore.enableDemoMode()
 }
 
 function confirmRemoveLeague(league: any) {
@@ -676,7 +638,8 @@ function confirmRemoveLeague(league: any) {
 
 async function removeLeague() {
   if (!leagueToRemove.value) return
-  await leagueStore.removeLeague(leagueToRemove.value.league_id, authStore.user?.id)
+  const leagueId = leagueToRemove.value.league_id || leagueToRemove.value.league_key
+  await leagueStore.removeLeague(leagueId, authStore.user?.id)
   leagueToRemove.value = null
 }
 
@@ -685,10 +648,7 @@ async function handleAuthSuccess() {
   
   if (authStore.user?.id) {
     await leagueStore.loadSavedLeagues(authStore.user.id)
-    
-    if (!leagueStore.hasSavedLeagues && !leagueStore.activeLeagueId) {
-      leagueStore.enableDemoMode()
-    }
+    // If no leagues, user will be prompted to add one on the pages
   }
 }
 
@@ -765,10 +725,7 @@ onMounted(async () => {
   if (authStore.isAuthenticated && authStore.user?.id) {
     await leagueStore.loadSavedLeagues(authStore.user.id)
     leagueStore.refreshYahooLeagues(authStore.user.id)
-    
-    if (!leagueStore.hasSavedLeagues && !leagueStore.activeLeagueId) {
-      leagueStore.enableDemoMode()
-    }
+    // If no leagues, user will be prompted to add one on the pages
   }
 })
 
@@ -781,9 +738,7 @@ onUnmounted(() => {
 watch(() => authStore.isAuthenticated, async (isAuth) => {
   if (isAuth && authStore.user?.id) {
     await leagueStore.loadSavedLeagues(authStore.user.id)
-    if (!leagueStore.hasSavedLeagues && !leagueStore.activeLeagueId) {
-      leagueStore.enableDemoMode()
-    }
+    // If no leagues, user will be prompted to add one on the pages
   }
 })
 
