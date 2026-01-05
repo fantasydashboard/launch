@@ -42,12 +42,12 @@
     <template v-else>
       <!-- Combined Header Container -->
       <div class="relative z-40">
-        <!-- Top Header Bar (Dark) - Scrolls away with page -->
+        <!-- Top Header Bar (Dark) - Short, scrolls away naturally -->
         <header 
-          class="relative transition-all duration-300 hidden lg:block overflow-hidden"
-          :style="{ height: isScrolled ? '0px' : '84px', opacity: isScrolled ? 0 : 1, background: '#0a0c14' }"
+          class="relative hidden lg:block"
+          style="background: #0a0c14; height: 36px;"
         >
-          <div class="flex items-center justify-end h-[84px] px-4 xl:px-8">
+          <div class="flex items-center justify-end h-9 px-4 xl:px-8">
             <!-- Sport Title (Desktop) -->
             <div class="flex items-center gap-6">
               <h1 class="text-xs xl:text-sm font-bold tracking-wide">
@@ -220,46 +220,40 @@
           </div>
         </header>
 
-        <!-- Menu Header Bar (Green) - Always sticky at top -->
+        <!-- Menu Header Bar (Green) - STICKY at top -->
         <nav 
-          class="sticky top-0 z-40 transition-all duration-300 overflow-visible"
-          style="background: #22c55e;"
+          class="sticky top-0 z-40 overflow-visible"
+          style="background: #22c55e; height: 56px;"
         >
-          <!-- Logo Container - Inside nav so it moves with sticky behavior -->
+          <!-- Logo Container - Extends up into dark header space via negative margin -->
           <div 
-            class="absolute left-0 z-50 hidden lg:flex items-end transition-all duration-300"
+            class="absolute left-0 bottom-0 z-50 hidden lg:flex items-end pl-4 xl:pl-6 transition-all duration-300"
             :style="{ 
-              bottom: '4px',
-              height: isScrolled ? '48px' : '130px',
-              transform: isScrolled ? 'none' : 'translateY(-76px)'
+              marginTop: isScrolled ? '0' : '-36px',
+              height: isScrolled ? '56px' : '92px'
             }"
           >
-            <div class="relative h-full flex items-center pl-4 xl:pl-8">
-              <img 
-                src="/ufd-logo-full.png" 
-                alt="Ultimate Fantasy Dashboard" 
-                class="object-contain relative z-10 transition-all duration-300"
-                :style="{ height: isScrolled ? '44px' : '120px' }"
-              />
-              <!-- Dark gradient background under logo -->
-              <div 
-                class="absolute bottom-0 -left-4 xl:-left-8 transition-all duration-300"
-                :style="{ 
-                  background: 'linear-gradient(to right, #0a0c14 0%, #0a0c14 65%, transparent 100%)', 
-                  width: isScrolled ? '320px' : '520px',
-                  height: isScrolled ? '56px' : '140px'
-                }"
-              ></div>
-            </div>
+            <!-- Dark gradient behind logo -->
+            <div 
+              class="absolute inset-0 -left-4 xl:-left-6 transition-all duration-300"
+              :style="{ 
+                background: 'linear-gradient(to right, #0a0c14 0%, #0a0c14 65%, transparent 100%)', 
+                width: isScrolled ? '260px' : '380px'
+              }"
+            ></div>
+            <img 
+              src="/ufd-logo-full.png" 
+              alt="Ultimate Fantasy Dashboard" 
+              class="relative z-10 object-contain mb-1 transition-all duration-300"
+              :style="{ height: isScrolled ? '44px' : '82px' }"
+            />
           </div>
 
-          <!-- Dark gradient overlay on left for the nav itself -->
+          <!-- Dark gradient on left when scrolled -->
           <div 
-            class="absolute left-0 top-0 bottom-0 hidden lg:block pointer-events-none transition-all duration-300"
-            :style="{ 
-              background: isScrolled ? 'linear-gradient(to right, #0a0c14 0%, #0a0c14 60%, transparent 100%)' : 'transparent', 
-              width: '320px'
-            }"
+            v-if="isScrolled"
+            class="absolute left-0 top-0 bottom-0 hidden lg:block pointer-events-none"
+            style="background: linear-gradient(to right, #0a0c14 0%, #0a0c14 60%, transparent 100%); width: 260px;"
           ></div>
           
           <div class="flex items-center justify-end h-14 px-4 xl:px-8 relative">
