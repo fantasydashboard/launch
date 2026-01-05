@@ -225,28 +225,28 @@
           class="sticky top-0 z-40 overflow-visible"
           style="background: #22c55e; height: 56px;"
         >
-          <!-- Logo Container - Much larger when not scrolled, shrinks when menu becomes sticky -->
+          <!-- Logo Container - Centered across both headers when not scrolled -->
           <div 
-            class="absolute left-0 z-50 hidden lg:flex items-end pl-4 xl:pl-6 transition-all duration-300 ease-out"
+            class="absolute left-0 z-50 hidden lg:flex items-center pl-4 xl:pl-6 transition-all duration-300 ease-out"
             :style="{ 
-              bottom: '4px',
-              height: isScrolled ? '48px' : '140px',
-              marginTop: isScrolled ? '0' : '-88px'
+              top: isScrolled ? '4px' : '-36px',
+              height: isScrolled ? '48px' : '92px'
             }"
           >
-            <!-- Dark gradient behind logo - covers both headers when large -->
+            <!-- Dark gradient behind logo - full height coverage -->
             <div 
-              class="absolute inset-0 -left-4 xl:-left-6 transition-all duration-300 ease-out"
+              class="absolute top-0 bottom-0 -left-4 xl:-left-6 transition-all duration-300 ease-out"
               :style="{ 
                 background: 'linear-gradient(to right, #0a0c14 0%, #0a0c14 60%, transparent 100%)', 
-                width: isScrolled ? '280px' : '520px'
+                width: isScrolled ? '280px' : '480px',
+                height: isScrolled ? '56px' : '92px'
               }"
             ></div>
             <img 
               src="/ufd-logo-full.png" 
               alt="Ultimate Fantasy Dashboard" 
-              class="relative z-10 object-contain mb-1 transition-all duration-300 ease-out"
-              :style="{ height: isScrolled ? '42px' : '130px' }"
+              class="relative z-10 object-contain transition-all duration-300 ease-out"
+              :style="{ height: isScrolled ? '40px' : '80px' }"
             />
           </div>
 
@@ -347,7 +347,7 @@
       <Teleport to="body">
         <div 
           v-if="showMobileMenu"
-          class="fixed inset-0 z-[100] sm:hidden"
+          class="fixed inset-0 z-[100] lg:hidden"
           style="background: #0a0c14;"
         >
           <!-- Header -->
