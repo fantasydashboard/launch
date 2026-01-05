@@ -6,7 +6,7 @@
         <!-- Brand Column -->
         <div class="lg:col-span-1">
           <div class="flex items-center gap-3 mb-4">
-            <img src="/logos/UFD_Logo.png" alt="UFD Logo" class="w-10 h-10 object-contain" />
+            <img src="/UFD_V5.png" alt="UFD Logo" class="h-10 object-contain" />
             <div>
               <h3 class="text-lg font-bold text-dark-text">Ultimate Fantasy Dashboard</h3>
             </div>

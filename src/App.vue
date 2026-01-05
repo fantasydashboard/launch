@@ -9,7 +9,7 @@
           <div class="flex items-center justify-between h-16">
             <!-- Logo -->
             <div class="flex items-center gap-2 sm:gap-3">
-              <img src="/ufd-logo-full.png" alt="Ultimate Fantasy Dashboard" class="h-10 sm:h-12 object-contain" />
+              <img src="/UFD_V5.png" alt="Ultimate Fantasy Dashboard" class="h-10 sm:h-12 object-contain" />
             </div>
 
             <!-- Auth Buttons -->
@@ -242,7 +242,7 @@
               }"
             ></div>
             <img 
-              src="/ufd-logo-full.png" 
+              src="/UFD_V5.png" 
               alt="Ultimate Fantasy Dashboard" 
               class="relative z-10 object-contain transition-all duration-300 ease-out"
               :style="{ height: isScrolled ? '44px' : '82px' }"
@@ -259,7 +259,7 @@
           <div class="flex items-center justify-end h-14 px-4 xl:px-8 relative">
             <!-- Mobile/Tablet: Logo + Dashboards Button + League Dropdown -->
             <div class="lg:hidden flex items-center justify-between w-full">
-              <img src="/ufd-logo-full.png" alt="UFD" class="h-10 object-contain" />
+              <img src="/UFD_V5.png" alt="UFD" class="h-10 object-contain" />
               <div class="flex items-center gap-2">
                 <button 
                   @click="showMobileMenu = true"
@@ -353,7 +353,7 @@
         >
           <!-- Header -->
           <div class="flex items-center justify-between p-4 border-b border-dark-border">
-            <img src="/ufd-logo-full.png" alt="UFD" class="h-10 object-contain" />
+            <img src="/UFD_V5.png" alt="UFD" class="h-10 object-contain" />
             <button 
               @click="showMobileMenu = false"
               class="p-2 rounded-lg hover:bg-dark-border/50 transition-colors"
