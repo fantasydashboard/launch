@@ -230,8 +230,8 @@
           <div 
             class="absolute left-0 z-50 hidden lg:flex items-center pl-4 xl:pl-6 transition-all duration-300 ease-out"
             :style="{ 
-              top: isScrolled ? '4px' : '-36px',
-              height: isScrolled ? '48px' : '92px'
+              top: isScrolled ? '4px' : '-60px',
+              height: isScrolled ? '48px' : '170px'
             }"
           >
             <!-- Dark gradient behind logo - full height coverage -->
@@ -239,15 +239,15 @@
               class="absolute top-0 bottom-0 -left-4 xl:-left-6 transition-all duration-300 ease-out"
               :style="{ 
                 background: 'linear-gradient(to right, #0a0c14 0%, #0a0c14 60%, transparent 100%)', 
-                width: isScrolled ? '300px' : '520px',
-                height: isScrolled ? '56px' : '92px'
+                width: isScrolled ? '300px' : '680px',
+                height: isScrolled ? '56px' : '170px'
               }"
             ></div>
             <img 
               src="/ufd-logo-full.png" 
               alt="Ultimate Fantasy Dashboard" 
               class="relative z-10 object-contain transition-all duration-300 ease-out"
-              :style="{ height: isScrolled ? '44px' : '85px' }"
+              :style="{ height: isScrolled ? '44px' : '160px' }"
             />
           </div>
 
