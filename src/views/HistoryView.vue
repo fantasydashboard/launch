@@ -75,6 +75,7 @@
               <div class="flex items-center gap-2">
                 <span class="text-xs text-dark-textMuted italic">Downloads in current sort order</span>
                 <button 
+                  v-if="hasLeagueAccess"
                   @click="downloadCareerStats"
                   :disabled="isDownloadingCareerStats"
                   class="btn-primary flex items-center gap-2 text-sm"
@@ -87,6 +88,13 @@
                     <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                   </svg>
                   {{ isDownloadingCareerStats ? 'Generating...' : 'Share League History' }}
+                </button>
+                <button 
+                  v-else
+                  class="btn-secondary flex items-center gap-2 text-sm opacity-50 cursor-not-allowed"
+                  disabled
+                >
+                  🔒 Share League History
                 </button>
               </div>
             </div>
@@ -154,7 +162,7 @@
               </tr>
             </thead>
             <tbody>
-              <tr v-for="(stat, idx) in filteredCareerStats" :key="stat.owner_id" 
+              <tr v-for="(stat, idx) in gatedCareerStats" :key="stat.owner_id" 
                   class="border-b border-dark-border hover:bg-dark-border/30 transition-colors">
                 <td class="py-3 px-4">
                   <div class="flex items-center gap-3">
@@ -189,6 +197,39 @@
               </tr>
             </tbody>
           </table>
+          
+          <!-- Gated content overlay for free users -->
+          <div v-if="hiddenCareerStatsCount > 0" class="relative">
+            <!-- Blurred preview rows -->
+            <div class="blur-sm select-none pointer-events-none opacity-50 border-t border-dark-border/30">
+              <div v-for="i in Math.min(hiddenCareerStatsCount, 3)" :key="'career-preview-' + i" class="flex items-center gap-4 px-4 py-3 border-b border-dark-border/20">
+                <div class="w-10 h-10 rounded-full bg-dark-border/50"></div>
+                <div class="flex-1">
+                  <div class="h-4 w-32 bg-dark-border/50 rounded"></div>
+                </div>
+                <div class="h-4 w-16 bg-dark-border/40 rounded"></div>
+                <div class="h-4 w-12 bg-dark-border/40 rounded"></div>
+                <div class="h-4 w-16 bg-dark-border/40 rounded"></div>
+                <div class="h-4 w-12 bg-dark-border/40 rounded"></div>
+                <div class="h-4 w-16 bg-dark-border/40 rounded"></div>
+              </div>
+            </div>
+            
+            <!-- Upgrade overlay -->
+            <div class="absolute inset-0 flex items-center justify-center bg-gradient-to-t from-dark-bg via-dark-bg/95 to-transparent">
+              <div class="text-center p-6">
+                <div class="text-4xl mb-3">🔒</div>
+                <h3 class="text-lg font-bold text-dark-text mb-2">{{ hiddenCareerStatsCount }} More Teams</h3>
+                <p class="text-sm text-dark-textMuted mb-4">Unlock full career statistics for your entire league</p>
+                <button 
+                  @click="$router.push('/pricing')"
+                  class="px-6 py-2.5 bg-primary hover:bg-primary/90 text-gray-900 font-bold rounded-lg transition-all transform hover:scale-105"
+                >
+                  Unlock League Pass
+                </button>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -201,6 +242,7 @@
               <h2 class="card-title">Season-by-Season Records</h2>
             </div>
             <button 
+              v-if="hasLeagueAccess"
               @click="downloadSeasonHistory"
               :disabled="isDownloadingSeasonHistory"
               class="btn-primary flex items-center gap-2 text-sm"
@@ -213,6 +255,13 @@
                 <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
               </svg>
               {{ isDownloadingSeasonHistory ? 'Generating...' : 'Share Season History' }}
+            </button>
+            <button 
+              v-else
+              class="btn-secondary flex items-center gap-2 text-sm opacity-50 cursor-not-allowed"
+              disabled
+            >
+              🔒 Share Season History
             </button>
           </div>
           <p class="card-subtitle mt-2">Historical performance by year</p>
@@ -230,7 +279,7 @@
               </tr>
             </thead>
             <tbody>
-              <tr v-for="season in seasonRecords" :key="season.season" 
+              <tr v-for="season in gatedSeasonRecords" :key="season.season" 
                   class="border-b border-dark-border hover:bg-dark-border/30 transition-colors">
                 <td class="py-3 px-4 font-bold text-dark-text">{{ season.season }}</td>
                 <td class="text-center py-3 px-4 text-dark-text">{{ season.avg_ppg.toFixed(1) }}</td>
@@ -252,6 +301,36 @@
               </tr>
             </tbody>
           </table>
+          
+          <!-- Gated content overlay for free users -->
+          <div v-if="hiddenSeasonRecordsCount > 0" class="relative">
+            <!-- Blurred preview rows -->
+            <div class="blur-sm select-none pointer-events-none opacity-50 border-t border-dark-border/30">
+              <div v-for="i in Math.min(hiddenSeasonRecordsCount, 3)" :key="'season-preview-' + i" class="flex items-center gap-4 px-4 py-3 border-b border-dark-border/20">
+                <div class="h-4 w-16 bg-dark-border/50 rounded"></div>
+                <div class="h-4 w-12 bg-dark-border/40 rounded"></div>
+                <div class="flex-1 flex justify-center"><div class="h-4 w-24 bg-dark-border/40 rounded"></div></div>
+                <div class="flex-1 flex justify-center"><div class="h-4 w-24 bg-dark-border/40 rounded"></div></div>
+                <div class="h-4 w-12 bg-dark-border/40 rounded"></div>
+                <div class="h-4 w-32 bg-dark-border/40 rounded"></div>
+              </div>
+            </div>
+            
+            <!-- Upgrade overlay -->
+            <div class="absolute inset-0 flex items-center justify-center bg-gradient-to-t from-dark-bg via-dark-bg/95 to-transparent">
+              <div class="text-center p-6">
+                <div class="text-4xl mb-3">🔒</div>
+                <h3 class="text-lg font-bold text-dark-text mb-2">{{ hiddenSeasonRecordsCount }} More Seasons</h3>
+                <p class="text-sm text-dark-textMuted mb-4">Unlock full season-by-season history</p>
+                <button 
+                  @click="$router.push('/pricing')"
+                  class="px-6 py-2.5 bg-primary hover:bg-primary/90 text-gray-900 font-bold rounded-lg transition-all transform hover:scale-105"
+                >
+                  Unlock League Pass
+                </button>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -280,6 +359,7 @@
                 </div>
               </label>
               <button 
+                v-if="hasLeagueAccess"
                 @click="downloadHeadToHead"
                 :disabled="isDownloadingH2H"
                 class="btn-primary flex items-center gap-2 text-sm"
@@ -293,6 +373,13 @@
                 </svg>
                 {{ isDownloadingH2H ? 'Generating...' : 'Share Head to Head' }}
               </button>
+              <button 
+                v-else
+                class="btn-secondary flex items-center gap-2 text-sm opacity-50 cursor-not-allowed"
+                disabled
+              >
+                🔒 Share Head to Head
+              </button>
             </div>
           </div>
           <p class="card-subtitle mt-2">All-time records between teams (read horizontally: each row shows that team's record against opponents)</p>
@@ -303,7 +390,7 @@
               <tr>
                 <th class="sticky left-0 bg-dark-elevated z-10 px-3 py-2 text-left border border-dark-border">Team</th>
                 <th 
-                  v-for="team in filteredH2HTeams" 
+                  v-for="team in gatedH2HTeams" 
                   :key="`header-${team.user_id}`"
                   class="px-3 py-2 text-center border border-dark-border font-semibold text-dark-textSecondary uppercase tracking-wider"
                   style="min-width: 80px;"
@@ -313,12 +400,12 @@
               </tr>
             </thead>
             <tbody>
-              <tr v-for="rowTeam in filteredH2HTeams" :key="`row-${rowTeam.user_id}`">
+              <tr v-for="rowTeam in gatedH2HTeams" :key="`row-${rowTeam.user_id}`">
                 <td class="sticky left-0 bg-dark-elevated z-10 px-3 py-2 font-semibold text-dark-text border border-dark-border whitespace-nowrap">
                   {{ rowTeam.team_name }}
                 </td>
                 <td 
-                  v-for="colTeam in filteredH2HTeams" 
+                  v-for="colTeam in gatedH2HTeams" 
                   :key="`cell-${rowTeam.user_id}-${colTeam.user_id}`"
                   class="px-3 py-2 text-center border border-dark-border"
                   :class="getH2HCellClass(rowTeam.user_id, colTeam.user_id)"
@@ -331,6 +418,31 @@
               </tr>
             </tbody>
           </table>
+          
+          <!-- Gated content overlay for free users -->
+          <div v-if="hiddenH2HTeamsCount > 0" class="relative mt-4">
+            <!-- Blurred preview -->
+            <div class="blur-sm select-none pointer-events-none opacity-50">
+              <div class="grid grid-cols-4 gap-2">
+                <div v-for="i in 12" :key="'h2h-preview-' + i" class="h-8 bg-dark-border/40 rounded"></div>
+              </div>
+            </div>
+            
+            <!-- Upgrade overlay -->
+            <div class="absolute inset-0 flex items-center justify-center bg-gradient-to-t from-dark-bg via-dark-bg/95 to-transparent">
+              <div class="text-center p-6">
+                <div class="text-4xl mb-3">🔒</div>
+                <h3 class="text-lg font-bold text-dark-text mb-2">{{ hiddenH2HTeamsCount }} More Teams</h3>
+                <p class="text-sm text-dark-textMuted mb-4">Unlock the full head-to-head matrix</p>
+                <button 
+                  @click="$router.push('/pricing')"
+                  class="px-6 py-2.5 bg-primary hover:bg-primary/90 text-gray-900 font-bold rounded-lg transition-all transform hover:scale-105"
+                >
+                  Unlock League Pass
+                </button>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -346,15 +458,17 @@
               <button 
                 v-for="tab in awardTabs" 
                 :key="tab"
-                @click="selectedAwardTab = tab"
+                @click="hasLeagueAccess || tab === 'All-Time' ? selectedAwardTab = tab : null"
                 :class="[
-                  'px-4 py-2 rounded-lg font-semibold transition-colors',
+                  'px-4 py-2 rounded-lg font-semibold transition-colors relative',
                   selectedAwardTab === tab 
                     ? 'bg-primary text-dark-bg' 
-                    : 'bg-dark-border/30 text-dark-textSecondary hover:bg-dark-border/50'
+                    : 'bg-dark-border/30 text-dark-textSecondary hover:bg-dark-border/50',
+                  !hasLeagueAccess && tab !== 'All-Time' ? 'opacity-50 cursor-not-allowed' : ''
                 ]"
               >
                 {{ tab }}
+                <span v-if="!hasLeagueAccess && tab !== 'All-Time'" class="ml-1">🔒</span>
               </button>
             </div>
           </div>
@@ -406,7 +520,7 @@
               </h3>
               <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div 
-                  v-for="award in allTimeHallOfFame" 
+                  v-for="award in gatedHallOfFame" 
                   :key="award.title" 
                   class="bg-dark-border/30 rounded-xl p-4 cursor-pointer hover:bg-dark-border/50 transition-colors"
                   @click="openAwardModal(award, 'fame')"
@@ -434,6 +548,28 @@
                   <div v-if="award.winner" class="text-xs text-primary mt-2 opacity-70">Click for details →</div>
                 </div>
               </div>
+              
+              <!-- Gated Hall of Fame overlay -->
+              <div v-if="hiddenHallOfFameCount > 0" class="relative mt-4">
+                <div class="blur-sm select-none pointer-events-none opacity-50 grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div v-for="i in hiddenHallOfFameCount" :key="'fame-preview-' + i" class="bg-dark-border/30 rounded-xl p-4 h-28">
+                    <div class="h-3 w-32 bg-dark-border/50 rounded mb-3"></div>
+                    <div class="flex items-center gap-3">
+                      <div class="w-12 h-12 rounded-full bg-dark-border/50"></div>
+                      <div class="flex-1">
+                        <div class="h-4 w-24 bg-dark-border/40 rounded mb-2"></div>
+                        <div class="h-3 w-16 bg-dark-border/30 rounded"></div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                <div class="absolute inset-0 flex items-center justify-center">
+                  <div class="text-center p-4 bg-dark-bg/80 rounded-xl">
+                    <span class="text-2xl">🔒</span>
+                    <p class="text-sm text-dark-textMuted mt-2">{{ hiddenHallOfFameCount }} more awards</p>
+                  </div>
+                </div>
+              </div>
             </div>
 
             <!-- Hall of Shame -->
@@ -444,7 +580,7 @@
               </h3>
               <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div 
-                  v-for="award in allTimeHallOfShame" 
+                  v-for="award in gatedHallOfShame" 
                   :key="award.title" 
                   class="bg-dark-border/30 rounded-xl p-4 cursor-pointer hover:bg-dark-border/50 transition-colors"
                   @click="openAwardModal(award, 'shame')"
@@ -472,6 +608,28 @@
                   <div v-if="award.winner" class="text-xs text-primary mt-2 opacity-70">Click for details →</div>
                 </div>
               </div>
+              
+              <!-- Gated Hall of Shame overlay -->
+              <div v-if="hiddenHallOfShameCount > 0" class="relative mt-4">
+                <div class="blur-sm select-none pointer-events-none opacity-50 grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div v-for="i in hiddenHallOfShameCount" :key="'shame-preview-' + i" class="bg-dark-border/30 rounded-xl p-4 h-28">
+                    <div class="h-3 w-32 bg-dark-border/50 rounded mb-3"></div>
+                    <div class="flex items-center gap-3">
+                      <div class="w-12 h-12 rounded-full bg-dark-border/50"></div>
+                      <div class="flex-1">
+                        <div class="h-4 w-24 bg-dark-border/40 rounded mb-2"></div>
+                        <div class="h-3 w-16 bg-dark-border/30 rounded"></div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                <div class="absolute inset-0 flex items-center justify-center">
+                  <div class="text-center p-4 bg-dark-bg/80 rounded-xl">
+                    <span class="text-2xl">🔒</span>
+                    <p class="text-sm text-dark-textMuted mt-2">{{ hiddenHallOfShameCount }} more awards</p>
+                  </div>
+                </div>
+              </div>
             </div>
 
             <!-- Trades & Waivers -->
@@ -480,61 +638,111 @@
                 <span>📈</span>
                 <span>Trades & Waivers</span>
               </h3>
-              <div v-if="isLoadingTradeWaiverAwards" class="text-center py-8">
-                <div class="animate-spin rounded-full h-12 w-12 border-b-4 border-primary mx-auto"></div>
-                <p class="text-sm text-dark-textMuted mt-4">Analyzing transactions...</p>
-              </div>
-              <div v-else class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                <!-- Best Trade -->
-                <div v-if="allTimeBestTrade" class="bg-dark-border/30 rounded-xl p-4">
-                  <div class="text-sm text-dark-textMuted uppercase tracking-wide mb-3">🤝 Best Trade</div>
-                  <div class="flex items-center gap-3 mb-3">
-                    <div class="w-12 h-12 rounded-full overflow-hidden bg-dark-border flex-shrink-0">
-                      <img
-                        :src="allTimeBestTrade.avatar"
-                        :alt="allTimeBestTrade.team_name"
-                        class="w-full h-full object-cover"
-                        @error="handleImageError"
-                      />
-                    </div>
-                    <div class="flex-1">
-                      <div class="font-bold text-dark-text">{{ allTimeBestTrade.team_name }}</div>
-                      <div class="text-xs text-dark-textMuted">{{ allTimeBestTrade.season }}</div>
+              
+              <!-- Gated for free users -->
+              <div v-if="!hasLeagueAccess" class="relative">
+                <div class="blur-sm select-none pointer-events-none opacity-50 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  <div v-for="i in 3" :key="'trade-preview-' + i" class="bg-dark-border/30 rounded-xl p-4 h-32">
+                    <div class="h-3 w-24 bg-dark-border/50 rounded mb-3"></div>
+                    <div class="flex items-center gap-3">
+                      <div class="w-12 h-12 rounded-full bg-dark-border/50"></div>
+                      <div class="flex-1">
+                        <div class="h-4 w-28 bg-dark-border/40 rounded mb-2"></div>
+                        <div class="h-3 w-20 bg-dark-border/30 rounded"></div>
+                      </div>
                     </div>
                   </div>
-                  <div class="text-sm text-dark-textSecondary leading-relaxed">{{ allTimeBestTrade.details }}</div>
                 </div>
-
-                <!-- Best Waiver Pickups by Position -->
-                <div v-for="waiver in allTimeBestWaivers" :key="waiver.position" class="bg-dark-border/30 rounded-xl p-4">
-                  <div class="text-sm text-dark-textMuted uppercase tracking-wide mb-2">🎯 Best {{ waiver.position }} Waiver</div>
-                  <div class="flex items-center gap-3 mb-2">
-                    <div class="w-12 h-12 rounded-full overflow-hidden bg-dark-border flex-shrink-0">
-                      <img
-                        :src="waiver.avatar"
-                        :alt="waiver.team_name"
-                        class="w-full h-full object-cover"
-                        @error="handleImageError"
-                      />
-                    </div>
-                    <div class="flex-1">
-                      <div class="font-bold text-dark-text">{{ waiver.player_name }}</div>
-                      <div class="text-xs text-dark-textMuted">{{ waiver.team_name }} • {{ waiver.season }}</div>
-                    </div>
+                <div class="absolute inset-0 flex items-center justify-center bg-gradient-to-t from-dark-bg/80 via-dark-bg/60 to-transparent">
+                  <div class="text-center p-6">
+                    <div class="text-4xl mb-3">🔒</div>
+                    <h3 class="text-lg font-bold text-dark-text mb-2">Trades & Waivers Analysis</h3>
+                    <p class="text-sm text-dark-textMuted mb-4">Unlock to see the best trades and waiver pickups</p>
+                    <button 
+                      @click="$router.push('/pricing')"
+                      class="px-6 py-2.5 bg-primary hover:bg-primary/90 text-gray-900 font-bold rounded-lg transition-all transform hover:scale-105"
+                    >
+                      Unlock League Pass
+                    </button>
                   </div>
-                  <div class="text-xs text-dark-textSecondary">{{ waiver.details }}</div>
-                </div>
-
-                <!-- No data message -->
-                <div v-if="!allTimeBestTrade && allTimeBestWaivers.length === 0" class="col-span-full text-center py-8 text-dark-textMuted italic">
-                  No trade or waiver data available
                 </div>
               </div>
+              
+              <!-- Full content for subscribers -->
+              <template v-else>
+                <div v-if="isLoadingTradeWaiverAwards" class="text-center py-8">
+                  <div class="animate-spin rounded-full h-12 w-12 border-b-4 border-primary mx-auto"></div>
+                  <p class="text-sm text-dark-textMuted mt-4">Analyzing transactions...</p>
+                </div>
+                <div v-else class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  <!-- Best Trade -->
+                  <div v-if="allTimeBestTrade" class="bg-dark-border/30 rounded-xl p-4">
+                    <div class="text-sm text-dark-textMuted uppercase tracking-wide mb-3">🤝 Best Trade</div>
+                    <div class="flex items-center gap-3 mb-3">
+                      <div class="w-12 h-12 rounded-full overflow-hidden bg-dark-border flex-shrink-0">
+                        <img
+                          :src="allTimeBestTrade.avatar"
+                          :alt="allTimeBestTrade.team_name"
+                          class="w-full h-full object-cover"
+                          @error="handleImageError"
+                        />
+                      </div>
+                      <div class="flex-1">
+                        <div class="font-bold text-dark-text">{{ allTimeBestTrade.team_name }}</div>
+                        <div class="text-xs text-dark-textMuted">{{ allTimeBestTrade.season }}</div>
+                      </div>
+                    </div>
+                    <div class="text-sm text-dark-textSecondary leading-relaxed">{{ allTimeBestTrade.details }}</div>
+                  </div>
+
+                  <!-- Best Waiver Pickups by Position -->
+                  <div v-for="waiver in allTimeBestWaivers" :key="waiver.position" class="bg-dark-border/30 rounded-xl p-4">
+                    <div class="text-sm text-dark-textMuted uppercase tracking-wide mb-2">🎯 Best {{ waiver.position }} Waiver</div>
+                    <div class="flex items-center gap-3 mb-2">
+                      <div class="w-12 h-12 rounded-full overflow-hidden bg-dark-border flex-shrink-0">
+                        <img
+                          :src="waiver.avatar"
+                          :alt="waiver.team_name"
+                          class="w-full h-full object-cover"
+                          @error="handleImageError"
+                        />
+                      </div>
+                      <div class="flex-1">
+                        <div class="font-bold text-dark-text">{{ waiver.player_name }}</div>
+                        <div class="text-xs text-dark-textMuted">{{ waiver.team_name }} • {{ waiver.season }}</div>
+                      </div>
+                    </div>
+                    <div class="text-xs text-dark-textSecondary">{{ waiver.details }}</div>
+                  </div>
+
+                  <!-- No data message -->
+                  <div v-if="!allTimeBestTrade && allTimeBestWaivers.length === 0" class="col-span-full text-center py-8 text-dark-textMuted italic">
+                    No trade or waiver data available
+                  </div>
+                </div>
+              </template>
             </div>
           </div>
 
           <!-- Season Awards -->
           <div v-if="selectedAwardTab === 'Season'">
+            <!-- Gated for free users -->
+            <div v-if="!hasLeagueAccess" class="text-center py-12">
+              <div class="text-5xl mb-4">🔒</div>
+              <h3 class="text-xl font-bold text-dark-text mb-3">Season Awards Locked</h3>
+              <p class="text-dark-textMuted mb-6 max-w-md mx-auto">
+                Unlock League Pass to see season-specific awards including Best/Worst performances, trades, and waiver pickups for each year.
+              </p>
+              <button 
+                @click="$router.push('/pricing')"
+                class="px-6 py-3 bg-primary hover:bg-primary/90 text-gray-900 font-bold rounded-lg transition-all transform hover:scale-105"
+              >
+                Unlock League Pass
+              </button>
+            </div>
+            
+            <!-- Full content for subscribers -->
+            <template v-else>
             <!-- Best of the Year -->
             <div class="mb-8">
               <h3 class="text-xl font-bold text-dark-text mb-4 flex items-center gap-2">
@@ -668,10 +876,28 @@
                 </div>
               </div>
             </div>
+            </template><!-- End subscriber content for Season Awards -->
           </div>
 
           <!-- Weekly Awards -->
           <div v-if="selectedAwardTab === 'Weekly'">
+            <!-- Gated for free users -->
+            <div v-if="!hasLeagueAccess" class="text-center py-12">
+              <div class="text-5xl mb-4">🔒</div>
+              <h3 class="text-xl font-bold text-dark-text mb-3">Weekly Awards Locked</h3>
+              <p class="text-dark-textMuted mb-6 max-w-md mx-auto">
+                Unlock League Pass to see weekly awards including best/worst performances for each week of every season.
+              </p>
+              <button 
+                @click="$router.push('/pricing')"
+                class="px-6 py-3 bg-primary hover:bg-primary/90 text-gray-900 font-bold rounded-lg transition-all transform hover:scale-105"
+              >
+                Unlock League Pass
+              </button>
+            </div>
+            
+            <!-- Full content for subscribers -->
+            <template v-else>
             <!-- Best of the Week -->
             <div class="mb-8">
               <h3 class="text-xl font-bold text-dark-text mb-4 flex items-center gap-2">
@@ -747,6 +973,7 @@
                 </div>
               </div>
             </div>
+            </template><!-- End subscriber content for Weekly Awards -->
           </div>
         </div>
       </div>
@@ -885,8 +1112,11 @@ import { sleeperService } from '@/services/sleeper'
 import { awardsService } from '@/services/awards'
 import type { AwardWinner, TradeAward, WaiverAward } from '@/services/awards'
 import html2canvas from 'html2canvas'
+import { useFeatureAccess } from '@/composables/useFeatureAccess'
+import SimulatedDataBanner from '@/components/SimulatedDataBanner.vue'
 
 const leagueStore = useLeagueStore()
+const { hasLeagueAccess } = useFeatureAccess()
 const isLoading = ref(false)
 const sortColumn = ref<string>('win_pct')
 const sortDirection = ref<'asc' | 'desc'>('desc')
@@ -1229,6 +1459,18 @@ const filteredCareerStats = computed((): CareerStat[] => {
     return sortedCareerStats.value
   }
   return sortedCareerStats.value.filter(stat => currentMemberIds.value.has(stat.owner_id))
+})
+
+// Gated career stats - show top 3 for free users
+const gatedCareerStats = computed((): CareerStat[] => {
+  if (hasLeagueAccess.value) return filteredCareerStats.value
+  return filteredCareerStats.value.slice(0, 3)
+})
+
+// Hidden career stats count for free users
+const hiddenCareerStatsCount = computed((): number => {
+  if (hasLeagueAccess.value) return 0
+  return Math.max(0, filteredCareerStats.value.length - 3)
 })
 
 // Get record rankings for coloring (top 3 green, bottom 3 red)
@@ -1668,6 +1910,18 @@ const seasonRecords = computed((): SeasonRecord[] => {
   return records.sort((a, b) => b.season.localeCompare(a.season))
 })
 
+// Gated season records - show only most recent year for free users
+const gatedSeasonRecords = computed((): SeasonRecord[] => {
+  if (hasLeagueAccess.value) return seasonRecords.value
+  return seasonRecords.value.slice(0, 1)
+})
+
+// Hidden season records count for free users
+const hiddenSeasonRecordsCount = computed((): number => {
+  if (hasLeagueAccess.value) return 0
+  return Math.max(0, seasonRecords.value.length - 1)
+})
+
 const weeklyRecords = computed((): RecordItem[] => {
   let highestScore = { value: 0, team: 'N/A', season: '', week: 0 }
   let lowestScore = { value: Infinity, team: 'N/A', season: '', week: 0 }
@@ -1875,6 +2129,30 @@ const allTimeHallOfShame = computed((): Award[] => {
   awards.push({ title: '😢 Unluckiest Team', winner: unluckiest })
 
   return awards
+})
+
+// Gated Hall of Fame - show 2 for free users
+const gatedHallOfFame = computed((): Award[] => {
+  if (hasLeagueAccess.value) return allTimeHallOfFame.value
+  return allTimeHallOfFame.value.slice(0, 2)
+})
+
+// Hidden Hall of Fame count
+const hiddenHallOfFameCount = computed((): number => {
+  if (hasLeagueAccess.value) return 0
+  return Math.max(0, allTimeHallOfFame.value.length - 2)
+})
+
+// Gated Hall of Shame - show 2 for free users
+const gatedHallOfShame = computed((): Award[] => {
+  if (hasLeagueAccess.value) return allTimeHallOfShame.value
+  return allTimeHallOfShame.value.slice(0, 2)
+})
+
+// Hidden Hall of Shame count
+const hiddenHallOfShameCount = computed((): number => {
+  if (hasLeagueAccess.value) return 0
+  return Math.max(0, allTimeHallOfShame.value.length - 2)
 })
 
 const seasonBestAwards = computed((): Award[] => {
@@ -2260,6 +2538,18 @@ const filteredH2HTeams = computed(() => {
     return h2hMatrixTeams.value
   }
   return h2hMatrixTeams.value.filter(team => currentMemberIds.value.has(team.user_id))
+})
+
+// Gated H2H teams - show top 3 for free users
+const gatedH2HTeams = computed(() => {
+  if (hasLeagueAccess.value) return filteredH2HTeams.value
+  return filteredH2HTeams.value.slice(0, 3)
+})
+
+// Hidden H2H teams count for free users
+const hiddenH2HTeamsCount = computed((): number => {
+  if (hasLeagueAccess.value) return 0
+  return Math.max(0, filteredH2HTeams.value.length - 3)
 })
 
 // Get all-time H2H record between two users
