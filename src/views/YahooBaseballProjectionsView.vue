@@ -16,11 +16,7 @@
     <!-- Simulated Data Banner for non-Ultimate users -->
     <SimulatedDataBanner v-if="!hasPremiumAccess" :is-ultimate-tier="true" class="mb-6" />
 
-    <!-- Gated Content Container -->
-    <div class="relative">
-      <!-- Content (visible but blurred for non-Ultimate users) -->
-      <div :class="!hasPremiumAccess ? 'blur-sm select-none pointer-events-none' : ''">
-        <!-- Tab Navigation -->
+    <!-- Tab Navigation -->
     <div class="flex gap-2">
       <button v-for="tab in tabs" :key="tab.id" @click="activeTab = tab.id"
         :class="activeTab === tab.id ? 'bg-primary text-gray-900' : 'bg-dark-card text-dark-textSecondary hover:bg-dark-border/50'"
@@ -95,7 +91,7 @@
                 </tr>
               </thead>
               <tbody class="divide-y divide-dark-border/30">
-                <tr v-for="(player, idx) in filteredPlayers" :key="player.player_key" :class="getRowClass(player)" class="hover:bg-dark-border/20 transition-colors">
+                <tr v-for="(player, idx) in gatedFilteredPlayers" :key="player.player_key" :class="getRowClass(player)" class="hover:bg-dark-border/20 transition-colors">
                   <td class="px-3 py-3"><span class="font-bold text-lg text-dark-text">{{ player.rosRank }}</span></td>
                   <td class="px-3 py-3">
                     <div class="flex items-center gap-3">
@@ -123,9 +119,29 @@
                   <td class="px-2 py-3 text-center font-bold text-dark-text">{{ player.ppg?.toFixed(2) || '0' }}</td>
                   <td class="px-2 py-3 text-center font-bold" :class="player.vor > 0 ? 'text-green-400' : player.vor < -3 ? 'text-red-400' : 'text-dark-textMuted'">{{ player.vor >= 0 ? '+' : '' }}{{ player.vor?.toFixed(1) || '0' }}</td>
                 </tr>
-                <tr v-if="filteredPlayers.length === 0"><td colspan="7" class="px-4 py-8 text-center text-dark-textMuted">No players match filters</td></tr>
+                <tr v-if="gatedFilteredPlayers.length === 0"><td colspan="7" class="px-4 py-8 text-center text-dark-textMuted">No players match filters</td></tr>
               </tbody>
             </table>
+            
+            <!-- Gated players overlay -->
+            <div v-if="hiddenPlayersCount > 0" class="relative">
+              <div class="blur-sm select-none pointer-events-none opacity-50 border-t border-dark-border/30">
+                <div v-for="i in Math.min(hiddenPlayersCount, 3)" :key="'player-preview-' + i" class="flex items-center gap-4 px-4 py-3 border-b border-dark-border/20">
+                  <div class="w-6 h-4 bg-dark-border/50 rounded"></div>
+                  <div class="w-10 h-10 rounded-full bg-dark-border/50"></div>
+                  <div class="flex-1"><div class="h-4 w-32 bg-dark-border/50 rounded mb-1"></div><div class="h-3 w-20 bg-dark-border/40 rounded"></div></div>
+                  <div class="h-6 w-12 bg-dark-border/40 rounded"></div>
+                </div>
+              </div>
+              <div class="absolute inset-0 flex items-center justify-center bg-gradient-to-t from-dark-bg via-dark-bg/95 to-transparent">
+                <div class="text-center p-6">
+                  <div class="text-4xl mb-3">🔒</div>
+                  <h3 class="text-lg font-bold text-dark-text mb-2">{{ hiddenPlayersCount }} More Players</h3>
+                  <p class="text-sm text-dark-textMuted mb-4">Unlock full player rankings</p>
+                  <button @click="$router.push('/pricing')" class="px-6 py-2.5 bg-gradient-to-r from-yellow-500 to-orange-500 text-gray-900 font-bold rounded-lg transition-all transform hover:scale-105">Go Ultimate - $4.99/mo</button>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -160,7 +176,7 @@
                 </tr>
               </thead>
               <tbody class="divide-y divide-dark-border/30">
-                <template v-for="(team, index) in rankedTeams" :key="team.teamKey">
+                <template v-for="(team, index) in gatedRankedTeams" :key="team.teamKey">
                   <tr :class="[team.isMyTeam ? 'bg-primary/10' : 'hover:bg-dark-border/20', expandedTeamId === team.teamKey ? 'bg-dark-border/30' : '']" class="transition-colors cursor-pointer" @click="expandedTeamId = expandedTeamId === team.teamKey ? null : team.teamKey">
                     <td class="px-3 py-3"><span class="font-bold" :class="index < 3 ? 'text-primary' : 'text-dark-textMuted'">{{ index + 1 }}</span></td>
                     <td class="px-3 py-3">
@@ -207,6 +223,26 @@
                 </template>
               </tbody>
             </table>
+            
+            <!-- Gated teams overlay -->
+            <div v-if="hiddenTeamsCount > 0" class="relative">
+              <div class="blur-sm select-none pointer-events-none opacity-50 border-t border-dark-border/30">
+                <div v-for="i in Math.min(hiddenTeamsCount, 3)" :key="'team-preview-' + i" class="flex items-center gap-4 px-4 py-3 border-b border-dark-border/20">
+                  <div class="w-6 h-4 bg-dark-border/50 rounded"></div>
+                  <div class="w-9 h-9 rounded-full bg-dark-border/50"></div>
+                  <div class="flex-1 h-4 bg-dark-border/50 rounded"></div>
+                  <div class="h-8 w-8 bg-dark-border/40 rounded"></div>
+                </div>
+              </div>
+              <div class="absolute inset-0 flex items-center justify-center bg-gradient-to-t from-dark-bg via-dark-bg/95 to-transparent">
+                <div class="text-center p-6">
+                  <div class="text-4xl mb-3">🔒</div>
+                  <h3 class="text-lg font-bold text-dark-text mb-2">{{ hiddenTeamsCount }} More Teams</h3>
+                  <p class="text-sm text-dark-textMuted mb-4">Unlock full team rankings</p>
+                  <button @click="$router.push('/pricing')" class="px-6 py-2.5 bg-gradient-to-r from-yellow-500 to-orange-500 text-gray-900 font-bold rounded-lg transition-all transform hover:scale-105">Go Ultimate - $4.99/mo</button>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -324,7 +360,7 @@
                     </tr>
                   </thead>
                   <tbody class="divide-y divide-dark-border/30">
-                    <template v-for="(player, index) in getStartSitPlayers(selectedStartSitPosition)" :key="player.player_key">
+                    <template v-for="(player, index) in gatedGetStartSitPlayers(selectedStartSitPosition)" :key="player.player_key">
                       <tr v-if="showTierBreak(player, index, selectedStartSitPosition)" class="bg-dark-border/10">
                         <td colspan="7" class="px-4 py-2">
                           <div class="flex items-center gap-2">
@@ -373,11 +409,31 @@
                         <td class="px-2 py-2 text-center"><span class="px-2 py-1 rounded text-xs font-bold" :class="getVerdictClass(player.verdict)">{{ player.verdict }}</span></td>
                       </tr>
                     </template>
-                    <tr v-if="getStartSitPlayers(selectedStartSitPosition).length === 0">
+                    <tr v-if="gatedGetStartSitPlayers(selectedStartSitPosition).length === 0">
                       <td colspan="7" class="px-4 py-8 text-center text-dark-textMuted">No {{ selectedStartSitPosition }} players found{{ scoringMode === 'daily' ? ' playing today' : '' }}</td>
                     </tr>
                   </tbody>
                 </table>
+                
+                <!-- Gated start/sit overlay -->
+                <div v-if="getHiddenStartSitCount(selectedStartSitPosition) > 0" class="relative">
+                  <div class="blur-sm select-none pointer-events-none opacity-50 border-t border-dark-border/30">
+                    <div v-for="i in Math.min(getHiddenStartSitCount(selectedStartSitPosition), 3)" :key="'startsit-preview-' + i" class="flex items-center gap-4 px-4 py-3 border-b border-dark-border/20">
+                      <div class="w-6 h-4 bg-dark-border/50 rounded"></div>
+                      <div class="w-10 h-10 rounded-full bg-dark-border/50"></div>
+                      <div class="flex-1"><div class="h-4 w-32 bg-dark-border/50 rounded mb-1"></div><div class="h-3 w-20 bg-dark-border/40 rounded"></div></div>
+                      <div class="h-6 w-16 bg-dark-border/40 rounded"></div>
+                    </div>
+                  </div>
+                  <div class="absolute inset-0 flex items-center justify-center bg-gradient-to-t from-dark-bg via-dark-bg/95 to-transparent">
+                    <div class="text-center p-6">
+                      <div class="text-4xl mb-3">🔒</div>
+                      <h3 class="text-lg font-bold text-dark-text mb-2">{{ getHiddenStartSitCount(selectedStartSitPosition) }} More Players</h3>
+                      <p class="text-sm text-dark-textMuted mb-4">Unlock full start/sit recommendations</p>
+                      <button @click="$router.push('/pricing')" class="px-6 py-2.5 bg-gradient-to-r from-yellow-500 to-orange-500 text-gray-900 font-bold rounded-lg transition-all transform hover:scale-105">Go Ultimate - $4.99/mo</button>
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
@@ -418,31 +474,6 @@
         </div>
       </div>
     </template>
-      </div><!-- End blur wrapper -->
-      
-      <!-- Upgrade Overlay for non-Ultimate Users -->
-      <div 
-        v-if="!hasPremiumAccess" 
-        class="absolute inset-0 flex items-center justify-center bg-gradient-to-t from-dark-bg via-dark-bg/80 to-transparent"
-      >
-        <div class="text-center p-8 max-w-md">
-          <div class="text-5xl mb-4">🔒</div>
-          <h3 class="text-2xl font-bold text-dark-text mb-3">Ultimate Tools</h3>
-          <p class="text-dark-textMuted mb-6">
-            Get access to player projections, start/sit recommendations, trade analyzer, and waiver wire analysis.
-          </p>
-          <div class="space-y-3">
-            <button 
-              @click="$router.push('/pricing')"
-              class="w-full px-6 py-3 bg-gradient-to-r from-yellow-500 to-orange-500 hover:from-yellow-400 hover:to-orange-400 text-gray-900 font-bold rounded-xl transition-all transform hover:scale-105 shadow-lg"
-            >
-              Go Ultimate - $4.99/mo
-            </button>
-            <p class="text-xs text-dark-textMuted">Personal subscription • Works across all your leagues</p>
-          </div>
-        </div>
-      </div>
-    </div><!-- End relative container -->
 
     <!-- Platform Badge -->
     <div class="flex justify-center mt-8">
@@ -537,6 +568,17 @@ const filteredPlayers = computed(() => {
   if (showOnlyMyPlayers.value) players = players.filter(p => isMyPlayer(p))
   if (showOnlyFreeAgents.value) players = players.filter(p => isFreeAgent(p))
   return players
+})
+
+// Gated filtered players - show top 3 for non-premium users
+const gatedFilteredPlayers = computed(() => {
+  if (hasPremiumAccess.value) return filteredPlayers.value
+  return filteredPlayers.value.slice(0, 3)
+})
+
+const hiddenPlayersCount = computed(() => {
+  if (hasPremiumAccess.value) return 0
+  return Math.max(0, filteredPlayers.value.length - 3)
 })
 
 const formatSelectedDate = computed(() => selectedDate.value.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }))
@@ -638,6 +680,18 @@ function getStartSitPlayers(position: string): any[] {
   return players
 }
 
+// Gated start/sit players - show top 3 for non-premium users
+function gatedGetStartSitPlayers(position: string): any[] {
+  const players = getStartSitPlayers(position)
+  if (hasPremiumAccess.value) return players
+  return players.slice(0, 3)
+}
+
+function getHiddenStartSitCount(position: string): number {
+  if (hasPremiumAccess.value) return 0
+  return Math.max(0, getStartSitPlayers(position).length - 3)
+}
+
 function showTierBreak(player: any, index: number, position: string): boolean {
   if (index === 0) return true
   return getStartSitPlayers(position)[index - 1]?.tier !== player.tier
@@ -701,6 +755,17 @@ const rankedTeams = computed<TeamRanking[]>(() => {
     teams.push({ teamKey, teamName: first?.fantasy_team || 'Unknown', managerName: first?.manager_name || 'Unknown', isMyTeam: teamKey === myTeamKey.value, players: allTeamPlayers, positionGrades, overallGrade: getGradeFromValue(avgVal), statusScore })
   })
   return teams.sort((a, b) => b.statusScore - a.statusScore)
+})
+
+// Gated ranked teams - show top 3 for non-premium users
+const gatedRankedTeams = computed(() => {
+  if (hasPremiumAccess.value) return rankedTeams.value
+  return rankedTeams.value.slice(0, 3)
+})
+
+const hiddenTeamsCount = computed(() => {
+  if (hasPremiumAccess.value) return 0
+  return Math.max(0, rankedTeams.value.length - 3)
 })
 
 function getRosterSlotCount(pos: string): number { const r = rosterRequirements.value; if (r[pos] > 0) return r[pos]; const d: Record<string, number> = { C: 1, '1B': 1, '2B': 1, '3B': 1, SS: 1, OF: 3, SP: 2, RP: 2, Util: 1 }; return d[pos] || 1 }

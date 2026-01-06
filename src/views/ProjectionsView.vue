@@ -71,10 +71,6 @@
     <!-- Simulated Data Banner for non-Ultimate users -->
     <SimulatedDataBanner v-if="!hasPremiumAccess" :is-ultimate-tier="true" class="mb-6" />
 
-    <!-- Gated Content Container -->
-    <div class="relative">
-      <!-- Content (visible but blurred for non-Ultimate users) -->
-      <div :class="!hasPremiumAccess ? 'blur-sm select-none pointer-events-none' : ''">
         <!-- Not a Dynasty League Warning (Dynasty mode only) -->
     <div v-if="isDynastyMode && !isDynastyLeague" class="card bg-yellow-500/10 border border-yellow-500/30">
       <div class="card-body py-6 text-center">
@@ -212,7 +208,7 @@
                 </thead>
                 <tbody class="divide-y divide-dark-border/30">
                   <tr 
-                    v-for="(player, index) in filteredDynastyPlayers" 
+                    v-for="(player, index) in gatedDynastyPlayers" 
                     :key="player.player_id"
                     :class="isDynastyMyPlayer(player.player_id) ? 'bg-primary/10' : 'hover:bg-dark-border/20'"
                     class="transition-colors"
@@ -259,13 +255,41 @@
                       <span v-else class="text-sm text-green-400">Free Agent</span>
                     </td>
                   </tr>
-                  <tr v-if="filteredDynastyPlayers.length === 0">
+                  <tr v-if="gatedDynastyPlayers.length === 0">
                     <td colspan="7" class="px-4 py-8 text-center text-dark-textMuted">
                       No players match your filters
                     </td>
                   </tr>
                 </tbody>
               </table>
+              
+              <!-- Gated dynasty players overlay -->
+              <div v-if="hiddenDynastyPlayersCount > 0" class="relative">
+                <div class="blur-sm select-none pointer-events-none opacity-50 border-t border-dark-border/30">
+                  <div v-for="i in Math.min(hiddenDynastyPlayersCount, 3)" :key="'dynasty-preview-' + i" class="flex items-center gap-4 px-4 py-3 border-b border-dark-border/20">
+                    <div class="w-4 h-4 bg-dark-border/50 rounded"></div>
+                    <div class="w-10 h-10 rounded-full bg-dark-border/50"></div>
+                    <div class="flex-1">
+                      <div class="h-4 w-32 bg-dark-border/50 rounded mb-1"></div>
+                      <div class="h-3 w-16 bg-dark-border/40 rounded"></div>
+                    </div>
+                    <div class="h-6 w-16 bg-dark-border/40 rounded"></div>
+                  </div>
+                </div>
+                <div class="absolute inset-0 flex items-center justify-center bg-gradient-to-t from-dark-bg via-dark-bg/95 to-transparent">
+                  <div class="text-center p-6">
+                    <div class="text-4xl mb-3">🔒</div>
+                    <h3 class="text-lg font-bold text-dark-text mb-2">{{ hiddenDynastyPlayersCount }} More Players</h3>
+                    <p class="text-sm text-dark-textMuted mb-4">Unlock full dynasty player rankings</p>
+                    <button 
+                      @click="$router.push('/pricing')"
+                      class="px-6 py-2.5 bg-gradient-to-r from-yellow-500 to-orange-500 text-gray-900 font-bold rounded-lg transition-all transform hover:scale-105"
+                    >
+                      Go Ultimate - $4.99/mo
+                    </button>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -466,7 +490,7 @@
                 </tr>
               </thead>
               <tbody class="divide-y divide-dark-border/30">
-                <template v-for="(player, index) in filteredPlayers" :key="player.player_id">
+                <template v-for="(player, index) in gatedFilteredPlayers" :key="player.player_id">
                   <!-- Tier Break -->
                   <tr v-if="showTierBreak(player, index)" class="bg-dark-border/10">
                     <td :colspan="(rankingMode === 'vor' && !hasCustomRankings) ? 10 : 9" class="px-4 py-2">
@@ -602,6 +626,34 @@
                 </template>
               </tbody>
             </table>
+            
+            <!-- Gated players overlay -->
+            <div v-if="hiddenPlayersCount > 0" class="relative">
+              <div class="blur-sm select-none pointer-events-none opacity-50 border-t border-dark-border/30">
+                <div v-for="i in Math.min(hiddenPlayersCount, 3)" :key="'player-preview-' + i" class="flex items-center gap-4 px-4 py-3 border-b border-dark-border/20">
+                  <div class="w-6 h-4 bg-dark-border/50 rounded"></div>
+                  <div class="w-10 h-10 rounded-full bg-dark-border/50"></div>
+                  <div class="flex-1">
+                    <div class="h-4 w-32 bg-dark-border/50 rounded mb-1"></div>
+                    <div class="h-3 w-20 bg-dark-border/40 rounded"></div>
+                  </div>
+                  <div class="h-6 w-12 bg-dark-border/40 rounded"></div>
+                </div>
+              </div>
+              <div class="absolute inset-0 flex items-center justify-center bg-gradient-to-t from-dark-bg via-dark-bg/95 to-transparent">
+                <div class="text-center p-6">
+                  <div class="text-4xl mb-3">🔒</div>
+                  <h3 class="text-lg font-bold text-dark-text mb-2">{{ hiddenPlayersCount }} More Players</h3>
+                  <p class="text-sm text-dark-textMuted mb-4">Unlock full player rankings</p>
+                  <button 
+                    @click="$router.push('/pricing')"
+                    class="px-6 py-2.5 bg-gradient-to-r from-yellow-500 to-orange-500 text-gray-900 font-bold rounded-lg transition-all transform hover:scale-105"
+                  >
+                    Go Ultimate - $4.99/mo
+                  </button>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -713,7 +765,7 @@
                 </thead>
                 <tbody class="divide-y divide-dark-border/30">
                   <tr 
-                    v-for="(team, index) in sortedDynastyTeamValues" 
+                    v-for="(team, index) in gatedDynastyTeamValues" 
                     :key="team.roster_id"
                     :class="team.roster_id === leagueStore.rosters.find(r => r.owner_id === leagueStore.currentUserId)?.roster_id ? 'bg-primary/10' : 'hover:bg-dark-border/20'"
                     class="transition-colors"
@@ -762,6 +814,31 @@
                   </tr>
                 </tbody>
               </table>
+              
+              <!-- Gated dynasty teams overlay -->
+              <div v-if="hiddenDynastyTeamsCount > 0" class="relative">
+                <div class="blur-sm select-none pointer-events-none opacity-50 border-t border-dark-border/30">
+                  <div v-for="i in Math.min(hiddenDynastyTeamsCount, 3)" :key="'dynasty-team-preview-' + i" class="flex items-center gap-4 px-4 py-3 border-b border-dark-border/20">
+                    <div class="w-6 h-4 bg-dark-border/50 rounded"></div>
+                    <div class="w-10 h-10 rounded-full bg-dark-border/50"></div>
+                    <div class="flex-1 h-4 bg-dark-border/50 rounded"></div>
+                    <div class="h-6 w-20 bg-dark-border/40 rounded"></div>
+                  </div>
+                </div>
+                <div class="absolute inset-0 flex items-center justify-center bg-gradient-to-t from-dark-bg via-dark-bg/95 to-transparent">
+                  <div class="text-center p-6">
+                    <div class="text-4xl mb-3">🔒</div>
+                    <h3 class="text-lg font-bold text-dark-text mb-2">{{ hiddenDynastyTeamsCount }} More Teams</h3>
+                    <p class="text-sm text-dark-textMuted mb-4">Unlock full dynasty team rankings</p>
+                    <button 
+                      @click="$router.push('/pricing')"
+                      class="px-6 py-2.5 bg-gradient-to-r from-yellow-500 to-orange-500 text-gray-900 font-bold rounded-lg transition-all transform hover:scale-105"
+                    >
+                      Go Ultimate - $4.99/mo
+                    </button>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -835,7 +912,7 @@
                 </tr>
               </thead>
               <tbody class="divide-y divide-dark-border/30">
-                <template v-for="(team, index) in rankedTeamsWithStatus" :key="team.odwnerId">
+                <template v-for="(team, index) in gatedRankedTeams" :key="team.odwnerId">
                   <!-- Main Row -->
                   <tr 
                     :class="[
@@ -978,6 +1055,31 @@
                 </template>
               </tbody>
             </table>
+            
+            <!-- Gated teams overlay -->
+            <div v-if="hiddenTeamsCount > 0" class="relative">
+              <div class="blur-sm select-none pointer-events-none opacity-50 border-t border-dark-border/30">
+                <div v-for="i in Math.min(hiddenTeamsCount, 3)" :key="'team-preview-' + i" class="flex items-center gap-4 px-4 py-3 border-b border-dark-border/20">
+                  <div class="w-6 h-4 bg-dark-border/50 rounded"></div>
+                  <div class="w-9 h-9 rounded-full bg-dark-border/50"></div>
+                  <div class="flex-1 h-4 bg-dark-border/50 rounded"></div>
+                  <div class="h-8 w-8 bg-dark-border/40 rounded"></div>
+                </div>
+              </div>
+              <div class="absolute inset-0 flex items-center justify-center bg-gradient-to-t from-dark-bg via-dark-bg/95 to-transparent">
+                <div class="text-center p-6">
+                  <div class="text-4xl mb-3">🔒</div>
+                  <h3 class="text-lg font-bold text-dark-text mb-2">{{ hiddenTeamsCount }} More Teams</h3>
+                  <p class="text-sm text-dark-textMuted mb-4">Unlock full team roster rankings</p>
+                  <button 
+                    @click="$router.push('/pricing')"
+                    class="px-6 py-2.5 bg-gradient-to-r from-yellow-500 to-orange-500 text-gray-900 font-bold rounded-lg transition-all transform hover:scale-105"
+                  >
+                    Go Ultimate - $4.99/mo
+                  </button>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -1311,7 +1413,7 @@
                   </thead>
                   <tbody class="divide-y divide-dark-border/30">
                     <!-- Tier Break -->
-                    <template v-for="(player, index) in getWeeklyPositionPlayers(selectedWeeklyPosition)" :key="player.player_id">
+                    <template v-for="(player, index) in gatedGetWeeklyPositionPlayers(selectedWeeklyPosition)" :key="player.player_id">
                       <tr v-if="showWeeklyTierBreak(player, index, selectedWeeklyPosition)" class="bg-dark-border/10">
                         <td :colspan="selectedWeeklyPosition === 'FLEX' ? 9 : 8" class="px-4 py-2">
                           <div class="flex items-center gap-2">
@@ -1406,13 +1508,41 @@
                         </td>
                       </tr>
                     </template>
-                    <tr v-if="getWeeklyPositionPlayers(selectedWeeklyPosition).length === 0">
+                    <tr v-if="gatedGetWeeklyPositionPlayers(selectedWeeklyPosition).length === 0">
                       <td :colspan="selectedWeeklyPosition === 'FLEX' ? 9 : 8" class="px-4 py-8 text-center text-dark-textMuted">
                         {{ weeklyProjectionsLoading ? 'Loading projections...' : `No ${selectedWeeklyPosition} players found` }}
                       </td>
                     </tr>
                   </tbody>
                 </table>
+                
+                <!-- Gated weekly players overlay -->
+                <div v-if="getHiddenWeeklyPositionPlayersCount(selectedWeeklyPosition) > 0" class="relative">
+                  <div class="blur-sm select-none pointer-events-none opacity-50 border-t border-dark-border/30">
+                    <div v-for="i in Math.min(getHiddenWeeklyPositionPlayersCount(selectedWeeklyPosition), 3)" :key="'weekly-preview-' + i" class="flex items-center gap-4 px-4 py-3 border-b border-dark-border/20">
+                      <div class="w-6 h-4 bg-dark-border/50 rounded"></div>
+                      <div class="w-10 h-10 rounded-full bg-dark-border/50"></div>
+                      <div class="flex-1">
+                        <div class="h-4 w-32 bg-dark-border/50 rounded mb-1"></div>
+                        <div class="h-3 w-20 bg-dark-border/40 rounded"></div>
+                      </div>
+                      <div class="h-6 w-12 bg-dark-border/40 rounded"></div>
+                    </div>
+                  </div>
+                  <div class="absolute inset-0 flex items-center justify-center bg-gradient-to-t from-dark-bg via-dark-bg/95 to-transparent">
+                    <div class="text-center p-6">
+                      <div class="text-4xl mb-3">🔒</div>
+                      <h3 class="text-lg font-bold text-dark-text mb-2">{{ getHiddenWeeklyPositionPlayersCount(selectedWeeklyPosition) }} More Players</h3>
+                      <p class="text-sm text-dark-textMuted mb-4">Unlock full weekly rankings</p>
+                      <button 
+                        @click="$router.push('/pricing')"
+                        class="px-6 py-2.5 bg-gradient-to-r from-yellow-500 to-orange-500 text-gray-900 font-bold rounded-lg transition-all transform hover:scale-105"
+                      >
+                        Go Ultimate - $4.99/mo
+                      </button>
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
@@ -1489,7 +1619,7 @@
             <div class="card-body p-0">
               <div class="divide-y divide-dark-border/30 max-h-[400px] overflow-y-auto">
                 <div 
-                  v-for="(team, idx) in weeklyTeamRankings" 
+                  v-for="(team, idx) in gatedWeeklyTeamRankings" 
                   :key="team.odwnerId"
                   class="flex items-center gap-2 px-3 py-2 hover:bg-dark-border/10 transition-colors"
                   :class="team.odwnerId === leagueStore.currentUserId ? 'bg-primary/10' : ''"
@@ -1507,6 +1637,30 @@
                   <div class="text-right">
                     <div class="font-bold text-sm" :class="idx === 0 ? 'text-green-400' : idx < 3 ? 'text-lime-400' : 'text-dark-text'">
                       {{ team.projectedTotal.toFixed(1) }}
+                    </div>
+                  </div>
+                </div>
+                
+                <!-- Gated weekly teams overlay -->
+                <div v-if="hiddenWeeklyTeamsCount > 0" class="relative">
+                  <div class="blur-sm select-none pointer-events-none opacity-50">
+                    <div v-for="i in Math.min(hiddenWeeklyTeamsCount, 3)" :key="'weekly-team-preview-' + i" class="flex items-center gap-2 px-3 py-2 border-b border-dark-border/20">
+                      <div class="w-6 h-4 bg-dark-border/50 rounded"></div>
+                      <div class="w-8 h-8 rounded-full bg-dark-border/50"></div>
+                      <div class="flex-1 h-3 bg-dark-border/50 rounded"></div>
+                      <div class="h-4 w-10 bg-dark-border/40 rounded"></div>
+                    </div>
+                  </div>
+                  <div class="absolute inset-0 flex items-center justify-center bg-gradient-to-t from-dark-bg via-dark-bg/90 to-transparent">
+                    <div class="text-center p-4">
+                      <div class="text-2xl mb-2">🔒</div>
+                      <h3 class="text-sm font-bold text-dark-text mb-1">{{ hiddenWeeklyTeamsCount }} More</h3>
+                      <button 
+                        @click="$router.push('/pricing')"
+                        class="px-3 py-1.5 bg-gradient-to-r from-yellow-500 to-orange-500 text-gray-900 font-bold rounded-lg text-xs transition-all transform hover:scale-105"
+                      >
+                        Go Ultimate
+                      </button>
                     </div>
                   </div>
                 </div>
@@ -1816,31 +1970,6 @@
         </div>
       </div>
     </div>
-      </div><!-- End blur wrapper -->
-      
-      <!-- Upgrade Overlay for non-Ultimate Users -->
-      <div 
-        v-if="!hasPremiumAccess" 
-        class="absolute inset-0 flex items-center justify-center bg-gradient-to-t from-dark-bg via-dark-bg/80 to-transparent"
-      >
-        <div class="text-center p-8 max-w-md">
-          <div class="text-5xl mb-4">🔒</div>
-          <h3 class="text-2xl font-bold text-dark-text mb-3">Ultimate Tools</h3>
-          <p class="text-dark-textMuted mb-6">
-            Get access to player projections, dynasty values, start/sit recommendations, trade analyzer, and waiver wire analysis.
-          </p>
-          <div class="space-y-3">
-            <button 
-              @click="$router.push('/pricing')"
-              class="w-full px-6 py-3 bg-gradient-to-r from-yellow-500 to-orange-500 hover:from-yellow-400 hover:to-orange-400 text-gray-900 font-bold rounded-xl transition-all transform hover:scale-105 shadow-lg"
-            >
-              Go Ultimate - $4.99/mo
-            </button>
-            <p class="text-xs text-dark-textMuted">Personal subscription • Works across all your leagues</p>
-          </div>
-        </div>
-      </div>
-    </div><!-- End relative container -->
   </div>
 </template>
 
@@ -1987,6 +2116,17 @@ const sortedDynastyTeamValues = computed(() => {
   }))
 })
 
+// Gated dynasty team values - show top 3 for non-premium users
+const gatedDynastyTeamValues = computed(() => {
+  if (hasPremiumAccess.value) return sortedDynastyTeamValues.value
+  return sortedDynastyTeamValues.value.slice(0, 3)
+})
+
+const hiddenDynastyTeamsCount = computed(() => {
+  if (hasPremiumAccess.value) return 0
+  return Math.max(0, sortedDynastyTeamValues.value.length - 3)
+})
+
 // Dynasty league average value
 const dynastyLeagueAvgValue = computed(() => {
   if (sortedDynastyTeamValues.value.length === 0) return 0
@@ -2042,6 +2182,17 @@ const filteredDynastyPlayers = computed(() => {
   })
   
   return players.slice(0, 200)
+})
+
+// Gated dynasty players - show top 3 for non-premium users
+const gatedDynastyPlayers = computed(() => {
+  if (hasPremiumAccess.value) return filteredDynastyPlayers.value
+  return filteredDynastyPlayers.value.slice(0, 3)
+})
+
+const hiddenDynastyPlayersCount = computed(() => {
+  if (hasPremiumAccess.value) return 0
+  return Math.max(0, filteredDynastyPlayers.value.length - 3)
 })
 
 // ==================== END DYNASTY MODE STATE ====================
@@ -2341,6 +2492,17 @@ const filteredPlayers = computed(() => {
   }
 
   return players
+})
+
+// Gated filtered players - show top 3 for non-premium users
+const gatedFilteredPlayers = computed(() => {
+  if (hasPremiumAccess.value) return filteredPlayers.value
+  return filteredPlayers.value.slice(0, 3)
+})
+
+const hiddenPlayersCount = computed(() => {
+  if (hasPremiumAccess.value) return 0
+  return Math.max(0, filteredPlayers.value.length - 3)
 })
 
 function togglePositionFilter(pos: string) {
@@ -3493,6 +3655,17 @@ const rankedTeamsWithStatus = computed(() => {
   })
 })
 
+// Gated ranked teams - show top 3 for non-premium users
+const gatedRankedTeams = computed(() => {
+  if (hasPremiumAccess.value) return rankedTeamsWithStatus.value
+  return rankedTeamsWithStatus.value.slice(0, 3)
+})
+
+const hiddenTeamsCount = computed(() => {
+  if (hasPremiumAccess.value) return 0
+  return Math.max(0, rankedTeamsWithStatus.value.length - 3)
+})
+
 // Get players for expanded view with individual grades
 function getExpandedPositionPlayers(team: any, position: string): any[] {
   const reqs = rosterRequirements.value
@@ -4602,6 +4775,19 @@ function getWeeklyPositionPlayers(pos: string): (RankedPlayer & { weeklyProjecti
   return withProjections
 }
 
+// Gated weekly position players - show top 3 for non-premium users
+function gatedGetWeeklyPositionPlayers(pos: string) {
+  const players = getWeeklyPositionPlayers(pos)
+  if (hasPremiumAccess.value) return players
+  return players.slice(0, 3)
+}
+
+function getHiddenWeeklyPositionPlayersCount(pos: string): number {
+  if (hasPremiumAccess.value) return 0
+  const players = getWeeklyPositionPlayers(pos)
+  return Math.max(0, players.length - 3)
+}
+
 // Team rankings for the week
 const weeklyTeamRankings = computed(() => {
   const teams: Array<{
@@ -4671,6 +4857,17 @@ const weeklyTeamRankings = computed(() => {
   teams.sort((a, b) => b.projectedTotal - a.projectedTotal)
   
   return teams
+})
+
+// Gated weekly team rankings - show top 3 for non-premium users
+const gatedWeeklyTeamRankings = computed(() => {
+  if (hasPremiumAccess.value) return weeklyTeamRankings.value
+  return weeklyTeamRankings.value.slice(0, 3)
+})
+
+const hiddenWeeklyTeamsCount = computed(() => {
+  if (hasPremiumAccess.value) return 0
+  return Math.max(0, weeklyTeamRankings.value.length - 3)
 })
 
 // Suggested starting lineup - uses exact roster_positions from league
