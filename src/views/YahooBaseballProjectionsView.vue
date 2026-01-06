@@ -13,7 +13,14 @@
       </div>
     </div>
 
-    <!-- Tab Navigation -->
+    <!-- Simulated Data Banner for non-Ultimate users -->
+    <SimulatedDataBanner v-if="!hasPremiumAccess" :is-ultimate-tier="true" class="mb-6" />
+
+    <!-- Gated Content Container -->
+    <div class="relative">
+      <!-- Content (visible but blurred for non-Ultimate users) -->
+      <div :class="!hasPremiumAccess ? 'blur-sm select-none pointer-events-none' : ''">
+        <!-- Tab Navigation -->
     <div class="flex gap-2">
       <button v-for="tab in tabs" :key="tab.id" @click="activeTab = tab.id"
         :class="activeTab === tab.id ? 'bg-primary text-gray-900' : 'bg-dark-card text-dark-textSecondary hover:bg-dark-border/50'"
@@ -411,6 +418,31 @@
         </div>
       </div>
     </template>
+      </div><!-- End blur wrapper -->
+      
+      <!-- Upgrade Overlay for non-Ultimate Users -->
+      <div 
+        v-if="!hasPremiumAccess" 
+        class="absolute inset-0 flex items-center justify-center bg-gradient-to-t from-dark-bg via-dark-bg/80 to-transparent"
+      >
+        <div class="text-center p-8 max-w-md">
+          <div class="text-5xl mb-4">🔒</div>
+          <h3 class="text-2xl font-bold text-dark-text mb-3">Ultimate Tools</h3>
+          <p class="text-dark-textMuted mb-6">
+            Get access to player projections, start/sit recommendations, trade analyzer, and waiver wire analysis.
+          </p>
+          <div class="space-y-3">
+            <button 
+              @click="$router.push('/pricing')"
+              class="w-full px-6 py-3 bg-gradient-to-r from-yellow-500 to-orange-500 hover:from-yellow-400 hover:to-orange-400 text-gray-900 font-bold rounded-xl transition-all transform hover:scale-105 shadow-lg"
+            >
+              Go Ultimate - $4.99/mo
+            </button>
+            <p class="text-xs text-dark-textMuted">Personal subscription • Works across all your leagues</p>
+          </div>
+        </div>
+      </div>
+    </div><!-- End relative container -->
 
     <!-- Platform Badge -->
     <div class="flex justify-center mt-8">
@@ -427,9 +459,12 @@ import { ref, computed, watch, onMounted } from 'vue'
 import { useLeagueStore } from '@/stores/league'
 import { useAuthStore } from '@/stores/auth'
 import { yahooService } from '@/services/yahoo'
+import { useFeatureAccess } from '@/composables/useFeatureAccess'
+import SimulatedDataBanner from '@/components/SimulatedDataBanner.vue'
 
 const leagueStore = useLeagueStore()
 const authStore = useAuthStore()
+const { hasPremiumAccess } = useFeatureAccess()
 
 const tabs = [
   { id: 'ros', name: 'Rest of Season', icon: '📊' },

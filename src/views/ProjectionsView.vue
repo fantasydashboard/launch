@@ -68,7 +68,14 @@
       </div>
     </div>
 
-    <!-- Not a Dynasty League Warning (Dynasty mode only) -->
+    <!-- Simulated Data Banner for non-Ultimate users -->
+    <SimulatedDataBanner v-if="!hasPremiumAccess" :is-ultimate-tier="true" class="mb-6" />
+
+    <!-- Gated Content Container -->
+    <div class="relative">
+      <!-- Content (visible but blurred for non-Ultimate users) -->
+      <div :class="!hasPremiumAccess ? 'blur-sm select-none pointer-events-none' : ''">
+        <!-- Not a Dynasty League Warning (Dynasty mode only) -->
     <div v-if="isDynastyMode && !isDynastyLeague" class="card bg-yellow-500/10 border border-yellow-500/30">
       <div class="card-body py-6 text-center">
         <div class="text-4xl mb-3">⚠️</div>
@@ -1809,6 +1816,31 @@
         </div>
       </div>
     </div>
+      </div><!-- End blur wrapper -->
+      
+      <!-- Upgrade Overlay for non-Ultimate Users -->
+      <div 
+        v-if="!hasPremiumAccess" 
+        class="absolute inset-0 flex items-center justify-center bg-gradient-to-t from-dark-bg via-dark-bg/80 to-transparent"
+      >
+        <div class="text-center p-8 max-w-md">
+          <div class="text-5xl mb-4">🔒</div>
+          <h3 class="text-2xl font-bold text-dark-text mb-3">Ultimate Tools</h3>
+          <p class="text-dark-textMuted mb-6">
+            Get access to player projections, dynasty values, start/sit recommendations, trade analyzer, and waiver wire analysis.
+          </p>
+          <div class="space-y-3">
+            <button 
+              @click="$router.push('/pricing')"
+              class="w-full px-6 py-3 bg-gradient-to-r from-yellow-500 to-orange-500 hover:from-yellow-400 hover:to-orange-400 text-gray-900 font-bold rounded-xl transition-all transform hover:scale-105 shadow-lg"
+            >
+              Go Ultimate - $4.99/mo
+            </button>
+            <p class="text-xs text-dark-textMuted">Personal subscription • Works across all your leagues</p>
+          </div>
+        </div>
+      </div>
+    </div><!-- End relative container -->
   </div>
 </template>
 
@@ -1818,6 +1850,10 @@ import { useLeagueStore } from '@/stores/league'
 import { useAuthStore } from '@/stores/auth'
 import { supabase } from '@/lib/supabase'
 import { sleeperService } from '@/services/sleeper'
+import { useFeatureAccess } from '@/composables/useFeatureAccess'
+import SimulatedDataBanner from '@/components/SimulatedDataBanner.vue'
+
+const { hasPremiumAccess } = useFeatureAccess()
 import { 
   type DynastyPlayerValue, 
   type DynastyPickValue,
