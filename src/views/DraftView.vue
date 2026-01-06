@@ -126,7 +126,7 @@
               
               <!-- Team Picks -->
               <div class="bg-dark-card/50 rounded-b-xl p-2 space-y-1.5">
-                <template v-for="pick in team.picks" :key="pick.pick_id">
+                <template v-for="pick in getGatedPicks(team.picks)" :key="pick.pick_id">
                   <div 
                     v-if="shouldShowPick(pick)"
                     :class="getPickClass(pick)"
@@ -159,9 +159,40 @@
                     </div>
                   </div>
                 </template>
+                
+                <!-- Gated picks overlay per team -->
+                <div v-if="getHiddenPicksCount(team.picks) > 0" class="relative mt-2">
+                  <div class="blur-sm select-none pointer-events-none opacity-40">
+                    <div v-for="i in Math.min(getHiddenPicksCount(team.picks), 3)" :key="'locked-' + i" class="p-2 rounded-lg bg-dark-border/30 mb-1">
+                      <div class="h-3 w-20 bg-dark-border/50 rounded mb-1"></div>
+                      <div class="h-2 w-16 bg-dark-border/40 rounded"></div>
+                    </div>
+                  </div>
+                  <div class="absolute inset-0 flex items-center justify-center">
+                    <div class="text-center bg-dark-bg/90 px-3 py-2 rounded-lg">
+                      <span class="text-lg">🔒</span>
+                      <p class="text-[10px] text-dark-textMuted">{{ getHiddenPicksCount(team.picks) }} more picks</p>
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
+        </div>
+      </div>
+      
+      <!-- Gated draft rounds banner -->
+      <div v-if="hiddenDraftRoundsCount > 0" class="card">
+        <div class="card-body text-center py-6">
+          <div class="text-4xl mb-3">🔒</div>
+          <h3 class="text-lg font-bold text-dark-text mb-2">{{ hiddenDraftRoundsCount }} More Rounds Available</h3>
+          <p class="text-sm text-dark-textMuted mb-4">Unlock League Pass to see all draft rounds and detailed analysis</p>
+          <button 
+            @click="$router.push('/pricing')"
+            class="px-6 py-2.5 bg-primary hover:bg-primary/90 text-gray-900 font-bold rounded-lg transition-all transform hover:scale-105"
+          >
+            Unlock League Pass
+          </button>
         </div>
       </div>
     </template>
@@ -212,7 +243,7 @@
               </thead>
               <tbody class="divide-y divide-dark-border/30">
                 <tr 
-                  v-for="grade in filteredPlayerGrades" 
+                  v-for="grade in gatedPlayerGrades" 
                   :key="grade.pick_id"
                   :class="getGradeRowClass(grade)"
                   class="hover:bg-dark-border/20 transition-colors cursor-pointer"
@@ -256,13 +287,41 @@
                     </span>
                   </td>
                 </tr>
-                <tr v-if="filteredPlayerGrades.length === 0">
+                <tr v-if="gatedPlayerGrades.length === 0">
                   <td colspan="7" class="px-4 py-8 text-center text-dark-textMuted">
                     No player grades available
                   </td>
                 </tr>
               </tbody>
             </table>
+            
+            <!-- Gated player grades overlay -->
+            <div v-if="hiddenPlayerGradesCount > 0" class="relative">
+              <div class="blur-sm select-none pointer-events-none opacity-50 border-t border-dark-border/30">
+                <div v-for="i in Math.min(hiddenPlayerGradesCount, 3)" :key="'grade-preview-' + i" class="flex items-center gap-4 px-4 py-3 border-b border-dark-border/20">
+                  <div class="w-10 h-10 rounded-full bg-dark-border/50"></div>
+                  <div class="flex-1">
+                    <div class="h-4 w-32 bg-dark-border/50 rounded"></div>
+                  </div>
+                  <div class="h-4 w-12 bg-dark-border/40 rounded"></div>
+                  <div class="h-4 w-16 bg-dark-border/40 rounded"></div>
+                  <div class="h-4 w-12 bg-dark-border/40 rounded"></div>
+                </div>
+              </div>
+              <div class="absolute inset-0 flex items-center justify-center bg-gradient-to-t from-dark-bg via-dark-bg/95 to-transparent">
+                <div class="text-center p-6">
+                  <div class="text-4xl mb-3">🔒</div>
+                  <h3 class="text-lg font-bold text-dark-text mb-2">{{ hiddenPlayerGradesCount }} More Players</h3>
+                  <p class="text-sm text-dark-textMuted mb-4">Unlock full player grades for your entire draft</p>
+                  <button 
+                    @click="$router.push('/pricing')"
+                    class="px-6 py-2.5 bg-primary hover:bg-primary/90 text-gray-900 font-bold rounded-lg transition-all transform hover:scale-105"
+                  >
+                    Unlock League Pass
+                  </button>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -280,7 +339,7 @@
         </div>
         <div class="card-body p-0">
           <div class="divide-y divide-dark-border/30">
-            <div v-for="round in roundAnalyses" :key="round.round" class="p-4">
+            <div v-for="round in gatedRoundAnalyses" :key="round.round" class="p-4">
               <div class="flex items-center justify-between mb-3">
                 <h3 class="font-bold text-dark-text">Round {{ round.round }}</h3>
                 <span class="text-sm px-2 py-1 rounded-full" :class="round.avgValue >= 0 ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'">
@@ -322,6 +381,32 @@
                     </div>
                   </div>
                 </div>
+              </div>
+            </div>
+          </div>
+          
+          <!-- Gated rounds overlay -->
+          <div v-if="hiddenRoundsCount > 0" class="relative">
+            <div class="blur-sm select-none pointer-events-none opacity-50 p-4 border-t border-dark-border/30">
+              <div v-for="i in Math.min(hiddenRoundsCount, 2)" :key="'round-preview-' + i" class="mb-4">
+                <div class="h-4 w-24 bg-dark-border/50 rounded mb-3"></div>
+                <div class="grid grid-cols-2 gap-4">
+                  <div class="bg-dark-border/30 rounded-lg p-3 h-20"></div>
+                  <div class="bg-dark-border/30 rounded-lg p-3 h-20"></div>
+                </div>
+              </div>
+            </div>
+            <div class="absolute inset-0 flex items-center justify-center bg-gradient-to-t from-dark-bg via-dark-bg/95 to-transparent">
+              <div class="text-center p-6">
+                <div class="text-4xl mb-3">🔒</div>
+                <h3 class="text-lg font-bold text-dark-text mb-2">{{ hiddenRoundsCount }} More Rounds</h3>
+                <p class="text-sm text-dark-textMuted mb-4">Unlock full round-by-round draft analysis</p>
+                <button 
+                  @click="$router.push('/pricing')"
+                  class="px-6 py-2.5 bg-primary hover:bg-primary/90 text-gray-900 font-bold rounded-lg transition-all transform hover:scale-105"
+                >
+                  Unlock League Pass
+                </button>
               </div>
             </div>
           </div>
@@ -419,7 +504,7 @@
                   </tr>
                 </thead>
                 <tbody class="divide-y divide-dark-border/30">
-                  <tr v-for="team in trueGrades" :key="team.roster_id" class="hover:bg-dark-border/20">
+                  <tr v-for="team in gatedTrueGrades" :key="team.roster_id" class="hover:bg-dark-border/20">
                     <td class="px-4 py-3">
                       <div class="flex items-center gap-3">
                         <div class="w-10 h-10 rounded-full bg-dark-border overflow-hidden">
@@ -454,13 +539,42 @@
                   </tr>
                 </tbody>
               </table>
+              
+              <!-- Gated true grades overlay -->
+              <div v-if="hiddenTrueGradesCount > 0" class="relative">
+                <div class="blur-sm select-none pointer-events-none opacity-50 border-t border-dark-border/30">
+                  <div v-for="i in Math.min(hiddenTrueGradesCount, 3)" :key="'true-grade-preview-' + i" class="flex items-center gap-4 px-4 py-3 border-b border-dark-border/20">
+                    <div class="w-10 h-10 rounded-full bg-dark-border/50"></div>
+                    <div class="flex-1">
+                      <div class="h-4 w-32 bg-dark-border/50 rounded"></div>
+                    </div>
+                    <div class="h-4 w-16 bg-dark-border/40 rounded"></div>
+                    <div class="h-4 w-16 bg-dark-border/40 rounded"></div>
+                    <div class="h-4 w-16 bg-dark-border/40 rounded"></div>
+                    <div class="h-8 w-12 bg-dark-border/40 rounded"></div>
+                  </div>
+                </div>
+                <div class="absolute inset-0 flex items-center justify-center bg-gradient-to-t from-dark-bg via-dark-bg/95 to-transparent">
+                  <div class="text-center p-6">
+                    <div class="text-4xl mb-3">🔒</div>
+                    <h3 class="text-lg font-bold text-dark-text mb-2">{{ hiddenTrueGradesCount }} More Teams</h3>
+                    <p class="text-sm text-dark-textMuted mb-4">Unlock full roster building grades</p>
+                    <button 
+                      @click="$router.push('/pricing')"
+                      class="px-6 py-2.5 bg-primary hover:bg-primary/90 text-gray-900 font-bold rounded-lg transition-all transform hover:scale-105"
+                    >
+                      Unlock League Pass
+                    </button>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         </div>
 
         <!-- Team Detail Cards -->
         <div class="space-y-6">
-          <div v-for="team in trueGrades" :key="'detail-' + team.roster_id" class="card">
+          <div v-for="team in gatedTrueGrades" :key="'detail-' + team.roster_id" class="card">
             <div class="card-header">
               <div class="flex items-center justify-between">
                 <div class="flex items-center gap-3">
@@ -723,8 +837,10 @@ import { ref, computed, watch, onMounted } from 'vue'
 import { useLeagueStore } from '@/stores/league'
 import { sleeperService } from '@/services/sleeper'
 import draftAnalysisService, { type DraftPickAnalysis, type TeamDraftGrade, type RoundAnalysis } from '@/services/draftAnalysis'
+import { useFeatureAccess } from '@/composables/useFeatureAccess'
 
 const leagueStore = useLeagueStore()
+const { hasLeagueAccess } = useFeatureAccess()
 
 // Tab options - now with 4 tabs
 const tabOptions = [
@@ -974,6 +1090,62 @@ const filteredPlayerGrades = computed(() => {
   }
   
   return grades
+})
+
+// Gated player grades - show top 3 for free users
+const gatedPlayerGrades = computed(() => {
+  if (hasLeagueAccess.value) return filteredPlayerGrades.value
+  return filteredPlayerGrades.value.slice(0, 3)
+})
+
+// Hidden player grades count
+const hiddenPlayerGradesCount = computed(() => {
+  if (hasLeagueAccess.value) return 0
+  return Math.max(0, filteredPlayerGrades.value.length - 3)
+})
+
+// Gated round analyses - show 2 rounds for free users
+const gatedRoundAnalyses = computed(() => {
+  if (hasLeagueAccess.value) return roundAnalyses.value
+  return roundAnalyses.value.slice(0, 2)
+})
+
+// Hidden rounds count
+const hiddenRoundsCount = computed(() => {
+  if (hasLeagueAccess.value) return 0
+  return Math.max(0, roundAnalyses.value.length - 2)
+})
+
+// Gated true grades - show top 3 for free users
+const gatedTrueGrades = computed(() => {
+  if (hasLeagueAccess.value) return trueGrades.value
+  return trueGrades.value.slice(0, 3)
+})
+
+// Hidden true grades count
+const hiddenTrueGradesCount = computed(() => {
+  if (hasLeagueAccess.value) return 0
+  return Math.max(0, trueGrades.value.length - 3)
+})
+
+// Get gated picks for a team (show only round 1 for free users)
+function getGatedPicks(picks: DraftPick[]): DraftPick[] {
+  if (hasLeagueAccess.value) return picks
+  return picks.filter(pick => pick.round === 1)
+}
+
+// Count hidden picks per team
+function getHiddenPicksCount(picks: DraftPick[]): number {
+  if (hasLeagueAccess.value) return 0
+  return picks.filter(pick => pick.round !== 1).length
+}
+
+// Total hidden rounds in draft
+const hiddenDraftRoundsCount = computed(() => {
+  if (hasLeagueAccess.value) return 0
+  if (draftBoard.value.length === 0) return 0
+  const totalRounds = Math.max(...draftBoard.value.flatMap(t => t.picks.map(p => p.round)))
+  return Math.max(0, totalRounds - 1)
 })
 
 // Filtered steals for Deep Analysis
