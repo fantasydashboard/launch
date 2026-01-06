@@ -329,147 +329,205 @@
 
     <!-- ==================== DEEP ANALYSIS TAB ==================== -->
     <template v-else-if="activeTab === 'analysis'">
-      <!-- Round by Round Analysis -->
-      <div class="card">
-        <div class="card-header">
-          <div class="flex items-center gap-2">
-            <span class="text-2xl">📊</span>
-            <h2 class="card-title">Best & Worst Picks by Round</h2>
-          </div>
-        </div>
-        <div class="card-body p-0">
-          <div class="divide-y divide-dark-border/30">
-            <div v-for="round in gatedRoundAnalyses" :key="round.round" class="p-4">
-              <div class="flex items-center justify-between mb-3">
-                <h3 class="font-bold text-dark-text">Round {{ round.round }}</h3>
-                <span class="text-sm px-2 py-1 rounded-full" :class="round.avgValue >= 0 ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'">
-                  Avg: {{ round.avgValue >= 0 ? '+' : '' }}{{ round.avgValue.toFixed(1) }}
-                </span>
-              </div>
-              <div class="grid grid-cols-2 gap-4">
-                <!-- Best Pick -->
-                <div v-if="round.bestPick" class="bg-green-500/10 rounded-lg p-3 border border-green-500/30">
-                  <div class="text-xs text-green-400 font-medium mb-2">🏆 Best Pick</div>
-                  <div class="flex items-center gap-3">
-                    <div class="w-10 h-10 rounded-full bg-dark-border overflow-hidden ring-2 ring-green-500/50">
-                      <img :src="getPlayerImageUrl(round.bestPick.player_id)" class="w-full h-full object-cover" @error="handleImageError" />
-                    </div>
-                    <div class="flex-1 min-w-0">
-                      <div class="font-semibold text-dark-text text-sm truncate">{{ round.bestPick.player_name }}</div>
-                      <div class="text-xs text-dark-textMuted">{{ round.bestPick.team_name }}</div>
-                    </div>
-                    <div class="text-right">
-                      <div class="text-lg font-bold text-green-400">+{{ round.bestPick.adjustedScore.toFixed(1) }}</div>
-                      <div class="text-xs text-dark-textMuted">{{ round.bestPick.position }}{{ round.bestPick.positionExpectedRank }} → {{ round.bestPick.positionRank }}</div>
-                    </div>
-                  </div>
-                </div>
-                <!-- Worst Pick -->
-                <div v-if="round.worstPick" class="bg-red-500/10 rounded-lg p-3 border border-red-500/30">
-                  <div class="text-xs text-red-400 font-medium mb-2">💀 Worst Pick</div>
-                  <div class="flex items-center gap-3">
-                    <div class="w-10 h-10 rounded-full bg-dark-border overflow-hidden ring-2 ring-red-500/50">
-                      <img :src="getPlayerImageUrl(round.worstPick.player_id)" class="w-full h-full object-cover" @error="handleImageError" />
-                    </div>
-                    <div class="flex-1 min-w-0">
-                      <div class="font-semibold text-dark-text text-sm truncate">{{ round.worstPick.player_name }}</div>
-                      <div class="text-xs text-dark-textMuted">{{ round.worstPick.team_name }}</div>
-                    </div>
-                    <div class="text-right">
-                      <div class="text-lg font-bold text-red-400">{{ round.worstPick.adjustedScore.toFixed(1) }}</div>
-                      <div class="text-xs text-dark-textMuted">{{ round.worstPick.position }}{{ round.worstPick.positionExpectedRank }} → {{ round.worstPick.positionRank < 900 ? round.worstPick.positionRank : 'N/A' }}</div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-          
-          <!-- Gated rounds overlay -->
-          <div v-if="hiddenRoundsCount > 0" class="relative">
-            <div class="blur-sm select-none pointer-events-none opacity-50 p-4 border-t border-dark-border/30">
-              <div v-for="i in Math.min(hiddenRoundsCount, 2)" :key="'round-preview-' + i" class="mb-4">
-                <div class="h-4 w-24 bg-dark-border/50 rounded mb-3"></div>
-                <div class="grid grid-cols-2 gap-4">
-                  <div class="bg-dark-border/30 rounded-lg p-3 h-20"></div>
-                  <div class="bg-dark-border/30 rounded-lg p-3 h-20"></div>
-                </div>
-              </div>
-            </div>
-            <div class="absolute inset-0 flex items-center justify-center bg-gradient-to-t from-dark-bg via-dark-bg/95 to-transparent">
-              <div class="text-center p-6">
-                <div class="text-4xl mb-3">🔒</div>
-                <h3 class="text-lg font-bold text-dark-text mb-2">{{ hiddenRoundsCount }} More Rounds</h3>
-                <p class="text-sm text-dark-textMuted mb-4">Unlock full round-by-round draft analysis</p>
-                <button 
-                  @click="$router.push('/pricing')"
-                  class="px-6 py-2.5 bg-primary hover:bg-primary/90 text-gray-900 font-bold rounded-lg transition-all transform hover:scale-105"
-                >
-                  Unlock League Pass
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
+      <!-- Sub-tab Navigation -->
+      <div class="flex gap-2 mb-4">
+        <button
+          @click="analysisSubTab = 'round'"
+          :class="analysisSubTab === 'round' ? 'bg-primary text-gray-900' : 'bg-dark-card text-dark-textSecondary hover:bg-dark-border/50'"
+          class="px-4 py-2 rounded-lg font-semibold transition-all text-sm"
+        >
+          📊 By Round
+        </button>
+        <button
+          @click="analysisSubTab = 'team'"
+          :class="analysisSubTab === 'team' ? 'bg-primary text-gray-900' : 'bg-dark-card text-dark-textSecondary hover:bg-dark-border/50'"
+          class="px-4 py-2 rounded-lg font-semibold transition-all text-sm"
+        >
+          👥 By Team
+        </button>
       </div>
 
-      <!-- Team Draft Grade Cards -->
-      <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-        <div v-for="team in teamDraftGrades" :key="team.roster_id" class="card">
-          <div class="card-header pb-2">
-            <div class="flex items-center justify-between">
-              <div class="flex items-center gap-3">
-                <div class="w-12 h-12 rounded-full bg-dark-border overflow-hidden ring-2" :class="getGradeRingClass(team.overallGrade)">
-                  <img :src="getTeamAvatar(team.roster_id)" class="w-full h-full object-cover" @error="handleImageError" />
+      <!-- ===== BY ROUND SUB-TAB ===== -->
+      <template v-if="analysisSubTab === 'round'">
+        <!-- Round by Round Analysis -->
+        <div class="card">
+          <div class="card-header">
+            <div class="flex items-center gap-2">
+              <span class="text-2xl">📊</span>
+              <h2 class="card-title">Best & Worst Picks by Round</h2>
+            </div>
+          </div>
+          <div class="card-body p-0">
+            <div class="divide-y divide-dark-border/30">
+              <div v-for="round in gatedRoundAnalyses" :key="round.round" class="p-4">
+                <div class="flex items-center justify-between mb-3">
+                  <h3 class="font-bold text-dark-text">Round {{ round.round }}</h3>
+                  <span class="text-sm px-2 py-1 rounded-full" :class="round.avgValue >= 0 ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'">
+                    Avg: {{ round.avgValue >= 0 ? '+' : '' }}{{ round.avgValue.toFixed(1) }}
+                  </span>
                 </div>
-                <div>
-                  <h3 class="font-bold text-dark-text">{{ team.team_name }}</h3>
-                  <div class="text-xs text-dark-textMuted">
-                    Total: <span :class="team.totalAdjustedScore >= 0 ? 'text-green-400' : 'text-red-400'">
-                      {{ team.totalAdjustedScore >= 0 ? '+' : '' }}{{ team.totalAdjustedScore.toFixed(1) }}
-                    </span>
+                <div class="grid grid-cols-2 gap-4">
+                  <!-- Best Pick -->
+                  <div v-if="round.bestPick" class="bg-green-500/10 rounded-lg p-3 border border-green-500/30">
+                    <div class="text-xs text-green-400 font-medium mb-2">🏆 Best Pick</div>
+                    <div class="flex items-center gap-3">
+                      <div class="w-10 h-10 rounded-full bg-dark-border overflow-hidden ring-2 ring-green-500/50">
+                        <img :src="getPlayerImageUrl(round.bestPick.player_id)" class="w-full h-full object-cover" @error="handleImageError" />
+                      </div>
+                      <div class="flex-1 min-w-0">
+                        <div class="font-semibold text-dark-text text-sm truncate">{{ round.bestPick.player_name }}</div>
+                        <div class="text-xs text-dark-textMuted">{{ round.bestPick.team_name }}</div>
+                      </div>
+                      <div class="text-right">
+                        <div class="text-lg font-bold text-green-400">+{{ round.bestPick.adjustedScore.toFixed(1) }}</div>
+                        <div class="text-xs text-dark-textMuted">{{ round.bestPick.position }}{{ round.bestPick.positionExpectedRank }} → {{ round.bestPick.positionRank }}</div>
+                      </div>
+                    </div>
+                  </div>
+                  <!-- Worst Pick -->
+                  <div v-if="round.worstPick" class="bg-red-500/10 rounded-lg p-3 border border-red-500/30">
+                    <div class="text-xs text-red-400 font-medium mb-2">💀 Worst Pick</div>
+                    <div class="flex items-center gap-3">
+                      <div class="w-10 h-10 rounded-full bg-dark-border overflow-hidden ring-2 ring-red-500/50">
+                        <img :src="getPlayerImageUrl(round.worstPick.player_id)" class="w-full h-full object-cover" @error="handleImageError" />
+                      </div>
+                      <div class="flex-1 min-w-0">
+                        <div class="font-semibold text-dark-text text-sm truncate">{{ round.worstPick.player_name }}</div>
+                        <div class="text-xs text-dark-textMuted">{{ round.worstPick.team_name }}</div>
+                      </div>
+                      <div class="text-right">
+                        <div class="text-lg font-bold text-red-400">{{ round.worstPick.adjustedScore.toFixed(1) }}</div>
+                        <div class="text-xs text-dark-textMuted">{{ round.worstPick.position }}{{ round.worstPick.positionExpectedRank }} → {{ round.worstPick.positionRank < 900 ? round.worstPick.positionRank : 'N/A' }}</div>
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>
-              <div class="text-5xl font-black" :class="getGradeClass(team.overallGrade)">
-                {{ team.overallGrade }}
-              </div>
             </div>
-          </div>
-          <div class="card-body pt-2">
-            <!-- Player Grid -->
-            <div class="grid grid-cols-4 gap-1.5">
-              <div 
-                v-for="pick in getTeamPicks(team.roster_id).slice(0, 12)" 
-                :key="pick.player_id"
-                class="text-center cursor-pointer hover:scale-105 transition-transform"
-                @click="openPlayerModal(pick, team.team_name)"
-                :title="`${pick.player_name}: ${pick.score >= 0 ? '+' : ''}${pick.score.toFixed(1)}`"
-              >
-                <div class="w-10 h-10 mx-auto rounded-full bg-dark-border overflow-hidden ring-2" :class="getScoreRingClass(pick.score)">
-                  <img :src="getPlayerImageUrl(pick.player_id)" class="w-full h-full object-cover" @error="handleImageError" />
+            
+            <!-- Gated rounds overlay -->
+            <div v-if="hiddenRoundsCount > 0" class="relative">
+              <div class="blur-sm select-none pointer-events-none opacity-50 p-4 border-t border-dark-border/30">
+                <div v-for="i in Math.min(hiddenRoundsCount, 2)" :key="'round-preview-' + i" class="mb-4">
+                  <div class="h-4 w-24 bg-dark-border/50 rounded mb-3"></div>
+                  <div class="grid grid-cols-2 gap-4">
+                    <div class="bg-dark-border/30 rounded-lg p-3 h-20"></div>
+                    <div class="bg-dark-border/30 rounded-lg p-3 h-20"></div>
+                  </div>
                 </div>
-                <div class="text-[9px] text-dark-textMuted mt-0.5 truncate">{{ pick.player_name.split(' ').pop() }}</div>
               </div>
-            </div>
-            <!-- Stats Row -->
-            <div class="flex justify-between mt-3 pt-3 border-t border-dark-border/30 text-xs">
-              <div class="text-center">
-                <div class="text-green-400 font-bold">{{ team.steals?.length || 0 }}</div>
-                <div class="text-dark-textMuted">Steals</div>
-              </div>
-              <div class="text-center">
-                <div class="text-blue-400 font-bold">{{ team.hits?.length || 0 }}</div>
-                <div class="text-dark-textMuted">Hits</div>
-              </div>
-              <div class="text-center">
-                <div class="text-red-400 font-bold">{{ team.busts?.length || 0 }}</div>
-                <div class="text-dark-textMuted">Busts</div>
+              <div class="absolute inset-0 flex items-center justify-center bg-gradient-to-t from-dark-bg via-dark-bg/95 to-transparent">
+                <div class="text-center p-6">
+                  <div class="text-4xl mb-3">🔒</div>
+                  <h3 class="text-lg font-bold text-dark-text mb-2">{{ hiddenRoundsCount }} More Rounds</h3>
+                  <p class="text-sm text-dark-textMuted mb-4">Unlock full round-by-round draft analysis</p>
+                  <button 
+                    @click="$router.push('/pricing')"
+                    class="px-6 py-2.5 bg-primary hover:bg-primary/90 text-gray-900 font-bold rounded-lg transition-all transform hover:scale-105"
+                  >
+                    Unlock League Pass
+                  </button>
+                </div>
               </div>
             </div>
           </div>
         </div>
-      </div>
+      </template>
+
+      <!-- ===== BY TEAM SUB-TAB ===== -->
+      <template v-else-if="analysisSubTab === 'team'">
+        <!-- Team Draft Grade Cards -->
+        <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+          <div v-for="team in gatedTeamDraftGrades" :key="team.roster_id" class="card">
+            <div class="card-header pb-2">
+              <div class="flex items-center justify-between">
+                <div class="flex items-center gap-3">
+                  <div class="w-12 h-12 rounded-full bg-dark-border overflow-hidden ring-2" :class="getGradeRingClass(team.overallGrade)">
+                    <img :src="getTeamAvatar(team.roster_id)" class="w-full h-full object-cover" @error="handleImageError" />
+                  </div>
+                  <div>
+                    <h3 class="font-bold text-dark-text">{{ team.team_name }}</h3>
+                    <div class="text-xs text-dark-textMuted">
+                      Total: <span :class="team.totalAdjustedScore >= 0 ? 'text-green-400' : 'text-red-400'">
+                        {{ team.totalAdjustedScore >= 0 ? '+' : '' }}{{ team.totalAdjustedScore.toFixed(1) }}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+                <div class="text-5xl font-black" :class="getGradeClass(team.overallGrade)">
+                  {{ team.overallGrade }}
+                </div>
+              </div>
+            </div>
+            <div class="card-body pt-2">
+              <!-- Player Grid -->
+              <div class="grid grid-cols-4 gap-1.5">
+                <div 
+                  v-for="pick in getTeamPicks(team.roster_id).slice(0, 12)" 
+                  :key="pick.player_id"
+                  class="text-center cursor-pointer hover:scale-105 transition-transform"
+                  @click="openPlayerModal(pick, team.team_name)"
+                  :title="`${pick.player_name}: ${pick.score >= 0 ? '+' : ''}${pick.score.toFixed(1)}`"
+                >
+                  <div class="w-10 h-10 mx-auto rounded-full bg-dark-border overflow-hidden ring-2" :class="getScoreRingClass(pick.score)">
+                    <img :src="getPlayerImageUrl(pick.player_id)" class="w-full h-full object-cover" @error="handleImageError" />
+                  </div>
+                  <div class="text-[9px] text-dark-textMuted mt-0.5 truncate">{{ pick.player_name.split(' ').pop() }}</div>
+                </div>
+              </div>
+              <!-- Stats Row -->
+              <div class="flex justify-between mt-3 pt-3 border-t border-dark-border/30 text-xs">
+                <div class="text-center">
+                  <div class="text-green-400 font-bold">{{ team.steals?.length || 0 }}</div>
+                  <div class="text-dark-textMuted">Steals</div>
+                </div>
+                <div class="text-center">
+                  <div class="text-blue-400 font-bold">{{ team.hits?.length || 0 }}</div>
+                  <div class="text-dark-textMuted">Hits</div>
+                </div>
+                <div class="text-center">
+                  <div class="text-red-400 font-bold">{{ team.busts?.length || 0 }}</div>
+                  <div class="text-dark-textMuted">Busts</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Gated teams overlay -->
+        <div v-if="hiddenTeamDraftGradesCount > 0" class="mt-4 relative">
+          <div class="blur-sm select-none pointer-events-none opacity-50 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+            <div v-for="i in Math.min(hiddenTeamDraftGradesCount, 3)" :key="'team-preview-' + i" class="card">
+              <div class="card-body">
+                <div class="flex items-center gap-3 mb-4">
+                  <div class="w-12 h-12 rounded-full bg-dark-border/50"></div>
+                  <div class="flex-1">
+                    <div class="h-4 w-32 bg-dark-border/50 rounded mb-2"></div>
+                    <div class="h-3 w-20 bg-dark-border/40 rounded"></div>
+                  </div>
+                  <div class="h-12 w-12 bg-dark-border/40 rounded"></div>
+                </div>
+                <div class="grid grid-cols-4 gap-1.5">
+                  <div v-for="j in 8" :key="'placeholder-' + j" class="w-10 h-10 mx-auto rounded-full bg-dark-border/40"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="absolute inset-0 flex items-center justify-center bg-gradient-to-t from-dark-bg via-dark-bg/90 to-transparent">
+            <div class="text-center p-6">
+              <div class="text-4xl mb-3">🔒</div>
+              <h3 class="text-lg font-bold text-dark-text mb-2">{{ hiddenTeamDraftGradesCount }} More Teams</h3>
+              <p class="text-sm text-dark-textMuted mb-4">Unlock full team draft grade analysis</p>
+              <button 
+                @click="$router.push('/pricing')"
+                class="px-6 py-2.5 bg-primary hover:bg-primary/90 text-gray-900 font-bold rounded-lg transition-all transform hover:scale-105"
+              >
+                Unlock League Pass
+              </button>
+            </div>
+          </div>
+        </div>
+      </template>
     </template>
 
     <!-- ==================== ACTUAL VALUE TAB ==================== -->
@@ -852,6 +910,7 @@ const tabOptions = [
 
 // State
 const activeTab = ref('board')
+const analysisSubTab = ref<'round' | 'team'>('round')
 const selectedSeason = ref('')
 const selectedWeek = ref('final')
 const positionFilter = ref('All')
@@ -1126,6 +1185,18 @@ const gatedTrueGrades = computed(() => {
 const hiddenTrueGradesCount = computed(() => {
   if (hasLeagueAccess.value) return 0
   return Math.max(0, trueGrades.value.length - 3)
+})
+
+// Gated team draft grades - show top 3 for free users
+const gatedTeamDraftGrades = computed(() => {
+  if (hasLeagueAccess.value) return teamDraftGrades.value
+  return teamDraftGrades.value.slice(0, 3)
+})
+
+// Hidden team draft grades count
+const hiddenTeamDraftGradesCount = computed(() => {
+  if (hasLeagueAccess.value) return 0
+  return Math.max(0, teamDraftGrades.value.length - 3)
 })
 
 // Get gated picks for a team (show only round 1 for free users)
