@@ -5,7 +5,7 @@
       <div>
         <h1 class="text-3xl font-bold text-dark-text mb-2">Team Comparison</h1>
         <p class="text-base text-dark-textMuted">
-          Compare any two teams head-to-head across the season
+          Compare any two teams head-to-head across all seasons
         </p>
       </div>
     </div>
@@ -23,7 +23,7 @@
           <!-- Team 1 Selector -->
           <div>
             <label class="block text-sm font-semibold text-dark-text mb-2">Team 1</label>
-            <select v-model="team1Key" class="select w-full">
+            <select v-model="team1Key" class="select w-full" :disabled="isInitialLoading">
               <option value="">Select Team...</option>
               <option v-for="team in availableTeams1" :key="team.team_key" :value="team.team_key">
                 {{ team.name }}
@@ -34,7 +34,7 @@
           <!-- Team 2 Selector -->
           <div>
             <label class="block text-sm font-semibold text-dark-text mb-2">Team 2</label>
-            <select v-model="team2Key" class="select w-full">
+            <select v-model="team2Key" class="select w-full" :disabled="isInitialLoading">
               <option value="">Select Team...</option>
               <option v-for="team in availableTeams2" :key="team.team_key" :value="team.team_key">
                 {{ team.name }}
@@ -45,13 +45,27 @@
       </div>
     </div>
 
-    <!-- Loading State -->
-    <div v-if="isLoading" class="flex items-center justify-center py-20">
-      <div class="animate-spin rounded-full h-16 w-16 border-b-4 border-primary"></div>
+    <!-- Initial Loading State (loading historical data) -->
+    <div v-if="isInitialLoading" class="flex items-center justify-center py-20">
+      <div class="text-center">
+        <div class="animate-spin rounded-full h-16 w-16 border-b-4 border-primary mx-auto mb-4"></div>
+        <div class="text-lg font-semibold text-dark-text mb-2">Loading League History</div>
+        <div class="text-dark-textMuted text-sm">{{ loadingMessage }}</div>
+        <div class="text-xs text-dark-textMuted/70 mt-2">This may take a minute for leagues with many seasons</div>
+      </div>
+    </div>
+
+    <!-- Comparison Loading State -->
+    <div v-else-if="isLoading" class="flex items-center justify-center py-20">
+      <div class="text-center">
+        <div class="animate-spin rounded-full h-16 w-16 border-b-4 border-primary mx-auto mb-4"></div>
+        <div class="text-lg font-semibold text-dark-text mb-2">Building Comparison</div>
+        <div class="text-dark-textMuted text-sm">Analyzing head-to-head matchups...</div>
+      </div>
     </div>
 
     <!-- Comparison Results -->
-    <template v-if="!isLoading && comparisonData">
+    <template v-if="!isLoading && !isInitialLoading && comparisonData">
       <!-- Simulated Data Banner for free users -->
       <SimulatedDataBanner v-if="!hasLeagueAccess" class="mb-6" />
       
@@ -61,219 +75,205 @@
         <div :class="!hasLeagueAccess ? 'blur-sm select-none pointer-events-none' : ''">
           <!-- Tale of the Tape -->
           <div class="card">
-        <div class="card-header">
-          <div class="flex items-center gap-2">
-            <span class="text-2xl">🥊</span>
-            <h2 class="card-title">Tale of the Tape</h2>
-          </div>
-          <p class="card-subtitle mt-2">Season category comparison</p>
-        </div>
-        <div class="card-body">
-          <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            <!-- Team 1 Stats -->
-            <div class="text-center p-6 bg-gradient-to-br from-cyan-500/10 to-cyan-600/5 rounded-xl border-2 border-cyan-500/30">
-              <img 
-                :src="team1Data?.logo_url || defaultAvatar" 
-                :alt="team1Data?.name" 
-                class="w-24 h-24 rounded-full mx-auto mb-4 border-4 border-cyan-500 object-cover" 
-                @error="handleImageError" 
-              />
-              <div class="font-bold text-2xl text-dark-text mb-4">{{ team1Data?.name }}</div>
-              
-              <div class="space-y-3 text-left">
-                <div class="flex justify-between">
-                  <span class="text-dark-textMuted">🏆 Championships:</span>
-                  <span class="font-bold text-dark-text">{{ comparisonData.team1.championships || 0 }}</span>
-                </div>
-                <div class="flex justify-between">
-                  <span class="text-dark-textMuted">🎯 Playoff Apps:</span>
-                  <span class="font-bold text-dark-text">{{ comparisonData.team1.playoffAppearances || 0 }}</span>
-                </div>
-                <div class="flex justify-between">
-                  <span class="text-dark-textMuted">Record:</span>
-                  <span class="font-bold text-dark-text">{{ comparisonData.team1.wins }}-{{ comparisonData.team1.losses }}-{{ comparisonData.team1.ties || 0 }}</span>
-                </div>
-                <div class="flex justify-between">
-                  <span class="text-dark-textMuted">Win %:</span>
-                  <span class="font-bold text-dark-text">{{ comparisonData.team1.winPct.toFixed(1) }}%</span>
-                </div>
-                <div class="flex justify-between">
-                  <span class="text-dark-textMuted">Avg Cat/Week:</span>
-                  <span class="font-bold text-dark-text">{{ comparisonData.team1.avgCatPerWeek.toFixed(1) }}</span>
-                </div>
-                <div class="flex justify-between">
-                  <span class="text-dark-textMuted">Total Categories:</span>
-                  <span class="font-bold text-dark-text">{{ comparisonData.team1.totalCategories.toLocaleString() }}</span>
-                </div>
+            <div class="card-header">
+              <div class="flex items-center gap-2">
+                <span class="text-2xl">🥊</span>
+                <h2 class="card-title">Tale of the Tape</h2>
               </div>
+              <p class="card-subtitle mt-2">All-time category comparison across {{ seasonsLoaded }} season{{ seasonsLoaded !== 1 ? 's' : '' }}</p>
             </div>
-
-            <!-- VS Section -->
-            <div class="flex flex-col items-center justify-center p-6">
-              <div class="text-6xl font-black text-dark-textMuted mb-4">VS</div>
-              
-              <!-- Head-to-Head Record -->
-              <div class="text-center mb-6">
-                <div class="text-sm text-dark-textMuted mb-2">Head-to-Head Record</div>
-                <div class="flex items-center justify-center gap-3">
-                  <div class="text-center">
-                    <div class="text-4xl font-bold" :class="comparisonData.h2h.team1Wins > comparisonData.h2h.team2Wins ? 'text-green-400' : 'text-dark-textMuted'">
-                      {{ comparisonData.h2h.team1Wins }}
+            <div class="card-body">
+              <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <!-- Team 1 Stats -->
+                <div class="text-center p-6 bg-gradient-to-br from-cyan-500/10 to-cyan-600/5 rounded-xl border-2 border-cyan-500/30">
+                  <img 
+                    :src="team1Data?.logo_url || defaultAvatar" 
+                    :alt="team1Data?.name" 
+                    class="w-24 h-24 rounded-full mx-auto mb-4 border-4 border-cyan-500 object-cover" 
+                    @error="handleImageError" 
+                  />
+                  <div class="font-bold text-2xl text-dark-text mb-4">{{ team1Data?.name }}</div>
+                  
+                  <div class="space-y-3 text-left">
+                    <div class="flex justify-between">
+                      <span class="text-dark-textMuted">🏆 Championships:</span>
+                      <span class="font-bold text-dark-text">{{ comparisonData.team1.championships }}</span>
                     </div>
-                    <div class="text-xs text-dark-textMuted">{{ getShortName(team1Data?.name) }}</div>
-                  </div>
-                  <div class="text-3xl text-dark-textMuted">-</div>
-                  <div class="text-center">
-                    <div class="text-4xl font-bold" :class="comparisonData.h2h.team2Wins > comparisonData.h2h.team1Wins ? 'text-green-400' : 'text-dark-textMuted'">
-                      {{ comparisonData.h2h.team2Wins }}
+                    <div class="flex justify-between">
+                      <span class="text-dark-textMuted">🎯 Playoff Apps:</span>
+                      <span class="font-bold text-dark-text">{{ comparisonData.team1.playoffAppearances }}</span>
                     </div>
-                    <div class="text-xs text-dark-textMuted">{{ getShortName(team2Data?.name) }}</div>
+                    <div class="flex justify-between">
+                      <span class="text-dark-textMuted">Record:</span>
+                      <span class="font-bold text-dark-text">{{ comparisonData.team1.wins }}-{{ comparisonData.team1.losses }}-{{ comparisonData.team1.ties }}</span>
+                    </div>
+                    <div class="flex justify-between">
+                      <span class="text-dark-textMuted">Win %:</span>
+                      <span class="font-bold text-dark-text">{{ comparisonData.team1.winPct.toFixed(1) }}%</span>
+                    </div>
+                    <div class="flex justify-between">
+                      <span class="text-dark-textMuted">Avg Cat/Week:</span>
+                      <span class="font-bold text-dark-text">{{ comparisonData.team1.avgCatPerWeek.toFixed(1) }}</span>
+                    </div>
                   </div>
                 </div>
-                <div v-if="comparisonData.h2h.ties > 0" class="text-xs text-dark-textMuted mt-1">
-                  {{ comparisonData.h2h.ties }} tie(s)
-                </div>
-              </div>
 
-              <!-- Rivalry Stats -->
-              <div class="w-full space-y-2 text-sm">
-                <div class="flex justify-between p-2 bg-dark-border/20 rounded">
-                  <span class="text-dark-textMuted">Total Meetings:</span>
-                  <span class="font-semibold text-dark-text">{{ comparisonData.h2h.totalGames }}</span>
-                </div>
-                <div v-if="comparisonData.h2h.totalGames > 0" class="flex justify-between p-2 bg-dark-border/20 rounded">
-                  <span class="text-dark-textMuted">Avg Category Margin:</span>
-                  <span class="font-semibold text-dark-text">{{ comparisonData.h2h.avgMargin.toFixed(1) }}</span>
-                </div>
-                <div v-if="comparisonData.h2h.totalGames > 0" class="flex justify-between p-2 bg-dark-border/20 rounded">
-                  <span class="text-dark-textMuted">Total Cat Wins:</span>
-                  <span class="font-semibold text-dark-text">
-                    {{ comparisonData.h2h.team1TotalCats }} - {{ comparisonData.h2h.team2TotalCats }}
-                  </span>
-                </div>
-              </div>
-            </div>
+                <!-- VS Section -->
+                <div class="flex flex-col items-center justify-center p-6">
+                  <div class="text-6xl font-black text-dark-textMuted mb-4">VS</div>
+                  
+                  <!-- Head-to-Head Record -->
+                  <div class="text-center mb-6">
+                    <div class="text-sm text-dark-textMuted mb-2">Head-to-Head Record</div>
+                    <div class="flex items-center justify-center gap-3">
+                      <div class="text-center">
+                        <div class="text-4xl font-bold" :class="comparisonData.h2h.team1Wins > comparisonData.h2h.team2Wins ? 'text-green-400' : 'text-dark-textMuted'">
+                          {{ comparisonData.h2h.team1Wins }}
+                        </div>
+                        <div class="text-xs text-dark-textMuted">{{ getShortName(team1Data?.name) }}</div>
+                      </div>
+                      <div class="text-3xl text-dark-textMuted">-</div>
+                      <div class="text-center">
+                        <div class="text-4xl font-bold" :class="comparisonData.h2h.team2Wins > comparisonData.h2h.team1Wins ? 'text-green-400' : 'text-dark-textMuted'">
+                          {{ comparisonData.h2h.team2Wins }}
+                        </div>
+                        <div class="text-xs text-dark-textMuted">{{ getShortName(team2Data?.name) }}</div>
+                      </div>
+                    </div>
+                    <div v-if="comparisonData.h2h.ties > 0" class="text-xs text-dark-textMuted mt-1">
+                      {{ comparisonData.h2h.ties }} tie(s)
+                    </div>
+                  </div>
 
-            <!-- Team 2 Stats -->
-            <div class="text-center p-6 bg-gradient-to-br from-orange-500/10 to-orange-600/5 rounded-xl border-2 border-orange-500/30">
-              <img 
-                :src="team2Data?.logo_url || defaultAvatar" 
-                :alt="team2Data?.name" 
-                class="w-24 h-24 rounded-full mx-auto mb-4 border-4 border-orange-500 object-cover" 
-                @error="handleImageError" 
-              />
-              <div class="font-bold text-2xl text-dark-text mb-4">{{ team2Data?.name }}</div>
-              
-              <div class="space-y-3 text-left">
-                <div class="flex justify-between">
-                  <span class="text-dark-textMuted">🏆 Championships:</span>
-                  <span class="font-bold text-dark-text">{{ comparisonData.team2.championships || 0 }}</span>
+                  <!-- Rivalry Stats -->
+                  <div class="w-full space-y-2 text-sm">
+                    <div class="flex justify-between p-2 bg-dark-border/20 rounded">
+                      <span class="text-dark-textMuted">Total Meetings:</span>
+                      <span class="font-semibold text-dark-text">{{ comparisonData.h2h.totalGames }}</span>
+                    </div>
+                    <div v-if="comparisonData.h2h.totalGames > 0" class="flex justify-between p-2 bg-dark-border/20 rounded">
+                      <span class="text-dark-textMuted">Avg Category Margin:</span>
+                      <span class="font-semibold text-dark-text">{{ comparisonData.h2h.avgMargin.toFixed(1) }}</span>
+                    </div>
+                  </div>
                 </div>
-                <div class="flex justify-between">
-                  <span class="text-dark-textMuted">🎯 Playoff Apps:</span>
-                  <span class="font-bold text-dark-text">{{ comparisonData.team2.playoffAppearances || 0 }}</span>
-                </div>
-                <div class="flex justify-between">
-                  <span class="text-dark-textMuted">Record:</span>
-                  <span class="font-bold text-dark-text">{{ comparisonData.team2.wins }}-{{ comparisonData.team2.losses }}-{{ comparisonData.team2.ties || 0 }}</span>
-                </div>
-                <div class="flex justify-between">
-                  <span class="text-dark-textMuted">Win %:</span>
-                  <span class="font-bold text-dark-text">{{ comparisonData.team2.winPct.toFixed(1) }}%</span>
-                </div>
-                <div class="flex justify-between">
-                  <span class="text-dark-textMuted">Avg Cat/Week:</span>
-                  <span class="font-bold text-dark-text">{{ comparisonData.team2.avgCatPerWeek.toFixed(1) }}</span>
-                </div>
-                <div class="flex justify-between">
-                  <span class="text-dark-textMuted">Total Categories:</span>
-                  <span class="font-bold text-dark-text">{{ comparisonData.team2.totalCategories.toLocaleString() }}</span>
+
+                <!-- Team 2 Stats -->
+                <div class="text-center p-6 bg-gradient-to-br from-orange-500/10 to-orange-600/5 rounded-xl border-2 border-orange-500/30">
+                  <img 
+                    :src="team2Data?.logo_url || defaultAvatar" 
+                    :alt="team2Data?.name" 
+                    class="w-24 h-24 rounded-full mx-auto mb-4 border-4 border-orange-500 object-cover" 
+                    @error="handleImageError" 
+                  />
+                  <div class="font-bold text-2xl text-dark-text mb-4">{{ team2Data?.name }}</div>
+                  
+                  <div class="space-y-3 text-left">
+                    <div class="flex justify-between">
+                      <span class="text-dark-textMuted">🏆 Championships:</span>
+                      <span class="font-bold text-dark-text">{{ comparisonData.team2.championships }}</span>
+                    </div>
+                    <div class="flex justify-between">
+                      <span class="text-dark-textMuted">🎯 Playoff Apps:</span>
+                      <span class="font-bold text-dark-text">{{ comparisonData.team2.playoffAppearances }}</span>
+                    </div>
+                    <div class="flex justify-between">
+                      <span class="text-dark-textMuted">Record:</span>
+                      <span class="font-bold text-dark-text">{{ comparisonData.team2.wins }}-{{ comparisonData.team2.losses }}-{{ comparisonData.team2.ties }}</span>
+                    </div>
+                    <div class="flex justify-between">
+                      <span class="text-dark-textMuted">Win %:</span>
+                      <span class="font-bold text-dark-text">{{ comparisonData.team2.winPct.toFixed(1) }}%</span>
+                    </div>
+                    <div class="flex justify-between">
+                      <span class="text-dark-textMuted">Avg Cat/Week:</span>
+                      <span class="font-bold text-dark-text">{{ comparisonData.team2.avgCatPerWeek.toFixed(1) }}</span>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
           </div>
-        </div>
-      </div>
 
-      <!-- Recent Matchups Chart -->
-      <div class="card" v-if="rivalryHistory.length > 0">
-        <div class="card-header">
-          <div class="flex items-center gap-2">
-            <span class="text-2xl">📈</span>
-            <h2 class="card-title">Recent Matchups</h2>
-          </div>
-          <p class="card-subtitle mt-2">Categories won in last {{ Math.min(rivalryHistory.length, 10) }} head-to-head meetings</p>
-        </div>
-        <div class="card-body">
-          <div ref="chartContainer" class="w-full" style="height: 350px;"></div>
-        </div>
-      </div>
-
-      <!-- Rivalry History -->
-      <div class="card" v-if="rivalryHistory.length > 0">
-        <div class="card-header">
-          <div class="flex items-center gap-2">
-            <span class="text-2xl">📜</span>
-            <h2 class="card-title">Rivalry History</h2>
-          </div>
-          <p class="card-subtitle mt-2">All head-to-head matchups this season</p>
-        </div>
-        <div class="card-body">
-          <div class="space-y-3">
-            <div 
-              v-for="(matchup, idx) in rivalryHistory" 
-              :key="idx"
-              class="p-4 bg-dark-border/20 rounded-lg border border-dark-border"
-            >
-              <div class="flex items-center justify-between">
-                <div class="flex items-center gap-4">
-                  <div class="text-sm">
-                    <span class="font-semibold text-dark-text">Week {{ matchup.week }}</span>
-                    <span v-if="matchup.isPlayoff" class="ml-2 px-2 py-0.5 bg-primary/20 text-primary text-xs rounded">
-                      Playoff
-                    </span>
-                  </div>
-                </div>
-                <div class="flex items-center gap-6">
-                  <div class="text-right">
-                    <div class="text-xs text-dark-textMuted">{{ getShortName(team1Data?.name) }}</div>
-                    <div class="font-bold text-lg" :class="matchup.team1Cats > matchup.team2Cats ? 'text-green-400' : matchup.team1Cats < matchup.team2Cats ? 'text-red-400' : 'text-dark-text'">
-                      {{ matchup.team1Cats }}
-                    </div>
-                  </div>
-                  <div class="text-dark-textMuted text-sm">cats</div>
-                  <div class="text-left">
-                    <div class="text-xs text-dark-textMuted">{{ getShortName(team2Data?.name) }}</div>
-                    <div class="font-bold text-lg" :class="matchup.team2Cats > matchup.team1Cats ? 'text-green-400' : matchup.team2Cats < matchup.team1Cats ? 'text-red-400' : 'text-dark-text'">
-                      {{ matchup.team2Cats }}
-                    </div>
-                  </div>
-                  <div class="text-sm w-24 text-right">
-                    <span v-if="matchup.team1Cats > matchup.team2Cats" class="text-cyan-400 font-bold">
-                      {{ getShortName(team1Data?.name) }} +{{ matchup.team1Cats - matchup.team2Cats }}
-                    </span>
-                    <span v-else-if="matchup.team2Cats > matchup.team1Cats" class="text-orange-400 font-bold">
-                      {{ getShortName(team2Data?.name) }} +{{ matchup.team2Cats - matchup.team1Cats }}
-                    </span>
-                    <span v-else class="text-dark-textMuted">Tie</span>
-                  </div>
-                </div>
+          <!-- Recent Matchups Chart (Line Graph - Last 5) -->
+          <div class="card" v-if="rivalryHistory.length > 0">
+            <div class="card-header">
+              <div class="flex items-center gap-2">
+                <span class="text-2xl">📈</span>
+                <h2 class="card-title">Recent Matchups</h2>
               </div>
-              <!-- Category Breakdown (Tied categories shown) -->
-              <div v-if="matchup.tiedCats > 0" class="mt-2 text-xs text-dark-textMuted">
-                {{ matchup.tiedCats }} tied categories
+              <p class="card-subtitle mt-2">Categories won in last {{ Math.min(rivalryHistory.length, 5) }} head-to-head meetings</p>
+            </div>
+            <div class="card-body">
+              <div ref="chartContainer" class="w-full" style="height: 350px;"></div>
+            </div>
+          </div>
+
+          <!-- Rivalry History (All-Time) -->
+          <div class="card" v-if="rivalryHistory.length > 0">
+            <div class="card-header">
+              <div class="flex items-center gap-2">
+                <span class="text-2xl">📜</span>
+                <h2 class="card-title">Rivalry History</h2>
+              </div>
+              <p class="card-subtitle mt-2">All {{ rivalryHistory.length }} head-to-head matchups across all seasons</p>
+            </div>
+            <div class="card-body">
+              <div class="space-y-3 max-h-96 overflow-y-auto">
+                <div 
+                  v-for="(matchup, idx) in rivalryHistory" 
+                  :key="idx"
+                  class="p-4 bg-dark-border/20 rounded-lg border border-dark-border"
+                >
+                  <div class="flex items-center justify-between">
+                    <div class="flex items-center gap-4">
+                      <div class="text-sm">
+                        <span class="font-semibold text-dark-text">{{ matchup.season }} Week {{ matchup.week }}</span>
+                        <span v-if="matchup.isPlayoff" class="ml-2 px-2 py-0.5 bg-primary/20 text-primary text-xs rounded">
+                          Playoff
+                        </span>
+                      </div>
+                    </div>
+                    <div class="flex items-center gap-6">
+                      <div class="text-right">
+                        <div class="text-xs text-dark-textMuted">{{ getShortName(team1Data?.name) }}</div>
+                        <div class="font-bold text-lg" :class="matchup.team1Cats > matchup.team2Cats ? 'text-green-400' : matchup.team1Cats < matchup.team2Cats ? 'text-red-400' : 'text-dark-text'">
+                          {{ matchup.team1Cats }}
+                        </div>
+                      </div>
+                      <div class="text-dark-textMuted text-sm">cats</div>
+                      <div class="text-left">
+                        <div class="text-xs text-dark-textMuted">{{ getShortName(team2Data?.name) }}</div>
+                        <div class="font-bold text-lg" :class="matchup.team2Cats > matchup.team1Cats ? 'text-green-400' : matchup.team2Cats < matchup.team1Cats ? 'text-red-400' : 'text-dark-text'">
+                          {{ matchup.team2Cats }}
+                        </div>
+                      </div>
+                      <div class="text-sm w-24 text-right">
+                        <span v-if="matchup.team1Cats > matchup.team2Cats" class="text-cyan-400 font-bold">
+                          {{ getShortName(team1Data?.name) }} +{{ matchup.team1Cats - matchup.team2Cats }}
+                        </span>
+                        <span v-else-if="matchup.team2Cats > matchup.team1Cats" class="text-orange-400 font-bold">
+                          {{ getShortName(team2Data?.name) }} +{{ matchup.team2Cats - matchup.team1Cats }}
+                        </span>
+                        <span v-else class="text-dark-textMuted">Tie</span>
+                      </div>
+                    </div>
+                  </div>
+                  <!-- Category Breakdown (Tied categories shown) -->
+                  <div v-if="matchup.tiedCats > 0" class="mt-2 text-xs text-dark-textMuted">
+                    {{ matchup.tiedCats }} tied categories
+                  </div>
+                </div>
               </div>
             </div>
           </div>
-        </div>
-      </div>
 
-      <!-- No H2H matchups found -->
-      <div v-if="rivalryHistory.length === 0" class="card">
-        <div class="card-body text-center py-8">
-          <p class="text-dark-textMuted">No head-to-head matchups found between these teams this season</p>
-        </div>
-      </div>
+          <!-- No H2H matchups found -->
+          <div v-if="rivalryHistory.length === 0" class="card">
+            <div class="card-body text-center py-8">
+              <p class="text-dark-textMuted">No head-to-head matchups found between these teams</p>
+            </div>
+          </div>
         </div><!-- End blur wrapper -->
         
         <!-- Upgrade Overlay for Free Users -->
@@ -326,14 +326,27 @@ const { hasLeagueAccess } = useFeatureAccess()
 
 const defaultAvatar = 'https://s.yimg.com/cv/apiv2/default/mlb/mlb_1_y.png'
 
+// Baseball game keys by year
+const GAME_KEYS: Record<string, string> = {
+  '2025': '458', '2024': '431', '2023': '422', '2022': '412',
+  '2021': '404', '2020': '398', '2019': '388', '2018': '378',
+  '2017': '370', '2016': '357', '2015': '346', '2014': '328',
+  '2013': '308', '2012': '283', '2011': '268', '2010': '253'
+}
+
 // State
 const isLoading = ref(false)
 const isInitialLoading = ref(true)
+const loadingMessage = ref('Initializing...')
 const team1Key = ref('')
 const team2Key = ref('')
-const allTeams = ref<any[]>([])
-const allMatchups = ref<any[]>([]) // Flat array of matchups (like points view)
-const numCategories = ref(10) // Default, will be updated from league settings
+const allTeams = ref<any[]>([]) // Current season teams for dropdown
+const numCategories = ref(10)
+const seasonsLoaded = ref(0)
+
+// Historical data storage
+const historicalData = ref<Record<string, { standings: any[], matchups: any[] }>>({})
+const teamIdMapping = ref<Record<string, { name: string, logo_url: string, team_keys: string[] }>>({}) // Maps team_id to all their team_keys across seasons
 
 const team1Data = ref<any>(null)
 const team2Data = ref<any>(null)
@@ -342,6 +355,12 @@ const rivalryHistory = ref<any[]>([])
 
 const chartContainer = ref<HTMLElement | null>(null)
 let chartInstance: ApexCharts | null = null
+
+// Helper to extract team_id from team_key (e.g., "431.l.12345.t.3" -> "3")
+function getTeamId(teamKey: string): string {
+  const parts = teamKey.split('.t.')
+  return parts[1] || teamKey
+}
 
 // Computed
 const availableTeams1 = computed(() => {
@@ -366,9 +385,10 @@ function getShortName(name: string | undefined): string {
   return name.substring(0, 10)
 }
 
-async function loadInitialData() {
-  console.log('=== CATEGORY COMPARE: loadInitialData START ===')
+async function loadHistoricalData() {
+  console.log('=== CATEGORY COMPARE: loadHistoricalData START ===')
   isInitialLoading.value = true
+  loadingMessage.value = 'Initializing...'
   
   try {
     const leagueKey = leagueStore.activeLeagueId
@@ -379,29 +399,9 @@ async function loadInitialData() {
       return
     }
     
-    // Load teams from API with full data
-    console.log('Fetching standings from API...')
-    const standings = await yahooService.getStandings(leagueKey)
-    console.log('Raw standings:', standings)
-    
-    if (standings && standings.length > 0) {
-      allTeams.value = standings.map((team: any) => ({
-        team_key: team.team_key,
-        name: team.name,
-        logo_url: team.logo_url,
-        wins: parseInt(team.wins) || 0,
-        losses: parseInt(team.losses) || 0,
-        ties: parseInt(team.ties) || 0,
-        rank: parseInt(team.rank) || 0,
-        playoff_seed: team.playoff_seed,
-        clinched_playoffs: team.clinched_playoffs
-      }))
-      console.log('Loaded', allTeams.value.length, 'teams:', allTeams.value.map(t => t.name))
-    } else {
-      console.error('No standings data from API')
-      isInitialLoading.value = false
-      return
-    }
+    // Extract league ID from current league key (e.g., "431.l.12345" -> "12345")
+    const leagueId = leagueKey.split('.l.')[1]
+    loadingMessage.value = `Loading league ${leagueId} history...`
     
     // Load league settings to get number of categories
     try {
@@ -414,32 +414,121 @@ async function loadInitialData() {
       console.log('Could not load league settings, using default 10 categories')
     }
     
-    // Get current week from league info
-    const yahooLeagues = leagueStore.yahooLeagues || []
-    const leagueInfo = yahooLeagues.find((l: any) => l.league_key === leagueKey)
-    const currentWeek = leagueInfo?.current_week || 25
-    console.log('Current week:', currentWeek)
+    // Load ALL historical seasons
+    const data: Record<string, any> = {}
+    const years = Object.keys(GAME_KEYS).sort((a, b) => parseInt(b) - parseInt(a))
     
-    // Load all matchups week by week (like points view does)
-    console.log('Loading matchups for weeks 1-' + currentWeek)
-    const matchupsList: any[] = []
+    console.log('=== Starting Historical Data Load ===')
+    console.log('League ID:', leagueId)
+    let successCount = 0
+    let failCount = 0
     
-    for (let week = 1; week <= currentWeek; week++) {
+    for (const year of years) {
+      const yearGameKey = GAME_KEYS[year]
+      const yearLeagueKey = `${yearGameKey}.l.${leagueId}`
+      
+      loadingMessage.value = `Loading ${year} season... (${successCount} found)`
+      console.log(`Attempting to load ${year} with key: ${yearLeagueKey}`)
+      
       try {
-        // Use getCategoryMatchups to get stat_winners data
-        const weekMatchups = await yahooService.getCategoryMatchups(leagueKey, week)
-        if (weekMatchups && weekMatchups.length > 0) {
-          matchupsList.push(...weekMatchups)
-          console.log(`Week ${week}: ${weekMatchups.length} matchups`)
+        const standings = await yahooService.getStandings(yearLeagueKey)
+        
+        if (standings && standings.length > 0) {
+          console.log(`✓ Loaded ${year} season: ${standings.length} teams`)
+          successCount++
+          
+          // Determine champion (rank 1)
+          const champion = standings.find((t: any) => t.rank === 1)
+          if (champion) champion.is_champion = true
+          
+          // Mark teams that made playoffs
+          for (const team of standings) {
+            team.made_playoffs = team.playoff_seed !== null && team.playoff_seed !== undefined && team.playoff_seed !== ''
+          }
+          
+          data[year] = { standings, matchups: [] }
+          
+          // Build team ID mapping
+          for (const team of standings) {
+            const teamId = getTeamId(team.team_key)
+            if (!teamIdMapping.value[teamId]) {
+              teamIdMapping.value[teamId] = {
+                name: team.name,
+                logo_url: team.logo_url,
+                team_keys: []
+              }
+            }
+            teamIdMapping.value[teamId].team_keys.push(team.team_key)
+            // Update name/logo to most recent
+            if (team.logo_url) teamIdMapping.value[teamId].logo_url = team.logo_url
+            teamIdMapping.value[teamId].name = team.name
+          }
+          
+          // Store current season teams for dropdown (most recent loaded)
+          if (Object.keys(data).length === 1) {
+            allTeams.value = standings.map((team: any) => ({
+              team_key: team.team_key,
+              name: team.name,
+              logo_url: team.logo_url,
+              team_id: getTeamId(team.team_key)
+            }))
+          }
+          
+          // Load matchups for this season
+          try {
+            loadingMessage.value = `Loading ${year} matchups...`
+            const allMatchups: any[] = []
+            const totalWeeks = 25
+            let consecutiveFailures = 0
+            
+            for (let week = 1; week <= totalWeeks; week++) {
+              try {
+                const weekMatchups = await yahooService.getCategoryMatchups(yearLeagueKey, week)
+                if (weekMatchups && weekMatchups.length > 0) {
+                  // Add season info to each matchup
+                  for (const m of weekMatchups) {
+                    m.season = year
+                  }
+                  allMatchups.push(...weekMatchups)
+                  consecutiveFailures = 0
+                } else {
+                  consecutiveFailures++
+                }
+              } catch (weekError) {
+                consecutiveFailures++
+              }
+              
+              if (consecutiveFailures >= 3 && allMatchups.length > 0) {
+                console.log(`Stopping at week ${week} for ${year}`)
+                break
+              }
+            }
+            
+            console.log(`Loaded ${allMatchups.length} matchups for ${year}`)
+            if (allMatchups.length > 0) {
+              data[year].matchups = allMatchups
+            }
+          } catch (e) {
+            console.log(`Could not load matchups for ${year}:`, e)
+          }
+          
+          // Small delay to avoid rate limiting
+          await new Promise(resolve => setTimeout(resolve, 100))
+        } else {
+          console.log(`✗ ${year} - No standings data`)
+          failCount++
         }
-      } catch (e) {
-        // Week may not have data
-        console.log(`Week ${week}: no data`)
+      } catch (e: any) {
+        console.log(`✗ Could not load ${year}:`, e?.message || e)
+        failCount++
       }
     }
     
-    allMatchups.value = matchupsList
-    console.log('Total matchups loaded:', allMatchups.value.length)
+    console.log('=== Historical Data Load Complete ===')
+    console.log(`Loaded ${successCount} seasons`)
+    
+    historicalData.value = data
+    seasonsLoaded.value = successCount
     
     // Auto-select first two teams
     if (allTeams.value.length >= 2) {
@@ -447,10 +536,11 @@ async function loadInitialData() {
       team2Key.value = allTeams.value[1].team_key
     }
     
-    console.log('=== CATEGORY COMPARE: loadInitialData COMPLETE ===')
+    loadingMessage.value = 'Done!'
     
   } catch (e) {
-    console.error('Error loading initial data:', e)
+    console.error('Error loading historical data:', e)
+    loadingMessage.value = 'Error loading data'
   } finally {
     isInitialLoading.value = false
   }
@@ -474,127 +564,179 @@ async function loadComparison() {
   isLoading.value = true
   
   try {
-    // Find team data
-    const t1 = allTeams.value.find(t => t.team_key === team1Key.value)
-    const t2 = allTeams.value.find(t => t.team_key === team2Key.value)
+    // Get team IDs for cross-season matching
+    const team1Id = getTeamId(team1Key.value)
+    const team2Id = getTeamId(team2Key.value)
     
-    if (!t1 || !t2) {
-      console.error('Could not find team data')
-      isLoading.value = false
-      return
+    console.log('Team1 ID:', team1Id, 'Team2 ID:', team2Id)
+    
+    // Get all team_keys for each team across seasons
+    const team1Keys = teamIdMapping.value[team1Id]?.team_keys || [team1Key.value]
+    const team2Keys = teamIdMapping.value[team2Id]?.team_keys || [team2Key.value]
+    
+    console.log('Team1 keys across seasons:', team1Keys)
+    console.log('Team2 keys across seasons:', team2Keys)
+    
+    // Find current season team data for display
+    const t1Current = allTeams.value.find(t => t.team_key === team1Key.value)
+    const t2Current = allTeams.value.find(t => t.team_key === team2Key.value)
+    
+    team1Data.value = {
+      name: teamIdMapping.value[team1Id]?.name || t1Current?.name || 'Team 1',
+      logo_url: teamIdMapping.value[team1Id]?.logo_url || t1Current?.logo_url || defaultAvatar
+    }
+    team2Data.value = {
+      name: teamIdMapping.value[team2Id]?.name || t2Current?.name || 'Team 2',
+      logo_url: teamIdMapping.value[team2Id]?.logo_url || t2Current?.logo_url || defaultAvatar
     }
     
-    team1Data.value = t1
-    team2Data.value = t2
-    
-    console.log('Team1:', t1.name, 'rank:', t1.rank, 'playoff_seed:', t1.playoff_seed)
-    console.log('Team2:', t2.name, 'rank:', t2.rank, 'playoff_seed:', t2.playoff_seed)
-    
-    // Calculate season stats
-    const team1TotalGames = (t1.wins || 0) + (t1.losses || 0) + (t1.ties || 0)
-    const team2TotalGames = (t2.wins || 0) + (t2.losses || 0) + (t2.ties || 0)
-    
-    // Weeks played = total category results / categories per week
-    const team1WeeksPlayed = team1TotalGames > 0 ? Math.ceil(team1TotalGames / numCategories.value) : 1
-    const team2WeeksPlayed = team2TotalGames > 0 ? Math.ceil(team2TotalGames / numCategories.value) : 1
-    
-    // Championship = rank 1 (final standings)
-    const t1Champ = t1.rank === 1 ? 1 : 0
-    const t2Champ = t2.rank === 1 ? 1 : 0
-    
-    // Playoff appearance = has playoff_seed
-    const t1MadePlayoffs = t1.playoff_seed !== null && t1.playoff_seed !== undefined && t1.playoff_seed !== ''
-    const t2MadePlayoffs = t2.playoff_seed !== null && t2.playoff_seed !== undefined && t2.playoff_seed !== ''
-    
-    console.log('t1Champ:', t1Champ, 't1MadePlayoffs:', t1MadePlayoffs)
-    console.log('t2Champ:', t2Champ, 't2MadePlayoffs:', t2MadePlayoffs)
-    
-    const team1Stats = {
-      wins: t1.wins || 0,
-      losses: t1.losses || 0,
-      ties: t1.ties || 0,
-      winPct: team1TotalGames > 0 ? ((t1.wins || 0) / team1TotalGames) * 100 : 0,
-      avgCatPerWeek: team1WeeksPlayed > 0 ? (t1.wins || 0) / team1WeeksPlayed : 0,
-      totalCategories: t1.wins || 0,
-      championships: t1Champ,
-      playoffAppearances: t1MadePlayoffs ? 1 : 0
+    // Aggregate stats across all seasons
+    let team1Stats = {
+      wins: 0,
+      losses: 0,
+      ties: 0,
+      totalCatWins: 0,
+      totalWeeks: 0,
+      championships: 0,
+      playoffAppearances: 0,
+      winPct: 0,
+      avgCatPerWeek: 0
     }
     
-    const team2Stats = {
-      wins: t2.wins || 0,
-      losses: t2.losses || 0,
-      ties: t2.ties || 0,
-      winPct: team2TotalGames > 0 ? ((t2.wins || 0) / team2TotalGames) * 100 : 0,
-      avgCatPerWeek: team2WeeksPlayed > 0 ? (t2.wins || 0) / team2WeeksPlayed : 0,
-      totalCategories: t2.wins || 0,
-      championships: t2Champ,
-      playoffAppearances: t2MadePlayoffs ? 1 : 0
+    let team2Stats = {
+      wins: 0,
+      losses: 0,
+      ties: 0,
+      totalCatWins: 0,
+      totalWeeks: 0,
+      championships: 0,
+      playoffAppearances: 0,
+      winPct: 0,
+      avgCatPerWeek: 0
     }
     
-    console.log('team1Stats:', team1Stats)
-    console.log('team2Stats:', team2Stats)
-    
-    // Find head-to-head matchups using stat_winners
-    const h2hMatchups: any[] = []
-    
-    console.log('Searching through', allMatchups.value.length, 'matchups for H2H')
-    
-    for (const matchup of allMatchups.value) {
-      const teams = matchup.teams || []
-      const t1Match = teams.find((t: any) => t.team_key === team1Key.value)
-      const t2Match = teams.find((t: any) => t.team_key === team2Key.value)
+    // Process each season
+    for (const [season, seasonData] of Object.entries(historicalData.value)) {
+      const standings = seasonData.standings || []
       
-      if (t1Match && t2Match) {
-        // Count category wins from stat_winners
-        let team1CatsWon = 0
-        let team2CatsWon = 0
-        let tiedCats = 0
-        
-        const statWinners = matchup.stat_winners || []
-        console.log(`Week ${matchup.week}: Found H2H matchup with ${statWinners.length} stat winners`)
-        
-        for (const sw of statWinners) {
-          if (sw.is_tied) {
-            tiedCats++
-          } else if (sw.winner_team_key === team1Key.value) {
-            team1CatsWon++
-          } else if (sw.winner_team_key === team2Key.value) {
-            team2CatsWon++
-          }
-        }
-        
-        console.log(`Week ${matchup.week}: ${t1Match.name} ${team1CatsWon} - ${team2CatsWon} ${t2Match.name} (${tiedCats} tied)`)
-        
-        h2hMatchups.push({
-          week: matchup.week,
-          team1Cats: team1CatsWon,
-          team2Cats: team2CatsWon,
-          tiedCats: tiedCats,
-          margin: Math.abs(team1CatsWon - team2CatsWon),
-          isPlayoff: matchup.is_playoffs
-        })
+      // Find team 1 in this season
+      const t1 = standings.find((t: any) => team1Keys.includes(t.team_key))
+      if (t1) {
+        team1Stats.wins += t1.wins || 0
+        team1Stats.losses += t1.losses || 0
+        team1Stats.ties += t1.ties || 0
+        if (t1.is_champion) team1Stats.championships++
+        if (t1.made_playoffs) team1Stats.playoffAppearances++
+      }
+      
+      // Find team 2 in this season
+      const t2 = standings.find((t: any) => team2Keys.includes(t.team_key))
+      if (t2) {
+        team2Stats.wins += t2.wins || 0
+        team2Stats.losses += t2.losses || 0
+        team2Stats.ties += t2.ties || 0
+        if (t2.is_champion) team2Stats.championships++
+        if (t2.made_playoffs) team2Stats.playoffAppearances++
       }
     }
     
-    console.log('Found', h2hMatchups.length, 'H2H matchups')
+    // Calculate win percentages and averages
+    const team1TotalGames = team1Stats.wins + team1Stats.losses + team1Stats.ties
+    const team2TotalGames = team2Stats.wins + team2Stats.losses + team2Stats.ties
+    
+    team1Stats.winPct = team1TotalGames > 0 ? (team1Stats.wins / team1TotalGames) * 100 : 0
+    team2Stats.winPct = team2TotalGames > 0 ? (team2Stats.wins / team2TotalGames) * 100 : 0
+    
+    // Calculate average categories per week from matchup data
+    let team1WeeksPlayed = 0
+    let team2WeeksPlayed = 0
+    let team1TotalCats = 0
+    let team2TotalCats = 0
+    
+    for (const [season, seasonData] of Object.entries(historicalData.value)) {
+      const matchups = seasonData.matchups || []
+      
+      for (const matchup of matchups) {
+        const teams = matchup.teams || []
+        const statWinners = matchup.stat_winners || []
+        
+        // Check if team1 was in this matchup
+        const t1Match = teams.find((t: any) => team1Keys.includes(t.team_key))
+        if (t1Match) {
+          team1WeeksPlayed++
+          const catsWon = statWinners.filter((w: any) => !w.is_tied && team1Keys.includes(w.winner_team_key)).length
+          team1TotalCats += catsWon
+        }
+        
+        // Check if team2 was in this matchup
+        const t2Match = teams.find((t: any) => team2Keys.includes(t.team_key))
+        if (t2Match) {
+          team2WeeksPlayed++
+          const catsWon = statWinners.filter((w: any) => !w.is_tied && team2Keys.includes(w.winner_team_key)).length
+          team2TotalCats += catsWon
+        }
+      }
+    }
+    
+    team1Stats.avgCatPerWeek = team1WeeksPlayed > 0 ? team1TotalCats / team1WeeksPlayed : 0
+    team2Stats.avgCatPerWeek = team2WeeksPlayed > 0 ? team2TotalCats / team2WeeksPlayed : 0
+    
+    // Find all head-to-head matchups across all seasons
+    const h2hMatchups: any[] = []
+    
+    for (const [season, seasonData] of Object.entries(historicalData.value)) {
+      const matchups = seasonData.matchups || []
+      
+      for (const matchup of matchups) {
+        const teams = matchup.teams || []
+        const t1Match = teams.find((t: any) => team1Keys.includes(t.team_key))
+        const t2Match = teams.find((t: any) => team2Keys.includes(t.team_key))
+        
+        if (t1Match && t2Match) {
+          // This is a head-to-head matchup!
+          const statWinners = matchup.stat_winners || []
+          
+          let team1CatsWon = 0
+          let team2CatsWon = 0
+          let tiedCats = 0
+          
+          for (const sw of statWinners) {
+            if (sw.is_tied) {
+              tiedCats++
+            } else if (team1Keys.includes(sw.winner_team_key)) {
+              team1CatsWon++
+            } else if (team2Keys.includes(sw.winner_team_key)) {
+              team2CatsWon++
+            }
+          }
+          
+          h2hMatchups.push({
+            season: season,
+            week: matchup.week,
+            team1Cats: team1CatsWon,
+            team2Cats: team2CatsWon,
+            tiedCats: tiedCats,
+            margin: Math.abs(team1CatsWon - team2CatsWon),
+            isPlayoff: matchup.is_playoffs
+          })
+        }
+      }
+    }
+    
+    console.log('Found', h2hMatchups.length, 'H2H matchups across all seasons')
     
     // Calculate H2H stats
     let team1MatchupWins = 0
     let team2MatchupWins = 0
     let ties = 0
     let totalMargin = 0
-    let team1TotalCats = 0
-    let team2TotalCats = 0
     
     for (const m of h2hMatchups) {
-      // Matchup win = won more categories
       if (m.team1Cats > m.team2Cats) team1MatchupWins++
       else if (m.team2Cats > m.team1Cats) team2MatchupWins++
       else ties++
       
       totalMargin += m.margin
-      team1TotalCats += m.team1Cats
-      team2TotalCats += m.team2Cats
     }
     
     const h2hStats = {
@@ -602,9 +744,7 @@ async function loadComparison() {
       team2Wins: team2MatchupWins,
       ties,
       totalGames: h2hMatchups.length,
-      avgMargin: h2hMatchups.length > 0 ? totalMargin / h2hMatchups.length : 0,
-      team1TotalCats,
-      team2TotalCats
+      avgMargin: h2hMatchups.length > 0 ? totalMargin / h2hMatchups.length : 0
     }
     
     console.log('h2hStats:', h2hStats)
@@ -616,8 +756,11 @@ async function loadComparison() {
       h2h: h2hStats
     }
     
-    // Store rivalry history (sorted by week descending for display)
-    rivalryHistory.value = h2hMatchups.sort((a, b) => b.week - a.week)
+    // Store rivalry history (sorted by season desc, then week desc)
+    rivalryHistory.value = h2hMatchups.sort((a, b) => {
+      if (a.season !== b.season) return parseInt(b.season) - parseInt(a.season)
+      return b.week - a.week
+    })
     
     // Render chart after DOM updates
     await nextTick()
@@ -645,25 +788,32 @@ function renderChart() {
     chartInstance = null
   }
   
-  // Sort by week ascending for chart (chronological order)
-  const recentMatchups = [...rivalryHistory.value].sort((a, b) => a.week - b.week).slice(-10)
+  // Get last 5 matchups in chronological order (oldest to newest)
+  const recentMatchups = [...rivalryHistory.value]
+    .sort((a, b) => {
+      if (a.season !== b.season) return parseInt(a.season) - parseInt(b.season)
+      return a.week - b.week
+    })
+    .slice(-5)
   
-  console.log('Chart data:', recentMatchups.map(m => ({ week: m.week, t1: m.team1Cats, t2: m.team2Cats })))
+  console.log('Chart data (last 5):', recentMatchups.map(m => ({ season: m.season, week: m.week, t1: m.team1Cats, t2: m.team2Cats })))
   
   const options = {
     chart: {
-      type: 'bar' as const,
+      type: 'line' as const,
       height: 350,
       background: 'transparent',
       toolbar: { show: false },
       animations: { enabled: true }
     },
-    plotOptions: {
-      bar: {
-        horizontal: false,
-        columnWidth: '60%',
-        borderRadius: 4
-      }
+    stroke: {
+      curve: 'smooth' as const,
+      width: 3
+    },
+    markers: {
+      size: 6,
+      strokeWidth: 2,
+      hover: { size: 8 }
     },
     series: [
       { 
@@ -677,15 +827,15 @@ function renderChart() {
     ],
     colors: ['#06b6d4', '#f97316'],
     dataLabels: {
-      enabled: false
-    },
-    stroke: {
-      show: true,
-      width: 2,
-      colors: ['transparent']
+      enabled: true,
+      background: {
+        enabled: true,
+        borderRadius: 2,
+        padding: 4
+      }
     },
     xaxis: {
-      categories: recentMatchups.map(m => `W${m.week}`),
+      categories: recentMatchups.map(m => `${m.season} W${m.week}`),
       labels: { style: { colors: '#94a3b8' } }
     },
     yaxis: { 
@@ -706,15 +856,12 @@ function renderChart() {
     tooltip: { 
       theme: 'dark',
       y: { formatter: (val: number) => val + ' categories' }
-    },
-    fill: {
-      opacity: 1
     }
   }
   
   chartInstance = new ApexCharts(chartContainer.value, options)
   chartInstance.render()
-  console.log('Chart rendered')
+  console.log('Line chart rendered')
 }
 
 // Watch for team selection changes - auto-compare when both selected
@@ -728,20 +875,23 @@ watch([team1Key, team2Key], ([t1, t2]) => {
 watch(() => leagueStore.activeLeagueId, async (newId, oldId) => {
   if (newId && newId !== oldId && leagueStore.activePlatform === 'yahoo') {
     console.log('League changed from', oldId, 'to', newId)
+    // Reset everything
     team1Key.value = ''
     team2Key.value = ''
     comparisonData.value = null
     rivalryHistory.value = []
     allTeams.value = []
-    allMatchups.value = []
-    await loadInitialData()
+    historicalData.value = {}
+    teamIdMapping.value = {}
+    seasonsLoaded.value = 0
+    await loadHistoricalData()
   }
 }, { immediate: false })
 
 onMounted(async () => {
   console.log('Category Compare page mounted')
   if (leagueStore.activeLeagueId && leagueStore.activePlatform === 'yahoo') {
-    await loadInitialData()
+    await loadHistoricalData()
   }
 })
 </script>
