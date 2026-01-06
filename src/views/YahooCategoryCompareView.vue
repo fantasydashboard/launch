@@ -46,7 +46,7 @@
             <select v-model="team1Key" class="select w-full" :disabled="isInitialLoading">
               <option value="">Select Team...</option>
               <option v-for="team in availableTeams1" :key="team.team_id" :value="team.team_key">
-                {{ team.name }}{{ !currentSeasonTeamIds.includes(team.team_id) ? ' (former)' : '' }}
+                {{ team.name }} ({{ team.seasons }} yr{{ team.seasons !== 1 ? 's' : '' }}){{ !currentSeasonTeamIds.includes(team.team_id) ? ' - former' : '' }}
               </option>
             </select>
           </div>
@@ -57,11 +57,15 @@
             <select v-model="team2Key" class="select w-full" :disabled="isInitialLoading">
               <option value="">Select Team...</option>
               <option v-for="team in availableTeams2" :key="team.team_id" :value="team.team_key">
-                {{ team.name }}{{ !currentSeasonTeamIds.includes(team.team_id) ? ' (former)' : '' }}
+                {{ team.name }} ({{ team.seasons }} yr{{ team.seasons !== 1 ? 's' : '' }}){{ !currentSeasonTeamIds.includes(team.team_id) ? ' - former' : '' }}
               </option>
             </select>
           </div>
         </div>
+        <p class="text-xs text-dark-textMuted mt-3">
+          {{ availableTeams1.length }} teams available
+          <span v-if="!showCurrentMembersOnly"> (including {{ allTeams.length - currentSeasonTeamIds.length }} former members)</span>
+        </p>
       </div>
     </div>
 
@@ -551,24 +555,37 @@ async function loadHistoricalData() {
     
     console.log('=== Historical Data Load Complete ===')
     console.log(`Loaded ${successCount} seasons`)
+    console.log('Seasons loaded:', Object.keys(data).sort((a, b) => parseInt(b) - parseInt(a)))
     
     historicalData.value = data
     seasonsLoaded.value = successCount
     
     // Build allTeams from teamIdMapping - all unique teams across all seasons
-    // Use the most recent team_key for each team (first one in the sorted list since we go newest to oldest)
-    allTeams.value = Object.entries(teamIdMapping.value).map(([teamId, info]) => ({
-      team_id: teamId,
-      team_key: info.team_keys[0], // Most recent team_key
-      name: info.name,
-      logo_url: info.logo_url
-    })).sort((a, b) => a.name.localeCompare(b.name))
+    // Use the most recent team_key for each team (first one in the list since we go newest to oldest)
+    allTeams.value = Object.entries(teamIdMapping.value).map(([teamId, info]) => {
+      // Count how many seasons this team participated
+      const seasonsParticipated = info.team_keys.length
+      return {
+        team_id: teamId,
+        team_key: info.team_keys[0], // Most recent team_key
+        name: info.name,
+        logo_url: info.logo_url,
+        seasons: seasonsParticipated
+      }
+    }).sort((a, b) => a.name.localeCompare(b.name))
     
-    console.log('All teams (across all seasons):', allTeams.value.length)
-    console.log('Current season teams:', currentSeasonTeamIds.value.length)
+    console.log('=== Team Mapping Debug ===')
+    console.log('Total unique teams across all seasons:', allTeams.value.length)
+    console.log('Current season (most recent) team IDs:', currentSeasonTeamIds.value)
+    console.log('All teams:', allTeams.value.map(t => `${t.name} (ID: ${t.team_id}, ${t.seasons} seasons)`))
+    
+    // Log which teams are former vs current
+    const formerTeams = allTeams.value.filter(t => !currentSeasonTeamIds.value.includes(t.team_id))
+    const currentTeams = allTeams.value.filter(t => currentSeasonTeamIds.value.includes(t.team_id))
+    console.log('Current members:', currentTeams.map(t => t.name))
+    console.log('Former members:', formerTeams.map(t => t.name))
     
     // Auto-select first two current-season teams
-    const currentTeams = allTeams.value.filter(t => currentSeasonTeamIds.value.includes(t.team_id))
     if (currentTeams.length >= 2) {
       team1Key.value = currentTeams[0].team_key
       team2Key.value = currentTeams[1].team_key
