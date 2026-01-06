@@ -1562,7 +1562,7 @@
               <!-- Lineup Slots -->
               <div class="divide-y divide-dark-border/30">
                 <div 
-                  v-for="(slot, idx) in suggestedLineup" 
+                  v-for="(slot, idx) in gatedSuggestedLineup" 
                   :key="idx"
                   class="flex items-center gap-2 px-3 py-2 hover:bg-dark-border/10 transition-colors"
                 >
@@ -1596,13 +1596,38 @@
                     <div class="text-xs text-dark-textMuted italic">Empty</div>
                   </div>
                 </div>
+                
+                <!-- Gated lineup slots overlay -->
+                <div v-if="hiddenLineupSlotsCount > 0" class="relative">
+                  <div class="blur-sm select-none pointer-events-none opacity-50">
+                    <div v-for="i in Math.min(hiddenLineupSlotsCount, 4)" :key="'lineup-preview-' + i" class="flex items-center gap-2 px-3 py-2 border-b border-dark-border/20">
+                      <div class="w-10 h-5 bg-dark-border/50 rounded"></div>
+                      <div class="w-8 h-8 rounded-full bg-dark-border/50"></div>
+                      <div class="flex-1 h-3 bg-dark-border/50 rounded"></div>
+                      <div class="h-4 w-8 bg-dark-border/40 rounded"></div>
+                    </div>
+                  </div>
+                  <div class="absolute inset-0 flex items-center justify-center bg-gradient-to-t from-dark-bg via-dark-bg/90 to-transparent">
+                    <div class="text-center p-3">
+                      <div class="text-2xl mb-1">🔒</div>
+                      <h3 class="text-xs font-bold text-dark-text mb-1">{{ hiddenLineupSlotsCount }} More Slots</h3>
+                      <button 
+                        @click="$router.push('/pricing')"
+                        class="px-3 py-1 bg-gradient-to-r from-yellow-500 to-orange-500 text-gray-900 font-bold rounded text-[10px] transition-all transform hover:scale-105"
+                      >
+                        Go Ultimate
+                      </button>
+                    </div>
+                  </div>
+                </div>
               </div>
               
               <!-- Total -->
               <div class="px-3 py-3 bg-dark-border/20 border-t border-dark-border/30">
                 <div class="flex items-center justify-between">
                   <span class="text-dark-textMuted text-sm">Projected Total</span>
-                  <span class="text-xl font-bold text-primary">{{ suggestedLineupTotal.toFixed(1) }}</span>
+                  <span v-if="hasPremiumAccess" class="text-xl font-bold text-primary">{{ suggestedLineupTotal.toFixed(1) }}</span>
+                  <span v-else class="text-sm text-dark-textMuted">🔒 Unlock</span>
                 </div>
               </div>
             </div>
@@ -2049,7 +2074,7 @@ const activeTab = ref<'ros' | 'teams' | 'week'>('ros')
 const redraftTabOptions = [
   { id: 'ros', name: 'Rest of Season', icon: '📈' },
   { id: 'teams', name: 'Teams', icon: '👥' },
-  { id: 'week', name: 'This Week', icon: '📅' }
+  { id: 'week', name: 'Start/Sit', icon: '📅' }
 ]
 const dynastyTabOptions = [
   { id: 'ros', name: 'Dynasty Values', icon: '📊' },
@@ -4950,6 +4975,17 @@ const suggestedLineupTotal = computed(() => {
     }
     return sum
   }, 0)
+})
+
+// Gated suggested lineup - show top 2 positions for non-premium users
+const gatedSuggestedLineup = computed(() => {
+  if (hasPremiumAccess.value) return suggestedLineup.value
+  return suggestedLineup.value.slice(0, 2)
+})
+
+const hiddenLineupSlotsCount = computed(() => {
+  if (hasPremiumAccess.value) return 0
+  return Math.max(0, suggestedLineup.value.length - 2)
 })
 
 onMounted(() => {
