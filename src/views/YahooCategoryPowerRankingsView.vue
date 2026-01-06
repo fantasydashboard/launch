@@ -715,10 +715,10 @@ async function downloadRankings() {
     
     const leagueName = leagueInfo.value?.name || 'League'
     
-    // Load baseball logo
+    // Load main UFD logo
     const loadLogo = async (): Promise<string> => {
       try {
-        const response = await fetch('/logos/UFD_Baseball.png')
+        const response = await fetch('/logos/UFD_Logo.png')
         if (!response.ok) return ''
         const blob = await response.blob()
         return new Promise((resolve) => {
@@ -744,7 +744,7 @@ async function downloadRankings() {
         ctx.beginPath()
         ctx.arc(32, 32, 32, 0, Math.PI * 2)
         ctx.fill()
-        ctx.fillStyle = '#3B9FE8'
+        ctx.fillStyle = '#dc2626'
         ctx.font = 'bold 28px sans-serif'
         ctx.textAlign = 'center'
         ctx.textBaseline = 'middle'
@@ -808,7 +808,7 @@ async function downloadRankings() {
       <div style="display: flex; height: 80px; padding: 0 12px; background: rgba(38, 42, 58, 0.4); border-radius: 10px; margin-bottom: 6px; border: 1px solid rgba(58, 61, 82, 0.4); box-sizing: border-box;">
         <!-- Rank Number - much less padding to move it UP -->
         <div style="width: 44px; flex-shrink: 0; padding-top: 8px;">
-          <span style="font-size: 36px; font-weight: 900; color: #3B9FE8; font-family: 'Impact', 'Arial Black', sans-serif; letter-spacing: -2px; line-height: 1;">${rank}</span>
+          <span style="font-size: 36px; font-weight: 900; color: #dc2626; font-family: 'Impact', 'Arial Black', sans-serif; letter-spacing: -2px; line-height: 1;">${rank}</span>
           ${team.change !== 0 ? `
             <span style="font-size: 10px; font-weight: 700; color: ${team.change > 0 ? '#10b981' : '#ef4444'}; margin-left: 2px;">
               ${team.change > 0 ? '▲' : '▼'}${Math.abs(team.change)}
@@ -826,7 +826,7 @@ async function downloadRankings() {
         </div>
         <!-- Power Score with conditional bar - move up -->
         <div style="width: 55px; flex-shrink: 0; text-align: center; padding-top: 14px;">
-          <div style="font-size: 18px; font-weight: bold; color: #3B9FE8; line-height: 1;">${team.powerScore.toFixed(1)}</div>
+          <div style="font-size: 18px; font-weight: bold; color: #dc2626; line-height: 1;">${team.powerScore.toFixed(1)}</div>
           <div style="width: 100%; height: 5px; background: rgba(58, 61, 82, 0.8); border-radius: 3px; overflow: hidden; margin-top: 12px;">
             <div style="width: ${powerPct}%; height: 100%; background: ${barColor}; border-radius: 3px;"></div>
           </div>
@@ -837,22 +837,22 @@ async function downloadRankings() {
     container.innerHTML = `
       <div style="background: linear-gradient(160deg, #0f1219 0%, #0a0c14 50%, #0d1117 100%); border-radius: 16px; box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5); position: relative; overflow: hidden;">
         
-        <!-- Top Blue Bar with site name -->
-        <div style="background: #3B9FE8; padding: 10px 24px 10px 24px; text-align: center; overflow: visible;">
+        <!-- Top Red Bar with site name -->
+        <div style="background: #dc2626; padding: 10px 24px 10px 24px; text-align: center; overflow: visible;">
           <span style="font-size: 16px; font-weight: 700; color: #0a0c14; text-transform: uppercase; letter-spacing: 3px; display: block; margin-top: -17px;">Ultimate Fantasy Dashboard</span>
         </div>
         
         <!-- HEADER - Logo on left with text next to it -->
-        <div style="display: flex; padding: 12px 24px 12px 24px; border-bottom: 1px solid rgba(59, 159, 232, 0.2); position: relative; z-index: 10;">
-          <!-- Baseball Logo -->
+        <div style="display: flex; padding: 12px 24px 12px 24px; border-bottom: 1px solid rgba(220, 38, 38, 0.2); position: relative; z-index: 10;">
+          <!-- Main Logo -->
           ${logoBase64 ? `<img src="${logoBase64}" style="width: 90px; height: 90px; object-fit: contain; flex-shrink: 0; margin-right: 20px; display: block;" />` : ''}
           <!-- Title and League Info - adjusted margin to center with logo -->
           <div style="flex: 1; margin-top: -5px;">
-            <div style="font-size: 42px; font-weight: 900; color: #ffffff; text-transform: uppercase; letter-spacing: 2px; text-shadow: 0 2px 8px rgba(59, 159, 232, 0.4); line-height: 42px; display: block;">Power Rankings</div>
+            <div style="font-size: 42px; font-weight: 900; color: #ffffff; text-transform: uppercase; letter-spacing: 2px; text-shadow: 0 2px 8px rgba(220, 38, 38, 0.4); line-height: 42px; display: block;">Power Rankings</div>
             <div style="font-size: 20px; margin-top: 6px; font-weight: 600; line-height: 20px; display: block;">
               <span style="color: #e5e7eb;">${leagueName}</span>
               <span style="color: #6b7280; margin: 0 8px;">•</span>
-              <span style="color: #3B9FE8; font-weight: 700;">Week ${selectedWeek.value}</span>
+              <span style="color: #dc2626; font-weight: 700;">Week ${selectedWeek.value}</span>
             </div>
           </div>
         </div>
@@ -867,8 +867,8 @@ async function downloadRankings() {
           </div>
           
           <!-- Trend Chart -->
-          <div style="background: rgba(38, 42, 58, 0.3); border-radius: 12px; padding: 16px; margin-bottom: 12px; border: 1px solid rgba(59, 159, 232, 0.2); position: relative; z-index: 1;">
-            <h3 style="color: #3B9FE8; font-size: 18px; margin: 0 0 12px 0; text-align: center; font-weight: 700; text-transform: uppercase; letter-spacing: 1px;">Rankings Trend</h3>
+          <div style="background: rgba(38, 42, 58, 0.3); border-radius: 12px; padding: 16px; margin-bottom: 12px; border: 1px solid rgba(220, 38, 38, 0.2); position: relative; z-index: 1;">
+            <h3 style="color: #dc2626; font-size: 18px; margin: 0 0 12px 0; text-align: center; font-weight: 700; text-transform: uppercase; letter-spacing: 1px;">Rankings Trend</h3>
             <div id="trend-chart-container" style="height: 220px; position: relative;"></div>
           </div>
           
@@ -880,7 +880,7 @@ async function downloadRankings() {
         
         <!-- Footer - negative margin to pull up -->
         <div style="padding: 20px 24px 20px 24px; text-align: center; position: relative; z-index: 1;">
-          <span style="font-size: 24px; font-weight: bold; color: #3B9FE8; letter-spacing: -0.5px; display: block; margin-top: -35px;">ultimatefantasydashboard.com</span>
+          <span style="font-size: 24px; font-weight: bold; color: #dc2626; letter-spacing: -0.5px; display: block; margin-top: -35px;">ultimatefantasydashboard.com</span>
         </div>
       </div>
     `
