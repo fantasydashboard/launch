@@ -13,10 +13,30 @@
     <!-- Team Selector -->
     <div class="card">
       <div class="card-header">
-        <div class="flex items-center gap-2">
-          <span class="text-2xl">⚔️</span>
-          <h2 class="card-title">Select Teams to Compare</h2>
+        <div class="flex items-center justify-between flex-wrap gap-4">
+          <div class="flex items-center gap-2">
+            <span class="text-2xl">⚔️</span>
+            <h2 class="card-title">Select Teams to Compare</h2>
+          </div>
+          <!-- Toggle for current members only -->
+          <label class="flex items-center gap-2 cursor-pointer">
+            <span class="text-sm text-dark-textMuted">Current members only</span>
+            <div class="relative">
+              <input type="checkbox" v-model="showCurrentMembersOnly" class="sr-only">
+              <div :class="[
+                'w-10 h-5 rounded-full transition-colors',
+                showCurrentMembersOnly ? 'bg-primary' : 'bg-dark-border'
+              ]"></div>
+              <div :class="[
+                'absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full transition-transform',
+                showCurrentMembersOnly ? 'translate-x-5' : 'translate-x-0'
+              ]"></div>
+            </div>
+          </label>
         </div>
+        <p v-if="!showCurrentMembersOnly && allTeams.length > currentSeasonTeamIds.length" class="text-xs text-dark-textMuted mt-2">
+          Showing all {{ allTeams.length }} teams from league history ({{ allTeams.length - currentSeasonTeamIds.length }} former members)
+        </p>
       </div>
       <div class="card-body">
         <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -25,8 +45,8 @@
             <label class="block text-sm font-semibold text-dark-text mb-2">Team 1</label>
             <select v-model="team1Key" class="select w-full" :disabled="isInitialLoading">
               <option value="">Select Team...</option>
-              <option v-for="team in availableTeams1" :key="team.team_key" :value="team.team_key">
-                {{ team.name }}
+              <option v-for="team in availableTeams1" :key="team.team_id" :value="team.team_key">
+                {{ team.name }}{{ !currentSeasonTeamIds.includes(team.team_id) ? ' (former)' : '' }}
               </option>
             </select>
           </div>
@@ -36,8 +56,8 @@
             <label class="block text-sm font-semibold text-dark-text mb-2">Team 2</label>
             <select v-model="team2Key" class="select w-full" :disabled="isInitialLoading">
               <option value="">Select Team...</option>
-              <option v-for="team in availableTeams2" :key="team.team_key" :value="team.team_key">
-                {{ team.name }}
+              <option v-for="team in availableTeams2" :key="team.team_id" :value="team.team_key">
+                {{ team.name }}{{ !currentSeasonTeamIds.includes(team.team_id) ? ' (former)' : '' }}
               </option>
             </select>
           </div>
@@ -340,7 +360,9 @@ const isInitialLoading = ref(true)
 const loadingMessage = ref('Initializing...')
 const team1Key = ref('')
 const team2Key = ref('')
-const allTeams = ref<any[]>([]) // Current season teams for dropdown
+const allTeams = ref<any[]>([]) // All teams across all seasons
+const currentSeasonTeamIds = ref<string[]>([]) // Team IDs in current season
+const showCurrentMembersOnly = ref(true) // Toggle for dropdown filter
 const numCategories = ref(10)
 const seasonsLoaded = ref(0)
 
@@ -362,13 +384,21 @@ function getTeamId(teamKey: string): string {
   return parts[1] || teamKey
 }
 
-// Computed
+// Computed - filter teams based on toggle and exclude already-selected team
 const availableTeams1 = computed(() => {
-  return allTeams.value.filter(t => t.team_key !== team2Key.value)
+  let teams = allTeams.value
+  if (showCurrentMembersOnly.value) {
+    teams = teams.filter(t => currentSeasonTeamIds.value.includes(t.team_id))
+  }
+  return teams.filter(t => t.team_id !== getTeamId(team2Key.value))
 })
 
 const availableTeams2 = computed(() => {
-  return allTeams.value.filter(t => t.team_key !== team1Key.value)
+  let teams = allTeams.value
+  if (showCurrentMembersOnly.value) {
+    teams = teams.filter(t => currentSeasonTeamIds.value.includes(t.team_id))
+  }
+  return teams.filter(t => t.team_id !== getTeamId(team1Key.value))
 })
 
 // Methods
@@ -464,14 +494,9 @@ async function loadHistoricalData() {
             teamIdMapping.value[teamId].name = team.name
           }
           
-          // Store current season teams for dropdown (most recent loaded)
+          // Track current season team IDs (first successfully loaded = most recent)
           if (Object.keys(data).length === 1) {
-            allTeams.value = standings.map((team: any) => ({
-              team_key: team.team_key,
-              name: team.name,
-              logo_url: team.logo_url,
-              team_id: getTeamId(team.team_key)
-            }))
+            currentSeasonTeamIds.value = standings.map((team: any) => getTeamId(team.team_key))
           }
           
           // Load matchups for this season
@@ -530,8 +555,24 @@ async function loadHistoricalData() {
     historicalData.value = data
     seasonsLoaded.value = successCount
     
-    // Auto-select first two teams
-    if (allTeams.value.length >= 2) {
+    // Build allTeams from teamIdMapping - all unique teams across all seasons
+    // Use the most recent team_key for each team (first one in the sorted list since we go newest to oldest)
+    allTeams.value = Object.entries(teamIdMapping.value).map(([teamId, info]) => ({
+      team_id: teamId,
+      team_key: info.team_keys[0], // Most recent team_key
+      name: info.name,
+      logo_url: info.logo_url
+    })).sort((a, b) => a.name.localeCompare(b.name))
+    
+    console.log('All teams (across all seasons):', allTeams.value.length)
+    console.log('Current season teams:', currentSeasonTeamIds.value.length)
+    
+    // Auto-select first two current-season teams
+    const currentTeams = allTeams.value.filter(t => currentSeasonTeamIds.value.includes(t.team_id))
+    if (currentTeams.length >= 2) {
+      team1Key.value = currentTeams[0].team_key
+      team2Key.value = currentTeams[1].team_key
+    } else if (allTeams.value.length >= 2) {
       team1Key.value = allTeams.value[0].team_key
       team2Key.value = allTeams.value[1].team_key
     }
@@ -881,6 +922,7 @@ watch(() => leagueStore.activeLeagueId, async (newId, oldId) => {
     comparisonData.value = null
     rivalryHistory.value = []
     allTeams.value = []
+    currentSeasonTeamIds.value = []
     historicalData.value = {}
     teamIdMapping.value = {}
     seasonsLoaded.value = 0
