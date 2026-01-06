@@ -482,25 +482,32 @@ async function loadHistoricalData() {
           
           data[year] = { standings, matchups: [] }
           
-          // Build team ID mapping
+          // Build team mapping by NAME (team_id is NOT consistent across seasons in Yahoo)
           for (const team of standings) {
-            const teamId = getTeamId(team.team_key)
-            if (!teamIdMapping.value[teamId]) {
-              teamIdMapping.value[teamId] = {
-                name: team.name,
+            const teamName = team.name.trim()
+            if (!teamIdMapping.value[teamName]) {
+              teamIdMapping.value[teamName] = {
+                name: teamName,
                 logo_url: team.logo_url,
-                team_keys: []
+                team_keys: [],
+                current_season_key: null // Track if in current season
               }
             }
-            teamIdMapping.value[teamId].team_keys.push(team.team_key)
-            // Update name/logo to most recent
-            if (team.logo_url) teamIdMapping.value[teamId].logo_url = team.logo_url
-            teamIdMapping.value[teamId].name = team.name
+            teamIdMapping.value[teamName].team_keys.push(team.team_key)
+            // Update logo to most recent if available
+            if (team.logo_url) teamIdMapping.value[teamName].logo_url = team.logo_url
           }
           
-          // Track current season team IDs (first successfully loaded = most recent)
+          // Track current season teams (first successfully loaded = most recent)
           if (Object.keys(data).length === 1) {
-            currentSeasonTeamIds.value = standings.map((team: any) => getTeamId(team.team_key))
+            currentSeasonTeamIds.value = standings.map((team: any) => team.name.trim())
+            // Mark current season keys
+            for (const team of standings) {
+              const teamName = team.name.trim()
+              if (teamIdMapping.value[teamName]) {
+                teamIdMapping.value[teamName].current_season_key = team.team_key
+              }
+            }
           }
           
           // Load matchups for this season
@@ -561,12 +568,11 @@ async function loadHistoricalData() {
     seasonsLoaded.value = successCount
     
     // Build allTeams from teamIdMapping - all unique teams across all seasons
-    // Use the most recent team_key for each team (first one in the list since we go newest to oldest)
-    allTeams.value = Object.entries(teamIdMapping.value).map(([teamId, info]) => {
-      // Count how many seasons this team participated
+    // Key is team NAME (since Yahoo team_id changes between seasons)
+    allTeams.value = Object.entries(teamIdMapping.value).map(([teamName, info]) => {
       const seasonsParticipated = info.team_keys.length
       return {
-        team_id: teamId,
+        team_id: teamName, // Use name as ID for consistency
         team_key: info.team_keys[0], // Most recent team_key
         name: info.name,
         logo_url: info.logo_url,
@@ -576,8 +582,8 @@ async function loadHistoricalData() {
     
     console.log('=== Team Mapping Debug ===')
     console.log('Total unique teams across all seasons:', allTeams.value.length)
-    console.log('Current season (most recent) team IDs:', currentSeasonTeamIds.value)
-    console.log('All teams:', allTeams.value.map(t => `${t.name} (ID: ${t.team_id}, ${t.seasons} seasons)`))
+    console.log('Current season teams:', currentSeasonTeamIds.value)
+    console.log('All teams:', allTeams.value.map(t => `${t.name} (${t.seasons} seasons)`))
     
     // Log which teams are former vs current
     const formerTeams = allTeams.value.filter(t => !currentSeasonTeamIds.value.includes(t.team_id))
@@ -622,15 +628,18 @@ async function loadComparison() {
   isLoading.value = true
   
   try {
-    // Get team IDs for cross-season matching
-    const team1Id = getTeamId(team1Key.value)
-    const team2Id = getTeamId(team2Key.value)
+    // Find team names from the selected team_keys
+    const team1Info = allTeams.value.find(t => t.team_key === team1Key.value)
+    const team2Info = allTeams.value.find(t => t.team_key === team2Key.value)
     
-    console.log('Team1 ID:', team1Id, 'Team2 ID:', team2Id)
+    const team1Name = team1Info?.name || ''
+    const team2Name = team2Info?.name || ''
     
-    // Get all team_keys for each team across seasons
-    const team1Keys = teamIdMapping.value[team1Id]?.team_keys || [team1Key.value]
-    const team2Keys = teamIdMapping.value[team2Id]?.team_keys || [team2Key.value]
+    console.log('Team1 Name:', team1Name, 'Team2 Name:', team2Name)
+    
+    // Get all team_keys for each team across seasons (keyed by name now)
+    const team1Keys = teamIdMapping.value[team1Name]?.team_keys || [team1Key.value]
+    const team2Keys = teamIdMapping.value[team2Name]?.team_keys || [team2Key.value]
     
     console.log('Team1 keys across seasons:', team1Keys)
     console.log('Team2 keys across seasons:', team2Keys)
@@ -640,12 +649,12 @@ async function loadComparison() {
     const t2Current = allTeams.value.find(t => t.team_key === team2Key.value)
     
     team1Data.value = {
-      name: teamIdMapping.value[team1Id]?.name || t1Current?.name || 'Team 1',
-      logo_url: teamIdMapping.value[team1Id]?.logo_url || t1Current?.logo_url || defaultAvatar
+      name: team1Name || t1Current?.name || 'Team 1',
+      logo_url: teamIdMapping.value[team1Name]?.logo_url || t1Current?.logo_url || defaultAvatar
     }
     team2Data.value = {
-      name: teamIdMapping.value[team2Id]?.name || t2Current?.name || 'Team 2',
-      logo_url: teamIdMapping.value[team2Id]?.logo_url || t2Current?.logo_url || defaultAvatar
+      name: team2Name || t2Current?.name || 'Team 2',
+      logo_url: teamIdMapping.value[team2Name]?.logo_url || t2Current?.logo_url || defaultAvatar
     }
     
     // Aggregate stats across all seasons
