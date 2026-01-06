@@ -440,12 +440,25 @@ async function loadHistoricalData() {
     // Load league settings to get number of categories
     try {
       const settings = await yahooService.getLeagueSettings(leagueKey)
+      console.log('League settings response:', settings)
+      
       const statCats = settings?.stat_categories || []
-      const scoringCats = statCats.filter((cat: any) => cat.is_only_display_stat !== '1')
-      numCategories.value = scoringCats.length || 10
-      console.log('League has', numCategories.value, 'scoring categories')
+      console.log('All stat categories:', statCats.length, statCats)
+      
+      // Filter to only scoring categories (exclude display-only stats)
+      const scoringCats = statCats.filter((cat: any) => {
+        const isDisplayOnly = cat.is_only_display_stat === '1' || cat.is_only_display_stat === 1
+        return !isDisplayOnly
+      })
+      
+      console.log('Scoring categories:', scoringCats.length, scoringCats.map((c: any) => c.display_name || c.name))
+      
+      if (scoringCats.length > 0) {
+        numCategories.value = scoringCats.length
+      }
+      console.log('League has', numCategories.value, 'scoring categories for chart max')
     } catch (e) {
-      console.log('Could not load league settings, using default 10 categories')
+      console.log('Could not load league settings, using default 10 categories:', e)
     }
     
     // Load ALL historical seasons
@@ -792,6 +805,16 @@ async function loadComparison() {
     
     console.log('Found', h2hMatchups.length, 'H2H matchups across all seasons')
     
+    // Detect category count from matchup data (fallback/verification)
+    if (h2hMatchups.length > 0) {
+      const detectedCategories = h2hMatchups[0].team1Cats + h2hMatchups[0].team2Cats + h2hMatchups[0].tiedCats
+      console.log('Detected categories from matchup data:', detectedCategories)
+      if (detectedCategories > 0 && detectedCategories !== numCategories.value) {
+        console.log(`Updating numCategories from ${numCategories.value} to ${detectedCategories}`)
+        numCategories.value = detectedCategories
+      }
+    }
+    
     // Calculate H2H stats
     let team1MatchupWins = 0
     let team2MatchupWins = 0
@@ -843,7 +866,7 @@ async function loadComparison() {
 }
 
 function renderChart() {
-  console.log('renderChart called, container:', !!chartContainer.value, 'history:', rivalryHistory.value.length)
+  console.log('renderChart called, container:', !!chartContainer.value, 'history:', rivalryHistory.value.length, 'numCategories:', numCategories.value)
   
   if (!chartContainer.value || rivalryHistory.value.length === 0) {
     console.log('Cannot render chart - missing container or no history')
@@ -928,7 +951,7 @@ function renderChart() {
   
   chartInstance = new ApexCharts(chartContainer.value, options)
   chartInstance.render()
-  console.log('Line chart rendered')
+  console.log('Line chart rendered with Y-axis max:', numCategories.value)
 }
 
 // Watch for team selection changes - auto-compare when both selected
