@@ -521,10 +521,11 @@
                     ></div>
                   </div>
                 </div>
-                <div class="w-20 text-right">
-                  <span class="text-sm font-semibold" :class="index === 0 ? leaderModalTextColor : 'text-dark-text'">
+                <div class="w-24 text-right">
+                  <div class="text-sm font-semibold" :class="index === 0 ? leaderModalTextColor : 'text-dark-text'">
                     {{ formatLeaderValue(team.value) }}
-                  </span>
+                  </div>
+                  <div class="text-[10px] text-dark-textMuted">{{ leaderModalUnit }}</div>
                 </div>
               </div>
             </div>
@@ -1117,28 +1118,28 @@ async function downloadLeaderImage() {
       const rowBg = isFirst ? 'rgba(16, 185, 129, 0.1)' : 'rgba(38, 42, 58, 0.4)'
       
       return `
-      <div style="display: flex; height: 60px; padding: 0 12px; background: ${rowBg}; border-radius: 10px; margin-bottom: 6px; border: ${rowBorder}; box-sizing: border-box;">
-        <!-- Rank Number -->
-        <div style="width: 36px; flex-shrink: 0; display: flex; align-items: flex-start; justify-content: center; padding-top: 12px;">
-          <span style="font-size: 22px; font-weight: 900; color: ${rankColor}; font-family: 'Impact', 'Arial Black', sans-serif; letter-spacing: -1px;">${rank}</span>
+      <div style="display: flex; height: 80px; padding: 0 12px; background: ${rowBg}; border-radius: 10px; margin-bottom: 6px; border: ${rowBorder}; box-sizing: border-box;">
+        <!-- Rank Number - padding-top 8px aligns with 48px logo center -->
+        <div style="width: 44px; flex-shrink: 0; padding-top: 8px;">
+          <span style="font-size: 36px; font-weight: 900; color: ${rankColor}; font-family: 'Impact', 'Arial Black', sans-serif; letter-spacing: -2px; line-height: 1;">${rank}</span>
         </div>
-        <!-- Team Logo -->
-        <div style="width: 52px; flex-shrink: 0; display: flex; align-items: flex-start; padding-top: 10px;">
-          <img src="${imageMap.get(team.team_key) || ''}" style="width: 40px; height: 40px; border-radius: 50%; border: 2px solid ${isFirst ? '#10b981' : '#3a3d52'}; background: #262a3a; object-fit: cover;" />
+        <!-- Team Logo - 48px logo, padding-top 16px centers in 80px row -->
+        <div style="width: 60px; flex-shrink: 0; padding-top: 16px;">
+          <img src="${imageMap.get(team.team_key) || ''}" style="width: 48px; height: 48px; border-radius: 50%; border: 2px solid ${isFirst ? '#10b981' : '#3a3d52'}; background: #262a3a; object-fit: cover;" />
         </div>
-        <!-- Team Info and Bar -->
-        <div style="flex: 1; min-width: 0; display: flex; flex-direction: column; justify-content: flex-start; padding-right: 8px; padding-top: 10px;">
-          <div style="display: flex; align-items: center; margin-bottom: 6px;">
-            <span style="font-size: 13px; font-weight: 700; color: #f7f7ff; white-space: nowrap; overflow: visible; line-height: 1;">${team.name}</span>${crownIcon}
+        <!-- Team Info and Bar - padding-top 16px aligns with logo top -->
+        <div style="flex: 1; min-width: 0; padding-top: 16px;">
+          <div style="display: flex; align-items: center;">
+            <span style="font-size: 14px; font-weight: 700; color: #f7f7ff; white-space: nowrap; overflow: visible; line-height: 1.2;">${team.name}</span>${crownIcon}
           </div>
-          <div style="height: 8px; background: #262a3a; border-radius: 4px; overflow: hidden;">
+          <div style="height: 8px; background: #262a3a; border-radius: 4px; overflow: hidden; margin-top: 8px;">
             <div style="height: 100%; width: ${barWidth}%; background: ${barColor}; border-radius: 4px;"></div>
           </div>
         </div>
-        <!-- Value with Unit -->
-        <div style="width: 70px; flex-shrink: 0; display: flex; flex-direction: column; align-items: flex-end; justify-content: flex-start; padding-top: 12px;">
-          <span style="font-size: 16px; font-weight: 700; color: ${valueColor}; line-height: 1;">${formatValueNumber(team.value)}</span>
-          <span style="font-size: 10px; font-weight: 400; color: #9ca3af; margin-top: 2px;">${valueUnit}</span>
+        <!-- Value with Unit - padding-top 14px aligns value with logo center -->
+        <div style="width: 75px; flex-shrink: 0; text-align: right; padding-top: 14px;">
+          <div style="font-size: 18px; font-weight: 700; color: ${valueColor}; line-height: 1;">${formatValueNumber(team.value)}</div>
+          <div style="font-size: 10px; font-weight: 400; color: #9ca3af; margin-top: 4px;">${valueUnit}</div>
         </div>
       </div>
     `}

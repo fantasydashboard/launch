@@ -537,10 +537,11 @@
                     ></div>
                   </div>
                 </div>
-                <div class="w-20 text-right">
-                  <span class="text-sm font-semibold" :class="index === 0 ? leaderModalTextColor : 'text-dark-text'">
+                <div class="w-24 text-right">
+                  <div class="text-sm font-semibold" :class="index === 0 ? leaderModalTextColor : 'text-dark-text'">
                     {{ formatLeaderValue(team.value) }}
-                  </span>
+                  </div>
+                  <div class="text-[10px] text-dark-textMuted">{{ leaderModalUnit }}</div>
                 </div>
               </div>
             </div>
@@ -954,7 +955,7 @@ const leaderModalData = computed(() => {
   let comparison: any[] = []
   let maxValue = 1
   
-  if (leaderModalType.value === 'bestRecord' || leaderModalType.value === 'hottest') {
+  if (leaderModalType.value === 'bestRecord') {
     // Best to worst (highest win % first)
     comparison = [...teams].sort((a, b) => {
       const aWinPct = (a.wins || 0) / Math.max(1, (a.wins || 0) + (a.losses || 0))
@@ -962,14 +963,22 @@ const leaderModalData = computed(() => {
       return bWinPct - aWinPct
     }).map(t => ({ ...t, value: (t.wins || 0) / Math.max(1, (t.wins || 0) + (t.losses || 0)) * 100 }))
     maxValue = 100
-  } else if (leaderModalType.value === 'coldest') {
-    // Worst to best (lowest win % first)
+  } else if (leaderModalType.value === 'hottest') {
+    // Hottest based on last 3 weeks category wins (most wins first)
     comparison = [...teams].sort((a, b) => {
-      const aWinPct = (a.wins || 0) / Math.max(1, (a.wins || 0) + (a.losses || 0))
-      const bWinPct = (b.wins || 0) / Math.max(1, (b.wins || 0) + (b.losses || 0))
-      return aWinPct - bWinPct
-    }).map(t => ({ ...t, value: (t.wins || 0) / Math.max(1, (t.wins || 0) + (t.losses || 0)) * 100 }))
-    maxValue = 100
+      const aLast3 = last3WeeksWins.value.get(a.team_key) || 0
+      const bLast3 = last3WeeksWins.value.get(b.team_key) || 0
+      return bLast3 - aLast3
+    }).map(t => ({ ...t, value: last3WeeksWins.value.get(t.team_key) || 0 }))
+    maxValue = Math.max(...teams.map(t => last3WeeksWins.value.get(t.team_key) || 0), 1)
+  } else if (leaderModalType.value === 'coldest') {
+    // Coldest based on last 3 weeks category wins (fewest wins first)
+    comparison = [...teams].sort((a, b) => {
+      const aLast3 = last3WeeksWins.value.get(a.team_key) || 0
+      const bLast3 = last3WeeksWins.value.get(b.team_key) || 0
+      return aLast3 - bLast3
+    }).map(t => ({ ...t, value: last3WeeksWins.value.get(t.team_key) || 0 }))
+    maxValue = Math.max(...teams.map(t => last3WeeksWins.value.get(t.team_key) || 0), 1)
   } else if (leaderModalType.value === 'mostCatWins') {
     if (isPointsLeague.value) {
       comparison = [...teams].sort((a, b) => (b.points_for || 0) - (a.points_for || 0)).map(t => ({ ...t, value: t.points_for || 0 }))
@@ -1051,7 +1060,8 @@ const leaderModalGradient = computed(() => {
 const leaderModalValue = computed(() => {
   const leader = leaderModalData.value.leader
   if (!leader) return '0'
-  if (leaderModalType.value === 'bestRecord' || leaderModalType.value === 'hottest' || leaderModalType.value === 'coldest') return getWinPercentage(leader)
+  if (leaderModalType.value === 'bestRecord') return getWinPercentage(leader)
+  if (leaderModalType.value === 'hottest' || leaderModalType.value === 'coldest') return `${last3WeeksWins.value.get(leader.team_key) || 0}`
   if (leaderModalType.value === 'mostCatWins') return isPointsLeague.value ? (leader.points_for?.toFixed(1) || '0') : `${leader.wins || 0}`
   if (leaderModalType.value === 'bestAllPlay') return `${leader.all_play_wins || 0}-${leader.all_play_losses || 0}`
   if (leaderModalType.value === 'luckiest' || leaderModalType.value === 'unluckiest') return (leader.luckScore > 0 ? '+' : '') + (leader.luckScore || 0).toFixed(0)
@@ -1060,7 +1070,8 @@ const leaderModalValue = computed(() => {
 })
 
 const leaderModalUnit = computed(() => {
-  if (leaderModalType.value === 'bestRecord' || leaderModalType.value === 'hottest' || leaderModalType.value === 'coldest') return 'Win %'
+  if (leaderModalType.value === 'bestRecord') return 'Win %'
+  if (leaderModalType.value === 'hottest' || leaderModalType.value === 'coldest') return 'Wins (Last 3 Wks)'
   if (leaderModalType.value === 'mostCatWins') return isPointsLeague.value ? 'Total Points' : 'Category Wins'
   if (leaderModalType.value === 'bestAllPlay') return 'All-Play Record'
   if (leaderModalType.value === 'luckiest' || leaderModalType.value === 'unluckiest') return 'Luck Score'
@@ -1128,17 +1139,50 @@ const teamDetailCategories = computed(() => {
   return cats.sort((a, b) => b.wins - a.wins)
 })
 
+// Calculate last 3 weeks category wins for each team
+const last3WeeksWins = computed(() => {
+  const weeks = Array.from(weeklyStandings.value.keys()).sort((a, b) => a - b)
+  const last3Weeks = weeks.slice(-3)
+  
+  const result = new Map<string, number>()
+  
+  leagueStore.yahooTeams.forEach(team => {
+    const teamMatchups = weeklyMatchupResults.value.get(team.team_key)
+    if (!teamMatchups) {
+      result.set(team.team_key, 0)
+      return
+    }
+    
+    let totalWins = 0
+    last3Weeks.forEach(week => {
+      const weekResult = teamMatchups.get(week)
+      if (weekResult) {
+        totalWins += weekResult.catWins || 0
+      }
+    })
+    result.set(team.team_key, totalWins)
+  })
+  
+  return result
+})
+
 // Quick Stats - without luckiest/unluckiest
 const quickStats = computed(() => {
   const teams = teamsWithStats.value
   const mostActive = [...teams].sort((a, b) => (b.transactions || 0) - (a.transactions || 0))[0]
   const leastActive = [...teams].sort((a, b) => (a.transactions || 0) - (b.transactions || 0))[0]
-  const hottest = [...teams].sort((a, b) => (b.wins || 0) / Math.max(1, (b.wins || 0) + (b.losses || 0)) - (a.wins || 0) / Math.max(1, (a.wins || 0) + (a.losses || 0)))[0]
-  const coldest = [...teams].sort((a, b) => (a.wins || 0) / Math.max(1, (a.wins || 0) + (a.losses || 0)) - (b.wins || 0) / Math.max(1, (b.wins || 0) + (b.losses || 0)))[0]
+  
+  // Hottest/Coldest based on last 3 weeks category wins
+  const teamsWithLast3 = teams.map(t => ({
+    ...t,
+    last3Wins: last3WeeksWins.value.get(t.team_key) || 0
+  }))
+  const hottest = [...teamsWithLast3].sort((a, b) => b.last3Wins - a.last3Wins)[0]
+  const coldest = [...teamsWithLast3].sort((a, b) => a.last3Wins - b.last3Wins)[0]
   
   return [
-    { icon: '🔥', label: 'Hottest', team: hottest, value: hottest ? getWinPercentage(hottest) : '-', valueClass: 'text-orange-400', type: 'hottest' },
-    { icon: '❄️', label: 'Coldest', team: coldest, value: coldest ? getWinPercentage(coldest) : '-', valueClass: 'text-cyan-400', type: 'coldest' },
+    { icon: '🔥', label: 'Hottest', team: hottest, value: hottest ? `${hottest.last3Wins} wins` : '-', valueClass: 'text-orange-400', type: 'hottest' },
+    { icon: '❄️', label: 'Coldest', team: coldest, value: coldest ? `${coldest.last3Wins} wins` : '-', valueClass: 'text-cyan-400', type: 'coldest' },
     { icon: '📈', label: 'Most Moves', team: mostActive, value: mostActive?.transactions?.toString() || '-', valueClass: 'text-blue-400', type: 'mostMoves' },
     { icon: '🪨', label: 'Fewest Moves', team: leastActive, value: leastActive?.transactions?.toString() || '-', valueClass: 'text-purple-400', type: 'fewestMoves' }
   ]
@@ -1418,7 +1462,8 @@ function handleImageError(e: Event) { (e.target as HTMLImageElement).src = defau
 function openLeaderModal(type: string) { leaderModalType.value = type; showLeaderModal.value = true }
 function closeLeaderModal() { showLeaderModal.value = false }
 function formatLeaderValue(value: number) {
-  if (leaderModalType.value === 'bestRecord' || leaderModalType.value === 'hottest' || leaderModalType.value === 'coldest') return value.toFixed(0) + '%'
+  if (leaderModalType.value === 'bestRecord') return value.toFixed(0) + '%'
+  if (leaderModalType.value === 'hottest' || leaderModalType.value === 'coldest') return Math.round(value).toString()
   if (leaderModalType.value === 'mostCatWins' && !isPointsLeague.value) return value + ' wins'
   if (leaderModalType.value === 'mostCatWins' && isPointsLeague.value) return value.toFixed(1)
   return value.toString()
@@ -2020,7 +2065,8 @@ async function downloadLeaderImage() {
     
     // Format just the number part (no unit suffix)
     const formatValueNumber = (value: number): string => {
-      if (leaderModalType.value === 'bestRecord' || leaderModalType.value === 'hottest' || leaderModalType.value === 'coldest') return value.toFixed(0) + '%'
+      if (leaderModalType.value === 'bestRecord') return value.toFixed(0) + '%'
+      if (leaderModalType.value === 'hottest' || leaderModalType.value === 'coldest') return Math.round(value).toString()
       if (leaderModalType.value === 'mostCatWins' && isPointsLeague.value) return value.toFixed(1)
       return Math.round(value).toString()
     }
@@ -2049,28 +2095,28 @@ async function downloadLeaderImage() {
       const rowBg = isFirst ? 'rgba(16, 185, 129, 0.1)' : 'rgba(38, 42, 58, 0.4)'
       
       return `
-      <div style="display: flex; height: 60px; padding: 0 12px; background: ${rowBg}; border-radius: 10px; margin-bottom: 6px; border: ${rowBorder}; box-sizing: border-box;">
-        <!-- Rank Number -->
-        <div style="width: 36px; flex-shrink: 0; display: flex; align-items: flex-start; justify-content: center; padding-top: 12px;">
-          <span style="font-size: 22px; font-weight: 900; color: ${rankColor}; font-family: 'Impact', 'Arial Black', sans-serif; letter-spacing: -1px;">${rank}</span>
+      <div style="display: flex; height: 80px; padding: 0 12px; background: ${rowBg}; border-radius: 10px; margin-bottom: 6px; border: ${rowBorder}; box-sizing: border-box;">
+        <!-- Rank Number - padding-top 8px aligns with 48px logo center -->
+        <div style="width: 44px; flex-shrink: 0; padding-top: 8px;">
+          <span style="font-size: 36px; font-weight: 900; color: ${rankColor}; font-family: 'Impact', 'Arial Black', sans-serif; letter-spacing: -2px; line-height: 1;">${rank}</span>
         </div>
-        <!-- Team Logo -->
-        <div style="width: 52px; flex-shrink: 0; display: flex; align-items: flex-start; padding-top: 10px;">
-          <img src="${imageMap.get(team.team_key) || ''}" style="width: 40px; height: 40px; border-radius: 50%; border: 2px solid ${isFirst ? '#10b981' : '#3a3d52'}; background: #262a3a; object-fit: cover;" />
+        <!-- Team Logo - 48px logo, padding-top 16px centers in 80px row -->
+        <div style="width: 60px; flex-shrink: 0; padding-top: 16px;">
+          <img src="${imageMap.get(team.team_key) || ''}" style="width: 48px; height: 48px; border-radius: 50%; border: 2px solid ${isFirst ? '#10b981' : '#3a3d52'}; background: #262a3a; object-fit: cover;" />
         </div>
-        <!-- Team Info and Bar -->
-        <div style="flex: 1; min-width: 0; display: flex; flex-direction: column; justify-content: flex-start; padding-right: 8px; padding-top: 10px;">
-          <div style="display: flex; align-items: center; margin-bottom: 6px;">
-            <span style="font-size: 13px; font-weight: 700; color: #f7f7ff; white-space: nowrap; overflow: visible; line-height: 1;">${team.name}</span>${crownIcon}
+        <!-- Team Info and Bar - padding-top 16px aligns with logo top -->
+        <div style="flex: 1; min-width: 0; padding-top: 16px;">
+          <div style="display: flex; align-items: center;">
+            <span style="font-size: 14px; font-weight: 700; color: #f7f7ff; white-space: nowrap; overflow: visible; line-height: 1.2;">${team.name}</span>${crownIcon}
           </div>
-          <div style="height: 8px; background: #262a3a; border-radius: 4px; overflow: hidden;">
+          <div style="height: 8px; background: #262a3a; border-radius: 4px; overflow: hidden; margin-top: 8px;">
             <div style="height: 100%; width: ${barWidth}%; background: ${barColor}; border-radius: 4px;"></div>
           </div>
         </div>
-        <!-- Value with Unit -->
-        <div style="width: 70px; flex-shrink: 0; display: flex; flex-direction: column; align-items: flex-end; justify-content: flex-start; padding-top: 12px;">
-          <span style="font-size: 16px; font-weight: 700; color: ${valueColor}; line-height: 1;">${formatValueNumber(team.value)}</span>
-          <span style="font-size: 10px; font-weight: 400; color: #9ca3af; margin-top: 2px;">${valueUnit}</span>
+        <!-- Value with Unit - padding-top 14px aligns value with logo center -->
+        <div style="width: 75px; flex-shrink: 0; text-align: right; padding-top: 14px;">
+          <div style="font-size: 18px; font-weight: 700; color: ${valueColor}; line-height: 1;">${formatValueNumber(team.value)}</div>
+          <div style="font-size: 10px; font-weight: 400; color: #9ca3af; margin-top: 4px;">${valueUnit}</div>
         </div>
       </div>
     `}
