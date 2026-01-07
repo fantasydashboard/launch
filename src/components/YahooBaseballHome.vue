@@ -116,33 +116,7 @@
       <h2 class="text-2xl font-black text-dark-text mb-4 flex items-center gap-2">
         <span class="text-2xl">👑</span>League Leaders
       </h2>
-      <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <!-- Best Record -->
-        <div 
-          @click="openLeaderModal('bestRecord')"
-          class="group relative overflow-hidden rounded-xl bg-dark-card border border-green-500/20 hover:border-green-500/40 transition-all cursor-pointer"
-        >
-          <div class="absolute top-0 right-0 w-24 h-24 bg-green-500/5 rounded-full -translate-y-1/2 translate-x-1/2 group-hover:scale-150 transition-transform duration-500"></div>
-          <div class="relative p-5">
-            <div class="text-xs uppercase tracking-wider text-green-400 font-bold mb-3">Best Record</div>
-            <div class="flex items-center gap-3 mb-3">
-              <img 
-                :src="leaders.bestRecord?.logo_url || defaultAvatar" 
-                class="w-12 h-12 rounded-full border-2 border-green-500/50 object-cover" 
-                @error="handleImageError" 
-              />
-              <div class="flex-1 min-w-0">
-                <div class="font-bold text-lg text-dark-text truncate">{{ leaders.bestRecord?.name || 'N/A' }}</div>
-                <div class="text-sm text-dark-textMuted">{{ leaders.bestRecord ? `${leaders.bestRecord.wins}-${leaders.bestRecord.losses}` : '' }}</div>
-              </div>
-            </div>
-            <div class="flex items-center justify-between">
-              <div class="text-2xl font-black text-green-400">{{ leaders.bestRecord ? getWinPercentage(leaders.bestRecord) : '0%' }}</div>
-              <div class="text-xs text-green-400/70 group-hover:text-green-400 transition-colors">Click for details →</div>
-            </div>
-          </div>
-        </div>
-
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
         <!-- Most Category Wins / Most Points -->
         <div 
           @click="openLeaderModal('mostCatWins')"
@@ -486,11 +460,27 @@
               <h3 class="text-xl font-bold text-dark-text">{{ leaderModalTitle }}</h3>
               <p class="text-sm text-dark-textMuted">{{ currentSeason }} Season Leaderboard</p>
             </div>
-            <button @click="closeLeaderModal" class="p-2 rounded-lg hover:bg-dark-border/50 transition-colors">
-              <svg class="w-5 h-5 text-dark-textMuted" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            </button>
+            <div class="flex items-center gap-2">
+              <button 
+                @click="downloadLeaderImage" 
+                :disabled="isGeneratingLeaderDownload"
+                class="btn-primary flex items-center gap-2 text-sm"
+              >
+                <svg v-if="!isGeneratingLeaderDownload" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                </svg>
+                <svg v-else class="w-4 h-4 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                  <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                {{ isGeneratingLeaderDownload ? 'Saving...' : 'Share' }}
+              </button>
+              <button @click="closeLeaderModal" class="p-2 rounded-lg hover:bg-dark-border/50 transition-colors">
+                <svg class="w-5 h-5 text-dark-textMuted" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
           </div>
           
           <div class="p-6 border-b border-dark-border" :class="leaderModalGradient">
@@ -532,7 +522,7 @@
                   <div class="h-2.5 bg-dark-border rounded-full overflow-hidden">
                     <div 
                       class="h-full rounded-full transition-all duration-500"
-                      :class="index === 0 ? leaderModalBarColor : 'bg-primary/60'"
+                      :class="leaderModalBarColor"
                       :style="{ width: `${(team.value / leaderModalData.maxValue) * 100}%` }"
                     ></div>
                   </div>
@@ -686,6 +676,7 @@ const authStore = useAuthStore()
 const isLoading = ref(false)
 const isLoadingChart = ref(false)
 const isGeneratingDownload = ref(false)
+const isGeneratingLeaderDownload = ref(false)
 const chartLoadProgress = ref('')
 const defaultAvatar = 'https://s.yimg.com/cv/apiv2/default/mlb/mlb_2_g.png'
 
@@ -990,9 +981,7 @@ const leaderModalData = computed(() => {
     maxValue = Math.max(...teams.map(t => t.transactions || 0), 1)
   }
   
-  // Limit to top 5
-  comparison = comparison.slice(0, 5)
-  
+  // Show all teams (no limit)
   return { comparison, maxValue, leader: comparison[0] }
 })
 
@@ -1921,6 +1910,190 @@ async function downloadStandings() {
     alert('Failed to generate image. Please try again.')
   } finally {
     isGeneratingDownload.value = false
+  }
+}
+
+// Download Leader/Quick Stat image
+async function downloadLeaderImage() {
+  isGeneratingLeaderDownload.value = true
+  
+  try {
+    const html2canvas = (await import('html2canvas')).default
+    
+    // Get accent color based on modal type
+    const getAccentColor = () => {
+      if (leaderModalType.value === 'bestRecord' || leaderModalType.value === 'luckiest') return '#22c55e' // green-500
+      if (leaderModalType.value === 'mostCatWins' || leaderModalType.value === 'hottest') return '#eab308' // yellow-500
+      if (leaderModalType.value === 'bestAllPlay' || leaderModalType.value === 'mostMoves') return '#3b82f6' // blue-500
+      if (leaderModalType.value === 'unluckiest') return '#ef4444' // red-500
+      if (leaderModalType.value === 'coldest') return '#06b6d4' // cyan-500
+      if (leaderModalType.value === 'fewestMoves') return '#a855f7' // purple-500
+      return '#dc2626' // red-600 default
+    }
+    const accentColor = getAccentColor()
+    
+    // Helper to load logo (same as header)
+    const loadLogo = async (): Promise<string> => {
+      try {
+        const response = await fetch('/UFD_V5.png')
+        const blob = await response.blob()
+        return new Promise((resolve) => {
+          const reader = new FileReader()
+          reader.onloadend = () => resolve(reader.result as string)
+          reader.onerror = () => resolve('')
+          reader.readAsDataURL(blob)
+        })
+      } catch (e) {
+        console.warn('Failed to load logo:', e)
+        return ''
+      }
+    }
+    
+    // Helper to create placeholder avatar
+    const createPlaceholder = (teamName: string): string => {
+      const canvas = document.createElement('canvas')
+      canvas.width = 48
+      canvas.height = 48
+      const ctx = canvas.getContext('2d')
+      if (ctx) {
+        ctx.fillStyle = '#3a3d52'
+        ctx.beginPath()
+        ctx.arc(24, 24, 24, 0, Math.PI * 2)
+        ctx.fill()
+        ctx.fillStyle = '#ffffff'
+        ctx.font = 'bold 20px sans-serif'
+        ctx.textAlign = 'center'
+        ctx.textBaseline = 'middle'
+        ctx.fillText(teamName.charAt(0).toUpperCase(), 24, 26)
+      }
+      return canvas.toDataURL('image/png')
+    }
+    
+    const logoBase64 = await loadLogo()
+    
+    // Pre-load all team images
+    const imageMap = new Map<string, string>()
+    for (const team of leaderModalData.value.comparison) {
+      try {
+        const img = new Image()
+        img.crossOrigin = 'anonymous'
+        const loadPromise = new Promise<string>((resolve) => {
+          img.onload = () => {
+            try {
+              const canvas = document.createElement('canvas')
+              canvas.width = 48
+              canvas.height = 48
+              const ctx = canvas.getContext('2d')
+              if (ctx) {
+                ctx.beginPath()
+                ctx.arc(24, 24, 24, 0, Math.PI * 2)
+                ctx.closePath()
+                ctx.clip()
+                ctx.drawImage(img, 0, 0, 48, 48)
+              }
+              resolve(canvas.toDataURL('image/png'))
+            } catch {
+              resolve(createPlaceholder(team.name))
+            }
+          }
+          img.onerror = () => resolve(createPlaceholder(team.name))
+          setTimeout(() => resolve(createPlaceholder(team.name)), 3000)
+        })
+        img.src = team.logo_url || ''
+        imageMap.set(team.team_key, await loadPromise)
+      } catch {
+        imageMap.set(team.team_key, createPlaceholder(team.name))
+      }
+    }
+    
+    // Create container
+    const container = document.createElement('div')
+    container.style.cssText = 'position: absolute; left: -9999px; top: 0; width: 600px; font-family: system-ui, -apple-system, sans-serif;'
+    
+    // Generate team rows
+    const maxValue = leaderModalData.value.maxValue
+    const generateTeamRow = (team: any, rank: number) => {
+      const barWidth = Math.max(5, (team.value / maxValue) * 100)
+      return `
+        <div style="display: flex; align-items: center; gap: 12px; padding: 10px 0; border-bottom: 1px solid rgba(58, 61, 82, 0.3);">
+          <div style="width: 28px; text-align: center;">
+            <span style="font-size: 16px; font-weight: 700; color: ${rank === 1 ? accentColor : '#9ca3af'};">${rank}</span>
+          </div>
+          <img src="${imageMap.get(team.team_key) || ''}" style="width: 36px; height: 36px; border-radius: 50%; border: 2px solid #3a3d52; background: #262a3a; object-fit: cover;" />
+          <div style="flex: 1; min-width: 0;">
+            <div style="font-size: 13px; font-weight: 600; color: #f7f7ff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-bottom: 4px;">${team.name}</div>
+            <div style="height: 8px; background: #262a3a; border-radius: 4px; overflow: hidden;">
+              <div style="height: 100%; width: ${barWidth}%; background: ${accentColor}; border-radius: 4px;"></div>
+            </div>
+          </div>
+          <div style="width: 70px; text-align: right;">
+            <span style="font-size: 14px; font-weight: 700; color: ${rank === 1 ? accentColor : '#e5e7eb'};">${formatLeaderValue(team.value)}</span>
+          </div>
+        </div>
+      `
+    }
+    
+    container.innerHTML = `
+      <div style="background: linear-gradient(160deg, #0f1219 0%, #0a0c14 50%, #0d1117 100%); border-radius: 16px; box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5); position: relative; overflow: hidden;">
+        
+        <!-- Top Accent Bar -->
+        <div style="background: ${accentColor}; padding: 10px 24px; text-align: center;">
+          <span style="font-size: 14px; font-weight: 700; color: #0a0c14; text-transform: uppercase; letter-spacing: 3px;">Ultimate Fantasy Dashboard</span>
+        </div>
+        
+        <!-- Header -->
+        <div style="display: flex; align-items: center; padding: 16px 24px; border-bottom: 1px solid rgba(${accentColor === '#22c55e' ? '34,197,94' : accentColor === '#eab308' ? '234,179,8' : accentColor === '#3b82f6' ? '59,130,246' : accentColor === '#06b6d4' ? '6,182,212' : accentColor === '#a855f7' ? '168,85,247' : '220,38,38'}, 0.2);">
+          ${logoBase64 ? `<img src="${logoBase64}" style="height: 50px; width: auto; flex-shrink: 0; margin-right: 20px;" />` : ''}
+          <div style="flex: 1;">
+            <div style="font-size: 28px; font-weight: 900; color: #ffffff; text-transform: uppercase; letter-spacing: 1px; line-height: 1;">${leaderModalTitle.value}</div>
+            <div style="font-size: 14px; margin-top: 6px; color: #9ca3af;">
+              ${leagueName.value} • ${currentSeason.value} Season
+            </div>
+          </div>
+        </div>
+        
+        <!-- Team List -->
+        <div style="padding: 16px 24px;">
+          ${leaderModalData.value.comparison.map((team: any, idx: number) => generateTeamRow(team, idx + 1)).join('')}
+        </div>
+        
+        <!-- Footer -->
+        <div style="padding: 16px 24px; text-align: center;">
+          <span style="font-size: 18px; font-weight: bold; color: ${accentColor}; letter-spacing: -0.5px;">ultimatefantasydashboard.com</span>
+        </div>
+      </div>
+    `
+    
+    document.body.appendChild(container)
+    
+    // Wait for images
+    await new Promise(resolve => setTimeout(resolve, 300))
+    
+    // Capture
+    const canvas = await html2canvas(container, {
+      backgroundColor: '#0a0c14',
+      scale: 2,
+      logging: false,
+      useCORS: true,
+      allowTaint: true,
+      width: 600
+    })
+    
+    document.body.removeChild(container)
+    
+    // Download
+    const link = document.createElement('a')
+    const safeLeagueName = leagueName.value.replace(/[^a-zA-Z0-9\s]/g, '').replace(/\s+/g, '-')
+    const safeTitle = leaderModalTitle.value.replace(/[^a-zA-Z0-9\s]/g, '').replace(/\s+/g, '-')
+    link.download = `${safeTitle} - ${safeLeagueName}.png`
+    link.href = canvas.toDataURL('image/png')
+    link.click()
+    
+  } catch (error) {
+    console.error('Error generating leader image:', error)
+    alert('Failed to generate image. Please try again.')
+  } finally {
+    isGeneratingLeaderDownload.value = false
   }
 }
 // Load league settings
