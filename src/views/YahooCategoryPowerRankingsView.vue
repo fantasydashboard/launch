@@ -52,18 +52,25 @@
                 </p>
                 <button 
                   @click="showSettings = true" 
-                  class="text-primary hover:text-blue-400 text-xs font-semibold transition-colors mt-1"
+                  class="text-yellow-400 hover:text-yellow-300 text-xs font-semibold transition-colors mt-1"
                 >
                   Customize Formula →
                 </button>
               </div>
             </div>
             <div class="flex items-center gap-2 flex-shrink-0">
-              <button @click="downloadRankings" :disabled="isGeneratingDownload" class="btn-primary flex items-center gap-2">
-                <svg v-if="!isGeneratingDownload" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <button 
+                @click="downloadRankings" 
+                :disabled="isGeneratingDownload" 
+                class="flex items-center gap-2 px-4 py-2 rounded-lg font-semibold transition-colors disabled:opacity-50"
+                style="background: #dc2626; color: #ffffff;"
+                @mouseover="$event.currentTarget.style.background = '#eab308'; $event.currentTarget.style.color = '#0a0c14'"
+                @mouseout="$event.currentTarget.style.background = '#dc2626'; $event.currentTarget.style.color = '#ffffff'"
+              >
+                <svg v-if="!isGeneratingDownload" class="w-5 h-5 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
                 </svg>
-                <svg v-else class="w-5 h-5 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg v-else class="w-5 h-5 animate-spin pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                   <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                 </svg>
@@ -134,11 +141,12 @@
                     <div class="flex items-center justify-center gap-2">
                       <div class="w-16 h-2 bg-dark-border rounded-full overflow-hidden">
                         <div 
-                          class="h-full bg-primary rounded-full"
+                          class="h-full rounded-full"
+                          :class="getPowerScoreBarClass(team.powerScore)"
                           :style="{ width: `${team.powerScore}%` }"
                         ></div>
                       </div>
-                      <span class="font-bold text-primary">{{ team.powerScore.toFixed(1) }}</span>
+                      <span class="font-bold" :class="getPowerScoreTextClass(team.powerScore)">{{ team.powerScore.toFixed(1) }}</span>
                     </div>
                   </td>
                   <td class="py-3 px-4 text-center">
@@ -183,21 +191,21 @@
         </div>
         <div class="card-body">
           <div v-if="chartSeries.length > 0" class="relative">
-            <apexchart type="line" :height="chartHeight" :options="chartOptions" :series="chartSeries" />
+            <apexchart ref="apexChartRef" type="line" :height="chartHeight" :options="chartOptions" :series="chartSeries" />
             
-            <!-- Team avatar overlays at end of lines -->
+            <!-- Team avatar overlays at end of lines - positioned after chart renders -->
             <div 
               v-for="(team, idx) in powerRankings" 
               :key="'avatar-' + team.team_key"
-              class="absolute pointer-events-none"
-              :style="getAvatarPosition(team)"
+              class="absolute pointer-events-none transition-all duration-300"
+              :style="getChartAvatarStyle(team)"
             >
               <div class="relative">
                 <img 
                   :src="team.logo_url || defaultAvatar" 
                   :alt="team.name"
                   class="w-6 h-6 rounded-full ring-2 object-cover"
-                  :class="team.is_my_team ? 'ring-yellow-500' : 'ring-cyan-500/70'"
+                  :class="team.is_my_team ? 'ring-yellow-500' : 'ring-dark-border'"
                   @error="handleImageError"
                 />
                 <div v-if="team.is_my_team" class="absolute -top-0.5 -right-0.5 w-3 h-3 bg-yellow-500 rounded-full flex items-center justify-center">
@@ -212,82 +220,182 @@
         </div>
       </div>
 
-      <!-- Category Breakdown Grid -->
-      <div class="card">
-        <div class="card-header">
-          <div class="flex items-center gap-2">
-            <span class="text-2xl">📊</span>
-            <h2 class="card-title">Category Wins by Team</h2>
+      <!-- Rankings Insights -->
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <!-- Biggest Climber -->
+        <div :class="[
+          'card rounded-xl border-2 transition-all',
+          biggestClimber && biggestClimber.is_my_team 
+            ? 'border-yellow-500/40 bg-gradient-to-br from-yellow-500/10 to-yellow-500/5' 
+            : 'border-dark-border'
+        ]">
+          <div class="card-header pb-2">
+            <div class="text-sm text-dark-textMuted uppercase tracking-wide">📈 Biggest Climber</div>
           </div>
-          <p class="card-subtitle">Total category wins across {{ totalWeeksLoaded }} weeks (click column headers to sort)</p>
+          <div class="card-body pt-2" v-if="biggestClimber">
+            <div class="flex items-center gap-3 mb-2">
+              <div class="relative">
+                <img 
+                  :src="biggestClimber.logo_url || defaultAvatar" 
+                  :alt="biggestClimber.name" 
+                  :class="[
+                    'w-12 h-12 rounded-full ring-2 object-cover',
+                    biggestClimber.is_my_team ? 'ring-yellow-500' : 'ring-cyan-500'
+                  ]"
+                  @error="handleImageError" 
+                />
+                <div v-if="biggestClimber.is_my_team" class="absolute -top-1 -right-1 w-5 h-5 bg-yellow-500 rounded-full flex items-center justify-center shadow-lg">
+                  <span class="text-xs text-gray-900 font-bold">★</span>
+                </div>
+              </div>
+              <div class="flex-1">
+                <div :class="[
+                  'font-bold',
+                  biggestClimber.is_my_team ? 'text-yellow-400' : 'text-dark-text'
+                ]">{{ biggestClimber.name }}</div>
+                <div class="text-xs text-dark-textMuted">Started #{{ biggestClimber.firstRank }}</div>
+              </div>
+            </div>
+            <div class="text-center mt-3 p-3 bg-green-500/10 rounded-xl">
+              <div class="text-2xl font-bold text-green-400">↑{{ biggestClimber.climb }}</div>
+              <div class="text-xs text-dark-textMuted mt-1">positions up</div>
+            </div>
+          </div>
+          <div v-else class="card-body pt-2 text-center text-dark-textMuted text-sm">
+            Need more weeks of data
+          </div>
         </div>
-        <div class="card-body overflow-x-auto">
-          <table class="w-full text-sm">
-            <thead>
-              <tr class="text-xs text-dark-textMuted uppercase border-b border-dark-border">
-                <th class="py-2 px-3 text-left sticky left-0 bg-dark-card z-10">Team</th>
-                <th 
-                  v-for="cat in displayCategories" 
-                  :key="cat.stat_id"
-                  class="py-2 px-2 text-center whitespace-nowrap cursor-pointer hover:text-primary transition-colors"
-                  :title="'Sort by ' + cat.name"
-                  @click="sortCategoryTable(cat.stat_id)"
-                >
-                  <div class="flex items-center justify-center gap-1">
-                    {{ cat.display_name }}
-                    <span v-if="categorySortColumn === cat.stat_id" class="text-primary">
-                      {{ categorySortDirection === 'desc' ? '▼' : '▲' }}
-                    </span>
-                  </div>
-                </th>
-                <th 
-                  class="py-2 px-2 text-center font-bold cursor-pointer hover:text-primary transition-colors"
-                  @click="sortCategoryTable('total')"
-                >
-                  <div class="flex items-center justify-center gap-1">
-                    Total
-                    <span v-if="categorySortColumn === 'total'" class="text-primary">
-                      {{ categorySortDirection === 'desc' ? '▼' : '▲' }}
-                    </span>
-                  </div>
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr 
-                v-for="team in sortedCategoryTeams" 
-                :key="team.team_key"
-                class="border-b border-dark-border/50 hover:bg-dark-border/20"
-                :class="{ 'bg-yellow-500/10 ring-2 ring-yellow-500/50 ring-inset': team.is_my_team }"
-              >
-                <td class="py-2 px-3 sticky left-0 bg-dark-card z-10">
-                  <div class="flex items-center gap-2">
-                    <img 
-                      :src="team.logo_url || defaultAvatar" 
-                      class="w-6 h-6 rounded-full object-cover"
-                      @error="handleImageError"
-                    />
-                    <span class="font-medium text-dark-text truncate max-w-[100px]">{{ team.name }}</span>
-                  </div>
-                </td>
-                <td 
-                  v-for="cat in displayCategories" 
-                  :key="cat.stat_id"
-                  class="py-2 px-2 text-center"
-                >
-                  <span 
-                    class="text-sm font-medium"
-                    :class="getCategoryClass(team.categoryRanks[cat.stat_id])"
-                  >
-                    {{ team.categoryWins[cat.stat_id] || 0 }}
-                  </span>
-                </td>
-                <td class="py-2 px-2 text-center font-bold text-primary">
-                  {{ team.totalCatWins }}
-                </td>
-              </tr>
-            </tbody>
-          </table>
+
+        <!-- Biggest Faller -->
+        <div :class="[
+          'card rounded-xl border-2 transition-all',
+          biggestFaller && biggestFaller.is_my_team 
+            ? 'border-yellow-500/40 bg-gradient-to-br from-yellow-500/10 to-yellow-500/5' 
+            : 'border-dark-border'
+        ]">
+          <div class="card-header pb-2">
+            <div class="text-sm text-dark-textMuted uppercase tracking-wide">📉 Biggest Faller</div>
+          </div>
+          <div class="card-body pt-2" v-if="biggestFaller">
+            <div class="flex items-center gap-3 mb-2">
+              <div class="relative">
+                <img 
+                  :src="biggestFaller.logo_url || defaultAvatar" 
+                  :alt="biggestFaller.name" 
+                  :class="[
+                    'w-12 h-12 rounded-full ring-2 object-cover',
+                    biggestFaller.is_my_team ? 'ring-yellow-500' : 'ring-cyan-500'
+                  ]"
+                  @error="handleImageError" 
+                />
+                <div v-if="biggestFaller.is_my_team" class="absolute -top-1 -right-1 w-5 h-5 bg-yellow-500 rounded-full flex items-center justify-center shadow-lg">
+                  <span class="text-xs text-gray-900 font-bold">★</span>
+                </div>
+              </div>
+              <div class="flex-1">
+                <div :class="[
+                  'font-bold',
+                  biggestFaller.is_my_team ? 'text-yellow-400' : 'text-dark-text'
+                ]">{{ biggestFaller.name }}</div>
+                <div class="text-xs text-dark-textMuted">Started #{{ biggestFaller.firstRank }}</div>
+              </div>
+            </div>
+            <div class="text-center mt-3 p-3 bg-red-500/10 rounded-xl">
+              <div class="text-2xl font-bold text-red-400">↓{{ biggestFaller.fall }}</div>
+              <div class="text-xs text-dark-textMuted mt-1">positions down</div>
+            </div>
+          </div>
+          <div v-else class="card-body pt-2 text-center text-dark-textMuted text-sm">
+            Need more weeks of data
+          </div>
+        </div>
+
+        <!-- Most Consistent -->
+        <div :class="[
+          'card rounded-xl border-2 transition-all',
+          mostConsistent && mostConsistent.is_my_team 
+            ? 'border-yellow-500/40 bg-gradient-to-br from-yellow-500/10 to-yellow-500/5' 
+            : 'border-dark-border'
+        ]">
+          <div class="card-header pb-2">
+            <div class="text-sm text-dark-textMuted uppercase tracking-wide">🎯 Most Consistent</div>
+          </div>
+          <div class="card-body pt-2" v-if="mostConsistent">
+            <div class="flex items-center gap-3 mb-2">
+              <div class="relative">
+                <img 
+                  :src="mostConsistent.logo_url || defaultAvatar" 
+                  :alt="mostConsistent.name" 
+                  :class="[
+                    'w-12 h-12 rounded-full ring-2 object-cover',
+                    mostConsistent.is_my_team ? 'ring-yellow-500' : 'ring-cyan-500'
+                  ]"
+                  @error="handleImageError" 
+                />
+                <div v-if="mostConsistent.is_my_team" class="absolute -top-1 -right-1 w-5 h-5 bg-yellow-500 rounded-full flex items-center justify-center shadow-lg">
+                  <span class="text-xs text-gray-900 font-bold">★</span>
+                </div>
+              </div>
+              <div class="flex-1">
+                <div :class="[
+                  'font-bold',
+                  mostConsistent.is_my_team ? 'text-yellow-400' : 'text-dark-text'
+                ]">{{ mostConsistent.name }}</div>
+                <div class="text-xs text-dark-textMuted">Avg Rank #{{ mostConsistent.avgRank }}</div>
+              </div>
+            </div>
+            <div class="text-center mt-3 p-3 bg-cyan-500/10 rounded-xl">
+              <div class="text-2xl font-bold text-cyan-400">{{ mostConsistent.variance.toFixed(1) }}</div>
+              <div class="text-xs text-dark-textMuted mt-1">rank variance</div>
+            </div>
+          </div>
+          <div v-else class="card-body pt-2 text-center text-dark-textMuted text-sm">
+            Need more weeks of data
+          </div>
+        </div>
+
+        <!-- Most Volatile -->
+        <div :class="[
+          'card rounded-xl border-2 transition-all',
+          mostVolatile && mostVolatile.is_my_team 
+            ? 'border-yellow-500/40 bg-gradient-to-br from-yellow-500/10 to-yellow-500/5' 
+            : 'border-dark-border'
+        ]">
+          <div class="card-header pb-2">
+            <div class="text-sm text-dark-textMuted uppercase tracking-wide">🎢 Most Volatile</div>
+          </div>
+          <div class="card-body pt-2" v-if="mostVolatile">
+            <div class="flex items-center gap-3 mb-2">
+              <div class="relative">
+                <img 
+                  :src="mostVolatile.logo_url || defaultAvatar" 
+                  :alt="mostVolatile.name" 
+                  :class="[
+                    'w-12 h-12 rounded-full ring-2 object-cover',
+                    mostVolatile.is_my_team ? 'ring-yellow-500' : 'ring-cyan-500'
+                  ]"
+                  @error="handleImageError" 
+                />
+                <div v-if="mostVolatile.is_my_team" class="absolute -top-1 -right-1 w-5 h-5 bg-yellow-500 rounded-full flex items-center justify-center shadow-lg">
+                  <span class="text-xs text-gray-900 font-bold">★</span>
+                </div>
+              </div>
+              <div class="flex-1">
+                <div :class="[
+                  'font-bold',
+                  mostVolatile.is_my_team ? 'text-yellow-400' : 'text-dark-text'
+                ]">{{ mostVolatile.name }}</div>
+                <div class="text-xs text-dark-textMuted">Swings #{{ mostVolatile.minRank }}-{{ mostVolatile.maxRank }}</div>
+              </div>
+            </div>
+            <div class="text-center mt-3 p-3 bg-orange-500/10 rounded-xl">
+              <div class="text-2xl font-bold text-orange-400">{{ mostVolatile.variance.toFixed(1) }}</div>
+              <div class="text-xs text-dark-textMuted mt-1">rank variance</div>
+            </div>
+          </div>
+          <div v-else class="card-body pt-2 text-center text-dark-textMuted text-sm">
+            Need more weeks of data
+          </div>
         </div>
       </div>
     </template>
@@ -458,7 +566,7 @@
           <div class="p-6">
             <div class="grid grid-cols-2 gap-4 mb-6">
               <div class="text-center p-3 bg-dark-card rounded-lg">
-                <div class="text-2xl font-black text-primary">{{ selectedTeam.powerScore.toFixed(1) }}</div>
+                <div class="text-2xl font-black" :class="getPowerScoreTextClass(selectedTeam.powerScore)">{{ selectedTeam.powerScore.toFixed(1) }}</div>
                 <div class="text-xs text-dark-textMuted">Power Score</div>
               </div>
               <div class="text-center p-3 bg-dark-card rounded-lg">
@@ -525,6 +633,10 @@ const chartOptions = ref<any>(null)
 const historicalRanks = ref<Map<string, number[]>>(new Map())
 const chartWeeks = ref<number[]>([])
 const chartHeight = 400
+
+// Chart refs for avatar positioning
+const apexChartRef = ref<any>(null)
+const avatarPositions = ref<Map<string, { top: number, right: number }>>(new Map())
 
 // Team colors
 const teamColors = ['#F59E0B', '#10B981', '#3B82F6', '#EF4444', '#8B5CF6', '#EC4899', '#06B6D4', '#F97316', '#84CC16', '#6366F1', '#14B8A6', '#F43F5E']
@@ -1052,22 +1164,73 @@ async function downloadRankings() {
   }
 }
 
-// Calculate avatar position for chart overlay
-function getAvatarPosition(team: any): Record<string, string> {
+// Update avatar positions based on actual chart rendering
+function updateAvatarPositions() {
+  if (!apexChartRef.value?.chart) return
+  
+  const chart = apexChartRef.value.chart
+  const weeks = chartWeeks.value
+  if (weeks.length === 0) return
+  
+  const newPositions = new Map<string, { top: number, right: number }>()
+  
+  powerRankings.value.forEach((team) => {
+    const ranks = historicalRanks.value.get(team.team_key) || []
+    const lastRank = ranks[ranks.length - 1]
+    if (!lastRank) return
+    
+    // Get the actual Y position from ApexCharts
+    try {
+      const w = chart.w
+      const plotHeight = w.globals.gridHeight
+      const plotTop = w.globals.translateY
+      
+      // Calculate Y position - reversed axis means rank 1 is at top
+      const totalTeams = powerRankings.value.length
+      const yPercent = (lastRank - 1) / Math.max(1, totalTeams - 1)
+      const yPos = plotTop + (yPercent * plotHeight) - 12 // -12 to center 24px avatar
+      
+      // X position - right edge of plot
+      const rightPadding = 8
+      
+      newPositions.set(team.team_key, { top: yPos, right: rightPadding })
+    } catch (e) {
+      // Fallback positioning
+      const totalTeams = powerRankings.value.length
+      const chartPadding = { top: 30, bottom: 80 }
+      const usableHeight = chartHeight - chartPadding.top - chartPadding.bottom
+      const yPercent = (lastRank - 1) / Math.max(1, totalTeams - 1)
+      const yPos = chartPadding.top + (yPercent * usableHeight) - 12
+      newPositions.set(team.team_key, { top: yPos, right: 8 })
+    }
+  })
+  
+  avatarPositions.value = newPositions
+}
+
+// Get avatar style for a team
+function getChartAvatarStyle(team: any): Record<string, string> {
+  const pos = avatarPositions.value.get(team.team_key)
+  if (pos) {
+    return {
+      top: `${pos.top}px`,
+      right: `${pos.right}px`
+    }
+  }
+  
+  // Fallback: calculate position
   const ranks = historicalRanks.value.get(team.team_key) || []
   const lastRank = ranks[ranks.length - 1]
   if (!lastRank) return { display: 'none' }
   
   const totalTeams = powerRankings.value.length
-  const chartPadding = { top: 30, bottom: 80 } // ApexChart padding (bottom includes legend)
+  const chartPadding = { top: 30, bottom: 80 }
   const usableHeight = chartHeight - chartPadding.top - chartPadding.bottom
-  
-  // Y position: rank 1 is at top, rank N is at bottom (reversed axis)
   const yPercent = (lastRank - 1) / Math.max(1, totalTeams - 1)
-  const yPos = chartPadding.top + (yPercent * usableHeight) - 12 // -12 to center the avatar
+  const yPos = chartPadding.top + (yPercent * usableHeight) - 12
   
   return {
-    right: '15px',
+    right: '8px',
     top: `${yPos}px`
   }
 }
@@ -1116,6 +1279,118 @@ const maxCategoryWins = computed(() => {
     }
   }
   return max
+})
+
+// Insight card computeds
+const biggestClimber = computed(() => {
+  if (powerRankings.value.length === 0 || chartWeeks.value.length < 2) return null
+  
+  let maxClimb = 0
+  let climber = null
+  
+  powerRankings.value.forEach(team => {
+    const ranks = historicalRanks.value.get(team.team_key) || []
+    if (ranks.length < 2) return
+    
+    const firstRank = ranks[0]
+    const lastRank = ranks[ranks.length - 1]
+    const climb = firstRank - lastRank // Positive = moved up
+    
+    if (climb > maxClimb) {
+      maxClimb = climb
+      climber = {
+        ...team,
+        climb,
+        firstRank,
+        lastRank
+      }
+    }
+  })
+  
+  return climber
+})
+
+const biggestFaller = computed(() => {
+  if (powerRankings.value.length === 0 || chartWeeks.value.length < 2) return null
+  
+  let maxFall = 0
+  let faller = null
+  
+  powerRankings.value.forEach(team => {
+    const ranks = historicalRanks.value.get(team.team_key) || []
+    if (ranks.length < 2) return
+    
+    const firstRank = ranks[0]
+    const lastRank = ranks[ranks.length - 1]
+    const fall = lastRank - firstRank // Positive = moved down
+    
+    if (fall > maxFall) {
+      maxFall = fall
+      faller = {
+        ...team,
+        fall,
+        firstRank,
+        lastRank
+      }
+    }
+  })
+  
+  return faller
+})
+
+const mostConsistent = computed(() => {
+  if (powerRankings.value.length === 0 || chartWeeks.value.length < 2) return null
+  
+  let minVariance = Infinity
+  let consistent = null
+  
+  powerRankings.value.forEach(team => {
+    const ranks = historicalRanks.value.get(team.team_key) || []
+    if (ranks.length < 2) return
+    
+    const avg = ranks.reduce((a, b) => a + b, 0) / ranks.length
+    const variance = ranks.reduce((sum, rank) => sum + Math.pow(rank - avg, 2), 0) / ranks.length
+    
+    if (variance < minVariance) {
+      minVariance = variance
+      consistent = {
+        ...team,
+        variance,
+        avgRank: Math.round(avg)
+      }
+    }
+  })
+  
+  return consistent
+})
+
+const mostVolatile = computed(() => {
+  if (powerRankings.value.length === 0 || chartWeeks.value.length < 2) return null
+  
+  let maxVariance = 0
+  let volatile = null
+  
+  powerRankings.value.forEach(team => {
+    const ranks = historicalRanks.value.get(team.team_key) || []
+    if (ranks.length < 2) return
+    
+    const avg = ranks.reduce((a, b) => a + b, 0) / ranks.length
+    const variance = ranks.reduce((sum, rank) => sum + Math.pow(rank - avg, 2), 0) / ranks.length
+    const minRank = Math.min(...ranks)
+    const maxRank = Math.max(...ranks)
+    
+    if (variance > maxVariance) {
+      maxVariance = variance
+      volatile = {
+        ...team,
+        variance,
+        minRank,
+        maxRank
+      }
+    }
+  })
+  
+  return volatile
 })
 
 // Sorted teams for Category Wins table
@@ -1169,6 +1444,16 @@ function getCatWinPctClass(pct: number) {
   if (pct >= 0.55) return 'text-green-400'
   if (pct <= 0.45) return 'text-red-400'
   return 'text-dark-text'
+}
+function getPowerScoreTextClass(score: number) {
+  if (score >= 70) return 'text-green-400'
+  if (score >= 40) return 'text-yellow-400'
+  return 'text-red-400'
+}
+function getPowerScoreBarClass(score: number) {
+  if (score >= 70) return 'bg-green-500'
+  if (score >= 40) return 'bg-yellow-500'
+  return 'bg-red-500'
 }
 function getAvgCatsClass(avg: number) {
   const mid = numCategories.value / 2
@@ -1504,7 +1789,11 @@ function buildChart() {
       type: 'line',
       background: 'transparent',
       toolbar: { show: false },
-      zoom: { enabled: false }
+      zoom: { enabled: false },
+      events: {
+        mounted: () => setTimeout(updateAvatarPositions, 100),
+        updated: () => setTimeout(updateAvatarPositions, 100)
+      }
     },
     theme: { mode: 'dark' },
     colors: powerRankings.value.map((team, idx) => 
@@ -1586,6 +1875,9 @@ function buildChart() {
       }
     }
   }
+  
+  // Update avatar positions after chart data is ready
+  setTimeout(updateAvatarPositions, 100)
 }
 
 // Initialize
