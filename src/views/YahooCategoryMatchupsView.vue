@@ -20,6 +20,15 @@
       </div>
     </div>
 
+    <!-- Offseason Notice Banner -->
+    <div class="bg-slate-500/10 border border-slate-500/30 rounded-xl p-4 flex items-start gap-3">
+      <div class="text-slate-400 text-xl flex-shrink-0">⚾</div>
+      <div>
+        <p class="text-slate-200 font-semibold">You're viewing the 2025 season</p>
+        <p class="text-slate-400 text-sm mt-1">The 2026 season will automatically appear here when it begins.</p>
+      </div>
+    </div>
+
     <!-- Loading State -->
     <div v-if="isLoading" class="flex items-center justify-center py-20">
       <div class="text-center">
