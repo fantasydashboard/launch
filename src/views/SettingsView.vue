@@ -275,6 +275,43 @@
       </div>
     </div>
 
+    <!-- Cache Management Section -->
+    <div class="card">
+      <div class="card-header">
+        <div class="flex items-center gap-2">
+          <span class="text-2xl">💾</span>
+          <h2 class="card-title">Cache Management</h2>
+        </div>
+      </div>
+      <div class="card-body">
+        <div class="space-y-4">
+          <div class="flex items-center justify-between p-4 bg-dark-border/20 rounded-lg">
+            <div class="flex-1">
+              <div class="font-semibold text-dark-text">Local Data Cache</div>
+              <p class="text-sm text-dark-textMuted mt-1">
+                Data is cached locally to speed up page loads. Historical data is stored for up to 24 hours.
+              </p>
+              <div v-if="cacheStats" class="mt-2 text-xs text-dark-textMuted">
+                <span class="mr-4">Memory: {{ cacheStats.memoryEntries }} entries</span>
+                <span class="mr-4">Storage: {{ cacheStats.localStorageEntries }} entries</span>
+                <span>Size: {{ cacheStats.totalSize }}</span>
+              </div>
+            </div>
+            <button 
+              @click="clearCache"
+              :disabled="clearingCache"
+              class="btn-secondary text-sm"
+            >
+              {{ clearingCache ? 'Clearing...' : 'Clear Cache' }}
+            </button>
+          </div>
+          <p class="text-xs text-dark-textMuted px-4">
+            Clear the cache if you're seeing outdated data or experiencing issues. This will cause pages to reload data from scratch on next visit.
+          </p>
+        </div>
+      </div>
+    </div>
+
     <!-- Success Message -->
     <div v-if="showSuccess" 
          class="fixed bottom-6 right-6 bg-green-500 text-white px-6 py-3 rounded-lg shadow-lg flex items-center gap-3 z-50">
@@ -292,6 +329,7 @@ import { useLeagueStore } from '@/stores/league'
 import { usePlatformsStore } from '@/stores/platforms'
 import { useAuthStore } from '@/stores/auth'
 import { supabase } from '@/lib/supabase'
+import { cache } from '@/services/cache'
 
 const leagueStore = useLeagueStore()
 const platformsStore = usePlatformsStore()
@@ -302,6 +340,8 @@ const showSuccess = ref(false)
 const successMessage = ref('Settings saved!')
 const syncingYahoo = ref(false)
 const yahooLeagues = ref<any[]>([])
+const clearingCache = ref(false)
+const cacheStats = ref<{ memoryEntries: number; localStorageEntries: number; totalSize: string } | null>(null)
 
 // Display settings
 const displaySettings = ref({
@@ -326,12 +366,32 @@ const teamsList = ref<TeamData[]>([])
 onMounted(async () => {
   loadTeams()
   loadDisplaySettings()
+  loadCacheStats()
   
   if (authStore.isAuthenticated) {
     await platformsStore.fetchConnectedPlatforms()
     await loadYahooLeagues()
   }
 })
+
+// Load cache statistics
+function loadCacheStats() {
+  cacheStats.value = cache.getStats()
+}
+
+// Clear all cached data
+async function clearCache() {
+  clearingCache.value = true
+  try {
+    cache.clearAll()
+    cacheStats.value = cache.getStats()
+    successMessage.value = 'Cache cleared successfully!'
+    showSuccess.value = true
+    setTimeout(() => showSuccess.value = false, 3000)
+  } finally {
+    clearingCache.value = false
+  }
+}
 
 // Connect Yahoo
 function connectYahoo() {

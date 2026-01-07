@@ -10,6 +10,7 @@
 
 import { supabase } from '@/lib/supabase'
 import type { Sport } from '@/types/supabase'
+import { cache, CACHE_TTL, CACHE_KEYS } from './cache'
 
 // Yahoo sport keys
 const SPORT_KEYS: Record<Sport, string> = {
@@ -322,24 +323,46 @@ export class YahooFantasyService {
    * Get current week and league metadata
    */
   async getLeagueMetadata(leagueKey: string): Promise<{ currentWeek: number; startWeek: number; endWeek: number; isFinished: boolean }> {
+    // Check cache first
+    const cached = cache.get<{ currentWeek: number; startWeek: number; endWeek: number; isFinished: boolean }>(
+      CACHE_KEYS.YAHOO_METADATA, leagueKey
+    )
+    if (cached) {
+      console.log(`[Cache HIT] League metadata for ${leagueKey}`)
+      return cached
+    }
+    
     const data = await this.apiRequest(
       `/league/${leagueKey}/metadata?format=json`
     )
     
     const league = data.fantasy_content?.league?.[0]
     
-    return {
+    const result = {
       currentWeek: parseInt(league?.current_week || '1'),
       startWeek: parseInt(league?.start_week || '1'),
       endWeek: parseInt(league?.end_week || '16'),
       isFinished: league?.is_finished === '1'
     }
+    
+    // Cache with appropriate TTL based on season status
+    const ttl = result.isFinished ? CACHE_TTL.COMPLETED : CACHE_TTL.METADATA
+    cache.set(CACHE_KEYS.YAHOO_METADATA, result, ttl, leagueKey)
+    
+    return result
   }
 
   /**
    * Get all teams in a league with full details
    */
   async getTeams(leagueKey: string): Promise<YahooTeam[]> {
+    // Check cache first
+    const cached = cache.get<YahooTeam[]>(CACHE_KEYS.YAHOO_TEAMS, leagueKey)
+    if (cached) {
+      console.log(`[Cache HIT] Teams for ${leagueKey}`)
+      return cached
+    }
+    
     const data = await this.apiRequest(
       `/league/${leagueKey}/teams;out=standings?format=json`
     )
@@ -384,6 +407,9 @@ export class YahooFantasyService {
       })
     }
 
+    // Cache teams
+    cache.set(CACHE_KEYS.YAHOO_TEAMS, teams, CACHE_TTL.STANDINGS, leagueKey)
+    
     return teams
   }
 
@@ -450,6 +476,13 @@ export class YahooFantasyService {
    * Get league standings
    */
   async getStandings(leagueKey: string): Promise<any[]> {
+    // Check cache first
+    const cached = cache.get<any[]>(CACHE_KEYS.YAHOO_STANDINGS, leagueKey)
+    if (cached) {
+      console.log(`[Cache HIT] Standings for ${leagueKey}`)
+      return cached
+    }
+    
     const data = await this.apiRequest(
       `/league/${leagueKey}/standings?format=json`
     )
@@ -530,13 +563,25 @@ export class YahooFantasyService {
       })
     }
 
-    return standings.sort((a, b) => a.rank - b.rank)
+    const result = standings.sort((a, b) => a.rank - b.rank)
+    
+    // Cache standings
+    cache.set(CACHE_KEYS.YAHOO_STANDINGS, result, CACHE_TTL.STANDINGS, leagueKey)
+    
+    return result
   }
 
   /**
    * Get matchups for a specific week
    */
   async getMatchups(leagueKey: string, week: number): Promise<YahooMatchup[]> {
+    // Check cache first
+    const cached = cache.get<YahooMatchup[]>(CACHE_KEYS.YAHOO_MATCHUPS, leagueKey, week)
+    if (cached) {
+      console.log(`[Cache HIT] Matchups for ${leagueKey} week ${week}`)
+      return cached
+    }
+    
     const data = await this.apiRequest(
       `/league/${leagueKey}/scoreboard;week=${week}?format=json`
     )
@@ -597,6 +642,12 @@ export class YahooFantasyService {
       })
     }
 
+    // Cache matchups - completed weeks get longer TTL
+    const metadata = await this.getLeagueMetadata(leagueKey)
+    const isCompletedWeek = week < metadata.currentWeek || metadata.isFinished
+    const ttl = isCompletedWeek ? CACHE_TTL.COMPLETED : CACHE_TTL.CURRENT
+    cache.set(CACHE_KEYS.YAHOO_MATCHUPS, matchups, ttl, leagueKey, week)
+
     return matchups
   }
 
@@ -605,6 +656,13 @@ export class YahooFantasyService {
    * This returns which team won each category in each matchup
    */
   async getCategoryMatchups(leagueKey: string, week: number): Promise<any[]> {
+    // Check cache first
+    const cached = cache.get<any[]>(CACHE_KEYS.YAHOO_CATEGORY_MATCHUPS, leagueKey, week)
+    if (cached) {
+      console.log(`[Cache HIT] Category matchups for ${leagueKey} week ${week}`)
+      return cached
+    }
+    
     const data = await this.apiRequest(
       `/league/${leagueKey}/scoreboard;week=${week}?format=json`
     )
@@ -684,6 +742,12 @@ export class YahooFantasyService {
     }
     
     console.log(`Week ${week}: ${matchups.length} matchups, first has ${matchups[0]?.stat_winners?.length || 0} stat winners`)
+    
+    // Cache category matchups - completed weeks get longer TTL
+    const metadata = await this.getLeagueMetadata(leagueKey)
+    const isCompletedWeek = week < metadata.currentWeek || metadata.isFinished
+    const ttl = isCompletedWeek ? CACHE_TTL.COMPLETED : CACHE_TTL.CURRENT
+    cache.set(CACHE_KEYS.YAHOO_CATEGORY_MATCHUPS, matchups, ttl, leagueKey, week)
     
     return matchups
   }
@@ -1204,6 +1268,13 @@ export class YahooFantasyService {
    * Get league scoring settings to understand point values
    */
   async getLeagueScoringSettings(leagueKey: string): Promise<any> {
+    // Check cache first - settings rarely change
+    const cached = cache.get<any>(CACHE_KEYS.YAHOO_SETTINGS, leagueKey)
+    if (cached) {
+      console.log(`[Cache HIT] Scoring settings for ${leagueKey}`)
+      return cached
+    }
+    
     try {
       const data = await this.apiRequest(
         `/league/${leagueKey}/settings?format=json`
@@ -1223,12 +1294,17 @@ export class YahooFantasyService {
         }
       }
       
-      return {
+      const result = {
         scoring_type: settings?.scoring_type,
         stat_categories: statCategories,
         stat_modifiers: scoringMap,
         roster_positions: settings?.roster_positions || []
       }
+      
+      // Cache settings - they rarely change
+      cache.set(CACHE_KEYS.YAHOO_SETTINGS, result, CACHE_TTL.SETTINGS, leagueKey)
+      
+      return result
     } catch (e) {
       console.error('Error fetching league settings:', e)
       return null
