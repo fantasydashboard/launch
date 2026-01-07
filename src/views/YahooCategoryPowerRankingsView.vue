@@ -97,67 +97,67 @@
                   <th class="py-3 px-4 w-6">+/-</th>
                   <th class="py-3 px-4">Team</th>
                   <th 
-                    class="py-3 px-4 text-center cursor-pointer hover:text-primary transition-colors"
+                    class="py-3 px-4 text-center cursor-pointer hover:text-red-400 transition-colors"
                     @click="sortPowerRankings('powerScore')"
                   >
                     <div class="flex items-center justify-center gap-1">
                       Power Score
-                      <span v-if="sortColumn === 'powerScore'" class="text-primary">
+                      <span v-if="sortColumn === 'powerScore'" class="text-red-400">
                         {{ sortDirection === 'desc' ? '↓' : '↑' }}
                       </span>
                     </div>
                   </th>
                   <th 
-                    class="py-3 px-4 text-center cursor-pointer hover:text-primary transition-colors"
+                    class="py-3 px-4 text-center cursor-pointer hover:text-red-400 transition-colors"
                     @click="sortPowerRankings('catWins')"
                   >
                     <div class="flex items-center justify-center gap-1">
                       Cat W-L-T
-                      <span v-if="sortColumn === 'catWins'" class="text-primary">
+                      <span v-if="sortColumn === 'catWins'" class="text-red-400">
                         {{ sortDirection === 'desc' ? '↓' : '↑' }}
                       </span>
                     </div>
                   </th>
                   <th 
-                    class="py-3 px-4 text-center cursor-pointer hover:text-primary transition-colors"
+                    class="py-3 px-4 text-center cursor-pointer hover:text-red-400 transition-colors"
                     @click="sortPowerRankings('catWinPct')"
                   >
                     <div class="flex items-center justify-center gap-1">
                       Cat Win %
-                      <span v-if="sortColumn === 'catWinPct'" class="text-primary">
+                      <span v-if="sortColumn === 'catWinPct'" class="text-red-400">
                         {{ sortDirection === 'desc' ? '↓' : '↑' }}
                       </span>
                     </div>
                   </th>
                   <th 
-                    class="py-3 px-4 text-center hidden md:table-cell cursor-pointer hover:text-primary transition-colors"
+                    class="py-3 px-4 text-center hidden md:table-cell cursor-pointer hover:text-red-400 transition-colors"
                     @click="sortPowerRankings('dominant')"
                   >
                     <div class="flex items-center justify-center gap-1">
                       Dominant
-                      <span v-if="sortColumn === 'dominant'" class="text-primary">
+                      <span v-if="sortColumn === 'dominant'" class="text-red-400">
                         {{ sortDirection === 'desc' ? '↓' : '↑' }}
                       </span>
                     </div>
                   </th>
                   <th 
-                    class="py-3 px-4 text-center hidden md:table-cell cursor-pointer hover:text-primary transition-colors"
+                    class="py-3 px-4 text-center hidden md:table-cell cursor-pointer hover:text-red-400 transition-colors"
                     @click="sortPowerRankings('weak')"
                   >
                     <div class="flex items-center justify-center gap-1">
                       Weak
-                      <span v-if="sortColumn === 'weak'" class="text-primary">
+                      <span v-if="sortColumn === 'weak'" class="text-red-400">
                         {{ sortDirection === 'desc' ? '↓' : '↑' }}
                       </span>
                     </div>
                   </th>
                   <th 
-                    class="py-3 px-4 text-center hidden lg:table-cell cursor-pointer hover:text-primary transition-colors"
+                    class="py-3 px-4 text-center hidden lg:table-cell cursor-pointer hover:text-red-400 transition-colors"
                     @click="sortPowerRankings('avgCats')"
                   >
                     <div class="flex items-center justify-center gap-1">
                       Avg/Week
-                      <span v-if="sortColumn === 'avgCats'" class="text-primary">
+                      <span v-if="sortColumn === 'avgCats'" class="text-red-400">
                         {{ sortDirection === 'desc' ? '↓' : '↑' }}
                       </span>
                     </div>

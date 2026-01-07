@@ -230,12 +230,12 @@
         <table class="w-full">
           <thead>
             <tr class="text-left text-xs text-dark-textMuted uppercase border-b border-dark-border">
-              <th class="py-3 px-3 w-12 cursor-pointer hover:text-primary" @click="setSortColumn('rank')">
-                # <span v-if="sortColumn === 'rank'">{{ sortDirection === 'asc' ? '↑' : '↓' }}</span>
+              <th class="py-3 px-3 w-12 cursor-pointer hover:text-red-400" @click="setSortColumn('rank')">
+                # <span v-if="sortColumn === 'rank'" class="text-red-400">{{ sortDirection === 'asc' ? '↑' : '↓' }}</span>
               </th>
               <th class="py-3 px-3 min-w-[150px]">Team</th>
-              <th class="py-3 px-3 text-center cursor-pointer hover:text-primary" @click="setSortColumn('record')" title="Total Category W-L-T">
-                W-L-T <span v-if="sortColumn === 'record'">{{ sortDirection === 'asc' ? '↑' : '↓' }}</span>
+              <th class="py-3 px-3 text-center cursor-pointer hover:text-red-400" @click="setSortColumn('record')" title="Total Category W-L-T">
+                W-L-T <span v-if="sortColumn === 'record'" class="text-red-400">{{ sortDirection === 'asc' ? '↑' : '↓' }}</span>
               </th>
               
               <!-- Category columns (for H2H/Roto Category leagues) -->
@@ -243,27 +243,27 @@
                 <th 
                   v-for="cat in displayCategories" 
                   :key="cat.stat_id"
-                  class="py-3 px-2 text-center cursor-pointer hover:text-primary whitespace-nowrap"
+                  class="py-3 px-2 text-center cursor-pointer hover:text-red-400 whitespace-nowrap"
                   :title="cat.name + ' - Times won this category'"
                   @click="setSortColumn('cat_' + cat.stat_id)"
                 >
                   <div class="flex flex-col items-center">
                     <span class="text-[10px]">{{ cat.display_name }}</span>
-                    <span v-if="sortColumn === 'cat_' + cat.stat_id" class="text-[8px]">{{ sortDirection === 'asc' ? '↑' : '↓' }}</span>
+                    <span v-if="sortColumn === 'cat_' + cat.stat_id" class="text-[8px] text-red-400">{{ sortDirection === 'asc' ? '↑' : '↓' }}</span>
                   </div>
                 </th>
               </template>
               
               <!-- Points columns (for Points leagues) -->
               <template v-else>
-                <th class="py-3 px-3 text-center cursor-pointer hover:text-primary" @click="setSortColumn('allPlay')">
-                  All-Play <span v-if="sortColumn === 'allPlay'">{{ sortDirection === 'asc' ? '↑' : '↓' }}</span>
+                <th class="py-3 px-3 text-center cursor-pointer hover:text-red-400" @click="setSortColumn('allPlay')">
+                  All-Play <span v-if="sortColumn === 'allPlay'" class="text-red-400">{{ sortDirection === 'asc' ? '↑' : '↓' }}</span>
                 </th>
-                <th class="py-3 px-3 text-right cursor-pointer hover:text-primary" @click="setSortColumn('pf')">
-                  PF <span v-if="sortColumn === 'pf'">{{ sortDirection === 'asc' ? '↑' : '↓' }}</span>
+                <th class="py-3 px-3 text-right cursor-pointer hover:text-red-400" @click="setSortColumn('pf')">
+                  PF <span v-if="sortColumn === 'pf'" class="text-red-400">{{ sortDirection === 'asc' ? '↑' : '↓' }}</span>
                 </th>
-                <th class="py-3 px-3 text-right cursor-pointer hover:text-primary" @click="setSortColumn('pa')">
-                  PA <span v-if="sortColumn === 'pa'">{{ sortDirection === 'asc' ? '↑' : '↓' }}</span>
+                <th class="py-3 px-3 text-right cursor-pointer hover:text-red-400" @click="setSortColumn('pa')">
+                  PA <span v-if="sortColumn === 'pa'" class="text-red-400">{{ sortDirection === 'asc' ? '↑' : '↓' }}</span>
                 </th>
               </template>
             </tr>
