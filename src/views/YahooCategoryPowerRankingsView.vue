@@ -715,10 +715,10 @@ async function downloadRankings() {
     
     const leagueName = leagueInfo.value?.name || 'League'
     
-    // Load main UFD logo
+    // Load main UFD logo (same as header)
     const loadLogo = async (): Promise<string> => {
       try {
-        const response = await fetch('/logos/UFD_Logo.png')
+        const response = await fetch('/UFD_V5.png')
         if (!response.ok) return ''
         const blob = await response.blob()
         return new Promise((resolve) => {
@@ -744,7 +744,7 @@ async function downloadRankings() {
         ctx.beginPath()
         ctx.arc(32, 32, 32, 0, Math.PI * 2)
         ctx.fill()
-        ctx.fillStyle = '#dc2626'
+        ctx.fillStyle = '#ffffff'
         ctx.font = 'bold 28px sans-serif'
         ctx.textAlign = 'center'
         ctx.textBaseline = 'middle'
@@ -808,7 +808,7 @@ async function downloadRankings() {
       <div style="display: flex; height: 80px; padding: 0 12px; background: rgba(38, 42, 58, 0.4); border-radius: 10px; margin-bottom: 6px; border: 1px solid rgba(58, 61, 82, 0.4); box-sizing: border-box;">
         <!-- Rank Number - much less padding to move it UP -->
         <div style="width: 44px; flex-shrink: 0; padding-top: 8px;">
-          <span style="font-size: 36px; font-weight: 900; color: #dc2626; font-family: 'Impact', 'Arial Black', sans-serif; letter-spacing: -2px; line-height: 1;">${rank}</span>
+          <span style="font-size: 36px; font-weight: 900; color: #ffffff; font-family: 'Impact', 'Arial Black', sans-serif; letter-spacing: -2px; line-height: 1;">${rank}</span>
           ${team.change !== 0 ? `
             <span style="font-size: 10px; font-weight: 700; color: ${team.change > 0 ? '#10b981' : '#ef4444'}; margin-left: 2px;">
               ${team.change > 0 ? '▲' : '▼'}${Math.abs(team.change)}
@@ -826,7 +826,7 @@ async function downloadRankings() {
         </div>
         <!-- Power Score with conditional bar - move up -->
         <div style="width: 55px; flex-shrink: 0; text-align: center; padding-top: 14px;">
-          <div style="font-size: 18px; font-weight: bold; color: #dc2626; line-height: 1;">${team.powerScore.toFixed(1)}</div>
+          <div style="font-size: 18px; font-weight: bold; color: #ffffff; line-height: 1;">${team.powerScore.toFixed(1)}</div>
           <div style="width: 100%; height: 5px; background: rgba(58, 61, 82, 0.8); border-radius: 3px; overflow: hidden; margin-top: 12px;">
             <div style="width: ${powerPct}%; height: 100%; background: ${barColor}; border-radius: 3px;"></div>
           </div>
