@@ -8,6 +8,15 @@
       </p>
     </div>
 
+    <!-- Offseason Notice Banner -->
+    <div class="bg-slate-500/10 border border-slate-500/30 rounded-xl p-4 flex items-start gap-3">
+      <div class="text-slate-400 text-xl flex-shrink-0">⚾</div>
+      <div>
+        <p class="text-slate-200 font-semibold">You're viewing the 2025 season</p>
+        <p class="text-slate-400 text-sm mt-1">The 2026 season will automatically appear here when it begins.</p>
+      </div>
+    </div>
+
     <!-- Loading State -->
     <div v-if="isLoading" class="flex items-center justify-center py-20">
       <div class="text-center">
@@ -109,12 +118,15 @@
               <button 
                 @click="downloadCareerStats"
                 :disabled="isDownloading"
-                class="btn-primary flex items-center gap-2 text-sm"
+                class="flex items-center gap-2 px-4 py-2 rounded-lg font-semibold transition-colors disabled:opacity-50 text-sm"
+                style="background: #dc2626; color: #ffffff;"
+                @mouseover="$event.currentTarget.style.background = '#eab308'; $event.currentTarget.style.color = '#0a0c14'"
+                @mouseout="$event.currentTarget.style.background = '#dc2626'; $event.currentTarget.style.color = '#ffffff'"
               >
-                <svg v-if="!isDownloading" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg v-if="!isDownloading" class="w-4 h-4 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
                 </svg>
-                <svg v-else class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                <svg v-else class="w-4 h-4 animate-spin pointer-events-none" fill="none" viewBox="0 0 24 24">
                   <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                   <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                 </svg>
@@ -132,8 +144,8 @@
                   <div class="flex items-center justify-center gap-1">
                     Seasons
                     <span class="inline-flex flex-col" style="font-size: 10px; line-height: 8px;">
-                      <span :class="sortColumn === 'seasons' && sortDirection === 'asc' ? 'text-primary' : 'text-dark-textMuted'">▲</span>
-                      <span :class="sortColumn === 'seasons' && sortDirection === 'desc' ? 'text-primary' : 'text-dark-textMuted'">▼</span>
+                      <span :class="sortColumn === 'seasons' && sortDirection === 'asc' ? 'text-red-400' : 'text-dark-textMuted'">▲</span>
+                      <span :class="sortColumn === 'seasons' && sortDirection === 'desc' ? 'text-red-400' : 'text-dark-textMuted'">▼</span>
                     </span>
                   </div>
                 </th>
@@ -141,8 +153,8 @@
                   <div class="flex items-center justify-center gap-1">
                     🏆
                     <span class="inline-flex flex-col" style="font-size: 10px; line-height: 8px;">
-                      <span :class="sortColumn === 'championships' && sortDirection === 'asc' ? 'text-primary' : 'text-dark-textMuted'">▲</span>
-                      <span :class="sortColumn === 'championships' && sortDirection === 'desc' ? 'text-primary' : 'text-dark-textMuted'">▼</span>
+                      <span :class="sortColumn === 'championships' && sortDirection === 'asc' ? 'text-red-400' : 'text-dark-textMuted'">▲</span>
+                      <span :class="sortColumn === 'championships' && sortDirection === 'desc' ? 'text-red-400' : 'text-dark-textMuted'">▼</span>
                     </span>
                   </div>
                 </th>
@@ -150,8 +162,8 @@
                   <div class="flex items-center justify-center gap-1">
                     Record
                     <span class="inline-flex flex-col" style="font-size: 10px; line-height: 8px;">
-                      <span :class="sortColumn === 'matchup_wins' && sortDirection === 'asc' ? 'text-primary' : 'text-dark-textMuted'">▲</span>
-                      <span :class="sortColumn === 'matchup_wins' && sortDirection === 'desc' ? 'text-primary' : 'text-dark-textMuted'">▼</span>
+                      <span :class="sortColumn === 'matchup_wins' && sortDirection === 'asc' ? 'text-red-400' : 'text-dark-textMuted'">▲</span>
+                      <span :class="sortColumn === 'matchup_wins' && sortDirection === 'desc' ? 'text-red-400' : 'text-dark-textMuted'">▼</span>
                     </span>
                   </div>
                 </th>
@@ -159,8 +171,8 @@
                   <div class="flex items-center justify-center gap-1">
                     Win %
                     <span class="inline-flex flex-col" style="font-size: 10px; line-height: 8px;">
-                      <span :class="sortColumn === 'matchup_win_pct' && sortDirection === 'asc' ? 'text-primary' : 'text-dark-textMuted'">▲</span>
-                      <span :class="sortColumn === 'matchup_win_pct' && sortDirection === 'desc' ? 'text-primary' : 'text-dark-textMuted'">▼</span>
+                      <span :class="sortColumn === 'matchup_win_pct' && sortDirection === 'asc' ? 'text-red-400' : 'text-dark-textMuted'">▲</span>
+                      <span :class="sortColumn === 'matchup_win_pct' && sortDirection === 'desc' ? 'text-red-400' : 'text-dark-textMuted'">▼</span>
                     </span>
                   </div>
                 </th>
@@ -168,8 +180,8 @@
                   <div class="flex items-center justify-center gap-1">
                     Hitting Cat W
                     <span class="inline-flex flex-col" style="font-size: 10px; line-height: 8px;">
-                      <span :class="sortColumn === 'hitting_cat_wins' && sortDirection === 'asc' ? 'text-primary' : 'text-dark-textMuted'">▲</span>
-                      <span :class="sortColumn === 'hitting_cat_wins' && sortDirection === 'desc' ? 'text-primary' : 'text-dark-textMuted'">▼</span>
+                      <span :class="sortColumn === 'hitting_cat_wins' && sortDirection === 'asc' ? 'text-red-400' : 'text-dark-textMuted'">▲</span>
+                      <span :class="sortColumn === 'hitting_cat_wins' && sortDirection === 'desc' ? 'text-red-400' : 'text-dark-textMuted'">▼</span>
                     </span>
                   </div>
                 </th>
@@ -177,8 +189,8 @@
                   <div class="flex items-center justify-center gap-1">
                     Pitching Cat W
                     <span class="inline-flex flex-col" style="font-size: 10px; line-height: 8px;">
-                      <span :class="sortColumn === 'pitching_cat_wins' && sortDirection === 'asc' ? 'text-primary' : 'text-dark-textMuted'">▲</span>
-                      <span :class="sortColumn === 'pitching_cat_wins' && sortDirection === 'desc' ? 'text-primary' : 'text-dark-textMuted'">▼</span>
+                      <span :class="sortColumn === 'pitching_cat_wins' && sortDirection === 'asc' ? 'text-red-400' : 'text-dark-textMuted'">▲</span>
+                      <span :class="sortColumn === 'pitching_cat_wins' && sortDirection === 'desc' ? 'text-red-400' : 'text-dark-textMuted'">▼</span>
                     </span>
                   </div>
                 </th>
@@ -186,8 +198,8 @@
                   <div class="flex items-center justify-center gap-1">
                     Cat +/-
                     <span class="inline-flex flex-col" style="font-size: 10px; line-height: 8px;">
-                      <span :class="sortColumn === 'cat_diff' && sortDirection === 'asc' ? 'text-primary' : 'text-dark-textMuted'">▲</span>
-                      <span :class="sortColumn === 'cat_diff' && sortDirection === 'desc' ? 'text-primary' : 'text-dark-textMuted'">▼</span>
+                      <span :class="sortColumn === 'cat_diff' && sortDirection === 'asc' ? 'text-red-400' : 'text-dark-textMuted'">▲</span>
+                      <span :class="sortColumn === 'cat_diff' && sortDirection === 'desc' ? 'text-red-400' : 'text-dark-textMuted'">▼</span>
                     </span>
                   </div>
                 </th>
@@ -269,12 +281,15 @@
             <button 
               @click="downloadSeasonHistory"
               :disabled="isDownloadingSeason"
-              class="btn-primary flex items-center gap-2 text-sm"
+              class="flex items-center gap-2 px-4 py-2 rounded-lg font-semibold transition-colors disabled:opacity-50 text-sm"
+              style="background: #dc2626; color: #ffffff;"
+              @mouseover="$event.currentTarget.style.background = '#eab308'; $event.currentTarget.style.color = '#0a0c14'"
+              @mouseout="$event.currentTarget.style.background = '#dc2626'; $event.currentTarget.style.color = '#ffffff'"
             >
-              <svg v-if="!isDownloadingSeason" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg v-if="!isDownloadingSeason" class="w-4 h-4 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
               </svg>
-              <svg v-else class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+              <svg v-else class="w-4 h-4 animate-spin pointer-events-none" fill="none" viewBox="0 0 24 24">
                 <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                 <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
               </svg>
@@ -379,12 +394,15 @@
               <button 
                 @click="downloadH2HMatrix"
                 :disabled="isDownloadingH2H"
-                class="btn-primary flex items-center gap-2 text-sm"
+                class="flex items-center gap-2 px-4 py-2 rounded-lg font-semibold transition-colors disabled:opacity-50 text-sm"
+                style="background: #dc2626; color: #ffffff;"
+                @mouseover="$event.currentTarget.style.background = '#eab308'; $event.currentTarget.style.color = '#0a0c14'"
+                @mouseout="$event.currentTarget.style.background = '#dc2626'; $event.currentTarget.style.color = '#ffffff'"
               >
-                <svg v-if="!isDownloadingH2H" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg v-if="!isDownloadingH2H" class="w-4 h-4 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
                 </svg>
-                <svg v-else class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                <svg v-else class="w-4 h-4 animate-spin pointer-events-none" fill="none" viewBox="0 0 24 24">
                   <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                   <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                 </svg>
@@ -516,19 +534,19 @@
                   <div v-for="award in hallOfFameHitting" :key="award.category" 
                        class="cursor-pointer"
                        @click="toggleAwardCard(`fame-hitting-${award.category}`)">
-                    <div class="bg-gradient-to-br from-blue-500/10 to-blue-600/5 rounded-xl p-4 border border-blue-500/20 hover:border-blue-500/40 transition-all"
-                         :class="expandedAwardCard === `fame-hitting-${award.category}` ? 'ring-2 ring-blue-500' : ''">
+                    <div class="bg-gradient-to-br from-green-500/10 to-green-600/5 rounded-xl p-4 border border-green-500/20 hover:border-green-500/40 transition-all"
+                         :class="expandedAwardCard === `fame-hitting-${award.category}` ? 'ring-2 ring-green-500' : ''">
                       <div class="text-center mb-2">
-                        <span class="px-3 py-1 rounded-full text-xs font-bold bg-blue-500/30 text-blue-400">{{ award.category }}</span>
+                        <span class="px-3 py-1 rounded-full text-xs font-bold bg-green-500/30 text-green-400">{{ award.category }}</span>
                       </div>
                       <div v-if="award.winner" class="text-center">
-                        <div class="w-10 h-10 rounded-full overflow-hidden bg-dark-border mx-auto mb-2 ring-2 ring-blue-500/50">
+                        <div class="w-10 h-10 rounded-full overflow-hidden bg-dark-border mx-auto mb-2 ring-2 ring-green-500/50">
                           <img :src="award.winner.logo_url || defaultAvatar" class="w-full h-full object-cover" @error="handleImageError" />
                         </div>
                         <div class="font-semibold text-dark-text text-sm truncate">{{ award.winner.team_name }}</div>
-                        <div class="text-2xl font-black text-blue-400">{{ award.winner.value }}</div>
+                        <div class="text-2xl font-black text-green-400">{{ award.winner.value }}</div>
                         <div class="text-xs text-dark-textMuted">wins in {{ award.winner.season }}</div>
-                        <div class="text-xs text-blue-400/70 mt-1">Click for rankings →</div>
+                        <div class="text-xs text-green-400/70 mt-1">Click for rankings →</div>
                       </div>
                       <div v-else class="text-center text-sm text-dark-textMuted italic py-4">No data</div>
                     </div>
@@ -538,9 +556,9 @@
                 <!-- Expanded Rankings Panel (outside grid for full width) -->
                 <transition name="expand">
                   <div v-if="expandedAwardCard?.startsWith('fame-hitting-')" 
-                       class="mt-4 bg-dark-elevated rounded-xl border border-blue-500/30 p-6">
+                       class="mt-4 bg-dark-elevated rounded-xl border border-green-500/30 p-6">
                     <div class="flex items-center justify-between mb-4">
-                      <div class="text-lg font-bold text-blue-400">{{ expandedAwardCard?.replace('fame-hitting-', '') }} - All-Time Best Seasons</div>
+                      <div class="text-lg font-bold text-green-400">{{ expandedAwardCard?.replace('fame-hitting-', '') }} - All-Time Best Seasons</div>
                       <button @click="expandedAwardCard = null" class="text-dark-textMuted hover:text-dark-text">
                         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
@@ -552,11 +570,11 @@
                            :key="`${team.team_name}-${team.season}`"
                            class="relative">
                         <div class="flex items-center gap-4">
-                          <div class="w-8 text-center font-bold text-lg" :class="idx === 0 ? 'text-blue-400' : 'text-dark-textMuted'">
+                          <div class="w-8 text-center font-bold text-lg" :class="idx === 0 ? 'text-green-400' : 'text-dark-textMuted'">
                             {{ idx + 1 }}
                           </div>
                           <div class="w-10 h-10 rounded-full overflow-hidden bg-dark-border flex-shrink-0 ring-2" 
-                               :class="idx === 0 ? 'ring-blue-500' : 'ring-dark-border'">
+                               :class="idx === 0 ? 'ring-green-500' : 'ring-dark-border'">
                             <img :src="team.logo_url || defaultAvatar" class="w-full h-full object-cover" @error="handleImageError" />
                           </div>
                           <div class="w-40 flex-shrink-0">
@@ -565,7 +583,7 @@
                           </div>
                           <div class="flex-1 relative h-8 bg-dark-border/30 rounded-lg overflow-hidden">
                             <div class="absolute inset-y-0 left-0 rounded-lg transition-all duration-500"
-                                 :class="idx === 0 ? 'bg-gradient-to-r from-blue-600 to-blue-400' : 'bg-blue-500/50'"
+                                 :class="idx === 0 ? 'bg-gradient-to-r from-green-600 to-green-400' : 'bg-green-500/50'"
                                  :style="{ width: getBarWidth(team.value, getCategoryRankings(expandedAwardCard?.replace('fame-hitting-', '') || '', 'best')) }">
                             </div>
                             <div class="absolute inset-0 flex items-center justify-end pr-3">
@@ -824,19 +842,19 @@
                   <div v-for="award in seasonHallOfFameHitting" :key="award.category" 
                        class="cursor-pointer"
                        @click="toggleSeasonAwardCard(`season-fame-hitting-${award.category}`)">
-                    <div class="bg-gradient-to-br from-blue-500/10 to-blue-600/5 rounded-xl p-4 border border-blue-500/20 hover:border-blue-500/40 transition-all"
-                         :class="expandedSeasonAwardCard === `season-fame-hitting-${award.category}` ? 'ring-2 ring-blue-500' : ''">
+                    <div class="bg-gradient-to-br from-green-500/10 to-green-600/5 rounded-xl p-4 border border-green-500/20 hover:border-green-500/40 transition-all"
+                         :class="expandedSeasonAwardCard === `season-fame-hitting-${award.category}` ? 'ring-2 ring-green-500' : ''">
                       <div class="text-center mb-2">
-                        <span class="px-3 py-1 rounded-full text-xs font-bold bg-blue-500/30 text-blue-400">{{ award.category }}</span>
+                        <span class="px-3 py-1 rounded-full text-xs font-bold bg-green-500/30 text-green-400">{{ award.category }}</span>
                       </div>
                       <div v-if="award.winner" class="text-center">
-                        <div class="w-10 h-10 rounded-full overflow-hidden bg-dark-border mx-auto mb-2 ring-2 ring-blue-500/50">
+                        <div class="w-10 h-10 rounded-full overflow-hidden bg-dark-border mx-auto mb-2 ring-2 ring-green-500/50">
                           <img :src="award.winner.logo_url || defaultAvatar" class="w-full h-full object-cover" @error="handleImageError" />
                         </div>
                         <div class="font-semibold text-dark-text text-sm truncate">{{ award.winner.team_name }}</div>
-                        <div class="text-2xl font-black text-blue-400">{{ award.winner.value }}</div>
+                        <div class="text-2xl font-black text-green-400">{{ award.winner.value }}</div>
                         <div class="text-xs text-dark-textMuted">category wins</div>
-                        <div class="text-xs text-blue-400/70 mt-1">Click for rankings →</div>
+                        <div class="text-xs text-green-400/70 mt-1">Click for rankings →</div>
                       </div>
                       <div v-else class="text-center text-sm text-dark-textMuted italic py-4">No data</div>
                     </div>
@@ -846,9 +864,9 @@
                 <!-- Expanded Rankings Panel -->
                 <transition name="expand">
                   <div v-if="expandedSeasonAwardCard?.startsWith('season-fame-hitting-')" 
-                       class="mt-4 bg-dark-elevated rounded-xl border border-blue-500/30 p-6">
+                       class="mt-4 bg-dark-elevated rounded-xl border border-green-500/30 p-6">
                     <div class="flex items-center justify-between mb-4">
-                      <div class="text-lg font-bold text-blue-400">{{ expandedSeasonAwardCard?.replace('season-fame-hitting-', '') }} - {{ selectedAwardsSeason }} Rankings</div>
+                      <div class="text-lg font-bold text-green-400">{{ expandedSeasonAwardCard?.replace('season-fame-hitting-', '') }} - {{ selectedAwardsSeason }} Rankings</div>
                       <button @click="expandedSeasonAwardCard = null" class="text-dark-textMuted hover:text-dark-text">
                         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
@@ -860,11 +878,11 @@
                            :key="`${team.team_name}`"
                            class="relative">
                         <div class="flex items-center gap-4">
-                          <div class="w-8 text-center font-bold text-lg" :class="idx === 0 ? 'text-blue-400' : 'text-dark-textMuted'">
+                          <div class="w-8 text-center font-bold text-lg" :class="idx === 0 ? 'text-green-400' : 'text-dark-textMuted'">
                             {{ idx + 1 }}
                           </div>
                           <div class="w-10 h-10 rounded-full overflow-hidden bg-dark-border flex-shrink-0 ring-2" 
-                               :class="idx === 0 ? 'ring-blue-500' : 'ring-dark-border'">
+                               :class="idx === 0 ? 'ring-green-500' : 'ring-dark-border'">
                             <img :src="team.logo_url || defaultAvatar" class="w-full h-full object-cover" @error="handleImageError" />
                           </div>
                           <div class="w-40 flex-shrink-0">
@@ -872,7 +890,7 @@
                           </div>
                           <div class="flex-1 relative h-8 bg-dark-border/30 rounded-lg overflow-hidden">
                             <div class="absolute inset-y-0 left-0 rounded-lg transition-all duration-500"
-                                 :class="idx === 0 ? 'bg-gradient-to-r from-blue-600 to-blue-400' : 'bg-blue-500/50'"
+                                 :class="idx === 0 ? 'bg-gradient-to-r from-green-600 to-green-400' : 'bg-green-500/50'"
                                  :style="{ width: getBarWidth(team.value, getSeasonCategoryRankings(expandedSeasonAwardCard?.replace('season-fame-hitting-', '') || '', 'best')) }">
                             </div>
                             <div class="absolute inset-0 flex items-center justify-end pr-3">
@@ -2271,7 +2289,7 @@ function isHittingCategory(catName: string): boolean {
 
 function getCategoryColorClass(cat: string): string {
   const hittingCats = ['HR', 'RBI', 'R', 'SB', 'AVG', 'OPS', 'OBP', 'SLG', 'H']
-  if (hittingCats.includes(cat)) return 'bg-blue-500/30 text-blue-400'
+  if (hittingCats.includes(cat)) return 'bg-green-500/30 text-green-400'
   return 'bg-purple-500/30 text-purple-400'
 }
 
@@ -2304,13 +2322,85 @@ async function downloadCareerStats() {
   if (!careerTableRef.value) return
   isDownloading.value = true
   try {
-    const canvas = await html2canvas(careerTableRef.value, {
-      backgroundColor: '#1a1d23',
+    const html2canvas = (await import('html2canvas')).default
+    const leagueName = leagueStore.yahooLeague?.name || 'Fantasy League'
+    
+    // Load logo
+    const loadLogo = async (): Promise<string> => {
+      try {
+        const response = await fetch('/UFD_V5.png')
+        if (!response.ok) return ''
+        const blob = await response.blob()
+        return new Promise((resolve) => {
+          const reader = new FileReader()
+          reader.onloadend = () => resolve(reader.result as string)
+          reader.onerror = () => resolve('')
+          reader.readAsDataURL(blob)
+        })
+      } catch (e) { return '' }
+    }
+    
+    const logoBase64 = await loadLogo()
+    
+    // Capture the table
+    const tableCanvas = await html2canvas(careerTableRef.value, {
+      backgroundColor: '#0a0c14',
       scale: 2
     })
+    const tableDataUrl = tableCanvas.toDataURL('image/png')
+    
+    // Create wrapper with header/footer
+    const container = document.createElement('div')
+    container.style.cssText = 'position: absolute; left: -9999px; top: 0; width: 700px; font-family: system-ui, -apple-system, sans-serif;'
+    
+    container.innerHTML = `
+      <div style="background: linear-gradient(160deg, #0f1219 0%, #0a0c14 50%, #0d1117 100%); border-radius: 16px; box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5); position: relative; overflow: hidden;">
+        
+        <!-- Top Red Bar -->
+        <div style="background: #dc2626; padding: 10px 24px; text-align: center;">
+          <span style="font-size: 16px; font-weight: 700; color: #ffffff; text-transform: uppercase; letter-spacing: 3px;">Ultimate Fantasy Dashboard</span>
+        </div>
+        
+        <!-- Header -->
+        <div style="display: flex; padding: 16px 24px; border-bottom: 1px solid rgba(220, 38, 38, 0.2);">
+          ${logoBase64 ? `<img src="${logoBase64}" style="height: 70px; width: auto; flex-shrink: 0; margin-right: 24px;" />` : ''}
+          <div style="flex: 1;">
+            <div style="font-size: 36px; font-weight: 900; color: #ffffff; text-transform: uppercase; letter-spacing: 2px; text-shadow: 0 2px 8px rgba(220, 38, 38, 0.4);">Career Statistics</div>
+            <div style="font-size: 18px; margin-top: 6px; font-weight: 600;">
+              <span style="color: #e5e7eb;">${leagueName}</span>
+              <span style="color: #6b7280; margin: 0 8px;">•</span>
+              <span style="color: #dc2626; font-weight: 700;">All-Time Records</span>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Table Content -->
+        <div style="padding: 16px 24px;">
+          <img src="${tableDataUrl}" style="width: 100%; height: auto; border-radius: 8px;" />
+        </div>
+        
+        <!-- Footer -->
+        <div style="padding: 16px 24px; text-align: center;">
+          <span style="font-size: 20px; font-weight: bold; color: #dc2626;">ultimatefantasydashboard.com</span>
+        </div>
+      </div>
+    `
+    
+    document.body.appendChild(container)
+    await new Promise(r => setTimeout(r, 300))
+    
+    const finalCanvas = await html2canvas(container, {
+      backgroundColor: '#0a0c14',
+      scale: 2,
+      useCORS: true,
+      allowTaint: true
+    })
+    
+    document.body.removeChild(container)
+    
     const link = document.createElement('a')
     link.download = 'category-league-career-stats.png'
-    link.href = canvas.toDataURL()
+    link.href = finalCanvas.toDataURL('image/png')
     link.click()
   } finally {
     isDownloading.value = false
@@ -2321,13 +2411,85 @@ async function downloadSeasonHistory() {
   if (!seasonTableRef.value) return
   isDownloadingSeason.value = true
   try {
-    const canvas = await html2canvas(seasonTableRef.value, {
-      backgroundColor: '#1a1d23',
+    const html2canvas = (await import('html2canvas')).default
+    const leagueName = leagueStore.yahooLeague?.name || 'Fantasy League'
+    
+    // Load logo
+    const loadLogo = async (): Promise<string> => {
+      try {
+        const response = await fetch('/UFD_V5.png')
+        if (!response.ok) return ''
+        const blob = await response.blob()
+        return new Promise((resolve) => {
+          const reader = new FileReader()
+          reader.onloadend = () => resolve(reader.result as string)
+          reader.onerror = () => resolve('')
+          reader.readAsDataURL(blob)
+        })
+      } catch (e) { return '' }
+    }
+    
+    const logoBase64 = await loadLogo()
+    
+    // Capture the table
+    const tableCanvas = await html2canvas(seasonTableRef.value, {
+      backgroundColor: '#0a0c14',
       scale: 2
     })
+    const tableDataUrl = tableCanvas.toDataURL('image/png')
+    
+    // Create wrapper with header/footer
+    const container = document.createElement('div')
+    container.style.cssText = 'position: absolute; left: -9999px; top: 0; width: 700px; font-family: system-ui, -apple-system, sans-serif;'
+    
+    container.innerHTML = `
+      <div style="background: linear-gradient(160deg, #0f1219 0%, #0a0c14 50%, #0d1117 100%); border-radius: 16px; box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5); position: relative; overflow: hidden;">
+        
+        <!-- Top Red Bar -->
+        <div style="background: #dc2626; padding: 10px 24px; text-align: center;">
+          <span style="font-size: 16px; font-weight: 700; color: #ffffff; text-transform: uppercase; letter-spacing: 3px;">Ultimate Fantasy Dashboard</span>
+        </div>
+        
+        <!-- Header -->
+        <div style="display: flex; padding: 16px 24px; border-bottom: 1px solid rgba(220, 38, 38, 0.2);">
+          ${logoBase64 ? `<img src="${logoBase64}" style="height: 70px; width: auto; flex-shrink: 0; margin-right: 24px;" />` : ''}
+          <div style="flex: 1;">
+            <div style="font-size: 36px; font-weight: 900; color: #ffffff; text-transform: uppercase; letter-spacing: 2px; text-shadow: 0 2px 8px rgba(220, 38, 38, 0.4);">Season History</div>
+            <div style="font-size: 18px; margin-top: 6px; font-weight: 600;">
+              <span style="color: #e5e7eb;">${leagueName}</span>
+              <span style="color: #6b7280; margin: 0 8px;">•</span>
+              <span style="color: #dc2626; font-weight: 700;">Year-by-Year</span>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Table Content -->
+        <div style="padding: 16px 24px;">
+          <img src="${tableDataUrl}" style="width: 100%; height: auto; border-radius: 8px;" />
+        </div>
+        
+        <!-- Footer -->
+        <div style="padding: 16px 24px; text-align: center;">
+          <span style="font-size: 20px; font-weight: bold; color: #dc2626;">ultimatefantasydashboard.com</span>
+        </div>
+      </div>
+    `
+    
+    document.body.appendChild(container)
+    await new Promise(r => setTimeout(r, 300))
+    
+    const finalCanvas = await html2canvas(container, {
+      backgroundColor: '#0a0c14',
+      scale: 2,
+      useCORS: true,
+      allowTaint: true
+    })
+    
+    document.body.removeChild(container)
+    
     const link = document.createElement('a')
     link.download = 'category-league-season-history.png'
-    link.href = canvas.toDataURL()
+    link.href = finalCanvas.toDataURL('image/png')
     link.click()
   } finally {
     isDownloadingSeason.value = false
@@ -2338,13 +2500,85 @@ async function downloadH2HMatrix() {
   if (!h2hTableRef.value) return
   isDownloadingH2H.value = true
   try {
-    const canvas = await html2canvas(h2hTableRef.value, {
-      backgroundColor: '#1a1d23',
+    const html2canvas = (await import('html2canvas')).default
+    const leagueName = leagueStore.yahooLeague?.name || 'Fantasy League'
+    
+    // Load logo
+    const loadLogo = async (): Promise<string> => {
+      try {
+        const response = await fetch('/UFD_V5.png')
+        if (!response.ok) return ''
+        const blob = await response.blob()
+        return new Promise((resolve) => {
+          const reader = new FileReader()
+          reader.onloadend = () => resolve(reader.result as string)
+          reader.onerror = () => resolve('')
+          reader.readAsDataURL(blob)
+        })
+      } catch (e) { return '' }
+    }
+    
+    const logoBase64 = await loadLogo()
+    
+    // Capture the table
+    const tableCanvas = await html2canvas(h2hTableRef.value, {
+      backgroundColor: '#0a0c14',
       scale: 2
     })
+    const tableDataUrl = tableCanvas.toDataURL('image/png')
+    
+    // Create wrapper with header/footer
+    const container = document.createElement('div')
+    container.style.cssText = 'position: absolute; left: -9999px; top: 0; width: 700px; font-family: system-ui, -apple-system, sans-serif;'
+    
+    container.innerHTML = `
+      <div style="background: linear-gradient(160deg, #0f1219 0%, #0a0c14 50%, #0d1117 100%); border-radius: 16px; box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5); position: relative; overflow: hidden;">
+        
+        <!-- Top Red Bar -->
+        <div style="background: #dc2626; padding: 10px 24px; text-align: center;">
+          <span style="font-size: 16px; font-weight: 700; color: #ffffff; text-transform: uppercase; letter-spacing: 3px;">Ultimate Fantasy Dashboard</span>
+        </div>
+        
+        <!-- Header -->
+        <div style="display: flex; padding: 16px 24px; border-bottom: 1px solid rgba(220, 38, 38, 0.2);">
+          ${logoBase64 ? `<img src="${logoBase64}" style="height: 70px; width: auto; flex-shrink: 0; margin-right: 24px;" />` : ''}
+          <div style="flex: 1;">
+            <div style="font-size: 36px; font-weight: 900; color: #ffffff; text-transform: uppercase; letter-spacing: 2px; text-shadow: 0 2px 8px rgba(220, 38, 38, 0.4);">Head-to-Head</div>
+            <div style="font-size: 18px; margin-top: 6px; font-weight: 600;">
+              <span style="color: #e5e7eb;">${leagueName}</span>
+              <span style="color: #6b7280; margin: 0 8px;">•</span>
+              <span style="color: #dc2626; font-weight: 700;">All-Time Records</span>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Table Content -->
+        <div style="padding: 16px 24px;">
+          <img src="${tableDataUrl}" style="width: 100%; height: auto; border-radius: 8px;" />
+        </div>
+        
+        <!-- Footer -->
+        <div style="padding: 16px 24px; text-align: center;">
+          <span style="font-size: 20px; font-weight: bold; color: #dc2626;">ultimatefantasydashboard.com</span>
+        </div>
+      </div>
+    `
+    
+    document.body.appendChild(container)
+    await new Promise(r => setTimeout(r, 300))
+    
+    const finalCanvas = await html2canvas(container, {
+      backgroundColor: '#0a0c14',
+      scale: 2,
+      useCORS: true,
+      allowTaint: true
+    })
+    
+    document.body.removeChild(container)
+    
     const link = document.createElement('a')
     link.download = 'category-league-h2h-matrix.png'
-    link.href = canvas.toDataURL()
+    link.href = finalCanvas.toDataURL('image/png')
     link.click()
   } finally {
     isDownloadingH2H.value = false
