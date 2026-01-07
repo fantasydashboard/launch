@@ -2,7 +2,7 @@
   <div class="space-y-8">
     <!-- Offseason Notice Banner -->
     <div class="bg-slate-500/10 border border-slate-500/30 rounded-xl p-4 flex items-start gap-3">
-      <div class="text-slate-400 text-xl flex-shrink-0">📅</div>
+      <div class="text-slate-400 text-xl flex-shrink-0">⚾</div>
       <div>
         <p class="text-slate-200 font-semibold">You're viewing the {{ currentSeason }} season</p>
         <p class="text-slate-400 text-sm mt-1">The {{ Number(currentSeason) + 1 }} season will automatically appear here when it begins.</p>
@@ -574,10 +574,35 @@ const displayMatchups = ref<any[]>([])
 
 // Computed
 const leagueName = computed(() => leagueStore.yahooLeague?.name || 'My League')
-const currentSeason = computed(() => leagueStore.yahooLeague?.season || new Date().getFullYear())
-const currentWeek = computed(() => leagueStore.yahooLeague?.current_week || 1)
-const totalWeeks = computed(() => parseInt(leagueStore.yahooLeague?.end_week) || 25)
-const isSeasonComplete = computed(() => leagueStore.yahooLeague?.is_finished === 1)
+const currentSeason = computed(() => {
+  // First try savedLeague season (most reliable for offseason)
+  const savedLeague = leagueStore.savedLeagues?.find((l: any) => l.league_id === leagueStore.activeLeagueId)
+  if (savedLeague?.season) return savedLeague.season
+  // Then try currentLeague which is populated from savedLeague
+  if (leagueStore.currentLeague?.season) return leagueStore.currentLeague.season
+  // Then try yahooLeague raw data
+  if (leagueStore.yahooLeague?.season) return leagueStore.yahooLeague.season
+  // Fallback to current year
+  return new Date().getFullYear()
+})
+const currentWeek = computed(() => {
+  // Try currentLeague first (populated from saved league)
+  if (leagueStore.currentLeague?.settings?.leg) return leagueStore.currentLeague.settings.leg
+  // Fall back to yahooLeague
+  return leagueStore.yahooLeague?.current_week || 1
+})
+const totalWeeks = computed(() => {
+  // Try currentLeague first
+  if (leagueStore.currentLeague?.settings?.end_week) return parseInt(leagueStore.currentLeague.settings.end_week)
+  // Fall back to yahooLeague
+  return parseInt(leagueStore.yahooLeague?.end_week) || 25
+})
+const isSeasonComplete = computed(() => {
+  // Try currentLeague first
+  if (leagueStore.currentLeague?.status === 'complete') return true
+  // Fall back to yahooLeague
+  return leagueStore.yahooLeague?.is_finished === 1
+})
 const displayWeek = computed(() => isSeasonComplete.value ? totalWeeks.value : currentWeek.value)
 
 const isPointsLeague = computed(() => {

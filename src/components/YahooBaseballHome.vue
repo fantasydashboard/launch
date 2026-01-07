@@ -2,7 +2,7 @@
   <div class="space-y-8">
     <!-- Offseason Notice Banner -->
     <div class="bg-slate-500/10 border border-slate-500/30 rounded-xl p-4 flex items-start gap-3">
-      <div class="text-slate-400 text-xl flex-shrink-0">📅</div>
+      <div class="text-slate-400 text-xl flex-shrink-0">⚾</div>
       <div>
         <p class="text-slate-200 font-semibold">You're viewing the {{ currentSeason }} season</p>
         <p class="text-slate-400 text-sm mt-1">The {{ Number(currentSeason) + 1 }} season will automatically appear here when it begins.</p>
@@ -218,9 +218,9 @@
               <span class="text-2xl">🏆</span>
               <h2 class="card-title">League Standings</h2>
             </div>
-            <div class="text-sm text-dark-textMuted">
-              {{ isPointsLeague ? 'Points league' : 'Category wins per stat (cumulative season total)' }}
-            </div>
+            <p class="text-sm text-dark-textMuted mt-1">
+              <span class="text-primary">Click any team</span> to see detailed stats and category breakdown
+            </p>
           </div>
           <div class="flex items-center gap-2 flex-shrink-0">
             <button @click="downloadStandings" :disabled="isGeneratingDownload" class="btn-primary flex items-center gap-2">
@@ -766,10 +766,35 @@ const leagueName = computed(() => {
   }
   return league?.name || 'League'
 })
-const currentSeason = computed(() => leagueStore.yahooLeague?.season || new Date().getFullYear())
-const currentWeek = computed(() => leagueStore.yahooLeague?.current_week || 1)
-const totalWeeks = computed(() => parseInt(leagueStore.yahooLeague?.end_week) || 25)
-const isSeasonComplete = computed(() => leagueStore.yahooLeague?.is_finished === 1)
+const currentSeason = computed(() => {
+  // First try savedLeague season (most reliable for offseason)
+  const savedLeague = leagueStore.savedLeagues?.find((l: any) => l.league_id === leagueStore.activeLeagueId)
+  if (savedLeague?.season) return savedLeague.season
+  // Then try currentLeague which is populated from savedLeague
+  if (leagueStore.currentLeague?.season) return leagueStore.currentLeague.season
+  // Then try yahooLeague raw data
+  if (leagueStore.yahooLeague?.season) return leagueStore.yahooLeague.season
+  // Fallback to current year
+  return new Date().getFullYear()
+})
+const currentWeek = computed(() => {
+  // Try currentLeague first (populated from saved league)
+  if (leagueStore.currentLeague?.settings?.leg) return leagueStore.currentLeague.settings.leg
+  // Fall back to yahooLeague
+  return leagueStore.yahooLeague?.current_week || 1
+})
+const totalWeeks = computed(() => {
+  // Try currentLeague first
+  if (leagueStore.currentLeague?.settings?.end_week) return parseInt(leagueStore.currentLeague.settings.end_week)
+  // Fall back to yahooLeague
+  return parseInt(leagueStore.yahooLeague?.end_week) || 25
+})
+const isSeasonComplete = computed(() => {
+  // Try currentLeague first
+  if (leagueStore.currentLeague?.status === 'complete') return true
+  // Fall back to yahooLeague
+  return leagueStore.yahooLeague?.is_finished === 1
+})
 const displayWeek = computed(() => isSeasonComplete.value ? totalWeeks.value : currentWeek.value)
 
 const isPointsLeague = computed(() => {
@@ -1530,10 +1555,10 @@ async function downloadStandings() {
     const teamColors = ['#F59E0B', '#10B981', '#3B82F6', '#EF4444', '#8B5CF6', '#EC4899', '#06B6D4', '#F97316', '#84CC16', '#6366F1', '#14B8A6', '#F43F5E']
     const getTeamColor = (idx: number) => teamColors[idx % teamColors.length]
     
-    // Helper to load logo
+    // Helper to load logo (same as header)
     const loadLogo = async (): Promise<string> => {
       try {
-        const response = await fetch('/logos/UFD_Baseball.png')
+        const response = await fetch('/UFD_V5.png')
         const blob = await response.blob()
         return new Promise((resolve) => {
           const reader = new FileReader()
@@ -1558,7 +1583,7 @@ async function downloadStandings() {
         ctx.beginPath()
         ctx.arc(32, 32, 32, 0, Math.PI * 2)
         ctx.fill()
-        ctx.fillStyle = '#3B9FE8'
+        ctx.fillStyle = '#ffffff'
         ctx.font = 'bold 28px sans-serif'
         ctx.textAlign = 'center'
         ctx.textBaseline = 'middle'
@@ -1647,9 +1672,9 @@ async function downloadStandings() {
       
       return `
       <div style="display: flex; height: 80px; padding: 0 12px; background: rgba(38, 42, 58, 0.4); border-radius: 10px; margin-bottom: 6px; border: 1px solid rgba(58, 61, 82, 0.4); box-sizing: border-box;">
-        <!-- Rank Number - big blue number -->
+        <!-- Rank Number - white -->
         <div style="width: 44px; flex-shrink: 0; padding-top: 8px;">
-          <span style="font-size: 36px; font-weight: 900; color: #3B9FE8; font-family: 'Impact', 'Arial Black', sans-serif; letter-spacing: -2px; line-height: 1;">${rank}</span>
+          <span style="font-size: 36px; font-weight: 900; color: #ffffff; font-family: 'Impact', 'Arial Black', sans-serif; letter-spacing: -2px; line-height: 1;">${rank}</span>
         </div>
         <!-- Team Logo - 48px logo -->
         <div style="width: 60px; flex-shrink: 0; padding-top: 16px;">
@@ -1671,22 +1696,22 @@ async function downloadStandings() {
     container.innerHTML = `
       <div style="background: linear-gradient(160deg, #0f1219 0%, #0a0c14 50%, #0d1117 100%); border-radius: 16px; box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5); position: relative; overflow: hidden;">
         
-        <!-- Top Blue Bar with site name -->
-        <div style="background: #3B9FE8; padding: 10px 24px 10px 24px; text-align: center; overflow: visible;">
+        <!-- Top Red Bar with site name -->
+        <div style="background: #dc2626; padding: 10px 24px 10px 24px; text-align: center; overflow: visible;">
           <span style="font-size: 16px; font-weight: 700; color: #0a0c14; text-transform: uppercase; letter-spacing: 3px; display: block; margin-top: -17px;">Ultimate Fantasy Dashboard</span>
         </div>
         
         <!-- HEADER - Logo on left with text next to it -->
-        <div style="display: flex; padding: 12px 24px 12px 24px; border-bottom: 1px solid rgba(59, 159, 232, 0.2); position: relative; z-index: 10;">
-          <!-- Baseball Logo -->
-          ${logoBase64 ? `<img src="${logoBase64}" style="width: 90px; height: 90px; object-fit: contain; flex-shrink: 0; margin-right: 20px; display: block;" />` : ''}
-          <!-- Title and League Info - adjusted margin to center with logo -->
-          <div style="flex: 1; margin-top: -5px;">
-            <div style="font-size: 42px; font-weight: 900; color: #ffffff; text-transform: uppercase; letter-spacing: 2px; text-shadow: 0 2px 8px rgba(59, 159, 232, 0.4); line-height: 42px; display: block;">League Standings</div>
-            <div style="font-size: 20px; margin-top: 6px; font-weight: 600; line-height: 20px; display: block;">
+        <div style="display: flex; align-items: center; padding: 16px 24px; border-bottom: 1px solid rgba(220, 38, 38, 0.2); position: relative; z-index: 10;">
+          <!-- Main Logo - maintain aspect ratio -->
+          ${logoBase64 ? `<img src="${logoBase64}" style="height: 70px; width: auto; flex-shrink: 0; margin-right: 24px; display: block;" />` : ''}
+          <!-- Title and League Info - vertically centered -->
+          <div style="flex: 1; margin-top: -14px;">
+            <div style="font-size: 42px; font-weight: 900; color: #ffffff; text-transform: uppercase; letter-spacing: 2px; text-shadow: 0 2px 8px rgba(220, 38, 38, 0.4); line-height: 1;">League Standings</div>
+            <div style="font-size: 20px; margin-top: 8px; font-weight: 600; line-height: 1;">
               <span style="color: #e5e7eb;">${leagueName.value}</span>
               <span style="color: #6b7280; margin: 0 8px;">•</span>
-              <span style="color: #3B9FE8; font-weight: 700;">Week ${displayWeek.value}</span>
+              <span style="color: #dc2626; font-weight: 700;">Week ${displayWeek.value}</span>
             </div>
           </div>
         </div>
@@ -1701,15 +1726,15 @@ async function downloadStandings() {
           </div>
           
           <!-- Trend Chart -->
-          <div style="background: rgba(38, 42, 58, 0.3); border-radius: 12px; padding: 16px; margin-bottom: 12px; border: 1px solid rgba(59, 159, 232, 0.2); position: relative; z-index: 1;">
-            <h3 style="color: #3B9FE8; font-size: 18px; margin: 0 0 12px 0; text-align: center; font-weight: 700; text-transform: uppercase; letter-spacing: 1px;">Standings Trend</h3>
+          <div style="background: rgba(38, 42, 58, 0.3); border-radius: 12px; padding: 16px; margin-bottom: 12px; border: 1px solid rgba(220, 38, 38, 0.2); position: relative; z-index: 1;">
+            <h3 style="color: #dc2626; font-size: 18px; margin: 0 0 12px 0; text-align: center; font-weight: 700; text-transform: uppercase; letter-spacing: 1px;">Standings Trend</h3>
             <div id="standings-trend-chart" style="height: 220px; width: 100%; min-width: 400px; position: relative;"></div>
           </div>
         </div>
         
         <!-- Footer -->
         <div style="padding: 20px 24px 20px 24px; text-align: center; position: relative; z-index: 1;">
-          <span style="font-size: 24px; font-weight: bold; color: #3B9FE8; letter-spacing: -0.5px; display: block; margin-top: -35px;">ultimatefantasydashboard.com</span>
+          <span style="font-size: 24px; font-weight: bold; color: #dc2626; letter-spacing: -0.5px; display: block; margin-top: -35px;">ultimatefantasydashboard.com</span>
         </div>
       </div>
     `
@@ -1886,7 +1911,8 @@ async function downloadStandings() {
     
     // Download the image
     const link = document.createElement('a')
-    link.download = `standings-week-${displayWeek.value}.png`
+    const safeLeagueName = leagueName.value.replace(/[^a-zA-Z0-9\s]/g, '').replace(/\s+/g, '-')
+    link.download = `Standings - Week ${displayWeek.value} - ${safeLeagueName}.png`
     link.href = canvas.toDataURL('image/png')
     link.click()
     
