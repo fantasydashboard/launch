@@ -847,7 +847,7 @@ async function downloadRankings() {
           <!-- Main Logo - maintain aspect ratio -->
           ${logoBase64 ? `<img src="${logoBase64}" style="height: 70px; width: auto; flex-shrink: 0; margin-right: 24px; display: block;" />` : ''}
           <!-- Title and League Info - use margin-top to move up -->
-          <div style="flex: 1; margin-top: -8px;">
+          <div style="flex: 1; margin-top: -14px;">
             <div style="font-size: 42px; font-weight: 900; color: #ffffff; text-transform: uppercase; letter-spacing: 2px; text-shadow: 0 2px 8px rgba(220, 38, 38, 0.4); line-height: 1;">Power Rankings</div>
             <div style="font-size: 20px; margin-top: 6px; font-weight: 600; line-height: 1;">
               <span style="color: #e5e7eb;">${leagueName}</span>
