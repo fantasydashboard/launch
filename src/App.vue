@@ -538,7 +538,7 @@ const leagueToRemove = ref<any>(null)
 const isScrolled = ref(false)
 
 const tabs = [
-  { name: 'Home', path: '/' },
+  { name: 'Season', path: '/' },
   { name: 'Power Rankings', path: '/power-rankings' },
   { name: 'Matchups', path: '/matchups' },
   { name: 'History', path: '/history' },

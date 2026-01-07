@@ -261,7 +261,7 @@
 
           <div class="p-6 bg-dark-bg min-h-[700px]">
             <!-- Home View -->
-            <div v-if="activeDemoView === 'home'" class="space-y-6">
+            <div v-if="activeDemoView === 'season'" class="space-y-6">
               <div class="flex items-center justify-between"><h1 class="text-2xl font-bold text-white">League of Record</h1><div class="text-sm text-gray-400">Week 15 • 2024 Season</div></div>
               <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div class="bg-dark-card rounded-xl p-4 border border-dark-border"><div class="text-sm text-gray-400 mb-1">Your Record</div><div class="text-2xl font-bold text-white">10-4</div><div class="text-sm text-green-400">2nd Place</div></div>
@@ -372,10 +372,10 @@ const sports = [
   { id: 'hockey', name: 'Hockey', emoji: '🏒' }
 ]
 
-const activeDemoView = ref('home')
+const activeDemoView = ref('season')
 
 const demoNavTabs = [
-  { id: 'home', name: 'Home' },
+  { id: 'season', name: 'Season' },
   { id: 'power', name: 'Rankings' },
   { id: 'matchups', name: 'Matchups' },
   { id: 'history', name: 'History' },

@@ -1,5 +1,14 @@
 <template>
   <div class="space-y-8">
+    <!-- Offseason Notice Banner -->
+    <div class="bg-amber-500/10 border border-amber-500/30 rounded-xl p-4 flex items-start gap-3">
+      <div class="text-amber-400 text-xl flex-shrink-0">🏈</div>
+      <div>
+        <p class="text-amber-200 font-semibold">You're viewing the 2024 season</p>
+        <p class="text-amber-200/70 text-sm mt-1">The 2025 season will automatically appear here closer to the NFL season kickoff.</p>
+      </div>
+    </div>
+
     <!-- Settings Gear at Top -->
     <div class="flex justify-end">
       <router-link to="/settings" class="p-2 rounded-lg bg-dark-card border border-dark-border hover:border-primary transition-colors">
@@ -19,7 +28,7 @@
           <div class="w-1.5 h-10 bg-primary rounded-full"></div>
           <div>
             <h1 class="text-3xl md:text-4xl font-black text-dark-text tracking-tight">{{ leagueName }}</h1>
-            <p class="text-dark-textMuted text-base mt-1">Season {{ currentSeason }} • Week {{ currentWeek }}</p>
+            <p class="text-dark-textMuted text-base mt-1"><span class="text-amber-400 font-semibold">{{ currentSeason }} Season</span> • Week {{ currentWeek }}</p>
           </div>
         </div>
 
