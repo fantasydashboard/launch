@@ -260,7 +260,14 @@
           <div class="flex items-center justify-end h-14 px-4 xl:px-8 relative">
             <!-- Mobile/Tablet: Logo + Dashboards Button + League Dropdown -->
             <div class="lg:hidden flex items-center justify-between w-full">
-              <img src="/UFD_V5.png" alt="UFD" class="h-10 object-contain" />
+              <!-- Mobile logo with gradient background -->
+              <div class="relative flex items-center">
+                <div 
+                  class="absolute -left-4 top-1/2 -translate-y-1/2"
+                  style="background: linear-gradient(to right, #0a0c14 0%, #0a0c14 60%, transparent 100%); width: 160px; height: 56px;"
+                ></div>
+                <img src="/UFD_V5.png" alt="UFD" class="h-10 object-contain relative z-10" />
+              </div>
               <div class="flex items-center gap-2">
                 <button 
                   @click="showMobileMenu = true"
@@ -272,25 +279,117 @@
                   </svg>
                 </button>
                 <!-- Mobile League Dropdown -->
-                <button
-                  @click="showLeagueDropdown = !showLeagueDropdown"
-                  class="flex items-center gap-1.5 px-3 py-2 bg-black/20 rounded-lg text-white text-sm"
-                >
-                  <template v-if="leagueStore.currentLeague">
-                    <img 
-                      :src="leagueStore.activePlatform === 'yahoo' ? '/yahoo-fantasy.svg' : '/sleeper.svg'" 
-                      :alt="leagueStore.activePlatform"
-                      class="w-5 h-5 rounded flex-shrink-0"
-                    />
-                    <span class="font-medium truncate max-w-[80px]">{{ leagueStore.currentLeague.name }}</span>
-                  </template>
-                  <template v-else>
-                    <span class="text-primary font-medium">Add</span>
-                  </template>
-                  <svg class="w-3 h-3 text-white/70 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
-                  </svg>
-                </button>
+                <div class="relative" ref="mobileLeagueDropdownRef">
+                  <button
+                    @click="showLeagueDropdown = !showLeagueDropdown"
+                    class="flex items-center gap-1.5 px-3 py-2 bg-black/20 rounded-lg text-white text-sm"
+                  >
+                    <template v-if="leagueStore.currentLeague">
+                      <img 
+                        :src="leagueStore.activePlatform === 'yahoo' ? '/yahoo-fantasy.svg' : '/sleeper.svg'" 
+                        :alt="leagueStore.activePlatform"
+                        class="w-5 h-5 rounded flex-shrink-0"
+                      />
+                      <span class="font-medium truncate max-w-[80px]">{{ leagueStore.currentLeague.name }}</span>
+                    </template>
+                    <template v-else>
+                      <span class="text-primary font-medium">Add</span>
+                    </template>
+                    <svg class="w-3 h-3 text-white/70 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                    </svg>
+                  </button>
+                  
+                  <!-- Mobile League Dropdown Menu -->
+                  <div 
+                    v-if="showLeagueDropdown"
+                    class="absolute top-full right-0 mt-2 w-72 bg-dark-card border border-dark-border rounded-xl shadow-xl z-[60] overflow-hidden"
+                  >
+                    <!-- All Leagues grouped by sport -->
+                    <div v-if="leagueStore.allLeagues && leagueStore.allLeagues.length > 0" class="max-h-80 overflow-y-auto">
+                      <template v-for="(sport, sportIndex) in sportOrder" :key="'mobile-' + sport">
+                        <template v-if="getLeaguesBySport(sport).length > 0">
+                          <!-- Sport divider -->
+                          <div v-if="sportIndex > 0 && hasPreviousSportLeagues(sportIndex)" class="border-t border-dark-border"></div>
+                          
+                          <div class="p-2">
+                            <div class="text-xs text-dark-textMuted uppercase tracking-wider px-2 py-1 flex items-center gap-2">
+                              <span>{{ getSportEmoji(sport) }}</span>
+                              <span>{{ sport }}</span>
+                            </div>
+                            <div
+                              v-for="league in getLeaguesBySport(sport)"
+                              :key="'mobile-league-' + league.league_id"
+                              @click="selectLeague(league.league_id)"
+                              :class="[
+                                'flex items-center gap-3 px-3 py-2.5 rounded-lg cursor-pointer transition-colors',
+                                leagueStore.activeLeagueId === league.league_id
+                                  ? 'bg-primary/10 border border-primary/30' 
+                                  : 'hover:bg-dark-border/30 active:bg-dark-border/50'
+                              ]"
+                            >
+                              <img 
+                                :src="league.platform === 'yahoo' ? '/yahoo-fantasy.svg' : '/sleeper.svg'" 
+                                :alt="league.platform"
+                                class="w-8 h-8 rounded-lg flex-shrink-0"
+                              />
+                              <div class="flex-1 min-w-0">
+                                <div class="flex items-center gap-2">
+                                  <span class="font-medium text-dark-text text-sm truncate">{{ league.league_name || league.name }}</span>
+                                  <span 
+                                    v-if="hasLeaguePass(league)" 
+                                    class="px-1.5 py-0.5 text-[10px] font-bold bg-gradient-to-r from-yellow-500 to-orange-500 text-gray-900 rounded"
+                                  >
+                                    PASS
+                                  </span>
+                                </div>
+                                <div class="text-xs text-dark-textMuted">
+                                  {{ league.season }} · {{ league.num_teams || league.total_rosters }} teams
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        </template>
+                      </template>
+                      
+                      <!-- Add League -->
+                      <div class="border-t border-dark-border p-2">
+                        <button
+                          @click="showAddLeagueModal = true; showLeagueDropdown = false"
+                          class="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-primary/10 active:bg-primary/20 transition-colors"
+                        >
+                          <div class="w-8 h-8 rounded-lg bg-primary/20 flex items-center justify-center">
+                            <svg class="w-4 h-4 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                            </svg>
+                          </div>
+                          <div class="text-left">
+                            <div class="font-medium text-primary text-sm">Add League</div>
+                            <div class="text-xs text-dark-textMuted">Connect Sleeper or Yahoo</div>
+                          </div>
+                        </button>
+                      </div>
+                    </div>
+                    
+                    <!-- No leagues -->
+                    <div v-else class="p-4">
+                      <div class="text-center mb-4">
+                        <div class="text-4xl mb-2">🏆</div>
+                        <div class="text-dark-text font-medium">No Leagues Connected</div>
+                        <div class="text-xs text-dark-textMuted">Add your first league to get started</div>
+                      </div>
+                      <button
+                        @click="showAddLeagueModal = true; showLeagueDropdown = false"
+                        class="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-lg bg-primary hover:bg-primary/90 transition-colors"
+                      >
+                        <svg class="w-5 h-5 text-gray-900" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                        </svg>
+                        <span class="font-semibold text-gray-900">Add League</span>
+                      </button>
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
             
@@ -534,6 +633,7 @@ const showUserMenu = ref(false)
 const showAddLeagueModal = ref(false)
 const showMobileMenu = ref(false)
 const leagueDropdownRef = ref<HTMLElement | null>(null)
+const mobileLeagueDropdownRef = ref<HTMLElement | null>(null)
 const leagueToRemove = ref<any>(null)
 const isScrolled = ref(false)
 
@@ -715,7 +815,11 @@ function handleScroll() {
 function handleClickOutside(event: MouseEvent) {
   const target = event.target as HTMLElement
   
-  if (leagueDropdownRef.value && !leagueDropdownRef.value.contains(target)) {
+  // Check both desktop and mobile league dropdowns
+  const isInsideDesktopDropdown = leagueDropdownRef.value && leagueDropdownRef.value.contains(target)
+  const isInsideMobileDropdown = mobileLeagueDropdownRef.value && mobileLeagueDropdownRef.value.contains(target)
+  
+  if (!isInsideDesktopDropdown && !isInsideMobileDropdown) {
     showLeagueDropdown.value = false
   }
   
