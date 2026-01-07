@@ -561,8 +561,9 @@
 
     <!-- Auth Modal -->
     <AuthModal 
-      v-model:show="showAuthModal" 
-      :mode="authMode"
+      :isOpen="showAuthModal" 
+      :initialMode="authMode"
+      @close="showAuthModal = false"
       @success="handleAuthSuccess"
     />
     
