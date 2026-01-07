@@ -2085,27 +2085,41 @@ async function downloadLeaderImage() {
     }
     
     const maxValue = leaderModalData.value.maxValue
-    const leader = leaderModalData.value.leader
-    const otherTeams = leaderModalData.value.comparison.slice(1) // All teams except leader
     
-    // Generate compact team row for the "All Teams Comparison" section
-    const generateCompactRow = (team: any, rank: number) => {
+    // Generate team row - #1 gets special treatment with accent color
+    const generateTeamRow = (team: any, rank: number) => {
       const barWidth = Math.max(5, (team.value / maxValue) * 100)
+      const isFirst = rank === 1
+      const rankColor = isFirst ? accentColor : '#ffffff'
+      const valueColor = isFirst ? accentColor : '#e5e7eb'
+      const crownIcon = isFirst ? '<span style="font-size: 14px; margin-left: 4px;">👑</span>' : ''
+      const rowBorder = isFirst ? `2px solid ${accentColor}50` : '1px solid rgba(58, 61, 82, 0.4)'
+      const rowBg = isFirst ? `${accentColor}15` : 'rgba(38, 42, 58, 0.4)'
+      const logoBorder = isFirst ? accentColor : '#3a3d52'
+      
       return `
-      <div style="display: flex; align-items: center; gap: 8px; padding: 6px 0; border-bottom: 1px solid rgba(58, 61, 82, 0.3);">
-        <div style="width: 24px; text-align: center;">
-          <span style="font-size: 12px; font-weight: 700; color: #9ca3af;">${rank}</span>
+      <div style="display: flex; height: 80px; padding: 0 12px; background: ${rowBg}; border-radius: 10px; margin-bottom: 6px; border: ${rowBorder}; box-sizing: border-box;">
+        <!-- Rank Number -->
+        <div style="width: 44px; flex-shrink: 0; padding-top: 8px;">
+          <span style="font-size: 36px; font-weight: 900; color: ${rankColor}; font-family: 'Impact', 'Arial Black', sans-serif; letter-spacing: -2px; line-height: 1;">${rank}</span>
         </div>
-        <img src="${imageMap.get(team.team_key) || ''}" style="width: 28px; height: 28px; border-radius: 50%; border: 1px solid #3a3d52; background: #262a3a; object-fit: cover;" />
-        <div style="flex: 1; min-width: 0;">
-          <div style="font-size: 12px; font-weight: 600; color: #f7f7ff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-bottom: 3px;">${team.name}</div>
-          <div style="height: 6px; background: #262a3a; border-radius: 3px; overflow: hidden;">
-            <div style="height: 100%; width: ${barWidth}%; background: ${accentColor}; border-radius: 3px;"></div>
+        <!-- Team Logo -->
+        <div style="width: 60px; flex-shrink: 0; padding-top: 16px;">
+          <img src="${imageMap.get(team.team_key) || ''}" style="width: 48px; height: 48px; border-radius: 50%; border: 2px solid ${logoBorder}; background: #262a3a; object-fit: cover;" />
+        </div>
+        <!-- Team Info and Bar -->
+        <div style="flex: 1; min-width: 0; padding-top: 16px;">
+          <div style="display: flex; align-items: center;">
+            <span style="font-size: 14px; font-weight: 700; color: #f7f7ff; white-space: nowrap; overflow: visible; line-height: 1.2;">${team.name}</span>${crownIcon}
+          </div>
+          <div style="height: 8px; background: #262a3a; border-radius: 4px; overflow: hidden; margin-top: 8px;">
+            <div style="height: 100%; width: ${barWidth}%; background: ${accentColor}; border-radius: 4px;"></div>
           </div>
         </div>
-        <div style="width: 55px; text-align: right;">
-          <div style="font-size: 12px; font-weight: 700; color: #e5e7eb;">${formatValueNumber(team.value)}</div>
-          <div style="font-size: 9px; color: #9ca3af;">${valueUnit}</div>
+        <!-- Value with Unit -->
+        <div style="width: 75px; flex-shrink: 0; text-align: right; padding-top: 14px;">
+          <div style="font-size: 18px; font-weight: 700; color: ${valueColor}; line-height: 1;">${formatValueNumber(team.value)}</div>
+          <div style="font-size: 10px; font-weight: 400; color: #9ca3af; margin-top: 4px;">${valueUnit}</div>
         </div>
       </div>
     `}
@@ -2118,12 +2132,12 @@ async function downloadLeaderImage() {
           <span style="font-size: 14px; font-weight: 700; color: #0a0c14; text-transform: uppercase; letter-spacing: 3px; display: block; margin-top: -14px;">Ultimate Fantasy Dashboard</span>
         </div>
         
-        <!-- Header with Logo and Title -->
+        <!-- Header -->
         <div style="display: flex; align-items: center; padding: 16px 24px; border-bottom: 1px solid rgba(220, 38, 38, 0.2);">
-          ${logoBase64 ? `<img src="${logoBase64}" style="height: 50px; width: auto; flex-shrink: 0; margin-right: 16px;" />` : ''}
-          <div style="flex: 1; margin-top: -8px;">
-            <div style="font-size: 24px; font-weight: 900; color: #ffffff; text-transform: uppercase; letter-spacing: 1px; line-height: 1;">${leaderModalTitle.value}</div>
-            <div style="font-size: 13px; margin-top: 4px;">
+          ${logoBase64 ? `<img src="${logoBase64}" style="height: 60px; width: auto; flex-shrink: 0; margin-right: 20px;" />` : ''}
+          <div style="flex: 1; margin-top: -10px;">
+            <div style="font-size: 28px; font-weight: 900; color: #ffffff; text-transform: uppercase; letter-spacing: 1px; line-height: 1;">${leaderModalTitle.value}</div>
+            <div style="font-size: 14px; margin-top: 6px;">
               <span style="color: #9ca3af;">${leagueName.value}</span>
               <span style="color: #6b7280; margin: 0 6px;">•</span>
               <span style="color: #dc2626; font-weight: 700;">Week ${displayWeek.value}, ${currentSeason.value}</span>
@@ -2131,25 +2145,9 @@ async function downloadLeaderImage() {
           </div>
         </div>
         
-        <!-- Featured Leader Section -->
-        <div style="padding: 20px 24px; background: linear-gradient(to right, ${accentColor}15, transparent); border-bottom: 1px solid rgba(58, 61, 82, 0.3);">
-          <div style="display: flex; align-items: center; gap: 16px;">
-            <img src="${imageMap.get(leader?.team_key) || ''}" style="width: 72px; height: 72px; border-radius: 50%; border: 4px solid ${accentColor}; background: #262a3a; object-fit: cover;" />
-            <div style="flex: 1;">
-              <div style="font-size: 20px; font-weight: 700; color: #f7f7ff;">${leader?.name || ''}</div>
-              <div style="font-size: 13px; color: #9ca3af; margin-top: 2px;">${leader?.wins || 0}-${leader?.losses || 0}</div>
-            </div>
-            <div style="text-align: right;">
-              <div style="font-size: 36px; font-weight: 900; color: ${accentColor}; line-height: 1;">${formatValueNumber(leader?.value || 0)}</div>
-              <div style="font-size: 12px; color: #9ca3af; margin-top: 2px;">${valueUnit}</div>
-            </div>
-          </div>
-        </div>
-        
-        <!-- All Teams Comparison Section -->
+        <!-- Team List -->
         <div style="padding: 16px 24px 12px 24px;">
-          <div style="font-size: 11px; font-weight: 600; color: #9ca3af; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 12px;">All Teams Comparison</div>
-          ${leaderModalData.value.comparison.map((team: any, idx: number) => generateCompactRow(team, idx + 1)).join('')}
+          ${leaderModalData.value.comparison.map((team: any, idx: number) => generateTeamRow(team, idx + 1)).join('')}
         </div>
         
         <!-- Footer -->
