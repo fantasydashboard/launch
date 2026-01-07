@@ -1079,7 +1079,7 @@ async function generateMatchupImage(matchup: any, html2canvas: any) {
       <!-- HEADER - Logo on left with text next to it -->
       <div style="display: flex; padding: 12px 24px 12px 24px; border-bottom: 1px solid rgba(220, 38, 38, 0.2); position: relative; z-index: 10;">
         <!-- Logo -->
-        ${logoBase64 ? `<img src="${logoBase64}" style="width: 90px; height: 90px; object-fit: contain; flex-shrink: 0; margin-right: 20px; display: block;" />` : ''}
+        ${logoBase64 ? `<img src="${logoBase64}" style="height: 70px; width: auto; flex-shrink: 0; margin-right: 24px; display: block;" />` : ''}
         <!-- Title and League Info -->
         <div style="flex: 1; margin-top: -5px;">
           <div style="font-size: 42px; font-weight: 900; color: #ffffff; text-transform: uppercase; letter-spacing: 2px; text-shadow: 0 2px 8px rgba(220, 38, 38, 0.4); line-height: 42px; display: block;">Matchup</div>
