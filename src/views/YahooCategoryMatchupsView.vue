@@ -939,7 +939,7 @@ async function generateMatchupImage(matchup: any, html2canvas: any) {
   // Helper to load logo
   const loadLogo = async (): Promise<string> => {
     try {
-      const response = await fetch('/logos/UFD_Logo.png')
+      const response = await fetch('/UFD_V5.png')
       const blob = await response.blob()
       return new Promise((resolve) => {
         const reader = new FileReader()
