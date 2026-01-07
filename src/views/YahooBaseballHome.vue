@@ -1,11 +1,11 @@
 <template>
   <div class="space-y-8">
     <!-- Offseason Notice Banner -->
-    <div class="bg-amber-500/10 border border-amber-500/30 rounded-xl p-4 flex items-start gap-3">
-      <div class="text-amber-400 text-xl flex-shrink-0">⚾</div>
+    <div class="bg-slate-500/10 border border-slate-500/30 rounded-xl p-4 flex items-start gap-3">
+      <div class="text-slate-400 text-xl flex-shrink-0">📅</div>
       <div>
-        <p class="text-amber-200 font-semibold">You're viewing the 2025 season</p>
-        <p class="text-amber-200/70 text-sm mt-1">The 2026 season will automatically appear here closer to Opening Day.</p>
+        <p class="text-slate-200 font-semibold">You're viewing the {{ currentSeason }} season</p>
+        <p class="text-slate-400 text-sm mt-1">The {{ Number(currentSeason) + 1 }} season will automatically appear here when it begins.</p>
       </div>
     </div>
 
@@ -29,7 +29,7 @@
           <div>
             <h1 class="text-3xl md:text-4xl font-black text-dark-text tracking-tight">{{ leagueName }}</h1>
             <p class="text-dark-textMuted text-base mt-1">
-              <span class="text-amber-400 font-semibold">{{ currentSeason }} Season</span> • Week {{ displayWeek }}
+              {{ currentSeason }} Season • Week {{ displayWeek }}
               <span v-if="isSeasonComplete" class="ml-2 text-green-400">(Season Complete)</span>
               <span class="ml-2 px-2 py-0.5 rounded text-xs font-medium" :class="scoringTypeBadgeClass">{{ scoringTypeLabel }}</span>
             </p>
