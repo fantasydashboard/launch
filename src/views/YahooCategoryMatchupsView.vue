@@ -40,11 +40,17 @@
         <div class="card-body">
           <div class="grid grid-cols-2 lg:grid-cols-4 gap-6">
             <div class="text-center">
-              <div class="text-3xl font-bold text-primary mb-2">{{ weekStats.totalCategories }}</div>
-              <div class="text-sm text-dark-textMuted uppercase tracking-wide">Categories</div>
+              <div class="text-3xl font-bold text-green-400 mb-2">{{ weekStats.mostCategories.count }}</div>
+              <div class="text-sm text-dark-textMuted uppercase tracking-wide mb-1">Most Categories</div>
+              <div class="text-sm font-semibold text-dark-text">{{ weekStats.mostCategories.team }}</div>
             </div>
             <div class="text-center">
-              <div class="text-3xl font-bold text-green-400 mb-2">{{ weekStats.mostDominant.score }}</div>
+              <div class="text-3xl font-bold text-red-400 mb-2">{{ weekStats.fewestCategories.count }}</div>
+              <div class="text-sm text-dark-textMuted uppercase tracking-wide mb-1">Fewest Categories</div>
+              <div class="text-sm font-semibold text-dark-text">{{ weekStats.fewestCategories.team }}</div>
+            </div>
+            <div class="text-center">
+              <div class="text-3xl font-bold text-cyan-400 mb-2">{{ weekStats.mostDominant.score }}</div>
               <div class="text-sm text-dark-textMuted uppercase tracking-wide mb-1">Most Dominant</div>
               <div class="text-sm font-semibold text-dark-text">{{ weekStats.mostDominant.team }}</div>
             </div>
@@ -52,10 +58,6 @@
               <div class="text-3xl font-bold text-yellow-400 mb-2">{{ weekStats.closestMatchup.margin }}</div>
               <div class="text-sm text-dark-textMuted uppercase tracking-wide mb-1">Closest Matchup</div>
               <div class="text-sm font-semibold text-dark-text">{{ weekStats.closestMatchup.teams }}</div>
-            </div>
-            <div class="text-center">
-              <div class="text-3xl font-bold text-cyan-400 mb-2">{{ matchups.length }}</div>
-              <div class="text-sm text-dark-textMuted uppercase tracking-wide">Matchups</div>
             </div>
           </div>
         </div>
@@ -95,7 +97,10 @@
                     <div class="text-xs text-dark-textMuted">{{ getTeamRecord(matchup.team1.team_key) }}</div>
                   </div>
                 </div>
-                <span class="text-xl font-bold text-white">{{ matchup.team1CatWins }}</span>
+                <div class="text-right">
+                  <div class="text-xl font-bold text-white">{{ matchup.team1CatWins }}</div>
+                  <div class="text-xs text-cyan-400">proj {{ matchup.projectedTeam1Wins }}</div>
+                </div>
               </div>
               <!-- VS -->
               <div class="flex items-center gap-2 my-2">
@@ -104,7 +109,7 @@
                 <div class="flex-1 h-px bg-dark-border"></div>
               </div>
               <!-- Team 2 -->
-              <div class="flex items-center justify-between mb-3">
+              <div class="flex items-center justify-between">
                 <div class="flex items-center gap-2 flex-1 min-w-0">
                   <div class="relative">
                     <img :src="matchup.team2.logo_url || defaultAvatar" class="w-9 h-9 rounded-full ring-2" :class="matchup.team2Leading ? 'ring-green-500' : 'ring-dark-border'" @error="handleImageError"/>
@@ -115,12 +120,10 @@
                     <div class="text-xs text-dark-textMuted">{{ getTeamRecord(matchup.team2.team_key) }}</div>
                   </div>
                 </div>
-                <span class="text-xl font-bold text-white">{{ matchup.team2CatWins }}</span>
-              </div>
-              <!-- Projected -->
-              <div class="text-center pt-2 border-t border-dark-border/50">
-                <div class="text-xs text-dark-textMuted">Projected</div>
-                <div class="text-sm font-semibold text-primary">{{ matchup.projectedTeam1Wins }}-{{ matchup.projectedTeam2Wins }}-{{ matchup.projectedTies }}</div>
+                <div class="text-right">
+                  <div class="text-xl font-bold text-white">{{ matchup.team2CatWins }}</div>
+                  <div class="text-xs text-orange-400">proj {{ matchup.projectedTeam2Wins }}</div>
+                </div>
               </div>
             </button>
           </div>
@@ -301,8 +304,8 @@
                     <td class="p-3 text-dark-text font-medium">{{ stat.label }}</td>
                     <td class="text-center p-3"><span :class="stat.team1Better ? 'text-cyan-400 font-bold' : 'text-dark-textMuted'">{{ stat.team1Value }}</span></td>
                     <td class="text-center p-3">
-                      <span v-if="stat.team1Better" class="text-cyan-400 font-semibold">◀ {{ selectedMatchup.team1.name.split(' ')[0] }}</span>
-                      <span v-else-if="stat.team2Better" class="text-orange-400 font-semibold">{{ selectedMatchup.team2.name.split(' ')[0] }} ▶</span>
+                      <span v-if="stat.team1Better" class="text-cyan-400 font-semibold">◀ {{ selectedMatchup.team1.name }}</span>
+                      <span v-else-if="stat.team2Better" class="text-orange-400 font-semibold">{{ selectedMatchup.team2.name }} ▶</span>
                       <span v-else class="text-dark-textMuted">Even</span>
                     </td>
                     <td class="text-center p-3"><span :class="stat.team2Better ? 'text-orange-400 font-bold' : 'text-dark-textMuted'">{{ stat.team2Value }}</span></td>
@@ -313,15 +316,15 @@
           </div>
         </div>
 
-        <!-- Lifetime Series -->
+        <!-- Season Series -->
         <div class="card">
           <div class="card-header">
-            <div class="flex items-center gap-2"><span class="text-2xl">📜</span><h2 class="card-title">Lifetime Series</h2></div>
-            <p class="card-subtitle mt-2">All-time head-to-head results</p>
+            <div class="flex items-center gap-2"><span class="text-2xl">📜</span><h2 class="card-title">Season Series</h2></div>
+            <p class="card-subtitle mt-2">Head-to-head results this season</p>
           </div>
           <div class="card-body">
             <div class="text-center mb-6 p-4 bg-dark-border/20 rounded-lg">
-              <div class="text-sm text-dark-textMuted mb-2">Lifetime Record</div>
+              <div class="text-sm text-dark-textMuted mb-2">Season Record</div>
               <div class="flex items-center justify-center gap-4">
                 <div class="text-center">
                   <div class="text-3xl font-bold" :class="lifetimeSeries.team1Wins > lifetimeSeries.team2Wins ? 'text-green-400' : 'text-dark-textMuted'">{{ lifetimeSeries.team1Wins }}</div>
@@ -336,8 +339,8 @@
               <div v-if="lifetimeSeries.ties > 0" class="text-xs text-dark-textMuted mt-2">{{ lifetimeSeries.ties }} tie(s)</div>
             </div>
             <div v-if="lifetimeSeries.games.length > 0" class="space-y-3">
-              <div class="text-sm font-semibold text-dark-text mb-3">Recent History</div>
-              <div v-for="(game, i) in lifetimeSeries.games.slice(0,5)" :key="i" class="p-3 bg-dark-border/20 rounded-lg border border-dark-border">
+              <div class="text-sm font-semibold text-dark-text mb-3">All Matchups ({{ lifetimeSeries.games.length }})</div>
+              <div v-for="(game, i) in lifetimeSeries.games" :key="i" class="p-3 bg-dark-border/20 rounded-lg border border-dark-border">
                 <div class="flex items-center justify-between mb-2">
                   <div class="text-xs text-dark-textMuted"><span class="font-semibold">Week {{ game.week }}</span></div>
                   <div class="text-xs text-dark-textMuted">{{ game.team1Score }}-{{ game.team2Score }}</div>
@@ -348,7 +351,7 @@
                 </div>
               </div>
             </div>
-            <div v-else class="text-center text-dark-textMuted py-4">No previous matchups found</div>
+            <div v-else class="text-center text-dark-textMuted py-4">No previous matchups this season</div>
           </div>
         </div>
       </template>
@@ -400,16 +403,64 @@ const availableWeeks = computed(() => Array.from({ length: isSeasonComplete.valu
 const allCategories = computed(() => categories.value.filter(c => [...BATTING_STAT_IDS, ...PITCHING_STAT_IDS].includes(c.stat_id)))
 
 const weekStats = computed(() => {
-  if (!matchups.value.length) return { totalCategories: categories.value.length, mostDominant: { team: '-', score: '0-0' }, closestMatchup: { teams: '-', margin: 0 } }
-  let mostDominant = { team: '-', score: '0-0', diff: 0 }, closestMatchup = { teams: '-', margin: 999 }
+  if (!matchups.value.length) return { 
+    mostDominant: { team: '-', score: '0-0' }, 
+    closestMatchup: { teams: '-', margin: 0 },
+    mostCategories: { team: '-', count: 0 },
+    fewestCategories: { team: '-', count: 0 }
+  }
+  
+  let mostDominant = { team: '-', score: '0-0', diff: 0 }
+  let closestMatchup = { teams: '-', margin: 999 }
+  
+  // Track category wins for each team
+  const teamCatWins = new Map<string, { name: string, wins: number }>()
+  
   for (const m of matchups.value) {
+    // Track team category wins
+    const existing1 = teamCatWins.get(m.team1.team_key)
+    if (existing1) {
+      existing1.wins += m.team1CatWins
+    } else {
+      teamCatWins.set(m.team1.team_key, { name: m.team1.name, wins: m.team1CatWins })
+    }
+    
+    const existing2 = teamCatWins.get(m.team2.team_key)
+    if (existing2) {
+      existing2.wins += m.team2CatWins
+    } else {
+      teamCatWins.set(m.team2.team_key, { name: m.team2.name, wins: m.team2CatWins })
+    }
+    
+    // Most dominant
     const d1 = m.team1CatWins - m.team2CatWins, d2 = m.team2CatWins - m.team1CatWins
     if (d1 > mostDominant.diff) mostDominant = { team: m.team1.name, score: `${m.team1CatWins}-${m.team2CatWins}`, diff: d1 }
     if (d2 > mostDominant.diff) mostDominant = { team: m.team2.name, score: `${m.team2CatWins}-${m.team1CatWins}`, diff: d2 }
+    
+    // Closest matchup - use full team names
     const margin = Math.abs(m.team1CatWins - m.team2CatWins)
-    if (margin < closestMatchup.margin) closestMatchup = { teams: `${m.team1.name.split(' ')[0]} vs ${m.team2.name.split(' ')[0]}`, margin }
+    if (margin < closestMatchup.margin) closestMatchup = { teams: `${m.team1.name} vs ${m.team2.name}`, margin }
   }
-  return { totalCategories: categories.value.length, mostDominant, closestMatchup }
+  
+  // Find most and fewest categories
+  const teams = Array.from(teamCatWins.values())
+  const maxWins = Math.max(...teams.map(t => t.wins))
+  const minWins = Math.min(...teams.map(t => t.wins))
+  
+  const mostWinners = teams.filter(t => t.wins === maxWins)
+  const fewestWinners = teams.filter(t => t.wins === minWins)
+  
+  const mostCategories = {
+    team: mostWinners.length > 1 ? `Tie - ${mostWinners.length} teams` : mostWinners[0]?.name || '-',
+    count: maxWins
+  }
+  
+  const fewestCategories = {
+    team: fewestWinners.length > 1 ? `Tie - ${fewestWinners.length} teams` : fewestWinners[0]?.name || '-',
+    count: minWins
+  }
+  
+  return { mostDominant, closestMatchup, mostCategories, fewestCategories }
 })
 
 const gradientBarStyle = computed(() => {
@@ -604,11 +655,10 @@ async function loadTeamSeasonStats(leagueKey: string, currentWeek: number) {
     const newStats = new Map<string, any>()
     const newMatchupHistory = new Map<string, any[]>()
     
-    // Load matchups from all previous weeks
-    const weeksToLoad = Math.min(currentWeek - 1, 20) // Load up to 20 weeks of history for lifetime series
+    // Load matchups from ALL previous weeks in the season for complete series data
     const weekPromises: Promise<any>[] = []
     
-    for (let w = Math.max(1, currentWeek - weeksToLoad); w < currentWeek; w++) {
+    for (let w = 1; w < currentWeek; w++) {
       weekPromises.push(yahooService.getCategoryMatchups(leagueKey, w).then(data => ({ week: w, data })))
     }
     
