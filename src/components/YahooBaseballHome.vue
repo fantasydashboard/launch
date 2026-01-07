@@ -197,7 +197,14 @@
             </p>
           </div>
           <div class="flex items-center gap-2 flex-shrink-0">
-            <button @click="downloadStandings" :disabled="isGeneratingDownload" class="btn-primary flex items-center gap-2">
+            <button 
+              @click="downloadStandings" 
+              :disabled="isGeneratingDownload" 
+              class="flex items-center gap-2 px-4 py-2 rounded-lg font-semibold transition-colors disabled:opacity-50"
+              style="background: #eab308; color: #0a0c14;"
+              @mouseover="$event.target.style.background = '#ca8a04'"
+              @mouseout="$event.target.style.background = '#eab308'"
+            >
               <svg v-if="!isGeneratingDownload" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
               </svg>
@@ -464,7 +471,10 @@
               <button 
                 @click="downloadLeaderImage" 
                 :disabled="isGeneratingLeaderDownload"
-                class="btn-primary flex items-center gap-2 text-sm"
+                class="flex items-center gap-2 text-sm px-3 py-1.5 rounded-lg font-semibold transition-colors disabled:opacity-50"
+                style="background: #eab308; color: #0a0c14;"
+                @mouseover="$event.target.style.background = '#ca8a04'"
+                @mouseout="$event.target.style.background = '#eab308'"
               >
                 <svg v-if="!isGeneratingLeaderDownload" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
@@ -1998,12 +2008,29 @@ async function downloadLeaderImage() {
     const container = document.createElement('div')
     container.style.cssText = 'position: absolute; left: -9999px; top: 0; width: 600px; font-family: system-ui, -apple-system, sans-serif;'
     
-    // Generate team rows with gold for #1, then green-to-red gradient for others
+    // Get value unit label based on modal type
+    const getValueUnit = (): string => {
+      if (leaderModalType.value === 'bestRecord' || leaderModalType.value === 'hottest' || leaderModalType.value === 'coldest') return 'Win %'
+      if (leaderModalType.value === 'mostCatWins') return isPointsLeague.value ? 'Points' : 'Wins'
+      if (leaderModalType.value === 'bestAllPlay') return 'All-Play'
+      if (leaderModalType.value === 'mostMoves' || leaderModalType.value === 'fewestMoves') return 'Moves'
+      return ''
+    }
+    const valueUnit = getValueUnit()
+    
+    // Format just the number part (no unit suffix)
+    const formatValueNumber = (value: number): string => {
+      if (leaderModalType.value === 'bestRecord' || leaderModalType.value === 'hottest' || leaderModalType.value === 'coldest') return value.toFixed(0) + '%'
+      if (leaderModalType.value === 'mostCatWins' && isPointsLeague.value) return value.toFixed(1)
+      return Math.round(value).toString()
+    }
+    
+    // Generate team rows with green+crown for #1, then green-to-red gradient for others
     const maxValue = leaderModalData.value.maxValue
     const numTeams = leaderModalData.value.comparison.length
     
     const getBarColor = (rank: number): string => {
-      if (rank === 1) return '#eab308' // Gold for #1
+      if (rank === 1) return '#10b981' // Emerald green for #1
       // Green to red gradient for ranks 2+
       const position = (rank - 2) / Math.max(1, numTeams - 2) // 0 to 1
       // HSL interpolation: green (120) to red (0)
@@ -2014,29 +2041,36 @@ async function downloadLeaderImage() {
     const generateTeamRow = (team: any, rank: number) => {
       const barWidth = Math.max(5, (team.value / maxValue) * 100)
       const barColor = getBarColor(rank)
-      const rankColor = rank === 1 ? '#eab308' : '#ffffff'
-      const valueColor = rank === 1 ? '#eab308' : '#e5e7eb'
+      const isFirst = rank === 1
+      const rankColor = isFirst ? '#10b981' : '#ffffff'
+      const valueColor = isFirst ? '#10b981' : '#e5e7eb'
+      const crownIcon = isFirst ? '<span style="font-size: 14px; margin-left: 4px;">👑</span>' : ''
+      const rowBorder = isFirst ? '2px solid rgba(16, 185, 129, 0.5)' : '1px solid rgba(58, 61, 82, 0.4)'
+      const rowBg = isFirst ? 'rgba(16, 185, 129, 0.1)' : 'rgba(38, 42, 58, 0.4)'
       
       return `
-      <div style="display: flex; height: 56px; padding: 0 12px; background: rgba(38, 42, 58, 0.4); border-radius: 10px; margin-bottom: 6px; border: 1px solid rgba(58, 61, 82, 0.4); box-sizing: border-box;">
+      <div style="display: flex; height: 60px; padding: 0 12px; background: ${rowBg}; border-radius: 10px; margin-bottom: 6px; border: ${rowBorder}; box-sizing: border-box;">
         <!-- Rank Number -->
-        <div style="width: 36px; flex-shrink: 0; display: flex; align-items: center; justify-content: center;">
-          <span style="font-size: 20px; font-weight: 900; color: ${rankColor}; font-family: 'Impact', 'Arial Black', sans-serif; letter-spacing: -1px;">${rank}</span>
+        <div style="width: 36px; flex-shrink: 0; display: flex; align-items: flex-start; justify-content: center; padding-top: 12px;">
+          <span style="font-size: 22px; font-weight: 900; color: ${rankColor}; font-family: 'Impact', 'Arial Black', sans-serif; letter-spacing: -1px;">${rank}</span>
         </div>
         <!-- Team Logo -->
-        <div style="width: 52px; flex-shrink: 0; display: flex; align-items: center;">
-          <img src="${imageMap.get(team.team_key) || ''}" style="width: 40px; height: 40px; border-radius: 50%; border: 2px solid #3a3d52; background: #262a3a; object-fit: cover;" />
+        <div style="width: 52px; flex-shrink: 0; display: flex; align-items: flex-start; padding-top: 10px;">
+          <img src="${imageMap.get(team.team_key) || ''}" style="width: 40px; height: 40px; border-radius: 50%; border: 2px solid ${isFirst ? '#10b981' : '#3a3d52'}; background: #262a3a; object-fit: cover;" />
         </div>
         <!-- Team Info and Bar -->
-        <div style="flex: 1; min-width: 0; display: flex; flex-direction: column; justify-content: center; padding-right: 8px;">
-          <div style="font-size: 13px; font-weight: 700; color: #f7f7ff; white-space: nowrap; overflow: visible; line-height: 1.2; margin-bottom: 4px;">${team.name}</div>
+        <div style="flex: 1; min-width: 0; display: flex; flex-direction: column; justify-content: flex-start; padding-right: 8px; padding-top: 10px;">
+          <div style="display: flex; align-items: center; margin-bottom: 6px;">
+            <span style="font-size: 13px; font-weight: 700; color: #f7f7ff; white-space: nowrap; overflow: visible; line-height: 1;">${team.name}</span>${crownIcon}
+          </div>
           <div style="height: 8px; background: #262a3a; border-radius: 4px; overflow: hidden;">
             <div style="height: 100%; width: ${barWidth}%; background: ${barColor}; border-radius: 4px;"></div>
           </div>
         </div>
-        <!-- Value -->
-        <div style="width: 65px; flex-shrink: 0; display: flex; align-items: center; justify-content: flex-end;">
-          <span style="font-size: 15px; font-weight: 700; color: ${valueColor};">${formatLeaderValue(team.value)}</span>
+        <!-- Value with Unit -->
+        <div style="width: 70px; flex-shrink: 0; display: flex; flex-direction: column; align-items: flex-end; justify-content: flex-start; padding-top: 12px;">
+          <span style="font-size: 16px; font-weight: 700; color: ${valueColor}; line-height: 1;">${formatValueNumber(team.value)}</span>
+          <span style="font-size: 10px; font-weight: 400; color: #9ca3af; margin-top: 2px;">${valueUnit}</span>
         </div>
       </div>
     `}
