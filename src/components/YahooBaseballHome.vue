@@ -202,13 +202,13 @@
               :disabled="isGeneratingDownload" 
               class="flex items-center gap-2 px-4 py-2 rounded-lg font-semibold transition-colors disabled:opacity-50"
               style="background: #dc2626; color: #ffffff;"
-              @mouseover="$event.target.style.background = '#eab308'; $event.target.style.color = '#0a0c14'"
-              @mouseout="$event.target.style.background = '#dc2626'; $event.target.style.color = '#ffffff'"
+              @mouseover="$event.currentTarget.style.background = '#eab308'; $event.currentTarget.style.color = '#0a0c14'"
+              @mouseout="$event.currentTarget.style.background = '#dc2626'; $event.currentTarget.style.color = '#ffffff'"
             >
-              <svg v-if="!isGeneratingDownload" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg v-if="!isGeneratingDownload" class="w-5 h-5 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
               </svg>
-              <svg v-else class="w-5 h-5 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg v-else class="w-5 h-5 animate-spin pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                 <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
               </svg>
@@ -473,13 +473,13 @@
                 :disabled="isGeneratingLeaderDownload"
                 class="flex items-center gap-2 text-sm px-3 py-1.5 rounded-lg font-semibold transition-colors disabled:opacity-50"
                 style="background: #dc2626; color: #ffffff;"
-                @mouseover="$event.target.style.background = '#eab308'; $event.target.style.color = '#0a0c14'"
-                @mouseout="$event.target.style.background = '#dc2626'; $event.target.style.color = '#ffffff'"
+                @mouseover="$event.currentTarget.style.background = '#eab308'; $event.currentTarget.style.color = '#0a0c14'"
+                @mouseout="$event.currentTarget.style.background = '#dc2626'; $event.currentTarget.style.color = '#ffffff'"
               >
-                <svg v-if="!isGeneratingLeaderDownload" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg v-if="!isGeneratingLeaderDownload" class="w-4 h-4 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
                 </svg>
-                <svg v-else class="w-4 h-4 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg v-else class="w-4 h-4 animate-spin pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                   <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                 </svg>
@@ -1073,7 +1073,7 @@ const leaderModalUnit = computed(() => {
   if (leaderModalType.value === 'bestRecord') return 'Win %'
   if (leaderModalType.value === 'hottest' || leaderModalType.value === 'coldest') return 'Cats (Last 3)'
   if (leaderModalType.value === 'mostCatWins') return isPointsLeague.value ? 'Total Points' : 'Category Wins'
-  if (leaderModalType.value === 'bestAllPlay') return 'All-Play Record'
+  if (leaderModalType.value === 'bestAllPlay') return 'All-Play Wins'
   if (leaderModalType.value === 'luckiest' || leaderModalType.value === 'unluckiest') return 'Luck Score'
   if (leaderModalType.value === 'mostMoves' || leaderModalType.value === 'fewestMoves') return 'Transactions'
   return 'All-Play Record'
@@ -2056,7 +2056,8 @@ async function downloadLeaderImage() {
     // Get accent color based on modal type (matching the card colors)
     const getAccentColor = (): string => {
       if (leaderModalType.value === 'bestRecord' || leaderModalType.value === 'luckiest') return '#22c55e' // green
-      if (leaderModalType.value === 'mostCatWins' || leaderModalType.value === 'hottest') return '#eab308' // yellow
+      if (leaderModalType.value === 'mostCatWins') return '#eab308' // yellow
+      if (leaderModalType.value === 'hottest') return '#f97316' // orange
       if (leaderModalType.value === 'bestAllPlay' || leaderModalType.value === 'mostMoves') return '#3b82f6' // blue
       if (leaderModalType.value === 'unluckiest') return '#ef4444' // red
       if (leaderModalType.value === 'coldest') return '#06b6d4' // cyan
@@ -2070,7 +2071,7 @@ async function downloadLeaderImage() {
       if (leaderModalType.value === 'bestRecord') return 'Win %'
       if (leaderModalType.value === 'hottest' || leaderModalType.value === 'coldest') return 'Cats (Last 3)'
       if (leaderModalType.value === 'mostCatWins') return isPointsLeague.value ? 'Points' : 'Wins'
-      if (leaderModalType.value === 'bestAllPlay') return 'All-Play'
+      if (leaderModalType.value === 'bestAllPlay') return 'All-Play Wins'
       if (leaderModalType.value === 'mostMoves' || leaderModalType.value === 'fewestMoves') return 'Moves'
       return ''
     }
