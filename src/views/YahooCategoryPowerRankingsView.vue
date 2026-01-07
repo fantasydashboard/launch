@@ -28,6 +28,15 @@
       </div>
     </div>
 
+    <!-- Offseason Notice Banner -->
+    <div class="bg-slate-500/10 border border-slate-500/30 rounded-xl p-4 flex items-start gap-3">
+      <div class="text-slate-400 text-xl flex-shrink-0">⚾</div>
+      <div>
+        <p class="text-slate-200 font-semibold">You're viewing the 2025 season</p>
+        <p class="text-slate-400 text-sm mt-1">The 2026 season will automatically appear here when it begins.</p>
+      </div>
+    </div>
+
     <!-- Loading State -->
     <div v-if="isLoading" class="flex items-center justify-center py-20">
       <div class="text-center">
@@ -87,17 +96,77 @@
                   <th class="py-3 px-4">Rank</th>
                   <th class="py-3 px-4 w-6">+/-</th>
                   <th class="py-3 px-4">Team</th>
-                  <th class="py-3 px-4 text-center">Power Score</th>
-                  <th class="py-3 px-4 text-center">Cat W-L-T</th>
-                  <th class="py-3 px-4 text-center">Cat Win %</th>
-                  <th class="py-3 px-4 text-center hidden md:table-cell">Dominant</th>
-                  <th class="py-3 px-4 text-center hidden md:table-cell">Weak</th>
-                  <th class="py-3 px-4 text-center hidden lg:table-cell">Avg/Week</th>
+                  <th 
+                    class="py-3 px-4 text-center cursor-pointer hover:text-primary transition-colors"
+                    @click="sortPowerRankings('powerScore')"
+                  >
+                    <div class="flex items-center justify-center gap-1">
+                      Power Score
+                      <span v-if="sortColumn === 'powerScore'" class="text-primary">
+                        {{ sortDirection === 'desc' ? '↓' : '↑' }}
+                      </span>
+                    </div>
+                  </th>
+                  <th 
+                    class="py-3 px-4 text-center cursor-pointer hover:text-primary transition-colors"
+                    @click="sortPowerRankings('catWins')"
+                  >
+                    <div class="flex items-center justify-center gap-1">
+                      Cat W-L-T
+                      <span v-if="sortColumn === 'catWins'" class="text-primary">
+                        {{ sortDirection === 'desc' ? '↓' : '↑' }}
+                      </span>
+                    </div>
+                  </th>
+                  <th 
+                    class="py-3 px-4 text-center cursor-pointer hover:text-primary transition-colors"
+                    @click="sortPowerRankings('catWinPct')"
+                  >
+                    <div class="flex items-center justify-center gap-1">
+                      Cat Win %
+                      <span v-if="sortColumn === 'catWinPct'" class="text-primary">
+                        {{ sortDirection === 'desc' ? '↓' : '↑' }}
+                      </span>
+                    </div>
+                  </th>
+                  <th 
+                    class="py-3 px-4 text-center hidden md:table-cell cursor-pointer hover:text-primary transition-colors"
+                    @click="sortPowerRankings('dominant')"
+                  >
+                    <div class="flex items-center justify-center gap-1">
+                      Dominant
+                      <span v-if="sortColumn === 'dominant'" class="text-primary">
+                        {{ sortDirection === 'desc' ? '↓' : '↑' }}
+                      </span>
+                    </div>
+                  </th>
+                  <th 
+                    class="py-3 px-4 text-center hidden md:table-cell cursor-pointer hover:text-primary transition-colors"
+                    @click="sortPowerRankings('weak')"
+                  >
+                    <div class="flex items-center justify-center gap-1">
+                      Weak
+                      <span v-if="sortColumn === 'weak'" class="text-primary">
+                        {{ sortDirection === 'desc' ? '↓' : '↑' }}
+                      </span>
+                    </div>
+                  </th>
+                  <th 
+                    class="py-3 px-4 text-center hidden lg:table-cell cursor-pointer hover:text-primary transition-colors"
+                    @click="sortPowerRankings('avgCats')"
+                  >
+                    <div class="flex items-center justify-center gap-1">
+                      Avg/Week
+                      <span v-if="sortColumn === 'avgCats'" class="text-primary">
+                        {{ sortDirection === 'desc' ? '↓' : '↑' }}
+                      </span>
+                    </div>
+                  </th>
                 </tr>
               </thead>
               <tbody>
                 <tr 
-                  v-for="(team, idx) in powerRankings" 
+                  v-for="team in sortedPowerRankings" 
                   :key="team.team_key"
                   @click="openTeamModal(team)"
                   class="border-b border-dark-border/50 hover:bg-dark-border/20 transition-colors cursor-pointer"
@@ -108,9 +177,9 @@
                   <td class="py-3 px-4">
                     <span 
                       class="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold"
-                      :class="getRankClass(idx + 1)"
+                      :class="getRankClass(team.rank)"
                     >
-                      {{ idx + 1 }}
+                      {{ team.rank }}
                     </span>
                   </td>
                   <td class="py-3 px-4">
@@ -618,9 +687,9 @@ const displayCategories = ref<any[]>([])
 const totalWeeksLoaded = ref(0)
 const defaultAvatar = 'https://s.yimg.com/cv/apiv2/default/mlb/mlb_2_g.png'
 
-// Category table sorting
-const categorySortColumn = ref<string>('total')
-const categorySortDirection = ref<'asc' | 'desc'>('desc')
+// Power rankings table sorting
+const sortColumn = ref<string>('powerScore')
+const sortDirection = ref<'asc' | 'desc'>('desc')
 
 // Modals
 const showSettings = ref(false)
@@ -1393,21 +1462,43 @@ const mostVolatile = computed(() => {
   return volatile
 })
 
-// Sorted teams for Category Wins table
-const sortedCategoryTeams = computed(() => {
+// Sorted power rankings
+const sortedPowerRankings = computed(() => {
   const teams = [...powerRankings.value]
-  const col = categorySortColumn.value
-  const dir = categorySortDirection.value
+  const col = sortColumn.value
+  const dir = sortDirection.value
   
   teams.sort((a, b) => {
     let aVal: number, bVal: number
     
-    if (col === 'total') {
-      aVal = a.totalCatWins || 0
-      bVal = b.totalCatWins || 0
-    } else {
-      aVal = a.categoryWins?.[col] || 0
-      bVal = b.categoryWins?.[col] || 0
+    switch (col) {
+      case 'powerScore':
+        aVal = a.powerScore || 0
+        bVal = b.powerScore || 0
+        break
+      case 'catWinPct':
+        aVal = a.catWinPct || 0
+        bVal = b.catWinPct || 0
+        break
+      case 'dominant':
+        aVal = a.dominantCategories || 0
+        bVal = b.dominantCategories || 0
+        break
+      case 'weak':
+        aVal = a.weakCategories || 0
+        bVal = b.weakCategories || 0
+        break
+      case 'avgCats':
+        aVal = a.avgCatsWonPerWeek || 0
+        bVal = b.avgCatsWonPerWeek || 0
+        break
+      case 'catWins':
+        aVal = a.totalCatWins || 0
+        bVal = b.totalCatWins || 0
+        break
+      default:
+        aVal = a.powerScore || 0
+        bVal = b.powerScore || 0
     }
     
     if (dir === 'desc') {
@@ -1420,25 +1511,22 @@ const sortedCategoryTeams = computed(() => {
   return teams
 })
 
-// Sort category table
-function sortCategoryTable(column: string) {
-  if (categorySortColumn.value === column) {
+// Sort power rankings table
+function sortPowerRankings(column: string) {
+  if (sortColumn.value === column) {
     // Toggle direction
-    categorySortDirection.value = categorySortDirection.value === 'desc' ? 'asc' : 'desc'
+    sortDirection.value = sortDirection.value === 'desc' ? 'asc' : 'desc'
   } else {
     // New column, default to descending
-    categorySortColumn.value = column
-    categorySortDirection.value = 'desc'
+    sortColumn.value = column
+    sortDirection.value = 'desc'
   }
 }
 
 // Helpers
 function handleImageError(e: Event) { (e.target as HTMLImageElement).src = defaultAvatar }
 function getRankClass(rank: number) {
-  if (rank === 1) return 'bg-yellow-500/20 text-yellow-400'
-  if (rank === 2) return 'bg-gray-400/20 text-gray-300'
-  if (rank === 3) return 'bg-orange-600/20 text-orange-400'
-  return 'bg-dark-border text-dark-textMuted'
+  return 'bg-dark-border text-dark-text'
 }
 function getCatWinPctClass(pct: number) {
   if (pct >= 0.55) return 'text-green-400'
@@ -1638,6 +1726,11 @@ async function loadPowerRankings() {
     console.log('=== POWER RANKINGS COMPLETE ===')
     finalRankings.slice(0, 3).forEach((t, i) => {
       console.log(`#${i+1}: ${t.name} - Score: ${t.powerScore.toFixed(1)}, Cat W-L: ${t.totalCatWins}-${t.totalCatLosses}`)
+    })
+    
+    // Add rank property to each team based on power score order
+    finalRankings.forEach((team, idx) => {
+      team.rank = idx + 1
     })
     
     powerRankings.value = finalRankings
