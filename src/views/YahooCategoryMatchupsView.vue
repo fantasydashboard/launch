@@ -1445,9 +1445,13 @@ async function generateCategoryBreakdownImage(matchup: any, html2canvas: any) {
     const winProb1 = getCategoryWinProb(matchup, cat.stat_id, 1)
     const winProb2 = getCategoryWinProb(matchup, cat.stat_id, 2)
     
-    let leaderIndicator = '<span style="color: #6b7280;">—</span>'
-    if (leader === 1) leaderIndicator = `<span style="color: ${team1Color}; font-size: 16px;">◀</span>`
-    else if (leader === 2) leaderIndicator = `<span style="color: ${team2Color}; font-size: 16px;">▶</span>`
+    // Separate advantage indicators for each team
+    const team1Adv = leader === 1 
+      ? `<span style="color: ${team1Color}; font-size: 16px;">◀</span>` 
+      : '<span style="color: #6b7280;">—</span>'
+    const team2Adv = leader === 2 
+      ? `<span style="color: ${team2Color}; font-size: 16px;">▶</span>` 
+      : '<span style="color: #6b7280;">—</span>'
     
     const prob1Color = winProb1 >= 70 ? '#10b981' : winProb1 >= 40 ? '#f59e0b' : '#ef4444'
     const prob2Color = winProb2 >= 70 ? '#10b981' : winProb2 >= 40 ? '#f59e0b' : '#ef4444'
@@ -1456,9 +1460,9 @@ async function generateCategoryBreakdownImage(matchup: any, html2canvas: any) {
       <tr style="border-bottom: 1px solid rgba(58, 61, 82, 0.3);">
         <td style="padding: 8px 4px; text-align: center; color: ${prob1Color}; font-weight: 600; font-size: 11px;">${winProb1.toFixed(0)}%</td>
         <td style="padding: 8px 4px; text-align: center; color: #ffffff; font-weight: 700; font-size: 13px;">${formatStat(stat1, cat.stat_id)}</td>
-        <td style="padding: 8px 4px; text-align: center; width: 30px;">${leaderIndicator}</td>
+        <td style="padding: 8px 4px; text-align: center; width: 30px;">${team1Adv}</td>
         <td style="padding: 8px 4px; text-align: center; color: #9ca3af; font-size: 11px; font-weight: 600;">${cat.display_name}</td>
-        <td style="padding: 8px 4px; text-align: center; width: 30px;">${leaderIndicator === '<span style="color: #6b7280;">—</span>' ? leaderIndicator : ''}</td>
+        <td style="padding: 8px 4px; text-align: center; width: 30px;">${team2Adv}</td>
         <td style="padding: 8px 4px; text-align: center; color: #ffffff; font-weight: 700; font-size: 13px;">${formatStat(stat2, cat.stat_id)}</td>
         <td style="padding: 8px 4px; text-align: center; color: ${prob2Color}; font-weight: 600; font-size: 11px;">${winProb2.toFixed(0)}%</td>
       </tr>
@@ -1539,9 +1543,9 @@ async function generateCategoryBreakdownImage(matchup: any, html2canvas: any) {
               <tr style="border-bottom: 1px solid rgba(220, 38, 38, 0.3);">
                 <th style="padding: 6px 4px; text-align: center; color: ${team1Color}; font-size: 10px; text-transform: uppercase;">Win%</th>
                 <th style="padding: 6px 4px; text-align: center; color: ${team1Color}; font-size: 10px; text-transform: uppercase;">Stat</th>
-                <th style="padding: 6px 4px; width: 30px;"></th>
+                <th style="padding: 6px 4px; width: 30px; text-align: center; color: ${team1Color}; font-size: 10px; text-transform: uppercase;">Adv</th>
                 <th style="padding: 6px 4px; text-align: center; color: #6b7280; font-size: 10px; text-transform: uppercase;">Category</th>
-                <th style="padding: 6px 4px; width: 30px;"></th>
+                <th style="padding: 6px 4px; width: 30px; text-align: center; color: ${team2Color}; font-size: 10px; text-transform: uppercase;">Adv</th>
                 <th style="padding: 6px 4px; text-align: center; color: ${team2Color}; font-size: 10px; text-transform: uppercase;">Stat</th>
                 <th style="padding: 6px 4px; text-align: center; color: ${team2Color}; font-size: 10px; text-transform: uppercase;">Win%</th>
               </tr>
