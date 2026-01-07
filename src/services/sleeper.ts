@@ -6,12 +6,13 @@ import type {
   SleeperPlayer,
   SleeperTransaction
 } from '@/types/sleeper'
+import { cache, CACHE_TTL, CACHE_KEYS } from './cache'
 
 const BASE_URL = 'https://api.sleeper.app/v1'
 const CDN_URL = 'https://sleepercdn.com'
 
 class SleeperService {
-  // Cache for players data
+  // Cache for players data (in-memory only, very large)
   private playersCache: Record<string, SleeperPlayer> | null = null
 
   async getUser(username: string): Promise<SleeperUser> {
@@ -27,27 +28,77 @@ class SleeperService {
   }
 
   async getLeague(leagueId: string): Promise<SleeperLeague> {
+    // Check cache first
+    const cached = cache.get<SleeperLeague>('sleeper_league', leagueId)
+    if (cached) {
+      console.log(`[Cache HIT] Sleeper league ${leagueId}`)
+      return cached
+    }
+    
     const response = await fetch(`${BASE_URL}/league/${leagueId}`)
     if (!response.ok) throw new Error('League not found')
-    return response.json()
+    const data = await response.json()
+    
+    // Cache league data
+    cache.set('sleeper_league', data, CACHE_TTL.METADATA, leagueId)
+    return data
   }
 
   async getLeagueRosters(leagueId: string): Promise<SleeperRoster[]> {
+    // Check cache first
+    const cached = cache.get<SleeperRoster[]>(CACHE_KEYS.SLEEPER_ROSTERS, leagueId)
+    if (cached) {
+      console.log(`[Cache HIT] Sleeper rosters for ${leagueId}`)
+      return cached
+    }
+    
     const response = await fetch(`${BASE_URL}/league/${leagueId}/rosters`)
     if (!response.ok) throw new Error('Failed to fetch rosters')
-    return response.json()
+    const data = await response.json()
+    
+    // Cache rosters
+    cache.set(CACHE_KEYS.SLEEPER_ROSTERS, data, CACHE_TTL.STANDINGS, leagueId)
+    return data
   }
 
   async getLeagueUsers(leagueId: string): Promise<SleeperUser[]> {
+    // Check cache first
+    const cached = cache.get<SleeperUser[]>('sleeper_users', leagueId)
+    if (cached) {
+      console.log(`[Cache HIT] Sleeper users for ${leagueId}`)
+      return cached
+    }
+    
     const response = await fetch(`${BASE_URL}/league/${leagueId}/users`)
     if (!response.ok) throw new Error('Failed to fetch users')
-    return response.json()
+    const data = await response.json()
+    
+    // Cache users - they rarely change
+    cache.set('sleeper_users', data, CACHE_TTL.SETTINGS, leagueId)
+    return data
   }
 
   async getMatchups(leagueId: string, week: number): Promise<SleeperMatchup[]> {
+    // Check cache first
+    const cached = cache.get<SleeperMatchup[]>(CACHE_KEYS.SLEEPER_MATCHUPS, leagueId, week)
+    if (cached) {
+      console.log(`[Cache HIT] Sleeper matchups for ${leagueId} week ${week}`)
+      return cached
+    }
+    
     const response = await fetch(`${BASE_URL}/league/${leagueId}/matchups/${week}`)
     if (!response.ok) throw new Error('Failed to fetch matchups')
-    return response.json()
+    const data = await response.json()
+    
+    // Determine if this is a completed week (need league info)
+    // For now, cache current week for 5 min, assume past weeks are completed
+    const league = await this.getLeague(leagueId)
+    const currentWeek = league.settings?.leg || 1
+    const isCompletedWeek = week < currentWeek || league.status === 'complete'
+    const ttl = isCompletedWeek ? CACHE_TTL.COMPLETED : CACHE_TTL.CURRENT
+    
+    cache.set(CACHE_KEYS.SLEEPER_MATCHUPS, data, ttl, leagueId, week)
+    return data
   }
 
   async getPlayers(): Promise<Record<string, SleeperPlayer>> {
@@ -63,13 +114,29 @@ class SleeperService {
    * Get all transactions for a league in a given week
    */
   async getTransactions(leagueId: string, week: number): Promise<SleeperTransaction[]> {
+    // Check cache first
+    const cached = cache.get<SleeperTransaction[]>('sleeper_transactions', leagueId, week)
+    if (cached) {
+      console.log(`[Cache HIT] Sleeper transactions for ${leagueId} week ${week}`)
+      return cached
+    }
+    
     const response = await fetch(`${BASE_URL}/league/${leagueId}/transactions/${week}`)
     if (!response.ok) {
       // Return empty array if no transactions (common for early/late weeks)
       if (response.status === 404) return []
       throw new Error('Failed to fetch transactions')
     }
-    return response.json()
+    const data = await response.json()
+    
+    // Cache transactions - historical weeks get longer TTL
+    const league = await this.getLeague(leagueId)
+    const currentWeek = league.settings?.leg || 1
+    const isCompletedWeek = week < currentWeek || league.status === 'complete'
+    const ttl = isCompletedWeek ? CACHE_TTL.COMPLETED : CACHE_TTL.CURRENT
+    
+    cache.set('sleeper_transactions', data, ttl, leagueId, week)
+    return data
   }
 
   /**
@@ -96,16 +163,78 @@ class SleeperService {
    * Returns array of bracket matchups with winner (w) field indicating champion
    */
   async getWinnersBracket(leagueId: string): Promise<any[]> {
+    // Check cache first
+    const cached = cache.get<any[]>('sleeper_bracket', leagueId)
+    if (cached) {
+      console.log(`[Cache HIT] Sleeper winners bracket for ${leagueId}`)
+      return cached
+    }
+    
     try {
       const response = await fetch(`${BASE_URL}/league/${leagueId}/winners_bracket`)
       if (!response.ok) {
         console.warn(`Failed to fetch winners bracket for league ${leagueId}`)
         return []
       }
-      return response.json()
+      const data = await response.json()
+      
+      // Cache bracket - this is historical data
+      cache.set('sleeper_bracket', data, CACHE_TTL.COMPLETED, leagueId)
+      return data
     } catch (error) {
       console.error('Error fetching winners bracket:', error)
       return []
+    }
+  }
+
+  /**
+   * Get draft data for a league (cached)
+   */
+  async getDraftData(leagueId: string): Promise<any | null> {
+    // Check cache first
+    const cached = cache.get<any>('sleeper_draft', leagueId)
+    if (cached) {
+      console.log(`[Cache HIT] Sleeper draft for ${leagueId}`)
+      return cached
+    }
+    
+    try {
+      const draftResponse = await fetch(`${BASE_URL}/league/${leagueId}/drafts`)
+      if (!draftResponse.ok) return null
+      
+      const draftIds = await draftResponse.json()
+      if (!draftIds || !Array.isArray(draftIds) || draftIds.length === 0) return null
+      
+      const draftId = draftIds[0].draft_id || draftIds[0]
+      
+      const [draftData, picksData] = await Promise.all([
+        fetch(`${BASE_URL}/draft/${draftId}`).then(r => r.json()),
+        fetch(`${BASE_URL}/draft/${draftId}/picks`).then(r => r.json())
+      ])
+      
+      // Organize picks by user
+      const draftOrder: Record<string, any[]> = {}
+      if (Array.isArray(picksData)) {
+        picksData.forEach((pick: any) => {
+          if (!draftOrder[pick.picked_by]) {
+            draftOrder[pick.picked_by] = []
+          }
+          draftOrder[pick.picked_by].push(pick)
+        })
+      }
+      
+      const result = {
+        ...draftData,
+        draft_order: draftOrder,
+        picks: picksData || []
+      }
+      
+      // Cache draft data - historical, doesn't change
+      cache.set('sleeper_draft', result, CACHE_TTL.PERMANENT, leagueId)
+      return result
+    } catch (error) {
+      console.error('Error fetching draft data:', error)
+      return null
     }
   }
 
@@ -372,49 +501,11 @@ class SleeperService {
         rosters.set(league.season, seasonRosters)
         users.set(league.season, seasonUsers)
         
-        // Fetch draft data
+        // Fetch draft data (cached)
         try {
-          const draftResponse = await fetch(`${BASE_URL}/league/${currentId}/drafts`)
-          if (!draftResponse.ok) {
-            console.warn(`Failed to fetch drafts for season ${league.season}:`, draftResponse.status)
-          } else {
-            const draftIds = await draftResponse.json()
-            console.log(`Draft IDs for season ${league.season}:`, draftIds)
-            
-            if (draftIds && Array.isArray(draftIds) && draftIds.length > 0) {
-              const draftId = draftIds[0].draft_id || draftIds[0]
-              console.log(`Fetching draft data for draft ID: ${draftId}`)
-              
-              const [draftData, picksData] = await Promise.all([
-                fetch(`${BASE_URL}/draft/${draftId}`).then(r => r.json()),
-                fetch(`${BASE_URL}/draft/${draftId}/picks`).then(r => r.json())
-              ])
-              
-              console.log(`Draft data for ${league.season}:`, {
-                draftId,
-                hasSettings: !!draftData?.settings,
-                picksCount: picksData?.length || 0
-              })
-              
-              // Organize picks by user
-              const draftOrder: Record<string, any[]> = {}
-              if (Array.isArray(picksData)) {
-                picksData.forEach((pick: any) => {
-                  if (!draftOrder[pick.picked_by]) {
-                    draftOrder[pick.picked_by] = []
-                  }
-                  draftOrder[pick.picked_by].push(pick)
-                })
-              }
-              
-              drafts.set(league.season, {
-                ...draftData,
-                draft_order: draftOrder,
-                picks: picksData || []
-              })
-            } else {
-              console.warn(`No draft IDs found for season ${league.season}`)
-            }
+          const draftData = await this.getDraftData(currentId)
+          if (draftData) {
+            drafts.set(league.season, draftData)
           }
         } catch (error) {
           console.error('Error fetching draft data for season:', league.season, error)
