@@ -188,7 +188,7 @@
               <div class="font-semibold text-dark-text">Weighted Lottery</div>
               <div class="text-sm text-dark-textMuted">Give some teams more lottery balls for better odds</div>
             </div>
-            <button @click="draftConfig.weighted = !draftConfig.weighted" :class="draftConfig.weighted ? 'bg-primary' : 'bg-dark-border'" class="relative inline-flex h-7 w-12 items-center rounded-full transition-colors">
+            <button @click="draftConfig.weighted = !draftConfig.weighted" :class="draftConfig.weighted ? 'bg-yellow-400' : 'bg-dark-border'" class="relative inline-flex h-7 w-12 items-center rounded-full transition-colors">
               <span :class="draftConfig.weighted ? 'translate-x-6' : 'translate-x-1'" class="inline-block h-5 w-5 transform rounded-full bg-white transition-transform" />
             </button>
           </div>
@@ -208,7 +208,7 @@
                 <input v-model="team.name" type="text" :placeholder="'Team ' + (idx + 1)" class="input flex-1" />
                 <div v-if="draftConfig.weighted" class="flex items-center gap-2">
                   <button @click="team.balls = Math.max(1, team.balls - 1)" class="w-8 h-8 rounded-lg bg-dark-border/50 hover:bg-dark-border text-dark-text font-bold transition-colors">−</button>
-                  <span class="w-8 text-center font-bold text-primary">{{ team.balls }}</span>
+                  <span class="w-8 text-center font-bold text-yellow-400">{{ team.balls }}</span>
                   <button @click="team.balls = Math.min(20, team.balls + 1)" class="w-8 h-8 rounded-lg bg-dark-border/50 hover:bg-dark-border text-dark-text font-bold transition-colors">+</button>
                   <span class="text-xs text-dark-textMuted">🎱</span>
                 </div>
@@ -223,9 +223,9 @@
               <div v-for="(team, idx) in draftTeams" :key="idx" class="flex items-center gap-3">
                 <span class="text-dark-textMuted w-24 truncate text-sm">{{ team.name || 'Team ' + (idx + 1) }}</span>
                 <div class="flex-1 h-4 bg-dark-border/50 rounded-full overflow-hidden">
-                  <div class="h-full bg-gradient-to-r from-primary to-yellow-400 rounded-full transition-all" :style="{ width: getTeamOdds(idx) + '%' }"></div>
+                  <div class="h-full bg-gradient-to-r from-yellow-500 to-yellow-300 rounded-full transition-all" :style="{ width: getTeamOdds(idx) + '%' }"></div>
                 </div>
-                <span class="text-sm font-medium text-primary w-16 text-right">{{ getTeamOdds(idx).toFixed(1) }}%</span>
+                <span class="text-sm font-medium text-yellow-400 w-16 text-right">{{ getTeamOdds(idx).toFixed(1) }}%</span>
               </div>
             </div>
           </div>
@@ -254,7 +254,7 @@
               <!-- Lottery Ball Machine Animation -->
               <div v-if="currentAnimationPhase === 'spinning'" class="absolute inset-0 flex items-center justify-center">
                 <div class="relative w-48 h-48">
-                  <div class="absolute inset-0 rounded-full border-4 border-primary/30 overflow-hidden">
+                  <div class="absolute inset-0 rounded-full border-4 border-yellow-400/30 overflow-hidden">
                     <div class="absolute inset-2 rounded-full bg-dark-border/50 flex items-center justify-center">
                       <div class="lottery-spinner">
                         <div v-for="(team, i) in remainingSpinnerTeams" :key="team.originalIdx" class="lottery-ball" :style="getSpinnerBallStyle(i, remainingSpinnerTeams.length)">
@@ -264,16 +264,16 @@
                       </div>
                     </div>
                   </div>
-                  <div class="absolute inset-0 rounded-full animate-pulse bg-primary/20"></div>
+                  <div class="absolute inset-0 rounded-full animate-pulse bg-yellow-400/20"></div>
                 </div>
               </div>
 
               <!-- Revealed Pick -->
               <div v-if="currentAnimationPhase === 'reveal'" class="absolute inset-0 flex items-center justify-center">
                 <div class="text-center animate-bounce-in">
-                  <div class="text-5xl font-black text-primary mb-3">Pick #{{ currentRevealPick }}</div>
+                  <div class="text-5xl font-black text-yellow-400 mb-3">Pick #{{ currentRevealPick }}</div>
                   <div class="flex items-center justify-center gap-3">
-                    <img v-if="currentRevealAvatar" :src="getAvatarUrl(currentRevealAvatar)" class="w-14 h-14 rounded-full border-2 border-primary" />
+                    <img v-if="currentRevealAvatar" :src="getAvatarUrl(currentRevealAvatar)" class="w-14 h-14 rounded-full border-2 border-yellow-400" />
                     <div class="text-2xl font-bold text-dark-text">{{ currentRevealTeam }}</div>
                   </div>
                 </div>
@@ -288,7 +288,7 @@
                   <img v-if="team.avatar" :src="getAvatarUrl(team.avatar)" class="w-5 h-5 rounded-full" />
                   <span v-else class="w-5 h-5 rounded-full bg-dark-border flex items-center justify-center text-xs">{{ team.name.charAt(0) }}</span>
                   <span class="text-dark-text truncate flex-1">{{ team.name }}</span>
-                  <span class="text-primary font-bold">{{ getLiveOdds(team.originalIdx).toFixed(1) }}%</span>
+                  <span class="text-yellow-400 font-bold">{{ getLiveOdds(team.originalIdx).toFixed(1) }}%</span>
                 </div>
               </div>
             </div>
@@ -299,14 +299,14 @@
               <div class="grid grid-cols-2 gap-4">
                 <div class="space-y-2">
                   <div v-for="pick in leftColumnPicks" :key="pick.pick" class="flex items-center gap-2 p-2 bg-dark-border/30 rounded-lg">
-                    <span class="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center text-primary font-bold text-sm flex-shrink-0">{{ pick.pick }}</span>
+                    <span class="w-8 h-8 rounded-full bg-yellow-400/20 flex items-center justify-center text-yellow-400 font-bold text-sm flex-shrink-0">{{ pick.pick }}</span>
                     <img v-if="pick.avatar" :src="getAvatarUrl(pick.avatar)" class="w-6 h-6 rounded-full flex-shrink-0" />
                     <span class="text-dark-text font-medium truncate">{{ pick.team }}</span>
                   </div>
                 </div>
                 <div class="space-y-2">
                   <div v-for="pick in rightColumnPicks" :key="pick.pick" class="flex items-center gap-2 p-2 bg-dark-border/30 rounded-lg">
-                    <span class="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center text-primary font-bold text-sm flex-shrink-0">{{ pick.pick }}</span>
+                    <span class="w-8 h-8 rounded-full bg-yellow-400/20 flex items-center justify-center text-yellow-400 font-bold text-sm flex-shrink-0">{{ pick.pick }}</span>
                     <img v-if="pick.avatar" :src="getAvatarUrl(pick.avatar)" class="w-6 h-6 rounded-full flex-shrink-0" />
                     <span class="text-dark-text font-medium truncate">{{ pick.team }}</span>
                   </div>
@@ -321,12 +321,12 @@
                 <span>{{ revealedPicks.length }} / {{ draftConfig.numTeams }}</span>
               </div>
               <div class="h-2 bg-dark-border/50 rounded-full overflow-hidden">
-                <div class="h-full bg-gradient-to-r from-primary to-yellow-400 transition-all duration-300" :style="{ width: (revealedPicks.length / draftConfig.numTeams) * 100 + '%' }"></div>
+                <div class="h-full bg-gradient-to-r from-yellow-500 to-yellow-300 transition-all duration-300" :style="{ width: (revealedPicks.length / draftConfig.numTeams) * 100 + '%' }"></div>
               </div>
             </div>
 
             <!-- Close Button -->
-            <button v-if="revealedPicks.length === draftConfig.numTeams" @click="closeLotteryModal" class="w-full py-3 rounded-xl bg-primary text-gray-900 font-bold hover:bg-primary/90 transition-colors">
+            <button v-if="revealedPicks.length === draftConfig.numTeams" @click="closeLotteryModal" class="w-full py-3 rounded-xl bg-yellow-400 text-gray-900 font-bold hover:bg-yellow-300 transition-colors">
               View Final Draft Order
             </button>
           </div>
@@ -374,8 +374,8 @@
         <div class="card-body">
           <div class="grid grid-cols-2 gap-6">
             <div class="space-y-3">
-              <div v-for="pick in leftColumnFinal" :key="pick.pickNumber" class="flex items-center gap-4 p-4 rounded-xl transition-all" :class="pick.pickNumber === 1 ? 'bg-gradient-to-r from-primary/20 to-yellow-400/20 border border-primary/30' : 'bg-dark-border/20'">
-                <div class="w-12 h-12 rounded-full flex items-center justify-center font-black text-xl flex-shrink-0" :class="pick.pickNumber === 1 ? 'bg-primary text-gray-900' : 'bg-dark-border text-dark-text'">{{ pick.pickNumber }}</div>
+              <div v-for="pick in leftColumnFinal" :key="pick.pickNumber" class="flex items-center gap-4 p-4 rounded-xl transition-all" :class="pick.pickNumber === 1 ? 'bg-gradient-to-r from-yellow-400/20 to-yellow-300/20 border border-yellow-400/30' : 'bg-dark-border/20'">
+                <div class="w-12 h-12 rounded-full flex items-center justify-center font-black text-xl flex-shrink-0" :class="pick.pickNumber === 1 ? 'bg-yellow-400 text-gray-900' : 'bg-dark-border text-dark-text'">{{ pick.pickNumber }}</div>
                 <img v-if="pick.avatar" :src="getAvatarUrl(pick.avatar)" class="w-10 h-10 rounded-full flex-shrink-0" />
                 <div class="flex-1 min-w-0">
                   <div class="font-bold text-dark-text text-lg truncate">{{ pick.team }}</div>
@@ -408,7 +408,7 @@
             <div v-for="(step, idx) in scheduleSteps" :key="idx" class="flex items-center">
               <div 
                 class="w-10 h-10 rounded-full flex items-center justify-center font-bold text-lg transition-all"
-                :class="scheduleStep >= idx ? 'bg-primary text-gray-900' : 'bg-dark-border text-dark-textMuted'"
+                :class="scheduleStep >= idx ? 'bg-yellow-400 text-gray-900' : 'bg-dark-border text-dark-textMuted'"
               >
                 {{ idx + 1 }}
               </div>
@@ -417,7 +417,7 @@
                   {{ step.title }}
                 </div>
               </div>
-              <div v-if="idx < scheduleSteps.length - 1" class="w-6 sm:w-12 h-0.5 mx-2 sm:mx-3" :class="scheduleStep > idx ? 'bg-primary' : 'bg-dark-border'"></div>
+              <div v-if="idx < scheduleSteps.length - 1" class="w-6 sm:w-12 h-0.5 mx-2 sm:mx-3" :class="scheduleStep > idx ? 'bg-yellow-400' : 'bg-dark-border'"></div>
             </div>
           </div>
         </div>
@@ -595,7 +595,7 @@
               v-for="(format, idx) in availableFormats" 
               :key="idx"
               @click="selectScheduleFormat(format)"
-              :class="selectedFormat?.id === format.id ? 'border-primary bg-primary/5' : 'border-dark-border hover:border-dark-textMuted'"
+              :class="selectedFormat?.id === format.id ? 'border-yellow-400 bg-yellow-400/5' : 'border-dark-border hover:border-dark-textMuted'"
               class="p-4 rounded-xl border-2 cursor-pointer transition-all"
             >
               <div class="flex items-start justify-between gap-4">
@@ -631,7 +631,7 @@
                   <span v-if="format.isPerfect" class="px-2 py-1 rounded-full text-xs font-semibold bg-green-500/20 text-green-400">
                     ✓ Perfect Balance
                   </span>
-                  <span v-if="format.isRecommended" class="px-2 py-1 rounded-full text-xs font-semibold bg-primary/20 text-primary">
+                  <span v-if="format.isRecommended" class="px-2 py-1 rounded-full text-xs font-semibold bg-yellow-400/20 text-yellow-400">
                     🎯 Recommended
                   </span>
                   <span v-if="format.isDivisionOnly" class="px-2 py-1 rounded-full text-xs font-semibold bg-red-500/20 text-red-400">
@@ -990,11 +990,11 @@
             <!-- Schedule Stats -->
             <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
               <div class="p-3 rounded-lg bg-dark-border/20 text-center">
-                <div class="text-lg font-bold text-primary">{{ scheduleConfig.numTeams }}</div>
+                <div class="text-lg font-bold text-yellow-400">{{ scheduleConfig.numTeams }}</div>
                 <div class="text-xs text-dark-textMuted">Teams</div>
               </div>
               <div class="p-3 rounded-lg bg-dark-border/20 text-center">
-                <div class="text-lg font-bold text-primary">{{ scheduleConfig.numWeeks }}</div>
+                <div class="text-lg font-bold text-yellow-400">{{ scheduleConfig.numWeeks }}</div>
                 <div class="text-xs text-dark-textMuted">Weeks</div>
               </div>
               <div v-if="scheduleConfig.numDivisions > 0" class="p-3 rounded-lg bg-dark-border/20 text-center">
@@ -1021,11 +1021,15 @@
                 <tbody>
                   <tr v-for="(team, idx) in scheduleTeams" :key="idx" class="border-t border-dark-border/30">
                     <td class="p-3 sticky left-0 z-10" style="background: #1a1d2a;">
-                      <div class="flex items-center gap-2">
+                      <div 
+                        class="flex items-center gap-2 cursor-pointer hover:bg-dark-border/30 -m-2 p-2 rounded-lg transition-colors"
+                        @click="openTeamSchedule(idx)"
+                        title="Click to view team schedule"
+                      >
                         <div v-if="team.avatar" class="w-7 h-7 rounded-full overflow-hidden flex-shrink-0">
                           <img :src="getScheduleAvatarUrl(team.avatar)" class="w-full h-full object-cover" />
                         </div>
-                        <span class="font-semibold text-dark-text">{{ team.name || 'Team ' + (idx + 1) }}</span>
+                        <span class="font-semibold text-dark-text hover:text-yellow-400 transition-colors">{{ team.name || 'Team ' + (idx + 1) }}</span>
                         <span 
                           v-if="scheduleConfig.numDivisions > 0" 
                           class="text-xs px-2 py-0.5 rounded-full text-white"
@@ -1056,7 +1060,7 @@
                 <span class="text-sm text-dark-text">{{ div.name || 'Division ' + (idx + 1) }}</span>
               </div>
               <div class="flex items-center gap-2">
-                <span class="w-4 h-4 rounded bg-primary/30"></span>
+                <span class="w-4 h-4 rounded bg-red-500/30"></span>
                 <span class="text-sm text-dark-textMuted">Division Game</span>
               </div>
             </div>
@@ -1098,6 +1102,77 @@
     <template v-if="activeTool === 'sos'">
       <ScheduleAnalysis />
     </template>
+
+    <!-- Team Schedule Modal -->
+    <Teleport to="body">
+      <div v-if="showTeamScheduleModal && selectedTeamIndex !== null" class="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
+        <div class="bg-dark-card rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-hidden border border-dark-border shadow-2xl">
+          <!-- Modal Header -->
+          <div class="p-6 border-b border-dark-border">
+            <div class="flex items-center justify-between">
+              <div class="flex items-center gap-4">
+                <div v-if="scheduleTeams[selectedTeamIndex]?.avatar" class="w-14 h-14 rounded-full overflow-hidden border-2 border-yellow-400">
+                  <img :src="getScheduleAvatarUrl(scheduleTeams[selectedTeamIndex]?.avatar)" class="w-full h-full object-cover" />
+                </div>
+                <div v-else class="w-14 h-14 rounded-full bg-dark-border flex items-center justify-center border-2 border-yellow-400">
+                  <span class="text-xl text-dark-textMuted">{{ (scheduleTeams[selectedTeamIndex]?.name || 'T').charAt(0) }}</span>
+                </div>
+                <div>
+                  <h3 class="text-2xl font-bold text-dark-text">{{ scheduleTeams[selectedTeamIndex]?.name || 'Team ' + (selectedTeamIndex + 1) }}</h3>
+                  <p class="text-dark-textMuted text-sm">{{ scheduleConfig.numWeeks }} Week Schedule</p>
+                </div>
+              </div>
+              <button @click="showTeamScheduleModal = false" class="w-10 h-10 rounded-full bg-dark-border/50 hover:bg-dark-border flex items-center justify-center text-dark-textMuted hover:text-dark-text transition-colors">
+                ✕
+              </button>
+            </div>
+          </div>
+          
+          <!-- Team Schedule List -->
+          <div class="p-6 overflow-y-auto max-h-[50vh]">
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div 
+                v-for="week in scheduleConfig.numWeeks" 
+                :key="week"
+                class="flex items-center gap-3 p-3 rounded-lg"
+                :class="getTeamScheduleMatchupClass(selectedTeamIndex, week - 1)"
+              >
+                <div class="w-10 h-10 rounded-full bg-dark-border flex items-center justify-center font-bold text-yellow-400 flex-shrink-0">
+                  {{ week }}
+                </div>
+                <div class="flex items-center gap-2 flex-1 min-w-0">
+                  <div v-if="getOpponentAvatar(selectedTeamIndex, week - 1)" class="w-8 h-8 rounded-full overflow-hidden flex-shrink-0">
+                    <img :src="getOpponentAvatar(selectedTeamIndex, week - 1)" class="w-full h-full object-cover" />
+                  </div>
+                  <div v-else class="w-8 h-8 rounded-full bg-dark-border/50 flex items-center justify-center flex-shrink-0">
+                    <span class="text-xs text-dark-textMuted">{{ getOpponentInitial(selectedTeamIndex, week - 1) }}</span>
+                  </div>
+                  <div class="flex-1 min-w-0">
+                    <div class="font-semibold text-dark-text truncate">{{ getOpponentName(selectedTeamIndex, week - 1) }}</div>
+                    <div v-if="isTeamScheduleDivisionGame(selectedTeamIndex, week - 1)" class="text-xs text-red-400">Division Game</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          <!-- Modal Footer -->
+          <div class="p-6 border-t border-dark-border flex gap-3 justify-end">
+            <button 
+              @click="downloadTeamScheduleImage" 
+              :disabled="isDownloadingTeamSchedule"
+              class="px-6 py-3 rounded-xl font-bold flex items-center gap-2 bg-green-500 text-gray-900 hover:bg-green-400 transition-colors disabled:opacity-50"
+            >
+              <svg v-if="!isDownloadingTeamSchedule" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+              </svg>
+              <div v-else class="w-5 h-5 border-2 border-gray-900 border-t-transparent rounded-full animate-spin"></div>
+              {{ isDownloadingTeamSchedule ? 'Generating...' : 'Share Schedule' }}
+            </button>
+          </div>
+        </div>
+      </div>
+    </Teleport>
   </div>
 </template>
 
@@ -1589,10 +1664,10 @@ async function downloadDraftOrderImage() {
       const avatarDataUrl = avatarMap.get(pick.pickNumber) || createPlaceholder(pick.team)
       const isFirst = pick.pickNumber === 1
       const numColor = isFirst ? '#eab308' : '#e5e7eb'
-      return `<div style="display:flex;align-items:center;padding:8px 12px;background:rgba(58,61,82,0.3);border-radius:8px;margin-bottom:6px;">
+      return `<div style="display:flex;align-items:center;padding:10px 12px;background:rgba(58,61,82,0.3);border-radius:8px;margin-bottom:8px;min-height:44px;">
         <div style="font-size:22px;font-weight:900;color:${numColor};width:32px;text-align:center;margin-right:10px;flex-shrink:0;">${pick.pickNumber}</div>
-        <img src="${avatarDataUrl}" style="width:32px;height:32px;border-radius:50%;margin-right:10px;flex-shrink:0;object-fit:cover;" />
-        <div style="font-weight:600;font-size:14px;color:#ffffff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${pick.team}</div>
+        <img src="${avatarDataUrl}" style="width:36px;height:36px;border-radius:50%;margin-right:12px;flex-shrink:0;object-fit:cover;border:2px solid #3a3d52;" />
+        <div style="font-weight:600;font-size:15px;color:#ffffff;white-space:nowrap;overflow:visible;">${pick.team}</div>
       </div>`
     }
     
@@ -1612,9 +1687,9 @@ async function downloadDraftOrderImage() {
             </div>
           </div>
         </div>
-        <div style="padding:16px 20px;display:flex;gap:16px;">
-          <div style="flex:1;">${leftColumn.map(p => buildRow(p)).join('')}</div>
-          <div style="flex:1;">${rightColumn.map(p => buildRow(p)).join('')}</div>
+        <div style="padding:16px 24px;display:flex;gap:20px;">
+          <div style="flex:1;min-width:0;">${leftColumn.map(p => buildRow(p)).join('')}</div>
+          <div style="flex:1;min-width:0;">${rightColumn.map(p => buildRow(p)).join('')}</div>
         </div>
         <div style="padding:12px 20px;text-align:center;border-top:1px solid rgba(220,38,38,0.2);">
           <span style="font-size:14px;font-weight:bold;color:#dc2626;">ultimatefantasydashboard.com</span>
@@ -1647,12 +1722,17 @@ async function downloadDraftAnimation() {
     const { GIFEncoder, quantize, applyPalette } = await import('https://unpkg.com/gifenc@1.0.3/dist/gifenc.esm.js')
     const html2canvas = (await import('html2canvas')).default
     
-    const WIDTH = 600
-    const HEIGHT = 620
-    
     const order = recordedDraftOrder.value
     const numTeams = order.length
     const half = Math.ceil(numTeams / 2)
+    
+    const WIDTH = 600
+    const ROW_HEIGHT = 48
+    const HEADER_HEIGHT = 40
+    const TITLE_AREA = 70
+    const FOOTER_HEIGHT = 50
+    const PADDING = 30
+    const HEIGHT = HEADER_HEIGHT + TITLE_AREA + (half * ROW_HEIGHT) + FOOTER_HEIGHT + PADDING
     
     // Create placeholder avatar
     const createPlaceholder = (name: string): string => {
@@ -1774,10 +1854,10 @@ async function downloadDraftAnimation() {
       const isFirst = p.pickNumber === 1
       const numColor = isFirst ? '#eab308' : (highlight ? '#22c55e' : '#e5e7eb')
       const bgStyle = highlight ? 'background:rgba(34,197,94,0.2);border:2px solid #22c55e;' : 'background:rgba(58,61,82,0.3);'
-      return `<div style="display:flex;align-items:center;padding:6px 10px;border-radius:8px;margin-bottom:5px;${bgStyle}">
-        <div style="font-size:20px;font-weight:900;color:${numColor};width:28px;text-align:center;margin-right:8px;flex-shrink:0;">${p.pickNumber}</div>
-        <img src="${avatarDataUrl}" style="width:28px;height:28px;border-radius:50%;margin-right:8px;flex-shrink:0;object-fit:cover;" />
-        <div style="font-weight:600;font-size:13px;color:#ffffff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${p.team}</div>
+      return `<div style="display:flex;align-items:center;padding:8px 12px;border-radius:8px;margin-bottom:6px;min-height:40px;${bgStyle}">
+        <div style="font-size:20px;font-weight:900;color:${numColor};width:28px;text-align:center;margin-right:10px;flex-shrink:0;">${p.pickNumber}</div>
+        <img src="${avatarDataUrl}" style="width:32px;height:32px;border-radius:50%;margin-right:10px;flex-shrink:0;object-fit:cover;border:2px solid #3a3d52;" />
+        <div style="font-weight:600;font-size:14px;color:#ffffff;white-space:nowrap;overflow:visible;">${p.team}</div>
       </div>`
     }
     
@@ -1951,6 +2031,11 @@ const scheduleSleeperImported = ref(false)
 const rivalryPairings = ref<Record<number, number>>({}) // teamIndex -> pairedTeamIndex
 const selectedRivalryTeamA = ref<number | null>(null)
 const selectedRivalryTeamB = ref<number | null>(null)
+
+// Team schedule modal state
+const showTeamScheduleModal = ref(false)
+const selectedTeamIndex = ref<number | null>(null)
+const isDownloadingTeamSchedule = ref(false)
 
 const divisionColors = ['#3b82f6', '#ef4444', '#22c55e', '#f59e0b', '#8b5cf6', '#ec4899']
 
@@ -2526,7 +2611,7 @@ function getMatchupClass(teamIdx: number, week: number): string {
   const opp = generatedSchedule.value[teamIdx]?.[week]
   if (opp === undefined || opp === -1) return 'text-dark-textMuted'
   if (isSameDivision(teamIdx, opp)) {
-    return 'bg-primary/10 text-primary font-medium'
+    return 'bg-red-500/10 text-red-400 font-medium'
   }
   return 'text-dark-text'
 }
@@ -2535,6 +2620,155 @@ function getOpponentName(idx: number, wk: number): string {
   const opp = generatedSchedule.value[idx]?.[wk]
   if (opp === undefined || opp === -1) return '—'
   return scheduleTeams.value[opp]?.name || 'Team ' + (opp + 1)
+}
+
+// Team schedule modal functions
+function openTeamSchedule(teamIdx: number) {
+  selectedTeamIndex.value = teamIdx
+  showTeamScheduleModal.value = true
+}
+
+function getOpponentAvatar(teamIdx: number, week: number): string | null {
+  const opp = generatedSchedule.value[teamIdx]?.[week]
+  if (opp === undefined || opp === -1) return null
+  const avatar = scheduleTeams.value[opp]?.avatar
+  return avatar ? getScheduleAvatarUrl(avatar) : null
+}
+
+function getOpponentInitial(teamIdx: number, week: number): string {
+  const opp = generatedSchedule.value[teamIdx]?.[week]
+  if (opp === undefined || opp === -1) return '—'
+  const name = scheduleTeams.value[opp]?.name || 'Team'
+  return name.charAt(0).toUpperCase()
+}
+
+function isTeamScheduleDivisionGame(teamIdx: number, week: number): boolean {
+  const opp = generatedSchedule.value[teamIdx]?.[week]
+  if (opp === undefined || opp === -1) return false
+  return isSameDivision(teamIdx, opp)
+}
+
+function getTeamScheduleMatchupClass(teamIdx: number, week: number): string {
+  const opp = generatedSchedule.value[teamIdx]?.[week]
+  if (opp === undefined || opp === -1) return 'bg-dark-border/20'
+  if (isSameDivision(teamIdx, opp)) {
+    return 'bg-red-500/10 border border-red-500/30'
+  }
+  return 'bg-dark-border/20'
+}
+
+async function downloadTeamScheduleImage() {
+  if (selectedTeamIndex.value === null) return
+  
+  isDownloadingTeamSchedule.value = true
+  try {
+    const html2canvas = (await import('html2canvas')).default
+    const teamIdx = selectedTeamIndex.value
+    const team = scheduleTeams.value[teamIdx]
+    const teamName = team?.name || `Team ${teamIdx + 1}`
+    const numWeeks = scheduleConfig.numWeeks
+    
+    // Load UFD logo
+    const loadLogo = async (): Promise<string> => {
+      try {
+        const response = await fetch('/UFD_V5.png')
+        if (!response.ok) return ''
+        const blob = await response.blob()
+        return new Promise((resolve) => {
+          const reader = new FileReader()
+          reader.onloadend = () => resolve(reader.result as string)
+          reader.onerror = () => resolve('')
+          reader.readAsDataURL(blob)
+        })
+      } catch (e) { return '' }
+    }
+    
+    const createPlaceholder = (name: string): string => {
+      const canvas = document.createElement('canvas')
+      canvas.width = 64
+      canvas.height = 64
+      const ctx = canvas.getContext('2d')
+      if (ctx) {
+        ctx.fillStyle = '#3a3d52'
+        ctx.beginPath()
+        ctx.arc(32, 32, 32, 0, Math.PI * 2)
+        ctx.fill()
+        ctx.fillStyle = '#f5c451'
+        ctx.font = 'bold 28px sans-serif'
+        ctx.textAlign = 'center'
+        ctx.textBaseline = 'middle'
+        ctx.fillText((name || 'T').charAt(0).toUpperCase(), 32, 34)
+      }
+      return canvas.toDataURL('image/png')
+    }
+    
+    const logoBase64 = await loadLogo()
+    
+    const WIDTH = 500
+    const ROW_HEIGHT = 44
+    const half = Math.ceil(numWeeks / 2)
+    const HEIGHT = 160 + half * ROW_HEIGHT + 60
+    
+    const container = document.createElement('div')
+    container.style.cssText = `position:absolute;left:-9999px;width:${WIDTH}px;font-family:system-ui,-apple-system,sans-serif;`
+    
+    const buildWeekRow = (week: number) => {
+      const oppIdx = generatedSchedule.value[teamIdx]?.[week - 1]
+      const oppName = getOpponentName(teamIdx, week - 1)
+      const isDivGame = isTeamScheduleDivisionGame(teamIdx, week - 1)
+      const bgStyle = isDivGame ? 'background:rgba(220,38,38,0.15);border:1px solid rgba(220,38,38,0.3);' : 'background:rgba(58,61,82,0.3);'
+      
+      return `<div style="display:flex;align-items:center;padding:8px 10px;border-radius:8px;margin-bottom:6px;${bgStyle}">
+        <div style="font-size:16px;font-weight:900;color:#eab308;width:28px;text-align:center;margin-right:10px;flex-shrink:0;">W${week}</div>
+        <div style="flex:1;min-width:0;">
+          <div style="font-weight:600;font-size:13px;color:#ffffff;white-space:nowrap;overflow:visible;">${oppName}</div>
+          ${isDivGame ? '<div style="font-size:10px;color:#dc2626;margin-top:2px;">Division Game</div>' : ''}
+        </div>
+      </div>`
+    }
+    
+    const leftWeeks = Array.from({ length: half }, (_, i) => i + 1)
+    const rightWeeks = Array.from({ length: numWeeks - half }, (_, i) => half + i + 1)
+    
+    container.innerHTML = `
+      <div style="background:linear-gradient(160deg,#0f1219 0%,#0a0c14 50%,#0d1117 100%);border-radius:16px;overflow:hidden;box-shadow:0 12px 40px rgba(0,0,0,0.5);width:${WIDTH}px;">
+        <div style="background:#dc2626;padding:8px 20px;text-align:center;">
+          <span style="font-size:12px;font-weight:700;color:#0a0c14;text-transform:uppercase;letter-spacing:2px;">Ultimate Fantasy Dashboard</span>
+        </div>
+        <div style="display:flex;align-items:center;padding:14px 20px;border-bottom:1px solid rgba(220,38,38,0.2);">
+          ${logoBase64 ? `<img src="${logoBase64}" style="height:44px;width:auto;flex-shrink:0;margin-right:14px;" />` : ''}
+          <div style="flex:1;">
+            <div style="font-size:18px;font-weight:900;color:#ffffff;">📅 ${teamName}</div>
+            <div style="font-size:12px;margin-top:3px;">
+              <span style="color:#e5e7eb;">${numWeeks} Week Schedule</span>
+            </div>
+          </div>
+        </div>
+        <div style="padding:14px 16px;display:flex;gap:14px;">
+          <div style="flex:1;">${leftWeeks.map(w => buildWeekRow(w)).join('')}</div>
+          <div style="flex:1;">${rightWeeks.map(w => buildWeekRow(w)).join('')}</div>
+        </div>
+        <div style="padding:12px 20px;text-align:center;border-top:1px solid rgba(220,38,38,0.2);">
+          <span style="font-size:14px;font-weight:bold;color:#dc2626;">ultimatefantasydashboard.com</span>
+        </div>
+      </div>
+    `
+    
+    document.body.appendChild(container)
+    await new Promise(r => setTimeout(r, 300))
+    const canvas = await html2canvas(container, { backgroundColor: '#0a0c14', scale: 2, useCORS: true, allowTaint: true, width: WIDTH })
+    document.body.removeChild(container)
+    
+    const link = document.createElement('a')
+    link.download = `${teamName.replace(/[^a-zA-Z0-9]/g, '-')}-schedule.png`
+    link.href = canvas.toDataURL('image/png')
+    link.click()
+  } catch (e) {
+    console.error(e)
+    alert('Failed to generate image')
+  } finally {
+    isDownloadingTeamSchedule.value = false
+  }
 }
 
 function getOpponentCounts(teamIdx: number): Record<number, number> {
