@@ -341,11 +341,33 @@
             <h2 class="card-title">Final Draft Order</h2>
           </div>
           <div class="flex gap-2">
-            <button @click="downloadDraftOrderImage" :disabled="isDownloadingDraft" class="px-4 py-2 rounded-lg bg-dark-border/50 hover:bg-dark-border text-dark-text font-medium transition-colors flex items-center gap-2">
-              <span>📷</span> {{ isDownloadingDraft ? 'Generating...' : 'Download PNG' }}
+            <button 
+              @click="downloadDraftOrderImage" 
+              :disabled="isDownloadingDraft" 
+              class="flex items-center gap-2 px-4 py-2 rounded-lg font-semibold transition-colors disabled:opacity-50 text-sm"
+              style="background: #dc2626; color: #ffffff;"
+              @mouseover="$event.currentTarget.style.background = '#eab308'; $event.currentTarget.style.color = '#0a0c14'"
+              @mouseout="$event.currentTarget.style.background = '#dc2626'; $event.currentTarget.style.color = '#ffffff'"
+            >
+              <svg v-if="!isDownloadingDraft" class="w-4 h-4 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+              </svg>
+              <svg v-else class="w-4 h-4 animate-spin pointer-events-none" fill="none" viewBox="0 0 24 24">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+              </svg>
+              {{ isDownloadingDraft ? 'Saving...' : 'Share' }}
             </button>
-            <button @click="downloadDraftAnimation" :disabled="isDownloadingAnimation" class="px-4 py-2 rounded-lg bg-dark-border/50 hover:bg-dark-border text-dark-text font-medium transition-colors flex items-center gap-2">
-              <span>🎬</span> {{ isDownloadingAnimation ? 'Recording...' : 'Download Animation' }}
+            <button 
+              @click="downloadDraftAnimation" 
+              :disabled="isDownloadingAnimation" 
+              class="flex items-center gap-2 px-4 py-2 rounded-lg font-semibold transition-colors disabled:opacity-50 text-sm"
+              style="background: #dc2626; color: #ffffff;"
+              @mouseover="$event.currentTarget.style.background = '#eab308'; $event.currentTarget.style.color = '#0a0c14'"
+              @mouseout="$event.currentTarget.style.background = '#dc2626'; $event.currentTarget.style.color = '#ffffff'"
+            >
+              <span class="pointer-events-none">🎬</span>
+              {{ isDownloadingAnimation ? 'Recording...' : 'Download GIF' }}
             </button>
           </div>
         </div>
@@ -948,9 +970,19 @@
               <button 
                 @click="downloadScheduleImage"
                 :disabled="isDownloadingSchedule"
-                class="px-4 py-2 rounded-lg bg-primary/20 hover:bg-primary/30 text-primary font-medium transition-colors flex items-center gap-2"
+                class="flex items-center gap-2 px-4 py-2 rounded-lg font-semibold transition-colors disabled:opacity-50 text-sm"
+                style="background: #dc2626; color: #ffffff;"
+                @mouseover="$event.currentTarget.style.background = '#eab308'; $event.currentTarget.style.color = '#0a0c14'"
+                @mouseout="$event.currentTarget.style.background = '#dc2626'; $event.currentTarget.style.color = '#ffffff'"
               >
-                <span>📷</span> {{ isDownloadingSchedule ? 'Generating...' : 'Download PNG' }}
+                <svg v-if="!isDownloadingSchedule" class="w-4 h-4 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                </svg>
+                <svg v-else class="w-4 h-4 animate-spin pointer-events-none" fill="none" viewBox="0 0 24 24">
+                  <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                  <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                {{ isDownloadingSchedule ? 'Saving...' : 'Share' }}
               </button>
             </div>
           </div>
@@ -1429,27 +1461,76 @@ async function downloadDraftOrderImage() {
     const html2canvas = (await import('html2canvas')).default
     const numTeams = finalDraftOrder.value.length
     const half = Math.ceil(numTeams / 2)
-    const WIDTH = 720
-    const HEIGHT = half * 70 + 160
+    const WIDTH = 520
+    const ROW_HEIGHT = 52
+    const HEIGHT = 140 + half * ROW_HEIGHT + 60
+    
+    // Load UFD logo
+    const loadLogo = async (): Promise<string> => {
+      try {
+        const response = await fetch('/UFD_V5.png')
+        if (!response.ok) return ''
+        const blob = await response.blob()
+        return new Promise((resolve) => {
+          const reader = new FileReader()
+          reader.onloadend = () => resolve(reader.result as string)
+          reader.onerror = () => resolve('')
+          reader.readAsDataURL(blob)
+        })
+      } catch (e) { return '' }
+    }
+    
+    const logoBase64 = await loadLogo()
     
     const container = document.createElement('div')
-    container.style.cssText = `position:absolute;left:-9999px;width:${WIDTH}px;background:linear-gradient(135deg,#1a1d2e 0%,#0d0f18 100%);color:#f7f7ff;font-family:system-ui,-apple-system,sans-serif;padding:32px;box-sizing:border-box;`
+    container.style.cssText = `position:absolute;left:-9999px;width:${WIDTH}px;font-family:system-ui,-apple-system,sans-serif;`
     
     const leftColumn = finalDraftOrder.value.slice(0, half)
     const rightColumn = finalDraftOrder.value.slice(half)
     
-    const buildRow = (pick: any, isFirst: boolean = false) => {
-      const avatar = pick.avatar ? `<img src="${getAvatarUrl(pick.avatar)}" style="width:44px;height:44px;border-radius:50%;margin-right:12px;" crossorigin="anonymous" />` : `<div style="width:44px;height:44px;border-radius:50%;background:#3a3d52;margin-right:12px;display:flex;align-items:center;justify-content:center;color:#9ca3af;font-size:16px;">${pick.team.charAt(0)}</div>`
-      const bg = isFirst ? 'background:linear-gradient(90deg,rgba(245,196,81,0.2),rgba(250,204,21,0.1));border:1px solid rgba(245,196,81,0.4);' : 'background:rgba(58,61,82,0.3);'
-      const pickBg = isFirst ? 'background:linear-gradient(135deg,#f5c451,#fcd34d);color:#1a1d2e;' : 'background:#3a3d52;color:#f7f7ff;'
-      return `<div style="display:flex;align-items:center;padding:12px 16px;border-radius:12px;margin-bottom:8px;${bg}"><div style="width:48px;height:48px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:20px;margin-right:12px;${pickBg}">${pick.pickNumber}</div>${avatar}<div style="flex:1;"><div style="font-weight:bold;font-size:18px;color:#f7f7ff;">${pick.team}</div><div style="font-size:13px;color:#9ca3af;">Pick #${pick.pickNumber}</div></div>${isFirst ? '<div style="font-size:24px;margin-left:8px;">👑</div>' : ''}</div>`
+    const buildRow = (pick: any) => {
+      const avatar = pick.avatar ? `<img src="${getAvatarUrl(pick.avatar)}" style="width:36px;height:36px;border-radius:50%;margin-right:10px;object-fit:cover;" crossorigin="anonymous" />` : `<div style="width:36px;height:36px;border-radius:50%;background:#3a3d52;margin-right:10px;display:flex;align-items:center;justify-content:center;color:#9ca3af;font-size:14px;">${pick.team.charAt(0)}</div>`
+      const isFirst = pick.pickNumber === 1
+      const numColor = isFirst ? '#eab308' : '#e5e7eb'
+      return `<div style="display:flex;align-items:center;padding:8px 12px;background:rgba(58,61,82,0.3);border-radius:8px;margin-bottom:6px;">
+        <div style="font-size:24px;font-weight:900;color:${numColor};width:36px;text-align:center;margin-right:8px;">${pick.pickNumber}</div>
+        ${avatar}
+        <div style="flex:1;min-width:0;">
+          <div style="font-weight:600;font-size:14px;color:#ffffff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${pick.team}</div>
+        </div>
+        ${isFirst ? '<div style="font-size:18px;margin-left:4px;">👑</div>' : ''}
+      </div>`
     }
     
-    container.innerHTML = `<div style="text-align:center;margin-bottom:24px;"><div style="font-size:36px;font-weight:bold;color:#f5c451;">🏆 Draft Order</div><div style="font-size:14px;color:#9ca3af;margin-top:6px;">${numTeams} Teams • ${new Date().toLocaleDateString()}</div></div><div style="display:flex;gap:24px;"><div style="flex:1;">${leftColumn.map((p, i) => buildRow(p, i === 0)).join('')}</div><div style="flex:1;">${rightColumn.map(p => buildRow(p)).join('')}</div></div><div style="text-align:center;font-size:12px;color:#6b7280;margin-top:20px;">Generated by Fantasy Dashboard</div>`
+    container.innerHTML = `
+      <div style="background:linear-gradient(160deg,#0f1219 0%,#0a0c14 50%,#0d1117 100%);border-radius:16px;overflow:hidden;box-shadow:0 12px 40px rgba(0,0,0,0.5);">
+        <div style="background:#dc2626;padding:8px 20px;text-align:center;">
+          <span style="font-size:12px;font-weight:700;color:#0a0c14;text-transform:uppercase;letter-spacing:2px;">Ultimate Fantasy Dashboard</span>
+        </div>
+        <div style="display:flex;align-items:center;padding:12px 20px;border-bottom:1px solid rgba(220,38,38,0.2);">
+          ${logoBase64 ? `<img src="${logoBase64}" style="height:40px;width:auto;flex-shrink:0;margin-right:12px;" />` : ''}
+          <div style="flex:1;">
+            <div style="font-size:22px;font-weight:900;color:#ffffff;text-transform:uppercase;letter-spacing:0.5px;">🏆 Draft Order</div>
+            <div style="font-size:12px;margin-top:2px;">
+              <span style="color:#e5e7eb;">${numTeams} Teams</span>
+              <span style="color:#6b7280;margin:0 4px;">•</span>
+              <span style="color:#dc2626;font-weight:600;">${new Date().toLocaleDateString()}</span>
+            </div>
+          </div>
+        </div>
+        <div style="padding:16px 20px;display:flex;gap:16px;">
+          <div style="flex:1;">${leftColumn.map(p => buildRow(p)).join('')}</div>
+          <div style="flex:1;">${rightColumn.map(p => buildRow(p)).join('')}</div>
+        </div>
+        <div style="padding:12px 20px;text-align:center;border-top:1px solid rgba(220,38,38,0.2);">
+          <span style="font-size:14px;font-weight:bold;color:#dc2626;">ultimatefantasydashboard.com</span>
+        </div>
+      </div>
+    `
     
     document.body.appendChild(container)
     await new Promise(r => setTimeout(r, 500))
-    const canvas = await html2canvas(container, { backgroundColor: '#0d0f18', scale: 2, useCORS: true, allowTaint: true })
+    const canvas = await html2canvas(container, { backgroundColor: '#0a0c14', scale: 2, useCORS: true, allowTaint: true, width: WIDTH })
     document.body.removeChild(container)
     
     const link = document.createElement('a')
@@ -1473,8 +1554,8 @@ async function downloadDraftAnimation() {
     const { GIFEncoder, quantize, applyPalette } = await import('https://unpkg.com/gifenc@1.0.3/dist/gifenc.esm.js')
     const html2canvas = (await import('html2canvas')).default
     
-    const WIDTH = 600
-    const HEIGHT = 500
+    const WIDTH = 520
+    const HEIGHT = 580
     
     const order = recordedDraftOrder.value
     const numTeams = order.length
@@ -1498,12 +1579,40 @@ async function downloadDraftAnimation() {
       gif.writeFrame(index, WIDTH, HEIGHT, { palette, delay: delayMs })
     }
     
-    // Title frame
+    // Build row with big numbers (not circles)
+    const buildRow = (p: any, highlight: boolean = false) => {
+      const isFirst = p.pickNumber === 1
+      const numColor = isFirst ? '#eab308' : (highlight ? '#dc2626' : '#e5e7eb')
+      const bgStyle = highlight ? 'background:rgba(220,38,38,0.2);border:2px solid #dc2626;' : 'background:rgba(58,61,82,0.3);'
+      const avatar = p.avatar ? `<img src="${getAvatarUrl(p.avatar)}" style="width:32px;height:32px;border-radius:50%;margin-right:8px;object-fit:cover;" crossorigin="anonymous" />` : `<div style="width:32px;height:32px;border-radius:50%;background:#3a3d52;margin-right:8px;display:flex;align-items:center;justify-content:center;color:#9ca3af;font-size:12px;">${p.team.charAt(0)}</div>`
+      return `<div style="display:flex;align-items:center;padding:6px 10px;border-radius:8px;margin-bottom:4px;${bgStyle}">
+        <div style="font-size:20px;font-weight:900;color:${numColor};width:28px;text-align:center;margin-right:6px;">${p.pickNumber}</div>
+        ${avatar}
+        <div style="font-weight:600;font-size:12px;color:#ffffff;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${p.team}</div>
+        ${isFirst ? '<div style="font-size:14px;margin-left:4px;">👑</div>' : ''}
+      </div>`
+    }
+    
+    // Title frame with red header
     const titleFrame = document.createElement('div')
-    titleFrame.style.cssText = `position:absolute;left:-9999px;width:${WIDTH}px;height:${HEIGHT}px;background:linear-gradient(135deg,#1a1d2e,#0d0f18);display:flex;flex-direction:column;align-items:center;justify-content:center;font-family:system-ui;`
-    titleFrame.innerHTML = `<div style="font-size:80px;margin-bottom:20px;">🎱</div><div style="font-size:42px;font-weight:bold;color:#f5c451;">Draft Lottery</div><div style="font-size:18px;color:#9ca3af;margin-top:12px;">${numTeams} Teams</div>`
+    titleFrame.style.cssText = `position:absolute;left:-9999px;width:${WIDTH}px;height:${HEIGHT}px;font-family:system-ui;`
+    titleFrame.innerHTML = `
+      <div style="width:100%;height:100%;background:linear-gradient(160deg,#0f1219 0%,#0a0c14 50%,#0d1117 100%);border-radius:16px;overflow:hidden;display:flex;flex-direction:column;">
+        <div style="background:#dc2626;padding:8px 20px;text-align:center;">
+          <span style="font-size:12px;font-weight:700;color:#0a0c14;text-transform:uppercase;letter-spacing:2px;">Ultimate Fantasy Dashboard</span>
+        </div>
+        <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;">
+          <div style="font-size:80px;margin-bottom:20px;">🎱</div>
+          <div style="font-size:36px;font-weight:900;color:#ffffff;text-transform:uppercase;">Draft Lottery</div>
+          <div style="font-size:16px;color:#9ca3af;margin-top:12px;">${numTeams} Teams</div>
+        </div>
+        <div style="padding:12px 20px;text-align:center;border-top:1px solid rgba(220,38,38,0.2);">
+          <span style="font-size:14px;font-weight:bold;color:#dc2626;">ultimatefantasydashboard.com</span>
+        </div>
+      </div>
+    `
     document.body.appendChild(titleFrame)
-    let canvas = await html2canvas(titleFrame, { backgroundColor: '#0d0f18', scale: 1, width: WIDTH, height: HEIGHT })
+    let canvas = await html2canvas(titleFrame, { backgroundColor: '#0a0c14', scale: 1, width: WIDTH, height: HEIGHT })
     addFrame(canvas, 2000)
     document.body.removeChild(titleFrame)
     
@@ -1515,29 +1624,30 @@ async function downloadDraftAnimation() {
       const left = sorted.filter(p => p.pickNumber <= half)
       const right = sorted.filter(p => p.pickNumber > half)
       
-      const buildMiniRow = (p: any, highlight: boolean) => {
-        const bg = highlight ? 'background:rgba(245,196,81,0.3);border:2px solid #f5c451;' : p.pickNumber === 1 ? 'background:linear-gradient(90deg,rgba(245,196,81,0.2),rgba(250,204,21,0.1));' : 'background:rgba(58,61,82,0.3);'
-        const pickBg = p.pickNumber === 1 ? 'background:linear-gradient(135deg,#f5c451,#fcd34d);color:#1a1d2e;' : 'background:#3a3d52;color:#f7f7ff;'
-        const avatar = p.avatar ? `<img src="${getAvatarUrl(p.avatar)}" style="width:32px;height:32px;border-radius:50%;margin-right:8px;" crossorigin="anonymous" />` : ''
-        return `<div style="display:flex;align-items:center;padding:8px 12px;border-radius:8px;margin-bottom:6px;${bg}"><div style="width:36px;height:36px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:16px;margin-right:8px;${pickBg}">${p.pickNumber}</div>${avatar}<div style="font-weight:bold;font-size:14px;color:#f7f7ff;">${p.team}</div>${p.pickNumber === 1 ? '<span style="margin-left:auto;font-size:18px;">👑</span>' : ''}</div>`
-      }
-      
       const frame = document.createElement('div')
-      frame.style.cssText = `position:absolute;left:-9999px;width:${WIDTH}px;height:${HEIGHT}px;background:linear-gradient(135deg,#1a1d2e,#0d0f18);padding:24px;box-sizing:border-box;font-family:system-ui;`
+      frame.style.cssText = `position:absolute;left:-9999px;width:${WIDTH}px;height:${HEIGHT}px;font-family:system-ui;`
       frame.innerHTML = `
-        <div style="text-align:center;margin-bottom:16px;">
-          <div style="font-size:48px;font-weight:black;color:#f5c451;">Pick #${pick.pickNumber}</div>
-          <div style="font-size:24px;font-weight:bold;color:#f7f7ff;margin-top:8px;">${pick.team}</div>
+        <div style="width:100%;height:100%;background:linear-gradient(160deg,#0f1219 0%,#0a0c14 50%,#0d1117 100%);border-radius:16px;overflow:hidden;display:flex;flex-direction:column;">
+          <div style="background:#dc2626;padding:8px 20px;text-align:center;">
+            <span style="font-size:12px;font-weight:700;color:#0a0c14;text-transform:uppercase;letter-spacing:2px;">Ultimate Fantasy Dashboard</span>
+          </div>
+          <div style="padding:16px 20px;border-bottom:1px solid rgba(220,38,38,0.2);text-align:center;">
+            <div style="font-size:14px;color:#9ca3af;">Pick #${pick.pickNumber} Revealed</div>
+            <div style="font-size:24px;font-weight:900;color:#ffffff;margin-top:4px;">${pick.team}</div>
+          </div>
+          <div style="flex:1;padding:12px 16px;display:flex;gap:12px;overflow:hidden;">
+            <div style="flex:1;">${left.map(p => buildRow(p, p.pickNumber === pick.pickNumber)).join('')}</div>
+            <div style="flex:1;">${right.map(p => buildRow(p, p.pickNumber === pick.pickNumber)).join('')}</div>
+          </div>
+          <div style="padding:12px 20px;text-align:center;border-top:1px solid rgba(220,38,38,0.2);display:flex;justify-content:space-between;align-items:center;">
+            <span style="font-size:12px;color:#6b7280;">${revealed.length} of ${numTeams} revealed</span>
+            <span style="font-size:14px;font-weight:bold;color:#dc2626;">ultimatefantasydashboard.com</span>
+          </div>
         </div>
-        <div style="display:flex;gap:16px;">
-          <div style="flex:1;">${left.map(p => buildMiniRow(p, p.pickNumber === pick.pickNumber)).join('')}</div>
-          <div style="flex:1;">${right.map(p => buildMiniRow(p, p.pickNumber === pick.pickNumber)).join('')}</div>
-        </div>
-        <div style="text-align:center;font-size:12px;color:#6b7280;margin-top:auto;position:absolute;bottom:16px;left:0;right:0;">${revealed.length} of ${numTeams} revealed</div>
       `
       document.body.appendChild(frame)
       await new Promise(r => setTimeout(r, 100))
-      canvas = await html2canvas(frame, { backgroundColor: '#0d0f18', scale: 1, width: WIDTH, height: HEIGHT, useCORS: true, allowTaint: true })
+      canvas = await html2canvas(frame, { backgroundColor: '#0a0c14', scale: 1, width: WIDTH, height: HEIGHT, useCORS: true, allowTaint: true })
       addFrame(canvas, 1500)
       document.body.removeChild(frame)
     }
@@ -1546,18 +1656,29 @@ async function downloadDraftAnimation() {
     const finalFrame = document.createElement('div')
     const leftFinal = order.slice(0, half)
     const rightFinal = order.slice(half)
-    const buildFinalRow = (p: any) => {
-      const bg = p.pickNumber === 1 ? 'background:linear-gradient(90deg,rgba(245,196,81,0.2),rgba(250,204,21,0.1));border:1px solid rgba(245,196,81,0.4);' : 'background:rgba(58,61,82,0.3);'
-      const pickBg = p.pickNumber === 1 ? 'background:linear-gradient(135deg,#f5c451,#fcd34d);color:#1a1d2e;' : 'background:#3a3d52;color:#f7f7ff;'
-      const avatar = p.avatar ? `<img src="${getAvatarUrl(p.avatar)}" style="width:36px;height:36px;border-radius:50%;margin-right:10px;" crossorigin="anonymous" />` : ''
-      return `<div style="display:flex;align-items:center;padding:10px 14px;border-radius:10px;margin-bottom:6px;${bg}"><div style="width:40px;height:40px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:18px;margin-right:10px;${pickBg}">${p.pickNumber}</div>${avatar}<div style="font-weight:bold;font-size:15px;color:#f7f7ff;">${p.team}</div>${p.pickNumber === 1 ? '<span style="margin-left:auto;font-size:20px;">👑</span>' : ''}</div>`
-    }
     
-    finalFrame.style.cssText = `position:absolute;left:-9999px;width:${WIDTH}px;height:${HEIGHT}px;background:linear-gradient(135deg,#1a1d2e,#0d0f18);padding:24px;box-sizing:border-box;font-family:system-ui;`
-    finalFrame.innerHTML = `<div style="text-align:center;margin-bottom:20px;"><div style="font-size:32px;font-weight:bold;color:#f5c451;">🏆 Final Draft Order</div></div><div style="display:flex;gap:16px;"><div style="flex:1;">${leftFinal.map(p => buildFinalRow(p)).join('')}</div><div style="flex:1;">${rightFinal.map(p => buildFinalRow(p)).join('')}</div></div><div style="text-align:center;font-size:11px;color:#6b7280;position:absolute;bottom:12px;left:0;right:0;">Generated by Fantasy Dashboard</div>`
+    finalFrame.style.cssText = `position:absolute;left:-9999px;width:${WIDTH}px;height:${HEIGHT}px;font-family:system-ui;`
+    finalFrame.innerHTML = `
+      <div style="width:100%;height:100%;background:linear-gradient(160deg,#0f1219 0%,#0a0c14 50%,#0d1117 100%);border-radius:16px;overflow:hidden;display:flex;flex-direction:column;">
+        <div style="background:#dc2626;padding:8px 20px;text-align:center;">
+          <span style="font-size:12px;font-weight:700;color:#0a0c14;text-transform:uppercase;letter-spacing:2px;">Ultimate Fantasy Dashboard</span>
+        </div>
+        <div style="padding:16px 20px;border-bottom:1px solid rgba(220,38,38,0.2);text-align:center;">
+          <div style="font-size:28px;font-weight:900;color:#ffffff;">🏆 Final Draft Order</div>
+          <div style="font-size:12px;color:#9ca3af;margin-top:4px;">${numTeams} Teams</div>
+        </div>
+        <div style="flex:1;padding:12px 16px;display:flex;gap:12px;overflow:hidden;">
+          <div style="flex:1;">${leftFinal.map(p => buildRow(p)).join('')}</div>
+          <div style="flex:1;">${rightFinal.map(p => buildRow(p)).join('')}</div>
+        </div>
+        <div style="padding:12px 20px;text-align:center;border-top:1px solid rgba(220,38,38,0.2);">
+          <span style="font-size:14px;font-weight:bold;color:#dc2626;">ultimatefantasydashboard.com</span>
+        </div>
+      </div>
+    `
     document.body.appendChild(finalFrame)
     await new Promise(r => setTimeout(r, 100))
-    canvas = await html2canvas(finalFrame, { backgroundColor: '#0d0f18', scale: 1, width: WIDTH, height: HEIGHT, useCORS: true, allowTaint: true })
+    canvas = await html2canvas(finalFrame, { backgroundColor: '#0a0c14', scale: 1, width: WIDTH, height: HEIGHT, useCORS: true, allowTaint: true })
     addFrame(canvas, 5000)
     document.body.removeChild(finalFrame)
     
@@ -2468,41 +2589,84 @@ async function downloadScheduleImage() {
   try {
     const html2canvas = (await import('html2canvas')).default
     const n = scheduleConfig.value.numTeams, w = scheduleConfig.value.numWeeks
-    const WIDTH = 220 + w * 100 + 48, HEIGHT = 80 + n * 48 + 100
-    const container = document.createElement('div')
-    container.style.cssText = `position:absolute;left:-9999px;width:${WIDTH}px;background:linear-gradient(135deg,#1a1d2e,#0d0f18);color:#f7f7ff;font-family:system-ui;padding:24px;`
+    const CELL_WIDTH = 70
+    const WIDTH = 200 + w * CELL_WIDTH + 48
+    const HEIGHT = 180 + n * 44 + 60
     
-    let hdr = '<th style="padding:12px;text-align:left;background:rgba(58,61,82,0.5);font-weight:bold;color:#f7f7ff;min-width:200px;">Team</th>'
-    for (let i = 0; i < w; i++) hdr += `<th style="padding:12px;text-align:center;background:rgba(58,61,82,0.5);font-weight:bold;color:#f7f7ff;">Wk ${i+1}</th>`
+    // Load UFD logo
+    const loadLogo = async (): Promise<string> => {
+      try {
+        const response = await fetch('/UFD_V5.png')
+        if (!response.ok) return ''
+        const blob = await response.blob()
+        return new Promise((resolve) => {
+          const reader = new FileReader()
+          reader.onloadend = () => resolve(reader.result as string)
+          reader.onerror = () => resolve('')
+          reader.readAsDataURL(blob)
+        })
+      } catch (e) { return '' }
+    }
+    
+    const logoBase64 = await loadLogo()
+    
+    const container = document.createElement('div')
+    container.style.cssText = `position:absolute;left:-9999px;width:${WIDTH}px;font-family:system-ui,-apple-system,sans-serif;`
+    
+    let hdr = '<th style="padding:10px;text-align:left;background:rgba(58,61,82,0.5);font-weight:bold;color:#f7f7ff;min-width:180px;position:sticky;left:0;">Team</th>'
+    for (let i = 0; i < w; i++) hdr += `<th style="padding:8px;text-align:center;background:rgba(58,61,82,0.5);font-weight:bold;color:#f7f7ff;min-width:${CELL_WIDTH}px;font-size:11px;">Wk ${i+1}</th>`
     
     let rows = ''
     scheduleTeams.value.forEach((t, idx) => {
       const avatarImg = t.avatar 
-        ? `<img src="${getScheduleAvatarUrl(t.avatar)}" style="width:28px;height:28px;border-radius:50%;margin-right:10px;" crossorigin="anonymous" />` 
-        : ''
+        ? `<img src="${getScheduleAvatarUrl(t.avatar)}" style="width:24px;height:24px;border-radius:50%;margin-right:8px;object-fit:cover;" crossorigin="anonymous" />` 
+        : `<div style="width:24px;height:24px;border-radius:50%;background:#3a3d52;margin-right:8px;display:flex;align-items:center;justify-content:center;color:#9ca3af;font-size:10px;">${(t.name || 'T').charAt(0)}</div>`
       const divBadge = selectedFormat.value && selectedFormat.value.divisions > 0 
-        ? `<span style="font-size:10px;padding:2px 8px;border-radius:9999px;background:${divisionColors[t.division]};color:white;margin-left:8px;">${scheduleConfig.value.divisions[t.division]?.name || 'D'+(t.division+1)}</span>` 
+        ? `<span style="font-size:9px;padding:2px 6px;border-radius:9999px;background:${divisionColors[t.division]};color:white;margin-left:6px;">${scheduleConfig.value.divisions[t.division]?.name || 'D'+(t.division+1)}</span>` 
         : ''
-      let cells = `<td style="padding:10px;background:rgba(38,42,58,0.3);border-bottom:1px solid rgba(58,61,82,0.3);"><div style="display:flex;align-items:center;">${avatarImg}<span style="font-weight:600;color:#f7f7ff;">${t.name || 'Team '+(idx+1)}</span>${divBadge}</div></td>`
+      let cells = `<td style="padding:8px;background:rgba(38,42,58,0.3);border-bottom:1px solid rgba(58,61,82,0.3);"><div style="display:flex;align-items:center;">${avatarImg}<span style="font-weight:600;color:#f7f7ff;font-size:12px;">${t.name || 'Team '+(idx+1)}</span>${divBadge}</div></td>`
       for (let wk = 0; wk < w; wk++) {
         const opp = generatedSchedule.value[idx]?.[wk]
         const isDivGame = opp >= 0 && isSameDivision(idx, opp)
-        const bgColor = isDivGame ? 'rgba(245,196,81,0.15)' : 'rgba(38,42,58,0.15)'
-        const textColor = isDivGame ? '#f5c451' : '#d1d5db'
-        cells += `<td style="padding:10px;text-align:center;background:${bgColor};border-bottom:1px solid rgba(58,61,82,0.3);color:${textColor};font-weight:${isDivGame ? '600' : '400'};">${getOpponentName(idx, wk)}</td>`
+        const bgColor = isDivGame ? 'rgba(220,38,38,0.15)' : 'rgba(38,42,58,0.15)'
+        const textColor = isDivGame ? '#dc2626' : '#d1d5db'
+        cells += `<td style="padding:8px;text-align:center;background:${bgColor};border-bottom:1px solid rgba(58,61,82,0.3);color:${textColor};font-weight:${isDivGame ? '600' : '400'};font-size:11px;">${getOpponentName(idx, wk)}</td>`
       }
       rows += `<tr>${cells}</tr>`
     })
     
     const title = selectedFormat.value && selectedFormat.value.divisions > 0 
-      ? `📅 League Schedule (${selectedFormat.value.divisions} Divisions)` 
-      : '📅 League Schedule'
+      ? `League Schedule (${selectedFormat.value.divisions} Divisions)` 
+      : 'League Schedule'
     
-    container.innerHTML = `<div style="text-align:center;margin-bottom:20px;"><div style="font-size:28px;font-weight:bold;color:#f5c451;">${title}</div><div style="font-size:14px;color:#9ca3af;margin-top:4px;">${n} Teams • ${w} Weeks • No Back-to-Back Games</div></div><table style="width:100%;border-collapse:collapse;"><thead><tr>${hdr}</tr></thead><tbody>${rows}</tbody></table><div style="text-align:center;font-size:12px;color:#6b7280;margin-top:16px;">Generated by Fantasy Dashboard</div>`
+    container.innerHTML = `
+      <div style="background:linear-gradient(160deg,#0f1219 0%,#0a0c14 50%,#0d1117 100%);border-radius:16px;overflow:hidden;box-shadow:0 12px 40px rgba(0,0,0,0.5);">
+        <div style="background:#dc2626;padding:8px 20px;text-align:center;">
+          <span style="font-size:12px;font-weight:700;color:#0a0c14;text-transform:uppercase;letter-spacing:2px;">Ultimate Fantasy Dashboard</span>
+        </div>
+        <div style="display:flex;align-items:center;padding:12px 20px;border-bottom:1px solid rgba(220,38,38,0.2);">
+          ${logoBase64 ? `<img src="${logoBase64}" style="height:40px;width:auto;flex-shrink:0;margin-right:12px;" />` : ''}
+          <div style="flex:1;">
+            <div style="font-size:20px;font-weight:900;color:#ffffff;text-transform:uppercase;letter-spacing:0.5px;">📅 ${title}</div>
+            <div style="font-size:12px;margin-top:2px;">
+              <span style="color:#e5e7eb;">${n} Teams • ${w} Weeks</span>
+              <span style="color:#6b7280;margin:0 4px;">•</span>
+              <span style="color:#22c55e;font-weight:600;">No Back-to-Back Games</span>
+            </div>
+          </div>
+        </div>
+        <div style="padding:16px 20px;overflow-x:auto;">
+          <table style="width:100%;border-collapse:collapse;"><thead><tr>${hdr}</tr></thead><tbody>${rows}</tbody></table>
+        </div>
+        <div style="padding:12px 20px;text-align:center;border-top:1px solid rgba(220,38,38,0.2);">
+          <span style="font-size:14px;font-weight:bold;color:#dc2626;">ultimatefantasydashboard.com</span>
+        </div>
+      </div>
+    `
     
     document.body.appendChild(container)
     await new Promise(r => setTimeout(r, 200)) // Allow images to load
-    const canvas = await html2canvas(container, { backgroundColor: '#0d0f18', scale: 2, useCORS: true, allowTaint: true })
+    const canvas = await html2canvas(container, { backgroundColor: '#0a0c14', scale: 2, useCORS: true, allowTaint: true })
     document.body.removeChild(container)
     
     const link = document.createElement('a')
