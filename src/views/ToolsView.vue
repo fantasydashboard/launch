@@ -8,13 +8,13 @@
 
     <!-- Tool Selector Tabs -->
     <div class="flex gap-2 flex-wrap">
-      <button @click="activeTool = 'draft'" :class="activeTool === 'draft' ? 'bg-primary text-gray-900' : 'bg-dark-card text-dark-textSecondary hover:bg-dark-border/50'" class="px-6 py-3 rounded-xl font-semibold transition-all flex items-center gap-2">
+      <button @click="activeTool = 'draft'" :class="activeTool === 'draft' ? 'bg-yellow-400 text-gray-900' : 'bg-dark-card text-dark-textSecondary hover:bg-dark-border/50'" class="px-6 py-3 rounded-xl font-semibold transition-all flex items-center gap-2">
         <span class="text-xl">🎱</span> Draft Order Generator
       </button>
-      <button @click="activeTool = 'schedule'" :class="activeTool === 'schedule' ? 'bg-primary text-gray-900' : 'bg-dark-card text-dark-textSecondary hover:bg-dark-border/50'" class="px-6 py-3 rounded-xl font-semibold transition-all flex items-center gap-2">
+      <button @click="activeTool = 'schedule'" :class="activeTool === 'schedule' ? 'bg-yellow-400 text-gray-900' : 'bg-dark-card text-dark-textSecondary hover:bg-dark-border/50'" class="px-6 py-3 rounded-xl font-semibold transition-all flex items-center gap-2">
         <span class="text-xl">📅</span> Schedule Generator
       </button>
-      <button @click="activeTool = 'sos'" :class="activeTool === 'sos' ? 'bg-primary text-gray-900' : 'bg-dark-card text-dark-textSecondary hover:bg-dark-border/50'" class="px-6 py-3 rounded-xl font-semibold transition-all flex items-center gap-2">
+      <button @click="activeTool = 'sos'" :class="activeTool === 'sos' ? 'bg-yellow-400 text-gray-900' : 'bg-dark-card text-dark-textSecondary hover:bg-dark-border/50'" class="px-6 py-3 rounded-xl font-semibold transition-all flex items-center gap-2">
         <span class="text-xl">🛡️</span> Schedule Analysis
       </button>
     </div>
@@ -41,7 +41,7 @@
               <button 
                 @click="loadCurrentLeagueTeams('draft')" 
                 :disabled="isLoadingPlatformTeams" 
-                class="px-4 py-2 rounded-lg bg-primary text-gray-900 font-semibold hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm"
+                class="px-4 py-2 rounded-lg bg-yellow-400 text-gray-900 font-semibold hover:bg-yellow-300 transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm"
               >
                 {{ isLoadingPlatformTeams ? 'Loading...' : 'Import Teams' }}
               </button>
@@ -164,8 +164,8 @@
           <div>
             <label class="block text-sm font-semibold text-dark-text mb-2">Number of Teams</label>
             <div class="flex items-center gap-4">
-              <input v-model.number="draftConfig.numTeams" type="range" min="4" max="20" class="flex-1 accent-primary" @input="updateDraftTeams" />
-              <span class="text-2xl font-bold text-primary w-12 text-center">{{ draftConfig.numTeams }}</span>
+              <input v-model.number="draftConfig.numTeams" type="range" min="4" max="20" class="flex-1 accent-green-500" @input="updateDraftTeams" />
+              <span class="text-2xl font-bold text-green-500 w-12 text-center">{{ draftConfig.numTeams }}</span>
             </div>
           </div>
 
@@ -173,10 +173,10 @@
           <div>
             <label class="block text-sm font-semibold text-dark-text mb-2">Reveal Order</label>
             <div class="flex gap-3">
-              <button @click="draftConfig.revealOrder = 'last-to-first'" :class="draftConfig.revealOrder === 'last-to-first' ? 'bg-primary text-gray-900' : 'bg-dark-border/50 text-dark-textSecondary'" class="px-4 py-2 rounded-lg font-medium transition-all">
+              <button @click="draftConfig.revealOrder = 'last-to-first'" :class="draftConfig.revealOrder === 'last-to-first' ? 'bg-yellow-400 text-gray-900' : 'bg-dark-border/50 text-dark-textSecondary'" class="px-4 py-2 rounded-lg font-medium transition-all">
                 {{ draftConfig.numTeams }} → 1 (Last Pick First)
               </button>
-              <button @click="draftConfig.revealOrder = 'first-to-last'" :class="draftConfig.revealOrder === 'first-to-last' ? 'bg-primary text-gray-900' : 'bg-dark-border/50 text-dark-textSecondary'" class="px-4 py-2 rounded-lg font-medium transition-all">
+              <button @click="draftConfig.revealOrder = 'first-to-last'" :class="draftConfig.revealOrder === 'first-to-last' ? 'bg-yellow-400 text-gray-900' : 'bg-dark-border/50 text-dark-textSecondary'" class="px-4 py-2 rounded-lg font-medium transition-all">
                 1 → {{ draftConfig.numTeams }} (First Pick First)
               </button>
             </div>
@@ -231,7 +231,7 @@
           </div>
 
           <!-- Generate Button -->
-          <button @click="startLotteryAnimation" :disabled="isAnimating" class="w-full py-4 rounded-xl font-bold text-lg transition-all flex items-center justify-center gap-3" :class="isAnimating ? 'bg-dark-border text-dark-textMuted cursor-not-allowed' : 'bg-gradient-to-r from-primary to-yellow-400 text-gray-900 hover:shadow-lg hover:shadow-primary/30'">
+          <button @click="startLotteryAnimation" :disabled="isAnimating" class="w-full py-4 rounded-xl font-bold text-lg transition-all flex items-center justify-center gap-3" :class="isAnimating ? 'bg-dark-border text-dark-textMuted cursor-not-allowed' : 'bg-gradient-to-r from-green-500 to-emerald-400 text-gray-900 hover:shadow-lg hover:shadow-green-500/30'">
             <span class="text-2xl">🎰</span>
             {{ isAnimating ? 'Drawing...' : 'Generate Draft Order' }}
           </button>
@@ -447,7 +447,7 @@
                 <button 
                   @click="loadCurrentLeagueTeams('schedule')" 
                   :disabled="isLoadingPlatformTeams" 
-                  class="px-4 py-2 rounded-lg bg-primary text-gray-900 font-semibold hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm"
+                  class="px-4 py-2 rounded-lg bg-yellow-400 text-gray-900 font-semibold hover:bg-yellow-300 transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm"
                 >
                   {{ isLoadingPlatformTeams ? 'Loading...' : 'Import Teams' }}
                 </button>
@@ -528,16 +528,16 @@
             <div>
               <label class="block text-sm font-semibold text-dark-text mb-2">Number of Teams</label>
               <div class="flex items-center gap-4">
-                <input v-model.number="scheduleConfig.numTeams" type="range" min="6" max="16" step="2" class="flex-1 accent-primary" @input="onTeamsChange" />
-                <span class="text-2xl font-bold text-primary w-12 text-center">{{ scheduleConfig.numTeams }}</span>
+                <input v-model.number="scheduleConfig.numTeams" type="range" min="6" max="16" step="2" class="flex-1 accent-green-500" @input="onTeamsChange" />
+                <span class="text-2xl font-bold text-green-500 w-12 text-center">{{ scheduleConfig.numTeams }}</span>
               </div>
               <div class="text-xs text-dark-textMuted mt-1">Even numbers only (6-16)</div>
             </div>
             <div>
               <label class="block text-sm font-semibold text-dark-text mb-2">Regular Season Weeks</label>
               <div class="flex items-center gap-4">
-                <input v-model.number="scheduleConfig.numWeeks" type="range" min="18" max="26" class="flex-1 accent-primary" @input="generateScheduleFormats" />
-                <span class="text-2xl font-bold text-primary w-12 text-center">{{ scheduleConfig.numWeeks }}</span>
+                <input v-model.number="scheduleConfig.numWeeks" type="range" min="18" max="26" class="flex-1 accent-green-500" @input="generateScheduleFormats" />
+                <span class="text-2xl font-bold text-green-500 w-12 text-center">{{ scheduleConfig.numWeeks }}</span>
               </div>
               <div class="text-xs text-dark-textMuted mt-1">Baseball regular season: 20-24 weeks typical</div>
             </div>
@@ -568,7 +568,7 @@
           <div class="flex justify-end">
             <button 
               @click="scheduleStep = 1; generateScheduleFormats()"
-              class="px-6 py-3 rounded-xl font-bold text-lg transition-all flex items-center gap-2 bg-primary text-gray-900 hover:bg-primary/90"
+              class="px-6 py-3 rounded-xl font-bold text-lg transition-all flex items-center gap-2 bg-yellow-400 text-gray-900 hover:bg-yellow-300"
             >
               Next: Choose Format
               <span>→</span>
@@ -665,7 +665,7 @@
             <button 
               @click="proceedFromFormatSelection"
               :disabled="!selectedFormat"
-              class="px-6 py-3 rounded-xl font-bold text-lg transition-all flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed bg-primary text-gray-900 hover:bg-primary/90"
+              class="px-6 py-3 rounded-xl font-bold text-lg transition-all flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed bg-yellow-400 text-gray-900 hover:bg-yellow-300"
             >
               {{ selectedFormat?.needsSelection ? 'Next: Assign Matchups' : 'Next: Assign Divisions' }}
               <span>→</span>
@@ -1462,7 +1462,8 @@ async function downloadDraftOrderImage() {
     const numTeams = finalDraftOrder.value.length
     const half = Math.ceil(numTeams / 2)
     const WIDTH = 520
-    const ROW_HEIGHT = 52
+    const COL_WIDTH = 230
+    const ROW_HEIGHT = 48
     const HEIGHT = 140 + half * ROW_HEIGHT + 60
     
     // Load UFD logo
@@ -1480,7 +1481,103 @@ async function downloadDraftOrderImage() {
       } catch (e) { return '' }
     }
     
+    // Create placeholder avatar
+    const createPlaceholder = (name: string): string => {
+      const canvas = document.createElement('canvas')
+      canvas.width = 64
+      canvas.height = 64
+      const ctx = canvas.getContext('2d')
+      if (ctx) {
+        ctx.fillStyle = '#3a3d52'
+        ctx.beginPath()
+        ctx.arc(32, 32, 32, 0, Math.PI * 2)
+        ctx.fill()
+        ctx.fillStyle = '#f5c451'
+        ctx.font = 'bold 28px sans-serif'
+        ctx.textAlign = 'center'
+        ctx.textBaseline = 'middle'
+        ctx.fillText((name || 'T').charAt(0).toUpperCase(), 32, 34)
+      }
+      return canvas.toDataURL('image/png')
+    }
+    
+    // Preload all team avatars as base64
+    const loadTeamAvatar = async (pick: any): Promise<{ pickNumber: number; dataUrl: string }> => {
+      const avatarUrl = pick.avatar ? getAvatarUrl(pick.avatar) : null
+      if (!avatarUrl) {
+        return { pickNumber: pick.pickNumber, dataUrl: createPlaceholder(pick.team) }
+      }
+      
+      // Approach 1: Try direct load with CORS
+      try {
+        const img = new Image()
+        img.crossOrigin = 'anonymous'
+        const loadPromise = new Promise<string>((resolve, reject) => {
+          img.onload = () => {
+            try {
+              const canvas = document.createElement('canvas')
+              canvas.width = 64
+              canvas.height = 64
+              const ctx = canvas.getContext('2d')
+              if (ctx) {
+                ctx.beginPath()
+                ctx.arc(32, 32, 32, 0, Math.PI * 2)
+                ctx.closePath()
+                ctx.clip()
+                ctx.drawImage(img, 0, 0, 64, 64)
+              }
+              resolve(canvas.toDataURL('image/png'))
+            } catch (e) { reject(e) }
+          }
+          img.onerror = () => reject(new Error('Failed'))
+          setTimeout(() => reject(new Error('Timeout')), 3000)
+        })
+        img.src = avatarUrl
+        const dataUrl = await loadPromise
+        return { pickNumber: pick.pickNumber, dataUrl }
+      } catch (e) {
+        console.log(`Direct CORS failed for ${pick.team}, trying proxy...`)
+      }
+      
+      // Approach 2: Try CORS proxy
+      try {
+        const proxyUrl = `https://corsproxy.io/?${encodeURIComponent(avatarUrl)}`
+        const img = new Image()
+        img.crossOrigin = 'anonymous'
+        const loadPromise = new Promise<string>((resolve, reject) => {
+          img.onload = () => {
+            try {
+              const canvas = document.createElement('canvas')
+              canvas.width = 64
+              canvas.height = 64
+              const ctx = canvas.getContext('2d')
+              if (ctx) {
+                ctx.beginPath()
+                ctx.arc(32, 32, 32, 0, Math.PI * 2)
+                ctx.closePath()
+                ctx.clip()
+                ctx.drawImage(img, 0, 0, 64, 64)
+              }
+              resolve(canvas.toDataURL('image/png'))
+            } catch (e) { reject(e) }
+          }
+          img.onerror = () => reject(new Error('Proxy failed'))
+          setTimeout(() => reject(new Error('Timeout')), 5000)
+        })
+        img.src = proxyUrl
+        const dataUrl = await loadPromise
+        return { pickNumber: pick.pickNumber, dataUrl }
+      } catch (e) {
+        console.log(`CORS proxy failed for ${pick.team}, using placeholder`)
+      }
+      
+      // Approach 3: Use placeholder
+      return { pickNumber: pick.pickNumber, dataUrl: createPlaceholder(pick.team) }
+    }
+    
     const logoBase64 = await loadLogo()
+    const avatarResults = await Promise.all(finalDraftOrder.value.map(loadTeamAvatar))
+    const avatarMap = new Map(avatarResults.map(r => [r.pickNumber, r.dataUrl]))
     
     const container = document.createElement('div')
     container.style.cssText = `position:absolute;left:-9999px;width:${WIDTH}px;font-family:system-ui,-apple-system,sans-serif;`
@@ -1489,47 +1586,46 @@ async function downloadDraftOrderImage() {
     const rightColumn = finalDraftOrder.value.slice(half)
     
     const buildRow = (pick: any) => {
-      const avatar = pick.avatar ? `<img src="${getAvatarUrl(pick.avatar)}" style="width:36px;height:36px;border-radius:50%;margin-right:10px;object-fit:cover;" crossorigin="anonymous" />` : `<div style="width:36px;height:36px;border-radius:50%;background:#3a3d52;margin-right:10px;display:flex;align-items:center;justify-content:center;color:#9ca3af;font-size:14px;">${pick.team.charAt(0)}</div>`
+      const avatarDataUrl = avatarMap.get(pick.pickNumber) || createPlaceholder(pick.team)
       const isFirst = pick.pickNumber === 1
       const numColor = isFirst ? '#eab308' : '#e5e7eb'
-      return `<div style="display:flex;align-items:center;padding:8px 12px;background:rgba(58,61,82,0.3);border-radius:8px;margin-bottom:6px;">
-        <div style="font-size:24px;font-weight:900;color:${numColor};width:36px;text-align:center;margin-right:8px;">${pick.pickNumber}</div>
-        ${avatar}
-        <div style="flex:1;min-width:0;">
-          <div style="font-weight:600;font-size:14px;color:#ffffff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${pick.team}</div>
+      return `<div style="display:flex;align-items:center;padding:6px 10px;background:rgba(58,61,82,0.3);border-radius:8px;margin-bottom:5px;height:36px;box-sizing:border-box;">
+        <div style="font-size:20px;font-weight:900;color:${numColor};width:28px;text-align:center;margin-right:8px;flex-shrink:0;">${pick.pickNumber}</div>
+        <img src="${avatarDataUrl}" style="width:28px;height:28px;border-radius:50%;margin-right:8px;flex-shrink:0;object-fit:cover;" />
+        <div style="flex:1;min-width:0;max-width:140px;overflow:hidden;">
+          <div style="font-weight:600;font-size:12px;color:#ffffff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${pick.team}</div>
         </div>
-        ${isFirst ? '<div style="font-size:18px;margin-left:4px;">👑</div>' : ''}
       </div>`
     }
     
     container.innerHTML = `
-      <div style="background:linear-gradient(160deg,#0f1219 0%,#0a0c14 50%,#0d1117 100%);border-radius:16px;overflow:hidden;box-shadow:0 12px 40px rgba(0,0,0,0.5);">
+      <div style="background:linear-gradient(160deg,#0f1219 0%,#0a0c14 50%,#0d1117 100%);border-radius:16px;overflow:hidden;box-shadow:0 12px 40px rgba(0,0,0,0.5);width:${WIDTH}px;">
         <div style="background:#dc2626;padding:8px 20px;text-align:center;">
           <span style="font-size:12px;font-weight:700;color:#0a0c14;text-transform:uppercase;letter-spacing:2px;">Ultimate Fantasy Dashboard</span>
         </div>
         <div style="display:flex;align-items:center;padding:12px 20px;border-bottom:1px solid rgba(220,38,38,0.2);">
           ${logoBase64 ? `<img src="${logoBase64}" style="height:40px;width:auto;flex-shrink:0;margin-right:12px;" />` : ''}
           <div style="flex:1;">
-            <div style="font-size:22px;font-weight:900;color:#ffffff;text-transform:uppercase;letter-spacing:0.5px;">🏆 Draft Order</div>
-            <div style="font-size:12px;margin-top:2px;">
+            <div style="font-size:20px;font-weight:900;color:#ffffff;text-transform:uppercase;letter-spacing:0.5px;">🏆 Draft Order</div>
+            <div style="font-size:11px;margin-top:2px;">
               <span style="color:#e5e7eb;">${numTeams} Teams</span>
               <span style="color:#6b7280;margin:0 4px;">•</span>
               <span style="color:#dc2626;font-weight:600;">${new Date().toLocaleDateString()}</span>
             </div>
           </div>
         </div>
-        <div style="padding:16px 20px;display:flex;gap:16px;">
-          <div style="flex:1;">${leftColumn.map(p => buildRow(p)).join('')}</div>
-          <div style="flex:1;">${rightColumn.map(p => buildRow(p)).join('')}</div>
+        <div style="padding:12px 16px;display:flex;gap:12px;">
+          <div style="width:${COL_WIDTH}px;flex-shrink:0;">${leftColumn.map(p => buildRow(p)).join('')}</div>
+          <div style="width:${COL_WIDTH}px;flex-shrink:0;">${rightColumn.map(p => buildRow(p)).join('')}</div>
         </div>
-        <div style="padding:12px 20px;text-align:center;border-top:1px solid rgba(220,38,38,0.2);">
-          <span style="font-size:14px;font-weight:bold;color:#dc2626;">ultimatefantasydashboard.com</span>
+        <div style="padding:10px 20px;text-align:center;border-top:1px solid rgba(220,38,38,0.2);">
+          <span style="font-size:13px;font-weight:bold;color:#dc2626;">ultimatefantasydashboard.com</span>
         </div>
       </div>
     `
     
     document.body.appendChild(container)
-    await new Promise(r => setTimeout(r, 500))
+    await new Promise(r => setTimeout(r, 300))
     const canvas = await html2canvas(container, { backgroundColor: '#0a0c14', scale: 2, useCORS: true, allowTaint: true, width: WIDTH })
     document.body.removeChild(container)
     
@@ -1550,25 +1646,121 @@ async function downloadDraftAnimation() {
   isDownloadingAnimation.value = true
   
   try {
-    // Use gifenc from CDN (same approach as PowerRankingsView)
     const { GIFEncoder, quantize, applyPalette } = await import('https://unpkg.com/gifenc@1.0.3/dist/gifenc.esm.js')
     const html2canvas = (await import('html2canvas')).default
     
     const WIDTH = 520
     const HEIGHT = 580
+    const COL_WIDTH = 230
     
     const order = recordedDraftOrder.value
     const numTeams = order.length
     const half = Math.ceil(numTeams / 2)
     
+    // Create placeholder avatar
+    const createPlaceholder = (name: string): string => {
+      const canvas = document.createElement('canvas')
+      canvas.width = 64
+      canvas.height = 64
+      const ctx = canvas.getContext('2d')
+      if (ctx) {
+        ctx.fillStyle = '#3a3d52'
+        ctx.beginPath()
+        ctx.arc(32, 32, 32, 0, Math.PI * 2)
+        ctx.fill()
+        ctx.fillStyle = '#f5c451'
+        ctx.font = 'bold 28px sans-serif'
+        ctx.textAlign = 'center'
+        ctx.textBaseline = 'middle'
+        ctx.fillText((name || 'T').charAt(0).toUpperCase(), 32, 34)
+      }
+      return canvas.toDataURL('image/png')
+    }
+    
+    // Preload all team avatars as base64 BEFORE generating any frames
+    const loadTeamAvatar = async (pick: any): Promise<{ pickNumber: number; dataUrl: string }> => {
+      const avatarUrl = pick.avatar ? getAvatarUrl(pick.avatar) : null
+      if (!avatarUrl) {
+        return { pickNumber: pick.pickNumber, dataUrl: createPlaceholder(pick.team) }
+      }
+      
+      // Approach 1: Try direct load with CORS
+      try {
+        const img = new Image()
+        img.crossOrigin = 'anonymous'
+        const loadPromise = new Promise<string>((resolve, reject) => {
+          img.onload = () => {
+            try {
+              const canvas = document.createElement('canvas')
+              canvas.width = 64
+              canvas.height = 64
+              const ctx = canvas.getContext('2d')
+              if (ctx) {
+                ctx.beginPath()
+                ctx.arc(32, 32, 32, 0, Math.PI * 2)
+                ctx.closePath()
+                ctx.clip()
+                ctx.drawImage(img, 0, 0, 64, 64)
+              }
+              resolve(canvas.toDataURL('image/png'))
+            } catch (e) { reject(e) }
+          }
+          img.onerror = () => reject(new Error('Failed'))
+          setTimeout(() => reject(new Error('Timeout')), 3000)
+        })
+        img.src = avatarUrl
+        const dataUrl = await loadPromise
+        return { pickNumber: pick.pickNumber, dataUrl }
+      } catch (e) {
+        console.log(`Direct CORS failed for ${pick.team}, trying proxy...`)
+      }
+      
+      // Approach 2: Try CORS proxy
+      try {
+        const proxyUrl = `https://corsproxy.io/?${encodeURIComponent(avatarUrl)}`
+        const img = new Image()
+        img.crossOrigin = 'anonymous'
+        const loadPromise = new Promise<string>((resolve, reject) => {
+          img.onload = () => {
+            try {
+              const canvas = document.createElement('canvas')
+              canvas.width = 64
+              canvas.height = 64
+              const ctx = canvas.getContext('2d')
+              if (ctx) {
+                ctx.beginPath()
+                ctx.arc(32, 32, 32, 0, Math.PI * 2)
+                ctx.closePath()
+                ctx.clip()
+                ctx.drawImage(img, 0, 0, 64, 64)
+              }
+              resolve(canvas.toDataURL('image/png'))
+            } catch (e) { reject(e) }
+          }
+          img.onerror = () => reject(new Error('Proxy failed'))
+          setTimeout(() => reject(new Error('Timeout')), 5000)
+        })
+        img.src = proxyUrl
+        const dataUrl = await loadPromise
+        return { pickNumber: pick.pickNumber, dataUrl }
+      } catch (e) {
+        console.log(`CORS proxy failed for ${pick.team}, using placeholder`)
+      }
+      
+      // Approach 3: Use placeholder
+      return { pickNumber: pick.pickNumber, dataUrl: createPlaceholder(pick.team) }
+    }
+    
+    // Preload all avatars
+    const avatarResults = await Promise.all(order.map(loadTeamAvatar))
+    const avatarMap = new Map(avatarResults.map(r => [r.pickNumber, r.dataUrl]))
+    
     const revealSequence = draftConfig.value.revealOrder === 'last-to-first'
       ? [...order].sort((a, b) => b.pickNumber - a.pickNumber)
       : [...order].sort((a, b) => a.pickNumber - b.pickNumber)
     
-    // Create GIF encoder
     const gif = GIFEncoder()
     
-    // Helper to add frame to gif
     const addFrame = (canvas: HTMLCanvasElement, delayMs: number) => {
       const ctx = canvas.getContext('2d')
       if (!ctx) return
@@ -1579,21 +1771,20 @@ async function downloadDraftAnimation() {
       gif.writeFrame(index, WIDTH, HEIGHT, { palette, delay: delayMs })
     }
     
-    // Build row with big numbers (not circles)
+    // Build row using preloaded avatars
     const buildRow = (p: any, highlight: boolean = false) => {
+      const avatarDataUrl = avatarMap.get(p.pickNumber) || createPlaceholder(p.team)
       const isFirst = p.pickNumber === 1
       const numColor = isFirst ? '#eab308' : (highlight ? '#dc2626' : '#e5e7eb')
       const bgStyle = highlight ? 'background:rgba(220,38,38,0.2);border:2px solid #dc2626;' : 'background:rgba(58,61,82,0.3);'
-      const avatar = p.avatar ? `<img src="${getAvatarUrl(p.avatar)}" style="width:32px;height:32px;border-radius:50%;margin-right:8px;object-fit:cover;" crossorigin="anonymous" />` : `<div style="width:32px;height:32px;border-radius:50%;background:#3a3d52;margin-right:8px;display:flex;align-items:center;justify-content:center;color:#9ca3af;font-size:12px;">${p.team.charAt(0)}</div>`
-      return `<div style="display:flex;align-items:center;padding:6px 10px;border-radius:8px;margin-bottom:4px;${bgStyle}">
-        <div style="font-size:20px;font-weight:900;color:${numColor};width:28px;text-align:center;margin-right:6px;">${p.pickNumber}</div>
-        ${avatar}
-        <div style="font-weight:600;font-size:12px;color:#ffffff;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${p.team}</div>
-        ${isFirst ? '<div style="font-size:14px;margin-left:4px;">👑</div>' : ''}
+      return `<div style="display:flex;align-items:center;padding:5px 8px;border-radius:6px;margin-bottom:4px;height:32px;box-sizing:border-box;${bgStyle}">
+        <div style="font-size:18px;font-weight:900;color:${numColor};width:24px;text-align:center;margin-right:6px;flex-shrink:0;">${p.pickNumber}</div>
+        <img src="${avatarDataUrl}" style="width:24px;height:24px;border-radius:50%;margin-right:6px;flex-shrink:0;object-fit:cover;" />
+        <div style="font-weight:600;font-size:11px;color:#ffffff;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:140px;">${p.team}</div>
       </div>`
     }
     
-    // Title frame with red header
+    // Title frame
     const titleFrame = document.createElement('div')
     titleFrame.style.cssText = `position:absolute;left:-9999px;width:${WIDTH}px;height:${HEIGHT}px;font-family:system-ui;`
     titleFrame.innerHTML = `
@@ -1631,17 +1822,17 @@ async function downloadDraftAnimation() {
           <div style="background:#dc2626;padding:8px 20px;text-align:center;">
             <span style="font-size:12px;font-weight:700;color:#0a0c14;text-transform:uppercase;letter-spacing:2px;">Ultimate Fantasy Dashboard</span>
           </div>
-          <div style="padding:16px 20px;border-bottom:1px solid rgba(220,38,38,0.2);text-align:center;">
-            <div style="font-size:14px;color:#9ca3af;">Pick #${pick.pickNumber} Revealed</div>
-            <div style="font-size:24px;font-weight:900;color:#ffffff;margin-top:4px;">${pick.team}</div>
+          <div style="padding:12px 20px;border-bottom:1px solid rgba(220,38,38,0.2);text-align:center;">
+            <div style="font-size:12px;color:#9ca3af;">Pick #${pick.pickNumber} Revealed</div>
+            <div style="font-size:20px;font-weight:900;color:#ffffff;margin-top:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${pick.team}</div>
           </div>
-          <div style="flex:1;padding:12px 16px;display:flex;gap:12px;overflow:hidden;">
-            <div style="flex:1;">${left.map(p => buildRow(p, p.pickNumber === pick.pickNumber)).join('')}</div>
-            <div style="flex:1;">${right.map(p => buildRow(p, p.pickNumber === pick.pickNumber)).join('')}</div>
+          <div style="flex:1;padding:10px 14px;display:flex;gap:10px;overflow:hidden;">
+            <div style="width:${COL_WIDTH}px;flex-shrink:0;">${left.map(p => buildRow(p, p.pickNumber === pick.pickNumber)).join('')}</div>
+            <div style="width:${COL_WIDTH}px;flex-shrink:0;">${right.map(p => buildRow(p, p.pickNumber === pick.pickNumber)).join('')}</div>
           </div>
-          <div style="padding:12px 20px;text-align:center;border-top:1px solid rgba(220,38,38,0.2);display:flex;justify-content:space-between;align-items:center;">
-            <span style="font-size:12px;color:#6b7280;">${revealed.length} of ${numTeams} revealed</span>
-            <span style="font-size:14px;font-weight:bold;color:#dc2626;">ultimatefantasydashboard.com</span>
+          <div style="padding:10px 20px;text-align:center;border-top:1px solid rgba(220,38,38,0.2);display:flex;justify-content:space-between;align-items:center;">
+            <span style="font-size:11px;color:#6b7280;">${revealed.length} of ${numTeams} revealed</span>
+            <span style="font-size:13px;font-weight:bold;color:#dc2626;">ultimatefantasydashboard.com</span>
           </div>
         </div>
       `
@@ -1663,16 +1854,16 @@ async function downloadDraftAnimation() {
         <div style="background:#dc2626;padding:8px 20px;text-align:center;">
           <span style="font-size:12px;font-weight:700;color:#0a0c14;text-transform:uppercase;letter-spacing:2px;">Ultimate Fantasy Dashboard</span>
         </div>
-        <div style="padding:16px 20px;border-bottom:1px solid rgba(220,38,38,0.2);text-align:center;">
-          <div style="font-size:28px;font-weight:900;color:#ffffff;">🏆 Final Draft Order</div>
-          <div style="font-size:12px;color:#9ca3af;margin-top:4px;">${numTeams} Teams</div>
+        <div style="padding:12px 20px;border-bottom:1px solid rgba(220,38,38,0.2);text-align:center;">
+          <div style="font-size:24px;font-weight:900;color:#ffffff;">🏆 Final Draft Order</div>
+          <div style="font-size:11px;color:#9ca3af;margin-top:4px;">${numTeams} Teams</div>
         </div>
-        <div style="flex:1;padding:12px 16px;display:flex;gap:12px;overflow:hidden;">
-          <div style="flex:1;">${leftFinal.map(p => buildRow(p)).join('')}</div>
-          <div style="flex:1;">${rightFinal.map(p => buildRow(p)).join('')}</div>
+        <div style="flex:1;padding:10px 14px;display:flex;gap:10px;overflow:hidden;">
+          <div style="width:${COL_WIDTH}px;flex-shrink:0;">${leftFinal.map(p => buildRow(p)).join('')}</div>
+          <div style="width:${COL_WIDTH}px;flex-shrink:0;">${rightFinal.map(p => buildRow(p)).join('')}</div>
         </div>
-        <div style="padding:12px 20px;text-align:center;border-top:1px solid rgba(220,38,38,0.2);">
-          <span style="font-size:14px;font-weight:bold;color:#dc2626;">ultimatefantasydashboard.com</span>
+        <div style="padding:10px 20px;text-align:center;border-top:1px solid rgba(220,38,38,0.2);">
+          <span style="font-size:13px;font-weight:bold;color:#dc2626;">ultimatefantasydashboard.com</span>
         </div>
       </div>
     `
