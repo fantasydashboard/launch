@@ -17,6 +17,15 @@
       </div>
     </div>
 
+    <!-- Offseason Notice Banner -->
+    <div class="bg-slate-500/10 border border-slate-500/30 rounded-xl p-4 flex items-start gap-3">
+      <div class="text-slate-400 text-xl flex-shrink-0">⚾</div>
+      <div>
+        <p class="text-slate-200 font-semibold">You're viewing the {{ selectedSeason }} season draft</p>
+        <p class="text-slate-400 text-sm mt-1">Select a different season from the dropdown to view previous drafts.</p>
+      </div>
+    </div>
+
     <!-- Tab Navigation -->
     <div class="flex gap-2 flex-wrap">
       <button

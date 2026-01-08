@@ -17,6 +17,34 @@
       </div>
     </div>
 
+    <!-- Tab Navigation -->
+    <div class="flex gap-2 flex-wrap">
+      <button
+        @click="activeHistoryTab = 'career'"
+        :class="activeHistoryTab === 'career' ? 'bg-primary text-gray-900' : 'bg-dark-card text-dark-textSecondary hover:bg-dark-border/50'"
+        class="px-4 py-2.5 rounded-xl font-semibold transition-all flex items-center gap-2 text-sm"
+      >
+        <span class="text-lg">📊</span>
+        Career
+      </button>
+      <button
+        @click="activeHistoryTab = 'h2h'"
+        :class="activeHistoryTab === 'h2h' ? 'bg-primary text-gray-900' : 'bg-dark-card text-dark-textSecondary hover:bg-dark-border/50'"
+        class="px-4 py-2.5 rounded-xl font-semibold transition-all flex items-center gap-2 text-sm"
+      >
+        <span class="text-lg">⚔️</span>
+        Head-to-Head
+      </button>
+      <button
+        @click="activeHistoryTab = 'awards'"
+        :class="activeHistoryTab === 'awards' ? 'bg-primary text-gray-900' : 'bg-dark-card text-dark-textSecondary hover:bg-dark-border/50'"
+        class="px-4 py-2.5 rounded-xl font-semibold transition-all flex items-center gap-2 text-sm"
+      >
+        <span class="text-lg">🏆</span>
+        Awards
+      </button>
+    </div>
+
     <!-- Loading State -->
     <div v-if="isLoading" class="flex items-center justify-center py-20">
       <div class="text-center">
@@ -28,6 +56,8 @@
     </div>
 
     <template v-else>
+      <!-- ==================== CAREER TAB ==================== -->
+      <template v-if="activeHistoryTab === 'career'">
       <!-- Career Records (4 Cards) - Click opens modal -->
       <div class="card">
         <div class="card-header">
@@ -339,7 +369,10 @@
           </table>
         </div>
       </div>
+      </template>
 
+      <!-- ==================== HEAD-TO-HEAD TAB ==================== -->
+      <template v-if="activeHistoryTab === 'h2h'">
       <!-- Head-to-Head Matrix -->
       <div class="card">
         <div class="card-header">
@@ -455,7 +488,10 @@
           </div>
         </div>
       </div>
+      </template>
 
+      <!-- ==================== AWARDS TAB ==================== -->
+      <template v-if="activeHistoryTab === 'awards'">
       <!-- League Awards -->
       <div class="card">
         <div class="card-header">
@@ -995,6 +1031,7 @@
           </template>
         </div>
       </div>
+      </template>
 
     </template>
   </div>
@@ -1241,6 +1278,9 @@ const isDownloadingH2H = ref(false)
 const isDownloadingRecord = ref(false)
 const isDownloadingAward = ref(false)
 const isDownloadingSeasonCategory = ref(false)
+
+// Tab state
+const activeHistoryTab = ref('career')
 
 // League display name
 const leagueDisplayName = computed(() => {
