@@ -21,70 +21,44 @@
 
     <!-- ==================== DRAFT ORDER GENERATOR ==================== -->
     <template v-if="activeTool === 'draft'">
-      <!-- Import Source Card -->
+      <!-- Import League Card -->
       <div class="card">
         <div class="card-header">
           <div class="flex items-center gap-2">
             <span class="text-2xl">🔗</span>
-            <h2 class="card-title">Import Teams (Optional)</h2>
+            <h2 class="card-title">Import League (Optional)</h2>
           </div>
         </div>
         <div class="card-body space-y-4">
-          <!-- Import Source Tabs -->
-          <div class="flex gap-2 flex-wrap">
-            <button 
-              @click="draftImportSource = 'manual'"
-              :class="draftImportSource === 'manual' ? 'bg-primary text-gray-900' : 'bg-dark-border/50 text-dark-textSecondary hover:bg-dark-border'"
-              class="px-4 py-2 rounded-lg font-semibold transition-all text-sm"
-            >
-              ✏️ Manual Entry
-            </button>
-            <button 
-              v-if="isLoggedIn && currentPlatform"
-              @click="draftImportSource = 'platform'"
-              :class="draftImportSource === 'platform' ? 'bg-primary text-gray-900' : 'bg-dark-border/50 text-dark-textSecondary hover:bg-dark-border'"
-              class="px-4 py-2 rounded-lg font-semibold transition-all text-sm"
-            >
-              {{ currentPlatform === 'yahoo' ? '🟣 Yahoo' : currentPlatform === 'sleeper' ? '💤 Sleeper' : '🔵 ESPN' }} Current League
-            </button>
-            <button 
-              @click="draftImportSource = 'sleeper'"
-              :class="draftImportSource === 'sleeper' ? 'bg-primary text-gray-900' : 'bg-dark-border/50 text-dark-textSecondary hover:bg-dark-border'"
-              class="px-4 py-2 rounded-lg font-semibold transition-all text-sm"
-            >
-              💤 Import from Sleeper
-            </button>
-          </div>
-
-          <!-- Platform Import -->
-          <div v-if="draftImportSource === 'platform' && isLoggedIn" class="p-4 rounded-lg bg-dark-border/20 border border-dark-border">
-            <div class="flex items-center gap-2 mb-3">
-              <span class="text-xl">{{ currentPlatform === 'yahoo' ? '🟣' : '💤' }}</span>
-              <span class="font-semibold text-dark-text">Import from {{ currentLeagueName }}</span>
-            </div>
-            <p class="text-sm text-dark-textMuted mb-3">Load teams from your currently connected league.</p>
-            <div class="flex items-center gap-3 flex-wrap">
+          <!-- Current League Auto-Import (if logged in) -->
+          <div v-if="isLoggedIn && currentPlatform && currentLeagueName" class="p-4 rounded-lg bg-dark-border/20 border border-dark-border">
+            <div class="flex items-center justify-between mb-3">
+              <div class="flex items-center gap-2">
+                <span class="text-xl">{{ currentPlatform === 'yahoo' ? '🟣' : currentPlatform === 'sleeper' ? '💤' : '🔵' }}</span>
+                <span class="font-semibold text-dark-text">{{ currentLeagueName }}</span>
+                <span class="text-xs px-2 py-0.5 rounded bg-green-500/20 text-green-400">Connected</span>
+              </div>
               <button 
-                @click="loadPlatformTeams" 
+                @click="loadCurrentLeagueTeams('draft')" 
                 :disabled="isLoadingPlatformTeams" 
-                class="px-4 py-2 rounded-lg bg-primary text-gray-900 font-semibold hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                class="px-4 py-2 rounded-lg bg-primary text-gray-900 font-semibold hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm"
               >
-                {{ isLoadingPlatformTeams ? 'Loading...' : 'Load Teams' }}
+                {{ isLoadingPlatformTeams ? 'Loading...' : 'Import Teams' }}
               </button>
             </div>
-            <p v-if="platformTeamsError" class="text-red-400 mt-2 text-sm">{{ platformTeamsError }}</p>
+            <p v-if="platformTeamsError" class="text-red-400 text-sm">{{ platformTeamsError }}</p>
             
-            <!-- Platform Team Selection -->
-            <div v-if="platformTeams.length > 0 && platformTeamsLoaded" class="mt-4">
+            <!-- Team Selection after loading -->
+            <div v-if="draftImportTeams.length > 0" class="mt-4">
               <div class="flex items-center justify-between mb-3">
                 <label class="text-sm font-semibold text-dark-text">Select Teams to Include</label>
                 <div class="flex gap-2">
-                  <button @click="platformTeams.forEach(t => t.selected = true)" class="text-xs px-3 py-1 rounded bg-dark-border/50 text-dark-textSecondary hover:bg-dark-border">Select All</button>
-                  <button @click="platformTeams.forEach(t => t.selected = false)" class="text-xs px-3 py-1 rounded bg-dark-border/50 text-dark-textSecondary hover:bg-dark-border">Deselect All</button>
+                  <button @click="draftImportTeams.forEach(t => t.selected = true)" class="text-xs px-3 py-1 rounded bg-dark-border/50 text-dark-textSecondary hover:bg-dark-border">Select All</button>
+                  <button @click="draftImportTeams.forEach(t => t.selected = false)" class="text-xs px-3 py-1 rounded bg-dark-border/50 text-dark-textSecondary hover:bg-dark-border">Deselect All</button>
                 </div>
               </div>
               <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2">
-                <div v-for="(team, idx) in platformTeams" :key="idx" 
+                <div v-for="(team, idx) in draftImportTeams" :key="idx" 
                   @click="team.selected = !team.selected"
                   :class="team.selected ? 'border-primary bg-primary/10' : 'border-dark-border/50 hover:border-dark-border'"
                   class="flex items-center gap-3 p-3 rounded-lg border-2 cursor-pointer transition-all">
@@ -92,7 +66,7 @@
                     :class="team.selected ? 'bg-primary border-primary' : 'border-dark-border'">
                     <span v-if="team.selected" class="text-gray-900 text-xs font-bold">✓</span>
                   </div>
-                  <img v-if="team.avatar" :src="team.avatar" class="w-8 h-8 rounded-full flex-shrink-0" @error="($event.target as HTMLImageElement).style.display='none'" />
+                  <img v-if="team.avatar" :src="team.avatar" class="w-8 h-8 rounded-full flex-shrink-0 object-cover" @error="handleImgError" />
                   <div v-else class="w-8 h-8 rounded-full bg-dark-border flex items-center justify-center flex-shrink-0">
                     <span class="text-xs text-dark-textMuted">{{ (team.name || 'T').charAt(0) }}</span>
                   </div>
@@ -100,70 +74,80 @@
                 </div>
               </div>
               <div class="mt-4 flex items-center justify-between">
-                <span class="text-sm text-dark-textMuted">{{ platformTeams.filter(t => t.selected).length }} of {{ platformTeams.length }} teams selected</span>
-                <button @click="importPlatformTeamsToDraft" :disabled="platformTeams.filter(t => t.selected).length === 0" class="px-4 py-2 rounded-lg bg-green-500 text-gray-900 font-semibold hover:bg-green-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
-                  Import {{ platformTeams.filter(t => t.selected).length }} Teams
+                <span class="text-sm text-dark-textMuted">{{ draftImportTeams.filter(t => t.selected).length }} of {{ draftImportTeams.length }} teams selected</span>
+                <button @click="confirmDraftImport" :disabled="draftImportTeams.filter(t => t.selected).length === 0" class="px-4 py-2 rounded-lg bg-green-500 text-gray-900 font-semibold hover:bg-green-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
+                  Use {{ draftImportTeams.filter(t => t.selected).length }} Teams
                 </button>
               </div>
             </div>
           </div>
 
-          <!-- Sleeper Import -->
-          <div v-if="draftImportSource === 'sleeper'" class="p-4 rounded-lg bg-dark-border/20 border border-dark-border">
-            <div class="flex items-center gap-2 mb-3">
-              <span class="text-xl">💤</span>
-              <span class="font-semibold text-dark-text">Import from Sleeper</span>
-            </div>
-            <p class="text-sm text-dark-textMuted mb-3">Connect your Sleeper league to auto-populate team names and logos.</p>
-            <div class="flex items-center gap-3 flex-wrap">
-              <input v-model="sleeperUsername" type="text" placeholder="Enter Sleeper Username" class="input w-56" @keyup.enter="loadSleeperLeagues" />
-              <button @click="loadSleeperLeagues" :disabled="isLoadingSleeper || !sleeperUsername.trim()" class="px-4 py-2 rounded-lg bg-primary text-gray-900 font-semibold hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
-                {{ isLoadingSleeper ? 'Loading...' : 'Load Leagues' }}
-              </button>
-              <select v-if="sleeperLeagues.length > 0" v-model="selectedSleeperLeague" @change="loadSleeperTeams" class="select min-w-[200px]">
-                <option value="">Select a League...</option>
-                <option v-for="league in sleeperLeagues" :key="league.league_id" :value="league.league_id">{{ league.name }}</option>
-              </select>
-            </div>
-            <p v-if="sleeperError" class="text-red-400 mt-2 text-sm">{{ sleeperError }}</p>
+          <!-- Import from Another League -->
+          <div class="border-t border-dark-border pt-4">
+            <button 
+              @click="showSleeperImport = !showSleeperImport"
+              class="flex items-center gap-2 text-sm text-dark-textMuted hover:text-dark-text transition-colors"
+            >
+              <span :class="showSleeperImport ? 'rotate-90' : ''" class="transition-transform">▶</span>
+              {{ isLoggedIn ? 'Import from a different league' : 'Import from Sleeper' }}
+            </button>
             
-            <!-- Team Selection UI -->
-            <div v-if="availableSleeperTeams.length > 0" class="mt-6">
-              <div class="flex items-center justify-between mb-3">
-                <label class="text-sm font-semibold text-dark-text">Select Teams to Include</label>
-                <div class="flex gap-2">
-                  <button @click="selectAllSleeperTeams" class="text-xs px-3 py-1 rounded bg-dark-border/50 text-dark-textSecondary hover:bg-dark-border">Select All</button>
-                  <button @click="deselectAllSleeperTeams" class="text-xs px-3 py-1 rounded bg-dark-border/50 text-dark-textSecondary hover:bg-dark-border">Deselect All</button>
-                </div>
+            <div v-if="showSleeperImport" class="mt-4 p-4 rounded-lg bg-dark-border/20 border border-dark-border">
+              <div class="flex items-center gap-2 mb-3">
+                <span class="text-xl">💤</span>
+                <span class="font-semibold text-dark-text">Import from Sleeper</span>
               </div>
-              <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2">
-                <div v-for="team in availableSleeperTeams" :key="team.oddsIdx" 
-                  @click="toggleSleeperTeam(team)"
-                  :class="team.selected ? 'border-primary bg-primary/10' : 'border-dark-border/50 hover:border-dark-border'"
-                  class="flex items-center gap-3 p-3 rounded-lg border-2 cursor-pointer transition-all">
-                  <div class="w-5 h-5 rounded border-2 flex items-center justify-center flex-shrink-0"
-                    :class="team.selected ? 'bg-primary border-primary' : 'border-dark-border'">
-                    <span v-if="team.selected" class="text-gray-900 text-xs font-bold">✓</span>
-                  </div>
-                  <img v-if="team.avatar" :src="getAvatarUrl(team.avatar)" class="w-8 h-8 rounded-full flex-shrink-0" />
-                  <div v-else class="w-8 h-8 rounded-full bg-dark-border flex items-center justify-center flex-shrink-0">
-                    <span class="text-xs text-dark-textMuted">{{ (team.name || 'T').charAt(0) }}</span>
-                  </div>
-                  <span class="text-dark-text text-sm truncate">{{ team.name }}</span>
-                </div>
-              </div>
-              <div class="mt-4 flex items-center justify-between">
-                <span class="text-sm text-dark-textMuted">{{ selectedSleeperCount }} of {{ availableSleeperTeams.length }} teams selected</span>
-                <button @click="importSelectedTeams" :disabled="selectedSleeperCount === 0" class="px-4 py-2 rounded-lg bg-green-500 text-gray-900 font-semibold hover:bg-green-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
-                  Import {{ selectedSleeperCount }} Teams
+              <p class="text-sm text-dark-textMuted mb-3">Enter your Sleeper username to import team names and logos.</p>
+              <div class="flex items-center gap-3 flex-wrap">
+                <input v-model="sleeperUsername" type="text" placeholder="Enter Sleeper Username" class="input w-56" @keyup.enter="loadSleeperLeagues" />
+                <button @click="loadSleeperLeagues" :disabled="isLoadingSleeper || !sleeperUsername.trim()" class="px-4 py-2 rounded-lg bg-primary text-gray-900 font-semibold hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
+                  {{ isLoadingSleeper ? 'Loading...' : 'Load Leagues' }}
                 </button>
+                <select v-if="sleeperLeagues.length > 0" v-model="selectedSleeperLeague" @change="loadSleeperTeams" class="select min-w-[200px]">
+                  <option value="">Select a League...</option>
+                  <option v-for="league in sleeperLeagues" :key="league.league_id" :value="league.league_id">{{ league.name }}</option>
+                </select>
+              </div>
+              <p v-if="sleeperError" class="text-red-400 mt-2 text-sm">{{ sleeperError }}</p>
+              
+              <!-- Sleeper Team Selection -->
+              <div v-if="availableSleeperTeams.length > 0" class="mt-4">
+                <div class="flex items-center justify-between mb-3">
+                  <label class="text-sm font-semibold text-dark-text">Select Teams to Include</label>
+                  <div class="flex gap-2">
+                    <button @click="selectAllSleeperTeams" class="text-xs px-3 py-1 rounded bg-dark-border/50 text-dark-textSecondary hover:bg-dark-border">Select All</button>
+                    <button @click="deselectAllSleeperTeams" class="text-xs px-3 py-1 rounded bg-dark-border/50 text-dark-textSecondary hover:bg-dark-border">Deselect All</button>
+                  </div>
+                </div>
+                <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2">
+                  <div v-for="team in availableSleeperTeams" :key="team.oddsIdx" 
+                    @click="toggleSleeperTeam(team)"
+                    :class="team.selected ? 'border-primary bg-primary/10' : 'border-dark-border/50 hover:border-dark-border'"
+                    class="flex items-center gap-3 p-3 rounded-lg border-2 cursor-pointer transition-all">
+                    <div class="w-5 h-5 rounded border-2 flex items-center justify-center flex-shrink-0"
+                      :class="team.selected ? 'bg-primary border-primary' : 'border-dark-border'">
+                      <span v-if="team.selected" class="text-gray-900 text-xs font-bold">✓</span>
+                    </div>
+                    <img v-if="team.avatar" :src="getAvatarUrl(team.avatar)" class="w-8 h-8 rounded-full flex-shrink-0" />
+                    <div v-else class="w-8 h-8 rounded-full bg-dark-border flex items-center justify-center flex-shrink-0">
+                      <span class="text-xs text-dark-textMuted">{{ (team.name || 'T').charAt(0) }}</span>
+                    </div>
+                    <span class="text-dark-text text-sm truncate">{{ team.name }}</span>
+                  </div>
+                </div>
+                <div class="mt-4 flex items-center justify-between">
+                  <span class="text-sm text-dark-textMuted">{{ selectedSleeperCount }} of {{ availableSleeperTeams.length }} teams selected</span>
+                  <button @click="importSelectedTeams" :disabled="selectedSleeperCount === 0" class="px-4 py-2 rounded-lg bg-green-500 text-gray-900 font-semibold hover:bg-green-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
+                    Use {{ selectedSleeperCount }} Teams
+                  </button>
+                </div>
               </div>
             </div>
           </div>
           
-          <span v-if="sleeperImported" class="text-green-400 flex items-center gap-1">
+          <div v-if="sleeperImported" class="text-green-400 flex items-center gap-1">
             <span>✓</span> Teams imported successfully!
-          </span>
+          </div>
         </div>
       </div>
 
@@ -426,63 +410,39 @@
           </div>
         </div>
         <div class="card-body space-y-6">
-          <!-- Import Source Tabs -->
+          <!-- Import League Section -->
           <div>
-            <label class="block text-sm font-semibold text-dark-text mb-3">Import Teams (Optional)</label>
-            <div class="flex gap-2 flex-wrap mb-4">
-              <button 
-                @click="scheduleImportSource = 'manual'"
-                :class="scheduleImportSource === 'manual' ? 'bg-primary text-gray-900' : 'bg-dark-border/50 text-dark-textSecondary hover:bg-dark-border'"
-                class="px-4 py-2 rounded-lg font-semibold transition-all text-sm"
-              >
-                ✏️ Manual Entry
-              </button>
-              <button 
-                v-if="isLoggedIn && currentPlatform"
-                @click="scheduleImportSource = 'platform'"
-                :class="scheduleImportSource === 'platform' ? 'bg-primary text-gray-900' : 'bg-dark-border/50 text-dark-textSecondary hover:bg-dark-border'"
-                class="px-4 py-2 rounded-lg font-semibold transition-all text-sm"
-              >
-                {{ currentPlatform === 'yahoo' ? '🟣 Yahoo' : currentPlatform === 'sleeper' ? '💤 Sleeper' : '🔵 ESPN' }} Current League
-              </button>
-              <button 
-                @click="scheduleImportSource = 'sleeper'"
-                :class="scheduleImportSource === 'sleeper' ? 'bg-primary text-gray-900' : 'bg-dark-border/50 text-dark-textSecondary hover:bg-dark-border'"
-                class="px-4 py-2 rounded-lg font-semibold transition-all text-sm"
-              >
-                💤 Import from Sleeper
-              </button>
-            </div>
-
-            <!-- Platform Import -->
-            <div v-if="scheduleImportSource === 'platform' && isLoggedIn" class="p-4 rounded-lg bg-dark-border/20 border border-dark-border mb-4">
-              <div class="flex items-center gap-2 mb-3">
-                <span class="text-xl">{{ currentPlatform === 'yahoo' ? '🟣' : '💤' }}</span>
-                <span class="font-semibold text-dark-text">Import from {{ currentLeagueName }}</span>
-              </div>
-              <p class="text-sm text-dark-textMuted mb-3">Load teams from your currently connected league.</p>
-              <div class="flex items-center gap-3 flex-wrap">
+            <label class="block text-sm font-semibold text-dark-text mb-3">Import League (Optional)</label>
+            
+            <!-- Current League Auto-Import (if logged in) -->
+            <div v-if="isLoggedIn && currentPlatform && currentLeagueName" class="p-4 rounded-lg bg-dark-border/20 border border-dark-border mb-4">
+              <div class="flex items-center justify-between mb-3">
+                <div class="flex items-center gap-2">
+                  <span class="text-xl">{{ currentPlatform === 'yahoo' ? '🟣' : currentPlatform === 'sleeper' ? '💤' : '🔵' }}</span>
+                  <span class="font-semibold text-dark-text">{{ currentLeagueName }}</span>
+                  <span class="text-xs px-2 py-0.5 rounded bg-green-500/20 text-green-400">Connected</span>
+                </div>
                 <button 
-                  @click="loadPlatformTeamsForSchedule" 
+                  @click="loadCurrentLeagueTeams('schedule')" 
                   :disabled="isLoadingPlatformTeams" 
-                  class="px-4 py-2 rounded-lg bg-primary text-gray-900 font-semibold hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  class="px-4 py-2 rounded-lg bg-primary text-gray-900 font-semibold hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm"
                 >
-                  {{ isLoadingPlatformTeams ? 'Loading...' : 'Load Teams' }}
+                  {{ isLoadingPlatformTeams ? 'Loading...' : 'Import Teams' }}
                 </button>
               </div>
-              <p v-if="platformTeamsError" class="text-red-400 mt-2 text-sm">{{ platformTeamsError }}</p>
+              <p v-if="platformTeamsError" class="text-red-400 text-sm">{{ platformTeamsError }}</p>
               
-              <!-- Platform Team Selection for Schedule -->
-              <div v-if="schedulePlatformTeams.length > 0" class="mt-4">
+              <!-- Team Selection after loading -->
+              <div v-if="scheduleImportTeams.length > 0" class="mt-4">
                 <div class="flex items-center justify-between mb-3">
                   <label class="text-sm font-semibold text-dark-text">Select Teams to Include</label>
                   <div class="flex gap-2">
-                    <button @click="schedulePlatformTeams.forEach(t => t.selected = true)" class="text-xs px-3 py-1 rounded bg-dark-border/50 text-dark-textSecondary hover:bg-dark-border">Select All</button>
-                    <button @click="schedulePlatformTeams.forEach(t => t.selected = false)" class="text-xs px-3 py-1 rounded bg-dark-border/50 text-dark-textSecondary hover:bg-dark-border">Deselect All</button>
+                    <button @click="scheduleImportTeams.forEach(t => t.selected = true)" class="text-xs px-3 py-1 rounded bg-dark-border/50 text-dark-textSecondary hover:bg-dark-border">Select All</button>
+                    <button @click="scheduleImportTeams.forEach(t => t.selected = false)" class="text-xs px-3 py-1 rounded bg-dark-border/50 text-dark-textSecondary hover:bg-dark-border">Deselect All</button>
                   </div>
                 </div>
                 <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2">
-                  <div v-for="(team, idx) in schedulePlatformTeams" :key="idx" 
+                  <div v-for="(team, idx) in scheduleImportTeams" :key="idx" 
                     @click="team.selected = !team.selected"
                     :class="team.selected ? 'border-primary bg-primary/10' : 'border-dark-border/50 hover:border-dark-border'"
                     class="flex items-center gap-3 p-3 rounded-lg border-2 cursor-pointer transition-all">
@@ -490,7 +450,7 @@
                       :class="team.selected ? 'bg-primary border-primary' : 'border-dark-border'">
                       <span v-if="team.selected" class="text-gray-900 text-xs font-bold">✓</span>
                     </div>
-                    <img v-if="team.avatar" :src="team.avatar" class="w-8 h-8 rounded-full flex-shrink-0" @error="($event.target as HTMLImageElement).style.display='none'" />
+                    <img v-if="team.avatar" :src="team.avatar" class="w-8 h-8 rounded-full flex-shrink-0 object-cover" @error="handleImgError" />
                     <div v-else class="w-8 h-8 rounded-full bg-dark-border flex items-center justify-center flex-shrink-0">
                       <span class="text-xs text-dark-textMuted">{{ (team.name || 'T').charAt(0) }}</span>
                     </div>
@@ -498,35 +458,45 @@
                   </div>
                 </div>
                 <div class="mt-4 flex items-center justify-between">
-                  <span class="text-sm text-dark-textMuted">{{ schedulePlatformTeams.filter(t => t.selected).length }} of {{ schedulePlatformTeams.length }} teams selected</span>
-                  <button @click="importPlatformTeamsToSchedule" :disabled="schedulePlatformTeams.filter(t => t.selected).length === 0" class="px-4 py-2 rounded-lg bg-green-500 text-gray-900 font-semibold hover:bg-green-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
-                    Import {{ schedulePlatformTeams.filter(t => t.selected).length }} Teams
+                  <span class="text-sm text-dark-textMuted">{{ scheduleImportTeams.filter(t => t.selected).length }} of {{ scheduleImportTeams.length }} teams selected</span>
+                  <button @click="confirmScheduleImport" :disabled="scheduleImportTeams.filter(t => t.selected).length === 0" class="px-4 py-2 rounded-lg bg-green-500 text-gray-900 font-semibold hover:bg-green-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
+                    Use {{ scheduleImportTeams.filter(t => t.selected).length }} Teams
                   </button>
                 </div>
               </div>
             </div>
 
-            <!-- Sleeper Import -->
-            <div v-if="scheduleImportSource === 'sleeper'" class="p-4 rounded-lg bg-dark-border/20 border border-dark-border mb-4">
-              <div class="flex items-center gap-2 mb-3">
-                <span class="text-xl">💤</span>
-                <span class="font-semibold text-dark-text">Import from Sleeper</span>
+            <!-- Import from Another League -->
+            <div :class="isLoggedIn ? 'border-t border-dark-border pt-4' : ''">
+              <button 
+                @click="showScheduleSleeperImport = !showScheduleSleeperImport"
+                class="flex items-center gap-2 text-sm text-dark-textMuted hover:text-dark-text transition-colors"
+              >
+                <span :class="showScheduleSleeperImport ? 'rotate-90' : ''" class="transition-transform">▶</span>
+                {{ isLoggedIn ? 'Import from a different league' : 'Import from Sleeper' }}
+              </button>
+              
+              <div v-if="showScheduleSleeperImport" class="mt-4 p-4 rounded-lg bg-dark-border/20 border border-dark-border">
+                <div class="flex items-center gap-2 mb-3">
+                  <span class="text-xl">💤</span>
+                  <span class="font-semibold text-dark-text">Import from Sleeper</span>
+                </div>
+                <p class="text-sm text-dark-textMuted mb-3">Enter your Sleeper username to import team names and logos.</p>
+                <div class="flex items-center gap-3 flex-wrap">
+                  <input v-model="scheduleSleeperUsername" type="text" placeholder="Enter Sleeper Username" class="input w-48" @keyup.enter="loadScheduleSleeperLeagues" />
+                  <button @click="loadScheduleSleeperLeagues" :disabled="isLoadingScheduleSleeper || !scheduleSleeperUsername.trim()" class="px-4 py-2 rounded-lg bg-primary text-gray-900 font-semibold hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
+                    {{ isLoadingScheduleSleeper ? 'Loading...' : 'Load Leagues' }}
+                  </button>
+                  <select v-if="scheduleSleeperLeagues.length > 0" v-model="selectedScheduleSleeperLeague" @change="loadScheduleSleeperTeams" class="select min-w-[200px]">
+                    <option value="">Select a League...</option>
+                    <option v-for="league in scheduleSleeperLeagues" :key="league.league_id" :value="league.league_id">{{ league.name }} ({{ league.total_rosters }} teams)</option>
+                  </select>
+                </div>
+                <p v-if="scheduleSleeperError" class="text-red-400 mt-2 text-sm">{{ scheduleSleeperError }}</p>
               </div>
-              <p class="text-sm text-dark-textMuted mb-3">Connect your Sleeper league to auto-populate team names and logos.</p>
-              <div class="flex items-center gap-3 flex-wrap">
-                <input v-model="scheduleSleeperUsername" type="text" placeholder="Enter Sleeper Username" class="input w-48" @keyup.enter="loadScheduleSleeperLeagues" />
-                <button @click="loadScheduleSleeperLeagues" :disabled="isLoadingScheduleSleeper || !scheduleSleeperUsername.trim()" class="px-4 py-2 rounded-lg bg-primary text-gray-900 font-semibold hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
-                  {{ isLoadingScheduleSleeper ? 'Loading...' : 'Load Leagues' }}
-                </button>
-                <select v-if="scheduleSleeperLeagues.length > 0" v-model="selectedScheduleSleeperLeague" @change="loadScheduleSleeperTeams" class="select min-w-[200px]">
-                  <option value="">Select a League...</option>
-                  <option v-for="league in scheduleSleeperLeagues" :key="league.league_id" :value="league.league_id">{{ league.name }} ({{ league.total_rosters }} teams)</option>
-                </select>
-              </div>
-              <p v-if="scheduleSleeperError" class="text-red-400 mt-2 text-sm">{{ scheduleSleeperError }}</p>
             </div>
             
-            <div v-if="scheduleSleeperImported" class="text-green-400 flex items-center gap-1">
+            <div v-if="scheduleSleeperImported" class="text-green-400 flex items-center gap-1 mt-3">
               <span>✓</span> {{ scheduleTeams.length }} teams imported successfully!
             </div>
           </div>
@@ -1104,7 +1074,6 @@ import { ref, computed, watch, onMounted } from 'vue'
 import ScheduleAnalysis from '@/components/ScheduleAnalysis.vue'
 import { useLeagueStore } from '@/stores/league'
 import { useAuthStore } from '@/stores/auth'
-import { yahooService } from '@/services/yahoo'
 
 const leagueStore = useLeagueStore()
 const authStore = useAuthStore()
@@ -1120,53 +1089,66 @@ const currentLeagueName = computed(() => {
   return savedLeague?.league_name || leagueStore.yahooLeague?.name || 'Current League'
 })
 
-// Import source state - shared for both tools
-type ImportSource = 'platform' | 'sleeper' | 'manual'
-const draftImportSource = ref<ImportSource>('manual')
-const scheduleImportSource = ref<ImportSource>('manual')
+// UI state
+const showSleeperImport = ref(false)
+const showScheduleSleeperImport = ref(false)
 
 // Platform teams state
-const platformTeams = ref<any[]>([])
 const isLoadingPlatformTeams = ref(false)
 const platformTeamsError = ref('')
-const platformTeamsLoaded = ref(false)
 
-// Load teams from current platform (Yahoo)
-async function loadPlatformTeams() {
-  if (!leagueStore.activeLeagueId || !authStore.user?.id) {
+// Draft import teams (separate from draft teams so we can select/deselect)
+const draftImportTeams = ref<{ name: string; avatar: string | null; selected: boolean }[]>([])
+
+// Schedule import teams
+const scheduleImportTeams = ref<{ name: string; avatar: string | null; selected: boolean }[]>([])
+
+// Handle image error
+function handleImgError(event: Event) {
+  const target = event.target as HTMLImageElement
+  target.style.display = 'none'
+}
+
+// Load teams from current platform (Yahoo/Sleeper)
+async function loadCurrentLeagueTeams(target: 'draft' | 'schedule') {
+  if (!leagueStore.activeLeagueId) {
     platformTeamsError.value = 'No league selected'
-    return []
+    return
   }
   
   isLoadingPlatformTeams.value = true
   platformTeamsError.value = ''
   
   try {
-    await yahooService.initialize(authStore.user.id)
-    const standings = await yahooService.getStandings(leagueStore.activeLeagueId)
+    // Use yahooTeams from the store - these are already loaded when user selects a league
+    const teams = leagueStore.yahooTeams
     
-    if (standings?.standings) {
-      platformTeams.value = standings.standings.map((team: any, idx: number) => ({
-        name: team.name || `Team ${idx + 1}`,
-        avatar: team.team_logos?.[0]?.url || null,
-        team_key: team.team_key,
+    if (teams && teams.length > 0) {
+      const mappedTeams = teams.map((team: any) => ({
+        name: team.name || 'Team',
+        avatar: team.logo_url || null, // Yahoo teams use logo_url
         selected: true
       }))
-      platformTeamsLoaded.value = true
-      return platformTeams.value
+      
+      if (target === 'draft') {
+        draftImportTeams.value = mappedTeams
+      } else {
+        scheduleImportTeams.value = mappedTeams
+      }
+    } else {
+      platformTeamsError.value = 'No teams found in current league. Make sure you have a league selected.'
     }
-    return []
   } catch (e: any) {
-    platformTeamsError.value = e.message || 'Failed to load teams from platform'
-    return []
+    console.error('Error loading teams:', e)
+    platformTeamsError.value = e.message || 'Failed to load teams'
   } finally {
     isLoadingPlatformTeams.value = false
   }
 }
 
-// Import platform teams to draft generator
-function importPlatformTeamsToDraft() {
-  const selected = platformTeams.value.filter(t => t.selected)
+// Confirm draft import - apply selected teams to draft config
+function confirmDraftImport() {
+  const selected = draftImportTeams.value.filter(t => t.selected)
   if (selected.length === 0) return
   
   draftConfig.value.numTeams = selected.length
@@ -1177,55 +1159,31 @@ function importPlatformTeamsToDraft() {
   }))
   
   sleeperImported.value = true
+  draftImportTeams.value = [] // Clear after import
   setTimeout(() => sleeperImported.value = false, 3000)
 }
 
-// Import platform teams to schedule generator
-function importPlatformTeamsToSchedule() {
-  const selected = schedulePlatformTeams.value.filter(t => t.selected)
+// Confirm schedule import - apply selected teams to schedule config
+function confirmScheduleImport() {
+  const selected = scheduleImportTeams.value.filter(t => t.selected)
   if (selected.length === 0) return
   
-  scheduleConfig.value.numTeams = selected.length
-  scheduleTeams.value = selected.map(t => ({
+  // Adjust numTeams to be even (required for schedule generation)
+  let numTeams = selected.length
+  if (numTeams % 2 !== 0) {
+    numTeams = numTeams - 1 // Drop the last one if odd
+  }
+  
+  scheduleConfig.value.numTeams = numTeams
+  scheduleTeams.value = selected.slice(0, numTeams).map(t => ({
     name: t.name,
     division: 0,
     avatar: t.avatar
   }))
   
   scheduleSleeperImported.value = true
+  scheduleImportTeams.value = [] // Clear after import
   setTimeout(() => scheduleSleeperImported.value = false, 3000)
-}
-
-// Schedule-specific platform teams
-const schedulePlatformTeams = ref<any[]>([])
-
-// Load teams from current platform for Schedule generator
-async function loadPlatformTeamsForSchedule() {
-  if (!leagueStore.activeLeagueId || !authStore.user?.id) {
-    platformTeamsError.value = 'No league selected'
-    return
-  }
-  
-  isLoadingPlatformTeams.value = true
-  platformTeamsError.value = ''
-  
-  try {
-    await yahooService.initialize(authStore.user.id)
-    const standings = await yahooService.getStandings(leagueStore.activeLeagueId)
-    
-    if (standings?.standings) {
-      schedulePlatformTeams.value = standings.standings.map((team: any, idx: number) => ({
-        name: team.name || `Team ${idx + 1}`,
-        avatar: team.team_logos?.[0]?.url || null,
-        team_key: team.team_key,
-        selected: true
-      }))
-    }
-  } catch (e: any) {
-    platformTeamsError.value = e.message || 'Failed to load teams from platform'
-  } finally {
-    isLoadingPlatformTeams.value = false
-  }
 }
 
 // Sleeper Integration
@@ -1248,6 +1206,11 @@ const selectedSleeperCount = computed(() => availableSleeperTeams.value.filter(t
 
 function getAvatarUrl(avatarId: string | null): string {
   if (!avatarId) return ''
+  // If it's already a full URL, return it directly
+  if (avatarId.startsWith('http://') || avatarId.startsWith('https://')) {
+    return avatarId
+  }
+  // Otherwise, treat it as a Sleeper avatar ID
   return `https://sleepercdn.com/avatars/thumbs/${avatarId}`
 }
 
@@ -1685,6 +1648,11 @@ const divisionColors = ['#3b82f6', '#ef4444', '#22c55e', '#f59e0b', '#8b5cf6', '
 // Sleeper import functions for schedule generator
 function getScheduleAvatarUrl(avatarId: string | null): string {
   if (!avatarId) return ''
+  // If it's already a full URL, return it directly
+  if (avatarId.startsWith('http://') || avatarId.startsWith('https://')) {
+    return avatarId
+  }
+  // Otherwise, treat it as a Sleeper avatar ID
   return `https://sleepercdn.com/avatars/thumbs/${avatarId}`
 }
 
