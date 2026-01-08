@@ -3129,34 +3129,23 @@ async function downloadSeasonCategoryRankings(category: string, type: 'best' | '
     
     const maxValue = Math.max(...rankings.map(r => r.value || 0))
     
-    // Colors based on type and category
-    const colorMain = type === 'best' 
-      ? (catType === 'hitting' ? '#22c55e' : '#a855f7') 
-      : '#ef4444'
-    const colorLight = type === 'best' 
-      ? (catType === 'hitting' ? 'rgba(34, 197, 94, 0.15)' : 'rgba(168, 85, 247, 0.15)') 
-      : 'rgba(239, 68, 68, 0.15)'
-    const colorBorder = type === 'best' 
-      ? (catType === 'hitting' ? 'rgba(34, 197, 94, 0.3)' : 'rgba(168, 85, 247, 0.3)') 
-      : 'rgba(239, 68, 68, 0.3)'
-    
-    // Generate ranking rows with images
+    // Generate ranking rows with images - EXACT same style as Career Records
     const generateRows = () => {
       return rankings.map((team, idx) => {
         const barWidth = maxValue > 0 ? (team.value / maxValue) * 100 : 0
         
         return `
           <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 10px;">
-            <div style="width: 20px; text-align: center; font-weight: bold; font-size: 12px; color: ${idx === 0 ? colorMain : '#6b7280'};">${idx + 1}</div>
+            <div style="width: 20px; text-align: center; font-weight: bold; font-size: 12px; color: ${idx === 0 ? '#facc15' : '#6b7280'};">${idx + 1}</div>
             <img src="${imageMap.get(team.team_name) || createPlaceholder(team.team_name)}" style="width: 28px; height: 28px; border-radius: 50%;" />
             <div style="flex: 1; min-width: 0;">
               <div style="font-size: 12px; font-weight: 600; color: #e5e7eb; margin-bottom: 5px;">${team.team_name}</div>
               <div style="height: 6px; background: rgba(58, 61, 82, 0.5); border-radius: 3px; overflow: hidden;">
-                <div style="height: 100%; width: ${barWidth}%; background: ${colorMain}; opacity: ${idx === 0 ? 1 : 0.6}; border-radius: 3px;"></div>
+                <div style="height: 100%; width: ${barWidth}%; background: #facc15; opacity: ${idx === 0 ? 1 : 0.6}; border-radius: 3px;"></div>
               </div>
             </div>
             <div style="width: 50px; text-align: right;">
-              <div style="font-size: 13px; font-weight: bold; color: ${idx === 0 ? colorMain : '#e5e7eb'};">${team.value}</div>
+              <div style="font-size: 13px; font-weight: bold; color: ${idx === 0 ? '#facc15' : '#e5e7eb'};">${team.value}</div>
             </div>
           </div>
         `
@@ -3165,8 +3154,6 @@ async function downloadSeasonCategoryRankings(category: string, type: 'best' | '
     
     const container = document.createElement('div')
     container.style.cssText = 'position: absolute; left: -9999px; top: 0; width: 480px; font-family: system-ui, -apple-system, sans-serif;'
-    
-    const typeLabel = type === 'best' ? 'Leaders' : 'Worst'
     
     container.innerHTML = `
       <div style="background: linear-gradient(160deg, #0f1219 0%, #0a0c14 50%, #0d1117 100%); border-radius: 16px; box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5); position: relative; overflow: hidden;">
@@ -3180,7 +3167,7 @@ async function downloadSeasonCategoryRankings(category: string, type: 'best' | '
         <div style="display: flex; align-items: center; padding: 10px 16px; border-bottom: 1px solid rgba(220, 38, 38, 0.2);">
           ${logoBase64 ? `<img src="${logoBase64}" style="height: 40px; width: auto; flex-shrink: 0; margin-right: 12px; margin-top: 4px;" />` : ''}
           <div style="flex: 1;">
-            <div style="font-size: 17px; font-weight: 900; color: #ffffff; text-transform: uppercase; letter-spacing: 0.5px; line-height: 1.1;">${category} ${typeLabel}</div>
+            <div style="font-size: 17px; font-weight: 900; color: #ffffff; text-transform: uppercase; letter-spacing: 0.5px; line-height: 1.1;">${category} Leaders</div>
             <div style="font-size: 12px; margin-top: 2px;">
               <span style="color: #e5e7eb;">${leagueName}</span>
               <span style="color: #6b7280; margin: 0 4px;">•</span>
@@ -3190,16 +3177,15 @@ async function downloadSeasonCategoryRankings(category: string, type: 'best' | '
         </div>
         
         <!-- Featured Leader -->
-        <div style="padding: 12px 16px; background: linear-gradient(135deg, ${colorLight} 0%, transparent 100%); border-bottom: 1px solid ${colorBorder};">
+        <div style="padding: 12px 16px; background: linear-gradient(135deg, rgba(250, 204, 21, 0.15) 0%, transparent 100%); border-bottom: 1px solid rgba(250, 204, 21, 0.2);">
           <div style="display: flex; align-items: center; gap: 12px;">
-            <img src="${imageMap.get(leader.team_name) || createPlaceholder(leader.team_name)}" style="width: 44px; height: 44px; border-radius: 50%; border: 2px solid ${colorBorder};" />
+            <img src="${imageMap.get(leader.team_name) || createPlaceholder(leader.team_name)}" style="width: 44px; height: 44px; border-radius: 50%; border: 2px solid rgba(250, 204, 21, 0.5);" />
             <div style="flex: 1;">
               <div style="font-size: 15px; font-weight: bold; color: #ffffff;">${leader.team_name}</div>
-              <div style="font-size: 11px; color: #9ca3af;">${type === 'best' ? 'Category Leader' : 'Fewest Wins'}</div>
+              <div style="font-size: 11px; color: #9ca3af;">${leader.value} category wins</div>
             </div>
             <div style="text-align: right;">
-              <div style="font-size: 26px; font-weight: 900; color: ${colorMain};">${leader.value}</div>
-              <div style="font-size: 10px; color: #6b7280;">category wins</div>
+              <div style="font-size: 26px; font-weight: 900; color: #facc15;">${leader.value}</div>
             </div>
           </div>
         </div>
@@ -3229,7 +3215,7 @@ async function downloadSeasonCategoryRankings(category: string, type: 'best' | '
     document.body.removeChild(container)
     
     const link = document.createElement('a')
-    link.download = `${selectedAwardsSeason.value}-${type}-${catType}-${category.toLowerCase()}.png`
+    link.download = `${selectedAwardsSeason.value}-${category.toLowerCase()}-leaders.png`
     link.href = finalCanvas.toDataURL('image/png')
     link.click()
   } finally {
