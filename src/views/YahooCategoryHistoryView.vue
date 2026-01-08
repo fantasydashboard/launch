@@ -664,11 +664,30 @@
                        class="mt-4 bg-dark-elevated rounded-xl border border-green-500/30 p-6">
                     <div class="flex items-center justify-between mb-4">
                       <div class="text-lg font-bold text-green-400">{{ expandedSeasonAwardCard?.replace('season-fame-hitting-', '') }} - {{ selectedAwardsSeason }} Rankings</div>
-                      <button @click="expandedSeasonAwardCard = null" class="text-dark-textMuted hover:text-dark-text">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-                        </svg>
-                      </button>
+                      <div class="flex items-center gap-2">
+                        <button 
+                          @click="downloadSeasonCategoryRankings(expandedSeasonAwardCard?.replace('season-fame-hitting-', '') || '', 'best', 'hitting')"
+                          :disabled="isDownloadingSeasonCategory"
+                          class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-semibold transition-colors disabled:opacity-50 text-xs"
+                          style="background: #dc2626; color: #ffffff;"
+                          @mouseover="$event.currentTarget.style.background = '#22c55e'; $event.currentTarget.style.color = '#ffffff'"
+                          @mouseout="$event.currentTarget.style.background = '#dc2626'; $event.currentTarget.style.color = '#ffffff'"
+                        >
+                          <svg v-if="!isDownloadingSeasonCategory" class="w-3.5 h-3.5 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                          </svg>
+                          <svg v-else class="w-3.5 h-3.5 animate-spin pointer-events-none" fill="none" viewBox="0 0 24 24">
+                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                          </svg>
+                          {{ isDownloadingSeasonCategory ? 'Saving...' : 'Share' }}
+                        </button>
+                        <button @click="expandedSeasonAwardCard = null" class="text-dark-textMuted hover:text-dark-text">
+                          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                          </svg>
+                        </button>
+                      </div>
                     </div>
                     <div class="space-y-3">
                       <div v-for="(team, idx) in getSeasonCategoryRankings(expandedSeasonAwardCard?.replace('season-fame-hitting-', '') || '', 'best')" 
@@ -733,11 +752,30 @@
                        class="mt-4 bg-dark-elevated rounded-xl border border-purple-500/30 p-6">
                     <div class="flex items-center justify-between mb-4">
                       <div class="text-lg font-bold text-purple-400">{{ expandedSeasonAwardCard?.replace('season-fame-pitching-', '') }} - {{ selectedAwardsSeason }} Rankings</div>
-                      <button @click="expandedSeasonAwardCard = null" class="text-dark-textMuted hover:text-dark-text">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-                        </svg>
-                      </button>
+                      <div class="flex items-center gap-2">
+                        <button 
+                          @click="downloadSeasonCategoryRankings(expandedSeasonAwardCard?.replace('season-fame-pitching-', '') || '', 'best', 'pitching')"
+                          :disabled="isDownloadingSeasonCategory"
+                          class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-semibold transition-colors disabled:opacity-50 text-xs"
+                          style="background: #dc2626; color: #ffffff;"
+                          @mouseover="$event.currentTarget.style.background = '#a855f7'; $event.currentTarget.style.color = '#ffffff'"
+                          @mouseout="$event.currentTarget.style.background = '#dc2626'; $event.currentTarget.style.color = '#ffffff'"
+                        >
+                          <svg v-if="!isDownloadingSeasonCategory" class="w-3.5 h-3.5 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                          </svg>
+                          <svg v-else class="w-3.5 h-3.5 animate-spin pointer-events-none" fill="none" viewBox="0 0 24 24">
+                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                          </svg>
+                          {{ isDownloadingSeasonCategory ? 'Saving...' : 'Share' }}
+                        </button>
+                        <button @click="expandedSeasonAwardCard = null" class="text-dark-textMuted hover:text-dark-text">
+                          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                          </svg>
+                        </button>
+                      </div>
                     </div>
                     <div class="space-y-3">
                       <div v-for="(team, idx) in getSeasonCategoryRankings(expandedSeasonAwardCard?.replace('season-fame-pitching-', '') || '', 'best')" 
@@ -810,11 +848,30 @@
                        class="mt-4 bg-dark-elevated rounded-xl border border-red-500/30 p-6">
                     <div class="flex items-center justify-between mb-4">
                       <div class="text-lg font-bold text-red-400">{{ expandedSeasonAwardCard?.replace('season-shame-hitting-', '') }} - {{ selectedAwardsSeason }} Rankings (Worst)</div>
-                      <button @click="expandedSeasonAwardCard = null" class="text-dark-textMuted hover:text-dark-text">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-                        </svg>
-                      </button>
+                      <div class="flex items-center gap-2">
+                        <button 
+                          @click="downloadSeasonCategoryRankings(expandedSeasonAwardCard?.replace('season-shame-hitting-', '') || '', 'worst', 'hitting')"
+                          :disabled="isDownloadingSeasonCategory"
+                          class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-semibold transition-colors disabled:opacity-50 text-xs"
+                          style="background: #dc2626; color: #ffffff;"
+                          @mouseover="$event.currentTarget.style.background = '#ef4444'; $event.currentTarget.style.color = '#ffffff'"
+                          @mouseout="$event.currentTarget.style.background = '#dc2626'; $event.currentTarget.style.color = '#ffffff'"
+                        >
+                          <svg v-if="!isDownloadingSeasonCategory" class="w-3.5 h-3.5 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                          </svg>
+                          <svg v-else class="w-3.5 h-3.5 animate-spin pointer-events-none" fill="none" viewBox="0 0 24 24">
+                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                          </svg>
+                          {{ isDownloadingSeasonCategory ? 'Saving...' : 'Share' }}
+                        </button>
+                        <button @click="expandedSeasonAwardCard = null" class="text-dark-textMuted hover:text-dark-text">
+                          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                          </svg>
+                        </button>
+                      </div>
                     </div>
                     <div class="space-y-3">
                       <div v-for="(team, idx) in getSeasonCategoryRankings(expandedSeasonAwardCard?.replace('season-shame-hitting-', '') || '', 'worst')" 
@@ -879,11 +936,30 @@
                        class="mt-4 bg-dark-elevated rounded-xl border border-red-500/30 p-6">
                     <div class="flex items-center justify-between mb-4">
                       <div class="text-lg font-bold text-red-400">{{ expandedSeasonAwardCard?.replace('season-shame-pitching-', '') }} - {{ selectedAwardsSeason }} Rankings (Worst)</div>
-                      <button @click="expandedSeasonAwardCard = null" class="text-dark-textMuted hover:text-dark-text">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-                        </svg>
-                      </button>
+                      <div class="flex items-center gap-2">
+                        <button 
+                          @click="downloadSeasonCategoryRankings(expandedSeasonAwardCard?.replace('season-shame-pitching-', '') || '', 'worst', 'pitching')"
+                          :disabled="isDownloadingSeasonCategory"
+                          class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-semibold transition-colors disabled:opacity-50 text-xs"
+                          style="background: #dc2626; color: #ffffff;"
+                          @mouseover="$event.currentTarget.style.background = '#ef4444'; $event.currentTarget.style.color = '#ffffff'"
+                          @mouseout="$event.currentTarget.style.background = '#dc2626'; $event.currentTarget.style.color = '#ffffff'"
+                        >
+                          <svg v-if="!isDownloadingSeasonCategory" class="w-3.5 h-3.5 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                          </svg>
+                          <svg v-else class="w-3.5 h-3.5 animate-spin pointer-events-none" fill="none" viewBox="0 0 24 24">
+                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                          </svg>
+                          {{ isDownloadingSeasonCategory ? 'Saving...' : 'Share' }}
+                        </button>
+                        <button @click="expandedSeasonAwardCard = null" class="text-dark-textMuted hover:text-dark-text">
+                          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                          </svg>
+                        </button>
+                      </div>
                     </div>
                     <div class="space-y-3">
                       <div v-for="(team, idx) in getSeasonCategoryRankings(expandedSeasonAwardCard?.replace('season-shame-pitching-', '') || '', 'worst')" 
@@ -1164,6 +1240,7 @@ const isDownloadingSeason = ref(false)
 const isDownloadingH2H = ref(false)
 const isDownloadingRecord = ref(false)
 const isDownloadingAward = ref(false)
+const isDownloadingSeasonCategory = ref(false)
 
 // League display name
 const leagueDisplayName = computed(() => {
@@ -2956,6 +3033,207 @@ async function downloadRecordRankings(recordLabel: string) {
     link.click()
   } finally {
     isDownloadingRecord.value = false
+  }
+}
+
+// Download season category rankings as image (mirrors Career Leaders style)
+async function downloadSeasonCategoryRankings(category: string, type: 'best' | 'worst', catType: 'hitting' | 'pitching') {
+  isDownloadingSeasonCategory.value = true
+  try {
+    const html2canvas = (await import('html2canvas')).default
+    
+    // Get league name
+    const activeId = leagueStore.activeLeagueId
+    const savedLeague = leagueStore.savedLeagues?.find((l: any) => l.league_id === activeId?.split('.l.')[1])
+    const leagueName = savedLeague?.league_name || leagueStore.yahooLeague?.name || 'Fantasy League'
+    
+    const rankings = getSeasonCategoryRankings(category, type).slice(0, 10)
+    
+    if (rankings.length === 0) {
+      isDownloadingSeasonCategory.value = false
+      return
+    }
+    
+    // Load UFD logo
+    const loadLogo = async (): Promise<string> => {
+      try {
+        const response = await fetch('/UFD_V5.png')
+        if (!response.ok) return ''
+        const blob = await response.blob()
+        return new Promise((resolve) => {
+          const reader = new FileReader()
+          reader.onloadend = () => resolve(reader.result as string)
+          reader.onerror = () => resolve('')
+          reader.readAsDataURL(blob)
+        })
+      } catch (e) { return '' }
+    }
+    
+    // Helper to create placeholder avatar
+    const createPlaceholder = (name: string): string => {
+      const canvas = document.createElement('canvas')
+      canvas.width = 64
+      canvas.height = 64
+      const ctx = canvas.getContext('2d')
+      if (ctx) {
+        ctx.fillStyle = '#3a3d52'
+        ctx.beginPath()
+        ctx.arc(32, 32, 32, 0, Math.PI * 2)
+        ctx.fill()
+        ctx.fillStyle = '#ffffff'
+        ctx.font = 'bold 28px sans-serif'
+        ctx.textAlign = 'center'
+        ctx.textBaseline = 'middle'
+        ctx.fillText(name.charAt(0).toUpperCase(), 32, 34)
+      }
+      return canvas.toDataURL('image/png')
+    }
+    
+    const logoBase64 = await loadLogo()
+    const leader = rankings[0]
+    
+    // Pre-load all team images
+    const imageMap = new Map<string, string>()
+    for (const team of rankings) {
+      try {
+        const img = new Image()
+        img.crossOrigin = 'anonymous'
+        const loadPromise = new Promise<string>((resolve) => {
+          img.onload = () => {
+            try {
+              const canvas = document.createElement('canvas')
+              canvas.width = 64
+              canvas.height = 64
+              const ctx = canvas.getContext('2d')
+              if (ctx) {
+                ctx.beginPath()
+                ctx.arc(32, 32, 32, 0, Math.PI * 2)
+                ctx.closePath()
+                ctx.clip()
+                ctx.drawImage(img, 0, 0, 64, 64)
+              }
+              resolve(canvas.toDataURL('image/png'))
+            } catch {
+              resolve(createPlaceholder(team.team_name))
+            }
+          }
+          img.onerror = () => resolve(createPlaceholder(team.team_name))
+          setTimeout(() => resolve(createPlaceholder(team.team_name)), 3000)
+        })
+        img.src = team.logo_url || ''
+        imageMap.set(team.team_name, await loadPromise)
+      } catch {
+        imageMap.set(team.team_name, createPlaceholder(team.team_name))
+      }
+    }
+    
+    const maxValue = Math.max(...rankings.map(r => r.value || 0))
+    
+    // Colors based on type and category
+    const colorMain = type === 'best' 
+      ? (catType === 'hitting' ? '#22c55e' : '#a855f7') 
+      : '#ef4444'
+    const colorLight = type === 'best' 
+      ? (catType === 'hitting' ? 'rgba(34, 197, 94, 0.15)' : 'rgba(168, 85, 247, 0.15)') 
+      : 'rgba(239, 68, 68, 0.15)'
+    const colorBorder = type === 'best' 
+      ? (catType === 'hitting' ? 'rgba(34, 197, 94, 0.3)' : 'rgba(168, 85, 247, 0.3)') 
+      : 'rgba(239, 68, 68, 0.3)'
+    
+    // Generate ranking rows with images
+    const generateRows = () => {
+      return rankings.map((team, idx) => {
+        const barWidth = maxValue > 0 ? (team.value / maxValue) * 100 : 0
+        
+        return `
+          <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 10px;">
+            <div style="width: 20px; text-align: center; font-weight: bold; font-size: 12px; color: ${idx === 0 ? colorMain : '#6b7280'};">${idx + 1}</div>
+            <img src="${imageMap.get(team.team_name) || createPlaceholder(team.team_name)}" style="width: 28px; height: 28px; border-radius: 50%;" />
+            <div style="flex: 1; min-width: 0;">
+              <div style="font-size: 12px; font-weight: 600; color: #e5e7eb; margin-bottom: 5px;">${team.team_name}</div>
+              <div style="height: 6px; background: rgba(58, 61, 82, 0.5); border-radius: 3px; overflow: hidden;">
+                <div style="height: 100%; width: ${barWidth}%; background: ${colorMain}; opacity: ${idx === 0 ? 1 : 0.6}; border-radius: 3px;"></div>
+              </div>
+            </div>
+            <div style="width: 50px; text-align: right;">
+              <div style="font-size: 13px; font-weight: bold; color: ${idx === 0 ? colorMain : '#e5e7eb'};">${team.value}</div>
+            </div>
+          </div>
+        `
+      }).join('')
+    }
+    
+    const container = document.createElement('div')
+    container.style.cssText = 'position: absolute; left: -9999px; top: 0; width: 480px; font-family: system-ui, -apple-system, sans-serif;'
+    
+    const typeLabel = type === 'best' ? 'Leaders' : 'Worst'
+    
+    container.innerHTML = `
+      <div style="background: linear-gradient(160deg, #0f1219 0%, #0a0c14 50%, #0d1117 100%); border-radius: 16px; box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5); position: relative; overflow: hidden;">
+        
+        <!-- Top Red Bar -->
+        <div style="background: #dc2626; padding: 8px 20px; text-align: center;">
+          <span style="font-size: 12px; font-weight: 700; color: #ffffff; text-transform: uppercase; letter-spacing: 2px;">Ultimate Fantasy Dashboard</span>
+        </div>
+        
+        <!-- Header -->
+        <div style="display: flex; align-items: center; padding: 10px 16px; border-bottom: 1px solid rgba(220, 38, 38, 0.2);">
+          ${logoBase64 ? `<img src="${logoBase64}" style="height: 40px; width: auto; flex-shrink: 0; margin-right: 12px; margin-top: 4px;" />` : ''}
+          <div style="flex: 1;">
+            <div style="font-size: 17px; font-weight: 900; color: #ffffff; text-transform: uppercase; letter-spacing: 0.5px; line-height: 1.1;">${category} ${typeLabel}</div>
+            <div style="font-size: 12px; margin-top: 2px;">
+              <span style="color: #e5e7eb;">${leagueName}</span>
+              <span style="color: #6b7280; margin: 0 4px;">•</span>
+              <span style="color: #dc2626; font-weight: 600;">${selectedAwardsSeason.value} Season</span>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Featured Leader -->
+        <div style="padding: 12px 16px; background: linear-gradient(135deg, ${colorLight} 0%, transparent 100%); border-bottom: 1px solid ${colorBorder};">
+          <div style="display: flex; align-items: center; gap: 12px;">
+            <img src="${imageMap.get(leader.team_name) || createPlaceholder(leader.team_name)}" style="width: 44px; height: 44px; border-radius: 50%; border: 2px solid ${colorBorder};" />
+            <div style="flex: 1;">
+              <div style="font-size: 15px; font-weight: bold; color: #ffffff;">${leader.team_name}</div>
+              <div style="font-size: 11px; color: #9ca3af;">${type === 'best' ? 'Category Leader' : 'Fewest Wins'}</div>
+            </div>
+            <div style="text-align: right;">
+              <div style="font-size: 26px; font-weight: 900; color: ${colorMain};">${leader.value}</div>
+              <div style="font-size: 10px; color: #6b7280;">category wins</div>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Rankings List -->
+        <div style="padding: 12px 16px;">
+          ${generateRows()}
+        </div>
+        
+        <!-- Footer -->
+        <div style="padding: 10px 16px; text-align: center; border-top: 1px solid rgba(220, 38, 38, 0.2);">
+          <span style="font-size: 14px; font-weight: bold; color: #dc2626;">ultimatefantasydashboard.com</span>
+        </div>
+      </div>
+    `
+    
+    document.body.appendChild(container)
+    await new Promise(r => setTimeout(r, 300))
+    
+    const finalCanvas = await html2canvas(container, {
+      backgroundColor: '#0a0c14',
+      scale: 2,
+      useCORS: true,
+      allowTaint: true
+    })
+    
+    document.body.removeChild(container)
+    
+    const link = document.createElement('a')
+    link.download = `${selectedAwardsSeason.value}-${type}-${catType}-${category.toLowerCase()}.png`
+    link.href = finalCanvas.toDataURL('image/png')
+    link.click()
+  } finally {
+    isDownloadingSeasonCategory.value = false
   }
 }
 
