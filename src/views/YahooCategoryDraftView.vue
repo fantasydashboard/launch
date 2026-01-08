@@ -640,11 +640,30 @@
                   <p class="text-sm text-dark-textMuted">Draft Balance Breakdown</p>
                 </div>
               </div>
-              <button @click="showBalanceModal = false" class="p-2 rounded-lg hover:bg-dark-border/50 transition-colors">
-                <svg class="w-5 h-5 text-dark-textMuted" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
+              <div class="flex items-center gap-2">
+                <button 
+                  @click="downloadBalanceImage" 
+                  :disabled="isDownloadingBalance"
+                  class="flex items-center gap-2 text-sm px-3 py-1.5 rounded-lg font-semibold transition-colors disabled:opacity-50"
+                  style="background: #dc2626; color: #ffffff;"
+                  @mouseover="$event.currentTarget.style.background = '#eab308'"
+                  @mouseout="$event.currentTarget.style.background = '#dc2626'"
+                >
+                  <svg v-if="!isDownloadingBalance" class="w-4 h-4 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                  </svg>
+                  <svg v-else class="w-4 h-4 animate-spin pointer-events-none" fill="none" viewBox="0 0 24 24">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                  {{ isDownloadingBalance ? 'Saving...' : 'Share' }}
+                </button>
+                <button @click="showBalanceModal = false" class="p-2 rounded-lg hover:bg-dark-border/50 transition-colors">
+                  <svg class="w-5 h-5 text-dark-textMuted" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
             </div>
             
             <div class="p-6">
@@ -1063,6 +1082,7 @@ const selectedBoardTeam = ref<string | null>(null)
 const isDownloadingSteals = ref(false)
 const isDownloadingBusts = ref(false)
 const isDownloadingTeamDraft = ref(false)
+const isDownloadingBalance = ref(false)
 
 // Data
 const draftPicks = ref<any[]>([])
@@ -2334,14 +2354,14 @@ async function downloadTeamDraftImage() {
       const valueColor = (pick.valueScore || 0) >= 10 ? '#22c55e' : (pick.valueScore || 0) <= -10 ? '#ef4444' : '#9ca3af'
       const bgColor = (pick.valueScore || 0) >= 10 ? 'rgba(34, 197, 94, 0.1)' : (pick.valueScore || 0) <= -10 ? 'rgba(239, 68, 68, 0.1)' : 'rgba(58, 61, 82, 0.3)'
       return `
-        <div style="display: flex; align-items: center; gap: 6px; margin-bottom: 6px; padding: 6px; border-radius: 6px; background: ${bgColor};">
-          <div style="width: 22px; text-align: center; font-weight: bold; font-size: 10px; color: #6b7280;">R${pick.round}</div>
-          <img src="${imageMap.get(pick.player_name) || createPlaceholder(pick.player_name)}" style="width: 24px; height: 24px; border-radius: 50%;" />
-          <div style="flex: 1; min-width: 0;">
-            <div style="font-size: 11px; font-weight: 600; color: #e5e7eb; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${pick.player_name}</div>
-            <div style="font-size: 9px; color: #9ca3af;">${pick.position}</div>
+        <div style="display: flex; align-items: center; gap: 6px; height: 42px; padding: 6px; border-radius: 6px; background: ${bgColor}; margin-bottom: 6px; box-sizing: border-box;">
+          <div style="width: 22px; flex-shrink: 0; text-align: center; font-weight: bold; font-size: 10px; color: #6b7280;">R${pick.round}</div>
+          <img src="${imageMap.get(pick.player_name) || createPlaceholder(pick.player_name)}" style="width: 24px; height: 24px; border-radius: 50%; flex-shrink: 0;" />
+          <div style="flex: 1; min-width: 0; padding-top: 2px;">
+            <div style="font-size: 11px; font-weight: 600; color: #e5e7eb; white-space: nowrap; overflow: visible; line-height: 1.2;">${pick.player_name}</div>
+            <div style="font-size: 9px; color: #9ca3af; line-height: 1.2;">${pick.position}</div>
           </div>
-          <div style="width: 32px; text-align: right;">
+          <div style="width: 32px; flex-shrink: 0; text-align: right;">
             <div style="font-size: 11px; font-weight: bold; color: ${valueColor};">${(pick.valueScore || 0) >= 0 ? '+' : ''}${pick.valueScore?.toFixed(0)}</div>
           </div>
         </div>
@@ -2391,7 +2411,7 @@ async function downloadTeamDraftImage() {
             </div>
           </div>
         </div>
-        <div style="padding: 12px 16px; display: flex; gap: 12px;">
+        <div style="padding: 16px 16px 20px 16px; display: flex; gap: 12px;">
           <div style="flex: 1;">${generateLeftColumn()}</div>
           <div style="flex: 1;">${generateRightColumn()}</div>
         </div>
@@ -2404,7 +2424,7 @@ async function downloadTeamDraftImage() {
     document.body.appendChild(container)
     await new Promise(r => setTimeout(r, 300))
     
-    const finalCanvas = await html2canvas(container, { backgroundColor: '#0a0c14', scale: 2, useCORS: true, allowTaint: true })
+    const finalCanvas = await html2canvas(container, { backgroundColor: '#0a0c14', scale: 2, useCORS: true, allowTaint: true, width: 580 })
     document.body.removeChild(container)
     
     const link = document.createElement('a')
@@ -2414,6 +2434,176 @@ async function downloadTeamDraftImage() {
     link.click()
   } finally {
     isDownloadingTeamDraft.value = false
+  }
+}
+
+// Download Balance Image
+async function downloadBalanceImage() {
+  if (!selectedTeamData.value) return
+  isDownloadingBalance.value = true
+  try {
+    const html2canvas = (await import('html2canvas')).default
+    const leagueName = getLeagueName()
+    const team = selectedTeamData.value
+    
+    const loadLogo = async (): Promise<string> => {
+      try {
+        const response = await fetch('/UFD_V5.png')
+        if (!response.ok) return ''
+        const blob = await response.blob()
+        return new Promise((resolve) => {
+          const reader = new FileReader()
+          reader.onloadend = () => resolve(reader.result as string)
+          reader.onerror = () => resolve('')
+          reader.readAsDataURL(blob)
+        })
+      } catch (e) { return '' }
+    }
+    
+    const createPlaceholder = (name: string): string => {
+      const canvas = document.createElement('canvas')
+      canvas.width = 64
+      canvas.height = 64
+      const ctx = canvas.getContext('2d')
+      if (ctx) {
+        ctx.fillStyle = '#3a3d52'
+        ctx.beginPath()
+        ctx.arc(32, 32, 32, 0, Math.PI * 2)
+        ctx.fill()
+        ctx.fillStyle = '#ffffff'
+        ctx.font = 'bold 28px sans-serif'
+        ctx.textAlign = 'center'
+        ctx.textBaseline = 'middle'
+        ctx.fillText(name.charAt(0).toUpperCase(), 32, 34)
+      }
+      return canvas.toDataURL('image/png')
+    }
+    
+    const logoBase64 = await loadLogo()
+    
+    // Load team logo
+    let teamLogoBase64 = ''
+    if (team.logo_url) {
+      try {
+        const img = new Image()
+        img.crossOrigin = 'anonymous'
+        teamLogoBase64 = await new Promise<string>((resolve) => {
+          img.onload = () => {
+            const canvas = document.createElement('canvas')
+            canvas.width = 64
+            canvas.height = 64
+            const ctx = canvas.getContext('2d')
+            if (ctx) {
+              ctx.beginPath()
+              ctx.arc(32, 32, 32, 0, Math.PI * 2)
+              ctx.closePath()
+              ctx.clip()
+              ctx.drawImage(img, 0, 0, 64, 64)
+            }
+            resolve(canvas.toDataURL('image/png'))
+          }
+          img.onerror = () => resolve(createPlaceholder(team.team_name))
+          img.src = team.logo_url
+        })
+      } catch { teamLogoBase64 = createPlaceholder(team.team_name) }
+    }
+    
+    const hittingCats = team.categoryStrengths.filter((c: any) => isHittingCategory(c.category))
+    const pitchingCats = team.categoryStrengths.filter((c: any) => !isHittingCategory(c.category))
+    
+    const getBarColor = (percentile: number) => {
+      if (percentile >= 75) return '#22c55e'
+      if (percentile >= 50) return '#eab308'
+      if (percentile >= 25) return '#f97316'
+      return '#ef4444'
+    }
+    
+    const generateCategoryRow = (cat: any) => {
+      return `
+        <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
+          <div style="width: 40px; font-size: 11px; font-weight: 600; color: #9ca3af;">${cat.category}</div>
+          <div style="flex: 1; height: 12px; background: rgba(58, 61, 82, 0.5); border-radius: 6px; overflow: hidden;">
+            <div style="height: 100%; width: ${cat.percentile}%; background: ${getBarColor(cat.percentile)}; border-radius: 6px;"></div>
+          </div>
+          <div style="width: 36px; text-align: right; font-size: 11px; font-weight: bold; color: ${getBarColor(cat.percentile)};">${cat.percentile}%</div>
+        </div>
+      `
+    }
+    
+    const container = document.createElement('div')
+    container.style.cssText = 'position: absolute; left: -9999px; top: 0; width: 480px; font-family: system-ui, -apple-system, sans-serif;'
+    
+    container.innerHTML = `
+      <div style="background: linear-gradient(160deg, #0f1219 0%, #0a0c14 50%, #0d1117 100%); border-radius: 16px; box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5); position: relative; overflow: hidden;">
+        <div style="background: #dc2626; padding: 8px 20px; text-align: center;">
+          <span style="font-size: 12px; font-weight: 700; color: #0a0c14; text-transform: uppercase; letter-spacing: 2px;">Ultimate Fantasy Dashboard</span>
+        </div>
+        <div style="display: flex; align-items: center; padding: 10px 16px; border-bottom: 1px solid rgba(220, 38, 38, 0.2);">
+          ${logoBase64 ? `<img src="${logoBase64}" style="height: 40px; width: auto; flex-shrink: 0; margin-right: 12px; margin-top: 4px;" />` : ''}
+          <div style="flex: 1;">
+            <div style="font-size: 17px; font-weight: 900; color: #ffffff; text-transform: uppercase; letter-spacing: 0.5px; line-height: 1.1;">Draft Balance</div>
+            <div style="font-size: 12px; margin-top: 2px;">
+              <span style="color: #e5e7eb;">${leagueName}</span>
+              <span style="color: #6b7280; margin: 0 4px;">•</span>
+              <span style="color: #dc2626; font-weight: 600;">${selectedSeason.value} Draft</span>
+            </div>
+          </div>
+        </div>
+        <div style="padding: 12px 16px; background: linear-gradient(135deg, rgba(250, 204, 21, 0.15) 0%, transparent 100%); border-bottom: 1px solid rgba(250, 204, 21, 0.2);">
+          <div style="display: flex; align-items: center; gap: 12px;">
+            <img src="${teamLogoBase64 || createPlaceholder(team.team_name)}" style="width: 44px; height: 44px; border-radius: 50%; border: 2px solid rgba(250, 204, 21, 0.5);" />
+            <div style="flex: 1;">
+              <div style="font-size: 15px; font-weight: bold; color: #ffffff;">${team.team_name}</div>
+              <div style="font-size: 11px; color: #9ca3af;">${team.strategyLabel}</div>
+            </div>
+            <div style="text-align: center;">
+              <div style="font-size: 28px; font-weight: 900; color: #facc15;">${team.balanceGrade}</div>
+              <div style="font-size: 9px; color: #9ca3af;">BALANCE</div>
+            </div>
+          </div>
+        </div>
+        <div style="padding: 16px; display: flex; gap: 16px;">
+          <div style="flex: 1;">
+            <div style="font-size: 12px; font-weight: bold; color: #60a5fa; margin-bottom: 10px; display: flex; align-items: center; gap: 6px;">
+              <span>⚾</span> Hitting
+            </div>
+            ${hittingCats.map(generateCategoryRow).join('')}
+          </div>
+          <div style="flex: 1;">
+            <div style="font-size: 12px; font-weight: bold; color: #a78bfa; margin-bottom: 10px; display: flex; align-items: center; gap: 6px;">
+              <span>🎯</span> Pitching
+            </div>
+            ${pitchingCats.map(generateCategoryRow).join('')}
+          </div>
+        </div>
+        <div style="padding: 12px 16px; border-top: 1px solid rgba(58, 61, 82, 0.5);">
+          <div style="display: flex; align-items: center; gap: 10px;">
+            <span style="font-size: 20px;">${team.strategyIcon}</span>
+            <div style="flex: 1;">
+              <div style="font-size: 13px; font-weight: bold; color: #e5e7eb;">${team.strategyLabel}</div>
+              <div style="font-size: 11px; color: #9ca3af;">${team.strategyDetail}</div>
+            </div>
+          </div>
+        </div>
+        <div style="padding: 10px 16px; text-align: center; border-top: 1px solid rgba(220, 38, 38, 0.2);">
+          <span style="font-size: 14px; font-weight: bold; color: #dc2626;">ultimatefantasydashboard.com</span>
+        </div>
+      </div>
+    `
+    
+    document.body.appendChild(container)
+    await new Promise(r => setTimeout(r, 300))
+    
+    const finalCanvas = await html2canvas(container, { backgroundColor: '#0a0c14', scale: 2, useCORS: true, allowTaint: true, width: 480 })
+    document.body.removeChild(container)
+    
+    const link = document.createElement('a')
+    const safeTeamName = team.team_name.replace(/[^a-zA-Z0-9\s]/g, '').replace(/\s+/g, '-').toLowerCase()
+    link.download = `${selectedSeason.value}-draft-balance-${safeTeamName}.png`
+    link.href = finalCanvas.toDataURL('image/png')
+    link.click()
+  } finally {
+    isDownloadingBalance.value = false
   }
 }
 
