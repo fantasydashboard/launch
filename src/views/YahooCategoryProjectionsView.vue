@@ -8,7 +8,10 @@
       </div>
       <div class="flex items-center gap-3">
         <button @click="refreshData" :disabled="isLoading" class="px-4 py-2 rounded-lg bg-dark-card hover:bg-dark-border/50 text-dark-textMuted transition-all flex items-center gap-2">
-          <span :class="{ 'animate-spin': isLoading }">🔄</span> Refresh
+          <svg :class="{ 'animate-spin': isLoading }" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+          </svg>
+          Refresh
         </button>
       </div>
     </div>
@@ -20,21 +23,21 @@
     <div class="flex items-center gap-2 border-b border-dark-border pb-2">
       <button 
         @click="activeTab = 'ros'"
-        :class="activeTab === 'ros' ? 'bg-primary text-gray-900' : 'bg-dark-card text-dark-textMuted hover:bg-dark-border'"
+        :class="activeTab === 'ros' ? 'bg-yellow-400 text-gray-900' : 'bg-dark-card text-dark-textMuted hover:bg-dark-border'"
         class="px-5 py-2.5 rounded-lg text-sm font-semibold transition-all flex items-center gap-2"
       >
         <span>📊</span> Rest of Season
       </button>
       <button 
         @click="activeTab = 'teams'"
-        :class="activeTab === 'teams' ? 'bg-primary text-gray-900' : 'bg-dark-card text-dark-textMuted hover:bg-dark-border'"
+        :class="activeTab === 'teams' ? 'bg-yellow-400 text-gray-900' : 'bg-dark-card text-dark-textMuted hover:bg-dark-border'"
         class="px-5 py-2.5 rounded-lg text-sm font-semibold transition-all flex items-center gap-2"
       >
         <span>👥</span> Teams
       </button>
       <button 
         @click="activeTab = 'startsit'"
-        :class="activeTab === 'startsit' ? 'bg-primary text-gray-900' : 'bg-dark-card text-dark-textMuted hover:bg-dark-border'"
+        :class="activeTab === 'startsit' ? 'bg-yellow-400 text-gray-900' : 'bg-dark-card text-dark-textMuted hover:bg-dark-border'"
         class="px-5 py-2.5 rounded-lg text-sm font-semibold transition-all flex items-center gap-2"
       >
         <span>🎯</span> Start/Sit
@@ -44,7 +47,7 @@
     <!-- Loading State -->
     <div v-if="isLoading" class="flex items-center justify-center py-20">
       <div class="text-center">
-        <div class="animate-spin rounded-full h-16 w-16 border-b-4 border-primary mx-auto mb-4"></div>
+        <div class="animate-spin rounded-full h-16 w-16 border-b-4 border-yellow-400 mx-auto mb-4"></div>
         <p class="text-dark-textMuted">{{ loadingMessage }}</p>
       </div>
     </div>
@@ -77,7 +80,7 @@
                 v-for="cat in displayCategories" 
                 :key="cat.stat_id"
                 @click="selectedCategory = cat.stat_id"
-                :class="selectedCategory === cat.stat_id ? 'bg-primary text-gray-900' : 'bg-dark-border/50 text-dark-textSecondary hover:bg-dark-border'"
+                :class="selectedCategory === cat.stat_id ? 'bg-yellow-400 text-gray-900' : 'bg-dark-border/50 text-dark-textSecondary hover:bg-dark-border'"
                 class="px-3 py-1.5 rounded-lg text-sm font-medium transition-all"
               >
                 {{ cat.display_name }}
@@ -118,14 +121,14 @@
             v-for="pos in availablePositions" 
             :key="pos"
             @click="togglePositionFilter(pos)"
-            :class="selectedPositions.includes(pos) ? 'bg-primary/20 text-primary border-primary' : 'bg-dark-card text-dark-textMuted border-dark-border hover:border-dark-textMuted'"
+            :class="selectedPositions.includes(pos) ? 'bg-green-500/20 text-green-400 border-green-500' : 'bg-dark-card text-dark-textMuted border-dark-border hover:border-dark-textMuted'"
             class="px-3 py-1 text-sm rounded-lg border transition-all"
           >{{ pos }}</button>
-          <button @click="selectAllPositions" class="text-xs text-primary hover:underline ml-2">All</button>
+          <button @click="selectAllPositions" class="text-xs text-green-400 hover:underline ml-2">All</button>
         </div>
         <div class="flex items-center gap-3 ml-auto">
           <label class="flex items-center gap-2 cursor-pointer">
-            <input type="checkbox" v-model="showOnlyMyPlayers" class="w-4 h-4 rounded border-dark-border bg-dark-card text-primary" />
+            <input type="checkbox" v-model="showOnlyMyPlayers" class="w-4 h-4 rounded border-dark-border bg-dark-card text-yellow-400" />
             <span class="text-sm text-dark-textMuted">My Players</span>
           </label>
           <label class="flex items-center gap-2 cursor-pointer">
@@ -149,26 +152,26 @@
             <table class="w-full">
               <thead class="bg-dark-border/30 sticky top-0 z-10">
                 <tr>
-                  <th class="px-3 py-3 text-left text-xs font-semibold text-dark-textMuted uppercase w-14 cursor-pointer hover:text-primary" @click="toggleSort('rank')" :title="columnTooltips.rank">
-                    <div class="flex items-center gap-1">Rank <span v-if="sortColumn === 'rank'" class="text-primary">{{ sortDirection === 'asc' ? '↑' : '↓' }}</span></div>
+                  <th class="px-3 py-3 text-left text-xs font-semibold text-dark-textMuted uppercase w-14 cursor-pointer hover:text-yellow-400" @click="toggleSort('rank')" :title="columnTooltips.rank">
+                    <div class="flex items-center gap-1">Rank <span v-if="sortColumn === 'rank'" class="text-yellow-400">{{ sortDirection === 'asc' ? '↑' : '↓' }}</span></div>
                   </th>
-                  <th class="px-3 py-3 text-left text-xs font-semibold text-dark-textMuted uppercase cursor-pointer hover:text-primary" @click="toggleSort('name')" :title="columnTooltips.player">
-                    <div class="flex items-center gap-1">Player <span v-if="sortColumn === 'name'" class="text-primary">{{ sortDirection === 'asc' ? '↑' : '↓' }}</span></div>
+                  <th class="px-3 py-3 text-left text-xs font-semibold text-dark-textMuted uppercase cursor-pointer hover:text-yellow-400" @click="toggleSort('name')" :title="columnTooltips.player">
+                    <div class="flex items-center gap-1">Player <span v-if="sortColumn === 'name'" class="text-yellow-400">{{ sortDirection === 'asc' ? '↑' : '↓' }}</span></div>
                   </th>
-                  <th class="px-2 py-3 text-center text-xs font-semibold text-dark-textMuted uppercase w-14 cursor-pointer hover:text-primary" @click="toggleSort('position')" :title="columnTooltips.position">
-                    <div class="flex items-center justify-center gap-1">Pos <span v-if="sortColumn === 'position'" class="text-primary">{{ sortDirection === 'asc' ? '↑' : '↓' }}</span></div>
+                  <th class="px-2 py-3 text-center text-xs font-semibold text-dark-textMuted uppercase w-14 cursor-pointer hover:text-yellow-400" @click="toggleSort('position')" :title="columnTooltips.position">
+                    <div class="flex items-center justify-center gap-1">Pos <span v-if="sortColumn === 'position'" class="text-yellow-400">{{ sortDirection === 'asc' ? '↑' : '↓' }}</span></div>
                   </th>
-                  <th class="px-2 py-3 text-center text-xs font-semibold uppercase w-20 cursor-pointer hover:text-primary" @click="toggleSort('projected')" :title="columnTooltips.rosProj">
-                    <div class="flex items-center justify-center gap-1"><span class="text-primary">ROS Proj</span> <span v-if="sortColumn === 'projected'" class="text-primary">{{ sortDirection === 'asc' ? '↑' : '↓' }}</span></div>
+                  <th class="px-2 py-3 text-center text-xs font-semibold uppercase w-20 cursor-pointer hover:text-yellow-400" @click="toggleSort('projected')" :title="columnTooltips.rosProj">
+                    <div class="flex items-center justify-center gap-1"><span class="text-yellow-400">ROS Proj</span> <span v-if="sortColumn === 'projected'" class="text-yellow-400">{{ sortDirection === 'asc' ? '↑' : '↓' }}</span></div>
                   </th>
-                  <th class="px-2 py-3 text-center text-xs font-semibold text-dark-textMuted uppercase w-16 cursor-pointer hover:text-primary" @click="toggleSort('current')" :title="columnTooltips.current">
-                    <div class="flex items-center justify-center gap-1">Current <span v-if="sortColumn === 'current'" class="text-primary">{{ sortDirection === 'asc' ? '↑' : '↓' }}</span></div>
+                  <th class="px-2 py-3 text-center text-xs font-semibold text-dark-textMuted uppercase w-16 cursor-pointer hover:text-yellow-400" @click="toggleSort('current')" :title="columnTooltips.current">
+                    <div class="flex items-center justify-center gap-1">Current <span v-if="sortColumn === 'current'" class="text-yellow-400">{{ sortDirection === 'asc' ? '↑' : '↓' }}</span></div>
                   </th>
-                  <th class="px-2 py-3 text-center text-xs font-semibold text-dark-textMuted uppercase w-16 cursor-pointer hover:text-primary" @click="toggleSort('perGame')" :title="columnTooltips.perGame">
-                    <div class="flex items-center justify-center gap-1">Per Game <span v-if="sortColumn === 'perGame'" class="text-primary">{{ sortDirection === 'asc' ? '↑' : '↓' }}</span></div>
+                  <th class="px-2 py-3 text-center text-xs font-semibold text-dark-textMuted uppercase w-16 cursor-pointer hover:text-yellow-400" @click="toggleSort('perGame')" :title="columnTooltips.perGame">
+                    <div class="flex items-center justify-center gap-1">Per Game <span v-if="sortColumn === 'perGame'" class="text-yellow-400">{{ sortDirection === 'asc' ? '↑' : '↓' }}</span></div>
                   </th>
-                  <th class="px-2 py-3 text-center text-xs font-semibold text-dark-textMuted uppercase w-24 cursor-pointer hover:text-primary" @click="toggleSort('value')" :title="columnTooltips.value">
-                    <div class="flex items-center justify-center gap-1">Value <span class="text-dark-textMuted/50 text-[10px]">ⓘ</span> <span v-if="sortColumn === 'value'" class="text-primary">{{ sortDirection === 'asc' ? '↑' : '↓' }}</span></div>
+                  <th class="px-2 py-3 text-center text-xs font-semibold text-dark-textMuted uppercase w-24 cursor-pointer hover:text-yellow-400" @click="toggleSort('value')" :title="columnTooltips.value">
+                    <div class="flex items-center justify-center gap-1">Value <span class="text-dark-textMuted/50 text-[10px]">ⓘ</span> <span v-if="sortColumn === 'value'" class="text-yellow-400">{{ sortDirection === 'asc' ? '↑' : '↓' }}</span></div>
                   </th>
                 </tr>
               </thead>
@@ -178,9 +181,9 @@
                   <tr v-if="showTierBreak(player, idx)" class="bg-dark-border/10">
                     <td colspan="7" class="px-4 py-2">
                       <div class="flex items-center gap-2">
-                        <div class="h-px flex-1 bg-primary/30"></div>
-                        <span class="text-xs font-bold text-primary uppercase tracking-wider">{{ getTierLabel(player.tier) }}</span>
-                        <div class="h-px flex-1 bg-primary/30"></div>
+                        <div class="h-px flex-1 bg-yellow-400/30"></div>
+                        <span class="text-xs font-bold text-yellow-400 uppercase tracking-wider">{{ getTierLabel(player.tier) }}</span>
+                        <div class="h-px flex-1 bg-yellow-400/30"></div>
                       </div>
                     </td>
                   </tr>
@@ -222,7 +225,7 @@
                       <span class="px-2 py-1 rounded text-xs font-bold" :class="getPositionClass(player.position)">{{ player.position?.split(',')[0] }}</span>
                     </td>
                     <td class="px-2 py-3 text-center">
-                      <span class="text-lg font-bold text-primary">{{ formatStatValue(player.projectedValue) }}</span>
+                      <span class="text-lg font-bold text-yellow-400">{{ formatStatValue(player.projectedValue) }}</span>
                     </td>
                     <td class="px-2 py-3 text-center text-dark-text font-medium">{{ formatStatValue(player.currentValue) }}</td>
                     <td class="px-2 py-3 text-center text-dark-textMuted">{{ formatStatValue(player.perGameValue, 3) }}</td>
@@ -238,7 +241,7 @@
                   <!-- Expanded Player Detail -->
                   <tr v-if="expandedPlayerKey === player.player_key" class="bg-dark-bg/80">
                     <td colspan="7" class="p-0">
-                      <div class="p-4 space-y-4 border-y border-primary/30">
+                      <div class="p-4 space-y-4 border-y border-yellow-400/30">
                         <div class="flex items-start justify-between">
                           <div class="flex items-center gap-4">
                             <div class="w-16 h-16 rounded-full bg-dark-border overflow-hidden ring-2" :class="getAvatarRingClass(player)">
@@ -261,7 +264,7 @@
                         <!-- Stats Grid -->
                         <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3">
                           <div class="bg-dark-card rounded-lg p-3 text-center">
-                            <div class="text-2xl font-bold text-primary">#{{ player.categoryRank }}</div>
+                            <div class="text-2xl font-bold text-yellow-400">#{{ player.categoryRank }}</div>
                             <div class="text-xs text-dark-textMuted">{{ selectedCategoryInfo?.display_name }} Rank</div>
                           </div>
                           <div class="bg-dark-card rounded-lg p-3 text-center">
@@ -407,7 +410,7 @@
                                 <div class="text-[10px] text-dark-textMuted">vs League Avg</div>
                               </div>
                               <div class="text-center">
-                                <div class="text-lg font-bold text-primary">{{ playerRecentAvg.toFixed(1) }}</div>
+                                <div class="text-lg font-bold text-yellow-400">{{ playerRecentAvg.toFixed(1) }}</div>
                                 <div class="text-[10px] text-dark-textMuted">Player Avg (5 games)</div>
                               </div>
                               <div class="text-center">
@@ -435,14 +438,14 @@
                             <div class="space-y-1 max-h-72 overflow-y-auto">
                               <div v-for="cat in relevantCategories" :key="cat.stat_id" 
                                 class="flex items-center py-2 px-3 rounded-lg" 
-                                :class="cat.stat_id === selectedCategory ? 'bg-primary/20 border border-primary/30' : 'bg-dark-border/30'">
+                                :class="cat.stat_id === selectedCategory ? 'bg-yellow-400/20 border border-yellow-400/30' : 'bg-dark-border/30'">
                                 <!-- Category Name -->
                                 <div class="flex-1">
                                   <span class="text-sm text-dark-text font-medium">{{ cat.display_name }}</span>
                                 </div>
                                 <!-- Season Stats -->
                                 <div class="w-24 flex items-center justify-end gap-2">
-                                  <span class="text-sm font-bold" :class="cat.stat_id === selectedCategory ? 'text-primary' : 'text-dark-text'">
+                                  <span class="text-sm font-bold" :class="cat.stat_id === selectedCategory ? 'text-yellow-400' : 'text-dark-text'">
                                     {{ formatCategoryStat(player, cat.stat_id) }}
                                   </span>
                                   <span class="text-[10px] px-1.5 py-0.5 rounded" :class="getCategoryRankClass(player, cat.stat_id)">
@@ -474,7 +477,7 @@
                             <div class="space-y-4">
                               <div>
                                 <div class="flex justify-between text-sm mb-1"><span class="text-dark-textMuted">Category Rank (40%)</span><span class="text-dark-text font-medium">{{ ((1 - (player.categoryRank - 1) / Math.max(filteredPlayers.length, 1)) * 100).toFixed(0) }}</span></div>
-                                <div class="h-2 bg-dark-border rounded-full overflow-hidden"><div class="h-full bg-primary rounded-full" :style="{ width: `${(1 - (player.categoryRank - 1) / Math.max(filteredPlayers.length, 1)) * 100}%` }"></div></div>
+                                <div class="h-2 bg-dark-border rounded-full overflow-hidden"><div class="h-full bg-yellow-400 rounded-full" :style="{ width: `${(1 - (player.categoryRank - 1) / Math.max(filteredPlayers.length, 1)) * 100}%` }"></div></div>
                               </div>
                               <div>
                                 <div class="flex justify-between text-sm mb-1"><span class="text-dark-textMuted">Multi-Category (25%)</span><span class="text-dark-text font-medium">{{ ((player.categoriesContributing || 0) / Math.max(relevantCategories.length, 1) * 100).toFixed(0) }}</span></div>
@@ -500,7 +503,7 @@
                           <h4 class="font-semibold text-dark-text mb-3 flex items-center gap-2"><span>📅</span> Pitcher Info</h4>
                           <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
                             <div class="text-center p-3 rounded-lg bg-dark-border/30">
-                              <div class="text-2xl font-bold text-primary">~{{ player.position?.includes('SP') ? '13' : '25' }}</div>
+                              <div class="text-2xl font-bold text-yellow-400">~{{ player.position?.includes('SP') ? '13' : '25' }}</div>
                               <div class="text-xs text-dark-textMuted">{{ player.position?.includes('SP') ? 'Est. ROS Starts' : 'Est. ROS Apps' }}</div>
                             </div>
                             <div class="text-center p-3 rounded-lg bg-dark-border/30">
@@ -557,7 +560,7 @@
           <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
             <div class="text-center p-4 rounded-xl bg-dark-border/20">
               <div class="text-sm text-dark-textMuted mb-1">Team Projected Total</div>
-              <div class="text-3xl font-black text-primary">{{ formatStatValue(myTeamProjectedTotal) }}</div>
+              <div class="text-3xl font-black text-yellow-400">{{ formatStatValue(myTeamProjectedTotal) }}</div>
             </div>
             <div class="text-center p-4 rounded-xl bg-dark-border/20">
               <div class="text-sm text-dark-textMuted mb-1">League Rank</div>
@@ -566,7 +569,7 @@
             <div class="text-center p-4 rounded-xl bg-dark-border/20">
               <div class="text-sm text-dark-textMuted mb-1">Top Contributor</div>
               <div class="text-lg font-bold text-dark-text">{{ topContributor?.full_name || 'N/A' }}</div>
-              <div class="text-sm text-primary">{{ formatStatValue(topContributor?.projectedValue) }}</div>
+              <div class="text-sm text-yellow-400">{{ formatStatValue(topContributor?.projectedValue) }}</div>
             </div>
           </div>
           <div class="mt-6">
@@ -576,7 +579,7 @@
                 <div class="w-10 h-10 rounded-full bg-dark-border overflow-hidden mx-auto mb-2 ring-2 ring-yellow-400"><img :src="player.headshot || defaultHeadshot" :alt="player.full_name" class="w-full h-full object-cover" @error="handleImageError" /></div>
                 <div class="text-sm font-medium text-dark-text truncate">{{ player.full_name?.split(' ').pop() }}</div>
                 <div class="text-xs text-dark-textMuted">{{ player.position?.split(',')[0] }}</div>
-                <div class="text-sm font-bold text-primary mt-1">{{ formatStatValue(player.projectedValue) }}</div>
+                <div class="text-sm font-bold text-yellow-400 mt-1">{{ formatStatValue(player.projectedValue) }}</div>
               </div>
             </div>
           </div>
@@ -589,7 +592,7 @@
         <!-- Teams View Content -->
         <div class="space-y-6">
           <!-- League Category Summary -->
-          <div class="card bg-gradient-to-r from-primary/10 to-cyan-500/10 border-primary/30">
+          <div class="card bg-gradient-to-r from-green-500/10 to-cyan-500/10 border-green-500/30">
             <div class="card-body py-4">
               <div class="flex items-center justify-between flex-wrap gap-4">
                 <div>
@@ -598,7 +601,7 @@
                 </div>
                 <div class="flex gap-6">
                   <div class="text-center">
-                    <div class="text-2xl font-bold text-primary">{{ hittingCategories.length }}</div>
+                    <div class="text-2xl font-bold text-green-400">{{ hittingCategories.length }}</div>
                     <div class="text-xs text-dark-textMuted">Hitting</div>
                   </div>
                   <div class="text-center">
@@ -614,14 +617,14 @@
           <div class="flex items-center gap-2">
             <button 
               @click="teamsViewMode = 'grid'" 
-              :class="teamsViewMode === 'grid' ? 'bg-primary text-gray-900' : 'bg-dark-card text-dark-textMuted hover:bg-dark-border'"
+              :class="teamsViewMode === 'grid' ? 'bg-yellow-400 text-gray-900' : 'bg-dark-card text-dark-textMuted hover:bg-dark-border'"
               class="px-4 py-2 rounded-lg text-sm font-medium transition-all"
             >
               <span class="mr-2">◻️</span> Grid View
             </button>
             <button 
               @click="teamsViewMode = 'table'" 
-              :class="teamsViewMode === 'table' ? 'bg-primary text-gray-900' : 'bg-dark-card text-dark-textMuted hover:bg-dark-border'"
+              :class="teamsViewMode === 'table' ? 'bg-yellow-400 text-gray-900' : 'bg-dark-card text-dark-textMuted hover:bg-dark-border'"
               class="px-4 py-2 rounded-lg text-sm font-medium transition-all"
             >
               <span class="mr-2">📊</span> Table View
@@ -634,7 +637,7 @@
               v-for="team in gatedRankedTeams" 
               :key="team.team_key"
               @click="toggleTeamExpanded(team)"
-              class="card hover:ring-2 hover:ring-primary/50 transition-all cursor-pointer"
+              class="card hover:ring-2 hover:ring-yellow-400/50 transition-all cursor-pointer"
               :class="[
                 team.is_my_team ? 'ring-2 ring-yellow-400/50 bg-yellow-500/5' : '',
                 expandedTeamKey === team.team_key ? 'ring-2 ring-primary' : ''
@@ -778,7 +781,7 @@
                               <div v-if="team.topContributors?.[cat.stat_id]" class="flex items-center gap-2">
                                 <img :src="team.topContributors[cat.stat_id].headshot || defaultHeadshot" class="w-6 h-6 rounded-full" @error="handleImageError" />
                                 <span class="text-dark-text">{{ team.topContributors[cat.stat_id].name }}</span>
-                                <span class="text-primary font-medium">({{ formatTeamCategoryStat(team.topContributors[cat.stat_id].value, cat) }})</span>
+                                <span class="text-yellow-400 font-medium">({{ formatTeamCategoryStat(team.topContributors[cat.stat_id].value, cat) }})</span>
                               </div>
                               <span v-else class="text-dark-textMuted">-</span>
                             </td>
@@ -966,15 +969,15 @@
                 <div class="flex items-center gap-3">
                   <span class="text-dark-textMuted font-medium">View:</span>
                   <div class="flex rounded-lg overflow-hidden border border-dark-border/50">
-                    <button @click="startSitMode = 'daily'" :class="startSitMode === 'daily' ? 'bg-primary text-gray-900' : 'bg-dark-card text-dark-textMuted'" class="px-4 py-2 text-sm font-medium transition-colors">📅 Daily</button>
-                    <button @click="startSitMode = 'weekly'" :class="startSitMode === 'weekly' ? 'bg-primary text-gray-900' : 'bg-dark-card text-dark-textMuted'" class="px-4 py-2 text-sm font-medium transition-colors">📆 Weekly</button>
+                    <button @click="startSitMode = 'daily'" :class="startSitMode === 'daily' ? 'bg-yellow-400 text-gray-900' : 'bg-dark-card text-dark-textMuted'" class="px-4 py-2 text-sm font-medium transition-colors">📅 Daily</button>
+                    <button @click="startSitMode = 'weekly'" :class="startSitMode === 'weekly' ? 'bg-yellow-400 text-gray-900' : 'bg-dark-card text-dark-textMuted'" class="px-4 py-2 text-sm font-medium transition-colors">📆 Weekly</button>
                   </div>
                 </div>
                 <div class="flex items-center gap-3">
                   <template v-if="startSitMode === 'daily'">
                     <div class="flex rounded-lg overflow-hidden border border-dark-border/50">
-                      <button @click="startSitDay = 'today'" :class="startSitDay === 'today' ? 'bg-primary text-gray-900' : 'bg-dark-card text-dark-textMuted hover:bg-dark-border/50'" class="px-4 py-2 text-sm font-medium transition-colors">Today</button>
-                      <button @click="startSitDay = 'tomorrow'" :class="startSitDay === 'tomorrow' ? 'bg-primary text-gray-900' : 'bg-dark-card text-dark-textMuted hover:bg-dark-border/50'" class="px-4 py-2 text-sm font-medium transition-colors">Tomorrow</button>
+                      <button @click="startSitDay = 'today'" :class="startSitDay === 'today' ? 'bg-yellow-400 text-gray-900' : 'bg-dark-card text-dark-textMuted hover:bg-dark-border/50'" class="px-4 py-2 text-sm font-medium transition-colors">Today</button>
+                      <button @click="startSitDay = 'tomorrow'" :class="startSitDay === 'tomorrow' ? 'bg-yellow-400 text-gray-900' : 'bg-dark-card text-dark-textMuted hover:bg-dark-border/50'" class="px-4 py-2 text-sm font-medium transition-colors">Tomorrow</button>
                     </div>
                     <span class="text-dark-text font-semibold">{{ formatStartSitDate }}</span>
                   </template>
@@ -995,7 +998,7 @@
                   <div class="flex rounded-lg overflow-hidden border border-dark-border/50">
                     <button 
                       @click="startSitPlayerFilter = 'all'" 
-                      :class="startSitPlayerFilter === 'all' ? 'bg-primary text-gray-900' : 'bg-dark-card text-dark-textMuted hover:bg-dark-border/50'" 
+                      :class="startSitPlayerFilter === 'all' ? 'bg-yellow-400 text-gray-900' : 'bg-dark-card text-dark-textMuted hover:bg-dark-border/50'" 
                       class="px-3 py-1.5 text-sm font-medium transition-colors"
                     >All Players</button>
                     <button 
@@ -1034,7 +1037,7 @@
                   v-for="pos in startSitPositions" 
                   :key="pos.id" 
                   @click="selectedStartSitPosition = pos.id"
-                  :class="selectedStartSitPosition === pos.id ? 'bg-primary text-gray-900' : 'bg-dark-border/30 text-dark-textSecondary hover:text-dark-text'"
+                  :class="selectedStartSitPosition === pos.id ? 'bg-yellow-400 text-gray-900' : 'bg-dark-border/30 text-dark-textSecondary hover:text-dark-text'"
                   class="px-4 py-2 rounded-lg text-sm font-medium transition-all"
                 >
                   {{ pos.label }}
@@ -1899,8 +1902,8 @@ function getTierLabel(tier: number): string { const labels: Record<number, strin
 function getValueClass(value: number): string { if (value >= 80) return 'text-green-400'; if (value >= 60) return 'text-lime-400'; if (value >= 40) return 'text-yellow-400'; if (value >= 20) return 'text-orange-400'; return 'text-red-400' }
 function getValueDotClass(value: number): string { if (value >= 80) return 'bg-green-400'; if (value >= 60) return 'bg-lime-400'; if (value >= 40) return 'bg-yellow-400'; if (value >= 20) return 'bg-orange-400'; return 'bg-red-400' }
 
-const getCategoryCardClass = computed(() => isPitchingCategory.value ? 'bg-cyan-500/10 border-cyan-500/30' : 'bg-primary/10 border-primary/30')
-const getCategoryBadgeClass = computed(() => isPitchingCategory.value ? 'bg-cyan-500/20 text-cyan-400' : 'bg-primary/20 text-primary')
+const getCategoryCardClass = computed(() => isPitchingCategory.value ? 'bg-cyan-500/10 border-cyan-500/30' : 'bg-green-500/10 border-green-500/30')
+const getCategoryBadgeClass = computed(() => isPitchingCategory.value ? 'bg-cyan-500/20 text-cyan-400' : 'bg-green-500/20 text-green-400')
 
 async function loadProjections() {
   isLoading.value = true
@@ -2605,7 +2608,7 @@ function getCategoryProjectionClass(player: any, cat: any): string {
   if (value <= 0) return 'text-dark-textMuted'
   
   const status = matchupCategoryStatus.value[cat.stat_id]?.status
-  if (status === 'losing' || status === 'close') return 'text-primary'
+  if (status === 'losing' || status === 'close') return 'text-yellow-400'
   return 'text-dark-text'
 }
 
