@@ -11,8 +11,8 @@
 
     <!-- Settings Gear at Top -->
     <div class="flex justify-end">
-      <router-link to="/settings" class="p-2 rounded-lg bg-dark-card border border-dark-border hover:border-primary transition-colors">
-        <svg class="w-6 h-6 text-dark-textMuted hover:text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <router-link to="/settings" class="p-2 rounded-lg bg-dark-card border border-dark-border hover:border-red-600 transition-colors">
+        <svg class="w-6 h-6 text-dark-textMuted hover:text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
         </svg>
@@ -20,12 +20,12 @@
     </div>
 
     <!-- Hero Section - Current Week Matchups -->
-    <div class="relative overflow-hidden rounded-2xl bg-gradient-to-br from-primary/10 via-dark-card to-dark-bg border border-dark-border">
-      <div class="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-primary/5 via-transparent to-transparent"></div>
+    <div class="relative overflow-hidden rounded-2xl bg-gradient-to-br from-red-600/10 via-dark-card to-dark-bg border border-dark-border">
+      <div class="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-red-600/5 via-transparent to-transparent"></div>
       
       <div class="relative p-6 md:p-8">
         <div class="flex items-center gap-3 mb-6">
-          <div class="w-1.5 h-10 bg-primary rounded-full"></div>
+          <div class="w-1.5 h-10 bg-red-600 rounded-full"></div>
           <div>
             <h1 class="text-3xl md:text-4xl font-black text-dark-text tracking-tight">{{ leagueName }}</h1>
             <p class="text-dark-textMuted text-base mt-1">
@@ -38,7 +38,7 @@
 
         <div v-if="isLoading" class="flex items-center justify-center py-12">
           <div class="text-center">
-            <div class="animate-spin rounded-full h-12 w-12 border-b-4 border-primary mx-auto mb-3"></div>
+            <div class="animate-spin rounded-full h-12 w-12 border-b-4 border-red-600 mx-auto mb-3"></div>
             <p class="text-dark-textMuted text-sm">Loading matchups...</p>
           </div>
         </div>
@@ -48,7 +48,7 @@
           <div 
             v-for="matchup in formattedMatchups" 
             :key="matchup.matchup_id" 
-            class="bg-dark-bg/60 backdrop-blur rounded-xl p-4 border border-dark-border/50 hover:border-primary/50 hover:bg-dark-bg/80 transition-all cursor-pointer group"
+            class="bg-dark-bg/60 backdrop-blur rounded-xl p-4 border border-dark-border/50 hover:border-red-600/50 hover:bg-dark-bg/80 transition-all cursor-pointer group"
           >
             <!-- Team 1 -->
             <div class="flex items-center justify-between mb-3">
@@ -57,7 +57,7 @@
                   <img 
                     :src="matchup.team1?.logo_url || defaultAvatar" 
                     :alt="matchup.team1?.name || 'Team 1'" 
-                    :class="['w-10 h-10 rounded-full border-2 transition-colors object-cover', matchup.team1?.is_my_team ? 'border-yellow-500 ring-2 ring-yellow-500/30' : 'border-dark-border group-hover:border-primary/50']"
+                    :class="['w-10 h-10 rounded-full border-2 transition-colors object-cover', matchup.team1?.is_my_team ? 'border-yellow-500 ring-2 ring-yellow-500/30' : 'border-dark-border group-hover:border-red-600/50']"
                     @error="handleImageError" 
                   />
                   <div v-if="matchup.team1?.is_my_team" class="absolute -top-0.5 -left-0.5 w-4 h-4 bg-yellow-500 rounded-full flex items-center justify-center shadow">
@@ -86,7 +86,7 @@
                   <img 
                     :src="matchup.team2?.logo_url || defaultAvatar" 
                     :alt="matchup.team2?.name || 'Team 2'" 
-                    :class="['w-10 h-10 rounded-full border-2 transition-colors object-cover', matchup.team2?.is_my_team ? 'border-yellow-500 ring-2 ring-yellow-500/30' : 'border-dark-border group-hover:border-primary/50']"
+                    :class="['w-10 h-10 rounded-full border-2 transition-colors object-cover', matchup.team2?.is_my_team ? 'border-yellow-500 ring-2 ring-yellow-500/30' : 'border-dark-border group-hover:border-red-600/50']"
                     @error="handleImageError" 
                   />
                   <div v-if="matchup.team2?.is_my_team" class="absolute -top-0.5 -left-0.5 w-4 h-4 bg-yellow-500 rounded-full flex items-center justify-center shadow">
@@ -193,7 +193,7 @@
               <h2 class="card-title">League Standings</h2>
             </div>
             <p class="text-sm text-dark-textMuted mt-1">
-              <span class="text-primary">Click any team</span> to see detailed stats and category breakdown
+              <span class="text-red-500">Click any team</span> to see detailed stats and category breakdown
             </p>
           </div>
           <div class="flex items-center gap-2 flex-shrink-0">
@@ -369,7 +369,7 @@
       <div class="card-body">
         <div v-if="isLoadingChart" class="flex items-center justify-center py-12">
           <div class="text-center">
-            <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-3"></div>
+            <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-red-600 mx-auto mb-3"></div>
             <p class="text-dark-textMuted text-sm">Loading chart data ({{ chartLoadProgress }})...</p>
           </div>
         </div>
@@ -435,7 +435,7 @@
               <div class="font-semibold text-dark-text truncate text-sm">{{ stat.team?.name || 'N/A' }}</div>
               <div class="text-xs font-bold" :class="stat.valueClass">{{ stat.value }}</div>
             </div>
-            <div class="text-dark-textMuted/50 group-hover:text-primary transition-colors">
+            <div class="text-dark-textMuted/50 group-hover:text-red-500 transition-colors">
               <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
               </svg>
@@ -447,9 +447,9 @@
 
     <!-- Platform Badge -->
     <div class="flex justify-center">
-      <div class="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-purple-600/10 border border-purple-600/30">
-        <span class="text-sm font-bold text-purple-400">Y!</span>
-        <span class="text-sm text-purple-300">Yahoo Fantasy Baseball • {{ scoringTypeLabel }}</span>
+      <div class="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-red-600/10 border border-red-600/30">
+        <span class="text-sm font-bold text-red-400">Y!</span>
+        <span class="text-sm text-red-300">Yahoo Fantasy Baseball • {{ scoringTypeLabel }}</span>
       </div>
     </div>
 
@@ -565,7 +565,7 @@
               <img 
                 :src="selectedTeamDetail?.logo_url || defaultAvatar" 
                 :alt="selectedTeamDetail?.name"
-                class="w-12 h-12 rounded-full ring-2 ring-primary object-cover"
+                class="w-12 h-12 rounded-full ring-2 ring-red-600 object-cover"
                 @error="handleImageError"
               />
               <div>
@@ -613,7 +613,7 @@
               </div>
               <div class="bg-dark-border/20 rounded-xl p-4 text-center">
                 <div class="flex items-center justify-center">
-                  <span class="text-2xl font-black text-primary">#{{ selectedTeamDetail?.regularSeasonRank }}</span>
+                  <span class="text-2xl font-black text-yellow-400">#{{ selectedTeamDetail?.regularSeasonRank }}</span>
                 </div>
                 <div class="text-xs text-dark-textMuted mt-1">Rank</div>
               </div>
@@ -835,7 +835,7 @@ const scoringTypeLabel = computed(() => {
 const scoringTypeBadgeClass = computed(() => {
   if (scoringType.value?.includes('roto')) return 'bg-purple-500/20 text-purple-400'
   if (isPointsLeague.value) return 'bg-green-500/20 text-green-400'
-  return 'bg-blue-500/20 text-blue-400'
+  return 'bg-red-500/20 text-red-400'
 })
 
 // Format matchups with category win data
