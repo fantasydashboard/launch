@@ -2629,7 +2629,7 @@ async function downloadCareerStats() {
         
         <!-- Top Red Bar -->
         <div style="background: #dc2626; padding: 10px 24px; text-align: center;">
-          <span style="font-size: 16px; font-weight: 700; color: #ffffff; text-transform: uppercase; letter-spacing: 3px;">Ultimate Fantasy Dashboard</span>
+          <span style="font-size: 16px; font-weight: 700; color: #0a0c14; text-transform: uppercase; letter-spacing: 3px;">Ultimate Fantasy Dashboard</span>
         </div>
         
         <!-- Header -->
@@ -2740,7 +2740,7 @@ async function downloadSeasonHistory() {
         
         <!-- Top Red Bar -->
         <div style="background: #dc2626; padding: 10px 24px; text-align: center;">
-          <span style="font-size: 16px; font-weight: 700; color: #ffffff; text-transform: uppercase; letter-spacing: 3px;">Ultimate Fantasy Dashboard</span>
+          <span style="font-size: 16px; font-weight: 700; color: #0a0c14; text-transform: uppercase; letter-spacing: 3px;">Ultimate Fantasy Dashboard</span>
         </div>
         
         <!-- Header -->
@@ -2829,7 +2829,7 @@ async function downloadH2HMatrix() {
         
         <!-- Top Red Bar -->
         <div style="background: #dc2626; padding: 10px 24px; text-align: center;">
-          <span style="font-size: 16px; font-weight: 700; color: #ffffff; text-transform: uppercase; letter-spacing: 3px;">Ultimate Fantasy Dashboard</span>
+          <span style="font-size: 16px; font-weight: 700; color: #0a0c14; text-transform: uppercase; letter-spacing: 3px;">Ultimate Fantasy Dashboard</span>
         </div>
         
         <!-- Header -->
@@ -2977,6 +2977,18 @@ async function downloadRecordRankings(recordLabel: string) {
       return r.value || 0
     }))
     
+    // Get value unit descriptor based on record label
+    const getValueUnit = (): string => {
+      if (recordLabel.includes('Championships')) return 'Titles'
+      if (recordLabel.includes('Categories Won')) return 'Cat Wins'
+      if (recordLabel.includes('Win %') || recordLabel.includes('Pct')) return 'Win %'
+      if (recordLabel.includes('Wins')) return 'Wins'
+      if (recordLabel.includes('Losses')) return 'Losses'
+      if (recordLabel.includes('Seasons')) return 'Seasons'
+      return ''
+    }
+    const valueUnit = getValueUnit()
+    
     // Generate ranking rows with images
     const generateRows = () => {
       return rankings.map((team, idx) => {
@@ -2997,8 +3009,9 @@ async function downloadRecordRankings(recordLabel: string) {
                 <div style="height: 100%; width: ${barWidth}%; background: #facc15; opacity: ${idx === 0 ? 1 : 0.6}; border-radius: 3px;"></div>
               </div>
             </div>
-            <div style="width: 50px; text-align: right;">
+            <div style="width: 65px; text-align: right;">
               <div style="font-size: 13px; font-weight: bold; color: ${idx === 0 ? '#facc15' : '#e5e7eb'};">${team.value}</div>
+              <div style="font-size: 9px; color: #6b7280; margin-top: 1px;">${valueUnit}</div>
             </div>
           </div>
         `
@@ -3013,7 +3026,7 @@ async function downloadRecordRankings(recordLabel: string) {
         
         <!-- Top Red Bar -->
         <div style="background: #dc2626; padding: 8px 20px; text-align: center;">
-          <span style="font-size: 12px; font-weight: 700; color: #ffffff; text-transform: uppercase; letter-spacing: 2px;">Ultimate Fantasy Dashboard</span>
+          <span style="font-size: 12px; font-weight: 700; color: #0a0c14; text-transform: uppercase; letter-spacing: 2px;">Ultimate Fantasy Dashboard</span>
         </div>
         
         <!-- Header -->
@@ -3045,6 +3058,7 @@ async function downloadRecordRankings(recordLabel: string) {
         
         <!-- Rankings List -->
         <div style="padding: 12px 16px;">
+          <div style="font-size: 10px; font-weight: 600; color: #6b7280; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 10px;">Top Ten Comparison</div>
           ${generateRows()}
         </div>
         
@@ -3184,8 +3198,9 @@ async function downloadSeasonCategoryRankings(category: string, type: 'best' | '
                 <div style="height: 100%; width: ${barWidth}%; background: #facc15; opacity: ${idx === 0 ? 1 : 0.6}; border-radius: 3px;"></div>
               </div>
             </div>
-            <div style="width: 50px; text-align: right;">
+            <div style="width: 65px; text-align: right;">
               <div style="font-size: 13px; font-weight: bold; color: ${idx === 0 ? '#facc15' : '#e5e7eb'};">${team.value}</div>
+              <div style="font-size: 9px; color: #6b7280; margin-top: 1px;">Cat Wins</div>
             </div>
           </div>
         `
@@ -3200,7 +3215,7 @@ async function downloadSeasonCategoryRankings(category: string, type: 'best' | '
         
         <!-- Top Red Bar -->
         <div style="background: #dc2626; padding: 8px 20px; text-align: center;">
-          <span style="font-size: 12px; font-weight: 700; color: #ffffff; text-transform: uppercase; letter-spacing: 2px;">Ultimate Fantasy Dashboard</span>
+          <span style="font-size: 12px; font-weight: 700; color: #0a0c14; text-transform: uppercase; letter-spacing: 2px;">Ultimate Fantasy Dashboard</span>
         </div>
         
         <!-- Header -->
@@ -3232,6 +3247,7 @@ async function downloadSeasonCategoryRankings(category: string, type: 'best' | '
         
         <!-- Rankings List -->
         <div style="padding: 12px 16px;">
+          <div style="font-size: 10px; font-weight: 600; color: #6b7280; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 10px;">Top Ten Comparison</div>
           ${generateRows()}
         </div>
         
@@ -3375,8 +3391,9 @@ async function downloadAwardRankings(category: string, type: 'best' | 'worst', c
                 <div style="height: 100%; width: ${barWidth}%; background: ${colorMain}; opacity: ${idx === 0 ? 1 : 0.6}; border-radius: 3px;"></div>
               </div>
             </div>
-            <div style="width: 40px; text-align: right;">
+            <div style="width: 65px; text-align: right;">
               <div style="font-size: 13px; font-weight: bold; color: ${idx === 0 ? colorMain : '#e5e7eb'};">${team.value}</div>
+              <div style="font-size: 9px; color: #6b7280; margin-top: 1px;">Cat Wins</div>
             </div>
           </div>
         `
@@ -3391,7 +3408,7 @@ async function downloadAwardRankings(category: string, type: 'best' | 'worst', c
         
         <!-- Top Red Bar -->
         <div style="background: #dc2626; padding: 8px 20px; text-align: center;">
-          <span style="font-size: 12px; font-weight: 700; color: #ffffff; text-transform: uppercase; letter-spacing: 2px;">Ultimate Fantasy Dashboard</span>
+          <span style="font-size: 12px; font-weight: 700; color: #0a0c14; text-transform: uppercase; letter-spacing: 2px;">Ultimate Fantasy Dashboard</span>
         </div>
         
         <!-- Header -->
@@ -3424,6 +3441,7 @@ async function downloadAwardRankings(category: string, type: 'best' | 'worst', c
         
         <!-- Rankings List -->
         <div style="padding: 12px 16px;">
+          <div style="font-size: 10px; font-weight: 600; color: #6b7280; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 10px;">Top Ten Comparison</div>
           ${generateRows()}
         </div>
         
