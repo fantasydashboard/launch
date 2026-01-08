@@ -2435,11 +2435,39 @@ async function downloadCareerStats() {
     // Get sorted top 12 teams
     const sortedStats = sortStats(filteredCareerStats.value).slice(0, 12)
     
-    // Pre-load all team images - use placeholders for all due to CORS issues with Yahoo
+    // Pre-load all team images
     const imageMap = new Map<string, string>()
     for (const stat of sortedStats) {
-      // Always use placeholder to avoid CORS issues with Yahoo images
-      imageMap.set(stat.team_key, createPlaceholder(stat.team_name))
+      try {
+        const img = new Image()
+        img.crossOrigin = 'anonymous'
+        const loadPromise = new Promise<string>((resolve) => {
+          img.onload = () => {
+            try {
+              const canvas = document.createElement('canvas')
+              canvas.width = 64
+              canvas.height = 64
+              const ctx = canvas.getContext('2d')
+              if (ctx) {
+                ctx.beginPath()
+                ctx.arc(32, 32, 32, 0, Math.PI * 2)
+                ctx.closePath()
+                ctx.clip()
+                ctx.drawImage(img, 0, 0, 64, 64)
+              }
+              resolve(canvas.toDataURL('image/png'))
+            } catch {
+              resolve(createPlaceholder(stat.team_name))
+            }
+          }
+          img.onerror = () => resolve(createPlaceholder(stat.team_name))
+          setTimeout(() => resolve(createPlaceholder(stat.team_name)), 3000)
+        })
+        img.src = stat.logo_url || ''
+        imageMap.set(stat.team_key, await loadPromise)
+      } catch {
+        imageMap.set(stat.team_key, createPlaceholder(stat.team_name))
+      }
     }
     
     // Column label mapping
@@ -2789,10 +2817,39 @@ async function downloadRecordRankings(recordLabel: string) {
     const logoBase64 = await loadLogo()
     const leader = rankings[0]
     
-    // Pre-load all team images - use placeholders to avoid CORS issues
+    // Pre-load all team images
     const imageMap = new Map<string, string>()
     for (const team of rankings) {
-      imageMap.set(team.team_name, createPlaceholder(team.team_name))
+      try {
+        const img = new Image()
+        img.crossOrigin = 'anonymous'
+        const loadPromise = new Promise<string>((resolve) => {
+          img.onload = () => {
+            try {
+              const canvas = document.createElement('canvas')
+              canvas.width = 64
+              canvas.height = 64
+              const ctx = canvas.getContext('2d')
+              if (ctx) {
+                ctx.beginPath()
+                ctx.arc(32, 32, 32, 0, Math.PI * 2)
+                ctx.closePath()
+                ctx.clip()
+                ctx.drawImage(img, 0, 0, 64, 64)
+              }
+              resolve(canvas.toDataURL('image/png'))
+            } catch {
+              resolve(createPlaceholder(team.team_name))
+            }
+          }
+          img.onerror = () => resolve(createPlaceholder(team.team_name))
+          setTimeout(() => resolve(createPlaceholder(team.team_name)), 3000)
+        })
+        img.src = team.logo_url || ''
+        imageMap.set(team.team_name, await loadPromise)
+      } catch {
+        imageMap.set(team.team_name, createPlaceholder(team.team_name))
+      }
     }
     
     const maxValue = Math.max(...rankings.map(r => {
@@ -2964,10 +3021,39 @@ async function downloadAwardRankings(category: string, type: 'best' | 'worst', c
     const colorLight = type === 'best' ? (catType === 'hitting' ? 'rgba(34, 197, 94, 0.15)' : 'rgba(168, 85, 247, 0.15)') : 'rgba(239, 68, 68, 0.15)'
     const colorBorder = type === 'best' ? (catType === 'hitting' ? 'rgba(34, 197, 94, 0.3)' : 'rgba(168, 85, 247, 0.3)') : 'rgba(239, 68, 68, 0.3)'
     
-    // Pre-load all team images - use placeholders to avoid CORS issues
+    // Pre-load all team images
     const imageMap = new Map<string, string>()
     for (const team of rankings) {
-      imageMap.set(team.team_name + team.season, createPlaceholder(team.team_name, colorMain))
+      try {
+        const img = new Image()
+        img.crossOrigin = 'anonymous'
+        const loadPromise = new Promise<string>((resolve) => {
+          img.onload = () => {
+            try {
+              const canvas = document.createElement('canvas')
+              canvas.width = 64
+              canvas.height = 64
+              const ctx = canvas.getContext('2d')
+              if (ctx) {
+                ctx.beginPath()
+                ctx.arc(32, 32, 32, 0, Math.PI * 2)
+                ctx.closePath()
+                ctx.clip()
+                ctx.drawImage(img, 0, 0, 64, 64)
+              }
+              resolve(canvas.toDataURL('image/png'))
+            } catch {
+              resolve(createPlaceholder(team.team_name, colorMain))
+            }
+          }
+          img.onerror = () => resolve(createPlaceholder(team.team_name, colorMain))
+          setTimeout(() => resolve(createPlaceholder(team.team_name, colorMain)), 3000)
+        })
+        img.src = team.logo_url || ''
+        imageMap.set(team.team_name + team.season, await loadPromise)
+      } catch {
+        imageMap.set(team.team_name + team.season, createPlaceholder(team.team_name, colorMain))
+      }
     }
     
     // Generate ranking rows with proper layout
