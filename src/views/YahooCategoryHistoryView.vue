@@ -28,20 +28,20 @@
     </div>
 
     <template v-else>
-      <!-- Career Records (4 Cards) - Expandable -->
+      <!-- Career Records (4 Cards) - Click opens modal -->
       <div class="card">
         <div class="card-header">
           <div class="flex items-center gap-2">
             <span class="text-2xl">👑</span>
             <h2 class="card-title">Career Records</h2>
           </div>
-          <p class="card-subtitle mt-2">All-time league leaders • Click to expand</p>
+          <p class="card-subtitle mt-2">All-time league leaders • Click for details</p>
         </div>
         <div class="card-body">
           <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
             <div v-for="record in careerRecords" :key="record.label" 
                  class="relative overflow-hidden cursor-pointer"
-                 @click="toggleRecordCard(record.label)">
+                 @click="openRecordModal(record.label)">
               <div class="p-6 bg-gradient-to-br from-yellow-500/10 to-yellow-600/5 rounded-xl border-2 border-yellow-500/20 hover:border-yellow-500/40 transition-all">
                 <div class="flex items-start justify-between mb-4">
                   <div class="text-4xl">{{ record.icon }}</div>
@@ -54,73 +54,8 @@
                   <div class="font-bold text-lg text-dark-text">{{ record.team }}</div>
                   <div class="text-xs text-dark-textMuted">{{ record.detail }}</div>
                 </div>
-                <div class="text-xs text-yellow-400 mt-2 opacity-70">Click for full rankings →</div>
+                <div class="text-xs text-yellow-400 mt-2 opacity-70">Click for details →</div>
               </div>
-              
-              <!-- Expanded Rankings - League Leaders Style -->
-              <transition name="expand">
-                <div v-if="expandedRecordCard === record.label" 
-                     class="mt-2 bg-dark-elevated rounded-xl border border-yellow-500/30 overflow-hidden" @click.stop>
-                  <!-- Header with Share Button -->
-                  <div class="px-4 py-3 border-b border-dark-border flex items-center justify-between bg-dark-card">
-                    <div class="text-sm font-semibold text-dark-text uppercase tracking-wider">{{ record.label }} - All-Time</div>
-                    <button 
-                      @click.stop="downloadRecordRankings(record.label)"
-                      :disabled="isDownloadingRecord"
-                      class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors disabled:opacity-50"
-                      style="background: #dc2626; color: #ffffff;"
-                      @mouseover="$event.currentTarget.style.background = '#eab308'; $event.currentTarget.style.color = '#0a0c14'"
-                      @mouseout="$event.currentTarget.style.background = '#dc2626'; $event.currentTarget.style.color = '#ffffff'"
-                    >
-                      <svg class="w-3.5 h-3.5 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-                      </svg>
-                      Share
-                    </button>
-                  </div>
-                  
-                  <!-- Featured Leader -->
-                  <div class="p-4 bg-gradient-to-r from-yellow-500/10 to-transparent border-b border-dark-border">
-                    <div class="flex items-center gap-4" v-if="getRecordRankings(record.label)[0]">
-                      <img :src="getRecordRankings(record.label)[0].logo_url || defaultAvatar" 
-                           class="w-14 h-14 rounded-full ring-4 ring-yellow-500/50 object-cover" 
-                           @error="handleImageError" />
-                      <div class="flex-1">
-                        <div class="text-lg font-bold text-dark-text">{{ getRecordRankings(record.label)[0].team_name }}</div>
-                        <div class="text-sm text-dark-textMuted">{{ getRecordRankings(record.label)[0].detail }}</div>
-                      </div>
-                      <div class="text-right">
-                        <div class="text-3xl font-black text-yellow-400">{{ getRecordRankings(record.label)[0].value }}</div>
-                      </div>
-                    </div>
-                  </div>
-                  
-                  <!-- Rankings List with Bars -->
-                  <div class="p-4 max-h-72 overflow-y-auto">
-                    <div class="space-y-3">
-                      <div v-for="(team, idx) in getRecordRankings(record.label).slice(0, 10)" :key="team.team_name"
-                           class="flex items-center gap-3">
-                        <div class="w-6 text-center">
-                          <span class="text-sm font-bold" :class="idx === 0 ? 'text-yellow-400' : 'text-dark-textMuted'">{{ idx + 1 }}</span>
-                        </div>
-                        <img :src="team.logo_url || defaultAvatar" class="w-8 h-8 rounded-full object-cover" @error="handleImageError" />
-                        <div class="flex-1 min-w-0">
-                          <div class="flex items-center gap-2 mb-1">
-                            <span class="text-sm font-medium text-dark-text truncate">{{ team.team_name }}</span>
-                          </div>
-                          <div class="h-2.5 bg-dark-border rounded-full overflow-hidden">
-                            <div class="h-full rounded-full transition-all duration-500 bg-yellow-500"
-                                 :style="{ width: getRecordBarWidth(team.value, record.label) }"></div>
-                          </div>
-                        </div>
-                        <div class="w-20 text-right">
-                          <div class="text-sm font-semibold" :class="idx === 0 ? 'text-yellow-400' : 'text-dark-text'">{{ team.value }}</div>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </transition>
             </div>
           </div>
         </div>
@@ -571,9 +506,8 @@
                 <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
                   <div v-for="award in hallOfFameHitting" :key="award.category" 
                        class="cursor-pointer"
-                       @click="toggleAwardCard(`fame-hitting-${award.category}`)">
-                    <div class="bg-gradient-to-br from-green-500/10 to-green-600/5 rounded-xl p-4 border border-green-500/20 hover:border-green-500/40 transition-all"
-                         :class="expandedAwardCard === `fame-hitting-${award.category}` ? 'ring-2 ring-green-500' : ''">
+                       @click="openAwardModal(award.category, 'best', 'hitting')">
+                    <div class="bg-gradient-to-br from-green-500/10 to-green-600/5 rounded-xl p-4 border border-green-500/20 hover:border-green-500/40 transition-all">
                       <div class="text-center mb-2">
                         <span class="px-3 py-1 rounded-full text-xs font-bold bg-green-500/30 text-green-400">{{ award.category }}</span>
                       </div>
@@ -584,88 +518,12 @@
                         <div class="font-semibold text-dark-text text-sm truncate">{{ award.winner.team_name }}</div>
                         <div class="text-2xl font-black text-green-400">{{ award.winner.value }}</div>
                         <div class="text-xs text-dark-textMuted">wins in {{ award.winner.season }}</div>
-                        <div class="text-xs text-green-400/70 mt-1">Click for rankings →</div>
+                        <div class="text-xs text-green-400/70 mt-1">Click for details →</div>
                       </div>
                       <div v-else class="text-center text-sm text-dark-textMuted italic py-4">No data</div>
                     </div>
                   </div>
                 </div>
-                
-                <!-- Expanded Rankings Panel (outside grid for full width) -->
-                <transition name="expand">
-                  <div v-if="expandedAwardCard?.startsWith('fame-hitting-')" 
-                       class="mt-4 bg-dark-elevated rounded-xl border border-green-500/30 overflow-hidden">
-                    <!-- Header with Share -->
-                    <div class="px-4 py-3 border-b border-dark-border flex items-center justify-between bg-dark-card">
-                      <div class="text-lg font-bold text-green-400">{{ expandedAwardCard?.replace('fame-hitting-', '') }} - All-Time Best</div>
-                      <div class="flex items-center gap-2">
-                        <button 
-                          @click.stop="downloadAwardRankings(expandedAwardCard?.replace('fame-hitting-', '') || '', 'best', 'hitting')"
-                          :disabled="isDownloadingAward"
-                          class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors disabled:opacity-50"
-                          style="background: #dc2626; color: #ffffff;"
-                          @mouseover="$event.currentTarget.style.background = '#eab308'; $event.currentTarget.style.color = '#0a0c14'"
-                          @mouseout="$event.currentTarget.style.background = '#dc2626'; $event.currentTarget.style.color = '#ffffff'"
-                        >
-                          <svg class="w-3.5 h-3.5 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-                          </svg>
-                          Share
-                        </button>
-                        <button @click="expandedAwardCard = null" class="text-dark-textMuted hover:text-dark-text p-1">
-                          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-                          </svg>
-                        </button>
-                      </div>
-                    </div>
-                    
-                    <!-- Featured Leader -->
-                    <div class="p-4 bg-gradient-to-r from-green-500/10 to-transparent border-b border-dark-border" 
-                         v-if="getCategoryRankings(expandedAwardCard?.replace('fame-hitting-', '') || '', 'best')[0]">
-                      <div class="flex items-center gap-4">
-                        <img :src="getCategoryRankings(expandedAwardCard?.replace('fame-hitting-', '') || '', 'best')[0].logo_url || defaultAvatar" 
-                             class="w-14 h-14 rounded-full ring-4 ring-green-500/50 object-cover" 
-                             @error="handleImageError" />
-                        <div class="flex-1">
-                          <div class="text-lg font-bold text-dark-text">{{ getCategoryRankings(expandedAwardCard?.replace('fame-hitting-', '') || '', 'best')[0].team_name }}</div>
-                          <div class="text-sm text-dark-textMuted">{{ getCategoryRankings(expandedAwardCard?.replace('fame-hitting-', '') || '', 'best')[0].season }}</div>
-                        </div>
-                        <div class="text-right">
-                          <div class="text-3xl font-black text-green-400">{{ getCategoryRankings(expandedAwardCard?.replace('fame-hitting-', '') || '', 'best')[0].value }}</div>
-                          <div class="text-xs text-dark-textMuted">category wins</div>
-                        </div>
-                      </div>
-                    </div>
-                    
-                    <!-- Rankings List -->
-                    <div class="p-4 max-h-72 overflow-y-auto">
-                      <div class="space-y-3">
-                        <div v-for="(team, idx) in getCategoryRankings(expandedAwardCard?.replace('fame-hitting-', '') || '', 'best').slice(0, 10)" 
-                             :key="`${team.team_name}-${team.season}`"
-                             class="flex items-center gap-3">
-                          <div class="w-6 text-center">
-                            <span class="text-sm font-bold" :class="idx === 0 ? 'text-green-400' : 'text-dark-textMuted'">{{ idx + 1 }}</span>
-                          </div>
-                          <img :src="team.logo_url || defaultAvatar" class="w-8 h-8 rounded-full object-cover" @error="handleImageError" />
-                          <div class="flex-1 min-w-0">
-                            <div class="flex items-center gap-2 mb-1">
-                              <span class="text-sm font-medium text-dark-text truncate">{{ team.team_name }}</span>
-                              <span class="text-xs text-dark-textMuted">{{ team.season }}</span>
-                            </div>
-                            <div class="h-2.5 bg-dark-border rounded-full overflow-hidden">
-                              <div class="h-full rounded-full transition-all duration-500 bg-green-500"
-                                   :style="{ width: getBarWidth(team.value, getCategoryRankings(expandedAwardCard?.replace('fame-hitting-', '') || '', 'best')) }"></div>
-                            </div>
-                          </div>
-                          <div class="w-16 text-right">
-                            <div class="text-sm font-semibold" :class="idx === 0 ? 'text-green-400' : 'text-dark-text'">{{ team.value }}</div>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </transition>
               </div>
               
               <!-- Category Kings - Pitching -->
@@ -674,9 +532,8 @@
                 <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
                   <div v-for="award in hallOfFamePitching" :key="award.category"
                        class="cursor-pointer"
-                       @click="toggleAwardCard(`fame-pitching-${award.category}`)">
-                    <div class="bg-gradient-to-br from-purple-500/10 to-purple-600/5 rounded-xl p-4 border border-purple-500/20 hover:border-purple-500/40 transition-all"
-                         :class="expandedAwardCard === `fame-pitching-${award.category}` ? 'ring-2 ring-purple-500' : ''">
+                       @click="openAwardModal(award.category, 'best', 'pitching')">
+                    <div class="bg-gradient-to-br from-purple-500/10 to-purple-600/5 rounded-xl p-4 border border-purple-500/20 hover:border-purple-500/40 transition-all">
                       <div class="text-center mb-2">
                         <span class="px-3 py-1 rounded-full text-xs font-bold bg-purple-500/30 text-purple-400">{{ award.category }}</span>
                       </div>
@@ -687,88 +544,12 @@
                         <div class="font-semibold text-dark-text text-sm truncate">{{ award.winner.team_name }}</div>
                         <div class="text-2xl font-black text-purple-400">{{ award.winner.value }}</div>
                         <div class="text-xs text-dark-textMuted">wins in {{ award.winner.season }}</div>
-                        <div class="text-xs text-purple-400/70 mt-1">Click for rankings →</div>
+                        <div class="text-xs text-purple-400/70 mt-1">Click for details →</div>
                       </div>
                       <div v-else class="text-center text-sm text-dark-textMuted italic py-4">No data</div>
                     </div>
                   </div>
                 </div>
-                
-                <!-- Expanded Rankings Panel -->
-                <transition name="expand">
-                  <div v-if="expandedAwardCard?.startsWith('fame-pitching-')" 
-                       class="mt-4 bg-dark-elevated rounded-xl border border-purple-500/30 overflow-hidden">
-                    <!-- Header with Share -->
-                    <div class="px-4 py-3 border-b border-dark-border flex items-center justify-between bg-dark-card">
-                      <div class="text-lg font-bold text-purple-400">{{ expandedAwardCard?.replace('fame-pitching-', '') }} - All-Time Best</div>
-                      <div class="flex items-center gap-2">
-                        <button 
-                          @click.stop="downloadAwardRankings(expandedAwardCard?.replace('fame-pitching-', '') || '', 'best', 'pitching')"
-                          :disabled="isDownloadingAward"
-                          class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors disabled:opacity-50"
-                          style="background: #dc2626; color: #ffffff;"
-                          @mouseover="$event.currentTarget.style.background = '#eab308'; $event.currentTarget.style.color = '#0a0c14'"
-                          @mouseout="$event.currentTarget.style.background = '#dc2626'; $event.currentTarget.style.color = '#ffffff'"
-                        >
-                          <svg class="w-3.5 h-3.5 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-                          </svg>
-                          Share
-                        </button>
-                        <button @click="expandedAwardCard = null" class="text-dark-textMuted hover:text-dark-text p-1">
-                          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-                          </svg>
-                        </button>
-                      </div>
-                    </div>
-                    
-                    <!-- Featured Leader -->
-                    <div class="p-4 bg-gradient-to-r from-purple-500/10 to-transparent border-b border-dark-border" 
-                         v-if="getCategoryRankings(expandedAwardCard?.replace('fame-pitching-', '') || '', 'best')[0]">
-                      <div class="flex items-center gap-4">
-                        <img :src="getCategoryRankings(expandedAwardCard?.replace('fame-pitching-', '') || '', 'best')[0].logo_url || defaultAvatar" 
-                             class="w-14 h-14 rounded-full ring-4 ring-purple-500/50 object-cover" 
-                             @error="handleImageError" />
-                        <div class="flex-1">
-                          <div class="text-lg font-bold text-dark-text">{{ getCategoryRankings(expandedAwardCard?.replace('fame-pitching-', '') || '', 'best')[0].team_name }}</div>
-                          <div class="text-sm text-dark-textMuted">{{ getCategoryRankings(expandedAwardCard?.replace('fame-pitching-', '') || '', 'best')[0].season }}</div>
-                        </div>
-                        <div class="text-right">
-                          <div class="text-3xl font-black text-purple-400">{{ getCategoryRankings(expandedAwardCard?.replace('fame-pitching-', '') || '', 'best')[0].value }}</div>
-                          <div class="text-xs text-dark-textMuted">category wins</div>
-                        </div>
-                      </div>
-                    </div>
-                    
-                    <!-- Rankings List -->
-                    <div class="p-4 max-h-72 overflow-y-auto">
-                      <div class="space-y-3">
-                        <div v-for="(team, idx) in getCategoryRankings(expandedAwardCard?.replace('fame-pitching-', '') || '', 'best').slice(0, 10)" 
-                             :key="`${team.team_name}-${team.season}`"
-                             class="flex items-center gap-3">
-                          <div class="w-6 text-center">
-                            <span class="text-sm font-bold" :class="idx === 0 ? 'text-purple-400' : 'text-dark-textMuted'">{{ idx + 1 }}</span>
-                          </div>
-                          <img :src="team.logo_url || defaultAvatar" class="w-8 h-8 rounded-full object-cover" @error="handleImageError" />
-                          <div class="flex-1 min-w-0">
-                            <div class="flex items-center gap-2 mb-1">
-                              <span class="text-sm font-medium text-dark-text truncate">{{ team.team_name }}</span>
-                              <span class="text-xs text-dark-textMuted">{{ team.season }}</span>
-                            </div>
-                            <div class="h-2.5 bg-dark-border rounded-full overflow-hidden">
-                              <div class="h-full rounded-full transition-all duration-500 bg-purple-500"
-                                   :style="{ width: getBarWidth(team.value, getCategoryRankings(expandedAwardCard?.replace('fame-pitching-', '') || '', 'best')) }"></div>
-                            </div>
-                          </div>
-                          <div class="w-16 text-right">
-                            <div class="text-sm font-semibold" :class="idx === 0 ? 'text-purple-400' : 'text-dark-text'">{{ team.value }}</div>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </transition>
               </div>
             </div>
 
@@ -785,9 +566,8 @@
                 <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
                   <div v-for="award in hallOfShameHitting" :key="award.category"
                        class="cursor-pointer"
-                       @click="toggleAwardCard(`shame-hitting-${award.category}`)">
-                    <div class="bg-gradient-to-br from-gray-500/10 to-gray-600/5 rounded-xl p-4 border border-gray-500/20 hover:border-gray-500/40 transition-all"
-                         :class="expandedAwardCard === `shame-hitting-${award.category}` ? 'ring-2 ring-red-500' : ''">
+                       @click="openAwardModal(award.category, 'worst', 'hitting')">
+                    <div class="bg-gradient-to-br from-gray-500/10 to-gray-600/5 rounded-xl p-4 border border-gray-500/20 hover:border-red-500/40 transition-all">
                       <div class="text-center mb-2">
                         <span class="px-3 py-1 rounded-full text-xs font-bold bg-gray-500/30 text-gray-400">{{ award.category }}</span>
                       </div>
@@ -798,88 +578,12 @@
                         <div class="font-semibold text-dark-text text-sm truncate">{{ award.winner.team_name }}</div>
                         <div class="text-2xl font-black text-gray-400">{{ award.winner.value }}</div>
                         <div class="text-xs text-dark-textMuted">wins in {{ award.winner.season }}</div>
-                        <div class="text-xs text-gray-400/70 mt-1">Click for rankings →</div>
+                        <div class="text-xs text-red-400/70 mt-1">Click for details →</div>
                       </div>
                       <div v-else class="text-center text-sm text-dark-textMuted italic py-4">No data</div>
                     </div>
                   </div>
                 </div>
-                
-                <!-- Expanded Rankings Panel -->
-                <transition name="expand">
-                  <div v-if="expandedAwardCard?.startsWith('shame-hitting-')" 
-                       class="mt-4 bg-dark-elevated rounded-xl border border-red-500/30 overflow-hidden">
-                    <!-- Header with Share -->
-                    <div class="px-4 py-3 border-b border-dark-border flex items-center justify-between bg-dark-card">
-                      <div class="text-lg font-bold text-red-400">{{ expandedAwardCard?.replace('shame-hitting-', '') }} - All-Time Worst</div>
-                      <div class="flex items-center gap-2">
-                        <button 
-                          @click.stop="downloadAwardRankings(expandedAwardCard?.replace('shame-hitting-', '') || '', 'worst', 'hitting')"
-                          :disabled="isDownloadingAward"
-                          class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors disabled:opacity-50"
-                          style="background: #dc2626; color: #ffffff;"
-                          @mouseover="$event.currentTarget.style.background = '#eab308'; $event.currentTarget.style.color = '#0a0c14'"
-                          @mouseout="$event.currentTarget.style.background = '#dc2626'; $event.currentTarget.style.color = '#ffffff'"
-                        >
-                          <svg class="w-3.5 h-3.5 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-                          </svg>
-                          Share
-                        </button>
-                        <button @click="expandedAwardCard = null" class="text-dark-textMuted hover:text-dark-text p-1">
-                          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-                          </svg>
-                        </button>
-                      </div>
-                    </div>
-                    
-                    <!-- Featured "Winner" (worst performer) -->
-                    <div class="p-4 bg-gradient-to-r from-red-500/10 to-transparent border-b border-dark-border" 
-                         v-if="getCategoryRankings(expandedAwardCard?.replace('shame-hitting-', '') || '', 'worst')[0]">
-                      <div class="flex items-center gap-4">
-                        <img :src="getCategoryRankings(expandedAwardCard?.replace('shame-hitting-', '') || '', 'worst')[0].logo_url || defaultAvatar" 
-                             class="w-14 h-14 rounded-full ring-4 ring-red-500/50 object-cover" 
-                             @error="handleImageError" />
-                        <div class="flex-1">
-                          <div class="text-lg font-bold text-dark-text">{{ getCategoryRankings(expandedAwardCard?.replace('shame-hitting-', '') || '', 'worst')[0].team_name }}</div>
-                          <div class="text-sm text-dark-textMuted">{{ getCategoryRankings(expandedAwardCard?.replace('shame-hitting-', '') || '', 'worst')[0].season }}</div>
-                        </div>
-                        <div class="text-right">
-                          <div class="text-3xl font-black text-red-400">{{ getCategoryRankings(expandedAwardCard?.replace('shame-hitting-', '') || '', 'worst')[0].value }}</div>
-                          <div class="text-xs text-dark-textMuted">category wins</div>
-                        </div>
-                      </div>
-                    </div>
-                    
-                    <!-- Rankings List -->
-                    <div class="p-4 max-h-72 overflow-y-auto">
-                      <div class="space-y-3">
-                        <div v-for="(team, idx) in getCategoryRankings(expandedAwardCard?.replace('shame-hitting-', '') || '', 'worst').slice(0, 10)" 
-                             :key="`${team.team_name}-${team.season}`"
-                             class="flex items-center gap-3">
-                          <div class="w-6 text-center">
-                            <span class="text-sm font-bold" :class="idx === 0 ? 'text-red-400' : 'text-dark-textMuted'">{{ idx + 1 }}</span>
-                          </div>
-                          <img :src="team.logo_url || defaultAvatar" class="w-8 h-8 rounded-full object-cover" @error="handleImageError" />
-                          <div class="flex-1 min-w-0">
-                            <div class="flex items-center gap-2 mb-1">
-                              <span class="text-sm font-medium text-dark-text truncate">{{ team.team_name }}</span>
-                              <span class="text-xs text-dark-textMuted">{{ team.season }}</span>
-                            </div>
-                            <div class="h-2.5 bg-dark-border rounded-full overflow-hidden">
-                              <div class="h-full rounded-full transition-all duration-500 bg-red-500"
-                                   :style="{ width: getBarWidthWorst(team.value, getCategoryRankings(expandedAwardCard?.replace('shame-hitting-', '') || '', 'worst')) }"></div>
-                            </div>
-                          </div>
-                          <div class="w-16 text-right">
-                            <div class="text-sm font-semibold" :class="idx === 0 ? 'text-red-400' : 'text-dark-text'">{{ team.value }}</div>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </transition>
               </div>
               
               <!-- Category Struggles - Pitching -->
@@ -888,9 +592,8 @@
                 <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
                   <div v-for="award in hallOfShamePitching" :key="award.category"
                        class="cursor-pointer"
-                       @click="toggleAwardCard(`shame-pitching-${award.category}`)">
-                    <div class="bg-gradient-to-br from-gray-500/10 to-gray-600/5 rounded-xl p-4 border border-gray-500/20 hover:border-gray-500/40 transition-all"
-                         :class="expandedAwardCard === `shame-pitching-${award.category}` ? 'ring-2 ring-red-500' : ''">
+                       @click="openAwardModal(award.category, 'worst', 'pitching')">
+                    <div class="bg-gradient-to-br from-gray-500/10 to-gray-600/5 rounded-xl p-4 border border-gray-500/20 hover:border-red-500/40 transition-all">
                       <div class="text-center mb-2">
                         <span class="px-3 py-1 rounded-full text-xs font-bold bg-gray-500/30 text-gray-400">{{ award.category }}</span>
                       </div>
@@ -901,88 +604,12 @@
                         <div class="font-semibold text-dark-text text-sm truncate">{{ award.winner.team_name }}</div>
                         <div class="text-2xl font-black text-gray-400">{{ award.winner.value }}</div>
                         <div class="text-xs text-dark-textMuted">wins in {{ award.winner.season }}</div>
-                        <div class="text-xs text-gray-400/70 mt-1">Click for rankings →</div>
+                        <div class="text-xs text-red-400/70 mt-1">Click for details →</div>
                       </div>
                       <div v-else class="text-center text-sm text-dark-textMuted italic py-4">No data</div>
                     </div>
                   </div>
                 </div>
-                
-                <!-- Expanded Rankings Panel -->
-                <transition name="expand">
-                  <div v-if="expandedAwardCard?.startsWith('shame-pitching-')" 
-                       class="mt-4 bg-dark-elevated rounded-xl border border-red-500/30 overflow-hidden">
-                    <!-- Header with Share -->
-                    <div class="px-4 py-3 border-b border-dark-border flex items-center justify-between bg-dark-card">
-                      <div class="text-lg font-bold text-red-400">{{ expandedAwardCard?.replace('shame-pitching-', '') }} - All-Time Worst</div>
-                      <div class="flex items-center gap-2">
-                        <button 
-                          @click.stop="downloadAwardRankings(expandedAwardCard?.replace('shame-pitching-', '') || '', 'worst', 'pitching')"
-                          :disabled="isDownloadingAward"
-                          class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors disabled:opacity-50"
-                          style="background: #dc2626; color: #ffffff;"
-                          @mouseover="$event.currentTarget.style.background = '#eab308'; $event.currentTarget.style.color = '#0a0c14'"
-                          @mouseout="$event.currentTarget.style.background = '#dc2626'; $event.currentTarget.style.color = '#ffffff'"
-                        >
-                          <svg class="w-3.5 h-3.5 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-                          </svg>
-                          Share
-                        </button>
-                        <button @click="expandedAwardCard = null" class="text-dark-textMuted hover:text-dark-text p-1">
-                          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-                          </svg>
-                        </button>
-                      </div>
-                    </div>
-                    
-                    <!-- Featured "Winner" (worst performer) -->
-                    <div class="p-4 bg-gradient-to-r from-red-500/10 to-transparent border-b border-dark-border" 
-                         v-if="getCategoryRankings(expandedAwardCard?.replace('shame-pitching-', '') || '', 'worst')[0]">
-                      <div class="flex items-center gap-4">
-                        <img :src="getCategoryRankings(expandedAwardCard?.replace('shame-pitching-', '') || '', 'worst')[0].logo_url || defaultAvatar" 
-                             class="w-14 h-14 rounded-full ring-4 ring-red-500/50 object-cover" 
-                             @error="handleImageError" />
-                        <div class="flex-1">
-                          <div class="text-lg font-bold text-dark-text">{{ getCategoryRankings(expandedAwardCard?.replace('shame-pitching-', '') || '', 'worst')[0].team_name }}</div>
-                          <div class="text-sm text-dark-textMuted">{{ getCategoryRankings(expandedAwardCard?.replace('shame-pitching-', '') || '', 'worst')[0].season }}</div>
-                        </div>
-                        <div class="text-right">
-                          <div class="text-3xl font-black text-red-400">{{ getCategoryRankings(expandedAwardCard?.replace('shame-pitching-', '') || '', 'worst')[0].value }}</div>
-                          <div class="text-xs text-dark-textMuted">category wins</div>
-                        </div>
-                      </div>
-                    </div>
-                    
-                    <!-- Rankings List -->
-                    <div class="p-4 max-h-72 overflow-y-auto">
-                      <div class="space-y-3">
-                        <div v-for="(team, idx) in getCategoryRankings(expandedAwardCard?.replace('shame-pitching-', '') || '', 'worst').slice(0, 10)" 
-                             :key="`${team.team_name}-${team.season}`"
-                             class="flex items-center gap-3">
-                          <div class="w-6 text-center">
-                            <span class="text-sm font-bold" :class="idx === 0 ? 'text-red-400' : 'text-dark-textMuted'">{{ idx + 1 }}</span>
-                          </div>
-                          <img :src="team.logo_url || defaultAvatar" class="w-8 h-8 rounded-full object-cover" @error="handleImageError" />
-                          <div class="flex-1 min-w-0">
-                            <div class="flex items-center gap-2 mb-1">
-                              <span class="text-sm font-medium text-dark-text truncate">{{ team.team_name }}</span>
-                              <span class="text-xs text-dark-textMuted">{{ team.season }}</span>
-                            </div>
-                            <div class="h-2.5 bg-dark-border rounded-full overflow-hidden">
-                              <div class="h-full rounded-full transition-all duration-500 bg-red-500"
-                                   :style="{ width: getBarWidthWorst(team.value, getCategoryRankings(expandedAwardCard?.replace('shame-pitching-', '') || '', 'worst')) }"></div>
-                            </div>
-                          </div>
-                          <div class="w-16 text-right">
-                            <div class="text-sm font-semibold" :class="idx === 0 ? 'text-red-400' : 'text-dark-text'">{{ team.value }}</div>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </transition>
               </div>
             </div>
           </template>
@@ -1295,6 +922,207 @@
 
     </template>
   </div>
+  
+  <!-- Career Record Modal -->
+  <Teleport to="body">
+    <div 
+      v-if="showRecordModal" 
+      class="fixed inset-0 z-50 flex items-center justify-center p-4"
+      @click.self="closeRecordModal"
+    >
+      <div class="absolute inset-0 bg-black/70 backdrop-blur-sm"></div>
+      <div class="relative bg-dark-elevated rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto border border-dark-border">
+        <div class="sticky top-0 z-10 px-6 py-4 border-b border-dark-border bg-dark-elevated flex items-center justify-between">
+          <div>
+            <h3 class="text-xl font-bold text-dark-text">{{ recordModalLabel }}</h3>
+            <p class="text-sm"><span class="text-dark-textMuted">{{ leagueDisplayName }}</span> <span class="text-dark-textMuted">•</span> <span class="text-red-500 font-semibold">All-Time</span></p>
+          </div>
+          <div class="flex items-center gap-2">
+            <button 
+              @click="downloadRecordRankings(recordModalLabel)" 
+              :disabled="isDownloadingRecord"
+              class="flex items-center gap-2 text-sm px-3 py-1.5 rounded-lg font-semibold transition-colors disabled:opacity-50"
+              style="background: #dc2626; color: #ffffff;"
+              @mouseover="$event.currentTarget.style.background = '#eab308'; $event.currentTarget.style.color = '#0a0c14'"
+              @mouseout="$event.currentTarget.style.background = '#dc2626'; $event.currentTarget.style.color = '#ffffff'"
+            >
+              <svg v-if="!isDownloadingRecord" class="w-4 h-4 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+              </svg>
+              <svg v-else class="w-4 h-4 animate-spin pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+              </svg>
+              {{ isDownloadingRecord ? 'Saving...' : 'Share' }}
+            </button>
+            <button @click="closeRecordModal" class="p-2 rounded-lg hover:bg-dark-border/50 transition-colors">
+              <svg class="w-5 h-5 text-dark-textMuted" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+        </div>
+        
+        <div class="p-6 border-b border-dark-border bg-gradient-to-r from-yellow-500/10 to-transparent" v-if="recordModalRankings[0]">
+          <div class="flex items-center gap-4">
+            <img 
+              :src="recordModalRankings[0].logo_url || defaultAvatar" 
+              :alt="recordModalRankings[0].team_name"
+              class="w-16 h-16 rounded-full ring-4 ring-yellow-500/50 object-cover"
+              @error="handleImageError"
+            />
+            <div class="flex-1">
+              <div class="text-xl font-bold text-dark-text">{{ recordModalRankings[0].team_name }}</div>
+              <div class="text-sm text-dark-textMuted">{{ recordModalRankings[0].detail }}</div>
+            </div>
+            <div class="text-right">
+              <div class="text-3xl font-black text-yellow-400">{{ recordModalRankings[0].value }}</div>
+            </div>
+          </div>
+        </div>
+        
+        <div class="p-6">
+          <h4 class="text-sm font-semibold text-dark-textMuted uppercase tracking-wider mb-4">All-Time Rankings</h4>
+          <div class="space-y-3">
+            <div 
+              v-for="(team, index) in recordModalRankings.slice(0, 10)" 
+              :key="team.team_name"
+              class="flex items-center gap-3"
+            >
+              <div class="w-6 text-center">
+                <span class="text-sm font-bold" :class="index === 0 ? 'text-yellow-400' : 'text-dark-textMuted'">{{ index + 1 }}</span>
+              </div>
+              <img :src="team.logo_url || defaultAvatar" :alt="team.team_name" class="w-8 h-8 rounded-full object-cover" @error="handleImageError" />
+              <div class="flex-1 min-w-0">
+                <div class="text-sm font-medium text-dark-text truncate mb-1">{{ team.team_name }}</div>
+                <div class="h-2.5 bg-dark-border rounded-full overflow-hidden">
+                  <div 
+                    class="h-full rounded-full transition-all duration-500 bg-yellow-500"
+                    :style="{ width: getRecordBarWidth(team.value, recordModalLabel) }"
+                  ></div>
+                </div>
+              </div>
+              <div class="w-20 text-right">
+                <div class="text-sm font-semibold" :class="index === 0 ? 'text-yellow-400' : 'text-dark-text'">
+                  {{ team.value }}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </Teleport>
+  
+  <!-- Award Modal -->
+  <Teleport to="body">
+    <div 
+      v-if="showAwardModal" 
+      class="fixed inset-0 z-50 flex items-center justify-center p-4"
+      @click.self="closeAwardModal"
+    >
+      <div class="absolute inset-0 bg-black/70 backdrop-blur-sm"></div>
+      <div class="relative bg-dark-elevated rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto border border-dark-border">
+        <div class="sticky top-0 z-10 px-6 py-4 border-b border-dark-border bg-dark-elevated flex items-center justify-between">
+          <div>
+            <h3 class="text-xl font-bold text-dark-text">{{ awardModalCategory }} - {{ awardModalType === 'best' ? 'Best' : 'Worst' }}</h3>
+            <p class="text-sm"><span class="text-dark-textMuted">{{ leagueDisplayName }}</span> <span class="text-dark-textMuted">•</span> <span class="text-red-500 font-semibold">All-Time {{ awardModalCatType === 'hitting' ? 'Hitting' : 'Pitching' }}</span></p>
+          </div>
+          <div class="flex items-center gap-2">
+            <button 
+              @click="downloadAwardRankings(awardModalCategory, awardModalType, awardModalCatType)" 
+              :disabled="isDownloadingAward"
+              class="flex items-center gap-2 text-sm px-3 py-1.5 rounded-lg font-semibold transition-colors disabled:opacity-50"
+              style="background: #dc2626; color: #ffffff;"
+              @mouseover="$event.currentTarget.style.background = '#eab308'; $event.currentTarget.style.color = '#0a0c14'"
+              @mouseout="$event.currentTarget.style.background = '#dc2626'; $event.currentTarget.style.color = '#ffffff'"
+            >
+              <svg v-if="!isDownloadingAward" class="w-4 h-4 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+              </svg>
+              <svg v-else class="w-4 h-4 animate-spin pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+              </svg>
+              {{ isDownloadingAward ? 'Saving...' : 'Share' }}
+            </button>
+            <button @click="closeAwardModal" class="p-2 rounded-lg hover:bg-dark-border/50 transition-colors">
+              <svg class="w-5 h-5 text-dark-textMuted" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+        </div>
+        
+        <div 
+          class="p-6 border-b border-dark-border" 
+          :class="awardModalType === 'best' ? (awardModalCatType === 'hitting' ? 'bg-gradient-to-r from-green-500/10 to-transparent' : 'bg-gradient-to-r from-purple-500/10 to-transparent') : 'bg-gradient-to-r from-red-500/10 to-transparent'"
+          v-if="awardModalRankings[0]"
+        >
+          <div class="flex items-center gap-4">
+            <img 
+              :src="awardModalRankings[0].logo_url || defaultAvatar" 
+              :alt="awardModalRankings[0].team_name"
+              class="w-16 h-16 rounded-full ring-4 object-cover"
+              :class="awardModalType === 'best' ? (awardModalCatType === 'hitting' ? 'ring-green-500/50' : 'ring-purple-500/50') : 'ring-red-500/50'"
+              @error="handleImageError"
+            />
+            <div class="flex-1">
+              <div class="text-xl font-bold text-dark-text">{{ awardModalRankings[0].team_name }}</div>
+              <div class="text-sm text-dark-textMuted">{{ awardModalRankings[0].season }}</div>
+            </div>
+            <div class="text-right">
+              <div 
+                class="text-3xl font-black"
+                :class="awardModalType === 'best' ? (awardModalCatType === 'hitting' ? 'text-green-400' : 'text-purple-400') : 'text-red-400'"
+              >{{ awardModalRankings[0].value }}</div>
+              <div class="text-xs text-dark-textMuted">category wins</div>
+            </div>
+          </div>
+        </div>
+        
+        <div class="p-6">
+          <h4 class="text-sm font-semibold text-dark-textMuted uppercase tracking-wider mb-4">{{ awardModalType === 'best' ? 'Best' : 'Worst' }} Single-Season Performances</h4>
+          <div class="space-y-3">
+            <div 
+              v-for="(team, index) in awardModalRankings.slice(0, 10)" 
+              :key="`${team.team_name}-${team.season}`"
+              class="flex items-center gap-3"
+            >
+              <div class="w-6 text-center">
+                <span 
+                  class="text-sm font-bold" 
+                  :class="index === 0 ? (awardModalType === 'best' ? (awardModalCatType === 'hitting' ? 'text-green-400' : 'text-purple-400') : 'text-red-400') : 'text-dark-textMuted'"
+                >{{ index + 1 }}</span>
+              </div>
+              <img :src="team.logo_url || defaultAvatar" :alt="team.team_name" class="w-8 h-8 rounded-full object-cover" @error="handleImageError" />
+              <div class="flex-1 min-w-0">
+                <div class="flex items-center gap-2 mb-1">
+                  <span class="text-sm font-medium text-dark-text truncate">{{ team.team_name }}</span>
+                  <span class="text-xs text-dark-textMuted">{{ team.season }}</span>
+                </div>
+                <div class="h-2.5 bg-dark-border rounded-full overflow-hidden">
+                  <div 
+                    class="h-full rounded-full transition-all duration-500"
+                    :class="awardModalType === 'best' ? (awardModalCatType === 'hitting' ? 'bg-green-500' : 'bg-purple-500') : 'bg-red-500'"
+                    :style="{ width: awardModalType === 'worst' ? getBarWidthWorst(team.value, awardModalRankings) : getBarWidth(team.value, awardModalRankings) }"
+                  ></div>
+                </div>
+              </div>
+              <div class="w-16 text-right">
+                <div 
+                  class="text-sm font-semibold" 
+                  :class="index === 0 ? (awardModalType === 'best' ? (awardModalCatType === 'hitting' ? 'text-green-400' : 'text-purple-400') : 'text-red-400') : 'text-dark-text'"
+                >
+                  {{ team.value }}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </Teleport>
 </template>
 
 <script setup lang="ts">
@@ -1336,6 +1164,25 @@ const isDownloadingSeason = ref(false)
 const isDownloadingH2H = ref(false)
 const isDownloadingRecord = ref(false)
 const isDownloadingAward = ref(false)
+
+// League display name
+const leagueDisplayName = computed(() => {
+  const activeId = leagueStore.activeLeagueId
+  const savedLeague = leagueStore.savedLeagues?.find((l: any) => l.league_id === activeId?.split('.l.')[1])
+  return savedLeague?.league_name || leagueStore.yahooLeague?.name || 'Fantasy League'
+})
+
+// Modal state for career records
+const showRecordModal = ref(false)
+const recordModalLabel = ref('')
+const recordModalRankings = computed(() => getRecordRankings(recordModalLabel.value))
+
+// Modal state for awards
+const showAwardModal = ref(false)
+const awardModalCategory = ref('')
+const awardModalType = ref<'best' | 'worst'>('best')
+const awardModalCatType = ref<'hitting' | 'pitching'>('hitting')
+const awardModalRankings = computed(() => getCategoryRankings(awardModalCategory.value, awardModalType.value))
 const showCurrentMembersOnly = ref(false)
 const showCurrentMembersOnlyH2H = ref(false)
 const sortColumn = ref('matchup_wins')
@@ -1359,7 +1206,29 @@ const awardsTab = ref<'alltime' | 'yearly'>('alltime')
 
 const defaultAvatar = 'https://s.yimg.com/cv/apiv2/default/mlb/mlb_dp_2_72.png'
 
-// Toggle card expansion
+// Open/close record modal
+function openRecordModal(label: string) {
+  recordModalLabel.value = label
+  showRecordModal.value = true
+}
+
+function closeRecordModal() {
+  showRecordModal.value = false
+}
+
+// Open/close award modal
+function openAwardModal(category: string, type: 'best' | 'worst', catType: 'hitting' | 'pitching') {
+  awardModalCategory.value = category
+  awardModalType.value = type
+  awardModalCatType.value = catType
+  showAwardModal.value = true
+}
+
+function closeAwardModal() {
+  showAwardModal.value = false
+}
+
+// Toggle card expansion (keep for backward compat)
 function toggleRecordCard(label: string) {
   expandedRecordCard.value = expandedRecordCard.value === label ? null : label
 }
@@ -2520,9 +2389,13 @@ async function downloadCareerStats() {
   isDownloading.value = true
   try {
     const html2canvas = (await import('html2canvas')).default
-    const leagueName = leagueStore.yahooLeague?.name || 'Fantasy League'
     
-    // Load logo
+    // Get league name from saved leagues or yahooLeague
+    const activeId = leagueStore.activeLeagueId
+    const savedLeague = leagueStore.savedLeagues?.find((l: any) => l.league_id === activeId?.split('.l.')[1])
+    const leagueName = savedLeague?.league_name || leagueStore.yahooLeague?.name || 'Fantasy League'
+    
+    // Load UFD logo
     const loadLogo = async (): Promise<string> => {
       try {
         const response = await fetch('/UFD_V5.png')
@@ -2537,15 +2410,42 @@ async function downloadCareerStats() {
       } catch (e) { return '' }
     }
     
+    // Helper to create placeholder avatar
+    const createPlaceholder = (name: string): string => {
+      const canvas = document.createElement('canvas')
+      canvas.width = 64
+      canvas.height = 64
+      const ctx = canvas.getContext('2d')
+      if (ctx) {
+        ctx.fillStyle = '#3a3d52'
+        ctx.beginPath()
+        ctx.arc(32, 32, 32, 0, Math.PI * 2)
+        ctx.fill()
+        ctx.fillStyle = '#ffffff'
+        ctx.font = 'bold 28px sans-serif'
+        ctx.textAlign = 'center'
+        ctx.textBaseline = 'middle'
+        ctx.fillText(name.charAt(0).toUpperCase(), 32, 34)
+      }
+      return canvas.toDataURL('image/png')
+    }
+    
     const logoBase64 = await loadLogo()
     
-    // Get sorted top 12 teams based on current sort column
+    // Get sorted top 12 teams
     const sortedStats = sortStats(filteredCareerStats.value).slice(0, 12)
+    
+    // Pre-load all team images - use placeholders for all due to CORS issues with Yahoo
+    const imageMap = new Map<string, string>()
+    for (const stat of sortedStats) {
+      // Always use placeholder to avoid CORS issues with Yahoo images
+      imageMap.set(stat.team_key, createPlaceholder(stat.team_name))
+    }
     
     // Column label mapping
     const columnLabels: Record<string, string> = {
       'seasons': 'Seasons',
-      'championships': '🏆',
+      'championships': 'Championships',
       'matchup_wins': 'Wins',
       'matchup_win_pct': 'Win%',
       'hitting_cat_wins': 'Hitting',
@@ -2553,14 +2453,14 @@ async function downloadCareerStats() {
       'cat_diff': '+/-'
     }
     
-    // Generate table rows
+    // Generate table rows with logos
     const generateRows = () => {
       return sortedStats.map((stat, idx) => `
         <tr style="border-bottom: 1px solid rgba(58, 61, 82, 0.3);">
           <td style="padding: 8px 12px; color: #9ca3af; font-weight: 600;">${idx + 1}</td>
           <td style="padding: 8px 12px;">
             <div style="display: flex; align-items: center; gap: 8px;">
-              <div style="width: 28px; height: 28px; border-radius: 50%; background: #374151; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: bold; color: #ffffff;">${stat.team_name.charAt(0)}</div>
+              <img src="${imageMap.get(stat.team_key) || createPlaceholder(stat.team_name)}" style="width: 28px; height: 28px; border-radius: 50%;" />
               <span style="color: #ffffff; font-weight: 600;">${stat.team_name}</span>
             </div>
           </td>
@@ -2588,13 +2488,13 @@ async function downloadCareerStats() {
         </div>
         
         <!-- Header -->
-        <div style="display: flex; padding: 16px 24px; border-bottom: 1px solid rgba(220, 38, 38, 0.2);">
-          ${logoBase64 ? `<img src="${logoBase64}" style="height: 70px; width: auto; flex-shrink: 0; margin-right: 24px;" />` : ''}
+        <div style="display: flex; align-items: center; padding: 12px 24px; border-bottom: 1px solid rgba(220, 38, 38, 0.2);">
+          ${logoBase64 ? `<img src="${logoBase64}" style="height: 50px; width: auto; flex-shrink: 0; margin-right: 16px; margin-top: 6px;" />` : ''}
           <div style="flex: 1;">
-            <div style="font-size: 36px; font-weight: 900; color: #ffffff; text-transform: uppercase; letter-spacing: 2px; text-shadow: 0 2px 8px rgba(220, 38, 38, 0.4);">Career Statistics</div>
-            <div style="font-size: 18px; margin-top: 6px; font-weight: 600;">
+            <div style="font-size: 24px; font-weight: 900; color: #ffffff; text-transform: uppercase; letter-spacing: 1px; line-height: 1.1;">Career Statistics</div>
+            <div style="font-size: 14px; margin-top: 3px; font-weight: 600;">
               <span style="color: #e5e7eb;">${leagueName}</span>
-              <span style="color: #6b7280; margin: 0 8px;">•</span>
+              <span style="color: #6b7280; margin: 0 6px;">•</span>
               <span style="color: #dc2626; font-weight: 700;">Top 12 by ${columnLabels[sortColumn.value] || sortColumn.value}</span>
             </div>
           </div>
@@ -2838,7 +2738,12 @@ async function downloadRecordRankings(recordLabel: string) {
   isDownloadingRecord.value = true
   try {
     const html2canvas = (await import('html2canvas')).default
-    const leagueName = leagueStore.yahooLeague?.name || 'Fantasy League'
+    
+    // Get league name
+    const activeId = leagueStore.activeLeagueId
+    const savedLeague = leagueStore.savedLeagues?.find((l: any) => l.league_id === activeId?.split('.l.')[1])
+    const leagueName = savedLeague?.league_name || leagueStore.yahooLeague?.name || 'Fantasy League'
+    
     const rankings = getRecordRankings(recordLabel).slice(0, 10)
     
     if (rankings.length === 0) {
@@ -2846,7 +2751,7 @@ async function downloadRecordRankings(recordLabel: string) {
       return
     }
     
-    // Load logo
+    // Load UFD logo
     const loadLogo = async (): Promise<string> => {
       try {
         const response = await fetch('/UFD_V5.png')
@@ -2861,8 +2766,35 @@ async function downloadRecordRankings(recordLabel: string) {
       } catch (e) { return '' }
     }
     
+    // Helper to create placeholder avatar
+    const createPlaceholder = (name: string): string => {
+      const canvas = document.createElement('canvas')
+      canvas.width = 64
+      canvas.height = 64
+      const ctx = canvas.getContext('2d')
+      if (ctx) {
+        ctx.fillStyle = '#3a3d52'
+        ctx.beginPath()
+        ctx.arc(32, 32, 32, 0, Math.PI * 2)
+        ctx.fill()
+        ctx.fillStyle = '#ffffff'
+        ctx.font = 'bold 28px sans-serif'
+        ctx.textAlign = 'center'
+        ctx.textBaseline = 'middle'
+        ctx.fillText(name.charAt(0).toUpperCase(), 32, 34)
+      }
+      return canvas.toDataURL('image/png')
+    }
+    
     const logoBase64 = await loadLogo()
     const leader = rankings[0]
+    
+    // Pre-load all team images - use placeholders to avoid CORS issues
+    const imageMap = new Map<string, string>()
+    for (const team of rankings) {
+      imageMap.set(team.team_name, createPlaceholder(team.team_name))
+    }
+    
     const maxValue = Math.max(...rankings.map(r => {
       if (typeof r.value === 'string') {
         if (r.value.includes('%')) return parseFloat(r.value.replace('%', ''))
@@ -2871,7 +2803,7 @@ async function downloadRecordRankings(recordLabel: string) {
       return r.value || 0
     }))
     
-    // Generate ranking rows
+    // Generate ranking rows with images
     const generateRows = () => {
       return rankings.map((team, idx) => {
         let numValue = team.value
@@ -2882,19 +2814,17 @@ async function downloadRecordRankings(recordLabel: string) {
         const barWidth = maxValue > 0 ? (numValue / maxValue) * 100 : 0
         
         return `
-          <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 10px;">
-            <div style="width: 24px; text-align: center; font-weight: bold; color: ${idx === 0 ? '#facc15' : '#6b7280'};">${idx + 1}</div>
-            <div style="width: 32px; height: 32px; border-radius: 50%; background: #374151; display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: bold; color: #ffffff;">${team.team_name.charAt(0)}</div>
+          <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 10px;">
+            <div style="width: 20px; text-align: center; font-weight: bold; font-size: 12px; color: ${idx === 0 ? '#facc15' : '#6b7280'};">${idx + 1}</div>
+            <img src="${imageMap.get(team.team_name) || createPlaceholder(team.team_name)}" style="width: 28px; height: 28px; border-radius: 50%;" />
             <div style="flex: 1; min-width: 0;">
-              <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 4px;">
-                <span style="font-size: 13px; font-weight: 600; color: #e5e7eb;">${team.team_name}</span>
-              </div>
-              <div style="height: 10px; background: rgba(58, 61, 82, 0.5); border-radius: 5px; overflow: hidden;">
-                <div style="height: 100%; width: ${barWidth}%; background: ${idx === 0 ? '#facc15' : '#facc15'}; opacity: ${idx === 0 ? 1 : 0.6}; border-radius: 5px;"></div>
+              <div style="font-size: 12px; font-weight: 600; color: #e5e7eb; margin-bottom: 5px;">${team.team_name}</div>
+              <div style="height: 6px; background: rgba(58, 61, 82, 0.5); border-radius: 3px; overflow: hidden;">
+                <div style="height: 100%; width: ${barWidth}%; background: #facc15; opacity: ${idx === 0 ? 1 : 0.6}; border-radius: 3px;"></div>
               </div>
             </div>
-            <div style="width: 70px; text-align: right;">
-              <div style="font-size: 14px; font-weight: bold; color: ${idx === 0 ? '#facc15' : '#e5e7eb'};">${team.value}</div>
+            <div style="width: 50px; text-align: right;">
+              <div style="font-size: 13px; font-weight: bold; color: ${idx === 0 ? '#facc15' : '#e5e7eb'};">${team.value}</div>
             </div>
           </div>
         `
@@ -2902,47 +2832,51 @@ async function downloadRecordRankings(recordLabel: string) {
     }
     
     const container = document.createElement('div')
-    container.style.cssText = 'position: absolute; left: -9999px; top: 0; width: 500px; font-family: system-ui, -apple-system, sans-serif;'
+    container.style.cssText = 'position: absolute; left: -9999px; top: 0; width: 480px; font-family: system-ui, -apple-system, sans-serif;'
     
     container.innerHTML = `
       <div style="background: linear-gradient(160deg, #0f1219 0%, #0a0c14 50%, #0d1117 100%); border-radius: 16px; box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5); position: relative; overflow: hidden;">
         
         <!-- Top Red Bar -->
-        <div style="background: #dc2626; padding: 10px 20px; text-align: center;">
-          <span style="font-size: 14px; font-weight: 700; color: #ffffff; text-transform: uppercase; letter-spacing: 3px;">Ultimate Fantasy Dashboard</span>
+        <div style="background: #dc2626; padding: 8px 20px; text-align: center;">
+          <span style="font-size: 12px; font-weight: 700; color: #ffffff; text-transform: uppercase; letter-spacing: 2px;">Ultimate Fantasy Dashboard</span>
         </div>
         
         <!-- Header -->
-        <div style="display: flex; padding: 12px 20px; border-bottom: 1px solid rgba(220, 38, 38, 0.2);">
-          ${logoBase64 ? `<img src="${logoBase64}" style="height: 50px; width: auto; flex-shrink: 0; margin-right: 16px;" />` : ''}
+        <div style="display: flex; align-items: center; padding: 10px 16px; border-bottom: 1px solid rgba(220, 38, 38, 0.2);">
+          ${logoBase64 ? `<img src="${logoBase64}" style="height: 40px; width: auto; flex-shrink: 0; margin-right: 12px; margin-top: 4px;" />` : ''}
           <div style="flex: 1;">
-            <div style="font-size: 24px; font-weight: 900; color: #ffffff; text-transform: uppercase; letter-spacing: 1px;">${recordLabel}</div>
-            <div style="font-size: 14px; margin-top: 4px; color: #9ca3af;">${leagueName} • All-Time</div>
+            <div style="font-size: 17px; font-weight: 900; color: #ffffff; text-transform: uppercase; letter-spacing: 0.5px; line-height: 1.1;">${recordLabel}</div>
+            <div style="font-size: 12px; margin-top: 2px;">
+              <span style="color: #e5e7eb;">${leagueName}</span>
+              <span style="color: #6b7280; margin: 0 4px;">•</span>
+              <span style="color: #dc2626; font-weight: 600;">All-Time</span>
+            </div>
           </div>
         </div>
         
         <!-- Featured Leader -->
-        <div style="padding: 16px 20px; background: linear-gradient(135deg, rgba(250, 204, 21, 0.15) 0%, transparent 100%); border-bottom: 1px solid rgba(250, 204, 21, 0.2);">
-          <div style="display: flex; align-items: center; gap: 16px;">
-            <div style="width: 56px; height: 56px; border-radius: 50%; background: #374151; display: flex; align-items: center; justify-content: center; font-size: 24px; font-weight: bold; color: #facc15; border: 3px solid rgba(250, 204, 21, 0.5);">${leader.team_name.charAt(0)}</div>
+        <div style="padding: 12px 16px; background: linear-gradient(135deg, rgba(250, 204, 21, 0.15) 0%, transparent 100%); border-bottom: 1px solid rgba(250, 204, 21, 0.2);">
+          <div style="display: flex; align-items: center; gap: 12px;">
+            <img src="${imageMap.get(leader.team_name) || createPlaceholder(leader.team_name)}" style="width: 44px; height: 44px; border-radius: 50%; border: 2px solid rgba(250, 204, 21, 0.5);" />
             <div style="flex: 1;">
-              <div style="font-size: 18px; font-weight: bold; color: #ffffff;">${leader.team_name}</div>
-              <div style="font-size: 13px; color: #9ca3af;">${leader.detail || ''}</div>
+              <div style="font-size: 15px; font-weight: bold; color: #ffffff;">${leader.team_name}</div>
+              <div style="font-size: 11px; color: #9ca3af;">${leader.detail || ''}</div>
             </div>
             <div style="text-align: right;">
-              <div style="font-size: 32px; font-weight: 900; color: #facc15;">${leader.value}</div>
+              <div style="font-size: 26px; font-weight: 900; color: #facc15;">${leader.value}</div>
             </div>
           </div>
         </div>
         
         <!-- Rankings List -->
-        <div style="padding: 16px 20px;">
+        <div style="padding: 12px 16px;">
           ${generateRows()}
         </div>
         
         <!-- Footer -->
-        <div style="padding: 12px 20px; text-align: center; border-top: 1px solid rgba(220, 38, 38, 0.2);">
-          <span style="font-size: 16px; font-weight: bold; color: #dc2626;">ultimatefantasydashboard.com</span>
+        <div style="padding: 10px 16px; text-align: center; border-top: 1px solid rgba(220, 38, 38, 0.2);">
+          <span style="font-size: 14px; font-weight: bold; color: #dc2626;">ultimatefantasydashboard.com</span>
         </div>
       </div>
     `
@@ -2973,7 +2907,12 @@ async function downloadAwardRankings(category: string, type: 'best' | 'worst', c
   isDownloadingAward.value = true
   try {
     const html2canvas = (await import('html2canvas')).default
-    const leagueName = leagueStore.yahooLeague?.name || 'Fantasy League'
+    
+    // Get league name properly
+    const activeId = leagueStore.activeLeagueId
+    const savedLeague = leagueStore.savedLeagues?.find((l: any) => l.league_id === activeId?.split('.l.')[1])
+    const leagueName = savedLeague?.league_name || leagueStore.yahooLeague?.name || 'Fantasy League'
+    
     const rankings = getCategoryRankings(category, type).slice(0, 10)
     
     if (rankings.length === 0) {
@@ -2981,7 +2920,7 @@ async function downloadAwardRankings(category: string, type: 'best' | 'worst', c
       return
     }
     
-    // Load logo
+    // Load UFD logo
     const loadLogo = async (): Promise<string> => {
       try {
         const response = await fetch('/UFD_V5.png')
@@ -2996,6 +2935,26 @@ async function downloadAwardRankings(category: string, type: 'best' | 'worst', c
       } catch (e) { return '' }
     }
     
+    // Helper to create placeholder avatar
+    const createPlaceholder = (name: string, color: string): string => {
+      const canvas = document.createElement('canvas')
+      canvas.width = 64
+      canvas.height = 64
+      const ctx = canvas.getContext('2d')
+      if (ctx) {
+        ctx.fillStyle = '#3a3d52'
+        ctx.beginPath()
+        ctx.arc(32, 32, 32, 0, Math.PI * 2)
+        ctx.fill()
+        ctx.fillStyle = color
+        ctx.font = 'bold 28px sans-serif'
+        ctx.textAlign = 'center'
+        ctx.textBaseline = 'middle'
+        ctx.fillText(name.charAt(0).toUpperCase(), 32, 34)
+      }
+      return canvas.toDataURL('image/png')
+    }
+    
     const logoBase64 = await loadLogo()
     const leader = rankings[0]
     const maxValue = Math.max(...rankings.map(r => r.value || 0))
@@ -3003,29 +2962,31 @@ async function downloadAwardRankings(category: string, type: 'best' | 'worst', c
     // Colors based on type
     const colorMain = type === 'best' ? (catType === 'hitting' ? '#22c55e' : '#a855f7') : '#ef4444'
     const colorLight = type === 'best' ? (catType === 'hitting' ? 'rgba(34, 197, 94, 0.15)' : 'rgba(168, 85, 247, 0.15)') : 'rgba(239, 68, 68, 0.15)'
-    const colorBorder = type === 'best' ? (catType === 'hitting' ? 'rgba(34, 197, 94, 0.2)' : 'rgba(168, 85, 247, 0.2)') : 'rgba(239, 68, 68, 0.2)'
-    const title = type === 'best' ? `${category} - All-Time Best` : `${category} - All-Time Worst`
+    const colorBorder = type === 'best' ? (catType === 'hitting' ? 'rgba(34, 197, 94, 0.3)' : 'rgba(168, 85, 247, 0.3)') : 'rgba(239, 68, 68, 0.3)'
     
-    // Generate ranking rows
+    // Pre-load all team images - use placeholders to avoid CORS issues
+    const imageMap = new Map<string, string>()
+    for (const team of rankings) {
+      imageMap.set(team.team_name + team.season, createPlaceholder(team.team_name, colorMain))
+    }
+    
+    // Generate ranking rows with proper layout
     const generateRows = () => {
       return rankings.map((team, idx) => {
         const barWidth = maxValue > 0 ? (team.value / maxValue) * 100 : 0
         
         return `
-          <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 10px;">
-            <div style="width: 24px; text-align: center; font-weight: bold; color: ${idx === 0 ? colorMain : '#6b7280'};">${idx + 1}</div>
-            <div style="width: 32px; height: 32px; border-radius: 50%; background: #374151; display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: bold; color: #ffffff;">${team.team_name.charAt(0)}</div>
+          <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 10px;">
+            <div style="width: 20px; text-align: center; font-weight: bold; font-size: 12px; color: ${idx === 0 ? colorMain : '#6b7280'};">${idx + 1}</div>
+            <img src="${imageMap.get(team.team_name + team.season) || createPlaceholder(team.team_name, colorMain)}" style="width: 28px; height: 28px; border-radius: 50%;" />
             <div style="flex: 1; min-width: 0;">
-              <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 4px;">
-                <span style="font-size: 13px; font-weight: 600; color: #e5e7eb;">${team.team_name}</span>
-                <span style="font-size: 11px; color: #6b7280;">${team.season}</span>
-              </div>
-              <div style="height: 10px; background: rgba(58, 61, 82, 0.5); border-radius: 5px; overflow: hidden;">
-                <div style="height: 100%; width: ${barWidth}%; background: ${colorMain}; opacity: ${idx === 0 ? 1 : 0.6}; border-radius: 5px;"></div>
+              <div style="font-size: 12px; font-weight: 600; color: #e5e7eb; margin-bottom: 5px;">${team.team_name} <span style="color: #6b7280; font-weight: 400;">${team.season}</span></div>
+              <div style="height: 6px; background: rgba(58, 61, 82, 0.5); border-radius: 3px; overflow: hidden;">
+                <div style="height: 100%; width: ${barWidth}%; background: ${colorMain}; opacity: ${idx === 0 ? 1 : 0.6}; border-radius: 3px;"></div>
               </div>
             </div>
-            <div style="width: 50px; text-align: right;">
-              <div style="font-size: 14px; font-weight: bold; color: ${idx === 0 ? colorMain : '#e5e7eb'};">${team.value}</div>
+            <div style="width: 40px; text-align: right;">
+              <div style="font-size: 13px; font-weight: bold; color: ${idx === 0 ? colorMain : '#e5e7eb'};">${team.value}</div>
             </div>
           </div>
         `
@@ -3033,48 +2994,52 @@ async function downloadAwardRankings(category: string, type: 'best' | 'worst', c
     }
     
     const container = document.createElement('div')
-    container.style.cssText = 'position: absolute; left: -9999px; top: 0; width: 500px; font-family: system-ui, -apple-system, sans-serif;'
+    container.style.cssText = 'position: absolute; left: -9999px; top: 0; width: 480px; font-family: system-ui, -apple-system, sans-serif;'
     
     container.innerHTML = `
       <div style="background: linear-gradient(160deg, #0f1219 0%, #0a0c14 50%, #0d1117 100%); border-radius: 16px; box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5); position: relative; overflow: hidden;">
         
         <!-- Top Red Bar -->
-        <div style="background: #dc2626; padding: 10px 20px; text-align: center;">
-          <span style="font-size: 14px; font-weight: 700; color: #ffffff; text-transform: uppercase; letter-spacing: 3px;">Ultimate Fantasy Dashboard</span>
+        <div style="background: #dc2626; padding: 8px 20px; text-align: center;">
+          <span style="font-size: 12px; font-weight: 700; color: #ffffff; text-transform: uppercase; letter-spacing: 2px;">Ultimate Fantasy Dashboard</span>
         </div>
         
         <!-- Header -->
-        <div style="display: flex; padding: 12px 20px; border-bottom: 1px solid rgba(220, 38, 38, 0.2);">
-          ${logoBase64 ? `<img src="${logoBase64}" style="height: 50px; width: auto; flex-shrink: 0; margin-right: 16px;" />` : ''}
+        <div style="display: flex; align-items: center; padding: 10px 16px; border-bottom: 1px solid rgba(220, 38, 38, 0.2);">
+          ${logoBase64 ? `<img src="${logoBase64}" style="height: 40px; width: auto; flex-shrink: 0; margin-right: 12px; margin-top: 4px;" />` : ''}
           <div style="flex: 1;">
-            <div style="font-size: 24px; font-weight: 900; color: ${colorMain}; text-transform: uppercase; letter-spacing: 1px;">${title}</div>
-            <div style="font-size: 14px; margin-top: 4px; color: #9ca3af;">${leagueName} • ${catType === 'hitting' ? 'Hitting' : 'Pitching'}</div>
+            <div style="font-size: 17px; font-weight: 900; color: #ffffff; text-transform: uppercase; letter-spacing: 0.5px; line-height: 1.1;">${category}</div>
+            <div style="font-size: 12px; margin-top: 2px;">
+              <span style="color: #e5e7eb;">${leagueName}</span>
+              <span style="color: #6b7280; margin: 0 4px;">•</span>
+              <span style="color: #dc2626; font-weight: 600;">${type === 'best' ? 'Best' : 'Worst'} All-Time</span>
+            </div>
           </div>
         </div>
         
         <!-- Featured Leader -->
-        <div style="padding: 16px 20px; background: linear-gradient(135deg, ${colorLight} 0%, transparent 100%); border-bottom: 1px solid ${colorBorder};">
-          <div style="display: flex; align-items: center; gap: 16px;">
-            <div style="width: 56px; height: 56px; border-radius: 50%; background: #374151; display: flex; align-items: center; justify-content: center; font-size: 24px; font-weight: bold; color: ${colorMain}; border: 3px solid ${colorBorder};">${leader.team_name.charAt(0)}</div>
+        <div style="padding: 12px 16px; background: linear-gradient(135deg, ${colorLight} 0%, transparent 100%); border-bottom: 1px solid ${colorBorder};">
+          <div style="display: flex; align-items: center; gap: 12px;">
+            <img src="${imageMap.get(leader.team_name + leader.season) || createPlaceholder(leader.team_name, colorMain)}" style="width: 44px; height: 44px; border-radius: 50%; border: 2px solid ${colorBorder};" />
             <div style="flex: 1;">
-              <div style="font-size: 18px; font-weight: bold; color: #ffffff;">${leader.team_name}</div>
-              <div style="font-size: 13px; color: #9ca3af;">${leader.season}</div>
+              <div style="font-size: 15px; font-weight: bold; color: #ffffff;">${leader.team_name}</div>
+              <div style="font-size: 11px; color: #9ca3af;">${leader.season}</div>
             </div>
             <div style="text-align: right;">
-              <div style="font-size: 32px; font-weight: 900; color: ${colorMain};">${leader.value}</div>
-              <div style="font-size: 11px; color: #6b7280;">category wins</div>
+              <div style="font-size: 26px; font-weight: 900; color: ${colorMain};">${leader.value}</div>
+              <div style="font-size: 10px; color: #6b7280;">category wins</div>
             </div>
           </div>
         </div>
         
         <!-- Rankings List -->
-        <div style="padding: 16px 20px;">
+        <div style="padding: 12px 16px;">
           ${generateRows()}
         </div>
         
         <!-- Footer -->
-        <div style="padding: 12px 20px; text-align: center; border-top: 1px solid rgba(220, 38, 38, 0.2);">
-          <span style="font-size: 16px; font-weight: bold; color: #dc2626;">ultimatefantasydashboard.com</span>
+        <div style="padding: 10px 16px; text-align: center; border-top: 1px solid rgba(220, 38, 38, 0.2);">
+          <span style="font-size: 14px; font-weight: bold; color: #dc2626;">ultimatefantasydashboard.com</span>
         </div>
       </div>
     `
