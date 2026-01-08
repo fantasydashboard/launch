@@ -2094,6 +2094,16 @@ async function downloadLeaderImage() {
       return Math.round(val).toString()
     }
     
+    // Get value unit for display in rows
+    const getValueUnit = (): string => {
+      if (leaderModalType.value === 'mostCatWins') return isPointsLeague.value ? 'Points' : 'Cat Wins'
+      if (leaderModalType.value === 'bestAllPlay') return 'All-Play Wins'
+      if (leaderModalType.value === 'hottest' || leaderModalType.value === 'coldest') return 'Cats (Last 3)'
+      if (leaderModalType.value === 'mostMoves' || leaderModalType.value === 'fewestMoves') return 'Moves'
+      return ''
+    }
+    const valueUnit = getValueUnit()
+    
     // Generate ranking rows
     const generateRows = () => {
       return rankings.map((team: any, idx: number) => {
@@ -2110,8 +2120,9 @@ async function downloadLeaderImage() {
                 <div style="height: 100%; width: ${barWidth}%; background: ${accentColor}; opacity: ${isFirst ? 1 : 0.6}; border-radius: 3px;"></div>
               </div>
             </div>
-            <div style="width: 50px; text-align: right;">
+            <div style="width: 65px; text-align: right;">
               <div style="font-size: 13px; font-weight: bold; color: ${isFirst ? accentColor : '#e5e7eb'};">${formatValue(team.value)}</div>
+              <div style="font-size: 9px; color: #6b7280; margin-top: 1px;">${valueUnit}</div>
             </div>
           </div>
         `
