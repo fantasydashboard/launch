@@ -98,6 +98,11 @@
         </div>
       </div>
 
+      <!-- Hint Text -->
+      <div class="text-sm text-dark-textMuted mb-2">
+        <span class="text-yellow-400 font-semibold">Click any team header</span> to see detailed draft breakdown and share
+      </div>
+
       <!-- Legend -->
       <div class="card">
         <div class="card-body py-3">
@@ -151,7 +156,8 @@
             <div 
               v-for="team in draftBoard" 
               :key="team.team_key"
-              class="w-44 flex-shrink-0 bg-dark-card rounded-t-lg p-2 text-center"
+              class="w-44 flex-shrink-0 bg-dark-card rounded-t-lg p-2 text-center cursor-pointer hover:ring-2 hover:ring-primary transition-all"
+              @click="selectedBoardTeam = team.team_key; showBoardTeamModal = true"
             >
               <div class="w-8 h-8 rounded-full bg-dark-border mx-auto mb-1 overflow-hidden">
                 <img v-if="team.logo_url" :src="team.logo_url" class="w-full h-full object-cover" @error="handleImageError" />
@@ -162,6 +168,11 @@
               <div class="text-xs font-semibold text-dark-text truncate" :title="team.team_name">
                 {{ team.team_name }}
               </div>
+              <!-- Team Draft Score -->
+              <div class="mt-1 text-lg font-black" :class="getTeamDraftScoreClass(team)">
+                {{ getTeamDraftScore(team) }}
+              </div>
+              <div class="text-[10px] text-dark-textMuted">Draft Score</div>
             </div>
           </div>
 
@@ -247,6 +258,105 @@
           </div>
         </div>
       </div>
+
+      <!-- Board Team Modal -->
+      <Teleport to="body">
+        <div 
+          v-if="showBoardTeamModal && selectedBoardTeamData" 
+          class="fixed inset-0 z-50 flex items-center justify-center p-4"
+          @click.self="showBoardTeamModal = false"
+        >
+          <div class="absolute inset-0 bg-black/70 backdrop-blur-sm"></div>
+          <div class="relative bg-dark-elevated rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto border border-dark-border">
+            <div class="sticky top-0 z-10 px-6 py-4 border-b border-dark-border bg-dark-elevated flex items-center justify-between">
+              <div class="flex items-center gap-3">
+                <div class="w-12 h-12 rounded-full bg-dark-border overflow-hidden">
+                  <img :src="selectedBoardTeamData?.logo_url || defaultAvatar" class="w-full h-full object-cover" @error="handleImageError" />
+                </div>
+                <div>
+                  <h3 class="text-xl font-bold text-dark-text">{{ selectedBoardTeamData?.team_name }}</h3>
+                  <p class="text-sm text-dark-textMuted">Draft Summary • {{ selectedBoardTeamData?.picks?.length }} picks</p>
+                </div>
+              </div>
+              <div class="flex items-center gap-2">
+                <button 
+                  @click="downloadTeamDraftImage" 
+                  :disabled="isDownloadingTeamDraft"
+                  class="flex items-center gap-2 text-sm px-3 py-1.5 rounded-lg font-semibold transition-colors disabled:opacity-50"
+                  style="background: #dc2626; color: #ffffff;"
+                  @mouseover="$event.currentTarget.style.background = '#eab308'"
+                  @mouseout="$event.currentTarget.style.background = '#dc2626'"
+                >
+                  <svg v-if="!isDownloadingTeamDraft" class="w-4 h-4 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                  </svg>
+                  <svg v-else class="w-4 h-4 animate-spin pointer-events-none" fill="none" viewBox="0 0 24 24">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                  {{ isDownloadingTeamDraft ? 'Saving...' : 'Share' }}
+                </button>
+                <button @click="showBoardTeamModal = false" class="p-2 rounded-lg hover:bg-dark-border/50 transition-colors">
+                  <svg class="w-5 h-5 text-dark-textMuted" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+            </div>
+            
+            <!-- Team Stats Summary -->
+            <div class="p-6 border-b border-dark-border bg-gradient-to-r from-yellow-500/10 to-transparent">
+              <div class="grid grid-cols-3 gap-4 text-center">
+                <div>
+                  <div class="text-3xl font-black" :class="getTeamDraftScoreClass(selectedBoardTeamData)">{{ getTeamDraftScore(selectedBoardTeamData) }}</div>
+                  <div class="text-xs text-dark-textMuted">Draft Score</div>
+                </div>
+                <div>
+                  <div class="text-3xl font-black text-green-400">{{ getTeamStealsCount(selectedBoardTeamData) }}</div>
+                  <div class="text-xs text-dark-textMuted">Steals</div>
+                </div>
+                <div>
+                  <div class="text-3xl font-black text-red-400">{{ getTeamBustsCount(selectedBoardTeamData) }}</div>
+                  <div class="text-xs text-dark-textMuted">Busts</div>
+                </div>
+              </div>
+            </div>
+            
+            <!-- Picks List -->
+            <div class="p-6">
+              <h4 class="text-sm font-semibold text-dark-textMuted uppercase tracking-wider mb-4">Draft Picks</h4>
+              <div class="space-y-2">
+                <div 
+                  v-for="pick in selectedBoardTeamData?.picks" 
+                  :key="pick.pick"
+                  class="flex items-center gap-3 p-3 rounded-lg"
+                  :class="pick.valueScore >= 10 ? 'bg-green-500/10' : pick.valueScore <= -10 ? 'bg-red-500/10' : 'bg-dark-border/20'"
+                >
+                  <div class="w-8 text-center">
+                    <div class="text-xs font-bold text-dark-textMuted">R{{ pick.round }}</div>
+                  </div>
+                  <div class="w-10 h-10 rounded-full bg-dark-border overflow-hidden flex-shrink-0">
+                    <img :src="pick.headshot || defaultAvatar" class="w-full h-full object-cover" @error="handleImageError" />
+                  </div>
+                  <div class="flex-1 min-w-0">
+                    <div class="font-semibold text-dark-text">{{ pick.player_name }}</div>
+                    <div class="text-xs text-dark-textMuted">{{ pick.position }} • Pick #{{ pick.pick }}</div>
+                  </div>
+                  <div class="text-right">
+                    <div 
+                      class="text-lg font-bold"
+                      :class="pick.valueScore >= 10 ? 'text-green-400' : pick.valueScore <= -10 ? 'text-red-400' : 'text-dark-textMuted'"
+                    >
+                      {{ pick.valueScore >= 0 ? '+' : '' }}{{ pick.valueScore?.toFixed(0) }}
+                    </div>
+                    <div class="text-xs text-dark-textMuted">value</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </Teleport>
     </template>
 
     <!-- ==================== CATEGORY IMPACT TAB ==================== -->
@@ -449,13 +559,18 @@
 
     <!-- ==================== DRAFT BALANCE TAB ==================== -->
     <template v-else-if="activeTab === 'balance'">
+      <!-- Hint Text -->
+      <div class="text-sm text-dark-textMuted mb-4">
+        <span class="text-yellow-400 font-semibold">Click any team</span> to see detailed category breakdown
+      </div>
+
       <!-- Team Balance Overview -->
       <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
         <div 
           v-for="team in teamBalanceData" 
           :key="team.team_key"
           class="card cursor-pointer hover:ring-2 hover:ring-primary transition-all"
-          @click="selectedBalanceTeam = team.team_key"
+          @click="selectedBalanceTeam = team.team_key; showBalanceModal = true"
         >
           <div class="card-body">
             <!-- Team Header -->
@@ -506,74 +621,96 @@
         </div>
       </div>
 
-      <!-- Selected Team Deep Dive -->
-      <div v-if="selectedBalanceTeam" class="card mt-6">
-        <div class="card-header">
-          <div class="flex items-center justify-between">
-            <div class="flex items-center gap-3">
-              <div class="w-10 h-10 rounded-full bg-dark-border overflow-hidden">
-                <img :src="selectedTeamData?.logo_url || defaultAvatar" class="w-full h-full object-cover" @error="handleImageError" />
+      <!-- Balance Modal -->
+      <Teleport to="body">
+        <div 
+          v-if="showBalanceModal && selectedTeamData" 
+          class="fixed inset-0 z-50 flex items-center justify-center p-4"
+          @click.self="showBalanceModal = false"
+        >
+          <div class="absolute inset-0 bg-black/70 backdrop-blur-sm"></div>
+          <div class="relative bg-dark-elevated rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto border border-dark-border">
+            <div class="sticky top-0 z-10 px-6 py-4 border-b border-dark-border bg-dark-elevated flex items-center justify-between">
+              <div class="flex items-center gap-3">
+                <div class="w-12 h-12 rounded-full bg-dark-border overflow-hidden">
+                  <img :src="selectedTeamData?.logo_url || defaultAvatar" class="w-full h-full object-cover" @error="handleImageError" />
+                </div>
+                <div>
+                  <h3 class="text-xl font-bold text-dark-text">{{ selectedTeamData?.team_name }}</h3>
+                  <p class="text-sm text-dark-textMuted">Draft Balance Breakdown</p>
+                </div>
               </div>
-              <div>
-                <h2 class="card-title">{{ selectedTeamData?.team_name }} Draft Breakdown</h2>
-                <p class="card-subtitle">Category contribution by round</p>
-              </div>
+              <button @click="showBalanceModal = false" class="p-2 rounded-lg hover:bg-dark-border/50 transition-colors">
+                <svg class="w-5 h-5 text-dark-textMuted" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
             </div>
-            <button @click="selectedBalanceTeam = null" class="text-dark-textMuted hover:text-dark-text p-2">
-              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            </button>
-          </div>
-        </div>
-        <div class="card-body">
-          <!-- Category Radar Chart (simplified bar version) -->
-          <div class="grid grid-cols-2 gap-4">
-            <!-- Hitting Categories -->
-            <div>
-              <div class="text-sm font-bold text-blue-400 mb-3 flex items-center gap-2">
-                <span>⚾</span> Hitting Categories
-              </div>
-              <div class="space-y-2">
-                <div v-for="cat in selectedTeamHittingCategories" :key="cat.category" class="flex items-center gap-2">
-                  <div class="w-12 text-xs font-medium text-dark-textMuted">{{ cat.category }}</div>
-                  <div class="flex-1 h-4 bg-dark-border/30 rounded-full overflow-hidden">
-                    <div 
-                      class="h-full rounded-full transition-all duration-500"
-                      :class="cat.percentile >= 75 ? 'bg-green-500' : cat.percentile >= 50 ? 'bg-yellow-500' : cat.percentile >= 25 ? 'bg-orange-500' : 'bg-red-500'"
-                      :style="{ width: cat.percentile + '%' }"
-                    ></div>
+            
+            <div class="p-6">
+              <!-- Category Breakdown -->
+              <div class="grid grid-cols-2 gap-6">
+                <!-- Hitting Categories -->
+                <div>
+                  <div class="text-sm font-bold text-blue-400 mb-3 flex items-center gap-2">
+                    <span>⚾</span> Hitting Categories
                   </div>
-                  <div class="w-10 text-xs font-bold text-right" :class="getCategoryScoreClass(cat.percentile)">
-                    {{ cat.percentile }}%
+                  <div class="space-y-2">
+                    <div v-for="cat in selectedTeamHittingCategories" :key="cat.category" class="flex items-center gap-2">
+                      <div class="w-12 text-xs font-medium text-dark-textMuted">{{ cat.category }}</div>
+                      <div class="flex-1 h-4 bg-dark-border/30 rounded-full overflow-hidden">
+                        <div 
+                          class="h-full rounded-full transition-all duration-500"
+                          :class="cat.percentile >= 75 ? 'bg-green-500' : cat.percentile >= 50 ? 'bg-yellow-500' : cat.percentile >= 25 ? 'bg-orange-500' : 'bg-red-500'"
+                          :style="{ width: cat.percentile + '%' }"
+                        ></div>
+                      </div>
+                      <div class="w-10 text-xs font-bold text-right" :class="getCategoryScoreClass(cat.percentile)">
+                        {{ cat.percentile }}%
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                <!-- Pitching Categories -->
+                <div>
+                  <div class="text-sm font-bold text-purple-400 mb-3 flex items-center gap-2">
+                    <span>🎯</span> Pitching Categories
+                  </div>
+                  <div class="space-y-2">
+                    <div v-for="cat in selectedTeamPitchingCategories" :key="cat.category" class="flex items-center gap-2">
+                      <div class="w-12 text-xs font-medium text-dark-textMuted">{{ cat.category }}</div>
+                      <div class="flex-1 h-4 bg-dark-border/30 rounded-full overflow-hidden">
+                        <div 
+                          class="h-full rounded-full transition-all duration-500"
+                          :class="cat.percentile >= 75 ? 'bg-green-500' : cat.percentile >= 50 ? 'bg-yellow-500' : cat.percentile >= 25 ? 'bg-orange-500' : 'bg-red-500'"
+                          :style="{ width: cat.percentile + '%' }"
+                        ></div>
+                      </div>
+                      <div class="w-10 text-xs font-bold text-right" :class="getCategoryScoreClass(cat.percentile)">
+                        {{ cat.percentile }}%
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Strategy Info -->
+              <div class="mt-6 pt-6 border-t border-dark-border">
+                <div class="flex items-center gap-3">
+                  <span class="text-2xl">{{ selectedTeamData?.strategyIcon }}</span>
+                  <div>
+                    <div class="font-bold text-dark-text">{{ selectedTeamData?.strategyLabel }}</div>
+                    <div class="text-sm text-dark-textMuted">{{ selectedTeamData?.strategyDetail }}</div>
+                  </div>
+                  <div class="ml-auto text-3xl font-black" :class="getGradeClass(selectedTeamData?.balanceGrade)">
+                    {{ selectedTeamData?.balanceGrade }}
                   </div>
                 </div>
               </div>
             </div>
-            <!-- Pitching Categories -->
-            <div>
-              <div class="text-sm font-bold text-purple-400 mb-3 flex items-center gap-2">
-                <span>🎯</span> Pitching Categories
-              </div>
-              <div class="space-y-2">
-                <div v-for="cat in selectedTeamPitchingCategories" :key="cat.category" class="flex items-center gap-2">
-                  <div class="w-12 text-xs font-medium text-dark-textMuted">{{ cat.category }}</div>
-                  <div class="flex-1 h-4 bg-dark-border/30 rounded-full overflow-hidden">
-                    <div 
-                      class="h-full rounded-full transition-all duration-500"
-                      :class="cat.percentile >= 75 ? 'bg-green-500' : cat.percentile >= 50 ? 'bg-yellow-500' : cat.percentile >= 25 ? 'bg-orange-500' : 'bg-red-500'"
-                      :style="{ width: cat.percentile + '%' }"
-                    ></div>
-                  </div>
-                  <div class="w-10 text-xs font-bold text-right" :class="getCategoryScoreClass(cat.percentile)">
-                    {{ cat.percentile }}%
-                  </div>
-                </div>
-              </div>
-            </div>
           </div>
         </div>
-      </div>
+      </Teleport>
     </template>
 
     <!-- ==================== STEALS & BUSTS TAB ==================== -->
@@ -582,11 +719,32 @@
         <!-- Biggest Steals -->
         <div class="card">
           <div class="card-header">
-            <div class="flex items-center gap-2">
-              <span class="text-2xl">🔥</span>
-              <h2 class="card-title">Biggest Draft Steals</h2>
+            <div class="flex items-center justify-between">
+              <div class="flex items-center gap-2">
+                <span class="text-2xl">🔥</span>
+                <div>
+                  <h2 class="card-title">Biggest Draft Steals</h2>
+                  <p class="card-subtitle mt-1">Best value relative to draft position</p>
+                </div>
+              </div>
+              <button 
+                @click="downloadStealsImage" 
+                :disabled="isDownloadingSteals"
+                class="flex items-center gap-2 text-sm px-3 py-1.5 rounded-lg font-semibold transition-colors disabled:opacity-50"
+                style="background: #dc2626; color: #ffffff;"
+                @mouseover="$event.currentTarget.style.background = '#22c55e'"
+                @mouseout="$event.currentTarget.style.background = '#dc2626'"
+              >
+                <svg v-if="!isDownloadingSteals" class="w-4 h-4 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                </svg>
+                <svg v-else class="w-4 h-4 animate-spin pointer-events-none" fill="none" viewBox="0 0 24 24">
+                  <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                  <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                {{ isDownloadingSteals ? 'Saving...' : 'Share' }}
+              </button>
             </div>
-            <p class="card-subtitle mt-1">Best value relative to draft position</p>
           </div>
           <div class="card-body space-y-2">
             <div 
@@ -617,11 +775,32 @@
         <!-- Biggest Busts -->
         <div class="card">
           <div class="card-header">
-            <div class="flex items-center gap-2">
-              <span class="text-2xl">💀</span>
-              <h2 class="card-title">Biggest Draft Busts</h2>
+            <div class="flex items-center justify-between">
+              <div class="flex items-center gap-2">
+                <span class="text-2xl">💀</span>
+                <div>
+                  <h2 class="card-title">Biggest Draft Busts</h2>
+                  <p class="card-subtitle mt-1">Underperformed relative to draft position</p>
+                </div>
+              </div>
+              <button 
+                @click="downloadBustsImage" 
+                :disabled="isDownloadingBusts"
+                class="flex items-center gap-2 text-sm px-3 py-1.5 rounded-lg font-semibold transition-colors disabled:opacity-50"
+                style="background: #dc2626; color: #ffffff;"
+                @mouseover="$event.currentTarget.style.background = '#ef4444'"
+                @mouseout="$event.currentTarget.style.background = '#dc2626'"
+              >
+                <svg v-if="!isDownloadingBusts" class="w-4 h-4 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                </svg>
+                <svg v-else class="w-4 h-4 animate-spin pointer-events-none" fill="none" viewBox="0 0 24 24">
+                  <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                  <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                {{ isDownloadingBusts ? 'Saving...' : 'Share' }}
+              </button>
             </div>
-            <p class="card-subtitle mt-1">Underperformed relative to draft position</p>
           </div>
           <div class="card-body space-y-2">
             <div 
@@ -874,6 +1053,16 @@ const impactSort = ref('pick')
 const selectedBalanceTeam = ref<string | null>(null)
 const selectedPick = ref<any>(null)
 const selectedStealCategory = ref('HR')
+
+// Modal states
+const showBalanceModal = ref(false)
+const showBoardTeamModal = ref(false)
+const selectedBoardTeam = ref<string | null>(null)
+
+// Download states
+const isDownloadingSteals = ref(false)
+const isDownloadingBusts = ref(false)
+const isDownloadingTeamDraft = ref(false)
 
 // Data
 const draftPicks = ref<any[]>([])
@@ -1161,6 +1350,44 @@ const selectedTeamPitchingCategories = computed(() => {
   if (!selectedTeamData.value) return []
   return selectedTeamData.value.categoryStrengths.filter((c: any) => !isHittingCategory(c.category))
 })
+
+// Selected Board Team Data
+const selectedBoardTeamData = computed(() => {
+  return draftBoard.value.find(t => t.team_key === selectedBoardTeam.value)
+})
+
+// Team Draft Score helpers
+function getTeamDraftScore(team: any): string {
+  if (!team?.picks) return 'N/A'
+  const totalValue = team.picks.reduce((sum: number, p: any) => sum + (p.valueScore || 0), 0)
+  const avgValue = totalValue / team.picks.length
+  if (avgValue >= 10) return 'A+'
+  if (avgValue >= 5) return 'A'
+  if (avgValue >= 2) return 'B+'
+  if (avgValue >= 0) return 'B'
+  if (avgValue >= -2) return 'C+'
+  if (avgValue >= -5) return 'C'
+  if (avgValue >= -10) return 'D'
+  return 'F'
+}
+
+function getTeamDraftScoreClass(team: any): string {
+  const score = getTeamDraftScore(team)
+  if (score.startsWith('A')) return 'text-green-400'
+  if (score.startsWith('B')) return 'text-yellow-400'
+  if (score.startsWith('C')) return 'text-orange-400'
+  return 'text-red-400'
+}
+
+function getTeamStealsCount(team: any): number {
+  if (!team?.picks) return 0
+  return team.picks.filter((p: any) => (p.valueScore || 0) >= 10).length
+}
+
+function getTeamBustsCount(team: any): number {
+  if (!team?.picks) return 0
+  return team.picks.filter((p: any) => (p.valueScore || 0) <= -10).length
+}
 
 // Top Steals & Busts
 const topSteals = computed(() => {
@@ -1663,6 +1890,521 @@ async function loadDraftData() {
     draftPicks.value = []
   } finally {
     isLoading.value = false
+  }
+}
+
+// Get league name helper
+function getLeagueName(): string {
+  const activeId = leagueStore.activeLeagueId
+  const savedLeague = leagueStore.savedLeagues?.find((l: any) => l.league_id === activeId?.split('.l.')[1])
+  return savedLeague?.league_name || leagueStore.yahooLeague?.name || 'Fantasy League'
+}
+
+// Download Steals Image
+async function downloadStealsImage() {
+  isDownloadingSteals.value = true
+  try {
+    const html2canvas = (await import('html2canvas')).default
+    const leagueName = getLeagueName()
+    const steals = topSteals.value.slice(0, 10)
+    
+    if (steals.length === 0) {
+      isDownloadingSteals.value = false
+      return
+    }
+    
+    // Load UFD logo
+    const loadLogo = async (): Promise<string> => {
+      try {
+        const response = await fetch('/UFD_V5.png')
+        if (!response.ok) return ''
+        const blob = await response.blob()
+        return new Promise((resolve) => {
+          const reader = new FileReader()
+          reader.onloadend = () => resolve(reader.result as string)
+          reader.onerror = () => resolve('')
+          reader.readAsDataURL(blob)
+        })
+      } catch (e) { return '' }
+    }
+    
+    const createPlaceholder = (name: string): string => {
+      const canvas = document.createElement('canvas')
+      canvas.width = 64
+      canvas.height = 64
+      const ctx = canvas.getContext('2d')
+      if (ctx) {
+        ctx.fillStyle = '#3a3d52'
+        ctx.beginPath()
+        ctx.arc(32, 32, 32, 0, Math.PI * 2)
+        ctx.fill()
+        ctx.fillStyle = '#ffffff'
+        ctx.font = 'bold 28px sans-serif'
+        ctx.textAlign = 'center'
+        ctx.textBaseline = 'middle'
+        ctx.fillText(name.charAt(0).toUpperCase(), 32, 34)
+      }
+      return canvas.toDataURL('image/png')
+    }
+    
+    const logoBase64 = await loadLogo()
+    const leader = steals[0]
+    
+    // Pre-load images
+    const imageMap = new Map<string, string>()
+    for (const pick of steals) {
+      try {
+        const img = new Image()
+        img.crossOrigin = 'anonymous'
+        const loadPromise = new Promise<string>((resolve) => {
+          img.onload = () => {
+            try {
+              const canvas = document.createElement('canvas')
+              canvas.width = 64
+              canvas.height = 64
+              const ctx = canvas.getContext('2d')
+              if (ctx) {
+                ctx.beginPath()
+                ctx.arc(32, 32, 32, 0, Math.PI * 2)
+                ctx.closePath()
+                ctx.clip()
+                ctx.drawImage(img, 0, 0, 64, 64)
+              }
+              resolve(canvas.toDataURL('image/png'))
+            } catch { resolve(createPlaceholder(pick.player_name)) }
+          }
+          img.onerror = () => resolve(createPlaceholder(pick.player_name))
+          setTimeout(() => resolve(createPlaceholder(pick.player_name)), 3000)
+        })
+        img.src = pick.headshot || ''
+        imageMap.set(pick.player_name, await loadPromise)
+      } catch { imageMap.set(pick.player_name, createPlaceholder(pick.player_name)) }
+    }
+    
+    const maxValue = Math.max(...steals.map(s => s.valueScore || 0))
+    
+    const generateRows = () => {
+      return steals.map((pick, idx) => {
+        const barWidth = maxValue > 0 ? ((pick.valueScore || 0) / maxValue) * 100 : 0
+        return `
+          <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 10px;">
+            <div style="width: 20px; text-align: center; font-weight: bold; font-size: 12px; color: ${idx === 0 ? '#22c55e' : '#6b7280'};">${idx + 1}</div>
+            <img src="${imageMap.get(pick.player_name) || createPlaceholder(pick.player_name)}" style="width: 28px; height: 28px; border-radius: 50%;" />
+            <div style="flex: 1; min-width: 0;">
+              <div style="font-size: 12px; font-weight: 600; color: #e5e7eb; margin-bottom: 2px;">${pick.player_name}</div>
+              <div style="font-size: 10px; color: #9ca3af;">Drafted by <span style="color: #facc15; font-weight: 600;">${pick.team_name}</span> • R${pick.round}</div>
+              <div style="height: 6px; background: rgba(58, 61, 82, 0.5); border-radius: 3px; overflow: hidden; margin-top: 3px;">
+                <div style="height: 100%; width: ${barWidth}%; background: #22c55e; opacity: ${idx === 0 ? 1 : 0.6}; border-radius: 3px;"></div>
+              </div>
+            </div>
+            <div style="width: 50px; text-align: right;">
+              <div style="font-size: 13px; font-weight: bold; color: ${idx === 0 ? '#22c55e' : '#e5e7eb'};">+${pick.valueScore?.toFixed(0)}</div>
+            </div>
+          </div>
+        `
+      }).join('')
+    }
+    
+    const container = document.createElement('div')
+    container.style.cssText = 'position: absolute; left: -9999px; top: 0; width: 480px; font-family: system-ui, -apple-system, sans-serif;'
+    
+    container.innerHTML = `
+      <div style="background: linear-gradient(160deg, #0f1219 0%, #0a0c14 50%, #0d1117 100%); border-radius: 16px; box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5); position: relative; overflow: hidden;">
+        <div style="background: #dc2626; padding: 8px 20px; text-align: center;">
+          <span style="font-size: 12px; font-weight: 700; color: #ffffff; text-transform: uppercase; letter-spacing: 2px;">Ultimate Fantasy Dashboard</span>
+        </div>
+        <div style="display: flex; align-items: center; padding: 10px 16px; border-bottom: 1px solid rgba(220, 38, 38, 0.2);">
+          ${logoBase64 ? `<img src="${logoBase64}" style="height: 40px; width: auto; flex-shrink: 0; margin-right: 12px; margin-top: 4px;" />` : ''}
+          <div style="flex: 1;">
+            <div style="font-size: 17px; font-weight: 900; color: #ffffff; text-transform: uppercase; letter-spacing: 0.5px; line-height: 1.1;">🔥 Biggest Draft Steals</div>
+            <div style="font-size: 12px; margin-top: 2px;">
+              <span style="color: #e5e7eb;">${leagueName}</span>
+              <span style="color: #6b7280; margin: 0 4px;">•</span>
+              <span style="color: #dc2626; font-weight: 600;">${selectedSeason.value} Draft</span>
+            </div>
+          </div>
+        </div>
+        <div style="padding: 12px 16px; background: linear-gradient(135deg, rgba(34, 197, 94, 0.15) 0%, transparent 100%); border-bottom: 1px solid rgba(34, 197, 94, 0.2);">
+          <div style="display: flex; align-items: center; gap: 12px;">
+            <img src="${imageMap.get(leader.player_name) || createPlaceholder(leader.player_name)}" style="width: 44px; height: 44px; border-radius: 50%; border: 2px solid rgba(34, 197, 94, 0.5);" />
+            <div style="flex: 1;">
+              <div style="font-size: 15px; font-weight: bold; color: #ffffff;">${leader.player_name}</div>
+              <div style="font-size: 11px; color: #9ca3af;">Drafted by <span style="color: #facc15;">${leader.team_name}</span></div>
+            </div>
+            <div style="text-align: right;">
+              <div style="font-size: 26px; font-weight: 900; color: #22c55e;">+${leader.valueScore?.toFixed(0)}</div>
+            </div>
+          </div>
+        </div>
+        <div style="padding: 12px 16px;">${generateRows()}</div>
+        <div style="padding: 10px 16px; text-align: center; border-top: 1px solid rgba(220, 38, 38, 0.2);">
+          <span style="font-size: 14px; font-weight: bold; color: #dc2626;">ultimatefantasydashboard.com</span>
+        </div>
+      </div>
+    `
+    
+    document.body.appendChild(container)
+    await new Promise(r => setTimeout(r, 300))
+    
+    const finalCanvas = await html2canvas(container, { backgroundColor: '#0a0c14', scale: 2, useCORS: true, allowTaint: true })
+    document.body.removeChild(container)
+    
+    const link = document.createElement('a')
+    link.download = `${selectedSeason.value}-draft-steals.png`
+    link.href = finalCanvas.toDataURL('image/png')
+    link.click()
+  } finally {
+    isDownloadingSteals.value = false
+  }
+}
+
+// Download Busts Image
+async function downloadBustsImage() {
+  isDownloadingBusts.value = true
+  try {
+    const html2canvas = (await import('html2canvas')).default
+    const leagueName = getLeagueName()
+    const busts = topBusts.value.slice(0, 10)
+    
+    if (busts.length === 0) {
+      isDownloadingBusts.value = false
+      return
+    }
+    
+    const loadLogo = async (): Promise<string> => {
+      try {
+        const response = await fetch('/UFD_V5.png')
+        if (!response.ok) return ''
+        const blob = await response.blob()
+        return new Promise((resolve) => {
+          const reader = new FileReader()
+          reader.onloadend = () => resolve(reader.result as string)
+          reader.onerror = () => resolve('')
+          reader.readAsDataURL(blob)
+        })
+      } catch (e) { return '' }
+    }
+    
+    const createPlaceholder = (name: string): string => {
+      const canvas = document.createElement('canvas')
+      canvas.width = 64
+      canvas.height = 64
+      const ctx = canvas.getContext('2d')
+      if (ctx) {
+        ctx.fillStyle = '#3a3d52'
+        ctx.beginPath()
+        ctx.arc(32, 32, 32, 0, Math.PI * 2)
+        ctx.fill()
+        ctx.fillStyle = '#ffffff'
+        ctx.font = 'bold 28px sans-serif'
+        ctx.textAlign = 'center'
+        ctx.textBaseline = 'middle'
+        ctx.fillText(name.charAt(0).toUpperCase(), 32, 34)
+      }
+      return canvas.toDataURL('image/png')
+    }
+    
+    const logoBase64 = await loadLogo()
+    const leader = busts[0]
+    
+    const imageMap = new Map<string, string>()
+    for (const pick of busts) {
+      try {
+        const img = new Image()
+        img.crossOrigin = 'anonymous'
+        const loadPromise = new Promise<string>((resolve) => {
+          img.onload = () => {
+            try {
+              const canvas = document.createElement('canvas')
+              canvas.width = 64
+              canvas.height = 64
+              const ctx = canvas.getContext('2d')
+              if (ctx) {
+                ctx.beginPath()
+                ctx.arc(32, 32, 32, 0, Math.PI * 2)
+                ctx.closePath()
+                ctx.clip()
+                ctx.drawImage(img, 0, 0, 64, 64)
+              }
+              resolve(canvas.toDataURL('image/png'))
+            } catch { resolve(createPlaceholder(pick.player_name)) }
+          }
+          img.onerror = () => resolve(createPlaceholder(pick.player_name))
+          setTimeout(() => resolve(createPlaceholder(pick.player_name)), 3000)
+        })
+        img.src = pick.headshot || ''
+        imageMap.set(pick.player_name, await loadPromise)
+      } catch { imageMap.set(pick.player_name, createPlaceholder(pick.player_name)) }
+    }
+    
+    const minValue = Math.min(...busts.map(s => s.valueScore || 0))
+    
+    const generateRows = () => {
+      return busts.map((pick, idx) => {
+        const barWidth = minValue < 0 ? ((pick.valueScore || 0) / minValue) * 100 : 0
+        return `
+          <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 10px;">
+            <div style="width: 20px; text-align: center; font-weight: bold; font-size: 12px; color: ${idx === 0 ? '#ef4444' : '#6b7280'};">${idx + 1}</div>
+            <img src="${imageMap.get(pick.player_name) || createPlaceholder(pick.player_name)}" style="width: 28px; height: 28px; border-radius: 50%;" />
+            <div style="flex: 1; min-width: 0;">
+              <div style="font-size: 12px; font-weight: 600; color: #e5e7eb; margin-bottom: 2px;">${pick.player_name}</div>
+              <div style="font-size: 10px; color: #9ca3af;">Drafted by <span style="color: #facc15; font-weight: 600;">${pick.team_name}</span> • R${pick.round}</div>
+              <div style="height: 6px; background: rgba(58, 61, 82, 0.5); border-radius: 3px; overflow: hidden; margin-top: 3px;">
+                <div style="height: 100%; width: ${barWidth}%; background: #ef4444; opacity: ${idx === 0 ? 1 : 0.6}; border-radius: 3px;"></div>
+              </div>
+            </div>
+            <div style="width: 50px; text-align: right;">
+              <div style="font-size: 13px; font-weight: bold; color: ${idx === 0 ? '#ef4444' : '#e5e7eb'};">${pick.valueScore?.toFixed(0)}</div>
+            </div>
+          </div>
+        `
+      }).join('')
+    }
+    
+    const container = document.createElement('div')
+    container.style.cssText = 'position: absolute; left: -9999px; top: 0; width: 480px; font-family: system-ui, -apple-system, sans-serif;'
+    
+    container.innerHTML = `
+      <div style="background: linear-gradient(160deg, #0f1219 0%, #0a0c14 50%, #0d1117 100%); border-radius: 16px; box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5); position: relative; overflow: hidden;">
+        <div style="background: #dc2626; padding: 8px 20px; text-align: center;">
+          <span style="font-size: 12px; font-weight: 700; color: #ffffff; text-transform: uppercase; letter-spacing: 2px;">Ultimate Fantasy Dashboard</span>
+        </div>
+        <div style="display: flex; align-items: center; padding: 10px 16px; border-bottom: 1px solid rgba(220, 38, 38, 0.2);">
+          ${logoBase64 ? `<img src="${logoBase64}" style="height: 40px; width: auto; flex-shrink: 0; margin-right: 12px; margin-top: 4px;" />` : ''}
+          <div style="flex: 1;">
+            <div style="font-size: 17px; font-weight: 900; color: #ffffff; text-transform: uppercase; letter-spacing: 0.5px; line-height: 1.1;">💀 Biggest Draft Busts</div>
+            <div style="font-size: 12px; margin-top: 2px;">
+              <span style="color: #e5e7eb;">${leagueName}</span>
+              <span style="color: #6b7280; margin: 0 4px;">•</span>
+              <span style="color: #dc2626; font-weight: 600;">${selectedSeason.value} Draft</span>
+            </div>
+          </div>
+        </div>
+        <div style="padding: 12px 16px; background: linear-gradient(135deg, rgba(239, 68, 68, 0.15) 0%, transparent 100%); border-bottom: 1px solid rgba(239, 68, 68, 0.2);">
+          <div style="display: flex; align-items: center; gap: 12px;">
+            <img src="${imageMap.get(leader.player_name) || createPlaceholder(leader.player_name)}" style="width: 44px; height: 44px; border-radius: 50%; border: 2px solid rgba(239, 68, 68, 0.5);" />
+            <div style="flex: 1;">
+              <div style="font-size: 15px; font-weight: bold; color: #ffffff;">${leader.player_name}</div>
+              <div style="font-size: 11px; color: #9ca3af;">Drafted by <span style="color: #facc15;">${leader.team_name}</span></div>
+            </div>
+            <div style="text-align: right;">
+              <div style="font-size: 26px; font-weight: 900; color: #ef4444;">${leader.valueScore?.toFixed(0)}</div>
+            </div>
+          </div>
+        </div>
+        <div style="padding: 12px 16px;">${generateRows()}</div>
+        <div style="padding: 10px 16px; text-align: center; border-top: 1px solid rgba(220, 38, 38, 0.2);">
+          <span style="font-size: 14px; font-weight: bold; color: #dc2626;">ultimatefantasydashboard.com</span>
+        </div>
+      </div>
+    `
+    
+    document.body.appendChild(container)
+    await new Promise(r => setTimeout(r, 300))
+    
+    const finalCanvas = await html2canvas(container, { backgroundColor: '#0a0c14', scale: 2, useCORS: true, allowTaint: true })
+    document.body.removeChild(container)
+    
+    const link = document.createElement('a')
+    link.download = `${selectedSeason.value}-draft-busts.png`
+    link.href = finalCanvas.toDataURL('image/png')
+    link.click()
+  } finally {
+    isDownloadingBusts.value = false
+  }
+}
+
+// Download Team Draft Image
+async function downloadTeamDraftImage() {
+  if (!selectedBoardTeamData.value) return
+  isDownloadingTeamDraft.value = true
+  try {
+    const html2canvas = (await import('html2canvas')).default
+    const leagueName = getLeagueName()
+    const team = selectedBoardTeamData.value
+    const picks = team.picks?.slice(0, 10) || []
+    
+    if (picks.length === 0) {
+      isDownloadingTeamDraft.value = false
+      return
+    }
+    
+    const loadLogo = async (): Promise<string> => {
+      try {
+        const response = await fetch('/UFD_V5.png')
+        if (!response.ok) return ''
+        const blob = await response.blob()
+        return new Promise((resolve) => {
+          const reader = new FileReader()
+          reader.onloadend = () => resolve(reader.result as string)
+          reader.onerror = () => resolve('')
+          reader.readAsDataURL(blob)
+        })
+      } catch (e) { return '' }
+    }
+    
+    const createPlaceholder = (name: string): string => {
+      const canvas = document.createElement('canvas')
+      canvas.width = 64
+      canvas.height = 64
+      const ctx = canvas.getContext('2d')
+      if (ctx) {
+        ctx.fillStyle = '#3a3d52'
+        ctx.beginPath()
+        ctx.arc(32, 32, 32, 0, Math.PI * 2)
+        ctx.fill()
+        ctx.fillStyle = '#ffffff'
+        ctx.font = 'bold 28px sans-serif'
+        ctx.textAlign = 'center'
+        ctx.textBaseline = 'middle'
+        ctx.fillText(name.charAt(0).toUpperCase(), 32, 34)
+      }
+      return canvas.toDataURL('image/png')
+    }
+    
+    const logoBase64 = await loadLogo()
+    
+    // Load team logo
+    let teamLogoBase64 = ''
+    if (team.logo_url) {
+      try {
+        const img = new Image()
+        img.crossOrigin = 'anonymous'
+        teamLogoBase64 = await new Promise<string>((resolve) => {
+          img.onload = () => {
+            const canvas = document.createElement('canvas')
+            canvas.width = 64
+            canvas.height = 64
+            const ctx = canvas.getContext('2d')
+            if (ctx) {
+              ctx.beginPath()
+              ctx.arc(32, 32, 32, 0, Math.PI * 2)
+              ctx.closePath()
+              ctx.clip()
+              ctx.drawImage(img, 0, 0, 64, 64)
+            }
+            resolve(canvas.toDataURL('image/png'))
+          }
+          img.onerror = () => resolve(createPlaceholder(team.team_name))
+          img.src = team.logo_url
+        })
+      } catch { teamLogoBase64 = createPlaceholder(team.team_name) }
+    }
+    
+    const imageMap = new Map<string, string>()
+    for (const pick of picks) {
+      try {
+        const img = new Image()
+        img.crossOrigin = 'anonymous'
+        const loadPromise = new Promise<string>((resolve) => {
+          img.onload = () => {
+            try {
+              const canvas = document.createElement('canvas')
+              canvas.width = 64
+              canvas.height = 64
+              const ctx = canvas.getContext('2d')
+              if (ctx) {
+                ctx.beginPath()
+                ctx.arc(32, 32, 32, 0, Math.PI * 2)
+                ctx.closePath()
+                ctx.clip()
+                ctx.drawImage(img, 0, 0, 64, 64)
+              }
+              resolve(canvas.toDataURL('image/png'))
+            } catch { resolve(createPlaceholder(pick.player_name)) }
+          }
+          img.onerror = () => resolve(createPlaceholder(pick.player_name))
+          setTimeout(() => resolve(createPlaceholder(pick.player_name)), 3000)
+        })
+        img.src = pick.headshot || ''
+        imageMap.set(pick.player_name, await loadPromise)
+      } catch { imageMap.set(pick.player_name, createPlaceholder(pick.player_name)) }
+    }
+    
+    const draftScore = getTeamDraftScore(team)
+    const stealsCount = getTeamStealsCount(team)
+    const bustsCount = getTeamBustsCount(team)
+    
+    const generateRows = () => {
+      return picks.map((pick: any) => {
+        const valueColor = (pick.valueScore || 0) >= 10 ? '#22c55e' : (pick.valueScore || 0) <= -10 ? '#ef4444' : '#9ca3af'
+        const bgColor = (pick.valueScore || 0) >= 10 ? 'rgba(34, 197, 94, 0.1)' : (pick.valueScore || 0) <= -10 ? 'rgba(239, 68, 68, 0.1)' : 'rgba(58, 61, 82, 0.3)'
+        return `
+          <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 8px; padding: 8px; border-radius: 8px; background: ${bgColor};">
+            <div style="width: 28px; text-align: center; font-weight: bold; font-size: 11px; color: #6b7280;">R${pick.round}</div>
+            <img src="${imageMap.get(pick.player_name) || createPlaceholder(pick.player_name)}" style="width: 28px; height: 28px; border-radius: 50%;" />
+            <div style="flex: 1; min-width: 0;">
+              <div style="font-size: 12px; font-weight: 600; color: #e5e7eb;">${pick.player_name}</div>
+              <div style="font-size: 10px; color: #9ca3af;">${pick.position} • Pick #${pick.pick}</div>
+            </div>
+            <div style="width: 45px; text-align: right;">
+              <div style="font-size: 13px; font-weight: bold; color: ${valueColor};">${(pick.valueScore || 0) >= 0 ? '+' : ''}${pick.valueScore?.toFixed(0)}</div>
+            </div>
+          </div>
+        `
+      }).join('')
+    }
+    
+    const container = document.createElement('div')
+    container.style.cssText = 'position: absolute; left: -9999px; top: 0; width: 480px; font-family: system-ui, -apple-system, sans-serif;'
+    
+    container.innerHTML = `
+      <div style="background: linear-gradient(160deg, #0f1219 0%, #0a0c14 50%, #0d1117 100%); border-radius: 16px; box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5); position: relative; overflow: hidden;">
+        <div style="background: #dc2626; padding: 8px 20px; text-align: center;">
+          <span style="font-size: 12px; font-weight: 700; color: #ffffff; text-transform: uppercase; letter-spacing: 2px;">Ultimate Fantasy Dashboard</span>
+        </div>
+        <div style="display: flex; align-items: center; padding: 10px 16px; border-bottom: 1px solid rgba(220, 38, 38, 0.2);">
+          ${logoBase64 ? `<img src="${logoBase64}" style="height: 40px; width: auto; flex-shrink: 0; margin-right: 12px; margin-top: 4px;" />` : ''}
+          <div style="flex: 1;">
+            <div style="font-size: 17px; font-weight: 900; color: #ffffff; text-transform: uppercase; letter-spacing: 0.5px; line-height: 1.1;">Draft Summary</div>
+            <div style="font-size: 12px; margin-top: 2px;">
+              <span style="color: #e5e7eb;">${leagueName}</span>
+              <span style="color: #6b7280; margin: 0 4px;">•</span>
+              <span style="color: #dc2626; font-weight: 600;">${selectedSeason.value} Draft</span>
+            </div>
+          </div>
+        </div>
+        <div style="padding: 12px 16px; background: linear-gradient(135deg, rgba(250, 204, 21, 0.15) 0%, transparent 100%); border-bottom: 1px solid rgba(250, 204, 21, 0.2);">
+          <div style="display: flex; align-items: center; gap: 12px;">
+            <img src="${teamLogoBase64 || createPlaceholder(team.team_name)}" style="width: 44px; height: 44px; border-radius: 50%; border: 2px solid rgba(250, 204, 21, 0.5);" />
+            <div style="flex: 1;">
+              <div style="font-size: 15px; font-weight: bold; color: #ffffff;">${team.team_name}</div>
+              <div style="font-size: 11px; color: #9ca3af;">${picks.length} picks</div>
+            </div>
+            <div style="text-align: center; padding: 0 12px;">
+              <div style="font-size: 22px; font-weight: 900; color: #facc15;">${draftScore}</div>
+              <div style="font-size: 9px; color: #9ca3af;">GRADE</div>
+            </div>
+            <div style="text-align: center; padding: 0 8px;">
+              <div style="font-size: 18px; font-weight: 900; color: #22c55e;">${stealsCount}</div>
+              <div style="font-size: 9px; color: #9ca3af;">STEALS</div>
+            </div>
+            <div style="text-align: center; padding: 0 8px;">
+              <div style="font-size: 18px; font-weight: 900; color: #ef4444;">${bustsCount}</div>
+              <div style="font-size: 9px; color: #9ca3af;">BUSTS</div>
+            </div>
+          </div>
+        </div>
+        <div style="padding: 12px 16px;">${generateRows()}</div>
+        <div style="padding: 10px 16px; text-align: center; border-top: 1px solid rgba(220, 38, 38, 0.2);">
+          <span style="font-size: 14px; font-weight: bold; color: #dc2626;">ultimatefantasydashboard.com</span>
+        </div>
+      </div>
+    `
+    
+    document.body.appendChild(container)
+    await new Promise(r => setTimeout(r, 300))
+    
+    const finalCanvas = await html2canvas(container, { backgroundColor: '#0a0c14', scale: 2, useCORS: true, allowTaint: true })
+    document.body.removeChild(container)
+    
+    const link = document.createElement('a')
+    const safeTeamName = team.team_name.replace(/[^a-zA-Z0-9\s]/g, '').replace(/\s+/g, '-').toLowerCase()
+    link.download = `${selectedSeason.value}-draft-${safeTeamName}.png`
+    link.href = finalCanvas.toDataURL('image/png')
+    link.click()
+  } finally {
+    isDownloadingTeamDraft.value = false
   }
 }
 
