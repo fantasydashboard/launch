@@ -25,7 +25,7 @@
               <input type="checkbox" v-model="showCurrentMembersOnly" class="sr-only">
               <div :class="[
                 'w-10 h-5 rounded-full transition-colors',
-                showCurrentMembersOnly ? 'bg-primary' : 'bg-dark-border'
+                showCurrentMembersOnly ? 'bg-yellow-400' : 'bg-dark-border'
               ]"></div>
               <div :class="[
                 'absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full transition-transform',
@@ -72,7 +72,7 @@
     <!-- Initial Loading State (loading historical data) -->
     <div v-if="isInitialLoading" class="flex items-center justify-center py-20">
       <div class="text-center">
-        <div class="animate-spin rounded-full h-16 w-16 border-b-4 border-primary mx-auto mb-4"></div>
+        <div class="animate-spin rounded-full h-16 w-16 border-b-4 border-yellow-400 mx-auto mb-4"></div>
         <div class="text-lg font-semibold text-dark-text mb-2">Loading League History</div>
         <div class="text-dark-textMuted text-sm">{{ loadingMessage }}</div>
         <div class="text-xs text-dark-textMuted/70 mt-2">This may take a minute for leagues with many seasons</div>
@@ -82,7 +82,7 @@
     <!-- Comparison Loading State -->
     <div v-else-if="isLoading" class="flex items-center justify-center py-20">
       <div class="text-center">
-        <div class="animate-spin rounded-full h-16 w-16 border-b-4 border-primary mx-auto mb-4"></div>
+        <div class="animate-spin rounded-full h-16 w-16 border-b-4 border-yellow-400 mx-auto mb-4"></div>
         <div class="text-lg font-semibold text-dark-text mb-2">Building Comparison</div>
         <div class="text-dark-textMuted text-sm">Analyzing head-to-head matchups...</div>
       </div>
@@ -272,7 +272,7 @@
                     <div class="flex items-center gap-4">
                       <div class="text-sm">
                         <span class="font-semibold text-dark-text">{{ matchup.season }} Week {{ matchup.week }}</span>
-                        <span v-if="matchup.isPlayoff" class="ml-2 px-2 py-0.5 bg-primary/20 text-primary text-xs rounded">
+                        <span v-if="matchup.isPlayoff" class="ml-2 px-2 py-0.5 bg-yellow-400/20 text-yellow-400 text-xs rounded">
                           Playoff
                         </span>
                       </div>

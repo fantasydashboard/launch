@@ -32,7 +32,7 @@
         v-for="tab in tabOptions"
         :key="tab.id"
         @click="activeTab = tab.id"
-        :class="activeTab === tab.id ? 'bg-primary text-gray-900' : 'bg-dark-card text-dark-textSecondary hover:bg-dark-border/50'"
+        :class="activeTab === tab.id ? 'bg-yellow-400 text-gray-900' : 'bg-dark-card text-dark-textSecondary hover:bg-dark-border/50'"
         class="px-4 py-2.5 rounded-xl font-semibold transition-all flex items-center gap-2 text-sm"
       >
         <span class="text-lg">{{ tab.icon }}</span>
@@ -43,7 +43,7 @@
     <!-- Loading State -->
     <div v-if="isLoading" class="flex items-center justify-center py-20">
       <div class="text-center">
-        <div class="animate-spin rounded-full h-16 w-16 border-b-4 border-primary mx-auto mb-4"></div>
+        <div class="animate-spin rounded-full h-16 w-16 border-b-4 border-yellow-400 mx-auto mb-4"></div>
         <p class="text-dark-textMuted">{{ loadingMessage }}</p>
       </div>
     </div>
@@ -98,9 +98,9 @@
             </div>
             <div class="flex items-center gap-4">
               <div v-for="(leader, idx) in getCategoryTopPicks(highlightCategory, 5)" :key="leader.pick" class="flex items-center gap-2">
-                <span class="text-xs font-bold" :class="idx === 0 ? 'text-primary' : 'text-dark-textMuted'">#{{ idx + 1 }}</span>
+                <span class="text-xs font-bold" :class="idx === 0 ? 'text-yellow-400' : 'text-dark-textMuted'">#{{ idx + 1 }}</span>
                 <span class="text-sm text-dark-text">{{ leader.player_name }}</span>
-                <span class="text-xs font-bold text-primary">{{ formatStatValue(leader.stats?.[getStatIdForCategory(highlightCategory)], highlightCategory) }}</span>
+                <span class="text-xs font-bold text-yellow-400">{{ formatStatValue(leader.stats?.[getStatIdForCategory(highlightCategory)], highlightCategory) }}</span>
               </div>
             </div>
           </div>
@@ -406,7 +406,7 @@
                   </div>
                 </div>
                 <div class="text-center">
-                  <div class="text-2xl font-black text-primary">{{ formatStatValue(cat.value, cat.category) }}</div>
+                  <div class="text-2xl font-black text-yellow-400">{{ formatStatValue(cat.value, cat.category) }}</div>
                   <div class="text-xs text-dark-textMuted">R{{ cat.player.round }} Pick</div>
                 </div>
               </div>
@@ -896,7 +896,7 @@
                   </div>
                 </div>
                 <div class="text-right">
-                  <div class="text-xl font-black text-primary">
+                  <div class="text-xl font-black text-yellow-400">
                     {{ formatStatValue(steal.stats?.[getStatIdForCategory(selectedStealCategory)], selectedStealCategory) }}
                   </div>
                   <div class="text-xs font-bold" :class="steal.categoryValueScore >= 0 ? 'text-green-400' : 'text-red-400'">
@@ -935,7 +935,7 @@
               <div v-if="gem.player" class="mt-2">
                 <div class="font-semibold text-dark-text text-sm">{{ gem.player.player_name }}</div>
                 <div class="text-xs text-dark-textMuted">R{{ gem.player.round }}</div>
-                <div class="text-lg font-bold text-primary mt-1">
+                <div class="text-lg font-bold text-yellow-400 mt-1">
                   {{ formatStatValue(gem.value, gem.category) }}
                 </div>
               </div>

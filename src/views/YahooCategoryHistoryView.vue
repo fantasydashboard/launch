@@ -21,7 +21,7 @@
     <div class="flex gap-2 flex-wrap">
       <button
         @click="activeHistoryTab = 'career'"
-        :class="activeHistoryTab === 'career' ? 'bg-primary text-gray-900' : 'bg-dark-card text-dark-textSecondary hover:bg-dark-border/50'"
+        :class="activeHistoryTab === 'career' ? 'bg-yellow-400 text-gray-900' : 'bg-dark-card text-dark-textSecondary hover:bg-dark-border/50'"
         class="px-4 py-2.5 rounded-xl font-semibold transition-all flex items-center gap-2 text-sm"
       >
         <span class="text-lg">📊</span>
@@ -29,7 +29,7 @@
       </button>
       <button
         @click="activeHistoryTab = 'h2h'"
-        :class="activeHistoryTab === 'h2h' ? 'bg-primary text-gray-900' : 'bg-dark-card text-dark-textSecondary hover:bg-dark-border/50'"
+        :class="activeHistoryTab === 'h2h' ? 'bg-yellow-400 text-gray-900' : 'bg-dark-card text-dark-textSecondary hover:bg-dark-border/50'"
         class="px-4 py-2.5 rounded-xl font-semibold transition-all flex items-center gap-2 text-sm"
       >
         <span class="text-lg">⚔️</span>
@@ -37,7 +37,7 @@
       </button>
       <button
         @click="activeHistoryTab = 'awards'"
-        :class="activeHistoryTab === 'awards' ? 'bg-primary text-gray-900' : 'bg-dark-card text-dark-textSecondary hover:bg-dark-border/50'"
+        :class="activeHistoryTab === 'awards' ? 'bg-yellow-400 text-gray-900' : 'bg-dark-card text-dark-textSecondary hover:bg-dark-border/50'"
         class="px-4 py-2.5 rounded-xl font-semibold transition-all flex items-center gap-2 text-sm"
       >
         <span class="text-lg">🏆</span>
@@ -48,7 +48,7 @@
     <!-- Loading State -->
     <div v-if="isLoading" class="flex items-center justify-center py-20">
       <div class="text-center">
-        <div class="animate-spin rounded-full h-16 w-16 border-b-4 border-primary mx-auto mb-4"></div>
+        <div class="animate-spin rounded-full h-16 w-16 border-b-4 border-yellow-400 mx-auto mb-4"></div>
         <div class="text-lg font-semibold text-dark-text mb-2">Loading League History</div>
         <div class="text-dark-textMuted text-sm">{{ loadingMessage }}</div>
         <div class="text-xs text-dark-textMuted/70 mt-2">This may take a minute for leagues with many seasons</div>
@@ -228,7 +228,7 @@
                 </td>
                 <td class="text-center py-3 px-4 text-dark-text">{{ stat.seasons }}</td>
                 <td class="text-center py-3 px-4">
-                  <span v-if="stat.championships > 0" class="text-primary font-bold">
+                  <span v-if="stat.championships > 0" class="text-yellow-400 font-bold">
                     🏆 {{ stat.championships }}
                   </span>
                   <span v-else class="text-dark-textMuted">—</span>
@@ -356,7 +356,7 @@
                     <div class="w-6 h-6 rounded-full overflow-hidden bg-dark-border flex-shrink-0">
                       <img :src="season.champion?.logo_url || defaultAvatar" class="w-full h-full object-cover" @error="handleImageError" />
                     </div>
-                    <span class="font-semibold text-primary">{{ season.champion?.name || 'TBD' }}</span>
+                    <span class="font-semibold text-yellow-400">{{ season.champion?.name || 'TBD' }}</span>
                   </div>
                 </td>
               </tr>
@@ -506,7 +506,7 @@
                       :class="[
                         'px-4 py-2 rounded-lg text-sm font-medium transition-all',
                         awardsTab === 'alltime' 
-                          ? 'bg-primary text-white' 
+                          ? 'bg-yellow-400 text-gray-900' 
                           : 'bg-dark-elevated text-dark-textMuted hover:text-dark-text'
                       ]">
                 All-Time
@@ -515,7 +515,7 @@
                       :class="[
                         'px-4 py-2 rounded-lg text-sm font-medium transition-all',
                         awardsTab === 'yearly' 
-                          ? 'bg-primary text-white' 
+                          ? 'bg-yellow-400 text-gray-900' 
                           : 'bg-dark-elevated text-dark-textMuted hover:text-dark-text'
                       ]">
                 Yearly
