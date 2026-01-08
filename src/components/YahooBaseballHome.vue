@@ -514,10 +514,10 @@
           </div>
           
           <div class="p-6">
-            <h4 class="text-sm font-semibold text-dark-textMuted uppercase tracking-wider mb-4">All Teams Comparison</h4>
+            <h4 class="text-sm font-semibold text-dark-textMuted uppercase tracking-wider mb-4">Top Ten Comparison</h4>
             <div class="space-y-3">
               <div 
-                v-for="(team, index) in leaderModalData.comparison" 
+                v-for="(team, index) in leaderModalData.comparison.slice(0, 10)" 
                 :key="team.team_key"
                 class="flex items-center gap-3"
               >
@@ -2082,6 +2082,8 @@ async function downloadLeaderImage() {
       if (leaderModalType.value === 'hottest') return '#f97316' // orange
       if (leaderModalType.value === 'bestAllPlay') return '#3b82f6' // blue
       if (leaderModalType.value === 'coldest') return '#06b6d4' // cyan
+      if (leaderModalType.value === 'mostMoves') return '#3b82f6' // blue
+      if (leaderModalType.value === 'fewestMoves') return '#a855f7' // purple
       return '#eab308' // default yellow
     }
     const accentColor = getAccentColor()
@@ -2156,6 +2158,7 @@ async function downloadLeaderImage() {
         
         <!-- Rankings List -->
         <div style="padding: 12px 16px;">
+          <div style="font-size: 10px; font-weight: 600; color: #6b7280; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 10px;">Top Ten Comparison</div>
           ${generateRows()}
         </div>
         
