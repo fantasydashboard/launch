@@ -41,7 +41,7 @@
               <button 
                 @click="loadCurrentLeagueTeams('draft')" 
                 :disabled="isLoadingPlatformTeams" 
-                class="px-4 py-2 rounded-lg bg-yellow-400 text-gray-900 font-semibold hover:bg-yellow-300 transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm"
+                class="px-4 py-2 rounded-lg bg-green-500 text-gray-900 font-semibold hover:bg-green-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm"
               >
                 {{ isLoadingPlatformTeams ? 'Loading...' : 'Import Teams' }}
               </button>
@@ -60,10 +60,10 @@
               <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2">
                 <div v-for="(team, idx) in draftImportTeams" :key="idx" 
                   @click="team.selected = !team.selected"
-                  :class="team.selected ? 'border-primary bg-primary/10' : 'border-dark-border/50 hover:border-dark-border'"
+                  :class="team.selected ? 'border-yellow-400 bg-yellow-400/10' : 'border-dark-border/50 hover:border-dark-border'"
                   class="flex items-center gap-3 p-3 rounded-lg border-2 cursor-pointer transition-all">
                   <div class="w-5 h-5 rounded border-2 flex items-center justify-center flex-shrink-0"
-                    :class="team.selected ? 'bg-primary border-primary' : 'border-dark-border'">
+                    :class="team.selected ? 'bg-yellow-400 border-yellow-400' : 'border-dark-border'">
                     <span v-if="team.selected" class="text-gray-900 text-xs font-bold">✓</span>
                   </div>
                   <img v-if="team.avatar" :src="team.avatar" class="w-8 h-8 rounded-full flex-shrink-0 object-cover" @error="handleImgError" />
@@ -100,7 +100,7 @@
               <p class="text-sm text-dark-textMuted mb-3">Enter your Sleeper username to import team names and logos.</p>
               <div class="flex items-center gap-3 flex-wrap">
                 <input v-model="sleeperUsername" type="text" placeholder="Enter Sleeper Username" class="input w-56" @keyup.enter="loadSleeperLeagues" />
-                <button @click="loadSleeperLeagues" :disabled="isLoadingSleeper || !sleeperUsername.trim()" class="px-4 py-2 rounded-lg bg-primary text-gray-900 font-semibold hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
+                <button @click="loadSleeperLeagues" :disabled="isLoadingSleeper || !sleeperUsername.trim()" class="px-4 py-2 rounded-lg bg-green-500 text-gray-900 font-semibold hover:bg-green-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
                   {{ isLoadingSleeper ? 'Loading...' : 'Load Leagues' }}
                 </button>
                 <select v-if="sleeperLeagues.length > 0" v-model="selectedSleeperLeague" @change="loadSleeperTeams" class="select min-w-[200px]">
@@ -122,10 +122,10 @@
                 <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2">
                   <div v-for="team in availableSleeperTeams" :key="team.oddsIdx" 
                     @click="toggleSleeperTeam(team)"
-                    :class="team.selected ? 'border-primary bg-primary/10' : 'border-dark-border/50 hover:border-dark-border'"
+                    :class="team.selected ? 'border-yellow-400 bg-yellow-400/10' : 'border-dark-border/50 hover:border-dark-border'"
                     class="flex items-center gap-3 p-3 rounded-lg border-2 cursor-pointer transition-all">
                     <div class="w-5 h-5 rounded border-2 flex items-center justify-center flex-shrink-0"
-                      :class="team.selected ? 'bg-primary border-primary' : 'border-dark-border'">
+                      :class="team.selected ? 'bg-yellow-400 border-yellow-400' : 'border-dark-border'">
                       <span v-if="team.selected" class="text-gray-900 text-xs font-bold">✓</span>
                     </div>
                     <img v-if="team.avatar" :src="getAvatarUrl(team.avatar)" class="w-8 h-8 rounded-full flex-shrink-0" />
@@ -447,7 +447,7 @@
                 <button 
                   @click="loadCurrentLeagueTeams('schedule')" 
                   :disabled="isLoadingPlatformTeams" 
-                  class="px-4 py-2 rounded-lg bg-yellow-400 text-gray-900 font-semibold hover:bg-yellow-300 transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm"
+                  class="px-4 py-2 rounded-lg bg-green-500 text-gray-900 font-semibold hover:bg-green-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm"
                 >
                   {{ isLoadingPlatformTeams ? 'Loading...' : 'Import Teams' }}
                 </button>
@@ -466,10 +466,10 @@
                 <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2">
                   <div v-for="(team, idx) in scheduleImportTeams" :key="idx" 
                     @click="team.selected = !team.selected"
-                    :class="team.selected ? 'border-primary bg-primary/10' : 'border-dark-border/50 hover:border-dark-border'"
+                    :class="team.selected ? 'border-yellow-400 bg-yellow-400/10' : 'border-dark-border/50 hover:border-dark-border'"
                     class="flex items-center gap-3 p-3 rounded-lg border-2 cursor-pointer transition-all">
                     <div class="w-5 h-5 rounded border-2 flex items-center justify-center flex-shrink-0"
-                      :class="team.selected ? 'bg-primary border-primary' : 'border-dark-border'">
+                      :class="team.selected ? 'bg-yellow-400 border-yellow-400' : 'border-dark-border'">
                       <span v-if="team.selected" class="text-gray-900 text-xs font-bold">✓</span>
                     </div>
                     <img v-if="team.avatar" :src="team.avatar" class="w-8 h-8 rounded-full flex-shrink-0 object-cover" @error="handleImgError" />
@@ -506,7 +506,7 @@
                 <p class="text-sm text-dark-textMuted mb-3">Enter your Sleeper username to import team names and logos.</p>
                 <div class="flex items-center gap-3 flex-wrap">
                   <input v-model="scheduleSleeperUsername" type="text" placeholder="Enter Sleeper Username" class="input w-48" @keyup.enter="loadScheduleSleeperLeagues" />
-                  <button @click="loadScheduleSleeperLeagues" :disabled="isLoadingScheduleSleeper || !scheduleSleeperUsername.trim()" class="px-4 py-2 rounded-lg bg-primary text-gray-900 font-semibold hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
+                  <button @click="loadScheduleSleeperLeagues" :disabled="isLoadingScheduleSleeper || !scheduleSleeperUsername.trim()" class="px-4 py-2 rounded-lg bg-green-500 text-gray-900 font-semibold hover:bg-green-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
                     {{ isLoadingScheduleSleeper ? 'Loading...' : 'Load Leagues' }}
                   </button>
                   <select v-if="scheduleSleeperLeagues.length > 0" v-model="selectedScheduleSleeperLeague" @change="loadScheduleSleeperTeams" class="select min-w-[200px]">
@@ -1461,9 +1461,9 @@ async function downloadDraftOrderImage() {
     const html2canvas = (await import('html2canvas')).default
     const numTeams = finalDraftOrder.value.length
     const half = Math.ceil(numTeams / 2)
-    const WIDTH = 520
-    const COL_WIDTH = 230
-    const ROW_HEIGHT = 48
+    const WIDTH = 600
+    const COL_WIDTH = 270
+    const ROW_HEIGHT = 44
     const HEIGHT = 140 + half * ROW_HEIGHT + 60
     
     // Load UFD logo
@@ -1589,12 +1589,10 @@ async function downloadDraftOrderImage() {
       const avatarDataUrl = avatarMap.get(pick.pickNumber) || createPlaceholder(pick.team)
       const isFirst = pick.pickNumber === 1
       const numColor = isFirst ? '#eab308' : '#e5e7eb'
-      return `<div style="display:flex;align-items:center;padding:6px 10px;background:rgba(58,61,82,0.3);border-radius:8px;margin-bottom:5px;height:36px;box-sizing:border-box;">
-        <div style="font-size:20px;font-weight:900;color:${numColor};width:28px;text-align:center;margin-right:8px;flex-shrink:0;">${pick.pickNumber}</div>
-        <img src="${avatarDataUrl}" style="width:28px;height:28px;border-radius:50%;margin-right:8px;flex-shrink:0;object-fit:cover;" />
-        <div style="flex:1;min-width:0;max-width:140px;overflow:hidden;">
-          <div style="font-weight:600;font-size:12px;color:#ffffff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${pick.team}</div>
-        </div>
+      return `<div style="display:flex;align-items:center;padding:8px 12px;background:rgba(58,61,82,0.3);border-radius:8px;margin-bottom:6px;">
+        <div style="font-size:22px;font-weight:900;color:${numColor};width:32px;text-align:center;margin-right:10px;flex-shrink:0;">${pick.pickNumber}</div>
+        <img src="${avatarDataUrl}" style="width:32px;height:32px;border-radius:50%;margin-right:10px;flex-shrink:0;object-fit:cover;" />
+        <div style="font-weight:600;font-size:14px;color:#ffffff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${pick.team}</div>
       </div>`
     }
     
@@ -1603,23 +1601,23 @@ async function downloadDraftOrderImage() {
         <div style="background:#dc2626;padding:8px 20px;text-align:center;">
           <span style="font-size:12px;font-weight:700;color:#0a0c14;text-transform:uppercase;letter-spacing:2px;">Ultimate Fantasy Dashboard</span>
         </div>
-        <div style="display:flex;align-items:center;padding:12px 20px;border-bottom:1px solid rgba(220,38,38,0.2);">
-          ${logoBase64 ? `<img src="${logoBase64}" style="height:40px;width:auto;flex-shrink:0;margin-right:12px;" />` : ''}
+        <div style="display:flex;align-items:center;padding:14px 24px;border-bottom:1px solid rgba(220,38,38,0.2);">
+          ${logoBase64 ? `<img src="${logoBase64}" style="height:44px;width:auto;flex-shrink:0;margin-right:14px;" />` : ''}
           <div style="flex:1;">
-            <div style="font-size:20px;font-weight:900;color:#ffffff;text-transform:uppercase;letter-spacing:0.5px;">🏆 Draft Order</div>
-            <div style="font-size:11px;margin-top:2px;">
+            <div style="font-size:22px;font-weight:900;color:#ffffff;text-transform:uppercase;letter-spacing:0.5px;">🏆 Draft Order</div>
+            <div style="font-size:12px;margin-top:3px;">
               <span style="color:#e5e7eb;">${numTeams} Teams</span>
-              <span style="color:#6b7280;margin:0 4px;">•</span>
+              <span style="color:#6b7280;margin:0 6px;">•</span>
               <span style="color:#dc2626;font-weight:600;">${new Date().toLocaleDateString()}</span>
             </div>
           </div>
         </div>
-        <div style="padding:12px 16px;display:flex;gap:12px;">
-          <div style="width:${COL_WIDTH}px;flex-shrink:0;">${leftColumn.map(p => buildRow(p)).join('')}</div>
-          <div style="width:${COL_WIDTH}px;flex-shrink:0;">${rightColumn.map(p => buildRow(p)).join('')}</div>
+        <div style="padding:16px 20px;display:flex;gap:16px;">
+          <div style="flex:1;">${leftColumn.map(p => buildRow(p)).join('')}</div>
+          <div style="flex:1;">${rightColumn.map(p => buildRow(p)).join('')}</div>
         </div>
-        <div style="padding:10px 20px;text-align:center;border-top:1px solid rgba(220,38,38,0.2);">
-          <span style="font-size:13px;font-weight:bold;color:#dc2626;">ultimatefantasydashboard.com</span>
+        <div style="padding:12px 20px;text-align:center;border-top:1px solid rgba(220,38,38,0.2);">
+          <span style="font-size:14px;font-weight:bold;color:#dc2626;">ultimatefantasydashboard.com</span>
         </div>
       </div>
     `
@@ -1649,9 +1647,8 @@ async function downloadDraftAnimation() {
     const { GIFEncoder, quantize, applyPalette } = await import('https://unpkg.com/gifenc@1.0.3/dist/gifenc.esm.js')
     const html2canvas = (await import('html2canvas')).default
     
-    const WIDTH = 520
-    const HEIGHT = 580
-    const COL_WIDTH = 230
+    const WIDTH = 600
+    const HEIGHT = 620
     
     const order = recordedDraftOrder.value
     const numTeams = order.length
@@ -1775,12 +1772,12 @@ async function downloadDraftAnimation() {
     const buildRow = (p: any, highlight: boolean = false) => {
       const avatarDataUrl = avatarMap.get(p.pickNumber) || createPlaceholder(p.team)
       const isFirst = p.pickNumber === 1
-      const numColor = isFirst ? '#eab308' : (highlight ? '#dc2626' : '#e5e7eb')
-      const bgStyle = highlight ? 'background:rgba(220,38,38,0.2);border:2px solid #dc2626;' : 'background:rgba(58,61,82,0.3);'
-      return `<div style="display:flex;align-items:center;padding:5px 8px;border-radius:6px;margin-bottom:4px;height:32px;box-sizing:border-box;${bgStyle}">
-        <div style="font-size:18px;font-weight:900;color:${numColor};width:24px;text-align:center;margin-right:6px;flex-shrink:0;">${p.pickNumber}</div>
-        <img src="${avatarDataUrl}" style="width:24px;height:24px;border-radius:50%;margin-right:6px;flex-shrink:0;object-fit:cover;" />
-        <div style="font-weight:600;font-size:11px;color:#ffffff;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:140px;">${p.team}</div>
+      const numColor = isFirst ? '#eab308' : (highlight ? '#22c55e' : '#e5e7eb')
+      const bgStyle = highlight ? 'background:rgba(34,197,94,0.2);border:2px solid #22c55e;' : 'background:rgba(58,61,82,0.3);'
+      return `<div style="display:flex;align-items:center;padding:6px 10px;border-radius:8px;margin-bottom:5px;${bgStyle}">
+        <div style="font-size:20px;font-weight:900;color:${numColor};width:28px;text-align:center;margin-right:8px;flex-shrink:0;">${p.pickNumber}</div>
+        <img src="${avatarDataUrl}" style="width:28px;height:28px;border-radius:50%;margin-right:8px;flex-shrink:0;object-fit:cover;" />
+        <div style="font-weight:600;font-size:13px;color:#ffffff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${p.team}</div>
       </div>`
     }
     
@@ -1822,17 +1819,17 @@ async function downloadDraftAnimation() {
           <div style="background:#dc2626;padding:8px 20px;text-align:center;">
             <span style="font-size:12px;font-weight:700;color:#0a0c14;text-transform:uppercase;letter-spacing:2px;">Ultimate Fantasy Dashboard</span>
           </div>
-          <div style="padding:12px 20px;border-bottom:1px solid rgba(220,38,38,0.2);text-align:center;">
-            <div style="font-size:12px;color:#9ca3af;">Pick #${pick.pickNumber} Revealed</div>
-            <div style="font-size:20px;font-weight:900;color:#ffffff;margin-top:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${pick.team}</div>
+          <div style="padding:14px 24px;border-bottom:1px solid rgba(220,38,38,0.2);text-align:center;">
+            <div style="font-size:13px;color:#9ca3af;">Pick #${pick.pickNumber} Revealed</div>
+            <div style="font-size:22px;font-weight:900;color:#ffffff;margin-top:4px;">${pick.team}</div>
           </div>
-          <div style="flex:1;padding:10px 14px;display:flex;gap:10px;overflow:hidden;">
-            <div style="width:${COL_WIDTH}px;flex-shrink:0;">${left.map(p => buildRow(p, p.pickNumber === pick.pickNumber)).join('')}</div>
-            <div style="width:${COL_WIDTH}px;flex-shrink:0;">${right.map(p => buildRow(p, p.pickNumber === pick.pickNumber)).join('')}</div>
+          <div style="flex:1;padding:12px 20px;display:flex;gap:16px;overflow:hidden;">
+            <div style="flex:1;">${left.map(p => buildRow(p, p.pickNumber === pick.pickNumber)).join('')}</div>
+            <div style="flex:1;">${right.map(p => buildRow(p, p.pickNumber === pick.pickNumber)).join('')}</div>
           </div>
           <div style="padding:10px 20px;text-align:center;border-top:1px solid rgba(220,38,38,0.2);display:flex;justify-content:space-between;align-items:center;">
-            <span style="font-size:11px;color:#6b7280;">${revealed.length} of ${numTeams} revealed</span>
-            <span style="font-size:13px;font-weight:bold;color:#dc2626;">ultimatefantasydashboard.com</span>
+            <span style="font-size:12px;color:#6b7280;">${revealed.length} of ${numTeams} revealed</span>
+            <span style="font-size:14px;font-weight:bold;color:#dc2626;">ultimatefantasydashboard.com</span>
           </div>
         </div>
       `
@@ -1854,16 +1851,16 @@ async function downloadDraftAnimation() {
         <div style="background:#dc2626;padding:8px 20px;text-align:center;">
           <span style="font-size:12px;font-weight:700;color:#0a0c14;text-transform:uppercase;letter-spacing:2px;">Ultimate Fantasy Dashboard</span>
         </div>
-        <div style="padding:12px 20px;border-bottom:1px solid rgba(220,38,38,0.2);text-align:center;">
-          <div style="font-size:24px;font-weight:900;color:#ffffff;">🏆 Final Draft Order</div>
-          <div style="font-size:11px;color:#9ca3af;margin-top:4px;">${numTeams} Teams</div>
+        <div style="padding:14px 24px;border-bottom:1px solid rgba(220,38,38,0.2);text-align:center;">
+          <div style="font-size:26px;font-weight:900;color:#ffffff;">🏆 Final Draft Order</div>
+          <div style="font-size:12px;color:#9ca3af;margin-top:4px;">${numTeams} Teams</div>
         </div>
-        <div style="flex:1;padding:10px 14px;display:flex;gap:10px;overflow:hidden;">
-          <div style="width:${COL_WIDTH}px;flex-shrink:0;">${leftFinal.map(p => buildRow(p)).join('')}</div>
-          <div style="width:${COL_WIDTH}px;flex-shrink:0;">${rightFinal.map(p => buildRow(p)).join('')}</div>
+        <div style="flex:1;padding:12px 20px;display:flex;gap:16px;overflow:hidden;">
+          <div style="flex:1;">${leftFinal.map(p => buildRow(p)).join('')}</div>
+          <div style="flex:1;">${rightFinal.map(p => buildRow(p)).join('')}</div>
         </div>
         <div style="padding:10px 20px;text-align:center;border-top:1px solid rgba(220,38,38,0.2);">
-          <span style="font-size:13px;font-weight:bold;color:#dc2626;">ultimatefantasydashboard.com</span>
+          <span style="font-size:14px;font-weight:bold;color:#dc2626;">ultimatefantasydashboard.com</span>
         </div>
       </div>
     `
