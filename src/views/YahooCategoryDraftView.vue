@@ -1991,9 +1991,9 @@ async function downloadStealsImage() {
             <div style="width: 20px; text-align: center; font-weight: bold; font-size: 12px; color: ${idx === 0 ? '#22c55e' : '#6b7280'};">${idx + 1}</div>
             <img src="${imageMap.get(pick.player_name) || createPlaceholder(pick.player_name)}" style="width: 28px; height: 28px; border-radius: 50%;" />
             <div style="flex: 1; min-width: 0;">
-              <div style="font-size: 12px; font-weight: 600; color: #e5e7eb; margin-bottom: 2px;">${pick.player_name}</div>
-              <div style="font-size: 10px; color: #9ca3af;">Drafted by <span style="color: #facc15; font-weight: 600;">${pick.team_name}</span> • R${pick.round}</div>
-              <div style="height: 6px; background: rgba(58, 61, 82, 0.5); border-radius: 3px; overflow: hidden; margin-top: 3px;">
+              <div style="font-size: 12px; font-weight: 600; color: #e5e7eb;">${pick.player_name}</div>
+              <div style="font-size: 10px; color: #9ca3af; margin-top: 1px;">Drafted by <span style="color: #facc15; font-weight: 600;">${pick.team_name}</span> • R${pick.round}</div>
+              <div style="height: 6px; background: rgba(58, 61, 82, 0.5); border-radius: 3px; overflow: hidden; margin-top: 6px;">
                 <div style="height: 100%; width: ${barWidth}%; background: #22c55e; opacity: ${idx === 0 ? 1 : 0.6}; border-radius: 3px;"></div>
               </div>
             </div>
@@ -2011,7 +2011,7 @@ async function downloadStealsImage() {
     container.innerHTML = `
       <div style="background: linear-gradient(160deg, #0f1219 0%, #0a0c14 50%, #0d1117 100%); border-radius: 16px; box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5); position: relative; overflow: hidden;">
         <div style="background: #dc2626; padding: 8px 20px; text-align: center;">
-          <span style="font-size: 12px; font-weight: 700; color: #ffffff; text-transform: uppercase; letter-spacing: 2px;">Ultimate Fantasy Dashboard</span>
+          <span style="font-size: 12px; font-weight: 700; color: #0a0c14; text-transform: uppercase; letter-spacing: 2px;">Ultimate Fantasy Dashboard</span>
         </div>
         <div style="display: flex; align-items: center; padding: 10px 16px; border-bottom: 1px solid rgba(220, 38, 38, 0.2);">
           ${logoBase64 ? `<img src="${logoBase64}" style="height: 40px; width: auto; flex-shrink: 0; margin-right: 12px; margin-top: 4px;" />` : ''}
@@ -2147,9 +2147,9 @@ async function downloadBustsImage() {
             <div style="width: 20px; text-align: center; font-weight: bold; font-size: 12px; color: ${idx === 0 ? '#ef4444' : '#6b7280'};">${idx + 1}</div>
             <img src="${imageMap.get(pick.player_name) || createPlaceholder(pick.player_name)}" style="width: 28px; height: 28px; border-radius: 50%;" />
             <div style="flex: 1; min-width: 0;">
-              <div style="font-size: 12px; font-weight: 600; color: #e5e7eb; margin-bottom: 2px;">${pick.player_name}</div>
-              <div style="font-size: 10px; color: #9ca3af;">Drafted by <span style="color: #facc15; font-weight: 600;">${pick.team_name}</span> • R${pick.round}</div>
-              <div style="height: 6px; background: rgba(58, 61, 82, 0.5); border-radius: 3px; overflow: hidden; margin-top: 3px;">
+              <div style="font-size: 12px; font-weight: 600; color: #e5e7eb;">${pick.player_name}</div>
+              <div style="font-size: 10px; color: #9ca3af; margin-top: 1px;">Drafted by <span style="color: #facc15; font-weight: 600;">${pick.team_name}</span> • R${pick.round}</div>
+              <div style="height: 6px; background: rgba(58, 61, 82, 0.5); border-radius: 3px; overflow: hidden; margin-top: 6px;">
                 <div style="height: 100%; width: ${barWidth}%; background: #ef4444; opacity: ${idx === 0 ? 1 : 0.6}; border-radius: 3px;"></div>
               </div>
             </div>
@@ -2167,7 +2167,7 @@ async function downloadBustsImage() {
     container.innerHTML = `
       <div style="background: linear-gradient(160deg, #0f1219 0%, #0a0c14 50%, #0d1117 100%); border-radius: 16px; box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5); position: relative; overflow: hidden;">
         <div style="background: #dc2626; padding: 8px 20px; text-align: center;">
-          <span style="font-size: 12px; font-weight: 700; color: #ffffff; text-transform: uppercase; letter-spacing: 2px;">Ultimate Fantasy Dashboard</span>
+          <span style="font-size: 12px; font-weight: 700; color: #0a0c14; text-transform: uppercase; letter-spacing: 2px;">Ultimate Fantasy Dashboard</span>
         </div>
         <div style="display: flex; align-items: center; padding: 10px 16px; border-bottom: 1px solid rgba(220, 38, 38, 0.2);">
           ${logoBase64 ? `<img src="${logoBase64}" style="height: 40px; width: auto; flex-shrink: 0; margin-right: 12px; margin-top: 4px;" />` : ''}
@@ -2222,7 +2222,7 @@ async function downloadTeamDraftImage() {
     const html2canvas = (await import('html2canvas')).default
     const leagueName = getLeagueName()
     const team = selectedBoardTeamData.value
-    const picks = team.picks?.slice(0, 10) || []
+    const picks = team.picks || []
     
     if (picks.length === 0) {
       isDownloadingTeamDraft.value = false
@@ -2325,33 +2325,39 @@ async function downloadTeamDraftImage() {
     const stealsCount = getTeamStealsCount(team)
     const bustsCount = getTeamBustsCount(team)
     
-    const generateRows = () => {
-      return picks.map((pick: any) => {
-        const valueColor = (pick.valueScore || 0) >= 10 ? '#22c55e' : (pick.valueScore || 0) <= -10 ? '#ef4444' : '#9ca3af'
-        const bgColor = (pick.valueScore || 0) >= 10 ? 'rgba(34, 197, 94, 0.1)' : (pick.valueScore || 0) <= -10 ? 'rgba(239, 68, 68, 0.1)' : 'rgba(58, 61, 82, 0.3)'
-        return `
-          <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 8px; padding: 8px; border-radius: 8px; background: ${bgColor};">
-            <div style="width: 28px; text-align: center; font-weight: bold; font-size: 11px; color: #6b7280;">R${pick.round}</div>
-            <img src="${imageMap.get(pick.player_name) || createPlaceholder(pick.player_name)}" style="width: 28px; height: 28px; border-radius: 50%;" />
-            <div style="flex: 1; min-width: 0;">
-              <div style="font-size: 12px; font-weight: 600; color: #e5e7eb;">${pick.player_name}</div>
-              <div style="font-size: 10px; color: #9ca3af;">${pick.position} • Pick #${pick.pick}</div>
-            </div>
-            <div style="width: 45px; text-align: right;">
-              <div style="font-size: 13px; font-weight: bold; color: ${valueColor};">${(pick.valueScore || 0) >= 0 ? '+' : ''}${pick.valueScore?.toFixed(0)}</div>
-            </div>
+    // Split picks into two columns
+    const midPoint = Math.ceil(picks.length / 2)
+    const leftPicks = picks.slice(0, midPoint)
+    const rightPicks = picks.slice(midPoint)
+    
+    const generatePickRow = (pick: any) => {
+      const valueColor = (pick.valueScore || 0) >= 10 ? '#22c55e' : (pick.valueScore || 0) <= -10 ? '#ef4444' : '#9ca3af'
+      const bgColor = (pick.valueScore || 0) >= 10 ? 'rgba(34, 197, 94, 0.1)' : (pick.valueScore || 0) <= -10 ? 'rgba(239, 68, 68, 0.1)' : 'rgba(58, 61, 82, 0.3)'
+      return `
+        <div style="display: flex; align-items: center; gap: 6px; margin-bottom: 6px; padding: 6px; border-radius: 6px; background: ${bgColor};">
+          <div style="width: 22px; text-align: center; font-weight: bold; font-size: 10px; color: #6b7280;">R${pick.round}</div>
+          <img src="${imageMap.get(pick.player_name) || createPlaceholder(pick.player_name)}" style="width: 24px; height: 24px; border-radius: 50%;" />
+          <div style="flex: 1; min-width: 0;">
+            <div style="font-size: 11px; font-weight: 600; color: #e5e7eb; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${pick.player_name}</div>
+            <div style="font-size: 9px; color: #9ca3af;">${pick.position}</div>
           </div>
-        `
-      }).join('')
+          <div style="width: 32px; text-align: right;">
+            <div style="font-size: 11px; font-weight: bold; color: ${valueColor};">${(pick.valueScore || 0) >= 0 ? '+' : ''}${pick.valueScore?.toFixed(0)}</div>
+          </div>
+        </div>
+      `
     }
     
+    const generateLeftColumn = () => leftPicks.map(generatePickRow).join('')
+    const generateRightColumn = () => rightPicks.map(generatePickRow).join('')
+    
     const container = document.createElement('div')
-    container.style.cssText = 'position: absolute; left: -9999px; top: 0; width: 480px; font-family: system-ui, -apple-system, sans-serif;'
+    container.style.cssText = 'position: absolute; left: -9999px; top: 0; width: 580px; font-family: system-ui, -apple-system, sans-serif;'
     
     container.innerHTML = `
       <div style="background: linear-gradient(160deg, #0f1219 0%, #0a0c14 50%, #0d1117 100%); border-radius: 16px; box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5); position: relative; overflow: hidden;">
         <div style="background: #dc2626; padding: 8px 20px; text-align: center;">
-          <span style="font-size: 12px; font-weight: 700; color: #ffffff; text-transform: uppercase; letter-spacing: 2px;">Ultimate Fantasy Dashboard</span>
+          <span style="font-size: 12px; font-weight: 700; color: #0a0c14; text-transform: uppercase; letter-spacing: 2px;">Ultimate Fantasy Dashboard</span>
         </div>
         <div style="display: flex; align-items: center; padding: 10px 16px; border-bottom: 1px solid rgba(220, 38, 38, 0.2);">
           ${logoBase64 ? `<img src="${logoBase64}" style="height: 40px; width: auto; flex-shrink: 0; margin-right: 12px; margin-top: 4px;" />` : ''}
@@ -2385,7 +2391,10 @@ async function downloadTeamDraftImage() {
             </div>
           </div>
         </div>
-        <div style="padding: 12px 16px;">${generateRows()}</div>
+        <div style="padding: 12px 16px; display: flex; gap: 12px;">
+          <div style="flex: 1;">${generateLeftColumn()}</div>
+          <div style="flex: 1;">${generateRightColumn()}</div>
+        </div>
         <div style="padding: 10px 16px; text-align: center; border-top: 1px solid rgba(220, 38, 38, 0.2);">
           <span style="font-size: 14px; font-weight: bold; color: #dc2626;">ultimatefantasydashboard.com</span>
         </div>
