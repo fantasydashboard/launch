@@ -467,11 +467,30 @@
               <h3 class="text-xl font-bold text-dark-text">{{ leaderModalTitle }}</h3>
               <p class="text-sm text-dark-textMuted">{{ currentSeason }} Season Leaderboard</p>
             </div>
-            <button @click="closeLeaderModal" class="p-2 rounded-lg hover:bg-dark-border/50 transition-colors">
-              <svg class="w-5 h-5 text-dark-textMuted" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            </button>
+            <div class="flex items-center gap-2">
+              <button 
+                @click="downloadLeaderImage" 
+                :disabled="isDownloadingLeader"
+                class="flex items-center gap-2 text-sm px-3 py-1.5 rounded-lg font-semibold transition-colors disabled:opacity-50"
+                style="background: #dc2626; color: #ffffff;"
+                @mouseover="$event.currentTarget.style.background = '#b91c1c'"
+                @mouseout="$event.currentTarget.style.background = '#dc2626'"
+              >
+                <svg v-if="!isDownloadingLeader" class="w-4 h-4 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                </svg>
+                <svg v-else class="w-4 h-4 animate-spin pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                  <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                {{ isDownloadingLeader ? 'Generating...' : 'Share' }}
+              </button>
+              <button @click="closeLeaderModal" class="p-2 rounded-lg hover:bg-dark-border/50 transition-colors">
+                <svg class="w-5 h-5 text-dark-textMuted" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
           </div>
           
           <div class="p-6 border-b border-dark-border" :class="leaderModalGradient">
@@ -559,11 +578,30 @@
                 <p class="text-sm text-dark-textMuted">Team Details - {{ currentSeason }} Season</p>
               </div>
             </div>
-            <button @click="showTeamDetailModal = false" class="p-2 rounded-lg hover:bg-dark-border/50 transition-colors">
-              <svg class="w-5 h-5 text-dark-textMuted" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            </button>
+            <div class="flex items-center gap-2">
+              <button 
+                @click="downloadTeamDetailImage" 
+                :disabled="isDownloadingTeamDetail"
+                class="flex items-center gap-2 text-sm px-3 py-1.5 rounded-lg font-semibold transition-colors disabled:opacity-50"
+                style="background: #dc2626; color: #ffffff;"
+                @mouseover="$event.currentTarget.style.background = '#b91c1c'"
+                @mouseout="$event.currentTarget.style.background = '#dc2626'"
+              >
+                <svg v-if="!isDownloadingTeamDetail" class="w-4 h-4 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                </svg>
+                <svg v-else class="w-4 h-4 animate-spin pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                  <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                {{ isDownloadingTeamDetail ? 'Generating...' : 'Share' }}
+              </button>
+              <button @click="showTeamDetailModal = false" class="p-2 rounded-lg hover:bg-dark-border/50 transition-colors">
+                <svg class="w-5 h-5 text-dark-textMuted" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
           </div>
           
           <!-- Top Stats Cards -->
@@ -668,6 +706,8 @@ const authStore = useAuthStore()
 const isLoading = ref(false)
 const isLoadingChart = ref(false)
 const isGeneratingDownload = ref(false)
+const isDownloadingLeader = ref(false)
+const isDownloadingTeamDetail = ref(false)
 const chartLoadProgress = ref('')
 const defaultAvatar = 'https://s.yimg.com/cv/apiv2/default/mlb/mlb_2_g.png'
 
@@ -1945,6 +1985,433 @@ async function downloadStandings() {
     alert('Failed to generate image. Please try again.')
   } finally {
     isGeneratingDownload.value = false
+  }
+}
+
+// Download Leader Modal image (Most Category Wins, Best All Play, etc.)
+async function downloadLeaderImage() {
+  isDownloadingLeader.value = true
+  try {
+    const html2canvas = (await import('html2canvas')).default
+    
+    const rankings = leaderModalData.value.comparison.slice(0, 10)
+    if (rankings.length === 0) {
+      isDownloadingLeader.value = false
+      return
+    }
+    
+    // Load UFD logo
+    const loadLogo = async (): Promise<string> => {
+      try {
+        const response = await fetch('/UFD_V5.png')
+        if (!response.ok) return ''
+        const blob = await response.blob()
+        return new Promise((resolve) => {
+          const reader = new FileReader()
+          reader.onloadend = () => resolve(reader.result as string)
+          reader.onerror = () => resolve('')
+          reader.readAsDataURL(blob)
+        })
+      } catch (e) { return '' }
+    }
+    
+    // Helper to create placeholder avatar
+    const createPlaceholder = (name: string): string => {
+      const canvas = document.createElement('canvas')
+      canvas.width = 64
+      canvas.height = 64
+      const ctx = canvas.getContext('2d')
+      if (ctx) {
+        ctx.fillStyle = '#3a3d52'
+        ctx.beginPath()
+        ctx.arc(32, 32, 32, 0, Math.PI * 2)
+        ctx.fill()
+        ctx.fillStyle = '#ffffff'
+        ctx.font = 'bold 28px sans-serif'
+        ctx.textAlign = 'center'
+        ctx.textBaseline = 'middle'
+        ctx.fillText(name.charAt(0).toUpperCase(), 32, 34)
+      }
+      return canvas.toDataURL('image/png')
+    }
+    
+    const logoBase64 = await loadLogo()
+    const leader = rankings[0]
+    
+    // Pre-load all team images
+    const imageMap = new Map<string, string>()
+    for (const team of rankings) {
+      try {
+        const img = new Image()
+        img.crossOrigin = 'anonymous'
+        const loadPromise = new Promise<string>((resolve) => {
+          img.onload = () => {
+            try {
+              const canvas = document.createElement('canvas')
+              canvas.width = 64
+              canvas.height = 64
+              const ctx = canvas.getContext('2d')
+              if (ctx) {
+                ctx.beginPath()
+                ctx.arc(32, 32, 32, 0, Math.PI * 2)
+                ctx.closePath()
+                ctx.clip()
+                ctx.drawImage(img, 0, 0, 64, 64)
+              }
+              resolve(canvas.toDataURL('image/png'))
+            } catch {
+              resolve(createPlaceholder(team.name))
+            }
+          }
+          img.onerror = () => resolve(createPlaceholder(team.name))
+          setTimeout(() => resolve(createPlaceholder(team.name)), 3000)
+        })
+        img.src = team.logo_url || ''
+        imageMap.set(team.name, await loadPromise)
+      } catch {
+        imageMap.set(team.name, createPlaceholder(team.name))
+      }
+    }
+    
+    const maxValue = leaderModalData.value.maxValue
+    
+    // Get accent color based on modal type
+    const getAccentColor = (): string => {
+      if (leaderModalType.value === 'bestRecord') return '#22c55e' // green
+      if (leaderModalType.value === 'mostCatWins') return '#eab308' // yellow
+      if (leaderModalType.value === 'hottest') return '#f97316' // orange
+      if (leaderModalType.value === 'bestAllPlay') return '#3b82f6' // blue
+      if (leaderModalType.value === 'coldest') return '#06b6d4' // cyan
+      return '#eab308' // default yellow
+    }
+    const accentColor = getAccentColor()
+    
+    // Format value for display
+    const formatValue = (val: number): string => {
+      if (leaderModalType.value === 'bestRecord') return val.toFixed(0) + '%'
+      return Math.round(val).toString()
+    }
+    
+    // Generate ranking rows
+    const generateRows = () => {
+      return rankings.map((team: any, idx: number) => {
+        const barWidth = maxValue > 0 ? (team.value / maxValue) * 100 : 0
+        const isFirst = idx === 0
+        
+        return `
+          <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 10px;">
+            <div style="width: 20px; text-align: center; font-weight: bold; font-size: 12px; color: ${isFirst ? accentColor : '#6b7280'};">${idx + 1}</div>
+            <img src="${imageMap.get(team.name) || createPlaceholder(team.name)}" style="width: 28px; height: 28px; border-radius: 50%; border: 2px solid ${isFirst ? accentColor : '#3a3d52'};" />
+            <div style="flex: 1; min-width: 0;">
+              <div style="font-size: 12px; font-weight: 600; color: #e5e7eb; margin-bottom: 5px;">${team.name}</div>
+              <div style="height: 6px; background: rgba(58, 61, 82, 0.5); border-radius: 3px; overflow: hidden;">
+                <div style="height: 100%; width: ${barWidth}%; background: ${accentColor}; opacity: ${isFirst ? 1 : 0.6}; border-radius: 3px;"></div>
+              </div>
+            </div>
+            <div style="width: 50px; text-align: right;">
+              <div style="font-size: 13px; font-weight: bold; color: ${isFirst ? accentColor : '#e5e7eb'};">${formatValue(team.value)}</div>
+            </div>
+          </div>
+        `
+      }).join('')
+    }
+    
+    const container = document.createElement('div')
+    container.style.cssText = 'position: absolute; left: -9999px; top: 0; width: 480px; font-family: system-ui, -apple-system, sans-serif;'
+    
+    container.innerHTML = `
+      <div style="background: linear-gradient(160deg, #0f1219 0%, #0a0c14 50%, #0d1117 100%); border-radius: 16px; box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5); position: relative; overflow: hidden;">
+        
+        <!-- Top Red Bar -->
+        <div style="background: #dc2626; padding: 8px 20px; text-align: center;">
+          <span style="font-size: 12px; font-weight: 700; color: #0a0c14; text-transform: uppercase; letter-spacing: 2px;">Ultimate Fantasy Dashboard</span>
+        </div>
+        
+        <!-- Header -->
+        <div style="display: flex; align-items: center; padding: 10px 16px; border-bottom: 1px solid rgba(220, 38, 38, 0.2);">
+          ${logoBase64 ? `<img src="${logoBase64}" style="height: 40px; width: auto; flex-shrink: 0; margin-right: 12px; margin-top: 4px;" />` : ''}
+          <div style="flex: 1;">
+            <div style="font-size: 17px; font-weight: 900; color: #ffffff; text-transform: uppercase; letter-spacing: 0.5px; line-height: 1.1;">${leaderModalTitle.value}</div>
+            <div style="font-size: 12px; margin-top: 2px;">
+              <span style="color: #e5e7eb;">${leagueName.value}</span>
+              <span style="color: #6b7280; margin: 0 4px;">•</span>
+              <span style="color: #dc2626; font-weight: 600;">Week ${displayWeek.value}, ${currentSeason.value}</span>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Featured Leader -->
+        <div style="padding: 12px 16px; background: linear-gradient(135deg, ${accentColor}20 0%, transparent 100%); border-bottom: 1px solid ${accentColor}30;">
+          <div style="display: flex; align-items: center; gap: 12px;">
+            <img src="${imageMap.get(leader.name) || createPlaceholder(leader.name)}" style="width: 44px; height: 44px; border-radius: 50%; border: 2px solid ${accentColor}80;" />
+            <div style="flex: 1;">
+              <div style="font-size: 15px; font-weight: bold; color: #ffffff;">${leader.name}</div>
+              <div style="font-size: 11px; color: #9ca3af;">${leader.wins || 0}-${leader.losses || 0}</div>
+            </div>
+            <div style="text-align: right;">
+              <div style="font-size: 26px; font-weight: 900; color: ${accentColor};">${formatValue(leader.value)}</div>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Rankings List -->
+        <div style="padding: 12px 16px;">
+          ${generateRows()}
+        </div>
+        
+        <!-- Footer -->
+        <div style="padding: 10px 16px; text-align: center; border-top: 1px solid rgba(220, 38, 38, 0.2);">
+          <span style="font-size: 14px; font-weight: bold; color: #dc2626;">ultimatefantasydashboard.com</span>
+        </div>
+      </div>
+    `
+    
+    document.body.appendChild(container)
+    await new Promise(r => setTimeout(r, 300))
+    
+    const finalCanvas = await html2canvas(container, {
+      backgroundColor: '#0a0c14',
+      scale: 2,
+      useCORS: true,
+      allowTaint: true
+    })
+    
+    document.body.removeChild(container)
+    
+    const link = document.createElement('a')
+    const safeTitle = leaderModalTitle.value.replace(/[^a-zA-Z0-9\s]/g, '').replace(/\s+/g, '-')
+    link.download = `${safeTitle}-${currentSeason.value}.png`
+    link.href = finalCanvas.toDataURL('image/png')
+    link.click()
+  } catch (error) {
+    console.error('Error generating leader image:', error)
+    alert('Failed to generate image. Please try again.')
+  } finally {
+    isDownloadingLeader.value = false
+  }
+}
+
+// Download Team Detail Modal image
+async function downloadTeamDetailImage() {
+  if (!selectedTeamDetail.value) return
+  
+  isDownloadingTeamDetail.value = true
+  try {
+    const html2canvas = (await import('html2canvas')).default
+    const team = selectedTeamDetail.value
+    
+    // Load UFD logo
+    const loadLogo = async (): Promise<string> => {
+      try {
+        const response = await fetch('/UFD_V5.png')
+        if (!response.ok) return ''
+        const blob = await response.blob()
+        return new Promise((resolve) => {
+          const reader = new FileReader()
+          reader.onloadend = () => resolve(reader.result as string)
+          reader.onerror = () => resolve('')
+          reader.readAsDataURL(blob)
+        })
+      } catch (e) { return '' }
+    }
+    
+    // Helper to create placeholder avatar
+    const createPlaceholder = (name: string): string => {
+      const canvas = document.createElement('canvas')
+      canvas.width = 64
+      canvas.height = 64
+      const ctx = canvas.getContext('2d')
+      if (ctx) {
+        ctx.fillStyle = '#3a3d52'
+        ctx.beginPath()
+        ctx.arc(32, 32, 32, 0, Math.PI * 2)
+        ctx.fill()
+        ctx.fillStyle = '#eab308'
+        ctx.font = 'bold 28px sans-serif'
+        ctx.textAlign = 'center'
+        ctx.textBaseline = 'middle'
+        ctx.fillText(name.charAt(0).toUpperCase(), 32, 34)
+      }
+      return canvas.toDataURL('image/png')
+    }
+    
+    const logoBase64 = await loadLogo()
+    
+    // Load team logo
+    let teamLogoBase64 = createPlaceholder(team.name)
+    if (team.logo_url) {
+      try {
+        const img = new Image()
+        img.crossOrigin = 'anonymous'
+        const loadPromise = new Promise<string>((resolve) => {
+          img.onload = () => {
+            try {
+              const canvas = document.createElement('canvas')
+              canvas.width = 64
+              canvas.height = 64
+              const ctx = canvas.getContext('2d')
+              if (ctx) {
+                ctx.beginPath()
+                ctx.arc(32, 32, 32, 0, Math.PI * 2)
+                ctx.closePath()
+                ctx.clip()
+                ctx.drawImage(img, 0, 0, 64, 64)
+              }
+              resolve(canvas.toDataURL('image/png'))
+            } catch {
+              resolve(createPlaceholder(team.name))
+            }
+          }
+          img.onerror = () => resolve(createPlaceholder(team.name))
+          setTimeout(() => resolve(createPlaceholder(team.name)), 3000)
+        })
+        img.src = team.logo_url
+        teamLogoBase64 = await loadPromise
+      } catch {
+        teamLogoBase64 = createPlaceholder(team.name)
+      }
+    }
+    
+    // Get weekly results
+    const weeklyResults = teamDetailWeeklyResults.value.slice(0, 20) // Up to 20 weeks
+    
+    // Generate weekly results grid
+    const generateWeeklyResults = () => {
+      return weeklyResults.map((result: any, idx: number) => {
+        const bgColor = result.won ? 'rgba(34, 197, 94, 0.2)' : (result.tied ? 'rgba(234, 179, 8, 0.2)' : 'rgba(239, 68, 68, 0.2)')
+        const textColor = result.won ? '#22c55e' : (result.tied ? '#eab308' : '#ef4444')
+        const label = result.won ? 'W' : (result.tied ? 'T' : 'L')
+        
+        return `
+          <div style="width: 32px; height: 32px; border-radius: 6px; background: ${bgColor}; display: flex; align-items: center; justify-content: center;">
+            <span style="font-size: 11px; font-weight: bold; color: ${textColor};">${label}</span>
+          </div>
+        `
+      }).join('')
+    }
+    
+    // Get top categories for the team
+    const topCategories = teamDetailCategories.value.slice(0, 6)
+    
+    // Generate category breakdown
+    const generateCategories = () => {
+      return topCategories.map((cat: any) => {
+        const rankColor = cat.rank <= 3 ? '#22c55e' : (cat.rank <= 6 ? '#eab308' : '#ef4444')
+        
+        return `
+          <div style="background: rgba(58, 61, 82, 0.3); border-radius: 8px; padding: 8px 10px; display: flex; align-items: center; justify-content: space-between;">
+            <span style="font-size: 11px; color: #9ca3af;">${cat.display_name}</span>
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <span style="font-size: 13px; font-weight: bold; color: #e5e7eb;">${cat.wins}-${cat.losses}${cat.ties > 0 ? '-' + cat.ties : ''}</span>
+              <span style="font-size: 10px; padding: 2px 6px; border-radius: 4px; background: ${rankColor}20; color: ${rankColor}; font-weight: 600;">#${cat.rank}</span>
+            </div>
+          </div>
+        `
+      }).join('')
+    }
+    
+    const container = document.createElement('div')
+    container.style.cssText = 'position: absolute; left: -9999px; top: 0; width: 480px; font-family: system-ui, -apple-system, sans-serif;'
+    
+    const tiesText = team.ties > 0 ? `-${team.ties}` : ''
+    const playoffBadge = team.playoffFinish === 1 ? '🏆' : (team.playoffFinish === 2 ? '🥈' : (team.playoffFinish === 3 ? '🥉' : ''))
+    
+    container.innerHTML = `
+      <div style="background: linear-gradient(160deg, #0f1219 0%, #0a0c14 50%, #0d1117 100%); border-radius: 16px; box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5); position: relative; overflow: hidden;">
+        
+        <!-- Top Red Bar -->
+        <div style="background: #dc2626; padding: 8px 20px; text-align: center;">
+          <span style="font-size: 12px; font-weight: 700; color: #0a0c14; text-transform: uppercase; letter-spacing: 2px;">Ultimate Fantasy Dashboard</span>
+        </div>
+        
+        <!-- Header with Team -->
+        <div style="display: flex; align-items: center; padding: 12px 16px; border-bottom: 1px solid rgba(220, 38, 38, 0.2);">
+          ${logoBase64 ? `<img src="${logoBase64}" style="height: 40px; width: auto; flex-shrink: 0; margin-right: 12px;" />` : ''}
+          <div style="flex: 1;">
+            <div style="font-size: 11px; color: #9ca3af; margin-bottom: 2px;">${leagueName.value}</div>
+            <div style="font-size: 12px; color: #dc2626; font-weight: 600;">${currentSeason.value} Season</div>
+          </div>
+        </div>
+        
+        <!-- Team Hero -->
+        <div style="padding: 16px; background: linear-gradient(135deg, rgba(234, 179, 8, 0.1) 0%, transparent 100%); border-bottom: 1px solid rgba(234, 179, 8, 0.2);">
+          <div style="display: flex; align-items: center; gap: 14px;">
+            <img src="${teamLogoBase64}" style="width: 56px; height: 56px; border-radius: 50%; border: 3px solid rgba(234, 179, 8, 0.5);" />
+            <div style="flex: 1;">
+              <div style="display: flex; align-items: center; gap: 8px;">
+                <span style="font-size: 20px; font-weight: 900; color: #ffffff;">${team.name}</span>
+                ${playoffBadge ? `<span style="font-size: 18px;">${playoffBadge}</span>` : ''}
+              </div>
+              <div style="font-size: 12px; color: #9ca3af; margin-top: 2px;">Rank #${team.regularSeasonRank}</div>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Stats Grid -->
+        <div style="padding: 12px 16px; display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; border-bottom: 1px solid rgba(58, 61, 82, 0.5);">
+          <div style="background: rgba(58, 61, 82, 0.3); border-radius: 8px; padding: 10px; text-align: center;">
+            <div style="font-size: 18px; font-weight: 900; color: #ffffff;">${team.wins}-${team.losses}${tiesText}</div>
+            <div style="font-size: 10px; color: #9ca3af; margin-top: 2px;">Record</div>
+          </div>
+          <div style="background: rgba(58, 61, 82, 0.3); border-radius: 8px; padding: 10px; text-align: center;">
+            <div style="font-size: 18px; font-weight: 900; color: #eab308;">#${team.regularSeasonRank}</div>
+            <div style="font-size: 10px; color: #9ca3af; margin-top: 2px;">Rank</div>
+          </div>
+          <div style="background: rgba(58, 61, 82, 0.3); border-radius: 8px; padding: 10px; text-align: center;">
+            <div style="font-size: 18px; font-weight: 900; color: #06b6d4;">${team.all_play_wins}-${team.all_play_losses}</div>
+            <div style="font-size: 10px; color: #9ca3af; margin-top: 2px;">All-Play</div>
+          </div>
+          <div style="background: rgba(58, 61, 82, 0.3); border-radius: 8px; padding: 10px; text-align: center;">
+            <div style="font-size: 18px; font-weight: 900; color: #22c55e;">${teamDetailAvgCatsPerWeek.value}</div>
+            <div style="font-size: 10px; color: #9ca3af; margin-top: 2px;">Cats/Week</div>
+          </div>
+        </div>
+        
+        <!-- Category Breakdown -->
+        <div style="padding: 12px 16px; border-bottom: 1px solid rgba(58, 61, 82, 0.5);">
+          <div style="font-size: 10px; font-weight: 600; color: #6b7280; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px;">Category Breakdown</div>
+          <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 6px;">
+            ${generateCategories()}
+          </div>
+        </div>
+        
+        <!-- Weekly Results -->
+        <div style="padding: 12px 16px;">
+          <div style="font-size: 10px; font-weight: 600; color: #6b7280; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px;">Weekly Results</div>
+          <div style="display: flex; flex-wrap: wrap; gap: 4px;">
+            ${generateWeeklyResults()}
+          </div>
+        </div>
+        
+        <!-- Footer -->
+        <div style="padding: 10px 16px; text-align: center; border-top: 1px solid rgba(220, 38, 38, 0.2);">
+          <span style="font-size: 14px; font-weight: bold; color: #dc2626;">ultimatefantasydashboard.com</span>
+        </div>
+      </div>
+    `
+    
+    document.body.appendChild(container)
+    await new Promise(r => setTimeout(r, 300))
+    
+    const finalCanvas = await html2canvas(container, {
+      backgroundColor: '#0a0c14',
+      scale: 2,
+      useCORS: true,
+      allowTaint: true
+    })
+    
+    document.body.removeChild(container)
+    
+    const link = document.createElement('a')
+    const safeTeamName = team.name.replace(/[^a-zA-Z0-9\s]/g, '').replace(/\s+/g, '-')
+    link.download = `${safeTeamName}-${currentSeason.value}.png`
+    link.href = finalCanvas.toDataURL('image/png')
+    link.click()
+  } catch (error) {
+    console.error('Error generating team detail image:', error)
+    alert('Failed to generate image. Please try again.')
+  } finally {
+    isDownloadingTeamDetail.value = false
   }
 }
 
