@@ -324,16 +324,16 @@
         </div>
       </div>
 
-      <!-- Season Points by Position - Stacked Bar Visualization -->
+      <!-- Projected Points by Position - Stacked Bar Visualization -->
       <div class="card">
         <div class="card-header">
           <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
             <div>
               <div class="flex items-center gap-2 mb-2">
                 <span class="text-2xl">🔮</span>
-                <h2 class="card-title">Season Points by Position</h2>
+                <h2 class="card-title">Projected Points by Position</h2>
               </div>
-              <p class="text-sm text-dark-textMuted">Total points scored by position group this season</p>
+              <p class="text-sm text-dark-textMuted">Total projected points by position group</p>
             </div>
             <!-- Position color legend -->
             <div v-if="rosProjectionsAvailable" class="flex flex-wrap items-center gap-2 text-xs">
@@ -1418,9 +1418,9 @@ function getBaseballPositionColor(position: string): string {
     'OF': '#8b5cf6',   // violet
     'SP': '#06b6d4',   // cyan
     'RP': '#f97316',   // orange
-    'UTIL': '#6b7280'  // gray
+    'UTIL': '#a855f7'  // purple (more visible)
   }
-  return colors[position] || '#6b7280'
+  return colors[position] || '#a855f7'
 }
 
 // Get max ROS total across all teams for scaling bar widths
