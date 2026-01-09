@@ -3866,6 +3866,62 @@ const otherTeams = computed(() => {
   return teamsData.value.filter(t => t.team_key !== myTeamKey.value)
 })
 
+// All players with calculated overall values (for trade analyzer)
+const allPlayersWithValues = computed(() => {
+  if (allPlayers.value.length === 0) return []
+  
+  // Calculate overall value for each player based on their stats across all categories
+  return allPlayers.value.map(p => {
+    const isPlayerPitcher = isPitcher(p)
+    const relevantCats = isPlayerPitcher ? pitchingCategories.value : hittingCategories.value
+    
+    if (relevantCats.length === 0) return { ...p, overallValue: 50 }
+    
+    // Calculate how good this player is across their relevant categories
+    let totalScore = 0
+    let catsWithValue = 0
+    
+    for (const cat of relevantCats) {
+      const statId = cat.stat_id
+      const value = parseFloat(p.stats?.[statId] || 0)
+      
+      if (value === 0) continue
+      
+      // Get percentile ranking for this stat among all players
+      const allValues = allPlayers.value
+        .filter(pl => isPitcher(pl) === isPlayerPitcher)
+        .map(pl => parseFloat(pl.stats?.[statId] || 0))
+        .filter(v => v > 0)
+        .sort((a, b) => {
+          const isLower = isLowerBetterStat(cat)
+          return isLower ? a - b : b - a
+        })
+      
+      if (allValues.length === 0) continue
+      
+      const rank = allValues.indexOf(value)
+      const percentile = rank >= 0 ? (1 - (rank / allValues.length)) * 100 : 50
+      
+      totalScore += percentile
+      catsWithValue++
+    }
+    
+    const avgScore = catsWithValue > 0 ? totalScore / catsWithValue : 50
+    
+    // Boost for multi-category contributors
+    const multiCatBonus = Math.min(20, catsWithValue * 3)
+    
+    // Position scarcity bonus
+    const pos = p.position?.split(',')[0]?.trim() || 'Util'
+    const scarcePositions = ['C', 'SS', '2B']
+    const scarcityBonus = scarcePositions.includes(pos) ? 5 : 0
+    
+    const overallValue = Math.min(100, Math.max(0, avgScore + multiCatBonus + scarcityBonus))
+    
+    return { ...p, overallValue: Math.round(overallValue * 10) / 10 }
+  })
+})
+
 // Total values for trade comparison
 const tradeGiveTotalValue = computed(() => {
   return tradeGivePlayers.value.reduce((sum, p) => sum + (p.overallValue || 0), 0)
@@ -3881,7 +3937,7 @@ const tradeValueDifference = computed(() => {
 
 // My players for trade selection (filtered and sorted)
 const filteredMyPlayersForTrade = computed(() => {
-  let myPlayers = allPlayers.value.filter(p => p.fantasy_team_key === myTeamKey.value)
+  let myPlayers = allPlayersWithValues.value.filter(p => p.fantasy_team_key === myTeamKey.value)
   
   // Apply position filter
   if (tradeGivePositionFilter.value !== 'all') {
@@ -3916,7 +3972,7 @@ const filteredMyPlayersForTrade = computed(() => {
 // Trade partner's players (filtered and sorted)
 const filteredPartnerPlayersForTrade = computed(() => {
   if (!tradePartnerKey.value) return []
-  let partnerPlayers = allPlayers.value.filter(p => p.fantasy_team_key === tradePartnerKey.value)
+  let partnerPlayers = allPlayersWithValues.value.filter(p => p.fantasy_team_key === tradePartnerKey.value)
   
   // Apply position filter
   if (tradeGetPositionFilter.value !== 'all') {
@@ -4171,8 +4227,8 @@ function calculateNewPowerRank(givePlayers: any[], getPlayers: any[]): { newPowe
   
   // Calculate balance score (how evenly distributed ranks are)
   const currentRanks = Object.values(myTeam?.categoryRanks || {}) as number[]
-  const avgRank = currentRanks.reduce((a, b) => a + b, 0) / currentRanks.length
-  const variance = currentRanks.reduce((sum, r) => sum + Math.pow(r - avgRank, 2), 0) / currentRanks.length
+  const avgRank = currentRanks.length > 0 ? currentRanks.reduce((a, b) => a + b, 0) / currentRanks.length : 6
+  const variance = currentRanks.length > 0 ? currentRanks.reduce((sum, r) => sum + Math.pow(r - avgRank, 2), 0) / currentRanks.length : 10
   const balanceBefore = Math.max(0, 100 - variance * 3)
   
   // Calculate value difference
@@ -4180,22 +4236,27 @@ function calculateNewPowerRank(givePlayers: any[], getPlayers: any[]): { newPowe
   const getTotal = getPlayers.reduce((sum, p) => sum + (p.overallValue || 0), 0)
   const valueDiff = getTotal - giveTotal
   
-  // Estimate new balance after trade
-  const balanceAfter = balanceBefore + (valueDiff > 0 ? 5 : valueDiff < -10 ? -5 : 0) + Math.random() * 6 - 3
+  // Estimate new balance after trade (category diversity)
+  const balanceAfter = balanceBefore + (valueDiff > 10 ? 5 : valueDiff < -10 ? -5 : 0)
   
   // Star power (based on elite player count)
-  const myPlayers = allPlayers.value.filter(p => p.fantasy_team_key === myTeamKey.value)
-  const eliteCount = myPlayers.filter(p => (p.overallValue || 0) > 70).length
-  const starPowerBefore = Math.min(100, eliteCount * 15)
+  const myPlayers = allPlayersWithValues.value.filter(p => p.fantasy_team_key === myTeamKey.value)
+  const eliteThreshold = 70
+  const eliteCount = myPlayers.filter(p => (p.overallValue || 0) >= eliteThreshold).length
+  const starPowerBefore = Math.min(100, eliteCount * 12)
   
   // After trade star power
-  const giveEliteCount = givePlayers.filter(p => (p.overallValue || 0) > 70).length
-  const getEliteCount = getPlayers.filter(p => (p.overallValue || 0) > 70).length
-  const starPowerAfter = Math.min(100, Math.max(0, (eliteCount - giveEliteCount + getEliteCount) * 15))
+  const giveEliteCount = givePlayers.filter(p => (p.overallValue || 0) >= eliteThreshold).length
+  const getEliteCount = getPlayers.filter(p => (p.overallValue || 0) >= eliteThreshold).length
+  const newEliteCount = eliteCount - giveEliteCount + getEliteCount
+  const starPowerAfter = Math.min(100, Math.max(0, newEliteCount * 12))
   
   // Depth (based on roster quality distribution)
-  const depthBefore = Math.min(100, myPlayers.filter(p => (p.overallValue || 0) > 40).length * 8)
-  const depthAfter = depthBefore + valueDiff * 0.3
+  const goodPlayerThreshold = 50
+  const depthBefore = Math.min(100, myPlayers.filter(p => (p.overallValue || 0) >= goodPlayerThreshold).length * 6)
+  const giveGoodCount = givePlayers.filter(p => (p.overallValue || 0) >= goodPlayerThreshold).length
+  const getGoodCount = getPlayers.filter(p => (p.overallValue || 0) >= goodPlayerThreshold).length
+  const depthAfter = depthBefore + (getGoodCount - giveGoodCount) * 6
   
   // Calculate overall score change
   const scoreBefore = (balanceBefore + starPowerBefore + depthBefore) / 3
@@ -4205,10 +4266,10 @@ function calculateNewPowerRank(givePlayers: any[], getPlayers: any[]): { newPowe
   // Estimate new rank (simplified)
   const currentRank = calculateCurrentPowerRank()
   let newRank = currentRank
-  if (scoreDiff > 5) newRank = Math.max(1, currentRank - 1)
-  if (scoreDiff > 10) newRank = Math.max(1, currentRank - 2)
-  if (scoreDiff < -5) newRank = Math.min(totalTeams, currentRank + 1)
-  if (scoreDiff < -10) newRank = Math.min(totalTeams, currentRank + 2)
+  if (scoreDiff > 8) newRank = Math.max(1, currentRank - 2)
+  else if (scoreDiff > 4) newRank = Math.max(1, currentRank - 1)
+  else if (scoreDiff < -8) newRank = Math.min(totalTeams, currentRank + 2)
+  else if (scoreDiff < -4) newRank = Math.min(totalTeams, currentRank + 1)
   
   return {
     newPowerRank: newRank,
@@ -4224,33 +4285,51 @@ function calculateNewPowerRank(givePlayers: any[], getPlayers: any[]): { newPowe
 function calculateCategoryGrade(up: number, down: number, impact: any[]): string {
   const net = up - down
   const significantChanges = impact.filter(c => Math.abs(c.rankChange) >= 2).length
+  const totalCats = impact.length
   
-  if (net >= 4 || significantChanges >= 3) return 'A'
+  // Consider both net change and proportion of categories affected
+  const netRatio = totalCats > 0 ? net / totalCats : 0
+  
+  if (net >= 5 || (net >= 3 && significantChanges >= 3)) return 'A+'
+  if (net >= 4 || (net >= 2 && significantChanges >= 2)) return 'A'
+  if (net >= 3 || significantChanges >= 3) return 'A-'
   if (net >= 2 || significantChanges >= 2) return 'B+'
   if (net >= 1) return 'B'
-  if (net === 0) return 'C'
-  if (net >= -1) return 'C-'
-  if (net >= -2) return 'D'
+  if (net === 0 && down === 0) return 'B-'
+  if (net === 0) return 'C+'
+  if (net >= -1) return 'C'
+  if (net >= -2) return 'C-'
+  if (net >= -3) return 'D+'
+  if (net >= -4) return 'D'
   return 'F'
 }
 
 function calculateValueGrade(giveTotal: number, getTotal: number): string {
   const diff = getTotal - giveTotal
+  const percentDiff = giveTotal > 0 ? (diff / giveTotal) * 100 : diff
   
-  if (diff >= 30) return 'A'
-  if (diff >= 20) return 'A-'
-  if (diff >= 10) return 'B+'
-  if (diff >= 0) return 'B'
-  if (diff >= -10) return 'B-'
-  if (diff >= -20) return 'C'
-  if (diff >= -30) return 'D'
+  // Use both absolute and percentage difference
+  if (diff >= 50 || percentDiff >= 40) return 'A+'
+  if (diff >= 40 || percentDiff >= 30) return 'A'
+  if (diff >= 30 || percentDiff >= 20) return 'A-'
+  if (diff >= 20 || percentDiff >= 15) return 'B+'
+  if (diff >= 10 || percentDiff >= 5) return 'B'
+  if (diff >= 0) return 'B-'
+  if (diff >= -10 || percentDiff >= -5) return 'C+'
+  if (diff >= -20 || percentDiff >= -15) return 'C'
+  if (diff >= -30 || percentDiff >= -20) return 'C-'
+  if (diff >= -40 || percentDiff >= -30) return 'D+'
+  if (diff >= -50 || percentDiff >= -40) return 'D'
   return 'F'
 }
 
 function calculateBalanceGrade(balanceChange: number): string {
+  if (balanceChange >= 15) return 'A+'
   if (balanceChange >= 10) return 'A'
   if (balanceChange >= 5) return 'B+'
-  if (balanceChange >= 0) return 'B'
+  if (balanceChange >= 2) return 'B'
+  if (balanceChange >= 0) return 'B-'
+  if (balanceChange >= -2) return 'C+'
   if (balanceChange >= -5) return 'C'
   if (balanceChange >= -10) return 'D'
   return 'F'
@@ -4274,35 +4353,42 @@ function calculateScarcityGrade(givePlayers: any[], getPlayers: any[]): string {
   
   if (netScarce >= 2) return 'A'
   if (netScarce >= 1) return 'B+'
-  if (netScarce === 0) return 'B'
+  if (netScarce === 0 && givingScarce === 0) return 'B'
+  if (netScarce === 0) return 'B-'
   if (netScarce >= -1) return 'C'
   return 'D'
 }
 
 function calculateOverallTradeGrade(catGrade: string, valGrade: string, balGrade: string, scarGrade: string): string {
   const gradeToNum = (g: string): number => {
-    const grades: Record<string, number> = { 'A+': 97, 'A': 93, 'A-': 90, 'B+': 87, 'B': 83, 'B-': 80, 'C+': 77, 'C': 73, 'C-': 70, 'D+': 67, 'D': 63, 'D-': 60, 'F': 50 }
-    return grades[g] || 73
+    const grades: Record<string, number> = { 
+      'A+': 100, 'A': 95, 'A-': 90, 
+      'B+': 85, 'B': 80, 'B-': 75, 
+      'C+': 70, 'C': 65, 'C-': 60, 
+      'D+': 55, 'D': 50, 'D-': 45, 
+      'F': 35 
+    }
+    return grades[g] || 65
   }
   
   const numToGrade = (n: number): string => {
-    if (n >= 95) return 'A+'
-    if (n >= 90) return 'A'
+    if (n >= 97) return 'A+'
+    if (n >= 92) return 'A'
     if (n >= 87) return 'A-'
-    if (n >= 83) return 'B+'
-    if (n >= 80) return 'B'
-    if (n >= 77) return 'B-'
-    if (n >= 73) return 'C+'
-    if (n >= 70) return 'C'
-    if (n >= 67) return 'C-'
-    if (n >= 63) return 'D+'
-    if (n >= 60) return 'D'
-    if (n >= 55) return 'D-'
+    if (n >= 82) return 'B+'
+    if (n >= 77) return 'B'
+    if (n >= 72) return 'B-'
+    if (n >= 67) return 'C+'
+    if (n >= 62) return 'C'
+    if (n >= 57) return 'C-'
+    if (n >= 52) return 'D+'
+    if (n >= 47) return 'D'
+    if (n >= 42) return 'D-'
     return 'F'
   }
   
-  // Weighted average: Category 30%, Value 25%, Balance 25%, Scarcity 20%
-  const score = gradeToNum(catGrade) * 0.30 + gradeToNum(valGrade) * 0.25 + gradeToNum(balGrade) * 0.25 + gradeToNum(scarGrade) * 0.20
+  // Weighted average: Category 30%, Value 30%, Balance 20%, Scarcity 20%
+  const score = gradeToNum(catGrade) * 0.30 + gradeToNum(valGrade) * 0.30 + gradeToNum(balGrade) * 0.20 + gradeToNum(scarGrade) * 0.20
   return numToGrade(score)
 }
 
@@ -4311,20 +4397,36 @@ function generateTradeAnalysis(givePlayers: any[], getPlayers: any[], categoryIm
   const concerns: string[] = []
   
   const valueDiff = getTotal - giveTotal
+  const percentDiff = giveTotal > 0 ? (valueDiff / giveTotal) * 100 : 0
   const tradeSize = Math.max(givePlayers.length, getPlayers.length)
   const giveNames = givePlayers.map(p => p.full_name).join(', ')
   const getNames = getPlayers.map(p => p.full_name).join(', ')
   
   // Analyze value
-  if (valueDiff > 15) {
-    strengths.push(`Gaining ${Math.round(valueDiff)} total value points in return`)
-  } else if (valueDiff < -15) {
-    concerns.push(`Giving up ${Math.round(Math.abs(valueDiff))} more value than receiving`)
+  if (valueDiff > 20) {
+    strengths.push(`Gaining ${Math.round(valueDiff)} total value points (+${percentDiff.toFixed(0)}%)`)
+  } else if (valueDiff > 0) {
+    strengths.push(`Slight value gain of ${Math.round(valueDiff)} points`)
+  } else if (valueDiff < -20) {
+    concerns.push(`Giving up ${Math.round(Math.abs(valueDiff))} more value than receiving (${percentDiff.toFixed(0)}% loss)`)
+  } else if (valueDiff < 0) {
+    concerns.push(`Slight value loss of ${Math.round(Math.abs(valueDiff))} points`)
+  }
+  
+  // Analyze number of players
+  if (givePlayers.length > getPlayers.length + 1) {
+    concerns.push(`Trading ${givePlayers.length} players for only ${getPlayers.length} - losing roster depth`)
+  } else if (getPlayers.length > givePlayers.length + 1) {
+    strengths.push(`Getting ${getPlayers.length} players for ${givePlayers.length} - gaining roster depth`)
   }
   
   // Analyze categories
-  if (catsUp > catsDown) {
+  if (catsUp > catsDown + 2) {
+    strengths.push(`Strong category improvement: ${catsUp} up vs ${catsDown} down`)
+  } else if (catsUp > catsDown) {
     strengths.push(`Improves ${catsUp} categories vs hurts ${catsDown}`)
+  } else if (catsDown > catsUp + 2) {
+    concerns.push(`Significant category decline: ${catsDown} hurt vs ${catsUp} improved`)
   } else if (catsDown > catsUp) {
     concerns.push(`Hurts ${catsDown} categories vs improves ${catsUp}`)
   }
@@ -4366,17 +4468,10 @@ function generateTradeAnalysis(givePlayers: any[], getPlayers: any[], categoryIm
   })
   
   if (gettingScarce.length > 0) {
-    strengths.push(`Acquiring ${gettingScarce.map(p => `${p.full_name} (${p.position})`).join(', ')} at premium position(s)`)
+    strengths.push(`Acquiring premium position player(s): ${gettingScarce.map(p => `${p.full_name} (${p.position})`).join(', ')}`)
   }
   if (givingScarce.length > 0) {
-    concerns.push(`Giving up scarce position eligibility: ${givingScarce.map(p => p.position).join(', ')}`)
-  }
-  
-  // Trade size consideration
-  if (givePlayers.length < getPlayers.length) {
-    strengths.push(`Receiving more players (${getPlayers.length}) than giving up (${givePlayers.length})`)
-  } else if (givePlayers.length > getPlayers.length) {
-    concerns.push(`Giving up more players (${givePlayers.length}) than receiving (${getPlayers.length})`)
+    concerns.push(`Giving up scarce position eligibility: ${givingScarce.map(p => `${p.full_name} (${p.position})`).join(', ')}`)
   }
   
   // Generate headline and summary
@@ -4385,33 +4480,50 @@ function generateTradeAnalysis(givePlayers: any[], getPlayers: any[], categoryIm
   let recommendation: 'accept' | 'decline' | 'consider' = 'consider'
   let bottomLine = ''
   
-  const netScore = (catsUp - catsDown) + (valueDiff / 15) + balanceChange / 5
+  // Calculate net score based on all factors
+  const valueFactor = valueDiff / 20  // Normalize value diff
+  const catFactor = (catsUp - catsDown) * 0.5
+  const rankFactor = (rankBefore - rankAfter) * 0.5
+  const balanceFactor = balanceChange / 10
+  const depthFactor = (getPlayers.length - givePlayers.length) * 0.3
   
-  if (netScore >= 3) {
+  const netScore = valueFactor + catFactor + rankFactor + balanceFactor + depthFactor
+  
+  if (netScore >= 4) {
+    headline = 'Excellent Trade for You!'
+    summary = `This ${tradeSize > 1 ? 'multi-player trade' : 'trade'} is a clear win. You're getting significantly more value and production.`
+    recommendation = 'accept'
+    bottomLine = 'This is a great deal - make this trade!'
+  } else if (netScore >= 2) {
     headline = 'Strong Trade for You'
-    summary = `This ${tradeSize > 1 ? 'multi-player trade' : 'trade'} significantly improves your team. You're getting better overall value and category production.`
+    summary = `This trade significantly improves your team. The incoming player(s) provide more value than what you're giving up.`
     recommendation = 'accept'
     bottomLine = 'This is a favorable deal - you should strongly consider making this trade.'
-  } else if (netScore >= 1) {
+  } else if (netScore >= 0.5) {
     headline = 'Slight Win for You'
     summary = `This trade provides modest improvement to your team. The incoming player(s) should help in key areas.`
     recommendation = 'accept'
     bottomLine = 'The trade is in your favor, though not by a huge margin.'
-  } else if (netScore >= -1) {
+  } else if (netScore >= -0.5) {
     headline = 'Roughly Even Trade'
     summary = `This is a fair exchange that could work depending on your specific needs. Consider what categories matter most for your playoff push.`
     recommendation = 'consider'
     bottomLine = 'This is close to a fair trade - evaluate based on your specific team needs.'
-  } else if (netScore >= -3) {
+  } else if (netScore >= -2) {
     headline = 'Slight Loss for You'
     summary = `You may be giving up a bit more than you're getting back. Make sure this addresses a critical need.`
     recommendation = 'consider'
     bottomLine = 'You\'re likely overpaying slightly - only do this if you really need what you\'re getting.'
-  } else {
-    headline = 'Unfavorable Trade'
-    summary = `This trade would likely hurt your team. You're giving up significant value without adequate return.`
+  } else if (netScore >= -4) {
+    headline = 'Bad Trade for You'
+    summary = `This trade would hurt your team. You're giving up significantly more value than you're receiving.`
     recommendation = 'decline'
-    bottomLine = 'This trade is not recommended - look for a better deal.'
+    bottomLine = 'This trade is not recommended - you can do better.'
+  } else {
+    headline = 'Terrible Trade - Avoid!'
+    summary = `This trade would seriously damage your team. You're giving away far too much value for what you're getting back.`
+    recommendation = 'decline'
+    bottomLine = 'Do NOT make this trade - it heavily favors the other team.'
   }
   
   return { headline, summary, strengths, concerns, recommendation, bottomLine }
