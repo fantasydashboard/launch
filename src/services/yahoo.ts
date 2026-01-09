@@ -378,9 +378,33 @@ export class YahooFantasyService {
       const teamInfo = teamWrapper.team[0]
       const teamStandings = teamWrapper.team[1]?.team_standings
       
-      // Check if this is the current user's team
-      const managers = teamInfo[19]?.managers || teamInfo.managers || []
-      const isMyTeam = managers.some((m: any) => m.manager?.is_current_login === '1')
+      // Check if this is the current user's team - search for managers more robustly
+      let managers: any[] = []
+      let isMyTeam = false
+      
+      // Try different possible locations for managers
+      if (Array.isArray(teamInfo)) {
+        for (const item of teamInfo) {
+          if (item?.managers && Array.isArray(item.managers)) {
+            managers = item.managers
+            break
+          }
+        }
+      }
+      
+      // Fallback to legacy positions
+      if (managers.length === 0) {
+        managers = teamInfo[19]?.managers || teamInfo.managers || []
+      }
+      
+      // Check all managers for is_current_login
+      for (const m of managers) {
+        if (m.manager?.is_current_login === '1' || m.manager?.is_current_login === 1) {
+          isMyTeam = true
+          console.log('Found current login team:', teamInfo[2]?.name, 'via manager:', m.manager?.nickname)
+          break
+        }
+      }
       
       // Get team logo
       let logoUrl = ''

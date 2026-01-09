@@ -247,291 +247,6 @@
                       </div>
                     </td>
                   </tr>
-                  <!-- Expanded Player Detail -->
-                  <tr v-if="expandedPlayerKey === player.player_key" class="bg-dark-bg/80">
-                    <td colspan="7" class="p-0">
-                      <div class="p-4 space-y-4 border-y border-yellow-400/30">
-                        <div class="flex items-start justify-between">
-                          <div class="flex items-center gap-4">
-                            <div class="w-16 h-16 rounded-full bg-dark-border overflow-hidden ring-2" :class="getAvatarRingClass(player)">
-                              <img :src="player.headshot || defaultHeadshot" :alt="player.full_name" class="w-full h-full object-cover" @error="handleImageError" />
-                            </div>
-                            <div>
-                              <h3 class="text-xl font-bold text-dark-text">{{ player.full_name }}</h3>
-                              <div class="flex items-center gap-3 text-sm text-dark-textMuted">
-                                <span class="px-2 py-0.5 rounded text-xs font-bold" :class="getPositionClass(player.position)">{{ player.position }}</span>
-                                <span>{{ player.mlb_team || 'FA' }}</span>
-                                <span v-if="player.fantasy_team">• {{ player.fantasy_team }}</span>
-                              </div>
-                            </div>
-                          </div>
-                          <button @click.stop="expandedPlayerKey = null" class="p-2 hover:bg-dark-border/50 rounded-lg transition-colors">
-                            <svg class="w-5 h-5 text-dark-textMuted" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
-                          </button>
-                        </div>
-                        
-                        <!-- Stats Grid -->
-                        <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3">
-                          <div class="bg-dark-card rounded-lg p-3 text-center">
-                            <div class="text-2xl font-bold text-yellow-400">#{{ player.categoryRank }}</div>
-                            <div class="text-xs text-dark-textMuted">{{ selectedCategoryInfo?.display_name }} Rank</div>
-                          </div>
-                          <div class="bg-dark-card rounded-lg p-3 text-center">
-                            <div class="text-2xl font-bold text-dark-text">{{ formatStatValue(player.projectedValue) }}</div>
-                            <div class="text-xs text-dark-textMuted">ROS Projection</div>
-                          </div>
-                          <div class="bg-dark-card rounded-lg p-3 text-center">
-                            <div class="text-2xl font-bold text-dark-text">{{ formatStatValue(player.currentValue) }}</div>
-                            <div class="text-xs text-dark-textMuted">Current Season</div>
-                          </div>
-                          <div class="bg-dark-card rounded-lg p-3 text-center">
-                            <div class="text-2xl font-bold text-dark-text">{{ formatStatValue(player.perGameValue, 3) }}</div>
-                            <div class="text-xs text-dark-textMuted">Per Game Avg</div>
-                          </div>
-                          <div class="bg-dark-card rounded-lg p-3 text-center">
-                            <div class="text-2xl font-bold" :class="getValueClass(player.overallValue)">{{ player.overallValue?.toFixed(1) }}</div>
-                            <div class="text-xs text-dark-textMuted">Overall Value</div>
-                          </div>
-                          <div class="bg-dark-card rounded-lg p-3 text-center">
-                            <div class="text-2xl font-bold text-dark-text">{{ player.categoriesContributing || 0 }}/{{ relevantCategories.length }}</div>
-                            <div class="text-xs text-dark-textMuted">Multi-Cat Score</div>
-                          </div>
-                        </div>
-
-                        <!-- Recent Performance Line Chart -->
-                        <div class="bg-dark-card rounded-xl p-4">
-                          <div class="flex items-center justify-between mb-4">
-                            <h4 class="font-semibold text-dark-text flex items-center gap-2">
-                              <span>📈</span> Last 5 Performances vs League Average
-                            </h4>
-                            <select v-model="chartCategory" class="select bg-dark-border border-dark-border text-dark-text px-3 py-1.5 rounded-lg text-sm">
-                              <option v-for="cat in relevantCategories" :key="cat.stat_id" :value="cat.stat_id">
-                                {{ cat.display_name }}
-                              </option>
-                            </select>
-                          </div>
-                          
-                          <div v-if="isLoadingChart" class="h-56 flex items-center justify-center">
-                            <div class="text-dark-textMuted text-sm animate-pulse">Loading performance data...</div>
-                          </div>
-                          <div v-else-if="recentPerformances.length > 0" class="space-y-4">
-                            <!-- SVG Line Chart -->
-                            <div class="h-56 relative">
-                              <svg class="w-full h-full" viewBox="0 0 400 180" preserveAspectRatio="xMidYMid meet">
-                                <!-- Grid lines -->
-                                <g class="grid-lines">
-                                  <line v-for="i in 5" :key="'h'+i" 
-                                    :x1="50" :x2="380" 
-                                    :y1="20 + (i-1) * 35" :y2="20 + (i-1) * 35" 
-                                    stroke="#374151" stroke-width="1" stroke-dasharray="4,4" opacity="0.3"/>
-                                </g>
-                                
-                                <!-- Y-axis labels -->
-                                <g class="y-labels" fill="#9CA3AF" font-size="10">
-                                  <text x="45" y="25" text-anchor="end">{{ chartYMax.toFixed(1) }}</text>
-                                  <text x="45" y="95" text-anchor="end">{{ (chartYMax / 2).toFixed(1) }}</text>
-                                  <text x="45" y="165" text-anchor="end">0</text>
-                                </g>
-                                
-                                <!-- League Average Line (Yellow) -->
-                                <polyline
-                                  :points="leagueAvgLinePoints"
-                                  fill="none"
-                                  stroke="#EAB308"
-                                  stroke-width="2"
-                                  stroke-dasharray="6,4"
-                                  opacity="0.8"
-                                />
-                                
-                                <!-- Player Performance Line (Primary/Gold) -->
-                                <polyline
-                                  :points="playerLinePoints"
-                                  fill="none"
-                                  stroke="#F59E0B"
-                                  stroke-width="3"
-                                />
-                                
-                                <!-- Data points for player -->
-                                <g v-for="(perf, idx) in recentPerformances" :key="'p'+idx">
-                                  <circle
-                                    :cx="getChartX(idx)"
-                                    :cy="getChartY(perf.playerValue)"
-                                    r="6"
-                                    fill="#F59E0B"
-                                    stroke="#1F2937"
-                                    stroke-width="2"
-                                  />
-                                  <!-- Value label above point -->
-                                  <text
-                                    :x="getChartX(idx)"
-                                    :y="getChartY(perf.playerValue) - 12"
-                                    fill="#F59E0B"
-                                    font-size="10"
-                                    font-weight="bold"
-                                    text-anchor="middle"
-                                  >{{ perf.playerValue.toFixed(1) }}</text>
-                                </g>
-                                
-                                <!-- Data points for league avg -->
-                                <g v-for="(perf, idx) in recentPerformances" :key="'l'+idx">
-                                  <circle
-                                    :cx="getChartX(idx)"
-                                    :cy="getChartY(perf.leagueAvg)"
-                                    r="4"
-                                    fill="#EAB308"
-                                    stroke="#1F2937"
-                                    stroke-width="2"
-                                    opacity="0.8"
-                                  />
-                                </g>
-                                
-                                <!-- X-axis date labels -->
-                                <g class="x-labels" fill="#9CA3AF" font-size="9">
-                                  <text 
-                                    v-for="(perf, idx) in recentPerformances" 
-                                    :key="'d'+idx"
-                                    :x="getChartX(idx)"
-                                    y="178"
-                                    text-anchor="middle"
-                                  >{{ perf.date }}</text>
-                                </g>
-                              </svg>
-                            </div>
-                            
-                            <!-- Legend -->
-                            <div class="flex items-center justify-center gap-6 text-xs">
-                              <div class="flex items-center gap-2">
-                                <div class="w-4 h-1 bg-amber-500 rounded"></div>
-                                <span class="text-dark-textMuted">{{ player.full_name?.split(' ').pop() }}</span>
-                              </div>
-                              <div class="flex items-center gap-2">
-                                <div class="w-4 h-0.5 border-t-2 border-dashed border-yellow-500"></div>
-                                <span class="text-dark-textMuted">League Avg (same dates)</span>
-                              </div>
-                            </div>
-                            
-                            <!-- Performance Summary -->
-                            <div class="grid grid-cols-3 gap-3 pt-2 border-t border-dark-border">
-                              <div class="text-center">
-                                <div class="text-lg font-bold" :class="playerAvgVsLeague >= 0 ? 'text-green-400' : 'text-red-400'">
-                                  {{ playerAvgVsLeague >= 0 ? '+' : '' }}{{ playerAvgVsLeague.toFixed(1) }}
-                                </div>
-                                <div class="text-[10px] text-dark-textMuted">vs League Avg</div>
-                              </div>
-                              <div class="text-center">
-                                <div class="text-lg font-bold text-yellow-400">{{ playerRecentAvg.toFixed(1) }}</div>
-                                <div class="text-[10px] text-dark-textMuted">Player Avg (5 games)</div>
-                              </div>
-                              <div class="text-center">
-                                <div class="text-lg font-bold text-yellow-500">{{ leagueRecentAvg.toFixed(1) }}</div>
-                                <div class="text-[10px] text-dark-textMuted">League Avg (5 games)</div>
-                              </div>
-                            </div>
-                          </div>
-                          <div v-else class="h-56 flex items-center justify-center text-dark-textMuted text-sm">
-                            No recent performance data available
-                          </div>
-                        </div>
-
-                        <!-- All Category Stats & Value Breakdown -->
-                        <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                          <div class="bg-dark-card rounded-xl p-4">
-                            <h4 class="font-semibold text-dark-text mb-3 flex items-center gap-2"><span>📊</span> All {{ isPitchingCategory ? 'Pitching' : 'Hitting' }} Categories</h4>
-                            <!-- Header Row -->
-                            <div class="flex items-center text-xs text-dark-textMuted uppercase tracking-wider mb-2 px-3">
-                              <div class="flex-1">Category</div>
-                              <div class="w-24 text-center">Season</div>
-                              <div class="w-px h-4 bg-dark-border mx-2"></div>
-                              <div class="w-24 text-center">{{ isPitcher(player) ? 'Last 4' : 'Last 10' }}</div>
-                            </div>
-                            <div class="space-y-1 max-h-72 overflow-y-auto">
-                              <div v-for="cat in relevantCategories" :key="cat.stat_id" 
-                                class="flex items-center py-2 px-3 rounded-lg" 
-                                :class="cat.stat_id === selectedCategory ? 'bg-yellow-400/20 border border-yellow-400/30' : 'bg-dark-border/30'">
-                                <!-- Category Name -->
-                                <div class="flex-1">
-                                  <span class="text-sm text-dark-text font-medium">{{ cat.display_name }}</span>
-                                </div>
-                                <!-- Season Stats -->
-                                <div class="w-24 flex items-center justify-end gap-2">
-                                  <span class="text-sm font-bold" :class="cat.stat_id === selectedCategory ? 'text-yellow-400' : 'text-dark-text'">
-                                    {{ formatCategoryStat(player, cat.stat_id) }}
-                                  </span>
-                                  <span class="text-[10px] px-1.5 py-0.5 rounded" :class="getCategoryRankClass(player, cat.stat_id)">
-                                    #{{ getCategoryRank(player, cat.stat_id) }}
-                                  </span>
-                                </div>
-                                <!-- Vertical Divider -->
-                                <div class="w-px h-8 bg-dark-border mx-3"></div>
-                                <!-- Recent Stats -->
-                                <div class="w-24 flex items-center justify-end gap-2">
-                                  <span class="text-sm font-bold text-cyan-400">
-                                    {{ getRecentStat(player, cat.stat_id) }}
-                                  </span>
-                                  <span class="text-[10px] px-1.5 py-0.5 rounded" :class="getRecentRankClass(player, cat.stat_id)">
-                                    #{{ getRecentRank(player, cat.stat_id) }}
-                                  </span>
-                                </div>
-                              </div>
-                            </div>
-                            <!-- Legend -->
-                            <div class="flex items-center justify-end gap-4 mt-3 pt-2 border-t border-dark-border text-[10px] text-dark-textMuted">
-                              <span>Season totals</span>
-                              <div class="w-px h-3 bg-dark-border"></div>
-                              <span class="text-cyan-400">Recent performance</span>
-                            </div>
-                          </div>
-                          <div class="bg-dark-card rounded-xl p-4">
-                            <h4 class="font-semibold text-dark-text mb-3 flex items-center gap-2"><span>💎</span> Value Score Breakdown</h4>
-                            <div class="space-y-4">
-                              <div>
-                                <div class="flex justify-between text-sm mb-1"><span class="text-dark-textMuted">Category Rank ({{ rankingWeights.categoryRank }}%)</span><span class="text-dark-text font-medium">{{ ((1 - (player.categoryRank - 1) / Math.max(filteredPlayers.length, 1)) * 100).toFixed(0) }}</span></div>
-                                <div class="h-2 bg-dark-border rounded-full overflow-hidden"><div class="h-full bg-yellow-400 rounded-full" :style="{ width: `${(1 - (player.categoryRank - 1) / Math.max(filteredPlayers.length, 1)) * 100}%` }"></div></div>
-                              </div>
-                              <div>
-                                <div class="flex justify-between text-sm mb-1"><span class="text-dark-textMuted">Multi-Category ({{ rankingWeights.multiCategory }}%)</span><span class="text-dark-text font-medium">{{ ((player.categoriesContributing || 0) / Math.max(relevantCategories.length, 1) * 100).toFixed(0) }}</span></div>
-                                <div class="h-2 bg-dark-border rounded-full overflow-hidden"><div class="h-full bg-green-500 rounded-full" :style="{ width: `${(player.categoriesContributing || 0) / Math.max(relevantCategories.length, 1) * 100}%` }"></div></div>
-                              </div>
-                              <div>
-                                <div class="flex justify-between text-sm mb-1"><span class="text-dark-textMuted">Position Scarcity ({{ rankingWeights.scarcity }}%)</span><span class="text-dark-text font-medium">{{ player.scarcityScore || 50 }}</span></div>
-                                <div class="h-2 bg-dark-border rounded-full overflow-hidden"><div class="h-full bg-cyan-400 rounded-full" :style="{ width: `${player.scarcityScore || 50}%` }"></div></div>
-                              </div>
-                              <div>
-                                <div class="flex justify-between text-sm mb-1"><span class="text-dark-textMuted">Consistency ({{ rankingWeights.consistency }}%)</span><span class="text-dark-text font-medium">50</span></div>
-                                <div class="h-2 bg-dark-border rounded-full overflow-hidden"><div class="h-full bg-purple-400 rounded-full" style="width: 50%"></div></div>
-                              </div>
-                              <div class="border-t border-dark-border pt-3 mt-3">
-                                <p class="text-xs text-dark-textMuted leading-relaxed"><strong class="text-dark-text">Value Score</strong> measures overall fantasy value using your custom weights. Click "Customize Rankings" above to adjust.</p>
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-
-                        <!-- Pitcher Info -->
-                        <div v-if="isPitcher(player)" class="bg-dark-card rounded-xl p-4">
-                          <h4 class="font-semibold text-dark-text mb-3 flex items-center gap-2"><span>📅</span> Pitcher Info</h4>
-                          <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
-                            <div class="text-center p-3 rounded-lg bg-dark-border/30">
-                              <div class="text-2xl font-bold text-yellow-400">~{{ player.position?.includes('SP') ? '13' : '25' }}</div>
-                              <div class="text-xs text-dark-textMuted">{{ player.position?.includes('SP') ? 'Est. ROS Starts' : 'Est. ROS Apps' }}</div>
-                            </div>
-                            <div class="text-center p-3 rounded-lg bg-dark-border/30">
-                              <div class="text-2xl font-bold text-dark-text">{{ formatCategoryStat(player, '50') || '-' }}</div>
-                              <div class="text-xs text-dark-textMuted">Innings Pitched</div>
-                            </div>
-                            <div class="text-center p-3 rounded-lg bg-dark-border/30">
-                              <div class="text-2xl font-bold text-dark-text">{{ formatCategoryStat(player, '42') || '-' }}</div>
-                              <div class="text-xs text-dark-textMuted">Strikeouts</div>
-                            </div>
-                            <div class="text-center p-3 rounded-lg bg-dark-border/30">
-                              <div class="text-2xl font-bold text-dark-text">{{ formatCategoryStat(player, player.position?.includes('SP') ? '28' : '32') || '-' }}</div>
-                              <div class="text-xs text-dark-textMuted">{{ player.position?.includes('SP') ? 'Wins' : 'Saves' }}</div>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    </td>
-                  </tr>
                 </template>
                 <tr v-if="gatedSortedPlayers.length === 0"><td colspan="7" class="px-4 py-8 text-center text-dark-textMuted">No players match filters</td></tr>
               </tbody>
@@ -743,88 +458,7 @@
 
                 <!-- Expand Indicator -->
                 <div class="mt-4 text-center">
-                  <span class="text-xs text-dark-textMuted">{{ expandedTeamKey === team.team_key ? '▲ Click to collapse' : '▼ Click to expand' }}</span>
-                </div>
-              </div>
-
-              <!-- Expanded Team Details -->
-              <div v-if="expandedTeamKey === team.team_key" class="border-t border-dark-border bg-dark-card/50">
-                <div class="p-6 space-y-6">
-                  
-                  <!-- Category Breakdown Table -->
-                  <div>
-                    <h4 class="font-semibold text-dark-text mb-3 flex items-center gap-2">
-                      <span>📊</span> Category Breakdown
-                    </h4>
-                    <div class="overflow-x-auto">
-                      <table class="w-full text-sm">
-                        <thead>
-                          <tr class="border-b border-dark-border">
-                            <th class="text-left py-2 px-3 text-dark-textMuted font-medium">Category</th>
-                            <th class="text-center py-2 px-3 text-dark-textMuted font-medium">Total</th>
-                            <th class="text-center py-2 px-3 text-dark-textMuted font-medium">Rank</th>
-                            <th class="text-center py-2 px-3 text-dark-textMuted font-medium">Grade</th>
-                            <th class="text-left py-2 px-3 text-dark-textMuted font-medium">Top Contributor</th>
-                          </tr>
-                        </thead>
-                        <tbody class="divide-y divide-dark-border/30">
-                          <tr v-for="cat in displayCategories" :key="cat.stat_id" class="hover:bg-dark-border/20">
-                            <td class="py-2 px-3">
-                              <span class="font-medium text-dark-text">{{ cat.display_name }}</span>
-                              <span class="text-dark-textMuted ml-1">({{ cat.name }})</span>
-                            </td>
-                            <td class="py-2 px-3 text-center font-bold text-dark-text">
-                              {{ formatTeamCategoryStat(team.categoryTotals?.[cat.stat_id], cat) }}
-                            </td>
-                            <td class="py-2 px-3 text-center">
-                              <span class="px-2 py-0.5 rounded text-xs font-bold" :class="getTeamRankBadgeClass(team.categoryRanks?.[cat.stat_id])">
-                                #{{ team.categoryRanks?.[cat.stat_id] || '-' }}
-                              </span>
-                            </td>
-                            <td class="py-2 px-3 text-center">
-                              <span class="font-bold" :class="getTeamGradeColorClass(getTeamCategoryGrade(team.categoryRanks?.[cat.stat_id]))">
-                                {{ getTeamCategoryGrade(team.categoryRanks?.[cat.stat_id]) }}
-                              </span>
-                            </td>
-                            <td class="py-2 px-3">
-                              <div v-if="team.topContributors?.[cat.stat_id]" class="flex items-center gap-2">
-                                <img :src="team.topContributors[cat.stat_id].headshot || defaultHeadshot" class="w-6 h-6 rounded-full" @error="handleImageError" />
-                                <span class="text-dark-text">{{ team.topContributors[cat.stat_id].name }}</span>
-                                <span class="text-yellow-400 font-medium">({{ formatTeamCategoryStat(team.topContributors[cat.stat_id].value, cat) }})</span>
-                              </div>
-                              <span v-else class="text-dark-textMuted">-</span>
-                            </td>
-                          </tr>
-                        </tbody>
-                      </table>
-                    </div>
-                  </div>
-
-                  <!-- Trade Insights -->
-                  <div class="bg-gradient-to-r from-purple-500/10 to-pink-500/10 rounded-xl p-4 border border-purple-500/20">
-                    <h4 class="font-semibold text-dark-text mb-3 flex items-center gap-2">
-                      <span>💡</span> Trade Insights
-                    </h4>
-                    <div class="grid grid-cols-2 gap-4">
-                      <div>
-                        <div class="text-xs text-dark-textMuted uppercase tracking-wider mb-2">Could Use</div>
-                        <div class="flex flex-wrap gap-1">
-                          <span v-for="cat in (team.weakestCategories || []).slice(0, 4)" :key="cat" class="px-2 py-1 bg-red-500/20 text-red-400 rounded text-xs font-medium">
-                            {{ cat }}
-                          </span>
-                        </div>
-                      </div>
-                      <div>
-                        <div class="text-xs text-dark-textMuted uppercase tracking-wider mb-2">Has Surplus</div>
-                        <div class="flex flex-wrap gap-1">
-                          <span v-for="cat in (team.strongestCategories || []).slice(0, 4)" :key="cat" class="px-2 py-1 bg-green-500/20 text-green-400 rounded text-xs font-medium">
-                            {{ cat }}
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
+                  <span class="text-xs text-dark-textMuted">Click to view details</span>
                 </div>
               </div>
             </div>
@@ -1455,6 +1089,250 @@
         </div>
       </div>
     </div>
+
+    <!-- Player Detail Modal -->
+    <div v-if="selectedPlayer" class="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4" @click.self="expandedPlayerKey = null">
+      <div class="bg-dark-elevated rounded-2xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-hidden border border-dark-border">
+        <!-- Header -->
+        <div class="px-6 py-4 border-b border-yellow-400/30 flex items-center justify-between">
+          <div class="flex items-center gap-4">
+            <div class="w-16 h-16 rounded-full bg-dark-border overflow-hidden ring-2" :class="getAvatarRingClass(selectedPlayer)">
+              <img :src="selectedPlayer.headshot || defaultHeadshot" :alt="selectedPlayer.full_name" class="w-full h-full object-cover" @error="handleImageError" />
+            </div>
+            <div>
+              <h3 class="text-xl font-bold text-dark-text">{{ selectedPlayer.full_name }}</h3>
+              <div class="flex items-center gap-3 text-sm text-dark-textMuted">
+                <span class="px-2 py-0.5 rounded text-xs font-bold" :class="getPositionClass(selectedPlayer.position)">{{ selectedPlayer.position }}</span>
+                <span>{{ selectedPlayer.mlb_team || 'FA' }}</span>
+                <span v-if="selectedPlayer.fantasy_team" :class="isMyPlayer(selectedPlayer) ? 'text-yellow-400' : ''">• {{ selectedPlayer.fantasy_team }}</span>
+                <span v-else class="text-cyan-400">• Free Agent</span>
+              </div>
+            </div>
+          </div>
+          <button @click="expandedPlayerKey = null" class="p-2 hover:bg-dark-border/50 rounded-lg transition-colors">
+            <svg class="w-6 h-6 text-dark-textMuted" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
+          </button>
+        </div>
+        
+        <!-- Content -->
+        <div class="p-6 overflow-y-auto max-h-[calc(90vh-100px)] space-y-6">
+          <!-- Stats Grid -->
+          <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+            <div class="bg-dark-card rounded-lg p-3 text-center">
+              <div class="text-2xl font-bold text-yellow-400">#{{ selectedPlayer.categoryRank }}</div>
+              <div class="text-xs text-dark-textMuted">{{ selectedCategoryInfo?.display_name }} Rank</div>
+            </div>
+            <div class="bg-dark-card rounded-lg p-3 text-center">
+              <div class="text-2xl font-bold text-dark-text">{{ formatStatValue(selectedPlayer.projectedValue) }}</div>
+              <div class="text-xs text-dark-textMuted">ROS Projection</div>
+            </div>
+            <div class="bg-dark-card rounded-lg p-3 text-center">
+              <div class="text-2xl font-bold text-dark-text">{{ formatStatValue(selectedPlayer.currentValue) }}</div>
+              <div class="text-xs text-dark-textMuted">Current Season</div>
+            </div>
+            <div class="bg-dark-card rounded-lg p-3 text-center">
+              <div class="text-2xl font-bold text-dark-text">{{ formatStatValue(selectedPlayer.perGameValue, 3) }}</div>
+              <div class="text-xs text-dark-textMuted">Per Game Avg</div>
+            </div>
+            <div class="bg-dark-card rounded-lg p-3 text-center">
+              <div class="text-2xl font-bold" :class="getValueClass(selectedPlayer.overallValue)">{{ selectedPlayer.overallValue?.toFixed(1) }}</div>
+              <div class="text-xs text-dark-textMuted">Overall Value</div>
+            </div>
+            <div class="bg-dark-card rounded-lg p-3 text-center">
+              <div class="text-2xl font-bold text-dark-text">{{ selectedPlayer.categoriesContributing || 0 }}/{{ relevantCategories.length }}</div>
+              <div class="text-xs text-dark-textMuted">Multi-Cat Score</div>
+            </div>
+          </div>
+
+          <!-- Performance Chart -->
+          <div class="bg-dark-card rounded-xl p-4">
+            <div class="flex items-center justify-between mb-4">
+              <h4 class="font-semibold text-dark-text flex items-center gap-2"><span>📈</span> Recent Performance</h4>
+              <select v-model="chartCategory" class="select bg-dark-border border-dark-border text-dark-text px-3 py-1.5 rounded-lg text-sm">
+                <option v-for="cat in relevantCategories" :key="cat.stat_id" :value="cat.stat_id">
+                  {{ cat.display_name }} - {{ cat.name }}
+                </option>
+              </select>
+            </div>
+            <div v-if="isLoadingChart" class="h-48 flex items-center justify-center">
+              <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-yellow-400"></div>
+            </div>
+            <div v-else-if="recentPerformances.length > 0" class="space-y-4">
+              <div class="h-48 relative">
+                <svg viewBox="0 0 400 180" class="w-full h-full" preserveAspectRatio="xMidYMid meet">
+                  <g class="grid-lines" stroke="#374151" stroke-width="1" opacity="0.3">
+                    <line x1="50" y1="20" x2="380" y2="20" />
+                    <line x1="50" y1="90" x2="380" y2="90" />
+                    <line x1="50" y1="160" x2="380" y2="160" />
+                  </g>
+                  <g class="y-labels" fill="#9CA3AF" font-size="10">
+                    <text x="45" y="25" text-anchor="end">{{ chartYMax.toFixed(1) }}</text>
+                    <text x="45" y="95" text-anchor="end">{{ (chartYMax / 2).toFixed(1) }}</text>
+                    <text x="45" y="165" text-anchor="end">0</text>
+                  </g>
+                  <polyline :points="leagueAvgLinePoints" fill="none" stroke="#EAB308" stroke-width="2" stroke-dasharray="6,4" opacity="0.8" />
+                  <polyline :points="playerLinePoints" fill="none" stroke="#F59E0B" stroke-width="3" />
+                  <g v-for="(perf, idx) in recentPerformances" :key="'p'+idx">
+                    <circle :cx="getChartX(idx)" :cy="getChartY(perf.playerValue)" r="6" fill="#F59E0B" stroke="#1F2937" stroke-width="2" />
+                    <text :x="getChartX(idx)" :y="getChartY(perf.playerValue) - 12" fill="#F59E0B" font-size="10" font-weight="bold" text-anchor="middle">{{ perf.playerValue.toFixed(1) }}</text>
+                  </g>
+                  <g v-for="(perf, idx) in recentPerformances" :key="'l'+idx">
+                    <circle :cx="getChartX(idx)" :cy="getChartY(perf.leagueAvg)" r="4" fill="#EAB308" stroke="#1F2937" stroke-width="2" opacity="0.8" />
+                  </g>
+                  <g class="x-labels" fill="#9CA3AF" font-size="9">
+                    <text v-for="(perf, idx) in recentPerformances" :key="'d'+idx" :x="getChartX(idx)" y="178" text-anchor="middle">{{ perf.date }}</text>
+                  </g>
+                </svg>
+              </div>
+              <div class="flex items-center justify-center gap-6 text-sm">
+                <div class="flex items-center gap-2"><div class="w-4 h-1 bg-amber-500 rounded"></div><span class="text-dark-textMuted">Player</span></div>
+                <div class="flex items-center gap-2"><div class="w-4 h-1 bg-yellow-500 rounded opacity-80" style="background: repeating-linear-gradient(90deg, #EAB308, #EAB308 4px, transparent 4px, transparent 8px)"></div><span class="text-dark-textMuted">League Avg</span></div>
+              </div>
+            </div>
+            <div v-else class="h-48 flex items-center justify-center text-dark-textMuted text-sm">
+              No recent performance data available
+            </div>
+          </div>
+
+          <!-- All Categories & Value Breakdown -->
+          <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            <div class="bg-dark-card rounded-xl p-4">
+              <h4 class="font-semibold text-dark-text mb-3 flex items-center gap-2"><span>📊</span> All {{ isPitchingCategory ? 'Pitching' : 'Hitting' }} Categories</h4>
+              <div class="space-y-1 max-h-64 overflow-y-auto">
+                <div v-for="cat in relevantCategories" :key="cat.stat_id" 
+                  class="flex items-center py-2 px-3 rounded-lg" 
+                  :class="cat.stat_id === selectedCategory ? 'bg-yellow-400/20 border border-yellow-400/30' : 'bg-dark-border/30'">
+                  <div class="flex-1"><span class="text-sm text-dark-text font-medium">{{ cat.display_name }}</span></div>
+                  <div class="w-24 flex items-center justify-end gap-2">
+                    <span class="text-sm font-bold" :class="cat.stat_id === selectedCategory ? 'text-yellow-400' : 'text-dark-text'">
+                      {{ formatCategoryStat(selectedPlayer, cat.stat_id) }}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="bg-dark-card rounded-xl p-4">
+              <h4 class="font-semibold text-dark-text mb-3 flex items-center gap-2"><span>💎</span> Value Score Breakdown</h4>
+              <div class="space-y-4">
+                <div>
+                  <div class="flex justify-between text-sm mb-1"><span class="text-dark-textMuted">Category Rank ({{ rankingWeights.categoryRank }}%)</span><span class="text-dark-text font-medium">{{ ((1 - (selectedPlayer.categoryRank - 1) / Math.max(filteredPlayers.length, 1)) * 100).toFixed(0) }}</span></div>
+                  <div class="h-2 bg-dark-border rounded-full overflow-hidden"><div class="h-full bg-yellow-400 rounded-full" :style="{ width: `${(1 - (selectedPlayer.categoryRank - 1) / Math.max(filteredPlayers.length, 1)) * 100}%` }"></div></div>
+                </div>
+                <div>
+                  <div class="flex justify-between text-sm mb-1"><span class="text-dark-textMuted">Multi-Category ({{ rankingWeights.multiCategory }}%)</span><span class="text-dark-text font-medium">{{ ((selectedPlayer.categoriesContributing || 0) / Math.max(relevantCategories.length, 1) * 100).toFixed(0) }}</span></div>
+                  <div class="h-2 bg-dark-border rounded-full overflow-hidden"><div class="h-full bg-green-500 rounded-full" :style="{ width: `${(selectedPlayer.categoriesContributing || 0) / Math.max(relevantCategories.length, 1) * 100}%` }"></div></div>
+                </div>
+                <div>
+                  <div class="flex justify-between text-sm mb-1"><span class="text-dark-textMuted">Position Scarcity ({{ rankingWeights.scarcity }}%)</span><span class="text-dark-text font-medium">{{ selectedPlayer.scarcityScore || 50 }}</span></div>
+                  <div class="h-2 bg-dark-border rounded-full overflow-hidden"><div class="h-full bg-cyan-400 rounded-full" :style="{ width: `${selectedPlayer.scarcityScore || 50}%` }"></div></div>
+                </div>
+                <div>
+                  <div class="flex justify-between text-sm mb-1"><span class="text-dark-textMuted">Consistency ({{ rankingWeights.consistency }}%)</span><span class="text-dark-text font-medium">50</span></div>
+                  <div class="h-2 bg-dark-border rounded-full overflow-hidden"><div class="h-full bg-purple-400 rounded-full" style="width: 50%"></div></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Team Detail Modal -->
+    <div v-if="selectedTeam" class="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4" @click.self="expandedTeamKey = null">
+      <div class="bg-dark-elevated rounded-2xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-hidden border border-dark-border">
+        <!-- Header -->
+        <div class="px-6 py-4 border-b border-dark-border flex items-center justify-between">
+          <div class="flex items-center gap-4">
+            <div class="w-14 h-14 rounded-xl bg-dark-border overflow-hidden" :class="selectedTeam.is_my_team ? 'ring-2 ring-yellow-400' : ''">
+              <img :src="selectedTeam.logo_url || defaultLogo" :alt="selectedTeam.name" class="w-full h-full object-cover" @error="handleImageError" />
+            </div>
+            <div>
+              <div class="flex items-center gap-2">
+                <h3 class="text-xl font-bold text-dark-text">{{ selectedTeam.name }}</h3>
+                <span v-if="selectedTeam.is_my_team" class="text-yellow-400">★</span>
+              </div>
+              <div class="text-sm text-dark-textMuted">Rank #{{ selectedTeam.overallRank || '-' }} • {{ selectedTeam.wins || 0 }}-{{ selectedTeam.losses || 0 }}</div>
+            </div>
+          </div>
+          <button @click="expandedTeamKey = null" class="p-2 hover:bg-dark-border/50 rounded-lg transition-colors">
+            <svg class="w-6 h-6 text-dark-textMuted" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
+          </button>
+        </div>
+        
+        <!-- Content -->
+        <div class="p-6 overflow-y-auto max-h-[calc(90vh-100px)] space-y-6">
+          <!-- Category Breakdown Table -->
+          <div>
+            <h4 class="font-semibold text-dark-text mb-3 flex items-center gap-2"><span>📊</span> Category Breakdown</h4>
+            <div class="overflow-x-auto">
+              <table class="w-full text-sm">
+                <thead>
+                  <tr class="border-b border-dark-border">
+                    <th class="text-left py-2 px-3 text-dark-textMuted font-medium">Category</th>
+                    <th class="text-center py-2 px-3 text-dark-textMuted font-medium">Total</th>
+                    <th class="text-center py-2 px-3 text-dark-textMuted font-medium">Rank</th>
+                    <th class="text-center py-2 px-3 text-dark-textMuted font-medium">Grade</th>
+                    <th class="text-left py-2 px-3 text-dark-textMuted font-medium">Top Contributor</th>
+                  </tr>
+                </thead>
+                <tbody class="divide-y divide-dark-border/30">
+                  <tr v-for="cat in displayCategories" :key="cat.stat_id" class="hover:bg-dark-border/20">
+                    <td class="py-2 px-3">
+                      <span class="font-medium text-dark-text">{{ cat.display_name }}</span>
+                      <span class="text-dark-textMuted ml-1">({{ cat.name }})</span>
+                    </td>
+                    <td class="py-2 px-3 text-center font-bold text-dark-text">
+                      {{ formatTeamCategoryStat(selectedTeam.categoryTotals?.[cat.stat_id], cat) }}
+                    </td>
+                    <td class="py-2 px-3 text-center">
+                      <span class="px-2 py-0.5 rounded text-xs font-bold" :class="getTeamRankBadgeClass(selectedTeam.categoryRanks?.[cat.stat_id])">
+                        #{{ selectedTeam.categoryRanks?.[cat.stat_id] || '-' }}
+                      </span>
+                    </td>
+                    <td class="py-2 px-3 text-center">
+                      <span class="font-bold" :class="getTeamGradeColorClass(getTeamCategoryGrade(selectedTeam.categoryRanks?.[cat.stat_id]))">
+                        {{ getTeamCategoryGrade(selectedTeam.categoryRanks?.[cat.stat_id]) }}
+                      </span>
+                    </td>
+                    <td class="py-2 px-3">
+                      <div v-if="selectedTeam.topContributors?.[cat.stat_id]" class="flex items-center gap-2">
+                        <img :src="selectedTeam.topContributors[cat.stat_id].headshot || defaultHeadshot" class="w-6 h-6 rounded-full" @error="handleImageError" />
+                        <span class="text-dark-text">{{ selectedTeam.topContributors[cat.stat_id].name }}</span>
+                        <span class="text-yellow-400 font-medium">({{ formatTeamCategoryStat(selectedTeam.topContributors[cat.stat_id].value, cat) }})</span>
+                      </div>
+                      <span v-else class="text-dark-textMuted">-</span>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- Trade Insights -->
+          <div class="bg-gradient-to-r from-purple-500/10 to-pink-500/10 rounded-xl p-4 border border-purple-500/20">
+            <h4 class="font-semibold text-dark-text mb-3 flex items-center gap-2"><span>💡</span> Trade Insights</h4>
+            <div class="grid grid-cols-2 gap-4">
+              <div>
+                <div class="text-xs text-dark-textMuted uppercase tracking-wider mb-2">Could Use</div>
+                <div class="flex flex-wrap gap-2">
+                  <span v-for="cat in (selectedTeam.weakCategories || []).slice(0, 4)" :key="cat" class="px-2 py-1 bg-red-500/20 text-red-400 rounded text-xs font-medium">
+                    {{ cat }}
+                  </span>
+                </div>
+              </div>
+              <div>
+                <div class="text-xs text-dark-textMuted uppercase tracking-wider mb-2">Strong In</div>
+                <div class="flex flex-wrap gap-2">
+                  <span v-for="cat in (selectedTeam.strongestCategories || []).slice(0, 4)" :key="cat" class="px-2 py-1 bg-green-500/20 text-green-400 rounded text-xs font-medium">
+                    {{ cat }}
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -1911,6 +1789,19 @@ const hiddenPlayersCount = computed(() => {
   return Math.max(0, sortedPlayers.value.length - 3)
 })
 
+// Selected player for modal
+const selectedPlayer = computed(() => {
+  if (!expandedPlayerKey.value) return null
+  return sortedPlayers.value.find(p => p.player_key === expandedPlayerKey.value) || 
+         allPlayers.value.find(p => p.player_key === expandedPlayerKey.value) || null
+})
+
+// Selected team for modal
+const selectedTeam = computed(() => {
+  if (!expandedTeamKey.value) return null
+  return teamsData.value.find((t: any) => t.team_key === expandedTeamKey.value) || null
+})
+
 const myPlayersInCategory = computed(() => categoryRankedPlayers.value.filter(p => isMyPlayer(p)).sort((a, b) => b.projectedValue - a.projectedValue))
 const myTeamProjectedTotal = computed(() => { 
   if (isRatioCategory.value) { 
@@ -2298,6 +2189,14 @@ async function loadProjections() {
     myTeamKey.value = myTeam?.team_key || null
     console.log('Teams loaded:', teamsData.value.length, 'My team:', myTeam?.name, 'Key:', myTeamKey.value)
     
+    // If no team found with is_my_team, try to find by looking at manager login status more carefully
+    if (!myTeamKey.value && teamsData.value.length > 0) {
+      console.warn('No team marked as is_my_team - checking managers...')
+      for (const t of teamsData.value) {
+        console.log(`Team ${t.name} managers:`, JSON.stringify(t.managers || []))
+      }
+    }
+    
     loadingMessage.value = 'Loading player data...'
     const rosteredPlayers = await yahooService.getAllRosteredPlayers(leagueKey)
     const freeAgents = await yahooService.getTopFreeAgents(leagueKey, 100)
@@ -2322,6 +2221,29 @@ async function loadProjections() {
         fantasy_team: p.fantasy_team,
         fantasy_team_key: p.fantasy_team_key
       })))
+    }
+    
+    // If myTeamKey is set, check if any players match
+    if (myTeamKey.value) {
+      const matchingPlayers = rostered.filter(p => p.fantasy_team_key === myTeamKey.value)
+      console.log(`Players matching myTeamKey (${myTeamKey.value}):`, matchingPlayers.length)
+      
+      // If no match, try matching by team name
+      if (matchingPlayers.length === 0 && myTeam?.name) {
+        const byName = rostered.filter(p => p.fantasy_team === myTeam.name)
+        console.log(`Players matching by team name (${myTeam.name}):`, byName.length)
+        
+        // If we found players by name, update their team keys
+        if (byName.length > 0) {
+          console.log('Fixing player team keys to match myTeamKey')
+          byName.forEach(p => {
+            const idx = rostered.findIndex(r => r.player_key === p.player_key)
+            if (idx >= 0) {
+              rostered[idx].fantasy_team_key = myTeamKey.value
+            }
+          })
+        }
+      }
     }
     
     const fas = (freeAgents || []).map((p: any) => ({ 
