@@ -127,7 +127,7 @@
                   <span class="text-dark-textMuted">Category Underperformer (Bottom 25%)</span>
                 </div>
                 <div class="flex items-center gap-2">
-                  <span class="px-1.5 py-0.5 rounded text-xs bg-blue-500/20 text-blue-400">HR</span>
+                  <span class="px-1.5 py-0.5 rounded text-xs bg-green-500/20 text-green-400">HR</span>
                   <span class="text-dark-textMuted">= Best category contribution</span>
                 </div>
               </div>
@@ -431,7 +431,7 @@
           <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <!-- Hitting Categories -->
             <div>
-              <div class="text-sm font-bold text-blue-400 mb-3 flex items-center gap-2">
+              <div class="text-sm font-bold text-green-400 mb-3 flex items-center gap-2">
                 <span>⚾</span> Hitting Categories
               </div>
               <div class="space-y-3">
@@ -680,7 +680,7 @@
               <div class="grid grid-cols-2 gap-6">
                 <!-- Hitting Categories -->
                 <div>
-                  <div class="text-sm font-bold text-blue-400 mb-3 flex items-center gap-2">
+                  <div class="text-sm font-bold text-green-400 mb-3 flex items-center gap-2">
                     <span>⚾</span> Hitting Categories
                   </div>
                   <div class="space-y-2">
@@ -1626,22 +1626,22 @@ function getCategoryTopPicks(cat: string, limit: number = 5) {
 
 function getPositionClass(position: string) {
   const classes: Record<string, string> = {
-    'C': 'bg-blue-500/20 text-blue-400',
-    '1B': 'bg-green-500/20 text-green-400',
-    '2B': 'bg-yellow-500/20 text-yellow-400',
-    '3B': 'bg-orange-500/20 text-orange-400',
-    'SS': 'bg-purple-500/20 text-purple-400',
-    'OF': 'bg-pink-500/20 text-pink-400',
-    'SP': 'bg-red-500/20 text-red-400',
-    'RP': 'bg-cyan-500/20 text-cyan-400',
-    'P': 'bg-red-500/20 text-red-400',
+    'C': 'bg-purple-500/20 text-purple-400',
+    '1B': 'bg-red-500/20 text-red-400',
+    '2B': 'bg-green-500/20 text-green-400',
+    '3B': 'bg-blue-500/20 text-blue-400',
+    'SS': 'bg-yellow-500/20 text-yellow-400',
+    'OF': 'bg-orange-500/20 text-orange-400',
+    'SP': 'bg-cyan-500/20 text-cyan-400',
+    'RP': 'bg-pink-500/20 text-pink-400',
+    'P': 'bg-cyan-500/20 text-cyan-400',
     'Util': 'bg-gray-500/20 text-gray-400',
   }
   return classes[position] || 'bg-gray-500/20 text-gray-400'
 }
 
 function getCategoryColorClass(cat: string) {
-  if (isHittingCategory(cat)) return 'bg-blue-500/20 text-blue-400'
+  if (isHittingCategory(cat)) return 'bg-green-500/20 text-green-400'
   return 'bg-purple-500/20 text-purple-400'
 }
 

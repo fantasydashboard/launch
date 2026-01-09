@@ -323,7 +323,7 @@
         <!-- Teams View Content -->
         <div class="space-y-6">
           <!-- League Category Summary -->
-          <div class="card bg-gradient-to-r from-green-500/10 to-cyan-500/10 border-green-500/30">
+          <div class="card bg-gradient-to-r from-green-500/10 to-purple-500/10 border-green-500/30">
             <div class="card-body py-4">
               <div class="flex items-center justify-between flex-wrap gap-4">
                 <div>
@@ -336,7 +336,7 @@
                     <div class="text-xs text-dark-textMuted">Hitting</div>
                   </div>
                   <div class="text-center">
-                    <div class="text-2xl font-bold text-cyan-400">{{ pitchingCategories.length }}</div>
+                    <div class="text-2xl font-bold text-purple-400">{{ pitchingCategories.length }}</div>
                     <div class="text-xs text-dark-textMuted">Pitching</div>
                   </div>
                 </div>
@@ -2903,14 +2903,14 @@ function handleImageError(e: Event) { (e.target as HTMLImageElement).src = defau
 function getRowClass(player: any): string { if (isMyPlayer(player)) return 'bg-yellow-500/20 border-l-4 border-l-yellow-400'; if (isFreeAgent(player)) return 'bg-cyan-500/20 border-l-4 border-l-cyan-400'; return '' }
 function getAvatarRingClass(player: any): string { if (isMyPlayer(player)) return 'ring-yellow-400 ring-offset-2 ring-offset-dark-card'; if (isFreeAgent(player)) return 'ring-cyan-400 ring-offset-2 ring-offset-dark-card'; return 'ring-dark-border' }
 function getPlayerNameClass(player: any): string { if (isMyPlayer(player)) return 'text-yellow-400'; if (isFreeAgent(player)) return 'text-cyan-400'; return 'text-dark-text' }
-function getPositionClass(position: string): string { const pos = position?.split(',')[0]?.trim(); const colors: Record<string, string> = { 'C': 'bg-purple-500/30 text-purple-300', '1B': 'bg-red-500/30 text-red-300', '2B': 'bg-green-500/30 text-green-300', '3B': 'bg-blue-500/30 text-blue-300', 'SS': 'bg-yellow-500/30 text-yellow-300', 'OF': 'bg-orange-500/30 text-orange-300', 'SP': 'bg-cyan-500/30 text-cyan-300', 'RP': 'bg-pink-500/30 text-pink-300' }; return colors[pos] || 'bg-dark-border text-dark-textMuted' }
+function getPositionClass(position: string): string { const pos = position?.split(',')[0]?.trim(); const colors: Record<string, string> = { 'C': 'bg-purple-500/20 text-purple-400', '1B': 'bg-red-500/20 text-red-400', '2B': 'bg-green-500/20 text-green-400', '3B': 'bg-blue-500/20 text-blue-400', 'SS': 'bg-yellow-500/20 text-yellow-400', 'OF': 'bg-orange-500/20 text-orange-400', 'SP': 'bg-cyan-500/20 text-cyan-400', 'RP': 'bg-pink-500/20 text-pink-400' }; return colors[pos] || 'bg-dark-border text-dark-textMuted' }
 function showTierBreak(player: any, index: number): boolean { if (sortColumn.value !== 'rank') return false; if (index === 0) return true; const prevPlayer = sortedPlayers.value[index - 1]; return prevPlayer && player.tier !== prevPlayer.tier }
 function getTierLabel(tier: number): string { const labels: Record<number, string> = { 1: 'Tier 1: Elite', 2: 'Tier 2: Great', 3: 'Tier 3: Good', 4: 'Tier 4: Average', 5: 'Tier 5: Below Average' }; return labels[tier] || `Tier ${tier}` }
 function getValueClass(value: number): string { if (value >= 80) return 'text-green-400'; if (value >= 60) return 'text-lime-400'; if (value >= 40) return 'text-yellow-400'; if (value >= 20) return 'text-orange-400'; return 'text-red-400' }
 function getValueDotClass(value: number): string { if (value >= 80) return 'bg-green-400'; if (value >= 60) return 'bg-lime-400'; if (value >= 40) return 'bg-yellow-400'; if (value >= 20) return 'bg-orange-400'; return 'bg-red-400' }
 
-const getCategoryCardClass = computed(() => isPitchingCategory.value ? 'bg-cyan-500/10 border-cyan-500/30' : 'bg-green-500/10 border-green-500/30')
-const getCategoryBadgeClass = computed(() => isPitchingCategory.value ? 'bg-cyan-500/20 text-cyan-400' : 'bg-green-500/20 text-green-400')
+const getCategoryCardClass = computed(() => isPitchingCategory.value ? 'bg-purple-500/10 border-purple-500/30' : 'bg-green-500/10 border-green-500/30')
+const getCategoryBadgeClass = computed(() => isPitchingCategory.value ? 'bg-purple-500/20 text-purple-400' : 'bg-green-500/20 text-green-400')
 
 async function loadProjections() {
   isLoading.value = true
@@ -3721,14 +3721,14 @@ function getProjectedCategoryTotal(cat: any): string {
 
 function getStartSitPositionClass(position: string): string {
   const colors: Record<string, string> = {
-    'C': 'bg-purple-500/30 text-purple-300',
-    '1B': 'bg-red-500/30 text-red-300',
-    '2B': 'bg-green-500/30 text-green-300',
-    '3B': 'bg-blue-500/30 text-blue-300',
-    'SS': 'bg-yellow-500/30 text-yellow-300',
-    'OF': 'bg-orange-500/30 text-orange-300',
-    'SP': 'bg-cyan-500/30 text-cyan-300',
-    'RP': 'bg-pink-500/30 text-pink-300'
+    'C': 'bg-purple-500/20 text-purple-400',
+    '1B': 'bg-red-500/20 text-red-400',
+    '2B': 'bg-green-500/20 text-green-400',
+    '3B': 'bg-blue-500/20 text-blue-400',
+    'SS': 'bg-yellow-500/20 text-yellow-400',
+    'OF': 'bg-orange-500/20 text-orange-400',
+    'SP': 'bg-cyan-500/20 text-cyan-400',
+    'RP': 'bg-pink-500/20 text-pink-400'
   }
   return colors[position] || 'bg-dark-border text-dark-textMuted'
 }

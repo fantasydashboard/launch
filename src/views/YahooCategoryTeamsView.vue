@@ -23,7 +23,7 @@
 
     <template v-else>
       <!-- League Category Summary -->
-      <div class="card bg-gradient-to-r from-primary/10 to-cyan-500/10 border-primary/30">
+      <div class="card bg-gradient-to-r from-green-500/10 to-purple-500/10 border-green-500/30">
         <div class="card-body py-4">
           <div class="flex items-center justify-between flex-wrap gap-4">
             <div>
@@ -32,11 +32,11 @@
             </div>
             <div class="flex gap-6">
               <div class="text-center">
-                <div class="text-2xl font-bold text-primary">{{ hittingCategories.length }}</div>
+                <div class="text-2xl font-bold text-green-400">{{ hittingCategories.length }}</div>
                 <div class="text-xs text-dark-textMuted">Hitting</div>
               </div>
               <div class="text-center">
-                <div class="text-2xl font-bold text-cyan-400">{{ pitchingCategories.length }}</div>
+                <div class="text-2xl font-bold text-purple-400">{{ pitchingCategories.length }}</div>
                 <div class="text-xs text-dark-textMuted">Pitching</div>
               </div>
             </div>
@@ -252,7 +252,7 @@
 
                 <!-- Pitching Section -->
                 <div>
-                  <h5 class="text-sm font-medium text-cyan-400 mb-2">Pitching</h5>
+                  <h5 class="text-sm font-medium text-purple-400 mb-2">Pitching</h5>
                   <div class="grid grid-cols-2 md:grid-cols-3 gap-2">
                     <div v-for="pos in ['SP', 'RP']" :key="pos" class="bg-dark-border/30 rounded-lg p-3">
                       <div class="flex items-center justify-between mb-2">
