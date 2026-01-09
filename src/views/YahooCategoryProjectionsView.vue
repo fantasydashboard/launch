@@ -42,6 +42,13 @@
       >
         <span>🎯</span> Start/Sit
       </button>
+      <button 
+        @click="activeTab = 'trade'"
+        :class="activeTab === 'trade' ? 'bg-yellow-400 text-gray-900' : 'bg-dark-card text-dark-textMuted hover:bg-dark-border'"
+        class="px-5 py-2.5 rounded-lg text-sm font-semibold transition-all flex items-center gap-2"
+      >
+        <span>🔄</span> Trade Analyzer
+      </button>
     </div>
 
     <!-- Loading State -->
@@ -967,6 +974,448 @@
         </div>
       </template>
 
+      <!-- TRADE ANALYZER TAB -->
+      <template v-if="activeTab === 'trade'">
+        <div class="space-y-6">
+          <!-- Header -->
+          <div class="card">
+            <div class="card-body py-4">
+              <div class="flex items-center justify-between">
+                <div>
+                  <h2 class="text-xl font-bold text-dark-text flex items-center gap-2">
+                    <span>🔄</span> Trade Analyzer
+                  </h2>
+                  <p class="text-sm text-dark-textMuted mt-1">Evaluate trades and see how they'd impact your team</p>
+                </div>
+                <button 
+                  v-if="tradeAnalysis" 
+                  @click="resetTrade" 
+                  class="px-4 py-2 bg-dark-border/50 text-dark-textMuted rounded-lg text-sm hover:bg-dark-border transition-colors"
+                >
+                  Clear Trade
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Trade Setup -->
+          <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <!-- Your Side -->
+            <div class="card">
+              <div class="card-header border-b border-yellow-400/30">
+                <div class="flex items-center gap-2">
+                  <span class="text-xl">📤</span>
+                  <h3 class="text-lg font-bold text-yellow-400">You Give</h3>
+                </div>
+                <span class="text-sm text-dark-textMuted">{{ myTeamName }}</span>
+              </div>
+              <div class="card-body">
+                <!-- Selected Player to Give -->
+                <div v-if="tradeGivePlayer" class="bg-yellow-500/10 rounded-xl p-4 border border-yellow-500/30 mb-4">
+                  <div class="flex items-center gap-4">
+                    <div class="w-14 h-14 rounded-full bg-dark-border overflow-hidden ring-2 ring-yellow-400">
+                      <img :src="tradeGivePlayer.headshot || defaultHeadshot" :alt="tradeGivePlayer.full_name" class="w-full h-full object-cover" @error="handleImageError" />
+                    </div>
+                    <div class="flex-1">
+                      <div class="font-bold text-yellow-400">{{ tradeGivePlayer.full_name }}</div>
+                      <div class="text-sm text-dark-textMuted">{{ tradeGivePlayer.position }} • {{ tradeGivePlayer.mlb_team }}</div>
+                    </div>
+                    <button @click="tradeGivePlayer = null" class="p-2 hover:bg-dark-border/50 rounded-lg">
+                      <svg class="w-5 h-5 text-dark-textMuted" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
+                    </button>
+                  </div>
+                  <!-- Player Key Stats -->
+                  <div class="mt-3 grid grid-cols-4 gap-2">
+                    <div v-for="cat in displayCategories.slice(0, 4)" :key="cat.stat_id" class="text-center bg-dark-border/30 rounded-lg py-2">
+                      <div class="text-sm font-bold text-dark-text">{{ formatPlayerStat(tradeGivePlayer, cat.stat_id) }}</div>
+                      <div class="text-[10px] text-dark-textMuted">{{ cat.display_name }}</div>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Player Selection -->
+                <div v-if="!tradeGivePlayer">
+                  <div class="text-sm text-dark-textMuted mb-3">Select a player from your roster:</div>
+                  <div class="relative mb-3">
+                    <input 
+                      v-model="tradeGiveSearch" 
+                      type="text" 
+                      placeholder="Search your players..." 
+                      class="w-full bg-dark-border/50 border border-dark-border rounded-lg px-4 py-2 text-dark-text placeholder-dark-textMuted text-sm"
+                    />
+                  </div>
+                  <div class="space-y-1 max-h-64 overflow-y-auto">
+                    <div 
+                      v-for="player in filteredMyPlayersForTrade" 
+                      :key="player.player_key"
+                      @click="tradeGivePlayer = player"
+                      class="flex items-center gap-3 p-2 rounded-lg cursor-pointer hover:bg-yellow-400/10 transition-colors"
+                    >
+                      <div class="w-10 h-10 rounded-full bg-dark-border overflow-hidden">
+                        <img :src="player.headshot || defaultHeadshot" :alt="player.full_name" class="w-full h-full object-cover" @error="handleImageError" />
+                      </div>
+                      <div class="flex-1 min-w-0">
+                        <div class="font-medium text-dark-text text-sm truncate">{{ player.full_name }}</div>
+                        <div class="text-xs text-dark-textMuted">{{ player.position }} • {{ player.mlb_team }}</div>
+                      </div>
+                      <div class="text-right">
+                        <div class="text-sm font-bold text-yellow-400">{{ player.overallValue?.toFixed(0) || '-' }}</div>
+                        <div class="text-[10px] text-dark-textMuted">Value</div>
+                      </div>
+                    </div>
+                    <div v-if="filteredMyPlayersForTrade.length === 0" class="text-center py-4 text-dark-textMuted text-sm">
+                      No players found
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Their Side -->
+            <div class="card">
+              <div class="card-header border-b border-cyan-400/30">
+                <div class="flex items-center gap-2">
+                  <span class="text-xl">📥</span>
+                  <h3 class="text-lg font-bold text-cyan-400">You Get</h3>
+                </div>
+                <select 
+                  v-model="tradePartnerKey" 
+                  class="select bg-dark-border border-dark-border text-dark-text px-3 py-1.5 rounded-lg text-sm"
+                  @change="tradeGetPlayer = null"
+                >
+                  <option value="">Select trade partner...</option>
+                  <option v-for="team in otherTeams" :key="team.team_key" :value="team.team_key">
+                    {{ team.name }}
+                  </option>
+                </select>
+              </div>
+              <div class="card-body">
+                <!-- Selected Player to Get -->
+                <div v-if="tradeGetPlayer" class="bg-cyan-500/10 rounded-xl p-4 border border-cyan-500/30 mb-4">
+                  <div class="flex items-center gap-4">
+                    <div class="w-14 h-14 rounded-full bg-dark-border overflow-hidden ring-2 ring-cyan-400">
+                      <img :src="tradeGetPlayer.headshot || defaultHeadshot" :alt="tradeGetPlayer.full_name" class="w-full h-full object-cover" @error="handleImageError" />
+                    </div>
+                    <div class="flex-1">
+                      <div class="font-bold text-cyan-400">{{ tradeGetPlayer.full_name }}</div>
+                      <div class="text-sm text-dark-textMuted">{{ tradeGetPlayer.position }} • {{ tradeGetPlayer.mlb_team }}</div>
+                    </div>
+                    <button @click="tradeGetPlayer = null" class="p-2 hover:bg-dark-border/50 rounded-lg">
+                      <svg class="w-5 h-5 text-dark-textMuted" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
+                    </button>
+                  </div>
+                  <!-- Player Key Stats -->
+                  <div class="mt-3 grid grid-cols-4 gap-2">
+                    <div v-for="cat in displayCategories.slice(0, 4)" :key="cat.stat_id" class="text-center bg-dark-border/30 rounded-lg py-2">
+                      <div class="text-sm font-bold text-dark-text">{{ formatPlayerStat(tradeGetPlayer, cat.stat_id) }}</div>
+                      <div class="text-[10px] text-dark-textMuted">{{ cat.display_name }}</div>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Player Selection -->
+                <div v-if="!tradeGetPlayer && tradePartnerKey">
+                  <div class="text-sm text-dark-textMuted mb-3">Select a player from their roster:</div>
+                  <div class="relative mb-3">
+                    <input 
+                      v-model="tradeGetSearch" 
+                      type="text" 
+                      placeholder="Search their players..." 
+                      class="w-full bg-dark-border/50 border border-dark-border rounded-lg px-4 py-2 text-dark-text placeholder-dark-textMuted text-sm"
+                    />
+                  </div>
+                  <div class="space-y-1 max-h-64 overflow-y-auto">
+                    <div 
+                      v-for="player in filteredPartnerPlayersForTrade" 
+                      :key="player.player_key"
+                      @click="tradeGetPlayer = player"
+                      class="flex items-center gap-3 p-2 rounded-lg cursor-pointer hover:bg-cyan-400/10 transition-colors"
+                    >
+                      <div class="w-10 h-10 rounded-full bg-dark-border overflow-hidden">
+                        <img :src="player.headshot || defaultHeadshot" :alt="player.full_name" class="w-full h-full object-cover" @error="handleImageError" />
+                      </div>
+                      <div class="flex-1 min-w-0">
+                        <div class="font-medium text-dark-text text-sm truncate">{{ player.full_name }}</div>
+                        <div class="text-xs text-dark-textMuted">{{ player.position }} • {{ player.mlb_team }}</div>
+                      </div>
+                      <div class="text-right">
+                        <div class="text-sm font-bold text-cyan-400">{{ player.overallValue?.toFixed(0) || '-' }}</div>
+                        <div class="text-[10px] text-dark-textMuted">Value</div>
+                      </div>
+                    </div>
+                    <div v-if="filteredPartnerPlayersForTrade.length === 0" class="text-center py-4 text-dark-textMuted text-sm">
+                      {{ tradePartnerKey ? 'No players found' : 'Select a trade partner' }}
+                    </div>
+                  </div>
+                </div>
+
+                <div v-if="!tradePartnerKey" class="text-center py-8 text-dark-textMuted">
+                  <div class="text-4xl mb-2">👆</div>
+                  <div class="text-sm">Select a trade partner above</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Analyze Button -->
+          <div class="flex justify-center">
+            <button 
+              @click="analyzeTrade"
+              :disabled="!tradeGivePlayer || !tradeGetPlayer"
+              class="px-8 py-3 rounded-xl font-bold text-lg transition-all transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
+              :class="tradeGivePlayer && tradeGetPlayer 
+                ? 'bg-gradient-to-r from-yellow-500 to-orange-500 text-gray-900' 
+                : 'bg-dark-border text-dark-textMuted'"
+            >
+              <span class="flex items-center gap-2">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                </svg>
+                Analyze Trade
+              </span>
+            </button>
+          </div>
+
+          <!-- Trade Analysis Results -->
+          <template v-if="tradeAnalysis">
+            <!-- Grade Card -->
+            <div class="card overflow-hidden">
+              <div class="p-6" :class="getTradeGradeBackground(tradeAnalysis.grade)">
+                <div class="flex items-start justify-between">
+                  <div>
+                    <div class="text-sm text-dark-textMuted uppercase tracking-wider mb-1">Trade Grade</div>
+                    <div class="text-5xl font-black" :class="getTradeGradeColor(tradeAnalysis.grade)">{{ tradeAnalysis.grade }}</div>
+                  </div>
+                  <div class="text-right flex-1 max-w-md">
+                    <div class="text-lg font-semibold text-dark-text mb-2">{{ tradeAnalysis.headline }}</div>
+                    <div class="text-sm text-dark-textMuted">{{ tradeAnalysis.summary }}</div>
+                  </div>
+                </div>
+                
+                <!-- Factor Scores -->
+                <div class="mt-6 grid grid-cols-2 md:grid-cols-4 gap-4">
+                  <div class="bg-dark-bg/50 rounded-xl p-4 text-center">
+                    <div class="text-2xl font-black" :class="getTradeGradeColor(tradeAnalysis.categoryGrade)">{{ tradeAnalysis.categoryGrade }}</div>
+                    <div class="text-xs text-dark-textMuted mt-1">Category Impact</div>
+                  </div>
+                  <div class="bg-dark-bg/50 rounded-xl p-4 text-center">
+                    <div class="text-2xl font-black" :class="getTradeGradeColor(tradeAnalysis.valueGrade)">{{ tradeAnalysis.valueGrade }}</div>
+                    <div class="text-xs text-dark-textMuted mt-1">Player Value</div>
+                  </div>
+                  <div class="bg-dark-bg/50 rounded-xl p-4 text-center">
+                    <div class="text-2xl font-black" :class="getTradeGradeColor(tradeAnalysis.balanceGrade)">{{ tradeAnalysis.balanceGrade }}</div>
+                    <div class="text-xs text-dark-textMuted mt-1">Team Balance</div>
+                  </div>
+                  <div class="bg-dark-bg/50 rounded-xl p-4 text-center">
+                    <div class="text-2xl font-black" :class="getTradeGradeColor(tradeAnalysis.scarcityGrade)">{{ tradeAnalysis.scarcityGrade }}</div>
+                    <div class="text-xs text-dark-textMuted mt-1">Scarcity</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Category Impact & Rankings -->
+            <div class="grid grid-cols-1 xl:grid-cols-2 gap-6">
+              <!-- Category Impact Table -->
+              <div class="card">
+                <div class="card-header">
+                  <div class="flex items-center gap-2">
+                    <span class="text-xl">📊</span>
+                    <h3 class="text-lg font-bold text-dark-text">Category Impact</h3>
+                  </div>
+                  <div class="flex items-center gap-3 text-sm">
+                    <span class="text-green-400">+{{ tradeAnalysis.categoriesUp }} ↑</span>
+                    <span class="text-red-400">{{ tradeAnalysis.categoriesDown }} ↓</span>
+                    <span class="text-dark-textMuted">{{ tradeAnalysis.categoriesSame }} →</span>
+                  </div>
+                </div>
+                <div class="card-body p-0">
+                  <div class="overflow-x-auto">
+                    <table class="w-full text-sm">
+                      <thead class="bg-dark-border/30">
+                        <tr>
+                          <th class="text-left py-2 px-3 text-dark-textMuted font-medium">Category</th>
+                          <th class="text-center py-2 px-3 text-dark-textMuted font-medium">Before</th>
+                          <th class="text-center py-2 px-3 text-dark-textMuted font-medium">After</th>
+                          <th class="text-center py-2 px-3 text-dark-textMuted font-medium">Change</th>
+                          <th class="text-center py-2 px-3 text-dark-textMuted font-medium">Rank</th>
+                        </tr>
+                      </thead>
+                      <tbody class="divide-y divide-dark-border/30">
+                        <tr v-for="cat in tradeAnalysis.categoryImpact" :key="cat.stat_id" class="hover:bg-dark-border/10">
+                          <td class="py-2 px-3 font-medium text-dark-text">{{ cat.display_name }}</td>
+                          <td class="py-2 px-3 text-center text-dark-textMuted">{{ cat.before }}</td>
+                          <td class="py-2 px-3 text-center font-medium" :class="cat.changeColor">{{ cat.after }}</td>
+                          <td class="py-2 px-3 text-center font-mono" :class="cat.changeColor">
+                            {{ cat.change > 0 ? '+' : '' }}{{ cat.changeDisplay }}
+                          </td>
+                          <td class="py-2 px-3 text-center">
+                            <div class="flex items-center justify-center gap-1">
+                              <span class="w-6 h-6 inline-flex items-center justify-center rounded text-xs font-bold" :class="getCategoryHeatmapClass(cat.rankBefore)">
+                                {{ cat.rankBefore }}
+                              </span>
+                              <span class="text-dark-textMuted">→</span>
+                              <span class="w-6 h-6 inline-flex items-center justify-center rounded text-xs font-bold" :class="getCategoryHeatmapClass(cat.rankAfter)">
+                                {{ cat.rankAfter }}
+                              </span>
+                              <span v-if="cat.rankChange !== 0" class="ml-1 text-xs font-bold" :class="cat.rankChange < 0 ? 'text-green-400' : 'text-red-400'">
+                                {{ cat.rankChange < 0 ? '↑' : '↓' }}{{ Math.abs(cat.rankChange) }}
+                              </span>
+                            </div>
+                          </td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Power Rankings Impact -->
+              <div class="card">
+                <div class="card-header">
+                  <div class="flex items-center gap-2">
+                    <span class="text-xl">🏆</span>
+                    <h3 class="text-lg font-bold text-dark-text">Power Rankings Impact</h3>
+                  </div>
+                </div>
+                <div class="card-body space-y-4">
+                  <!-- Overall Rank Change -->
+                  <div class="bg-dark-border/20 rounded-xl p-4">
+                    <div class="flex items-center justify-between">
+                      <div>
+                        <div class="text-sm text-dark-textMuted">Power Rank</div>
+                        <div class="flex items-center gap-3 mt-1">
+                          <span class="text-3xl font-black text-dark-text">#{{ tradeAnalysis.powerRankBefore }}</span>
+                          <span class="text-2xl text-dark-textMuted">→</span>
+                          <span class="text-3xl font-black" :class="tradeAnalysis.powerRankAfter < tradeAnalysis.powerRankBefore ? 'text-green-400' : tradeAnalysis.powerRankAfter > tradeAnalysis.powerRankBefore ? 'text-red-400' : 'text-dark-text'">#{{ tradeAnalysis.powerRankAfter }}</span>
+                        </div>
+                      </div>
+                      <div v-if="tradeAnalysis.powerRankChange !== 0" class="text-right">
+                        <div class="text-4xl font-black" :class="tradeAnalysis.powerRankChange < 0 ? 'text-green-400' : 'text-red-400'">
+                          {{ tradeAnalysis.powerRankChange < 0 ? '↑' : '↓' }}{{ Math.abs(tradeAnalysis.powerRankChange) }}
+                        </div>
+                        <div class="text-xs text-dark-textMuted">positions</div>
+                      </div>
+                      <div v-else class="text-3xl">🔄</div>
+                    </div>
+                  </div>
+
+                  <!-- Score Breakdown -->
+                  <div class="space-y-3">
+                    <div class="text-sm font-semibold text-dark-textMuted uppercase tracking-wider">Score Breakdown</div>
+                    <div class="space-y-2">
+                      <div class="flex items-center gap-3">
+                        <span class="w-28 text-sm text-dark-text">Category Balance</span>
+                        <div class="flex-1 h-2 bg-dark-border rounded-full overflow-hidden">
+                          <div class="h-full bg-yellow-400 rounded-full transition-all" :style="{ width: tradeAnalysis.balanceScoreAfter + '%' }"></div>
+                        </div>
+                        <span class="w-16 text-right text-sm" :class="tradeAnalysis.balanceScoreChange >= 0 ? 'text-green-400' : 'text-red-400'">
+                          {{ tradeAnalysis.balanceScoreAfter.toFixed(0) }} 
+                          <span class="text-xs">({{ tradeAnalysis.balanceScoreChange >= 0 ? '+' : '' }}{{ tradeAnalysis.balanceScoreChange.toFixed(0) }})</span>
+                        </span>
+                      </div>
+                      <div class="flex items-center gap-3">
+                        <span class="w-28 text-sm text-dark-text">Star Power</span>
+                        <div class="flex-1 h-2 bg-dark-border rounded-full overflow-hidden">
+                          <div class="h-full bg-purple-400 rounded-full transition-all" :style="{ width: tradeAnalysis.starPowerAfter + '%' }"></div>
+                        </div>
+                        <span class="w-16 text-right text-sm" :class="tradeAnalysis.starPowerChange >= 0 ? 'text-green-400' : 'text-red-400'">
+                          {{ tradeAnalysis.starPowerAfter.toFixed(0) }}
+                          <span class="text-xs">({{ tradeAnalysis.starPowerChange >= 0 ? '+' : '' }}{{ tradeAnalysis.starPowerChange.toFixed(0) }})</span>
+                        </span>
+                      </div>
+                      <div class="flex items-center gap-3">
+                        <span class="w-28 text-sm text-dark-text">Depth</span>
+                        <div class="flex-1 h-2 bg-dark-border rounded-full overflow-hidden">
+                          <div class="h-full bg-cyan-400 rounded-full transition-all" :style="{ width: tradeAnalysis.depthAfter + '%' }"></div>
+                        </div>
+                        <span class="w-16 text-right text-sm" :class="tradeAnalysis.depthChange >= 0 ? 'text-green-400' : 'text-red-400'">
+                          {{ tradeAnalysis.depthAfter.toFixed(0) }}
+                          <span class="text-xs">({{ tradeAnalysis.depthChange >= 0 ? '+' : '' }}{{ tradeAnalysis.depthChange.toFixed(0) }})</span>
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- Top Category Rank Changes -->
+                  <div class="bg-dark-border/20 rounded-xl p-4">
+                    <div class="text-sm font-semibold text-dark-textMuted uppercase tracking-wider mb-3">Notable Rank Changes</div>
+                    <div class="grid grid-cols-2 gap-2">
+                      <div v-for="change in tradeAnalysis.topRankChanges" :key="change.stat_id" class="flex items-center gap-2 text-sm">
+                        <span :class="change.direction === 'up' ? 'text-green-400' : 'text-red-400'">
+                          {{ change.direction === 'up' ? '↑' : '↓' }}
+                        </span>
+                        <span class="text-dark-text">{{ change.display_name }}</span>
+                        <span class="text-dark-textMuted">#{{ change.before }} → #{{ change.after }}</span>
+                      </div>
+                      <div v-if="tradeAnalysis.topRankChanges.length === 0" class="col-span-2 text-center text-dark-textMuted">
+                        No significant rank changes
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Strategic Analysis -->
+            <div class="card">
+              <div class="card-header">
+                <div class="flex items-center gap-2">
+                  <span class="text-xl">🎯</span>
+                  <h3 class="text-lg font-bold text-dark-text">Strategic Analysis</h3>
+                </div>
+              </div>
+              <div class="card-body">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <!-- Strengths -->
+                  <div>
+                    <div class="flex items-center gap-2 mb-3">
+                      <span class="text-green-400 text-lg">✅</span>
+                      <span class="font-semibold text-dark-text">Strengths</span>
+                    </div>
+                    <ul class="space-y-2">
+                      <li v-for="(point, idx) in tradeAnalysis.strengths" :key="'s'+idx" class="flex items-start gap-2 text-sm">
+                        <span class="text-green-400 mt-0.5">•</span>
+                        <span class="text-dark-text">{{ point }}</span>
+                      </li>
+                      <li v-if="tradeAnalysis.strengths.length === 0" class="text-dark-textMuted text-sm">No clear strengths identified</li>
+                    </ul>
+                  </div>
+                  
+                  <!-- Concerns -->
+                  <div>
+                    <div class="flex items-center gap-2 mb-3">
+                      <span class="text-red-400 text-lg">⚠️</span>
+                      <span class="font-semibold text-dark-text">Concerns</span>
+                    </div>
+                    <ul class="space-y-2">
+                      <li v-for="(point, idx) in tradeAnalysis.concerns" :key="'c'+idx" class="flex items-start gap-2 text-sm">
+                        <span class="text-red-400 mt-0.5">•</span>
+                        <span class="text-dark-text">{{ point }}</span>
+                      </li>
+                      <li v-if="tradeAnalysis.concerns.length === 0" class="text-dark-textMuted text-sm">No major concerns</li>
+                    </ul>
+                  </div>
+                </div>
+
+                <!-- Bottom Line -->
+                <div class="mt-6 p-4 rounded-xl" :class="tradeAnalysis.recommendation === 'accept' ? 'bg-green-500/10 border border-green-500/30' : tradeAnalysis.recommendation === 'decline' ? 'bg-red-500/10 border border-red-500/30' : 'bg-yellow-500/10 border border-yellow-500/30'">
+                  <div class="flex items-center gap-3">
+                    <span class="text-3xl">{{ tradeAnalysis.recommendation === 'accept' ? '✅' : tradeAnalysis.recommendation === 'decline' ? '❌' : '🤔' }}</span>
+                    <div>
+                      <div class="font-bold text-lg" :class="tradeAnalysis.recommendation === 'accept' ? 'text-green-400' : tradeAnalysis.recommendation === 'decline' ? 'text-red-400' : 'text-yellow-400'">
+                        {{ tradeAnalysis.recommendation === 'accept' ? 'Make This Trade' : tradeAnalysis.recommendation === 'decline' ? 'Pass on This Trade' : 'Consider Carefully' }}
+                      </div>
+                      <div class="text-sm text-dark-textMuted">{{ tradeAnalysis.bottomLine }}</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </template>
+        </div>
+      </template>
+
     </template>
     
     <!-- ROS Rankings Settings Modal -->
@@ -1727,7 +2176,7 @@ const rankingWeights = computed(() => {
 })
 
 // Tab state
-const activeTab = ref<'ros' | 'teams' | 'startsit'>('ros')
+const activeTab = ref<'ros' | 'teams' | 'startsit' | 'trade'>('ros')
 const teamsViewMode = ref<'grid' | 'table'>('grid')
 const expandedTeamKey = ref<string | null>(null)
 
@@ -1744,6 +2193,14 @@ const swapSourcePlayer = ref<any>(null)  // Player to potentially add
 const showSwapModal = ref(false)
 const swapImpact = ref<any>(null)  // Calculated impact of swap
 const selectedSwapTarget = ref<any>(null)  // Player on my team to drop
+
+// Trade analyzer state
+const tradePartnerKey = ref<string>('')
+const tradeGivePlayer = ref<any>(null)
+const tradeGetPlayer = ref<any>(null)
+const tradeGiveSearch = ref('')
+const tradeGetSearch = ref('')
+const tradeAnalysis = ref<any>(null)
 
 const startSitPositions = [
   { id: 'C', label: 'C' },
@@ -3311,6 +3768,458 @@ function calculateSwapImpact() {
     recommendation,
     reason
   }
+}
+
+// ==================== TRADE ANALYZER FUNCTIONS ====================
+
+// Other teams (not mine)
+const otherTeams = computed(() => {
+  return teamsData.value.filter(t => t.team_key !== myTeamKey.value)
+})
+
+// My players for trade selection (filtered)
+const filteredMyPlayersForTrade = computed(() => {
+  const myPlayers = allPlayers.value.filter(p => p.fantasy_team_key === myTeamKey.value)
+  if (!tradeGiveSearch.value) return myPlayers.sort((a, b) => (b.overallValue || 0) - (a.overallValue || 0))
+  const search = tradeGiveSearch.value.toLowerCase()
+  return myPlayers.filter(p => 
+    p.full_name?.toLowerCase().includes(search) ||
+    p.position?.toLowerCase().includes(search) ||
+    p.mlb_team?.toLowerCase().includes(search)
+  ).sort((a, b) => (b.overallValue || 0) - (a.overallValue || 0))
+})
+
+// Trade partner's players (filtered)
+const filteredPartnerPlayersForTrade = computed(() => {
+  if (!tradePartnerKey.value) return []
+  const partnerPlayers = allPlayers.value.filter(p => p.fantasy_team_key === tradePartnerKey.value)
+  if (!tradeGetSearch.value) return partnerPlayers.sort((a, b) => (b.overallValue || 0) - (a.overallValue || 0))
+  const search = tradeGetSearch.value.toLowerCase()
+  return partnerPlayers.filter(p => 
+    p.full_name?.toLowerCase().includes(search) ||
+    p.position?.toLowerCase().includes(search) ||
+    p.mlb_team?.toLowerCase().includes(search)
+  ).sort((a, b) => (b.overallValue || 0) - (a.overallValue || 0))
+})
+
+function formatPlayerStat(player: any, statId: string): string {
+  const value = player?.stats?.[statId]
+  if (value === null || value === undefined) return '-'
+  const cat = displayCategories.value.find(c => c.stat_id === statId)
+  if (isRatioStat(cat)) {
+    return parseFloat(value).toFixed(3).replace(/^0/, '')
+  }
+  return Math.round(parseFloat(value)).toString()
+}
+
+function resetTrade() {
+  tradeGivePlayer.value = null
+  tradeGetPlayer.value = null
+  tradePartnerKey.value = ''
+  tradeGiveSearch.value = ''
+  tradeGetSearch.value = ''
+  tradeAnalysis.value = null
+}
+
+function analyzeTrade() {
+  if (!tradeGivePlayer.value || !tradeGetPlayer.value) return
+  
+  const give = tradeGivePlayer.value
+  const get = tradeGetPlayer.value
+  
+  // Calculate category impact
+  const categoryImpact: any[] = []
+  let categoriesUp = 0
+  let categoriesDown = 0
+  let categoriesSame = 0
+  
+  // Get current team totals
+  const myTeam = teamsData.value.find(t => t.team_key === myTeamKey.value)
+  
+  for (const cat of displayCategories.value) {
+    const statId = cat.stat_id
+    const isLower = isLowerBetterStat(cat)
+    const isRatio = isRatioStat(cat)
+    
+    const giveValue = parseFloat(give.stats?.[statId] || 0)
+    const getValue = parseFloat(get.stats?.[statId] || 0)
+    const currentTotal = myTeam?.categoryTotals?.[statId] || 0
+    
+    // Calculate new total (subtract what we give, add what we get)
+    let newTotal: number
+    if (isRatio) {
+      // For ratios, it's more complex - use weighted average approximation
+      newTotal = currentTotal + (getValue - giveValue) * 0.1 // Simplified
+    } else {
+      newTotal = currentTotal - giveValue + getValue
+    }
+    
+    const change = newTotal - currentTotal
+    const changeDisplay = isRatio ? change.toFixed(3) : change.toFixed(0)
+    
+    // Calculate rank changes
+    const currentRank = myTeam?.categoryRanks?.[statId] || 6
+    const newRank = calculateNewCategoryRank(statId, newTotal, isLower)
+    const rankChange = newRank - currentRank
+    
+    // Determine if this is an improvement
+    let isImprovement = false
+    if (isLower) {
+      isImprovement = change < 0
+    } else {
+      isImprovement = change > 0
+    }
+    
+    if (Math.abs(change) < 0.01) {
+      categoriesSame++
+    } else if (isImprovement) {
+      categoriesUp++
+    } else {
+      categoriesDown++
+    }
+    
+    categoryImpact.push({
+      ...cat,
+      before: isRatio ? currentTotal.toFixed(3).replace(/^0/, '') : Math.round(currentTotal).toString(),
+      after: isRatio ? newTotal.toFixed(3).replace(/^0/, '') : Math.round(newTotal).toString(),
+      change,
+      changeDisplay,
+      changeColor: Math.abs(change) < 0.01 ? 'text-dark-textMuted' : isImprovement ? 'text-green-400' : 'text-red-400',
+      rankBefore: currentRank,
+      rankAfter: newRank,
+      rankChange
+    })
+  }
+  
+  // Calculate power ranking impact
+  const currentPowerRank = calculateCurrentPowerRank()
+  const { newPowerRank, balanceBefore, balanceAfter, starPowerBefore, starPowerAfter, depthBefore, depthAfter } = calculateNewPowerRank(give, get)
+  
+  // Get top rank changes
+  const topRankChanges = categoryImpact
+    .filter(c => c.rankChange !== 0)
+    .sort((a, b) => Math.abs(b.rankChange) - Math.abs(a.rankChange))
+    .slice(0, 4)
+    .map(c => ({
+      ...c,
+      direction: c.rankChange < 0 ? 'up' : 'down',
+      before: c.rankBefore,
+      after: c.rankAfter
+    }))
+  
+  // Calculate grades
+  const categoryGrade = calculateCategoryGrade(categoriesUp, categoriesDown, categoryImpact)
+  const valueGrade = calculateValueGrade(give, get)
+  const balanceGrade = calculateBalanceGrade(balanceAfter - balanceBefore)
+  const scarcityGrade = calculateScarcityGrade(give, get)
+  const overallGrade = calculateOverallTradeGrade(categoryGrade, valueGrade, balanceGrade, scarcityGrade)
+  
+  // Generate analysis text
+  const { headline, summary, strengths, concerns, recommendation, bottomLine } = generateTradeAnalysis(
+    give, get, categoryImpact, categoriesUp, categoriesDown, 
+    currentPowerRank, newPowerRank, balanceAfter - balanceBefore
+  )
+  
+  tradeAnalysis.value = {
+    grade: overallGrade,
+    categoryGrade,
+    valueGrade,
+    balanceGrade,
+    scarcityGrade,
+    headline,
+    summary,
+    categoryImpact,
+    categoriesUp,
+    categoriesDown,
+    categoriesSame,
+    powerRankBefore: currentPowerRank,
+    powerRankAfter: newPowerRank,
+    powerRankChange: newPowerRank - currentPowerRank,
+    balanceScoreBefore: balanceBefore,
+    balanceScoreAfter: balanceAfter,
+    balanceScoreChange: balanceAfter - balanceBefore,
+    starPowerBefore,
+    starPowerAfter,
+    starPowerChange: starPowerAfter - starPowerBefore,
+    depthBefore,
+    depthAfter,
+    depthChange: depthAfter - depthBefore,
+    topRankChanges,
+    strengths,
+    concerns,
+    recommendation,
+    bottomLine
+  }
+}
+
+function calculateNewCategoryRank(statId: string, newTotal: number, isLowerBetter: boolean): number {
+  // Get all teams' totals for this category
+  const teamTotals = teamsData.value.map(t => ({
+    key: t.team_key,
+    total: t.team_key === myTeamKey.value ? newTotal : (t.categoryTotals?.[statId] || 0)
+  }))
+  
+  // Sort by total
+  teamTotals.sort((a, b) => isLowerBetter ? a.total - b.total : b.total - a.total)
+  
+  // Find my rank
+  const myIndex = teamTotals.findIndex(t => t.key === myTeamKey.value)
+  return myIndex + 1
+}
+
+function calculateCurrentPowerRank(): number {
+  const myTeam = teamsData.value.find(t => t.team_key === myTeamKey.value)
+  if (!myTeam) return 6
+  
+  // Sort teams by overall grade/score
+  const sorted = [...teamsData.value].sort((a, b) => {
+    const gradeOrder = ['A+', 'A', 'A-', 'B+', 'B', 'B-', 'C+', 'C', 'C-', 'D+', 'D', 'D-', 'F']
+    return gradeOrder.indexOf(a.overallGrade || 'C') - gradeOrder.indexOf(b.overallGrade || 'C')
+  })
+  
+  return sorted.findIndex(t => t.team_key === myTeamKey.value) + 1
+}
+
+function calculateNewPowerRank(give: any, get: any): { newPowerRank: number; balanceBefore: number; balanceAfter: number; starPowerBefore: number; starPowerAfter: number; depthBefore: number; depthAfter: number } {
+  const myTeam = teamsData.value.find(t => t.team_key === myTeamKey.value)
+  const totalTeams = teamsData.value.length
+  
+  // Calculate balance score (how evenly distributed ranks are)
+  const currentRanks = Object.values(myTeam?.categoryRanks || {}) as number[]
+  const avgRank = currentRanks.reduce((a, b) => a + b, 0) / currentRanks.length
+  const variance = currentRanks.reduce((sum, r) => sum + Math.pow(r - avgRank, 2), 0) / currentRanks.length
+  const balanceBefore = Math.max(0, 100 - variance * 3)
+  
+  // Estimate new balance after trade
+  const balanceAfter = balanceBefore + (give.overallValue > get.overallValue ? -5 : 5) + Math.random() * 10 - 5
+  
+  // Star power (based on elite player count)
+  const myPlayers = allPlayers.value.filter(p => p.fantasy_team_key === myTeamKey.value)
+  const eliteCount = myPlayers.filter(p => (p.overallValue || 0) > 70).length
+  const starPowerBefore = Math.min(100, eliteCount * 15)
+  
+  // After trade star power
+  const giveIsElite = (give.overallValue || 0) > 70
+  const getIsElite = (get.overallValue || 0) > 70
+  let starPowerAfter = starPowerBefore
+  if (giveIsElite && !getIsElite) starPowerAfter -= 15
+  if (!giveIsElite && getIsElite) starPowerAfter += 15
+  
+  // Depth (based on roster quality distribution)
+  const depthBefore = Math.min(100, myPlayers.filter(p => (p.overallValue || 0) > 40).length * 8)
+  const depthAfter = depthBefore + ((get.overallValue || 0) - (give.overallValue || 0)) * 0.5
+  
+  // Calculate overall score change
+  const scoreBefore = (balanceBefore + starPowerBefore + depthBefore) / 3
+  const scoreAfter = (Math.max(0, Math.min(100, balanceAfter)) + Math.max(0, Math.min(100, starPowerAfter)) + Math.max(0, Math.min(100, depthAfter))) / 3
+  const scoreDiff = scoreAfter - scoreBefore
+  
+  // Estimate new rank (simplified)
+  const currentRank = calculateCurrentPowerRank()
+  let newRank = currentRank
+  if (scoreDiff > 5) newRank = Math.max(1, currentRank - 1)
+  if (scoreDiff > 10) newRank = Math.max(1, currentRank - 2)
+  if (scoreDiff < -5) newRank = Math.min(totalTeams, currentRank + 1)
+  if (scoreDiff < -10) newRank = Math.min(totalTeams, currentRank + 2)
+  
+  return {
+    newPowerRank: newRank,
+    balanceBefore,
+    balanceAfter: Math.max(0, Math.min(100, balanceAfter)),
+    starPowerBefore,
+    starPowerAfter: Math.max(0, Math.min(100, starPowerAfter)),
+    depthBefore,
+    depthAfter: Math.max(0, Math.min(100, depthAfter))
+  }
+}
+
+function calculateCategoryGrade(up: number, down: number, impact: any[]): string {
+  const net = up - down
+  const significantChanges = impact.filter(c => Math.abs(c.rankChange) >= 2).length
+  
+  if (net >= 4 || significantChanges >= 3) return 'A'
+  if (net >= 2 || significantChanges >= 2) return 'B+'
+  if (net >= 1) return 'B'
+  if (net === 0) return 'C'
+  if (net >= -1) return 'C-'
+  if (net >= -2) return 'D'
+  return 'F'
+}
+
+function calculateValueGrade(give: any, get: any): string {
+  const giveValue = give.overallValue || 50
+  const getValue = get.overallValue || 50
+  const diff = getValue - giveValue
+  
+  if (diff >= 15) return 'A'
+  if (diff >= 10) return 'A-'
+  if (diff >= 5) return 'B+'
+  if (diff >= 0) return 'B'
+  if (diff >= -5) return 'B-'
+  if (diff >= -10) return 'C'
+  if (diff >= -15) return 'D'
+  return 'F'
+}
+
+function calculateBalanceGrade(balanceChange: number): string {
+  if (balanceChange >= 10) return 'A'
+  if (balanceChange >= 5) return 'B+'
+  if (balanceChange >= 0) return 'B'
+  if (balanceChange >= -5) return 'C'
+  if (balanceChange >= -10) return 'D'
+  return 'F'
+}
+
+function calculateScarcityGrade(give: any, get: any): string {
+  // Check position scarcity
+  const scarcePositions = ['C', 'SS', '2B']
+  const givePos = give.position?.split(',')[0] || ''
+  const getPos = get.position?.split(',')[0] || ''
+  
+  const givingScarce = scarcePositions.some(p => givePos.includes(p))
+  const gettingScarce = scarcePositions.some(p => getPos.includes(p))
+  
+  if (gettingScarce && !givingScarce) return 'A'
+  if (!gettingScarce && !givingScarce) return 'B'
+  if (gettingScarce && givingScarce) return 'B-'
+  if (!gettingScarce && givingScarce) return 'C'
+  return 'C'
+}
+
+function calculateOverallTradeGrade(catGrade: string, valGrade: string, balGrade: string, scarGrade: string): string {
+  const gradeToNum = (g: string): number => {
+    const grades: Record<string, number> = { 'A+': 97, 'A': 93, 'A-': 90, 'B+': 87, 'B': 83, 'B-': 80, 'C+': 77, 'C': 73, 'C-': 70, 'D+': 67, 'D': 63, 'D-': 60, 'F': 50 }
+    return grades[g] || 73
+  }
+  
+  const numToGrade = (n: number): string => {
+    if (n >= 95) return 'A+'
+    if (n >= 90) return 'A'
+    if (n >= 87) return 'A-'
+    if (n >= 83) return 'B+'
+    if (n >= 80) return 'B'
+    if (n >= 77) return 'B-'
+    if (n >= 73) return 'C+'
+    if (n >= 70) return 'C'
+    if (n >= 67) return 'C-'
+    if (n >= 63) return 'D+'
+    if (n >= 60) return 'D'
+    if (n >= 55) return 'D-'
+    return 'F'
+  }
+  
+  // Weighted average: Category 30%, Value 25%, Balance 25%, Scarcity 20%
+  const score = gradeToNum(catGrade) * 0.30 + gradeToNum(valGrade) * 0.25 + gradeToNum(balGrade) * 0.25 + gradeToNum(scarGrade) * 0.20
+  return numToGrade(score)
+}
+
+function generateTradeAnalysis(give: any, get: any, categoryImpact: any[], catsUp: number, catsDown: number, rankBefore: number, rankAfter: number, balanceChange: number): { headline: string; summary: string; strengths: string[]; concerns: string[]; recommendation: 'accept' | 'decline' | 'consider'; bottomLine: string } {
+  const strengths: string[] = []
+  const concerns: string[] = []
+  
+  const giveValue = give.overallValue || 50
+  const getValue = get.overallValue || 50
+  const valueDiff = getValue - giveValue
+  
+  // Analyze value
+  if (valueDiff > 10) {
+    strengths.push(`Getting ${Math.round(valueDiff)} more player value points`)
+  } else if (valueDiff < -10) {
+    concerns.push(`Giving up ${Math.round(Math.abs(valueDiff))} player value points`)
+  }
+  
+  // Analyze categories
+  if (catsUp > catsDown) {
+    strengths.push(`Improves ${catsUp} categories vs hurts ${catsDown}`)
+  } else if (catsDown > catsUp) {
+    concerns.push(`Hurts ${catsDown} categories vs improves ${catsUp}`)
+  }
+  
+  // Analyze rank changes
+  const bigImprovements = categoryImpact.filter(c => c.rankChange <= -2)
+  const bigDeclines = categoryImpact.filter(c => c.rankChange >= 2)
+  
+  if (bigImprovements.length > 0) {
+    strengths.push(`Significant rank improvements in: ${bigImprovements.map(c => c.display_name).join(', ')}`)
+  }
+  if (bigDeclines.length > 0) {
+    concerns.push(`Risk dropping in: ${bigDeclines.map(c => c.display_name).join(', ')}`)
+  }
+  
+  // Analyze power rank
+  if (rankAfter < rankBefore) {
+    strengths.push(`Could improve power ranking by ${rankBefore - rankAfter} spot${rankBefore - rankAfter > 1 ? 's' : ''}`)
+  } else if (rankAfter > rankBefore) {
+    concerns.push(`May drop ${rankAfter - rankBefore} spot${rankAfter - rankBefore > 1 ? 's' : ''} in power rankings`)
+  }
+  
+  // Analyze balance
+  if (balanceChange > 5) {
+    strengths.push('Makes your team more well-rounded')
+  } else if (balanceChange < -5) {
+    concerns.push('Creates more category imbalance')
+  }
+  
+  // Analyze positions
+  const givePos = give.position || ''
+  const getPos = get.position || ''
+  if (getPos.includes('C') || getPos.includes('SS')) {
+    strengths.push(`${get.full_name} plays a premium position (${getPos})`)
+  }
+  if (givePos.includes('C') || givePos.includes('SS')) {
+    concerns.push(`Giving up scarce position eligibility (${givePos})`)
+  }
+  
+  // Generate headline and summary
+  let headline = ''
+  let summary = ''
+  let recommendation: 'accept' | 'decline' | 'consider' = 'consider'
+  let bottomLine = ''
+  
+  const netScore = (catsUp - catsDown) + (valueDiff / 10) + balanceChange / 5
+  
+  if (netScore >= 3) {
+    headline = 'Strong Trade for You'
+    summary = `This trade significantly improves your team across multiple dimensions. ${get.full_name} brings more value and helps balance your roster.`
+    recommendation = 'accept'
+    bottomLine = 'This is a favorable deal - you should strongly consider making this trade.'
+  } else if (netScore >= 1) {
+    headline = 'Slight Win for You'
+    summary = `This trade provides modest improvement to your team. You gain some category production while maintaining competitive balance.`
+    recommendation = 'accept'
+    bottomLine = 'The trade is in your favor, though not by a huge margin.'
+  } else if (netScore >= -1) {
+    headline = 'Roughly Even Trade'
+    summary = `This is a fair exchange that could work depending on your specific needs. Consider what categories matter most for your playoff push.`
+    recommendation = 'consider'
+    bottomLine = 'This is close to a fair trade - evaluate based on your specific team needs.'
+  } else if (netScore >= -3) {
+    headline = 'Slight Loss for You'
+    summary = `You may be giving up a bit more than you\'re getting back. Make sure this addresses a critical need.`
+    recommendation = 'consider'
+    bottomLine = 'You\'re likely overpaying slightly - only do this if you really need what you\'re getting.'
+  } else {
+    headline = 'Unfavorable Trade'
+    summary = `This trade would likely hurt your team. You\'re giving up significant value without adequate return.`
+    recommendation = 'decline'
+    bottomLine = 'This trade is not recommended - look for a better deal.'
+  }
+  
+  return { headline, summary, strengths, concerns, recommendation, bottomLine }
+}
+
+function getTradeGradeBackground(grade: string): string {
+  if (grade.startsWith('A')) return 'bg-gradient-to-r from-green-500/20 to-emerald-500/20'
+  if (grade.startsWith('B')) return 'bg-gradient-to-r from-yellow-500/20 to-orange-500/20'
+  if (grade.startsWith('C')) return 'bg-gradient-to-r from-gray-500/20 to-slate-500/20'
+  return 'bg-gradient-to-r from-red-500/20 to-rose-500/20'
+}
+
+function getTradeGradeColor(grade: string): string {
+  if (grade.startsWith('A')) return 'text-green-400'
+  if (grade.startsWith('B')) return 'text-yellow-400'
+  if (grade.startsWith('C')) return 'text-gray-400'
+  return 'text-red-400'
 }
 
 // ==================== STARTING LINEUP & CATEGORY IMPACT ====================
