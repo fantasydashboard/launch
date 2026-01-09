@@ -834,7 +834,112 @@ export const useLeagueStore = defineStore('league', () => {
       yahooLeague.value = leagueDetails
       
       // Fetch teams with standings info
-      const teams = await yahooService.getTeams(leagueKey)
+      let teams = await yahooService.getTeams(leagueKey)
+      
+      // Check if this league has actual data (not a renewed but unplayed league)
+      const hasData = teams.some(t => (t.wins || 0) > 0 || (t.losses || 0) > 0 || (t.points_for || 0) > 0)
+      
+      // If no data, check for a previous season to load instead
+      if (!hasData) {
+        console.log('League has no data, checking for previous season...')
+        
+        // Check if there's a "renew" field in the league details pointing to previous season
+        const renewField = leagueDetails?.[0]?.renew
+        if (renewField) {
+          // renew format is "gamekey_leagueid" like "431_136233"
+          const [prevGameKey, prevLeagueId] = renewField.split('_')
+          const previousLeagueKey = `${prevGameKey}.l.${prevLeagueId}`
+          
+          console.log(`Found previous season: ${previousLeagueKey}, trying to load that instead...`)
+          
+          try {
+            // Try loading the previous season
+            const prevTeams = await yahooService.getTeams(previousLeagueKey)
+            const prevHasData = prevTeams.some(t => (t.wins || 0) > 0 || (t.losses || 0) > 0 || (t.points_for || 0) > 0)
+            
+            if (prevHasData) {
+              console.log('Previous season has data! Using that instead.')
+              
+              // Update to use previous season data
+              teams = prevTeams
+              yahooTeams.value = teams
+              
+              // Update league details and metadata for previous season
+              const prevLeagueDetails = await yahooService.getLeagueDetails(previousLeagueKey)
+              yahooLeague.value = prevLeagueDetails
+              
+              const prevMetadata = await yahooService.getLeagueMetadata(previousLeagueKey)
+              
+              // Fetch standings for previous season
+              const standings = await yahooService.getStandings(previousLeagueKey)
+              yahooStandings.value = standings
+              
+              // Fetch matchups for previous season
+              const matchups = await yahooService.getMatchups(previousLeagueKey, prevMetadata.currentWeek)
+              yahooMatchups.value = matchups
+              
+              // Create a currentLeague object that's compatible with the UI
+              const savedLeague = savedLeagues.value.find(l => l.league_id === leagueKey)
+              const prevSeason = prevLeagueDetails?.[0]?.season || (parseInt(savedLeague?.season || '2025') - 1).toString()
+              
+              currentLeague.value = {
+                league_id: previousLeagueKey, // Use previous season's key
+                name: savedLeague?.league_name || prevLeagueDetails?.[0]?.name || 'Yahoo League',
+                season: prevSeason,
+                status: prevMetadata.isFinished ? 'complete' : 'in_season',
+                sport: 'nfl',
+                settings: {
+                  leg: prevMetadata.currentWeek,
+                  playoff_week_start: 15,
+                  start_week: prevMetadata.startWeek,
+                  end_week: prevMetadata.endWeek
+                },
+                scoring_settings: {},
+                roster_positions: [],
+                total_rosters: savedLeague?.num_teams || teams.length || 12
+              } as any
+              
+              console.log('Yahoo league loaded (previous season):', {
+                metadata: prevMetadata,
+                league: yahooLeague.value,
+                teams: yahooTeams.value,
+                standings: yahooStandings.value,
+                matchups: yahooMatchups.value
+              })
+              
+              return // Exit early, we loaded previous season successfully
+            }
+          } catch (prevError) {
+            console.warn('Failed to load previous season:', prevError)
+            // Continue with current (empty) data
+          }
+        }
+        
+        // Also check saved league for historical seasons
+        const savedLeague = savedLeagues.value.find(l => l.league_id === leagueKey)
+        if (savedLeague?.yahoo_historical_seasons?.length) {
+          // Find a historical season that might have data
+          for (const historicalSeason of savedLeague.yahoo_historical_seasons) {
+            if (historicalSeason.league_key === leagueKey) continue // Skip current
+            
+            try {
+              console.log(`Trying historical season: ${historicalSeason.league_key} (${historicalSeason.season})`)
+              const histTeams = await yahooService.getTeams(historicalSeason.league_key)
+              const histHasData = histTeams.some(t => (t.wins || 0) > 0 || (t.losses || 0) > 0 || (t.points_for || 0) > 0)
+              
+              if (histHasData) {
+                console.log('Historical season has data! Using that.')
+                teams = histTeams
+                // Similar logic to load historical season...
+                break
+              }
+            } catch (histError) {
+              console.warn(`Failed to load historical season ${historicalSeason.league_key}:`, histError)
+            }
+          }
+        }
+      }
+      
       yahooTeams.value = teams
       
       // Fetch standings

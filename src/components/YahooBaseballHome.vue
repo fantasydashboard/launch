@@ -788,14 +788,24 @@ const leagueName = computed(() => {
   }
   return league?.name || 'League'
 })
+
+// Effective league key - use the actually loaded league (might be previous season)
+const effectiveLeagueKey = computed(() => {
+  // If currentLeague has a league_id set (might be previous season), use that
+  if (leagueStore.currentLeague?.league_id) return leagueStore.currentLeague.league_id
+  // Fall back to active league
+  return leagueStore.activeLeagueId
+})
+
 const currentSeason = computed(() => {
-  // First try savedLeague season (most reliable for offseason)
+  // First try currentLeague which is populated when loading (including previous season fallback)
+  if (leagueStore.currentLeague?.season) return leagueStore.currentLeague.season
+  // Then try yahooLeague raw data (the array from API)
+  const yahooSeason = leagueStore.yahooLeague?.[0]?.season
+  if (yahooSeason) return yahooSeason
+  // Then try saved league
   const savedLeague = leagueStore.savedLeagues?.find((l: any) => l.league_id === leagueStore.activeLeagueId)
   if (savedLeague?.season) return savedLeague.season
-  // Then try currentLeague which is populated from savedLeague
-  if (leagueStore.currentLeague?.season) return leagueStore.currentLeague.season
-  // Then try yahooLeague raw data
-  if (leagueStore.yahooLeague?.season) return leagueStore.yahooLeague.season
   // Fallback to current year
   return new Date().getFullYear()
 })
@@ -2455,12 +2465,13 @@ async function loadLeagueSettings() {
 
 // Load all matchup data for chart
 async function loadAllMatchups() {
-  const leagueKey = leagueStore.activeLeagueId
+  const leagueKey = effectiveLeagueKey.value || leagueStore.activeLeagueId
   if (!leagueKey) {
     console.log('No league key, skipping matchup load')
     return
   }
   
+  console.log(`Loading matchups for league: ${leagueKey}`)
   isLoadingChart.value = true
   
   // For H2H Categories, we need to simulate standings over time
