@@ -135,107 +135,15 @@
             <input type="checkbox" v-model="showOnlyFreeAgents" class="w-4 h-4 rounded border-dark-border bg-dark-card text-cyan-400" />
             <span class="text-sm text-dark-textMuted">Free Agents</span>
           </label>
-          <div class="relative">
-            <button 
-              @click="showRankingSettings = !showRankingSettings"
-              class="px-3 py-1.5 text-sm rounded-lg border transition-all flex items-center gap-2"
-              :class="showRankingSettings ? 'bg-yellow-400/20 text-yellow-400 border-yellow-400' : 'bg-dark-card text-dark-textMuted border-dark-border hover:border-dark-textMuted'"
-            >
-              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4" />
-              </svg>
-              Customize Rankings
-            </button>
-            <!-- Settings Dropdown -->
-            <div 
-              v-if="showRankingSettings" 
-              class="absolute right-0 top-full mt-2 w-80 bg-dark-card border border-dark-border rounded-xl shadow-2xl z-50 p-4"
-            >
-              <div class="flex items-center justify-between mb-4">
-                <h3 class="font-bold text-dark-text">Ranking Weights</h3>
-                <button @click="resetWeights" class="text-xs text-yellow-400 hover:underline">Reset to Default</button>
-              </div>
-              <p class="text-xs text-dark-textMuted mb-4">Adjust how player value scores are calculated. Weights should total 100%.</p>
-              
-              <!-- Category Rank Weight -->
-              <div class="mb-4">
-                <div class="flex justify-between text-sm mb-1">
-                  <span class="text-dark-text">Category Rank</span>
-                  <span class="text-yellow-400 font-bold">{{ rankingWeights.categoryRank }}%</span>
-                </div>
-                <input 
-                  type="range" 
-                  v-model.number="rankingWeights.categoryRank" 
-                  @change="saveWeights"
-                  min="0" max="100" step="5"
-                  class="w-full h-2 bg-dark-border rounded-lg appearance-none cursor-pointer accent-yellow-400"
-                />
-                <p class="text-[10px] text-dark-textMuted mt-1">How the player ranks in this specific category</p>
-              </div>
-              
-              <!-- Multi-Category Weight -->
-              <div class="mb-4">
-                <div class="flex justify-between text-sm mb-1">
-                  <span class="text-dark-text">Multi-Category</span>
-                  <span class="text-green-400 font-bold">{{ rankingWeights.multiCategory }}%</span>
-                </div>
-                <input 
-                  type="range" 
-                  v-model.number="rankingWeights.multiCategory" 
-                  @change="saveWeights"
-                  min="0" max="100" step="5"
-                  class="w-full h-2 bg-dark-border rounded-lg appearance-none cursor-pointer accent-green-400"
-                />
-                <p class="text-[10px] text-dark-textMuted mt-1">Contribution across multiple scoring categories</p>
-              </div>
-              
-              <!-- Scarcity Weight -->
-              <div class="mb-4">
-                <div class="flex justify-between text-sm mb-1">
-                  <span class="text-dark-text">Position Scarcity</span>
-                  <span class="text-cyan-400 font-bold">{{ rankingWeights.scarcity }}%</span>
-                </div>
-                <input 
-                  type="range" 
-                  v-model.number="rankingWeights.scarcity" 
-                  @change="saveWeights"
-                  min="0" max="100" step="5"
-                  class="w-full h-2 bg-dark-border rounded-lg appearance-none cursor-pointer accent-cyan-400"
-                />
-                <p class="text-[10px] text-dark-textMuted mt-1">Value boost for scarce positions (C, SS, etc.)</p>
-              </div>
-              
-              <!-- Consistency Weight -->
-              <div class="mb-4">
-                <div class="flex justify-between text-sm mb-1">
-                  <span class="text-dark-text">Consistency</span>
-                  <span class="text-purple-400 font-bold">{{ rankingWeights.consistency }}%</span>
-                </div>
-                <input 
-                  type="range" 
-                  v-model.number="rankingWeights.consistency" 
-                  @change="saveWeights"
-                  min="0" max="100" step="5"
-                  class="w-full h-2 bg-dark-border rounded-lg appearance-none cursor-pointer accent-purple-400"
-                />
-                <p class="text-[10px] text-dark-textMuted mt-1">How reliable/consistent the player's production is</p>
-              </div>
-              
-              <!-- Total Weight Indicator -->
-              <div class="pt-3 border-t border-dark-border">
-                <div class="flex justify-between items-center">
-                  <span class="text-sm text-dark-textMuted">Total Weight:</span>
-                  <span 
-                    class="text-sm font-bold"
-                    :class="totalWeight === 100 ? 'text-green-400' : 'text-red-400'"
-                  >
-                    {{ totalWeight }}%
-                    <span v-if="totalWeight !== 100" class="text-xs ml-1">(should be 100%)</span>
-                  </span>
-                </div>
-              </div>
-            </div>
-          </div>
+          <button 
+            @click="showRankingSettings = true"
+            class="px-3 py-1.5 text-sm rounded-lg border transition-all flex items-center gap-2 bg-dark-card text-dark-textMuted border-dark-border hover:border-yellow-400 hover:text-yellow-400"
+          >
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4" />
+            </svg>
+            Customize Rankings
+          </button>
         </div>
       </div>
 
@@ -1423,6 +1331,130 @@
       </template>
 
     </template>
+    
+    <!-- ROS Rankings Settings Modal -->
+    <div v-if="showRankingSettings" class="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4" @click.self="showRankingSettings = false">
+      <div class="bg-dark-elevated rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-hidden border border-dark-border">
+        <!-- Header -->
+        <div class="px-6 py-4 border-b border-dark-border flex items-center justify-between">
+          <div>
+            <h3 class="text-xl font-bold text-dark-text">ROS Rankings Settings</h3>
+            <p class="text-sm text-dark-textMuted">Customize how player value scores are calculated</p>
+          </div>
+          <button @click="showRankingSettings = false" class="p-2 hover:bg-dark-border/50 rounded-lg transition-colors">
+            <svg class="w-5 h-5 text-dark-textMuted" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+        
+        <!-- Presets -->
+        <div class="px-6 py-4 border-b border-dark-border">
+          <h4 class="text-sm font-semibold text-dark-textMuted uppercase tracking-wider mb-3">Quick Presets</h4>
+          <div class="grid grid-cols-2 sm:grid-cols-3 gap-3">
+            <button
+              v-for="preset in rosRankingPresets"
+              :key="preset.id"
+              @click="applyPreset(preset)"
+              class="p-3 rounded-xl border transition-colors text-left"
+              :class="currentPresetId === preset.id 
+                ? 'border-yellow-400 bg-yellow-400/10' 
+                : 'border-dark-border hover:border-dark-textMuted bg-dark-border/20'"
+            >
+              <div class="flex items-start gap-2">
+                <span class="text-xl flex-shrink-0">{{ preset.icon }}</span>
+                <div class="min-w-0 flex-1">
+                  <div class="text-sm font-semibold" :class="currentPresetId === preset.id ? 'text-yellow-400' : 'text-dark-text'">{{ preset.name }}</div>
+                  <div class="text-xs text-dark-textMuted mt-0.5 leading-tight">{{ preset.description }}</div>
+                </div>
+              </div>
+            </button>
+          </div>
+        </div>
+        
+        <!-- Factors -->
+        <div class="px-6 py-4 overflow-y-auto max-h-[45vh]">
+          <div class="flex items-center justify-between mb-3">
+            <h4 class="text-sm font-semibold text-dark-textMuted uppercase tracking-wider">Ranking Factors</h4>
+            <span class="text-xs" :class="totalWeight === 100 ? 'text-green-400' : 'text-yellow-400'">Total: {{ totalWeight }}%</span>
+          </div>
+          
+          <div class="space-y-3">
+            <div 
+              v-for="factor in rosRankingFactors" 
+              :key="factor.id"
+              class="bg-dark-border/20 rounded-xl p-4"
+            >
+              <div class="flex items-start justify-between gap-4 mb-2">
+                <div class="flex items-start gap-3 flex-1 min-w-0">
+                  <span class="text-2xl flex-shrink-0 mt-0.5">{{ factor.icon }}</span>
+                  <div class="flex-1 min-w-0">
+                    <div class="font-semibold text-dark-text text-sm">{{ factor.name }}</div>
+                    <p class="text-xs text-dark-textMuted mt-1 leading-relaxed">{{ factor.description }}</p>
+                  </div>
+                </div>
+                <label class="relative inline-flex items-center cursor-pointer flex-shrink-0 mt-1">
+                  <input 
+                    type="checkbox" 
+                    v-model="factor.enabled" 
+                    @change="onFactorChange"
+                    class="sr-only peer"
+                  />
+                  <div class="w-11 h-6 bg-dark-border rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-yellow-400"></div>
+                </label>
+              </div>
+              
+              <div v-if="factor.enabled" class="flex items-center gap-4 mt-3 pt-3 border-t border-dark-border/30">
+                <input 
+                  type="range" 
+                  v-model.number="factor.weight" 
+                  min="0" 
+                  max="100" 
+                  step="5"
+                  @input="onFactorChange"
+                  class="flex-1 h-2 bg-dark-border rounded-lg appearance-none cursor-pointer accent-yellow-400"
+                />
+                <div class="w-16 flex items-center gap-1 flex-shrink-0">
+                  <input 
+                    type="number" 
+                    v-model.number="factor.weight" 
+                    min="0" 
+                    max="100"
+                    @input="onFactorChange"
+                    class="w-12 px-2 py-1 rounded bg-dark-bg border border-dark-border text-dark-text text-sm text-center"
+                  />
+                  <span class="text-dark-textMuted text-sm">%</span>
+                </div>
+              </div>
+              
+              <!-- Weight bar visualization -->
+              <div v-if="factor.enabled" class="mt-2 h-1.5 bg-dark-border rounded-full overflow-hidden">
+                <div 
+                  class="h-full rounded-full transition-all"
+                  :style="{ width: `${factor.weight}%`, backgroundColor: factor.color }"
+                ></div>
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Footer -->
+        <div class="px-6 py-4 border-t border-dark-border flex items-center justify-between">
+          <button 
+            @click="resetWeights"
+            class="px-4 py-2 text-sm text-dark-textMuted hover:text-dark-text transition-colors"
+          >
+            Reset to Default
+          </button>
+          <button 
+            @click="showRankingSettings = false"
+            class="px-6 py-2 bg-yellow-400 text-gray-900 rounded-lg font-semibold text-sm hover:bg-yellow-300 transition-colors"
+          >
+            Done
+          </button>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -1450,40 +1482,220 @@ const expandedPlayerKey = ref<string | null>(null)
 const sortColumn = ref<string>('rank')
 const sortDirection = ref<'asc' | 'desc'>('asc')
 
-// Ranking customization weights
+// Ranking customization - factor-based like Power Rankings
 const showRankingSettings = ref(false)
-const rankingWeights = ref({
-  categoryRank: 40,
-  multiCategory: 25,
-  scarcity: 20,
-  consistency: 15
-})
 
-// Load saved weights from localStorage
+interface RankingFactor {
+  id: string
+  name: string
+  description: string
+  enabled: boolean
+  weight: number
+  icon: string
+  color: string
+}
+
+const DEFAULT_ROS_FACTORS: RankingFactor[] = [
+  {
+    id: 'categoryRank',
+    name: 'Category Rank',
+    description: 'How the player ranks in this specific category based on ROS projections',
+    enabled: true,
+    weight: 40,
+    icon: '📊',
+    color: '#facc15' // yellow-400
+  },
+  {
+    id: 'multiCategory',
+    name: 'Multi-Category Value',
+    description: 'Contribution across multiple scoring categories - rewards versatile players',
+    enabled: true,
+    weight: 25,
+    icon: '🎯',
+    color: '#22c55e' // green-500
+  },
+  {
+    id: 'scarcity',
+    name: 'Position Scarcity',
+    description: 'Value boost for positions with fewer quality options (C, SS, RP)',
+    enabled: true,
+    weight: 20,
+    icon: '💎',
+    color: '#06b6d4' // cyan-400
+  },
+  {
+    id: 'consistency',
+    name: 'Consistency',
+    description: 'How reliable and consistent the player\'s production has been',
+    enabled: true,
+    weight: 15,
+    icon: '📈',
+    color: '#a855f7' // purple-400
+  }
+]
+
+const rosRankingFactors = ref<RankingFactor[]>(JSON.parse(JSON.stringify(DEFAULT_ROS_FACTORS)))
+
+interface RankingPreset {
+  id: string
+  name: string
+  description: string
+  icon: string
+  factors: Record<string, { enabled: boolean; weight: number }>
+}
+
+const rosRankingPresets: RankingPreset[] = [
+  {
+    id: 'balanced',
+    name: 'Balanced',
+    description: 'Default balanced approach',
+    icon: '⚖️',
+    factors: {
+      categoryRank: { enabled: true, weight: 40 },
+      multiCategory: { enabled: true, weight: 25 },
+      scarcity: { enabled: true, weight: 20 },
+      consistency: { enabled: true, weight: 15 }
+    }
+  },
+  {
+    id: 'categoryFocused',
+    name: 'Category Focused',
+    description: 'Prioritize single-category dominance',
+    icon: '🎯',
+    factors: {
+      categoryRank: { enabled: true, weight: 70 },
+      multiCategory: { enabled: true, weight: 10 },
+      scarcity: { enabled: true, weight: 10 },
+      consistency: { enabled: true, weight: 10 }
+    }
+  },
+  {
+    id: 'versatile',
+    name: 'Versatile',
+    description: 'Favor players who contribute everywhere',
+    icon: '🌟',
+    factors: {
+      categoryRank: { enabled: true, weight: 25 },
+      multiCategory: { enabled: true, weight: 50 },
+      scarcity: { enabled: true, weight: 15 },
+      consistency: { enabled: true, weight: 10 }
+    }
+  },
+  {
+    id: 'scarcityHunter',
+    name: 'Scarcity Hunter',
+    description: 'Find value at thin positions',
+    icon: '💎',
+    factors: {
+      categoryRank: { enabled: true, weight: 30 },
+      multiCategory: { enabled: true, weight: 15 },
+      scarcity: { enabled: true, weight: 45 },
+      consistency: { enabled: true, weight: 10 }
+    }
+  },
+  {
+    id: 'reliable',
+    name: 'Reliable Floor',
+    description: 'Prioritize consistent performers',
+    icon: '🛡️',
+    factors: {
+      categoryRank: { enabled: true, weight: 30 },
+      multiCategory: { enabled: true, weight: 20 },
+      scarcity: { enabled: true, weight: 10 },
+      consistency: { enabled: true, weight: 40 }
+    }
+  },
+  {
+    id: 'simple',
+    name: 'Simple Rank',
+    description: 'Pure category ranking only',
+    icon: '📋',
+    factors: {
+      categoryRank: { enabled: true, weight: 100 },
+      multiCategory: { enabled: false, weight: 0 },
+      scarcity: { enabled: false, weight: 0 },
+      consistency: { enabled: false, weight: 0 }
+    }
+  }
+]
+
+const currentPresetId = ref<string | null>('balanced')
+
+// Load saved factors from localStorage
 const loadSavedWeights = () => {
   try {
-    const saved = localStorage.getItem('rosRankingWeights')
+    const saved = localStorage.getItem('rosRankingFactors')
     if (saved) {
       const parsed = JSON.parse(saved)
-      rankingWeights.value = { ...rankingWeights.value, ...parsed }
+      rosRankingFactors.value = parsed
+      // Check if it matches any preset
+      updateCurrentPreset()
     }
-  } catch (e) { console.error('Error loading ranking weights:', e) }
+  } catch (e) { console.error('Error loading ranking factors:', e) }
 }
 
 const saveWeights = () => {
   try {
-    localStorage.setItem('rosRankingWeights', JSON.stringify(rankingWeights.value))
-  } catch (e) { console.error('Error saving ranking weights:', e) }
+    localStorage.setItem('rosRankingFactors', JSON.stringify(rosRankingFactors.value))
+    updateCurrentPreset()
+  } catch (e) { console.error('Error saving ranking factors:', e) }
 }
 
 const resetWeights = () => {
-  rankingWeights.value = { categoryRank: 40, multiCategory: 25, scarcity: 20, consistency: 15 }
+  rosRankingFactors.value = JSON.parse(JSON.stringify(DEFAULT_ROS_FACTORS))
+  currentPresetId.value = 'balanced'
+  saveWeights()
+}
+
+const applyPreset = (preset: RankingPreset) => {
+  rosRankingFactors.value.forEach(factor => {
+    const presetFactor = preset.factors[factor.id]
+    if (presetFactor) {
+      factor.enabled = presetFactor.enabled
+      factor.weight = presetFactor.weight
+    } else {
+      factor.enabled = false
+      factor.weight = 0
+    }
+  })
+  currentPresetId.value = preset.id
+  saveWeights()
+}
+
+const updateCurrentPreset = () => {
+  // Check if current factors match any preset
+  for (const preset of rosRankingPresets) {
+    let matches = true
+    for (const factor of rosRankingFactors.value) {
+      const presetFactor = preset.factors[factor.id]
+      if (!presetFactor || presetFactor.enabled !== factor.enabled || presetFactor.weight !== factor.weight) {
+        matches = false
+        break
+      }
+    }
+    if (matches) {
+      currentPresetId.value = preset.id
+      return
+    }
+  }
+  currentPresetId.value = null // Custom
+}
+
+const onFactorChange = () => {
   saveWeights()
 }
 
 const totalWeight = computed(() => {
-  return rankingWeights.value.categoryRank + rankingWeights.value.multiCategory + 
-         rankingWeights.value.scarcity + rankingWeights.value.consistency
+  return rosRankingFactors.value.filter(f => f.enabled).reduce((sum, f) => sum + f.weight, 0)
+})
+
+// Helper to get weights for calculations
+const rankingWeights = computed(() => {
+  const factors: Record<string, number> = {}
+  rosRankingFactors.value.forEach(f => {
+    factors[f.id] = f.enabled ? f.weight : 0
+  })
+  return factors
 })
 
 // Tab state
@@ -2078,6 +2290,10 @@ async function loadProjections() {
     loadingMessage.value = 'Loading teams...'
     const teams = await yahooService.getTeams(leagueKey)
     teamsData.value = teams || []
+    
+    // Debug: log all teams with their is_my_team flag
+    console.log('All teams:', teamsData.value.map(t => ({ name: t.name, team_key: t.team_key, is_my_team: t.is_my_team })))
+    
     const myTeam = teamsData.value.find((t: any) => t.is_owned_by_current_login || t.is_my_team)
     myTeamKey.value = myTeam?.team_key || null
     console.log('Teams loaded:', teamsData.value.length, 'My team:', myTeam?.name, 'Key:', myTeamKey.value)
@@ -2093,11 +2309,20 @@ async function loadProjections() {
       position: p.position || 'Util', 
       mlb_team: p.mlb_team || '', 
       headshot: p.headshot || '', 
-      fantasy_team: p.fantasy_team, 
-      fantasy_team_key: p.fantasy_team_key, 
+      fantasy_team: p.fantasy_team || p.team_name, 
+      fantasy_team_key: p.fantasy_team_key || p.team_key, 
       stats: p.stats || {}, 
       total_points: p.total_points || 0 
     }))
+    
+    // Debug: log first few rostered players to see their team keys
+    if (rostered.length > 0) {
+      console.log('Sample rostered players:', rostered.slice(0, 3).map(p => ({
+        name: p.full_name,
+        fantasy_team: p.fantasy_team,
+        fantasy_team_key: p.fantasy_team_key
+      })))
+    }
     
     const fas = (freeAgents || []).map((p: any) => ({ 
       ...p, 
@@ -2128,7 +2353,11 @@ async function loadProjections() {
     }
     
     const myPlayers = allPlayers.value.filter(p => p.fantasy_team_key === myTeamKey.value)
-    console.log('Players on my team:', myPlayers.length)
+    console.log('Players on my team:', myPlayers.length, 'myTeamKey:', myTeamKey.value)
+    
+    // Debug: show unique team keys to identify mismatch
+    const uniqueTeamKeys = [...new Set(allPlayers.value.filter(p => p.fantasy_team_key).map(p => p.fantasy_team_key))]
+    console.log('Unique fantasy_team_keys in players:', uniqueTeamKeys)
     
     // Process teams for Teams tab
     processTeamsData()
