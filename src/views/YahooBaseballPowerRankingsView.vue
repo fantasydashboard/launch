@@ -326,15 +326,28 @@
 
       <!-- ROS Projections by Position -->
       <div class="card">
-        <div class="card-header">
-          <div class="flex items-center gap-2">
-            <span class="text-2xl">🔮</span>
-            <h2 class="card-title">Rest of Season Projections by Position</h2>
+        <div class="card-header flex items-center justify-between">
+          <div>
+            <div class="flex items-center gap-2">
+              <span class="text-2xl">🔮</span>
+              <h2 class="card-title">Season Points by Position</h2>
+            </div>
+            <p class="text-sm text-dark-textMuted mt-1">Total points scored by position group this season</p>
           </div>
-          <p class="text-sm text-dark-textMuted mt-1">Projected points for remaining weeks by position group</p>
+          <button 
+            v-if="!rosProjectionsAvailable && !isLoadingPlayers" 
+            @click="loadRosteredPlayers" 
+            class="btn-primary text-sm"
+          >
+            Load Player Data
+          </button>
         </div>
         <div class="card-body">
-          <div v-if="rosProjectionsAvailable" class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
+          <div v-if="isLoadingPlayers" class="text-center py-8">
+            <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-3"></div>
+            <p class="text-dark-textMuted">Loading player data...</p>
+          </div>
+          <div v-else-if="rosProjectionsAvailable" class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
             <div 
               v-for="pos in baseballPositions" 
               :key="pos.id"
@@ -351,10 +364,9 @@
           </div>
           <div v-else class="text-center py-8">
             <div class="text-4xl mb-3">📊</div>
-            <p class="text-dark-text font-medium">Coming Soon</p>
+            <p class="text-dark-text font-medium">Player Data Not Loaded</p>
             <p class="text-sm text-dark-textMuted mt-2 max-w-md mx-auto">
-              ROS projections require player-level data. Yahoo's API doesn't provide player projections, 
-              but we're working on integrating external projection sources.
+              Click "Load Player Data" to see position strength rankings based on season stats.
             </p>
           </div>
         </div>
@@ -437,12 +449,17 @@
             </table>
           </div>
           <div v-else class="text-center py-8">
-            <div class="text-4xl mb-3">🏋️</div>
-            <p class="text-dark-text font-medium">Coming Soon</p>
-            <p class="text-sm text-dark-textMuted mt-2 max-w-md mx-auto">
-              Position strength rankings require roster data with player stats. 
-              We're working on adding this feature to analyze each team's strength by position.
-            </p>
+            <div v-if="isLoadingPlayers">
+              <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-3"></div>
+              <p class="text-dark-textMuted">Loading player data...</p>
+            </div>
+            <div v-else>
+              <div class="text-4xl mb-3">🏋️</div>
+              <p class="text-dark-text font-medium">Player Data Not Loaded</p>
+              <p class="text-sm text-dark-textMuted mt-2 max-w-md mx-auto">
+                Load player data above to see position strength rankings.
+              </p>
+            </div>
           </div>
         </div>
       </div>
@@ -637,7 +654,7 @@
           <div class="sticky top-0 z-10 px-6 py-4 border-b border-dark-border bg-dark-elevated flex items-center justify-between">
             <div>
               <h3 class="text-xl font-bold text-dark-text">{{ selectedPosition?.name }} Rankings</h3>
-              <p class="text-sm text-dark-textMuted">Rest of Season projections</p>
+              <p class="text-sm text-dark-textMuted">Season points by team</p>
             </div>
             <button @click="closePositionModal" class="p-2 rounded-lg hover:bg-dark-border/50 transition-colors">
               <svg class="w-5 h-5 text-dark-textMuted" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -648,13 +665,60 @@
           
           <!-- Position Rankings Content -->
           <div class="p-6">
-            <div class="text-center py-8">
-              <div class="text-4xl mb-3">📈</div>
-              <p class="text-dark-text font-medium">Coming Soon</p>
-              <p class="text-sm text-dark-textMuted mt-2 max-w-sm mx-auto">
-                Player-level ROS projections require external data integration. 
-                We're working on adding this feature.
-              </p>
+            <div v-if="positionStrengthData.length > 0 && selectedPosition">
+              <!-- Team Rankings for this position -->
+              <div class="space-y-2">
+                <div 
+                  v-for="(team, idx) in getTeamsRankedByPosition(selectedPosition.id)" 
+                  :key="team.team_key"
+                  class="flex items-center gap-4 p-3 rounded-lg bg-dark-border/20"
+                  :class="{ 'ring-2 ring-yellow-500/50': team.is_my_team }"
+                >
+                  <span 
+                    class="w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold"
+                    :class="idx === 0 ? 'bg-green-500/20 text-green-400' : idx === getTeamsRankedByPosition(selectedPosition.id).length - 1 ? 'bg-red-500/20 text-red-400' : 'bg-dark-border text-dark-textMuted'"
+                  >
+                    {{ idx + 1 }}
+                  </span>
+                  <img :src="team.logo_url || defaultAvatar" class="w-8 h-8 rounded-full" />
+                  <div class="flex-1">
+                    <div class="font-medium text-dark-text">{{ team.name }}</div>
+                    <div class="text-xs text-dark-textMuted">{{ getTeamPlayersAtPosition(team.team_key, selectedPosition.id).length }} players</div>
+                  </div>
+                  <div class="text-right">
+                    <div class="font-bold text-primary">{{ team.positionTotals?.[selectedPosition.id]?.toFixed(0) || 0 }}</div>
+                    <div class="text-xs text-dark-textMuted">points</div>
+                  </div>
+                </div>
+              </div>
+              
+              <!-- Top Players at this position -->
+              <div class="mt-6">
+                <h4 class="text-lg font-bold text-dark-text mb-3">Top Players at {{ selectedPosition.name }}</h4>
+                <div class="space-y-2">
+                  <div 
+                    v-for="(player, idx) in getTopPlayersAtPosition(selectedPosition.id).slice(0, 10)" 
+                    :key="player.player_key"
+                    class="flex items-center gap-3 p-2 rounded-lg bg-dark-border/10"
+                  >
+                    <span class="w-6 text-center text-sm text-dark-textMuted">{{ idx + 1 }}</span>
+                    <img :src="player.headshot || defaultAvatar" class="w-8 h-8 rounded-full" />
+                    <div class="flex-1">
+                      <div class="text-sm font-medium text-dark-text">{{ player.full_name }}</div>
+                      <div class="text-xs text-dark-textMuted">{{ player.mlb_team }} • {{ player.fantasy_team || 'Free Agent' }}</div>
+                    </div>
+                    <div class="text-right">
+                      <div class="font-bold text-primary">{{ player.total_points?.toFixed(1) || 0 }}</div>
+                      <div class="text-xs text-dark-textMuted">pts</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div v-else class="text-center py-8">
+              <div class="text-4xl mb-3">📊</div>
+              <p class="text-dark-text font-medium">No Data Available</p>
+              <p class="text-sm text-dark-textMuted mt-2">Load player data to see position rankings.</p>
             </div>
           </div>
         </div>
@@ -689,6 +753,10 @@ const selectedWeek = ref('')
 const downloadFormat = ref<'png' | 'gif'>('png')
 const isGeneratingDownload = ref(false)
 const rankingsTableRef = ref<HTMLElement | null>(null)
+const isLoadingPlayers = ref(false)
+
+// Player data for position strength
+const allRosteredPlayers = ref<any[]>([])
 
 // Modal state
 const showPowerRankingSettings = ref(false)
@@ -806,15 +874,108 @@ const currentFormulaDisplay = computed(() => {
   return enabled.map(f => `${f.name} (${Math.round(f.weight / total * 100)}%)`).join(' + ')
 })
 
-const rosProjectionsAvailable = computed(() => false) // Yahoo doesn't provide player projections via API
+const rosProjectionsAvailable = computed(() => allRosteredPlayers.value.length > 0)
 
-// For position strength, we'd need player-level roster data
-// This is a placeholder that returns empty until we implement roster fetching
+// Position strength data - calculated from rostered players
 const positionStrengthData = computed(() => {
-  // For now, return empty - we'd need to fetch team rosters and calculate position strength
-  // This would require calling yahooService.getTeamRoster for each team
-  // and aggregating player stats by position
-  return []
+  if (allRosteredPlayers.value.length === 0) return []
+  
+  // Group players by team
+  const teamPlayers = new Map<string, any[]>()
+  const teamInfo = new Map<string, { name: string; logo_url: string; is_my_team: boolean }>()
+  
+  for (const player of allRosteredPlayers.value) {
+    if (!player.fantasy_team_key) continue
+    
+    if (!teamPlayers.has(player.fantasy_team_key)) {
+      teamPlayers.set(player.fantasy_team_key, [])
+      // Try to find team info from leagueStore
+      const teamData = leagueStore.yahooTeams.find(t => t.team_key === player.fantasy_team_key)
+      teamInfo.set(player.fantasy_team_key, {
+        name: player.fantasy_team || 'Unknown',
+        logo_url: teamData?.logo_url || defaultAvatar,
+        is_my_team: teamData?.is_my_team || false
+      })
+    }
+    teamPlayers.get(player.fantasy_team_key)!.push(player)
+  }
+  
+  // Calculate position totals for each team
+  const positionTotals = new Map<string, Map<string, number>>()
+  
+  for (const [teamKey, players] of teamPlayers) {
+    const totals = new Map<string, number>()
+    
+    for (const player of players) {
+      const pos = player.position || 'UTIL'
+      // Normalize position (OF includes LF, CF, RF)
+      let normalizedPos = pos
+      if (['LF', 'CF', 'RF'].includes(pos)) normalizedPos = 'OF'
+      if (pos.includes('/')) normalizedPos = pos.split('/')[0] // Take primary position
+      
+      const currentTotal = totals.get(normalizedPos) || 0
+      totals.set(normalizedPos, currentTotal + (player.total_points || 0))
+    }
+    
+    positionTotals.set(teamKey, totals)
+  }
+  
+  // Calculate rankings per position
+  const positions = ['C', '1B', '2B', '3B', 'SS', 'OF', 'SP', 'RP']
+  const positionRankings = new Map<string, Map<string, number>>() // teamKey -> position -> rank
+  
+  for (const pos of positions) {
+    // Get all teams' totals for this position
+    const teamTotalsForPos: { teamKey: string; total: number }[] = []
+    for (const [teamKey, totals] of positionTotals) {
+      teamTotalsForPos.push({ teamKey, total: totals.get(pos) || 0 })
+    }
+    
+    // Sort by total (descending) and assign ranks
+    teamTotalsForPos.sort((a, b) => b.total - a.total)
+    teamTotalsForPos.forEach((item, idx) => {
+      if (!positionRankings.has(item.teamKey)) {
+        positionRankings.set(item.teamKey, new Map())
+      }
+      positionRankings.get(item.teamKey)!.set(pos, idx + 1)
+    })
+  }
+  
+  // Build final data structure
+  const result: any[] = []
+  
+  for (const [teamKey, players] of teamPlayers) {
+    const info = teamInfo.get(teamKey)!
+    const totals = positionTotals.get(teamKey)!
+    const rankings = positionRankings.get(teamKey)!
+    
+    // Calculate ROS total (sum of all position points)
+    let rosTotal = 0
+    for (const [, pts] of totals) {
+      rosTotal += pts
+    }
+    
+    // Convert rankings map to object
+    const rankingsObj: Record<string, number> = {}
+    for (const [pos, rank] of rankings) {
+      rankingsObj[pos] = rank
+    }
+    
+    result.push({
+      team_key: teamKey,
+      name: info.name,
+      logo_url: info.logo_url,
+      is_my_team: info.is_my_team,
+      rosTotal,
+      rankings: rankingsObj,
+      positionTotals: Object.fromEntries(totals)
+    })
+  }
+  
+  // Sort by rosTotal descending (overall ranking)
+  result.sort((a, b) => b.rosTotal - a.rosTotal)
+  
+  return result
 })
 
 const sortedPositionStrength = computed(() => {
@@ -823,7 +984,7 @@ const sortedPositionStrength = computed(() => {
   const sorted = [...positionStrengthData.value]
   
   if (positionSortColumn.value === 'rank') {
-    // Already sorted by rank
+    // Already sorted by rank (rosTotal)
   } else if (positionSortColumn.value === 'total') {
     sorted.sort((a: any, b: any) => {
       return positionSortDirection.value === 'asc' 
@@ -1056,7 +1217,53 @@ function getAvatarPosition(team: PowerRankingData): { top: string; left: string 
 }
 
 function getPositionLeader(posId: string): string {
-  return 'N/A' // Would need player data
+  if (positionStrengthData.value.length === 0) return 'Loading...'
+  
+  // Find the team with rank 1 for this position
+  const leader = positionStrengthData.value.find((team: any) => team.rankings?.[posId] === 1)
+  if (!leader) return 'N/A'
+  
+  const points = leader.positionTotals?.[posId] || 0
+  return `${leader.name} (${points.toFixed(0)} pts)`
+}
+
+function getTeamsRankedByPosition(posId: string): any[] {
+  if (positionStrengthData.value.length === 0) return []
+  
+  // Sort teams by their points at this position
+  return [...positionStrengthData.value].sort((a: any, b: any) => {
+    const aPoints = a.positionTotals?.[posId] || 0
+    const bPoints = b.positionTotals?.[posId] || 0
+    return bPoints - aPoints
+  })
+}
+
+function getTeamPlayersAtPosition(teamKey: string, posId: string): any[] {
+  return allRosteredPlayers.value.filter(p => {
+    if (p.fantasy_team_key !== teamKey) return false
+    const pos = p.position || ''
+    // Normalize position
+    if (posId === 'OF' && ['LF', 'CF', 'RF', 'OF'].includes(pos)) return true
+    if (pos.includes('/')) {
+      const positions = pos.split('/')
+      return positions.includes(posId)
+    }
+    return pos === posId
+  })
+}
+
+function getTopPlayersAtPosition(posId: string): any[] {
+  return allRosteredPlayers.value
+    .filter(p => {
+      const pos = p.position || ''
+      if (posId === 'OF' && ['LF', 'CF', 'RF', 'OF'].includes(pos)) return true
+      if (pos.includes('/')) {
+        const positions = pos.split('/')
+        return positions.includes(posId)
+      }
+      return pos === posId
+    })
+    .sort((a, b) => (b.total_points || 0) - (a.total_points || 0))
 }
 
 function sortPositionBy(column: string) {
@@ -1638,10 +1845,41 @@ async function loadPowerRankings() {
     
     powerRankings.value = currentRankings
     historicalPowerRanks.value = historical
+    
+    // Also load rostered players for position strength (if not already loaded)
+    if (allRosteredPlayers.value.length === 0) {
+      loadRosteredPlayers()
+    }
   } catch (e) {
     console.error('Error loading power rankings:', e)
   } finally {
     isLoading.value = false
+  }
+}
+
+async function loadRosteredPlayers() {
+  const leagueKey = effectiveLeagueKey.value
+  if (!leagueKey || !authStore.user?.id) return
+  
+  isLoadingPlayers.value = true
+  
+  try {
+    await yahooService.initialize(authStore.user.id)
+    console.log('Loading rostered players for position strength...')
+    
+    const rostered = await yahooService.getAllRosteredPlayers(leagueKey)
+    
+    // Calculate PPG for each player (total_points / ~25 weeks)
+    rostered.forEach(p => {
+      p.ppg = p.total_points > 0 ? p.total_points / 25 : 0
+    })
+    
+    allRosteredPlayers.value = rostered
+    console.log(`Loaded ${rostered.length} rostered players`)
+  } catch (e) {
+    console.error('Error loading rostered players:', e)
+  } finally {
+    isLoadingPlayers.value = false
   }
 }
 
