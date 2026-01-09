@@ -324,45 +324,169 @@
         </div>
       </div>
 
-      <!-- ROS Projections by Position -->
+      <!-- Season Points by Position - Stacked Bar Visualization -->
       <div class="card">
-        <div class="card-header flex items-center justify-between">
-          <div>
-            <div class="flex items-center gap-2">
-              <span class="text-2xl">🔮</span>
-              <h2 class="card-title">Season Points by Position</h2>
+        <div class="card-header">
+          <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+            <div>
+              <div class="flex items-center gap-2 mb-2">
+                <span class="text-2xl">🔮</span>
+                <h2 class="card-title">Season Points by Position</h2>
+              </div>
+              <p class="text-sm text-dark-textMuted">Total points scored by position group this season</p>
             </div>
-            <p class="text-sm text-dark-textMuted mt-1">Total points scored by position group this season</p>
+            <!-- Position color legend -->
+            <div v-if="rosProjectionsAvailable" class="flex flex-wrap items-center gap-2 text-xs">
+              <div v-for="pos in baseballPositions.slice(0, 8)" :key="pos.id" class="flex items-center gap-1">
+                <div class="w-3 h-3 rounded" :style="{ backgroundColor: getBaseballPositionColor(pos.id) }"></div>
+                <span class="text-dark-textMuted">{{ pos.abbrev }}</span>
+              </div>
+            </div>
+            <button 
+              v-if="!rosProjectionsAvailable && !isLoadingPlayers" 
+              @click="loadRosteredPlayers" 
+              class="btn-primary text-sm"
+            >
+              Load Player Data
+            </button>
           </div>
-          <button 
-            v-if="!rosProjectionsAvailable && !isLoadingPlayers" 
-            @click="loadRosteredPlayers" 
-            class="btn-primary text-sm"
-          >
-            Load Player Data
-          </button>
         </div>
-        <div class="card-body">
+        <div class="card-body p-0">
           <div v-if="isLoadingPlayers" class="text-center py-8">
             <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-3"></div>
             <p class="text-dark-textMuted">Loading player data...</p>
           </div>
-          <div v-else-if="rosProjectionsAvailable" class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
+          <div v-else-if="rosProjectionsAvailable" class="space-y-2 p-4">
+            <!-- Stacked bar for each team -->
             <div 
-              v-for="pos in baseballPositions" 
-              :key="pos.id"
-              @click="openPositionModal(pos.id)"
-              class="bg-dark-border/30 rounded-xl p-4 text-center cursor-pointer hover:bg-dark-border/50 transition-colors group"
+              v-for="(team, idx) in positionStrengthData" 
+              :key="team.team_key"
+              :class="[
+                'rounded-xl transition-all overflow-hidden cursor-pointer',
+                team.is_my_team 
+                  ? 'bg-primary/10 border border-primary/30' 
+                  : 'border border-transparent hover:border-dark-border/50'
+              ]"
+              @click="openPositionModal(baseballPositions[0].id)"
             >
-              <div class="text-2xl mb-2">{{ pos.icon }}</div>
-              <div class="text-sm font-bold text-dark-text">{{ pos.name }}</div>
-              <div class="text-xs text-dark-textMuted mt-1">{{ getPositionLeader(pos.id) }}</div>
-              <div class="text-xs text-primary mt-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                View Rankings →
+              <div class="p-3 hover:bg-dark-border/20 transition-colors">
+                <!-- Desktop: Horizontal layout -->
+                <div class="hidden sm:flex items-center gap-3">
+                  <!-- Rank -->
+                  <div class="w-8 text-center">
+                    <span :class="[
+                      'font-bold text-lg',
+                      team.is_my_team ? 'text-primary' : 'text-dark-textMuted'
+                    ]">{{ idx + 1 }}</span>
+                  </div>
+                  
+                  <!-- Team Avatar & Name -->
+                  <div class="flex items-center gap-2 w-40 flex-shrink-0">
+                    <div class="relative">
+                      <img 
+                        :src="team.logo_url || defaultAvatar" 
+                        :alt="team.name"
+                        :class="[
+                          'w-8 h-8 rounded-full ring-2',
+                          team.is_my_team ? 'ring-primary' : 'ring-cyan-500/50'
+                        ]"
+                        @error="handleImageError"
+                      />
+                      <div v-if="team.is_my_team" class="absolute -top-1 -right-1 w-4 h-4 bg-primary rounded-full flex items-center justify-center">
+                        <span class="text-[8px] text-gray-900 font-bold">★</span>
+                      </div>
+                    </div>
+                    <span :class="[
+                      'font-medium text-sm truncate',
+                      team.is_my_team ? 'text-primary' : 'text-dark-text'
+                    ]">{{ team.name }}</span>
+                  </div>
+                  
+                  <!-- Stacked Bar Container -->
+                  <div class="flex-1 flex items-center">
+                    <div 
+                      class="h-8 bg-dark-border/30 rounded-lg overflow-hidden flex"
+                      :style="{ width: getTeamBarWidth(team) + '%' }"
+                    >
+                      <div 
+                        v-for="pos in baseballPositions.slice(0, 8)"
+                        :key="pos.id"
+                        class="h-full flex items-center justify-center text-xs font-bold text-white transition-all"
+                        :style="{ 
+                          width: getPositionBarWidth(team, pos.id) + '%',
+                          backgroundColor: getBaseballPositionColor(pos.id)
+                        }"
+                        :title="`${pos.abbrev}: ${(team.positionTotals?.[pos.id] || 0).toFixed(1)}`"
+                      >
+                        <span v-if="(team.positionTotals?.[pos.id] || 0) > 50" class="text-[10px]">
+                          {{ (team.positionTotals?.[pos.id] || 0).toFixed(0) }}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <!-- Total -->
+                  <div class="w-20 text-right">
+                    <span :class="[
+                      'font-bold text-lg',
+                      team.is_my_team ? 'text-primary' : 'text-cyan-400'
+                    ]">{{ team.rosTotal?.toFixed(0) || 0 }}</span>
+                  </div>
+                </div>
+                
+                <!-- Mobile: Stacked layout -->
+                <div class="sm:hidden">
+                  <div class="flex items-center gap-2 mb-3">
+                    <div class="w-6 text-center">
+                      <span :class="[
+                        'font-bold text-base',
+                        team.is_my_team ? 'text-primary' : 'text-dark-textMuted'
+                      ]">{{ idx + 1 }}</span>
+                    </div>
+                    <div class="flex items-center gap-2 flex-1 min-w-0">
+                      <img 
+                        :src="team.logo_url || defaultAvatar" 
+                        :alt="team.name"
+                        :class="[
+                          'w-8 h-8 rounded-full ring-2',
+                          team.is_my_team ? 'ring-primary' : 'ring-cyan-500/50'
+                        ]"
+                        @error="handleImageError"
+                      />
+                      <span :class="[
+                        'font-medium text-sm truncate',
+                        team.is_my_team ? 'text-primary' : 'text-dark-text'
+                      ]">{{ team.name }}</span>
+                    </div>
+                    <div class="text-right flex-shrink-0">
+                      <span :class="[
+                        'font-bold text-lg',
+                        team.is_my_team ? 'text-primary' : 'text-cyan-400'
+                      ]">{{ team.rosTotal?.toFixed(0) || 0 }}</span>
+                    </div>
+                  </div>
+                  <div class="ml-8">
+                    <div 
+                      class="h-7 bg-dark-border/30 rounded-lg overflow-hidden flex"
+                      :style="{ width: getTeamBarWidth(team) + '%' }"
+                    >
+                      <div 
+                        v-for="pos in baseballPositions.slice(0, 8)"
+                        :key="pos.id"
+                        class="h-full flex items-center justify-center text-xs font-bold text-white transition-all"
+                        :style="{ 
+                          width: getPositionBarWidth(team, pos.id) + '%',
+                          backgroundColor: getBaseballPositionColor(pos.id)
+                        }"
+                      >
+                      </div>
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
-          <div v-else class="text-center py-8">
+          <div v-else class="text-center py-8 px-4">
             <div class="text-4xl mb-3">📊</div>
             <p class="text-dark-text font-medium">Player Data Not Loaded</p>
             <p class="text-sm text-dark-textMuted mt-2 max-w-md mx-auto">
@@ -372,77 +496,94 @@
         </div>
       </div>
 
-      <!-- Position Strength Rankings -->
+      <!-- Position Strength Rankings Table -->
       <div class="card">
         <div class="card-header">
           <div class="flex items-center gap-2">
             <span class="text-2xl">💪</span>
             <h2 class="card-title">Position Strength Rankings</h2>
           </div>
-          <p class="text-sm text-dark-textMuted mt-1">Compare teams by position group strength</p>
+          <p class="text-sm text-dark-textMuted mt-1">Rankings by points per position (1 = best)</p>
         </div>
         <div class="card-body">
           <div v-if="positionStrengthData.length > 0" class="overflow-x-auto">
             <table class="w-full">
               <thead>
                 <tr class="text-left text-xs text-dark-textMuted uppercase border-b border-dark-border">
-                  <th class="py-3 px-4 cursor-pointer hover:text-primary" @click="sortPositionBy('rank')">
-                    Rank <span v-if="positionSortColumn === 'rank'">{{ positionSortDirection === 'asc' ? '↑' : '↓' }}</span>
-                  </th>
                   <th class="py-3 px-4">Team</th>
                   <th 
                     v-for="pos in baseballPositions.slice(0, 8)" 
                     :key="pos.id"
-                    class="py-3 px-4 text-center cursor-pointer hover:text-primary"
+                    class="py-3 px-4 text-center cursor-pointer hover:text-primary w-16"
                     @click="sortPositionBy(pos.id)"
                   >
-                    {{ pos.abbrev }} <span v-if="positionSortColumn === pos.id">{{ positionSortDirection === 'asc' ? '↑' : '↓' }}</span>
+                    <div class="flex items-center justify-center gap-1">
+                      {{ pos.abbrev }}
+                      <span class="inline-flex flex-col text-[10px] leading-[8px]">
+                        <span :class="positionSortColumn === pos.id && positionSortDirection === 'asc' ? 'text-primary' : 'text-dark-textMuted'">▲</span>
+                        <span :class="positionSortColumn === pos.id && positionSortDirection === 'desc' ? 'text-primary' : 'text-dark-textMuted'">▼</span>
+                      </span>
+                    </div>
                   </th>
-                  <th class="py-3 px-4 text-right cursor-pointer hover:text-primary" @click="sortPositionBy('total')">
-                    Total <span v-if="positionSortColumn === 'total'">{{ positionSortDirection === 'asc' ? '↑' : '↓' }}</span>
+                  <th class="py-3 px-4 text-center cursor-pointer hover:text-primary w-24" @click="sortPositionBy('total')">
+                    <div class="flex items-center justify-center gap-1">
+                      Total
+                      <span class="inline-flex flex-col text-[10px] leading-[8px]">
+                        <span :class="positionSortColumn === 'total' && positionSortDirection === 'asc' ? 'text-primary' : 'text-dark-textMuted'">▲</span>
+                        <span :class="positionSortColumn === 'total' && positionSortDirection === 'desc' ? 'text-primary' : 'text-dark-textMuted'">▼</span>
+                      </span>
+                    </div>
                   </th>
                 </tr>
               </thead>
               <tbody>
                 <tr 
-                  v-for="(team, idx) in sortedPositionStrength" 
+                  v-for="team in sortedPositionStrength" 
                   :key="team.team_key"
-                  class="border-b border-dark-border/50 hover:bg-dark-border/20"
-                  :class="{ 'bg-yellow-500/10 ring-2 ring-yellow-500/50 ring-inset': team.is_my_team }"
+                  :class="[
+                    'transition-colors border-b border-dark-border/30',
+                    team.is_my_team 
+                      ? 'bg-primary/10 hover:bg-primary/15 border-l-4 border-l-primary' 
+                      : 'hover:bg-dark-border/20'
+                  ]"
                 >
                   <td class="py-3 px-4">
-                    <span 
-                      class="w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold"
-                      :class="getRankClass(idx + 1, positionStrengthData.length)"
-                    >
-                      {{ idx + 1 }}
-                    </span>
-                  </td>
-                  <td class="py-3 px-4">
-                    <div class="flex items-center gap-2">
-                      <img 
-                        :src="team.logo_url || defaultAvatar" 
-                        :alt="team.name"
-                        class="w-6 h-6 rounded-full object-cover"
-                        @error="handleImageError"
-                      />
-                      <span class="font-medium text-dark-text text-sm">{{ team.name }}</span>
+                    <div class="flex items-center gap-3">
+                      <div class="relative">
+                        <img 
+                          :src="team.logo_url || defaultAvatar" 
+                          :alt="team.name"
+                          :class="[
+                            'w-10 h-10 rounded-full ring-2',
+                            team.is_my_team ? 'ring-primary' : 'ring-cyan-500'
+                          ]"
+                          @error="handleImageError"
+                        />
+                        <div v-if="team.is_my_team" class="absolute -top-1 -right-1 w-4 h-4 bg-primary rounded-full flex items-center justify-center shadow-lg">
+                          <span class="text-[10px] text-gray-900 font-bold">★</span>
+                        </div>
+                      </div>
+                      <span :class="[
+                        'font-semibold',
+                        team.is_my_team ? 'text-primary' : 'text-dark-text'
+                      ]">{{ team.name }}</span>
                     </div>
                   </td>
-                  <td 
-                    v-for="pos in baseballPositions.slice(0, 8)" 
-                    :key="pos.id"
-                    class="py-3 px-4 text-center"
-                  >
+                  <td v-for="pos in baseballPositions.slice(0, 8)" :key="pos.id" class="py-3 px-4 text-center">
                     <span 
-                      class="text-sm font-medium"
-                      :class="getPositionRankClass(team.rankings[pos.id], positionStrengthData.length)"
+                      :class="getRankClass(team.rankings?.[pos.id] || 99, positionStrengthData.length)" 
+                      class="inline-flex items-center justify-center w-8 h-8 rounded-full font-bold text-sm"
                     >
-                      {{ team.rankings[pos.id] || '-' }}
+                      {{ team.rankings?.[pos.id] || '-' }}
                     </span>
                   </td>
-                  <td class="py-3 px-4 text-right">
-                    <span class="font-bold text-primary">{{ team.rosTotal?.toFixed(0) || '-' }}</span>
+                  <td class="py-3 px-4 text-center">
+                    <span :class="[
+                      'font-semibold text-base',
+                      team.is_my_team ? 'text-primary' : 'text-cyan-400'
+                    ]">
+                      {{ team.rosTotal?.toFixed(0) || 0 }}
+                    </span>
                   </td>
                 </tr>
               </tbody>
@@ -1264,6 +1405,45 @@ function getTopPlayersAtPosition(posId: string): any[] {
       return pos === posId
     })
     .sort((a, b) => (b.total_points || 0) - (a.total_points || 0))
+}
+
+// Get color for baseball position in ROS chart
+function getBaseballPositionColor(position: string): string {
+  const colors: Record<string, string> = {
+    'C': '#ef4444',    // red
+    '1B': '#10b981',   // emerald
+    '2B': '#3b82f6',   // blue
+    '3B': '#f59e0b',   // amber
+    'SS': '#ec4899',   // pink
+    'OF': '#8b5cf6',   // violet
+    'SP': '#06b6d4',   // cyan
+    'RP': '#f97316',   // orange
+    'UTIL': '#6b7280'  // gray
+  }
+  return colors[position] || '#6b7280'
+}
+
+// Get max ROS total across all teams for scaling bar widths
+const maxRosTotal = computed(() => {
+  if (positionStrengthData.value.length === 0) return 0
+  return Math.max(...positionStrengthData.value.map((t: any) => t.rosTotal || 0))
+})
+
+// Get bar width as percentage of max team total
+function getTeamBarWidth(team: any): number {
+  const max = maxRosTotal.value
+  if (max === 0) return 100
+  const teamTotal = team.rosTotal || 0
+  // Minimum 40% width so even lowest teams are visible
+  return Math.max(40, (teamTotal / max) * 100)
+}
+
+// Get width percentage for a position bar segment
+function getPositionBarWidth(team: any, position: string): number {
+  const total = team.rosTotal || 0
+  if (total === 0) return 0
+  const posValue = team.positionTotals?.[position] || 0
+  return (posValue / total) * 100
 }
 
 function sortPositionBy(column: string) {
