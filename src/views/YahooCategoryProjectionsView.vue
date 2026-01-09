@@ -1058,11 +1058,41 @@
                   </div>
                   
                   <!-- Sort Options -->
-                  <div class="flex items-center gap-2 text-xs">
+                  <div class="flex items-center gap-2 text-xs flex-wrap">
                     <span class="text-dark-textMuted">Sort:</span>
                     <button @click="tradeGiveSortBy = 'value'" :class="tradeGiveSortBy === 'value' ? 'bg-yellow-400/20 text-yellow-400' : 'bg-dark-border/30 text-dark-textMuted'" class="px-2 py-1 rounded">Value</button>
-                    <button @click="tradeGiveSortBy = 'name'" :class="tradeGiveSortBy === 'name' ? 'bg-yellow-400/20 text-yellow-400' : 'bg-dark-border/30 text-dark-textMuted'" class="px-2 py-1 rounded">Name</button>
                     <button @click="tradeGiveSortBy = 'position'" :class="tradeGiveSortBy === 'position' ? 'bg-yellow-400/20 text-yellow-400' : 'bg-dark-border/30 text-dark-textMuted'" class="px-2 py-1 rounded">Position</button>
+                    <select 
+                      v-model="tradeGiveSortBy" 
+                      class="bg-dark-border/30 border-0 rounded px-2 py-1 text-xs"
+                      :class="tradeGiveSortBy !== 'value' && tradeGiveSortBy !== 'position' ? 'text-yellow-400 bg-yellow-400/20' : 'text-dark-textMuted'"
+                    >
+                      <option value="" disabled>By Category...</option>
+                      <option v-for="cat in displayCategories" :key="cat.stat_id" :value="cat.stat_id">{{ cat.display_name }}</option>
+                    </select>
+                  </div>
+                  
+                  <!-- Column Headers -->
+                  <div class="flex items-center gap-3 px-2 py-1 text-[10px] uppercase tracking-wider text-dark-textMuted border-b border-dark-border">
+                    <div class="w-9"></div>
+                    <div class="flex-1">Player</div>
+                    <div class="w-16 text-right flex items-center justify-end gap-1">
+                      <span>{{ tradeGiveSortBy !== 'value' && tradeGiveSortBy !== 'position' ? getCategoryName(tradeGiveSortBy) : 'Value' }}</span>
+                      <button @click="showValueExplanation = !showValueExplanation" class="text-dark-textMuted hover:text-yellow-400">
+                        <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                      </button>
+                    </div>
+                  </div>
+                  
+                  <!-- Value Explanation Tooltip -->
+                  <div v-if="showValueExplanation" class="bg-dark-card border border-dark-border rounded-lg p-3 text-xs text-dark-textMuted">
+                    <div class="font-bold text-dark-text mb-1">How Value is Calculated:</div>
+                    <ul class="space-y-1 list-disc list-inside">
+                      <li><span class="text-yellow-400">Category Percentile</span> - Player's rank across all relevant stats</li>
+                      <li><span class="text-yellow-400">Multi-Category Bonus</span> - Rewards players contributing to multiple categories</li>
+                      <li><span class="text-yellow-400">Position Scarcity</span> - C, SS, 2B get +5 for thin talent pools</li>
+                    </ul>
+                    <div class="mt-2 text-[10px]">Value ranges from 0-100. Higher is better.</div>
                   </div>
                   
                   <!-- Player List -->
@@ -1081,8 +1111,13 @@
                         <div class="font-medium text-dark-text text-sm truncate">{{ player.full_name }}</div>
                         <div class="text-xs text-dark-textMuted">{{ player.position }} • {{ player.mlb_team }}</div>
                       </div>
-                      <div class="text-right">
-                        <div class="text-base font-black text-yellow-400">{{ player.overallValue?.toFixed(0) || '-' }}</div>
+                      <div class="w-16 text-right">
+                        <div class="text-base font-black text-yellow-400">
+                          {{ getTradePlayerSortValue(player, tradeGiveSortBy) }}
+                        </div>
+                        <div v-if="tradeGiveSortBy !== 'value' && tradeGiveSortBy !== 'position'" class="text-[10px] text-dark-textMuted">
+                          Val: {{ player.overallValue?.toFixed(0) || '-' }}
+                        </div>
                       </div>
                     </div>
                     <div v-if="filteredMyPlayersForTrade.length === 0" class="text-center py-4 text-dark-textMuted text-sm">
@@ -1160,11 +1195,27 @@
                   </div>
                   
                   <!-- Sort Options -->
-                  <div class="flex items-center gap-2 text-xs">
+                  <div class="flex items-center gap-2 text-xs flex-wrap">
                     <span class="text-dark-textMuted">Sort:</span>
                     <button @click="tradeGetSortBy = 'value'" :class="tradeGetSortBy === 'value' ? 'bg-cyan-400/20 text-cyan-400' : 'bg-dark-border/30 text-dark-textMuted'" class="px-2 py-1 rounded">Value</button>
-                    <button @click="tradeGetSortBy = 'name'" :class="tradeGetSortBy === 'name' ? 'bg-cyan-400/20 text-cyan-400' : 'bg-dark-border/30 text-dark-textMuted'" class="px-2 py-1 rounded">Name</button>
                     <button @click="tradeGetSortBy = 'position'" :class="tradeGetSortBy === 'position' ? 'bg-cyan-400/20 text-cyan-400' : 'bg-dark-border/30 text-dark-textMuted'" class="px-2 py-1 rounded">Position</button>
+                    <select 
+                      v-model="tradeGetSortBy" 
+                      class="bg-dark-border/30 border-0 rounded px-2 py-1 text-xs"
+                      :class="tradeGetSortBy !== 'value' && tradeGetSortBy !== 'position' ? 'text-cyan-400 bg-cyan-400/20' : 'text-dark-textMuted'"
+                    >
+                      <option value="" disabled>By Category...</option>
+                      <option v-for="cat in displayCategories" :key="cat.stat_id" :value="cat.stat_id">{{ cat.display_name }}</option>
+                    </select>
+                  </div>
+                  
+                  <!-- Column Headers -->
+                  <div class="flex items-center gap-3 px-2 py-1 text-[10px] uppercase tracking-wider text-dark-textMuted border-b border-dark-border">
+                    <div class="w-9"></div>
+                    <div class="flex-1">Player</div>
+                    <div class="w-16 text-right">
+                      {{ tradeGetSortBy !== 'value' && tradeGetSortBy !== 'position' ? getCategoryName(tradeGetSortBy) : 'Value' }}
+                    </div>
                   </div>
                   
                   <!-- Player List -->
@@ -1183,8 +1234,13 @@
                         <div class="font-medium text-dark-text text-sm truncate">{{ player.full_name }}</div>
                         <div class="text-xs text-dark-textMuted">{{ player.position }} • {{ player.mlb_team }}</div>
                       </div>
-                      <div class="text-right">
-                        <div class="text-base font-black text-cyan-400">{{ player.overallValue?.toFixed(0) || '-' }}</div>
+                      <div class="w-16 text-right">
+                        <div class="text-base font-black text-cyan-400">
+                          {{ getTradePlayerSortValue(player, tradeGetSortBy) }}
+                        </div>
+                        <div v-if="tradeGetSortBy !== 'value' && tradeGetSortBy !== 'position'" class="text-[10px] text-dark-textMuted">
+                          Val: {{ player.overallValue?.toFixed(0) || '-' }}
+                        </div>
                       </div>
                     </div>
                     <div v-if="filteredPartnerPlayersForTrade.length === 0" class="text-center py-4 text-dark-textMuted text-sm">
@@ -2274,9 +2330,10 @@ const tradeGiveSearch = ref('')
 const tradeGetSearch = ref('')
 const tradeGivePositionFilter = ref<string>('all')
 const tradeGetPositionFilter = ref<string>('all')
-const tradeGiveSortBy = ref<'value' | 'name' | 'position'>('value')
-const tradeGetSortBy = ref<'value' | 'name' | 'position'>('value')
+const tradeGiveSortBy = ref<string>('value')  // 'value', 'position', or a stat_id
+const tradeGetSortBy = ref<string>('value')   // 'value', 'position', or a stat_id
 const tradeAnalysis = ref<any>(null)
+const showValueExplanation = ref(false)
 
 // Position options for trade filter
 const tradePositionOptions = [
@@ -3935,6 +3992,50 @@ const tradeValueDifference = computed(() => {
   return tradeGetTotalValue.value - tradeGiveTotalValue.value
 })
 
+// Helper to get category name for display
+function getCategoryName(statId: string): string {
+  const cat = displayCategories.value.find(c => c.stat_id === statId)
+  return cat?.display_name || statId
+}
+
+// Helper to get sort value for trade player display
+function getTradePlayerSortValue(player: any, sortBy: string): string {
+  if (sortBy === 'value') {
+    return player.overallValue?.toFixed(0) || '-'
+  }
+  if (sortBy === 'position') {
+    return player.position || '-'
+  }
+  // It's a category stat_id
+  const value = player?.stats?.[sortBy]
+  if (value === null || value === undefined) return '-'
+  const cat = displayCategories.value.find(c => c.stat_id === sortBy)
+  if (isRatioStat(cat)) {
+    return parseFloat(value).toFixed(3).replace(/^0/, '')
+  }
+  return Math.round(parseFloat(value)).toString()
+}
+
+// Helper to sort by category stat
+function sortByCategory(players: any[], statId: string): any[] {
+  const cat = displayCategories.value.find(c => c.stat_id === statId)
+  const isLower = isLowerBetterStat(cat)
+  
+  return [...players].sort((a, b) => {
+    const aVal = parseFloat(a.stats?.[statId] || 0)
+    const bVal = parseFloat(b.stats?.[statId] || 0)
+    // For lower-is-better stats (like ERA), sort ascending but put 0s at the end
+    if (isLower) {
+      if (aVal === 0 && bVal === 0) return 0
+      if (aVal === 0) return 1
+      if (bVal === 0) return -1
+      return aVal - bVal
+    }
+    // For higher-is-better stats, sort descending
+    return bVal - aVal
+  })
+}
+
 // My players for trade selection (filtered and sorted)
 const filteredMyPlayersForTrade = computed(() => {
   let myPlayers = allPlayersWithValues.value.filter(p => p.fantasy_team_key === myTeamKey.value)
@@ -3961,12 +4062,15 @@ const filteredMyPlayersForTrade = computed(() => {
   }
   
   // Sort
-  return myPlayers.sort((a, b) => {
-    if (tradeGiveSortBy.value === 'value') return (b.overallValue || 0) - (a.overallValue || 0)
-    if (tradeGiveSortBy.value === 'name') return (a.full_name || '').localeCompare(b.full_name || '')
-    if (tradeGiveSortBy.value === 'position') return (a.position || '').localeCompare(b.position || '')
-    return 0
-  })
+  const sortBy = tradeGiveSortBy.value
+  if (sortBy === 'value') {
+    return myPlayers.sort((a, b) => (b.overallValue || 0) - (a.overallValue || 0))
+  }
+  if (sortBy === 'position') {
+    return myPlayers.sort((a, b) => (a.position || '').localeCompare(b.position || ''))
+  }
+  // Sort by category
+  return sortByCategory(myPlayers, sortBy)
 })
 
 // Trade partner's players (filtered and sorted)
@@ -3996,12 +4100,15 @@ const filteredPartnerPlayersForTrade = computed(() => {
   }
   
   // Sort
-  return partnerPlayers.sort((a, b) => {
-    if (tradeGetSortBy.value === 'value') return (b.overallValue || 0) - (a.overallValue || 0)
-    if (tradeGetSortBy.value === 'name') return (a.full_name || '').localeCompare(b.full_name || '')
-    if (tradeGetSortBy.value === 'position') return (a.position || '').localeCompare(b.position || '')
-    return 0
-  })
+  const sortBy = tradeGetSortBy.value
+  if (sortBy === 'value') {
+    return partnerPlayers.sort((a, b) => (b.overallValue || 0) - (a.overallValue || 0))
+  }
+  if (sortBy === 'position') {
+    return partnerPlayers.sort((a, b) => (a.position || '').localeCompare(b.position || ''))
+  }
+  // Sort by category
+  return sortByCategory(partnerPlayers, sortBy)
 })
 
 function formatPlayerStat(player: any, statId: string): string {
