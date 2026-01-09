@@ -2182,20 +2182,27 @@ async function loadProjections() {
     const teams = await yahooService.getTeams(leagueKey)
     teamsData.value = teams || []
     
-    // Debug: log all teams with their is_my_team flag
+    // Debug: log all teams
     console.log('All teams:', teamsData.value.map(t => ({ name: t.name, team_key: t.team_key, is_my_team: t.is_my_team })))
     
-    const myTeam = teamsData.value.find((t: any) => t.is_owned_by_current_login || t.is_my_team)
-    myTeamKey.value = myTeam?.team_key || null
-    console.log('Teams loaded:', teamsData.value.length, 'My team:', myTeam?.name, 'Key:', myTeamKey.value)
+    // First try to find team with is_my_team flag
+    let myTeam = teamsData.value.find((t: any) => t.is_owned_by_current_login || t.is_my_team)
     
-    // If no team found with is_my_team, try to find by looking at manager login status more carefully
-    if (!myTeamKey.value && teamsData.value.length > 0) {
-      console.warn('No team marked as is_my_team - checking managers...')
-      for (const t of teamsData.value) {
-        console.log(`Team ${t.name} managers:`, JSON.stringify(t.managers || []))
+    // If not found, use getMyTeam which uses Yahoo's special "me" syntax
+    if (!myTeam) {
+      console.log('No is_my_team flag found, trying getMyTeam endpoint...')
+      const myTeamData = await yahooService.getMyTeam(leagueKey)
+      if (myTeamData) {
+        console.log('Found my team via getMyTeam:', myTeamData.name, myTeamData.team_key)
+        myTeam = teamsData.value.find(t => t.team_key === myTeamData.team_key)
+        if (myTeam) {
+          myTeam.is_my_team = true
+        }
       }
     }
+    
+    myTeamKey.value = myTeam?.team_key || null
+    console.log('Teams loaded:', teamsData.value.length, 'My team:', myTeam?.name, 'Key:', myTeamKey.value)
     
     loadingMessage.value = 'Loading player data...'
     const rosteredPlayers = await yahooService.getAllRosteredPlayers(leagueKey)

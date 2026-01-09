@@ -442,19 +442,44 @@ export class YahooFantasyService {
    */
   async getMyTeam(leagueKey: string): Promise<YahooTeam | null> {
     try {
+      // Use Yahoo's special "me" syntax to get current user's team
       const data = await this.apiRequest(
         `/league/${leagueKey}/teams;team_keys=${leagueKey}.t.me?format=json`
       )
       
+      console.log('getMyTeam response:', JSON.stringify(data, null, 2).substring(0, 1000))
+      
       const teamData = data.fantasy_content?.league?.[1]?.teams?.[0]?.team
-      if (!teamData) return null
+      if (!teamData) {
+        console.log('No team data in getMyTeam response')
+        return null
+      }
 
       const teamInfo = teamData[0]
+      
+      // Parse team info array
+      let teamKey = ''
+      let teamId = ''
+      let teamName = ''
+      let managers: any[] = []
+      
+      if (Array.isArray(teamInfo)) {
+        for (const item of teamInfo) {
+          if (item?.team_key) teamKey = item.team_key
+          if (item?.team_id) teamId = item.team_id
+          if (item?.name) teamName = item.name
+          if (item?.managers) managers = item.managers
+        }
+      }
+      
+      console.log('Parsed my team:', { teamKey, teamId, teamName })
+      
       return {
-        team_key: teamInfo[0]?.team_key,
-        team_id: teamInfo[1]?.team_id,
-        name: teamInfo[2]?.name,
-        managers: teamInfo[19]?.managers || []
+        team_key: teamKey,
+        team_id: teamId,
+        name: teamName,
+        managers: managers,
+        is_my_team: true
       }
     } catch (error) {
       console.error('Error fetching my team:', error)
