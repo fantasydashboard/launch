@@ -872,23 +872,36 @@ const teamsWithStats = computed(() => {
   return leagueStore.yahooTeams.map(team => {
     const transactions = transactionCounts.value.get(team.team_key) || 0
     const categoryWins = teamCategoryWins.value.get(team.team_key) || {}
-    
-    // For H2H Categories, wins/losses from Yahoo ARE cumulative category wins
-    // Calculate all-play based on this
-    const totalGames = (team.wins || 0) + (team.losses || 0) + (team.ties || 0)
-    const weeksPlayed = Math.ceil(totalGames / numCategories.value) || 1
     const numTeams = leagueStore.yahooTeams.length
     
-    // Simulate all-play based on category win percentage
-    const catWinPct = (team.wins || 0) / Math.max(1, totalGames)
-    const all_play_wins = Math.round(catWinPct * weeksPlayed * (numTeams - 1))
-    const all_play_losses = weeksPlayed * (numTeams - 1) - all_play_wins
+    let all_play_wins = 0
+    let all_play_losses = 0
+    
+    if (isPointsLeague.value) {
+      // For points leagues, calculate all-play based on points comparison
+      // Count how many teams this team would beat based on points_for
+      const teamPoints = team.points_for || 0
+      for (const opponent of leagueStore.yahooTeams) {
+        if (opponent.team_key === team.team_key) continue
+        const oppPoints = opponent.points_for || 0
+        if (teamPoints > oppPoints) all_play_wins++
+        else if (teamPoints < oppPoints) all_play_losses++
+        // ties split evenly
+      }
+    } else {
+      // For H2H Categories, wins/losses from Yahoo ARE cumulative category wins
+      // Calculate all-play based on category win percentage
+      const totalGames = (team.wins || 0) + (team.losses || 0) + (team.ties || 0)
+      const weeksPlayed = Math.ceil(totalGames / numCategories.value) || 1
+      
+      const catWinPct = (team.wins || 0) / Math.max(1, totalGames)
+      all_play_wins = Math.round(catWinPct * weeksPlayed * (numTeams - 1))
+      all_play_losses = weeksPlayed * (numTeams - 1) - all_play_wins
+    }
     
     // Calculate luck score based on all-play vs actual matchup wins
-    // For H2H categories: actual matchup record is in standings (rank)
-    // Use team rank to estimate matchup wins
-    const matchupWins = team.matchup_wins ?? 0
-    const matchupLosses = team.matchup_losses ?? 0
+    const matchupWins = team.wins ?? 0
+    const matchupLosses = team.losses ?? 0
     const totalMatchups = matchupWins + matchupLosses
     const expectedMatchupWinPct = totalMatchups > 0 ? all_play_wins / Math.max(1, all_play_wins + all_play_losses) : 0.5
     const expectedMatchupWins = expectedMatchupWinPct * totalMatchups
@@ -1101,7 +1114,7 @@ const leaderModalValue = computed(() => {
 
 const leaderModalUnit = computed(() => {
   if (leaderModalType.value === 'bestRecord') return 'Win %'
-  if (leaderModalType.value === 'hottest' || leaderModalType.value === 'coldest') return 'Cats (Last 3)'
+  if (leaderModalType.value === 'hottest' || leaderModalType.value === 'coldest') return isPointsLeague.value ? 'Wins (Last 3)' : 'Cats (Last 3)'
   if (leaderModalType.value === 'mostCatWins') return isPointsLeague.value ? 'Total Points' : 'Category Wins'
   if (leaderModalType.value === 'bestAllPlay') return 'All-Play Wins'
   if (leaderModalType.value === 'luckiest' || leaderModalType.value === 'unluckiest') return 'Luck Score'
@@ -1183,14 +1196,27 @@ const last3WeeksWins = computed(() => {
       return
     }
     
-    let totalWins = 0
-    last3Weeks.forEach(week => {
-      const weekResult = teamMatchups.get(week)
-      if (weekResult) {
-        totalWins += weekResult.catWins || 0
-      }
-    })
-    result.set(team.team_key, totalWins)
+    if (isPointsLeague.value) {
+      // For points leagues, count wins in last 3 weeks
+      let totalWins = 0
+      last3Weeks.forEach(week => {
+        const weekResult = teamMatchups.get(week)
+        if (weekResult?.won) {
+          totalWins++
+        }
+      })
+      result.set(team.team_key, totalWins)
+    } else {
+      // For category leagues, sum category wins in last 3 weeks
+      let totalWins = 0
+      last3Weeks.forEach(week => {
+        const weekResult = teamMatchups.get(week)
+        if (weekResult) {
+          totalWins += weekResult.catWins || 0
+        }
+      })
+      result.set(team.team_key, totalWins)
+    }
   })
   
   return result
@@ -1202,7 +1228,7 @@ const quickStats = computed(() => {
   const mostActive = [...teams].sort((a, b) => (b.transactions || 0) - (a.transactions || 0))[0]
   const leastActive = [...teams].sort((a, b) => (a.transactions || 0) - (b.transactions || 0))[0]
   
-  // Hottest/Coldest based on last 3 weeks category wins
+  // Hottest/Coldest based on last 3 weeks performance
   const teamsWithLast3 = teams.map(t => ({
     ...t,
     last3Wins: last3WeeksWins.value.get(t.team_key) || 0
@@ -1210,9 +1236,13 @@ const quickStats = computed(() => {
   const hottest = [...teamsWithLast3].sort((a, b) => b.last3Wins - a.last3Wins)[0]
   const coldest = [...teamsWithLast3].sort((a, b) => a.last3Wins - b.last3Wins)[0]
   
+  // For points leagues, show "X wins" in last 3 weeks
+  // For category leagues, show "X cat wins" in last 3 weeks
+  const winsLabel = isPointsLeague.value ? 'wins' : 'cat wins'
+  
   return [
-    { icon: '🔥', label: 'Hottest', team: hottest, value: hottest ? `${hottest.last3Wins} wins` : '-', valueClass: 'text-orange-400', type: 'hottest' },
-    { icon: '❄️', label: 'Coldest', team: coldest, value: coldest ? `${coldest.last3Wins} wins` : '-', valueClass: 'text-cyan-400', type: 'coldest' },
+    { icon: '🔥', label: 'Hottest', team: hottest, value: hottest ? `${hottest.last3Wins} ${winsLabel}` : '-', valueClass: 'text-orange-400', type: 'hottest' },
+    { icon: '❄️', label: 'Coldest', team: coldest, value: coldest ? `${coldest.last3Wins} ${winsLabel}` : '-', valueClass: 'text-cyan-400', type: 'coldest' },
     { icon: '📈', label: 'Most Moves', team: mostActive, value: mostActive?.transactions?.toString() || '-', valueClass: 'text-blue-400', type: 'mostMoves' },
     { icon: '🪨', label: 'Fewest Moves', team: leastActive, value: leastActive?.transactions?.toString() || '-', valueClass: 'text-purple-400', type: 'fewestMoves' }
   ]
@@ -1452,32 +1482,58 @@ function getRankClass(rank: number) {
 }
 
 function getRecordClass(team: any) {
-  const winPct = (team.wins || 0) / Math.max(1, (team.wins || 0) + (team.losses || 0))
-  if (winPct >= 0.6) return 'text-green-400'
-  if (winPct <= 0.4) return 'text-red-400'
+  const teams = teamsWithStats.value
+  if (!teams || teams.length === 0) return 'text-dark-text'
+  
+  // Sort by win percentage
+  const sorted = [...teams].sort((a, b) => {
+    const aWinPct = (a.wins || 0) / Math.max(1, (a.wins || 0) + (a.losses || 0))
+    const bWinPct = (b.wins || 0) / Math.max(1, (b.wins || 0) + (b.losses || 0))
+    return bWinPct - aWinPct
+  })
+  
+  if (team.team_key === sorted[0]?.team_key) return 'text-green-400'
+  if (team.team_key === sorted[sorted.length - 1]?.team_key) return 'text-red-400'
   return 'text-dark-text'
 }
 
 function getAllPlayClass(team: any) {
-  const winPct = team.all_play_wins / Math.max(1, team.all_play_wins + team.all_play_losses)
-  if (winPct >= 0.6) return 'text-green-400'
-  if (winPct <= 0.4) return 'text-red-400'
+  const teams = teamsWithStats.value
+  if (!teams || teams.length === 0) return 'text-dark-textMuted'
+  
+  // Sort by all-play win percentage
+  const sorted = [...teams].sort((a, b) => {
+    const aWinPct = a.all_play_wins / Math.max(1, a.all_play_wins + a.all_play_losses)
+    const bWinPct = b.all_play_wins / Math.max(1, b.all_play_wins + b.all_play_losses)
+    return bWinPct - aWinPct
+  })
+  
+  if (team.team_key === sorted[0]?.team_key) return 'text-green-400'
+  if (team.team_key === sorted[sorted.length - 1]?.team_key) return 'text-red-400'
   return 'text-dark-textMuted'
 }
 
 function getPointsForClass(team: any) {
   const teams = teamsWithStats.value
-  const avgPF = teams.reduce((sum, t) => sum + (t.points_for || 0), 0) / Math.max(1, teams.length)
-  if ((team.points_for || 0) > avgPF * 1.1) return 'text-green-400'
-  if ((team.points_for || 0) < avgPF * 0.9) return 'text-red-400'
+  if (!teams || teams.length === 0) return 'text-dark-text'
+  
+  // Sort by points for (highest first)
+  const sorted = [...teams].sort((a, b) => (b.points_for || 0) - (a.points_for || 0))
+  
+  if (team.team_key === sorted[0]?.team_key) return 'text-green-400'
+  if (team.team_key === sorted[sorted.length - 1]?.team_key) return 'text-red-400'
   return 'text-dark-text'
 }
 
 function getPointsAgainstClass(team: any) {
   const teams = teamsWithStats.value
-  const avgPA = teams.reduce((sum, t) => sum + (t.points_against || 0), 0) / Math.max(1, teams.length)
-  if ((team.points_against || 0) < avgPA * 0.9) return 'text-green-400'
-  if ((team.points_against || 0) > avgPA * 1.1) return 'text-red-400'
+  if (!teams || teams.length === 0) return 'text-dark-textMuted'
+  
+  // Sort by points against (lowest first is best)
+  const sorted = [...teams].sort((a, b) => (a.points_against || 0) - (b.points_against || 0))
+  
+  if (team.team_key === sorted[0]?.team_key) return 'text-green-400'
+  if (team.team_key === sorted[sorted.length - 1]?.team_key) return 'text-red-400'
   return 'text-dark-textMuted'
 }
 
@@ -1719,12 +1775,21 @@ async function downloadStandings() {
     
     // Generate standings row - matching power rankings style
     const generateStandingsRow = (team: any, rank: number) => {
-      // Category record (wins-losses-ties)
-      const catRecord = `${team.wins || 0}-${team.losses || 0}-${team.ties || 0}`
+      // Record (wins-losses-ties)
+      const record = `${team.wins || 0}-${team.losses || 0}${(team.ties || 0) > 0 ? `-${team.ties}` : ''}`
       
-      // Calculate category win percentage (this is what Yahoo uses to determine standings)
-      const totalCats = (team.wins || 0) + (team.losses || 0) + (team.ties || 0)
-      const catWinPct = totalCats > 0 ? ((team.wins || 0) / totalCats * 100).toFixed(0) : '0'
+      // For points leagues, show total points; for category leagues, show cat win %
+      let statValue: string
+      let statLabel: string
+      
+      if (isPointsLeague.value) {
+        statValue = (team.points_for || 0).toFixed(1)
+        statLabel = 'Points'
+      } else {
+        const totalCats = (team.wins || 0) + (team.losses || 0) + (team.ties || 0)
+        statValue = totalCats > 0 ? ((team.wins || 0) / totalCats * 100).toFixed(0) + '%' : '0%'
+        statLabel = 'Cat Win %'
+      }
       
       // Conditional color: green for top third, yellow for middle, red for bottom third
       let pctColor = '#f59e0b' // yellow default (middle)
@@ -1757,12 +1822,12 @@ async function downloadStandings() {
         <!-- Team Info with trophy -->
         <div style="flex: 1; min-width: 0; padding-top: 16px;">
           <div style="font-size: 14px; font-weight: 700; color: #f7f7ff; white-space: nowrap; overflow: visible; line-height: 1.2; display: flex; align-items: center;">${team.name}${trophyIcon}</div>
-          <div style="font-size: 11px; color: #9ca3af; line-height: 1.2; margin-top: 4px;">${catRecord}</div>
+          <div style="font-size: 11px; color: #9ca3af; line-height: 1.2; margin-top: 4px;">${record}</div>
         </div>
-        <!-- Category Win Percentage - big and colorful with label -->
+        <!-- Stat Value - big and colorful with label -->
         <div style="width: 65px; flex-shrink: 0; text-align: center; padding-top: 14px;">
-          <div style="font-size: 22px; font-weight: bold; color: ${pctColor}; line-height: 1;">${catWinPct}%</div>
-          <div style="font-size: 9px; color: #6b7280; margin-top: 2px; text-transform: uppercase;">Cat Win %</div>
+          <div style="font-size: 22px; font-weight: bold; color: ${pctColor}; line-height: 1;">${statValue}</div>
+          <div style="font-size: 9px; color: #6b7280; margin-top: 2px; text-transform: uppercase;">${statLabel}</div>
         </div>
       </div>
     `}
@@ -1854,11 +1919,9 @@ async function downloadStandings() {
           animations: { enabled: false }
         },
         series: trendSeries,
-        colors: sortedTeams.value.map((team, idx) => 
-          team.is_my_team ? '#F5C451' : getTeamColor(idx)
-        ),
+        colors: sortedTeams.value.map((team, idx) => getTeamColor(idx)),
         stroke: {
-          width: sortedTeams.value.map(team => team.is_my_team ? 4 : 2),
+          width: 2,
           curve: 'smooth'
         },
         markers: {
@@ -2441,7 +2504,7 @@ async function downloadTeamDetailImage() {
 
 // Load league settings
 async function loadLeagueSettings() {
-  const leagueKey = leagueStore.activeLeagueId
+  const leagueKey = effectiveLeagueKey.value || leagueStore.activeLeagueId
   if (!leagueKey) return
   
   try {
@@ -2619,6 +2682,12 @@ async function loadAllMatchups() {
     } else {
       // For points leagues, load actual matchup data
       const standings = new Map<number, any[]>()
+      const allMatchupResults = new Map<string, Map<number, any>>()
+      
+      // Initialize matchup results map for each team
+      leagueStore.yahooTeams.forEach(t => {
+        allMatchupResults.set(t.team_key, new Map())
+      })
       
       for (let week = startWeek; week <= endWeek; week++) {
         chartLoadProgress.value = `Week ${week}/${endWeek}`
@@ -2629,17 +2698,20 @@ async function loadAllMatchups() {
           
           const cumulativeWins = new Map<string, number>()
           const cumulativeLosses = new Map<string, number>()
+          const cumulativePoints = new Map<string, number>()
           
           if (week > startWeek) {
             const prevStandings = standings.get(week - 1) || []
             prevStandings.forEach(t => {
               cumulativeWins.set(t.team_key, t.wins || 0)
               cumulativeLosses.set(t.team_key, t.losses || 0)
+              cumulativePoints.set(t.team_key, t.points_for || 0)
             })
           } else {
             leagueStore.yahooTeams.forEach(t => {
               cumulativeWins.set(t.team_key, 0)
               cumulativeLosses.set(t.team_key, 0)
+              cumulativePoints.set(t.team_key, 0)
             })
           }
           
@@ -2647,6 +2719,33 @@ async function loadAllMatchups() {
             if (!matchup.teams || matchup.teams.length < 2) continue
             const t1 = matchup.teams[0]
             const t2 = matchup.teams[1]
+            
+            // Get points for this week
+            const t1Points = parseFloat(t1.team_points?.total || t1.points || '0')
+            const t2Points = parseFloat(t2.team_points?.total || t2.points || '0')
+            
+            // Store matchup results for each team
+            const t1Results = allMatchupResults.get(t1.team_key)
+            const t2Results = allMatchupResults.get(t2.team_key)
+            
+            if (t1Results) {
+              t1Results.set(week, {
+                points: t1Points,
+                oppPoints: t2Points,
+                won: matchup.winner_team_key === t1.team_key
+              })
+            }
+            if (t2Results) {
+              t2Results.set(week, {
+                points: t2Points,
+                oppPoints: t1Points,
+                won: matchup.winner_team_key === t2.team_key
+              })
+            }
+            
+            // Track cumulative points
+            cumulativePoints.set(t1.team_key, (cumulativePoints.get(t1.team_key) || 0) + t1Points)
+            cumulativePoints.set(t2.team_key, (cumulativePoints.get(t2.team_key) || 0) + t2Points)
             
             if (matchup.winner_team_key) {
               if (matchup.winner_team_key === t1.team_key) {
@@ -2663,7 +2762,8 @@ async function loadAllMatchups() {
             team_key: t.team_key,
             name: t.name,
             wins: cumulativeWins.get(t.team_key) || 0,
-            losses: cumulativeLosses.get(t.team_key) || 0
+            losses: cumulativeLosses.get(t.team_key) || 0,
+            points_for: cumulativePoints.get(t.team_key) || 0
           })).sort((a, b) => {
             const aWinPct = a.wins / Math.max(1, a.wins + a.losses)
             const bWinPct = b.wins / Math.max(1, b.wins + b.losses)
@@ -2683,6 +2783,7 @@ async function loadAllMatchups() {
       }
       
       weeklyStandings.value = standings
+      weeklyMatchupResults.value = allMatchupResults
     }
     
     buildChart()
@@ -2754,9 +2855,11 @@ function generateStandingsProgression(startWeek: number, endWeek: number) {
 
 // Load all data
 async function loadAllData() {
-  const leagueKey = leagueStore.activeLeagueId
+  // Use effectiveLeagueKey which might be the previous season if current has no data
+  const leagueKey = effectiveLeagueKey.value || leagueStore.activeLeagueId
   if (!leagueKey || leagueStore.activePlatform !== 'yahoo') return
   
+  console.log(`loadAllData using league key: ${leagueKey}`)
   isLoading.value = true
   
   try {
@@ -2767,6 +2870,7 @@ async function loadAllData() {
     // Fetch transaction counts
     const transCounts = await yahooService.getTransactionCounts(leagueKey)
     transactionCounts.value = transCounts
+    console.log(`Loaded transaction counts for ${transCounts.size} teams`)
     
     // Distribute category wins proportionally
     if (!isPointsLeague.value && displayCategories.value.length > 0) {
@@ -2786,6 +2890,14 @@ async function loadAllData() {
 
 watch(() => leagueStore.activeLeagueId, () => {
   if (leagueStore.activePlatform === 'yahoo') loadAllData()
+})
+
+// Watch for currentLeague changes (happens when fallback to previous season occurs)
+watch(() => leagueStore.currentLeague?.league_id, (newKey, oldKey) => {
+  if (newKey && newKey !== oldKey && leagueStore.activePlatform === 'yahoo') {
+    console.log(`Current league changed from ${oldKey} to ${newKey}, reloading data...`)
+    loadAllData()
+  }
 })
 
 watch(() => leagueStore.yahooTeams, () => {
