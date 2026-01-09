@@ -9,8 +9,19 @@
       </div>
     </div>
 
-    <!-- Settings Gear at Top -->
-    <div class="flex justify-end">
+    <!-- Settings Gear and Refresh at Top -->
+    <div class="flex justify-end gap-2">
+      <button 
+        @click="refreshData" 
+        class="p-2 rounded-lg bg-dark-card border border-dark-border hover:border-primary transition-colors"
+        :class="{ 'animate-spin': isRefreshing }"
+        :disabled="isRefreshing"
+        title="Clear cache and refresh data"
+      >
+        <svg class="w-6 h-6 text-dark-textMuted hover:text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+        </svg>
+      </button>
       <router-link to="/settings" class="p-2 rounded-lg bg-dark-card border border-dark-border hover:border-primary transition-colors">
         <svg class="w-6 h-6 text-dark-textMuted hover:text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
@@ -547,6 +558,7 @@ const authStore = useAuthStore()
 
 const isLoading = ref(false)
 const isLoadingChart = ref(false)
+const isRefreshing = ref(false)
 const isGeneratingDownload = ref(false)
 const isGeneratingLeaderDownload = ref(false)
 const chartLoadProgress = ref('')
@@ -1704,6 +1716,31 @@ function generateStandingsProgression(startWeek: number, endWeek: number) {
 }
 
 // Load all data
+// Clear cache and force refresh data
+async function refreshData() {
+  const leagueKey = leagueStore.activeLeagueId
+  if (!leagueKey) return
+  
+  isRefreshing.value = true
+  
+  try {
+    // Clear cache for this league
+    yahooService.clearLeagueCache(leagueKey)
+    
+    // Force reload from league store (which will re-fetch from API)
+    await leagueStore.loadYahooLeague(leagueKey)
+    
+    // Reload our local data
+    await loadAllData()
+    
+    console.log('Data refreshed successfully')
+  } catch (e) {
+    console.error('Error refreshing data:', e)
+  } finally {
+    isRefreshing.value = false
+  }
+}
+
 async function loadAllData() {
   const leagueKey = leagueStore.activeLeagueId
   if (!leagueKey || leagueStore.activePlatform !== 'yahoo') return
@@ -1714,6 +1751,26 @@ async function loadAllData() {
     if (authStore.user?.id) await yahooService.initialize(authStore.user.id)
     
     await loadLeagueSettings()
+    
+    // Debug: Log what teams we have
+    console.log('=== DEBUG: loadAllData ===')
+    console.log('League Key:', leagueKey)
+    console.log('Yahoo Teams count:', leagueStore.yahooTeams.length)
+    if (leagueStore.yahooTeams.length > 0) {
+      const sampleTeam = leagueStore.yahooTeams[0]
+      console.log('Sample team data:', {
+        name: sampleTeam.name,
+        wins: sampleTeam.wins,
+        losses: sampleTeam.losses,
+        points_for: sampleTeam.points_for,
+        points_against: sampleTeam.points_against,
+        rank: sampleTeam.rank
+      })
+    }
+    console.log('Is Points League:', isPointsLeague.value)
+    console.log('Scoring Type:', scoringType.value)
+    console.log('Current Season:', currentSeason.value)
+    console.log('=== END DEBUG ===')
     
     // Fetch transaction counts
     const transCounts = await yahooService.getTransactionCounts(leagueKey)

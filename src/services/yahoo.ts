@@ -359,24 +359,45 @@ export class YahooFantasyService {
     // Check cache first
     const cached = cache.get<YahooTeam[]>(CACHE_KEYS.YAHOO_TEAMS, leagueKey)
     if (cached) {
-      console.log(`[Cache HIT] Teams for ${leagueKey}`)
+      console.log(`[Cache HIT] Teams for ${leagueKey}`, cached.length > 0 ? `First team: ${cached[0].name}, wins=${cached[0].wins}, pf=${cached[0].points_for}` : 'empty')
       return cached
     }
     
+    console.log(`[Cache MISS] Fetching teams for ${leagueKey}`)
     const data = await this.apiRequest(
       `/league/${leagueKey}/teams;out=standings?format=json`
     )
+    
+    // Log raw response structure for debugging
+    console.log('Raw teams API response keys:', Object.keys(data.fantasy_content?.league?.[1] || {}))
 
     const teams: YahooTeam[] = []
     const teamsData = data.fantasy_content?.league?.[1]?.teams
 
-    if (!teamsData) return teams
+    if (!teamsData) {
+      console.log('No teamsData found in response. Full league data:', JSON.stringify(data.fantasy_content?.league).substring(0, 500))
+      return teams
+    }
 
     for (const teamWrapper of Object.values(teamsData) as any[]) {
       if (typeof teamWrapper !== 'object' || !teamWrapper.team) continue
       
       const teamInfo = teamWrapper.team[0]
-      const teamStandings = teamWrapper.team[1]?.team_standings
+      const teamArray = teamWrapper.team
+      
+      // Search for team_standings and team_points in ALL elements (not just index 1)
+      let teamStandings: any = null
+      let teamPoints: any = null
+      
+      for (let i = 1; i < teamArray.length; i++) {
+        const element = teamArray[i]
+        if (element?.team_standings) {
+          teamStandings = element.team_standings
+        }
+        if (element?.team_points) {
+          teamPoints = element.team_points
+        }
+      }
       
       // Check if this is the current user's team - search for managers more robustly
       let managers: any[] = []
@@ -415,18 +436,25 @@ export class YahooFantasyService {
         }
       }
       
+      // Parse points - try team_standings first, then team_points
+      const points_for = parseFloat(teamStandings?.points_for || teamPoints?.total || '0')
+      const points_against = parseFloat(teamStandings?.points_against || '0')
+      
+      const teamName = teamInfo[2]?.name || 'Unknown'
+      console.log(`getTeams: ${teamName} - wins=${teamStandings?.outcome_totals?.wins}, pf=${points_for}, pa=${points_against}`)
+      
       teams.push({
         team_key: teamInfo[0]?.team_key,
         team_id: teamInfo[1]?.team_id,
-        name: teamInfo[2]?.name,
+        name: teamName,
         logo_url: logoUrl,
         managers: managers,
         is_my_team: isMyTeam,
         wins: parseInt(teamStandings?.outcome_totals?.wins || '0'),
         losses: parseInt(teamStandings?.outcome_totals?.losses || '0'),
         ties: parseInt(teamStandings?.outcome_totals?.ties || '0'),
-        points_for: parseFloat(teamStandings?.points_for || '0'),
-        points_against: parseFloat(teamStandings?.points_against || '0'),
+        points_for,
+        points_against,
         rank: parseInt(teamStandings?.rank || '0')
       })
     }
@@ -1358,6 +1386,33 @@ export class YahooFantasyService {
       console.error('Error fetching league settings:', e)
       return null
     }
+  }
+  
+  /**
+   * Clear all Yahoo-related caches for a specific league
+   * Useful for forcing a refresh of data
+   */
+  clearLeagueCache(leagueKey: string): void {
+    console.log(`Clearing cache for league: ${leagueKey}`)
+    cache.clear(CACHE_KEYS.YAHOO_TEAMS, leagueKey)
+    cache.clear(CACHE_KEYS.YAHOO_STANDINGS, leagueKey)
+    cache.clear(CACHE_KEYS.YAHOO_METADATA, leagueKey)
+    cache.clear(CACHE_KEYS.YAHOO_SETTINGS, leagueKey)
+    // Clear matchups for all weeks
+    for (let week = 1; week <= 30; week++) {
+      cache.clear(CACHE_KEYS.YAHOO_MATCHUPS, leagueKey, week)
+      cache.clear(CACHE_KEYS.YAHOO_CATEGORY_MATCHUPS, leagueKey, week)
+    }
+    console.log('Cache cleared for league')
+  }
+  
+  /**
+   * Clear all Yahoo caches
+   */
+  clearAllCache(): void {
+    console.log('Clearing all Yahoo caches')
+    cache.clearAll()
+    console.log('All caches cleared')
   }
 }
 
