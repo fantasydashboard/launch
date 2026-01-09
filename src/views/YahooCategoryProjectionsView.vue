@@ -1006,52 +1006,75 @@
                 <div class="flex items-center gap-2">
                   <span class="text-xl">📤</span>
                   <h3 class="text-lg font-bold text-yellow-400">You Give</h3>
+                  <span v-if="tradeGivePlayers.length > 0" class="ml-2 px-2 py-0.5 bg-yellow-400/20 rounded-full text-xs font-bold text-yellow-400">
+                    {{ tradeGivePlayers.length }} player{{ tradeGivePlayers.length > 1 ? 's' : '' }}
+                  </span>
                 </div>
-                <span class="text-sm text-dark-textMuted">{{ myTeamName }}</span>
+                <div class="flex items-center gap-2">
+                  <span class="text-sm text-dark-textMuted">{{ myTeamName }}</span>
+                  <span v-if="tradeGivePlayers.length > 0" class="text-sm font-bold text-yellow-400">
+                    Total: {{ tradeGiveTotalValue.toFixed(0) }}
+                  </span>
+                </div>
               </div>
               <div class="card-body">
-                <!-- Selected Player to Give -->
-                <div v-if="tradeGivePlayer" class="bg-yellow-500/10 rounded-xl p-4 border border-yellow-500/30 mb-4">
-                  <div class="flex items-center gap-4">
-                    <div class="w-14 h-14 rounded-full bg-dark-border overflow-hidden ring-2 ring-yellow-400">
-                      <img :src="tradeGivePlayer.headshot || defaultHeadshot" :alt="tradeGivePlayer.full_name" class="w-full h-full object-cover" @error="handleImageError" />
-                    </div>
-                    <div class="flex-1">
-                      <div class="font-bold text-yellow-400">{{ tradeGivePlayer.full_name }}</div>
-                      <div class="text-sm text-dark-textMuted">{{ tradeGivePlayer.position }} • {{ tradeGivePlayer.mlb_team }}</div>
-                    </div>
-                    <button @click="tradeGivePlayer = null" class="p-2 hover:bg-dark-border/50 rounded-lg">
-                      <svg class="w-5 h-5 text-dark-textMuted" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
-                    </button>
-                  </div>
-                  <!-- Player Key Stats -->
-                  <div class="mt-3 grid grid-cols-4 gap-2">
-                    <div v-for="cat in displayCategories.slice(0, 4)" :key="cat.stat_id" class="text-center bg-dark-border/30 rounded-lg py-2">
-                      <div class="text-sm font-bold text-dark-text">{{ formatPlayerStat(tradeGivePlayer, cat.stat_id) }}</div>
-                      <div class="text-[10px] text-dark-textMuted">{{ cat.display_name }}</div>
+                <!-- Selected Players to Give -->
+                <div v-if="tradeGivePlayers.length > 0" class="space-y-2 mb-4">
+                  <div v-for="player in tradeGivePlayers" :key="player.player_key" class="bg-yellow-500/10 rounded-xl p-3 border border-yellow-500/30">
+                    <div class="flex items-center gap-3">
+                      <div class="w-10 h-10 rounded-full bg-dark-border overflow-hidden ring-2 ring-yellow-400">
+                        <img :src="player.headshot || defaultHeadshot" :alt="player.full_name" class="w-full h-full object-cover" @error="handleImageError" />
+                      </div>
+                      <div class="flex-1 min-w-0">
+                        <div class="font-bold text-yellow-400 text-sm truncate">{{ player.full_name }}</div>
+                        <div class="text-xs text-dark-textMuted">{{ player.position }} • {{ player.mlb_team }}</div>
+                      </div>
+                      <div class="text-right mr-2">
+                        <div class="text-lg font-black text-yellow-400">{{ player.overallValue?.toFixed(0) || '-' }}</div>
+                        <div class="text-[10px] text-dark-textMuted">Value</div>
+                      </div>
+                      <button @click="removeGivePlayer(player)" class="p-1.5 hover:bg-dark-border/50 rounded-lg">
+                        <svg class="w-4 h-4 text-dark-textMuted" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
+                      </button>
                     </div>
                   </div>
                 </div>
 
-                <!-- Player Selection -->
-                <div v-if="!tradeGivePlayer">
-                  <div class="text-sm text-dark-textMuted mb-3">Select a player from your roster:</div>
-                  <div class="relative mb-3">
+                <!-- Player Selection Controls -->
+                <div class="space-y-3">
+                  <div class="text-sm text-dark-textMuted">{{ tradeGivePlayers.length > 0 ? 'Add another player:' : 'Select players from your roster:' }}</div>
+                  
+                  <!-- Search & Filters -->
+                  <div class="flex gap-2">
                     <input 
                       v-model="tradeGiveSearch" 
                       type="text" 
-                      placeholder="Search your players..." 
-                      class="w-full bg-dark-border/50 border border-dark-border rounded-lg px-4 py-2 text-dark-text placeholder-dark-textMuted text-sm"
+                      placeholder="Search..." 
+                      class="flex-1 bg-dark-border/50 border border-dark-border rounded-lg px-3 py-2 text-dark-text placeholder-dark-textMuted text-sm"
                     />
+                    <select v-model="tradeGivePositionFilter" class="bg-dark-border border border-dark-border rounded-lg px-2 py-2 text-dark-text text-sm">
+                      <option v-for="pos in tradePositionOptions" :key="pos.id" :value="pos.id">{{ pos.label }}</option>
+                    </select>
                   </div>
+                  
+                  <!-- Sort Options -->
+                  <div class="flex items-center gap-2 text-xs">
+                    <span class="text-dark-textMuted">Sort:</span>
+                    <button @click="tradeGiveSortBy = 'value'" :class="tradeGiveSortBy === 'value' ? 'bg-yellow-400/20 text-yellow-400' : 'bg-dark-border/30 text-dark-textMuted'" class="px-2 py-1 rounded">Value</button>
+                    <button @click="tradeGiveSortBy = 'name'" :class="tradeGiveSortBy === 'name' ? 'bg-yellow-400/20 text-yellow-400' : 'bg-dark-border/30 text-dark-textMuted'" class="px-2 py-1 rounded">Name</button>
+                    <button @click="tradeGiveSortBy = 'position'" :class="tradeGiveSortBy === 'position' ? 'bg-yellow-400/20 text-yellow-400' : 'bg-dark-border/30 text-dark-textMuted'" class="px-2 py-1 rounded">Position</button>
+                  </div>
+                  
+                  <!-- Player List -->
                   <div class="space-y-1 max-h-64 overflow-y-auto">
                     <div 
                       v-for="player in filteredMyPlayersForTrade" 
                       :key="player.player_key"
-                      @click="tradeGivePlayer = player"
+                      @click="addGivePlayer(player)"
                       class="flex items-center gap-3 p-2 rounded-lg cursor-pointer hover:bg-yellow-400/10 transition-colors"
+                      :class="isPlayerInGive(player) ? 'opacity-40 pointer-events-none' : ''"
                     >
-                      <div class="w-10 h-10 rounded-full bg-dark-border overflow-hidden">
+                      <div class="w-9 h-9 rounded-full bg-dark-border overflow-hidden">
                         <img :src="player.headshot || defaultHeadshot" :alt="player.full_name" class="w-full h-full object-cover" @error="handleImageError" />
                       </div>
                       <div class="flex-1 min-w-0">
@@ -1059,8 +1082,7 @@
                         <div class="text-xs text-dark-textMuted">{{ player.position }} • {{ player.mlb_team }}</div>
                       </div>
                       <div class="text-right">
-                        <div class="text-sm font-bold text-yellow-400">{{ player.overallValue?.toFixed(0) || '-' }}</div>
-                        <div class="text-[10px] text-dark-textMuted">Value</div>
+                        <div class="text-base font-black text-yellow-400">{{ player.overallValue?.toFixed(0) || '-' }}</div>
                       </div>
                     </div>
                     <div v-if="filteredMyPlayersForTrade.length === 0" class="text-center py-4 text-dark-textMuted text-sm">
@@ -1077,61 +1099,84 @@
                 <div class="flex items-center gap-2">
                   <span class="text-xl">📥</span>
                   <h3 class="text-lg font-bold text-cyan-400">You Get</h3>
+                  <span v-if="tradeGetPlayers.length > 0" class="ml-2 px-2 py-0.5 bg-cyan-400/20 rounded-full text-xs font-bold text-cyan-400">
+                    {{ tradeGetPlayers.length }} player{{ tradeGetPlayers.length > 1 ? 's' : '' }}
+                  </span>
                 </div>
-                <select 
-                  v-model="tradePartnerKey" 
-                  class="select bg-dark-border border-dark-border text-dark-text px-3 py-1.5 rounded-lg text-sm"
-                  @change="tradeGetPlayer = null"
-                >
-                  <option value="">Select trade partner...</option>
-                  <option v-for="team in otherTeams" :key="team.team_key" :value="team.team_key">
-                    {{ team.name }}
-                  </option>
-                </select>
+                <div class="flex items-center gap-2">
+                  <select 
+                    v-model="tradePartnerKey" 
+                    class="select bg-dark-border border-dark-border text-dark-text px-3 py-1.5 rounded-lg text-sm"
+                    @change="tradeGetPlayers = []"
+                  >
+                    <option value="">Select team...</option>
+                    <option v-for="team in otherTeams" :key="team.team_key" :value="team.team_key">
+                      {{ team.name }}
+                    </option>
+                  </select>
+                  <span v-if="tradeGetPlayers.length > 0" class="text-sm font-bold text-cyan-400">
+                    Total: {{ tradeGetTotalValue.toFixed(0) }}
+                  </span>
+                </div>
               </div>
               <div class="card-body">
-                <!-- Selected Player to Get -->
-                <div v-if="tradeGetPlayer" class="bg-cyan-500/10 rounded-xl p-4 border border-cyan-500/30 mb-4">
-                  <div class="flex items-center gap-4">
-                    <div class="w-14 h-14 rounded-full bg-dark-border overflow-hidden ring-2 ring-cyan-400">
-                      <img :src="tradeGetPlayer.headshot || defaultHeadshot" :alt="tradeGetPlayer.full_name" class="w-full h-full object-cover" @error="handleImageError" />
-                    </div>
-                    <div class="flex-1">
-                      <div class="font-bold text-cyan-400">{{ tradeGetPlayer.full_name }}</div>
-                      <div class="text-sm text-dark-textMuted">{{ tradeGetPlayer.position }} • {{ tradeGetPlayer.mlb_team }}</div>
-                    </div>
-                    <button @click="tradeGetPlayer = null" class="p-2 hover:bg-dark-border/50 rounded-lg">
-                      <svg class="w-5 h-5 text-dark-textMuted" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
-                    </button>
-                  </div>
-                  <!-- Player Key Stats -->
-                  <div class="mt-3 grid grid-cols-4 gap-2">
-                    <div v-for="cat in displayCategories.slice(0, 4)" :key="cat.stat_id" class="text-center bg-dark-border/30 rounded-lg py-2">
-                      <div class="text-sm font-bold text-dark-text">{{ formatPlayerStat(tradeGetPlayer, cat.stat_id) }}</div>
-                      <div class="text-[10px] text-dark-textMuted">{{ cat.display_name }}</div>
+                <!-- Selected Players to Get -->
+                <div v-if="tradeGetPlayers.length > 0" class="space-y-2 mb-4">
+                  <div v-for="player in tradeGetPlayers" :key="player.player_key" class="bg-cyan-500/10 rounded-xl p-3 border border-cyan-500/30">
+                    <div class="flex items-center gap-3">
+                      <div class="w-10 h-10 rounded-full bg-dark-border overflow-hidden ring-2 ring-cyan-400">
+                        <img :src="player.headshot || defaultHeadshot" :alt="player.full_name" class="w-full h-full object-cover" @error="handleImageError" />
+                      </div>
+                      <div class="flex-1 min-w-0">
+                        <div class="font-bold text-cyan-400 text-sm truncate">{{ player.full_name }}</div>
+                        <div class="text-xs text-dark-textMuted">{{ player.position }} • {{ player.mlb_team }}</div>
+                      </div>
+                      <div class="text-right mr-2">
+                        <div class="text-lg font-black text-cyan-400">{{ player.overallValue?.toFixed(0) || '-' }}</div>
+                        <div class="text-[10px] text-dark-textMuted">Value</div>
+                      </div>
+                      <button @click="removeGetPlayer(player)" class="p-1.5 hover:bg-dark-border/50 rounded-lg">
+                        <svg class="w-4 h-4 text-dark-textMuted" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
+                      </button>
                     </div>
                   </div>
                 </div>
 
-                <!-- Player Selection -->
-                <div v-if="!tradeGetPlayer && tradePartnerKey">
-                  <div class="text-sm text-dark-textMuted mb-3">Select a player from their roster:</div>
-                  <div class="relative mb-3">
+                <!-- Player Selection Controls -->
+                <div v-if="tradePartnerKey" class="space-y-3">
+                  <div class="text-sm text-dark-textMuted">{{ tradeGetPlayers.length > 0 ? 'Add another player:' : 'Select players from their roster:' }}</div>
+                  
+                  <!-- Search & Filters -->
+                  <div class="flex gap-2">
                     <input 
                       v-model="tradeGetSearch" 
                       type="text" 
-                      placeholder="Search their players..." 
-                      class="w-full bg-dark-border/50 border border-dark-border rounded-lg px-4 py-2 text-dark-text placeholder-dark-textMuted text-sm"
+                      placeholder="Search..." 
+                      class="flex-1 bg-dark-border/50 border border-dark-border rounded-lg px-3 py-2 text-dark-text placeholder-dark-textMuted text-sm"
                     />
+                    <select v-model="tradeGetPositionFilter" class="bg-dark-border border border-dark-border rounded-lg px-2 py-2 text-dark-text text-sm">
+                      <option v-for="pos in tradePositionOptions" :key="pos.id" :value="pos.id">{{ pos.label }}</option>
+                    </select>
                   </div>
+                  
+                  <!-- Sort Options -->
+                  <div class="flex items-center gap-2 text-xs">
+                    <span class="text-dark-textMuted">Sort:</span>
+                    <button @click="tradeGetSortBy = 'value'" :class="tradeGetSortBy === 'value' ? 'bg-cyan-400/20 text-cyan-400' : 'bg-dark-border/30 text-dark-textMuted'" class="px-2 py-1 rounded">Value</button>
+                    <button @click="tradeGetSortBy = 'name'" :class="tradeGetSortBy === 'name' ? 'bg-cyan-400/20 text-cyan-400' : 'bg-dark-border/30 text-dark-textMuted'" class="px-2 py-1 rounded">Name</button>
+                    <button @click="tradeGetSortBy = 'position'" :class="tradeGetSortBy === 'position' ? 'bg-cyan-400/20 text-cyan-400' : 'bg-dark-border/30 text-dark-textMuted'" class="px-2 py-1 rounded">Position</button>
+                  </div>
+                  
+                  <!-- Player List -->
                   <div class="space-y-1 max-h-64 overflow-y-auto">
                     <div 
                       v-for="player in filteredPartnerPlayersForTrade" 
                       :key="player.player_key"
-                      @click="tradeGetPlayer = player"
+                      @click="addGetPlayer(player)"
                       class="flex items-center gap-3 p-2 rounded-lg cursor-pointer hover:bg-cyan-400/10 transition-colors"
+                      :class="isPlayerInGet(player) ? 'opacity-40 pointer-events-none' : ''"
                     >
-                      <div class="w-10 h-10 rounded-full bg-dark-border overflow-hidden">
+                      <div class="w-9 h-9 rounded-full bg-dark-border overflow-hidden">
                         <img :src="player.headshot || defaultHeadshot" :alt="player.full_name" class="w-full h-full object-cover" @error="handleImageError" />
                       </div>
                       <div class="flex-1 min-w-0">
@@ -1139,12 +1184,11 @@
                         <div class="text-xs text-dark-textMuted">{{ player.position }} • {{ player.mlb_team }}</div>
                       </div>
                       <div class="text-right">
-                        <div class="text-sm font-bold text-cyan-400">{{ player.overallValue?.toFixed(0) || '-' }}</div>
-                        <div class="text-[10px] text-dark-textMuted">Value</div>
+                        <div class="text-base font-black text-cyan-400">{{ player.overallValue?.toFixed(0) || '-' }}</div>
                       </div>
                     </div>
                     <div v-if="filteredPartnerPlayersForTrade.length === 0" class="text-center py-4 text-dark-textMuted text-sm">
-                      {{ tradePartnerKey ? 'No players found' : 'Select a trade partner' }}
+                      No players found
                     </div>
                   </div>
                 </div>
@@ -1157,13 +1201,41 @@
             </div>
           </div>
 
+          <!-- Trade Value Summary -->
+          <div v-if="tradeGivePlayers.length > 0 || tradeGetPlayers.length > 0" class="card">
+            <div class="card-body py-4">
+              <div class="flex items-center justify-between">
+                <div class="flex items-center gap-6">
+                  <div class="text-center">
+                    <div class="text-2xl font-black text-yellow-400">{{ tradeGiveTotalValue.toFixed(0) }}</div>
+                    <div class="text-xs text-dark-textMuted">You Give</div>
+                  </div>
+                  <div class="text-3xl text-dark-textMuted">⇄</div>
+                  <div class="text-center">
+                    <div class="text-2xl font-black text-cyan-400">{{ tradeGetTotalValue.toFixed(0) }}</div>
+                    <div class="text-xs text-dark-textMuted">You Get</div>
+                  </div>
+                  <div class="text-center px-4 border-l border-dark-border">
+                    <div class="text-2xl font-black" :class="tradeValueDifference >= 0 ? 'text-green-400' : 'text-red-400'">
+                      {{ tradeValueDifference >= 0 ? '+' : '' }}{{ tradeValueDifference.toFixed(0) }}
+                    </div>
+                    <div class="text-xs text-dark-textMuted">Net Value</div>
+                  </div>
+                </div>
+                <div class="text-sm text-dark-textMuted">
+                  {{ tradeGivePlayers.length }} for {{ tradeGetPlayers.length }} trade
+                </div>
+              </div>
+            </div>
+          </div>
+
           <!-- Analyze Button -->
           <div class="flex justify-center">
             <button 
               @click="analyzeTrade"
-              :disabled="!tradeGivePlayer || !tradeGetPlayer"
+              :disabled="tradeGivePlayers.length === 0 || tradeGetPlayers.length === 0"
               class="px-8 py-3 rounded-xl font-bold text-lg transition-all transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
-              :class="tradeGivePlayer && tradeGetPlayer 
+              :class="tradeGivePlayers.length > 0 && tradeGetPlayers.length > 0 
                 ? 'bg-gradient-to-r from-yellow-500 to-orange-500 text-gray-900' 
                 : 'bg-dark-border text-dark-textMuted'"
             >
@@ -2196,11 +2268,28 @@ const selectedSwapTarget = ref<any>(null)  // Player on my team to drop
 
 // Trade analyzer state
 const tradePartnerKey = ref<string>('')
-const tradeGivePlayer = ref<any>(null)
-const tradeGetPlayer = ref<any>(null)
+const tradeGivePlayers = ref<any[]>([])  // Array of players to give
+const tradeGetPlayers = ref<any[]>([])   // Array of players to get
 const tradeGiveSearch = ref('')
 const tradeGetSearch = ref('')
+const tradeGivePositionFilter = ref<string>('all')
+const tradeGetPositionFilter = ref<string>('all')
+const tradeGiveSortBy = ref<'value' | 'name' | 'position'>('value')
+const tradeGetSortBy = ref<'value' | 'name' | 'position'>('value')
 const tradeAnalysis = ref<any>(null)
+
+// Position options for trade filter
+const tradePositionOptions = [
+  { id: 'all', label: 'All Positions' },
+  { id: 'C', label: 'Catcher' },
+  { id: '1B', label: 'First Base' },
+  { id: '2B', label: 'Second Base' },
+  { id: '3B', label: 'Third Base' },
+  { id: 'SS', label: 'Shortstop' },
+  { id: 'OF', label: 'Outfield' },
+  { id: 'SP', label: 'Starting Pitcher' },
+  { id: 'RP', label: 'Relief Pitcher' }
+]
 
 const startSitPositions = [
   { id: 'C', label: 'C' },
@@ -3777,29 +3866,86 @@ const otherTeams = computed(() => {
   return teamsData.value.filter(t => t.team_key !== myTeamKey.value)
 })
 
-// My players for trade selection (filtered)
-const filteredMyPlayersForTrade = computed(() => {
-  const myPlayers = allPlayers.value.filter(p => p.fantasy_team_key === myTeamKey.value)
-  if (!tradeGiveSearch.value) return myPlayers.sort((a, b) => (b.overallValue || 0) - (a.overallValue || 0))
-  const search = tradeGiveSearch.value.toLowerCase()
-  return myPlayers.filter(p => 
-    p.full_name?.toLowerCase().includes(search) ||
-    p.position?.toLowerCase().includes(search) ||
-    p.mlb_team?.toLowerCase().includes(search)
-  ).sort((a, b) => (b.overallValue || 0) - (a.overallValue || 0))
+// Total values for trade comparison
+const tradeGiveTotalValue = computed(() => {
+  return tradeGivePlayers.value.reduce((sum, p) => sum + (p.overallValue || 0), 0)
 })
 
-// Trade partner's players (filtered)
+const tradeGetTotalValue = computed(() => {
+  return tradeGetPlayers.value.reduce((sum, p) => sum + (p.overallValue || 0), 0)
+})
+
+const tradeValueDifference = computed(() => {
+  return tradeGetTotalValue.value - tradeGiveTotalValue.value
+})
+
+// My players for trade selection (filtered and sorted)
+const filteredMyPlayersForTrade = computed(() => {
+  let myPlayers = allPlayers.value.filter(p => p.fantasy_team_key === myTeamKey.value)
+  
+  // Apply position filter
+  if (tradeGivePositionFilter.value !== 'all') {
+    myPlayers = myPlayers.filter(p => {
+      const pos = p.position || ''
+      if (tradeGivePositionFilter.value === 'OF') {
+        return pos.includes('OF') || pos.includes('LF') || pos.includes('CF') || pos.includes('RF')
+      }
+      return pos.includes(tradeGivePositionFilter.value)
+    })
+  }
+  
+  // Apply search filter
+  if (tradeGiveSearch.value) {
+    const search = tradeGiveSearch.value.toLowerCase()
+    myPlayers = myPlayers.filter(p => 
+      p.full_name?.toLowerCase().includes(search) ||
+      p.position?.toLowerCase().includes(search) ||
+      p.mlb_team?.toLowerCase().includes(search)
+    )
+  }
+  
+  // Sort
+  return myPlayers.sort((a, b) => {
+    if (tradeGiveSortBy.value === 'value') return (b.overallValue || 0) - (a.overallValue || 0)
+    if (tradeGiveSortBy.value === 'name') return (a.full_name || '').localeCompare(b.full_name || '')
+    if (tradeGiveSortBy.value === 'position') return (a.position || '').localeCompare(b.position || '')
+    return 0
+  })
+})
+
+// Trade partner's players (filtered and sorted)
 const filteredPartnerPlayersForTrade = computed(() => {
   if (!tradePartnerKey.value) return []
-  const partnerPlayers = allPlayers.value.filter(p => p.fantasy_team_key === tradePartnerKey.value)
-  if (!tradeGetSearch.value) return partnerPlayers.sort((a, b) => (b.overallValue || 0) - (a.overallValue || 0))
-  const search = tradeGetSearch.value.toLowerCase()
-  return partnerPlayers.filter(p => 
-    p.full_name?.toLowerCase().includes(search) ||
-    p.position?.toLowerCase().includes(search) ||
-    p.mlb_team?.toLowerCase().includes(search)
-  ).sort((a, b) => (b.overallValue || 0) - (a.overallValue || 0))
+  let partnerPlayers = allPlayers.value.filter(p => p.fantasy_team_key === tradePartnerKey.value)
+  
+  // Apply position filter
+  if (tradeGetPositionFilter.value !== 'all') {
+    partnerPlayers = partnerPlayers.filter(p => {
+      const pos = p.position || ''
+      if (tradeGetPositionFilter.value === 'OF') {
+        return pos.includes('OF') || pos.includes('LF') || pos.includes('CF') || pos.includes('RF')
+      }
+      return pos.includes(tradeGetPositionFilter.value)
+    })
+  }
+  
+  // Apply search filter
+  if (tradeGetSearch.value) {
+    const search = tradeGetSearch.value.toLowerCase()
+    partnerPlayers = partnerPlayers.filter(p => 
+      p.full_name?.toLowerCase().includes(search) ||
+      p.position?.toLowerCase().includes(search) ||
+      p.mlb_team?.toLowerCase().includes(search)
+    )
+  }
+  
+  // Sort
+  return partnerPlayers.sort((a, b) => {
+    if (tradeGetSortBy.value === 'value') return (b.overallValue || 0) - (a.overallValue || 0)
+    if (tradeGetSortBy.value === 'name') return (a.full_name || '').localeCompare(b.full_name || '')
+    if (tradeGetSortBy.value === 'position') return (a.position || '').localeCompare(b.position || '')
+    return 0
+  })
 })
 
 function formatPlayerStat(player: any, statId: string): string {
@@ -3812,20 +3958,58 @@ function formatPlayerStat(player: any, statId: string): string {
   return Math.round(parseFloat(value)).toString()
 }
 
+function isPlayerInGive(player: any): boolean {
+  return tradeGivePlayers.value.some(p => p.player_key === player.player_key)
+}
+
+function isPlayerInGet(player: any): boolean {
+  return tradeGetPlayers.value.some(p => p.player_key === player.player_key)
+}
+
+function addGivePlayer(player: any) {
+  if (!isPlayerInGive(player)) {
+    tradeGivePlayers.value.push(player)
+    tradeAnalysis.value = null // Reset analysis when changing players
+  }
+}
+
+function removeGivePlayer(player: any) {
+  tradeGivePlayers.value = tradeGivePlayers.value.filter(p => p.player_key !== player.player_key)
+  tradeAnalysis.value = null
+}
+
+function addGetPlayer(player: any) {
+  if (!isPlayerInGet(player)) {
+    tradeGetPlayers.value.push(player)
+    tradeAnalysis.value = null
+  }
+}
+
+function removeGetPlayer(player: any) {
+  tradeGetPlayers.value = tradeGetPlayers.value.filter(p => p.player_key !== player.player_key)
+  tradeAnalysis.value = null
+}
+
 function resetTrade() {
-  tradeGivePlayer.value = null
-  tradeGetPlayer.value = null
+  tradeGivePlayers.value = []
+  tradeGetPlayers.value = []
   tradePartnerKey.value = ''
   tradeGiveSearch.value = ''
   tradeGetSearch.value = ''
+  tradeGivePositionFilter.value = 'all'
+  tradeGetPositionFilter.value = 'all'
   tradeAnalysis.value = null
 }
 
 function analyzeTrade() {
-  if (!tradeGivePlayer.value || !tradeGetPlayer.value) return
+  if (tradeGivePlayers.value.length === 0 || tradeGetPlayers.value.length === 0) return
   
-  const give = tradeGivePlayer.value
-  const get = tradeGetPlayer.value
+  const givePlayers = tradeGivePlayers.value
+  const getPlayers = tradeGetPlayers.value
+  
+  // Calculate totals for all players being traded
+  const giveTotal = givePlayers.reduce((sum, p) => sum + (p.overallValue || 0), 0)
+  const getTotal = getPlayers.reduce((sum, p) => sum + (p.overallValue || 0), 0)
   
   // Calculate category impact
   const categoryImpact: any[] = []
@@ -3841,8 +4025,9 @@ function analyzeTrade() {
     const isLower = isLowerBetterStat(cat)
     const isRatio = isRatioStat(cat)
     
-    const giveValue = parseFloat(give.stats?.[statId] || 0)
-    const getValue = parseFloat(get.stats?.[statId] || 0)
+    // Sum up stats from all players being traded
+    const giveValue = givePlayers.reduce((sum, p) => sum + parseFloat(p.stats?.[statId] || 0), 0)
+    const getValue = getPlayers.reduce((sum, p) => sum + parseFloat(p.stats?.[statId] || 0), 0)
     const currentTotal = myTeam?.categoryTotals?.[statId] || 0
     
     // Calculate new total (subtract what we give, add what we get)
@@ -3893,7 +4078,7 @@ function analyzeTrade() {
   
   // Calculate power ranking impact
   const currentPowerRank = calculateCurrentPowerRank()
-  const { newPowerRank, balanceBefore, balanceAfter, starPowerBefore, starPowerAfter, depthBefore, depthAfter } = calculateNewPowerRank(give, get)
+  const { newPowerRank, balanceBefore, balanceAfter, starPowerBefore, starPowerAfter, depthBefore, depthAfter } = calculateNewPowerRank(givePlayers, getPlayers)
   
   // Get top rank changes
   const topRankChanges = categoryImpact
@@ -3909,15 +4094,15 @@ function analyzeTrade() {
   
   // Calculate grades
   const categoryGrade = calculateCategoryGrade(categoriesUp, categoriesDown, categoryImpact)
-  const valueGrade = calculateValueGrade(give, get)
+  const valueGrade = calculateValueGrade(giveTotal, getTotal)
   const balanceGrade = calculateBalanceGrade(balanceAfter - balanceBefore)
-  const scarcityGrade = calculateScarcityGrade(give, get)
+  const scarcityGrade = calculateScarcityGrade(givePlayers, getPlayers)
   const overallGrade = calculateOverallTradeGrade(categoryGrade, valueGrade, balanceGrade, scarcityGrade)
   
   // Generate analysis text
   const { headline, summary, strengths, concerns, recommendation, bottomLine } = generateTradeAnalysis(
-    give, get, categoryImpact, categoriesUp, categoriesDown, 
-    currentPowerRank, newPowerRank, balanceAfter - balanceBefore
+    givePlayers, getPlayers, categoryImpact, categoriesUp, categoriesDown, 
+    currentPowerRank, newPowerRank, balanceAfter - balanceBefore, giveTotal, getTotal
   )
   
   tradeAnalysis.value = {
@@ -3980,7 +4165,7 @@ function calculateCurrentPowerRank(): number {
   return sorted.findIndex(t => t.team_key === myTeamKey.value) + 1
 }
 
-function calculateNewPowerRank(give: any, get: any): { newPowerRank: number; balanceBefore: number; balanceAfter: number; starPowerBefore: number; starPowerAfter: number; depthBefore: number; depthAfter: number } {
+function calculateNewPowerRank(givePlayers: any[], getPlayers: any[]): { newPowerRank: number; balanceBefore: number; balanceAfter: number; starPowerBefore: number; starPowerAfter: number; depthBefore: number; depthAfter: number } {
   const myTeam = teamsData.value.find(t => t.team_key === myTeamKey.value)
   const totalTeams = teamsData.value.length
   
@@ -3990,8 +4175,13 @@ function calculateNewPowerRank(give: any, get: any): { newPowerRank: number; bal
   const variance = currentRanks.reduce((sum, r) => sum + Math.pow(r - avgRank, 2), 0) / currentRanks.length
   const balanceBefore = Math.max(0, 100 - variance * 3)
   
+  // Calculate value difference
+  const giveTotal = givePlayers.reduce((sum, p) => sum + (p.overallValue || 0), 0)
+  const getTotal = getPlayers.reduce((sum, p) => sum + (p.overallValue || 0), 0)
+  const valueDiff = getTotal - giveTotal
+  
   // Estimate new balance after trade
-  const balanceAfter = balanceBefore + (give.overallValue > get.overallValue ? -5 : 5) + Math.random() * 10 - 5
+  const balanceAfter = balanceBefore + (valueDiff > 0 ? 5 : valueDiff < -10 ? -5 : 0) + Math.random() * 6 - 3
   
   // Star power (based on elite player count)
   const myPlayers = allPlayers.value.filter(p => p.fantasy_team_key === myTeamKey.value)
@@ -3999,15 +4189,13 @@ function calculateNewPowerRank(give: any, get: any): { newPowerRank: number; bal
   const starPowerBefore = Math.min(100, eliteCount * 15)
   
   // After trade star power
-  const giveIsElite = (give.overallValue || 0) > 70
-  const getIsElite = (get.overallValue || 0) > 70
-  let starPowerAfter = starPowerBefore
-  if (giveIsElite && !getIsElite) starPowerAfter -= 15
-  if (!giveIsElite && getIsElite) starPowerAfter += 15
+  const giveEliteCount = givePlayers.filter(p => (p.overallValue || 0) > 70).length
+  const getEliteCount = getPlayers.filter(p => (p.overallValue || 0) > 70).length
+  const starPowerAfter = Math.min(100, Math.max(0, (eliteCount - giveEliteCount + getEliteCount) * 15))
   
   // Depth (based on roster quality distribution)
   const depthBefore = Math.min(100, myPlayers.filter(p => (p.overallValue || 0) > 40).length * 8)
-  const depthAfter = depthBefore + ((get.overallValue || 0) - (give.overallValue || 0)) * 0.5
+  const depthAfter = depthBefore + valueDiff * 0.3
   
   // Calculate overall score change
   const scoreBefore = (balanceBefore + starPowerBefore + depthBefore) / 3
@@ -4046,18 +4234,16 @@ function calculateCategoryGrade(up: number, down: number, impact: any[]): string
   return 'F'
 }
 
-function calculateValueGrade(give: any, get: any): string {
-  const giveValue = give.overallValue || 50
-  const getValue = get.overallValue || 50
-  const diff = getValue - giveValue
+function calculateValueGrade(giveTotal: number, getTotal: number): string {
+  const diff = getTotal - giveTotal
   
-  if (diff >= 15) return 'A'
-  if (diff >= 10) return 'A-'
-  if (diff >= 5) return 'B+'
+  if (diff >= 30) return 'A'
+  if (diff >= 20) return 'A-'
+  if (diff >= 10) return 'B+'
   if (diff >= 0) return 'B'
-  if (diff >= -5) return 'B-'
-  if (diff >= -10) return 'C'
-  if (diff >= -15) return 'D'
+  if (diff >= -10) return 'B-'
+  if (diff >= -20) return 'C'
+  if (diff >= -30) return 'D'
   return 'F'
 }
 
@@ -4070,20 +4256,27 @@ function calculateBalanceGrade(balanceChange: number): string {
   return 'F'
 }
 
-function calculateScarcityGrade(give: any, get: any): string {
+function calculateScarcityGrade(givePlayers: any[], getPlayers: any[]): string {
   // Check position scarcity
   const scarcePositions = ['C', 'SS', '2B']
-  const givePos = give.position?.split(',')[0] || ''
-  const getPos = get.position?.split(',')[0] || ''
   
-  const givingScarce = scarcePositions.some(p => givePos.includes(p))
-  const gettingScarce = scarcePositions.some(p => getPos.includes(p))
+  const givingScarce = givePlayers.filter(p => {
+    const pos = p.position?.split(',')[0] || ''
+    return scarcePositions.some(sp => pos.includes(sp))
+  }).length
   
-  if (gettingScarce && !givingScarce) return 'A'
-  if (!gettingScarce && !givingScarce) return 'B'
-  if (gettingScarce && givingScarce) return 'B-'
-  if (!gettingScarce && givingScarce) return 'C'
-  return 'C'
+  const gettingScarce = getPlayers.filter(p => {
+    const pos = p.position?.split(',')[0] || ''
+    return scarcePositions.some(sp => pos.includes(sp))
+  }).length
+  
+  const netScarce = gettingScarce - givingScarce
+  
+  if (netScarce >= 2) return 'A'
+  if (netScarce >= 1) return 'B+'
+  if (netScarce === 0) return 'B'
+  if (netScarce >= -1) return 'C'
+  return 'D'
 }
 
 function calculateOverallTradeGrade(catGrade: string, valGrade: string, balGrade: string, scarGrade: string): string {
@@ -4113,19 +4306,20 @@ function calculateOverallTradeGrade(catGrade: string, valGrade: string, balGrade
   return numToGrade(score)
 }
 
-function generateTradeAnalysis(give: any, get: any, categoryImpact: any[], catsUp: number, catsDown: number, rankBefore: number, rankAfter: number, balanceChange: number): { headline: string; summary: string; strengths: string[]; concerns: string[]; recommendation: 'accept' | 'decline' | 'consider'; bottomLine: string } {
+function generateTradeAnalysis(givePlayers: any[], getPlayers: any[], categoryImpact: any[], catsUp: number, catsDown: number, rankBefore: number, rankAfter: number, balanceChange: number, giveTotal: number, getTotal: number): { headline: string; summary: string; strengths: string[]; concerns: string[]; recommendation: 'accept' | 'decline' | 'consider'; bottomLine: string } {
   const strengths: string[] = []
   const concerns: string[] = []
   
-  const giveValue = give.overallValue || 50
-  const getValue = get.overallValue || 50
-  const valueDiff = getValue - giveValue
+  const valueDiff = getTotal - giveTotal
+  const tradeSize = Math.max(givePlayers.length, getPlayers.length)
+  const giveNames = givePlayers.map(p => p.full_name).join(', ')
+  const getNames = getPlayers.map(p => p.full_name).join(', ')
   
   // Analyze value
-  if (valueDiff > 10) {
-    strengths.push(`Getting ${Math.round(valueDiff)} more player value points`)
-  } else if (valueDiff < -10) {
-    concerns.push(`Giving up ${Math.round(Math.abs(valueDiff))} player value points`)
+  if (valueDiff > 15) {
+    strengths.push(`Gaining ${Math.round(valueDiff)} total value points in return`)
+  } else if (valueDiff < -15) {
+    concerns.push(`Giving up ${Math.round(Math.abs(valueDiff))} more value than receiving`)
   }
   
   // Analyze categories
@@ -4161,13 +4355,28 @@ function generateTradeAnalysis(give: any, get: any, categoryImpact: any[], catsU
   }
   
   // Analyze positions
-  const givePos = give.position || ''
-  const getPos = get.position || ''
-  if (getPos.includes('C') || getPos.includes('SS')) {
-    strengths.push(`${get.full_name} plays a premium position (${getPos})`)
+  const scarcePositions = ['C', 'SS', '2B']
+  const gettingScarce = getPlayers.filter(p => {
+    const pos = p.position || ''
+    return scarcePositions.some(sp => pos.includes(sp))
+  })
+  const givingScarce = givePlayers.filter(p => {
+    const pos = p.position || ''
+    return scarcePositions.some(sp => pos.includes(sp))
+  })
+  
+  if (gettingScarce.length > 0) {
+    strengths.push(`Acquiring ${gettingScarce.map(p => `${p.full_name} (${p.position})`).join(', ')} at premium position(s)`)
   }
-  if (givePos.includes('C') || givePos.includes('SS')) {
-    concerns.push(`Giving up scarce position eligibility (${givePos})`)
+  if (givingScarce.length > 0) {
+    concerns.push(`Giving up scarce position eligibility: ${givingScarce.map(p => p.position).join(', ')}`)
+  }
+  
+  // Trade size consideration
+  if (givePlayers.length < getPlayers.length) {
+    strengths.push(`Receiving more players (${getPlayers.length}) than giving up (${givePlayers.length})`)
+  } else if (givePlayers.length > getPlayers.length) {
+    concerns.push(`Giving up more players (${givePlayers.length}) than receiving (${getPlayers.length})`)
   }
   
   // Generate headline and summary
@@ -4176,16 +4385,16 @@ function generateTradeAnalysis(give: any, get: any, categoryImpact: any[], catsU
   let recommendation: 'accept' | 'decline' | 'consider' = 'consider'
   let bottomLine = ''
   
-  const netScore = (catsUp - catsDown) + (valueDiff / 10) + balanceChange / 5
+  const netScore = (catsUp - catsDown) + (valueDiff / 15) + balanceChange / 5
   
   if (netScore >= 3) {
     headline = 'Strong Trade for You'
-    summary = `This trade significantly improves your team across multiple dimensions. ${get.full_name} brings more value and helps balance your roster.`
+    summary = `This ${tradeSize > 1 ? 'multi-player trade' : 'trade'} significantly improves your team. You're getting better overall value and category production.`
     recommendation = 'accept'
     bottomLine = 'This is a favorable deal - you should strongly consider making this trade.'
   } else if (netScore >= 1) {
     headline = 'Slight Win for You'
-    summary = `This trade provides modest improvement to your team. You gain some category production while maintaining competitive balance.`
+    summary = `This trade provides modest improvement to your team. The incoming player(s) should help in key areas.`
     recommendation = 'accept'
     bottomLine = 'The trade is in your favor, though not by a huge margin.'
   } else if (netScore >= -1) {
@@ -4195,12 +4404,12 @@ function generateTradeAnalysis(give: any, get: any, categoryImpact: any[], catsU
     bottomLine = 'This is close to a fair trade - evaluate based on your specific team needs.'
   } else if (netScore >= -3) {
     headline = 'Slight Loss for You'
-    summary = `You may be giving up a bit more than you\'re getting back. Make sure this addresses a critical need.`
+    summary = `You may be giving up a bit more than you're getting back. Make sure this addresses a critical need.`
     recommendation = 'consider'
     bottomLine = 'You\'re likely overpaying slightly - only do this if you really need what you\'re getting.'
   } else {
     headline = 'Unfavorable Trade'
-    summary = `This trade would likely hurt your team. You\'re giving up significant value without adequate return.`
+    summary = `This trade would likely hurt your team. You're giving up significant value without adequate return.`
     recommendation = 'decline'
     bottomLine = 'This trade is not recommended - look for a better deal.'
   }
