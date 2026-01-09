@@ -940,9 +940,9 @@ const baseballPositions = [
   { id: '3B', name: 'Third Base', abbrev: '3B', icon: '3️⃣' },
   { id: 'SS', name: 'Shortstop', abbrev: 'SS', icon: '⚡' },
   { id: 'OF', name: 'Outfield', abbrev: 'OF', icon: '🌿' },
-  { id: 'UTIL', name: 'Utility', abbrev: 'UTIL', icon: '🔧' },
   { id: 'SP', name: 'Starting Pitcher', abbrev: 'SP', icon: '⚾' },
-  { id: 'RP', name: 'Relief Pitcher', abbrev: 'RP', icon: '🔥' }
+  { id: 'RP', name: 'Relief Pitcher', abbrev: 'RP', icon: '🔥' },
+  { id: 'UTIL', name: 'Utility', abbrev: 'UTIL', icon: '🔧' }
 ]
 
 // Interfaces
@@ -1043,16 +1043,34 @@ const positionStrengthData = computed(() => {
   
   // Calculate position totals for each team
   const positionTotals = new Map<string, Map<string, number>>()
+  const displayPositions = ['C', '1B', '2B', '3B', 'SS', 'OF', 'SP', 'RP']
   
   for (const [teamKey, players] of teamPlayers) {
     const totals = new Map<string, number>()
     
     for (const player of players) {
       const pos = player.position || 'UTIL'
-      // Normalize position (OF includes LF, CF, RF)
+      // Normalize position to one of the display positions
       let normalizedPos = pos
-      if (['LF', 'CF', 'RF'].includes(pos)) normalizedPos = 'OF'
-      if (pos.includes('/')) normalizedPos = pos.split('/')[0] // Take primary position
+      
+      // Outfielders
+      if (['LF', 'CF', 'RF', 'OF'].includes(pos)) normalizedPos = 'OF'
+      // Pitchers - treat generic "P" as SP
+      else if (pos === 'P') normalizedPos = 'SP'
+      // DH goes to UTIL (we'll add to OF as fallback since UTIL isn't displayed)
+      else if (pos === 'DH' || pos === 'UTIL') normalizedPos = 'OF'
+      // Handle multi-position players (e.g., "1B/DH", "SS/2B")
+      else if (pos.includes('/')) {
+        const positions = pos.split('/')
+        // Find first position that's in our display list
+        normalizedPos = positions.find(p => displayPositions.includes(p)) || positions[0]
+      }
+      
+      // If still not in display positions, try to map it
+      if (!displayPositions.includes(normalizedPos)) {
+        // Default unmapped positions to OF (utility-like)
+        normalizedPos = 'OF'
+      }
       
       const currentTotal = totals.get(normalizedPos) || 0
       totals.set(normalizedPos, currentTotal + (player.total_points || 0))
