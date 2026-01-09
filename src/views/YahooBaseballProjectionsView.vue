@@ -497,6 +497,12 @@ const leagueStore = useLeagueStore()
 const authStore = useAuthStore()
 const { hasPremiumAccess } = useFeatureAccess()
 
+// Effective league key - use the actually loaded league (might be previous season)
+const effectiveLeagueKey = computed(() => {
+  if (leagueStore.currentLeague?.league_id) return leagueStore.currentLeague.league_id
+  return leagueStore.activeLeagueId
+})
+
 const tabs = [
   { id: 'ros', name: 'Rest of Season', icon: '📊' },
   { id: 'teams', name: 'Teams', icon: '👥' },
@@ -809,7 +815,7 @@ async function loadProjections() {
   isLoading.value = true
   loadingMessage.value = 'Connecting to Yahoo...'
   try {
-    const leagueKey = leagueStore.activeLeagueId
+    const leagueKey = effectiveLeagueKey.value
     if (!leagueKey || !authStore.user?.id) { isLoading.value = false; return }
     await yahooService.initialize(authStore.user.id)
     loadingMessage.value = 'Loading league settings...'
@@ -832,5 +838,14 @@ async function loadProjections() {
 }
 
 watch(() => leagueStore.activeLeagueId, (id) => { if (id && leagueStore.activePlatform === 'yahoo') loadProjections() }, { immediate: true })
-onMounted(() => { if (leagueStore.activeLeagueId && leagueStore.activePlatform === 'yahoo') loadProjections() })
+
+// Watch for currentLeague changes (happens when fallback to previous season occurs)
+watch(() => leagueStore.currentLeague?.league_id, (newKey, oldKey) => {
+  if (newKey && newKey !== oldKey) {
+    console.log(`Projections: League changed from ${oldKey} to ${newKey}, reloading...`)
+    loadProjections()
+  }
+})
+
+onMounted(() => { if (effectiveLeagueKey.value && leagueStore.activePlatform === 'yahoo') loadProjections() })
 </script>

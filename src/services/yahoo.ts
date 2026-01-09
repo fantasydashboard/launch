@@ -679,9 +679,22 @@ export class YahooFantasyService {
       for (const teamWrapper of Object.values(teams) as any[]) {
         if (typeof teamWrapper !== 'object' || !teamWrapper.team) continue
         
-        const teamInfo = teamWrapper.team[0]
-        const teamPoints = teamWrapper.team[1]?.team_points
-        const teamProjected = teamWrapper.team[1]?.team_projected_points
+        const teamArray = teamWrapper.team
+        const teamInfo = teamArray[0]
+        
+        // Search all indices for team_points and team_projected_points (Yahoo's structure varies)
+        let teamPoints: any = null
+        let teamProjected: any = null
+        
+        for (let i = 1; i < teamArray.length; i++) {
+          const element = teamArray[i]
+          if (element?.team_points) {
+            teamPoints = element.team_points
+          }
+          if (element?.team_projected_points) {
+            teamProjected = element.team_projected_points
+          }
+        }
         
         // Get team logo
         let logoUrl = ''
@@ -692,9 +705,18 @@ export class YahooFantasyService {
           }
         }
         
-        // Check if my team
-        const managers = teamInfo[19]?.managers || []
+        // Check if my team - search for managers in multiple locations
+        let managers: any[] = []
+        for (const item of teamInfo) {
+          if (item?.managers) {
+            managers = item.managers
+            break
+          }
+        }
         const isMyTeam = managers.some((m: any) => m.manager?.is_current_login === '1')
+        
+        const points = parseFloat(teamPoints?.total || '0')
+        const projectedPoints = parseFloat(teamProjected?.total || '0')
         
         parsedTeams.push({
           team_key: teamInfo[0]?.team_key,
@@ -702,9 +724,11 @@ export class YahooFantasyService {
           name: teamInfo[2]?.name,
           logo_url: logoUrl,
           managers: managers,
-          points: parseFloat(teamPoints?.total || '0'),
-          projected_points: parseFloat(teamProjected?.total || '0'),
-          is_my_team: isMyTeam
+          points: points,
+          projected_points: projectedPoints,
+          is_my_team: isMyTeam,
+          // Also store team_points object for debugging
+          team_points: teamPoints
         })
       }
 
@@ -716,6 +740,16 @@ export class YahooFantasyService {
         is_consolation: matchupInfo.is_consolation === '1',
         winner_team_key: matchupInfo.winner_team_key,
         is_tied: matchupInfo.is_tied === '1'
+      })
+    }
+    
+    // Log first matchup for debugging
+    if (matchups.length > 0 && matchups[0].teams.length >= 2) {
+      console.log(`Week ${week} matchup sample:`, {
+        team1: matchups[0].teams[0].name,
+        team1Points: matchups[0].teams[0].points,
+        team2: matchups[0].teams[1].name,
+        team2Points: matchups[0].teams[1].points
       })
     }
 

@@ -601,6 +601,12 @@ import html2canvas from 'html2canvas'
 const leagueStore = useLeagueStore()
 const authStore = useAuthStore()
 
+// Effective league key - use the actually loaded league (might be previous season)
+const effectiveLeagueKey = computed(() => {
+  if (leagueStore.currentLeague?.league_id) return leagueStore.currentLeague.league_id
+  return leagueStore.activeLeagueId
+})
+
 const defaultAvatar = 'https://s.yimg.com/cv/apiv2/default/mlb/mlb_1_100.png'
 
 // State
@@ -1374,7 +1380,7 @@ async function loadHistoricalData() {
   isLoading.value = true
   
   try {
-    const leagueKey = leagueStore.activeLeagueId
+    const leagueKey = effectiveLeagueKey.value
     console.log('Loading history for league:', leagueKey)
     console.log('User ID:', authStore.user?.id)
     
@@ -1589,10 +1595,23 @@ watch(() => leagueStore.activeLeagueId, (newLeagueId) => {
   }
 }, { immediate: true })
 
+// Watch for currentLeague changes (happens when fallback to previous season occurs)
+watch(() => leagueStore.currentLeague?.league_id, (newKey, oldKey) => {
+  if (newKey && newKey !== oldKey) {
+    console.log(`History: League changed from ${oldKey} to ${newKey}, reloading...`)
+    historicalData.value = {}
+    allMatchups.value = {}
+    allTeams.value = {}
+    h2hRecords.value = {}
+    currentMembers.value = []
+    loadHistoricalData()
+  }
+})
+
 // Load data on mount (as backup)
 onMounted(() => {
-  console.log('YahooBaseballHistoryView mounted - activeLeagueId:', leagueStore.activeLeagueId)
-  if (leagueStore.activeLeagueId && Object.keys(historicalData.value).length === 0) {
+  console.log('YahooBaseballHistoryView mounted - effectiveLeagueKey:', effectiveLeagueKey.value)
+  if (effectiveLeagueKey.value && Object.keys(historicalData.value).length === 0) {
     loadHistoricalData()
   }
 })

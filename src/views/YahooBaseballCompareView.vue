@@ -340,6 +340,12 @@ const leagueStore = useLeagueStore()
 const authStore = useAuthStore()
 const { hasLeagueAccess } = useFeatureAccess()
 
+// Effective league key - use the actually loaded league (might be previous season)
+const effectiveLeagueKey = computed(() => {
+  if (leagueStore.currentLeague?.league_id) return leagueStore.currentLeague.league_id
+  return leagueStore.activeLeagueId
+})
+
 const defaultAvatar = 'https://s.yimg.com/cv/apiv2/default/mlb/mlb_1_y.png'
 
 // State
@@ -380,7 +386,7 @@ function getShortName(name: string | undefined): string {
 
 async function loadInitialData() {
   console.log('=== COMPARE PAGE: loadInitialData START ===')
-  const leagueKey = leagueStore.activeLeagueId
+  const leagueKey = effectiveLeagueKey.value
   console.log('League key:', leagueKey)
   console.log('User ID:', authStore.user?.id)
   
@@ -744,9 +750,25 @@ watch(() => leagueStore.activeLeagueId, async (newId) => {
   }
 }, { immediate: true })
 
+// Watch for currentLeague changes (happens when fallback to previous season occurs)
+watch(() => leagueStore.currentLeague?.league_id, async (newKey, oldKey) => {
+  if (newKey && newKey !== oldKey) {
+    console.log(`Compare: League changed from ${oldKey} to ${newKey}, reloading...`)
+    team1Key.value = ''
+    team2Key.value = ''
+    comparisonData.value = null
+    rivalryHistory.value = []
+    rivalryHighlights.value = null
+    allTeams.value = []
+    allMatchups.value = []
+    isInitialLoading.value = true
+    await loadInitialData()
+  }
+})
+
 onMounted(async () => {
   console.log('Compare page mounted')
-  if (leagueStore.activeLeagueId && leagueStore.activePlatform === 'yahoo') {
+  if (effectiveLeagueKey.value && leagueStore.activePlatform === 'yahoo') {
     await loadInitialData()
   }
 })

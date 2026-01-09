@@ -628,6 +628,12 @@ const comparisonRef = ref<HTMLElement | null>(null)
 const currentWeek = computed(() => leagueStore.currentLeague?.settings?.leg || 1)
 const currentSeason = computed(() => leagueStore.currentLeague?.season || new Date().getFullYear().toString())
 
+// Effective league key - use the actually loaded league (might be previous season)
+const effectiveLeagueKey = computed(() => {
+  if (leagueStore.currentLeague?.league_id) return leagueStore.currentLeague.league_id
+  return leagueStore.activeLeagueId
+})
+
 const availableWeeks = computed(() => {
   const weeks = []
   for (let i = 1; i <= currentWeek.value; i++) {
@@ -1194,7 +1200,7 @@ async function loadMatchups() {
   isLoading.value = true
   
   try {
-    const leagueKey = leagueStore.activeLeagueId
+    const leagueKey = effectiveLeagueKey.value
     if (!leagueKey || !authStore.user?.id) {
       console.log('Missing leagueKey or userId:', { leagueKey, userId: authStore.user?.id })
       return
@@ -1254,7 +1260,7 @@ async function loadSnapshotsInBackground(leagueKey: string, week: number, matchu
 
 // Take snapshots for current week matchups
 async function takeCurrentWeekSnapshots(matchups: any[]) {
-  const leagueKey = leagueStore.activeLeagueId
+  const leagueKey = effectiveLeagueKey.value
   if (!leagueKey) return
   
   isSnapshotting.value = true
@@ -1304,7 +1310,7 @@ async function takeCurrentWeekSnapshots(matchups: any[]) {
 }
 
 async function loadMatchupHistory() {
-  const leagueKey = leagueStore.activeLeagueId
+  const leagueKey = effectiveLeagueKey.value
   if (!leagueKey) return
   
   const currentWeekNum = parseInt(selectedWeek.value)

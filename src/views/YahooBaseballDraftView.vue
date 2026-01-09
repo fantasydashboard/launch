@@ -617,6 +617,12 @@ import { yahooService } from '@/services/yahoo'
 const leagueStore = useLeagueStore()
 const authStore = useAuthStore()
 
+// Effective league key - use the actually loaded league (might be previous season)
+const effectiveLeagueKey = computed(() => {
+  if (leagueStore.currentLeague?.league_id) return leagueStore.currentLeague.league_id
+  return leagueStore.activeLeagueId
+})
+
 // Tab options
 const tabOptions = [
   { id: 'board', name: 'Draft Board', icon: '📋' },
@@ -888,7 +894,7 @@ function selectPick(pick: any) {
 
 // Load draft data
 async function loadDraftData() {
-  const leagueKey = leagueStore.activeLeagueId
+  const leagueKey = effectiveLeagueKey.value
   if (!leagueKey || !authStore.user?.id) return
   
   isLoading.value = true
@@ -1022,8 +1028,16 @@ watch(() => leagueStore.activeLeagueId, (newId) => {
   }
 }, { immediate: true })
 
+// Watch for currentLeague changes (happens when fallback to previous season occurs)
+watch(() => leagueStore.currentLeague?.league_id, (newKey, oldKey) => {
+  if (newKey && newKey !== oldKey) {
+    console.log(`Draft: League changed from ${oldKey} to ${newKey}, reloading...`)
+    loadDraftData()
+  }
+})
+
 onMounted(() => {
-  if (leagueStore.activeLeagueId) {
+  if (effectiveLeagueKey.value) {
     loadDraftData()
   }
 })

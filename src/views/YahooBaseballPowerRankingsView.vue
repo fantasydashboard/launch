@@ -758,6 +758,14 @@ interface PowerRankingFactorConfig {
 // Computed
 const currentWeek = computed(() => leagueStore.currentLeague?.settings?.leg || 1)
 
+// Effective league key - use the actually loaded league (might be previous season)
+const effectiveLeagueKey = computed(() => {
+  // If currentLeague has a league_id set (might be previous season), use that
+  if (leagueStore.currentLeague?.league_id) return leagueStore.currentLeague.league_id
+  // Fall back to active league
+  return leagueStore.activeLeagueId
+})
+
 const availableWeeks = computed(() => {
   const weeks = []
   const week = currentWeek.value
@@ -1148,9 +1156,10 @@ async function calculatePowerRankingsForWeek(throughWeek: number): Promise<Power
   }
   
   if (matchupsNeeded) {
-    const leagueKey = leagueStore.activeLeagueId
+    const leagueKey = effectiveLeagueKey.value
     if (leagueKey && authStore.user?.id) {
       await yahooService.initialize(authStore.user.id)
+      console.log(`Loading matchups for power rankings using league: ${leagueKey}`)
       for (let w = 1; w <= throughWeek; w++) {
         if (!allMatchups.value.has(w)) {
           try {
@@ -1322,6 +1331,19 @@ watch(() => leagueStore.yahooTeams, () => {
     }
   }
 }, { immediate: true })
+
+// Watch for currentLeague changes (happens when fallback to previous season occurs)
+watch(() => leagueStore.currentLeague?.league_id, (newKey, oldKey) => {
+  if (newKey && newKey !== oldKey) {
+    console.log(`Power Rankings: League changed from ${oldKey} to ${newKey}, clearing cache...`)
+    // Clear cached matchups since we're loading a different league
+    allMatchups.value.clear()
+    // Reload if we have a selected week
+    if (selectedWeek.value && currentWeek.value >= 3) {
+      loadPowerRankings()
+    }
+  }
+})
 
 onMounted(() => {
   if (leagueStore.yahooTeams.length > 0 && currentWeek.value >= 3) {
