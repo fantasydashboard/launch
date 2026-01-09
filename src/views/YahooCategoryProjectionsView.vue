@@ -721,7 +721,8 @@
                           v-for="(player, index) in getStartSitPlayersForPosition(selectedStartSitPosition)" 
                           :key="player.player_key"
                           :class="getStartSitRowClass(player)"
-                          class="hover:bg-dark-border/20 transition-colors"
+                          class="hover:bg-dark-border/20 transition-colors cursor-pointer"
+                          @click="openSwapModal(player)"
                         >
                           <td class="px-3 py-3">
                             <span class="font-bold text-lg text-dark-text">{{ index + 1 }}</span>
@@ -799,7 +800,7 @@
             </div>
 
             <!-- Right Sidebar: Starting Lineup & Category Impact -->
-            <div class="w-96 flex-shrink-0 space-y-4">
+            <div class="w-[420px] flex-shrink-0 space-y-4">
               <!-- Starting Lineup -->
               <div class="card sticky top-4">
                 <div class="card-header py-3">
@@ -888,14 +889,16 @@
                       <div class="text-xs text-dark-textMuted uppercase tracking-wider mb-2">Category Breakdown</div>
                       <div class="space-y-1.5 max-h-[30vh] overflow-y-auto">
                         <div v-for="cat in categoryImpactBreakdown" :key="cat.stat_id" class="flex items-center gap-2 text-xs">
-                          <span class="w-10 font-medium text-dark-text">{{ cat.display_name }}</span>
-                          <div class="flex-1 h-1.5 bg-dark-border rounded-full overflow-hidden">
+                          <span class="w-8 font-medium text-dark-text shrink-0">{{ cat.display_name }}</span>
+                          <div class="flex-1 h-1.5 bg-dark-border rounded-full overflow-hidden min-w-[40px]">
                             <div class="h-full rounded-full" :class="cat.barClass" :style="{ width: cat.barWidth + '%' }"></div>
                           </div>
-                          <span class="w-16 text-right font-mono" :class="cat.statusClass">
-                            {{ cat.myProj }} - {{ cat.oppProj }}
-                          </span>
-                          <span class="w-6 text-center">
+                          <div class="flex items-center gap-1 shrink-0">
+                            <span class="font-mono text-[11px]" :class="cat.statusClass">{{ cat.myProj }}</span>
+                            <span class="text-dark-textMuted">v</span>
+                            <span class="font-mono text-[11px] text-dark-textMuted">{{ cat.oppProj }}</span>
+                          </div>
+                          <span class="w-4 text-center shrink-0">
                             <span v-if="cat.status === 'winning'" class="text-green-400">✓</span>
                             <span v-else-if="cat.status === 'losing'" class="text-red-400">✗</span>
                             <span v-else class="text-yellow-400">~</span>
@@ -1333,6 +1336,153 @@
         </div>
       </div>
     </div>
+
+    <!-- Player Swap Analysis Modal -->
+    <div v-if="showSwapModal && swapSourcePlayer" class="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4" @click.self="closeSwapModal">
+      <div class="bg-dark-elevated rounded-2xl shadow-2xl max-w-3xl w-full max-h-[90vh] overflow-hidden border border-dark-border">
+        <!-- Header -->
+        <div class="px-6 py-4 border-b border-cyan-400/30 flex items-center justify-between">
+          <div class="flex items-center gap-4">
+            <div class="w-14 h-14 rounded-full bg-dark-border overflow-hidden ring-2 ring-cyan-400">
+              <img :src="swapSourcePlayer.headshot || defaultHeadshot" :alt="swapSourcePlayer.full_name" class="w-full h-full object-cover" @error="handleImageError" />
+            </div>
+            <div>
+              <h3 class="text-lg font-bold text-dark-text">Swap Analysis</h3>
+              <div class="flex items-center gap-2 text-sm">
+                <span class="text-cyan-400 font-semibold">{{ swapSourcePlayer.full_name }}</span>
+                <span class="text-dark-textMuted">{{ swapSourcePlayer.mlb_team }}</span>
+              </div>
+            </div>
+          </div>
+          <button @click="closeSwapModal" class="p-2 hover:bg-dark-border/50 rounded-lg transition-colors">
+            <svg class="w-6 h-6 text-dark-textMuted" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
+          </button>
+        </div>
+        
+        <!-- Content -->
+        <div class="p-6 overflow-y-auto max-h-[calc(90vh-80px)] space-y-6">
+          <!-- Source Player Stats -->
+          <div class="bg-cyan-500/10 rounded-xl p-4 border border-cyan-500/20">
+            <div class="flex items-center justify-between mb-3">
+              <div class="text-sm font-semibold text-cyan-400">
+                {{ swapSourcePlayer.fantasy_team_key === myTeamKey ? '⭐ Your Player' : '➕ Available Player' }}
+              </div>
+              <div class="text-xs text-dark-textMuted">
+                {{ swapSourcePlayer.opponent || 'No game today' }}
+              </div>
+            </div>
+            <div class="grid grid-cols-4 gap-3">
+              <div v-for="cat in relevantStartSitCategories.slice(0, 4)" :key="cat.stat_id" class="text-center">
+                <div class="text-lg font-bold text-dark-text">{{ formatCategoryProjection(swapSourcePlayer, cat) }}</div>
+                <div class="text-[10px] text-dark-textMuted">{{ cat.display_name }}</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Select Player to Drop -->
+          <div>
+            <div class="text-sm font-semibold text-dark-text mb-3 flex items-center gap-2">
+              <span class="text-yellow-400">🔄</span>
+              {{ swapSourcePlayer.fantasy_team_key === myTeamKey ? 'Compare With' : 'Select Player to Drop' }}
+            </div>
+            <div class="grid grid-cols-1 gap-2 max-h-48 overflow-y-auto">
+              <div 
+                v-for="player in getSwapCandidates()" 
+                :key="player.player_key"
+                @click="selectSwapTarget(player)"
+                class="flex items-center gap-3 p-3 rounded-xl cursor-pointer transition-all"
+                :class="selectedSwapTarget?.player_key === player.player_key 
+                  ? 'bg-yellow-400/20 border-2 border-yellow-400' 
+                  : 'bg-dark-border/30 border-2 border-transparent hover:border-dark-border'"
+              >
+                <div class="w-10 h-10 rounded-full bg-dark-border overflow-hidden ring-2 ring-yellow-400/50">
+                  <img :src="player.headshot || defaultHeadshot" :alt="player.full_name" class="w-full h-full object-cover" @error="handleImageError" />
+                </div>
+                <div class="flex-1 min-w-0">
+                  <div class="font-semibold text-dark-text text-sm truncate">{{ player.full_name }}</div>
+                  <div class="text-xs text-dark-textMuted">{{ player.position }} • {{ player.mlb_team }}</div>
+                </div>
+                <div class="text-right">
+                  <div class="text-sm font-bold text-yellow-400">{{ player.opponent || 'OFF' }}</div>
+                  <div class="text-[10px] text-dark-textMuted">{{ player.hasGame ? 'Playing' : 'No game' }}</div>
+                </div>
+              </div>
+              <div v-if="getSwapCandidates().length === 0" class="text-center py-4 text-dark-textMuted text-sm">
+                No eligible players at this position
+              </div>
+            </div>
+          </div>
+
+          <!-- Impact Analysis -->
+          <div v-if="selectedSwapTarget && swapImpact" class="space-y-4">
+            <div class="text-sm font-semibold text-dark-text flex items-center gap-2">
+              <span>📊</span> Matchup Impact
+            </div>
+            
+            <!-- Summary -->
+            <div class="grid grid-cols-3 gap-3">
+              <div class="bg-dark-card rounded-xl p-3 text-center">
+                <div class="text-2xl font-black" :class="swapImpact.netChange > 0 ? 'text-green-400' : swapImpact.netChange < 0 ? 'text-red-400' : 'text-dark-textMuted'">
+                  {{ swapImpact.netChange > 0 ? '+' : '' }}{{ swapImpact.netChange.toFixed(1) }}
+                </div>
+                <div class="text-[10px] text-dark-textMuted">Net Category Change</div>
+              </div>
+              <div class="bg-dark-card rounded-xl p-3 text-center">
+                <div class="text-2xl font-black text-green-400">{{ swapImpact.categoriesImproved }}</div>
+                <div class="text-[10px] text-dark-textMuted">Categories Improved</div>
+              </div>
+              <div class="bg-dark-card rounded-xl p-3 text-center">
+                <div class="text-2xl font-black text-red-400">{{ swapImpact.categoriesHurt }}</div>
+                <div class="text-[10px] text-dark-textMuted">Categories Hurt</div>
+              </div>
+            </div>
+
+            <!-- Category-by-Category -->
+            <div class="bg-dark-card rounded-xl p-4">
+              <div class="space-y-2">
+                <div v-for="cat in swapImpact.categoryChanges" :key="cat.stat_id" class="flex items-center gap-2 text-xs">
+                  <span class="w-10 font-medium text-dark-text">{{ cat.display_name }}</span>
+                  <div class="flex-1 flex items-center gap-2">
+                    <span class="text-dark-textMuted w-12 text-right">{{ cat.before }}</span>
+                    <span class="text-dark-textMuted">→</span>
+                    <span class="w-12" :class="cat.change > 0 ? 'text-green-400' : cat.change < 0 ? 'text-red-400' : 'text-dark-textMuted'">
+                      {{ cat.after }}
+                    </span>
+                  </div>
+                  <span class="w-12 text-right font-mono" :class="cat.change > 0 ? 'text-green-400' : cat.change < 0 ? 'text-red-400' : 'text-dark-textMuted'">
+                    {{ cat.change > 0 ? '+' : '' }}{{ cat.changeDisplay }}
+                  </span>
+                  <span class="w-6 text-center">
+                    <span v-if="cat.impact === 'flip-win'" class="text-green-400 text-sm">🔥</span>
+                    <span v-else-if="cat.impact === 'flip-lose'" class="text-red-400 text-sm">⚠️</span>
+                    <span v-else-if="cat.change > 0" class="text-green-400">↑</span>
+                    <span v-else-if="cat.change < 0" class="text-red-400">↓</span>
+                    <span v-else class="text-dark-textMuted">-</span>
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Recommendation -->
+            <div class="rounded-xl p-4" :class="swapImpact.recommendation === 'do-it' ? 'bg-green-500/10 border border-green-500/30' : swapImpact.recommendation === 'avoid' ? 'bg-red-500/10 border border-red-500/30' : 'bg-yellow-500/10 border border-yellow-500/30'">
+              <div class="flex items-center gap-3">
+                <span class="text-2xl">{{ swapImpact.recommendation === 'do-it' ? '✅' : swapImpact.recommendation === 'avoid' ? '❌' : '🤔' }}</span>
+                <div>
+                  <div class="font-semibold" :class="swapImpact.recommendation === 'do-it' ? 'text-green-400' : swapImpact.recommendation === 'avoid' ? 'text-red-400' : 'text-yellow-400'">
+                    {{ swapImpact.recommendation === 'do-it' ? 'Make This Swap!' : swapImpact.recommendation === 'avoid' ? 'Avoid This Swap' : 'Consider Carefully' }}
+                  </div>
+                  <div class="text-xs text-dark-textMuted">{{ swapImpact.reason }}</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div v-else-if="!selectedSwapTarget" class="text-center py-6 text-dark-textMuted">
+            Select a player above to see the matchup impact
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -1588,6 +1738,12 @@ const selectedStartSitPosition = ref('C')
 const currentMatchupWeek = ref(1)
 const currentMatchup = ref<any>(null)
 const startSitPlayerFilter = ref<'all' | 'mine' | 'fa'>('all')
+
+// Player swap state
+const swapSourcePlayer = ref<any>(null)  // Player to potentially add
+const showSwapModal = ref(false)
+const swapImpact = ref<any>(null)  // Calculated impact of swap
+const selectedSwapTarget = ref<any>(null)  // Player on my team to drop
 
 const startSitPositions = [
   { id: 'C', label: 'C' },
@@ -2991,6 +3147,172 @@ function getStartSitPlayerNameClass(player: any): string {
   return 'text-dark-text'
 }
 
+// ==================== PLAYER SWAP FUNCTIONS ====================
+
+function openSwapModal(player: any) {
+  swapSourcePlayer.value = player
+  selectedSwapTarget.value = null
+  swapImpact.value = null
+  showSwapModal.value = true
+}
+
+function closeSwapModal() {
+  showSwapModal.value = false
+  swapSourcePlayer.value = null
+  selectedSwapTarget.value = null
+  swapImpact.value = null
+}
+
+function getSwapCandidates(): any[] {
+  if (!swapSourcePlayer.value) return []
+  
+  const sourcePos = swapSourcePlayer.value.position || ''
+  const sourceIsMyPlayer = swapSourcePlayer.value.fantasy_team_key === myTeamKey.value
+  
+  // Get my players at similar positions
+  const myPlayers = allPlayers.value.filter(p => {
+    if (p.fantasy_team_key !== myTeamKey.value) return false
+    if (p.player_key === swapSourcePlayer.value.player_key) return false
+    
+    const playerPos = p.position || ''
+    // Check if positions overlap
+    const sourcePositions = sourcePos.split(',').map((s: string) => s.trim())
+    const playerPositions = playerPos.split(',').map((s: string) => s.trim())
+    
+    // Allow any overlap or if either is Util
+    return sourcePositions.some((sp: string) => 
+      playerPositions.includes(sp) || sp === 'Util' || playerPositions.includes('Util')
+    ) || (isPitcher(swapSourcePlayer.value) && isPitcher({ position: playerPos }))
+      || (!isPitcher(swapSourcePlayer.value) && !isPitcher({ position: playerPos }))
+  })
+  
+  // Add game info
+  return myPlayers.map(p => ({
+    ...p,
+    hasGame: Math.random() > 0.2, // Simulate - would come from real schedule
+    opponent: Math.random() > 0.2 ? ['NYY', 'BOS', 'LAD', 'HOU', 'ATL', 'PHI'][Math.floor(Math.random() * 6)] : null
+  })).sort((a, b) => {
+    // Prioritize players without games
+    if (!a.hasGame && b.hasGame) return -1
+    if (a.hasGame && !b.hasGame) return 1
+    return 0
+  })
+}
+
+function selectSwapTarget(player: any) {
+  selectedSwapTarget.value = player
+  calculateSwapImpact()
+}
+
+function calculateSwapImpact() {
+  if (!swapSourcePlayer.value || !selectedSwapTarget.value) {
+    swapImpact.value = null
+    return
+  }
+  
+  const source = swapSourcePlayer.value
+  const target = selectedSwapTarget.value
+  
+  const categoryChanges: any[] = []
+  let totalPositiveChange = 0
+  let totalNegativeChange = 0
+  let categoriesImproved = 0
+  let categoriesHurt = 0
+  let flipsWon = 0
+  let flipsLost = 0
+  
+  for (const cat of relevantStartSitCategories.value) {
+    const statId = cat.stat_id
+    const isLowerBetter = isLowerBetterStat(cat)
+    
+    // Get current values
+    const sourceValue = source.stats?.[statId] || 0
+    const targetValue = target.stats?.[statId] || 0
+    
+    // Calculate per-game rates (simplified)
+    const gamesPlayed = 97
+    const sourcePerGame = gamesPlayed > 0 ? sourceValue / gamesPlayed : 0
+    const targetPerGame = gamesPlayed > 0 ? targetValue / gamesPlayed : 0
+    
+    // Calculate impact (if we add source and drop target)
+    const dailyChange = sourcePerGame - targetPerGame
+    const weeklyChange = dailyChange * 6 // Approximate week
+    
+    // Get current matchup standing
+    const currentStanding = categoryImpactBreakdown.value.find(c => c.stat_id === statId)
+    const currentStatus = currentStanding?.status || 'close'
+    
+    // Determine impact
+    let impact = 'neutral'
+    if (isLowerBetter) {
+      if (dailyChange < 0 && currentStatus === 'losing') impact = 'flip-win'
+      else if (dailyChange > 0 && currentStatus === 'winning') impact = 'flip-lose'
+    } else {
+      if (dailyChange > 0 && currentStatus === 'losing') impact = 'flip-win'
+      else if (dailyChange < 0 && currentStatus === 'winning') impact = 'flip-lose'
+    }
+    
+    const absChange = Math.abs(dailyChange)
+    if ((dailyChange > 0 && !isLowerBetter) || (dailyChange < 0 && isLowerBetter)) {
+      totalPositiveChange += absChange
+      if (absChange > 0.01) categoriesImproved++
+    } else if ((dailyChange < 0 && !isLowerBetter) || (dailyChange > 0 && isLowerBetter)) {
+      totalNegativeChange += absChange
+      if (absChange > 0.01) categoriesHurt++
+    }
+    
+    if (impact === 'flip-win') flipsWon++
+    if (impact === 'flip-lose') flipsLost++
+    
+    const formatVal = (val: number) => {
+      if (isRatioStat(cat)) return val.toFixed(3).replace(/^0/, '')
+      return Math.round(val).toString()
+    }
+    
+    categoryChanges.push({
+      ...cat,
+      before: formatVal(targetPerGame),
+      after: formatVal(sourcePerGame),
+      change: dailyChange,
+      changeDisplay: isRatioStat(cat) ? dailyChange.toFixed(3) : dailyChange.toFixed(2),
+      impact
+    })
+  }
+  
+  // Calculate recommendation
+  const netChange = totalPositiveChange - totalNegativeChange
+  let recommendation: 'do-it' | 'avoid' | 'consider' = 'consider'
+  let reason = ''
+  
+  if (flipsWon > flipsLost && categoriesImproved > categoriesHurt) {
+    recommendation = 'do-it'
+    reason = `Could flip ${flipsWon} categor${flipsWon === 1 ? 'y' : 'ies'} in your favor!`
+  } else if (flipsLost > flipsWon) {
+    recommendation = 'avoid'
+    reason = `Risk losing ${flipsLost} categor${flipsLost === 1 ? 'y' : 'ies'} you're currently winning.`
+  } else if (categoriesImproved > categoriesHurt) {
+    recommendation = 'do-it'
+    reason = `Net positive impact across ${categoriesImproved} categories.`
+  } else if (categoriesHurt > categoriesImproved) {
+    recommendation = 'avoid'
+    reason = `Would hurt ${categoriesHurt} categories more than help.`
+  } else {
+    recommendation = 'consider'
+    reason = 'Mixed impact - consider your specific needs this week.'
+  }
+  
+  swapImpact.value = {
+    categoryChanges,
+    netChange,
+    categoriesImproved,
+    categoriesHurt,
+    flipsWon,
+    flipsLost,
+    recommendation,
+    reason
+  }
+}
+
 // ==================== STARTING LINEUP & CATEGORY IMPACT ====================
 
 // Suggested lineup for categories
@@ -3176,10 +3498,20 @@ const categoryImpactBreakdown = computed(() => {
       }
     }
     
+    // Format projections compactly
+    const formatCompact = (val: number) => {
+      if (isRatioStat(cat)) {
+        return val.toFixed(3).replace(/^0/, '')
+      }
+      return Math.round(val).toString()
+    }
+    
     return {
       ...cat,
-      myProj: formatTeamCategoryStat(myProj, cat),
-      oppProj: formatTeamCategoryStat(oppProj, cat),
+      myProj: formatCompact(myProj),
+      oppProj: formatCompact(oppProj),
+      myProjRaw: myProj,
+      oppProjRaw: oppProj,
       status,
       barWidth,
       barClass: status === 'winning' ? 'bg-green-500' : status === 'losing' ? 'bg-red-500' : 'bg-yellow-500',
