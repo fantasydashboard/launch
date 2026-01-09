@@ -1088,11 +1088,12 @@
                   <div v-if="showValueExplanation" class="bg-dark-card border border-dark-border rounded-lg p-3 text-xs text-dark-textMuted">
                     <div class="font-bold text-dark-text mb-1">How Value is Calculated:</div>
                     <ul class="space-y-1 list-disc list-inside">
-                      <li><span class="text-yellow-400">Category Percentile</span> - Player's rank across all relevant stats</li>
-                      <li><span class="text-yellow-400">Multi-Category Bonus</span> - Rewards players contributing to multiple categories</li>
-                      <li><span class="text-yellow-400">Position Scarcity</span> - C, SS, 2B get +5 for thin talent pools</li>
+                      <li><span class="text-yellow-400">Category Percentile</span> - Player's rank in each stat vs. same player type</li>
+                      <li><span class="text-yellow-400">Multi-Category Bonus</span> - Rewards contributing across all categories</li>
+                      <li><span class="text-yellow-400">Position Scarcity</span> - C, SS, 2B hitters get +5 for thin pools</li>
+                      <li><span class="text-yellow-400">Normalization</span> - Scores balanced so pitchers & hitters compare fairly</li>
                     </ul>
-                    <div class="mt-2 text-[10px]">Value ranges from 0-100. Higher is better.</div>
+                    <div class="mt-2 text-[10px]">Value ranges from 10-90. Higher is better. Pitchers & hitters are normalized separately then scaled to the same range.</div>
                   </div>
                   
                   <!-- Player List -->
@@ -3927,16 +3928,19 @@ const otherTeams = computed(() => {
 const allPlayersWithValues = computed(() => {
   if (allPlayers.value.length === 0) return []
   
-  // Calculate overall value for each player based on their stats across all categories
-  return allPlayers.value.map(p => {
+  // First pass: calculate raw scores for all players
+  const playersWithRawScores = allPlayers.value.map(p => {
     const isPlayerPitcher = isPitcher(p)
     const relevantCats = isPlayerPitcher ? pitchingCategories.value : hittingCategories.value
     
-    if (relevantCats.length === 0) return { ...p, overallValue: 50 }
+    if (relevantCats.length === 0) return { ...p, rawScore: 50, isPlayerPitcher }
     
     // Calculate how good this player is across their relevant categories
     let totalScore = 0
     let catsWithValue = 0
+    
+    // Get all players of same type for comparison
+    const samePlayers = allPlayers.value.filter(pl => isPitcher(pl) === isPlayerPitcher)
     
     for (const cat of relevantCats) {
       const statId = cat.stat_id
@@ -3944,18 +3948,18 @@ const allPlayersWithValues = computed(() => {
       
       if (value === 0) continue
       
-      // Get percentile ranking for this stat among all players
-      const allValues = allPlayers.value
-        .filter(pl => isPitcher(pl) === isPlayerPitcher)
+      // Get all non-zero values for this stat
+      const allValues = samePlayers
         .map(pl => parseFloat(pl.stats?.[statId] || 0))
         .filter(v => v > 0)
-        .sort((a, b) => {
-          const isLower = isLowerBetterStat(cat)
-          return isLower ? a - b : b - a
-        })
       
       if (allValues.length === 0) continue
       
+      // Sort based on whether lower is better
+      const isLower = isLowerBetterStat(cat)
+      allValues.sort((a, b) => isLower ? a - b : b - a)
+      
+      // Find rank (handle ties by finding first occurrence)
       const rank = allValues.indexOf(value)
       const percentile = rank >= 0 ? (1 - (rank / allValues.length)) * 100 : 50
       
@@ -3965,16 +3969,51 @@ const allPlayersWithValues = computed(() => {
     
     const avgScore = catsWithValue > 0 ? totalScore / catsWithValue : 50
     
-    // Boost for multi-category contributors
-    const multiCatBonus = Math.min(20, catsWithValue * 3)
+    // Smaller multi-category bonus (max 10 instead of 20)
+    // Scale by percentage of categories contributed to, not absolute count
+    const catContributionRate = relevantCats.length > 0 ? catsWithValue / relevantCats.length : 0
+    const multiCatBonus = catContributionRate * 10
     
-    // Position scarcity bonus
+    // Position scarcity bonus (only for hitters at scarce positions)
     const pos = p.position?.split(',')[0]?.trim() || 'Util'
     const scarcePositions = ['C', 'SS', '2B']
-    const scarcityBonus = scarcePositions.includes(pos) ? 5 : 0
+    const scarcityBonus = (!isPlayerPitcher && scarcePositions.includes(pos)) ? 5 : 0
     
-    const overallValue = Math.min(100, Math.max(0, avgScore + multiCatBonus + scarcityBonus))
+    const rawScore = avgScore + multiCatBonus + scarcityBonus
     
+    return { ...p, rawScore, isPlayerPitcher }
+  })
+  
+  // Second pass: normalize scores within each group (pitchers vs hitters)
+  const pitchers = playersWithRawScores.filter(p => p.isPlayerPitcher)
+  const hitters = playersWithRawScores.filter(p => !p.isPlayerPitcher)
+  
+  // Calculate stats for normalization
+  const getStats = (players: any[]) => {
+    if (players.length === 0) return { min: 0, max: 100, avg: 50 }
+    const scores = players.map(p => p.rawScore)
+    return {
+      min: Math.min(...scores),
+      max: Math.max(...scores),
+      avg: scores.reduce((a, b) => a + b, 0) / scores.length
+    }
+  }
+  
+  const pitcherStats = getStats(pitchers)
+  const hitterStats = getStats(hitters)
+  
+  // Normalize to 0-100 scale within each group, then blend
+  // Target: both groups should have similar distribution centered around 50
+  const normalizeScore = (rawScore: number, stats: { min: number; max: number; avg: number }) => {
+    if (stats.max === stats.min) return 50
+    // Normalize to 0-100 range
+    const normalized = ((rawScore - stats.min) / (stats.max - stats.min)) * 80 + 10
+    return Math.min(100, Math.max(0, normalized))
+  }
+  
+  return playersWithRawScores.map(p => {
+    const stats = p.isPlayerPitcher ? pitcherStats : hitterStats
+    const overallValue = normalizeScore(p.rawScore, stats)
     return { ...p, overallValue: Math.round(overallValue * 10) / 10 }
   })
 })
