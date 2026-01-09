@@ -135,6 +135,107 @@
             <input type="checkbox" v-model="showOnlyFreeAgents" class="w-4 h-4 rounded border-dark-border bg-dark-card text-cyan-400" />
             <span class="text-sm text-dark-textMuted">Free Agents</span>
           </label>
+          <div class="relative">
+            <button 
+              @click="showRankingSettings = !showRankingSettings"
+              class="px-3 py-1.5 text-sm rounded-lg border transition-all flex items-center gap-2"
+              :class="showRankingSettings ? 'bg-yellow-400/20 text-yellow-400 border-yellow-400' : 'bg-dark-card text-dark-textMuted border-dark-border hover:border-dark-textMuted'"
+            >
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4" />
+              </svg>
+              Customize Rankings
+            </button>
+            <!-- Settings Dropdown -->
+            <div 
+              v-if="showRankingSettings" 
+              class="absolute right-0 top-full mt-2 w-80 bg-dark-card border border-dark-border rounded-xl shadow-2xl z-50 p-4"
+            >
+              <div class="flex items-center justify-between mb-4">
+                <h3 class="font-bold text-dark-text">Ranking Weights</h3>
+                <button @click="resetWeights" class="text-xs text-yellow-400 hover:underline">Reset to Default</button>
+              </div>
+              <p class="text-xs text-dark-textMuted mb-4">Adjust how player value scores are calculated. Weights should total 100%.</p>
+              
+              <!-- Category Rank Weight -->
+              <div class="mb-4">
+                <div class="flex justify-between text-sm mb-1">
+                  <span class="text-dark-text">Category Rank</span>
+                  <span class="text-yellow-400 font-bold">{{ rankingWeights.categoryRank }}%</span>
+                </div>
+                <input 
+                  type="range" 
+                  v-model.number="rankingWeights.categoryRank" 
+                  @change="saveWeights"
+                  min="0" max="100" step="5"
+                  class="w-full h-2 bg-dark-border rounded-lg appearance-none cursor-pointer accent-yellow-400"
+                />
+                <p class="text-[10px] text-dark-textMuted mt-1">How the player ranks in this specific category</p>
+              </div>
+              
+              <!-- Multi-Category Weight -->
+              <div class="mb-4">
+                <div class="flex justify-between text-sm mb-1">
+                  <span class="text-dark-text">Multi-Category</span>
+                  <span class="text-green-400 font-bold">{{ rankingWeights.multiCategory }}%</span>
+                </div>
+                <input 
+                  type="range" 
+                  v-model.number="rankingWeights.multiCategory" 
+                  @change="saveWeights"
+                  min="0" max="100" step="5"
+                  class="w-full h-2 bg-dark-border rounded-lg appearance-none cursor-pointer accent-green-400"
+                />
+                <p class="text-[10px] text-dark-textMuted mt-1">Contribution across multiple scoring categories</p>
+              </div>
+              
+              <!-- Scarcity Weight -->
+              <div class="mb-4">
+                <div class="flex justify-between text-sm mb-1">
+                  <span class="text-dark-text">Position Scarcity</span>
+                  <span class="text-cyan-400 font-bold">{{ rankingWeights.scarcity }}%</span>
+                </div>
+                <input 
+                  type="range" 
+                  v-model.number="rankingWeights.scarcity" 
+                  @change="saveWeights"
+                  min="0" max="100" step="5"
+                  class="w-full h-2 bg-dark-border rounded-lg appearance-none cursor-pointer accent-cyan-400"
+                />
+                <p class="text-[10px] text-dark-textMuted mt-1">Value boost for scarce positions (C, SS, etc.)</p>
+              </div>
+              
+              <!-- Consistency Weight -->
+              <div class="mb-4">
+                <div class="flex justify-between text-sm mb-1">
+                  <span class="text-dark-text">Consistency</span>
+                  <span class="text-purple-400 font-bold">{{ rankingWeights.consistency }}%</span>
+                </div>
+                <input 
+                  type="range" 
+                  v-model.number="rankingWeights.consistency" 
+                  @change="saveWeights"
+                  min="0" max="100" step="5"
+                  class="w-full h-2 bg-dark-border rounded-lg appearance-none cursor-pointer accent-purple-400"
+                />
+                <p class="text-[10px] text-dark-textMuted mt-1">How reliable/consistent the player's production is</p>
+              </div>
+              
+              <!-- Total Weight Indicator -->
+              <div class="pt-3 border-t border-dark-border">
+                <div class="flex justify-between items-center">
+                  <span class="text-sm text-dark-textMuted">Total Weight:</span>
+                  <span 
+                    class="text-sm font-bold"
+                    :class="totalWeight === 100 ? 'text-green-400' : 'text-red-400'"
+                  >
+                    {{ totalWeight }}%
+                    <span v-if="totalWeight !== 100" class="text-xs ml-1">(should be 100%)</span>
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -476,23 +577,23 @@
                             <h4 class="font-semibold text-dark-text mb-3 flex items-center gap-2"><span>💎</span> Value Score Breakdown</h4>
                             <div class="space-y-4">
                               <div>
-                                <div class="flex justify-between text-sm mb-1"><span class="text-dark-textMuted">Category Rank (40%)</span><span class="text-dark-text font-medium">{{ ((1 - (player.categoryRank - 1) / Math.max(filteredPlayers.length, 1)) * 100).toFixed(0) }}</span></div>
+                                <div class="flex justify-between text-sm mb-1"><span class="text-dark-textMuted">Category Rank ({{ rankingWeights.categoryRank }}%)</span><span class="text-dark-text font-medium">{{ ((1 - (player.categoryRank - 1) / Math.max(filteredPlayers.length, 1)) * 100).toFixed(0) }}</span></div>
                                 <div class="h-2 bg-dark-border rounded-full overflow-hidden"><div class="h-full bg-yellow-400 rounded-full" :style="{ width: `${(1 - (player.categoryRank - 1) / Math.max(filteredPlayers.length, 1)) * 100}%` }"></div></div>
                               </div>
                               <div>
-                                <div class="flex justify-between text-sm mb-1"><span class="text-dark-textMuted">Multi-Category (25%)</span><span class="text-dark-text font-medium">{{ ((player.categoriesContributing || 0) / Math.max(relevantCategories.length, 1) * 100).toFixed(0) }}</span></div>
+                                <div class="flex justify-between text-sm mb-1"><span class="text-dark-textMuted">Multi-Category ({{ rankingWeights.multiCategory }}%)</span><span class="text-dark-text font-medium">{{ ((player.categoriesContributing || 0) / Math.max(relevantCategories.length, 1) * 100).toFixed(0) }}</span></div>
                                 <div class="h-2 bg-dark-border rounded-full overflow-hidden"><div class="h-full bg-green-500 rounded-full" :style="{ width: `${(player.categoriesContributing || 0) / Math.max(relevantCategories.length, 1) * 100}%` }"></div></div>
                               </div>
                               <div>
-                                <div class="flex justify-between text-sm mb-1"><span class="text-dark-textMuted">Position Scarcity (20%)</span><span class="text-dark-text font-medium">{{ player.scarcityScore || 50 }}</span></div>
-                                <div class="h-2 bg-dark-border rounded-full overflow-hidden"><div class="h-full bg-yellow-500 rounded-full" :style="{ width: `${player.scarcityScore || 50}%` }"></div></div>
+                                <div class="flex justify-between text-sm mb-1"><span class="text-dark-textMuted">Position Scarcity ({{ rankingWeights.scarcity }}%)</span><span class="text-dark-text font-medium">{{ player.scarcityScore || 50 }}</span></div>
+                                <div class="h-2 bg-dark-border rounded-full overflow-hidden"><div class="h-full bg-cyan-400 rounded-full" :style="{ width: `${player.scarcityScore || 50}%` }"></div></div>
                               </div>
                               <div>
-                                <div class="flex justify-between text-sm mb-1"><span class="text-dark-textMuted">Consistency (15%)</span><span class="text-dark-text font-medium">50</span></div>
-                                <div class="h-2 bg-dark-border rounded-full overflow-hidden"><div class="h-full bg-cyan-500 rounded-full" style="width: 50%"></div></div>
+                                <div class="flex justify-between text-sm mb-1"><span class="text-dark-textMuted">Consistency ({{ rankingWeights.consistency }}%)</span><span class="text-dark-text font-medium">50</span></div>
+                                <div class="h-2 bg-dark-border rounded-full overflow-hidden"><div class="h-full bg-purple-400 rounded-full" style="width: 50%"></div></div>
                               </div>
                               <div class="border-t border-dark-border pt-3 mt-3">
-                                <p class="text-xs text-dark-textMuted leading-relaxed"><strong class="text-dark-text">Value Score</strong> measures overall fantasy value: category rank, multi-category contribution, positional scarcity, and consistency.</p>
+                                <p class="text-xs text-dark-textMuted leading-relaxed"><strong class="text-dark-text">Value Score</strong> measures overall fantasy value using your custom weights. Click "Customize Rankings" above to adjust.</p>
                               </div>
                             </div>
                           </div>
@@ -1349,6 +1450,42 @@ const expandedPlayerKey = ref<string | null>(null)
 const sortColumn = ref<string>('rank')
 const sortDirection = ref<'asc' | 'desc'>('asc')
 
+// Ranking customization weights
+const showRankingSettings = ref(false)
+const rankingWeights = ref({
+  categoryRank: 40,
+  multiCategory: 25,
+  scarcity: 20,
+  consistency: 15
+})
+
+// Load saved weights from localStorage
+const loadSavedWeights = () => {
+  try {
+    const saved = localStorage.getItem('rosRankingWeights')
+    if (saved) {
+      const parsed = JSON.parse(saved)
+      rankingWeights.value = { ...rankingWeights.value, ...parsed }
+    }
+  } catch (e) { console.error('Error loading ranking weights:', e) }
+}
+
+const saveWeights = () => {
+  try {
+    localStorage.setItem('rosRankingWeights', JSON.stringify(rankingWeights.value))
+  } catch (e) { console.error('Error saving ranking weights:', e) }
+}
+
+const resetWeights = () => {
+  rankingWeights.value = { categoryRank: 40, multiCategory: 25, scarcity: 20, consistency: 15 }
+  saveWeights()
+}
+
+const totalWeight = computed(() => {
+  return rankingWeights.value.categoryRank + rankingWeights.value.multiCategory + 
+         rankingWeights.value.scarcity + rankingWeights.value.consistency
+})
+
 // Tab state
 const activeTab = ref<'ros' | 'teams' | 'startsit'>('ros')
 const teamsViewMode = ref<'grid' | 'table'>('grid')
@@ -1381,15 +1518,15 @@ const isLoadingChart = ref(false)
 const defaultHeadshot = 'https://s.yimg.com/cv/apiv2/default/mlb/mlb_default_player_v2.png'
 const defaultLogo = 'https://s.yimg.com/cv/apiv2/default/mlb/mlb_dp_2_72.png'
 
-const columnTooltips = {
+const columnTooltips = computed(() => ({
   rank: 'Player rank in this category based on projected ROS performance',
   player: 'Player name, MLB team, and fantasy team owner',
   position: 'Primary fielding position',
   rosProj: 'Rest of Season Projection: Current stats + (per-game rate × remaining games)',
   current: 'Current season total for this category',
   perGame: 'Average production per game this season',
-  value: 'Overall Value Score (0-100) combining: Category Rank (40%), Multi-Category Contribution (25%), Positional Scarcity (20%), and Consistency (15%)'
-}
+  value: `Overall Value Score (0-100) combining: Category Rank (${rankingWeights.value.categoryRank}%), Multi-Category (${rankingWeights.value.multiCategory}%), Scarcity (${rankingWeights.value.scarcity}%), Consistency (${rankingWeights.value.consistency}%)`
+}))
 
 // Stat detection - use names instead of hardcoded IDs since IDs vary by league
 const pitchingStatNames = ['ERA', 'WHIP', 'W', 'SV', 'K', 'IP', 'QS', 'HLD', 'Wins', 'Saves', 'Strikeouts', 'Innings', 'Quality', 'Holds', 'L', 'Losses', 'BB', 'Walks', 'CG', 'SHO', 'BSV', 'Blown']
@@ -1513,7 +1650,14 @@ const categoryRankedPlayers = computed(() => {
       const actualPerGame = p.perGameValue
       if (actualPerGame > 0 && expectedPerGame > 0) { consistencyScore = Math.min(100, Math.max(0, (actualPerGame / expectedPerGame) * 50)) } 
     }
-    const overallValue = (categoryRankScore * 0.40) + (multiCatScore * 0.25) + (scarcityScore * 0.20) + (consistencyScore * 0.15)
+    // Use custom weights, normalized to sum to 1
+    const weights = rankingWeights.value
+    const totalW = weights.categoryRank + weights.multiCategory + weights.scarcity + weights.consistency
+    const normFactor = totalW > 0 ? 100 / totalW : 1
+    const overallValue = (categoryRankScore * (weights.categoryRank / 100 * normFactor)) + 
+                        (multiCatScore * (weights.multiCategory / 100 * normFactor)) + 
+                        (scarcityScore * (weights.scarcity / 100 * normFactor)) + 
+                        (consistencyScore * (weights.consistency / 100 * normFactor))
     return { ...p, tier, categoryRank: index + 1, overallValue: Math.round(overallValue * 10) / 10, categoriesContributing, scarcityScore: Math.round(scarcityScore) }
   })
   return players
@@ -1893,9 +2037,9 @@ function getRecentRankClass(player: any, statId: string): string {
 }
 
 function handleImageError(e: Event) { (e.target as HTMLImageElement).src = defaultHeadshot }
-function getRowClass(player: any): string { if (isMyPlayer(player)) return 'bg-yellow-500/20 border-l-4 border-l-yellow-400'; if (isFreeAgent(player)) return 'bg-cyan-500/10 border-l-4 border-l-cyan-400'; return '' }
+function getRowClass(player: any): string { if (isMyPlayer(player)) return 'bg-yellow-500/20 border-l-4 border-l-yellow-400'; if (isFreeAgent(player)) return 'bg-cyan-500/20 border-l-4 border-l-cyan-400'; return '' }
 function getAvatarRingClass(player: any): string { if (isMyPlayer(player)) return 'ring-yellow-400 ring-offset-2 ring-offset-dark-card'; if (isFreeAgent(player)) return 'ring-cyan-400 ring-offset-2 ring-offset-dark-card'; return 'ring-dark-border' }
-function getPlayerNameClass(player: any): string { if (isMyPlayer(player)) return 'text-yellow-400'; if (isFreeAgent(player)) return 'text-cyan-300'; return 'text-dark-text' }
+function getPlayerNameClass(player: any): string { if (isMyPlayer(player)) return 'text-yellow-400'; if (isFreeAgent(player)) return 'text-cyan-400'; return 'text-dark-text' }
 function getPositionClass(position: string): string { const pos = position?.split(',')[0]?.trim(); const colors: Record<string, string> = { 'C': 'bg-purple-500/30 text-purple-300', '1B': 'bg-red-500/30 text-red-300', '2B': 'bg-green-500/30 text-green-300', '3B': 'bg-blue-500/30 text-blue-300', 'SS': 'bg-yellow-500/30 text-yellow-300', 'OF': 'bg-orange-500/30 text-orange-300', 'SP': 'bg-cyan-500/30 text-cyan-300', 'RP': 'bg-pink-500/30 text-pink-300' }; return colors[pos] || 'bg-dark-border text-dark-textMuted' }
 function showTierBreak(player: any, index: number): boolean { if (sortColumn.value !== 'rank') return false; if (index === 0) return true; const prevPlayer = sortedPlayers.value[index - 1]; return prevPlayer && player.tier !== prevPlayer.tier }
 function getTierLabel(tier: number): string { const labels: Record<number, string> = { 1: 'Tier 1: Elite', 2: 'Tier 2: Great', 3: 'Tier 3: Good', 4: 'Tier 4: Average', 5: 'Tier 5: Below Average' }; return labels[tier] || `Tier ${tier}` }
@@ -2672,8 +2816,8 @@ function getStartSitPositionClass(position: string): string {
 }
 
 function getStartSitRowClass(player: any): string {
-  if (player.fantasy_team_key === myTeamKey.value) return 'bg-yellow-500/10 border-l-4 border-l-yellow-400'
-  if (!player.fantasy_team_key) return 'bg-cyan-500/5 border-l-4 border-l-cyan-400'
+  if (player.fantasy_team_key === myTeamKey.value) return 'bg-yellow-500/20 border-l-4 border-l-yellow-400'
+  if (!player.fantasy_team_key) return 'bg-cyan-500/20 border-l-4 border-l-cyan-400'
   return ''
 }
 
@@ -2685,7 +2829,7 @@ function getStartSitAvatarClass(player: any): string {
 
 function getStartSitPlayerNameClass(player: any): string {
   if (player.fantasy_team_key === myTeamKey.value) return 'text-yellow-400'
-  if (!player.fantasy_team_key) return 'text-cyan-300'
+  if (!player.fantasy_team_key) return 'text-cyan-400'
   return 'text-dark-text'
 }
 
@@ -2921,5 +3065,5 @@ const potentialFlips = computed(() => {
 })
 
 watch(selectedCategory, () => { selectAllPositions() })
-onMounted(() => { loadProjections() })
+onMounted(() => { loadSavedWeights(); loadProjections() })
 </script>
