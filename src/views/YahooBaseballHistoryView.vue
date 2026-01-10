@@ -1120,13 +1120,24 @@ const filteredH2HTeams = computed(() => {
 // H2H Records Map
 const h2hRecords = ref<Record<string, Record<string, { wins: number; losses: number }>>>({})
 
+// Helper function to find logo by team name
+function getLogoByTeamName(teamName: string): string {
+  // First check allTeams by iterating values
+  for (const team of Object.values(allTeams.value)) {
+    if (team.name === teamName) return team.logo_url || ''
+  }
+  // Also check careerStats
+  const stat = careerStats.value.find(s => s.team_name === teamName)
+  return stat?.logo_url || ''
+}
+
 // Computed: All-Time Awards
 const allTimeHallOfFame = computed((): Award[] => {
   const stats = careerStats.value
   if (stats.length === 0) return []
   
   // Find best performers across all matchups
-  let highestScore = { value: 0, team: '', season: '', week: 0 }
+  let highestScore = { value: 0, team: '', teamKey: '', logoUrl: '', season: '', week: 0 }
   let mostWins = { value: 0, team: '', logo: '' }
   let highestPPW = { value: 0, team: '', logo: '' }
   let bestWinPct = { value: 0, team: '', logo: '', record: '' }
@@ -1140,6 +1151,8 @@ const allTimeHallOfFame = computed((): Award[] => {
             highestScore = {
               value: team.points,
               team: team.name,
+              teamKey: team.team_key || '',
+              logoUrl: team.logo_url || allTeams.value[team.team_key]?.logo_url || '',
               season,
               week: parseInt(week)
             }
@@ -1159,7 +1172,7 @@ const allTimeHallOfFame = computed((): Award[] => {
       title: 'Highest Single-Week Score',
       winner: highestScore.value > 0 ? {
         team_name: highestScore.team,
-        logo_url: allTeams.value[highestScore.team]?.logo_url || '',
+        logo_url: highestScore.logoUrl || getLogoByTeamName(highestScore.team),
         value: highestScore.value.toFixed(1),
         season: `${highestScore.season} Week ${highestScore.week}`,
         details: 'All-time best single-week performance'
@@ -1169,7 +1182,7 @@ const allTimeHallOfFame = computed((): Award[] => {
       title: 'Most Career Wins',
       winner: byWins ? {
         team_name: byWins.team_name,
-        logo_url: byWins.logo_url,
+        logo_url: byWins.logo_url || getLogoByTeamName(byWins.team_name),
         value: String(byWins.wins),
         details: `${byWins.wins}-${byWins.losses} career record`
       } : null
@@ -1178,7 +1191,7 @@ const allTimeHallOfFame = computed((): Award[] => {
       title: 'Highest Career PPW',
       winner: byPPW ? {
         team_name: byPPW.team_name,
-        logo_url: byPPW.logo_url,
+        logo_url: byPPW.logo_url || getLogoByTeamName(byPPW.team_name),
         value: byPPW.avg_ppw.toFixed(1),
         details: `Over ${byPPW.total_weeks} weeks`
       } : null
@@ -1187,7 +1200,7 @@ const allTimeHallOfFame = computed((): Award[] => {
       title: 'Best Win Percentage',
       winner: byWinPct ? {
         team_name: byWinPct.team_name,
-        logo_url: byWinPct.logo_url,
+        logo_url: byWinPct.logo_url || getLogoByTeamName(byWinPct.team_name),
         value: `${(byWinPct.win_pct * 100).toFixed(1)}%`,
         details: `${byWinPct.wins}-${byWinPct.losses} (min 10 games)`
       } : null
@@ -1200,7 +1213,7 @@ const allTimeHallOfShame = computed((): Award[] => {
   if (stats.length === 0) return []
   
   // Find worst performers
-  let lowestScore = { value: Infinity, team: '', season: '', week: 0 }
+  let lowestScore = { value: Infinity, team: '', teamKey: '', logoUrl: '', season: '', week: 0 }
   
   for (const [season, seasonMatchups] of Object.entries(allMatchups.value)) {
     for (const [week, matchups] of Object.entries(seasonMatchups)) {
@@ -1210,6 +1223,8 @@ const allTimeHallOfShame = computed((): Award[] => {
             lowestScore = {
               value: team.points,
               team: team.name,
+              teamKey: team.team_key || '',
+              logoUrl: team.logo_url || allTeams.value[team.team_key]?.logo_url || '',
               season,
               week: parseInt(week)
             }
@@ -1228,7 +1243,7 @@ const allTimeHallOfShame = computed((): Award[] => {
       title: 'Lowest Single-Week Score',
       winner: lowestScore.value < Infinity ? {
         team_name: lowestScore.team,
-        logo_url: allTeams.value[lowestScore.team]?.logo_url || '',
+        logo_url: lowestScore.logoUrl || getLogoByTeamName(lowestScore.team),
         value: lowestScore.value.toFixed(1),
         season: `${lowestScore.season} Week ${lowestScore.week}`,
         details: 'All-time worst single-week performance'
@@ -1238,7 +1253,7 @@ const allTimeHallOfShame = computed((): Award[] => {
       title: 'Most Career Losses',
       winner: byLosses ? {
         team_name: byLosses.team_name,
-        logo_url: byLosses.logo_url,
+        logo_url: byLosses.logo_url || getLogoByTeamName(byLosses.team_name),
         value: String(byLosses.losses),
         details: `${byLosses.wins}-${byLosses.losses} career record`
       } : null
@@ -1247,7 +1262,7 @@ const allTimeHallOfShame = computed((): Award[] => {
       title: 'Lowest Career PPW',
       winner: byLowPPW ? {
         team_name: byLowPPW.team_name,
-        logo_url: byLowPPW.logo_url,
+        logo_url: byLowPPW.logo_url || getLogoByTeamName(byLowPPW.team_name),
         value: byLowPPW.avg_ppw.toFixed(1),
         details: `Over ${byLowPPW.total_weeks} weeks (min 10)`
       } : null
@@ -1256,7 +1271,7 @@ const allTimeHallOfShame = computed((): Award[] => {
       title: 'Worst Win Percentage',
       winner: byWorstWinPct ? {
         team_name: byWorstWinPct.team_name,
-        logo_url: byWorstWinPct.logo_url,
+        logo_url: byWorstWinPct.logo_url || getLogoByTeamName(byWorstWinPct.team_name),
         value: `${(byWorstWinPct.win_pct * 100).toFixed(1)}%`,
         details: `${byWorstWinPct.wins}-${byWorstWinPct.losses} (min 10 games)`
       } : null
@@ -1331,6 +1346,16 @@ function getAwardRankings(awardTitle: string, type: 'best' | 'worst'): any[] {
   const stats = careerStats.value
   if (stats.length === 0) return []
   
+  // Helper to find logo by team name
+  const getLogoByName = (teamName: string): string => {
+    for (const team of Object.values(allTeams.value)) {
+      if (team.name === teamName) return team.logo_url || ''
+    }
+    // Also check careerStats
+    const stat = stats.find(s => s.team_name === teamName)
+    return stat?.logo_url || ''
+  }
+  
   switch (awardTitle) {
     case 'Highest Single-Week Score':
     case 'Lowest Single-Week Score': {
@@ -1343,7 +1368,8 @@ function getAwardRankings(awardTitle: string, type: 'best' | 'worst'): any[] {
               if ((team.points || 0) > 0) {
                 weeklyScores.push({
                   team_name: team.name,
-                  logo_url: allTeams.value[team.name]?.logo_url || '',
+                  team_key: team.team_key,
+                  logo_url: team.logo_url || allTeams.value[team.team_key]?.logo_url || getLogoByName(team.name),
                   value: (team.points || 0).toFixed(1),
                   detail: `${season} Week ${week}`
                 })
@@ -1366,7 +1392,7 @@ function getAwardRankings(awardTitle: string, type: 'best' | 'worst'): any[] {
         : [...stats].sort((a, b) => b.losses - a.losses)
       return sorted.slice(0, 10).map(s => ({
         team_name: s.team_name,
-        logo_url: s.logo_url,
+        logo_url: s.logo_url || getLogoByName(s.team_name),
         value: type === 'best' ? String(s.wins) : String(s.losses),
         detail: `${s.wins}-${s.losses} career record`
       }))
@@ -1379,7 +1405,7 @@ function getAwardRankings(awardTitle: string, type: 'best' | 'worst'): any[] {
         : [...filtered].sort((a, b) => a.avg_ppw - b.avg_ppw)
       return sorted.slice(0, 10).map(s => ({
         team_name: s.team_name,
-        logo_url: s.logo_url,
+        logo_url: s.logo_url || getLogoByName(s.team_name),
         value: s.avg_ppw.toFixed(1),
         detail: `Over ${s.total_weeks} weeks`
       }))
@@ -1392,7 +1418,7 @@ function getAwardRankings(awardTitle: string, type: 'best' | 'worst'): any[] {
         : [...filtered].sort((a, b) => a.win_pct - b.win_pct)
       return sorted.slice(0, 10).map(s => ({
         team_name: s.team_name,
-        logo_url: s.logo_url,
+        logo_url: s.logo_url || getLogoByName(s.team_name),
         value: `${(s.win_pct * 100).toFixed(1)}%`,
         detail: `${s.wins}-${s.losses} (min 10 games)`
       }))
@@ -1463,12 +1489,18 @@ const seasonHallOfFame = computed((): Award[] => {
   const standings = seasonData.standings || []
   
   // Find high score for season
-  let highScore = { value: 0, team: '', week: 0 }
+  let highScore = { value: 0, team: '', teamKey: '', logoUrl: '', week: 0 }
   for (const [week, weekMatchups] of Object.entries(matchups)) {
     for (const matchup of weekMatchups as any[]) {
       for (const team of matchup.teams || []) {
         if ((team.points || 0) > highScore.value) {
-          highScore = { value: team.points, team: team.name, week: parseInt(week) }
+          highScore = { 
+            value: team.points, 
+            team: team.name, 
+            teamKey: team.team_key || '',
+            logoUrl: team.logo_url || allTeams.value[team.team_key]?.logo_url || '',
+            week: parseInt(week) 
+          }
         }
       }
     }
@@ -1482,7 +1514,7 @@ const seasonHallOfFame = computed((): Award[] => {
       title: 'Season High Score',
       winner: highScore.value > 0 ? {
         team_name: highScore.team,
-        logo_url: allTeams.value[highScore.team]?.logo_url || '',
+        logo_url: highScore.logoUrl || getLogoByTeamName(highScore.team),
         value: highScore.value.toFixed(1),
         details: `Week ${highScore.week}`
       } : null
@@ -1491,7 +1523,7 @@ const seasonHallOfFame = computed((): Award[] => {
       title: 'Most Wins',
       winner: byWins ? {
         team_name: byWins.name,
-        logo_url: byWins.logo_url || '',
+        logo_url: byWins.logo_url || getLogoByTeamName(byWins.name),
         value: String(byWins.wins || 0),
         details: `${byWins.wins}-${byWins.losses} record`
       } : null
@@ -1500,7 +1532,7 @@ const seasonHallOfFame = computed((): Award[] => {
       title: 'Most Points Scored',
       winner: byPoints ? {
         team_name: byPoints.name,
-        logo_url: byPoints.logo_url || '',
+        logo_url: byPoints.logo_url || getLogoByTeamName(byPoints.name),
         value: (byPoints.points_for || 0).toFixed(1),
         details: 'Regular season total'
       } : null
@@ -1519,12 +1551,18 @@ const seasonHallOfShame = computed((): Award[] => {
   const standings = seasonData.standings || []
   
   // Find low score for season
-  let lowScore = { value: Infinity, team: '', week: 0 }
+  let lowScore = { value: Infinity, team: '', teamKey: '', logoUrl: '', week: 0 }
   for (const [week, weekMatchups] of Object.entries(matchups)) {
     for (const matchup of weekMatchups as any[]) {
       for (const team of matchup.teams || []) {
         if ((team.points || 0) > 0 && (team.points || 0) < lowScore.value) {
-          lowScore = { value: team.points, team: team.name, week: parseInt(week) }
+          lowScore = { 
+            value: team.points, 
+            team: team.name, 
+            teamKey: team.team_key || '',
+            logoUrl: team.logo_url || allTeams.value[team.team_key]?.logo_url || '',
+            week: parseInt(week) 
+          }
         }
       }
     }
@@ -1538,7 +1576,7 @@ const seasonHallOfShame = computed((): Award[] => {
       title: 'Season Low Score',
       winner: lowScore.value < Infinity ? {
         team_name: lowScore.team,
-        logo_url: allTeams.value[lowScore.team]?.logo_url || '',
+        logo_url: lowScore.logoUrl || getLogoByTeamName(lowScore.team),
         value: lowScore.value.toFixed(1),
         details: `Week ${lowScore.week}`
       } : null
@@ -1547,7 +1585,7 @@ const seasonHallOfShame = computed((): Award[] => {
       title: 'Most Losses',
       winner: byLosses ? {
         team_name: byLosses.name,
-        logo_url: byLosses.logo_url || '',
+        logo_url: byLosses.logo_url || getLogoByTeamName(byLosses.name),
         value: String(byLosses.losses || 0),
         details: `${byLosses.wins}-${byLosses.losses} record`
       } : null
@@ -1556,7 +1594,7 @@ const seasonHallOfShame = computed((): Award[] => {
       title: 'Fewest Points Scored',
       winner: byLeastPoints ? {
         team_name: byLeastPoints.name,
-        logo_url: byLeastPoints.logo_url || '',
+        logo_url: byLeastPoints.logo_url || getLogoByTeamName(byLeastPoints.name),
         value: (byLeastPoints.points_for || 0).toFixed(1),
         details: 'Regular season total'
       } : null
@@ -2456,7 +2494,6 @@ async function downloadSeasonHistory() {
 }
 
 async function downloadHeadToHead() {
-  if (!h2hTableRef.value) return
   isDownloadingH2H.value = true
   try {
     const leagueName = leagueStore.yahooLeague?.name || 'Fantasy League'
@@ -2476,18 +2513,120 @@ async function downloadHeadToHead() {
       } catch (e) { return '' }
     }
     
+    // Helper to create placeholder avatar
+    const createPlaceholder = (name: string): string => {
+      const canvas = document.createElement('canvas')
+      canvas.width = 64
+      canvas.height = 64
+      const ctx = canvas.getContext('2d')
+      if (ctx) {
+        ctx.fillStyle = '#3a3d52'
+        ctx.beginPath()
+        ctx.arc(32, 32, 32, 0, Math.PI * 2)
+        ctx.fill()
+        ctx.fillStyle = '#ffffff'
+        ctx.font = 'bold 28px sans-serif'
+        ctx.textAlign = 'center'
+        ctx.textBaseline = 'middle'
+        ctx.fillText(name.charAt(0).toUpperCase(), 32, 34)
+      }
+      return canvas.toDataURL('image/png')
+    }
+    
     const logoBase64 = await loadLogo()
     
-    // Capture the table
-    const tableCanvas = await html2canvas(h2hTableRef.value, {
-      backgroundColor: '#0a0c14',
-      scale: 2
-    })
-    const tableDataUrl = tableCanvas.toDataURL('image/png')
+    // Get current members only for the matrix
+    const teams = currentMembers.value.map(key => {
+      const team = allTeams.value[key]
+      return {
+        team_key: key,
+        team_name: team?.name || 'Unknown',
+        logo_url: team?.logo_url || ''
+      }
+    }).filter(t => t.team_name !== 'Unknown')
+    
+    if (teams.length === 0) {
+      isDownloadingH2H.value = false
+      return
+    }
+    
+    // Pre-load all team images
+    const imageMap = new Map<string, string>()
+    for (const team of teams) {
+      try {
+        const img = new Image()
+        img.crossOrigin = 'anonymous'
+        const loadPromise = new Promise<string>((resolve) => {
+          img.onload = () => {
+            try {
+              const canvas = document.createElement('canvas')
+              canvas.width = 64
+              canvas.height = 64
+              const ctx = canvas.getContext('2d')
+              if (ctx) {
+                ctx.beginPath()
+                ctx.arc(32, 32, 32, 0, Math.PI * 2)
+                ctx.closePath()
+                ctx.clip()
+                ctx.drawImage(img, 0, 0, 64, 64)
+              }
+              resolve(canvas.toDataURL('image/png'))
+            } catch {
+              resolve(createPlaceholder(team.team_name))
+            }
+          }
+          img.onerror = () => resolve(createPlaceholder(team.team_name))
+          setTimeout(() => resolve(createPlaceholder(team.team_name)), 3000)
+        })
+        img.src = team.logo_url || ''
+        imageMap.set(team.team_key, await loadPromise)
+      } catch {
+        imageMap.set(team.team_key, createPlaceholder(team.team_name))
+      }
+    }
+    
+    // Build matrix header (opponent logos)
+    const headerCells = teams.map(t => `
+      <th style="padding: 4px; text-align: center; width: 50px;">
+        <img src="${imageMap.get(t.team_key) || createPlaceholder(t.team_name)}" style="width: 24px; height: 24px; border-radius: 50%;" />
+      </th>
+    `).join('')
+    
+    // Build matrix rows
+    const matrixRows = teams.map(rowTeam => {
+      const cells = teams.map(colTeam => {
+        if (rowTeam.team_key === colTeam.team_key) {
+          return `<td style="padding: 4px; text-align: center; background: rgba(58, 61, 82, 0.3); color: #6b7280;">—</td>`
+        }
+        const record = h2hRecords.value[rowTeam.team_key]?.[colTeam.team_key]
+        if (!record) {
+          return `<td style="padding: 4px; text-align: center; color: #6b7280;">0-0</td>`
+        }
+        const isWinning = record.wins > record.losses
+        const isLosing = record.losses > record.wins
+        const color = isWinning ? '#22c55e' : isLosing ? '#ef4444' : '#e5e7eb'
+        return `<td style="padding: 4px; text-align: center; color: ${color}; font-weight: ${isWinning || isLosing ? '600' : '400'}; font-size: 11px;">${record.wins}-${record.losses}</td>`
+      }).join('')
+      
+      return `
+        <tr style="border-bottom: 1px solid rgba(58, 61, 82, 0.3);">
+          <td style="padding: 6px 8px;">
+            <div style="display: flex; align-items: center; gap: 6px;">
+              <img src="${imageMap.get(rowTeam.team_key) || createPlaceholder(rowTeam.team_name)}" style="width: 24px; height: 24px; border-radius: 50%;" />
+              <span style="color: #ffffff; font-size: 11px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100px;">${rowTeam.team_name}</span>
+            </div>
+          </td>
+          ${cells}
+        </tr>
+      `
+    }).join('')
+    
+    // Calculate container width based on team count
+    const containerWidth = Math.max(600, 150 + (teams.length * 50))
     
     // Create wrapper with header/footer
     const container = document.createElement('div')
-    container.style.cssText = 'position: absolute; left: -9999px; top: 0; width: 700px; font-family: system-ui, -apple-system, sans-serif;'
+    container.style.cssText = `position: absolute; left: -9999px; top: 0; width: ${containerWidth}px; font-family: system-ui, -apple-system, sans-serif;`
     
     container.innerHTML = `
       <div style="background: linear-gradient(160deg, #0f1219 0%, #0a0c14 50%, #0d1117 100%); border-radius: 16px; box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5); position: relative; overflow: hidden;">
@@ -2498,26 +2637,43 @@ async function downloadHeadToHead() {
         </div>
         
         <!-- Header -->
-        <div style="display: flex; padding: 16px 24px; border-bottom: 1px solid rgba(220, 38, 38, 0.2);">
-          ${logoBase64 ? `<img src="${logoBase64}" style="height: 70px; width: auto; flex-shrink: 0; margin-right: 24px;" />` : ''}
+        <div style="display: flex; align-items: center; padding: 12px 24px; border-bottom: 1px solid rgba(220, 38, 38, 0.2);">
+          ${logoBase64 ? `<img src="${logoBase64}" style="height: 50px; width: auto; flex-shrink: 0; margin-right: 16px; margin-top: 6px;" />` : ''}
           <div style="flex: 1;">
-            <div style="font-size: 36px; font-weight: 900; color: #ffffff; text-transform: uppercase; letter-spacing: 2px; text-shadow: 0 2px 8px rgba(220, 38, 38, 0.4);">Head-to-Head</div>
-            <div style="font-size: 18px; margin-top: 6px; font-weight: 600;">
+            <div style="font-size: 24px; font-weight: 900; color: #ffffff; text-transform: uppercase; letter-spacing: 1px; line-height: 1.1;">Head-to-Head Matrix</div>
+            <div style="font-size: 14px; margin-top: 3px; font-weight: 600;">
               <span style="color: #e5e7eb;">${leagueName}</span>
-              <span style="color: #6b7280; margin: 0 8px;">•</span>
-              <span style="color: #dc2626; font-weight: 700;">All-Time Records</span>
+              <span style="color: #6b7280; margin: 0 6px;">•</span>
+              <span style="color: #dc2626; font-weight: 700;">Current Members • All-Time</span>
             </div>
           </div>
         </div>
         
         <!-- Table Content -->
-        <div style="padding: 16px 24px;">
-          <img src="${tableDataUrl}" style="width: 100%; height: auto; border-radius: 8px;" />
+        <div style="padding: 16px 24px; overflow-x: auto;">
+          <table style="width: 100%; border-collapse: collapse; font-size: 12px;">
+            <thead>
+              <tr style="border-bottom: 2px solid rgba(220, 38, 38, 0.3);">
+                <th style="padding: 8px; text-align: left; color: #9ca3af; font-size: 10px; text-transform: uppercase;">Team</th>
+                ${headerCells}
+              </tr>
+            </thead>
+            <tbody>
+              ${matrixRows}
+            </tbody>
+          </table>
+        </div>
+        
+        <!-- Legend -->
+        <div style="padding: 8px 24px 16px 24px; display: flex; justify-content: center; gap: 16px;">
+          <span style="font-size: 11px; color: #22c55e;">● Winning record</span>
+          <span style="font-size: 11px; color: #ef4444;">● Losing record</span>
+          <span style="font-size: 11px; color: #e5e7eb;">● Even record</span>
         </div>
         
         <!-- Footer -->
-        <div style="padding: 16px 24px; text-align: center;">
-          <span style="font-size: 20px; font-weight: bold; color: #dc2626;">ultimatefantasydashboard.com</span>
+        <div style="padding: 12px 24px; text-align: center; border-top: 1px solid rgba(220, 38, 38, 0.2);">
+          <span style="font-size: 18px; font-weight: bold; color: #dc2626;">ultimatefantasydashboard.com</span>
         </div>
       </div>
     `
