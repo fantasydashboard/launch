@@ -1485,7 +1485,7 @@ async function generateMatchupImage(matchup: any, html2canvas: any) {
   // Build win probability trend chart SVG
   const baseProb1 = 50
   const generateProgressionData = () => {
-    const points = 5
+    const points = 7
     const data: number[] = []
     for (let i = 0; i < points; i++) {
       const progress = i / (points - 1)
@@ -1505,7 +1505,7 @@ async function generateMatchupImage(matchup: any, html2canvas: any) {
   const plotWidth = chartWidth - padding.left - padding.right
   const plotHeight = chartHeight - padding.top - padding.bottom
   
-  const getX = (i: number) => padding.left + (i / 4) * plotWidth
+  const getX = (i: number) => padding.left + (i / 6) * plotWidth
   const getY = (val: number) => padding.top + plotHeight - (val / 100) * plotHeight
   
   // Build path for team 1
@@ -1536,7 +1536,7 @@ async function generateMatchupImage(matchup: any, html2canvas: any) {
     team2Points += `<circle cx="${x}" cy="${y}" r="6" fill="${team2Color}"/>`
   })
   
-  const chartLabels = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri']
+  const chartLabels = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
   const xLabels = chartLabels.map((label, i) => {
     const x = getX(i)
     return `<text x="${x}" y="${chartHeight - 6}" text-anchor="middle" font-size="11" font-weight="600" fill="#9CA3AF">${label}</text>`
