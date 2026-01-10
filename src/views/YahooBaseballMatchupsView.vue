@@ -10,6 +10,20 @@
       </div>
       <div class="flex items-center gap-3">
         <button 
+          @click="downloadAllMatchups" 
+          :disabled="isDownloadingAll || matchups.length === 0"
+          class="btn-secondary flex items-center gap-2"
+        >
+          <svg v-if="!isDownloadingAll" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+          </svg>
+          <svg v-else class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+          </svg>
+          {{ isDownloadingAll ? `Downloading ${downloadProgress}` : 'Download All' }}
+        </button>
+        <button 
           @click="refreshData" 
           :disabled="isRefreshing"
           class="btn-secondary flex items-center gap-2"
@@ -218,64 +232,48 @@
           <div class="card-body">
             <div ref="winProbRef" class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
               <!-- Team 1 Probability -->
-              <div :class="[
-                'text-center p-6 rounded-xl border-2',
-                selectedMatchup?.team1?.is_my_team 
-                  ? 'bg-gradient-to-br from-primary/15 to-primary/5 border-primary/40' 
-                  : 'bg-gradient-to-br from-cyan-500/10 to-cyan-600/5 border-cyan-500/30'
-              ]">
+              <div class="text-center p-6 rounded-xl border-2 bg-gradient-to-br from-cyan-500/10 to-cyan-600/5 border-cyan-500/30">
                 <div class="relative inline-block">
                   <img 
                     :src="selectedMatchup?.team1?.logo_url || defaultAvatar" 
                     :alt="selectedMatchup?.team1?.name || 'Team 1'" 
-                    :class="['w-20 h-20 rounded-full mx-auto mb-3 border-4', selectedMatchup?.team1?.is_my_team ? 'border-primary' : 'border-cyan-500']"
+                    class="w-20 h-20 rounded-full mx-auto mb-3 border-4 border-cyan-500"
                     @error="handleImageError" 
                   />
-                  <div v-if="selectedMatchup?.team1?.is_my_team" class="absolute -top-1 -right-1 w-6 h-6 bg-primary rounded-full flex items-center justify-center shadow-lg">
-                    <span class="text-sm text-gray-900">★</span>
-                  </div>
                 </div>
-                <div :class="['font-bold text-xl mb-2', selectedMatchup?.team1?.is_my_team ? 'text-primary' : 'text-cyan-400']">
+                <div class="font-bold text-xl mb-2 text-cyan-400">
                   {{ selectedMatchup?.team1?.name || 'Team 1' }}
                 </div>
-                <div :class="['text-5xl font-black mb-3', selectedMatchup?.team1?.is_my_team ? 'text-primary' : 'text-cyan-400']">
+                <div class="text-5xl font-black mb-3 text-cyan-400">
                   {{ winProbability.team1.toFixed(1) }}%
                 </div>
                 <div class="space-y-1 text-sm">
                   <div class="text-white">Current: {{ (selectedMatchup?.team1?.points || 0).toFixed(1) }} pts</div>
-                  <div v-if="selectedMatchup?.team1?.projected_points" :class="selectedMatchup?.team1?.is_my_team ? 'text-primary' : 'text-cyan-400'">
+                  <div v-if="selectedMatchup?.team1?.projected_points" class="text-cyan-400">
                     Projected: {{ selectedMatchup.team1.projected_points.toFixed(1) }}
                   </div>
                 </div>
               </div>
 
               <!-- Team 2 Probability -->
-              <div :class="[
-                'text-center p-6 rounded-xl border-2',
-                selectedMatchup?.team2?.is_my_team 
-                  ? 'bg-gradient-to-br from-primary/15 to-primary/5 border-primary/40' 
-                  : 'bg-gradient-to-br from-orange-500/10 to-orange-600/5 border-orange-500/30'
-              ]">
+              <div class="text-center p-6 rounded-xl border-2 bg-gradient-to-br from-orange-500/10 to-orange-600/5 border-orange-500/30">
                 <div class="relative inline-block">
                   <img 
                     :src="selectedMatchup?.team2?.logo_url || defaultAvatar" 
                     :alt="selectedMatchup?.team2?.name || 'Team 2'" 
-                    :class="['w-20 h-20 rounded-full mx-auto mb-3 border-4', selectedMatchup?.team2?.is_my_team ? 'border-primary' : 'border-orange-500']"
+                    class="w-20 h-20 rounded-full mx-auto mb-3 border-4 border-orange-500"
                     @error="handleImageError" 
                   />
-                  <div v-if="selectedMatchup?.team2?.is_my_team" class="absolute -top-1 -right-1 w-6 h-6 bg-primary rounded-full flex items-center justify-center shadow-lg">
-                    <span class="text-sm text-gray-900">★</span>
-                  </div>
                 </div>
-                <div :class="['font-bold text-xl mb-2', selectedMatchup?.team2?.is_my_team ? 'text-primary' : 'text-orange-400']">
+                <div class="font-bold text-xl mb-2 text-orange-400">
                   {{ selectedMatchup?.team2?.name || 'Team 2' }}
                 </div>
-                <div :class="['text-5xl font-black mb-3', selectedMatchup?.team2?.is_my_team ? 'text-primary' : 'text-orange-400']">
+                <div class="text-5xl font-black mb-3 text-orange-400">
                   {{ winProbability.team2.toFixed(1) }}%
                 </div>
                 <div class="space-y-1 text-sm">
                   <div class="text-white">Current: {{ (selectedMatchup?.team2?.points || 0).toFixed(1) }} pts</div>
-                  <div v-if="selectedMatchup?.team2?.projected_points" :class="selectedMatchup?.team2?.is_my_team ? 'text-primary' : 'text-orange-400'">
+                  <div v-if="selectedMatchup?.team2?.projected_points" class="text-orange-400">
                     Projected: {{ selectedMatchup.team2.projected_points.toFixed(1) }}
                   </div>
                 </div>
@@ -347,12 +345,7 @@
           <div class="card-body">
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
               <!-- Team 1 Report -->
-              <div :class="[
-                'p-4 rounded-xl border',
-                selectedMatchup?.team1?.is_my_team 
-                  ? 'bg-gradient-to-br from-primary/10 to-primary/5 border-primary/30' 
-                  : 'bg-gradient-to-br from-cyan-500/10 to-cyan-600/5 border-cyan-500/30'
-              ]">
+              <div class="p-4 rounded-xl border bg-gradient-to-br from-cyan-500/10 to-cyan-600/5 border-cyan-500/30">
                 <div class="flex items-center gap-3 mb-4">
                   <img 
                     :src="selectedMatchup?.team1?.logo_url || defaultAvatar" 
@@ -395,12 +388,7 @@
               </div>
 
               <!-- Team 2 Report -->
-              <div :class="[
-                'p-4 rounded-xl border',
-                selectedMatchup?.team2?.is_my_team 
-                  ? 'bg-gradient-to-br from-primary/10 to-primary/5 border-primary/30' 
-                  : 'bg-gradient-to-br from-orange-500/10 to-orange-600/5 border-orange-500/30'
-              ]">
+              <div class="p-4 rounded-xl border bg-gradient-to-br from-orange-500/10 to-orange-600/5 border-orange-500/30">
                 <div class="flex items-center gap-3 mb-4">
                   <img 
                     :src="selectedMatchup?.team2?.logo_url || defaultAvatar" 
@@ -469,11 +457,11 @@
                 <thead>
                   <tr class="border-b border-dark-border bg-dark-border/30">
                     <th class="text-left p-3 text-dark-textMuted font-semibold">Statistic</th>
-                    <th class="text-center p-3 font-semibold" :class="selectedMatchup?.team1?.is_my_team ? 'text-primary' : 'text-cyan-400'">
+                    <th class="text-center p-3 font-semibold text-cyan-400">
                       {{ selectedMatchup?.team1?.name || 'Team 1' }}
                     </th>
                     <th class="text-center p-3 text-dark-textMuted font-semibold">Advantage</th>
-                    <th class="text-center p-3 font-semibold" :class="selectedMatchup?.team2?.is_my_team ? 'text-primary' : 'text-orange-400'">
+                    <th class="text-center p-3 font-semibold text-orange-400">
                       {{ selectedMatchup?.team2?.name || 'Team 2' }}
                     </th>
                   </tr>
@@ -482,21 +470,21 @@
                   <tr v-for="stat in comparisonStats" :key="stat.label" class="border-b border-dark-border/50 hover:bg-dark-border/10">
                     <td class="p-3 text-dark-text font-medium">{{ stat.label }}</td>
                     <td class="text-center p-3">
-                      <span :class="stat.team1Better ? (selectedMatchup?.team1?.is_my_team ? 'text-primary' : 'text-cyan-400') + ' font-bold' : 'text-dark-textMuted'">
+                      <span :class="stat.team1Better ? 'text-cyan-400 font-bold' : 'text-dark-textMuted'">
                         {{ stat.team1Value }}
                       </span>
                     </td>
                     <td class="text-center p-3">
-                      <div v-if="stat.team1Better" :class="selectedMatchup?.team1?.is_my_team ? 'text-primary' : 'text-cyan-400'" class="font-semibold">
+                      <div v-if="stat.team1Better" class="text-cyan-400 font-semibold">
                         ◀ {{ selectedMatchup?.team1?.name || 'Team 1' }}
                       </div>
-                      <div v-else-if="stat.team2Better" :class="selectedMatchup?.team2?.is_my_team ? 'text-primary' : 'text-orange-400'" class="font-semibold">
+                      <div v-else-if="stat.team2Better" class="text-orange-400 font-semibold">
                         {{ selectedMatchup?.team2?.name || 'Team 2' }} ▶
                       </div>
                       <div v-else class="text-dark-textMuted">Even</div>
                     </td>
                     <td class="text-center p-3">
-                      <span :class="stat.team2Better ? (selectedMatchup?.team2?.is_my_team ? 'text-primary' : 'text-orange-400') + ' font-bold' : 'text-dark-textMuted'">
+                      <span :class="stat.team2Better ? 'text-orange-400 font-bold' : 'text-dark-textMuted'">
                         {{ stat.team2Value }}
                       </span>
                     </td>
@@ -612,6 +600,8 @@ const isLoading = ref(false)
 const isRefreshing = ref(false)
 const isDownloading = ref(false)
 const isDownloadingComparison = ref(false)
+const isDownloadingAll = ref(false)
+const downloadProgress = ref('')
 const matchupsData = ref<any[]>([])
 const selectedMatchup = ref<any>(null)
 const allMatchupsHistory = ref<Map<number, any[]>>(new Map())
@@ -914,7 +904,7 @@ const probabilityChartOptions = computed(() => ({
   },
   stroke: { curve: 'smooth', width: 2, dashArray: [0, 0] },
   fill: { type: 'gradient', gradient: { shadeIntensity: 1, opacityFrom: 0.4, opacityTo: 0.1, stops: [0, 100] } },
-  colors: [selectedMatchup.value?.team1?.is_my_team === true ? '#F5C451' : '#06b6d4', selectedMatchup.value?.team2?.is_my_team === true ? '#F5C451' : '#f97316'],
+  colors: ['#06b6d4', '#f97316'],
   xaxis: { 
     categories: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
     labels: { style: { colors: '#8b8ea1' } },
@@ -946,8 +936,8 @@ const probabilityChartSeries = computed(() => {
 // Gradient bar style
 const gradientBarStyle = computed(() => {
   if (!selectedMatchup.value?.team1 || !selectedMatchup.value?.team2) return {}
-  const team1Color = selectedMatchup.value.team1.is_my_team === true ? '#F5C451' : '#06b6d4'
-  const team2Color = selectedMatchup.value.team2.is_my_team === true ? '#F5C451' : '#f97316'
+  const team1Color = '#06b6d4'
+  const team2Color = '#f97316'
   const team1Pct = winProbability.value.team1
   return {
     background: `linear-gradient(to right, ${team1Color} 0%, ${team1Color} ${team1Pct}%, ${team2Color} ${team1Pct}%, ${team2Color} 100%)`
@@ -1333,16 +1323,35 @@ async function refreshData() {
   isRefreshing.value = false
 }
 
+async function downloadAllMatchups() {
+  if (!matchups.value.length) return
+  isDownloadingAll.value = true
+  
+  try {
+    const html2canvasModule = await import('html2canvas')
+    const html2canvas = html2canvasModule.default
+    
+    for (let i = 0; i < matchups.value.length; i++) {
+      downloadProgress.value = `${i + 1}/${matchups.value.length}`
+      await generateMatchupImage(matchups.value[i], html2canvas)
+      await new Promise(r => setTimeout(r, 300))
+    }
+  } catch (error) {
+    console.error('Error generating matchup images:', error)
+  } finally {
+    isDownloadingAll.value = false
+    downloadProgress.value = ''
+  }
+}
+
 async function downloadWinProbability() {
-  if (!winProbRef.value) return
+  if (!selectedMatchup.value) return
   isDownloading.value = true
   
   try {
-    const canvas = await html2canvas(winProbRef.value, { backgroundColor: '#1a1b2e', scale: 2 })
-    const link = document.createElement('a')
-    link.download = `win-probability-week-${selectedWeek.value}.png`
-    link.href = canvas.toDataURL()
-    link.click()
+    const html2canvasModule = await import('html2canvas')
+    const html2canvas = html2canvasModule.default
+    await generateMatchupImage(selectedMatchup.value, html2canvas)
   } catch (e) {
     console.error('Error downloading:', e)
   } finally {
@@ -1350,15 +1359,327 @@ async function downloadWinProbability() {
   }
 }
 
+async function generateMatchupImage(matchup: any, html2canvas: any) {
+  // Helper to load logo
+  const loadLogo = async (): Promise<string> => {
+    try {
+      const response = await fetch('/UFD_V5.png')
+      const blob = await response.blob()
+      return new Promise((resolve) => {
+        const reader = new FileReader()
+        reader.onloadend = () => resolve(reader.result as string)
+        reader.onerror = () => resolve('')
+        reader.readAsDataURL(blob)
+      })
+    } catch (e) {
+      return ''
+    }
+  }
+  
+  // Helper to create placeholder avatar
+  const createPlaceholder = (teamName: string): string => {
+    const canvas = document.createElement('canvas')
+    canvas.width = 64
+    canvas.height = 64
+    const ctx = canvas.getContext('2d')
+    if (ctx) {
+      ctx.fillStyle = '#3a3d52'
+      ctx.beginPath()
+      ctx.arc(32, 32, 32, 0, Math.PI * 2)
+      ctx.fill()
+      ctx.fillStyle = '#dc2626'
+      ctx.font = 'bold 28px sans-serif'
+      ctx.textAlign = 'center'
+      ctx.textBaseline = 'middle'
+      ctx.fillText(teamName.charAt(0).toUpperCase(), 32, 34)
+    }
+    return canvas.toDataURL('image/png')
+  }
+  
+  // Load team images
+  const loadTeamImage = async (team: any): Promise<string> => {
+    try {
+      const img = new Image()
+      img.crossOrigin = 'anonymous'
+      return new Promise((resolve) => {
+        img.onload = () => {
+          try {
+            const canvas = document.createElement('canvas')
+            canvas.width = 64
+            canvas.height = 64
+            const ctx = canvas.getContext('2d')
+            if (ctx) {
+              ctx.beginPath()
+              ctx.arc(32, 32, 32, 0, Math.PI * 2)
+              ctx.closePath()
+              ctx.clip()
+              ctx.drawImage(img, 0, 0, 64, 64)
+            }
+            resolve(canvas.toDataURL('image/png'))
+          } catch {
+            resolve(createPlaceholder(team.name))
+          }
+        }
+        img.onerror = () => resolve(createPlaceholder(team.name))
+        setTimeout(() => resolve(createPlaceholder(team.name)), 3000)
+        img.src = team.logo_url || ''
+      })
+    } catch {
+      return createPlaceholder(team.name)
+    }
+  }
+  
+  const logoBase64 = await loadLogo()
+  const team1Logo = await loadTeamImage(matchup.team1)
+  const team2Logo = await loadTeamImage(matchup.team2)
+  
+  const league = leagueStore.yahooLeague
+  const leagueName = Array.isArray(league) ? league[0]?.name : league?.name || 'Fantasy League'
+  
+  const container = document.createElement('div')
+  container.style.cssText = 'position: absolute; left: -9999px; top: 0; width: 700px; font-family: system-ui, -apple-system, sans-serif;'
+  
+  const team1Color = '#06b6d4'
+  const team2Color = '#f97316'
+  
+  // Calculate win probability for this matchup
+  const team1Pts = matchup.team1?.points || 0
+  const team2Pts = matchup.team2?.points || 0
+  const totalPts = team1Pts + team2Pts
+  let winProb1 = 50
+  let winProb2 = 50
+  if (totalPts > 0) {
+    winProb1 = Math.min(95, Math.max(5, (team1Pts / totalPts) * 100))
+    winProb2 = 100 - winProb1
+  }
+  
+  // Build scouting report HTML
+  const buildScoutingHtml = (teamName: string, teamKey: string, color: string, borderColor: string, bgRgba: string) => {
+    const stats = getTeamStats(teamKey)
+    const strengths: string[] = []
+    const weaknesses: string[] = []
+    
+    if (stats.ppg > 100) strengths.push('High-scoring offense')
+    else if (stats.ppg < 80) weaknesses.push('Low scoring output')
+    if (stats.winPct > 0.6) strengths.push('Consistent winner')
+    else if (stats.winPct < 0.4) weaknesses.push('Struggling record')
+    
+    const strengthsHtml = strengths.slice(0, 2).map(s => `<div style="font-size: 13px; color: #d1d5db; margin-bottom: 4px;">✓ ${s}</div>`).join('')
+    const weaknessesHtml = weaknesses.slice(0, 2).map(w => `<div style="font-size: 13px; color: #d1d5db; margin-bottom: 4px;">✗ ${w}</div>`).join('')
+    
+    return `
+      <div style="padding: 14px; background: ${bgRgba}; border: 2px solid ${borderColor}; border-radius: 12px; margin-bottom: 10px;">
+        <div style="font-weight: 800; color: ${color}; margin-bottom: 10px; font-size: 16px;">${teamName}</div>
+        <div style="display: flex; gap: 16px;">
+          <div style="flex: 1; min-width: 0;">
+            ${strengthsHtml ? `<div style="margin-bottom: 8px;"><div style="font-size: 10px; font-weight: 800; color: #22c55e; margin-bottom: 4px; text-transform: uppercase; letter-spacing: 1px;">Strengths</div>${strengthsHtml}</div>` : ''}
+            ${weaknessesHtml ? `<div><div style="font-size: 10px; font-weight: 800; color: #ef4444; margin-bottom: 4px; text-transform: uppercase; letter-spacing: 1px;">Weaknesses</div>${weaknessesHtml}</div>` : ''}
+          </div>
+        </div>
+      </div>
+    `
+  }
+  
+  container.innerHTML = `
+    <div style="background: linear-gradient(160deg, #0f1219 0%, #0a0c14 50%, #0d1117 100%); border-radius: 16px; box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5); position: relative; overflow: hidden;">
+      
+      <!-- Top Red Bar -->
+      <div style="background: #dc2626; padding: 10px 24px; text-align: center;">
+        <span style="font-size: 16px; font-weight: 700; color: #ffffff; text-transform: uppercase; letter-spacing: 3px;">Ultimate Fantasy Dashboard</span>
+      </div>
+      
+      <!-- Header -->
+      <div style="display: flex; padding: 12px 24px; border-bottom: 1px solid rgba(220, 38, 38, 0.2);">
+        ${logoBase64 ? `<img src="${logoBase64}" style="height: 70px; width: auto; margin-right: 24px;" />` : ''}
+        <div style="flex: 1;">
+          <div style="font-size: 42px; font-weight: 900; color: #ffffff; text-transform: uppercase; letter-spacing: 2px; line-height: 42px;">Matchup</div>
+          <div style="font-size: 20px; margin-top: 6px; font-weight: 600; line-height: 20px;">
+            <span style="color: #e5e7eb;">${leagueName}</span>
+            <span style="color: #6b7280; margin: 0 8px;">•</span>
+            <span style="color: #dc2626; font-weight: 700;">Week ${selectedWeek.value}</span>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Win Probability Section -->
+      <div style="padding: 16px 24px;">
+        <div style="background: rgba(38, 42, 58, 0.4); border-radius: 12px; padding: 16px; margin-bottom: 16px; border: 1px solid rgba(220, 38, 38, 0.2);">
+          <div style="text-align: center; margin-bottom: 16px;">
+            <span style="font-size: 20px;">🎲</span>
+            <span style="font-size: 18px; font-weight: 800; color: #ffffff; margin-left: 8px;">Win Probability</span>
+          </div>
+          
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+            <div style="text-align: center; flex: 1;">
+              <img src="${team1Logo}" style="width: 60px; height: 60px; border-radius: 50%; margin: 0 auto 8px; display: block; border: 3px solid ${team1Color};" />
+              <div style="font-size: 14px; font-weight: 700; color: ${team1Color}; margin-bottom: 4px;">${matchup.team1.name}</div>
+              <div style="font-size: 36px; font-weight: 900; color: ${team1Color}; line-height: 1;">${winProb1.toFixed(0)}%</div>
+              <div style="font-size: 14px; color: #9ca3af; margin-top: 4px;">${team1Pts.toFixed(1)} pts</div>
+            </div>
+            <div style="font-size: 24px; color: #4a5568; padding: 0 12px; font-weight: 900;">VS</div>
+            <div style="text-align: center; flex: 1;">
+              <img src="${team2Logo}" style="width: 60px; height: 60px; border-radius: 50%; margin: 0 auto 8px; display: block; border: 3px solid ${team2Color};" />
+              <div style="font-size: 14px; font-weight: 700; color: ${team2Color}; margin-bottom: 4px;">${matchup.team2.name}</div>
+              <div style="font-size: 36px; font-weight: 900; color: ${team2Color}; line-height: 1;">${winProb2.toFixed(0)}%</div>
+              <div style="font-size: 14px; color: #9ca3af; margin-top: 4px;">${team2Pts.toFixed(1)} pts</div>
+            </div>
+          </div>
+          
+          <!-- Probability Bar -->
+          <div style="height: 32px; background: linear-gradient(to right, ${team1Color} 0%, ${team1Color} ${winProb1}%, ${team2Color} ${winProb1}%, ${team2Color} 100%); border-radius: 16px; overflow: hidden; border: 2px solid #374151;">
+            <div style="display: flex; justify-content: space-between; align-items: center; height: 100%; padding: 0 12px;">
+              <span style="color: white; font-weight: 800; font-size: 13px; text-shadow: 0 1px 3px rgba(0,0,0,0.4);">${matchup.team1.name.split(' ')[0]}</span>
+              <span style="color: white; font-weight: 800; font-size: 13px; text-shadow: 0 1px 3px rgba(0,0,0,0.4);">${matchup.team2.name.split(' ')[0]}</span>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Scouting Reports -->
+        <div style="background: rgba(38, 42, 58, 0.4); border-radius: 12px; padding: 16px; border: 1px solid rgba(220, 38, 38, 0.2);">
+          <div style="text-align: center; margin-bottom: 12px;">
+            <span style="font-size: 20px;">🔍</span>
+            <span style="font-size: 18px; font-weight: 800; color: #ffffff; margin-left: 8px;">Scouting Reports</span>
+          </div>
+          ${buildScoutingHtml(matchup.team1.name, matchup.team1.team_key, team1Color, 'rgba(6, 182, 212, 0.3)', 'rgba(6, 182, 212, 0.08)')}
+          ${buildScoutingHtml(matchup.team2.name, matchup.team2.team_key, team2Color, 'rgba(249, 115, 22, 0.3)', 'rgba(249, 115, 22, 0.08)')}
+        </div>
+      </div>
+      
+      <!-- Footer -->
+      <div style="padding: 16px 24px; text-align: center;">
+        <span style="font-size: 20px; font-weight: bold; color: #dc2626;">ultimatefantasydashboard.com</span>
+      </div>
+    </div>
+  `
+  
+  document.body.appendChild(container)
+  await new Promise(resolve => setTimeout(resolve, 500))
+  
+  const canvas = await html2canvas(container, {
+    backgroundColor: '#0a0c14',
+    scale: 2,
+    logging: false,
+    useCORS: true,
+    allowTaint: true
+  })
+  
+  document.body.removeChild(container)
+  
+  const link = document.createElement('a')
+  link.download = `matchup-${matchup.team1.name.replace(/\s+/g, '-')}-vs-${matchup.team2.name.replace(/\s+/g, '-')}-week-${selectedWeek.value}.png`
+  link.href = canvas.toDataURL('image/png')
+  link.click()
+}
+
 async function downloadComparison() {
-  if (!comparisonRef.value) return
+  if (!selectedMatchup.value) return
   isDownloadingComparison.value = true
   
   try {
-    const canvas = await html2canvas(comparisonRef.value, { backgroundColor: '#1a1b2e', scale: 2 })
+    const html2canvasModule = await import('html2canvas')
+    const html2canvas = html2canvasModule.default
+    
+    // Helper to load logo
+    const loadLogo = async (): Promise<string> => {
+      try {
+        const response = await fetch('/UFD_V5.png')
+        const blob = await response.blob()
+        return new Promise((resolve) => {
+          const reader = new FileReader()
+          reader.onloadend = () => resolve(reader.result as string)
+          reader.onerror = () => resolve('')
+          reader.readAsDataURL(blob)
+        })
+      } catch (e) {
+        return ''
+      }
+    }
+    
+    const logoBase64 = await loadLogo()
+    const league = leagueStore.yahooLeague
+    const leagueName = Array.isArray(league) ? league[0]?.name : league?.name || 'Fantasy League'
+    
+    const container = document.createElement('div')
+    container.style.cssText = 'position: absolute; left: -9999px; top: 0; width: 700px; font-family: system-ui, -apple-system, sans-serif;'
+    
+    const team1Color = '#06b6d4'
+    const team2Color = '#f97316'
+    
+    // Build stats rows
+    const statsRows = comparisonStats.value.map(stat => `
+      <tr style="border-bottom: 1px solid rgba(55, 65, 81, 0.5);">
+        <td style="padding: 10px; color: #e5e7eb; font-weight: 500;">${stat.label}</td>
+        <td style="padding: 10px; text-align: center; color: ${stat.team1Better ? team1Color : '#9ca3af'}; font-weight: ${stat.team1Better ? '700' : '400'};">${stat.team1Value}</td>
+        <td style="padding: 10px; text-align: center; color: ${stat.team1Better ? team1Color : stat.team2Better ? team2Color : '#6b7280'}; font-weight: 600;">
+          ${stat.team1Better ? '◀ ' + selectedMatchup.value.team1.name.split(' ')[0] : stat.team2Better ? selectedMatchup.value.team2.name.split(' ')[0] + ' ▶' : 'Even'}
+        </td>
+        <td style="padding: 10px; text-align: center; color: ${stat.team2Better ? team2Color : '#9ca3af'}; font-weight: ${stat.team2Better ? '700' : '400'};">${stat.team2Value}</td>
+      </tr>
+    `).join('')
+    
+    container.innerHTML = `
+      <div style="background: linear-gradient(160deg, #0f1219 0%, #0a0c14 50%, #0d1117 100%); border-radius: 16px; box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5); overflow: hidden;">
+        
+        <!-- Top Red Bar -->
+        <div style="background: #dc2626; padding: 10px 24px; text-align: center;">
+          <span style="font-size: 16px; font-weight: 700; color: #ffffff; text-transform: uppercase; letter-spacing: 3px;">Ultimate Fantasy Dashboard</span>
+        </div>
+        
+        <!-- Header -->
+        <div style="display: flex; padding: 12px 24px; border-bottom: 1px solid rgba(220, 38, 38, 0.2);">
+          ${logoBase64 ? `<img src="${logoBase64}" style="height: 70px; width: auto; margin-right: 24px;" />` : ''}
+          <div style="flex: 1;">
+            <div style="font-size: 36px; font-weight: 900; color: #ffffff; text-transform: uppercase; letter-spacing: 2px; line-height: 36px;">Statistical Comparison</div>
+            <div style="font-size: 18px; margin-top: 6px; font-weight: 600;">
+              <span style="color: #e5e7eb;">${leagueName}</span>
+              <span style="color: #6b7280; margin: 0 8px;">•</span>
+              <span style="color: #dc2626; font-weight: 700;">Week ${selectedWeek.value}</span>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Comparison Table -->
+        <div style="padding: 16px 24px;">
+          <div style="background: rgba(38, 42, 58, 0.4); border-radius: 12px; overflow: hidden; border: 1px solid rgba(220, 38, 38, 0.2);">
+            <table style="width: 100%; border-collapse: collapse; font-size: 14px;">
+              <thead>
+                <tr style="background: rgba(55, 65, 81, 0.5);">
+                  <th style="padding: 12px; text-align: left; color: #9ca3af; font-weight: 600;">Statistic</th>
+                  <th style="padding: 12px; text-align: center; color: ${team1Color}; font-weight: 700;">${selectedMatchup.value.team1.name}</th>
+                  <th style="padding: 12px; text-align: center; color: #9ca3af; font-weight: 600;">Advantage</th>
+                  <th style="padding: 12px; text-align: center; color: ${team2Color}; font-weight: 700;">${selectedMatchup.value.team2.name}</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${statsRows}
+              </tbody>
+            </table>
+          </div>
+        </div>
+        
+        <!-- Footer -->
+        <div style="padding: 16px 24px; text-align: center;">
+          <span style="font-size: 20px; font-weight: bold; color: #dc2626;">ultimatefantasydashboard.com</span>
+        </div>
+      </div>
+    `
+    
+    document.body.appendChild(container)
+    await new Promise(resolve => setTimeout(resolve, 500))
+    
+    const canvas = await html2canvas(container, {
+      backgroundColor: '#0a0c14',
+      scale: 2,
+      logging: false,
+      useCORS: true,
+      allowTaint: true
+    })
+    
+    document.body.removeChild(container)
+    
     const link = document.createElement('a')
-    link.download = `stat-comparison-week-${selectedWeek.value}.png`
-    link.href = canvas.toDataURL()
+    link.download = `stat-comparison-${selectedMatchup.value.team1.name.replace(/\s+/g, '-')}-vs-${selectedMatchup.value.team2.name.replace(/\s+/g, '-')}-week-${selectedWeek.value}.png`
+    link.href = canvas.toDataURL('image/png')
     link.click()
   } catch (e) {
     console.error('Error downloading:', e)
