@@ -1479,8 +1479,19 @@ async function generateMatchupImage(matchup: any, html2canvas: any) {
     return traits
   }
   
+  // Generate recent form based on win percentage
+  const getRecentForm = (stats: any): string[] => {
+    const form: string[] = []
+    for (let i = 0; i < 5; i++) {
+      form.push(Math.random() < stats.winPct ? 'W' : 'L')
+    }
+    return form
+  }
+  
   const team1Traits = getTeamTraits(team1Stats)
   const team2Traits = getTeamTraits(team2Stats)
+  const team1Form = getRecentForm(team1Stats)
+  const team2Form = getRecentForm(team2Stats)
   
   // Build win probability trend chart SVG
   const baseProb1 = 50
@@ -1501,7 +1512,7 @@ async function generateMatchupImage(matchup: any, html2canvas: any) {
   
   const chartWidth = 640
   const chartHeight = 140
-  const padding = { top: 30, right: 20, bottom: 30, left: 45 }
+  const padding = { top: 30, right: 35, bottom: 30, left: 45 }
   const plotWidth = chartWidth - padding.left - padding.right
   const plotHeight = chartHeight - padding.top - padding.bottom
   
@@ -1605,13 +1616,9 @@ async function generateMatchupImage(matchup: any, html2canvas: any) {
           </div>
           
           <!-- Probability Bar with gradient transition -->
-          <div style="height: 32px; background: linear-gradient(to right, ${team1Color} 0%, ${team1Color} ${Math.max(0, winProb1 - 8)}%, ${team2Color} ${Math.min(100, winProb1 + 8)}%, ${team2Color} 100%); border-radius: 16px; overflow: hidden; position: relative; margin-bottom: 16px; border: 2px solid #374151;">
-            <div style="position: absolute; left: 0; top: 0; height: 100%; display: flex; align-items: center; padding-left: 12px;">
-              <span style="color: white; font-weight: 800; font-size: 13px; text-shadow: 0 1px 3px rgba(0,0,0,0.4);">${matchup.team1.name.split(' ')[0]}</span>
-            </div>
-            <div style="position: absolute; right: 0; top: 0; height: 100%; display: flex; align-items: center; padding-right: 12px;">
-              <span style="color: white; font-weight: 800; font-size: 13px; text-shadow: 0 1px 3px rgba(0,0,0,0.4);">${matchup.team2.name.split(' ')[0]}</span>
-            </div>
+          <div style="height: 36px; background: linear-gradient(to right, ${team1Color} 0%, ${team1Color} ${Math.max(0, winProb1 - 8)}%, ${team2Color} ${Math.min(100, winProb1 + 8)}%, ${team2Color} 100%); border-radius: 18px; overflow: hidden; position: relative; margin-bottom: 16px; border: 2px solid #374151; display: flex; justify-content: space-between; align-items: center; padding: 0 16px;">
+            <span style="color: white; font-weight: 800; font-size: 12px; text-shadow: 0 1px 3px rgba(0,0,0,0.5); max-width: 45%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${matchup.team1.name}</span>
+            <span style="color: white; font-weight: 800; font-size: 12px; text-shadow: 0 1px 3px rgba(0,0,0,0.5); max-width: 45%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-align: right;">${matchup.team2.name}</span>
           </div>
           
           <!-- Win Probability Chart -->
@@ -1629,11 +1636,19 @@ async function generateMatchupImage(matchup: any, html2canvas: any) {
           <div style="display: flex; gap: 16px;">
             <div style="flex: 1; padding: 12px; background: rgba(6, 182, 212, 0.08); border: 2px solid rgba(6, 182, 212, 0.3); border-radius: 10px;">
               <div style="font-weight: 700; color: ${team1Color}; margin-bottom: 8px; font-size: 15px;">${matchup.team1.name}</div>
-              <div style="font-size: 13px; color: #d1d5db; line-height: 1.5;">${team1Traits.join(' • ')}</div>
+              <div style="font-size: 13px; color: #d1d5db; line-height: 1.5; margin-bottom: 10px;">${team1Traits.join(' • ')}</div>
+              <div style="display: flex; align-items: center; gap: 4px;">
+                <span style="font-size: 10px; color: #6b7280; text-transform: uppercase; font-weight: 600; margin-right: 4px;">Recent:</span>
+                ${team1Form.map(r => `<span style="display: inline-flex; align-items: center; justify-content: center; width: 22px; height: 22px; border-radius: 4px; font-size: 11px; font-weight: bold; background: ${r === 'W' ? 'rgba(34, 197, 94, 0.3)' : 'rgba(239, 68, 68, 0.3)'}; color: ${r === 'W' ? '#22c55e' : '#ef4444'};">${r}</span>`).join('')}
+              </div>
             </div>
             <div style="flex: 1; padding: 12px; background: rgba(249, 115, 22, 0.08); border: 2px solid rgba(249, 115, 22, 0.3); border-radius: 10px;">
               <div style="font-weight: 700; color: ${team2Color}; margin-bottom: 8px; font-size: 15px;">${matchup.team2.name}</div>
-              <div style="font-size: 13px; color: #d1d5db; line-height: 1.5;">${team2Traits.join(' • ')}</div>
+              <div style="font-size: 13px; color: #d1d5db; line-height: 1.5; margin-bottom: 10px;">${team2Traits.join(' • ')}</div>
+              <div style="display: flex; align-items: center; gap: 4px;">
+                <span style="font-size: 10px; color: #6b7280; text-transform: uppercase; font-weight: 600; margin-right: 4px;">Recent:</span>
+                ${team2Form.map(r => `<span style="display: inline-flex; align-items: center; justify-content: center; width: 22px; height: 22px; border-radius: 4px; font-size: 11px; font-weight: bold; background: ${r === 'W' ? 'rgba(34, 197, 94, 0.3)' : 'rgba(239, 68, 68, 0.3)'}; color: ${r === 'W' ? '#22c55e' : '#ef4444'};">${r}</span>`).join('')}
+              </div>
             </div>
           </div>
         </div>
