@@ -2175,16 +2175,192 @@ async function downloadAwardRankings(awardTitle: string, type: 'best' | 'worst')
 }
 
 async function downloadCareerStats() {
-  if (!careerTableRef.value) return
   isDownloadingCareerStats.value = true
   try {
-    const canvas = await html2canvas(careerTableRef.value, {
-      backgroundColor: '#1a1d23',
-      scale: 2
+    // Get league name from saved leagues or yahooLeague
+    const activeId = leagueStore.activeLeagueId
+    const savedLeague = leagueStore.savedLeagues?.find((l: any) => l.league_id === activeId?.split('.l.')[1])
+    const leagueName = savedLeague?.league_name || leagueStore.yahooLeague?.name || 'Fantasy League'
+    
+    // Load UFD logo
+    const loadLogo = async (): Promise<string> => {
+      try {
+        const response = await fetch('/UFD_V5.png')
+        if (!response.ok) return ''
+        const blob = await response.blob()
+        return new Promise((resolve) => {
+          const reader = new FileReader()
+          reader.onloadend = () => resolve(reader.result as string)
+          reader.onerror = () => resolve('')
+          reader.readAsDataURL(blob)
+        })
+      } catch (e) { return '' }
+    }
+    
+    // Helper to create placeholder avatar
+    const createPlaceholder = (name: string): string => {
+      const canvas = document.createElement('canvas')
+      canvas.width = 64
+      canvas.height = 64
+      const ctx = canvas.getContext('2d')
+      if (ctx) {
+        ctx.fillStyle = '#3a3d52'
+        ctx.beginPath()
+        ctx.arc(32, 32, 32, 0, Math.PI * 2)
+        ctx.fill()
+        ctx.fillStyle = '#ffffff'
+        ctx.font = 'bold 28px sans-serif'
+        ctx.textAlign = 'center'
+        ctx.textBaseline = 'middle'
+        ctx.fillText(name.charAt(0).toUpperCase(), 32, 34)
+      }
+      return canvas.toDataURL('image/png')
+    }
+    
+    const logoBase64 = await loadLogo()
+    
+    // Get sorted top 12 teams
+    const sortedStats = sortStats(filteredCareerStats.value).slice(0, 12)
+    
+    // Pre-load all team images
+    const imageMap = new Map<string, string>()
+    for (const stat of sortedStats) {
+      try {
+        const img = new Image()
+        img.crossOrigin = 'anonymous'
+        const loadPromise = new Promise<string>((resolve) => {
+          img.onload = () => {
+            try {
+              const canvas = document.createElement('canvas')
+              canvas.width = 64
+              canvas.height = 64
+              const ctx = canvas.getContext('2d')
+              if (ctx) {
+                ctx.beginPath()
+                ctx.arc(32, 32, 32, 0, Math.PI * 2)
+                ctx.closePath()
+                ctx.clip()
+                ctx.drawImage(img, 0, 0, 64, 64)
+              }
+              resolve(canvas.toDataURL('image/png'))
+            } catch {
+              resolve(createPlaceholder(stat.team_name))
+            }
+          }
+          img.onerror = () => resolve(createPlaceholder(stat.team_name))
+          setTimeout(() => resolve(createPlaceholder(stat.team_name)), 3000)
+        })
+        img.src = stat.logo_url || ''
+        imageMap.set(stat.team_key, await loadPromise)
+      } catch {
+        imageMap.set(stat.team_key, createPlaceholder(stat.team_name))
+      }
+    }
+    
+    // Column label mapping
+    const columnLabels: Record<string, string> = {
+      'seasons': 'Seasons',
+      'championships': 'Championships',
+      'wins': 'Wins',
+      'win_pct': 'Win%',
+      'avg_ppw': 'PPW',
+      'total_pf': 'Total Points'
+    }
+    
+    // Generate table rows with logos
+    const generateRows = () => {
+      return sortedStats.map((stat, idx) => `
+        <tr style="border-bottom: 1px solid rgba(58, 61, 82, 0.3);">
+          <td style="padding: 8px 12px; color: #9ca3af; font-weight: 600;">${idx + 1}</td>
+          <td style="padding: 8px 12px;">
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <img src="${imageMap.get(stat.team_key) || createPlaceholder(stat.team_name)}" style="width: 28px; height: 28px; border-radius: 50%;" />
+              <span style="color: #ffffff; font-weight: 600;">${stat.team_name}</span>
+            </div>
+          </td>
+          <td style="padding: 8px 12px; text-align: center; color: #e5e7eb;">${stat.seasons}</td>
+          <td style="padding: 8px 12px; text-align: center; color: ${stat.championships > 0 ? '#F5C451' : '#6b7280'}; font-weight: ${stat.championships > 0 ? 'bold' : 'normal'};">${stat.championships}</td>
+          <td style="padding: 8px 12px; text-align: center; color: #e5e7eb;">${stat.wins}-${stat.losses}</td>
+          <td style="padding: 8px 12px; text-align: center; color: #e5e7eb;">${(stat.win_pct * 100).toFixed(1)}%</td>
+          <td style="padding: 8px 12px; text-align: center; color: #10b981;">${stat.avg_ppw.toFixed(1)}</td>
+          <td style="padding: 8px 12px; text-align: center; color: #8b5cf6;">${stat.total_pf.toFixed(0)}</td>
+        </tr>
+      `).join('')
+    }
+    
+    // Create wrapper with header/footer
+    const container = document.createElement('div')
+    container.style.cssText = 'position: absolute; left: -9999px; top: 0; width: 700px; font-family: system-ui, -apple-system, sans-serif;'
+    
+    container.innerHTML = `
+      <div style="background: linear-gradient(160deg, #0f1219 0%, #0a0c14 50%, #0d1117 100%); border-radius: 16px; box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5); position: relative; overflow: hidden;">
+        
+        <!-- Top Red Bar -->
+        <div style="background: #dc2626; padding: 10px 24px; text-align: center;">
+          <span style="font-size: 16px; font-weight: 700; color: #0a0c14; text-transform: uppercase; letter-spacing: 3px;">Ultimate Fantasy Dashboard</span>
+        </div>
+        
+        <!-- Header -->
+        <div style="display: flex; align-items: center; padding: 12px 24px; border-bottom: 1px solid rgba(220, 38, 38, 0.2);">
+          ${logoBase64 ? `<img src="${logoBase64}" style="height: 50px; width: auto; flex-shrink: 0; margin-right: 16px; margin-top: 6px;" />` : ''}
+          <div style="flex: 1;">
+            <div style="font-size: 24px; font-weight: 900; color: #ffffff; text-transform: uppercase; letter-spacing: 1px; line-height: 1.1;">Career Statistics</div>
+            <div style="font-size: 14px; margin-top: 3px; font-weight: 600;">
+              <span style="color: #e5e7eb;">${leagueName}</span>
+              <span style="color: #6b7280; margin: 0 6px;">•</span>
+              <span style="color: #dc2626; font-weight: 700;">Top 12 by ${columnLabels[sortColumn.value] || sortColumn.value}</span>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Table Content -->
+        <div style="padding: 16px 24px;">
+          <table style="width: 100%; border-collapse: collapse; font-size: 13px;">
+            <thead>
+              <tr style="border-bottom: 2px solid rgba(220, 38, 38, 0.3);">
+                <th style="padding: 10px 12px; text-align: left; color: #9ca3af; font-size: 11px; text-transform: uppercase;">#</th>
+                <th style="padding: 10px 12px; text-align: left; color: #9ca3af; font-size: 11px; text-transform: uppercase;">Team</th>
+                <th style="padding: 10px 12px; text-align: center; color: #9ca3af; font-size: 11px; text-transform: uppercase;">Yrs</th>
+                <th style="padding: 10px 12px; text-align: center; color: #9ca3af; font-size: 11px; text-transform: uppercase;">🏆</th>
+                <th style="padding: 10px 12px; text-align: center; color: #9ca3af; font-size: 11px; text-transform: uppercase;">Record</th>
+                <th style="padding: 10px 12px; text-align: center; color: #9ca3af; font-size: 11px; text-transform: uppercase;">Win%</th>
+                <th style="padding: 10px 12px; text-align: center; color: #10b981; font-size: 11px; text-transform: uppercase;">PPW</th>
+                <th style="padding: 10px 12px; text-align: center; color: #8b5cf6; font-size: 11px; text-transform: uppercase;">Total PF</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${generateRows()}
+            </tbody>
+          </table>
+        </div>
+        
+        <!-- Note about full history -->
+        <div style="padding: 0 24px 16px 24px; text-align: center;">
+          <span style="font-size: 12px; color: #6b7280; font-style: italic;">Showing top 12 • See complete league history at ultimatefantasydashboard.com</span>
+        </div>
+        
+        <!-- Footer -->
+        <div style="padding: 16px 24px; text-align: center; border-top: 1px solid rgba(220, 38, 38, 0.2);">
+          <span style="font-size: 20px; font-weight: bold; color: #dc2626;">ultimatefantasydashboard.com</span>
+        </div>
+      </div>
+    `
+    
+    document.body.appendChild(container)
+    await new Promise(r => setTimeout(r, 300))
+    
+    const finalCanvas = await html2canvas(container, {
+      backgroundColor: '#0a0c14',
+      scale: 2,
+      useCORS: true,
+      allowTaint: true
     })
+    
+    document.body.removeChild(container)
+    
     const link = document.createElement('a')
-    link.download = 'league-career-stats.png'
-    link.href = canvas.toDataURL()
+    link.download = 'points-league-career-stats.png'
+    link.href = finalCanvas.toDataURL('image/png')
     link.click()
   } finally {
     isDownloadingCareerStats.value = false
@@ -2195,13 +2371,84 @@ async function downloadSeasonHistory() {
   if (!seasonTableRef.value) return
   isDownloadingSeasonHistory.value = true
   try {
-    const canvas = await html2canvas(seasonTableRef.value, {
-      backgroundColor: '#1a1d23',
+    const leagueName = leagueStore.yahooLeague?.name || 'Fantasy League'
+    
+    // Load logo
+    const loadLogo = async (): Promise<string> => {
+      try {
+        const response = await fetch('/UFD_V5.png')
+        if (!response.ok) return ''
+        const blob = await response.blob()
+        return new Promise((resolve) => {
+          const reader = new FileReader()
+          reader.onloadend = () => resolve(reader.result as string)
+          reader.onerror = () => resolve('')
+          reader.readAsDataURL(blob)
+        })
+      } catch (e) { return '' }
+    }
+    
+    const logoBase64 = await loadLogo()
+    
+    // Capture the table
+    const tableCanvas = await html2canvas(seasonTableRef.value, {
+      backgroundColor: '#0a0c14',
       scale: 2
     })
+    const tableDataUrl = tableCanvas.toDataURL('image/png')
+    
+    // Create wrapper with header/footer
+    const container = document.createElement('div')
+    container.style.cssText = 'position: absolute; left: -9999px; top: 0; width: 700px; font-family: system-ui, -apple-system, sans-serif;'
+    
+    container.innerHTML = `
+      <div style="background: linear-gradient(160deg, #0f1219 0%, #0a0c14 50%, #0d1117 100%); border-radius: 16px; box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5); position: relative; overflow: hidden;">
+        
+        <!-- Top Red Bar -->
+        <div style="background: #dc2626; padding: 10px 24px; text-align: center;">
+          <span style="font-size: 16px; font-weight: 700; color: #0a0c14; text-transform: uppercase; letter-spacing: 3px;">Ultimate Fantasy Dashboard</span>
+        </div>
+        
+        <!-- Header -->
+        <div style="display: flex; padding: 16px 24px; border-bottom: 1px solid rgba(220, 38, 38, 0.2);">
+          ${logoBase64 ? `<img src="${logoBase64}" style="height: 70px; width: auto; flex-shrink: 0; margin-right: 24px;" />` : ''}
+          <div style="flex: 1;">
+            <div style="font-size: 36px; font-weight: 900; color: #ffffff; text-transform: uppercase; letter-spacing: 2px; text-shadow: 0 2px 8px rgba(220, 38, 38, 0.4);">Season History</div>
+            <div style="font-size: 18px; margin-top: 6px; font-weight: 600;">
+              <span style="color: #e5e7eb;">${leagueName}</span>
+              <span style="color: #6b7280; margin: 0 8px;">•</span>
+              <span style="color: #dc2626; font-weight: 700;">Year-by-Year</span>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Table Content -->
+        <div style="padding: 16px 24px;">
+          <img src="${tableDataUrl}" style="width: 100%; height: auto; border-radius: 8px;" />
+        </div>
+        
+        <!-- Footer -->
+        <div style="padding: 16px 24px; text-align: center;">
+          <span style="font-size: 20px; font-weight: bold; color: #dc2626;">ultimatefantasydashboard.com</span>
+        </div>
+      </div>
+    `
+    
+    document.body.appendChild(container)
+    await new Promise(r => setTimeout(r, 300))
+    
+    const finalCanvas = await html2canvas(container, {
+      backgroundColor: '#0a0c14',
+      scale: 2,
+      useCORS: true,
+      allowTaint: true
+    })
+    
+    document.body.removeChild(container)
+    
     const link = document.createElement('a')
-    link.download = 'league-season-history.png'
-    link.href = canvas.toDataURL()
+    link.download = 'points-league-season-history.png'
+    link.href = finalCanvas.toDataURL('image/png')
     link.click()
   } finally {
     isDownloadingSeasonHistory.value = false
@@ -2212,13 +2459,84 @@ async function downloadHeadToHead() {
   if (!h2hTableRef.value) return
   isDownloadingH2H.value = true
   try {
-    const canvas = await html2canvas(h2hTableRef.value, {
-      backgroundColor: '#1a1d23',
+    const leagueName = leagueStore.yahooLeague?.name || 'Fantasy League'
+    
+    // Load logo
+    const loadLogo = async (): Promise<string> => {
+      try {
+        const response = await fetch('/UFD_V5.png')
+        if (!response.ok) return ''
+        const blob = await response.blob()
+        return new Promise((resolve) => {
+          const reader = new FileReader()
+          reader.onloadend = () => resolve(reader.result as string)
+          reader.onerror = () => resolve('')
+          reader.readAsDataURL(blob)
+        })
+      } catch (e) { return '' }
+    }
+    
+    const logoBase64 = await loadLogo()
+    
+    // Capture the table
+    const tableCanvas = await html2canvas(h2hTableRef.value, {
+      backgroundColor: '#0a0c14',
       scale: 2
     })
+    const tableDataUrl = tableCanvas.toDataURL('image/png')
+    
+    // Create wrapper with header/footer
+    const container = document.createElement('div')
+    container.style.cssText = 'position: absolute; left: -9999px; top: 0; width: 700px; font-family: system-ui, -apple-system, sans-serif;'
+    
+    container.innerHTML = `
+      <div style="background: linear-gradient(160deg, #0f1219 0%, #0a0c14 50%, #0d1117 100%); border-radius: 16px; box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5); position: relative; overflow: hidden;">
+        
+        <!-- Top Red Bar -->
+        <div style="background: #dc2626; padding: 10px 24px; text-align: center;">
+          <span style="font-size: 16px; font-weight: 700; color: #0a0c14; text-transform: uppercase; letter-spacing: 3px;">Ultimate Fantasy Dashboard</span>
+        </div>
+        
+        <!-- Header -->
+        <div style="display: flex; padding: 16px 24px; border-bottom: 1px solid rgba(220, 38, 38, 0.2);">
+          ${logoBase64 ? `<img src="${logoBase64}" style="height: 70px; width: auto; flex-shrink: 0; margin-right: 24px;" />` : ''}
+          <div style="flex: 1;">
+            <div style="font-size: 36px; font-weight: 900; color: #ffffff; text-transform: uppercase; letter-spacing: 2px; text-shadow: 0 2px 8px rgba(220, 38, 38, 0.4);">Head-to-Head</div>
+            <div style="font-size: 18px; margin-top: 6px; font-weight: 600;">
+              <span style="color: #e5e7eb;">${leagueName}</span>
+              <span style="color: #6b7280; margin: 0 8px;">•</span>
+              <span style="color: #dc2626; font-weight: 700;">All-Time Records</span>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Table Content -->
+        <div style="padding: 16px 24px;">
+          <img src="${tableDataUrl}" style="width: 100%; height: auto; border-radius: 8px;" />
+        </div>
+        
+        <!-- Footer -->
+        <div style="padding: 16px 24px; text-align: center;">
+          <span style="font-size: 20px; font-weight: bold; color: #dc2626;">ultimatefantasydashboard.com</span>
+        </div>
+      </div>
+    `
+    
+    document.body.appendChild(container)
+    await new Promise(r => setTimeout(r, 300))
+    
+    const finalCanvas = await html2canvas(container, {
+      backgroundColor: '#0a0c14',
+      scale: 2,
+      useCORS: true,
+      allowTaint: true
+    })
+    
+    document.body.removeChild(container)
+    
     const link = document.createElement('a')
-    link.download = 'league-head-to-head.png'
-    link.href = canvas.toDataURL()
+    link.download = 'points-league-h2h-matrix.png'
+    link.href = finalCanvas.toDataURL('image/png')
     link.click()
   } finally {
     isDownloadingH2H.value = false
