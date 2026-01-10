@@ -910,14 +910,49 @@ async function loadDraftData() {
     
     const currentGameKey = leagueKey.split('.')[0]
     const leagueNum = leagueKey.split('.l.')[1]
-    // Use current league's game key to maintain consistency
-    const seasonLeagueKey = leagueKey
+    let seasonLeagueKey = leagueKey
     
     console.log('Loading draft for league:', seasonLeagueKey)
     
     // Get draft results
-    const draftResults = await yahooService.getDraftResults(seasonLeagueKey)
+    let draftResults = await yahooService.getDraftResults(seasonLeagueKey)
     console.log('Draft results:', draftResults)
+    
+    // Check if draft has player data (draft_status might be "predraft" or picks might not have player_keys)
+    const playerKeys = draftResults.picks?.map((p: any) => p.player_key).filter(Boolean) || []
+    
+    // If no player keys (draft hasn't happened), try to fall back to previous season
+    if (playerKeys.length === 0 && draftResults.picks?.length > 0) {
+      console.log('Draft has picks but no player keys (predraft). Checking for previous season...')
+      
+      // Try to get previous season from league metadata
+      const metadata = await yahooService.getLeagueMetadata(seasonLeagueKey)
+      const renewedFrom = metadata?.renew // Format: "431_136233" (previous year's game_leaguenum)
+      
+      if (renewedFrom) {
+        const [prevGameKey, prevLeagueNum] = renewedFrom.split('_')
+        const prevLeagueKey = `${prevGameKey}.l.${prevLeagueNum}`
+        console.log('Found previous season:', prevLeagueKey, '- loading that draft instead')
+        
+        // Load previous season's draft
+        draftResults = await yahooService.getDraftResults(prevLeagueKey)
+        seasonLeagueKey = prevLeagueKey
+        
+        // Update player keys
+        const prevPlayerKeys = draftResults.picks?.map((p: any) => p.player_key).filter(Boolean) || []
+        if (prevPlayerKeys.length === 0) {
+          console.log('Previous season also has no draft data')
+          draftPicks.value = []
+          isLoading.value = false
+          return
+        }
+      } else {
+        console.log('No previous season found and current draft has no player data')
+        draftPicks.value = []
+        isLoading.value = false
+        return
+      }
+    }
     
     if (!draftResults.picks || draftResults.picks.length === 0) {
       draftPicks.value = []
@@ -925,15 +960,15 @@ async function loadDraftData() {
       return
     }
     
-    // Get player details
-    const playerKeys = draftResults.picks.map((p: any) => p.player_key).filter(Boolean)
-    console.log('Fetching details for', playerKeys.length, 'players')
-    const players = await yahooService.getPlayers(playerKeys, seasonLeagueKey)
+    // Get player details (re-calculate playerKeys in case we switched seasons)
+    const finalPlayerKeys = draftResults.picks.map((p: any) => p.player_key).filter(Boolean)
+    console.log('Fetching details for', finalPlayerKeys.length, 'players')
+    const players = await yahooService.getPlayers(finalPlayerKeys, seasonLeagueKey)
     playerData.value = players
     console.log('Got player details:', players.size)
     
     // Get player stats
-    const stats = await yahooService.getPlayerStats(seasonLeagueKey, playerKeys)
+    const stats = await yahooService.getPlayerStats(seasonLeagueKey, finalPlayerKeys)
     playerStats.value = stats
     console.log('Got player stats:', stats.size)
     
