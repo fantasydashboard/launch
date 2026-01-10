@@ -1262,7 +1262,7 @@ async function generateMatchupAnalysisImage(matchup: any, html2canvas: any) {
       
       <!-- Top Red Bar with site name -->
       <div style="background: #dc2626; padding: 10px 24px 10px 24px; text-align: center; overflow: visible;">
-        <span style="font-size: 16px; font-weight: 700; color: #ffffff; text-transform: uppercase; letter-spacing: 3px; display: block; margin-top: -17px;">Ultimate Fantasy Dashboard</span>
+        <span style="font-size: 16px; font-weight: 700; color: #0a0c14; text-transform: uppercase; letter-spacing: 3px; display: block; margin-top: -17px;">Ultimate Fantasy Dashboard</span>
       </div>
       
       <!-- HEADER - Logo on left with text next to it -->
@@ -1502,7 +1502,7 @@ async function generateCategoryBreakdownImage(matchup: any, html2canvas: any) {
       
       <!-- Top Red Bar with site name -->
       <div style="background: #dc2626; padding: 10px 24px 10px 24px; text-align: center; overflow: visible;">
-        <span style="font-size: 16px; font-weight: 700; color: #ffffff; text-transform: uppercase; letter-spacing: 3px; display: block; margin-top: -17px;">Ultimate Fantasy Dashboard</span>
+        <span style="font-size: 16px; font-weight: 700; color: #0a0c14; text-transform: uppercase; letter-spacing: 3px; display: block; margin-top: -17px;">Ultimate Fantasy Dashboard</span>
       </div>
       
       <!-- HEADER - Logo on left with text next to it -->

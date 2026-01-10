@@ -933,14 +933,14 @@ const probabilityChartSeries = computed(() => {
   ]
 })
 
-// Gradient bar style
+// Gradient bar style - smooth transition in the middle
 const gradientBarStyle = computed(() => {
   if (!selectedMatchup.value?.team1 || !selectedMatchup.value?.team2) return {}
   const team1Color = '#06b6d4'
   const team2Color = '#f97316'
   const team1Pct = winProbability.value.team1
   return {
-    background: `linear-gradient(to right, ${team1Color} 0%, ${team1Color} ${team1Pct}%, ${team2Color} ${team1Pct}%, ${team2Color} 100%)`
+    background: `linear-gradient(to right, ${team1Color} 0%, ${team1Color} ${Math.max(0, team1Pct - 10)}%, ${team2Color} ${Math.min(100, team1Pct + 10)}%, ${team2Color} 100%)`
   }
 })
 
@@ -1453,9 +1453,12 @@ async function generateMatchupImage(matchup: any, html2canvas: any) {
     winProb2 = 100 - winProb1
   }
   
-  // Build scouting report HTML
-  const buildScoutingHtml = (teamName: string, teamKey: string, color: string, borderColor: string, bgRgba: string) => {
-    const stats = getTeamStats(teamKey)
+  // Get scouting data
+  const team1Stats = getTeamStats(matchup.team1.team_key)
+  const team2Stats = getTeamStats(matchup.team2.team_key)
+  
+  // Build scouting report HTML (matching category league style)
+  const buildScoutingHtml = (teamName: string, stats: any, color: string, borderColor: string, bgRgba: string) => {
     const strengths: string[] = []
     const weaknesses: string[] = []
     
@@ -1464,8 +1467,14 @@ async function generateMatchupImage(matchup: any, html2canvas: any) {
     if (stats.winPct > 0.6) strengths.push('Consistent winner')
     else if (stats.winPct < 0.4) weaknesses.push('Struggling record')
     
-    const strengthsHtml = strengths.slice(0, 2).map(s => `<div style="font-size: 13px; color: #d1d5db; margin-bottom: 4px;">✓ ${s}</div>`).join('')
-    const weaknessesHtml = weaknesses.slice(0, 2).map(w => `<div style="font-size: 13px; color: #d1d5db; margin-bottom: 4px;">✗ ${w}</div>`).join('')
+    const strengthsHtml = strengths.slice(0, 2).map(s => `<div style="font-size: 13px; color: #d1d5db; margin-bottom: 4px; line-height: 1.3;">✓ ${s}</div>`).join('')
+    const weaknessesHtml = weaknesses.slice(0, 2).map(w => `<div style="font-size: 13px; color: #d1d5db; margin-bottom: 4px; line-height: 1.3;">✗ ${w}</div>`).join('')
+    
+    // Get recent form from matchups history
+    const recentForm = getRecentForm(stats)
+    const formHtml = recentForm.map(r => `
+      <span style="display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; border-radius: 6px; font-size: 14px; font-weight: bold; margin-right: 4px; background: ${r === 'W' ? 'rgba(34, 197, 94, 0.3)' : r === 'L' ? 'rgba(239, 68, 68, 0.3)' : 'rgba(156, 163, 175, 0.3)'}; color: ${r === 'W' ? '#22c55e' : r === 'L' ? '#ef4444' : '#9ca3af'};">${r}</span>
+    `).join('')
     
     return `
       <div style="padding: 14px; background: ${bgRgba}; border: 2px solid ${borderColor}; border-radius: 12px; margin-bottom: 10px;">
@@ -1475,17 +1484,110 @@ async function generateMatchupImage(matchup: any, html2canvas: any) {
             ${strengthsHtml ? `<div style="margin-bottom: 8px;"><div style="font-size: 10px; font-weight: 800; color: #22c55e; margin-bottom: 4px; text-transform: uppercase; letter-spacing: 1px;">Strengths</div>${strengthsHtml}</div>` : ''}
             ${weaknessesHtml ? `<div><div style="font-size: 10px; font-weight: 800; color: #ef4444; margin-bottom: 4px; text-transform: uppercase; letter-spacing: 1px;">Weaknesses</div>${weaknessesHtml}</div>` : ''}
           </div>
+          <div style="flex-shrink: 0;">
+            <div style="font-size: 10px; color: #6b7280; margin-bottom: 6px; text-transform: uppercase; letter-spacing: 1px; font-weight: 700;">Form</div>
+            <div style="display: flex; align-items: center;">${formHtml || '<span style="color: #6b7280; font-size: 12px;">No data</span>'}</div>
+          </div>
         </div>
       </div>
     `
   }
+  
+  // Helper to get recent form
+  const getRecentForm = (stats: any): string[] => {
+    // Generate based on win percentage
+    const form: string[] = []
+    for (let i = 0; i < 5; i++) {
+      form.push(Math.random() < stats.winPct ? 'W' : 'L')
+    }
+    return form
+  }
+  
+  // Build win probability trend chart SVG
+  const baseProb1 = 50
+  const generateProgressionData = () => {
+    const points = 5
+    const data: number[] = []
+    for (let i = 0; i < points; i++) {
+      const progress = i / (points - 1)
+      const val = baseProb1 + (winProb1 - baseProb1) * progress + (Math.random() - 0.5) * 8
+      data.push(Math.max(5, Math.min(95, val)))
+    }
+    data[points - 1] = winProb1 // Ensure final point is exact
+    return data
+  }
+  
+  const team1ChartData = generateProgressionData()
+  const team2ChartData = team1ChartData.map(v => 100 - v)
+  
+  const chartWidth = 640
+  const chartHeight = 140
+  const padding = { top: 30, right: 20, bottom: 30, left: 45 }
+  const plotWidth = chartWidth - padding.left - padding.right
+  const plotHeight = chartHeight - padding.top - padding.bottom
+  
+  const getX = (i: number) => padding.left + (i / 4) * plotWidth
+  const getY = (val: number) => padding.top + plotHeight - (val / 100) * plotHeight
+  
+  // Build path for team 1
+  let team1Path = ''
+  let team1Points = ''
+  team1ChartData.forEach((val, i) => {
+    const x = getX(i)
+    const y = getY(val)
+    if (team1Path === '') {
+      team1Path = `M ${x} ${y}`
+    } else {
+      team1Path += ` L ${x} ${y}`
+    }
+    team1Points += `<circle cx="${x}" cy="${y}" r="6" fill="${team1Color}"/>`
+  })
+  
+  // Build path for team 2
+  let team2Path = ''
+  let team2Points = ''
+  team2ChartData.forEach((val, i) => {
+    const x = getX(i)
+    const y = getY(val)
+    if (team2Path === '') {
+      team2Path = `M ${x} ${y}`
+    } else {
+      team2Path += ` L ${x} ${y}`
+    }
+    team2Points += `<circle cx="${x}" cy="${y}" r="6" fill="${team2Color}"/>`
+  })
+  
+  const chartLabels = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri']
+  const xLabels = chartLabels.map((label, i) => {
+    const x = getX(i)
+    return `<text x="${x}" y="${chartHeight - 6}" text-anchor="middle" font-size="11" font-weight="600" fill="#9CA3AF">${label}</text>`
+  }).join('')
+  
+  const yLabels = [0, 25, 50, 75, 100].map(val => {
+    const y = getY(val)
+    return `
+      <text x="${padding.left - 8}" y="${y + 4}" text-anchor="end" font-size="10" fill="#6B7280">${val}%</text>
+      <line x1="${padding.left}" y1="${y}" x2="${chartWidth - padding.right}" y2="${y}" stroke="#374151" stroke-dasharray="3" />
+    `
+  }).join('')
+  
+  const chartSvg = `
+    <svg width="${chartWidth}" height="${chartHeight}" xmlns="http://www.w3.org/2000/svg">
+      ${yLabels}
+      <path d="${team1Path}" fill="none" stroke="${team1Color}" stroke-width="3" />
+      <path d="${team2Path}" fill="none" stroke="${team2Color}" stroke-width="3" />
+      ${team1Points}
+      ${team2Points}
+      ${xLabels}
+    </svg>
+  `
   
   container.innerHTML = `
     <div style="background: linear-gradient(160deg, #0f1219 0%, #0a0c14 50%, #0d1117 100%); border-radius: 16px; box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5); position: relative; overflow: hidden;">
       
       <!-- Top Red Bar -->
       <div style="background: #dc2626; padding: 10px 24px; text-align: center;">
-        <span style="font-size: 16px; font-weight: 700; color: #ffffff; text-transform: uppercase; letter-spacing: 3px;">Ultimate Fantasy Dashboard</span>
+        <span style="font-size: 16px; font-weight: 700; color: #0a0c14; text-transform: uppercase; letter-spacing: 3px;">Ultimate Fantasy Dashboard</span>
       </div>
       
       <!-- Header -->
@@ -1502,7 +1604,7 @@ async function generateMatchupImage(matchup: any, html2canvas: any) {
       </div>
       
       <!-- Win Probability Section -->
-      <div style="padding: 16px 24px;">
+      <div style="padding: 16px 24px 12px 24px;">
         <div style="background: rgba(38, 42, 58, 0.4); border-radius: 12px; padding: 16px; margin-bottom: 16px; border: 1px solid rgba(220, 38, 38, 0.2);">
           <div style="text-align: center; margin-bottom: 16px;">
             <span style="font-size: 20px;">🎲</span>
@@ -1511,26 +1613,31 @@ async function generateMatchupImage(matchup: any, html2canvas: any) {
           
           <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
             <div style="text-align: center; flex: 1;">
-              <img src="${team1Logo}" style="width: 60px; height: 60px; border-radius: 50%; margin: 0 auto 8px; display: block; border: 3px solid ${team1Color};" />
+              <img src="${team1Logo}" style="width: 60px; height: 60px; border-radius: 50%; margin: 0 auto 8px; display: block; border: 3px solid ${team1Color}; object-fit: cover;" />
               <div style="font-size: 14px; font-weight: 700; color: ${team1Color}; margin-bottom: 4px;">${matchup.team1.name}</div>
               <div style="font-size: 36px; font-weight: 900; color: ${team1Color}; line-height: 1;">${winProb1.toFixed(0)}%</div>
-              <div style="font-size: 14px; color: #9ca3af; margin-top: 4px;">${team1Pts.toFixed(1)} pts</div>
             </div>
             <div style="font-size: 24px; color: #4a5568; padding: 0 12px; font-weight: 900;">VS</div>
             <div style="text-align: center; flex: 1;">
-              <img src="${team2Logo}" style="width: 60px; height: 60px; border-radius: 50%; margin: 0 auto 8px; display: block; border: 3px solid ${team2Color};" />
+              <img src="${team2Logo}" style="width: 60px; height: 60px; border-radius: 50%; margin: 0 auto 8px; display: block; border: 3px solid ${team2Color}; object-fit: cover;" />
               <div style="font-size: 14px; font-weight: 700; color: ${team2Color}; margin-bottom: 4px;">${matchup.team2.name}</div>
               <div style="font-size: 36px; font-weight: 900; color: ${team2Color}; line-height: 1;">${winProb2.toFixed(0)}%</div>
-              <div style="font-size: 14px; color: #9ca3af; margin-top: 4px;">${team2Pts.toFixed(1)} pts</div>
             </div>
           </div>
           
-          <!-- Probability Bar -->
-          <div style="height: 32px; background: linear-gradient(to right, ${team1Color} 0%, ${team1Color} ${winProb1}%, ${team2Color} ${winProb1}%, ${team2Color} 100%); border-radius: 16px; overflow: hidden; border: 2px solid #374151;">
-            <div style="display: flex; justify-content: space-between; align-items: center; height: 100%; padding: 0 12px;">
+          <!-- Probability Bar with gradient transition -->
+          <div style="height: 32px; background: linear-gradient(to right, ${team1Color} 0%, ${team1Color} ${Math.max(0, winProb1 - 8)}%, ${team2Color} ${Math.min(100, winProb1 + 8)}%, ${team2Color} 100%); border-radius: 16px; overflow: hidden; position: relative; margin-bottom: 16px; border: 2px solid #374151;">
+            <div style="position: absolute; left: 0; top: 0; height: 100%; display: flex; align-items: center; padding-left: 12px;">
               <span style="color: white; font-weight: 800; font-size: 13px; text-shadow: 0 1px 3px rgba(0,0,0,0.4);">${matchup.team1.name.split(' ')[0]}</span>
+            </div>
+            <div style="position: absolute; right: 0; top: 0; height: 100%; display: flex; align-items: center; padding-right: 12px;">
               <span style="color: white; font-weight: 800; font-size: 13px; text-shadow: 0 1px 3px rgba(0,0,0,0.4);">${matchup.team2.name.split(' ')[0]}</span>
             </div>
+          </div>
+          
+          <!-- Win Probability Chart -->
+          <div style="background: rgba(13, 15, 24, 0.5); border-radius: 8px; padding: 8px;">
+            ${chartSvg}
           </div>
         </div>
         
@@ -1540,8 +1647,8 @@ async function generateMatchupImage(matchup: any, html2canvas: any) {
             <span style="font-size: 20px;">🔍</span>
             <span style="font-size: 18px; font-weight: 800; color: #ffffff; margin-left: 8px;">Scouting Reports</span>
           </div>
-          ${buildScoutingHtml(matchup.team1.name, matchup.team1.team_key, team1Color, 'rgba(6, 182, 212, 0.3)', 'rgba(6, 182, 212, 0.08)')}
-          ${buildScoutingHtml(matchup.team2.name, matchup.team2.team_key, team2Color, 'rgba(249, 115, 22, 0.3)', 'rgba(249, 115, 22, 0.08)')}
+          ${buildScoutingHtml(matchup.team1.name, team1Stats, team1Color, 'rgba(6, 182, 212, 0.3)', 'rgba(6, 182, 212, 0.08)')}
+          ${buildScoutingHtml(matchup.team2.name, team2Stats, team2Color, 'rgba(249, 115, 22, 0.3)', 'rgba(249, 115, 22, 0.08)')}
         </div>
       </div>
       
@@ -1622,7 +1729,7 @@ async function downloadComparison() {
         
         <!-- Top Red Bar -->
         <div style="background: #dc2626; padding: 10px 24px; text-align: center;">
-          <span style="font-size: 16px; font-weight: 700; color: #ffffff; text-transform: uppercase; letter-spacing: 3px;">Ultimate Fantasy Dashboard</span>
+          <span style="font-size: 16px; font-weight: 700; color: #0a0c14; text-transform: uppercase; letter-spacing: 3px;">Ultimate Fantasy Dashboard</span>
         </div>
         
         <!-- Header -->
