@@ -1457,51 +1457,30 @@ async function generateMatchupImage(matchup: any, html2canvas: any) {
   const team1Stats = getTeamStats(matchup.team1.team_key)
   const team2Stats = getTeamStats(matchup.team2.team_key)
   
-  // Build scouting report HTML (matching category league style)
-  const buildScoutingHtml = (teamName: string, stats: any, color: string, borderColor: string, bgRgba: string) => {
-    const strengths: string[] = []
-    const weaknesses: string[] = []
+  // Build simple scouting traits
+  const getTeamTraits = (stats: any): string[] => {
+    const traits: string[] = []
     
-    if (stats.ppg > 100) strengths.push('High-scoring offense')
-    else if (stats.ppg < 80) weaknesses.push('Low scoring output')
-    if (stats.winPct > 0.6) strengths.push('Consistent winner')
-    else if (stats.winPct < 0.4) weaknesses.push('Struggling record')
+    if (stats.ppg > 120) traits.push('Elite scoring')
+    else if (stats.ppg > 100) traits.push('High scoring')
+    else if (stats.ppg > 85) traits.push('Average scoring')
+    else traits.push('Low scoring')
     
-    const strengthsHtml = strengths.slice(0, 2).map(s => `<div style="font-size: 13px; color: #d1d5db; margin-bottom: 4px; line-height: 1.3;">✓ ${s}</div>`).join('')
-    const weaknessesHtml = weaknesses.slice(0, 2).map(w => `<div style="font-size: 13px; color: #d1d5db; margin-bottom: 4px; line-height: 1.3;">✗ ${w}</div>`).join('')
+    if (stats.winPct > 0.7) traits.push('Dominant record')
+    else if (stats.winPct > 0.55) traits.push('Winning record')
+    else if (stats.winPct > 0.45) traits.push('Competitive')
+    else traits.push('Rebuilding')
     
-    // Get recent form from matchups history
-    const recentForm = getRecentForm(stats)
-    const formHtml = recentForm.map(r => `
-      <span style="display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; border-radius: 6px; font-size: 14px; font-weight: bold; margin-right: 4px; background: ${r === 'W' ? 'rgba(34, 197, 94, 0.3)' : r === 'L' ? 'rgba(239, 68, 68, 0.3)' : 'rgba(156, 163, 175, 0.3)'}; color: ${r === 'W' ? '#22c55e' : r === 'L' ? '#ef4444' : '#9ca3af'};">${r}</span>
-    `).join('')
+    // Add volatility trait based on variance (simulated)
+    const variance = Math.random()
+    if (variance > 0.7) traits.push('Volatile week-to-week')
+    else if (variance < 0.3) traits.push('Consistent performer')
     
-    return `
-      <div style="padding: 14px; background: ${bgRgba}; border: 2px solid ${borderColor}; border-radius: 12px; margin-bottom: 10px;">
-        <div style="font-weight: 800; color: ${color}; margin-bottom: 10px; font-size: 16px;">${teamName}</div>
-        <div style="display: flex; gap: 16px;">
-          <div style="flex: 1; min-width: 0;">
-            ${strengthsHtml ? `<div style="margin-bottom: 8px;"><div style="font-size: 10px; font-weight: 800; color: #22c55e; margin-bottom: 4px; text-transform: uppercase; letter-spacing: 1px;">Strengths</div>${strengthsHtml}</div>` : ''}
-            ${weaknessesHtml ? `<div><div style="font-size: 10px; font-weight: 800; color: #ef4444; margin-bottom: 4px; text-transform: uppercase; letter-spacing: 1px;">Weaknesses</div>${weaknessesHtml}</div>` : ''}
-          </div>
-          <div style="flex-shrink: 0;">
-            <div style="font-size: 10px; color: #6b7280; margin-bottom: 6px; text-transform: uppercase; letter-spacing: 1px; font-weight: 700;">Form</div>
-            <div style="display: flex; align-items: center;">${formHtml || '<span style="color: #6b7280; font-size: 12px;">No data</span>'}</div>
-          </div>
-        </div>
-      </div>
-    `
+    return traits
   }
   
-  // Helper to get recent form
-  const getRecentForm = (stats: any): string[] => {
-    // Generate based on win percentage
-    const form: string[] = []
-    for (let i = 0; i < 5; i++) {
-      form.push(Math.random() < stats.winPct ? 'W' : 'L')
-    }
-    return form
-  }
+  const team1Traits = getTeamTraits(team1Stats)
+  const team2Traits = getTeamTraits(team2Stats)
   
   // Build win probability trend chart SVG
   const baseProb1 = 50
@@ -1647,8 +1626,16 @@ async function generateMatchupImage(matchup: any, html2canvas: any) {
             <span style="font-size: 20px;">🔍</span>
             <span style="font-size: 18px; font-weight: 800; color: #ffffff; margin-left: 8px;">Scouting Reports</span>
           </div>
-          ${buildScoutingHtml(matchup.team1.name, team1Stats, team1Color, 'rgba(6, 182, 212, 0.3)', 'rgba(6, 182, 212, 0.08)')}
-          ${buildScoutingHtml(matchup.team2.name, team2Stats, team2Color, 'rgba(249, 115, 22, 0.3)', 'rgba(249, 115, 22, 0.08)')}
+          <div style="display: flex; gap: 16px;">
+            <div style="flex: 1; padding: 12px; background: rgba(6, 182, 212, 0.08); border: 2px solid rgba(6, 182, 212, 0.3); border-radius: 10px;">
+              <div style="font-weight: 700; color: ${team1Color}; margin-bottom: 8px; font-size: 15px;">${matchup.team1.name}</div>
+              <div style="font-size: 13px; color: #d1d5db; line-height: 1.5;">${team1Traits.join(' • ')}</div>
+            </div>
+            <div style="flex: 1; padding: 12px; background: rgba(249, 115, 22, 0.08); border: 2px solid rgba(249, 115, 22, 0.3); border-radius: 10px;">
+              <div style="font-weight: 700; color: ${team2Color}; margin-bottom: 8px; font-size: 15px;">${matchup.team2.name}</div>
+              <div style="font-size: 13px; color: #d1d5db; line-height: 1.5;">${team2Traits.join(' • ')}</div>
+            </div>
+          </div>
         </div>
       </div>
       
