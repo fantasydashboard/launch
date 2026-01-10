@@ -528,7 +528,8 @@
                 <div 
                   v-for="award in seasonHallOfFame" 
                   :key="award.title" 
-                  class="bg-dark-border/30 rounded-xl p-4"
+                  class="bg-dark-border/30 rounded-xl p-4 cursor-pointer hover:bg-dark-border/50 transition-colors"
+                  @click="openSeasonAwardModal(award.title, 'best')"
                 >
                   <div class="text-sm text-dark-textMuted uppercase tracking-wide mb-2">{{ award.title }}</div>
                   <div v-if="award.winner" class="flex items-center gap-3 mb-2">
@@ -549,6 +550,7 @@
                   </div>
                   <div v-if="award.winner" class="text-xs text-dark-textSecondary">{{ award.winner.details }}</div>
                   <div v-else class="text-sm text-dark-textMuted italic">No data available</div>
+                  <div class="text-xs text-primary mt-2 opacity-70">Click for top 10 →</div>
                 </div>
               </div>
             </div>
@@ -563,7 +565,8 @@
                 <div 
                   v-for="award in seasonHallOfShame" 
                   :key="award.title" 
-                  class="bg-dark-border/30 rounded-xl p-4"
+                  class="bg-dark-border/30 rounded-xl p-4 cursor-pointer hover:bg-dark-border/50 transition-colors"
+                  @click="openSeasonAwardModal(award.title, 'worst')"
                 >
                   <div class="text-sm text-dark-textMuted uppercase tracking-wide mb-2">{{ award.title }}</div>
                   <div v-if="award.winner" class="flex items-center gap-3 mb-2">
@@ -584,6 +587,7 @@
                   </div>
                   <div v-if="award.winner" class="text-xs text-dark-textSecondary">{{ award.winner.details }}</div>
                   <div v-else class="text-sm text-dark-textMuted italic">No data available</div>
+                  <div class="text-xs text-primary mt-2 opacity-70">Click for bottom 10 →</div>
                 </div>
               </div>
             </div>
@@ -595,7 +599,8 @@
               <div 
                 v-for="award in weeklyAwards" 
                 :key="award.title" 
-                class="bg-dark-border/30 rounded-xl p-4"
+                class="bg-dark-border/30 rounded-xl p-4 cursor-pointer hover:bg-dark-border/50 transition-colors"
+                @click="openWeeklyAwardModal(award.title, award.isShame ? 'worst' : 'best')"
               >
                 <div class="text-sm text-dark-textMuted uppercase tracking-wide mb-2">{{ award.title }}</div>
                 <div v-if="award.winner" class="flex items-center gap-3 mb-2">
@@ -616,6 +621,7 @@
                 </div>
                 <div v-if="award.winner" class="text-xs text-dark-textSecondary">{{ award.winner.details }}</div>
                 <div v-else class="text-sm text-dark-textMuted italic">No data available</div>
+                <div class="text-xs text-primary mt-2 opacity-70">Click for details →</div>
               </div>
             </div>
           </div>
@@ -808,6 +814,192 @@
       </div>
     </Teleport>
 
+    <!-- Season Award Modal -->
+    <Teleport to="body">
+      <div 
+        v-if="showSeasonAwardModal" 
+        class="fixed inset-0 z-50 flex items-center justify-center p-4"
+        @click.self="closeSeasonAwardModal"
+      >
+        <div class="absolute inset-0 bg-black/70 backdrop-blur-sm"></div>
+        <div class="relative bg-dark-elevated rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto border border-dark-border">
+          <div class="sticky top-0 z-10 px-6 py-4 border-b border-dark-border bg-dark-elevated flex items-center justify-between">
+            <div>
+              <h3 class="text-xl font-bold text-dark-text">{{ seasonAwardModalTitle }}</h3>
+              <p class="text-sm"><span class="text-dark-textMuted">{{ leagueDisplayName }}</span> <span class="text-dark-textMuted">•</span> <span class="text-red-500 font-semibold">{{ selectedAwardSeason }} {{ seasonAwardModalType === 'best' ? 'Best' : 'Worst' }}</span></p>
+            </div>
+            <div class="flex items-center gap-2">
+              <button 
+                @click="downloadSeasonAwardRankings(seasonAwardModalTitle, seasonAwardModalType)" 
+                :disabled="isDownloadingSeasonAward"
+                class="flex items-center gap-2 text-sm px-3 py-1.5 rounded-lg font-semibold transition-colors disabled:opacity-50"
+                style="background: #dc2626; color: #ffffff;"
+                @mouseover="$event.currentTarget.style.background = '#F5C451'; $event.currentTarget.style.color = '#0a0c14'"
+                @mouseout="$event.currentTarget.style.background = '#dc2626'; $event.currentTarget.style.color = '#ffffff'"
+              >
+                <svg v-if="!isDownloadingSeasonAward" class="w-4 h-4 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                </svg>
+                <svg v-else class="w-4 h-4 animate-spin pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                  <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                {{ isDownloadingSeasonAward ? 'Saving...' : 'Share' }}
+              </button>
+              <button @click="closeSeasonAwardModal" class="p-2 rounded-lg hover:bg-dark-border/50 transition-colors">
+                <svg class="w-5 h-5 text-dark-textMuted" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+          </div>
+          
+          <div class="p-6 border-b border-dark-border" :class="seasonAwardModalType === 'best' ? 'bg-gradient-to-r from-green-500/10 to-transparent' : 'bg-gradient-to-r from-red-500/10 to-transparent'" v-if="seasonAwardModalRankings[0]">
+            <div class="flex items-center gap-4">
+              <img 
+                :src="seasonAwardModalRankings[0].logo_url || defaultAvatar" 
+                :alt="seasonAwardModalRankings[0].team_name"
+                class="w-16 h-16 rounded-full ring-4 object-cover"
+                :class="seasonAwardModalType === 'best' ? 'ring-green-500/50' : 'ring-red-500/50'"
+                @error="handleImageError"
+              />
+              <div class="flex-1">
+                <div class="text-xl font-bold text-dark-text">{{ seasonAwardModalRankings[0].team_name }}</div>
+                <div class="text-sm text-dark-textMuted">{{ seasonAwardModalRankings[0].detail }}</div>
+              </div>
+              <div class="text-right">
+                <div class="text-3xl font-black" :class="seasonAwardModalType === 'best' ? 'text-green-400' : 'text-red-400'">{{ seasonAwardModalRankings[0].value }}</div>
+              </div>
+            </div>
+          </div>
+          
+          <div class="p-6">
+            <h4 class="text-sm font-semibold text-dark-textMuted uppercase tracking-wider mb-4">{{ seasonAwardModalType === 'best' ? 'Top 10' : 'Bottom 10' }}</h4>
+            <div class="space-y-3">
+              <div 
+                v-for="(team, index) in seasonAwardModalRankings.slice(0, 10)" 
+                :key="team.team_name + index"
+                class="flex items-center gap-3"
+              >
+                <div class="w-6 text-center">
+                  <span class="text-sm font-bold" :class="index === 0 ? (seasonAwardModalType === 'best' ? 'text-green-400' : 'text-red-400') : 'text-dark-textMuted'">{{ index + 1 }}</span>
+                </div>
+                <img :src="team.logo_url || defaultAvatar" :alt="team.team_name" class="w-8 h-8 rounded-full object-cover" @error="handleImageError" />
+                <div class="flex-1 min-w-0">
+                  <div class="text-sm font-medium text-dark-text truncate mb-1">{{ team.team_name }}</div>
+                  <div class="h-2.5 bg-dark-border rounded-full overflow-hidden">
+                    <div 
+                      class="h-full rounded-full transition-all duration-500"
+                      :class="seasonAwardModalType === 'best' ? 'bg-green-500' : 'bg-red-500'"
+                      :style="{ width: getSeasonAwardBarWidth(team.value, seasonAwardModalTitle, seasonAwardModalType) }"
+                    ></div>
+                  </div>
+                </div>
+                <div class="w-20 text-right">
+                  <div class="text-sm font-semibold" :class="index === 0 ? (seasonAwardModalType === 'best' ? 'text-green-400' : 'text-red-400') : 'text-dark-text'">
+                    {{ team.value }}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </Teleport>
+
+    <!-- Weekly Award Modal -->
+    <Teleport to="body">
+      <div 
+        v-if="showWeeklyAwardModal" 
+        class="fixed inset-0 z-50 flex items-center justify-center p-4"
+        @click.self="closeWeeklyAwardModal"
+      >
+        <div class="absolute inset-0 bg-black/70 backdrop-blur-sm"></div>
+        <div class="relative bg-dark-elevated rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto border border-dark-border">
+          <div class="sticky top-0 z-10 px-6 py-4 border-b border-dark-border bg-dark-elevated flex items-center justify-between">
+            <div>
+              <h3 class="text-xl font-bold text-dark-text">{{ weeklyAwardModalTitle }}</h3>
+              <p class="text-sm"><span class="text-dark-textMuted">{{ leagueDisplayName }}</span> <span class="text-dark-textMuted">•</span> <span class="text-red-500 font-semibold">{{ selectedWeeklyAwardSeason }} Week {{ selectedWeeklyAwardWeek }}</span></p>
+            </div>
+            <div class="flex items-center gap-2">
+              <button 
+                @click="downloadWeeklyAwardRankings(weeklyAwardModalTitle, weeklyAwardModalType)" 
+                :disabled="isDownloadingWeeklyAward"
+                class="flex items-center gap-2 text-sm px-3 py-1.5 rounded-lg font-semibold transition-colors disabled:opacity-50"
+                style="background: #dc2626; color: #ffffff;"
+                @mouseover="$event.currentTarget.style.background = '#F5C451'; $event.currentTarget.style.color = '#0a0c14'"
+                @mouseout="$event.currentTarget.style.background = '#dc2626'; $event.currentTarget.style.color = '#ffffff'"
+              >
+                <svg v-if="!isDownloadingWeeklyAward" class="w-4 h-4 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                </svg>
+                <svg v-else class="w-4 h-4 animate-spin pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                  <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                {{ isDownloadingWeeklyAward ? 'Saving...' : 'Share' }}
+              </button>
+              <button @click="closeWeeklyAwardModal" class="p-2 rounded-lg hover:bg-dark-border/50 transition-colors">
+                <svg class="w-5 h-5 text-dark-textMuted" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+          </div>
+          
+          <div class="p-6 border-b border-dark-border" :class="weeklyAwardModalType === 'best' ? 'bg-gradient-to-r from-green-500/10 to-transparent' : 'bg-gradient-to-r from-red-500/10 to-transparent'" v-if="weeklyAwardModalRankings[0]">
+            <div class="flex items-center gap-4">
+              <img 
+                :src="weeklyAwardModalRankings[0].logo_url || defaultAvatar" 
+                :alt="weeklyAwardModalRankings[0].team_name"
+                class="w-16 h-16 rounded-full ring-4 object-cover"
+                :class="weeklyAwardModalType === 'best' ? 'ring-green-500/50' : 'ring-red-500/50'"
+                @error="handleImageError"
+              />
+              <div class="flex-1">
+                <div class="text-xl font-bold text-dark-text">{{ weeklyAwardModalRankings[0].team_name }}</div>
+                <div class="text-sm text-dark-textMuted">{{ weeklyAwardModalRankings[0].detail }}</div>
+              </div>
+              <div class="text-right">
+                <div class="text-3xl font-black" :class="weeklyAwardModalType === 'best' ? 'text-green-400' : 'text-red-400'">{{ weeklyAwardModalRankings[0].value }}</div>
+              </div>
+            </div>
+          </div>
+          
+          <div class="p-6">
+            <h4 class="text-sm font-semibold text-dark-textMuted uppercase tracking-wider mb-4">Week Rankings</h4>
+            <div class="space-y-3">
+              <div 
+                v-for="(team, index) in weeklyAwardModalRankings.slice(0, 10)" 
+                :key="team.team_name + index"
+                class="flex items-center gap-3"
+              >
+                <div class="w-6 text-center">
+                  <span class="text-sm font-bold" :class="index === 0 ? (weeklyAwardModalType === 'best' ? 'text-green-400' : 'text-red-400') : 'text-dark-textMuted'">{{ index + 1 }}</span>
+                </div>
+                <img :src="team.logo_url || defaultAvatar" :alt="team.team_name" class="w-8 h-8 rounded-full object-cover" @error="handleImageError" />
+                <div class="flex-1 min-w-0">
+                  <div class="text-sm font-medium text-dark-text truncate mb-1">{{ team.team_name }}</div>
+                  <div class="h-2.5 bg-dark-border rounded-full overflow-hidden">
+                    <div 
+                      class="h-full rounded-full transition-all duration-500"
+                      :class="weeklyAwardModalType === 'best' ? 'bg-green-500' : 'bg-red-500'"
+                      :style="{ width: getWeeklyAwardBarWidth(team.value) }"
+                    ></div>
+                  </div>
+                </div>
+                <div class="w-20 text-right">
+                  <div class="text-sm font-semibold" :class="index === 0 ? (weeklyAwardModalType === 'best' ? 'text-green-400' : 'text-red-400') : 'text-dark-text'">
+                    {{ team.value }}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </Teleport>
+
     <!-- Platform Badge -->
     <div class="flex justify-center mt-8">
       <div class="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-purple-600/10 border border-purple-600/30">
@@ -853,6 +1045,18 @@ const showAwardModal = ref(false)
 const awardModalTitle = ref('')
 const awardModalType = ref<'best' | 'worst'>('best')
 const isDownloadingAward = ref(false)
+
+// Season Award Modal state
+const showSeasonAwardModal = ref(false)
+const seasonAwardModalTitle = ref('')
+const seasonAwardModalType = ref<'best' | 'worst'>('best')
+const isDownloadingSeasonAward = ref(false)
+
+// Weekly Award Modal state
+const showWeeklyAwardModal = ref(false)
+const weeklyAwardModalTitle = ref('')
+const weeklyAwardModalType = ref<'best' | 'worst'>('best')
+const isDownloadingWeeklyAward = ref(false)
 
 // Sort state
 const sortColumn = ref<string>('wins')
@@ -1292,6 +1496,12 @@ const recordModalRankings = computed(() => getRecordRankings(recordModalLabel.va
 // Award Modal Rankings
 const awardModalRankings = computed(() => getAwardRankings(awardModalTitle.value, awardModalType.value))
 
+// Season Award Modal Rankings
+const seasonAwardModalRankings = computed(() => getSeasonAwardRankings(seasonAwardModalTitle.value, seasonAwardModalType.value))
+
+// Weekly Award Modal Rankings  
+const weeklyAwardModalRankings = computed(() => getWeeklyAwardRankings(weeklyAwardModalTitle.value, weeklyAwardModalType.value))
+
 // Get rankings for career records
 function getRecordRankings(recordType: string): any[] {
   const stats = careerStats.value
@@ -1457,6 +1667,165 @@ function getAwardBarWidth(value: any, title: string, type: 'best' | 'worst'): st
   }
 }
 
+// Get rankings for season awards
+function getSeasonAwardRankings(awardTitle: string, type: 'best' | 'worst'): any[] {
+  const season = selectedAwardSeason.value
+  if (!season) return []
+  
+  const seasonData = historicalData.value[season]
+  const matchups = allMatchups.value[season]
+  if (!seasonData || !matchups) return []
+  
+  const standings = seasonData.standings || []
+  
+  switch (awardTitle) {
+    case 'Season High Score':
+    case 'Season Low Score': {
+      const weeklyScores: any[] = []
+      for (const [week, weekMatchups] of Object.entries(matchups)) {
+        for (const matchup of weekMatchups as any[]) {
+          for (const team of matchup.teams || []) {
+            if ((team.points || 0) > 0) {
+              weeklyScores.push({
+                team_name: team.name,
+                logo_url: team.logo_url || allTeams.value[team.team_key]?.logo_url || getLogoByTeamName(team.name),
+                value: (team.points || 0).toFixed(1),
+                detail: `Week ${week}`
+              })
+            }
+          }
+        }
+      }
+      if (type === 'best') {
+        weeklyScores.sort((a, b) => parseFloat(b.value) - parseFloat(a.value))
+      } else {
+        weeklyScores.sort((a, b) => parseFloat(a.value) - parseFloat(b.value))
+      }
+      return weeklyScores.slice(0, 10)
+    }
+    case 'Most Wins':
+    case 'Most Losses': {
+      const sorted = type === 'best'
+        ? [...standings].sort((a: any, b: any) => (b.wins || 0) - (a.wins || 0))
+        : [...standings].sort((a: any, b: any) => (b.losses || 0) - (a.losses || 0))
+      return sorted.slice(0, 10).map((s: any) => ({
+        team_name: s.name,
+        logo_url: s.logo_url || getLogoByTeamName(s.name),
+        value: type === 'best' ? String(s.wins || 0) : String(s.losses || 0),
+        detail: `${s.wins || 0}-${s.losses || 0} record`
+      }))
+    }
+    case 'Most Points Scored':
+    case 'Fewest Points Scored': {
+      const sorted = type === 'best'
+        ? [...standings].sort((a: any, b: any) => (b.points_for || 0) - (a.points_for || 0))
+        : [...standings].sort((a: any, b: any) => (a.points_for || 0) - (b.points_for || 0))
+      return sorted.slice(0, 10).map((s: any) => ({
+        team_name: s.name,
+        logo_url: s.logo_url || getLogoByTeamName(s.name),
+        value: (s.points_for || 0).toFixed(1),
+        detail: 'Regular season total'
+      }))
+    }
+    default:
+      return []
+  }
+}
+
+// Get rankings for weekly awards
+function getWeeklyAwardRankings(awardTitle: string, type: 'best' | 'worst'): any[] {
+  const season = selectedWeeklyAwardSeason.value
+  const week = selectedWeeklyAwardWeek.value
+  if (!season || !week) return []
+  
+  const seasonMatchups = allMatchups.value[season]
+  if (!seasonMatchups) return []
+  
+  const weekMatchups = seasonMatchups[week] || []
+  
+  // Collect all scores for the week
+  const scores: any[] = []
+  for (const matchup of weekMatchups) {
+    const teams = matchup.teams || []
+    for (const team of teams) {
+      if ((team.points || 0) > 0) {
+        scores.push({
+          team_name: team.name,
+          logo_url: team.logo_url || allTeams.value[team.team_key]?.logo_url || getLogoByTeamName(team.name),
+          value: (team.points || 0).toFixed(1),
+          detail: `${season} Week ${week}`
+        })
+      }
+    }
+  }
+  
+  switch (awardTitle) {
+    case 'Week High Score':
+      scores.sort((a, b) => parseFloat(b.value) - parseFloat(a.value))
+      return scores.slice(0, 10)
+    case 'Week Low Score':
+      scores.sort((a, b) => parseFloat(a.value) - parseFloat(b.value))
+      return scores.slice(0, 10)
+    case 'Biggest Blowout':
+    case 'Closest Game': {
+      const margins: any[] = []
+      for (const matchup of weekMatchups) {
+        const teams = matchup.teams || []
+        if (teams.length === 2) {
+          const [t1, t2] = teams
+          const p1 = t1.points || 0
+          const p2 = t2.points || 0
+          const margin = Math.abs(p1 - p2)
+          const winner = p1 > p2 ? t1 : t2
+          const loser = p1 > p2 ? t2 : t1
+          margins.push({
+            team_name: winner.name,
+            logo_url: winner.logo_url || allTeams.value[winner.team_key]?.logo_url || getLogoByTeamName(winner.name),
+            value: margin.toFixed(1),
+            detail: `defeated ${loser.name}`
+          })
+        }
+      }
+      if (awardTitle === 'Biggest Blowout') {
+        margins.sort((a, b) => parseFloat(b.value) - parseFloat(a.value))
+      } else {
+        margins.sort((a, b) => parseFloat(a.value) - parseFloat(b.value))
+      }
+      return margins.slice(0, 10)
+    }
+    default:
+      return []
+  }
+}
+
+function getSeasonAwardBarWidth(value: any, title: string, type: 'best' | 'worst'): string {
+  const rankings = seasonAwardModalRankings.value
+  if (rankings.length === 0) return '0%'
+  const vals = rankings.map(r => parseFloat(String(r.value).replace('%', '')))
+  const maxVal = Math.max(...vals)
+  const minVal = Math.min(...vals)
+  const currVal = parseFloat(String(value).replace('%', ''))
+  
+  if (type === 'best') {
+    if (maxVal === 0) return '0%'
+    return `${(currVal / maxVal * 100).toFixed(1)}%`
+  } else {
+    const range = maxVal - minVal
+    if (range === 0) return '100%'
+    return `${((maxVal - currVal) / range * 100 + 10).toFixed(1)}%`
+  }
+}
+
+function getWeeklyAwardBarWidth(value: any): string {
+  const rankings = weeklyAwardModalRankings.value
+  if (rankings.length === 0) return '0%'
+  const vals = rankings.map(r => parseFloat(String(r.value)))
+  const maxVal = Math.max(...vals)
+  const currVal = parseFloat(String(value))
+  if (maxVal === 0) return '0%'
+  return `${(currVal / maxVal * 100).toFixed(1)}%`
+}
+
 // Modal functions
 function openRecordModal(label: string) {
   recordModalLabel.value = label
@@ -1475,6 +1844,26 @@ function openAwardModal(title: string, type: 'best' | 'worst') {
 
 function closeAwardModal() {
   showAwardModal.value = false
+}
+
+function openSeasonAwardModal(title: string, type: 'best' | 'worst') {
+  seasonAwardModalTitle.value = title
+  seasonAwardModalType.value = type
+  showSeasonAwardModal.value = true
+}
+
+function closeSeasonAwardModal() {
+  showSeasonAwardModal.value = false
+}
+
+function openWeeklyAwardModal(title: string, type: 'best' | 'worst') {
+  weeklyAwardModalTitle.value = title
+  weeklyAwardModalType.value = type
+  showWeeklyAwardModal.value = true
+}
+
+function closeWeeklyAwardModal() {
+  showWeeklyAwardModal.value = false
 }
 
 // Computed: Season Awards
@@ -2212,6 +2601,387 @@ async function downloadAwardRankings(awardTitle: string, type: 'best' | 'worst')
   }
 }
 
+async function downloadSeasonAwardRankings(awardTitle: string, type: 'best' | 'worst') {
+  isDownloadingSeasonAward.value = true
+  try {
+    const activeId = leagueStore.activeLeagueId
+    const savedLeague = leagueStore.savedLeagues?.find((l: any) => l.league_id === activeId?.split('.l.')[1])
+    const leagueName = savedLeague?.league_name || leagueStore.yahooLeague?.name || 'Fantasy League'
+    
+    const rankings = seasonAwardModalRankings.value.slice(0, 10)
+    if (rankings.length === 0) {
+      isDownloadingSeasonAward.value = false
+      return
+    }
+    
+    const loadLogo = async (): Promise<string> => {
+      try {
+        const response = await fetch('/UFD_V5.png')
+        if (!response.ok) return ''
+        const blob = await response.blob()
+        return new Promise((resolve) => {
+          const reader = new FileReader()
+          reader.onloadend = () => resolve(reader.result as string)
+          reader.onerror = () => resolve('')
+          reader.readAsDataURL(blob)
+        })
+      } catch (e) { return '' }
+    }
+    
+    const colorMain = type === 'best' ? '#22c55e' : '#ef4444'
+    const colorLight = type === 'best' ? 'rgba(34, 197, 94, 0.15)' : 'rgba(239, 68, 68, 0.15)'
+    const colorBorder = type === 'best' ? 'rgba(34, 197, 94, 0.3)' : 'rgba(239, 68, 68, 0.3)'
+    
+    const createPlaceholder = (name: string): string => {
+      const canvas = document.createElement('canvas')
+      canvas.width = 64
+      canvas.height = 64
+      const ctx = canvas.getContext('2d')
+      if (ctx) {
+        ctx.fillStyle = '#3a3d52'
+        ctx.beginPath()
+        ctx.arc(32, 32, 32, 0, Math.PI * 2)
+        ctx.fill()
+        ctx.fillStyle = colorMain
+        ctx.font = 'bold 28px sans-serif'
+        ctx.textAlign = 'center'
+        ctx.textBaseline = 'middle'
+        ctx.fillText(name.charAt(0).toUpperCase(), 32, 34)
+      }
+      return canvas.toDataURL('image/png')
+    }
+    
+    const logoBase64 = await loadLogo()
+    const leader = rankings[0]
+    
+    const imageMap = new Map<string, string>()
+    for (const team of rankings) {
+      const uniqueKey = team.team_name + (team.detail || '')
+      try {
+        const img = new Image()
+        img.crossOrigin = 'anonymous'
+        const loadPromise = new Promise<string>((resolve) => {
+          img.onload = () => {
+            try {
+              const canvas = document.createElement('canvas')
+              canvas.width = 64
+              canvas.height = 64
+              const ctx = canvas.getContext('2d')
+              if (ctx) {
+                ctx.beginPath()
+                ctx.arc(32, 32, 32, 0, Math.PI * 2)
+                ctx.closePath()
+                ctx.clip()
+                ctx.drawImage(img, 0, 0, 64, 64)
+              }
+              resolve(canvas.toDataURL('image/png'))
+            } catch {
+              resolve(createPlaceholder(team.team_name))
+            }
+          }
+          img.onerror = () => resolve(createPlaceholder(team.team_name))
+          setTimeout(() => resolve(createPlaceholder(team.team_name)), 3000)
+        })
+        img.src = team.logo_url || ''
+        imageMap.set(uniqueKey, await loadPromise)
+      } catch {
+        imageMap.set(uniqueKey, createPlaceholder(team.team_name))
+      }
+    }
+    
+    const maxValue = Math.max(...rankings.map(r => parseFloat(String(r.value).replace('%', '')) || 0))
+    
+    const getValueUnit = (): string => {
+      if (awardTitle.includes('Score')) return 'Points'
+      if (awardTitle.includes('Wins')) return 'Wins'
+      if (awardTitle.includes('Losses')) return 'Losses'
+      if (awardTitle.includes('Points')) return 'Points'
+      return ''
+    }
+    const valueUnit = getValueUnit()
+    
+    const generateRows = () => {
+      return rankings.map((team, idx) => {
+        let numValue = parseFloat(String(team.value).replace('%', '')) || 0
+        const barWidth = maxValue > 0 ? (numValue / maxValue) * 100 : 0
+        const uniqueKey = team.team_name + (team.detail || '')
+        
+        return `
+          <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 10px;">
+            <div style="width: 20px; text-align: center; font-weight: bold; font-size: 12px; color: ${idx === 0 ? colorMain : '#6b7280'};">${idx + 1}</div>
+            <img src="${imageMap.get(uniqueKey) || createPlaceholder(team.team_name)}" style="width: 28px; height: 28px; border-radius: 50%;" />
+            <div style="flex: 1; min-width: 0;">
+              <div style="font-size: 12px; font-weight: 600; color: #e5e7eb; margin-bottom: 5px;">${team.team_name} <span style="color: #6b7280; font-weight: 400;">${team.detail || ''}</span></div>
+              <div style="height: 6px; background: rgba(58, 61, 82, 0.5); border-radius: 3px; overflow: hidden;">
+                <div style="height: 100%; width: ${barWidth}%; background: ${colorMain}; opacity: ${idx === 0 ? 1 : 0.6}; border-radius: 3px;"></div>
+              </div>
+            </div>
+            <div style="width: 65px; text-align: right;">
+              <div style="font-size: 13px; font-weight: bold; color: ${idx === 0 ? colorMain : '#e5e7eb'};">${team.value}</div>
+              <div style="font-size: 9px; color: #6b7280; margin-top: 1px;">${valueUnit}</div>
+            </div>
+          </div>
+        `
+      }).join('')
+    }
+    
+    const container = document.createElement('div')
+    container.style.cssText = 'position: absolute; left: -9999px; top: 0; width: 480px; font-family: system-ui, -apple-system, sans-serif;'
+    
+    const leaderUniqueKey = leader.team_name + (leader.detail || '')
+    
+    container.innerHTML = `
+      <div style="background: linear-gradient(160deg, #0f1219 0%, #0a0c14 50%, #0d1117 100%); border-radius: 16px; box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5); position: relative; overflow: hidden;">
+        
+        <div style="background: #dc2626; padding: 8px 20px; text-align: center;">
+          <span style="font-size: 12px; font-weight: 700; color: #0a0c14; text-transform: uppercase; letter-spacing: 2px;">Ultimate Fantasy Dashboard</span>
+        </div>
+        
+        <div style="display: flex; align-items: center; padding: 10px 16px; border-bottom: 1px solid rgba(220, 38, 38, 0.2);">
+          ${logoBase64 ? `<img src="${logoBase64}" style="height: 40px; width: auto; flex-shrink: 0; margin-right: 12px; margin-top: 4px;" />` : ''}
+          <div style="flex: 1;">
+            <div style="font-size: 17px; font-weight: 900; color: #ffffff; text-transform: uppercase; letter-spacing: 0.5px; line-height: 1.1;">${awardTitle}</div>
+            <div style="font-size: 12px; margin-top: 2px;">
+              <span style="color: #e5e7eb;">${leagueName}</span>
+              <span style="color: #6b7280; margin: 0 4px;">•</span>
+              <span style="color: #dc2626; font-weight: 600;">${selectedAwardSeason.value} ${type === 'best' ? 'Best' : 'Worst'}</span>
+            </div>
+          </div>
+        </div>
+        
+        <div style="padding: 12px 16px; background: linear-gradient(135deg, ${colorLight} 0%, transparent 100%); border-bottom: 1px solid ${colorBorder};">
+          <div style="display: flex; align-items: center; gap: 12px;">
+            <img src="${imageMap.get(leaderUniqueKey) || createPlaceholder(leader.team_name)}" style="width: 44px; height: 44px; border-radius: 50%; border: 2px solid ${colorBorder};" />
+            <div style="flex: 1;">
+              <div style="font-size: 15px; font-weight: bold; color: #ffffff;">${leader.team_name}</div>
+              <div style="font-size: 11px; color: #9ca3af;">${leader.detail || ''}</div>
+            </div>
+            <div style="text-align: right;">
+              <div style="font-size: 26px; font-weight: 900; color: ${colorMain};">${leader.value}</div>
+              <div style="font-size: 10px; color: #6b7280;">${valueUnit}</div>
+            </div>
+          </div>
+        </div>
+        
+        <div style="padding: 12px 16px;">
+          <div style="font-size: 10px; font-weight: 600; color: #6b7280; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 10px;">${type === 'best' ? 'Top' : 'Bottom'} Ten</div>
+          ${generateRows()}
+        </div>
+        
+        <div style="padding: 10px 16px; text-align: center; border-top: 1px solid rgba(220, 38, 38, 0.2);">
+          <span style="font-size: 14px; font-weight: bold; color: #dc2626;">ultimatefantasydashboard.com</span>
+        </div>
+      </div>
+    `
+    
+    document.body.appendChild(container)
+    await new Promise(r => setTimeout(r, 300))
+    
+    const finalCanvas = await html2canvas(container, {
+      backgroundColor: '#0a0c14',
+      scale: 2,
+      useCORS: true,
+      allowTaint: true
+    })
+    
+    document.body.removeChild(container)
+    
+    const link = document.createElement('a')
+    link.download = `${selectedAwardSeason.value}-${awardTitle.toLowerCase().replace(/\s+/g, '-')}-${type}.png`
+    link.href = finalCanvas.toDataURL('image/png')
+    link.click()
+  } finally {
+    isDownloadingSeasonAward.value = false
+  }
+}
+
+async function downloadWeeklyAwardRankings(awardTitle: string, type: 'best' | 'worst') {
+  isDownloadingWeeklyAward.value = true
+  try {
+    const activeId = leagueStore.activeLeagueId
+    const savedLeague = leagueStore.savedLeagues?.find((l: any) => l.league_id === activeId?.split('.l.')[1])
+    const leagueName = savedLeague?.league_name || leagueStore.yahooLeague?.name || 'Fantasy League'
+    
+    const rankings = weeklyAwardModalRankings.value.slice(0, 10)
+    if (rankings.length === 0) {
+      isDownloadingWeeklyAward.value = false
+      return
+    }
+    
+    const loadLogo = async (): Promise<string> => {
+      try {
+        const response = await fetch('/UFD_V5.png')
+        if (!response.ok) return ''
+        const blob = await response.blob()
+        return new Promise((resolve) => {
+          const reader = new FileReader()
+          reader.onloadend = () => resolve(reader.result as string)
+          reader.onerror = () => resolve('')
+          reader.readAsDataURL(blob)
+        })
+      } catch (e) { return '' }
+    }
+    
+    const colorMain = type === 'best' ? '#22c55e' : '#ef4444'
+    const colorLight = type === 'best' ? 'rgba(34, 197, 94, 0.15)' : 'rgba(239, 68, 68, 0.15)'
+    const colorBorder = type === 'best' ? 'rgba(34, 197, 94, 0.3)' : 'rgba(239, 68, 68, 0.3)'
+    
+    const createPlaceholder = (name: string): string => {
+      const canvas = document.createElement('canvas')
+      canvas.width = 64
+      canvas.height = 64
+      const ctx = canvas.getContext('2d')
+      if (ctx) {
+        ctx.fillStyle = '#3a3d52'
+        ctx.beginPath()
+        ctx.arc(32, 32, 32, 0, Math.PI * 2)
+        ctx.fill()
+        ctx.fillStyle = colorMain
+        ctx.font = 'bold 28px sans-serif'
+        ctx.textAlign = 'center'
+        ctx.textBaseline = 'middle'
+        ctx.fillText(name.charAt(0).toUpperCase(), 32, 34)
+      }
+      return canvas.toDataURL('image/png')
+    }
+    
+    const logoBase64 = await loadLogo()
+    const leader = rankings[0]
+    
+    const imageMap = new Map<string, string>()
+    for (const team of rankings) {
+      const uniqueKey = team.team_name + (team.detail || '')
+      try {
+        const img = new Image()
+        img.crossOrigin = 'anonymous'
+        const loadPromise = new Promise<string>((resolve) => {
+          img.onload = () => {
+            try {
+              const canvas = document.createElement('canvas')
+              canvas.width = 64
+              canvas.height = 64
+              const ctx = canvas.getContext('2d')
+              if (ctx) {
+                ctx.beginPath()
+                ctx.arc(32, 32, 32, 0, Math.PI * 2)
+                ctx.closePath()
+                ctx.clip()
+                ctx.drawImage(img, 0, 0, 64, 64)
+              }
+              resolve(canvas.toDataURL('image/png'))
+            } catch {
+              resolve(createPlaceholder(team.team_name))
+            }
+          }
+          img.onerror = () => resolve(createPlaceholder(team.team_name))
+          setTimeout(() => resolve(createPlaceholder(team.team_name)), 3000)
+        })
+        img.src = team.logo_url || ''
+        imageMap.set(uniqueKey, await loadPromise)
+      } catch {
+        imageMap.set(uniqueKey, createPlaceholder(team.team_name))
+      }
+    }
+    
+    const maxValue = Math.max(...rankings.map(r => parseFloat(String(r.value)) || 0))
+    
+    const valueUnit = awardTitle.includes('Blowout') || awardTitle.includes('Closest') ? 'Margin' : 'Points'
+    
+    const generateRows = () => {
+      return rankings.map((team, idx) => {
+        let numValue = parseFloat(String(team.value)) || 0
+        const barWidth = maxValue > 0 ? (numValue / maxValue) * 100 : 0
+        const uniqueKey = team.team_name + (team.detail || '')
+        
+        return `
+          <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 10px;">
+            <div style="width: 20px; text-align: center; font-weight: bold; font-size: 12px; color: ${idx === 0 ? colorMain : '#6b7280'};">${idx + 1}</div>
+            <img src="${imageMap.get(uniqueKey) || createPlaceholder(team.team_name)}" style="width: 28px; height: 28px; border-radius: 50%;" />
+            <div style="flex: 1; min-width: 0;">
+              <div style="font-size: 12px; font-weight: 600; color: #e5e7eb; margin-bottom: 5px;">${team.team_name} <span style="color: #6b7280; font-weight: 400;">${team.detail || ''}</span></div>
+              <div style="height: 6px; background: rgba(58, 61, 82, 0.5); border-radius: 3px; overflow: hidden;">
+                <div style="height: 100%; width: ${barWidth}%; background: ${colorMain}; opacity: ${idx === 0 ? 1 : 0.6}; border-radius: 3px;"></div>
+              </div>
+            </div>
+            <div style="width: 65px; text-align: right;">
+              <div style="font-size: 13px; font-weight: bold; color: ${idx === 0 ? colorMain : '#e5e7eb'};">${team.value}</div>
+              <div style="font-size: 9px; color: #6b7280; margin-top: 1px;">${valueUnit}</div>
+            </div>
+          </div>
+        `
+      }).join('')
+    }
+    
+    const container = document.createElement('div')
+    container.style.cssText = 'position: absolute; left: -9999px; top: 0; width: 480px; font-family: system-ui, -apple-system, sans-serif;'
+    
+    const leaderUniqueKey = leader.team_name + (leader.detail || '')
+    
+    container.innerHTML = `
+      <div style="background: linear-gradient(160deg, #0f1219 0%, #0a0c14 50%, #0d1117 100%); border-radius: 16px; box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5); position: relative; overflow: hidden;">
+        
+        <div style="background: #dc2626; padding: 8px 20px; text-align: center;">
+          <span style="font-size: 12px; font-weight: 700; color: #0a0c14; text-transform: uppercase; letter-spacing: 2px;">Ultimate Fantasy Dashboard</span>
+        </div>
+        
+        <div style="display: flex; align-items: center; padding: 10px 16px; border-bottom: 1px solid rgba(220, 38, 38, 0.2);">
+          ${logoBase64 ? `<img src="${logoBase64}" style="height: 40px; width: auto; flex-shrink: 0; margin-right: 12px; margin-top: 4px;" />` : ''}
+          <div style="flex: 1;">
+            <div style="font-size: 17px; font-weight: 900; color: #ffffff; text-transform: uppercase; letter-spacing: 0.5px; line-height: 1.1;">${awardTitle}</div>
+            <div style="font-size: 12px; margin-top: 2px;">
+              <span style="color: #e5e7eb;">${leagueName}</span>
+              <span style="color: #6b7280; margin: 0 4px;">•</span>
+              <span style="color: #dc2626; font-weight: 600;">${selectedWeeklyAwardSeason.value} Week ${selectedWeeklyAwardWeek.value}</span>
+            </div>
+          </div>
+        </div>
+        
+        <div style="padding: 12px 16px; background: linear-gradient(135deg, ${colorLight} 0%, transparent 100%); border-bottom: 1px solid ${colorBorder};">
+          <div style="display: flex; align-items: center; gap: 12px;">
+            <img src="${imageMap.get(leaderUniqueKey) || createPlaceholder(leader.team_name)}" style="width: 44px; height: 44px; border-radius: 50%; border: 2px solid ${colorBorder};" />
+            <div style="flex: 1;">
+              <div style="font-size: 15px; font-weight: bold; color: #ffffff;">${leader.team_name}</div>
+              <div style="font-size: 11px; color: #9ca3af;">${leader.detail || ''}</div>
+            </div>
+            <div style="text-align: right;">
+              <div style="font-size: 26px; font-weight: 900; color: ${colorMain};">${leader.value}</div>
+              <div style="font-size: 10px; color: #6b7280;">${valueUnit}</div>
+            </div>
+          </div>
+        </div>
+        
+        <div style="padding: 12px 16px;">
+          <div style="font-size: 10px; font-weight: 600; color: #6b7280; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 10px;">Week Rankings</div>
+          ${generateRows()}
+        </div>
+        
+        <div style="padding: 10px 16px; text-align: center; border-top: 1px solid rgba(220, 38, 38, 0.2);">
+          <span style="font-size: 14px; font-weight: bold; color: #dc2626;">ultimatefantasydashboard.com</span>
+        </div>
+      </div>
+    `
+    
+    document.body.appendChild(container)
+    await new Promise(r => setTimeout(r, 300))
+    
+    const finalCanvas = await html2canvas(container, {
+      backgroundColor: '#0a0c14',
+      scale: 2,
+      useCORS: true,
+      allowTaint: true
+    })
+    
+    document.body.removeChild(container)
+    
+    const link = document.createElement('a')
+    link.download = `${selectedWeeklyAwardSeason.value}-week${selectedWeeklyAwardWeek.value}-${awardTitle.toLowerCase().replace(/\s+/g, '-')}.png`
+    link.href = finalCanvas.toDataURL('image/png')
+    link.click()
+  } finally {
+    isDownloadingWeeklyAward.value = false
+  }
+}
+
 async function downloadCareerStats() {
   isDownloadingCareerStats.value = true
   try {
@@ -2610,10 +3380,10 @@ async function downloadHeadToHead() {
       
       return `
         <tr style="border-bottom: 1px solid rgba(58, 61, 82, 0.3);">
-          <td style="padding: 6px 8px;">
+          <td style="padding: 6px 8px; white-space: nowrap;">
             <div style="display: flex; align-items: center; gap: 6px;">
-              <img src="${imageMap.get(rowTeam.team_key) || createPlaceholder(rowTeam.team_name)}" style="width: 24px; height: 24px; border-radius: 50%;" />
-              <span style="color: #ffffff; font-size: 11px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100px;">${rowTeam.team_name}</span>
+              <img src="${imageMap.get(rowTeam.team_key) || createPlaceholder(rowTeam.team_name)}" style="width: 24px; height: 24px; border-radius: 50%; flex-shrink: 0;" />
+              <span style="color: #ffffff; font-size: 11px; font-weight: 500;">${rowTeam.team_name}</span>
             </div>
           </td>
           ${cells}
@@ -2621,8 +3391,8 @@ async function downloadHeadToHead() {
       `
     }).join('')
     
-    // Calculate container width based on team count
-    const containerWidth = Math.max(600, 150 + (teams.length * 50))
+    // Calculate container width based on team count (wider for team names)
+    const containerWidth = Math.max(700, 200 + (teams.length * 50))
     
     // Create wrapper with header/footer
     const container = document.createElement('div')
