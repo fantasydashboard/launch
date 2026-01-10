@@ -1025,7 +1025,7 @@ export class YahooFantasyService {
   /**
    * Get player details for multiple player keys
    */
-  async getPlayers(playerKeys: string[]): Promise<Map<string, any>> {
+  async getPlayers(playerKeys: string[], leagueKey?: string): Promise<Map<string, any>> {
     const players = new Map<string, any>()
     
     // Yahoo API limits to 25 players per request
@@ -1037,12 +1037,70 @@ export class YahooFantasyService {
     for (const chunk of chunks) {
       try {
         const keysParam = chunk.join(',')
-        const data = await this.apiRequest(
+        
+        // Try league-based endpoint first if leagueKey provided
+        let data: any
+        if (leagueKey) {
+          try {
+            data = await this.apiRequest(
+              `/league/${leagueKey}/players;player_keys=${keysParam}?format=json`
+            )
+            console.log('getPlayers (league-based) response sample:', JSON.stringify(data, null, 2).substring(0, 1500))
+            
+            const playersData = data.fantasy_content?.league?.[1]?.players
+            if (playersData) {
+              for (const playerWrapper of Object.values(playersData) as any[]) {
+                if (typeof playerWrapper !== 'object' || !playerWrapper.player) continue
+                
+                const playerInfo = playerWrapper.player[0]
+                if (!Array.isArray(playerInfo)) continue
+                
+                let player_key = ''
+                let player_id = ''
+                let name = ''
+                let team = ''
+                let position = ''
+                let headshot = ''
+                
+                for (const item of playerInfo) {
+                  if (item?.player_key) player_key = item.player_key
+                  if (item?.player_id) player_id = item.player_id
+                  if (item?.name) name = item.name.full || (item.name.first + ' ' + item.name.last)
+                  if (item?.editorial_team_abbr) team = item.editorial_team_abbr
+                  if (item?.display_position) position = item.display_position
+                  if (item?.headshot) headshot = item.headshot.url || ''
+                }
+                
+                if (player_key && name) {
+                  players.set(player_key, {
+                    player_key,
+                    player_id,
+                    name,
+                    team,
+                    position,
+                    headshot
+                  })
+                }
+              }
+              continue // Successfully got data from league endpoint
+            }
+          } catch (e) {
+            console.log('League-based player fetch failed, trying direct endpoint')
+          }
+        }
+        
+        // Fallback to direct players endpoint
+        data = await this.apiRequest(
           `/players;player_keys=${keysParam}?format=json`
         )
         
+        console.log('getPlayers (direct) response sample:', JSON.stringify(data, null, 2).substring(0, 1500))
+        
         const playersData = data.fantasy_content?.players
-        if (!playersData) continue
+        if (!playersData) {
+          console.log('No playersData found in response')
+          continue
+        }
         
         for (const playerWrapper of Object.values(playersData) as any[]) {
           if (typeof playerWrapper !== 'object' || !playerWrapper.player) continue
@@ -1060,26 +1118,29 @@ export class YahooFantasyService {
           for (const item of playerInfo) {
             if (item?.player_key) player_key = item.player_key
             if (item?.player_id) player_id = item.player_id
-            if (item?.name) name = item.name.full || item.name.first + ' ' + item.name.last
+            if (item?.name) name = item.name.full || (item.name.first + ' ' + item.name.last)
             if (item?.editorial_team_abbr) team = item.editorial_team_abbr
             if (item?.display_position) position = item.display_position
             if (item?.headshot) headshot = item.headshot.url || ''
           }
           
-          players.set(player_key, {
-            player_key,
-            player_id,
-            name,
-            team,
-            position,
-            headshot
-          })
+          if (player_key && name) {
+            players.set(player_key, {
+              player_key,
+              player_id,
+              name,
+              team,
+              position,
+              headshot
+            })
+          }
         }
       } catch (e) {
         console.error('Error fetching player chunk:', e)
       }
     }
     
+    console.log(`getPlayers returned ${players.size} players`)
     return players
   }
 

@@ -1784,7 +1784,7 @@ async function loadDraftData() {
     // Get player details and stats
     loadingMessage.value = 'Loading player stats...'
     const playerKeys = draftResults.picks.map((p: any) => p.player_key).filter(Boolean)
-    const players = await yahooService.getPlayers(playerKeys)
+    const players = await yahooService.getPlayers(playerKeys, leagueKey)
     const stats = await yahooService.getPlayerStats(leagueKey, playerKeys)
     playerStats.value = stats
     
