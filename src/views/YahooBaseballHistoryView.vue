@@ -47,19 +47,20 @@
 
       <!-- ==================== CAREER TAB ==================== -->
       <template v-if="activeHistoryTab === 'career'">
-      <!-- Career Records (4 Cards) -->
+      <!-- Career Records (4 Cards) - Click opens modal -->
       <div class="card">
         <div class="card-header">
           <div class="flex items-center gap-2">
             <span class="text-2xl">👑</span>
             <h2 class="card-title">Career Records</h2>
           </div>
-          <p class="card-subtitle mt-2">All-time league leaders</p>
+          <p class="card-subtitle mt-2">All-time league leaders • Click for details</p>
         </div>
         <div class="card-body">
           <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
             <div v-for="record in careerRecords" :key="record.label" 
-                 class="relative overflow-hidden">
+                 class="relative overflow-hidden cursor-pointer"
+                 @click="openRecordModal(record.label)">
               <div class="p-6 bg-gradient-to-br from-primary/10 to-primary/5 rounded-xl border-2 border-primary/20 hover:border-primary/40 transition-all">
                 <div class="flex items-start justify-between mb-4">
                   <div class="text-4xl">{{ record.icon }}</div>
@@ -72,6 +73,7 @@
                   <div class="font-bold text-lg text-dark-text">{{ record.team }}</div>
                   <div class="text-xs text-dark-textMuted">{{ record.detail }}</div>
                 </div>
+                <div class="text-xs text-primary mt-2 opacity-70">Click for details →</div>
               </div>
             </div>
           </div>
@@ -447,7 +449,8 @@
                 <div 
                   v-for="award in allTimeHallOfFame" 
                   :key="award.title" 
-                  class="bg-dark-border/30 rounded-xl p-4"
+                  class="bg-dark-border/30 rounded-xl p-4 cursor-pointer hover:bg-dark-border/50 transition-colors"
+                  @click="openAwardModal(award.title, 'best')"
                 >
                   <div class="text-sm text-dark-textMuted uppercase tracking-wide mb-2">{{ award.title }}</div>
                   <div v-if="award.winner" class="flex items-center gap-3 mb-2">
@@ -469,6 +472,7 @@
                   </div>
                   <div v-if="award.winner" class="text-xs text-dark-textSecondary">{{ award.winner.details }}</div>
                   <div v-else class="text-sm text-dark-textMuted italic">No data available</div>
+                  <div class="text-xs text-primary mt-2 opacity-70">Click for top 10 →</div>
                 </div>
               </div>
             </div>
@@ -483,7 +487,8 @@
                 <div 
                   v-for="award in allTimeHallOfShame" 
                   :key="award.title" 
-                  class="bg-dark-border/30 rounded-xl p-4"
+                  class="bg-dark-border/30 rounded-xl p-4 cursor-pointer hover:bg-dark-border/50 transition-colors"
+                  @click="openAwardModal(award.title, 'worst')"
                 >
                   <div class="text-sm text-dark-textMuted uppercase tracking-wide mb-2">{{ award.title }}</div>
                   <div v-if="award.winner" class="flex items-center gap-3 mb-2">
@@ -505,6 +510,7 @@
                   </div>
                   <div v-if="award.winner" class="text-xs text-dark-textSecondary">{{ award.winner.details }}</div>
                   <div v-else class="text-sm text-dark-textMuted italic">No data available</div>
+                  <div class="text-xs text-primary mt-2 opacity-70">Click for bottom 10 →</div>
                 </div>
               </div>
             </div>
@@ -618,6 +624,190 @@
       </template>
     </template>
 
+    <!-- Career Record Modal -->
+    <Teleport to="body">
+      <div 
+        v-if="showRecordModal" 
+        class="fixed inset-0 z-50 flex items-center justify-center p-4"
+        @click.self="closeRecordModal"
+      >
+        <div class="absolute inset-0 bg-black/70 backdrop-blur-sm"></div>
+        <div class="relative bg-dark-elevated rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto border border-dark-border">
+          <div class="sticky top-0 z-10 px-6 py-4 border-b border-dark-border bg-dark-elevated flex items-center justify-between">
+            <div>
+              <h3 class="text-xl font-bold text-dark-text">{{ recordModalLabel }}</h3>
+              <p class="text-sm"><span class="text-dark-textMuted">{{ leagueDisplayName }}</span> <span class="text-dark-textMuted">•</span> <span class="text-red-500 font-semibold">All-Time</span></p>
+            </div>
+            <div class="flex items-center gap-2">
+              <button 
+                @click="downloadRecordRankings(recordModalLabel)" 
+                :disabled="isDownloadingRecord"
+                class="flex items-center gap-2 text-sm px-3 py-1.5 rounded-lg font-semibold transition-colors disabled:opacity-50"
+                style="background: #dc2626; color: #ffffff;"
+                @mouseover="$event.currentTarget.style.background = '#F5C451'; $event.currentTarget.style.color = '#0a0c14'"
+                @mouseout="$event.currentTarget.style.background = '#dc2626'; $event.currentTarget.style.color = '#ffffff'"
+              >
+                <svg v-if="!isDownloadingRecord" class="w-4 h-4 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                </svg>
+                <svg v-else class="w-4 h-4 animate-spin pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                  <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                {{ isDownloadingRecord ? 'Saving...' : 'Share' }}
+              </button>
+              <button @click="closeRecordModal" class="p-2 rounded-lg hover:bg-dark-border/50 transition-colors">
+                <svg class="w-5 h-5 text-dark-textMuted" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+          </div>
+          
+          <div class="p-6 border-b border-dark-border bg-gradient-to-r from-primary/10 to-transparent" v-if="recordModalRankings[0]">
+            <div class="flex items-center gap-4">
+              <img 
+                :src="recordModalRankings[0].logo_url || defaultAvatar" 
+                :alt="recordModalRankings[0].team_name"
+                class="w-16 h-16 rounded-full ring-4 ring-primary/50 object-cover"
+                @error="handleImageError"
+              />
+              <div class="flex-1">
+                <div class="text-xl font-bold text-dark-text">{{ recordModalRankings[0].team_name }}</div>
+                <div class="text-sm text-dark-textMuted">{{ recordModalRankings[0].detail }}</div>
+              </div>
+              <div class="text-right">
+                <div class="text-3xl font-black text-primary">{{ recordModalRankings[0].value }}</div>
+              </div>
+            </div>
+          </div>
+          
+          <div class="p-6">
+            <h4 class="text-sm font-semibold text-dark-textMuted uppercase tracking-wider mb-4">All-Time Rankings</h4>
+            <div class="space-y-3">
+              <div 
+                v-for="(team, index) in recordModalRankings.slice(0, 10)" 
+                :key="team.team_name"
+                class="flex items-center gap-3"
+              >
+                <div class="w-6 text-center">
+                  <span class="text-sm font-bold" :class="index === 0 ? 'text-primary' : 'text-dark-textMuted'">{{ index + 1 }}</span>
+                </div>
+                <img :src="team.logo_url || defaultAvatar" :alt="team.team_name" class="w-8 h-8 rounded-full object-cover" @error="handleImageError" />
+                <div class="flex-1 min-w-0">
+                  <div class="text-sm font-medium text-dark-text truncate mb-1">{{ team.team_name }}</div>
+                  <div class="h-2.5 bg-dark-border rounded-full overflow-hidden">
+                    <div 
+                      class="h-full rounded-full transition-all duration-500 bg-primary"
+                      :style="{ width: getRecordBarWidth(team.value, recordModalLabel) }"
+                    ></div>
+                  </div>
+                </div>
+                <div class="w-20 text-right">
+                  <div class="text-sm font-semibold" :class="index === 0 ? 'text-primary' : 'text-dark-text'">
+                    {{ team.value }}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </Teleport>
+
+    <!-- Award Modal -->
+    <Teleport to="body">
+      <div 
+        v-if="showAwardModal" 
+        class="fixed inset-0 z-50 flex items-center justify-center p-4"
+        @click.self="closeAwardModal"
+      >
+        <div class="absolute inset-0 bg-black/70 backdrop-blur-sm"></div>
+        <div class="relative bg-dark-elevated rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto border border-dark-border">
+          <div class="sticky top-0 z-10 px-6 py-4 border-b border-dark-border bg-dark-elevated flex items-center justify-between">
+            <div>
+              <h3 class="text-xl font-bold text-dark-text">{{ awardModalTitle }}</h3>
+              <p class="text-sm"><span class="text-dark-textMuted">{{ leagueDisplayName }}</span> <span class="text-dark-textMuted">•</span> <span class="text-red-500 font-semibold">All-Time {{ awardModalType === 'best' ? 'Best' : 'Worst' }}</span></p>
+            </div>
+            <div class="flex items-center gap-2">
+              <button 
+                @click="downloadAwardRankings(awardModalTitle, awardModalType)" 
+                :disabled="isDownloadingAward"
+                class="flex items-center gap-2 text-sm px-3 py-1.5 rounded-lg font-semibold transition-colors disabled:opacity-50"
+                style="background: #dc2626; color: #ffffff;"
+                @mouseover="$event.currentTarget.style.background = '#F5C451'; $event.currentTarget.style.color = '#0a0c14'"
+                @mouseout="$event.currentTarget.style.background = '#dc2626'; $event.currentTarget.style.color = '#ffffff'"
+              >
+                <svg v-if="!isDownloadingAward" class="w-4 h-4 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                </svg>
+                <svg v-else class="w-4 h-4 animate-spin pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                  <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                {{ isDownloadingAward ? 'Saving...' : 'Share' }}
+              </button>
+              <button @click="closeAwardModal" class="p-2 rounded-lg hover:bg-dark-border/50 transition-colors">
+                <svg class="w-5 h-5 text-dark-textMuted" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+          </div>
+          
+          <div class="p-6 border-b border-dark-border" :class="awardModalType === 'best' ? 'bg-gradient-to-r from-green-500/10 to-transparent' : 'bg-gradient-to-r from-red-500/10 to-transparent'" v-if="awardModalRankings[0]">
+            <div class="flex items-center gap-4">
+              <img 
+                :src="awardModalRankings[0].logo_url || defaultAvatar" 
+                :alt="awardModalRankings[0].team_name"
+                class="w-16 h-16 rounded-full ring-4 object-cover"
+                :class="awardModalType === 'best' ? 'ring-green-500/50' : 'ring-red-500/50'"
+                @error="handleImageError"
+              />
+              <div class="flex-1">
+                <div class="text-xl font-bold text-dark-text">{{ awardModalRankings[0].team_name }}</div>
+                <div class="text-sm text-dark-textMuted">{{ awardModalRankings[0].detail }}</div>
+              </div>
+              <div class="text-right">
+                <div class="text-3xl font-black" :class="awardModalType === 'best' ? 'text-green-400' : 'text-red-400'">{{ awardModalRankings[0].value }}</div>
+              </div>
+            </div>
+          </div>
+          
+          <div class="p-6">
+            <h4 class="text-sm font-semibold text-dark-textMuted uppercase tracking-wider mb-4">{{ awardModalType === 'best' ? 'Top 10' : 'Bottom 10' }}</h4>
+            <div class="space-y-3">
+              <div 
+                v-for="(team, index) in awardModalRankings.slice(0, 10)" 
+                :key="team.team_name + index"
+                class="flex items-center gap-3"
+              >
+                <div class="w-6 text-center">
+                  <span class="text-sm font-bold" :class="index === 0 ? (awardModalType === 'best' ? 'text-green-400' : 'text-red-400') : 'text-dark-textMuted'">{{ index + 1 }}</span>
+                </div>
+                <img :src="team.logo_url || defaultAvatar" :alt="team.team_name" class="w-8 h-8 rounded-full object-cover" @error="handleImageError" />
+                <div class="flex-1 min-w-0">
+                  <div class="text-sm font-medium text-dark-text truncate mb-1">{{ team.team_name }}</div>
+                  <div class="h-2.5 bg-dark-border rounded-full overflow-hidden">
+                    <div 
+                      class="h-full rounded-full transition-all duration-500"
+                      :class="awardModalType === 'best' ? 'bg-green-500' : 'bg-red-500'"
+                      :style="{ width: getAwardBarWidth(team.value, awardModalTitle, awardModalType) }"
+                    ></div>
+                  </div>
+                </div>
+                <div class="w-20 text-right">
+                  <div class="text-sm font-semibold" :class="index === 0 ? (awardModalType === 'best' ? 'text-green-400' : 'text-red-400') : 'text-dark-text'">
+                    {{ team.value }}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </Teleport>
+
     <!-- Platform Badge -->
     <div class="flex justify-center mt-8">
       <div class="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-purple-600/10 border border-purple-600/30">
@@ -653,6 +843,16 @@ const activeHistoryTab = ref('career')
 const isDownloadingCareerStats = ref(false)
 const isDownloadingSeasonHistory = ref(false)
 const isDownloadingH2H = ref(false)
+
+// Modal state
+const showRecordModal = ref(false)
+const recordModalLabel = ref('')
+const isDownloadingRecord = ref(false)
+
+const showAwardModal = ref(false)
+const awardModalTitle = ref('')
+const awardModalType = ref<'best' | 'worst'>('best')
+const isDownloadingAward = ref(false)
 
 // Sort state
 const sortColumn = ref<string>('wins')
@@ -1064,6 +1264,193 @@ const allTimeHallOfShame = computed((): Award[] => {
   ]
 })
 
+// League display name
+const leagueDisplayName = computed(() => {
+  const league = leagueStore.yahooLeague
+  if (Array.isArray(league)) return league[0]?.name || 'Fantasy League'
+  return league?.name || 'Fantasy League'
+})
+
+// Record Modal Rankings
+const recordModalRankings = computed(() => getRecordRankings(recordModalLabel.value))
+
+// Award Modal Rankings
+const awardModalRankings = computed(() => getAwardRankings(awardModalTitle.value, awardModalType.value))
+
+// Get rankings for career records
+function getRecordRankings(recordType: string): any[] {
+  const stats = careerStats.value
+  if (stats.length === 0) return []
+  
+  let sorted: CareerStat[] = []
+  
+  switch (recordType) {
+    case 'Most Championships':
+      sorted = [...stats].sort((a, b) => b.championships - a.championships)
+      return sorted.map((s, idx) => ({
+        rank: idx + 1,
+        team_name: s.team_name,
+        logo_url: s.logo_url,
+        value: s.championships,
+        detail: `${s.seasons} season(s)`
+      }))
+    case 'Most Wins':
+      sorted = [...stats].sort((a, b) => b.wins - a.wins)
+      return sorted.map((s, idx) => ({
+        rank: idx + 1,
+        team_name: s.team_name,
+        logo_url: s.logo_url,
+        value: s.wins,
+        detail: `${s.wins}-${s.losses} record`
+      }))
+    case 'Highest PPW':
+      sorted = [...stats].sort((a, b) => b.avg_ppw - a.avg_ppw)
+      return sorted.map((s, idx) => ({
+        rank: idx + 1,
+        team_name: s.team_name,
+        logo_url: s.logo_url,
+        value: s.avg_ppw.toFixed(1),
+        detail: `${s.total_weeks} weeks`
+      }))
+    case 'Most Total Points':
+      sorted = [...stats].sort((a, b) => b.total_pf - a.total_pf)
+      return sorted.map((s, idx) => ({
+        rank: idx + 1,
+        team_name: s.team_name,
+        logo_url: s.logo_url,
+        value: s.total_pf.toFixed(0),
+        detail: `Over ${s.seasons} season(s)`
+      }))
+    default:
+      return []
+  }
+}
+
+// Get rankings for awards
+function getAwardRankings(awardTitle: string, type: 'best' | 'worst'): any[] {
+  const stats = careerStats.value
+  if (stats.length === 0) return []
+  
+  switch (awardTitle) {
+    case 'Highest Single-Week Score':
+    case 'Lowest Single-Week Score': {
+      // Collect all weekly scores
+      const weeklyScores: any[] = []
+      for (const [season, seasonMatchups] of Object.entries(allMatchups.value)) {
+        for (const [week, matchups] of Object.entries(seasonMatchups)) {
+          for (const matchup of matchups as any[]) {
+            for (const team of matchup.teams || []) {
+              if ((team.points || 0) > 0) {
+                weeklyScores.push({
+                  team_name: team.name,
+                  logo_url: allTeams.value[team.name]?.logo_url || '',
+                  value: (team.points || 0).toFixed(1),
+                  detail: `${season} Week ${week}`
+                })
+              }
+            }
+          }
+        }
+      }
+      if (type === 'best') {
+        weeklyScores.sort((a, b) => parseFloat(b.value) - parseFloat(a.value))
+      } else {
+        weeklyScores.sort((a, b) => parseFloat(a.value) - parseFloat(b.value))
+      }
+      return weeklyScores.slice(0, 10)
+    }
+    case 'Most Career Wins':
+    case 'Most Career Losses': {
+      const sorted = type === 'best' 
+        ? [...stats].sort((a, b) => b.wins - a.wins)
+        : [...stats].sort((a, b) => b.losses - a.losses)
+      return sorted.slice(0, 10).map(s => ({
+        team_name: s.team_name,
+        logo_url: s.logo_url,
+        value: type === 'best' ? String(s.wins) : String(s.losses),
+        detail: `${s.wins}-${s.losses} career record`
+      }))
+    }
+    case 'Highest Career PPW':
+    case 'Lowest Career PPW': {
+      const filtered = stats.filter(s => s.total_weeks >= 10)
+      const sorted = type === 'best'
+        ? [...filtered].sort((a, b) => b.avg_ppw - a.avg_ppw)
+        : [...filtered].sort((a, b) => a.avg_ppw - b.avg_ppw)
+      return sorted.slice(0, 10).map(s => ({
+        team_name: s.team_name,
+        logo_url: s.logo_url,
+        value: s.avg_ppw.toFixed(1),
+        detail: `Over ${s.total_weeks} weeks`
+      }))
+    }
+    case 'Best Win Percentage':
+    case 'Worst Win Percentage': {
+      const filtered = stats.filter(s => s.wins + s.losses >= 10)
+      const sorted = type === 'best'
+        ? [...filtered].sort((a, b) => b.win_pct - a.win_pct)
+        : [...filtered].sort((a, b) => a.win_pct - b.win_pct)
+      return sorted.slice(0, 10).map(s => ({
+        team_name: s.team_name,
+        logo_url: s.logo_url,
+        value: `${(s.win_pct * 100).toFixed(1)}%`,
+        detail: `${s.wins}-${s.losses} (min 10 games)`
+      }))
+    }
+    default:
+      return []
+  }
+}
+
+// Bar width calculations
+function getRecordBarWidth(value: any, recordType: string): string {
+  const rankings = recordModalRankings.value
+  if (rankings.length === 0) return '0%'
+  const maxVal = parseFloat(String(rankings[0].value))
+  const currVal = parseFloat(String(value))
+  if (maxVal === 0) return '0%'
+  return `${(currVal / maxVal * 100).toFixed(1)}%`
+}
+
+function getAwardBarWidth(value: any, title: string, type: 'best' | 'worst'): string {
+  const rankings = awardModalRankings.value
+  if (rankings.length === 0) return '0%'
+  const vals = rankings.map(r => parseFloat(String(r.value).replace('%', '')))
+  const maxVal = Math.max(...vals)
+  const minVal = Math.min(...vals)
+  const currVal = parseFloat(String(value).replace('%', ''))
+  
+  if (type === 'best') {
+    if (maxVal === 0) return '0%'
+    return `${(currVal / maxVal * 100).toFixed(1)}%`
+  } else {
+    // For worst, invert - lower is "better" (more extreme)
+    const range = maxVal - minVal
+    if (range === 0) return '100%'
+    return `${((maxVal - currVal) / range * 100 + 10).toFixed(1)}%`
+  }
+}
+
+// Modal functions
+function openRecordModal(label: string) {
+  recordModalLabel.value = label
+  showRecordModal.value = true
+}
+
+function closeRecordModal() {
+  showRecordModal.value = false
+}
+
+function openAwardModal(title: string, type: 'best' | 'worst') {
+  awardModalTitle.value = title
+  awardModalType.value = type
+  showAwardModal.value = true
+}
+
+function closeAwardModal() {
+  showAwardModal.value = false
+}
+
 // Computed: Season Awards
 const seasonHallOfFame = computed((): Award[] => {
   const season = selectedAwardSeason.value
@@ -1360,6 +1747,127 @@ function getH2HCellClass(team1Key: string, team2Key: string): string {
 function handleImageError(e: Event) {
   const img = e.target as HTMLImageElement
   img.src = defaultAvatar
+}
+
+// Download record rankings image
+async function downloadRecordRankings(recordType: string) {
+  isDownloadingRecord.value = true
+  try {
+    const rankings = recordModalRankings.value.slice(0, 10)
+    if (rankings.length === 0) return
+    
+    // Create download container
+    const container = document.createElement('div')
+    container.style.cssText = 'position: absolute; left: -9999px; top: 0; width: 600px; font-family: system-ui, -apple-system, sans-serif;'
+    
+    const rowsHtml = rankings.map((team, idx) => `
+      <div style="display: flex; align-items: center; gap: 12px; padding: 12px 0; ${idx < rankings.length - 1 ? 'border-bottom: 1px solid #374151;' : ''}">
+        <div style="width: 30px; text-align: center; font-weight: bold; font-size: 16px; color: ${idx === 0 ? '#F5C451' : '#9ca3af'};">${idx + 1}</div>
+        <div style="width: 40px; height: 40px; border-radius: 50%; overflow: hidden; background: #374151; flex-shrink: 0;">
+          <img src="${team.logo_url || defaultAvatar}" style="width: 100%; height: 100%; object-fit: cover;" />
+        </div>
+        <div style="flex: 1; min-width: 0;">
+          <div style="font-weight: 600; color: #ffffff; font-size: 14px;">${team.team_name}</div>
+          <div style="font-size: 12px; color: #9ca3af;">${team.detail}</div>
+        </div>
+        <div style="font-weight: bold; font-size: 18px; color: ${idx === 0 ? '#F5C451' : '#ffffff'};">${team.value}</div>
+      </div>
+    `).join('')
+    
+    container.innerHTML = `
+      <div style="background: linear-gradient(160deg, #1a1d23 0%, #0f1219 100%); border-radius: 16px; overflow: hidden; border: 1px solid #374151;">
+        <div style="background: #dc2626; padding: 16px 24px;">
+          <div style="font-size: 20px; font-weight: bold; color: #ffffff;">${recordType}</div>
+          <div style="font-size: 14px; color: rgba(255,255,255,0.8);">${leagueDisplayName.value} • All-Time</div>
+        </div>
+        <div style="padding: 16px 24px;">
+          ${rowsHtml}
+        </div>
+        <div style="padding: 12px 24px; text-align: center; border-top: 1px solid #374151;">
+          <span style="font-size: 14px; font-weight: bold; color: #dc2626;">ultimatefantasydashboard.com</span>
+        </div>
+      </div>
+    `
+    
+    document.body.appendChild(container)
+    await new Promise(resolve => setTimeout(resolve, 300))
+    
+    const canvas = await html2canvas(container, {
+      backgroundColor: '#0f1219',
+      scale: 2,
+      useCORS: true
+    })
+    
+    document.body.removeChild(container)
+    
+    const link = document.createElement('a')
+    link.download = `${recordType.toLowerCase().replace(/\s+/g, '-')}-rankings.png`
+    link.href = canvas.toDataURL('image/png')
+    link.click()
+  } finally {
+    isDownloadingRecord.value = false
+  }
+}
+
+// Download award rankings image
+async function downloadAwardRankings(awardTitle: string, type: 'best' | 'worst') {
+  isDownloadingAward.value = true
+  try {
+    const rankings = awardModalRankings.value.slice(0, 10)
+    if (rankings.length === 0) return
+    
+    const accentColor = type === 'best' ? '#22c55e' : '#ef4444'
+    
+    const container = document.createElement('div')
+    container.style.cssText = 'position: absolute; left: -9999px; top: 0; width: 600px; font-family: system-ui, -apple-system, sans-serif;'
+    
+    const rowsHtml = rankings.map((team, idx) => `
+      <div style="display: flex; align-items: center; gap: 12px; padding: 12px 0; ${idx < rankings.length - 1 ? 'border-bottom: 1px solid #374151;' : ''}">
+        <div style="width: 30px; text-align: center; font-weight: bold; font-size: 16px; color: ${idx === 0 ? accentColor : '#9ca3af'};">${idx + 1}</div>
+        <div style="width: 40px; height: 40px; border-radius: 50%; overflow: hidden; background: #374151; flex-shrink: 0;">
+          <img src="${team.logo_url || defaultAvatar}" style="width: 100%; height: 100%; object-fit: cover;" />
+        </div>
+        <div style="flex: 1; min-width: 0;">
+          <div style="font-weight: 600; color: #ffffff; font-size: 14px;">${team.team_name}</div>
+          <div style="font-size: 12px; color: #9ca3af;">${team.detail}</div>
+        </div>
+        <div style="font-weight: bold; font-size: 18px; color: ${idx === 0 ? accentColor : '#ffffff'};">${team.value}</div>
+      </div>
+    `).join('')
+    
+    container.innerHTML = `
+      <div style="background: linear-gradient(160deg, #1a1d23 0%, #0f1219 100%); border-radius: 16px; overflow: hidden; border: 1px solid #374151;">
+        <div style="background: #dc2626; padding: 16px 24px;">
+          <div style="font-size: 20px; font-weight: bold; color: #ffffff;">${awardTitle}</div>
+          <div style="font-size: 14px; color: rgba(255,255,255,0.8);">${leagueDisplayName.value} • All-Time ${type === 'best' ? 'Best' : 'Worst'}</div>
+        </div>
+        <div style="padding: 16px 24px;">
+          ${rowsHtml}
+        </div>
+        <div style="padding: 12px 24px; text-align: center; border-top: 1px solid #374151;">
+          <span style="font-size: 14px; font-weight: bold; color: #dc2626;">ultimatefantasydashboard.com</span>
+        </div>
+      </div>
+    `
+    
+    document.body.appendChild(container)
+    await new Promise(resolve => setTimeout(resolve, 300))
+    
+    const canvas = await html2canvas(container, {
+      backgroundColor: '#0f1219',
+      scale: 2,
+      useCORS: true
+    })
+    
+    document.body.removeChild(container)
+    
+    const link = document.createElement('a')
+    link.download = `${awardTitle.toLowerCase().replace(/\s+/g, '-')}-${type}-rankings.png`
+    link.href = canvas.toDataURL('image/png')
+    link.click()
+  } finally {
+    isDownloadingAward.value = false
+  }
 }
 
 async function downloadCareerStats() {
