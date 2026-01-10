@@ -1753,56 +1753,203 @@ function handleImageError(e: Event) {
 async function downloadRecordRankings(recordType: string) {
   isDownloadingRecord.value = true
   try {
+    // Get league name
+    const activeId = leagueStore.activeLeagueId
+    const savedLeague = leagueStore.savedLeagues?.find((l: any) => l.league_id === activeId?.split('.l.')[1])
+    const leagueName = savedLeague?.league_name || leagueStore.yahooLeague?.name || 'Fantasy League'
+    
     const rankings = recordModalRankings.value.slice(0, 10)
-    if (rankings.length === 0) return
+    if (rankings.length === 0) {
+      isDownloadingRecord.value = false
+      return
+    }
     
-    // Create download container
+    // Load UFD logo
+    const loadLogo = async (): Promise<string> => {
+      try {
+        const response = await fetch('/UFD_V5.png')
+        if (!response.ok) return ''
+        const blob = await response.blob()
+        return new Promise((resolve) => {
+          const reader = new FileReader()
+          reader.onloadend = () => resolve(reader.result as string)
+          reader.onerror = () => resolve('')
+          reader.readAsDataURL(blob)
+        })
+      } catch (e) { return '' }
+    }
+    
+    // Helper to create placeholder avatar
+    const createPlaceholder = (name: string): string => {
+      const canvas = document.createElement('canvas')
+      canvas.width = 64
+      canvas.height = 64
+      const ctx = canvas.getContext('2d')
+      if (ctx) {
+        ctx.fillStyle = '#3a3d52'
+        ctx.beginPath()
+        ctx.arc(32, 32, 32, 0, Math.PI * 2)
+        ctx.fill()
+        ctx.fillStyle = '#ffffff'
+        ctx.font = 'bold 28px sans-serif'
+        ctx.textAlign = 'center'
+        ctx.textBaseline = 'middle'
+        ctx.fillText(name.charAt(0).toUpperCase(), 32, 34)
+      }
+      return canvas.toDataURL('image/png')
+    }
+    
+    const logoBase64 = await loadLogo()
+    const leader = rankings[0]
+    
+    // Pre-load all team images
+    const imageMap = new Map<string, string>()
+    for (const team of rankings) {
+      try {
+        const img = new Image()
+        img.crossOrigin = 'anonymous'
+        const loadPromise = new Promise<string>((resolve) => {
+          img.onload = () => {
+            try {
+              const canvas = document.createElement('canvas')
+              canvas.width = 64
+              canvas.height = 64
+              const ctx = canvas.getContext('2d')
+              if (ctx) {
+                ctx.beginPath()
+                ctx.arc(32, 32, 32, 0, Math.PI * 2)
+                ctx.closePath()
+                ctx.clip()
+                ctx.drawImage(img, 0, 0, 64, 64)
+              }
+              resolve(canvas.toDataURL('image/png'))
+            } catch {
+              resolve(createPlaceholder(team.team_name))
+            }
+          }
+          img.onerror = () => resolve(createPlaceholder(team.team_name))
+          setTimeout(() => resolve(createPlaceholder(team.team_name)), 3000)
+        })
+        img.src = team.logo_url || ''
+        imageMap.set(team.team_name, await loadPromise)
+      } catch {
+        imageMap.set(team.team_name, createPlaceholder(team.team_name))
+      }
+    }
+    
+    const maxValue = Math.max(...rankings.map(r => {
+      if (typeof r.value === 'string') {
+        if (r.value.includes('%')) return parseFloat(r.value.replace('%', ''))
+        return parseFloat(r.value) || 0
+      }
+      return r.value || 0
+    }))
+    
+    // Get value unit descriptor based on record label
+    const getValueUnit = (): string => {
+      if (recordType.includes('Championships')) return 'Titles'
+      if (recordType.includes('PPW')) return 'PPW'
+      if (recordType.includes('Points')) return 'Points'
+      if (recordType.includes('Wins')) return 'Wins'
+      return ''
+    }
+    const valueUnit = getValueUnit()
+    
+    // Generate ranking rows with images
+    const generateRows = () => {
+      return rankings.map((team, idx) => {
+        let numValue = team.value
+        if (typeof numValue === 'string') {
+          if (numValue.includes('%')) numValue = parseFloat(numValue.replace('%', ''))
+          else numValue = parseFloat(numValue) || 0
+        }
+        const barWidth = maxValue > 0 ? (numValue / maxValue) * 100 : 0
+        
+        return `
+          <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 10px;">
+            <div style="width: 20px; text-align: center; font-weight: bold; font-size: 12px; color: ${idx === 0 ? '#F5C451' : '#6b7280'};">${idx + 1}</div>
+            <img src="${imageMap.get(team.team_name) || createPlaceholder(team.team_name)}" style="width: 28px; height: 28px; border-radius: 50%;" />
+            <div style="flex: 1; min-width: 0;">
+              <div style="font-size: 12px; font-weight: 600; color: #e5e7eb; margin-bottom: 5px;">${team.team_name}</div>
+              <div style="height: 6px; background: rgba(58, 61, 82, 0.5); border-radius: 3px; overflow: hidden;">
+                <div style="height: 100%; width: ${barWidth}%; background: #F5C451; opacity: ${idx === 0 ? 1 : 0.6}; border-radius: 3px;"></div>
+              </div>
+            </div>
+            <div style="width: 65px; text-align: right;">
+              <div style="font-size: 13px; font-weight: bold; color: ${idx === 0 ? '#F5C451' : '#e5e7eb'};">${team.value}</div>
+              <div style="font-size: 9px; color: #6b7280; margin-top: 1px;">${valueUnit}</div>
+            </div>
+          </div>
+        `
+      }).join('')
+    }
+    
     const container = document.createElement('div')
-    container.style.cssText = 'position: absolute; left: -9999px; top: 0; width: 600px; font-family: system-ui, -apple-system, sans-serif;'
-    
-    const rowsHtml = rankings.map((team, idx) => `
-      <div style="display: flex; align-items: center; gap: 12px; padding: 12px 0; ${idx < rankings.length - 1 ? 'border-bottom: 1px solid #374151;' : ''}">
-        <div style="width: 30px; text-align: center; font-weight: bold; font-size: 16px; color: ${idx === 0 ? '#F5C451' : '#9ca3af'};">${idx + 1}</div>
-        <div style="width: 40px; height: 40px; border-radius: 50%; overflow: hidden; background: #374151; flex-shrink: 0;">
-          <img src="${team.logo_url || defaultAvatar}" style="width: 100%; height: 100%; object-fit: cover;" />
-        </div>
-        <div style="flex: 1; min-width: 0;">
-          <div style="font-weight: 600; color: #ffffff; font-size: 14px;">${team.team_name}</div>
-          <div style="font-size: 12px; color: #9ca3af;">${team.detail}</div>
-        </div>
-        <div style="font-weight: bold; font-size: 18px; color: ${idx === 0 ? '#F5C451' : '#ffffff'};">${team.value}</div>
-      </div>
-    `).join('')
+    container.style.cssText = 'position: absolute; left: -9999px; top: 0; width: 480px; font-family: system-ui, -apple-system, sans-serif;'
     
     container.innerHTML = `
-      <div style="background: linear-gradient(160deg, #1a1d23 0%, #0f1219 100%); border-radius: 16px; overflow: hidden; border: 1px solid #374151;">
-        <div style="background: #dc2626; padding: 16px 24px;">
-          <div style="font-size: 20px; font-weight: bold; color: #ffffff;">${recordType}</div>
-          <div style="font-size: 14px; color: rgba(255,255,255,0.8);">${leagueDisplayName.value} • All-Time</div>
+      <div style="background: linear-gradient(160deg, #0f1219 0%, #0a0c14 50%, #0d1117 100%); border-radius: 16px; box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5); position: relative; overflow: hidden;">
+        
+        <!-- Top Red Bar -->
+        <div style="background: #dc2626; padding: 8px 20px; text-align: center;">
+          <span style="font-size: 12px; font-weight: 700; color: #0a0c14; text-transform: uppercase; letter-spacing: 2px;">Ultimate Fantasy Dashboard</span>
         </div>
-        <div style="padding: 16px 24px;">
-          ${rowsHtml}
+        
+        <!-- Header -->
+        <div style="display: flex; align-items: center; padding: 10px 16px; border-bottom: 1px solid rgba(220, 38, 38, 0.2);">
+          ${logoBase64 ? `<img src="${logoBase64}" style="height: 40px; width: auto; flex-shrink: 0; margin-right: 12px; margin-top: 4px;" />` : ''}
+          <div style="flex: 1;">
+            <div style="font-size: 17px; font-weight: 900; color: #ffffff; text-transform: uppercase; letter-spacing: 0.5px; line-height: 1.1;">${recordType}</div>
+            <div style="font-size: 12px; margin-top: 2px;">
+              <span style="color: #e5e7eb;">${leagueName}</span>
+              <span style="color: #6b7280; margin: 0 4px;">•</span>
+              <span style="color: #dc2626; font-weight: 600;">All-Time</span>
+            </div>
+          </div>
         </div>
-        <div style="padding: 12px 24px; text-align: center; border-top: 1px solid #374151;">
+        
+        <!-- Featured Leader -->
+        <div style="padding: 12px 16px; background: linear-gradient(135deg, rgba(245, 196, 81, 0.15) 0%, transparent 100%); border-bottom: 1px solid rgba(245, 196, 81, 0.2);">
+          <div style="display: flex; align-items: center; gap: 12px;">
+            <img src="${imageMap.get(leader.team_name) || createPlaceholder(leader.team_name)}" style="width: 44px; height: 44px; border-radius: 50%; border: 2px solid rgba(245, 196, 81, 0.5);" />
+            <div style="flex: 1;">
+              <div style="font-size: 15px; font-weight: bold; color: #ffffff;">${leader.team_name}</div>
+              <div style="font-size: 11px; color: #9ca3af;">${leader.detail || ''}</div>
+            </div>
+            <div style="text-align: right;">
+              <div style="font-size: 26px; font-weight: 900; color: #F5C451;">${leader.value}</div>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Rankings List -->
+        <div style="padding: 12px 16px;">
+          <div style="font-size: 10px; font-weight: 600; color: #6b7280; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 10px;">Top Ten Comparison</div>
+          ${generateRows()}
+        </div>
+        
+        <!-- Footer -->
+        <div style="padding: 10px 16px; text-align: center; border-top: 1px solid rgba(220, 38, 38, 0.2);">
           <span style="font-size: 14px; font-weight: bold; color: #dc2626;">ultimatefantasydashboard.com</span>
         </div>
       </div>
     `
     
     document.body.appendChild(container)
-    await new Promise(resolve => setTimeout(resolve, 300))
+    await new Promise(r => setTimeout(r, 300))
     
-    const canvas = await html2canvas(container, {
-      backgroundColor: '#0f1219',
+    const finalCanvas = await html2canvas(container, {
+      backgroundColor: '#0a0c14',
       scale: 2,
-      useCORS: true
+      useCORS: true,
+      allowTaint: true
     })
     
     document.body.removeChild(container)
     
     const link = document.createElement('a')
-    link.download = `${recordType.toLowerCase().replace(/\s+/g, '-')}-rankings.png`
-    link.href = canvas.toDataURL('image/png')
+    link.download = `career-${recordType.toLowerCase().replace(/\s+/g, '-')}.png`
+    link.href = finalCanvas.toDataURL('image/png')
     link.click()
   } finally {
     isDownloadingRecord.value = false
@@ -1813,57 +1960,214 @@ async function downloadRecordRankings(recordType: string) {
 async function downloadAwardRankings(awardTitle: string, type: 'best' | 'worst') {
   isDownloadingAward.value = true
   try {
-    const rankings = awardModalRankings.value.slice(0, 10)
-    if (rankings.length === 0) return
+    // Get league name
+    const activeId = leagueStore.activeLeagueId
+    const savedLeague = leagueStore.savedLeagues?.find((l: any) => l.league_id === activeId?.split('.l.')[1])
+    const leagueName = savedLeague?.league_name || leagueStore.yahooLeague?.name || 'Fantasy League'
     
-    const accentColor = type === 'best' ? '#22c55e' : '#ef4444'
+    const rankings = awardModalRankings.value.slice(0, 10)
+    if (rankings.length === 0) {
+      isDownloadingAward.value = false
+      return
+    }
+    
+    // Load UFD logo
+    const loadLogo = async (): Promise<string> => {
+      try {
+        const response = await fetch('/UFD_V5.png')
+        if (!response.ok) return ''
+        const blob = await response.blob()
+        return new Promise((resolve) => {
+          const reader = new FileReader()
+          reader.onloadend = () => resolve(reader.result as string)
+          reader.onerror = () => resolve('')
+          reader.readAsDataURL(blob)
+        })
+      } catch (e) { return '' }
+    }
+    
+    // Colors based on type
+    const colorMain = type === 'best' ? '#22c55e' : '#ef4444'
+    const colorLight = type === 'best' ? 'rgba(34, 197, 94, 0.15)' : 'rgba(239, 68, 68, 0.15)'
+    const colorBorder = type === 'best' ? 'rgba(34, 197, 94, 0.3)' : 'rgba(239, 68, 68, 0.3)'
+    
+    // Helper to create placeholder avatar
+    const createPlaceholder = (name: string): string => {
+      const canvas = document.createElement('canvas')
+      canvas.width = 64
+      canvas.height = 64
+      const ctx = canvas.getContext('2d')
+      if (ctx) {
+        ctx.fillStyle = '#3a3d52'
+        ctx.beginPath()
+        ctx.arc(32, 32, 32, 0, Math.PI * 2)
+        ctx.fill()
+        ctx.fillStyle = colorMain
+        ctx.font = 'bold 28px sans-serif'
+        ctx.textAlign = 'center'
+        ctx.textBaseline = 'middle'
+        ctx.fillText(name.charAt(0).toUpperCase(), 32, 34)
+      }
+      return canvas.toDataURL('image/png')
+    }
+    
+    const logoBase64 = await loadLogo()
+    const leader = rankings[0]
+    
+    // Pre-load all team images
+    const imageMap = new Map<string, string>()
+    for (const team of rankings) {
+      const uniqueKey = team.team_name + (team.detail || '')
+      try {
+        const img = new Image()
+        img.crossOrigin = 'anonymous'
+        const loadPromise = new Promise<string>((resolve) => {
+          img.onload = () => {
+            try {
+              const canvas = document.createElement('canvas')
+              canvas.width = 64
+              canvas.height = 64
+              const ctx = canvas.getContext('2d')
+              if (ctx) {
+                ctx.beginPath()
+                ctx.arc(32, 32, 32, 0, Math.PI * 2)
+                ctx.closePath()
+                ctx.clip()
+                ctx.drawImage(img, 0, 0, 64, 64)
+              }
+              resolve(canvas.toDataURL('image/png'))
+            } catch {
+              resolve(createPlaceholder(team.team_name))
+            }
+          }
+          img.onerror = () => resolve(createPlaceholder(team.team_name))
+          setTimeout(() => resolve(createPlaceholder(team.team_name)), 3000)
+        })
+        img.src = team.logo_url || ''
+        imageMap.set(uniqueKey, await loadPromise)
+      } catch {
+        imageMap.set(uniqueKey, createPlaceholder(team.team_name))
+      }
+    }
+    
+    const maxValue = Math.max(...rankings.map(r => {
+      if (typeof r.value === 'string') {
+        if (r.value.includes('%')) return parseFloat(r.value.replace('%', ''))
+        return parseFloat(r.value) || 0
+      }
+      return r.value || 0
+    }))
+    
+    // Get value unit descriptor
+    const getValueUnit = (): string => {
+      if (awardTitle.includes('Score')) return 'Points'
+      if (awardTitle.includes('Wins')) return 'Wins'
+      if (awardTitle.includes('Losses')) return 'Losses'
+      if (awardTitle.includes('PPW')) return 'PPW'
+      if (awardTitle.includes('Percentage')) return 'Win %'
+      return ''
+    }
+    const valueUnit = getValueUnit()
+    
+    // Generate ranking rows with images
+    const generateRows = () => {
+      return rankings.map((team, idx) => {
+        let numValue = team.value
+        if (typeof numValue === 'string') {
+          if (numValue.includes('%')) numValue = parseFloat(numValue.replace('%', ''))
+          else numValue = parseFloat(numValue) || 0
+        }
+        const barWidth = maxValue > 0 ? (numValue / maxValue) * 100 : 0
+        const uniqueKey = team.team_name + (team.detail || '')
+        
+        return `
+          <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 10px;">
+            <div style="width: 20px; text-align: center; font-weight: bold; font-size: 12px; color: ${idx === 0 ? colorMain : '#6b7280'};">${idx + 1}</div>
+            <img src="${imageMap.get(uniqueKey) || createPlaceholder(team.team_name)}" style="width: 28px; height: 28px; border-radius: 50%;" />
+            <div style="flex: 1; min-width: 0;">
+              <div style="font-size: 12px; font-weight: 600; color: #e5e7eb; margin-bottom: 5px;">${team.team_name} <span style="color: #6b7280; font-weight: 400;">${team.detail || ''}</span></div>
+              <div style="height: 6px; background: rgba(58, 61, 82, 0.5); border-radius: 3px; overflow: hidden;">
+                <div style="height: 100%; width: ${barWidth}%; background: ${colorMain}; opacity: ${idx === 0 ? 1 : 0.6}; border-radius: 3px;"></div>
+              </div>
+            </div>
+            <div style="width: 65px; text-align: right;">
+              <div style="font-size: 13px; font-weight: bold; color: ${idx === 0 ? colorMain : '#e5e7eb'};">${team.value}</div>
+              <div style="font-size: 9px; color: #6b7280; margin-top: 1px;">${valueUnit}</div>
+            </div>
+          </div>
+        `
+      }).join('')
+    }
     
     const container = document.createElement('div')
-    container.style.cssText = 'position: absolute; left: -9999px; top: 0; width: 600px; font-family: system-ui, -apple-system, sans-serif;'
+    container.style.cssText = 'position: absolute; left: -9999px; top: 0; width: 480px; font-family: system-ui, -apple-system, sans-serif;'
     
-    const rowsHtml = rankings.map((team, idx) => `
-      <div style="display: flex; align-items: center; gap: 12px; padding: 12px 0; ${idx < rankings.length - 1 ? 'border-bottom: 1px solid #374151;' : ''}">
-        <div style="width: 30px; text-align: center; font-weight: bold; font-size: 16px; color: ${idx === 0 ? accentColor : '#9ca3af'};">${idx + 1}</div>
-        <div style="width: 40px; height: 40px; border-radius: 50%; overflow: hidden; background: #374151; flex-shrink: 0;">
-          <img src="${team.logo_url || defaultAvatar}" style="width: 100%; height: 100%; object-fit: cover;" />
-        </div>
-        <div style="flex: 1; min-width: 0;">
-          <div style="font-weight: 600; color: #ffffff; font-size: 14px;">${team.team_name}</div>
-          <div style="font-size: 12px; color: #9ca3af;">${team.detail}</div>
-        </div>
-        <div style="font-weight: bold; font-size: 18px; color: ${idx === 0 ? accentColor : '#ffffff'};">${team.value}</div>
-      </div>
-    `).join('')
+    const leaderUniqueKey = leader.team_name + (leader.detail || '')
     
     container.innerHTML = `
-      <div style="background: linear-gradient(160deg, #1a1d23 0%, #0f1219 100%); border-radius: 16px; overflow: hidden; border: 1px solid #374151;">
-        <div style="background: #dc2626; padding: 16px 24px;">
-          <div style="font-size: 20px; font-weight: bold; color: #ffffff;">${awardTitle}</div>
-          <div style="font-size: 14px; color: rgba(255,255,255,0.8);">${leagueDisplayName.value} • All-Time ${type === 'best' ? 'Best' : 'Worst'}</div>
+      <div style="background: linear-gradient(160deg, #0f1219 0%, #0a0c14 50%, #0d1117 100%); border-radius: 16px; box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5); position: relative; overflow: hidden;">
+        
+        <!-- Top Red Bar -->
+        <div style="background: #dc2626; padding: 8px 20px; text-align: center;">
+          <span style="font-size: 12px; font-weight: 700; color: #0a0c14; text-transform: uppercase; letter-spacing: 2px;">Ultimate Fantasy Dashboard</span>
         </div>
-        <div style="padding: 16px 24px;">
-          ${rowsHtml}
+        
+        <!-- Header -->
+        <div style="display: flex; align-items: center; padding: 10px 16px; border-bottom: 1px solid rgba(220, 38, 38, 0.2);">
+          ${logoBase64 ? `<img src="${logoBase64}" style="height: 40px; width: auto; flex-shrink: 0; margin-right: 12px; margin-top: 4px;" />` : ''}
+          <div style="flex: 1;">
+            <div style="font-size: 17px; font-weight: 900; color: #ffffff; text-transform: uppercase; letter-spacing: 0.5px; line-height: 1.1;">${awardTitle}</div>
+            <div style="font-size: 12px; margin-top: 2px;">
+              <span style="color: #e5e7eb;">${leagueName}</span>
+              <span style="color: #6b7280; margin: 0 4px;">•</span>
+              <span style="color: #dc2626; font-weight: 600;">${type === 'best' ? 'Best' : 'Worst'} All-Time</span>
+            </div>
+          </div>
         </div>
-        <div style="padding: 12px 24px; text-align: center; border-top: 1px solid #374151;">
+        
+        <!-- Featured Leader -->
+        <div style="padding: 12px 16px; background: linear-gradient(135deg, ${colorLight} 0%, transparent 100%); border-bottom: 1px solid ${colorBorder};">
+          <div style="display: flex; align-items: center; gap: 12px;">
+            <img src="${imageMap.get(leaderUniqueKey) || createPlaceholder(leader.team_name)}" style="width: 44px; height: 44px; border-radius: 50%; border: 2px solid ${colorBorder};" />
+            <div style="flex: 1;">
+              <div style="font-size: 15px; font-weight: bold; color: #ffffff;">${leader.team_name}</div>
+              <div style="font-size: 11px; color: #9ca3af;">${leader.detail || ''}</div>
+            </div>
+            <div style="text-align: right;">
+              <div style="font-size: 26px; font-weight: 900; color: ${colorMain};">${leader.value}</div>
+              <div style="font-size: 10px; color: #6b7280;">${valueUnit}</div>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Rankings List -->
+        <div style="padding: 12px 16px;">
+          <div style="font-size: 10px; font-weight: 600; color: #6b7280; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 10px;">${type === 'best' ? 'Top' : 'Bottom'} Ten Comparison</div>
+          ${generateRows()}
+        </div>
+        
+        <!-- Footer -->
+        <div style="padding: 10px 16px; text-align: center; border-top: 1px solid rgba(220, 38, 38, 0.2);">
           <span style="font-size: 14px; font-weight: bold; color: #dc2626;">ultimatefantasydashboard.com</span>
         </div>
       </div>
     `
     
     document.body.appendChild(container)
-    await new Promise(resolve => setTimeout(resolve, 300))
+    await new Promise(r => setTimeout(r, 300))
     
-    const canvas = await html2canvas(container, {
-      backgroundColor: '#0f1219',
+    const finalCanvas = await html2canvas(container, {
+      backgroundColor: '#0a0c14',
       scale: 2,
-      useCORS: true
+      useCORS: true,
+      allowTaint: true
     })
     
     document.body.removeChild(container)
     
     const link = document.createElement('a')
-    link.download = `${awardTitle.toLowerCase().replace(/\s+/g, '-')}-${type}-rankings.png`
-    link.href = canvas.toDataURL('image/png')
+    link.download = `${awardTitle.toLowerCase().replace(/\s+/g, '-')}-${type}.png`
+    link.href = finalCanvas.toDataURL('image/png')
     link.click()
   } finally {
     isDownloadingAward.value = false
