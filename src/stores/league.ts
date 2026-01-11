@@ -47,7 +47,9 @@ const STORAGE_KEYS = {
   SAVED_LEAGUES: 'fd_saved_leagues',
   LEAGUE_CACHE: 'fd_league_cache',
   CURRENT_USERNAME: 'fd_current_username',
-  ACTIVE_LEAGUE: 'fd_active_league'
+  ACTIVE_LEAGUE: 'fd_active_league',
+  ACTIVE_PLATFORM: 'fd_active_platform',
+  ACTIVE_SPORT: 'fd_active_sport'
 }
 
 export const useLeagueStore = defineStore('league', () => {
@@ -111,6 +113,7 @@ export const useLeagueStore = defineStore('league', () => {
   // Set active sport (called from App.vue when sport changes)
   function setActiveSport(sport: 'football' | 'baseball' | 'basketball' | 'hockey') {
     activeSport.value = sport
+    saveToLocalStorage()
   }
 
   // ============================================
@@ -129,6 +132,9 @@ export const useLeagueStore = defineStore('league', () => {
       if (currentUserId.value) {
         localStorage.setItem('ufd_current_user_id', currentUserId.value)
       }
+      // Save active platform and sport
+      localStorage.setItem(STORAGE_KEYS.ACTIVE_PLATFORM, activePlatform.value)
+      localStorage.setItem(STORAGE_KEYS.ACTIVE_SPORT, activeSport.value)
     } catch (e) {
       console.warn('Failed to save to localStorage:', e)
     }
@@ -154,6 +160,17 @@ export const useLeagueStore = defineStore('league', () => {
       const userId = localStorage.getItem('ufd_current_user_id')
       if (userId) {
         currentUserId.value = userId
+      }
+      
+      // Restore active platform and sport
+      const platform = localStorage.getItem(STORAGE_KEYS.ACTIVE_PLATFORM) as 'sleeper' | 'yahoo' | null
+      if (platform) {
+        activePlatform.value = platform
+      }
+      
+      const sport = localStorage.getItem(STORAGE_KEYS.ACTIVE_SPORT) as 'football' | 'baseball' | 'basketball' | 'hockey' | null
+      if (sport) {
+        activeSport.value = sport
       }
     } catch (e) {
       console.warn('Failed to load from localStorage:', e)
@@ -551,10 +568,16 @@ export const useLeagueStore = defineStore('league', () => {
     error.value = null
     activeLeagueId.value = leagueId
     isDemoMode.value = false
-    saveToLocalStorage()
     
     // Check if this is a Yahoo league
     const savedLeague = savedLeagues.value.find(l => l.league_id === leagueId)
+    
+    // Set sport from saved league if available
+    if (savedLeague?.sport) {
+      activeSport.value = savedLeague.sport as 'football' | 'baseball' | 'basketball' | 'hockey'
+    }
+    
+    saveToLocalStorage()
     
     // Detect Yahoo league by ID format (e.g., "431.l.136233" or "nfl.l.123456")
     const isYahooLeagueId = /^\d+\.l\.\d+$/.test(leagueId) || /^[a-z]+\.l\.\d+$/.test(leagueId)
@@ -562,12 +585,14 @@ export const useLeagueStore = defineStore('league', () => {
     if (savedLeague?.platform === 'yahoo' || isYahooLeagueId) {
       // Handle Yahoo league
       activePlatform.value = 'yahoo'
+      saveToLocalStorage() // Save again after setting platform
       await loadYahooLeagueData(leagueId)
       return
     }
     
     // Handle Sleeper league (existing logic)
     activePlatform.value = 'sleeper'
+    saveToLocalStorage() // Save again after setting platform
     
     try {
       // Get the saved league to find the username

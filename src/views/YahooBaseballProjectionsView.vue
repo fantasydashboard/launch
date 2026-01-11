@@ -8,7 +8,10 @@
       </div>
       <div class="flex items-center gap-3">
         <button @click="loadProjections" :disabled="isLoading" class="px-4 py-2 rounded-lg bg-dark-card hover:bg-dark-border/50 text-dark-textMuted transition-all flex items-center gap-2">
-          <span :class="{ 'animate-spin': isLoading }">🔄</span> Refresh
+          <svg :class="{ 'animate-spin': isLoading }" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+          </svg>
+          Refresh
         </button>
       </div>
     </div>
@@ -19,7 +22,7 @@
     <!-- Tab Navigation -->
     <div class="flex gap-2">
       <button v-for="tab in tabs" :key="tab.id" @click="activeTab = tab.id"
-        :class="activeTab === tab.id ? 'bg-primary text-gray-900' : 'bg-dark-card text-dark-textSecondary hover:bg-dark-border/50'"
+        :class="activeTab === tab.id ? 'bg-yellow-400 text-gray-900' : 'bg-dark-card text-dark-textSecondary hover:bg-dark-border/50'"
         class="px-6 py-3 rounded-xl font-semibold transition-all flex items-center gap-2">
         <span class="text-xl">{{ tab.icon }}</span> {{ tab.name }}
       </button>
@@ -28,19 +31,19 @@
     <!-- Loading State -->
     <div v-if="isLoading" class="flex items-center justify-center py-20">
       <div class="text-center">
-        <div class="animate-spin rounded-full h-16 w-16 border-b-4 border-primary mx-auto mb-4"></div>
+        <div class="animate-spin rounded-full h-16 w-16 border-b-4 border-yellow-400 mx-auto mb-4"></div>
         <p class="text-dark-textMuted">{{ loadingMessage }}</p>
       </div>
     </div>
 
     <!-- REST OF SEASON TAB -->
     <template v-else-if="activeTab === 'ros'">
-      <div class="card bg-green-500/10 border-green-500/30">
+      <div class="card bg-gradient-to-r from-green-500/10 to-cyan-500/10 border-green-500/30">
         <div class="card-body py-3">
           <div class="flex items-center gap-3">
             <span class="text-xl">✓</span>
             <span class="font-semibold text-green-400">Live Yahoo Data</span>
-            <span class="text-dark-textMuted">{{ allPlayers.length }} players</span>
+            <span class="text-dark-textMuted">{{ allPlayers.length }} players • Points League</span>
           </div>
         </div>
       </div>
@@ -51,14 +54,14 @@
           <div class="flex flex-wrap items-center justify-between gap-4">
             <div class="flex items-center gap-2 flex-wrap">
               <span class="text-dark-textMuted font-medium">Positions:</span>
-              <button @click="selectAllPositions" :class="selectedPositions.length === positionFilters.length ? 'bg-primary text-gray-900' : 'bg-dark-border/50 text-dark-textSecondary'" class="px-3 py-1.5 rounded-lg text-sm font-medium">All</button>
+              <button @click="selectAllPositions" :class="selectedPositions.length === positionFilters.length ? 'bg-yellow-400 text-gray-900' : 'bg-dark-border/50 text-dark-textSecondary'" class="px-3 py-1.5 rounded-lg text-sm font-medium">All</button>
               <button v-for="pos in positionFilters" :key="pos.id" @click="togglePositionFilter(pos.id)"
-                :class="selectedPositions.includes(pos.id) ? 'bg-primary text-gray-900' : 'bg-dark-border/50 text-dark-textSecondary'"
+                :class="selectedPositions.includes(pos.id) ? 'bg-yellow-400 text-gray-900' : 'bg-dark-border/50 text-dark-textSecondary'"
                 class="px-3 py-1.5 rounded-lg text-sm font-medium">{{ pos.label }}</button>
             </div>
             <div class="flex items-center gap-4">
               <label class="flex items-center gap-2 text-sm text-dark-textMuted cursor-pointer">
-                <input type="checkbox" v-model="showOnlyMyPlayers" class="rounded accent-primary w-4 h-4" /> My Players
+                <input type="checkbox" v-model="showOnlyMyPlayers" class="rounded accent-yellow-400 w-4 h-4" /> My Players
               </label>
               <label class="flex items-center gap-2 text-sm text-dark-textMuted cursor-pointer">
                 <input type="checkbox" v-model="showOnlyFreeAgents" class="rounded accent-cyan-400 w-4 h-4" /> Free Agents
@@ -81,13 +84,23 @@
             <table class="w-full">
               <thead class="bg-dark-border/30 sticky top-0 z-10">
                 <tr>
-                  <th class="px-3 py-3 text-left text-xs font-semibold text-dark-textMuted uppercase w-12">Rank</th>
+                  <th class="px-3 py-3 text-left text-xs font-semibold uppercase w-12 cursor-pointer hover:text-yellow-400" @click="setRosSort('rosRank')">
+                    Rank <span v-if="rosSortColumn === 'rosRank'" class="text-yellow-400">{{ rosSortDirection === 'asc' ? '↑' : '↓' }}</span>
+                  </th>
                   <th class="px-3 py-3 text-left text-xs font-semibold text-dark-textMuted uppercase">Player</th>
                   <th class="px-2 py-3 text-center text-xs font-semibold text-dark-textMuted uppercase w-12">Pos</th>
-                  <th class="px-2 py-3 text-center text-xs font-semibold text-dark-textMuted uppercase w-14">Pos Rk</th>
-                  <th class="px-2 py-3 text-center text-xs font-semibold text-dark-textMuted uppercase w-14">Pts</th>
-                  <th class="px-2 py-3 text-center text-xs font-semibold text-dark-textMuted uppercase w-14">PPG</th>
-                  <th class="px-2 py-3 text-center text-xs font-semibold text-dark-textMuted uppercase w-14">VOR</th>
+                  <th class="px-2 py-3 text-center text-xs font-semibold uppercase w-14 cursor-pointer hover:text-yellow-400" @click="setRosSort('positionRank')">
+                    Pos Rk <span v-if="rosSortColumn === 'positionRank'" class="text-yellow-400">{{ rosSortDirection === 'asc' ? '↑' : '↓' }}</span>
+                  </th>
+                  <th class="px-2 py-3 text-center text-xs font-semibold uppercase w-14 cursor-pointer hover:text-yellow-400" @click="setRosSort('total_points')">
+                    Pts <span v-if="rosSortColumn === 'total_points'" class="text-yellow-400">{{ rosSortDirection === 'asc' ? '↑' : '↓' }}</span>
+                  </th>
+                  <th class="px-2 py-3 text-center text-xs font-semibold uppercase w-14 cursor-pointer hover:text-yellow-400" @click="setRosSort('ppg')">
+                    PPG <span v-if="rosSortColumn === 'ppg'" class="text-yellow-400">{{ rosSortDirection === 'asc' ? '↑' : '↓' }}</span>
+                  </th>
+                  <th class="px-2 py-3 text-center text-xs font-semibold uppercase w-14 cursor-pointer hover:text-yellow-400" @click="setRosSort('vor')">
+                    VOR <span v-if="rosSortColumn === 'vor'" class="text-yellow-400">{{ rosSortDirection === 'asc' ? '↑' : '↓' }}</span>
+                  </th>
                 </tr>
               </thead>
               <tbody class="divide-y divide-dark-border/30">
@@ -99,7 +112,7 @@
                         <div class="w-10 h-10 rounded-full bg-dark-border overflow-hidden ring-2" :class="getAvatarRingClass(player)">
                           <img :src="player.headshot || defaultHeadshot" :alt="player.full_name" class="w-full h-full object-cover" @error="handleImageError" />
                         </div>
-                        <div v-if="isMyPlayer(player)" class="absolute -top-1 -right-1 w-5 h-5 bg-primary rounded-full flex items-center justify-center"><span class="text-xs text-gray-900 font-bold">★</span></div>
+                        <div v-if="isMyPlayer(player)" class="absolute -top-1 -right-1 w-5 h-5 bg-yellow-400 rounded-full flex items-center justify-center"><span class="text-xs text-gray-900 font-bold">★</span></div>
                         <div v-else-if="isFreeAgent(player)" class="absolute -top-1 -right-1 w-5 h-5 bg-cyan-400 rounded-full flex items-center justify-center"><span class="text-xs text-gray-900 font-bold">+</span></div>
                       </div>
                       <div>
@@ -107,7 +120,7 @@
                         <div class="flex items-center gap-2 text-xs text-dark-textMuted">
                           <span>{{ player.mlb_team || 'FA' }}</span>
                           <span class="text-dark-border">•</span>
-                          <span v-if="player.fantasy_team" :class="isMyPlayer(player) ? 'text-primary' : ''">{{ player.fantasy_team }}</span>
+                          <span v-if="player.fantasy_team" :class="isMyPlayer(player) ? 'text-yellow-400' : ''">{{ player.fantasy_team }}</span>
                           <span v-else class="text-cyan-400">Free Agent</span>
                         </div>
                       </div>
@@ -161,42 +174,53 @@
       <div class="card">
         <div class="card-header">
           <div class="flex items-center gap-2"><span class="text-2xl">📊</span><h2 class="card-title">Team Roster Rankings</h2></div>
-          <div class="text-right text-sm text-dark-textMuted">Click any team to see breakdown</div>
+          <div class="flex items-center gap-2 text-yellow-400 text-sm mt-1">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 15l-2 5L9 9l11 4-5 2zm0 0l5 5M7.188 2.239l.777 2.897M5.136 7.965l-2.898-.777M13.95 4.05l-2.122 2.122m-5.657 5.656l-2.12 2.122" />
+            </svg>
+            <span>Select team for details</span>
+          </div>
         </div>
         <div class="card-body p-0">
           <div class="overflow-x-auto">
             <table class="w-full">
               <thead class="bg-dark-border/30">
                 <tr>
-                  <th class="px-3 py-3 text-left text-xs font-semibold text-dark-textMuted uppercase w-10">#</th>
+                  <th class="px-3 py-3 text-left text-xs font-semibold text-dark-textMuted uppercase w-10 cursor-pointer hover:text-yellow-400" @click="setTeamsSort('rank')">
+                    # <span v-if="teamsSortColumn === 'rank'" class="text-yellow-400">{{ teamsSortDirection === 'asc' ? '↑' : '↓' }}</span>
+                  </th>
                   <th class="px-3 py-3 text-left text-xs font-semibold text-dark-textMuted uppercase">Team</th>
-                  <th class="px-3 py-3 text-center text-xs font-semibold text-dark-textMuted uppercase w-16">Grade</th>
-                  <th class="px-3 py-3 text-center text-xs font-semibold text-dark-textMuted uppercase w-24">Status</th>
+                  <th class="px-3 py-3 text-center text-xs font-semibold text-dark-textMuted uppercase w-16 cursor-pointer hover:text-yellow-400" @click="setTeamsSort('overallGrade')">
+                    Grade <span v-if="teamsSortColumn === 'overallGrade'" class="text-yellow-400">{{ teamsSortDirection === 'asc' ? '↑' : '↓' }}</span>
+                  </th>
+                  <th class="px-3 py-3 text-center text-xs font-semibold text-dark-textMuted uppercase w-24 cursor-pointer hover:text-yellow-400" @click="setTeamsSort('statusScore')">
+                    Status <span v-if="teamsSortColumn === 'statusScore'" class="text-yellow-400">{{ teamsSortDirection === 'asc' ? '↑' : '↓' }}</span>
+                  </th>
                   <th v-for="pos in uniquePositions" :key="pos" class="px-3 py-3 text-center text-xs font-semibold uppercase w-12" :class="getPositionTextClass(pos)">{{ pos }}</th>
                 </tr>
               </thead>
               <tbody class="divide-y divide-dark-border/30">
                 <template v-for="(team, index) in gatedRankedTeams" :key="team.teamKey">
-                  <tr :class="[team.isMyTeam ? 'bg-primary/10' : 'hover:bg-dark-border/20', expandedTeamId === team.teamKey ? 'bg-dark-border/30' : '']" class="transition-colors cursor-pointer" @click="expandedTeamId = expandedTeamId === team.teamKey ? null : team.teamKey">
-                    <td class="px-3 py-3"><span class="font-bold" :class="index < 3 ? 'text-primary' : 'text-dark-textMuted'">{{ index + 1 }}</span></td>
+                  <tr :class="[team.isMyTeam ? 'bg-yellow-500/10' : 'hover:bg-dark-border/20', expandedTeamId === team.teamKey ? 'bg-dark-border/30' : '']" class="transition-colors cursor-pointer" @click="expandedTeamId = expandedTeamId === team.teamKey ? null : team.teamKey">
+                    <td class="px-3 py-3"><span class="font-bold" :class="index < 3 ? 'text-yellow-400' : 'text-dark-textMuted'">{{ index + 1 }}</span></td>
                     <td class="px-3 py-3">
                       <div class="flex items-center gap-3">
-                        <div class="w-9 h-9 rounded-full overflow-hidden bg-dark-border ring-2 flex-shrink-0" :class="team.isMyTeam ? 'ring-primary' : 'ring-dark-border'">
-                          <img :src="defaultTeamAvatar" :alt="team.teamName" class="w-full h-full object-cover" />
+                        <div class="w-9 h-9 rounded-full overflow-hidden bg-dark-border ring-2 flex-shrink-0" :class="team.isMyTeam ? 'ring-yellow-400' : 'ring-dark-border'">
+                          <img :src="team.logoUrl || defaultTeamAvatar" :alt="team.teamName" class="w-full h-full object-cover" @error="handleImageError" />
                         </div>
                         <div class="min-w-0">
-                          <div class="font-semibold text-dark-text flex items-center gap-2 truncate">{{ team.teamName }}<span v-if="team.isMyTeam" class="text-[10px] bg-primary/20 text-primary px-1.5 py-0.5 rounded">You</span></div>
+                          <div class="font-semibold text-dark-text flex items-center gap-2 truncate">{{ team.teamName }}<span v-if="team.isMyTeam" class="text-[10px] bg-yellow-400/20 text-yellow-400 px-1.5 py-0.5 rounded">You</span></div>
                           <div class="text-xs text-dark-textMuted truncate">{{ team.managerName }}</div>
                         </div>
                       </div>
                     </td>
                     <td class="px-3 py-3 text-center"><span class="text-xl font-black" :class="getTeamGradeClass(team.overallGrade)">{{ team.overallGrade }}</span></td>
-                    <td class="px-3 py-3 text-center"><span class="px-2 py-1 rounded-full text-[10px] font-bold" :class="getTeamStatusClass(team.statusScore)">{{ getTeamStatusLabel(team.statusScore) }}</span></td>
+                    <td class="px-3 py-3 text-center"><span class="px-2 py-1 rounded-full text-[10px] font-bold whitespace-nowrap" :class="getTeamStatusClass(team.statusScore)">{{ getTeamStatusLabel(team.statusScore) }}</span></td>
                     <td v-for="pos in uniquePositions" :key="pos" class="px-3 py-3 text-center"><span class="font-bold text-sm" :class="getPositionGradeClass(team.positionGrades[pos] || 'N/A')">{{ team.positionGrades[pos] || 'N/A' }}</span></td>
                   </tr>
                   <tr v-if="expandedTeamId === team.teamKey">
                     <td :colspan="5 + uniquePositions.length" class="p-0">
-                      <div class="bg-dark-card/50 border-t border-b border-primary/30">
+                      <div class="bg-dark-card/50 border-t border-b border-yellow-400/30">
                         <div class="grid grid-cols-2 lg:grid-cols-4 xl:grid-cols-6 divide-y lg:divide-y-0 lg:divide-x divide-dark-border/30">
                           <div v-for="pos in uniquePositions" :key="pos" class="p-4">
                             <div class="flex items-center justify-between mb-3">
@@ -209,7 +233,7 @@
                               <div v-for="(player, pIdx) in getTeamPositionPlayers(team, pos)" :key="player.player_key" class="flex items-center gap-2 p-1.5 rounded-lg" :class="pIdx < getRosterSlotCount(pos) ? 'bg-dark-border/30' : 'opacity-60'">
                                 <div class="w-7 h-7 rounded-full bg-dark-border overflow-hidden flex-shrink-0"><img :src="player.headshot || defaultHeadshot" :alt="player.full_name" class="w-full h-full object-cover" @error="handleImageError" /></div>
                                 <div class="flex-1 min-w-0">
-                                  <div class="flex items-center gap-1"><span class="font-medium text-dark-text text-xs truncate">{{ player.full_name }}</span><span v-if="pIdx < getRosterSlotCount(pos)" class="text-[8px] text-primary">★</span></div>
+                                  <div class="flex items-center gap-1"><span class="font-medium text-dark-text text-xs truncate">{{ player.full_name }}</span><span v-if="pIdx < getRosterSlotCount(pos)" class="text-[8px] text-yellow-400">★</span></div>
                                   <div class="text-[10px] text-dark-textMuted">{{ player.ppg?.toFixed(1) || '0.0' }} PPG</div>
                                 </div>
                               </div>
@@ -257,15 +281,15 @@
             <div class="flex items-center gap-3">
               <span class="text-dark-textMuted font-medium">Scoring Type:</span>
               <div class="flex rounded-lg overflow-hidden border border-dark-border/50">
-                <button @click="scoringMode = 'daily'" :class="scoringMode === 'daily' ? 'bg-primary text-gray-900' : 'bg-dark-card text-dark-textMuted'" class="px-4 py-2 text-sm font-medium transition-colors">📅 Daily</button>
-                <button @click="scoringMode = 'weekly'" :class="scoringMode === 'weekly' ? 'bg-primary text-gray-900' : 'bg-dark-card text-dark-textMuted'" class="px-4 py-2 text-sm font-medium transition-colors">📆 Weekly</button>
+                <button @click="scoringMode = 'daily'" :class="scoringMode === 'daily' ? 'bg-yellow-400 text-gray-900' : 'bg-dark-card text-dark-textMuted'" class="px-4 py-2 text-sm font-medium transition-colors">📅 Daily</button>
+                <button @click="scoringMode = 'weekly'" :class="scoringMode === 'weekly' ? 'bg-yellow-400 text-gray-900' : 'bg-dark-card text-dark-textMuted'" class="px-4 py-2 text-sm font-medium transition-colors">📆 Weekly</button>
               </div>
             </div>
             <div class="flex items-center gap-3">
               <template v-if="scoringMode === 'daily'">
                 <div class="flex rounded-lg overflow-hidden border border-dark-border/50">
-                  <button @click="setToday" :class="isToday ? 'bg-primary text-gray-900' : 'bg-dark-card text-dark-textMuted hover:bg-dark-border/50'" class="px-4 py-2 text-sm font-medium transition-colors">Today</button>
-                  <button @click="setTomorrow" :class="isTomorrow ? 'bg-primary text-gray-900' : 'bg-dark-card text-dark-textMuted hover:bg-dark-border/50'" class="px-4 py-2 text-sm font-medium transition-colors">Tomorrow</button>
+                  <button @click="setToday" :class="isToday ? 'bg-yellow-400 text-gray-900' : 'bg-dark-card text-dark-textMuted hover:bg-dark-border/50'" class="px-4 py-2 text-sm font-medium transition-colors">Today</button>
+                  <button @click="setTomorrow" :class="isTomorrow ? 'bg-yellow-400 text-gray-900' : 'bg-dark-card text-dark-textMuted hover:bg-dark-border/50'" class="px-4 py-2 text-sm font-medium transition-colors">Tomorrow</button>
                 </div>
                 <span class="text-dark-text font-semibold">{{ formatSelectedDate }}</span>
               </template>
@@ -278,11 +302,11 @@
       </div>
       
       <!-- Projections Note -->
-      <div class="card bg-blue-500/10 border-blue-500/30">
+      <div class="card bg-gradient-to-r from-purple-500/10 to-pink-500/10 border-purple-500/30">
         <div class="card-body py-3">
           <div class="flex items-center gap-3">
             <span class="text-xl">ℹ️</span>
-            <span class="text-sm text-blue-300">
+            <span class="text-sm text-purple-300">
               <span class="font-semibold">Projections based on PPG × games.</span>
               Yahoo's premium projections (RotoWire, The BLITZ) are not available via API.
               {{ scoringMode === 'daily' ? 'Use Tomorrow tab to plan waiver pickups before overnight processing.' : 'Weekly mode accounts for games played this week.' }}
@@ -300,7 +324,7 @@
               <div class="flex rounded-lg overflow-hidden border border-dark-border/50">
                 <button 
                   @click="startSitPlayerFilter = 'all'" 
-                  :class="startSitPlayerFilter === 'all' ? 'bg-primary text-gray-900' : 'bg-dark-card text-dark-textMuted hover:bg-dark-border/50'" 
+                  :class="startSitPlayerFilter === 'all' ? 'bg-yellow-400 text-gray-900' : 'bg-dark-card text-dark-textMuted hover:bg-dark-border/50'" 
                   class="px-3 py-1.5 text-sm font-medium transition-colors"
                 >All Players</button>
                 <button 
@@ -332,7 +356,7 @@
           <!-- Position Selector -->
           <div class="flex items-center gap-2 mb-4 flex-wrap">
             <button v-for="pos in startSitPositions" :key="pos.id" @click="selectedStartSitPosition = pos.id"
-              :class="selectedStartSitPosition === pos.id ? 'bg-primary text-gray-900' : 'bg-dark-border/30 text-dark-textSecondary hover:text-dark-text'"
+              :class="selectedStartSitPosition === pos.id ? 'bg-yellow-400 text-gray-900' : 'bg-dark-border/30 text-dark-textSecondary hover:text-dark-text'"
               class="px-4 py-2 rounded-lg text-sm font-medium transition-all">{{ pos.label }}</button>
           </div>
 
@@ -354,7 +378,7 @@
                       <th class="px-3 py-3 text-left text-xs font-semibold text-dark-textMuted uppercase">Player</th>
                       <th class="px-2 py-3 text-center text-xs font-semibold text-dark-textMuted uppercase w-28">{{ scoringMode === 'daily' ? 'Matchup' : 'Games' }}</th>
                       <th class="px-2 py-3 text-center text-xs font-semibold text-dark-textMuted uppercase w-16">PPG</th>
-                      <th class="px-2 py-3 text-center text-xs font-semibold text-dark-textMuted uppercase w-18"><span class="text-primary">Proj</span></th>
+                      <th class="px-2 py-3 text-center text-xs font-semibold text-dark-textMuted uppercase w-18"><span class="text-yellow-400">Proj</span></th>
                       <th class="px-2 py-3 text-center text-xs font-semibold text-dark-textMuted uppercase w-14">Tier</th>
                       <th class="px-2 py-3 text-center text-xs font-semibold text-dark-textMuted uppercase w-24">Verdict</th>
                     </tr>
@@ -364,9 +388,9 @@
                       <tr v-if="showTierBreak(player, index, selectedStartSitPosition)" class="bg-dark-border/10">
                         <td colspan="7" class="px-4 py-2">
                           <div class="flex items-center gap-2">
-                            <div class="h-px flex-1 bg-primary/30"></div>
-                            <span class="text-xs font-bold text-primary uppercase">Tier {{ player.tier }}</span>
-                            <div class="h-px flex-1 bg-primary/30"></div>
+                            <div class="h-px flex-1 bg-yellow-400/30"></div>
+                            <span class="text-xs font-bold text-yellow-400 uppercase">Tier {{ player.tier }}</span>
+                            <div class="h-px flex-1 bg-yellow-400/30"></div>
                           </div>
                         </td>
                       </tr>
@@ -458,7 +482,7 @@
                       <div class="font-medium text-dark-text text-xs truncate">{{ slot.player.full_name }}</div>
                       <div class="text-[10px] text-dark-textMuted">{{ slot.player.opponent || (slot.player.gamesThisWeek + ' games') }}</div>
                     </div>
-                    <div class="font-bold text-primary text-sm">{{ slot.player.projection?.toFixed(1) || '—' }}</div>
+                    <div class="font-bold text-yellow-400 text-sm">{{ slot.player.projection?.toFixed(1) || '—' }}</div>
                   </div>
                   <div v-else class="flex items-center gap-2 flex-1"><div class="w-8 h-8 rounded-full bg-dark-border/30"></div><span class="text-xs text-dark-textMuted italic">Empty</span></div>
                 </div>
@@ -466,9 +490,502 @@
               <div class="px-3 py-3 bg-dark-border/20 border-t border-dark-border/30">
                 <div class="flex items-center justify-between">
                   <span class="text-dark-textMuted text-sm">Projected Total</span>
-                  <span class="text-xl font-bold text-primary">{{ suggestedLineupTotal.toFixed(1) }}</span>
+                  <span class="text-xl font-bold text-yellow-400">{{ suggestedLineupTotal.toFixed(1) }}</span>
                 </div>
               </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </template>
+
+    <!-- TRADE ANALYZER TAB -->
+    <template v-else-if="activeTab === 'trade'">
+      <!-- Simulated Data Banner for non-Premium users -->
+      <SimulatedDataBanner v-if="!hasPremiumAccess" :is-ultimate-tier="true" class="mb-6" />
+      
+      <div class="relative">
+        <div :class="!hasPremiumAccess ? 'blur-sm select-none pointer-events-none' : ''">
+          <!-- Trade Setup Card -->
+          <div class="card">
+            <div class="card-header">
+              <div class="flex items-center justify-between">
+                <div class="flex items-center gap-2">
+                  <span class="text-2xl">🔄</span>
+                  <h2 class="card-title">Trade Analyzer</h2>
+                </div>
+                <button 
+                  v-if="tradeAnalysis" 
+                  @click="resetTrade" 
+                  class="px-3 py-1.5 bg-dark-border/50 hover:bg-dark-border text-dark-textMuted rounded-lg text-sm"
+                >
+                  Clear Trade
+                </button>
+              </div>
+              <p class="text-sm text-dark-textMuted mt-1">Evaluate trades based on season point production</p>
+            </div>
+          </div>
+
+          <!-- Debug Info (temporary - remove after confirming it works) -->
+          <div v-if="!myTeamKey && teamsData.length > 0" class="card bg-orange-500/10 border border-orange-500/30 mt-4">
+            <div class="card-body py-3">
+              <div class="flex items-center gap-2 text-orange-300">
+                <span>⚠️</span>
+                <span class="font-semibold">Could not detect your team</span>
+              </div>
+              <p class="text-xs text-orange-300/70 mt-1">myTeamKey: {{ myTeamKey || 'null' }} | Teams: {{ teamsData.length }} | Players: {{ allPlayers.length }}</p>
+            </div>
+          </div>
+
+          <!-- Trade Setup -->
+          <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
+            <!-- YOU GIVE -->
+            <div class="card border-2 border-yellow-500/30">
+              <div class="card-header bg-yellow-500/10">
+                <div class="flex items-center justify-between">
+                  <div class="flex items-center gap-2">
+                    <span class="text-xl">📤</span>
+                    <h3 class="font-bold text-yellow-400">You Give</h3>
+                    <span v-if="tradeGivePlayers.length > 0" class="ml-2 px-2 py-0.5 bg-yellow-400/20 rounded-full text-xs font-bold text-yellow-400">
+                      {{ tradeGivePlayers.length }} player{{ tradeGivePlayers.length > 1 ? 's' : '' }}
+                    </span>
+                  </div>
+                  <span v-if="tradeGivePlayers.length > 0" class="text-sm font-bold text-yellow-400">
+                    {{ tradeGiveTotalValue.toFixed(1) }} pts
+                  </span>
+                </div>
+              </div>
+              <div class="card-body">
+                <!-- Selected Players to Give -->
+                <div v-if="tradeGivePlayers.length > 0" class="space-y-2 mb-4">
+                  <div v-for="player in tradeGivePlayers" :key="player.player_key" class="bg-yellow-500/10 rounded-xl p-3 border border-yellow-500/30">
+                    <div class="flex items-center justify-between">
+                      <div class="flex items-center gap-3">
+                        <img :src="player.headshot || defaultHeadshot" class="w-10 h-10 rounded-full" @error="handleImageError" />
+                        <div>
+                          <div class="font-semibold text-dark-text">{{ player.full_name }}</div>
+                          <div class="text-xs text-dark-textMuted">{{ player.position }} • {{ player.team }}</div>
+                        </div>
+                      </div>
+                      <div class="flex items-center gap-3">
+                        <div class="text-right">
+                          <div class="font-bold text-yellow-400">{{ player.total_points?.toFixed(1) || '0' }}</div>
+                          <div class="text-xs text-dark-textMuted">{{ player.ppg?.toFixed(1) || '0' }} PPG</div>
+                        </div>
+                        <button @click="removeGivePlayer(player)" class="text-red-400 hover:text-red-300 p-1">
+                          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                          </svg>
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Player Search & Filter -->
+                <div class="space-y-3">
+                  <div class="text-sm text-dark-textMuted">{{ tradeGivePlayers.length > 0 ? 'Add another player:' : 'Select players from your roster:' }}</div>
+                  <div class="flex gap-2">
+                    <input 
+                      v-model="tradeGiveSearch" 
+                      type="text" 
+                      placeholder="Search players..." 
+                      class="flex-1 bg-dark-border border border-dark-border rounded-lg px-3 py-2 text-dark-text text-sm"
+                    />
+                    <select v-model="tradeGivePositionFilter" class="bg-dark-border border border-dark-border rounded-lg px-2 py-2 text-dark-text text-sm">
+                      <option v-for="pos in tradePositionOptions" :key="pos.id" :value="pos.id">{{ pos.label }}</option>
+                    </select>
+                  </div>
+                </div>
+
+                <!-- Available Players List -->
+                <div class="mt-3 max-h-64 overflow-y-auto space-y-1">
+                  <button 
+                    v-for="player in filteredMyPlayersForTrade.slice(0, 15)" 
+                    :key="player.player_key"
+                    @click="addGivePlayer(player)"
+                    class="w-full flex items-center justify-between p-2 rounded-lg hover:bg-yellow-500/10 transition-colors text-left"
+                  >
+                    <div class="flex items-center gap-2">
+                      <img :src="player.headshot || defaultHeadshot" class="w-8 h-8 rounded-full" @error="handleImageError" />
+                      <div>
+                        <div class="text-sm font-medium text-dark-text">{{ player.full_name }}</div>
+                        <div class="text-xs text-dark-textMuted">{{ player.position }} • {{ player.team }}</div>
+                      </div>
+                    </div>
+                    <div class="text-right">
+                      <div class="text-sm font-bold text-dark-text">{{ player.total_points?.toFixed(1) || '0' }}</div>
+                      <div class="text-xs text-dark-textMuted">{{ player.ppg?.toFixed(1) || '0' }} PPG</div>
+                    </div>
+                  </button>
+                  <div v-if="filteredMyPlayersForTrade.length === 0" class="text-center py-4 text-dark-textMuted text-sm">
+                    No players found
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- YOU GET -->
+            <div class="card border-2 border-cyan-500/30">
+              <div class="card-header bg-cyan-500/10">
+                <div class="flex items-center justify-between">
+                  <div class="flex items-center gap-2">
+                    <span class="text-xl">📥</span>
+                    <h3 class="font-bold text-cyan-400">You Get</h3>
+                    <span v-if="tradeGetPlayers.length > 0" class="ml-2 px-2 py-0.5 bg-cyan-400/20 rounded-full text-xs font-bold text-cyan-400">
+                      {{ tradeGetPlayers.length }} player{{ tradeGetPlayers.length > 1 ? 's' : '' }}
+                    </span>
+                  </div>
+                  <select 
+                    v-model="tradePartnerKey" 
+                    class="bg-dark-border border border-dark-border rounded-lg px-3 py-1.5 text-dark-text text-sm"
+                    @change="tradeGetPlayers = []"
+                  >
+                    <option value="">Select trade partner...</option>
+                    <option v-for="team in otherTeams" :key="team.team_key" :value="team.team_key">
+                      {{ team.name }}
+                    </option>
+                  </select>
+                </div>
+                <span v-if="tradeGetPlayers.length > 0" class="text-sm font-bold text-cyan-400 mt-2 block">
+                  {{ tradeGetTotalValue.toFixed(1) }} pts
+                </span>
+              </div>
+              <div class="card-body">
+                <!-- Selected Players to Get -->
+                <div v-if="tradeGetPlayers.length > 0" class="space-y-2 mb-4">
+                  <div v-for="player in tradeGetPlayers" :key="player.player_key" class="bg-cyan-500/10 rounded-xl p-3 border border-cyan-500/30">
+                    <div class="flex items-center justify-between">
+                      <div class="flex items-center gap-3">
+                        <img :src="player.headshot || defaultHeadshot" class="w-10 h-10 rounded-full" @error="handleImageError" />
+                        <div>
+                          <div class="font-semibold text-dark-text">{{ player.full_name }}</div>
+                          <div class="text-xs text-dark-textMuted">{{ player.position }} • {{ player.team }}</div>
+                        </div>
+                      </div>
+                      <div class="flex items-center gap-3">
+                        <div class="text-right">
+                          <div class="font-bold text-cyan-400">{{ player.total_points?.toFixed(1) || '0' }}</div>
+                          <div class="text-xs text-dark-textMuted">{{ player.ppg?.toFixed(1) || '0' }} PPG</div>
+                        </div>
+                        <button @click="removeGetPlayer(player)" class="text-red-400 hover:text-red-300 p-1">
+                          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                          </svg>
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div v-if="tradePartnerKey" class="space-y-3">
+                  <div class="text-sm text-dark-textMuted">{{ tradeGetPlayers.length > 0 ? 'Add another player:' : 'Select players from their roster:' }}</div>
+                  <div class="flex gap-2">
+                    <input 
+                      v-model="tradeGetSearch" 
+                      type="text" 
+                      placeholder="Search players..." 
+                      class="flex-1 bg-dark-border border border-dark-border rounded-lg px-3 py-2 text-dark-text text-sm"
+                    />
+                    <select v-model="tradeGetPositionFilter" class="bg-dark-border border border-dark-border rounded-lg px-2 py-2 text-dark-text text-sm">
+                      <option v-for="pos in tradePositionOptions" :key="pos.id" :value="pos.id">{{ pos.label }}</option>
+                    </select>
+                  </div>
+
+                  <!-- Available Players List -->
+                  <div class="max-h-64 overflow-y-auto space-y-1">
+                    <button 
+                      v-for="player in filteredPartnerPlayersForTrade.slice(0, 15)" 
+                      :key="player.player_key"
+                      @click="addGetPlayer(player)"
+                      class="w-full flex items-center justify-between p-2 rounded-lg hover:bg-cyan-500/10 transition-colors text-left"
+                    >
+                      <div class="flex items-center gap-2">
+                        <img :src="player.headshot || defaultHeadshot" class="w-8 h-8 rounded-full" @error="handleImageError" />
+                        <div>
+                          <div class="text-sm font-medium text-dark-text">{{ player.full_name }}</div>
+                          <div class="text-xs text-dark-textMuted">{{ player.position }} • {{ player.team }}</div>
+                        </div>
+                      </div>
+                      <div class="text-right">
+                        <div class="text-sm font-bold text-dark-text">{{ player.total_points?.toFixed(1) || '0' }}</div>
+                        <div class="text-xs text-dark-textMuted">{{ player.ppg?.toFixed(1) || '0' }} PPG</div>
+                      </div>
+                    </button>
+                    <div v-if="filteredPartnerPlayersForTrade.length === 0" class="text-center py-4 text-dark-textMuted text-sm">
+                      No players found
+                    </div>
+                  </div>
+                </div>
+
+                <div v-if="!tradePartnerKey" class="text-center py-8 text-dark-textMuted">
+                  <div class="text-4xl mb-2">👆</div>
+                  <div class="text-sm">Select a trade partner above</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Trade Value Summary -->
+          <div v-if="tradeGivePlayers.length > 0 || tradeGetPlayers.length > 0" class="card mt-6">
+            <div class="card-body py-4">
+              <div class="flex items-center justify-between flex-wrap gap-4">
+                <div class="flex items-center gap-6">
+                  <div class="text-center">
+                    <div class="text-2xl font-black text-yellow-400">{{ tradeGiveTotalValue.toFixed(1) }}</div>
+                    <div class="text-xs text-dark-textMuted">You Give</div>
+                  </div>
+                  <div class="text-3xl text-dark-textMuted">⇄</div>
+                  <div class="text-center">
+                    <div class="text-2xl font-black text-cyan-400">{{ tradeGetTotalValue.toFixed(1) }}</div>
+                    <div class="text-xs text-dark-textMuted">You Get</div>
+                  </div>
+                  <div class="text-center px-4 border-l border-dark-border">
+                    <div class="text-2xl font-black" :class="tradeValueDifference >= 0 ? 'text-green-400' : 'text-red-400'">
+                      {{ tradeValueDifference >= 0 ? '+' : '' }}{{ tradeValueDifference.toFixed(1) }}
+                    </div>
+                    <div class="text-xs text-dark-textMuted">Net Points</div>
+                  </div>
+                </div>
+                <div class="text-sm text-dark-textMuted">
+                  {{ tradeGivePlayers.length }} for {{ tradeGetPlayers.length }} trade
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Analyze Button -->
+          <div class="flex justify-center mt-6">
+            <button 
+              @click="analyzeTrade"
+              :disabled="tradeGivePlayers.length === 0 || tradeGetPlayers.length === 0 || isAnalyzingTrade"
+              class="px-8 py-3 rounded-xl font-bold text-lg transition-all transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
+              :class="tradeGivePlayers.length > 0 && tradeGetPlayers.length > 0 
+                ? 'bg-gradient-to-r from-yellow-500 to-orange-500 text-gray-900' 
+                : 'bg-dark-border text-dark-textMuted'"
+            >
+              <span class="flex items-center gap-2">
+                <svg v-if="!isAnalyzingTrade" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                </svg>
+                <svg v-else class="w-5 h-5 animate-spin" fill="none" viewBox="0 0 24 24">
+                  <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                  <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                {{ isAnalyzingTrade ? 'Analyzing...' : 'Analyze Trade' }}
+              </span>
+            </button>
+          </div>
+
+          <!-- Trade Analysis Results -->
+          <template v-if="tradeAnalysis">
+            <!-- Grade Card -->
+            <div class="card overflow-hidden mt-6">
+              <div class="p-6" :class="getTradeGradeBackground(tradeAnalysis.grade)">
+                <div class="flex items-start justify-between flex-wrap gap-4">
+                  <div>
+                    <div class="text-sm text-dark-textMuted uppercase tracking-wider mb-1">Trade Grade</div>
+                    <div class="text-6xl font-black" :class="getTradeGradeColor(tradeAnalysis.grade)">{{ tradeAnalysis.grade }}</div>
+                  </div>
+                  <div class="text-right flex-1 max-w-md">
+                    <div class="text-xl font-semibold text-dark-text mb-2">{{ tradeAnalysis.headline }}</div>
+                    <div class="text-sm text-dark-textMuted">{{ tradeAnalysis.summary }}</div>
+                  </div>
+                </div>
+                
+                <!-- Factor Scores -->
+                <div class="mt-6 grid grid-cols-3 gap-4">
+                  <div class="bg-dark-bg/50 rounded-xl p-4 text-center">
+                    <div class="text-2xl font-black" :class="getTradeGradeColor(tradeAnalysis.valueGrade)">{{ tradeAnalysis.valueGrade }}</div>
+                    <div class="text-xs text-dark-textMuted mt-1">Point Value</div>
+                  </div>
+                  <div class="bg-dark-bg/50 rounded-xl p-4 text-center">
+                    <div class="text-2xl font-black" :class="getTradeGradeColor(tradeAnalysis.ppgGrade)">{{ tradeAnalysis.ppgGrade }}</div>
+                    <div class="text-xs text-dark-textMuted mt-1">PPG Impact</div>
+                  </div>
+                  <div class="bg-dark-bg/50 rounded-xl p-4 text-center">
+                    <div class="text-2xl font-black" :class="getTradeGradeColor(tradeAnalysis.positionGrade)">{{ tradeAnalysis.positionGrade }}</div>
+                    <div class="text-xs text-dark-textMuted mt-1">Positional Value</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Trade Fairness Meter -->
+            <div class="card mt-6">
+              <div class="card-header">
+                <div class="flex items-center gap-2">
+                  <span class="text-xl">⚖️</span>
+                  <h3 class="font-bold text-dark-text">Trade Fairness</h3>
+                </div>
+              </div>
+              <div class="card-body">
+                <div class="relative h-8 bg-dark-border/30 rounded-full overflow-hidden">
+                  <div 
+                    class="absolute top-0 bottom-0 transition-all duration-500"
+                    :class="tradeAnalysis.fairnessPercent >= 50 ? 'bg-gradient-to-r from-green-600 to-green-400' : 'bg-gradient-to-r from-red-600 to-red-400'"
+                    :style="{ 
+                      left: tradeAnalysis.fairnessPercent >= 50 ? '50%' : tradeAnalysis.fairnessPercent + '%',
+                      right: tradeAnalysis.fairnessPercent >= 50 ? (100 - tradeAnalysis.fairnessPercent) + '%' : '50%'
+                    }"
+                  ></div>
+                  <div class="absolute top-0 bottom-0 left-1/2 w-1 bg-white/50 transform -translate-x-1/2"></div>
+                </div>
+                <div class="flex justify-between mt-2 text-sm">
+                  <span class="text-red-400">They Win</span>
+                  <span class="text-dark-textMuted">Fair Trade</span>
+                  <span class="text-green-400">You Win</span>
+                </div>
+                <div class="text-center mt-4">
+                  <span class="text-2xl font-bold" :class="tradeAnalysis.fairnessPercent >= 50 ? 'text-green-400' : 'text-red-400'">
+                    {{ tradeAnalysis.fairnessPercent >= 50 ? '+' : '-' }}{{ Math.abs(tradeAnalysis.fairnessPercent - 50).toFixed(0) }}%
+                  </span>
+                  <span class="text-dark-textMuted ml-2">{{ tradeAnalysis.fairnessPercent >= 50 ? 'in your favor' : 'against you' }}</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Team Impact -->
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
+              <!-- Before vs After -->
+              <div class="card">
+                <div class="card-header">
+                  <div class="flex items-center gap-2">
+                    <span class="text-xl">📊</span>
+                    <h3 class="font-bold text-dark-text">Team Impact</h3>
+                  </div>
+                </div>
+                <div class="card-body">
+                  <div class="grid grid-cols-2 gap-4">
+                    <div class="bg-dark-border/20 rounded-xl p-4 text-center">
+                      <div class="text-sm text-dark-textMuted mb-1">Before Trade</div>
+                      <div class="text-3xl font-black text-dark-text">{{ tradeAnalysis.teamBefore.totalPoints.toFixed(0) }}</div>
+                      <div class="text-xs text-dark-textMuted mt-1">{{ tradeAnalysis.teamBefore.avgPPG.toFixed(1) }} avg PPG</div>
+                    </div>
+                    <div class="bg-dark-border/20 rounded-xl p-4 text-center">
+                      <div class="text-sm text-dark-textMuted mb-1">After Trade</div>
+                      <div class="text-3xl font-black" :class="tradeAnalysis.teamAfter.totalPoints > tradeAnalysis.teamBefore.totalPoints ? 'text-green-400' : 'text-red-400'">
+                        {{ tradeAnalysis.teamAfter.totalPoints.toFixed(0) }}
+                      </div>
+                      <div class="text-xs text-dark-textMuted mt-1">{{ tradeAnalysis.teamAfter.avgPPG.toFixed(1) }} avg PPG</div>
+                    </div>
+                  </div>
+                  <div class="mt-4 text-center">
+                    <span class="text-lg font-bold" :class="tradeAnalysis.teamAfter.totalPoints > tradeAnalysis.teamBefore.totalPoints ? 'text-green-400' : 'text-red-400'">
+                      {{ tradeAnalysis.teamAfter.totalPoints > tradeAnalysis.teamBefore.totalPoints ? '+' : '' }}{{ (tradeAnalysis.teamAfter.totalPoints - tradeAnalysis.teamBefore.totalPoints).toFixed(1) }} points
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Position Breakdown -->
+              <div class="card">
+                <div class="card-header">
+                  <div class="flex items-center gap-2">
+                    <span class="text-xl">🎯</span>
+                    <h3 class="font-bold text-dark-text">Position Impact</h3>
+                  </div>
+                </div>
+                <div class="card-body p-0">
+                  <div class="overflow-x-auto">
+                    <table class="w-full text-sm">
+                      <thead class="bg-dark-border/30">
+                        <tr>
+                          <th class="py-2 px-3 text-left text-dark-textMuted font-medium">Position</th>
+                          <th class="py-2 px-3 text-center text-dark-textMuted font-medium">Giving</th>
+                          <th class="py-2 px-3 text-center text-dark-textMuted font-medium">Getting</th>
+                          <th class="py-2 px-3 text-center text-dark-textMuted font-medium">Net</th>
+                        </tr>
+                      </thead>
+                      <tbody class="divide-y divide-dark-border/30">
+                        <tr v-for="pos in tradeAnalysis.positionImpact" :key="pos.position" class="hover:bg-dark-border/10">
+                          <td class="py-2 px-3 font-medium text-dark-text">{{ pos.position }}</td>
+                          <td class="py-2 px-3 text-center text-yellow-400">{{ pos.giving > 0 ? '-' + pos.giving.toFixed(0) : '-' }}</td>
+                          <td class="py-2 px-3 text-center text-cyan-400">{{ pos.getting > 0 ? '+' + pos.getting.toFixed(0) : '-' }}</td>
+                          <td class="py-2 px-3 text-center font-bold" :class="pos.net >= 0 ? 'text-green-400' : 'text-red-400'">
+                            {{ pos.net >= 0 ? '+' : '' }}{{ pos.net.toFixed(0) }}
+                          </td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Player Comparison Table -->
+            <div class="card mt-6">
+              <div class="card-header">
+                <div class="flex items-center gap-2">
+                  <span class="text-xl">👥</span>
+                  <h3 class="font-bold text-dark-text">Player Breakdown</h3>
+                </div>
+              </div>
+              <div class="card-body p-0">
+                <div class="grid grid-cols-1 lg:grid-cols-2 divide-y lg:divide-y-0 lg:divide-x divide-dark-border/30">
+                  <!-- Giving -->
+                  <div class="p-4">
+                    <div class="text-sm font-semibold text-yellow-400 mb-3">You Give</div>
+                    <div class="space-y-2">
+                      <div v-for="player in tradeGivePlayers" :key="player.player_key" class="flex items-center justify-between p-2 bg-yellow-500/5 rounded-lg">
+                        <div class="flex items-center gap-2">
+                          <img :src="player.headshot || defaultHeadshot" class="w-8 h-8 rounded-full" @error="handleImageError" />
+                          <div>
+                            <div class="text-sm font-medium text-dark-text">{{ player.full_name }}</div>
+                            <div class="text-xs text-dark-textMuted">{{ player.position }}</div>
+                          </div>
+                        </div>
+                        <div class="text-right">
+                          <div class="font-bold text-yellow-400">{{ player.total_points?.toFixed(1) }}</div>
+                          <div class="text-xs text-dark-textMuted">VOR: {{ player.vor?.toFixed(0) || '0' }}</div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  <!-- Getting -->
+                  <div class="p-4">
+                    <div class="text-sm font-semibold text-cyan-400 mb-3">You Get</div>
+                    <div class="space-y-2">
+                      <div v-for="player in tradeGetPlayers" :key="player.player_key" class="flex items-center justify-between p-2 bg-cyan-500/5 rounded-lg">
+                        <div class="flex items-center gap-2">
+                          <img :src="player.headshot || defaultHeadshot" class="w-8 h-8 rounded-full" @error="handleImageError" />
+                          <div>
+                            <div class="text-sm font-medium text-dark-text">{{ player.full_name }}</div>
+                            <div class="text-xs text-dark-textMuted">{{ player.position }}</div>
+                          </div>
+                        </div>
+                        <div class="text-right">
+                          <div class="font-bold text-cyan-400">{{ player.total_points?.toFixed(1) }}</div>
+                          <div class="text-xs text-dark-textMuted">VOR: {{ player.vor?.toFixed(0) || '0' }}</div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </template>
+        </div>
+
+        <!-- Premium Upgrade Overlay -->
+        <div 
+          v-if="!hasPremiumAccess" 
+          class="absolute inset-0 flex items-center justify-center bg-gradient-to-t from-dark-bg via-dark-bg/80 to-transparent"
+        >
+          <div class="text-center p-8 max-w-md">
+            <div class="text-5xl mb-4">🔒</div>
+            <h3 class="text-2xl font-bold text-dark-text mb-3">Unlock Trade Analyzer</h3>
+            <p class="text-dark-textMuted mb-6">
+              Get instant trade grades, point projections, and team impact analysis with Premium.
+            </p>
+            <div class="space-y-3">
+              <button 
+                @click="$router.push('/pricing')"
+                class="w-full px-6 py-3 bg-gradient-to-r from-yellow-500 to-orange-500 hover:from-yellow-400 hover:to-orange-400 text-gray-900 font-bold rounded-xl transition-all transform hover:scale-105 shadow-lg"
+              >
+                Upgrade to Premium
+              </button>
+              <p class="text-xs text-dark-textMuted">Unlock all features • Trade analyzer • Full projections</p>
             </div>
           </div>
         </div>
@@ -506,7 +1023,8 @@ const effectiveLeagueKey = computed(() => {
 const tabs = [
   { id: 'ros', name: 'Rest of Season', icon: '📊' },
   { id: 'teams', name: 'Teams', icon: '👥' },
-  { id: 'startsit', name: 'Start/Sit', icon: '📅' }
+  { id: 'startsit', name: 'Start/Sit', icon: '📅' },
+  { id: 'trade', name: 'Trade Analyzer', icon: '🔄' }
 ]
 const activeTab = ref('ros')
 const isLoading = ref(true)
@@ -531,11 +1049,19 @@ const currentWeek = computed(() => {
   return Math.max(1, Math.min(26, diffWeeks)) // MLB season is ~26 weeks
 })
 const selectedStartSitPosition = ref('C')
-const startSitPlayerFilter = ref<'all' | 'mine' | 'fa'>('all')
+const startSitPlayerFilter = ref<'all' | 'mine' | 'fa'>('mine')
 const startSitPositions = [
   { id: 'C', label: 'C' }, { id: '1B', label: '1B' }, { id: '2B', label: '2B' }, { id: '3B', label: '3B' },
   { id: 'SS', label: 'SS' }, { id: 'OF', label: 'OF' }, { id: 'SP', label: 'SP' }, { id: 'RP', label: 'RP' }, { id: 'Util', label: 'UTIL' }
 ]
+
+// Sorting state for Rest of Season tab
+const rosSortColumn = ref<string>('rosRank')
+const rosSortDirection = ref<'asc' | 'desc'>('asc')
+
+// Sorting state for Teams tab
+const teamsSortColumn = ref<string>('statusScore')
+const teamsSortDirection = ref<'asc' | 'desc'>('desc')
 
 const rosterPositions = ref<any[]>([])
 const teamsData = ref<any[]>([])
@@ -546,6 +1072,66 @@ const positionFilters = [
 ]
 const vorBaselines = ref<Record<string, number>>({ C: 12, '1B': 15, '2B': 15, '3B': 15, SS: 15, OF: 40, SP: 50, RP: 25 })
 const positionBaselines = ref<Record<string, number>>({})
+
+// Trade Analyzer State
+const tradePartnerKey = ref('')
+const tradeGivePlayers = ref<any[]>([])
+const tradeGetPlayers = ref<any[]>([])
+const tradeGiveSearch = ref('')
+const tradeGetSearch = ref('')
+const tradeGivePositionFilter = ref('all')
+const tradeGetPositionFilter = ref('all')
+const tradeAnalysis = ref<any>(null)
+const isAnalyzingTrade = ref(false)
+
+const tradePositionOptions = [
+  { id: 'all', label: 'All Positions' },
+  { id: 'C', label: 'C' }, { id: '1B', label: '1B' }, { id: '2B', label: '2B' }, { id: '3B', label: '3B' },
+  { id: 'SS', label: 'SS' }, { id: 'OF', label: 'OF' }, { id: 'SP', label: 'SP' }, { id: 'RP', label: 'RP' }
+]
+
+// Trade computed values
+const myTeamPlayers = computed(() => {
+  if (!myTeamKey.value) return []
+  return allPlayers.value.filter(p => p.fantasy_team_key === myTeamKey.value)
+})
+
+const tradePartnerPlayers = computed(() => {
+  if (!tradePartnerKey.value) return []
+  return allPlayers.value.filter(p => p.fantasy_team_key === tradePartnerKey.value)
+})
+
+const filteredMyPlayersForTrade = computed(() => {
+  let players = myTeamPlayers.value.filter(p => !tradeGivePlayers.value.some(gp => gp.player_key === p.player_key))
+  if (tradeGivePositionFilter.value !== 'all') {
+    players = players.filter(p => p.position?.includes(tradeGivePositionFilter.value))
+  }
+  if (tradeGiveSearch.value) {
+    const search = tradeGiveSearch.value.toLowerCase()
+    players = players.filter(p => p.full_name?.toLowerCase().includes(search))
+  }
+  return players.sort((a, b) => (b.total_points || 0) - (a.total_points || 0))
+})
+
+const filteredPartnerPlayersForTrade = computed(() => {
+  let players = tradePartnerPlayers.value.filter(p => !tradeGetPlayers.value.some(gp => gp.player_key === p.player_key))
+  if (tradeGetPositionFilter.value !== 'all') {
+    players = players.filter(p => p.position?.includes(tradeGetPositionFilter.value))
+  }
+  if (tradeGetSearch.value) {
+    const search = tradeGetSearch.value.toLowerCase()
+    players = players.filter(p => p.full_name?.toLowerCase().includes(search))
+  }
+  return players.sort((a, b) => (b.total_points || 0) - (a.total_points || 0))
+})
+
+const tradeGiveTotalValue = computed(() => tradeGivePlayers.value.reduce((sum, p) => sum + (p.total_points || 0), 0))
+const tradeGetTotalValue = computed(() => tradeGetPlayers.value.reduce((sum, p) => sum + (p.total_points || 0), 0))
+const tradeValueDifference = computed(() => tradeGetTotalValue.value - tradeGiveTotalValue.value)
+
+const otherTeams = computed(() => {
+  return teamsData.value.filter(t => t.team_key !== myTeamKey.value)
+})
 
 const rosterRequirements = computed(() => {
   const reqs: Record<string, number> = { C: 0, '1B': 0, '2B': 0, '3B': 0, SS: 0, OF: 0, SP: 0, RP: 0, Util: 0 }
@@ -573,8 +1159,30 @@ const filteredPlayers = computed(() => {
   }
   if (showOnlyMyPlayers.value) players = players.filter(p => isMyPlayer(p))
   if (showOnlyFreeAgents.value) players = players.filter(p => isFreeAgent(p))
+  
+  // Apply sorting
+  const col = rosSortColumn.value
+  const dir = rosSortDirection.value
+  players.sort((a, b) => {
+    let aVal = a[col] ?? 0
+    let bVal = b[col] ?? 0
+    if (typeof aVal === 'string') aVal = aVal.toLowerCase()
+    if (typeof bVal === 'string') bVal = bVal.toLowerCase()
+    if (aVal < bVal) return dir === 'asc' ? -1 : 1
+    if (aVal > bVal) return dir === 'asc' ? 1 : -1
+    return 0
+  })
   return players
 })
+
+function setRosSort(column: string) {
+  if (rosSortColumn.value === column) {
+    rosSortDirection.value = rosSortDirection.value === 'asc' ? 'desc' : 'asc'
+  } else {
+    rosSortColumn.value = column
+    rosSortDirection.value = column === 'rosRank' || column === 'positionRank' ? 'asc' : 'desc'
+  }
+}
 
 // Gated filtered players - show top 3 for non-premium users
 const gatedFilteredPlayers = computed(() => {
@@ -733,7 +1341,7 @@ const suggestedLineup = computed(() => {
 
 const suggestedLineupTotal = computed(() => suggestedLineup.value.reduce((sum, s) => sum + (s.player?.projection || 0), 0))
 
-interface TeamRanking { teamKey: string; teamName: string; managerName: string; isMyTeam: boolean; players: any[]; positionGrades: Record<string, string>; overallGrade: string; statusScore: number }
+interface TeamRanking { teamKey: string; teamName: string; managerName: string; logoUrl: string; isMyTeam: boolean; players: any[]; positionGrades: Record<string, string>; overallGrade: string; statusScore: number }
 
 const rankedTeams = computed<TeamRanking[]>(() => {
   const gradeValues: Record<string, number> = { 'A+': 100, 'A': 92, 'A-': 85, 'B+': 78, 'B': 70, 'B-': 62, 'C+': 55, 'C': 47, 'C-': 40, 'D+': 32, 'D': 25, 'D-': 18, 'F': 10 }
@@ -742,6 +1350,7 @@ const rankedTeams = computed<TeamRanking[]>(() => {
   const teams: TeamRanking[] = []
   teamMap.forEach((players, teamKey) => {
     const first = players[0]
+    const teamData = teamsData.value.find(t => t.team_key === teamKey)
     const byPos: Record<string, any[]> = {}
     players.forEach(p => { const pos = p.position?.split(',')[0]?.trim() || 'Util'; if (!byPos[pos]) byPos[pos] = []; byPos[pos].push(p) })
     Object.values(byPos).forEach(arr => arr.sort((a, b) => (b.ppg || 0) - (a.ppg || 0)))
@@ -758,10 +1367,38 @@ const rankedTeams = computed<TeamRanking[]>(() => {
     const grades = Object.values(positionGrades)
     const depthScore = Math.max(0, 100 - grades.filter(g => g === 'F').length * 20 - grades.filter(g => g.startsWith('D')).length * 8)
     const statusScore = Math.round(avgVal * 0.5 + starScore * 0.25 + depthScore * 0.25)
-    teams.push({ teamKey, teamName: first?.fantasy_team || 'Unknown', managerName: first?.manager_name || 'Unknown', isMyTeam: teamKey === myTeamKey.value, players: allTeamPlayers, positionGrades, overallGrade: getGradeFromValue(avgVal), statusScore })
+    teams.push({ teamKey, teamName: teamData?.name || first?.fantasy_team || 'Unknown', managerName: first?.manager_name || 'Unknown', logoUrl: teamData?.team_logos?.[0]?.url || teamData?.logo_url || '', isMyTeam: teamKey === myTeamKey.value, players: allTeamPlayers, positionGrades, overallGrade: getGradeFromValue(avgVal), statusScore })
   })
-  return teams.sort((a, b) => b.statusScore - a.statusScore)
+  
+  // Apply sorting
+  const gradeOrder: Record<string, number> = { 'A+': 13, 'A': 12, 'A-': 11, 'B+': 10, 'B': 9, 'B-': 8, 'C+': 7, 'C': 6, 'C-': 5, 'D+': 4, 'D': 3, 'D-': 2, 'F': 1 }
+  const col = teamsSortColumn.value
+  const dir = teamsSortDirection.value
+  return teams.sort((a, b) => {
+    let aVal: number, bVal: number
+    if (col === 'overallGrade') {
+      aVal = gradeOrder[a.overallGrade] || 0
+      bVal = gradeOrder[b.overallGrade] || 0
+    } else if (col === 'statusScore') {
+      aVal = a.statusScore
+      bVal = b.statusScore
+    } else {
+      aVal = 0
+      bVal = 0
+    }
+    if (dir === 'asc') return aVal - bVal
+    return bVal - aVal
+  })
 })
+
+function setTeamsSort(column: string) {
+  if (teamsSortColumn.value === column) {
+    teamsSortDirection.value = teamsSortDirection.value === 'asc' ? 'desc' : 'asc'
+  } else {
+    teamsSortColumn.value = column
+    teamsSortDirection.value = column === 'rank' ? 'asc' : 'desc'
+  }
+}
 
 // Gated ranked teams - show top 3 for non-premium users
 const gatedRankedTeams = computed(() => {
@@ -784,9 +1421,9 @@ function togglePositionFilter(pos: string) { const i = selectedPositions.value.i
 function isMyPlayer(p: any) { return p.fantasy_team_key === myTeamKey.value }
 function isFreeAgent(p: any) { return !p.fantasy_team }
 function handleImageError(e: Event) { (e.target as HTMLImageElement).src = defaultHeadshot }
-function getRowClass(p: any) { return isMyPlayer(p) ? 'bg-primary/10 border-l-2 border-primary' : isFreeAgent(p) ? 'bg-cyan-500/5 border-l-2 border-cyan-400' : '' }
-function getAvatarRingClass(p: any) { return isMyPlayer(p) ? 'ring-primary' : isFreeAgent(p) ? 'ring-cyan-400' : 'ring-dark-border' }
-function getPlayerNameClass(p: any) { return isMyPlayer(p) ? 'text-primary' : isFreeAgent(p) ? 'text-cyan-400' : 'text-dark-text' }
+function getRowClass(p: any) { return isMyPlayer(p) ? 'bg-yellow-500/10 border-l-2 border-yellow-400' : isFreeAgent(p) ? 'bg-cyan-500/5 border-l-2 border-cyan-400' : '' }
+function getAvatarRingClass(p: any) { return isMyPlayer(p) ? 'ring-yellow-400' : isFreeAgent(p) ? 'ring-cyan-400' : 'ring-dark-border' }
+function getPlayerNameClass(p: any) { return isMyPlayer(p) ? 'text-yellow-400' : isFreeAgent(p) ? 'text-cyan-400' : 'text-dark-text' }
 function getStartSitRowClass(p: any) { return isMyPlayer(p) ? 'bg-yellow-500/10 border-l-4 border-yellow-400' : isFreeAgent(p) ? 'bg-cyan-500/5 border-l-4 border-cyan-400' : '' }
 function getStartSitAvatarRingClass(p: any) { return isMyPlayer(p) ? 'ring-yellow-400' : isFreeAgent(p) ? 'ring-cyan-400' : 'ring-dark-border' }
 function getStartSitPlayerNameClass(p: any) { return isMyPlayer(p) ? 'text-yellow-400' : isFreeAgent(p) ? 'text-cyan-400' : 'text-dark-text' }
@@ -820,18 +1457,82 @@ async function loadProjections() {
     await yahooService.initialize(authStore.user.id)
     loadingMessage.value = 'Loading league settings...'
     try { const settings = await yahooService.getLeagueSettings(leagueKey); rosterPositions.value = settings?.roster_positions || [] } catch (e) { console.log('Could not load roster settings') }
-    loadingMessage.value = 'Finding your team...'
-    const myTeam = await yahooService.getMyTeam(leagueKey)
+    
+    // Load teams first (like Category page does)
+    loadingMessage.value = 'Loading teams...'
+    const teams = await yahooService.getTeams(leagueKey)
+    teamsData.value = teams || []
+    
+    // Debug: log all teams
+    console.log('All teams:', teamsData.value.map(t => ({ name: t.name, team_key: t.team_key, is_my_team: t.is_my_team })))
+    
+    // First try to find team with is_my_team flag
+    let myTeam = teamsData.value.find((t: any) => t.is_owned_by_current_login || t.is_my_team)
+    
+    // If not found, use getMyTeam which uses Yahoo's special "me" syntax
+    if (!myTeam) {
+      console.log('No is_my_team flag found, trying getMyTeam endpoint...')
+      const myTeamData = await yahooService.getMyTeam(leagueKey)
+      if (myTeamData) {
+        console.log('Found my team via getMyTeam:', myTeamData.name, myTeamData.team_key)
+        myTeam = teamsData.value.find(t => t.team_key === myTeamData.team_key)
+        if (myTeam) {
+          myTeam.is_my_team = true
+        }
+      }
+    }
+    
     myTeamKey.value = myTeam?.team_key || null
+    console.log('Teams loaded:', teamsData.value.length, 'My team:', myTeam?.name, 'Key:', myTeamKey.value)
+    
     loadingMessage.value = 'Loading rostered players...'
     const rostered = await yahooService.getAllRosteredPlayers(leagueKey)
+    
+    // Debug: log first few rostered players to see their team keys
+    if (rostered.length > 0) {
+      console.log('Sample rostered players:', rostered.slice(0, 3).map(p => ({
+        name: p.full_name,
+        fantasy_team: p.fantasy_team,
+        fantasy_team_key: p.fantasy_team_key
+      })))
+    }
+    
+    // If myTeamKey is set, check if any players match
+    if (myTeamKey.value) {
+      const matchingPlayers = rostered.filter(p => p.fantasy_team_key === myTeamKey.value)
+      console.log(`Players matching myTeamKey (${myTeamKey.value}):`, matchingPlayers.length)
+      
+      // If no match, try matching by team name
+      if (matchingPlayers.length === 0 && myTeam?.name) {
+        const byName = rostered.filter(p => p.fantasy_team === myTeam.name)
+        console.log(`Players matching by team name (${myTeam.name}):`, byName.length)
+        
+        // If we found players by name, update their team keys
+        if (byName.length > 0) {
+          console.log('Fixing player team keys to match myTeamKey')
+          byName.forEach(p => {
+            const idx = rostered.findIndex(r => r.player_key === p.player_key)
+            if (idx >= 0) {
+              rostered[idx].fantasy_team_key = myTeamKey.value
+            }
+          })
+        }
+      }
+    }
+    
     loadingMessage.value = 'Loading free agents...'
     const fa = await yahooService.getTopFreeAgents(leagueKey, 100)
     const combined = [...rostered, ...fa]
     combined.forEach(p => { p.ppg = p.total_points > 0 ? p.total_points / 25 : 0 })
     allPlayers.value = combined
-    const teamKeys = new Set(rostered.map(p => p.fantasy_team_key).filter(Boolean))
-    teamsData.value = Array.from(teamKeys).map(k => ({ team_key: k }))
+    
+    // Debug logging
+    console.log('=== Trade Analyzer Debug ===')
+    console.log('myTeamKey:', myTeamKey.value)
+    console.log('teamsData count:', teamsData.value.length)
+    const myPlayers = allPlayers.value.filter(p => p.fantasy_team_key === myTeamKey.value)
+    console.log('Players on my team:', myPlayers.length)
+    
     recalculateRankings()
   } catch (e) { console.error('Error:', e); loadingMessage.value = 'Error loading data' }
   finally { isLoading.value = false }
@@ -848,4 +1549,198 @@ watch(() => leagueStore.currentLeague?.league_id, (newKey, oldKey) => {
 })
 
 onMounted(() => { if (effectiveLeagueKey.value && leagueStore.activePlatform === 'yahoo') loadProjections() })
+
+// Trade Analyzer Functions
+function addGivePlayer(player: any) {
+  if (!tradeGivePlayers.value.some(p => p.player_key === player.player_key)) {
+    tradeGivePlayers.value.push(player)
+  }
+  tradeGiveSearch.value = ''
+  tradeAnalysis.value = null
+}
+
+function removeGivePlayer(player: any) {
+  tradeGivePlayers.value = tradeGivePlayers.value.filter(p => p.player_key !== player.player_key)
+  tradeAnalysis.value = null
+}
+
+function addGetPlayer(player: any) {
+  if (!tradeGetPlayers.value.some(p => p.player_key === player.player_key)) {
+    tradeGetPlayers.value.push(player)
+  }
+  tradeGetSearch.value = ''
+  tradeAnalysis.value = null
+}
+
+function removeGetPlayer(player: any) {
+  tradeGetPlayers.value = tradeGetPlayers.value.filter(p => p.player_key !== player.player_key)
+  tradeAnalysis.value = null
+}
+
+function resetTrade() {
+  tradeGivePlayers.value = []
+  tradeGetPlayers.value = []
+  tradePartnerKey.value = ''
+  tradeGiveSearch.value = ''
+  tradeGetSearch.value = ''
+  tradeGivePositionFilter.value = 'all'
+  tradeGetPositionFilter.value = 'all'
+  tradeAnalysis.value = null
+}
+
+function getTradeGradeBackground(grade: string): string {
+  if (grade.startsWith('A')) return 'bg-gradient-to-br from-green-600/30 to-green-800/10'
+  if (grade.startsWith('B')) return 'bg-gradient-to-br from-blue-600/30 to-blue-800/10'
+  if (grade.startsWith('C')) return 'bg-gradient-to-br from-yellow-600/30 to-yellow-800/10'
+  if (grade.startsWith('D')) return 'bg-gradient-to-br from-orange-600/30 to-orange-800/10'
+  return 'bg-gradient-to-br from-red-600/30 to-red-800/10'
+}
+
+function getTradeGradeColor(grade: string): string {
+  if (grade.startsWith('A')) return 'text-green-400'
+  if (grade.startsWith('B')) return 'text-blue-400'
+  if (grade.startsWith('C')) return 'text-yellow-400'
+  if (grade.startsWith('D')) return 'text-orange-400'
+  return 'text-red-400'
+}
+
+function calculateTradeGrade(valueDiff: number, ppgDiff: number, vorDiff: number): { grade: string; headline: string; summary: string } {
+  // Weighted score: 40% total points, 30% PPG, 30% VOR
+  const normalizedValueDiff = valueDiff / 50 // Normalize to ~-2 to +2 range
+  const normalizedPpgDiff = ppgDiff / 2
+  const normalizedVorDiff = vorDiff / 30
+  
+  const compositeScore = (normalizedValueDiff * 0.4) + (normalizedPpgDiff * 0.3) + (normalizedVorDiff * 0.3)
+  
+  let grade: string
+  let headline: string
+  let summary: string
+  
+  if (compositeScore >= 1.5) {
+    grade = 'A+'
+    headline = 'Smash Accept! 🔥'
+    summary = 'This trade significantly improves your team. The value you\'re getting is exceptional.'
+  } else if (compositeScore >= 1.0) {
+    grade = 'A'
+    headline = 'Great Trade!'
+    summary = 'You\'re coming out ahead in this deal with a nice boost to your lineup.'
+  } else if (compositeScore >= 0.5) {
+    grade = 'B+'
+    headline = 'Solid Win'
+    summary = 'A favorable trade that adds good value to your roster.'
+  } else if (compositeScore >= 0.2) {
+    grade = 'B'
+    headline = 'Slight Edge'
+    summary = 'You have a small advantage in this trade. Could be worth doing.'
+  } else if (compositeScore >= -0.2) {
+    grade = 'C'
+    headline = 'Fair Trade'
+    summary = 'This trade is relatively balanced. Consider your specific roster needs.'
+  } else if (compositeScore >= -0.5) {
+    grade = 'C-'
+    headline = 'Slight Disadvantage'
+    summary = 'You\'re giving up a bit more than you\'re getting. Proceed with caution.'
+  } else if (compositeScore >= -1.0) {
+    grade = 'D'
+    headline = 'Not Recommended'
+    summary = 'This trade favors the other team. Consider asking for more.'
+  } else if (compositeScore >= -1.5) {
+    grade = 'D-'
+    headline = 'Bad Deal'
+    summary = 'You\'re losing significant value here. Strongly consider declining.'
+  } else {
+    grade = 'F'
+    headline = 'Reject This! ❌'
+    summary = 'This trade heavily favors the other team. Don\'t do it.'
+  }
+  
+  return { grade, headline, summary }
+}
+
+function getSubGrade(diff: number, scale: number): string {
+  const normalized = diff / scale
+  if (normalized >= 1.5) return 'A+'
+  if (normalized >= 1.0) return 'A'
+  if (normalized >= 0.5) return 'B+'
+  if (normalized >= 0.2) return 'B'
+  if (normalized >= -0.2) return 'C'
+  if (normalized >= -0.5) return 'C-'
+  if (normalized >= -1.0) return 'D'
+  if (normalized >= -1.5) return 'D-'
+  return 'F'
+}
+
+function analyzeTrade() {
+  if (tradeGivePlayers.value.length === 0 || tradeGetPlayers.value.length === 0) return
+  
+  isAnalyzingTrade.value = true
+  
+  // Simulate analysis time for UX
+  setTimeout(() => {
+    // Calculate totals
+    const giveTotal = tradeGivePlayers.value.reduce((sum, p) => sum + (p.total_points || 0), 0)
+    const getTotal = tradeGetPlayers.value.reduce((sum, p) => sum + (p.total_points || 0), 0)
+    const valueDiff = getTotal - giveTotal
+    
+    const givePPG = tradeGivePlayers.value.reduce((sum, p) => sum + (p.ppg || 0), 0)
+    const getPPG = tradeGetPlayers.value.reduce((sum, p) => sum + (p.ppg || 0), 0)
+    const ppgDiff = getPPG - givePPG
+    
+    const giveVOR = tradeGivePlayers.value.reduce((sum, p) => sum + (p.vor || 0), 0)
+    const getVOR = tradeGetPlayers.value.reduce((sum, p) => sum + (p.vor || 0), 0)
+    const vorDiff = getVOR - giveVOR
+    
+    // Calculate grade
+    const { grade, headline, summary } = calculateTradeGrade(valueDiff, ppgDiff, vorDiff)
+    
+    // Calculate fairness percentage (50% = fair, >50% = you win, <50% = they win)
+    const totalValue = giveTotal + getTotal
+    const fairnessPercent = totalValue > 0 ? (getTotal / totalValue) * 100 : 50
+    
+    // Calculate team before/after
+    const teamBefore = {
+      totalPoints: myTeamPlayers.value.reduce((sum, p) => sum + (p.total_points || 0), 0),
+      avgPPG: myTeamPlayers.value.reduce((sum, p) => sum + (p.ppg || 0), 0) / Math.max(myTeamPlayers.value.length, 1)
+    }
+    
+    const teamAfterPlayers = myTeamPlayers.value
+      .filter(p => !tradeGivePlayers.value.some(gp => gp.player_key === p.player_key))
+      .concat(tradeGetPlayers.value)
+    
+    const teamAfter = {
+      totalPoints: teamAfterPlayers.reduce((sum, p) => sum + (p.total_points || 0), 0),
+      avgPPG: teamAfterPlayers.reduce((sum, p) => sum + (p.ppg || 0), 0) / Math.max(teamAfterPlayers.length, 1)
+    }
+    
+    // Position impact
+    const positions = ['C', '1B', '2B', '3B', 'SS', 'OF', 'SP', 'RP']
+    const positionImpact = positions.map(pos => {
+      const giving = tradeGivePlayers.value
+        .filter(p => p.position?.includes(pos))
+        .reduce((sum, p) => sum + (p.total_points || 0), 0)
+      const getting = tradeGetPlayers.value
+        .filter(p => p.position?.includes(pos))
+        .reduce((sum, p) => sum + (p.total_points || 0), 0)
+      return { position: pos, giving, getting, net: getting - giving }
+    }).filter(p => p.giving > 0 || p.getting > 0)
+    
+    tradeAnalysis.value = {
+      grade,
+      headline,
+      summary,
+      valueGrade: getSubGrade(valueDiff, 50),
+      ppgGrade: getSubGrade(ppgDiff, 2),
+      positionGrade: getSubGrade(vorDiff, 30),
+      fairnessPercent,
+      teamBefore,
+      teamAfter,
+      positionImpact,
+      valueDiff,
+      ppgDiff,
+      vorDiff
+    }
+    
+    isAnalyzingTrade.value = false
+  }, 500)
+}
 </script>

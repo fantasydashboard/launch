@@ -31,33 +31,18 @@
     <!-- Loading State -->
     <div v-if="isLoading" class="flex items-center justify-center py-20">
       <div class="text-center">
-        <div class="animate-spin rounded-full h-16 w-16 border-b-4 border-primary mx-auto mb-4"></div>
+        <div class="animate-spin rounded-full h-16 w-16 border-b-4 border-yellow-400 mx-auto mb-4"></div>
         <p class="text-dark-textMuted">Loading power rankings...</p>
       </div>
     </div>
 
     <template v-else-if="powerRankings.length > 0">
-      <!-- Legend Card -->
-      <div class="card bg-dark-card/50">
-        <div class="card-body py-3">
-          <div class="flex items-center gap-6 text-sm">
-            <div class="flex items-center gap-2">
-              <div class="w-4 h-4 rounded-full bg-primary flex items-center justify-center">
-                <span class="text-[8px] text-gray-900">★</span>
-              </div>
-              <span class="text-dark-textMuted">My Team</span>
-            </div>
-            <div class="flex items-center gap-2">
-              <div class="w-4 h-4 rounded-full ring-2 ring-cyan-500 bg-dark-card"></div>
-              <span class="text-dark-textMuted">Other Teams</span>
-            </div>
-            <div class="hidden sm:flex items-center gap-2 text-dark-textMuted">
-              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 15l-2 5L9 9l11 4-5 2zm0 0l5 5M7.188 2.239l.777 2.897M5.136 7.965l-2.898-.777M13.95 4.05l-2.122 2.122m-5.657 5.656l-2.12 2.122" />
-              </svg>
-              <span>Click team for details</span>
-            </div>
-          </div>
+      <!-- Offseason Notice Banner -->
+      <div class="bg-slate-500/10 border border-slate-500/30 rounded-xl p-4 flex items-start gap-3">
+        <div class="text-slate-400 text-xl flex-shrink-0">⚾</div>
+        <div>
+          <p class="text-slate-200 font-semibold">You're viewing the {{ currentSeason }} season</p>
+          <p class="text-slate-400 text-sm mt-1">The {{ Number(currentSeason) + 1 }} season will automatically appear here when it begins.</p>
         </div>
       </div>
 
@@ -76,10 +61,16 @@
                 </p>
                 <button 
                   @click="showPowerRankingSettings = true" 
-                  class="text-primary hover:text-yellow-500 text-xs font-semibold transition-colors mt-1"
+                  class="text-yellow-400 hover:text-yellow-300 text-xs font-semibold transition-colors mt-1"
                 >
                   Customize Formula →
                 </button>
+              </div>
+              <div class="flex items-center gap-2 text-sm mt-2">
+                <svg class="w-4 h-4 text-yellow-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 15l-2 5L9 9l11 4-5 2zm0 0l5 5M7.188 2.239l.777 2.897M5.136 7.965l-2.898-.777M13.95 4.05l-2.122 2.122m-5.657 5.656l-2.12 2.122" />
+                </svg>
+                <span class="text-dark-textMuted">Select <span class="text-yellow-400">team</span> for details</span>
               </div>
             </div>
             <div class="flex items-center gap-2 flex-shrink-0">
@@ -87,15 +78,15 @@
                 <option value="png">Static Image (PNG)</option>
                 <option value="gif">Animated GIF</option>
               </select>
-              <button @click="downloadRankings" :disabled="isGeneratingDownload" class="btn-primary flex items-center gap-2">
+              <button @click="downloadRankings" :disabled="isGeneratingDownload" class="px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg font-medium flex items-center gap-2 transition-colors disabled:opacity-50">
                 <svg v-if="!isGeneratingDownload" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
                 </svg>
                 <svg v-else class="w-5 h-5 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                   <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                 </svg>
-                {{ isGeneratingDownload ? 'Generating...' : 'Download' }}
+                {{ isGeneratingDownload ? 'Generating...' : 'Share' }}
               </button>
             </div>
           </div>
@@ -165,24 +156,25 @@
                     <div class="flex items-center justify-center gap-2">
                       <div class="w-16 h-2 bg-dark-border rounded-full overflow-hidden">
                         <div 
-                          class="h-full bg-primary rounded-full transition-all duration-500"
+                          class="h-full rounded-full transition-all duration-500"
+                          :class="getPowerScoreBarClass(team.powerScore)"
                           :style="{ width: `${team.powerScore}%` }"
                         ></div>
                       </div>
-                      <span class="font-bold text-primary">{{ team.powerScore.toFixed(1) }}</span>
+                      <span class="font-bold" :class="getPowerScoreTextClass(team.powerScore)">{{ team.powerScore.toFixed(1) }}</span>
                     </div>
                   </td>
                   <td class="py-3 px-4 text-center hidden sm:table-cell">
-                    <span class="font-medium text-dark-text">{{ team.wins }}-{{ team.losses }}</span>
+                    <span class="font-medium" :class="getRecordColumnClass(team)">{{ team.wins }}-{{ team.losses }}</span>
                   </td>
                   <td class="py-3 px-4 text-center hidden sm:table-cell">
-                    <span class="text-dark-textMuted">{{ team.allPlayWins }}-{{ team.allPlayLosses }}</span>
+                    <span :class="getAllPlayColumnClass(team)">{{ team.allPlayWins }}-{{ team.allPlayLosses }}</span>
                   </td>
                   <td class="py-3 px-4 text-right hidden md:table-cell">
-                    <span class="font-medium text-dark-text">{{ team.avgScore.toFixed(1) }}</span>
+                    <span class="font-medium" :class="getAvgScoreColumnClass(team)">{{ team.avgScore.toFixed(1) }}</span>
                   </td>
                   <td class="py-3 px-4 text-right hidden lg:table-cell">
-                    <span :class="team.recentAvg > team.avgScore ? 'text-green-400' : team.recentAvg < team.avgScore ? 'text-red-400' : 'text-dark-textMuted'">
+                    <span :class="getRecentAvgColumnClass(team)">
                       {{ team.recentAvg.toFixed(1) }}
                     </span>
                   </td>
@@ -353,7 +345,7 @@
         </div>
         <div class="card-body p-0">
           <div v-if="isLoadingPlayers" class="text-center py-8">
-            <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-3"></div>
+            <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-yellow-400 mx-auto mb-3"></div>
             <p class="text-dark-textMuted">Loading player data...</p>
           </div>
           <div v-else-if="rosProjectionsAvailable" class="space-y-2 p-4">
@@ -591,7 +583,7 @@
           </div>
           <div v-else class="text-center py-8">
             <div v-if="isLoadingPlayers">
-              <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-3"></div>
+              <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-yellow-400 mx-auto mb-3"></div>
               <p class="text-dark-textMuted">Loading player data...</p>
             </div>
             <div v-else>
@@ -732,7 +724,7 @@
           <div class="p-6 border-b border-dark-border">
             <div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
               <div class="bg-dark-border/30 rounded-xl p-4 text-center">
-                <div class="text-2xl font-black text-primary">{{ selectedTeamDetail?.powerScore.toFixed(1) }}</div>
+                <div class="text-2xl font-black text-yellow-400">{{ selectedTeamDetail?.powerScore.toFixed(1) }}</div>
                 <div class="text-xs text-dark-textMuted">Power Score</div>
               </div>
               <div class="bg-dark-border/30 rounded-xl p-4 text-center">
@@ -987,6 +979,8 @@ const effectiveLeagueKey = computed(() => {
   // Fall back to active league
   return leagueStore.activeLeagueId
 })
+
+const currentSeason = computed(() => leagueStore.currentLeague?.season || new Date().getFullYear().toString())
 
 const availableWeeks = computed(() => {
   const weeks = []
@@ -1340,17 +1334,80 @@ function handleImageError(e: Event) {
   img.src = defaultAvatar
 }
 
+// Power Score coloring - green for best, yellow for middle, red for worst
+function getPowerScoreBarClass(score: number): string {
+  const scores = powerRankings.value.map(t => t.powerScore)
+  const maxScore = Math.max(...scores)
+  const minScore = Math.min(...scores)
+  if (score === maxScore) return 'bg-green-500'
+  if (score === minScore) return 'bg-red-500'
+  return 'bg-yellow-500'
+}
+
+function getPowerScoreTextClass(score: number): string {
+  const scores = powerRankings.value.map(t => t.powerScore)
+  const maxScore = Math.max(...scores)
+  const minScore = Math.min(...scores)
+  if (score === maxScore) return 'text-green-400'
+  if (score === minScore) return 'text-red-400'
+  return 'text-yellow-400'
+}
+
+// Record column - only top green, only bottom red
+function getRecordColumnClass(team: any): string {
+  const teams = powerRankings.value
+  if (teams.length === 0) return 'text-dark-text'
+  const sortedByWins = [...teams].sort((a, b) => b.wins - a.wins)
+  const maxWins = sortedByWins[0]?.wins
+  const minWins = sortedByWins[sortedByWins.length - 1]?.wins
+  if (team.wins === maxWins && maxWins > minWins) return 'text-green-400'
+  if (team.wins === minWins && maxWins > minWins) return 'text-red-400'
+  return 'text-dark-text'
+}
+
+// All-Play column - only top green, only bottom red
+function getAllPlayColumnClass(team: any): string {
+  const teams = powerRankings.value
+  if (teams.length === 0) return 'text-dark-textMuted'
+  const sortedByAllPlay = [...teams].sort((a, b) => b.allPlayWins - a.allPlayWins)
+  const maxWins = sortedByAllPlay[0]?.allPlayWins
+  const minWins = sortedByAllPlay[sortedByAllPlay.length - 1]?.allPlayWins
+  if (team.allPlayWins === maxWins && maxWins > minWins) return 'text-green-400'
+  if (team.allPlayWins === minWins && maxWins > minWins) return 'text-red-400'
+  return 'text-dark-textMuted'
+}
+
+// Avg Score column - only top green, only bottom red
+function getAvgScoreColumnClass(team: any): string {
+  const teams = powerRankings.value
+  if (teams.length === 0) return 'text-dark-text'
+  const sortedByAvg = [...teams].sort((a, b) => b.avgScore - a.avgScore)
+  const maxAvg = sortedByAvg[0]?.avgScore
+  const minAvg = sortedByAvg[sortedByAvg.length - 1]?.avgScore
+  if (team.avgScore === maxAvg && maxAvg > minAvg) return 'text-green-400'
+  if (team.avgScore === minAvg && maxAvg > minAvg) return 'text-red-400'
+  return 'text-dark-text'
+}
+
+// Recent Avg column - only top green, only bottom red
+function getRecentAvgColumnClass(team: any): string {
+  const teams = powerRankings.value
+  if (teams.length === 0) return 'text-dark-textMuted'
+  const sortedByRecent = [...teams].sort((a, b) => b.recentAvg - a.recentAvg)
+  const maxRecent = sortedByRecent[0]?.recentAvg
+  const minRecent = sortedByRecent[sortedByRecent.length - 1]?.recentAvg
+  if (team.recentAvg === maxRecent && maxRecent > minRecent) return 'text-green-400'
+  if (team.recentAvg === minRecent && maxRecent > minRecent) return 'text-red-400'
+  return 'text-dark-textMuted'
+}
+
 function getTeamColor(idx: number): string {
   const colors = ['#3b82f6', '#ef4444', '#10b981', '#f59e0b', '#8b5cf6', '#ec4899', '#06b6d4', '#84cc16', '#f97316', '#6366f1', '#14b8a6', '#f43f5e']
   return colors[idx % colors.length]
 }
 
 function getRankClass(rank: number, total: number): string {
-  const percentile = rank / total
-  if (percentile <= 0.25) return 'bg-green-500/20 text-green-400'
-  if (percentile <= 0.5) return 'bg-blue-500/20 text-blue-400'
-  if (percentile <= 0.75) return 'bg-yellow-500/20 text-yellow-400'
-  return 'bg-red-500/20 text-red-400'
+  return 'bg-dark-border text-dark-text'
 }
 
 function getPositionRankClass(rank: number, total: number): string {

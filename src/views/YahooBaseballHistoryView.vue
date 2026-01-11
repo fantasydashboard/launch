@@ -1,5 +1,14 @@
 <template>
   <div class="space-y-6">
+    <!-- Offseason Notice Banner -->
+    <div class="bg-slate-500/10 border border-slate-500/30 rounded-xl p-4 flex items-start gap-3">
+      <div class="text-slate-400 text-xl flex-shrink-0">⚾</div>
+      <div>
+        <p class="text-slate-200 font-semibold">You're viewing the {{ currentSeason }} season</p>
+        <p class="text-slate-400 text-sm mt-1">The {{ Number(currentSeason) + 1 }} season will automatically appear here when it begins.</p>
+      </div>
+    </div>
+
     <!-- Header -->
     <div>
       <h1 class="text-3xl font-bold text-dark-text mb-2">League History</h1>
@@ -10,7 +19,7 @@
 
     <!-- Loading State -->
     <div v-if="isLoading" class="flex flex-col items-center justify-center py-20">
-      <div class="animate-spin rounded-full h-16 w-16 border-b-4 border-primary mb-4"></div>
+      <div class="animate-spin rounded-full h-16 w-16 border-b-4 border-yellow-400 mb-4"></div>
       <div class="text-lg font-semibold text-dark-text mb-2">Loading League History</div>
       <p class="text-dark-textMuted text-sm">{{ loadingMessage }}</p>
       <div class="text-xs text-dark-textMuted/70 mt-2">This may take a minute for leagues with many seasons</div>
@@ -21,7 +30,7 @@
       <div class="flex gap-2 flex-wrap">
         <button
           @click="activeHistoryTab = 'career'"
-          :class="activeHistoryTab === 'career' ? 'bg-primary text-gray-900' : 'bg-dark-card text-dark-textSecondary hover:bg-dark-border/50'"
+          :class="activeHistoryTab === 'career' ? 'bg-yellow-400 text-gray-900' : 'bg-dark-card text-dark-textSecondary hover:bg-dark-border/50'"
           class="px-4 py-2.5 rounded-xl font-semibold transition-all flex items-center gap-2 text-sm"
         >
           <span class="text-lg">📊</span>
@@ -29,7 +38,7 @@
         </button>
         <button
           @click="activeHistoryTab = 'h2h'"
-          :class="activeHistoryTab === 'h2h' ? 'bg-primary text-gray-900' : 'bg-dark-card text-dark-textSecondary hover:bg-dark-border/50'"
+          :class="activeHistoryTab === 'h2h' ? 'bg-yellow-400 text-gray-900' : 'bg-dark-card text-dark-textSecondary hover:bg-dark-border/50'"
           class="px-4 py-2.5 rounded-xl font-semibold transition-all flex items-center gap-2 text-sm"
         >
           <span class="text-lg">⚔️</span>
@@ -37,7 +46,7 @@
         </button>
         <button
           @click="activeHistoryTab = 'awards'"
-          :class="activeHistoryTab === 'awards' ? 'bg-primary text-gray-900' : 'bg-dark-card text-dark-textSecondary hover:bg-dark-border/50'"
+          :class="activeHistoryTab === 'awards' ? 'bg-yellow-400 text-gray-900' : 'bg-dark-card text-dark-textSecondary hover:bg-dark-border/50'"
           class="px-4 py-2.5 rounded-xl font-semibold transition-all flex items-center gap-2 text-sm"
         >
           <span class="text-lg">🏆</span>
@@ -61,11 +70,11 @@
             <div v-for="record in careerRecords" :key="record.label" 
                  class="relative overflow-hidden cursor-pointer"
                  @click="openRecordModal(record.label)">
-              <div class="p-6 bg-gradient-to-br from-primary/10 to-primary/5 rounded-xl border-2 border-primary/20 hover:border-primary/40 transition-all">
+              <div class="p-6 bg-gradient-to-br from-yellow-500/10 to-yellow-500/5 rounded-xl border-2 border-yellow-500/20 hover:border-yellow-500/40 transition-all">
                 <div class="flex items-start justify-between mb-4">
                   <div class="text-4xl">{{ record.icon }}</div>
                   <div class="text-right">
-                    <div class="text-4xl font-black text-primary mb-1">{{ record.value }}</div>
+                    <div class="text-4xl font-black text-yellow-400 mb-1">{{ record.value }}</div>
                   </div>
                 </div>
                 <div class="space-y-1">
@@ -73,7 +82,7 @@
                   <div class="font-bold text-lg text-dark-text">{{ record.team }}</div>
                   <div class="text-xs text-dark-textMuted">{{ record.detail }}</div>
                 </div>
-                <div class="text-xs text-primary mt-2 opacity-70">Click for details →</div>
+                <div class="text-xs text-yellow-400 mt-2 opacity-70">Click for details →</div>
               </div>
             </div>
           </div>
@@ -99,7 +108,7 @@
                   <input type="checkbox" v-model="showCurrentMembersOnlyCareer" class="sr-only">
                   <div :class="[
                     'w-10 h-5 rounded-full transition-colors',
-                    showCurrentMembersOnlyCareer ? 'bg-primary' : 'bg-dark-border'
+                    showCurrentMembersOnlyCareer ? 'bg-yellow-500' : 'bg-dark-border'
                   ]"></div>
                   <div :class="[
                     'absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full transition-transform',
@@ -112,7 +121,7 @@
                 <button 
                   @click="downloadCareerStats"
                   :disabled="isDownloadingCareerStats"
-                  class="btn-primary flex items-center gap-2 text-sm"
+                  class="px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg font-medium flex items-center gap-2 text-sm transition-colors disabled:opacity-50"
                 >
                   <svg v-if="!isDownloadingCareerStats" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
@@ -130,61 +139,25 @@
         <div class="card-body overflow-x-auto">
           <table ref="careerTableRef" class="w-full text-sm">
             <thead>
-              <tr class="border-b border-dark-border">
-                <th class="text-left py-3 px-4 font-semibold text-dark-textSecondary uppercase tracking-wider">Team</th>
-                <th class="text-center py-3 px-4 font-semibold text-dark-textSecondary uppercase tracking-wider cursor-pointer hover:bg-dark-border/30 transition-colors" @click="sortBy('seasons')">
-                  <div class="flex items-center justify-center gap-1">
-                    Seasons
-                    <span class="inline-flex flex-col" style="font-size: 10px; line-height: 8px;">
-                      <span :class="sortColumn === 'seasons' && sortDirection === 'asc' ? 'text-primary' : 'text-dark-textMuted'">▲</span>
-                      <span :class="sortColumn === 'seasons' && sortDirection === 'desc' ? 'text-primary' : 'text-dark-textMuted'">▼</span>
-                    </span>
-                  </div>
+              <tr class="text-left text-xs text-dark-textMuted uppercase border-b border-dark-border">
+                <th class="py-3 px-4 font-semibold">Team</th>
+                <th class="py-3 px-4 text-center cursor-pointer hover:text-yellow-400" @click="sortBy('seasons')">
+                  Seasons <span v-if="sortColumn === 'seasons'" class="text-yellow-400">{{ sortDirection === 'asc' ? '↑' : '↓' }}</span>
                 </th>
-                <th class="text-center py-3 px-4 font-semibold text-dark-textSecondary uppercase tracking-wider cursor-pointer hover:bg-dark-border/30 transition-colors" @click="sortBy('championships')">
-                  <div class="flex items-center justify-center gap-1">
-                    Championships
-                    <span class="inline-flex flex-col" style="font-size: 10px; line-height: 8px;">
-                      <span :class="sortColumn === 'championships' && sortDirection === 'asc' ? 'text-primary' : 'text-dark-textMuted'">▲</span>
-                      <span :class="sortColumn === 'championships' && sortDirection === 'desc' ? 'text-primary' : 'text-dark-textMuted'">▼</span>
-                    </span>
-                  </div>
+                <th class="py-3 px-4 text-center cursor-pointer hover:text-yellow-400" @click="sortBy('championships')">
+                  Championships <span v-if="sortColumn === 'championships'" class="text-yellow-400">{{ sortDirection === 'asc' ? '↑' : '↓' }}</span>
                 </th>
-                <th class="text-center py-3 px-4 font-semibold text-dark-textSecondary uppercase tracking-wider cursor-pointer hover:bg-dark-border/30 transition-colors" @click="sortBy('wins')">
-                  <div class="flex items-center justify-center gap-1">
-                    Record
-                    <span class="inline-flex flex-col" style="font-size: 10px; line-height: 8px;">
-                      <span :class="sortColumn === 'wins' && sortDirection === 'asc' ? 'text-primary' : 'text-dark-textMuted'">▲</span>
-                      <span :class="sortColumn === 'wins' && sortDirection === 'desc' ? 'text-primary' : 'text-dark-textMuted'">▼</span>
-                    </span>
-                  </div>
+                <th class="py-3 px-4 text-center cursor-pointer hover:text-yellow-400" @click="sortBy('wins')">
+                  Record <span v-if="sortColumn === 'wins'" class="text-yellow-400">{{ sortDirection === 'asc' ? '↑' : '↓' }}</span>
                 </th>
-                <th class="text-center py-3 px-4 font-semibold text-dark-textSecondary uppercase tracking-wider cursor-pointer hover:bg-dark-border/30 transition-colors" @click="sortBy('win_pct')">
-                  <div class="flex items-center justify-center gap-1">
-                    Win %
-                    <span class="inline-flex flex-col" style="font-size: 10px; line-height: 8px;">
-                      <span :class="sortColumn === 'win_pct' && sortDirection === 'asc' ? 'text-primary' : 'text-dark-textMuted'">▲</span>
-                      <span :class="sortColumn === 'win_pct' && sortDirection === 'desc' ? 'text-primary' : 'text-dark-textMuted'">▼</span>
-                    </span>
-                  </div>
+                <th class="py-3 px-4 text-center cursor-pointer hover:text-yellow-400" @click="sortBy('win_pct')">
+                  Win % <span v-if="sortColumn === 'win_pct'" class="text-yellow-400">{{ sortDirection === 'asc' ? '↑' : '↓' }}</span>
                 </th>
-                <th class="text-center py-3 px-4 font-semibold text-dark-textSecondary uppercase tracking-wider cursor-pointer hover:bg-dark-border/30 transition-colors" @click="sortBy('avg_ppw')">
-                  <div class="flex items-center justify-center gap-1">
-                    Avg PPW
-                    <span class="inline-flex flex-col" style="font-size: 10px; line-height: 8px;">
-                      <span :class="sortColumn === 'avg_ppw' && sortDirection === 'asc' ? 'text-primary' : 'text-dark-textMuted'">▲</span>
-                      <span :class="sortColumn === 'avg_ppw' && sortDirection === 'desc' ? 'text-primary' : 'text-dark-textMuted'">▼</span>
-                    </span>
-                  </div>
+                <th class="py-3 px-4 text-center cursor-pointer hover:text-yellow-400" @click="sortBy('avg_ppw')">
+                  Avg PPW <span v-if="sortColumn === 'avg_ppw'" class="text-yellow-400">{{ sortDirection === 'asc' ? '↑' : '↓' }}</span>
                 </th>
-                <th class="text-center py-3 px-4 font-semibold text-dark-textSecondary uppercase tracking-wider cursor-pointer hover:bg-dark-border/30 transition-colors" @click="sortBy('total_pf')">
-                  <div class="flex items-center justify-center gap-1">
-                    Total PF
-                    <span class="inline-flex flex-col" style="font-size: 10px; line-height: 8px;">
-                      <span :class="sortColumn === 'total_pf' && sortDirection === 'asc' ? 'text-primary' : 'text-dark-textMuted'">▲</span>
-                      <span :class="sortColumn === 'total_pf' && sortDirection === 'desc' ? 'text-primary' : 'text-dark-textMuted'">▼</span>
-                    </span>
-                  </div>
+                <th class="py-3 px-4 text-center cursor-pointer hover:text-yellow-400" @click="sortBy('total_pf')">
+                  Total PF <span v-if="sortColumn === 'total_pf'" class="text-yellow-400">{{ sortDirection === 'asc' ? '↑' : '↓' }}</span>
                 </th>
               </tr>
             </thead>
@@ -206,7 +179,7 @@
                 </td>
                 <td class="text-center py-3 px-4 text-dark-text">{{ stat.seasons }}</td>
                 <td class="text-center py-3 px-4">
-                  <span v-if="stat.championships > 0" class="text-primary font-bold">
+                  <span v-if="stat.championships > 0" class="text-yellow-400 font-bold">
                     🏆 {{ stat.championships }}
                   </span>
                   <span v-else class="text-dark-textMuted">—</span>
@@ -238,7 +211,7 @@
             <button 
               @click="downloadSeasonHistory"
               :disabled="isDownloadingSeasonHistory"
-              class="btn-primary flex items-center gap-2 text-sm"
+              class="px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg font-medium flex items-center gap-2 text-sm transition-colors disabled:opacity-50"
             >
               <svg v-if="!isDownloadingSeasonHistory" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
@@ -309,7 +282,7 @@
                   <input type="checkbox" v-model="showCurrentMembersOnlyH2H" class="sr-only">
                   <div :class="[
                     'w-10 h-5 rounded-full transition-colors',
-                    showCurrentMembersOnlyH2H ? 'bg-primary' : 'bg-dark-border'
+                    showCurrentMembersOnlyH2H ? 'bg-yellow-500' : 'bg-dark-border'
                   ]"></div>
                   <div :class="[
                     'absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full transition-transform',
@@ -320,7 +293,7 @@
               <button 
                 @click="downloadHeadToHead"
                 :disabled="isDownloadingH2H"
-                class="btn-primary flex items-center gap-2 text-sm"
+                class="px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg font-medium flex items-center gap-2 text-sm transition-colors disabled:opacity-50"
               >
                 <svg v-if="!isDownloadingH2H" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
@@ -339,26 +312,36 @@
           <table ref="h2hTableRef" class="w-full text-xs border-collapse">
             <thead>
               <tr>
-                <th class="sticky left-0 bg-dark-elevated z-10 px-3 py-2 text-left border border-dark-border">Team</th>
+                <th class="sticky left-0 bg-dark-elevated z-10 px-3 py-2 text-left border border-dark-border min-w-[120px]">Team</th>
                 <th 
                   v-for="team in filteredH2HTeams" 
                   :key="`header-${team.team_key}`"
-                  class="px-3 py-2 text-center border border-dark-border font-semibold text-dark-textSecondary uppercase tracking-wider"
-                  style="min-width: 80px;"
+                  class="px-2 py-2 text-center border border-dark-border font-semibold text-dark-textSecondary uppercase tracking-wider"
+                  style="min-width: 90px;"
                 >
-                  <div class="truncate" :title="team.team_name">{{ team.team_name.substring(0, 8) }}</div>
+                  <div class="flex flex-col items-center gap-1">
+                    <div class="w-6 h-6 rounded-full overflow-hidden bg-dark-border">
+                      <img :src="team.logo_url || defaultAvatar" class="w-full h-full object-cover" @error="handleImageError" />
+                    </div>
+                    <div class="truncate text-[10px]" :title="team.team_name">{{ team.team_name.substring(0, 8) }}</div>
+                  </div>
                 </th>
               </tr>
             </thead>
             <tbody>
               <tr v-for="rowTeam in filteredH2HTeams" :key="`row-${rowTeam.team_key}`">
                 <td class="sticky left-0 bg-dark-elevated z-10 px-3 py-2 font-semibold text-dark-text border border-dark-border whitespace-nowrap">
-                  {{ rowTeam.team_name }}
+                  <div class="flex items-center gap-2">
+                    <div class="w-6 h-6 rounded-full overflow-hidden bg-dark-border flex-shrink-0">
+                      <img :src="rowTeam.logo_url || defaultAvatar" class="w-full h-full object-cover" @error="handleImageError" />
+                    </div>
+                    <span class="truncate">{{ rowTeam.team_name }}</span>
+                  </div>
                 </td>
                 <td 
                   v-for="colTeam in filteredH2HTeams" 
                   :key="`cell-${rowTeam.team_key}-${colTeam.team_key}`"
-                  class="px-3 py-2 text-center border border-dark-border"
+                  class="px-2 py-2 text-center border border-dark-border"
                   :class="getH2HCellClass(rowTeam.team_key, colTeam.team_key)"
                 >
                   <span v-if="rowTeam.team_key === colTeam.team_key" class="text-dark-textMuted">—</span>
@@ -391,7 +374,7 @@
                 :class="[
                   'px-4 py-2 rounded-lg font-semibold transition-colors',
                   selectedAwardTab === tab 
-                    ? 'bg-primary text-dark-bg' 
+                    ? 'bg-yellow-400 text-gray-900' 
                     : 'bg-dark-border/30 text-dark-textSecondary hover:bg-dark-border/50'
                 ]"
               >
@@ -449,7 +432,7 @@
                 <div 
                   v-for="award in allTimeHallOfFame" 
                   :key="award.title" 
-                  class="bg-dark-border/30 rounded-xl p-4 cursor-pointer hover:bg-dark-border/50 transition-colors"
+                  class="bg-green-500/10 border border-green-500/30 rounded-xl p-4 cursor-pointer hover:bg-green-500/20 transition-colors"
                   @click="openAwardModal(award.title, 'best')"
                 >
                   <div class="text-sm text-dark-textMuted uppercase tracking-wide mb-2">{{ award.title }}</div>
@@ -472,7 +455,7 @@
                   </div>
                   <div v-if="award.winner" class="text-xs text-dark-textSecondary">{{ award.winner.details }}</div>
                   <div v-else class="text-sm text-dark-textMuted italic">No data available</div>
-                  <div class="text-xs text-primary mt-2 opacity-70">Click for top 10 →</div>
+                  <div class="text-xs text-green-400 mt-2 opacity-70">Click for top 10 →</div>
                 </div>
               </div>
             </div>
@@ -510,7 +493,7 @@
                   </div>
                   <div v-if="award.winner" class="text-xs text-dark-textSecondary">{{ award.winner.details }}</div>
                   <div v-else class="text-sm text-dark-textMuted italic">No data available</div>
-                  <div class="text-xs text-primary mt-2 opacity-70">Click for bottom 10 →</div>
+                  <div class="text-xs text-red-400 mt-2 opacity-70">Click for bottom 10 →</div>
                 </div>
               </div>
             </div>
@@ -528,7 +511,7 @@
                 <div 
                   v-for="award in seasonHallOfFame" 
                   :key="award.title" 
-                  class="bg-dark-border/30 rounded-xl p-4 cursor-pointer hover:bg-dark-border/50 transition-colors"
+                  class="bg-green-500/10 border border-green-500/30 rounded-xl p-4 cursor-pointer hover:bg-green-500/20 transition-colors"
                   @click="openSeasonAwardModal(award.title, 'best')"
                 >
                   <div class="text-sm text-dark-textMuted uppercase tracking-wide mb-2">{{ award.title }}</div>
@@ -550,7 +533,7 @@
                   </div>
                   <div v-if="award.winner" class="text-xs text-dark-textSecondary">{{ award.winner.details }}</div>
                   <div v-else class="text-sm text-dark-textMuted italic">No data available</div>
-                  <div class="text-xs text-primary mt-2 opacity-70">Click for top 10 →</div>
+                  <div class="text-xs text-green-400 mt-2 opacity-70">Click for top 10 →</div>
                 </div>
               </div>
             </div>
@@ -587,7 +570,7 @@
                   </div>
                   <div v-if="award.winner" class="text-xs text-dark-textSecondary">{{ award.winner.details }}</div>
                   <div v-else class="text-sm text-dark-textMuted italic">No data available</div>
-                  <div class="text-xs text-primary mt-2 opacity-70">Click for bottom 10 →</div>
+                  <div class="text-xs text-red-400 mt-2 opacity-70">Click for bottom 10 →</div>
                 </div>
               </div>
             </div>
@@ -621,7 +604,7 @@
                 </div>
                 <div v-if="award.winner" class="text-xs text-dark-textSecondary">{{ award.winner.details }}</div>
                 <div v-else class="text-sm text-dark-textMuted italic">No data available</div>
-                <div class="text-xs text-primary mt-2 opacity-70">Click for details →</div>
+                <div class="text-xs text-yellow-400 mt-2 opacity-70">Click for details →</div>
               </div>
             </div>
           </div>
@@ -670,12 +653,12 @@
             </div>
           </div>
           
-          <div class="p-6 border-b border-dark-border bg-gradient-to-r from-primary/10 to-transparent" v-if="recordModalRankings[0]">
+          <div class="p-6 border-b border-dark-border bg-gradient-to-r from-yellow-500/10 to-transparent" v-if="recordModalRankings[0]">
             <div class="flex items-center gap-4">
               <img 
                 :src="recordModalRankings[0].logo_url || defaultAvatar" 
                 :alt="recordModalRankings[0].team_name"
-                class="w-16 h-16 rounded-full ring-4 ring-primary/50 object-cover"
+                class="w-16 h-16 rounded-full ring-4 ring-yellow-500/50 object-cover"
                 @error="handleImageError"
               />
               <div class="flex-1">
@@ -683,7 +666,7 @@
                 <div class="text-sm text-dark-textMuted">{{ recordModalRankings[0].detail }}</div>
               </div>
               <div class="text-right">
-                <div class="text-3xl font-black text-primary">{{ recordModalRankings[0].value }}</div>
+                <div class="text-3xl font-black text-yellow-400">{{ recordModalRankings[0].value }}</div>
               </div>
             </div>
           </div>
@@ -697,20 +680,20 @@
                 class="flex items-center gap-3"
               >
                 <div class="w-6 text-center">
-                  <span class="text-sm font-bold" :class="index === 0 ? 'text-primary' : 'text-dark-textMuted'">{{ index + 1 }}</span>
+                  <span class="text-sm font-bold" :class="index === 0 ? 'text-yellow-400' : 'text-dark-textMuted'">{{ index + 1 }}</span>
                 </div>
                 <img :src="team.logo_url || defaultAvatar" :alt="team.team_name" class="w-8 h-8 rounded-full object-cover" @error="handleImageError" />
                 <div class="flex-1 min-w-0">
                   <div class="text-sm font-medium text-dark-text truncate mb-1">{{ team.team_name }}</div>
                   <div class="h-2.5 bg-dark-border rounded-full overflow-hidden">
                     <div 
-                      class="h-full rounded-full transition-all duration-500 bg-primary"
+                      class="h-full rounded-full transition-all duration-500 bg-yellow-500"
                       :style="{ width: getRecordBarWidth(team.value, recordModalLabel) }"
                     ></div>
                   </div>
                 </div>
                 <div class="w-20 text-right">
-                  <div class="text-sm font-semibold" :class="index === 0 ? 'text-primary' : 'text-dark-text'">
+                  <div class="text-sm font-semibold" :class="index === 0 ? 'text-yellow-400' : 'text-dark-text'">
                     {{ team.value }}
                   </div>
                 </div>
@@ -1025,6 +1008,9 @@ const effectiveLeagueKey = computed(() => {
   if (leagueStore.currentLeague?.league_id) return leagueStore.currentLeague.league_id
   return leagueStore.activeLeagueId
 })
+
+// Current season for display
+const currentSeason = computed(() => leagueStore.currentLeague?.season || new Date().getFullYear().toString())
 
 const defaultAvatar = 'https://s.yimg.com/cv/apiv2/default/mlb/mlb_1_100.png'
 

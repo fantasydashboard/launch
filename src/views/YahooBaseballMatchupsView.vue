@@ -1,5 +1,14 @@
 <template>
   <div class="space-y-6">
+    <!-- Offseason Notice Banner -->
+    <div class="bg-slate-500/10 border border-slate-500/30 rounded-xl p-4 flex items-start gap-3">
+      <div class="text-slate-400 text-xl flex-shrink-0">⚾</div>
+      <div>
+        <p class="text-slate-200 font-semibold">You're viewing the {{ currentSeason }} season</p>
+        <p class="text-slate-400 text-sm mt-1">The {{ Number(currentSeason) + 1 }} season will automatically appear here when it begins.</p>
+      </div>
+    </div>
+
     <!-- Header with Controls -->
     <div class="flex items-center justify-between flex-wrap gap-4">
       <div>
@@ -9,20 +18,6 @@
         </p>
       </div>
       <div class="flex items-center gap-3">
-        <button 
-          @click="downloadAllMatchups" 
-          :disabled="isDownloadingAll || matchups.length === 0"
-          class="btn-secondary flex items-center gap-2"
-        >
-          <svg v-if="!isDownloadingAll" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-          </svg>
-          <svg v-else class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
-            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-          </svg>
-          {{ isDownloadingAll ? `Downloading ${downloadProgress}` : 'Download All' }}
-        </button>
         <button 
           @click="refreshData" 
           :disabled="isRefreshing"
@@ -50,7 +45,7 @@
 
     <!-- Loading State -->
     <div v-if="isLoading" class="flex items-center justify-center py-20">
-      <div class="animate-spin rounded-full h-16 w-16 border-b-4 border-primary"></div>
+      <div class="animate-spin rounded-full h-16 w-16 border-b-4 border-yellow-400"></div>
     </div>
 
     <template v-else-if="matchups.length > 0">
@@ -99,12 +94,31 @@
       <!-- Matchup Selector -->
       <div class="card">
         <div class="card-header">
-          <div class="flex items-center gap-2">
-            <span class="text-2xl">⚔️</span>
-            <h2 class="card-title">Select Matchup to Analyze</h2>
+          <div class="flex items-center justify-between">
+            <div class="flex items-center gap-2">
+              <span class="text-2xl">⚔️</span>
+              <h2 class="card-title">Select Matchup to Analyze</h2>
+            </div>
+            <button 
+              @click="downloadAllMatchups" 
+              :disabled="isDownloadingAll || matchups.length === 0"
+              class="px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg font-medium flex items-center gap-2 transition-colors disabled:opacity-50"
+            >
+              <svg v-if="!isDownloadingAll" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
+              </svg>
+              <svg v-else class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+              </svg>
+              {{ isDownloadingAll ? `Sharing ${downloadProgress}` : 'Share All' }}
+            </button>
           </div>
-          <p class="text-sm text-dark-textMuted mt-2">
-            💡 Click any matchup to see head-to-head history, win probability, and detailed analysis
+          <p class="text-sm text-dark-textMuted mt-2 flex items-center gap-2">
+            <svg class="w-4 h-4 text-yellow-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 15l-2 5L9 9l11 4-5 2zm0 0l5 5M7.188 2.239l.777 2.897M5.136 7.965l-2.898-.777M13.95 4.05l-2.122 2.122m-5.657 5.656l-2.12 2.122" />
+            </svg>
+            <span class="text-yellow-400 font-medium">Select matchup for details</span>
           </p>
         </div>
         <div class="card-body">
@@ -116,8 +130,8 @@
               :class="[
                 'p-4 rounded-xl border-2 transition-all text-left',
                 selectedMatchup?.matchup_id === matchup.matchup_id
-                  ? 'border-primary bg-primary/10 ring-2 ring-primary/30'
-                  : 'border-dark-border bg-dark-card hover:border-primary/50 hover:bg-dark-border/30'
+                  ? 'border-yellow-400 bg-yellow-500/10 ring-2 ring-yellow-400/30'
+                  : 'border-dark-border bg-dark-card hover:border-yellow-400/50 hover:bg-dark-border/30'
               ]"
             >
               <!-- Status Badge -->
@@ -215,7 +229,7 @@
               <button 
                 @click="downloadWinProbability"
                 :disabled="isDownloading"
-                class="btn-primary flex items-center gap-2"
+                class="px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg font-medium flex items-center gap-2 transition-colors disabled:opacity-50"
               >
                 <svg v-if="!isDownloading" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
@@ -443,7 +457,7 @@
             <button
               @click="downloadComparison"
               :disabled="isDownloadingComparison"
-              class="btn-primary flex items-center gap-2 text-sm"
+              class="px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg font-medium flex items-center gap-2 text-sm transition-colors disabled:opacity-50"
             >
               <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />

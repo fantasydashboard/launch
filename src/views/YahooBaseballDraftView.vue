@@ -23,7 +23,7 @@
         v-for="tab in tabOptions"
         :key="tab.id"
         @click="activeTab = tab.id"
-        :class="activeTab === tab.id ? 'bg-primary text-gray-900' : 'bg-dark-card text-dark-textSecondary hover:bg-dark-border/50'"
+        :class="activeTab === tab.id ? 'bg-yellow-400 text-gray-900' : 'bg-dark-card text-dark-textSecondary hover:bg-dark-border/50'"
         class="px-4 py-2.5 rounded-xl font-semibold transition-all flex items-center gap-2 text-sm"
       >
         <span class="text-lg">{{ tab.icon }}</span>
@@ -34,7 +34,7 @@
     <!-- Loading State -->
     <div v-if="isLoading" class="flex items-center justify-center py-20">
       <div class="text-center">
-        <div class="animate-spin rounded-full h-16 w-16 border-b-4 border-primary mx-auto mb-4"></div>
+        <div class="animate-spin rounded-full h-16 w-16 border-b-4 border-yellow-400 mx-auto mb-4"></div>
         <p class="text-dark-textMuted">Loading draft data...</p>
       </div>
     </div>
@@ -86,8 +86,11 @@
                 <span class="text-dark-textMuted">Reach (-8 or worse)</span>
               </div>
             </div>
-            <div class="text-sm text-dark-textMuted">
-              Click any player for details
+            <div class="flex items-center gap-2 text-yellow-400 text-sm">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 15l-2 5L9 9l11 4-5 2zm0 0l5 5M7.188 2.239l.777 2.897M5.136 7.965l-2.898-.777M13.95 4.05l-2.122 2.122m-5.657 5.656l-2.12 2.122" />
+              </svg>
+              <span>Select team or player for details</span>
             </div>
           </div>
         </div>
@@ -132,7 +135,7 @@
               <div 
                 v-if="getPickForRound(team.team_key, round)"
                 @click="selectPick(getPickForRound(team.team_key, round))"
-                class="bg-dark-card rounded-lg p-2 cursor-pointer hover:ring-2 hover:ring-primary transition-all h-full"
+                class="bg-dark-card rounded-lg p-2 cursor-pointer hover:ring-2 hover:ring-yellow-400 transition-all h-full"
                 :class="getPickClass(getPickForRound(team.team_key, round))"
               >
                 <div class="text-xs font-medium text-dark-text truncate">
@@ -199,7 +202,7 @@
         <div 
           v-for="team in teamGrades" 
           :key="team.team_key"
-          class="card cursor-pointer hover:ring-2 hover:ring-primary transition-all"
+          class="card cursor-pointer hover:ring-2 hover:ring-yellow-400 transition-all"
           @click="selectedTeamFilter = team.team_key"
         >
           <div class="card-body">
@@ -912,42 +915,46 @@ async function loadDraftData() {
     const leagueNum = leagueKey.split('.l.')[1]
     let seasonLeagueKey = leagueKey
     
-    console.log('Loading draft for league:', seasonLeagueKey)
+    console.log('[POINTS DRAFT] Loading draft for league:', seasonLeagueKey)
     
     // Get draft results
     let draftResults = await yahooService.getDraftResults(seasonLeagueKey)
-    console.log('Draft results:', draftResults)
+    console.log('[POINTS DRAFT] Draft results type:', draftResults.type, 'picks:', draftResults.picks?.length)
     
     // Check if draft has player data (draft_status might be "predraft" or picks might not have player_keys)
-    const playerKeys = draftResults.picks?.map((p: any) => p.player_key).filter(Boolean) || []
+    let playerKeys = draftResults.picks?.map((p: any) => p.player_key).filter(Boolean) || []
+    console.log('[POINTS DRAFT] Player keys found:', playerKeys.length, 'from', draftResults.picks?.length, 'picks')
     
     // If no player keys (draft hasn't happened), try to fall back to previous season
     if (playerKeys.length === 0 && draftResults.picks?.length > 0) {
-      console.log('Draft has picks but no player keys (predraft). Checking for previous season...')
+      console.log('[POINTS DRAFT] Draft has picks but no player keys (predraft). Checking for previous season...')
       
-      // Try to get previous season from league metadata
-      const metadata = await yahooService.getLeagueMetadata(seasonLeagueKey)
-      const renewedFrom = metadata?.renew // Format: "431_136233" (previous year's game_leaguenum)
+      // Use renew field from draft results (already contains previous season info)
+      const renewedFrom = draftResults.renew // Format: "431_136233" (previous year's game_leaguenum)
+      console.log('[POINTS DRAFT] Renew field from draft results:', renewedFrom)
       
       if (renewedFrom) {
         const [prevGameKey, prevLeagueNum] = renewedFrom.split('_')
         const prevLeagueKey = `${prevGameKey}.l.${prevLeagueNum}`
-        console.log('Found previous season:', prevLeagueKey, '- loading that draft instead')
+        console.log('[POINTS DRAFT] Found previous season:', prevLeagueKey, '- loading that draft instead')
         
         // Load previous season's draft
         draftResults = await yahooService.getDraftResults(prevLeagueKey)
         seasonLeagueKey = prevLeagueKey
+        console.log('[POINTS DRAFT] Previous season draft picks:', draftResults.picks?.length)
         
         // Update player keys
-        const prevPlayerKeys = draftResults.picks?.map((p: any) => p.player_key).filter(Boolean) || []
-        if (prevPlayerKeys.length === 0) {
-          console.log('Previous season also has no draft data')
+        playerKeys = draftResults.picks?.map((p: any) => p.player_key).filter(Boolean) || []
+        console.log('[POINTS DRAFT] Previous season player keys:', playerKeys.length)
+        
+        if (playerKeys.length === 0) {
+          console.log('[POINTS DRAFT] Previous season also has no draft data')
           draftPicks.value = []
           isLoading.value = false
           return
         }
       } else {
-        console.log('No previous season found and current draft has no player data')
+        console.log('[POINTS DRAFT] No previous season found (no renew field)')
         draftPicks.value = []
         isLoading.value = false
         return
@@ -962,10 +969,10 @@ async function loadDraftData() {
     
     // Get player details (re-calculate playerKeys in case we switched seasons)
     const finalPlayerKeys = draftResults.picks.map((p: any) => p.player_key).filter(Boolean)
-    console.log('Fetching details for', finalPlayerKeys.length, 'players')
+    console.log('[POINTS DRAFT] Fetching details for', finalPlayerKeys.length, 'players from', seasonLeagueKey)
     const players = await yahooService.getPlayers(finalPlayerKeys, seasonLeagueKey)
     playerData.value = players
-    console.log('Got player details:', players.size)
+    console.log('[POINTS DRAFT] Got player details:', players.size)
     
     // Get player stats
     const stats = await yahooService.getPlayerStats(seasonLeagueKey, finalPlayerKeys)

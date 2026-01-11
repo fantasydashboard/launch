@@ -11,8 +11,8 @@
 
     <!-- Settings Gear at Top -->
     <div class="flex justify-end">
-      <router-link to="/settings" class="p-2 rounded-lg bg-dark-card border border-dark-border hover:border-red-600 transition-colors">
-        <svg class="w-6 h-6 text-dark-textMuted hover:text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <router-link to="/settings" class="p-2 rounded-lg bg-dark-card border border-dark-border hover:border-yellow-400 transition-colors">
+        <svg class="w-6 h-6 text-dark-textMuted hover:text-yellow-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
         </svg>
@@ -192,9 +192,12 @@
               <span class="text-2xl">🏆</span>
               <h2 class="card-title">League Standings</h2>
             </div>
-            <p class="text-sm text-dark-textMuted mt-1">
-              <span class="text-red-500">Click any team</span> to see detailed stats and category breakdown
-            </p>
+            <div class="flex items-center gap-2 text-sm mt-1">
+              <svg class="w-4 h-4 text-yellow-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 15l-2 5L9 9l11 4-5 2zm0 0l5 5M7.188 2.239l.777 2.897M5.136 7.965l-2.898-.777M13.95 4.05l-2.122 2.122m-5.657 5.656l-2.12 2.122" />
+              </svg>
+              <span class="text-dark-textMuted">Select <span class="text-yellow-400">team</span> for details</span>
+            </div>
           </div>
           <div class="flex items-center gap-2 flex-shrink-0">
             <button 
@@ -233,12 +236,12 @@
         <table class="w-full">
           <thead>
             <tr class="text-left text-xs text-dark-textMuted uppercase border-b border-dark-border">
-              <th class="py-3 px-3 w-12 cursor-pointer hover:text-red-400" @click="setSortColumn('rank')">
-                # <span v-if="sortColumn === 'rank'" class="text-red-400">{{ sortDirection === 'asc' ? '↑' : '↓' }}</span>
+              <th class="py-3 px-3 w-12 cursor-pointer hover:text-yellow-400" @click="setSortColumn('rank')">
+                # <span v-if="sortColumn === 'rank'" class="text-yellow-400">{{ sortDirection === 'asc' ? '↑' : '↓' }}</span>
               </th>
               <th class="py-3 px-3 min-w-[150px]">Team</th>
-              <th class="py-3 px-3 text-center cursor-pointer hover:text-red-400" @click="setSortColumn('record')" title="Total Category W-L-T">
-                W-L-T <span v-if="sortColumn === 'record'" class="text-red-400">{{ sortDirection === 'asc' ? '↑' : '↓' }}</span>
+              <th class="py-3 px-3 text-center cursor-pointer hover:text-yellow-400" @click="setSortColumn('record')" title="Total Category W-L-T">
+                W-L-T <span v-if="sortColumn === 'record'" class="text-yellow-400">{{ sortDirection === 'asc' ? '↑' : '↓' }}</span>
               </th>
               
               <!-- Category columns (for H2H/Roto Category leagues) -->
@@ -246,27 +249,27 @@
                 <th 
                   v-for="cat in displayCategories" 
                   :key="cat.stat_id"
-                  class="py-3 px-2 text-center cursor-pointer hover:text-red-400 whitespace-nowrap"
+                  class="py-3 px-2 text-center cursor-pointer hover:text-yellow-400 whitespace-nowrap"
                   :title="cat.name + ' - Times won this category'"
                   @click="setSortColumn('cat_' + cat.stat_id)"
                 >
                   <div class="flex flex-col items-center">
                     <span class="text-[10px]">{{ cat.display_name }}</span>
-                    <span v-if="sortColumn === 'cat_' + cat.stat_id" class="text-[8px] text-red-400">{{ sortDirection === 'asc' ? '↑' : '↓' }}</span>
+                    <span v-if="sortColumn === 'cat_' + cat.stat_id" class="text-[8px] text-yellow-400">{{ sortDirection === 'asc' ? '↑' : '↓' }}</span>
                   </div>
                 </th>
               </template>
               
               <!-- Points columns (for Points leagues) -->
               <template v-else>
-                <th class="py-3 px-3 text-center cursor-pointer hover:text-red-400" @click="setSortColumn('allPlay')">
-                  All-Play <span v-if="sortColumn === 'allPlay'" class="text-red-400">{{ sortDirection === 'asc' ? '↑' : '↓' }}</span>
+                <th class="py-3 px-3 text-center cursor-pointer hover:text-yellow-400" @click="setSortColumn('allPlay')">
+                  All-Play <span v-if="sortColumn === 'allPlay'" class="text-yellow-400">{{ sortDirection === 'asc' ? '↑' : '↓' }}</span>
                 </th>
-                <th class="py-3 px-3 text-right cursor-pointer hover:text-red-400" @click="setSortColumn('pf')">
-                  PF <span v-if="sortColumn === 'pf'" class="text-red-400">{{ sortDirection === 'asc' ? '↑' : '↓' }}</span>
+                <th class="py-3 px-3 text-right cursor-pointer hover:text-yellow-400" @click="setSortColumn('pf')">
+                  PF <span v-if="sortColumn === 'pf'" class="text-yellow-400">{{ sortDirection === 'asc' ? '↑' : '↓' }}</span>
                 </th>
-                <th class="py-3 px-3 text-right cursor-pointer hover:text-red-400" @click="setSortColumn('pa')">
-                  PA <span v-if="sortColumn === 'pa'" class="text-red-400">{{ sortDirection === 'asc' ? '↑' : '↓' }}</span>
+                <th class="py-3 px-3 text-right cursor-pointer hover:text-yellow-400" @click="setSortColumn('pa')">
+                  PA <span v-if="sortColumn === 'pa'" class="text-yellow-400">{{ sortDirection === 'asc' ? '↑' : '↓' }}</span>
                 </th>
               </template>
             </tr>
@@ -435,7 +438,7 @@
               <div class="font-semibold text-dark-text truncate text-sm">{{ stat.team?.name || 'N/A' }}</div>
               <div class="text-xs font-bold" :class="stat.valueClass">{{ stat.value }}</div>
             </div>
-            <div class="text-dark-textMuted/50 group-hover:text-red-500 transition-colors">
+            <div class="text-dark-textMuted/50 group-hover:text-yellow-400 transition-colors">
               <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
               </svg>
@@ -714,6 +717,7 @@ const defaultAvatar = 'https://s.yimg.com/cv/apiv2/default/mlb/mlb_2_g.png'
 // League settings
 const scoringType = ref<string>('head')
 const statCategories = ref<any[]>([])
+const loadedSeason = ref<string>('')
 
 // Sorting
 const sortColumn = ref('rank')
@@ -798,16 +802,18 @@ const effectiveLeagueKey = computed(() => {
 })
 
 const currentSeason = computed(() => {
-  // First try currentLeague which is populated when loading (including previous season fallback)
-  if (leagueStore.currentLeague?.season) return leagueStore.currentLeague.season
-  // Then try yahooLeague raw data (the array from API)
-  const yahooSeason = leagueStore.yahooLeague?.[0]?.season
-  if (yahooSeason) return yahooSeason
-  // Then try saved league
-  const savedLeague = leagueStore.savedLeagues?.find((l: any) => l.league_id === leagueStore.activeLeagueId)
-  if (savedLeague?.season) return savedLeague.season
-  // Fallback to current year
-  return new Date().getFullYear()
+  // First check season loaded directly from Yahoo API
+  if (loadedSeason.value) return loadedSeason.value
+  // Then check yahooLeague from API
+  const league = leagueStore.yahooLeague
+  if (Array.isArray(league) && league[0]?.season) {
+    return league[0].season
+  }
+  if (league?.season) {
+    return league.season
+  }
+  // Fall back to currentLeague
+  return leagueStore.currentLeague?.season || new Date().getFullYear().toString()
 })
 const currentWeek = computed(() => {
   // Try currentLeague first (populated from saved league)
@@ -2508,6 +2514,13 @@ async function loadLeagueSettings() {
   if (!leagueKey) return
   
   try {
+    // Get league details to get the season
+    const leagueDetails = await yahooService.getLeagueDetails(leagueKey)
+    if (leagueDetails?.[0]?.season) {
+      loadedSeason.value = leagueDetails[0].season
+      console.log('Loaded season from API:', loadedSeason.value)
+    }
+    
     const settings = await yahooService.getLeagueScoringSettings(leagueKey)
     if (settings) {
       scoringType.value = settings.scoring_type || 'head'

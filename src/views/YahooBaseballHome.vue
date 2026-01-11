@@ -49,7 +49,7 @@
 
         <div v-if="isLoading" class="flex items-center justify-center py-12">
           <div class="text-center">
-            <div class="animate-spin rounded-full h-12 w-12 border-b-4 border-primary mx-auto mb-3"></div>
+            <div class="animate-spin rounded-full h-12 w-12 border-b-4 border-yellow-400 mx-auto mb-3"></div>
             <p class="text-dark-textMuted text-sm">Loading matchups...</p>
           </div>
         </div>
@@ -206,6 +206,12 @@
             <div class="text-sm text-dark-textMuted">
               {{ isPointsLeague ? 'Points league' : 'Category wins per stat (cumulative season total)' }}
             </div>
+            <div class="flex items-center gap-2 text-sm mt-1">
+              <svg class="w-4 h-4 text-yellow-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 15l-2 5L9 9l11 4-5 2zm0 0l5 5M7.188 2.239l.777 2.897M5.136 7.965l-2.898-.777M13.95 4.05l-2.122 2.122m-5.657 5.656l-2.12 2.122" />
+              </svg>
+              <span class="text-dark-textMuted">Select <span class="text-yellow-400">team</span> for details</span>
+            </div>
           </div>
           <div class="flex items-center gap-2 flex-shrink-0">
             <button 
@@ -241,12 +247,12 @@
         <table class="w-full">
           <thead>
             <tr class="text-left text-xs text-dark-textMuted uppercase border-b border-dark-border">
-              <th class="py-3 px-3 w-12 cursor-pointer hover:text-red-400" @click="setSortColumn('rank')">
-                # <span v-if="sortColumn === 'rank'" class="text-red-400">{{ sortDirection === 'asc' ? '↑' : '↓' }}</span>
+              <th class="py-3 px-3 w-12 cursor-pointer hover:text-yellow-400" @click="setSortColumn('rank')">
+                # <span v-if="sortColumn === 'rank'" class="text-yellow-400">{{ sortDirection === 'asc' ? '↑' : '↓' }}</span>
               </th>
               <th class="py-3 px-3 min-w-[150px]">Team</th>
-              <th class="py-3 px-3 text-center cursor-pointer hover:text-red-400" @click="setSortColumn('record')" title="Total Category W-L-T">
-                W-L-T <span v-if="sortColumn === 'record'" class="text-red-400">{{ sortDirection === 'asc' ? '↑' : '↓' }}</span>
+              <th class="py-3 px-3 text-center cursor-pointer hover:text-yellow-400" @click="setSortColumn('record')" title="Total Category W-L-T">
+                W-L-T <span v-if="sortColumn === 'record'" class="text-yellow-400">{{ sortDirection === 'asc' ? '↑' : '↓' }}</span>
               </th>
               
               <!-- Category columns (for H2H/Roto Category leagues) -->
@@ -254,27 +260,27 @@
                 <th 
                   v-for="cat in displayCategories" 
                   :key="cat.stat_id"
-                  class="py-3 px-2 text-center cursor-pointer hover:text-red-400 whitespace-nowrap"
+                  class="py-3 px-2 text-center cursor-pointer hover:text-yellow-400 whitespace-nowrap"
                   :title="cat.name + ' - Times won this category'"
                   @click="setSortColumn('cat_' + cat.stat_id)"
                 >
                   <div class="flex flex-col items-center">
                     <span class="text-[10px]">{{ cat.display_name }}</span>
-                    <span v-if="sortColumn === 'cat_' + cat.stat_id" class="text-[8px] text-red-400">{{ sortDirection === 'asc' ? '↑' : '↓' }}</span>
+                    <span v-if="sortColumn === 'cat_' + cat.stat_id" class="text-[8px] text-yellow-400">{{ sortDirection === 'asc' ? '↑' : '↓' }}</span>
                   </div>
                 </th>
               </template>
               
               <!-- Points columns (for Points leagues) -->
               <template v-else>
-                <th class="py-3 px-3 text-center cursor-pointer hover:text-red-400" @click="setSortColumn('allPlay')">
-                  All-Play <span v-if="sortColumn === 'allPlay'" class="text-red-400">{{ sortDirection === 'asc' ? '↑' : '↓' }}</span>
+                <th class="py-3 px-3 text-center cursor-pointer hover:text-yellow-400" @click="setSortColumn('allPlay')">
+                  All-Play <span v-if="sortColumn === 'allPlay'" class="text-yellow-400">{{ sortDirection === 'asc' ? '↑' : '↓' }}</span>
                 </th>
-                <th class="py-3 px-3 text-right cursor-pointer hover:text-red-400" @click="setSortColumn('pf')">
-                  PF <span v-if="sortColumn === 'pf'" class="text-red-400">{{ sortDirection === 'asc' ? '↑' : '↓' }}</span>
+                <th class="py-3 px-3 text-right cursor-pointer hover:text-yellow-400" @click="setSortColumn('pf')">
+                  PF <span v-if="sortColumn === 'pf'" class="text-yellow-400">{{ sortDirection === 'asc' ? '↑' : '↓' }}</span>
                 </th>
-                <th class="py-3 px-3 text-right cursor-pointer hover:text-red-400" @click="setSortColumn('pa')">
-                  PA <span v-if="sortColumn === 'pa'" class="text-red-400">{{ sortDirection === 'asc' ? '↑' : '↓' }}</span>
+                <th class="py-3 px-3 text-right cursor-pointer hover:text-yellow-400" @click="setSortColumn('pa')">
+                  PA <span v-if="sortColumn === 'pa'" class="text-yellow-400">{{ sortDirection === 'asc' ? '↑' : '↓' }}</span>
                 </th>
               </template>
             </tr>
@@ -366,7 +372,7 @@
       <div class="card-body">
         <div v-if="isLoadingChart" class="flex items-center justify-center py-12">
           <div class="text-center">
-            <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-3"></div>
+            <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-yellow-400 mx-auto mb-3"></div>
             <p class="text-dark-textMuted text-sm">Loading chart data ({{ chartLoadProgress }})...</p>
           </div>
         </div>
@@ -980,39 +986,58 @@ function getRankClass(rank: number) {
 }
 
 function getRecordClass(team: any) {
-  const winPct = (team.wins || 0) / Math.max(1, (team.wins || 0) + (team.losses || 0))
-  if (winPct >= 0.6) return 'text-green-400'
-  if (winPct <= 0.4) return 'text-red-400'
+  const teams = teamsWithStats.value
+  if (teams.length === 0) return 'text-dark-text'
+  const sortedByWins = [...teams].sort((a, b) => (b.wins || 0) - (a.wins || 0))
+  const maxWins = sortedByWins[0]?.wins || 0
+  const minWins = sortedByWins[sortedByWins.length - 1]?.wins || 0
+  if ((team.wins || 0) === maxWins && maxWins > minWins) return 'text-green-400'
+  if ((team.wins || 0) === minWins && maxWins > minWins) return 'text-red-400'
   return 'text-dark-text'
 }
 
 function getAllPlayClass(team: any) {
-  const winPct = team.all_play_wins / Math.max(1, team.all_play_wins + team.all_play_losses)
-  if (winPct >= 0.6) return 'text-green-400'
-  if (winPct <= 0.4) return 'text-red-400'
+  const teams = teamsWithStats.value
+  if (teams.length === 0) return 'text-dark-textMuted'
+  const sortedByAllPlay = [...teams].sort((a, b) => (b.all_play_wins || 0) - (a.all_play_wins || 0))
+  const maxWins = sortedByAllPlay[0]?.all_play_wins || 0
+  const minWins = sortedByAllPlay[sortedByAllPlay.length - 1]?.all_play_wins || 0
+  if ((team.all_play_wins || 0) === maxWins && maxWins > minWins) return 'text-green-400'
+  if ((team.all_play_wins || 0) === minWins && maxWins > minWins) return 'text-red-400'
   return 'text-dark-textMuted'
 }
 
 function getPointsForClass(team: any) {
   const teams = teamsWithStats.value
-  const avgPF = teams.reduce((sum, t) => sum + (t.points_for || 0), 0) / Math.max(1, teams.length)
-  if ((team.points_for || 0) > avgPF * 1.1) return 'text-green-400'
-  if ((team.points_for || 0) < avgPF * 0.9) return 'text-red-400'
+  if (teams.length === 0) return 'text-dark-text'
+  const sortedByPF = [...teams].sort((a, b) => (b.points_for || 0) - (a.points_for || 0))
+  const maxPF = sortedByPF[0]?.points_for || 0
+  const minPF = sortedByPF[sortedByPF.length - 1]?.points_for || 0
+  if ((team.points_for || 0) === maxPF && maxPF > minPF) return 'text-green-400'
+  if ((team.points_for || 0) === minPF && maxPF > minPF) return 'text-red-400'
   return 'text-dark-text'
 }
 
 function getPointsAgainstClass(team: any) {
   const teams = teamsWithStats.value
-  const avgPA = teams.reduce((sum, t) => sum + (t.points_against || 0), 0) / Math.max(1, teams.length)
-  if ((team.points_against || 0) < avgPA * 0.9) return 'text-green-400'
-  if ((team.points_against || 0) > avgPA * 1.1) return 'text-red-400'
+  if (teams.length === 0) return 'text-dark-textMuted'
+  const sortedByPA = [...teams].sort((a, b) => (a.points_against || 0) - (b.points_against || 0))
+  const minPA = sortedByPA[0]?.points_against || 0
+  const maxPA = sortedByPA[sortedByPA.length - 1]?.points_against || 0
+  // For PA, lower is better (green), higher is worse (red)
+  if ((team.points_against || 0) === minPA && maxPA > minPA) return 'text-green-400'
+  if ((team.points_against || 0) === maxPA && maxPA > minPA) return 'text-red-400'
   return 'text-dark-textMuted'
 }
 
 function getCategoryWinClass(wins: number, catId: string) {
-  const avg = getAverageCategoryWins(catId)
-  if (wins > avg * 1.2) return 'text-green-400'
-  if (wins < avg * 0.8) return 'text-red-400'
+  const teams = teamsWithStats.value
+  if (teams.length === 0) return 'text-dark-text'
+  const catWins = teams.map(t => t.categoryWins?.[catId] || 0)
+  const maxWins = Math.max(...catWins)
+  const minWins = Math.min(...catWins)
+  if (wins === maxWins && maxWins > minWins) return 'text-green-400'
+  if (wins === minWins && maxWins > minWins) return 'text-red-400'
   return 'text-dark-text'
 }
 

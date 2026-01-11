@@ -47,7 +47,7 @@
 
     <!-- Loading State -->
     <div v-if="isLoading" class="flex items-center justify-center py-20">
-      <div class="animate-spin rounded-full h-16 w-16 border-b-4 border-primary"></div>
+      <div class="animate-spin rounded-full h-16 w-16 border-b-4 border-yellow-400"></div>
     </div>
 
     <!-- Comparison Results -->
@@ -62,9 +62,28 @@
           <!-- Tale of the Tape -->
           <div class="card">
         <div class="card-header">
-          <div class="flex items-center gap-2">
-            <span class="text-2xl">🥊</span>
-            <h2 class="card-title">Tale of the Tape</h2>
+          <div class="flex items-center justify-between">
+            <div class="flex items-center gap-2">
+              <span class="text-2xl">🥊</span>
+              <h2 class="card-title">Tale of the Tape</h2>
+            </div>
+            <button 
+              @click="downloadComparisonImage" 
+              :disabled="isDownloadingComparison"
+              class="flex items-center gap-2 px-4 py-2 rounded-lg font-semibold transition-colors disabled:opacity-50 text-sm"
+              style="background: #dc2626; color: #ffffff;"
+              @mouseover="$event.currentTarget.style.background = '#eab308'; $event.currentTarget.style.color = '#0a0c14'"
+              @mouseout="$event.currentTarget.style.background = '#dc2626'; $event.currentTarget.style.color = '#ffffff'"
+            >
+              <svg v-if="!isDownloadingComparison" class="w-4 h-4 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+              </svg>
+              <svg v-else class="w-4 h-4 animate-spin pointer-events-none" fill="none" viewBox="0 0 24 24">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+              </svg>
+              {{ isDownloadingComparison ? 'Saving...' : 'Share' }}
+            </button>
           </div>
           <p class="card-subtitle mt-2">Season comparison</p>
         </div>
@@ -364,6 +383,7 @@ const rivalryHighlights = ref<any>(null)
 
 const chartContainer = ref<HTMLElement | null>(null)
 let chartInstance: ApexCharts | null = null
+const isDownloadingComparison = ref(false)
 
 // Computed: Filter dropdowns so you can't select the same team twice
 const availableTeams1 = computed(() => {
@@ -384,9 +404,286 @@ function getShortName(name: string | undefined): string {
   return name.split(' ')[0]
 }
 
+function getLeagueName(): string {
+  return leagueStore.currentLeague?.name || 
+         leagueStore.savedLeagues.find(l => l.yahoo_league_key === effectiveLeagueKey.value)?.name || 
+         'Yahoo Points League'
+}
+
+async function downloadComparisonImage() {
+  if (!team1Data.value || !team2Data.value || !comparisonData.value) return
+  isDownloadingComparison.value = true
+  
+  try {
+    const html2canvas = (await import('html2canvas')).default
+    const leagueName = getLeagueName()
+    
+    // Load UFD logo
+    const loadLogo = async (): Promise<string> => {
+      try {
+        const response = await fetch('/UFD_V5.png')
+        if (!response.ok) return ''
+        const blob = await response.blob()
+        return new Promise((resolve) => {
+          const reader = new FileReader()
+          reader.onloadend = () => resolve(reader.result as string)
+          reader.onerror = () => resolve('')
+          reader.readAsDataURL(blob)
+        })
+      } catch (e) { return '' }
+    }
+    
+    const createPlaceholder = (name: string, color: string): string => {
+      const canvas = document.createElement('canvas')
+      canvas.width = 64
+      canvas.height = 64
+      const ctx = canvas.getContext('2d')
+      if (ctx) {
+        ctx.fillStyle = color
+        ctx.beginPath()
+        ctx.arc(32, 32, 32, 0, Math.PI * 2)
+        ctx.fill()
+        ctx.fillStyle = '#ffffff'
+        ctx.font = 'bold 28px sans-serif'
+        ctx.textAlign = 'center'
+        ctx.textBaseline = 'middle'
+        ctx.fillText(name.charAt(0).toUpperCase(), 32, 34)
+      }
+      return canvas.toDataURL('image/png')
+    }
+    
+    const logoBase64 = await loadLogo()
+    
+    // Load team logos
+    const loadTeamLogo = async (url: string | undefined, name: string, color: string): Promise<string> => {
+      if (!url) return createPlaceholder(name, color)
+      try {
+        const img = new Image()
+        img.crossOrigin = 'anonymous'
+        return await new Promise<string>((resolve) => {
+          img.onload = () => {
+            const canvas = document.createElement('canvas')
+            canvas.width = 64
+            canvas.height = 64
+            const ctx = canvas.getContext('2d')
+            if (ctx) {
+              ctx.beginPath()
+              ctx.arc(32, 32, 32, 0, Math.PI * 2)
+              ctx.closePath()
+              ctx.clip()
+              ctx.drawImage(img, 0, 0, 64, 64)
+            }
+            resolve(canvas.toDataURL('image/png'))
+          }
+          img.onerror = () => resolve(createPlaceholder(name, color))
+          setTimeout(() => resolve(createPlaceholder(name, color)), 3000)
+          img.src = url
+        })
+      } catch { return createPlaceholder(name, color) }
+    }
+    
+    const team1Logo = await loadTeamLogo(team1Data.value.logo_url, team1Data.value.name, '#06b6d4')
+    const team2Logo = await loadTeamLogo(team2Data.value.logo_url, team2Data.value.name, '#f97316')
+    
+    // Get recent matchups for chart (ascending order for chart)
+    const recentMatchups = [...rivalryHistory.value].reverse().slice(0, 5).reverse()
+    
+    // Generate chart points for SVG
+    const chartWidth = 420
+    const chartHeight = 150
+    const padding = 40
+    
+    // Find max score for scaling
+    let maxScore = 0
+    for (const m of recentMatchups) {
+      maxScore = Math.max(maxScore, m.team1Score, m.team2Score)
+    }
+    maxScore = Math.ceil(maxScore / 50) * 50 // Round up to nearest 50
+    
+    const getX = (idx: number) => padding + (idx / (recentMatchups.length - 1 || 1)) * (chartWidth - padding * 2)
+    const getY = (val: number) => chartHeight - padding - (val / maxScore) * (chartHeight - padding * 2)
+    
+    const team1Points = recentMatchups.map((m, i) => `${getX(i)},${getY(m.team1Score)}`).join(' ')
+    const team2Points = recentMatchups.map((m, i) => `${getX(i)},${getY(m.team2Score)}`).join(' ')
+    
+    // Generate X-axis labels
+    const xLabels = recentMatchups.map((m, i) => 
+      `<text x="${getX(i)}" y="${chartHeight - 10}" text-anchor="middle" fill="#94a3b8" font-size="10">Wk ${m.week}</text>`
+    ).join('')
+    
+    // Generate Y-axis labels
+    const yLabels = [0, Math.round(maxScore/2), maxScore].map(val =>
+      `<text x="${padding - 8}" y="${getY(val) + 4}" text-anchor="end" fill="#94a3b8" font-size="10">${val}</text>`
+    ).join('')
+    
+    // Generate grid lines
+    const gridLines = [0, Math.round(maxScore/2), maxScore].map(val =>
+      `<line x1="${padding}" y1="${getY(val)}" x2="${chartWidth - padding}" y2="${getY(val)}" stroke="#334155" stroke-dasharray="4"/>`
+    ).join('')
+    
+    // Generate data points
+    const team1Dots = recentMatchups.map((m, i) =>
+      `<circle cx="${getX(i)}" cy="${getY(m.team1Score)}" r="5" fill="#06b6d4" stroke="#0a0c14" stroke-width="2"/>
+       <text x="${getX(i)}" y="${getY(m.team1Score) - 10}" text-anchor="middle" fill="#06b6d4" font-size="10" font-weight="bold">${m.team1Score.toFixed(0)}</text>`
+    ).join('')
+    
+    const team2Dots = recentMatchups.map((m, i) =>
+      `<circle cx="${getX(i)}" cy="${getY(m.team2Score)}" r="5" fill="#f97316" stroke="#0a0c14" stroke-width="2"/>
+       <text x="${getX(i)}" y="${getY(m.team2Score) + 18}" text-anchor="middle" fill="#f97316" font-size="10" font-weight="bold">${m.team2Score.toFixed(0)}</text>`
+    ).join('')
+    
+    const h2h = comparisonData.value.h2h
+    const team1Wins = h2h.team1Wins
+    const team2Wins = h2h.team2Wins
+    
+    const container = document.createElement('div')
+    container.style.cssText = 'position: absolute; left: -9999px; top: 0; width: 520px; font-family: system-ui, -apple-system, sans-serif;'
+    
+    container.innerHTML = `
+      <div style="background: linear-gradient(160deg, #0f1219 0%, #0a0c14 50%, #0d1117 100%); border-radius: 16px; box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5); overflow: hidden;">
+        <div style="background: #dc2626; padding: 8px 20px; text-align: center;">
+          <span style="font-size: 12px; font-weight: 700; color: #0a0c14; text-transform: uppercase; letter-spacing: 2px;">Ultimate Fantasy Dashboard</span>
+        </div>
+        <div style="display: flex; align-items: center; padding: 12px 20px; border-bottom: 1px solid rgba(220, 38, 38, 0.2);">
+          ${logoBase64 ? `<img src="${logoBase64}" style="height: 40px; width: auto; flex-shrink: 0; margin-right: 12px;" />` : ''}
+          <div style="flex: 1;">
+            <div style="font-size: 18px; font-weight: 900; color: #ffffff; text-transform: uppercase; letter-spacing: 0.5px;">Team Comparison</div>
+            <div style="font-size: 12px; margin-top: 2px;">
+              <span style="color: #e5e7eb;">${leagueName}</span>
+              <span style="color: #6b7280; margin: 0 4px;">•</span>
+              <span style="color: #dc2626; font-weight: 600;">Points League</span>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Teams Comparison -->
+        <div style="padding: 20px; display: flex; gap: 16px;">
+          <!-- Team 1 -->
+          <div style="flex: 1; padding: 16px; background: linear-gradient(135deg, rgba(6, 182, 212, 0.15) 0%, transparent 100%); border-radius: 12px; border: 1px solid rgba(6, 182, 212, 0.3);">
+            <div style="text-align: center; margin-bottom: 12px;">
+              <img src="${team1Logo}" style="width: 56px; height: 56px; border-radius: 50%; border: 3px solid #06b6d4; margin: 0 auto 8px;" />
+              <div style="font-size: 14px; font-weight: bold; color: #ffffff;">${team1Data.value.name}</div>
+            </div>
+            <div style="font-size: 11px; color: #9ca3af;">
+              <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+                <span>🏆 Championships:</span>
+                <span style="color: #e5e7eb; font-weight: bold;">${comparisonData.value.team1.championships}</span>
+              </div>
+              <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+                <span>Record:</span>
+                <span style="color: #e5e7eb; font-weight: bold;">${comparisonData.value.team1.wins}-${comparisonData.value.team1.losses}</span>
+              </div>
+              <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+                <span>Win %:</span>
+                <span style="color: #e5e7eb; font-weight: bold;">${comparisonData.value.team1.winPct.toFixed(1)}%</span>
+              </div>
+              <div style="display: flex; justify-content: space-between;">
+                <span>Avg PPW:</span>
+                <span style="color: #e5e7eb; font-weight: bold;">${comparisonData.value.team1.avgPPW.toFixed(1)}</span>
+              </div>
+            </div>
+          </div>
+          
+          <!-- VS Section -->
+          <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 0 8px;">
+            <div style="font-size: 28px; font-weight: 900; color: #4b5563; margin-bottom: 8px;">VS</div>
+            <div style="text-align: center; background: rgba(58, 61, 82, 0.5); padding: 12px 16px; border-radius: 8px;">
+              <div style="font-size: 10px; color: #9ca3af; margin-bottom: 4px;">Head-to-Head</div>
+              <div style="display: flex; align-items: center; gap: 8px;">
+                <span style="font-size: 22px; font-weight: 900; color: ${team1Wins > team2Wins ? '#22c55e' : '#9ca3af'};">${team1Wins}</span>
+                <span style="font-size: 16px; color: #6b7280;">-</span>
+                <span style="font-size: 22px; font-weight: 900; color: ${team2Wins > team1Wins ? '#22c55e' : '#9ca3af'};">${team2Wins}</span>
+              </div>
+              ${h2h.ties > 0 ? `<div style="font-size: 10px; color: #9ca3af; margin-top: 2px;">${h2h.ties} tie(s)</div>` : ''}
+            </div>
+          </div>
+          
+          <!-- Team 2 -->
+          <div style="flex: 1; padding: 16px; background: linear-gradient(135deg, rgba(249, 115, 22, 0.15) 0%, transparent 100%); border-radius: 12px; border: 1px solid rgba(249, 115, 22, 0.3);">
+            <div style="text-align: center; margin-bottom: 12px;">
+              <img src="${team2Logo}" style="width: 56px; height: 56px; border-radius: 50%; border: 3px solid #f97316; margin: 0 auto 8px;" />
+              <div style="font-size: 14px; font-weight: bold; color: #ffffff;">${team2Data.value.name}</div>
+            </div>
+            <div style="font-size: 11px; color: #9ca3af;">
+              <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+                <span>🏆 Championships:</span>
+                <span style="color: #e5e7eb; font-weight: bold;">${comparisonData.value.team2.championships}</span>
+              </div>
+              <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+                <span>Record:</span>
+                <span style="color: #e5e7eb; font-weight: bold;">${comparisonData.value.team2.wins}-${comparisonData.value.team2.losses}</span>
+              </div>
+              <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+                <span>Win %:</span>
+                <span style="color: #e5e7eb; font-weight: bold;">${comparisonData.value.team2.winPct.toFixed(1)}%</span>
+              </div>
+              <div style="display: flex; justify-content: space-between;">
+                <span>Avg PPW:</span>
+                <span style="color: #e5e7eb; font-weight: bold;">${comparisonData.value.team2.avgPPW.toFixed(1)}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        ${recentMatchups.length > 1 ? `
+        <!-- Recent Matchups Chart -->
+        <div style="padding: 0 20px 16px;">
+          <div style="font-size: 13px; font-weight: bold; color: #e5e7eb; margin-bottom: 8px; display: flex; align-items: center; gap: 8px;">
+            <span>📈</span> Recent Matchups
+            <span style="font-size: 11px; color: #9ca3af; font-weight: normal;">(Points scored)</span>
+          </div>
+          <div style="background: rgba(58, 61, 82, 0.3); border-radius: 8px; padding: 8px;">
+            <svg width="${chartWidth}" height="${chartHeight}" style="display: block; margin: 0 auto;">
+              ${gridLines}
+              ${yLabels}
+              ${xLabels}
+              <polyline points="${team1Points}" fill="none" stroke="#06b6d4" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+              <polyline points="${team2Points}" fill="none" stroke="#f97316" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+              ${team1Dots}
+              ${team2Dots}
+            </svg>
+            <div style="display: flex; justify-content: center; gap: 20px; margin-top: 8px;">
+              <div style="display: flex; align-items: center; gap: 6px;">
+                <div style="width: 12px; height: 3px; background: #06b6d4; border-radius: 2px;"></div>
+                <span style="font-size: 10px; color: #e5e7eb;">${getShortName(team1Data.value.name)}</span>
+              </div>
+              <div style="display: flex; align-items: center; gap: 6px;">
+                <div style="width: 12px; height: 3px; background: #f97316; border-radius: 2px;"></div>
+                <span style="font-size: 10px; color: #e5e7eb;">${getShortName(team2Data.value.name)}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+        ` : ''}
+        
+        <div style="padding: 12px 20px; text-align: center; border-top: 1px solid rgba(220, 38, 38, 0.2);">
+          <span style="font-size: 14px; font-weight: bold; color: #dc2626;">ultimatefantasydashboard.com</span>
+        </div>
+      </div>
+    `
+    
+    document.body.appendChild(container)
+    await new Promise(r => setTimeout(r, 300))
+    
+    const finalCanvas = await html2canvas(container, { backgroundColor: '#0a0c14', scale: 2, useCORS: true, allowTaint: true, width: 520 })
+    document.body.removeChild(container)
+    
+    const link = document.createElement('a')
+    const safeTeam1 = team1Data.value.name.replace(/[^a-zA-Z0-9\s]/g, '').replace(/\s+/g, '-').toLowerCase().substring(0, 15)
+    const safeTeam2 = team2Data.value.name.replace(/[^a-zA-Z0-9\s]/g, '').replace(/\s+/g, '-').toLowerCase().substring(0, 15)
+    link.download = `comparison-${safeTeam1}-vs-${safeTeam2}.png`
+    link.href = finalCanvas.toDataURL('image/png')
+    link.click()
+  } catch (e) {
+    console.error('Error generating comparison image:', e)
+  } finally {
+    isDownloadingComparison.value = false
+  }
+}
+
 async function loadInitialData() {
   console.log('=== COMPARE PAGE: loadInitialData START ===')
-  const leagueKey = effectiveLeagueKey.value
+  let leagueKey = effectiveLeagueKey.value
   console.log('League key:', leagueKey)
   console.log('User ID:', authStore.user?.id)
   
@@ -401,13 +698,57 @@ async function loadInitialData() {
     
     // Get standings
     console.log('Fetching standings...')
-    const standings = await yahooService.getStandings(leagueKey)
+    let standings = await yahooService.getStandings(leagueKey)
     console.log('Got standings:', standings?.length || 0, 'teams')
     
     if (!standings || standings.length === 0) {
       console.error('No standings data returned')
       isInitialLoading.value = false
       return
+    }
+    
+    // Check if we have actual data (predraft leagues have 0 wins/losses/points)
+    const hasData = standings.some((team: any) => 
+      (parseInt(team.wins) || 0) > 0 || 
+      (parseInt(team.losses) || 0) > 0 || 
+      (parseFloat(team.points_for) || 0) > 0
+    )
+    
+    if (!hasData) {
+      console.log('[COMPARE] League has no data (predraft). Checking for previous season...')
+      
+      // Get league metadata to find previous season
+      const metadata = await yahooService.getLeagueMetadata(leagueKey)
+      const renewedFrom = metadata?.renew // Format: "431_136233"
+      
+      if (renewedFrom) {
+        const [prevGameKey, prevLeagueNum] = renewedFrom.split('_')
+        const prevLeagueKey = `${prevGameKey}.l.${prevLeagueNum}`
+        console.log('[COMPARE] Found previous season:', prevLeagueKey, '- loading that instead')
+        
+        // Load previous season's standings
+        standings = await yahooService.getStandings(prevLeagueKey)
+        leagueKey = prevLeagueKey
+        
+        // Verify previous season has data
+        const prevHasData = standings.some((team: any) => 
+          (parseInt(team.wins) || 0) > 0 || 
+          (parseInt(team.losses) || 0) > 0 || 
+          (parseFloat(team.points_for) || 0) > 0
+        )
+        
+        if (!prevHasData) {
+          console.log('[COMPARE] Previous season also has no data')
+          isInitialLoading.value = false
+          return
+        }
+        
+        console.log('[COMPARE] Previous season has data! Using:', prevLeagueKey)
+      } else {
+        console.log('[COMPARE] No previous season found')
+        isInitialLoading.value = false
+        return
+      }
     }
     
     allTeams.value = standings.map((team: any) => ({
@@ -435,8 +776,8 @@ async function loadInitialData() {
     const currentWeek = leagueInfo?.current_week || 25
     console.log('Current week:', currentWeek, 'from league info:', leagueInfo?.name)
     
-    // Load all matchups
-    console.log('Loading matchups for weeks 1-' + currentWeek)
+    // Load all matchups using the correct league key
+    console.log('Loading matchups for weeks 1-' + currentWeek, 'from', leagueKey)
     const matchupsList: any[] = []
     
     for (let week = 1; week <= currentWeek; week++) {

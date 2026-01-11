@@ -322,14 +322,19 @@ export class YahooFantasyService {
   /**
    * Get current week and league metadata
    */
-  async getLeagueMetadata(leagueKey: string): Promise<{ currentWeek: number; startWeek: number; endWeek: number; isFinished: boolean }> {
+  async getLeagueMetadata(leagueKey: string): Promise<{ currentWeek: number; startWeek: number; endWeek: number; isFinished: boolean; scoring_type?: string; renew?: string }> {
     // Check cache first
-    const cached = cache.get<{ currentWeek: number; startWeek: number; endWeek: number; isFinished: boolean }>(
+    const cached = cache.get<{ currentWeek: number; startWeek: number; endWeek: number; isFinished: boolean; scoring_type?: string; renew?: string }>(
       CACHE_KEYS.YAHOO_METADATA, leagueKey
     )
-    if (cached) {
-      console.log(`[Cache HIT] League metadata for ${leagueKey}`)
+    
+    // If cached data exists but is missing scoring_type, we need to refetch
+    // This handles migration from old cache format to new format
+    if (cached && cached.scoring_type) {
+      console.log(`[Cache HIT] League metadata for ${leagueKey} scoring_type=${cached.scoring_type}`)
       return cached
+    } else if (cached) {
+      console.log(`[Cache STALE] League metadata for ${leagueKey} missing scoring_type, refetching...`)
     }
     
     const data = await this.apiRequest(
@@ -342,8 +347,12 @@ export class YahooFantasyService {
       currentWeek: parseInt(league?.current_week || '1'),
       startWeek: parseInt(league?.start_week || '1'),
       endWeek: parseInt(league?.end_week || '16'),
-      isFinished: league?.is_finished === '1'
+      isFinished: league?.is_finished === '1' || league?.is_finished === 1,
+      scoring_type: league?.scoring_type,
+      renew: league?.renew
     }
+    
+    console.log(`[Cache MISS] League metadata for ${leagueKey}: scoring_type=${result.scoring_type}`)
     
     // Cache with appropriate TTL based on season status
     const ttl = result.isFinished ? CACHE_TTL.COMPLETED : CACHE_TTL.METADATA
@@ -990,14 +999,15 @@ export class YahooFantasyService {
       const draftResults: any[] = []
       const resultsData = data.fantasy_content?.league?.[1]?.draft_results
       
-      if (!resultsData) {
-        console.log('No draft_results found in response')
-        return { picks: [], type: 'unknown' }
-      }
-      
-      // Get draft type from league info
+      // Get league info (contains renew field for previous season)
       const leagueInfo = data.fantasy_content?.league?.[0] || {}
       const draftType = leagueInfo.draft_status || 'unknown'
+      const renew = leagueInfo.renew || '' // Format: "431_136233" for previous season
+      
+      if (!resultsData) {
+        console.log('No draft_results found in response')
+        return { picks: [], type: 'unknown', renew }
+      }
       
       for (const resultWrapper of Object.values(resultsData) as any[]) {
         if (typeof resultWrapper !== 'object' || !resultWrapper.draft_result) continue
@@ -1014,11 +1024,12 @@ export class YahooFantasyService {
       
       return {
         picks: draftResults.sort((a, b) => a.pick - b.pick),
-        type: draftType
+        type: draftType,
+        renew // Include renew field so views can fall back to previous season
       }
     } catch (e) {
       console.error('Error fetching draft results:', e)
-      return { picks: [], type: 'unknown' }
+      return { picks: [], type: 'unknown', renew: '' }
     }
   }
 

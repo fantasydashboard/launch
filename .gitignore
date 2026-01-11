@@ -58,3 +58,5 @@ coverage/
 *.local.ts
 TODO.md
 NOTES.md
+.vercel
+.env*.local

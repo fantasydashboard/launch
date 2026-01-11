@@ -839,7 +839,11 @@ onMounted(async () => {
   if (authStore.isAuthenticated && authStore.user?.id) {
     await leagueStore.loadSavedLeagues(authStore.user.id)
     leagueStore.refreshYahooLeagues(authStore.user.id)
-    // If no leagues, user will be prompted to add one on the pages
+    
+    // Sync sport store with league store's persisted sport
+    if (leagueStore.activeSport) {
+      sportStore.setSport(leagueStore.activeSport as Sport)
+    }
   }
 })
 
@@ -852,7 +856,11 @@ onUnmounted(() => {
 watch(() => authStore.isAuthenticated, async (isAuth) => {
   if (isAuth && authStore.user?.id) {
     await leagueStore.loadSavedLeagues(authStore.user.id)
-    // If no leagues, user will be prompted to add one on the pages
+    
+    // Sync sport store with league store's persisted sport
+    if (leagueStore.activeSport) {
+      sportStore.setSport(leagueStore.activeSport as Sport)
+    }
   }
 })
 

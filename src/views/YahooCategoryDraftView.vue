@@ -329,11 +329,21 @@
                   <div class="text-xs text-dark-textMuted">Busts</div>
                 </div>
               </div>
+              <div class="mt-3 pt-3 border-t border-dark-border/50 text-xs text-dark-textMuted text-center">
+                <span class="text-yellow-400 font-semibold">Draft Score</span> = sum of all value scores.
+                <span class="text-green-400 font-semibold">Steals</span> = picks with value +10 or more.
+                <span class="text-red-400 font-semibold">Busts</span> = picks with value -10 or worse.
+              </div>
             </div>
             
             <!-- Picks List -->
             <div class="p-6">
-              <h4 class="text-sm font-semibold text-dark-textMuted uppercase tracking-wider mb-4">Draft Picks</h4>
+              <div class="flex items-center justify-between mb-4">
+                <h4 class="text-sm font-semibold text-dark-textMuted uppercase tracking-wider">Draft Picks</h4>
+                <div class="text-xs text-dark-textMuted">
+                  Value = Draft Position − Actual Season Rank
+                </div>
+              </div>
               <div class="space-y-2">
                 <div 
                   v-for="pick in selectedBoardTeamData?.picks" 
@@ -370,6 +380,24 @@
 
     <!-- ==================== CATEGORY IMPACT TAB ==================== -->
     <template v-else-if="activeTab === 'impact'">
+      <!-- Explanation Card -->
+      <div class="card mb-6">
+        <div class="card-body py-4">
+          <div class="flex items-start gap-3">
+            <span class="text-2xl">💡</span>
+            <div class="text-sm">
+              <p class="text-dark-text font-semibold mb-1">Understanding Category Impact</p>
+              <p class="text-dark-textMuted">
+                This tab shows which players dominated each statistical category throughout the season.
+                <span class="text-yellow-400 font-semibold">Category Leaders</span> shows the top performer in each category from the draft pool.
+                The large numbers (like <span class="text-yellow-400 font-semibold">247</span> HR) represent the player's total season stats in that category.
+                <span class="text-yellow-400 font-semibold">Category Value by Round</span> helps identify which rounds produced the best category contributors.
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <!-- Category Leaders from Draft -->
       <div class="card">
         <div class="card-header">
@@ -568,6 +596,24 @@
 
     <!-- ==================== DRAFT BALANCE TAB ==================== -->
     <template v-else-if="activeTab === 'balance'">
+      <!-- Explanation Card -->
+      <div class="card mb-6">
+        <div class="card-body py-4">
+          <div class="flex items-start gap-3">
+            <span class="text-2xl">💡</span>
+            <div class="text-sm">
+              <p class="text-dark-text font-semibold mb-1">Understanding Draft Balance</p>
+              <p class="text-dark-textMuted">
+                Each team's draft is analyzed for category coverage.
+                <span class="text-yellow-400 font-semibold">Percentages</span> show how a team's drafted players rank in each category compared to all drafted players (higher is better).
+                <span class="text-green-400 font-semibold">75%+</span> = Elite, <span class="text-yellow-400 font-semibold">50-74%</span> = Above Average, <span class="text-orange-400 font-semibold">25-49%</span> = Below Average, <span class="text-red-400 font-semibold">&lt;25%</span> = Weak.
+                The <span class="text-yellow-400 font-semibold">Balance Grade</span> measures how evenly a team covered all categories.
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <!-- Hint Text -->
       <div class="text-sm text-dark-textMuted mb-4">
         <span class="text-yellow-400 font-semibold">Click any team</span> to see detailed category breakdown
@@ -743,6 +789,23 @@
 
     <!-- ==================== STEALS & BUSTS TAB ==================== -->
     <template v-else-if="activeTab === 'steals'">
+      <!-- Explanation Card -->
+      <div class="card mb-6">
+        <div class="card-body py-4">
+          <div class="flex items-start gap-3">
+            <span class="text-2xl">💡</span>
+            <div class="text-sm">
+              <p class="text-dark-text font-semibold mb-1">How Value Scores Work</p>
+              <p class="text-dark-textMuted">
+                <span class="text-yellow-400 font-semibold">Value Score</span> = Draft Position − Actual Season Rank by Category Production.
+                A <span class="text-green-400 font-semibold">+50</span> means the player finished 50 spots higher than where they were drafted (a steal!).
+                A <span class="text-red-400 font-semibold">-50</span> means they finished 50 spots lower than drafted (a bust).
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <!-- Biggest Steals -->
         <div class="card">
@@ -992,7 +1055,7 @@
                 <div class="text-2xl font-bold" :class="getCategoryScoreClass(selectedPick.categoryScore)">
                   {{ selectedPick.categoryScore?.toFixed(0) || '0' }}
                 </div>
-                <div class="text-xs text-dark-textMuted mt-1">Avg percentile</div>
+                <div class="text-xs text-dark-textMuted mt-1">Avg percentile across categories</div>
               </div>
               <div class="bg-dark-border/30 rounded-xl p-4 text-center">
                 <div class="text-sm text-dark-textMuted mb-1">Value Score</div>
@@ -1005,13 +1068,20 @@
               </div>
             </div>
 
+            <!-- Quick Explanation -->
+            <div class="bg-yellow-500/10 border border-yellow-500/20 rounded-xl p-3 text-xs text-dark-textMuted">
+              <span class="text-yellow-400 font-semibold">Category Score</span> = average percentile rank across all categories (100 = best).
+              <span class="text-yellow-400 font-semibold">Value Score</span> = Draft Position − Actual Rank (positive = outperformed draft position).
+            </div>
+
             <!-- Category Breakdown with Value -->
             <div class="bg-dark-border/30 rounded-xl p-4">
-              <div class="flex items-center justify-between mb-4">
+              <div class="flex items-center justify-between mb-2">
                 <h3 class="text-lg font-bold text-dark-text">Category Performance</h3>
-                <div class="text-xs text-dark-textMuted">
-                  Value = Expected Rank − Actual Rank in each category
-                </div>
+              </div>
+              <div class="text-xs text-dark-textMuted mb-4">
+                Large numbers = season totals. <span class="text-yellow-400">#rank</span> = player's rank among all drafted players in that category. 
+                <span class="text-green-400">+value</span> = spots above draft position / <span class="text-red-400">-value</span> = spots below.
               </div>
               <div class="grid grid-cols-5 gap-3">
                 <div 
@@ -1752,17 +1822,17 @@ async function loadDraftData() {
     
     // If no player keys (draft hasn't happened), try to fall back to previous season
     if (playerKeys.length === 0 && draftResults.picks?.length > 0) {
-      console.log('Draft has picks but no player keys (predraft). Checking for previous season...')
+      console.log('[CATEGORY DRAFT] Draft has picks but no player keys (predraft). Checking for previous season...')
       loadingMessage.value = 'Draft not complete, checking previous season...'
       
-      // Try to get previous season from league metadata
-      const metadata = await yahooService.getLeagueMetadata(leagueKey)
-      const renewedFrom = metadata?.renew // Format: "431_136233" (previous year's game_leaguenum)
+      // Use renew field from draft results (already contains previous season info)
+      const renewedFrom = draftResults.renew // Format: "431_136233" (previous year's game_leaguenum)
+      console.log('[CATEGORY DRAFT] Renew field from draft results:', renewedFrom)
       
       if (renewedFrom) {
         const [prevGameKey, prevLeagueNum] = renewedFrom.split('_')
         const prevLeagueKey = `${prevGameKey}.l.${prevLeagueNum}`
-        console.log('Found previous season:', prevLeagueKey, '- loading that draft instead')
+        console.log('[CATEGORY DRAFT] Found previous season:', prevLeagueKey, '- loading that draft instead')
         
         // Load previous season's draft
         draftResults = await yahooService.getDraftResults(prevLeagueKey)
@@ -1770,14 +1840,16 @@ async function loadDraftData() {
         
         // Update player keys
         playerKeys = draftResults.picks?.map((p: any) => p.player_key).filter(Boolean) || []
+        console.log('[CATEGORY DRAFT] Previous season player keys:', playerKeys.length)
+        
         if (playerKeys.length === 0) {
-          console.log('Previous season also has no draft data')
+          console.log('[CATEGORY DRAFT] Previous season also has no draft data')
           draftPicks.value = []
           isLoading.value = false
           return
         }
       } else {
-        console.log('No previous season found and current draft has no player data')
+        console.log('[CATEGORY DRAFT] No previous season found (no renew field)')
         draftPicks.value = []
         isLoading.value = false
         return
@@ -2103,6 +2175,13 @@ async function downloadStealsImage() {
           </div>
         </div>
         <div style="padding: 12px 16px;">${generateRows()}</div>
+        <div style="padding: 8px 16px; background: rgba(34, 197, 94, 0.1); border-top: 1px solid rgba(34, 197, 94, 0.2);">
+          <div style="font-size: 10px; color: #9ca3af; text-align: center;">
+            <span style="color: #22c55e; font-weight: 600;">Value Score</span> = Draft Position − Season Rank by Category Production
+            <br/>
+            <span style="color: #22c55e;">+50</span> means player performed 50 spots better than drafted
+          </div>
+        </div>
         <div style="padding: 10px 16px; text-align: center; border-top: 1px solid rgba(220, 38, 38, 0.2);">
           <span style="font-size: 14px; font-weight: bold; color: #dc2626;">ultimatefantasydashboard.com</span>
         </div>
@@ -2259,6 +2338,13 @@ async function downloadBustsImage() {
           </div>
         </div>
         <div style="padding: 12px 16px;">${generateRows()}</div>
+        <div style="padding: 8px 16px; background: rgba(239, 68, 68, 0.1); border-top: 1px solid rgba(239, 68, 68, 0.2);">
+          <div style="font-size: 10px; color: #9ca3af; text-align: center;">
+            <span style="color: #ef4444; font-weight: 600;">Value Score</span> = Draft Position − Season Rank by Category Production
+            <br/>
+            <span style="color: #ef4444;">-50</span> means player performed 50 spots worse than drafted
+          </div>
+        </div>
         <div style="padding: 10px 16px; text-align: center; border-top: 1px solid rgba(220, 38, 38, 0.2);">
           <span style="font-size: 14px; font-weight: bold; color: #dc2626;">ultimatefantasydashboard.com</span>
         </div>
@@ -2457,9 +2543,16 @@ async function downloadTeamDraftImage() {
             </div>
           </div>
         </div>
-        <div style="padding: 16px 16px 20px 16px; display: flex; gap: 12px;">
+        <div style="padding: 16px 16px 12px 16px; display: flex; gap: 12px;">
           <div style="flex: 1;">${generateLeftColumn()}</div>
           <div style="flex: 1;">${generateRightColumn()}</div>
+        </div>
+        <div style="padding: 8px 16px; background: rgba(250, 204, 21, 0.1); border-top: 1px solid rgba(250, 204, 21, 0.2);">
+          <div style="font-size: 10px; color: #9ca3af; text-align: center;">
+            <span style="color: #facc15; font-weight: 600;">Value Score</span> = Draft Position − Season Rank by Category Production
+            <br/>
+            <span style="color: #22c55e;">+value</span> = outperformed draft spot &nbsp;|&nbsp; <span style="color: #ef4444;">-value</span> = underperformed
+          </div>
         </div>
         <div style="padding: 10px 16px; text-align: center; border-top: 1px solid rgba(220, 38, 38, 0.2);">
           <span style="font-size: 14px; font-weight: bold; color: #dc2626;">ultimatefantasydashboard.com</span>
