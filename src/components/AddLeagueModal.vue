@@ -67,17 +67,27 @@
                 </svg>
               </button>
               
-              <!-- ESPN Coming Soon -->
-              <div class="w-full flex items-center gap-4 p-4 rounded-xl bg-dark-bg/30 border border-dark-border/30 opacity-50 cursor-not-allowed">
+              <!-- ESPN Option (Now Enabled!) -->
+              <button
+                @click="selectPlatform('espn')"
+                class="w-full flex items-center gap-4 p-4 rounded-xl bg-dark-bg/50 border border-dark-border/50 hover:border-red-500/50 hover:bg-dark-border/30 transition-all text-left"
+              >
                 <div class="w-12 h-12 rounded-xl bg-red-600 flex items-center justify-center flex-shrink-0">
                   <span class="text-xl font-bold text-white">E</span>
                 </div>
                 <div class="flex-1">
-                  <div class="font-semibold text-dark-text">ESPN Fantasy</div>
-                  <div class="text-xs text-dark-textMuted">Coming soon</div>
+                  <div class="font-semibold text-dark-text flex items-center gap-2">
+                    ESPN Fantasy
+                    <span v-if="platformsStore.hasEspnCredentials" class="text-xs px-2 py-0.5 rounded-full bg-green-500/20 text-green-400">
+                      Connected
+                    </span>
+                  </div>
+                  <div class="text-xs text-dark-textMuted">Enter league ID to connect</div>
                 </div>
-                <span class="text-xs px-2 py-1 rounded-full bg-dark-border text-dark-textMuted">Soon</span>
-              </div>
+                <svg class="w-5 h-5 text-dark-textMuted" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+                </svg>
+              </button>
             </div>
           </div>
           
@@ -332,6 +342,168 @@
             </div>
           </div>
           
+          <!-- Step 1: ESPN - Enter League ID -->
+          <div v-if="step === 1 && selectedPlatform === 'espn' && !espnNeedsCredentials">
+            <div class="flex items-center gap-2 mb-4">
+              <button @click="step = 0" class="p-1 hover:bg-dark-border/50 rounded-lg transition-colors">
+                <svg class="w-5 h-5 text-dark-textMuted" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+                </svg>
+              </button>
+              <div class="w-8 h-8 rounded-lg bg-red-600 flex items-center justify-center">
+                <span class="text-sm font-bold text-white">E</span>
+              </div>
+              <span class="text-sm text-dark-textMuted">Connect ESPN</span>
+            </div>
+            
+            <!-- Sport Selection -->
+            <label class="block text-sm font-medium text-dark-textMuted mb-2">
+              Sport
+            </label>
+            <div class="grid grid-cols-4 gap-2 mb-4">
+              <button
+                v-for="sport in availableSports"
+                :key="sport.id"
+                @click="espnSport = sport.id"
+                :class="[
+                  'p-3 rounded-xl border text-center transition-all',
+                  espnSport === sport.id 
+                    ? 'bg-red-600/20 border-red-500/50 text-red-400' 
+                    : 'bg-dark-bg/50 border-dark-border/50 text-dark-textMuted hover:border-red-500/30'
+                ]"
+              >
+                <span class="text-lg">{{ sport.icon }}</span>
+                <div class="text-xs mt-1">{{ sport.label }}</div>
+              </button>
+            </div>
+            
+            <!-- League ID Input -->
+            <label class="block text-sm font-medium text-dark-textMuted mb-2">
+              League ID
+            </label>
+            <input
+              v-model="espnLeagueId"
+              type="text"
+              placeholder="e.g., 12345678"
+              class="w-full px-4 py-3 rounded-xl bg-dark-bg border border-dark-border focus:border-red-500 focus:ring-1 focus:ring-red-500 transition-colors text-dark-text"
+              @keyup.enter="validateEspnLeague"
+            />
+            <p class="text-xs text-dark-textMuted mt-1">
+              Find this in your ESPN league URL: fantasy.espn.com/.../<span class="text-red-400">leagueId</span>=12345678
+            </p>
+            
+            <!-- Season Selection -->
+            <label class="block text-sm font-medium text-dark-textMuted mb-2 mt-4">
+              Season
+            </label>
+            <select
+              v-model="espnSeason"
+              class="w-full px-4 py-3 rounded-xl bg-dark-bg border border-dark-border focus:border-red-500 focus:ring-1 focus:ring-red-500 transition-colors text-dark-text"
+            >
+              <option v-for="year in availableSeasons" :key="year" :value="year">
+                {{ year }}{{ year === currentSeasonYear ? ' (Current)' : '' }}
+              </option>
+            </select>
+            
+            <div v-if="errorMessage" class="text-red-400 text-sm mt-3">
+              {{ errorMessage }}
+            </div>
+            
+            <button
+              @click="validateEspnLeague"
+              :disabled="!espnLeagueId.trim() || loading"
+              class="w-full mt-4 px-4 py-3 rounded-xl bg-red-600 text-white font-semibold hover:bg-red-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2"
+            >
+              <span v-if="loading">Connecting...</span>
+              <span v-else>Connect League</span>
+            </button>
+          </div>
+          
+          <!-- Step 1b: ESPN - Private League, need credentials -->
+          <div v-if="step === 1 && selectedPlatform === 'espn' && espnNeedsCredentials">
+            <div class="flex items-center gap-2 mb-4">
+              <button @click="espnNeedsCredentials = false; errorMessage = ''" class="p-1 hover:bg-dark-border/50 rounded-lg transition-colors">
+                <svg class="w-5 h-5 text-dark-textMuted" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+                </svg>
+              </button>
+              <div class="w-8 h-8 rounded-lg bg-red-600 flex items-center justify-center">
+                <span class="text-sm font-bold text-white">E</span>
+              </div>
+              <span class="text-sm text-dark-textMuted">Private League</span>
+            </div>
+            
+            <!-- Private League Notice -->
+            <div class="bg-yellow-500/10 border border-yellow-500/30 rounded-xl p-4 mb-4">
+              <div class="flex items-start gap-3">
+                <svg class="w-5 h-5 text-yellow-500 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                </svg>
+                <div>
+                  <p class="text-sm text-yellow-200 font-medium">This is a private league</p>
+                  <p class="text-xs text-yellow-200/70 mt-1">
+                    ESPN requires browser cookies to access private leagues. Your cookies are stored securely and only used to fetch your league data.
+                  </p>
+                </div>
+              </div>
+            </div>
+            
+            <!-- ESPN S2 Cookie -->
+            <label class="block text-sm font-medium text-dark-textMuted mb-2">
+              espn_s2 Cookie
+            </label>
+            <textarea
+              v-model="espnS2Cookie"
+              placeholder="Paste your espn_s2 cookie value here..."
+              rows="2"
+              class="w-full px-4 py-3 rounded-xl bg-dark-bg border border-dark-border focus:border-red-500 focus:ring-1 focus:ring-red-500 transition-colors text-dark-text text-xs font-mono resize-none"
+            ></textarea>
+            
+            <!-- SWID Cookie -->
+            <label class="block text-sm font-medium text-dark-textMuted mb-2 mt-3">
+              SWID Cookie
+            </label>
+            <input
+              v-model="espnSwidCookie"
+              type="text"
+              placeholder="{XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX}"
+              class="w-full px-4 py-3 rounded-xl bg-dark-bg border border-dark-border focus:border-red-500 focus:ring-1 focus:ring-red-500 transition-colors text-dark-text text-xs font-mono"
+            />
+            
+            <!-- How to find cookies -->
+            <button 
+              @click="showCookieHelp = !showCookieHelp"
+              class="text-xs text-red-400 hover:text-red-300 mt-2 flex items-center gap-1"
+            >
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              How do I find these cookies?
+            </button>
+            
+            <div v-if="showCookieHelp" class="mt-3 p-3 rounded-lg bg-dark-bg border border-dark-border text-xs text-dark-textMuted">
+              <ol class="list-decimal list-inside space-y-2">
+                <li>Log in to ESPN Fantasy in Chrome</li>
+                <li>Press <kbd class="px-1.5 py-0.5 rounded bg-dark-border text-dark-text">F12</kbd> to open Developer Tools</li>
+                <li>Go to <strong>Application</strong> → <strong>Cookies</strong> → <strong>espn.com</strong></li>
+                <li>Find and copy <strong>espn_s2</strong> and <strong>SWID</strong> values</li>
+              </ol>
+            </div>
+            
+            <div v-if="errorMessage" class="text-red-400 text-sm mt-3">
+              {{ errorMessage }}
+            </div>
+            
+            <button
+              @click="connectEspnPrivate"
+              :disabled="!espnS2Cookie.trim() || !espnSwidCookie.trim() || loading"
+              class="w-full mt-4 px-4 py-3 rounded-xl bg-red-600 text-white font-semibold hover:bg-red-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2"
+            >
+              <span v-if="loading">Connecting...</span>
+              <span v-else>Connect Private League</span>
+            </button>
+          </div>
+          
           <!-- Step 2: Select Sleeper League -->
           <div v-else-if="step === 2 && selectedPlatform === 'sleeper'">
             <div class="flex items-center gap-2 mb-4">
@@ -387,10 +559,12 @@
 import { ref, watch, computed } from 'vue'
 import { useLeagueStore } from '@/stores/league'
 import { usePlatformsStore } from '@/stores/platforms'
-import { useSportStore, type Sport } from '@/stores/sport'
+import { useSportStore } from '@/stores/sport'
 import { yahooService } from '@/services/yahoo'
+import { espnService } from '@/services/espn'
 import { useAuthStore } from '@/stores/auth'
 import type { SleeperLeague } from '@/types/sleeper'
+import type { Sport } from '@/types/supabase'
 
 interface GroupedYahooLeague {
   name: string
@@ -404,6 +578,14 @@ interface GroupedYahooLeague {
   sport?: Sport
 }
 
+interface EspnLeagueResult {
+  id: number
+  name: string
+  size: number
+  scoringType: string
+  isPublic: boolean
+}
+
 const props = defineProps<{
   isOpen: boolean
 }>()
@@ -412,6 +594,7 @@ const emit = defineEmits<{
   (e: 'close'): void
   (e: 'league-added', league: SleeperLeague): void
   (e: 'yahoo-league-added', league: GroupedYahooLeague & { sport: Sport }): void
+  (e: 'espn-league-added', league: { leagueId: string; sport: Sport; season: number; league: EspnLeagueResult }): void
 }>()
 
 const leagueStore = useLeagueStore()
@@ -419,21 +602,68 @@ const platformsStore = usePlatformsStore()
 const sportStore = useSportStore()
 const authStore = useAuthStore()
 
+// General state
 const step = ref(0)
-const selectedPlatform = ref<'sleeper' | 'yahoo' | null>(null)
-const username = ref('')
+const selectedPlatform = ref<'sleeper' | 'yahoo' | 'espn' | null>(null)
 const loading = ref(false)
-const loadingYahooLeagues = ref(false)
 const errorMessage = ref('')
-const availableLeagues = ref<SleeperLeague[]>([])
-const showYahooAccountMenu = ref(false)
 
-// Store leagues by sport
+// Sleeper state
+const username = ref('')
+const availableLeagues = ref<SleeperLeague[]>([])
+
+// Yahoo state
+const loadingYahooLeagues = ref(false)
+const showYahooAccountMenu = ref(false)
 const yahooLeaguesBySport = ref<Record<Sport, any[]>>({
   football: [],
   baseball: [],
   basketball: [],
   hockey: []
+})
+
+// ESPN state
+const espnLeagueId = ref('')
+const espnSport = ref<Sport>('football')
+const espnSeason = ref(new Date().getFullYear())
+const espnNeedsCredentials = ref(false)
+const espnS2Cookie = ref('')
+const espnSwidCookie = ref('')
+const showCookieHelp = ref(false)
+
+// Available sports for ESPN
+const availableSports = [
+  { id: 'football' as Sport, label: 'NFL', icon: '🏈' },
+  { id: 'baseball' as Sport, label: 'MLB', icon: '⚾' },
+  { id: 'basketball' as Sport, label: 'NBA', icon: '🏀' },
+  { id: 'hockey' as Sport, label: 'NHL', icon: '🏒' }
+]
+
+// Calculate current season year based on sport
+const currentSeasonYear = computed(() => {
+  const now = new Date()
+  const year = now.getFullYear()
+  const month = now.getMonth()
+  
+  // Different sports have different season start months
+  const seasonStartMonth: Record<Sport, number> = {
+    football: 8,   // September
+    baseball: 2,   // March
+    basketball: 9, // October
+    hockey: 9      // October
+  }
+  
+  return month < seasonStartMonth[espnSport.value] ? year - 1 : year
+})
+
+// Available seasons (last 6 years)
+const availableSeasons = computed(() => {
+  const years = []
+  const currentYear = new Date().getFullYear()
+  for (let i = 0; i < 6; i++) {
+    years.push(currentYear - i)
+  }
+  return years
 })
 
 // Group leagues by name for each sport
@@ -504,6 +734,15 @@ watch(() => props.isOpen, async (isOpen) => {
     }
     showYahooAccountMenu.value = false
     
+    // Reset ESPN state
+    espnLeagueId.value = ''
+    espnSport.value = 'football'
+    espnSeason.value = currentSeasonYear.value
+    espnNeedsCredentials.value = false
+    espnS2Cookie.value = ''
+    espnSwidCookie.value = ''
+    showCookieHelp.value = false
+    
     // Fetch platforms status
     if (authStore.isAuthenticated) {
       await platformsStore.fetchConnectedPlatforms()
@@ -511,7 +750,12 @@ watch(() => props.isOpen, async (isOpen) => {
   }
 }, { immediate: true })
 
-function selectPlatform(platform: 'sleeper' | 'yahoo') {
+// Update season when sport changes
+watch(espnSport, () => {
+  espnSeason.value = currentSeasonYear.value
+})
+
+function selectPlatform(platform: 'sleeper' | 'yahoo' | 'espn') {
   selectedPlatform.value = platform
   step.value = 1
   
@@ -519,6 +763,10 @@ function selectPlatform(platform: 'sleeper' | 'yahoo') {
     loadAllYahooLeagues()
   }
 }
+
+// ============================================================
+// Sleeper Methods
+// ============================================================
 
 async function searchSleeperLeagues() {
   if (!username.value.trim()) return
@@ -590,6 +838,10 @@ function selectSleeperLeague(league: SleeperLeague) {
   emit('league-added', league)
 }
 
+// ============================================================
+// Yahoo Methods
+// ============================================================
+
 function connectYahoo() {
   emit('close')
   platformsStore.connectYahoo()
@@ -653,5 +905,140 @@ async function syncYahooLeagues() {
 
 function selectYahooLeague(league: GroupedYahooLeague, sport: Sport) {
   emit('yahoo-league-added', { ...league, sport })
+}
+
+// ============================================================
+// ESPN Methods
+// ============================================================
+
+async function validateEspnLeague() {
+  if (!espnLeagueId.value.trim()) return
+  
+  loading.value = true
+  errorMessage.value = ''
+  
+  try {
+    // Initialize ESPN service
+    if (authStore.user?.id) {
+      await espnService.initialize(authStore.user.id)
+    }
+    
+    // Check if we have stored credentials
+    const credentials = platformsStore.getEspnCredentials()
+    if (credentials) {
+      espnService.setCredentials(credentials.espn_s2, credentials.swid)
+    }
+    
+    console.log('Validating ESPN league:', espnLeagueId.value, espnSport.value, espnSeason.value)
+    
+    // Try to validate the league
+    const validation = await espnService.validateLeague(
+      espnSport.value,
+      espnLeagueId.value,
+      espnSeason.value
+    )
+    
+    if (!validation.valid && validation.isPrivate) {
+      // League exists but is private - need credentials
+      espnNeedsCredentials.value = true
+      errorMessage.value = ''
+      return
+    }
+    
+    if (!validation.valid) {
+      errorMessage.value = validation.error || 'Could not find this league. Please check the ID.'
+      return
+    }
+    
+    // League is valid and accessible
+    console.log('ESPN league validated:', validation.league)
+    
+    // Sync the league to database
+    const syncResult = await platformsStore.syncEspnLeague(
+      espnLeagueId.value,
+      espnSport.value,
+      espnSeason.value
+    )
+    
+    if (!syncResult.success) {
+      errorMessage.value = syncResult.error || 'Failed to save league.'
+      return
+    }
+    
+    // Emit success
+    emit('espn-league-added', {
+      leagueId: espnLeagueId.value,
+      sport: espnSport.value,
+      season: espnSeason.value,
+      league: validation.league as EspnLeagueResult
+    })
+    
+  } catch (err: any) {
+    console.error('Error validating ESPN league:', err)
+    
+    // Check if it's a private league error
+    if (err.message?.includes('private') || err.message?.includes('403')) {
+      espnNeedsCredentials.value = true
+      errorMessage.value = ''
+    } else {
+      errorMessage.value = err.message || 'An error occurred. Please try again.'
+    }
+  } finally {
+    loading.value = false
+  }
+}
+
+async function connectEspnPrivate() {
+  if (!espnS2Cookie.value.trim() || !espnSwidCookie.value.trim()) return
+  
+  loading.value = true
+  errorMessage.value = ''
+  
+  try {
+    console.log('Connecting ESPN private league with credentials')
+    
+    // Store credentials
+    const result = await platformsStore.storeEspnCredentials({
+      espn_s2: espnS2Cookie.value.trim(),
+      swid: espnSwidCookie.value.trim(),
+      leagueId: espnLeagueId.value,
+      sport: espnSport.value,
+      season: espnSeason.value
+    })
+    
+    if (!result.success) {
+      errorMessage.value = result.error || 'Invalid credentials. Please check and try again.'
+      return
+    }
+    
+    // Now sync the league
+    const syncResult = await platformsStore.syncEspnLeague(
+      espnLeagueId.value,
+      espnSport.value,
+      espnSeason.value
+    )
+    
+    if (!syncResult.success) {
+      errorMessage.value = syncResult.error || 'Failed to save league.'
+      return
+    }
+    
+    // Get league details for the emit
+    const league = await espnService.getLeague(espnSport.value, espnLeagueId.value, espnSeason.value)
+    
+    // Emit success
+    emit('espn-league-added', {
+      leagueId: espnLeagueId.value,
+      sport: espnSport.value,
+      season: espnSeason.value,
+      league: league as unknown as EspnLeagueResult
+    })
+    
+  } catch (err: any) {
+    console.error('Error connecting ESPN private league:', err)
+    errorMessage.value = err.message || 'Failed to connect. Please check your cookies and try again.'
+  } finally {
+    loading.value = false
+  }
 }
 </script>
