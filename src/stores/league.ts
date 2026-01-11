@@ -10,18 +10,19 @@ import type {
   SleeperPlayer
 } from '@/types/sleeper'
 
-// Saved league interface - supports both Sleeper and Yahoo
+// Saved league interface - supports Sleeper, Yahoo, and ESPN
 interface SavedLeague {
   id?: string
   user_id?: string
   league_id: string
   league_name: string
-  platform: 'sleeper' | 'yahoo'
+  platform: 'sleeper' | 'yahoo' | 'espn'
   sport: 'football' | 'baseball' | 'basketball' | 'hockey'
   season: string
   sleeper_username?: string
   yahoo_league_key?: string
   yahoo_historical_seasons?: Array<{ league_key: string; season: string }>
+  espn_league_id?: string
   is_primary: boolean
   league_type?: number // 0 = redraft, 1 = keeper, 2 = dynasty
   num_teams?: number
@@ -55,7 +56,7 @@ const STORAGE_KEYS = {
 export const useLeagueStore = defineStore('league', () => {
   // State
   const activeLeagueId = ref<string | null>(null)
-  const activePlatform = ref<'sleeper' | 'yahoo'>('sleeper')
+  const activePlatform = ref<'sleeper' | 'yahoo' | 'espn'>('sleeper')
   const leagues = ref<SleeperLeague[]>([])
   const savedLeagues = ref<SavedLeague[]>([])
   const currentLeague = ref<SleeperLeague | null>(null)
@@ -163,7 +164,7 @@ export const useLeagueStore = defineStore('league', () => {
       }
       
       // Restore active platform and sport
-      const platform = localStorage.getItem(STORAGE_KEYS.ACTIVE_PLATFORM) as 'sleeper' | 'yahoo' | null
+      const platform = localStorage.getItem(STORAGE_KEYS.ACTIVE_PLATFORM) as 'sleeper' | 'yahoo' | 'espn' | null
       if (platform) {
         activePlatform.value = platform
       }
@@ -454,6 +455,96 @@ export const useLeagueStore = defineStore('league', () => {
     return newLeague
   }
 
+  // ============================================
+  // ESPN LEAGUE FUNCTIONS
+  // ============================================
+
+  async function saveEspnLeague(
+    league: {
+      leagueId: string
+      sport: 'football' | 'baseball' | 'basketball' | 'hockey'
+      season: number
+      league: {
+        id: number
+        name: string
+        size: number
+        scoringType: string
+        isPublic: boolean
+      }
+    },
+    userId: string
+  ): Promise<SavedLeague | undefined> {
+    const { leagueId, sport, season, league: espnLeague } = league
+    
+    // Check if this league is already saved
+    const existing = savedLeagues.value.find(l => 
+      l.platform === 'espn' && 
+      l.espn_league_id === leagueId &&
+      l.season === season.toString()
+    )
+    if (existing) return existing
+    
+    const isPrimary = savedLeagues.value.length === 0
+    
+    // Map ESPN scoring type to our format
+    const scoringType = espnLeague.scoringType === 'H2H_POINTS' ? 'head' :
+                        espnLeague.scoringType === 'H2H_CATEGORY' ? 'headcategory' :
+                        espnLeague.scoringType === 'ROTO' ? 'roto' : 'points'
+    
+    const newLeague: SavedLeague = {
+      league_id: `espn_${leagueId}_${season}`, // Unique ID combining platform, league, season
+      league_name: espnLeague.name,
+      platform: 'espn',
+      sport: sport,
+      season: season.toString(),
+      espn_league_id: leagueId,
+      is_primary: isPrimary,
+      num_teams: espnLeague.size,
+      scoring_type: scoringType
+    }
+    
+    // Add to local state immediately
+    savedLeagues.value.push(newLeague)
+    saveToLocalStorage()
+    
+    // Sync to Supabase in background
+    if (supabase) {
+      try {
+        const { data, error: saveError } = await supabase
+          .from('user_leagues')
+          .insert({
+            user_id: userId,
+            league_id: newLeague.league_id,
+            league_name: newLeague.league_name,
+            platform: newLeague.platform,
+            sport: newLeague.sport,
+            season: newLeague.season,
+            espn_league_id: newLeague.espn_league_id,
+            is_primary: newLeague.is_primary,
+            num_teams: newLeague.num_teams,
+            scoring_type: newLeague.scoring_type
+          })
+          .select()
+          .single()
+        
+        if (saveError) throw saveError
+        
+        // Update with server ID
+        const index = savedLeagues.value.findIndex(l => l.league_id === newLeague.league_id)
+        if (index !== -1 && data) {
+          savedLeagues.value[index] = data
+          saveToLocalStorage()
+        }
+        
+        return data
+      } catch (e) {
+        console.error('Failed to save ESPN league to Supabase:', e)
+      }
+    }
+    
+    return newLeague
+  }
+
   async function removeLeague(leagueId: string, userId?: string) {
     // Remove from local state immediately
     savedLeagues.value = savedLeagues.value.filter(l => l.league_id !== leagueId)
@@ -569,7 +660,7 @@ export const useLeagueStore = defineStore('league', () => {
     activeLeagueId.value = leagueId
     isDemoMode.value = false
     
-    // Check if this is a Yahoo league
+    // Check if this is a Yahoo or ESPN league
     const savedLeague = savedLeagues.value.find(l => l.league_id === leagueId)
     
     // Set sport from saved league if available
@@ -582,11 +673,22 @@ export const useLeagueStore = defineStore('league', () => {
     // Detect Yahoo league by ID format (e.g., "431.l.136233" or "nfl.l.123456")
     const isYahooLeagueId = /^\d+\.l\.\d+$/.test(leagueId) || /^[a-z]+\.l\.\d+$/.test(leagueId)
     
+    // Detect ESPN league by ID format (e.g., "espn_12345_2024")
+    const isEspnLeagueId = leagueId.startsWith('espn_')
+    
     if (savedLeague?.platform === 'yahoo' || isYahooLeagueId) {
       // Handle Yahoo league
       activePlatform.value = 'yahoo'
       saveToLocalStorage() // Save again after setting platform
       await loadYahooLeagueData(leagueId)
+      return
+    }
+    
+    if (savedLeague?.platform === 'espn' || isEspnLeagueId) {
+      // Handle ESPN league
+      activePlatform.value = 'espn'
+      saveToLocalStorage()
+      await loadEspnLeagueData(leagueId)
       return
     }
     
@@ -1010,6 +1112,69 @@ export const useLeagueStore = defineStore('league', () => {
     }
   }
 
+  // Load ESPN league data
+  async function loadEspnLeagueData(leagueId: string) {
+    isLoading.value = true
+    error.value = null
+    
+    try {
+      const { espnService } = await import('@/services/espn')
+      const { useAuthStore } = await import('@/stores/auth')
+      const { usePlatformsStore } = await import('@/stores/platforms')
+      const authStore = useAuthStore()
+      const platformsStore = usePlatformsStore()
+      
+      if (!authStore.user?.id) {
+        throw new Error('Not authenticated')
+      }
+      
+      // Initialize ESPN service
+      await espnService.initialize(authStore.user.id)
+      
+      // Check for stored credentials
+      const credentials = platformsStore.getEspnCredentials()
+      if (credentials) {
+        espnService.setCredentials(credentials.espn_s2, credentials.swid)
+      }
+      
+      // Parse the league ID (format: espn_12345_2024)
+      const savedLeague = savedLeagues.value.find(l => l.league_id === leagueId)
+      const espnLeagueId = savedLeague?.espn_league_id || leagueId.split('_')[1]
+      const season = parseInt(savedLeague?.season || leagueId.split('_')[2] || new Date().getFullYear().toString())
+      const sport = savedLeague?.sport || 'football'
+      
+      console.log('Loading ESPN league:', { espnLeagueId, season, sport })
+      
+      // Fetch league data
+      const league = await espnService.getLeague(sport, espnLeagueId, season)
+      
+      // Create a currentLeague object that's compatible with the UI
+      currentLeague.value = {
+        league_id: leagueId,
+        name: league.name,
+        season: season.toString(),
+        status: league.status === 'current' ? 'in_season' : 'complete',
+        sport: sport === 'football' ? 'nfl' : sport,
+        settings: {
+          leg: league.currentMatchupPeriod || 1,
+          playoff_week_start: league.playoffWeekStart || 15,
+          num_teams: league.size
+        },
+        scoring_settings: {},
+        roster_positions: [],
+        total_rosters: league.size
+      } as any
+      
+      console.log('ESPN league loaded:', league)
+      
+    } catch (e) {
+      console.error('Failed to load ESPN league data:', e)
+      error.value = e instanceof Error ? e.message : 'Failed to load ESPN league'
+    } finally {
+      isLoading.value = false
+    }
+  }
+
   // Refresh all saved Yahoo leagues to ensure they have the latest season
   async function refreshYahooLeagues(userId: string) {
     try {
@@ -1186,12 +1351,14 @@ export const useLeagueStore = defineStore('league', () => {
     loadSavedLeagues,
     saveLeague,
     saveYahooLeague,
+    saveEspnLeague,
     removeLeague,
     setPrimaryLeague,
     fetchUserLeagues,
     setActiveLeague,
     setActiveSport,
     loadYahooLeagueData,
+    loadEspnLeagueData,
     refreshYahooLeagues,
     getTeamInfo,
     reset,
