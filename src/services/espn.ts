@@ -732,6 +732,148 @@ export class EspnFantasyService {
     return seasons
   }
 
+  /**
+   * Auto-detect sport for a league by trying each sport code
+   * Returns the sport and league info if found
+   */
+  async detectLeagueSport(leagueId: string | number, season?: number): Promise<{
+    sport: Sport
+    league: EspnLeague
+  } | null> {
+    const targetSeason = season || this.getCurrentSeason('football')
+    const sports: Sport[] = ['football', 'baseball', 'basketball', 'hockey']
+    
+    for (const sport of sports) {
+      try {
+        console.log(`[ESPN] Trying ${sport} for league ${leagueId}...`)
+        const league = await this.getLeague(sport, leagueId, targetSeason)
+        if (league) {
+          console.log(`[ESPN] Found league as ${sport}: ${league.name}`)
+          return { sport, league }
+        }
+      } catch (error: any) {
+        // 404 means wrong sport, keep trying
+        // 403 means private league in that sport - could be correct sport
+        if (error.message?.includes('403') || error.message?.includes('private')) {
+          console.log(`[ESPN] League ${leagueId} exists as ${sport} but is private`)
+          return { 
+            sport, 
+            league: {
+              id: Number(leagueId),
+              seasonId: targetSeason,
+              scoringPeriodId: 1,
+              segmentId: 0,
+              name: `Private League ${leagueId}`,
+              size: 0,
+              isPublic: false,
+              scoringType: 'H2H_POINTS',
+              currentMatchupPeriod: 1,
+              status: {
+                currentMatchupPeriod: 1,
+                isActive: true,
+                latestScoringPeriod: 1,
+                finalScoringPeriod: 17,
+                firstScoringPeriod: 1
+              },
+              settings: {} as any
+            }
+          }
+        }
+        // Otherwise keep trying other sports
+        console.log(`[ESPN] ${sport} not found for league ${leagueId}`)
+      }
+    }
+    
+    return null
+  }
+
+  /**
+   * Discover all available seasons for a league
+   * Searches backwards from current year until no more data found
+   */
+  async discoverAllSeasons(sport: Sport, leagueId: string | number): Promise<Array<{
+    season: number
+    league: EspnLeague
+  }>> {
+    const currentYear = new Date().getFullYear()
+    const seasons: Array<{ season: number; league: EspnLeague }> = []
+    
+    // Start from current year and go backwards
+    // ESPN fantasy started around 2010 for most sports
+    const minYear = 2010
+    let consecutiveFailures = 0
+    const maxFailures = 2 // Stop after 2 consecutive failures
+    
+    for (let year = currentYear; year >= minYear && consecutiveFailures < maxFailures; year--) {
+      try {
+        const league = await this.getLeague(sport, leagueId, year)
+        if (league) {
+          seasons.push({ season: year, league })
+          consecutiveFailures = 0
+          console.log(`[ESPN] Found season ${year}: ${league.name}`)
+        } else {
+          consecutiveFailures++
+        }
+      } catch (error) {
+        consecutiveFailures++
+        console.log(`[ESPN] No data for season ${year}`)
+      }
+    }
+    
+    return seasons
+  }
+
+  /**
+   * Full discovery: detect sport and get all seasons
+   * This is the main entry point for adding a new ESPN league
+   */
+  async discoverLeague(leagueId: string | number): Promise<{
+    sport: Sport
+    leagueId: string
+    name: string
+    isPublic: boolean
+    seasons: Array<{
+      season: number
+      league: EspnLeague
+    }>
+  } | null> {
+    // First detect the sport
+    const detected = await this.detectLeagueSport(leagueId)
+    if (!detected) {
+      return null
+    }
+    
+    const { sport, league } = detected
+    
+    // If private and we don't have credentials, return minimal info
+    if (!league.isPublic && !this.hasCredentials()) {
+      return {
+        sport,
+        leagueId: String(leagueId),
+        name: league.name,
+        isPublic: false,
+        seasons: [{
+          season: league.seasonId || new Date().getFullYear(),
+          league
+        }]
+      }
+    }
+    
+    // Discover all seasons
+    const seasons = await this.discoverAllSeasons(sport, leagueId)
+    
+    // Use most recent season's name
+    const name = seasons.length > 0 ? seasons[0].league.name : league.name
+    
+    return {
+      sport,
+      leagueId: String(leagueId),
+      name,
+      isPublic: league.isPublic,
+      seasons
+    }
+  }
+
   // ============================================================
   // Member/Owner Methods
   // ============================================================

@@ -10,7 +10,6 @@ import { ref, computed } from 'vue'
 import { supabase } from '@/lib/supabase'
 import { useAuthStore } from './auth'
 import { yahooService } from '@/services/yahoo'
-import { espnService } from '@/services/espn'
 import type { ConnectedPlatform, Platform, Sport, LeagueInsert } from '@/types/supabase'
 
 export const usePlatformsStore = defineStore('platforms', () => {
@@ -31,12 +30,6 @@ export const usePlatformsStore = defineStore('platforms', () => {
   const isEspnConnected = computed(() => 
     connectedPlatforms.value.some(p => p.platform === 'espn')
   )
-
-  // Check if ESPN has credentials stored (for private leagues)
-  const hasEspnCredentials = computed(() => {
-    const espnConnection = connectedPlatforms.value.find(p => p.platform === 'espn')
-    return !!(espnConnection?.access_token && espnConnection?.refresh_token)
-  })
 
   const getConnection = (platform: Platform) => 
     connectedPlatforms.value.find(p => p.platform === platform)
@@ -250,285 +243,6 @@ export const usePlatformsStore = defineStore('platforms', () => {
     }
   }
 
-  // ============================================================
-  // ESPN Methods
-  // ============================================================
-
-  /**
-   * Connect ESPN for a public league (no cookies needed)
-   * This just validates the league exists and saves the connection
-   */
-  async function connectEspnPublic(leagueId: string, sport: Sport, season: number): Promise<{
-    success: boolean
-    error?: string
-    league?: any
-  }> {
-    const authStore = useAuthStore()
-    if (!supabase || !authStore.user) {
-      return { success: false, error: 'Not authenticated' }
-    }
-
-    try {
-      loading.value = true
-      error.value = null
-
-      // Initialize ESPN service
-      await espnService.initialize(authStore.user.id)
-
-      // Validate the league exists and is accessible
-      const validation = await espnService.validateLeague(sport, leagueId, season)
-      
-      if (!validation.valid) {
-        throw new Error(validation.error || 'Invalid league')
-      }
-
-      if (validation.isPrivate) {
-        return { 
-          success: false, 
-          error: 'This is a private league. Please provide ESPN cookies (espn_s2 and SWID).' 
-        }
-      }
-
-      // Save the ESPN connection (without credentials for public leagues)
-      const { data, error: upsertError } = await supabase
-        .from('connected_platforms')
-        .upsert({
-          user_id: authStore.user.id,
-          platform: 'espn' as Platform,
-          platform_user_id: null,
-          platform_username: null,
-          access_token: null,  // No cookies needed for public leagues
-          refresh_token: null,
-          token_expires_at: null,
-          scopes: 'public'
-        }, {
-          onConflict: 'user_id,platform'
-        })
-        .select()
-        .single()
-
-      if (upsertError) throw upsertError
-
-      await fetchConnectedPlatforms()
-
-      return { success: true, league: validation.league }
-    } catch (err: any) {
-      console.error('Error connecting ESPN:', err)
-      error.value = err.message
-      return { success: false, error: err.message }
-    } finally {
-      loading.value = false
-    }
-  }
-
-  /**
-   * Store ESPN credentials for private league access
-   * ESPN uses cookies (espn_s2 and SWID) instead of OAuth
-   */
-  async function storeEspnCredentials(credentials: {
-    espn_s2: string
-    swid: string
-    leagueId?: string
-    sport?: Sport
-    season?: number
-  }): Promise<{ success: boolean; error?: string; league?: any }> {
-    const authStore = useAuthStore()
-    if (!supabase || !authStore.user) {
-      return { success: false, error: 'Not authenticated' }
-    }
-
-    try {
-      loading.value = true
-      error.value = null
-
-      // Initialize ESPN service with credentials
-      await espnService.initialize(authStore.user.id)
-      espnService.setCredentials(credentials.espn_s2, credentials.swid)
-
-      // If league info provided, validate access
-      let league = null
-      if (credentials.leagueId && credentials.sport && credentials.season) {
-        const validation = await espnService.validateLeague(
-          credentials.sport, 
-          credentials.leagueId, 
-          credentials.season
-        )
-        
-        if (!validation.valid) {
-          throw new Error(validation.error || 'Could not access league with provided credentials')
-        }
-        
-        league = validation.league
-      }
-
-      // ESPN cookies typically last about 2 years, but we'll set a conservative expiry
-      // Users can re-authenticate if needed
-      const expiresAt = new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString() // 1 year
-
-      // Store credentials - we use access_token for espn_s2 and refresh_token for SWID
-      const { data, error: upsertError } = await supabase
-        .from('connected_platforms')
-        .upsert({
-          user_id: authStore.user.id,
-          platform: 'espn' as Platform,
-          platform_user_id: credentials.swid, // SWID is the user identifier
-          platform_username: null,
-          access_token: credentials.espn_s2,   // Store espn_s2 cookie
-          refresh_token: credentials.swid,      // Store SWID cookie
-          token_expires_at: expiresAt,
-          scopes: 'private'
-        }, {
-          onConflict: 'user_id,platform'
-        })
-        .select()
-        .single()
-
-      if (upsertError) throw upsertError
-
-      await fetchConnectedPlatforms()
-
-      return { success: true, league }
-    } catch (err: any) {
-      console.error('Error storing ESPN credentials:', err)
-      error.value = err.message
-      return { success: false, error: err.message }
-    } finally {
-      loading.value = false
-    }
-  }
-
-  /**
-   * Get ESPN credentials for API calls
-   */
-  function getEspnCredentials(): { espn_s2: string; swid: string } | null {
-    const espnConnection = getConnection('espn')
-    if (!espnConnection?.access_token || !espnConnection?.refresh_token) {
-      return null
-    }
-    
-    return {
-      espn_s2: espnConnection.access_token,
-      swid: espnConnection.refresh_token
-    }
-  }
-
-  /**
-   * Sync an ESPN league to the database
-   */
-  async function syncEspnLeague(
-    leagueId: string,
-    sport: Sport,
-    season: number
-  ): Promise<{ success: boolean; error?: string; league?: any }> {
-    const authStore = useAuthStore()
-    if (!supabase || !authStore.user) {
-      return { success: false, error: 'Not authenticated' }
-    }
-
-    try {
-      loading.value = true
-      error.value = null
-
-      // Initialize ESPN service
-      await espnService.initialize(authStore.user.id)
-      
-      // Load credentials if available
-      const credentials = getEspnCredentials()
-      if (credentials) {
-        espnService.setCredentials(credentials.espn_s2, credentials.swid)
-      }
-
-      // Fetch league data
-      const espnLeague = await espnService.getLeague(sport, leagueId, season)
-      if (!espnLeague) {
-        throw new Error('Could not fetch league data')
-      }
-
-      // Try to find user's team
-      const myTeam = await espnService.getMyTeam(sport, leagueId, season)
-
-      // Map ESPN scoring type to our format
-      const scoringType = espnLeague.scoringType === 'H2H_POINTS' ? 'head' :
-                          espnLeague.scoringType === 'H2H_CATEGORY' ? 'headcategory' :
-                          espnLeague.scoringType === 'ROTO' ? 'roto' : 'points'
-
-      // Save to database
-      const leagueData: LeagueInsert = {
-        user_id: authStore.user.id,
-        platform: 'espn',
-        sport,
-        platform_league_id: leagueId,
-        league_name: espnLeague.name,
-        season: season.toString(),
-        team_name: myTeam ? `${myTeam.location} ${myTeam.nickname}`.trim() : null,
-        team_id: myTeam?.id?.toString() || null,
-        scoring_type: scoringType,
-        league_size: espnLeague.size,
-        is_active: espnLeague.status.isActive,
-        last_synced_at: new Date().toISOString(),
-        settings: {
-          scoring_type: espnLeague.scoringType,
-          current_week: espnLeague.status.currentMatchupPeriod,
-          playoff_team_count: espnLeague.settings.playoffTeamCount,
-          regular_season_weeks: espnLeague.settings.regularSeasonMatchupPeriodCount,
-          is_public: espnLeague.isPublic
-        }
-      }
-
-      const { data, error: upsertError } = await supabase
-        .from('leagues')
-        .upsert(leagueData, {
-          onConflict: 'user_id,platform,platform_league_id,season'
-        })
-        .select()
-        .single()
-
-      if (upsertError) throw upsertError
-
-      return { success: true, league: data }
-    } catch (err: any) {
-      console.error('Error syncing ESPN league:', err)
-      error.value = err.message
-      return { success: false, error: err.message }
-    } finally {
-      loading.value = false
-    }
-  }
-
-  /**
-   * Validate ESPN credentials are still working
-   */
-  async function validateEspnCredentials(
-    leagueId: string,
-    sport: Sport,
-    season: number
-  ): Promise<{ valid: boolean; error?: string }> {
-    const credentials = getEspnCredentials()
-    if (!credentials) {
-      return { valid: false, error: 'No ESPN credentials stored' }
-    }
-
-    try {
-      const authStore = useAuthStore()
-      await espnService.initialize(authStore.user!.id)
-      espnService.setCredentials(credentials.espn_s2, credentials.swid)
-      
-      const validation = await espnService.validateLeague(sport, leagueId, season)
-      
-      if (!validation.valid) {
-        return { valid: false, error: validation.error }
-      }
-      
-      return { valid: true }
-    } catch (err: any) {
-      return { valid: false, error: err.message }
-    }
-  }
-
-  // ============================================================
-  // General Methods
-  // ============================================================
-
   // Disconnect a platform
   async function disconnectPlatform(platform: Platform) {
     const authStore = useAuthStore()
@@ -551,11 +265,6 @@ export const usePlatformsStore = defineStore('platforms', () => {
       // If disconnecting Sleeper, also clear from profile
       if (platform === 'sleeper') {
         await authStore.updateProfile({ sleeper_user_id: null })
-      }
-
-      // If disconnecting ESPN, clear credentials from service
-      if (platform === 'espn') {
-        espnService.clearCredentials()
       }
 
       await fetchConnectedPlatforms()
@@ -620,7 +329,65 @@ export const usePlatformsStore = defineStore('platforms', () => {
   function clearState() {
     connectedPlatforms.value = []
     error.value = null
-    espnService.clearCredentials()
+  }
+
+  // ============================================
+  // ESPN Methods
+  // ============================================
+
+  /**
+   * Store ESPN credentials (cookies) for private leagues
+   * These are stored in localStorage since they're user-specific cookies
+   */
+  function storeEspnCredentials(espn_s2: string, swid: string) {
+    try {
+      const credentials = { espn_s2, swid, stored_at: Date.now() }
+      localStorage.setItem('espn_credentials', JSON.stringify(credentials))
+      console.log('[ESPN] Credentials stored')
+    } catch (err) {
+      console.error('Failed to store ESPN credentials:', err)
+    }
+  }
+
+  /**
+   * Get stored ESPN credentials
+   */
+  function getEspnCredentials(): { espn_s2: string; swid: string } | null {
+    try {
+      const stored = localStorage.getItem('espn_credentials')
+      if (!stored) return null
+      
+      const credentials = JSON.parse(stored)
+      // Credentials are generally valid for a long time but let's warn if old
+      const age = Date.now() - (credentials.stored_at || 0)
+      const oneMonth = 30 * 24 * 60 * 60 * 1000
+      if (age > oneMonth) {
+        console.warn('[ESPN] Stored credentials are over a month old, may need refresh')
+      }
+      
+      return {
+        espn_s2: credentials.espn_s2,
+        swid: credentials.swid
+      }
+    } catch (err) {
+      console.error('Failed to get ESPN credentials:', err)
+      return null
+    }
+  }
+
+  /**
+   * Clear ESPN credentials
+   */
+  function clearEspnCredentials() {
+    localStorage.removeItem('espn_credentials')
+    console.log('[ESPN] Credentials cleared')
+  }
+
+  /**
+   * Check if ESPN credentials are stored
+   */
+  function hasEspnCredentials(): boolean {
+    return !!getEspnCredentials()
   }
 
   return {
@@ -633,29 +400,23 @@ export const usePlatformsStore = defineStore('platforms', () => {
     isSleeperConnected,
     isYahooConnected,
     isEspnConnected,
-    hasEspnCredentials,
     getConnection,
 
-    // Actions - General
+    // Actions
     fetchConnectedPlatforms,
-    disconnectPlatform,
-    clearState,
-
-    // Actions - Sleeper
     connectSleeper,
-
-    // Actions - Yahoo
     connectYahoo,
     storeYahooTokens,
     syncYahooLeagues,
+    disconnectPlatform,
     isYahooTokenExpired,
     getYahooAccessToken,
-
-    // Actions - ESPN
-    connectEspnPublic,
+    clearState,
+    
+    // ESPN
     storeEspnCredentials,
     getEspnCredentials,
-    syncEspnLeague,
-    validateEspnCredentials
+    clearEspnCredentials,
+    hasEspnCredentials
   }
 })

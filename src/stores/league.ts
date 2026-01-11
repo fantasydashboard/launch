@@ -471,18 +471,26 @@ export const useLeagueStore = defineStore('league', () => {
         scoringType: string
         isPublic: boolean
       }
+      allSeasons?: Array<{ season: number; league: any }>
     },
     userId: string
   ): Promise<SavedLeague | undefined> {
-    const { leagueId, sport, season, league: espnLeague } = league
+    const { leagueId, sport, season, league: espnLeague, allSeasons } = league
     
-    // Check if this league is already saved
+    // Check if this league is already saved (by ESPN league ID, any season)
     const existing = savedLeagues.value.find(l => 
       l.platform === 'espn' && 
-      l.espn_league_id === leagueId &&
-      l.season === season.toString()
+      l.espn_league_id === leagueId
     )
-    if (existing) return existing
+    if (existing) {
+      // Update to latest season if newer
+      if (season > parseInt(existing.season)) {
+        existing.season = season.toString()
+        existing.league_id = `espn_${leagueId}_${season}`
+        saveToLocalStorage()
+      }
+      return existing
+    }
     
     const isPrimary = savedLeagues.value.length === 0
     
@@ -506,6 +514,19 @@ export const useLeagueStore = defineStore('league', () => {
     // Add to local state immediately
     savedLeagues.value.push(newLeague)
     saveToLocalStorage()
+    
+    // Store all seasons info in localStorage for historical access
+    if (allSeasons && allSeasons.length > 0) {
+      try {
+        localStorage.setItem(`espn_seasons_${leagueId}`, JSON.stringify(allSeasons.map(s => ({
+          season: s.season,
+          name: s.league?.name || espnLeague.name,
+          size: s.league?.size || espnLeague.size
+        }))))
+      } catch (e) {
+        console.warn('Failed to store ESPN seasons:', e)
+      }
+    }
     
     // Sync to Supabase in background
     if (supabase) {
