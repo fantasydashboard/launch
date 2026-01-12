@@ -209,14 +209,22 @@ export class YahooFantasyService {
    * Make an authenticated request to Yahoo Fantasy API via proxy
    */
   private async apiRequest(endpoint: string): Promise<any> {
-    if (!supabase) {
-      throw new Error('Supabase not configured')
+    // Get access token from localStorage (Supabase getSession can hang)
+    let accessToken: string | null = null
+    
+    try {
+      const storageKey = 'sb-ergxtydfgffqgkddclvr-auth-token'
+      const stored = localStorage.getItem(storageKey)
+      if (stored) {
+        const parsed = JSON.parse(stored)
+        accessToken = parsed?.access_token
+      }
+    } catch (e) {
+      console.error('[Yahoo] Failed to get session from localStorage:', e)
     }
-
-    // Get current session for auth header
-    const { data: { session } } = await supabase.auth.getSession()
-    if (!session) {
-      throw new Error('Not authenticated')
+    
+    if (!accessToken) {
+      throw new Error('Not authenticated - no session found')
     }
 
     const proxyUrl = `${this.supabaseUrl}/functions/v1/yahoo-api`
@@ -224,7 +232,7 @@ export class YahooFantasyService {
     const response = await fetch(proxyUrl, {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${session.access_token}`,
+        'Authorization': `Bearer ${accessToken}`,
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({ endpoint })

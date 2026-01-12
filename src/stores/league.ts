@@ -1112,26 +1112,31 @@ export const useLeagueStore = defineStore('league', () => {
 
   // Load ESPN league data - current season only
   async function loadEspnLeagueData(leagueId: string) {
+    console.log('[ESPN] loadEspnLeagueData called with:', leagueId)
     isLoading.value = true
     error.value = null
     
     try {
+      console.log('[ESPN] Importing services...')
       const { espnService } = await import('@/services/espn')
       const { useAuthStore } = await import('@/stores/auth')
       const { usePlatformsStore } = await import('@/stores/platforms')
       const authStore = useAuthStore()
       const platformsStore = usePlatformsStore()
       
+      console.log('[ESPN] Services imported, user:', authStore.user?.id)
+      
       if (!authStore.user?.id) {
         throw new Error('Not authenticated')
       }
       
-      // Initialize ESPN service
+      // Initialize ESPN service (now lightweight - no Supabase call)
       await espnService.initialize(authStore.user.id)
       
-      // Check for stored credentials
+      // Check for stored credentials from localStorage
       const credentials = platformsStore.getEspnCredentials()
       if (credentials) {
+        console.log('[ESPN] Using stored credentials')
         espnService.setCredentials(credentials.espn_s2, credentials.swid)
       }
       

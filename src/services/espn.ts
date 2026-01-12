@@ -245,35 +245,9 @@ export class EspnFantasyService {
    */
   async initialize(userId: string): Promise<boolean> {
     this.userId = userId
-    
-    if (!supabase) {
-      console.error('Supabase not configured')
-      return false
-    }
-
-    // Check if ESPN is connected and load credentials
-    const { data, error } = await supabase
-      .from('connected_platforms')
-      .select('*')
-      .eq('user_id', userId)
-      .eq('platform', 'espn')
-      .single()
-
-    if (error || !data) {
-      // Not connected yet, but that's OK for public leagues
-      console.log('ESPN not connected for user:', userId)
-      return true
-    }
-
-    // Load stored credentials for private leagues
-    if (data.access_token && data.refresh_token) {
-      this.credentials = {
-        visibleToPublic: false,
-        espn_s2: data.access_token,  // We store espn_s2 in access_token field
-        swid: data.refresh_token      // We store SWID in refresh_token field
-      }
-    }
-
+    console.log('[ESPN] Service initialized for user:', userId)
+    // Credentials are loaded from localStorage via platformsStore.getEspnCredentials()
+    // No need to query Supabase here (which can hang)
     return true
   }
 
@@ -324,14 +298,22 @@ export class EspnFantasyService {
     scoringPeriod?: number,
     historical: boolean = false
   ): Promise<any> {
-    if (!supabase) {
-      throw new Error('Supabase not configured')
+    // Get access token from localStorage (Supabase getSession can hang)
+    let accessToken: string | null = null
+    
+    try {
+      const storageKey = 'sb-ergxtydfgffqgkddclvr-auth-token'
+      const stored = localStorage.getItem(storageKey)
+      if (stored) {
+        const parsed = JSON.parse(stored)
+        accessToken = parsed?.access_token
+      }
+    } catch (e) {
+      console.error('[ESPN] Failed to get session from localStorage:', e)
     }
-
-    // Get current session for auth header
-    const { data: { session } } = await supabase.auth.getSession()
-    if (!session) {
-      throw new Error('Not authenticated')
+    
+    if (!accessToken) {
+      throw new Error('Not authenticated - no session found')
     }
 
     const sportCode = ESPN_SPORT_CODES[sport]
@@ -370,7 +352,7 @@ export class EspnFantasyService {
     const response = await fetch(proxyUrl, {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${session.access_token}`,
+        'Authorization': `Bearer ${accessToken}`,
         'Content-Type': 'application/json'
       },
       body: JSON.stringify(requestBody)
