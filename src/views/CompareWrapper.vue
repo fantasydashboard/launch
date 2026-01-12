@@ -4,11 +4,11 @@
     <div class="animate-spin rounded-full h-16 w-16 border-b-4 border-primary"></div>
   </div>
   
-  <!-- Yahoo Baseball Categories -->
-  <YahooCategoryCompare v-else-if="isYahooCategoryBaseball" :key="'category-' + detectedScoringType" />
+  <!-- Yahoo/ESPN Baseball Categories -->
+  <YahooCategoryCompare v-else-if="isCategoryBaseball" :key="'category-' + detectedScoringType" />
   
-  <!-- Yahoo Baseball Points -->
-  <YahooBaseballCompare v-else-if="isYahooPointsBaseball" :key="'points-' + detectedScoringType" />
+  <!-- Yahoo/ESPN Baseball Points -->
+  <YahooBaseballCompare v-else-if="isPointsBaseball" :key="'points-' + detectedScoringType" />
   
   <!-- Sleeper Football (default) -->
   <SleeperCompare v-else />
@@ -38,14 +38,27 @@ const SleeperCompare = defineAsyncComponent(() =>
   import('@/views/PerformanceComparisonView.vue')
 )
 
-const isYahooBaseball = computed(() => 
-  leagueStore.activePlatform === 'yahoo' && sportStore.activeSport === 'baseball'
+// Check for Yahoo or ESPN
+const isYahooOrEspn = computed(() => 
+  leagueStore.activePlatform === 'yahoo' || leagueStore.activePlatform === 'espn'
+)
+
+const isBaseball = computed(() => 
+  isYahooOrEspn.value && sportStore.activeSport === 'baseball'
 )
 
 // Detect scoring type - check multiple sources including cache
 async function detectScoringType() {
   const activeId = leagueStore.activeLeagueId
   console.log('[CompareWrapper] Detecting scoring type for activeId:', activeId)
+  
+  // For ESPN, get from currentLeague or savedLeagues
+  if (leagueStore.activePlatform === 'espn') {
+    const saved = leagueStore.savedLeagues.find(l => l.league_id === activeId)
+    const st = saved?.scoring_type || leagueStore.currentLeague?.scoring_type || 'head'
+    console.log('[CompareWrapper] ESPN scoring type:', st)
+    return st
+  }
   
   // Try currentLeague first
   if (leagueStore.currentLeague?.scoring_type) {
@@ -79,53 +92,39 @@ async function detectScoringType() {
       if (metadata?.scoring_type) {
         console.log('[CompareWrapper] Found scoring_type in Yahoo metadata:', metadata.scoring_type)
         return metadata.scoring_type
-      } else {
-        // scoring_type missing from cache - this means old cache format
-        // Force a fresh fetch by calling the API directly
-        console.log('[CompareWrapper] scoring_type missing from cached metadata, forcing fresh fetch...')
-        // Clear cache and refetch (the service will refetch on next call)
-        // We need to wait for data to propagate - try yahooLeagues after a short delay
-        await new Promise(resolve => setTimeout(resolve, 500))
-        const refreshedLeagues = leagueStore.yahooLeagues || []
-        const refreshedLeague = refreshedLeagues.find((l: any) => l.league_key === activeId)
-        if (refreshedLeague?.scoring_type) {
-          console.log('[CompareWrapper] Found scoring_type after refresh:', refreshedLeague.scoring_type)
-          return refreshedLeague.scoring_type
-        }
       }
     } catch (e) {
       console.log('[CompareWrapper] Could not get metadata from Yahoo cache:', e)
     }
   }
   
-  // Default for Yahoo leagues we can't determine
-  if (leagueStore.activePlatform === 'yahoo') {
+  // Default for Yahoo/ESPN leagues we can't determine
+  if (isYahooOrEspn.value) {
     console.log('[CompareWrapper] Could not determine scoring type, defaulting to head (category)')
     return 'head'
   }
   
-  return 'sleeper' // For non-Yahoo leagues
+  return 'sleeper' // For non-Yahoo/ESPN leagues
 }
 
 const isCategoryLeague = computed(() => {
   const st = detectedScoringType.value
-  if (!st) return false // Unknown, don't render yet
-  // 'head' = H2H Categories, 'roto' = Rotisserie, 'headone' = H2H One-Win - all category-based
-  // 'headpoint' and 'point' are points-based
-  return st === 'head' || st === 'roto' || st === 'headone'
+  if (!st) return false
+  // 'head' = H2H Categories, 'roto' = Rotisserie, 'headone' = H2H One-Win, 'headcategory' = ESPN categories
+  return st === 'head' || st === 'roto' || st === 'headone' || st === 'headcategory' || st.includes('category')
 })
 
-const isYahooCategoryBaseball = computed(() => 
-  isYahooBaseball.value && isCategoryLeague.value && detectedScoringType.value !== ''
+const isCategoryBaseball = computed(() => 
+  isBaseball.value && isCategoryLeague.value && detectedScoringType.value !== ''
 )
 
-const isYahooPointsBaseball = computed(() => 
-  isYahooBaseball.value && !isCategoryLeague.value && detectedScoringType.value !== '' && detectedScoringType.value !== 'sleeper'
+const isPointsBaseball = computed(() => 
+  isBaseball.value && !isCategoryLeague.value && detectedScoringType.value !== '' && detectedScoringType.value !== 'sleeper'
 )
 
 // Initialize scoring type detection
 onMounted(async () => {
-  if (isYahooBaseball.value) {
+  if (isBaseball.value) {
     detectedScoringType.value = await detectScoringType()
     console.log('[CompareWrapper] Final scoring type:', detectedScoringType.value)
   } else {
@@ -136,7 +135,7 @@ onMounted(async () => {
 
 // Re-detect if league changes
 watch(() => leagueStore.activeLeagueId, async (newId, oldId) => {
-  if (newId !== oldId && isYahooBaseball.value) {
+  if (newId !== oldId && isBaseball.value) {
     isLoading.value = true
     detectedScoringType.value = await detectScoringType()
     isLoading.value = false
@@ -144,14 +143,13 @@ watch(() => leagueStore.activeLeagueId, async (newId, oldId) => {
 })
 
 // Debug logging
-watch([isYahooBaseball, isCategoryLeague, detectedScoringType], ([yahoo, category, st]) => {
+watch([isBaseball, isCategoryLeague, detectedScoringType], ([baseball, category, st]) => {
   console.log('CompareWrapper routing:', {
-    isYahooBaseball: yahoo,
+    isBaseball: baseball,
     isCategoryLeague: category,
     scoringType: st,
     isLoading: isLoading.value,
-    willLoadCategoryView: yahoo && category && st !== '',
-    willLoadPointsView: yahoo && !category && st !== '' && st !== 'sleeper'
+    platform: leagueStore.activePlatform
   })
 }, { immediate: true })
 </script>

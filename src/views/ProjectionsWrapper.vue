@@ -1,16 +1,16 @@
 <template>
-  <!-- Yahoo Baseball H2H Categories -->
-  <YahooCategoryProjections v-if="isYahooBaseballCategories" />
+  <!-- Yahoo/ESPN Baseball H2H Categories -->
+  <YahooCategoryProjections v-if="isBaseballCategories" />
   
-  <!-- Yahoo Baseball Points -->
-  <YahooBaseballProjections v-else-if="isYahooBaseball" />
+  <!-- Yahoo/ESPN Baseball Points -->
+  <YahooBaseballProjections v-else-if="isBaseball" />
   
   <!-- Sleeper Football (default) -->
   <SleeperProjections v-else />
 </template>
 
 <script setup lang="ts">
-import { computed, defineAsyncComponent, ref, onMounted } from 'vue'
+import { computed, defineAsyncComponent, ref, onMounted, watch } from 'vue'
 import { useLeagueStore } from '@/stores/league'
 import { useSportStore } from '@/stores/sport'
 import { yahooService } from '@/services/yahoo'
@@ -34,28 +34,43 @@ const SleeperProjections = defineAsyncComponent(() =>
   import('@/views/ProjectionsView.vue')
 )
 
-const isYahooBaseball = computed(() => 
-  leagueStore.activePlatform === 'yahoo' && sportStore.activeSport === 'baseball'
+// Check for Yahoo or ESPN
+const isYahooOrEspn = computed(() => 
+  leagueStore.activePlatform === 'yahoo' || leagueStore.activePlatform === 'espn'
 )
 
-const isYahooBaseballCategories = computed(() => {
-  if (!isYahooBaseball.value) return false
-  // Check if it's a category league (not points)
+const isBaseball = computed(() => 
+  isYahooOrEspn.value && sportStore.activeSport === 'baseball'
+)
+
+const isBaseballCategories = computed(() => {
+  if (!isBaseball.value) return false
   const st = scoringType.value.toLowerCase()
-  return st.includes('head') && !st.includes('point')
+  return st.includes('head') && !st.includes('point') || st.includes('category') || st === 'headcategory'
 })
 
-// Load scoring type on mount
-onMounted(async () => {
-  if (isYahooBaseball.value && leagueStore.activeLeagueId) {
-    try {
-      const settings = await yahooService.getLeagueScoringSettings(leagueStore.activeLeagueId)
-      if (settings) {
-        scoringType.value = settings.scoring_type || ''
-      }
-    } catch (e) {
-      console.error('Error loading scoring type:', e)
-    }
+// Load scoring type
+async function loadScoringType() {
+  if (!isBaseball.value || !leagueStore.activeLeagueId) return
+  
+  // For ESPN, get from league store
+  if (leagueStore.activePlatform === 'espn') {
+    const savedLeague = leagueStore.savedLeagues?.find(l => l.league_id === leagueStore.activeLeagueId)
+    scoringType.value = savedLeague?.scoring_type || leagueStore.currentLeague?.scoring_type || 'head'
+    return
   }
-})
+  
+  // For Yahoo
+  try {
+    const settings = await yahooService.getLeagueScoringSettings(leagueStore.activeLeagueId)
+    if (settings) {
+      scoringType.value = settings.scoring_type || ''
+    }
+  } catch (e) {
+    console.error('Error loading scoring type:', e)
+  }
+}
+
+watch(() => leagueStore.activeLeagueId, loadScoringType, { immediate: true })
+onMounted(loadScoringType)
 </script>

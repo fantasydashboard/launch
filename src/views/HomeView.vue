@@ -1,9 +1,9 @@
 <template>
-  <!-- Show Yahoo Baseball Home if Yahoo baseball league is active -->
-  <YahooBaseballHome v-if="leagueStore.activePlatform === 'yahoo' && currentSport === 'baseball'" />
+  <!-- Show Yahoo/ESPN Baseball Home if baseball league is active -->
+  <YahooBaseballHome v-if="isYahooOrEspn && currentSport === 'baseball'" />
   
-  <!-- Show Yahoo League Home for other Yahoo sports (football, etc.) -->
-  <YahooLeagueHome v-else-if="leagueStore.activePlatform === 'yahoo'" />
+  <!-- Show Yahoo/ESPN League Home for other sports (football, etc.) -->
+  <YahooLeagueHome v-else-if="isYahooOrEspn" />
   
   <!-- Show Sleeper League Home -->
   <div v-else class="space-y-8">
@@ -667,6 +667,11 @@ const { applyCustomizations } = useTeamCustomizations()
 
 // Current sport for routing
 const currentSport = computed(() => sportStore.activeSport)
+
+// Check for Yahoo or ESPN platform (both use same views)
+const isYahooOrEspn = computed(() => 
+  leagueStore.activePlatform === 'yahoo' || leagueStore.activePlatform === 'espn'
+)
 
 // State
 const isLoading = ref(true)

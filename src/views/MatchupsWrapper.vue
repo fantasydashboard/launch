@@ -1,9 +1,9 @@
 <template>
-  <!-- Yahoo Baseball H2H Categories -->
-  <YahooCategoryMatchups v-if="isYahooCategoryBaseball" />
+  <!-- Yahoo/ESPN Baseball H2H Categories -->
+  <YahooCategoryMatchups v-if="isCategoryBaseball" />
   
-  <!-- Yahoo Baseball Points -->
-  <YahooBaseballMatchups v-else-if="isYahooBaseball" />
+  <!-- Yahoo/ESPN Baseball Points -->
+  <YahooBaseballMatchups v-else-if="isBaseball" />
   
   <!-- Sleeper Football (default) -->
   <SleeperMatchups v-else />
@@ -30,18 +30,28 @@ const SleeperMatchups = defineAsyncComponent(() =>
   import('@/views/MatchupsView.vue')
 )
 
-const isYahooBaseball = computed(() => 
-  leagueStore.activePlatform === 'yahoo' && sportStore.activeSport === 'baseball'
+// Check for Yahoo or ESPN
+const isYahooOrEspn = computed(() => 
+  leagueStore.activePlatform === 'yahoo' || leagueStore.activePlatform === 'espn'
 )
 
-// Check if it's a H2H Category league (scoring_type: 'head')
-const isYahooCategoryBaseball = computed(() => {
-  if (!isYahooBaseball.value) return false
+const isBaseball = computed(() => 
+  isYahooOrEspn.value && sportStore.activeSport === 'baseball'
+)
+
+// Check if it's a H2H Category league
+const isCategoryBaseball = computed(() => {
+  if (!isBaseball.value) return false
   
+  // Check yahooLeague (works for both Yahoo and ESPN since we map ESPN to this format)
   const league = leagueStore.yahooLeague
   if (Array.isArray(league) && league[0]) {
-    return league[0].scoring_type === 'head'
+    const st = (league[0].scoring_type || '').toLowerCase()
+    return st === 'head' || st.includes('category') || st === 'headcategory'
   }
-  return false
+  
+  // Fallback to currentLeague
+  const st = (leagueStore.currentLeague?.scoring_type || '').toLowerCase()
+  return st === 'head' || st.includes('category') || st === 'headcategory'
 })
 </script>

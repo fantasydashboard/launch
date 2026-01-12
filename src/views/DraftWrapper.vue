@@ -1,6 +1,6 @@
 <template>
-  <YahooCategoryDraftView v-if="isYahooCategoryBaseball" />
-  <YahooBaseballDraftView v-else-if="isYahooPointsBaseball" />
+  <YahooCategoryDraftView v-if="isCategoryBaseball" />
+  <YahooBaseballDraftView v-else-if="isPointsBaseball" />
   <DraftView v-else />
 </template>
 
@@ -25,20 +25,24 @@ const DraftView = defineAsyncComponent(() =>
   import('@/views/DraftView.vue')
 )
 
-const isYahooBaseball = computed(() => 
-  leagueStore.activePlatform === 'yahoo' && sportStore.activeSport === 'baseball'
+// Check for Yahoo or ESPN
+const isYahooOrEspn = computed(() => 
+  leagueStore.activePlatform === 'yahoo' || leagueStore.activePlatform === 'espn'
+)
+
+const isBaseball = computed(() => 
+  isYahooOrEspn.value && sportStore.activeSport === 'baseball'
 )
 
 // Check if it's a category league
-// Yahoo scoring types: 'head' = H2H Categories, 'roto' = Rotisserie, 'point' = Points, 'headpoint' = H2H Points
 const scoringType = computed(() => {
   // Try multiple places to find scoring_type
-  // 1. Check currentLeague (may have it if loaded from Yahoo API)
+  // 1. Check currentLeague
   if (leagueStore.currentLeague?.scoring_type) {
     return leagueStore.currentLeague.scoring_type
   }
   
-  // 2. Check savedLeagues by yahoo_league_key
+  // 2. Check savedLeagues
   const activeId = leagueStore.activeLeagueId
   if (activeId) {
     const saved = leagueStore.savedLeagues.find(l => 
@@ -49,40 +53,35 @@ const scoringType = computed(() => {
     }
   }
   
-  // 3. For Yahoo leagues, default to 'head' (most common) if we can't determine
-  // This ensures category view loads for Yahoo baseball unless we know it's points
-  if (leagueStore.activePlatform === 'yahoo') {
-    return 'head' // Default to category for Yahoo
+  // 3. For Yahoo/ESPN leagues, default to 'head' if we can't determine
+  if (isYahooOrEspn.value) {
+    return 'head'
   }
   
   return ''
 })
 
 const isCategoryLeague = computed(() => {
-  const st = scoringType.value
-  // 'head' = H2H Categories, 'roto' = Rotisserie, 'headone' = H2H One-Win - all category-based
-  // 'point' = Rotisserie Points, 'headpoint' = H2H Points - points-based
-  return st === 'head' || st === 'roto' || st === 'headone'
+  const st = (scoringType.value || '').toLowerCase()
+  // 'head' = H2H Categories, 'roto' = Rotisserie, 'headone' = H2H One-Win, 'headcategory' = ESPN
+  return st === 'head' || st === 'roto' || st === 'headone' || st === 'headcategory' || st.includes('category')
 })
 
-const isYahooCategoryBaseball = computed(() => 
-  isYahooBaseball.value && isCategoryLeague.value
+const isCategoryBaseball = computed(() => 
+  isBaseball.value && isCategoryLeague.value
 )
 
-const isYahooPointsBaseball = computed(() => 
-  isYahooBaseball.value && !isCategoryLeague.value
+const isPointsBaseball = computed(() => 
+  isBaseball.value && !isCategoryLeague.value
 )
 
 // Debug logging
-watch([isYahooBaseball, isCategoryLeague, scoringType], ([yahoo, category, st]) => {
+watch([isBaseball, isCategoryLeague, scoringType], ([baseball, category, st]) => {
   console.log('DraftWrapper routing:', {
-    isYahooBaseball: yahoo,
+    isBaseball: baseball,
     isCategoryLeague: category,
     scoringType: st,
-    activeLeagueId: leagueStore.activeLeagueId,
-    activePlatform: leagueStore.activePlatform,
-    currentLeagueScoringType: leagueStore.currentLeague?.scoring_type,
-    willLoadCategoryView: yahoo && category
+    platform: leagueStore.activePlatform
   })
 }, { immediate: true })
 </script>

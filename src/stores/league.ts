@@ -1116,6 +1116,12 @@ export const useLeagueStore = defineStore('league', () => {
     isLoading.value = true
     error.value = null
     
+    // Clear previous Yahoo data
+    yahooLeague.value = null
+    yahooTeams.value = []
+    yahooStandings.value = []
+    yahooMatchups.value = []
+    
     try {
       console.log('[ESPN] Importing services...')
       const { espnService } = await import('@/services/espn')
@@ -1144,34 +1150,126 @@ export const useLeagueStore = defineStore('league', () => {
       const savedLeague = savedLeagues.value.find(l => l.league_id === leagueId)
       const espnLeagueId = savedLeague?.espn_league_id || leagueId.split('_')[1]
       const season = parseInt(savedLeague?.season || leagueId.split('_')[2] || new Date().getFullYear().toString())
-      const sport = savedLeague?.sport || 'football'
+      const sport = (savedLeague?.sport || 'football') as 'football' | 'baseball' | 'basketball' | 'hockey'
       
-      console.log('[ESPN] Loading current season only:', { espnLeagueId, season, sport })
+      console.log('[ESPN] Loading league:', { espnLeagueId, season, sport })
       
-      // Fetch ONLY current season league data - this is fast (1 API call)
+      // Fetch league info
       const league = await espnService.getLeague(sport, espnLeagueId, season)
+      console.log('[ESPN] League loaded:', league?.name, 'scoring:', league?.scoringType)
       
-      // Create a currentLeague object that's compatible with the UI
+      // Fetch teams with standings
+      const espnTeams = await espnService.getTeams(sport, espnLeagueId, season)
+      console.log('[ESPN] Teams loaded:', espnTeams.length)
+      
+      // Fetch current week matchups
+      const currentWeek = league?.currentMatchupPeriod || 1
+      let espnMatchups: any[] = []
+      try {
+        espnMatchups = await espnService.getMatchups(sport, espnLeagueId, season, currentWeek)
+        console.log('[ESPN] Matchups loaded:', espnMatchups.length)
+      } catch (e) {
+        console.warn('[ESPN] Could not load matchups:', e)
+      }
+      
+      // Map ESPN scoring type to our format
+      const scoringTypeMap: Record<string, string> = {
+        'H2H_POINTS': 'head',
+        'H2H_CATEGORY': 'headcategory', 
+        'ROTO': 'roto',
+        'TOTAL_POINTS': 'points'
+      }
+      const mappedScoringType = scoringTypeMap[league?.scoringType || 'H2H_POINTS'] || 'head'
+      
+      // Create currentLeague object
       currentLeague.value = {
         league_id: leagueId,
         name: league?.name || savedLeague?.league_name || 'ESPN League',
         season: season.toString(),
         status: league?.status?.isActive ? 'in_season' : 'complete',
-        sport: sport === 'football' ? 'nfl' : sport,
+        sport: sport,
         settings: {
-          leg: league?.currentMatchupPeriod || 1,
+          leg: currentWeek,
           playoff_week_start: league?.settings?.regularSeasonMatchupPeriodCount || 14,
-          num_teams: league?.size || savedLeague?.num_teams
+          num_teams: league?.size || savedLeague?.num_teams,
+          end_week: league?.status?.finalScoringPeriod || 25
         },
         scoring_settings: {},
         roster_positions: [],
-        total_rosters: league?.size || savedLeague?.num_teams || 12
+        total_rosters: league?.size || savedLeague?.num_teams || 12,
+        scoring_type: mappedScoringType
       } as any
       
-      console.log('[ESPN] League loaded:', league?.name)
+      // Map ESPN league to Yahoo league format (for views that expect yahooLeague)
+      yahooLeague.value = [{
+        league_key: leagueId,
+        league_id: espnLeagueId,
+        name: league?.name || 'ESPN League',
+        season: season.toString(),
+        num_teams: league?.size || 12,
+        scoring_type: mappedScoringType,
+        current_week: currentWeek,
+        start_week: league?.status?.firstScoringPeriod || 1,
+        end_week: league?.status?.finalScoringPeriod || 25,
+        is_finished: !league?.status?.isActive ? 1 : 0
+      }]
       
-      // NOTE: Historical seasons are loaded on-demand when viewing History tab
-      // This keeps initial page load fast
+      // Map ESPN teams to Yahoo team format
+      yahooTeams.value = espnTeams.map((team, index) => ({
+        team_key: `espn_${espnLeagueId}_${team.id}`,
+        team_id: team.id.toString(),
+        name: team.name || `${team.location} ${team.nickname}`.trim(),
+        managers: [{
+          manager: {
+            nickname: team.primaryOwner || `Owner ${team.id}`,
+            guid: team.primaryOwner || team.id.toString(),
+            is_current_login: false // Could check against user if we had that info
+          }
+        }],
+        logo_url: team.logo || `https://g.espncdn.com/lm-static/ffl/images/default_logos/team_${team.id % 25}.svg`,
+        wins: team.wins || 0,
+        losses: team.losses || 0,
+        ties: team.ties || 0,
+        points_for: team.pointsFor || team.points || 0,
+        points_against: team.pointsAgainst || 0,
+        rank: team.rank || index + 1,
+        points: team.points || 0,
+        is_my_team: false // Could determine if we tracked user's team
+      }))
+      
+      // Sort by rank
+      yahooTeams.value.sort((a, b) => (a.rank || 99) - (b.rank || 99))
+      
+      // Map ESPN matchups to Yahoo matchup format
+      yahooMatchups.value = espnMatchups.map(matchup => {
+        const homeTeam = yahooTeams.value.find(t => t.team_id === matchup.homeTeamId?.toString())
+        const awayTeam = yahooTeams.value.find(t => t.team_id === matchup.awayTeamId?.toString())
+        
+        return {
+          matchup_id: matchup.id,
+          week: currentWeek,
+          team1: homeTeam ? {
+            ...homeTeam,
+            points: matchup.homeScore || 0
+          } : null,
+          team2: awayTeam ? {
+            ...awayTeam,
+            points: matchup.awayScore || 0
+          } : null,
+          team1_points: matchup.homeScore || 0,
+          team2_points: matchup.awayScore || 0,
+          winner_team_key: matchup.winner === 'HOME' ? homeTeam?.team_key : 
+                          matchup.winner === 'AWAY' ? awayTeam?.team_key : null
+        }
+      })
+      
+      console.log('[ESPN] Data mapped to Yahoo format. Teams:', yahooTeams.value.length, 'Matchups:', yahooMatchups.value.length)
+      
+      // Update saved league with scoring type if we learned it
+      if (savedLeague && !savedLeague.scoring_type) {
+        savedLeague.scoring_type = mappedScoringType
+        saveToLocalStorage()
+      }
       
     } catch (e) {
       console.error('Failed to load ESPN league data:', e)
