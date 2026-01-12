@@ -1110,7 +1110,7 @@ export const useLeagueStore = defineStore('league', () => {
     }
   }
 
-  // Load ESPN league data
+  // Load ESPN league data - current season only
   async function loadEspnLeagueData(leagueId: string) {
     isLoading.value = true
     error.value = null
@@ -1141,9 +1141,9 @@ export const useLeagueStore = defineStore('league', () => {
       const season = parseInt(savedLeague?.season || leagueId.split('_')[2] || new Date().getFullYear().toString())
       const sport = savedLeague?.sport || 'football'
       
-      console.log('[ESPN] Loading league data:', { espnLeagueId, season, sport })
+      console.log('[ESPN] Loading current season only:', { espnLeagueId, season, sport })
       
-      // Fetch current season league data
+      // Fetch ONLY current season league data - this is fast (1 API call)
       const league = await espnService.getLeague(sport, espnLeagueId, season)
       
       // Create a currentLeague object that's compatible with the UI
@@ -1163,21 +1163,10 @@ export const useLeagueStore = defineStore('league', () => {
         total_rosters: league?.size || savedLeague?.num_teams || 12
       } as any
       
-      console.log('[ESPN] Current season loaded:', league?.name)
+      console.log('[ESPN] League loaded:', league?.name)
       
-      // Now fetch full history (this happens during loading spinner)
-      console.log('[ESPN] Fetching full league history...')
-      const fullHistory = await espnService.discoverFullHistory(sport as any, espnLeagueId)
-      
-      if (fullHistory.length > 0) {
-        // Store in localStorage for historical views
-        localStorage.setItem(`espn_seasons_${espnLeagueId}`, JSON.stringify(fullHistory.map(s => ({
-          season: s.season,
-          name: s.league?.name || league?.name,
-          size: s.league?.size || league?.size
-        }))))
-        console.log(`[ESPN] Full history loaded: ${fullHistory.length} seasons`)
-      }
+      // NOTE: Historical seasons are loaded on-demand when viewing History tab
+      // This keeps initial page load fast
       
     } catch (e) {
       console.error('Failed to load ESPN league data:', e)
@@ -1185,6 +1174,35 @@ export const useLeagueStore = defineStore('league', () => {
     } finally {
       isLoading.value = false
     }
+  }
+  
+  // Load ESPN historical seasons - call this only when viewing History
+  async function loadEspnHistory(leagueId: string): Promise<Array<{ season: number; name: string }>> {
+    const savedLeague = savedLeagues.value.find(l => l.league_id === leagueId)
+    const espnLeagueId = savedLeague?.espn_league_id || leagueId.split('_')[1]
+    const sport = savedLeague?.sport || 'football'
+    
+    // Check localStorage first
+    const cached = localStorage.getItem(`espn_seasons_${espnLeagueId}`)
+    if (cached) {
+      try {
+        return JSON.parse(cached)
+      } catch {}
+    }
+    
+    // Fetch from API
+    const { espnService } = await import('@/services/espn')
+    const history = await espnService.discoverFullHistory(sport as any, espnLeagueId)
+    
+    const seasons = history.map(s => ({
+      season: s.season,
+      name: s.league?.name || savedLeague?.league_name || 'ESPN League'
+    }))
+    
+    // Cache for next time
+    localStorage.setItem(`espn_seasons_${espnLeagueId}`, JSON.stringify(seasons))
+    
+    return seasons
   }
 
   // Refresh all saved Yahoo leagues to ensure they have the latest season
@@ -1371,6 +1389,7 @@ export const useLeagueStore = defineStore('league', () => {
     setActiveSport,
     loadYahooLeagueData,
     loadEspnLeagueData,
+    loadEspnHistory,
     refreshYahooLeagues,
     getTeamInfo,
     reset,
