@@ -48,18 +48,60 @@ onMounted(async () => {
     if (accessToken) {
       console.log('Found access token in URL, setting session...')
       
-      // Manually set the session from the URL hash
-      const { data, error: setSessionError } = await supabase.auth.setSession({
-        access_token: accessToken,
-        refresh_token: refreshToken || ''
-      })
-      
-      if (setSessionError) {
-        console.error('Error setting session:', setSessionError)
-        throw setSessionError
+      // Use timeout to prevent hanging
+      const setSessionWithTimeout = async () => {
+        return Promise.race([
+          supabase.auth.setSession({
+            access_token: accessToken,
+            refresh_token: refreshToken || ''
+          }),
+          new Promise((_, reject) => 
+            setTimeout(() => reject(new Error('setSession timeout')), 5000)
+          )
+        ])
       }
       
-      console.log('Session set successfully:', data.session?.user?.email)
+      try {
+        const { data, error: setSessionError } = await setSessionWithTimeout() as any
+        
+        if (setSessionError) {
+          console.error('Error setting session:', setSessionError)
+          throw setSessionError
+        }
+        
+        console.log('Session set successfully:', data.session?.user?.email)
+      } catch (timeoutErr) {
+        console.warn('setSession timed out, storing tokens manually...')
+        
+        // Manually store the session in localStorage as fallback
+        try {
+          const storageKey = `sb-ergxtydfgffqgkddclvr-auth-token`
+          
+          // Decode the JWT to get user info
+          const payload = JSON.parse(atob(accessToken.split('.')[1]))
+          
+          const sessionData = {
+            access_token: accessToken,
+            refresh_token: refreshToken || '',
+            token_type: 'bearer',
+            expires_at: payload.exp,
+            expires_in: 3600,
+            user: {
+              id: payload.sub,
+              email: payload.email,
+              user_metadata: payload.user_metadata || {},
+              app_metadata: payload.app_metadata || {},
+              aud: payload.aud,
+              role: payload.role
+            }
+          }
+          
+          localStorage.setItem(storageKey, JSON.stringify(sessionData))
+          console.log('Session stored manually in localStorage')
+        } catch (storeErr) {
+          console.error('Failed to store session manually:', storeErr)
+        }
+      }
       
       // Initialize auth store
       await authStore.initialize()
@@ -69,30 +111,17 @@ onMounted(async () => {
       return
     }
 
-    // No token in hash - check if we already have a session
-    const { data: { session }, error: sessionError } = await supabase.auth.getSession()
+    // No token in hash - just redirect to home
+    // The auth store initialize in App.vue will handle the rest
+    console.log('No token in URL, redirecting home')
+    router.replace('/')
     
-    if (sessionError) {
-      throw sessionError
-    }
-
-    if (session) {
-      console.log('Existing session found:', session.user?.email)
-      await authStore.initialize()
-      router.replace('/')
-    } else {
-      // Check for error in URL
-      const errorDescription = hashParams.get('error_description')
-      if (errorDescription) {
-        throw new Error(errorDescription)
-      }
-      
-      console.log('No session found, redirecting home')
-      router.replace('/')
-    }
   } catch (err: any) {
     console.error('Auth callback error:', err)
     error.value = err.message || 'Authentication failed'
+    
+    // Redirect home after error
+    setTimeout(() => router.replace('/'), 3000)
   }
 })
 </script>
