@@ -464,20 +464,15 @@ export const useLeagueStore = defineStore('league', () => {
       leagueId: string
       sport: 'football' | 'baseball' | 'basketball' | 'hockey'
       season: number
-      league: {
-        id: number
-        name: string
-        size: number
-        scoringType: string
-        isPublic: boolean
-      }
-      allSeasons?: Array<{ season: number; league: any }>
+      name: string
+      size: number
+      isPublic: boolean
     },
     userId: string
   ): Promise<SavedLeague | undefined> {
-    const { leagueId, sport, season, league: espnLeague, allSeasons } = league
+    const { leagueId, sport, season, name, size } = league
     
-    // Check if this league is already saved (by ESPN league ID, any season)
+    // Check if this league is already saved (by ESPN league ID)
     const existing = savedLeagues.value.find(l => 
       l.platform === 'espn' && 
       l.espn_league_id === leagueId
@@ -494,39 +489,21 @@ export const useLeagueStore = defineStore('league', () => {
     
     const isPrimary = savedLeagues.value.length === 0
     
-    // Map ESPN scoring type to our format
-    const scoringType = espnLeague.scoringType === 'H2H_POINTS' ? 'head' :
-                        espnLeague.scoringType === 'H2H_CATEGORY' ? 'headcategory' :
-                        espnLeague.scoringType === 'ROTO' ? 'roto' : 'points'
-    
     const newLeague: SavedLeague = {
-      league_id: `espn_${leagueId}_${season}`, // Unique ID combining platform, league, season
-      league_name: espnLeague.name,
+      league_id: `espn_${leagueId}_${season}`,
+      league_name: name,
       platform: 'espn',
       sport: sport,
       season: season.toString(),
       espn_league_id: leagueId,
       is_primary: isPrimary,
-      num_teams: espnLeague.size,
-      scoring_type: scoringType
+      num_teams: size,
+      scoring_type: 'head' // Default, will be updated when loading
     }
     
     // Add to local state immediately
     savedLeagues.value.push(newLeague)
     saveToLocalStorage()
-    
-    // Store all seasons info in localStorage for historical access
-    if (allSeasons && allSeasons.length > 0) {
-      try {
-        localStorage.setItem(`espn_seasons_${leagueId}`, JSON.stringify(allSeasons.map(s => ({
-          season: s.season,
-          name: s.league?.name || espnLeague.name,
-          size: s.league?.size || espnLeague.size
-        }))))
-      } catch (e) {
-        console.warn('Failed to store ESPN seasons:', e)
-      }
-    }
     
     // Sync to Supabase in background
     if (supabase) {
@@ -1164,29 +1141,43 @@ export const useLeagueStore = defineStore('league', () => {
       const season = parseInt(savedLeague?.season || leagueId.split('_')[2] || new Date().getFullYear().toString())
       const sport = savedLeague?.sport || 'football'
       
-      console.log('Loading ESPN league:', { espnLeagueId, season, sport })
+      console.log('[ESPN] Loading league data:', { espnLeagueId, season, sport })
       
-      // Fetch league data
+      // Fetch current season league data
       const league = await espnService.getLeague(sport, espnLeagueId, season)
       
       // Create a currentLeague object that's compatible with the UI
       currentLeague.value = {
         league_id: leagueId,
-        name: league.name,
+        name: league?.name || savedLeague?.league_name || 'ESPN League',
         season: season.toString(),
-        status: league.status === 'current' ? 'in_season' : 'complete',
+        status: league?.status?.isActive ? 'in_season' : 'complete',
         sport: sport === 'football' ? 'nfl' : sport,
         settings: {
-          leg: league.currentMatchupPeriod || 1,
-          playoff_week_start: league.playoffWeekStart || 15,
-          num_teams: league.size
+          leg: league?.currentMatchupPeriod || 1,
+          playoff_week_start: league?.settings?.regularSeasonMatchupPeriodCount || 14,
+          num_teams: league?.size || savedLeague?.num_teams
         },
         scoring_settings: {},
         roster_positions: [],
-        total_rosters: league.size
+        total_rosters: league?.size || savedLeague?.num_teams || 12
       } as any
       
-      console.log('ESPN league loaded:', league)
+      console.log('[ESPN] Current season loaded:', league?.name)
+      
+      // Now fetch full history (this happens during loading spinner)
+      console.log('[ESPN] Fetching full league history...')
+      const fullHistory = await espnService.discoverFullHistory(sport as any, espnLeagueId)
+      
+      if (fullHistory.length > 0) {
+        // Store in localStorage for historical views
+        localStorage.setItem(`espn_seasons_${espnLeagueId}`, JSON.stringify(fullHistory.map(s => ({
+          season: s.season,
+          name: s.league?.name || league?.name,
+          size: s.league?.size || league?.size
+        }))))
+        console.log(`[ESPN] Full history loaded: ${fullHistory.length} seasons`)
+      }
       
     } catch (e) {
       console.error('Failed to load ESPN league data:', e)

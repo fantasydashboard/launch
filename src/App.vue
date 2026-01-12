@@ -818,14 +818,9 @@ async function handleEspnLeagueAdded(league: {
   leagueId: string
   sport: Sport
   season: number
-  league: {
-    id: number
-    name: string
-    size: number
-    scoringType: string
-    isPublic: boolean
-  }
-  allSeasons?: Array<{ season: number; league: any }>
+  name: string
+  size: number
+  isPublic: boolean
 }) {
   showAddLeagueModal.value = false
   
@@ -847,7 +842,7 @@ async function handleEspnLeagueAdded(league: {
     sportStore.setSport(league.sport)
     leagueStore.setActiveSport(league.sport)
     
-    console.log('ESPN league added successfully:', league.league.name, `(${league.allSeasons?.length || 1} seasons)`)
+    console.log('ESPN league added:', league.name)
   } catch (err) {
     console.error('Failed to add ESPN league:', err)
   }

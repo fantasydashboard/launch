@@ -844,10 +844,10 @@ export class EspnFantasyService {
   }
 
   /**
-   * Full discovery: detect sport and get all seasons
-   * This is the main entry point for adding a new ESPN league
+   * Quick discovery - just validate league exists and get current + recent seasons
+   * Use this for fast initial add, then call discoverAllSeasons in background
    */
-  async discoverLeague(leagueId: string | number): Promise<{
+  async quickDiscoverLeague(leagueId: string | number): Promise<{
     sport: Sport
     leagueId: string
     name: string
@@ -864,6 +864,7 @@ export class EspnFantasyService {
     }
     
     const { sport, league } = detected
+    const currentYear = new Date().getFullYear()
     
     // If private and we don't have credentials, return minimal info
     if (!league.isPublic && !this.hasCredentials()) {
@@ -873,14 +874,34 @@ export class EspnFantasyService {
         name: league.name,
         isPublic: false,
         seasons: [{
-          season: league.seasonId || new Date().getFullYear(),
+          season: league.seasonId || currentYear,
           league
         }]
       }
     }
     
-    // Discover all seasons
-    const seasons = await this.discoverAllSeasons(sport, leagueId)
+    // Quick check: just get last 3 years in parallel (fast!)
+    const recentYears = [currentYear, currentYear - 1, currentYear - 2]
+    const results = await Promise.allSettled(
+      recentYears.map(async (year) => {
+        try {
+          const l = await this.getLeague(sport, leagueId, year)
+          return l ? { season: year, league: l } : null
+        } catch {
+          return null
+        }
+      })
+    )
+    
+    const seasons: Array<{ season: number; league: EspnLeague }> = []
+    for (const result of results) {
+      if (result.status === 'fulfilled' && result.value) {
+        seasons.push(result.value)
+      }
+    }
+    
+    // Sort by season descending
+    seasons.sort((a, b) => b.season - a.season)
     
     // Use most recent season's name
     const name = seasons.length > 0 ? seasons[0].league.name : league.name
@@ -892,6 +913,48 @@ export class EspnFantasyService {
       isPublic: league.isPublic,
       seasons
     }
+  }
+
+  /**
+   * Quick discovery - just validate league exists and get basic info
+   * This is FAST - only 1 API call per sport until we find it
+   */
+  async discoverLeague(leagueId: string | number): Promise<{
+    sport: Sport
+    leagueId: string
+    name: string
+    isPublic: boolean
+    size: number
+    currentSeason: number
+  } | null> {
+    // Just detect the sport and get current season info
+    const detected = await this.detectLeagueSport(leagueId)
+    if (!detected) {
+      return null
+    }
+    
+    const { sport, league } = detected
+    
+    return {
+      sport,
+      leagueId: String(leagueId),
+      name: league.name,
+      isPublic: league.isPublic,
+      size: league.size || 0,
+      currentSeason: league.seasonId || new Date().getFullYear()
+    }
+  }
+
+  /**
+   * Full history discovery - call this when loading a league for viewing
+   * This runs while the loading spinner is shown
+   */
+  async discoverFullHistory(sport: Sport, leagueId: string | number): Promise<Array<{
+    season: number
+    league: EspnLeague
+  }>> {
+    console.log(`[ESPN] Loading full history for league ${leagueId}...`)
+    return this.discoverAllSeasons(sport, leagueId)
   }
 
   // ============================================================

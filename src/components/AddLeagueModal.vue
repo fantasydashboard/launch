@@ -429,25 +429,20 @@
                   <div class="text-sm text-dark-textMuted flex items-center gap-2">
                     <span class="capitalize">{{ discoveredEspnLeague.sport }}</span>
                     <span>•</span>
-                    <span v-if="discoveredEspnLeague.seasons.length > 1">
-                      {{ discoveredEspnLeague.seasons.length }} seasons ({{ oldestEspnSeason }}-{{ newestEspnSeason }})
-                    </span>
-                    <span v-else>{{ newestEspnSeason }} season</span>
+                    <span>{{ currentEspnSeason }} season</span>
+                    <span>•</span>
+                    <span>{{ discoveredEspnLeague.size }} teams</span>
                   </div>
                 </div>
               </div>
               
-              <!-- Seasons list -->
-              <div v-if="discoveredEspnLeague.seasons.length > 1" class="mt-3 pt-3 border-t border-dark-border/50">
-                <div class="text-xs text-dark-textMuted mb-2">Seasons found:</div>
-                <div class="flex flex-wrap gap-1">
-                  <span 
-                    v-for="s in discoveredEspnLeague.seasons" 
-                    :key="s.season"
-                    class="px-2 py-0.5 bg-red-500/10 text-red-400 rounded text-xs"
-                  >
-                    {{ s.season }}
-                  </span>
+              <!-- History note -->
+              <div class="mt-3 pt-3 border-t border-dark-border/50">
+                <div class="flex items-center gap-2 text-xs text-dark-textMuted">
+                  <svg class="w-4 h-4 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  <span>Full league history will load automatically after adding</span>
                 </div>
               </div>
               
@@ -551,10 +546,8 @@ interface DiscoveredEspnLeague {
   leagueId: string
   name: string
   isPublic: boolean
-  seasons: Array<{
-    season: number
-    league: any
-  }>
+  size: number
+  currentSeason: number
 }
 
 const props = defineProps<{
@@ -569,14 +562,9 @@ const emit = defineEmits<{
     leagueId: string
     sport: Sport
     season: number
-    league: {
-      id: number
-      name: string
-      size: number
-      scoringType: string
-      isPublic: boolean
-    }
-    allSeasons: Array<{ season: number; league: any }>
+    name: string
+    size: number
+    isPublic: boolean
   }): void
 }>()
 
@@ -662,14 +650,8 @@ const totalYahooLeagues = computed(() =>
 )
 
 // ESPN computed
-const newestEspnSeason = computed(() => {
-  if (!discoveredEspnLeague.value?.seasons.length) return ''
-  return Math.max(...discoveredEspnLeague.value.seasons.map(s => s.season))
-})
-
-const oldestEspnSeason = computed(() => {
-  if (!discoveredEspnLeague.value?.seasons.length) return ''
-  return Math.min(...discoveredEspnLeague.value.seasons.map(s => s.season))
+const currentEspnSeason = computed(() => {
+  return discoveredEspnLeague.value?.currentSeason || new Date().getFullYear()
 })
 
 // Reset when modal opens
@@ -832,20 +814,13 @@ async function searchEspnLeague() {
 function addEspnLeague() {
   if (!discoveredEspnLeague.value) return
   
-  const mostRecentSeason = discoveredEspnLeague.value.seasons[0]
-  
   emit('espn-league-added', {
     leagueId: discoveredEspnLeague.value.leagueId,
     sport: discoveredEspnLeague.value.sport,
-    season: mostRecentSeason.season,
-    league: {
-      id: mostRecentSeason.league.id,
-      name: discoveredEspnLeague.value.name,
-      size: mostRecentSeason.league.size || 0,
-      scoringType: mostRecentSeason.league.scoringType || 'H2H_POINTS',
-      isPublic: discoveredEspnLeague.value.isPublic
-    },
-    allSeasons: discoveredEspnLeague.value.seasons
+    season: discoveredEspnLeague.value.currentSeason,
+    name: discoveredEspnLeague.value.name,
+    size: discoveredEspnLeague.value.size,
+    isPublic: discoveredEspnLeague.value.isPublic
   })
 }
 
