@@ -28,38 +28,65 @@ export const useAuthStore = defineStore('auth', () => {
 
   // Initialize auth state
   async function initialize() {
+    console.log('[Auth] Starting initialization...')
+    
     if (!supabase) {
+      console.error('[Auth] Supabase client is NULL - check env variables')
       loading.value = false
       return
     }
 
+    console.log('[Auth] Supabase client exists, getting session...')
+
     try {
       // Get current session
-      const { data: { session: currentSession } } = await supabase.auth.getSession()
+      const { data: { session: currentSession }, error: sessionError } = await supabase.auth.getSession()
+      
+      if (sessionError) {
+        console.error('[Auth] Error getting session:', sessionError)
+        throw sessionError
+      }
+      
+      console.log('[Auth] Session result:', currentSession ? `User: ${currentSession.user?.email}` : 'No session')
       
       if (currentSession) {
         session.value = currentSession
         user.value = currentSession.user
-        await fetchProfile()
+        console.log('[Auth] User set, isAuthenticated should be:', !!user.value)
+        
+        try {
+          await fetchProfile()
+          console.log('[Auth] Profile fetched successfully')
+        } catch (profileErr) {
+          console.error('[Auth] Profile fetch failed (non-fatal):', profileErr)
+          // Don't throw - user is still authenticated even if profile fails
+        }
       }
 
       // Listen for auth changes
       supabase.auth.onAuthStateChange(async (event, newSession) => {
-        console.log('Auth state changed:', event)
+        console.log('[Auth] State changed:', event, newSession?.user?.email || 'no user')
         session.value = newSession
         user.value = newSession?.user || null
 
         if (newSession?.user) {
-          await fetchProfile()
+          try {
+            await fetchProfile()
+          } catch (err) {
+            console.error('[Auth] Profile fetch on state change failed:', err)
+          }
         } else {
           profile.value = null
         }
       })
+      
+      console.log('[Auth] Initialization complete. isAuthenticated:', !!user.value)
     } catch (err) {
-      console.error('Auth initialization error:', err)
+      console.error('[Auth] Initialization error:', err)
       error.value = 'Failed to initialize authentication'
     } finally {
       loading.value = false
+      console.log('[Auth] Loading set to false')
     }
   }
 
