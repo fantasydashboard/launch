@@ -23,7 +23,6 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { supabase } from '@/lib/supabase'
 import { useAuthStore } from '@/stores/auth'
 
 const router = useRouter()
@@ -32,13 +31,7 @@ const error = ref<string | null>(null)
 
 onMounted(async () => {
   try {
-    if (!supabase) {
-      throw new Error('Supabase not configured')
-    }
-
     console.log('Auth callback - checking URL hash...')
-    console.log('Current URL:', window.location.href)
-    console.log('Hash:', window.location.hash)
 
     // Check if there's an access_token in the hash (OAuth redirect)
     const hashParams = new URLSearchParams(window.location.hash.substring(1))
@@ -46,82 +39,57 @@ onMounted(async () => {
     const refreshToken = hashParams.get('refresh_token')
     
     if (accessToken) {
-      console.log('Found access token in URL, setting session...')
+      console.log('Found access token in URL, storing session...')
       
-      // Use timeout to prevent hanging
-      const setSessionWithTimeout = async () => {
-        return Promise.race([
-          supabase.auth.setSession({
-            access_token: accessToken,
-            refresh_token: refreshToken || ''
-          }),
-          new Promise((_, reject) => 
-            setTimeout(() => reject(new Error('setSession timeout')), 5000)
-          )
-        ])
-      }
-      
+      // Store the session directly in localStorage
       try {
-        const { data, error: setSessionError } = await setSessionWithTimeout() as any
+        const storageKey = `sb-ergxtydfgffqgkddclvr-auth-token`
         
-        if (setSessionError) {
-          console.error('Error setting session:', setSessionError)
-          throw setSessionError
-        }
+        // Decode the JWT to get user info
+        const payload = JSON.parse(atob(accessToken.split('.')[1]))
         
-        console.log('Session set successfully:', data.session?.user?.email)
-      } catch (timeoutErr) {
-        console.warn('setSession timed out, storing tokens manually...')
-        
-        // Manually store the session in localStorage as fallback
-        try {
-          const storageKey = `sb-ergxtydfgffqgkddclvr-auth-token`
-          
-          // Decode the JWT to get user info
-          const payload = JSON.parse(atob(accessToken.split('.')[1]))
-          
-          const sessionData = {
-            access_token: accessToken,
-            refresh_token: refreshToken || '',
-            token_type: 'bearer',
-            expires_at: payload.exp,
-            expires_in: 3600,
-            user: {
-              id: payload.sub,
-              email: payload.email,
-              user_metadata: payload.user_metadata || {},
-              app_metadata: payload.app_metadata || {},
-              aud: payload.aud,
-              role: payload.role
-            }
+        const sessionData = {
+          access_token: accessToken,
+          refresh_token: refreshToken || '',
+          token_type: 'bearer',
+          expires_at: payload.exp,
+          expires_in: 3600,
+          user: {
+            id: payload.sub,
+            email: payload.email,
+            user_metadata: payload.user_metadata || {},
+            app_metadata: payload.app_metadata || {},
+            aud: payload.aud,
+            role: payload.role,
+            email_confirmed_at: new Date().toISOString(),
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
           }
-          
-          localStorage.setItem(storageKey, JSON.stringify(sessionData))
-          console.log('Session stored manually in localStorage')
-        } catch (storeErr) {
-          console.error('Failed to store session manually:', storeErr)
         }
+        
+        localStorage.setItem(storageKey, JSON.stringify(sessionData))
+        console.log('Session stored, redirecting to home...')
+        
+        // Redirect immediately - App.vue will pick up the session
+        window.location.href = '/'
+        return
+        
+      } catch (storeErr) {
+        console.error('Failed to store session:', storeErr)
+        error.value = 'Failed to complete sign in'
+        setTimeout(() => window.location.href = '/', 2000)
+        return
       }
-      
-      // Initialize auth store
-      await authStore.initialize()
-      
-      // Clear the hash from URL and redirect
-      router.replace('/')
-      return
     }
 
-    // No token in hash - just redirect to home
-    // The auth store initialize in App.vue will handle the rest
+    // No token in URL - just redirect to home
     console.log('No token in URL, redirecting home')
-    router.replace('/')
+    window.location.href = '/'
     
   } catch (err: any) {
     console.error('Auth callback error:', err)
     error.value = err.message || 'Authentication failed'
-    
-    // Redirect home after error
-    setTimeout(() => router.replace('/'), 3000)
+    setTimeout(() => window.location.href = '/', 2000)
   }
 })
 </script>
