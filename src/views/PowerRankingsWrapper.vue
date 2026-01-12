@@ -47,12 +47,14 @@ const isBaseball = computed(() =>
 
 const isPointsLeague = computed(() => {
   const st = (scoringType.value || '').toLowerCase()
-  return st.includes('point') || st === 'headpoint' || st === 'head'
+  // 'headpoint', 'point' = points-based leagues
+  return st.includes('point') || st === 'headpoint'
 })
 
 const isCategoriesLeague = computed(() => {
   const st = (scoringType.value || '').toLowerCase()
-  return st.includes('category') || st.includes('roto') || st === 'headcategory'
+  // 'head' = H2H Categories, 'roto' = Rotisserie, 'headcategory' = ESPN H2H Categories
+  return st === 'head' || st.includes('category') || st.includes('roto') || st === 'headcategory'
 })
 
 const isBaseballCategories = computed(() => 

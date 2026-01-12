@@ -1172,14 +1172,18 @@ export const useLeagueStore = defineStore('league', () => {
         console.warn('[ESPN] Could not load matchups:', e)
       }
       
-      // Map ESPN scoring type to our format
+      // Map ESPN scoring type to Yahoo format
+      // Yahoo: 'head' = H2H Categories, 'headpoint' = H2H Points, 'roto' = Rotisserie
+      // ESPN: 'H2H_POINTS', 'H2H_CATEGORY', 'ROTO', 'TOTAL_POINTS'
       const scoringTypeMap: Record<string, string> = {
-        'H2H_POINTS': 'head',
-        'H2H_CATEGORY': 'headcategory', 
+        'H2H_POINTS': 'headpoint',    // ESPN Points → Yahoo Points
+        'H2H_CATEGORY': 'head',       // ESPN Categories → Yahoo Categories  
         'ROTO': 'roto',
-        'TOTAL_POINTS': 'points'
+        'TOTAL_POINTS': 'point'
       }
       const mappedScoringType = scoringTypeMap[league?.scoringType || 'H2H_POINTS'] || 'head'
+      
+      console.log('[ESPN] Scoring type mapping:', league?.scoringType, '→', mappedScoringType)
       
       // Create currentLeague object
       currentLeague.value = {
