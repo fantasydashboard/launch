@@ -789,7 +789,9 @@ export class EspnFantasyService {
 
   /**
    * Discover all available seasons for a league
-   * Searches backwards from current year until no more data found
+   * Fetches ALL years from current back to 2003 (ESPN fantasy football started ~2004)
+   * This gets the full league history regardless of when the user joined
+   * Uses parallel batching for speed
    */
   async discoverAllSeasons(sport: Sport, leagueId: string | number): Promise<Array<{
     season: number
@@ -798,28 +800,46 @@ export class EspnFantasyService {
     const currentYear = new Date().getFullYear()
     const seasons: Array<{ season: number; league: EspnLeague }> = []
     
-    // Start from current year and go backwards
-    // ESPN fantasy started around 2010 for most sports
-    const minYear = 2010
-    let consecutiveFailures = 0
-    const maxFailures = 2 // Stop after 2 consecutive failures
+    // ESPN fantasy started around 2003-2004 for football, later for other sports
+    const minYear = 2003
     
-    for (let year = currentYear; year >= minYear && consecutiveFailures < maxFailures; year--) {
-      try {
-        const league = await this.getLeague(sport, leagueId, year)
-        if (league) {
-          seasons.push({ season: year, league })
-          consecutiveFailures = 0
-          console.log(`[ESPN] Found season ${year}: ${league.name}`)
-        } else {
-          consecutiveFailures++
+    console.log(`[ESPN] Discovering all seasons for league ${leagueId} (${currentYear} to ${minYear})...`)
+    
+    // Build array of years to check
+    const yearsToCheck: number[] = []
+    for (let year = currentYear; year >= minYear; year--) {
+      yearsToCheck.push(year)
+    }
+    
+    // Fetch in parallel batches of 5 for speed (don't overwhelm API)
+    const batchSize = 5
+    for (let i = 0; i < yearsToCheck.length; i += batchSize) {
+      const batch = yearsToCheck.slice(i, i + batchSize)
+      
+      const results = await Promise.allSettled(
+        batch.map(async (year) => {
+          try {
+            const league = await this.getLeague(sport, leagueId, year)
+            return league ? { season: year, league } : null
+          } catch {
+            return null
+          }
+        })
+      )
+      
+      // Collect successful results
+      for (const result of results) {
+        if (result.status === 'fulfilled' && result.value) {
+          seasons.push(result.value)
+          console.log(`[ESPN] Found season ${result.value.season}: ${result.value.league.name}`)
         }
-      } catch (error) {
-        consecutiveFailures++
-        console.log(`[ESPN] No data for season ${year}`)
       }
     }
     
+    // Sort by season descending (most recent first)
+    seasons.sort((a, b) => b.season - a.season)
+    
+    console.log(`[ESPN] Discovery complete: found ${seasons.length} seasons`)
     return seasons
   }
 
