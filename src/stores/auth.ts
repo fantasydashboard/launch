@@ -39,12 +39,42 @@ export const useAuthStore = defineStore('auth', () => {
     console.log('[Auth] Supabase client exists, getting session...')
 
     try {
-      // Get current session
-      const { data: { session: currentSession }, error: sessionError } = await supabase.auth.getSession()
+      // Use a timeout to detect if getSession hangs
+      const getSessionWithTimeout = async () => {
+        return Promise.race([
+          supabase.auth.getSession(),
+          new Promise((_, reject) => 
+            setTimeout(() => reject(new Error('getSession timeout')), 5000)
+          )
+        ])
+      }
+
+      let currentSession = null
       
-      if (sessionError) {
-        console.error('[Auth] Error getting session:', sessionError)
-        throw sessionError
+      try {
+        const { data, error: sessionError } = await getSessionWithTimeout() as any
+        if (sessionError) {
+          console.error('[Auth] Error getting session:', sessionError)
+        } else {
+          currentSession = data?.session
+        }
+      } catch (timeoutErr) {
+        console.warn('[Auth] getSession timed out, trying localStorage fallback...')
+        
+        // Fallback: read session directly from localStorage
+        try {
+          const storageKey = `sb-ergxtydfgffqgkddclvr-auth-token`
+          const stored = localStorage.getItem(storageKey)
+          if (stored) {
+            const parsed = JSON.parse(stored)
+            if (parsed?.user && parsed?.access_token) {
+              console.log('[Auth] Found session in localStorage:', parsed.user.email)
+              currentSession = parsed
+            }
+          }
+        } catch (parseErr) {
+          console.error('[Auth] localStorage fallback failed:', parseErr)
+        }
       }
       
       console.log('[Auth] Session result:', currentSession ? `User: ${currentSession.user?.email}` : 'No session')
