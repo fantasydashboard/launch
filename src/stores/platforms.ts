@@ -408,9 +408,9 @@ export const usePlatformsStore = defineStore('platforms', () => {
   /**
    * Check if ESPN credentials are stored
    */
-  function hasEspnCredentials(): boolean {
+  const hasEspnCredentials = computed(() => {
     return !!getEspnCredentials()
-  }
+  })
 
   /**
    * Sync an ESPN league to the database

@@ -10,19 +10,18 @@ import type {
   SleeperPlayer
 } from '@/types/sleeper'
 
-// Saved league interface - supports Sleeper, Yahoo, and ESPN
+// Saved league interface - supports both Sleeper and Yahoo
 interface SavedLeague {
   id?: string
   user_id?: string
   league_id: string
   league_name: string
-  platform: 'sleeper' | 'yahoo' | 'espn'
+  platform: 'sleeper' | 'yahoo'
   sport: 'football' | 'baseball' | 'basketball' | 'hockey'
   season: string
   sleeper_username?: string
   yahoo_league_key?: string
   yahoo_historical_seasons?: Array<{ league_key: string; season: string }>
-  espn_league_id?: string
   is_primary: boolean
   league_type?: number // 0 = redraft, 1 = keeper, 2 = dynasty
   num_teams?: number
@@ -56,7 +55,7 @@ const STORAGE_KEYS = {
 export const useLeagueStore = defineStore('league', () => {
   // State
   const activeLeagueId = ref<string | null>(null)
-  const activePlatform = ref<'sleeper' | 'yahoo' | 'espn'>('sleeper')
+  const activePlatform = ref<'sleeper' | 'yahoo'>('sleeper')
   const leagues = ref<SleeperLeague[]>([])
   const savedLeagues = ref<SavedLeague[]>([])
   const currentLeague = ref<SleeperLeague | null>(null)
@@ -164,7 +163,7 @@ export const useLeagueStore = defineStore('league', () => {
       }
       
       // Restore active platform and sport
-      const platform = localStorage.getItem(STORAGE_KEYS.ACTIVE_PLATFORM) as 'sleeper' | 'yahoo' | 'espn' | null
+      const platform = localStorage.getItem(STORAGE_KEYS.ACTIVE_PLATFORM) as 'sleeper' | 'yahoo' | null
       if (platform) {
         activePlatform.value = platform
       }
@@ -455,94 +454,6 @@ export const useLeagueStore = defineStore('league', () => {
     return newLeague
   }
 
-  // ============================================
-  // ESPN LEAGUE FUNCTIONS
-  // ============================================
-
-  async function saveEspnLeague(
-    league: {
-      leagueId: string
-      sport: 'football' | 'baseball' | 'basketball' | 'hockey'
-      season: number
-      name: string
-      size: number
-      isPublic: boolean
-    },
-    userId: string
-  ): Promise<SavedLeague | undefined> {
-    const { leagueId, sport, season, name, size } = league
-    
-    // Check if this league is already saved (by ESPN league ID)
-    const existing = savedLeagues.value.find(l => 
-      l.platform === 'espn' && 
-      l.espn_league_id === leagueId
-    )
-    if (existing) {
-      // Update to latest season if newer
-      if (season > parseInt(existing.season)) {
-        existing.season = season.toString()
-        existing.league_id = `espn_${leagueId}_${season}`
-        saveToLocalStorage()
-      }
-      return existing
-    }
-    
-    const isPrimary = savedLeagues.value.length === 0
-    
-    const newLeague: SavedLeague = {
-      league_id: `espn_${leagueId}_${season}`,
-      league_name: name,
-      platform: 'espn',
-      sport: sport,
-      season: season.toString(),
-      espn_league_id: leagueId,
-      is_primary: isPrimary,
-      num_teams: size,
-      scoring_type: 'head' // Default, will be updated when loading
-    }
-    
-    // Add to local state immediately
-    savedLeagues.value.push(newLeague)
-    saveToLocalStorage()
-    
-    // Sync to Supabase in background
-    if (supabase) {
-      try {
-        const { data, error: saveError } = await supabase
-          .from('user_leagues')
-          .insert({
-            user_id: userId,
-            league_id: newLeague.league_id,
-            league_name: newLeague.league_name,
-            platform: newLeague.platform,
-            sport: newLeague.sport,
-            season: newLeague.season,
-            espn_league_id: newLeague.espn_league_id,
-            is_primary: newLeague.is_primary,
-            num_teams: newLeague.num_teams,
-            scoring_type: newLeague.scoring_type
-          })
-          .select()
-          .single()
-        
-        if (saveError) throw saveError
-        
-        // Update with server ID
-        const index = savedLeagues.value.findIndex(l => l.league_id === newLeague.league_id)
-        if (index !== -1 && data) {
-          savedLeagues.value[index] = data
-          saveToLocalStorage()
-        }
-        
-        return data
-      } catch (e) {
-        console.error('Failed to save ESPN league to Supabase:', e)
-      }
-    }
-    
-    return newLeague
-  }
-
   async function removeLeague(leagueId: string, userId?: string) {
     // Remove from local state immediately
     savedLeagues.value = savedLeagues.value.filter(l => l.league_id !== leagueId)
@@ -658,7 +569,7 @@ export const useLeagueStore = defineStore('league', () => {
     activeLeagueId.value = leagueId
     isDemoMode.value = false
     
-    // Check if this is a Yahoo or ESPN league
+    // Check if this is a saved league
     const savedLeague = savedLeagues.value.find(l => l.league_id === leagueId)
     
     // Set sport from saved league if available
@@ -668,19 +579,8 @@ export const useLeagueStore = defineStore('league', () => {
     
     saveToLocalStorage()
     
-    // Detect Yahoo league by ID format (e.g., "431.l.136233" or "nfl.l.123456")
-    const isYahooLeagueId = /^\d+\.l\.\d+$/.test(leagueId) || /^[a-z]+\.l\.\d+$/.test(leagueId)
-    
-    // Detect ESPN league by ID format (e.g., "espn_12345_2024")
+    // Detect ESPN league by ID format (e.g., "espn_baseball_12345_2024")
     const isEspnLeagueId = leagueId.startsWith('espn_')
-    
-    if (savedLeague?.platform === 'yahoo' || isYahooLeagueId) {
-      // Handle Yahoo league
-      activePlatform.value = 'yahoo'
-      saveToLocalStorage() // Save again after setting platform
-      await loadYahooLeagueData(leagueId)
-      return
-    }
     
     if (savedLeague?.platform === 'espn' || isEspnLeagueId) {
       // Handle ESPN league
@@ -690,9 +590,20 @@ export const useLeagueStore = defineStore('league', () => {
       return
     }
     
+    // Detect Yahoo league by ID format (e.g., "431.l.136233" or "nfl.l.123456")
+    const isYahooLeagueId = /^\d+\.l\.\d+$/.test(leagueId) || /^[a-z]+\.l\.\d+$/.test(leagueId)
+    
+    if (savedLeague?.platform === 'yahoo' || isYahooLeagueId) {
+      // Handle Yahoo league
+      activePlatform.value = 'yahoo'
+      saveToLocalStorage()
+      await loadYahooLeagueData(leagueId)
+      return
+    }
+    
     // Handle Sleeper league (existing logic)
     activePlatform.value = 'sleeper'
-    saveToLocalStorage() // Save again after setting platform
+    saveToLocalStorage()
     
     try {
       // Get the saved league to find the username
@@ -1110,239 +1021,139 @@ export const useLeagueStore = defineStore('league', () => {
     }
   }
 
-  // Load ESPN league data - current season only
-  async function loadEspnLeagueData(leagueId: string) {
-    console.log('[ESPN] loadEspnLeagueData called with:', leagueId)
+  // Load ESPN league data
+  async function loadEspnLeagueData(leagueKey: string) {
     isLoading.value = true
     error.value = null
     
-    // Clear previous Yahoo data
-    yahooLeague.value = null
-    yahooTeams.value = []
-    yahooStandings.value = []
-    yahooMatchups.value = []
-    
     try {
-      console.log('[ESPN] Importing services...')
+      // Import ESPN service dynamically
       const { espnService } = await import('@/services/espn')
       const { useAuthStore } = await import('@/stores/auth')
       const { usePlatformsStore } = await import('@/stores/platforms')
       const authStore = useAuthStore()
       const platformsStore = usePlatformsStore()
       
-      console.log('[ESPN] Services imported, user:', authStore.user?.id)
-      
       if (!authStore.user?.id) {
         throw new Error('Not authenticated')
       }
       
-      // Initialize ESPN service (now lightweight - no Supabase call)
+      // Initialize ESPN service
       await espnService.initialize(authStore.user.id)
       
-      // Check for stored credentials from localStorage
+      // Apply stored credentials if available
       const credentials = platformsStore.getEspnCredentials()
       if (credentials) {
-        console.log('[ESPN] Using stored credentials')
         espnService.setCredentials(credentials.espn_s2, credentials.swid)
       }
       
-      // Parse the league ID (format: espn_12345_2024)
-      const savedLeague = savedLeagues.value.find(l => l.league_id === leagueId)
-      const espnLeagueId = savedLeague?.espn_league_id || leagueId.split('_')[1]
-      const season = parseInt(savedLeague?.season || leagueId.split('_')[2] || new Date().getFullYear().toString())
-      const sport = (savedLeague?.sport || 'football') as 'football' | 'baseball' | 'basketball' | 'hockey'
+      // Parse ESPN league key (format: espn_{sport}_{leagueId}_{season})
+      const parts = leagueKey.split('_')
+      if (parts.length < 4 || parts[0] !== 'espn') {
+        throw new Error('Invalid ESPN league key format')
+      }
       
-      console.log('[ESPN] Loading league:', { espnLeagueId, season, sport })
+      const sport = parts[1] as 'football' | 'baseball' | 'basketball' | 'hockey'
+      const espnLeagueId = parts[2]
+      const season = parseInt(parts[3])
+      
+      console.log(`[ESPN] Loading league: ${espnLeagueId}, sport: ${sport}, season: ${season}`)
       
       // Fetch league info
       const league = await espnService.getLeague(sport, espnLeagueId, season)
-      console.log('[ESPN] League loaded:', league?.name, 'scoring:', league?.scoringType)
-      console.log('[ESPN] League status:', {
-        isActive: league?.status?.isActive,
-        currentMatchupPeriod: league?.status?.currentMatchupPeriod,
-        finalScoringPeriod: league?.status?.finalScoringPeriod,
-        latestScoringPeriod: league?.status?.latestScoringPeriod
-      })
+      if (!league) {
+        throw new Error('Could not fetch ESPN league')
+      }
       
-      // Fetch teams with standings
+      // Get teams with standings
       const espnTeams = await espnService.getTeams(sport, espnLeagueId, season)
-      console.log('[ESPN] Teams loaded:', espnTeams.length)
       
-      // Determine which week to fetch matchups for
-      // For finished seasons, use the final week; for active seasons, use current week
-      const isSeasonFinished = !league?.status?.isActive
-      const currentWeek = isSeasonFinished 
-        ? (league?.status?.finalScoringPeriod || league?.status?.latestScoringPeriod || 25)
-        : (league?.currentMatchupPeriod || league?.status?.currentMatchupPeriod || 1)
+      // Get current week matchups
+      const currentWeek = league.status?.currentMatchupPeriod || 1
+      const espnMatchups = await espnService.getMatchups(sport, espnLeagueId, season, currentWeek)
       
-      console.log('[ESPN] Fetching matchups for week:', currentWeek, '(season finished:', isSeasonFinished, ')')
-      
-      let espnMatchups: any[] = []
-      try {
-        espnMatchups = await espnService.getMatchups(sport, espnLeagueId, season, currentWeek)
-        console.log('[ESPN] Matchups loaded:', espnMatchups.length)
-      } catch (e) {
-        console.warn('[ESPN] Could not load matchups:', e)
-      }
-      
-      // Map ESPN scoring type to Yahoo format
-      // Yahoo: 'head' = H2H Categories, 'headpoint' = H2H Points, 'roto' = Rotisserie
-      // ESPN: 'H2H_POINTS', 'H2H_CATEGORY', 'ROTO', 'TOTAL_POINTS'
-      const scoringTypeMap: Record<string, string> = {
-        'H2H_POINTS': 'headpoint',    // ESPN Points → Yahoo Points
-        'H2H_CATEGORY': 'head',       // ESPN Categories → Yahoo Categories  
-        'ROTO': 'roto',
-        'TOTAL_POINTS': 'point'
-      }
-      const mappedScoringType = scoringTypeMap[league?.scoringType || 'H2H_POINTS'] || 'head'
-      
-      console.log('[ESPN] Scoring type mapping:', league?.scoringType, '→', mappedScoringType)
-      
-      // Create currentLeague object
-      currentLeague.value = {
-        league_id: leagueId,
-        name: league?.name || savedLeague?.league_name || 'ESPN League',
-        season: season.toString(),
-        status: league?.status?.isActive ? 'in_season' : 'complete',
-        sport: sport,
-        settings: {
-          leg: currentWeek,
-          playoff_week_start: league?.settings?.regularSeasonMatchupPeriodCount || 14,
-          num_teams: league?.size || savedLeague?.num_teams,
-          end_week: league?.status?.finalScoringPeriod || 25
-        },
-        scoring_settings: {},
-        roster_positions: [],
-        total_rosters: league?.size || savedLeague?.num_teams || 12,
-        scoring_type: mappedScoringType
-      } as any
-      
-      // Map ESPN league to Yahoo league format (for views that expect yahooLeague)
-      yahooLeague.value = [{
-        league_key: leagueId,
-        league_id: espnLeagueId,
-        name: league?.name || 'ESPN League',
-        season: season.toString(),
-        num_teams: league?.size || 12,
-        scoring_type: mappedScoringType,
-        current_week: currentWeek,
-        start_week: league?.status?.firstScoringPeriod || 1,
-        end_week: league?.status?.finalScoringPeriod || 25,
-        is_finished: !league?.status?.isActive ? 1 : 0
-      }]
-      
-      // Debug: Log ESPN team data before mapping
-      console.log('[ESPN] Raw ESPN teams before mapping:')
-      espnTeams.forEach((team, i) => {
-        console.log(`  Team ${i}: ${team.name}`, {
-          wins: team.wins,
-          losses: team.losses,
-          ties: team.ties,
-          pointsFor: team.pointsFor,
-          pointsAgainst: team.pointsAgainst,
-          points: team.points,
-          rank: team.rank
-        })
-      })
-      
-      // Map ESPN teams to Yahoo team format
-      yahooTeams.value = espnTeams.map((team, index) => ({
-        team_key: `espn_${espnLeagueId}_${team.id}`,
+      // Map ESPN teams to Yahoo-compatible format
+      yahooTeams.value = espnTeams.map(team => ({
+        team_key: `espn_${team.id}`,
         team_id: team.id.toString(),
-        name: team.name || `${team.location} ${team.nickname}`.trim(),
-        managers: [{
-          manager: {
-            nickname: team.primaryOwner || `Owner ${team.id}`,
-            guid: team.primaryOwner || team.id.toString(),
-            is_current_login: false // Could check against user if we had that info
-          }
-        }],
-        logo_url: team.logo || `https://g.espncdn.com/lm-static/ffl/images/default_logos/team_${team.id % 25}.svg`,
-        wins: team.wins || 0,
-        losses: team.losses || 0,
-        ties: team.ties || 0,
-        points_for: team.pointsFor || team.points || 0,
-        points_against: team.pointsAgainst || 0,
-        rank: team.rank || index + 1,
-        points: team.points || 0,
-        is_my_team: false // Could determine if we tracked user's team
+        name: team.name,
+        logo_url: team.logoUrl || 'https://g.espncdn.com/lm-static/ffl/images/default_logos/team_0.svg',
+        wins: team.record?.wins || 0,
+        losses: team.record?.losses || 0,
+        ties: team.record?.ties || 0,
+        points_for: team.record?.pointsFor || 0,
+        points_against: team.record?.pointsAgainst || 0,
+        rank: team.playoffSeed || team.rank || 0,
+        is_my_team: false, // TODO: Detect user's team
+        transactions: 0
       }))
-      
-      // Debug: Log mapped teams
-      console.log('[ESPN] Mapped yahooTeams:')
-      yahooTeams.value.forEach((team, i) => {
-        console.log(`  Team ${i}: ${team.name}`, {
-          wins: team.wins,
-          losses: team.losses,
-          points_for: team.points_for,
-          points_against: team.points_against,
-          rank: team.rank
-        })
-      })
       
       // Sort by rank
       yahooTeams.value.sort((a, b) => (a.rank || 99) - (b.rank || 99))
       
-      // Map ESPN matchups to Yahoo matchup format
+      // Map ESPN matchups to Yahoo-compatible format
       yahooMatchups.value = espnMatchups.map(matchup => {
         const homeTeam = yahooTeams.value.find(t => t.team_id === matchup.homeTeamId?.toString())
         const awayTeam = yahooTeams.value.find(t => t.team_id === matchup.awayTeamId?.toString())
         
-        console.log('[ESPN Matchup] Mapping:', {
-          matchupId: matchup.id,
-          homeTeamId: matchup.homeTeamId,
-          awayTeamId: matchup.awayTeamId,
-          homeScore: matchup.homeScore,
-          awayScore: matchup.awayScore,
-          foundHomeTeam: !!homeTeam,
-          foundAwayTeam: !!awayTeam
-        })
-        
-        // Build team objects with points for this matchup
-        const team1Data = homeTeam ? {
-          ...homeTeam,
-          team_key: homeTeam.team_key,
-          name: homeTeam.name,
-          logo_url: homeTeam.logo_url,
-          points: matchup.homeScore || 0
-        } : null
-        
-        const team2Data = awayTeam ? {
-          ...awayTeam,
-          team_key: awayTeam.team_key,
-          name: awayTeam.name,
-          logo_url: awayTeam.logo_url,
-          points: matchup.awayScore || 0
-        } : null
-        
         return {
           matchup_id: matchup.id,
           week: currentWeek,
-          // Yahoo format uses teams array
-          teams: [team1Data, team2Data].filter(Boolean),
-          // Also keep direct references for compatibility
-          team1: team1Data,
-          team2: team2Data,
-          team1_points: matchup.homeScore || 0,
-          team2_points: matchup.awayScore || 0,
-          winner_team_key: matchup.winner === 'HOME' ? homeTeam?.team_key : 
-                          matchup.winner === 'AWAY' ? awayTeam?.team_key : null
+          team1: homeTeam ? { ...homeTeam, points: matchup.homeScore || 0 } : null,
+          team2: awayTeam ? { ...awayTeam, points: matchup.awayScore || 0 } : null,
+          teams: [
+            homeTeam ? { team_key: homeTeam.team_key, points: matchup.homeScore || 0 } : null,
+            awayTeam ? { team_key: awayTeam.team_key, points: matchup.awayScore || 0 } : null
+          ].filter(Boolean)
         }
       })
       
-      console.log('[ESPN] Final yahooMatchups:', yahooMatchups.value.length)
-      if (yahooMatchups.value.length > 0) {
-        console.log('[ESPN] First mapped matchup:', JSON.stringify(yahooMatchups.value[0]))
+      // Map ESPN league to Yahoo-compatible format
+      const scoringTypeMap: Record<string, string> = {
+        'H2H_POINTS': 'headpoint',
+        'H2H_CATEGORY': 'head',
+        'ROTO': 'roto',
+        'TOTAL_POINTS': 'point'
       }
       
-      console.log('[ESPN] Data mapped to Yahoo format. Teams:', yahooTeams.value.length, 'Matchups:', yahooMatchups.value.length)
+      yahooLeague.value = [{
+        name: league.name,
+        season: season.toString(),
+        scoring_type: scoringTypeMap[league.scoringType || 'H2H_POINTS'] || 'head',
+        start_week: 1,
+        end_week: league.settings?.regularSeasonMatchupPeriodCount || 25,
+        current_week: currentWeek
+      }]
       
-      // Always update saved league with scoring type
-      if (savedLeague) {
-        savedLeague.scoring_type = mappedScoringType
-        console.log('[ESPN] Updated savedLeague.scoring_type to:', mappedScoringType)
-        saveToLocalStorage()
-      }
+      yahooStandings.value = yahooTeams.value
+      
+      // Create currentLeague object
+      const savedLeague = savedLeagues.value.find(l => l.league_id === leagueKey)
+      currentLeague.value = {
+        league_id: leagueKey,
+        name: savedLeague?.league_name || league.name || 'ESPN League',
+        season: season.toString(),
+        status: league.status?.isActive ? 'in_season' : 'complete',
+        sport: sport,
+        settings: {
+          leg: currentWeek,
+          playoff_week_start: league.settings?.playoffMatchupPeriodLength ? 
+            (league.settings.regularSeasonMatchupPeriodCount || 14) + 1 : 15,
+          start_week: 1,
+          end_week: league.settings?.regularSeasonMatchupPeriodCount || 25
+        },
+        scoring_settings: {},
+        roster_positions: [],
+        total_rosters: savedLeague?.num_teams || espnTeams.length || 12,
+        scoring_type: scoringTypeMap[league.scoringType || 'H2H_POINTS'] || 'head'
+      } as any
+      
+      console.log('[ESPN] League loaded:', {
+        league: yahooLeague.value,
+        teams: yahooTeams.value.length,
+        matchups: yahooMatchups.value.length,
+        currentWeek
+      })
       
     } catch (e) {
       console.error('Failed to load ESPN league data:', e)
@@ -1350,35 +1161,6 @@ export const useLeagueStore = defineStore('league', () => {
     } finally {
       isLoading.value = false
     }
-  }
-  
-  // Load ESPN historical seasons - call this only when viewing History
-  async function loadEspnHistory(leagueId: string): Promise<Array<{ season: number; name: string }>> {
-    const savedLeague = savedLeagues.value.find(l => l.league_id === leagueId)
-    const espnLeagueId = savedLeague?.espn_league_id || leagueId.split('_')[1]
-    const sport = savedLeague?.sport || 'football'
-    
-    // Check localStorage first
-    const cached = localStorage.getItem(`espn_seasons_${espnLeagueId}`)
-    if (cached) {
-      try {
-        return JSON.parse(cached)
-      } catch {}
-    }
-    
-    // Fetch from API
-    const { espnService } = await import('@/services/espn')
-    const history = await espnService.discoverFullHistory(sport as any, espnLeagueId)
-    
-    const seasons = history.map(s => ({
-      season: s.season,
-      name: s.league?.name || savedLeague?.league_name || 'ESPN League'
-    }))
-    
-    // Cache for next time
-    localStorage.setItem(`espn_seasons_${espnLeagueId}`, JSON.stringify(seasons))
-    
-    return seasons
   }
 
   // Refresh all saved Yahoo leagues to ensure they have the latest season
@@ -1557,7 +1339,6 @@ export const useLeagueStore = defineStore('league', () => {
     loadSavedLeagues,
     saveLeague,
     saveYahooLeague,
-    saveEspnLeague,
     removeLeague,
     setPrimaryLeague,
     fetchUserLeagues,
@@ -1565,7 +1346,6 @@ export const useLeagueStore = defineStore('league', () => {
     setActiveSport,
     loadYahooLeagueData,
     loadEspnLeagueData,
-    loadEspnHistory,
     refreshYahooLeagues,
     getTeamInfo,
     reset,

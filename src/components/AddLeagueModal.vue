@@ -31,9 +31,7 @@
                 @click="selectPlatform('sleeper')"
                 class="w-full flex items-center gap-4 p-4 rounded-xl bg-dark-bg/50 border border-dark-border/50 hover:border-blue-500/50 hover:bg-dark-border/30 transition-all text-left"
               >
-                <div class="w-12 h-12 rounded-xl bg-blue-600 flex items-center justify-center flex-shrink-0">
-                  <span class="text-2xl">💤</span>
-                </div>
+                <img src="/sleeper.svg" alt="Sleeper" class="w-12 h-12 rounded-xl flex-shrink-0" />
                 <div class="flex-1">
                   <div class="font-semibold text-dark-text">Sleeper</div>
                   <div class="text-xs text-dark-textMuted">Enter username to find leagues</div>
@@ -48,9 +46,7 @@
                 @click="selectPlatform('yahoo')"
                 class="w-full flex items-center gap-4 p-4 rounded-xl bg-dark-bg/50 border border-dark-border/50 hover:border-purple-500/50 hover:bg-dark-border/30 transition-all text-left"
               >
-                <div class="w-12 h-12 rounded-xl bg-purple-600 flex items-center justify-center flex-shrink-0">
-                  <span class="text-2xl font-bold text-white">Y!</span>
-                </div>
+                <img src="/yahoo-fantasy.svg" alt="Yahoo" class="w-12 h-12 rounded-xl flex-shrink-0" />
                 <div class="flex-1">
                   <div class="font-semibold text-dark-text flex items-center gap-2">
                     Yahoo Fantasy
@@ -72,9 +68,7 @@
                 @click="selectPlatform('espn')"
                 class="w-full flex items-center gap-4 p-4 rounded-xl bg-dark-bg/50 border border-dark-border/50 hover:border-red-500/50 hover:bg-dark-border/30 transition-all text-left"
               >
-                <div class="w-12 h-12 rounded-xl bg-red-600 flex items-center justify-center flex-shrink-0">
-                  <span class="text-xl font-bold text-white">E</span>
-                </div>
+                <img src="/espn-logo.svg" alt="ESPN" class="w-12 h-12 rounded-xl flex-shrink-0" />
                 <div class="flex-1">
                   <div class="font-semibold text-dark-text flex items-center gap-2">
                     ESPN Fantasy
@@ -99,9 +93,7 @@
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
                 </svg>
               </button>
-              <div class="w-8 h-8 rounded-lg bg-blue-600 flex items-center justify-center">
-                <span class="text-lg">💤</span>
-              </div>
+              <img src="/sleeper.svg" alt="Sleeper" class="w-8 h-8 rounded-lg" />
               <span class="text-sm text-dark-textMuted">Connect Sleeper</span>
             </div>
             
@@ -138,9 +130,7 @@
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
                 </svg>
               </button>
-              <div class="w-8 h-8 rounded-lg bg-purple-600 flex items-center justify-center">
-                <span class="text-sm font-bold text-white">Y!</span>
-              </div>
+              <img src="/yahoo-fantasy.svg" alt="Yahoo" class="w-8 h-8 rounded-lg" />
               <span class="text-sm text-dark-textMuted">Connect Yahoo</span>
             </div>
             
@@ -169,9 +159,7 @@
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
                   </svg>
                 </button>
-                <div class="w-8 h-8 rounded-lg bg-purple-600 flex items-center justify-center">
-                  <span class="text-sm font-bold text-white">Y!</span>
-                </div>
+                <img src="/yahoo-fantasy.svg" alt="Yahoo" class="w-8 h-8 rounded-lg" />
                 <span class="text-sm text-dark-textMuted">Yahoo Leagues</span>
               </div>
               <button
@@ -399,9 +387,7 @@
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
                 </svg>
               </button>
-              <div class="w-8 h-8 rounded-lg bg-red-600 flex items-center justify-center">
-                <span class="text-sm font-bold text-white">E</span>
-              </div>
+              <img src="/espn-logo.svg" alt="ESPN" class="w-8 h-8 rounded-lg" />
               <span class="text-sm text-dark-textMuted">Private League</span>
             </div>
             
