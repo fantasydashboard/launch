@@ -1249,23 +1249,52 @@ export const useLeagueStore = defineStore('league', () => {
         const homeTeam = yahooTeams.value.find(t => t.team_id === matchup.homeTeamId?.toString())
         const awayTeam = yahooTeams.value.find(t => t.team_id === matchup.awayTeamId?.toString())
         
+        console.log('[ESPN Matchup] Mapping:', {
+          matchupId: matchup.id,
+          homeTeamId: matchup.homeTeamId,
+          awayTeamId: matchup.awayTeamId,
+          homeScore: matchup.homeScore,
+          awayScore: matchup.awayScore,
+          foundHomeTeam: !!homeTeam,
+          foundAwayTeam: !!awayTeam
+        })
+        
+        // Build team objects with points for this matchup
+        const team1Data = homeTeam ? {
+          ...homeTeam,
+          team_key: homeTeam.team_key,
+          name: homeTeam.name,
+          logo_url: homeTeam.logo_url,
+          points: matchup.homeScore || 0
+        } : null
+        
+        const team2Data = awayTeam ? {
+          ...awayTeam,
+          team_key: awayTeam.team_key,
+          name: awayTeam.name,
+          logo_url: awayTeam.logo_url,
+          points: matchup.awayScore || 0
+        } : null
+        
         return {
           matchup_id: matchup.id,
           week: currentWeek,
-          team1: homeTeam ? {
-            ...homeTeam,
-            points: matchup.homeScore || 0
-          } : null,
-          team2: awayTeam ? {
-            ...awayTeam,
-            points: matchup.awayScore || 0
-          } : null,
+          // Yahoo format uses teams array
+          teams: [team1Data, team2Data].filter(Boolean),
+          // Also keep direct references for compatibility
+          team1: team1Data,
+          team2: team2Data,
           team1_points: matchup.homeScore || 0,
           team2_points: matchup.awayScore || 0,
           winner_team_key: matchup.winner === 'HOME' ? homeTeam?.team_key : 
                           matchup.winner === 'AWAY' ? awayTeam?.team_key : null
         }
       })
+      
+      console.log('[ESPN] Final yahooMatchups:', yahooMatchups.value.length)
+      if (yahooMatchups.value.length > 0) {
+        console.log('[ESPN] First mapped matchup:', JSON.stringify(yahooMatchups.value[0]))
+      }
       
       console.log('[ESPN] Data mapped to Yahoo format. Teams:', yahooTeams.value.length, 'Matchups:', yahooMatchups.value.length)
       

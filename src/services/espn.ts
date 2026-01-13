@@ -1143,11 +1143,20 @@ export class EspnFantasyService {
 
   private parseMatchups(data: any, week: number): EspnMatchup[] {
     const schedule = data.schedule || []
+    console.log('[ESPN parseMatchups] Raw schedule length:', schedule.length, 'for week:', week)
+    
+    if (schedule.length > 0) {
+      console.log('[ESPN parseMatchups] First schedule item:', JSON.stringify(schedule[0]))
+      console.log('[ESPN parseMatchups] matchupPeriodIds in data:', [...new Set(schedule.map((m: any) => m.matchupPeriodId))])
+    }
+    
     const teams = this.parseTeams(data)
     const teamMap = new Map(teams.map(t => [t.id, t]))
     
-    return schedule
-      .filter((match: any) => match.matchupPeriodId === week)
+    const filteredSchedule = schedule.filter((match: any) => match.matchupPeriodId === week)
+    console.log('[ESPN parseMatchups] Filtered to', filteredSchedule.length, 'matchups for week', week)
+    
+    return filteredSchedule
       .map((match: any) => ({
         id: match.id,
         matchupPeriodId: match.matchupPeriodId,

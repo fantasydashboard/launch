@@ -683,13 +683,25 @@ const scoringTypeBadgeClass = computed(() => {
 
 // Format matchups with category win data
 const formattedMatchups = computed(() => {
-  return displayMatchups.value.map(m => ({
-    ...m,
-    team1: m.teams?.[0] || null,
-    team2: m.teams?.[1] || null,
-    team1_cat_wins: m.stat_winners?.[0]?.stat_winner_count || m.teams?.[0]?.win_probability || '-',
-    team2_cat_wins: m.stat_winners?.[1]?.stat_winner_count || m.teams?.[1]?.win_probability || '-'
-  }))
+  console.log('[formattedMatchups] displayMatchups count:', displayMatchups.value.length)
+  if (displayMatchups.value.length > 0) {
+    console.log('[formattedMatchups] First matchup raw:', JSON.stringify(displayMatchups.value[0]))
+  }
+  
+  return displayMatchups.value.map(m => {
+    // Handle both formats: teams[] array (Yahoo) or team1/team2 directly (ESPN fallback)
+    const team1 = m.teams?.[0] || m.team1 || null
+    const team2 = m.teams?.[1] || m.team2 || null
+    
+    return {
+      ...m,
+      matchup_id: m.matchup_id || m.id,
+      team1,
+      team2,
+      team1_cat_wins: m.stat_winners?.[0]?.stat_winner_count || m.teams?.[0]?.win_probability || '-',
+      team2_cat_wins: m.stat_winners?.[1]?.stat_winner_count || m.teams?.[1]?.win_probability || '-'
+    }
+  })
 })
 
 const displayCategories = computed(() => {
@@ -702,7 +714,56 @@ const displayCategories = computed(() => {
 const numCategories = computed(() => displayCategories.value.length || 12)
 
 const teamsWithStats = computed(() => {
-  return leagueStore.yahooTeams.map(team => {
+  const teams = leagueStore.yahooTeams
+  const numTeams = teams.length
+  
+  if (numTeams === 0) return []
+  
+  // For points leagues, calculate all-play by comparing points_for against all other teams
+  if (isPointsLeague.value) {
+    // Sort teams by points_for to determine all-play record
+    const sortedByPoints = [...teams].sort((a, b) => (b.points_for || 0) - (a.points_for || 0))
+    
+    return teams.map(team => {
+      const transactions = transactionCounts.value.get(team.team_key) || 0
+      
+      // All-play: how many teams would this team beat based on total points
+      // In a points league, we compare season totals
+      const myPoints = team.points_for || 0
+      let all_play_wins = 0
+      let all_play_losses = 0
+      
+      teams.forEach(opponent => {
+        if (opponent.team_key !== team.team_key) {
+          if (myPoints > (opponent.points_for || 0)) {
+            all_play_wins++
+          } else if (myPoints < (opponent.points_for || 0)) {
+            all_play_losses++
+          }
+          // Ties don't count
+        }
+      })
+      
+      // Luck score: actual wins vs expected wins based on points ranking
+      const pointsRank = sortedByPoints.findIndex(t => t.team_key === team.team_key) + 1
+      const expectedWinPct = (numTeams - pointsRank) / (numTeams - 1)
+      const totalGames = (team.wins || 0) + (team.losses || 0)
+      const expectedWins = expectedWinPct * totalGames
+      const luckScore = (team.wins || 0) - expectedWins
+      
+      return {
+        ...team,
+        all_play_wins,
+        all_play_losses,
+        transactions,
+        categoryWins: {},
+        luckScore
+      }
+    })
+  }
+  
+  // For category leagues, use the original logic
+  return teams.map(team => {
     const transactions = transactionCounts.value.get(team.team_key) || 0
     const categoryWins = teamCategoryWins.value.get(team.team_key) || {}
     
@@ -710,7 +771,6 @@ const teamsWithStats = computed(() => {
     // Calculate all-play based on this
     const totalGames = (team.wins || 0) + (team.losses || 0) + (team.ties || 0)
     const weeksPlayed = Math.ceil(totalGames / numCategories.value) || 1
-    const numTeams = leagueStore.yahooTeams.length
     
     // Simulate all-play based on category win percentage
     const catWinPct = (team.wins || 0) / Math.max(1, totalGames)
@@ -1801,6 +1861,15 @@ watch(() => leagueStore.activeLeagueId, () => {
 watch(() => leagueStore.yahooTeams, () => {
   const isYahooOrEspn = leagueStore.activePlatform === 'yahoo' || leagueStore.activePlatform === 'espn'
   if (leagueStore.yahooTeams.length > 0 && isYahooOrEspn) loadAllData()
+}, { immediate: true })
+
+// Also watch for matchups changes (they might load after teams)
+watch(() => leagueStore.yahooMatchups, () => {
+  const isYahooOrEspn = leagueStore.activePlatform === 'yahoo' || leagueStore.activePlatform === 'espn'
+  if (leagueStore.yahooMatchups?.length > 0 && isYahooOrEspn) {
+    console.log('[Watch yahooMatchups] Matchups changed, updating displayMatchups:', leagueStore.yahooMatchups.length)
+    displayMatchups.value = leagueStore.yahooMatchups
+  }
 }, { immediate: true })
 
 onMounted(() => {
