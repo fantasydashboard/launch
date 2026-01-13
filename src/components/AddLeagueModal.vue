@@ -350,31 +350,8 @@
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
                 </svg>
               </button>
-              <div class="w-8 h-8 rounded-lg bg-red-600 flex items-center justify-center">
-                <span class="text-sm font-bold text-white">E</span>
-              </div>
-              <span class="text-sm text-dark-textMuted">Connect ESPN</span>
-            </div>
-            
-            <!-- Sport Selection -->
-            <label class="block text-sm font-medium text-dark-textMuted mb-2">
-              Sport
-            </label>
-            <div class="grid grid-cols-4 gap-2 mb-4">
-              <button
-                v-for="sport in availableSports"
-                :key="sport.id"
-                @click="espnSport = sport.id"
-                :class="[
-                  'p-3 rounded-xl border text-center transition-all',
-                  espnSport === sport.id 
-                    ? 'bg-red-600/20 border-red-500/50 text-red-400' 
-                    : 'bg-dark-bg/50 border-dark-border/50 text-dark-textMuted hover:border-red-500/30'
-                ]"
-              >
-                <span class="text-lg">{{ sport.icon }}</span>
-                <div class="text-xs mt-1">{{ sport.label }}</div>
-              </button>
+              <img src="/espn-logo.svg" class="w-8 h-8 rounded-lg" alt="ESPN" />
+              <span class="text-sm text-dark-textMuted">Connect ESPN League</span>
             </div>
             
             <!-- League ID Input -->
@@ -388,25 +365,20 @@
               class="w-full px-4 py-3 rounded-xl bg-dark-bg border border-dark-border focus:border-red-500 focus:ring-1 focus:ring-red-500 transition-colors text-dark-text"
               @keyup.enter="validateEspnLeague"
             />
-            <p class="text-xs text-dark-textMuted mt-1">
+            <p class="text-xs text-dark-textMuted mt-2">
               Find this in your ESPN league URL: fantasy.espn.com/.../<span class="text-red-400">leagueId</span>=12345678
             </p>
             
-            <!-- Season Selection -->
-            <label class="block text-sm font-medium text-dark-textMuted mb-2 mt-4">
-              Season
-            </label>
-            <select
-              v-model="espnSeason"
-              class="w-full px-4 py-3 rounded-xl bg-dark-bg border border-dark-border focus:border-red-500 focus:ring-1 focus:ring-red-500 transition-colors text-dark-text"
-            >
-              <option v-for="year in availableSeasons" :key="year" :value="year">
-                {{ year }}{{ year === currentSeasonYear ? ' (Current)' : '' }}
-              </option>
-            </select>
-            
             <div v-if="errorMessage" class="text-red-400 text-sm mt-3">
               {{ errorMessage }}
+            </div>
+            
+            <div v-if="espnDiscoveryStatus" class="text-dark-textMuted text-sm mt-3 flex items-center gap-2">
+              <svg class="animate-spin h-4 w-4 text-red-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+              </svg>
+              {{ espnDiscoveryStatus }}
             </div>
             
             <button
@@ -414,8 +386,8 @@
               :disabled="!espnLeagueId.trim() || loading"
               class="w-full mt-4 px-4 py-3 rounded-xl bg-red-600 text-white font-semibold hover:bg-red-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2"
             >
-              <span v-if="loading">Connecting...</span>
-              <span v-else>Connect League</span>
+              <span v-if="loading">Discovering League...</span>
+              <span v-else>Find League</span>
             </button>
           </div>
           
@@ -627,6 +599,8 @@ const espnLeagueId = ref('')
 const espnSport = ref<Sport>('football')
 const espnSeason = ref(new Date().getFullYear())
 const espnNeedsCredentials = ref(false)
+const espnDiscoveryStatus = ref('')
+const espnDiscoveredLeague = ref<any>(null)
 const espnS2Cookie = ref('')
 const espnSwidCookie = ref('')
 const showCookieHelp = ref(false)
@@ -741,6 +715,8 @@ watch(() => props.isOpen, async (isOpen) => {
     espnNeedsCredentials.value = false
     espnS2Cookie.value = ''
     espnSwidCookie.value = ''
+    espnDiscoveryStatus.value = ''
+    espnDiscoveredLeague.value = null
     showCookieHelp.value = false
     
     // Fetch platforms status
@@ -916,6 +892,7 @@ async function validateEspnLeague() {
   
   loading.value = true
   errorMessage.value = ''
+  espnDiscoveryStatus.value = 'Detecting league...'
   
   try {
     // Initialize ESPN service
@@ -929,55 +906,64 @@ async function validateEspnLeague() {
       espnService.setCredentials(credentials.espn_s2, credentials.swid)
     }
     
-    console.log('Validating ESPN league:', espnLeagueId.value, espnSport.value, espnSeason.value)
+    console.log('Discovering ESPN league:', espnLeagueId.value)
     
-    // Try to validate the league
-    const validation = await espnService.validateLeague(
-      espnSport.value,
-      espnLeagueId.value,
-      espnSeason.value
-    )
+    // Auto-detect sport and discover league with all seasons
+    espnDiscoveryStatus.value = 'Auto-detecting sport...'
+    const discovered = await espnService.quickDiscoverLeague(espnLeagueId.value)
     
-    if (!validation.valid && validation.isPrivate) {
-      // League exists but is private - need credentials
+    if (!discovered) {
+      errorMessage.value = 'Could not find this league. Please check the League ID.'
+      return
+    }
+    
+    // Check if private and needs credentials
+    if (!discovered.isPublic && !credentials) {
       espnNeedsCredentials.value = true
+      espnSport.value = discovered.sport
       errorMessage.value = ''
+      espnDiscoveryStatus.value = ''
       return
     }
     
-    if (!validation.valid) {
-      errorMessage.value = validation.error || 'Could not find this league. Please check the ID.'
-      return
+    console.log('ESPN league discovered:', discovered)
+    espnDiscoveredLeague.value = discovered
+    espnSport.value = discovered.sport
+    
+    // Sync all discovered seasons to database
+    espnDiscoveryStatus.value = `Found ${discovered.name} (${discovered.sport}) - saving ${discovered.seasons.length} season(s)...`
+    
+    for (const seasonData of discovered.seasons) {
+      const syncResult = await platformsStore.syncEspnLeague(
+        discovered.leagueId,
+        discovered.sport,
+        seasonData.season
+      )
+      
+      if (!syncResult.success) {
+        console.warn(`Failed to sync season ${seasonData.season}:`, syncResult.error)
+      }
     }
     
-    // League is valid and accessible
-    console.log('ESPN league validated:', validation.league)
+    // Use most recent season for the emit
+    const mostRecentSeason = discovered.seasons[0]
+    espnSeason.value = mostRecentSeason?.season || new Date().getFullYear()
     
-    // Sync the league to database
-    const syncResult = await platformsStore.syncEspnLeague(
-      espnLeagueId.value,
-      espnSport.value,
-      espnSeason.value
-    )
+    espnDiscoveryStatus.value = ''
     
-    if (!syncResult.success) {
-      errorMessage.value = syncResult.error || 'Failed to save league.'
-      return
-    }
-    
-    // Emit success
+    // Emit success with discovered info
     emit('espn-league-added', {
-      leagueId: espnLeagueId.value,
-      sport: espnSport.value,
+      leagueId: discovered.leagueId,
+      sport: discovered.sport,
       season: espnSeason.value,
-      league: validation.league as EspnLeagueResult
+      league: mostRecentSeason?.league || discovered
     })
     
   } catch (err: any) {
-    console.error('Error validating ESPN league:', err)
+    console.error('Error discovering ESPN league:', err)
     
     // Check if it's a private league error
-    if (err.message?.includes('private') || err.message?.includes('403')) {
+    if (err.message?.includes('private') || err.message?.includes('403') || err.message?.includes('401')) {
       espnNeedsCredentials.value = true
       errorMessage.value = ''
     } else {
@@ -985,6 +971,7 @@ async function validateEspnLeague() {
     }
   } finally {
     loading.value = false
+    espnDiscoveryStatus.value = ''
   }
 }
 
@@ -993,11 +980,12 @@ async function connectEspnPrivate() {
   
   loading.value = true
   errorMessage.value = ''
+  espnDiscoveryStatus.value = 'Validating credentials...'
   
   try {
     console.log('Connecting ESPN private league with credentials')
     
-    // Store credentials
+    // Store and validate credentials
     const result = await platformsStore.storeEspnCredentials({
       espn_s2: espnS2Cookie.value.trim(),
       swid: espnSwidCookie.value.trim(),
@@ -1008,30 +996,50 @@ async function connectEspnPrivate() {
     
     if (!result.success) {
       errorMessage.value = result.error || 'Invalid credentials. Please check and try again.'
+      espnDiscoveryStatus.value = ''
       return
     }
     
-    // Now sync the league
-    const syncResult = await platformsStore.syncEspnLeague(
-      espnLeagueId.value,
-      espnSport.value,
-      espnSeason.value
-    )
+    // Now discover all seasons with credentials
+    espnDiscoveryStatus.value = 'Discovering league seasons...'
+    const discovered = await espnService.quickDiscoverLeague(espnLeagueId.value)
     
-    if (!syncResult.success) {
-      errorMessage.value = syncResult.error || 'Failed to save league.'
+    if (!discovered) {
+      errorMessage.value = 'Could not access league. Please check your credentials.'
+      espnDiscoveryStatus.value = ''
       return
     }
     
-    // Get league details for the emit
-    const league = await espnService.getLeague(espnSport.value, espnLeagueId.value, espnSeason.value)
+    console.log('ESPN private league discovered:', discovered)
+    espnSport.value = discovered.sport
+    
+    // Sync all discovered seasons
+    espnDiscoveryStatus.value = `Found ${discovered.name} - saving ${discovered.seasons.length} season(s)...`
+    
+    for (const seasonData of discovered.seasons) {
+      const syncResult = await platformsStore.syncEspnLeague(
+        discovered.leagueId,
+        discovered.sport,
+        seasonData.season
+      )
+      
+      if (!syncResult.success) {
+        console.warn(`Failed to sync season ${seasonData.season}:`, syncResult.error)
+      }
+    }
+    
+    // Use most recent season
+    const mostRecentSeason = discovered.seasons[0]
+    espnSeason.value = mostRecentSeason?.season || new Date().getFullYear()
+    
+    espnDiscoveryStatus.value = ''
     
     // Emit success
     emit('espn-league-added', {
-      leagueId: espnLeagueId.value,
-      sport: espnSport.value,
+      leagueId: discovered.leagueId,
+      sport: discovered.sport,
       season: espnSeason.value,
-      league: league as unknown as EspnLeagueResult
+      league: mostRecentSeason?.league || discovered
     })
     
   } catch (err: any) {
@@ -1039,6 +1047,7 @@ async function connectEspnPrivate() {
     errorMessage.value = err.message || 'Failed to connect. Please check your cookies and try again.'
   } finally {
     loading.value = false
+    espnDiscoveryStatus.value = ''
   }
 }
 </script>
