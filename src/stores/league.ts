@@ -1109,23 +1109,53 @@ export const useLeagueStore = defineStore('league', () => {
       const espnMatchups = await espnService.getMatchups(sport, espnLeagueId, season, currentWeek)
       
       // Map ESPN teams to Yahoo-compatible format
-      yahooTeams.value = espnTeams.map(team => ({
-        team_key: `espn_${team.id}`,
-        team_id: team.id.toString(),
-        name: team.name,
-        logo_url: team.logoUrl || 'https://g.espncdn.com/lm-static/ffl/images/default_logos/team_0.svg',
-        wins: team.record?.wins || 0,
-        losses: team.record?.losses || 0,
-        ties: team.record?.ties || 0,
-        points_for: team.record?.pointsFor || 0,
-        points_against: team.record?.pointsAgainst || 0,
-        rank: team.playoffSeed || team.rank || 0,
-        is_my_team: false, // TODO: Detect user's team
-        transactions: 0
-      }))
+      yahooTeams.value = espnTeams.map(team => {
+        // Debug: log what we're receiving from ESPN
+        console.log('[ESPN] Mapping team:', {
+          id: team.id,
+          name: team.name,
+          wins: team.wins,
+          losses: team.losses,
+          pointsFor: team.pointsFor,
+          record: team.record,
+          logo: team.logo
+        })
+        
+        // Use team's logo if available, otherwise generate initials-based placeholder
+        let logoUrl = team.logo
+        if (!logoUrl || logoUrl === '') {
+          // Generate a placeholder avatar URL (could use a service like ui-avatars.com)
+          const initials = team.name.split(' ').map(w => w[0]).join('').substring(0, 2).toUpperCase()
+          logoUrl = `https://ui-avatars.com/api/?name=${encodeURIComponent(team.name)}&background=random&color=fff&size=64`
+        }
+        
+        return {
+          team_key: `espn_${team.id}`,
+          team_id: team.id.toString(),
+          name: team.name,
+          logo_url: logoUrl,
+          wins: team.wins || team.record?.overall?.wins || 0,
+          losses: team.losses || team.record?.overall?.losses || 0,
+          ties: team.ties || team.record?.overall?.ties || 0,
+          points_for: team.pointsFor || team.record?.overall?.pointsFor || 0,
+          points_against: team.pointsAgainst || team.record?.overall?.pointsAgainst || 0,
+          rank: team.playoffSeed || team.rank || 0,
+          is_my_team: false, // TODO: Detect user's team
+          transactions: 0
+        }
+      })
       
       // Sort by rank
       yahooTeams.value.sort((a, b) => (a.rank || 99) - (b.rank || 99))
+      
+      // Log final mapped teams
+      console.log('[ESPN] Final mapped teams:', yahooTeams.value.map(t => ({
+        name: t.name,
+        wins: t.wins,
+        losses: t.losses,
+        points_for: t.points_for,
+        rank: t.rank
+      })))
       
       // Map ESPN matchups to Yahoo-compatible format
       yahooMatchups.value = espnMatchups.map(matchup => {
