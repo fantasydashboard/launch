@@ -762,55 +762,62 @@ export class EspnFantasyService {
     sport: Sport
     league: EspnLeague
   } | null> {
-    const targetSeason = season || new Date().getFullYear()
+    const currentYear = new Date().getFullYear()
+    const currentMonth = new Date().getMonth() + 1 // 1-12
+    
+    // Determine seasons to try based on time of year
+    // For sports that haven't started their new season yet, check previous year first
+    const seasonsToTry = season ? [season] : [currentYear, currentYear - 1]
+    
     const sports: Sport[] = ['football', 'baseball', 'basketball', 'hockey']
     
-    console.log(`[ESPN] Detecting sport for league ${leagueId}, season ${targetSeason}...`)
+    console.log(`[ESPN] Detecting sport for league ${leagueId}, trying seasons: ${seasonsToTry.join(', ')}...`)
     
-    for (const sport of sports) {
-      try {
-        console.log(`[ESPN] Trying ${sport}...`)
-        const league = await this.getLeague(sport, leagueId, targetSeason)
-        if (league) {
-          console.log(`[ESPN] SUCCESS - Found league as ${sport}: ${league.name}`)
-          return { sport, league }
-        }
-      } catch (error: any) {
-        const errorMsg = error.message || ''
-        console.log(`[ESPN] ${sport} failed: ${errorMsg}`)
-        
-        // 403 means private league in that sport - we found it!
-        if (errorMsg.includes('403') || errorMsg.includes('private')) {
-          console.log(`[ESPN] League ${leagueId} exists as ${sport} but is private`)
-          return { 
-            sport, 
-            league: {
-              id: Number(leagueId),
-              seasonId: targetSeason,
-              scoringPeriodId: 1,
-              segmentId: 0,
-              name: `Private League ${leagueId}`,
-              size: 0,
-              isPublic: false,
-              scoringType: 'H2H_POINTS',
-              currentMatchupPeriod: 1,
-              status: {
-                currentMatchupPeriod: 1,
-                isActive: true,
-                latestScoringPeriod: 1,
-                finalScoringPeriod: 17,
-                firstScoringPeriod: 1
-              },
-              settings: {} as any
-            } as EspnLeague
+    for (const targetSeason of seasonsToTry) {
+      for (const sport of sports) {
+        try {
+          console.log(`[ESPN] Trying ${sport} ${targetSeason}...`)
+          const league = await this.getLeague(sport, leagueId, targetSeason)
+          if (league) {
+            console.log(`[ESPN] SUCCESS - Found league as ${sport} ${targetSeason}: ${league.name}`)
+            return { sport, league }
           }
+        } catch (error: any) {
+          const errorMsg = error.message || ''
+          
+          // 403 means private league in that sport - we found it!
+          if (errorMsg.includes('403') || errorMsg.includes('private')) {
+            console.log(`[ESPN] League ${leagueId} exists as ${sport} ${targetSeason} but is private`)
+            return { 
+              sport, 
+              league: {
+                id: Number(leagueId),
+                seasonId: targetSeason,
+                scoringPeriodId: 1,
+                segmentId: 0,
+                name: `Private League ${leagueId}`,
+                size: 0,
+                isPublic: false,
+                scoringType: 'H2H_POINTS',
+                currentMatchupPeriod: 1,
+                status: {
+                  currentMatchupPeriod: 1,
+                  isActive: true,
+                  latestScoringPeriod: 1,
+                  finalScoringPeriod: 17,
+                  firstScoringPeriod: 1
+                },
+                settings: {} as any
+              } as EspnLeague
+            }
+          }
+          // 404 or other errors - keep trying
+          console.log(`[ESPN] ${sport} ${targetSeason}: not found`)
         }
-        // 404 or "not found" means wrong sport, keep trying
-        // Other errors - keep trying other sports
       }
     }
     
-    console.log(`[ESPN] Could not find league ${leagueId} in any sport`)
+    console.log(`[ESPN] Could not find league ${leagueId} in any sport/season combination`)
     return null
   }
 
