@@ -883,22 +883,31 @@ async function validateEspnLeague() {
   try {
     // Initialize ESPN service
     if (authStore.user?.id) {
+      console.log('[ESPN] Initializing service for user:', authStore.user.id)
       await espnService.initialize(authStore.user.id)
+    } else {
+      console.error('[ESPN] No user ID available')
+      errorMessage.value = 'Please sign in first.'
+      return
     }
     
     // Check if we have stored credentials
     const credentials = platformsStore.getEspnCredentials()
     if (credentials) {
+      console.log('[ESPN] Using stored credentials')
       espnService.setCredentials(credentials.espn_s2, credentials.swid)
     }
     
-    console.log('[ESPN] Discovering league:', espnLeagueId.value)
+    const leagueId = espnLeagueId.value.trim()
+    console.log('[ESPN] Discovering league:', leagueId)
     
-    // Quick discovery - just detect sport and get basic info (FAST - 1 API call per sport)
-    const discovered = await espnService.discoverLeague(espnLeagueId.value)
+    // Quick discovery - just detect sport and get basic info
+    const discovered = await espnService.discoverLeague(leagueId)
+    
+    console.log('[ESPN] Discovery result:', discovered)
     
     if (!discovered) {
-      errorMessage.value = 'Could not find this league. Please check the League ID.'
+      errorMessage.value = 'Could not find this league. Please check the League ID and make sure it\'s a public league.'
       return
     }
     

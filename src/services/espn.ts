@@ -298,22 +298,47 @@ export class EspnFantasyService {
     scoringPeriod?: number,
     historical: boolean = false
   ): Promise<any> {
-    // Get access token from localStorage (Supabase getSession can hang)
+    // Get access token - try multiple methods
     let accessToken: string | null = null
     
+    // Method 1: Try localStorage (fast)
     try {
-      const storageKey = 'sb-ergxtydfgffqgkddclvr-auth-token'
-      const stored = localStorage.getItem(storageKey)
-      if (stored) {
-        const parsed = JSON.parse(stored)
-        accessToken = parsed?.access_token
+      const keys = Object.keys(localStorage)
+      const authKey = keys.find(k => k.startsWith('sb-') && k.endsWith('-auth-token'))
+      
+      if (authKey) {
+        const stored = localStorage.getItem(authKey)
+        if (stored) {
+          const parsed = JSON.parse(stored)
+          accessToken = parsed?.access_token
+          if (accessToken) {
+            console.log('[ESPN] Got token from localStorage')
+          }
+        }
       }
     } catch (e) {
-      console.error('[ESPN] Failed to get session from localStorage:', e)
+      console.warn('[ESPN] localStorage access failed:', e)
+    }
+    
+    // Method 2: Try Supabase client (slower but more reliable)
+    if (!accessToken) {
+      try {
+        const { supabase } = await import('@/lib/supabase')
+        if (supabase) {
+          const { data: { session } } = await supabase.auth.getSession()
+          accessToken = session?.access_token || null
+          if (accessToken) {
+            console.log('[ESPN] Got token from Supabase client')
+          }
+        }
+      } catch (e) {
+        console.warn('[ESPN] Supabase getSession failed:', e)
+      }
     }
     
     if (!accessToken) {
-      throw new Error('Not authenticated - no session found')
+      console.error('[ESPN] No access token found')
+      throw new Error('Not authenticated - please sign in')
     }
 
     const sportCode = ESPN_SPORT_CODES[sport]
@@ -740,56 +765,52 @@ export class EspnFantasyService {
     const targetSeason = season || new Date().getFullYear()
     const sports: Sport[] = ['football', 'baseball', 'basketball', 'hockey']
     
-    console.log(`[ESPN] Detecting sport for league ${leagueId} (trying all sports in parallel)...`)
+    console.log(`[ESPN] Detecting sport for league ${leagueId}, season ${targetSeason}...`)
     
-    // Try all sports in parallel for speed
-    const results = await Promise.allSettled(
-      sports.map(async (sport) => {
-        try {
-          const league = await this.getLeague(sport, leagueId, targetSeason)
-          if (league) {
-            return { sport, league }
-          }
-          return null
-        } catch (error: any) {
-          // 403 means private league - we found the right sport
-          if (error.message?.includes('403') || error.message?.includes('private')) {
-            return { 
-              sport, 
-              league: {
-                id: Number(leagueId),
-                seasonId: targetSeason,
-                scoringPeriodId: 1,
-                segmentId: 0,
-                name: `Private League ${leagueId}`,
-                size: 0,
-                isPublic: false,
-                scoringType: 'H2H_POINTS',
-                currentMatchupPeriod: 1,
-                status: {
-                  currentMatchupPeriod: 1,
-                  isActive: true,
-                  latestScoringPeriod: 1,
-                  finalScoringPeriod: 17,
-                  firstScoringPeriod: 1
-                },
-                settings: {} as any
-              } as EspnLeague
-            }
-          }
-          return null
+    for (const sport of sports) {
+      try {
+        console.log(`[ESPN] Trying ${sport}...`)
+        const league = await this.getLeague(sport, leagueId, targetSeason)
+        if (league) {
+          console.log(`[ESPN] SUCCESS - Found league as ${sport}: ${league.name}`)
+          return { sport, league }
         }
-      })
-    )
-    
-    // Return first successful result
-    for (const result of results) {
-      if (result.status === 'fulfilled' && result.value) {
-        console.log(`[ESPN] Found league as ${result.value.sport}: ${result.value.league.name}`)
-        return result.value
+      } catch (error: any) {
+        const errorMsg = error.message || ''
+        console.log(`[ESPN] ${sport} failed: ${errorMsg}`)
+        
+        // 403 means private league in that sport - we found it!
+        if (errorMsg.includes('403') || errorMsg.includes('private')) {
+          console.log(`[ESPN] League ${leagueId} exists as ${sport} but is private`)
+          return { 
+            sport, 
+            league: {
+              id: Number(leagueId),
+              seasonId: targetSeason,
+              scoringPeriodId: 1,
+              segmentId: 0,
+              name: `Private League ${leagueId}`,
+              size: 0,
+              isPublic: false,
+              scoringType: 'H2H_POINTS',
+              currentMatchupPeriod: 1,
+              status: {
+                currentMatchupPeriod: 1,
+                isActive: true,
+                latestScoringPeriod: 1,
+                finalScoringPeriod: 17,
+                firstScoringPeriod: 1
+              },
+              settings: {} as any
+            } as EspnLeague
+          }
+        }
+        // 404 or "not found" means wrong sport, keep trying
+        // Other errors - keep trying other sports
       }
     }
     
+    console.log(`[ESPN] Could not find league ${leagueId} in any sport`)
     return null
   }
 
