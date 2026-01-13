@@ -1205,19 +1205,77 @@ async function loadMatchups() {
   
   try {
     const leagueKey = effectiveLeagueKey.value
-    if (!leagueKey || !authStore.user?.id) {
-      console.log('Missing leagueKey or userId:', { leagueKey, userId: authStore.user?.id })
+    if (!leagueKey) {
+      console.log('Missing leagueKey')
       return
     }
     
-    await yahooService.initialize(authStore.user.id)
-    
     const week = parseInt(selectedWeek.value)
-    console.log('Loading matchups for week:', week, 'league:', leagueKey)
+    console.log('Loading matchups for week:', week, 'league:', leagueKey, 'platform:', leagueStore.activePlatform)
     
-    const matchups = await yahooService.getMatchups(leagueKey, week)
+    let matchups: any[] = []
+    
+    // Handle ESPN leagues
+    if (leagueStore.activePlatform === 'espn') {
+      // Parse league key to get ESPN details
+      const parts = leagueKey.split('_')
+      const sport = parts[1] as 'football' | 'baseball' | 'basketball' | 'hockey'
+      const espnLeagueId = parts[2]
+      const season = parseInt(parts[3])
+      
+      // Dynamically import ESPN service
+      const { espnService } = await import('@/services/espn')
+      
+      const espnMatchups = await espnService.getMatchups(sport, espnLeagueId, season, week)
+      console.log('ESPN matchups received:', espnMatchups.length)
+      
+      // Transform ESPN matchups to Yahoo-compatible format
+      matchups = espnMatchups.map(m => {
+        const homeTeam = leagueStore.yahooTeams.find(t => t.team_id === m.homeTeamId?.toString())
+        const awayTeam = leagueStore.yahooTeams.find(t => t.team_id === m.awayTeamId?.toString())
+        
+        return {
+          matchup_id: m.id,
+          teams: [
+            {
+              team_key: homeTeam?.team_key || `espn_${m.homeTeamId}`,
+              name: homeTeam?.name || m.homeTeam?.name || 'Home Team',
+              points: m.homeScore || 0,
+              projected_points: 0,
+              logo_url: homeTeam?.logo_url || '',
+              is_my_team: homeTeam?.is_my_team || false,
+              wins: homeTeam?.wins || 0,
+              losses: homeTeam?.losses || 0
+            },
+            {
+              team_key: awayTeam?.team_key || `espn_${m.awayTeamId}`,
+              name: awayTeam?.name || m.awayTeam?.name || 'Away Team',
+              points: m.awayScore || 0,
+              projected_points: 0,
+              logo_url: awayTeam?.logo_url || '',
+              is_my_team: awayTeam?.is_my_team || false,
+              wins: awayTeam?.wins || 0,
+              losses: awayTeam?.losses || 0
+            }
+          ],
+          winner_team_key: m.winner === 'HOME' ? (homeTeam?.team_key || `espn_${m.homeTeamId}`) : 
+                           m.winner === 'AWAY' ? (awayTeam?.team_key || `espn_${m.awayTeamId}`) : null,
+          is_playoffs: m.playoffTierType !== 'NONE',
+          is_consolation: m.playoffTierType === 'LOSERS_BRACKET'
+        }
+      })
+    } else {
+      // Handle Yahoo leagues
+      if (!authStore.user?.id) {
+        console.log('Missing userId')
+        return
+      }
+      
+      await yahooService.initialize(authStore.user.id)
+      matchups = await yahooService.getMatchups(leagueKey, week)
+    }
+    
     console.log('Matchups received:', matchups.length, matchups)
-    
     matchupsData.value = matchups
     
     // Also load history for lifetime series
@@ -1319,13 +1377,64 @@ async function loadMatchupHistory() {
   
   const currentWeekNum = parseInt(selectedWeek.value)
   
-  for (let week = 1; week <= currentWeekNum; week++) {
-    if (!allMatchupsHistory.value.has(week)) {
-      try {
-        const matchups = await yahooService.getMatchups(leagueKey, week)
-        allMatchupsHistory.value.set(week, matchups)
-      } catch (e) {
-        console.error(`Error fetching week ${week}:`, e)
+  // Handle ESPN leagues
+  if (leagueStore.activePlatform === 'espn') {
+    // Parse league key to get ESPN details
+    const parts = leagueKey.split('_')
+    const sport = parts[1] as 'football' | 'baseball' | 'basketball' | 'hockey'
+    const espnLeagueId = parts[2]
+    const season = parseInt(parts[3])
+    
+    // Dynamically import ESPN service
+    const { espnService } = await import('@/services/espn')
+    
+    for (let week = 1; week <= currentWeekNum; week++) {
+      if (!allMatchupsHistory.value.has(week)) {
+        try {
+          const espnMatchups = await espnService.getMatchups(sport, espnLeagueId, season, week)
+          
+          // Transform to Yahoo-compatible format
+          const matchups = espnMatchups.map(m => {
+            const homeTeam = leagueStore.yahooTeams.find(t => t.team_id === m.homeTeamId?.toString())
+            const awayTeam = leagueStore.yahooTeams.find(t => t.team_id === m.awayTeamId?.toString())
+            
+            return {
+              matchup_id: m.id,
+              teams: [
+                {
+                  team_key: homeTeam?.team_key || `espn_${m.homeTeamId}`,
+                  name: homeTeam?.name || 'Home Team',
+                  points: m.homeScore || 0,
+                  is_my_team: homeTeam?.is_my_team || false
+                },
+                {
+                  team_key: awayTeam?.team_key || `espn_${m.awayTeamId}`,
+                  name: awayTeam?.name || 'Away Team',
+                  points: m.awayScore || 0,
+                  is_my_team: awayTeam?.is_my_team || false
+                }
+              ],
+              winner_team_key: m.winner === 'HOME' ? (homeTeam?.team_key || `espn_${m.homeTeamId}`) : 
+                               m.winner === 'AWAY' ? (awayTeam?.team_key || `espn_${m.awayTeamId}`) : null
+            }
+          })
+          
+          allMatchupsHistory.value.set(week, matchups)
+        } catch (e) {
+          console.error(`Error fetching ESPN week ${week}:`, e)
+        }
+      }
+    }
+  } else {
+    // Handle Yahoo leagues
+    for (let week = 1; week <= currentWeekNum; week++) {
+      if (!allMatchupsHistory.value.has(week)) {
+        try {
+          const matchups = await yahooService.getMatchups(leagueKey, week)
+          allMatchupsHistory.value.set(week, matchups)
+        } catch (e) {
+          console.error(`Error fetching week ${week}:`, e)
+        }
       }
     }
   }
