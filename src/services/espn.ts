@@ -349,32 +349,47 @@ export class EspnFantasyService {
       requestBody.swid = this.credentials.swid
     }
 
-    const response = await fetch(proxyUrl, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${accessToken}`,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify(requestBody)
-    })
+    // Add timeout to prevent hanging
+    const controller = new AbortController()
+    const timeoutId = setTimeout(() => controller.abort(), 15000) // 15 second timeout
 
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({ error: 'Unknown error' }))
-      console.error('ESPN API proxy error:', response.status, errorData)
-      
-      // Provide helpful error messages
-      if (response.status === 401) {
-        throw new Error('ESPN credentials expired or invalid. Please reconnect your ESPN account.')
-      } else if (response.status === 404) {
-        throw new Error('League not found. Please check the league ID.')
-      } else if (response.status === 403) {
-        throw new Error('This is a private league. Please provide ESPN cookies (espn_s2 and SWID).')
+    try {
+      const response = await fetch(proxyUrl, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(requestBody),
+        signal: controller.signal
+      })
+
+      clearTimeout(timeoutId)
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ error: 'Unknown error' }))
+        console.error('ESPN API proxy error:', response.status, errorData)
+        
+        // Provide helpful error messages
+        if (response.status === 401) {
+          throw new Error('ESPN credentials expired or invalid. Please reconnect your ESPN account.')
+        } else if (response.status === 404) {
+          throw new Error('League not found. Please check the league ID.')
+        } else if (response.status === 403) {
+          throw new Error('This is a private league. Please provide ESPN cookies (espn_s2 and SWID).')
+        }
+        
+        throw new Error(errorData.error || `ESPN API error: ${response.status}`)
       }
-      
-      throw new Error(errorData.error || `ESPN API error: ${response.status}`)
-    }
 
-    return response.json()
+      return response.json()
+    } catch (error: any) {
+      clearTimeout(timeoutId)
+      if (error.name === 'AbortError') {
+        throw new Error('Request timed out. ESPN API may be slow or unavailable.')
+      }
+      throw error
+    }
   }
 
   // ============================================================
@@ -722,47 +737,56 @@ export class EspnFantasyService {
     sport: Sport
     league: EspnLeague
   } | null> {
-    const targetSeason = season || this.getCurrentSeason('football')
+    const targetSeason = season || new Date().getFullYear()
     const sports: Sport[] = ['football', 'baseball', 'basketball', 'hockey']
     
-    for (const sport of sports) {
-      try {
-        console.log(`[ESPN] Trying ${sport} for league ${leagueId}...`)
-        const league = await this.getLeague(sport, leagueId, targetSeason)
-        if (league) {
-          console.log(`[ESPN] Found league as ${sport}: ${league.name}`)
-          return { sport, league }
-        }
-      } catch (error: any) {
-        // 404 means wrong sport, keep trying
-        // 403 means private league in that sport - could be correct sport
-        if (error.message?.includes('403') || error.message?.includes('private')) {
-          console.log(`[ESPN] League ${leagueId} exists as ${sport} but is private`)
-          return { 
-            sport, 
-            league: {
-              id: Number(leagueId),
-              seasonId: targetSeason,
-              scoringPeriodId: 1,
-              segmentId: 0,
-              name: `Private League ${leagueId}`,
-              size: 0,
-              isPublic: false,
-              scoringType: 'H2H_POINTS',
-              currentMatchupPeriod: 1,
-              status: {
+    console.log(`[ESPN] Detecting sport for league ${leagueId} (trying all sports in parallel)...`)
+    
+    // Try all sports in parallel for speed
+    const results = await Promise.allSettled(
+      sports.map(async (sport) => {
+        try {
+          const league = await this.getLeague(sport, leagueId, targetSeason)
+          if (league) {
+            return { sport, league }
+          }
+          return null
+        } catch (error: any) {
+          // 403 means private league - we found the right sport
+          if (error.message?.includes('403') || error.message?.includes('private')) {
+            return { 
+              sport, 
+              league: {
+                id: Number(leagueId),
+                seasonId: targetSeason,
+                scoringPeriodId: 1,
+                segmentId: 0,
+                name: `Private League ${leagueId}`,
+                size: 0,
+                isPublic: false,
+                scoringType: 'H2H_POINTS',
                 currentMatchupPeriod: 1,
-                isActive: true,
-                latestScoringPeriod: 1,
-                finalScoringPeriod: 17,
-                firstScoringPeriod: 1
-              },
-              settings: {} as any
+                status: {
+                  currentMatchupPeriod: 1,
+                  isActive: true,
+                  latestScoringPeriod: 1,
+                  finalScoringPeriod: 17,
+                  firstScoringPeriod: 1
+                },
+                settings: {} as any
+              } as EspnLeague
             }
           }
+          return null
         }
-        // Otherwise keep trying other sports
-        console.log(`[ESPN] ${sport} not found for league ${leagueId}`)
+      })
+    )
+    
+    // Return first successful result
+    for (const result of results) {
+      if (result.status === 'fulfilled' && result.value) {
+        console.log(`[ESPN] Found league as ${result.value.sport}: ${result.value.league.name}`)
+        return result.value
       }
     }
     

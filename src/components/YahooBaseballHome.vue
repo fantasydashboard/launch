@@ -723,9 +723,9 @@ const defaultAvatar = computed(() => {
 
 // Platform styling
 const platformName = computed(() => leagueStore.activePlatform === 'espn' ? 'ESPN' : 'Yahoo')
-const platformBadgeClass = computed(() => leagueStore.activePlatform === 'espn' ? 'bg-red-600/10 border-red-600/30' : 'bg-purple-600/10 border-purple-600/30')
-const platformTextClass = computed(() => leagueStore.activePlatform === 'espn' ? 'text-red-400' : 'text-purple-400')
-const platformSubTextClass = computed(() => leagueStore.activePlatform === 'espn' ? 'text-red-300' : 'text-purple-300')
+const platformBadgeClass = computed(() => leagueStore.activePlatform === 'espn' ? 'bg-[#0719b2]/10 border-[#0719b2]/30' : 'bg-purple-600/10 border-purple-600/30')
+const platformTextClass = computed(() => leagueStore.activePlatform === 'espn' ? 'text-[#0719b2]' : 'text-purple-400')
+const platformSubTextClass = computed(() => leagueStore.activePlatform === 'espn' ? 'text-[#3d5fc4]' : 'text-purple-300')
 
 // Scoring type - read from store for both Yahoo and ESPN
 const scoringType = computed(() => {

@@ -414,11 +414,13 @@ export const usePlatformsStore = defineStore('platforms', () => {
 
   /**
    * Sync an ESPN league to the database
+   * Accepts optional league info to avoid re-fetching
    */
   async function syncEspnLeague(
     leagueId: string, 
     sport: Sport, 
-    season: number
+    season: number,
+    leagueInfo?: { name: string; size: number; scoringType?: string }
   ): Promise<{ success: boolean; error?: string }> {
     const authStore = useAuthStore()
     if (!supabase || !authStore.user) {
@@ -428,21 +430,6 @@ export const usePlatformsStore = defineStore('platforms', () => {
     try {
       console.log('[ESPN] Syncing league:', { leagueId, sport, season })
 
-      // Initialize ESPN service
-      await espnService.initialize(authStore.user.id)
-
-      // Apply stored credentials if available
-      const credentials = getEspnCredentials()
-      if (credentials) {
-        espnService.setCredentials(credentials.espn_s2, credentials.swid)
-      }
-
-      // Get league info from ESPN
-      const league = await espnService.getLeague(sport, leagueId, season)
-      if (!league) {
-        return { success: false, error: 'Could not fetch league info from ESPN' }
-      }
-
       // Map ESPN scoring type to Yahoo format
       const scoringTypeMap: Record<string, string> = {
         'H2H_POINTS': 'headpoint',
@@ -450,19 +437,19 @@ export const usePlatformsStore = defineStore('platforms', () => {
         'ROTO': 'roto',
         'TOTAL_POINTS': 'point'
       }
-      const scoringType = scoringTypeMap[league.scoringType || 'H2H_POINTS'] || 'head'
+      const scoringType = scoringTypeMap[leagueInfo?.scoringType || 'H2H_POINTS'] || 'head'
 
       // Create league key (format: espn_{sport}_{leagueId}_{season})
       const leagueKey = `espn_${sport}_${leagueId}_${season}`
 
-      // Save to database
+      // Save to database - use provided info or defaults
       const leagueData: LeagueInsert = {
         user_id: authStore.user.id,
         platform: 'espn',
         league_id: leagueKey,
-        league_name: league.name || `ESPN League ${leagueId}`,
+        league_name: leagueInfo?.name || `ESPN League ${leagueId}`,
         season: season.toString(),
-        num_teams: league.size || 12,
+        num_teams: leagueInfo?.size || 12,
         scoring_type: scoringType,
         sport: sport
       }
