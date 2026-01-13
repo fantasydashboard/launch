@@ -1269,9 +1269,10 @@ export const useLeagueStore = defineStore('league', () => {
       
       console.log('[ESPN] Data mapped to Yahoo format. Teams:', yahooTeams.value.length, 'Matchups:', yahooMatchups.value.length)
       
-      // Update saved league with scoring type if we learned it
-      if (savedLeague && !savedLeague.scoring_type) {
+      // Always update saved league with scoring type
+      if (savedLeague) {
         savedLeague.scoring_type = mappedScoringType
+        console.log('[ESPN] Updated savedLeague.scoring_type to:', mappedScoringType)
         saveToLocalStorage()
       }
       

@@ -1012,13 +1012,66 @@ export class EspnFantasyService {
     const memberMap = new Map<string, any>()
     members.forEach((m: any) => memberMap.set(m.id, m))
     
+    console.log('[ESPN parseTeams] Raw teams count:', teams.length)
+    console.log('[ESPN parseTeams] Raw members count:', members.length)
+    
     return teams.map((team: any) => {
       const record = team.record?.overall || {}
+      
+      // Debug: log all available name-related fields
+      console.log(`[ESPN Team ${team.id}] Raw data:`, {
+        name: team.name,
+        location: team.location,
+        nickname: team.nickname,
+        abbrev: team.abbrev,
+        primaryOwner: team.primaryOwner,
+        owners: team.owners
+      })
+      
+      // Get team name - ESPN uses different fields for different sports
+      // Try multiple approaches to get the team name
+      let teamName = ''
+      
+      // Approach 1: Use 'name' field directly (some ESPN sports use this)
+      if (team.name && team.name !== 'undefined' && team.name.trim()) {
+        teamName = team.name.trim()
+      }
+      
+      // Approach 2: Combine location + nickname (common for football)
+      if (!teamName && (team.location || team.nickname)) {
+        const combined = `${team.location || ''} ${team.nickname || ''}`.trim()
+        if (combined && combined !== 'undefined undefined') {
+          teamName = combined
+        }
+      }
+      
+      // Approach 3: Use abbreviation as fallback
+      if (!teamName && team.abbrev && team.abbrev !== `T${team.id}`) {
+        teamName = team.abbrev
+      }
+      
+      // Approach 4: Use owner's display name
+      if (!teamName) {
+        const ownerId = team.primaryOwner || team.owners?.[0]
+        if (ownerId) {
+          const owner = memberMap.get(ownerId)
+          if (owner?.displayName) {
+            teamName = `${owner.displayName}'s Team`
+          }
+        }
+      }
+      
+      // Final fallback
+      if (!teamName) {
+        teamName = `Team ${team.id}`
+      }
+      
+      console.log(`[ESPN Team ${team.id}] Final name: "${teamName}"`)
       
       return {
         id: team.id,
         abbrev: team.abbrev || `T${team.id}`,
-        name: `${team.location || ''} ${team.nickname || ''}`.trim() || `Team ${team.id}`,
+        name: teamName,
         location: team.location || '',
         nickname: team.nickname || '',
         logo: team.logo || '',

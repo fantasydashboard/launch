@@ -448,9 +448,9 @@
 
     <!-- Platform Badge -->
     <div class="flex justify-center">
-      <div class="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-purple-600/10 border border-purple-600/30">
-        <span class="text-sm font-bold text-purple-400">Y!</span>
-        <span class="text-sm text-purple-300">Yahoo Fantasy Baseball • {{ scoringTypeLabel }}</span>
+      <div class="inline-flex items-center gap-2 px-4 py-2 rounded-full border" :class="platformBadgeClass">
+        <span class="text-sm font-bold" :class="platformTextClass">{{ isEspnPlatform ? 'ESPN' : 'Y!' }}</span>
+        <span class="text-sm" :class="platformSubTextClass">{{ platformName }} Fantasy Baseball • {{ scoringTypeLabel }}</span>
       </div>
     </div>
 
@@ -562,13 +562,23 @@ import { yahooService } from '@/services/yahoo'
 const leagueStore = useLeagueStore()
 const authStore = useAuthStore()
 
+// Platform detection
+const isEspnPlatform = computed(() => leagueStore.activePlatform === 'espn')
+const platformName = computed(() => isEspnPlatform.value ? 'ESPN' : 'Yahoo')
+const platformBadgeClass = computed(() => isEspnPlatform.value ? 'bg-red-600/10 border-red-600/30' : 'bg-purple-600/10 border-purple-600/30')
+const platformTextClass = computed(() => isEspnPlatform.value ? 'text-red-400' : 'text-purple-400')
+const platformSubTextClass = computed(() => isEspnPlatform.value ? 'text-red-300' : 'text-purple-300')
+
 const isLoading = ref(false)
 const isLoadingChart = ref(false)
 const isRefreshing = ref(false)
 const isGeneratingDownload = ref(false)
 const isGeneratingLeaderDownload = ref(false)
 const chartLoadProgress = ref('')
-const defaultAvatar = 'https://s.yimg.com/cv/apiv2/default/mlb/mlb_2_g.png'
+const defaultAvatar = computed(() => isEspnPlatform.value 
+  ? 'https://g.espncdn.com/lm-static/ffl/images/default_logos/team_0.svg'
+  : 'https://s.yimg.com/cv/apiv2/default/mlb/mlb_2_g.png'
+)
 
 // League settings
 const scoringType = ref<string>('head')
@@ -642,7 +652,9 @@ const displayWeek = computed(() => isSeasonComplete.value ? totalWeeks.value : c
 
 const isPointsLeague = computed(() => {
   const st = (scoringType.value || '').toLowerCase()
-  return st.includes('point') || st === 'headpoint'
+  const result = st.includes('point') || st === 'headpoint'
+  console.log('[isPointsLeague] scoringType:', scoringType.value, 'lowercase:', st, 'result:', result)
+  return result
 })
 
 const scoringTypeLabel = computed(() => {
@@ -1567,6 +1579,52 @@ async function loadLeagueSettings() {
   const leagueKey = effectiveLeagueKey.value || leagueStore.activeLeagueId
   if (!leagueKey) return
   
+  console.log('[loadLeagueSettings] Starting...', {
+    leagueKey,
+    isEspnPlatform: isEspnPlatform.value,
+    activePlatform: leagueStore.activePlatform
+  })
+  
+  // For ESPN, get scoring type from already loaded data
+  if (isEspnPlatform.value) {
+    // Debug: log what we have
+    console.log('[loadLeagueSettings] ESPN - yahooLeague:', JSON.stringify(leagueStore.yahooLeague))
+    console.log('[loadLeagueSettings] ESPN - currentLeague:', JSON.stringify(leagueStore.currentLeague))
+    
+    // Try multiple sources for scoring type
+    let detectedScoringType = 'headpoint' // Default for ESPN baseball
+    
+    // Try yahooLeague first
+    const yahooLeagueData = Array.isArray(leagueStore.yahooLeague) ? leagueStore.yahooLeague[0] : leagueStore.yahooLeague
+    if (yahooLeagueData?.scoring_type) {
+      detectedScoringType = yahooLeagueData.scoring_type
+      console.log('[loadLeagueSettings] Got scoring_type from yahooLeague:', detectedScoringType)
+    }
+    // Try currentLeague
+    else if (leagueStore.currentLeague?.scoring_type) {
+      detectedScoringType = leagueStore.currentLeague.scoring_type
+      console.log('[loadLeagueSettings] Got scoring_type from currentLeague:', detectedScoringType)
+    }
+    // Try savedLeagues
+    else {
+      const savedLeague = leagueStore.savedLeagues?.find((l: any) => l.league_id === leagueKey)
+      if (savedLeague?.scoring_type) {
+        detectedScoringType = savedLeague.scoring_type
+        console.log('[loadLeagueSettings] Got scoring_type from savedLeagues:', detectedScoringType)
+      }
+    }
+    
+    scoringType.value = detectedScoringType
+    
+    console.log('[loadLeagueSettings] ESPN - Final scoring type:', scoringType.value)
+    console.log('[loadLeagueSettings] ESPN - isPointsLeague will be:', scoringType.value.toLowerCase().includes('point'))
+    
+    // ESPN doesn't have category stats for points leagues
+    statCategories.value = []
+    return
+  }
+  
+  // For Yahoo, call the API
   try {
     const settings = await yahooService.getLeagueScoringSettings(leagueKey)
     if (settings) {
@@ -1596,6 +1654,21 @@ async function loadAllMatchups() {
   
   console.log(`Loading matchups for league: ${leagueKey}`)
   isLoadingChart.value = true
+  
+  // For ESPN, use the already loaded matchups from the store
+  if (isEspnPlatform.value) {
+    console.log('ESPN platform - using preloaded matchups')
+    displayMatchups.value = leagueStore.yahooMatchups || []
+    
+    // Generate standings progression for chart
+    const endWeek = totalWeeks.value || 25
+    const startWeek = 1
+    generateStandingsProgression(startWeek, endWeek)
+    
+    isLoadingChart.value = false
+    chartLoadProgress.value = ''
+    return
+  }
   
   // For H2H Categories, we need to simulate standings over time
   // since Yahoo doesn't give us weekly W-L for category leagues
@@ -1765,11 +1838,14 @@ async function refreshData() {
   isRefreshing.value = true
   
   try {
-    // Clear cache for this league
-    yahooService.clearLeagueCache(leagueKey)
-    
-    // Force reload from league store (which will re-fetch from API)
-    await leagueStore.loadYahooLeague(leagueKey)
+    if (isEspnPlatform.value) {
+      // For ESPN, reload the league data
+      await leagueStore.loadEspnLeagueData(leagueKey)
+    } else {
+      // For Yahoo, clear cache and reload
+      yahooService.clearLeagueCache(leagueKey)
+      await leagueStore.loadYahooLeague(leagueKey)
+    }
     
     // Reload our local data
     await loadAllData()
@@ -1784,19 +1860,24 @@ async function refreshData() {
 
 async function loadAllData() {
   const leagueKey = effectiveLeagueKey.value
-  if (!leagueKey || leagueStore.activePlatform !== 'yahoo') return
+  const isYahooOrEspn = leagueStore.activePlatform === 'yahoo' || leagueStore.activePlatform === 'espn'
+  if (!leagueKey || !isYahooOrEspn) return
   
   isLoading.value = true
   
   try {
-    if (authStore.user?.id) await yahooService.initialize(authStore.user.id)
+    // Only initialize Yahoo service for Yahoo leagues
+    if (!isEspnPlatform.value && authStore.user?.id) {
+      await yahooService.initialize(authStore.user.id)
+    }
     
     await loadLeagueSettings()
     
     // Debug: Log what teams we have
     console.log('=== DEBUG: loadAllData ===')
+    console.log('Platform:', leagueStore.activePlatform)
     console.log('League Key:', leagueKey)
-    console.log('Yahoo Teams count:', leagueStore.yahooTeams.length)
+    console.log('Teams count:', leagueStore.yahooTeams.length)
     if (leagueStore.yahooTeams.length > 0) {
       const sampleTeam = leagueStore.yahooTeams[0]
       console.log('Sample team data:', {
@@ -1813,9 +1894,11 @@ async function loadAllData() {
     console.log('Current Season:', currentSeason.value)
     console.log('=== END DEBUG ===')
     
-    // Fetch transaction counts
-    const transCounts = await yahooService.getTransactionCounts(leagueKey)
-    transactionCounts.value = transCounts
+    // Fetch transaction counts - only for Yahoo
+    if (!isEspnPlatform.value) {
+      const transCounts = await yahooService.getTransactionCounts(leagueKey)
+      transactionCounts.value = transCounts
+    }
     
     // Distribute category wins proportionally
     if (!isPointsLeague.value && displayCategories.value.length > 0) {
@@ -1833,12 +1916,15 @@ async function loadAllData() {
   }
 }
 
+// Trigger load on league change (for both Yahoo and ESPN)
 watch(() => leagueStore.activeLeagueId, () => {
-  if (leagueStore.activePlatform === 'yahoo') loadAllData()
+  const isYahooOrEspn = leagueStore.activePlatform === 'yahoo' || leagueStore.activePlatform === 'espn'
+  if (isYahooOrEspn) loadAllData()
 })
 
 watch(() => leagueStore.yahooTeams, () => {
-  if (leagueStore.yahooTeams.length > 0 && leagueStore.activePlatform === 'yahoo') loadAllData()
+  const isYahooOrEspn = leagueStore.activePlatform === 'yahoo' || leagueStore.activePlatform === 'espn'
+  if (leagueStore.yahooTeams.length > 0 && isYahooOrEspn) loadAllData()
 }, { immediate: true })
 
 onMounted(() => {
