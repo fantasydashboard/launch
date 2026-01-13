@@ -521,10 +521,10 @@
           </div>
           
           <div class="p-6">
-            <h4 class="text-sm font-semibold text-dark-textMuted uppercase tracking-wider mb-4">Top Ten Comparison</h4>
+            <h4 class="text-sm font-semibold text-dark-textMuted uppercase tracking-wider mb-4">{{ leaderModalListTitle }}</h4>
             <div class="space-y-3">
               <div 
-                v-for="(team, index) in leaderModalData.comparison.slice(0, 10)" 
+                v-for="(team, index) in leaderModalData.comparison.slice(0, leaderModalListLimit)" 
                 :key="team.team_key"
                 class="flex items-center gap-3"
               >
@@ -1241,6 +1241,17 @@ const leaderModalUnit = computed(() => {
   return 'All-Play Record'
 })
 
+// Quick stats show top 5, others show top 10
+const leaderModalListLimit = computed(() => {
+  const quickStatTypes = ['hottest', 'coldest', 'mostMoves', 'fewestMoves']
+  return quickStatTypes.includes(leaderModalType.value) ? 5 : 10
+})
+
+const leaderModalListTitle = computed(() => {
+  const quickStatTypes = ['hottest', 'coldest', 'mostMoves', 'fewestMoves']
+  return quickStatTypes.includes(leaderModalType.value) ? 'Top 5' : 'Top Ten Comparison'
+})
+
 // Team Detail Modal Computed
 const teamDetailAvgCatsPerWeek = computed(() => {
   if (!selectedTeamDetail.value) return '0.0'
@@ -1361,12 +1372,6 @@ const pointsLeagueTeamDetailChartOptions = computed(() => {
   const weeklyResults = pointsLeagueTeamDetailStats.value.weeklyResults
   if (weeklyResults.length === 0) return null
   
-  // Calculate league average PPG
-  const leagueAvg = leagueStore.yahooTeams.reduce((sum, t) => {
-    const games = (t.wins || 0) + (t.losses || 0)
-    return sum + (games > 0 ? (t.points_for || 0) / games : 0)
-  }, 0) / Math.max(leagueStore.yahooTeams.length, 1)
-  
   return {
     chart: {
       type: 'line',
@@ -1404,18 +1409,6 @@ const pointsLeagueTeamDetailChartOptions = computed(() => {
     tooltip: {
       theme: 'dark',
       y: { formatter: (val: number) => val.toFixed(1) + ' pts' }
-    },
-    annotations: {
-      yaxis: [{
-        y: leagueAvg,
-        borderColor: '#6b7280',
-        strokeDashArray: 5,
-        label: {
-          borderColor: '#6b7280',
-          style: { color: '#fff', background: '#6b7280' },
-          text: `Avg: ${leagueAvg.toFixed(1)}`
-        }
-      }]
     }
   }
 })
@@ -1425,11 +1418,30 @@ const pointsLeagueTeamDetailChartSeries = computed(() => {
   const weeklyResults = pointsLeagueTeamDetailStats.value.weeklyResults
   if (weeklyResults.length === 0) return []
   
-  // Calculate league average PPG
-  const leagueAvg = leagueStore.yahooTeams.reduce((sum, t) => {
-    const games = (t.wins || 0) + (t.losses || 0)
-    return sum + (games > 0 ? (t.points_for || 0) / games : 0)
-  }, 0) / Math.max(leagueStore.yahooTeams.length, 1)
+  // Calculate weekly league averages from all teams' matchup results
+  const weeklyLeagueAvgs: number[] = []
+  
+  for (let weekIdx = 0; weekIdx < weeklyResults.length; weekIdx++) {
+    const weekNum = weekIdx + 1 // Weeks are 1-indexed
+    let totalPoints = 0
+    let teamCount = 0
+    
+    // Sum up all teams' points for this week
+    leagueStore.yahooTeams.forEach(team => {
+      const teamMatchups = weeklyMatchupResults.value.get(team.team_key)
+      if (teamMatchups) {
+        const weekResult = teamMatchups.get(weekNum)
+        if (weekResult && weekResult.points > 0) {
+          totalPoints += weekResult.points
+          teamCount++
+        }
+      }
+    })
+    
+    // Calculate average for this week
+    const weekAvg = teamCount > 0 ? totalPoints / teamCount : 0
+    weeklyLeagueAvgs.push(parseFloat(weekAvg.toFixed(1)))
+  }
   
   return [
     {
@@ -1438,7 +1450,7 @@ const pointsLeagueTeamDetailChartSeries = computed(() => {
     },
     {
       name: 'League Avg',
-      data: weeklyResults.map(() => parseFloat(leagueAvg.toFixed(1)))
+      data: weeklyLeagueAvgs
     }
   ]
 })
@@ -2384,7 +2396,7 @@ async function downloadLeaderImage() {
   try {
     const html2canvas = (await import('html2canvas')).default
     
-    const rankings = leaderModalData.value.comparison.slice(0, 10)
+    const rankings = leaderModalData.value.comparison.slice(0, leaderModalListLimit.value)
     if (rankings.length === 0) {
       isDownloadingLeader.value = false
       return
@@ -2559,7 +2571,7 @@ async function downloadLeaderImage() {
         
         <!-- Rankings List -->
         <div style="padding: 12px 16px;">
-          <div style="font-size: 10px; font-weight: 600; color: #6b7280; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 10px;">Top Ten Comparison</div>
+          <div style="font-size: 10px; font-weight: 600; color: #6b7280; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 10px;">${leaderModalListTitle.value}</div>
           ${generateRows()}
         </div>
         
