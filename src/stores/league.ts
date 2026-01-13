@@ -1162,14 +1162,22 @@ export const useLeagueStore = defineStore('league', () => {
         const homeTeam = yahooTeams.value.find(t => t.team_id === matchup.homeTeamId?.toString())
         const awayTeam = yahooTeams.value.find(t => t.team_id === matchup.awayTeamId?.toString())
         
+        console.log('[ESPN] Mapping matchup:', {
+          homeTeamId: matchup.homeTeamId,
+          awayTeamId: matchup.awayTeamId,
+          homeTeamFound: homeTeam?.name,
+          awayTeamFound: awayTeam?.name
+        })
+        
         return {
           matchup_id: matchup.id,
           week: currentWeek,
           team1: homeTeam ? { ...homeTeam, points: matchup.homeScore || 0 } : null,
           team2: awayTeam ? { ...awayTeam, points: matchup.awayScore || 0 } : null,
+          // Include full team data in teams array too (for compatibility with formattedMatchups)
           teams: [
-            homeTeam ? { team_key: homeTeam.team_key, points: matchup.homeScore || 0 } : null,
-            awayTeam ? { team_key: awayTeam.team_key, points: matchup.awayScore || 0 } : null
+            homeTeam ? { ...homeTeam, points: matchup.homeScore || 0 } : null,
+            awayTeam ? { ...awayTeam, points: matchup.awayScore || 0 } : null
           ].filter(Boolean)
         }
       })

@@ -629,72 +629,126 @@
                 <div class="text-xs text-dark-textMuted mt-1">All-Play</div>
               </div>
               <div class="bg-dark-border/20 rounded-xl p-4 text-center">
-                <div class="text-2xl font-black text-green-400">{{ teamDetailAvgCatsPerWeek }}</div>
-                <div class="text-xs text-dark-textMuted mt-1">Cats/Week</div>
+                <div class="text-2xl font-black text-green-400">{{ isPointsLeague ? pointsLeagueTeamDetailStats.ppg : teamDetailAvgCatsPerWeek }}</div>
+                <div class="text-xs text-dark-textMuted mt-1">{{ isPointsLeague ? 'PPG' : 'Cats/Week' }}</div>
               </div>
             </div>
           </div>
           
-          <!-- Category Performance Chart -->
-          <div class="p-6 border-b border-dark-border">
-            <h4 class="text-sm font-semibold text-dark-textMuted uppercase tracking-wider mb-4">Weekly Category Wins vs League Average</h4>
-            <div class="h-48">
-              <apexchart 
-                v-if="teamDetailChartOptions" 
-                type="line" 
-                height="100%" 
-                :options="teamDetailChartOptions" 
-                :series="teamDetailChartSeries" 
-              />
-            </div>
-          </div>
-          
-          <!-- Category Breakdown -->
-          <div class="p-6 border-b border-dark-border">
-            <h4 class="text-sm font-semibold text-dark-textMuted uppercase tracking-wider mb-4">Category Breakdown</h4>
-            <div class="grid grid-cols-2 sm:grid-cols-3 gap-3">
-              <div 
-                v-for="cat in teamDetailCategories" 
-                :key="cat.stat_id"
-                class="bg-dark-border/20 rounded-xl p-3"
-              >
-                <div class="flex items-center justify-between mb-2">
-                  <span class="text-xs text-dark-textMuted font-medium">{{ cat.display_name }}</span>
-                  <span 
-                    class="text-xs px-1.5 py-0.5 rounded font-bold"
-                    :class="cat.rankClass"
-                  >
-                    #{{ cat.rank }}
-                  </span>
+          <!-- Points League: Season Breakdown -->
+          <template v-if="isPointsLeague">
+            <div class="p-6 border-b border-dark-border">
+              <h4 class="text-sm font-semibold text-dark-textMuted uppercase tracking-wider mb-4">Season Breakdown</h4>
+              <div class="grid grid-cols-2 sm:grid-cols-3 gap-4">
+                <div class="bg-dark-border/20 rounded-xl p-4">
+                  <div class="text-lg font-bold text-green-400">{{ pointsLeagueTeamDetailStats.highScore }}</div>
+                  <div class="text-xs text-dark-textMuted">High Score</div>
                 </div>
-                <div class="text-lg font-bold" :class="cat.valueClass">{{ cat.wins }}</div>
-                <div class="h-1.5 bg-dark-border rounded-full overflow-hidden mt-2">
-                  <div 
-                    class="h-full rounded-full transition-all"
-                    :class="cat.barClass"
-                    :style="{ width: `${cat.pct}%` }"
-                  ></div>
+                <div class="bg-dark-border/20 rounded-xl p-4">
+                  <div class="text-lg font-bold text-red-400">{{ pointsLeagueTeamDetailStats.lowScore }}</div>
+                  <div class="text-xs text-dark-textMuted">Low Score</div>
+                </div>
+                <div class="bg-dark-border/20 rounded-xl p-4">
+                  <div class="text-lg font-bold text-dark-text">{{ pointsLeagueTeamDetailStats.totalPoints }}</div>
+                  <div class="text-xs text-dark-textMuted">Total Points</div>
+                </div>
+                <div class="bg-dark-border/20 rounded-xl p-4">
+                  <div class="text-lg font-bold text-dark-text">{{ pointsLeagueTeamDetailStats.pointsAgainst }}</div>
+                  <div class="text-xs text-dark-textMuted">Points Against</div>
+                </div>
+                <div class="bg-dark-border/20 rounded-xl p-4">
+                  <div class="text-lg font-bold" :class="parseFloat(pointsLeagueTeamDetailStats.pointDiff) >= 0 ? 'text-green-400' : 'text-red-400'">
+                    {{ parseFloat(pointsLeagueTeamDetailStats.pointDiff) >= 0 ? '+' : '' }}{{ pointsLeagueTeamDetailStats.pointDiff }}
+                  </div>
+                  <div class="text-xs text-dark-textMuted">Point Differential</div>
+                </div>
+                <div class="bg-dark-border/20 rounded-xl p-4">
+                  <div class="text-lg font-bold text-dark-text">{{ pointsLeagueTeamDetailStats.winStreak }}</div>
+                  <div class="text-xs text-dark-textMuted">Current Streak</div>
                 </div>
               </div>
             </div>
-          </div>
+            
+            <!-- Points League: Week-by-Week Results -->
+            <div class="p-6">
+              <h4 class="text-sm font-semibold text-dark-textMuted uppercase tracking-wider mb-4">Week-by-Week Results</h4>
+              <div class="flex flex-wrap gap-2">
+                <div 
+                  v-for="(result, idx) in pointsLeagueTeamDetailStats.weeklyResults" 
+                  :key="idx"
+                  class="w-10 h-10 rounded-lg flex items-center justify-center text-xs font-bold"
+                  :class="result.won ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'"
+                  :title="`Week ${idx + 1}: ${result.points?.toFixed(1) || '0.0'} pts`"
+                >
+                  {{ result.won ? 'W' : 'L' }}
+                </div>
+              </div>
+              <p class="text-xs text-dark-textMuted mt-3">Hover over a week to see points scored</p>
+            </div>
+          </template>
           
-          <!-- Week-by-Week Results -->
-          <div class="p-6">
-            <h4 class="text-sm font-semibold text-dark-textMuted uppercase tracking-wider mb-4">Week-by-Week Results</h4>
-            <div class="flex flex-wrap gap-2">
-              <div 
-                v-for="(result, idx) in teamDetailWeeklyResults" 
-                :key="idx"
-                class="w-10 h-10 rounded-lg flex items-center justify-center text-xs font-bold"
-                :class="result.won ? 'bg-green-500/20 text-green-400' : (result.tied ? 'bg-yellow-500/20 text-yellow-400' : 'bg-red-500/20 text-red-400')"
-                :title="`Week ${idx + 1}: ${result.catWins}-${result.catLosses} vs ${result.opponent}`"
-              >
-                {{ result.won ? 'W' : (result.tied ? 'T' : 'L') }}
+          <!-- Category League: Category Performance Chart -->
+          <template v-else>
+            <div class="p-6 border-b border-dark-border">
+              <h4 class="text-sm font-semibold text-dark-textMuted uppercase tracking-wider mb-4">Weekly Category Wins vs League Average</h4>
+              <div class="h-48">
+                <apexchart 
+                  v-if="teamDetailChartOptions" 
+                  type="line" 
+                  height="100%" 
+                  :options="teamDetailChartOptions" 
+                  :series="teamDetailChartSeries" 
+                />
               </div>
             </div>
-            <p class="text-xs text-dark-textMuted mt-3">Hover over a week to see category score and opponent</p>
-          </div>
+            
+            <!-- Category Breakdown -->
+            <div class="p-6 border-b border-dark-border">
+              <h4 class="text-sm font-semibold text-dark-textMuted uppercase tracking-wider mb-4">Category Breakdown</h4>
+              <div class="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                <div 
+                  v-for="cat in teamDetailCategories" 
+                  :key="cat.stat_id"
+                  class="bg-dark-border/20 rounded-xl p-3"
+                >
+                  <div class="flex items-center justify-between mb-2">
+                    <span class="text-xs text-dark-textMuted font-medium">{{ cat.display_name }}</span>
+                    <span 
+                      class="text-xs px-1.5 py-0.5 rounded font-bold"
+                      :class="cat.rankClass"
+                    >
+                      #{{ cat.rank }}
+                    </span>
+                  </div>
+                  <div class="text-lg font-bold" :class="cat.valueClass">{{ cat.wins }}</div>
+                  <div class="h-1.5 bg-dark-border rounded-full overflow-hidden mt-2">
+                    <div 
+                      class="h-full rounded-full transition-all"
+                      :class="cat.barClass"
+                      :style="{ width: `${cat.pct}%` }"
+                    ></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            
+            <!-- Week-by-Week Results -->
+            <div class="p-6">
+              <h4 class="text-sm font-semibold text-dark-textMuted uppercase tracking-wider mb-4">Week-by-Week Results</h4>
+              <div class="flex flex-wrap gap-2">
+                <div 
+                  v-for="(result, idx) in teamDetailWeeklyResults" 
+                  :key="idx"
+                  class="w-10 h-10 rounded-lg flex items-center justify-center text-xs font-bold"
+                  :class="result.won ? 'bg-green-500/20 text-green-400' : (result.tied ? 'bg-yellow-500/20 text-yellow-400' : 'bg-red-500/20 text-red-400')"
+                  :title="`Week ${idx + 1}: ${result.catWins}-${result.catLosses} vs ${result.opponent}`"
+                >
+                  {{ result.won ? 'W' : (result.tied ? 'T' : 'L') }}
+                </div>
+              </div>
+              <p class="text-xs text-dark-textMuted mt-3">Hover over a week to see category score and opponent</p>
+            </div>
+          </template>
         </div>
       </div>
     </Teleport>
@@ -1180,6 +1234,84 @@ const teamDetailAvgCatsPerWeek = computed(() => {
   return (totalCatWins / weeks).toFixed(1)
 })
 
+// Points League Team Detail Stats (for football-style view)
+const pointsLeagueTeamDetailStats = computed(() => {
+  if (!selectedTeamDetail.value) {
+    return {
+      ppg: '0.0',
+      highScore: '0.0',
+      lowScore: '0.0',
+      totalPoints: '0.0',
+      pointsAgainst: '0.0',
+      pointDiff: '0.0',
+      winStreak: 'N/A',
+      weeklyResults: []
+    }
+  }
+  
+  const team = selectedTeamDetail.value
+  const pointsFor = team.points_for || 0
+  const pointsAgainst = team.points_against || 0
+  const totalGames = (team.wins || 0) + (team.losses || 0)
+  const ppg = totalGames > 0 ? (pointsFor / totalGames).toFixed(1) : '0.0'
+  
+  // Get weekly results from matchup data
+  const weeklyResults: { won: boolean; points: number }[] = []
+  let highScore = 0
+  let lowScore = Infinity
+  let currentStreak = 0
+  let streakType = ''
+  
+  // Try to build weekly results from matchup results if available
+  const matchupResults = team.matchupResults || []
+  matchupResults.forEach((result: any) => {
+    const pts = result.points || 0
+    const won = result.won || false
+    weeklyResults.push({ won, points: pts })
+    
+    if (pts > highScore) highScore = pts
+    if (pts < lowScore && pts > 0) lowScore = pts
+    
+    // Track streak
+    if (weeklyResults.length === 1) {
+      currentStreak = 1
+      streakType = won ? 'W' : 'L'
+    } else if ((won && streakType === 'W') || (!won && streakType === 'L')) {
+      currentStreak++
+    } else {
+      currentStreak = 1
+      streakType = won ? 'W' : 'L'
+    }
+  })
+  
+  // If no matchup results, create placeholder results based on record
+  if (weeklyResults.length === 0 && totalGames > 0) {
+    for (let i = 0; i < team.wins; i++) {
+      weeklyResults.push({ won: true, points: pointsFor / totalGames })
+    }
+    for (let i = 0; i < team.losses; i++) {
+      weeklyResults.push({ won: false, points: pointsFor / totalGames })
+    }
+    highScore = pointsFor / totalGames * 1.2
+    lowScore = pointsFor / totalGames * 0.8
+    currentStreak = 0
+    streakType = ''
+  }
+  
+  if (lowScore === Infinity) lowScore = 0
+  
+  return {
+    ppg,
+    highScore: highScore.toFixed(1),
+    lowScore: lowScore.toFixed(1),
+    totalPoints: pointsFor.toFixed(1),
+    pointsAgainst: pointsAgainst.toFixed(1),
+    pointDiff: (pointsFor - pointsAgainst).toFixed(1),
+    winStreak: currentStreak > 0 ? `${streakType}${currentStreak}` : 'N/A',
+    weeklyResults
+  }
+})
+
 const teamDetailCategories = computed(() => {
   if (!selectedTeamDetail.value || displayCategories.value.length === 0) return []
   
@@ -1275,7 +1407,6 @@ const last3WeeksWins = computed(() => {
 // Quick Stats - without luckiest/unluckiest
 const quickStats = computed(() => {
   const teams = teamsWithStats.value
-  const isEspn = leagueStore.activePlatform === 'espn'
   
   // Hottest/Coldest based on last 3 weeks performance
   const teamsWithLast3 = teams.map(t => ({
@@ -1289,36 +1420,16 @@ const quickStats = computed(() => {
   // For category leagues, show "X cat wins" in last 3 weeks
   const winsLabel = isPointsLeague.value ? 'wins' : 'cat wins'
   
+  // Most/Fewest Moves - works for all platforms
+  const mostActive = [...teams].sort((a, b) => (b.transactions || 0) - (a.transactions || 0))[0]
+  const leastActive = [...teams].sort((a, b) => (a.transactions || 0) - (b.transactions || 0))[0]
+  
   const stats = [
     { icon: '🔥', label: 'Hottest', team: hottest, value: hottest ? `${hottest.last3Wins} ${winsLabel}` : '-', valueClass: 'text-orange-400', type: 'hottest' },
-    { icon: '❄️', label: 'Coldest', team: coldest, value: coldest ? `${coldest.last3Wins} ${winsLabel}` : '-', valueClass: 'text-cyan-400', type: 'coldest' }
+    { icon: '❄️', label: 'Coldest', team: coldest, value: coldest ? `${coldest.last3Wins} ${winsLabel}` : '-', valueClass: 'text-cyan-400', type: 'coldest' },
+    { icon: '📈', label: 'Most Moves', team: mostActive, value: mostActive?.transactions?.toString() || '0', valueClass: 'text-blue-400', type: 'mostMoves' },
+    { icon: '🪨', label: 'Fewest Moves', team: leastActive, value: leastActive?.transactions?.toString() || '0', valueClass: 'text-purple-400', type: 'fewestMoves' }
   ]
-  
-  // Only show transaction stats for Yahoo (ESPN doesn't have this data)
-  if (!isEspn) {
-    const mostActive = [...teams].sort((a, b) => (b.transactions || 0) - (a.transactions || 0))[0]
-    const leastActive = [...teams].sort((a, b) => (a.transactions || 0) - (b.transactions || 0))[0]
-    stats.push(
-      { icon: '📈', label: 'Most Moves', team: mostActive, value: mostActive?.transactions?.toString() || '-', valueClass: 'text-blue-400', type: 'mostMoves' },
-      { icon: '🪨', label: 'Fewest Moves', team: leastActive, value: leastActive?.transactions?.toString() || '-', valueClass: 'text-purple-400', type: 'fewestMoves' }
-    )
-  } else {
-    // For ESPN, show best/worst record instead
-    const bestRecord = [...teams].sort((a, b) => {
-      const aWinPct = (a.wins || 0) / Math.max(1, (a.wins || 0) + (a.losses || 0))
-      const bWinPct = (b.wins || 0) / Math.max(1, (b.wins || 0) + (b.losses || 0))
-      return bWinPct - aWinPct
-    })[0]
-    const worstRecord = [...teams].sort((a, b) => {
-      const aWinPct = (a.wins || 0) / Math.max(1, (a.wins || 0) + (a.losses || 0))
-      const bWinPct = (b.wins || 0) / Math.max(1, (b.wins || 0) + (b.losses || 0))
-      return aWinPct - bWinPct
-    })[0]
-    stats.push(
-      { icon: '🏆', label: 'Best Record', team: bestRecord, value: bestRecord ? `${bestRecord.wins}-${bestRecord.losses}` : '-', valueClass: 'text-green-400', type: 'bestRecord' },
-      { icon: '📉', label: 'Worst Record', team: worstRecord, value: worstRecord ? `${worstRecord.wins}-${worstRecord.losses}` : '-', valueClass: 'text-red-400', type: 'worstRecord' }
-    )
-  }
   
   return stats
 })
