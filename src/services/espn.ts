@@ -519,7 +519,7 @@ export class EspnFantasyService {
       const views = [ESPN_VIEWS.TEAM, ESPN_VIEWS.ROSTER]
       const data = await this.apiRequest(sport, leagueId, season, views, week)
       
-      return this.parseTeamsWithRosters(data)
+      return this.parseTeamsWithRosters(data, sport)
     } catch (error) {
       console.error('Error fetching ESPN teams with rosters:', error)
       throw error
@@ -1158,7 +1158,7 @@ export class EspnFantasyService {
     })
   }
 
-  private parseTeamsWithRosters(data: any): EspnTeam[] {
+  private parseTeamsWithRosters(data: any, sport?: Sport): EspnTeam[] {
     const teams = this.parseTeams(data)
     const rawTeams = data.teams || []
     
@@ -1166,14 +1166,14 @@ export class EspnFantasyService {
     teams.forEach((team, index) => {
       const rawTeam = rawTeams[index]
       if (rawTeam?.roster?.entries) {
-        team.roster = rawTeam.roster.entries.map((entry: any) => this.parsePlayer(entry))
+        team.roster = rawTeam.roster.entries.map((entry: any) => this.parsePlayer(entry, sport))
       }
     })
     
     return teams
   }
 
-  private parsePlayer(entry: any): EspnPlayer {
+  private parsePlayer(entry: any, sport?: Sport): EspnPlayer {
     const playerPoolEntry = entry.playerPoolEntry || {}
     const player = playerPoolEntry.player || {}
     const stats = player.stats || []
@@ -1190,7 +1190,7 @@ export class EspnFantasyService {
       lastName: player.lastName || '',
       proTeam: PRO_TEAMS[player.proTeamId] || 'FA',
       proTeamId: player.proTeamId || 0,
-      position: this.getPositionName(player.defaultPositionId),
+      position: this.getPositionName(player.defaultPositionId, sport),
       positionId: player.defaultPositionId || 0,
       lineupSlotId: entry.lineupSlotId,
       lineupSlot: LINEUP_SLOTS[entry.lineupSlotId] || 'Unknown',
@@ -1269,14 +1269,48 @@ export class EspnFantasyService {
     }
   }
 
-  private getPositionName(positionId: number): string {
-    const positions: Record<number, string> = {
+  private getPositionName(positionId: number, sport?: string): string {
+    // Football positions
+    const footballPositions: Record<number, string> = {
       1: 'QB', 2: 'RB', 3: 'WR', 4: 'TE', 5: 'K',
       6: 'P', 7: 'HC', 8: 'DT', 9: 'DE', 10: 'LB',
       11: 'CB', 12: 'S', 13: 'DB', 14: 'DP', 15: 'DL',
       16: 'D/ST', 17: 'K', 18: 'P', 19: 'HC'
     }
-    return positions[positionId] || 'Unknown'
+    
+    // Baseball positions
+    const baseballPositions: Record<number, string> = {
+      1: 'SP', 2: 'C', 3: '1B', 4: '2B', 5: '3B',
+      6: 'SS', 7: 'LF', 8: 'CF', 9: 'RF', 10: 'DH',
+      11: 'RP', 12: 'P', 13: 'OF', 14: 'UTIL'
+    }
+    
+    // Basketball positions
+    const basketballPositions: Record<number, string> = {
+      1: 'PG', 2: 'SG', 3: 'SF', 4: 'PF', 5: 'C',
+      6: 'G', 7: 'F', 8: 'SG/SF', 9: 'G/F', 10: 'PF/C',
+      11: 'F/C', 12: 'UTIL'
+    }
+    
+    // Hockey positions
+    const hockeyPositions: Record<number, string> = {
+      1: 'C', 2: 'LW', 3: 'RW', 4: 'D', 5: 'G',
+      6: 'F', 7: 'UTIL'
+    }
+    
+    // Return based on sport context or try all
+    if (sport === 'baseball' || sport === 'flb') {
+      return baseballPositions[positionId] || 'Unknown'
+    } else if (sport === 'basketball' || sport === 'fba') {
+      return basketballPositions[positionId] || 'Unknown'
+    } else if (sport === 'hockey' || sport === 'fhl') {
+      return hockeyPositions[positionId] || 'Unknown'
+    } else if (sport === 'football' || sport === 'ffl') {
+      return footballPositions[positionId] || 'Unknown'
+    }
+    
+    // Try to match from any sport if no sport specified
+    return footballPositions[positionId] || baseballPositions[positionId] || 'Unknown'
   }
 
   private determineWinner(match: any): EspnMatchup['winner'] {

@@ -1032,8 +1032,14 @@ const positionStrengthData = computed(() => {
   const teamPlayers = new Map<string, any[]>()
   const teamInfo = new Map<string, { name: string; logo_url: string; is_my_team: boolean }>()
   
+  // Debug: Track positions we receive
+  const receivedPositions = new Map<string, number>()
+  
   for (const player of allRosteredPlayers.value) {
     if (!player.fantasy_team_key) continue
+    
+    // Track received positions
+    receivedPositions.set(player.position, (receivedPositions.get(player.position) || 0) + 1)
     
     if (!teamPlayers.has(player.fantasy_team_key)) {
       teamPlayers.set(player.fantasy_team_key, [])
@@ -1048,9 +1054,14 @@ const positionStrengthData = computed(() => {
     teamPlayers.get(player.fantasy_team_key)!.push(player)
   }
   
+  console.log('[PositionStrength] Received positions:', Object.fromEntries(receivedPositions))
+  
   // Calculate position totals for each team
   const positionTotals = new Map<string, Map<string, number>>()
   const displayPositions = ['C', '1B', '2B', '3B', 'SS', 'OF', 'SP', 'RP']
+  
+  // Debug: Track normalized positions
+  const normalizedCounts = new Map<string, number>()
   
   for (const [teamKey, players] of teamPlayers) {
     const totals = new Map<string, number>()
@@ -1076,8 +1087,11 @@ const positionStrengthData = computed(() => {
       // If still not in display positions, try to map it
       if (!displayPositions.includes(normalizedPos)) {
         // Default unmapped positions to OF (utility-like)
+        console.log(`[PositionStrength] Unmapped position "${pos}" -> defaulting to OF`)
         normalizedPos = 'OF'
       }
+      
+      normalizedCounts.set(normalizedPos, (normalizedCounts.get(normalizedPos) || 0) + 1)
       
       const currentTotal = totals.get(normalizedPos) || 0
       totals.set(normalizedPos, currentTotal + (player.total_points || 0))
@@ -1085,6 +1099,8 @@ const positionStrengthData = computed(() => {
     
     positionTotals.set(teamKey, totals)
   }
+  
+  console.log('[PositionStrength] Normalized position counts:', Object.fromEntries(normalizedCounts))
   
   // Calculate rankings per position
   const positions = ['C', '1B', '2B', '3B', 'SS', 'OF', 'SP', 'RP']
@@ -2185,6 +2201,7 @@ async function loadRosteredPlayers() {
       
       // Flatten all players with their team info
       const allPlayers: any[] = []
+      const positionCounts = new Map<string, number>()
       
       for (const team of teamsWithRosters) {
         if (!team.roster || team.roster.length === 0) continue
@@ -2196,11 +2213,21 @@ async function loadRosteredPlayers() {
           // Calculate PPG (actualPoints is season total, divide by ~25 weeks for baseball)
           const ppg = player.actualPoints > 0 ? player.actualPoints / 25 : 0
           
+          // Track position counts for debugging
+          const pos = player.position || 'Unknown'
+          positionCounts.set(pos, (positionCounts.get(pos) || 0) + 1)
+          
+          // Log position details for first few players to debug
+          if (allPlayers.length < 5) {
+            console.log(`[ESPN] Player ${player.fullName}: position=${player.position}, positionId=${player.positionId}, actualPoints=${player.actualPoints}`)
+          }
+          
           allPlayers.push({
             player_key: `espn_${player.playerId}`,
             player_id: player.playerId,
             name: player.fullName,
             position: player.position,
+            positionId: player.positionId,
             fantasy_team_key: teamKey,
             fantasy_team: team.name,
             total_points: player.actualPoints || 0,
@@ -2210,6 +2237,7 @@ async function loadRosteredPlayers() {
         }
       }
       
+      console.log('[ESPN] Position counts:', Object.fromEntries(positionCounts))
       allRosteredPlayers.value = allPlayers
       console.log(`[ESPN] Loaded ${allPlayers.length} rostered players`)
       
