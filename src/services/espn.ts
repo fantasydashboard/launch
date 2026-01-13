@@ -1015,8 +1015,18 @@ export class EspnFantasyService {
     console.log('[ESPN parseTeams] Raw teams count:', teams.length)
     console.log('[ESPN parseTeams] Raw members count:', members.length)
     
+    // Log first raw team to see structure
+    if (teams.length > 0) {
+      console.log('[ESPN parseTeams] FIRST RAW TEAM:', JSON.stringify(teams[0]))
+    }
+    
     return teams.map((team: any) => {
       const record = team.record?.overall || {}
+      
+      // Debug: log record data for each team
+      console.log(`[ESPN Team ${team.id}] record:`, team.record)
+      console.log(`[ESPN Team ${team.id}] record.overall:`, record)
+      console.log(`[ESPN Team ${team.id}] wins=${record.wins}, losses=${record.losses}, pointsFor=${record.pointsFor}, points=${team.points}`)
       
       // Debug: log all available name-related fields
       console.log(`[ESPN Team ${team.id}] Raw data:`, {

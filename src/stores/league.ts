@@ -1157,13 +1157,26 @@ export const useLeagueStore = defineStore('league', () => {
       // Fetch league info
       const league = await espnService.getLeague(sport, espnLeagueId, season)
       console.log('[ESPN] League loaded:', league?.name, 'scoring:', league?.scoringType)
+      console.log('[ESPN] League status:', {
+        isActive: league?.status?.isActive,
+        currentMatchupPeriod: league?.status?.currentMatchupPeriod,
+        finalScoringPeriod: league?.status?.finalScoringPeriod,
+        latestScoringPeriod: league?.status?.latestScoringPeriod
+      })
       
       // Fetch teams with standings
       const espnTeams = await espnService.getTeams(sport, espnLeagueId, season)
       console.log('[ESPN] Teams loaded:', espnTeams.length)
       
-      // Fetch current week matchups
-      const currentWeek = league?.currentMatchupPeriod || 1
+      // Determine which week to fetch matchups for
+      // For finished seasons, use the final week; for active seasons, use current week
+      const isSeasonFinished = !league?.status?.isActive
+      const currentWeek = isSeasonFinished 
+        ? (league?.status?.finalScoringPeriod || league?.status?.latestScoringPeriod || 25)
+        : (league?.currentMatchupPeriod || league?.status?.currentMatchupPeriod || 1)
+      
+      console.log('[ESPN] Fetching matchups for week:', currentWeek, '(season finished:', isSeasonFinished, ')')
+      
       let espnMatchups: any[] = []
       try {
         espnMatchups = await espnService.getMatchups(sport, espnLeagueId, season, currentWeek)
@@ -1218,6 +1231,20 @@ export const useLeagueStore = defineStore('league', () => {
         is_finished: !league?.status?.isActive ? 1 : 0
       }]
       
+      // Debug: Log ESPN team data before mapping
+      console.log('[ESPN] Raw ESPN teams before mapping:')
+      espnTeams.forEach((team, i) => {
+        console.log(`  Team ${i}: ${team.name}`, {
+          wins: team.wins,
+          losses: team.losses,
+          ties: team.ties,
+          pointsFor: team.pointsFor,
+          pointsAgainst: team.pointsAgainst,
+          points: team.points,
+          rank: team.rank
+        })
+      })
+      
       // Map ESPN teams to Yahoo team format
       yahooTeams.value = espnTeams.map((team, index) => ({
         team_key: `espn_${espnLeagueId}_${team.id}`,
@@ -1240,6 +1267,18 @@ export const useLeagueStore = defineStore('league', () => {
         points: team.points || 0,
         is_my_team: false // Could determine if we tracked user's team
       }))
+      
+      // Debug: Log mapped teams
+      console.log('[ESPN] Mapped yahooTeams:')
+      yahooTeams.value.forEach((team, i) => {
+        console.log(`  Team ${i}: ${team.name}`, {
+          wins: team.wins,
+          losses: team.losses,
+          points_for: team.points_for,
+          points_against: team.points_against,
+          rank: team.rank
+        })
+      })
       
       // Sort by rank
       yahooTeams.value.sort((a, b) => (a.rank || 99) - (b.rank || 99))

@@ -446,6 +446,18 @@
       </div>
     </div>
 
+    <!-- DEBUG: Remove after fixing -->
+    <div class="bg-red-900/50 border border-red-500 rounded p-4 text-xs text-white mb-4">
+      <div><strong>DEBUG INFO:</strong></div>
+      <div>activePlatform: {{ leagueStore.activePlatform }}</div>
+      <div>scoringType (computed): {{ scoringType }}</div>
+      <div>isPointsLeague: {{ isPointsLeague }}</div>
+      <div>yahooTeams count: {{ leagueStore.yahooTeams?.length || 0 }}</div>
+      <div>yahooMatchups count: {{ leagueStore.yahooMatchups?.length || 0 }}</div>
+      <div>yahooLeague: {{ JSON.stringify(leagueStore.yahooLeague?.[0] || leagueStore.yahooLeague || 'null') }}</div>
+      <div>currentLeague scoring_type: {{ leagueStore.currentLeague?.scoring_type || 'N/A' }}</div>
+    </div>
+
     <!-- Platform Badge -->
     <div class="flex justify-center">
       <div class="inline-flex items-center gap-2 px-4 py-2 rounded-full border" :class="platformBadgeClass">
@@ -588,7 +600,6 @@ const defaultAvatar = computed(() => {
   if (leagueStore.activePlatform === 'espn') return 'https://g.espncdn.com/lm-static/ffl/images/default_logos/team_0.svg'
   return 'https://s.yimg.com/cv/apiv2/default/mlb/mlb_2_g.png'
 })
-)
 
 // League settings (stat categories for category leagues)
 const statCategories = ref<any[]>([])
@@ -739,26 +750,27 @@ const teamsWithStats = computed(() => {
   const teams = leagueStore.yahooTeams
   const numTeams = teams.length
   
-  console.log('[teamsWithStats] teams from store:', numTeams)
-  console.log('[teamsWithStats] isPointsLeague:', isPointsLeague.value)
+  console.log('========== teamsWithStats DEBUG ==========')
+  console.log('Teams from store:', numTeams)
+  console.log('isPointsLeague:', isPointsLeague.value)
+  console.log('scoringType:', scoringType.value)
+  
   if (numTeams > 0) {
-    console.log('[teamsWithStats] First team:', JSON.stringify({
-      name: teams[0].name,
-      wins: teams[0].wins,
-      losses: teams[0].losses,
-      points_for: teams[0].points_for,
-      points_against: teams[0].points_against
-    }))
+    console.log('First team raw data:', JSON.stringify(teams[0]))
   }
   
-  if (numTeams === 0) return []
+  if (numTeams === 0) {
+    console.log('No teams - returning empty array')
+    return []
+  }
   
   // For points leagues, calculate all-play by comparing points_for against all other teams
   if (isPointsLeague.value) {
+    console.log('Using POINTS league logic')
     // Sort teams by points_for to determine all-play record
     const sortedByPoints = [...teams].sort((a, b) => (b.points_for || 0) - (a.points_for || 0))
     
-    return teams.map(team => {
+    const result = teams.map(team => {
       const transactions = transactionCounts.value.get(team.team_key) || 0
       
       // All-play: how many teams would this team beat based on total points
@@ -794,8 +806,12 @@ const teamsWithStats = computed(() => {
         luckScore
       }
     })
+    
+    console.log('Points league result - first team:', JSON.stringify(result[0]))
+    return result
   }
   
+  console.log('Using CATEGORY league logic')
   // For category leagues, use the original logic
   return teams.map(team => {
     const transactions = transactionCounts.value.get(team.team_key) || 0
