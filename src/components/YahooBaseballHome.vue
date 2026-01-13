@@ -1300,7 +1300,8 @@ const pointsLeagueTeamDetailStats = computed(() => {
         
         if (pts > highScore) highScore = pts
         if (pts > 0 && pts < lowScore) lowScore = pts
-        totalPointsAgainst += result.opponentPoints || 0
+        // Handle both field names: oppPoints (Yahoo) and opponentPoints (ESPN)
+        totalPointsAgainst += result.opponentPoints || result.oppPoints || 0
       }
     })
   }

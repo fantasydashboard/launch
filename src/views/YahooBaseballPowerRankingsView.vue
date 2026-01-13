@@ -2163,29 +2163,76 @@ async function loadRosteredPlayers() {
   const leagueKey = effectiveLeagueKey.value
   if (!leagueKey) return
   
-  // ESPN doesn't have rostered player data - skip
-  if (leagueStore.activePlatform === 'espn') {
-    console.log('[ESPN] Rostered players not available for ESPN leagues')
-    return
-  }
-  
-  if (!authStore.user?.id) return
-  
   isLoadingPlayers.value = true
   
   try {
-    await yahooService.initialize(authStore.user.id)
-    console.log('Loading rostered players for position strength...')
-    
-    const rostered = await yahooService.getAllRosteredPlayers(leagueKey)
-    
-    // Calculate PPG for each player (total_points / ~25 weeks)
-    rostered.forEach(p => {
-      p.ppg = p.total_points > 0 ? p.total_points / 25 : 0
-    })
-    
-    allRosteredPlayers.value = rostered
-    console.log(`Loaded ${rostered.length} rostered players`)
+    // Handle ESPN leagues
+    if (leagueStore.activePlatform === 'espn') {
+      console.log('[ESPN] Loading rostered players for position strength...')
+      
+      // Parse league key to get ESPN details
+      const parts = leagueKey.split('_')
+      const sport = parts[1] as 'football' | 'baseball' | 'basketball' | 'hockey'
+      const espnLeagueId = parts[2]
+      const season = parseInt(parts[3])
+      
+      // Dynamically import ESPN service
+      const { espnService } = await import('@/services/espn')
+      
+      // Get teams with rosters
+      const teamsWithRosters = await espnService.getTeamsWithRosters(sport, espnLeagueId, season)
+      console.log('[ESPN] Loaded', teamsWithRosters.length, 'teams with rosters')
+      
+      // Flatten all players with their team info
+      const allPlayers: any[] = []
+      
+      for (const team of teamsWithRosters) {
+        if (!team.roster || team.roster.length === 0) continue
+        
+        const teamKey = `espn_${team.id}`
+        const teamData = leagueStore.yahooTeams.find(t => t.team_key === teamKey)
+        
+        for (const player of team.roster) {
+          // Calculate PPG (actualPoints is season total, divide by ~25 weeks for baseball)
+          const ppg = player.actualPoints > 0 ? player.actualPoints / 25 : 0
+          
+          allPlayers.push({
+            player_key: `espn_${player.playerId}`,
+            player_id: player.playerId,
+            name: player.fullName,
+            position: player.position,
+            fantasy_team_key: teamKey,
+            fantasy_team: team.name,
+            total_points: player.actualPoints || 0,
+            ppg: ppg,
+            is_my_team: teamData?.is_my_team || false
+          })
+        }
+      }
+      
+      allRosteredPlayers.value = allPlayers
+      console.log(`[ESPN] Loaded ${allPlayers.length} rostered players`)
+      
+    } else {
+      // Handle Yahoo leagues
+      if (!authStore.user?.id) {
+        isLoadingPlayers.value = false
+        return
+      }
+      
+      await yahooService.initialize(authStore.user.id)
+      console.log('Loading rostered players for position strength...')
+      
+      const rostered = await yahooService.getAllRosteredPlayers(leagueKey)
+      
+      // Calculate PPG for each player (total_points / ~25 weeks)
+      rostered.forEach(p => {
+        p.ppg = p.total_points > 0 ? p.total_points / 25 : 0
+      })
+      
+      allRosteredPlayers.value = rostered
+      console.log(`Loaded ${rostered.length} rostered players`)
+    }
   } catch (e) {
     console.error('Error loading rostered players:', e)
   } finally {
