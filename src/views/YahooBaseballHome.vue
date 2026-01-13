@@ -449,7 +449,7 @@
     <!-- Platform Badge -->
     <div class="flex justify-center">
       <div class="inline-flex items-center gap-2 px-4 py-2 rounded-full border" :class="platformBadgeClass">
-        <span class="text-sm font-bold" :class="platformTextClass">{{ isEspnPlatform ? 'ESPN' : 'Y!' }}</span>
+        <span class="text-sm font-bold" :class="platformTextClass">{{ leagueStore.activePlatform === 'espn' ? 'ESPN' : 'Y!' }}</span>
         <span class="text-sm" :class="platformSubTextClass">{{ platformName }} Fantasy Baseball • {{ scoringTypeLabel }}</span>
       </div>
     </div>
@@ -556,18 +556,27 @@
 <script setup lang="ts">
 import { ref, computed, watch, onMounted, Teleport } from 'vue'
 import { useLeagueStore } from '@/stores/league'
-import { useAuthStore } from '@/stores/auth'
-import { yahooService } from '@/services/yahoo'
 
 const leagueStore = useLeagueStore()
-const authStore = useAuthStore()
 
-// Platform detection
-const isEspnPlatform = computed(() => leagueStore.activePlatform === 'espn')
-const platformName = computed(() => isEspnPlatform.value ? 'ESPN' : 'Yahoo')
-const platformBadgeClass = computed(() => isEspnPlatform.value ? 'bg-red-600/10 border-red-600/30' : 'bg-purple-600/10 border-purple-600/30')
-const platformTextClass = computed(() => isEspnPlatform.value ? 'text-red-400' : 'text-purple-400')
-const platformSubTextClass = computed(() => isEspnPlatform.value ? 'text-red-300' : 'text-purple-300')
+// Platform detection (for badge display only - behavior is identical)
+const platformName = computed(() => {
+  if (leagueStore.activePlatform === 'espn') return 'ESPN'
+  if (leagueStore.activePlatform === 'yahoo') return 'Yahoo'
+  return 'Fantasy'
+})
+const platformBadgeClass = computed(() => {
+  if (leagueStore.activePlatform === 'espn') return 'bg-red-600/10 border-red-600/30'
+  return 'bg-purple-600/10 border-purple-600/30'
+})
+const platformTextClass = computed(() => {
+  if (leagueStore.activePlatform === 'espn') return 'text-red-400'
+  return 'text-purple-400'
+})
+const platformSubTextClass = computed(() => {
+  if (leagueStore.activePlatform === 'espn') return 'text-red-300'
+  return 'text-purple-300'
+})
 
 const isLoading = ref(false)
 const isLoadingChart = ref(false)
@@ -575,9 +584,10 @@ const isRefreshing = ref(false)
 const isGeneratingDownload = ref(false)
 const isGeneratingLeaderDownload = ref(false)
 const chartLoadProgress = ref('')
-const defaultAvatar = computed(() => isEspnPlatform.value 
-  ? 'https://g.espncdn.com/lm-static/ffl/images/default_logos/team_0.svg'
-  : 'https://s.yimg.com/cv/apiv2/default/mlb/mlb_2_g.png'
+const defaultAvatar = computed(() => {
+  if (leagueStore.activePlatform === 'espn') return 'https://g.espncdn.com/lm-static/ffl/images/default_logos/team_0.svg'
+  return 'https://s.yimg.com/cv/apiv2/default/mlb/mlb_2_g.png'
+})
 )
 
 // League settings
@@ -1575,195 +1585,72 @@ async function downloadStandings() {
 }
 
 // Load league settings
-async function loadLeagueSettings() {
+// Load league settings from store data (platform-agnostic)
+function loadLeagueSettings() {
   const leagueKey = effectiveLeagueKey.value || leagueStore.activeLeagueId
   if (!leagueKey) return
   
-  console.log('[loadLeagueSettings] Starting...', {
-    leagueKey,
-    isEspnPlatform: isEspnPlatform.value,
-    activePlatform: leagueStore.activePlatform
-  })
+  console.log('[loadLeagueSettings] Loading from store for:', leagueKey)
   
-  // For ESPN, get scoring type from already loaded data
-  if (isEspnPlatform.value) {
-    // Debug: log what we have
-    console.log('[loadLeagueSettings] ESPN - yahooLeague:', JSON.stringify(leagueStore.yahooLeague))
-    console.log('[loadLeagueSettings] ESPN - currentLeague:', JSON.stringify(leagueStore.currentLeague))
-    
-    // Try multiple sources for scoring type
-    let detectedScoringType = 'headpoint' // Default for ESPN baseball
-    
-    // Try yahooLeague first
-    const yahooLeagueData = Array.isArray(leagueStore.yahooLeague) ? leagueStore.yahooLeague[0] : leagueStore.yahooLeague
-    if (yahooLeagueData?.scoring_type) {
-      detectedScoringType = yahooLeagueData.scoring_type
-      console.log('[loadLeagueSettings] Got scoring_type from yahooLeague:', detectedScoringType)
+  // Get scoring type from store data (populated by league store for both Yahoo and ESPN)
+  let detectedScoringType = 'head' // Default
+  
+  // Try yahooLeague first (works for both Yahoo and ESPN since we map ESPN to this format)
+  const yahooLeagueData = Array.isArray(leagueStore.yahooLeague) ? leagueStore.yahooLeague[0] : leagueStore.yahooLeague
+  if (yahooLeagueData?.scoring_type) {
+    detectedScoringType = yahooLeagueData.scoring_type
+    console.log('[loadLeagueSettings] Got scoring_type from yahooLeague:', detectedScoringType)
+  }
+  // Try currentLeague
+  else if (leagueStore.currentLeague?.scoring_type) {
+    detectedScoringType = leagueStore.currentLeague.scoring_type
+    console.log('[loadLeagueSettings] Got scoring_type from currentLeague:', detectedScoringType)
+  }
+  // Try savedLeagues
+  else {
+    const savedLeague = leagueStore.savedLeagues?.find((l: any) => l.league_id === leagueKey)
+    if (savedLeague?.scoring_type) {
+      detectedScoringType = savedLeague.scoring_type
+      console.log('[loadLeagueSettings] Got scoring_type from savedLeagues:', detectedScoringType)
     }
-    // Try currentLeague
-    else if (leagueStore.currentLeague?.scoring_type) {
-      detectedScoringType = leagueStore.currentLeague.scoring_type
-      console.log('[loadLeagueSettings] Got scoring_type from currentLeague:', detectedScoringType)
-    }
-    // Try savedLeagues
-    else {
-      const savedLeague = leagueStore.savedLeagues?.find((l: any) => l.league_id === leagueKey)
-      if (savedLeague?.scoring_type) {
-        detectedScoringType = savedLeague.scoring_type
-        console.log('[loadLeagueSettings] Got scoring_type from savedLeagues:', detectedScoringType)
-      }
-    }
-    
-    scoringType.value = detectedScoringType
-    
-    console.log('[loadLeagueSettings] ESPN - Final scoring type:', scoringType.value)
-    console.log('[loadLeagueSettings] ESPN - isPointsLeague will be:', scoringType.value.toLowerCase().includes('point'))
-    
-    // ESPN doesn't have category stats for points leagues
-    statCategories.value = []
-    return
   }
   
-  // For Yahoo, call the API
-  try {
-    const settings = await yahooService.getLeagueScoringSettings(leagueKey)
-    if (settings) {
-      scoringType.value = settings.scoring_type || 'head'
-      const cats = settings.stat_categories || []
-      statCategories.value = cats.map((c: any) => ({
-        stat_id: c.stat?.stat_id || c.stat_id,
-        name: c.stat?.name || c.name,
-        display_name: c.stat?.display_name || c.display_name,
-        is_only_display_stat: c.stat?.is_only_display_stat || c.is_only_display_stat
-      })).filter((c: any) => c.stat_id)
-      
-      console.log('Loaded scoring type:', scoringType.value, 'Categories:', statCategories.value.length)
-    }
-  } catch (e) {
-    console.error('Error loading league settings:', e)
-  }
+  scoringType.value = detectedScoringType
+  
+  console.log('[loadLeagueSettings] Final scoring type:', scoringType.value)
+  console.log('[loadLeagueSettings] isPointsLeague:', scoringType.value.toLowerCase().includes('point'))
+  
+  // For now, clear stat categories (category tracking is complex and platform-specific)
+  // TODO: Add category support when needed
+  statCategories.value = []
 }
 
-// Load all matchup data for chart
-async function loadAllMatchups() {
+// Load matchup data for display and chart (platform-agnostic)
+function loadAllMatchups() {
   const leagueKey = effectiveLeagueKey.value || leagueStore.activeLeagueId
   if (!leagueKey) {
     console.log('No league key, skipping matchup load')
     return
   }
   
-  console.log(`Loading matchups for league: ${leagueKey}`)
+  console.log('[loadAllMatchups] Loading from store for:', leagueKey)
   isLoadingChart.value = true
   
-  // For ESPN, use the already loaded matchups from the store
-  if (isEspnPlatform.value) {
-    console.log('ESPN platform - using preloaded matchups')
+  try {
+    // Use matchups from store (populated by league store for both Yahoo and ESPN)
     displayMatchups.value = leagueStore.yahooMatchups || []
+    console.log('[loadAllMatchups] Matchups from store:', displayMatchups.value.length)
     
     // Generate standings progression for chart
-    const endWeek = totalWeeks.value || 25
-    const startWeek = 1
+    const yahooLeagueData = Array.isArray(leagueStore.yahooLeague) ? leagueStore.yahooLeague[0] : leagueStore.yahooLeague
+    const endWeek = yahooLeagueData?.end_week || leagueStore.currentLeague?.settings?.end_week || 25
+    const startWeek = yahooLeagueData?.start_week || 1
+    
+    console.log('[loadAllMatchups] Generating standings progression for weeks', startWeek, '-', endWeek)
     generateStandingsProgression(startWeek, endWeek)
     
-    isLoadingChart.value = false
-    chartLoadProgress.value = ''
-    return
-  }
-  
-  // For H2H Categories, we need to simulate standings over time
-  // since Yahoo doesn't give us weekly W-L for category leagues
-  // Instead, we'll generate estimated standings based on final standings
-  const endWeek = totalWeeks.value || 25
-  const startWeek = parseInt(leagueStore.yahooLeague?.start_week) || 1
-  
-  console.log(`Loading matchups for weeks ${startWeek}-${endWeek}, isSeasonComplete: ${isSeasonComplete.value}`)
-  
-  try {
-    // For category leagues, generate standings progression based on final standings
-    // This is because Yahoo doesn't track weekly matchup wins for category leagues
-    if (!isPointsLeague.value) {
-      console.log('Category league detected - generating standings progression')
-      generateStandingsProgression(startWeek, endWeek)
-      
-      // Load final week matchups for display
-      try {
-        const finalMatchups = await yahooService.getMatchups(leagueKey, endWeek)
-        displayMatchups.value = finalMatchups
-        console.log(`Loaded ${finalMatchups.length} matchups for week ${endWeek}`)
-      } catch (e) {
-        console.error('Error loading final week matchups:', e)
-      }
-    } else {
-      // For points leagues, load actual matchup data
-      const standings = new Map<number, any[]>()
-      
-      for (let week = startWeek; week <= endWeek; week++) {
-        chartLoadProgress.value = `Week ${week}/${endWeek}`
-        
-        try {
-          const matchups = await yahooService.getMatchups(leagueKey, week)
-          console.log(`Week ${week}: ${matchups.length} matchups`)
-          
-          const cumulativeWins = new Map<string, number>()
-          const cumulativeLosses = new Map<string, number>()
-          
-          if (week > startWeek) {
-            const prevStandings = standings.get(week - 1) || []
-            prevStandings.forEach(t => {
-              cumulativeWins.set(t.team_key, t.wins || 0)
-              cumulativeLosses.set(t.team_key, t.losses || 0)
-            })
-          } else {
-            leagueStore.yahooTeams.forEach(t => {
-              cumulativeWins.set(t.team_key, 0)
-              cumulativeLosses.set(t.team_key, 0)
-            })
-          }
-          
-          for (const matchup of matchups) {
-            if (!matchup.teams || matchup.teams.length < 2) continue
-            const t1 = matchup.teams[0]
-            const t2 = matchup.teams[1]
-            
-            if (matchup.winner_team_key) {
-              if (matchup.winner_team_key === t1.team_key) {
-                cumulativeWins.set(t1.team_key, (cumulativeWins.get(t1.team_key) || 0) + 1)
-                cumulativeLosses.set(t2.team_key, (cumulativeLosses.get(t2.team_key) || 0) + 1)
-              } else {
-                cumulativeWins.set(t2.team_key, (cumulativeWins.get(t2.team_key) || 0) + 1)
-                cumulativeLosses.set(t1.team_key, (cumulativeLosses.get(t1.team_key) || 0) + 1)
-              }
-            }
-          }
-          
-          const weekStandings = leagueStore.yahooTeams.map(t => ({
-            team_key: t.team_key,
-            name: t.name,
-            wins: cumulativeWins.get(t.team_key) || 0,
-            losses: cumulativeLosses.get(t.team_key) || 0
-          })).sort((a, b) => {
-            const aWinPct = a.wins / Math.max(1, a.wins + a.losses)
-            const bWinPct = b.wins / Math.max(1, b.wins + b.losses)
-            return bWinPct - aWinPct
-          })
-          
-          weekStandings.forEach((t, idx) => (t as any).rank = idx + 1)
-          standings.set(week, weekStandings)
-          
-          if (week === endWeek) {
-            displayMatchups.value = matchups
-          }
-          
-        } catch (e) {
-          console.error(`Error loading week ${week}:`, e)
-        }
-      }
-      
-      weeklyStandings.value = standings
-    }
-    
     buildChart()
-    console.log(`Chart built with ${weeklyStandings.value.size} weeks of data`)
+    console.log('[loadAllMatchups] Chart built with', weeklyStandings.value.size, 'weeks of data')
     
   } catch (e) {
     console.error('Error loading matchups:', e)
@@ -1838,17 +1725,15 @@ async function refreshData() {
   isRefreshing.value = true
   
   try {
-    if (isEspnPlatform.value) {
-      // For ESPN, reload the league data
+    // Reload league data through the store (handles both Yahoo and ESPN)
+    if (leagueStore.activePlatform === 'espn') {
       await leagueStore.loadEspnLeagueData(leagueKey)
-    } else {
-      // For Yahoo, clear cache and reload
-      yahooService.clearLeagueCache(leagueKey)
+    } else if (leagueStore.activePlatform === 'yahoo') {
       await leagueStore.loadYahooLeague(leagueKey)
     }
     
-    // Reload our local data
-    await loadAllData()
+    // Reload our local view data
+    loadAllData()
     
     console.log('Data refreshed successfully')
   } catch (e) {
@@ -1858,7 +1743,8 @@ async function refreshData() {
   }
 }
 
-async function loadAllData() {
+// Load all data from store (platform-agnostic)
+function loadAllData() {
   const leagueKey = effectiveLeagueKey.value
   const isYahooOrEspn = leagueStore.activePlatform === 'yahoo' || leagueStore.activePlatform === 'espn'
   if (!leagueKey || !isYahooOrEspn) return
@@ -1866,12 +1752,8 @@ async function loadAllData() {
   isLoading.value = true
   
   try {
-    // Only initialize Yahoo service for Yahoo leagues
-    if (!isEspnPlatform.value && authStore.user?.id) {
-      await yahooService.initialize(authStore.user.id)
-    }
-    
-    await loadLeagueSettings()
+    // Load settings from store data
+    loadLeagueSettings()
     
     // Debug: Log what teams we have
     console.log('=== DEBUG: loadAllData ===')
@@ -1894,20 +1776,14 @@ async function loadAllData() {
     console.log('Current Season:', currentSeason.value)
     console.log('=== END DEBUG ===')
     
-    // Fetch transaction counts - only for Yahoo
-    if (!isEspnPlatform.value) {
-      const transCounts = await yahooService.getTransactionCounts(leagueKey)
-      transactionCounts.value = transCounts
-    }
-    
-    // Distribute category wins proportionally
+    // Distribute category wins proportionally (for category leagues)
     if (!isPointsLeague.value && displayCategories.value.length > 0) {
       distributeCategoryWins()
     }
     
     isLoading.value = false
     
-    // Load matchups in background for chart
+    // Load matchups for chart
     loadAllMatchups()
     
   } catch (e) {
