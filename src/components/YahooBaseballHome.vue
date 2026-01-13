@@ -450,9 +450,9 @@
 
     <!-- Platform Badge -->
     <div class="flex justify-center">
-      <div class="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-red-600/10 border border-red-600/30">
-        <span class="text-sm font-bold text-red-400">Y!</span>
-        <span class="text-sm text-red-300">Yahoo Fantasy Baseball • {{ scoringTypeLabel }}</span>
+      <div class="inline-flex items-center gap-2 px-4 py-2 rounded-full border" :class="platformBadgeClass">
+        <span class="text-sm font-bold" :class="platformTextClass">{{ leagueStore.activePlatform === 'espn' ? 'ESPN' : 'Y!' }}</span>
+        <span class="text-sm" :class="platformSubTextClass">{{ platformName }} Fantasy Baseball • {{ scoringTypeLabel }}</span>
       </div>
     </div>
 
@@ -712,10 +712,41 @@ const isGeneratingDownload = ref(false)
 const isDownloadingLeader = ref(false)
 const isDownloadingTeamDetail = ref(false)
 const chartLoadProgress = ref('')
-const defaultAvatar = 'https://s.yimg.com/cv/apiv2/default/mlb/mlb_2_g.png'
+const defaultAvatar = computed(() => {
+  if (leagueStore.activePlatform === 'espn') return 'https://g.espncdn.com/lm-static/ffl/images/default_logos/team_0.svg'
+  return 'https://s.yimg.com/cv/apiv2/default/mlb/mlb_2_g.png'
+})
 
-// League settings
-const scoringType = ref<string>('head')
+// Platform styling
+const platformName = computed(() => leagueStore.activePlatform === 'espn' ? 'ESPN' : 'Yahoo')
+const platformBadgeClass = computed(() => leagueStore.activePlatform === 'espn' ? 'bg-red-600/10 border-red-600/30' : 'bg-purple-600/10 border-purple-600/30')
+const platformTextClass = computed(() => leagueStore.activePlatform === 'espn' ? 'text-red-400' : 'text-purple-400')
+const platformSubTextClass = computed(() => leagueStore.activePlatform === 'espn' ? 'text-red-300' : 'text-purple-300')
+
+// Scoring type - read from store for both Yahoo and ESPN
+const scoringType = computed(() => {
+  // Try yahooLeague first (array format for Yahoo, mapped from ESPN)
+  const yahooLeagueData = Array.isArray(leagueStore.yahooLeague) ? leagueStore.yahooLeague[0] : leagueStore.yahooLeague
+  if (yahooLeagueData?.scoring_type) {
+    console.log('[scoringType] from yahooLeague:', yahooLeagueData.scoring_type)
+    return yahooLeagueData.scoring_type
+  }
+  // Try currentLeague
+  if (leagueStore.currentLeague?.scoring_type) {
+    console.log('[scoringType] from currentLeague:', leagueStore.currentLeague.scoring_type)
+    return leagueStore.currentLeague.scoring_type
+  }
+  // Try savedLeagues using activeLeagueId
+  const savedLeague = leagueStore.savedLeagues?.find((l: any) => l.league_id === leagueStore.activeLeagueId)
+  if (savedLeague?.scoring_type) {
+    console.log('[scoringType] from savedLeagues:', savedLeague.scoring_type)
+    return savedLeague.scoring_type
+  }
+  console.log('[scoringType] defaulting to head')
+  return 'head'
+})
+
+// League settings (for category stat details - Yahoo only)
 const statCategories = ref<any[]>([])
 const loadedSeason = ref<string>('')
 
@@ -837,7 +868,9 @@ const displayWeek = computed(() => isSeasonComplete.value ? totalWeeks.value : c
 
 const isPointsLeague = computed(() => {
   const st = (scoringType.value || '').toLowerCase()
-  return st.includes('point') || st === 'headpoint'
+  const result = st.includes('point') || st === 'headpoint'
+  console.log('[isPointsLeague] scoringType:', scoringType.value, 'result:', result)
+  return result
 })
 
 const scoringTypeLabel = computed(() => {
@@ -856,13 +889,20 @@ const scoringTypeBadgeClass = computed(() => {
 
 // Format matchups with category win data
 const formattedMatchups = computed(() => {
-  return displayMatchups.value.map(m => ({
-    ...m,
-    team1: m.teams?.[0] || null,
-    team2: m.teams?.[1] || null,
-    team1_cat_wins: m.stat_winners?.[0]?.stat_winner_count || m.teams?.[0]?.win_probability || '-',
-    team2_cat_wins: m.stat_winners?.[1]?.stat_winner_count || m.teams?.[1]?.win_probability || '-'
-  }))
+  console.log('[formattedMatchups] displayMatchups count:', displayMatchups.value.length)
+  return displayMatchups.value.map(m => {
+    // Handle both formats: teams[] array (Yahoo) or team1/team2 directly (ESPN)
+    const team1 = m.teams?.[0] || m.team1 || null
+    const team2 = m.teams?.[1] || m.team2 || null
+    return {
+      ...m,
+      matchup_id: m.matchup_id || m.id,
+      team1,
+      team2,
+      team1_cat_wins: m.stat_winners?.[0]?.stat_winner_count || m.teams?.[0]?.win_probability || '-',
+      team2_cat_wins: m.stat_winners?.[1]?.stat_winner_count || m.teams?.[1]?.win_probability || '-'
+    }
+  })
 })
 
 const displayCategories = computed(() => {
@@ -2513,6 +2553,15 @@ async function loadLeagueSettings() {
   const leagueKey = effectiveLeagueKey.value || leagueStore.activeLeagueId
   if (!leagueKey) return
   
+  // For ESPN, scoring type is already in the store (set during league loading)
+  if (leagueStore.activePlatform === 'espn') {
+    console.log('[loadLeagueSettings] ESPN platform - using store data')
+    console.log('[loadLeagueSettings] scoringType:', scoringType.value)
+    statCategories.value = [] // ESPN doesn't need category details
+    return
+  }
+  
+  // For Yahoo, call the API
   try {
     // Get league details to get the season
     const leagueDetails = await yahooService.getLeagueDetails(leagueKey)
@@ -2523,7 +2572,7 @@ async function loadLeagueSettings() {
     
     const settings = await yahooService.getLeagueScoringSettings(leagueKey)
     if (settings) {
-      scoringType.value = settings.scoring_type || 'head'
+      // Note: scoringType is now computed from store, no need to set it here
       const cats = settings.stat_categories || []
       statCategories.value = cats.map((c: any) => ({
         stat_id: c.stat?.stat_id || c.stat_id,
@@ -2547,8 +2596,26 @@ async function loadAllMatchups() {
     return
   }
   
-  console.log(`Loading matchups for league: ${leagueKey}`)
+  console.log(`Loading matchups for league: ${leagueKey}, platform: ${leagueStore.activePlatform}`)
   isLoadingChart.value = true
+  
+  // For ESPN, use matchups from store (already loaded)
+  if (leagueStore.activePlatform === 'espn') {
+    console.log('[ESPN] Using matchups from store:', leagueStore.yahooMatchups?.length || 0)
+    displayMatchups.value = leagueStore.yahooMatchups || []
+    
+    // Generate standings progression for chart
+    const yahooLeagueData = Array.isArray(leagueStore.yahooLeague) ? leagueStore.yahooLeague[0] : leagueStore.yahooLeague
+    const endWeek = yahooLeagueData?.end_week || 25
+    const startWeek = yahooLeagueData?.start_week || 1
+    
+    generateStandingsProgression(startWeek, endWeek)
+    buildChart()
+    
+    isLoadingChart.value = false
+    chartLoadProgress.value = ''
+    return
+  }
   
   // For H2H Categories, we need to simulate standings over time
   // since Yahoo doesn't give us weekly W-L for category leagues
