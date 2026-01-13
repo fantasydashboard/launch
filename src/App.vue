@@ -810,11 +810,18 @@ async function handleEspnLeagueAdded(data: { leagueId: string; sport: string; se
   }
   
   try {
-    console.log('ESPN league added:', data)
+    console.log('[ESPN] League added:', data)
     
-    // The league should already be synced to the database by AddLeagueModal
-    // Just need to refresh saved leagues and activate
-    await leagueStore.fetchSavedLeagues(authStore.user.id)
+    // Save to local state (no database needed)
+    const sport = data.sport as 'football' | 'baseball' | 'basketball' | 'hockey'
+    leagueStore.saveEspnLeague(
+      data.leagueId,
+      data.league?.name || `ESPN League ${data.leagueId}`,
+      sport,
+      data.season,
+      data.league?.size,
+      data.league?.scoringType
+    )
     
     // Create league key for ESPN (format: espn_{sport}_{leagueId}_{season})
     const leagueKey = `espn_${data.sport}_${data.leagueId}_${data.season}`
@@ -823,9 +830,10 @@ async function handleEspnLeagueAdded(data: { leagueId: string; sport: string; se
     await leagueStore.setActiveLeague(leagueKey)
     
     // Update sport
-    const sport = data.sport as Sport
     sportStore.setSport(sport)
     leagueStore.setActiveSport(sport)
+    
+    console.log('[ESPN] League activated:', leagueKey)
   } catch (err) {
     console.error('Failed to add ESPN league:', err)
   }

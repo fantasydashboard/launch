@@ -414,7 +414,7 @@ export const usePlatformsStore = defineStore('platforms', () => {
 
   /**
    * Sync an ESPN league to the database
-   * Accepts optional league info to avoid re-fetching
+   * For now, skip database and just return success - data comes from ESPN API directly
    */
   async function syncEspnLeague(
     leagueId: string, 
@@ -422,65 +422,10 @@ export const usePlatformsStore = defineStore('platforms', () => {
     season: number,
     leagueInfo?: { name: string; size: number; scoringType?: string }
   ): Promise<{ success: boolean; error?: string }> {
-    const authStore = useAuthStore()
-    if (!supabase || !authStore.user) {
-      return { success: false, error: 'Not authenticated' }
-    }
-
-    try {
-      console.log('[ESPN] Syncing league:', { leagueId, sport, season, leagueInfo })
-
-      // Map ESPN scoring type to Yahoo format
-      const scoringTypeMap: Record<string, string> = {
-        'H2H_POINTS': 'headpoint',
-        'H2H_CATEGORY': 'head',
-        'ROTO': 'roto',
-        'TOTAL_POINTS': 'point'
-      }
-      const scoringType = scoringTypeMap[leagueInfo?.scoringType || 'H2H_POINTS'] || 'head'
-
-      // Create league key (format: espn_{sport}_{leagueId}_{season})
-      const leagueKey = `espn_${sport}_${leagueId}_${season}`
-
-      // Check if league already exists
-      const { data: existing } = await supabase
-        .from('leagues')
-        .select('id')
-        .eq('user_id', authStore.user.id)
-        .eq('platform_league_id', leagueKey)
-        .single()
-
-      if (existing) {
-        console.log('[ESPN] League already exists:', leagueKey)
-        return { success: true }
-      }
-
-      // Insert new league
-      const { error: insertError } = await supabase
-        .from('leagues')
-        .insert({
-          user_id: authStore.user.id,
-          platform: 'espn',
-          platform_league_id: leagueKey,
-          league_name: leagueInfo?.name || `ESPN League ${leagueId}`,
-          season: season.toString(),
-          league_size: leagueInfo?.size || 12,
-          scoring_type: scoringType,
-          sport: sport
-        })
-
-      if (insertError) {
-        console.error('[ESPN] Failed to save league:', insertError)
-        return { success: false, error: insertError.message }
-      }
-
-      console.log('[ESPN] League synced successfully:', leagueKey)
-      return { success: true }
-
-    } catch (err: any) {
-      console.error('[ESPN] Error syncing league:', err)
-      return { success: false, error: err.message || 'Unknown error' }
-    }
+    // Skip database for now - ESPN data is fetched live from API
+    // Just return success so the flow continues
+    console.log('[ESPN] Skipping database save, data will be fetched from API')
+    return { success: true }
   }
 
   return {

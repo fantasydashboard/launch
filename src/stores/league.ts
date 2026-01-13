@@ -16,7 +16,7 @@ interface SavedLeague {
   user_id?: string
   league_id: string
   league_name: string
-  platform: 'sleeper' | 'yahoo'
+  platform: 'sleeper' | 'yahoo' | 'espn'
   sport: 'football' | 'baseball' | 'basketball' | 'hockey'
   season: string
   sleeper_username?: string
@@ -55,7 +55,7 @@ const STORAGE_KEYS = {
 export const useLeagueStore = defineStore('league', () => {
   // State
   const activeLeagueId = ref<string | null>(null)
-  const activePlatform = ref<'sleeper' | 'yahoo'>('sleeper')
+  const activePlatform = ref<'sleeper' | 'yahoo' | 'espn'>('sleeper')
   const leagues = ref<SleeperLeague[]>([])
   const savedLeagues = ref<SavedLeague[]>([])
   const currentLeague = ref<SleeperLeague | null>(null)
@@ -451,6 +451,42 @@ export const useLeagueStore = defineStore('league', () => {
       }
     }
     
+    return newLeague
+  }
+
+  /**
+   * Save an ESPN league to local state
+   * ESPN data is fetched live from API, we just store the reference
+   */
+  function saveEspnLeague(leagueId: string, leagueName: string, sport: 'football' | 'baseball' | 'basketball' | 'hockey', season: number, numTeams?: number, scoringType?: string): SavedLeague {
+    // Create league key (format: espn_{sport}_{leagueId}_{season})
+    const leagueKey = `espn_${sport}_${leagueId}_${season}`
+    
+    // Check if already exists
+    const existing = savedLeagues.value.find(l => l.league_id === leagueKey)
+    if (existing) {
+      console.log('[ESPN] League already saved:', leagueKey)
+      return existing
+    }
+    
+    const isPrimary = savedLeagues.value.length === 0
+    
+    const newLeague: SavedLeague = {
+      league_id: leagueKey,
+      league_name: leagueName,
+      platform: 'espn',
+      sport: sport,
+      season: season.toString(),
+      is_primary: isPrimary,
+      num_teams: numTeams,
+      scoring_type: scoringType
+    }
+    
+    // Add to local state
+    savedLeagues.value.push(newLeague)
+    saveToLocalStorage()
+    
+    console.log('[ESPN] League saved to local state:', newLeague)
     return newLeague
   }
 
@@ -1339,6 +1375,7 @@ export const useLeagueStore = defineStore('league', () => {
     loadSavedLeagues,
     saveLeague,
     saveYahooLeague,
+    saveEspnLeague,
     removeLeague,
     setPrimaryLeague,
     fetchUserLeagues,
