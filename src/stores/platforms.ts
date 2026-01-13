@@ -442,30 +442,36 @@ export const usePlatformsStore = defineStore('platforms', () => {
       // Create league key (format: espn_{sport}_{leagueId}_{season})
       const leagueKey = `espn_${sport}_${leagueId}_${season}`
 
-      // Save to database - use CORRECT column names from schema
-      const leagueData: LeagueInsert = {
-        user_id: authStore.user.id,
-        platform: 'espn',
-        platform_league_id: leagueKey,
-        league_name: leagueInfo?.name || `ESPN League ${leagueId}`,
-        season: season.toString(),
-        league_size: leagueInfo?.size || 12,
-        scoring_type: scoringType,
-        sport: sport
+      // Check if league already exists
+      const { data: existing } = await supabase
+        .from('leagues')
+        .select('id')
+        .eq('user_id', authStore.user.id)
+        .eq('platform_league_id', leagueKey)
+        .single()
+
+      if (existing) {
+        console.log('[ESPN] League already exists:', leagueKey)
+        return { success: true }
       }
 
-      console.log('[ESPN] Saving league data:', leagueData)
-
-      const { error: upsertError } = await supabase
+      // Insert new league
+      const { error: insertError } = await supabase
         .from('leagues')
-        .upsert(leagueData, { 
-          onConflict: 'user_id,platform_league_id',
-          ignoreDuplicates: false 
+        .insert({
+          user_id: authStore.user.id,
+          platform: 'espn',
+          platform_league_id: leagueKey,
+          league_name: leagueInfo?.name || `ESPN League ${leagueId}`,
+          season: season.toString(),
+          league_size: leagueInfo?.size || 12,
+          scoring_type: scoringType,
+          sport: sport
         })
 
-      if (upsertError) {
-        console.error('[ESPN] Failed to save league:', upsertError)
-        return { success: false, error: upsertError.message }
+      if (insertError) {
+        console.error('[ESPN] Failed to save league:', insertError)
+        return { success: false, error: insertError.message }
       }
 
       console.log('[ESPN] League synced successfully:', leagueKey)
