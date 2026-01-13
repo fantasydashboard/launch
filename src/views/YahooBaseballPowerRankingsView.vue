@@ -860,9 +860,13 @@
 
     <!-- Platform Badge -->
     <div class="flex justify-center mt-8">
-      <div class="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-purple-600/10 border border-purple-600/30">
-        <span class="text-sm font-bold text-purple-400">Y!</span>
-        <span class="text-sm text-purple-300">Yahoo Fantasy Baseball • Points League</span>
+      <div class="inline-flex items-center gap-2 px-4 py-2 rounded-full border" :class="platformBadgeClass">
+        <img 
+          :src="leagueStore.activePlatform === 'espn' ? '/espn-logo.svg' : '/yahoo-fantasy.svg'" 
+          :alt="platformName"
+          class="w-5 h-5"
+        />
+        <span class="text-sm" :class="platformSubTextClass">{{ platformName }} Fantasy Baseball • Points League</span>
       </div>
     </div>
   </div>
@@ -872,13 +876,22 @@
 import { ref, computed, onMounted, watch } from 'vue'
 import { useLeagueStore } from '@/stores/league'
 import { yahooService } from '@/services/yahoo'
+import { espnService } from '@/services/espn'
 import { useAuthStore } from '@/stores/auth'
 import html2canvas from 'html2canvas'
 
 const leagueStore = useLeagueStore()
 const authStore = useAuthStore()
 
-const defaultAvatar = 'https://s.yimg.com/cv/apiv2/default/mlb/mlb_1_100.png'
+const defaultAvatar = computed(() => {
+  if (leagueStore.activePlatform === 'espn') return 'https://g.espncdn.com/lm-static/ffl/images/default_logos/team_0.svg'
+  return 'https://s.yimg.com/cv/apiv2/default/mlb/mlb_1_100.png'
+})
+
+// Platform styling
+const platformName = computed(() => leagueStore.activePlatform === 'espn' ? 'ESPN' : 'Yahoo')
+const platformBadgeClass = computed(() => leagueStore.activePlatform === 'espn' ? 'bg-red-600/10 border-red-600/30' : 'bg-purple-600/10 border-purple-600/30')
+const platformSubTextClass = computed(() => leagueStore.activePlatform === 'espn' ? 'text-red-300' : 'text-purple-300')
 
 // State
 const isLoading = ref(false)
@@ -1028,7 +1041,7 @@ const positionStrengthData = computed(() => {
       const teamData = leagueStore.yahooTeams.find(t => t.team_key === player.fantasy_team_key)
       teamInfo.set(player.fantasy_team_key, {
         name: player.fantasy_team || 'Unknown',
-        logo_url: teamData?.logo_url || defaultAvatar,
+        logo_url: teamData?.logo_url || defaultAvatar.value,
         is_my_team: teamData?.is_my_team || false
       })
     }
@@ -1331,7 +1344,7 @@ const mostVolatile = computed(() => {
 // Methods
 function handleImageError(e: Event) {
   const img = e.target as HTMLImageElement
-  img.src = defaultAvatar
+  img.src = defaultAvatar.value
 }
 
 // Power Score coloring - green for best, yellow for middle, red for worst
@@ -1949,7 +1962,41 @@ async function calculatePowerRankingsForWeek(throughWeek: number): Promise<Power
   
   if (matchupsNeeded) {
     const leagueKey = effectiveLeagueKey.value
-    if (leagueKey && authStore.user?.id) {
+    
+    if (leagueStore.activePlatform === 'espn') {
+      // ESPN: Use ESPN service to load matchups
+      console.log(`[ESPN] Loading matchups for power rankings, league: ${leagueKey}`)
+      
+      // Parse ESPN league info from league key (format: espn_baseball_LEAGUEID_SEASON)
+      const parts = leagueKey.split('_')
+      const espnLeagueId = parts[2]
+      const season = parseInt(parts[3]) || new Date().getFullYear()
+      
+      for (let w = 1; w <= throughWeek; w++) {
+        if (!allMatchups.value.has(w)) {
+          try {
+            const espnMatchups = await espnService.getMatchups('baseball', espnLeagueId, season, w)
+            // Convert ESPN matchup format to Yahoo format
+            const convertedMatchups = espnMatchups.map(m => {
+              const homeTeam = teams.find(t => t.team_id === m.homeTeamId?.toString())
+              const awayTeam = teams.find(t => t.team_id === m.awayTeamId?.toString())
+              return {
+                matchup_id: m.id,
+                week: w,
+                teams: [
+                  homeTeam ? { team_key: homeTeam.team_key, points: m.homeScore || 0 } : null,
+                  awayTeam ? { team_key: awayTeam.team_key, points: m.awayScore || 0 } : null
+                ].filter(Boolean)
+              }
+            })
+            allMatchups.value.set(w, convertedMatchups)
+          } catch (e) {
+            console.error(`[ESPN] Error fetching week ${w}:`, e)
+          }
+        }
+      }
+    } else if (leagueKey && authStore.user?.id) {
+      // Yahoo: Use Yahoo service
       await yahooService.initialize(authStore.user.id)
       console.log(`Loading matchups for power rankings using league: ${leagueKey}`)
       for (let w = 1; w <= throughWeek; w++) {
@@ -2114,7 +2161,15 @@ async function loadPowerRankings() {
 
 async function loadRosteredPlayers() {
   const leagueKey = effectiveLeagueKey.value
-  if (!leagueKey || !authStore.user?.id) return
+  if (!leagueKey) return
+  
+  // ESPN doesn't have rostered player data - skip
+  if (leagueStore.activePlatform === 'espn') {
+    console.log('[ESPN] Rostered players not available for ESPN leagues')
+    return
+  }
+  
+  if (!authStore.user?.id) return
   
   isLoadingPlayers.value = true
   

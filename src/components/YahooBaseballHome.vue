@@ -451,7 +451,11 @@
     <!-- Platform Badge -->
     <div class="flex justify-center">
       <div class="inline-flex items-center gap-2 px-4 py-2 rounded-full border" :class="platformBadgeClass">
-        <span class="text-sm font-bold" :class="platformTextClass">{{ leagueStore.activePlatform === 'espn' ? 'ESPN' : 'Y!' }}</span>
+        <img 
+          :src="leagueStore.activePlatform === 'espn' ? '/espn-logo.svg' : '/yahoo-fantasy.svg'" 
+          :alt="platformName"
+          class="w-5 h-5"
+        />
         <span class="text-sm" :class="platformSubTextClass">{{ platformName }} Fantasy Baseball • {{ scoringTypeLabel }}</span>
       </div>
     </div>
@@ -1271,8 +1275,7 @@ const last3WeeksWins = computed(() => {
 // Quick Stats - without luckiest/unluckiest
 const quickStats = computed(() => {
   const teams = teamsWithStats.value
-  const mostActive = [...teams].sort((a, b) => (b.transactions || 0) - (a.transactions || 0))[0]
-  const leastActive = [...teams].sort((a, b) => (a.transactions || 0) - (b.transactions || 0))[0]
+  const isEspn = leagueStore.activePlatform === 'espn'
   
   // Hottest/Coldest based on last 3 weeks performance
   const teamsWithLast3 = teams.map(t => ({
@@ -1286,12 +1289,38 @@ const quickStats = computed(() => {
   // For category leagues, show "X cat wins" in last 3 weeks
   const winsLabel = isPointsLeague.value ? 'wins' : 'cat wins'
   
-  return [
+  const stats = [
     { icon: '🔥', label: 'Hottest', team: hottest, value: hottest ? `${hottest.last3Wins} ${winsLabel}` : '-', valueClass: 'text-orange-400', type: 'hottest' },
-    { icon: '❄️', label: 'Coldest', team: coldest, value: coldest ? `${coldest.last3Wins} ${winsLabel}` : '-', valueClass: 'text-cyan-400', type: 'coldest' },
-    { icon: '📈', label: 'Most Moves', team: mostActive, value: mostActive?.transactions?.toString() || '-', valueClass: 'text-blue-400', type: 'mostMoves' },
-    { icon: '🪨', label: 'Fewest Moves', team: leastActive, value: leastActive?.transactions?.toString() || '-', valueClass: 'text-purple-400', type: 'fewestMoves' }
+    { icon: '❄️', label: 'Coldest', team: coldest, value: coldest ? `${coldest.last3Wins} ${winsLabel}` : '-', valueClass: 'text-cyan-400', type: 'coldest' }
   ]
+  
+  // Only show transaction stats for Yahoo (ESPN doesn't have this data)
+  if (!isEspn) {
+    const mostActive = [...teams].sort((a, b) => (b.transactions || 0) - (a.transactions || 0))[0]
+    const leastActive = [...teams].sort((a, b) => (a.transactions || 0) - (b.transactions || 0))[0]
+    stats.push(
+      { icon: '📈', label: 'Most Moves', team: mostActive, value: mostActive?.transactions?.toString() || '-', valueClass: 'text-blue-400', type: 'mostMoves' },
+      { icon: '🪨', label: 'Fewest Moves', team: leastActive, value: leastActive?.transactions?.toString() || '-', valueClass: 'text-purple-400', type: 'fewestMoves' }
+    )
+  } else {
+    // For ESPN, show best/worst record instead
+    const bestRecord = [...teams].sort((a, b) => {
+      const aWinPct = (a.wins || 0) / Math.max(1, (a.wins || 0) + (a.losses || 0))
+      const bWinPct = (b.wins || 0) / Math.max(1, (b.wins || 0) + (b.losses || 0))
+      return bWinPct - aWinPct
+    })[0]
+    const worstRecord = [...teams].sort((a, b) => {
+      const aWinPct = (a.wins || 0) / Math.max(1, (a.wins || 0) + (a.losses || 0))
+      const bWinPct = (b.wins || 0) / Math.max(1, (b.wins || 0) + (b.losses || 0))
+      return aWinPct - bWinPct
+    })[0]
+    stats.push(
+      { icon: '🏆', label: 'Best Record', team: bestRecord, value: bestRecord ? `${bestRecord.wins}-${bestRecord.losses}` : '-', valueClass: 'text-green-400', type: 'bestRecord' },
+      { icon: '📉', label: 'Worst Record', team: worstRecord, value: worstRecord ? `${worstRecord.wins}-${worstRecord.losses}` : '-', valueClass: 'text-red-400', type: 'worstRecord' }
+    )
+  }
+  
+  return stats
 })
 
 // Open quick stat modal - reuses the leader modal
@@ -2933,7 +2962,7 @@ function generateStandingsProgression(startWeek: number, endWeek: number) {
   console.log(`Generated standings for ${standings.size} weeks`)
 }
 
-// Load all data
+// Load all data for Yahoo
 async function loadAllData() {
   // Use effectiveLeagueKey which might be the previous season if current has no data
   const leagueKey = effectiveLeagueKey.value || leagueStore.activeLeagueId
@@ -2968,20 +2997,113 @@ async function loadAllData() {
   }
 }
 
+// Load all data for ESPN
+function loadEspnData() {
+  const leagueKey = leagueStore.activeLeagueId
+  if (!leagueKey || leagueStore.activePlatform !== 'espn') return
+  
+  console.log('[ESPN] loadEspnData for:', leagueKey)
+  isLoading.value = true
+  
+  try {
+    // Settings are already in store, just log them
+    loadLeagueSettings()
+    
+    // ESPN doesn't have transaction counts
+    transactionCounts.value = new Map()
+    
+    // Load matchups from store and build chart
+    displayMatchups.value = leagueStore.yahooMatchups || []
+    console.log('[ESPN] Matchups from store:', displayMatchups.value.length)
+    
+    // Generate standings progression and matchup results for ESPN
+    const yahooLeagueData = Array.isArray(leagueStore.yahooLeague) ? leagueStore.yahooLeague[0] : leagueStore.yahooLeague
+    const endWeek = yahooLeagueData?.end_week || 25
+    const startWeek = yahooLeagueData?.start_week || 1
+    
+    generateStandingsProgression(startWeek, endWeek)
+    generateEspnMatchupResults(startWeek, endWeek)
+    buildChart()
+    
+    isLoading.value = false
+    isLoadingChart.value = false
+    
+  } catch (e) {
+    console.error('[ESPN] Error loading data:', e)
+    isLoading.value = false
+  }
+}
+
+// Generate fake matchup results for ESPN (for hottest/coldest stats)
+function generateEspnMatchupResults(startWeek: number, endWeek: number) {
+  const allMatchupResults = new Map<string, Map<number, any>>()
+  const teams = leagueStore.yahooTeams
+  const numWeeks = endWeek - startWeek + 1
+  
+  // Initialize map for each team
+  teams.forEach(team => {
+    allMatchupResults.set(team.team_key, new Map())
+  })
+  
+  // Distribute wins/losses across weeks proportionally
+  teams.forEach(team => {
+    const totalWins = team.wins || 0
+    const totalLosses = team.losses || 0
+    const teamResults = allMatchupResults.get(team.team_key)!
+    
+    let cumulativeWins = 0
+    let cumulativeLosses = 0
+    
+    for (let week = startWeek; week <= endWeek; week++) {
+      const progress = (week - startWeek + 1) / numWeeks
+      const expectedWins = Math.floor(totalWins * progress)
+      const expectedLosses = Math.floor(totalLosses * progress)
+      
+      const weekWins = expectedWins - cumulativeWins
+      const weekLosses = expectedLosses - cumulativeLosses
+      
+      cumulativeWins = expectedWins
+      cumulativeLosses = expectedLosses
+      
+      teamResults.set(week, {
+        won: weekWins > weekLosses,
+        catWins: weekWins, // For points leagues, this represents matchup wins
+        catLosses: weekLosses
+      })
+    }
+  })
+  
+  weeklyMatchupResults.value = allMatchupResults
+  console.log('[ESPN] Generated matchup results for', teams.length, 'teams')
+}
+
 watch(() => leagueStore.activeLeagueId, () => {
   if (leagueStore.activePlatform === 'yahoo') loadAllData()
+  if (leagueStore.activePlatform === 'espn') loadEspnData()
 })
 
 // Watch for currentLeague changes (happens when fallback to previous season occurs)
 watch(() => leagueStore.currentLeague?.league_id, (newKey, oldKey) => {
-  if (newKey && newKey !== oldKey && leagueStore.activePlatform === 'yahoo') {
+  if (newKey && newKey !== oldKey) {
     console.log(`Current league changed from ${oldKey} to ${newKey}, reloading data...`)
-    loadAllData()
+    if (leagueStore.activePlatform === 'yahoo') loadAllData()
+    if (leagueStore.activePlatform === 'espn') loadEspnData()
   }
 })
 
 watch(() => leagueStore.yahooTeams, () => {
-  if (leagueStore.yahooTeams.length > 0 && leagueStore.activePlatform === 'yahoo') loadAllData()
+  if (leagueStore.yahooTeams.length > 0) {
+    if (leagueStore.activePlatform === 'yahoo') loadAllData()
+    if (leagueStore.activePlatform === 'espn') loadEspnData()
+  }
+}, { immediate: true })
+
+// Watch for matchups changes (they might load after teams)
+watch(() => leagueStore.yahooMatchups, () => {
+  if (leagueStore.activePlatform === 'espn' && leagueStore.yahooMatchups?.length > 0) {
+    console.log('[Watch yahooMatchups] ESPN matchups changed:', leagueStore.yahooMatchups.length)
+    displayMatchups.value = leagueStore.yahooMatchups
+  }
 }, { immediate: true })
 
 function checkScrollHint() {
@@ -2992,7 +3114,10 @@ function checkScrollHint() {
 }
 
 onMounted(() => {
-  if (leagueStore.yahooTeams.length > 0) loadAllData()
+  if (leagueStore.yahooTeams.length > 0) {
+    if (leagueStore.activePlatform === 'yahoo') loadAllData()
+    if (leagueStore.activePlatform === 'espn') loadEspnData()
+  }
   
   // Check scroll hint after a delay for DOM to settle
   setTimeout(checkScrollHint, 500)

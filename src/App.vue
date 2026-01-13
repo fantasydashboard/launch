@@ -65,7 +65,7 @@
               >
                 <template v-if="leagueStore.currentLeague">
                   <img 
-                    :src="getPlatformIcon(leagueStore.activePlatform)" 
+                    :src="leagueStore.activePlatform === 'yahoo' ? '/yahoo-fantasy.svg' : '/sleeper.svg'" 
                     :alt="leagueStore.activePlatform"
                     class="w-5 h-5 rounded flex-shrink-0"
                   />
@@ -111,7 +111,7 @@
                         >
                           <!-- Platform Icon -->
                           <img 
-                            :src="getPlatformIcon(league.platform)" 
+                            :src="league.platform === 'yahoo' ? '/yahoo-fantasy.svg' : league.platform === 'espn' ? '/espn-logo.svg' : '/sleeper.svg'" 
                             :alt="league.platform"
                             class="w-8 h-8 rounded-lg flex-shrink-0"
                           />
@@ -157,7 +157,7 @@
                       </div>
                       <div class="text-left">
                         <div class="font-medium text-primary text-sm">Add League</div>
-                        <div class="text-xs text-dark-textMuted">Connect Sleeper, Yahoo, or ESPN</div>
+                        <div class="text-xs text-dark-textMuted">Connect Sleeper or Yahoo</div>
                       </div>
                     </button>
                   </div>
@@ -286,7 +286,7 @@
                   >
                     <template v-if="leagueStore.currentLeague">
                       <img 
-                        :src="getPlatformIcon(leagueStore.activePlatform)" 
+                        :src="leagueStore.activePlatform === 'yahoo' ? '/yahoo-fantasy.svg' : '/sleeper.svg'" 
                         :alt="leagueStore.activePlatform"
                         class="w-5 h-5 rounded flex-shrink-0"
                       />
@@ -329,7 +329,7 @@
                               ]"
                             >
                               <img 
-                                :src="getPlatformIcon(league.platform)" 
+                                :src="league.platform === 'yahoo' ? '/yahoo-fantasy.svg' : league.platform === 'espn' ? '/espn-logo.svg' : '/sleeper.svg'" 
                                 :alt="league.platform"
                                 class="w-8 h-8 rounded-lg flex-shrink-0"
                               />
@@ -365,7 +365,7 @@
                           </div>
                           <div class="text-left">
                             <div class="font-medium text-primary text-sm">Add League</div>
-                            <div class="text-xs text-dark-textMuted">Connect Sleeper, Yahoo, or ESPN</div>
+                            <div class="text-xs text-dark-textMuted">Connect Sleeper or Yahoo</div>
                           </div>
                         </button>
                       </div>
@@ -574,7 +574,6 @@
       @close="showAddLeagueModal = false"
       @league-added="handleLeagueAdded"
       @yahoo-league-added="handleYahooLeagueAdded"
-      @espn-league-added="handleEspnLeagueAdded"
     />
     
     <!-- Remove League Confirmation -->
@@ -729,19 +728,6 @@ function getSportEmoji(sport: string): string {
   return emojis[sport] || '🏆'
 }
 
-// Get platform icon
-function getPlatformIcon(platform: string): string {
-  switch (platform) {
-    case 'yahoo':
-      return '/yahoo-fantasy.svg'
-    case 'espn':
-      return '/espn-fantasy.svg'
-    case 'sleeper':
-    default:
-      return '/sleeper.svg'
-  }
-}
-
 async function selectLeague(leagueId: string) {
   showLeagueDropdown.value = false
   leagueStore.disableDemoMode()
@@ -811,40 +797,6 @@ async function handleYahooLeagueAdded(league: any) {
     leagueStore.setActiveSport(sport as Sport)
   } catch (err) {
     console.error('Failed to add Yahoo league:', err)
-  }
-}
-
-async function handleEspnLeagueAdded(league: {
-  leagueId: string
-  sport: Sport
-  season: number
-  name: string
-  size: number
-  isPublic: boolean
-}) {
-  showAddLeagueModal.value = false
-  
-  if (!authStore.user?.id) {
-    console.error('Not authenticated')
-    return
-  }
-  
-  try {
-    await leagueStore.saveEspnLeague(league, authStore.user.id)
-    
-    leagueStore.disableDemoMode()
-    
-    // Set the active league using the composite ID format
-    const compositeLeagueId = `espn_${league.leagueId}_${league.season}`
-    await leagueStore.setActiveLeague(compositeLeagueId)
-    
-    // Update sport
-    sportStore.setSport(league.sport)
-    leagueStore.setActiveSport(league.sport)
-    
-    console.log('ESPN league added:', league.name)
-  } catch (err) {
-    console.error('Failed to add ESPN league:', err)
   }
 }
 
