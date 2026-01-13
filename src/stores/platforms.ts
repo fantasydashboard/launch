@@ -428,7 +428,7 @@ export const usePlatformsStore = defineStore('platforms', () => {
     }
 
     try {
-      console.log('[ESPN] Syncing league:', { leagueId, sport, season })
+      console.log('[ESPN] Syncing league:', { leagueId, sport, season, leagueInfo })
 
       // Map ESPN scoring type to Yahoo format
       const scoringTypeMap: Record<string, string> = {
@@ -442,22 +442,24 @@ export const usePlatformsStore = defineStore('platforms', () => {
       // Create league key (format: espn_{sport}_{leagueId}_{season})
       const leagueKey = `espn_${sport}_${leagueId}_${season}`
 
-      // Save to database - use provided info or defaults
+      // Save to database - use CORRECT column names from schema
       const leagueData: LeagueInsert = {
         user_id: authStore.user.id,
         platform: 'espn',
-        league_id: leagueKey,
+        platform_league_id: leagueKey,
         league_name: leagueInfo?.name || `ESPN League ${leagueId}`,
         season: season.toString(),
-        num_teams: leagueInfo?.size || 12,
+        league_size: leagueInfo?.size || 12,
         scoring_type: scoringType,
         sport: sport
       }
 
+      console.log('[ESPN] Saving league data:', leagueData)
+
       const { error: upsertError } = await supabase
         .from('leagues')
         .upsert(leagueData, { 
-          onConflict: 'user_id,league_id',
+          onConflict: 'user_id,platform_league_id',
           ignoreDuplicates: false 
         })
 
