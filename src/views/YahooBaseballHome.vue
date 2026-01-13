@@ -590,8 +590,7 @@ const defaultAvatar = computed(() => {
 })
 )
 
-// League settings
-const scoringType = ref<string>('head')
+// League settings (stat categories for category leagues)
 const statCategories = ref<any[]>([])
 
 // Sorting
@@ -660,10 +659,33 @@ const isSeasonComplete = computed(() => {
 })
 const displayWeek = computed(() => isSeasonComplete.value ? totalWeeks.value : currentWeek.value)
 
+// Scoring type - read directly from store data (reactive)
+const scoringType = computed(() => {
+  // Try yahooLeague first (array format)
+  const yahooLeagueData = Array.isArray(leagueStore.yahooLeague) ? leagueStore.yahooLeague[0] : leagueStore.yahooLeague
+  if (yahooLeagueData?.scoring_type) {
+    console.log('[scoringType] from yahooLeague:', yahooLeagueData.scoring_type)
+    return yahooLeagueData.scoring_type
+  }
+  // Try currentLeague
+  if (leagueStore.currentLeague?.scoring_type) {
+    console.log('[scoringType] from currentLeague:', leagueStore.currentLeague.scoring_type)
+    return leagueStore.currentLeague.scoring_type
+  }
+  // Try savedLeagues
+  const savedLeague = leagueStore.savedLeagues?.find((l: any) => l.league_id === effectiveLeagueKey.value)
+  if (savedLeague?.scoring_type) {
+    console.log('[scoringType] from savedLeagues:', savedLeague.scoring_type)
+    return savedLeague.scoring_type
+  }
+  console.log('[scoringType] defaulting to head')
+  return 'head'
+})
+
 const isPointsLeague = computed(() => {
   const st = (scoringType.value || '').toLowerCase()
   const result = st.includes('point') || st === 'headpoint'
-  console.log('[isPointsLeague] scoringType:', scoringType.value, 'lowercase:', st, 'result:', result)
+  console.log('[isPointsLeague] scoringType:', scoringType.value, 'result:', result)
   return result
 })
 
@@ -716,6 +738,18 @@ const numCategories = computed(() => displayCategories.value.length || 12)
 const teamsWithStats = computed(() => {
   const teams = leagueStore.yahooTeams
   const numTeams = teams.length
+  
+  console.log('[teamsWithStats] teams from store:', numTeams)
+  console.log('[teamsWithStats] isPointsLeague:', isPointsLeague.value)
+  if (numTeams > 0) {
+    console.log('[teamsWithStats] First team:', JSON.stringify({
+      name: teams[0].name,
+      wins: teams[0].wins,
+      losses: teams[0].losses,
+      points_for: teams[0].points_for,
+      points_against: teams[0].points_against
+    }))
+  }
   
   if (numTeams === 0) return []
   
@@ -1647,41 +1681,11 @@ async function downloadStandings() {
 // Load league settings
 // Load league settings from store data (platform-agnostic)
 function loadLeagueSettings() {
-  const leagueKey = effectiveLeagueKey.value || leagueStore.activeLeagueId
-  if (!leagueKey) return
+  // scoringType is now computed directly from store - just log for debugging
+  console.log('[loadLeagueSettings] scoringType (computed):', scoringType.value)
+  console.log('[loadLeagueSettings] isPointsLeague:', isPointsLeague.value)
   
-  console.log('[loadLeagueSettings] Loading from store for:', leagueKey)
-  
-  // Get scoring type from store data (populated by league store for both Yahoo and ESPN)
-  let detectedScoringType = 'head' // Default
-  
-  // Try yahooLeague first (works for both Yahoo and ESPN since we map ESPN to this format)
-  const yahooLeagueData = Array.isArray(leagueStore.yahooLeague) ? leagueStore.yahooLeague[0] : leagueStore.yahooLeague
-  if (yahooLeagueData?.scoring_type) {
-    detectedScoringType = yahooLeagueData.scoring_type
-    console.log('[loadLeagueSettings] Got scoring_type from yahooLeague:', detectedScoringType)
-  }
-  // Try currentLeague
-  else if (leagueStore.currentLeague?.scoring_type) {
-    detectedScoringType = leagueStore.currentLeague.scoring_type
-    console.log('[loadLeagueSettings] Got scoring_type from currentLeague:', detectedScoringType)
-  }
-  // Try savedLeagues
-  else {
-    const savedLeague = leagueStore.savedLeagues?.find((l: any) => l.league_id === leagueKey)
-    if (savedLeague?.scoring_type) {
-      detectedScoringType = savedLeague.scoring_type
-      console.log('[loadLeagueSettings] Got scoring_type from savedLeagues:', detectedScoringType)
-    }
-  }
-  
-  scoringType.value = detectedScoringType
-  
-  console.log('[loadLeagueSettings] Final scoring type:', scoringType.value)
-  console.log('[loadLeagueSettings] isPointsLeague:', scoringType.value.toLowerCase().includes('point'))
-  
-  // For now, clear stat categories (category tracking is complex and platform-specific)
-  // TODO: Add category support when needed
+  // Clear stat categories (for category leagues)
   statCategories.value = []
 }
 
