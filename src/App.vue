@@ -65,7 +65,7 @@
               >
                 <template v-if="leagueStore.currentLeague">
                   <img 
-                    :src="leagueStore.activePlatform === 'yahoo' ? '/yahoo-fantasy.svg' : '/sleeper.svg'" 
+                    :src="leagueStore.activePlatform === 'yahoo' ? '/yahoo-fantasy.svg' : leagueStore.activePlatform === 'espn' ? '/espn-logo.svg' : '/sleeper.svg'" 
                     :alt="leagueStore.activePlatform"
                     class="w-5 h-5 rounded flex-shrink-0"
                   />
@@ -286,7 +286,7 @@
                   >
                     <template v-if="leagueStore.currentLeague">
                       <img 
-                        :src="leagueStore.activePlatform === 'yahoo' ? '/yahoo-fantasy.svg' : '/sleeper.svg'" 
+                        :src="leagueStore.activePlatform === 'yahoo' ? '/yahoo-fantasy.svg' : leagueStore.activePlatform === 'espn' ? '/espn-logo.svg' : '/sleeper.svg'" 
                         :alt="leagueStore.activePlatform"
                         class="w-5 h-5 rounded flex-shrink-0"
                       />
@@ -574,6 +574,7 @@
       @close="showAddLeagueModal = false"
       @league-added="handleLeagueAdded"
       @yahoo-league-added="handleYahooLeagueAdded"
+      @espn-league-added="handleEspnLeagueAdded"
     />
     
     <!-- Remove League Confirmation -->
@@ -797,6 +798,36 @@ async function handleYahooLeagueAdded(league: any) {
     leagueStore.setActiveSport(sport as Sport)
   } catch (err) {
     console.error('Failed to add Yahoo league:', err)
+  }
+}
+
+async function handleEspnLeagueAdded(data: { leagueId: string; sport: string; season: number; league: any }) {
+  showAddLeagueModal.value = false
+  
+  if (!authStore.user?.id) {
+    console.error('Not authenticated')
+    return
+  }
+  
+  try {
+    console.log('ESPN league added:', data)
+    
+    // The league should already be synced to the database by AddLeagueModal
+    // Just need to refresh saved leagues and activate
+    await leagueStore.fetchSavedLeagues(authStore.user.id)
+    
+    // Create league key for ESPN (format: espn_{sport}_{leagueId}_{season})
+    const leagueKey = `espn_${data.sport}_${data.leagueId}_${data.season}`
+    
+    leagueStore.disableDemoMode()
+    await leagueStore.setActiveLeague(leagueKey)
+    
+    // Update sport
+    const sport = data.sport as Sport
+    sportStore.setSport(sport)
+    leagueStore.setActiveSport(sport)
+  } catch (err) {
+    console.error('Failed to add ESPN league:', err)
   }
 }
 

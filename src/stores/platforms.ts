@@ -10,6 +10,7 @@ import { ref, computed } from 'vue'
 import { supabase } from '@/lib/supabase'
 import { useAuthStore } from './auth'
 import { yahooService } from '@/services/yahoo'
+import { espnService } from '@/services/espn'
 import type { ConnectedPlatform, Platform, Sport, LeagueInsert } from '@/types/supabase'
 
 export const usePlatformsStore = defineStore('platforms', () => {
@@ -339,13 +340,34 @@ export const usePlatformsStore = defineStore('platforms', () => {
    * Store ESPN credentials (cookies) for private leagues
    * These are stored in localStorage since they're user-specific cookies
    */
-  function storeEspnCredentials(espn_s2: string, swid: string) {
+  async function storeEspnCredentials(data: {
+    espn_s2: string
+    swid: string
+    leagueId: string
+    sport: Sport
+    season: number
+  }): Promise<{ success: boolean; error?: string }> {
     try {
+      const { espn_s2, swid, leagueId, sport, season } = data
+      
+      // Store credentials in localStorage
       const credentials = { espn_s2, swid, stored_at: Date.now() }
       localStorage.setItem('espn_credentials', JSON.stringify(credentials))
       console.log('[ESPN] Credentials stored')
-    } catch (err) {
+
+      // Apply credentials to service
+      espnService.setCredentials(espn_s2, swid)
+
+      // Validate the league is accessible with these credentials
+      const validation = await espnService.validateLeague(sport, leagueId, season)
+      if (!validation.valid) {
+        return { success: false, error: validation.error || 'Invalid credentials' }
+      }
+
+      return { success: true }
+    } catch (err: any) {
       console.error('Failed to store ESPN credentials:', err)
+      return { success: false, error: err.message || 'Failed to store credentials' }
     }
   }
 
@@ -390,6 +412,82 @@ export const usePlatformsStore = defineStore('platforms', () => {
     return !!getEspnCredentials()
   }
 
+  /**
+   * Sync an ESPN league to the database
+   */
+  async function syncEspnLeague(
+    leagueId: string, 
+    sport: Sport, 
+    season: number
+  ): Promise<{ success: boolean; error?: string }> {
+    const authStore = useAuthStore()
+    if (!supabase || !authStore.user) {
+      return { success: false, error: 'Not authenticated' }
+    }
+
+    try {
+      console.log('[ESPN] Syncing league:', { leagueId, sport, season })
+
+      // Initialize ESPN service
+      await espnService.initialize(authStore.user.id)
+
+      // Apply stored credentials if available
+      const credentials = getEspnCredentials()
+      if (credentials) {
+        espnService.setCredentials(credentials.espn_s2, credentials.swid)
+      }
+
+      // Get league info from ESPN
+      const league = await espnService.getLeague(sport, leagueId, season)
+      if (!league) {
+        return { success: false, error: 'Could not fetch league info from ESPN' }
+      }
+
+      // Map ESPN scoring type to Yahoo format
+      const scoringTypeMap: Record<string, string> = {
+        'H2H_POINTS': 'headpoint',
+        'H2H_CATEGORY': 'head',
+        'ROTO': 'roto',
+        'TOTAL_POINTS': 'point'
+      }
+      const scoringType = scoringTypeMap[league.scoringType || 'H2H_POINTS'] || 'head'
+
+      // Create league key (format: espn_{sport}_{leagueId}_{season})
+      const leagueKey = `espn_${sport}_${leagueId}_${season}`
+
+      // Save to database
+      const leagueData: LeagueInsert = {
+        user_id: authStore.user.id,
+        platform: 'espn',
+        league_id: leagueKey,
+        league_name: league.name || `ESPN League ${leagueId}`,
+        season: season.toString(),
+        num_teams: league.size || 12,
+        scoring_type: scoringType,
+        sport: sport
+      }
+
+      const { error: upsertError } = await supabase
+        .from('leagues')
+        .upsert(leagueData, { 
+          onConflict: 'user_id,league_id',
+          ignoreDuplicates: false 
+        })
+
+      if (upsertError) {
+        console.error('[ESPN] Failed to save league:', upsertError)
+        return { success: false, error: upsertError.message }
+      }
+
+      console.log('[ESPN] League synced successfully:', leagueKey)
+      return { success: true }
+
+    } catch (err: any) {
+      console.error('[ESPN] Error syncing league:', err)
+      return { success: false, error: err.message || 'Unknown error' }
+    }
+  }
+
   return {
     // State
     connectedPlatforms,
@@ -417,6 +515,7 @@ export const usePlatformsStore = defineStore('platforms', () => {
     storeEspnCredentials,
     getEspnCredentials,
     clearEspnCredentials,
-    hasEspnCredentials
+    hasEspnCredentials,
+    syncEspnLeague
   }
 })
