@@ -156,6 +156,7 @@ export interface EspnTeam {
   logo: string
   owners: string[]
   primaryOwner: string
+  ownerName?: string  // Display name of primary owner
   points: number
   pointsFor: number
   pointsAgainst: number
@@ -1113,11 +1114,13 @@ export class EspnFantasyService {
       }
       
       // Approach 4: Use owner's display name
-      if (!teamName) {
-        const ownerId = team.primaryOwner || team.owners?.[0]
-        if (ownerId) {
-          const owner = memberMap.get(ownerId)
-          if (owner?.displayName) {
+      let ownerName = ''
+      const ownerId = team.primaryOwner || team.owners?.[0]
+      if (ownerId) {
+        const owner = memberMap.get(ownerId)
+        if (owner?.displayName) {
+          ownerName = owner.displayName
+          if (!teamName) {
             teamName = `${owner.displayName}'s Team`
           }
         }
@@ -1128,7 +1131,7 @@ export class EspnFantasyService {
         teamName = `Team ${team.id}`
       }
       
-      console.log(`[ESPN Team ${team.id}] Final name: "${teamName}"`)
+      console.log(`[ESPN Team ${team.id}] Final name: "${teamName}", owner: "${ownerName}"`)
       
       return {
         id: team.id,
@@ -1139,6 +1142,7 @@ export class EspnFantasyService {
         logo: team.logo || '',
         owners: team.owners || [],
         primaryOwner: team.primaryOwner || team.owners?.[0] || '',
+        ownerName: ownerName, // Add owner display name
         points: team.points || 0,
         pointsFor: team.record?.overall?.pointsFor || record.pointsFor || 0,
         pointsAgainst: team.record?.overall?.pointsAgainst || record.pointsAgainst || 0,
@@ -1218,7 +1222,18 @@ export class EspnFantasyService {
     const filteredSchedule = schedule.filter((match: any) => match.matchupPeriodId === week)
     console.log('[ESPN parseMatchups] Filtered to', filteredSchedule.length, 'matchups for week', week)
     
-    return filteredSchedule
+    // Deduplicate matchups by ID (ESPN sometimes returns duplicates)
+    const seenIds = new Set<number>()
+    const uniqueMatchups = filteredSchedule.filter((match: any) => {
+      if (seenIds.has(match.id)) {
+        return false
+      }
+      seenIds.add(match.id)
+      return true
+    })
+    console.log('[ESPN parseMatchups] After dedup:', uniqueMatchups.length, 'unique matchups')
+    
+    return uniqueMatchups
       .map((match: any) => ({
         id: match.id,
         matchupPeriodId: match.matchupPeriodId,

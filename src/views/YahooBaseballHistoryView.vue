@@ -3501,155 +3501,211 @@ async function loadHistoricalData() {
       const parts = leagueKey.split('_')
       const sport = parts[1] as 'football' | 'baseball' | 'basketball' | 'hockey'
       const espnLeagueId = parts[2]
-      const season = parseInt(parts[3])
-      
-      loadingMessage.value = `Loading ${season} season data...`
+      const currentSeason = parseInt(parts[3])
       
       // Dynamically import ESPN service
       const { espnService } = await import('@/services/espn')
       
-      // For ESPN, we can only reliably access current season
-      // Load standings from store (already loaded)
-      const standings = leagueStore.yahooTeams.map((team, idx) => ({
-        ...team,
-        rank: idx + 1,
-        is_champion: idx === 0
-      }))
+      // Try to load multiple seasons (current and previous years)
+      const seasonsToTry = []
+      for (let year = currentSeason; year >= currentSeason - 5; year--) {
+        seasonsToTry.push(year)
+      }
       
-      console.log(`[ESPN] Got standings for ${season}:`, standings.length, 'teams')
+      console.log('[ESPN] Will attempt to load seasons:', seasonsToTry)
       
-      if (standings.length > 0) {
-        // Store season data
-        historicalData.value[season.toString()] = {
-          standings: standings,
-          trade_count: 0
-        }
+      let successCount = 0
+      
+      for (const season of seasonsToTry) {
+        loadingMessage.value = `Loading ${season} season... (${successCount} loaded)`
         
-        // Track current members
-        standings.forEach((team: any) => {
-          if (!currentMembers.value.includes(team.team_key)) {
-            currentMembers.value.push(team.team_key)
-          }
-          // Store team info
-          if (!allTeams.value[team.team_key]) {
-            allTeams.value[team.team_key] = {
-              team_key: team.team_key,
-              name: team.name,
-              logo_url: team.logo_url || ''
-            }
-          }
-        })
-        
-        // Load matchups for H2H calculation
-        loadingMessage.value = `Loading ${season} matchups...`
-        const seasonMatchupsObj: Record<number, any[]> = {}
-        
-        // Get current week from league settings
-        const endWeek = leagueStore.currentLeague?.settings?.end_week || 25
-        const currentWeekNum = leagueStore.currentLeague?.settings?.leg || 1
-        const maxWeek = Math.min(currentWeekNum, endWeek)
-        
-        let consecutiveFailures = 0
-        
-        for (let week = 1; week <= maxWeek; week++) {
-          loadingMessage.value = `Loading ${season} week ${week}/${maxWeek}...`
-          try {
-            const weekMatchups = await espnService.getMatchups(sport, espnLeagueId, season, week)
-            
-            if (weekMatchups && weekMatchups.length > 0) {
-              consecutiveFailures = 0
-              
-              // Transform ESPN matchups to common format
-              const transformedMatchups = weekMatchups.map(m => {
-                const homeTeam = leagueStore.yahooTeams.find(t => t.team_id === m.homeTeamId?.toString())
-                const awayTeam = leagueStore.yahooTeams.find(t => t.team_id === m.awayTeamId?.toString())
-                
-                return {
-                  matchup_id: m.id,
-                  teams: [
-                    {
-                      team_key: homeTeam?.team_key || `espn_${m.homeTeamId}`,
-                      name: homeTeam?.name || 'Home Team',
-                      points: m.homeScore || 0,
-                      logo_url: homeTeam?.logo_url || ''
-                    },
-                    {
-                      team_key: awayTeam?.team_key || `espn_${m.awayTeamId}`,
-                      name: awayTeam?.name || 'Away Team',
-                      points: m.awayScore || 0,
-                      logo_url: awayTeam?.logo_url || ''
-                    }
-                  ],
-                  winner_team_key: m.winner === 'HOME' ? (homeTeam?.team_key || `espn_${m.homeTeamId}`) : 
-                                   m.winner === 'AWAY' ? (awayTeam?.team_key || `espn_${m.awayTeamId}`) : null
-                }
-              })
-              
-              seasonMatchupsObj[week] = transformedMatchups
-              
-              // Build H2H records
-              for (const matchup of transformedMatchups) {
-                const teams = matchup.teams || []
-                if (teams.length === 2) {
-                  const [team1, team2] = teams
-                  const team1Won = (team1.points || 0) > (team2.points || 0)
-                  
-                  // Update team info
-                  if (!allTeams.value[team1.team_key]) {
-                    allTeams.value[team1.team_key] = {
-                      team_key: team1.team_key,
-                      name: team1.name,
-                      logo_url: team1.logo_url || ''
-                    }
-                  }
-                  if (!allTeams.value[team2.team_key]) {
-                    allTeams.value[team2.team_key] = {
-                      team_key: team2.team_key,
-                      name: team2.name,
-                      logo_url: team2.logo_url || ''
-                    }
-                  }
-                  
-                  // Update team1's record vs team2
-                  if (!h2hRecords.value[team1.team_key]) {
-                    h2hRecords.value[team1.team_key] = {}
-                  }
-                  if (!h2hRecords.value[team1.team_key][team2.team_key]) {
-                    h2hRecords.value[team1.team_key][team2.team_key] = { wins: 0, losses: 0 }
-                  }
-                  if (team1Won) h2hRecords.value[team1.team_key][team2.team_key].wins++
-                  else h2hRecords.value[team1.team_key][team2.team_key].losses++
-                  
-                  // Update team2's record vs team1
-                  if (!h2hRecords.value[team2.team_key]) {
-                    h2hRecords.value[team2.team_key] = {}
-                  }
-                  if (!h2hRecords.value[team2.team_key][team1.team_key]) {
-                    h2hRecords.value[team2.team_key][team1.team_key] = { wins: 0, losses: 0 }
-                  }
-                  if (!team1Won) h2hRecords.value[team2.team_key][team1.team_key].wins++
-                  else h2hRecords.value[team2.team_key][team1.team_key].losses++
-                }
-              }
-            } else {
-              consecutiveFailures++
-            }
-          } catch (e) {
-            consecutiveFailures++
+        try {
+          // Fetch teams for this season
+          const teams = await espnService.getTeams(sport, espnLeagueId, season)
+          
+          if (!teams || teams.length === 0) {
+            console.log(`[ESPN] No data for ${season} season`)
+            continue
           }
           
-          if (consecutiveFailures >= 3 && Object.keys(seasonMatchupsObj).length > 0) {
-            console.log(`[ESPN] Stopping at week ${week} - season appears to have ended`)
-            break
+          successCount++
+          
+          // Transform teams to standings format
+          const standings = teams.map((team: any, idx: number) => ({
+            team_key: `espn_${sport}_${espnLeagueId}_${team.id}_${season}`,
+            team_id: team.id.toString(),
+            name: team.name,
+            logo_url: team.logo || '',
+            wins: team.wins || 0,
+            losses: team.losses || 0,
+            ties: team.ties || 0,
+            points_for: team.pointsFor || 0,
+            points_against: team.pointsAgainst || 0,
+            rank: idx + 1,
+            is_champion: idx === 0,
+            // Owner info for proper attribution
+            owner_id: team.primaryOwner || '',
+            owner_name: team.ownerName || team.name
+          }))
+          
+          console.log(`[ESPN] Got standings for ${season}:`, standings.length, 'teams')
+          
+          // Store season data
+          historicalData.value[season.toString()] = {
+            standings: standings,
+            trade_count: 0
           }
+          
+          // Track team info (by owner for multi-season)
+          standings.forEach((team: any) => {
+            // Use owner_id as the key if available, otherwise team_key
+            const trackingKey = team.owner_id || team.team_key
+            
+            if (!currentMembers.value.includes(trackingKey)) {
+              currentMembers.value.push(trackingKey)
+            }
+            
+            // Store team info keyed by owner for proper multi-season tracking
+            if (!allTeams.value[trackingKey]) {
+              allTeams.value[trackingKey] = {
+                team_key: trackingKey,
+                name: team.owner_name || team.name,
+                logo_url: team.logo_url || ''
+              }
+            }
+          })
+          
+          // Load matchups for H2H calculation
+          loadingMessage.value = `Loading ${season} matchups...`
+          const seasonMatchupsObj: Record<number, any[]> = {}
+          
+          // For current season, use current week; for past seasons, load all weeks
+          const isCurrentSeason = season === currentSeason
+          const maxWeek = isCurrentSeason 
+            ? Math.min(leagueStore.currentLeague?.settings?.leg || 25, 25)
+            : 25
+          
+          let consecutiveFailures = 0
+          
+          for (let week = 1; week <= maxWeek; week++) {
+            loadingMessage.value = `Loading ${season} week ${week}...`
+            try {
+              const weekMatchups = await espnService.getMatchups(sport, espnLeagueId, season, week)
+              
+              if (weekMatchups && weekMatchups.length > 0) {
+                consecutiveFailures = 0
+                
+                // Transform ESPN matchups - use owner IDs for tracking
+                const transformedMatchups = weekMatchups.map((m: any) => {
+                  const homeTeamData = standings.find((t: any) => t.team_id === m.homeTeamId?.toString())
+                  const awayTeamData = standings.find((t: any) => t.team_id === m.awayTeamId?.toString())
+                  
+                  // Use owner_id for H2H tracking if available
+                  const homeOwner = homeTeamData?.owner_id || `espn_${m.homeTeamId}`
+                  const awayOwner = awayTeamData?.owner_id || `espn_${m.awayTeamId}`
+                  
+                  return {
+                    matchup_id: m.id,
+                    season: season,
+                    teams: [
+                      {
+                        team_key: homeOwner,
+                        team_id: m.homeTeamId?.toString(),
+                        name: homeTeamData?.owner_name || homeTeamData?.name || 'Home Team',
+                        points: m.homeScore || 0,
+                        logo_url: homeTeamData?.logo_url || ''
+                      },
+                      {
+                        team_key: awayOwner,
+                        team_id: m.awayTeamId?.toString(),
+                        name: awayTeamData?.owner_name || awayTeamData?.name || 'Away Team',
+                        points: m.awayScore || 0,
+                        logo_url: awayTeamData?.logo_url || ''
+                      }
+                    ],
+                    winner_team_key: m.winner === 'HOME' ? homeOwner : 
+                                     m.winner === 'AWAY' ? awayOwner : null
+                  }
+                })
+                
+                seasonMatchupsObj[week] = transformedMatchups
+                
+                // Build H2H records (by owner)
+                for (const matchup of transformedMatchups) {
+                  const teams = matchup.teams || []
+                  if (teams.length === 2) {
+                    const [team1, team2] = teams
+                    
+                    // Skip if either team has no points (bye week or incomplete)
+                    if ((team1.points || 0) === 0 && (team2.points || 0) === 0) continue
+                    
+                    const team1Won = (team1.points || 0) > (team2.points || 0)
+                    
+                    // Update team info
+                    if (!allTeams.value[team1.team_key]) {
+                      allTeams.value[team1.team_key] = {
+                        team_key: team1.team_key,
+                        name: team1.name,
+                        logo_url: team1.logo_url || ''
+                      }
+                    }
+                    if (!allTeams.value[team2.team_key]) {
+                      allTeams.value[team2.team_key] = {
+                        team_key: team2.team_key,
+                        name: team2.name,
+                        logo_url: team2.logo_url || ''
+                      }
+                    }
+                    
+                    // Update team1's record vs team2
+                    if (!h2hRecords.value[team1.team_key]) {
+                      h2hRecords.value[team1.team_key] = {}
+                    }
+                    if (!h2hRecords.value[team1.team_key][team2.team_key]) {
+                      h2hRecords.value[team1.team_key][team2.team_key] = { wins: 0, losses: 0 }
+                    }
+                    if (team1Won) h2hRecords.value[team1.team_key][team2.team_key].wins++
+                    else h2hRecords.value[team1.team_key][team2.team_key].losses++
+                    
+                    // Update team2's record vs team1
+                    if (!h2hRecords.value[team2.team_key]) {
+                      h2hRecords.value[team2.team_key] = {}
+                    }
+                    if (!h2hRecords.value[team2.team_key][team1.team_key]) {
+                      h2hRecords.value[team2.team_key][team1.team_key] = { wins: 0, losses: 0 }
+                    }
+                    if (!team1Won) h2hRecords.value[team2.team_key][team1.team_key].wins++
+                    else h2hRecords.value[team2.team_key][team1.team_key].losses++
+                  }
+                }
+              } else {
+                consecutiveFailures++
+              }
+            } catch (e) {
+              consecutiveFailures++
+            }
+            
+            if (consecutiveFailures >= 3 && Object.keys(seasonMatchupsObj).length > 0) {
+              console.log(`[ESPN] Stopping at week ${week} for ${season} - season appears to have ended`)
+              break
+            }
+          }
+          
+          if (Object.keys(seasonMatchupsObj).length > 0) {
+            allMatchups.value[season.toString()] = seasonMatchupsObj
+          }
+          
+          console.log(`[ESPN] ✓ Loaded ${season}: ${standings.length} teams, ${Object.keys(seasonMatchupsObj).length} weeks`)
+          
+          // Small delay between seasons
+          await new Promise(resolve => setTimeout(resolve, 100))
+          
+        } catch (e) {
+          console.log(`[ESPN] Could not load ${season} season:`, e)
         }
-        
-        if (Object.keys(seasonMatchupsObj).length > 0) {
-          allMatchups.value[season.toString()] = seasonMatchupsObj
-        }
-        
-        console.log(`[ESPN] ✓ Loaded ${season}: ${standings.length} teams, ${Object.keys(seasonMatchupsObj).length} weeks`)
       }
+      
+      console.log(`[ESPN] Finished loading: ${successCount} seasons`)
       
       // Set default award season
       if (availableSeasons.value.length > 0) {
@@ -3657,7 +3713,7 @@ async function loadHistoricalData() {
         selectedWeeklyAwardSeason.value = availableSeasons.value[0]
       }
       
-      loadingMessage.value = `Done! Loaded ${season} season.`
+      loadingMessage.value = `Done! Loaded ${successCount} season${successCount !== 1 ? 's' : ''}.`
       isLoading.value = false
       return
     }
