@@ -773,6 +773,167 @@ export class EspnFantasyService {
     }
   }
 
+  /**
+   * Get player info by player IDs
+   * Uses the kona_player_info view with a filter to get player details
+   */
+  async getPlayersByIds(sport: Sport, leagueId: string | number, season: number, playerIds: number[]): Promise<Map<number, { name: string; position: string; team: string }>> {
+    if (playerIds.length === 0) {
+      return new Map()
+    }
+
+    const cacheKey = `espn_players_${sport}_${leagueId}_${season}_${playerIds.slice(0, 5).join('_')}`
+    const cached = cache.get<Map<number, { name: string; position: string; team: string }>>('espn_players', cacheKey)
+    if (cached) {
+      console.log(`[Cache HIT] ESPN players for ${leagueId}`)
+      return cached
+    }
+
+    try {
+      // Batch player IDs into chunks of 50 to avoid URL length limits
+      const playerMap = new Map<number, { name: string; position: string; team: string }>()
+      const chunkSize = 50
+      
+      for (let i = 0; i < playerIds.length; i += chunkSize) {
+        const chunk = playerIds.slice(i, i + chunkSize)
+        
+        // Use kona_player_info view with filter
+        // ESPN requires the filter to be passed as x-fantasy-filter header (handled by proxy)
+        const filterObj = {
+          players: {
+            filterIds: {
+              value: chunk
+            },
+            filterStatsForCurrentSeasonScoringPeriodId: {
+              value: [0] // Get season stats
+            }
+          }
+        }
+        
+        const data = await this.apiRequestWithFilter(sport, leagueId, season, [ESPN_VIEWS.PLAYER_INFO], filterObj)
+        
+        // Parse player data from response
+        const players = data.players || []
+        console.log(`[ESPN getPlayersByIds] Got ${players.length} players in chunk ${Math.floor(i/chunkSize) + 1}`)
+        
+        for (const entry of players) {
+          const player = entry.player || entry
+          if (player.id) {
+            playerMap.set(player.id, {
+              name: player.fullName || `${player.firstName || ''} ${player.lastName || ''}`.trim() || `Player ${player.id}`,
+              position: this.getPositionName(player.defaultPositionId, sport),
+              team: PRO_TEAMS[player.proTeamId] || 'FA'
+            })
+          }
+        }
+      }
+      
+      console.log(`[ESPN getPlayersByIds] Total: resolved ${playerMap.size} of ${playerIds.length} players`)
+      
+      // Cache for a long time since player names don't change
+      cache.set('espn_players', playerMap, CACHE_TTL.PERMANENT, cacheKey)
+      
+      return playerMap
+    } catch (error) {
+      console.error('Error fetching ESPN players by IDs:', error)
+      return new Map()
+    }
+  }
+
+  /**
+   * Make an API request with a filter header (for player info requests)
+   */
+  private async apiRequestWithFilter(
+    sport: Sport,
+    leagueId: string | number,
+    season: number,
+    views: string[] = [],
+    filter?: any
+  ): Promise<any> {
+    // Get access token
+    let accessToken: string | null = null
+    
+    try {
+      const keys = Object.keys(localStorage)
+      const authKey = keys.find(k => k.startsWith('sb-') && k.endsWith('-auth-token'))
+      if (authKey) {
+        const stored = localStorage.getItem(authKey)
+        if (stored) {
+          const parsed = JSON.parse(stored)
+          accessToken = parsed?.access_token
+        }
+      }
+    } catch (e) {
+      // Try Supabase client
+    }
+    
+    if (!accessToken) {
+      try {
+        const { supabase } = await import('@/lib/supabase')
+        if (supabase) {
+          const { data: { session } } = await supabase.auth.getSession()
+          accessToken = session?.access_token || null
+        }
+      } catch (e) {
+        // Silent fail
+      }
+    }
+    
+    if (!accessToken) {
+      throw new Error('Not authenticated - please sign in')
+    }
+
+    const sportCode = ESPN_SPORT_CODES[sport]
+    let endpoint = `/games/${sportCode}/seasons/${season}/segments/0/leagues/${leagueId}`
+    
+    if (views.length > 0) {
+      const viewParams = views.map(v => `view=${v}`).join('&')
+      endpoint += `?${viewParams}`
+    }
+
+    const proxyUrl = `${this.supabaseUrl}/functions/v1/espn-api`
+    
+    const requestBody: any = { 
+      endpoint,
+      filter: filter ? JSON.stringify(filter) : undefined
+    }
+    
+    if (this.credentials?.espn_s2 && this.credentials?.swid) {
+      requestBody.espn_s2 = this.credentials.espn_s2
+      requestBody.swid = this.credentials.swid
+    }
+
+    const controller = new AbortController()
+    const timeoutId = setTimeout(() => controller.abort(), 20000)
+
+    try {
+      const response = await fetch(proxyUrl, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(requestBody),
+        signal: controller.signal
+      })
+
+      clearTimeout(timeoutId)
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ error: 'Unknown error' }))
+        throw new Error(errorData.error || `ESPN API error: ${response.status}`)
+      }
+
+      return response.json()
+    } catch (error: any) {
+      clearTimeout(timeoutId)
+      if (error.name === 'AbortError') {
+        throw new Error('Request timed out.')
+      }
+      throw error
+    }
+  }
+
   // ============================================================
   // Scoring & Stats Methods
   // ============================================================

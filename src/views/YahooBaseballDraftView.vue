@@ -635,8 +635,15 @@ const effectiveLeagueKey = computed(() => {
   return leagueStore.activeLeagueId
 })
 
-// Check if ESPN platform
-const isEspn = computed(() => leagueStore.activePlatform === 'espn')
+// Check if ESPN platform - use both activePlatform AND league key format for robustness
+const isEspn = computed(() => {
+  // Primary check: activePlatform
+  if (leagueStore.activePlatform === 'espn') return true
+  // Fallback: check if league key starts with 'espn_'
+  const leagueKey = leagueStore.currentLeague?.league_id || leagueStore.activeLeagueId
+  if (leagueKey && leagueKey.startsWith('espn_')) return true
+  return false
+})
 
 // Platform display helpers
 const platformName = computed(() => isEspn.value ? 'ESPN' : 'Yahoo')
@@ -970,7 +977,25 @@ async function loadDraftData() {
         teamMap.set(team.id, team)
       }
       
-      // Try to get roster data for player positions
+      // Collect all player IDs that need name resolution
+      const playerIdsNeedingNames = espnDraftPicks
+        .filter((p: any) => !p.playerName || p.playerName.startsWith('Player '))
+        .map((p: any) => p.playerId)
+      
+      console.log('[ESPN DRAFT] Need to resolve names for', playerIdsNeedingNames.length, 'players')
+      
+      // Fetch player info for all drafted players
+      let playerInfoMap = new Map<number, { name: string; position: string; team: string }>()
+      if (playerIdsNeedingNames.length > 0) {
+        try {
+          playerInfoMap = await espnService.getPlayersByIds(sport, espnLeagueId, season, playerIdsNeedingNames)
+          console.log('[ESPN DRAFT] Resolved', playerInfoMap.size, 'player names')
+        } catch (e) {
+          console.log('[ESPN DRAFT] Could not resolve player names:', e)
+        }
+      }
+      
+      // Also try to get roster data for additional player info (positions, etc.)
       let playerPositionMap = new Map<number, string>()
       try {
         const teamsWithRosters = await espnService.getTeamsWithRosters(sport, espnLeagueId, season)
@@ -978,6 +1003,14 @@ async function loadDraftData() {
           if (team.roster) {
             for (const player of team.roster) {
               playerPositionMap.set(player.playerId, player.position)
+              // Also use roster data for names if we didn't get them from getPlayersByIds
+              if (!playerInfoMap.has(player.playerId) && player.fullName) {
+                playerInfoMap.set(player.playerId, {
+                  name: player.fullName,
+                  position: player.position,
+                  team: player.proTeam
+                })
+              }
             }
           }
         }
@@ -993,7 +1026,7 @@ async function loadDraftData() {
       // Initialize team points
       for (const team of teams) {
         // Use pointsFor from team record if available
-        const pointsFor = team.record?.pointsFor || 0
+        const pointsFor = team.pointsFor || 0
         teamTotalPoints.set(team.id, pointsFor)
       }
       
@@ -1032,8 +1065,17 @@ async function loadDraftData() {
         const round = pick.roundId
         const pickInRound = pick.roundPickNumber
         
-        // Get position from draft data or roster lookup
-        const position = pick.position || playerPositionMap.get(pick.playerId) || 'Unknown'
+        // Get player info from our resolved data
+        const playerInfo = playerInfoMap.get(pick.playerId)
+        const playerName = pick.playerName && !pick.playerName.startsWith('Player ') 
+          ? pick.playerName 
+          : (playerInfo?.name || `Player ${pick.playerId}`)
+        
+        // Get position from multiple sources
+        const position = pick.position || playerInfo?.position || playerPositionMap.get(pick.playerId) || 'Unknown'
+        
+        // Get MLB team
+        const mlbTeam = playerInfo?.team || ''
         
         // For ESPN, estimate player value based on overall pick position
         // Earlier picks from successful teams = good picks
@@ -1050,9 +1092,9 @@ async function loadDraftData() {
           team_name: team?.name || `Team ${pick.teamId}`,
           team_logo: team?.logo || '',
           player_key: `espn_player_${pick.playerId}`,
-          player_name: pick.playerName || `Player ${pick.playerId}`,
+          player_name: playerName,
           position,
-          mlb_team: '',
+          mlb_team: mlbTeam,
           headshot: '',
           totalPoints: teamPoints / picksByTeam.get(pick.teamId)!.length, // Estimate per-player contribution
           score,

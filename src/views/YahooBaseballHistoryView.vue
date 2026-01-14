@@ -1007,8 +1007,15 @@ import html2canvas from 'html2canvas'
 const leagueStore = useLeagueStore()
 const authStore = useAuthStore()
 
-// Check if ESPN platform
-const isEspn = computed(() => leagueStore.activePlatform === 'espn')
+// Check if ESPN platform - use both activePlatform AND league key format for robustness
+const isEspn = computed(() => {
+  // Primary check: activePlatform
+  if (leagueStore.activePlatform === 'espn') return true
+  // Fallback: check if league key starts with 'espn_'
+  const leagueKey = leagueStore.currentLeague?.league_id || leagueStore.activeLeagueId
+  if (leagueKey && leagueKey.startsWith('espn_')) return true
+  return false
+})
 
 // Platform display
 const platformName = computed(() => isEspn.value ? 'ESPN' : 'Yahoo')
