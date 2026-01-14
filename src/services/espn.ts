@@ -513,6 +513,59 @@ export class EspnFantasyService {
   }
 
   /**
+   * Get teams for a historical season - tries both regular and leagueHistory endpoints
+   */
+  async getHistoricalTeams(sport: Sport, leagueId: string | number, season: number): Promise<EspnTeam[]> {
+    const cacheKey = `espn_hist_teams_${sport}_${leagueId}_${season}`
+    const cached = cache.get<EspnTeam[]>('espn_teams', cacheKey)
+    if (cached) {
+      console.log(`[Cache HIT] ESPN historical teams for ${leagueId} ${season}`)
+      return cached
+    }
+
+    // Try regular endpoint first
+    try {
+      console.log(`[ESPN] Trying regular endpoint for ${season}...`)
+      const data = await this.apiRequest(sport, leagueId, season, [ESPN_VIEWS.TEAM, ESPN_VIEWS.STANDINGS])
+      
+      if (data && data.teams && data.teams.length > 0) {
+        const teams = this.parseTeams(data)
+        cache.set('espn_teams', teams, CACHE_TTL.STANDINGS, cacheKey)
+        console.log(`[ESPN] Regular endpoint worked for ${season}`)
+        return teams
+      }
+    } catch (error: any) {
+      console.log(`[ESPN] Regular endpoint failed for ${season}:`, error?.message)
+    }
+
+    // Try leagueHistory endpoint
+    try {
+      console.log(`[ESPN] Trying leagueHistory endpoint for ${season}...`)
+      const data = await this.apiRequest(sport, leagueId, season, [ESPN_VIEWS.TEAM, ESPN_VIEWS.STANDINGS], undefined, true)
+      
+      if (data && data.teams && data.teams.length > 0) {
+        const teams = this.parseTeams(data)
+        cache.set('espn_teams', teams, CACHE_TTL.STANDINGS, cacheKey)
+        console.log(`[ESPN] leagueHistory endpoint worked for ${season}`)
+        return teams
+      }
+      
+      // leagueHistory returns array format
+      if (Array.isArray(data) && data.length > 0 && data[0].teams) {
+        const teams = this.parseTeams(data[0])
+        cache.set('espn_teams', teams, CACHE_TTL.STANDINGS, cacheKey)
+        console.log(`[ESPN] leagueHistory endpoint (array) worked for ${season}`)
+        return teams
+      }
+    } catch (error: any) {
+      console.log(`[ESPN] leagueHistory endpoint failed for ${season}:`, error?.message)
+    }
+
+    console.log(`[ESPN] No data available for ${season}`)
+    return []
+  }
+
+  /**
    * Get teams with full rosters
    */
   async getTeamsWithRosters(sport: Sport, leagueId: string | number, season: number, week?: number): Promise<EspnTeam[]> {
@@ -587,6 +640,61 @@ export class EspnFantasyService {
       console.error('Error fetching ESPN matchups:', error)
       throw error
     }
+  }
+
+  /**
+   * Get matchups for a historical season - tries both regular and leagueHistory endpoints
+   */
+  async getHistoricalMatchups(sport: Sport, leagueId: string | number, season: number, week: number): Promise<EspnMatchup[]> {
+    const cacheKey = `espn_hist_matchups_${sport}_${leagueId}_${season}_${week}`
+    const cached = cache.get<EspnMatchup[]>('espn_matchups', cacheKey)
+    if (cached) {
+      return cached
+    }
+
+    // Try regular endpoint first
+    try {
+      const data = await this.apiRequest(
+        sport, 
+        leagueId, 
+        season, 
+        [ESPN_VIEWS.MATCHUP, ESPN_VIEWS.MATCHUP_SCORE],
+        week
+      )
+      
+      const matchups = this.parseMatchups(data, week)
+      if (matchups.length > 0) {
+        cache.set('espn_matchups', matchups, CACHE_TTL.COMPLETED, cacheKey)
+        return matchups
+      }
+    } catch (error: any) {
+      // Silent fail, try historical endpoint
+    }
+
+    // Try leagueHistory endpoint
+    try {
+      const data = await this.apiRequest(
+        sport, 
+        leagueId, 
+        season, 
+        [ESPN_VIEWS.MATCHUP, ESPN_VIEWS.MATCHUP_SCORE],
+        week,
+        true // historical flag
+      )
+      
+      // leagueHistory returns array format
+      const scheduleData = Array.isArray(data) ? data[0] : data
+      const matchups = this.parseMatchups(scheduleData, week)
+      
+      if (matchups.length > 0) {
+        cache.set('espn_matchups', matchups, CACHE_TTL.COMPLETED, cacheKey)
+        return matchups
+      }
+    } catch (error: any) {
+      // Silent fail
+    }
+
+    return []
   }
 
   /**

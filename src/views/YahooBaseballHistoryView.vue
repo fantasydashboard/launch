@@ -3520,11 +3520,17 @@ async function loadHistoricalData() {
         loadingMessage.value = `Loading ${season} season... (${successCount} loaded)`
         
         try {
-          // Fetch teams for this season
-          const teams = await espnService.getTeams(sport, espnLeagueId, season)
+          // Fetch teams for this season - use historical method for past seasons
+          console.log(`[ESPN History] Fetching teams for ${season}...`)
+          const isCurrentSeason = season === currentSeason
+          const teams = isCurrentSeason 
+            ? await espnService.getTeams(sport, espnLeagueId, season)
+            : await espnService.getHistoricalTeams(sport, espnLeagueId, season)
+          
+          console.log(`[ESPN History] ${season} returned ${teams?.length || 0} teams`)
           
           if (!teams || teams.length === 0) {
-            console.log(`[ESPN] No data for ${season} season`)
+            console.log(`[ESPN History] No data for ${season} season - skipping`)
             continue
           }
           
@@ -3595,7 +3601,7 @@ async function loadHistoricalData() {
           const seasonMatchupsObj: Record<number, any[]> = {}
           
           // For current season, use current week; for past seasons, load all weeks
-          const isCurrentSeason = season === currentSeason
+          // Note: isCurrentSeason already defined above when fetching teams
           const maxWeek = isCurrentSeason 
             ? Math.min(leagueStore.currentLeague?.settings?.leg || 25, 25)
             : 25
@@ -3605,7 +3611,10 @@ async function loadHistoricalData() {
           for (let week = 1; week <= maxWeek; week++) {
             loadingMessage.value = `Loading ${season} week ${week}...`
             try {
-              const weekMatchups = await espnService.getMatchups(sport, espnLeagueId, season, week)
+              // Use historical method for past seasons
+              const weekMatchups = isCurrentSeason
+                ? await espnService.getMatchups(sport, espnLeagueId, season, week)
+                : await espnService.getHistoricalMatchups(sport, espnLeagueId, season, week)
               
               if (weekMatchups && weekMatchups.length > 0) {
                 consecutiveFailures = 0
