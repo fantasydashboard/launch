@@ -980,9 +980,9 @@ async function loadDraftData() {
       
       console.log('[ESPN DRAFT] Fetching draft for:', { sport, espnLeagueId, season })
       
-      // Get draft picks
-      const espnDraftPicks = await espnService.getDraft(sport, espnLeagueId, season)
-      console.log('[ESPN DRAFT] Got', espnDraftPicks.length, 'draft picks')
+      // Get draft picks with player info pre-resolved
+      const espnDraftPicks = await espnService.getDraftWithPlayers(sport, espnLeagueId, season)
+      console.log('[ESPN DRAFT] Got', espnDraftPicks.length, 'draft picks with player info')
       
       if (!espnDraftPicks || espnDraftPicks.length === 0) {
         console.log('[ESPN DRAFT] No draft data available')
@@ -990,6 +990,14 @@ async function loadDraftData() {
         isLoading.value = false
         return
       }
+      
+      // Debug first few picks
+      console.log('[ESPN DRAFT] Sample picks:', espnDraftPicks.slice(0, 5).map(p => ({
+        pick: p.overallPickNumber,
+        name: p.playerName,
+        position: p.position,
+        playerId: p.playerId
+      })))
       
       // Get teams for mapping
       const teams = await espnService.getTeams(sport, espnLeagueId, season)
@@ -1002,71 +1010,33 @@ async function loadDraftData() {
         teamMap.set(team.id, team)
       }
       
-      // Collect ALL player IDs for name resolution (not just ones missing names)
-      const allPlayerIds = espnDraftPicks.map((p: any) => p.playerId)
-      console.log('[ESPN DRAFT] Fetching info for ALL', allPlayerIds.length, 'drafted players')
-      
-      // Fetch player info for all drafted players
-      let playerInfoMap = new Map<number, { name: string; position: string; team: string }>()
+      // Get teams with rosters for player season points
+      let playerSeasonPoints = new Map<number, number>()
       try {
-        const result = await espnService.getPlayersByIds(sport, espnLeagueId, season, allPlayerIds)
-        // Ensure result is a Map (cache might return plain object)
-        if (result instanceof Map) {
-          playerInfoMap = result
-        } else if (result && typeof result === 'object') {
-          // Convert plain object back to Map
-          playerInfoMap = new Map(Object.entries(result).map(([k, v]) => [parseInt(k), v as { name: string; position: string; team: string }]))
-        }
-        console.log('[ESPN DRAFT] Resolved', playerInfoMap.size, 'player names from getPlayersByIds')
-      } catch (e) {
-        console.log('[ESPN DRAFT] Could not resolve player names from getPlayersByIds:', e)
-      }
-      
-      // Also try to get roster data for additional player info (positions, etc.)
-      let playerPositionMap = new Map<number, string>()
-      try {
+        // Get all matchups to calculate total points per player
         const teamsWithRosters = await espnService.getTeamsWithRosters(sport, espnLeagueId, season)
         for (const team of teamsWithRosters) {
           if (team.roster) {
             for (const player of team.roster) {
-              playerPositionMap.set(player.playerId, player.position)
-              // Also use roster data for names if we didn't get them from getPlayersByIds
-              if (!playerInfoMap.has(player.playerId) && player.fullName) {
-                playerInfoMap.set(player.playerId, {
-                  name: player.fullName,
-                  position: player.position,
-                  team: player.proTeam
-                })
+              // actualPoints contains season total in some cases
+              if (player.actualPoints && player.actualPoints > 0) {
+                playerSeasonPoints.set(player.playerId, player.actualPoints)
               }
             }
           }
         }
-        console.log('[ESPN DRAFT] Got positions for', playerPositionMap.size, 'players from rosters')
+        console.log('[ESPN DRAFT] Got season points for', playerSeasonPoints.size, 'players from rosters')
       } catch (e) {
-        console.log('[ESPN DRAFT] Could not get roster data for positions:', e)
-      }
-      
-      // Log unresolved players
-      const unresolvedPlayers = allPlayerIds.filter((id: number) => !playerInfoMap.has(id))
-      if (unresolvedPlayers.length > 0) {
-        console.log('[ESPN DRAFT] Still unresolved players:', unresolvedPlayers.length, unresolvedPlayers.slice(0, 10))
+        console.log('[ESPN DRAFT] Could not get player season points:', e)
       }
       
       // Get matchups to calculate total points per team
-      const totalWeeks = sport === 'baseball' ? 24 : 17
       const teamTotalPoints = new Map<number, number>()
-      
-      // Initialize team points
       for (const team of teams) {
-        // Use pointsFor from team record if available
         const pointsFor = team.pointsFor || 0
         teamTotalPoints.set(team.id, pointsFor)
       }
       
-      console.log('[ESPN DRAFT] Team point totals:', [...teamTotalPoints.entries()])
-      
-      // Process draft picks
-      // For ESPN, we'll use a simpler scoring approach based on draft position vs team performance
       const numTeams = teams.length || 12
       
       // Calculate team performance ranks (by total points)
@@ -1076,7 +1046,7 @@ async function loadDraftData() {
       
       const teamRankMap = new Map(teamRanks.map(t => [t.teamId, t.rank]))
       
-      // Group picks by team to calculate team-level draft performance
+      // Group picks by team
       const picksByTeam = new Map<number, any[]>()
       for (const pick of espnDraftPicks) {
         if (!picksByTeam.has(pick.teamId)) {
@@ -1087,21 +1057,19 @@ async function loadDraftData() {
       
       // ========== POSITION RANK TRACKING ==========
       // Calculate position_rank_drafted - the order each position was drafted
-      // First, we need to resolve positions for all picks to track position draft order
       const positionDraftOrder = new Map<string, number[]>() // position -> array of playerIds in draft order
       
-      // First pass: resolve positions and build draft order by position
-      for (const pick of espnDraftPicks) {
-        const playerInfo = playerInfoMap.get(pick.playerId)
-        const position = pick.position || playerInfo?.position || playerPositionMap.get(pick.playerId) || 'Unknown'
-        
+      // Build draft order by position (picks are in draft order by overallPickNumber)
+      const sortedPicks = [...espnDraftPicks].sort((a, b) => a.overallPickNumber - b.overallPickNumber)
+      for (const pick of sortedPicks) {
+        const position = pick.position || 'Unknown'
         if (!positionDraftOrder.has(position)) {
           positionDraftOrder.set(position, [])
         }
         positionDraftOrder.get(position)!.push(pick.playerId)
       }
       
-      // Now build a map of playerId -> position_rank_drafted
+      // Build a map of playerId -> position_rank_drafted
       const positionRankDraftedMap = new Map<number, number>()
       for (const [position, playerIds] of positionDraftOrder) {
         playerIds.forEach((playerId, index) => {
@@ -1109,44 +1077,71 @@ async function loadDraftData() {
         })
       }
       
-      console.log('[ESPN DRAFT] Position draft order calculated:', 
-        [...positionDraftOrder.entries()].map(([pos, ids]) => `${pos}: ${ids.length} players`).join(', ')
+      console.log('[ESPN DRAFT] Position draft order:', 
+        [...positionDraftOrder.entries()].map(([pos, ids]) => `${pos}: ${ids.length}`).join(', ')
       )
       
-      // For individual pick scoring, we'll estimate based on:
-      // Pick value = expected team finish based on draft position vs actual team finish
-      // This is a team-level approximation since ESPN doesn't easily expose player season totals
+      // ========== CURRENT POSITION RANK (based on points) ==========
+      // Group players by position and sort by season points to get current rank
+      const currentPositionRankMap = new Map<number, number>()
       
-      draftPicks.value = espnDraftPicks.map((pick: any) => {
+      // First, collect points for all drafted players
+      const playerPointsData: { playerId: number; position: string; points: number }[] = []
+      for (const pick of espnDraftPicks) {
+        const points = playerSeasonPoints.get(pick.playerId) || 0
+        playerPointsData.push({
+          playerId: pick.playerId,
+          position: pick.position || 'Unknown',
+          points
+        })
+      }
+      
+      // Group by position and sort by points
+      const positionGroups = new Map<string, typeof playerPointsData>()
+      for (const data of playerPointsData) {
+        if (!positionGroups.has(data.position)) {
+          positionGroups.set(data.position, [])
+        }
+        positionGroups.get(data.position)!.push(data)
+      }
+      
+      // Calculate current rank within each position
+      for (const [position, players] of positionGroups) {
+        const sortedByPoints = [...players].sort((a, b) => b.points - a.points)
+        sortedByPoints.forEach((player, index) => {
+          currentPositionRankMap.set(player.playerId, index + 1)
+        })
+      }
+      
+      console.log('[ESPN DRAFT] Current position ranks calculated for', currentPositionRankMap.size, 'players')
+      
+      // Process draft picks
+      draftPicks.value = sortedPicks.map((pick: any) => {
         const team = teamMap.get(pick.teamId)
         const teamRank = teamRankMap.get(pick.teamId) || numTeams
         const teamPoints = teamTotalPoints.get(pick.teamId) || 0
         
-        // Calculate round and pick in round
         const round = pick.roundId
         const pickInRound = pick.roundPickNumber
         
-        // Get player info from our resolved data
-        const playerInfo = playerInfoMap.get(pick.playerId)
-        const playerName = pick.playerName && !pick.playerName.startsWith('Player ') 
-          ? pick.playerName 
-          : (playerInfo?.name || `Player ${pick.playerId}`)
-        
-        // Get position from multiple sources
-        const position = pick.position || playerInfo?.position || playerPositionMap.get(pick.playerId) || 'Unknown'
-        
-        // Get MLB team
-        const mlbTeam = playerInfo?.team || ''
-        
-        // Get position rank at draft time
+        const position = pick.position || 'Unknown'
         const position_rank_drafted = positionRankDraftedMap.get(pick.playerId) || 0
+        const current_position_rank = currentPositionRankMap.get(pick.playerId) || 999
         
-        // For ESPN, estimate player value based on overall pick position
-        // Earlier picks from successful teams = good picks
-        // Later picks from successful teams = steals
-        // Earlier picks from poor teams = reaches
-        const expectedRank = Math.ceil(pick.overallPickNumber / Math.max(1, espnDraftPicks.length / numTeams))
-        const score = expectedRank - teamRank
+        // Player points from roster data
+        const playerPoints = playerSeasonPoints.get(pick.playerId) || 0
+        
+        // Calculate score based on position rank change (like football)
+        // Positive = player performed better than where they were drafted at their position
+        // Negative = player performed worse than where they were drafted
+        let score = 0
+        if (position_rank_drafted > 0 && current_position_rank < 999) {
+          score = position_rank_drafted - current_position_rank
+        } else {
+          // Fallback to team-based scoring
+          const expectedRank = Math.ceil(pick.overallPickNumber / Math.max(1, espnDraftPicks.length / numTeams))
+          score = expectedRank - teamRank
+        }
         
         return {
           pick: pick.overallPickNumber,
@@ -1156,13 +1151,13 @@ async function loadDraftData() {
           team_name: team?.name || `Team ${pick.teamId}`,
           team_logo: team?.logo || '',
           player_key: `espn_player_${pick.playerId}`,
-          player_name: playerName,
+          player_name: pick.playerName || `Player ${pick.playerId}`,
           position,
           position_rank_drafted,
-          current_position_rank: 999, // ESPN doesn't provide individual player stats easily
-          mlb_team: mlbTeam,
+          current_position_rank,
+          mlb_team: pick.proTeam || '',
           headshot: '',
-          totalPoints: teamPoints / picksByTeam.get(pick.teamId)!.length, // Estimate per-player contribution
+          totalPoints: playerPoints,
           score,
           grade: calculateGrade(score),
           keeper: pick.keeper,
@@ -1170,7 +1165,11 @@ async function loadDraftData() {
         }
       })
       
-      console.log('[ESPN DRAFT] Processed', draftPicks.value.length, 'draft picks with position ranks')
+      // Log summary
+      const unresolvedCount = draftPicks.value.filter(p => p.player_name.startsWith('Player ')).length
+      const unknownPosCount = draftPicks.value.filter(p => p.position === 'Unknown').length
+      console.log('[ESPN DRAFT] Processed', draftPicks.value.length, 'picks. Unresolved names:', unresolvedCount, 'Unknown positions:', unknownPosCount)
+      
       isLoading.value = false
       return
     }
