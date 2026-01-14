@@ -152,8 +152,16 @@
                     #{{ getPickForRound(team.team_key, round)?.pick }}
                   </span>
                 </div>
-                <div v-if="getPickForRound(team.team_key, round)?.score !== undefined" class="mt-1">
+                <!-- Position Rank Row -->
+                <div class="flex items-center justify-between mt-1">
+                  <span class="text-[9px] text-dark-textMuted">
+                    {{ getPickForRound(team.team_key, round)?.position }}{{ getPickForRound(team.team_key, round)?.position_rank_drafted || '?' }}
+                    <template v-if="getPickForRound(team.team_key, round)?.current_position_rank && getPickForRound(team.team_key, round)?.current_position_rank < 900">
+                      → {{ getPickForRound(team.team_key, round)?.position }}{{ getPickForRound(team.team_key, round)?.current_position_rank }}
+                    </template>
+                  </span>
                   <span 
+                    v-if="getPickForRound(team.team_key, round)?.score !== undefined"
                     class="text-xs font-bold"
                     :class="getPickForRound(team.team_key, round)?.score >= 0 ? 'text-green-400' : 'text-red-400'"
                   >
@@ -253,7 +261,7 @@
                 <th class="text-left p-3 text-sm font-semibold text-dark-textMuted">Pick</th>
                 <th class="text-left p-3 text-sm font-semibold text-dark-textMuted">Player</th>
                 <th class="text-left p-3 text-sm font-semibold text-dark-textMuted">Team</th>
-                <th class="text-center p-3 text-sm font-semibold text-dark-textMuted">Pos</th>
+                <th class="text-center p-3 text-sm font-semibold text-dark-textMuted">Pos Rank</th>
                 <th class="text-center p-3 text-sm font-semibold text-dark-textMuted">Score</th>
                 <th class="text-center p-3 text-sm font-semibold text-dark-textMuted">Grade</th>
               </tr>
@@ -279,12 +287,14 @@
                 </td>
                 <td class="p-3 text-sm text-dark-textMuted">{{ pick.team_name }}</td>
                 <td class="p-3 text-center">
-                  <span 
-                    class="text-xs px-2 py-1 rounded font-bold"
-                    :class="getPositionClass(pick.position)"
-                  >
-                    {{ pick.position }}
-                  </span>
+                  <div class="flex flex-col items-center">
+                    <span 
+                      class="text-xs px-2 py-1 rounded font-bold"
+                      :class="getPositionClass(pick.position)"
+                    >
+                      {{ pick.position }}{{ pick.position_rank_drafted || '' }}
+                    </span>
+                  </div>
                 </td>
                 <td class="p-3 text-center">
                   <span 
@@ -563,15 +573,20 @@
           <!-- Modal Content -->
           <div class="p-6 overflow-y-auto max-h-[calc(90vh-120px)] space-y-4">
             <!-- Draft Info & Grade -->
-            <div class="grid grid-cols-2 gap-4">
+            <div class="grid grid-cols-3 gap-4">
               <div class="bg-dark-border/30 rounded-xl p-4">
                 <div class="text-sm text-dark-textMuted mb-1">Draft Pick</div>
                 <div class="text-2xl font-bold text-dark-text">R{{ selectedPick.round }}.{{ selectedPick.pickInRound }}</div>
                 <div class="text-xs text-dark-textMuted">Overall #{{ selectedPick.pick }}</div>
               </div>
               <div class="bg-dark-border/30 rounded-xl p-4 text-center">
+                <div class="text-sm text-dark-textMuted mb-1">Position Rank</div>
+                <div class="text-2xl font-bold text-yellow-400">{{ selectedPick.position }}{{ selectedPick.position_rank_drafted || '?' }}</div>
+                <div class="text-xs text-dark-textMuted">at draft</div>
+              </div>
+              <div class="bg-dark-border/30 rounded-xl p-4 text-center">
                 <div class="text-sm text-dark-textMuted mb-1">Pick Grade</div>
-                <div class="text-5xl font-black" :class="getGradeClass(selectedPick.grade)">{{ selectedPick.grade }}</div>
+                <div class="text-4xl font-black" :class="getGradeClass(selectedPick.grade)">{{ selectedPick.grade }}</div>
               </div>
             </div>
 
@@ -987,29 +1002,24 @@ async function loadDraftData() {
         teamMap.set(team.id, team)
       }
       
-      // Collect all player IDs that need name resolution
-      const playerIdsNeedingNames = espnDraftPicks
-        .filter((p: any) => !p.playerName || p.playerName.startsWith('Player '))
-        .map((p: any) => p.playerId)
-      
-      console.log('[ESPN DRAFT] Need to resolve names for', playerIdsNeedingNames.length, 'players')
+      // Collect ALL player IDs for name resolution (not just ones missing names)
+      const allPlayerIds = espnDraftPicks.map((p: any) => p.playerId)
+      console.log('[ESPN DRAFT] Fetching info for ALL', allPlayerIds.length, 'drafted players')
       
       // Fetch player info for all drafted players
       let playerInfoMap = new Map<number, { name: string; position: string; team: string }>()
-      if (playerIdsNeedingNames.length > 0) {
-        try {
-          const result = await espnService.getPlayersByIds(sport, espnLeagueId, season, playerIdsNeedingNames)
-          // Ensure result is a Map (cache might return plain object)
-          if (result instanceof Map) {
-            playerInfoMap = result
-          } else if (result && typeof result === 'object') {
-            // Convert plain object back to Map
-            playerInfoMap = new Map(Object.entries(result).map(([k, v]) => [parseInt(k), v as { name: string; position: string; team: string }]))
-          }
-          console.log('[ESPN DRAFT] Resolved', playerInfoMap.size, 'player names')
-        } catch (e) {
-          console.log('[ESPN DRAFT] Could not resolve player names:', e)
+      try {
+        const result = await espnService.getPlayersByIds(sport, espnLeagueId, season, allPlayerIds)
+        // Ensure result is a Map (cache might return plain object)
+        if (result instanceof Map) {
+          playerInfoMap = result
+        } else if (result && typeof result === 'object') {
+          // Convert plain object back to Map
+          playerInfoMap = new Map(Object.entries(result).map(([k, v]) => [parseInt(k), v as { name: string; position: string; team: string }]))
         }
+        console.log('[ESPN DRAFT] Resolved', playerInfoMap.size, 'player names from getPlayersByIds')
+      } catch (e) {
+        console.log('[ESPN DRAFT] Could not resolve player names from getPlayersByIds:', e)
       }
       
       // Also try to get roster data for additional player info (positions, etc.)
@@ -1034,6 +1044,12 @@ async function loadDraftData() {
         console.log('[ESPN DRAFT] Got positions for', playerPositionMap.size, 'players from rosters')
       } catch (e) {
         console.log('[ESPN DRAFT] Could not get roster data for positions:', e)
+      }
+      
+      // Log unresolved players
+      const unresolvedPlayers = allPlayerIds.filter((id: number) => !playerInfoMap.has(id))
+      if (unresolvedPlayers.length > 0) {
+        console.log('[ESPN DRAFT] Still unresolved players:', unresolvedPlayers.length, unresolvedPlayers.slice(0, 10))
       }
       
       // Get matchups to calculate total points per team
@@ -1069,6 +1085,34 @@ async function loadDraftData() {
         picksByTeam.get(pick.teamId)!.push(pick)
       }
       
+      // ========== POSITION RANK TRACKING ==========
+      // Calculate position_rank_drafted - the order each position was drafted
+      // First, we need to resolve positions for all picks to track position draft order
+      const positionDraftOrder = new Map<string, number[]>() // position -> array of playerIds in draft order
+      
+      // First pass: resolve positions and build draft order by position
+      for (const pick of espnDraftPicks) {
+        const playerInfo = playerInfoMap.get(pick.playerId)
+        const position = pick.position || playerInfo?.position || playerPositionMap.get(pick.playerId) || 'Unknown'
+        
+        if (!positionDraftOrder.has(position)) {
+          positionDraftOrder.set(position, [])
+        }
+        positionDraftOrder.get(position)!.push(pick.playerId)
+      }
+      
+      // Now build a map of playerId -> position_rank_drafted
+      const positionRankDraftedMap = new Map<number, number>()
+      for (const [position, playerIds] of positionDraftOrder) {
+        playerIds.forEach((playerId, index) => {
+          positionRankDraftedMap.set(playerId, index + 1)
+        })
+      }
+      
+      console.log('[ESPN DRAFT] Position draft order calculated:', 
+        [...positionDraftOrder.entries()].map(([pos, ids]) => `${pos}: ${ids.length} players`).join(', ')
+      )
+      
       // For individual pick scoring, we'll estimate based on:
       // Pick value = expected team finish based on draft position vs actual team finish
       // This is a team-level approximation since ESPN doesn't easily expose player season totals
@@ -1094,6 +1138,9 @@ async function loadDraftData() {
         // Get MLB team
         const mlbTeam = playerInfo?.team || ''
         
+        // Get position rank at draft time
+        const position_rank_drafted = positionRankDraftedMap.get(pick.playerId) || 0
+        
         // For ESPN, estimate player value based on overall pick position
         // Earlier picks from successful teams = good picks
         // Later picks from successful teams = steals
@@ -1111,6 +1158,8 @@ async function loadDraftData() {
           player_key: `espn_player_${pick.playerId}`,
           player_name: playerName,
           position,
+          position_rank_drafted,
+          current_position_rank: 999, // ESPN doesn't provide individual player stats easily
           mlb_team: mlbTeam,
           headshot: '',
           totalPoints: teamPoints / picksByTeam.get(pick.teamId)!.length, // Estimate per-player contribution
@@ -1121,7 +1170,7 @@ async function loadDraftData() {
         }
       })
       
-      console.log('[ESPN DRAFT] Processed', draftPicks.value.length, 'draft picks')
+      console.log('[ESPN DRAFT] Processed', draftPicks.value.length, 'draft picks with position ranks')
       isLoading.value = false
       return
     }
@@ -1223,13 +1272,15 @@ async function loadDraftData() {
     }
     
     // Calculate points for each pick and sort to get rankings
-    const pickPointsData: { pick: number, points: number, playerKey: string }[] = []
+    const pickPointsData: { pick: number, points: number, playerKey: string, position: string }[] = []
     for (const pick of draftResults.picks) {
       const stat = stats.get(pick.player_key)
+      const player = players.get(pick.player_key) || {}
       pickPointsData.push({
         pick: pick.pick,
         points: stat?.total_points || 0,
-        playerKey: pick.player_key
+        playerKey: pick.player_key,
+        position: player.position || 'Unknown'
       })
     }
     
@@ -1240,7 +1291,47 @@ async function loadDraftData() {
       actualRankMap.set(p.playerKey, idx + 1)
     })
     
+    // ========== POSITION RANK TRACKING FOR YAHOO ==========
+    // Calculate position_rank_drafted - the order each position was drafted
+    const yahooPositionDraftOrder = new Map<string, string[]>() // position -> array of playerKeys in draft order
+    
+    // Build draft order by position (picks are already in draft order)
+    for (const pick of draftResults.picks) {
+      const player = players.get(pick.player_key) || {}
+      const position = player.position || 'Unknown'
+      
+      if (!yahooPositionDraftOrder.has(position)) {
+        yahooPositionDraftOrder.set(position, [])
+      }
+      yahooPositionDraftOrder.get(position)!.push(pick.player_key)
+    }
+    
+    // Build a map of playerKey -> position_rank_drafted
+    const yahooPositionRankDraftedMap = new Map<string, number>()
+    for (const [position, playerKeys] of yahooPositionDraftOrder) {
+      playerKeys.forEach((playerKey, index) => {
+        yahooPositionRankDraftedMap.set(playerKey, index + 1)
+      })
+    }
+    
+    // Calculate current position ranks based on points within each position
+    const currentPositionRankMap = new Map<string, number>()
+    for (const [position, playerKeys] of yahooPositionDraftOrder) {
+      // Sort players of this position by their total points
+      const positionPlayers = playerKeys.map(pk => ({
+        playerKey: pk,
+        points: pickPointsData.find(p => p.playerKey === pk)?.points || 0
+      })).sort((a, b) => b.points - a.points)
+      
+      positionPlayers.forEach((player, index) => {
+        currentPositionRankMap.set(player.playerKey, index + 1)
+      })
+    }
+    
     console.log('Top 5 players by points:', sortedByPoints.slice(0, 5))
+    console.log('[YAHOO DRAFT] Position draft order calculated:', 
+      [...yahooPositionDraftOrder.entries()].map(([pos, keys]) => `${pos}: ${keys.length} players`).join(', ')
+    )
     
     // Process draft picks with player info and scores
     const numTeams = standings.length || 12
@@ -1259,6 +1350,10 @@ async function loadDraftData() {
       const actualRank = actualRankMap.get(pick.player_key) || expectedRank
       const score = expectedRank - actualRank
       
+      // Get position ranks
+      const position_rank_drafted = yahooPositionRankDraftedMap.get(pick.player_key) || 0
+      const current_position_rank = currentPositionRankMap.get(pick.player_key) || 999
+      
       return {
         pick: pick.pick,
         round: pick.round,
@@ -1269,6 +1364,8 @@ async function loadDraftData() {
         player_key: pick.player_key,
         player_name: player.name || 'Unknown Player',
         position: player.position || 'Unknown',
+        position_rank_drafted,
+        current_position_rank,
         mlb_team: player.team || '',
         headshot: player.headshot || '',
         totalPoints,
