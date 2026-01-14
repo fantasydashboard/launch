@@ -3481,7 +3481,20 @@ async function downloadHeadToHead() {
 
 async function loadHistoricalData() {
   console.log('loadHistoricalData called')
+  
+  // Prevent concurrent executions
+  if (isLoading.value) {
+    console.log('loadHistoricalData already in progress, skipping')
+    return
+  }
+  
   isLoading.value = true
+  
+  // Reset all data at start to prevent accumulation from multiple calls
+  historicalData.value = {}
+  allMatchups.value = {}
+  allTeams.value = {}
+  h2hRecords.value = {}
   
   try {
     const leagueKey = effectiveLeagueKey.value

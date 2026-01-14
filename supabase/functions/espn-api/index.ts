@@ -70,12 +70,36 @@ serve(async (req) => {
       'Content-Type': 'application/json',
     }
 
-    // Add cookies for private league access
+    // Determine which cookies to use:
+    // 1. User-provided cookies (for private leagues)
+    // 2. Server-side service account cookies (for public league historical data)
+    let useServiceCookies = false
+    let finalS2 = espn_s2
+    let finalSwid = swid
+
     if (espn_s2 && swid) {
+      // User provided their own cookies
+      console.log('[ESPN API] Using user-provided credentials')
+    } else {
+      // Try server-side service account cookies
+      const serviceS2 = Deno.env.get('ESPN_SERVICE_S2')
+      const serviceSwid = Deno.env.get('ESPN_SERVICE_SWID')
+      
+      if (serviceS2 && serviceSwid) {
+        finalS2 = serviceS2
+        finalSwid = serviceSwid
+        useServiceCookies = true
+        console.log('[ESPN API] Using service account credentials for public league access')
+      } else {
+        console.log('[ESPN API] No credentials available - requesting without auth')
+      }
+    }
+
+    // Add cookies if available
+    if (finalS2 && finalSwid) {
       // Format SWID - ensure it has curly braces
-      const formattedSwid = swid.startsWith('{') ? swid : `{${swid}}`
-      espnHeaders['Cookie'] = `espn_s2=${espn_s2}; SWID=${formattedSwid}`
-      console.log('[ESPN API] Using private league credentials')
+      const formattedSwid = finalSwid.startsWith('{') ? finalSwid : `{${finalSwid}}`
+      espnHeaders['Cookie'] = `espn_s2=${finalS2}; SWID=${formattedSwid}`
     }
 
     // Make request to ESPN
