@@ -1344,52 +1344,48 @@ function getMonteCarloWinProbability(matchup: any, dayOfWeek: number, isComplete
   
   const team1Key = matchup.team1.team_key
   const team2Key = matchup.team2.team_key
-  const cacheKey = `${matchup.matchup_id}_${dayOfWeek}_${isCompletedMatchup}`
   
-  // Check cache
-  const cached = monteCarloCache.value.get(cacheKey)
-  if (cached) return { team1: cached.team1, team2: cached.team2 }
-  
-  // Final scores
-  const team1TotalPoints = matchup.team1.points || 0
-  const team2TotalPoints = matchup.team2.points || 0
+  // Final/current scores
+  const team1FinalPoints = matchup.team1.points || 0
+  const team2FinalPoints = matchup.team2.points || 0
   
   // dayOfWeek: 0 = Monday, 6 = Sunday
-  // At END of day X, we have (X+1)/7 of the week completed
   const daysCompleted = dayOfWeek + 1 // 1-7
   const daysRemaining = 7 - daysCompleted // 6-0
-  
-  // For completed matchups, use proportional scoring to show progression
-  // Points accumulated through end of this day
-  const team1CurrentPoints = team1TotalPoints * (daysCompleted / 7)
-  const team2CurrentPoints = team2TotalPoints * (daysCompleted / 7)
-  
-  // Sunday (day 6) = end of week, no simulation needed
-  if (daysRemaining === 0) {
-    if (team1TotalPoints > team2TotalPoints) return { team1: 100, team2: 0 }
-    if (team2TotalPoints > team1TotalPoints) return { team1: 0, team2: 100 }
-    return { team1: 50, team2: 50 }
-  }
   
   // Get team stats for simulation
   const team1Stats = calculateTeamDailyStats(team1Key)
   const team2Stats = calculateTeamDailyStats(team2Key)
   
-  // For completed matchups, we know the final result - bias simulation toward actual outcome
-  // This makes the chart show realistic convergence
   if (isCompletedMatchup) {
-    // Calculate expected remaining points based on actual final scores
-    const team1RemainingActual = team1TotalPoints - team1CurrentPoints
-    const team2RemainingActual = team2TotalPoints - team2CurrentPoints
+    // COMPLETED MATCHUP: We know the final scores
+    // Sunday = final result (100/0)
+    if (daysRemaining === 0) {
+      if (team1FinalPoints > team2FinalPoints) return { team1: 100, team2: 0 }
+      if (team2FinalPoints > team1FinalPoints) return { team1: 0, team2: 100 }
+      return { team1: 50, team2: 50 }
+    }
     
-    // Use actual remaining points with small variance for realistic-looking convergence
+    // Estimate points at end of each day proportionally
+    const team1PointsAtDay = team1FinalPoints * (daysCompleted / 7)
+    const team2PointsAtDay = team2FinalPoints * (daysCompleted / 7)
+    
+    // Cache check for completed matchups
+    const cacheKey = `completed_${matchup.matchup_id}_${dayOfWeek}`
+    const cached = monteCarloCache.value.get(cacheKey)
+    if (cached) return { team1: cached.team1, team2: cached.team2 }
+    
+    // For completed matchups, use actual remaining points for realistic convergence
+    const team1RemainingPoints = team1FinalPoints - team1PointsAtDay
+    const team2RemainingPoints = team2FinalPoints - team2PointsAtDay
+    
     const result = runMonteCarloSimulation(
-      team1CurrentPoints,
-      team2CurrentPoints,
-      team1RemainingActual / daysRemaining, // Actual daily avg for remaining days
-      team1Stats.stdDev * 0.3, // Reduced variance for smoother convergence
-      team2RemainingActual / daysRemaining,
-      team2Stats.stdDev * 0.3,
+      team1PointsAtDay,
+      team2PointsAtDay,
+      team1RemainingPoints / daysRemaining,
+      team1Stats.stdDev * 0.2, // Low variance for smooth convergence
+      team2RemainingPoints / daysRemaining,
+      team2Stats.stdDev * 0.2,
       daysRemaining,
       3000
     )
@@ -1401,28 +1397,55 @@ function getMonteCarloWinProbability(matchup: any, dayOfWeek: number, isComplete
     })
     
     return { team1: result.team1WinPct, team2: result.team2WinPct }
+    
+  } else {
+    // LIVE MATCHUP: Current scores are actual current scores
+    const team1CurrentPoints = team1FinalPoints
+    const team2CurrentPoints = team2FinalPoints
+    
+    // Get today's day index
+    const jsDay = new Date().getDay()
+    const todayIndex = jsDay === 0 ? 6 : jsDay - 1 // 0-6, Monday-based
+    
+    // Days remaining from TODAY (not from chart day)
+    const daysRemainingFromToday = Math.max(0, 6 - todayIndex)
+    
+    // For days before today, interpolate from 50% to current probability
+    if (dayOfWeek < todayIndex) {
+      const totalPoints = team1CurrentPoints + team2CurrentPoints
+      const currentProb = totalPoints > 0 
+        ? (team1CurrentPoints / totalPoints) * 100
+        : 50
+      const progress = (dayOfWeek + 1) / (todayIndex + 1)
+      const interpolated = 50 + (currentProb - 50) * progress
+      return { team1: interpolated, team2: 100 - interpolated }
+    }
+    
+    // For today and future days (including Sunday), run Monte Carlo
+    // Use current actual scores and simulate remaining days from today
+    const cacheKey = `live_${matchup.matchup_id}_${team1CurrentPoints.toFixed(0)}_${team2CurrentPoints.toFixed(0)}_${todayIndex}`
+    const cached = monteCarloCache.value.get(cacheKey)
+    if (cached) return { team1: cached.team1, team2: cached.team2 }
+    
+    const result = runMonteCarloSimulation(
+      team1CurrentPoints,
+      team2CurrentPoints,
+      team1Stats.avgDaily,
+      team1Stats.stdDev,
+      team2Stats.avgDaily,
+      team2Stats.stdDev,
+      daysRemainingFromToday,
+      5000
+    )
+    
+    monteCarloCache.value.set(cacheKey, { 
+      team1: result.team1WinPct, 
+      team2: result.team2WinPct,
+      simulations: 5000
+    })
+    
+    return { team1: result.team1WinPct, team2: result.team2WinPct }
   }
-  
-  // For live matchups, use full season stats for simulation
-  const result = runMonteCarloSimulation(
-    team1CurrentPoints,
-    team2CurrentPoints,
-    team1Stats.avgDaily,
-    team1Stats.stdDev,
-    team2Stats.avgDaily,
-    team2Stats.stdDev,
-    daysRemaining,
-    5000
-  )
-  
-  // Cache result
-  monteCarloCache.value.set(cacheKey, { 
-    team1: result.team1WinPct, 
-    team2: result.team2WinPct,
-    simulations: 5000
-  })
-  
-  return { team1: result.team1WinPct, team2: result.team2WinPct }
 }
 
 function selectMatchup(matchup: any) {
