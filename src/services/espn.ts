@@ -215,6 +215,8 @@ export interface EspnDraftPick {
   overallPickNumber: number
   playerId: number
   playerName: string
+  position?: string
+  positionId?: number
   teamId: number
   keeper: boolean
   bidAmount?: number
@@ -759,7 +761,7 @@ export class EspnFantasyService {
     try {
       const data = await this.apiRequest(sport, leagueId, season, [ESPN_VIEWS.DRAFT_DETAIL])
       
-      const picks = this.parseDraft(data)
+      const picks = this.parseDraft(data, sport)
       
       // Draft data is permanent
       cache.set('espn_draft', picks, CACHE_TTL.PERMANENT, cacheKey)
@@ -1356,21 +1358,43 @@ export class EspnFantasyService {
       }))
   }
 
-  private parseDraft(data: any): EspnDraftPick[] {
+  private parseDraft(data: any, sport?: string): EspnDraftPick[] {
     const draftDetail = data.draftDetail || {}
     const picks = draftDetail.picks || []
     
-    return picks.map((pick: any) => ({
-      id: pick.id,
-      roundId: pick.roundId,
-      roundPickNumber: pick.roundPickNumber,
-      overallPickNumber: pick.overallPickNumber,
-      playerId: pick.playerId,
-      playerName: pick.playerName || `Player ${pick.playerId}`,
-      teamId: pick.teamId,
-      keeper: pick.keeper || false,
-      bidAmount: pick.bidAmount
-    }))
+    // Log first pick to see structure
+    if (picks.length > 0) {
+      console.log('[ESPN parseDraft] First raw pick:', JSON.stringify(picks[0]))
+    }
+    
+    return picks.map((pick: any) => {
+      // Try to get position from player info if available
+      let position = 'Unknown'
+      let positionId = 0
+      
+      // Some ESPN responses include player info directly
+      if (pick.player) {
+        positionId = pick.player.defaultPositionId || 0
+        position = this.getPositionName(positionId, sport)
+      } else if (pick.defaultPositionId) {
+        positionId = pick.defaultPositionId
+        position = this.getPositionName(positionId, sport)
+      }
+      
+      return {
+        id: pick.id,
+        roundId: pick.roundId,
+        roundPickNumber: pick.roundPickNumber,
+        overallPickNumber: pick.overallPickNumber,
+        playerId: pick.playerId,
+        playerName: pick.playerName || `Player ${pick.playerId}`,
+        position,
+        positionId,
+        teamId: pick.teamId,
+        keeper: pick.keeper || false,
+        bidAmount: pick.bidAmount
+      }
+    })
   }
 
   // ============================================================

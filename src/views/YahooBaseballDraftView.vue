@@ -9,6 +9,15 @@
         </p>
       </div>
       <div class="flex items-center gap-3">
+        <!-- Platform Badge -->
+        <div class="inline-flex items-center gap-2 px-4 py-2 rounded-full border" :class="platformBadgeClass">
+          <img 
+            :src="isEspn ? '/espn-logo.svg' : '/yahoo-fantasy.svg'" 
+            :alt="platformName"
+            class="h-5 w-auto"
+          />
+          <span class="text-sm" :class="platformTextClass">{{ platformName }} Fantasy Baseball</span>
+        </div>
         <select v-model="selectedSeason" @change="loadDraftData" class="select">
           <option v-for="season in availableSeasons" :key="season" :value="season">
             {{ season }} Season
@@ -626,6 +635,26 @@ const effectiveLeagueKey = computed(() => {
   return leagueStore.activeLeagueId
 })
 
+// Check if ESPN platform
+const isEspn = computed(() => leagueStore.activePlatform === 'espn')
+
+// Platform display helpers
+const platformName = computed(() => isEspn.value ? 'ESPN' : 'Yahoo')
+
+const platformBadgeClass = computed(() => {
+  if (isEspn.value) {
+    return 'border-red-500/30 bg-red-500/10'
+  }
+  return 'border-purple-500/30 bg-purple-500/10'
+})
+
+const platformTextClass = computed(() => {
+  if (isEspn.value) {
+    return 'text-red-400'
+  }
+  return 'text-purple-400'
+})
+
 // Tab options
 const tabOptions = [
   { id: 'board', name: 'Draft Board', icon: '📋' },
@@ -903,6 +932,142 @@ async function loadDraftData() {
   isLoading.value = true
   
   try {
+    // Handle ESPN leagues
+    if (isEspn.value) {
+      console.log('[ESPN DRAFT] Loading draft for ESPN league:', leagueKey)
+      
+      // Dynamically import ESPN service
+      const { espnService } = await import('@/services/espn')
+      
+      // Parse league key: espn_baseball_1227422768_2025
+      const parts = leagueKey.split('_')
+      const sport = parts[1] as 'football' | 'baseball' | 'basketball' | 'hockey'
+      const espnLeagueId = parts[2]
+      const currentSeason = parseInt(parts[3])
+      const season = parseInt(selectedSeason.value) || currentSeason
+      
+      console.log('[ESPN DRAFT] Fetching draft for:', { sport, espnLeagueId, season })
+      
+      // Get draft picks
+      const espnDraftPicks = await espnService.getDraft(sport, espnLeagueId, season)
+      console.log('[ESPN DRAFT] Got', espnDraftPicks.length, 'draft picks')
+      
+      if (!espnDraftPicks || espnDraftPicks.length === 0) {
+        console.log('[ESPN DRAFT] No draft data available')
+        draftPicks.value = []
+        isLoading.value = false
+        return
+      }
+      
+      // Get teams for mapping
+      const teams = await espnService.getTeams(sport, espnLeagueId, season)
+      teamsData.value = teams
+      console.log('[ESPN DRAFT] Got', teams.length, 'teams')
+      
+      // Build team lookup
+      const teamMap = new Map<number, any>()
+      for (const team of teams) {
+        teamMap.set(team.id, team)
+      }
+      
+      // Try to get roster data for player positions
+      let playerPositionMap = new Map<number, string>()
+      try {
+        const teamsWithRosters = await espnService.getTeamsWithRosters(sport, espnLeagueId, season)
+        for (const team of teamsWithRosters) {
+          if (team.roster) {
+            for (const player of team.roster) {
+              playerPositionMap.set(player.playerId, player.position)
+            }
+          }
+        }
+        console.log('[ESPN DRAFT] Got positions for', playerPositionMap.size, 'players from rosters')
+      } catch (e) {
+        console.log('[ESPN DRAFT] Could not get roster data for positions:', e)
+      }
+      
+      // Get matchups to calculate total points per team
+      const totalWeeks = sport === 'baseball' ? 24 : 17
+      const teamTotalPoints = new Map<number, number>()
+      
+      // Initialize team points
+      for (const team of teams) {
+        // Use pointsFor from team record if available
+        const pointsFor = team.record?.pointsFor || 0
+        teamTotalPoints.set(team.id, pointsFor)
+      }
+      
+      console.log('[ESPN DRAFT] Team point totals:', [...teamTotalPoints.entries()])
+      
+      // Process draft picks
+      // For ESPN, we'll use a simpler scoring approach based on draft position vs team performance
+      const numTeams = teams.length || 12
+      
+      // Calculate team performance ranks (by total points)
+      const teamRanks = [...teams]
+        .sort((a, b) => (teamTotalPoints.get(b.id) || 0) - (teamTotalPoints.get(a.id) || 0))
+        .map((team, idx) => ({ teamId: team.id, rank: idx + 1 }))
+      
+      const teamRankMap = new Map(teamRanks.map(t => [t.teamId, t.rank]))
+      
+      // Group picks by team to calculate team-level draft performance
+      const picksByTeam = new Map<number, any[]>()
+      for (const pick of espnDraftPicks) {
+        if (!picksByTeam.has(pick.teamId)) {
+          picksByTeam.set(pick.teamId, [])
+        }
+        picksByTeam.get(pick.teamId)!.push(pick)
+      }
+      
+      // For individual pick scoring, we'll estimate based on:
+      // Pick value = expected team finish based on draft position vs actual team finish
+      // This is a team-level approximation since ESPN doesn't easily expose player season totals
+      
+      draftPicks.value = espnDraftPicks.map((pick: any) => {
+        const team = teamMap.get(pick.teamId)
+        const teamRank = teamRankMap.get(pick.teamId) || numTeams
+        const teamPoints = teamTotalPoints.get(pick.teamId) || 0
+        
+        // Calculate round and pick in round
+        const round = pick.roundId
+        const pickInRound = pick.roundPickNumber
+        
+        // Get position from draft data or roster lookup
+        const position = pick.position || playerPositionMap.get(pick.playerId) || 'Unknown'
+        
+        // For ESPN, estimate player value based on overall pick position
+        // Earlier picks from successful teams = good picks
+        // Later picks from successful teams = steals
+        // Earlier picks from poor teams = reaches
+        const expectedRank = Math.ceil(pick.overallPickNumber / Math.max(1, espnDraftPicks.length / numTeams))
+        const score = expectedRank - teamRank
+        
+        return {
+          pick: pick.overallPickNumber,
+          round,
+          pickInRound,
+          team_key: `espn_team_${pick.teamId}`,
+          team_name: team?.name || `Team ${pick.teamId}`,
+          team_logo: team?.logo || '',
+          player_key: `espn_player_${pick.playerId}`,
+          player_name: pick.playerName || `Player ${pick.playerId}`,
+          position,
+          mlb_team: '',
+          headshot: '',
+          totalPoints: teamPoints / picksByTeam.get(pick.teamId)!.length, // Estimate per-player contribution
+          score,
+          grade: calculateGrade(score),
+          keeper: pick.keeper,
+          bidAmount: pick.bidAmount
+        }
+      })
+      
+      console.log('[ESPN DRAFT] Processed', draftPicks.value.length, 'draft picks')
+      isLoading.value = false
+      return
+    }
+    
+    // Yahoo league handling (existing code)
     await yahooService.initialize(authStore.user.id)
     
     // Get game key and build league key for selected season
