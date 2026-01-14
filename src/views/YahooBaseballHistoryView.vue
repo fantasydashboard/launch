@@ -3530,23 +3530,39 @@ async function loadHistoricalData() {
           
           successCount++
           
+          // Log owner info for debugging
+          console.log(`[ESPN ${season}] Teams with owners:`, teams.map((t: any) => ({
+            id: t.id,
+            name: t.name,
+            primaryOwner: t.primaryOwner,
+            ownerName: t.ownerName
+          })))
+          
           // Transform teams to standings format
-          const standings = teams.map((team: any, idx: number) => ({
-            team_key: `espn_${sport}_${espnLeagueId}_${team.id}_${season}`,
-            team_id: team.id.toString(),
-            name: team.name,
-            logo_url: team.logo || '',
-            wins: team.wins || 0,
-            losses: team.losses || 0,
-            ties: team.ties || 0,
-            points_for: team.pointsFor || 0,
-            points_against: team.pointsAgainst || 0,
-            rank: idx + 1,
-            is_champion: idx === 0,
-            // Owner info for proper attribution
-            owner_id: team.primaryOwner || '',
-            owner_name: team.ownerName || team.name
-          }))
+          // KEY: Use owner_id for tracking (new owner = new history)
+          // DISPLAY: Use team name (not owner name)
+          const standings = teams.map((team: any, idx: number) => {
+            // Create unique key: prefer owner_id, but include season to handle missing owners
+            const ownerKey = team.primaryOwner 
+              ? team.primaryOwner 
+              : `team_${team.id}_${season}` // Fallback includes season so different years = different entries
+            
+            return {
+              team_key: ownerKey,
+              team_id: team.id.toString(),
+              name: team.name, // Use TEAM NAME for display
+              logo_url: team.logo || '',
+              wins: team.wins || 0,
+              losses: team.losses || 0,
+              ties: team.ties || 0,
+              points_for: team.pointsFor || 0,
+              points_against: team.pointsAgainst || 0,
+              rank: team.rank || idx + 1,
+              is_champion: (team.rank || idx + 1) === 1,
+              owner_id: team.primaryOwner || '',
+              season: season
+            }
+          })
           
           console.log(`[ESPN] Got standings for ${season}:`, standings.length, 'teams')
           
@@ -3556,20 +3572,19 @@ async function loadHistoricalData() {
             trade_count: 0
           }
           
-          // Track team info (by owner for multi-season)
+          // Track team info
           standings.forEach((team: any) => {
-            // Use owner_id as the key if available, otherwise team_key
-            const trackingKey = team.owner_id || team.team_key
+            const trackingKey = team.team_key
             
             if (!currentMembers.value.includes(trackingKey)) {
               currentMembers.value.push(trackingKey)
             }
             
-            // Store team info keyed by owner for proper multi-season tracking
+            // Store team info - use team NAME for display
             if (!allTeams.value[trackingKey]) {
               allTeams.value[trackingKey] = {
                 team_key: trackingKey,
-                name: team.owner_name || team.name,
+                name: team.name, // TEAM NAME, not owner name
                 logo_url: team.logo_url || ''
               }
             }
@@ -3595,42 +3610,42 @@ async function loadHistoricalData() {
               if (weekMatchups && weekMatchups.length > 0) {
                 consecutiveFailures = 0
                 
-                // Transform ESPN matchups - use owner IDs for tracking
+                // Transform ESPN matchups
                 const transformedMatchups = weekMatchups.map((m: any) => {
                   const homeTeamData = standings.find((t: any) => t.team_id === m.homeTeamId?.toString())
                   const awayTeamData = standings.find((t: any) => t.team_id === m.awayTeamId?.toString())
                   
-                  // Use owner_id for H2H tracking if available
-                  const homeOwner = homeTeamData?.owner_id || `espn_${m.homeTeamId}`
-                  const awayOwner = awayTeamData?.owner_id || `espn_${m.awayTeamId}`
+                  // Use owner-based key for H2H tracking
+                  const homeKey = homeTeamData?.team_key || `team_${m.homeTeamId}_${season}`
+                  const awayKey = awayTeamData?.team_key || `team_${m.awayTeamId}_${season}`
                   
                   return {
                     matchup_id: m.id,
                     season: season,
                     teams: [
                       {
-                        team_key: homeOwner,
+                        team_key: homeKey,
                         team_id: m.homeTeamId?.toString(),
-                        name: homeTeamData?.owner_name || homeTeamData?.name || 'Home Team',
+                        name: homeTeamData?.name || 'Home Team', // TEAM NAME
                         points: m.homeScore || 0,
                         logo_url: homeTeamData?.logo_url || ''
                       },
                       {
-                        team_key: awayOwner,
+                        team_key: awayKey,
                         team_id: m.awayTeamId?.toString(),
-                        name: awayTeamData?.owner_name || awayTeamData?.name || 'Away Team',
+                        name: awayTeamData?.name || 'Away Team', // TEAM NAME
                         points: m.awayScore || 0,
                         logo_url: awayTeamData?.logo_url || ''
                       }
                     ],
-                    winner_team_key: m.winner === 'HOME' ? homeOwner : 
-                                     m.winner === 'AWAY' ? awayOwner : null
+                    winner_team_key: m.winner === 'HOME' ? homeKey : 
+                                     m.winner === 'AWAY' ? awayKey : null
                   }
                 })
                 
                 seasonMatchupsObj[week] = transformedMatchups
                 
-                // Build H2H records (by owner)
+                // Build H2H records (by owner key)
                 for (const matchup of transformedMatchups) {
                   const teams = matchup.teams || []
                   if (teams.length === 2) {
@@ -3700,12 +3715,13 @@ async function loadHistoricalData() {
           // Small delay between seasons
           await new Promise(resolve => setTimeout(resolve, 100))
           
-        } catch (e) {
-          console.log(`[ESPN] Could not load ${season} season:`, e)
+        } catch (e: any) {
+          console.log(`[ESPN] Could not load ${season} season:`, e?.message || e)
+          // Continue to next season instead of breaking
         }
       }
       
-      console.log(`[ESPN] Finished loading: ${successCount} seasons`)
+      console.log(`[ESPN] Finished loading: ${successCount} seasons, historicalData keys:`, Object.keys(historicalData.value))
       
       // Set default award season
       if (availableSeasons.value.length > 0) {
