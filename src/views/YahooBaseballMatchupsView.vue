@@ -241,7 +241,10 @@
                 {{ isDownloading ? 'Generating...' : 'Share' }}
               </button>
             </div>
-            <p class="card-subtitle mt-2">Based on current scores and season performance</p>
+            <p class="card-subtitle mt-2">
+              <span v-if="isEspn">Monte Carlo simulation (5,000 iterations) based on season scoring patterns</span>
+              <span v-else>Based on current scores and season performance</span>
+            </p>
           </div>
           <div class="card-body">
             <div ref="winProbRef" class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
@@ -587,9 +590,13 @@
 
     <!-- Platform Badge -->
     <div class="flex justify-center mt-8">
-      <div class="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-purple-600/10 border border-purple-600/30">
-        <span class="text-sm font-bold text-purple-400">Y!</span>
-        <span class="text-sm text-purple-300">Yahoo Fantasy Baseball • Points League</span>
+      <div class="inline-flex items-center gap-2 px-4 py-2 rounded-full border" :class="platformBadgeClass">
+        <img 
+          :src="leagueStore.activePlatform === 'espn' ? '/espn-logo.svg' : '/yahoo-fantasy.svg'" 
+          :alt="platformName"
+          class="w-5 h-5"
+        />
+        <span class="text-sm" :class="platformTextClass">{{ platformName }} Fantasy Baseball • Points League</span>
       </div>
     </div>
   </div>
@@ -624,9 +631,15 @@ const allMatchupsHistory = ref<Map<number, any[]>>(new Map())
 const weekSnapshots = ref<Map<number, MatchupSnapshot[]>>(new Map())
 const isSnapshotting = ref(false)
 
+// Monte Carlo simulation cache
+const monteCarloCache = ref<Map<string, { team1: number; team2: number; simulations: number }>>(new Map())
+
 // Refs for download
 const winProbRef = ref<HTMLElement | null>(null)
 const comparisonRef = ref<HTMLElement | null>(null)
+
+// Check if ESPN platform
+const isEspn = computed(() => leagueStore.activePlatform === 'espn')
 
 // Computed
 const currentWeek = computed(() => leagueStore.currentLeague?.settings?.leg || 1)
@@ -644,6 +657,23 @@ const availableWeeks = computed(() => {
     weeks.push(i)
   }
   return weeks
+})
+
+// Platform display
+const platformName = computed(() => leagueStore.activePlatform === 'espn' ? 'ESPN' : 'Yahoo')
+
+const platformBadgeClass = computed(() => {
+  if (leagueStore.activePlatform === 'espn') {
+    return 'bg-[#5b8def]/10 border-[#5b8def]/30'
+  }
+  return 'bg-purple-600/10 border-purple-600/30'
+})
+
+const platformTextClass = computed(() => {
+  if (leagueStore.activePlatform === 'espn') {
+    return 'text-[#5b8def]' // Lighter ESPN blue for visibility
+  }
+  return 'text-purple-300'
 })
 
 // Transform matchups for display
@@ -732,7 +762,15 @@ const winProbability = computed(() => {
     return { team1: 50, team2: 50 }
   }
   
-  // For live weeks, calculate based on current + projected
+  // For ESPN live games, use Monte Carlo simulation
+  if (isEspn.value) {
+    const jsDay = new Date().getDay()
+    const currentDayIndex = jsDay === 0 ? 6 : jsDay - 1
+    const mcResult = getMonteCarloWinProbability(selectedMatchup.value, currentDayIndex)
+    return { team1: mcResult.team1, team2: mcResult.team2 }
+  }
+  
+  // For Yahoo live weeks, calculate based on current + projected
   const team1Total = team1.projected_points || team1.points || 0
   const team2Total = team2.projected_points || team2.points || 0
   
@@ -824,7 +862,7 @@ const probabilityHistory = computed(() => {
   }
   
   // No snapshots available - use simulation (for historical data before we started tracking)
-  console.log(`Using simulated data for matchup ${matchup.matchup_id} (no snapshots found)`)
+  console.log(`Using simulated data for matchup ${matchup.matchup_id} (no snapshots found), platform: ${leagueStore.activePlatform}`)
   
   // Get current day (0 = Sunday, 1 = Monday, etc.)
   const jsDay = new Date().getDay()
@@ -836,6 +874,61 @@ const probabilityHistory = computed(() => {
   const team2Score = matchup.team2.points || 0
   const totalScore = team1Score + team2Score
   
+  // For ESPN leagues, use Monte Carlo simulation for more accurate probabilities
+  if (isEspn.value) {
+    console.log(`[ESPN] Running Monte Carlo simulation for matchup ${matchup.matchup_id}`)
+    const history = []
+    
+    for (let i = 0; i < 7; i++) {
+      if (isCompleted) {
+        // For completed matchups, run Monte Carlo for each day
+        const mcResult = getMonteCarloWinProbability(matchup, i)
+        
+        // On final day, use actual result
+        const finalResult = i === 6 
+          ? (team1Score > team2Score ? 100 : (team1Score < team2Score ? 0 : 50))
+          : mcResult.team1
+        
+        history.push({
+          day: days[i],
+          team1: i === 6 ? finalResult : mcResult.team1,
+          team2: i === 6 ? (100 - finalResult) : mcResult.team2,
+          isFuture: false,
+          isReal: true,
+          isMonteCarlo: true
+        })
+      } else {
+        // Live week
+        if (i <= currentDayIndex) {
+          // Past/current days - use Monte Carlo
+          const mcResult = getMonteCarloWinProbability(matchup, i)
+          history.push({
+            day: days[i],
+            team1: mcResult.team1,
+            team2: mcResult.team2,
+            isFuture: false,
+            isReal: true,
+            isMonteCarlo: true
+          })
+        } else {
+          // Future days - project using Monte Carlo
+          const mcResult = getMonteCarloWinProbability(matchup, i)
+          history.push({
+            day: days[i],
+            team1: mcResult.team1,
+            team2: mcResult.team2,
+            isFuture: true,
+            isReal: false,
+            isMonteCarlo: true
+          })
+        }
+      }
+    }
+    
+    return history
+  }
+  
+  // Yahoo fallback - use simple simulation (no historical daily data available)
   // Calculate current win probability based on actual scores
   let currentProb = 50
   if (totalScore > 0) {
@@ -1170,6 +1263,148 @@ function generateScoutingReport(teamStats: any, opponentStats: any): any {
     weaknesses: weaknesses.slice(0, 3),
     recentForm: teamStats.recentResults || []
   }
+}
+
+// Monte Carlo simulation for ESPN win probability
+function runMonteCarloSimulation(
+  team1CurrentPoints: number,
+  team2CurrentPoints: number,
+  team1AvgDaily: number,
+  team1StdDev: number,
+  team2AvgDaily: number,
+  team2StdDev: number,
+  daysRemaining: number,
+  numSimulations: number = 10000
+): { team1WinPct: number; team2WinPct: number } {
+  if (daysRemaining <= 0) {
+    // No days remaining - use current scores
+    if (team1CurrentPoints > team2CurrentPoints) return { team1WinPct: 100, team2WinPct: 0 }
+    if (team2CurrentPoints > team1CurrentPoints) return { team1WinPct: 0, team2WinPct: 100 }
+    return { team1WinPct: 50, team2WinPct: 50 }
+  }
+  
+  let team1Wins = 0
+  let team2Wins = 0
+  let ties = 0
+  
+  // Box-Muller transform for normal distribution
+  function gaussianRandom(mean: number, stdDev: number): number {
+    const u1 = Math.random()
+    const u2 = Math.random()
+    const z = Math.sqrt(-2 * Math.log(u1)) * Math.cos(2 * Math.PI * u2)
+    return mean + z * stdDev
+  }
+  
+  for (let i = 0; i < numSimulations; i++) {
+    let team1Final = team1CurrentPoints
+    let team2Final = team2CurrentPoints
+    
+    // Simulate remaining days
+    for (let d = 0; d < daysRemaining; d++) {
+      // Add random daily points based on team's historical performance
+      team1Final += Math.max(0, gaussianRandom(team1AvgDaily, team1StdDev))
+      team2Final += Math.max(0, gaussianRandom(team2AvgDaily, team2StdDev))
+    }
+    
+    if (team1Final > team2Final) team1Wins++
+    else if (team2Final > team1Final) team2Wins++
+    else ties++
+  }
+  
+  // Split ties evenly
+  const team1WinPct = ((team1Wins + ties / 2) / numSimulations) * 100
+  const team2WinPct = 100 - team1WinPct
+  
+  return { team1WinPct, team2WinPct }
+}
+
+// Calculate team's daily scoring stats from history
+function calculateTeamDailyStats(teamKey: string): { avgDaily: number; stdDev: number } {
+  const weeklyScores: number[] = []
+  
+  // Get all historical matchups for this team
+  for (const [week, matchups] of allMatchupsHistory.value) {
+    for (const matchup of matchups) {
+      const teams = matchup.teams || []
+      for (const team of teams) {
+        if (team.team_key === teamKey && team.points > 0) {
+          weeklyScores.push(team.points)
+        }
+      }
+    }
+  }
+  
+  if (weeklyScores.length === 0) {
+    // Fallback: use average from current standings
+    const teamData = leagueStore.yahooTeams.find(t => t.team_key === teamKey)
+    const games = (teamData?.wins || 0) + (teamData?.losses || 0)
+    const avgWeekly = games > 0 ? (teamData?.points_for || 0) / games : 100
+    return { avgDaily: avgWeekly / 7, stdDev: avgWeekly / 7 * 0.2 }
+  }
+  
+  // Calculate average weekly score
+  const avgWeekly = weeklyScores.reduce((a, b) => a + b, 0) / weeklyScores.length
+  
+  // Calculate standard deviation
+  const variance = weeklyScores.reduce((sum, score) => sum + Math.pow(score - avgWeekly, 2), 0) / weeklyScores.length
+  const stdDevWeekly = Math.sqrt(variance)
+  
+  // Convert to daily (assume 7 days per week)
+  return {
+    avgDaily: avgWeekly / 7,
+    stdDev: stdDevWeekly / 7
+  }
+}
+
+// Get Monte Carlo win probability for a matchup
+function getMonteCarloWinProbability(matchup: any, dayOfWeek: number): { team1: number; team2: number } {
+  if (!matchup?.team1 || !matchup?.team2) return { team1: 50, team2: 50 }
+  
+  const team1Key = matchup.team1.team_key
+  const team2Key = matchup.team2.team_key
+  const cacheKey = `${matchup.matchup_id}_${dayOfWeek}`
+  
+  // Check cache
+  const cached = monteCarloCache.value.get(cacheKey)
+  if (cached) return { team1: cached.team1, team2: cached.team2 }
+  
+  // Get team stats
+  const team1Stats = calculateTeamDailyStats(team1Key)
+  const team2Stats = calculateTeamDailyStats(team2Key)
+  
+  // Current points (scale by day progress for simulating mid-week)
+  // dayOfWeek: 0 = Monday, 6 = Sunday
+  const daysPassed = dayOfWeek + 1
+  const daysRemaining = 7 - daysPassed
+  
+  // For simulating historical days, estimate points at that point in the week
+  const team1TotalPoints = matchup.team1.points || 0
+  const team2TotalPoints = matchup.team2.points || 0
+  
+  // Estimate points at this day (proportional)
+  const team1CurrentPoints = team1TotalPoints * (daysPassed / 7)
+  const team2CurrentPoints = team2TotalPoints * (daysPassed / 7)
+  
+  // Run simulation
+  const result = runMonteCarloSimulation(
+    team1CurrentPoints,
+    team2CurrentPoints,
+    team1Stats.avgDaily,
+    team1Stats.stdDev,
+    team2Stats.avgDaily,
+    team2Stats.stdDev,
+    daysRemaining,
+    5000 // Reduced for performance, still statistically significant
+  )
+  
+  // Cache result
+  monteCarloCache.value.set(cacheKey, { 
+    team1: result.team1WinPct, 
+    team2: result.team2WinPct,
+    simulations: 5000
+  })
+  
+  return { team1: result.team1WinPct, team2: result.team2WinPct }
 }
 
 function selectMatchup(matchup: any) {
