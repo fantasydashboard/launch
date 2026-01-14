@@ -9,15 +9,6 @@
         </p>
       </div>
       <div class="flex items-center gap-3">
-        <!-- Platform Badge -->
-        <div class="inline-flex items-center gap-2 px-4 py-2 rounded-full border" :class="platformBadgeClass">
-          <img 
-            :src="isEspn ? '/espn-logo.svg' : '/yahoo-fantasy.svg'" 
-            :alt="platformName"
-            class="h-5 w-auto"
-          />
-          <span class="text-sm" :class="platformTextClass">{{ platformName }} Fantasy Baseball</span>
-        </div>
         <select v-model="selectedSeason" @change="loadDraftData" class="select">
           <option v-for="season in availableSeasons" :key="season" :value="season">
             {{ season }} Season
@@ -617,6 +608,18 @@
         </div>
       </div>
     </Teleport>
+
+    <!-- Platform Badge at Bottom -->
+    <div class="flex justify-center mt-8">
+      <div class="inline-flex items-center gap-2 px-4 py-2 rounded-full border" :class="platformBadgeClass">
+        <img 
+          :src="isEspn ? '/espn-logo.svg' : '/yahoo-fantasy.svg'" 
+          :alt="platformName"
+          class="w-5 h-5"
+        />
+        <span class="text-sm" :class="platformSubTextClass">{{ platformName }} Fantasy Baseball • Points League</span>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -650,9 +653,9 @@ const platformName = computed(() => isEspn.value ? 'ESPN' : 'Yahoo')
 
 const platformBadgeClass = computed(() => {
   if (isEspn.value) {
-    return 'border-red-500/30 bg-red-500/10'
+    return 'bg-red-600/10 border-red-600/30'
   }
-  return 'border-purple-500/30 bg-purple-500/10'
+  return 'bg-purple-600/10 border-purple-600/30'
 })
 
 const platformTextClass = computed(() => {
@@ -660,6 +663,13 @@ const platformTextClass = computed(() => {
     return 'text-red-400'
   }
   return 'text-purple-400'
+})
+
+const platformSubTextClass = computed(() => {
+  if (isEspn.value) {
+    return 'text-red-300'
+  }
+  return 'text-purple-300'
 })
 
 // Tab options
@@ -988,7 +998,14 @@ async function loadDraftData() {
       let playerInfoMap = new Map<number, { name: string; position: string; team: string }>()
       if (playerIdsNeedingNames.length > 0) {
         try {
-          playerInfoMap = await espnService.getPlayersByIds(sport, espnLeagueId, season, playerIdsNeedingNames)
+          const result = await espnService.getPlayersByIds(sport, espnLeagueId, season, playerIdsNeedingNames)
+          // Ensure result is a Map (cache might return plain object)
+          if (result instanceof Map) {
+            playerInfoMap = result
+          } else if (result && typeof result === 'object') {
+            // Convert plain object back to Map
+            playerInfoMap = new Map(Object.entries(result).map(([k, v]) => [parseInt(k), v as { name: string; position: string; team: string }]))
+          }
           console.log('[ESPN DRAFT] Resolved', playerInfoMap.size, 'player names')
         } catch (e) {
           console.log('[ESPN DRAFT] Could not resolve player names:', e)

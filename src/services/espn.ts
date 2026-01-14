@@ -783,10 +783,16 @@ export class EspnFantasyService {
     }
 
     const cacheKey = `espn_players_${sport}_${leagueId}_${season}_${playerIds.slice(0, 5).join('_')}`
-    const cached = cache.get<Map<number, { name: string; position: string; team: string }>>('espn_players', cacheKey)
-    if (cached) {
+    // Cache stores plain objects, not Maps (JSON doesn't support Maps)
+    const cached = cache.get<Record<string, { name: string; position: string; team: string }>>('espn_players', cacheKey)
+    if (cached && typeof cached === 'object' && Object.keys(cached).length > 0) {
       console.log(`[Cache HIT] ESPN players for ${leagueId}`)
-      return cached
+      // Convert plain object back to Map
+      const map = new Map<number, { name: string; position: string; team: string }>()
+      for (const [key, value] of Object.entries(cached)) {
+        map.set(parseInt(key), value)
+      }
+      return map
     }
 
     try {
@@ -830,8 +836,14 @@ export class EspnFantasyService {
       
       console.log(`[ESPN getPlayersByIds] Total: resolved ${playerMap.size} of ${playerIds.length} players`)
       
+      // Convert Map to plain object for caching (JSON doesn't support Maps)
+      const cacheObj: Record<string, { name: string; position: string; team: string }> = {}
+      for (const [key, value] of playerMap.entries()) {
+        cacheObj[key.toString()] = value
+      }
+      
       // Cache for a long time since player names don't change
-      cache.set('espn_players', playerMap, CACHE_TTL.PERMANENT, cacheKey)
+      cache.set('espn_players', cacheObj, CACHE_TTL.PERMANENT, cacheKey)
       
       return playerMap
     } catch (error) {
