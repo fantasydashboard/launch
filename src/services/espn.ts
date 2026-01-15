@@ -523,6 +523,9 @@ export class EspnFantasyService {
     try {
       const data = await this.apiRequest(sport, leagueId, season, [ESPN_VIEWS.TEAM, ESPN_VIEWS.STANDINGS])
       
+      // Debug: Log API response keys to find stat data
+      console.log('[ESPN getTeams] API response top-level keys:', Object.keys(data))
+      
       const teams = this.parseTeams(data)
       
       cache.set('espn_teams', teams, CACHE_TTL.STANDINGS, cacheKey)
@@ -1773,9 +1776,22 @@ export class EspnFantasyService {
     console.log('[ESPN parseTeams] Raw teams count:', teams.length)
     console.log('[ESPN parseTeams] Raw members count:', members.length)
     
-    // Log first raw team to see structure
+    // Log first raw team to see structure - look for stat data
     if (teams.length > 0) {
-      console.log('[ESPN parseTeams] FIRST RAW TEAM:', JSON.stringify(teams[0]))
+      const firstTeam = teams[0]
+      console.log('[ESPN parseTeams] FIRST RAW TEAM KEYS:', Object.keys(firstTeam))
+      console.log('[ESPN parseTeams] FIRST RAW TEAM:', JSON.stringify(firstTeam).slice(0, 3000))
+      
+      // Check for stat-related fields
+      if (firstTeam.valuesByStat) {
+        console.log('[ESPN parseTeams] FOUND valuesByStat:', JSON.stringify(firstTeam.valuesByStat))
+      }
+      if (firstTeam.record?.statsByStat) {
+        console.log('[ESPN parseTeams] FOUND record.statsByStat:', JSON.stringify(firstTeam.record.statsByStat))
+      }
+      if (firstTeam.currentSimulationResults) {
+        console.log('[ESPN parseTeams] FOUND currentSimulationResults:', JSON.stringify(firstTeam.currentSimulationResults).slice(0, 500))
+      }
     }
     
     return teams.map((team: any) => {
@@ -2239,19 +2255,95 @@ export class EspnFantasyService {
    */
   async getMatchupWithStats(sport: Sport, leagueId: string | number, season: number, week: number): Promise<any> {
     try {
-      // Request matchup with scoreboard and boxscore views for stat details
+      // Request matchup with scoreboard, live scoring for stat details
       const data = await this.apiRequest(
         sport,
         leagueId,
         season,
-        [ESPN_VIEWS.MATCHUP, ESPN_VIEWS.MATCHUP_SCORE, ESPN_VIEWS.SCOREBOARD],
+        [ESPN_VIEWS.MATCHUP, ESPN_VIEWS.MATCHUP_SCORE, ESPN_VIEWS.SCOREBOARD, ESPN_VIEWS.LIVE_SCORING],
         week
       )
+      
+      // Debug: Log all available data to find stat values
+      console.log('[ESPN getMatchupWithStats] Week', week, 'API response keys:', Object.keys(data))
+      
+      // Check teams array for stat data
+      if (data.teams && data.teams.length > 0) {
+        const firstTeam = data.teams[0]
+        console.log('[ESPN getMatchupWithStats] First team keys:', Object.keys(firstTeam))
+        if (firstTeam.valuesByStat) {
+          console.log('[ESPN getMatchupWithStats] FOUND team valuesByStat:', JSON.stringify(firstTeam.valuesByStat))
+        }
+      }
+      
+      // Check schedule for stat data
+      if (data.schedule && data.schedule.length > 0) {
+        const firstMatch = data.schedule[0]
+        console.log('[ESPN getMatchupWithStats] First schedule item keys:', Object.keys(firstMatch))
+        if (firstMatch.home) {
+          console.log('[ESPN getMatchupWithStats] home keys:', Object.keys(firstMatch.home))
+          // Look for any stat-related fields
+          for (const key of Object.keys(firstMatch.home)) {
+            if (key.toLowerCase().includes('stat') || key.toLowerCase().includes('value') || key.toLowerCase().includes('score')) {
+              console.log(`[ESPN getMatchupWithStats] home.${key}:`, JSON.stringify(firstMatch.home[key]).slice(0, 500))
+            }
+          }
+        }
+      }
       
       return data
     } catch (error) {
       console.error('[ESPN] Error fetching matchup with stats:', error)
       throw error
+    }
+  }
+  
+  /**
+   * Get team stats for a specific week - tries to find actual stat values
+   */
+  async getTeamStatsForWeek(sport: Sport, leagueId: string | number, season: number, week: number): Promise<Map<number, Record<string, number>>> {
+    const teamStats = new Map<number, Record<string, number>>()
+    
+    try {
+      // Try fetching with mLiveScoring which should have stat values
+      const data = await this.apiRequest(
+        sport,
+        leagueId,
+        season,
+        [ESPN_VIEWS.TEAM, ESPN_VIEWS.LIVE_SCORING, ESPN_VIEWS.SCOREBOARD],
+        week
+      )
+      
+      console.log('[ESPN getTeamStatsForWeek] Week', week, 'response keys:', Object.keys(data))
+      
+      // Check for teams with stats
+      if (data.teams) {
+        for (const team of data.teams) {
+          if (team.valuesByStat) {
+            console.log(`[ESPN getTeamStatsForWeek] Team ${team.id} has valuesByStat:`, JSON.stringify(team.valuesByStat).slice(0, 200))
+            teamStats.set(team.id, team.valuesByStat)
+          }
+        }
+      }
+      
+      // Also check schedule for team stats
+      if (data.schedule) {
+        for (const match of data.schedule) {
+          if (match.home?.valuesByStat) {
+            console.log(`[ESPN getTeamStatsForWeek] Match home team has valuesByStat`)
+            teamStats.set(match.home.teamId, match.home.valuesByStat)
+          }
+          if (match.away?.valuesByStat) {
+            console.log(`[ESPN getTeamStatsForWeek] Match away team has valuesByStat`)
+            teamStats.set(match.away.teamId, match.away.valuesByStat)
+          }
+        }
+      }
+      
+      return teamStats
+    } catch (error) {
+      console.error('[ESPN getTeamStatsForWeek] Error:', error)
+      return teamStats
     }
   }
 
