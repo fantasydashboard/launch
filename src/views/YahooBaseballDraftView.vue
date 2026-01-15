@@ -328,95 +328,6 @@
       </div>
     </template>
 
-    <!-- ==================== DRAFT BALANCE TAB ==================== -->
-    <template v-else-if="activeTab === 'balance'">
-      <!-- Explanation Card -->
-      <div class="card mb-6">
-        <div class="card-body py-4">
-          <div class="flex items-start gap-3">
-            <span class="text-2xl">💡</span>
-            <div class="text-sm">
-              <p class="text-dark-text font-semibold mb-1">Understanding Draft Balance</p>
-              <p class="text-dark-textMuted">
-                Each team's draft is analyzed for position coverage.
-                <span class="text-yellow-400 font-semibold">Total Score</span> shows combined value from all picks.
-                <span class="text-green-400 font-semibold">Hits</span> = picks that exceeded expectations, <span class="text-red-400 font-semibold">Misses</span> = underperformers.
-              </p>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Hint Text -->
-      <div class="text-sm text-dark-textMuted mb-4">
-        <span class="text-yellow-400 font-semibold">Click any team</span> to see detailed draft breakdown and share
-      </div>
-
-      <!-- Team Balance Overview -->
-      <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-        <div 
-          v-for="team in teamGrades" 
-          :key="team.team_key"
-          class="card cursor-pointer hover:ring-2 hover:ring-primary transition-all"
-          @click="openTeamModal(team)"
-        >
-          <div class="card-body">
-            <!-- Team Header -->
-            <div class="flex items-center gap-3 mb-4">
-              <div class="w-12 h-12 rounded-full bg-dark-border overflow-hidden">
-                <img :src="team.logo_url || defaultAvatar" class="w-full h-full object-cover" @error="handleImageError" />
-              </div>
-              <div class="flex-1">
-                <div class="font-bold text-dark-text">{{ team.team_name }}</div>
-                <div class="text-xs text-dark-textMuted">{{ team.picks.length }} picks</div>
-              </div>
-              <div class="text-right">
-                <div class="text-2xl font-black" :class="getGradeClass(team.grade)">
-                  {{ team.grade }}
-                </div>
-                <div class="text-xs text-dark-textMuted">Grade</div>
-              </div>
-            </div>
-
-            <!-- Position Breakdown -->
-            <div class="space-y-2">
-              <div class="text-xs text-dark-textMuted uppercase font-bold mb-1">Position Breakdown</div>
-              <div class="grid grid-cols-5 gap-1">
-                <div 
-                  v-for="pos in getTeamPositionBreakdown(team.team_key).slice(0, 10)" 
-                  :key="pos.position"
-                  class="text-center p-1.5 rounded"
-                  :class="getPositionStrengthClass(pos.avgScore)"
-                  :title="`${pos.position}: ${pos.count} picks, avg ${pos.avgScore >= 0 ? '+' : ''}${pos.avgScore.toFixed(1)}`"
-                >
-                  <div class="text-xs font-bold">{{ pos.position }}</div>
-                  <div class="text-[10px] opacity-75">{{ pos.count }}</div>
-                </div>
-              </div>
-            </div>
-
-            <!-- Stats Summary -->
-            <div class="mt-4 pt-4 border-t border-dark-border">
-              <div class="grid grid-cols-3 gap-2 text-center text-xs">
-                <div>
-                  <div class="font-bold text-dark-text">{{ team.totalScore >= 0 ? '+' : '' }}{{ team.totalScore.toFixed(1) }}</div>
-                  <div class="text-dark-textMuted">Total Score</div>
-                </div>
-                <div>
-                  <div class="font-bold text-green-400">{{ team.hits }}</div>
-                  <div class="text-dark-textMuted">Hits</div>
-                </div>
-                <div>
-                  <div class="font-bold text-red-400">{{ team.misses }}</div>
-                  <div class="text-dark-textMuted">Misses</div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </template>
-
     <!-- ==================== DEEP ANALYSIS TAB ==================== -->
     <template v-else-if="activeTab === 'analysis'">
       <!-- Explanation Card -->
@@ -957,7 +868,6 @@ const platformSubTextClass = computed(() => {
 const tabOptions = [
   { id: 'board', name: 'Draft Board', icon: '📋' },
   { id: 'grades', name: 'Player Grades', icon: '🎯' },
-  { id: 'balance', name: 'Draft Balance', icon: '⚖️' },
   { id: 'analysis', name: 'Deep Analysis', icon: '📊' },
   { id: 'actual', name: 'Actual Value', icon: '🏆' }
 ]
@@ -1515,7 +1425,7 @@ async function loadDraftData() {
           position_rank_drafted,
           current_position_rank,
           mlb_team: pick.proTeam || '',
-          headshot: '',
+          headshot: `https://a.espncdn.com/combiner/i?img=/i/headshots/mlb/players/full/${pick.playerId}.png&w=96&h=70&cb=1`,
           totalPoints: playerPoints,
           score,
           grade: calculateGrade(score),
@@ -1604,6 +1514,13 @@ async function loadDraftData() {
     const players = await yahooService.getPlayers(finalPlayerKeys, seasonLeagueKey)
     playerData.value = players
     console.log('[POINTS DRAFT] Got player details:', players.size)
+    
+    // Debug: Check if headshots are present
+    let headshotCount = 0
+    for (const [key, player] of players) {
+      if (player.headshot) headshotCount++
+    }
+    console.log('[POINTS DRAFT] Players with headshots:', headshotCount, 'of', players.size)
     
     // Get player stats
     const stats = await yahooService.getPlayerStats(seasonLeagueKey, finalPlayerKeys)
