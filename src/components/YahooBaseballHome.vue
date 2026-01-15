@@ -55,7 +55,7 @@
               <div class="flex items-center gap-3 flex-1 min-w-0">
                 <div class="relative">
                   <img 
-                    :src="matchup.team1?.logo_url || defaultAvatar" 
+                    :src="getLogoUrl(matchup.team1?.logo_url)" 
                     :alt="matchup.team1?.name || 'Team 1'" 
                     :class="['w-10 h-10 rounded-full border-2 transition-colors object-cover', matchup.team1?.is_my_team ? 'border-yellow-500 ring-2 ring-yellow-500/30' : 'border-dark-border group-hover:border-red-600/50']"
                     @error="handleImageError" 
@@ -84,7 +84,7 @@
               <div class="flex items-center gap-3 flex-1 min-w-0">
                 <div class="relative">
                   <img 
-                    :src="matchup.team2?.logo_url || defaultAvatar" 
+                    :src="getLogoUrl(matchup.team2?.logo_url)" 
                     :alt="matchup.team2?.name || 'Team 2'" 
                     :class="['w-10 h-10 rounded-full border-2 transition-colors object-cover', matchup.team2?.is_my_team ? 'border-yellow-500 ring-2 ring-yellow-500/30' : 'border-dark-border group-hover:border-red-600/50']"
                     @error="handleImageError" 
@@ -129,7 +129,7 @@
             </div>
             <div class="flex items-center gap-3 mb-3">
               <img 
-                :src="(isPointsLeague ? leaders.mostPoints?.logo_url : leaders.mostCatWins?.logo_url) || defaultAvatar" 
+                :src="getLogoUrl(isPointsLeague ? leaders.mostPoints?.logo_url : leaders.mostCatWins?.logo_url)" 
                 class="w-12 h-12 rounded-full border-2 border-yellow-500/50 object-cover" 
                 @error="handleImageError" 
               />
@@ -165,7 +165,7 @@
             <div class="text-xs uppercase tracking-wider text-blue-400 font-bold mb-3">Best All-Play</div>
             <div class="flex items-center gap-3 mb-3">
               <img 
-                :src="leaders.bestAllPlay?.logo_url || defaultAvatar" 
+                :src="getLogoUrl(leaders.bestAllPlay?.logo_url)" 
                 class="w-12 h-12 rounded-full border-2 border-blue-500/50 object-cover" 
                 @error="handleImageError" 
               />
@@ -295,7 +295,7 @@
                 <div class="flex items-center gap-2">
                   <div class="relative flex-shrink-0">
                     <img 
-                      :src="team.logo_url || defaultAvatar" 
+                      :src="getLogoUrl(team.logo_url)" 
                       :alt="team.name"
                       class="w-8 h-8 rounded-full object-cover ring-2"
                       :class="team.is_my_team ? 'ring-yellow-500' : 'ring-dark-border'"
@@ -395,7 +395,7 @@
           >
             <div class="relative">
               <img 
-                :src="team.logo_url || defaultAvatar" 
+                :src="getLogoUrl(team.logo_url)" 
                 :alt="team.name"
                 class="w-6 h-6 rounded-full ring-2 object-cover"
                 :class="team.is_my_team ? 'ring-yellow-500' : 'ring-dark-border'"
@@ -431,7 +431,7 @@
             class="flex items-center gap-3 p-3 rounded-lg bg-dark-border/20 hover:bg-dark-border/40 cursor-pointer transition-colors group"
           >
             <div class="w-10 h-10 rounded-full overflow-hidden bg-dark-border flex-shrink-0">
-              <img v-if="stat.team" :src="stat.team.logo_url || defaultAvatar" class="w-full h-full object-cover" @error="handleImageError" />
+              <img v-if="stat.team" :src="getLogoUrl(stat.team.logo_url)" class="w-full h-full object-cover" @error="handleImageError" />
             </div>
             <div class="flex-1 min-w-0">
               <div class="text-[10px] text-dark-textMuted uppercase">{{ stat.icon }} {{ stat.label }}</div>
@@ -503,7 +503,7 @@
           <div class="p-6 border-b border-dark-border" :class="leaderModalGradient">
             <div class="flex items-center gap-4">
               <img 
-                :src="leaderModalData.leader?.logo_url || defaultAvatar" 
+                :src="getLogoUrl(leaderModalData.leader?.logo_url)" 
                 :alt="leaderModalData.leader?.name"
                 class="w-16 h-16 rounded-full ring-4 object-cover"
                 :class="leaderModalRingColor"
@@ -531,7 +531,7 @@
                 <div class="w-6 text-center">
                   <span class="text-sm font-bold" :class="index === 0 ? leaderModalTextColor : 'text-dark-textMuted'">{{ index + 1 }}</span>
                 </div>
-                <img :src="team.logo_url || defaultAvatar" :alt="team.name" class="w-8 h-8 rounded-full object-cover" @error="handleImageError" />
+                <img :src="getLogoUrl(team.logo_url)" :alt="team.name" class="w-8 h-8 rounded-full object-cover" @error="handleImageError" />
                 <div class="flex-1 min-w-0">
                   <div class="flex items-center gap-2 mb-1">
                     <span class="text-sm font-medium text-dark-text truncate">{{ team.name }}</span>
@@ -570,7 +570,7 @@
           <div class="sticky top-0 z-10 px-6 py-4 border-b border-dark-border bg-dark-elevated flex items-center justify-between">
             <div class="flex items-center gap-4">
               <img 
-                :src="selectedTeamDetail?.logo_url || defaultAvatar" 
+                :src="getLogoUrl(selectedTeamDetail?.logo_url)" 
                 :alt="selectedTeamDetail?.name"
                 class="w-12 h-12 rounded-full ring-2 ring-red-600 object-cover"
                 @error="handleImageError"
@@ -793,6 +793,16 @@ const defaultAvatar = computed(() => {
 
 // Track images that have already errored to prevent infinite loops
 const erroredImages = new Set<string>()
+
+// Reactive map to track broken logos - this ensures Vue re-renders with fallback
+const brokenLogos = ref(new Set<string>())
+
+// Helper function to get logo URL with fallback for broken images
+function getLogoUrl(logoUrl: string | undefined): string {
+  if (!logoUrl) return defaultAvatar.value
+  if (brokenLogos.value.has(logoUrl)) return defaultAvatar.value
+  return logoUrl
+}
 
 // Platform styling
 const platformName = computed(() => leagueStore.activePlatform === 'espn' ? 'ESPN' : 'Yahoo')
@@ -1887,6 +1897,8 @@ function handleImageError(e: Event) {
     return // Already tried fallback for this image
   }
   erroredImages.add(originalSrc)
+  // Add to reactive set so Vue re-renders with fallback
+  brokenLogos.value = new Set([...brokenLogos.value, originalSrc])
   img.src = defaultAvatar.value
 }
 function openLeaderModal(type: string) { leaderModalType.value = type; showLeaderModal.value = true }
