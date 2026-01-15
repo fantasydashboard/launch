@@ -763,7 +763,7 @@ export class EspnFantasyService {
    * Get draft results
    */
   async getDraft(sport: Sport, leagueId: string | number, season: number): Promise<EspnDraftPick[]> {
-    const cacheKey = `espn_draft_${sport}_${leagueId}_${season}_v5`
+    const cacheKey = `espn_draft_${sport}_${leagueId}_${season}_v6`
     const cached = cache.get<EspnDraftPick[]>('espn_draft', cacheKey)
     if (cached) {
       console.log(`[Cache HIT] ESPN draft for ${leagueId}`)
@@ -787,28 +787,37 @@ export class EspnFantasyService {
       const playerIds = rawPicks.map((p: any) => p.playerId).filter(Boolean)
       console.log('[ESPN getDraft] Player IDs to fetch:', playerIds.length)
       
-      // Now fetch player info for those specific players using filter
-      let playersData: any = { players: [] }
-      if (playerIds.length > 0) {
+      // Fetch player info in BATCHES of 50 (ESPN API limit)
+      const allPlayers: any[] = []
+      const chunkSize = 50
+      
+      for (let i = 0; i < playerIds.length; i += chunkSize) {
+        const chunk = playerIds.slice(i, i + chunkSize)
+        console.log(`[ESPN getDraft] Fetching player chunk ${Math.floor(i/chunkSize) + 1}/${Math.ceil(playerIds.length/chunkSize)} (${chunk.length} players)`)
+        
         try {
           const filterObj = {
             players: {
               filterIds: {
-                value: playerIds
+                value: chunk
               }
             }
           }
-          playersData = await this.apiRequestWithFilter(sport, leagueId, season, [ESPN_VIEWS.PLAYER_INFO], filterObj)
-          console.log('[ESPN getDraft] Fetched players with filter:', playersData.players?.length || 0)
+          const chunkData = await this.apiRequestWithFilter(sport, leagueId, season, [ESPN_VIEWS.PLAYER_INFO], filterObj)
+          const chunkPlayers = chunkData.players || []
+          console.log(`[ESPN getDraft] Chunk ${Math.floor(i/chunkSize) + 1} returned ${chunkPlayers.length} players`)
+          allPlayers.push(...chunkPlayers)
         } catch (e) {
-          console.log('[ESPN getDraft] Could not fetch players with filter:', e)
+          console.log(`[ESPN getDraft] Chunk ${Math.floor(i/chunkSize) + 1} failed:`, e)
         }
       }
+      
+      console.log('[ESPN getDraft] Total players fetched across all chunks:', allPlayers.length)
       
       // Combine draft data with player data for parsing
       const combinedData = {
         draftDetail: draftData.draftDetail,
-        players: playersData.players || []
+        players: allPlayers
       }
       
       const picks = this.parseDraft(combinedData, sport)
@@ -832,7 +841,7 @@ export class EspnFantasyService {
    * This combines draft data with player info lookup using multiple fallback methods
    */
   async getDraftWithPlayers(sport: Sport, leagueId: string | number, season: number): Promise<EspnDraftPick[]> {
-    const cacheKey = `espn_draft_full_${sport}_${leagueId}_${season}_v4`
+    const cacheKey = `espn_draft_full_${sport}_${leagueId}_${season}_v6`
     const cached = cache.get<EspnDraftPick[]>('espn_draft_full', cacheKey)
     if (cached) {
       console.log(`[Cache HIT] ESPN draft with players for ${leagueId}`)
@@ -909,9 +918,9 @@ export class EspnFantasyService {
         }
       }
       
-      // METHOD 4: Try fetching each unresolved player individually (last resort)
-      if (unresolvedIds.length > 0 && unresolvedIds.length <= 20) {
-        console.log('[ESPN getDraftWithPlayers] Method 4: Individual lookup for', unresolvedIds.length, 'players:', unresolvedIds)
+      // METHOD 4: Try fetching each unresolved player individually via league API
+      if (unresolvedIds.length > 0) {
+        console.log('[ESPN getDraftWithPlayers] Method 4: Individual league lookup for', unresolvedIds.length, 'players:', unresolvedIds)
         for (const playerId of unresolvedIds) {
           try {
             const playerInfo = await this.getPlayerById(sport, leagueId, season, playerId)
@@ -926,9 +935,28 @@ export class EspnFantasyService {
         console.log('[ESPN getDraftWithPlayers] After method 4: still unresolved:', unresolvedIds.length)
       }
       
+      // METHOD 5: Try ESPN's public athlete API (works for historical/inactive players)
+      if (unresolvedIds.length > 0) {
+        console.log('[ESPN getDraftWithPlayers] Method 5: Public athlete API for', unresolvedIds.length, 'players:', unresolvedIds)
+        for (const playerId of unresolvedIds) {
+          try {
+            const playerInfo = await this.getPlayerFromPublicAPI(sport, playerId)
+            if (playerInfo && !playerInfo.name.startsWith('Player ')) {
+              playerMap.set(playerId, playerInfo)
+              console.log(`[ESPN Method 5] Resolved player ${playerId}: ${playerInfo.name}`)
+            }
+          } catch (e) {
+            console.log(`[ESPN Method 5] Failed for player ${playerId}:`, e)
+          }
+        }
+        unresolvedIds = playerIds.filter(id => !playerMap.has(id) || playerMap.get(id)?.name.startsWith('Player '))
+        console.log('[ESPN getDraftWithPlayers] After method 5: still unresolved:', unresolvedIds.length)
+      }
+      
       // Log final unresolved players for debugging
       if (unresolvedIds.length > 0) {
         console.log('[ESPN getDraftWithPlayers] FINAL UNRESOLVED player IDs:', unresolvedIds)
+        console.log('[ESPN getDraftWithPlayers] Try looking these up manually at: https://www.espn.com/mlb/player/_/id/PLAYER_ID')
       }
       
       // Enrich picks with player info
@@ -1030,6 +1058,110 @@ export class EspnFantasyService {
       }
     } catch (e) {
       // Silent fail
+    }
+    
+    return null
+  }
+  
+  /**
+   * Get player info from ESPN's public athlete API (works for historical/inactive players)
+   * This endpoint doesn't require authentication and has broader player coverage
+   */
+  private async getPlayerFromPublicAPI(sport: Sport, playerId: number): Promise<{ name: string; position: string; team: string } | null> {
+    // Map our sport names to ESPN's sport/league format
+    const sportMapping: Record<Sport, { sport: string; league: string }> = {
+      baseball: { sport: 'baseball', league: 'mlb' },
+      football: { sport: 'football', league: 'nfl' },
+      basketball: { sport: 'basketball', league: 'nba' },
+      hockey: { sport: 'hockey', league: 'nhl' }
+    }
+    
+    const { sport: espnSport, league } = sportMapping[sport]
+    
+    // ESPN's public athlete API endpoint
+    const endpoint = `/apis/common/v3/sports/${espnSport}/${league}/athletes/${playerId}`
+    
+    // Get access token for proxy
+    let accessToken: string | null = null
+    try {
+      const keys = Object.keys(localStorage)
+      const authKey = keys.find(k => k.startsWith('sb-') && k.endsWith('-auth-token'))
+      if (authKey) {
+        const stored = localStorage.getItem(authKey)
+        if (stored) {
+          const parsed = JSON.parse(stored)
+          accessToken = parsed?.access_token
+        }
+      }
+    } catch (e) {
+      // Silent fail
+    }
+    
+    if (!accessToken) {
+      try {
+        const { supabase } = await import('@/lib/supabase')
+        if (supabase) {
+          const { data: { session } } = await supabase.auth.getSession()
+          accessToken = session?.access_token || null
+        }
+      } catch (e) {
+        // Silent fail
+      }
+    }
+    
+    if (!accessToken) {
+      return null
+    }
+    
+    try {
+      // Use the proxy with the public API endpoint
+      const proxyUrl = `${this.supabaseUrl}/functions/v1/espn-api`
+      
+      const response = await fetch(proxyUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${accessToken}`
+        },
+        body: JSON.stringify({
+          endpoint,
+          isPublicApi: true // Flag to tell proxy to use public API base URL
+        })
+      })
+      
+      if (!response.ok) {
+        // Try direct fetch as fallback (might work for some deployments)
+        const directUrl = `https://site.api.espn.com${endpoint}`
+        const directResponse = await fetch(directUrl, {
+          method: 'GET',
+          headers: { 'Accept': 'application/json' }
+        })
+        
+        if (directResponse.ok) {
+          const data = await directResponse.json()
+          const fullName = data.athlete?.fullName || data.displayName || data.fullName
+          const position = data.athlete?.position?.abbreviation || data.position?.abbreviation || 'Unknown'
+          const team = data.athlete?.team?.abbreviation || data.team?.abbreviation || 'FA'
+          
+          if (fullName && !fullName.startsWith('Player ')) {
+            return { name: fullName, position, team }
+          }
+        }
+        return null
+      }
+      
+      const data = await response.json()
+      
+      // Extract player info from response
+      const fullName = data.athlete?.fullName || data.displayName || data.fullName
+      const position = data.athlete?.position?.abbreviation || data.position?.abbreviation || 'Unknown'
+      const team = data.athlete?.team?.abbreviation || data.team?.abbreviation || 'FA'
+      
+      if (fullName && !fullName.startsWith('Player ')) {
+        return { name: fullName, position, team }
+      }
+    } catch (e) {
+      console.log(`[ESPN Public API] Error for player ${playerId}:`, e)
     }
     
     return null
