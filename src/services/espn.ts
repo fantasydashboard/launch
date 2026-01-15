@@ -763,7 +763,7 @@ export class EspnFantasyService {
    * Get draft results
    */
   async getDraft(sport: Sport, leagueId: string | number, season: number): Promise<EspnDraftPick[]> {
-    const cacheKey = `espn_draft_${sport}_${leagueId}_${season}_v4`
+    const cacheKey = `espn_draft_${sport}_${leagueId}_${season}_v5`
     const cached = cache.get<EspnDraftPick[]>('espn_draft', cacheKey)
     if (cached) {
       console.log(`[Cache HIT] ESPN draft for ${leagueId}`)
@@ -832,7 +832,7 @@ export class EspnFantasyService {
    * This combines draft data with player info lookup using multiple fallback methods
    */
   async getDraftWithPlayers(sport: Sport, leagueId: string | number, season: number): Promise<EspnDraftPick[]> {
-    const cacheKey = `espn_draft_full_${sport}_${leagueId}_${season}_v3`
+    const cacheKey = `espn_draft_full_${sport}_${leagueId}_${season}_v4`
     const cached = cache.get<EspnDraftPick[]>('espn_draft_full', cacheKey)
     if (cached) {
       console.log(`[Cache HIT] ESPN draft with players for ${leagueId}`)
@@ -1044,7 +1044,7 @@ export class EspnFantasyService {
       return new Map()
     }
 
-    const cacheKey = `espn_players_${sport}_${leagueId}_${season}_${playerIds.slice(0, 5).join('_')}_v2`
+    const cacheKey = `espn_players_${sport}_${leagueId}_${season}_${playerIds.slice(0, 5).join('_')}_v3`
     // Cache stores plain objects, not Maps (JSON doesn't support Maps)
     const cached = cache.get<Record<string, { name: string; position: string; team: string }>>('espn_players', cacheKey)
     if (cached && typeof cached === 'object' && Object.keys(cached).length > 0) {
