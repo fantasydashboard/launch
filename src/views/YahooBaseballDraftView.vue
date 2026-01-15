@@ -90,7 +90,7 @@
               <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 15l-2 5L9 9l11 4-5 2zm0 0l5 5M7.188 2.239l.777 2.897M5.136 7.965l-2.898-.777M13.95 4.05l-2.122 2.122m-5.657 5.656l-2.12 2.122" />
               </svg>
-              <span>Select team or player for details</span>
+              <span><span class="text-yellow-400 font-semibold">Click any team header</span> to see detailed draft breakdown and share</span>
             </div>
           </div>
         </div>
@@ -99,13 +99,14 @@
       <!-- Draft Board Grid -->
       <div class="overflow-x-auto">
         <div class="inline-block min-w-full">
-          <!-- Column Headers (Teams) -->
+          <!-- Column Headers (Teams) - Clickable -->
           <div class="flex gap-1 mb-1">
             <div class="w-12 flex-shrink-0"></div>
             <div 
               v-for="team in draftBoard" 
               :key="team.team_key"
-              class="w-32 flex-shrink-0 bg-dark-card rounded-t-lg p-2 text-center"
+              class="w-32 flex-shrink-0 bg-dark-card rounded-t-lg p-2 text-center cursor-pointer hover:ring-2 hover:ring-yellow-400 transition-all"
+              @click="openTeamModal(team)"
             >
               <div class="w-8 h-8 rounded-full bg-dark-border mx-auto mb-1 overflow-hidden">
                 <img v-if="team.logo_url" :src="team.logo_url" class="w-full h-full object-cover" @error="handleImageError" />
@@ -115,6 +116,11 @@
               </div>
               <div class="text-xs font-semibold text-dark-text truncate" :title="team.team_name">
                 {{ team.team_name }}
+              </div>
+              <div class="mt-1">
+                <span class="text-xs font-bold px-1.5 py-0.5 rounded" :class="getGradeClass(getTeamGrade(team.team_key))">
+                  {{ getTeamGrade(team.team_key) }}
+                </span>
               </div>
             </div>
           </div>
@@ -136,7 +142,10 @@
                 v-if="getPickForRound(team.team_key, round)"
                 @click="selectPick(getPickForRound(team.team_key, round))"
                 class="bg-dark-card rounded-lg p-2 cursor-pointer hover:ring-2 hover:ring-yellow-400 transition-all h-full"
-                :class="getPickClass(getPickForRound(team.team_key, round))"
+                :class="[
+                  getPickClass(getPickForRound(team.team_key, round)),
+                  positionFilter !== 'All' && getPickForRound(team.team_key, round)?.position !== positionFilter ? 'opacity-30' : ''
+                ]"
               >
                 <div class="text-xs font-medium text-dark-text truncate">
                   {{ getPickForRound(team.team_key, round)?.player_name || 'Unknown' }}
@@ -319,13 +328,131 @@
       </div>
     </template>
 
+    <!-- ==================== DRAFT BALANCE TAB ==================== -->
+    <template v-else-if="activeTab === 'balance'">
+      <!-- Explanation Card -->
+      <div class="card mb-6">
+        <div class="card-body py-4">
+          <div class="flex items-start gap-3">
+            <span class="text-2xl">💡</span>
+            <div class="text-sm">
+              <p class="text-dark-text font-semibold mb-1">Understanding Draft Balance</p>
+              <p class="text-dark-textMuted">
+                Each team's draft is analyzed for position coverage.
+                <span class="text-yellow-400 font-semibold">Total Score</span> shows combined value from all picks.
+                <span class="text-green-400 font-semibold">Hits</span> = picks that exceeded expectations, <span class="text-red-400 font-semibold">Misses</span> = underperformers.
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Hint Text -->
+      <div class="text-sm text-dark-textMuted mb-4">
+        <span class="text-yellow-400 font-semibold">Click any team</span> to see detailed draft breakdown and share
+      </div>
+
+      <!-- Team Balance Overview -->
+      <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+        <div 
+          v-for="team in teamGrades" 
+          :key="team.team_key"
+          class="card cursor-pointer hover:ring-2 hover:ring-primary transition-all"
+          @click="openTeamModal(team)"
+        >
+          <div class="card-body">
+            <!-- Team Header -->
+            <div class="flex items-center gap-3 mb-4">
+              <div class="w-12 h-12 rounded-full bg-dark-border overflow-hidden">
+                <img :src="team.logo_url || defaultAvatar" class="w-full h-full object-cover" @error="handleImageError" />
+              </div>
+              <div class="flex-1">
+                <div class="font-bold text-dark-text">{{ team.team_name }}</div>
+                <div class="text-xs text-dark-textMuted">{{ team.picks.length }} picks</div>
+              </div>
+              <div class="text-right">
+                <div class="text-2xl font-black" :class="getGradeClass(team.grade)">
+                  {{ team.grade }}
+                </div>
+                <div class="text-xs text-dark-textMuted">Grade</div>
+              </div>
+            </div>
+
+            <!-- Position Breakdown -->
+            <div class="space-y-2">
+              <div class="text-xs text-dark-textMuted uppercase font-bold mb-1">Position Breakdown</div>
+              <div class="grid grid-cols-5 gap-1">
+                <div 
+                  v-for="pos in getTeamPositionBreakdown(team.team_key).slice(0, 10)" 
+                  :key="pos.position"
+                  class="text-center p-1.5 rounded"
+                  :class="getPositionStrengthClass(pos.avgScore)"
+                  :title="`${pos.position}: ${pos.count} picks, avg ${pos.avgScore >= 0 ? '+' : ''}${pos.avgScore.toFixed(1)}`"
+                >
+                  <div class="text-xs font-bold">{{ pos.position }}</div>
+                  <div class="text-[10px] opacity-75">{{ pos.count }}</div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Stats Summary -->
+            <div class="mt-4 pt-4 border-t border-dark-border">
+              <div class="grid grid-cols-3 gap-2 text-center text-xs">
+                <div>
+                  <div class="font-bold text-dark-text">{{ team.totalScore >= 0 ? '+' : '' }}{{ team.totalScore.toFixed(1) }}</div>
+                  <div class="text-dark-textMuted">Total Score</div>
+                </div>
+                <div>
+                  <div class="font-bold text-green-400">{{ team.hits }}</div>
+                  <div class="text-dark-textMuted">Hits</div>
+                </div>
+                <div>
+                  <div class="font-bold text-red-400">{{ team.misses }}</div>
+                  <div class="text-dark-textMuted">Misses</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </template>
+
     <!-- ==================== DEEP ANALYSIS TAB ==================== -->
     <template v-else-if="activeTab === 'analysis'">
+      <!-- Explanation Card -->
+      <div class="card mb-6">
+        <div class="card-body py-4">
+          <div class="flex items-start gap-3">
+            <span class="text-2xl">💡</span>
+            <div class="text-sm">
+              <p class="text-dark-text font-semibold mb-1">Understanding Value Scores</p>
+              <p class="text-dark-textMuted">
+                <span class="text-yellow-400 font-semibold">Value Score</span> = Position Rank at Draft − Current Position Rank by Points.
+                A <span class="text-green-400 font-semibold">+10</span> means the player finished 10 spots higher than where they were drafted at their position (a steal!).
+                A <span class="text-red-400 font-semibold">-10</span> means they finished 10 spots lower than drafted (a bust).
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
       <!-- Round by Round Analysis -->
       <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <div class="card">
           <div class="card-header">
-            <h3 class="text-lg font-bold text-dark-text">🔥 Biggest Steals</h3>
+            <div class="flex items-center justify-between">
+              <div class="flex items-center gap-2">
+                <span class="text-2xl">🔥</span>
+                <div>
+                  <h3 class="text-lg font-bold text-dark-text">Biggest Draft Steals</h3>
+                  <p class="text-sm text-dark-textMuted">Best value relative to draft position</p>
+                </div>
+              </div>
+              <button @click="downloadStealsImage" :disabled="isDownloadingSteals" class="flex items-center gap-2 text-sm px-3 py-1.5 rounded-lg font-semibold transition-colors disabled:opacity-50" style="background:#dc2626;color:#fff;" @mouseover="$event.currentTarget.style.background='#22c55e'" @mouseout="$event.currentTarget.style.background='#dc2626'">
+                <svg v-if="!isDownloadingSteals" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
+                <svg v-else class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path></svg>
+                {{ isDownloadingSteals ? 'Saving...' : 'Share' }}
+              </button>
+            </div>
           </div>
           <div class="card-body space-y-2">
             <div 
@@ -340,10 +467,10 @@
               </div>
               <div class="flex-1">
                 <div class="font-semibold text-dark-text">{{ pick.player_name }}</div>
-                <div class="text-xs text-dark-textMuted">Round {{ pick.round }}, Pick {{ pick.pick }} • {{ pick.team_name }}</div>
+                <div class="text-xs text-dark-textMuted">R{{ pick.round }} • {{ pick.team_name }}</div>
               </div>
               <div class="text-right">
-                <div class="text-lg font-bold text-green-400">+{{ pick.score?.toFixed(1) }}</div>
+                <div class="text-lg font-bold text-green-400">+{{ pick.score?.toFixed(0) }}</div>
                 <div class="text-xs text-dark-textMuted">{{ pick.position }}</div>
               </div>
             </div>
@@ -355,7 +482,20 @@
 
         <div class="card">
           <div class="card-header">
-            <h3 class="text-lg font-bold text-dark-text">💀 Biggest Reaches</h3>
+            <div class="flex items-center justify-between">
+              <div class="flex items-center gap-2">
+                <span class="text-2xl">💀</span>
+                <div>
+                  <h3 class="text-lg font-bold text-dark-text">Biggest Draft Busts</h3>
+                  <p class="text-sm text-dark-textMuted">Underperformed relative to draft position</p>
+                </div>
+              </div>
+              <button @click="downloadBustsImage" :disabled="isDownloadingBusts" class="flex items-center gap-2 text-sm px-3 py-1.5 rounded-lg font-semibold transition-colors disabled:opacity-50" style="background:#dc2626;color:#fff;" @mouseover="$event.currentTarget.style.background='#ef4444'" @mouseout="$event.currentTarget.style.background='#dc2626'">
+                <svg v-if="!isDownloadingBusts" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
+                <svg v-else class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path></svg>
+                {{ isDownloadingBusts ? 'Saving...' : 'Share' }}
+              </button>
+            </div>
           </div>
           <div class="card-body space-y-2">
             <div 
@@ -370,15 +510,15 @@
               </div>
               <div class="flex-1">
                 <div class="font-semibold text-dark-text">{{ pick.player_name }}</div>
-                <div class="text-xs text-dark-textMuted">Round {{ pick.round }}, Pick {{ pick.pick }} • {{ pick.team_name }}</div>
+                <div class="text-xs text-dark-textMuted">R{{ pick.round }} • {{ pick.team_name }}</div>
               </div>
               <div class="text-right">
-                <div class="text-lg font-bold text-red-400">{{ pick.score?.toFixed(1) }}</div>
+                <div class="text-lg font-bold text-red-400">{{ pick.score?.toFixed(0) }}</div>
                 <div class="text-xs text-dark-textMuted">{{ pick.position }}</div>
               </div>
             </div>
             <div v-if="topReaches.length === 0" class="text-center py-4 text-dark-textMuted">
-              No significant reaches found
+              No significant busts found
             </div>
           </div>
         </div>
@@ -538,6 +678,132 @@
       </div>
     </template>
 
+    <!-- ==================== TEAM DETAIL MODAL ==================== -->
+    <Teleport to="body">
+      <div 
+        v-if="showTeamModal && selectedTeamData" 
+        class="fixed inset-0 z-50 flex items-center justify-center p-4"
+        @click.self="showTeamModal = false"
+      >
+        <div class="absolute inset-0 bg-black/70 backdrop-blur-sm"></div>
+        <div class="relative bg-dark-elevated rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto border border-dark-border">
+          <div class="sticky top-0 z-10 px-6 py-4 border-b border-dark-border bg-dark-elevated flex items-center justify-between">
+            <div class="flex items-center gap-3">
+              <div class="w-12 h-12 rounded-full bg-dark-border overflow-hidden">
+                <img :src="selectedTeamData?.logo_url || defaultAvatar" class="w-full h-full object-cover" @error="handleImageError" />
+              </div>
+              <div>
+                <h3 class="text-xl font-bold text-dark-text">{{ selectedTeamData?.team_name }}</h3>
+                <p class="text-sm text-dark-textMuted">Draft Breakdown</p>
+              </div>
+            </div>
+            <div class="flex items-center gap-2">
+              <button 
+                @click="downloadTeamImage" 
+                :disabled="isDownloadingTeam"
+                class="flex items-center gap-2 text-sm px-3 py-1.5 rounded-lg font-semibold transition-colors disabled:opacity-50"
+                style="background: #dc2626; color: #ffffff;"
+                @mouseover="$event.currentTarget.style.background = '#eab308'"
+                @mouseout="$event.currentTarget.style.background = '#dc2626'"
+              >
+                <svg v-if="!isDownloadingTeam" class="w-4 h-4 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                </svg>
+                <svg v-else class="w-4 h-4 animate-spin pointer-events-none" fill="none" viewBox="0 0 24 24">
+                  <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                  <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                {{ isDownloadingTeam ? 'Saving...' : 'Share' }}
+              </button>
+              <button @click="showTeamModal = false" class="p-2 rounded-lg hover:bg-dark-border/50 transition-colors">
+                <svg class="w-5 h-5 text-dark-textMuted" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+          </div>
+          
+          <div class="p-6">
+            <!-- Grade Summary -->
+            <div class="flex items-center justify-between mb-6 p-4 bg-dark-border/20 rounded-xl">
+              <div class="grid grid-cols-3 gap-4 flex-1 text-center">
+                <div>
+                  <div class="text-2xl font-bold text-dark-text">{{ selectedTeamData?.totalScore >= 0 ? '+' : '' }}{{ selectedTeamData?.totalScore?.toFixed(1) }}</div>
+                  <div class="text-xs text-dark-textMuted">Total Score</div>
+                </div>
+                <div>
+                  <div class="text-2xl font-bold text-green-400">{{ selectedTeamData?.hits }}</div>
+                  <div class="text-xs text-dark-textMuted">Hits</div>
+                </div>
+                <div>
+                  <div class="text-2xl font-bold text-red-400">{{ selectedTeamData?.misses }}</div>
+                  <div class="text-xs text-dark-textMuted">Misses</div>
+                </div>
+              </div>
+              <div class="text-center pl-6 border-l border-dark-border">
+                <div class="text-5xl font-black" :class="getGradeClass(selectedTeamData?.grade)">
+                  {{ selectedTeamData?.grade }}
+                </div>
+                <div class="text-xs text-dark-textMuted mt-1">Overall Grade</div>
+              </div>
+            </div>
+
+            <!-- Position Breakdown -->
+            <div class="mb-6">
+              <h4 class="text-sm font-bold text-dark-textMuted uppercase mb-3">Position Breakdown</h4>
+              <div class="grid grid-cols-5 gap-2">
+                <div 
+                  v-for="pos in getTeamPositionBreakdown(selectedTeamData?.team_key)" 
+                  :key="pos.position"
+                  class="text-center p-2 rounded-lg"
+                  :class="getPositionStrengthClass(pos.avgScore)"
+                >
+                  <div class="text-sm font-bold">{{ pos.position }}</div>
+                  <div class="text-xs opacity-75">{{ pos.count }} picks</div>
+                  <div class="text-xs font-semibold mt-1">
+                    {{ pos.avgScore >= 0 ? '+' : '' }}{{ pos.avgScore.toFixed(1) }}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- All Picks -->
+            <div>
+              <h4 class="text-sm font-bold text-dark-textMuted uppercase mb-3">All Picks</h4>
+              <div class="space-y-2">
+                <div 
+                  v-for="pick in selectedTeamData?.picks" 
+                  :key="pick.pick"
+                  class="flex items-center gap-3 p-3 bg-dark-border/20 rounded-lg"
+                  :class="pick.score >= 3 ? 'border-l-2 border-green-500' : pick.score <= -3 ? 'border-l-2 border-red-500' : ''"
+                >
+                  <div class="w-8 text-center text-sm font-bold text-dark-textMuted">R{{ pick.round }}</div>
+                  <div class="w-10 h-10 rounded-full bg-dark-border overflow-hidden flex-shrink-0">
+                    <img v-if="pick.headshot" :src="pick.headshot" class="w-full h-full object-cover" @error="handleImageError" />
+                  </div>
+                  <div class="flex-1 min-w-0">
+                    <div class="font-semibold text-dark-text truncate">{{ pick.player_name }}</div>
+                    <div class="text-xs text-dark-textMuted">
+                      {{ pick.position }}{{ pick.position_rank_drafted || '' }}
+                      <template v-if="pick.current_position_rank && pick.current_position_rank < 900">
+                        → {{ pick.position }}{{ pick.current_position_rank }}
+                      </template>
+                    </div>
+                  </div>
+                  <div class="text-right">
+                    <div class="font-bold" :class="getGradeClass(pick.grade)">{{ pick.grade }}</div>
+                    <div class="text-xs" :class="pick.score >= 0 ? 'text-green-400' : 'text-red-400'">
+                      {{ pick.score >= 0 ? '+' : '' }}{{ pick.score?.toFixed(1) }}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </Teleport>
+
     <!-- Player Detail Modal -->
     <Teleport to="body">
       <div 
@@ -691,6 +957,7 @@ const platformSubTextClass = computed(() => {
 const tabOptions = [
   { id: 'board', name: 'Draft Board', icon: '📋' },
   { id: 'grades', name: 'Player Grades', icon: '🎯' },
+  { id: 'balance', name: 'Draft Balance', icon: '⚖️' },
   { id: 'analysis', name: 'Deep Analysis', icon: '📊' },
   { id: 'actual', name: 'Actual Value', icon: '🏆' }
 ]
@@ -703,6 +970,13 @@ const selectedTeamFilter = ref('')
 const gradeSort = ref('pick')
 const isLoading = ref(false)
 const selectedPick = ref<any>(null)
+
+// Team Modal State
+const showTeamModal = ref(false)
+const selectedTeamData = ref<any>(null)
+const isDownloadingTeam = ref(false)
+const isDownloadingSteals = ref(false)
+const isDownloadingBusts = ref(false)
 
 // Data
 const draftPicks = ref<any[]>([])
@@ -954,6 +1228,91 @@ function handleImageError(e: Event) {
 
 function selectPick(pick: any) {
   selectedPick.value = pick
+}
+
+// Team Modal Functions
+function openTeamModal(team: any) {
+  const teamData = teamGrades.value.find(t => t.team_key === team.team_key)
+  selectedTeamData.value = teamData || team
+  showTeamModal.value = true
+}
+
+function getTeamGrade(teamKey: string): string {
+  const team = teamGrades.value.find(t => t.team_key === teamKey)
+  return team?.grade || 'C'
+}
+
+function getTeamPositionBreakdown(teamKey: string) {
+  const team = draftBoard.value.find(t => t.team_key === teamKey)
+  if (!team) return []
+  const posMap = new Map<string, { position: string; count: number; totalScore: number }>()
+  for (const pick of team.picks) {
+    const pos = pick.position || 'Unknown'
+    if (!posMap.has(pos)) posMap.set(pos, { position: pos, count: 0, totalScore: 0 })
+    const entry = posMap.get(pos)!
+    entry.count++
+    entry.totalScore += pick.score || 0
+  }
+  return Array.from(posMap.values()).map(p => ({ ...p, avgScore: p.count > 0 ? p.totalScore / p.count : 0 })).sort((a, b) => b.count - a.count)
+}
+
+function getPositionStrengthClass(avgScore: number): string {
+  if (avgScore >= 5) return 'bg-green-500/30 text-green-400'
+  if (avgScore >= 0) return 'bg-yellow-500/20 text-yellow-400'
+  if (avgScore >= -5) return 'bg-orange-500/20 text-orange-400'
+  return 'bg-red-500/20 text-red-400'
+}
+
+function getLeagueName(): string {
+  return leagueStore.currentLeague?.name || 'Fantasy Baseball'
+}
+
+// Download Team Image
+async function downloadTeamImage() {
+  if (!selectedTeamData.value) return
+  isDownloadingTeam.value = true
+  try {
+    const html2canvas = (await import('html2canvas')).default
+    const team = selectedTeamData.value
+    const loadLogo = async (): Promise<string> => { try { const r = await fetch('/UFD_V5.png'); if (!r.ok) return ''; const b = await r.blob(); return new Promise(res => { const rd = new FileReader(); rd.onloadend = () => res(rd.result as string); rd.onerror = () => res(''); rd.readAsDataURL(b) }) } catch { return '' } }
+    const createPlaceholder = (n: string): string => { const c = document.createElement('canvas'); c.width = 64; c.height = 64; const ctx = c.getContext('2d'); if (ctx) { ctx.fillStyle = '#3a3d52'; ctx.beginPath(); ctx.arc(32, 32, 32, 0, Math.PI * 2); ctx.fill(); ctx.fillStyle = '#fff'; ctx.font = 'bold 28px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(n.charAt(0).toUpperCase(), 32, 34) } return c.toDataURL('image/png') }
+    const logoBase64 = await loadLogo()
+    let teamLogoBase64 = team.logo_url ? await new Promise<string>(res => { const img = new Image(); img.crossOrigin = 'anonymous'; img.onload = () => { const c = document.createElement('canvas'); c.width = 64; c.height = 64; const ctx = c.getContext('2d'); if (ctx) { ctx.beginPath(); ctx.arc(32, 32, 32, 0, Math.PI * 2); ctx.clip(); ctx.drawImage(img, 0, 0, 64, 64) }; res(c.toDataURL('image/png')) }; img.onerror = () => res(createPlaceholder(team.team_name)); setTimeout(() => res(createPlaceholder(team.team_name)), 3000); img.src = team.logo_url }) : createPlaceholder(team.team_name)
+    const generatePickRows = () => team.picks.slice(0, 15).map((p: any) => `<div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid rgba(255,255,255,0.05);"><div style="width:24px;text-align:center;font-size:10px;color:#6b7280;">R${p.round}</div><div style="flex:1;font-size:11px;color:#e5e7eb;">${p.player_name}</div><div style="font-size:10px;color:#9ca3af;">${p.position}</div><div style="width:32px;text-align:center;font-size:12px;font-weight:bold;color:${p.grade?.startsWith('A') ? '#22c55e' : p.grade?.startsWith('B') ? '#eab308' : p.grade?.startsWith('C') ? '#f97316' : '#ef4444'};">${p.grade}</div><div style="width:40px;text-align:right;font-size:11px;font-weight:bold;color:${p.score >= 3 ? '#22c55e' : p.score <= -3 ? '#ef4444' : '#9ca3af'};">${p.score >= 0 ? '+' : ''}${p.score?.toFixed(1)}</div></div>`).join('')
+    const container = document.createElement('div'); container.style.cssText = 'position:absolute;left:-9999px;top:0;width:480px;font-family:system-ui,-apple-system,sans-serif;'
+    container.innerHTML = `<div style="background:linear-gradient(160deg,#0f1219 0%,#0a0c14 50%,#0d1117 100%);border-radius:16px;overflow:hidden;"><div style="background:#dc2626;padding:8px 20px;text-align:center;"><span style="font-size:12px;font-weight:700;color:#0a0c14;text-transform:uppercase;letter-spacing:2px;">Ultimate Fantasy Dashboard</span></div><div style="display:flex;align-items:center;padding:12px 16px;border-bottom:1px solid rgba(220,38,38,0.2);">${logoBase64 ? `<img src="${logoBase64}" style="height:40px;width:auto;flex-shrink:0;margin-right:12px;" />` : ''}<div style="flex:1;"><div style="font-size:16px;font-weight:900;color:#fff;">Draft Report Card</div><div style="font-size:12px;margin-top:2px;"><span style="color:#e5e7eb;">${getLeagueName()}</span><span style="color:#6b7280;margin:0 4px;">•</span><span style="color:#dc2626;font-weight:600;">${selectedSeason.value}</span></div></div></div><div style="padding:16px;background:linear-gradient(135deg,rgba(34,197,94,0.1) 0%,transparent 100%);"><div style="display:flex;align-items:center;gap:16px;"><img src="${teamLogoBase64}" style="width:56px;height:56px;border-radius:50%;border:2px solid rgba(255,255,255,0.1);" /><div style="flex:1;"><div style="font-size:18px;font-weight:bold;color:#fff;">${team.team_name}</div><div style="font-size:12px;color:#9ca3af;margin-top:2px;">${team.picks.length} picks</div></div><div style="text-align:center;"><div style="font-size:48px;font-weight:900;color:${team.grade?.startsWith('A') ? '#22c55e' : team.grade?.startsWith('B') ? '#eab308' : team.grade?.startsWith('C') ? '#f97316' : '#ef4444'};">${team.grade}</div></div></div><div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:16px;"><div style="text-align:center;padding:8px;background:rgba(255,255,255,0.05);border-radius:8px;"><div style="font-size:18px;font-weight:bold;color:#e5e7eb;">${team.totalScore >= 0 ? '+' : ''}${team.totalScore?.toFixed(1)}</div><div style="font-size:10px;color:#6b7280;">Total Score</div></div><div style="text-align:center;padding:8px;background:rgba(255,255,255,0.05);border-radius:8px;"><div style="font-size:18px;font-weight:bold;color:#22c55e;">${team.hits}</div><div style="font-size:10px;color:#6b7280;">Hits</div></div><div style="text-align:center;padding:8px;background:rgba(255,255,255,0.05);border-radius:8px;"><div style="font-size:18px;font-weight:bold;color:#ef4444;">${team.misses}</div><div style="font-size:10px;color:#6b7280;">Misses</div></div></div></div><div style="padding:12px 16px;">${generatePickRows()}</div><div style="padding:10px 16px;text-align:center;border-top:1px solid rgba(220,38,38,0.2);"><span style="font-size:14px;font-weight:bold;color:#dc2626;">ultimatefantasydashboard.com</span></div></div>`
+    document.body.appendChild(container); await new Promise(r => setTimeout(r, 300))
+    const finalCanvas = await html2canvas(container, { backgroundColor: '#0a0c14', scale: 2, useCORS: true, allowTaint: true }); document.body.removeChild(container)
+    const link = document.createElement('a'); link.download = `${team.team_name.replace(/\s+/g, '-')}-draft-report.png`; link.href = finalCanvas.toDataURL('image/png'); link.click()
+  } finally { isDownloadingTeam.value = false }
+}
+
+// Download Steals Image
+async function downloadStealsImage() {
+  isDownloadingSteals.value = true
+  try {
+    const html2canvas = (await import('html2canvas')).default; const steals = topSteals.value.slice(0, 10); if (steals.length === 0) { isDownloadingSteals.value = false; return }
+    const loadLogo = async (): Promise<string> => { try { const r = await fetch('/UFD_V5.png'); if (!r.ok) return ''; const b = await r.blob(); return new Promise(res => { const rd = new FileReader(); rd.onloadend = () => res(rd.result as string); rd.onerror = () => res(''); rd.readAsDataURL(b) }) } catch { return '' } }
+    const logoBase64 = await loadLogo(); const leader = steals[0]; const maxValue = Math.max(...steals.map(s => s.score || 0))
+    const generateRows = () => steals.map((p, i) => { const w = maxValue > 0 ? ((p.score || 0) / maxValue) * 100 : 0; return `<div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;"><div style="width:20px;text-align:center;font-weight:bold;font-size:12px;color:${i === 0 ? '#22c55e' : '#6b7280'};">${i + 1}</div><div style="flex:1;min-width:0;"><div style="font-size:12px;font-weight:600;color:#e5e7eb;">${p.player_name}</div><div style="font-size:10px;color:#9ca3af;margin-top:1px;">Drafted by <span style="color:#facc15;font-weight:600;">${p.team_name}</span> • R${p.round}</div><div style="height:6px;background:rgba(58,61,82,0.5);border-radius:3px;overflow:hidden;margin-top:6px;"><div style="height:100%;width:${w}%;background:#22c55e;opacity:${i === 0 ? 1 : 0.6};border-radius:3px;"></div></div></div><div style="width:50px;text-align:right;"><div style="font-size:13px;font-weight:bold;color:${i === 0 ? '#22c55e' : '#e5e7eb'};">+${p.score?.toFixed(0)}</div></div></div>` }).join('')
+    const container = document.createElement('div'); container.style.cssText = 'position:absolute;left:-9999px;top:0;width:480px;font-family:system-ui,-apple-system,sans-serif;'
+    container.innerHTML = `<div style="background:linear-gradient(160deg,#0f1219 0%,#0a0c14 50%,#0d1117 100%);border-radius:16px;overflow:hidden;"><div style="background:#dc2626;padding:8px 20px;text-align:center;"><span style="font-size:12px;font-weight:700;color:#0a0c14;text-transform:uppercase;letter-spacing:2px;">Ultimate Fantasy Dashboard</span></div><div style="display:flex;align-items:center;padding:10px 16px;border-bottom:1px solid rgba(220,38,38,0.2);">${logoBase64 ? `<img src="${logoBase64}" style="height:40px;width:auto;flex-shrink:0;margin-right:12px;margin-top:4px;" />` : ''}<div style="flex:1;"><div style="font-size:17px;font-weight:900;color:#fff;text-transform:uppercase;letter-spacing:0.5px;line-height:1.1;">🔥 Biggest Draft Steals</div><div style="font-size:12px;margin-top:2px;"><span style="color:#e5e7eb;">${getLeagueName()}</span><span style="color:#6b7280;margin:0 4px;">•</span><span style="color:#dc2626;font-weight:600;">${selectedSeason.value} Draft</span></div></div></div><div style="padding:12px 16px;background:linear-gradient(135deg,rgba(34,197,94,0.15) 0%,transparent 100%);border-bottom:1px solid rgba(34,197,94,0.2);"><div style="display:flex;align-items:center;gap:12px;"><div style="flex:1;"><div style="font-size:15px;font-weight:bold;color:#fff;">${leader.player_name}</div><div style="font-size:11px;color:#9ca3af;">Drafted by <span style="color:#facc15;">${leader.team_name}</span></div></div><div style="text-align:right;"><div style="font-size:26px;font-weight:900;color:#22c55e;">+${leader.score?.toFixed(0)}</div></div></div></div><div style="padding:12px 16px;">${generateRows()}</div><div style="padding:8px 16px;background:rgba(34,197,94,0.1);border-top:1px solid rgba(34,197,94,0.2);"><div style="font-size:10px;color:#9ca3af;text-align:center;"><span style="color:#22c55e;font-weight:600;">Value Score</span> = Position Rank at Draft − Current Position Rank</div></div><div style="padding:10px 16px;text-align:center;border-top:1px solid rgba(220,38,38,0.2);"><span style="font-size:14px;font-weight:bold;color:#dc2626;">ultimatefantasydashboard.com</span></div></div>`
+    document.body.appendChild(container); await new Promise(r => setTimeout(r, 300)); const finalCanvas = await html2canvas(container, { backgroundColor: '#0a0c14', scale: 2, useCORS: true, allowTaint: true }); document.body.removeChild(container); const link = document.createElement('a'); link.download = `${selectedSeason.value}-draft-steals.png`; link.href = finalCanvas.toDataURL('image/png'); link.click()
+  } finally { isDownloadingSteals.value = false }
+}
+
+// Download Busts Image
+async function downloadBustsImage() {
+  isDownloadingBusts.value = true
+  try {
+    const html2canvas = (await import('html2canvas')).default; const busts = topReaches.value.slice(0, 10); if (busts.length === 0) { isDownloadingBusts.value = false; return }
+    const loadLogo = async (): Promise<string> => { try { const r = await fetch('/UFD_V5.png'); if (!r.ok) return ''; const b = await r.blob(); return new Promise(res => { const rd = new FileReader(); rd.onloadend = () => res(rd.result as string); rd.onerror = () => res(''); rd.readAsDataURL(b) }) } catch { return '' } }
+    const logoBase64 = await loadLogo(); const leader = busts[0]; const maxValue = Math.max(...busts.map(s => Math.abs(s.score || 0)))
+    const generateRows = () => busts.map((p, i) => { const w = maxValue > 0 ? (Math.abs(p.score || 0) / maxValue) * 100 : 0; return `<div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;"><div style="width:20px;text-align:center;font-weight:bold;font-size:12px;color:${i === 0 ? '#ef4444' : '#6b7280'};">${i + 1}</div><div style="flex:1;min-width:0;"><div style="font-size:12px;font-weight:600;color:#e5e7eb;">${p.player_name}</div><div style="font-size:10px;color:#9ca3af;margin-top:1px;">Drafted by <span style="color:#facc15;font-weight:600;">${p.team_name}</span> • R${p.round}</div><div style="height:6px;background:rgba(58,61,82,0.5);border-radius:3px;overflow:hidden;margin-top:6px;"><div style="height:100%;width:${w}%;background:#ef4444;opacity:${i === 0 ? 1 : 0.6};border-radius:3px;"></div></div></div><div style="width:50px;text-align:right;"><div style="font-size:13px;font-weight:bold;color:${i === 0 ? '#ef4444' : '#e5e7eb'};">${p.score?.toFixed(0)}</div></div></div>` }).join('')
+    const container = document.createElement('div'); container.style.cssText = 'position:absolute;left:-9999px;top:0;width:480px;font-family:system-ui,-apple-system,sans-serif;'
+    container.innerHTML = `<div style="background:linear-gradient(160deg,#0f1219 0%,#0a0c14 50%,#0d1117 100%);border-radius:16px;overflow:hidden;"><div style="background:#dc2626;padding:8px 20px;text-align:center;"><span style="font-size:12px;font-weight:700;color:#0a0c14;text-transform:uppercase;letter-spacing:2px;">Ultimate Fantasy Dashboard</span></div><div style="display:flex;align-items:center;padding:10px 16px;border-bottom:1px solid rgba(220,38,38,0.2);">${logoBase64 ? `<img src="${logoBase64}" style="height:40px;width:auto;flex-shrink:0;margin-right:12px;margin-top:4px;" />` : ''}<div style="flex:1;"><div style="font-size:17px;font-weight:900;color:#fff;text-transform:uppercase;letter-spacing:0.5px;line-height:1.1;">💀 Biggest Draft Busts</div><div style="font-size:12px;margin-top:2px;"><span style="color:#e5e7eb;">${getLeagueName()}</span><span style="color:#6b7280;margin:0 4px;">•</span><span style="color:#dc2626;font-weight:600;">${selectedSeason.value} Draft</span></div></div></div><div style="padding:12px 16px;background:linear-gradient(135deg,rgba(239,68,68,0.15) 0%,transparent 100%);border-bottom:1px solid rgba(239,68,68,0.2);"><div style="display:flex;align-items:center;gap:12px;"><div style="flex:1;"><div style="font-size:15px;font-weight:bold;color:#fff;">${leader.player_name}</div><div style="font-size:11px;color:#9ca3af;">Drafted by <span style="color:#facc15;">${leader.team_name}</span></div></div><div style="text-align:right;"><div style="font-size:26px;font-weight:900;color:#ef4444;">${leader.score?.toFixed(0)}</div></div></div></div><div style="padding:12px 16px;">${generateRows()}</div><div style="padding:8px 16px;background:rgba(239,68,68,0.1);border-top:1px solid rgba(239,68,68,0.2);"><div style="font-size:10px;color:#9ca3af;text-align:center;"><span style="color:#ef4444;font-weight:600;">Value Score</span> = Position Rank at Draft − Current Position Rank</div></div><div style="padding:10px 16px;text-align:center;border-top:1px solid rgba(220,38,38,0.2);"><span style="font-size:14px;font-weight:bold;color:#dc2626;">ultimatefantasydashboard.com</span></div></div>`
+    document.body.appendChild(container); await new Promise(r => setTimeout(r, 300)); const finalCanvas = await html2canvas(container, { backgroundColor: '#0a0c14', scale: 2, useCORS: true, allowTaint: true }); document.body.removeChild(container); const link = document.createElement('a'); link.download = `${selectedSeason.value}-draft-busts.png`; link.href = finalCanvas.toDataURL('image/png'); link.click()
+  } finally { isDownloadingBusts.value = false }
 }
 
 // Load draft data
