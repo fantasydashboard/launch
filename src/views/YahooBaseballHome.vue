@@ -721,6 +721,9 @@ const scoringTypeBadgeClass = computed(() => {
 // Format matchups with category win data
 const formattedMatchups = computed(() => {
   console.log('[formattedMatchups] displayMatchups count:', displayMatchups.value.length)
+  console.log('[formattedMatchups] Platform:', leagueStore.activePlatform)
+  console.log('[formattedMatchups] isPointsLeague:', isPointsLeague.value)
+  
   if (displayMatchups.value.length > 0) {
     console.log('[formattedMatchups] First matchup raw:', JSON.stringify(displayMatchups.value[0]))
   }
@@ -730,13 +733,34 @@ const formattedMatchups = computed(() => {
     const team1 = m.teams?.[0] || m.team1 || null
     const team2 = m.teams?.[1] || m.team2 || null
     
+    // Determine category wins based on platform and data format
+    let team1CatWins: number | string = '-'
+    let team2CatWins: number | string = '-'
+    
+    // For ESPN category leagues
+    if (leagueStore.activePlatform === 'espn' && m.is_category_league) {
+      team1CatWins = m.home_category_wins ?? team1?.category_wins ?? '-'
+      team2CatWins = m.away_category_wins ?? team2?.category_wins ?? '-'
+      console.log('[formattedMatchups] ESPN category wins:', team1CatWins, '-', team2CatWins)
+    }
+    // For Yahoo category leagues
+    else if (m.stat_winners) {
+      team1CatWins = m.stat_winners[0]?.stat_winner_count ?? '-'
+      team2CatWins = m.stat_winners[1]?.stat_winner_count ?? '-'
+    }
+    // Fallback: check team data for category_wins
+    else if (team1?.category_wins !== undefined || team2?.category_wins !== undefined) {
+      team1CatWins = team1?.category_wins ?? '-'
+      team2CatWins = team2?.category_wins ?? '-'
+    }
+    
     return {
       ...m,
       matchup_id: m.matchup_id || m.id,
       team1,
       team2,
-      team1_cat_wins: m.stat_winners?.[0]?.stat_winner_count || m.teams?.[0]?.win_probability || '-',
-      team2_cat_wins: m.stat_winners?.[1]?.stat_winner_count || m.teams?.[1]?.win_probability || '-'
+      team1_cat_wins: team1CatWins,
+      team2_cat_wins: team2CatWins
     }
   })
 })

@@ -1157,6 +1157,10 @@ export const useLeagueStore = defineStore('league', () => {
         rank: t.rank
       })))
       
+      // Check if this is a category league
+      const isCategoryLeague = league.scoringType === 'H2H_CATEGORY'
+      console.log('[ESPN] Is category league:', isCategoryLeague)
+      
       // Map ESPN matchups to Yahoo-compatible format
       yahooMatchups.value = espnMatchups.map(matchup => {
         const homeTeam = yahooTeams.value.find(t => t.team_id === matchup.homeTeamId?.toString())
@@ -1166,19 +1170,42 @@ export const useLeagueStore = defineStore('league', () => {
           homeTeamId: matchup.homeTeamId,
           awayTeamId: matchup.awayTeamId,
           homeTeamFound: homeTeam?.name,
-          awayTeamFound: awayTeam?.name
+          awayTeamFound: awayTeam?.name,
+          isCategoryLeague: matchup.isCategoryLeague,
+          homeCategoryWins: matchup.homeCategoryWins,
+          awayCategoryWins: matchup.awayCategoryWins
         })
+        
+        // Build teams array with category win data for category leagues
+        const team1Data = homeTeam ? { 
+          ...homeTeam, 
+          points: matchup.homeScore || 0,
+          // Add category wins for category leagues
+          category_wins: isCategoryLeague ? (matchup.homeCategoryWins || 0) : undefined,
+          category_losses: isCategoryLeague ? (matchup.homeCategoryLosses || 0) : undefined
+        } : null
+        
+        const team2Data = awayTeam ? { 
+          ...awayTeam, 
+          points: matchup.awayScore || 0,
+          // Add category wins for category leagues
+          category_wins: isCategoryLeague ? (matchup.awayCategoryWins || 0) : undefined,
+          category_losses: isCategoryLeague ? (matchup.awayCategoryLosses || 0) : undefined
+        } : null
         
         return {
           matchup_id: matchup.id,
           week: currentWeek,
-          team1: homeTeam ? { ...homeTeam, points: matchup.homeScore || 0 } : null,
-          team2: awayTeam ? { ...awayTeam, points: matchup.awayScore || 0 } : null,
+          team1: team1Data,
+          team2: team2Data,
           // Include full team data in teams array too (for compatibility with formattedMatchups)
-          teams: [
-            homeTeam ? { ...homeTeam, points: matchup.homeScore || 0 } : null,
-            awayTeam ? { ...awayTeam, points: matchup.awayScore || 0 } : null
-          ].filter(Boolean)
+          teams: [team1Data, team2Data].filter(Boolean),
+          // ESPN-specific category data (for views to use)
+          is_category_league: isCategoryLeague,
+          home_category_wins: matchup.homeCategoryWins,
+          away_category_wins: matchup.awayCategoryWins,
+          home_category_losses: matchup.homeCategoryLosses,
+          away_category_losses: matchup.awayCategoryLosses
         }
       })
       

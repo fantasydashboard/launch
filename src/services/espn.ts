@@ -215,6 +215,14 @@ export interface EspnMatchup {
   awayTeam?: EspnTeam
   homeScore: number
   awayScore: number
+  // Category league specific fields
+  homeCategoryWins?: number
+  awayCategoryWins?: number
+  homeCategoryLosses?: number
+  awayCategoryLosses?: number
+  homeCategoryTies?: number
+  awayCategoryTies?: number
+  isCategoryLeague?: boolean
   winner: 'HOME' | 'AWAY' | 'TIE' | 'UNDECIDED'
   playoffTierType: string
 }
@@ -631,6 +639,11 @@ export class EspnFantasyService {
     }
 
     try {
+      // Get league first to know scoring type
+      const league = await this.getLeague(sport, leagueId, season)
+      const scoringType = league?.scoringType
+      console.log(`[ESPN getMatchups] League scoring type: ${scoringType}`)
+      
       const data = await this.apiRequest(
         sport, 
         leagueId, 
@@ -639,10 +652,10 @@ export class EspnFantasyService {
         week
       )
       
-      const matchups = this.parseMatchups(data, week)
+      // Pass scoring type to parseMatchups for category league handling
+      const matchups = this.parseMatchups(data, week, scoringType)
       
       // Determine cache TTL based on week status
-      const league = await this.getLeague(sport, leagueId, season)
       const currentWeek = league?.status?.currentMatchupPeriod || 1
       const isCompletedWeek = week < currentWeek
       const ttl = isCompletedWeek ? CACHE_TTL.COMPLETED : CACHE_TTL.CURRENT
@@ -1901,13 +1914,30 @@ export class EspnFantasyService {
     }
   }
 
-  private parseMatchups(data: any, week: number): EspnMatchup[] {
+  private parseMatchups(data: any, week: number, scoringType?: string): EspnMatchup[] {
     const schedule = data.schedule || []
     console.log('[ESPN parseMatchups] Raw schedule length:', schedule.length, 'for week:', week)
+    console.log('[ESPN parseMatchups] Scoring type:', scoringType)
+    
+    // Detect if this is a category league
+    const isCategoryLeague = scoringType === 'H2H_CATEGORY'
+    console.log('[ESPN parseMatchups] Is category league:', isCategoryLeague)
     
     if (schedule.length > 0) {
-      console.log('[ESPN parseMatchups] First schedule item:', JSON.stringify(schedule[0]))
+      console.log('[ESPN parseMatchups] First schedule item:', JSON.stringify(schedule[0]).slice(0, 1000))
       console.log('[ESPN parseMatchups] matchupPeriodIds in data:', [...new Set(schedule.map((m: any) => m.matchupPeriodId))])
+      
+      // Log category-specific fields if present
+      const firstMatch = schedule[0]
+      if (firstMatch?.home) {
+        console.log('[ESPN parseMatchups] Home team data keys:', Object.keys(firstMatch.home))
+        if (firstMatch.home.cumulativeScore) {
+          console.log('[ESPN parseMatchups] Home cumulativeScore:', JSON.stringify(firstMatch.home.cumulativeScore))
+        }
+        if (firstMatch.home.totalWins !== undefined) {
+          console.log('[ESPN parseMatchups] Home totalWins:', firstMatch.home.totalWins, 'totalLosses:', firstMatch.home.totalLosses)
+        }
+      }
     }
     
     const teams = this.parseTeams(data)
@@ -1928,18 +1958,73 @@ export class EspnFantasyService {
     console.log('[ESPN parseMatchups] After dedup:', uniqueMatchups.length, 'unique matchups')
     
     return uniqueMatchups
-      .map((match: any) => ({
-        id: match.id,
-        matchupPeriodId: match.matchupPeriodId,
-        homeTeamId: match.home?.teamId || 0,
-        awayTeamId: match.away?.teamId || 0,
-        homeTeam: teamMap.get(match.home?.teamId),
-        awayTeam: teamMap.get(match.away?.teamId),
-        homeScore: match.home?.totalPoints || 0,
-        awayScore: match.away?.totalPoints || 0,
-        winner: this.determineWinner(match),
-        playoffTierType: match.playoffTierType || 'NONE'
-      }))
+      .map((match: any) => {
+        // For H2H Category leagues, extract category wins/losses
+        // ESPN stores these in various places depending on the response
+        let homeCategoryWins = 0
+        let awayCategoryWins = 0
+        let homeCategoryLosses = 0
+        let awayCategoryLosses = 0
+        let homeCategoryTies = 0
+        let awayCategoryTies = 0
+        
+        if (isCategoryLeague) {
+          // Method 1: Check for totalWins/totalLosses directly on home/away
+          if (match.home?.totalWins !== undefined) {
+            homeCategoryWins = match.home.totalWins || 0
+            homeCategoryLosses = match.home.totalLosses || 0
+            homeCategoryTies = match.home.totalTies || 0
+          }
+          if (match.away?.totalWins !== undefined) {
+            awayCategoryWins = match.away.totalWins || 0
+            awayCategoryLosses = match.away.totalLosses || 0
+            awayCategoryTies = match.away.totalTies || 0
+          }
+          
+          // Method 2: Check cumulativeScore for category breakdown
+          if (match.home?.cumulativeScore?.wins !== undefined) {
+            homeCategoryWins = match.home.cumulativeScore.wins || 0
+            homeCategoryLosses = match.home.cumulativeScore.losses || 0
+            homeCategoryTies = match.home.cumulativeScore.ties || 0
+          }
+          if (match.away?.cumulativeScore?.wins !== undefined) {
+            awayCategoryWins = match.away.cumulativeScore.wins || 0
+            awayCategoryLosses = match.away.cumulativeScore.losses || 0
+            awayCategoryTies = match.away.cumulativeScore.ties || 0
+          }
+          
+          // Method 3: Some ESPN responses have statBySlot with category data
+          if (match.home?.rosterForMatchupPeriod?.appliedStatTotal !== undefined && homeCategoryWins === 0) {
+            // Count wins from stat comparisons if available
+            const homeStats = match.home.rosterForMatchupPeriod
+            const awayStats = match.away?.rosterForMatchupPeriod
+            // This would require stat-by-stat comparison which we'd need more data for
+          }
+          
+          console.log(`[ESPN parseMatchups] Category matchup: Home ${homeCategoryWins}-${homeCategoryLosses}-${homeCategoryTies}, Away ${awayCategoryWins}-${awayCategoryLosses}-${awayCategoryTies}`)
+        }
+        
+        return {
+          id: match.id,
+          matchupPeriodId: match.matchupPeriodId,
+          homeTeamId: match.home?.teamId || 0,
+          awayTeamId: match.away?.teamId || 0,
+          homeTeam: teamMap.get(match.home?.teamId),
+          awayTeam: teamMap.get(match.away?.teamId),
+          homeScore: match.home?.totalPoints || 0,
+          awayScore: match.away?.totalPoints || 0,
+          // Category league specific
+          homeCategoryWins: isCategoryLeague ? homeCategoryWins : undefined,
+          awayCategoryWins: isCategoryLeague ? awayCategoryWins : undefined,
+          homeCategoryLosses: isCategoryLeague ? homeCategoryLosses : undefined,
+          awayCategoryLosses: isCategoryLeague ? awayCategoryLosses : undefined,
+          homeCategoryTies: isCategoryLeague ? homeCategoryTies : undefined,
+          awayCategoryTies: isCategoryLeague ? awayCategoryTies : undefined,
+          isCategoryLeague,
+          winner: this.determineWinner(match),
+          playoffTierType: match.playoffTierType || 'NONE'
+        }
+      })
   }
 
   private parseDraft(data: any, sport?: string): EspnDraftPick[] {
