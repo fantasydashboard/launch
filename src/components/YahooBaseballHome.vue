@@ -39,7 +39,7 @@
         <div v-if="isLoading" class="flex items-center justify-center py-12">
           <div class="text-center">
             <div class="animate-spin rounded-full h-12 w-12 border-b-4 border-red-600 mx-auto mb-3"></div>
-            <p class="text-dark-textMuted text-sm">Loading matchups...</p>
+            <p class="text-dark-textMuted text-sm">{{ loadingStatus || 'Loading...' }}</p>
           </div>
         </div>
 
@@ -784,6 +784,7 @@ const isGeneratingDownload = ref(false)
 const isDownloadingLeader = ref(false)
 const isDownloadingTeamDetail = ref(false)
 const chartLoadProgress = ref('')
+const loadingStatus = ref('')
 const defaultAvatar = computed(() => {
   if (leagueStore.activePlatform === 'espn') return 'https://g.espncdn.com/lm-static/ffl/images/default_logos/team_0.svg'
   return 'https://s.yimg.com/cv/apiv2/default/mlb/mlb_2_g.png'
@@ -1874,7 +1875,7 @@ function getCategoryWinClass(wins: number, catId: string) {
   return 'text-dark-text'
 }
 
-function handleImageError(e: Event) { (e.target as HTMLImageElement).src = defaultAvatar }
+function handleImageError(e: Event) { (e.target as HTMLImageElement).src = defaultAvatar.value }
 function openLeaderModal(type: string) { leaderModalType.value = type; showLeaderModal.value = true }
 function closeLeaderModal() { showLeaderModal.value = false }
 function formatLeaderValue(value: number) {
@@ -3259,6 +3260,7 @@ async function loadEspnData() {
   
   console.log('[ESPN] loadEspnData for:', leagueKey)
   isLoading.value = true
+  loadingStatus.value = 'Initializing ESPN data...'
   
   try {
     // Settings are already in store, just log them
@@ -3271,9 +3273,11 @@ async function loadEspnData() {
     const season = parseInt(parts[3])
     
     // Dynamically import ESPN service
+    loadingStatus.value = 'Loading ESPN service...'
     const { espnService } = await import('@/services/espn')
     
     // Fetch transactions for move counts
+    loadingStatus.value = 'Fetching transactions...'
     try {
       const transactions = await espnService.getTransactions(sport, espnLeagueId, season)
       console.log('[ESPN] Fetched transactions:', transactions.length)
@@ -3309,9 +3313,23 @@ async function loadEspnData() {
     }
     
     // Fetch all historical matchups for proper streak/weekly data
+    loadingStatus.value = 'Fetching matchup history...'
     try {
       const allMatchups = await espnService.getAllMatchups(sport, espnLeagueId, season)
       console.log('[ESPN] Fetched all matchups for', allMatchups.size, 'weeks')
+      
+      // DEBUG: Log detailed matchup data to see what ESPN provides
+      if (allMatchups.size > 0) {
+        const firstWeekMatchups = allMatchups.get(1) || allMatchups.values().next().value
+        if (firstWeekMatchups && firstWeekMatchups.length > 0) {
+          console.log('[ESPN DEBUG] First matchup full data:', JSON.stringify(firstWeekMatchups[0], null, 2))
+          console.log('[ESPN DEBUG] Matchup keys:', Object.keys(firstWeekMatchups[0]))
+          // Check for stat data
+          const m = firstWeekMatchups[0]
+          if (m.homeTeam) console.log('[ESPN DEBUG] homeTeam keys:', Object.keys(m.homeTeam))
+          if (m.awayTeam) console.log('[ESPN DEBUG] awayTeam keys:', Object.keys(m.awayTeam))
+        }
+      }
       
       // Build weekly matchup results from actual data
       const allMatchupResults = new Map<string, Map<number, any>>()
@@ -3323,6 +3341,9 @@ async function loadEspnData() {
         weeklyScores.set(team.team_key, new Map())
       })
       
+      // Check if this is a category league for proper catWins tracking
+      const isCategoryLeague = !isPointsLeague.value
+      
       // Process each week's matchups
       allMatchups.forEach((matchups, week) => {
         matchups.forEach(matchup => {
@@ -3331,15 +3352,22 @@ async function loadEspnData() {
           const homeScore = matchup.homeScore || 0
           const awayScore = matchup.awayScore || 0
           
+          // For category leagues, use category wins from matchup data
+          const homeCatWins = matchup.homeCategoryWins || 0
+          const awayCatWins = matchup.awayCategoryWins || 0
+          
           // Record for home team
           const homeResults = allMatchupResults.get(homeTeamKey)
           if (homeResults) {
             homeResults.set(week, {
-              won: homeScore > awayScore,
-              tied: homeScore === awayScore,
+              won: isCategoryLeague ? (homeCatWins > awayCatWins) : (homeScore > awayScore),
+              tied: isCategoryLeague ? (homeCatWins === awayCatWins) : (homeScore === awayScore),
               points: homeScore,
               opponentPoints: awayScore,
-              opponent: awayTeamKey
+              opponent: awayTeamKey,
+              // Add catWins for category league hottest/coldest calculation
+              catWins: isCategoryLeague ? homeCatWins : (homeScore > awayScore ? 1 : 0),
+              catLosses: isCategoryLeague ? (matchup.homeCategoryLosses || 0) : (homeScore < awayScore ? 1 : 0)
             })
           }
           
@@ -3347,11 +3375,14 @@ async function loadEspnData() {
           const awayResults = allMatchupResults.get(awayTeamKey)
           if (awayResults) {
             awayResults.set(week, {
-              won: awayScore > homeScore,
-              tied: homeScore === awayScore,
+              won: isCategoryLeague ? (awayCatWins > homeCatWins) : (awayScore > homeScore),
+              tied: isCategoryLeague ? (awayCatWins === homeCatWins) : (homeScore === awayScore),
               points: awayScore,
               opponentPoints: homeScore,
-              opponent: homeTeamKey
+              opponent: homeTeamKey,
+              // Add catWins for category league hottest/coldest calculation
+              catWins: isCategoryLeague ? awayCatWins : (awayScore > homeScore ? 1 : 0),
+              catLosses: isCategoryLeague ? (matchup.awayCategoryLosses || 0) : (awayScore < homeScore ? 1 : 0)
             })
           }
           
@@ -3382,6 +3413,7 @@ async function loadEspnData() {
     
     // Fetch real category stats breakdown for ESPN category leagues
     if (!isPointsLeague.value) {
+      loadingStatus.value = 'Analyzing category statistics...'
       console.log('[ESPN] Category league detected - fetching real category stats')
       try {
         const categoryBreakdown = await espnService.getCategoryStatsBreakdown(sport, espnLeagueId, season)
@@ -3418,6 +3450,7 @@ async function loadEspnData() {
     }
     
     // Generate standings progression
+    loadingStatus.value = 'Building standings chart...'
     const yahooLeagueData = Array.isArray(leagueStore.yahooLeague) ? leagueStore.yahooLeague[0] : leagueStore.yahooLeague
     const endWeek = yahooLeagueData?.end_week || 25
     const startWeek = yahooLeagueData?.start_week || 1
@@ -3425,11 +3458,13 @@ async function loadEspnData() {
     generateStandingsProgression(startWeek, endWeek)
     buildChart()
     
+    loadingStatus.value = ''
     isLoading.value = false
     isLoadingChart.value = false
     
   } catch (e) {
     console.error('[ESPN] Error loading data:', e)
+    loadingStatus.value = ''
     isLoading.value = false
   }
 }

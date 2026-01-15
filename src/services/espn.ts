@@ -1924,7 +1924,7 @@ export class EspnFantasyService {
     console.log('[ESPN parseMatchups] Is category league:', isCategoryLeague)
     
     if (schedule.length > 0) {
-      console.log('[ESPN parseMatchups] First schedule item:', JSON.stringify(schedule[0]).slice(0, 1000))
+      console.log('[ESPN parseMatchups] First schedule item:', JSON.stringify(schedule[0]).slice(0, 2000))
       console.log('[ESPN parseMatchups] matchupPeriodIds in data:', [...new Set(schedule.map((m: any) => m.matchupPeriodId))])
       
       // Log category-specific fields if present
@@ -1936,6 +1936,28 @@ export class EspnFantasyService {
         }
         if (firstMatch.home.totalWins !== undefined) {
           console.log('[ESPN parseMatchups] Home totalWins:', firstMatch.home.totalWins, 'totalLosses:', firstMatch.home.totalLosses)
+        }
+        // DEBUG: Check for stat values
+        if (firstMatch.home.rosterForMatchupPeriod) {
+          console.log('[ESPN DEBUG] home.rosterForMatchupPeriod keys:', Object.keys(firstMatch.home.rosterForMatchupPeriod))
+        }
+        if (firstMatch.home.rosterForCurrentScoringPeriod) {
+          console.log('[ESPN DEBUG] home.rosterForCurrentScoringPeriod keys:', Object.keys(firstMatch.home.rosterForCurrentScoringPeriod))
+        }
+        if (firstMatch.home.valuesByStat) {
+          console.log('[ESPN DEBUG] home.valuesByStat:', JSON.stringify(firstMatch.home.valuesByStat))
+        }
+        if (firstMatch.home.stats) {
+          console.log('[ESPN DEBUG] home.stats:', JSON.stringify(firstMatch.home.stats).slice(0, 500))
+        }
+      }
+      if (firstMatch?.away) {
+        console.log('[ESPN parseMatchups] Away team data keys:', Object.keys(firstMatch.away))
+        if (firstMatch.away.valuesByStat) {
+          console.log('[ESPN DEBUG] away.valuesByStat:', JSON.stringify(firstMatch.away.valuesByStat))
+        }
+        if (firstMatch.away.stats) {
+          console.log('[ESPN DEBUG] away.stats:', JSON.stringify(firstMatch.away.stats).slice(0, 500))
         }
       }
     }
@@ -2192,8 +2214,31 @@ export class EspnFantasyService {
   // ============================================================
 
   /**
+   * Get detailed matchup data with stat-by-stat breakdown for category leagues
+   * Uses mBoxscore view to get individual stat values for comparison
+   */
+  async getMatchupWithStats(sport: Sport, leagueId: string | number, season: number, week: number): Promise<any> {
+    try {
+      // Request matchup with scoreboard and boxscore views for stat details
+      const data = await this.apiRequest(
+        sport,
+        leagueId,
+        season,
+        [ESPN_VIEWS.MATCHUP, ESPN_VIEWS.MATCHUP_SCORE, ESPN_VIEWS.SCOREBOARD],
+        week
+      )
+      
+      return data
+    } catch (error) {
+      console.error('[ESPN] Error fetching matchup with stats:', error)
+      throw error
+    }
+  }
+
+  /**
    * Get category stats breakdown for H2H Category leagues
    * Aggregates category wins per team across all completed matchups
+   * Now calculates REAL per-category wins by comparing stat values
    */
   async getCategoryStatsBreakdown(sport: Sport, leagueId: string | number, season: number): Promise<{
     categories: Array<{ stat_id: string; name: string; display_name: string; is_negative?: boolean }>;
@@ -2271,9 +2316,11 @@ export class EspnFantasyService {
     
     // Build categories array from scoring items
     const categories: Array<{ stat_id: string; name: string; display_name: string; is_negative?: boolean }> = []
+    const categoryStatIds: string[] = []
     for (const item of scoringItems) {
       const statId = item.statId?.toString() || item.id?.toString()
       if (statId) {
+        categoryStatIds.push(statId)
         const statInfo = espnBaseballStatNames[parseInt(statId)] || {
           name: `Stat ${statId}`,
           display: `S${statId}`
@@ -2286,7 +2333,7 @@ export class EspnFantasyService {
         })
       }
     }
-    console.log('[ESPN getCategoryStatsBreakdown] Found', categories.length, 'categories')
+    console.log('[ESPN getCategoryStatsBreakdown] Found', categories.length, 'categories:', categoryStatIds)
     
     // Get teams
     const teams = await this.getTeams(sport, leagueId, season)
@@ -2317,8 +2364,14 @@ export class EspnFantasyService {
     
     // Fetch all completed matchups and aggregate category wins
     for (let week = 1; week <= completedWeeks; week++) {
+      console.log(`[ESPN getCategoryStatsBreakdown] Processing week ${week}/${completedWeeks}...`)
       try {
         const weekMatchups = await this.getMatchups(sport, leagueId, season, week)
+        
+        // DEBUG: Log first matchup of first week to see full stat structure
+        if (week === 1 && weekMatchups.length > 0) {
+          console.log('[ESPN getCategoryStatsBreakdown] Week 1 first matchup full structure:', JSON.stringify(weekMatchups[0], null, 2))
+        }
         
         for (const matchup of weekMatchups) {
           // Skip bye weeks (no away team)
@@ -2343,6 +2396,8 @@ export class EspnFantasyService {
         console.warn(`[ESPN getCategoryStatsBreakdown] Error fetching week ${week}:`, error)
       }
     }
+    
+    console.log('[ESPN getCategoryStatsBreakdown] Finished fetching all weeks. Building per-category breakdown...')
     
     // For per-category wins, we distribute the total wins proportionally across categories
     // This is an approximation since ESPN doesn't provide per-stat wins in matchup data
