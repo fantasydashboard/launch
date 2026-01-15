@@ -214,13 +214,21 @@
         </div>
       </div>
 
+      <!-- Hint Text -->
+      <div class="flex items-center gap-2 text-sm text-dark-textMuted mt-4 mb-2">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 15l-2 5L9 9l11 4-5 2zm0 0l5 5M7.188 2.239l.777 2.897M5.136 7.965l-2.898-.777M13.95 4.05l-2.122 2.122m-5.657 5.656l-2.12 2.122" />
+        </svg>
+        <span>Click <span class="text-yellow-400 font-semibold">team</span> for details</span>
+      </div>
+
       <!-- Team Draft Grades Summary -->
       <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
         <div 
           v-for="team in teamGrades" 
           :key="team.team_key"
           class="card cursor-pointer hover:ring-2 hover:ring-yellow-400 transition-all"
-          @click="selectedTeamFilter = team.team_key"
+          @click="openTeamModal(team)"
         >
           <div class="card-body">
             <div class="flex items-center gap-3 mb-3">
