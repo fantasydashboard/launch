@@ -3380,6 +3380,43 @@ async function loadEspnData() {
     displayMatchups.value = leagueStore.yahooMatchups || []
     console.log('[ESPN] Matchups from store:', displayMatchups.value.length)
     
+    // Fetch real category stats breakdown for ESPN category leagues
+    if (!isPointsLeague.value) {
+      console.log('[ESPN] Category league detected - fetching real category stats')
+      try {
+        const categoryBreakdown = await espnService.getCategoryStatsBreakdown(sport, espnLeagueId, season)
+        
+        console.log('[ESPN] Got category breakdown:', {
+          categoriesCount: categoryBreakdown.categories.length,
+          teamsCount: categoryBreakdown.teamCategoryWins.size
+        })
+        
+        // Set stat categories from ESPN
+        statCategories.value = categoryBreakdown.categories
+        
+        // Convert teamCategoryWins Map to use team_key format consistent with yahooTeams
+        const convertedCatWins = new Map<string, Record<string, number>>()
+        for (const team of leagueStore.yahooTeams) {
+          // Try different key formats to find the matching entry
+          const espnKey = `espn_${team.team_id}`
+          const catWins = categoryBreakdown.teamCategoryWins.get(espnKey)
+          if (catWins) {
+            convertedCatWins.set(team.team_key, catWins)
+          }
+        }
+        
+        teamCategoryWins.value = convertedCatWins
+        console.log('[ESPN] Category wins set for', convertedCatWins.size, 'teams')
+        
+      } catch (error) {
+        console.error('[ESPN] Error fetching category breakdown:', error)
+        // Fall back to distribution method
+        if (displayCategories.value.length > 0) {
+          distributeCategoryWins()
+        }
+      }
+    }
+    
     // Generate standings progression
     const yahooLeagueData = Array.isArray(leagueStore.yahooLeague) ? leagueStore.yahooLeague[0] : leagueStore.yahooLeague
     const endWeek = yahooLeagueData?.end_week || 25

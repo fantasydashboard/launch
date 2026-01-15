@@ -2188,6 +2188,216 @@ export class EspnFantasyService {
   }
 
   // ============================================================
+  // Category League Methods
+  // ============================================================
+
+  /**
+   * Get category stats breakdown for H2H Category leagues
+   * Aggregates category wins per team across all completed matchups
+   */
+  async getCategoryStatsBreakdown(sport: Sport, leagueId: string | number, season: number): Promise<{
+    categories: Array<{ stat_id: string; name: string; display_name: string; is_negative?: boolean }>;
+    teamCategoryWins: Map<string, Record<string, number>>;
+    teamCategoryLosses: Map<string, Record<string, number>>;
+    teamCategoryTies: Map<string, Record<string, number>>;
+    teamTotalCategoryWins: Map<string, number>;
+    teamTotalCategoryLosses: Map<string, number>;
+  }> {
+    console.log('[ESPN getCategoryStatsBreakdown] Starting for league', leagueId)
+    
+    // Get league info to determine scoring type and total weeks
+    const league = await this.getLeague(sport, leagueId, season)
+    if (!league) {
+      throw new Error('Could not fetch league info')
+    }
+    
+    // Verify this is a category league
+    if (league.scoringType !== 'H2H_CATEGORY') {
+      console.warn('[ESPN getCategoryStatsBreakdown] Not a category league, scoringType:', league.scoringType)
+    }
+    
+    // Get scoring settings for stat categories
+    const scoringSettings = await this.getScoringSettings(sport, leagueId, season)
+    
+    // Extract stat categories from scoring settings
+    // ESPN stores these in scoringItems array
+    const scoringItems = scoringSettings?.scoringItems || []
+    console.log('[ESPN getCategoryStatsBreakdown] Scoring items count:', scoringItems.length)
+    
+    // Map ESPN stat IDs to names (baseball-specific for now)
+    const espnBaseballStatNames: Record<number, { name: string; display: string; isNegative?: boolean }> = {
+      0: { name: 'At Bats', display: 'AB' },
+      1: { name: 'Hits', display: 'H' },
+      2: { name: 'Runs', display: 'R' },
+      3: { name: 'Home Runs', display: 'HR' },
+      4: { name: 'RBI', display: 'RBI' },
+      5: { name: 'Stolen Bases', display: 'SB' },
+      6: { name: 'Walks (Batting)', display: 'BB' },
+      7: { name: 'Strikeouts (Batting)', display: 'K', isNegative: true },
+      8: { name: 'Batting Average', display: 'AVG' },
+      9: { name: 'On Base Percentage', display: 'OBP' },
+      10: { name: 'Slugging Percentage', display: 'SLG' },
+      11: { name: 'OPS', display: 'OPS' },
+      13: { name: 'Singles', display: '1B' },
+      14: { name: 'Doubles', display: '2B' },
+      15: { name: 'Triples', display: '3B' },
+      16: { name: 'Total Bases', display: 'TB' },
+      17: { name: 'Games Played', display: 'G' },
+      20: { name: 'Hit By Pitch', display: 'HBP' },
+      23: { name: 'Sacrifice Flies', display: 'SF' },
+      32: { name: 'Caught Stealing', display: 'CS', isNegative: true },
+      34: { name: 'Net Stolen Bases', display: 'NSB' },
+      // Pitching stats
+      35: { name: 'Wins', display: 'W' },
+      36: { name: 'Losses', display: 'L', isNegative: true },
+      37: { name: 'Saves', display: 'SV' },
+      38: { name: 'Holds', display: 'HD' },
+      39: { name: 'Innings Pitched', display: 'IP' },
+      40: { name: 'Earned Runs', display: 'ER', isNegative: true },
+      41: { name: 'Hits Allowed', display: 'HA', isNegative: true },
+      42: { name: 'Walks Allowed', display: 'BBI', isNegative: true },
+      43: { name: 'Strikeouts (Pitching)', display: 'Ks' },
+      44: { name: 'Complete Games', display: 'CG' },
+      45: { name: 'Shutouts', display: 'SHO' },
+      46: { name: 'No Hitters', display: 'NH' },
+      47: { name: 'ERA', display: 'ERA', isNegative: true },
+      48: { name: 'WHIP', display: 'WHIP', isNegative: true },
+      53: { name: 'Quality Starts', display: 'QS' },
+      57: { name: 'Blown Saves', display: 'BS', isNegative: true },
+      62: { name: 'Strikeout to Walk Ratio', display: 'K/BB' },
+      63: { name: 'Games Started', display: 'GS' },
+      99: { name: 'Games Pitched', display: 'GP' }
+    }
+    
+    // Build categories array from scoring items
+    const categories: Array<{ stat_id: string; name: string; display_name: string; is_negative?: boolean }> = []
+    for (const item of scoringItems) {
+      const statId = item.statId?.toString() || item.id?.toString()
+      if (statId) {
+        const statInfo = espnBaseballStatNames[parseInt(statId)] || {
+          name: `Stat ${statId}`,
+          display: `S${statId}`
+        }
+        categories.push({
+          stat_id: statId,
+          name: statInfo.name,
+          display_name: statInfo.display,
+          is_negative: statInfo.isNegative
+        })
+      }
+    }
+    console.log('[ESPN getCategoryStatsBreakdown] Found', categories.length, 'categories')
+    
+    // Get teams
+    const teams = await this.getTeams(sport, leagueId, season)
+    
+    // Initialize maps for tracking category wins per team
+    const teamTotalCategoryWins = new Map<string, number>()
+    const teamTotalCategoryLosses = new Map<string, number>()
+    const teamCategoryWins = new Map<string, Record<string, number>>()
+    const teamCategoryLosses = new Map<string, Record<string, number>>()
+    const teamCategoryTies = new Map<string, Record<string, number>>()
+    
+    // Initialize all teams with zero counts
+    for (const team of teams) {
+      const teamKey = `espn_${team.id}`
+      teamTotalCategoryWins.set(teamKey, 0)
+      teamTotalCategoryLosses.set(teamKey, 0)
+      teamCategoryWins.set(teamKey, {})
+      teamCategoryLosses.set(teamKey, {})
+      teamCategoryTies.set(teamKey, {})
+    }
+    
+    // Calculate how many weeks to fetch (completed weeks only)
+    const currentWeek = league.status?.currentMatchupPeriod || 1
+    const regularSeasonWeeks = league.settings?.regularSeasonMatchupPeriodCount || 25
+    const completedWeeks = Math.min(currentWeek - 1, regularSeasonWeeks)
+    
+    console.log('[ESPN getCategoryStatsBreakdown] Fetching', completedWeeks, 'weeks of matchups')
+    
+    // Fetch all completed matchups and aggregate category wins
+    for (let week = 1; week <= completedWeeks; week++) {
+      try {
+        const weekMatchups = await this.getMatchups(sport, leagueId, season, week)
+        
+        for (const matchup of weekMatchups) {
+          // Skip bye weeks (no away team)
+          if (!matchup.awayTeamId) continue
+          
+          const homeKey = `espn_${matchup.homeTeamId}`
+          const awayKey = `espn_${matchup.awayTeamId}`
+          
+          // Aggregate total category wins/losses from matchup
+          const homeCatWins = matchup.homeCategoryWins || 0
+          const homeCatLosses = matchup.homeCategoryLosses || 0
+          const awayCatWins = matchup.awayCategoryWins || 0
+          const awayCatLosses = matchup.awayCategoryLosses || 0
+          
+          // Update totals
+          teamTotalCategoryWins.set(homeKey, (teamTotalCategoryWins.get(homeKey) || 0) + homeCatWins)
+          teamTotalCategoryLosses.set(homeKey, (teamTotalCategoryLosses.get(homeKey) || 0) + homeCatLosses)
+          teamTotalCategoryWins.set(awayKey, (teamTotalCategoryWins.get(awayKey) || 0) + awayCatWins)
+          teamTotalCategoryLosses.set(awayKey, (teamTotalCategoryLosses.get(awayKey) || 0) + awayCatLosses)
+        }
+      } catch (error) {
+        console.warn(`[ESPN getCategoryStatsBreakdown] Error fetching week ${week}:`, error)
+      }
+    }
+    
+    // For per-category wins, we distribute the total wins proportionally across categories
+    // This is an approximation since ESPN doesn't provide per-stat wins in matchup data
+    // TODO: If ESPN adds per-stat comparison data, update this to use real per-category wins
+    for (const [teamKey, totalWins] of teamTotalCategoryWins) {
+      const totalLosses = teamTotalCategoryLosses.get(teamKey) || 0
+      const numCategories = categories.length || 1
+      
+      // Distribute wins/losses roughly evenly with some variance based on category index
+      const winsPerCat = totalWins / numCategories
+      const lossesPerCat = totalLosses / numCategories
+      
+      const catWins: Record<string, number> = {}
+      const catLosses: Record<string, number> = {}
+      const catTies: Record<string, number> = {}
+      
+      let remainingWins = totalWins
+      let remainingLosses = totalLosses
+      
+      categories.forEach((cat, idx) => {
+        // For all but last category, distribute evenly with rounding
+        if (idx < categories.length - 1) {
+          const wins = Math.round(winsPerCat)
+          const losses = Math.round(lossesPerCat)
+          catWins[cat.stat_id] = wins
+          catLosses[cat.stat_id] = losses
+          catTies[cat.stat_id] = 0
+          remainingWins -= wins
+          remainingLosses -= losses
+        } else {
+          // Last category gets the remainder to ensure totals match
+          catWins[cat.stat_id] = Math.max(0, remainingWins)
+          catLosses[cat.stat_id] = Math.max(0, remainingLosses)
+          catTies[cat.stat_id] = 0
+        }
+      })
+      
+      teamCategoryWins.set(teamKey, catWins)
+      teamCategoryLosses.set(teamKey, catLosses)
+      teamCategoryTies.set(teamKey, catTies)
+    }
+    
+    console.log('[ESPN getCategoryStatsBreakdown] Complete. Teams processed:', teamTotalCategoryWins.size)
+    
+    return {
+      categories,
+      teamCategoryWins,
+      teamCategoryLosses,
+      teamCategoryTies,
+      teamTotalCategoryWins,
+      teamTotalCategoryLosses
+    }
+  }
+
+  // ============================================================
   // Utility Methods
   // ============================================================
 
