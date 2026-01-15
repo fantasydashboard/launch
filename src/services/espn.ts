@@ -644,11 +644,12 @@ export class EspnFantasyService {
       const scoringType = league?.scoringType
       console.log(`[ESPN getMatchups] League scoring type: ${scoringType}`)
       
+      // Request mScoreboard along with mMatchup for stat values in category leagues
       const data = await this.apiRequest(
         sport, 
         leagueId, 
         season, 
-        [ESPN_VIEWS.MATCHUP, ESPN_VIEWS.MATCHUP_SCORE],
+        [ESPN_VIEWS.MATCHUP, ESPN_VIEWS.MATCHUP_SCORE, ESPN_VIEWS.SCOREBOARD],
         week
       )
       
@@ -1918,6 +1919,25 @@ export class EspnFantasyService {
     const schedule = data.schedule || []
     console.log('[ESPN parseMatchups] Raw schedule length:', schedule.length, 'for week:', week)
     console.log('[ESPN parseMatchups] Scoring type:', scoringType)
+    
+    // DEBUG: Log ALL top-level keys in the API response
+    console.log('[ESPN parseMatchups] API response top-level keys:', Object.keys(data))
+    
+    // Check for scoreboard data
+    if (data.scoreboard) {
+      console.log('[ESPN DEBUG] Found scoreboard data:', JSON.stringify(data.scoreboard).slice(0, 1000))
+    }
+    
+    // Check for teams array with stats
+    if (data.teams) {
+      console.log('[ESPN DEBUG] Found teams array, length:', data.teams.length)
+      if (data.teams[0]) {
+        console.log('[ESPN DEBUG] First team keys:', Object.keys(data.teams[0]))
+        if (data.teams[0].valuesByStat) {
+          console.log('[ESPN DEBUG] First team valuesByStat:', JSON.stringify(data.teams[0].valuesByStat))
+        }
+      }
+    }
     
     // Detect if this is a category league
     const isCategoryLeague = scoringType === 'H2H_CATEGORY'

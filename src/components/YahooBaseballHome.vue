@@ -786,9 +786,13 @@ const isDownloadingTeamDetail = ref(false)
 const chartLoadProgress = ref('')
 const loadingStatus = ref('')
 const defaultAvatar = computed(() => {
-  if (leagueStore.activePlatform === 'espn') return 'https://g.espncdn.com/lm-static/ffl/images/default_logos/team_0.svg'
+  // Use data URI for ESPN to prevent 404 loops - this is a simple gray circle with "ESPN" text
+  if (leagueStore.activePlatform === 'espn') return 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMDAgMTAwIj48Y2lyY2xlIGN4PSI1MCIgY3k9IjUwIiByPSI0NSIgZmlsbD0iIzMzMyIvPjx0ZXh0IHg9IjUwIiB5PSI1OCIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZmlsbD0iIzg4OCIgZm9udC1zaXplPSIxOCIgZm9udC1mYW1pbHk9InNhbnMtc2VyaWYiPkVTUE48L3RleHQ+PC9zdmc+'
   return 'https://s.yimg.com/cv/apiv2/default/mlb/mlb_2_g.png'
 })
+
+// Track images that have already errored to prevent infinite loops
+const erroredImages = new Set<string>()
 
 // Platform styling
 const platformName = computed(() => leagueStore.activePlatform === 'espn' ? 'ESPN' : 'Yahoo')
@@ -1875,7 +1879,16 @@ function getCategoryWinClass(wins: number, catId: string) {
   return 'text-dark-text'
 }
 
-function handleImageError(e: Event) { (e.target as HTMLImageElement).src = defaultAvatar.value }
+function handleImageError(e: Event) {
+  const img = e.target as HTMLImageElement
+  const originalSrc = img.src
+  // Prevent infinite loop - only try fallback once per image
+  if (erroredImages.has(originalSrc)) {
+    return // Already tried fallback for this image
+  }
+  erroredImages.add(originalSrc)
+  img.src = defaultAvatar.value
+}
 function openLeaderModal(type: string) { leaderModalType.value = type; showLeaderModal.value = true }
 function closeLeaderModal() { showLeaderModal.value = false }
 function formatLeaderValue(value: number) {
