@@ -338,9 +338,13 @@
 
     <!-- Platform Badge -->
     <div class="flex justify-center mt-8">
-      <div class="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-purple-600/10 border border-purple-600/30">
-        <span class="text-sm font-bold text-purple-400">Y!</span>
-        <span class="text-sm text-purple-300">Yahoo Fantasy Baseball • Points League</span>
+      <div class="inline-flex items-center gap-2 px-4 py-2 rounded-full border" :class="platformBadgeClass">
+        <img 
+          :src="isEspn ? '/espn-logo.svg' : '/yahoo-fantasy.svg'" 
+          :alt="platformName"
+          class="w-5 h-5"
+        />
+        <span class="text-sm" :class="platformSubTextClass">{{ platformName }} Fantasy Baseball • Points League</span>
       </div>
     </div>
   </div>
@@ -364,6 +368,20 @@ const effectiveLeagueKey = computed(() => {
   if (leagueStore.currentLeague?.league_id) return leagueStore.currentLeague.league_id
   return leagueStore.activeLeagueId
 })
+
+// Check if ESPN platform
+const isEspn = computed(() => {
+  if (leagueStore.activePlatform === 'espn') return true
+  const leagueKey = leagueStore.currentLeague?.league_id || leagueStore.activeLeagueId
+  if (leagueKey && leagueKey.startsWith('espn_')) return true
+  return false
+})
+
+// Platform display helpers
+const platformName = computed(() => isEspn.value ? 'ESPN' : 'Yahoo')
+const platformBadgeClass = computed(() => isEspn.value ? 'bg-red-600/10 border-red-600/30' : 'bg-purple-600/10 border-purple-600/30')
+const platformTextClass = computed(() => isEspn.value ? 'text-red-400' : 'text-purple-400')
+const platformSubTextClass = computed(() => isEspn.value ? 'text-red-300' : 'text-purple-300')
 
 const defaultAvatar = 'https://s.yimg.com/cv/apiv2/default/mlb/mlb_1_y.png'
 
@@ -405,6 +423,11 @@ function getShortName(name: string | undefined): string {
 }
 
 function getLeagueName(): string {
+  if (isEspn.value) {
+    return leagueStore.currentLeague?.name || 
+           leagueStore.savedLeagues.find(l => l.league_id === effectiveLeagueKey.value)?.name || 
+           'ESPN Points League'
+  }
   return leagueStore.currentLeague?.name || 
          leagueStore.savedLeagues.find(l => l.yahoo_league_key === effectiveLeagueKey.value)?.name || 
          'Yahoo Points League'
@@ -686,6 +709,7 @@ async function loadInitialData() {
   let leagueKey = effectiveLeagueKey.value
   console.log('League key:', leagueKey)
   console.log('User ID:', authStore.user?.id)
+  console.log('Is ESPN:', isEspn.value)
   
   if (!leagueKey || !authStore.user?.id) {
     console.log('Missing league key or user ID, aborting')
@@ -694,6 +718,90 @@ async function loadInitialData() {
   }
   
   try {
+    // Handle ESPN leagues
+    if (isEspn.value) {
+      console.log('[ESPN COMPARE] Loading ESPN data...')
+      const { espnService } = await import('@/services/espn')
+      
+      // Parse league key: espn_baseball_1227422768_2025
+      const parts = leagueKey.split('_')
+      const sport = parts[1] as 'football' | 'baseball' | 'basketball' | 'hockey'
+      const espnLeagueId = parts[2]
+      const season = parseInt(parts[3])
+      
+      console.log('[ESPN COMPARE] Parsed:', { sport, espnLeagueId, season })
+      
+      // Get teams
+      const teams = await espnService.getTeams(sport, espnLeagueId, season)
+      console.log('[ESPN COMPARE] Got', teams.length, 'teams')
+      
+      if (!teams || teams.length === 0) {
+        console.error('[ESPN COMPARE] No teams data returned')
+        isInitialLoading.value = false
+        return
+      }
+      
+      allTeams.value = teams.map((team: any) => ({
+        team_key: `espn_team_${team.id}`,
+        name: team.name,
+        manager: team.owners?.[0]?.firstName || team.owners?.[0]?.displayName || 'Manager',
+        logo_url: team.logo,
+        wins: team.wins || 0,
+        losses: team.losses || 0,
+        ties: team.ties || 0,
+        points_for: team.pointsFor || 0,
+        rank: team.rank || 0,
+        playoff_seed: team.playoffSeed || null,
+        clinched_playoffs: team.clinched || null
+      }))
+      
+      console.log('[ESPN COMPARE] Parsed teams:', allTeams.value.length)
+      
+      // Get league info for current week
+      const league = await espnService.getLeague(sport, espnLeagueId, season)
+      const currentWeek = league?.status?.currentMatchupPeriod || 25
+      console.log('[ESPN COMPARE] Current week:', currentWeek)
+      
+      const matchupsList: any[] = []
+      for (let week = 1; week <= currentWeek; week++) {
+        try {
+          const weekMatchups = await espnService.getMatchups(sport, espnLeagueId, season, week)
+          if (weekMatchups && weekMatchups.length > 0) {
+            // Transform ESPN matchups to our format
+            for (const matchup of weekMatchups) {
+              matchupsList.push({
+                week,
+                team1_key: `espn_team_${matchup.home?.teamId}`,
+                team1_points: matchup.home?.totalPoints || 0,
+                team2_key: `espn_team_${matchup.away?.teamId}`,
+                team2_points: matchup.away?.totalPoints || 0,
+                winner_team_key: matchup.winner === 'HOME' ? `espn_team_${matchup.home?.teamId}` : 
+                                 matchup.winner === 'AWAY' ? `espn_team_${matchup.away?.teamId}` : null,
+                is_tied: matchup.winner === 'UNDECIDED' && matchup.home?.totalPoints === matchup.away?.totalPoints
+              })
+            }
+            console.log(`[ESPN COMPARE] Week ${week}: ${weekMatchups.length} matchups`)
+          }
+        } catch (e) {
+          // Week may not have data
+        }
+      }
+      
+      allMatchups.value = matchupsList
+      console.log('[ESPN COMPARE] Total matchups loaded:', allMatchups.value.length)
+      
+      // Auto-select first two teams
+      if (allTeams.value.length >= 2) {
+        team1Key.value = allTeams.value[0].team_key
+        team2Key.value = allTeams.value[1].team_key
+      }
+      
+      console.log('=== ESPN COMPARE: loadInitialData COMPLETE ===')
+      isInitialLoading.value = false
+      return
+    }
+    
+    // Yahoo league handling
     await yahooService.initialize(authStore.user.id)
     
     // Get standings
@@ -1077,7 +1185,7 @@ watch([team1Key, team2Key], ([t1, t2]) => {
 
 // Load data when league changes
 watch(() => leagueStore.activeLeagueId, async (newId) => {
-  if (newId && leagueStore.activePlatform === 'yahoo') {
+  if (newId) {
     console.log('League changed, loading initial data...')
     team1Key.value = ''
     team2Key.value = ''
@@ -1109,7 +1217,7 @@ watch(() => leagueStore.currentLeague?.league_id, async (newKey, oldKey) => {
 
 onMounted(async () => {
   console.log('Compare page mounted')
-  if (effectiveLeagueKey.value && leagueStore.activePlatform === 'yahoo') {
+  if (effectiveLeagueKey.value) {
     await loadInitialData()
   }
 })
