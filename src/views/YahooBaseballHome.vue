@@ -461,8 +461,12 @@
     <!-- Platform Badge -->
     <div class="flex justify-center">
       <div class="inline-flex items-center gap-2 px-4 py-2 rounded-full border" :class="platformBadgeClass">
-        <span class="text-sm font-bold" :class="platformTextClass">{{ leagueStore.activePlatform === 'espn' ? 'ESPN' : 'Y!' }}</span>
-        <span class="text-sm" :class="platformSubTextClass">{{ platformName }} Fantasy Baseball • {{ scoringTypeLabel }}</span>
+        <img 
+          :src="leagueStore.activePlatform === 'espn' ? '/espn-logo.svg' : '/yahoo-fantasy.svg'" 
+          :alt="platformName"
+          class="w-5 h-5"
+        />
+        <span class="text-sm" :class="platformSubTextClass">{{ leagueStore.activePlatform === 'espn' ? 'ESPN' : 'Yahoo!' }} Fantasy Baseball • {{ scoringTypeLabel }}</span>
       </div>
     </div>
 
@@ -574,19 +578,19 @@ const leagueStore = useLeagueStore()
 // Platform detection (for badge display only - behavior is identical)
 const platformName = computed(() => {
   if (leagueStore.activePlatform === 'espn') return 'ESPN'
-  if (leagueStore.activePlatform === 'yahoo') return 'Yahoo'
+  if (leagueStore.activePlatform === 'yahoo') return 'Yahoo!'
   return 'Fantasy'
 })
 const platformBadgeClass = computed(() => {
-  if (leagueStore.activePlatform === 'espn') return 'bg-red-600/10 border-red-600/30'
+  if (leagueStore.activePlatform === 'espn') return 'bg-[#5b8def]/10 border-[#5b8def]/30'
   return 'bg-purple-600/10 border-purple-600/30'
 })
 const platformTextClass = computed(() => {
-  if (leagueStore.activePlatform === 'espn') return 'text-red-400'
+  if (leagueStore.activePlatform === 'espn') return 'text-[#5b8def]'
   return 'text-purple-400'
 })
 const platformSubTextClass = computed(() => {
-  if (leagueStore.activePlatform === 'espn') return 'text-red-300'
+  if (leagueStore.activePlatform === 'espn') return 'text-[#5b8def]'
   return 'text-purple-300'
 })
 

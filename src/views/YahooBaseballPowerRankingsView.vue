@@ -866,7 +866,7 @@
           :alt="platformName"
           class="w-5 h-5"
         />
-        <span class="text-sm" :class="platformSubTextClass">{{ platformName }} Fantasy Baseball • Points League</span>
+        <span class="text-sm" :class="platformSubTextClass">{{ leagueStore.activePlatform === 'espn' ? 'ESPN' : 'Yahoo!' }} Fantasy Baseball • {{ scoringTypeLabel }}</span>
       </div>
     </div>
   </div>
@@ -889,9 +889,18 @@ const defaultAvatar = computed(() => {
 })
 
 // Platform styling
-const platformName = computed(() => leagueStore.activePlatform === 'espn' ? 'ESPN' : 'Yahoo')
-const platformBadgeClass = computed(() => leagueStore.activePlatform === 'espn' ? 'bg-red-600/10 border-red-600/30' : 'bg-purple-600/10 border-purple-600/30')
-const platformSubTextClass = computed(() => leagueStore.activePlatform === 'espn' ? 'text-red-300' : 'text-purple-300')
+const platformName = computed(() => leagueStore.activePlatform === 'espn' ? 'ESPN' : 'Yahoo!')
+const platformBadgeClass = computed(() => leagueStore.activePlatform === 'espn' ? 'bg-[#5b8def]/10 border-[#5b8def]/30' : 'bg-purple-600/10 border-purple-600/30')
+const platformSubTextClass = computed(() => leagueStore.activePlatform === 'espn' ? 'text-[#5b8def]' : 'text-purple-300')
+
+// Scoring type label for badge
+const scoringTypeLabel = computed(() => {
+  const st = (leagueStore.currentLeague?.scoring_type || leagueStore.yahooLeague?.scoring_type || '').toLowerCase()
+  if (st.includes('roto')) return 'Roto'
+  if (st.includes('point') || st === 'headpoint') return 'H2H Points'
+  if (st.includes('head')) return 'H2H Categories'
+  return 'H2H Points'
+})
 
 // State
 const isLoading = ref(false)

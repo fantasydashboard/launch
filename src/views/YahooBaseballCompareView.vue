@@ -358,7 +358,7 @@
           :alt="platformName"
           class="w-5 h-5"
         />
-        <span class="text-sm" :class="platformSubTextClass">{{ platformName }} Fantasy Baseball • Points League</span>
+        <span class="text-sm" :class="platformSubTextClass">{{ isEspn ? 'ESPN' : 'Yahoo!' }} Fantasy Baseball • {{ scoringTypeLabel }}</span>
       </div>
     </div>
   </div>
@@ -392,10 +392,19 @@ const isEspn = computed(() => {
 })
 
 // Platform display helpers
-const platformName = computed(() => isEspn.value ? 'ESPN' : 'Yahoo')
-const platformBadgeClass = computed(() => isEspn.value ? 'bg-red-600/10 border-red-600/30' : 'bg-purple-600/10 border-purple-600/30')
-const platformTextClass = computed(() => isEspn.value ? 'text-red-400' : 'text-purple-400')
-const platformSubTextClass = computed(() => isEspn.value ? 'text-red-300' : 'text-purple-300')
+const platformName = computed(() => isEspn.value ? 'ESPN' : 'Yahoo!')
+const platformBadgeClass = computed(() => isEspn.value ? 'bg-[#5b8def]/10 border-[#5b8def]/30' : 'bg-purple-600/10 border-purple-600/30')
+const platformTextClass = computed(() => isEspn.value ? 'text-[#5b8def]' : 'text-purple-400')
+const platformSubTextClass = computed(() => isEspn.value ? 'text-[#5b8def]' : 'text-purple-300')
+
+// Scoring type label for badge
+const scoringTypeLabel = computed(() => {
+  const st = (leagueStore.currentLeague?.scoring_type || leagueStore.yahooLeague?.scoring_type || '').toLowerCase()
+  if (st.includes('roto')) return 'Roto'
+  if (st.includes('point') || st === 'headpoint') return 'H2H Points'
+  if (st.includes('head')) return 'H2H Categories'
+  return 'H2H Points'
+})
 
 const defaultAvatar = 'https://s.yimg.com/cv/apiv2/default/mlb/mlb_1_y.png'
 

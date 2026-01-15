@@ -817,7 +817,7 @@
           :alt="platformName"
           class="w-5 h-5"
         />
-        <span class="text-sm" :class="platformSubTextClass">{{ platformName }} Fantasy Baseball • Points League</span>
+        <span class="text-sm" :class="platformSubTextClass">{{ isEspn ? 'ESPN' : 'Yahoo!' }} Fantasy Baseball • {{ scoringTypeLabel }}</span>
       </div>
     </div>
   </div>
@@ -849,27 +849,36 @@ const isEspn = computed(() => {
 })
 
 // Platform display helpers
-const platformName = computed(() => isEspn.value ? 'ESPN' : 'Yahoo')
+const platformName = computed(() => isEspn.value ? 'ESPN' : 'Yahoo!')
 
 const platformBadgeClass = computed(() => {
   if (isEspn.value) {
-    return 'bg-red-600/10 border-red-600/30'
+    return 'bg-[#5b8def]/10 border-[#5b8def]/30'
   }
   return 'bg-purple-600/10 border-purple-600/30'
 })
 
 const platformTextClass = computed(() => {
   if (isEspn.value) {
-    return 'text-red-400'
+    return 'text-[#5b8def]'
   }
   return 'text-purple-400'
 })
 
 const platformSubTextClass = computed(() => {
   if (isEspn.value) {
-    return 'text-red-300'
+    return 'text-[#5b8def]'
   }
   return 'text-purple-300'
+})
+
+// Scoring type label for badge
+const scoringTypeLabel = computed(() => {
+  const st = (leagueStore.currentLeague?.scoring_type || leagueStore.yahooLeague?.scoring_type || '').toLowerCase()
+  if (st.includes('roto')) return 'Roto'
+  if (st.includes('point') || st === 'headpoint') return 'H2H Points'
+  if (st.includes('head')) return 'H2H Categories'
+  return 'H2H Points'
 })
 
 // Tab options

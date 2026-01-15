@@ -596,7 +596,7 @@
           :alt="platformName"
           class="w-5 h-5"
         />
-        <span class="text-sm" :class="platformTextClass">{{ platformName }} Fantasy Baseball • Points League</span>
+        <span class="text-sm" :class="platformTextClass">{{ leagueStore.activePlatform === 'espn' ? 'ESPN' : 'Yahoo!' }} Fantasy Baseball • {{ scoringTypeLabel }}</span>
       </div>
     </div>
   </div>
@@ -660,7 +660,7 @@ const availableWeeks = computed(() => {
 })
 
 // Platform display
-const platformName = computed(() => leagueStore.activePlatform === 'espn' ? 'ESPN' : 'Yahoo')
+const platformName = computed(() => leagueStore.activePlatform === 'espn' ? 'ESPN' : 'Yahoo!')
 
 const platformBadgeClass = computed(() => {
   if (leagueStore.activePlatform === 'espn') {
@@ -671,9 +671,18 @@ const platformBadgeClass = computed(() => {
 
 const platformTextClass = computed(() => {
   if (leagueStore.activePlatform === 'espn') {
-    return 'text-[#5b8def]' // Lighter ESPN blue for visibility
+    return 'text-[#5b8def]'
   }
   return 'text-purple-300'
+})
+
+// Scoring type label for badge
+const scoringTypeLabel = computed(() => {
+  const st = (leagueStore.currentLeague?.scoring_type || leagueStore.yahooLeague?.scoring_type || '').toLowerCase()
+  if (st.includes('roto')) return 'Roto'
+  if (st.includes('point') || st === 'headpoint') return 'H2H Points'
+  if (st.includes('head')) return 'H2H Categories'
+  return 'H2H Points'
 })
 
 // Transform matchups for display

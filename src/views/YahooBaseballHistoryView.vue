@@ -991,7 +991,7 @@
           :alt="platformName"
           class="w-5 h-5"
         />
-        <span class="text-sm" :class="platformTextClass">{{ platformName }} Fantasy Baseball • Points League</span>
+        <span class="text-sm" :class="platformTextClass">{{ isEspn ? 'ESPN' : 'Yahoo!' }} Fantasy Baseball • {{ scoringTypeLabel }}</span>
       </div>
     </div>
   </div>
@@ -1018,7 +1018,7 @@ const isEspn = computed(() => {
 })
 
 // Platform display
-const platformName = computed(() => isEspn.value ? 'ESPN' : 'Yahoo')
+const platformName = computed(() => isEspn.value ? 'ESPN' : 'Yahoo!')
 
 const platformBadgeClass = computed(() => {
   if (isEspn.value) {
@@ -1032,6 +1032,15 @@ const platformTextClass = computed(() => {
     return 'text-[#5b8def]'
   }
   return 'text-purple-300'
+})
+
+// Scoring type label for badge
+const scoringTypeLabel = computed(() => {
+  const st = (leagueStore.currentLeague?.scoring_type || leagueStore.yahooLeague?.scoring_type || '').toLowerCase()
+  if (st.includes('roto')) return 'Roto'
+  if (st.includes('point') || st === 'headpoint') return 'H2H Points'
+  if (st.includes('head')) return 'H2H Categories'
+  return 'H2H Points'
 })
 
 // Effective league key - use the actually loaded league (might be previous season)
