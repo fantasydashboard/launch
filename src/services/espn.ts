@@ -763,7 +763,7 @@ export class EspnFantasyService {
    * Get draft results
    */
   async getDraft(sport: Sport, leagueId: string | number, season: number): Promise<EspnDraftPick[]> {
-    const cacheKey = `espn_draft_${sport}_${leagueId}_${season}_v2`
+    const cacheKey = `espn_draft_${sport}_${leagueId}_${season}_v4`
     const cached = cache.get<EspnDraftPick[]>('espn_draft', cacheKey)
     if (cached) {
       console.log(`[Cache HIT] ESPN draft for ${leagueId}`)
@@ -771,18 +771,51 @@ export class EspnFantasyService {
     }
 
     try {
-      // Request draft detail with player info view
-      const data = await this.apiRequest(sport, leagueId, season, [ESPN_VIEWS.DRAFT_DETAIL, ESPN_VIEWS.PLAYER_INFO])
+      // First, get just the draft detail to get player IDs
+      const draftData = await this.apiRequest(sport, leagueId, season, [ESPN_VIEWS.DRAFT_DETAIL])
       
-      console.log('[ESPN getDraft] Response keys:', Object.keys(data))
-      if (data.draftDetail) {
-        console.log('[ESPN getDraft] Draft picks count:', data.draftDetail.picks?.length)
-      }
-      if (data.players) {
-        console.log('[ESPN getDraft] Players in response:', data.players.length)
+      console.log('[ESPN getDraft] Response keys:', Object.keys(draftData))
+      
+      const rawPicks = draftData.draftDetail?.picks || []
+      console.log('[ESPN getDraft] Raw draft picks count:', rawPicks.length)
+      
+      if (rawPicks.length === 0) {
+        return []
       }
       
-      const picks = this.parseDraft(data, sport)
+      // Extract player IDs from draft picks
+      const playerIds = rawPicks.map((p: any) => p.playerId).filter(Boolean)
+      console.log('[ESPN getDraft] Player IDs to fetch:', playerIds.length)
+      
+      // Now fetch player info for those specific players using filter
+      let playersData: any = { players: [] }
+      if (playerIds.length > 0) {
+        try {
+          const filterObj = {
+            players: {
+              filterIds: {
+                value: playerIds
+              }
+            }
+          }
+          playersData = await this.apiRequestWithFilter(sport, leagueId, season, [ESPN_VIEWS.PLAYER_INFO], filterObj)
+          console.log('[ESPN getDraft] Fetched players with filter:', playersData.players?.length || 0)
+        } catch (e) {
+          console.log('[ESPN getDraft] Could not fetch players with filter:', e)
+        }
+      }
+      
+      // Combine draft data with player data for parsing
+      const combinedData = {
+        draftDetail: draftData.draftDetail,
+        players: playersData.players || []
+      }
+      
+      const picks = this.parseDraft(combinedData, sport)
+      
+      // Log resolution rate
+      const resolved = picks.filter(p => !p.playerName.startsWith('Player '))
+      console.log('[ESPN getDraft] Resolved', resolved.length, 'of', picks.length, 'players in initial parse')
       
       // Draft data is permanent
       cache.set('espn_draft', picks, CACHE_TTL.PERMANENT, cacheKey)
@@ -796,10 +829,10 @@ export class EspnFantasyService {
   
   /**
    * Get draft picks with player names resolved
-   * This combines draft data with player info lookup
+   * This combines draft data with player info lookup using multiple fallback methods
    */
   async getDraftWithPlayers(sport: Sport, leagueId: string | number, season: number): Promise<EspnDraftPick[]> {
-    const cacheKey = `espn_draft_full_${sport}_${leagueId}_${season}`
+    const cacheKey = `espn_draft_full_${sport}_${leagueId}_${season}_v3`
     const cached = cache.get<EspnDraftPick[]>('espn_draft_full', cacheKey)
     if (cached) {
       console.log(`[Cache HIT] ESPN draft with players for ${leagueId}`)
@@ -817,50 +850,100 @@ export class EspnFantasyService {
       const playerIds = picks.map(p => p.playerId)
       console.log('[ESPN getDraftWithPlayers] Need to resolve', playerIds.length, 'players')
       
-      // Try to get player info
-      const playerMap = await this.getPlayersByIds(sport, leagueId, season, playerIds)
-      console.log('[ESPN getDraftWithPlayers] Resolved', playerMap.size, 'players from getPlayersByIds')
+      // Build a master player map using multiple methods
+      const playerMap = new Map<number, { name: string; position: string; team: string }>()
       
-      // Also get roster data as fallback
+      // METHOD 1: Try kona_player_info (works for most current players)
       try {
-        const teamsWithRosters = await this.getTeamsWithRosters(sport, leagueId, season)
-        for (const team of teamsWithRosters) {
-          if (team.roster) {
-            for (const player of team.roster) {
-              if (!playerMap.has(player.playerId) || playerMap.get(player.playerId)?.name.startsWith('Player ')) {
-                playerMap.set(player.playerId, {
-                  name: player.fullName || `Player ${player.playerId}`,
-                  position: player.position || 'Unknown',
-                  team: player.proTeam || teamMapping[player.proTeamId] || 'FA'
-                })
+        const result = await this.getPlayersByIds(sport, leagueId, season, playerIds)
+        for (const [id, info] of result) {
+          playerMap.set(id, info)
+        }
+        console.log('[ESPN getDraftWithPlayers] Method 1 (kona_player_info): resolved', playerMap.size, 'players')
+      } catch (e) {
+        console.log('[ESPN getDraftWithPlayers] Method 1 failed:', e)
+      }
+      
+      // Find still-unresolved players
+      let unresolvedIds = playerIds.filter(id => !playerMap.has(id) || playerMap.get(id)?.name.startsWith('Player '))
+      console.log('[ESPN getDraftWithPlayers] Still unresolved after method 1:', unresolvedIds.length)
+      
+      // METHOD 2: Try roster data (gets currently rostered players with full info)
+      if (unresolvedIds.length > 0) {
+        try {
+          const teamsWithRosters = await this.getTeamsWithRosters(sport, leagueId, season)
+          for (const team of teamsWithRosters) {
+            if (team.roster) {
+              for (const player of team.roster) {
+                if (!playerMap.has(player.playerId) || playerMap.get(player.playerId)?.name.startsWith('Player ')) {
+                  playerMap.set(player.playerId, {
+                    name: player.fullName || `Player ${player.playerId}`,
+                    position: player.position || 'Unknown',
+                    team: player.proTeam || teamMapping[player.proTeamId] || 'FA'
+                  })
+                }
               }
             }
           }
+          unresolvedIds = playerIds.filter(id => !playerMap.has(id) || playerMap.get(id)?.name.startsWith('Player '))
+          console.log('[ESPN getDraftWithPlayers] Method 2 (rosters): now have', playerMap.size, 'players, still unresolved:', unresolvedIds.length)
+        } catch (e) {
+          console.log('[ESPN getDraftWithPlayers] Method 2 failed:', e)
         }
-        console.log('[ESPN getDraftWithPlayers] After roster fallback:', playerMap.size, 'players resolved')
-      } catch (e) {
-        console.log('[ESPN getDraftWithPlayers] Roster fallback failed:', e)
+      }
+      
+      // METHOD 3: Try players_wl view for unresolved players (broader player pool)
+      if (unresolvedIds.length > 0) {
+        try {
+          console.log('[ESPN getDraftWithPlayers] Method 3: Trying players_wl for', unresolvedIds.length, 'unresolved players')
+          const playersWlData = await this.getPlayersFromWaiverList(sport, leagueId, season, unresolvedIds)
+          for (const [id, info] of playersWlData) {
+            if (!playerMap.has(id) || playerMap.get(id)?.name.startsWith('Player ')) {
+              playerMap.set(id, info)
+            }
+          }
+          unresolvedIds = playerIds.filter(id => !playerMap.has(id) || playerMap.get(id)?.name.startsWith('Player '))
+          console.log('[ESPN getDraftWithPlayers] Method 3 (players_wl): now have', playerMap.size, 'players, still unresolved:', unresolvedIds.length)
+        } catch (e) {
+          console.log('[ESPN getDraftWithPlayers] Method 3 failed:', e)
+        }
+      }
+      
+      // METHOD 4: Try fetching each unresolved player individually (last resort)
+      if (unresolvedIds.length > 0 && unresolvedIds.length <= 20) {
+        console.log('[ESPN getDraftWithPlayers] Method 4: Individual lookup for', unresolvedIds.length, 'players:', unresolvedIds)
+        for (const playerId of unresolvedIds) {
+          try {
+            const playerInfo = await this.getPlayerById(sport, leagueId, season, playerId)
+            if (playerInfo && !playerInfo.name.startsWith('Player ')) {
+              playerMap.set(playerId, playerInfo)
+            }
+          } catch (e) {
+            // Silent fail for individual lookups
+          }
+        }
+        unresolvedIds = playerIds.filter(id => !playerMap.has(id) || playerMap.get(id)?.name.startsWith('Player '))
+        console.log('[ESPN getDraftWithPlayers] After method 4: still unresolved:', unresolvedIds.length)
+      }
+      
+      // Log final unresolved players for debugging
+      if (unresolvedIds.length > 0) {
+        console.log('[ESPN getDraftWithPlayers] FINAL UNRESOLVED player IDs:', unresolvedIds)
       }
       
       // Enrich picks with player info
       const enrichedPicks = picks.map(pick => {
         const playerInfo = playerMap.get(pick.playerId)
-        if (playerInfo) {
+        if (playerInfo && !playerInfo.name.startsWith('Player ')) {
           return {
             ...pick,
-            playerName: pick.playerName.startsWith('Player ') ? playerInfo.name : pick.playerName,
-            position: pick.position === 'Unknown' ? playerInfo.position : pick.position,
+            playerName: playerInfo.name,
+            position: playerInfo.position || pick.position || 'Unknown',
             proTeam: playerInfo.team
           }
         }
         return pick
       })
-      
-      // Log unresolved players
-      const unresolved = enrichedPicks.filter(p => p.playerName.startsWith('Player '))
-      if (unresolved.length > 0) {
-        console.log('[ESPN getDraftWithPlayers] Still unresolved:', unresolved.length, 'players. IDs:', unresolved.slice(0, 10).map(p => p.playerId))
-      }
       
       // Cache the enriched data
       cache.set('espn_draft_full', enrichedPicks, CACHE_TTL.PERMANENT, cacheKey)
@@ -870,6 +953,86 @@ export class EspnFantasyService {
       console.error('Error fetching ESPN draft with players:', error)
       throw error
     }
+  }
+  
+  /**
+   * Get players from the waiver/free agent list view (broader player pool)
+   */
+  private async getPlayersFromWaiverList(sport: Sport, leagueId: string | number, season: number, playerIds: number[]): Promise<Map<number, { name: string; position: string; team: string }>> {
+    const teamMapping = sport === 'baseball' ? MLB_TEAMS : PRO_TEAMS
+    const playerMap = new Map<number, { name: string; position: string; team: string }>()
+    
+    try {
+      // Request players_wl view with filter for specific player IDs
+      const filterObj = {
+        players: {
+          filterIds: {
+            value: playerIds
+          },
+          filterSlotIds: {
+            value: [] // Empty = all slots
+          },
+          limit: playerIds.length + 10,
+          sortPercOwned: {
+            sortPriority: 1,
+            sortAsc: false
+          }
+        }
+      }
+      
+      const data = await this.apiRequestWithFilter(sport, leagueId, season, [ESPN_VIEWS.PLAYERS], filterObj)
+      const players = data.players || []
+      
+      console.log('[ESPN getPlayersFromWaiverList] Got', players.length, 'players from players_wl')
+      
+      for (const entry of players) {
+        const player = entry.player || entry
+        if (player.id && playerIds.includes(player.id)) {
+          playerMap.set(player.id, {
+            name: player.fullName || `${player.firstName || ''} ${player.lastName || ''}`.trim() || `Player ${player.id}`,
+            position: this.getPositionName(player.defaultPositionId, sport),
+            team: teamMapping[player.proTeamId] || 'FA'
+          })
+        }
+      }
+    } catch (e) {
+      console.error('[ESPN getPlayersFromWaiverList] Error:', e)
+    }
+    
+    return playerMap
+  }
+  
+  /**
+   * Get a single player's info by ID (fallback method)
+   */
+  private async getPlayerById(sport: Sport, leagueId: string | number, season: number, playerId: number): Promise<{ name: string; position: string; team: string } | null> {
+    const teamMapping = sport === 'baseball' ? MLB_TEAMS : PRO_TEAMS
+    
+    try {
+      const filterObj = {
+        players: {
+          filterIds: {
+            value: [playerId]
+          }
+        }
+      }
+      
+      const data = await this.apiRequestWithFilter(sport, leagueId, season, [ESPN_VIEWS.PLAYER_INFO], filterObj)
+      const players = data.players || []
+      
+      if (players.length > 0) {
+        const player = players[0].player || players[0]
+        return {
+          name: player.fullName || `${player.firstName || ''} ${player.lastName || ''}`.trim() || `Player ${playerId}`,
+          position: this.getPositionName(player.defaultPositionId, sport),
+          team: teamMapping[player.proTeamId] || 'FA'
+        }
+      }
+    } catch (e) {
+      // Silent fail
+    }
+    
+    return null
   }
 
   /**
@@ -1650,22 +1813,63 @@ export class EspnFantasyService {
   private parseDraft(data: any, sport?: string): EspnDraftPick[] {
     const draftDetail = data.draftDetail || {}
     const picks = draftDetail.picks || []
+    const teamMapping = sport === 'baseball' ? MLB_TEAMS : PRO_TEAMS
+    
+    // Build player lookup from players array if available (from PLAYER_INFO view)
+    const playerLookup = new Map<number, { name: string; position: string; team: string }>()
+    if (data.players && Array.isArray(data.players)) {
+      console.log('[ESPN parseDraft] Found', data.players.length, 'players in response')
+      for (const entry of data.players) {
+        const player = entry.player || entry
+        if (player.id) {
+          playerLookup.set(player.id, {
+            name: player.fullName || `${player.firstName || ''} ${player.lastName || ''}`.trim() || `Player ${player.id}`,
+            position: this.getPositionName(player.defaultPositionId, sport),
+            team: teamMapping[player.proTeamId] || 'FA'
+          })
+        }
+      }
+      console.log('[ESPN parseDraft] Built player lookup with', playerLookup.size, 'players')
+    }
     
     // Log first pick to see structure
     if (picks.length > 0) {
-      console.log('[ESPN parseDraft] First raw pick:', JSON.stringify(picks[0]))
+      console.log('[ESPN parseDraft] First raw pick:', JSON.stringify(picks[0]).slice(0, 300))
+      console.log('[ESPN parseDraft] Total picks:', picks.length)
     }
     
     return picks.map((pick: any) => {
-      // Try to get position from player info if available
+      // Try multiple sources for player info
+      let playerName = `Player ${pick.playerId}`
       let position = 'Unknown'
       let positionId = 0
+      let proTeam = ''
       
-      // Some ESPN responses include player info directly
+      // Source 1: Check player lookup from response
+      const lookupInfo = playerLookup.get(pick.playerId)
+      if (lookupInfo) {
+        playerName = lookupInfo.name
+        position = lookupInfo.position
+        proTeam = lookupInfo.team
+      }
+      
+      // Source 2: Check if pick has playerName directly
+      if (pick.playerName && !pick.playerName.startsWith('Player ')) {
+        playerName = pick.playerName
+      }
+      
+      // Source 3: Check if pick has nested player object
       if (pick.player) {
+        if (pick.player.fullName) {
+          playerName = pick.player.fullName
+        }
         positionId = pick.player.defaultPositionId || 0
         position = this.getPositionName(positionId, sport)
-      } else if (pick.defaultPositionId) {
+        proTeam = teamMapping[pick.player.proTeamId] || proTeam
+      }
+      
+      // Source 4: Check direct properties on pick
+      if (pick.defaultPositionId && position === 'Unknown') {
         positionId = pick.defaultPositionId
         position = this.getPositionName(positionId, sport)
       }
@@ -1676,9 +1880,10 @@ export class EspnFantasyService {
         roundPickNumber: pick.roundPickNumber,
         overallPickNumber: pick.overallPickNumber,
         playerId: pick.playerId,
-        playerName: pick.playerName || `Player ${pick.playerId}`,
+        playerName,
         position,
         positionId,
+        proTeam,
         teamId: pick.teamId,
         keeper: pick.keeper || false,
         bidAmount: pick.bidAmount
