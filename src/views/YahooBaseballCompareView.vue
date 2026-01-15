@@ -240,17 +240,31 @@
         </div>
       </div>
 
-      <!-- Recent Matchups Chart -->
+      <!-- Recent Matchups Chart (H2H only) -->
       <div class="card" v-if="rivalryHistory.length > 0">
         <div class="card-header">
           <div class="flex items-center gap-2">
-            <span class="text-2xl">📈</span>
-            <h2 class="card-title">Recent Matchups</h2>
+            <span class="text-2xl">🥊</span>
+            <h2 class="card-title">Head-to-Head Matchups</h2>
           </div>
-          <p class="card-subtitle mt-2">Last {{ rivalryHistory.length }} head-to-head meetings</p>
+          <p class="card-subtitle mt-2">Last {{ rivalryHistory.length }} direct meetings</p>
         </div>
         <div class="card-body">
           <div ref="chartContainer" class="w-full" style="height: 350px;"></div>
+        </div>
+      </div>
+
+      <!-- Weekly Performance Chart (regardless of opponent) -->
+      <div class="card" v-if="weeklyPerformance.length > 0">
+        <div class="card-header">
+          <div class="flex items-center gap-2">
+            <span class="text-2xl">📈</span>
+            <h2 class="card-title">Weekly Performance</h2>
+          </div>
+          <p class="card-subtitle mt-2">Season-long scoring comparison (regardless of opponent)</p>
+        </div>
+        <div class="card-body">
+          <div ref="weeklyChartContainer" class="w-full" style="height: 350px;"></div>
         </div>
       </div>
 
@@ -351,7 +365,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch, onMounted, nextTick, computed } from 'vue'
+import { ref, watch, onMounted, onUnmounted, nextTick, computed } from 'vue'
 import { useLeagueStore } from '@/stores/league'
 import { useAuthStore } from '@/stores/auth'
 import { yahooService } from '@/services/yahoo'
@@ -398,9 +412,12 @@ const team2Data = ref<any>(null)
 const comparisonData = ref<any>(null)
 const rivalryHistory = ref<any[]>([])
 const rivalryHighlights = ref<any>(null)
+const weeklyPerformance = ref<any[]>([])
 
 const chartContainer = ref<HTMLElement | null>(null)
+const weeklyChartContainer = ref<HTMLElement | null>(null)
 let chartInstance: ApexCharts | null = null
+let weeklyChartInstance: ApexCharts | null = null
 const isDownloadingComparison = ref(false)
 
 // Computed: Filter dropdowns so you can't select the same team twice
@@ -767,23 +784,29 @@ async function loadInitialData() {
         try {
           const weekMatchups = await espnService.getMatchups(sport, espnLeagueId, season, week)
           if (weekMatchups && weekMatchups.length > 0) {
-            // Transform ESPN matchups to our format
+            // Transform ESPN matchups to match Yahoo's format
             for (const matchup of weekMatchups) {
+              // ESPN parseMatchups returns homeTeamId/awayTeamId and homeScore/awayScore
               matchupsList.push({
                 week,
-                team1_key: `espn_team_${matchup.home?.teamId}`,
-                team1_points: matchup.home?.totalPoints || 0,
-                team2_key: `espn_team_${matchup.away?.teamId}`,
-                team2_points: matchup.away?.totalPoints || 0,
-                winner_team_key: matchup.winner === 'HOME' ? `espn_team_${matchup.home?.teamId}` : 
-                                 matchup.winner === 'AWAY' ? `espn_team_${matchup.away?.teamId}` : null,
-                is_tied: matchup.winner === 'UNDECIDED' && matchup.home?.totalPoints === matchup.away?.totalPoints
+                is_playoffs: matchup.playoffTierType === 'WINNERS_BRACKET',
+                teams: [
+                  {
+                    team_key: `espn_team_${matchup.homeTeamId}`,
+                    points: matchup.homeScore || 0
+                  },
+                  {
+                    team_key: `espn_team_${matchup.awayTeamId}`,
+                    points: matchup.awayScore || 0
+                  }
+                ]
               })
             }
             console.log(`[ESPN COMPARE] Week ${week}: ${weekMatchups.length} matchups`)
           }
         } catch (e) {
           // Week may not have data
+          console.log(`[ESPN COMPARE] Week ${week}: no data`)
         }
       }
       
@@ -998,6 +1021,12 @@ async function loadComparison() {
     const h2hMatchups: any[] = []
     
     console.log('Searching through', allMatchups.value.length, 'matchups for H2H')
+    console.log('Looking for team1Key:', team1Key.value, 'and team2Key:', team2Key.value)
+    
+    // Debug: Log first matchup structure
+    if (allMatchups.value.length > 0) {
+      console.log('Sample matchup structure:', JSON.stringify(allMatchups.value[0]))
+    }
     
     for (const matchup of allMatchups.value) {
       const teams = matchup.teams || []
@@ -1090,9 +1119,48 @@ async function loadComparison() {
       rivalryHighlights.value = null
     }
     
+    // Calculate weekly performance for both teams (regardless of opponent)
+    const weeklyScores: { week: number; team1Score: number; team2Score: number }[] = []
+    const weekMap = new Map<number, { team1: number | null; team2: number | null }>()
+    
+    for (const matchup of allMatchups.value) {
+      const teams = matchup.teams || []
+      const week = matchup.week
+      
+      if (!weekMap.has(week)) {
+        weekMap.set(week, { team1: null, team2: null })
+      }
+      
+      for (const team of teams) {
+        if (team.team_key === team1Key.value) {
+          weekMap.get(week)!.team1 = parseFloat(team.points) || 0
+        }
+        if (team.team_key === team2Key.value) {
+          weekMap.get(week)!.team2 = parseFloat(team.points) || 0
+        }
+      }
+    }
+    
+    // Convert to array and sort by week
+    for (const [week, scores] of weekMap) {
+      if (scores.team1 !== null && scores.team2 !== null) {
+        weeklyScores.push({
+          week,
+          team1Score: scores.team1,
+          team2Score: scores.team2
+        })
+      }
+    }
+    weeklyScores.sort((a, b) => a.week - b.week)
+    weeklyPerformance.value = weeklyScores
+    console.log('[COMPARE] Weekly performance data:', weeklyScores.length, 'weeks')
+    
     // Render chart after DOM updates
     await nextTick()
-    setTimeout(() => renderChart(), 100)
+    setTimeout(() => {
+      renderChart()
+      renderWeeklyChart()
+    }, 100)
     
     console.log('=== loadComparison COMPLETE ===')
     
@@ -1176,6 +1244,79 @@ function renderChart() {
   console.log('Chart rendered')
 }
 
+function renderWeeklyChart() {
+  console.log('renderWeeklyChart called, container:', !!weeklyChartContainer.value, 'data:', weeklyPerformance.value.length)
+  
+  if (!weeklyChartContainer.value || weeklyPerformance.value.length === 0) {
+    console.log('Cannot render weekly chart - missing container or no data')
+    return
+  }
+  
+  if (weeklyChartInstance) {
+    weeklyChartInstance.destroy()
+    weeklyChartInstance = null
+  }
+  
+  // Get last 15 weeks
+  const recentWeeks = weeklyPerformance.value.slice(-15)
+  
+  console.log('Weekly chart data:', recentWeeks.map(m => ({ week: m.week, t1: m.team1Score, t2: m.team2Score })))
+  
+  const options = {
+    chart: {
+      type: 'line' as const,
+      height: 350,
+      background: 'transparent',
+      toolbar: { show: false },
+      animations: { enabled: true }
+    },
+    series: [
+      { 
+        name: team1Data.value?.name || 'Team 1', 
+        data: recentWeeks.map(m => m.team1Score) 
+      },
+      { 
+        name: team2Data.value?.name || 'Team 2', 
+        data: recentWeeks.map(m => m.team2Score) 
+      }
+    ],
+    colors: ['#06b6d4', '#f97316'],
+    stroke: {
+      width: 3,
+      curve: 'smooth' as const
+    },
+    markers: {
+      size: 5,
+      strokeWidth: 2,
+      hover: { size: 7 }
+    },
+    xaxis: {
+      categories: recentWeeks.map(m => `W${m.week}`),
+      labels: { style: { colors: '#94a3b8' } }
+    },
+    yaxis: { 
+      labels: { 
+        style: { colors: '#94a3b8' },
+        formatter: (val: number) => val.toFixed(0)
+      },
+      title: { text: 'Points', style: { color: '#94a3b8' } }
+    },
+    grid: { borderColor: '#334155' },
+    legend: { 
+      labels: { colors: '#e2e8f0' },
+      position: 'top' as const
+    },
+    tooltip: { 
+      theme: 'dark',
+      y: { formatter: (val: number) => val.toFixed(1) + ' pts' }
+    }
+  }
+  
+  weeklyChartInstance = new ApexCharts(weeklyChartContainer.value, options)
+  weeklyChartInstance.render()
+  console.log('Weekly chart rendered')
+}
+
 // Watch for team selection changes - auto-compare when both selected
 watch([team1Key, team2Key], ([t1, t2]) => {
   if (t1 && t2 && !isInitialLoading.value) {
@@ -1192,6 +1333,7 @@ watch(() => leagueStore.activeLeagueId, async (newId) => {
     comparisonData.value = null
     rivalryHistory.value = []
     rivalryHighlights.value = null
+    weeklyPerformance.value = []
     allTeams.value = []
     allMatchups.value = []
     isInitialLoading.value = true
@@ -1208,6 +1350,7 @@ watch(() => leagueStore.currentLeague?.league_id, async (newKey, oldKey) => {
     comparisonData.value = null
     rivalryHistory.value = []
     rivalryHighlights.value = null
+    weeklyPerformance.value = []
     allTeams.value = []
     allMatchups.value = []
     isInitialLoading.value = true
@@ -1219,6 +1362,17 @@ onMounted(async () => {
   console.log('Compare page mounted')
   if (effectiveLeagueKey.value) {
     await loadInitialData()
+  }
+})
+
+onUnmounted(() => {
+  if (chartInstance) {
+    chartInstance.destroy()
+    chartInstance = null
+  }
+  if (weeklyChartInstance) {
+    weeklyChartInstance.destroy()
+    weeklyChartInstance = null
   }
 })
 </script>
