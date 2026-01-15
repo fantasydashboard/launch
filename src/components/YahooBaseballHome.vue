@@ -244,8 +244,8 @@
                 W-L-T <span v-if="sortColumn === 'record'" class="text-yellow-400">{{ sortDirection === 'asc' ? '↑' : '↓' }}</span>
               </th>
               
-              <!-- Category columns (for H2H/Roto Category leagues) -->
-              <template v-if="!isPointsLeague">
+              <!-- Category columns (for Yahoo H2H/Roto Category leagues with per-category data) -->
+              <template v-if="hasRealPerCategoryData">
                 <th 
                   v-for="cat in displayCategories" 
                   :key="cat.stat_id"
@@ -257,6 +257,19 @@
                     <span class="text-[10px]">{{ cat.display_name }}</span>
                     <span v-if="sortColumn === 'cat_' + cat.stat_id" class="text-[8px] text-yellow-400">{{ sortDirection === 'asc' ? '↑' : '↓' }}</span>
                   </div>
+                </th>
+              </template>
+              
+              <!-- ESPN Category league - show total Cat Wins column -->
+              <template v-else-if="showTotalCategoryWins">
+                <th class="py-3 px-3 text-center cursor-pointer hover:text-yellow-400" @click="setSortColumn('catWins')">
+                  Cat W <span v-if="sortColumn === 'catWins'" class="text-yellow-400">{{ sortDirection === 'asc' ? '↑' : '↓' }}</span>
+                </th>
+                <th class="py-3 px-3 text-center cursor-pointer hover:text-yellow-400" @click="setSortColumn('catLosses')">
+                  Cat L <span v-if="sortColumn === 'catLosses'" class="text-yellow-400">{{ sortDirection === 'asc' ? '↑' : '↓' }}</span>
+                </th>
+                <th class="py-3 px-3 text-center cursor-pointer hover:text-yellow-400" @click="setSortColumn('allPlay')">
+                  All-Play <span v-if="sortColumn === 'allPlay'" class="text-yellow-400">{{ sortDirection === 'asc' ? '↑' : '↓' }}</span>
                 </th>
               </template>
               
@@ -320,8 +333,8 @@
                 </span>
               </td>
               
-              <!-- Category wins per stat (for H2H/Roto Category leagues) -->
-              <template v-if="!isPointsLeague">
+              <!-- Category wins per stat (for Yahoo H2H/Roto Category leagues with per-category data) -->
+              <template v-if="hasRealPerCategoryData">
                 <td 
                   v-for="cat in displayCategories" 
                   :key="cat.stat_id"
@@ -333,6 +346,19 @@
                   >
                     {{ team.categoryWins?.[cat.stat_id] || 0 }}
                   </span>
+                </td>
+              </template>
+              
+              <!-- ESPN Category league - show total Cat Wins/Losses -->
+              <template v-else-if="showTotalCategoryWins">
+                <td class="py-3 px-3 text-center">
+                  <span class="text-sm font-bold text-green-400">{{ team.totalCategoryWins || 0 }}</span>
+                </td>
+                <td class="py-3 px-3 text-center">
+                  <span class="text-sm font-bold text-red-400">{{ team.totalCategoryLosses || 0 }}</span>
+                </td>
+                <td class="py-3 px-3 text-center">
+                  <span class="text-sm">{{ team.all_play_wins || 0 }}-{{ team.all_play_losses || 0 }}</span>
                 </td>
               </template>
               
@@ -868,6 +894,8 @@ const chartOptions = ref<any>(null)
 // Data
 const transactionCounts = ref<Map<string, number>>(new Map())
 const teamCategoryWins = ref<Map<string, Record<string, number>>>(new Map())
+const teamTotalCategoryWins = ref<Map<string, number>>(new Map())
+const teamTotalCategoryLosses = ref<Map<string, number>>(new Map())
 const weeklyStandings = ref<Map<number, any[]>>(new Map())
 const displayMatchups = ref<any[]>([])
 
@@ -994,10 +1022,27 @@ const formattedMatchups = computed(() => {
 })
 
 const displayCategories = computed(() => {
+  // For ESPN category leagues, we don't have real per-category data
+  // So don't display individual category columns - we'll show total only
+  if (leagueStore.activePlatform === 'espn' && !isPointsLeague.value) {
+    return [] // Empty - we'll show total cat wins column instead
+  }
+  
   return statCategories.value.filter(cat => {
     if (cat.is_only_display_stat === '1' || cat.is_only_display_stat === 1) return false
     return true
   }).slice(0, 12)
+})
+
+// Flag to indicate if we have real per-category breakdown (Yahoo) or only totals (ESPN)
+const hasRealPerCategoryData = computed(() => {
+  // Yahoo provides real per-category wins, ESPN only provides totals
+  return leagueStore.activePlatform === 'yahoo' && !isPointsLeague.value
+})
+
+// For ESPN category leagues, show total category wins column
+const showTotalCategoryWins = computed(() => {
+  return leagueStore.activePlatform === 'espn' && !isPointsLeague.value
 })
 
 const numCategories = computed(() => displayCategories.value.length || 12)
@@ -1055,6 +1100,8 @@ const teamsWithStats = computed(() => {
       all_play_losses,
       transactions,
       categoryWins,
+      totalCategoryWins: teamTotalCategoryWins.value.get(team.team_key) || 0,
+      totalCategoryLosses: teamTotalCategoryLosses.value.get(team.team_key) || 0,
       luckScore,
       regularSeasonRank,
       playoffFinish
@@ -1084,6 +1131,12 @@ const sortedTeams = computed(() => {
     } else if (sortColumn.value === 'pa') {
       aVal = a.points_against || 0
       bVal = b.points_against || 0
+    } else if (sortColumn.value === 'catWins') {
+      aVal = a.totalCategoryWins || 0
+      bVal = b.totalCategoryWins || 0
+    } else if (sortColumn.value === 'catLosses') {
+      aVal = a.totalCategoryLosses || 0
+      bVal = b.totalCategoryLosses || 0
     } else if (sortColumn.value.startsWith('cat_')) {
       const catId = sortColumn.value.replace('cat_', '')
       aVal = a.categoryWins?.[catId] || 0
@@ -3451,19 +3504,33 @@ async function loadEspnData() {
         // Set stat categories from ESPN
         statCategories.value = categoryBreakdown.categories
         
-        // Convert teamCategoryWins Map to use team_key format consistent with yahooTeams
+        // Convert Maps to use team_key format consistent with yahooTeams
         const convertedCatWins = new Map<string, Record<string, number>>()
+        const convertedTotalWins = new Map<string, number>()
+        const convertedTotalLosses = new Map<string, number>()
+        
         for (const team of leagueStore.yahooTeams) {
-          // Try different key formats to find the matching entry
           const espnKey = `espn_${team.team_id}`
+          
+          // Per-category wins (for Yahoo compatibility)
           const catWins = categoryBreakdown.teamCategoryWins.get(espnKey)
           if (catWins) {
             convertedCatWins.set(team.team_key, catWins)
           }
+          
+          // Total category wins/losses (for ESPN display)
+          const totalWins = categoryBreakdown.teamTotalCategoryWins.get(espnKey) || 0
+          const totalLosses = categoryBreakdown.teamTotalCategoryLosses.get(espnKey) || 0
+          convertedTotalWins.set(team.team_key, totalWins)
+          convertedTotalLosses.set(team.team_key, totalLosses)
         }
         
         teamCategoryWins.value = convertedCatWins
+        teamTotalCategoryWins.value = convertedTotalWins
+        teamTotalCategoryLosses.value = convertedTotalLosses
+        
         console.log('[ESPN] Category wins set for', convertedCatWins.size, 'teams')
+        console.log('[ESPN] Total category wins sample:', Object.fromEntries([...convertedTotalWins.entries()].slice(0, 3)))
         
       } catch (error) {
         console.error('[ESPN] Error fetching category breakdown:', error)
