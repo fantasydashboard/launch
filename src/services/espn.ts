@@ -222,6 +222,9 @@ export interface EspnMatchup {
   awayCategoryLosses?: number
   homeCategoryTies?: number
   awayCategoryTies?: number
+  // Stat values for per-category calculation
+  homeStatValues?: Record<string, number>
+  awayStatValues?: Record<string, number>
   isCategoryLeague?: boolean
   winner: 'HOME' | 'AWAY' | 'TIE' | 'UNDECIDED'
   playoffTierType: string
@@ -2026,6 +2029,10 @@ export class EspnFantasyService {
         let homeCategoryTies = 0
         let awayCategoryTies = 0
         
+        // Store stat values for per-category calculation
+        let homeStatValues: Record<string, number> = {}
+        let awayStatValues: Record<string, number> = {}
+        
         if (isCategoryLeague) {
           // Method 1: Check for totalWins/totalLosses directly on home/away
           if (match.home?.totalWins !== undefined) {
@@ -2051,12 +2058,52 @@ export class EspnFantasyService {
             awayCategoryTies = match.away.cumulativeScore.ties || 0
           }
           
-          // Method 3: Some ESPN responses have statBySlot with category data
-          if (match.home?.rosterForMatchupPeriod?.appliedStatTotal !== undefined && homeCategoryWins === 0) {
-            // Count wins from stat comparisons if available
-            const homeStats = match.home.rosterForMatchupPeriod
-            const awayStats = match.away?.rosterForMatchupPeriod
-            // This would require stat-by-stat comparison which we'd need more data for
+          // Method 3: Look for actual stat values in various locations
+          // Check rosterForMatchupPeriod.appliedStatTotal
+          if (match.home?.rosterForMatchupPeriod?.appliedStatTotal) {
+            homeStatValues = match.home.rosterForMatchupPeriod.appliedStatTotal
+            console.log('[ESPN] Found home appliedStatTotal:', JSON.stringify(homeStatValues).slice(0, 200))
+          }
+          if (match.away?.rosterForMatchupPeriod?.appliedStatTotal) {
+            awayStatValues = match.away.rosterForMatchupPeriod.appliedStatTotal
+            console.log('[ESPN] Found away appliedStatTotal:', JSON.stringify(awayStatValues).slice(0, 200))
+          }
+          
+          // Check for valuesByStat directly on home/away
+          if (match.home?.valuesByStat) {
+            homeStatValues = match.home.valuesByStat
+            console.log('[ESPN] Found home valuesByStat:', JSON.stringify(homeStatValues).slice(0, 200))
+          }
+          if (match.away?.valuesByStat) {
+            awayStatValues = match.away.valuesByStat
+            console.log('[ESPN] Found away valuesByStat:', JSON.stringify(awayStatValues).slice(0, 200))
+          }
+          
+          // Check for stats object
+          if (match.home?.stats && typeof match.home.stats === 'object') {
+            // Stats might be an array or object
+            if (Array.isArray(match.home.stats)) {
+              console.log('[ESPN] home.stats is array, length:', match.home.stats.length)
+            } else {
+              homeStatValues = match.home.stats
+              console.log('[ESPN] Found home stats object:', JSON.stringify(homeStatValues).slice(0, 200))
+            }
+          }
+          if (match.away?.stats && typeof match.away.stats === 'object') {
+            if (!Array.isArray(match.away.stats)) {
+              awayStatValues = match.away.stats
+              console.log('[ESPN] Found away stats object:', JSON.stringify(awayStatValues).slice(0, 200))
+            }
+          }
+          
+          // Check totalPointsByStat which some ESPN responses have
+          if (match.home?.totalPointsByStat) {
+            homeStatValues = match.home.totalPointsByStat
+            console.log('[ESPN] Found home totalPointsByStat:', JSON.stringify(homeStatValues).slice(0, 200))
+          }
+          if (match.away?.totalPointsByStat) {
+            awayStatValues = match.away.totalPointsByStat
+            console.log('[ESPN] Found away totalPointsByStat:', JSON.stringify(awayStatValues).slice(0, 200))
           }
           
           console.log(`[ESPN parseMatchups] Category matchup: Home ${homeCategoryWins}-${homeCategoryLosses}-${homeCategoryTies}, Away ${awayCategoryWins}-${awayCategoryLosses}-${awayCategoryTies}`)
@@ -2078,6 +2125,9 @@ export class EspnFantasyService {
           awayCategoryLosses: isCategoryLeague ? awayCategoryLosses : undefined,
           homeCategoryTies: isCategoryLeague ? homeCategoryTies : undefined,
           awayCategoryTies: isCategoryLeague ? awayCategoryTies : undefined,
+          // Stat values for per-category calculation
+          homeStatValues: Object.keys(homeStatValues).length > 0 ? homeStatValues : undefined,
+          awayStatValues: Object.keys(awayStatValues).length > 0 ? awayStatValues : undefined,
           isCategoryLeague,
           winner: this.determineWinner(match),
           playoffTierType: match.playoffTierType || 'NONE'
@@ -2359,6 +2409,7 @@ export class EspnFantasyService {
     teamCategoryTies: Map<string, Record<string, number>>;
     teamTotalCategoryWins: Map<string, number>;
     teamTotalCategoryLosses: Map<string, number>;
+    hasRealStatValues: boolean;
   }> {
     console.log('[ESPN getCategoryStatsBreakdown] Starting for league', leagueId)
     
@@ -2475,6 +2526,9 @@ export class EspnFantasyService {
     console.log('[ESPN getCategoryStatsBreakdown] Fetching', completedWeeks, 'weeks of matchups')
     
     // Fetch all completed matchups and aggregate category wins
+    // Track whether we found real stat values for per-category calculation
+    let hasRealStatValues = false
+    
     for (let week = 1; week <= completedWeeks; week++) {
       console.log(`[ESPN getCategoryStatsBreakdown] Processing week ${week}/${completedWeeks}...`)
       try {
@@ -2492,7 +2546,51 @@ export class EspnFantasyService {
           const homeKey = `espn_${matchup.homeTeamId}`
           const awayKey = `espn_${matchup.awayTeamId}`
           
-          // Aggregate total category wins/losses from matchup
+          // Check if we have actual stat values to compare
+          if (matchup.homeStatValues && matchup.awayStatValues && Object.keys(matchup.homeStatValues).length > 0) {
+            hasRealStatValues = true
+            console.log(`[ESPN] Week ${week}: Found stat values for comparison!`)
+            
+            // Compare each category and count wins
+            for (const cat of categories) {
+              const statId = cat.stat_id
+              const homeVal = matchup.homeStatValues[statId] || 0
+              const awayVal = matchup.awayStatValues[statId] || 0
+              
+              // Get current counts
+              const homeCatWins = teamCategoryWins.get(homeKey) || {}
+              const awayCatWins = teamCategoryWins.get(awayKey) || {}
+              const homeCatLosses = teamCategoryLosses.get(homeKey) || {}
+              const awayCatLosses = teamCategoryLosses.get(awayKey) || {}
+              
+              // For negative stats (ERA, WHIP), lower is better
+              const isNegative = cat.is_negative
+              let homeWins = isNegative ? (homeVal < awayVal) : (homeVal > awayVal)
+              let awayWins = isNegative ? (awayVal < homeVal) : (awayVal > homeVal)
+              
+              // Handle ties
+              if (homeVal === awayVal) {
+                homeWins = false
+                awayWins = false
+              }
+              
+              // Update per-category wins
+              if (homeWins) {
+                homeCatWins[statId] = (homeCatWins[statId] || 0) + 1
+                awayCatLosses[statId] = (awayCatLosses[statId] || 0) + 1
+              } else if (awayWins) {
+                awayCatWins[statId] = (awayCatWins[statId] || 0) + 1
+                homeCatLosses[statId] = (homeCatLosses[statId] || 0) + 1
+              }
+              
+              teamCategoryWins.set(homeKey, homeCatWins)
+              teamCategoryWins.set(awayKey, awayCatWins)
+              teamCategoryLosses.set(homeKey, homeCatLosses)
+              teamCategoryLosses.set(awayKey, awayCatLosses)
+            }
+          }
+          
+          // Always aggregate total category wins/losses from matchup
           const homeCatWins = matchup.homeCategoryWins || 0
           const homeCatLosses = matchup.homeCategoryLosses || 0
           const awayCatWins = matchup.awayCategoryWins || 0
@@ -2509,47 +2607,61 @@ export class EspnFantasyService {
       }
     }
     
-    console.log('[ESPN getCategoryStatsBreakdown] Finished fetching all weeks. Building per-category breakdown...')
+    console.log('[ESPN getCategoryStatsBreakdown] Finished fetching all weeks. hasRealStatValues:', hasRealStatValues)
     
-    // For per-category wins, we distribute the total wins proportionally across categories
-    // This is an approximation since ESPN doesn't provide per-stat wins in matchup data
-    // TODO: If ESPN adds per-stat comparison data, update this to use real per-category wins
-    for (const [teamKey, totalWins] of teamTotalCategoryWins) {
-      const totalLosses = teamTotalCategoryLosses.get(teamKey) || 0
-      const numCategories = categories.length || 1
+    // Only use distribution fallback if we don't have real stat values
+    if (!hasRealStatValues) {
+      console.log('[ESPN getCategoryStatsBreakdown] No real stat values found, using proportional distribution fallback')
       
-      // Distribute wins/losses roughly evenly with some variance based on category index
-      const winsPerCat = totalWins / numCategories
-      const lossesPerCat = totalLosses / numCategories
-      
-      const catWins: Record<string, number> = {}
-      const catLosses: Record<string, number> = {}
-      const catTies: Record<string, number> = {}
-      
-      let remainingWins = totalWins
-      let remainingLosses = totalLosses
-      
-      categories.forEach((cat, idx) => {
-        // For all but last category, distribute evenly with rounding
-        if (idx < categories.length - 1) {
-          const wins = Math.round(winsPerCat)
-          const losses = Math.round(lossesPerCat)
-          catWins[cat.stat_id] = wins
-          catLosses[cat.stat_id] = losses
+      // For per-category wins, we distribute the total wins proportionally across categories
+      // This is an approximation since ESPN doesn't provide per-stat wins in matchup data
+      for (const [teamKey, totalWins] of teamTotalCategoryWins) {
+        const totalLosses = teamTotalCategoryLosses.get(teamKey) || 0
+        const numCategories = categories.length || 1
+        
+        // Distribute wins/losses roughly evenly with some variance based on category index
+        const winsPerCat = totalWins / numCategories
+        const lossesPerCat = totalLosses / numCategories
+        
+        const catWins: Record<string, number> = {}
+        const catLosses: Record<string, number> = {}
+        const catTies: Record<string, number> = {}
+        
+        let remainingWins = totalWins
+        let remainingLosses = totalLosses
+        
+        categories.forEach((cat, idx) => {
+          // For all but last category, distribute evenly with rounding
+          if (idx < categories.length - 1) {
+            const wins = Math.round(winsPerCat)
+            const losses = Math.round(lossesPerCat)
+            catWins[cat.stat_id] = wins
+            catLosses[cat.stat_id] = losses
+            catTies[cat.stat_id] = 0
+            remainingWins -= wins
+            remainingLosses -= losses
+          } else {
+            // Last category gets the remainder to ensure totals match
+            catWins[cat.stat_id] = Math.max(0, remainingWins)
+            catLosses[cat.stat_id] = Math.max(0, remainingLosses)
+            catTies[cat.stat_id] = 0
+          }
+        })
+        
+        teamCategoryWins.set(teamKey, catWins)
+        teamCategoryLosses.set(teamKey, catLosses)
+        teamCategoryTies.set(teamKey, catTies)
+      }
+    } else {
+      console.log('[ESPN getCategoryStatsBreakdown] Using real per-category wins calculated from stat values')
+      // Initialize ties for all teams/categories
+      for (const [teamKey] of teamTotalCategoryWins) {
+        const catTies: Record<string, number> = {}
+        categories.forEach(cat => {
           catTies[cat.stat_id] = 0
-          remainingWins -= wins
-          remainingLosses -= losses
-        } else {
-          // Last category gets the remainder to ensure totals match
-          catWins[cat.stat_id] = Math.max(0, remainingWins)
-          catLosses[cat.stat_id] = Math.max(0, remainingLosses)
-          catTies[cat.stat_id] = 0
-        }
-      })
-      
-      teamCategoryWins.set(teamKey, catWins)
-      teamCategoryLosses.set(teamKey, catLosses)
-      teamCategoryTies.set(teamKey, catTies)
+        })
+        teamCategoryTies.set(teamKey, catTies)
+      }
     }
     
     console.log('[ESPN getCategoryStatsBreakdown] Complete. Teams processed:', teamTotalCategoryWins.size)
@@ -2560,7 +2672,8 @@ export class EspnFantasyService {
       teamCategoryLosses,
       teamCategoryTies,
       teamTotalCategoryWins,
-      teamTotalCategoryLosses
+      teamTotalCategoryLosses,
+      hasRealStatValues
     }
   }
 

@@ -896,6 +896,7 @@ const transactionCounts = ref<Map<string, number>>(new Map())
 const teamCategoryWins = ref<Map<string, Record<string, number>>>(new Map())
 const teamTotalCategoryWins = ref<Map<string, number>>(new Map())
 const teamTotalCategoryLosses = ref<Map<string, number>>(new Map())
+const espnHasRealStatValues = ref(false) // Track if ESPN provided real per-category stat values
 const weeklyStandings = ref<Map<number, any[]>>(new Map())
 const displayMatchups = ref<any[]>([])
 
@@ -1022,9 +1023,9 @@ const formattedMatchups = computed(() => {
 })
 
 const displayCategories = computed(() => {
-  // For ESPN category leagues, we don't have real per-category data
+  // For ESPN category leagues without real stat values, we don't have per-category data
   // So don't display individual category columns - we'll show total only
-  if (leagueStore.activePlatform === 'espn' && !isPointsLeague.value) {
+  if (leagueStore.activePlatform === 'espn' && !isPointsLeague.value && !espnHasRealStatValues.value) {
     return [] // Empty - we'll show total cat wins column instead
   }
   
@@ -1034,15 +1035,16 @@ const displayCategories = computed(() => {
   }).slice(0, 12)
 })
 
-// Flag to indicate if we have real per-category breakdown (Yahoo) or only totals (ESPN)
+// Flag to indicate if we have real per-category breakdown (Yahoo always has it, ESPN only if stat values were found)
 const hasRealPerCategoryData = computed(() => {
-  // Yahoo provides real per-category wins, ESPN only provides totals
-  return leagueStore.activePlatform === 'yahoo' && !isPointsLeague.value
+  if (leagueStore.activePlatform === 'yahoo' && !isPointsLeague.value) return true
+  if (leagueStore.activePlatform === 'espn' && !isPointsLeague.value && espnHasRealStatValues.value) return true
+  return false
 })
 
-// For ESPN category leagues, show total category wins column
+// For ESPN category leagues without real stat values, show total category wins column
 const showTotalCategoryWins = computed(() => {
-  return leagueStore.activePlatform === 'espn' && !isPointsLeague.value
+  return leagueStore.activePlatform === 'espn' && !isPointsLeague.value && !espnHasRealStatValues.value
 })
 
 const numCategories = computed(() => displayCategories.value.length || 12)
@@ -3528,8 +3530,10 @@ async function loadEspnData() {
         teamCategoryWins.value = convertedCatWins
         teamTotalCategoryWins.value = convertedTotalWins
         teamTotalCategoryLosses.value = convertedTotalLosses
+        espnHasRealStatValues.value = categoryBreakdown.hasRealStatValues
         
         console.log('[ESPN] Category wins set for', convertedCatWins.size, 'teams')
+        console.log('[ESPN] hasRealStatValues:', categoryBreakdown.hasRealStatValues)
         console.log('[ESPN] Total category wins sample:', Object.fromEntries([...convertedTotalWins.entries()].slice(0, 3)))
         
       } catch (error) {
