@@ -1666,16 +1666,14 @@ async function loadCategories() {
       const savedLeague = leagueStore.savedLeagues?.find((l: any) => l.league_id === leagueKey)
       console.log('[loadCategories ESPN] savedLeague:', savedLeague)
       
-      // Parse ESPN league ID and season from leagueKey format: espn_baseball_1880415994_2025
+      // Parse ESPN league ID and season
+      // The leagueKey format is: espn_baseball_1880415994_2025
+      // We need to extract: leagueId = 1880415994, season = 2025
       let espnLeagueId: string | number = ''
       let season = new Date().getFullYear()
       
-      if (savedLeague) {
-        // Use saved league data if available
-        espnLeagueId = savedLeague.espn_id || savedLeague.league_id
-        season = savedLeague.season || new Date().getFullYear()
-      } else if (typeof leagueKey === 'string' && leagueKey.startsWith('espn_')) {
-        // Parse from leagueKey format: espn_baseball_1880415994_2025
+      // Always parse from leagueKey to get the numeric ID
+      if (typeof leagueKey === 'string' && leagueKey.startsWith('espn_')) {
         const parts = leagueKey.split('_')
         // parts[0] = 'espn', parts[1] = 'baseball', parts[2] = leagueId, parts[3] = season
         if (parts.length >= 4) {
@@ -1685,6 +1683,14 @@ async function loadCategories() {
           // Fallback: espn_123456
           espnLeagueId = parts[1]
         }
+      }
+      
+      // Override with savedLeague values if they exist and are numeric
+      if (savedLeague?.espn_id && !String(savedLeague.espn_id).includes('_')) {
+        espnLeagueId = savedLeague.espn_id
+      }
+      if (savedLeague?.season) {
+        season = savedLeague.season
       }
       
       console.log('[loadCategories ESPN] Parsed espnLeagueId:', espnLeagueId, 'season:', season)
@@ -1861,13 +1867,9 @@ async function loadPowerRankings() {
     let espnLeagueId: string | number = ''
     let espnSeason = new Date().getFullYear()
     if (isEspn.value) {
-      const savedLeague = leagueStore.savedLeagues?.find((l: any) => l.league_id === leagueKey)
-      
-      if (savedLeague) {
-        espnLeagueId = savedLeague.espn_id || savedLeague.league_id
-        espnSeason = savedLeague.season || new Date().getFullYear()
-      } else if (typeof leagueKey === 'string' && leagueKey.startsWith('espn_')) {
-        // Parse from leagueKey format: espn_baseball_1880415994_2025
+      // Always parse from leagueKey to get the numeric ID
+      // Format: espn_baseball_1880415994_2025
+      if (typeof leagueKey === 'string' && leagueKey.startsWith('espn_')) {
         const parts = leagueKey.split('_')
         if (parts.length >= 4) {
           espnLeagueId = parts[2]
@@ -1875,6 +1877,15 @@ async function loadPowerRankings() {
         } else if (parts.length >= 2) {
           espnLeagueId = parts[1]
         }
+      }
+      
+      // Override with savedLeague values if they exist and are numeric
+      const savedLeague = leagueStore.savedLeagues?.find((l: any) => l.league_id === leagueKey)
+      if (savedLeague?.espn_id && !String(savedLeague.espn_id).includes('_')) {
+        espnLeagueId = savedLeague.espn_id
+      }
+      if (savedLeague?.season) {
+        espnSeason = savedLeague.season
       }
       
       console.log('[Power Rankings ESPN] Parsed espnLeagueId:', espnLeagueId, 'season:', espnSeason)
