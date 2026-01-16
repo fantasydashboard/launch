@@ -1612,15 +1612,33 @@ async function loadCategories() {
       const savedLeague = leagueStore.savedLeagues?.find((l: any) => l.league_id === leagueKey)
       console.log('[loadCategories ESPN] savedLeague:', savedLeague)
       
-      // Extract ESPN league ID - handle different formats
-      let espnLeagueId: string | number = savedLeague?.espn_id || leagueKey
-      // If leagueKey starts with 'espn_', extract just the number
-      if (typeof espnLeagueId === 'string' && espnLeagueId.startsWith('espn_')) {
-        espnLeagueId = espnLeagueId.replace('espn_', '')
+      // Parse ESPN league ID and season from leagueKey format: espn_baseball_1880415994_2025
+      let espnLeagueId: string | number = ''
+      let season = new Date().getFullYear()
+      
+      if (savedLeague) {
+        // Use saved league data if available
+        espnLeagueId = savedLeague.espn_id || savedLeague.league_id
+        season = savedLeague.season || new Date().getFullYear()
+      } else if (typeof leagueKey === 'string' && leagueKey.startsWith('espn_')) {
+        // Parse from leagueKey format: espn_baseball_1880415994_2025
+        const parts = leagueKey.split('_')
+        // parts[0] = 'espn', parts[1] = 'baseball', parts[2] = leagueId, parts[3] = season
+        if (parts.length >= 4) {
+          espnLeagueId = parts[2]
+          season = parseInt(parts[3]) || new Date().getFullYear()
+        } else if (parts.length >= 2) {
+          // Fallback: espn_123456
+          espnLeagueId = parts[1]
+        }
       }
       
-      const season = savedLeague?.season || new Date().getFullYear()
-      console.log('[loadCategories ESPN] Using espnLeagueId:', espnLeagueId, 'season:', season)
+      console.log('[loadCategories ESPN] Parsed espnLeagueId:', espnLeagueId, 'season:', season)
+      
+      if (!espnLeagueId) {
+        console.error('[loadCategories ESPN] Could not parse ESPN league ID from:', leagueKey)
+        return
+      }
       
       // Get scoring settings which has the stat categories
       const scoringSettings = await espnService.getScoringSettings('baseball', espnLeagueId, season)
@@ -1789,13 +1807,22 @@ async function loadPowerRankings() {
     let espnSeason = new Date().getFullYear()
     if (isEspn.value) {
       const savedLeague = leagueStore.savedLeagues?.find((l: any) => l.league_id === leagueKey)
-      espnLeagueId = savedLeague?.espn_id || leagueKey
-      // If leagueKey starts with 'espn_', extract just the number
-      if (typeof espnLeagueId === 'string' && espnLeagueId.startsWith('espn_')) {
-        espnLeagueId = espnLeagueId.replace('espn_', '')
+      
+      if (savedLeague) {
+        espnLeagueId = savedLeague.espn_id || savedLeague.league_id
+        espnSeason = savedLeague.season || new Date().getFullYear()
+      } else if (typeof leagueKey === 'string' && leagueKey.startsWith('espn_')) {
+        // Parse from leagueKey format: espn_baseball_1880415994_2025
+        const parts = leagueKey.split('_')
+        if (parts.length >= 4) {
+          espnLeagueId = parts[2]
+          espnSeason = parseInt(parts[3]) || new Date().getFullYear()
+        } else if (parts.length >= 2) {
+          espnLeagueId = parts[1]
+        }
       }
-      espnSeason = savedLeague?.season || new Date().getFullYear()
-      console.log('[Power Rankings ESPN] Using espnLeagueId:', espnLeagueId, 'season:', espnSeason)
+      
+      console.log('[Power Rankings ESPN] Parsed espnLeagueId:', espnLeagueId, 'season:', espnSeason)
     }
     
     // Load each week's matchup data and calculate running rankings
