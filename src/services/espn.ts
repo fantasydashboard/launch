@@ -637,19 +637,39 @@ export class EspnFantasyService {
 
   /**
    * Get matchups for a specific week
+   * @param forceRefresh - If true, bypass cache and fetch fresh data
    */
-  async getMatchups(sport: Sport, leagueId: string | number, season: number, week: number): Promise<EspnMatchup[]> {
+  async getMatchups(sport: Sport, leagueId: string | number, season: number, week: number, forceRefresh: boolean = false): Promise<EspnMatchup[]> {
     const cacheKey = `espn_matchups_${sport}_${leagueId}_${season}_${week}`
-    const cached = cache.get<EspnMatchup[]>('espn_matchups', cacheKey)
-    if (cached) {
-      console.log(`[Cache HIT] ESPN matchups for ${leagueId} week ${week}`)
-      return cached
+    
+    // Get league scoring type first to check if it's a category league
+    const league = await this.getLeague(sport, leagueId, season)
+    const scoringType = league?.scoringType
+    const isCategoryLeague = scoringType === 'H2H_CATEGORY'
+    
+    if (!forceRefresh) {
+      const cached = cache.get<EspnMatchup[]>('espn_matchups', cacheKey)
+      if (cached && cached.length > 0) {
+        // For category leagues, check if cached data has per-category results
+        // Old cached data won't have homePerCategoryResults field
+        if (isCategoryLeague) {
+          const firstMatchup = cached[0]
+          // Check if any matchup has homePerCategoryResults populated
+          const hasNewFormat = 'homePerCategoryResults' in firstMatchup
+          if (!hasNewFormat) {
+            console.log(`[Cache STALE] ESPN matchups for ${leagueId} week ${week} - old format without per-category data, refreshing`)
+          } else {
+            console.log(`[Cache HIT] ESPN matchups for ${leagueId} week ${week} (with per-category data)`)
+            return cached
+          }
+        } else {
+          console.log(`[Cache HIT] ESPN matchups for ${leagueId} week ${week}`)
+          return cached
+        }
+      }
     }
 
     try {
-      // Get league first to know scoring type
-      const league = await this.getLeague(sport, leagueId, season)
-      const scoringType = league?.scoringType
       console.log(`[ESPN getMatchups] League scoring type: ${scoringType}`)
       
       // Request mScoreboard and mBoxscore along with mMatchup for stat values in category leagues
@@ -2537,6 +2557,7 @@ export class EspnFantasyService {
     for (let week = 1; week <= completedWeeks; week++) {
       console.log(`[ESPN getCategoryStatsBreakdown] Processing week ${week}/${completedWeeks}...`)
       try {
+        // The cache will auto-refresh if it detects stale data missing per-category results
         const weekMatchups = await this.getMatchups(sport, leagueId, season, week)
         
         // DEBUG: Log first matchup of first week to see full stat structure
