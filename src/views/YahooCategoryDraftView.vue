@@ -1134,9 +1134,24 @@ import { ref, computed, onMounted, watch } from 'vue'
 import { useLeagueStore } from '@/stores/league'
 import { useAuthStore } from '@/stores/auth'
 import { yahooService } from '@/services/yahoo'
+import { espnService } from '@/services/espn'
 
 const leagueStore = useLeagueStore()
 const authStore = useAuthStore()
+
+// Platform detection
+const isEspn = computed(() => leagueStore.activePlatform === 'espn')
+
+// Helper to parse ESPN league key format: espn_baseball_1880415994_2025
+function parseEspnLeagueKey(leagueKey: string) {
+  if (typeof leagueKey === 'string' && leagueKey.startsWith('espn_')) {
+    const parts = leagueKey.split('_')
+    if (parts.length >= 4) {
+      return { leagueId: parts[2], season: parseInt(parts[3]) || new Date().getFullYear() }
+    }
+  }
+  return { leagueId: leagueKey, season: new Date().getFullYear() }
+}
 
 // State
 const isLoading = ref(true)
@@ -1811,11 +1826,128 @@ async function loadDraftData() {
   loadingMessage.value = 'Loading draft data...'
   
   try {
-    await yahooService.initialize(authStore.user.id)
+    if (isEspn.value) {
+      await loadEspnDraftData(leagueKey)
+    } else {
+      await loadYahooDraftData(leagueKey)
+    }
+  } catch (e) {
+    console.error('Error loading draft data:', e)
+    draftPicks.value = []
+  } finally {
+    isLoading.value = false
+  }
+}
+
+async function loadEspnDraftData(leagueKey: string) {
+  const { leagueId, season } = parseEspnLeagueKey(leagueKey)
+  console.log('[ESPN Draft] Loading draft for league:', leagueId, 'season:', season)
+  
+  loadingMessage.value = 'Fetching ESPN draft results...'
+  
+  // Get draft with player names
+  const espnDraftPicks = await espnService.getDraftWithPlayers('baseball', leagueId, season)
+  console.log('[ESPN Draft] Got', espnDraftPicks.length, 'draft picks')
+  
+  if (!espnDraftPicks || espnDraftPicks.length === 0) {
+    console.log('[ESPN Draft] No draft data available')
+    draftPicks.value = []
+    return
+  }
+  
+  // Get league categories from scoring settings
+  loadingMessage.value = 'Loading league categories...'
+  try {
+    const scoringSettings = await espnService.getScoringSettings('baseball', leagueId, season)
+    const scoringItems = scoringSettings?.scoringItems || []
     
-    // Get draft results
-    loadingMessage.value = 'Fetching draft results...'
-    let draftResults = await yahooService.getDraftResults(leagueKey)
+    // ESPN baseball stat ID mapping
+    const espnBaseballStatNames: Record<number, string> = {
+      0: 'AB', 1: 'H', 2: 'R', 3: 'HR', 4: 'RBI', 5: 'SB',
+      6: 'BB', 7: 'K', 8: 'AVG', 9: 'OBP', 10: 'SLG', 11: 'OPS',
+      17: 'IP', 18: 'ERA', 19: 'WHIP', 20: 'Ks', 21: 'BBs',
+      32: 'W', 33: 'L', 34: 'SV', 35: 'QS', 37: 'CG'
+    }
+    
+    leagueCategories.value = scoringItems
+      .filter((item: any) => item.statId !== undefined)
+      .map((item: any) => espnBaseballStatNames[item.statId] || `Stat${item.statId}`)
+      .filter((name: string) => name && !name.startsWith('Stat'))
+    
+    if (leagueCategories.value.length === 0) {
+      leagueCategories.value = ['R', 'HR', 'RBI', 'SB', 'AVG', 'W', 'SV', 'K', 'ERA', 'WHIP']
+    }
+    
+    selectedStealCategory.value = leagueCategories.value[0] || 'HR'
+  } catch (e) {
+    console.log('[ESPN Draft] Could not load league settings, using defaults')
+    leagueCategories.value = ['R', 'HR', 'RBI', 'SB', 'AVG', 'W', 'SV', 'K', 'ERA', 'WHIP']
+    selectedStealCategory.value = 'HR'
+  }
+  
+  // Get teams
+  loadingMessage.value = 'Loading teams...'
+  const teams = await espnService.getTeams('baseball', leagueId, season)
+  teamsData.value = teams.map(t => ({
+    team_key: `espn_${t.id}`,
+    name: t.name,
+    logo_url: t.logo || ''
+  }))
+  
+  const teamLookup = new Map<number, any>()
+  for (const team of teams) {
+    teamLookup.set(team.id, team)
+  }
+  
+  // Process ESPN draft picks to match expected format
+  loadingMessage.value = 'Processing draft data...'
+  const numTeams = teams.length || 12
+  
+  // For ESPN, we don't have detailed player stats readily available
+  // So we'll set up basic draft data without category percentiles
+  const processedPicks = espnDraftPicks.map((pick: any) => {
+    const team = teamLookup.get(pick.teamId) || {}
+    const pickInRound = pick.roundPickNumber || ((pick.overallPickNumber - 1) % numTeams) + 1
+    
+    return {
+      pick: pick.overallPickNumber,
+      round: pick.roundId,
+      pickInRound,
+      team_key: `espn_${pick.teamId}`,
+      team_name: team.name || `Team ${pick.teamId}`,
+      team_logo: team.logo || '',
+      player_key: `espn_player_${pick.playerId}`,
+      player_name: pick.playerName || 'Unknown Player',
+      position: pick.position || 'Unknown',
+      mlb_team: pick.proTeam || '',
+      headshot: '', // ESPN doesn't provide headshots in draft data
+      stats: {},
+      categoryScore: 50, // Default mid-range score since we don't have stats
+      categoryPercentile: 50,
+      bestCategories: [],
+      valueScore: 0,
+      grade: 'C', // Default grade
+      keeper: pick.keeper || false,
+      bidAmount: pick.bidAmount
+    }
+  })
+  
+  // Sort by overall pick
+  processedPicks.sort((a: any, b: any) => a.pick - b.pick)
+  
+  // Update the reactive ref
+  draftPicks.value = processedPicks
+  
+  console.log('[ESPN Draft] Processed', processedPicks.length, 'draft picks')
+  console.log('[ESPN Draft] League categories:', leagueCategories.value)
+}
+
+async function loadYahooDraftData(leagueKey: string) {
+  await yahooService.initialize(authStore.user!.id)
+  
+  // Get draft results
+  loadingMessage.value = 'Fetching draft results...'
+  let draftResults = await yahooService.getDraftResults(leagueKey)
     
     // Check if draft has player data (draft_status might be "predraft" or picks might not have player_keys)
     let playerKeys = draftResults.picks?.map((p: any) => p.player_key).filter(Boolean) || []
@@ -2022,18 +2154,19 @@ async function loadDraftData() {
     
     console.log('Processed draft picks:', draftPicks.value.length)
     console.log('League categories:', leagueCategories.value)
-    
-  } catch (e) {
-    console.error('Error loading draft data:', e)
-    draftPicks.value = []
-  } finally {
-    isLoading.value = false
-  }
 }
 
 // Get league name helper
 function getLeagueName(): string {
   const activeId = leagueStore.activeLeagueId
+  
+  if (isEspn.value) {
+    // For ESPN, check currentLeague or savedLeagues
+    const savedLeague = leagueStore.savedLeagues?.find((l: any) => l.league_id === activeId)
+    return savedLeague?.league_name || leagueStore.currentLeague?.name || 'Fantasy League'
+  }
+  
+  // For Yahoo
   const savedLeague = leagueStore.savedLeagues?.find((l: any) => l.league_id === activeId?.split('.l.')[1])
   return savedLeague?.league_name || leagueStore.yahooLeague?.name || 'Fantasy League'
 }
