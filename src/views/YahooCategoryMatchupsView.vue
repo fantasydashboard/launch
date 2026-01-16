@@ -412,10 +412,14 @@ import { ref, computed, watch, onMounted, nextTick } from 'vue'
 import { useLeagueStore } from '@/stores/league'
 import { useAuthStore } from '@/stores/auth'
 import { yahooService } from '@/services/yahoo'
+import { espnService } from '@/services/espn'
 import ApexCharts from 'apexcharts'
 
 const leagueStore = useLeagueStore()
 const authStore = useAuthStore()
+
+// Platform detection
+const isEspn = computed(() => leagueStore.activePlatform === 'espn')
 
 const isLoading = ref(false)
 const isRefreshing = ref(false)
@@ -429,7 +433,6 @@ const matchups = ref<any[]>([])
 const selectedMatchup = ref<any>(null)
 const categories = ref<any[]>([])
 const teamSeasonStats = ref<Map<string, any>>(new Map())
-const defaultAvatar = 'https://s.yimg.com/cv/apiv2/default/mlb/mlb_2_g.png'
 const winProbChartEl = ref<HTMLElement | null>(null)
 let winProbChart: ApexCharts | null = null
 
@@ -437,12 +440,73 @@ const BATTING_STAT_IDS = ['60', '7', '12', '16', '3', '55', '56']
 const PITCHING_STAT_IDS = ['28', '32', '42', '26', '27', '48']
 const INVERSE_STATS = ['26', '27']
 
+// ESPN stat IDs for batting/pitching categorization
+const ESPN_BATTING_STAT_IDS = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12', '13', '40', '41', '42', '43']
+const ESPN_PITCHING_STAT_IDS = ['17', '18', '19', '20', '21', '22', '23', '24', '32', '33', '34', '35', '36', '37', '99']
+const ESPN_INVERSE_STATS = ['7', '12', '14', '18', '19', '21', '22', '24', '33', '45'] // Lower is better
+
+const defaultAvatar = computed(() => {
+  if (isEspn.value) return 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMDAgMTAwIj48Y2lyY2xlIGN4PSI1MCIgY3k9IjUwIiByPSI0NSIgZmlsbD0iIzMzMyIvPjx0ZXh0IHg9IjUwIiB5PSI1OCIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZmlsbD0iIzg4OCIgZm9udC1zaXplPSIxOCIgZm9udC1mYW1pbHk9InNhbnMtc2VyaWYiPkVTUE48L3RleHQ+PC9zdmc+'
+  return 'https://s.yimg.com/cv/apiv2/default/mlb/mlb_2_g.png'
+})
+
+// Helper to parse ESPN league key format: espn_baseball_1880415994_2025
+function parseEspnLeagueKey(leagueKey: string) {
+  if (typeof leagueKey === 'string' && leagueKey.startsWith('espn_')) {
+    const parts = leagueKey.split('_')
+    if (parts.length >= 4) {
+      return { leagueId: parts[2], season: parseInt(parts[3]) || new Date().getFullYear() }
+    }
+  }
+  return { leagueId: leagueKey, season: new Date().getFullYear() }
+}
+
 const leagueInfo = computed(() => { const l = leagueStore.yahooLeague; return Array.isArray(l) ? l[0] || {} : l || {} })
-const currentWeek = computed(() => parseInt(leagueInfo.value?.current_week) || 1)
-const totalWeeks = computed(() => parseInt(leagueInfo.value?.end_week) || 25)
-const isSeasonComplete = computed(() => leagueInfo.value?.is_finished === 1 || leagueInfo.value?.is_finished === '1')
+
+const currentWeek = computed(() => {
+  if (isEspn.value) {
+    // Try yahooLeague first (holds ESPN data in same format)
+    if (leagueInfo.value?.current_week) {
+      return parseInt(leagueInfo.value.current_week) || 1
+    }
+    // Try currentLeague
+    if (leagueStore.currentLeague?.status?.currentMatchupPeriod) {
+      return parseInt(leagueStore.currentLeague.status.currentMatchupPeriod) || 1
+    }
+    return 1
+  }
+  return parseInt(leagueInfo.value?.current_week) || 1
+})
+
+const totalWeeks = computed(() => {
+  if (isEspn.value) {
+    if (leagueInfo.value?.end_week) {
+      return parseInt(leagueInfo.value.end_week) || 25
+    }
+    if (leagueStore.currentLeague?.status?.finalMatchupPeriod) {
+      return parseInt(leagueStore.currentLeague.status.finalMatchupPeriod) || 25
+    }
+    return 25
+  }
+  return parseInt(leagueInfo.value?.end_week) || 25
+})
+
+const isSeasonComplete = computed(() => {
+  if (isEspn.value) {
+    if (leagueInfo.value?.is_finished === 1 || leagueInfo.value?.is_finished === true) return true
+    if (leagueStore.currentLeague?.status?.isFinished) return true
+    return false
+  }
+  return leagueInfo.value?.is_finished === 1 || leagueInfo.value?.is_finished === '1'
+})
+
 const availableWeeks = computed(() => Array.from({ length: isSeasonComplete.value ? totalWeeks.value : currentWeek.value }, (_, i) => i + 1))
-const allCategories = computed(() => categories.value.filter(c => [...BATTING_STAT_IDS, ...PITCHING_STAT_IDS].includes(c.stat_id)))
+const allCategories = computed(() => {
+  if (isEspn.value) {
+    return categories.value.filter(c => [...ESPN_BATTING_STAT_IDS, ...ESPN_PITCHING_STAT_IDS].includes(c.stat_id))
+  }
+  return categories.value.filter(c => [...BATTING_STAT_IDS, ...PITCHING_STAT_IDS].includes(c.stat_id))
+})
 
 const weekStats = computed(() => {
   if (!matchups.value.length) return { 
@@ -650,9 +714,13 @@ function randomNormal(mean: number, stdDev: number): number {
 
 // Calculate per-category win probability using simulation
 function calcCatWinProb(v1: number, v2: number, id: string, days: number) {
-  const inv = INVERSE_STATS.includes(id)
+  const inv = isEspn.value ? ESPN_INVERSE_STATS.includes(id) : INVERSE_STATS.includes(id)
   // Volatility per day remaining (standard deviation)
-  const vol: Record<string,number> = { '60':8,'7':3,'12':8,'16':2,'3':0.02,'55':0.02,'56':0.03,'28':0.5,'32':0.5,'42':15,'26':0.5,'27':0.15,'48':0.5 }
+  // Yahoo stat IDs
+  const yahooVol: Record<string,number> = { '60':8,'7':3,'12':8,'16':2,'3':0.02,'55':0.02,'56':0.03,'28':0.5,'32':0.5,'42':15,'26':0.5,'27':0.15,'48':0.5 }
+  // ESPN stat IDs (similar volatility concepts)
+  const espnVol: Record<string,number> = { '2':8,'3':3,'4':8,'5':2,'8':0.02,'9':0.02,'10':0.03,'17':0.5,'20':0.5,'34':15,'18':0.5,'19':0.15,'32':0.5 }
+  const vol = isEspn.value ? espnVol : yahooVol
   const dailyVol = vol[id] || 5
   const totalVol = dailyVol * Math.sqrt(Math.max(0.5, days))
   
@@ -702,7 +770,10 @@ function calcOverallWinProb(
   let ties = 0
   
   // Volatility per category
-  const vol: Record<string,number> = { '60':8,'7':3,'12':8,'16':2,'3':0.02,'55':0.02,'56':0.03,'28':0.5,'32':0.5,'42':15,'26':0.5,'27':0.15,'48':0.5 }
+  const yahooVol: Record<string,number> = { '60':8,'7':3,'12':8,'16':2,'3':0.02,'55':0.02,'56':0.03,'28':0.5,'32':0.5,'42':15,'26':0.5,'27':0.15,'48':0.5 }
+  const espnVol: Record<string,number> = { '2':8,'3':3,'4':8,'5':2,'8':0.02,'9':0.02,'10':0.03,'17':0.5,'20':0.5,'34':15,'18':0.5,'19':0.15,'32':0.5 }
+  const vol = isEspn.value ? espnVol : yahooVol
+  const inverseStats = isEspn.value ? ESPN_INVERSE_STATS : INVERSE_STATS
   
   for (let sim = 0; sim < SIMULATIONS; sim++) {
     let t1CatsWon = 0
@@ -713,7 +784,7 @@ function calcOverallWinProb(
       const v2 = team2Stats[catId] || 0
       const dailyVol = vol[catId] || 5
       const totalVol = dailyVol * Math.sqrt(Math.max(0.5, days))
-      const isInverse = INVERSE_STATS.includes(catId)
+      const isInverse = inverseStats.includes(catId)
       
       // Project final values with random variance
       const final1 = v1 + randomNormal(0, totalVol)
@@ -747,7 +818,7 @@ function calcOverallWinProb(
 }
 
 // Load historical category data to calculate avg and high per team per category
-async function loadTeamSeasonStats(leagueKey: string, currentWeek: number) {
+async function loadTeamSeasonStats(leagueKey: string, currentWeekNum: number) {
   try {
     // Get all teams
     const teams = leagueStore.yahooTeams
@@ -757,144 +828,301 @@ async function loadTeamSeasonStats(leagueKey: string, currentWeek: number) {
     // Load matchups from ALL previous weeks in the season for complete series data
     const weekPromises: Promise<any>[] = []
     
-    for (let w = 1; w < currentWeek; w++) {
-      weekPromises.push(yahooService.getCategoryMatchups(leagueKey, w).then(data => ({ week: w, data })))
-    }
-    
-    const allWeeksData = await Promise.all(weekPromises)
-    
-    // Track matchups between team pairs for lifetime series
-    for (const weekResult of allWeeksData) {
-      const weekNum = weekResult.week
-      const weekMatchups = weekResult.data
+    if (isEspn.value) {
+      // ESPN historical data
+      const { leagueId, season } = parseEspnLeagueKey(leagueKey)
       
-      for (const matchup of weekMatchups) {
-        if (!matchup.teams || matchup.teams.length < 2) continue
+      for (let w = 1; w < currentWeekNum; w++) {
+        weekPromises.push(espnService.getMatchups('baseball', leagueId, season, w).then(data => ({ week: w, data })))
+      }
+      
+      const allWeeksData = await Promise.all(weekPromises)
+      
+      // Track matchups between team pairs for lifetime series
+      for (const weekResult of allWeeksData) {
+        const weekNum = weekResult.week
+        const weekMatchups = weekResult.data
         
-        const t1 = matchup.teams[0]
-        const t2 = matchup.teams[1]
+        for (const matchup of weekMatchups) {
+          if (!matchup.awayTeamId) continue // Skip bye weeks
+          
+          const homeKey = `espn_${matchup.homeTeamId}`
+          const awayKey = `espn_${matchup.awayTeamId}`
+          
+          // Count category wins for each team from homePerCategoryResults
+          let homeWins = 0, awayWins = 0
+          if (matchup.homePerCategoryResults) {
+            for (const result of Object.values(matchup.homePerCategoryResults)) {
+              if (result === 'WIN') homeWins++
+              else if (result === 'LOSS') awayWins++
+            }
+          }
+          
+          // Store in matchup history
+          const pairKey = [homeKey, awayKey].sort().join('-')
+          if (!newMatchupHistory.has(pairKey)) {
+            newMatchupHistory.set(pairKey, [])
+          }
+          newMatchupHistory.get(pairKey)!.push({
+            week: weekNum,
+            team1Key: homeKey,
+            team2Key: awayKey,
+            team1Score: homeWins,
+            team2Score: awayWins
+          })
+        }
+      }
+      
+      historicalMatchupData.value = newMatchupHistory
+      
+      // Process each team's historical stats
+      for (const team of teams) {
+        const categoryTotals: Record<string, number[]> = {}
+        let totalCatsWon = 0
+        let weeksPlayed = 0
+        const weeklyWins: number[] = []
         
-        // Count category wins for each team
-        let t1Wins = 0, t2Wins = 0
-        for (const sw of (matchup.stat_winners || [])) {
-          if (sw.is_tied) continue
-          if (sw.winner_team_key === t1.team_key) t1Wins++
-          else t2Wins++
+        // Go through each week's matchups
+        for (const weekResult of allWeeksData) {
+          const weekMatchups = weekResult.data
+          for (const matchup of weekMatchups) {
+            if (!matchup.awayTeamId) continue
+            
+            const homeKey = `espn_${matchup.homeTeamId}`
+            const awayKey = `espn_${matchup.awayTeamId}`
+            
+            const isHome = team.team_key === homeKey
+            const isAway = team.team_key === awayKey
+            if (!isHome && !isAway) continue
+            
+            weeksPlayed++
+            let catsWonThisWeek = 0
+            
+            // Count category wins from homePerCategoryResults
+            if (matchup.homePerCategoryResults) {
+              for (const [statId, result] of Object.entries(matchup.homePerCategoryResults)) {
+                if (isHome && result === 'WIN') catsWonThisWeek++
+                else if (isAway && result === 'LOSS') catsWonThisWeek++
+                
+                // Track stat values
+                const statValue = isHome 
+                  ? matchup.homeScoreByStat?.[statId]?.score 
+                  : matchup.awayScoreByStat?.[statId]?.score
+                if (statValue !== undefined) {
+                  if (!categoryTotals[statId]) categoryTotals[statId] = []
+                  categoryTotals[statId].push(parseFloat(statValue) || 0)
+                }
+              }
+            }
+            totalCatsWon += catsWonThisWeek
+            weeklyWins.push(catsWonThisWeek)
+          }
         }
         
-        // Store in matchup history (use sorted key so we find it regardless of order)
-        const pairKey = [t1.team_key, t2.team_key].sort().join('-')
-        if (!newMatchupHistory.has(pairKey)) {
-          newMatchupHistory.set(pairKey, [])
+        // Calculate averages and highs
+        const categoryAvgs: Record<string, number> = {}
+        const categoryHighs: Record<string, number> = {}
+        
+        for (const [statId, values] of Object.entries(categoryTotals)) {
+          if (values.length > 0) {
+            categoryAvgs[statId] = values.reduce((a, b) => a + b, 0) / values.length
+            if (ESPN_INVERSE_STATS.includes(statId)) {
+              categoryHighs[statId] = Math.min(...values)
+            } else {
+              categoryHighs[statId] = Math.max(...values)
+            }
+          }
         }
-        newMatchupHistory.get(pairKey)!.push({
-          week: weekNum,
-          team1Key: t1.team_key,
-          team2Key: t2.team_key,
-          team1Score: t1Wins,
-          team2Score: t2Wins
+        
+        // Calculate consistency
+        const avgWins = weeklyWins.length > 0 ? weeklyWins.reduce((a, b) => a + b, 0) / weeklyWins.length : 0
+        const variance = weeklyWins.length > 0 ? weeklyWins.reduce((sum, w) => sum + Math.pow(w - avgWins, 2), 0) / weeklyWins.length : 0
+        const stdDev = Math.sqrt(variance)
+        
+        // Calculate category win rates
+        const categoryWinRates: Record<string, number> = {}
+        const categoryWinCounts: Record<string, { wins: number, total: number }> = {}
+        
+        for (const weekResult of allWeeksData) {
+          for (const matchup of weekResult.data) {
+            if (!matchup.awayTeamId) continue
+            
+            const homeKey = `espn_${matchup.homeTeamId}`
+            const awayKey = `espn_${matchup.awayTeamId}`
+            const isHome = team.team_key === homeKey
+            const isAway = team.team_key === awayKey
+            if (!isHome && !isAway) continue
+            
+            if (matchup.homePerCategoryResults) {
+              for (const [statId, result] of Object.entries(matchup.homePerCategoryResults)) {
+                if (!categoryWinCounts[statId]) categoryWinCounts[statId] = { wins: 0, total: 0 }
+                categoryWinCounts[statId].total++
+                if ((isHome && result === 'WIN') || (isAway && result === 'LOSS')) {
+                  categoryWinCounts[statId].wins++
+                }
+              }
+            }
+          }
+        }
+        
+        for (const [statId, counts] of Object.entries(categoryWinCounts)) {
+          categoryWinRates[statId] = counts.total > 0 ? counts.wins / counts.total : 0.5
+        }
+        
+        newStats.set(team.team_key, {
+          record: `${team.wins || 0}-${team.losses || 0}`,
+          wins: team.wins || 0,
+          avgCatsPerWeek: weeksPlayed > 0 ? totalCatsWon / weeksPlayed : 0,
+          mostCatsWon: weeklyWins.length > 0 ? Math.max(...weeklyWins) : 0,
+          leastCatsWon: weeklyWins.length > 0 ? Math.min(...weeklyWins) : 0,
+          stdDev: stdDev,
+          categoryAvgs,
+          categoryHighs,
+          categoryWinRates,
+          weeklyWins
         })
       }
-    }
+    } else {
+      // Yahoo historical data
+      for (let w = 1; w < currentWeekNum; w++) {
+        weekPromises.push(yahooService.getCategoryMatchups(leagueKey, w).then(data => ({ week: w, data })))
+      }
     
-    historicalMatchupData.value = newMatchupHistory
-    
-    // Process each team's historical stats
-    for (const team of teams) {
-      const categoryTotals: Record<string, number[]> = {}
-      let totalCatsWon = 0
-      let weeksPlayed = 0
-      const weeklyWins: number[] = []
+      const allWeeksData = await Promise.all(weekPromises)
       
-      // Go through each week's matchups
+      // Track matchups between team pairs for lifetime series
       for (const weekResult of allWeeksData) {
+        const weekNum = weekResult.week
         const weekMatchups = weekResult.data
+        
         for (const matchup of weekMatchups) {
           if (!matchup.teams || matchup.teams.length < 2) continue
           
-          const teamData = matchup.teams.find((t: any) => t.team_key === team.team_key)
-          if (!teamData) continue
+          const t1 = matchup.teams[0]
+          const t2 = matchup.teams[1]
           
-          weeksPlayed++
-          let catsWonThisWeek = 0
-          
-          // Count category wins
+          // Count category wins for each team
+          let t1Wins = 0, t2Wins = 0
           for (const sw of (matchup.stat_winners || [])) {
-            if (!sw.is_tied && sw.winner_team_key === team.team_key) {
-              catsWonThisWeek++
-            }
+            if (sw.is_tied) continue
+            if (sw.winner_team_key === t1.team_key) t1Wins++
+            else t2Wins++
           }
-          totalCatsWon += catsWonThisWeek
-          weeklyWins.push(catsWonThisWeek)
           
-          // Track each category value
-          if (teamData.stats) {
-            for (const [statId, value] of Object.entries(teamData.stats)) {
-              if (!categoryTotals[statId]) categoryTotals[statId] = []
-              categoryTotals[statId].push(parseFloat(value as string) || 0)
+          // Store in matchup history (use sorted key so we find it regardless of order)
+          const pairKey = [t1.team_key, t2.team_key].sort().join('-')
+          if (!newMatchupHistory.has(pairKey)) {
+            newMatchupHistory.set(pairKey, [])
+          }
+          newMatchupHistory.get(pairKey)!.push({
+            week: weekNum,
+            team1Key: t1.team_key,
+            team2Key: t2.team_key,
+            team1Score: t1Wins,
+            team2Score: t2Wins
+          })
+        }
+      }
+      
+      historicalMatchupData.value = newMatchupHistory
+      
+      // Process each team's historical stats
+      for (const team of teams) {
+        const categoryTotals: Record<string, number[]> = {}
+        let totalCatsWon = 0
+        let weeksPlayed = 0
+        const weeklyWins: number[] = []
+        
+        // Go through each week's matchups
+        for (const weekResult of allWeeksData) {
+          const weekMatchups = weekResult.data
+          for (const matchup of weekMatchups) {
+            if (!matchup.teams || matchup.teams.length < 2) continue
+            
+            const teamData = matchup.teams.find((t: any) => t.team_key === team.team_key)
+            if (!teamData) continue
+            
+            weeksPlayed++
+            let catsWonThisWeek = 0
+            
+            // Count category wins
+            for (const sw of (matchup.stat_winners || [])) {
+              if (!sw.is_tied && sw.winner_team_key === team.team_key) {
+                catsWonThisWeek++
+              }
+            }
+            totalCatsWon += catsWonThisWeek
+            weeklyWins.push(catsWonThisWeek)
+            
+            // Track each category value
+            if (teamData.stats) {
+              for (const [statId, value] of Object.entries(teamData.stats)) {
+                if (!categoryTotals[statId]) categoryTotals[statId] = []
+                categoryTotals[statId].push(parseFloat(value as string) || 0)
+              }
             }
           }
         }
-      }
-      
-      // Calculate averages and highs
-      const categoryAvgs: Record<string, number> = {}
-      const categoryHighs: Record<string, number> = {}
-      
-      for (const [statId, values] of Object.entries(categoryTotals)) {
-        if (values.length > 0) {
-          categoryAvgs[statId] = values.reduce((a, b) => a + b, 0) / values.length
-          // For inverse stats (ERA, WHIP), high is actually the lowest value
-          if (INVERSE_STATS.includes(statId)) {
-            categoryHighs[statId] = Math.min(...values)
-          } else {
-            categoryHighs[statId] = Math.max(...values)
-          }
-        }
-      }
-      
-      // Calculate consistency (standard deviation of weekly wins)
-      const avgWins = weeklyWins.length > 0 ? weeklyWins.reduce((a, b) => a + b, 0) / weeklyWins.length : 0
-      const variance = weeklyWins.length > 0 ? weeklyWins.reduce((sum, w) => sum + Math.pow(w - avgWins, 2), 0) / weeklyWins.length : 0
-      const stdDev = Math.sqrt(variance)
-      
-      // Calculate category win rates from historical matchups
-      const categoryWinRates: Record<string, number> = {}
-      const categoryWinCounts: Record<string, { wins: number, total: number }> = {}
-      
-      for (const weekResult of allWeeksData) {
-        for (const matchup of weekResult.data) {
-          if (!matchup.teams || matchup.teams.length < 2) continue
-          const teamData = matchup.teams.find((t: any) => t.team_key === team.team_key)
-          if (!teamData) continue
-          
-          for (const sw of (matchup.stat_winners || [])) {
-            const statId = String(sw.stat_id)
-            if (!categoryWinCounts[statId]) categoryWinCounts[statId] = { wins: 0, total: 0 }
-            categoryWinCounts[statId].total++
-            if (!sw.is_tied && sw.winner_team_key === team.team_key) {
-              categoryWinCounts[statId].wins++
+        
+        // Calculate averages and highs
+        const categoryAvgs: Record<string, number> = {}
+        const categoryHighs: Record<string, number> = {}
+        
+        for (const [statId, values] of Object.entries(categoryTotals)) {
+          if (values.length > 0) {
+            categoryAvgs[statId] = values.reduce((a, b) => a + b, 0) / values.length
+            // For inverse stats (ERA, WHIP), high is actually the lowest value
+            if (INVERSE_STATS.includes(statId)) {
+              categoryHighs[statId] = Math.min(...values)
+            } else {
+              categoryHighs[statId] = Math.max(...values)
             }
           }
         }
+        
+        // Calculate consistency (standard deviation of weekly wins)
+        const avgWins = weeklyWins.length > 0 ? weeklyWins.reduce((a, b) => a + b, 0) / weeklyWins.length : 0
+        const variance = weeklyWins.length > 0 ? weeklyWins.reduce((sum, w) => sum + Math.pow(w - avgWins, 2), 0) / weeklyWins.length : 0
+        const stdDev = Math.sqrt(variance)
+        
+        // Calculate category win rates from historical matchups
+        const categoryWinRates: Record<string, number> = {}
+        const categoryWinCounts: Record<string, { wins: number, total: number }> = {}
+        
+        for (const weekResult of allWeeksData) {
+          for (const matchup of weekResult.data) {
+            if (!matchup.teams || matchup.teams.length < 2) continue
+            const teamData = matchup.teams.find((t: any) => t.team_key === team.team_key)
+            if (!teamData) continue
+            
+            for (const sw of (matchup.stat_winners || [])) {
+              const statId = String(sw.stat_id)
+              if (!categoryWinCounts[statId]) categoryWinCounts[statId] = { wins: 0, total: 0 }
+              categoryWinCounts[statId].total++
+              if (!sw.is_tied && sw.winner_team_key === team.team_key) {
+                categoryWinCounts[statId].wins++
+              }
+            }
+          }
+        }
+        
+        for (const [statId, counts] of Object.entries(categoryWinCounts)) {
+          categoryWinRates[statId] = counts.total > 0 ? counts.wins / counts.total : 0.5
+        }
+        
+        newStats.set(team.team_key, {
+          record: `${team.wins || 0}-${team.losses || 0}`,
+          wins: team.wins || 0,
+          avgCatsPerWeek: weeksPlayed > 0 ? totalCatsWon / weeksPlayed : 0,
+          mostCatsWon: weeklyWins.length > 0 ? Math.max(...weeklyWins) : 0,
+          leastCatsWon: weeklyWins.length > 0 ? Math.min(...weeklyWins) : 0,
+          stdDev: stdDev,
+          categoryAvgs,
+          categoryHighs,
+          categoryWinRates,
+          weeklyWins
+        })
       }
-      
-      for (const [statId, counts] of Object.entries(categoryWinCounts)) {
-        categoryWinRates[statId] = counts.total > 0 ? counts.wins / counts.total : 0.5
-      }
-      
-      newStats.set(team.team_key, {
-        record: `${team.wins || 0}-${team.losses || 0}`,
-        wins: team.wins || 0,
-        avgCatsPerWeek: weeksPlayed > 0 ? totalCatsWon / weeksPlayed : 0,
-        mostCatsWon: weeklyWins.length > 0 ? Math.max(...weeklyWins) : 0,
-        leastCatsWon: weeklyWins.length > 0 ? Math.min(...weeklyWins) : 0,
-        stdDev: stdDev,
-        categoryAvgs,
-        categoryHighs,
-        categoryWinRates,
-        weeklyWins
-      })
     }
     
     teamSeasonStats.value = newStats
@@ -906,8 +1134,74 @@ async function loadTeamSeasonStats(leagueKey: string, currentWeek: number) {
 async function loadCategories() {
   const k = leagueStore.activeLeagueId; if (!k) return
   try {
-    const s = await yahooService.getLeagueScoringSettings(k)
-    if (s?.stat_categories) categories.value = s.stat_categories.map((c: any) => ({ stat_id: String(c.stat?.stat_id || c.stat_id), name: c.stat?.name || c.name, display_name: c.stat?.display_name || c.display_name, is_only_display_stat: c.stat?.is_only_display_stat || c.is_only_display_stat })).filter((c: any) => c.stat_id && c.is_only_display_stat !== '1' && c.is_only_display_stat !== 1)
+    if (isEspn.value) {
+      // ESPN categories
+      const { leagueId, season } = parseEspnLeagueKey(k)
+      console.log('[Matchups ESPN] Loading categories for league:', leagueId, 'season:', season)
+      
+      const scoringSettings = await espnService.getScoringSettings('baseball', leagueId, season)
+      const scoringItems = scoringSettings?.scoringItems || []
+      
+      // ESPN baseball stat ID mapping
+      const espnBaseballStatNames: Record<number, { name: string; display: string; isNegative?: boolean }> = {
+        0: { name: 'At Bats', display: 'AB' },
+        1: { name: 'Hits', display: 'H' },
+        2: { name: 'Runs', display: 'R' },
+        3: { name: 'Home Runs', display: 'HR' },
+        4: { name: 'RBI', display: 'RBI' },
+        5: { name: 'Stolen Bases', display: 'SB' },
+        6: { name: 'Walks (Batting)', display: 'BB' },
+        7: { name: 'Strikeouts (Batting)', display: 'K', isNegative: true },
+        8: { name: 'Batting Average', display: 'AVG' },
+        9: { name: 'On Base Pct', display: 'OBP' },
+        10: { name: 'Slugging Pct', display: 'SLG' },
+        11: { name: 'OPS', display: 'OPS' },
+        12: { name: 'Caught Stealing', display: 'CS', isNegative: true },
+        13: { name: 'Net Steals', display: 'NSB' },
+        14: { name: 'Ground into DP', display: 'GDP', isNegative: true },
+        15: { name: 'HBP', display: 'HBP' },
+        16: { name: 'Sacrifice Hits', display: 'SAC' },
+        17: { name: 'Innings Pitched', display: 'IP' },
+        18: { name: 'Earned Run Average', display: 'ERA', isNegative: true },
+        19: { name: 'WHIP', display: 'WHIP', isNegative: true },
+        20: { name: 'Strikeouts (Pitching)', display: 'Ks' },
+        21: { name: 'Walks (Pitching)', display: 'BBs', isNegative: true },
+        22: { name: 'Hits Against', display: 'HA', isNegative: true },
+        23: { name: 'Holds', display: 'HD' },
+        24: { name: 'Blown Saves', display: 'BS', isNegative: true },
+        32: { name: 'Wins', display: 'W' },
+        33: { name: 'Losses', display: 'L', isNegative: true },
+        34: { name: 'Saves', display: 'SV' },
+        35: { name: 'Quality Starts', display: 'QS' },
+        36: { name: 'Shutouts', display: 'SHO' },
+        37: { name: 'Complete Games', display: 'CG' },
+        40: { name: 'Total Bases', display: 'TB' },
+        41: { name: 'Doubles', display: '2B' },
+        42: { name: 'Triples', display: '3B' },
+        43: { name: 'Singles', display: '1B' },
+        45: { name: 'Errors', display: 'E', isNegative: true },
+        99: { name: 'Games Pitched', display: 'GP' }
+      }
+      
+      categories.value = scoringItems
+        .map((item: any) => {
+          const statId = String(item.statId || item.id)
+          const statInfo = espnBaseballStatNames[parseInt(statId)] || { name: `Stat ${statId}`, display: `S${statId}` }
+          return {
+            stat_id: statId,
+            name: statInfo.name,
+            display_name: statInfo.display,
+            is_negative: statInfo.isNegative
+          }
+        })
+        .filter((c: any) => c.stat_id)
+      
+      console.log('[Matchups ESPN] Loaded', categories.value.length, 'categories:', categories.value.map(c => c.display_name))
+    } else {
+      // Yahoo categories
+      const s = await yahooService.getLeagueScoringSettings(k)
+      if (s?.stat_categories) categories.value = s.stat_categories.map((c: any) => ({ stat_id: String(c.stat?.stat_id || c.stat_id), name: c.stat?.name || c.name, display_name: c.stat?.display_name || c.display_name, is_only_display_stat: c.stat?.is_only_display_stat || c.is_only_display_stat })).filter((c: any) => c.stat_id && c.is_only_display_stat !== '1' && c.is_only_display_stat !== 1)
+    }
   } catch (e) { console.error('Error loading categories:', e) }
 }
 
@@ -918,7 +1212,6 @@ async function loadMatchups() {
   try {
     if (!categories.value.length) await loadCategories()
     const week = parseInt(selectedWeek.value)
-    const raw = await yahooService.getCategoryMatchups(k, week)
     const isCurrent = week === currentWeek.value && !isSeasonComplete.value
     const days = isCurrent ? 3 : 0
     
@@ -926,44 +1219,135 @@ async function loadMatchups() {
     await loadTeamSeasonStats(k, week)
     
     const processed: any[] = []
-    for (const m of raw) {
-      if (!m.teams || m.teams.length < 2) continue
-      const t1 = m.teams[0], t2 = m.teams[1]
-      let w1 = 0, w2 = 0, ties = 0
-      const catProbs: Record<string, { team1: number, team2: number }> = {}
+    
+    if (isEspn.value) {
+      // ESPN matchups
+      const { leagueId, season } = parseEspnLeagueKey(k)
+      console.log('[Matchups ESPN] Loading week', week, 'for league:', leagueId, 'season:', season)
       
-      // Get category IDs from stat_winners
-      const categoryIds: string[] = []
-      for (const sw of (m.stat_winners || [])) {
-        const id = String(sw.stat_id)
-        categoryIds.push(id)
-        if (sw.is_tied) { ties++; catProbs[id] = { team1: 50, team2: 50 } }
-        else if (sw.winner_team_key === t1.team_key) w1++
-        else w2++
-        catProbs[id] = calcCatWinProb(parseFloat(t1.stats?.[id]||0), parseFloat(t2.stats?.[id]||0), id, days)
+      const raw = await espnService.getMatchups('baseball', leagueId, season, week)
+      console.log('[Matchups ESPN] Got', raw.length, 'matchups')
+      
+      if (raw.length > 0) {
+        console.log('[Matchups ESPN] First matchup:', raw[0])
       }
       
-      // Convert stats to number records for Monte Carlo
-      const t1StatsNum: Record<string, number> = {}
-      const t2StatsNum: Record<string, number> = {}
-      for (const id of categoryIds) {
-        t1StatsNum[id] = parseFloat(t1.stats?.[id] || 0)
-        t2StatsNum[id] = parseFloat(t2.stats?.[id] || 0)
+      for (const m of raw) {
+        if (!m.awayTeamId) continue // Skip bye weeks
+        
+        const homeKey = `espn_${m.homeTeamId}`
+        const awayKey = `espn_${m.awayTeamId}`
+        
+        // Find team info from yahooTeams (which holds ESPN team data)
+        const homeTeam = leagueStore.yahooTeams.find(t => t.team_key === homeKey)
+        const awayTeam = leagueStore.yahooTeams.find(t => t.team_key === awayKey)
+        
+        if (!homeTeam || !awayTeam) {
+          console.log('[Matchups ESPN] Team not found:', homeKey, awayKey)
+          continue
+        }
+        
+        let w1 = 0, w2 = 0, ties = 0
+        const catProbs: Record<string, { team1: number, team2: number }> = {}
+        const categoryIds: string[] = []
+        const statWinners: any[] = []
+        
+        // Build stats and wins from homePerCategoryResults
+        const homeStats: Record<string, number> = {}
+        const awayStats: Record<string, number> = {}
+        
+        if (m.homePerCategoryResults) {
+          for (const [statId, result] of Object.entries(m.homePerCategoryResults)) {
+            categoryIds.push(statId)
+            
+            // Get stat values from scoreByStat if available
+            const homeStatValue = m.homeScoreByStat?.[statId]?.score || 0
+            const awayStatValue = m.awayScoreByStat?.[statId]?.score || 0
+            homeStats[statId] = homeStatValue
+            awayStats[statId] = awayStatValue
+            
+            if (result === 'WIN') {
+              w1++
+              statWinners.push({ stat_id: statId, winner_team_key: homeKey, is_tied: false })
+            } else if (result === 'LOSS') {
+              w2++
+              statWinners.push({ stat_id: statId, winner_team_key: awayKey, is_tied: false })
+            } else if (result === 'TIE') {
+              ties++
+              statWinners.push({ stat_id: statId, winner_team_key: null, is_tied: true })
+            }
+            
+            catProbs[statId] = calcCatWinProb(homeStatValue, awayStatValue, statId, days)
+          }
+        }
+        
+        // Monte Carlo simulation
+        const op = calcOverallWinProb(homeStats, awayStats, categoryIds, days)
+        
+        let pj1 = 0, pj2 = 0, pjt = 0
+        for (const p of Object.values(catProbs)) { 
+          if (p.team1 > 55) pj1++
+          else if (p.team2 > 55) pj2++
+          else pjt++ 
+        }
+        
+        processed.push({
+          matchup_id: processed.length + 1,
+          team1: { team_key: homeKey, name: homeTeam.name, logo_url: homeTeam.logo_url, is_my_team: homeTeam.is_my_team || false },
+          team2: { team_key: awayKey, name: awayTeam.name, logo_url: awayTeam.logo_url, is_my_team: awayTeam.is_my_team || false },
+          team1Stats: homeStats, team2Stats: awayStats, team1CatWins: w1, team2CatWins: w2, ties, 
+          team1Leading: w1 > w2, team2Leading: w2 > w1,
+          team1WinProb: op.team1, team2WinProb: op.team2, 
+          projectedTeam1Wins: pj1, projectedTeam2Wins: pj2, projectedTies: pjt, 
+          categoryWinProbs: catProbs, stat_winners: statWinners
+        })
       }
       
-      // Run Monte Carlo simulation for overall win probability
-      const op = calcOverallWinProb(t1StatsNum, t2StatsNum, categoryIds, days)
+      console.log('[Matchups ESPN] Processed', processed.length, 'matchups')
+    } else {
+      // Yahoo matchups
+      const raw = await yahooService.getCategoryMatchups(k, week)
       
-      let pj1 = 0, pj2 = 0, pjt = 0
-      for (const p of Object.values(catProbs)) { if (p.team1 > 55) pj1++; else if (p.team2 > 55) pj2++; else pjt++ }
-      processed.push({
-        matchup_id: processed.length + 1,
-        team1: { team_key: t1.team_key, name: t1.name, logo_url: t1.logo_url, is_my_team: leagueStore.yahooTeams.find(x => x.team_key === t1.team_key)?.is_my_team || false },
-        team2: { team_key: t2.team_key, name: t2.name, logo_url: t2.logo_url, is_my_team: leagueStore.yahooTeams.find(x => x.team_key === t2.team_key)?.is_my_team || false },
-        team1Stats: t1.stats, team2Stats: t2.stats, team1CatWins: w1, team2CatWins: w2, ties, team1Leading: w1 > w2, team2Leading: w2 > w1,
-        team1WinProb: op.team1, team2WinProb: op.team2, projectedTeam1Wins: pj1, projectedTeam2Wins: pj2, projectedTies: pjt, categoryWinProbs: catProbs, stat_winners: m.stat_winners
-      })
+      for (const m of raw) {
+        if (!m.teams || m.teams.length < 2) continue
+        const t1 = m.teams[0], t2 = m.teams[1]
+        let w1 = 0, w2 = 0, ties = 0
+        const catProbs: Record<string, { team1: number, team2: number }> = {}
+        
+        // Get category IDs from stat_winners
+        const categoryIds: string[] = []
+        for (const sw of (m.stat_winners || [])) {
+          const id = String(sw.stat_id)
+          categoryIds.push(id)
+          if (sw.is_tied) { ties++; catProbs[id] = { team1: 50, team2: 50 } }
+          else if (sw.winner_team_key === t1.team_key) w1++
+          else w2++
+          catProbs[id] = calcCatWinProb(parseFloat(t1.stats?.[id]||0), parseFloat(t2.stats?.[id]||0), id, days)
+        }
+        
+        // Convert stats to number records for Monte Carlo
+        const t1StatsNum: Record<string, number> = {}
+        const t2StatsNum: Record<string, number> = {}
+        for (const id of categoryIds) {
+          t1StatsNum[id] = parseFloat(t1.stats?.[id] || 0)
+          t2StatsNum[id] = parseFloat(t2.stats?.[id] || 0)
+        }
+        
+        // Run Monte Carlo simulation for overall win probability
+        const op = calcOverallWinProb(t1StatsNum, t2StatsNum, categoryIds, days)
+        
+        let pj1 = 0, pj2 = 0, pjt = 0
+        for (const p of Object.values(catProbs)) { if (p.team1 > 55) pj1++; else if (p.team2 > 55) pj2++; else pjt++ }
+        processed.push({
+          matchup_id: processed.length + 1,
+          team1: { team_key: t1.team_key, name: t1.name, logo_url: t1.logo_url, is_my_team: leagueStore.yahooTeams.find(x => x.team_key === t1.team_key)?.is_my_team || false },
+          team2: { team_key: t2.team_key, name: t2.name, logo_url: t2.logo_url, is_my_team: leagueStore.yahooTeams.find(x => x.team_key === t2.team_key)?.is_my_team || false },
+          team1Stats: t1.stats, team2Stats: t2.stats, team1CatWins: w1, team2CatWins: w2, ties, team1Leading: w1 > w2, team2Leading: w2 > w1,
+          team1WinProb: op.team1, team2WinProb: op.team2, projectedTeam1Wins: pj1, projectedTeam2Wins: pj2, projectedTies: pjt, categoryWinProbs: catProbs, stat_winners: m.stat_winners
+        })
+      }
     }
+    
     matchups.value = processed
     const my = processed.find(m => m.team1.is_my_team || m.team2.is_my_team)
     if (my) selectMatchup(my); else if (processed.length) selectMatchup(processed[0])
@@ -1613,5 +1997,14 @@ watch(() => leagueStore.yahooTeams, async () => {
   }
 }, { immediate: true })
 
-onMounted(async () => { if (authStore.user?.id) await yahooService.initialize(authStore.user.id) })
+onMounted(async () => { 
+  if (authStore.user?.id) {
+    if (isEspn.value) {
+      // ESPN credentials are set in the store when league is selected
+      console.log('[Matchups] ESPN platform detected')
+    } else {
+      await yahooService.initialize(authStore.user.id) 
+    }
+  }
+})
 </script>
