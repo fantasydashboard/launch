@@ -1333,12 +1333,30 @@ const leagueInfo = computed(() => {
 })
 
 const currentWeek = computed(() => {
+  // Get yahooLeague data (may be array or object)
+  const yahooLeagueData = Array.isArray(leagueStore.yahooLeague) 
+    ? leagueStore.yahooLeague[0] 
+    : leagueStore.yahooLeague
+  
   if (isEspn.value) {
-    // For ESPN, get from saved league or current league
-    const savedLeague = leagueStore.savedLeagues?.find((l: any) => l.league_id === leagueStore.activeLeagueId)
-    const espnCurrentWeek = savedLeague?.current_week || leagueStore.currentLeague?.status?.currentMatchupPeriod || 1
-    console.log('currentWeek computed (ESPN):', espnCurrentWeek)
-    return parseInt(espnCurrentWeek) || 1
+    // For ESPN, try multiple sources
+    // 1. currentLeague settings
+    if (leagueStore.currentLeague?.settings?.leg) {
+      console.log('currentWeek computed (ESPN from currentLeague.settings.leg):', leagueStore.currentLeague.settings.leg)
+      return parseInt(leagueStore.currentLeague.settings.leg) || 1
+    }
+    // 2. yahooLeague (which holds ESPN data too)
+    if (yahooLeagueData?.current_week) {
+      console.log('currentWeek computed (ESPN from yahooLeague):', yahooLeagueData.current_week)
+      return parseInt(yahooLeagueData.current_week) || 1
+    }
+    // 3. currentLeague status
+    if (leagueStore.currentLeague?.status?.currentMatchupPeriod) {
+      console.log('currentWeek computed (ESPN from status):', leagueStore.currentLeague.status.currentMatchupPeriod)
+      return parseInt(leagueStore.currentLeague.status.currentMatchupPeriod) || 1
+    }
+    console.log('currentWeek computed (ESPN): defaulting to 1')
+    return 1
   }
   const week = leagueInfo.value?.current_week
   console.log('currentWeek computed:', week, 'from leagueInfo:', leagueInfo.value)
@@ -1346,12 +1364,30 @@ const currentWeek = computed(() => {
 })
 
 const totalWeeks = computed(() => {
+  // Get yahooLeague data (may be array or object)
+  const yahooLeagueData = Array.isArray(leagueStore.yahooLeague) 
+    ? leagueStore.yahooLeague[0] 
+    : leagueStore.yahooLeague
+  
   if (isEspn.value) {
-    // For ESPN, get from saved league or current league (baseball typically 22-25 weeks)
-    const savedLeague = leagueStore.savedLeagues?.find((l: any) => l.league_id === leagueStore.activeLeagueId)
-    const espnEndWeek = savedLeague?.end_week || leagueStore.currentLeague?.status?.finalMatchupPeriod || 25
-    console.log('totalWeeks computed (ESPN):', espnEndWeek)
-    return parseInt(espnEndWeek) || 25
+    // For ESPN, try multiple sources
+    // 1. currentLeague settings
+    if (leagueStore.currentLeague?.settings?.end_week) {
+      console.log('totalWeeks computed (ESPN from currentLeague.settings.end_week):', leagueStore.currentLeague.settings.end_week)
+      return parseInt(leagueStore.currentLeague.settings.end_week) || 25
+    }
+    // 2. yahooLeague
+    if (yahooLeagueData?.end_week) {
+      console.log('totalWeeks computed (ESPN from yahooLeague):', yahooLeagueData.end_week)
+      return parseInt(yahooLeagueData.end_week) || 25
+    }
+    // 3. currentLeague status
+    if (leagueStore.currentLeague?.status?.finalMatchupPeriod) {
+      console.log('totalWeeks computed (ESPN from status):', leagueStore.currentLeague.status.finalMatchupPeriod)
+      return parseInt(leagueStore.currentLeague.status.finalMatchupPeriod) || 25
+    }
+    console.log('totalWeeks computed (ESPN): defaulting to 25')
+    return 25
   }
   const endWeek = leagueInfo.value?.end_week
   console.log('totalWeeks computed:', endWeek)
@@ -1359,12 +1395,30 @@ const totalWeeks = computed(() => {
 })
 
 const isSeasonComplete = computed(() => {
+  // Get yahooLeague data (may be array or object)
+  const yahooLeagueData = Array.isArray(leagueStore.yahooLeague) 
+    ? leagueStore.yahooLeague[0] 
+    : leagueStore.yahooLeague
+  
   if (isEspn.value) {
-    // For ESPN, check if current week >= final week
-    const savedLeague = leagueStore.savedLeagues?.find((l: any) => l.league_id === leagueStore.activeLeagueId)
-    const isFinished = savedLeague?.is_finished || leagueStore.currentLeague?.status?.isFinished
-    console.log('isSeasonComplete computed (ESPN):', isFinished)
-    return isFinished === true || isFinished === 1 || isFinished === '1'
+    // For ESPN, check multiple sources
+    // 1. currentLeague status
+    if (leagueStore.currentLeague?.status === 'complete') {
+      console.log('isSeasonComplete computed (ESPN): true from status string')
+      return true
+    }
+    // 2. yahooLeague is_finished
+    if (yahooLeagueData?.is_finished === 1 || yahooLeagueData?.is_finished === true) {
+      console.log('isSeasonComplete computed (ESPN): true from yahooLeague')
+      return true
+    }
+    // 3. currentLeague status object
+    if (leagueStore.currentLeague?.status?.isFinished) {
+      console.log('isSeasonComplete computed (ESPN): true from status.isFinished')
+      return true
+    }
+    console.log('isSeasonComplete computed (ESPN): false')
+    return false
   }
   const finished = leagueInfo.value?.is_finished
   console.log('isSeasonComplete computed:', finished)
