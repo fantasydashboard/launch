@@ -1243,10 +1243,25 @@ import { ref, computed, onMounted, watch } from 'vue'
 import { useLeagueStore } from '@/stores/league'
 import { useAuthStore } from '@/stores/auth'
 import { yahooService } from '@/services/yahoo'
+import { espnService } from '@/services/espn'
 import html2canvas from 'html2canvas'
 
 const leagueStore = useLeagueStore()
 const authStore = useAuthStore()
+
+// Platform detection
+const isEspn = computed(() => leagueStore.activePlatform === 'espn')
+
+// Helper to parse ESPN league key format: espn_baseball_1880415994_2025
+function parseEspnLeagueKey(leagueKey: string) {
+  if (typeof leagueKey === 'string' && leagueKey.startsWith('espn_')) {
+    const parts = leagueKey.split('_')
+    if (parts.length >= 4) {
+      return { leagueId: parts[2], season: parseInt(parts[3]) || new Date().getFullYear() }
+    }
+  }
+  return { leagueId: leagueKey, season: new Date().getFullYear() }
+}
 
 interface CareerStat {
   team_key: string
@@ -2420,7 +2435,7 @@ function getRecordClass(stat: CareerStat, column: string): string {
 
 function getCategoryDisplayName(statId: string): string {
   // Map stat IDs to display names - comprehensive Yahoo baseball stat IDs
-  const mapping: Record<string, string> = {
+  const yahooMapping: Record<string, string> = {
     // Hitting
     '3': 'AVG', '7': 'R', '8': 'H', '12': 'HR', '13': 'RBI', '16': 'SB',
     '55': 'OBP', '56': 'SLG', '60': 'OPS', '2': 'AB', '4': 'BB', '6': 'TB',
@@ -2432,7 +2447,22 @@ function getCategoryDisplayName(statId: string): string {
     // Additional
     '84': 'SVHD', '33': 'BS', '25': 'CG', '30': 'SO', '31': 'GS'
   }
-  return mapping[statId] || null // Return null for unknown stat IDs
+  
+  // ESPN baseball stat IDs
+  const espnMapping: Record<string, string> = {
+    // Hitting
+    '0': 'AB', '1': 'H', '2': 'R', '3': 'HR', '4': 'RBI', '5': 'SB',
+    '6': 'BB', '7': 'K', '8': 'AVG', '9': 'OBP', '10': 'SLG', '11': 'OPS',
+    '12': 'CS', '13': 'NSB', '14': 'GDP', '15': 'HBP', '16': 'SAC',
+    '40': 'TB', '41': '2B', '42': '3B', '43': '1B', '45': 'E',
+    // Pitching
+    '17': 'IP', '18': 'ERA', '19': 'WHIP', '20': 'Ks', '21': 'BBs',
+    '22': 'HA', '23': 'HD', '24': 'BS', '32': 'W', '33': 'L',
+    '34': 'SV', '35': 'QS', '36': 'SHO', '37': 'CG', '99': 'GP'
+  }
+  
+  // Try Yahoo mapping first, then ESPN
+  return yahooMapping[statId] || espnMapping[statId] || null
 }
 
 // Check if a stat ID is valid/known
@@ -2441,12 +2471,15 @@ function isValidCategory(statId: string): boolean {
 }
 
 function isHittingCategory(catName: string): boolean {
-  const hittingCats = ['HR', 'RBI', 'R', 'SB', 'AVG', 'OPS', 'OBP', 'SLG', 'H', 'TB', 'BB', 'XBH', 'AB', 'PA', '2B', '3B', 'CS', 'SF', 'GDP']
+  // Hitting categories - includes both Yahoo and ESPN naming conventions
+  const hittingCats = ['HR', 'RBI', 'R', 'SB', 'AVG', 'OPS', 'OBP', 'SLG', 'H', 'TB', 'BB', 'XBH', 'AB', 'PA', '2B', '3B', 'CS', 'SF', 'GDP', 'NSB', '1B', 'HBP', 'SAC', 'E', 'K']
+  // Note: 'K' (strikeouts batting) is hitting, 'Ks' (strikeouts pitching) is pitching
   return hittingCats.includes(catName)
 }
 
 function getCategoryColorClass(cat: string): string {
-  const hittingCats = ['HR', 'RBI', 'R', 'SB', 'AVG', 'OPS', 'OBP', 'SLG', 'H']
+  // Hitting categories - includes both Yahoo and ESPN naming conventions
+  const hittingCats = ['HR', 'RBI', 'R', 'SB', 'AVG', 'OPS', 'OBP', 'SLG', 'H', 'TB', 'BB', 'AB', '2B', '3B', '1B', 'K', 'CS', 'NSB', 'GDP', 'HBP', 'SAC', 'E']
   if (hittingCats.includes(cat)) return 'bg-green-500/30 text-green-400'
   return 'bg-purple-500/30 text-purple-400'
 }
@@ -3527,7 +3560,7 @@ function buildH2HRecords() {
 
 async function loadHistoricalData() {
   isLoading.value = true
-  loadingMessage.value = 'Connecting to Yahoo...'
+  loadingMessage.value = isEspn.value ? 'Connecting to ESPN...' : 'Connecting to Yahoo...'
   
   try {
     const leagueKey = leagueStore.activeLeagueId
@@ -3536,7 +3569,199 @@ async function loadHistoricalData() {
       return
     }
     
-    await yahooService.initialize(authStore.user.id)
+    if (isEspn.value) {
+      // ESPN Historical Data Loading
+      await loadEspnHistoricalData(leagueKey)
+    } else {
+      // Yahoo Historical Data Loading
+      await loadYahooHistoricalData(leagueKey)
+    }
+    
+  } catch (e) {
+    console.error('Error loading history:', e)
+    loadingMessage.value = 'Error loading data'
+  } finally {
+    isLoading.value = false
+  }
+}
+
+async function loadEspnHistoricalData(leagueKey: string) {
+  const { leagueId, season: currentSeason } = parseEspnLeagueKey(leagueKey)
+  console.log('[History ESPN] Loading history for league:', leagueId, 'current season:', currentSeason)
+  
+  // For ESPN, we'll try to load seasons going back in time
+  // ESPN leagues can have history going back many years
+  const data: Record<string, any> = {}
+  let successCount = 0
+  let failCount = 0
+  
+  // Try loading from current season back to 2015 (ESPN fantasy baseball existed since ~2010)
+  const currentYear = currentSeason || new Date().getFullYear()
+  const years: number[] = []
+  for (let year = currentYear; year >= 2015; year--) {
+    years.push(year)
+  }
+  
+  console.log('[History ESPN] Will attempt to load seasons:', years)
+  
+  for (const year of years) {
+    loadingMessage.value = `Loading ${year} season... (${successCount} loaded, ${failCount} not found)`
+    console.log(`[History ESPN] Attempting to load ${year}`)
+    
+    try {
+      // Get league info to check if it exists for this season
+      const league = await espnService.getLeague('baseball', leagueId, year)
+      
+      if (!league) {
+        console.log(`[History ESPN] ✗ ${year} - League not found`)
+        failCount++
+        // If we've had 3 consecutive failures after at least one success, stop
+        if (failCount >= 3 && successCount > 0) {
+          console.log(`[History ESPN] Stopping after ${failCount} consecutive failures`)
+          break
+        }
+        continue
+      }
+      
+      // Get standings/teams
+      const standings = await espnService.getStandings('baseball', leagueId, year)
+      console.log(`[History ESPN] ${year} standings response:`, standings?.length || 0, 'teams')
+      
+      if (standings && standings.length > 0) {
+        console.log(`[History ESPN] ✓ Loaded ${year} season: ${standings.length} teams`)
+        successCount++
+        failCount = 0 // Reset consecutive failure count
+        
+        // Transform ESPN standings to match Yahoo format
+        const transformedStandings = standings.map((team: any, index: number) => ({
+          team_key: `espn_${team.id}`,
+          team_id: team.id,
+          name: team.name || team.teamName || `Team ${team.id}`,
+          team_name: team.name || team.teamName || `Team ${team.id}`,
+          logo_url: team.logo || '',
+          rank: team.playoffSeed || team.currentProjectedRank || index + 1,
+          wins: team.record?.wins || team.wins || 0,
+          losses: team.record?.losses || team.losses || 0,
+          ties: team.record?.ties || team.ties || 0,
+          points_for: team.record?.pointsFor || team.totalPoints || 0,
+          is_champion: (team.playoffSeed === 1 && league.status?.isFinished) || false
+        }))
+        
+        data[year.toString()] = { standings: transformedStandings, matchups: [] }
+        
+        // Store current members from most recent season
+        if (Object.keys(data).length === 1) {
+          transformedStandings.forEach((t: any) => {
+            currentMembers.value.add(t.team_key)
+            allTeams.value[t.team_key] = t
+          })
+        } else {
+          transformedStandings.forEach((t: any) => {
+            if (!allTeams.value[t.team_key]) {
+              allTeams.value[t.team_key] = t
+            }
+          })
+        }
+        
+        // Load matchups for category data
+        try {
+          loadingMessage.value = `Loading ${year} matchups...`
+          const allMatchups: any[] = []
+          
+          // Get total weeks from league info
+          const totalWeeks = league.status?.finalMatchupPeriod || 25
+          let consecutiveFailures = 0
+          
+          for (let week = 1; week <= totalWeeks; week++) {
+            try {
+              loadingMessage.value = `Loading ${year} week ${week}/${totalWeeks}...`
+              // Force refresh to ensure we get per-category data
+              const weekMatchups = await espnService.getMatchups('baseball', leagueId, year, week, true)
+              
+              if (weekMatchups && weekMatchups.length > 0) {
+                // Transform ESPN matchups to match expected format
+                const transformedMatchups = weekMatchups.map((m: any) => ({
+                  teams: [
+                    { 
+                      team_key: `espn_${m.homeTeamId}`,
+                      name: allTeams.value[`espn_${m.homeTeamId}`]?.name || `Team ${m.homeTeamId}`,
+                      stats: {}
+                    },
+                    { 
+                      team_key: `espn_${m.awayTeamId}`,
+                      name: allTeams.value[`espn_${m.awayTeamId}`]?.name || `Team ${m.awayTeamId}`,
+                      stats: {}
+                    }
+                  ],
+                  // Store ESPN-specific data for processing
+                  espn_data: {
+                    homePerCategoryResults: m.homePerCategoryResults,
+                    awayPerCategoryResults: m.awayPerCategoryResults,
+                    homeTeamId: m.homeTeamId,
+                    awayTeamId: m.awayTeamId
+                  },
+                  // Create stat_winners from homePerCategoryResults for compatibility
+                  stat_winners: m.homePerCategoryResults ? Object.entries(m.homePerCategoryResults).map(([statId, result]) => ({
+                    stat_id: statId,
+                    winner_team_key: result === 'WIN' ? `espn_${m.homeTeamId}` : result === 'LOSS' ? `espn_${m.awayTeamId}` : null,
+                    is_tied: result === 'TIE'
+                  })) : []
+                }))
+                allMatchups.push(...transformedMatchups)
+                consecutiveFailures = 0
+              } else {
+                consecutiveFailures++
+              }
+            } catch (weekError) {
+              consecutiveFailures++
+            }
+            
+            if (consecutiveFailures >= 3 && allMatchups.length > 0) {
+              console.log(`[History ESPN] Stopping at week ${week} for ${year} - season appears to have ended`)
+              break
+            }
+          }
+          
+          console.log(`[History ESPN] Loaded ${allMatchups.length} total matchups for ${year}`)
+          if (allMatchups.length > 0) {
+            data[year.toString()].matchups = allMatchups
+          }
+        } catch (e) {
+          console.log(`[History ESPN] Could not load matchups for ${year}:`, e)
+        }
+        
+        // Small delay between seasons
+        await new Promise(resolve => setTimeout(resolve, 100))
+      } else {
+        console.log(`[History ESPN] ✗ ${year} - No standings data returned`)
+        failCount++
+      }
+    } catch (e: any) {
+      console.log(`[History ESPN] ✗ Could not load ${year} season:`, e?.message || e)
+      failCount++
+      // If we've had 3 consecutive failures after at least one success, stop
+      if (failCount >= 3 && successCount > 0) {
+        console.log(`[History ESPN] Stopping after ${failCount} consecutive failures`)
+        break
+      }
+    }
+  }
+  
+  console.log('[History ESPN] === History Load Complete ===')
+  console.log(`[History ESPN] Finished loading: ${successCount} seasons loaded, ${failCount} not found`)
+  console.log('[History ESPN] Loaded seasons:', Object.keys(data))
+  
+  historicalData.value = data
+  console.log('[History ESPN] historicalData.value now has:', Object.keys(historicalData.value).length, 'seasons')
+  
+  loadingMessage.value = 'Building head-to-head records...'
+  buildH2HRecords()
+  
+  loadingMessage.value = 'Done!'
+}
+
+async function loadYahooHistoricalData(leagueKey: string) {
+    await yahooService.initialize(authStore.user!.id)
     
     const gameKey = leagueKey.split('.')[0]
     
@@ -3664,17 +3889,10 @@ async function loadHistoricalData() {
     buildH2HRecords()
     
     loadingMessage.value = 'Done!'
-    
-  } catch (e) {
-    console.error('Error loading history:', e)
-    loadingMessage.value = 'Error loading data'
-  } finally {
-    isLoading.value = false
-  }
 }
 
 watch(() => leagueStore.activeLeagueId, (id) => {
-  if (id && leagueStore.activePlatform === 'yahoo' && !isLoading.value) {
+  if (id && (leagueStore.activePlatform === 'yahoo' || leagueStore.activePlatform === 'espn') && !isLoading.value) {
     loadHistoricalData()
   }
 }, { immediate: true })
