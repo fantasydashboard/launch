@@ -1855,6 +1855,7 @@ async function loadPowerRankings() {
     
     // Debug: Log team keys being used
     console.log('[Power Rankings] Team keys in teamStats:', [...teamStats.keys()])
+    console.log('[Power Rankings] Categories:', displayCategories.value.map(c => c.stat_id))
     
     // Get ESPN league info if needed
     let espnLeagueId: string | number = ''
@@ -1879,6 +1880,10 @@ async function loadPowerRankings() {
       console.log('[Power Rankings ESPN] Parsed espnLeagueId:', espnLeagueId, 'season:', espnSeason)
     }
     
+    // Track total processed for debugging
+    let totalMatchupsProcessed = 0
+    let totalCategoryWinsRecorded = 0
+    
     // Load each week's matchup data and calculate running rankings
     for (let week = 1; week <= throughWeek; week++) {
       loadingMessage.value = `Loading week ${week}/${throughWeek}...`
@@ -1888,14 +1893,18 @@ async function loadPowerRankings() {
           // ESPN matchups - use per-category results
           const matchups = await espnService.getMatchups('baseball', espnLeagueId, espnSeason, week)
           
-          // Debug first week
+          console.log(`[Power Rankings ESPN] Week ${week}: ${matchups.length} matchups`)
+          
+          // Debug first week extensively
           if (week === 1 && matchups.length > 0) {
+            console.log('[Power Rankings ESPN] Week 1 first matchup FULL:', matchups[0])
             console.log('[Power Rankings ESPN] Week 1 first matchup:', {
               homeTeamId: matchups[0].homeTeamId,
               awayTeamId: matchups[0].awayTeamId,
               homeKey: `espn_${matchups[0].homeTeamId}`,
               hasHomePerCategoryResults: !!matchups[0].homePerCategoryResults,
-              homePerCategoryResultsKeys: matchups[0].homePerCategoryResults ? Object.keys(matchups[0].homePerCategoryResults) : []
+              homePerCategoryResultsKeys: matchups[0].homePerCategoryResults ? Object.keys(matchups[0].homePerCategoryResults) : [],
+              homePerCategoryResults: matchups[0].homePerCategoryResults
             })
           }
           
@@ -1920,25 +1929,38 @@ async function loadPowerRankings() {
             
             if (!homeStats || !awayStats) continue
             
+            totalMatchupsProcessed++
+            
             // Process home team per-category results
             if (matchup.homePerCategoryResults) {
+              const resultsCount = Object.keys(matchup.homePerCategoryResults).length
+              if (week === 1 && totalMatchupsProcessed === 1) {
+                console.log('[Power Rankings ESPN] Processing homePerCategoryResults:', matchup.homePerCategoryResults)
+              }
+              
               for (const [statId, result] of Object.entries(matchup.homePerCategoryResults)) {
                 if (result === 'WIN') {
                   homeStats.categoryWins[statId] = (homeStats.categoryWins[statId] || 0) + 1
                   awayStats.categoryLosses[statId] = (awayStats.categoryLosses[statId] || 0) + 1
                   homeStats.totalCatWins++
                   awayStats.totalCatLosses++
+                  totalCategoryWinsRecorded++
                 } else if (result === 'LOSS') {
                   homeStats.categoryLosses[statId] = (homeStats.categoryLosses[statId] || 0) + 1
                   awayStats.categoryWins[statId] = (awayStats.categoryWins[statId] || 0) + 1
                   homeStats.totalCatLosses++
                   awayStats.totalCatWins++
+                  totalCategoryWinsRecorded++
                 } else if (result === 'TIE') {
                   homeStats.categoryTies[statId] = (homeStats.categoryTies[statId] || 0) + 1
                   awayStats.categoryTies[statId] = (awayStats.categoryTies[statId] || 0) + 1
                   homeStats.totalCatTies++
                   awayStats.totalCatTies++
                 }
+              }
+            } else {
+              if (week === 1 && totalMatchupsProcessed === 1) {
+                console.log('[Power Rankings ESPN] NO homePerCategoryResults on matchup!')
               }
             }
           }
@@ -2009,6 +2031,12 @@ async function loadPowerRankings() {
     totalWeeksLoaded.value = throughWeek
     historicalRanks.value = rankHistory
     chartWeeks.value = weeksForChart
+    
+    // Debug summary
+    console.log(`[Power Rankings] Processing complete:`)
+    console.log(`  - Weeks processed: ${throughWeek}`)
+    console.log(`  - Total matchups processed: ${totalMatchupsProcessed}`)
+    console.log(`  - Total category wins recorded: ${totalCategoryWinsRecorded}`)
     
     // Debug: Log final team stats after all weeks processed
     if (isEspn.value) {
