@@ -1215,6 +1215,217 @@ export class EspnFantasyService {
   }
 
   /**
+   * Get player season stats from ESPN's public athlete statistics API
+   * This endpoint has full season stats for all MLB players
+   */
+  async getPlayerStatsFromPublicAPI(sport: Sport, playerId: number, season: number): Promise<Record<string, number> | null> {
+    const sportMapping: Record<Sport, { sport: string; league: string }> = {
+      baseball: { sport: 'baseball', league: 'mlb' },
+      football: { sport: 'football', league: 'nfl' },
+      basketball: { sport: 'basketball', league: 'nba' },
+      hockey: { sport: 'hockey', league: 'nhl' }
+    }
+    
+    const { sport: espnSport, league } = sportMapping[sport]
+    
+    // ESPN's public athlete statistics endpoint with season filter
+    const endpoint = `/apis/common/v3/sports/${espnSport}/${league}/athletes/${playerId}/statistics?season=${season}`
+    
+    // Get access token for proxy
+    let accessToken: string | null = null
+    try {
+      const keys = Object.keys(localStorage)
+      const authKey = keys.find(k => k.startsWith('sb-') && k.endsWith('-auth-token'))
+      if (authKey) {
+        const stored = localStorage.getItem(authKey)
+        if (stored) {
+          const parsed = JSON.parse(stored)
+          accessToken = parsed?.access_token
+        }
+      }
+    } catch (e) {
+      // Silent fail
+    }
+    
+    if (!accessToken) {
+      try {
+        const { supabase } = await import('@/lib/supabase')
+        if (supabase) {
+          const { data: { session } } = await supabase.auth.getSession()
+          accessToken = session?.access_token || null
+        }
+      } catch (e) {
+        // Silent fail
+      }
+    }
+    
+    try {
+      // Try proxy first
+      if (accessToken) {
+        const proxyUrl = `${this.supabaseUrl}/functions/v1/espn-api`
+        
+        const response = await fetch(proxyUrl, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${accessToken}`
+          },
+          body: JSON.stringify({
+            endpoint,
+            isPublicApi: true
+          })
+        })
+        
+        if (response.ok) {
+          const data = await response.json()
+          return this.parsePublicAPIStats(data, sport)
+        }
+      }
+      
+      // Try direct fetch as fallback
+      const directUrl = `https://site.api.espn.com${endpoint}`
+      const directResponse = await fetch(directUrl, {
+        method: 'GET',
+        headers: { 'Accept': 'application/json' }
+      })
+      
+      if (directResponse.ok) {
+        const data = await directResponse.json()
+        return this.parsePublicAPIStats(data, sport)
+      }
+    } catch (e) {
+      // Silent fail - will return null
+    }
+    
+    return null
+  }
+
+  /**
+   * Parse stats from ESPN's public API response into our stat format
+   */
+  private parsePublicAPIStats(data: any, sport: Sport): Record<string, number> | null {
+    const stats: Record<string, number> = {}
+    
+    // ESPN public API returns stats in a different format
+    // Look for season totals in the response
+    const categories = data.statistics?.splits?.categories || 
+                       data.splits?.categories || 
+                       data.categories || 
+                       []
+    
+    if (categories.length === 0) {
+      // Try alternate structure
+      const splits = data.statistics?.splits || data.splits || []
+      for (const split of splits) {
+        if (split.type === 'total' || split.displayName === 'Total') {
+          const splitStats = split.stats || []
+          for (const stat of splitStats) {
+            if (stat.name && stat.value !== undefined) {
+              // Map ESPN stat names to our stat IDs
+              const statId = this.mapPublicStatNameToId(stat.name, sport)
+              if (statId !== null) {
+                stats[statId.toString()] = parseFloat(stat.value) || 0
+              }
+            }
+          }
+        }
+      }
+    } else {
+      // Parse categories structure
+      for (const category of categories) {
+        const categoryStats = category.stats || []
+        for (const stat of categoryStats) {
+          if (stat.name && stat.value !== undefined) {
+            const statId = this.mapPublicStatNameToId(stat.name, sport)
+            if (statId !== null) {
+              stats[statId.toString()] = parseFloat(stat.value) || 0
+            }
+          }
+        }
+      }
+    }
+    
+    return Object.keys(stats).length > 0 ? stats : null
+  }
+
+  /**
+   * Map ESPN public API stat names to fantasy stat IDs
+   */
+  private mapPublicStatNameToId(statName: string, sport: Sport): number | null {
+    if (sport !== 'baseball') return null
+    
+    // ESPN public API uses full stat names, map to fantasy stat IDs
+    const mapping: Record<string, number> = {
+      // Hitting
+      'atBats': 0, 'AB': 0,
+      'hits': 1, 'H': 1,
+      'runs': 2, 'R': 2,
+      'homeRuns': 3, 'HR': 3,
+      'RBIs': 4, 'RBI': 4,
+      'stolenBases': 5, 'SB': 5,
+      'walks': 6, 'BB': 6,
+      'strikeouts': 7, 'SO': 7, 'K': 7,
+      'avg': 8, 'AVG': 8, 'battingAverage': 8,
+      'OBP': 9, 'onBasePercentage': 9,
+      'SLG': 10, 'sluggingPercentage': 10,
+      'OPS': 11,
+      'doubles': 41, '2B': 41,
+      'triples': 42, '3B': 42,
+      'totalBases': 40, 'TB': 40,
+      // Pitching
+      'inningsPitched': 17, 'IP': 17,
+      'ERA': 18, 'earnedRunAverage': 18,
+      'WHIP': 19,
+      'pitchingStrikeouts': 20, 'strikeoutsThrown': 20,
+      'walksAllowed': 21,
+      'wins': 32, 'W': 32,
+      'losses': 33, 'L': 33,
+      'saves': 34, 'SV': 34,
+      'qualityStarts': 35, 'QS': 35,
+      'completeGames': 37, 'CG': 37,
+      'holds': 50, 'HLD': 50,
+      'blownSaves': 51, 'BS': 51
+    }
+    
+    return mapping[statName] ?? null
+  }
+
+  /**
+   * Get stats for multiple players from ESPN's public API
+   * Returns a map of playerId -> stats
+   */
+  async getPlayersStatsFromPublicAPI(sport: Sport, playerIds: number[], season: number, onProgress?: (current: number, total: number) => void): Promise<Map<number, Record<string, number>>> {
+    const results = new Map<number, Record<string, number>>()
+    
+    console.log(`[ESPN Public Stats] Fetching stats for ${playerIds.length} players, season ${season}`)
+    
+    for (let i = 0; i < playerIds.length; i++) {
+      const playerId = playerIds[i]
+      
+      if (onProgress && i % 10 === 0) {
+        onProgress(i, playerIds.length)
+      }
+      
+      try {
+        const stats = await this.getPlayerStatsFromPublicAPI(sport, playerId, season)
+        if (stats && Object.keys(stats).length > 0) {
+          results.set(playerId, stats)
+        }
+      } catch (e) {
+        // Skip failed players
+      }
+      
+      // Small delay to avoid rate limiting
+      if (i > 0 && i % 5 === 0) {
+        await new Promise(resolve => setTimeout(resolve, 50))
+      }
+    }
+    
+    console.log(`[ESPN Public Stats] Got stats for ${results.size}/${playerIds.length} players`)
+    return results
+  }
+
+  /**
    * Get player info by player IDs
    * Uses the kona_player_info view with a filter to get player details
    */
@@ -1309,13 +1520,14 @@ export class EspnFantasyService {
 
   /**
    * Get players with full stats (including season totals) for draft analysis
+   * Tries multiple ESPN API approaches to maximize stat coverage
    */
   async getPlayersWithStats(sport: Sport, leagueId: string | number, season: number, playerIds: number[]): Promise<Map<number, { name: string; position: string; team: string; stats: Record<string, number> }>> {
     if (playerIds.length === 0) {
       return new Map()
     }
 
-    const cacheKey = `espn_players_stats_${sport}_${leagueId}_${season}_${playerIds.length}_v2`
+    const cacheKey = `espn_players_stats_${sport}_${leagueId}_${season}_${playerIds.length}_v3`
     const cached = cache.get<Record<string, any>>('espn_players_stats', cacheKey)
     if (cached && typeof cached === 'object' && Object.keys(cached).length > 0) {
       console.log(`[Cache HIT] ESPN players with stats for ${leagueId}`)
@@ -1327,110 +1539,233 @@ export class EspnFantasyService {
     }
 
     const teamMapping = sport === 'baseball' ? MLB_TEAMS : PRO_TEAMS
+    const playerMap = new Map<number, { name: string; position: string; team: string; stats: Record<string, number> }>()
+    
+    console.log(`[ESPN getPlayersWithStats] Fetching stats for ${playerIds.length} players, season ${season}`)
 
+    // METHOD 1: Try kona_player_info with stats filters
     try {
-      const playerMap = new Map<number, { name: string; position: string; team: string; stats: Record<string, number> }>()
       const chunkSize = 50
-      
       for (let i = 0; i < playerIds.length; i += chunkSize) {
         const chunk = playerIds.slice(i, i + chunkSize)
         
-        // Request player info with season total stats
-        // filterStatsForSplitTypeIds: { value: [0] } = season totals
-        // filterStatsForSourceIds: { value: [0] } = actual (not projected)
-        // filterStatsForExternalIds to get year-to-date
+        // Try with season-specific stats filter
         const filterObj = {
           players: {
             filterIds: { value: chunk },
-            filterStatsForCurrentSeasonOnly: { value: true },
-            filterStatsForSplitTypeIds: { value: [0] },  // 0 = season total
-            filterStatsForSourceIds: { value: [0] }      // 0 = actual stats
+            filterStatsForCurrentSeasonOnly: { value: false },  // Get historical seasons too
+            filterStatsForSplitTypeIds: { value: [0, 1, 5] },  // 0=total, 1=projected, 5=last7/30
+            filterStatsForSourceIds: { value: [0, 1] },  // 0=actual, 1=projected
+            filterStatsForSeasonId: { value: season }  // Specific season
           }
         }
         
-        console.log(`[ESPN getPlayersWithStats] Requesting chunk ${Math.floor(i/chunkSize) + 1} with ${chunk.length} player IDs`)
+        console.log(`[ESPN Method 1] Chunk ${Math.floor(i/chunkSize) + 1}/${Math.ceil(playerIds.length/chunkSize)}`)
         
         try {
           const data = await this.apiRequestWithFilter(sport, leagueId, season, [ESPN_VIEWS.PLAYER_INFO], filterObj)
-          
           const players = data.players || []
-          console.log(`[ESPN getPlayersWithStats] Got ${players.length} players in chunk ${Math.floor(i/chunkSize) + 1}`)
-          
-          // Debug first player
-          if (players.length > 0 && i === 0) {
-            const firstPlayer = players[0].player || players[0]
-            console.log('[ESPN getPlayersWithStats] First player:', firstPlayer.fullName)
-            console.log('[ESPN getPlayersWithStats] First player keys:', Object.keys(firstPlayer))
-            if (firstPlayer.stats) {
-              console.log('[ESPN getPlayersWithStats] Stats array length:', firstPlayer.stats.length)
-              firstPlayer.stats.forEach((s: any, idx: number) => {
-                const statsObj = s.stats || {}
-                console.log(`  [${idx}] statSourceId=${s.statSourceId}, statSplitTypeId=${s.statSplitTypeId}, appliedTotal=${s.appliedTotal}, statsKeys=${Object.keys(statsObj).length}`)
-                if (Object.keys(statsObj).length > 0 && idx === 0) {
-                  // Log first few stats as sample
-                  const sample = Object.entries(statsObj).slice(0, 10)
-                  console.log('  Sample stats:', sample)
-                }
-              })
-            }
-          }
           
           for (const entry of players) {
             const player = entry.player || entry
-            if (player.id) {
-              // Find season total stats
-              const statsArray = player.stats || []
-              
-              // Priority: statSplitTypeId=0 (season total) with statSourceId=0 (actual)
-              // Then fall back to any actual stats
-              const seasonStats = statsArray.find((s: any) => s.statSplitTypeId === 0 && s.statSourceId === 0) ||
-                                  statsArray.find((s: any) => s.statSourceId === 0 && s.stats && Object.keys(s.stats).length > 5) ||
-                                  statsArray.find((s: any) => s.statSourceId === 0) ||
-                                  {}
-              
-              const stats = seasonStats.stats || {}
-              
+            if (!player.id) continue
+            
+            const statsArray = player.stats || []
+            // Find season stats - prioritize actual stats (statSourceId=0)
+            const seasonStats = statsArray.find((s: any) => 
+              s.statSourceId === 0 && 
+              (s.seasonId === season || s.statSplitTypeId === 0) &&
+              s.stats && Object.keys(s.stats).length > 5
+            ) || statsArray.find((s: any) => 
+              s.statSourceId === 0 && s.stats && Object.keys(s.stats).length > 0
+            ) || {}
+            
+            const stats = seasonStats.stats || {}
+            
+            if (Object.keys(stats).length > 0 || !playerMap.has(player.id)) {
               playerMap.set(player.id, {
-                name: player.fullName || `${player.firstName || ''} ${player.lastName || ''}`.trim() || `Player ${player.id}`,
+                name: player.fullName || `Player ${player.id}`,
                 position: this.getPositionName(player.defaultPositionId, sport),
-                team: teamMapping[player.proTeamId] || `Team${player.proTeamId}`,
+                team: teamMapping[player.proTeamId] || 'FA',
                 stats: stats
               })
             }
           }
-        } catch (chunkError) {
-          console.error(`[ESPN getPlayersWithStats] Error in chunk ${Math.floor(i/chunkSize) + 1}:`, chunkError)
+        } catch (e) {
+          console.log(`[ESPN Method 1] Chunk ${Math.floor(i/chunkSize) + 1} failed:`, e)
         }
       }
-      
-      console.log(`[ESPN getPlayersWithStats] Total: resolved ${playerMap.size} of ${playerIds.length} players`)
-      
-      // Check how many have stats
-      let withStats = 0
-      let totalStatKeys = 0
-      for (const player of playerMap.values()) {
-        const keyCount = Object.keys(player.stats).length
-        if (keyCount > 0) {
-          withStats++
-          totalStatKeys += keyCount
-        }
-      }
-      console.log(`[ESPN getPlayersWithStats] Players with stats: ${withStats}, avg stat keys: ${withStats > 0 ? Math.round(totalStatKeys/withStats) : 0}`)
-      
-      // Cache the results
-      if (playerMap.size > 0) {
-        const cacheObj: Record<string, any> = {}
-        for (const [key, value] of playerMap.entries()) {
-          cacheObj[key.toString()] = value
-        }
-        cache.set('espn_players_stats', cacheObj, CACHE_TTL.LONG, cacheKey)
-      }
-      
-      return playerMap
-    } catch (error) {
-      console.error('Error fetching ESPN players with stats:', error)
-      return new Map()
+    } catch (e) {
+      console.log('[ESPN Method 1] Failed:', e)
     }
+    
+    // Count how many have stats
+    let withStats = 0
+    for (const p of playerMap.values()) {
+      if (Object.keys(p.stats).length > 5) withStats++
+    }
+    console.log(`[ESPN Method 1] Got stats for ${withStats}/${playerMap.size} players`)
+    
+    // METHOD 2: Try players_wl view which sometimes has more stats
+    if (withStats < playerIds.length * 0.5) {
+      console.log('[ESPN Method 2] Trying players_wl view...')
+      const missingIds = playerIds.filter(id => {
+        const p = playerMap.get(id)
+        return !p || Object.keys(p.stats).length <= 5
+      })
+      
+      try {
+        const filterObj = {
+          players: {
+            filterIds: { value: missingIds.slice(0, 100) },
+            filterStatsForSplitTypeIds: { value: [0] },
+            sortPercOwned: { sortPriority: 1, sortAsc: false },
+            limit: 100
+          }
+        }
+        
+        const data = await this.apiRequestWithFilter(sport, leagueId, season, [ESPN_VIEWS.PLAYERS], filterObj)
+        const players = data.players || []
+        
+        console.log(`[ESPN Method 2] Got ${players.length} players from players_wl`)
+        
+        for (const entry of players) {
+          const player = entry.player || entry
+          if (!player.id) continue
+          
+          const statsArray = player.stats || []
+          const seasonStats = statsArray.find((s: any) => s.statSourceId === 0) || {}
+          const stats = seasonStats.stats || {}
+          
+          if (Object.keys(stats).length > 0) {
+            const existing = playerMap.get(player.id)
+            if (!existing || Object.keys(existing.stats).length < Object.keys(stats).length) {
+              playerMap.set(player.id, {
+                name: player.fullName || existing?.name || `Player ${player.id}`,
+                position: this.getPositionName(player.defaultPositionId, sport) || existing?.position || 'Unknown',
+                team: teamMapping[player.proTeamId] || existing?.team || 'FA',
+                stats: stats
+              })
+            }
+          }
+        }
+      } catch (e) {
+        console.log('[ESPN Method 2] Failed:', e)
+      }
+    }
+    
+    // METHOD 3: Get stats from league's historical data if available
+    withStats = 0
+    for (const p of playerMap.values()) {
+      if (Object.keys(p.stats).length > 5) withStats++
+    }
+    
+    if (withStats < playerIds.length * 0.5) {
+      console.log('[ESPN Method 3] Trying league rosters...')
+      try {
+        const teamsWithRosters = await this.getTeamsWithRosters(sport, leagueId, season)
+        
+        for (const team of teamsWithRosters) {
+          if (team.roster) {
+            for (const player of team.roster) {
+              if (player.stats && Object.keys(player.stats).length > 0) {
+                const existing = playerMap.get(player.playerId)
+                if (!existing || Object.keys(existing.stats).length < Object.keys(player.stats).length) {
+                  playerMap.set(player.playerId, {
+                    name: player.fullName || existing?.name || `Player ${player.playerId}`,
+                    position: player.position || existing?.position || 'Unknown',
+                    team: player.proTeam || existing?.team || 'FA',
+                    stats: player.stats
+                  })
+                }
+              }
+            }
+          }
+        }
+      } catch (e) {
+        console.log('[ESPN Method 3] Failed:', e)
+      }
+    }
+    
+    // METHOD 4: Use ESPN's public statistics API for players still missing stats
+    withStats = 0
+    for (const p of playerMap.values()) {
+      if (Object.keys(p.stats).length > 5) withStats++
+    }
+    
+    if (withStats < playerIds.length * 0.5) {
+      console.log('[ESPN Method 4] Trying ESPN public statistics API...')
+      const missingStatIds = playerIds.filter(id => {
+        const p = playerMap.get(id)
+        return !p || Object.keys(p.stats).length <= 5
+      })
+      
+      console.log(`[ESPN Method 4] Fetching stats for ${missingStatIds.length} players from public API`)
+      
+      try {
+        const publicStats = await this.getPlayersStatsFromPublicAPI(
+          sport, 
+          missingStatIds.slice(0, 100), // Limit to avoid too many requests
+          season,
+          (current, total) => {
+            if (current % 20 === 0) {
+              console.log(`[ESPN Method 4] Progress: ${current}/${total}`)
+            }
+          }
+        )
+        
+        console.log(`[ESPN Method 4] Got stats for ${publicStats.size} players from public API`)
+        
+        for (const [playerId, stats] of publicStats.entries()) {
+          const existing = playerMap.get(playerId)
+          if (Object.keys(stats).length > 0) {
+            if (!existing || Object.keys(existing.stats).length < Object.keys(stats).length) {
+              playerMap.set(playerId, {
+                name: existing?.name || `Player ${playerId}`,
+                position: existing?.position || 'Unknown',
+                team: existing?.team || 'FA',
+                stats: stats
+              })
+            }
+          }
+        }
+      } catch (e) {
+        console.log('[ESPN Method 4] Failed:', e)
+      }
+    }
+    
+    // Final count
+    withStats = 0
+    let totalStatKeys = 0
+    for (const player of playerMap.values()) {
+      const keyCount = Object.keys(player.stats).length
+      if (keyCount > 0) {
+        withStats++
+        totalStatKeys += keyCount
+      }
+    }
+    console.log(`[ESPN getPlayersWithStats] Final: ${withStats}/${playerMap.size} players with stats, avg ${withStats > 0 ? Math.round(totalStatKeys/withStats) : 0} stat keys`)
+    
+    // Log sample of stats we got
+    let sampleCount = 0
+    for (const [id, player] of playerMap.entries()) {
+      if (sampleCount < 3 && Object.keys(player.stats).length > 5) {
+        console.log(`[ESPN Stats Sample] ${player.name}: ${Object.keys(player.stats).length} stats`)
+        console.log('  Stats:', Object.entries(player.stats).slice(0, 10))
+        sampleCount++
+      }
+    }
+
+    // Cache the results
+    if (playerMap.size > 0) {
+      const cacheObj: Record<string, any> = {}
+      for (const [key, value] of playerMap.entries()) {
+        cacheObj[key.toString()] = value
+      }
+      cache.set('espn_players_stats', cacheObj, CACHE_TTL.LONG, cacheKey)
+    }
+    
+    return playerMap
   }
 
   /**

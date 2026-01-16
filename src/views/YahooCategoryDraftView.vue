@@ -26,19 +26,19 @@
       </div>
     </div>
 
-    <!-- ESPN Limitation Notice -->
-    <div v-if="isEspn" class="bg-amber-500/10 border border-amber-500/30 rounded-xl p-4 flex items-start gap-3">
+    <!-- ESPN Limitation Notice - only show if we couldn't get stats for many players -->
+    <div v-if="isEspn && espnStatsWarning" class="bg-amber-500/10 border border-amber-500/30 rounded-xl p-4 flex items-start gap-3">
       <div class="text-amber-400 text-xl flex-shrink-0">ℹ️</div>
       <div>
-        <p class="text-amber-200 font-semibold">ESPN Draft Board</p>
-        <p class="text-amber-400/80 text-sm mt-1">ESPN's API does not provide historical player statistics. The draft board shows picks, players, and positions. Value analysis and grades are not available for ESPN leagues.</p>
+        <p class="text-amber-200 font-semibold">Limited Stats Available</p>
+        <p class="text-amber-400/80 text-sm mt-1">Some players couldn't be found in ESPN's database. This can happen with historical drafts or players who are no longer active.</p>
       </div>
     </div>
 
-    <!-- Tab Navigation -->
+    <!-- Tab Navigation - Show all tabs since we now have MLB stats -->
     <div class="flex gap-2 flex-wrap">
       <button
-        v-for="tab in espnFilteredTabs"
+        v-for="tab in tabOptions"
         :key="tab.id"
         @click="activeTab = tab.id"
         :class="activeTab === tab.id ? 'bg-yellow-400 text-gray-900' : 'bg-dark-card text-dark-textSecondary hover:bg-dark-border/50'"
@@ -82,8 +82,7 @@
                   <option v-for="pos in availablePositions" :key="pos" :value="pos">{{ pos }}</option>
                 </select>
               </div>
-              <!-- Hide highlight category for ESPN since we don't have stats -->
-              <div v-if="!isEspn" class="flex items-center gap-2">
+              <div class="flex items-center gap-2">
                 <label class="text-sm text-dark-textMuted">Highlight Category:</label>
                 <select v-model="highlightCategory" class="select text-sm py-1.5">
                   <option value="">All Categories</option>
@@ -98,8 +97,8 @@
         </div>
       </div>
 
-      <!-- Category Quick Stats - Hide for ESPN -->
-      <div class="card" v-if="!isEspn && highlightCategory">
+      <!-- Category Quick Stats -->
+      <div class="card" v-if="highlightCategory">
         <div class="card-body py-3">
           <div class="flex items-center justify-between flex-wrap gap-4">
             <div class="flex items-center gap-2">
@@ -218,9 +217,9 @@
                   <div class="text-xs font-medium text-dark-text truncate flex-1 mr-1">
                     {{ getPickForRound(team.team_key, round)?.player_name || 'Unknown' }}
                   </div>
-                  <!-- Value Score Badge - Hide for ESPN -->
+                  <!-- Value Score Badge -->
                   <span 
-                    v-if="!isEspn && getPickForRound(team.team_key, round)?.valueScore !== undefined"
+                    v-if="getPickForRound(team.team_key, round)?.valueScore !== undefined && getPickForRound(team.team_key, round)?.hasStats !== false"
                     class="text-[10px] font-bold px-1 py-0.5 rounded flex-shrink-0"
                     :class="getValueScoreClass(getPickForRound(team.team_key, round)?.valueScore)"
                     :title="`Value Score: ${getPickForRound(team.team_key, round)?.valueScore >= 0 ? '+' : ''}${getPickForRound(team.team_key, round)?.valueScore?.toFixed(0)} (Draft Position vs Actual Performance)`"
@@ -239,8 +238,8 @@
                     #{{ getPickForRound(team.team_key, round)?.pick }}
                   </span>
                 </div>
-                <!-- Show highlighted category stat OR best categories - Hide for ESPN -->
-                <div v-if="!isEspn" class="mt-1.5">
+                <!-- Show highlighted category stat OR best categories -->
+                <div class="mt-1.5">
                   <!-- When a category is highlighted, show that stat prominently -->
                   <div v-if="highlightCategory" class="flex items-center justify-between">
                     <span class="text-[10px] px-1.5 py-0.5 rounded font-bold" :class="getCategoryColorClass(highlightCategory)">
@@ -350,7 +349,7 @@
             <div class="p-6">
               <div class="flex items-center justify-between mb-4">
                 <h4 class="text-sm font-semibold text-dark-textMuted uppercase tracking-wider">Draft Picks</h4>
-                <div v-if="!isEspn" class="text-xs text-dark-textMuted">
+                <div class="text-xs text-dark-textMuted">
                   Value = Draft Position − Actual Season Rank
                 </div>
               </div>
@@ -370,8 +369,8 @@
                     <div class="font-semibold text-dark-text">{{ pick.player_name }}</div>
                     <div class="text-xs text-dark-textMuted">{{ pick.position }} • {{ pick.mlb_team }} • Pick #{{ pick.pick }}</div>
                   </div>
-                  <!-- Only show value score for non-ESPN -->
-                  <div v-if="!isEspn" class="text-right">
+                  <!-- Show value score if player has stats -->
+                  <div v-if="pick.hasStats !== false" class="text-right">
                     <div 
                       class="text-lg font-bold"
                       :class="pick.valueScore >= 10 ? 'text-green-400' : pick.valueScore <= -10 ? 'text-red-400' : 'text-dark-textMuted'"
@@ -1060,8 +1059,8 @@
                 <div class="text-2xl font-bold text-dark-text">R{{ selectedPick.round }}.{{ selectedPick.pickInRound }}</div>
                 <div class="text-xs text-dark-textMuted mt-1">Overall #{{ selectedPick.pick }}</div>
               </div>
-              <!-- Only show stats for Yahoo -->
-              <template v-if="!isEspn">
+              <!-- Show stats if player has them -->
+              <template v-if="selectedPick.hasStats !== false">
                 <div class="bg-dark-border/30 rounded-xl p-4 text-center">
                   <div class="text-sm text-dark-textMuted mb-1">Category Score</div>
                   <div class="text-2xl font-bold" :class="getCategoryScoreClass(selectedPick.categoryScore)">
@@ -1081,22 +1080,22 @@
               </template>
             </div>
 
-            <!-- ESPN Notice -->
-            <div v-if="isEspn" class="bg-amber-500/10 border border-amber-500/20 rounded-xl p-4">
+            <!-- Notice if player has no stats -->
+            <div v-if="selectedPick.hasStats === false" class="bg-amber-500/10 border border-amber-500/20 rounded-xl p-4">
               <div class="flex items-start gap-3">
                 <span class="text-amber-400 text-xl">ℹ️</span>
                 <div>
-                  <p class="text-amber-200 font-semibold text-sm">ESPN Draft Data</p>
+                  <p class="text-amber-200 font-semibold text-sm">No Stats Available</p>
                   <p class="text-amber-400/80 text-xs mt-1">
-                    ESPN's API does not provide historical player statistics needed for detailed category analysis. 
-                    The draft board shows pick order, player names, positions, and teams.
+                    This player couldn't be found in the MLB Stats database. This can happen for players who 
+                    didn't play in MLB during the {{ selectedSeason }} season or have name mismatches.
                   </p>
                 </div>
               </div>
             </div>
 
-            <!-- Yahoo-only sections -->
-            <template v-if="!isEspn">
+            <!-- Show stats sections if player has stats -->
+            <template v-if="selectedPick.hasStats !== false">
               <!-- Quick Explanation -->
               <div class="bg-yellow-500/10 border border-yellow-500/20 rounded-xl p-3 text-xs text-dark-textMuted">
                 <span class="text-yellow-400 font-semibold">Category Score</span> = average percentile rank across all categories (100 = best).
@@ -1196,6 +1195,7 @@ const impactSort = ref('pick')
 const selectedBalanceTeam = ref<string | null>(null)
 const selectedPick = ref<any>(null)
 const selectedStealCategory = ref('HR')
+const espnStatsWarning = ref(false)
 
 // Modal states
 const showBalanceModal = ref(false)
@@ -1224,14 +1224,6 @@ const tabOptions = [
   { id: 'balance', name: 'Draft Balance', icon: '⚖️' },
   { id: 'steals', name: 'Steals & Busts', icon: '🎯' }
 ]
-
-// For ESPN, only show the Draft Board tab since we don't have stats
-const espnFilteredTabs = computed(() => {
-  if (isEspn.value) {
-    return tabOptions.filter(tab => tab.id === 'board')
-  }
-  return tabOptions
-})
 
 // Stat ID mapping
 const statIdMapping: Record<string, string> = {
@@ -1905,26 +1897,34 @@ async function loadEspnDraftData(leagueKey: string) {
     40: 'TB', 41: '2B', 42: '3B'
   }
   
+  let leagueCategoryStatIds: number[] = []
+  
   try {
     const scoringSettings = await espnService.getScoringSettings('baseball', leagueId, season)
     const scoringItems = scoringSettings?.scoringItems || []
     
     leagueCategories.value = scoringItems
       .filter((item: any) => item.statId !== undefined && espnBaseballStatNames[item.statId])
-      .map((item: any) => espnBaseballStatNames[item.statId])
+      .map((item: any) => {
+        leagueCategoryStatIds.push(item.statId)
+        return espnBaseballStatNames[item.statId]
+      })
     
     if (leagueCategories.value.length === 0) {
       leagueCategories.value = ['R', 'HR', 'RBI', 'SB', 'AVG', 'W', 'SV', 'Ks', 'ERA', 'WHIP']
+      leagueCategoryStatIds = [2, 3, 4, 5, 8, 32, 34, 20, 18, 19]
     }
     
     selectedStealCategory.value = leagueCategories.value[0] || 'HR'
   } catch (e) {
     console.log('[ESPN Draft] Could not load league settings, using defaults')
     leagueCategories.value = ['R', 'HR', 'RBI', 'SB', 'AVG', 'W', 'SV', 'Ks', 'ERA', 'WHIP']
+    leagueCategoryStatIds = [2, 3, 4, 5, 8, 32, 34, 20, 18, 19]
     selectedStealCategory.value = 'HR'
   }
   
   console.log('[ESPN Draft] League categories:', leagueCategories.value)
+  console.log('[ESPN Draft] Category stat IDs:', leagueCategoryStatIds)
   
   // Get teams for lookup
   loadingMessage.value = 'Loading teams...'
@@ -1940,36 +1940,115 @@ async function loadEspnDraftData(leagueKey: string) {
     teamLookup.set(team.id, team)
   }
   
-  // Process draft picks - ESPN doesn't provide full season stats through fantasy API
-  // We'll show the draft board with basic info
-  loadingMessage.value = 'Processing draft data...'
   const numTeams = teams.length || 12
   
-  // Determine player types based on position for category assignment
-  const pitchingPositions = ['SP', 'RP', 'P']
+  // === GET PLAYER STATS FROM ESPN ===
+  loadingMessage.value = 'Loading player stats from ESPN...'
   
-  const hittingCategories = leagueCategories.value.filter(cat => 
-    ['R', 'HR', 'RBI', 'SB', 'AVG', 'OBP', 'SLG', 'OPS', 'H', 'BB', '2B', '3B', 'TB'].includes(cat)
-  )
-  const pitchingCategories = leagueCategories.value.filter(cat => 
-    ['W', 'SV', 'Ks', 'ERA', 'WHIP', 'QS', 'K', 'IP', 'L', 'BS'].includes(cat)
-  )
+  const playerIds = espnDraftPicks.map((p: any) => p.playerId).filter(Boolean)
+  console.log('[ESPN Draft] Getting stats for', playerIds.length, 'drafted players')
+  
+  // Use ESPN's getPlayersWithStats which tries multiple methods including public API
+  const playerStatsMap = await espnService.getPlayersWithStats('baseball', leagueId, season, playerIds)
+  console.log('[ESPN Draft] Got stats map with', playerStatsMap.size, 'players')
+  
+  // Debug: Check what stats look like for first few players
+  let debugCount = 0
+  for (const [playerId, playerData] of playerStatsMap.entries()) {
+    if (debugCount < 3 && Object.keys(playerData.stats).length > 0) {
+      console.log(`[ESPN Draft DEBUG] Player ${playerData.name} (${playerId}):`)
+      console.log('  Stats keys:', Object.keys(playerData.stats).slice(0, 15))
+      console.log('  Stats sample:', Object.entries(playerData.stats).slice(0, 10))
+      debugCount++
+    }
+  }
+  
+  // Calculate category totals for percentile calculation
+  loadingMessage.value = 'Calculating category rankings...'
+  const categoryTotals: Record<string, number[]> = {}
+  for (const cat of leagueCategories.value) {
+    categoryTotals[cat] = []
+  }
+  
+  // Collect all stat values for percentile calculation
+  for (const pick of espnDraftPicks) {
+    const playerData = playerStatsMap.get(pick.playerId)
+    if (!playerData?.stats) continue
+    
+    for (let i = 0; i < leagueCategories.value.length; i++) {
+      const cat = leagueCategories.value[i]
+      const statId = leagueCategoryStatIds[i]
+      // Try both string and number keys
+      const rawValue = playerData.stats[statId.toString()] ?? playerData.stats[statId] ?? 0
+      const value = typeof rawValue === 'number' ? rawValue : parseFloat(rawValue) || 0
+      if (value > 0 || ['ERA', 'WHIP'].includes(cat)) {
+        categoryTotals[cat].push(value)
+      }
+    }
+  }
+  
+  console.log('[ESPN Draft] Category totals:', Object.fromEntries(
+    Object.entries(categoryTotals).map(([k, v]) => [k, v.length])
+  ))
+  
+  // Sort for percentile calculation
+  const categoryPercentiles: Record<string, number[]> = {}
+  for (const cat of leagueCategories.value) {
+    // Lower is better for ERA, WHIP, L, BS
+    const isLowerBetter = ['ERA', 'WHIP', 'L', 'BS'].includes(cat)
+    categoryPercentiles[cat] = [...categoryTotals[cat]].sort((a, b) => 
+      isLowerBetter ? a - b : b - a
+    )
+  }
+  
+  function getPercentile(cat: string, value: number): number {
+    const sorted = categoryPercentiles[cat]
+    if (!sorted || sorted.length === 0) return 50
+    if (value === 0 && !['ERA', 'WHIP'].includes(cat)) return 0
+    
+    const isLowerBetter = ['ERA', 'WHIP', 'L', 'BS'].includes(cat)
+    const rank = sorted.findIndex(v => isLowerBetter ? v >= value : v <= value)
+    if (rank === -1) return isLowerBetter ? 100 : 0
+    return Math.round((1 - rank / sorted.length) * 100)
+  }
+  
+  // Process draft picks
+  loadingMessage.value = 'Processing draft data...'
   
   const processedPicks = espnDraftPicks.map((pick: any) => {
     const team = teamLookup.get(pick.teamId) || {}
     const pickInRound = pick.roundPickNumber || ((pick.overallPickNumber - 1) % numTeams) + 1
-    const position = pick.position || 'Unknown'
+    const playerData = playerStatsMap.get(pick.playerId)
+    const stats = playerData?.stats || {}
+    const hasRealStats = Object.keys(stats).length > 5
     
-    // Determine if hitter or pitcher based on position
-    const isPitcher = pitchingPositions.some(p => position.toUpperCase().includes(p))
-    const relevantCategories = isPitcher ? pitchingCategories : hittingCategories
+    // Calculate category score and find best categories
+    let categoryScore = 0
+    let catCount = 0
+    const categoryPerformance: Array<{category: string, value: number, percentile: number}> = []
     
-    // Create placeholder best categories based on position type
-    const bestCategories = relevantCategories.slice(0, 3).map((cat) => ({
-      category: cat,
-      value: 0,
-      percentile: 0
-    }))
+    for (let i = 0; i < leagueCategories.value.length; i++) {
+      const cat = leagueCategories.value[i]
+      const statId = leagueCategoryStatIds[i]
+      const rawValue = stats[statId.toString()] ?? stats[statId] ?? 0
+      const value = typeof rawValue === 'number' ? rawValue : parseFloat(rawValue) || 0
+      
+      // Only count if player has this stat
+      if (value > 0 || ['ERA', 'WHIP'].includes(cat)) {
+        const percentile = getPercentile(cat, value)
+        if (percentile > 0) {
+          categoryScore += percentile
+          catCount++
+          categoryPerformance.push({ category: cat, value, percentile })
+        }
+      }
+    }
+    
+    const bestCategories = [...categoryPerformance]
+      .sort((a, b) => b.percentile - a.percentile)
+      .slice(0, 5)
+    
+    const avgPercentile = catCount > 0 ? categoryScore / catCount : 50
     
     return {
       pick: pick.overallPickNumber,
@@ -1979,21 +2058,42 @@ async function loadEspnDraftData(leagueKey: string) {
       team_name: team.name || `Team ${pick.teamId}`,
       team_logo: team.logo || '',
       player_key: `espn_player_${pick.playerId}`,
-      player_name: pick.playerName || 'Unknown Player',
-      position: position,
-      mlb_team: pick.proTeam || '',
+      player_name: playerData?.name || pick.playerName || 'Unknown Player',
+      position: playerData?.position || pick.position || 'Unknown',
+      mlb_team: playerData?.team || pick.proTeam || '',
       headshot: '',
-      stats: {},
-      categoryScore: 0,
-      categoryPercentile: 0,
+      stats,
+      categoryScore: avgPercentile,
+      categoryPercentile: avgPercentile,
       bestCategories,
-      valueScore: 0,
-      grade: '-', // No grade without stats
+      valueScore: 0, // Will calculate below
+      grade: 'C',
       keeper: pick.keeper || false,
       bidAmount: pick.bidAmount,
-      hasStats: false // Flag to indicate no stats available
+      hasStats: hasRealStats
     }
   })
+  
+  // Calculate value scores (expected vs actual performance)
+  const allScores = processedPicks
+    .filter((p: any) => p.hasStats)
+    .map((p: any) => ({
+      pick: p.pick,
+      score: p.categoryPercentile
+    }))
+    .sort((a: any, b: any) => b.score - a.score)
+  
+  for (const pick of processedPicks) {
+    if (pick.hasStats) {
+      const expectedRank = pick.pick
+      const actualRank = allScores.findIndex((s: any) => s.pick === pick.pick) + 1
+      pick.valueScore = expectedRank - actualRank
+      pick.grade = calculateGrade(pick.valueScore / 5)
+    } else {
+      pick.grade = '-'
+      pick.valueScore = 0
+    }
+  }
   
   // Sort by overall pick
   processedPicks.sort((a: any, b: any) => a.pick - b.pick)
@@ -2001,8 +2101,15 @@ async function loadEspnDraftData(leagueKey: string) {
   // Update the reactive ref
   draftPicks.value = processedPicks
   
+  // Log summary
+  const withStats = processedPicks.filter((p: any) => p.hasStats).length
+  const withCategories = processedPicks.filter((p: any) => p.bestCategories.length > 0).length
   console.log('[ESPN Draft] Processed', processedPicks.length, 'draft picks')
-  console.log('[ESPN Draft] Note: ESPN API does not provide player season stats - showing draft board only')
+  console.log('[ESPN Draft] Players with stats:', withStats)
+  console.log('[ESPN Draft] Players with category data:', withCategories)
+  
+  // Set warning if coverage is low
+  espnStatsWarning.value = withStats < processedPicks.length * 0.5
 }
 
 async function loadYahooDraftData(leagueKey: string) {
