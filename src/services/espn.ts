@@ -44,6 +44,8 @@ const ESPN_VIEWS = {
   MATCHUP_SCORE: 'mMatchupScore',
   SCOREBOARD: 'mScoreboard',
   STANDINGS: 'mStandings',
+  BOXSCORE: 'mBoxscore',
+  NAV: 'mNav',
   
   // Draft views
   DRAFT_DETAIL: 'mDraftDetail',
@@ -650,12 +652,12 @@ export class EspnFantasyService {
       const scoringType = league?.scoringType
       console.log(`[ESPN getMatchups] League scoring type: ${scoringType}`)
       
-      // Request mScoreboard along with mMatchup for stat values in category leagues
+      // Request mScoreboard and mBoxscore along with mMatchup for stat values in category leagues
       const data = await this.apiRequest(
         sport, 
         leagueId, 
         season, 
-        [ESPN_VIEWS.MATCHUP, ESPN_VIEWS.MATCHUP_SCORE, ESPN_VIEWS.SCOREBOARD],
+        [ESPN_VIEWS.MATCHUP, ESPN_VIEWS.MATCHUP_SCORE, ESPN_VIEWS.SCOREBOARD, ESPN_VIEWS.BOXSCORE],
         week
       )
       
@@ -1999,6 +2001,15 @@ export class EspnFantasyService {
           console.log('[ESPN DEBUG] away.stats:', JSON.stringify(firstMatch.away.stats).slice(0, 500))
         }
       }
+      
+      // Log ALL keys on home and away to find where stat values might be hiding
+      console.log('[ESPN DEBUG] === FULL HOME OBJECT KEYS ===')
+      console.log('[ESPN DEBUG] home keys:', Object.keys(firstMatch.home || {}))
+      console.log('[ESPN DEBUG] home full:', JSON.stringify(firstMatch.home, null, 2).slice(0, 2000))
+      
+      console.log('[ESPN DEBUG] === FULL AWAY OBJECT KEYS ===')  
+      console.log('[ESPN DEBUG] away keys:', Object.keys(firstMatch.away || {}))
+      console.log('[ESPN DEBUG] away full:', JSON.stringify(firstMatch.away, null, 2).slice(0, 2000))
     }
     
     const teams = this.parseTeams(data)
