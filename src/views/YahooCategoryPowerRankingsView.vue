@@ -1710,6 +1710,8 @@ async function loadPowerRankings() {
       await loadCategories()
     }
     
+    console.log('[Power Rankings] Categories loaded:', displayCategories.value.map(c => ({ id: c.stat_id, name: c.display_name })))
+    
     // Initialize team stats - we'll track cumulative stats as we go through each week
     const teamStats = new Map<string, any>()
     for (const team of leagueStore.yahooTeams) {
@@ -1737,6 +1739,16 @@ async function loadPowerRankings() {
       })
     }
     
+    // Debug: Log first team's initial state
+    const firstTeamKey = [...teamStats.keys()][0]
+    if (firstTeamKey) {
+      console.log('[Power Rankings] First team initial state:', {
+        key: firstTeamKey,
+        name: teamStats.get(firstTeamKey)?.name,
+        categoryWinsKeys: Object.keys(teamStats.get(firstTeamKey)?.categoryWins || {})
+      })
+    }
+    
     // Track historical rankings for chart
     const rankHistory = new Map<string, number[]>()
     const weeksForChart: number[] = []
@@ -1748,6 +1760,9 @@ async function loadPowerRankings() {
     
     console.log(`=== Loading ${throughWeek} weeks of matchup data ===`)
     
+    // Debug: Log team keys being used
+    console.log('[Power Rankings] Team keys in teamStats:', [...teamStats.keys()])
+    
     // Get ESPN league info if needed
     let espnLeagueId: string | number = ''
     let espnSeason = new Date().getFullYear()
@@ -1755,6 +1770,7 @@ async function loadPowerRankings() {
       const savedLeague = leagueStore.savedLeagues?.find((l: any) => l.league_id === leagueKey)
       espnLeagueId = savedLeague?.espn_id || leagueKey
       espnSeason = savedLeague?.season || new Date().getFullYear()
+      console.log('[Power Rankings ESPN] Using espnLeagueId:', espnLeagueId, 'season:', espnSeason)
     }
     
     // Load each week's matchup data and calculate running rankings
@@ -1766,6 +1782,17 @@ async function loadPowerRankings() {
           // ESPN matchups - use per-category results
           const matchups = await espnService.getMatchups('baseball', espnLeagueId, espnSeason, week)
           
+          // Debug first week
+          if (week === 1 && matchups.length > 0) {
+            console.log('[Power Rankings ESPN] Week 1 first matchup:', {
+              homeTeamId: matchups[0].homeTeamId,
+              awayTeamId: matchups[0].awayTeamId,
+              homeKey: `espn_${matchups[0].homeTeamId}`,
+              hasHomePerCategoryResults: !!matchups[0].homePerCategoryResults,
+              homePerCategoryResultsKeys: matchups[0].homePerCategoryResults ? Object.keys(matchups[0].homePerCategoryResults) : []
+            })
+          }
+          
           for (const matchup of matchups) {
             if (!matchup.awayTeamId) continue // Skip bye weeks
             
@@ -1774,6 +1801,16 @@ async function loadPowerRankings() {
             
             const homeStats = teamStats.get(homeKey)
             const awayStats = teamStats.get(awayKey)
+            
+            // Debug: Log if team not found
+            if (week === 1 && (!homeStats || !awayStats)) {
+              console.log('[Power Rankings ESPN] Team not found!', {
+                homeKey,
+                awayKey,
+                homeFound: !!homeStats,
+                awayFound: !!awayStats
+              })
+            }
             
             if (!homeStats || !awayStats) continue
             
@@ -1866,6 +1903,14 @@ async function loadPowerRankings() {
     totalWeeksLoaded.value = throughWeek
     historicalRanks.value = rankHistory
     chartWeeks.value = weeksForChart
+    
+    // Debug: Log final team stats after all weeks processed
+    if (isEspn.value) {
+      console.log('[Power Rankings ESPN] Final team stats after all weeks:')
+      for (const [key, stats] of teamStats) {
+        console.log(`  ${stats.name}: W=${stats.totalCatWins}, L=${stats.totalCatLosses}, T=${stats.totalCatTies}`)
+      }
+    }
     
     // Calculate final rankings
     loadingMessage.value = 'Calculating final rankings...'
