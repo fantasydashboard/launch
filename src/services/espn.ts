@@ -143,8 +143,10 @@ export interface EspnLeague {
   status: {
     currentMatchupPeriod: number
     isActive: boolean
+    isFinished: boolean
     latestScoringPeriod: number
     finalScoringPeriod: number
+    finalMatchupPeriod: number
     firstScoringPeriod: number
   }
   settings: {
@@ -1762,6 +1764,13 @@ export class EspnFantasyService {
     const settings = data.settings || {}
     const status = data.status || {}
     
+    // Determine if season is finished
+    // ESPN marks seasons as inactive when finished, or we can compare current period to final period
+    const finalPeriod = status.finalScoringPeriod || settings.scheduleSettings?.matchupPeriodCount || 25
+    const currentPeriod = status.currentMatchupPeriod || 1
+    const isActive = status.isActive ?? true
+    const isFinished = !isActive || (currentPeriod >= finalPeriod && status.latestScoringPeriod >= finalPeriod)
+    
     return {
       id: data.id,
       seasonId: data.seasonId,
@@ -1774,9 +1783,11 @@ export class EspnFantasyService {
       currentMatchupPeriod: status.currentMatchupPeriod || 1,
       status: {
         currentMatchupPeriod: status.currentMatchupPeriod || 1,
-        isActive: status.isActive ?? true,
+        isActive: isActive,
+        isFinished: isFinished,
         latestScoringPeriod: status.latestScoringPeriod || 1,
-        finalScoringPeriod: status.finalScoringPeriod || 17,
+        finalScoringPeriod: finalPeriod,
+        finalMatchupPeriod: finalPeriod,
         firstScoringPeriod: status.firstScoringPeriod || 1
       },
       settings: {

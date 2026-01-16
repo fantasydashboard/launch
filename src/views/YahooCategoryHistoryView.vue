@@ -3593,7 +3593,7 @@ async function loadEspnHistoricalData(leagueKey: string) {
   // ESPN leagues can have history going back many years
   const data: Record<string, any> = {}
   let successCount = 0
-  let failCount = 0
+  let consecutiveFailures = 0
   
   // Try loading from current season back to 2015 (ESPN fantasy baseball existed since ~2010)
   const currentYear = currentSeason || new Date().getFullYear()
@@ -3605,7 +3605,7 @@ async function loadEspnHistoricalData(leagueKey: string) {
   console.log('[History ESPN] Will attempt to load seasons:', years)
   
   for (const year of years) {
-    loadingMessage.value = `Loading ${year} season... (${successCount} loaded, ${failCount} not found)`
+    loadingMessage.value = `Loading ${year} season... (${successCount} loaded)`
     console.log(`[History ESPN] Attempting to load ${year}`)
     
     try {
@@ -3613,15 +3613,12 @@ async function loadEspnHistoricalData(leagueKey: string) {
       const league = await espnService.getLeague('baseball', leagueId, year)
       
       if (!league) {
-        console.log(`[History ESPN] ✗ ${year} - League not found`)
-        failCount++
-        // If we've had 3 consecutive failures after at least one success, stop
-        if (failCount >= 3 && successCount > 0) {
-          console.log(`[History ESPN] Stopping after ${failCount} consecutive failures`)
-          break
-        }
+        console.log(`[History ESPN] ✗ ${year} - League not found (null response)`)
+        // Don't count as failure - league just didn't exist that year
         continue
       }
+      
+      console.log(`[History ESPN] ${year} league found:`, league.name, 'status:', league.status)
       
       // Get standings/teams
       const standings = await espnService.getStandings('baseball', leagueId, year)
@@ -3630,22 +3627,53 @@ async function loadEspnHistoricalData(leagueKey: string) {
       if (standings && standings.length > 0) {
         console.log(`[History ESPN] ✓ Loaded ${year} season: ${standings.length} teams`)
         successCount++
-        failCount = 0 // Reset consecutive failure count
+        consecutiveFailures = 0 // Reset consecutive failure count
+        
+        // Determine champion - look for rankCalculatedFinal === 1 or rank === 1 for finished seasons
+        // For past seasons (year < current year), assume finished
+        const currentYear = new Date().getFullYear()
+        const isPastSeason = year < currentYear
+        const isFinished = isPastSeason || league.status?.isFinished === true || !league.status?.isActive
+        console.log(`[History ESPN] ${year} isFinished:`, isFinished, `(isPastSeason: ${isPastSeason}, status.isFinished: ${league.status?.isFinished}, status.isActive: ${league.status?.isActive})`)
+        
+        // Log raw standings data for debugging
+        if (standings.length > 0) {
+          console.log(`[History ESPN] ${year} first team raw data:`, {
+            name: standings[0].name,
+            rank: standings[0].rank,
+            rankCalculatedFinal: standings[0].rankCalculatedFinal,
+            playoffSeed: standings[0].playoffSeed
+          })
+        }
         
         // Transform ESPN standings to match Yahoo format
-        const transformedStandings = standings.map((team: any, index: number) => ({
-          team_key: `espn_${team.id}`,
-          team_id: team.id,
-          name: team.name || team.teamName || `Team ${team.id}`,
-          team_name: team.name || team.teamName || `Team ${team.id}`,
-          logo_url: team.logo || '',
-          rank: team.playoffSeed || team.currentProjectedRank || index + 1,
-          wins: team.record?.wins || team.wins || 0,
-          losses: team.record?.losses || team.losses || 0,
-          ties: team.record?.ties || team.ties || 0,
-          points_for: team.record?.pointsFor || team.totalPoints || 0,
-          is_champion: (team.playoffSeed === 1 && league.status?.isFinished) || false
-        }))
+        const transformedStandings = standings.map((team: any, index: number) => {
+          // For champion detection:
+          // - rankCalculatedFinal is the final standings after playoffs (preferred)
+          // - rank is current/final rank
+          // - playoffSeed is seed going INTO playoffs (not the result)
+          // Priority: rankCalculatedFinal > rank > playoffSeed > index
+          const finalRank = team.rankCalculatedFinal || team.rank || team.playoffSeed || (index + 1)
+          const isChampion = isFinished && finalRank === 1
+          
+          if (finalRank === 1) {
+            console.log(`[History ESPN] ${year} Rank 1 team: ${team.name} (isFinished: ${isFinished}, isChampion: ${isChampion})`)
+          }
+          
+          return {
+            team_key: `espn_${team.id}`,
+            team_id: team.id,
+            name: team.name || team.teamName || `Team ${team.id}`,
+            team_name: team.name || team.teamName || `Team ${team.id}`,
+            logo_url: team.logo || '',
+            rank: finalRank,
+            wins: team.record?.overall?.wins || team.wins || 0,
+            losses: team.record?.overall?.losses || team.losses || 0,
+            ties: team.record?.overall?.ties || team.ties || 0,
+            points_for: team.record?.overall?.pointsFor || team.pointsFor || 0,
+            is_champion: isChampion
+          }
+        })
         
         data[year.toString()] = { standings: transformedStandings, matchups: [] }
         
@@ -3670,7 +3698,7 @@ async function loadEspnHistoricalData(leagueKey: string) {
           
           // Get total weeks from league info
           const totalWeeks = league.status?.finalMatchupPeriod || 25
-          let consecutiveFailures = 0
+          let weekFailures = 0
           
           for (let week = 1; week <= totalWeeks; week++) {
             try {
@@ -3708,15 +3736,15 @@ async function loadEspnHistoricalData(leagueKey: string) {
                   })) : []
                 }))
                 allMatchups.push(...transformedMatchups)
-                consecutiveFailures = 0
+                weekFailures = 0
               } else {
-                consecutiveFailures++
+                weekFailures++
               }
             } catch (weekError) {
-              consecutiveFailures++
+              weekFailures++
             }
             
-            if (consecutiveFailures >= 3 && allMatchups.length > 0) {
+            if (weekFailures >= 3 && allMatchups.length > 0) {
               console.log(`[History ESPN] Stopping at week ${week} for ${year} - season appears to have ended`)
               break
             }
@@ -3734,21 +3762,30 @@ async function loadEspnHistoricalData(leagueKey: string) {
         await new Promise(resolve => setTimeout(resolve, 100))
       } else {
         console.log(`[History ESPN] ✗ ${year} - No standings data returned`)
-        failCount++
+        // Don't count as failure - might just be empty data
       }
     } catch (e: any) {
-      console.log(`[History ESPN] ✗ Could not load ${year} season:`, e?.message || e)
-      failCount++
-      // If we've had 3 consecutive failures after at least one success, stop
-      if (failCount >= 3 && successCount > 0) {
-        console.log(`[History ESPN] Stopping after ${failCount} consecutive failures`)
+      const errorMsg = e?.message || String(e)
+      console.log(`[History ESPN] ✗ Could not load ${year} season:`, errorMsg)
+      
+      // Don't count 404 "League not found" as a failure - league just didn't exist that year
+      if (errorMsg.includes('not found') || errorMsg.includes('404')) {
+        console.log(`[History ESPN] ${year} - League didn't exist this year, continuing to check older years`)
+        continue
+      }
+      
+      // For other errors (network, auth, etc), count as failure
+      consecutiveFailures++
+      // If we've had 5 consecutive real failures, stop
+      if (consecutiveFailures >= 5) {
+        console.log(`[History ESPN] Stopping after ${consecutiveFailures} consecutive failures`)
         break
       }
     }
   }
   
   console.log('[History ESPN] === History Load Complete ===')
-  console.log(`[History ESPN] Finished loading: ${successCount} seasons loaded, ${failCount} not found`)
+  console.log(`[History ESPN] Finished loading: ${successCount} seasons loaded`)
   console.log('[History ESPN] Loaded seasons:', Object.keys(data))
   
   historicalData.value = data
