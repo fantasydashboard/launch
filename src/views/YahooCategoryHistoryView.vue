@@ -3589,13 +3589,29 @@ async function loadEspnHistoricalData(leagueKey: string) {
   const { leagueId, season: currentSeason } = parseEspnLeagueKey(leagueKey)
   console.log('[History ESPN] Loading history for league:', leagueId, 'current season:', currentSeason)
   
+  loadingMessage.value = `Connecting to ESPN for league ${leagueId}...`
+  
+  // Quick check - verify we can access the current season
+  try {
+    const testLeague = await espnService.getLeague('baseball', leagueId, currentSeason)
+    if (!testLeague) {
+      loadingMessage.value = 'League not found or not accessible'
+      console.log('[History ESPN] Failed initial league check')
+      return
+    }
+    console.log('[History ESPN] Initial check passed, league:', testLeague.name)
+  } catch (e: any) {
+    loadingMessage.value = `Error connecting: ${e?.message || 'Unknown error'}`
+    console.error('[History ESPN] Initial check failed:', e)
+    return
+  }
+  
   // For ESPN, we'll try to load seasons going back in time
-  // ESPN leagues can have history going back many years
   const data: Record<string, any> = {}
   let successCount = 0
   let consecutiveFailures = 0
   
-  // Try loading from current season back to 2015 (ESPN fantasy baseball existed since ~2010)
+  // Try loading from current season back to 2015
   const currentYear = currentSeason || new Date().getFullYear()
   const years: number[] = []
   for (let year = currentYear; year >= 2015; year--) {
@@ -3603,9 +3619,10 @@ async function loadEspnHistoricalData(leagueKey: string) {
   }
   
   console.log('[History ESPN] Will attempt to load seasons:', years)
+  loadingMessage.value = `Found league! Checking ${years.length} seasons...`
   
   for (const year of years) {
-    loadingMessage.value = `Loading ${year} season... (${successCount} loaded)`
+    loadingMessage.value = `Checking ${year} season... (${successCount} found so far)`
     console.log(`[History ESPN] Attempting to load ${year}`)
     
     try {
@@ -3628,11 +3645,12 @@ async function loadEspnHistoricalData(leagueKey: string) {
         console.log(`[History ESPN] ✓ Loaded ${year} season: ${standings.length} teams`)
         successCount++
         consecutiveFailures = 0 // Reset consecutive failure count
+        loadingMessage.value = `Found ${year} season (${standings.length} teams)...`
         
         // Determine champion - look for rankCalculatedFinal === 1 or rank === 1 for finished seasons
         // For past seasons (year < current year), assume finished
-        const currentYear = new Date().getFullYear()
-        const isPastSeason = year < currentYear
+        const nowYear = new Date().getFullYear()
+        const isPastSeason = year < nowYear
         const isFinished = isPastSeason || league.status?.isFinished === true || !league.status?.isActive
         console.log(`[History ESPN] ${year} isFinished:`, isFinished, `(isPastSeason: ${isPastSeason}, status.isFinished: ${league.status?.isFinished}, status.isActive: ${league.status?.isActive})`)
         
@@ -3700,11 +3718,18 @@ async function loadEspnHistoricalData(leagueKey: string) {
           const totalWeeks = league.status?.finalMatchupPeriod || 25
           let weekFailures = 0
           
+          // For historical data, we don't need forceRefresh - cached data is fine
+          // Only force refresh for current season's current week
+          const needsForceRefresh = year === currentYear
+          
           for (let week = 1; week <= totalWeeks; week++) {
             try {
-              loadingMessage.value = `Loading ${year} week ${week}/${totalWeeks}...`
-              // Force refresh to ensure we get per-category data
-              const weekMatchups = await espnService.getMatchups('baseball', leagueId, year, week, true)
+              // Update progress every few weeks to not spam the UI
+              if (week === 1 || week % 5 === 0 || week === totalWeeks) {
+                loadingMessage.value = `${year}: Loading week ${week}/${totalWeeks}...`
+              }
+              
+              const weekMatchups = await espnService.getMatchups('baseball', leagueId, year, week, needsForceRefresh)
               
               if (weekMatchups && weekMatchups.length > 0) {
                 // Transform ESPN matchups to match expected format
