@@ -3534,6 +3534,10 @@ async function loadEspnData() {
         
         console.log('[ESPN] Category wins set for', convertedCatWins.size, 'teams')
         console.log('[ESPN] hasRealStatValues:', categoryBreakdown.hasRealStatValues)
+        console.log('[ESPN] espnHasRealStatValues.value is now:', espnHasRealStatValues.value)
+        console.log('[ESPN] statCategories count:', statCategories.value.length)
+        console.log('[ESPN] statCategories sample:', statCategories.value.slice(0, 3))
+        console.log('[ESPN] Sample per-category wins:', convertedCatWins.size > 0 ? Object.fromEntries([...convertedCatWins.entries()].slice(0, 1)) : 'none')
         console.log('[ESPN] Total category wins sample:', Object.fromEntries([...convertedTotalWins.entries()].slice(0, 3)))
         
       } catch (error) {

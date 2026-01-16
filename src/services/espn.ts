@@ -2049,6 +2049,7 @@ export class EspnFantasyService {
           // Each stat has: { result: "WIN" | "LOSS" | "TIE" | null, score: number }
           if (match.home?.cumulativeScore?.scoreByStat) {
             const scoreByStat = match.home.cumulativeScore.scoreByStat
+            console.log('[ESPN parseMatchups] Found scoreByStat for home team, processing', Object.keys(scoreByStat).length, 'stats')
             for (const [statId, statData] of Object.entries(scoreByStat)) {
               const data = statData as { result: string | null; score: number }
               if (data.result === 'WIN') {
@@ -2062,6 +2063,7 @@ export class EspnFantasyService {
                 homePerCategoryResults[statId] = 'TIE'
               }
             }
+            console.log('[ESPN parseMatchups] Extracted homePerCategoryResults:', Object.keys(homePerCategoryResults).length, 'categories with results')
           }
           
           if (match.away?.cumulativeScore?.scoreByStat) {
@@ -2549,8 +2551,22 @@ export class EspnFantasyService {
           const homeKey = `espn_${matchup.homeTeamId}`
           const awayKey = `espn_${matchup.awayTeamId}`
           
+          // Log what we have for debugging
+          if (week === 1) {
+            console.log('[ESPN getCategoryStatsBreakdown] Week 1 matchup check:', {
+              homeTeamId: matchup.homeTeamId,
+              awayTeamId: matchup.awayTeamId,
+              hasHomePerCategoryResults: !!matchup.homePerCategoryResults,
+              homePerCategoryResultsCount: matchup.homePerCategoryResults ? Object.keys(matchup.homePerCategoryResults).length : 0,
+              homePerCategoryResults: matchup.homePerCategoryResults
+            })
+          }
+          
           // Check if we have per-category results from ESPN (scoreByStat.result)
           if (matchup.homePerCategoryResults && Object.keys(matchup.homePerCategoryResults).length > 0) {
+            if (!hasRealStatValues) {
+              console.log('[ESPN getCategoryStatsBreakdown] Setting hasRealStatValues = true!')
+            }
             hasRealStatValues = true
             
             // Process home team per-category results
