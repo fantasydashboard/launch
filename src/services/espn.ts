@@ -1315,7 +1315,7 @@ export class EspnFantasyService {
       return new Map()
     }
 
-    const cacheKey = `espn_players_stats_${sport}_${leagueId}_${season}_${playerIds.length}_v1`
+    const cacheKey = `espn_players_stats_${sport}_${leagueId}_${season}_${playerIds.length}_v2`
     const cached = cache.get<Record<string, any>>('espn_players_stats', cacheKey)
     if (cached && typeof cached === 'object' && Object.keys(cached).length > 0) {
       console.log(`[Cache HIT] ESPN players with stats for ${leagueId}`)
@@ -1335,13 +1335,16 @@ export class EspnFantasyService {
       for (let i = 0; i < playerIds.length; i += chunkSize) {
         const chunk = playerIds.slice(i, i + chunkSize)
         
-        // Request player info with stats included
-        // statSourceId: 0 = actual, 1 = projected
-        // statSplitTypeId: 0 = season total
+        // Request player info with season total stats
+        // filterStatsForSplitTypeIds: { value: [0] } = season totals
+        // filterStatsForSourceIds: { value: [0] } = actual (not projected)
+        // filterStatsForExternalIds to get year-to-date
         const filterObj = {
           players: {
             filterIds: { value: chunk },
-            filterStatsForCurrentSeasonOnly: { value: true }
+            filterStatsForCurrentSeasonOnly: { value: true },
+            filterStatsForSplitTypeIds: { value: [0] },  // 0 = season total
+            filterStatsForSourceIds: { value: [0] }      // 0 = actual stats
           }
         }
         
@@ -1356,11 +1359,18 @@ export class EspnFantasyService {
           // Debug first player
           if (players.length > 0 && i === 0) {
             const firstPlayer = players[0].player || players[0]
+            console.log('[ESPN getPlayersWithStats] First player:', firstPlayer.fullName)
             console.log('[ESPN getPlayersWithStats] First player keys:', Object.keys(firstPlayer))
             if (firstPlayer.stats) {
-              console.log('[ESPN getPlayersWithStats] First player stats array length:', firstPlayer.stats.length)
+              console.log('[ESPN getPlayersWithStats] Stats array length:', firstPlayer.stats.length)
               firstPlayer.stats.forEach((s: any, idx: number) => {
-                console.log(`  [${idx}] statSourceId=${s.statSourceId}, statSplitTypeId=${s.statSplitTypeId}, stats keys: ${Object.keys(s.stats || {}).length}`)
+                const statsObj = s.stats || {}
+                console.log(`  [${idx}] statSourceId=${s.statSourceId}, statSplitTypeId=${s.statSplitTypeId}, appliedTotal=${s.appliedTotal}, statsKeys=${Object.keys(statsObj).length}`)
+                if (Object.keys(statsObj).length > 0 && idx === 0) {
+                  // Log first few stats as sample
+                  const sample = Object.entries(statsObj).slice(0, 10)
+                  console.log('  Sample stats:', sample)
+                }
               })
             }
           }
@@ -1368,17 +1378,23 @@ export class EspnFantasyService {
           for (const entry of players) {
             const player = entry.player || entry
             if (player.id) {
-              // Find season total stats (statSourceId=0 for actual, statSplitTypeId=0 for full season)
+              // Find season total stats
               const statsArray = player.stats || []
-              const seasonStats = statsArray.find((s: any) => s.statSourceId === 0 && s.statSplitTypeId === 0) ||
+              
+              // Priority: statSplitTypeId=0 (season total) with statSourceId=0 (actual)
+              // Then fall back to any actual stats
+              const seasonStats = statsArray.find((s: any) => s.statSplitTypeId === 0 && s.statSourceId === 0) ||
+                                  statsArray.find((s: any) => s.statSourceId === 0 && s.stats && Object.keys(s.stats).length > 5) ||
                                   statsArray.find((s: any) => s.statSourceId === 0) ||
                                   {}
+              
+              const stats = seasonStats.stats || {}
               
               playerMap.set(player.id, {
                 name: player.fullName || `${player.firstName || ''} ${player.lastName || ''}`.trim() || `Player ${player.id}`,
                 position: this.getPositionName(player.defaultPositionId, sport),
                 team: teamMapping[player.proTeamId] || `Team${player.proTeamId}`,
-                stats: seasonStats.stats || {}
+                stats: stats
               })
             }
           }
@@ -1391,10 +1407,15 @@ export class EspnFantasyService {
       
       // Check how many have stats
       let withStats = 0
+      let totalStatKeys = 0
       for (const player of playerMap.values()) {
-        if (Object.keys(player.stats).length > 0) withStats++
+        const keyCount = Object.keys(player.stats).length
+        if (keyCount > 0) {
+          withStats++
+          totalStatKeys += keyCount
+        }
       }
-      console.log(`[ESPN getPlayersWithStats] Players with stats: ${withStats}`)
+      console.log(`[ESPN getPlayersWithStats] Players with stats: ${withStats}, avg stat keys: ${withStats > 0 ? Math.round(totalStatKeys/withStats) : 0}`)
       
       // Cache the results
       if (playerMap.size > 0) {

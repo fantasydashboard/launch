@@ -1916,8 +1916,62 @@ async function loadEspnDraftData(leagueKey: string) {
   
   // Get player stats using the new method
   loadingMessage.value = 'Loading player stats...'
-  const playerStatsMap = await espnService.getPlayersWithStats('baseball', leagueId, season, playerIds)
+  let playerStatsMap = await espnService.getPlayersWithStats('baseball', leagueId, season, playerIds)
   console.log('[ESPN Draft] Got stats map with', playerStatsMap.size, 'players')
+  
+  // Check if we got enough stats
+  let playersWithStats = 0
+  for (const p of playerStatsMap.values()) {
+    if (Object.keys(p.stats).length > 5) playersWithStats++
+  }
+  console.log('[ESPN Draft] Players with substantial stats:', playersWithStats)
+  
+  // If not enough stats from player API, try roster API as fallback
+  if (playersWithStats < playerIds.length * 0.3) {
+    console.log('[ESPN Draft] Insufficient stats from player API, trying roster fallback...')
+    loadingMessage.value = 'Loading stats from rosters (fallback)...'
+    
+    try {
+      const teamsWithRosters = await espnService.getTeamsWithRosters('baseball', leagueId, season)
+      const rosterStatsMap = new Map<number, Record<string, number>>()
+      
+      for (const team of teamsWithRosters) {
+        if (team.roster) {
+          for (const player of team.roster) {
+            if (player.stats && Object.keys(player.stats).length > 0) {
+              rosterStatsMap.set(player.playerId, player.stats)
+            }
+          }
+        }
+      }
+      
+      console.log('[ESPN Draft] Got', rosterStatsMap.size, 'players with stats from rosters')
+      
+      // Merge roster stats into player stats map
+      for (const [playerId, stats] of rosterStatsMap.entries()) {
+        const existing = playerStatsMap.get(playerId)
+        if (existing) {
+          // If existing has fewer stats, use roster stats
+          if (Object.keys(existing.stats).length < Object.keys(stats).length) {
+            existing.stats = stats
+          }
+        }
+      }
+    } catch (e) {
+      console.log('[ESPN Draft] Roster fallback failed:', e)
+    }
+  }
+  
+  // Debug: Check what stats look like for first few players
+  let debugCount = 0
+  for (const [playerId, playerData] of playerStatsMap.entries()) {
+    if (debugCount < 3 && Object.keys(playerData.stats).length > 0) {
+      console.log(`[ESPN Draft DEBUG] Player ${playerData.name} (${playerId}):`)
+      console.log('  Stats keys:', Object.keys(playerData.stats))
+      console.log('  Stats sample:', Object.entries(playerData.stats).slice(0, 15))
+      debugCount++
+    }
+  }
   
   // Calculate category totals for percentile calculation
   loadingMessage.value = 'Calculating category rankings...'
@@ -1934,9 +1988,10 @@ async function loadEspnDraftData(leagueKey: string) {
     for (let i = 0; i < leagueCategories.value.length; i++) {
       const cat = leagueCategories.value[i]
       const statId = leagueCategoryStatIds[i]
-      const value = playerData.stats[statId.toString()] || playerData.stats[statId] || 0
+      // Try both string and number keys
+      const value = playerData.stats[statId.toString()] ?? playerData.stats[statId] ?? 0
       if (value > 0 || ['ERA', 'WHIP'].includes(cat)) {
-        categoryTotals[cat].push(value)
+        categoryTotals[cat].push(typeof value === 'number' ? value : parseFloat(value) || 0)
       }
     }
   }
@@ -1985,7 +2040,8 @@ async function loadEspnDraftData(leagueKey: string) {
     for (let i = 0; i < leagueCategories.value.length; i++) {
       const cat = leagueCategories.value[i]
       const statId = leagueCategoryStatIds[i]
-      const value = stats[statId.toString()] || stats[statId] || 0
+      const rawValue = stats[statId.toString()] ?? stats[statId] ?? 0
+      const value = typeof rawValue === 'number' ? rawValue : parseFloat(rawValue) || 0
       
       // Only count if player has this stat
       if (value > 0 || ['ERA', 'WHIP'].includes(cat)) {
