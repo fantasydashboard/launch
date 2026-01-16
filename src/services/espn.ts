@@ -653,15 +653,14 @@ export class EspnFantasyService {
     if (!forceRefresh) {
       const cached = cache.get<EspnMatchup[]>('espn_matchups', cacheKey)
       if (cached && cached.length > 0) {
-        // For category leagues, check if cached data has per-category results
-        // Old cached data won't have homePerCategoryResults field OR it might be empty/undefined
+        // For category leagues, check if cached data has per-category results with actual data
         if (isCategoryLeague) {
           const firstMatchup = cached[0]
-          // Check if any matchup has homePerCategoryResults populated with actual data
-          const hasValidCategoryData = firstMatchup.homePerCategoryResults && 
+          const hasNewFormat = firstMatchup.homePerCategoryResults && 
             Object.keys(firstMatchup.homePerCategoryResults).length > 0
-          if (!hasValidCategoryData) {
-            console.log(`[Cache STALE] ESPN matchups for ${leagueId} week ${week} - missing or empty per-category data, refreshing`)
+          if (!hasNewFormat) {
+            console.log(`[Cache STALE] ESPN matchups for ${leagueId} week ${week} - old format without per-category data, refreshing`)
+            // Don't return - fall through to fetch fresh data
           } else {
             console.log(`[Cache HIT] ESPN matchups for ${leagueId} week ${week} (with per-category data)`)
             return cached
