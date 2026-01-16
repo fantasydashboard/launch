@@ -227,7 +227,7 @@ export interface EspnMatchup {
   // Per-category results (WIN/LOSS/TIE for each stat ID)
   homePerCategoryResults?: Record<string, 'WIN' | 'LOSS' | 'TIE'>
   awayPerCategoryResults?: Record<string, 'WIN' | 'LOSS' | 'TIE'>
-  // Raw stat values per category
+  // Raw stat values per category (for matchups page display)
   homeScoreByStat?: Record<string, { result?: string | null; score: number }>
   awayScoreByStat?: Record<string, { result?: string | null; score: number }>
   isCategoryLeague?: boolean
@@ -654,13 +654,14 @@ export class EspnFantasyService {
       const cached = cache.get<EspnMatchup[]>('espn_matchups', cacheKey)
       if (cached && cached.length > 0) {
         // For category leagues, check if cached data has per-category results
-        // Old cached data won't have homePerCategoryResults field
+        // Old cached data won't have homePerCategoryResults field OR it might be empty/undefined
         if (isCategoryLeague) {
           const firstMatchup = cached[0]
-          // Check if any matchup has homePerCategoryResults populated
-          const hasNewFormat = 'homePerCategoryResults' in firstMatchup
-          if (!hasNewFormat) {
-            console.log(`[Cache STALE] ESPN matchups for ${leagueId} week ${week} - old format without per-category data, refreshing`)
+          // Check if any matchup has homePerCategoryResults populated with actual data
+          const hasValidCategoryData = firstMatchup.homePerCategoryResults && 
+            Object.keys(firstMatchup.homePerCategoryResults).length > 0
+          if (!hasValidCategoryData) {
+            console.log(`[Cache STALE] ESPN matchups for ${leagueId} week ${week} - missing or empty per-category data, refreshing`)
           } else {
             console.log(`[Cache HIT] ESPN matchups for ${leagueId} week ${week} (with per-category data)`)
             return cached

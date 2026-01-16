@@ -1884,6 +1884,9 @@ async function loadPowerRankings() {
     let totalMatchupsProcessed = 0
     let totalCategoryWinsRecorded = 0
     
+    // Track if we need to force refresh (set if first week had missing category data)
+    let needsForceRefresh = false
+    
     // Load each week's matchup data and calculate running rankings
     for (let week = 1; week <= throughWeek; week++) {
       loadingMessage.value = `Loading week ${week}/${throughWeek}...`
@@ -1891,9 +1894,21 @@ async function loadPowerRankings() {
       try {
         if (isEspn.value) {
           // ESPN matchups - use per-category results
-          const matchups = await espnService.getMatchups('baseball', espnLeagueId, espnSeason, week)
+          let matchups = await espnService.getMatchups('baseball', espnLeagueId, espnSeason, week, needsForceRefresh)
           
           console.log(`[Power Rankings ESPN] Week ${week}: ${matchups.length} matchups`)
+          
+          // Check if first week has the category data we need
+          if (week === 1 && matchups.length > 0) {
+            const hasData = matchups[0].homePerCategoryResults && 
+              Object.keys(matchups[0].homePerCategoryResults).length > 0
+            if (!hasData) {
+              console.log('[Power Rankings ESPN] Week 1 missing category data, forcing refresh for all weeks')
+              needsForceRefresh = true
+              // Re-fetch week 1 with force refresh
+              matchups = await espnService.getMatchups('baseball', espnLeagueId, espnSeason, week, true)
+            }
+          }
           
           // Debug first week extensively
           if (week === 1 && matchups.length > 0) {
