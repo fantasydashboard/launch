@@ -227,6 +227,9 @@ export interface EspnMatchup {
   // Per-category results (WIN/LOSS/TIE for each stat ID)
   homePerCategoryResults?: Record<string, 'WIN' | 'LOSS' | 'TIE'>
   awayPerCategoryResults?: Record<string, 'WIN' | 'LOSS' | 'TIE'>
+  // Raw stat values per category
+  homeScoreByStat?: Record<string, { result?: string | null; score: number }>
+  awayScoreByStat?: Record<string, { result?: string | null; score: number }>
   isCategoryLeague?: boolean
   winner: 'HOME' | 'AWAY' | 'TIE' | 'UNDECIDED'
   playoffTierType: string
@@ -2153,6 +2156,9 @@ export class EspnFantasyService {
           // Per-category results (WIN/LOSS/TIE for each stat ID)
           homePerCategoryResults: Object.keys(homePerCategoryResults).length > 0 ? homePerCategoryResults : undefined,
           awayPerCategoryResults: Object.keys(awayPerCategoryResults).length > 0 ? awayPerCategoryResults : undefined,
+          // Raw stat values (for display in matchups page)
+          homeScoreByStat: match.home?.cumulativeScore?.scoreByStat,
+          awayScoreByStat: match.away?.cumulativeScore?.scoreByStat,
           isCategoryLeague,
           winner: this.determineWinner(match),
           playoffTierType: match.playoffTierType || 'NONE'

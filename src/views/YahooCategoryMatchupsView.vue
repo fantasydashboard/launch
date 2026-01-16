@@ -467,12 +467,15 @@ const currentWeek = computed(() => {
   if (isEspn.value) {
     // Try yahooLeague first (holds ESPN data in same format)
     if (leagueInfo.value?.current_week) {
+      console.log('[Matchups] currentWeek from leagueInfo:', leagueInfo.value.current_week)
       return parseInt(leagueInfo.value.current_week) || 1
     }
     // Try currentLeague
     if (leagueStore.currentLeague?.status?.currentMatchupPeriod) {
+      console.log('[Matchups] currentWeek from currentLeague:', leagueStore.currentLeague.status.currentMatchupPeriod)
       return parseInt(leagueStore.currentLeague.status.currentMatchupPeriod) || 1
     }
+    console.log('[Matchups] currentWeek defaulting to 1')
     return 1
   }
   return parseInt(leagueInfo.value?.current_week) || 1
@@ -481,11 +484,14 @@ const currentWeek = computed(() => {
 const totalWeeks = computed(() => {
   if (isEspn.value) {
     if (leagueInfo.value?.end_week) {
+      console.log('[Matchups] totalWeeks from leagueInfo:', leagueInfo.value.end_week)
       return parseInt(leagueInfo.value.end_week) || 25
     }
     if (leagueStore.currentLeague?.status?.finalMatchupPeriod) {
+      console.log('[Matchups] totalWeeks from currentLeague:', leagueStore.currentLeague.status.finalMatchupPeriod)
       return parseInt(leagueStore.currentLeague.status.finalMatchupPeriod) || 25
     }
+    console.log('[Matchups] totalWeeks defaulting to 25')
     return 25
   }
   return parseInt(leagueInfo.value?.end_week) || 25
@@ -493,14 +499,25 @@ const totalWeeks = computed(() => {
 
 const isSeasonComplete = computed(() => {
   if (isEspn.value) {
-    if (leagueInfo.value?.is_finished === 1 || leagueInfo.value?.is_finished === true) return true
-    if (leagueStore.currentLeague?.status?.isFinished) return true
+    if (leagueInfo.value?.is_finished === 1 || leagueInfo.value?.is_finished === true) {
+      console.log('[Matchups] isSeasonComplete: true from leagueInfo')
+      return true
+    }
+    if (leagueStore.currentLeague?.status?.isFinished) {
+      console.log('[Matchups] isSeasonComplete: true from currentLeague')
+      return true
+    }
+    console.log('[Matchups] isSeasonComplete: false')
     return false
   }
   return leagueInfo.value?.is_finished === 1 || leagueInfo.value?.is_finished === '1'
 })
 
-const availableWeeks = computed(() => Array.from({ length: isSeasonComplete.value ? totalWeeks.value : currentWeek.value }, (_, i) => i + 1))
+const availableWeeks = computed(() => {
+  const weeks = Array.from({ length: isSeasonComplete.value ? totalWeeks.value : currentWeek.value }, (_, i) => i + 1)
+  console.log('[Matchups] availableWeeks:', weeks.length, 'weeks, isComplete:', isSeasonComplete.value, 'total:', totalWeeks.value, 'current:', currentWeek.value)
+  return weeks
+})
 const allCategories = computed(() => {
   if (isEspn.value) {
     return categories.value.filter(c => [...ESPN_BATTING_STAT_IDS, ...ESPN_PITCHING_STAT_IDS].includes(c.stat_id))
@@ -1224,12 +1241,14 @@ async function loadMatchups() {
       // ESPN matchups
       const { leagueId, season } = parseEspnLeagueKey(k)
       console.log('[Matchups ESPN] Loading week', week, 'for league:', leagueId, 'season:', season)
+      console.log('[Matchups ESPN] selectedWeek.value:', selectedWeek.value)
       
       const raw = await espnService.getMatchups('baseball', leagueId, season, week)
-      console.log('[Matchups ESPN] Got', raw.length, 'matchups')
+      console.log('[Matchups ESPN] Got', raw.length, 'matchups for week', week)
       
       if (raw.length > 0) {
         console.log('[Matchups ESPN] First matchup:', raw[0])
+        console.log('[Matchups ESPN] First matchup matchupPeriodId:', raw[0].matchupPeriodId)
       }
       
       for (const m of raw) {
@@ -1991,8 +2010,12 @@ async function refreshData() { isRefreshing.value = true; await loadMatchups(); 
 
 watch(() => leagueStore.yahooTeams, async () => {
   if (leagueStore.yahooTeams.length > 0) {
+    console.log('[Matchups] yahooTeams loaded:', leagueStore.yahooTeams.length, 'teams')
+    console.log('[Matchups] yahooLeague raw:', leagueStore.yahooLeague)
+    console.log('[Matchups] leagueInfo:', leagueInfo.value)
     await loadCategories()
     const dw = isSeasonComplete.value ? totalWeeks.value : currentWeek.value
+    console.log('[Matchups] Setting selectedWeek to:', dw, '(isComplete:', isSeasonComplete.value, 'total:', totalWeeks.value, 'current:', currentWeek.value, ')')
     if (dw >= 1) { selectedWeek.value = dw.toString(); loadMatchups() }
   }
 }, { immediate: true })
