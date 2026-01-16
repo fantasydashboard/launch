@@ -1599,18 +1599,39 @@ function openTeamModal(team: any) { selectedTeam.value = team; showTeamModal.val
 // Load categories
 async function loadCategories() {
   const leagueKey = leagueStore.activeLeagueId
-  if (!leagueKey) return
+  if (!leagueKey) {
+    console.log('[loadCategories] No leagueKey, returning')
+    return
+  }
+  
+  console.log('[loadCategories] Starting, leagueKey:', leagueKey, 'isEspn:', isEspn.value)
   
   try {
     if (isEspn.value) {
       // ESPN categories - get from scoring settings
       const savedLeague = leagueStore.savedLeagues?.find((l: any) => l.league_id === leagueKey)
-      const espnLeagueId = savedLeague?.espn_id || leagueKey
+      console.log('[loadCategories ESPN] savedLeague:', savedLeague)
+      
+      // Extract ESPN league ID - handle different formats
+      let espnLeagueId: string | number = savedLeague?.espn_id || leagueKey
+      // If leagueKey starts with 'espn_', extract just the number
+      if (typeof espnLeagueId === 'string' && espnLeagueId.startsWith('espn_')) {
+        espnLeagueId = espnLeagueId.replace('espn_', '')
+      }
+      
       const season = savedLeague?.season || new Date().getFullYear()
+      console.log('[loadCategories ESPN] Using espnLeagueId:', espnLeagueId, 'season:', season)
       
       // Get scoring settings which has the stat categories
       const scoringSettings = await espnService.getScoringSettings('baseball', espnLeagueId, season)
+      console.log('[loadCategories ESPN] scoringSettings:', scoringSettings)
+      console.log('[loadCategories ESPN] scoringSettings keys:', scoringSettings ? Object.keys(scoringSettings) : 'null')
+      
       const scoringItems = scoringSettings?.scoringItems || []
+      console.log('[loadCategories ESPN] scoringItems count:', scoringItems.length)
+      if (scoringItems.length > 0) {
+        console.log('[loadCategories ESPN] First scoring item:', scoringItems[0])
+      }
       
       // ESPN baseball stat ID mapping (must match getCategoryStatsBreakdown)
       const espnBaseballStatNames: Record<number, { name: string; display: string; isNegative?: boolean }> = {
@@ -1769,6 +1790,10 @@ async function loadPowerRankings() {
     if (isEspn.value) {
       const savedLeague = leagueStore.savedLeagues?.find((l: any) => l.league_id === leagueKey)
       espnLeagueId = savedLeague?.espn_id || leagueKey
+      // If leagueKey starts with 'espn_', extract just the number
+      if (typeof espnLeagueId === 'string' && espnLeagueId.startsWith('espn_')) {
+        espnLeagueId = espnLeagueId.replace('espn_', '')
+      }
       espnSeason = savedLeague?.season || new Date().getFullYear()
       console.log('[Power Rankings ESPN] Using espnLeagueId:', espnLeagueId, 'season:', espnSeason)
     }
