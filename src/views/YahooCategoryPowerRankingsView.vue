@@ -673,10 +673,14 @@ import { ref, computed, watch, onMounted, Teleport } from 'vue'
 import { useLeagueStore } from '@/stores/league'
 import { useAuthStore } from '@/stores/auth'
 import { yahooService } from '@/services/yahoo'
+import { espnService } from '@/services/espn'
 import { calculateCategoryBalance } from '@/services/categoryPowerRankingFactors'
 
 const leagueStore = useLeagueStore()
 const authStore = useAuthStore()
+
+// Platform detection
+const isEspn = computed(() => leagueStore.activePlatform === 'espn')
 
 // State
 const isLoading = ref(false)
@@ -685,7 +689,10 @@ const selectedWeek = ref('')
 const powerRankings = ref<any[]>([])
 const displayCategories = ref<any[]>([])
 const totalWeeksLoaded = ref(0)
-const defaultAvatar = 'https://s.yimg.com/cv/apiv2/default/mlb/mlb_2_g.png'
+const defaultAvatar = computed(() => {
+  if (isEspn.value) return 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMDAgMTAwIj48Y2lyY2xlIGN4PSI1MCIgY3k9IjUwIiByPSI0NSIgZmlsbD0iIzMzMyIvPjx0ZXh0IHg9IjUwIiB5PSI1OCIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZmlsbD0iIzg4OCIgZm9udC1zaXplPSIxOCIgZm9udC1mYW1pbHk9InNhbnMtc2VyaWYiPkVTUE48L3RleHQ+PC9zdmc+'
+  return 'https://s.yimg.com/cv/apiv2/default/mlb/mlb_2_g.png'
+})
 
 // Power rankings table sorting
 const sortColumn = ref<string>('powerScore')
@@ -1306,7 +1313,18 @@ function getChartAvatarStyle(team: any): Record<string, string> {
 
 // Computed
 // yahooLeague is an array - index 0 contains league metadata
+// For ESPN, it's stored differently
 const leagueInfo = computed(() => {
+  if (isEspn.value) {
+    // ESPN league info from store
+    const espnLeague = leagueStore.yahooLeague // ESPN data is also stored here
+    if (Array.isArray(espnLeague)) {
+      return espnLeague[0] || {}
+    }
+    return espnLeague || {}
+  }
+  
+  // Yahoo league info
   const league = leagueStore.yahooLeague
   if (Array.isArray(league)) {
     return league[0] || {}
@@ -1315,18 +1333,39 @@ const leagueInfo = computed(() => {
 })
 
 const currentWeek = computed(() => {
+  if (isEspn.value) {
+    // For ESPN, get from saved league or current league
+    const savedLeague = leagueStore.savedLeagues?.find((l: any) => l.league_id === leagueStore.activeLeagueId)
+    const espnCurrentWeek = savedLeague?.current_week || leagueStore.currentLeague?.status?.currentMatchupPeriod || 1
+    console.log('currentWeek computed (ESPN):', espnCurrentWeek)
+    return parseInt(espnCurrentWeek) || 1
+  }
   const week = leagueInfo.value?.current_week
   console.log('currentWeek computed:', week, 'from leagueInfo:', leagueInfo.value)
   return parseInt(week) || 1
 })
 
 const totalWeeks = computed(() => {
+  if (isEspn.value) {
+    // For ESPN, get from saved league or current league (baseball typically 22-25 weeks)
+    const savedLeague = leagueStore.savedLeagues?.find((l: any) => l.league_id === leagueStore.activeLeagueId)
+    const espnEndWeek = savedLeague?.end_week || leagueStore.currentLeague?.status?.finalMatchupPeriod || 25
+    console.log('totalWeeks computed (ESPN):', espnEndWeek)
+    return parseInt(espnEndWeek) || 25
+  }
   const endWeek = leagueInfo.value?.end_week
   console.log('totalWeeks computed:', endWeek)
   return parseInt(endWeek) || 25
 })
 
 const isSeasonComplete = computed(() => {
+  if (isEspn.value) {
+    // For ESPN, check if current week >= final week
+    const savedLeague = leagueStore.savedLeagues?.find((l: any) => l.league_id === leagueStore.activeLeagueId)
+    const isFinished = savedLeague?.is_finished || leagueStore.currentLeague?.status?.isFinished
+    console.log('isSeasonComplete computed (ESPN):', isFinished)
+    return isFinished === true || isFinished === 1 || isFinished === '1'
+  }
   const finished = leagueInfo.value?.is_finished
   console.log('isSeasonComplete computed:', finished)
   return finished === 1 || finished === '1'
@@ -1524,7 +1563,7 @@ function sortPowerRankings(column: string) {
 }
 
 // Helpers
-function handleImageError(e: Event) { (e.target as HTMLImageElement).src = defaultAvatar }
+function handleImageError(e: Event) { (e.target as HTMLImageElement).src = defaultAvatar.value }
 function getRankClass(rank: number) {
   return 'bg-dark-border text-dark-text'
 }
@@ -1563,18 +1602,91 @@ async function loadCategories() {
   if (!leagueKey) return
   
   try {
-    const settings = await yahooService.getLeagueScoringSettings(leagueKey)
-    if (settings?.stat_categories) {
-      displayCategories.value = settings.stat_categories
-        .map((c: any) => ({
-          stat_id: String(c.stat?.stat_id || c.stat_id),
-          name: c.stat?.name || c.name,
-          display_name: c.stat?.display_name || c.display_name,
-          is_only_display_stat: c.stat?.is_only_display_stat || c.is_only_display_stat
-        }))
-        .filter((c: any) => c.stat_id && c.is_only_display_stat !== '1' && c.is_only_display_stat !== 1)
+    if (isEspn.value) {
+      // ESPN categories - get from scoring settings
+      const savedLeague = leagueStore.savedLeagues?.find((l: any) => l.league_id === leagueKey)
+      const espnLeagueId = savedLeague?.espn_id || leagueKey
+      const season = savedLeague?.season || new Date().getFullYear()
       
-      console.log(`Loaded ${displayCategories.value.length} categories:`, displayCategories.value.map(c => c.display_name))
+      // Get scoring settings which has the stat categories
+      const scoringSettings = await espnService.getScoringSettings('baseball', espnLeagueId, season)
+      const scoringItems = scoringSettings?.scoringItems || []
+      
+      // ESPN baseball stat ID mapping (must match getCategoryStatsBreakdown)
+      const espnBaseballStatNames: Record<number, { name: string; display: string; isNegative?: boolean }> = {
+        0: { name: 'At Bats', display: 'AB' },
+        1: { name: 'Hits', display: 'H' },
+        2: { name: 'Runs', display: 'R' },
+        3: { name: 'Home Runs', display: 'HR' },
+        4: { name: 'RBI', display: 'RBI' },
+        5: { name: 'Stolen Bases', display: 'SB' },
+        6: { name: 'Walks (Batting)', display: 'BB' },
+        7: { name: 'Strikeouts (Batting)', display: 'K', isNegative: true },
+        8: { name: 'Batting Average', display: 'AVG' },
+        9: { name: 'On Base Pct', display: 'OBP' },
+        10: { name: 'Slugging Pct', display: 'SLG' },
+        11: { name: 'OPS', display: 'OPS' },
+        12: { name: 'Caught Stealing', display: 'CS', isNegative: true },
+        13: { name: 'Net Steals', display: 'NSB' },
+        14: { name: 'Ground into DP', display: 'GDP', isNegative: true },
+        15: { name: 'HBP', display: 'HBP' },
+        16: { name: 'Sacrifice Hits', display: 'SAC' },
+        17: { name: 'Innings Pitched', display: 'IP' },
+        18: { name: 'Earned Run Average', display: 'ERA', isNegative: true },
+        19: { name: 'WHIP', display: 'WHIP', isNegative: true },
+        20: { name: 'Strikeouts (Pitching)', display: 'Ks' },
+        21: { name: 'Walks (Pitching)', display: 'BBs', isNegative: true },
+        22: { name: 'Hits Against', display: 'HA', isNegative: true },
+        23: { name: 'Holds', display: 'HD' },
+        24: { name: 'Blown Saves', display: 'BS', isNegative: true },
+        32: { name: 'Wins', display: 'W' },
+        33: { name: 'Losses', display: 'L', isNegative: true },
+        34: { name: 'Saves', display: 'SV' },
+        35: { name: 'Quality Starts', display: 'QS' },
+        36: { name: 'Shutouts', display: 'SHO' },
+        37: { name: 'Complete Games', display: 'CG' },
+        38: { name: 'No Hitters', display: 'NH' },
+        39: { name: 'Perfect Games', display: 'PG' },
+        40: { name: 'Total Bases', display: 'TB' },
+        41: { name: 'Doubles', display: '2B' },
+        42: { name: 'Triples', display: '3B' },
+        43: { name: 'Singles', display: '1B' },
+        44: { name: 'Grand Slams', display: 'GSLAM' },
+        45: { name: 'Errors', display: 'E', isNegative: true },
+        46: { name: 'Fielding Pct', display: 'FPCT' },
+        53: { name: 'Outfield Assists', display: 'OFA' },
+        99: { name: 'Games Pitched', display: 'GP' }
+      }
+      
+      displayCategories.value = scoringItems
+        .map((item: any) => {
+          const statId = String(item.statId || item.id)
+          const statInfo = espnBaseballStatNames[parseInt(statId)] || { name: `Stat ${statId}`, display: `S${statId}` }
+          return {
+            stat_id: statId,
+            name: statInfo.name,
+            display_name: statInfo.display,
+            is_negative: statInfo.isNegative
+          }
+        })
+        .filter((c: any) => c.stat_id)
+      
+      console.log(`[ESPN] Loaded ${displayCategories.value.length} categories:`, displayCategories.value.map(c => c.display_name))
+    } else {
+      // Yahoo categories
+      const settings = await yahooService.getLeagueScoringSettings(leagueKey)
+      if (settings?.stat_categories) {
+        displayCategories.value = settings.stat_categories
+          .map((c: any) => ({
+            stat_id: String(c.stat?.stat_id || c.stat_id),
+            name: c.stat?.name || c.name,
+            display_name: c.stat?.display_name || c.display_name,
+            is_only_display_stat: c.stat?.is_only_display_stat || c.is_only_display_stat
+          }))
+          .filter((c: any) => c.stat_id && c.is_only_display_stat !== '1' && c.is_only_display_stat !== 1)
+        
+        console.log(`[Yahoo] Loaded ${displayCategories.value.length} categories:`, displayCategories.value.map(c => c.display_name))
+      }
     }
   } catch (e) {
     console.error('Error loading categories:', e)
@@ -1636,47 +1748,96 @@ async function loadPowerRankings() {
     
     console.log(`=== Loading ${throughWeek} weeks of matchup data ===`)
     
+    // Get ESPN league info if needed
+    let espnLeagueId: string | number = ''
+    let espnSeason = new Date().getFullYear()
+    if (isEspn.value) {
+      const savedLeague = leagueStore.savedLeagues?.find((l: any) => l.league_id === leagueKey)
+      espnLeagueId = savedLeague?.espn_id || leagueKey
+      espnSeason = savedLeague?.season || new Date().getFullYear()
+    }
+    
     // Load each week's matchup data and calculate running rankings
     for (let week = 1; week <= throughWeek; week++) {
       loadingMessage.value = `Loading week ${week}/${throughWeek}...`
       
       try {
-        const matchups = await yahooService.getCategoryMatchups(leagueKey, week)
-        
-        // Process this week's matchups
-        for (const matchup of matchups) {
-          if (!matchup.teams || matchup.teams.length < 2) continue
+        if (isEspn.value) {
+          // ESPN matchups - use per-category results
+          const matchups = await espnService.getMatchups('baseball', espnLeagueId, espnSeason, week)
           
-          const team1Key = matchup.teams[0]?.team_key
-          const team2Key = matchup.teams[1]?.team_key
+          for (const matchup of matchups) {
+            if (!matchup.awayTeamId) continue // Skip bye weeks
+            
+            const homeKey = `espn_${matchup.homeTeamId}`
+            const awayKey = `espn_${matchup.awayTeamId}`
+            
+            const homeStats = teamStats.get(homeKey)
+            const awayStats = teamStats.get(awayKey)
+            
+            if (!homeStats || !awayStats) continue
+            
+            // Process home team per-category results
+            if (matchup.homePerCategoryResults) {
+              for (const [statId, result] of Object.entries(matchup.homePerCategoryResults)) {
+                if (result === 'WIN') {
+                  homeStats.categoryWins[statId] = (homeStats.categoryWins[statId] || 0) + 1
+                  awayStats.categoryLosses[statId] = (awayStats.categoryLosses[statId] || 0) + 1
+                  homeStats.totalCatWins++
+                  awayStats.totalCatLosses++
+                } else if (result === 'LOSS') {
+                  homeStats.categoryLosses[statId] = (homeStats.categoryLosses[statId] || 0) + 1
+                  awayStats.categoryWins[statId] = (awayStats.categoryWins[statId] || 0) + 1
+                  homeStats.totalCatLosses++
+                  awayStats.totalCatWins++
+                } else if (result === 'TIE') {
+                  homeStats.categoryTies[statId] = (homeStats.categoryTies[statId] || 0) + 1
+                  awayStats.categoryTies[statId] = (awayStats.categoryTies[statId] || 0) + 1
+                  homeStats.totalCatTies++
+                  awayStats.totalCatTies++
+                }
+              }
+            }
+          }
+        } else {
+          // Yahoo matchups - use stat_winners
+          const matchups = await yahooService.getCategoryMatchups(leagueKey, week)
           
-          if (!team1Key || !team2Key) continue
-          
-          const team1Stats = teamStats.get(team1Key)
-          const team2Stats = teamStats.get(team2Key)
-          
-          if (!team1Stats || !team2Stats) continue
-          
-          // Process stat winners if available
-          if (matchup.stat_winners && matchup.stat_winners.length > 0) {
-            for (const sw of matchup.stat_winners) {
-              const statId = String(sw.stat_id)
-              
-              if (sw.is_tied) {
-                team1Stats.categoryTies[statId] = (team1Stats.categoryTies[statId] || 0) + 1
-                team2Stats.categoryTies[statId] = (team2Stats.categoryTies[statId] || 0) + 1
-                team1Stats.totalCatTies++
-                team2Stats.totalCatTies++
-              } else if (sw.winner_team_key === team1Key) {
-                team1Stats.categoryWins[statId] = (team1Stats.categoryWins[statId] || 0) + 1
-                team2Stats.categoryLosses[statId] = (team2Stats.categoryLosses[statId] || 0) + 1
-                team1Stats.totalCatWins++
-                team2Stats.totalCatLosses++
-              } else if (sw.winner_team_key === team2Key) {
-                team2Stats.categoryWins[statId] = (team2Stats.categoryWins[statId] || 0) + 1
-                team1Stats.categoryLosses[statId] = (team1Stats.categoryLosses[statId] || 0) + 1
-                team2Stats.totalCatWins++
-                team1Stats.totalCatLosses++
+          // Process this week's matchups
+          for (const matchup of matchups) {
+            if (!matchup.teams || matchup.teams.length < 2) continue
+            
+            const team1Key = matchup.teams[0]?.team_key
+            const team2Key = matchup.teams[1]?.team_key
+            
+            if (!team1Key || !team2Key) continue
+            
+            const team1Stats = teamStats.get(team1Key)
+            const team2Stats = teamStats.get(team2Key)
+            
+            if (!team1Stats || !team2Stats) continue
+            
+            // Process stat winners if available
+            if (matchup.stat_winners && matchup.stat_winners.length > 0) {
+              for (const sw of matchup.stat_winners) {
+                const statId = String(sw.stat_id)
+                
+                if (sw.is_tied) {
+                  team1Stats.categoryTies[statId] = (team1Stats.categoryTies[statId] || 0) + 1
+                  team2Stats.categoryTies[statId] = (team2Stats.categoryTies[statId] || 0) + 1
+                  team1Stats.totalCatTies++
+                  team2Stats.totalCatTies++
+                } else if (sw.winner_team_key === team1Key) {
+                  team1Stats.categoryWins[statId] = (team1Stats.categoryWins[statId] || 0) + 1
+                  team2Stats.categoryLosses[statId] = (team2Stats.categoryLosses[statId] || 0) + 1
+                  team1Stats.totalCatWins++
+                  team2Stats.totalCatLosses++
+                } else if (sw.winner_team_key === team2Key) {
+                  team2Stats.categoryWins[statId] = (team2Stats.categoryWins[statId] || 0) + 1
+                  team1Stats.categoryLosses[statId] = (team1Stats.categoryLosses[statId] || 0) + 1
+                  team2Stats.totalCatWins++
+                  team1Stats.totalCatLosses++
+                }
               }
             }
           }
@@ -1996,7 +2157,18 @@ watch(() => leagueStore.yahooTeams, async () => {
 
 onMounted(async () => {
   if (authStore.user?.id) {
-    await yahooService.initialize(authStore.user.id)
+    if (isEspn.value) {
+      // ESPN is initialized elsewhere, but ensure credentials are set
+      const savedLeague = leagueStore.savedLeagues?.find((l: any) => l.league_id === leagueStore.activeLeagueId)
+      if (savedLeague?.espn_s2 && savedLeague?.swid) {
+        espnService.setCredentials({
+          espn_s2: savedLeague.espn_s2,
+          swid: savedLeague.swid
+        })
+      }
+    } else {
+      await yahooService.initialize(authStore.user.id)
+    }
   }
 })
 </script>
