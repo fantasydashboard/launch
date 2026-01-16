@@ -1938,9 +1938,22 @@ function getPointsAgainstClass(team: any) {
 }
 
 function getCategoryWinClass(wins: number, catId: string) {
-  const avg = getAverageCategoryWins(catId)
-  if (wins > avg * 1.2) return 'text-green-400'
-  if (wins < avg * 0.8) return 'text-red-400'
+  // Find the max and min values for this category across all teams
+  const teams = teamsWithStats.value
+  if (!teams || teams.length === 0) return 'text-dark-text'
+  
+  let maxWins = -Infinity
+  let minWins = Infinity
+  
+  for (const team of teams) {
+    const teamWins = team.categoryWins?.[catId] || 0
+    if (teamWins > maxWins) maxWins = teamWins
+    if (teamWins < minWins) minWins = teamWins
+  }
+  
+  // Only highlight the single best (green) and worst (red) values
+  if (wins === maxWins && maxWins > minWins) return 'text-green-400'
+  if (wins === minWins && minWins < maxWins) return 'text-red-400'
   return 'text-dark-text'
 }
 
