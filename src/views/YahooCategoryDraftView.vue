@@ -1857,35 +1857,46 @@ async function loadEspnDraftData(leagueKey: string) {
   
   // Get league categories from scoring settings
   loadingMessage.value = 'Loading league categories...'
+  
+  // ESPN baseball stat ID mapping (statId -> display name)
+  const espnBaseballStatNames: Record<number, string> = {
+    0: 'AB', 1: 'H', 2: 'R', 3: 'HR', 4: 'RBI', 5: 'SB',
+    6: 'BB', 7: 'K', 8: 'AVG', 9: 'OBP', 10: 'SLG', 11: 'OPS',
+    17: 'IP', 18: 'ERA', 19: 'WHIP', 20: 'Ks', 21: 'BBs',
+    32: 'W', 33: 'L', 34: 'SV', 35: 'QS', 37: 'CG',
+    40: 'TB', 41: '2B', 42: '3B'
+  }
+  
+  let leagueCategoryStatIds: number[] = []
+  
   try {
     const scoringSettings = await espnService.getScoringSettings('baseball', leagueId, season)
     const scoringItems = scoringSettings?.scoringItems || []
     
-    // ESPN baseball stat ID mapping
-    const espnBaseballStatNames: Record<number, string> = {
-      0: 'AB', 1: 'H', 2: 'R', 3: 'HR', 4: 'RBI', 5: 'SB',
-      6: 'BB', 7: 'K', 8: 'AVG', 9: 'OBP', 10: 'SLG', 11: 'OPS',
-      17: 'IP', 18: 'ERA', 19: 'WHIP', 20: 'Ks', 21: 'BBs',
-      32: 'W', 33: 'L', 34: 'SV', 35: 'QS', 37: 'CG'
-    }
-    
     leagueCategories.value = scoringItems
-      .filter((item: any) => item.statId !== undefined)
-      .map((item: any) => espnBaseballStatNames[item.statId] || `Stat${item.statId}`)
-      .filter((name: string) => name && !name.startsWith('Stat'))
+      .filter((item: any) => item.statId !== undefined && espnBaseballStatNames[item.statId])
+      .map((item: any) => {
+        leagueCategoryStatIds.push(item.statId)
+        return espnBaseballStatNames[item.statId]
+      })
     
     if (leagueCategories.value.length === 0) {
-      leagueCategories.value = ['R', 'HR', 'RBI', 'SB', 'AVG', 'W', 'SV', 'K', 'ERA', 'WHIP']
+      leagueCategories.value = ['R', 'HR', 'RBI', 'SB', 'AVG', 'W', 'SV', 'Ks', 'ERA', 'WHIP']
+      leagueCategoryStatIds = [2, 3, 4, 5, 8, 32, 34, 20, 18, 19]
     }
     
     selectedStealCategory.value = leagueCategories.value[0] || 'HR'
   } catch (e) {
     console.log('[ESPN Draft] Could not load league settings, using defaults')
-    leagueCategories.value = ['R', 'HR', 'RBI', 'SB', 'AVG', 'W', 'SV', 'K', 'ERA', 'WHIP']
+    leagueCategories.value = ['R', 'HR', 'RBI', 'SB', 'AVG', 'W', 'SV', 'Ks', 'ERA', 'WHIP']
+    leagueCategoryStatIds = [2, 3, 4, 5, 8, 32, 34, 20, 18, 19]
     selectedStealCategory.value = 'HR'
   }
   
-  // Get teams
+  console.log('[ESPN Draft] League categories:', leagueCategories.value)
+  console.log('[ESPN Draft] Category stat IDs:', leagueCategoryStatIds)
+  
+  // Get teams for lookup
   loadingMessage.value = 'Loading teams...'
   const teams = await espnService.getTeams('baseball', leagueId, season)
   teamsData.value = teams.map(t => ({
@@ -1899,15 +1910,99 @@ async function loadEspnDraftData(leagueKey: string) {
     teamLookup.set(team.id, team)
   }
   
-  // Process ESPN draft picks to match expected format
+  // Get player IDs from draft
+  const playerIds = espnDraftPicks.map((p: any) => p.playerId).filter(Boolean)
+  console.log('[ESPN Draft] Getting stats for', playerIds.length, 'drafted players')
+  
+  // Get player stats using the new method
+  loadingMessage.value = 'Loading player stats...'
+  const playerStatsMap = await espnService.getPlayersWithStats('baseball', leagueId, season, playerIds)
+  console.log('[ESPN Draft] Got stats map with', playerStatsMap.size, 'players')
+  
+  // Calculate category totals for percentile calculation
+  loadingMessage.value = 'Calculating category rankings...'
+  const categoryTotals: Record<string, number[]> = {}
+  for (const cat of leagueCategories.value) {
+    categoryTotals[cat] = []
+  }
+  
+  // Collect all stat values for percentile calculation
+  for (const pick of espnDraftPicks) {
+    const playerData = playerStatsMap.get(pick.playerId)
+    if (!playerData?.stats) continue
+    
+    for (let i = 0; i < leagueCategories.value.length; i++) {
+      const cat = leagueCategories.value[i]
+      const statId = leagueCategoryStatIds[i]
+      const value = playerData.stats[statId.toString()] || playerData.stats[statId] || 0
+      if (value > 0 || ['ERA', 'WHIP'].includes(cat)) {
+        categoryTotals[cat].push(value)
+      }
+    }
+  }
+  
+  console.log('[ESPN Draft] Category totals:', Object.fromEntries(
+    Object.entries(categoryTotals).map(([k, v]) => [k, v.length])
+  ))
+  
+  // Sort for percentile calculation
+  const categoryPercentiles: Record<string, number[]> = {}
+  for (const cat of leagueCategories.value) {
+    // Lower is better for ERA, WHIP, K (batting strikeouts)
+    // Note: Ks (pitching strikeouts) are GOOD, K (batting strikeouts) are BAD
+    const isLowerBetter = ['ERA', 'WHIP', 'L', 'BS'].includes(cat)
+    categoryPercentiles[cat] = [...categoryTotals[cat]].sort((a, b) => 
+      isLowerBetter ? a - b : b - a
+    )
+  }
+  
+  function getPercentile(cat: string, value: number): number {
+    const sorted = categoryPercentiles[cat]
+    if (!sorted || sorted.length === 0) return 50
+    if (value === 0 && !['ERA', 'WHIP'].includes(cat)) return 0
+    
+    const isLowerBetter = ['ERA', 'WHIP', 'L', 'BS'].includes(cat)
+    const rank = sorted.findIndex(v => isLowerBetter ? v >= value : v <= value)
+    if (rank === -1) return isLowerBetter ? 100 : 0
+    return Math.round((1 - rank / sorted.length) * 100)
+  }
+  
+  // Process draft picks
   loadingMessage.value = 'Processing draft data...'
   const numTeams = teams.length || 12
   
-  // For ESPN, we don't have detailed player stats readily available
-  // So we'll set up basic draft data without category percentiles
   const processedPicks = espnDraftPicks.map((pick: any) => {
     const team = teamLookup.get(pick.teamId) || {}
     const pickInRound = pick.roundPickNumber || ((pick.overallPickNumber - 1) % numTeams) + 1
+    const playerData = playerStatsMap.get(pick.playerId)
+    const stats = playerData?.stats || {}
+    
+    // Calculate category score and find best categories
+    let categoryScore = 0
+    let catCount = 0
+    const categoryPerformance: Array<{category: string, value: number, percentile: number}> = []
+    
+    for (let i = 0; i < leagueCategories.value.length; i++) {
+      const cat = leagueCategories.value[i]
+      const statId = leagueCategoryStatIds[i]
+      const value = stats[statId.toString()] || stats[statId] || 0
+      
+      // Only count if player has this stat
+      if (value > 0 || ['ERA', 'WHIP'].includes(cat)) {
+        const percentile = getPercentile(cat, value)
+        if (percentile > 0) {
+          categoryScore += percentile
+          catCount++
+          categoryPerformance.push({ category: cat, value, percentile })
+        }
+      }
+    }
+    
+    const bestCategories = [...categoryPerformance]
+      .sort((a, b) => b.percentile - a.percentile)
+      .slice(0, 5)
+    
+    const avgPercentile = catCount > 0 ? categoryScore / catCount : 50
     
     return {
       pick: pick.overallPickNumber,
@@ -1917,20 +2012,33 @@ async function loadEspnDraftData(leagueKey: string) {
       team_name: team.name || `Team ${pick.teamId}`,
       team_logo: team.logo || '',
       player_key: `espn_player_${pick.playerId}`,
-      player_name: pick.playerName || 'Unknown Player',
-      position: pick.position || 'Unknown',
-      mlb_team: pick.proTeam || '',
-      headshot: '', // ESPN doesn't provide headshots in draft data
-      stats: {},
-      categoryScore: 50, // Default mid-range score since we don't have stats
-      categoryPercentile: 50,
-      bestCategories: [],
-      valueScore: 0,
-      grade: 'C', // Default grade
+      player_name: playerData?.name || pick.playerName || 'Unknown Player',
+      position: playerData?.position || pick.position || 'Unknown',
+      mlb_team: playerData?.team || pick.proTeam || '',
+      headshot: '',
+      stats,
+      categoryScore: avgPercentile,
+      categoryPercentile: avgPercentile,
+      bestCategories,
+      valueScore: 0, // Will calculate below
+      grade: 'C',
       keeper: pick.keeper || false,
       bidAmount: pick.bidAmount
     }
   })
+  
+  // Calculate value scores (expected vs actual performance)
+  const allScores = processedPicks.map((p: any) => ({
+    pick: p.pick,
+    score: p.categoryPercentile
+  })).sort((a: any, b: any) => b.score - a.score)
+  
+  for (const pick of processedPicks) {
+    const expectedRank = pick.pick
+    const actualRank = allScores.findIndex((s: any) => s.pick === pick.pick) + 1
+    pick.valueScore = expectedRank - actualRank
+    pick.grade = calculateGrade(pick.valueScore / 5)
+  }
   
   // Sort by overall pick
   processedPicks.sort((a: any, b: any) => a.pick - b.pick)
@@ -1938,8 +2046,12 @@ async function loadEspnDraftData(leagueKey: string) {
   // Update the reactive ref
   draftPicks.value = processedPicks
   
+  // Log summary
+  const withStats = processedPicks.filter((p: any) => Object.keys(p.stats).length > 0).length
+  const withCategories = processedPicks.filter((p: any) => p.bestCategories.length > 0).length
   console.log('[ESPN Draft] Processed', processedPicks.length, 'draft picks')
-  console.log('[ESPN Draft] League categories:', leagueCategories.value)
+  console.log('[ESPN Draft] Players with stats:', withStats)
+  console.log('[ESPN Draft] Players with category data:', withCategories)
 }
 
 async function loadYahooDraftData(leagueKey: string) {

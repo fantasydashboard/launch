@@ -1308,6 +1308,111 @@ export class EspnFantasyService {
   }
 
   /**
+   * Get players with full stats (including season totals) for draft analysis
+   */
+  async getPlayersWithStats(sport: Sport, leagueId: string | number, season: number, playerIds: number[]): Promise<Map<number, { name: string; position: string; team: string; stats: Record<string, number> }>> {
+    if (playerIds.length === 0) {
+      return new Map()
+    }
+
+    const cacheKey = `espn_players_stats_${sport}_${leagueId}_${season}_${playerIds.length}_v1`
+    const cached = cache.get<Record<string, any>>('espn_players_stats', cacheKey)
+    if (cached && typeof cached === 'object' && Object.keys(cached).length > 0) {
+      console.log(`[Cache HIT] ESPN players with stats for ${leagueId}`)
+      const map = new Map<number, { name: string; position: string; team: string; stats: Record<string, number> }>()
+      for (const [key, value] of Object.entries(cached)) {
+        map.set(parseInt(key), value)
+      }
+      return map
+    }
+
+    const teamMapping = sport === 'baseball' ? MLB_TEAMS : PRO_TEAMS
+
+    try {
+      const playerMap = new Map<number, { name: string; position: string; team: string; stats: Record<string, number> }>()
+      const chunkSize = 50
+      
+      for (let i = 0; i < playerIds.length; i += chunkSize) {
+        const chunk = playerIds.slice(i, i + chunkSize)
+        
+        // Request player info with stats included
+        // statSourceId: 0 = actual, 1 = projected
+        // statSplitTypeId: 0 = season total
+        const filterObj = {
+          players: {
+            filterIds: { value: chunk },
+            filterStatsForCurrentSeasonOnly: { value: true }
+          }
+        }
+        
+        console.log(`[ESPN getPlayersWithStats] Requesting chunk ${Math.floor(i/chunkSize) + 1} with ${chunk.length} player IDs`)
+        
+        try {
+          const data = await this.apiRequestWithFilter(sport, leagueId, season, [ESPN_VIEWS.PLAYER_INFO], filterObj)
+          
+          const players = data.players || []
+          console.log(`[ESPN getPlayersWithStats] Got ${players.length} players in chunk ${Math.floor(i/chunkSize) + 1}`)
+          
+          // Debug first player
+          if (players.length > 0 && i === 0) {
+            const firstPlayer = players[0].player || players[0]
+            console.log('[ESPN getPlayersWithStats] First player keys:', Object.keys(firstPlayer))
+            if (firstPlayer.stats) {
+              console.log('[ESPN getPlayersWithStats] First player stats array length:', firstPlayer.stats.length)
+              firstPlayer.stats.forEach((s: any, idx: number) => {
+                console.log(`  [${idx}] statSourceId=${s.statSourceId}, statSplitTypeId=${s.statSplitTypeId}, stats keys: ${Object.keys(s.stats || {}).length}`)
+              })
+            }
+          }
+          
+          for (const entry of players) {
+            const player = entry.player || entry
+            if (player.id) {
+              // Find season total stats (statSourceId=0 for actual, statSplitTypeId=0 for full season)
+              const statsArray = player.stats || []
+              const seasonStats = statsArray.find((s: any) => s.statSourceId === 0 && s.statSplitTypeId === 0) ||
+                                  statsArray.find((s: any) => s.statSourceId === 0) ||
+                                  {}
+              
+              playerMap.set(player.id, {
+                name: player.fullName || `${player.firstName || ''} ${player.lastName || ''}`.trim() || `Player ${player.id}`,
+                position: this.getPositionName(player.defaultPositionId, sport),
+                team: teamMapping[player.proTeamId] || `Team${player.proTeamId}`,
+                stats: seasonStats.stats || {}
+              })
+            }
+          }
+        } catch (chunkError) {
+          console.error(`[ESPN getPlayersWithStats] Error in chunk ${Math.floor(i/chunkSize) + 1}:`, chunkError)
+        }
+      }
+      
+      console.log(`[ESPN getPlayersWithStats] Total: resolved ${playerMap.size} of ${playerIds.length} players`)
+      
+      // Check how many have stats
+      let withStats = 0
+      for (const player of playerMap.values()) {
+        if (Object.keys(player.stats).length > 0) withStats++
+      }
+      console.log(`[ESPN getPlayersWithStats] Players with stats: ${withStats}`)
+      
+      // Cache the results
+      if (playerMap.size > 0) {
+        const cacheObj: Record<string, any> = {}
+        for (const [key, value] of playerMap.entries()) {
+          cacheObj[key.toString()] = value
+        }
+        cache.set('espn_players_stats', cacheObj, CACHE_TTL.LONG, cacheKey)
+      }
+      
+      return playerMap
+    } catch (error) {
+      console.error('Error fetching ESPN players with stats:', error)
+      return new Map()
+    }
+  }
+
+  /**
    * Make an API request with a filter header (for player info requests)
    */
   private async apiRequestWithFilter(
@@ -1942,8 +2047,19 @@ export class EspnFantasyService {
     const player = playerPoolEntry.player || {}
     const stats = player.stats || []
     
-    // Find current week stats
-    const currentStats = stats.find((s: any) => s.statSourceId === 0) || {}
+    // Debug: log available stats structures
+    if (stats.length > 0) {
+      console.log(`[ESPN parsePlayer] Player ${player.fullName} has ${stats.length} stat entries`)
+      stats.forEach((s: any, i: number) => {
+        console.log(`  [${i}] statSourceId=${s.statSourceId}, statSplitTypeId=${s.statSplitTypeId}, appliedTotal=${s.appliedTotal}`)
+      })
+    }
+    
+    // Find season total stats (statSplitTypeId = 0 is full season, statSourceId = 0 is actual)
+    // Try multiple approaches to find the best stats
+    const seasonStats = stats.find((s: any) => s.statSourceId === 0 && s.statSplitTypeId === 0) || 
+                        stats.find((s: any) => s.statSourceId === 0 && s.appliedTotal > 0) ||
+                        stats.find((s: any) => s.statSourceId === 0) || {}
     const projectedStats = stats.find((s: any) => s.statSourceId === 1) || {}
     
     // Get correct team mapping based on sport
@@ -1963,10 +2079,10 @@ export class EspnFantasyService {
       lineupSlot: LINEUP_SLOTS[entry.lineupSlotId] || 'Unknown',
       injuryStatus: player.injuryStatus || 'ACTIVE',
       projectedPoints: projectedStats.appliedTotal || 0,
-      actualPoints: currentStats.appliedTotal || 0,
+      actualPoints: seasonStats.appliedTotal || 0,
       percentOwned: playerPoolEntry.player?.ownership?.percentOwned || 0,
       percentStarted: playerPoolEntry.player?.ownership?.percentStarted || 0,
-      stats: this.flattenStats(currentStats.stats || {})
+      stats: this.flattenStats(seasonStats.stats || {})
     }
   }
 
