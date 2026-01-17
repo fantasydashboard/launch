@@ -33,10 +33,7 @@
         </div>
 
         <div v-if="isLoading" class="flex items-center justify-center py-12">
-          <div class="text-center">
-            <div class="animate-spin rounded-full h-12 w-12 border-b-4 border-primary mx-auto mb-3"></div>
-            <p class="text-dark-textMuted text-sm">Loading matchups...</p>
-          </div>
+          <LoadingSpinner size="md" message="Loading matchups..." />
         </div>
 
         <!-- Matchups Grid -->
@@ -510,6 +507,7 @@ import { computed, ref, onMounted, watch } from 'vue'
 import { useLeagueStore } from '@/stores/league'
 import { yahooService } from '@/services/yahoo'
 import { useAuthStore } from '@/stores/auth'
+import LoadingSpinner from '@/components/LoadingSpinner.vue'
 
 const leagueStore = useLeagueStore()
 const authStore = useAuthStore()

@@ -37,10 +37,7 @@
         </div>
 
         <div v-if="isLoading" class="flex items-center justify-center py-12">
-          <div class="text-center">
-            <div class="animate-spin rounded-full h-12 w-12 border-b-4 border-red-600 mx-auto mb-3"></div>
-            <p class="text-dark-textMuted text-sm">{{ loadingStatus || 'Loading...' }}</p>
-          </div>
+          <LoadingSpinner size="md" :message="loadingStatus || 'Loading...'" />
         </div>
 
         <!-- Matchups Grid -->
@@ -397,10 +394,7 @@
       </div>
       <div class="card-body">
         <div v-if="isLoadingChart" class="flex items-center justify-center py-12">
-          <div class="text-center">
-            <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-red-600 mx-auto mb-3"></div>
-            <p class="text-dark-textMuted text-sm">Loading chart data ({{ chartLoadProgress }})...</p>
-          </div>
+          <LoadingSpinner size="sm" :message="`Loading chart data (${chartLoadProgress})...`" />
         </div>
         <div v-else-if="chartSeries.length > 0" class="relative" ref="standingsChartRef">
           <apexchart 
@@ -800,6 +794,7 @@ import { ref, computed, watch, onMounted, Teleport } from 'vue'
 import { useLeagueStore } from '@/stores/league'
 import { useAuthStore } from '@/stores/auth'
 import { yahooService } from '@/services/yahoo'
+import LoadingSpinner from '@/components/LoadingSpinner.vue'
 
 const leagueStore = useLeagueStore()
 const authStore = useAuthStore()
