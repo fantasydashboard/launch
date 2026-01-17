@@ -947,6 +947,11 @@ const defaultAvatar = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0
 
 // Available seasons based on game keys
 const availableSeasons = computed(() => {
+  // For Sleeper, use historical seasons from the store
+  if (isSleeper.value && leagueStore.historicalSeasons.length > 0) {
+    return leagueStore.historicalSeasons.map(s => s.season).sort((a, b) => b.localeCompare(a))
+  }
+  // Default for Yahoo/ESPN
   return ['2025', '2024', '2023', '2022', '2021', '2020']
 })
 
@@ -1491,6 +1496,144 @@ async function loadDraftData() {
       return
     }
     
+    // Handle Sleeper leagues
+    if (isSleeper.value) {
+      console.log('[SLEEPER DRAFT] Loading draft for Sleeper league:', leagueKey)
+      
+      // Import services
+      const { sleeperService } = await import('@/services/sleeper')
+      const { draftAnalysisService } = await import('@/services/draftAnalysis')
+      
+      // Find the season info from historical seasons
+      const seasonInfo = leagueStore.historicalSeasons.find(s => s.season === selectedSeason.value)
+      if (!seasonInfo) {
+        console.log('[SLEEPER DRAFT] No season info found for:', selectedSeason.value)
+        draftPicks.value = []
+        isLoading.value = false
+        return
+      }
+      
+      // Load draft if not already loaded
+      if (!leagueStore.historicalDrafts.has(selectedSeason.value)) {
+        console.log('[SLEEPER DRAFT] Loading draft from store for season:', selectedSeason.value)
+        await leagueStore.loadHistoricalDraft(seasonInfo.league_id, selectedSeason.value)
+      }
+      
+      // Load matchups if not already loaded
+      if (!leagueStore.historicalMatchups.has(selectedSeason.value)) {
+        await leagueStore.loadHistoricalMatchups(seasonInfo.league_id, selectedSeason.value)
+      }
+      
+      const draft = leagueStore.historicalDrafts.get(selectedSeason.value)
+      if (!draft || !draft.picks || draft.picks.length === 0) {
+        console.log('[SLEEPER DRAFT] No draft picks found')
+        draftPicks.value = []
+        isLoading.value = false
+        return
+      }
+      
+      console.log('[SLEEPER DRAFT] Got', draft.picks.length, 'draft picks')
+      
+      const rosters = leagueStore.historicalRosters.get(selectedSeason.value) || []
+      const users = leagueStore.historicalUsers.get(selectedSeason.value) || []
+      const matchups = leagueStore.historicalMatchups.get(selectedSeason.value)
+      
+      // Build player positions map from draft picks
+      const playerPositions = new Map<string, string>()
+      draft.picks.forEach((pick: any) => {
+        const pos = pick.metadata?.position
+        if (pos && pick.player_id) {
+          playerPositions.set(pick.player_id, pos)
+        }
+      })
+      
+      // Calculate player stats
+      const playoffStart = seasonInfo.settings?.playoff_week_start || 15
+      const playerStats = matchups ? draftAnalysisService.calculatePlayerSeasonStats(matchups, playoffStart - 1, playerPositions) : new Map()
+      
+      // Build position draft order for calculating position rank at draft
+      const positionDraftOrder: Record<string, string[]> = {}
+      draft.picks.forEach((pick: any) => {
+        const pos = pick.metadata?.position
+        if (pos && pick.player_id) {
+          if (!positionDraftOrder[pos]) positionDraftOrder[pos] = []
+          positionDraftOrder[pos].push(pick.player_id)
+        }
+      })
+      
+      // Build team lookup
+      const teamLookup = new Map<number, { name: string, avatar: string }>()
+      rosters.forEach((roster: any) => {
+        const user = users.find((u: any) => u.user_id === roster.owner_id)
+        const teamName = sleeperService.getTeamName(roster, user)
+        const avatar = sleeperService.getAvatarUrl(roster, user, seasonInfo)
+        teamLookup.set(roster.roster_id, { name: teamName, avatar })
+      })
+      
+      // Store teams data for the view
+      teamsData.value = rosters.map((r: any) => {
+        const info = teamLookup.get(r.roster_id)
+        return {
+          team_key: String(r.roster_id),
+          team_name: info?.name || `Team ${r.roster_id}`,
+          logo: info?.avatar || ''
+        }
+      })
+      
+      const numTeams = rosters.length || 12
+      
+      // Process picks
+      const processedPicks = draft.picks.map((pick: any) => {
+        const position = pick.metadata?.position || 'Unknown'
+        const playerName = pick.metadata?.first_name && pick.metadata?.last_name
+          ? `${pick.metadata.first_name} ${pick.metadata.last_name}`
+          : `Player ${pick.player_id}`
+        
+        // Get drafted position rank
+        const draftedRank = (positionDraftOrder[position]?.indexOf(pick.player_id) ?? -1) + 1
+        
+        // Get current position rank from stats
+        const stats = playerStats.get(pick.player_id)
+        let currentRank = 999
+        let totalPoints = 0
+        if (stats) {
+          totalPoints = stats.totalPoints || 0
+          const samePositionPlayers = Array.from(playerStats.entries())
+            .filter(([, s]) => s.position === position)
+            .sort((a, b) => b[1].totalPoints - a[1].totalPoints)
+          currentRank = samePositionPlayers.findIndex(([id]) => id === pick.player_id) + 1
+          if (currentRank === 0) currentRank = 999
+        }
+        
+        // Calculate score
+        const score = draftedRank > 0 && currentRank < 999 ? draftedRank - currentRank : 0
+        
+        const teamInfo = teamLookup.get(pick.roster_id)
+        
+        return {
+          player_key: pick.player_id,
+          player_name: playerName,
+          position,
+          round: pick.round,
+          pick_no: pick.pick_no || pick.draft_slot,
+          team_key: String(pick.roster_id),
+          team_name: teamInfo?.name || `Team ${pick.roster_id}`,
+          team_logo: teamInfo?.avatar || '',
+          headshot: pick.metadata?.headshot_url || `https://sleepercdn.com/content/nfl/players/thumb/${pick.player_id}.jpg`,
+          position_rank_drafted: draftedRank,
+          current_position_rank: currentRank,
+          total_points: totalPoints,
+          score: Math.round(score * 10) / 10
+        }
+      })
+      
+      draftPicks.value = processedPicks
+      console.log('[SLEEPER DRAFT] Processed', processedPicks.length, 'picks')
+      
+      isLoading.value = false
+      return
+    }
+    
     // Yahoo league handling (existing code)
     await yahooService.initialize(authStore.user.id)
     
@@ -1714,6 +1857,15 @@ watch(() => leagueStore.activeLeagueId, (newId) => {
   }
 }, { immediate: true })
 
+// Watch for historical seasons loading (for Sleeper)
+watch(() => leagueStore.historicalSeasons.length, (newLen) => {
+  if (isSleeper.value && newLen > 0 && !selectedSeason.value) {
+    const seasons = leagueStore.historicalSeasons.map(s => s.season).sort((a, b) => b.localeCompare(a))
+    selectedSeason.value = seasons[0] || '2024'
+    loadDraftData()
+  }
+})
+
 // Watch for currentLeague changes (happens when fallback to previous season occurs)
 watch(() => leagueStore.currentLeague?.league_id, (newKey, oldKey) => {
   if (newKey && newKey !== oldKey) {
@@ -1723,6 +1875,12 @@ watch(() => leagueStore.currentLeague?.league_id, (newKey, oldKey) => {
 })
 
 onMounted(() => {
+  // For Sleeper, set selected season from historical seasons
+  if (isSleeper.value && leagueStore.historicalSeasons.length > 0) {
+    const seasons = leagueStore.historicalSeasons.map(s => s.season).sort((a, b) => b.localeCompare(a))
+    selectedSeason.value = seasons[0] || '2024'
+  }
+  
   if (effectiveLeagueKey.value) {
     loadDraftData()
   }
