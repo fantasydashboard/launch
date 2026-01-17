@@ -372,7 +372,7 @@
                   <p class="text-sm text-dark-textMuted">Best value relative to draft position</p>
                 </div>
               </div>
-              <button @click="downloadStealsImage" :disabled="isDownloadingSteals" class="flex items-center gap-2 text-sm px-3 py-1.5 rounded-lg font-semibold transition-colors disabled:opacity-50" style="background:#facc15;color:#111827;" @mouseover="$event.currentTarget.style.background='#fde047'" @mouseout="$event.currentTarget.style.background='#facc15'">
+              <button @click="downloadStealsImage" :disabled="isDownloadingSteals" class="flex items-center gap-2 text-sm px-3 py-1.5 rounded-lg font-semibold transition-colors disabled:opacity-50" style="background:transparent;color:#facc15;border:1px solid #facc15;" @mouseover="$event.currentTarget.style.background='#facc15';$event.currentTarget.style.color='#111827'" @mouseout="$event.currentTarget.style.background='transparent';$event.currentTarget.style.color='#facc15'">
                 <svg v-if="!isDownloadingSteals" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
                 <svg v-else class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path></svg>
                 {{ isDownloadingSteals ? 'Saving...' : 'Share' }}
@@ -415,7 +415,7 @@
                   <p class="text-sm text-dark-textMuted">Underperformed relative to draft position</p>
                 </div>
               </div>
-              <button @click="downloadBustsImage" :disabled="isDownloadingBusts" class="flex items-center gap-2 text-sm px-3 py-1.5 rounded-lg font-semibold transition-colors disabled:opacity-50" style="background:#facc15;color:#111827;" @mouseover="$event.currentTarget.style.background='#fde047'" @mouseout="$event.currentTarget.style.background='#facc15'">
+              <button @click="downloadBustsImage" :disabled="isDownloadingBusts" class="flex items-center gap-2 text-sm px-3 py-1.5 rounded-lg font-semibold transition-colors disabled:opacity-50" style="background:transparent;color:#facc15;border:1px solid #facc15;" @mouseover="$event.currentTarget.style.background='#facc15';$event.currentTarget.style.color='#111827'" @mouseout="$event.currentTarget.style.background='transparent';$event.currentTarget.style.color='#facc15'">
                 <svg v-if="!isDownloadingBusts" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
                 <svg v-else class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path></svg>
                 {{ isDownloadingBusts ? 'Saving...' : 'Share' }}
@@ -627,9 +627,9 @@
                 @click="downloadTeamImage" 
                 :disabled="isDownloadingTeam"
                 class="flex items-center gap-2 text-sm px-3 py-1.5 rounded-lg font-semibold transition-colors disabled:opacity-50"
-                style="background: #facc15; color: #111827;"
-                @mouseover="$event.currentTarget.style.background = '#fde047'"
-                @mouseout="$event.currentTarget.style.background = '#facc15'"
+                style="background: transparent; color: #facc15; border: 1px solid #facc15;"
+                @mouseover="$event.currentTarget.style.background = '#facc15'; $event.currentTarget.style.color = '#111827'"
+                @mouseout="$event.currentTarget.style.background = 'transparent'; $event.currentTarget.style.color = '#facc15'"
               >
                 <svg v-if="!isDownloadingTeam" class="w-4 h-4 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />

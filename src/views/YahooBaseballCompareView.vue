@@ -80,9 +80,9 @@
               @click="downloadComparisonImage" 
               :disabled="isDownloadingComparison"
               class="flex items-center gap-2 px-4 py-2 rounded-lg font-semibold transition-colors disabled:opacity-50 text-sm"
-              style="background: #facc15; color: #111827;"
-              @mouseover="$event.currentTarget.style.background = '#fde047'; $event.currentTarget.style.color = '#111827'"
-              @mouseout="$event.currentTarget.style.background = '#facc15'; $event.currentTarget.style.color = '#111827'"
+              style="background: transparent; color: #facc15; border: 1px solid #facc15;"
+              @mouseover="$event.currentTarget.style.background = '#facc15'; $event.currentTarget.style.color = '#111827'"
+              @mouseout="$event.currentTarget.style.background = 'transparent'; $event.currentTarget.style.color = '#facc15'"
             >
               <svg v-if="!isDownloadingComparison" class="w-4 h-4 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
