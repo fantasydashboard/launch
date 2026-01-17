@@ -359,6 +359,7 @@ import { ref, watch, onMounted, nextTick, computed } from 'vue'
 import { useLeagueStore } from '@/stores/league'
 import { useAuthStore } from '@/stores/auth'
 import { yahooService } from '@/services/yahoo'
+import { espnService } from '@/services/espn'
 import ApexCharts from 'apexcharts'
 import { useFeatureAccess } from '@/composables/useFeatureAccess'
 import SimulatedDataBanner from '@/components/SimulatedDataBanner.vue'
@@ -366,6 +367,9 @@ import SimulatedDataBanner from '@/components/SimulatedDataBanner.vue'
 const leagueStore = useLeagueStore()
 const authStore = useAuthStore()
 const { hasLeagueAccess } = useFeatureAccess()
+
+// Platform detection
+const isEspn = computed(() => leagueStore.activePlatform === 'espn')
 
 const defaultAvatar = 'https://s.yimg.com/cv/apiv2/default/mlb/mlb_1_y.png'
 
@@ -404,8 +408,23 @@ let chartInstance: ApexCharts | null = null
 
 // Helper to extract team_id from team_key (e.g., "431.l.12345.t.3" -> "3")
 function getTeamId(teamKey: string): string {
+  if (isEspn.value) {
+    // ESPN team keys are like "espn_12345_2024_3" -> extract team number "3"
+    const parts = teamKey.split('_')
+    return parts[parts.length - 1] || teamKey
+  }
   const parts = teamKey.split('.t.')
   return parts[1] || teamKey
+}
+
+// Parse ESPN league key to extract leagueId and season
+function parseEspnLeagueKey(leagueKey: string): { leagueId: string; season: number } {
+  // ESPN league keys: "espn_12345_2024" or just leagueId
+  const parts = leagueKey.replace('espn_', '').split('_')
+  return {
+    leagueId: parts[0],
+    season: parseInt(parts[1]) || new Date().getFullYear()
+  }
 }
 
 // Computed - filter teams based on toggle and exclude already-selected team
@@ -643,6 +662,226 @@ async function loadHistoricalData() {
   }
 }
 
+// ESPN Historical Data Loading
+async function loadEspnHistoricalData() {
+  console.log('=== ESPN CATEGORY COMPARE: loadEspnHistoricalData START ===')
+  isInitialLoading.value = true
+  loadingMessage.value = 'Initializing ESPN data...'
+  
+  try {
+    const leagueKey = leagueStore.activeLeagueId
+    console.log('ESPN League key:', leagueKey)
+    if (!leagueKey) {
+      console.log('No league key, returning early')
+      isInitialLoading.value = false
+      return
+    }
+    
+    const { leagueId, season: currentSeason } = parseEspnLeagueKey(leagueKey)
+    loadingMessage.value = `Loading ESPN league ${leagueId} history...`
+    
+    // Load league settings to get number of categories
+    try {
+      const scoringSettings = await espnService.getScoringSettings('baseball', leagueId, currentSeason)
+      const scoringItems = scoringSettings?.scoringItems || []
+      if (scoringItems.length > 0) {
+        numCategories.value = scoringItems.length
+      }
+      console.log('ESPN League has', numCategories.value, 'scoring categories')
+    } catch (e) {
+      console.log('Could not load ESPN league settings, using default 10 categories:', e)
+    }
+    
+    // Load historical seasons (ESPN typically goes back to ~2018 reliably)
+    const data: Record<string, any> = {}
+    const currentYear = new Date().getFullYear()
+    const years = []
+    for (let year = currentYear; year >= 2018; year--) {
+      years.push(year.toString())
+    }
+    
+    console.log('=== Starting ESPN Historical Data Load ===')
+    console.log('League ID:', leagueId)
+    let successCount = 0
+    
+    for (const year of years) {
+      const yearSeason = parseInt(year)
+      loadingMessage.value = `Loading ${year} season... (${successCount} found)`
+      console.log(`[ESPN] Attempting to load ${year} season`)
+      
+      try {
+        // Try to get teams/standings for this season
+        // Try current method first, fall back to historical method
+        let teams: any[] = []
+        try {
+          teams = await espnService.getTeams('baseball', leagueId, yearSeason)
+        } catch (e) {
+          // Try historical endpoint
+          teams = await espnService.getHistoricalTeams('baseball', leagueId, yearSeason)
+        }
+        
+        if (teams && teams.length > 0) {
+          console.log(`✓ [ESPN] Loaded ${year} season: ${teams.length} teams`)
+          successCount++
+          
+          // Build standings array from teams
+          const standings = teams.map((team: any) => ({
+            team_key: `espn_${leagueId}_${year}_${team.id}`,
+            team_id: team.id.toString(),
+            name: team.name,
+            logo_url: team.logo || '',
+            wins: team.wins || 0,
+            losses: team.losses || 0,
+            ties: team.ties || 0,
+            rank: team.playoffSeed || team.rank || 0,
+            playoff_seed: team.playoffSeed,
+            is_champion: team.rank === 1 || team.playoffSeed === 1,
+            made_playoffs: team.playoffSeed !== undefined && team.playoffSeed !== null && team.playoffSeed > 0
+          }))
+          
+          data[year] = { standings, matchups: [] }
+          
+          // Build team mapping by team ID (ESPN team IDs are consistent within a league)
+          for (const team of standings) {
+            const teamId = team.team_id
+            if (!teamIdMapping.value[teamId]) {
+              teamIdMapping.value[teamId] = {
+                name: team.name,
+                logo_url: team.logo_url,
+                team_keys: [],
+                current_season_key: null
+              }
+            }
+            teamIdMapping.value[teamId].team_keys.push(team.team_key)
+            if (team.logo_url) teamIdMapping.value[teamId].logo_url = team.logo_url
+            // Update name to most recent
+            teamIdMapping.value[teamId].name = team.name
+          }
+          
+          // Track current season teams
+          if (Object.keys(data).length === 1) {
+            currentSeasonTeamIds.value = standings.map((team: any) => team.team_id)
+            for (const team of standings) {
+              if (teamIdMapping.value[team.team_id]) {
+                teamIdMapping.value[team.team_id].current_season_key = team.team_key
+              }
+            }
+          }
+          
+          // Load matchups for this season
+          try {
+            loadingMessage.value = `Loading ${year} matchups...`
+            const allMatchups: any[] = []
+            const totalWeeks = 25
+            let consecutiveFailures = 0
+            
+            for (let week = 1; week <= totalWeeks; week++) {
+              try {
+                // Try regular matchups first, fall back to historical
+                let weekMatchups: any[] = []
+                try {
+                  weekMatchups = await espnService.getMatchups('baseball', leagueId, yearSeason, week)
+                } catch (e) {
+                  weekMatchups = await espnService.getHistoricalMatchups('baseball', leagueId, yearSeason, week)
+                }
+                
+                if (weekMatchups && weekMatchups.length > 0) {
+                  // Transform ESPN matchups to our format
+                  for (const m of weekMatchups) {
+                    allMatchups.push({
+                      season: year,
+                      week: m.matchupPeriodId,
+                      teams: [
+                        { team_key: `espn_${leagueId}_${year}_${m.homeTeamId}`, team_id: m.homeTeamId.toString() },
+                        { team_key: `espn_${leagueId}_${year}_${m.awayTeamId}`, team_id: m.awayTeamId.toString() }
+                      ],
+                      // ESPN provides category wins directly
+                      home_category_wins: m.homeCategoryWins || 0,
+                      away_category_wins: m.awayCategoryWins || 0,
+                      home_category_ties: m.homeCategoryTies || 0,
+                      away_category_ties: m.awayCategoryTies || 0,
+                      is_playoffs: m.playoffTierType !== 'NONE',
+                      homeTeamId: m.homeTeamId,
+                      awayTeamId: m.awayTeamId,
+                      // Store per-category results if available
+                      homePerCategoryResults: m.homePerCategoryResults,
+                      awayPerCategoryResults: m.awayPerCategoryResults
+                    })
+                  }
+                  consecutiveFailures = 0
+                } else {
+                  consecutiveFailures++
+                }
+              } catch (weekError) {
+                consecutiveFailures++
+              }
+              
+              if (consecutiveFailures >= 3 && allMatchups.length > 0) {
+                console.log(`[ESPN] Stopping at week ${week} for ${year}`)
+                break
+              }
+            }
+            
+            console.log(`[ESPN] Loaded ${allMatchups.length} matchups for ${year}`)
+            if (allMatchups.length > 0) {
+              data[year].matchups = allMatchups
+            }
+          } catch (e) {
+            console.log(`[ESPN] Could not load matchups for ${year}:`, e)
+          }
+          
+          await new Promise(resolve => setTimeout(resolve, 100))
+        } else {
+          console.log(`✗ [ESPN] ${year} - No standings data`)
+        }
+      } catch (e: any) {
+        console.log(`✗ [ESPN] Could not load ${year}:`, e?.message || e)
+      }
+    }
+    
+    console.log('=== ESPN Historical Data Load Complete ===')
+    console.log(`Loaded ${successCount} seasons`)
+    console.log('Seasons loaded:', Object.keys(data).sort((a, b) => parseInt(b) - parseInt(a)))
+    
+    historicalData.value = data
+    seasonsLoaded.value = successCount
+    
+    // Build allTeams from teamIdMapping
+    allTeams.value = Object.entries(teamIdMapping.value).map(([teamId, info]) => {
+      const seasonsParticipated = info.team_keys.length
+      return {
+        team_id: teamId,
+        team_key: info.team_keys[0],
+        name: info.name,
+        logo_url: info.logo_url,
+        seasons: seasonsParticipated
+      }
+    }).sort((a, b) => a.name.localeCompare(b.name))
+    
+    console.log('=== ESPN Team Mapping Debug ===')
+    console.log('Total unique teams across all seasons:', allTeams.value.length)
+    console.log('Current season teams:', currentSeasonTeamIds.value)
+    
+    // Auto-select first two current-season teams
+    const currentTeams = allTeams.value.filter(t => currentSeasonTeamIds.value.includes(t.team_id))
+    if (currentTeams.length >= 2) {
+      team1Key.value = currentTeams[0].team_key
+      team2Key.value = currentTeams[1].team_key
+    } else if (allTeams.value.length >= 2) {
+      team1Key.value = allTeams.value[0].team_key
+      team2Key.value = allTeams.value[1].team_key
+    }
+    
+    loadingMessage.value = 'Done!'
+    
+  } catch (e) {
+    console.error('Error loading ESPN historical data:', e)
+    loadingMessage.value = 'Error loading data'
+  } finally {
+    isInitialLoading.value = false
+  }
+}
+
 async function loadComparison() {
   console.log('=== loadComparison START ===')
   console.log('team1Key:', team1Key.value)
@@ -661,18 +900,25 @@ async function loadComparison() {
   isLoading.value = true
   
   try {
-    // Find team names from the selected team_keys
+    // Find team info from the selected team_keys
     const team1Info = allTeams.value.find(t => t.team_key === team1Key.value)
     const team2Info = allTeams.value.find(t => t.team_key === team2Key.value)
+    
+    // For ESPN, we use team_id as the key in teamIdMapping
+    // For Yahoo, we use team name as the key in teamIdMapping
+    const team1MappingKey = isEspn.value ? team1Info?.team_id : team1Info?.name
+    const team2MappingKey = isEspn.value ? team2Info?.team_id : team2Info?.name
     
     const team1Name = team1Info?.name || ''
     const team2Name = team2Info?.name || ''
     
     console.log('Team1 Name:', team1Name, 'Team2 Name:', team2Name)
+    console.log('Platform:', isEspn.value ? 'ESPN' : 'Yahoo')
+    console.log('Team1 mapping key:', team1MappingKey, 'Team2 mapping key:', team2MappingKey)
     
-    // Get all team_keys for each team across seasons (keyed by name now)
-    const team1Keys = teamIdMapping.value[team1Name]?.team_keys || [team1Key.value]
-    const team2Keys = teamIdMapping.value[team2Name]?.team_keys || [team2Key.value]
+    // Get all team_keys for each team across seasons
+    const team1Keys = teamIdMapping.value[team1MappingKey]?.team_keys || [team1Key.value]
+    const team2Keys = teamIdMapping.value[team2MappingKey]?.team_keys || [team2Key.value]
     
     console.log('Team1 keys across seasons:', team1Keys)
     console.log('Team2 keys across seasons:', team2Keys)
@@ -683,11 +929,11 @@ async function loadComparison() {
     
     team1Data.value = {
       name: team1Name || t1Current?.name || 'Team 1',
-      logo_url: teamIdMapping.value[team1Name]?.logo_url || t1Current?.logo_url || defaultAvatar
+      logo_url: teamIdMapping.value[team1MappingKey]?.logo_url || t1Current?.logo_url || defaultAvatar
     }
     team2Data.value = {
       name: team2Name || t2Current?.name || 'Team 2',
-      logo_url: teamIdMapping.value[team2Name]?.logo_url || t2Current?.logo_url || defaultAvatar
+      logo_url: teamIdMapping.value[team2MappingKey]?.logo_url || t2Current?.logo_url || defaultAvatar
     }
     
     // Aggregate stats across all seasons
@@ -758,22 +1004,41 @@ async function loadComparison() {
       
       for (const matchup of matchups) {
         const teams = matchup.teams || []
-        const statWinners = matchup.stat_winners || []
         
         // Check if team1 was in this matchup
         const t1Match = teams.find((t: any) => team1Keys.includes(t.team_key))
         if (t1Match) {
           team1WeeksPlayed++
-          const catsWon = statWinners.filter((w: any) => !w.is_tied && team1Keys.includes(w.winner_team_key)).length
-          team1TotalCats += catsWon
+          
+          if (isEspn.value) {
+            // ESPN format - check if team1 is home or away
+            const isHome = matchup.homeTeamId?.toString() === getTeamId(t1Match.team_key)
+            const catsWon = isHome ? (matchup.home_category_wins || 0) : (matchup.away_category_wins || 0)
+            team1TotalCats += catsWon
+          } else {
+            // Yahoo format
+            const statWinners = matchup.stat_winners || []
+            const catsWon = statWinners.filter((w: any) => !w.is_tied && team1Keys.includes(w.winner_team_key)).length
+            team1TotalCats += catsWon
+          }
         }
         
         // Check if team2 was in this matchup
         const t2Match = teams.find((t: any) => team2Keys.includes(t.team_key))
         if (t2Match) {
           team2WeeksPlayed++
-          const catsWon = statWinners.filter((w: any) => !w.is_tied && team2Keys.includes(w.winner_team_key)).length
-          team2TotalCats += catsWon
+          
+          if (isEspn.value) {
+            // ESPN format
+            const isHome = matchup.homeTeamId?.toString() === getTeamId(t2Match.team_key)
+            const catsWon = isHome ? (matchup.home_category_wins || 0) : (matchup.away_category_wins || 0)
+            team2TotalCats += catsWon
+          } else {
+            // Yahoo format
+            const statWinners = matchup.stat_winners || []
+            const catsWon = statWinners.filter((w: any) => !w.is_tied && team2Keys.includes(w.winner_team_key)).length
+            team2TotalCats += catsWon
+          }
         }
       }
     }
@@ -794,19 +1059,35 @@ async function loadComparison() {
         
         if (t1Match && t2Match) {
           // This is a head-to-head matchup!
-          const statWinners = matchup.stat_winners || []
-          
           let team1CatsWon = 0
           let team2CatsWon = 0
           let tiedCats = 0
           
-          for (const sw of statWinners) {
-            if (sw.is_tied) {
-              tiedCats++
-            } else if (team1Keys.includes(sw.winner_team_key)) {
-              team1CatsWon++
-            } else if (team2Keys.includes(sw.winner_team_key)) {
-              team2CatsWon++
+          if (isEspn.value) {
+            // ESPN format - determine who is home/away
+            const team1IsHome = matchup.homeTeamId?.toString() === getTeamId(t1Match.team_key)
+            
+            if (team1IsHome) {
+              team1CatsWon = matchup.home_category_wins || 0
+              team2CatsWon = matchup.away_category_wins || 0
+              tiedCats = matchup.home_category_ties || 0
+            } else {
+              team1CatsWon = matchup.away_category_wins || 0
+              team2CatsWon = matchup.home_category_wins || 0
+              tiedCats = matchup.away_category_ties || 0
+            }
+          } else {
+            // Yahoo format
+            const statWinners = matchup.stat_winners || []
+            
+            for (const sw of statWinners) {
+              if (sw.is_tied) {
+                tiedCats++
+              } else if (team1Keys.includes(sw.winner_team_key)) {
+                team1CatsWon++
+              } else if (team2Keys.includes(sw.winner_team_key)) {
+                team2CatsWon++
+              }
             }
           }
           
@@ -1257,8 +1538,8 @@ watch([team1Key, team2Key], ([t1, t2]) => {
 
 // Load data when league changes
 watch(() => leagueStore.activeLeagueId, async (newId, oldId) => {
-  if (newId && newId !== oldId && leagueStore.activePlatform === 'yahoo') {
-    console.log('League changed from', oldId, 'to', newId)
+  if (newId && newId !== oldId) {
+    console.log('League changed from', oldId, 'to', newId, 'platform:', leagueStore.activePlatform)
     // Reset everything
     team1Key.value = ''
     team2Key.value = ''
@@ -1269,14 +1550,23 @@ watch(() => leagueStore.activeLeagueId, async (newId, oldId) => {
     historicalData.value = {}
     teamIdMapping.value = {}
     seasonsLoaded.value = 0
-    await loadHistoricalData()
+    
+    if (leagueStore.activePlatform === 'espn') {
+      await loadEspnHistoricalData()
+    } else if (leagueStore.activePlatform === 'yahoo') {
+      await loadHistoricalData()
+    }
   }
 }, { immediate: false })
 
 onMounted(async () => {
-  console.log('Category Compare page mounted')
-  if (leagueStore.activeLeagueId && leagueStore.activePlatform === 'yahoo') {
-    await loadHistoricalData()
+  console.log('Category Compare page mounted, platform:', leagueStore.activePlatform)
+  if (leagueStore.activeLeagueId) {
+    if (leagueStore.activePlatform === 'espn') {
+      await loadEspnHistoricalData()
+    } else if (leagueStore.activePlatform === 'yahoo') {
+      await loadHistoricalData()
+    }
   }
 })
 </script>
