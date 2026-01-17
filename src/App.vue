@@ -127,7 +127,7 @@
                               </span>
                             </div>
                             <div class="text-xs text-dark-textMuted">
-                              {{ formatScoringType(league.scoring_type) }} · {{ league.num_teams || league.total_rosters }} teams
+                              {{ formatScoringType(league) }} · {{ league.num_teams || league.total_rosters }} teams
                             </div>
                           </div>
                           <button
@@ -148,16 +148,16 @@
                   <div class="border-t border-dark-border p-2">
                     <button
                       @click="showAddLeagueModal = true; showLeagueDropdown = false"
-                      class="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-primary/10 transition-colors"
+                      class="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-yellow-500/10 transition-colors"
                     >
-                      <div class="w-8 h-8 rounded-lg bg-primary/20 flex items-center justify-center">
-                        <svg class="w-4 h-4 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <div class="w-8 h-8 rounded-lg bg-yellow-500/20 flex items-center justify-center">
+                        <svg class="w-4 h-4 text-yellow-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
                         </svg>
                       </div>
                       <div class="text-left">
-                        <div class="font-medium text-primary text-sm">Add League</div>
-                        <div class="text-xs text-dark-textMuted">Connect Sleeper or Yahoo</div>
+                        <div class="font-medium text-yellow-500 text-sm">Add League</div>
+                        <div class="text-xs text-dark-textMuted">Connect Sleeper, Yahoo, or ESPN</div>
                       </div>
                     </button>
                   </div>
@@ -172,7 +172,7 @@
                   </div>
                   <button
                     @click="showAddLeagueModal = true; showLeagueDropdown = false"
-                    class="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-lg bg-primary hover:bg-primary/90 transition-colors"
+                    class="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-lg bg-yellow-500 hover:bg-yellow-400 transition-colors"
                   >
                     <svg class="w-5 h-5 text-gray-900" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
@@ -355,7 +355,7 @@
                                   </span>
                                 </div>
                                 <div class="text-xs text-dark-textMuted">
-                                  {{ formatScoringType(league.scoring_type) }} · {{ league.num_teams || league.total_rosters }} teams
+                                  {{ formatScoringType(league) }} · {{ league.num_teams || league.total_rosters }} teams
                                 </div>
                               </div>
                             </div>
@@ -367,16 +367,16 @@
                       <div class="border-t border-dark-border p-2">
                         <button
                           @click="showAddLeagueModal = true; showLeagueDropdown = false"
-                          class="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-primary/10 active:bg-primary/20 transition-colors"
+                          class="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-yellow-500/10 active:bg-yellow-500/20 transition-colors"
                         >
-                          <div class="w-8 h-8 rounded-lg bg-primary/20 flex items-center justify-center">
-                            <svg class="w-4 h-4 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <div class="w-8 h-8 rounded-lg bg-yellow-500/20 flex items-center justify-center">
+                            <svg class="w-4 h-4 text-yellow-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
                             </svg>
                           </div>
                           <div class="text-left">
-                            <div class="font-medium text-primary text-sm">Add League</div>
-                            <div class="text-xs text-dark-textMuted">Connect Sleeper or Yahoo</div>
+                            <div class="font-medium text-yellow-500 text-sm">Add League</div>
+                            <div class="text-xs text-dark-textMuted">Connect Sleeper, Yahoo, or ESPN</div>
                           </div>
                         </button>
                       </div>
@@ -391,7 +391,7 @@
                       </div>
                       <button
                         @click="showAddLeagueModal = true; showLeagueDropdown = false"
-                        class="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-lg bg-primary hover:bg-primary/90 transition-colors"
+                        class="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-lg bg-yellow-500 hover:bg-yellow-400 transition-colors"
                       >
                         <svg class="w-5 h-5 text-gray-900" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
@@ -487,7 +487,7 @@
                                   </span>
                                 </div>
                                 <div class="text-xs text-dark-textMuted">
-                                  {{ formatScoringType(league.scoring_type) }} · {{ league.num_teams || league.total_rosters }} teams
+                                  {{ formatScoringType(league) }} · {{ league.num_teams || league.total_rosters }} teams
                                 </div>
                               </div>
                             </div>
@@ -499,15 +499,15 @@
                       <div class="border-t border-dark-border p-2">
                         <button
                           @click="showAddLeagueModal = true; showLeagueDropdown = false"
-                          class="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-primary/10 transition-colors"
+                          class="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-yellow-500/10 transition-colors"
                         >
-                          <div class="w-8 h-8 rounded-lg bg-primary/20 flex items-center justify-center">
-                            <svg class="w-4 h-4 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <div class="w-8 h-8 rounded-lg bg-yellow-500/20 flex items-center justify-center">
+                            <svg class="w-4 h-4 text-yellow-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
                             </svg>
                           </div>
                           <div class="text-left">
-                            <div class="font-medium text-primary text-sm">Add League</div>
+                            <div class="font-medium text-yellow-500 text-sm">Add League</div>
                             <div class="text-xs text-dark-textMuted">Connect Sleeper, Yahoo, or ESPN</div>
                           </div>
                         </button>
@@ -523,7 +523,7 @@
                       </div>
                       <button
                         @click="showAddLeagueModal = true; showLeagueDropdown = false"
-                        class="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-lg bg-primary hover:bg-primary/90 transition-colors"
+                        class="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-lg bg-yellow-500 hover:bg-yellow-400 transition-colors"
                       >
                         <svg class="w-5 h-5 text-gray-900" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
@@ -828,19 +828,31 @@ const sportColor = computed(() => {
 })
 
 // Format scoring type for display
-function formatScoringType(scoringType: string | undefined): string {
-  if (!scoringType) return 'Points'
+function formatScoringType(league: any): string {
+  const scoringType = league?.scoring_type || ''
   const type = scoringType.toLowerCase()
-  if (type.includes('head') || type === 'h2h' || type === 'head-to-head') {
-    if (type.includes('point')) return 'H2H Points'
-    if (type.includes('cat')) return 'H2H Categories'
-    return 'H2H Points'
-  }
+  
+  // Handle ESPN-style explicit types (H2H_CATEGORY, H2H_POINTS, ROTO, TOTAL_POINTS)
+  if (type === 'h2h_category' || type === 'h2h category') return 'H2H Categories'
+  if (type === 'h2h_points' || type === 'h2h points') return 'H2H Points'
+  if (type === 'total_points' || type === 'total points') return 'H2H Points'
+  if (type === 'roto' || type === 'rotisserie') return 'Rotisserie'
+  
+  // Handle Yahoo-style types
+  if (type === 'headpoint' || type === 'head_point') return 'H2H Points'
+  if (type === 'head' || type === 'headone' || type === 'headcategory' || type === 'head_category') return 'H2H Categories'
+  if (type === 'point' || type === 'points') return 'H2H Points'
+  
+  // Check if type contains keywords
   if (type.includes('roto')) return 'Rotisserie'
-  if (type.includes('cat')) return 'Categories'
-  if (type.includes('point')) return 'Points'
-  // Capitalize first letter
-  return scoringType.charAt(0).toUpperCase() + scoringType.slice(1)
+  if (type.includes('categor')) return 'H2H Categories'
+  if (type.includes('point')) return 'H2H Points'
+  
+  // Default based on sport
+  const sport = league?.sport || ''
+  if (sport === 'baseball') return 'H2H Categories'
+  
+  return 'H2H Points'
 }
 
 // Get leagues by sport, sorted by scoring type
@@ -856,8 +868,8 @@ function getLeaguesBySport(sport: string) {
   
   // Sort by scoring type to group similar league types together
   return leagues.sort((a, b) => {
-    const typeA = formatScoringType(a.scoring_type)
-    const typeB = formatScoringType(b.scoring_type)
+    const typeA = formatScoringType(a)
+    const typeB = formatScoringType(b)
     return typeA.localeCompare(typeB)
   })
 }

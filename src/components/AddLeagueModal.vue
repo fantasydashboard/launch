@@ -215,9 +215,7 @@
                   <div class="flex-1 min-w-0">
                     <div class="font-semibold text-dark-text truncate">{{ league.name }}</div>
                     <div class="text-xs text-dark-textMuted">
-                      {{ league.num_teams }} teams • 
-                      <span v-if="league.seasons_count > 1">{{ league.seasons_count }} seasons</span>
-                      <span v-else>{{ league.season }}</span>
+                      {{ formatScoringType(league, 'football') }} • {{ league.num_teams }} teams
                     </div>
                   </div>
                   <svg class="w-5 h-5 text-dark-textMuted" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -245,9 +243,7 @@
                   <div class="flex-1 min-w-0">
                     <div class="font-semibold text-dark-text truncate">{{ league.name }}</div>
                     <div class="text-xs text-dark-textMuted">
-                      {{ league.num_teams }} teams • 
-                      <span v-if="league.seasons_count > 1">{{ league.seasons_count }} seasons</span>
-                      <span v-else>{{ league.season }}</span>
+                      {{ formatScoringType(league, 'baseball') }} • {{ league.num_teams }} teams
                     </div>
                   </div>
                   <svg class="w-5 h-5 text-dark-textMuted" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -275,9 +271,7 @@
                   <div class="flex-1 min-w-0">
                     <div class="font-semibold text-dark-text truncate">{{ league.name }}</div>
                     <div class="text-xs text-dark-textMuted">
-                      {{ league.num_teams }} teams • 
-                      <span v-if="league.seasons_count > 1">{{ league.seasons_count }} seasons</span>
-                      <span v-else>{{ league.season }}</span>
+                      {{ formatScoringType(league, 'basketball') }} • {{ league.num_teams }} teams
                     </div>
                   </div>
                   <svg class="w-5 h-5 text-dark-textMuted" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -305,9 +299,7 @@
                   <div class="flex-1 min-w-0">
                     <div class="font-semibold text-dark-text truncate">{{ league.name }}</div>
                     <div class="text-xs text-dark-textMuted">
-                      {{ league.num_teams }} teams • 
-                      <span v-if="league.seasons_count > 1">{{ league.seasons_count }} seasons</span>
-                      <span v-else>{{ league.season }}</span>
+                      {{ formatScoringType(league, 'hockey') }} • {{ league.num_teams }} teams
                     </div>
                   </div>
                   <svg class="w-5 h-5 text-dark-textMuted" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -488,7 +480,7 @@
                 <div class="flex-1 min-w-0">
                   <div class="font-semibold text-dark-text truncate">{{ league.name }}</div>
                   <div class="text-xs text-dark-textMuted">
-                    {{ league.total_rosters }} teams • {{ league.season }} Season
+                    H2H Points • {{ league.total_rosters }} teams
                   </div>
                 </div>
                 <svg class="w-5 h-5 text-dark-textMuted" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -535,6 +527,7 @@ interface GroupedYahooLeague {
   seasons_count: number
   all_seasons: Array<{ league_key: string; season: string }>
   sport?: Sport
+  scoring_type?: string
 }
 
 interface EspnLeagueResult {
@@ -627,6 +620,33 @@ const availableSeasons = computed(() => {
   return years
 })
 
+// Format scoring type for display
+function formatScoringType(league: any, sport?: string): string {
+  const scoringType = league?.scoring_type || league?.scoringType || ''
+  const type = scoringType.toLowerCase()
+  
+  // Handle ESPN-style explicit types (H2H_CATEGORY, H2H_POINTS, ROTO, TOTAL_POINTS)
+  if (type === 'h2h_category' || type === 'h2h category') return 'H2H Categories'
+  if (type === 'h2h_points' || type === 'h2h points') return 'H2H Points'
+  if (type === 'total_points' || type === 'total points') return 'H2H Points'
+  if (type === 'roto' || type === 'rotisserie') return 'Rotisserie'
+  
+  // Handle Yahoo-style types
+  if (type === 'headpoint' || type === 'head_point') return 'H2H Points'
+  if (type === 'head' || type === 'headone' || type === 'headcategory' || type === 'head_category') return 'H2H Categories'
+  if (type === 'point' || type === 'points') return 'H2H Points'
+  
+  // Check if type contains keywords
+  if (type.includes('roto')) return 'Rotisserie'
+  if (type.includes('categor')) return 'H2H Categories'
+  if (type.includes('point')) return 'H2H Points'
+  
+  // Default based on sport
+  if (sport === 'baseball') return 'H2H Categories'
+  
+  return 'H2H Points'
+}
+
 // Group leagues by name for each sport
 function groupLeagues(leagues: any[]): GroupedYahooLeague[] {
   const leaguesByName = new Map<string, any[]>()
@@ -658,7 +678,8 @@ function groupLeagues(leagues: any[]): GroupedYahooLeague[] {
       all_seasons: seasons.map(s => ({ 
         league_key: s.league_key, 
         season: s.season 
-      }))
+      })),
+      scoring_type: mostRecent.scoring_type
     })
   }
   
