@@ -204,6 +204,17 @@
                   <div class="font-medium text-dark-text text-sm truncate">{{ displayName }}</div>
                   <div class="text-xs text-dark-textMuted truncate">{{ authStore.user?.email }}</div>
                 </div>
+                <router-link
+                  to="/settings"
+                  @click="showUserMenu = false"
+                  class="w-full flex items-center gap-2 px-3 py-2.5 text-dark-text hover:bg-dark-border/30 transition-colors text-sm"
+                >
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                  </svg>
+                  <span>Settings</span>
+                </router-link>
                 <button
                   @click="handleSignOut; showUserMenu = false"
                   class="w-full flex items-center gap-2 px-3 py-2.5 text-red-400 hover:bg-red-500/10 transition-colors text-sm"
@@ -417,24 +428,152 @@
               
               <!-- League & User controls when scrolled (since top header is hidden) -->
               <div v-if="isScrolled" class="ml-4 flex items-center gap-2">
-                <!-- Compact League Selector -->
-                <button
-                  @click="showLeagueDropdown = !showLeagueDropdown"
-                  class="flex items-center gap-2 px-3 py-1.5 rounded-full bg-black/20 text-white text-xs font-medium hover:bg-black/30 transition-colors"
-                >
-                  <span class="truncate max-w-[100px]">{{ leagueStore.currentLeague?.name || 'Demo' }}</span>
-                  <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
-                  </svg>
-                </button>
+                <!-- Compact League Selector with Dropdown -->
+                <div class="relative" ref="scrolledLeagueDropdownRef">
+                  <button
+                    @click="showLeagueDropdown = !showLeagueDropdown"
+                    class="flex items-center gap-2 px-3 py-1.5 rounded-full bg-black/20 text-white text-xs font-medium hover:bg-black/30 transition-colors"
+                  >
+                    <img 
+                      :src="leagueStore.activePlatform === 'yahoo' ? '/yahoo-fantasy.svg' : leagueStore.activePlatform === 'espn' ? '/espn-logo.svg' : '/sleeper.svg'" 
+                      :alt="leagueStore.activePlatform"
+                      class="w-4 h-4 rounded flex-shrink-0"
+                    />
+                    <span class="truncate max-w-[100px]">{{ leagueStore.currentLeague?.name || 'Demo' }}</span>
+                    <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                    </svg>
+                  </button>
+                  
+                  <!-- Scrolled League Dropdown Menu -->
+                  <div 
+                    v-if="showLeagueDropdown"
+                    class="absolute top-full right-0 mt-2 w-72 bg-dark-card border border-dark-border rounded-xl shadow-xl z-[60] overflow-hidden"
+                  >
+                    <!-- All Leagues grouped by sport -->
+                    <div v-if="leagueStore.allLeagues && leagueStore.allLeagues.length > 0" class="max-h-80 overflow-y-auto">
+                      <template v-for="(sport, sportIndex) in sportOrder" :key="'scrolled-' + sport">
+                        <template v-if="getLeaguesBySport(sport).length > 0">
+                          <div v-if="sportIndex > 0 && hasPreviousSportLeagues(sportIndex)" class="border-t border-dark-border"></div>
+                          <div class="p-2">
+                            <div class="text-xs text-dark-textMuted uppercase tracking-wider px-2 py-1 flex items-center gap-2">
+                              <span>{{ getSportEmoji(sport) }}</span>
+                              <span>{{ sport }}</span>
+                            </div>
+                            <div
+                              v-for="league in getLeaguesBySport(sport)"
+                              :key="'scrolled-league-' + league.league_id"
+                              @click="selectLeague(league.league_id)"
+                              :class="[
+                                'flex items-center gap-3 px-3 py-2.5 rounded-lg cursor-pointer transition-colors',
+                                leagueStore.activeLeagueId === league.league_id
+                                  ? 'bg-primary/10 border border-primary/30' 
+                                  : 'hover:bg-dark-border/30'
+                              ]"
+                            >
+                              <img 
+                                :src="league.platform === 'yahoo' ? '/yahoo-fantasy.svg' : league.platform === 'espn' ? '/espn-logo.svg' : '/sleeper.svg'" 
+                                :alt="league.platform"
+                                class="w-8 h-8 rounded-lg flex-shrink-0"
+                              />
+                              <div class="flex-1 min-w-0">
+                                <div class="flex items-center gap-2">
+                                  <span class="font-medium text-dark-text text-sm truncate">{{ league.league_name || league.name }}</span>
+                                  <span 
+                                    v-if="hasLeaguePass(league)" 
+                                    class="px-1.5 py-0.5 text-[10px] font-bold bg-gradient-to-r from-yellow-500 to-orange-500 text-gray-900 rounded"
+                                  >
+                                    PASS
+                                  </span>
+                                </div>
+                                <div class="text-xs text-dark-textMuted">
+                                  {{ league.season }} · {{ league.num_teams || league.total_rosters }} teams
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        </template>
+                      </template>
+                      
+                      <!-- Add League -->
+                      <div class="border-t border-dark-border p-2">
+                        <button
+                          @click="showAddLeagueModal = true; showLeagueDropdown = false"
+                          class="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-primary/10 transition-colors"
+                        >
+                          <div class="w-8 h-8 rounded-lg bg-primary/20 flex items-center justify-center">
+                            <svg class="w-4 h-4 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                            </svg>
+                          </div>
+                          <div class="text-left">
+                            <div class="font-medium text-primary text-sm">Add League</div>
+                            <div class="text-xs text-dark-textMuted">Connect Sleeper, Yahoo, or ESPN</div>
+                          </div>
+                        </button>
+                      </div>
+                    </div>
+                    
+                    <!-- No leagues -->
+                    <div v-else class="p-4">
+                      <div class="text-center mb-4">
+                        <div class="text-4xl mb-2">🏆</div>
+                        <div class="text-dark-text font-medium">No Leagues Connected</div>
+                        <div class="text-xs text-dark-textMuted">Add your first league to get started</div>
+                      </div>
+                      <button
+                        @click="showAddLeagueModal = true; showLeagueDropdown = false"
+                        class="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-lg bg-primary hover:bg-primary/90 transition-colors"
+                      >
+                        <svg class="w-5 h-5 text-gray-900" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                        </svg>
+                        <span class="font-semibold text-gray-900">Add League</span>
+                      </button>
+                    </div>
+                  </div>
+                </div>
                 
-                <!-- Compact User -->
-                <button 
-                  @click="showUserMenu = !showUserMenu"
-                  class="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center hover:bg-white/30 transition-colors"
-                >
-                  <span class="text-xs font-bold text-white">{{ userInitials }}</span>
-                </button>
+                <!-- Compact User with Dropdown -->
+                <div class="relative" data-user-menu>
+                  <button 
+                    @click="showUserMenu = !showUserMenu"
+                    class="w-8 h-8 rounded-full bg-gradient-to-br from-primary to-cyan-500 flex items-center justify-center hover:opacity-90 transition-opacity"
+                  >
+                    <span class="text-xs font-bold text-gray-900">{{ userInitials }}</span>
+                  </button>
+                  
+                  <!-- Scrolled User Dropdown -->
+                  <div 
+                    v-if="showUserMenu"
+                    class="absolute top-full right-0 mt-2 w-48 bg-dark-card border border-dark-border rounded-xl shadow-xl z-[60] overflow-hidden"
+                  >
+                    <div class="p-3 border-b border-dark-border">
+                      <div class="font-medium text-dark-text text-sm truncate">{{ displayName }}</div>
+                      <div class="text-xs text-dark-textMuted truncate">{{ authStore.user?.email }}</div>
+                    </div>
+                    <router-link
+                      to="/settings"
+                      @click="showUserMenu = false"
+                      class="w-full flex items-center gap-2 px-3 py-2.5 text-dark-text hover:bg-dark-border/30 transition-colors text-sm"
+                    >
+                      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                      </svg>
+                      <span>Settings</span>
+                    </router-link>
+                    <button
+                      @click="handleSignOut; showUserMenu = false"
+                      class="w-full flex items-center gap-2 px-3 py-2.5 text-red-400 hover:bg-red-500/10 transition-colors text-sm"
+                    >
+                      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                      </svg>
+                      <span>Sign Out</span>
+                    </button>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
@@ -634,6 +773,7 @@ const showAddLeagueModal = ref(false)
 const showMobileMenu = ref(false)
 const leagueDropdownRef = ref<HTMLElement | null>(null)
 const mobileLeagueDropdownRef = ref<HTMLElement | null>(null)
+const scrolledLeagueDropdownRef = ref<HTMLElement | null>(null)
 const leagueToRemove = ref<any>(null)
 const isScrolled = ref(false)
 
@@ -853,11 +993,12 @@ function handleScroll() {
 function handleClickOutside(event: MouseEvent) {
   const target = event.target as HTMLElement
   
-  // Check both desktop and mobile league dropdowns
+  // Check all league dropdowns (desktop, mobile, and scrolled)
   const isInsideDesktopDropdown = leagueDropdownRef.value && leagueDropdownRef.value.contains(target)
   const isInsideMobileDropdown = mobileLeagueDropdownRef.value && mobileLeagueDropdownRef.value.contains(target)
+  const isInsideScrolledDropdown = scrolledLeagueDropdownRef.value && scrolledLeagueDropdownRef.value.contains(target)
   
-  if (!isInsideDesktopDropdown && !isInsideMobileDropdown) {
+  if (!isInsideDesktopDropdown && !isInsideMobileDropdown && !isInsideScrolledDropdown) {
     showLeagueDropdown.value = false
   }
   
