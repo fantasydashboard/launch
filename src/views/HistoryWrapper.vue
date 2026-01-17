@@ -1,55 +1,66 @@
 <template>
-  <!-- Yahoo/ESPN Baseball H2H Categories -->
-  <YahooCategoryHistoryView v-if="isCategoryBaseball" />
+  <!-- Sleeper leagues -->
+  <SleeperHistory v-if="isSleeper" />
   
-  <!-- Yahoo/ESPN Baseball Points -->
-  <YahooBaseballHistoryView v-else-if="isBaseball" />
+  <!-- Yahoo/ESPN H2H Category leagues (any sport) -->
+  <CategoryHistory v-else-if="isCategoryLeague" />
   
-  <!-- Sleeper Football (default) -->
-  <HistoryView v-else />
+  <!-- Yahoo/ESPN Points leagues (any sport) -->
+  <PointsHistory v-else />
 </template>
 
 <script setup lang="ts">
 import { computed, defineAsyncComponent } from 'vue'
 import { useLeagueStore } from '@/stores/league'
-import { useSportStore } from '@/stores/sport'
 
 const leagueStore = useLeagueStore()
-const sportStore = useSportStore()
 
 // Lazy load components
-const YahooCategoryHistoryView = defineAsyncComponent(() => 
-  import('@/views/YahooCategoryHistoryView.vue')
-)
-
-const YahooBaseballHistoryView = defineAsyncComponent(() => 
-  import('@/views/YahooBaseballHistoryView.vue')
-)
-
-const HistoryView = defineAsyncComponent(() => 
+const SleeperHistory = defineAsyncComponent(() => 
   import('@/views/HistoryView.vue')
 )
 
-// Check for Yahoo or ESPN
-const isYahooOrEspn = computed(() => 
-  leagueStore.activePlatform === 'yahoo' || leagueStore.activePlatform === 'espn'
+const CategoryHistory = defineAsyncComponent(() => 
+  import('@/views/YahooCategoryHistoryView.vue')
 )
 
-const isBaseball = computed(() => 
-  isYahooOrEspn.value && sportStore.activeSport === 'baseball'
+const PointsHistory = defineAsyncComponent(() => 
+  import('@/views/YahooBaseballHistoryView.vue')
 )
 
-// Check if it's a H2H Category league
-const isCategoryBaseball = computed(() => {
-  if (!isBaseball.value) return false
+// Check if it's a Sleeper league
+const isSleeper = computed(() => 
+  leagueStore.activePlatform === 'sleeper'
+)
+
+// Detect if it's a category league
+const isCategoryLeague = computed(() => {
+  if (isSleeper.value) return false
   
+  // Check yahooLeague
   const league = leagueStore.yahooLeague
   if (Array.isArray(league) && league[0]) {
     const st = (league[0].scoring_type || '').toLowerCase()
-    return st === 'head' || st.includes('category') || st === 'headcategory'
+    if (st === 'head' || st.includes('category') || st === 'headcategory' || st === 'h2h_category') {
+      return true
+    }
   }
   
+  // Check currentLeague
   const st = (leagueStore.currentLeague?.scoring_type || '').toLowerCase()
-  return st === 'head' || st.includes('category') || st === 'headcategory'
+  if (st === 'head' || st.includes('category') || st === 'headcategory' || st === 'h2h_category') {
+    return true
+  }
+  
+  // Check saved leagues
+  const saved = leagueStore.savedLeagues.find(l => l.league_id === leagueStore.activeLeagueId)
+  if (saved) {
+    const savedSt = (saved.scoring_type || '').toLowerCase()
+    if (savedSt === 'head' || savedSt.includes('category') || savedSt === 'headcategory' || savedSt === 'h2h_category') {
+      return true
+    }
+  }
+  
+  return false
 })
 </script>

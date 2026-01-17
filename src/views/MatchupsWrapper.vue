@@ -1,57 +1,64 @@
 <template>
-  <!-- Yahoo/ESPN Baseball H2H Categories -->
-  <YahooCategoryMatchups v-if="isCategoryBaseball" />
+  <!-- Sleeper leagues (football only for now) -->
+  <SleeperMatchups v-if="isSleeper" />
   
-  <!-- Yahoo/ESPN Baseball Points -->
-  <YahooBaseballMatchups v-else-if="isBaseball" />
+  <!-- Yahoo/ESPN H2H Category leagues (any sport) -->
+  <CategoryMatchups v-else-if="isCategoryLeague" />
   
-  <!-- Sleeper Football (default) -->
-  <SleeperMatchups v-else />
+  <!-- Yahoo/ESPN Points leagues (any sport) -->
+  <PointsMatchups v-else />
 </template>
 
 <script setup lang="ts">
 import { computed, defineAsyncComponent } from 'vue'
 import { useLeagueStore } from '@/stores/league'
-import { useSportStore } from '@/stores/sport'
 
 const leagueStore = useLeagueStore()
-const sportStore = useSportStore()
 
 // Lazy load components
-const YahooCategoryMatchups = defineAsyncComponent(() => 
-  import('@/views/YahooCategoryMatchupsView.vue')
-)
-
-const YahooBaseballMatchups = defineAsyncComponent(() => 
-  import('@/views/YahooBaseballMatchupsView.vue')
-)
-
 const SleeperMatchups = defineAsyncComponent(() => 
   import('@/views/MatchupsView.vue')
 )
 
-// Check for Yahoo or ESPN
-const isYahooOrEspn = computed(() => 
-  leagueStore.activePlatform === 'yahoo' || leagueStore.activePlatform === 'espn'
+const CategoryMatchups = defineAsyncComponent(() => 
+  import('@/views/YahooCategoryMatchupsView.vue')
 )
 
-const isBaseball = computed(() => 
-  isYahooOrEspn.value && sportStore.activeSport === 'baseball'
+const PointsMatchups = defineAsyncComponent(() => 
+  import('@/views/YahooBaseballMatchupsView.vue')
 )
 
-// Check if it's a H2H Category league
-const isCategoryBaseball = computed(() => {
-  if (!isBaseball.value) return false
-  
-  // Check yahooLeague (works for both Yahoo and ESPN since we map ESPN to this format)
+// Check if it's a Sleeper league
+const isSleeper = computed(() => 
+  leagueStore.activePlatform === 'sleeper'
+)
+
+// Detect if it's a category league based on scoring_type
+const isCategoryLeague = computed(() => {
+  // Check yahooLeague first (works for both Yahoo and ESPN)
   const league = leagueStore.yahooLeague
   if (Array.isArray(league) && league[0]) {
     const st = (league[0].scoring_type || '').toLowerCase()
-    return st === 'head' || st.includes('category') || st === 'headcategory'
+    if (st === 'head' || st.includes('category') || st === 'headcategory' || st === 'h2h_category') {
+      return true
+    }
   }
   
-  // Fallback to currentLeague
+  // Check currentLeague
   const st = (leagueStore.currentLeague?.scoring_type || '').toLowerCase()
-  return st === 'head' || st.includes('category') || st === 'headcategory'
+  if (st === 'head' || st.includes('category') || st === 'headcategory' || st === 'h2h_category') {
+    return true
+  }
+  
+  // Check saved leagues
+  const saved = leagueStore.savedLeagues.find(l => l.league_id === leagueStore.activeLeagueId)
+  if (saved) {
+    const savedSt = (saved.scoring_type || '').toLowerCase()
+    if (savedSt === 'head' || savedSt.includes('category') || savedSt === 'headcategory' || savedSt === 'h2h_category') {
+      return true
+    }
+  }
+  
+  return false
 })
 </script>
