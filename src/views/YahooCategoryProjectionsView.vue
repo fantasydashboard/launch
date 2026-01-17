@@ -2061,6 +2061,18 @@
         </div>
       </div>
     </div>
+
+    <!-- Platform Badge -->
+    <div class="flex justify-center mt-8">
+      <div v-if="isEspn" class="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-[#5b8def]/10 border border-[#5b8def]/30">
+        <img src="/espn-logo.svg" alt="ESPN" class="w-5 h-5" />
+        <span class="text-sm text-[#5b8def]">ESPN Fantasy Baseball • H2H Categories</span>
+      </div>
+      <div v-else class="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-purple-600/10 border border-purple-600/30">
+        <img src="/yahoo-fantasy.svg" alt="Yahoo" class="w-5 h-5" />
+        <span class="text-sm text-purple-300">Yahoo Fantasy Baseball • H2H Categories</span>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -2068,11 +2080,25 @@
 import { ref, computed, onMounted, watch } from 'vue'
 import { useLeagueStore } from '@/stores/league'
 import { yahooService } from '@/services/yahoo'
+import { espnService } from '@/services/espn'
 import { useFeatureAccess } from '@/composables/useFeatureAccess'
 import SimulatedDataBanner from '@/components/SimulatedDataBanner.vue'
 
 const leagueStore = useLeagueStore()
 const { hasPremiumAccess } = useFeatureAccess()
+
+// Platform detection
+const isEspn = computed(() => leagueStore.activePlatform === 'espn')
+
+// Parse ESPN league key
+function parseEspnLeagueKey(leagueKey: string): { leagueId: string; season: number; sport: string } {
+  const parts = leagueKey.split('_')
+  return {
+    sport: parts[1] || 'baseball',
+    leagueId: parts[2] || '',
+    season: parseInt(parts[3]) || new Date().getFullYear()
+  }
+}
 
 const isLoading = ref(true)
 const loadingMessage = ref('Loading...')
@@ -3059,6 +3085,173 @@ async function loadProjections() {
   }
 }
 
+// ESPN version of loadProjections
+async function loadEspnProjections() {
+  isLoading.value = true
+  loadingMessage.value = 'Loading ESPN league settings...'
+  try {
+    const leagueKey = leagueStore.activeLeagueId
+    if (!leagueKey) { loadingMessage.value = 'No league selected'; return }
+    
+    const { leagueId, season, sport } = parseEspnLeagueKey(leagueKey)
+    console.log('[ESPN Projections] Loading league:', leagueId, 'season:', season)
+    
+    // Load scoring settings
+    const scoringSettings = await espnService.getScoringSettings(sport as any, leagueId, season)
+    if (scoringSettings?.scoringItems) {
+      // ESPN stat ID to display name mapping
+      const espnStatNames: Record<number, { name: string; display: string; isHitting: boolean }> = {
+        // Hitting
+        0: { name: 'At Bats', display: 'AB', isHitting: true },
+        1: { name: 'Hits', display: 'H', isHitting: true },
+        2: { name: 'Batting Average', display: 'AVG', isHitting: true },
+        3: { name: 'Home Runs', display: 'HR', isHitting: true },
+        4: { name: 'Runs', display: 'R', isHitting: true },
+        5: { name: 'Runs Batted In', display: 'RBI', isHitting: true },
+        6: { name: 'Stolen Bases', display: 'SB', isHitting: true },
+        7: { name: 'Walks', display: 'BB', isHitting: true },
+        8: { name: 'Strikeouts', display: 'K', isHitting: true },
+        9: { name: 'Doubles', display: '2B', isHitting: true },
+        10: { name: 'Triples', display: '3B', isHitting: true },
+        11: { name: 'Total Bases', display: 'TB', isHitting: true },
+        12: { name: 'On Base Percentage', display: 'OBP', isHitting: true },
+        13: { name: 'Slugging Percentage', display: 'SLG', isHitting: true },
+        14: { name: 'On Base Plus Slugging', display: 'OPS', isHitting: true },
+        // Pitching
+        32: { name: 'Wins', display: 'W', isHitting: false },
+        33: { name: 'Losses', display: 'L', isHitting: false },
+        34: { name: 'Saves', display: 'SV', isHitting: false },
+        35: { name: 'Holds', display: 'HD', isHitting: false },
+        36: { name: 'Earned Run Average', display: 'ERA', isHitting: false },
+        37: { name: 'WHIP', display: 'WHIP', isHitting: false },
+        38: { name: 'Innings Pitched', display: 'IP', isHitting: false },
+        39: { name: 'Strikeouts', display: 'K', isHitting: false },
+        40: { name: 'Quality Starts', display: 'QS', isHitting: false },
+        41: { name: 'Blown Saves', display: 'BS', isHitting: false }
+      }
+      
+      statCategories.value = scoringSettings.scoringItems.map((item: any) => {
+        const statInfo = espnStatNames[item.statId] || { name: `Stat ${item.statId}`, display: `S${item.statId}`, isHitting: item.statId < 20 }
+        return {
+          stat_id: item.statId.toString(),
+          name: statInfo.name,
+          display_name: statInfo.display,
+          is_only_display_stat: false,
+          isHitting: statInfo.isHitting
+        }
+      })
+      
+      console.log('[ESPN Projections] Loaded categories:', statCategories.value.map(c => c.display_name))
+      
+      if (displayCategories.value.length > 0 && !selectedCategory.value) {
+        selectedCategory.value = displayCategories.value[0].stat_id
+      }
+    }
+    
+    loadingMessage.value = 'Loading teams...'
+    const teams = await espnService.getTeamsWithRosters(sport as any, leagueId, season)
+    
+    // Transform ESPN teams to our format
+    teamsData.value = teams.map((team: any) => ({
+      team_key: `espn_${leagueId}_${season}_${team.id}`,
+      team_id: team.id.toString(),
+      name: team.name,
+      logo_url: team.logo || `https://ui-avatars.com/api/?name=${encodeURIComponent(team.name)}&background=random&color=fff&size=64`,
+      is_my_team: team.id === leagueStore.currentLeague?.myTeamId,
+      wins: team.wins || 0,
+      losses: team.losses || 0,
+      ties: team.ties || 0
+    }))
+    
+    console.log('[ESPN Projections] Teams loaded:', teamsData.value.length)
+    
+    // Find my team
+    const myTeam = teamsData.value.find((t: any) => t.is_my_team)
+    myTeamKey.value = myTeam?.team_key || teamsData.value[0]?.team_key || null
+    console.log('[ESPN Projections] My team:', myTeam?.name, 'Key:', myTeamKey.value)
+    
+    loadingMessage.value = 'Loading player data...'
+    
+    // Get all rostered players from teams with rosters
+    const allRosteredPlayers: any[] = []
+    for (const team of teams) {
+      const roster = team.roster || []
+      for (const entry of roster) {
+        const player = entry.playerPoolEntry?.player || entry.player || entry
+        if (player) {
+          allRosteredPlayers.push({
+            player_key: `espn_player_${player.id}`,
+            player_id: player.id,
+            full_name: player.fullName || player.name || 'Unknown',
+            position: getEspnPositionAbbrev(player.defaultPositionId),
+            mlb_team: getEspnTeamAbbrev(player.proTeamId),
+            headshot: player.id ? `https://a.espncdn.com/combiner/i?img=/i/headshots/mlb/players/full/${player.id}.png&w=96&h=70&cb=1` : '',
+            fantasy_team: team.name,
+            fantasy_team_key: `espn_${leagueId}_${season}_${team.id}`,
+            stats: transformEspnPlayerStats(player.stats),
+            total_points: 0
+          })
+        }
+      }
+    }
+    
+    console.log('[ESPN Projections] Rostered players:', allRosteredPlayers.length)
+    
+    // Note: ESPN free agents API requires additional work - using rostered players only for now
+    const freeAgents: any[] = []
+    
+    allPlayers.value = [...allRosteredPlayers, ...freeAgents]
+    selectAllPositions()
+    
+    const pitchers = allPlayers.value.filter(p => isPitcher(p))
+    const hitters = allPlayers.value.filter(p => !isPitcher(p))
+    console.log('[ESPN Projections] Players loaded:', allPlayers.value.length, '- Pitchers:', pitchers.length, '- Hitters:', hitters.length)
+    
+    // Process teams for Teams tab
+    processTeamsData()
+    
+  } catch (error) { 
+    console.error('[ESPN Projections] Error loading:', error)
+    loadingMessage.value = 'Error loading data' 
+  } finally { 
+    isLoading.value = false 
+  }
+}
+
+// Helper functions for ESPN data transformation
+function getEspnPositionAbbrev(positionId: number): string {
+  const positions: Record<number, string> = {
+    1: 'SP', 2: 'C', 3: '1B', 4: '2B', 5: '3B', 6: 'SS', 7: 'LF', 8: 'CF', 9: 'RF',
+    10: 'DH', 11: 'RP', 12: 'P', 13: 'OF', 14: 'Util'
+  }
+  return positions[positionId] || 'Util'
+}
+
+function getEspnTeamAbbrev(teamId: number): string {
+  const teams: Record<number, string> = {
+    1: 'BAL', 2: 'BOS', 3: 'LAA', 4: 'CWS', 5: 'CLE', 6: 'DET', 7: 'KC', 8: 'MIL',
+    9: 'MIN', 10: 'NYY', 11: 'OAK', 12: 'SEA', 13: 'TEX', 14: 'TOR', 15: 'ATL',
+    16: 'CHC', 17: 'CIN', 18: 'HOU', 19: 'LAD', 20: 'WSH', 21: 'NYM', 22: 'PHI',
+    23: 'PIT', 24: 'STL', 25: 'SD', 26: 'SF', 27: 'COL', 28: 'MIA', 29: 'ARI', 30: 'TB'
+  }
+  return teams[teamId] || ''
+}
+
+function transformEspnPlayerStats(statsArray: any[]): Record<string, number> {
+  const stats: Record<string, number> = {}
+  if (!statsArray || !Array.isArray(statsArray)) return stats
+  
+  // Look for season stats (statSourceId: 0 for actuals, 1 for projections)
+  const seasonStats = statsArray.find((s: any) => s.statSourceId === 0 && s.statSplitTypeId === 0)
+  if (seasonStats?.stats) {
+    for (const [statId, value] of Object.entries(seasonStats.stats)) {
+      stats[statId] = typeof value === 'number' ? value : parseFloat(value as string) || 0
+    }
+  }
+  
+  return stats
+}
+
 // ==================== TEAMS TAB FUNCTIONS ====================
 
 // Computed: Ranked teams sorted by grade
@@ -3332,7 +3525,11 @@ function formatTeamCategoryStat(value: any, cat: any): string {
 }
 
 function refreshData() {
-  loadProjections()
+  if (isEspn.value) {
+    loadEspnProjections()
+  } else {
+    loadProjections()
+  }
 }
 
 // ==================== START/SIT TAB FUNCTIONS ====================
@@ -4931,5 +5128,25 @@ const potentialFlips = computed(() => {
 })
 
 watch(selectedCategory, () => { selectAllPositions() })
-onMounted(() => { loadSavedWeights(); loadProjections() })
+
+// Load data on mount - use appropriate loader based on platform
+onMounted(() => { 
+  loadSavedWeights()
+  if (isEspn.value) {
+    loadEspnProjections()
+  } else {
+    loadProjections()
+  }
+})
+
+// Watch for league changes
+watch(() => leagueStore.activeLeagueId, (newId, oldId) => {
+  if (newId && newId !== oldId) {
+    if (isEspn.value) {
+      loadEspnProjections()
+    } else {
+      loadProjections()
+    }
+  }
+})
 </script>
