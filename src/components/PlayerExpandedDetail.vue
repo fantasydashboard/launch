@@ -141,7 +141,7 @@
               <span>📋</span> Transaction History
             </h4>
             <div v-if="isLoadingTransactions" class="flex items-center justify-center py-4">
-              <div class="animate-spin rounded-full h-6 w-6 border-b-2 border-primary"></div>
+              <LoadingSpinner size="sm" />
             </div>
             <div v-else-if="transactionHistory.length === 0" class="text-center py-4 text-dark-textMuted text-sm">
               No transaction history available
@@ -219,6 +219,7 @@
 import { ref, computed, onMounted, watch } from 'vue'
 import { sleeperService } from '@/services/sleeper'
 import { useLeagueStore } from '@/stores/league'
+import LoadingSpinner from '@/components/LoadingSpinner.vue'
 
 const props = defineProps<{
   player: any

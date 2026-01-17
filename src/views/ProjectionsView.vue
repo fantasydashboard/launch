@@ -99,10 +99,7 @@
 
     <!-- Loading State -->
     <div v-if="isLoading" class="flex items-center justify-center py-20">
-      <div class="text-center">
-        <div class="animate-spin rounded-full h-16 w-16 border-b-4 border-primary mx-auto mb-4"></div>
-        <p class="text-dark-textMuted">{{ loadingMessage }}</p>
-      </div>
+      <LoadingSpinner size="xl" message="{{ loadingMessage }}" />
     </div>
 
     <!-- REST OF SEASON TAB -->
@@ -2006,6 +2003,7 @@ import { supabase } from '@/lib/supabase'
 import { sleeperService } from '@/services/sleeper'
 import { useFeatureAccess } from '@/composables/useFeatureAccess'
 import SimulatedDataBanner from '@/components/SimulatedDataBanner.vue'
+import LoadingSpinner from '@/components/LoadingSpinner.vue'
 
 const { hasPremiumAccess } = useFeatureAccess()
 import { 

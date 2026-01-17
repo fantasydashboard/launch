@@ -51,10 +51,7 @@
 
     <!-- Loading State -->
     <div v-if="isLoading" class="flex items-center justify-center py-20">
-      <div class="text-center">
-        <div class="animate-spin rounded-full h-16 w-16 border-b-4 border-yellow-400 mx-auto mb-4"></div>
-        <p class="text-dark-textMuted">{{ loadingMessage }}</p>
-      </div>
+      <LoadingSpinner size="xl" message="{{ loadingMessage }}" />
     </div>
 
     <!-- No Draft Data -->
@@ -1179,6 +1176,7 @@ import { useLeagueStore } from '@/stores/league'
 import { useAuthStore } from '@/stores/auth'
 import { yahooService } from '@/services/yahoo'
 import { espnService } from '@/services/espn'
+import LoadingSpinner from '@/components/LoadingSpinner.vue'
 
 const leagueStore = useLeagueStore()
 const authStore = useAuthStore()

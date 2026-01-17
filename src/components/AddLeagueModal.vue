@@ -190,7 +190,7 @@
             
             <!-- Loading -->
             <div v-if="loadingYahooLeagues" class="text-center py-8">
-              <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-500 mx-auto mb-3"></div>
+              <LoadingSpinner size="md" />
               <p class="text-sm text-dark-textMuted">Loading your Yahoo leagues...</p>
             </div>
             
@@ -523,6 +523,7 @@ import { espnService } from '@/services/espn'
 import { useAuthStore } from '@/stores/auth'
 import type { SleeperLeague } from '@/types/sleeper'
 import type { Sport } from '@/types/supabase'
+import LoadingSpinner from '@/components/LoadingSpinner.vue'
 
 interface GroupedYahooLeague {
   name: string

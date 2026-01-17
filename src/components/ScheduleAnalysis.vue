@@ -26,7 +26,7 @@
     <!-- Loading State -->
     <div v-if="isLoading" class="card">
       <div class="card-body py-12 text-center">
-        <div class="animate-spin rounded-full h-12 w-12 border-b-4 border-primary mx-auto mb-4"></div>
+        <LoadingSpinner size="lg" />
         <p class="text-dark-textMuted">{{ loadingMessage }}</p>
         <p class="text-xs text-dark-textMuted mt-2">This may take a moment as we analyze game data...</p>
       </div>
@@ -303,6 +303,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { useLeagueStore } from '@/stores/league'
+import LoadingSpinner from '@/components/LoadingSpinner.vue'
 import {
   getAdjustedDefenseRankings,
   type DefensePositionStats

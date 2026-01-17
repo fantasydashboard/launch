@@ -33,10 +33,7 @@
 
     <!-- Loading State -->
     <div v-if="isLoading" class="flex items-center justify-center py-20">
-      <div class="text-center">
-        <div class="animate-spin rounded-full h-16 w-16 border-b-4 border-yellow-400 mx-auto mb-4"></div>
-        <p class="text-dark-textMuted">Loading draft data...</p>
-      </div>
+      <LoadingSpinner size="xl" message="Loading draft data..." />
     </div>
 
     <!-- No Draft Data -->
@@ -828,6 +825,7 @@ import { ref, computed, onMounted, watch } from 'vue'
 import { useLeagueStore } from '@/stores/league'
 import { useAuthStore } from '@/stores/auth'
 import { yahooService } from '@/services/yahoo'
+import LoadingSpinner from '@/components/LoadingSpinner.vue'
 
 const leagueStore = useLeagueStore()
 const authStore = useAuthStore()

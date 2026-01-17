@@ -1,7 +1,7 @@
 <template>
   <!-- Loading state while determining scoring type -->
   <div v-if="isLoading" class="flex items-center justify-center py-20">
-    <div class="animate-spin rounded-full h-16 w-16 border-b-4 border-primary"></div>
+    <LoadingSpinner size="xl" />
   </div>
   
   <!-- Yahoo/ESPN Baseball Categories -->
@@ -19,6 +19,7 @@ import { computed, defineAsyncComponent, watch, ref, onMounted } from 'vue'
 import { useLeagueStore } from '@/stores/league'
 import { useSportStore } from '@/stores/sport'
 import { yahooService } from '@/services/yahoo'
+import LoadingSpinner from '@/components/LoadingSpinner.vue'
 
 const leagueStore = useLeagueStore()
 const sportStore = useSportStore()

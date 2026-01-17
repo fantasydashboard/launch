@@ -30,10 +30,7 @@
 
     <!-- Loading State -->
     <div v-if="isLoading" class="flex items-center justify-center py-20">
-      <div class="text-center">
-        <div class="animate-spin rounded-full h-16 w-16 border-b-4 border-yellow-400 mx-auto mb-4"></div>
-        <p class="text-dark-textMuted">Loading power rankings...</p>
-      </div>
+      <LoadingSpinner size="xl" message="Loading power rankings..." />
     </div>
 
     <template v-else-if="powerRankings.length > 0">
@@ -345,7 +342,7 @@
         </div>
         <div class="card-body p-0">
           <div v-if="isLoadingPlayers" class="text-center py-8">
-            <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-yellow-400 mx-auto mb-3"></div>
+            <LoadingSpinner size="md" />
             <p class="text-dark-textMuted">Loading player data...</p>
           </div>
           <div v-else-if="rosProjectionsAvailable" class="space-y-2 p-4">
@@ -583,7 +580,7 @@
           </div>
           <div v-else class="text-center py-8">
             <div v-if="isLoadingPlayers">
-              <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-yellow-400 mx-auto mb-3"></div>
+              <LoadingSpinner size="md" />
               <p class="text-dark-textMuted">Loading player data...</p>
             </div>
             <div v-else>
@@ -879,6 +876,7 @@ import { yahooService } from '@/services/yahoo'
 import { espnService } from '@/services/espn'
 import { useAuthStore } from '@/stores/auth'
 import html2canvas from 'html2canvas'
+import LoadingSpinner from '@/components/LoadingSpinner.vue'
 
 const leagueStore = useLeagueStore()
 const authStore = useAuthStore()

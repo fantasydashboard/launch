@@ -21,7 +21,7 @@
 
     <!-- Loading State -->
     <div v-if="isLoading" class="flex items-center justify-center py-20">
-      <div class="animate-spin rounded-full h-16 w-16 border-b-4 border-primary"></div>
+      <LoadingSpinner size="xl" />
     </div>
 
     <template v-else-if="seasonData">
@@ -349,6 +349,7 @@ import { useLeagueStore } from '@/stores/league'
 import { sleeperService } from '@/services/sleeper'
 import { useTeamCustomizations } from '@/composables/useTeamCustomizations'
 import PlayoffPredictor from '@/components/PlayoffPredictor.vue'
+import LoadingSpinner from '@/components/LoadingSpinner.vue'
 import StandingsTable from '@/components/StandingsTable.vue'
 import type { SleeperRoster, SleeperMatchup, SleeperTransaction } from '@/types/sleeper'
 import {

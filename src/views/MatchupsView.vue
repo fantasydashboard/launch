@@ -542,7 +542,7 @@
                 "{{ matchupPreviewText }}"
               </p>
               <div v-else class="flex items-center gap-2 text-sm text-dark-textMuted">
-                <div class="animate-spin rounded-full h-4 w-4 border-b-2 border-primary"></div>
+                <LoadingSpinner size="sm" />
                 Generating preview...
               </div>
             </div>

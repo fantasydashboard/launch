@@ -545,10 +545,7 @@
 
         <!-- Loading State -->
         <div v-if="leagueStore.isLoading" class="flex items-center justify-center py-24">
-          <div class="text-center">
-            <div class="animate-spin rounded-full h-12 w-12 border-b-4 border-primary mx-auto mb-4"></div>
-            <p class="text-dark-textMuted">Loading league data...</p>
-          </div>
+          <LoadingSpinner size="lg" message="Loading league data..." />
         </div>
 
         <!-- Show router view -->
@@ -620,6 +617,7 @@ import LandingPage from '@/components/LandingPage.vue'
 import AddLeagueModal from '@/components/AddLeagueModal.vue'
 import AppFooter from '@/components/AppFooter.vue'
 import DevModePanel from '@/components/DevModePanel.vue'
+import LoadingSpinner from '@/components/LoadingSpinner.vue'
 
 const router = useRouter()
 const route = useRoute()

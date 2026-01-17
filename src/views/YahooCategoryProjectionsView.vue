@@ -1733,7 +1733,7 @@
               </select>
             </div>
             <div v-if="isLoadingChart" class="h-48 flex items-center justify-center">
-              <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-yellow-400"></div>
+              <LoadingSpinner size="md" />
             </div>
             <div v-else-if="recentPerformances.length > 0" class="space-y-4">
               <div class="h-48 relative">

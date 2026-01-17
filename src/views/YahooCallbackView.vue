@@ -1,15 +1,12 @@
 <template>
   <div class="min-h-screen flex items-center justify-center" style="background: radial-gradient(circle at top, #1c2030, #05060a 55%);">
     <div class="text-center">
-      <div v-if="!error" class="animate-spin rounded-full h-16 w-16 border-b-4 border-purple-500 mx-auto mb-4"></div>
-      <div v-else class="text-red-500 text-5xl mb-4">⚠️</div>
-      
-      <h2 class="text-xl font-semibold text-dark-text mb-2">
-        {{ error ? 'Connection Failed' : 'Connecting Yahoo...' }}
-      </h2>
-      <p class="text-dark-textMuted">
-        {{ error ? error : 'Please wait while we connect your Yahoo account.' }}
-      </p>
+      <LoadingSpinner v-if="!error" size="lg" message="Please wait while we connect your Yahoo account." />
+      <template v-else>
+        <div class="text-red-500 text-5xl mb-4">⚠️</div>
+        <h2 class="text-xl font-semibold text-dark-text mb-2">Connection Failed</h2>
+        <p class="text-dark-textMuted">{{ error }}</p>
+      </template>
       <p v-if="debugInfo" class="text-xs text-dark-textMuted mt-4 font-mono">{{ debugInfo }}</p>
       
       <button 
@@ -28,6 +25,7 @@ import { onMounted, ref } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { supabase } from '@/lib/supabase'
 import { useAuthStore } from '@/stores/auth'
+import LoadingSpinner from '@/components/LoadingSpinner.vue'
 
 const router = useRouter()
 const route = useRoute()

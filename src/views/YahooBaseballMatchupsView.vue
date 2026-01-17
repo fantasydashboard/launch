@@ -45,7 +45,7 @@
 
     <!-- Loading State -->
     <div v-if="isLoading" class="flex items-center justify-center py-20">
-      <div class="animate-spin rounded-full h-16 w-16 border-b-4 border-yellow-400"></div>
+      <LoadingSpinner size="xl" />
     </div>
 
     <template v-else-if="matchups.length > 0">
@@ -609,6 +609,7 @@ import { yahooService } from '@/services/yahoo'
 import { useAuthStore } from '@/stores/auth'
 import { matchupSnapshotsService, type MatchupSnapshot } from '@/services/matchupSnapshots'
 import html2canvas from 'html2canvas'
+import LoadingSpinner from '@/components/LoadingSpinner.vue'
 
 const leagueStore = useLeagueStore()
 const authStore = useAuthStore()

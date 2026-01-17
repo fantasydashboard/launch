@@ -73,7 +73,7 @@
     <!-- Initial Loading State (loading historical data) -->
     <div v-if="isInitialLoading" class="flex items-center justify-center py-20">
       <div class="text-center">
-        <div class="animate-spin rounded-full h-16 w-16 border-b-4 border-yellow-400 mx-auto mb-4"></div>
+        <LoadingSpinner size="xl" />
         <div class="text-lg font-semibold text-dark-text mb-2">Loading League History</div>
         <div class="text-dark-textMuted text-sm">{{ loadingMessage }}</div>
         <div class="text-xs text-dark-textMuted/70 mt-2">This may take a minute for leagues with many seasons</div>
@@ -83,7 +83,7 @@
     <!-- Comparison Loading State -->
     <div v-else-if="isLoading" class="flex items-center justify-center py-20">
       <div class="text-center">
-        <div class="animate-spin rounded-full h-16 w-16 border-b-4 border-yellow-400 mx-auto mb-4"></div>
+        <LoadingSpinner size="xl" />
         <div class="text-lg font-semibold text-dark-text mb-2">Building Comparison</div>
         <div class="text-dark-textMuted text-sm">Analyzing head-to-head matchups...</div>
       </div>
@@ -368,6 +368,7 @@ import { espnService } from '@/services/espn'
 import ApexCharts from 'apexcharts'
 import { useFeatureAccess } from '@/composables/useFeatureAccess'
 import SimulatedDataBanner from '@/components/SimulatedDataBanner.vue'
+import LoadingSpinner from '@/components/LoadingSpinner.vue'
 
 const leagueStore = useLeagueStore()
 const authStore = useAuthStore()

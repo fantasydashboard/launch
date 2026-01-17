@@ -1,14 +1,12 @@
 <template>
   <div class="min-h-screen flex items-center justify-center" style="background: radial-gradient(circle at top, #1c2030, #05060a 55%);">
     <div class="text-center">
-      <div v-if="!error" class="animate-spin rounded-full h-16 w-16 border-b-4 border-primary mx-auto mb-4"></div>
-      <div v-else class="text-red-500 text-5xl mb-4">⚠️</div>
-      <h2 class="text-xl font-semibold text-dark-text mb-2">
-        {{ error ? 'Sign In Failed' : 'Completing sign in...' }}
-      </h2>
-      <p class="text-dark-textMuted">
-        {{ error ? error : 'Please wait while we verify your account.' }}
-      </p>
+      <LoadingSpinner v-if="!error" size="lg" message="Please wait while we verify your account." />
+      <template v-else>
+        <div class="text-red-500 text-5xl mb-4">⚠️</div>
+        <h2 class="text-xl font-semibold text-dark-text mb-2">Sign In Failed</h2>
+        <p class="text-dark-textMuted">{{ error }}</p>
+      </template>
       <button 
         v-if="error"
         @click="router.replace('/')"
@@ -24,6 +22,7 @@
 import { onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
+import LoadingSpinner from '@/components/LoadingSpinner.vue'
 
 const router = useRouter()
 const authStore = useAuthStore()
