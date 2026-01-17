@@ -652,7 +652,7 @@ async function downloadComparisonImage() {
             <div style="font-size: 12px; margin-top: 2px;">
               <span style="color: #e5e7eb;">${leagueName}</span>
               <span style="color: #6b7280; margin: 0 4px;">•</span>
-              <span style="color: #facc15; font-weight: 600;">Points League</span>
+              <span style="color: #facc15; font-weight: 600;">${selectedSeason.value}</span>
             </div>
           </div>
         </div>
@@ -667,7 +667,7 @@ async function downloadComparisonImage() {
             </div>
             <div style="font-size: 11px; color: #9ca3af;">
               <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
-                <span>🏆 Championships:</span>
+                <span>Championships:</span>
                 <span style="color: #e5e7eb; font-weight: bold;">${comparisonData.value.team1.championships}</span>
               </div>
               <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
@@ -707,7 +707,7 @@ async function downloadComparisonImage() {
             </div>
             <div style="font-size: 11px; color: #9ca3af;">
               <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
-                <span>🏆 Championships:</span>
+                <span>Championships:</span>
                 <span style="color: #e5e7eb; font-weight: bold;">${comparisonData.value.team2.championships}</span>
               </div>
               <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">

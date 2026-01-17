@@ -1458,7 +1458,7 @@ async function downloadComparisonImage() {
             </div>
             <div style="font-size: 11px; color: #9ca3af;">
               <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
-                <span>🏆 Championships:</span>
+                <span>Championships:</span>
                 <span style="color: #e5e7eb; font-weight: bold;">${comparisonData.value.team1.championships}</span>
               </div>
               <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
@@ -1498,7 +1498,7 @@ async function downloadComparisonImage() {
             </div>
             <div style="font-size: 11px; color: #9ca3af;">
               <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
-                <span>🏆 Championships:</span>
+                <span>Championships:</span>
                 <span style="color: #e5e7eb; font-weight: bold;">${comparisonData.value.team2.championships}</span>
               </div>
               <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">

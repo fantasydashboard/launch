@@ -2128,6 +2128,31 @@ const showOnlyFreeAgents = ref(false)
 const expandedPlayerKey = ref<string | null>(null)
 const sortColumn = ref<string>('rank')
 const sortDirection = ref<'asc' | 'desc'>('asc')
+const currentSport = ref<string>('baseball')
+
+// Sport-specific headshot URL generation
+function getEspnHeadshotUrl(playerId: string | number, sport: string): string {
+  if (!playerId) return getDefaultHeadshot(sport)
+  // ESPN uses different paths for different sports
+  const sportPath = sport === 'hockey' ? 'nhl' : sport === 'basketball' ? 'nba' : sport === 'football' ? 'nfl' : 'mlb'
+  return `https://a.espncdn.com/combiner/i?img=/i/headshots/${sportPath}/players/full/${playerId}.png&w=96&h=70&cb=1`
+}
+
+function getDefaultHeadshot(sport?: string): string {
+  const s = sport || currentSport.value
+  if (s === 'hockey') return 'https://a.espncdn.com/combiner/i?img=/i/headshots/nophoto.png&w=96&h=70'
+  if (s === 'basketball') return 'https://a.espncdn.com/combiner/i?img=/i/headshots/nophoto.png&w=96&h=70'
+  if (s === 'football') return 'https://a.espncdn.com/combiner/i?img=/i/headshots/nophoto.png&w=96&h=70'
+  return 'https://s.yimg.com/cv/apiv2/default/mlb/mlb_default_player_v2.png'
+}
+
+function getDefaultLogo(sport?: string): string {
+  const s = sport || currentSport.value
+  if (s === 'hockey') return 'https://a.espncdn.com/combiner/i?img=/i/teamlogos/nhl/500/default.png&w=72&h=72'
+  if (s === 'basketball') return 'https://a.espncdn.com/combiner/i?img=/i/teamlogos/nba/500/default.png&w=72&h=72'
+  if (s === 'football') return 'https://a.espncdn.com/combiner/i?img=/i/teamlogos/nfl/500/default.png&w=72&h=72'
+  return 'https://s.yimg.com/cv/apiv2/default/mlb/mlb_dp_2_72.png'
+}
 
 // Ranking customization - factor-based like Power Rankings
 const showRankingSettings = ref(false)
@@ -2406,8 +2431,9 @@ const chartCategory = ref<string>('')
 const recentPerformances = ref<any[]>([])
 const isLoadingChart = ref(false)
 
-const defaultHeadshot = 'https://s.yimg.com/cv/apiv2/default/mlb/mlb_default_player_v2.png'
-const defaultLogo = 'https://s.yimg.com/cv/apiv2/default/mlb/mlb_dp_2_72.png'
+// Default images are now computed based on current sport
+const defaultHeadshot = computed(() => getDefaultHeadshot())
+const defaultLogo = computed(() => getDefaultLogo())
 
 const columnTooltips = computed(() => ({
   rank: 'Player rank in this category based on projected ROS performance',
@@ -2940,7 +2966,7 @@ function getRecentRankClass(player: any, statId: string): string {
   return 'bg-dark-border text-dark-textMuted'
 }
 
-function handleImageError(e: Event) { (e.target as HTMLImageElement).src = defaultHeadshot }
+function handleImageError(e: Event) { (e.target as HTMLImageElement).src = getDefaultHeadshot() }
 function getRowClass(player: any): string { if (isMyPlayer(player)) return 'bg-yellow-500/20 border-l-4 border-l-yellow-400'; if (isFreeAgent(player)) return 'bg-cyan-500/20 border-l-4 border-l-cyan-400'; return '' }
 function getAvatarRingClass(player: any): string { if (isMyPlayer(player)) return 'ring-yellow-400 ring-offset-2 ring-offset-dark-card'; if (isFreeAgent(player)) return 'ring-cyan-400 ring-offset-2 ring-offset-dark-card'; return 'ring-dark-border' }
 function getPlayerNameClass(player: any): string { if (isMyPlayer(player)) return 'text-yellow-400'; if (isFreeAgent(player)) return 'text-cyan-400'; return 'text-dark-text' }
@@ -3109,13 +3135,14 @@ async function loadEspnProjections() {
     if (!leagueKey) { loadingMessage.value = 'No league selected'; return }
     
     const { leagueId, season, sport } = parseEspnLeagueKey(leagueKey)
-    console.log('[ESPN Projections] Loading league:', leagueId, 'season:', season)
+    currentSport.value = sport  // Set sport for sport-specific defaults
+    console.log('[ESPN Projections] Loading league:', leagueId, 'season:', season, 'sport:', sport)
     
     // Load scoring settings
     const scoringSettings = await espnService.getScoringSettings(sport as any, leagueId, season)
     if (scoringSettings?.scoringItems) {
-      // ESPN stat ID to display name mapping
-      const espnStatNames: Record<number, { name: string; display: string; isHitting: boolean }> = {
+      // ESPN stat ID to display name mapping - baseball
+      const espnBaseballStatNames: Record<number, { name: string; display: string; isHitting: boolean }> = {
         // Hitting
         0: { name: 'At Bats', display: 'AB', isHitting: true },
         1: { name: 'Hits', display: 'H', isHitting: true },
@@ -3144,6 +3171,53 @@ async function loadEspnProjections() {
         40: { name: 'Quality Starts', display: 'QS', isHitting: false },
         41: { name: 'Blown Saves', display: 'BS', isHitting: false }
       }
+      
+      // ESPN stat ID to display name mapping - hockey
+      const espnHockeyStatNames: Record<number, { name: string; display: string; isHitting: boolean }> = {
+        0: { name: 'Goals', display: 'G', isHitting: true },
+        1: { name: 'Assists', display: 'A', isHitting: true },
+        2: { name: 'Points', display: 'PTS', isHitting: true },
+        3: { name: 'Plus/Minus', display: '+/-', isHitting: true },
+        4: { name: 'Penalty Minutes', display: 'PIM', isHitting: true },
+        5: { name: 'Powerplay Goals', display: 'PPG', isHitting: true },
+        6: { name: 'Powerplay Assists', display: 'PPA', isHitting: true },
+        7: { name: 'Powerplay Points', display: 'PPP', isHitting: true },
+        8: { name: 'Shorthanded Goals', display: 'SHG', isHitting: true },
+        9: { name: 'Shorthanded Assists', display: 'SHA', isHitting: true },
+        10: { name: 'Shorthanded Points', display: 'SHP', isHitting: true },
+        11: { name: 'Game-Winning Goals', display: 'GWG', isHitting: true },
+        12: { name: 'Shots on Goal', display: 'SOG', isHitting: true },
+        13: { name: 'Shooting Percentage', display: 'SH%', isHitting: true },
+        14: { name: 'Faceoffs Won', display: 'FOW', isHitting: true },
+        15: { name: 'Faceoffs Lost', display: 'FOL', isHitting: true },
+        16: { name: 'Hits', display: 'HIT', isHitting: true },
+        17: { name: 'Blocks', display: 'BLK', isHitting: true },
+        18: { name: 'Takeaways', display: 'TK', isHitting: true },
+        19: { name: 'Defensemen Points', display: 'DEF', isHitting: true },
+        20: { name: 'Hat Tricks', display: 'HAT', isHitting: true },
+        21: { name: 'Special Teams Goals', display: 'STG', isHitting: true },
+        22: { name: 'Special Teams Assists', display: 'STA', isHitting: true },
+        23: { name: 'Special Teams Points', display: 'STP', isHitting: true },
+        24: { name: 'Games Played', display: 'GP', isHitting: true },
+        25: { name: 'Average Time on Ice', display: 'ATOI', isHitting: true },
+        26: { name: 'Giveaways', display: 'GV', isHitting: true },
+        27: { name: 'Games Started', display: 'GS', isHitting: false },
+        28: { name: 'Wins', display: 'W', isHitting: false },
+        29: { name: 'Losses', display: 'L', isHitting: false },
+        30: { name: 'Goals Against', display: 'GA', isHitting: false },
+        31: { name: 'Goals Against Average', display: 'GAA', isHitting: false },
+        32: { name: 'Saves', display: 'SV', isHitting: false },
+        33: { name: 'Save Percentage', display: 'SV%', isHitting: false },
+        34: { name: 'Shutouts', display: 'SO', isHitting: false },
+        35: { name: 'Minutes', display: 'MIN', isHitting: false },
+        36: { name: 'Shots Against', display: 'SA', isHitting: false },
+        37: { name: 'Goalie Wins', display: 'GW', isHitting: false },
+        38: { name: 'Shots Against', display: 'SA', isHitting: false },
+        39: { name: 'Goals Saved Above Avg', display: 'GSAA', isHitting: false }
+      }
+      
+      // Select appropriate stat names based on sport
+      const espnStatNames = sport === 'hockey' ? espnHockeyStatNames : espnBaseballStatNames
       
       statCategories.value = scoringSettings.scoringItems.map((item: any) => {
         const statInfo = espnStatNames[item.statId] || { name: `Stat ${item.statId}`, display: `S${item.statId}`, isHitting: item.statId < 20 }
@@ -3246,7 +3320,7 @@ async function loadEspnProjections() {
           full_name: playerName,
           position: entry.position || getEspnPositionAbbrev(entry.positionId || entry.defaultPositionId),
           mlb_team: entry.proTeam || getEspnTeamAbbrev(entry.proTeamId),
-          headshot: playerId ? `https://a.espncdn.com/combiner/i?img=/i/headshots/mlb/players/full/${playerId}.png&w=96&h=70&cb=1` : '',
+          headshot: getEspnHeadshotUrl(playerId, sport),
           fantasy_team: team.name,
           fantasy_team_key: `espn_${leagueId}_${season}_${team.id}`,
           stats: playerStats,  // Initial stats from roster (may be empty)
@@ -3329,7 +3403,7 @@ async function loadEspnProjections() {
         full_name: player.fullName || 'Unknown',
         position: player.position || 'Util',
         mlb_team: player.proTeam || '',
-        headshot: player.playerId ? `https://a.espncdn.com/combiner/i?img=/i/headshots/mlb/players/full/${player.playerId}.png&w=96&h=70&cb=1` : '',
+        headshot: getEspnHeadshotUrl(player.playerId || player.id, sport),
         fantasy_team: null,  // Free agents have no team
         fantasy_team_key: null,  // Free agents have no team key
         stats: player.stats || {},
