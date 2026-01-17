@@ -1,8 +1,8 @@
 <template>
   <!-- Unified home for all platforms (handles points and categories, all sports) -->
-  <YahooBaseballHome />
+  <UnifiedHomeComponent />
 </template>
 
 <script setup lang="ts">
-import YahooBaseballHome from '@/components/YahooBaseballHome.vue'
+import UnifiedHomeComponent from '@/components/UnifiedHomeComponent.vue'
 </script>

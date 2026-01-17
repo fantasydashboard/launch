@@ -14,11 +14,11 @@ const leagueStore = useLeagueStore()
 
 // Lazy load components - these work for ALL platforms (Sleeper, Yahoo, ESPN)
 const CategoryMatchups = defineAsyncComponent(() => 
-  import('@/views/YahooCategoryMatchupsView.vue')
+  import('@/views/CategoryMatchupsView.vue')
 )
 
 const PointsMatchups = defineAsyncComponent(() => 
-  import('@/views/YahooBaseballMatchupsView.vue')
+  import('@/views/PointsMatchupsView.vue')
 )
 
 // Detect if it's a category league based on scoring_type

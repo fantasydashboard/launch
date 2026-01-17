@@ -20,11 +20,11 @@ const scoringType = ref<string>('')
 
 // Lazy load components - these work for ALL platforms
 const CategoryPowerRankings = defineAsyncComponent(() => 
-  import('@/views/YahooCategoryPowerRankingsView.vue')
+  import('@/views/CategoryPowerRankingsView.vue')
 )
 
 const PointsPowerRankings = defineAsyncComponent(() => 
-  import('@/views/YahooBaseballPowerRankingsView.vue')
+  import('@/views/PointsPowerRankingsView.vue')
 )
 
 // Detect if it's a category league

@@ -23,11 +23,11 @@ const detectedScoringType = ref('')
 
 // Lazy load components - these work for ALL platforms
 const CategoryCompare = defineAsyncComponent(() => 
-  import('@/views/YahooCategoryCompareView.vue')
+  import('@/views/CategoryCompareView.vue')
 )
 
 const PointsCompare = defineAsyncComponent(() => 
-  import('@/views/YahooBaseballCompareView.vue')
+  import('@/views/PointsCompareView.vue')
 )
 
 // Detect scoring type - check multiple sources

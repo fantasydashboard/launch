@@ -14,11 +14,11 @@ const leagueStore = useLeagueStore()
 
 // Lazy load components - these work for ALL platforms
 const CategoryHistory = defineAsyncComponent(() => 
-  import('@/views/YahooCategoryHistoryView.vue')
+  import('@/views/CategoryHistoryView.vue')
 )
 
 const PointsHistory = defineAsyncComponent(() => 
-  import('@/views/YahooBaseballHistoryView.vue')
+  import('@/views/PointsHistoryView.vue')
 )
 
 // Detect if it's a category league

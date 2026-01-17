@@ -14,11 +14,11 @@ const leagueStore = useLeagueStore()
 
 // Lazy load components - these work for ALL platforms
 const CategoryDraft = defineAsyncComponent(() => 
-  import('@/views/YahooCategoryDraftView.vue')
+  import('@/views/CategoryDraftView.vue')
 )
 
 const PointsDraft = defineAsyncComponent(() => 
-  import('@/views/YahooBaseballDraftView.vue')
+  import('@/views/PointsDraftView.vue')
 )
 
 // Get scoring type from multiple sources
