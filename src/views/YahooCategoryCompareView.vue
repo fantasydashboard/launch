@@ -347,12 +347,12 @@
 
     <!-- Platform Badge -->
     <div class="flex justify-center mt-8">
-      <div v-if="isEspn" class="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-red-600/10 border border-red-600/30">
-        <span class="text-sm font-bold text-red-400">ESPN</span>
-        <span class="text-sm text-red-300">ESPN Fantasy Baseball • H2H Categories</span>
+      <div v-if="isEspn" class="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-[#5b8def]/10 border border-[#5b8def]/30">
+        <img src="/espn-logo.svg" alt="ESPN" class="w-5 h-5" />
+        <span class="text-sm text-[#5b8def]">ESPN Fantasy Baseball • H2H Categories</span>
       </div>
       <div v-else class="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-purple-600/10 border border-purple-600/30">
-        <span class="text-sm font-bold text-purple-400">Y!</span>
+        <img src="/yahoo-fantasy.svg" alt="Yahoo" class="w-5 h-5" />
         <span class="text-sm text-purple-300">Yahoo Fantasy Baseball • H2H Categories</span>
       </div>
     </div>
