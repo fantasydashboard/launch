@@ -1,11 +1,8 @@
 <template>
-  <!-- Sleeper leagues -->
-  <SleeperHistory v-if="isSleeper" />
+  <!-- H2H Category leagues (any platform, any sport) -->
+  <CategoryHistory v-if="isCategoryLeague" />
   
-  <!-- Yahoo/ESPN H2H Category leagues (any sport) -->
-  <CategoryHistory v-else-if="isCategoryLeague" />
-  
-  <!-- Yahoo/ESPN Points leagues (any sport) -->
+  <!-- Points leagues (any platform, any sport) -->
   <PointsHistory v-else />
 </template>
 
@@ -15,11 +12,7 @@ import { useLeagueStore } from '@/stores/league'
 
 const leagueStore = useLeagueStore()
 
-// Lazy load components
-const SleeperHistory = defineAsyncComponent(() => 
-  import('@/views/HistoryView.vue')
-)
-
+// Lazy load components - these work for ALL platforms
 const CategoryHistory = defineAsyncComponent(() => 
   import('@/views/YahooCategoryHistoryView.vue')
 )
@@ -28,14 +21,10 @@ const PointsHistory = defineAsyncComponent(() =>
   import('@/views/YahooBaseballHistoryView.vue')
 )
 
-// Check if it's a Sleeper league
-const isSleeper = computed(() => 
-  leagueStore.activePlatform === 'sleeper'
-)
-
 // Detect if it's a category league
 const isCategoryLeague = computed(() => {
-  if (isSleeper.value) return false
+  // Sleeper is always points
+  if (leagueStore.activePlatform === 'sleeper') return false
   
   // Check yahooLeague
   const league = leagueStore.yahooLeague

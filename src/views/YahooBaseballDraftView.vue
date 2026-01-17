@@ -846,28 +846,44 @@ const isEspn = computed(() => {
   return false
 })
 
+const isSleeper = computed(() => leagueStore.activePlatform === 'sleeper')
+
 // Platform display helpers
-const platformName = computed(() => isEspn.value ? 'ESPN' : 'Yahoo!')
+const platformName = computed(() => {
+  if (isEspn.value) return 'ESPN'
+  if (isSleeper.value) return 'Sleeper'
+  return 'Yahoo!'
+})
+
+const platformLogo = computed(() => {
+  if (isEspn.value) return '/espn-logo.svg'
+  if (isSleeper.value) return '/sleeper-logo.svg'
+  return '/yahoo-fantasy.svg'
+})
 
 const platformBadgeClass = computed(() => {
-  if (isEspn.value) {
-    return 'bg-[#5b8def]/10 border-[#5b8def]/30'
-  }
+  if (isEspn.value) return 'bg-[#5b8def]/10 border-[#5b8def]/30'
+  if (isSleeper.value) return 'bg-[#01b5a5]/10 border-[#01b5a5]/30'
   return 'bg-purple-600/10 border-purple-600/30'
 })
 
 const platformTextClass = computed(() => {
-  if (isEspn.value) {
-    return 'text-[#5b8def]'
-  }
+  if (isEspn.value) return 'text-[#5b8def]'
+  if (isSleeper.value) return 'text-[#01b5a5]'
   return 'text-purple-400'
 })
 
 const platformSubTextClass = computed(() => {
-  if (isEspn.value) {
-    return 'text-[#5b8def]'
-  }
+  if (isEspn.value) return 'text-[#5b8def]'
+  if (isSleeper.value) return 'text-[#01b5a5]'
   return 'text-purple-300'
+})
+
+const sportName = computed(() => {
+  const saved = leagueStore.savedLeagues.find(l => l.league_id === leagueStore.activeLeagueId)
+  const sport = saved?.sport || 'football'
+  const names: Record<string, string> = { football: 'Football', baseball: 'Baseball', basketball: 'Basketball', hockey: 'Hockey' }
+  return names[sport] || 'Fantasy'
 })
 
 // Scoring type label for badge

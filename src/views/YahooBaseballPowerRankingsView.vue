@@ -859,11 +859,11 @@
     <div class="flex justify-center mt-8">
       <div class="inline-flex items-center gap-2 px-4 py-2 rounded-full border" :class="platformBadgeClass">
         <img 
-          :src="leagueStore.activePlatform === 'espn' ? '/espn-logo.svg' : '/yahoo-fantasy.svg'" 
+          :src="platformLogo" 
           :alt="platformName"
           class="w-5 h-5"
         />
-        <span class="text-sm" :class="platformSubTextClass">{{ leagueStore.activePlatform === 'espn' ? 'ESPN' : 'Yahoo!' }} Fantasy Baseball • {{ scoringTypeLabel }}</span>
+        <span class="text-sm" :class="platformSubTextClass">{{ platformName }} Fantasy {{ sportName }} • {{ scoringTypeLabel }}</span>
       </div>
     </div>
   </div>
@@ -883,13 +883,41 @@ const authStore = useAuthStore()
 
 const defaultAvatar = computed(() => {
   if (leagueStore.activePlatform === 'espn') return 'https://g.espncdn.com/lm-static/ffl/images/default_logos/team_0.svg'
+  if (leagueStore.activePlatform === 'sleeper') return 'https://ui-avatars.com/api/?name=S&background=01b5a5&color=fff&size=64'
   return 'https://s.yimg.com/cv/apiv2/default/mlb/mlb_1_100.png'
 })
 
 // Platform styling
-const platformName = computed(() => leagueStore.activePlatform === 'espn' ? 'ESPN' : 'Yahoo!')
-const platformBadgeClass = computed(() => leagueStore.activePlatform === 'espn' ? 'bg-[#5b8def]/10 border-[#5b8def]/30' : 'bg-purple-600/10 border-purple-600/30')
-const platformSubTextClass = computed(() => leagueStore.activePlatform === 'espn' ? 'text-[#5b8def]' : 'text-purple-300')
+const platformName = computed(() => {
+  if (leagueStore.activePlatform === 'espn') return 'ESPN'
+  if (leagueStore.activePlatform === 'sleeper') return 'Sleeper'
+  return 'Yahoo!'
+})
+
+const platformLogo = computed(() => {
+  if (leagueStore.activePlatform === 'espn') return '/espn-logo.svg'
+  if (leagueStore.activePlatform === 'sleeper') return '/sleeper-logo.svg'
+  return '/yahoo-fantasy.svg'
+})
+
+const platformBadgeClass = computed(() => {
+  if (leagueStore.activePlatform === 'espn') return 'bg-[#5b8def]/10 border-[#5b8def]/30'
+  if (leagueStore.activePlatform === 'sleeper') return 'bg-[#01b5a5]/10 border-[#01b5a5]/30'
+  return 'bg-purple-600/10 border-purple-600/30'
+})
+
+const platformSubTextClass = computed(() => {
+  if (leagueStore.activePlatform === 'espn') return 'text-[#5b8def]'
+  if (leagueStore.activePlatform === 'sleeper') return 'text-[#01b5a5]'
+  return 'text-purple-300'
+})
+
+const sportName = computed(() => {
+  const saved = leagueStore.savedLeagues.find(l => l.league_id === leagueStore.activeLeagueId)
+  const sport = saved?.sport || 'football'
+  const names: Record<string, string> = { football: 'Football', baseball: 'Baseball', basketball: 'Basketball', hockey: 'Hockey' }
+  return names[sport] || 'Fantasy'
+})
 
 // Scoring type label for badge
 const scoringTypeLabel = computed(() => {
@@ -1986,7 +2014,32 @@ async function calculatePowerRankingsForWeek(throughWeek: number): Promise<Power
   if (matchupsNeeded) {
     const leagueKey = effectiveLeagueKey.value
     
-    if (leagueStore.activePlatform === 'espn') {
+    if (leagueStore.activePlatform === 'sleeper') {
+      // Sleeper: Use historical matchups from store
+      console.log(`[Sleeper] Loading matchups for power rankings`)
+      const season = leagueStore.currentLeague?.season || new Date().getFullYear().toString()
+      
+      for (let w = 1; w <= throughWeek; w++) {
+        if (!allMatchups.value.has(w)) {
+          const sleeperMatchups = leagueStore.historicalMatchups.get(season)?.get(w) || []
+          
+          // Group by matchup_id and transform
+          const matchupMap = new Map<number, any>()
+          for (const m of sleeperMatchups) {
+            if (!matchupMap.has(m.matchup_id)) {
+              matchupMap.set(m.matchup_id, { matchup_id: m.matchup_id, week: w, teams: [] })
+            }
+            const team = teams.find(t => t.roster_id === m.roster_id)
+            matchupMap.get(m.matchup_id).teams.push({
+              team_key: `sleeper_${m.roster_id}`,
+              points: m.points || 0
+            })
+          }
+          
+          allMatchups.value.set(w, Array.from(matchupMap.values()))
+        }
+      }
+    } else if (leagueStore.activePlatform === 'espn') {
       // ESPN: Use ESPN service to load matchups
       console.log(`[ESPN] Loading matchups for power rankings, league: ${leagueKey}`)
       
