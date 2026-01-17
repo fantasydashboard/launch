@@ -476,7 +476,7 @@
           :alt="platformName"
           class="w-5 h-5"
         />
-        <span class="text-sm" :class="platformSubTextClass">{{ platformName }} Fantasy Baseball • {{ scoringTypeLabel }}</span>
+        <span class="text-sm" :class="platformSubTextClass">{{ platformName }} Fantasy {{ sportName }} • {{ scoringTypeLabel }}</span>
       </div>
     </div>
 
@@ -836,6 +836,24 @@ const platformLogo = computed(() => {
   if (leagueStore.activePlatform === 'espn') return '/espn-logo.svg'
   if (leagueStore.activePlatform === 'sleeper') return '/sleeper-logo.svg'
   return '/yahoo-fantasy.svg'
+})
+
+const sportName = computed(() => {
+  // For Sleeper, get from currentLeague.sport
+  if (leagueStore.activePlatform === 'sleeper' && leagueStore.currentLeague?.sport) {
+    const sport = leagueStore.currentLeague.sport
+    const names: Record<string, string> = { nfl: 'Football', mlb: 'Baseball', nba: 'Basketball', nhl: 'Hockey' }
+    return names[sport] || 'Fantasy'
+  }
+  
+  // Check saved leagues
+  const saved = leagueStore.savedLeagues.find(l => l.league_id === leagueStore.activeLeagueId)
+  if (saved?.sport) {
+    const names: Record<string, string> = { football: 'Football', baseball: 'Baseball', basketball: 'Basketball', hockey: 'Hockey', nfl: 'Football', mlb: 'Baseball', nba: 'Basketball', nhl: 'Hockey' }
+    return names[saved.sport] || 'Fantasy'
+  }
+  
+  return 'Fantasy'
 })
 
 const platformBadgeClass = computed(() => {
@@ -2997,18 +3015,20 @@ async function loadAllMatchups() {
   console.log(`Loading matchups for league: ${leagueKey}, platform: ${leagueStore.activePlatform}`)
   isLoadingChart.value = true
   
-  // For Sleeper, use historical matchups data (already transformed to yahoo format)
+  // For Sleeper, use REAL historical matchups data
   if (leagueStore.activePlatform === 'sleeper') {
-    console.log('[Sleeper] Loading matchups from historical data')
+    console.log('[Sleeper] Loading REAL matchups from historical data')
     const season = leagueStore.currentLeague?.season || new Date().getFullYear().toString()
     const currentWeek = leagueStore.currentLeague?.settings?.leg || 1
+    const endWeek = Math.min(currentWeek, leagueStore.currentLeague?.settings?.playoff_week_start || 14)
+    const startWeek = 1
     
     // Get current week matchups for display
-    const sleeperMatchups = leagueStore.historicalMatchups.get(season)?.get(currentWeek) || []
+    const currentWeekMatchups = leagueStore.historicalMatchups.get(season)?.get(currentWeek) || []
     
-    // Transform to display format
+    // Transform current week to display format
     const matchupMap = new Map<number, any>()
-    for (const m of sleeperMatchups) {
+    for (const m of currentWeekMatchups) {
       const matchupId = m.matchup_id
       if (!matchupMap.has(matchupId)) {
         matchupMap.set(matchupId, { matchup_id: matchupId, teams: [] })
@@ -3029,13 +3049,114 @@ async function loadAllMatchups() {
     
     displayMatchups.value = Array.from(matchupMap.values())
     
-    // Generate standings progression for chart
-    const endWeek = leagueStore.currentLeague?.settings?.playoff_week_start || 14
-    const startWeek = 1
+    // Load REAL standings progression from actual matchups
+    const standings = new Map<number, any[]>()
+    const allMatchupResults = new Map<string, Map<number, any>>()
     
-    generateStandingsProgression(startWeek, endWeek)
+    // Initialize matchup results map for each team
+    leagueStore.yahooTeams.forEach(t => {
+      allMatchupResults.set(t.team_key, new Map())
+    })
+    
+    // Track cumulative wins/losses per team
+    const cumulativeWins = new Map<string, number>()
+    const cumulativeLosses = new Map<string, number>()
+    const cumulativePoints = new Map<string, number>()
+    
+    leagueStore.yahooTeams.forEach(t => {
+      cumulativeWins.set(t.team_key, 0)
+      cumulativeLosses.set(t.team_key, 0)
+      cumulativePoints.set(t.team_key, 0)
+    })
+    
+    for (let week = startWeek; week <= endWeek; week++) {
+      chartLoadProgress.value = `Week ${week}/${endWeek}`
+      
+      const weekMatchups = leagueStore.historicalMatchups.get(season)?.get(week) || []
+      console.log(`[Sleeper] Week ${week}: ${weekMatchups.length} roster entries`)
+      
+      // Group matchups by matchup_id
+      const weekMatchupMap = new Map<number, any[]>()
+      for (const m of weekMatchups) {
+        if (!weekMatchupMap.has(m.matchup_id)) {
+          weekMatchupMap.set(m.matchup_id, [])
+        }
+        weekMatchupMap.get(m.matchup_id).push(m)
+      }
+      
+      // Process each matchup to determine winners
+      for (const [matchupId, rosters] of weekMatchupMap) {
+        if (rosters.length !== 2) continue
+        
+        const r1 = rosters[0]
+        const r2 = rosters[1]
+        const team1Key = `sleeper_${r1.roster_id}`
+        const team2Key = `sleeper_${r2.roster_id}`
+        const team1Points = r1.points || 0
+        const team2Points = r2.points || 0
+        
+        // Update cumulative points
+        cumulativePoints.set(team1Key, (cumulativePoints.get(team1Key) || 0) + team1Points)
+        cumulativePoints.set(team2Key, (cumulativePoints.get(team2Key) || 0) + team2Points)
+        
+        // Determine winner (only if points exist - game was played)
+        let team1Won = false
+        let team2Won = false
+        if (team1Points > 0 || team2Points > 0) {
+          if (team1Points > team2Points) {
+            team1Won = true
+            cumulativeWins.set(team1Key, (cumulativeWins.get(team1Key) || 0) + 1)
+            cumulativeLosses.set(team2Key, (cumulativeLosses.get(team2Key) || 0) + 1)
+          } else if (team2Points > team1Points) {
+            team2Won = true
+            cumulativeWins.set(team2Key, (cumulativeWins.get(team2Key) || 0) + 1)
+            cumulativeLosses.set(team1Key, (cumulativeLosses.get(team1Key) || 0) + 1)
+          }
+        }
+        
+        // Store matchup results for team detail view
+        const team1Results = allMatchupResults.get(team1Key)
+        const team2Results = allMatchupResults.get(team2Key)
+        
+        if (team1Results) {
+          team1Results.set(week, {
+            points: team1Points,
+            oppPoints: team2Points,
+            won: team1Won
+          })
+        }
+        if (team2Results) {
+          team2Results.set(week, {
+            points: team2Points,
+            oppPoints: team1Points,
+            won: team2Won
+          })
+        }
+      }
+      
+      // Build standings for this week
+      const weekStandings = leagueStore.yahooTeams.map(t => ({
+        team_key: t.team_key,
+        name: t.name,
+        wins: cumulativeWins.get(t.team_key) || 0,
+        losses: cumulativeLosses.get(t.team_key) || 0,
+        points_for: cumulativePoints.get(t.team_key) || 0,
+        rank: 0
+      })).sort((a, b) => {
+        // Sort by wins desc, then points_for desc
+        if (b.wins !== a.wins) return b.wins - a.wins
+        return b.points_for - a.points_for
+      })
+      
+      weekStandings.forEach((t, idx) => t.rank = idx + 1)
+      standings.set(week, weekStandings)
+    }
+    
+    weeklyStandings.value = standings
+    weeklyMatchupResults.value = allMatchupResults
+    console.log(`[Sleeper] Loaded REAL data for ${standings.size} weeks, ${allMatchupResults.size} teams`)
+    
     buildChart()
-    
     isLoadingChart.value = false
     chartLoadProgress.value = ''
     return
