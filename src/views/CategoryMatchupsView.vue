@@ -1810,8 +1810,7 @@ async function generateMatchupAnalysisImage(matchup: any, html2canvas: any) {
         <!-- Win Probability Section -->
         <div style="background: rgba(38, 42, 58, 0.4); border-radius: 12px; padding: 16px; margin-bottom: 16px; border: 1px solid rgba(250, 204, 21, 0.2);">
           <div style="text-align: center; margin-bottom: 16px;">
-            <span style="font-size: 20px;">🎲</span>
-            <span style="font-size: 18px; font-weight: 800; color: #ffffff; margin-left: 8px;">Win Probability</span>
+            <span style="font-size: 22px; font-weight: 800; color: #ffffff; text-transform: uppercase; letter-spacing: 2px;">WIN PROBABILITY</span>
           </div>
           
           <!-- Team Probabilities -->
@@ -1848,8 +1847,7 @@ async function generateMatchupAnalysisImage(matchup: any, html2canvas: any) {
         <!-- Scouting Reports -->
         <div style="background: rgba(38, 42, 58, 0.4); border-radius: 12px; padding: 16px; border: 1px solid rgba(250, 204, 21, 0.2);">
           <div style="text-align: center; margin-bottom: 12px;">
-            <span style="font-size: 20px;">🔍</span>
-            <span style="font-size: 18px; font-weight: 800; color: #ffffff; margin-left: 8px;">Scouting Reports</span>
+            <span style="font-size: 22px; font-weight: 800; color: #ffffff; text-transform: uppercase; letter-spacing: 2px;">SCOUTING REPORTS</span>
           </div>
           ${buildScoutingHtml(matchup.team1.name, team1Report, team1Color, 'rgba(6, 182, 212, 0.3)', 'rgba(6, 182, 212, 0.08)')}
           ${buildScoutingHtml(matchup.team2.name, team2Report, team2Color, 'rgba(249, 115, 22, 0.3)', 'rgba(249, 115, 22, 0.08)')}
