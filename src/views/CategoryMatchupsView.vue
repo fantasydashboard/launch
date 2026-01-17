@@ -1223,6 +1223,7 @@ async function loadCategories() {
         15: { name: 'Faceoffs Lost', display: 'FOL', isNegative: true },
         16: { name: 'Hits', display: 'HIT' },
         17: { name: 'Blocks', display: 'BLK' },
+        18: { name: 'Takeaways', display: 'TK' },
         19: { name: 'Wins', display: 'W' },
         20: { name: 'Losses', display: 'L', isNegative: true },
         21: { name: 'Goals Against', display: 'GA', isNegative: true },
@@ -1232,9 +1233,18 @@ async function loadCategories() {
         25: { name: 'Shutouts', display: 'SHO' },
         26: { name: 'Overtime Losses', display: 'OTL' },
         27: { name: 'Games Started', display: 'GS' },
+        28: { name: 'Giveaways', display: 'GV', isNegative: true },
+        29: { name: 'Avg Time on Ice', display: 'ATOI' },
+        30: { name: 'Games Played', display: 'GP' },
         31: { name: 'Hat Tricks', display: 'HAT' },
         32: { name: 'Defensemen Points', display: 'DEF' },
-        33: { name: 'Special Teams Points', display: 'STP' }
+        33: { name: 'Special Teams Points', display: 'STP' },
+        34: { name: 'Faceoff Win Pct', display: 'FO%' },
+        35: { name: 'Minutes', display: 'MIN' },
+        36: { name: 'Shots', display: 'SH' },
+        37: { name: 'Goalie Wins', display: 'GW' },
+        38: { name: 'Shots Against', display: 'SA' },
+        39: { name: 'Goals Saved Above Avg', display: 'GSAA' }
       }
       
       const espnBasketballStatNames: Record<number, { name: string; display: string; isNegative?: boolean }> = {

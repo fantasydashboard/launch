@@ -3171,8 +3171,12 @@ async function loadAllMatchups() {
     const yahooLeagueData = Array.isArray(leagueStore.yahooLeague) ? leagueStore.yahooLeague[0] : leagueStore.yahooLeague
     const endWeek = yahooLeagueData?.end_week || 25
     const startWeek = yahooLeagueData?.start_week || 1
+    const currWeek = yahooLeagueData?.current_week || currentWeek.value || 1
     
-    generateStandingsProgression(startWeek, endWeek)
+    // Only show weeks up to current week (not future weeks)
+    const chartEndWeek = isSeasonComplete.value ? endWeek : Math.min(currWeek, endWeek)
+    
+    generateStandingsProgression(startWeek, chartEndWeek)
     buildChart()
     
     isLoadingChart.value = false
@@ -3752,8 +3756,12 @@ async function loadEspnData() {
     const yahooLeagueData = Array.isArray(leagueStore.yahooLeague) ? leagueStore.yahooLeague[0] : leagueStore.yahooLeague
     const endWeek = yahooLeagueData?.end_week || 25
     const startWeek = yahooLeagueData?.start_week || 1
+    const currWeek = yahooLeagueData?.current_week || currentWeek.value || 1
     
-    generateStandingsProgression(startWeek, endWeek)
+    // Only show weeks up to current week (not future weeks)
+    const chartEndWeek = isSeasonComplete.value ? endWeek : Math.min(currWeek, endWeek)
+    
+    generateStandingsProgression(startWeek, chartEndWeek)
     buildChart()
     
     loadingStatus.value = ''
