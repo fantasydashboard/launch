@@ -819,11 +819,11 @@
     <div class="flex justify-center mt-8">
       <div class="inline-flex items-center gap-2 px-4 py-2 rounded-full border" :class="platformBadgeClass">
         <img 
-          :src="isEspn ? '/espn-logo.svg' : '/yahoo-fantasy.svg'" 
+          :src="platformLogo" 
           :alt="platformName"
           class="w-5 h-5"
         />
-        <span class="text-sm" :class="platformSubTextClass">{{ isEspn ? 'ESPN' : 'Yahoo!' }} Fantasy Baseball • {{ scoringTypeLabel }}</span>
+        <span class="text-sm" :class="platformSubTextClass">{{ platformName }} Fantasy {{ sportName }} • {{ scoringTypeLabel }}</span>
       </div>
     </div>
   </div>
