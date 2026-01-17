@@ -1559,7 +1559,7 @@ async function generateMatchupAnalysisImage(matchup: any, html2canvas: any) {
       ctx.beginPath()
       ctx.arc(32, 32, 32, 0, Math.PI * 2)
       ctx.fill()
-      ctx.fillStyle = '#dc2626'
+      ctx.fillStyle = '#facc15'
       ctx.font = 'bold 28px sans-serif'
       ctx.textAlign = 'center'
       ctx.textBaseline = 'middle'
@@ -1732,20 +1732,20 @@ async function generateMatchupAnalysisImage(matchup: any, html2canvas: any) {
   container.innerHTML = `
     <div style="background: linear-gradient(160deg, #0f1219 0%, #0a0c14 50%, #0d1117 100%); border-radius: 16px; box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5); position: relative; overflow: hidden;">
       
-      <!-- Top Red Bar with site name -->
-      <div style="background: #dc2626; padding: 10px 24px 10px 24px; text-align: center; overflow: visible;">
+      <!-- Top Yellow Bar with site name -->
+      <div style="background: #facc15; padding: 10px 24px 10px 24px; text-align: center; overflow: visible;">
         <span style="font-size: 16px; font-weight: 700; color: #0a0c14; text-transform: uppercase; letter-spacing: 3px; display: block; margin-top: -17px;">Ultimate Fantasy Dashboard</span>
       </div>
       
       <!-- HEADER - Logo on left with text next to it -->
-      <div style="display: flex; padding: 12px 24px 12px 24px; border-bottom: 1px solid rgba(220, 38, 38, 0.2); position: relative; z-index: 10;">
+      <div style="display: flex; padding: 12px 24px 12px 24px; border-bottom: 1px solid rgba(250, 204, 21, 0.2); position: relative; z-index: 10;">
         ${logoBase64 ? `<img src="${logoBase64}" style="height: 70px; width: auto; flex-shrink: 0; margin-right: 24px; display: block;" />` : ''}
         <div style="flex: 1; margin-top: -5px;">
-          <div style="font-size: 42px; font-weight: 900; color: #ffffff; text-transform: uppercase; letter-spacing: 2px; text-shadow: 0 2px 8px rgba(220, 38, 38, 0.4); line-height: 42px; display: block;">Matchup</div>
+          <div style="font-size: 42px; font-weight: 900; color: #ffffff; text-transform: uppercase; letter-spacing: 2px; text-shadow: 0 2px 8px rgba(250, 204, 21, 0.4); line-height: 42px; display: block;">Matchup</div>
           <div style="font-size: 20px; margin-top: 6px; font-weight: 600; line-height: 20px; display: block;">
             <span style="color: #e5e7eb;">${leagueName}</span>
             <span style="color: #6b7280; margin: 0 8px;">•</span>
-            <span style="color: #dc2626; font-weight: 700;">Week ${selectedWeek.value}</span>
+            <span style="color: #facc15; font-weight: 700;">Week ${selectedWeek.value}</span>
           </div>
         </div>
       </div>
@@ -1754,7 +1754,7 @@ async function generateMatchupAnalysisImage(matchup: any, html2canvas: any) {
       <div style="padding: 16px 24px 12px 24px; position: relative;">
         
         <!-- Win Probability Section -->
-        <div style="background: rgba(38, 42, 58, 0.4); border-radius: 12px; padding: 16px; margin-bottom: 16px; border: 1px solid rgba(220, 38, 38, 0.2);">
+        <div style="background: rgba(38, 42, 58, 0.4); border-radius: 12px; padding: 16px; margin-bottom: 16px; border: 1px solid rgba(250, 204, 21, 0.2);">
           <div style="text-align: center; margin-bottom: 16px;">
             <span style="font-size: 20px;">🎲</span>
             <span style="font-size: 18px; font-weight: 800; color: #ffffff; margin-left: 8px;">Win Probability</span>
@@ -1792,7 +1792,7 @@ async function generateMatchupAnalysisImage(matchup: any, html2canvas: any) {
         </div>
         
         <!-- Scouting Reports -->
-        <div style="background: rgba(38, 42, 58, 0.4); border-radius: 12px; padding: 16px; border: 1px solid rgba(220, 38, 38, 0.2);">
+        <div style="background: rgba(38, 42, 58, 0.4); border-radius: 12px; padding: 16px; border: 1px solid rgba(250, 204, 21, 0.2);">
           <div style="text-align: center; margin-bottom: 12px;">
             <span style="font-size: 20px;">🔍</span>
             <span style="font-size: 18px; font-weight: 800; color: #ffffff; margin-left: 8px;">Scouting Reports</span>
@@ -1804,7 +1804,7 @@ async function generateMatchupAnalysisImage(matchup: any, html2canvas: any) {
       
       <!-- Footer -->
       <div style="padding: 16px 24px; text-align: center; position: relative; z-index: 1;">
-        <span style="font-size: 20px; font-weight: bold; color: #dc2626; letter-spacing: -0.5px;">ultimatefantasydashboard.com</span>
+        <span style="font-size: 20px; font-weight: bold; color: #facc15; letter-spacing: -0.5px;">ultimatefantasydashboard.com</span>
       </div>
     </div>
   `
@@ -1860,7 +1860,7 @@ async function generateCategoryBreakdownImage(matchup: any, html2canvas: any) {
       ctx.beginPath()
       ctx.arc(32, 32, 32, 0, Math.PI * 2)
       ctx.fill()
-      ctx.fillStyle = '#dc2626'
+      ctx.fillStyle = '#facc15'
       ctx.font = 'bold 28px sans-serif'
       ctx.textAlign = 'center'
       ctx.textBaseline = 'middle'
@@ -1972,20 +1972,20 @@ async function generateCategoryBreakdownImage(matchup: any, html2canvas: any) {
   container.innerHTML = `
     <div style="background: linear-gradient(160deg, #0f1219 0%, #0a0c14 50%, #0d1117 100%); border-radius: 16px; box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5); position: relative; overflow: hidden;">
       
-      <!-- Top Red Bar with site name -->
-      <div style="background: #dc2626; padding: 10px 24px 10px 24px; text-align: center; overflow: visible;">
+      <!-- Top Yellow Bar with site name -->
+      <div style="background: #facc15; padding: 10px 24px 10px 24px; text-align: center; overflow: visible;">
         <span style="font-size: 16px; font-weight: 700; color: #0a0c14; text-transform: uppercase; letter-spacing: 3px; display: block; margin-top: -17px;">Ultimate Fantasy Dashboard</span>
       </div>
       
       <!-- HEADER - Logo on left with text next to it -->
-      <div style="display: flex; padding: 12px 24px 12px 24px; border-bottom: 1px solid rgba(220, 38, 38, 0.2); position: relative; z-index: 10;">
+      <div style="display: flex; padding: 12px 24px 12px 24px; border-bottom: 1px solid rgba(250, 204, 21, 0.2); position: relative; z-index: 10;">
         ${logoBase64 ? `<img src="${logoBase64}" style="height: 70px; width: auto; flex-shrink: 0; margin-right: 24px; display: block;" />` : ''}
         <div style="flex: 1; margin-top: -5px;">
-          <div style="font-size: 42px; font-weight: 900; color: #ffffff; text-transform: uppercase; letter-spacing: 2px; text-shadow: 0 2px 8px rgba(220, 38, 38, 0.4); line-height: 42px; display: block;">Matchup</div>
+          <div style="font-size: 42px; font-weight: 900; color: #ffffff; text-transform: uppercase; letter-spacing: 2px; text-shadow: 0 2px 8px rgba(250, 204, 21, 0.4); line-height: 42px; display: block;">Matchup</div>
           <div style="font-size: 20px; margin-top: 6px; font-weight: 600; line-height: 20px; display: block;">
             <span style="color: #e5e7eb;">${leagueName}</span>
             <span style="color: #6b7280; margin: 0 8px;">•</span>
-            <span style="color: #dc2626; font-weight: 700;">Week ${selectedWeek.value}</span>
+            <span style="color: #facc15; font-weight: 700;">Week ${selectedWeek.value}</span>
           </div>
         </div>
       </div>
@@ -2017,11 +2017,11 @@ async function generateCategoryBreakdownImage(matchup: any, html2canvas: any) {
         </div>
         
         <!-- Category Breakdown Table -->
-        <div style="background: rgba(38, 42, 58, 0.3); border-radius: 12px; padding: 12px; border: 1px solid rgba(220, 38, 38, 0.2);">
-          <h3 style="color: #dc2626; font-size: 14px; margin: 0 0 12px 0; text-align: center; font-weight: 700; text-transform: uppercase; letter-spacing: 1px;">Category Breakdown</h3>
+        <div style="background: rgba(38, 42, 58, 0.3); border-radius: 12px; padding: 12px; border: 1px solid rgba(250, 204, 21, 0.2);">
+          <h3 style="color: #facc15; font-size: 14px; margin: 0 0 12px 0; text-align: center; font-weight: 700; text-transform: uppercase; letter-spacing: 1px;">Category Breakdown</h3>
           <table style="width: 100%; border-collapse: collapse;">
             <thead>
-              <tr style="border-bottom: 1px solid rgba(220, 38, 38, 0.3);">
+              <tr style="border-bottom: 1px solid rgba(250, 204, 21, 0.3);">
                 <th style="padding: 6px 4px; text-align: center; color: ${team1Color}; font-size: 10px; text-transform: uppercase;">Win%</th>
                 <th style="padding: 6px 4px; text-align: center; color: ${team1Color}; font-size: 10px; text-transform: uppercase;">Stat</th>
                 <th style="padding: 6px 4px; width: 30px; text-align: center; color: ${team1Color}; font-size: 10px; text-transform: uppercase;">Adv</th>
@@ -2038,7 +2038,7 @@ async function generateCategoryBreakdownImage(matchup: any, html2canvas: any) {
         </div>
         
         <!-- Projected Final -->
-        <div style="text-align: center; margin-top: 12px; padding: 8px; background: rgba(220, 38, 38, 0.1); border-radius: 8px;">
+        <div style="text-align: center; margin-top: 12px; padding: 8px; background: rgba(250, 204, 21, 0.1); border-radius: 8px;">
           <span style="font-size: 11px; color: #6b7280; text-transform: uppercase;">Projected Final: </span>
           <span style="font-size: 14px; font-weight: 700; color: #ffffff;">${matchup.projectedTeam1Wins}-${matchup.projectedTeam2Wins}-${matchup.projectedTies}</span>
           <span style="font-size: 11px; color: #6b7280;"> • </span>
@@ -2048,7 +2048,7 @@ async function generateCategoryBreakdownImage(matchup: any, html2canvas: any) {
       
       <!-- Footer -->
       <div style="padding: 16px 24px; text-align: center; position: relative; z-index: 1;">
-        <span style="font-size: 20px; font-weight: bold; color: #dc2626; letter-spacing: -0.5px;">ultimatefantasydashboard.com</span>
+        <span style="font-size: 20px; font-weight: bold; color: #facc15; letter-spacing: -0.5px;">ultimatefantasydashboard.com</span>
       </div>
     </div>
   `

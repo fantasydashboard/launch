@@ -1927,7 +1927,7 @@ async function generateMatchupImage(matchup: any, html2canvas: any) {
       ctx.beginPath()
       ctx.arc(32, 32, 32, 0, Math.PI * 2)
       ctx.fill()
-      ctx.fillStyle = '#dc2626'
+      ctx.fillStyle = '#facc15'
       ctx.font = 'bold 28px sans-serif'
       ctx.textAlign = 'center'
       ctx.textBaseline = 'middle'
@@ -2138,27 +2138,27 @@ async function generateMatchupImage(matchup: any, html2canvas: any) {
   container.innerHTML = `
     <div style="background: linear-gradient(160deg, #0f1219 0%, #0a0c14 50%, #0d1117 100%); border-radius: 16px; box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5); position: relative; overflow: hidden;">
       
-      <!-- Top Red Bar -->
-      <div style="background: #dc2626; padding: 10px 24px; text-align: center;">
+      <!-- Top Yellow Bar -->
+      <div style="background: #facc15; padding: 10px 24px; text-align: center;">
         <span style="font-size: 16px; font-weight: 700; color: #0a0c14; text-transform: uppercase; letter-spacing: 3px;">Ultimate Fantasy Dashboard</span>
       </div>
       
       <!-- Header -->
-      <div style="display: flex; padding: 12px 24px; border-bottom: 1px solid rgba(220, 38, 38, 0.2);">
+      <div style="display: flex; padding: 12px 24px; border-bottom: 1px solid rgba(250, 204, 21, 0.2);">
         ${logoBase64 ? `<img src="${logoBase64}" style="height: 70px; width: auto; margin-right: 24px;" />` : ''}
         <div style="flex: 1;">
           <div style="font-size: 42px; font-weight: 900; color: #ffffff; text-transform: uppercase; letter-spacing: 2px; line-height: 42px;">Matchup</div>
           <div style="font-size: 20px; margin-top: 6px; font-weight: 600; line-height: 20px;">
             <span style="color: #e5e7eb;">${leagueName}</span>
             <span style="color: #6b7280; margin: 0 8px;">•</span>
-            <span style="color: #dc2626; font-weight: 700;">Week ${selectedWeek.value}</span>
+            <span style="color: #facc15; font-weight: 700;">Week ${selectedWeek.value}</span>
           </div>
         </div>
       </div>
       
       <!-- Win Probability Section -->
       <div style="padding: 16px 24px 12px 24px;">
-        <div style="background: rgba(38, 42, 58, 0.4); border-radius: 12px; padding: 16px; margin-bottom: 16px; border: 1px solid rgba(220, 38, 38, 0.2);">
+        <div style="background: rgba(38, 42, 58, 0.4); border-radius: 12px; padding: 16px; margin-bottom: 16px; border: 1px solid rgba(250, 204, 21, 0.2);">
           <div style="text-align: center; margin-bottom: 16px;">
             <span style="font-size: 20px;">🎲</span>
             <span style="font-size: 18px; font-weight: 800; color: #ffffff; margin-left: 8px;">Win Probability</span>
@@ -2195,7 +2195,7 @@ async function generateMatchupImage(matchup: any, html2canvas: any) {
         </div>
         
         <!-- Scouting Reports -->
-        <div style="background: rgba(38, 42, 58, 0.4); border-radius: 12px; padding: 16px; border: 1px solid rgba(220, 38, 38, 0.2);">
+        <div style="background: rgba(38, 42, 58, 0.4); border-radius: 12px; padding: 16px; border: 1px solid rgba(250, 204, 21, 0.2);">
           <div style="text-align: center; margin-bottom: 12px;">
             <span style="font-size: 20px;">🔍</span>
             <span style="font-size: 18px; font-weight: 800; color: #ffffff; margin-left: 8px;">Scouting Reports</span>
@@ -2207,7 +2207,7 @@ async function generateMatchupImage(matchup: any, html2canvas: any) {
       
       <!-- Footer -->
       <div style="padding: 16px 24px; text-align: center;">
-        <span style="font-size: 20px; font-weight: bold; color: #dc2626;">ultimatefantasydashboard.com</span>
+        <span style="font-size: 20px; font-weight: bold; color: #facc15;">ultimatefantasydashboard.com</span>
       </div>
     </div>
   `
@@ -2280,27 +2280,27 @@ async function downloadComparison() {
     container.innerHTML = `
       <div style="background: linear-gradient(160deg, #0f1219 0%, #0a0c14 50%, #0d1117 100%); border-radius: 16px; box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5); overflow: hidden;">
         
-        <!-- Top Red Bar -->
-        <div style="background: #dc2626; padding: 10px 24px; text-align: center;">
+        <!-- Top Yellow Bar -->
+        <div style="background: #facc15; padding: 10px 24px; text-align: center;">
           <span style="font-size: 16px; font-weight: 700; color: #0a0c14; text-transform: uppercase; letter-spacing: 3px;">Ultimate Fantasy Dashboard</span>
         </div>
         
         <!-- Header -->
-        <div style="display: flex; padding: 12px 24px; border-bottom: 1px solid rgba(220, 38, 38, 0.2);">
+        <div style="display: flex; padding: 12px 24px; border-bottom: 1px solid rgba(250, 204, 21, 0.2);">
           ${logoBase64 ? `<img src="${logoBase64}" style="height: 70px; width: auto; margin-right: 24px;" />` : ''}
           <div style="flex: 1;">
             <div style="font-size: 36px; font-weight: 900; color: #ffffff; text-transform: uppercase; letter-spacing: 2px; line-height: 36px;">Statistical Comparison</div>
             <div style="font-size: 18px; margin-top: 6px; font-weight: 600;">
               <span style="color: #e5e7eb;">${leagueName}</span>
               <span style="color: #6b7280; margin: 0 8px;">•</span>
-              <span style="color: #dc2626; font-weight: 700;">Week ${selectedWeek.value}</span>
+              <span style="color: #facc15; font-weight: 700;">Week ${selectedWeek.value}</span>
             </div>
           </div>
         </div>
         
         <!-- Comparison Table -->
         <div style="padding: 16px 24px;">
-          <div style="background: rgba(38, 42, 58, 0.4); border-radius: 12px; overflow: hidden; border: 1px solid rgba(220, 38, 38, 0.2);">
+          <div style="background: rgba(38, 42, 58, 0.4); border-radius: 12px; overflow: hidden; border: 1px solid rgba(250, 204, 21, 0.2);">
             <table style="width: 100%; border-collapse: collapse; font-size: 14px;">
               <thead>
                 <tr style="background: rgba(55, 65, 81, 0.5);">
@@ -2319,7 +2319,7 @@ async function downloadComparison() {
         
         <!-- Footer -->
         <div style="padding: 16px 24px; text-align: center;">
-          <span style="font-size: 20px; font-weight: bold; color: #dc2626;">ultimatefantasydashboard.com</span>
+          <span style="font-size: 20px; font-weight: bold; color: #facc15;">ultimatefantasydashboard.com</span>
         </div>
       </div>
     `

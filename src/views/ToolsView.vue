@@ -1673,7 +1673,7 @@ async function downloadDraftOrderImage() {
     
     container.innerHTML = `
       <div style="background:linear-gradient(160deg,#0f1219 0%,#0a0c14 50%,#0d1117 100%);border-radius:16px;overflow:hidden;box-shadow:0 12px 40px rgba(0,0,0,0.5);width:${WIDTH}px;">
-        <div style="background:#dc2626;padding:8px 20px;text-align:center;">
+        <div style="background:#facc15;padding:8px 20px;text-align:center;">
           <span style="font-size:12px;font-weight:700;color:#0a0c14;text-transform:uppercase;letter-spacing:2px;">Ultimate Fantasy Dashboard</span>
         </div>
         <div style="display:flex;align-items:center;padding:14px 24px;border-bottom:1px solid rgba(220,38,38,0.2);">
@@ -1683,7 +1683,7 @@ async function downloadDraftOrderImage() {
             <div style="font-size:12px;margin-top:3px;">
               <span style="color:#e5e7eb;">${numTeams} Teams</span>
               <span style="color:#6b7280;margin:0 6px;">•</span>
-              <span style="color:#dc2626;font-weight:600;">${new Date().toLocaleDateString()}</span>
+              <span style="color:#facc15;font-weight:600;">${new Date().toLocaleDateString()}</span>
             </div>
           </div>
         </div>
@@ -1692,7 +1692,7 @@ async function downloadDraftOrderImage() {
           <div style="flex:1;min-width:0;">${rightColumn.map(p => buildRow(p)).join('')}</div>
         </div>
         <div style="padding:12px 20px;text-align:center;border-top:1px solid rgba(220,38,38,0.2);">
-          <span style="font-size:14px;font-weight:bold;color:#dc2626;">ultimatefantasydashboard.com</span>
+          <span style="font-size:14px;font-weight:bold;color:#facc15;">ultimatefantasydashboard.com</span>
         </div>
       </div>
     `
@@ -1866,7 +1866,7 @@ async function downloadDraftAnimation() {
     titleFrame.style.cssText = `position:absolute;left:-9999px;width:${WIDTH}px;height:${HEIGHT}px;font-family:system-ui;`
     titleFrame.innerHTML = `
       <div style="width:100%;height:100%;background:linear-gradient(160deg,#0f1219 0%,#0a0c14 50%,#0d1117 100%);border-radius:16px;overflow:hidden;display:flex;flex-direction:column;">
-        <div style="background:#dc2626;padding:8px 20px;text-align:center;">
+        <div style="background:#facc15;padding:8px 20px;text-align:center;">
           <span style="font-size:12px;font-weight:700;color:#0a0c14;text-transform:uppercase;letter-spacing:2px;">Ultimate Fantasy Dashboard</span>
         </div>
         <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;">
@@ -1875,7 +1875,7 @@ async function downloadDraftAnimation() {
           <div style="font-size:16px;color:#9ca3af;margin-top:12px;">${numTeams} Teams</div>
         </div>
         <div style="padding:12px 20px;text-align:center;border-top:1px solid rgba(220,38,38,0.2);">
-          <span style="font-size:14px;font-weight:bold;color:#dc2626;">ultimatefantasydashboard.com</span>
+          <span style="font-size:14px;font-weight:bold;color:#facc15;">ultimatefantasydashboard.com</span>
         </div>
       </div>
     `
@@ -1896,7 +1896,7 @@ async function downloadDraftAnimation() {
       frame.style.cssText = `position:absolute;left:-9999px;width:${WIDTH}px;height:${HEIGHT}px;font-family:system-ui;`
       frame.innerHTML = `
         <div style="width:100%;height:100%;background:linear-gradient(160deg,#0f1219 0%,#0a0c14 50%,#0d1117 100%);border-radius:16px;overflow:hidden;display:flex;flex-direction:column;">
-          <div style="background:#dc2626;padding:8px 20px;text-align:center;">
+          <div style="background:#facc15;padding:8px 20px;text-align:center;">
             <span style="font-size:12px;font-weight:700;color:#0a0c14;text-transform:uppercase;letter-spacing:2px;">Ultimate Fantasy Dashboard</span>
           </div>
           <div style="padding:14px 24px;border-bottom:1px solid rgba(220,38,38,0.2);text-align:center;">
@@ -1909,7 +1909,7 @@ async function downloadDraftAnimation() {
           </div>
           <div style="padding:10px 20px;text-align:center;border-top:1px solid rgba(220,38,38,0.2);display:flex;justify-content:space-between;align-items:center;">
             <span style="font-size:12px;color:#6b7280;">${revealed.length} of ${numTeams} revealed</span>
-            <span style="font-size:14px;font-weight:bold;color:#dc2626;">ultimatefantasydashboard.com</span>
+            <span style="font-size:14px;font-weight:bold;color:#facc15;">ultimatefantasydashboard.com</span>
           </div>
         </div>
       `
@@ -1928,7 +1928,7 @@ async function downloadDraftAnimation() {
     finalFrame.style.cssText = `position:absolute;left:-9999px;width:${WIDTH}px;height:${HEIGHT}px;font-family:system-ui;`
     finalFrame.innerHTML = `
       <div style="width:100%;height:100%;background:linear-gradient(160deg,#0f1219 0%,#0a0c14 50%,#0d1117 100%);border-radius:16px;overflow:hidden;display:flex;flex-direction:column;">
-        <div style="background:#dc2626;padding:8px 20px;text-align:center;">
+        <div style="background:#facc15;padding:8px 20px;text-align:center;">
           <span style="font-size:12px;font-weight:700;color:#0a0c14;text-transform:uppercase;letter-spacing:2px;">Ultimate Fantasy Dashboard</span>
         </div>
         <div style="padding:14px 24px;border-bottom:1px solid rgba(220,38,38,0.2);text-align:center;">
@@ -1940,7 +1940,7 @@ async function downloadDraftAnimation() {
           <div style="flex:1;">${rightFinal.map(p => buildRow(p)).join('')}</div>
         </div>
         <div style="padding:10px 20px;text-align:center;border-top:1px solid rgba(220,38,38,0.2);">
-          <span style="font-size:14px;font-weight:bold;color:#dc2626;">ultimatefantasydashboard.com</span>
+          <span style="font-size:14px;font-weight:bold;color:#facc15;">ultimatefantasydashboard.com</span>
         </div>
       </div>
     `
@@ -2722,7 +2722,7 @@ async function downloadTeamScheduleImage() {
         <div style="font-size:16px;font-weight:900;color:#eab308;width:28px;text-align:center;margin-right:10px;flex-shrink:0;">W${week}</div>
         <div style="flex:1;min-width:0;">
           <div style="font-weight:600;font-size:13px;color:#ffffff;white-space:nowrap;overflow:visible;">${oppName}</div>
-          ${isDivGame ? '<div style="font-size:10px;color:#dc2626;margin-top:2px;">Division Game</div>' : ''}
+          ${isDivGame ? '<div style="font-size:10px;color:#facc15;margin-top:2px;">Division Game</div>' : ''}
         </div>
       </div>`
     }
@@ -2732,7 +2732,7 @@ async function downloadTeamScheduleImage() {
     
     container.innerHTML = `
       <div style="background:linear-gradient(160deg,#0f1219 0%,#0a0c14 50%,#0d1117 100%);border-radius:16px;overflow:hidden;box-shadow:0 12px 40px rgba(0,0,0,0.5);width:${WIDTH}px;">
-        <div style="background:#dc2626;padding:8px 20px;text-align:center;">
+        <div style="background:#facc15;padding:8px 20px;text-align:center;">
           <span style="font-size:12px;font-weight:700;color:#0a0c14;text-transform:uppercase;letter-spacing:2px;">Ultimate Fantasy Dashboard</span>
         </div>
         <div style="display:flex;align-items:center;padding:14px 20px;border-bottom:1px solid rgba(220,38,38,0.2);">
@@ -2749,7 +2749,7 @@ async function downloadTeamScheduleImage() {
           <div style="flex:1;">${rightWeeks.map(w => buildWeekRow(w)).join('')}</div>
         </div>
         <div style="padding:12px 20px;text-align:center;border-top:1px solid rgba(220,38,38,0.2);">
-          <span style="font-size:14px;font-weight:bold;color:#dc2626;">ultimatefantasydashboard.com</span>
+          <span style="font-size:14px;font-weight:bold;color:#facc15;">ultimatefantasydashboard.com</span>
         </div>
       </div>
     `
@@ -3051,7 +3051,7 @@ async function downloadScheduleImage() {
         const opp = generatedSchedule.value[idx]?.[wk]
         const isDivGame = opp >= 0 && isSameDivision(idx, opp)
         const bgColor = isDivGame ? 'rgba(220,38,38,0.15)' : 'rgba(38,42,58,0.15)'
-        const textColor = isDivGame ? '#dc2626' : '#d1d5db'
+        const textColor = isDivGame ? '#facc15' : '#d1d5db'
         cells += `<td style="padding:8px;text-align:center;background:${bgColor};border-bottom:1px solid rgba(58,61,82,0.3);color:${textColor};font-weight:${isDivGame ? '600' : '400'};font-size:11px;">${getOpponentName(idx, wk)}</td>`
       }
       rows += `<tr>${cells}</tr>`
@@ -3063,7 +3063,7 @@ async function downloadScheduleImage() {
     
     container.innerHTML = `
       <div style="background:linear-gradient(160deg,#0f1219 0%,#0a0c14 50%,#0d1117 100%);border-radius:16px;overflow:hidden;box-shadow:0 12px 40px rgba(0,0,0,0.5);">
-        <div style="background:#dc2626;padding:8px 20px;text-align:center;">
+        <div style="background:#facc15;padding:8px 20px;text-align:center;">
           <span style="font-size:12px;font-weight:700;color:#0a0c14;text-transform:uppercase;letter-spacing:2px;">Ultimate Fantasy Dashboard</span>
         </div>
         <div style="display:flex;align-items:center;padding:12px 20px;border-bottom:1px solid rgba(220,38,38,0.2);">
@@ -3081,7 +3081,7 @@ async function downloadScheduleImage() {
           <table style="width:100%;border-collapse:collapse;"><thead><tr>${hdr}</tr></thead><tbody>${rows}</tbody></table>
         </div>
         <div style="padding:12px 20px;text-align:center;border-top:1px solid rgba(220,38,38,0.2);">
-          <span style="font-size:14px;font-weight:bold;color:#dc2626;">ultimatefantasydashboard.com</span>
+          <span style="font-size:14px;font-weight:bold;color:#facc15;">ultimatefantasydashboard.com</span>
         </div>
       </div>
     `

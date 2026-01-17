@@ -1023,22 +1023,22 @@ async function downloadRankings() {
     container.innerHTML = `
       <div style="background: linear-gradient(160deg, #0f1219 0%, #0a0c14 50%, #0d1117 100%); border-radius: 16px; box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5); position: relative; overflow: hidden;">
         
-        <!-- Top Red Bar with site name -->
-        <div style="background: #dc2626; padding: 10px 24px 10px 24px; text-align: center; overflow: visible;">
+        <!-- Top Yellow Bar with site name -->
+        <div style="background: #facc15; padding: 10px 24px 10px 24px; text-align: center; overflow: visible;">
           <span style="font-size: 16px; font-weight: 700; color: #0a0c14; text-transform: uppercase; letter-spacing: 3px; display: block; margin-top: -17px;">Ultimate Fantasy Dashboard</span>
         </div>
         
         <!-- HEADER - Logo on left with text next to it -->
-        <div style="display: flex; padding: 16px 24px; border-bottom: 1px solid rgba(220, 38, 38, 0.2); position: relative; z-index: 10;">
+        <div style="display: flex; padding: 16px 24px; border-bottom: 1px solid rgba(250, 204, 21, 0.2); position: relative; z-index: 10;">
           <!-- Main Logo - maintain aspect ratio -->
           ${logoBase64 ? `<img src="${logoBase64}" style="height: 70px; width: auto; flex-shrink: 0; margin-right: 24px; display: block;" />` : ''}
           <!-- Title and League Info - use margin-top to move up -->
           <div style="flex: 1; margin-top: -14px;">
-            <div style="font-size: 42px; font-weight: 900; color: #ffffff; text-transform: uppercase; letter-spacing: 2px; text-shadow: 0 2px 8px rgba(220, 38, 38, 0.4); line-height: 1;">Power Rankings</div>
+            <div style="font-size: 42px; font-weight: 900; color: #ffffff; text-transform: uppercase; letter-spacing: 2px; text-shadow: 0 2px 8px rgba(250, 204, 21, 0.4); line-height: 1;">Power Rankings</div>
             <div style="font-size: 20px; margin-top: 6px; font-weight: 600; line-height: 1;">
               <span style="color: #e5e7eb;">${leagueName}</span>
               <span style="color: #6b7280; margin: 0 8px;">•</span>
-              <span style="color: #dc2626; font-weight: 700;">Week ${selectedWeek.value}</span>
+              <span style="color: #facc15; font-weight: 700;">Week ${selectedWeek.value}</span>
             </div>
           </div>
         </div>
@@ -1053,8 +1053,8 @@ async function downloadRankings() {
           </div>
           
           <!-- Trend Chart -->
-          <div style="background: rgba(38, 42, 58, 0.3); border-radius: 12px; padding: 16px; margin-bottom: 12px; border: 1px solid rgba(220, 38, 38, 0.2); position: relative; z-index: 1;">
-            <h3 style="color: #dc2626; font-size: 18px; margin: 0 0 12px 0; text-align: center; font-weight: 700; text-transform: uppercase; letter-spacing: 1px;">Rankings Trend</h3>
+          <div style="background: rgba(38, 42, 58, 0.3); border-radius: 12px; padding: 16px; margin-bottom: 12px; border: 1px solid rgba(250, 204, 21, 0.2); position: relative; z-index: 1;">
+            <h3 style="color: #facc15; font-size: 18px; margin: 0 0 12px 0; text-align: center; font-weight: 700; text-transform: uppercase; letter-spacing: 1px;">Rankings Trend</h3>
             <div id="trend-chart-container" style="height: 220px; position: relative;"></div>
           </div>
           
@@ -1066,7 +1066,7 @@ async function downloadRankings() {
         
         <!-- Footer - negative margin to pull up -->
         <div style="padding: 20px 24px 20px 24px; text-align: center; position: relative; z-index: 1;">
-          <span style="font-size: 24px; font-weight: bold; color: #dc2626; letter-spacing: -0.5px; display: block; margin-top: -35px;">ultimatefantasydashboard.com</span>
+          <span style="font-size: 24px; font-weight: bold; color: #facc15; letter-spacing: -0.5px; display: block; margin-top: -35px;">ultimatefantasydashboard.com</span>
         </div>
       </div>
     `

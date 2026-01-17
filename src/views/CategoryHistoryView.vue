@@ -2669,20 +2669,20 @@ async function downloadCareerStats() {
     container.innerHTML = `
       <div style="background: linear-gradient(160deg, #0f1219 0%, #0a0c14 50%, #0d1117 100%); border-radius: 16px; box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5); position: relative; overflow: hidden;">
         
-        <!-- Top Red Bar -->
-        <div style="background: #dc2626; padding: 10px 24px; text-align: center;">
+        <!-- Top Yellow Bar -->
+        <div style="background: #facc15; padding: 10px 24px; text-align: center;">
           <span style="font-size: 16px; font-weight: 700; color: #0a0c14; text-transform: uppercase; letter-spacing: 3px;">Ultimate Fantasy Dashboard</span>
         </div>
         
         <!-- Header -->
-        <div style="display: flex; align-items: center; padding: 12px 24px; border-bottom: 1px solid rgba(220, 38, 38, 0.2);">
+        <div style="display: flex; align-items: center; padding: 12px 24px; border-bottom: 1px solid rgba(250, 204, 21, 0.2);">
           ${logoBase64 ? `<img src="${logoBase64}" style="height: 50px; width: auto; flex-shrink: 0; margin-right: 16px; margin-top: 6px;" />` : ''}
           <div style="flex: 1;">
             <div style="font-size: 24px; font-weight: 900; color: #ffffff; text-transform: uppercase; letter-spacing: 1px; line-height: 1.1;">Career Statistics</div>
             <div style="font-size: 14px; margin-top: 3px; font-weight: 600;">
               <span style="color: #e5e7eb;">${leagueName}</span>
               <span style="color: #6b7280; margin: 0 6px;">•</span>
-              <span style="color: #dc2626; font-weight: 700;">Top 12 by ${columnLabels[sortColumn.value] || sortColumn.value}</span>
+              <span style="color: #facc15; font-weight: 700;">Top 12 by ${columnLabels[sortColumn.value] || sortColumn.value}</span>
             </div>
           </div>
         </div>
@@ -2691,7 +2691,7 @@ async function downloadCareerStats() {
         <div style="padding: 16px 24px;">
           <table style="width: 100%; border-collapse: collapse; font-size: 13px;">
             <thead>
-              <tr style="border-bottom: 2px solid rgba(220, 38, 38, 0.3);">
+              <tr style="border-bottom: 2px solid rgba(250, 204, 21, 0.3);">
                 <th style="padding: 10px 12px; text-align: left; color: #9ca3af; font-size: 11px; text-transform: uppercase;">#</th>
                 <th style="padding: 10px 12px; text-align: left; color: #9ca3af; font-size: 11px; text-transform: uppercase;">Team</th>
                 <th style="padding: 10px 12px; text-align: center; color: #9ca3af; font-size: 11px; text-transform: uppercase;">Yrs</th>
@@ -2715,8 +2715,8 @@ async function downloadCareerStats() {
         </div>
         
         <!-- Footer -->
-        <div style="padding: 16px 24px; text-align: center; border-top: 1px solid rgba(220, 38, 38, 0.2);">
-          <span style="font-size: 20px; font-weight: bold; color: #dc2626;">ultimatefantasydashboard.com</span>
+        <div style="padding: 16px 24px; text-align: center; border-top: 1px solid rgba(250, 204, 21, 0.2);">
+          <span style="font-size: 20px; font-weight: bold; color: #facc15;">ultimatefantasydashboard.com</span>
         </div>
       </div>
     `
@@ -2780,20 +2780,20 @@ async function downloadSeasonHistory() {
     container.innerHTML = `
       <div style="background: linear-gradient(160deg, #0f1219 0%, #0a0c14 50%, #0d1117 100%); border-radius: 16px; box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5); position: relative; overflow: hidden;">
         
-        <!-- Top Red Bar -->
-        <div style="background: #dc2626; padding: 10px 24px; text-align: center;">
+        <!-- Top Yellow Bar -->
+        <div style="background: #facc15; padding: 10px 24px; text-align: center;">
           <span style="font-size: 16px; font-weight: 700; color: #0a0c14; text-transform: uppercase; letter-spacing: 3px;">Ultimate Fantasy Dashboard</span>
         </div>
         
         <!-- Header -->
-        <div style="display: flex; padding: 16px 24px; border-bottom: 1px solid rgba(220, 38, 38, 0.2);">
+        <div style="display: flex; padding: 16px 24px; border-bottom: 1px solid rgba(250, 204, 21, 0.2);">
           ${logoBase64 ? `<img src="${logoBase64}" style="height: 70px; width: auto; flex-shrink: 0; margin-right: 24px;" />` : ''}
           <div style="flex: 1;">
-            <div style="font-size: 36px; font-weight: 900; color: #ffffff; text-transform: uppercase; letter-spacing: 2px; text-shadow: 0 2px 8px rgba(220, 38, 38, 0.4);">Season History</div>
+            <div style="font-size: 36px; font-weight: 900; color: #ffffff; text-transform: uppercase; letter-spacing: 2px; text-shadow: 0 2px 8px rgba(250, 204, 21, 0.4);">Season History</div>
             <div style="font-size: 18px; margin-top: 6px; font-weight: 600;">
               <span style="color: #e5e7eb;">${leagueName}</span>
               <span style="color: #6b7280; margin: 0 8px;">•</span>
-              <span style="color: #dc2626; font-weight: 700;">Year-by-Year</span>
+              <span style="color: #facc15; font-weight: 700;">Year-by-Year</span>
             </div>
           </div>
         </div>
@@ -2805,7 +2805,7 @@ async function downloadSeasonHistory() {
         
         <!-- Footer -->
         <div style="padding: 16px 24px; text-align: center;">
-          <span style="font-size: 20px; font-weight: bold; color: #dc2626;">ultimatefantasydashboard.com</span>
+          <span style="font-size: 20px; font-weight: bold; color: #facc15;">ultimatefantasydashboard.com</span>
         </div>
       </div>
     `
@@ -2869,20 +2869,20 @@ async function downloadH2HMatrix() {
     container.innerHTML = `
       <div style="background: linear-gradient(160deg, #0f1219 0%, #0a0c14 50%, #0d1117 100%); border-radius: 16px; box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5); position: relative; overflow: hidden;">
         
-        <!-- Top Red Bar -->
-        <div style="background: #dc2626; padding: 10px 24px; text-align: center;">
+        <!-- Top Yellow Bar -->
+        <div style="background: #facc15; padding: 10px 24px; text-align: center;">
           <span style="font-size: 16px; font-weight: 700; color: #0a0c14; text-transform: uppercase; letter-spacing: 3px;">Ultimate Fantasy Dashboard</span>
         </div>
         
         <!-- Header -->
-        <div style="display: flex; padding: 16px 24px; border-bottom: 1px solid rgba(220, 38, 38, 0.2);">
+        <div style="display: flex; padding: 16px 24px; border-bottom: 1px solid rgba(250, 204, 21, 0.2);">
           ${logoBase64 ? `<img src="${logoBase64}" style="height: 70px; width: auto; flex-shrink: 0; margin-right: 24px;" />` : ''}
           <div style="flex: 1;">
-            <div style="font-size: 36px; font-weight: 900; color: #ffffff; text-transform: uppercase; letter-spacing: 2px; text-shadow: 0 2px 8px rgba(220, 38, 38, 0.4);">Head-to-Head</div>
+            <div style="font-size: 36px; font-weight: 900; color: #ffffff; text-transform: uppercase; letter-spacing: 2px; text-shadow: 0 2px 8px rgba(250, 204, 21, 0.4);">Head-to-Head</div>
             <div style="font-size: 18px; margin-top: 6px; font-weight: 600;">
               <span style="color: #e5e7eb;">${leagueName}</span>
               <span style="color: #6b7280; margin: 0 8px;">•</span>
-              <span style="color: #dc2626; font-weight: 700;">All-Time Records</span>
+              <span style="color: #facc15; font-weight: 700;">All-Time Records</span>
             </div>
           </div>
         </div>
@@ -2894,7 +2894,7 @@ async function downloadH2HMatrix() {
         
         <!-- Footer -->
         <div style="padding: 16px 24px; text-align: center;">
-          <span style="font-size: 20px; font-weight: bold; color: #dc2626;">ultimatefantasydashboard.com</span>
+          <span style="font-size: 20px; font-weight: bold; color: #facc15;">ultimatefantasydashboard.com</span>
         </div>
       </div>
     `
@@ -3066,20 +3066,20 @@ async function downloadRecordRankings(recordLabel: string) {
     container.innerHTML = `
       <div style="background: linear-gradient(160deg, #0f1219 0%, #0a0c14 50%, #0d1117 100%); border-radius: 16px; box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5); position: relative; overflow: hidden;">
         
-        <!-- Top Red Bar -->
-        <div style="background: #dc2626; padding: 8px 20px; text-align: center;">
+        <!-- Top Yellow Bar -->
+        <div style="background: #facc15; padding: 8px 20px; text-align: center;">
           <span style="font-size: 12px; font-weight: 700; color: #0a0c14; text-transform: uppercase; letter-spacing: 2px;">Ultimate Fantasy Dashboard</span>
         </div>
         
         <!-- Header -->
-        <div style="display: flex; align-items: center; padding: 10px 16px; border-bottom: 1px solid rgba(220, 38, 38, 0.2);">
+        <div style="display: flex; align-items: center; padding: 10px 16px; border-bottom: 1px solid rgba(250, 204, 21, 0.2);">
           ${logoBase64 ? `<img src="${logoBase64}" style="height: 40px; width: auto; flex-shrink: 0; margin-right: 12px; margin-top: 4px;" />` : ''}
           <div style="flex: 1;">
             <div style="font-size: 17px; font-weight: 900; color: #ffffff; text-transform: uppercase; letter-spacing: 0.5px; line-height: 1.1;">${recordLabel}</div>
             <div style="font-size: 12px; margin-top: 2px;">
               <span style="color: #e5e7eb;">${leagueName}</span>
               <span style="color: #6b7280; margin: 0 4px;">•</span>
-              <span style="color: #dc2626; font-weight: 600;">All-Time</span>
+              <span style="color: #facc15; font-weight: 600;">All-Time</span>
             </div>
           </div>
         </div>
@@ -3105,8 +3105,8 @@ async function downloadRecordRankings(recordLabel: string) {
         </div>
         
         <!-- Footer -->
-        <div style="padding: 10px 16px; text-align: center; border-top: 1px solid rgba(220, 38, 38, 0.2);">
-          <span style="font-size: 14px; font-weight: bold; color: #dc2626;">ultimatefantasydashboard.com</span>
+        <div style="padding: 10px 16px; text-align: center; border-top: 1px solid rgba(250, 204, 21, 0.2);">
+          <span style="font-size: 14px; font-weight: bold; color: #facc15;">ultimatefantasydashboard.com</span>
         </div>
       </div>
     `
@@ -3255,20 +3255,20 @@ async function downloadSeasonCategoryRankings(category: string, type: 'best' | '
     container.innerHTML = `
       <div style="background: linear-gradient(160deg, #0f1219 0%, #0a0c14 50%, #0d1117 100%); border-radius: 16px; box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5); position: relative; overflow: hidden;">
         
-        <!-- Top Red Bar -->
-        <div style="background: #dc2626; padding: 8px 20px; text-align: center;">
+        <!-- Top Yellow Bar -->
+        <div style="background: #facc15; padding: 8px 20px; text-align: center;">
           <span style="font-size: 12px; font-weight: 700; color: #0a0c14; text-transform: uppercase; letter-spacing: 2px;">Ultimate Fantasy Dashboard</span>
         </div>
         
         <!-- Header -->
-        <div style="display: flex; align-items: center; padding: 10px 16px; border-bottom: 1px solid rgba(220, 38, 38, 0.2);">
+        <div style="display: flex; align-items: center; padding: 10px 16px; border-bottom: 1px solid rgba(250, 204, 21, 0.2);">
           ${logoBase64 ? `<img src="${logoBase64}" style="height: 40px; width: auto; flex-shrink: 0; margin-right: 12px; margin-top: 4px;" />` : ''}
           <div style="flex: 1;">
             <div style="font-size: 17px; font-weight: 900; color: #ffffff; text-transform: uppercase; letter-spacing: 0.5px; line-height: 1.1;">${category} Leaders</div>
             <div style="font-size: 12px; margin-top: 2px;">
               <span style="color: #e5e7eb;">${leagueName}</span>
               <span style="color: #6b7280; margin: 0 4px;">•</span>
-              <span style="color: #dc2626; font-weight: 600;">${selectedAwardsSeason.value} Season</span>
+              <span style="color: #facc15; font-weight: 600;">${selectedAwardsSeason.value} Season</span>
             </div>
           </div>
         </div>
@@ -3294,8 +3294,8 @@ async function downloadSeasonCategoryRankings(category: string, type: 'best' | '
         </div>
         
         <!-- Footer -->
-        <div style="padding: 10px 16px; text-align: center; border-top: 1px solid rgba(220, 38, 38, 0.2);">
-          <span style="font-size: 14px; font-weight: bold; color: #dc2626;">ultimatefantasydashboard.com</span>
+        <div style="padding: 10px 16px; text-align: center; border-top: 1px solid rgba(250, 204, 21, 0.2);">
+          <span style="font-size: 14px; font-weight: bold; color: #facc15;">ultimatefantasydashboard.com</span>
         </div>
       </div>
     `
@@ -3448,20 +3448,20 @@ async function downloadAwardRankings(category: string, type: 'best' | 'worst', c
     container.innerHTML = `
       <div style="background: linear-gradient(160deg, #0f1219 0%, #0a0c14 50%, #0d1117 100%); border-radius: 16px; box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5); position: relative; overflow: hidden;">
         
-        <!-- Top Red Bar -->
-        <div style="background: #dc2626; padding: 8px 20px; text-align: center;">
+        <!-- Top Yellow Bar -->
+        <div style="background: #facc15; padding: 8px 20px; text-align: center;">
           <span style="font-size: 12px; font-weight: 700; color: #0a0c14; text-transform: uppercase; letter-spacing: 2px;">Ultimate Fantasy Dashboard</span>
         </div>
         
         <!-- Header -->
-        <div style="display: flex; align-items: center; padding: 10px 16px; border-bottom: 1px solid rgba(220, 38, 38, 0.2);">
+        <div style="display: flex; align-items: center; padding: 10px 16px; border-bottom: 1px solid rgba(250, 204, 21, 0.2);">
           ${logoBase64 ? `<img src="${logoBase64}" style="height: 40px; width: auto; flex-shrink: 0; margin-right: 12px; margin-top: 4px;" />` : ''}
           <div style="flex: 1;">
             <div style="font-size: 17px; font-weight: 900; color: #ffffff; text-transform: uppercase; letter-spacing: 0.5px; line-height: 1.1;">${category}</div>
             <div style="font-size: 12px; margin-top: 2px;">
               <span style="color: #e5e7eb;">${leagueName}</span>
               <span style="color: #6b7280; margin: 0 4px;">•</span>
-              <span style="color: #dc2626; font-weight: 600;">${type === 'best' ? 'Best' : 'Worst'} All-Time</span>
+              <span style="color: #facc15; font-weight: 600;">${type === 'best' ? 'Best' : 'Worst'} All-Time</span>
             </div>
           </div>
         </div>
@@ -3488,8 +3488,8 @@ async function downloadAwardRankings(category: string, type: 'best' | 'worst', c
         </div>
         
         <!-- Footer -->
-        <div style="padding: 10px 16px; text-align: center; border-top: 1px solid rgba(220, 38, 38, 0.2);">
-          <span style="font-size: 14px; font-weight: bold; color: #dc2626;">ultimatefantasydashboard.com</span>
+        <div style="padding: 10px 16px; text-align: center; border-top: 1px solid rgba(250, 204, 21, 0.2);">
+          <span style="font-size: 14px; font-weight: bold; color: #facc15;">ultimatefantasydashboard.com</span>
         </div>
       </div>
     `

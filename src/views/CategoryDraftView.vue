@@ -2531,17 +2531,17 @@ async function downloadStealsImage() {
     
     container.innerHTML = `
       <div style="background: linear-gradient(160deg, #0f1219 0%, #0a0c14 50%, #0d1117 100%); border-radius: 16px; box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5); position: relative; overflow: hidden;">
-        <div style="background: #dc2626; padding: 8px 20px; text-align: center;">
+        <div style="background: #facc15; padding: 8px 20px; text-align: center;">
           <span style="font-size: 12px; font-weight: 700; color: #0a0c14; text-transform: uppercase; letter-spacing: 2px;">Ultimate Fantasy Dashboard</span>
         </div>
-        <div style="display: flex; align-items: center; padding: 10px 16px; border-bottom: 1px solid rgba(220, 38, 38, 0.2);">
+        <div style="display: flex; align-items: center; padding: 10px 16px; border-bottom: 1px solid rgba(250, 204, 21, 0.2);">
           ${logoBase64 ? `<img src="${logoBase64}" style="height: 40px; width: auto; flex-shrink: 0; margin-right: 12px; margin-top: 4px;" />` : ''}
           <div style="flex: 1;">
             <div style="font-size: 17px; font-weight: 900; color: #ffffff; text-transform: uppercase; letter-spacing: 0.5px; line-height: 1.1;">🔥 Biggest Draft Steals</div>
             <div style="font-size: 12px; margin-top: 2px;">
               <span style="color: #e5e7eb;">${leagueName}</span>
               <span style="color: #6b7280; margin: 0 4px;">•</span>
-              <span style="color: #dc2626; font-weight: 600;">${selectedSeason.value} Draft</span>
+              <span style="color: #facc15; font-weight: 600;">${selectedSeason.value} Draft</span>
             </div>
           </div>
         </div>
@@ -2565,8 +2565,8 @@ async function downloadStealsImage() {
             <span style="color: #22c55e;">+50</span> means player performed 50 spots better than drafted
           </div>
         </div>
-        <div style="padding: 10px 16px; text-align: center; border-top: 1px solid rgba(220, 38, 38, 0.2);">
-          <span style="font-size: 14px; font-weight: bold; color: #dc2626;">ultimatefantasydashboard.com</span>
+        <div style="padding: 10px 16px; text-align: center; border-top: 1px solid rgba(250, 204, 21, 0.2);">
+          <span style="font-size: 14px; font-weight: bold; color: #facc15;">ultimatefantasydashboard.com</span>
         </div>
       </div>
     `
@@ -2694,17 +2694,17 @@ async function downloadBustsImage() {
     
     container.innerHTML = `
       <div style="background: linear-gradient(160deg, #0f1219 0%, #0a0c14 50%, #0d1117 100%); border-radius: 16px; box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5); position: relative; overflow: hidden;">
-        <div style="background: #dc2626; padding: 8px 20px; text-align: center;">
+        <div style="background: #facc15; padding: 8px 20px; text-align: center;">
           <span style="font-size: 12px; font-weight: 700; color: #0a0c14; text-transform: uppercase; letter-spacing: 2px;">Ultimate Fantasy Dashboard</span>
         </div>
-        <div style="display: flex; align-items: center; padding: 10px 16px; border-bottom: 1px solid rgba(220, 38, 38, 0.2);">
+        <div style="display: flex; align-items: center; padding: 10px 16px; border-bottom: 1px solid rgba(250, 204, 21, 0.2);">
           ${logoBase64 ? `<img src="${logoBase64}" style="height: 40px; width: auto; flex-shrink: 0; margin-right: 12px; margin-top: 4px;" />` : ''}
           <div style="flex: 1;">
             <div style="font-size: 17px; font-weight: 900; color: #ffffff; text-transform: uppercase; letter-spacing: 0.5px; line-height: 1.1;">💀 Biggest Draft Busts</div>
             <div style="font-size: 12px; margin-top: 2px;">
               <span style="color: #e5e7eb;">${leagueName}</span>
               <span style="color: #6b7280; margin: 0 4px;">•</span>
-              <span style="color: #dc2626; font-weight: 600;">${selectedSeason.value} Draft</span>
+              <span style="color: #facc15; font-weight: 600;">${selectedSeason.value} Draft</span>
             </div>
           </div>
         </div>
@@ -2728,8 +2728,8 @@ async function downloadBustsImage() {
             <span style="color: #ef4444;">-50</span> means player performed 50 spots worse than drafted
           </div>
         </div>
-        <div style="padding: 10px 16px; text-align: center; border-top: 1px solid rgba(220, 38, 38, 0.2);">
-          <span style="font-size: 14px; font-weight: bold; color: #dc2626;">ultimatefantasydashboard.com</span>
+        <div style="padding: 10px 16px; text-align: center; border-top: 1px solid rgba(250, 204, 21, 0.2);">
+          <span style="font-size: 14px; font-weight: bold; color: #facc15;">ultimatefantasydashboard.com</span>
         </div>
       </div>
     `
@@ -2891,17 +2891,17 @@ async function downloadTeamDraftImage() {
     
     container.innerHTML = `
       <div style="background: linear-gradient(160deg, #0f1219 0%, #0a0c14 50%, #0d1117 100%); border-radius: 16px; box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5); position: relative; overflow: hidden;">
-        <div style="background: #dc2626; padding: 8px 20px; text-align: center;">
+        <div style="background: #facc15; padding: 8px 20px; text-align: center;">
           <span style="font-size: 12px; font-weight: 700; color: #0a0c14; text-transform: uppercase; letter-spacing: 2px;">Ultimate Fantasy Dashboard</span>
         </div>
-        <div style="display: flex; align-items: center; padding: 10px 16px; border-bottom: 1px solid rgba(220, 38, 38, 0.2);">
+        <div style="display: flex; align-items: center; padding: 10px 16px; border-bottom: 1px solid rgba(250, 204, 21, 0.2);">
           ${logoBase64 ? `<img src="${logoBase64}" style="height: 40px; width: auto; flex-shrink: 0; margin-right: 12px; margin-top: 4px;" />` : ''}
           <div style="flex: 1;">
             <div style="font-size: 17px; font-weight: 900; color: #ffffff; text-transform: uppercase; letter-spacing: 0.5px; line-height: 1.1;">Draft Summary</div>
             <div style="font-size: 12px; margin-top: 2px;">
               <span style="color: #e5e7eb;">${leagueName}</span>
               <span style="color: #6b7280; margin: 0 4px;">•</span>
-              <span style="color: #dc2626; font-weight: 600;">${selectedSeason.value} Draft</span>
+              <span style="color: #facc15; font-weight: 600;">${selectedSeason.value} Draft</span>
             </div>
           </div>
         </div>
@@ -2937,8 +2937,8 @@ async function downloadTeamDraftImage() {
             <span style="color: #22c55e;">+value</span> = outperformed draft spot &nbsp;|&nbsp; <span style="color: #ef4444;">-value</span> = underperformed
           </div>
         </div>
-        <div style="padding: 10px 16px; text-align: center; border-top: 1px solid rgba(220, 38, 38, 0.2);">
-          <span style="font-size: 14px; font-weight: bold; color: #dc2626;">ultimatefantasydashboard.com</span>
+        <div style="padding: 10px 16px; text-align: center; border-top: 1px solid rgba(250, 204, 21, 0.2);">
+          <span style="font-size: 14px; font-weight: bold; color: #facc15;">ultimatefantasydashboard.com</span>
         </div>
       </div>
     `
@@ -3057,17 +3057,17 @@ async function downloadBalanceImage() {
     
     container.innerHTML = `
       <div style="background: linear-gradient(160deg, #0f1219 0%, #0a0c14 50%, #0d1117 100%); border-radius: 16px; box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5); position: relative; overflow: hidden;">
-        <div style="background: #dc2626; padding: 8px 20px; text-align: center;">
+        <div style="background: #facc15; padding: 8px 20px; text-align: center;">
           <span style="font-size: 12px; font-weight: 700; color: #0a0c14; text-transform: uppercase; letter-spacing: 2px;">Ultimate Fantasy Dashboard</span>
         </div>
-        <div style="display: flex; align-items: center; padding: 10px 16px; border-bottom: 1px solid rgba(220, 38, 38, 0.2);">
+        <div style="display: flex; align-items: center; padding: 10px 16px; border-bottom: 1px solid rgba(250, 204, 21, 0.2);">
           ${logoBase64 ? `<img src="${logoBase64}" style="height: 40px; width: auto; flex-shrink: 0; margin-right: 12px; margin-top: 4px;" />` : ''}
           <div style="flex: 1;">
             <div style="font-size: 17px; font-weight: 900; color: #ffffff; text-transform: uppercase; letter-spacing: 0.5px; line-height: 1.1;">Draft Balance</div>
             <div style="font-size: 12px; margin-top: 2px;">
               <span style="color: #e5e7eb;">${leagueName}</span>
               <span style="color: #6b7280; margin: 0 4px;">•</span>
-              <span style="color: #dc2626; font-weight: 600;">${selectedSeason.value} Draft</span>
+              <span style="color: #facc15; font-weight: 600;">${selectedSeason.value} Draft</span>
             </div>
           </div>
         </div>
@@ -3107,8 +3107,8 @@ async function downloadBalanceImage() {
             </div>
           </div>
         </div>
-        <div style="padding: 10px 16px; text-align: center; border-top: 1px solid rgba(220, 38, 38, 0.2);">
-          <span style="font-size: 14px; font-weight: bold; color: #dc2626;">ultimatefantasydashboard.com</span>
+        <div style="padding: 10px 16px; text-align: center; border-top: 1px solid rgba(250, 204, 21, 0.2);">
+          <span style="font-size: 14px; font-weight: bold; color: #facc15;">ultimatefantasydashboard.com</span>
         </div>
       </div>
     `

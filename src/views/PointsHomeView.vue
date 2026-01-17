@@ -1354,19 +1354,19 @@ async function downloadLeaderImage() {
       <div style="background: linear-gradient(160deg, #0f1219 0%, #0a0c14 50%, #0d1117 100%); border-radius: 16px; box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5); position: relative; overflow: hidden;">
         
         <!-- Top Red Bar -->
-        <div style="background: #dc2626; padding: 8px 20px; text-align: center;">
+        <div style="background: #facc15; padding: 8px 20px; text-align: center;">
           <span style="font-size: 12px; font-weight: 700; color: #ffffff; text-transform: uppercase; letter-spacing: 2px;">Ultimate Fantasy Dashboard</span>
         </div>
         
         <!-- Header -->
-        <div style="display: flex; align-items: center; padding: 10px 16px; border-bottom: 1px solid rgba(220, 38, 38, 0.2);">
+        <div style="display: flex; align-items: center; padding: 10px 16px; border-bottom: 1px solid rgba(250, 204, 21, 0.2);">
           ${logoBase64 ? `<img src="${logoBase64}" style="height: 40px; width: auto; flex-shrink: 0; margin-right: 12px; margin-top: 4px;" />` : ''}
           <div style="flex: 1;">
             <div style="font-size: 17px; font-weight: 900; color: #ffffff; text-transform: uppercase; letter-spacing: 0.5px; line-height: 1.1;">${leaderModalTitle.value}</div>
             <div style="font-size: 12px; margin-top: 2px;">
               <span style="color: #e5e7eb;">${leagueName.value}</span>
               <span style="color: #6b7280; margin: 0 4px;">•</span>
-              <span style="color: #dc2626; font-weight: 600;">Week ${displayWeek.value}</span>
+              <span style="color: #facc15; font-weight: 600;">Week ${displayWeek.value}</span>
             </div>
           </div>
         </div>
@@ -1391,8 +1391,8 @@ async function downloadLeaderImage() {
         </div>
         
         <!-- Footer -->
-        <div style="padding: 10px 16px; text-align: center; border-top: 1px solid rgba(220, 38, 38, 0.2);">
-          <span style="font-size: 14px; font-weight: bold; color: #dc2626;">ultimatefantasydashboard.com</span>
+        <div style="padding: 10px 16px; text-align: center; border-top: 1px solid rgba(250, 204, 21, 0.2);">
+          <span style="font-size: 14px; font-weight: bold; color: #facc15;">ultimatefantasydashboard.com</span>
         </div>
       </div>
     `
