@@ -177,11 +177,14 @@
               class="w-44 flex-shrink-0 bg-dark-card rounded-t-lg p-2 text-center cursor-pointer hover:ring-2 hover:ring-primary transition-all"
               @click="selectedBoardTeam = team.team_key; showBoardTeamModal = true"
             >
-              <div class="w-8 h-8 rounded-full bg-dark-border mx-auto mb-1 overflow-hidden">
-                <img v-if="team.logo_url" :src="team.logo_url" class="w-full h-full object-cover" @error="handleImageError" />
-                <div v-else class="w-full h-full flex items-center justify-center text-xs font-bold text-dark-textMuted">
-                  {{ team.team_name?.substring(0, 2).toUpperCase() }}
-                </div>
+              <div class="w-8 h-8 rounded-full bg-dark-border mx-auto mb-1 overflow-hidden flex-shrink-0">
+                <img 
+                  :src="getImageSrc(team.logo_url)" 
+                  :key="team.team_key + '-logo'"
+                  class="w-full h-full object-cover"
+                  loading="lazy"
+                  @error="handleImageError" 
+                />
               </div>
               <div class="text-xs font-semibold text-dark-text truncate" :title="team.team_name">
                 {{ team.team_name }}
@@ -289,7 +292,13 @@
             <div class="sticky top-0 z-10 px-6 py-4 border-b border-dark-border bg-dark-elevated flex items-center justify-between">
               <div class="flex items-center gap-3">
                 <div class="w-12 h-12 rounded-full bg-dark-border overflow-hidden">
-                  <img :src="selectedBoardTeamData?.logo_url || defaultAvatar" class="w-full h-full object-cover" @error="handleImageError" />
+                  <img 
+                    :src="getImageSrc(selectedBoardTeamData?.logo_url)" 
+                    :key="selectedBoardTeam + '-modal-logo'"
+                    class="w-full h-full object-cover" 
+                    loading="lazy"
+                    @error="handleImageError" 
+                  />
                 </div>
                 <div>
                   <h3 class="text-xl font-bold text-dark-text">{{ selectedBoardTeamData?.team_name }}</h3>
@@ -363,7 +372,13 @@
                     <div class="text-xs font-bold text-dark-textMuted">R{{ pick.round }}</div>
                   </div>
                   <div class="w-10 h-10 rounded-full bg-dark-border overflow-hidden flex-shrink-0">
-                    <img :src="pick.headshot || defaultAvatar" class="w-full h-full object-cover" @error="handleImageError" />
+                    <img 
+                      :src="getImageSrc(pick.headshot)" 
+                      :key="pick.player_key + '-board-modal'"
+                      class="w-full h-full object-cover" 
+                      loading="lazy"
+                      @error="handleImageError" 
+                    />
                   </div>
                   <div class="flex-1 min-w-0">
                     <div class="font-semibold text-dark-text">{{ pick.player_name }}</div>
@@ -435,7 +450,7 @@
               <div v-if="cat.player" class="space-y-2">
                 <div class="flex items-center gap-2">
                   <div class="w-8 h-8 rounded-full overflow-hidden bg-dark-border flex-shrink-0">
-                    <img :src="cat.player.headshot || defaultAvatar" class="w-full h-full object-cover" @error="handleImageError" />
+                    <img :src="getImageSrc(cat.player.headshot)" loading="lazy" class="w-full h-full object-cover" @error="handleImageError" />
                   </div>
                   <div class="flex-1 min-w-0">
                     <div class="font-semibold text-dark-text text-sm truncate">{{ cat.player.player_name }}</div>
@@ -571,7 +586,7 @@
                 <td class="p-3 sticky left-0 bg-dark-card z-10">
                   <div class="flex items-center gap-2">
                     <div class="w-8 h-8 rounded-full bg-dark-border overflow-hidden flex-shrink-0">
-                      <img :src="pick.headshot || defaultAvatar" class="w-full h-full object-cover" @error="handleImageError" />
+                      <img :src="getImageSrc(pick.headshot)" loading="lazy" class="w-full h-full object-cover" @error="handleImageError" />
                     </div>
                     <div>
                       <div class="font-medium text-dark-text">{{ pick.player_name }}</div>
@@ -640,7 +655,7 @@
             <!-- Team Header -->
             <div class="flex items-center gap-3 mb-4">
               <div class="w-12 h-12 rounded-full bg-dark-border overflow-hidden">
-                <img :src="team.logo_url || defaultAvatar" class="w-full h-full object-cover" @error="handleImageError" />
+                <img :src="getImageSrc(team.logo_url)" loading="lazy" class="w-full h-full object-cover" @error="handleImageError" />
               </div>
               <div class="flex-1">
                 <div class="font-bold text-dark-text">{{ team.team_name }}</div>
@@ -697,7 +712,7 @@
             <div class="sticky top-0 z-10 px-6 py-4 border-b border-dark-border bg-dark-elevated flex items-center justify-between">
               <div class="flex items-center gap-3">
                 <div class="w-12 h-12 rounded-full bg-dark-border overflow-hidden">
-                  <img :src="selectedTeamData?.logo_url || defaultAvatar" class="w-full h-full object-cover" @error="handleImageError" />
+                  <img :src="getImageSrc(selectedTeamData?.logo_url)" loading="lazy" class="w-full h-full object-cover" @error="handleImageError" />
                 </div>
                 <div>
                   <h3 class="text-xl font-bold text-dark-text">{{ selectedTeamData?.team_name }}</h3>
@@ -855,7 +870,7 @@
             >
               <div class="text-lg font-bold text-green-400 w-6">{{ idx + 1 }}</div>
               <div class="w-10 h-10 rounded-full bg-dark-border overflow-hidden flex-shrink-0">
-                <img :src="pick.headshot || defaultAvatar" class="w-full h-full object-cover" @error="handleImageError" />
+                <img :src="getImageSrc(pick.headshot)" loading="lazy" class="w-full h-full object-cover" @error="handleImageError" />
               </div>
               <div class="flex-1 min-w-0">
                 <div class="font-semibold text-dark-text">{{ pick.player_name }}</div>
@@ -911,7 +926,7 @@
             >
               <div class="text-lg font-bold text-red-400 w-6">{{ idx + 1 }}</div>
               <div class="w-10 h-10 rounded-full bg-dark-border overflow-hidden flex-shrink-0">
-                <img :src="pick.headshot || defaultAvatar" class="w-full h-full object-cover" @error="handleImageError" />
+                <img :src="getImageSrc(pick.headshot)" loading="lazy" class="w-full h-full object-cover" @error="handleImageError" />
               </div>
               <div class="flex-1 min-w-0">
                 <div class="font-semibold text-dark-text">{{ pick.player_name }}</div>
@@ -959,7 +974,7 @@
                   {{ idx + 1 }}
                 </div>
                 <div class="w-10 h-10 rounded-full bg-dark-border overflow-hidden flex-shrink-0">
-                  <img :src="steal.headshot || defaultAvatar" class="w-full h-full object-cover" @error="handleImageError" />
+                  <img :src="getImageSrc(steal.headshot)" loading="lazy" class="w-full h-full object-cover" @error="handleImageError" />
                 </div>
                 <div class="flex-1 min-w-0">
                   <div class="font-semibold text-dark-text">{{ steal.player_name }}</div>
@@ -1030,7 +1045,7 @@
           <div class="p-6 border-b border-dark-border flex items-center justify-between">
             <div class="flex items-center gap-4">
               <div class="w-16 h-16 rounded-full bg-dark-border overflow-hidden" :class="!isEspn ? 'ring-4 ' + getGradeRingClass(selectedPick.grade) : ''">
-                <img :src="selectedPick.headshot || defaultAvatar" class="w-full h-full object-cover" @error="handleImageError" />
+                <img :src="getImageSrc(selectedPick.headshot)" loading="lazy" class="w-full h-full object-cover" @error="handleImageError" />
               </div>
               <div>
                 <h2 class="text-2xl font-bold text-dark-text">{{ selectedPick.player_name }}</h2>
@@ -1143,7 +1158,7 @@
               <h3 class="text-lg font-bold text-dark-text mb-2">Drafted By</h3>
               <div class="flex items-center gap-3">
                 <div class="w-10 h-10 rounded-full bg-dark-border overflow-hidden">
-                  <img :src="selectedPick.team_logo || defaultAvatar" class="w-full h-full object-cover" @error="handleImageError" />
+                  <img :src="getImageSrc(selectedPick.team_logo)" loading="lazy" class="w-full h-full object-cover" @error="handleImageError" />
                 </div>
                 <div>
                   <div class="font-semibold text-dark-text">{{ selectedPick.team_name }}</div>
@@ -1262,6 +1277,16 @@ const draftBoard = computed(() => {
   }
   
   return Object.values(teams)
+})
+
+// Pre-compute picks by round and team for O(1) lookup (prevents flickering from repeated function calls)
+const picksByRoundAndTeam = computed(() => {
+  const map = new Map<string, any>()
+  for (const pick of draftPicks.value) {
+    const key = `${pick.team_key}-${pick.round}`
+    map.set(key, pick)
+  }
+  return map
 })
 
 const totalRounds = computed(() => {
@@ -1618,7 +1643,8 @@ const categorySteals = computed(() => {
 
 // Helper functions
 function getPickForRound(teamKey: string, round: number) {
-  return draftPicks.value.find(p => p.team_key === teamKey && p.round === round)
+  // Use the cached map for O(1) lookup instead of O(n) find
+  return picksByRoundAndTeam.value.get(`${teamKey}-${round}`)
 }
 
 function getPickClass(pick: any) {
@@ -1838,9 +1864,36 @@ function calculateGrade(score: number): string {
   return 'D'
 }
 
+// Track images that have already errored to prevent infinite loops
+const erroredImages = new Set<string>()
+
 function handleImageError(e: Event) {
   const img = e.target as HTMLImageElement
+  const originalSrc = img.dataset.originalSrc || img.src
+  
+  // If we've already handled this image, don't do anything
+  if (erroredImages.has(originalSrc)) {
+    return
+  }
+  
+  // Mark as errored
+  erroredImages.add(originalSrc)
+  
+  // Store original src for tracking
+  if (!img.dataset.originalSrc) {
+    img.dataset.originalSrc = originalSrc
+  }
+  
+  // Set to default avatar
   img.src = defaultAvatar
+}
+
+// Computed image src helper to prevent unnecessary updates
+function getImageSrc(src: string | undefined, fallback: string = defaultAvatar): string {
+  if (!src || src === '' || erroredImages.has(src)) {
+    return fallback
+  }
+  return src
 }
 
 function selectPick(pick: any) {
@@ -3086,5 +3139,35 @@ onMounted(() => {
 
 .card-body {
   @apply p-4;
+}
+
+/* Image stability - prevent flickering and layout shifts */
+img {
+  /* Prevent flickering during re-renders */
+  content-visibility: auto;
+  /* Smooth loading transition */
+  opacity: 1;
+  transition: opacity 0.15s ease-in-out;
+  /* Prevent layout shift */
+  aspect-ratio: 1/1;
+  object-fit: cover;
+  /* Hardware acceleration */
+  transform: translateZ(0);
+  will-change: auto;
+}
+
+/* Background color while image loads */
+.rounded-full {
+  background-color: rgba(75, 85, 99, 0.4);
+}
+
+/* Ensure image containers maintain their size */
+.overflow-hidden {
+  contain: layout style;
+}
+
+/* Prevent layout shift on image error */
+img[src="https://s.yimg.com/cv/apiv2/default/mlb/mlb_dp_2_72.png"] {
+  background-color: rgba(75, 85, 99, 0.4);
 }
 </style>
