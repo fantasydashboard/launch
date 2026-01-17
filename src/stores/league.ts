@@ -250,7 +250,18 @@ export const useLeagueStore = defineStore('league', () => {
       if (fetchError) throw fetchError
       
       if (data && data.length > 0) {
-        savedLeagues.value = data
+        // MERGE Supabase leagues with localStorage leagues instead of replacing
+        // This preserves local-only leagues (like ESPN leagues that don't sync to Supabase)
+        const localLeagues = savedLeagues.value
+        const supabaseLeagueIds = new Set(data.map(l => l.league_id))
+        
+        // Keep local leagues that aren't in Supabase (local-only leagues)
+        const localOnlyLeagues = localLeagues.filter(l => !supabaseLeagueIds.has(l.league_id))
+        
+        // Merge: Supabase leagues (source of truth) + local-only leagues
+        savedLeagues.value = [...data, ...localOnlyLeagues]
+        
+        console.log(`[League Store] Merged ${data.length} Supabase leagues + ${localOnlyLeagues.length} local-only leagues`)
         saveToLocalStorage()
       }
       
@@ -455,10 +466,10 @@ export const useLeagueStore = defineStore('league', () => {
   }
 
   /**
-   * Save an ESPN league to local state
+   * Save an ESPN league to local state and Supabase
    * ESPN data is fetched live from API, we just store the reference
    */
-  function saveEspnLeague(leagueId: string, leagueName: string, sport: 'football' | 'baseball' | 'basketball' | 'hockey', season: number, numTeams?: number, scoringType?: string): SavedLeague {
+  async function saveEspnLeague(leagueId: string, leagueName: string, sport: 'football' | 'baseball' | 'basketball' | 'hockey', season: number, numTeams?: number, scoringType?: string): Promise<SavedLeague> {
     // Create league key (format: espn_{sport}_{leagueId}_{season})
     const leagueKey = `espn_${sport}_${leagueId}_${season}`
     
@@ -487,6 +498,42 @@ export const useLeagueStore = defineStore('league', () => {
     saveToLocalStorage()
     
     console.log('[ESPN] League saved to local state:', newLeague)
+    
+    // Sync to Supabase in background
+    if (supabase && currentUserId.value) {
+      try {
+        const { data, error: saveError } = await supabase
+          .from('user_leagues')
+          .insert({
+            user_id: currentUserId.value,
+            league_id: leagueKey,
+            league_name: leagueName,
+            platform: 'espn',
+            sport: sport,
+            season: season.toString(),
+            is_primary: isPrimary,
+            num_teams: numTeams,
+            scoring_type: scoringType
+          })
+          .select()
+          .single()
+        
+        if (saveError) {
+          console.error('Failed to save ESPN league to Supabase:', saveError)
+        } else if (data) {
+          // Update local state with the Supabase record (which has id)
+          const index = savedLeagues.value.findIndex(l => l.league_id === leagueKey)
+          if (index !== -1) {
+            savedLeagues.value[index] = data
+            saveToLocalStorage()
+          }
+          console.log('[ESPN] League synced to Supabase:', data)
+        }
+      } catch (e) {
+        console.error('Failed to sync ESPN league to Supabase:', e)
+      }
+    }
+    
     return newLeague
   }
 

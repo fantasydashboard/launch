@@ -812,9 +812,9 @@ async function handleEspnLeagueAdded(data: { leagueId: string; sport: string; se
   try {
     console.log('[ESPN] League added:', data)
     
-    // Save to local state (no database needed)
+    // Save to local state and Supabase
     const sport = data.sport as 'football' | 'baseball' | 'basketball' | 'hockey'
-    leagueStore.saveEspnLeague(
+    await leagueStore.saveEspnLeague(
       data.leagueId,
       data.league?.name || `ESPN League ${data.leagueId}`,
       sport,
