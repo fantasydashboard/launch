@@ -3001,7 +3001,7 @@ export class EspnFantasyService {
     teamTotalCategoryLosses: Map<string, number>;
     hasRealStatValues: boolean;
   }> {
-    console.log('[ESPN getCategoryStatsBreakdown] Starting for league', leagueId)
+    console.log('[ESPN getCategoryStatsBreakdown] Starting for league', leagueId, 'sport:', sport)
     
     // Get league info to determine scoring type and total weeks
     const league = await this.getLeague(sport, leagueId, season)
@@ -3022,7 +3022,7 @@ export class EspnFantasyService {
     const scoringItems = scoringSettings?.scoringItems || []
     console.log('[ESPN getCategoryStatsBreakdown] Scoring items count:', scoringItems.length)
     
-    // Map ESPN stat IDs to names (baseball-specific for now)
+    // Map ESPN stat IDs to names - Baseball
     const espnBaseballStatNames: Record<number, { name: string; display: string; isNegative?: boolean }> = {
       0: { name: 'At Bats', display: 'AB' },
       1: { name: 'Hits', display: 'H' },
@@ -3067,6 +3067,64 @@ export class EspnFantasyService {
       99: { name: 'Games Pitched', display: 'GP' }
     }
     
+    // Map ESPN stat IDs to names - Hockey
+    const espnHockeyStatNames: Record<number, { name: string; display: string; isNegative?: boolean }> = {
+      0: { name: 'Goals', display: 'G' },
+      1: { name: 'Assists', display: 'A' },
+      2: { name: 'Points', display: 'PTS' },
+      3: { name: 'Plus/Minus', display: '+/-' },
+      4: { name: 'Penalty Minutes', display: 'PIM' },
+      5: { name: 'Powerplay Goals', display: 'PPG' },
+      6: { name: 'Powerplay Assists', display: 'PPA' },
+      7: { name: 'Powerplay Points', display: 'PPP' },
+      8: { name: 'Shorthanded Goals', display: 'SHG' },
+      9: { name: 'Shorthanded Assists', display: 'SHA' },
+      10: { name: 'Shorthanded Points', display: 'SHP' },
+      11: { name: 'Game-Winning Goals', display: 'GWG' },
+      12: { name: 'Shots on Goal', display: 'SOG' },
+      13: { name: 'Shooting Percentage', display: 'SH%' },
+      14: { name: 'Faceoffs Won', display: 'FOW' },
+      15: { name: 'Faceoffs Lost', display: 'FOL', isNegative: true },
+      16: { name: 'Hits', display: 'HIT' },
+      17: { name: 'Blocks', display: 'BLK' },
+      19: { name: 'Wins', display: 'W' },
+      20: { name: 'Losses', display: 'L', isNegative: true },
+      21: { name: 'Goals Against', display: 'GA', isNegative: true },
+      22: { name: 'Goals Against Average', display: 'GAA', isNegative: true },
+      23: { name: 'Saves', display: 'SV' },
+      24: { name: 'Save Percentage', display: 'SV%' },
+      25: { name: 'Shutouts', display: 'SHO' },
+      26: { name: 'Overtime Losses', display: 'OTL' },
+      27: { name: 'Games Started', display: 'GS' },
+      31: { name: 'Hat Tricks', display: 'HAT' },
+      32: { name: 'Defensemen Points', display: 'DEF' },
+      33: { name: 'Special Teams Points', display: 'STP' }
+    }
+    
+    // Map ESPN stat IDs to names - Basketball
+    const espnBasketballStatNames: Record<number, { name: string; display: string; isNegative?: boolean }> = {
+      0: { name: 'Points', display: 'PTS' },
+      1: { name: 'Blocks', display: 'BLK' },
+      2: { name: 'Steals', display: 'STL' },
+      3: { name: 'Assists', display: 'AST' },
+      6: { name: 'Rebounds', display: 'REB' },
+      11: { name: 'Turnovers', display: 'TO', isNegative: true },
+      13: { name: 'Field Goals Made', display: 'FGM' },
+      14: { name: 'Field Goals Attempted', display: 'FGA' },
+      15: { name: 'Field Goal Pct', display: 'FG%' },
+      16: { name: 'Free Throws Made', display: 'FTM' },
+      17: { name: 'Free Throws Attempted', display: 'FTA' },
+      18: { name: 'Free Throw Pct', display: 'FT%' },
+      19: { name: '3-Pointers Made', display: '3PM' },
+      20: { name: '3-Pointers Attempted', display: '3PA' },
+      21: { name: '3-Point Pct', display: '3P%' }
+    }
+    
+    // Select the appropriate stat names based on sport
+    const statNames = sport === 'hockey' ? espnHockeyStatNames 
+      : sport === 'basketball' ? espnBasketballStatNames 
+      : espnBaseballStatNames
+    
     // Build categories array from scoring items
     const categories: Array<{ stat_id: string; name: string; display_name: string; is_negative?: boolean }> = []
     const categoryStatIds: string[] = []
@@ -3074,7 +3132,7 @@ export class EspnFantasyService {
       const statId = item.statId?.toString() || item.id?.toString()
       if (statId) {
         categoryStatIds.push(statId)
-        const statInfo = espnBaseballStatNames[parseInt(statId)] || {
+        const statInfo = statNames[parseInt(statId)] || {
           name: `Stat ${statId}`,
           display: `S${statId}`
         }
