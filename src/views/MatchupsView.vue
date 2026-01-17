@@ -42,7 +42,7 @@
 
     <!-- Loading State -->
     <div v-if="isLoading" class="flex items-center justify-center py-20">
-      <div class="animate-spin rounded-full h-16 w-16 border-b-4 border-primary"></div>
+      <LoadingSpinner size="lg" />
     </div>
 
     <template v-else-if="matchups.length > 0">
@@ -934,6 +934,7 @@ import type { SleeperRoster, SleeperMatchup, SleeperUser } from '@/types/sleeper
 import ApexCharts from 'apexcharts'
 import { useFeatureAccess } from '@/composables/useFeatureAccess'
 import SimulatedDataBanner from '@/components/SimulatedDataBanner.vue'
+import LoadingSpinner from '@/components/LoadingSpinner.vue'
 
 const leagueStore = useLeagueStore()
 const { hasLeagueAccess } = useFeatureAccess()

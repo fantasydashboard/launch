@@ -10,7 +10,7 @@
 
     <!-- Loading State -->
     <div v-if="isLoading" class="flex items-center justify-center py-20">
-      <div class="animate-spin rounded-full h-16 w-16 border-b-4 border-primary"></div>
+      <LoadingSpinner size="lg" />
     </div>
 
     <template v-else>
@@ -671,8 +671,7 @@
               <!-- Full content for subscribers -->
               <template v-else>
                 <div v-if="isLoadingTradeWaiverAwards" class="text-center py-8">
-                  <div class="animate-spin rounded-full h-12 w-12 border-b-4 border-primary mx-auto"></div>
-                  <p class="text-sm text-dark-textMuted mt-4">Analyzing transactions...</p>
+                  <LoadingSpinner size="md" message="Analyzing transactions..." />
                 </div>
                 <div v-else class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                   <!-- Best Trade -->
@@ -826,8 +825,7 @@
                 <span>Trades & Waivers - {{ selectedAwardSeason }}</span>
               </h3>
               <div v-if="isLoadingTradeWaiverAwards" class="text-center py-8">
-                <div class="animate-spin rounded-full h-12 w-12 border-b-4 border-primary mx-auto"></div>
-                <p class="text-sm text-dark-textMuted mt-4">Analyzing transactions...</p>
+                <LoadingSpinner size="md" message="Analyzing transactions..." />
               </div>
               <div v-else class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 <!-- Best Trade for Season -->
@@ -1114,6 +1112,7 @@ import type { AwardWinner, TradeAward, WaiverAward } from '@/services/awards'
 import html2canvas from 'html2canvas'
 import { useFeatureAccess } from '@/composables/useFeatureAccess'
 import SimulatedDataBanner from '@/components/SimulatedDataBanner.vue'
+import LoadingSpinner from '@/components/LoadingSpinner.vue'
 
 const leagueStore = useLeagueStore()
 const { hasLeagueAccess } = useFeatureAccess()

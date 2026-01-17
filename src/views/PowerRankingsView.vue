@@ -35,10 +35,7 @@
 
     <!-- Loading State -->
     <div v-if="isLoading" class="flex items-center justify-center py-20">
-      <div class="text-center">
-        <div class="animate-spin rounded-full h-16 w-16 border-b-4 border-primary mx-auto mb-4"></div>
-        <p class="text-dark-textMuted">Loading power rankings...</p>
-      </div>
+      <LoadingSpinner size="lg" message="Loading power rankings..." />
     </div>
 
     <template v-else-if="powerRankings.length > 0">
@@ -1420,6 +1417,7 @@ import { useFeatureAccess } from '@/composables/useFeatureAccess'
 import BlurredPreview from '@/components/BlurredPreview.vue'
 import LockedContentOverlay from '@/components/LockedContentOverlay.vue'
 import SimulatedDataBanner from '@/components/SimulatedDataBanner.vue'
+import LoadingSpinner from '@/components/LoadingSpinner.vue'
 
 // Feature access for subscription gating
 const { hasLeagueAccess, canDownloadGraphics } = useFeatureAccess()

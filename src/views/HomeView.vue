@@ -40,10 +40,7 @@
         </div>
 
         <div v-if="isLoading" class="flex items-center justify-center py-12">
-          <div class="text-center">
-            <div class="animate-spin rounded-full h-12 w-12 border-b-4 border-primary mx-auto mb-3"></div>
-            <p class="text-dark-textMuted text-sm">Loading matchups...</p>
-          </div>
+          <LoadingSpinner size="md" message="Loading matchups..." />
         </div>
 
         <!-- Matchups Grid -->
@@ -658,6 +655,7 @@ import PlayoffPredictor from '@/components/PlayoffPredictor.vue'
 import StandingsTable from '@/components/StandingsTable.vue'
 import YahooLeagueHome from '@/components/YahooLeagueHome.vue'
 import YahooBaseballHome from '@/components/YahooBaseballHome.vue'
+import LoadingSpinner from '@/components/LoadingSpinner.vue'
 import { calculateAllPlayRecord, calculateTransactionCount, getStandingsOverTime } from '@/utils/calculations'
 import type { SleeperMatchup } from '@/types/sleeper'
 

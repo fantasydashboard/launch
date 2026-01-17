@@ -39,10 +39,7 @@
 
     <!-- Loading State -->
     <div v-if="isLoading" class="flex items-center justify-center py-20">
-      <div class="text-center">
-        <div class="animate-spin rounded-full h-16 w-16 border-b-4 border-primary mx-auto mb-4"></div>
-        <p class="text-dark-textMuted">Loading draft data...</p>
-      </div>
+      <LoadingSpinner size="lg" message="Loading draft data..." />
     </div>
 
     <!-- ==================== DRAFT BOARD TAB ==================== -->
@@ -533,10 +530,7 @@
     <!-- ==================== ACTUAL VALUE TAB ==================== -->
     <template v-else-if="activeTab === 'actual'">
       <div v-if="isLoadingTransactions" class="flex items-center justify-center py-20">
-        <div class="text-center">
-          <div class="animate-spin rounded-full h-16 w-16 border-b-4 border-primary mx-auto mb-4"></div>
-          <p class="text-dark-textMuted">Loading transaction data...</p>
-        </div>
+        <LoadingSpinner size="lg" message="Loading transaction data..." />
       </div>
       
       <template v-else>
@@ -896,6 +890,7 @@ import { useLeagueStore } from '@/stores/league'
 import { sleeperService } from '@/services/sleeper'
 import draftAnalysisService, { type DraftPickAnalysis, type TeamDraftGrade, type RoundAnalysis } from '@/services/draftAnalysis'
 import { useFeatureAccess } from '@/composables/useFeatureAccess'
+import LoadingSpinner from '@/components/LoadingSpinner.vue'
 
 const leagueStore = useLeagueStore()
 const { hasLeagueAccess } = useFeatureAccess()
