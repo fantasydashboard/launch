@@ -2085,6 +2085,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from 'vue'
 import { useLeagueStore } from '@/stores/league'
+import { usePlatformsStore } from '@/stores/platforms'
 import { yahooService } from '@/services/yahoo'
 import { espnService } from '@/services/espn'
 import { useFeatureAccess } from '@/composables/useFeatureAccess'
@@ -3138,6 +3139,18 @@ async function loadEspnProjections() {
     currentSport.value = sport  // Set sport for sport-specific defaults
     console.log('[ESPN Projections] Loading league:', leagueId, 'season:', season, 'sport:', sport)
     
+    // Ensure ESPN credentials are loaded before trying to identify user's team
+    const platformsStore = usePlatformsStore()
+    const credentials = platformsStore.getEspnCredentials()
+    if (credentials) {
+      console.log('[ESPN Projections] Setting ESPN credentials')
+      console.log('[ESPN Projections] SWID from storage:', credentials.swid)
+      console.log('[ESPN Projections] espn_s2 length:', credentials.espn_s2?.length || 0)
+      espnService.setCredentials(credentials.espn_s2, credentials.swid)
+    } else {
+      console.log('[ESPN Projections] WARNING: No ESPN credentials found in storage - myTeamKey will not be set!')
+    }
+    
     // Load scoring settings
     const scoringSettings = await espnService.getScoringSettings(sport as any, leagueId, season)
     if (scoringSettings?.scoringItems) {
@@ -3278,12 +3291,15 @@ async function loadEspnProjections() {
     })
     
     console.log('[ESPN Projections] Teams loaded:', teamsData.value.length)
-    console.log('[ESPN Projections] Teams with is_my_team:', teamsData.value.filter(t => t.is_my_team).map(t => t.name))
+    console.log('[ESPN Projections] Teams with is_my_team:', teamsData.value.filter(t => t.is_my_team).map(t => ({ name: t.name, team_key: t.team_key })))
     
     // Find my team - only set if we actually found one
     const myTeam = teamsData.value.find((t: any) => t.is_my_team)
     myTeamKey.value = myTeam?.team_key || null  // Don't default to first team
     console.log('[ESPN Projections] My team key:', myTeamKey.value, 'Name:', myTeam?.name)
+    
+    // Debug: Log all team_keys for comparison
+    console.log('[ESPN Projections] All team_keys:', teamsData.value.map(t => ({ name: t.name, team_key: t.team_key })))
     
     loadingMessage.value = 'Loading player data...'
     

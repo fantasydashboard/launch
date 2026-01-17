@@ -1233,6 +1233,20 @@ export const useLeagueStore = defineStore('league', () => {
       // Get teams with standings
       const espnTeams = await espnService.getTeams(sport, espnLeagueId, season)
       
+      // Get user's team ID for highlighting
+      let myTeamId: number | null = null
+      try {
+        const myTeam = await espnService.getMyTeam(sport, espnLeagueId, season)
+        if (myTeam) {
+          myTeamId = myTeam.id
+          console.log('[ESPN] Found my team:', myTeam.name, 'ID:', myTeamId)
+        } else {
+          console.log('[ESPN] Could not identify user team - no credentials or no match')
+        }
+      } catch (e) {
+        console.log('[ESPN] Error getting my team:', e)
+      }
+      
       // Get current week matchups
       const currentWeek = league.status?.currentMatchupPeriod || 1
       const espnMatchups = await espnService.getMatchups(sport, espnLeagueId, season, currentWeek)
@@ -1259,7 +1273,7 @@ export const useLeagueStore = defineStore('league', () => {
         }
         
         return {
-          team_key: `espn_${team.id}`,
+          team_key: `espn_${espnLeagueId}_${season}_${team.id}`,
           team_id: team.id.toString(),
           name: team.name,
           logo_url: logoUrl,
@@ -1269,7 +1283,7 @@ export const useLeagueStore = defineStore('league', () => {
           points_for: team.pointsFor || team.record?.overall?.pointsFor || 0,
           points_against: team.pointsAgainst || team.record?.overall?.pointsAgainst || 0,
           rank: team.playoffSeed || team.rank || 0,
-          is_my_team: false, // TODO: Detect user's team
+          is_my_team: myTeamId !== null && team.id === myTeamId,
           transactions: 0
         }
       })
