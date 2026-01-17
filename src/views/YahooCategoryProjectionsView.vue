@@ -3141,7 +3141,7 @@ async function loadEspnProjections() {
         }
       })
       
-      console.log('[ESPN Projections] Loaded categories:', statCategories.value.map(c => c.display_name))
+      console.log('[ESPN Projections] Loaded categories:', statCategories.value.map(c => `${c.display_name}(${c.stat_id})`))
       
       if (displayCategories.value.length > 0 && !selectedCategory.value) {
         selectedCategory.value = displayCategories.value[0].stat_id
@@ -3151,51 +3151,155 @@ async function loadEspnProjections() {
     loadingMessage.value = 'Loading teams...'
     const teams = await espnService.getTeamsWithRosters(sport as any, leagueId, season)
     
+    // Get my team ID from ESPN
+    let myTeamId: number | null = null
+    try {
+      const myTeam = await espnService.getMyTeam(sport as any, leagueId, season)
+      if (myTeam) {
+        myTeamId = myTeam.id
+        console.log('[ESPN Projections] Found my team via getMyTeam:', myTeam.name, 'ID:', myTeamId)
+      }
+    } catch (e) {
+      console.log('[ESPN Projections] Could not get my team:', e)
+    }
+    
     // Transform ESPN teams to our format
-    teamsData.value = teams.map((team: any) => ({
-      team_key: `espn_${leagueId}_${season}_${team.id}`,
-      team_id: team.id.toString(),
-      name: team.name,
-      logo_url: team.logo || `https://ui-avatars.com/api/?name=${encodeURIComponent(team.name)}&background=random&color=fff&size=64`,
-      is_my_team: team.id === leagueStore.currentLeague?.myTeamId,
-      wins: team.wins || 0,
-      losses: team.losses || 0,
-      ties: team.ties || 0
-    }))
+    teamsData.value = teams.map((team: any) => {
+      // Get team logo - ESPN provides this in multiple places
+      let logoUrl = team.logo
+      if (!logoUrl && team.owners?.length > 0) {
+        // Try to get from team ID based URL
+        logoUrl = `https://g.espncdn.com/lm-static/fba/images/default_logos/team_${team.id % 30}.svg`
+      }
+      if (!logoUrl) {
+        logoUrl = `https://ui-avatars.com/api/?name=${encodeURIComponent(team.name)}&background=random&color=fff&size=64`
+      }
+      
+      return {
+        team_key: `espn_${leagueId}_${season}_${team.id}`,
+        team_id: team.id.toString(),
+        name: team.name,
+        logo: logoUrl,  // Template uses team.logo
+        logo_url: logoUrl,  // Also set logo_url for modals
+        is_my_team: myTeamId !== null && team.id === myTeamId,
+        wins: team.wins || 0,
+        losses: team.losses || 0,
+        ties: team.ties || 0
+      }
+    })
     
     console.log('[ESPN Projections] Teams loaded:', teamsData.value.length)
+    console.log('[ESPN Projections] Teams with is_my_team:', teamsData.value.filter(t => t.is_my_team).map(t => t.name))
     
-    // Find my team
+    // Find my team - only set if we actually found one
     const myTeam = teamsData.value.find((t: any) => t.is_my_team)
-    myTeamKey.value = myTeam?.team_key || teamsData.value[0]?.team_key || null
-    console.log('[ESPN Projections] My team:', myTeam?.name, 'Key:', myTeamKey.value)
+    myTeamKey.value = myTeam?.team_key || null  // Don't default to first team
+    console.log('[ESPN Projections] My team key:', myTeamKey.value, 'Name:', myTeam?.name)
     
     loadingMessage.value = 'Loading player data...'
     
     // Get all rostered players from teams with rosters
     const allRosteredPlayers: any[] = []
+    const playerIdList: number[] = []
+    
     for (const team of teams) {
       const roster = team.roster || []
+      console.log(`[ESPN Projections] Team ${team.name} has ${roster.length} roster entries`)
+      
       for (const entry of roster) {
-        const player = entry.playerPoolEntry?.player || entry.player || entry
-        if (player) {
-          allRosteredPlayers.push({
-            player_key: `espn_player_${player.id}`,
-            player_id: player.id,
-            full_name: player.fullName || player.name || 'Unknown',
-            position: getEspnPositionAbbrev(player.defaultPositionId),
-            mlb_team: getEspnTeamAbbrev(player.proTeamId),
-            headshot: player.id ? `https://a.espncdn.com/combiner/i?img=/i/headshots/mlb/players/full/${player.id}.png&w=96&h=70&cb=1` : '',
-            fantasy_team: team.name,
-            fantasy_team_key: `espn_${leagueId}_${season}_${team.id}`,
-            stats: transformEspnPlayerStats(player.stats),
-            total_points: 0
-          })
+        // ESPN service's parsePlayer already processed the roster entries
+        // So we can access properties directly from entry
+        const playerId = entry.playerId || entry.id
+        const playerName = entry.fullName || entry.name || 'Unknown'
+        const playerStats = entry.stats || {}
+        
+        // Collect player IDs for stat fetching
+        if (playerId) {
+          playerIdList.push(playerId)
         }
+        
+        // Debug first player's stats
+        if (allRosteredPlayers.length === 0) {
+          console.log('[ESPN Projections] Sample roster entry keys:', Object.keys(entry))
+          console.log('[ESPN Projections] Sample player initial stats:', playerStats)
+          console.log('[ESPN Projections] Sample player stats keys:', Object.keys(playerStats))
+        }
+        
+        allRosteredPlayers.push({
+          player_key: `espn_player_${playerId}`,
+          player_id: playerId,
+          full_name: playerName,
+          position: entry.position || getEspnPositionAbbrev(entry.positionId || entry.defaultPositionId),
+          mlb_team: entry.proTeam || getEspnTeamAbbrev(entry.proTeamId),
+          headshot: playerId ? `https://a.espncdn.com/combiner/i?img=/i/headshots/mlb/players/full/${playerId}.png&w=96&h=70&cb=1` : '',
+          fantasy_team: team.name,
+          fantasy_team_key: `espn_${leagueId}_${season}_${team.id}`,
+          stats: playerStats,  // Initial stats from roster (may be empty)
+          total_points: entry.actualPoints || 0
+        })
       }
     }
     
     console.log('[ESPN Projections] Rostered players:', allRosteredPlayers.length)
+    console.log('[ESPN Projections] Player IDs to fetch stats for:', playerIdList.length)
+    
+    // Fetch actual player stats using the stats API
+    if (playerIdList.length > 0) {
+      try {
+        loadingMessage.value = 'Loading player statistics...'
+        console.log('[ESPN Projections] Fetching stats for players...')
+        
+        const statsMap = await espnService.getPlayersWithStats(sport as any, leagueId, season, playerIdList)
+        console.log('[ESPN Projections] Got stats for', statsMap.size, 'players')
+        
+        // Merge stats back into players
+        for (const player of allRosteredPlayers) {
+          const playerStats = statsMap.get(player.player_id)
+          if (playerStats?.stats) {
+            player.stats = playerStats.stats
+          }
+        }
+        
+        // Debug: check if stats were loaded
+        const playersWithStats = allRosteredPlayers.filter(p => Object.keys(p.stats || {}).length > 0)
+        console.log('[ESPN Projections] Players with stats after fetch:', playersWithStats.length)
+      } catch (e) {
+        console.error('[ESPN Projections] Error fetching player stats:', e)
+      }
+    }
+    
+    // Log sample player to verify stats structure
+    if (allRosteredPlayers.length > 0) {
+      const samplePlayer = allRosteredPlayers[0]
+      console.log('[ESPN Projections] ===== SAMPLE PLAYER DEBUG =====')
+      console.log('[ESPN Projections] Sample player name:', samplePlayer.full_name)
+      console.log('[ESPN Projections] Sample player fantasy_team_key:', samplePlayer.fantasy_team_key)
+      console.log('[ESPN Projections] Sample player stats object:', JSON.stringify(samplePlayer.stats))
+      console.log('[ESPN Projections] Sample player stats keys:', Object.keys(samplePlayer.stats || {}))
+      
+      // Compare with category stat_ids
+      console.log('[ESPN Projections] ===== CATEGORY ID COMPARISON =====')
+      console.log('[ESPN Projections] Category stat_ids:', statCategories.value.map(c => c.stat_id))
+      
+      // Check if any stats match
+      for (const cat of statCategories.value.slice(0, 5)) {
+        const statValue = samplePlayer.stats?.[cat.stat_id]
+        console.log(`[ESPN Projections] Category ${cat.display_name} (id=${cat.stat_id}): player value = ${statValue}`)
+      }
+    }
+    
+    // Debug myTeamKey
+    console.log('[ESPN Projections] ===== MY TEAM DEBUG =====')
+    console.log('[ESPN Projections] myTeamKey.value:', myTeamKey.value)
+    console.log('[ESPN Projections] First few player fantasy_team_keys:', allRosteredPlayers.slice(0, 3).map(p => p.fantasy_team_key))
+    
+    // Check if any players match myTeamKey
+    if (myTeamKey.value) {
+      const myPlayers = allRosteredPlayers.filter(p => p.fantasy_team_key === myTeamKey.value)
+      console.log('[ESPN Projections] Players matching myTeamKey:', myPlayers.length)
+    } else {
+      console.log('[ESPN Projections] WARNING: myTeamKey is null/empty - no player highlighting will work')
+    }
     
     // Note: ESPN free agents API requires additional work - using rostered players only for now
     const freeAgents: any[] = []
@@ -3239,10 +3343,32 @@ function getEspnTeamAbbrev(teamId: number): string {
 
 function transformEspnPlayerStats(statsArray: any[]): Record<string, number> {
   const stats: Record<string, number> = {}
-  if (!statsArray || !Array.isArray(statsArray)) return stats
+  if (!statsArray || !Array.isArray(statsArray)) {
+    // Check if it's already an object (not an array)
+    if (statsArray && typeof statsArray === 'object' && !Array.isArray(statsArray)) {
+      for (const [statId, value] of Object.entries(statsArray)) {
+        stats[statId] = typeof value === 'number' ? value : parseFloat(value as string) || 0
+      }
+      return stats
+    }
+    return stats
+  }
   
-  // Look for season stats (statSourceId: 0 for actuals, 1 for projections)
-  const seasonStats = statsArray.find((s: any) => s.statSourceId === 0 && s.statSplitTypeId === 0)
+  // Look for season stats - try multiple sources
+  // statSourceId: 0 = actuals, 1 = projections
+  // statSplitTypeId: 0 = season total
+  let seasonStats = statsArray.find((s: any) => s.statSourceId === 0 && s.statSplitTypeId === 0)
+  
+  // If not found, try just statSourceId 0
+  if (!seasonStats?.stats) {
+    seasonStats = statsArray.find((s: any) => s.statSourceId === 0)
+  }
+  
+  // If still not found, try the first entry with stats
+  if (!seasonStats?.stats) {
+    seasonStats = statsArray.find((s: any) => s.stats && Object.keys(s.stats).length > 0)
+  }
+  
   if (seasonStats?.stats) {
     for (const [statId, value] of Object.entries(seasonStats.stats)) {
       stats[statId] = typeof value === 'number' ? value : parseFloat(value as string) || 0
