@@ -124,6 +124,17 @@ const router = createRouter({
       path: '/settings',
       name: 'settings',
       component: () => import('@/views/SettingsView.vue')
+    },
+    // Unified views (new architecture)
+    {
+      path: '/unified/matchups',
+      name: 'unified-matchups',
+      component: () => import('@/views/UnifiedMatchupsView.vue')
+    },
+    {
+      path: '/unified/season',
+      name: 'unified-season',
+      component: () => import('@/views/UnifiedSeasonView.vue')
     }
   ]
 })

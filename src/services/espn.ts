@@ -63,7 +63,6 @@ const ESPN_VIEWS = {
   POSITIONAL_RATINGS: 'mPositionalRatings',
   
   // Navigation/metadata
-  NAV: 'mNav',
   STATUS: 'mStatus',
   MODULAR: 'modular'
 } as const

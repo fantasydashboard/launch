@@ -13,7 +13,7 @@ import type {
   SportType,
   LeagueType 
 } from '@/config/sports'
-import { getSportConfig, getLeagueType, normalizePlatformStats } from '@/config/sports'
+import { getSportConfig, getLeagueType } from '@/config/sports'
 
 // =============================================================================
 // TEAM ADAPTERS
@@ -444,7 +444,7 @@ export function normalizeSleeperPlayer(
     avatar: player.player_id 
       ? `https://sleepercdn.com/content/nfl/players/thumb/${player.player_id}.jpg`
       : undefined,
-    stats: stats ? normalizePlatformStats('football', 'sleeper', stats) : undefined,
+    stats: stats || undefined,
     points: stats?.pts_ppr || stats?.pts_std,
     projected: projections?.pts_ppr || projections?.pts_std,
   }
@@ -471,7 +471,7 @@ export function normalizeYahooPlayer(
     position: player.primary_position || player.display_position || player.eligible_positions?.[0] || 'UNKNOWN',
     team: player.editorial_team_abbr || player.team,
     avatar: player.headshot?.url || player.image_url,
-    stats: Object.keys(stats).length > 0 ? normalizePlatformStats(sport, 'yahoo', stats) : undefined,
+    stats: Object.keys(stats).length > 0 ? stats : undefined,
     points: player.player_points?.total,
     projected: player.player_stats?.projected_points,
   }
@@ -506,7 +506,7 @@ export function normalizeEspnPlayer(
     avatar: playerInfo.id 
       ? `https://a.espncdn.com/combiner/i?img=/i/headshots/${sport === 'football' ? 'nfl' : sport === 'baseball' ? 'mlb' : sport === 'basketball' ? 'nba' : 'nhl'}/players/full/${playerInfo.id}.png&w=96&h=70&cb=1`
       : undefined,
-    stats: Object.keys(stats).length > 0 ? normalizePlatformStats(sport, 'espn', stats) : undefined,
+    stats: Object.keys(stats).length > 0 ? stats : undefined,
     points: player.appliedStatTotal,
     projected: player.projectedStatTotal,
   }
