@@ -1244,8 +1244,9 @@ const tabOptions = [
 const statIdMapping: Record<string, string> = {
   'R': '7', 'HR': '12', 'RBI': '13', 'SB': '16', 'AVG': '3',
   'OBP': '55', 'SLG': '56', 'OPS': '60', 'H': '8', 'BB': '18',
-  'W': '28', 'SV': '32', 'K': '42', 'ERA': '26', 'WHIP': '27',
-  'QS': '48', 'HD': '50', 'IP': '34', 'L': '29', 'BS': '33'
+  'W': '28', 'SV': '32', 'K': '42', 'Ks': '42', 'ERA': '26', 'WHIP': '27',
+  'QS': '48', 'HD': '50', 'IP': '34', 'L': '29', 'BS': '33',
+  '2B': '10', '3B': '11', 'TB': '86'
 }
 
 const reverseStatIdMapping: Record<string, string> = Object.fromEntries(
@@ -1253,6 +1254,11 @@ const reverseStatIdMapping: Record<string, string> = Object.fromEntries(
 )
 
 function getStatIdForCategory(cat: string): string {
+  // For ESPN leagues, stats are stored with category names as keys
+  // For Yahoo leagues, stats use Yahoo stat IDs
+  if (isEspn.value) {
+    return cat // ESPN stats use category name as key
+  }
   return statIdMapping[cat] || cat
 }
 
@@ -1787,7 +1793,9 @@ function getCategoryColorClass(cat: string) {
 }
 
 function isHittingCategory(cat: string): boolean {
-  const hittingCats = ['HR', 'RBI', 'R', 'SB', 'AVG', 'OPS', 'OBP', 'SLG', 'H', 'TB', 'BB', 'XBH', 'AB']
+  // Note: 'K' and 'Ks' are pitcher strikeouts (pitching category)
+  // Hitter strikeouts are rarely used in fantasy
+  const hittingCats = ['HR', 'RBI', 'R', 'SB', 'AVG', 'OPS', 'OBP', 'SLG', 'H', 'TB', 'BB', 'XBH', 'AB', '2B', '3B']
   return hittingCats.includes(cat)
 }
 
@@ -2072,8 +2080,11 @@ async function loadEspnDraftData(leagueKey: string) {
     const team = teamLookup.get(pick.teamId) || {}
     const pickInRound = pick.roundPickNumber || ((pick.overallPickNumber - 1) % numTeams) + 1
     const playerData = playerStatsMap.get(pick.playerId)
-    const stats = playerData?.stats || {}
-    const hasRealStats = Object.keys(stats).length > 5
+    const rawStats = playerData?.stats || {}
+    const hasRealStats = Object.keys(rawStats).length > 5
+    
+    // Transform stats to use category names as keys (for consistent lookups across the app)
+    const stats: Record<string, number> = {}
     
     // Calculate category score and find best categories
     let categoryScore = 0
@@ -2083,8 +2094,11 @@ async function loadEspnDraftData(leagueKey: string) {
     for (let i = 0; i < leagueCategories.value.length; i++) {
       const cat = leagueCategories.value[i]
       const statId = leagueCategoryStatIds[i]
-      const rawValue = stats[statId.toString()] ?? stats[statId] ?? 0
+      const rawValue = rawStats[statId.toString()] ?? rawStats[statId] ?? 0
       const value = typeof rawValue === 'number' ? rawValue : parseFloat(rawValue) || 0
+      
+      // Store stat with category name as key (e.g., stats['HR'] = 45)
+      stats[cat] = value
       
       // Only count if player has this stat
       if (value > 0 || ['ERA', 'WHIP'].includes(cat)) {
@@ -2114,7 +2128,7 @@ async function loadEspnDraftData(leagueKey: string) {
       player_name: playerData?.name || pick.playerName || 'Unknown Player',
       position: playerData?.position || pick.position || 'Unknown',
       mlb_team: playerData?.team || pick.proTeam || '',
-      headshot: '',
+      headshot: `https://a.espncdn.com/combiner/i?img=/i/headshots/mlb/players/full/${pick.playerId}.png&w=96&h=70&cb=1`,
       stats,
       categoryScore: avgPercentile,
       categoryPercentile: avgPercentile,
