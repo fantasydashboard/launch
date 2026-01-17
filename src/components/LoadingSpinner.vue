@@ -72,7 +72,7 @@ const messageClass = computed(() => {
 }
 
 .badge-image {
-  animation: badge-flip 1.4s ease-in-out infinite;
+  animation: badge-flip 2s ease-in-out infinite;
   filter: drop-shadow(0 4px 12px rgba(234, 179, 8, 0.4));
 }
 
