@@ -26,8 +26,7 @@
     <!-- Loading State -->
     <div v-if="isLoading" class="card">
       <div class="card-body py-12 text-center">
-        <LoadingSpinner size="lg" />
-        <p class="text-dark-textMuted">{{ loadingMessage }}</p>
+        <LoadingSpinner size="lg" :message="loadingMessage" />
         <p class="text-xs text-dark-textMuted mt-2">This may take a moment as we analyze game data...</p>
       </div>
     </div>

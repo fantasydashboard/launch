@@ -19,9 +19,7 @@
 
     <!-- Loading State -->
     <div v-if="isLoading" class="flex flex-col items-center justify-center py-20">
-      <LoadingSpinner size="xl" />
-      <div class="text-lg font-semibold text-dark-text mb-2">Loading League History</div>
-      <p class="text-dark-textMuted text-sm">{{ loadingMessage }}</p>
+      <LoadingSpinner size="xl" :message="loadingMessage" />
       <div class="text-xs text-dark-textMuted/70 mt-2">This may take a minute for leagues with many seasons</div>
     </div>
 

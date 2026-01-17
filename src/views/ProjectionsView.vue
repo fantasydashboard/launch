@@ -99,7 +99,7 @@
 
     <!-- Loading State -->
     <div v-if="isLoading" class="flex items-center justify-center py-20">
-      <LoadingSpinner size="xl" message="{{ loadingMessage }}" />
+      <LoadingSpinner size="xl" :message="loadingMessage" />
     </div>
 
     <!-- REST OF SEASON TAB -->
