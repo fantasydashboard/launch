@@ -122,9 +122,9 @@
                 @click="downloadCareerStats"
                 :disabled="isDownloading"
                 class="flex items-center gap-2 px-4 py-2 rounded-lg font-semibold transition-colors disabled:opacity-50 text-sm"
-                style="background: #dc2626; color: #ffffff;"
-                @mouseover="$event.currentTarget.style.background = '#eab308'; $event.currentTarget.style.color = '#0a0c14'"
-                @mouseout="$event.currentTarget.style.background = '#dc2626'; $event.currentTarget.style.color = '#ffffff'"
+                style="background: #facc15; color: #111827;"
+                @mouseover="$event.currentTarget.style.background = '#fde047'; $event.currentTarget.style.color = '#111827'"
+                @mouseout="$event.currentTarget.style.background = '#facc15'; $event.currentTarget.style.color = '#111827'"
               >
                 <svg v-if="!isDownloading" class="w-4 h-4 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
@@ -285,9 +285,9 @@
               @click="downloadSeasonHistory"
               :disabled="isDownloadingSeason"
               class="flex items-center gap-2 px-4 py-2 rounded-lg font-semibold transition-colors disabled:opacity-50 text-sm"
-              style="background: #dc2626; color: #ffffff;"
-              @mouseover="$event.currentTarget.style.background = '#eab308'; $event.currentTarget.style.color = '#0a0c14'"
-              @mouseout="$event.currentTarget.style.background = '#dc2626'; $event.currentTarget.style.color = '#ffffff'"
+              style="background: #facc15; color: #111827;"
+              @mouseover="$event.currentTarget.style.background = '#fde047'; $event.currentTarget.style.color = '#111827'"
+              @mouseout="$event.currentTarget.style.background = '#facc15'; $event.currentTarget.style.color = '#111827'"
             >
               <svg v-if="!isDownloadingSeason" class="w-4 h-4 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
@@ -401,9 +401,9 @@
                 @click="downloadH2HMatrix"
                 :disabled="isDownloadingH2H"
                 class="flex items-center gap-2 px-4 py-2 rounded-lg font-semibold transition-colors disabled:opacity-50 text-sm"
-                style="background: #dc2626; color: #ffffff;"
-                @mouseover="$event.currentTarget.style.background = '#eab308'; $event.currentTarget.style.color = '#0a0c14'"
-                @mouseout="$event.currentTarget.style.background = '#dc2626'; $event.currentTarget.style.color = '#ffffff'"
+                style="background: #facc15; color: #111827;"
+                @mouseover="$event.currentTarget.style.background = '#fde047'; $event.currentTarget.style.color = '#111827'"
+                @mouseout="$event.currentTarget.style.background = '#facc15'; $event.currentTarget.style.color = '#111827'"
               >
                 <svg v-if="!isDownloadingH2H" class="w-4 h-4 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
@@ -705,9 +705,9 @@
                           @click="downloadSeasonCategoryRankings(expandedSeasonAwardCard?.replace('season-fame-hitting-', '') || '', 'best', 'hitting')"
                           :disabled="isDownloadingSeasonCategory"
                           class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-semibold transition-colors disabled:opacity-50 text-xs"
-                          style="background: #dc2626; color: #ffffff;"
-                          @mouseover="$event.currentTarget.style.background = '#22c55e'; $event.currentTarget.style.color = '#ffffff'"
-                          @mouseout="$event.currentTarget.style.background = '#dc2626'; $event.currentTarget.style.color = '#ffffff'"
+                          style="background: #facc15; color: #111827;"
+                          @mouseover="$event.currentTarget.style.background = '#22c55e'; $event.currentTarget.style.color = '#111827'"
+                          @mouseout="$event.currentTarget.style.background = '#facc15'; $event.currentTarget.style.color = '#111827'"
                         >
                           <svg v-if="!isDownloadingSeasonCategory" class="w-3.5 h-3.5 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
@@ -793,9 +793,9 @@
                           @click="downloadSeasonCategoryRankings(expandedSeasonAwardCard?.replace('season-fame-pitching-', '') || '', 'best', 'pitching')"
                           :disabled="isDownloadingSeasonCategory"
                           class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-semibold transition-colors disabled:opacity-50 text-xs"
-                          style="background: #dc2626; color: #ffffff;"
-                          @mouseover="$event.currentTarget.style.background = '#a855f7'; $event.currentTarget.style.color = '#ffffff'"
-                          @mouseout="$event.currentTarget.style.background = '#dc2626'; $event.currentTarget.style.color = '#ffffff'"
+                          style="background: #facc15; color: #111827;"
+                          @mouseover="$event.currentTarget.style.background = '#a855f7'; $event.currentTarget.style.color = '#111827'"
+                          @mouseout="$event.currentTarget.style.background = '#facc15'; $event.currentTarget.style.color = '#111827'"
                         >
                           <svg v-if="!isDownloadingSeasonCategory" class="w-3.5 h-3.5 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
@@ -889,9 +889,9 @@
                           @click="downloadSeasonCategoryRankings(expandedSeasonAwardCard?.replace('season-shame-hitting-', '') || '', 'worst', 'hitting')"
                           :disabled="isDownloadingSeasonCategory"
                           class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-semibold transition-colors disabled:opacity-50 text-xs"
-                          style="background: #dc2626; color: #ffffff;"
-                          @mouseover="$event.currentTarget.style.background = '#ef4444'; $event.currentTarget.style.color = '#ffffff'"
-                          @mouseout="$event.currentTarget.style.background = '#dc2626'; $event.currentTarget.style.color = '#ffffff'"
+                          style="background: #facc15; color: #111827;"
+                          @mouseover="$event.currentTarget.style.background = '#ef4444'; $event.currentTarget.style.color = '#111827'"
+                          @mouseout="$event.currentTarget.style.background = '#facc15'; $event.currentTarget.style.color = '#111827'"
                         >
                           <svg v-if="!isDownloadingSeasonCategory" class="w-3.5 h-3.5 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
@@ -977,9 +977,9 @@
                           @click="downloadSeasonCategoryRankings(expandedSeasonAwardCard?.replace('season-shame-pitching-', '') || '', 'worst', 'pitching')"
                           :disabled="isDownloadingSeasonCategory"
                           class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-semibold transition-colors disabled:opacity-50 text-xs"
-                          style="background: #dc2626; color: #ffffff;"
-                          @mouseover="$event.currentTarget.style.background = '#ef4444'; $event.currentTarget.style.color = '#ffffff'"
-                          @mouseout="$event.currentTarget.style.background = '#dc2626'; $event.currentTarget.style.color = '#ffffff'"
+                          style="background: #facc15; color: #111827;"
+                          @mouseover="$event.currentTarget.style.background = '#ef4444'; $event.currentTarget.style.color = '#111827'"
+                          @mouseout="$event.currentTarget.style.background = '#facc15'; $event.currentTarget.style.color = '#111827'"
                         >
                           <svg v-if="!isDownloadingSeasonCategory" class="w-3.5 h-3.5 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
@@ -1055,9 +1055,9 @@
               @click="downloadRecordRankings(recordModalLabel)" 
               :disabled="isDownloadingRecord"
               class="flex items-center gap-2 text-sm px-3 py-1.5 rounded-lg font-semibold transition-colors disabled:opacity-50"
-              style="background: #dc2626; color: #ffffff;"
-              @mouseover="$event.currentTarget.style.background = '#eab308'; $event.currentTarget.style.color = '#0a0c14'"
-              @mouseout="$event.currentTarget.style.background = '#dc2626'; $event.currentTarget.style.color = '#ffffff'"
+              style="background: #facc15; color: #111827;"
+              @mouseover="$event.currentTarget.style.background = '#fde047'; $event.currentTarget.style.color = '#111827'"
+              @mouseout="$event.currentTarget.style.background = '#facc15'; $event.currentTarget.style.color = '#111827'"
             >
               <svg v-if="!isDownloadingRecord" class="w-4 h-4 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
@@ -1146,9 +1146,9 @@
               @click="downloadAwardRankings(awardModalCategory, awardModalType, awardModalCatType)" 
               :disabled="isDownloadingAward"
               class="flex items-center gap-2 text-sm px-3 py-1.5 rounded-lg font-semibold transition-colors disabled:opacity-50"
-              style="background: #dc2626; color: #ffffff;"
-              @mouseover="$event.currentTarget.style.background = '#eab308'; $event.currentTarget.style.color = '#0a0c14'"
-              @mouseout="$event.currentTarget.style.background = '#dc2626'; $event.currentTarget.style.color = '#ffffff'"
+              style="background: #facc15; color: #111827;"
+              @mouseover="$event.currentTarget.style.background = '#fde047'; $event.currentTarget.style.color = '#111827'"
+              @mouseout="$event.currentTarget.style.background = '#facc15'; $event.currentTarget.style.color = '#111827'"
             >
               <svg v-if="!isDownloadingAward" class="w-4 h-4 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />

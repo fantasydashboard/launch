@@ -20,12 +20,12 @@
     </div>
 
     <!-- Hero Section - Current Week Matchups -->
-    <div class="relative overflow-hidden rounded-2xl bg-gradient-to-br from-red-600/10 via-dark-card to-dark-bg border border-dark-border">
-      <div class="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-red-600/5 via-transparent to-transparent"></div>
+    <div class="relative overflow-hidden rounded-2xl bg-gradient-to-br from-emerald-600/10 via-dark-card to-dark-bg border border-dark-border">
+      <div class="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-emerald-600/5 via-transparent to-transparent"></div>
       
       <div class="relative p-6 md:p-8">
         <div class="flex items-center gap-3 mb-6">
-          <div class="w-1.5 h-10 bg-red-600 rounded-full"></div>
+          <div class="w-1.5 h-10 bg-emerald-600 rounded-full"></div>
           <div>
             <h1 class="text-3xl md:text-4xl font-black text-dark-text tracking-tight">{{ leagueName }}</h1>
             <p class="text-dark-textMuted text-base mt-1">
@@ -45,7 +45,7 @@
           <div 
             v-for="matchup in formattedMatchups" 
             :key="matchup.matchup_id" 
-            class="bg-dark-bg/60 backdrop-blur rounded-xl p-4 border border-dark-border/50 hover:border-red-600/50 hover:bg-dark-bg/80 transition-all cursor-pointer group"
+            class="bg-dark-bg/60 backdrop-blur rounded-xl p-4 border border-dark-border/50 hover:border-emerald-600/50 hover:bg-dark-bg/80 transition-all cursor-pointer group"
           >
             <!-- Team 1 -->
             <div class="flex items-center justify-between mb-3">
@@ -54,7 +54,7 @@
                   <img 
                     :src="getLogoUrl(matchup.team1?.logo_url)" 
                     :alt="matchup.team1?.name || 'Team 1'" 
-                    :class="['w-10 h-10 rounded-full border-2 transition-colors object-cover', matchup.team1?.is_my_team ? 'border-yellow-500 ring-2 ring-yellow-500/30' : 'border-dark-border group-hover:border-red-600/50']"
+                    :class="['w-10 h-10 rounded-full border-2 transition-colors object-cover', matchup.team1?.is_my_team ? 'border-yellow-500 ring-2 ring-yellow-500/30' : 'border-dark-border group-hover:border-emerald-600/50']"
                     @error="handleImageError" 
                   />
                   <div v-if="matchup.team1?.is_my_team" class="absolute -top-0.5 -left-0.5 w-4 h-4 bg-yellow-500 rounded-full flex items-center justify-center shadow">
@@ -83,7 +83,7 @@
                   <img 
                     :src="getLogoUrl(matchup.team2?.logo_url)" 
                     :alt="matchup.team2?.name || 'Team 2'" 
-                    :class="['w-10 h-10 rounded-full border-2 transition-colors object-cover', matchup.team2?.is_my_team ? 'border-yellow-500 ring-2 ring-yellow-500/30' : 'border-dark-border group-hover:border-red-600/50']"
+                    :class="['w-10 h-10 rounded-full border-2 transition-colors object-cover', matchup.team2?.is_my_team ? 'border-yellow-500 ring-2 ring-yellow-500/30' : 'border-dark-border group-hover:border-emerald-600/50']"
                     @error="handleImageError" 
                   />
                   <div v-if="matchup.team2?.is_my_team" class="absolute -top-0.5 -left-0.5 w-4 h-4 bg-yellow-500 rounded-full flex items-center justify-center shadow">

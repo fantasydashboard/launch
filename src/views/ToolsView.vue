@@ -345,7 +345,7 @@
               @click="downloadDraftOrderImage" 
               :disabled="isDownloadingDraft" 
               class="flex items-center gap-2 px-4 py-2 rounded-lg font-semibold transition-colors disabled:opacity-50 text-sm"
-              style="background: #dc2626; color: #ffffff;"
+              style="background: #facc15; color: #111827;"
               @mouseover="$event.currentTarget.style.background = '#eab308'; $event.currentTarget.style.color = '#0a0c14'"
               @mouseout="$event.currentTarget.style.background = '#dc2626'; $event.currentTarget.style.color = '#ffffff'"
             >
@@ -362,7 +362,7 @@
               @click="downloadDraftAnimation" 
               :disabled="isDownloadingAnimation" 
               class="flex items-center gap-2 px-4 py-2 rounded-lg font-semibold transition-colors disabled:opacity-50 text-sm"
-              style="background: #dc2626; color: #ffffff;"
+              style="background: #facc15; color: #111827;"
               @mouseover="$event.currentTarget.style.background = '#eab308'; $event.currentTarget.style.color = '#0a0c14'"
               @mouseout="$event.currentTarget.style.background = '#dc2626'; $event.currentTarget.style.color = '#ffffff'"
             >
@@ -971,7 +971,7 @@
                 @click="downloadScheduleImage"
                 :disabled="isDownloadingSchedule"
                 class="flex items-center gap-2 px-4 py-2 rounded-lg font-semibold transition-colors disabled:opacity-50 text-sm"
-                style="background: #dc2626; color: #ffffff;"
+                style="background: #facc15; color: #111827;"
                 @mouseover="$event.currentTarget.style.background = '#eab308'; $event.currentTarget.style.color = '#0a0c14'"
                 @mouseout="$event.currentTarget.style.background = '#dc2626'; $event.currentTarget.style.color = '#ffffff'"
               >

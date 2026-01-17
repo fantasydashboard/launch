@@ -307,9 +307,9 @@
                   @click="downloadTeamDraftImage" 
                   :disabled="isDownloadingTeamDraft"
                   class="flex items-center gap-2 text-sm px-3 py-1.5 rounded-lg font-semibold transition-colors disabled:opacity-50"
-                  style="background: #dc2626; color: #ffffff;"
-                  @mouseover="$event.currentTarget.style.background = '#eab308'"
-                  @mouseout="$event.currentTarget.style.background = '#dc2626'"
+                  style="background: #facc15; color: #111827;"
+                  @mouseover="$event.currentTarget.style.background = '#fde047'"
+                  @mouseout="$event.currentTarget.style.background = '#facc15'"
                 >
                   <svg v-if="!isDownloadingTeamDraft" class="w-4 h-4 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
@@ -721,9 +721,9 @@
                   @click="downloadBalanceImage" 
                   :disabled="isDownloadingBalance"
                   class="flex items-center gap-2 text-sm px-3 py-1.5 rounded-lg font-semibold transition-colors disabled:opacity-50"
-                  style="background: #dc2626; color: #ffffff;"
-                  @mouseover="$event.currentTarget.style.background = '#eab308'"
-                  @mouseout="$event.currentTarget.style.background = '#dc2626'"
+                  style="background: #facc15; color: #111827;"
+                  @mouseover="$event.currentTarget.style.background = '#fde047'"
+                  @mouseout="$event.currentTarget.style.background = '#facc15'"
                 >
                   <svg v-if="!isDownloadingBalance" class="w-4 h-4 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
@@ -843,9 +843,9 @@
                 @click="downloadStealsImage" 
                 :disabled="isDownloadingSteals"
                 class="flex items-center gap-2 text-sm px-3 py-1.5 rounded-lg font-semibold transition-colors disabled:opacity-50"
-                style="background: #dc2626; color: #ffffff;"
+                style="background: #facc15; color: #111827;"
                 @mouseover="$event.currentTarget.style.background = '#22c55e'"
-                @mouseout="$event.currentTarget.style.background = '#dc2626'"
+                @mouseout="$event.currentTarget.style.background = '#facc15'"
               >
                 <svg v-if="!isDownloadingSteals" class="w-4 h-4 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
@@ -899,9 +899,9 @@
                 @click="downloadBustsImage" 
                 :disabled="isDownloadingBusts"
                 class="flex items-center gap-2 text-sm px-3 py-1.5 rounded-lg font-semibold transition-colors disabled:opacity-50"
-                style="background: #dc2626; color: #ffffff;"
+                style="background: #facc15; color: #111827;"
                 @mouseover="$event.currentTarget.style.background = '#ef4444'"
-                @mouseout="$event.currentTarget.style.background = '#dc2626'"
+                @mouseout="$event.currentTarget.style.background = '#facc15'"
               >
                 <svg v-if="!isDownloadingBusts" class="w-4 h-4 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
