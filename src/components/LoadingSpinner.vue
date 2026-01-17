@@ -1,12 +1,14 @@
 <template>
   <div class="loading-spinner-container" :class="containerClass">
     <div class="badge-flipper" :style="{ width: computedSize, height: computedSize }">
-      <img 
-        src="/ufd-badge.png" 
-        alt="Loading..." 
-        class="badge-image"
-        :style="{ width: computedSize, height: computedSize }"
-      />
+      <div class="badge-inner">
+        <img 
+          src="/ufd-badge.png" 
+          alt="Loading..." 
+          class="badge-image"
+          :style="{ width: computedSize, height: computedSize }"
+        />
+      </div>
     </div>
     <p v-if="message" class="loading-message" :class="messageClass">{{ message }}</p>
   </div>
@@ -65,39 +67,46 @@ const messageClass = computed(() => {
 }
 
 .badge-flipper {
-  perspective: 1000px;
+  perspective: 800px;
   display: flex;
   align-items: center;
   justify-content: center;
 }
 
-.badge-image {
-  animation: badge-flip 2s ease-in-out infinite;
-  filter: drop-shadow(0 4px 12px rgba(234, 179, 8, 0.4));
+.badge-inner {
+  width: 100%;
+  height: 100%;
+  position: relative;
+  transform-style: preserve-3d;
+  animation: badge-flip-3d 2s ease-in-out infinite;
 }
 
-/* 3D horizontal flip that shows logo on both sides */
-@keyframes badge-flip {
+.badge-image {
+  backface-visibility: visible;
+  filter: drop-shadow(0 8px 16px rgba(0, 0, 0, 0.4));
+}
+
+/* 3D horizontal flip with depth */
+@keyframes badge-flip-3d {
   0% {
-    transform: perspective(400px) rotateY(0deg);
+    transform: rotateY(0deg) scale(1);
+    filter: drop-shadow(4px 4px 8px rgba(0, 0, 0, 0.5));
   }
   25% {
-    transform: perspective(400px) rotateY(90deg) scaleX(0.1);
-  }
-  26% {
-    transform: perspective(400px) rotateY(90deg) scaleX(0.1);
+    transform: rotateY(90deg) scale(0.9);
+    filter: drop-shadow(0px 4px 4px rgba(0, 0, 0, 0.3));
   }
   50% {
-    transform: perspective(400px) rotateY(0deg);
+    transform: rotateY(180deg) scale(1);
+    filter: drop-shadow(-4px 4px 8px rgba(0, 0, 0, 0.5));
   }
   75% {
-    transform: perspective(400px) rotateY(-90deg) scaleX(0.1);
-  }
-  76% {
-    transform: perspective(400px) rotateY(-90deg) scaleX(0.1);
+    transform: rotateY(270deg) scale(0.9);
+    filter: drop-shadow(0px 4px 4px rgba(0, 0, 0, 0.3));
   }
   100% {
-    transform: perspective(400px) rotateY(0deg);
+    transform: rotateY(360deg) scale(1);
+    filter: drop-shadow(4px 4px 8px rgba(0, 0, 0, 0.5));
   }
 }
 
