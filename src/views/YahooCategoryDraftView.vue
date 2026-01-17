@@ -759,8 +759,8 @@
                       <div class="flex-1 h-4 bg-dark-border/30 rounded-full overflow-hidden">
                         <div 
                           class="h-full rounded-full transition-all duration-500"
-                          :class="cat.percentile >= 75 ? 'bg-green-500' : cat.percentile >= 50 ? 'bg-yellow-500' : cat.percentile >= 25 ? 'bg-orange-500' : 'bg-red-500'"
-                          :style="{ width: cat.percentile + '%' }"
+                          :class="getBarColorClass(cat.percentile)"
+                          :style="{ width: Math.max(cat.percentile || 0, 8) + '%' }"
                         ></div>
                       </div>
                       <div class="w-10 text-xs font-bold text-right" :class="getCategoryScoreClass(cat.percentile)">
@@ -780,8 +780,8 @@
                       <div class="flex-1 h-4 bg-dark-border/30 rounded-full overflow-hidden">
                         <div 
                           class="h-full rounded-full transition-all duration-500"
-                          :class="cat.percentile >= 75 ? 'bg-green-500' : cat.percentile >= 50 ? 'bg-yellow-500' : cat.percentile >= 25 ? 'bg-orange-500' : 'bg-red-500'"
-                          :style="{ width: cat.percentile + '%' }"
+                          :class="getBarColorClass(cat.percentile)"
+                          :style="{ width: Math.max(cat.percentile || 0, 8) + '%' }"
                         ></div>
                       </div>
                       <div class="w-10 text-xs font-bold text-right" :class="getCategoryScoreClass(cat.percentile)">
@@ -1804,6 +1804,13 @@ function getCategoryScoreClass(score: number) {
   if (score >= 50) return 'text-yellow-400'
   if (score >= 25) return 'text-orange-400'
   return 'text-red-400'
+}
+
+function getBarColorClass(percentile: number) {
+  if (percentile >= 75) return 'bg-green-500'
+  if (percentile >= 50) return 'bg-yellow-500'
+  if (percentile >= 25) return 'bg-orange-500'
+  return 'bg-red-500'
 }
 
 function getCategoryStrengthClass(percentile: number) {
