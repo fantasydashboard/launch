@@ -5477,20 +5477,34 @@ watch(selectedCategory, () => { selectAllPositions() })
 
 // Load data on mount - use appropriate loader based on platform
 onMounted(() => { 
+  console.log('[CategoryProjections] ===== onMounted =====')
+  console.log('[CategoryProjections] activePlatform:', leagueStore.activePlatform)
+  console.log('[CategoryProjections] activeLeagueId:', leagueStore.activeLeagueId)
+  console.log('[CategoryProjections] isEspn.value:', isEspn.value)
+  
   loadSavedWeights()
   if (isEspn.value) {
+    console.log('[CategoryProjections] Calling loadEspnProjections...')
     loadEspnProjections()
   } else {
+    console.log('[CategoryProjections] Calling loadProjections (Yahoo/Sleeper)...')
     loadProjections()
   }
 })
 
 // Watch for league changes
 watch(() => leagueStore.activeLeagueId, (newId, oldId) => {
+  console.log('[CategoryProjections] ===== League Changed =====')
+  console.log('[CategoryProjections] Old ID:', oldId, '-> New ID:', newId)
+  console.log('[CategoryProjections] activePlatform:', leagueStore.activePlatform)
+  console.log('[CategoryProjections] isEspn.value:', isEspn.value)
+  
   if (newId && newId !== oldId) {
     if (isEspn.value) {
+      console.log('[CategoryProjections] Calling loadEspnProjections...')
       loadEspnProjections()
     } else {
+      console.log('[CategoryProjections] Calling loadProjections (Yahoo/Sleeper)...')
       loadProjections()
     }
   }
