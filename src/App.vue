@@ -81,9 +81,9 @@
                 </svg>
               </button>
               
-              <!-- League Dropdown Menu -->
+              <!-- League Dropdown Menu (only when not scrolled) -->
               <div 
-                v-if="showLeagueDropdown"
+                v-if="showLeagueDropdown && !isScrolled"
                 class="absolute top-full right-0 mt-2 w-80 bg-dark-card border border-dark-border rounded-xl shadow-xl z-50 overflow-hidden"
               >
                 <!-- All Leagues grouped by sport -->
@@ -195,9 +195,9 @@
                 <span class="hidden xl:inline text-xs text-dark-text font-medium">{{ displayName }}</span>
               </button>
               
-              <!-- User Dropdown -->
+              <!-- User Dropdown (only when not scrolled) -->
               <div 
-                v-if="showUserMenu"
+                v-if="showUserMenu && !isScrolled"
                 class="absolute top-full right-0 mt-2 w-48 bg-dark-card border border-dark-border rounded-xl shadow-xl z-50 overflow-hidden"
               >
                 <div class="p-3 border-b border-dark-border">
