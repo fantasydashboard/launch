@@ -97,7 +97,14 @@
         <div class="card-body">
           <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             <button v-for="matchup in matchups" :key="matchup.matchup_id" @click="selectMatchup(matchup)"
-              :class="['p-4 rounded-xl border-2 transition-all text-left', selectedMatchup?.matchup_id === matchup.matchup_id ? 'border-primary bg-primary/10 ring-2 ring-primary/30' : 'border-dark-border bg-dark-card hover:border-primary/50']">
+              :class="[
+                'p-4 rounded-xl border-2 transition-all text-left',
+                selectedMatchup?.matchup_id === matchup.matchup_id 
+                  ? 'border-yellow-400 bg-yellow-400/10 ring-2 ring-yellow-400/40' 
+                  : (matchup.team1.is_my_team || matchup.team2.is_my_team)
+                    ? 'border-yellow-400/50 bg-yellow-400/5 hover:border-yellow-400'
+                    : 'border-dark-border bg-dark-card hover:border-primary/50'
+              ]">
               <!-- Team 1 -->
               <div class="flex items-center justify-between mb-2">
                 <div class="flex items-center gap-2 flex-1 min-w-0">
@@ -523,10 +530,9 @@ const availableWeeks = computed(() => {
   return weeks
 })
 const allCategories = computed(() => {
-  if (isEspn.value) {
-    return categories.value.filter(c => [...ESPN_BATTING_STAT_IDS, ...ESPN_PITCHING_STAT_IDS].includes(c.stat_id))
-  }
-  return categories.value.filter(c => [...BATTING_STAT_IDS, ...PITCHING_STAT_IDS].includes(c.stat_id))
+  // Return ALL categories from the league settings - don't filter to predefined IDs
+  // This ensures hockey, basketball, and any other sport's categories are shown
+  return categories.value
 })
 
 const weekStats = computed(() => {
@@ -1448,21 +1454,66 @@ function selectMatchup(m: any) { selectedMatchup.value = m; nextTick(() => build
 function buildWinProbChart() {
   if (!winProbChartEl.value || !selectedMatchup.value) return
   if (winProbChart) { winProbChart.destroy(); winProbChart = null }
-  const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
-  const p1 = selectedMatchup.value.team1WinProb
-  // Round all data points to 2 decimal places
-  const d1 = [
-    Math.round(50 * 100) / 100,
-    Math.round((48 + Math.random() * 10) * 100) / 100,
-    Math.round((50 + Math.random() * 15) * 100) / 100,
-    Math.round((p1 * 0.7 + 15) * 100) / 100,
-    Math.round((p1 * 0.85 + 7) * 100) / 100,
-    Math.round((p1 * 0.95 + 2) * 100) / 100,
-    Math.round(p1 * 100) / 100
-  ]
+  
+  // Determine what day of the week it is (0 = Sunday, 1 = Monday, etc.)
+  const now = new Date()
+  const dayOfWeek = now.getDay()
+  
+  // Map day of week to index in our chart (Mon=0, Tue=1, Wed=2, Thu=3, Fri=4, Sat=5, Sun=6)
+  // JavaScript: Sun=0, Mon=1, Tue=2, Wed=3, Thu=4, Fri=5, Sat=6
+  const dayMap: Record<number, number> = { 1: 0, 2: 1, 3: 2, 4: 3, 5: 4, 6: 5, 0: 6 }
+  const todayIndex = dayMap[dayOfWeek]
+  
+  // We show data through yesterday (completed days only)
+  // On Monday (todayIndex=0), show nothing yet
+  // On Tuesday (todayIndex=1), show Mon
+  // On Saturday (todayIndex=5), show Mon-Fri
+  const completedDays = todayIndex // Number of completed days (0 on Monday)
+  
+  const allDays = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
+  const p1Final = selectedMatchup.value.team1WinProb
+  
+  // If no days completed yet, show just the starting point
+  if (completedDays === 0) {
+    const days = ['Start']
+    const d1 = [50]
+    const d2 = [50]
+    const c1 = selectedMatchup.value.team1.is_my_team ? '#f5c451' : '#06b6d4'
+    const c2 = selectedMatchup.value.team2.is_my_team ? '#f5c451' : '#f97316'
+    winProbChart = new ApexCharts(winProbChartEl.value, {
+      chart: { type: 'area', height: 192, background: 'transparent', toolbar: { show: false }, zoom: { enabled: false } },
+      series: [{ name: selectedMatchup.value.team1.name, data: d1 }, { name: selectedMatchup.value.team2.name, data: d2 }],
+      colors: [c1, c2],
+      fill: { type: 'gradient', gradient: { shadeIntensity: 1, opacityFrom: 0.4, opacityTo: 0.1, stops: [0, 100] } },
+      stroke: { width: 2, curve: 'smooth' },
+      xaxis: { categories: days, labels: { style: { colors: '#9ca3af', fontSize: '10px' } } },
+      yaxis: { min: 0, max: 100, labels: { style: { colors: '#9ca3af', fontSize: '10px' }, formatter: (v: number) => `${v.toFixed(0)}%` } },
+      legend: { show: true, position: 'top', labels: { colors: '#9ca3af' }, fontSize: '11px' },
+      grid: { borderColor: '#374151', strokeDashArray: 3 },
+      tooltip: { theme: 'dark', y: { formatter: (v: number) => `${v.toFixed(0)}%` } }
+    })
+    winProbChart.render()
+    return
+  }
+  
+  // Build probability progression for completed days
+  // Probabilities evolve from 50% on day 0 to current probability
+  const days = allDays.slice(0, completedDays)
+  const d1: number[] = []
+  
+  for (let i = 0; i < completedDays; i++) {
+    // Progress ratio: how far through the week we are
+    const progress = (i + 1) / 7
+    // Interpolate from 50% towards current probability
+    // Early days have more variance/uncertainty
+    const prob = 50 + (p1Final - 50) * progress
+    d1.push(Math.round(prob * 100) / 100)
+  }
+  
   const d2 = d1.map(x => Math.round((100 - x) * 100) / 100)
   const c1 = selectedMatchup.value.team1.is_my_team ? '#f5c451' : '#06b6d4'
   const c2 = selectedMatchup.value.team2.is_my_team ? '#f5c451' : '#f97316'
+  
   winProbChart = new ApexCharts(winProbChartEl.value, {
     chart: { type: 'area', height: 192, background: 'transparent', toolbar: { show: false }, zoom: { enabled: false } },
     series: [{ name: selectedMatchup.value.team1.name, data: d1 }, { name: selectedMatchup.value.team2.name, data: d2 }],
@@ -1470,10 +1521,10 @@ function buildWinProbChart() {
     fill: { type: 'gradient', gradient: { shadeIntensity: 1, opacityFrom: 0.4, opacityTo: 0.1, stops: [0, 100] } },
     stroke: { width: 2, curve: 'smooth' },
     xaxis: { categories: days, labels: { style: { colors: '#9ca3af', fontSize: '10px' } } },
-    yaxis: { min: 0, max: 100, labels: { style: { colors: '#9ca3af', fontSize: '10px' }, formatter: (v: number) => `${v.toFixed(2)}%` } },
+    yaxis: { min: 0, max: 100, labels: { style: { colors: '#9ca3af', fontSize: '10px' }, formatter: (v: number) => `${v.toFixed(0)}%` } },
     legend: { show: true, position: 'top', labels: { colors: '#9ca3af' }, fontSize: '11px' },
     grid: { borderColor: '#374151', strokeDashArray: 3 },
-    tooltip: { theme: 'dark', y: { formatter: (v: number) => `${v.toFixed(2)}%` } }
+    tooltip: { theme: 'dark', y: { formatter: (v: number) => `${v.toFixed(0)}%` } }
   })
   winProbChart.render()
 }
@@ -1650,22 +1701,25 @@ async function generateMatchupAnalysisImage(matchup: any, html2canvas: any) {
   const winProb1 = matchup.team1WinProb || 50
   const winProb2 = matchup.team2WinProb || 50
   
-  // Generate simulated progression data (similar to football)
-  const baseProb1 = 50
-  const generateProgressionData = () => {
-    const points = 5
-    const data: number[] = []
-    for (let i = 0; i < points; i++) {
-      const progress = i / (points - 1)
-      const val = baseProb1 + (winProb1 - baseProb1) * progress + (Math.random() - 0.5) * 8
-      data.push(Math.max(5, Math.min(95, val)))
-    }
-    data[points - 1] = winProb1 // Ensure final point is exact
-    return data
-  }
+  // Determine what day of the week it is
+  const now = new Date()
+  const dayOfWeek = now.getDay()
+  const dayMap: Record<number, number> = { 1: 0, 2: 1, 3: 2, 4: 3, 5: 4, 6: 5, 0: 6 }
+  const todayIndex = dayMap[dayOfWeek]
+  const completedDays = Math.max(1, todayIndex) // At least 1 point for the chart
   
-  const team1ChartData = generateProgressionData()
-  const team2ChartData = team1ChartData.map(v => 100 - v)
+  const allDays = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
+  const chartLabels = allDays.slice(0, completedDays)
+  
+  // Generate progression data based on completed days
+  const baseProb1 = 50
+  const team1ChartData: number[] = []
+  for (let i = 0; i < completedDays; i++) {
+    const progress = completedDays > 1 ? i / (completedDays - 1) : 1
+    const val = baseProb1 + (winProb1 - baseProb1) * progress
+    team1ChartData.push(Math.round(val * 100) / 100)
+  }
+  const team2ChartData = team1ChartData.map(v => Math.round((100 - v) * 100) / 100)
   
   const chartWidth = 640
   const chartHeight = 140
@@ -1673,7 +1727,8 @@ async function generateMatchupAnalysisImage(matchup: any, html2canvas: any) {
   const plotWidth = chartWidth - padding.left - padding.right
   const plotHeight = chartHeight - padding.top - padding.bottom
   
-  const getX = (i: number) => padding.left + (i / 4) * plotWidth
+  const numPoints = team1ChartData.length
+  const getX = (i: number) => padding.left + (numPoints > 1 ? (i / (numPoints - 1)) * plotWidth : plotWidth / 2)
   const getY = (val: number) => padding.top + plotHeight - (val / 100) * plotHeight
   
   // Build path for team 1
@@ -1704,7 +1759,6 @@ async function generateMatchupAnalysisImage(matchup: any, html2canvas: any) {
     team2Points += `<circle cx="${x}" cy="${y}" r="6" fill="${team2Color}"/>`
   })
   
-  const chartLabels = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri']
   const xLabels = chartLabels.map((label, i) => {
     const x = getX(i)
     return `<text x="${x}" y="${chartHeight - 6}" text-anchor="middle" font-size="11" font-weight="600" fill="#9CA3AF">${label}</text>`
