@@ -75,12 +75,12 @@
             <div class="flex items-center gap-3">
               <span class="text-dark-textMuted font-medium">Select Category:</span>
               <select v-model="selectedCategory" class="select bg-dark-card border-dark-border text-dark-text px-4 py-2 rounded-lg min-w-[200px]">
-                <optgroup label="Hitting">
+                <optgroup :label="skaterCategoryLabel">
                   <option v-for="cat in hittingCategories" :key="cat.stat_id" :value="cat.stat_id">
                     {{ cat.name }} ({{ cat.display_name }})
                   </option>
                 </optgroup>
-                <optgroup label="Pitching">
+                <optgroup :label="goalieCategoryLabel">
                   <option v-for="cat in pitchingCategories" :key="cat.stat_id" :value="cat.stat_id">
                     {{ cat.name }} ({{ cat.display_name }})
                   </option>
@@ -114,7 +114,7 @@
               <div>
                 <h2 class="text-xl font-bold text-dark-text">{{ selectedCategoryInfo.name }}</h2>
                 <p class="text-sm text-dark-textMuted">
-                  {{ isRatioCategory ? 'Ratio stat' : 'Counting stat' }} • {{ isPitchingCategory ? 'Pitching' : 'Hitting' }}
+                  {{ isRatioCategory ? 'Ratio stat' : 'Counting stat' }} • {{ categoryTypeLabel }}
                 </p>
               </div>
             </div>
@@ -1784,7 +1784,7 @@
           <!-- All Categories & Value Breakdown -->
           <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
             <div class="bg-dark-card rounded-xl p-4">
-              <h4 class="font-semibold text-dark-text mb-3 flex items-center gap-2"><span>📊</span> All {{ isPitchingCategory ? 'Pitching' : 'Hitting' }} Categories</h4>
+              <h4 class="font-semibold text-dark-text mb-3 flex items-center gap-2"><span>📊</span> All {{ categoryTypeLabel }} Categories</h4>
               <div class="space-y-1 max-h-64 overflow-y-auto">
                 <div v-for="cat in relevantCategories" :key="cat.stat_id" 
                   class="flex items-center py-2 px-3 rounded-lg" 
@@ -2447,15 +2447,25 @@ const columnTooltips = computed(() => ({
 }))
 
 // Stat detection - use names instead of hardcoded IDs since IDs vary by league
-const pitchingStatNames = ['ERA', 'WHIP', 'W', 'SV', 'K', 'IP', 'QS', 'HLD', 'Wins', 'Saves', 'Strikeouts', 'Innings', 'Quality', 'Holds', 'L', 'Losses', 'BB', 'Walks', 'CG', 'SHO', 'BSV', 'Blown']
-const ratioStatNames = ['ERA', 'WHIP', 'AVG', 'OPS', 'OBP', 'SLG', 'BABIP', 'K/9', 'BB/9', 'K/BB']
-const lowerIsBetterNames = ['ERA', 'WHIP', 'BB', 'L', 'ER', 'H', 'Losses', 'Walks']
+// Baseball pitching stats
+const baseballPitchingStatNames = ['ERA', 'WHIP', 'W', 'SV', 'K', 'IP', 'QS', 'HLD', 'Wins', 'Saves', 'Strikeouts', 'Innings', 'Quality', 'Holds', 'L', 'Losses', 'BB', 'Walks', 'CG', 'SHO', 'BSV', 'Blown']
+// Hockey goalie stats (these are the "pitching" equivalent for hockey)
+const hockeyGoalieStatNames = ['GAA', 'SV%', 'SO', 'Shutouts', 'Saves', 'Goals Against', 'Goalie', 'GW', 'GA', 'MIN', 'GS', 'SA']
+const ratioStatNames = ['ERA', 'WHIP', 'AVG', 'OPS', 'OBP', 'SLG', 'BABIP', 'K/9', 'BB/9', 'K/BB', 'GAA', 'SV%', 'SH%']
+const lowerIsBetterNames = ['ERA', 'WHIP', 'BB', 'L', 'ER', 'H', 'Losses', 'Walks', 'GAA', 'GA', 'GV']
 
 function isPitchingStat(cat: any): boolean {
   if (!cat) return false
   const name = (cat.name || '').toUpperCase()
   const display = (cat.display_name || '').toUpperCase()
-  return pitchingStatNames.some(pn => name.includes(pn.toUpperCase()) || display.includes(pn.toUpperCase()))
+  
+  // For hockey, use goalie stat names
+  if (currentSport.value === 'hockey') {
+    return hockeyGoalieStatNames.some(gn => name.includes(gn.toUpperCase()) || display.includes(gn.toUpperCase()))
+  }
+  
+  // Baseball (default)
+  return baseballPitchingStatNames.some(pn => name.includes(pn.toUpperCase()) || display.includes(pn.toUpperCase()))
 }
 
 function isRatioStat(cat: any): boolean {
@@ -2492,13 +2502,69 @@ const isLowerBetter = computed(() => {
   return isLowerBetterStat(cat)
 })
 
+// Sport-aware category type label
+const categoryTypeLabel = computed(() => {
+  const sport = currentSport.value
+  if (sport === 'hockey') {
+    return isPitchingCategory.value ? 'Goalie' : 'Skater'
+  }
+  // Baseball (default)
+  return isPitchingCategory.value ? 'Pitching' : 'Hitting'
+})
+
+// Sport-aware category group labels for dropdown
+const skaterCategoryLabel = computed(() => {
+  const sport = currentSport.value
+  if (sport === 'hockey') return 'Skater Stats'
+  if (sport === 'basketball') return 'Player Stats'
+  if (sport === 'football') return 'Offensive Stats'
+  return 'Hitting'
+})
+
+const goalieCategoryLabel = computed(() => {
+  const sport = currentSport.value
+  if (sport === 'hockey') return 'Goalie Stats'
+  if (sport === 'basketball') return 'Advanced Stats'
+  if (sport === 'football') return 'Defensive/Special Teams'
+  return 'Pitching'
+})
+
 const relevantCategories = computed(() => isPitchingCategory.value ? pitchingCategories.value : hittingCategories.value)
 
-const availablePositions = computed(() => isPitchingCategory.value ? ['SP', 'RP'] : ['C', '1B', '2B', '3B', 'SS', 'OF'])
+// Sport-specific position filters
+const availablePositions = computed(() => {
+  const sport = currentSport.value
+  
+  if (sport === 'hockey') {
+    // Hockey positions - skaters vs goalies
+    return isPitchingCategory.value 
+      ? ['G']  // Goalies (for goalie stats like SV%, GAA, W)
+      : ['C', 'LW', 'RW', 'D', 'F', 'Util']  // Skaters
+  }
+  
+  if (sport === 'basketball') {
+    return ['PG', 'SG', 'SF', 'PF', 'C', 'G', 'F', 'Util']
+  }
+  
+  if (sport === 'football') {
+    return ['QB', 'RB', 'WR', 'TE', 'K', 'DEF', 'Flex']
+  }
+  
+  // Baseball (default)
+  return isPitchingCategory.value ? ['SP', 'RP'] : ['C', '1B', '2B', '3B', 'SS', 'OF', 'Util']
+})
 
-// Helper to check if player is a pitcher
+// Helper to check if player is a pitcher/goalie (the "other" position type)
 function isPitcher(player: any): boolean {
-  const pos = player.position || ''
+  const pos = (player.position || '').toUpperCase()
+  const sport = currentSport.value
+  
+  if (sport === 'hockey') {
+    // For hockey, "pitching" stats are actually goalie stats
+    return pos.includes('G') && !pos.includes('LW') && !pos.includes('RW')
+  }
+  
+  // Baseball
   return pos.includes('SP') || pos.includes('RP') || pos === 'P'
 }
 
@@ -3129,26 +3195,38 @@ async function loadProjections() {
 
 // ESPN version of loadProjections
 async function loadEspnProjections() {
+  console.log('[ESPN Projections] ========== STARTING loadEspnProjections ==========')
   isLoading.value = true
   loadingMessage.value = 'Loading ESPN league settings...'
   try {
     const leagueKey = leagueStore.activeLeagueId
+    console.log('[ESPN Projections] League key:', leagueKey)
     if (!leagueKey) { loadingMessage.value = 'No league selected'; return }
     
     const { leagueId, season, sport } = parseEspnLeagueKey(leagueKey)
     currentSport.value = sport  // Set sport for sport-specific defaults
-    console.log('[ESPN Projections] Loading league:', leagueId, 'season:', season, 'sport:', sport)
+    console.log('[ESPN Projections] Parsed - leagueId:', leagueId, 'season:', season, 'sport:', sport)
     
     // Ensure ESPN credentials are loaded before trying to identify user's team
     const platformsStore = usePlatformsStore()
     const credentials = platformsStore.getEspnCredentials()
+    console.log('[ESPN Projections] Credentials check:', credentials ? 'FOUND' : 'NOT FOUND')
+    
     if (credentials) {
-      console.log('[ESPN Projections] Setting ESPN credentials')
-      console.log('[ESPN Projections] SWID from storage:', credentials.swid)
+      console.log('[ESPN Projections] SWID:', credentials.swid)
       console.log('[ESPN Projections] espn_s2 length:', credentials.espn_s2?.length || 0)
       espnService.setCredentials(credentials.espn_s2, credentials.swid)
+      console.log('[ESPN Projections] Credentials applied to espnService')
     } else {
-      console.log('[ESPN Projections] WARNING: No ESPN credentials found in storage - myTeamKey will not be set!')
+      console.log('[ESPN Projections] WARNING: No ESPN credentials found!')
+      console.log('[ESPN Projections] Check localStorage for "espn_credentials" key')
+      // Try to log what's in localStorage
+      try {
+        const stored = localStorage.getItem('espn_credentials')
+        console.log('[ESPN Projections] Raw localStorage espn_credentials:', stored ? stored.substring(0, 100) + '...' : 'null')
+      } catch (e) {
+        console.log('[ESPN Projections] Could not read localStorage:', e)
+      }
     }
     
     // Load scoring settings
