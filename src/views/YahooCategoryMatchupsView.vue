@@ -20,12 +20,12 @@
       </div>
     </div>
 
-    <!-- Offseason Notice Banner -->
-    <div class="bg-slate-500/10 border border-slate-500/30 rounded-xl p-4 flex items-start gap-3">
-      <div class="text-slate-400 text-xl flex-shrink-0">⚾</div>
+    <!-- Offseason Notice Banner - Only show when season is complete -->
+    <div v-if="isSeasonComplete" class="bg-slate-500/10 border border-slate-500/30 rounded-xl p-4 flex items-start gap-3">
+      <div class="text-slate-400 text-xl flex-shrink-0">📅</div>
       <div>
-        <p class="text-slate-200 font-semibold">You're viewing the 2025 season</p>
-        <p class="text-slate-400 text-sm mt-1">The 2026 season will automatically appear here when it begins.</p>
+        <p class="text-slate-200 font-semibold">It's the offseason</p>
+        <p class="text-slate-400 text-sm mt-1">You're viewing last season's data ({{ currentSeason }}). The {{ Number(currentSeason) + 1 }} season will appear automatically once Week 1 begins.</p>
       </div>
     </div>
 
@@ -510,6 +510,8 @@ const isSeasonComplete = computed(() => {
   }
   return leagueInfo.value?.is_finished === 1 || leagueInfo.value?.is_finished === '1'
 })
+
+const currentSeason = computed(() => leagueStore.currentLeague?.season || new Date().getFullYear().toString())
 
 const availableWeeks = computed(() => {
   const weeks = Array.from({ length: isSeasonComplete.value ? totalWeeks.value : currentWeek.value }, (_, i) => i + 1)

@@ -1,5 +1,14 @@
 <template>
   <div class="space-y-6">
+    <!-- Offseason Notice Banner - Only show when season is complete -->
+    <div v-if="isSeasonComplete" class="bg-slate-500/10 border border-slate-500/30 rounded-xl p-4 flex items-start gap-3">
+      <div class="text-slate-400 text-xl flex-shrink-0">📅</div>
+      <div>
+        <p class="text-slate-200 font-semibold">It's the offseason</p>
+        <p class="text-slate-400 text-sm mt-1">You're viewing last season's data ({{ currentSeason }}). The {{ Number(currentSeason) + 1 }} season will appear automatically once Week 1 begins.</p>
+      </div>
+    </div>
+
     <!-- Header -->
     <div class="flex items-center justify-between flex-wrap gap-4">
       <div>
@@ -364,6 +373,14 @@ import { yahooService } from '@/services/yahoo'
 import LoadingSpinner from '@/components/LoadingSpinner.vue'
 
 const leagueStore = useLeagueStore()
+
+// Season detection for offseason banner
+const currentSeason = computed(() => leagueStore.currentLeague?.season || new Date().getFullYear().toString())
+const isSeasonComplete = computed(() => {
+  if (leagueStore.currentLeague?.status === 'complete') return true
+  const yahooLeague = Array.isArray(leagueStore.yahooLeague) ? leagueStore.yahooLeague[0] : leagueStore.yahooLeague
+  return yahooLeague?.is_finished === 1
+})
 
 // State
 const isLoading = ref(true)

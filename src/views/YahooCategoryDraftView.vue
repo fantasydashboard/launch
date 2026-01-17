@@ -17,12 +17,12 @@
       </div>
     </div>
 
-    <!-- Offseason Notice Banner -->
-    <div class="bg-slate-500/10 border border-slate-500/30 rounded-xl p-4 flex items-start gap-3">
-      <div class="text-slate-400 text-xl flex-shrink-0">⚾</div>
+    <!-- Offseason Notice Banner - Only show when season is complete -->
+    <div v-if="isSeasonComplete" class="bg-slate-500/10 border border-slate-500/30 rounded-xl p-4 flex items-start gap-3">
+      <div class="text-slate-400 text-xl flex-shrink-0">📅</div>
       <div>
-        <p class="text-slate-200 font-semibold">You're viewing the {{ selectedSeason }} season draft</p>
-        <p class="text-slate-400 text-sm mt-1">Select a different season from the dropdown to view previous drafts.</p>
+        <p class="text-slate-200 font-semibold">It's the offseason</p>
+        <p class="text-slate-400 text-sm mt-1">You're viewing last season's data ({{ currentSeason }}). The {{ Number(currentSeason) + 1 }} season will appear automatically once Week 1 begins.</p>
       </div>
     </div>
 
@@ -1183,6 +1183,14 @@ const authStore = useAuthStore()
 
 // Platform detection
 const isEspn = computed(() => leagueStore.activePlatform === 'espn')
+
+// Season detection
+const currentSeason = computed(() => leagueStore.currentLeague?.season || new Date().getFullYear().toString())
+const isSeasonComplete = computed(() => {
+  if (leagueStore.currentLeague?.status === 'complete') return true
+  const yahooLeague = Array.isArray(leagueStore.yahooLeague) ? leagueStore.yahooLeague[0] : leagueStore.yahooLeague
+  return yahooLeague?.is_finished === 1
+})
 
 // Helper to parse ESPN league key format: espn_baseball_1880415994_2025
 function parseEspnLeagueKey(leagueKey: string) {
