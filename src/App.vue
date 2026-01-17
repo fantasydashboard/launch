@@ -127,7 +127,7 @@
                               </span>
                             </div>
                             <div class="text-xs text-dark-textMuted">
-                              {{ league.season }} · {{ league.num_teams || league.total_rosters }} teams
+                              {{ formatScoringType(league.scoring_type) }} · {{ league.num_teams || league.total_rosters }} teams
                             </div>
                           </div>
                           <button
@@ -355,7 +355,7 @@
                                   </span>
                                 </div>
                                 <div class="text-xs text-dark-textMuted">
-                                  {{ league.season }} · {{ league.num_teams || league.total_rosters }} teams
+                                  {{ formatScoringType(league.scoring_type) }} · {{ league.num_teams || league.total_rosters }} teams
                                 </div>
                               </div>
                             </div>
@@ -487,7 +487,7 @@
                                   </span>
                                 </div>
                                 <div class="text-xs text-dark-textMuted">
-                                  {{ league.season }} · {{ league.num_teams || league.total_rosters }} teams
+                                  {{ formatScoringType(league.scoring_type) }} · {{ league.num_teams || league.total_rosters }} teams
                                 </div>
                               </div>
                             </div>
@@ -827,15 +827,38 @@ const sportColor = computed(() => {
   return colors[currentSportName.value] || '#22c55e'
 })
 
-// Get leagues by sport
+// Format scoring type for display
+function formatScoringType(scoringType: string | undefined): string {
+  if (!scoringType) return 'Points'
+  const type = scoringType.toLowerCase()
+  if (type.includes('head') || type === 'h2h' || type === 'head-to-head') {
+    if (type.includes('point')) return 'H2H Points'
+    if (type.includes('cat')) return 'H2H Categories'
+    return 'H2H Points'
+  }
+  if (type.includes('roto')) return 'Rotisserie'
+  if (type.includes('cat')) return 'Categories'
+  if (type.includes('point')) return 'Points'
+  // Capitalize first letter
+  return scoringType.charAt(0).toUpperCase() + scoringType.slice(1)
+}
+
+// Get leagues by sport, sorted by scoring type
 function getLeaguesBySport(sport: string) {
   if (!leagueStore.allLeagues || !Array.isArray(leagueStore.allLeagues)) {
     return []
   }
-  return leagueStore.allLeagues.filter(league => {
+  const leagues = leagueStore.allLeagues.filter(league => {
     // Determine league sport from platform or stored sport
     const leagueSport = league.sport || (league.platform === 'sleeper' ? 'football' : 'baseball')
     return leagueSport === sport
+  })
+  
+  // Sort by scoring type to group similar league types together
+  return leagues.sort((a, b) => {
+    const typeA = formatScoringType(a.scoring_type)
+    const typeB = formatScoringType(b.scoring_type)
+    return typeA.localeCompare(typeB)
   })
 }
 
