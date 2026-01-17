@@ -781,6 +781,9 @@ export const useLeagueStore = defineStore('league', () => {
     users.value = leagueUsers
     players.value = playersData
 
+    // Transform Sleeper data to Yahoo-compatible format for unified views
+    transformSleeperToYahooFormat(league, leagueRosters, leagueUsers)
+
     // Fetch historical data
     await fetchHistoricalData(leagueId)
     
@@ -816,6 +819,9 @@ export const useLeagueStore = defineStore('league', () => {
         currentLeague.value = league
         rosters.value = leagueRosters
         users.value = leagueUsers
+        
+        // Transform to Yahoo format for unified views
+        transformSleeperToYahooFormat(league, leagueRosters, leagueUsers)
         
         // Update cache
         const existingCache = leagueCache.value.get(leagueId)
@@ -922,6 +928,82 @@ export const useLeagueStore = defineStore('league', () => {
         localStorage.removeItem(key)
       }
     }
+  }
+  
+  // Transform Sleeper data to Yahoo-compatible format for unified views
+  function transformSleeperToYahooFormat(league: any, leagueRosters: any[], leagueUsers: any[]) {
+    console.log('[Sleeper] Transforming to Yahoo format for unified views')
+    
+    // Create a map of user_id to user data for quick lookup
+    const userMap = new Map<string, any>()
+    leagueUsers.forEach(user => {
+      userMap.set(user.user_id, user)
+    })
+    
+    // Transform rosters to yahooTeams format
+    yahooTeams.value = leagueRosters.map((roster, index) => {
+      const user = userMap.get(roster.owner_id)
+      const teamName = user?.metadata?.team_name || user?.display_name || `Team ${roster.roster_id}`
+      
+      // Generate avatar URL
+      let logoUrl = ''
+      if (user?.avatar) {
+        logoUrl = `https://sleepercdn.com/avatars/thumbs/${user.avatar}`
+      } else {
+        logoUrl = `https://ui-avatars.com/api/?name=${encodeURIComponent(teamName)}&background=random&color=fff&size=64`
+      }
+      
+      // Calculate points (Sleeper stores as fpts which is points * 100 for decimal precision in some cases)
+      const pointsFor = roster.settings?.fpts || 0
+      const pointsAgainst = roster.settings?.fpts_against || 0
+      
+      return {
+        team_key: `sleeper_${roster.roster_id}`,
+        team_id: roster.roster_id.toString(),
+        name: teamName,
+        logo_url: logoUrl,
+        wins: roster.settings?.wins || 0,
+        losses: roster.settings?.losses || 0,
+        ties: roster.settings?.ties || 0,
+        points_for: pointsFor,
+        points_against: pointsAgainst,
+        rank: index + 1, // Will be sorted below
+        is_my_team: false, // TODO: Detect user's team
+        transactions: roster.settings?.total_moves || 0,
+        roster_id: roster.roster_id,
+        owner_id: roster.owner_id,
+        user_display_name: user?.display_name
+      }
+    })
+    
+    // Sort by wins (desc), then points_for (desc)
+    yahooTeams.value.sort((a, b) => {
+      if (b.wins !== a.wins) return b.wins - a.wins
+      return b.points_for - a.points_for
+    })
+    
+    // Update ranks after sorting
+    yahooTeams.value.forEach((team, idx) => {
+      team.rank = idx + 1
+    })
+    
+    // Set yahooStandings to same as yahooTeams
+    yahooStandings.value = yahooTeams.value
+    
+    // Transform league info
+    yahooLeague.value = [{
+      league_key: league.league_id,
+      league_id: league.league_id,
+      name: league.name,
+      season: league.season,
+      scoring_type: league.scoring_settings?.rec ? 'headpoint' : 'headpoint', // Sleeper is always points-based
+      current_week: league.settings?.leg || 1,
+      start_week: 1,
+      end_week: league.settings?.playoff_week_start || 14,
+      num_teams: league.total_rosters || leagueRosters.length
+    }]
+    
+    console.log('[Sleeper] Transformed teams:', yahooTeams.value.length)
   }
   
   // Load Yahoo league data

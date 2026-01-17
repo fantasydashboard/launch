@@ -592,11 +592,11 @@
     <div class="flex justify-center mt-8">
       <div class="inline-flex items-center gap-2 px-4 py-2 rounded-full border" :class="platformBadgeClass">
         <img 
-          :src="leagueStore.activePlatform === 'espn' ? '/espn-logo.svg' : '/yahoo-fantasy.svg'" 
+          :src="platformLogo" 
           :alt="platformName"
           class="w-5 h-5"
         />
-        <span class="text-sm" :class="platformTextClass">{{ leagueStore.activePlatform === 'espn' ? 'ESPN' : 'Yahoo!' }} Fantasy Baseball • {{ scoringTypeLabel }}</span>
+        <span class="text-sm" :class="platformTextClass">{{ platformName }} Fantasy {{ sportName }} • {{ scoringTypeLabel }}</span>
       </div>
     </div>
   </div>
@@ -661,11 +661,38 @@ const availableWeeks = computed(() => {
 })
 
 // Platform display
-const platformName = computed(() => leagueStore.activePlatform === 'espn' ? 'ESPN' : 'Yahoo!')
+const platformName = computed(() => {
+  if (leagueStore.activePlatform === 'espn') return 'ESPN'
+  if (leagueStore.activePlatform === 'sleeper') return 'Sleeper'
+  return 'Yahoo!'
+})
+
+const platformLogo = computed(() => {
+  if (leagueStore.activePlatform === 'espn') return '/espn-logo.svg'
+  if (leagueStore.activePlatform === 'sleeper') return '/sleeper-logo.svg'
+  return '/yahoo-fantasy.svg'
+})
+
+const sportName = computed(() => {
+  // Get sport from saved league or current context
+  const saved = leagueStore.savedLeagues.find(l => l.league_id === leagueStore.activeLeagueId)
+  const sport = saved?.sport || 'football'
+  
+  const sportNames: Record<string, string> = {
+    football: 'Football',
+    baseball: 'Baseball',
+    basketball: 'Basketball',
+    hockey: 'Hockey'
+  }
+  return sportNames[sport] || 'Fantasy'
+})
 
 const platformBadgeClass = computed(() => {
   if (leagueStore.activePlatform === 'espn') {
     return 'bg-[#5b8def]/10 border-[#5b8def]/30'
+  }
+  if (leagueStore.activePlatform === 'sleeper') {
+    return 'bg-[#01b5a5]/10 border-[#01b5a5]/30'
   }
   return 'bg-purple-600/10 border-purple-600/30'
 })
@@ -673,6 +700,9 @@ const platformBadgeClass = computed(() => {
 const platformTextClass = computed(() => {
   if (leagueStore.activePlatform === 'espn') {
     return 'text-[#5b8def]'
+  }
+  if (leagueStore.activePlatform === 'sleeper') {
+    return 'text-[#01b5a5]'
   }
   return 'text-purple-300'
 })
@@ -1501,8 +1531,61 @@ async function loadMatchups() {
     
     let matchups: any[] = []
     
+    // Handle Sleeper leagues
+    if (leagueStore.activePlatform === 'sleeper') {
+      // Get matchups from historical data
+      const season = leagueStore.currentLeague?.season || new Date().getFullYear().toString()
+      const sleeperMatchups = leagueStore.historicalMatchups.get(season)?.get(week) || []
+      console.log('Sleeper matchups for week', week, ':', sleeperMatchups.length)
+      
+      // Group by matchup_id and transform to Yahoo-compatible format
+      const matchupMap = new Map<number, any>()
+      
+      for (const m of sleeperMatchups) {
+        const matchupId = m.matchup_id
+        if (!matchupMap.has(matchupId)) {
+          matchupMap.set(matchupId, { matchup_id: matchupId, teams: [] })
+        }
+        
+        const team = leagueStore.yahooTeams.find(t => t.roster_id === m.roster_id)
+        
+        matchupMap.get(matchupId).teams.push({
+          team_key: `sleeper_${m.roster_id}`,
+          name: team?.name || `Team ${m.roster_id}`,
+          points: m.points || 0,
+          projected_points: m.projected_points || 0,
+          logo_url: team?.logo_url || '',
+          is_my_team: false,
+          wins: team?.wins || 0,
+          losses: team?.losses || 0,
+          roster_id: m.roster_id
+        })
+      }
+      
+      matchups = Array.from(matchupMap.values()).map(m => {
+        // Determine winner
+        const team1 = m.teams[0]
+        const team2 = m.teams[1]
+        let winnerKey = null
+        
+        if (team1 && team2 && (team1.points > 0 || team2.points > 0)) {
+          if (team1.points > team2.points) {
+            winnerKey = team1.team_key
+          } else if (team2.points > team1.points) {
+            winnerKey = team2.team_key
+          }
+        }
+        
+        return {
+          ...m,
+          winner_team_key: winnerKey,
+          is_playoffs: week > (leagueStore.currentLeague?.settings?.playoff_week_start || 14),
+          is_consolation: false
+        }
+      })
+    }
     // Handle ESPN leagues
-    if (leagueStore.activePlatform === 'espn') {
+    else if (leagueStore.activePlatform === 'espn') {
       // Parse league key to get ESPN details
       const parts = leagueKey.split('_')
       const sport = parts[1] as 'football' | 'baseball' | 'basketball' | 'hockey'
@@ -1662,6 +1745,50 @@ async function loadMatchupHistory() {
   if (!leagueKey) return
   
   const currentWeekNum = parseInt(selectedWeek.value)
+  
+  // Handle Sleeper leagues
+  if (leagueStore.activePlatform === 'sleeper') {
+    const season = leagueStore.currentLeague?.season || new Date().getFullYear().toString()
+    
+    for (let week = 1; week <= currentWeekNum; week++) {
+      if (!allMatchupsHistory.value.has(week)) {
+        const sleeperMatchups = leagueStore.historicalMatchups.get(season)?.get(week) || []
+        
+        // Group by matchup_id
+        const matchupMap = new Map<number, any>()
+        for (const m of sleeperMatchups) {
+          const matchupId = m.matchup_id
+          if (!matchupMap.has(matchupId)) {
+            matchupMap.set(matchupId, { matchup_id: matchupId, teams: [] })
+          }
+          
+          const team = leagueStore.yahooTeams.find(t => t.roster_id === m.roster_id)
+          matchupMap.get(matchupId).teams.push({
+            team_key: `sleeper_${m.roster_id}`,
+            name: team?.name || `Team ${m.roster_id}`,
+            points: m.points || 0,
+            is_my_team: false
+          })
+        }
+        
+        const matchups = Array.from(matchupMap.values()).map(m => {
+          const team1 = m.teams[0]
+          const team2 = m.teams[1]
+          let winnerKey = null
+          
+          if (team1 && team2 && (team1.points > 0 || team2.points > 0)) {
+            winnerKey = team1.points > team2.points ? team1.team_key : 
+                        team2.points > team1.points ? team2.team_key : null
+          }
+          
+          return { ...m, winner_team_key: winnerKey }
+        })
+        
+        allMatchupsHistory.value.set(week, matchups)
+      }
+    }
+    return
+  }
   
   // Handle ESPN leagues
   if (leagueStore.activePlatform === 'espn') {

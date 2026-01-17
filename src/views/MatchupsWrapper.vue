@@ -1,11 +1,8 @@
 <template>
-  <!-- Sleeper leagues (football only for now) -->
-  <SleeperMatchups v-if="isSleeper" />
+  <!-- H2H Category leagues (any platform, any sport) -->
+  <CategoryMatchups v-if="isCategoryLeague" />
   
-  <!-- Yahoo/ESPN H2H Category leagues (any sport) -->
-  <CategoryMatchups v-else-if="isCategoryLeague" />
-  
-  <!-- Yahoo/ESPN Points leagues (any sport) -->
+  <!-- Points leagues (any platform, any sport) -->
   <PointsMatchups v-else />
 </template>
 
@@ -15,11 +12,7 @@ import { useLeagueStore } from '@/stores/league'
 
 const leagueStore = useLeagueStore()
 
-// Lazy load components
-const SleeperMatchups = defineAsyncComponent(() => 
-  import('@/views/MatchupsView.vue')
-)
-
+// Lazy load components - these work for ALL platforms (Sleeper, Yahoo, ESPN)
 const CategoryMatchups = defineAsyncComponent(() => 
   import('@/views/YahooCategoryMatchupsView.vue')
 )
@@ -28,14 +21,9 @@ const PointsMatchups = defineAsyncComponent(() =>
   import('@/views/YahooBaseballMatchupsView.vue')
 )
 
-// Check if it's a Sleeper league
-const isSleeper = computed(() => 
-  leagueStore.activePlatform === 'sleeper'
-)
-
 // Detect if it's a category league based on scoring_type
 const isCategoryLeague = computed(() => {
-  // Check yahooLeague first (works for both Yahoo and ESPN)
+  // Check yahooLeague (works for Yahoo, ESPN, and Sleeper after transformation)
   const league = leagueStore.yahooLeague
   if (Array.isArray(league) && league[0]) {
     const st = (league[0].scoring_type || '').toLowerCase()

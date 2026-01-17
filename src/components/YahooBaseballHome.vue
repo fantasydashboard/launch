@@ -472,7 +472,7 @@
     <div class="flex justify-center">
       <div class="inline-flex items-center gap-2 px-4 py-2 rounded-full border" :class="platformBadgeClass">
         <img 
-          :src="leagueStore.activePlatform === 'espn' ? '/espn-logo.svg' : '/yahoo-fantasy.svg'" 
+          :src="platformLogo" 
           :alt="platformName"
           class="w-5 h-5"
         />
@@ -826,10 +826,35 @@ function getLogoUrl(logoUrl: string | undefined): string {
 }
 
 // Platform styling
-const platformName = computed(() => leagueStore.activePlatform === 'espn' ? 'ESPN' : 'Yahoo')
-const platformBadgeClass = computed(() => leagueStore.activePlatform === 'espn' ? 'bg-[#0719b2]/10 border-[#0719b2]/30' : 'bg-purple-600/10 border-purple-600/30')
-const platformTextClass = computed(() => leagueStore.activePlatform === 'espn' ? 'text-[#0719b2]' : 'text-purple-400')
-const platformSubTextClass = computed(() => leagueStore.activePlatform === 'espn' ? 'text-[#3d5fc4]' : 'text-purple-300')
+const platformName = computed(() => {
+  if (leagueStore.activePlatform === 'espn') return 'ESPN'
+  if (leagueStore.activePlatform === 'sleeper') return 'Sleeper'
+  return 'Yahoo'
+})
+
+const platformLogo = computed(() => {
+  if (leagueStore.activePlatform === 'espn') return '/espn-logo.svg'
+  if (leagueStore.activePlatform === 'sleeper') return '/sleeper-logo.svg'
+  return '/yahoo-fantasy.svg'
+})
+
+const platformBadgeClass = computed(() => {
+  if (leagueStore.activePlatform === 'espn') return 'bg-[#0719b2]/10 border-[#0719b2]/30'
+  if (leagueStore.activePlatform === 'sleeper') return 'bg-[#01b5a5]/10 border-[#01b5a5]/30'
+  return 'bg-purple-600/10 border-purple-600/30'
+})
+
+const platformTextClass = computed(() => {
+  if (leagueStore.activePlatform === 'espn') return 'text-[#0719b2]'
+  if (leagueStore.activePlatform === 'sleeper') return 'text-[#01b5a5]'
+  return 'text-purple-400'
+})
+
+const platformSubTextClass = computed(() => {
+  if (leagueStore.activePlatform === 'espn') return 'text-[#3d5fc4]'
+  if (leagueStore.activePlatform === 'sleeper') return 'text-[#02d4c3]'
+  return 'text-purple-300'
+})
 
 // Scoring type - read from store for both Yahoo and ESPN
 const scoringType = computed(() => {
@@ -2972,6 +2997,50 @@ async function loadAllMatchups() {
   console.log(`Loading matchups for league: ${leagueKey}, platform: ${leagueStore.activePlatform}`)
   isLoadingChart.value = true
   
+  // For Sleeper, use historical matchups data (already transformed to yahoo format)
+  if (leagueStore.activePlatform === 'sleeper') {
+    console.log('[Sleeper] Loading matchups from historical data')
+    const season = leagueStore.currentLeague?.season || new Date().getFullYear().toString()
+    const currentWeek = leagueStore.currentLeague?.settings?.leg || 1
+    
+    // Get current week matchups for display
+    const sleeperMatchups = leagueStore.historicalMatchups.get(season)?.get(currentWeek) || []
+    
+    // Transform to display format
+    const matchupMap = new Map<number, any>()
+    for (const m of sleeperMatchups) {
+      const matchupId = m.matchup_id
+      if (!matchupMap.has(matchupId)) {
+        matchupMap.set(matchupId, { matchup_id: matchupId, teams: [] })
+      }
+      
+      const team = leagueStore.yahooTeams.find(t => t.roster_id === m.roster_id)
+      matchupMap.get(matchupId).teams.push({
+        team_key: `sleeper_${m.roster_id}`,
+        name: team?.name || `Team ${m.roster_id}`,
+        points: m.points || 0,
+        projected_points: m.projected_points || 0,
+        logo_url: team?.logo_url || '',
+        is_my_team: false,
+        wins: team?.wins || 0,
+        losses: team?.losses || 0
+      })
+    }
+    
+    displayMatchups.value = Array.from(matchupMap.values())
+    
+    // Generate standings progression for chart
+    const endWeek = leagueStore.currentLeague?.settings?.playoff_week_start || 14
+    const startWeek = 1
+    
+    generateStandingsProgression(startWeek, endWeek)
+    buildChart()
+    
+    isLoadingChart.value = false
+    chartLoadProgress.value = ''
+    return
+  }
+  
   // For ESPN, use matchups from store (already loaded)
   if (leagueStore.activePlatform === 'espn') {
     console.log('[ESPN] Using matchups from store:', leagueStore.yahooMatchups?.length || 0)
@@ -3577,6 +3646,39 @@ async function loadEspnData() {
   }
 }
 
+// Load all data for Sleeper
+async function loadSleeperData() {
+  const leagueKey = leagueStore.activeLeagueId
+  if (!leagueKey || leagueStore.activePlatform !== 'sleeper') return
+  
+  console.log('[Sleeper] loadSleeperData for:', leagueKey)
+  isLoading.value = true
+  loadingStatus.value = 'Loading Sleeper data...'
+  
+  try {
+    // Data is already in store from transformation, just set up the display
+    loadLeagueSettings()
+    
+    // Transaction counts from yahooTeams (already mapped from Sleeper)
+    const counts = new Map<string, number>()
+    leagueStore.yahooTeams.forEach(team => {
+      counts.set(team.team_key, team.transactions || 0)
+    })
+    transactionCounts.value = counts
+    
+    isLoading.value = false
+    loadingStatus.value = ''
+    
+    // Load matchups in background for chart
+    loadAllMatchups()
+    
+  } catch (e) {
+    console.error('[Sleeper] Error loading data:', e)
+    loadingStatus.value = ''
+    isLoading.value = false
+  }
+}
+
 // Generate fake matchup results for ESPN (for hottest/coldest stats)
 function generateEspnMatchupResults(startWeek: number, endWeek: number) {
   const allMatchupResults = new Map<string, Map<number, any>>()
@@ -3623,6 +3725,7 @@ function generateEspnMatchupResults(startWeek: number, endWeek: number) {
 watch(() => leagueStore.activeLeagueId, () => {
   if (leagueStore.activePlatform === 'yahoo') loadAllData()
   if (leagueStore.activePlatform === 'espn') loadEspnData()
+  if (leagueStore.activePlatform === 'sleeper') loadSleeperData()
 })
 
 // Watch for currentLeague changes (happens when fallback to previous season occurs)
@@ -3631,6 +3734,7 @@ watch(() => leagueStore.currentLeague?.league_id, (newKey, oldKey) => {
     console.log(`Current league changed from ${oldKey} to ${newKey}, reloading data...`)
     if (leagueStore.activePlatform === 'yahoo') loadAllData()
     if (leagueStore.activePlatform === 'espn') loadEspnData()
+    if (leagueStore.activePlatform === 'sleeper') loadSleeperData()
   }
 })
 
@@ -3638,6 +3742,7 @@ watch(() => leagueStore.yahooTeams, () => {
   if (leagueStore.yahooTeams.length > 0) {
     if (leagueStore.activePlatform === 'yahoo') loadAllData()
     if (leagueStore.activePlatform === 'espn') loadEspnData()
+    if (leagueStore.activePlatform === 'sleeper') loadSleeperData()
   }
 }, { immediate: true })
 
@@ -3660,6 +3765,7 @@ onMounted(() => {
   if (leagueStore.yahooTeams.length > 0) {
     if (leagueStore.activePlatform === 'yahoo') loadAllData()
     if (leagueStore.activePlatform === 'espn') loadEspnData()
+    if (leagueStore.activePlatform === 'sleeper') loadSleeperData()
   }
   
   // Check scroll hint after a delay for DOM to settle
