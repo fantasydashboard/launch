@@ -3301,15 +3301,52 @@ async function loadEspnProjections() {
       console.log('[ESPN Projections] WARNING: myTeamKey is null/empty - no player highlighting will work')
     }
     
-    // Note: ESPN free agents API requires additional work - using rostered players only for now
-    const freeAgents: any[] = []
+    // Load ESPN free agents
+    loadingMessage.value = 'Loading free agents...'
+    let freeAgents: any[] = []
+    try {
+      const espnFreeAgents = await espnService.getFreeAgents(sport as any, leagueId, season, 100)
+      console.log('[ESPN Projections] Loaded', espnFreeAgents.length, 'free agents')
+      
+      freeAgents = espnFreeAgents.map((player: any) => ({
+        player_key: `espn_player_${player.playerId || player.id}`,
+        player_id: player.playerId || player.id,
+        full_name: player.fullName || 'Unknown',
+        position: player.position || 'Util',
+        mlb_team: player.proTeam || '',
+        headshot: player.playerId ? `https://a.espncdn.com/combiner/i?img=/i/headshots/mlb/players/full/${player.playerId}.png&w=96&h=70&cb=1` : '',
+        fantasy_team: null,  // Free agents have no team
+        fantasy_team_key: null,  // Free agents have no team key
+        stats: player.stats || {},
+        total_points: player.actualPoints || 0
+      }))
+      
+      // If free agents don't have stats, fetch them
+      const faIdsWithoutStats = freeAgents.filter(p => Object.keys(p.stats || {}).length === 0).map(p => p.player_id)
+      if (faIdsWithoutStats.length > 0) {
+        console.log('[ESPN Projections] Fetching stats for', faIdsWithoutStats.length, 'free agents...')
+        try {
+          const faStatsMap = await espnService.getPlayersWithStats(sport as any, leagueId, season, faIdsWithoutStats)
+          for (const fa of freeAgents) {
+            const faStats = faStatsMap.get(fa.player_id)
+            if (faStats?.stats) {
+              fa.stats = faStats.stats
+            }
+          }
+        } catch (e) {
+          console.log('[ESPN Projections] Could not fetch free agent stats:', e)
+        }
+      }
+    } catch (e) {
+      console.error('[ESPN Projections] Error loading free agents:', e)
+    }
     
     allPlayers.value = [...allRosteredPlayers, ...freeAgents]
     selectAllPositions()
     
     const pitchers = allPlayers.value.filter(p => isPitcher(p))
     const hitters = allPlayers.value.filter(p => !isPitcher(p))
-    console.log('[ESPN Projections] Players loaded:', allPlayers.value.length, '- Pitchers:', pitchers.length, '- Hitters:', hitters.length)
+    console.log('[ESPN Projections] Players loaded:', allPlayers.value.length, '- Pitchers:', pitchers.length, '- Hitters:', hitters.length, '- Free Agents:', freeAgents.length)
     
     // Process teams for Teams tab
     processTeamsData()

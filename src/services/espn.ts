@@ -1029,6 +1029,83 @@ export class EspnFantasyService {
       throw error
     }
   }
+
+  /**
+   * Get top free agents (unowned players) from the league
+   * @param limit - Number of free agents to return (default 100)
+   */
+  async getFreeAgents(sport: Sport, leagueId: string | number, season: number, limit: number = 100): Promise<EspnPlayer[]> {
+    const cacheKey = `espn_free_agents_${sport}_${leagueId}_${season}_${limit}`
+    const cached = cache.get<EspnPlayer[]>('espn_free_agents', cacheKey)
+    if (cached) {
+      console.log(`[Cache HIT] ESPN free agents for ${leagueId}`)
+      return cached
+    }
+
+    const teamMapping = sport === 'baseball' ? MLB_TEAMS : PRO_TEAMS
+    const freeAgents: EspnPlayer[] = []
+    
+    try {
+      // Request players_wl view filtered to show only unowned players
+      const filterObj = {
+        players: {
+          filterStatus: {
+            value: ['FREEAGENT', 'WAIVERS']  // Only free agents and waiver players
+          },
+          filterSlotIds: {
+            value: []  // All positions
+          },
+          limit: limit,
+          sortPercOwned: {
+            sortPriority: 1,
+            sortAsc: false  // Most owned first (popular free agents)
+          }
+        }
+      }
+      
+      const data = await this.apiRequestWithFilter(sport, leagueId, season, [ESPN_VIEWS.PLAYERS], filterObj)
+      const players = data.players || []
+      
+      console.log('[ESPN getFreeAgents] Got', players.length, 'free agents from players_wl')
+      
+      for (const entry of players) {
+        const player = entry.player || entry
+        if (!player.id) continue
+        
+        // Get stats from player data
+        const statsArray = player.stats || []
+        const seasonStats = statsArray.find((s: any) => s.statSourceId === 0 && s.statSplitTypeId === 0) ||
+                           statsArray.find((s: any) => s.statSourceId === 0) || {}
+        
+        freeAgents.push({
+          id: player.id,
+          playerId: player.id,
+          fullName: player.fullName || `${player.firstName || ''} ${player.lastName || ''}`.trim() || `Player ${player.id}`,
+          firstName: player.firstName || '',
+          lastName: player.lastName || '',
+          proTeam: teamMapping[player.proTeamId] || 'FA',
+          proTeamId: player.proTeamId || 0,
+          position: this.getPositionName(player.defaultPositionId, sport),
+          positionId: player.defaultPositionId || 0,
+          lineupSlotId: 0,
+          lineupSlot: 'FA',
+          injuryStatus: player.injuryStatus || 'ACTIVE',
+          projectedPoints: 0,
+          actualPoints: seasonStats.appliedTotal || 0,
+          percentOwned: entry.player?.ownership?.percentOwned || player.ownership?.percentOwned || 0,
+          percentStarted: entry.player?.ownership?.percentStarted || player.ownership?.percentStarted || 0,
+          stats: this.flattenStats(seasonStats.stats || {})
+        })
+      }
+      
+      cache.set('espn_free_agents', freeAgents, CACHE_TTL.STANDINGS, cacheKey)
+      return freeAgents
+      
+    } catch (e) {
+      console.error('[ESPN getFreeAgents] Error:', e)
+      return []
+    }
+  }
   
   /**
    * Get players from the waiver/free agent list view (broader player pool)
