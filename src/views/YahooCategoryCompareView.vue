@@ -63,8 +63,9 @@
           </div>
         </div>
         <p class="text-xs text-dark-textMuted mt-3">
-          {{ availableTeams1.length }} teams available
+          {{ availableTeams1.length }} teams available ({{ allTeams.length }} total, {{ currentSeasonTeamIds.length }} current)
           <span v-if="!showCurrentMembersOnly"> (including {{ allTeams.length - currentSeasonTeamIds.length }} former members)</span>
+          <span v-if="isEspn" class="text-red-400 ml-2">• ESPN Mode</span>
         </p>
       </div>
     </div>
@@ -346,7 +347,11 @@
 
     <!-- Platform Badge -->
     <div class="flex justify-center mt-8">
-      <div class="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-purple-600/10 border border-purple-600/30">
+      <div v-if="isEspn" class="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-red-600/10 border border-red-600/30">
+        <span class="text-sm font-bold text-red-400">ESPN</span>
+        <span class="text-sm text-red-300">ESPN Fantasy Baseball • H2H Categories</span>
+      </div>
+      <div v-else class="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-purple-600/10 border border-purple-600/30">
         <span class="text-sm font-bold text-purple-400">Y!</span>
         <span class="text-sm text-purple-300">Yahoo Fantasy Baseball • H2H Categories</span>
       </div>
@@ -418,12 +423,14 @@ function getTeamId(teamKey: string): string {
 }
 
 // Parse ESPN league key to extract leagueId and season
-function parseEspnLeagueKey(leagueKey: string): { leagueId: string; season: number } {
-  // ESPN league keys: "espn_12345_2024" or just leagueId
-  const parts = leagueKey.replace('espn_', '').split('_')
+// Format: espn_{sport}_{leagueId}_{season} (e.g., espn_baseball_12345_2024)
+function parseEspnLeagueKey(leagueKey: string): { leagueId: string; season: number; sport: string } {
+  const parts = leagueKey.split('_')
+  // parts[0] = "espn", parts[1] = sport, parts[2] = leagueId, parts[3] = season
   return {
-    leagueId: parts[0],
-    season: parseInt(parts[1]) || new Date().getFullYear()
+    sport: parts[1] || 'baseball',
+    leagueId: parts[2] || '',
+    season: parseInt(parts[3]) || new Date().getFullYear()
   }
 }
 
@@ -677,12 +684,19 @@ async function loadEspnHistoricalData() {
       return
     }
     
-    const { leagueId, season: currentSeason } = parseEspnLeagueKey(leagueKey)
+    const { leagueId, season: currentSeason, sport } = parseEspnLeagueKey(leagueKey)
+    console.log('[ESPN Compare] Parsed league key:', { leagueId, currentSeason, sport })
     loadingMessage.value = `Loading ESPN league ${leagueId} history...`
+    
+    if (!leagueId) {
+      console.error('[ESPN Compare] Could not parse league ID from key:', leagueKey)
+      isInitialLoading.value = false
+      return
+    }
     
     // Load league settings to get number of categories
     try {
-      const scoringSettings = await espnService.getScoringSettings('baseball', leagueId, currentSeason)
+      const scoringSettings = await espnService.getScoringSettings(sport as any, leagueId, currentSeason)
       const scoringItems = scoringSettings?.scoringItems || []
       if (scoringItems.length > 0) {
         numCategories.value = scoringItems.length
@@ -701,7 +715,7 @@ async function loadEspnHistoricalData() {
     }
     
     console.log('=== Starting ESPN Historical Data Load ===')
-    console.log('League ID:', leagueId)
+    console.log('League ID:', leagueId, 'Sport:', sport)
     let successCount = 0
     
     for (const year of years) {
@@ -714,14 +728,18 @@ async function loadEspnHistoricalData() {
         // Try current method first, fall back to historical method
         let teams: any[] = []
         try {
-          teams = await espnService.getTeams('baseball', leagueId, yearSeason)
+          teams = await espnService.getTeams(sport as any, leagueId, yearSeason)
+          console.log(`[ESPN] getTeams returned ${teams?.length || 0} teams for ${year}`)
         } catch (e) {
+          console.log(`[ESPN] getTeams failed for ${year}, trying historical:`, e)
           // Try historical endpoint
-          teams = await espnService.getHistoricalTeams('baseball', leagueId, yearSeason)
+          teams = await espnService.getHistoricalTeams(sport as any, leagueId, yearSeason)
+          console.log(`[ESPN] getHistoricalTeams returned ${teams?.length || 0} teams for ${year}`)
         }
         
         if (teams && teams.length > 0) {
           console.log(`✓ [ESPN] Loaded ${year} season: ${teams.length} teams`)
+          console.log(`[ESPN] Sample team:`, teams[0])
           successCount++
           
           // Build standings array from teams
@@ -780,9 +798,9 @@ async function loadEspnHistoricalData() {
                 // Try regular matchups first, fall back to historical
                 let weekMatchups: any[] = []
                 try {
-                  weekMatchups = await espnService.getMatchups('baseball', leagueId, yearSeason, week)
+                  weekMatchups = await espnService.getMatchups(sport as any, leagueId, yearSeason, week)
                 } catch (e) {
-                  weekMatchups = await espnService.getHistoricalMatchups('baseball', leagueId, yearSeason, week)
+                  weekMatchups = await espnService.getHistoricalMatchups(sport as any, leagueId, yearSeason, week)
                 }
                 
                 if (weekMatchups && weekMatchups.length > 0) {
@@ -847,6 +865,9 @@ async function loadEspnHistoricalData() {
     seasonsLoaded.value = successCount
     
     // Build allTeams from teamIdMapping
+    console.log('[ESPN Compare] teamIdMapping entries:', Object.keys(teamIdMapping.value).length)
+    console.log('[ESPN Compare] teamIdMapping:', JSON.stringify(teamIdMapping.value, null, 2))
+    
     allTeams.value = Object.entries(teamIdMapping.value).map(([teamId, info]) => {
       const seasonsParticipated = info.team_keys.length
       return {
@@ -860,16 +881,21 @@ async function loadEspnHistoricalData() {
     
     console.log('=== ESPN Team Mapping Debug ===')
     console.log('Total unique teams across all seasons:', allTeams.value.length)
-    console.log('Current season teams:', currentSeasonTeamIds.value)
+    console.log('All teams:', allTeams.value.map(t => ({ id: t.team_id, name: t.name, key: t.team_key })))
+    console.log('Current season team IDs:', currentSeasonTeamIds.value)
     
     // Auto-select first two current-season teams
     const currentTeams = allTeams.value.filter(t => currentSeasonTeamIds.value.includes(t.team_id))
+    console.log('[ESPN Compare] Current teams for selection:', currentTeams.length)
+    
     if (currentTeams.length >= 2) {
       team1Key.value = currentTeams[0].team_key
       team2Key.value = currentTeams[1].team_key
+      console.log('[ESPN Compare] Auto-selected teams:', team1Key.value, team2Key.value)
     } else if (allTeams.value.length >= 2) {
       team1Key.value = allTeams.value[0].team_key
       team2Key.value = allTeams.value[1].team_key
+      console.log('[ESPN Compare] Fallback selected teams:', team1Key.value, team2Key.value)
     }
     
     loadingMessage.value = 'Done!'
