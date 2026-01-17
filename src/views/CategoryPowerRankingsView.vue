@@ -1666,17 +1666,19 @@ async function loadCategories() {
       const savedLeague = leagueStore.savedLeagues?.find((l: any) => l.league_id === leagueKey)
       console.log('[loadCategories ESPN] savedLeague:', savedLeague)
       
-      // Parse ESPN league ID and season
+      // Parse ESPN league ID, sport, and season
       // The leagueKey format is: espn_baseball_1880415994_2025
-      // We need to extract: leagueId = 1880415994, season = 2025
+      // We need to extract: sport = baseball, leagueId = 1880415994, season = 2025
       let espnLeagueId: string | number = ''
       let season = new Date().getFullYear()
+      let sport: 'football' | 'baseball' | 'basketball' | 'hockey' = 'baseball'
       
-      // Always parse from leagueKey to get the numeric ID
+      // Always parse from leagueKey to get the numeric ID and sport
       if (typeof leagueKey === 'string' && leagueKey.startsWith('espn_')) {
         const parts = leagueKey.split('_')
-        // parts[0] = 'espn', parts[1] = 'baseball', parts[2] = leagueId, parts[3] = season
+        // parts[0] = 'espn', parts[1] = 'baseball/hockey/etc', parts[2] = leagueId, parts[3] = season
         if (parts.length >= 4) {
+          sport = parts[1] as 'football' | 'baseball' | 'basketball' | 'hockey'
           espnLeagueId = parts[2]
           season = parseInt(parts[3]) || new Date().getFullYear()
         } else if (parts.length >= 2) {
@@ -1692,8 +1694,11 @@ async function loadCategories() {
       if (savedLeague?.season) {
         season = savedLeague.season
       }
+      if (savedLeague?.sport) {
+        sport = savedLeague.sport as 'football' | 'baseball' | 'basketball' | 'hockey'
+      }
       
-      console.log('[loadCategories ESPN] Parsed espnLeagueId:', espnLeagueId, 'season:', season)
+      console.log('[loadCategories ESPN] Parsed espnLeagueId:', espnLeagueId, 'season:', season, 'sport:', sport)
       
       if (!espnLeagueId) {
         console.error('[loadCategories ESPN] Could not parse ESPN league ID from:', leagueKey)
@@ -1701,7 +1706,7 @@ async function loadCategories() {
       }
       
       // Get scoring settings which has the stat categories
-      const scoringSettings = await espnService.getScoringSettings('baseball', espnLeagueId, season)
+      const scoringSettings = await espnService.getScoringSettings(sport, espnLeagueId, season)
       console.log('[loadCategories ESPN] scoringSettings:', scoringSettings)
       console.log('[loadCategories ESPN] scoringSettings keys:', scoringSettings ? Object.keys(scoringSettings) : 'null')
       
@@ -1711,7 +1716,7 @@ async function loadCategories() {
         console.log('[loadCategories ESPN] First scoring item:', scoringItems[0])
       }
       
-      // ESPN baseball stat ID mapping (must match getCategoryStatsBreakdown)
+      // ESPN stat ID mappings by sport
       const espnBaseballStatNames: Record<number, { name: string; display: string; isNegative?: boolean }> = {
         0: { name: 'At Bats', display: 'AB' },
         1: { name: 'Hits', display: 'H' },
@@ -1757,10 +1762,68 @@ async function loadCategories() {
         99: { name: 'Games Pitched', display: 'GP' }
       }
       
+      // ESPN Hockey stat ID mapping
+      const espnHockeyStatNames: Record<number, { name: string; display: string; isNegative?: boolean }> = {
+        0: { name: 'Goals', display: 'G' },
+        1: { name: 'Assists', display: 'A' },
+        2: { name: 'Points', display: 'PTS' },
+        3: { name: 'Plus/Minus', display: '+/-' },
+        4: { name: 'Penalty Minutes', display: 'PIM' },
+        5: { name: 'Powerplay Goals', display: 'PPG' },
+        6: { name: 'Powerplay Assists', display: 'PPA' },
+        7: { name: 'Powerplay Points', display: 'PPP' },
+        8: { name: 'Shorthanded Goals', display: 'SHG' },
+        9: { name: 'Shorthanded Assists', display: 'SHA' },
+        10: { name: 'Shorthanded Points', display: 'SHP' },
+        11: { name: 'Game-Winning Goals', display: 'GWG' },
+        12: { name: 'Shots on Goal', display: 'SOG' },
+        13: { name: 'Shooting Percentage', display: 'SH%' },
+        14: { name: 'Faceoffs Won', display: 'FOW' },
+        15: { name: 'Faceoffs Lost', display: 'FOL', isNegative: true },
+        16: { name: 'Hits', display: 'HIT' },
+        17: { name: 'Blocks', display: 'BLK' },
+        19: { name: 'Wins', display: 'W' },
+        20: { name: 'Losses', display: 'L', isNegative: true },
+        21: { name: 'Goals Against', display: 'GA', isNegative: true },
+        22: { name: 'Goals Against Average', display: 'GAA', isNegative: true },
+        23: { name: 'Saves', display: 'SV' },
+        24: { name: 'Save Percentage', display: 'SV%' },
+        25: { name: 'Shutouts', display: 'SHO' },
+        26: { name: 'Overtime Losses', display: 'OTL' },
+        27: { name: 'Games Started', display: 'GS' },
+        31: { name: 'Hat Tricks', display: 'HAT' },
+        32: { name: 'Defensemen Points', display: 'DEF' },
+        33: { name: 'Special Teams Points', display: 'STP' }
+      }
+      
+      // ESPN Basketball stat ID mapping
+      const espnBasketballStatNames: Record<number, { name: string; display: string; isNegative?: boolean }> = {
+        0: { name: 'Points', display: 'PTS' },
+        1: { name: 'Blocks', display: 'BLK' },
+        2: { name: 'Steals', display: 'STL' },
+        3: { name: 'Assists', display: 'AST' },
+        6: { name: 'Rebounds', display: 'REB' },
+        11: { name: 'Turnovers', display: 'TO', isNegative: true },
+        13: { name: 'Field Goals Made', display: 'FGM' },
+        14: { name: 'Field Goals Attempted', display: 'FGA' },
+        15: { name: 'Field Goal Pct', display: 'FG%' },
+        16: { name: 'Free Throws Made', display: 'FTM' },
+        17: { name: 'Free Throws Attempted', display: 'FTA' },
+        18: { name: 'Free Throw Pct', display: 'FT%' },
+        19: { name: '3-Pointers Made', display: '3PM' },
+        20: { name: '3-Pointers Attempted', display: '3PA' },
+        21: { name: '3-Point Pct', display: '3P%' }
+      }
+      
+      // Select stat names based on sport
+      const statNames = sport === 'hockey' ? espnHockeyStatNames 
+        : sport === 'basketball' ? espnBasketballStatNames 
+        : espnBaseballStatNames
+      
       displayCategories.value = scoringItems
         .map((item: any) => {
           const statId = String(item.statId || item.id)
-          const statInfo = espnBaseballStatNames[parseInt(statId)] || { name: `Stat ${statId}`, display: `S${statId}` }
+          const statInfo = statNames[parseInt(statId)] || { name: `Stat ${statId}`, display: `S${statId}` }
           return {
             stat_id: statId,
             name: statInfo.name,
@@ -1770,7 +1833,7 @@ async function loadCategories() {
         })
         .filter((c: any) => c.stat_id)
       
-      console.log(`[ESPN] Loaded ${displayCategories.value.length} categories:`, displayCategories.value.map(c => c.display_name))
+      console.log(`[ESPN ${sport}] Loaded ${displayCategories.value.length} categories:`, displayCategories.value.map(c => c.display_name))
     } else {
       // Yahoo categories
       const settings = await yahooService.getLeagueScoringSettings(leagueKey)
@@ -1866,12 +1929,14 @@ async function loadPowerRankings() {
     // Get ESPN league info if needed
     let espnLeagueId: string | number = ''
     let espnSeason = new Date().getFullYear()
+    let espnSport: 'football' | 'baseball' | 'basketball' | 'hockey' = 'baseball'
     if (isEspn.value) {
-      // Always parse from leagueKey to get the numeric ID
-      // Format: espn_baseball_1880415994_2025
+      // Always parse from leagueKey to get the numeric ID and sport
+      // Format: espn_hockey_1880415994_2025
       if (typeof leagueKey === 'string' && leagueKey.startsWith('espn_')) {
         const parts = leagueKey.split('_')
         if (parts.length >= 4) {
+          espnSport = parts[1] as 'football' | 'baseball' | 'basketball' | 'hockey'
           espnLeagueId = parts[2]
           espnSeason = parseInt(parts[3]) || new Date().getFullYear()
         } else if (parts.length >= 2) {
@@ -1887,8 +1952,11 @@ async function loadPowerRankings() {
       if (savedLeague?.season) {
         espnSeason = savedLeague.season
       }
+      if (savedLeague?.sport) {
+        espnSport = savedLeague.sport as 'football' | 'baseball' | 'basketball' | 'hockey'
+      }
       
-      console.log('[Power Rankings ESPN] Parsed espnLeagueId:', espnLeagueId, 'season:', espnSeason)
+      console.log('[Power Rankings ESPN] Parsed espnLeagueId:', espnLeagueId, 'season:', espnSeason, 'sport:', espnSport)
     }
     
     // Track total processed for debugging
@@ -1903,7 +1971,7 @@ async function loadPowerRankings() {
         if (isEspn.value) {
           // ESPN matchups - use per-category results
           // Always force refresh to ensure we get the per-category data
-          const matchups = await espnService.getMatchups('baseball', espnLeagueId, espnSeason, week, true)
+          const matchups = await espnService.getMatchups(espnSport, espnLeagueId, espnSeason, week, true)
           
           console.log(`[Power Rankings ESPN] Week ${week}: ${matchups.length} matchups`)
           
