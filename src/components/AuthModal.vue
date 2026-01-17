@@ -12,7 +12,7 @@
       <div class="relative bg-dark-card rounded-2xl shadow-2xl w-full max-w-md overflow-hidden border border-dark-border/50">
         <!-- Header -->
         <div class="p-6 text-center border-b border-dark-border/30">
-          <div class="text-4xl mb-2">🏈</div>
+          <img src="/ufd-badge.png" alt="Ultimate Fantasy Dashboard" class="w-16 h-16 mx-auto mb-2" />
           <h2 class="text-2xl font-bold text-dark-text">
             {{ mode === 'login' ? 'Welcome Back' : 'Create Account' }}
           </h2>

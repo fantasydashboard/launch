@@ -1000,9 +1000,9 @@
 
     <!-- Platform Badge -->
     <div class="flex justify-center mt-8">
-      <div class="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-purple-600/10 border border-purple-600/30">
-        <span class="text-sm font-bold text-purple-400">Y!</span>
-        <span class="text-sm text-purple-300">Yahoo Fantasy Baseball</span>
+      <div class="inline-flex items-center gap-2 px-4 py-2 rounded-full border" :class="platformBadgeClass">
+        <img :src="platformLogo" :alt="platformName" class="w-5 h-5" />
+        <span class="text-sm" :class="platformTextClass">{{ platformName }} Fantasy {{ sportName }}</span>
       </div>
     </div>
   </div>
@@ -1033,6 +1033,36 @@ const isSeasonComplete = computed(() => {
   if (leagueStore.currentLeague?.status === 'complete') return true
   const yahooLeague = Array.isArray(leagueStore.yahooLeague) ? leagueStore.yahooLeague[0] : leagueStore.yahooLeague
   return yahooLeague?.is_finished === 1
+})
+
+// Platform detection for badge
+const isSleeper = computed(() => leagueStore.activePlatform === 'sleeper')
+const isEspn = computed(() => leagueStore.activePlatform === 'espn')
+const platformName = computed(() => {
+  if (isEspn.value) return 'ESPN'
+  if (isSleeper.value) return 'Sleeper'
+  return 'Yahoo!'
+})
+const platformLogo = computed(() => {
+  if (isEspn.value) return '/espn-logo.svg'
+  if (isSleeper.value) return '/sleeper-logo.svg'
+  return '/yahoo-fantasy.svg'
+})
+const platformBadgeClass = computed(() => {
+  if (isEspn.value) return 'bg-[#5b8def]/10 border-[#5b8def]/30'
+  if (isSleeper.value) return 'bg-[#01b5a5]/10 border-[#01b5a5]/30'
+  return 'bg-purple-600/10 border-purple-600/30'
+})
+const platformTextClass = computed(() => {
+  if (isEspn.value) return 'text-[#5b8def]'
+  if (isSleeper.value) return 'text-[#01b5a5]'
+  return 'text-purple-300'
+})
+const sportName = computed(() => {
+  const saved = leagueStore.savedLeagues.find(l => l.league_id === leagueStore.activeLeagueId)
+  const sport = saved?.sport || 'baseball'
+  const names: Record<string, string> = { football: 'Football', baseball: 'Baseball', basketball: 'Basketball', hockey: 'Hockey' }
+  return names[sport] || 'Fantasy'
 })
 
 const tabs = [
