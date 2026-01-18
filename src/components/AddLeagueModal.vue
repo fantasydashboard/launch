@@ -380,19 +380,32 @@
                 </svg>
               </button>
               <img src="/espn-logo.svg" alt="ESPN" class="w-8 h-8 rounded-lg" />
-              <span class="text-sm text-dark-textMuted">Private League</span>
+              <span class="text-sm text-dark-textMuted">Connect ESPN Account</span>
             </div>
             
-            <!-- Private League Notice -->
-            <div class="bg-yellow-500/10 border border-yellow-500/30 rounded-xl p-4 mb-4">
-              <div class="flex items-start gap-3">
-                <svg class="w-5 h-5 text-yellow-500 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+            <!-- Found League Info -->
+            <div v-if="espnDiscoveredLeague" class="bg-green-500/10 border border-green-500/30 rounded-xl p-4 mb-4">
+              <div class="flex items-center gap-3">
+                <svg class="w-5 h-5 text-green-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
                 </svg>
                 <div>
-                  <p class="text-sm text-yellow-200 font-medium">This is a private league</p>
-                  <p class="text-xs text-yellow-200/70 mt-1">
-                    ESPN requires browser cookies to access private leagues. Your cookies are stored securely and only used to fetch your league data.
+                  <p class="text-sm text-green-200 font-medium">Found: {{ espnDiscoveredLeague.name }}</p>
+                  <p class="text-xs text-green-200/70">{{ espnDiscoveredLeague.size }} teams • {{ espnDiscoveredLeague.sport.toUpperCase() }}</p>
+                </div>
+              </div>
+            </div>
+            
+            <!-- One-time Setup Notice -->
+            <div class="bg-blue-500/10 border border-blue-500/30 rounded-xl p-4 mb-4">
+              <div class="flex items-start gap-3">
+                <svg class="w-5 h-5 text-blue-400 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <div>
+                  <p class="text-sm text-blue-200 font-medium">One-time ESPN setup</p>
+                  <p class="text-xs text-blue-200/70 mt-1">
+                    To identify your team and highlight your players, we need your ESPN cookies. This is a <strong>one-time setup</strong> - future ESPN leagues will use these automatically.
                   </p>
                 </div>
               </div>
@@ -450,7 +463,7 @@
               class="w-full mt-4 px-4 py-3 rounded-xl bg-[#0719b2] text-white font-semibold hover:bg-[#0719b2]/80 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2"
             >
               <span v-if="loading">Connecting...</span>
-              <span v-else>Connect Private League</span>
+              <span v-else>Connect & Save</span>
             </button>
           </div>
           
@@ -467,26 +480,66 @@
               </span>
             </div>
             
-            <div class="space-y-2 max-h-64 overflow-y-auto">
-              <button
-                v-for="league in availableLeagues"
-                :key="league.league_id"
-                @click="selectSleeperLeague(league)"
-                class="w-full flex items-center gap-3 p-3 rounded-xl bg-dark-bg/50 border border-dark-border/50 hover:border-primary/50 hover:bg-dark-border/30 transition-all text-left"
-              >
-                <div class="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center flex-shrink-0">
-                  <span class="text-sm font-bold text-primary">{{ league.name.substring(0, 2).toUpperCase() }}</span>
+            <div class="space-y-3 max-h-80 overflow-y-auto">
+              <!-- NFL Leagues -->
+              <div v-if="sleeperNflLeagues.length > 0">
+                <div class="flex items-center gap-2 mb-2">
+                  <span class="text-lg">🏈</span>
+                  <span class="text-sm font-medium text-dark-text">NFL</span>
+                  <span class="text-green-400 ml-auto">{{ sleeperNflLeagues.length }}</span>
                 </div>
-                <div class="flex-1 min-w-0">
-                  <div class="font-semibold text-dark-text truncate">{{ league.name }}</div>
-                  <div class="text-xs text-dark-textMuted">
-                    H2H Points • {{ league.total_rosters }} teams
-                  </div>
+                <div class="space-y-2">
+                  <button
+                    v-for="league in sleeperNflLeagues"
+                    :key="league.league_id"
+                    @click="selectSleeperLeague(league)"
+                    class="w-full flex items-center gap-3 p-3 rounded-xl bg-dark-bg/50 border border-dark-border/50 hover:border-primary/50 hover:bg-dark-border/30 transition-all text-left"
+                  >
+                    <div class="w-10 h-10 rounded-full bg-green-500/20 flex items-center justify-center flex-shrink-0">
+                      <span class="text-sm font-bold text-green-400">{{ league.name.substring(0, 2).toUpperCase() }}</span>
+                    </div>
+                    <div class="flex-1 min-w-0">
+                      <div class="font-semibold text-dark-text truncate">{{ league.name }}</div>
+                      <div class="text-xs text-dark-textMuted">
+                        H2H Points • {{ league.total_rosters }} teams
+                      </div>
+                    </div>
+                    <svg class="w-5 h-5 text-dark-textMuted" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+                    </svg>
+                  </button>
                 </div>
-                <svg class="w-5 h-5 text-dark-textMuted" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
-                </svg>
-              </button>
+              </div>
+              
+              <!-- NBA Leagues -->
+              <div v-if="sleeperNbaLeagues.length > 0" :class="sleeperNflLeagues.length > 0 ? 'border-t border-dark-border/50 pt-3' : ''">
+                <div class="flex items-center gap-2 mb-2">
+                  <span class="text-lg">🏀</span>
+                  <span class="text-sm font-medium text-dark-text">NBA</span>
+                  <span class="text-orange-400 ml-auto">{{ sleeperNbaLeagues.length }}</span>
+                </div>
+                <div class="space-y-2">
+                  <button
+                    v-for="league in sleeperNbaLeagues"
+                    :key="league.league_id"
+                    @click="selectSleeperLeague(league)"
+                    class="w-full flex items-center gap-3 p-3 rounded-xl bg-dark-bg/50 border border-dark-border/50 hover:border-primary/50 hover:bg-dark-border/30 transition-all text-left"
+                  >
+                    <div class="w-10 h-10 rounded-full bg-orange-500/20 flex items-center justify-center flex-shrink-0">
+                      <span class="text-sm font-bold text-orange-400">{{ league.name.substring(0, 2).toUpperCase() }}</span>
+                    </div>
+                    <div class="flex-1 min-w-0">
+                      <div class="font-semibold text-dark-text truncate">{{ league.name }}</div>
+                      <div class="text-xs text-dark-textMuted">
+                        H2H Points • {{ league.total_rosters }} teams
+                      </div>
+                    </div>
+                    <svg class="w-5 h-5 text-dark-textMuted" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+                    </svg>
+                  </button>
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -700,6 +753,10 @@ const totalYahooLeagues = computed(() =>
   hockeyYahooLeagues.value.length
 )
 
+// Sleeper leagues by sport
+const sleeperNflLeagues = computed(() => availableLeagues.value.filter(l => l.sport === 'nfl'))
+const sleeperNbaLeagues = computed(() => availableLeagues.value.filter(l => l.sport === 'nba'))
+
 // Reset when modal opens
 watch(() => props.isOpen, async (isOpen) => {
   if (isOpen) {
@@ -779,33 +836,48 @@ async function searchSleeperLeagues() {
     // Save username for later
     leagueStore.setCurrentUsername(username.value)
     
-    // Get leagues for current NFL season (use current year, or previous year if before September)
+    // Calculate season years for each sport
     const now = new Date()
     const currentYear = now.getFullYear()
     const currentMonth = now.getMonth() // 0-indexed
-    // NFL season starts in September, so before September use previous year
-    const seasonYear = currentMonth < 8 ? currentYear - 1 : currentYear
     
-    console.log('Fetching Sleeper leagues for season:', seasonYear, 'user_id:', user.user_id)
+    // NFL season starts in September
+    const nflSeasonYear = currentMonth < 8 ? currentYear - 1 : currentYear
+    // NBA season starts in October
+    const nbaSeasonYear = currentMonth < 9 ? currentYear - 1 : currentYear
     
-    const leaguesResponse = await fetch(
-      `https://api.sleeper.app/v1/user/${user.user_id}/leagues/nfl/${seasonYear}`
-    )
+    console.log('Fetching Sleeper leagues - NFL:', nflSeasonYear, 'NBA:', nbaSeasonYear, 'user_id:', user.user_id)
     
-    console.log('Leagues response status:', leaguesResponse.status)
+    // Fetch both NFL and NBA leagues in parallel
+    const [nflResponse, nbaResponse] = await Promise.allSettled([
+      fetch(`https://api.sleeper.app/v1/user/${user.user_id}/leagues/nfl/${nflSeasonYear}`),
+      fetch(`https://api.sleeper.app/v1/user/${user.user_id}/leagues/nba/${nbaSeasonYear}`)
+    ])
     
-    if (!leaguesResponse.ok) {
-      errorMessage.value = 'Failed to fetch leagues. Please try again.'
-      return
+    const allLeagues: any[] = []
+    
+    // Process NFL leagues
+    if (nflResponse.status === 'fulfilled' && nflResponse.value.ok) {
+      const nflLeagues = await nflResponse.value.json()
+      console.log('NFL leagues:', nflLeagues?.length || 0)
+      if (nflLeagues?.length > 0) {
+        allLeagues.push(...nflLeagues.map((l: any) => ({ ...l, sport: 'nfl' })))
+      }
     }
     
-    const leaguesData = await leaguesResponse.json()
-    console.log('Leagues data:', leaguesData)
+    // Process NBA leagues
+    if (nbaResponse.status === 'fulfilled' && nbaResponse.value.ok) {
+      const nbaLeagues = await nbaResponse.value.json()
+      console.log('NBA leagues:', nbaLeagues?.length || 0)
+      if (nbaLeagues?.length > 0) {
+        allLeagues.push(...nbaLeagues.map((l: any) => ({ ...l, sport: 'nba' })))
+      }
+    }
     
-    availableLeagues.value = leaguesData || []
+    availableLeagues.value = allLeagues
     
     if (availableLeagues.value.length === 0) {
-      errorMessage.value = `No leagues found for this user in the ${seasonYear} NFL season`
+      errorMessage.value = `No leagues found for this user in the current NFL or NBA seasons`
       return
     }
     
@@ -933,10 +1005,13 @@ async function validateEspnLeague() {
       return
     }
     
-    // Check if private and needs credentials
-    if (!discovered.isPublic && !credentials) {
+    // Ask for credentials if:
+    // 1. League is private (required), OR
+    // 2. First ESPN league ever (needed for "my team" highlighting)
+    if (!credentials) {
       espnNeedsCredentials.value = true
       espnSport.value = discovered.sport
+      espnDiscoveredLeague.value = discovered  // Store for later use
       errorMessage.value = ''
       espnDiscoveryStatus.value = ''
       return
@@ -994,7 +1069,7 @@ async function connectEspnPrivate() {
   espnDiscoveryStatus.value = 'Validating credentials...'
   
   try {
-    console.log('[ESPN] Connecting private league with credentials')
+    console.log('[ESPN] Connecting league with credentials')
     
     // Store and validate credentials
     const result = await platformsStore.storeEspnCredentials({
@@ -1011,9 +1086,12 @@ async function connectEspnPrivate() {
       return
     }
     
-    // Quick discovery with credentials
-    espnDiscoveryStatus.value = 'Finding league...'
-    const discovered = await espnService.discoverLeague(espnLeagueId.value)
+    // Use already-discovered league if available, otherwise re-discover
+    let discovered = espnDiscoveredLeague.value
+    if (!discovered) {
+      espnDiscoveryStatus.value = 'Finding league...'
+      discovered = await espnService.discoverLeague(espnLeagueId.value)
+    }
     
     if (!discovered) {
       errorMessage.value = 'Could not access league. Please check your credentials.'
@@ -1021,7 +1099,7 @@ async function connectEspnPrivate() {
       return
     }
     
-    console.log('[ESPN] Private league discovered:', discovered)
+    console.log('[ESPN] League discovered:', discovered)
     espnSport.value = discovered.sport
     espnSeason.value = discovered.currentSeason
     

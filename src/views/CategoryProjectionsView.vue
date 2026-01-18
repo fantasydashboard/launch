@@ -3208,25 +3208,34 @@ async function loadEspnProjections() {
     console.log('[ESPN Projections] Parsed - leagueId:', leagueId, 'season:', season, 'sport:', sport)
     
     // Ensure ESPN credentials are loaded before trying to identify user's team
+    console.log('[ESPN Projections] ===== CREDENTIAL CHECK START =====')
     const platformsStore = usePlatformsStore()
+    
+    // First check raw localStorage
+    const rawCreds = localStorage.getItem('espn_credentials')
+    console.log('[ESPN Projections] Raw localStorage check:', rawCreds ? 'EXISTS' : 'MISSING')
+    if (rawCreds) {
+      try {
+        const parsed = JSON.parse(rawCreds)
+        console.log('[ESPN Projections] localStorage SWID:', parsed.swid)
+        console.log('[ESPN Projections] localStorage espn_s2 length:', parsed.espn_s2?.length || 0)
+      } catch (e) {
+        console.log('[ESPN Projections] Failed to parse localStorage:', e)
+      }
+    }
+    
     const credentials = platformsStore.getEspnCredentials()
-    console.log('[ESPN Projections] Credentials check:', credentials ? 'FOUND' : 'NOT FOUND')
+    console.log('[ESPN Projections] getEspnCredentials result:', credentials ? 'FOUND' : 'NOT FOUND')
+    console.log('[ESPN Projections] ===== CREDENTIAL CHECK END =====')
     
     if (credentials) {
-      console.log('[ESPN Projections] SWID:', credentials.swid)
-      console.log('[ESPN Projections] espn_s2 length:', credentials.espn_s2?.length || 0)
+      console.log('[ESPN Projections] Using SWID:', credentials.swid)
+      console.log('[ESPN Projections] Using espn_s2 length:', credentials.espn_s2?.length || 0)
       espnService.setCredentials(credentials.espn_s2, credentials.swid)
       console.log('[ESPN Projections] Credentials applied to espnService')
     } else {
       console.log('[ESPN Projections] WARNING: No ESPN credentials found!')
-      console.log('[ESPN Projections] Check localStorage for "espn_credentials" key')
-      // Try to log what's in localStorage
-      try {
-        const stored = localStorage.getItem('espn_credentials')
-        console.log('[ESPN Projections] Raw localStorage espn_credentials:', stored ? stored.substring(0, 100) + '...' : 'null')
-      } catch (e) {
-        console.log('[ESPN Projections] Could not read localStorage:', e)
-      }
+      console.log('[ESPN Projections] "My Team" highlighting will NOT work without credentials')
     }
     
     // Load scoring settings
