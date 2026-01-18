@@ -251,20 +251,14 @@ export class YahooFantasyService {
    * Get all leagues for the current user across recent seasons
    */
   async getLeagues(sport: Sport): Promise<YahooLeague[]> {
-    const gameKeys = getRecentGameKeys(sport, 6) // Get last 6 years
-    
-    if (gameKeys.length === 0) {
-      console.log('No game keys available for sport:', sport)
-      return []
-    }
+    const sportCode = SPORT_KEYS[sport] // nfl, mlb, nba, nhl
     
     try {
-      // Get user's leagues for all recent game keys
-      const allGameKeys = gameKeys.join(',')
-      console.log(`Fetching Yahoo leagues for ${sport} with game keys:`, allGameKeys)
+      // First, try to get leagues using game_codes (gets current + recent seasons automatically)
+      console.log(`Fetching Yahoo leagues for ${sport} using game_code: ${sportCode}`)
       
       const data = await this.apiRequest(
-        `/users;use_login=1/games;game_keys=${allGameKeys}/leagues?format=json`
+        `/users;use_login=1/games;game_codes=${sportCode}/leagues?format=json`
       )
 
       const leagues: YahooLeague[] = []
@@ -272,7 +266,7 @@ export class YahooFantasyService {
       // Parse the nested Yahoo response structure
       const fantasyContent = data.fantasy_content
       if (!fantasyContent?.users?.[0]?.user?.[1]?.games) {
-        console.log('No games found in response')
+        console.log('No games found in response for', sport)
         return leagues
       }
 
