@@ -619,74 +619,18 @@ export class EspnFantasyService {
    */
   async getMyTeam(sport: Sport, leagueId: string | number, season: number): Promise<EspnTeam | null> {
     if (!this.credentials?.swid) {
-      console.log('[ESPN getMyTeam] No SWID available to identify user team')
+      console.log('No SWID available to identify user team')
       return null
     }
 
     try {
       const teams = await this.getTeams(sport, leagueId, season)
-      const swid = this.credentials.swid
-      
-      // Remove curly braces if present for comparison
-      const cleanSwid = swid.replace(/[{}]/g, '').toLowerCase()
-      
-      console.log('[ESPN getMyTeam] ====== MY TEAM DETECTION DEBUG ======')
-      console.log('[ESPN getMyTeam] Raw SWID from credentials:', swid)
-      console.log('[ESPN getMyTeam] Clean SWID for comparison:', cleanSwid)
-      console.log('[ESPN getMyTeam] Teams count:', teams.length)
-      
-      // Debug: Log all team owners - this is critical for diagnosis
-      teams.forEach(team => {
-        const ownersList = (team.owners || []).map(o => `"${o}"`).join(', ')
-        console.log(`[ESPN getMyTeam] Team ${team.id} "${team.name}"`)
-        console.log(`  - owners array: [${ownersList}]`)
-        console.log(`  - primaryOwner: "${team.primaryOwner || 'none'}"`)
-        console.log(`  - ownerName: "${team.ownerName || 'none'}"`)
-      })
-      
-      // Try multiple matching strategies
-      let myTeam: EspnTeam | undefined
-      
-      // Strategy 1: Check owners array
-      myTeam = teams.find(team => {
-        if (!team.owners || team.owners.length === 0) return false
-        return team.owners.some(owner => {
-          if (!owner) return false
-          const cleanOwner = String(owner).replace(/[{}]/g, '').toLowerCase()
-          const matches = cleanOwner === cleanSwid
-          if (matches) {
-            console.log(`[ESPN getMyTeam] MATCH FOUND via owners array! Team: ${team.name}`)
-          }
-          return matches
-        })
-      })
-      
-      // Strategy 2: Check primaryOwner
-      if (!myTeam) {
-        myTeam = teams.find(team => {
-          if (!team.primaryOwner) return false
-          const cleanPrimary = String(team.primaryOwner).replace(/[{}]/g, '').toLowerCase()
-          const matches = cleanPrimary === cleanSwid
-          if (matches) {
-            console.log(`[ESPN getMyTeam] MATCH FOUND via primaryOwner! Team: ${team.name}`)
-          }
-          return matches
-        })
-      }
-      
-      if (myTeam) {
-        console.log('[ESPN getMyTeam] SUCCESS - Found my team:', myTeam.name, 'ID:', myTeam.id)
-      } else {
-        console.log('[ESPN getMyTeam] FAILED - No team found matching SWID:', cleanSwid)
-        console.log('[ESPN getMyTeam] This could mean:')
-        console.log('  1. SWID in credentials does not match any owner in this league')
-        console.log('  2. You may not be a member of this league')
-        console.log('  3. ESPN API did not return owner data (try refreshing)')
-      }
-      
+      const myTeam = teams.find(team => 
+        team.owners.some(owner => owner === `{${this.credentials!.swid}}` || owner === this.credentials!.swid)
+      )
       return myTeam || null
     } catch (error) {
-      console.error('[ESPN getMyTeam] Error finding user team:', error)
+      console.error('Error finding user team:', error)
       return null
     }
   }
