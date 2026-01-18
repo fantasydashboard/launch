@@ -825,6 +825,76 @@ function getLogoUrl(logoUrl: string | undefined): string {
   return logoUrl
 }
 
+// Helper to load image via CORS proxy for downloads
+// External CDNs (ESPN, Sleeper, Yahoo) don't send CORS headers, so we need a proxy
+async function loadImageAsBase64(url: string, fallbackName: string): Promise<string> {
+  if (!url) return createPlaceholderAvatar(fallbackName)
+  
+  // Skip proxy for data URIs and local files
+  if (url.startsWith('data:') || url.startsWith('/') || url.startsWith('blob:')) {
+    return url
+  }
+  
+  // Try multiple CORS proxies in order of reliability
+  const corsProxies = [
+    (u: string) => `https://corsproxy.io/?${encodeURIComponent(u)}`,
+    (u: string) => `https://api.allorigins.win/raw?url=${encodeURIComponent(u)}`,
+  ]
+  
+  for (const proxyFn of corsProxies) {
+    try {
+      const proxyUrl = proxyFn(url)
+      const response = await fetch(proxyUrl, { 
+        signal: AbortSignal.timeout(3000) // 3 second timeout
+      })
+      
+      if (!response.ok) continue
+      
+      const blob = await response.blob()
+      return new Promise<string>((resolve) => {
+        const reader = new FileReader()
+        reader.onloadend = () => {
+          const result = reader.result as string
+          if (result && result.startsWith('data:')) {
+            resolve(result)
+          } else {
+            resolve(createPlaceholderAvatar(fallbackName))
+          }
+        }
+        reader.onerror = () => resolve(createPlaceholderAvatar(fallbackName))
+        reader.readAsDataURL(blob)
+      })
+    } catch (e) {
+      console.log(`[Download] Proxy failed for ${fallbackName}:`, e)
+      continue
+    }
+  }
+  
+  // All proxies failed, return placeholder
+  console.log(`[Download] All proxies failed for ${fallbackName}, using placeholder`)
+  return createPlaceholderAvatar(fallbackName)
+}
+
+// Create a placeholder avatar with team initial
+function createPlaceholderAvatar(teamName: string): string {
+  const canvas = document.createElement('canvas')
+  canvas.width = 64
+  canvas.height = 64
+  const ctx = canvas.getContext('2d')
+  if (ctx) {
+    ctx.fillStyle = '#3a3d52'
+    ctx.beginPath()
+    ctx.arc(32, 32, 32, 0, Math.PI * 2)
+    ctx.fill()
+    ctx.fillStyle = '#ffffff'
+    ctx.font = 'bold 28px sans-serif'
+    ctx.textAlign = 'center'
+    ctx.textBaseline = 'middle'
+    ctx.fillText(teamName.charAt(0).toUpperCase(), 32, 34)
+  }
+  return canvas.toDataURL('image/png')
+}
+
 // Platform styling
 const platformName = computed(() => {
   if (leagueStore.activePlatform === 'espn') return 'ESPN'
@@ -2164,85 +2234,25 @@ async function downloadStandings() {
       }
     }
     
-    // Helper to create placeholder avatar
-    const createPlaceholder = (teamName: string): string => {
-      const canvas = document.createElement('canvas')
-      canvas.width = 64
-      canvas.height = 64
-      const ctx = canvas.getContext('2d')
-      if (ctx) {
-        ctx.fillStyle = '#3a3d52'
-        ctx.beginPath()
-        ctx.arc(32, 32, 32, 0, Math.PI * 2)
-        ctx.fill()
-        ctx.fillStyle = '#ffffff'
-        ctx.font = 'bold 28px sans-serif'
-        ctx.textAlign = 'center'
-        ctx.textBaseline = 'middle'
-        ctx.fillText(teamName.charAt(0).toUpperCase(), 32, 34)
-      }
-      return canvas.toDataURL('image/png')
-    }
-    
     const logoBase64 = await loadLogo()
     
-    // Pre-load all team images - try multiple methods for better compatibility
+    // Pre-load all team images using CORS proxy for external URLs
+    console.log('[Download] Loading team images via CORS proxy...')
     const imageMap = new Map<string, string>()
-    for (const team of sortedTeams.value) {
+    
+    // Load images in parallel for better performance
+    const imagePromises = sortedTeams.value.map(async (team) => {
       const logoUrl = team.logo_url || ''
-      
-      // If no logo URL, use placeholder immediately
-      if (!logoUrl) {
-        imageMap.set(team.team_key, createPlaceholder(team.name))
-        continue
-      }
-      
-      try {
-        // Try loading with CORS first
-        const base64 = await new Promise<string>((resolve) => {
-          const img = new Image()
-          img.crossOrigin = 'anonymous'
-          
-          const timeoutId = setTimeout(() => {
-            console.log(`[Download] Image timeout for ${team.name}, using placeholder`)
-            resolve(createPlaceholder(team.name))
-          }, 2000)
-          
-          img.onload = () => {
-            clearTimeout(timeoutId)
-            try {
-              const canvas = document.createElement('canvas')
-              canvas.width = 64
-              canvas.height = 64
-              const ctx = canvas.getContext('2d')
-              if (ctx) {
-                ctx.beginPath()
-                ctx.arc(32, 32, 32, 0, Math.PI * 2)
-                ctx.closePath()
-                ctx.clip()
-                ctx.drawImage(img, 0, 0, 64, 64)
-              }
-              resolve(canvas.toDataURL('image/png'))
-            } catch (e) {
-              console.log(`[Download] Canvas draw failed for ${team.name}, using placeholder`)
-              resolve(createPlaceholder(team.name))
-            }
-          }
-          
-          img.onerror = () => {
-            clearTimeout(timeoutId)
-            console.log(`[Download] Image load failed for ${team.name}, using placeholder`)
-            resolve(createPlaceholder(team.name))
-          }
-          
-          img.src = logoUrl
-        })
-        
-        imageMap.set(team.team_key, base64)
-      } catch {
-        imageMap.set(team.team_key, createPlaceholder(team.name))
-      }
-    }
+      const base64 = await loadImageAsBase64(logoUrl, team.name)
+      return { teamKey: team.team_key, base64 }
+    })
+    
+    const results = await Promise.all(imagePromises)
+    results.forEach(({ teamKey, base64 }) => {
+      imageMap.set(teamKey, base64)
+    })
+    
+    console.log(`[Download] Loaded ${imageMap.size} team images`)
     
     // Create container - use fixed width of 800px for consistent downloads regardless of team count
     const container = document.createElement('div')
@@ -2573,85 +2583,26 @@ async function downloadLeaderImage() {
       } catch (e) { return '' }
     }
     
-    // Helper to create placeholder avatar
-    const createPlaceholder = (name: string): string => {
-      const canvas = document.createElement('canvas')
-      canvas.width = 64
-      canvas.height = 64
-      const ctx = canvas.getContext('2d')
-      if (ctx) {
-        ctx.fillStyle = '#3a3d52'
-        ctx.beginPath()
-        ctx.arc(32, 32, 32, 0, Math.PI * 2)
-        ctx.fill()
-        ctx.fillStyle = '#ffffff'
-        ctx.font = 'bold 28px sans-serif'
-        ctx.textAlign = 'center'
-        ctx.textBaseline = 'middle'
-        ctx.fillText(name.charAt(0).toUpperCase(), 32, 34)
-      }
-      return canvas.toDataURL('image/png')
-    }
-    
     const logoBase64 = await loadLogo()
     const leader = rankings[0]
     
-    // Pre-load all team images - try multiple methods for better compatibility
+    // Pre-load all team images using CORS proxy for external URLs
+    console.log('[Download Leader] Loading team images via CORS proxy...')
     const imageMap = new Map<string, string>()
-    for (const team of rankings) {
+    
+    // Load images in parallel for better performance
+    const imagePromises = rankings.map(async (team: any) => {
       const logoUrl = team.logo_url || ''
-      
-      // If no logo URL, use placeholder immediately
-      if (!logoUrl) {
-        imageMap.set(team.name, createPlaceholder(team.name))
-        continue
-      }
-      
-      try {
-        const base64 = await new Promise<string>((resolve) => {
-          const img = new Image()
-          img.crossOrigin = 'anonymous'
-          
-          const timeoutId = setTimeout(() => {
-            console.log(`[Download] Image timeout for ${team.name}, using placeholder`)
-            resolve(createPlaceholder(team.name))
-          }, 2000)
-          
-          img.onload = () => {
-            clearTimeout(timeoutId)
-            try {
-              const canvas = document.createElement('canvas')
-              canvas.width = 64
-              canvas.height = 64
-              const ctx = canvas.getContext('2d')
-              if (ctx) {
-                ctx.beginPath()
-                ctx.arc(32, 32, 32, 0, Math.PI * 2)
-                ctx.closePath()
-                ctx.clip()
-                ctx.drawImage(img, 0, 0, 64, 64)
-              }
-              resolve(canvas.toDataURL('image/png'))
-            } catch (e) {
-              console.log(`[Download] Canvas draw failed for ${team.name}, using placeholder`)
-              resolve(createPlaceholder(team.name))
-            }
-          }
-          
-          img.onerror = () => {
-            clearTimeout(timeoutId)
-            console.log(`[Download] Image load failed for ${team.name}, using placeholder`)
-            resolve(createPlaceholder(team.name))
-          }
-          
-          img.src = logoUrl
-        })
-        
-        imageMap.set(team.name, base64)
-      } catch {
-        imageMap.set(team.name, createPlaceholder(team.name))
-      }
-    }
+      const base64 = await loadImageAsBase64(logoUrl, team.name)
+      return { teamName: team.name, base64 }
+    })
+    
+    const results = await Promise.all(imagePromises)
+    results.forEach(({ teamName, base64 }) => {
+      imageMap.set(teamName, base64)
+    })
+    
+    console.log(`[Download Leader] Loaded ${imageMap.size} team images`)
     
     const maxValue = leaderModalData.value.maxValue
     
@@ -2809,74 +2760,12 @@ async function downloadTeamDetailImage() {
       } catch (e) { return '' }
     }
     
-    // Helper to create placeholder avatar
-    const createPlaceholder = (name: string): string => {
-      const canvas = document.createElement('canvas')
-      canvas.width = 64
-      canvas.height = 64
-      const ctx = canvas.getContext('2d')
-      if (ctx) {
-        ctx.fillStyle = '#3a3d52'
-        ctx.beginPath()
-        ctx.arc(32, 32, 32, 0, Math.PI * 2)
-        ctx.fill()
-        ctx.fillStyle = '#eab308'
-        ctx.font = 'bold 28px sans-serif'
-        ctx.textAlign = 'center'
-        ctx.textBaseline = 'middle'
-        ctx.fillText(name.charAt(0).toUpperCase(), 32, 34)
-      }
-      return canvas.toDataURL('image/png')
-    }
-    
     const logoBase64 = await loadLogo()
     
-    // Load team logo with better error handling
-    let teamLogoBase64 = createPlaceholder(team.name)
-    if (team.logo_url) {
-      try {
-        teamLogoBase64 = await new Promise<string>((resolve) => {
-          const img = new Image()
-          img.crossOrigin = 'anonymous'
-          
-          const timeoutId = setTimeout(() => {
-            console.log(`[Download] Team logo timeout for ${team.name}, using placeholder`)
-            resolve(createPlaceholder(team.name))
-          }, 2000)
-          
-          img.onload = () => {
-            clearTimeout(timeoutId)
-            try {
-              const canvas = document.createElement('canvas')
-              canvas.width = 64
-              canvas.height = 64
-              const ctx = canvas.getContext('2d')
-              if (ctx) {
-                ctx.beginPath()
-                ctx.arc(32, 32, 32, 0, Math.PI * 2)
-                ctx.closePath()
-                ctx.clip()
-                ctx.drawImage(img, 0, 0, 64, 64)
-              }
-              resolve(canvas.toDataURL('image/png'))
-            } catch (e) {
-              console.log(`[Download] Canvas draw failed for ${team.name}, using placeholder`)
-              resolve(createPlaceholder(team.name))
-            }
-          }
-          
-          img.onerror = () => {
-            clearTimeout(timeoutId)
-            console.log(`[Download] Team logo load failed for ${team.name}, using placeholder`)
-            resolve(createPlaceholder(team.name))
-          }
-          
-          img.src = team.logo_url
-        })
-      } catch {
-        teamLogoBase64 = createPlaceholder(team.name)
-      }
-    }
+    // Load team logo using CORS proxy
+    console.log(`[Download Team] Loading team logo via CORS proxy for ${team.name}...`)
+    const teamLogoBase64 = await loadImageAsBase64(team.logo_url || '', team.name)
+    console.log(`[Download Team] Team logo loaded`)
     
     // Get weekly results
     const weeklyResults = teamDetailWeeklyResults.value.slice(0, 20) // Up to 20 weeks
