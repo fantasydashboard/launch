@@ -940,13 +940,21 @@ async function handleLeagueAdded(league: any) {
   showAddLeagueModal.value = false
   
   if (authStore.user?.id && leagueStore.currentUsername) {
-    await leagueStore.saveLeague(league, leagueStore.currentUsername, authStore.user.id)
+    // Map Sleeper sport codes to our sport types
+    let sport: Sport = 'football'
+    if (league.sport === 'nba') {
+      sport = 'basketball'
+    } else if (league.sport === 'nfl') {
+      sport = 'football'
+    }
+    
+    await leagueStore.saveLeague(league, leagueStore.currentUsername, authStore.user.id, sport)
     leagueStore.disableDemoMode()
     await leagueStore.setActiveLeague(league.league_id)
     
-    // Auto-set sport to football for Sleeper leagues
-    sportStore.setSport('football')
-    leagueStore.setActiveSport('football')
+    // Set sport based on league type
+    sportStore.setSport(sport)
+    leagueStore.setActiveSport(sport)
   }
 }
 
