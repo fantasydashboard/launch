@@ -618,19 +618,64 @@ export class EspnFantasyService {
    * Get the current user's team in a league
    */
   async getMyTeam(sport: Sport, leagueId: string | number, season: number): Promise<EspnTeam | null> {
+    console.log(`[ESPN getMyTeam] Starting for sport=${sport}, leagueId=${leagueId}, season=${season}`)
+    
     if (!this.credentials?.swid) {
-      console.log('No SWID available to identify user team')
+      console.log('[ESPN getMyTeam] No SWID available to identify user team')
       return null
     }
 
+    // Normalize SWID - remove braces if present for comparison
+    const rawSwid = this.credentials.swid
+    const normalizedSwid = rawSwid.replace(/^\{|\}$/g, '') // Remove leading { and trailing }
+    const swidWithBraces = `{${normalizedSwid}}`
+    
+    console.log('[ESPN getMyTeam] Credential SWID:', rawSwid)
+    console.log('[ESPN getMyTeam] Normalized SWID:', normalizedSwid)
+    console.log('[ESPN getMyTeam] SWID with braces:', swidWithBraces)
+
     try {
       const teams = await this.getTeams(sport, leagueId, season)
-      const myTeam = teams.find(team => 
-        team.owners.some(owner => owner === `{${this.credentials!.swid}}` || owner === this.credentials!.swid)
-      )
+      console.log(`[ESPN getMyTeam] Loaded ${teams.length} teams`)
+      
+      // Log owner format from first team for debugging
+      if (teams.length > 0 && teams[0].owners?.length > 0) {
+        console.log('[ESPN getMyTeam] Sample owner IDs from first team:', teams[0].owners)
+      }
+      
+      // Try multiple matching strategies
+      const myTeam = teams.find(team => {
+        if (!team.owners || team.owners.length === 0) return false
+        
+        return team.owners.some(owner => {
+          // Normalize owner ID too
+          const normalizedOwner = owner.replace(/^\{|\}$/g, '')
+          
+          const match = owner === swidWithBraces || 
+                        owner === normalizedSwid ||
+                        normalizedOwner === normalizedSwid
+          
+          if (match) {
+            console.log(`[ESPN getMyTeam] MATCH FOUND! Owner: ${owner}, Team: ${team.name}`)
+          }
+          return match
+        })
+      })
+      
+      if (myTeam) {
+        console.log(`[ESPN getMyTeam] Found my team: ${myTeam.name} (ID: ${myTeam.id})`)
+      } else {
+        console.log('[ESPN getMyTeam] No matching team found')
+        // Log all teams and their owners for debugging
+        console.log('[ESPN getMyTeam] All teams and owners:')
+        teams.forEach(t => {
+          console.log(`  - ${t.name}: owners=${JSON.stringify(t.owners)}`)
+        })
+      }
+      
       return myTeam || null
     } catch (error) {
-      console.error('Error finding user team:', error)
+      console.error('[ESPN getMyTeam] Error finding user team:', error)
       return null
     }
   }

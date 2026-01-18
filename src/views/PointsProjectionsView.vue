@@ -1035,9 +1035,13 @@ const isSeasonComplete = computed(() => {
   return yahooLeague?.is_finished === 1
 })
 
-// Platform detection for badge
+// Platform detection for badge - also check league ID format for robustness
 const isSleeper = computed(() => leagueStore.activePlatform === 'sleeper')
-const isEspn = computed(() => leagueStore.activePlatform === 'espn')
+const isEspn = computed(() => {
+  const byPlatform = leagueStore.activePlatform === 'espn'
+  const byLeagueId = leagueStore.activeLeagueId?.startsWith('espn_') || false
+  return byPlatform || byLeagueId
+})
 const platformName = computed(() => {
   if (isEspn.value) return 'ESPN'
   if (isSleeper.value) return 'Sleeper'

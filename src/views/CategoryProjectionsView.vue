@@ -2095,8 +2095,13 @@ import LoadingSpinner from '@/components/LoadingSpinner.vue'
 const leagueStore = useLeagueStore()
 const { hasPremiumAccess } = useFeatureAccess()
 
-// Platform detection
-const isEspn = computed(() => leagueStore.activePlatform === 'espn')
+// Platform detection - check both activePlatform AND league ID format for robustness
+const isEspn = computed(() => {
+  const byPlatform = leagueStore.activePlatform === 'espn'
+  const byLeagueId = leagueStore.activeLeagueId?.startsWith('espn_') || false
+  console.log('[CategoryProjections] isEspn check:', { byPlatform, byLeagueId, activeLeagueId: leagueStore.activeLeagueId, activePlatform: leagueStore.activePlatform })
+  return byPlatform || byLeagueId
+})
 
 // Season detection for offseason banner
 const currentSeason = computed(() => leagueStore.currentLeague?.season || new Date().getFullYear().toString())
