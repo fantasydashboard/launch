@@ -835,6 +835,15 @@ async function loadImageAsBase64(url: string, fallbackName: string): Promise<str
     return url
   }
   
+  // ui-avatars.com supports CORS, so we can use it directly as a final fallback
+  const uiAvatarsFallback = `https://ui-avatars.com/api/?name=${encodeURIComponent(fallbackName)}&background=random&color=fff&size=64`
+  
+  // For Sleeper default avatar, just use the placeholder directly since it often fails
+  if (url.includes('sleepercdn.com/avatars/thumbs/default')) {
+    console.log(`[Download] Using placeholder for Sleeper default avatar: ${fallbackName}`)
+    return createPlaceholderAvatar(fallbackName)
+  }
+  
   // Try multiple CORS proxies in order of reliability
   const corsProxies = [
     (u: string) => `https://corsproxy.io/?${encodeURIComponent(u)}`,
@@ -844,24 +853,41 @@ async function loadImageAsBase64(url: string, fallbackName: string): Promise<str
   for (const proxyFn of corsProxies) {
     try {
       const proxyUrl = proxyFn(url)
+      console.log(`[Download] Trying proxy for ${fallbackName}: ${proxyUrl.substring(0, 80)}...`)
+      
       const response = await fetch(proxyUrl, { 
-        signal: AbortSignal.timeout(3000) // 3 second timeout
+        signal: AbortSignal.timeout(4000) // 4 second timeout
       })
       
-      if (!response.ok) continue
+      if (!response.ok) {
+        console.log(`[Download] Proxy returned ${response.status} for ${fallbackName}`)
+        continue
+      }
       
       const blob = await response.blob()
+      
+      // Verify it's actually an image
+      if (!blob.type.startsWith('image/') && blob.size < 100) {
+        console.log(`[Download] Invalid blob for ${fallbackName}: type=${blob.type}, size=${blob.size}`)
+        continue
+      }
+      
       return new Promise<string>((resolve) => {
         const reader = new FileReader()
         reader.onloadend = () => {
           const result = reader.result as string
-          if (result && result.startsWith('data:')) {
+          if (result && result.startsWith('data:image')) {
+            console.log(`[Download] Successfully loaded image for ${fallbackName}`)
             resolve(result)
           } else {
+            console.log(`[Download] Invalid data URL for ${fallbackName}`)
             resolve(createPlaceholderAvatar(fallbackName))
           }
         }
-        reader.onerror = () => resolve(createPlaceholderAvatar(fallbackName))
+        reader.onerror = () => {
+          console.log(`[Download] FileReader error for ${fallbackName}`)
+          resolve(createPlaceholderAvatar(fallbackName))
+        }
         reader.readAsDataURL(blob)
       })
     } catch (e) {
@@ -870,8 +896,25 @@ async function loadImageAsBase64(url: string, fallbackName: string): Promise<str
     }
   }
   
-  // All proxies failed, return placeholder
-  console.log(`[Download] All proxies failed for ${fallbackName}, using placeholder`)
+  // All proxies failed - try ui-avatars.com directly as it supports CORS
+  try {
+    console.log(`[Download] Trying ui-avatars fallback for ${fallbackName}`)
+    const response = await fetch(uiAvatarsFallback, { signal: AbortSignal.timeout(3000) })
+    if (response.ok) {
+      const blob = await response.blob()
+      return new Promise<string>((resolve) => {
+        const reader = new FileReader()
+        reader.onloadend = () => resolve(reader.result as string || createPlaceholderAvatar(fallbackName))
+        reader.onerror = () => resolve(createPlaceholderAvatar(fallbackName))
+        reader.readAsDataURL(blob)
+      })
+    }
+  } catch (e) {
+    console.log(`[Download] ui-avatars fallback failed for ${fallbackName}`)
+  }
+  
+  // Final fallback: canvas-generated placeholder
+  console.log(`[Download] All methods failed for ${fallbackName}, using canvas placeholder`)
   return createPlaceholderAvatar(fallbackName)
 }
 

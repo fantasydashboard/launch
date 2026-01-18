@@ -945,13 +945,9 @@ export const useLeagueStore = defineStore('league', () => {
       const user = userMap.get(roster.owner_id)
       const teamName = user?.metadata?.team_name || user?.display_name || `Team ${roster.roster_id}`
       
-      // Generate avatar URL
-      let logoUrl = ''
-      if (user?.avatar) {
-        logoUrl = `https://sleepercdn.com/avatars/thumbs/${user.avatar}`
-      } else {
-        logoUrl = `https://ui-avatars.com/api/?name=${encodeURIComponent(teamName)}&background=random&color=fff&size=64`
-      }
+      // Generate avatar URL using sleeperService helper which checks all avatar sources
+      // Priority: roster.metadata.avatar > roster.settings.avatar > user.avatar > league.avatar > default
+      const logoUrl = sleeperService.getAvatarUrl(roster, user, league)
       
       // Calculate points (Sleeper stores as fpts which is points * 100 for decimal precision in some cases)
       const pointsFor = roster.settings?.fpts || 0
