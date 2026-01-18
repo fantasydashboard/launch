@@ -65,8 +65,8 @@ const GAME_KEYS: Record<Sport, Record<number, string>> = {
   },
   basketball: {
     // NBA seasons (October - June, spans 2 years)
-    2025: '445',  // 2025-26 season (current)
-    2024: '428',  // 2024-25 season
+    // Note: 2025 key TBD - Yahoo hasn't published it yet
+    2024: '428',  // 2024-25 season (current)
     2023: '418',
     2022: '410',
     2021: '402',
@@ -84,8 +84,8 @@ const GAME_KEYS: Record<Sport, Record<number, string>> = {
   },
   hockey: {
     // NHL seasons (October - June, spans 2 years)
-    2025: '444',  // 2025-26 season (current)
-    2024: '427',  // 2024-25 season
+    // Note: 2025 key TBD - Yahoo hasn't published it yet
+    2024: '427',  // 2024-25 season (current)
     2023: '419',
     2022: '411',
     2021: '403',
