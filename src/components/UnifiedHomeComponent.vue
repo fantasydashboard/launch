@@ -826,25 +826,29 @@ function getLogoUrl(logoUrl: string | undefined): string {
 }
 
 // Helper to load image via CORS proxy for downloads
-// External CDNs (ESPN, Sleeper, Yahoo) don't send CORS headers, so we need a proxy
+// External CDNs (ESPN, Sleeper, Yahoo) don't send CORS headers, so we need workarounds
 async function loadImageAsBase64(url: string, fallbackName: string): Promise<string> {
   if (!url) return createPlaceholderAvatar(fallbackName)
   
-  // Skip proxy for data URIs and local files
+  // Skip proxy for data URIs and local files - use directly
   if (url.startsWith('data:') || url.startsWith('/') || url.startsWith('blob:')) {
     return url
   }
   
-  // ui-avatars.com supports CORS, so we can use it directly as a final fallback
-  const uiAvatarsFallback = `https://ui-avatars.com/api/?name=${encodeURIComponent(fallbackName)}&background=random&color=fff&size=64`
-  
-  // For Sleeper default avatar, just use the placeholder directly since it often fails
-  if (url.includes('sleepercdn.com/avatars/thumbs/default')) {
-    console.log(`[Download] Using placeholder for Sleeper default avatar: ${fallbackName}`)
-    return createPlaceholderAvatar(fallbackName)
+  // For Sleeper CDN URLs, don't even try to proxy - go straight to ui-avatars.com
+  // sleepercdn.com blocks CORS proxies and is unreliable
+  if (url.includes('sleepercdn.com')) {
+    console.log(`[Download] Sleeper URL detected for ${fallbackName}, using ui-avatars`)
+    return await loadFromUiAvatars(fallbackName)
   }
   
-  // Try multiple CORS proxies in order of reliability
+  // For Yahoo URLs (s.yimg.com), also use ui-avatars as they block proxies too
+  if (url.includes('yimg.com') || url.includes('yahoo.com')) {
+    console.log(`[Download] Yahoo URL detected for ${fallbackName}, using ui-avatars`)
+    return await loadFromUiAvatars(fallbackName)
+  }
+  
+  // For ESPN and other URLs, try CORS proxy
   const corsProxies = [
     (u: string) => `https://corsproxy.io/?${encodeURIComponent(u)}`,
     (u: string) => `https://api.allorigins.win/raw?url=${encodeURIComponent(u)}`,
@@ -853,10 +857,10 @@ async function loadImageAsBase64(url: string, fallbackName: string): Promise<str
   for (const proxyFn of corsProxies) {
     try {
       const proxyUrl = proxyFn(url)
-      console.log(`[Download] Trying proxy for ${fallbackName}: ${proxyUrl.substring(0, 80)}...`)
+      console.log(`[Download] Trying proxy for ${fallbackName}`)
       
       const response = await fetch(proxyUrl, { 
-        signal: AbortSignal.timeout(4000) // 4 second timeout
+        signal: AbortSignal.timeout(4000)
       })
       
       if (!response.ok) {
@@ -867,7 +871,7 @@ async function loadImageAsBase64(url: string, fallbackName: string): Promise<str
       const blob = await response.blob()
       
       // Verify it's actually an image
-      if (!blob.type.startsWith('image/') && blob.size < 100) {
+      if (!blob.type.startsWith('image/') || blob.size < 100) {
         console.log(`[Download] Invalid blob for ${fallbackName}: type=${blob.type}, size=${blob.size}`)
         continue
       }
@@ -880,14 +884,10 @@ async function loadImageAsBase64(url: string, fallbackName: string): Promise<str
             console.log(`[Download] Successfully loaded image for ${fallbackName}`)
             resolve(result)
           } else {
-            console.log(`[Download] Invalid data URL for ${fallbackName}`)
             resolve(createPlaceholderAvatar(fallbackName))
           }
         }
-        reader.onerror = () => {
-          console.log(`[Download] FileReader error for ${fallbackName}`)
-          resolve(createPlaceholderAvatar(fallbackName))
-        }
+        reader.onerror = () => resolve(createPlaceholderAvatar(fallbackName))
         reader.readAsDataURL(blob)
       })
     } catch (e) {
@@ -896,26 +896,44 @@ async function loadImageAsBase64(url: string, fallbackName: string): Promise<str
     }
   }
   
-  // All proxies failed - try ui-avatars.com directly as it supports CORS
+  // Proxy failed, use ui-avatars as final fallback
+  console.log(`[Download] Proxies failed for ${fallbackName}, trying ui-avatars`)
+  return await loadFromUiAvatars(fallbackName)
+}
+
+// Load avatar from ui-avatars.com (supports CORS)
+async function loadFromUiAvatars(name: string): Promise<string> {
+  // Generate a consistent color based on the name
+  const colors = ['0D8ABC', '3498DB', '9B59B6', 'E91E63', 'F39C12', '1ABC9C', '2ECC71', 'E74C3C', '00BCD4', '8E44AD']
+  const colorIndex = name.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0) % colors.length
+  const bgColor = colors[colorIndex]
+  
+  const avatarUrl = `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=${bgColor}&color=fff&size=64&bold=true&format=png`
+  
   try {
-    console.log(`[Download] Trying ui-avatars fallback for ${fallbackName}`)
-    const response = await fetch(uiAvatarsFallback, { signal: AbortSignal.timeout(3000) })
+    const response = await fetch(avatarUrl, { signal: AbortSignal.timeout(3000) })
     if (response.ok) {
       const blob = await response.blob()
       return new Promise<string>((resolve) => {
         const reader = new FileReader()
-        reader.onloadend = () => resolve(reader.result as string || createPlaceholderAvatar(fallbackName))
-        reader.onerror = () => resolve(createPlaceholderAvatar(fallbackName))
+        reader.onloadend = () => {
+          const result = reader.result as string
+          if (result && result.startsWith('data:')) {
+            console.log(`[Download] ui-avatars success for ${name}`)
+            resolve(result)
+          } else {
+            resolve(createPlaceholderAvatar(name))
+          }
+        }
+        reader.onerror = () => resolve(createPlaceholderAvatar(name))
         reader.readAsDataURL(blob)
       })
     }
   } catch (e) {
-    console.log(`[Download] ui-avatars fallback failed for ${fallbackName}`)
+    console.log(`[Download] ui-avatars failed for ${name}:`, e)
   }
   
-  // Final fallback: canvas-generated placeholder
-  console.log(`[Download] All methods failed for ${fallbackName}, using canvas placeholder`)
-  return createPlaceholderAvatar(fallbackName)
+  return createPlaceholderAvatar(name)
 }
 
 // Create a placeholder avatar with team initial
