@@ -2186,14 +2186,30 @@ async function downloadStandings() {
     
     const logoBase64 = await loadLogo()
     
-    // Pre-load all team images
+    // Pre-load all team images - try multiple methods for better compatibility
     const imageMap = new Map<string, string>()
     for (const team of sortedTeams.value) {
+      const logoUrl = team.logo_url || ''
+      
+      // If no logo URL, use placeholder immediately
+      if (!logoUrl) {
+        imageMap.set(team.team_key, createPlaceholder(team.name))
+        continue
+      }
+      
       try {
-        const img = new Image()
-        img.crossOrigin = 'anonymous'
-        const loadPromise = new Promise<string>((resolve) => {
+        // Try loading with CORS first
+        const base64 = await new Promise<string>((resolve) => {
+          const img = new Image()
+          img.crossOrigin = 'anonymous'
+          
+          const timeoutId = setTimeout(() => {
+            console.log(`[Download] Image timeout for ${team.name}, using placeholder`)
+            resolve(createPlaceholder(team.name))
+          }, 2000)
+          
           img.onload = () => {
+            clearTimeout(timeoutId)
             try {
               const canvas = document.createElement('canvas')
               canvas.width = 64
@@ -2207,15 +2223,22 @@ async function downloadStandings() {
                 ctx.drawImage(img, 0, 0, 64, 64)
               }
               resolve(canvas.toDataURL('image/png'))
-            } catch {
+            } catch (e) {
+              console.log(`[Download] Canvas draw failed for ${team.name}, using placeholder`)
               resolve(createPlaceholder(team.name))
             }
           }
-          img.onerror = () => resolve(createPlaceholder(team.name))
-          setTimeout(() => resolve(createPlaceholder(team.name)), 3000)
+          
+          img.onerror = () => {
+            clearTimeout(timeoutId)
+            console.log(`[Download] Image load failed for ${team.name}, using placeholder`)
+            resolve(createPlaceholder(team.name))
+          }
+          
+          img.src = logoUrl
         })
-        img.src = team.logo_url || ''
-        imageMap.set(team.team_key, await loadPromise)
+        
+        imageMap.set(team.team_key, base64)
       } catch {
         imageMap.set(team.team_key, createPlaceholder(team.name))
       }
@@ -2573,14 +2596,29 @@ async function downloadLeaderImage() {
     const logoBase64 = await loadLogo()
     const leader = rankings[0]
     
-    // Pre-load all team images
+    // Pre-load all team images - try multiple methods for better compatibility
     const imageMap = new Map<string, string>()
     for (const team of rankings) {
+      const logoUrl = team.logo_url || ''
+      
+      // If no logo URL, use placeholder immediately
+      if (!logoUrl) {
+        imageMap.set(team.name, createPlaceholder(team.name))
+        continue
+      }
+      
       try {
-        const img = new Image()
-        img.crossOrigin = 'anonymous'
-        const loadPromise = new Promise<string>((resolve) => {
+        const base64 = await new Promise<string>((resolve) => {
+          const img = new Image()
+          img.crossOrigin = 'anonymous'
+          
+          const timeoutId = setTimeout(() => {
+            console.log(`[Download] Image timeout for ${team.name}, using placeholder`)
+            resolve(createPlaceholder(team.name))
+          }, 2000)
+          
           img.onload = () => {
+            clearTimeout(timeoutId)
             try {
               const canvas = document.createElement('canvas')
               canvas.width = 64
@@ -2594,15 +2632,22 @@ async function downloadLeaderImage() {
                 ctx.drawImage(img, 0, 0, 64, 64)
               }
               resolve(canvas.toDataURL('image/png'))
-            } catch {
+            } catch (e) {
+              console.log(`[Download] Canvas draw failed for ${team.name}, using placeholder`)
               resolve(createPlaceholder(team.name))
             }
           }
-          img.onerror = () => resolve(createPlaceholder(team.name))
-          setTimeout(() => resolve(createPlaceholder(team.name)), 3000)
+          
+          img.onerror = () => {
+            clearTimeout(timeoutId)
+            console.log(`[Download] Image load failed for ${team.name}, using placeholder`)
+            resolve(createPlaceholder(team.name))
+          }
+          
+          img.src = logoUrl
         })
-        img.src = team.logo_url || ''
-        imageMap.set(team.name, await loadPromise)
+        
+        imageMap.set(team.name, base64)
       } catch {
         imageMap.set(team.name, createPlaceholder(team.name))
       }
@@ -2786,14 +2831,21 @@ async function downloadTeamDetailImage() {
     
     const logoBase64 = await loadLogo()
     
-    // Load team logo
+    // Load team logo with better error handling
     let teamLogoBase64 = createPlaceholder(team.name)
     if (team.logo_url) {
       try {
-        const img = new Image()
-        img.crossOrigin = 'anonymous'
-        const loadPromise = new Promise<string>((resolve) => {
+        teamLogoBase64 = await new Promise<string>((resolve) => {
+          const img = new Image()
+          img.crossOrigin = 'anonymous'
+          
+          const timeoutId = setTimeout(() => {
+            console.log(`[Download] Team logo timeout for ${team.name}, using placeholder`)
+            resolve(createPlaceholder(team.name))
+          }, 2000)
+          
           img.onload = () => {
+            clearTimeout(timeoutId)
             try {
               const canvas = document.createElement('canvas')
               canvas.width = 64
@@ -2807,15 +2859,20 @@ async function downloadTeamDetailImage() {
                 ctx.drawImage(img, 0, 0, 64, 64)
               }
               resolve(canvas.toDataURL('image/png'))
-            } catch {
+            } catch (e) {
+              console.log(`[Download] Canvas draw failed for ${team.name}, using placeholder`)
               resolve(createPlaceholder(team.name))
             }
           }
-          img.onerror = () => resolve(createPlaceholder(team.name))
-          setTimeout(() => resolve(createPlaceholder(team.name)), 3000)
+          
+          img.onerror = () => {
+            clearTimeout(timeoutId)
+            console.log(`[Download] Team logo load failed for ${team.name}, using placeholder`)
+            resolve(createPlaceholder(team.name))
+          }
+          
+          img.src = team.logo_url
         })
-        img.src = team.logo_url
-        teamLogoBase64 = await loadPromise
       } catch {
         teamLogoBase64 = createPlaceholder(team.name)
       }
