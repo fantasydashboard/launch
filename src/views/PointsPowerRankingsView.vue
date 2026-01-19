@@ -371,7 +371,7 @@
                   <div class="flex items-center gap-2 w-40 flex-shrink-0">
                     <div class="relative">
                       <img 
-                        :src="team.logo_url || defaultAvatar" 
+                        :src="getCachedLogo(team.team_key)" 
                         :alt="team.name"
                         loading="lazy"
                         decoding="async"
@@ -434,7 +434,7 @@
                     </div>
                     <div class="flex items-center gap-2 flex-1 min-w-0">
                       <img 
-                        :src="team.logo_url || defaultAvatar" 
+                        :src="getCachedLogo(team.team_key)" 
                         :alt="team.name"
                         loading="lazy"
                         decoding="async"
@@ -548,7 +548,7 @@
                     <div class="flex items-center gap-3">
                       <div class="relative">
                         <img 
-                          :src="team.logo_url || defaultAvatar" 
+                          :src="getCachedLogo(team.team_key)" 
                           :alt="team.name"
                           loading="lazy"
                           decoding="async"
@@ -949,6 +949,25 @@ const isLoadingPlayers = ref(false)
 // Player data for position strength
 const allRosteredPlayers = ref<any[]>([])
 
+// Logo cache to prevent flickering - stores team_key -> logo_url
+const logoCache = ref<Map<string, string>>(new Map())
+
+// Cache logos when teams are loaded
+function cacheTeamLogos() {
+  const cache = new Map<string, string>()
+  leagueStore.yahooTeams.forEach(team => {
+    if (team.logo_url) {
+      cache.set(team.team_key, team.logo_url)
+    }
+  })
+  logoCache.value = cache
+}
+
+// Get cached logo URL (stable reference)
+function getCachedLogo(teamKey: string): string {
+  return logoCache.value.get(teamKey) || defaultAvatar.value
+}
+
 // Modal state
 const showPowerRankingSettings = ref(false)
 const showTeamDetailModal = ref(false)
@@ -1081,16 +1100,21 @@ const positionStrengthData = computed(() => {
   const teamPlayers = new Map<string, any[]>()
   const teamInfo = new Map<string, { name: string; logo_url: string; is_my_team: boolean }>()
   
+  // Get default avatar once (outside loop for stability)
+  const defaultAvatarUrl = defaultAvatar.value
+  
   for (const player of allRosteredPlayers.value) {
     if (!player.fantasy_team_key) continue
     
     if (!teamPlayers.has(player.fantasy_team_key)) {
       teamPlayers.set(player.fantasy_team_key, [])
-      // Try to find team info from leagueStore
+      // Try to find team info from leagueStore - use cached logo for stability
       const teamData = leagueStore.yahooTeams.find(t => t.team_key === player.fantasy_team_key)
+      // Use logoCache first, then team data, then default
+      const cachedLogo = logoCache.value.get(player.fantasy_team_key)
       teamInfo.set(player.fantasy_team_key, {
-        name: player.fantasy_team || 'Unknown',
-        logo_url: teamData?.logo_url || defaultAvatar.value,
+        name: player.fantasy_team || teamData?.name || 'Unknown',
+        logo_url: cachedLogo || teamData?.logo_url || defaultAvatarUrl,
         is_my_team: teamData?.is_my_team || false
       })
     }
@@ -2421,11 +2445,16 @@ function recalculatePowerRankings() {
 
 // Watch for league changes
 watch(() => leagueStore.yahooTeams, () => {
-  if (leagueStore.yahooTeams.length > 0 && !selectedWeek.value) {
-    const week = currentWeek.value
-    if (week >= 3) {
-      selectedWeek.value = week.toString()
-      loadPowerRankings()
+  if (leagueStore.yahooTeams.length > 0) {
+    // Cache logos whenever teams are updated
+    cacheTeamLogos()
+    
+    if (!selectedWeek.value) {
+      const week = currentWeek.value
+      if (week >= 1) {
+        selectedWeek.value = Math.max(1, week).toString()
+        loadPowerRankings()
+      }
     }
   }
 }, { immediate: true })
@@ -2436,6 +2465,8 @@ watch(() => leagueStore.currentLeague?.league_id, (newKey, oldKey) => {
     console.log(`Power Rankings: League changed from ${oldKey} to ${newKey}, clearing cache...`)
     // Clear cached matchups since we're loading a different league
     allMatchups.value.clear()
+    // Re-cache logos for the new league
+    cacheTeamLogos()
     // Reload if we have a selected week
     if (selectedWeek.value && currentWeek.value >= 3) {
       loadPowerRankings()
@@ -2444,6 +2475,11 @@ watch(() => leagueStore.currentLeague?.league_id, (newKey, oldKey) => {
 })
 
 onMounted(() => {
+  // Cache team logos first to prevent flickering
+  if (leagueStore.yahooTeams.length > 0) {
+    cacheTeamLogos()
+  }
+  
   // Always try to load power rankings if we have teams
   if (leagueStore.yahooTeams.length > 0) {
     // Default to current week or week 1 if early season
