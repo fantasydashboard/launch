@@ -385,7 +385,7 @@
                 <div class="flex items-center gap-4 mb-4">
                   <div class="relative">
                     <div class="w-14 h-14 rounded-xl bg-dark-border overflow-hidden ring-2" :class="team.is_my_team ? 'ring-yellow-400' : 'ring-dark-border'">
-                      <img :src="team.logo || defaultLogo" :alt="team.name" class="w-full h-full object-cover" @error="handleImageError" />
+                      <img :src="team.logo || defaultLogo" :alt="team.name" class="w-full h-full object-cover" @error="handleLogoError" />
                     </div>
                     <div v-if="team.is_my_team" class="absolute -top-1 -right-1 w-5 h-5 bg-yellow-400 rounded-full flex items-center justify-center shadow-lg">
                       <span class="text-xs text-gray-900 font-bold">★</span>
@@ -524,7 +524,7 @@
                   >
                     <td class="py-3 px-4">
                       <div class="flex items-center gap-3">
-                        <img :src="team.logo || defaultLogo" class="w-8 h-8 rounded-lg" @error="handleImageError" />
+                        <img :src="team.logo || defaultLogo" class="w-8 h-8 rounded-lg" @error="handleLogoError" />
                         <div>
                           <div class="font-medium text-dark-text flex items-center gap-2">
                             {{ team.name }}
@@ -1831,7 +1831,7 @@
         <div class="px-6 py-4 border-b border-dark-border flex items-center justify-between">
           <div class="flex items-center gap-4">
             <div class="w-14 h-14 rounded-xl bg-dark-border overflow-hidden" :class="selectedTeam.is_my_team ? 'ring-2 ring-yellow-400' : ''">
-              <img :src="selectedTeam.logo_url || defaultLogo" :alt="selectedTeam.name" class="w-full h-full object-cover" @error="handleImageError" />
+              <img :src="selectedTeam.logo_url || defaultLogo" :alt="selectedTeam.name" class="w-full h-full object-cover" @error="handleLogoError" />
             </div>
             <div>
               <div class="flex items-center gap-2">
@@ -2121,6 +2121,31 @@ function parseEspnLeagueKey(leagueKey: string): { leagueId: string; season: numb
   }
 }
 
+// Detect sport from Yahoo game key
+// Yahoo game keys map to specific sports - these are the known mappings
+function detectSportFromGameKey(gameKey: string): string | null {
+  const key = parseInt(gameKey)
+  if (!key) return null
+  
+  // Basketball (NBA) game keys
+  const basketballKeys = [428, 418, 410, 402, 395, 385, 375, 364, 353, 340, 322, 304, 282, 265, 249]
+  if (basketballKeys.includes(key)) return 'basketball'
+  
+  // Hockey (NHL) game keys
+  const hockeyKeys = [427, 419, 411, 403, 396, 386, 376, 365, 354, 341, 321, 303, 281]
+  if (hockeyKeys.includes(key)) return 'hockey'
+  
+  // Football (NFL) game keys
+  const footballKeys = [449, 423, 414, 390, 371, 399, 380, 359, 348, 331, 314, 299, 273, 257, 242, 222]
+  if (footballKeys.includes(key)) return 'football'
+  
+  // Baseball (MLB) game keys
+  const baseballKeys = [458, 431, 422, 412, 404, 398, 388, 378, 370, 357, 346, 328, 308, 283, 268, 253]
+  if (baseballKeys.includes(key)) return 'baseball'
+  
+  return null
+}
+
 const isLoading = ref(true)
 const loadingMessage = ref('Loading...')
 const statCategories = ref<any[]>([])
@@ -2408,29 +2433,112 @@ const tradeGetSortBy = ref<string>('value')   // 'value', 'position', or a stat_
 const tradeAnalysis = ref<any>(null)
 const showValueExplanation = ref(false)
 
-// Position options for trade filter
-const tradePositionOptions = [
-  { id: 'all', label: 'All Positions' },
-  { id: 'C', label: 'Catcher' },
-  { id: '1B', label: 'First Base' },
-  { id: '2B', label: 'Second Base' },
-  { id: '3B', label: 'Third Base' },
-  { id: 'SS', label: 'Shortstop' },
-  { id: 'OF', label: 'Outfield' },
-  { id: 'SP', label: 'Starting Pitcher' },
-  { id: 'RP', label: 'Relief Pitcher' }
-]
+// Position options for trade filter - sport-aware
+const tradePositionOptions = computed(() => {
+  const sport = currentSport.value
+  
+  if (sport === 'basketball') {
+    return [
+      { id: 'all', label: 'All Positions' },
+      { id: 'PG', label: 'Point Guard' },
+      { id: 'SG', label: 'Shooting Guard' },
+      { id: 'SF', label: 'Small Forward' },
+      { id: 'PF', label: 'Power Forward' },
+      { id: 'C', label: 'Center' },
+      { id: 'G', label: 'Guard' },
+      { id: 'F', label: 'Forward' }
+    ]
+  }
+  
+  if (sport === 'hockey') {
+    return [
+      { id: 'all', label: 'All Positions' },
+      { id: 'C', label: 'Center' },
+      { id: 'LW', label: 'Left Wing' },
+      { id: 'RW', label: 'Right Wing' },
+      { id: 'D', label: 'Defense' },
+      { id: 'G', label: 'Goalie' }
+    ]
+  }
+  
+  if (sport === 'football') {
+    return [
+      { id: 'all', label: 'All Positions' },
+      { id: 'QB', label: 'Quarterback' },
+      { id: 'RB', label: 'Running Back' },
+      { id: 'WR', label: 'Wide Receiver' },
+      { id: 'TE', label: 'Tight End' },
+      { id: 'K', label: 'Kicker' },
+      { id: 'DEF', label: 'Defense' }
+    ]
+  }
+  
+  // Baseball (default)
+  return [
+    { id: 'all', label: 'All Positions' },
+    { id: 'C', label: 'Catcher' },
+    { id: '1B', label: 'First Base' },
+    { id: '2B', label: 'Second Base' },
+    { id: '3B', label: 'Third Base' },
+    { id: 'SS', label: 'Shortstop' },
+    { id: 'OF', label: 'Outfield' },
+    { id: 'SP', label: 'Starting Pitcher' },
+    { id: 'RP', label: 'Relief Pitcher' }
+  ]
+})
 
-const startSitPositions = [
-  { id: 'C', label: 'C' },
-  { id: '1B', label: '1B' },
-  { id: '2B', label: '2B' },
-  { id: '3B', label: '3B' },
-  { id: 'SS', label: 'SS' },
-  { id: 'OF', label: 'OF' },
-  { id: 'SP', label: 'SP' },
-  { id: 'RP', label: 'RP' }
-]
+// Start/Sit positions - sport-aware
+const startSitPositions = computed(() => {
+  const sport = currentSport.value
+  
+  if (sport === 'basketball') {
+    return [
+      { id: 'PG', label: 'PG' },
+      { id: 'SG', label: 'SG' },
+      { id: 'SF', label: 'SF' },
+      { id: 'PF', label: 'PF' },
+      { id: 'C', label: 'C' },
+      { id: 'G', label: 'G' },
+      { id: 'F', label: 'F' },
+      { id: 'Util', label: 'Util' }
+    ]
+  }
+  
+  if (sport === 'hockey') {
+    return [
+      { id: 'C', label: 'C' },
+      { id: 'LW', label: 'LW' },
+      { id: 'RW', label: 'RW' },
+      { id: 'D', label: 'D' },
+      { id: 'G', label: 'G' },
+      { id: 'Util', label: 'Util' }
+    ]
+  }
+  
+  if (sport === 'football') {
+    return [
+      { id: 'QB', label: 'QB' },
+      { id: 'RB', label: 'RB' },
+      { id: 'WR', label: 'WR' },
+      { id: 'TE', label: 'TE' },
+      { id: 'K', label: 'K' },
+      { id: 'DEF', label: 'DEF' },
+      { id: 'Flex', label: 'Flex' }
+    ]
+  }
+  
+  // Baseball (default)
+  return [
+    { id: 'C', label: 'C' },
+    { id: '1B', label: '1B' },
+    { id: '2B', label: '2B' },
+    { id: '3B', label: '3B' },
+    { id: 'SS', label: 'SS' },
+    { id: 'OF', label: 'OF' },
+    { id: 'SP', label: 'SP' },
+    { id: 'RP', label: 'RP' }
+  ]
+})
 
 // Chart state
 const chartCategory = ref<string>('')
@@ -2463,6 +2571,16 @@ function isPitchingStat(cat: any): boolean {
   if (!cat) return false
   const name = (cat.name || '').toUpperCase()
   const display = (cat.display_name || '').toUpperCase()
+  
+  // For basketball, there's no pitcher/hitter distinction - all stats are for all players
+  if (currentSport.value === 'basketball') {
+    return false // Never treat any basketball stat as "pitching"
+  }
+  
+  // For football, there's no pitcher/hitter distinction either
+  if (currentSport.value === 'football') {
+    return false // Never treat any football stat as "pitching"
+  }
   
   // For hockey, use goalie stat names
   if (currentSport.value === 'hockey') {
@@ -2579,13 +2697,20 @@ const categoryRankedPlayers = computed(() => {
   if (!catInfo) return []
   const gamesRemaining = 65, gamesPlayed = 97, statId = catInfo.stat_id
   
+  console.log(`[categoryRankedPlayers] sport=${currentSport.value}, category=${catInfo.display_name}, isPitchingCategory=${isPitchingCategory.value}`)
+  console.log(`[categoryRankedPlayers] allPlayers count: ${allPlayers.value.length}`)
+  
   // Filter players by position type
   let players = allPlayers.value.filter(p => {
     const isPlayerPitcher = isPitcher(p)
     return isPitchingCategory.value ? isPlayerPitcher : !isPlayerPitcher
   })
   
-  console.log(`Filtering for ${isPitchingCategory.value ? 'pitching' : 'hitting'}: found ${players.length} players`)
+  console.log(`[categoryRankedPlayers] After pitcher/hitter filter: ${players.length} players`)
+  if (players.length === 0 && allPlayers.value.length > 0) {
+    console.log(`[categoryRankedPlayers] WARNING: All players filtered out! Sample positions:`, 
+      allPlayers.value.slice(0, 5).map(p => ({ name: p.full_name, position: p.position })))
+  }
   
   players = players.map(p => {
     const currentValue = p.stats?.[statId] || 0
@@ -3038,7 +3163,21 @@ function getRecentRankClass(player: any, statId: string): string {
   return 'bg-dark-border text-dark-textMuted'
 }
 
-function handleImageError(e: Event) { (e.target as HTMLImageElement).src = getDefaultHeadshot() }
+function handleImageError(e: Event) { 
+  const img = e.target as HTMLImageElement
+  // Prevent infinite loop by checking if already set to default
+  if (!img.src.includes('nophoto') && !img.src.includes('default')) {
+    img.src = getDefaultHeadshot() 
+  }
+}
+
+function handleLogoError(e: Event) { 
+  const img = e.target as HTMLImageElement
+  // Prevent infinite loop by checking if already set to default
+  if (!img.src.includes('default')) {
+    img.src = getDefaultLogo() 
+  }
+}
 function getRowClass(player: any): string { if (isMyPlayer(player)) return 'bg-yellow-500/20 border-l-4 border-l-yellow-400'; if (isFreeAgent(player)) return 'bg-cyan-500/20 border-l-4 border-l-cyan-400'; return '' }
 function getAvatarRingClass(player: any): string { if (isMyPlayer(player)) return 'ring-yellow-400 ring-offset-2 ring-offset-dark-card'; if (isFreeAgent(player)) return 'ring-cyan-400 ring-offset-2 ring-offset-dark-card'; return 'ring-dark-border' }
 function getPlayerNameClass(player: any): string { if (isMyPlayer(player)) return 'text-yellow-400'; if (isFreeAgent(player)) return 'text-cyan-400'; return 'text-dark-text' }
@@ -3057,6 +3196,21 @@ async function loadProjections() {
   try {
     const leagueKey = leagueStore.activeLeagueId
     if (!leagueKey) { loadingMessage.value = 'No league selected'; return }
+    
+    // Detect sport from saved league or league key
+    const savedLeague = leagueStore.savedLeagues.find(l => l.league_id === leagueKey)
+    if (savedLeague?.sport) {
+      currentSport.value = savedLeague.sport
+      console.log('[CategoryProjections] Sport detected from savedLeague:', currentSport.value)
+    } else {
+      // Try to detect from league key (Yahoo keys like 428.l.12345)
+      const gameKey = leagueKey.split('.')[0]
+      const detectedSport = detectSportFromGameKey(gameKey)
+      if (detectedSport) {
+        currentSport.value = detectedSport
+        console.log('[CategoryProjections] Sport detected from game key:', currentSport.value)
+      }
+    }
     
     const settings = await yahooService.getLeagueScoringSettings(leagueKey)
     if (settings) {
@@ -5254,28 +5408,63 @@ const suggestedCategoryLineup = computed(() => {
   const used = new Set<string>()
   const myPlayers = allPlayers.value.filter(p => p.fantasy_team_key === myTeamKey.value)
   
-  // Standard lineup positions
-  const lineupOrder = ['C', '1B', '2B', '3B', 'SS', 'OF', 'OF', 'OF', 'Util', 'SP', 'SP', 'RP', 'RP']
+  // Sport-specific lineup positions
+  const sport = currentSport.value
+  let lineupOrder: string[]
+  
+  if (sport === 'basketball') {
+    lineupOrder = ['PG', 'SG', 'SF', 'PF', 'C', 'G', 'F', 'Util', 'Util', 'Util']
+  } else if (sport === 'hockey') {
+    lineupOrder = ['C', 'C', 'LW', 'LW', 'RW', 'RW', 'D', 'D', 'D', 'D', 'G', 'G', 'Util', 'Util']
+  } else if (sport === 'football') {
+    lineupOrder = ['QB', 'RB', 'RB', 'WR', 'WR', 'TE', 'Flex', 'K', 'DEF']
+  } else {
+    // Baseball (default)
+    lineupOrder = ['C', '1B', '2B', '3B', 'SS', 'OF', 'OF', 'OF', 'Util', 'SP', 'SP', 'RP', 'RP']
+  }
   
   for (const pos of lineupOrder) {
     let eligible = myPlayers.filter(p => {
       if (used.has(p.player_key)) return false
       const playerPos = p.position || ''
-      if (pos === 'Util') return !playerPos.includes('SP') && !playerPos.includes('RP')
+      
+      if (pos === 'Util' || pos === 'Flex') {
+        // Util/Flex can be any non-pitcher/non-goalie
+        if (sport === 'baseball') return !playerPos.includes('SP') && !playerPos.includes('RP')
+        if (sport === 'hockey') return !playerPos.includes('G')
+        return true
+      }
+      
+      // Basketball guard/forward eligibility
+      if (sport === 'basketball') {
+        if (pos === 'G') return playerPos.includes('PG') || playerPos.includes('SG') || playerPos.includes('G')
+        if (pos === 'F') return playerPos.includes('SF') || playerPos.includes('PF') || playerPos.includes('F')
+      }
+      
+      // Outfield eligibility for baseball
       if (pos === 'OF') return playerPos.includes('OF') || playerPos.includes('LF') || playerPos.includes('CF') || playerPos.includes('RF')
+      
       return playerPos.includes(pos)
     })
     
     // Add game info and impact score
+    // Use deterministic "hasGame" based on player key hash to ensure consistency
     eligible = eligible.map(p => {
-      const hasGame = Math.random() > 0.2
+      // Create a simple hash from player_key for deterministic hasGame
+      const hash = (p.player_key || '').split('').reduce((acc, char) => acc + char.charCodeAt(0), 0)
+      const hasGame = (hash % 10) >= 2 // ~80% have games, but deterministic per player
       const impactCats = getImpactCategoryCount(p)
       return { ...p, hasGame, impactCats, impactScore: calculatePlayerImpact(p) }
     })
     
-    // Filter by game availability in daily mode
+    // In daily mode, filter by game availability BUT ensure we have at least some players
+    // If no players have games for this position, show all players
     if (startSitMode.value === 'daily') {
-      eligible = eligible.filter(p => p.hasGame)
+      const withGames = eligible.filter(p => p.hasGame)
+      if (withGames.length > 0) {
+        eligible = withGames
+      }
+      // If no one has a game, keep all eligible players (don't filter)
     }
     
     // Sort by impact score
@@ -5284,7 +5473,14 @@ const suggestedCategoryLineup = computed(() => {
     const best = eligible[0] || null
     if (best) {
       used.add(best.player_key)
-      best.opponent = ['vs NYY', 'vs BOS', '@ LAD', '@ CHC', 'vs HOU'][Math.floor(Math.random() * 5)]
+      // Sport-specific opponent labels
+      if (sport === 'basketball') {
+        best.opponent = ['vs LAL', 'vs BOS', '@ GSW', '@ MIA', 'vs PHI'][Math.floor(Math.random() * 5)]
+      } else if (sport === 'hockey') {
+        best.opponent = ['vs TOR', 'vs BOS', '@ EDM', '@ VGK', 'vs COL'][Math.floor(Math.random() * 5)]
+      } else {
+        best.opponent = ['vs NYY', 'vs BOS', '@ LAD', '@ CHC', 'vs HOU'][Math.floor(Math.random() * 5)]
+      }
       best.gamesThisWeek = Math.floor(Math.random() * 3) + 4
     }
     
@@ -5488,6 +5684,17 @@ const potentialFlips = computed(() => {
 })
 
 watch(selectedCategory, () => { selectAllPositions() })
+
+// Watch for sport changes to reset positions
+watch(currentSport, (newSport) => {
+  console.log('[CategoryProjections] Sport changed to:', newSport)
+  selectAllPositions()
+  // Reset selectedStartSitPosition to first position for new sport
+  const positions = startSitPositions.value
+  if (positions.length > 0) {
+    selectedStartSitPosition.value = positions[0].id
+  }
+})
 
 // Load data on mount - use appropriate loader based on platform
 onMounted(() => { 
