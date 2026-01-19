@@ -1213,6 +1213,24 @@ const showTotalCategoryWins = computed(() => {
 const numCategories = computed(() => displayCategories.value.length || 12)
 
 const teamsWithStats = computed(() => {
+  // Debug: log the data structures we're working with
+  if (leagueStore.yahooTeams.length > 0 && isPointsLeague.value) {
+    console.log('[teamsWithStats] Computing for', leagueStore.yahooTeams.length, 'teams')
+    console.log('[teamsWithStats] espnWeeklyScores size:', espnWeeklyScores.value.size)
+    console.log('[teamsWithStats] espnWeeklyScores keys:', [...espnWeeklyScores.value.keys()])
+    console.log('[teamsWithStats] weeklyMatchupResults size:', weeklyMatchupResults.value.size)
+    console.log('[teamsWithStats] Sample team_key:', leagueStore.yahooTeams[0]?.team_key)
+    
+    // Check if keys match
+    const firstTeamKey = leagueStore.yahooTeams[0]?.team_key
+    const hasScoresForFirstTeam = espnWeeklyScores.value.has(firstTeamKey)
+    console.log('[teamsWithStats] First team has scores?', hasScoresForFirstTeam)
+    if (hasScoresForFirstTeam) {
+      const scores = espnWeeklyScores.value.get(firstTeamKey)
+      console.log('[teamsWithStats] First team score count:', scores?.size, 'sample:', scores?.size ? [...scores.entries()].slice(0, 3) : 'none')
+    }
+  }
+  
   return leagueStore.yahooTeams.map(team => {
     const transactions = transactionCounts.value.get(team.team_key) || 0
     const categoryWins = teamCategoryWins.value.get(team.team_key) || {}
@@ -3674,25 +3692,55 @@ async function loadEspnData() {
       const transactions = await espnService.getTransactions(sport, espnLeagueId, season)
       console.log('[ESPN] Fetched transactions:', transactions.length)
       
+      // Build a mapping from ESPN team ID to team_key for lookup
+      // team_key format is: espn_LEAGUEID_SEASON_TEAMID
+      const espnIdToTeamKey = new Map<number, string>()
+      leagueStore.yahooTeams.forEach(team => {
+        const parts = team.team_key.split('_')
+        if (parts.length >= 4 && parts[0] === 'espn') {
+          const teamId = parseInt(parts[parts.length - 1])
+          if (!isNaN(teamId)) {
+            espnIdToTeamKey.set(teamId, team.team_key)
+          }
+        }
+        if (team.team_id) {
+          const teamIdNum = parseInt(team.team_id)
+          if (!isNaN(teamIdNum)) {
+            espnIdToTeamKey.set(teamIdNum, team.team_key)
+          }
+        }
+      })
+      
       // Count transactions per team
       const counts = new Map<string, number>()
+      // Initialize all teams with 0
+      leagueStore.yahooTeams.forEach(team => {
+        counts.set(team.team_key, 0)
+      })
+      
       transactions.forEach((tx: any) => {
         // ESPN transactions have different structures - try to get team ID
         const teamId = tx.teamId || tx.team?.id
         if (teamId) {
-          const teamKey = `espn_${teamId}`
-          counts.set(teamKey, (counts.get(teamKey) || 0) + 1)
+          const teamKey = espnIdToTeamKey.get(teamId)
+          if (teamKey) {
+            counts.set(teamKey, (counts.get(teamKey) || 0) + 1)
+          }
         }
         // Also count by items array if present
         if (tx.items) {
           tx.items.forEach((item: any) => {
             if (item.fromTeamId) {
-              const fromKey = `espn_${item.fromTeamId}`
-              counts.set(fromKey, (counts.get(fromKey) || 0) + 1)
+              const fromKey = espnIdToTeamKey.get(item.fromTeamId)
+              if (fromKey) {
+                counts.set(fromKey, (counts.get(fromKey) || 0) + 1)
+              }
             }
             if (item.toTeamId) {
-              const toKey = `espn_${item.toTeamId}`
-              counts.set(toKey, (counts.get(toKey) || 0) + 1)
+              const toKey = espnIdToTeamKey.get(item.toTeamId)
+              if (toKey) {
+                counts.set(toKey, (counts.get(toKey) || 0) + 1)
+              }
             }
           })
         }
@@ -3742,22 +3790,48 @@ async function loadEspnData() {
       const allMatchupResults = new Map<string, Map<number, any>>()
       const weeklyScores = new Map<string, Map<number, number>>()
       
-      // Initialize maps for each team
+      // Build a mapping from ESPN team ID to team_key for lookup
+      // team_key format is: espn_LEAGUEID_SEASON_TEAMID (e.g., espn_12345_2024_1)
+      const espnIdToTeamKey = new Map<number, string>()
       leagueStore.yahooTeams.forEach(team => {
+        // Extract ESPN team ID from team_key - it's the LAST number in the format espn_leagueId_season_teamId
+        const parts = team.team_key.split('_')
+        if (parts.length >= 4 && parts[0] === 'espn') {
+          const teamId = parseInt(parts[parts.length - 1])
+          if (!isNaN(teamId)) {
+            espnIdToTeamKey.set(teamId, team.team_key)
+          }
+        }
+        // Also try team_id field directly
+        if (team.team_id) {
+          const teamIdNum = parseInt(team.team_id)
+          if (!isNaN(teamIdNum)) {
+            espnIdToTeamKey.set(teamIdNum, team.team_key)
+          }
+        }
         allMatchupResults.set(team.team_key, new Map())
         weeklyScores.set(team.team_key, new Map())
       })
+      
+      console.log('[ESPN] Team key mapping (teamId -> team_key):', Object.fromEntries(espnIdToTeamKey))
+      console.log('[ESPN] yahooTeams keys:', leagueStore.yahooTeams.map(t => t.team_key))
       
       // Check if this is a category league for proper catWins tracking
       const isCategoryLeague = !isPointsLeague.value
       
       // Process each week's matchups
+      let matchupsProcessed = 0
+      let scoresRecorded = 0
+      
       allMatchups.forEach((matchups, week) => {
         matchups.forEach(matchup => {
-          const homeTeamKey = `espn_${matchup.homeTeamId}`
-          const awayTeamKey = `espn_${matchup.awayTeamId}`
+          // Get team keys using the mapping
+          const homeTeamKey = espnIdToTeamKey.get(matchup.homeTeamId) || `espn_${matchup.homeTeamId}`
+          const awayTeamKey = espnIdToTeamKey.get(matchup.awayTeamId) || `espn_${matchup.awayTeamId}`
           const homeScore = matchup.homeScore || 0
           const awayScore = matchup.awayScore || 0
+          
+          matchupsProcessed++
           
           // For category leagues, use category wins from matchup data
           const homeCatWins = matchup.homeCategoryWins || 0
@@ -3776,6 +3850,8 @@ async function loadEspnData() {
               catWins: isCategoryLeague ? homeCatWins : (homeScore > awayScore ? 1 : 0),
               catLosses: isCategoryLeague ? (matchup.homeCategoryLosses || 0) : (homeScore < awayScore ? 1 : 0)
             })
+          } else {
+            console.warn(`[ESPN] No map entry for home team: ${homeTeamKey} (ID: ${matchup.homeTeamId})`)
           }
           
           // Record for away team
@@ -3791,19 +3867,42 @@ async function loadEspnData() {
               catWins: isCategoryLeague ? awayCatWins : (awayScore > homeScore ? 1 : 0),
               catLosses: isCategoryLeague ? (matchup.awayCategoryLosses || 0) : (awayScore < homeScore ? 1 : 0)
             })
+          } else {
+            console.warn(`[ESPN] No map entry for away team: ${awayTeamKey} (ID: ${matchup.awayTeamId})`)
           }
           
           // Record weekly scores
-          const homeScores = weeklyScores.get(homeTeamKey)
-          if (homeScores) homeScores.set(week, homeScore)
-          const awayScores = weeklyScores.get(awayTeamKey)
-          if (awayScores) awayScores.set(week, awayScore)
+          const homeScoresMap = weeklyScores.get(homeTeamKey)
+          if (homeScoresMap) {
+            homeScoresMap.set(week, homeScore)
+            scoresRecorded++
+          }
+          const awayScoresMap = weeklyScores.get(awayTeamKey)
+          if (awayScoresMap) {
+            awayScoresMap.set(week, awayScore)
+            scoresRecorded++
+          }
         })
       })
       
       weeklyMatchupResults.value = allMatchupResults
       espnWeeklyScores.value = weeklyScores
       console.log('[ESPN] Built matchup results for', allMatchupResults.size, 'teams')
+      console.log('[ESPN] Processed', matchupsProcessed, 'matchups, recorded', scoresRecorded, 'scores')
+      
+      // Debug: show sample data
+      const sampleTeam = leagueStore.yahooTeams[0]
+      if (sampleTeam) {
+        const sampleMatchups = allMatchupResults.get(sampleTeam.team_key)
+        const sampleScores = weeklyScores.get(sampleTeam.team_key)
+        console.log(`[ESPN] Sample team ${sampleTeam.name} (${sampleTeam.team_key}):`)
+        console.log('  - Matchup weeks:', sampleMatchups?.size || 0)
+        console.log('  - Score weeks:', sampleScores?.size || 0)
+        if (sampleScores && sampleScores.size > 0) {
+          const firstWeek = [...sampleScores.entries()][0]
+          console.log('  - First week score:', firstWeek)
+        }
+      }
       
     } catch (matchupErr) {
       console.warn('[ESPN] Could not fetch all matchups, using generated data:', matchupErr)
