@@ -869,9 +869,17 @@ export const useLeagueStore = defineStore('league', () => {
 
   function getTeamInfo(roster: SleeperRoster) {
     const user = users.value.find(u => u.user_id === roster.owner_id)
+    const teamName = sleeperService.getTeamName(roster, user)
+    
+    // Use ui-avatars.com for Sleeper teams - sleepercdn.com blocks CORS which breaks downloads
+    const colors = ['0D8ABC', '3498DB', '9B59B6', 'E91E63', 'F39C12', '1ABC9C', '2ECC71', 'E74C3C', '00BCD4', '8E44AD']
+    const colorIndex = teamName.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0) % colors.length
+    const bgColor = colors[colorIndex]
+    const avatar = `https://ui-avatars.com/api/?name=${encodeURIComponent(teamName)}&background=${bgColor}&color=fff&size=128&bold=true`
+    
     return {
-      name: sleeperService.getTeamName(roster, user),
-      avatar: sleeperService.getAvatarUrl(roster, user, currentLeague.value!),
+      name: teamName,
+      avatar,
       user
     }
   }
@@ -945,9 +953,12 @@ export const useLeagueStore = defineStore('league', () => {
       const user = userMap.get(roster.owner_id)
       const teamName = user?.metadata?.team_name || user?.display_name || `Team ${roster.roster_id}`
       
-      // Generate avatar URL using sleeperService helper which checks all avatar sources
-      // Priority: roster.metadata.avatar > roster.settings.avatar > user.avatar > league.avatar > default
-      const logoUrl = sleeperService.getAvatarUrl(roster, user, league)
+      // Use ui-avatars.com for Sleeper teams - sleepercdn.com blocks CORS which breaks downloads
+      // Generate consistent color based on team name
+      const colors = ['0D8ABC', '3498DB', '9B59B6', 'E91E63', 'F39C12', '1ABC9C', '2ECC71', 'E74C3C', '00BCD4', '8E44AD']
+      const colorIndex = teamName.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0) % colors.length
+      const bgColor = colors[colorIndex]
+      const logoUrl = `https://ui-avatars.com/api/?name=${encodeURIComponent(teamName)}&background=${bgColor}&color=fff&size=128&bold=true`
       
       // Calculate points (Sleeper stores as fpts which is points * 100 for decimal precision in some cases)
       const pointsFor = roster.settings?.fpts || 0

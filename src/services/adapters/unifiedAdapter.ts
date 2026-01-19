@@ -29,14 +29,19 @@ export function normalizeSleeperTeam(
 ): UnifiedTeam {
   const owner = leagueUsers.find(u => u.roster_id === roster.roster_id)
   const userData = owner ? users[owner.user_id] : null
+  const teamName = userData?.metadata?.team_name || userData?.display_name || `Team ${roster.roster_id}`
+  
+  // Use ui-avatars.com for Sleeper teams - sleepercdn.com blocks CORS which breaks downloads
+  const colors = ['0D8ABC', '3498DB', '9B59B6', 'E91E63', 'F39C12', '1ABC9C', '2ECC71', 'E74C3C', '00BCD4', '8E44AD']
+  const colorIndex = teamName.split('').reduce((acc: number, char: string) => acc + char.charCodeAt(0), 0) % colors.length
+  const bgColor = colors[colorIndex]
+  const avatar = `https://ui-avatars.com/api/?name=${encodeURIComponent(teamName)}&background=${bgColor}&color=fff&size=128&bold=true`
   
   return {
     teamId: String(roster.roster_id),
-    name: userData?.metadata?.team_name || userData?.display_name || `Team ${roster.roster_id}`,
+    name: teamName,
     owner: userData?.display_name,
-    avatar: userData?.avatar 
-      ? `https://sleepercdn.com/avatars/thumbs/${userData.avatar}`
-      : undefined,
+    avatar,
     record: {
       wins: roster.settings?.wins || 0,
       losses: roster.settings?.losses || 0,
