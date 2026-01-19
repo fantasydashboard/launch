@@ -331,13 +331,11 @@
                 <span class="text-dark-textMuted">{{ pos.abbrev }}</span>
               </div>
             </div>
-            <button 
-              v-if="!rosProjectionsAvailable && !isLoadingPlayers" 
-              @click="loadRosteredPlayers" 
-              class="btn-primary text-sm"
-            >
-              Load Player Data
-            </button>
+            <!-- Loading indicator instead of button -->
+            <div v-if="!rosProjectionsAvailable && isLoadingPlayers" class="flex items-center gap-2 text-sm text-dark-textMuted">
+              <LoadingSpinner size="sm" />
+              <span>Loading player data...</span>
+            </div>
           </div>
         </div>
         <div class="card-body p-0">
@@ -349,7 +347,7 @@
             <!-- Stacked bar for each team -->
             <div 
               v-for="(team, idx) in positionStrengthData" 
-              :key="team.team_key"
+              :key="`proj-${team.team_key}`"
               :class="[
                 'rounded-xl transition-all overflow-hidden cursor-pointer',
                 team.is_my_team 
@@ -375,8 +373,10 @@
                       <img 
                         :src="team.logo_url || defaultAvatar" 
                         :alt="team.name"
+                        loading="lazy"
+                        decoding="async"
                         :class="[
-                          'w-8 h-8 rounded-full ring-2',
+                          'w-8 h-8 rounded-full ring-2 object-cover',
                           team.is_my_team ? 'ring-primary' : 'ring-cyan-500/50'
                         ]"
                         @error="handleImageError"
@@ -436,8 +436,10 @@
                       <img 
                         :src="team.logo_url || defaultAvatar" 
                         :alt="team.name"
+                        loading="lazy"
+                        decoding="async"
                         :class="[
-                          'w-8 h-8 rounded-full ring-2',
+                          'w-8 h-8 rounded-full ring-2 object-cover',
                           team.is_my_team ? 'ring-primary' : 'ring-cyan-500/50'
                         ]"
                         @error="handleImageError"
@@ -476,11 +478,17 @@
             </div>
           </div>
           <div v-else class="text-center py-8 px-4">
-            <div class="text-4xl mb-3">📊</div>
-            <p class="text-dark-text font-medium">Player Data Not Loaded</p>
-            <p class="text-sm text-dark-textMuted mt-2 max-w-md mx-auto">
-              Click "Load Player Data" to see position strength rankings based on season stats.
-            </p>
+            <div v-if="isLoadingPlayers">
+              <LoadingSpinner size="md" />
+              <p class="text-dark-textMuted mt-2">Loading player data...</p>
+            </div>
+            <div v-else>
+              <div class="text-4xl mb-3">📊</div>
+              <p class="text-dark-text font-medium">No Player Data Available</p>
+              <p class="text-sm text-dark-textMuted mt-2 max-w-md mx-auto">
+                Unable to load position data for this league.
+              </p>
+            </div>
           </div>
         </div>
       </div>
@@ -542,8 +550,10 @@
                         <img 
                           :src="team.logo_url || defaultAvatar" 
                           :alt="team.name"
+                          loading="lazy"
+                          decoding="async"
                           :class="[
-                            'w-10 h-10 rounded-full ring-2',
+                            'w-10 h-10 rounded-full ring-2 object-cover',
                             team.is_my_team ? 'ring-primary' : 'ring-cyan-500'
                           ]"
                           @error="handleImageError"
@@ -585,9 +595,9 @@
             </div>
             <div v-else>
               <div class="text-4xl mb-3">🏋️</div>
-              <p class="text-dark-text font-medium">Player Data Not Loaded</p>
+              <p class="text-dark-text font-medium">No Position Data Available</p>
               <p class="text-sm text-dark-textMuted mt-2 max-w-md mx-auto">
-                Load player data above to see position strength rankings.
+                Unable to load position strength data for this league.
               </p>
             </div>
           </div>
@@ -1071,14 +1081,8 @@ const positionStrengthData = computed(() => {
   const teamPlayers = new Map<string, any[]>()
   const teamInfo = new Map<string, { name: string; logo_url: string; is_my_team: boolean }>()
   
-  // Debug: Track positions we receive
-  const receivedPositions = new Map<string, number>()
-  
   for (const player of allRosteredPlayers.value) {
     if (!player.fantasy_team_key) continue
-    
-    // Track received positions
-    receivedPositions.set(player.position, (receivedPositions.get(player.position) || 0) + 1)
     
     if (!teamPlayers.has(player.fantasy_team_key)) {
       teamPlayers.set(player.fantasy_team_key, [])
@@ -1093,14 +1097,9 @@ const positionStrengthData = computed(() => {
     teamPlayers.get(player.fantasy_team_key)!.push(player)
   }
   
-  console.log('[PositionStrength] Received positions:', Object.fromEntries(receivedPositions))
-  
   // Calculate position totals for each team
   const positionTotals = new Map<string, Map<string, number>>()
   const displayPositions = ['C', '1B', '2B', '3B', 'SS', 'OF', 'SP', 'RP']
-  
-  // Debug: Track normalized positions
-  const normalizedCounts = new Map<string, number>()
   
   for (const [teamKey, players] of teamPlayers) {
     const totals = new Map<string, number>()
@@ -1123,14 +1122,10 @@ const positionStrengthData = computed(() => {
         normalizedPos = positions.find(p => displayPositions.includes(p)) || positions[0]
       }
       
-      // If still not in display positions, try to map it
+      // If still not in display positions, default to OF
       if (!displayPositions.includes(normalizedPos)) {
-        // Default unmapped positions to OF (utility-like)
-        console.log(`[PositionStrength] Unmapped position "${pos}" -> defaulting to OF`)
         normalizedPos = 'OF'
       }
-      
-      normalizedCounts.set(normalizedPos, (normalizedCounts.get(normalizedPos) || 0) + 1)
       
       const currentTotal = totals.get(normalizedPos) || 0
       totals.set(normalizedPos, currentTotal + (player.total_points || 0))
@@ -1138,8 +1133,6 @@ const positionStrengthData = computed(() => {
     
     positionTotals.set(teamKey, totals)
   }
-  
-  console.log('[PositionStrength] Normalized position counts:', Object.fromEntries(normalizedCounts))
   
   // Calculate rankings per position
   const positions = ['C', '1B', '2B', '3B', 'SS', 'OF', 'SP', 'RP']
@@ -2451,9 +2444,18 @@ watch(() => leagueStore.currentLeague?.league_id, (newKey, oldKey) => {
 })
 
 onMounted(() => {
-  if (leagueStore.yahooTeams.length > 0 && currentWeek.value >= 3) {
-    selectedWeek.value = currentWeek.value.toString()
+  // Always try to load power rankings if we have teams
+  if (leagueStore.yahooTeams.length > 0) {
+    // Default to current week or week 1 if early season
+    const weekToUse = Math.max(1, currentWeek.value)
+    selectedWeek.value = weekToUse.toString()
     loadPowerRankings()
+  }
+  
+  // Also auto-load player data for position strength
+  // Don't wait for power rankings - start loading players immediately
+  if (leagueStore.yahooTeams.length > 0 && allRosteredPlayers.value.length === 0 && !isLoadingPlayers.value) {
+    loadRosteredPlayers()
   }
 })
 </script>
