@@ -1681,7 +1681,10 @@ async function downloadRankings() {
       canvas.height = 64
       const ctx = canvas.getContext('2d')
       if (ctx) {
-        ctx.fillStyle = '#3a3d52'
+        // Use a consistent color based on team name
+        const colors = ['#0D8ABC', '#3498DB', '#9B59B6', '#E91E63', '#F39C12', '#1ABC9C', '#2ECC71', '#E74C3C', '#00BCD4', '#8E44AD']
+        const colorIndex = teamName.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0) % colors.length
+        ctx.fillStyle = colors[colorIndex]
         ctx.beginPath()
         ctx.arc(32, 32, 32, 0, Math.PI * 2)
         ctx.fill()
@@ -1691,7 +1694,9 @@ async function downloadRankings() {
         ctx.textBaseline = 'middle'
         ctx.fillText(teamName.charAt(0).toUpperCase(), 32, 34)
       }
-      return canvas.toDataURL('image/png')
+      const result = canvas.toDataURL('image/png')
+      console.log(`[Download] createPlaceholder for ${teamName}: length=${result.length}, starts with data:image=${result.startsWith('data:image')}`)
+      return result
     }
     
     const logoBase64 = await loadLogo()
@@ -1704,25 +1709,37 @@ async function downloadRankings() {
       const avatarUrl = `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=${bgColor}&color=fff&size=64&bold=true&format=png`
       
       try {
-        const response = await fetch(avatarUrl, { signal: AbortSignal.timeout(3000) })
+        console.log(`[Download] Fetching ui-avatar for ${name}: ${avatarUrl}`)
+        const response = await fetch(avatarUrl, { signal: AbortSignal.timeout(5000) })
+        console.log(`[Download] ui-avatars response for ${name}: status=${response.status}, ok=${response.ok}`)
+        
         if (response.ok) {
           const blob = await response.blob()
+          console.log(`[Download] Got blob for ${name}: type=${blob.type}, size=${blob.size}`)
+          
           return new Promise<string>((resolve) => {
             const reader = new FileReader()
             reader.onloadend = () => {
               const result = reader.result as string
+              console.log(`[Download] FileReader result for ${name}: starts with data:=${result?.startsWith('data:')}, length=${result?.length}`)
               if (result && result.startsWith('data:')) {
                 resolve(result)
               } else {
+                console.log(`[Download] Invalid result for ${name}, using placeholder`)
                 resolve(createPlaceholder(name))
               }
             }
-            reader.onerror = () => resolve(createPlaceholder(name))
+            reader.onerror = (e) => {
+              console.log(`[Download] FileReader error for ${name}:`, e)
+              resolve(createPlaceholder(name))
+            }
             reader.readAsDataURL(blob)
           })
+        } else {
+          console.log(`[Download] ui-avatars not ok for ${name}, using placeholder`)
         }
       } catch (e) {
-        console.log(`[Download] ui-avatars failed for ${name}`)
+        console.log(`[Download] ui-avatars fetch failed for ${name}:`, e)
       }
       return createPlaceholder(name)
     }
@@ -1734,7 +1751,18 @@ async function downloadRankings() {
       // For Sleeper CDN URLs, use ui-avatars.com directly (sleepercdn blocks CORS)
       if (url.includes('sleepercdn.com')) {
         console.log(`[Download] Sleeper URL for ${teamName}, using ui-avatars`)
-        return await loadFromUiAvatars(teamName)
+        try {
+          const result = await loadFromUiAvatars(teamName)
+          // If we got a valid base64, use it
+          if (result && result.startsWith('data:') && result.length > 100) {
+            return result
+          }
+        } catch (e) {
+          console.log(`[Download] ui-avatars error for ${teamName}, using canvas placeholder`)
+        }
+        // Fallback to canvas placeholder
+        console.log(`[Download] Using canvas placeholder for ${teamName}`)
+        return createPlaceholder(teamName)
       }
       
       // For other URLs, try loading with CORS proxy
@@ -1770,8 +1798,8 @@ async function downloadRankings() {
         }
       }
       
-      // Fallback to ui-avatars
-      return await loadFromUiAvatars(teamName)
+      // Fallback to canvas placeholder
+      return createPlaceholder(teamName)
     }
     
     // Pre-load all team images using CORS-safe method
@@ -1785,6 +1813,7 @@ async function downloadRankings() {
     const results = await Promise.all(imagePromises)
     results.forEach(({ teamKey, base64 }) => {
       imageMap.set(teamKey, base64)
+      console.log(`[Download] imageMap set ${teamKey}: starts with data:=${base64?.startsWith('data:')}, length=${base64?.length}`)
     })
     console.log(`[Download] Loaded ${imageMap.size} team images`)
     
@@ -1803,6 +1832,8 @@ async function downloadRankings() {
       const powerPct = Math.min(100, Math.max(0, team.powerScore))
       const barColor = team.powerScore >= 70 ? '#10b981' : (team.powerScore >= 40 ? '#f59e0b' : '#ef4444')
       const record = `${team.wins}-${team.losses}${team.ties > 0 ? `-${team.ties}` : ''}`
+      const imgSrc = imageMap.get(team.team_key) || ''
+      console.log(`[Download] Row ${rank} (${team.name}): imgSrc length=${imgSrc.length}, starts with data:=${imgSrc.startsWith('data:')}`)
       
       return `
       <div style="display: flex; height: 80px; padding: 0 12px; background: rgba(38, 42, 58, 0.4); border-radius: 10px; margin-bottom: 6px; border: 1px solid rgba(58, 61, 82, 0.4); box-sizing: border-box;">
@@ -1815,7 +1846,7 @@ async function downloadRankings() {
           ` : ''}
         </div>
         <div style="width: 60px; flex-shrink: 0; padding-top: 16px;">
-          <img src="${imageMap.get(team.team_key) || ''}" style="width: 48px; height: 48px; border-radius: 50%; border: 2px solid #3a3d52; background: #262a3a; object-fit: cover;" />
+          <img src="${imgSrc}" style="width: 48px; height: 48px; border-radius: 50%; border: 2px solid #3a3d52; background: #262a3a; object-fit: cover;" />
         </div>
         <div style="flex: 1; min-width: 0; padding-top: 16px;">
           <div style="font-size: 14px; font-weight: 700; color: #f7f7ff; white-space: nowrap; overflow: visible; line-height: 1.2;">${team.name}</div>
