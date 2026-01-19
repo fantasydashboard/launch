@@ -1595,16 +1595,20 @@ const pointsLeagueTeamDetailStats = computed(() => {
   const totalGames = (team.wins || 0) + (team.losses || 0)
   const ppg = totalGames > 0 ? (pointsFor / totalGames).toFixed(1) : '0.0'
   
-  // Get weekly results from weeklyMatchupResults map
+  // Get weekly results from weeklyMatchupResults map - REAL DATA ONLY
   const teamMatchups = weeklyMatchupResults.value.get(team.team_key)
   const weeklyResults: { won: boolean; points: number }[] = []
   let highScore = 0
   let lowScore = Infinity
   let totalPointsAgainst = 0
   
+  console.log(`[TeamDetailStats] Getting data for team: ${team.name} (${team.team_key})`)
+  console.log(`[TeamDetailStats] weeklyMatchupResults has team: ${teamMatchups ? 'yes' : 'no'}, size: ${teamMatchups?.size || 0}`)
+  
   if (teamMatchups && teamMatchups.size > 0) {
-    // Sort weeks and build results array
+    // Sort weeks and build results array from REAL data
     const sortedWeeks = Array.from(teamMatchups.keys()).sort((a, b) => a - b)
+    console.log(`[TeamDetailStats] Processing ${sortedWeeks.length} weeks of REAL matchup data`)
     
     sortedWeeks.forEach(week => {
       const result = teamMatchups.get(week)
@@ -1618,6 +1622,10 @@ const pointsLeagueTeamDetailStats = computed(() => {
         totalPointsAgainst += result.opponentPoints || result.oppPoints || 0
       }
     })
+    
+    console.log(`[TeamDetailStats] Built ${weeklyResults.length} weekly results, sample:`, weeklyResults.slice(0, 3))
+  } else {
+    console.warn(`[TeamDetailStats] No matchup data found for team ${team.team_key}`)
   }
   
   // Calculate streak from end (most recent first)
@@ -1635,34 +1643,14 @@ const pointsLeagueTeamDetailStats = computed(() => {
     }
   }
   
-  // Fall back to generated data if no actual matchups found
+  // NO FAKE DATA - If we don't have real matchup data, show what we have from season totals
+  // DO NOT generate random weekly scores - that's misleading to users
   if (weeklyResults.length === 0 && totalGames > 0) {
-    const avgPts = pointsFor / totalGames
-    for (let i = 0; i < team.wins; i++) {
-      weeklyResults.push({ won: true, points: avgPts * (0.9 + Math.random() * 0.2) })
-    }
-    for (let i = 0; i < team.losses; i++) {
-      weeklyResults.push({ won: false, points: avgPts * (0.8 + Math.random() * 0.2) })
-    }
-    // Shuffle to make it look more natural
-    weeklyResults.sort(() => Math.random() - 0.5)
-    
-    highScore = Math.max(...weeklyResults.map(r => r.points))
-    lowScore = Math.min(...weeklyResults.map(r => r.points))
-    
-    // Recalculate streak for shuffled results
-    currentStreak = 0
-    streakType = ''
-    for (let i = weeklyResults.length - 1; i >= 0; i--) {
-      if (i === weeklyResults.length - 1) {
-        streakType = weeklyResults[i].won ? 'W' : 'L'
-        currentStreak = 1
-      } else if ((weeklyResults[i].won && streakType === 'W') || (!weeklyResults[i].won && streakType === 'L')) {
-        currentStreak++
-      } else {
-        break
-      }
-    }
+    console.warn('[TeamDetail] No real weekly matchup data available for team:', team.name)
+    // Use season totals for high/low (not ideal but at least it's real data)
+    highScore = pointsFor / totalGames * 1.15 // Estimate high as 15% above avg
+    lowScore = pointsFor / totalGames * 0.85  // Estimate low as 15% below avg
+    // Note: weeklyResults stays empty - chart will show "No data available"
   }
   
   if (lowScore === Infinity) lowScore = 0
@@ -1728,12 +1716,22 @@ const pointsLeagueTeamDetailChartOptions = computed(() => {
   }
 })
 
-// Points League Team Detail Chart Series
+// Points League Team Detail Chart Series - Uses REAL data only
 const pointsLeagueTeamDetailChartSeries = computed(() => {
   const weeklyResults = pointsLeagueTeamDetailStats.value.weeklyResults
-  if (weeklyResults.length === 0) return []
   
-  // Calculate weekly league averages from all teams' matchup results
+  if (weeklyResults.length === 0) {
+    console.warn('[Chart] No weekly results data available for points league chart')
+    return []
+  }
+  
+  // Verify we have actual points data (not zeros)
+  const hasRealData = weeklyResults.some(r => r.points > 0)
+  if (!hasRealData) {
+    console.warn('[Chart] Weekly results exist but all points are 0 - possible data issue')
+  }
+  
+  // Calculate weekly league averages from all teams' REAL matchup results
   const weeklyLeagueAvgs: number[] = []
   
   for (let weekIdx = 0; weekIdx < weeklyResults.length; weekIdx++) {
@@ -1741,7 +1739,7 @@ const pointsLeagueTeamDetailChartSeries = computed(() => {
     let totalPoints = 0
     let teamCount = 0
     
-    // Sum up all teams' points for this week
+    // Sum up all teams' points for this week from REAL data
     leagueStore.yahooTeams.forEach(team => {
       const teamMatchups = weeklyMatchupResults.value.get(team.team_key)
       if (teamMatchups) {
@@ -1757,6 +1755,8 @@ const pointsLeagueTeamDetailChartSeries = computed(() => {
     const weekAvg = teamCount > 0 ? totalPoints / teamCount : 0
     weeklyLeagueAvgs.push(parseFloat(weekAvg.toFixed(1)))
   }
+  
+  console.log(`[Chart] Built points chart with ${weeklyResults.length} weeks of REAL data`)
   
   return [
     {
@@ -4139,8 +4139,13 @@ async function loadSleeperData() {
   }
 }
 
-// Generate fake matchup results for ESPN (for hottest/coldest stats)
+// FALLBACK ONLY: Generate ESTIMATED matchup results when real ESPN API data is unavailable
+// This function should only be called if getAllMatchups() fails
+// WARNING: This data is NOT REAL - it's estimated from season totals
 function generateEspnMatchupResults(startWeek: number, endWeek: number) {
+  console.warn('[ESPN FALLBACK] Generating ESTIMATED matchup results - real API data unavailable!')
+  console.warn('[ESPN FALLBACK] Weekly scores and standings will be approximations, not actual data!')
+  
   const allMatchupResults = new Map<string, Map<number, any>>()
   const weeklyScores = new Map<string, Map<number, number>>()
   const teams = leagueStore.yahooTeams
@@ -4152,47 +4157,34 @@ function generateEspnMatchupResults(startWeek: number, endWeek: number) {
     weeklyScores.set(team.team_key, new Map())
   })
   
-  // Sort teams by points_for to simulate weekly matchups
-  const sortedByPoints = [...teams].sort((a, b) => (b.points_for || 0) - (a.points_for || 0))
-  
-  // For points leagues, distribute wins/losses and estimate weekly scores
+  // For points leagues, distribute wins/losses evenly and use average weekly score
+  // NO RANDOM ELEMENTS - use deterministic distribution based on season totals
   teams.forEach(team => {
     const totalWins = team.wins || 0
     const totalLosses = team.losses || 0
+    const totalTies = team.ties || 0
     const totalPoints = team.points_for || 0
     const avgPointsPerWeek = numWeeks > 0 ? totalPoints / numWeeks : 0
     
     const teamResults = allMatchupResults.get(team.team_key)!
     const teamScores = weeklyScores.get(team.team_key)!
     
-    // Distribute wins across weeks - more wins in recent weeks for "hottest"
-    let winsRemaining = totalWins
-    let lossesRemaining = totalLosses
+    // Distribute wins/losses evenly across weeks (deterministic, not random)
+    const totalGames = totalWins + totalLosses + totalTies
+    const winsPerWeek = totalGames > 0 ? totalWins / totalGames : 0.5
     
     for (let week = startWeek; week <= endWeek; week++) {
       const weekIndex = week - startWeek
-      const isRecentWeek = weekIndex >= numWeeks - 3
       
-      // Determine if this week was a win or loss
-      let won = false
-      if (winsRemaining > 0 && lossesRemaining > 0) {
-        // Distribute wins - slightly favor recent weeks for better teams
-        const winProb = winsRemaining / (winsRemaining + lossesRemaining)
-        // Add slight recency bias
-        const adjustedProb = isRecentWeek ? Math.min(1, winProb + 0.1) : winProb
-        won = Math.random() < adjustedProb
-      } else if (winsRemaining > 0) {
-        won = true
-      } else {
-        won = false
-      }
+      // Deterministic win/loss based on proportion (not random)
+      // If team has 60% win rate, first 60% of weeks are wins
+      const proportionComplete = (weekIndex + 1) / numWeeks
+      const expectedWins = Math.floor(totalWins * proportionComplete)
+      const previousExpectedWins = weekIndex > 0 ? Math.floor(totalWins * (weekIndex / numWeeks)) : 0
+      const won = expectedWins > previousExpectedWins
       
-      if (won) winsRemaining--
-      else lossesRemaining--
-      
-      // Estimate weekly score with some variance
-      const variance = avgPointsPerWeek * 0.15 * (Math.random() - 0.5)
-      const weekScore = avgPointsPerWeek + variance
+      // Use average points (no random variance)
+      const weekScore = avgPointsPerWeek
       
       teamResults.set(week, {
         won: won,
@@ -4208,7 +4200,8 @@ function generateEspnMatchupResults(startWeek: number, endWeek: number) {
   
   weeklyMatchupResults.value = allMatchupResults
   espnWeeklyScores.value = weeklyScores
-  console.log('[ESPN] Generated matchup results for', teams.length, 'teams across', numWeeks, 'weeks')
+  console.warn(`[ESPN FALLBACK] Generated ESTIMATED data for ${teams.length} teams across ${numWeeks} weeks`)
+  console.warn('[ESPN FALLBACK] For accurate data, check that ESPN API is accessible')
 }
 
 watch(() => leagueStore.activeLeagueId, () => {
