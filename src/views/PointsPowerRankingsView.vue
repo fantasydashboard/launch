@@ -1696,40 +1696,97 @@ async function downloadRankings() {
     
     const logoBase64 = await loadLogo()
     
-    // Pre-load all team images
-    const imageMap = new Map<string, string>()
-    for (const team of powerRankings.value) {
+    // Helper to load image from ui-avatars.com (CORS-safe)
+    const loadFromUiAvatars = async (name: string): Promise<string> => {
+      const colors = ['0D8ABC', '3498DB', '9B59B6', 'E91E63', 'F39C12', '1ABC9C', '2ECC71', 'E74C3C', '00BCD4', '8E44AD']
+      const colorIndex = name.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0) % colors.length
+      const bgColor = colors[colorIndex]
+      const avatarUrl = `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=${bgColor}&color=fff&size=64&bold=true&format=png`
+      
       try {
-        const img = new Image()
-        img.crossOrigin = 'anonymous'
-        const loadPromise = new Promise<string>((resolve) => {
-          img.onload = () => {
-            try {
-              const canvas = document.createElement('canvas')
-              canvas.width = 64
-              canvas.height = 64
-              const ctx = canvas.getContext('2d')
-              if (ctx) {
-                ctx.beginPath()
-                ctx.arc(32, 32, 32, 0, Math.PI * 2)
-                ctx.closePath()
-                ctx.clip()
-                ctx.drawImage(img, 0, 0, 64, 64)
+        const response = await fetch(avatarUrl, { signal: AbortSignal.timeout(3000) })
+        if (response.ok) {
+          const blob = await response.blob()
+          return new Promise<string>((resolve) => {
+            const reader = new FileReader()
+            reader.onloadend = () => {
+              const result = reader.result as string
+              if (result && result.startsWith('data:')) {
+                resolve(result)
+              } else {
+                resolve(createPlaceholder(name))
               }
-              resolve(canvas.toDataURL('image/png'))
-            } catch {
-              resolve(createPlaceholder(team.name))
             }
-          }
-          img.onerror = () => resolve(createPlaceholder(team.name))
-          setTimeout(() => resolve(createPlaceholder(team.name)), 3000)
-        })
-        img.src = team.logo_url || ''
-        imageMap.set(team.team_key, await loadPromise)
-      } catch {
-        imageMap.set(team.team_key, createPlaceholder(team.name))
+            reader.onerror = () => resolve(createPlaceholder(name))
+            reader.readAsDataURL(blob)
+          })
+        }
+      } catch (e) {
+        console.log(`[Download] ui-avatars failed for ${name}`)
       }
+      return createPlaceholder(name)
     }
+    
+    // Helper to load image as base64 with CORS handling
+    const loadImageAsBase64 = async (url: string, teamName: string): Promise<string> => {
+      if (!url) return createPlaceholder(teamName)
+      
+      // For Sleeper CDN URLs, use ui-avatars.com directly (sleepercdn blocks CORS)
+      if (url.includes('sleepercdn.com')) {
+        console.log(`[Download] Sleeper URL for ${teamName}, using ui-avatars`)
+        return await loadFromUiAvatars(teamName)
+      }
+      
+      // For other URLs, try loading with CORS proxy
+      const corsProxies = [
+        (u: string) => `https://corsproxy.io/?${encodeURIComponent(u)}`,
+        (u: string) => `https://api.allorigins.win/raw?url=${encodeURIComponent(u)}`,
+      ]
+      
+      for (const proxyFn of corsProxies) {
+        try {
+          const proxyUrl = proxyFn(url)
+          const response = await fetch(proxyUrl, { signal: AbortSignal.timeout(4000) })
+          if (!response.ok) continue
+          
+          const blob = await response.blob()
+          if (!blob.type.startsWith('image/') || blob.size < 100) continue
+          
+          return new Promise<string>((resolve) => {
+            const reader = new FileReader()
+            reader.onloadend = () => {
+              const result = reader.result as string
+              if (result && result.startsWith('data:image')) {
+                resolve(result)
+              } else {
+                resolve(createPlaceholder(teamName))
+              }
+            }
+            reader.onerror = () => resolve(createPlaceholder(teamName))
+            reader.readAsDataURL(blob)
+          })
+        } catch (e) {
+          continue
+        }
+      }
+      
+      // Fallback to ui-avatars
+      return await loadFromUiAvatars(teamName)
+    }
+    
+    // Pre-load all team images using CORS-safe method
+    console.log('[Download] Loading team images...')
+    const imageMap = new Map<string, string>()
+    const imagePromises = powerRankings.value.map(async (team) => {
+      const base64 = await loadImageAsBase64(team.logo_url || '', team.name)
+      return { teamKey: team.team_key, base64 }
+    })
+    
+    const results = await Promise.all(imagePromises)
+    results.forEach(({ teamKey, base64 }) => {
+      imageMap.set(teamKey, base64)
+    })
+    console.log(`[Download] Loaded ${imageMap.size} team images`)
     
     // Create container
     const container = document.createElement('div')
