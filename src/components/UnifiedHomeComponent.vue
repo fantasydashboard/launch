@@ -3295,7 +3295,7 @@ async function loadAllMatchups() {
     console.log('[ESPN] Using matchups from store:', leagueStore.yahooMatchups?.length || 0)
     displayMatchups.value = leagueStore.yahooMatchups || []
     
-    // Generate standings progression for chart
+    // Build standings from REAL matchup data
     const yahooLeagueData = Array.isArray(leagueStore.yahooLeague) ? leagueStore.yahooLeague[0] : leagueStore.yahooLeague
     const endWeek = yahooLeagueData?.end_week || 25
     const startWeek = yahooLeagueData?.start_week || 1
@@ -3304,7 +3304,8 @@ async function loadAllMatchups() {
     // Only show weeks up to current week (not future weeks)
     const chartEndWeek = isSeasonComplete.value ? endWeek : Math.min(currWeek, endWeek)
     
-    generateStandingsProgression(startWeek, chartEndWeek)
+    // Use REAL matchup data to build standings (not simulated)
+    buildStandingsFromRealMatchups(startWeek, chartEndWeek)
     buildChart()
     
     isLoadingChart.value = false
@@ -3575,7 +3576,125 @@ async function loadAllMatchups() {
 // Generate standings progression for category leagues
 // Since we can't get weekly W-L from Yahoo for category leagues,
 // we simulate the progression based on final standings
+// Build standings from REAL weekly matchup results - NO SIMULATION
+function buildStandingsFromRealMatchups(startWeek: number, endWeek: number) {
+  console.log(`[Standings] Building REAL standings from matchups, weeks ${startWeek}-${endWeek}`)
+  
+  const standings = new Map<number, any[]>()
+  const teams = leagueStore.yahooTeams
+  
+  if (teams.length === 0) {
+    console.warn('[Standings] No teams available')
+    return
+  }
+  
+  // Check if we have real matchup data
+  const hasRealMatchupData = weeklyMatchupResults.value.size > 0 && 
+    [...weeklyMatchupResults.value.values()].some(teamMatchups => teamMatchups.size > 0)
+  
+  console.log(`[Standings] hasRealMatchupData: ${hasRealMatchupData}, weeklyMatchupResults size: ${weeklyMatchupResults.value.size}`)
+  
+  if (!hasRealMatchupData) {
+    console.warn('[Standings] No real matchup data available, using team records')
+    // Fallback: just use final standings for all weeks (not ideal but at least not random)
+    for (let week = startWeek; week <= endWeek; week++) {
+      const weekStandings = teams.map(team => ({
+        team_key: team.team_key,
+        name: team.name,
+        wins: team.wins || 0,
+        losses: team.losses || 0,
+        ties: team.ties || 0,
+        points_for: team.points_for || 0
+      })).sort((a, b) => {
+        const aWinPct = a.wins / Math.max(1, a.wins + a.losses)
+        const bWinPct = b.wins / Math.max(1, b.wins + b.losses)
+        if (Math.abs(aWinPct - bWinPct) < 0.001) {
+          return (b.points_for || 0) - (a.points_for || 0)
+        }
+        return bWinPct - aWinPct
+      })
+      weekStandings.forEach((t, idx) => (t as any).rank = idx + 1)
+      standings.set(week, weekStandings)
+    }
+    weeklyStandings.value = standings
+    console.log(`[Standings] Created ${standings.size} weeks of standings from final records`)
+    return
+  }
+  
+  // Track cumulative stats per team
+  const cumulativeWins = new Map<string, number>()
+  const cumulativeLosses = new Map<string, number>()
+  const cumulativeTies = new Map<string, number>()
+  const cumulativePoints = new Map<string, number>()
+  
+  teams.forEach(team => {
+    cumulativeWins.set(team.team_key, 0)
+    cumulativeLosses.set(team.team_key, 0)
+    cumulativeTies.set(team.team_key, 0)
+    cumulativePoints.set(team.team_key, 0)
+  })
+  
+  // Process each week's REAL matchup results
+  for (let week = startWeek; week <= endWeek; week++) {
+    // Add this week's results to cumulative totals
+    teams.forEach(team => {
+      const teamMatchups = weeklyMatchupResults.value.get(team.team_key)
+      const weekResult = teamMatchups?.get(week)
+      
+      if (weekResult) {
+        if (weekResult.won) {
+          cumulativeWins.set(team.team_key, (cumulativeWins.get(team.team_key) || 0) + 1)
+        } else if (weekResult.tied) {
+          cumulativeTies.set(team.team_key, (cumulativeTies.get(team.team_key) || 0) + 1)
+        } else {
+          cumulativeLosses.set(team.team_key, (cumulativeLosses.get(team.team_key) || 0) + 1)
+        }
+        
+        // Track points for tiebreakers
+        const points = weekResult.points || 0
+        cumulativePoints.set(team.team_key, (cumulativePoints.get(team.team_key) || 0) + points)
+      }
+    })
+    
+    // Build standings for this week based on cumulative record
+    const weekStandings = teams.map(team => ({
+      team_key: team.team_key,
+      name: team.name,
+      wins: cumulativeWins.get(team.team_key) || 0,
+      losses: cumulativeLosses.get(team.team_key) || 0,
+      ties: cumulativeTies.get(team.team_key) || 0,
+      points_for: cumulativePoints.get(team.team_key) || 0
+    })).sort((a, b) => {
+      // Sort by win percentage, then by total points as tiebreaker
+      const aWinPct = a.wins / Math.max(1, a.wins + a.losses + a.ties)
+      const bWinPct = b.wins / Math.max(1, b.wins + b.losses + b.ties)
+      if (Math.abs(aWinPct - bWinPct) < 0.001) {
+        return b.points_for - a.points_for
+      }
+      return bWinPct - aWinPct
+    })
+    
+    weekStandings.forEach((t, idx) => (t as any).rank = idx + 1)
+    standings.set(week, weekStandings)
+  }
+  
+  weeklyStandings.value = standings
+  console.log(`[Standings] Built REAL standings for ${standings.size} weeks from actual matchup data`)
+  
+  // Debug: show sample
+  if (standings.size > 0) {
+    const lastWeek = Math.max(...standings.keys())
+    const lastWeekStandings = standings.get(lastWeek)
+    if (lastWeekStandings && lastWeekStandings.length > 0) {
+      console.log(`[Standings] Week ${lastWeek} sample:`, lastWeekStandings.slice(0, 3).map(t => `${t.name}: ${t.wins}-${t.losses}`))
+    }
+  }
+}
+
+// DEPRECATED: This function creates FAKE data - only use as absolute last resort
 function generateStandingsProgression(startWeek: number, endWeek: number) {
+  console.warn('[Standings] WARNING: Using SIMULATED standings - this should only happen as a fallback!')
+  
   const standings = new Map<number, any[]>()
   const numWeeks = endWeek - startWeek + 1
   
@@ -3585,8 +3704,7 @@ function generateStandingsProgression(startWeek: number, endWeek: number) {
   for (let week = startWeek; week <= endWeek; week++) {
     const weekProgress = (week - startWeek + 1) / numWeeks
     
-    // Calculate intermediate standings
-    // Earlier weeks have more variance, later weeks converge to final standings
+    // Calculate intermediate standings - proportional to progress
     const weekStandings = finalStandings.map(team => {
       const finalWins = team.wins || 0
       const finalLosses = team.losses || 0
@@ -3608,24 +3726,12 @@ function generateStandingsProgression(startWeek: number, endWeek: number) {
       return bWinPct - aWinPct
     })
     
-    // Add some variance in early weeks
-    if (weekProgress < 0.3) {
-      // Shuffle a bit in early weeks
-      for (let i = 0; i < weekStandings.length - 1; i++) {
-        if (Math.random() < 0.3) {
-          const temp = weekStandings[i]
-          weekStandings[i] = weekStandings[i + 1]
-          weekStandings[i + 1] = temp
-        }
-      }
-    }
-    
     weekStandings.forEach((t, idx) => (t as any).rank = idx + 1)
     standings.set(week, weekStandings)
   }
   
   weeklyStandings.value = standings
-  console.log(`Generated standings for ${standings.size} weeks`)
+  console.log(`[Standings] Generated SIMULATED standings for ${standings.size} weeks (NOT REAL DATA)`)
 }
 
 // Load all data for Yahoo
@@ -3975,7 +4081,7 @@ async function loadEspnData() {
       }
     }
     
-    // Generate standings progression
+    // Build standings from REAL matchup data (not simulated)
     loadingStatus.value = 'Building standings chart...'
     const yahooLeagueData = Array.isArray(leagueStore.yahooLeague) ? leagueStore.yahooLeague[0] : leagueStore.yahooLeague
     const endWeek = yahooLeagueData?.end_week || 25
@@ -3985,7 +4091,8 @@ async function loadEspnData() {
     // Only show weeks up to current week (not future weeks)
     const chartEndWeek = isSeasonComplete.value ? endWeek : Math.min(currWeek, endWeek)
     
-    generateStandingsProgression(startWeek, chartEndWeek)
+    // Use REAL matchup data to build standings
+    buildStandingsFromRealMatchups(startWeek, chartEndWeek)
     buildChart()
     
     loadingStatus.value = ''
