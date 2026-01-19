@@ -2088,11 +2088,13 @@ export class EspnFantasyService {
     
     // Determine seasons to try based on time of year
     // For sports that haven't started their new season yet, check previous year first
-    const seasonsToTry = season ? [season] : [currentYear, currentYear - 1]
+    const seasonsToTry = season ? [season] : [currentYear, currentYear - 1, currentYear - 2]
     
     const sports: Sport[] = ['football', 'baseball', 'basketball', 'hockey']
     
     console.log(`[ESPN] Detecting sport for league ${leagueId}, trying seasons: ${seasonsToTry.join(', ')}...`)
+    
+    let lastError: string = ''
     
     for (const targetSeason of seasonsToTry) {
       for (const sport of sports) {
@@ -2105,6 +2107,8 @@ export class EspnFantasyService {
           }
         } catch (error: any) {
           const errorMsg = error.message || ''
+          lastError = errorMsg
+          console.log(`[ESPN] ${sport} ${targetSeason} error:`, errorMsg)
           
           // 403 means private league in that sport - we found it!
           if (errorMsg.includes('403') || errorMsg.includes('private')) {
@@ -2133,12 +2137,12 @@ export class EspnFantasyService {
             }
           }
           // 404 or other errors - keep trying
-          console.log(`[ESPN] ${sport} ${targetSeason}: not found`)
+          console.log(`[ESPN] ${sport} ${targetSeason}: not found (${errorMsg})`)
         }
       }
     }
     
-    console.log(`[ESPN] Could not find league ${leagueId} in any sport/season combination`)
+    console.log(`[ESPN] Could not find league ${leagueId} in any sport/season combination. Last error: ${lastError}`)
     return null
   }
 

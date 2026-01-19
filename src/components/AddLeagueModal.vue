@@ -1001,7 +1001,7 @@ async function validateEspnLeague() {
     console.log('[ESPN] Discovery result:', discovered)
     
     if (!discovered) {
-      errorMessage.value = 'Could not find this league. Please check the League ID and make sure it\'s a public league.'
+      errorMessage.value = 'Could not find this league. Please check the League ID and make sure it\'s a public league. Check the browser console for more details.'
       return
     }
     
@@ -1052,6 +1052,10 @@ async function validateEspnLeague() {
     if (err.message?.includes('private') || err.message?.includes('403') || err.message?.includes('401')) {
       espnNeedsCredentials.value = true
       errorMessage.value = ''
+    } else if (err.message?.includes('Not authenticated') || err.message?.includes('sign in')) {
+      errorMessage.value = 'Please sign in to add ESPN leagues.'
+    } else if (err.message?.includes('timed out')) {
+      errorMessage.value = 'Request timed out. ESPN servers may be slow. Please try again.'
     } else {
       errorMessage.value = err.message || 'An error occurred. Please try again.'
     }
