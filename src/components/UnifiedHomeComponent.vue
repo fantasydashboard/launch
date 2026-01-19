@@ -1220,17 +1220,78 @@ const teamsWithStats = computed(() => {
     
     let all_play_wins = 0
     let all_play_losses = 0
+    let all_play_ties = 0
     
     if (isPointsLeague.value) {
-      // For points leagues, calculate all-play based on points comparison
-      // Count how many teams this team would beat based on points_for
-      const teamPoints = team.points_for || 0
-      for (const opponent of leagueStore.yahooTeams) {
-        if (opponent.team_key === team.team_key) continue
-        const oppPoints = opponent.points_for || 0
-        if (teamPoints > oppPoints) all_play_wins++
-        else if (teamPoints < oppPoints) all_play_losses++
-        // ties split evenly
+      // For points leagues, calculate all-play week by week
+      // For each week, compare this team's score against every other team's score
+      
+      // Get weekly scores for this team
+      const teamWeeklyScores = espnWeeklyScores.value.get(team.team_key)
+      
+      if (teamWeeklyScores && teamWeeklyScores.size > 0) {
+        // ESPN path: use espnWeeklyScores
+        teamWeeklyScores.forEach((teamScore, week) => {
+          // Compare against every other team for this week
+          for (const opponent of leagueStore.yahooTeams) {
+            if (opponent.team_key === team.team_key) continue
+            const oppWeeklyScores = espnWeeklyScores.value.get(opponent.team_key)
+            const oppScore = oppWeeklyScores?.get(week) || 0
+            
+            if (teamScore > oppScore) all_play_wins++
+            else if (teamScore < oppScore) all_play_losses++
+            else all_play_ties++
+          }
+        })
+      } else {
+        // Yahoo path: use weeklyMatchupResults which has points per week
+        const teamMatchupResults = weeklyMatchupResults.value.get(team.team_key)
+        
+        if (teamMatchupResults && teamMatchupResults.size > 0) {
+          // Build a map of week -> score for all teams first
+          const allTeamScoresByWeek = new Map<string, Map<number, number>>()
+          
+          for (const t of leagueStore.yahooTeams) {
+            const tResults = weeklyMatchupResults.value.get(t.team_key)
+            if (tResults) {
+              const scoreMap = new Map<number, number>()
+              tResults.forEach((result, week) => {
+                scoreMap.set(week, result.points || 0)
+              })
+              allTeamScoresByWeek.set(t.team_key, scoreMap)
+            }
+          }
+          
+          // Now calculate all-play using weekly scores
+          const thisTeamScores = allTeamScoresByWeek.get(team.team_key)
+          if (thisTeamScores) {
+            thisTeamScores.forEach((teamScore, week) => {
+              for (const opponent of leagueStore.yahooTeams) {
+                if (opponent.team_key === team.team_key) continue
+                const oppScores = allTeamScoresByWeek.get(opponent.team_key)
+                const oppScore = oppScores?.get(week) || 0
+                
+                if (teamScore > oppScore) all_play_wins++
+                else if (teamScore < oppScore) all_play_losses++
+                else all_play_ties++
+              }
+            })
+          }
+        } else {
+          // Fallback: estimate from total points (less accurate but better than nothing)
+          // This gives "power ranking" style result based on season totals
+          const teamPoints = team.points_for || 0
+          const weeksPlayed = (team.wins || 0) + (team.losses || 0) + (team.ties || 0)
+          
+          for (const opponent of leagueStore.yahooTeams) {
+            if (opponent.team_key === team.team_key) continue
+            const oppPoints = opponent.points_for || 0
+            // Estimate weekly comparison based on average
+            if (teamPoints > oppPoints) all_play_wins += weeksPlayed
+            else if (teamPoints < oppPoints) all_play_losses += weeksPlayed
+            else all_play_ties += weeksPlayed
+          }
+        }
       }
     } else {
       // For H2H Categories, wins/losses from Yahoo ARE cumulative category wins
@@ -1247,7 +1308,8 @@ const teamsWithStats = computed(() => {
     const matchupWins = team.wins ?? 0
     const matchupLosses = team.losses ?? 0
     const totalMatchups = matchupWins + matchupLosses
-    const expectedMatchupWinPct = totalMatchups > 0 ? all_play_wins / Math.max(1, all_play_wins + all_play_losses) : 0.5
+    const totalAllPlay = all_play_wins + all_play_losses + all_play_ties
+    const expectedMatchupWinPct = totalAllPlay > 0 ? all_play_wins / totalAllPlay : 0.5
     const expectedMatchupWins = expectedMatchupWinPct * totalMatchups
     const luckScore = matchupWins - expectedMatchupWins
     
@@ -1263,6 +1325,7 @@ const teamsWithStats = computed(() => {
       ...team,
       all_play_wins,
       all_play_losses,
+      all_play_ties,
       transactions,
       categoryWins,
       totalCategoryWins: teamTotalCategoryWins.value.get(team.team_key) || 0,
@@ -1288,8 +1351,8 @@ const sortedTeams = computed(() => {
       aVal = (a.wins || 0) / Math.max(1, (a.wins || 0) + (a.losses || 0))
       bVal = (b.wins || 0) / Math.max(1, (b.wins || 0) + (b.losses || 0))
     } else if (sortColumn.value === 'allPlay') {
-      aVal = a.all_play_wins / Math.max(1, a.all_play_wins + a.all_play_losses)
-      bVal = b.all_play_wins / Math.max(1, b.all_play_wins + b.all_play_losses)
+      aVal = a.all_play_wins / Math.max(1, a.all_play_wins + a.all_play_losses + (a.all_play_ties || 0))
+      bVal = b.all_play_wins / Math.max(1, b.all_play_wins + b.all_play_losses + (b.all_play_ties || 0))
     } else if (sortColumn.value === 'pf') {
       aVal = a.points_for || 0
       bVal = b.points_for || 0
@@ -1318,7 +1381,7 @@ const sortedTeams = computed(() => {
   return teams
 })
 
-const defaultTeam = { name: 'N/A', logo_url: defaultAvatar, wins: 0, losses: 0, points_for: 0, all_play_wins: 0, all_play_losses: 0 }
+const defaultTeam = { name: 'N/A', logo_url: defaultAvatar, wins: 0, losses: 0, points_for: 0, all_play_wins: 0, all_play_losses: 0, all_play_ties: 0 }
 
 const leaders = computed(() => {
   const teams = teamsWithStats.value
@@ -2066,8 +2129,8 @@ function getAllPlayClass(team: any) {
   
   // Sort by all-play win percentage
   const sorted = [...teams].sort((a, b) => {
-    const aWinPct = a.all_play_wins / Math.max(1, a.all_play_wins + a.all_play_losses)
-    const bWinPct = b.all_play_wins / Math.max(1, b.all_play_wins + b.all_play_losses)
+    const aWinPct = a.all_play_wins / Math.max(1, a.all_play_wins + a.all_play_losses + (a.all_play_ties || 0))
+    const bWinPct = b.all_play_wins / Math.max(1, b.all_play_wins + b.all_play_losses + (b.all_play_ties || 0))
     return bWinPct - aWinPct
   })
   
