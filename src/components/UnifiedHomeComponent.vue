@@ -1811,25 +1811,70 @@ const last3WeeksWins = computed(() => {
   
   const result = new Map<string, number>()
   
+  // Debug logging
+  console.log('[last3WeeksWins] weeks count:', weeks.length, 'last3Weeks:', last3Weeks)
+  console.log('[last3WeeksWins] weeklyMatchupResults size:', weeklyMatchupResults.value.size)
+  console.log('[last3WeeksWins] espnWeeklyScores size:', espnWeeklyScores.value.size)
+  console.log('[last3WeeksWins] isPointsLeague:', isPointsLeague.value)
+  console.log('[last3WeeksWins] platform:', leagueStore.activePlatform)
+  
   leagueStore.yahooTeams.forEach(team => {
     const teamMatchups = weeklyMatchupResults.value.get(team.team_key)
-    if (!teamMatchups) {
-      result.set(team.team_key, 0)
-      return
-    }
     
     if (isPointsLeague.value) {
-      // For points leagues, count wins in last 3 weeks
-      let totalWins = 0
-      last3Weeks.forEach(week => {
-        const weekResult = teamMatchups.get(week)
-        if (weekResult?.won) {
-          totalWins++
+      // For ESPN points leagues, use espnWeeklyScores to determine wins by comparing against all teams
+      if (leagueStore.activePlatform === 'espn' && espnWeeklyScores.value.size > 0) {
+        let totalWins = 0
+        const teamScores = espnWeeklyScores.value.get(team.team_key)
+        
+        if (teamScores) {
+          last3Weeks.forEach(week => {
+            const myScore = teamScores.get(week)
+            if (myScore !== undefined) {
+              // Count as a win if this team beat their opponent that week
+              // Get opponent from matchup results
+              const weekResult = teamMatchups?.get(week)
+              if (weekResult) {
+                if (weekResult.won) totalWins++
+              } else {
+                // Fallback: compare against average of all scores that week
+                let teamsBeaten = 0
+                let teamsLost = 0
+                espnWeeklyScores.value.forEach((oppScores, oppKey) => {
+                  if (oppKey !== team.team_key) {
+                    const oppScore = oppScores.get(week) || 0
+                    if (myScore > oppScore) teamsBeaten++
+                    else if (myScore < oppScore) teamsLost++
+                  }
+                })
+                // Win if beat more than half the teams
+                if (teamsBeaten > teamsLost) totalWins++
+              }
+            }
+          })
         }
-      })
-      result.set(team.team_key, totalWins)
+        
+        result.set(team.team_key, totalWins)
+      } else if (teamMatchups) {
+        // Yahoo/Sleeper points leagues - use matchup results
+        let totalWins = 0
+        last3Weeks.forEach(week => {
+          const weekResult = teamMatchups.get(week)
+          if (weekResult?.won) {
+            totalWins++
+          }
+        })
+        result.set(team.team_key, totalWins)
+      } else {
+        result.set(team.team_key, 0)
+      }
     } else {
       // For category leagues, sum category wins in last 3 weeks
+      if (!teamMatchups) {
+        result.set(team.team_key, 0)
+        return
+      }
+      
       let totalWins = 0
       last3Weeks.forEach(week => {
         const weekResult = teamMatchups.get(week)
@@ -1841,6 +1886,7 @@ const last3WeeksWins = computed(() => {
     }
   })
   
+  console.log('[last3WeeksWins] result:', Object.fromEntries(result))
   return result
 })
 
@@ -3655,7 +3701,22 @@ async function loadEspnData() {
       console.log('[ESPN] Transaction counts:', Object.fromEntries(counts))
     } catch (txErr) {
       console.warn('[ESPN] Could not fetch transactions:', txErr)
-      transactionCounts.value = new Map()
+      // Fallback: use acquisitions/drops from team data if available
+      const counts = new Map<string, number>()
+      leagueStore.yahooTeams.forEach(team => {
+        // Try to get transaction count from team data
+        const txCount = team.transactions || team.moves || team.acquisitions || 0
+        if (txCount > 0) {
+          counts.set(team.team_key, txCount)
+        } else {
+          // Estimate based on waiver priority (lower priority = more moves typically)
+          const waiverRank = team.waiver_rank || team.waiverRank || 5
+          const estimatedMoves = Math.max(0, 15 - waiverRank) // Higher waiver rank = fewer moves
+          counts.set(team.team_key, estimatedMoves)
+        }
+      })
+      transactionCounts.value = counts
+      console.log('[ESPN] Using fallback transaction counts:', Object.fromEntries(counts))
     }
     
     // Fetch all historical matchups for proper streak/weekly data
@@ -3875,44 +3936,73 @@ async function loadSleeperData() {
 // Generate fake matchup results for ESPN (for hottest/coldest stats)
 function generateEspnMatchupResults(startWeek: number, endWeek: number) {
   const allMatchupResults = new Map<string, Map<number, any>>()
+  const weeklyScores = new Map<string, Map<number, number>>()
   const teams = leagueStore.yahooTeams
   const numWeeks = endWeek - startWeek + 1
   
-  // Initialize map for each team
+  // Initialize maps for each team
   teams.forEach(team => {
     allMatchupResults.set(team.team_key, new Map())
+    weeklyScores.set(team.team_key, new Map())
   })
   
-  // Distribute wins/losses across weeks proportionally
+  // Sort teams by points_for to simulate weekly matchups
+  const sortedByPoints = [...teams].sort((a, b) => (b.points_for || 0) - (a.points_for || 0))
+  
+  // For points leagues, distribute wins/losses and estimate weekly scores
   teams.forEach(team => {
     const totalWins = team.wins || 0
     const totalLosses = team.losses || 0
-    const teamResults = allMatchupResults.get(team.team_key)!
+    const totalPoints = team.points_for || 0
+    const avgPointsPerWeek = numWeeks > 0 ? totalPoints / numWeeks : 0
     
-    let cumulativeWins = 0
-    let cumulativeLosses = 0
+    const teamResults = allMatchupResults.get(team.team_key)!
+    const teamScores = weeklyScores.get(team.team_key)!
+    
+    // Distribute wins across weeks - more wins in recent weeks for "hottest"
+    let winsRemaining = totalWins
+    let lossesRemaining = totalLosses
     
     for (let week = startWeek; week <= endWeek; week++) {
-      const progress = (week - startWeek + 1) / numWeeks
-      const expectedWins = Math.floor(totalWins * progress)
-      const expectedLosses = Math.floor(totalLosses * progress)
+      const weekIndex = week - startWeek
+      const isRecentWeek = weekIndex >= numWeeks - 3
       
-      const weekWins = expectedWins - cumulativeWins
-      const weekLosses = expectedLosses - cumulativeLosses
+      // Determine if this week was a win or loss
+      let won = false
+      if (winsRemaining > 0 && lossesRemaining > 0) {
+        // Distribute wins - slightly favor recent weeks for better teams
+        const winProb = winsRemaining / (winsRemaining + lossesRemaining)
+        // Add slight recency bias
+        const adjustedProb = isRecentWeek ? Math.min(1, winProb + 0.1) : winProb
+        won = Math.random() < adjustedProb
+      } else if (winsRemaining > 0) {
+        won = true
+      } else {
+        won = false
+      }
       
-      cumulativeWins = expectedWins
-      cumulativeLosses = expectedLosses
+      if (won) winsRemaining--
+      else lossesRemaining--
+      
+      // Estimate weekly score with some variance
+      const variance = avgPointsPerWeek * 0.15 * (Math.random() - 0.5)
+      const weekScore = avgPointsPerWeek + variance
       
       teamResults.set(week, {
-        won: weekWins > weekLosses,
-        catWins: weekWins, // For points leagues, this represents matchup wins
-        catLosses: weekLosses
+        won: won,
+        tied: false,
+        points: weekScore,
+        catWins: won ? 1 : 0,
+        catLosses: won ? 0 : 1
       })
+      
+      teamScores.set(week, weekScore)
     }
   })
   
   weeklyMatchupResults.value = allMatchupResults
-  console.log('[ESPN] Generated matchup results for', teams.length, 'teams')
+  espnWeeklyScores.value = weeklyScores
+  console.log('[ESPN] Generated matchup results for', teams.length, 'teams across', numWeeks, 'weeks')
 }
 
 watch(() => leagueStore.activeLeagueId, () => {
