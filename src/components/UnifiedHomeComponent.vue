@@ -410,15 +410,20 @@
           <div 
             v-for="(team, idx) in sortedTeams" 
             :key="'avatar-' + team.team_key"
-            class="absolute pointer-events-none transition-all duration-300"
+            class="absolute cursor-pointer transition-opacity duration-200"
+            :class="{ 'opacity-30': standingsHoveredTeamKey && standingsHoveredTeamKey !== team.team_key }"
             :style="getChartAvatarStyle(team)"
+            @mouseenter="standingsHoveredTeamKey = team.team_key"
+            @mouseleave="standingsHoveredTeamKey = null"
           >
             <div class="relative">
               <img 
                 :src="getLogoUrl(team.logo_url)" 
                 :alt="team.name"
-                class="w-6 h-6 rounded-full ring-2 object-cover"
-                :class="team.is_my_team ? 'ring-yellow-500' : 'ring-dark-border'"
+                class="w-6 h-6 rounded-full object-cover"
+                :style="{ 
+                  boxShadow: `0 0 0 2px ${team.is_my_team ? '#F5C451' : getStandingsTeamColor(team)}`
+                }"
                 @error="handleImageError"
               />
               <div v-if="team.is_my_team" class="absolute -top-0.5 -right-0.5 w-3 h-3 bg-yellow-500 rounded-full flex items-center justify-center">
@@ -448,6 +453,8 @@
             v-for="stat in quickStats" 
             :key="stat.label" 
             @click="openQuickStatModal(stat.type)"
+            @mouseenter="stat.team && (standingsHoveredTeamKey = stat.team.team_key)"
+            @mouseleave="standingsHoveredTeamKey = null"
             class="flex items-center gap-3 p-3 rounded-lg bg-dark-border/20 hover:bg-dark-border/40 cursor-pointer transition-colors group"
           >
             <div class="w-10 h-10 rounded-full overflow-hidden bg-dark-border flex-shrink-0">
@@ -1053,6 +1060,7 @@ const avatarPositions = ref<Map<string, { top: number, right: number }>>(new Map
 // Chart
 const chartSeries = ref<any[]>([])
 const chartOptions = ref<any>(null)
+const standingsHoveredTeamKey = ref<string | null>(null)
 
 // Data
 const transactionCounts = ref<Map<string, number>>(new Map())
@@ -1335,9 +1343,11 @@ const teamsWithStats = computed(() => {
     // Falls back to Yahoo's rank if weeklyStandings hasn't loaded yet
     const regularSeasonRank = regularSeasonRanks.value.get(team.team_key) || team.rank || 999
     
-    // Playoff finish: Only set if season is complete, based on Yahoo's final rank
+    // Playoff finish: Only set if season is complete
     // 1 = Champion (🏆), 2 = Runner-up (🥈), 3 = Third place (🥉)
-    const playoffFinish = isSeasonComplete.value && team.rank && team.rank <= 3 ? team.rank : null
+    // Use team.rank first (Yahoo's final rank), fallback to regularSeasonRank for ESPN/Sleeper
+    const finalRank = team.rank || regularSeasonRank
+    const playoffFinish = isSeasonComplete.value && finalRank && finalRank <= 3 ? finalRank : null
     
     return {
       ...team,
@@ -2024,6 +2034,17 @@ function getChartAvatarStyle(team: any): Record<string, string> {
   }
 }
 
+// Get color for team in standings chart (matches line colors)
+function getStandingsTeamColor(team: any): string {
+  const teamColors = ['#F59E0B', '#10B981', '#3B82F6', '#EF4444', '#8B5CF6', '#EC4899', '#06B6D4', '#F97316', '#84CC16', '#6366F1', '#14B8A6', '#F43F5E']
+  // Find the team's original index in yahooTeams array (this is how buildChart assigns colors)
+  const originalIdx = leagueStore.yahooTeams.findIndex((t: any) => t.team_key === team.team_key)
+  if (originalIdx === -1) return teamColors[0]
+  // User's team gets yellow
+  if (team.is_my_team) return '#F5C451'
+  return teamColors[originalIdx % teamColors.length]
+}
+
 // Open team detail modal
 function openTeamDetailModal(team: any) {
   selectedTeamDetail.value = team
@@ -2310,14 +2331,45 @@ function buildChart() {
   
   const teamColors = ['#F59E0B', '#10B981', '#3B82F6', '#EF4444', '#8B5CF6', '#EC4899', '#06B6D4', '#F97316', '#84CC16', '#6366F1', '#14B8A6', '#F43F5E']
   
-  const series = leagueStore.yahooTeams.map((team, idx) => {
+  // Get the index of the hovered team
+  const hoveredIdx = standingsHoveredTeamKey.value 
+    ? leagueStore.yahooTeams.findIndex((t: any) => t.team_key === standingsHoveredTeamKey.value)
+    : -1
+  
+  // Get colors for each team - faded when another team is hovered
+  const colors = leagueStore.yahooTeams.map((team: any, idx: number) => {
+    const baseColor = team.is_my_team ? '#F5C451' : teamColors[idx % teamColors.length]
+    // If someone is hovered and it's not this team, fade it
+    if (hoveredIdx !== -1 && idx !== hoveredIdx) {
+      // Convert hex to rgba with low opacity
+      const r = parseInt(baseColor.slice(1, 3), 16)
+      const g = parseInt(baseColor.slice(3, 5), 16)
+      const b = parseInt(baseColor.slice(5, 7), 16)
+      return `rgba(${r}, ${g}, ${b}, 0.2)`
+    }
+    return baseColor
+  })
+  
+  // Stroke widths - hovered line is thicker
+  const strokeWidths = leagueStore.yahooTeams.map((_: any, idx: number) => {
+    if (hoveredIdx === -1) return 2  // No hover, all same
+    return idx === hoveredIdx ? 3 : 2
+  })
+  
+  // Marker sizes - only show markers for hovered team
+  const markerSizes = leagueStore.yahooTeams.map((_: any, idx: number) => {
+    if (hoveredIdx === -1) return 0  // No hover, no markers
+    return idx === hoveredIdx ? 12 : 0  // Only hovered team shows markers
+  })
+  
+  const series = leagueStore.yahooTeams.map((team: any, idx: number) => {
     const data = weeks.map(week => {
       const weekData = weeklyStandings.value.get(week) || []
       const teamStanding = weekData.find((t: any) => t.team_key === team.team_key)
       return teamStanding?.rank || leagueStore.yahooTeams.length
     })
     
-    return { name: team.name, data, color: teamColors[idx % teamColors.length] }
+    return { name: team.name, data, color: colors[idx] }
   })
   
   chartSeries.value = series
@@ -2328,14 +2380,35 @@ function buildChart() {
       background: 'transparent', 
       toolbar: { show: false }, 
       zoom: { enabled: false }, 
-      animations: { enabled: true, speed: 500 },
+      animations: { enabled: false },
       events: {
         mounted: () => setTimeout(updateAvatarPositions, 100),
         updated: () => setTimeout(updateAvatarPositions, 100)
       }
     },
-    stroke: { curve: 'smooth', width: 3 },
-    markers: { size: 4, strokeWidth: 0 },
+    colors: colors,
+    stroke: { curve: 'smooth', width: strokeWidths },
+    markers: { 
+      size: markerSizes,
+      strokeWidth: 0,
+      hover: { size: 0 }
+    },
+    dataLabels: {
+      enabled: hoveredIdx !== -1,
+      enabledOnSeries: hoveredIdx !== -1 ? [hoveredIdx] : [],
+      formatter: function(val: number) {
+        return val.toString()
+      },
+      style: {
+        fontSize: '10px',
+        fontWeight: 'bold',
+        colors: ['#fff']
+      },
+      background: {
+        enabled: false
+      },
+      offsetY: 0
+    },
     xaxis: {
       categories: weeks.map(w => `Wk ${w}`),
       labels: { style: { colors: '#9CA3AF', fontSize: '11px' } },
@@ -2351,40 +2424,7 @@ function buildChart() {
     },
     grid: { borderColor: '#374151', strokeDashArray: 3, padding: { right: 50 } },
     legend: { show: false },
-    tooltip: {
-      theme: 'dark',
-      shared: true,
-      intersect: false,
-      custom: function({ series: seriesData, dataPointIndex, w }: any) {
-        // Get all teams with their ranks at this week
-        const teamsWithRanks = leagueStore.yahooTeams.map((team: any, idx: number) => ({
-          name: team.name,
-          rank: seriesData[idx]?.[dataPointIndex] || leagueStore.yahooTeams.length,
-          color: w.globals.colors[idx],
-          isMyTeam: team.is_my_team
-        }))
-        
-        // Sort by rank (ascending - #1 first)
-        teamsWithRanks.sort((a: any, b: any) => a.rank - b.rank)
-        
-        const weekLabel = w.globals.categoryLabels?.[dataPointIndex] || `Week ${dataPointIndex + 1}`
-        
-        let html = `<div class="apexcharts-tooltip-title" style="font-weight: bold; padding: 6px 10px; background: #1f2937; border-bottom: 1px solid #374151;">${weekLabel}</div>`
-        html += `<div style="padding: 6px 10px; max-height: 300px; overflow-y: auto;">`
-        
-        teamsWithRanks.forEach((team: any) => {
-          const highlight = team.isMyTeam ? 'font-weight: bold; color: #F5C451;' : ''
-          html += `<div style="display: flex; align-items: center; gap: 8px; padding: 3px 0; ${highlight}">
-            <span style="color: ${team.color}; font-size: 16px;">●</span>
-            <span style="min-width: 24px; color: #9ca3af;">#${team.rank}</span>
-            <span>${team.name}</span>
-          </div>`
-        })
-        
-        html += `</div>`
-        return html
-      }
-    }
+    tooltip: { enabled: false }  // Disable tooltip since we show markers with labels
   }
 }
 
@@ -4204,6 +4244,14 @@ function generateEspnMatchupResults(startWeek: number, endWeek: number) {
   console.warn('[ESPN FALLBACK] For accurate data, check that ESPN API is accessible')
 }
 
+// Watch for hover changes to update chart
+watch(standingsHoveredTeamKey, () => {
+  // Rebuild chart with new hover state
+  if (weeklyStandings.value.size > 0) {
+    buildChart()
+  }
+})
+
 watch(() => leagueStore.activeLeagueId, () => {
   if (leagueStore.activePlatform === 'yahoo') loadAllData()
   if (leagueStore.activePlatform === 'espn') loadEspnData()
@@ -4255,3 +4303,17 @@ onMounted(() => {
   window.addEventListener('resize', checkScrollHint)
 })
 </script>
+
+<style scoped>
+/* Standings chart - make lines easier to hover */
+:deep(.apexcharts-series path) {
+  cursor: pointer;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+/* Ensure tooltip is always on top */
+:deep(.apexcharts-tooltip) {
+  z-index: 100;
+}
+</style>
