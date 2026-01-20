@@ -393,7 +393,7 @@
               :class="[
                 'rounded-xl transition-all overflow-hidden cursor-pointer',
                 team.is_my_team 
-                  ? 'bg-primary/10 border border-primary/30 hover:bg-primary/15' 
+                  ? 'bg-yellow-500/10 border border-yellow-500/30 hover:bg-yellow-500/15' 
                   : 'border border-dark-border/30 hover:border-dark-border/50 hover:bg-dark-border/10'
               ]"
               @click="openProjectedTeamModal(team)"
@@ -406,7 +406,7 @@
                   <div class="w-8 text-center">
                     <span :class="[
                       'font-bold text-lg',
-                      team.is_my_team ? 'text-primary' : 'text-dark-textMuted'
+                      team.is_my_team ? 'text-yellow-400' : 'text-dark-textMuted'
                     ]">{{ idx + 1 }}</span>
                   </div>
                   
@@ -420,18 +420,18 @@
                         decoding="async"
                         :class="[
                           'w-8 h-8 rounded-full ring-2 object-cover',
-                          team.is_my_team ? 'ring-primary' : 'ring-dark-border'
+                          team.is_my_team ? 'ring-yellow-500' : 'ring-dark-border'
                         ]"
                         @error="handleImageError"
                       />
-                      <div v-if="team.is_my_team" class="absolute -top-1 -right-1 w-4 h-4 bg-primary rounded-full flex items-center justify-center">
+                      <div v-if="team.is_my_team" class="absolute -top-1 -right-1 w-4 h-4 bg-yellow-500 rounded-full flex items-center justify-center">
                         <span class="text-[8px] text-gray-900 font-bold">★</span>
                       </div>
                     </div>
                     <div class="flex items-center gap-1">
                       <span :class="[
                         'font-medium text-sm truncate',
-                        team.is_my_team ? 'text-primary' : 'text-dark-text'
+                        team.is_my_team ? 'text-yellow-400' : 'text-dark-text'
                       ]">{{ team.name }}</span>
                       <svg class="w-4 h-4 text-dark-textMuted" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
@@ -466,7 +466,7 @@
                   <div class="w-20 text-right">
                     <span :class="[
                       'font-bold text-lg',
-                      team.is_my_team ? 'text-primary' : 'text-dark-text'
+                      team.is_my_team ? 'text-yellow-400' : 'text-dark-text'
                     ]">{{ team.rosTotal?.toFixed(0) || 0 }}</span>
                   </div>
                 </div>
@@ -477,7 +477,7 @@
                     <div class="w-6 text-center">
                       <span :class="[
                         'font-bold text-base',
-                        team.is_my_team ? 'text-primary' : 'text-dark-textMuted'
+                        team.is_my_team ? 'text-yellow-400' : 'text-dark-textMuted'
                       ]">{{ idx + 1 }}</span>
                     </div>
                     <div class="flex items-center gap-2 flex-1 min-w-0">
@@ -488,19 +488,19 @@
                         decoding="async"
                         :class="[
                           'w-8 h-8 rounded-full ring-2 object-cover',
-                          team.is_my_team ? 'ring-primary' : 'ring-dark-border'
+                          team.is_my_team ? 'ring-yellow-500' : 'ring-dark-border'
                         ]"
                         @error="handleImageError"
                       />
                       <span :class="[
                         'font-medium text-sm truncate',
-                        team.is_my_team ? 'text-primary' : 'text-dark-text'
+                        team.is_my_team ? 'text-yellow-400' : 'text-dark-text'
                       ]">{{ team.name }}</span>
                     </div>
                     <div class="text-right flex-shrink-0 flex items-center gap-2">
                       <span :class="[
                         'font-bold text-lg',
-                        team.is_my_team ? 'text-primary' : 'text-dark-text'
+                        team.is_my_team ? 'text-yellow-400' : 'text-dark-text'
                       ]">{{ team.rosTotal?.toFixed(0) || 0 }}</span>
                       <svg class="w-4 h-4 text-dark-textMuted" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
@@ -579,7 +579,7 @@
                   :class="[
                     'transition-colors border-b border-dark-border/30',
                     team.is_my_team 
-                      ? 'bg-primary/10 hover:bg-primary/15 border-l-4 border-l-primary' 
+                      ? 'bg-yellow-500/10 hover:bg-yellow-500/15 border-l-4 border-l-yellow-500' 
                       : 'hover:bg-dark-border/20'
                   ]"
                 >
@@ -593,17 +593,17 @@
                           decoding="async"
                           :class="[
                             'w-10 h-10 rounded-full ring-2 object-cover',
-                            team.is_my_team ? 'ring-primary' : 'ring-dark-border'
+                            team.is_my_team ? 'ring-yellow-500' : 'ring-dark-border'
                           ]"
                           @error="handleImageError"
                         />
-                        <div v-if="team.is_my_team" class="absolute -top-1 -right-1 w-4 h-4 bg-primary rounded-full flex items-center justify-center shadow-lg">
+                        <div v-if="team.is_my_team" class="absolute -top-1 -right-1 w-4 h-4 bg-yellow-500 rounded-full flex items-center justify-center shadow-lg">
                           <span class="text-[10px] text-gray-900 font-bold">★</span>
                         </div>
                       </div>
                       <span :class="[
                         'font-semibold',
-                        team.is_my_team ? 'text-primary' : 'text-dark-text'
+                        team.is_my_team ? 'text-yellow-400' : 'text-dark-text'
                       ]">{{ team.name }}</span>
                     </div>
                   </td>
@@ -618,7 +618,7 @@
                   <td class="py-3 px-4 text-center">
                     <span :class="[
                       'font-semibold text-base',
-                      team.is_my_team ? 'text-primary' : 'text-dark-text'
+                      team.is_my_team ? 'text-yellow-400' : 'text-dark-text'
                     ]">
                       {{ team.rosTotal?.toFixed(0) || 0 }}
                     </span>
@@ -921,7 +921,7 @@
                   :src="selectedProjectedTeam.logo_url || defaultAvatar" 
                   :alt="selectedProjectedTeam.name"
                   class="w-12 h-12 rounded-full ring-2 object-cover"
-                  :class="selectedProjectedTeam.is_my_team ? 'ring-primary' : 'ring-dark-border'"
+                  :class="selectedProjectedTeam.is_my_team ? 'ring-yellow-500' : 'ring-dark-border'"
                 />
                 <div>
                   <h3 class="text-xl font-bold text-dark-text">{{ selectedProjectedTeam.name }}</h3>
@@ -1436,7 +1436,19 @@ const chartOptions = computed(() => {
       toolbar: { show: false }, 
       zoom: { enabled: false },
       events: {
-        // These events help with hover but ApexCharts handles most of it
+        mouseMove: function(event: any, chartContext: any, config: any) {
+          // When hovering over a data point or line, highlight that team
+          if (config.seriesIndex !== undefined && config.seriesIndex >= 0) {
+            const team = powerRankings.value[config.seriesIndex]
+            if (team) {
+              hoveredTeamKey.value = team.team_key
+            }
+          }
+        },
+        mouseLeave: function() {
+          // Clear hover when mouse leaves chart area
+          hoveredTeamKey.value = null
+        }
       }
     },
     theme: { mode: 'dark' },
@@ -1464,7 +1476,7 @@ const chartOptions = computed(() => {
     tooltip: { 
       theme: 'dark',
       shared: false,
-      intersect: true,
+      intersect: false,  // Allow tooltip to show when hovering near line
       custom: function({ series, seriesIndex, dataPointIndex, w }: any) {
         const teamName = w.config.series[seriesIndex].name
         const rank = series[seriesIndex][dataPointIndex]
@@ -1479,12 +1491,12 @@ const chartOptions = computed(() => {
             <div class="font-semibold text-white">${teamName}</div>
             <div class="text-sm text-gray-400">Week ${week}</div>
             <div class="text-lg font-bold" style="color: ${colors[seriesIndex]}">Rank: #${rank}</div>
-            ${weeklyPoints ? `<div class="text-sm text-cyan-400">${weeklyPoints.toFixed(1)} pts</div>` : ''}
+            ${weeklyPoints ? `<div class="text-sm text-primary">${weeklyPoints.toFixed(1)} pts</div>` : ''}
           </div>
         `
       }
     },
-    grid: { borderColor: '#374151', padding: { right: 50 } }
+    grid: { borderColor: '#374151', padding: { left: 10, right: 40 } }
   }
 })
 
@@ -1897,19 +1909,15 @@ function getRankBadgePosition(weekIdx: number, rank: number): Record<string, str
   const numTeams = powerRankings.value.length
   const chartHeight = 400
   
-  // Chart area calculations (matching ApexCharts internal layout)
-  // Chart area starts at ~8% from top and ends at ~90% (leaving room for x-axis)
-  const chartTopOffset = chartHeight * 0.08
-  const chartUsableHeight = chartHeight * 0.82
+  // Y position - use same calculation as getAvatarPosition
+  // Chart area: ~8% from top, ~82% usable height
+  const yPercent = ((rank - 1) / Math.max(1, numTeams - 1)) * 100
+  const top = (chartHeight * 0.08) + (chartHeight * 0.82 * yPercent / 100)
   
-  // Calculate Y position based on rank (1 = top, numTeams = bottom because reversed)
-  const yPercent = (rank - 1) / Math.max(1, numTeams - 1)
-  const top = chartTopOffset + (chartUsableHeight * yPercent)
-  
-  // Calculate X position - chart plotting area is roughly from 10% to 88% of width
-  // (leaving room for y-axis labels on left and padding on right for avatars)
+  // X position - ApexCharts draws data points from roughly 8% to 92% of the chart width
+  // when we have left padding of 10 and right padding of 40
   const xPercent = totalWeeks > 1 
-    ? 10 + (weekIdx / (totalWeeks - 1)) * 78  // 10% to 88%
+    ? 8 + (weekIdx / (totalWeeks - 1)) * 84  // 8% to 92%
     : 50  // center if only one week
   
   return {
