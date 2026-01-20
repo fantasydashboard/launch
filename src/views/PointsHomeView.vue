@@ -1512,48 +1512,63 @@ async function downloadStandings() {
   try {
     const html2canvas = (await import('html2canvas')).default
     
-    // CORS-friendly fallback for downloads (ui-avatars.com allows cross-origin)
-    const getDownloadFallbackAvatar = (teamName: string) => {
-      return `https://ui-avatars.com/api/?name=${encodeURIComponent(teamName)}&background=3a3d52&color=fff&size=64`
+    // Create placeholder using canvas (works without CORS)
+    const createPlaceholder = (teamName: string): string => {
+      const canvas = document.createElement('canvas')
+      canvas.width = 64
+      canvas.height = 64
+      const ctx = canvas.getContext('2d')
+      if (ctx) {
+        ctx.fillStyle = '#3a3d52'
+        ctx.beginPath()
+        ctx.arc(32, 32, 32, 0, Math.PI * 2)
+        ctx.fill()
+        ctx.fillStyle = '#facc15'
+        ctx.font = 'bold 24px sans-serif'
+        ctx.textAlign = 'center'
+        ctx.textBaseline = 'middle'
+        const initials = teamName?.split(' ').map(w => w[0]).join('').substring(0, 2).toUpperCase() || '??'
+        ctx.fillText(initials, 32, 34)
+      }
+      return canvas.toDataURL('image/png')
+    }
+    
+    // Load team image using Image object (handles CORS better than fetch)
+    const loadTeamImage = async (team: any): Promise<string> => {
+      if (!team.logo_url) return createPlaceholder(team.name)
+      
+      return new Promise((resolve) => {
+        const img = new Image()
+        img.crossOrigin = 'anonymous'
+        img.onload = () => {
+          try {
+            const canvas = document.createElement('canvas')
+            canvas.width = 64
+            canvas.height = 64
+            const ctx = canvas.getContext('2d')
+            if (ctx) {
+              ctx.beginPath()
+              ctx.arc(32, 32, 32, 0, Math.PI * 2)
+              ctx.closePath()
+              ctx.clip()
+              ctx.drawImage(img, 0, 0, 64, 64)
+            }
+            resolve(canvas.toDataURL('image/png'))
+          } catch {
+            resolve(createPlaceholder(team.name))
+          }
+        }
+        img.onerror = () => resolve(createPlaceholder(team.name))
+        setTimeout(() => resolve(createPlaceholder(team.name)), 3000) // Timeout fallback
+        img.src = team.logo_url
+      })
     }
     
     // Preload team images
     const imageMap = new Map<string, string>()
     await Promise.all(sortedTeams.value.map(async (team) => {
-      try {
-        // Try to fetch the team's logo
-        if (team.logo_url) {
-          const response = await fetch(team.logo_url, { mode: 'cors' })
-          if (response.ok) {
-            const blob = await response.blob()
-            const base64 = await new Promise<string>((resolve) => {
-              const reader = new FileReader()
-              reader.onloadend = () => resolve(reader.result as string)
-              reader.readAsDataURL(blob)
-            })
-            imageMap.set(team.team_key, base64)
-            return
-          }
-        }
-      } catch {
-        // CORS error or other fetch failure - try fallback
-      }
-      
-      // Fallback: use ui-avatars which is CORS-friendly
-      try {
-        const fallbackUrl = getDownloadFallbackAvatar(team.name || 'Team')
-        const response = await fetch(fallbackUrl)
-        const blob = await response.blob()
-        const base64 = await new Promise<string>((resolve) => {
-          const reader = new FileReader()
-          reader.onloadend = () => resolve(reader.result as string)
-          reader.readAsDataURL(blob)
-        })
-        imageMap.set(team.team_key, base64)
-      } catch {
-        // Even fallback failed - use empty string, image just won't show
-        imageMap.set(team.team_key, '')
-      }
+      const base64 = await loadTeamImage(team)
+      imageMap.set(team.team_key, base64)
     }))
     
     // Load logo
