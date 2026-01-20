@@ -1231,26 +1231,49 @@ function getTeamStats(teamKey: string): any {
 }
 
 function generateScoutingReport(teamStats: any, opponentStats: any): any {
-  const strengths = []
-  const weaknesses = []
+  const strengths: string[] = []
+  const weaknesses: string[] = []
   
+  // Scoring comparison
   if (teamStats.ppw > opponentStats.ppw) strengths.push(`Higher scoring (${teamStats.ppw.toFixed(1)} PPW)`)
   else weaknesses.push(`Lower scoring (${teamStats.ppw.toFixed(1)} PPW)`)
   
+  // Consistency comparison
   if (teamStats.stdDev < opponentStats.stdDev) strengths.push('More consistent week-to-week')
   else weaknesses.push('More volatile week-to-week')
   
+  // Ceiling comparison
   if (teamStats.highScore > opponentStats.highScore) strengths.push(`Higher ceiling (${teamStats.highScore.toFixed(0)} pts)`)
+  else if (teamStats.highScore < opponentStats.highScore) weaknesses.push(`Lower ceiling (${teamStats.highScore.toFixed(0)} pts)`)
   
-  if (teamStats.last3Avg > teamStats.ppw) strengths.push('Hot streak - trending up')
+  // Floor comparison
+  if (teamStats.lowScore > opponentStats.lowScore) strengths.push(`Higher floor (${teamStats.lowScore.toFixed(0)} pts)`)
+  else if (teamStats.lowScore < opponentStats.lowScore) weaknesses.push(`Lower floor (${teamStats.lowScore.toFixed(0)} pts)`)
+  
+  // Recent form trend
+  if (teamStats.last3Avg > teamStats.ppw * 1.05) strengths.push('Hot streak - trending up')
   else if (teamStats.last3Avg < teamStats.ppw * 0.9) weaknesses.push('Cold streak - trending down')
   
-  if (teamStats.wins > teamStats.losses) strengths.push('Winning record')
-  else if (teamStats.wins < teamStats.losses) weaknesses.push('Losing record')
+  // Record comparison
+  if (teamStats.wins > teamStats.losses) {
+    const winPct = teamStats.wins / (teamStats.wins + teamStats.losses)
+    if (winPct > 0.7) strengths.push(`Dominant record (${teamStats.wins}-${teamStats.losses})`)
+    else strengths.push('Winning record')
+  } else if (teamStats.wins < teamStats.losses) {
+    weaknesses.push('Losing record')
+  }
+  
+  // Total points comparison
+  if (teamStats.totalPoints > opponentStats.totalPoints) strengths.push('More total points scored')
+  else if (teamStats.totalPoints < opponentStats.totalPoints) weaknesses.push('Fewer total points scored')
+  
+  // Last 3 average comparison
+  if (teamStats.last3Avg > opponentStats.last3Avg) strengths.push(`Better recent form (${teamStats.last3Avg.toFixed(1)} last 3)`)
+  else if (teamStats.last3Avg < opponentStats.last3Avg) weaknesses.push(`Worse recent form (${teamStats.last3Avg.toFixed(1)} last 3)`)
   
   return {
-    strengths: strengths.slice(0, 3),
-    weaknesses: weaknesses.slice(0, 3),
+    strengths: strengths.slice(0, 5),
+    weaknesses: weaknesses.slice(0, 5),
     recentForm: teamStats.recentResults || []
   }
 }
@@ -1946,59 +1969,22 @@ async function generateMatchupImage(matchup: any, html2canvas: any) {
   const team1Color = '#06b6d4'
   const team2Color = '#f97316'
   
-  // Calculate win probability for this matchup
-  const team1Pts = matchup.team1?.points || 0
-  const team2Pts = matchup.team2?.points || 0
-  const totalPts = team1Pts + team2Pts
-  let winProb1 = 50
-  let winProb2 = 50
-  if (totalPts > 0) {
-    winProb1 = Math.min(95, Math.max(5, (team1Pts / totalPts) * 100))
-    winProb2 = 100 - winProb1
-  }
+  // Use the same win probability as the display (handles completed weeks correctly)
+  const winProb1 = winProbability.value.team1
+  const winProb2 = winProbability.value.team2
   
-  // Get scouting data
+  // Get scouting data - use the same function as display
   const team1Stats = getTeamStats(matchup.team1.team_key)
   const team2Stats = getTeamStats(matchup.team2.team_key)
   
-  // Build scouting report with strengths and weaknesses
-  const getScoutingReport = (stats: any): { strengths: string[], weaknesses: string[], recentForm: string[] } => {
-    const strengths: string[] = []
-    const weaknesses: string[] = []
-    
-    // Scoring analysis
-    if (stats.ppg > 120) strengths.push('Elite scoring offense')
-    else if (stats.ppg > 100) strengths.push('High-scoring team')
-    else if (stats.ppg < 80) weaknesses.push('Low scoring output')
-    else if (stats.ppg < 90) weaknesses.push('Below average scoring')
-    
-    // Record analysis
-    if (stats.winPct > 0.7) strengths.push('Dominant win rate')
-    else if (stats.winPct > 0.55) strengths.push('Strong winning record')
-    else if (stats.winPct < 0.35) weaknesses.push('Poor win percentage')
-    else if (stats.winPct < 0.45) weaknesses.push('Losing record')
-    
-    // Consistency analysis (simulated)
-    const variance = Math.random()
-    if (variance > 0.7) weaknesses.push('Volatile week-to-week')
-    else if (variance < 0.3) strengths.push('Consistent performer')
-    
-    // Generate recent form based on win percentage
-    const recentForm: string[] = []
-    for (let i = 0; i < 5; i++) {
-      recentForm.push(Math.random() < stats.winPct ? 'W' : 'L')
-    }
-    
-    return { strengths, weaknesses, recentForm }
-  }
-  
-  const team1Report = getScoutingReport(team1Stats)
-  const team2Report = getScoutingReport(team2Stats)
+  // Use the same scouting report function as the display
+  const team1Report = generateScoutingReport(team1Stats, team2Stats)
+  const team2Report = generateScoutingReport(team2Stats, team1Stats)
   
   // Build scouting report HTML (matching category league style)
   const buildScoutingHtml = (teamName: string, report: any, color: string, borderColor: string, bgRgba: string) => {
-    const strengths = report.strengths.slice(0, 2).map((s: string) => `<div style="font-size: 13px; color: #d1d5db; margin-bottom: 4px; line-height: 1.3;">✓ ${s}</div>`).join('')
-    const weaknesses = report.weaknesses.slice(0, 2).map((w: string) => `<div style="font-size: 13px; color: #d1d5db; margin-bottom: 4px; line-height: 1.3;">✗ ${w}</div>`).join('')
+    const strengths = report.strengths.slice(0, 4).map((s: string) => `<div style="font-size: 13px; color: #d1d5db; margin-bottom: 4px; line-height: 1.3;">✓ ${s}</div>`).join('')
+    const weaknesses = report.weaknesses.slice(0, 4).map((w: string) => `<div style="font-size: 13px; color: #d1d5db; margin-bottom: 4px; line-height: 1.3;">✗ ${w}</div>`).join('')
     const form = report.recentForm.map((r: string) => `
       <span style="display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; border-radius: 6px; font-size: 14px; font-weight: bold; margin-right: 4px; background: ${r === 'W' ? 'rgba(34, 197, 94, 0.3)' : r === 'L' ? 'rgba(239, 68, 68, 0.3)' : 'rgba(156, 163, 175, 0.3)'}; color: ${r === 'W' ? '#22c55e' : r === 'L' ? '#ef4444' : '#9ca3af'};">${r}</span>
     `).join('')
@@ -2020,22 +2006,11 @@ async function generateMatchupImage(matchup: any, html2canvas: any) {
     `
   }
   
-  // Build win probability trend chart SVG
-  const baseProb1 = 50
-  const generateProgressionData = () => {
-    const points = 7
-    const data: number[] = []
-    for (let i = 0; i < points; i++) {
-      const progress = i / (points - 1)
-      const val = baseProb1 + (winProb1 - baseProb1) * progress + (Math.random() - 0.5) * 8
-      data.push(Math.max(5, Math.min(95, val)))
-    }
-    data[points - 1] = winProb1 // Ensure final point is exact
-    return data
-  }
-  
-  const team1ChartData = generateProgressionData()
-  const team2ChartData = team1ChartData.map(v => 100 - v)
+  // Build win probability trend chart SVG using actual probabilityHistory data
+  // Get the chart data from the computed probability history
+  const chartData = probabilityHistory.value
+  const team1ChartData = chartData.map(h => h.team1)
+  const team2ChartData = chartData.map(h => h.team2)
   
   const chartWidth = 640
   const chartHeight = 140
