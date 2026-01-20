@@ -242,8 +242,8 @@
               </button>
             </div>
             <p class="card-subtitle mt-2">
-              <span v-if="isEspn">Monte Carlo simulation (5,000 iterations) based on season scoring patterns</span>
-              <span v-else>Based on current scores and season performance</span>
+              <span v-if="hasRealSnapshots">Historical win probability from daily snapshots</span>
+              <span v-else>Monte Carlo simulation (5,000 iterations) based on historical scoring patterns</span>
             </p>
           </div>
           <div class="card-body">
@@ -327,14 +327,14 @@
               <div class="flex items-center justify-center gap-2 mt-1">
                 <div v-if="hasRealSnapshots" class="flex items-center gap-1">
                   <span class="w-2 h-2 rounded-full bg-green-500"></span>
-                  <span class="text-[10px] text-green-400">Real Data</span>
+                  <span class="text-[10px] text-green-400">Real Snapshots</span>
                 </div>
                 <div v-else class="flex items-center gap-1">
-                  <span class="w-2 h-2 rounded-full bg-yellow-500"></span>
-                  <span class="text-[10px] text-yellow-400">Simulated</span>
+                  <span class="w-2 h-2 rounded-full bg-cyan-500"></span>
+                  <span class="text-[10px] text-cyan-400">Monte Carlo Reconstruction</span>
                 </div>
                 <span class="text-[10px] text-dark-textMuted">•</span>
-                <span class="text-[10px] text-dark-textMuted">Win probability changes throughout the week based on game results</span>
+                <span class="text-[10px] text-dark-textMuted">Win probability based on {{ hasRealSnapshots ? 'actual daily scores' : 'historical scoring patterns' }}</span>
               </div>
             </div>
 
@@ -608,6 +608,7 @@ import { useLeagueStore } from '@/stores/league'
 import { yahooService } from '@/services/yahoo'
 import { useAuthStore } from '@/stores/auth'
 import { matchupSnapshotsService, type MatchupSnapshot } from '@/services/matchupSnapshots'
+import { generateWinProbabilityHistory } from '@/services/dailyScoreReconstruction'
 import html2canvas from 'html2canvas'
 import LoadingSpinner from '@/components/LoadingSpinner.vue'
 
@@ -841,7 +842,7 @@ const matchupSnapshots = computed(() => {
 // Check if we have real snapshot data (not simulated)
 const hasRealSnapshots = computed(() => matchupSnapshots.value.length > 0)
 
-// Probability history for chart - uses REAL data when available, simulation otherwise
+// Probability history for chart - uses REAL data when available, reconstruction otherwise
 const probabilityHistory = computed(() => {
   if (!selectedMatchup.value?.team1 || !selectedMatchup.value?.team2) return []
   
@@ -905,125 +906,51 @@ const probabilityHistory = computed(() => {
     return history
   }
   
-  // No snapshots available - use simulation (for historical data before we started tracking)
-  console.log(`Using simulated data for matchup ${matchup.matchup_id} (no snapshots found), platform: ${leagueStore.activePlatform}`)
+  // No snapshots available - use Monte Carlo reconstruction
+  // This provides accurate simulations for both live and historical matchups
+  console.log(`Using Monte Carlo reconstruction for matchup ${matchup.matchup_id} (no snapshots), platform: ${leagueStore.activePlatform}`)
   
-  // Get current day (0 = Sunday, 1 = Monday, etc.)
+  // Determine current sport for daily weight distribution
+  const sport = leagueStore.currentSportType || 'baseball'
+  
+  // Get current day index for live matchups
   const jsDay = new Date().getDay()
-  // Convert to Monday-based index (Mon = 0, Sun = 6)
   const currentDayIndex = jsDay === 0 ? 6 : jsDay - 1
   
-  // Get team scores
-  const team1Score = matchup.team1.points || 0
-  const team2Score = matchup.team2.points || 0
-  const totalScore = team1Score + team2Score
+  // Use the reconstruction service for accurate Monte Carlo simulations
+  const reconstructedHistory = generateWinProbabilityHistory(
+    {
+      matchup_id: matchup.matchup_id,
+      team1: {
+        team_key: matchup.team1.team_key || '',
+        name: matchup.team1.name,
+        points: matchup.team1.points || 0
+      },
+      team2: {
+        team_key: matchup.team2.team_key || '',
+        name: matchup.team2.name,
+        points: matchup.team2.points || 0
+      },
+      status: matchup.status
+    },
+    sport,
+    allMatchupsHistory.value,
+    isCompleted ? undefined : currentDayIndex
+  )
   
-  // For ESPN leagues, use Monte Carlo simulation for more accurate probabilities
-  if (isEspn.value) {
-    console.log(`[ESPN] Running Monte Carlo simulation for matchup ${matchup.matchup_id}, completed: ${isCompleted}`)
-    const history = []
-    
-    for (let i = 0; i < 7; i++) {
-      // Run Monte Carlo with isCompleted flag for proper convergence
-      const mcResult = getMonteCarloWinProbability(matchup, i, isCompleted)
-      
-      if (isCompleted) {
-        // For completed matchups, chart shows progression to final result
-        // Sunday (i=6) will be exactly 100/0 from the simulation
-        history.push({
-          day: days[i],
-          team1: mcResult.team1,
-          team2: mcResult.team2,
-          isFuture: false,
-          isReal: true,
-          isMonteCarlo: true
-        })
-      } else {
-        // Live week
-        history.push({
-          day: days[i],
-          team1: mcResult.team1,
-          team2: mcResult.team2,
-          isFuture: i > currentDayIndex,
-          isReal: i <= currentDayIndex,
-          isMonteCarlo: true
-        })
-      }
+  // Convert to the expected format
+  return reconstructedHistory.map((item, i) => ({
+    day: item.dayName,
+    team1: item.team1WinProb,
+    team2: item.team2WinProb,
+    isFuture: !isCompleted && i > currentDayIndex,
+    isReal: !item.isEstimated,
+    isMonteCarlo: true,
+    points: {
+      team1: item.team1Points,
+      team2: item.team2Points
     }
-    
-    return history
-  }
-  
-  // Yahoo fallback - use simple simulation (no historical daily data available)
-  // Calculate current win probability based on actual scores
-  let currentProb = 50
-  if (totalScore > 0) {
-    currentProb = (team1Score / totalScore) * 100
-  }
-  
-  // For completed matchups, final day should be 100/0
-  const finalTeam1Prob = isCompleted 
-    ? (team1Score > team2Score ? 100 : (team1Score < team2Score ? 0 : 50))
-    : currentProb
-  
-  const history = []
-  
-  for (let i = 0; i < 7; i++) {
-    const dayProgress = (i + 1) / 7
-    
-    if (isCompleted) {
-      // Completed week - simulate progression toward final result
-      // Start at 50%, end at 100/0/50
-      const team1Prob = 50 + (finalTeam1Prob - 50) * dayProgress
-      
-      // Add some variance for days 1-5 to make it look realistic
-      const variance = i < 6 ? (Math.sin(i * 1.5) * 15 * (1 - dayProgress)) : 0
-      const adjustedProb = i === 6 ? finalTeam1Prob : Math.min(95, Math.max(5, team1Prob + variance))
-      
-      history.push({
-        day: days[i],
-        team1: adjustedProb,
-        team2: 100 - adjustedProb,
-        isFuture: false,
-        isReal: false
-      })
-    } else {
-      // Live week
-      if (i <= currentDayIndex) {
-        // Past/current days - show progression from 50 to current
-        const progressToNow = (i + 1) / (currentDayIndex + 1)
-        const team1Prob = 50 + (currentProb - 50) * progressToNow
-        
-        // Add slight variance for past days
-        const variance = i < currentDayIndex ? (Math.sin(i * 2) * 8) : 0
-        const adjustedProb = Math.min(95, Math.max(5, team1Prob + variance))
-        
-        history.push({
-          day: days[i],
-          team1: adjustedProb,
-          team2: 100 - adjustedProb,
-          isFuture: false,
-          isReal: false
-        })
-      } else {
-        // Future days - project toward current trajectory
-        // Assume current trend continues but with diminishing certainty
-        const futureProgress = (i - currentDayIndex) / (6 - currentDayIndex)
-        const projectedProb = currentProb + (currentProb - 50) * futureProgress * 0.3
-        const adjustedProb = Math.min(90, Math.max(10, projectedProb))
-        
-        history.push({
-          day: days[i],
-          team1: adjustedProb,
-          team2: 100 - adjustedProb,
-          isFuture: true,
-          isReal: false
-        })
-      }
-    }
-  }
-  
-  return history
+  }))
 })
 
 // Probability chart options
