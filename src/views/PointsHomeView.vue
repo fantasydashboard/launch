@@ -1512,7 +1512,25 @@ async function downloadStandings() {
   try {
     const html2canvas = (await import('html2canvas')).default
     
-    // Create placeholder using canvas (works without external requests)
+    // Load main UFD logo - EXACTLY like Power Rankings
+    const loadLogo = async (): Promise<string> => {
+      try {
+        const response = await fetch('/UFD_V5.png')
+        if (!response.ok) return ''
+        const blob = await response.blob()
+        return new Promise((resolve) => {
+          const reader = new FileReader()
+          reader.onloadend = () => resolve(reader.result as string)
+          reader.onerror = () => resolve('')
+          reader.readAsDataURL(blob)
+        })
+      } catch (e) {
+        console.warn('Failed to load logo:', e)
+        return ''
+      }
+    }
+    
+    // Helper to create placeholder avatar - EXACTLY like Power Rankings
     const createPlaceholder = (teamName: string): string => {
       const canvas = document.createElement('canvas')
       canvas.width = 64
@@ -1532,20 +1550,18 @@ async function downloadStandings() {
         ctx.textBaseline = 'middle'
         ctx.fillText(teamName.charAt(0).toUpperCase(), 32, 34)
       }
-      const result = canvas.toDataURL('image/png')
-      console.log(`[Download] createPlaceholder for ${teamName}: length=${result.length}`)
-      return result
+      return canvas.toDataURL('image/png')
     }
     
-    // Load team image - exactly like Power Rankings page
+    const logoBase64 = await loadLogo()
+    
+    // Load team image - EXACTLY like Power Rankings
     const loadTeamImage = async (team: any): Promise<string> => {
-      console.log(`[Download] loadTeamImage called for ${team.name}, logo_url: ${team.logo_url?.substring(0, 50)}...`)
       try {
         const img = new Image()
         img.crossOrigin = 'anonymous'
         return new Promise((resolve) => {
           img.onload = () => {
-            console.log(`[Download] Image loaded for ${team.name}`)
             try {
               const canvas = document.createElement('canvas')
               canvas.width = 64
@@ -1558,32 +1574,21 @@ async function downloadStandings() {
                 ctx.clip()
                 ctx.drawImage(img, 0, 0, 64, 64)
               }
-              const result = canvas.toDataURL('image/png')
-              console.log(`[Download] Canvas drawn for ${team.name}, result length: ${result.length}`)
-              resolve(result)
-            } catch (e) {
-              console.log(`[Download] Canvas error for ${team.name}:`, e)
+              resolve(canvas.toDataURL('image/png'))
+            } catch {
               resolve(createPlaceholder(team.name))
             }
           }
-          img.onerror = (e) => {
-            console.log(`[Download] Image error for ${team.name}:`, e)
-            resolve(createPlaceholder(team.name))
-          }
-          setTimeout(() => {
-            console.log(`[Download] Timeout for ${team.name}`)
-            resolve(createPlaceholder(team.name))
-          }, 3000)
+          img.onerror = () => resolve(createPlaceholder(team.name))
+          setTimeout(() => resolve(createPlaceholder(team.name)), 3000)
           img.src = team.logo_url || ''
         })
-      } catch (e) {
-        console.log(`[Download] Exception for ${team.name}:`, e)
+      } catch {
         return createPlaceholder(team.name)
       }
     }
     
-    // Pre-load all team images
-    console.log('[Download] Loading team images...')
+    // Pre-load all team images - EXACTLY like Power Rankings
     const imageMap = new Map<string, string>()
     const imagePromises = sortedTeams.value.map(async (team) => {
       const base64 = await loadTeamImage(team)
@@ -1594,21 +1599,6 @@ async function downloadStandings() {
     results.forEach(({ teamKey, base64 }) => {
       imageMap.set(teamKey, base64)
     })
-    console.log(`[Download] Loaded ${imageMap.size} team images`)
-    
-    // Load logo
-    let logoBase64 = ''
-    try {
-      const logoResponse = await fetch('/img/logo.png')
-      const logoBlob = await logoResponse.blob()
-      logoBase64 = await new Promise<string>((resolve) => {
-        const reader = new FileReader()
-        reader.onloadend = () => resolve(reader.result as string)
-        reader.readAsDataURL(logoBlob)
-      })
-    } catch (e) {
-      console.log('Could not load logo')
-    }
     
     // Create container
     const container = document.createElement('div')
