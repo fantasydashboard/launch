@@ -201,20 +201,45 @@
             />
             <!-- Team avatars at end of lines -->
             <div 
-              v-for="team in powerRankings" 
+              v-for="(team, idx) in powerRankings" 
               :key="'avatar-' + team.team_key"
-              class="absolute pointer-events-none" 
+              class="absolute cursor-pointer transition-opacity duration-200" 
+              :class="{ 'opacity-30': hoveredTeamKey && hoveredTeamKey !== team.team_key }"
               :style="getAvatarPosition(team)"
+              @mouseenter="hoveredTeamKey = team.team_key"
+              @mouseleave="hoveredTeamKey = null"
             >
               <div class="relative">
                 <img 
                   :src="team.logo_url || defaultAvatar" 
                   :alt="team.name"
-                  :class="['w-6 h-6 rounded-full ring-2 object-cover', team.is_my_team ? 'ring-yellow-500' : 'ring-cyan-500/70']"
+                  class="w-6 h-6 rounded-full ring-2 object-cover"
+                  :style="{ borderColor: team.is_my_team ? '#F5C451' : getTeamColor(idx) }"
+                  :class="team.is_my_team ? 'ring-yellow-500' : ''"
                   @error="handleImageError" 
                 />
                 <div v-if="team.is_my_team" class="absolute -top-0.5 -right-0.5 w-3 h-3 bg-yellow-500 rounded-full flex items-center justify-center">
                   <span class="text-[6px] text-gray-900 font-bold">★</span>
+                </div>
+              </div>
+            </div>
+            
+            <!-- Hover rank badges overlay -->
+            <div 
+              v-if="hoveredTeamKey"
+              class="absolute inset-0 pointer-events-none"
+            >
+              <div 
+                v-for="(rank, weekIdx) in getHoveredTeamRanks()" 
+                :key="'rank-badge-' + weekIdx"
+                class="absolute transform -translate-x-1/2 -translate-y-full"
+                :style="getRankBadgePosition(weekIdx, rank)"
+              >
+                <div 
+                  class="px-1.5 py-0.5 rounded text-[10px] font-bold text-white shadow-lg"
+                  :style="{ backgroundColor: getHoveredTeamColor() }"
+                >
+                  {{ getOrdinal(rank) }}
                 </div>
               </div>
             </div>
@@ -229,7 +254,11 @@
       <!-- Movers & Shakers -->
       <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <!-- Biggest Climber -->
-        <div class="card bg-gradient-to-br from-green-500/10 to-transparent border-green-500/20">
+        <div 
+          class="card bg-gradient-to-br from-green-500/10 to-transparent border-green-500/20 cursor-pointer transition-all hover:border-green-500/40"
+          @mouseenter="biggestClimber && (hoveredTeamKey = biggestClimber.team_key)"
+          @mouseleave="hoveredTeamKey = null"
+        >
           <div class="card-body">
             <div class="text-xs uppercase tracking-wider text-green-400 font-bold mb-3">🚀 Biggest Climber</div>
             <div v-if="biggestClimber" class="flex items-center gap-3">
@@ -250,7 +279,11 @@
         </div>
 
         <!-- Biggest Faller -->
-        <div class="card bg-gradient-to-br from-red-500/10 to-transparent border-red-500/20">
+        <div 
+          class="card bg-gradient-to-br from-red-500/10 to-transparent border-red-500/20 cursor-pointer transition-all hover:border-red-500/40"
+          @mouseenter="biggestFaller && (hoveredTeamKey = biggestFaller.team_key)"
+          @mouseleave="hoveredTeamKey = null"
+        >
           <div class="card-body">
             <div class="text-xs uppercase tracking-wider text-red-400 font-bold mb-3">📉 Biggest Faller</div>
             <div v-if="biggestFaller" class="flex items-center gap-3">
@@ -271,7 +304,11 @@
         </div>
 
         <!-- Most Consistent -->
-        <div class="card bg-gradient-to-br from-blue-500/10 to-transparent border-blue-500/20">
+        <div 
+          class="card bg-gradient-to-br from-blue-500/10 to-transparent border-blue-500/20 cursor-pointer transition-all hover:border-blue-500/40"
+          @mouseenter="mostConsistent && (hoveredTeamKey = mostConsistent.team_key)"
+          @mouseleave="hoveredTeamKey = null"
+        >
           <div class="card-body">
             <div class="text-xs uppercase tracking-wider text-blue-400 font-bold mb-3">🎯 Most Consistent</div>
             <div v-if="mostConsistent" class="flex items-center gap-3">
@@ -292,7 +329,11 @@
         </div>
 
         <!-- Most Volatile -->
-        <div class="card bg-gradient-to-br from-purple-500/10 to-transparent border-purple-500/20">
+        <div 
+          class="card bg-gradient-to-br from-purple-500/10 to-transparent border-purple-500/20 cursor-pointer transition-all hover:border-purple-500/40"
+          @mouseenter="mostVolatile && (hoveredTeamKey = mostVolatile.team_key)"
+          @mouseleave="hoveredTeamKey = null"
+        >
           <div class="card-body">
             <div class="text-xs uppercase tracking-wider text-purple-400 font-bold mb-3">🎢 Most Volatile</div>
             <div v-if="mostVolatile" class="flex items-center gap-3">
@@ -349,31 +390,17 @@
               v-for="(team, idx) in positionStrengthData" 
               :key="`proj-${team.team_key}`"
               :class="[
-                'rounded-xl transition-all overflow-hidden',
+                'rounded-xl transition-all overflow-hidden cursor-pointer',
                 team.is_my_team 
-                  ? 'bg-primary/10 border border-primary/30' 
-                  : 'border border-dark-border/30 hover:border-dark-border/50',
-                expandedProjectedTeam === team.team_key ? 'ring-2 ring-primary/50' : ''
+                  ? 'bg-primary/10 border border-primary/30 hover:bg-primary/15' 
+                  : 'border border-dark-border/30 hover:border-dark-border/50 hover:bg-dark-border/10'
               ]"
+              @click="openProjectedTeamModal(team)"
             >
-              <!-- Team Row (clickable header) -->
-              <div 
-                class="p-3 cursor-pointer hover:bg-dark-border/20 transition-colors"
-                @click="toggleProjectedTeam(team.team_key)"
-              >
+              <!-- Team Row -->
+              <div class="p-3">
                 <!-- Desktop: Horizontal layout -->
                 <div class="hidden sm:flex items-center gap-3">
-                  <!-- Expand/Collapse Icon -->
-                  <div class="w-6 text-center">
-                    <svg 
-                      class="w-5 h-5 text-dark-textMuted transition-transform duration-200"
-                      :class="{ 'rotate-90': expandedProjectedTeam === team.team_key }"
-                      fill="none" stroke="currentColor" viewBox="0 0 24 24"
-                    >
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
-                    </svg>
-                  </div>
-                  
                   <!-- Rank -->
                   <div class="w-8 text-center">
                     <span :class="[
@@ -400,10 +427,15 @@
                         <span class="text-[8px] text-gray-900 font-bold">★</span>
                       </div>
                     </div>
-                    <span :class="[
-                      'font-medium text-sm truncate',
-                      team.is_my_team ? 'text-primary' : 'text-dark-text'
-                    ]">{{ team.name }}</span>
+                    <div class="flex items-center gap-1">
+                      <span :class="[
+                        'font-medium text-sm truncate',
+                        team.is_my_team ? 'text-primary' : 'text-dark-text'
+                      ]">{{ team.name }}</span>
+                      <svg class="w-4 h-4 text-dark-textMuted" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+                      </svg>
+                    </div>
                   </div>
                   
                   <!-- Stacked Bar Container -->
@@ -441,13 +473,6 @@
                 <!-- Mobile: Stacked layout -->
                 <div class="sm:hidden">
                   <div class="flex items-center gap-2 mb-3">
-                    <svg 
-                      class="w-4 h-4 text-dark-textMuted transition-transform duration-200 flex-shrink-0"
-                      :class="{ 'rotate-90': expandedProjectedTeam === team.team_key }"
-                      fill="none" stroke="currentColor" viewBox="0 0 24 24"
-                    >
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
-                    </svg>
                     <div class="w-6 text-center">
                       <span :class="[
                         'font-bold text-base',
@@ -471,11 +496,14 @@
                         team.is_my_team ? 'text-primary' : 'text-dark-text'
                       ]">{{ team.name }}</span>
                     </div>
-                    <div class="text-right flex-shrink-0">
+                    <div class="text-right flex-shrink-0 flex items-center gap-2">
                       <span :class="[
                         'font-bold text-lg',
                         team.is_my_team ? 'text-primary' : 'text-cyan-400'
                       ]">{{ team.rosTotal?.toFixed(0) || 0 }}</span>
+                      <svg class="w-4 h-4 text-dark-textMuted" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+                      </svg>
                     </div>
                   </div>
                   <div class="ml-8">
@@ -493,78 +521,6 @@
                         }"
                       >
                       </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-              
-              <!-- Expanded Player Cards Section -->
-              <div 
-                v-if="expandedProjectedTeam === team.team_key"
-                class="border-t border-dark-border/50 bg-dark-card/50 p-4"
-              >
-                <!-- Position Groups -->
-                <div class="space-y-4">
-                  <div 
-                    v-for="pos in baseballPositions.slice(0, 8)" 
-                    :key="`${team.team_key}-${pos.id}`"
-                    class="space-y-2"
-                  >
-                    <!-- Position Header -->
-                    <div class="flex items-center gap-2">
-                      <div 
-                        class="w-3 h-3 rounded"
-                        :style="{ backgroundColor: getBaseballPositionColor(pos.id) }"
-                      ></div>
-                      <span class="text-sm font-semibold text-dark-text">{{ pos.name }}</span>
-                      <span class="text-xs text-dark-textMuted">
-                        ({{ getTeamPlayersAtPosition(team.team_key, pos.id).length }} players • {{ (team.positionTotals?.[pos.id] || 0).toFixed(0) }} pts)
-                      </span>
-                    </div>
-                    
-                    <!-- Player Cards Grid -->
-                    <div 
-                      v-if="getTeamPlayersAtPosition(team.team_key, pos.id).length > 0"
-                      class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2"
-                    >
-                      <div 
-                        v-for="player in getTeamPlayersAtPosition(team.team_key, pos.id).sort((a, b) => (b.total_points || 0) - (a.total_points || 0))"
-                        :key="player.player_key"
-                        class="bg-dark-border/30 rounded-lg p-2 flex items-center gap-2"
-                      >
-                        <!-- Player Photo -->
-                        <div class="relative flex-shrink-0">
-                          <img 
-                            :src="getPlayerHeadshot(player)"
-                            :alt="player.name"
-                            class="w-10 h-10 rounded-full object-cover bg-dark-border"
-                            @error="handlePlayerImageError"
-                          />
-                          <div 
-                            class="absolute -bottom-1 -right-1 w-5 h-5 rounded-full flex items-center justify-center text-[9px] font-bold text-white"
-                            :style="{ backgroundColor: getBaseballPositionColor(pos.id) }"
-                          >
-                            {{ pos.abbrev }}
-                          </div>
-                        </div>
-                        
-                        <!-- Player Info -->
-                        <div class="flex-1 min-w-0">
-                          <div class="text-xs font-medium text-dark-text truncate">{{ player.name }}</div>
-                          <div class="text-lg font-bold text-primary leading-tight">
-                            {{ (player.total_points || 0).toFixed(0) }}
-                            <span class="text-[10px] text-dark-textMuted font-normal">pts</span>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                    
-                    <!-- No players message -->
-                    <div 
-                      v-else
-                      class="text-xs text-dark-textMuted italic pl-5"
-                    >
-                      No players at this position
                     </div>
                   </div>
                 </div>
@@ -947,6 +903,112 @@
       </div>
     </Teleport>
 
+    <!-- Projected Team Players Modal -->
+    <Teleport to="body">
+      <div 
+        v-if="showProjectedTeamModal && selectedProjectedTeam" 
+        class="fixed inset-0 z-50 flex items-center justify-center p-4"
+        @click.self="closeProjectedTeamModal"
+      >
+        <div class="absolute inset-0 bg-black/70 backdrop-blur-sm"></div>
+        <div class="relative bg-dark-elevated rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-y-auto border border-dark-border">
+          <!-- Header -->
+          <div class="sticky top-0 z-10 px-6 py-4 border-b border-dark-border bg-dark-elevated">
+            <div class="flex items-center justify-between">
+              <div class="flex items-center gap-3">
+                <img 
+                  :src="selectedProjectedTeam.logo_url || defaultAvatar" 
+                  :alt="selectedProjectedTeam.name"
+                  class="w-12 h-12 rounded-full ring-2 object-cover"
+                  :class="selectedProjectedTeam.is_my_team ? 'ring-primary' : 'ring-cyan-500'"
+                />
+                <div>
+                  <h3 class="text-xl font-bold text-dark-text">{{ selectedProjectedTeam.name }}</h3>
+                  <p class="text-sm text-dark-textMuted">
+                    <span class="text-primary font-bold">{{ selectedProjectedTeam.rosTotal?.toFixed(0) || 0 }}</span> total points
+                  </p>
+                </div>
+              </div>
+              <button @click="closeProjectedTeamModal" class="p-2 rounded-lg hover:bg-dark-border/50 transition-colors">
+                <svg class="w-5 h-5 text-dark-textMuted" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+            <!-- Position color legend -->
+            <div class="flex flex-wrap items-center gap-3 mt-4">
+              <div v-for="pos in baseballPositions.slice(0, 8)" :key="pos.id" class="flex items-center gap-1.5">
+                <div class="w-3 h-3 rounded" :style="{ backgroundColor: getBaseballPositionColor(pos.id) }"></div>
+                <span class="text-xs text-dark-textMuted">{{ pos.abbrev }}</span>
+                <span class="text-xs font-semibold text-dark-text">{{ (selectedProjectedTeam.positionTotals?.[pos.id] || 0).toFixed(0) }}</span>
+              </div>
+            </div>
+          </div>
+          
+          <!-- Players by Position -->
+          <div class="p-4">
+            <div class="grid gap-4">
+              <div 
+                v-for="pos in baseballPositions.slice(0, 8)" 
+                :key="`modal-${pos.id}`"
+                class="bg-dark-card/50 rounded-xl p-4"
+              >
+                <!-- Position Header -->
+                <div class="flex items-center gap-2 mb-3">
+                  <div 
+                    class="w-8 h-8 rounded-lg flex items-center justify-center text-white font-bold text-sm"
+                    :style="{ backgroundColor: getBaseballPositionColor(pos.id) }"
+                  >
+                    {{ pos.abbrev }}
+                  </div>
+                  <div>
+                    <span class="font-semibold text-dark-text">{{ pos.name }}</span>
+                    <span class="text-sm text-dark-textMuted ml-2">
+                      {{ getTeamPlayersAtPosition(selectedProjectedTeam.team_key, pos.id).length }} players
+                    </span>
+                  </div>
+                  <div class="ml-auto">
+                    <span class="text-lg font-bold" :style="{ color: getBaseballPositionColor(pos.id) }">
+                      {{ (selectedProjectedTeam.positionTotals?.[pos.id] || 0).toFixed(0) }}
+                    </span>
+                    <span class="text-xs text-dark-textMuted ml-1">pts</span>
+                  </div>
+                </div>
+                
+                <!-- Player Cards -->
+                <div 
+                  v-if="getTeamPlayersAtPosition(selectedProjectedTeam.team_key, pos.id).length > 0"
+                  class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2"
+                >
+                  <div 
+                    v-for="player in getTeamPlayersAtPosition(selectedProjectedTeam.team_key, pos.id).sort((a, b) => (b.total_points || 0) - (a.total_points || 0))"
+                    :key="player.player_key"
+                    class="flex items-center gap-3 p-2 rounded-lg bg-dark-border/30"
+                  >
+                    <img 
+                      :src="getPlayerHeadshot(player)"
+                      :alt="player.name"
+                      class="w-10 h-10 rounded-full object-cover bg-dark-border flex-shrink-0"
+                      @error="handlePlayerImageError"
+                    />
+                    <div class="flex-1 min-w-0">
+                      <div class="text-sm font-medium text-dark-text truncate">{{ player.name }}</div>
+                      <div class="text-xs text-dark-textMuted">{{ player.position }}</div>
+                    </div>
+                    <div class="text-right flex-shrink-0">
+                      <div class="text-lg font-bold text-primary">{{ (player.total_points || 0).toFixed(0) }}</div>
+                      <div class="text-[10px] text-dark-textMuted">pts</div>
+                    </div>
+                  </div>
+                </div>
+                <div v-else class="text-sm text-dark-textMuted italic">No players at this position</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </Teleport>
+
     <!-- Platform Badge -->
     <div class="flex justify-center mt-8">
       <div class="inline-flex items-center gap-2 px-4 py-2 rounded-full border" :class="platformBadgeClass">
@@ -1038,8 +1100,13 @@ const showPositionModal = ref(false)
 const selectedTeamDetail = ref<PowerRankingData | null>(null)
 const selectedPosition = ref<{ id: string; name: string } | null>(null)
 
-// Expanded team for projected points by position section
+// Expanded team for projected points by position section (now a modal)
 const expandedProjectedTeam = ref<string | null>(null)
+const showProjectedTeamModal = ref(false)
+const selectedProjectedTeam = ref<any>(null)
+
+// Hovered team for chart highlighting
+const hoveredTeamKey = ref<string | null>(null)
 
 // Position sorting
 const positionSortColumn = ref<string>('total')
@@ -1356,12 +1423,32 @@ const teamDetailFactors = computed(() => {
 const chartOptions = computed(() => {
   if (powerRankings.value.length === 0) return null
   
+  // Get colors for each team - user is yellow, others get unique colors
+  const colors = powerRankings.value.map((team, idx) => 
+    team.is_my_team ? '#F5C451' : getTeamColor(idx)
+  )
+  
   return {
-    chart: { type: 'line', background: 'transparent', toolbar: { show: false }, zoom: { enabled: false } },
+    chart: { 
+      type: 'line', 
+      background: 'transparent', 
+      toolbar: { show: false }, 
+      zoom: { enabled: false },
+      events: {
+        // These events help with hover but ApexCharts handles most of it
+      }
+    },
     theme: { mode: 'dark' },
-    colors: powerRankings.value.map((team) => team.is_my_team ? '#F5C451' : getTeamColor(powerRankings.value.indexOf(team))),
-    stroke: { width: powerRankings.value.map((team) => team.is_my_team ? 4 : 2), curve: 'smooth' },
-    markers: { size: 0, hover: { size: 6 } },
+    colors: colors,
+    stroke: { 
+      width: 2,  // Same width for all teams (no bold for user)
+      curve: 'smooth' 
+    },
+    markers: { 
+      size: 4, 
+      hover: { size: 7 },
+      strokeWidth: 0
+    },
     xaxis: {
       categories: historicalWeeks.value.map(w => `Wk ${w}`),
       labels: { style: { colors: '#9ca3af' } }
@@ -1373,7 +1460,29 @@ const chartOptions = computed(() => {
       labels: { style: { colors: '#9ca3af' }, formatter: (v: number) => `#${Math.round(v)}` }
     },
     legend: { show: false },
-    tooltip: { theme: 'dark' },
+    tooltip: { 
+      theme: 'dark',
+      shared: false,
+      intersect: true,
+      custom: function({ series, seriesIndex, dataPointIndex, w }: any) {
+        const teamName = w.config.series[seriesIndex].name
+        const rank = series[seriesIndex][dataPointIndex]
+        const week = historicalWeeks.value[dataPointIndex]
+        const team = powerRankings.value[seriesIndex]
+        
+        // Get the team's weekly points if available
+        const weeklyPoints = getTeamWeeklyPoints(team?.team_key, week)
+        
+        return `
+          <div class="px-3 py-2 bg-dark-elevated border border-dark-border rounded-lg shadow-lg">
+            <div class="font-semibold text-white">${teamName}</div>
+            <div class="text-sm text-gray-400">Week ${week}</div>
+            <div class="text-lg font-bold" style="color: ${colors[seriesIndex]}">Rank: #${rank}</div>
+            ${weeklyPoints ? `<div class="text-sm text-cyan-400">${weeklyPoints.toFixed(1)} pts</div>` : ''}
+          </div>
+        `
+      }
+    },
     grid: { borderColor: '#374151', padding: { right: 50 } }
   }
 })
@@ -1487,20 +1596,32 @@ function handleImageError(e: Event) {
 
 // Power Score coloring - green for best, yellow for middle, red for worst
 function getPowerScoreBarClass(score: number): string {
-  const scores = powerRankings.value.map(t => t.powerScore)
-  const maxScore = Math.max(...scores)
-  const minScore = Math.min(...scores)
-  if (score === maxScore) return 'bg-green-500'
-  if (score === minScore) return 'bg-red-500'
+  const scores = powerRankings.value.map(t => t.powerScore).sort((a, b) => b - a)
+  const numTeams = scores.length
+  if (numTeams === 0) return 'bg-yellow-500'
+  
+  // Find position of this score
+  const position = scores.indexOf(score) + 1
+  const percentile = position / numTeams
+  
+  // Top 25% = green, Bottom 25% = red, Middle 50% = yellow
+  if (percentile <= 0.25) return 'bg-green-500'
+  if (percentile > 0.75) return 'bg-red-500'
   return 'bg-yellow-500'
 }
 
 function getPowerScoreTextClass(score: number): string {
-  const scores = powerRankings.value.map(t => t.powerScore)
-  const maxScore = Math.max(...scores)
-  const minScore = Math.min(...scores)
-  if (score === maxScore) return 'text-green-400'
-  if (score === minScore) return 'text-red-400'
+  const scores = powerRankings.value.map(t => t.powerScore).sort((a, b) => b - a)
+  const numTeams = scores.length
+  if (numTeams === 0) return 'text-yellow-400'
+  
+  // Find position of this score
+  const position = scores.indexOf(score) + 1
+  const percentile = position / numTeams
+  
+  // Top 25% = green, Bottom 25% = red, Middle 50% = yellow
+  if (percentile <= 0.25) return 'text-green-400'
+  if (percentile > 0.75) return 'text-red-400'
   return 'text-yellow-400'
 }
 
@@ -1726,13 +1847,75 @@ function closePositionModal() {
   selectedPosition.value = null
 }
 
-// Toggle expanded team in Projected Points by Position section
-function toggleProjectedTeam(teamKey: string) {
-  if (expandedProjectedTeam.value === teamKey) {
-    expandedProjectedTeam.value = null
-  } else {
-    expandedProjectedTeam.value = teamKey
+// Open modal for projected team players
+function openProjectedTeamModal(team: any) {
+  selectedProjectedTeam.value = team
+  showProjectedTeamModal.value = true
+}
+
+// Close projected team modal
+function closeProjectedTeamModal() {
+  showProjectedTeamModal.value = false
+  selectedProjectedTeam.value = null
+}
+
+// Get team's weekly points for a specific week (for tooltip)
+function getTeamWeeklyPoints(teamKey: string | undefined, week: number): number | null {
+  if (!teamKey) return null
+  
+  // Try to get from matchup data
+  const weekMatchups = allMatchups.value.get(week)
+  if (!weekMatchups) return null
+  
+  for (const matchup of weekMatchups) {
+    const teamData = matchup.teams?.find((t: any) => t.team_key === teamKey)
+    if (teamData) {
+      return teamData.points || null
+    }
   }
+  return null
+}
+
+// Get ranks for the currently hovered team
+function getHoveredTeamRanks(): number[] {
+  if (!hoveredTeamKey.value) return []
+  return historicalPowerRanks.value.get(hoveredTeamKey.value) || []
+}
+
+// Get position for rank badge based on week index and rank
+function getRankBadgePosition(weekIdx: number, rank: number): Record<string, string> {
+  const totalWeeks = historicalWeeks.value.length
+  const numTeams = powerRankings.value.length
+  
+  // Calculate X position (percentage across chart width)
+  const chartPadding = 50 // right padding from chart options
+  const xPercent = (weekIdx / Math.max(1, totalWeeks - 1)) * 100
+  
+  // Calculate Y position (rank position, inverted because rank 1 is at top)
+  const yPercent = ((rank - 1) / (numTeams - 1)) * 100
+  
+  return {
+    left: `calc(${xPercent}% - 8px)`,
+    top: `calc(${yPercent}% + 15px)`
+  }
+}
+
+// Get color for the hovered team
+function getHoveredTeamColor(): string {
+  if (!hoveredTeamKey.value) return '#F5C451'
+  
+  const team = powerRankings.value.find(t => t.team_key === hoveredTeamKey.value)
+  if (team?.is_my_team) return '#F5C451'
+  
+  const idx = powerRankings.value.findIndex(t => t.team_key === hoveredTeamKey.value)
+  return idx >= 0 ? getTeamColor(idx) : '#F5C451'
+}
+
+// Convert number to ordinal (1st, 2nd, 3rd, etc.)
+function getOrdinal(n: number): string {
+  const s = ['th', 'st', 'nd', 'rd']
+  const v = n % 100
+  return n + (s[(v - 20) % 10] || s[v] || s[0])
 }
 
 // Get player headshot URL - ESPN players don't have headshots in the roster API
