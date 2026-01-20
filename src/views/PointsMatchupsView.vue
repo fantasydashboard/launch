@@ -608,7 +608,6 @@ import { useLeagueStore } from '@/stores/league'
 import { yahooService } from '@/services/yahoo'
 import { useAuthStore } from '@/stores/auth'
 import { matchupSnapshotsService, type MatchupSnapshot } from '@/services/matchupSnapshots'
-import { generateWinProbabilityHistory } from '@/services/dailyScoreReconstruction'
 import html2canvas from 'html2canvas'
 import LoadingSpinner from '@/components/LoadingSpinner.vue'
 
@@ -859,136 +858,209 @@ const matchupSnapshots = computed(() => {
 // Check if we have real snapshot data (not simulated)
 const hasRealSnapshots = computed(() => matchupSnapshots.value.length > 0)
 
-// Probability history for chart - uses REAL data when available, reconstruction otherwise
+// Probability history for chart - ALWAYS uses Monte Carlo reconstruction for completed weeks
 const probabilityHistory = computed(() => {
   if (!selectedMatchup.value?.team1 || !selectedMatchup.value?.team2) return []
   
   const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
   const matchup = selectedMatchup.value
-  const isCompleted = isCompletedWeek.value // Use our reliable completed check
-  const snapshots = matchupSnapshots.value
+  const isCompleted = isCompletedWeek.value
+  const team1FinalPoints = matchup.team1.points || 0
+  const team2FinalPoints = matchup.team2.points || 0
   
-  // If we have real snapshot data, use it (but ensure Sunday is 100/0 for completed matchups)
-  if (snapshots.length > 0) {
-    console.log(`Using ${snapshots.length} real snapshots for matchup ${matchup.matchup_id}`)
-    
-    const history = []
-    const team1Points = matchup.team1.points || 0
-    const team2Points = matchup.team2.points || 0
-    
-    for (let i = 0; i < 7; i++) {
-      // Find snapshot for this day
-      const snapshot = snapshots.find(s => s.day_of_week === i)
-      
-      // For Sunday (day 6) on completed matchups, always use final result
-      if (i === 6 && isCompleted) {
-        let team1Prob = 50, team2Prob = 50
-        if (team1Points > team2Points) { team1Prob = 100; team2Prob = 0 }
-        else if (team2Points > team1Points) { team1Prob = 0; team2Prob = 100 }
-        
-        history.push({
-          day: days[i],
-          team1: team1Prob,
-          team2: team2Prob,
-          isFuture: false,
-          isReal: true,
-          points: { team1: team1Points, team2: team2Points }
-        })
-        continue
-      }
-      
-      if (snapshot) {
-        // Use real data
-        history.push({
-          day: days[i],
-          team1: snapshot.team1_win_prob,
-          team2: snapshot.team2_win_prob,
-          isFuture: false,
-          isReal: true,
-          points: {
-            team1: snapshot.team1_points,
-            team2: snapshot.team2_points
-          }
-        })
-      } else {
-        // No snapshot for this day yet - either future or missing
-        const lastSnapshot = snapshots[snapshots.length - 1]
-        const jsDay = new Date().getDay()
-        const currentDayIndex = jsDay === 0 ? 6 : jsDay - 1
-        
-        if (i > currentDayIndex && !isCompleted) {
-          // Future day - project from last known
-          const lastProb = lastSnapshot?.team1_win_prob || 50
-          history.push({
-            day: days[i],
-            team1: lastProb,
-            team2: 100 - lastProb,
-            isFuture: true,
-            isReal: false
-          })
-        } else {
-          // Missing historical day - interpolate or use placeholder
-          history.push({
-            day: days[i],
-            team1: 50,
-            team2: 50,
-            isFuture: false,
-            isReal: false
-          })
-        }
-      }
-    }
-    
-    return history
+  console.log(`[WinProb Chart] Matchup ${matchup.matchup_id}, isCompleted: ${isCompleted}, team1: ${team1FinalPoints}, team2: ${team2FinalPoints}`)
+  
+  // Determine the winner for completed matchups
+  let team1IsFinalWinner = false
+  let team2IsFinalWinner = false
+  if (isCompleted) {
+    team1IsFinalWinner = team1FinalPoints > team2FinalPoints
+    team2IsFinalWinner = team2FinalPoints > team1FinalPoints
   }
   
-  // No snapshots available - use Monte Carlo reconstruction
-  // This provides accurate simulations for both live and historical matchups
-  console.log(`Using Monte Carlo reconstruction for matchup ${matchup.matchup_id} (no snapshots), isCompleted: ${isCompleted}`)
+  // Get team's historical stats for Monte Carlo
+  const team1Stats = getTeamStats(matchup.team1.team_key || '')
+  const team2Stats = getTeamStats(matchup.team2.team_key || '')
   
-  // Determine current sport for daily weight distribution
+  // Use historical PPW (points per week) as the expected average
+  // Fall back to league average if no history
+  const team1AvgWeekly = team1Stats.ppw > 0 ? team1Stats.ppw : (team1FinalPoints || 100)
+  const team2AvgWeekly = team2Stats.ppw > 0 ? team2Stats.ppw : (team2FinalPoints || 100)
+  const team1StdDev = team1Stats.stdDev > 0 ? team1Stats.stdDev : (team1AvgWeekly * 0.15)
+  const team2StdDev = team2Stats.stdDev > 0 ? team2Stats.stdDev : (team2AvgWeekly * 0.15)
+  
+  console.log(`[WinProb Chart] Team1 avg: ${team1AvgWeekly.toFixed(1)}, stdDev: ${team1StdDev.toFixed(1)}`)
+  console.log(`[WinProb Chart] Team2 avg: ${team2AvgWeekly.toFixed(1)}, stdDev: ${team2StdDev.toFixed(1)}`)
+  
+  // Get sport-specific daily weights
   const sport = leagueStore.currentSportType || 'baseball'
+  const dailyWeights = getDailyWeights(sport)
   
-  // Get current day index for live matchups
-  const jsDay = new Date().getDay()
-  const currentDayIndex = jsDay === 0 ? 6 : jsDay - 1
+  // Calculate cumulative weights
+  let cumulativeWeight = 0
+  const cumulativeWeights: number[] = []
+  for (let i = 0; i < 7; i++) {
+    cumulativeWeight += dailyWeights[i]
+    cumulativeWeights.push(cumulativeWeight)
+  }
   
-  // Use the reconstruction service for accurate Monte Carlo simulations
-  // Pass 'final' status if we determined this is a completed week
-  const reconstructedHistory = generateWinProbabilityHistory(
-    {
-      matchup_id: matchup.matchup_id,
-      team1: {
-        team_key: matchup.team1.team_key || '',
-        name: matchup.team1.name,
-        points: matchup.team1.points || 0
-      },
-      team2: {
-        team_key: matchup.team2.team_key || '',
-        name: matchup.team2.name,
-        points: matchup.team2.points || 0
-      },
-      status: isCompleted ? 'final' : matchup.status // Force 'final' if we know it's completed
-    },
-    sport,
-    allMatchupsHistory.value,
-    isCompleted ? undefined : currentDayIndex
-  )
+  const history: any[] = []
   
-  // Convert to the expected format
-  return reconstructedHistory.map((item, i) => ({
-    day: item.dayName,
-    team1: item.team1WinProb,
-    team2: item.team2WinProb,
-    isFuture: !isCompleted && i > currentDayIndex,
-    isReal: !item.isEstimated,
-    isMonteCarlo: true,
-    points: {
-      team1: item.team1Points,
-      team2: item.team2Points
+  for (let day = 0; day < 7; day++) {
+    // Calculate cumulative points at end of this day
+    // For completed matchups, distribute actual final score across days
+    // For live matchups, use current scores
+    let team1Cumulative: number
+    let team2Cumulative: number
+    
+    if (isCompleted) {
+      // Distribute final score across the week based on daily weights
+      team1Cumulative = team1FinalPoints * cumulativeWeights[day]
+      team2Cumulative = team2FinalPoints * cumulativeWeights[day]
+    } else {
+      // For live matchups, current scores are what we have
+      const jsDay = new Date().getDay()
+      const currentDayIndex = jsDay === 0 ? 6 : jsDay - 1
+      
+      if (day <= currentDayIndex) {
+        // Pro-rate current score back to this day
+        const dayFraction = cumulativeWeights[day] / cumulativeWeights[currentDayIndex]
+        team1Cumulative = team1FinalPoints * dayFraction
+        team2Cumulative = team2FinalPoints * dayFraction
+      } else {
+        // Project forward from current
+        team1Cumulative = team1FinalPoints + (team1AvgWeekly / 7) * (day - currentDayIndex)
+        team2Cumulative = team2FinalPoints + (team2AvgWeekly / 7) * (day - currentDayIndex)
+      }
     }
-  }))
+    
+    // Calculate win probability
+    let team1Prob: number
+    let team2Prob: number
+    
+    if (day === 6 && isCompleted) {
+      // SUNDAY on completed matchup - deterministic 100/0
+      if (team1IsFinalWinner) {
+        team1Prob = 100
+        team2Prob = 0
+      } else if (team2IsFinalWinner) {
+        team1Prob = 0
+        team2Prob = 100
+      } else {
+        team1Prob = 50
+        team2Prob = 50
+      }
+    } else {
+      // Run Monte Carlo: what would an observer think at end of this day?
+      const daysRemaining = 6 - day
+      const remainingFraction = 1 - cumulativeWeights[day]
+      
+      // Expected remaining points based on HISTORICAL AVERAGE (not actual remaining)
+      const team1ExpectedRemaining = team1AvgWeekly * remainingFraction
+      const team2ExpectedRemaining = team2AvgWeekly * remainingFraction
+      
+      // Variance scales with remaining time
+      const varianceScale = Math.sqrt(daysRemaining / 7)
+      const team1RemainingStdDev = team1StdDev * varianceScale
+      const team2RemainingStdDev = team2StdDev * varianceScale
+      
+      // Run Monte Carlo simulation
+      const mcResult = runMonteCarloInline(
+        team1Cumulative,
+        team2Cumulative,
+        team1ExpectedRemaining,
+        team1RemainingStdDev,
+        team2ExpectedRemaining,
+        team2RemainingStdDev,
+        3000
+      )
+      
+      team1Prob = mcResult.team1WinPct
+      team2Prob = mcResult.team2WinPct
+    }
+    
+    history.push({
+      day: days[day],
+      team1: Math.round(team1Prob * 10) / 10,
+      team2: Math.round(team2Prob * 10) / 10,
+      isFuture: !isCompleted && day > (new Date().getDay() === 0 ? 6 : new Date().getDay() - 1),
+      isReal: false,
+      isMonteCarlo: true,
+      points: {
+        team1: Math.round(team1Cumulative * 10) / 10,
+        team2: Math.round(team2Cumulative * 10) / 10
+      }
+    })
+  }
+  
+  console.log(`[WinProb Chart] Final history:`, history.map(h => `${h.day}: ${h.team1}/${h.team2}`).join(', '))
+  
+  return history
 })
+
+// Inline Monte Carlo function for probabilityHistory
+function runMonteCarloInline(
+  team1Current: number,
+  team2Current: number,
+  team1ExpectedRemaining: number,
+  team1StdDev: number,
+  team2ExpectedRemaining: number,
+  team2StdDev: number,
+  iterations: number
+): { team1WinPct: number; team2WinPct: number } {
+  // If no remaining expected points, use current scores
+  if (team1ExpectedRemaining <= 0 && team2ExpectedRemaining <= 0) {
+    if (team1Current > team2Current) return { team1WinPct: 100, team2WinPct: 0 }
+    if (team2Current > team1Current) return { team1WinPct: 0, team2WinPct: 100 }
+    return { team1WinPct: 50, team2WinPct: 50 }
+  }
+  
+  let team1Wins = 0
+  let team2Wins = 0
+  
+  for (let i = 0; i < iterations; i++) {
+    // Box-Muller transform for Gaussian random
+    const u1 = Math.random()
+    const u2 = Math.random()
+    const z1 = Math.sqrt(-2 * Math.log(u1)) * Math.cos(2 * Math.PI * u2)
+    const z2 = Math.sqrt(-2 * Math.log(u1)) * Math.sin(2 * Math.PI * u2)
+    
+    const team1Remaining = Math.max(0, team1ExpectedRemaining + z1 * team1StdDev)
+    const team2Remaining = Math.max(0, team2ExpectedRemaining + z2 * team2StdDev)
+    
+    const team1Final = team1Current + team1Remaining
+    const team2Final = team2Current + team2Remaining
+    
+    if (team1Final > team2Final) team1Wins++
+    else if (team2Final > team1Final) team2Wins++
+  }
+  
+  const ties = iterations - team1Wins - team2Wins
+  const team1WinPct = ((team1Wins + ties / 2) / iterations) * 100
+  
+  return {
+    team1WinPct: Math.round(team1WinPct * 10) / 10,
+    team2WinPct: Math.round((100 - team1WinPct) * 10) / 10
+  }
+}
+
+// Get daily weights for a sport (how points are distributed across the week)
+function getDailyWeights(sport: string): number[] {
+  // Baseball: games every day, fairly even
+  if (sport === 'baseball') {
+    return [0.14, 0.15, 0.15, 0.14, 0.14, 0.14, 0.14]
+  }
+  // Hockey: varies by day
+  if (sport === 'hockey') {
+    return [0.10, 0.15, 0.12, 0.16, 0.14, 0.17, 0.16]
+  }
+  // Basketball: varies by day  
+  if (sport === 'basketball') {
+    return [0.12, 0.14, 0.15, 0.14, 0.15, 0.16, 0.14]
+  }
+  // Default: even distribution
+  return [1/7, 1/7, 1/7, 1/7, 1/7, 1/7, 1/7]
+}
 
 // Probability chart options
 const probabilityChartOptions = computed(() => ({

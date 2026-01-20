@@ -137,8 +137,12 @@ function runMonteCarlo(
 
 /**
  * Reconstruct daily scores for a completed matchup
- * Uses the final scores and distributes them across the week
- * based on typical daily scoring patterns
+ * 
+ * KEY INSIGHT: For each day, we simulate what an observer would have thought
+ * at the END of that day. They know the cumulative score so far, but they'd
+ * estimate remaining points based on HISTORICAL AVERAGES, not the actual future.
+ * 
+ * This creates realistic probability curves that converge to 100/0 on Sunday.
  */
 export function reconstructDailyScores(
   team1FinalPoints: number,
@@ -155,32 +159,32 @@ export function reconstructDailyScores(
   const weights = getDailyWeights(sport)
   const dailyScores: DailyScore[] = []
   
-  // Calculate cumulative points at end of each day
-  let team1Cumulative = 0
-  let team2Cumulative = 0
+  // Get team's historical weekly averages (or use final as fallback estimate)
+  const team1AvgWeekly = teamStats?.team1AvgWeekly || team1FinalPoints
+  const team2AvgWeekly = teamStats?.team2AvgWeekly || team2FinalPoints
+  const team1WeeklyStdDev = teamStats?.team1StdDev || (team1AvgWeekly * 0.15)
+  const team2WeeklyStdDev = teamStats?.team2StdDev || (team2AvgWeekly * 0.15)
   
-  // Get team variance for Monte Carlo
-  const team1StdDev = teamStats?.team1StdDev || (team1FinalPoints * 0.15)
-  const team2StdDev = teamStats?.team2StdDev || (team2FinalPoints * 0.15)
+  // Calculate cumulative weights for each day
+  let cumulativeWeight = 0
+  const cumulativeWeights: number[] = []
+  for (let i = 0; i < 7; i++) {
+    cumulativeWeight += weights[i]
+    cumulativeWeights.push(cumulativeWeight)
+  }
   
   for (let day = 0; day < 7; day++) {
-    // Add daily points (based on weight distribution)
-    const team1DailyPoints = team1FinalPoints * weights[day]
-    const team2DailyPoints = team2FinalPoints * weights[day]
+    // Calculate cumulative points at end of this day (based on actual final score)
+    const team1Cumulative = team1FinalPoints * cumulativeWeights[day]
+    const team2Cumulative = team2FinalPoints * cumulativeWeights[day]
     
-    team1Cumulative += team1DailyPoints
-    team2Cumulative += team2DailyPoints
-    
-    // Calculate remaining points and days
     const daysRemaining = 6 - day
-    const team1Remaining = team1FinalPoints - team1Cumulative
-    const team2Remaining = team2FinalPoints - team2Cumulative
+    const daysCompleted = day + 1
     
-    // Run Monte Carlo for win probability
     let winProb: { team1WinPct: number; team2WinPct: number }
     
     if (day === 6) {
-      // Sunday - final result
+      // SUNDAY - Final result, no more games, deterministic outcome
       if (team1FinalPoints > team2FinalPoints) {
         winProb = { team1WinPct: 100, team2WinPct: 0 }
       } else if (team2FinalPoints > team1FinalPoints) {
@@ -189,19 +193,29 @@ export function reconstructDailyScores(
         winProb = { team1WinPct: 50, team2WinPct: 50 }
       }
     } else {
-      // Use Monte Carlo with actual remaining points as the mean
-      // Add some variance to make it realistic
-      const dailyStdDev1 = team1StdDev / Math.sqrt(7) * Math.sqrt(daysRemaining)
-      const dailyStdDev2 = team2StdDev / Math.sqrt(7) * Math.sqrt(daysRemaining)
+      // Days Mon-Sat: Simulate what an observer would think at end of this day
+      // They know current cumulative scores, but estimate remaining based on HISTORICAL AVERAGES
+      
+      // What fraction of the week is remaining?
+      const remainingFraction = 1 - cumulativeWeights[day]
+      
+      // Expected remaining points based on historical average (NOT actual remaining!)
+      const team1ExpectedRemaining = team1AvgWeekly * remainingFraction
+      const team2ExpectedRemaining = team2AvgWeekly * remainingFraction
+      
+      // Variance scales with sqrt of remaining days
+      const varianceScale = Math.sqrt(daysRemaining / 7)
+      const team1RemainingStdDev = team1WeeklyStdDev * varianceScale
+      const team2RemainingStdDev = team2WeeklyStdDev * varianceScale
       
       winProb = runMonteCarlo(
         team1Cumulative,
         team2Cumulative,
-        team1Remaining,
-        dailyStdDev1 * 0.3, // Reduce variance for completed matchups
-        team2Remaining,
-        dailyStdDev2 * 0.3,
-        3000
+        team1ExpectedRemaining,
+        team1RemainingStdDev,
+        team2ExpectedRemaining,
+        team2RemainingStdDev,
+        5000
       )
     }
     
