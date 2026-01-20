@@ -1264,17 +1264,9 @@ export const useLeagueStore = defineStore('league', () => {
           logo: team.logo
         })
         
-        // ESPN CDN URLs don't support CORS, so we need to use ui-avatars.com for downloads
-        // Only use team.logo if it's NOT from ESPN's CDN (e.g., custom uploaded logos)
+        // Use team's logo if available, otherwise use ui-avatars.com as fallback
         let logoUrl = team.logo
-        const isEspnCdnUrl = logoUrl && (
-          logoUrl.includes('espncdn.com') || 
-          logoUrl.includes('espn.com') ||
-          logoUrl.includes('g.espncdn.com')
-        )
-        
-        if (!logoUrl || logoUrl === '' || isEspnCdnUrl) {
-          // Generate a placeholder avatar URL using ui-avatars.com which supports CORS
+        if (!logoUrl || logoUrl === '') {
           logoUrl = `https://ui-avatars.com/api/?name=${encodeURIComponent(team.name)}&background=3a3d52&color=fff&size=64`
         }
         

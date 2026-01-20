@@ -3435,11 +3435,8 @@ export class EspnFantasyService {
    * Get avatar/logo URL for a team
    */
   getTeamLogo(team: EspnTeam): string {
-    // ESPN CDN URLs don't support CORS, so skip them
-    if (team.logo && !team.logo.includes('espncdn.com') && !team.logo.includes('espn.com')) {
-      return team.logo
-    }
-    // Use CORS-friendly ui-avatars.com for default logo (works with html2canvas downloads)
+    if (team.logo) return team.logo
+    // Fallback to ui-avatars.com
     return `https://ui-avatars.com/api/?name=${encodeURIComponent(team.name || 'Team')}&background=3a3d52&color=fff&size=64`
   }
 

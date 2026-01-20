@@ -1536,43 +1536,37 @@ async function downloadStandings() {
       return canvas.toDataURL('image/png')
     }
     
-    // Load team image - exactly like matchups page does
+    // Load team images - exactly like matchups page
     const loadTeamImage = async (team: any): Promise<string> => {
-      // Skip empty URLs - go straight to placeholder
-      if (!team.logo_url) {
-        return createPlaceholder(team.name)
-      }
-      
-      // ESPN CDN URLs don't support CORS - use placeholder
-      if (team.logo_url.includes('espncdn.com') || team.logo_url.includes('espn.com')) {
-        return createPlaceholder(team.name)
-      }
-      
-      return new Promise((resolve) => {
+      try {
         const img = new Image()
         img.crossOrigin = 'anonymous'
-        img.onload = () => {
-          try {
-            const canvas = document.createElement('canvas')
-            canvas.width = 64
-            canvas.height = 64
-            const ctx = canvas.getContext('2d')
-            if (ctx) {
-              ctx.beginPath()
-              ctx.arc(32, 32, 32, 0, Math.PI * 2)
-              ctx.closePath()
-              ctx.clip()
-              ctx.drawImage(img, 0, 0, 64, 64)
+        return new Promise((resolve) => {
+          img.onload = () => {
+            try {
+              const canvas = document.createElement('canvas')
+              canvas.width = 64
+              canvas.height = 64
+              const ctx = canvas.getContext('2d')
+              if (ctx) {
+                ctx.beginPath()
+                ctx.arc(32, 32, 32, 0, Math.PI * 2)
+                ctx.closePath()
+                ctx.clip()
+                ctx.drawImage(img, 0, 0, 64, 64)
+              }
+              resolve(canvas.toDataURL('image/png'))
+            } catch {
+              resolve(createPlaceholder(team.name))
             }
-            resolve(canvas.toDataURL('image/png'))
-          } catch {
-            resolve(createPlaceholder(team.name))
           }
-        }
-        img.onerror = () => resolve(createPlaceholder(team.name))
-        setTimeout(() => resolve(createPlaceholder(team.name)), 3000) // Timeout fallback
-        img.src = team.logo_url
-      })
+          img.onerror = () => resolve(createPlaceholder(team.name))
+          setTimeout(() => resolve(createPlaceholder(team.name)), 3000)
+          img.src = team.logo_url || ''
+        })
+      } catch {
+        return createPlaceholder(team.name)
+      }
     }
     
     // Preload team images
