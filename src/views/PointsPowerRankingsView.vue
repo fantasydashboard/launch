@@ -114,8 +114,7 @@
                 >
                   <td class="py-3 px-4">
                     <span 
-                      class="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold"
-                      :class="getRankClass(idx + 1, powerRankings.length)"
+                      class="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold bg-dark-border text-dark-text"
                     >
                       {{ idx + 1 }}
                     </span>
@@ -225,26 +224,6 @@
                 />
                 <div v-if="team.is_my_team" class="absolute -top-0.5 -right-0.5 w-3 h-3 bg-yellow-500 rounded-full flex items-center justify-center">
                   <span class="text-[6px] text-gray-900 font-bold">★</span>
-                </div>
-              </div>
-            </div>
-            
-            <!-- Hover rank badges overlay -->
-            <div 
-              v-if="hoveredTeamKey"
-              class="absolute inset-0 pointer-events-none"
-            >
-              <div 
-                v-for="(rank, weekIdx) in getHoveredTeamRanks()" 
-                :key="'rank-badge-' + weekIdx"
-                class="absolute transform -translate-x-1/2 -translate-y-1/2"
-                :style="getRankBadgePosition(weekIdx, rank)"
-              >
-                <div 
-                  class="w-6 h-6 rounded-full flex items-center justify-center text-[11px] font-bold text-white shadow-lg"
-                  :style="{ backgroundColor: getHoveredTeamColor() }"
-                >
-                  {{ rank }}
                 </div>
               </div>
             </div>
@@ -1460,28 +1439,20 @@ const chartOptions = computed(() => {
     return idx === hoveredIdx ? 3 : 2
   })
   
+  // Marker sizes - only show markers for hovered team
+  const markerSizes = powerRankings.value.map((_, idx) => {
+    if (hoveredIdx === -1) return 0  // No hover, no markers
+    return idx === hoveredIdx ? 12 : 0  // Only hovered team shows markers
+  })
+  
   return {
     chart: { 
       type: 'line', 
       background: 'transparent', 
       toolbar: { show: false }, 
       zoom: { enabled: false },
-      animations: { enabled: false },
-      events: {
-        mouseMove: function(event: any, chartContext: any, config: any) {
-          // When hovering over a data point or line, highlight that team
-          if (config.seriesIndex !== undefined && config.seriesIndex >= 0) {
-            const team = powerRankings.value[config.seriesIndex]
-            if (team && hoveredTeamKey.value !== team.team_key) {
-              hoveredTeamKey.value = team.team_key
-            }
-          }
-        },
-        mouseLeave: function() {
-          // Clear hover when mouse leaves chart area
-          hoveredTeamKey.value = null
-        }
-      }
+      animations: { enabled: false }
+      // No mouse events on chart - hover only from logos and cards
     },
     theme: { mode: 'dark' },
     colors: colors,
@@ -1490,9 +1461,25 @@ const chartOptions = computed(() => {
       curve: 'smooth' 
     },
     markers: { 
-      size: 0,  // No markers by default - we show custom badges on hover
-      hover: { size: 0 },
-      strokeWidth: 0
+      size: markerSizes,
+      strokeWidth: 0,
+      hover: { size: 0 }
+    },
+    dataLabels: {
+      enabled: hoveredIdx !== -1,
+      enabledOnSeries: hoveredIdx !== -1 ? [hoveredIdx] : [],
+      formatter: function(val: number) {
+        return val.toString()
+      },
+      style: {
+        fontSize: '10px',
+        fontWeight: 'bold',
+        colors: ['#fff']
+      },
+      background: {
+        enabled: false
+      },
+      offsetY: 0
     },
     xaxis: {
       categories: historicalWeeks.value.map(w => `Wk ${w}`),
@@ -1510,34 +1497,7 @@ const chartOptions = computed(() => {
     },
     legend: { show: false },
     tooltip: { 
-      enabled: true,
-      theme: 'dark',
-      shared: false,
-      intersect: false,
-      followCursor: true,
-      custom: function({ series, seriesIndex, dataPointIndex, w }: any) {
-        const teamName = w.config.series[seriesIndex].name
-        const rank = series[seriesIndex][dataPointIndex]
-        const week = historicalWeeks.value[dataPointIndex]
-        const team = powerRankings.value[seriesIndex]
-        
-        // Update hovered team when tooltip shows
-        if (team && hoveredTeamKey.value !== team.team_key) {
-          hoveredTeamKey.value = team.team_key
-        }
-        
-        // Get the team's weekly points if available
-        const weeklyPoints = getTeamWeeklyPoints(team?.team_key, week)
-        
-        return `
-          <div class="px-3 py-2 bg-dark-elevated border border-dark-border rounded-lg shadow-lg">
-            <div class="font-semibold text-white">${teamName}</div>
-            <div class="text-sm text-gray-400">Week ${week}</div>
-            <div class="text-lg font-bold" style="color: ${colors[seriesIndex]}">Rank: #${rank}</div>
-            ${weeklyPoints ? `<div class="text-sm text-yellow-400">${weeklyPoints.toFixed(1)} pts</div>` : ''}
-          </div>
-        `
-      }
+      enabled: false  // Disable tooltip since we show markers with labels
     },
     grid: { 
       borderColor: '#374151', 
