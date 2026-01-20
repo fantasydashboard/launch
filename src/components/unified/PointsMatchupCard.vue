@@ -45,7 +45,7 @@
             </div>
             <div 
               v-if="isMyTeam(matchup.team1.teamId)" 
-              class="absolute -top-1 -right-1 w-4 h-4 bg-primary rounded-full flex items-center justify-center"
+              class="absolute -top-1 -right-1 w-4 h-4 bg-yellow-400 rounded-full flex items-center justify-center"
             >
               <span class="text-[8px] text-gray-900 font-bold">★</span>
             </div>
@@ -102,7 +102,7 @@
             </div>
             <div 
               v-if="isMyTeam(matchup.team2.teamId)" 
-              class="absolute -top-1 -right-1 w-4 h-4 bg-primary rounded-full flex items-center justify-center"
+              class="absolute -top-1 -right-1 w-4 h-4 bg-yellow-400 rounded-full flex items-center justify-center"
             >
               <span class="text-[8px] text-gray-900 font-bold">★</span>
             </div>

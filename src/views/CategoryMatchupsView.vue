@@ -110,7 +110,7 @@
                 <div class="flex items-center gap-2 flex-1 min-w-0">
                   <div class="relative">
                     <img :src="matchup.team1.logo_url || defaultAvatar" class="w-9 h-9 rounded-full ring-2" :class="matchup.team1Leading ? 'ring-green-500' : 'ring-dark-border'" @error="handleImageError"/>
-                    <div v-if="matchup.team1.is_my_team" class="absolute -top-1 -right-1 w-4 h-4 bg-primary rounded-full flex items-center justify-center"><span class="text-[10px]">★</span></div>
+                    <div v-if="matchup.team1.is_my_team" class="absolute -top-1 -right-1 w-4 h-4 bg-yellow-400 rounded-full flex items-center justify-center"><span class="text-[10px] text-gray-900">★</span></div>
                   </div>
                   <div class="min-w-0">
                     <div class="font-semibold text-dark-text truncate text-sm">{{ matchup.team1.name }}</div>
@@ -133,7 +133,7 @@
                 <div class="flex items-center gap-2 flex-1 min-w-0">
                   <div class="relative">
                     <img :src="matchup.team2.logo_url || defaultAvatar" class="w-9 h-9 rounded-full ring-2" :class="matchup.team2Leading ? 'ring-green-500' : 'ring-dark-border'" @error="handleImageError"/>
-                    <div v-if="matchup.team2.is_my_team" class="absolute -top-1 -right-1 w-4 h-4 bg-primary rounded-full flex items-center justify-center"><span class="text-[10px]">★</span></div>
+                    <div v-if="matchup.team2.is_my_team" class="absolute -top-1 -right-1 w-4 h-4 bg-yellow-400 rounded-full flex items-center justify-center"><span class="text-[10px] text-gray-900">★</span></div>
                   </div>
                   <div class="min-w-0">
                     <div class="font-semibold text-dark-text truncate text-sm">{{ matchup.team2.name }}</div>
@@ -184,7 +184,7 @@
               <div :class="['text-center p-6 rounded-xl border-2', selectedMatchup.team1.is_my_team ? 'bg-gradient-to-br from-primary/15 to-primary/5 border-primary/40' : 'bg-gradient-to-br from-cyan-500/10 to-cyan-600/5 border-cyan-500/30']">
                 <div class="relative inline-block">
                   <img :src="selectedMatchup.team1.logo_url || defaultAvatar" :class="['w-20 h-20 rounded-full mx-auto mb-3 border-4', selectedMatchup.team1.is_my_team ? 'border-primary' : 'border-cyan-500']" @error="handleImageError"/>
-                  <div v-if="selectedMatchup.team1.is_my_team" class="absolute -top-1 -right-1 w-6 h-6 bg-primary rounded-full flex items-center justify-center shadow-lg"><span class="text-sm text-gray-900">★</span></div>
+                  <div v-if="selectedMatchup.team1.is_my_team" class="absolute -top-1 -right-1 w-6 h-6 bg-yellow-400 rounded-full flex items-center justify-center shadow-lg"><span class="text-sm text-gray-900">★</span></div>
                 </div>
                 <div :class="['font-bold text-xl mb-2', selectedMatchup.team1.is_my_team ? 'text-primary' : 'text-cyan-400']">{{ selectedMatchup.team1.name }}</div>
                 <div :class="['text-5xl font-black mb-3', selectedMatchup.team1.is_my_team ? 'text-primary' : 'text-cyan-400']">{{ selectedMatchup.team1WinProb.toFixed(0) }}%</div>
@@ -197,7 +197,7 @@
               <div :class="['text-center p-6 rounded-xl border-2', selectedMatchup.team2.is_my_team ? 'bg-gradient-to-br from-primary/15 to-primary/5 border-primary/40' : 'bg-gradient-to-br from-orange-500/10 to-orange-600/5 border-orange-500/30']">
                 <div class="relative inline-block">
                   <img :src="selectedMatchup.team2.logo_url || defaultAvatar" :class="['w-20 h-20 rounded-full mx-auto mb-3 border-4', selectedMatchup.team2.is_my_team ? 'border-primary' : 'border-orange-500']" @error="handleImageError"/>
-                  <div v-if="selectedMatchup.team2.is_my_team" class="absolute -top-1 -right-1 w-6 h-6 bg-primary rounded-full flex items-center justify-center shadow-lg"><span class="text-sm text-gray-900">★</span></div>
+                  <div v-if="selectedMatchup.team2.is_my_team" class="absolute -top-1 -right-1 w-6 h-6 bg-yellow-400 rounded-full flex items-center justify-center shadow-lg"><span class="text-sm text-gray-900">★</span></div>
                 </div>
                 <div :class="['font-bold text-xl mb-2', selectedMatchup.team2.is_my_team ? 'text-primary' : 'text-orange-400']">{{ selectedMatchup.team2.name }}</div>
                 <div :class="['text-5xl font-black mb-3', selectedMatchup.team2.is_my_team ? 'text-primary' : 'text-orange-400']">{{ selectedMatchup.team2WinProb.toFixed(0) }}%</div>
