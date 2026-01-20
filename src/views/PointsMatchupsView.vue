@@ -614,25 +614,10 @@ import LoadingSpinner from '@/components/LoadingSpinner.vue'
 const leagueStore = useLeagueStore()
 const authStore = useAuthStore()
 
-// Default avatar based on platform and sport
+// Default avatar - use CORS-friendly URL for downloads
 const defaultAvatar = computed(() => {
-  if (leagueStore.activePlatform === 'espn') {
-    // ESPN uses different paths for different sports
-    // Extract sport from league key (format: espn_baseball_leagueId_season)
-    const leagueKey = leagueStore.currentLeague?.league_id || leagueStore.activeLeagueId || ''
-    const parts = leagueKey.split('_')
-    const sport = parts[1] || 'football'
-    const sportPaths: Record<string, string> = {
-      football: 'ffl',
-      baseball: 'flb',
-      basketball: 'fba',
-      hockey: 'fhl'
-    }
-    const sportPath = sportPaths[sport] || 'ffl'
-    return `https://g.espncdn.com/lm-static/${sportPath}/images/default_logos/team_0.svg`
-  }
   if (leagueStore.activePlatform === 'sleeper') return 'https://sleepercdn.com/images/v2/icons/league/league_avatar_mint.png'
-  return 'https://s.yimg.com/cv/apiv2/default/mlb/mlb_1_100.png'
+  return 'https://ui-avatars.com/api/?name=Team&background=3a3d52&color=fff&size=64'
 })
 
 // State

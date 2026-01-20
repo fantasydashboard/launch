@@ -3434,20 +3434,10 @@ export class EspnFantasyService {
   /**
    * Get avatar/logo URL for a team
    */
-  getTeamLogo(team: EspnTeam, sport?: Sport): string {
+  getTeamLogo(team: EspnTeam): string {
     if (team.logo) return team.logo
-    
-    // ESPN uses different paths for different sports
-    const sportPaths: Record<string, string> = {
-      football: 'ffl',
-      baseball: 'flb',
-      basketball: 'fba',
-      hockey: 'fhl'
-    }
-    const sportPath = sport ? sportPaths[sport] || 'ffl' : 'ffl'
-    
-    // Default ESPN team logo - use team ID modulo 25 for variety
-    return `https://g.espncdn.com/lm-static/${sportPath}/images/default_logos/team_${team.id % 25}.svg`
+    // Use CORS-friendly ui-avatars.com for default logo (works with html2canvas downloads)
+    return `https://ui-avatars.com/api/?name=${encodeURIComponent(team.name || 'Team')}&background=3a3d52&color=fff&size=64`
   }
 
   /**

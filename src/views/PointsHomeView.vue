@@ -613,23 +613,10 @@ const isGeneratingDownload = ref(false)
 const isGeneratingLeaderDownload = ref(false)
 const chartLoadProgress = ref('')
 const defaultAvatar = computed(() => {
-  if (leagueStore.activePlatform === 'espn') {
-    // ESPN uses different paths for different sports
-    // Extract sport from league key (format: espn_baseball_leagueId_season)
-    const leagueKey = effectiveLeagueKey.value || leagueStore.activeLeagueId || ''
-    const parts = leagueKey.split('_')
-    const sport = parts[1] || 'football'
-    const sportPaths: Record<string, string> = {
-      football: 'ffl',
-      baseball: 'flb',
-      basketball: 'fba',
-      hockey: 'fhl'
-    }
-    const sportPath = sportPaths[sport] || 'ffl'
-    return `https://g.espncdn.com/lm-static/${sportPath}/images/default_logos/team_0.svg`
-  }
+  // Use CORS-friendly ui-avatars.com for all platforms (works with downloads)
   if (leagueStore.activePlatform === 'sleeper') return 'https://sleepercdn.com/images/v2/icons/league/league_avatar_mint.png'
-  return 'https://s.yimg.com/cv/apiv2/default/mlb/mlb_2_g.png'
+  // ui-avatars.com is CORS-friendly and works with html2canvas downloads
+  return 'https://ui-avatars.com/api/?name=Team&background=3a3d52&color=fff&size=64'
 })
 
 // League settings (stat categories for category leagues)
@@ -933,12 +920,12 @@ const sortedTeams = computed(() => {
   return teams
 })
 
-const defaultTeam = { name: 'N/A', logo_url: defaultAvatar, wins: 0, losses: 0, points_for: 0, all_play_wins: 0, all_play_losses: 0 }
+const defaultTeam = computed(() => ({ name: 'N/A', logo_url: defaultAvatar.value, wins: 0, losses: 0, points_for: 0, all_play_wins: 0, all_play_losses: 0 }))
 
 const leaders = computed(() => {
   const teams = teamsWithStats.value
   if (!teams || teams.length === 0) {
-    return { bestRecord: defaultTeam, mostPoints: defaultTeam, mostCatWins: defaultTeam, bestAllPlay: defaultTeam }
+    return { bestRecord: defaultTeam.value, mostPoints: defaultTeam.value, mostCatWins: defaultTeam.value, bestAllPlay: defaultTeam.value }
   }
   
   const sortedByRecord = [...teams].sort((a, b) => {
@@ -952,10 +939,10 @@ const leaders = computed(() => {
   const sortedByAllPlay = [...teams].sort((a, b) => (b.all_play_wins || 0) - (a.all_play_wins || 0))
   
   return {
-    bestRecord: sortedByRecord[0] || defaultTeam,
-    mostPoints: sortedByPoints[0] || defaultTeam,
-    mostCatWins: sortedByCatWins[0] || defaultTeam,
-    bestAllPlay: sortedByAllPlay[0] || defaultTeam
+    bestRecord: sortedByRecord[0] || defaultTeam.value,
+    mostPoints: sortedByPoints[0] || defaultTeam.value,
+    mostCatWins: sortedByCatWins[0] || defaultTeam.value,
+    bestAllPlay: sortedByAllPlay[0] || defaultTeam.value
   }
 })
 
@@ -1228,7 +1215,7 @@ function getCategoryWinClass(wins: number, catId: string) {
   return 'text-dark-text'
 }
 
-function handleImageError(e: Event) { (e.target as HTMLImageElement).src = defaultAvatar }
+function handleImageError(e: Event) { (e.target as HTMLImageElement).src = defaultAvatar.value }
 function openLeaderModal(type: string) { leaderModalType.value = type; showLeaderModal.value = true }
 function closeLeaderModal() { showLeaderModal.value = false }
 
@@ -1525,22 +1512,47 @@ async function downloadStandings() {
   try {
     const html2canvas = (await import('html2canvas')).default
     
+    // CORS-friendly fallback for downloads (ui-avatars.com allows cross-origin)
+    const getDownloadFallbackAvatar = (teamName: string) => {
+      return `https://ui-avatars.com/api/?name=${encodeURIComponent(teamName)}&background=3a3d52&color=fff&size=64`
+    }
+    
     // Preload team images
     const imageMap = new Map<string, string>()
     await Promise.all(sortedTeams.value.map(async (team) => {
-      if (team.logo_url) {
-        try {
-          const response = await fetch(team.logo_url)
-          const blob = await response.blob()
-          const base64 = await new Promise<string>((resolve) => {
-            const reader = new FileReader()
-            reader.onloadend = () => resolve(reader.result as string)
-            reader.readAsDataURL(blob)
-          })
-          imageMap.set(team.team_key, base64)
-        } catch {
-          imageMap.set(team.team_key, defaultAvatar)
+      try {
+        // Try to fetch the team's logo
+        if (team.logo_url) {
+          const response = await fetch(team.logo_url, { mode: 'cors' })
+          if (response.ok) {
+            const blob = await response.blob()
+            const base64 = await new Promise<string>((resolve) => {
+              const reader = new FileReader()
+              reader.onloadend = () => resolve(reader.result as string)
+              reader.readAsDataURL(blob)
+            })
+            imageMap.set(team.team_key, base64)
+            return
+          }
         }
+      } catch {
+        // CORS error or other fetch failure - try fallback
+      }
+      
+      // Fallback: use ui-avatars which is CORS-friendly
+      try {
+        const fallbackUrl = getDownloadFallbackAvatar(team.name || 'Team')
+        const response = await fetch(fallbackUrl)
+        const blob = await response.blob()
+        const base64 = await new Promise<string>((resolve) => {
+          const reader = new FileReader()
+          reader.onloadend = () => resolve(reader.result as string)
+          reader.readAsDataURL(blob)
+        })
+        imageMap.set(team.team_key, base64)
+      } catch {
+        // Even fallback failed - use empty string, image just won't show
+        imageMap.set(team.team_key, '')
       }
     }))
     
@@ -1574,6 +1586,9 @@ async function downloadStandings() {
       else if (rank === 2) { rankBg = 'rgba(156, 163, 175, 0.3)'; rankColor = '#d1d5db' }
       else if (rank === 3) { rankBg = 'rgba(249, 115, 22, 0.3)'; rankColor = '#fb923c' }
       
+      const teamLogo = imageMap.get(team.team_key)
+      const teamInitials = team.name?.split(' ').map((w: string) => w[0]).join('').substring(0, 2).toUpperCase() || '??'
+      
       return `
       <div style="display: flex; height: 56px; padding: 0 12px; background: rgba(38, 42, 58, 0.4); border-radius: 8px; margin-bottom: 4px; border: 1px solid rgba(58, 61, 82, 0.4);">
         <!-- Rank -->
@@ -1582,7 +1597,7 @@ async function downloadStandings() {
         </div>
         <!-- Team Logo -->
         <div style="width: 48px; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
-          <img src="${imageMap.get(team.team_key) || defaultAvatar}" style="width: 36px; height: 36px; border-radius: 50%; border: 2px solid #3a3d52; object-fit: cover;" />
+          ${teamLogo ? `<img src="${teamLogo}" style="width: 36px; height: 36px; border-radius: 50%; border: 2px solid #3a3d52; object-fit: cover;" />` : `<div style="width: 36px; height: 36px; border-radius: 50%; border: 2px solid #3a3d52; background: #3a3d52; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700; color: #9ca3af;">${teamInitials}</div>`}
         </div>
         <!-- Team Name -->
         <div style="flex: 1; min-width: 0; display: flex; align-items: center; padding-left: 8px;">
