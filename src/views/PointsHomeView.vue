@@ -1226,7 +1226,7 @@ async function downloadLeaderImage() {
   try {
     const html2canvas = (await import('html2canvas')).default
     
-    // Helper to load logo
+    // Load main UFD logo - EXACTLY like Power Rankings
     const loadLogo = async (): Promise<string> => {
       try {
         const response = await fetch('/UFD_V5.png')
@@ -1243,14 +1243,16 @@ async function downloadLeaderImage() {
       }
     }
     
-    // Helper to create placeholder avatar
-    const createPlaceholder = (name: string): string => {
+    // Helper to create placeholder avatar - EXACTLY like Power Rankings
+    const createPlaceholder = (teamName: string): string => {
       const canvas = document.createElement('canvas')
       canvas.width = 64
       canvas.height = 64
       const ctx = canvas.getContext('2d')
       if (ctx) {
-        ctx.fillStyle = '#3a3d52'
+        const colors = ['#0D8ABC', '#3498DB', '#9B59B6', '#E91E63', '#F39C12', '#1ABC9C', '#2ECC71', '#E74C3C', '#00BCD4', '#8E44AD']
+        const colorIndex = teamName.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0) % colors.length
+        ctx.fillStyle = colors[colorIndex]
         ctx.beginPath()
         ctx.arc(32, 32, 32, 0, Math.PI * 2)
         ctx.fill()
@@ -1258,28 +1260,17 @@ async function downloadLeaderImage() {
         ctx.font = 'bold 28px sans-serif'
         ctx.textAlign = 'center'
         ctx.textBaseline = 'middle'
-        ctx.fillText(name.charAt(0).toUpperCase(), 32, 34)
+        ctx.fillText(teamName.charAt(0).toUpperCase(), 32, 34)
       }
       return canvas.toDataURL('image/png')
     }
     
-    const logoBase64 = await loadLogo()
-    const rankings = leaderModalData.value.comparison.slice(0, 10)
-    
-    if (rankings.length === 0) {
-      isGeneratingLeaderDownload.value = false
-      return
-    }
-    
-    const leader = rankings[0]
-    
-    // Pre-load all team images
-    const imageMap = new Map<string, string>()
-    for (const team of rankings) {
+    // Load team image - EXACTLY like Power Rankings
+    const loadTeamImage = async (team: any): Promise<string> => {
       try {
         const img = new Image()
         img.crossOrigin = 'anonymous'
-        const loadPromise = new Promise<string>((resolve) => {
+        return new Promise((resolve) => {
           img.onload = () => {
             try {
               const canvas = document.createElement('canvas')
@@ -1300,13 +1291,34 @@ async function downloadLeaderImage() {
           }
           img.onerror = () => resolve(createPlaceholder(team.name))
           setTimeout(() => resolve(createPlaceholder(team.name)), 3000)
+          img.src = team.logo_url || ''
         })
-        img.src = team.logo_url || ''
-        imageMap.set(team.name, await loadPromise)
       } catch {
-        imageMap.set(team.name, createPlaceholder(team.name))
+        return createPlaceholder(team.name)
       }
     }
+    
+    const logoBase64 = await loadLogo()
+    const rankings = leaderModalData.value.comparison.slice(0, 10)
+    
+    if (rankings.length === 0) {
+      isGeneratingLeaderDownload.value = false
+      return
+    }
+    
+    const leader = rankings[0]
+    
+    // Pre-load all team images - EXACTLY like Power Rankings
+    const imageMap = new Map<string, string>()
+    const imagePromises = rankings.map(async (team) => {
+      const base64 = await loadTeamImage(team)
+      return { teamKey: team.name, base64 }
+    })
+    
+    const results = await Promise.all(imagePromises)
+    results.forEach(({ teamKey, base64 }) => {
+      imageMap.set(teamKey, base64)
+    })
     
     const maxValue = leaderModalData.value.maxValue
     
@@ -1617,7 +1629,6 @@ async function downloadStandings() {
       else if (rank === 3) { rankBg = 'rgba(249, 115, 22, 0.3)'; rankColor = '#fb923c' }
       
       const teamLogo = imageMap.get(team.team_key) || createPlaceholder(team.name)
-      console.log(`[Download] Row ${rank} (${team.name}): teamLogo length=${teamLogo.length}`)
       
       return `
       <div style="display: flex; height: 56px; padding: 0 12px; background: rgba(38, 42, 58, 0.4); border-radius: 8px; margin-bottom: 4px; border: 1px solid rgba(58, 61, 82, 0.4);">
