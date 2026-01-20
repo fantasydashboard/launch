@@ -134,7 +134,7 @@
                           :src="team.logo_url || defaultAvatar" 
                           :alt="team.name"
                           class="w-8 h-8 rounded-full object-cover ring-2"
-                          :class="team.is_my_team ? 'ring-yellow-500' : 'ring-cyan-500/50'"
+                          :class="team.is_my_team ? 'ring-yellow-500' : 'ring-dark-border'"
                           @error="handleImageError"
                         />
                         <div v-if="team.is_my_team" class="absolute -top-1 -right-1 w-4 h-4 bg-yellow-500 rounded-full flex items-center justify-center">
@@ -213,9 +213,10 @@
                 <img 
                   :src="team.logo_url || defaultAvatar" 
                   :alt="team.name"
-                  class="w-6 h-6 rounded-full ring-2 object-cover"
-                  :style="{ borderColor: team.is_my_team ? '#F5C451' : getTeamColor(idx) }"
-                  :class="team.is_my_team ? 'ring-yellow-500' : ''"
+                  class="w-6 h-6 rounded-full object-cover"
+                  :style="{ 
+                    boxShadow: `0 0 0 2px ${team.is_my_team ? '#F5C451' : getTeamColor(idx)}`
+                  }"
                   @error="handleImageError" 
                 />
                 <div v-if="team.is_my_team" class="absolute -top-0.5 -right-0.5 w-3 h-3 bg-yellow-500 rounded-full flex items-center justify-center">
@@ -232,14 +233,14 @@
               <div 
                 v-for="(rank, weekIdx) in getHoveredTeamRanks()" 
                 :key="'rank-badge-' + weekIdx"
-                class="absolute transform -translate-x-1/2 -translate-y-full"
+                class="absolute transform -translate-x-1/2 -translate-y-1/2"
                 :style="getRankBadgePosition(weekIdx, rank)"
               >
                 <div 
-                  class="px-1.5 py-0.5 rounded text-[10px] font-bold text-white shadow-lg"
+                  class="w-6 h-6 rounded-full flex items-center justify-center text-[11px] font-bold text-white shadow-lg"
                   :style="{ backgroundColor: getHoveredTeamColor() }"
                 >
-                  {{ getOrdinal(rank) }}
+                  {{ rank }}
                 </div>
               </div>
             </div>
@@ -419,7 +420,7 @@
                         decoding="async"
                         :class="[
                           'w-8 h-8 rounded-full ring-2 object-cover',
-                          team.is_my_team ? 'ring-primary' : 'ring-cyan-500/50'
+                          team.is_my_team ? 'ring-primary' : 'ring-dark-border'
                         ]"
                         @error="handleImageError"
                       />
@@ -465,7 +466,7 @@
                   <div class="w-20 text-right">
                     <span :class="[
                       'font-bold text-lg',
-                      team.is_my_team ? 'text-primary' : 'text-cyan-400'
+                      team.is_my_team ? 'text-primary' : 'text-dark-text'
                     ]">{{ team.rosTotal?.toFixed(0) || 0 }}</span>
                   </div>
                 </div>
@@ -487,7 +488,7 @@
                         decoding="async"
                         :class="[
                           'w-8 h-8 rounded-full ring-2 object-cover',
-                          team.is_my_team ? 'ring-primary' : 'ring-cyan-500/50'
+                          team.is_my_team ? 'ring-primary' : 'ring-dark-border'
                         ]"
                         @error="handleImageError"
                       />
@@ -499,7 +500,7 @@
                     <div class="text-right flex-shrink-0 flex items-center gap-2">
                       <span :class="[
                         'font-bold text-lg',
-                        team.is_my_team ? 'text-primary' : 'text-cyan-400'
+                        team.is_my_team ? 'text-primary' : 'text-dark-text'
                       ]">{{ team.rosTotal?.toFixed(0) || 0 }}</span>
                       <svg class="w-4 h-4 text-dark-textMuted" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
@@ -592,7 +593,7 @@
                           decoding="async"
                           :class="[
                             'w-10 h-10 rounded-full ring-2 object-cover',
-                            team.is_my_team ? 'ring-primary' : 'ring-cyan-500'
+                            team.is_my_team ? 'ring-primary' : 'ring-dark-border'
                           ]"
                           @error="handleImageError"
                         />
@@ -617,7 +618,7 @@
                   <td class="py-3 px-4 text-center">
                     <span :class="[
                       'font-semibold text-base',
-                      team.is_my_team ? 'text-primary' : 'text-cyan-400'
+                      team.is_my_team ? 'text-primary' : 'text-dark-text'
                     ]">
                       {{ team.rosTotal?.toFixed(0) || 0 }}
                     </span>
@@ -920,7 +921,7 @@
                   :src="selectedProjectedTeam.logo_url || defaultAvatar" 
                   :alt="selectedProjectedTeam.name"
                   class="w-12 h-12 rounded-full ring-2 object-cover"
-                  :class="selectedProjectedTeam.is_my_team ? 'ring-primary' : 'ring-cyan-500'"
+                  :class="selectedProjectedTeam.is_my_team ? 'ring-primary' : 'ring-dark-border'"
                 />
                 <div>
                   <h3 class="text-xl font-bold text-dark-text">{{ selectedProjectedTeam.name }}</h3>
@@ -1445,8 +1446,8 @@ const chartOptions = computed(() => {
       curve: 'smooth' 
     },
     markers: { 
-      size: 4, 
-      hover: { size: 7 },
+      size: 0,  // No markers by default - we show custom badges on hover
+      hover: { size: 0 },
       strokeWidth: 0
     },
     xaxis: {
@@ -1679,6 +1680,14 @@ function getTeamColor(idx: number): string {
 }
 
 function getRankClass(rank: number, total: number): string {
+  if (!rank || rank === 99) return 'bg-dark-border text-dark-textMuted'
+  
+  // Top 1/3 = green, Bottom 1/3 = red, Middle = default gray
+  const topThird = Math.ceil(total / 3)
+  const bottomThirdStart = total - Math.floor(total / 3) + 1
+  
+  if (rank <= topThird) return 'bg-green-500/20 text-green-400'
+  if (rank >= bottomThirdStart) return 'bg-red-500/20 text-red-400'
   return 'bg-dark-border text-dark-text'
 }
 
@@ -1886,17 +1895,26 @@ function getHoveredTeamRanks(): number[] {
 function getRankBadgePosition(weekIdx: number, rank: number): Record<string, string> {
   const totalWeeks = historicalWeeks.value.length
   const numTeams = powerRankings.value.length
+  const chartHeight = 400
   
-  // Calculate X position (percentage across chart width)
-  const chartPadding = 50 // right padding from chart options
-  const xPercent = (weekIdx / Math.max(1, totalWeeks - 1)) * 100
+  // Chart area calculations (matching ApexCharts internal layout)
+  // Chart area starts at ~8% from top and ends at ~90% (leaving room for x-axis)
+  const chartTopOffset = chartHeight * 0.08
+  const chartUsableHeight = chartHeight * 0.82
   
-  // Calculate Y position (rank position, inverted because rank 1 is at top)
-  const yPercent = ((rank - 1) / (numTeams - 1)) * 100
+  // Calculate Y position based on rank (1 = top, numTeams = bottom because reversed)
+  const yPercent = (rank - 1) / Math.max(1, numTeams - 1)
+  const top = chartTopOffset + (chartUsableHeight * yPercent)
+  
+  // Calculate X position - chart plotting area is roughly from 10% to 88% of width
+  // (leaving room for y-axis labels on left and padding on right for avatars)
+  const xPercent = totalWeeks > 1 
+    ? 10 + (weekIdx / (totalWeeks - 1)) * 78  // 10% to 88%
+    : 50  // center if only one week
   
   return {
-    left: `calc(${xPercent}% - 8px)`,
-    top: `calc(${yPercent}% + 15px)`
+    left: `${xPercent}%`,
+    top: `${top}px`
   }
 }
 
