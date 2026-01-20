@@ -1256,18 +1256,46 @@ function getTeamStats(teamKey: string): any {
   // Get all scores for this team from history
   const scores: number[] = []
   const results: string[] = []
+  let allPlayWins = 0
+  let allPlayLosses = 0
   
   for (const [week, weekMatchups] of allMatchupsHistory.value) {
+    // Find this team's score for the week
+    let myWeekScore = 0
+    let foundMyTeam = false
+    
     for (const matchup of weekMatchups) {
       const myTeam = matchup.teams.find((t: any) => t.team_key === teamKey)
       const opponent = matchup.teams.find((t: any) => t.team_key !== teamKey)
       
       if (myTeam && opponent) {
-        scores.push(myTeam.points || 0)
-        if ((myTeam.points || 0) > (opponent.points || 0)) results.push('W')
-        else if ((myTeam.points || 0) < (opponent.points || 0)) results.push('L')
+        myWeekScore = myTeam.points || 0
+        foundMyTeam = true
+        scores.push(myWeekScore)
+        if (myWeekScore > (opponent.points || 0)) results.push('W')
+        else if (myWeekScore < (opponent.points || 0)) results.push('L')
         else results.push('T')
       }
+    }
+    
+    // All-play calculation: compare this team's score against ALL other teams this week
+    if (foundMyTeam) {
+      // Collect all team scores for this week
+      const weekScores: { team_key: string; points: number }[] = []
+      for (const matchup of weekMatchups) {
+        for (const t of matchup.teams) {
+          weekScores.push({ team_key: t.team_key, points: t.points || 0 })
+        }
+      }
+      
+      // Compare against all other teams
+      weekScores.forEach(opp => {
+        if (opp.team_key !== teamKey) {
+          if (myWeekScore > opp.points) allPlayWins++
+          else if (myWeekScore < opp.points) allPlayLosses++
+          // Ties don't count in all-play
+        }
+      })
     }
   }
   
@@ -1294,8 +1322,8 @@ function getTeamStats(teamKey: string): any {
     totalPoints,
     highScore,
     lowScore,
-    allPlayWins: 0, // Would need all-play calculation
-    allPlayLosses: 0,
+    allPlayWins,
+    allPlayLosses,
     stdDev,
     last3Avg,
     recentResults: results.slice(-5).reverse()
