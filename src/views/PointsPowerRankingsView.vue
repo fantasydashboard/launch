@@ -349,16 +349,31 @@
               v-for="(team, idx) in positionStrengthData" 
               :key="`proj-${team.team_key}`"
               :class="[
-                'rounded-xl transition-all overflow-hidden cursor-pointer',
+                'rounded-xl transition-all overflow-hidden',
                 team.is_my_team 
                   ? 'bg-primary/10 border border-primary/30' 
-                  : 'border border-transparent hover:border-dark-border/50'
+                  : 'border border-dark-border/30 hover:border-dark-border/50',
+                expandedProjectedTeam === team.team_key ? 'ring-2 ring-primary/50' : ''
               ]"
-              @click="openPositionModal(baseballPositions[0].id)"
             >
-              <div class="p-3 hover:bg-dark-border/20 transition-colors">
+              <!-- Team Row (clickable header) -->
+              <div 
+                class="p-3 cursor-pointer hover:bg-dark-border/20 transition-colors"
+                @click="toggleProjectedTeam(team.team_key)"
+              >
                 <!-- Desktop: Horizontal layout -->
                 <div class="hidden sm:flex items-center gap-3">
+                  <!-- Expand/Collapse Icon -->
+                  <div class="w-6 text-center">
+                    <svg 
+                      class="w-5 h-5 text-dark-textMuted transition-transform duration-200"
+                      :class="{ 'rotate-90': expandedProjectedTeam === team.team_key }"
+                      fill="none" stroke="currentColor" viewBox="0 0 24 24"
+                    >
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+                    </svg>
+                  </div>
+                  
                   <!-- Rank -->
                   <div class="w-8 text-center">
                     <span :class="[
@@ -426,6 +441,13 @@
                 <!-- Mobile: Stacked layout -->
                 <div class="sm:hidden">
                   <div class="flex items-center gap-2 mb-3">
+                    <svg 
+                      class="w-4 h-4 text-dark-textMuted transition-transform duration-200 flex-shrink-0"
+                      :class="{ 'rotate-90': expandedProjectedTeam === team.team_key }"
+                      fill="none" stroke="currentColor" viewBox="0 0 24 24"
+                    >
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+                    </svg>
                     <div class="w-6 text-center">
                       <span :class="[
                         'font-bold text-base',
@@ -475,6 +497,78 @@
                   </div>
                 </div>
               </div>
+              
+              <!-- Expanded Player Cards Section -->
+              <div 
+                v-if="expandedProjectedTeam === team.team_key"
+                class="border-t border-dark-border/50 bg-dark-card/50 p-4"
+              >
+                <!-- Position Groups -->
+                <div class="space-y-4">
+                  <div 
+                    v-for="pos in baseballPositions.slice(0, 8)" 
+                    :key="`${team.team_key}-${pos.id}`"
+                    class="space-y-2"
+                  >
+                    <!-- Position Header -->
+                    <div class="flex items-center gap-2">
+                      <div 
+                        class="w-3 h-3 rounded"
+                        :style="{ backgroundColor: getBaseballPositionColor(pos.id) }"
+                      ></div>
+                      <span class="text-sm font-semibold text-dark-text">{{ pos.name }}</span>
+                      <span class="text-xs text-dark-textMuted">
+                        ({{ getTeamPlayersAtPosition(team.team_key, pos.id).length }} players • {{ (team.positionTotals?.[pos.id] || 0).toFixed(0) }} pts)
+                      </span>
+                    </div>
+                    
+                    <!-- Player Cards Grid -->
+                    <div 
+                      v-if="getTeamPlayersAtPosition(team.team_key, pos.id).length > 0"
+                      class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2"
+                    >
+                      <div 
+                        v-for="player in getTeamPlayersAtPosition(team.team_key, pos.id).sort((a, b) => (b.total_points || 0) - (a.total_points || 0))"
+                        :key="player.player_key"
+                        class="bg-dark-border/30 rounded-lg p-2 flex items-center gap-2"
+                      >
+                        <!-- Player Photo -->
+                        <div class="relative flex-shrink-0">
+                          <img 
+                            :src="getPlayerHeadshot(player)"
+                            :alt="player.name"
+                            class="w-10 h-10 rounded-full object-cover bg-dark-border"
+                            @error="handlePlayerImageError"
+                          />
+                          <div 
+                            class="absolute -bottom-1 -right-1 w-5 h-5 rounded-full flex items-center justify-center text-[9px] font-bold text-white"
+                            :style="{ backgroundColor: getBaseballPositionColor(pos.id) }"
+                          >
+                            {{ pos.abbrev }}
+                          </div>
+                        </div>
+                        
+                        <!-- Player Info -->
+                        <div class="flex-1 min-w-0">
+                          <div class="text-xs font-medium text-dark-text truncate">{{ player.name }}</div>
+                          <div class="text-lg font-bold text-primary leading-tight">
+                            {{ (player.total_points || 0).toFixed(0) }}
+                            <span class="text-[10px] text-dark-textMuted font-normal">pts</span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                    
+                    <!-- No players message -->
+                    <div 
+                      v-else
+                      class="text-xs text-dark-textMuted italic pl-5"
+                    >
+                      No players at this position
+                    </div>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
           <div v-else class="text-center py-8 px-4">
@@ -514,22 +608,10 @@
                     class="py-3 px-4 text-center cursor-pointer hover:text-primary w-16"
                     @click="sortPositionBy(pos.id)"
                   >
-                    <div class="flex items-center justify-center gap-1">
-                      {{ pos.abbrev }}
-                      <span class="inline-flex flex-col text-[10px] leading-[8px]">
-                        <span :class="positionSortColumn === pos.id && positionSortDirection === 'asc' ? 'text-primary' : 'text-dark-textMuted'">▲</span>
-                        <span :class="positionSortColumn === pos.id && positionSortDirection === 'desc' ? 'text-primary' : 'text-dark-textMuted'">▼</span>
-                      </span>
-                    </div>
+                    {{ pos.abbrev }} <span v-if="positionSortColumn === pos.id" class="text-yellow-400">{{ positionSortDirection === 'asc' ? '↑' : '↓' }}</span>
                   </th>
                   <th class="py-3 px-4 text-center cursor-pointer hover:text-primary w-24" @click="sortPositionBy('total')">
-                    <div class="flex items-center justify-center gap-1">
-                      Total
-                      <span class="inline-flex flex-col text-[10px] leading-[8px]">
-                        <span :class="positionSortColumn === 'total' && positionSortDirection === 'asc' ? 'text-primary' : 'text-dark-textMuted'">▲</span>
-                        <span :class="positionSortColumn === 'total' && positionSortDirection === 'desc' ? 'text-primary' : 'text-dark-textMuted'">▼</span>
-                      </span>
-                    </div>
+                    Total <span v-if="positionSortColumn === 'total'" class="text-yellow-400">{{ positionSortDirection === 'asc' ? '↑' : '↓' }}</span>
                   </th>
                 </tr>
               </thead>
@@ -956,9 +1038,12 @@ const showPositionModal = ref(false)
 const selectedTeamDetail = ref<PowerRankingData | null>(null)
 const selectedPosition = ref<{ id: string; name: string } | null>(null)
 
+// Expanded team for projected points by position section
+const expandedProjectedTeam = ref<string | null>(null)
+
 // Position sorting
-const positionSortColumn = ref<string>('rank')
-const positionSortDirection = ref<'asc' | 'desc'>('asc')
+const positionSortColumn = ref<string>('total')
+const positionSortDirection = ref<'asc' | 'desc'>('desc')
 
 // Power rankings data
 const powerRankings = ref<PowerRankingData[]>([])
@@ -1639,6 +1724,36 @@ function openPositionModal(posId: string) {
 function closePositionModal() {
   showPositionModal.value = false
   selectedPosition.value = null
+}
+
+// Toggle expanded team in Projected Points by Position section
+function toggleProjectedTeam(teamKey: string) {
+  if (expandedProjectedTeam.value === teamKey) {
+    expandedProjectedTeam.value = null
+  } else {
+    expandedProjectedTeam.value = teamKey
+  }
+}
+
+// Get player headshot URL - ESPN players don't have headshots in the roster API
+function getPlayerHeadshot(player: any): string {
+  // If player has a headshot URL, use it
+  if (player.headshot) return player.headshot
+  
+  // For ESPN, try to construct headshot URL from player ID
+  if (player.player_id && leagueStore.activePlatform === 'espn') {
+    return `https://a.espncdn.com/combiner/i?img=/i/headshots/mlb/players/full/${player.player_id}.png&w=96&h=70&cb=1`
+  }
+  
+  // Fallback to default avatar
+  return defaultAvatar.value
+}
+
+// Handle player image error - show initials fallback
+function handlePlayerImageError(event: Event) {
+  const img = event.target as HTMLImageElement
+  // Set to a generic player silhouette
+  img.src = defaultAvatar.value
 }
 
 async function downloadRankings() {
