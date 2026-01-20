@@ -793,6 +793,23 @@ const weekStats = computed(() => {
   }
 })
 
+// Check if viewing a completed week (past week or season is over)
+const isCompletedWeek = computed(() => {
+  const selectedWeekNum = parseInt(selectedWeek.value) || 0
+  const currentWeekNum = currentWeek.value
+  
+  // If season is complete, all weeks are completed
+  if (isSeasonComplete.value) return true
+  
+  // If viewing a past week, it's completed
+  if (selectedWeekNum > 0 && selectedWeekNum < currentWeekNum) return true
+  
+  // Also check matchup status as fallback
+  if (selectedMatchup.value?.status === 'final') return true
+  
+  return false
+})
+
 // Win probability calculation
 const winProbability = computed(() => {
   if (!selectedMatchup.value?.team1 || !selectedMatchup.value?.team2) return { team1: 50, team2: 50 }
@@ -800,8 +817,8 @@ const winProbability = computed(() => {
   const team1 = selectedMatchup.value.team1
   const team2 = selectedMatchup.value.team2
   
-  // For completed weeks, use actual results
-  if (selectedMatchup.value.status === 'final') {
+  // For completed weeks, use actual results (100% vs 0%)
+  if (isCompletedWeek.value) {
     if ((team1.points || 0) > (team2.points || 0)) return { team1: 100, team2: 0 }
     if ((team2.points || 0) > (team1.points || 0)) return { team1: 0, team2: 100 }
     return { team1: 50, team2: 50 }
@@ -848,18 +865,37 @@ const probabilityHistory = computed(() => {
   
   const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
   const matchup = selectedMatchup.value
-  const isCompleted = matchup.status === 'final'
+  const isCompleted = isCompletedWeek.value // Use our reliable completed check
   const snapshots = matchupSnapshots.value
   
-  // If we have real snapshot data, use it!
+  // If we have real snapshot data, use it (but ensure Sunday is 100/0 for completed matchups)
   if (snapshots.length > 0) {
     console.log(`Using ${snapshots.length} real snapshots for matchup ${matchup.matchup_id}`)
     
     const history = []
+    const team1Points = matchup.team1.points || 0
+    const team2Points = matchup.team2.points || 0
     
     for (let i = 0; i < 7; i++) {
       // Find snapshot for this day
       const snapshot = snapshots.find(s => s.day_of_week === i)
+      
+      // For Sunday (day 6) on completed matchups, always use final result
+      if (i === 6 && isCompleted) {
+        let team1Prob = 50, team2Prob = 50
+        if (team1Points > team2Points) { team1Prob = 100; team2Prob = 0 }
+        else if (team2Points > team1Points) { team1Prob = 0; team2Prob = 100 }
+        
+        history.push({
+          day: days[i],
+          team1: team1Prob,
+          team2: team2Prob,
+          isFuture: false,
+          isReal: true,
+          points: { team1: team1Points, team2: team2Points }
+        })
+        continue
+      }
       
       if (snapshot) {
         // Use real data
@@ -908,7 +944,7 @@ const probabilityHistory = computed(() => {
   
   // No snapshots available - use Monte Carlo reconstruction
   // This provides accurate simulations for both live and historical matchups
-  console.log(`Using Monte Carlo reconstruction for matchup ${matchup.matchup_id} (no snapshots), platform: ${leagueStore.activePlatform}`)
+  console.log(`Using Monte Carlo reconstruction for matchup ${matchup.matchup_id} (no snapshots), isCompleted: ${isCompleted}`)
   
   // Determine current sport for daily weight distribution
   const sport = leagueStore.currentSportType || 'baseball'
@@ -918,6 +954,7 @@ const probabilityHistory = computed(() => {
   const currentDayIndex = jsDay === 0 ? 6 : jsDay - 1
   
   // Use the reconstruction service for accurate Monte Carlo simulations
+  // Pass 'final' status if we determined this is a completed week
   const reconstructedHistory = generateWinProbabilityHistory(
     {
       matchup_id: matchup.matchup_id,
@@ -931,7 +968,7 @@ const probabilityHistory = computed(() => {
         name: matchup.team2.name,
         points: matchup.team2.points || 0
       },
-      status: matchup.status
+      status: isCompleted ? 'final' : matchup.status // Force 'final' if we know it's completed
     },
     sport,
     allMatchupsHistory.value,
