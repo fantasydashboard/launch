@@ -192,12 +192,16 @@
           <p class="text-sm text-dark-textMuted mt-1">Track power ranking changes throughout the season</p>
         </div>
         <div class="card-body">
-          <div v-if="chartSeries.length > 0" class="relative">
+          <div 
+            v-if="chartSeries.length > 0" 
+            class="relative power-chart-container"
+          >
             <apexchart 
+              ref="powerChartRef"
               type="line" 
               height="400" 
               :options="chartOptions" 
-              :series="chartSeries" 
+              :series="chartSeries"
             />
             <!-- Team avatars at end of lines -->
             <div 
@@ -562,12 +566,12 @@
                   <th 
                     v-for="pos in baseballPositions.slice(0, 8)" 
                     :key="pos.id"
-                    class="py-3 px-4 text-center cursor-pointer hover:text-primary w-16"
+                    class="py-3 px-4 text-center cursor-pointer hover:text-yellow-400 w-16"
                     @click="sortPositionBy(pos.id)"
                   >
                     {{ pos.abbrev }} <span v-if="positionSortColumn === pos.id" class="text-yellow-400">{{ positionSortDirection === 'asc' ? '↑' : '↓' }}</span>
                   </th>
-                  <th class="py-3 px-4 text-center cursor-pointer hover:text-primary w-24" @click="sortPositionBy('total')">
+                  <th class="py-3 px-4 text-center cursor-pointer hover:text-yellow-400 w-24" @click="sortPositionBy('total')">
                     Total <span v-if="positionSortColumn === 'total'" class="text-yellow-400">{{ positionSortDirection === 'asc' ? '↑' : '↓' }}</span>
                   </th>
                 </tr>
@@ -1108,6 +1112,13 @@ const selectedProjectedTeam = ref<any>(null)
 
 // Hovered team for chart highlighting
 const hoveredTeamKey = ref<string | null>(null)
+const powerChartRef = ref<any>(null)
+
+// Computed: get the series index of the hovered team
+const hoveredSeriesIndex = computed(() => {
+  if (!hoveredTeamKey.value) return -1
+  return powerRankings.value.findIndex(t => t.team_key === hoveredTeamKey.value)
+})
 
 // Position sorting
 const positionSortColumn = ref<string>('total')
@@ -1424,10 +1435,30 @@ const teamDetailFactors = computed(() => {
 const chartOptions = computed(() => {
   if (powerRankings.value.length === 0) return null
   
-  // Get colors for each team - user is yellow, others get unique colors
-  const colors = powerRankings.value.map((team, idx) => 
-    team.is_my_team ? '#F5C451' : getTeamColor(idx)
-  )
+  // Get the index of the hovered team
+  const hoveredIdx = hoveredTeamKey.value 
+    ? powerRankings.value.findIndex(t => t.team_key === hoveredTeamKey.value)
+    : -1
+  
+  // Get colors for each team - faded when another team is hovered
+  const colors = powerRankings.value.map((team, idx) => {
+    const baseColor = team.is_my_team ? '#F5C451' : getTeamColor(idx)
+    // If someone is hovered and it's not this team, fade it
+    if (hoveredIdx !== -1 && idx !== hoveredIdx) {
+      // Convert to rgba with low opacity
+      const r = parseInt(baseColor.slice(1, 3), 16)
+      const g = parseInt(baseColor.slice(3, 5), 16)
+      const b = parseInt(baseColor.slice(5, 7), 16)
+      return `rgba(${r}, ${g}, ${b}, 0.2)`
+    }
+    return baseColor
+  })
+  
+  // Stroke widths - hovered line is thicker
+  const strokeWidths = powerRankings.value.map((_, idx) => {
+    if (hoveredIdx === -1) return 2  // No hover, all same
+    return idx === hoveredIdx ? 3 : 2
+  })
   
   return {
     chart: { 
@@ -1435,12 +1466,13 @@ const chartOptions = computed(() => {
       background: 'transparent', 
       toolbar: { show: false }, 
       zoom: { enabled: false },
+      animations: { enabled: false },
       events: {
         mouseMove: function(event: any, chartContext: any, config: any) {
           // When hovering over a data point or line, highlight that team
           if (config.seriesIndex !== undefined && config.seriesIndex >= 0) {
             const team = powerRankings.value[config.seriesIndex]
-            if (team) {
+            if (team && hoveredTeamKey.value !== team.team_key) {
               hoveredTeamKey.value = team.team_key
             }
           }
@@ -1454,7 +1486,7 @@ const chartOptions = computed(() => {
     theme: { mode: 'dark' },
     colors: colors,
     stroke: { 
-      width: 2,  // Same width for all teams (no bold for user)
+      width: strokeWidths,
       curve: 'smooth' 
     },
     markers: { 
@@ -1470,18 +1502,29 @@ const chartOptions = computed(() => {
       reversed: true,
       min: 1,
       max: powerRankings.value.length,
-      labels: { style: { colors: '#9ca3af' }, formatter: (v: number) => `#${Math.round(v)}` }
+      labels: { 
+        style: { colors: '#9ca3af' }, 
+        formatter: (v: number) => `#${Math.round(v)}`,
+        offsetX: 0
+      }
     },
     legend: { show: false },
     tooltip: { 
+      enabled: true,
       theme: 'dark',
       shared: false,
-      intersect: false,  // Allow tooltip to show when hovering near line
+      intersect: false,
+      followCursor: true,
       custom: function({ series, seriesIndex, dataPointIndex, w }: any) {
         const teamName = w.config.series[seriesIndex].name
         const rank = series[seriesIndex][dataPointIndex]
         const week = historicalWeeks.value[dataPointIndex]
         const team = powerRankings.value[seriesIndex]
+        
+        // Update hovered team when tooltip shows
+        if (team && hoveredTeamKey.value !== team.team_key) {
+          hoveredTeamKey.value = team.team_key
+        }
         
         // Get the team's weekly points if available
         const weeklyPoints = getTeamWeeklyPoints(team?.team_key, week)
@@ -1491,12 +1534,23 @@ const chartOptions = computed(() => {
             <div class="font-semibold text-white">${teamName}</div>
             <div class="text-sm text-gray-400">Week ${week}</div>
             <div class="text-lg font-bold" style="color: ${colors[seriesIndex]}">Rank: #${rank}</div>
-            ${weeklyPoints ? `<div class="text-sm text-primary">${weeklyPoints.toFixed(1)} pts</div>` : ''}
+            ${weeklyPoints ? `<div class="text-sm text-yellow-400">${weeklyPoints.toFixed(1)} pts</div>` : ''}
           </div>
         `
       }
     },
-    grid: { borderColor: '#374151', padding: { left: 10, right: 40 } }
+    grid: { 
+      borderColor: '#374151', 
+      padding: { left: 5, right: 45, top: 10, bottom: 0 } 
+    },
+    states: {
+      hover: {
+        filter: { type: 'none' }
+      },
+      active: {
+        filter: { type: 'none' }
+      }
+    }
   }
 })
 
@@ -1909,15 +1963,27 @@ function getRankBadgePosition(weekIdx: number, rank: number): Record<string, str
   const numTeams = powerRankings.value.length
   const chartHeight = 400
   
-  // Y position - use same calculation as getAvatarPosition
-  // Chart area: ~8% from top, ~82% usable height
-  const yPercent = ((rank - 1) / Math.max(1, numTeams - 1)) * 100
-  const top = (chartHeight * 0.08) + (chartHeight * 0.82 * yPercent / 100)
+  // Y position calculation - must match ApexCharts' reversed Y-axis
+  // ApexCharts with yaxis.reversed=true places rank 1 at top
+  // Chart area: approximately 32px from top (8%), usable height ~328px (82%)
+  const chartTopOffset = 32  // ~8% of 400
+  const chartUsableHeight = 328  // ~82% of 400
   
-  // X position - ApexCharts draws data points from roughly 8% to 92% of the chart width
-  // when we have left padding of 10 and right padding of 40
+  // For reversed Y-axis: rank 1 is at top, rank N is at bottom
+  const yRatio = (rank - 1) / Math.max(1, numTeams - 1)
+  const top = chartTopOffset + (chartUsableHeight * yRatio)
+  
+  // X position calculation
+  // ApexCharts with our padding (left: 5, right: 45) and y-axis labels (~30px)
+  // The plotting area starts at roughly 35px from left edge
+  // Avatar is at calc(100% - 40px), so last point is around there
+  // For a container of ~600px width: left edge ~6%, right edge ~93%
+  const xStart = 6  // First data point percentage from left
+  const xEnd = 93   // Last data point percentage from left
+  const xRange = xEnd - xStart
+  
   const xPercent = totalWeeks > 1 
-    ? 8 + (weekIdx / (totalWeeks - 1)) * 84  // 8% to 92%
+    ? xStart + (weekIdx / (totalWeeks - 1)) * xRange
     : 50  // center if only one week
   
   return {
@@ -2795,3 +2861,18 @@ onMounted(() => {
   }
 })
 </script>
+
+<style scoped>
+/* Power chart - make lines easier to hover */
+.power-chart-container :deep(.apexcharts-series path) {
+  cursor: pointer;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  transition: stroke-opacity 0.2s ease;
+}
+
+/* Ensure tooltip is always on top */
+.power-chart-container :deep(.apexcharts-tooltip) {
+  z-index: 100;
+}
+</style>
