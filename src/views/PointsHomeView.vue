@@ -1512,18 +1512,21 @@ async function downloadStandings() {
   try {
     const html2canvas = (await import('html2canvas')).default
     
-    // Create placeholder using canvas (works without CORS)
+    // Create placeholder using canvas (works without external requests)
     const createPlaceholder = (teamName: string): string => {
       const canvas = document.createElement('canvas')
       canvas.width = 64
       canvas.height = 64
       const ctx = canvas.getContext('2d')
       if (ctx) {
-        ctx.fillStyle = '#3a3d52'
+        // Use consistent colors based on team name
+        const colors = ['#0D8ABC', '#3498DB', '#9B59B6', '#E91E63', '#F39C12', '#1ABC9C', '#2ECC71', '#E74C3C', '#00BCD4', '#8E44AD']
+        const colorIndex = teamName.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0) % colors.length
+        ctx.fillStyle = colors[colorIndex]
         ctx.beginPath()
         ctx.arc(32, 32, 32, 0, Math.PI * 2)
         ctx.fill()
-        ctx.fillStyle = '#facc15'
+        ctx.fillStyle = '#ffffff'
         ctx.font = 'bold 24px sans-serif'
         ctx.textAlign = 'center'
         ctx.textBaseline = 'middle'
@@ -1533,9 +1536,17 @@ async function downloadStandings() {
       return canvas.toDataURL('image/png')
     }
     
-    // Load team image using Image object (handles CORS better than fetch)
+    // Load team image - exactly like matchups page does
     const loadTeamImage = async (team: any): Promise<string> => {
-      if (!team.logo_url) return createPlaceholder(team.name)
+      // Skip empty URLs - go straight to placeholder
+      if (!team.logo_url) {
+        return createPlaceholder(team.name)
+      }
+      
+      // ESPN CDN URLs don't support CORS - use placeholder
+      if (team.logo_url.includes('espncdn.com') || team.logo_url.includes('espn.com')) {
+        return createPlaceholder(team.name)
+      }
       
       return new Promise((resolve) => {
         const img = new Image()

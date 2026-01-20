@@ -2053,6 +2053,11 @@ async function downloadRankings() {
     const loadTeamImage = async (team: any): Promise<string> => {
       if (!team.logo_url) return createPlaceholder(team.name)
       
+      // ESPN CDN URLs don't support CORS - use placeholder
+      if (team.logo_url.includes('espncdn.com') || team.logo_url.includes('espn.com')) {
+        return createPlaceholder(team.name)
+      }
+      
       return new Promise((resolve) => {
         const img = new Image()
         img.crossOrigin = 'anonymous'
