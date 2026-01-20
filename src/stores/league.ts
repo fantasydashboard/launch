@@ -1264,12 +1264,19 @@ export const useLeagueStore = defineStore('league', () => {
           logo: team.logo
         })
         
-        // Use team's logo if available, otherwise generate initials-based placeholder
+        // Use team's logo if available, otherwise use ESPN's default logos
         let logoUrl = team.logo
         if (!logoUrl || logoUrl === '') {
-          // Generate a placeholder avatar URL (could use a service like ui-avatars.com)
-          const initials = team.name.split(' ').map(w => w[0]).join('').substring(0, 2).toUpperCase()
-          logoUrl = `https://ui-avatars.com/api/?name=${encodeURIComponent(team.name)}&background=random&color=fff&size=64`
+          // ESPN uses different paths for different sports
+          const sportPaths: Record<string, string> = {
+            football: 'ffl',
+            baseball: 'flb',
+            basketball: 'fba',
+            hockey: 'fhl'
+          }
+          const sportPath = sportPaths[sport] || 'ffl'
+          // Use ESPN's default team logos (team ID modulo 25 for variety)
+          logoUrl = `https://g.espncdn.com/lm-static/${sportPath}/images/default_logos/team_${team.id % 25}.svg`
         }
         
         return {

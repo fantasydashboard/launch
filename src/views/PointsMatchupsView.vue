@@ -614,7 +614,26 @@ import LoadingSpinner from '@/components/LoadingSpinner.vue'
 const leagueStore = useLeagueStore()
 const authStore = useAuthStore()
 
-const defaultAvatar = 'https://s.yimg.com/cv/apiv2/default/mlb/mlb_1_100.png'
+// Default avatar based on platform and sport
+const defaultAvatar = computed(() => {
+  if (leagueStore.activePlatform === 'espn') {
+    // ESPN uses different paths for different sports
+    // Extract sport from league key (format: espn_baseball_leagueId_season)
+    const leagueKey = leagueStore.currentLeague?.league_id || leagueStore.activeLeagueId || ''
+    const parts = leagueKey.split('_')
+    const sport = parts[1] || 'football'
+    const sportPaths: Record<string, string> = {
+      football: 'ffl',
+      baseball: 'flb',
+      basketball: 'fba',
+      hockey: 'fhl'
+    }
+    const sportPath = sportPaths[sport] || 'ffl'
+    return `https://g.espncdn.com/lm-static/${sportPath}/images/default_logos/team_0.svg`
+  }
+  if (leagueStore.activePlatform === 'sleeper') return 'https://sleepercdn.com/images/v2/icons/league/league_avatar_mint.png'
+  return 'https://s.yimg.com/cv/apiv2/default/mlb/mlb_1_100.png'
+})
 
 // State
 const selectedWeek = ref('')
@@ -1205,7 +1224,7 @@ const lifetimeSeries = computed(() => {
 // Helper functions
 function handleImageError(e: Event) {
   const img = e.target as HTMLImageElement
-  img.src = defaultAvatar
+  img.src = defaultAvatar.value
 }
 
 function getTeamRecord(teamKey: string): string {
