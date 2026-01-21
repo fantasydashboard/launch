@@ -195,6 +195,84 @@
 
     <!-- ==================== PLAYER GRADES TAB ==================== -->
     <template v-else-if="activeTab === 'grades'">
+      <!-- Grading Methodology Explainer -->
+      <div class="card mb-4 border border-yellow-500/30">
+        <div class="card-body">
+          <div class="flex items-start gap-3">
+            <div class="w-10 h-10 rounded-full bg-yellow-500/20 flex items-center justify-center flex-shrink-0">
+              <span class="text-xl">📊</span>
+            </div>
+            <div class="flex-1">
+              <div class="flex items-center gap-2 mb-2">
+                <h3 class="font-bold text-dark-text">Premium Tier-Based Draft Grading</h3>
+                <button 
+                  @click="showGradingInfo = !showGradingInfo" 
+                  class="text-xs px-2 py-0.5 rounded bg-dark-border text-dark-textMuted hover:text-yellow-400 transition-colors"
+                >
+                  {{ showGradingInfo ? 'Hide Details' : 'How It Works' }}
+                </button>
+              </div>
+              <p class="text-sm text-dark-textMuted">
+                Grades are based on <span class="text-yellow-400 font-semibold">tier movement</span>, not raw rank difference. 
+                Drafting SS1 and getting SS3 (both elite) is very different than drafting SS24 and getting SS26 (both replacement level).
+              </p>
+              
+              <!-- Expanded Info -->
+              <div v-if="showGradingInfo" class="mt-4 space-y-4">
+                <!-- Tier Definitions -->
+                <div class="bg-dark-border/30 rounded-lg p-4">
+                  <h4 class="font-semibold text-dark-text mb-2">Position Tiers ({{ numTeams }}-team league)</h4>
+                  <div class="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
+                    <div class="flex items-center gap-2">
+                      <span class="w-3 h-3 rounded-full bg-emerald-500"></span>
+                      <span class="text-dark-textMuted">Elite: #1-{{ tierConfig.elite }}</span>
+                    </div>
+                    <div class="flex items-center gap-2">
+                      <span class="w-3 h-3 rounded-full bg-green-500"></span>
+                      <span class="text-dark-textMuted">Starter: #1-{{ tierConfig.starter }}</span>
+                    </div>
+                    <div class="flex items-center gap-2">
+                      <span class="w-3 h-3 rounded-full bg-yellow-500"></span>
+                      <span class="text-dark-textMuted">Bench: #{{ tierConfig.starter + 1 }}-{{ tierConfig.bench }}</span>
+                    </div>
+                    <div class="flex items-center gap-2">
+                      <span class="w-3 h-3 rounded-full bg-gray-500"></span>
+                      <span class="text-dark-textMuted">Replacement: #{{ tierConfig.bench + 1 }}+</span>
+                    </div>
+                  </div>
+                </div>
+                
+                <!-- Key Principles -->
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-3 text-sm">
+                  <div class="bg-dark-border/30 rounded-lg p-3">
+                    <div class="font-semibold text-dark-text mb-1">🎯 Tier Movement</div>
+                    <div class="text-dark-textMuted text-xs">
+                      ELITE→ELITE = great pick<br>
+                      BENCH→ELITE = 🔥 STEAL<br>
+                      ELITE→BENCH = 💥 BUST
+                    </div>
+                  </div>
+                  <div class="bg-dark-border/30 rounded-lg p-3">
+                    <div class="font-semibold text-dark-text mb-1">⚖️ Round Weighting</div>
+                    <div class="text-dark-textMuted text-xs">
+                      Rounds 1-2 weighted 5x<br>
+                      Rounds 3-5 weighted 3x<br>
+                      Late round steals get bonus
+                    </div>
+                  </div>
+                  <div class="bg-dark-border/30 rounded-lg p-3">
+                    <div class="font-semibold text-dark-text mb-1">📈 Position Scarcity</div>
+                    <div class="text-dark-textMuted text-xs">
+                      {{ sportScarcityExamples }}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <!-- Controls -->
       <div class="card">
         <div class="card-body py-3">
@@ -252,19 +330,31 @@
                 {{ team.grade }}
               </div>
             </div>
-            <div class="grid grid-cols-3 gap-2 text-center text-xs">
-              <div class="bg-dark-border/30 rounded p-2">
-                <div class="font-bold text-dark-text">{{ team.totalScore >= 0 ? '+' : '' }}{{ team.totalScore.toFixed(1) }}</div>
-                <div class="text-dark-textMuted">Total</div>
+            <!-- Updated stats with verdicts -->
+            <div class="grid grid-cols-4 gap-1 text-center text-xs">
+              <div class="bg-emerald-500/10 rounded p-1.5">
+                <div class="font-bold text-emerald-400">{{ team.steals || 0 }}</div>
+                <div class="text-dark-textMuted text-[10px]">Steals</div>
               </div>
-              <div class="bg-dark-border/30 rounded p-2">
-                <div class="font-bold text-green-400">{{ team.hits }}</div>
-                <div class="text-dark-textMuted">Hits</div>
+              <div class="bg-green-500/10 rounded p-1.5">
+                <div class="font-bold text-green-400">{{ team.hits || 0 }}</div>
+                <div class="text-dark-textMuted text-[10px]">Hits</div>
               </div>
-              <div class="bg-dark-border/30 rounded p-2">
-                <div class="font-bold text-red-400">{{ team.misses }}</div>
-                <div class="text-dark-textMuted">Misses</div>
+              <div class="bg-yellow-500/10 rounded p-1.5">
+                <div class="font-bold text-yellow-400">{{ team.misses || 0 }}</div>
+                <div class="text-dark-textMuted text-[10px]">Misses</div>
               </div>
+              <div class="bg-red-500/10 rounded p-1.5">
+                <div class="font-bold text-red-400">{{ team.busts || 0 }}</div>
+                <div class="text-dark-textMuted text-[10px]">Busts</div>
+              </div>
+            </div>
+            <!-- Early round hit rate -->
+            <div class="mt-2 flex items-center justify-between text-xs">
+              <span class="text-dark-textMuted">Early Round Hit Rate</span>
+              <span :class="team.earlyRoundHitRate >= 60 ? 'text-green-400' : team.earlyRoundHitRate >= 40 ? 'text-yellow-400' : 'text-red-400'" class="font-semibold">
+                {{ team.earlyRoundHitRate?.toFixed(0) || 0 }}%
+              </span>
             </div>
           </div>
         </div>
@@ -284,8 +374,9 @@
                 <th class="text-left p-3 text-sm font-semibold text-dark-textMuted">Pick</th>
                 <th class="text-left p-3 text-sm font-semibold text-dark-textMuted">Player</th>
                 <th class="text-left p-3 text-sm font-semibold text-dark-textMuted">Team</th>
-                <th class="text-center p-3 text-sm font-semibold text-dark-textMuted">Pos Rank</th>
-                <th class="text-center p-3 text-sm font-semibold text-dark-textMuted">Score</th>
+                <th class="text-center p-3 text-sm font-semibold text-dark-textMuted">Drafted → Finished</th>
+                <th class="text-center p-3 text-sm font-semibold text-dark-textMuted">Tier</th>
+                <th class="text-center p-3 text-sm font-semibold text-dark-textMuted">Verdict</th>
                 <th class="text-center p-3 text-sm font-semibold text-dark-textMuted">Grade</th>
               </tr>
             </thead>
@@ -305,26 +396,42 @@
                     <div class="w-8 h-8 rounded-full bg-dark-border overflow-hidden">
                       <img v-if="pick.headshot" :src="pick.headshot" class="w-full h-full object-cover" @error="handleImageError" />
                     </div>
-                    <span class="font-medium text-dark-text">{{ pick.player_name }}</span>
+                    <div>
+                      <div class="font-medium text-dark-text">{{ pick.player_name }}</div>
+                      <div class="text-xs text-dark-textMuted">{{ pick.totalPoints?.toFixed(1) || 0 }} pts</div>
+                    </div>
                   </div>
                 </td>
                 <td class="p-3 text-sm text-dark-textMuted">{{ pick.team_name }}</td>
                 <td class="p-3 text-center">
-                  <div class="flex flex-col items-center">
+                  <div class="flex items-center justify-center gap-1">
                     <span 
-                      class="text-xs px-2 py-1 rounded font-bold"
+                      class="text-xs px-1.5 py-0.5 rounded font-bold"
                       :class="getPositionClass(pick.position)"
                     >
-                      {{ pick.position }}{{ pick.position_rank_drafted || '' }}
+                      {{ pick.position }}{{ pick.position_rank_drafted || '?' }}
+                    </span>
+                    <span class="text-dark-textMuted">→</span>
+                    <span 
+                      class="text-xs px-1.5 py-0.5 rounded font-bold"
+                      :class="pick.current_position_rank < pick.position_rank_drafted ? 'bg-green-500/20 text-green-400' : pick.current_position_rank > pick.position_rank_drafted ? 'bg-red-500/20 text-red-400' : 'bg-gray-500/20 text-gray-400'"
+                    >
+                      {{ pick.position }}{{ pick.current_position_rank < 900 ? pick.current_position_rank : '?' }}
                     </span>
                   </div>
                 </td>
                 <td class="p-3 text-center">
+                  <span class="text-xs text-dark-textMuted whitespace-nowrap">
+                    {{ pick.tierMovement || '' }}
+                  </span>
+                </td>
+                <td class="p-3 text-center">
                   <span 
-                    class="font-bold"
-                    :class="pick.score >= 0 ? 'text-green-400' : 'text-red-400'"
+                    v-if="pick.verdict"
+                    class="text-xs px-2 py-1 rounded font-semibold whitespace-nowrap"
+                    :class="getVerdictClass(pick.verdict)"
                   >
-                    {{ pick.score >= 0 ? '+' : '' }}{{ pick.score?.toFixed(1) || '0.0' }}
+                    {{ getVerdictLabel(pick.verdict) }}
                   </span>
                 </td>
                 <td class="p-3 text-center">
@@ -835,6 +942,15 @@ import { useLeagueStore } from '@/stores/league'
 import { useAuthStore } from '@/stores/auth'
 import { yahooService } from '@/services/yahoo'
 import LoadingSpinner from '@/components/LoadingSpinner.vue'
+import { 
+  getTierConfig, 
+  getTier, 
+  calculatePickScore, 
+  scoreToGrade, 
+  calculateTeamGrade,
+  getPositionScarcity,
+  type Tier 
+} from '@/services/draftGrading'
 
 const leagueStore = useLeagueStore()
 const authStore = useAuthStore()
@@ -936,6 +1052,9 @@ const isDownloadingTeam = ref(false)
 const isDownloadingSteals = ref(false)
 const isDownloadingBusts = ref(false)
 
+// Grading info UI
+const showGradingInfo = ref(false)
+
 // Data
 const draftPicks = ref<any[]>([])
 const playerData = ref<Map<string, any>>(new Map())
@@ -944,6 +1063,29 @@ const teamsData = ref<any[]>([])
 
 // Default avatar for error handling
 const defaultAvatar = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHZpZXdCb3g9IjAgMCA0MCA0MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIGZpbGw9IiMzNzQxNTEiLz48cGF0aCBkPSJNMjAgMjBDMjMuMzEzNyAyMCAyNiAxNy4zMTM3IDI2IDE0QzI2IDEwLjY4NjMgMjMuMzEzNyA4IDIwIDhDMTYuNjg2MyA4IDE0IDEwLjY4NjMgMTQgMTRDMTQgMTcuMzEzNyAxNi42ODYzIDIwIDIwIDIwWiIgZmlsbD0iIzZCNzI4MCIvPjxwYXRoIGQ9Ik0zMiAzMkMzMiAyNy41ODE3IDI2LjYyNzQgMjQgMjAgMjRDMTMuMzcyNiAyNCAgMjcuNTgxNyA4IDMyIDMyWiIgZmlsbD0iIzZCNzI4MCIvPjwvc3ZnPg=='
+
+// Number of teams for tier calculations
+const numTeams = computed(() => {
+  return draftBoard.value.length || leagueStore.yahooTeams?.length || 10
+})
+
+// Tier configuration based on league size
+const tierConfig = computed(() => getTierConfig(numTeams.value))
+
+// Sport-specific scarcity examples for the info panel
+const sportScarcityExamples = computed(() => {
+  const sport = sportName.value?.toLowerCase() || 'baseball'
+  switch (sport) {
+    case 'football':
+      return 'RB & TE most valuable, K & DEF least'
+    case 'basketball':
+      return 'Centers slightly more valuable for blocks/rebounds'
+    case 'hockey':
+      return 'Goalies most scarce, forwards plentiful'
+    default: // baseball
+      return 'C & SS most scarce, OF & 1B easiest to replace'
+  }
+})
 
 // Available seasons based on game keys
 const availableSeasons = computed(() => {
@@ -998,24 +1140,41 @@ const draftBoard = computed(() => {
   })
 })
 
-// Team grades
+// Team grades using premium tier-based system
 const teamGrades = computed(() => {
   return draftBoard.value.map(team => {
     const picks = team.picks
-    const totalScore = picks.reduce((sum: number, p: any) => sum + (p.score || 0), 0)
-    const hits = picks.filter((p: any) => (p.score || 0) >= 3).length
-    const misses = picks.filter((p: any) => (p.score || 0) <= -3).length
-    const avgScore = picks.length > 0 ? totalScore / picks.length : 0
+    
+    // Use the new calculateTeamGrade function
+    const pickData = picks.map((p: any) => ({
+      round: p.round,
+      score: p.score || 0,
+      verdict: p.verdict || 'SOLID'
+    }))
+    
+    const gradeResult = calculateTeamGrade(pickData)
+    
+    // Count verdicts for display
+    const steals = picks.filter((p: any) => p.verdict === 'JACKPOT' || p.verdict === 'STEAL').length
+    const hits = picks.filter((p: any) => p.verdict === 'HIT').length
+    const misses = picks.filter((p: any) => p.verdict === 'MISS').length
+    const busts = picks.filter((p: any) => p.verdict === 'BUST' || p.verdict === 'DISASTER').length
     
     return {
       ...team,
-      totalScore,
+      totalScore: gradeResult.totalScore,
+      avgScore: gradeResult.avgScore,
+      grade: gradeResult.grade,
+      gradeScore: gradeResult.gradeScore,
+      steals,
       hits,
       misses,
-      avgScore,
-      grade: calculateGrade(avgScore)
+      busts,
+      earlyRoundHitRate: gradeResult.earlyRoundHitRate,
+      earlyRoundScore: gradeResult.earlyRoundScore,
+      lateRoundScore: gradeResult.lateRoundScore
     }
-  }).sort((a, b) => b.totalScore - a.totalScore)
+  }).sort((a, b) => b.gradeScore - a.gradeScore)
 })
 
 // Sorted picks for grades tab
@@ -1165,23 +1324,41 @@ function getGradeRingClass(grade: string) {
 }
 
 function calculateGrade(score: number): string {
-  if (score >= 10) return 'A+'
-  if (score >= 7) return 'A'
-  if (score >= 4) return 'A-'
-  if (score >= 2) return 'B+'
-  if (score >= 0) return 'B'
-  if (score >= -2) return 'B-'
-  if (score >= -4) return 'C+'
-  if (score >= -6) return 'C'
-  if (score >= -8) return 'C-'
-  if (score >= -10) return 'D'
-  return 'F'
+  // Use the new premium grading system
+  return scoreToGrade(score)
 }
 
 function calculateValueScore(pick: any, actualRank: number): number {
   // Value = draft pick number - actual finish rank
   // Positive = outperformed draft position
   return pick.pick - actualRank
+}
+
+// Verdict display helpers
+function getVerdictClass(verdict: string): string {
+  switch (verdict) {
+    case 'JACKPOT': return 'bg-emerald-500/20 text-emerald-400'
+    case 'STEAL': return 'bg-green-500/20 text-green-400'
+    case 'HIT': return 'bg-lime-500/20 text-lime-400'
+    case 'SOLID': return 'bg-gray-500/20 text-gray-400'
+    case 'MISS': return 'bg-yellow-500/20 text-yellow-400'
+    case 'BUST': return 'bg-orange-500/20 text-orange-400'
+    case 'DISASTER': return 'bg-red-500/20 text-red-400'
+    default: return 'bg-gray-500/20 text-gray-400'
+  }
+}
+
+function getVerdictLabel(verdict: string): string {
+  switch (verdict) {
+    case 'JACKPOT': return '💎 JACKPOT'
+    case 'STEAL': return '🔥 STEAL'
+    case 'HIT': return '✓ HIT'
+    case 'SOLID': return '○ SOLID'
+    case 'MISS': return '✗ MISS'
+    case 'BUST': return '💥 BUST'
+    case 'DISASTER': return '💀 DISASTER'
+    default: return verdict
+  }
 }
 
 function handleImageError(e: Event) {
@@ -1437,7 +1614,10 @@ async function loadDraftData() {
       
       console.log('[ESPN DRAFT] Current position ranks calculated for', currentPositionRankMap.size, 'players')
       
-      // Process draft picks
+      // Get sport for position scarcity (use existing sport variable from earlier)
+      const espnSport = parts[1] as string
+      
+      // Process draft picks with premium tier-based grading
       draftPicks.value = sortedPicks.map((pick: any) => {
         const team = teamMap.get(pick.teamId)
         const teamRank = teamRankMap.get(pick.teamId) || numTeams
@@ -1453,17 +1633,17 @@ async function loadDraftData() {
         // Player points from roster data
         const playerPoints = playerSeasonPoints.get(pick.playerId) || 0
         
-        // Calculate score based on position rank change (like football)
-        // Positive = player performed better than where they were drafted at their position
-        // Negative = player performed worse than where they were drafted
-        let score = 0
-        if (position_rank_drafted > 0 && current_position_rank < 999) {
-          score = position_rank_drafted - current_position_rank
-        } else {
-          // Fallback to team-based scoring
-          const expectedRank = Math.ceil(pick.overallPickNumber / Math.max(1, espnDraftPicks.length / numTeams))
-          score = expectedRank - teamRank
-        }
+        // Use premium tier-based grading system
+        const pickResult = calculatePickScore(
+          pick.overallPickNumber,
+          round,
+          position_rank_drafted || round, // If no position rank, use round as proxy
+          current_position_rank,
+          position,
+          numTeams,
+          espnDraftPicks.length,
+          espnSport
+        )
         
         return {
           pick: pick.overallPickNumber,
@@ -1480,8 +1660,12 @@ async function loadDraftData() {
           mlb_team: pick.proTeam || '',
           headshot: `https://a.espncdn.com/combiner/i?img=/i/headshots/mlb/players/full/${pick.playerId}.png&w=96&h=70&cb=1`,
           totalPoints: playerPoints,
-          score,
-          grade: calculateGrade(score),
+          score: pickResult.totalScore,
+          grade: scoreToGrade(pickResult.totalScore),
+          verdict: pickResult.verdict,
+          tierMovement: pickResult.tierMovement,
+          draftedTier: pickResult.draftedTier,
+          finishedTier: pickResult.finishedTier,
           keeper: pick.keeper,
           bidAmount: pick.bidAmount
         }
@@ -1582,7 +1766,10 @@ async function loadDraftData() {
       
       const numTeams = rosters.length || 12
       
-      // Process picks
+      // Determine sport for Sleeper (usually football)
+      const sleeperSport = leagueStore.currentLeague?.sport || 'football'
+      
+      // Process picks with premium tier-based grading
       const processedPicks = draft.picks.map((pick: any) => {
         const position = pick.metadata?.position || 'Unknown'
         const playerName = pick.metadata?.first_name && pick.metadata?.last_name
@@ -1605,8 +1792,17 @@ async function loadDraftData() {
           if (currentRank === 0) currentRank = 999
         }
         
-        // Calculate score
-        const score = draftedRank > 0 && currentRank < 999 ? draftedRank - currentRank : 0
+        // Use premium tier-based grading system
+        const pickResult = calculatePickScore(
+          pick.pick_no || pick.draft_slot,
+          pick.round,
+          draftedRank || pick.round, // Use round as fallback
+          currentRank,
+          position,
+          numTeams,
+          draft.picks.length,
+          sleeperSport
+        )
         
         const teamInfo = teamLookup.get(pick.roster_id)
         
@@ -1615,15 +1811,21 @@ async function loadDraftData() {
           player_name: playerName,
           position,
           round: pick.round,
-          pick_no: pick.pick_no || pick.draft_slot,
+          pick: pick.pick_no || pick.draft_slot,
+          pickInRound: ((pick.pick_no || pick.draft_slot) - 1) % numTeams + 1,
           team_key: String(pick.roster_id),
           team_name: teamInfo?.name || `Team ${pick.roster_id}`,
           team_logo: teamInfo?.avatar || '',
           headshot: pick.metadata?.headshot_url || `https://sleepercdn.com/content/nfl/players/thumb/${pick.player_id}.jpg`,
           position_rank_drafted: draftedRank,
           current_position_rank: currentRank,
-          total_points: totalPoints,
-          score: Math.round(score * 10) / 10
+          totalPoints: totalPoints,
+          score: pickResult.totalScore,
+          grade: scoreToGrade(pickResult.totalScore),
+          verdict: pickResult.verdict,
+          tierMovement: pickResult.tierMovement,
+          draftedTier: pickResult.draftedTier,
+          finishedTier: pickResult.finishedTier
         }
       })
       
@@ -1799,8 +2001,12 @@ async function loadDraftData() {
       [...yahooPositionDraftOrder.entries()].map(([pos, keys]) => `${pos}: ${keys.length} players`).join(', ')
     )
     
-    // Process draft picks with player info and scores
+    // Process draft picks with player info and premium tier-based grading
     const numTeams = standings.length || 12
+    
+    // Determine Yahoo sport (usually football or baseball based on league)
+    const yahooSport = leagueStore.currentLeague?.sport || 'football'
+    
     draftPicks.value = draftResults.picks.map((pick: any) => {
       const player = players.get(pick.player_key) || {}
       const stat = stats.get(pick.player_key) || {}
@@ -1809,16 +2015,22 @@ async function loadDraftData() {
       const pickInRound = ((pick.pick - 1) % numTeams) + 1
       const totalPoints = stat.total_points || 0
       
-      // Calculate score based on expected value vs actual
-      // Positive = player finished higher than drafted (good pick)
-      // Negative = player finished lower than drafted (bad pick)
-      const expectedRank = pick.pick
-      const actualRank = actualRankMap.get(pick.player_key) || expectedRank
-      const score = expectedRank - actualRank
-      
       // Get position ranks
       const position_rank_drafted = yahooPositionRankDraftedMap.get(pick.player_key) || 0
       const current_position_rank = currentPositionRankMap.get(pick.player_key) || 999
+      const position = player.position || 'Unknown'
+      
+      // Use premium tier-based grading system
+      const pickResult = calculatePickScore(
+        pick.pick,
+        pick.round,
+        position_rank_drafted || pick.round, // Use round as fallback
+        current_position_rank,
+        position,
+        numTeams,
+        draftResults.picks.length,
+        yahooSport
+      )
       
       return {
         pick: pick.pick,
@@ -1829,14 +2041,18 @@ async function loadDraftData() {
         team_logo: team.logo_url || '',
         player_key: pick.player_key,
         player_name: player.name || 'Unknown Player',
-        position: player.position || 'Unknown',
+        position,
         position_rank_drafted,
         current_position_rank,
         mlb_team: player.team || '',
         headshot: player.headshot || '',
         totalPoints,
-        score,
-        grade: calculateGrade(score)
+        score: pickResult.totalScore,
+        grade: scoreToGrade(pickResult.totalScore),
+        verdict: pickResult.verdict,
+        tierMovement: pickResult.tierMovement,
+        draftedTier: pickResult.draftedTier,
+        finishedTier: pickResult.finishedTier
       }
     })
     
