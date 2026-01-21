@@ -1267,11 +1267,13 @@ async function downloadLeaderImage() {
     
     // Load team image - EXACTLY like Power Rankings
     const loadTeamImage = async (team: any): Promise<string> => {
+      console.log(`[Leader Download] loadTeamImage for ${team.name}, logo_url: ${team.logo_url}`)
       try {
         const img = new Image()
         img.crossOrigin = 'anonymous'
         return new Promise((resolve) => {
           img.onload = () => {
+            console.log(`[Leader Download] img.onload fired for ${team.name}`)
             try {
               const canvas = document.createElement('canvas')
               canvas.width = 64
@@ -1286,11 +1288,18 @@ async function downloadLeaderImage() {
               }
               resolve(canvas.toDataURL('image/png'))
             } catch {
+              console.log(`[Leader Download] canvas error for ${team.name}, using placeholder`)
               resolve(createPlaceholder(team.name))
             }
           }
-          img.onerror = () => resolve(createPlaceholder(team.name))
-          setTimeout(() => resolve(createPlaceholder(team.name)), 3000)
+          img.onerror = () => {
+            console.log(`[Leader Download] img.onerror fired for ${team.name}`)
+            resolve(createPlaceholder(team.name))
+          }
+          setTimeout(() => {
+            console.log(`[Leader Download] timeout fired for ${team.name}`)
+            resolve(createPlaceholder(team.name))
+          }, 3000)
           img.src = team.logo_url || ''
         })
       } catch {
@@ -1301,6 +1310,10 @@ async function downloadLeaderImage() {
     const logoBase64 = await loadLogo()
     const rankings = leaderModalData.value.comparison.slice(0, 10)
     
+    // DEBUG: Log the first team to see what we have
+    console.log('[Season Download] First team data:', JSON.stringify(rankings[0]))
+    console.log('[Season Download] First team logo_url:', rankings[0]?.logo_url)
+    
     if (rankings.length === 0) {
       isGeneratingLeaderDownload.value = false
       return
@@ -1309,9 +1322,12 @@ async function downloadLeaderImage() {
     const leader = rankings[0]
     
     // Pre-load all team images - EXACTLY like Power Rankings
+    console.log('[Season Download] Loading team images...')
     const imageMap = new Map<string, string>()
     const imagePromises = rankings.map(async (team) => {
+      console.log(`[Season Download] Loading image for ${team.name}, logo_url: ${team.logo_url}`)
       const base64 = await loadTeamImage(team)
+      console.log(`[Season Download] Got base64 for ${team.name}, length: ${base64.length}`)
       return { teamKey: team.name, base64 }
     })
     
@@ -1319,6 +1335,7 @@ async function downloadLeaderImage() {
     results.forEach(({ teamKey, base64 }) => {
       imageMap.set(teamKey, base64)
     })
+    console.log(`[Season Download] Loaded ${imageMap.size} team images`)
     
     const maxValue = leaderModalData.value.maxValue
     
@@ -1567,13 +1584,19 @@ async function downloadStandings() {
     
     const logoBase64 = await loadLogo()
     
+    // DEBUG: Log the first team to see what we have
+    console.log('[Standings Download] First team data:', JSON.stringify(sortedTeams.value[0]))
+    console.log('[Standings Download] First team logo_url:', sortedTeams.value[0]?.logo_url)
+    
     // Load team image - EXACTLY like Power Rankings
     const loadTeamImage = async (team: any): Promise<string> => {
+      console.log(`[Standings Download] loadTeamImage for ${team.name}, logo_url: ${team.logo_url}`)
       try {
         const img = new Image()
         img.crossOrigin = 'anonymous'
         return new Promise((resolve) => {
           img.onload = () => {
+            console.log(`[Standings Download] img.onload fired for ${team.name}`)
             try {
               const canvas = document.createElement('canvas')
               canvas.width = 64
@@ -1588,11 +1611,18 @@ async function downloadStandings() {
               }
               resolve(canvas.toDataURL('image/png'))
             } catch {
+              console.log(`[Standings Download] canvas error for ${team.name}, using placeholder`)
               resolve(createPlaceholder(team.name))
             }
           }
-          img.onerror = () => resolve(createPlaceholder(team.name))
-          setTimeout(() => resolve(createPlaceholder(team.name)), 3000)
+          img.onerror = () => {
+            console.log(`[Standings Download] img.onerror fired for ${team.name}`)
+            resolve(createPlaceholder(team.name))
+          }
+          setTimeout(() => {
+            console.log(`[Standings Download] timeout fired for ${team.name}`)
+            resolve(createPlaceholder(team.name))
+          }, 3000)
           img.src = team.logo_url || ''
         })
       } catch {
@@ -1601,9 +1631,11 @@ async function downloadStandings() {
     }
     
     // Pre-load all team images - EXACTLY like Power Rankings
+    console.log('[Standings Download] Loading team images...')
     const imageMap = new Map<string, string>()
     const imagePromises = sortedTeams.value.map(async (team) => {
       const base64 = await loadTeamImage(team)
+      console.log(`[Standings Download] Got base64 for ${team.name}, length: ${base64.length}`)
       return { teamKey: team.team_key, base64 }
     })
     
@@ -1611,6 +1643,7 @@ async function downloadStandings() {
     results.forEach(({ teamKey, base64 }) => {
       imageMap.set(teamKey, base64)
     })
+    console.log(`[Standings Download] Loaded ${imageMap.size} team images`)
     
     // Create container
     const container = document.createElement('div')
