@@ -215,6 +215,7 @@
               <p class="text-sm text-dark-textMuted">
                 Grades are based on <span class="text-yellow-400 font-semibold">tier movement</span>, not raw rank difference. 
                 Drafting SS1 and getting SS3 (both elite) is very different than drafting SS24 and getting SS26 (both replacement level).
+                Team grades are <span class="text-yellow-400 font-semibold">ranked relative</span> to other managers in your league.
               </p>
               
               <!-- Expanded Info -->
@@ -242,28 +243,72 @@
                   </div>
                 </div>
                 
+                <!-- Value Score Calculation -->
+                <div class="bg-dark-border/30 rounded-lg p-4">
+                  <h4 class="font-semibold text-dark-text mb-2">📈 Value Score Calculation</h4>
+                  <div class="text-sm text-dark-textMuted space-y-2">
+                    <p>Each pick's score is calculated using multiple factors:</p>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-3 mt-2">
+                      <div class="bg-dark-bg/50 rounded p-2">
+                        <span class="text-yellow-400 font-semibold">1. Tier Movement</span>
+                        <p class="text-xs mt-1">Base score from where you drafted vs where they finished. ELITE→ELITE = +10, BENCH→ELITE = +35, ELITE→BENCH = -20</p>
+                      </div>
+                      <div class="bg-dark-bg/50 rounded p-2">
+                        <span class="text-yellow-400 font-semibold">2. Round Multiplier</span>
+                        <p class="text-xs mt-1">Early round busts hurt 1.5x more. Late round steals get 1.5x bonus. Finding value late is rewarded!</p>
+                      </div>
+                      <div class="bg-dark-bg/50 rounded p-2">
+                        <span class="text-yellow-400 font-semibold">3. Elite Bonus</span>
+                        <p class="text-xs mt-1">+8 bonus for any pick that finishes in the elite tier, regardless of where drafted.</p>
+                      </div>
+                      <div class="bg-dark-bg/50 rounded p-2">
+                        <span class="text-yellow-400 font-semibold">4. Position Scarcity</span>
+                        <p class="text-xs mt-1">{{ sportScarcityExamples }}. Scarce positions get bonus value.</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                
+                <!-- Team Grading -->
+                <div class="bg-dark-border/30 rounded-lg p-4">
+                  <h4 class="font-semibold text-dark-text mb-2">🏆 Team Grade Formula</h4>
+                  <div class="text-sm text-dark-textMuted space-y-2">
+                    <p>Team grades use <span class="text-yellow-400">weighted scoring</span> + <span class="text-yellow-400">relative ranking</span>:</p>
+                    <ul class="list-disc list-inside text-xs space-y-1 mt-2">
+                      <li>Rounds 1-2 picks weighted <span class="text-white font-semibold">5x</span></li>
+                      <li>Rounds 3-5 picks weighted <span class="text-white font-semibold">3x</span></li>
+                      <li>Rounds 6-10 picks weighted <span class="text-white font-semibold">2x</span></li>
+                      <li>Rounds 11+ picks weighted <span class="text-white font-semibold">1x</span></li>
+                      <li>Final grade adjusted by <span class="text-white font-semibold">league rank</span> (best drafter gets boost, worst gets penalty)</li>
+                    </ul>
+                  </div>
+                </div>
+                
                 <!-- Key Principles -->
                 <div class="grid grid-cols-1 md:grid-cols-3 gap-3 text-sm">
                   <div class="bg-dark-border/30 rounded-lg p-3">
-                    <div class="font-semibold text-dark-text mb-1">🎯 Tier Movement</div>
+                    <div class="font-semibold text-dark-text mb-1">🎯 Verdict Examples</div>
                     <div class="text-dark-textMuted text-xs">
-                      ELITE→ELITE = great pick<br>
-                      BENCH→ELITE = 🔥 STEAL<br>
-                      ELITE→BENCH = 💥 BUST
+                      💎 JACKPOT: Late pick → Elite<br>
+                      🔥 STEAL: Bench pick → Starter<br>
+                      💥 BUST: Elite pick → Bench
                     </div>
                   </div>
                   <div class="bg-dark-border/30 rounded-lg p-3">
-                    <div class="font-semibold text-dark-text mb-1">⚖️ Round Weighting</div>
+                    <div class="font-semibold text-dark-text mb-1">⚖️ Grade Distribution</div>
                     <div class="text-dark-textMuted text-xs">
-                      Rounds 1-2 weighted 5x<br>
-                      Rounds 3-5 weighted 3x<br>
-                      Late round steals get bonus
+                      Top 10%: A+ to A<br>
+                      Top 30%: A- to B+<br>
+                      Middle 40%: B to B-<br>
+                      Bottom 30%: C+ to F
                     </div>
                   </div>
                   <div class="bg-dark-border/30 rounded-lg p-3">
-                    <div class="font-semibold text-dark-text mb-1">📈 Position Scarcity</div>
+                    <div class="font-semibold text-dark-text mb-1">📉 What Hurts Most</div>
                     <div class="text-dark-textMuted text-xs">
-                      {{ sportScarcityExamples }}
+                      Round 1-2 bust = -30 to -50<br>
+                      Elite pick → Waiver = -40<br>
+                      Multiple early busts = F grade
                     </div>
                   </div>
                 </div>
@@ -311,9 +356,16 @@
         <div 
           v-for="team in teamGrades" 
           :key="team.team_key"
-          class="card cursor-pointer hover:ring-2 hover:ring-yellow-400 transition-all"
+          class="card cursor-pointer hover:ring-2 hover:ring-yellow-400 transition-all relative"
           @click="openTeamModal(team)"
         >
+          <!-- Rank Badge -->
+          <div 
+            class="absolute -top-2 -left-2 w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold shadow-lg"
+            :class="team.rank === 1 ? 'bg-yellow-500 text-black' : team.rank === 2 ? 'bg-gray-300 text-black' : team.rank === 3 ? 'bg-amber-600 text-white' : 'bg-dark-border text-dark-textMuted'"
+          >
+            #{{ team.rank }}
+          </div>
           <div class="card-body">
             <div class="flex items-center gap-3 mb-3">
               <div class="w-10 h-10 rounded-full bg-dark-border overflow-hidden">
@@ -321,7 +373,7 @@
               </div>
               <div class="flex-1 min-w-0">
                 <div class="font-semibold text-dark-text truncate">{{ team.team_name }}</div>
-                <div class="text-xs text-dark-textMuted">{{ team.picks.length }} picks</div>
+                <div class="text-xs text-dark-textMuted">{{ team.picks.length }} picks • Score: {{ team.gradeScore >= 0 ? '+' : '' }}{{ team.gradeScore?.toFixed(1) }}</div>
               </div>
               <div 
                 class="text-3xl font-black"
@@ -948,6 +1000,7 @@ import {
   calculatePickScore, 
   scoreToGrade, 
   calculateTeamGrade,
+  getRelativeTeamGrade,
   getPositionScarcity,
   type Tier 
 } from '@/services/draftGrading'
@@ -1140,9 +1193,10 @@ const draftBoard = computed(() => {
   })
 })
 
-// Team grades using premium tier-based system
+// Team grades using premium tier-based system with relative ranking
 const teamGrades = computed(() => {
-  return draftBoard.value.map(team => {
+  // First pass: calculate raw grades for all teams
+  const teamsWithRawGrades = draftBoard.value.map(team => {
     const picks = team.picks
     
     // Use the new calculateTeamGrade function
@@ -1164,7 +1218,7 @@ const teamGrades = computed(() => {
       ...team,
       totalScore: gradeResult.totalScore,
       avgScore: gradeResult.avgScore,
-      grade: gradeResult.grade,
+      rawGrade: gradeResult.grade,
       gradeScore: gradeResult.gradeScore,
       steals,
       hits,
@@ -1174,7 +1228,25 @@ const teamGrades = computed(() => {
       earlyRoundScore: gradeResult.earlyRoundScore,
       lateRoundScore: gradeResult.lateRoundScore
     }
-  }).sort((a, b) => b.gradeScore - a.gradeScore)
+  })
+  
+  // Sort by gradeScore to get rankings
+  const sorted = [...teamsWithRawGrades].sort((a, b) => b.gradeScore - a.gradeScore)
+  
+  // Second pass: apply relative grading based on league rank
+  return sorted.map((team, index) => {
+    const rank = index + 1
+    const numTeams = sorted.length
+    
+    // Use relative grading for final grade
+    const grade = getRelativeTeamGrade(rank, numTeams, team.gradeScore)
+    
+    return {
+      ...team,
+      grade,
+      rank
+    }
+  })
 })
 
 // Sorted picks for grades tab

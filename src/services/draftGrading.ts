@@ -37,41 +37,41 @@ export function getTier(rank: number, config: TierConfig): Tier {
   return 'WAIVER'
 }
 
-// Tier movement scoring
+// Tier movement scoring - MORE AGGRESSIVE for better grade distribution
 // Positive = good, Negative = bad
 const TIER_MOVEMENT_SCORES: Record<string, number> = {
-  // Drafted ELITE tier
-  'ELITE→ELITE': 10,         // Got what you paid for - elite stays elite
-  'ELITE→STARTER': 0,        // Slight miss - still usable
-  'ELITE→BENCH': -15,        // Bad - paid elite price for bench guy
-  'ELITE→REPLACEMENT': -25,  // Disaster
-  'ELITE→WAIVER': -35,       // Complete bust
+  // Drafted ELITE tier - high expectations, big penalties for missing
+  'ELITE→ELITE': 12,         // Got what you paid for - elite stays elite
+  'ELITE→STARTER': -5,       // Miss - paid elite price for just a starter
+  'ELITE→BENCH': -25,        // Bad - paid elite price for bench guy
+  'ELITE→REPLACEMENT': -40,  // Disaster
+  'ELITE→WAIVER': -50,       // Complete bust - wasted premium pick
   
-  // Drafted STARTER tier  
-  'STARTER→ELITE': 20,       // Great - found elite value mid-rounds
+  // Drafted STARTER tier - solid expectations
+  'STARTER→ELITE': 25,       // Great - found elite value mid-rounds
   'STARTER→STARTER': 5,      // Solid - got what you expected
-  'STARTER→BENCH': -5,       // Minor miss
-  'STARTER→REPLACEMENT': -15, // Bad pick
-  'STARTER→WAIVER': -25,     // Bust
+  'STARTER→BENCH': -10,      // Miss - should have been better
+  'STARTER→REPLACEMENT': -20, // Bad pick
+  'STARTER→WAIVER': -30,     // Bust
   
-  // Drafted BENCH tier
-  'BENCH→ELITE': 30,         // STEAL - found elite in late rounds
-  'BENCH→STARTER': 15,       // Great find
-  'BENCH→BENCH': 3,          // Got what you expected (baseline)
-  'BENCH→REPLACEMENT': -3,   // Meh
-  'BENCH→WAIVER': -8,        // Whatever, late pick
+  // Drafted BENCH tier - lower expectations, upside potential
+  'BENCH→ELITE': 40,         // STEAL - found elite in late rounds
+  'BENCH→STARTER': 20,       // Great find
+  'BENCH→BENCH': 3,          // Got what you expected (slight positive)
+  'BENCH→REPLACEMENT': -5,   // Minor miss
+  'BENCH→WAIVER': -10,       // Whatever, late pick
   
-  // Drafted REPLACEMENT tier
-  'REPLACEMENT→ELITE': 40,   // JACKPOT - league winner find
-  'REPLACEMENT→STARTER': 25, // Huge steal
-  'REPLACEMENT→BENCH': 10,   // Nice find
+  // Drafted REPLACEMENT tier - dart throws
+  'REPLACEMENT→ELITE': 50,   // JACKPOT - league winner find
+  'REPLACEMENT→STARTER': 30, // Huge steal
+  'REPLACEMENT→BENCH': 12,   // Nice find
   'REPLACEMENT→REPLACEMENT': 0, // Who cares
-  'REPLACEMENT→WAIVER': -2,  // Whatever
+  'REPLACEMENT→WAIVER': -3,  // Whatever
   
-  // Drafted WAIVER tier (super late picks)
-  'WAIVER→ELITE': 45,        // Absolute steal
-  'WAIVER→STARTER': 30,      // Great find
-  'WAIVER→BENCH': 12,        // Nice
+  // Drafted WAIVER tier (super late picks) - all upside
+  'WAIVER→ELITE': 55,        // Absolute steal
+  'WAIVER→STARTER': 35,      // Great find
+  'WAIVER→BENCH': 15,        // Nice
   'WAIVER→REPLACEMENT': 2,   // Meh
   'WAIVER→WAIVER': 0         // Expected
 }
@@ -89,6 +89,7 @@ export interface PickScoreResult {
   eliteBonus: number          // Bonus for finishing elite
   roundMultiplier: number     // Round weight adjustment
   positionScarcityBonus: number // Bonus for scarce positions
+  bustPenalty: number         // Extra penalty for early round busts
   totalScore: number          // Final score
   draftedTier: Tier
   finishedTier: Tier
@@ -178,39 +179,45 @@ export function calculatePickScore(
   // Elite finish bonus - any time you end up with an elite player, extra credit
   let eliteBonus = 0
   if (finishedTier === 'ELITE') {
-    eliteBonus = 5
+    eliteBonus = 8  // Increased from 5
   }
   
-  // Round multiplier - early round mistakes hurt more, late round finds help more
+  // Bust penalty - extra penalty for early picks that completely bust
+  let bustPenalty = 0
+  if (round <= 5 && (finishedTier === 'WAIVER' || finishedTier === 'REPLACEMENT')) {
+    bustPenalty = -10 * (6 - round) // Round 1 bust = -50 extra, Round 5 = -10 extra
+  }
+  
+  // Round multiplier - early round mistakes hurt MORE, late round finds help MORE
   let roundMultiplier = 1.0
   
   if (tierScore > 0) {
-    // Outperformed - late round picks get bonus
-    if (round >= 15) roundMultiplier = 1.5
-    else if (round >= 10) roundMultiplier = 1.3
-    else if (round >= 7) roundMultiplier = 1.15
+    // Outperformed - late round picks get bigger bonus
+    if (round >= 15) roundMultiplier = 1.6
+    else if (round >= 10) roundMultiplier = 1.4
+    else if (round >= 7) roundMultiplier = 1.2
   } else if (tierScore < 0) {
-    // Underperformed - early round picks penalized more
-    if (round <= 2) roundMultiplier = 1.4
-    else if (round <= 4) roundMultiplier = 1.25
-    else if (round <= 6) roundMultiplier = 1.1
+    // Underperformed - early round picks penalized more heavily
+    if (round <= 2) roundMultiplier = 1.5
+    else if (round <= 4) roundMultiplier = 1.3
+    else if (round <= 6) roundMultiplier = 1.15
   }
   
   // Position scarcity bonus/penalty (use sport-specific scarcity)
   const scarcityFactor = getPositionScarcity(position, sport)
-  const positionScarcityBonus = tierScore > 0 ? (scarcityFactor - 1) * 10 : 0
+  const positionScarcityBonus = tierScore > 0 ? (scarcityFactor - 1) * 15 : 0  // Increased from 10
   
-  // Calculate total score
-  const totalScore = (tierScore * roundMultiplier) + eliteBonus + positionScarcityBonus
+  // Calculate total score (including bust penalty for early round disasters)
+  const totalScore = (tierScore * roundMultiplier) + eliteBonus + positionScarcityBonus + bustPenalty
   
-  // Determine verdict
+  // Determine verdict with adjusted thresholds
   let verdict: PickScoreResult['verdict']
-  if (totalScore >= 35) verdict = 'JACKPOT'
-  else if (totalScore >= 20) verdict = 'STEAL'
+  if (totalScore >= 40) verdict = 'JACKPOT'
+  else if (totalScore >= 22) verdict = 'STEAL'
   else if (totalScore >= 10) verdict = 'HIT'
-  else if (totalScore >= 0) verdict = 'SOLID'
-  else if (totalScore >= -10) verdict = 'MISS'
-  else if (totalScore >= -20) verdict = 'BUST'
+  else if (totalScore >= -5) verdict = 'SOLID'
+  else if (totalScore >= -15) verdict = 'MISS'
+  else if (totalScore >= -30) verdict = 'BUST'
   else verdict = 'DISASTER'
   
   return {
@@ -218,6 +225,7 @@ export function calculatePickScore(
     eliteBonus,
     roundMultiplier,
     positionScarcityBonus,
+    bustPenalty,
     totalScore,
     draftedTier,
     finishedTier,
@@ -364,6 +372,110 @@ export function calculateTeamGrade(
     earlyRoundHitRate,
     stealRate
   }
+}
+
+/**
+ * Apply relative grading to a list of teams - ensures grade distribution
+ * Best team gets boosted, worst team gets penalized
+ */
+export function applyRelativeGrading(
+  teams: { gradeScore: number; totalScore: number }[]
+): { grade: string; relativeBonus: number }[] {
+  if (teams.length === 0) return []
+  
+  // Sort by gradeScore to get rankings
+  const sorted = [...teams].map((t, i) => ({ ...t, originalIndex: i }))
+    .sort((a, b) => b.gradeScore - a.gradeScore)
+  
+  const numTeams = teams.length
+  
+  return teams.map((team, originalIndex) => {
+    // Find this team's rank
+    const rank = sorted.findIndex(t => t.originalIndex === originalIndex) + 1
+    const percentile = ((numTeams - rank) / (numTeams - 1)) * 100
+    
+    // Calculate relative bonus/penalty based on rank
+    // Top team gets +8, bottom team gets -8
+    let relativeBonus = 0
+    if (rank === 1) relativeBonus = 10  // Best drafter
+    else if (rank === 2) relativeBonus = 6
+    else if (rank <= Math.ceil(numTeams * 0.25)) relativeBonus = 4  // Top 25%
+    else if (rank <= Math.ceil(numTeams * 0.5)) relativeBonus = 0   // Top 50%
+    else if (rank <= Math.ceil(numTeams * 0.75)) relativeBonus = -4 // Bottom 50%
+    else if (rank === numTeams) relativeBonus = -10 // Worst drafter
+    else relativeBonus = -6 // Bottom 25%
+    
+    // Apply relative bonus to get final grade
+    const adjustedScore = team.gradeScore + relativeBonus
+    
+    return {
+      grade: scoreToGrade(adjustedScore),
+      relativeBonus
+    }
+  })
+}
+
+/**
+ * Grade teams relative to each other - returns grades based on league ranking
+ * Guarantees grade distribution: best gets A-range, worst gets C/D/F range
+ */
+export function getRelativeTeamGrade(
+  rank: number,
+  numTeams: number,
+  gradeScore: number
+): string {
+  const percentile = ((numTeams - rank) / Math.max(1, numTeams - 1)) * 100
+  
+  // Force distribution based on ranking
+  // Top 10% (rank 1 in 10-team) = A+ to A
+  // Top 30% = A- to B+
+  // Middle 40% = B to B-
+  // Bottom 30% = C+ to F
+  
+  // But also factor in the actual score - if score is terrible, even #1 shouldn't get A+
+  
+  if (percentile >= 90) {
+    // Top 10% - Best drafter
+    if (gradeScore >= 5) return 'A+'
+    if (gradeScore >= 0) return 'A'
+    return 'A-'
+  }
+  if (percentile >= 70) {
+    // Top 30%
+    if (gradeScore >= 8) return 'A'
+    if (gradeScore >= 3) return 'A-'
+    if (gradeScore >= 0) return 'B+'
+    return 'B'
+  }
+  if (percentile >= 50) {
+    // Top 50%
+    if (gradeScore >= 5) return 'A-'
+    if (gradeScore >= 0) return 'B+'
+    if (gradeScore >= -5) return 'B'
+    return 'B-'
+  }
+  if (percentile >= 30) {
+    // Middle
+    if (gradeScore >= 3) return 'B+'
+    if (gradeScore >= -3) return 'B'
+    if (gradeScore >= -8) return 'B-'
+    return 'C+'
+  }
+  if (percentile >= 10) {
+    // Bottom 30%
+    if (gradeScore >= 0) return 'B'
+    if (gradeScore >= -5) return 'B-'
+    if (gradeScore >= -10) return 'C+'
+    if (gradeScore >= -15) return 'C'
+    return 'C-'
+  }
+  // Bottom 10% - Worst drafter
+  if (gradeScore >= 0) return 'B-'
+  if (gradeScore >= -5) return 'C+'
+  if (gradeScore >= -10) return 'C'
+  if (gradeScore >= -15) return 'C-'
+  if (gradeScore >= -20) return 'D'
+  return 'F'
 }
 
 /**
