@@ -1610,6 +1610,7 @@ function getRecordRankings(recordType: string): any[] {
         detail: `${s.wins}-${s.losses} record`
       }))
     case 'Highest PPW':
+    case 'Highest Avg PPW':
       sorted = [...stats].sort((a, b) => b.avg_ppw - a.avg_ppw)
       return sorted.map((s, idx) => ({
         rank: idx + 1,
