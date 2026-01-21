@@ -318,37 +318,12 @@
         </div>
       </div>
 
-      <!-- Controls -->
-      <div class="card">
-        <div class="card-body py-3">
-          <div class="flex items-center gap-4 flex-wrap">
-            <div class="flex items-center gap-2">
-              <label class="text-sm text-dark-textMuted">Team:</label>
-              <select v-model="selectedTeamFilter" class="select text-sm py-1.5">
-                <option value="">All Teams</option>
-                <option v-for="team in draftBoard" :key="team.team_key" :value="team.team_key">
-                  {{ team.team_name }}
-                </option>
-              </select>
-            </div>
-            <div class="flex items-center gap-2">
-              <label class="text-sm text-dark-textMuted">Sort:</label>
-              <select v-model="gradeSort" class="select text-sm py-1.5">
-                <option value="pick">By Pick</option>
-                <option value="score">By Score</option>
-                <option value="grade">By Grade</option>
-              </select>
-            </div>
-          </div>
-        </div>
-      </div>
-
       <!-- Hint Text -->
       <div class="flex items-center gap-2 text-sm text-dark-textMuted mt-4 mb-2">
         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 15l-2 5L9 9l11 4-5 2zm0 0l5 5M7.188 2.239l.777 2.897M5.136 7.965l-2.898-.777M13.95 4.05l-2.122 2.122m-5.657 5.656l-2.12 2.122" />
         </svg>
-        <span>Click <span class="text-yellow-400 font-semibold">team</span> for details</span>
+        <span>Click <span class="text-yellow-400 font-semibold">team card</span> for details</span>
       </div>
 
       <!-- Team Draft Grades Summary -->
@@ -414,10 +389,29 @@
 
       <!-- Individual Player Grades -->
       <div class="card mt-6">
-        <div class="card-header">
+        <div class="card-header flex flex-wrap items-center justify-between gap-4">
           <h3 class="text-lg font-bold text-dark-text">
             {{ selectedTeamFilter ? teamGrades.find(t => t.team_key === selectedTeamFilter)?.team_name + ' Picks' : 'All Picks' }}
           </h3>
+          <div class="flex items-center gap-4 flex-wrap">
+            <div class="flex items-center gap-2">
+              <label class="text-sm text-dark-textMuted">Team:</label>
+              <select v-model="selectedTeamFilter" class="select text-sm py-1.5">
+                <option value="">All Teams</option>
+                <option v-for="team in draftBoard" :key="team.team_key" :value="team.team_key">
+                  {{ team.team_name }}
+                </option>
+              </select>
+            </div>
+            <div class="flex items-center gap-2">
+              <label class="text-sm text-dark-textMuted">Sort:</label>
+              <select v-model="gradeSort" class="select text-sm py-1.5">
+                <option value="pick">By Pick</option>
+                <option value="score">By Score</option>
+                <option value="grade">By Grade</option>
+              </select>
+            </div>
+          </div>
         </div>
         <div class="overflow-x-auto">
           <table class="w-full">
@@ -426,7 +420,7 @@
                 <th class="text-left p-3 text-sm font-semibold text-dark-textMuted">Pick</th>
                 <th class="text-left p-3 text-sm font-semibold text-dark-textMuted">Player</th>
                 <th class="text-left p-3 text-sm font-semibold text-dark-textMuted">Team</th>
-                <th class="text-center p-3 text-sm font-semibold text-dark-textMuted">Drafted → Finished</th>
+                <th class="text-center p-3 text-sm font-semibold text-dark-textMuted">Position</th>
                 <th class="text-center p-3 text-sm font-semibold text-dark-textMuted">Tier</th>
                 <th class="text-center p-3 text-sm font-semibold text-dark-textMuted">Verdict</th>
                 <th class="text-center p-3 text-sm font-semibold text-dark-textMuted">Grade</th>
@@ -435,7 +429,7 @@
             <tbody>
               <tr 
                 v-for="pick in sortedGradePicks" 
-                :key="pick.pick"
+                :key="pick.pick + '-' + (pick.activePosition || pick.position)"
                 class="border-b border-dark-border/50 hover:bg-dark-border/20 cursor-pointer"
                 @click="selectPick(pick)"
               >
@@ -457,18 +451,50 @@
                 <td class="p-3 text-sm text-dark-textMuted">{{ pick.team_name }}</td>
                 <td class="p-3 text-center">
                   <div class="flex items-center justify-center gap-1">
-                    <span 
-                      class="text-xs px-1.5 py-0.5 rounded font-bold"
-                      :class="getPositionClass(pick.position)"
+                    <!-- Position switcher arrows for multi-position players -->
+                    <button 
+                      v-if="pick.eligiblePositions && pick.eligiblePositions.length > 1"
+                      @click.stop="cyclePosition(pick, -1)"
+                      class="w-5 h-5 rounded hover:bg-dark-border flex items-center justify-center text-dark-textMuted hover:text-white transition-colors"
                     >
-                      {{ pick.position }}{{ pick.position_rank_drafted || '?' }}
+                      <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+                      </svg>
+                    </button>
+                    
+                    <!-- Position badge with drafted rank and +/- difference -->
+                    <span 
+                      class="text-xs px-2 py-1 rounded font-bold"
+                      :class="getPositionClass(pick.activePosition || pick.position)"
+                    >
+                      {{ pick.activePosition || pick.position }}{{ pick.position_rank_drafted || '?' }}
+                      <span 
+                        v-if="pick.current_position_rank < 900 && pick.position_rank_drafted"
+                        class="ml-1"
+                        :class="getPositionDiffClass(pick.position_rank_drafted - pick.current_position_rank)"
+                      >
+                        {{ formatPositionDiff(pick.position_rank_drafted - pick.current_position_rank) }}
+                      </span>
                     </span>
-                    <span class="text-dark-textMuted">→</span>
-                    <span 
-                      class="text-xs px-1.5 py-0.5 rounded font-bold"
-                      :class="pick.current_position_rank < pick.position_rank_drafted ? 'bg-green-500/20 text-green-400' : pick.current_position_rank > pick.position_rank_drafted ? 'bg-red-500/20 text-red-400' : 'bg-gray-500/20 text-gray-400'"
+                    
+                    <!-- Position switcher arrows for multi-position players -->
+                    <button 
+                      v-if="pick.eligiblePositions && pick.eligiblePositions.length > 1"
+                      @click.stop="cyclePosition(pick, 1)"
+                      class="w-5 h-5 rounded hover:bg-dark-border flex items-center justify-center text-dark-textMuted hover:text-white transition-colors"
                     >
-                      {{ pick.position }}{{ pick.current_position_rank < 900 ? pick.current_position_rank : '?' }}
+                      <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+                      </svg>
+                    </button>
+                    
+                    <!-- Multi-position indicator -->
+                    <span 
+                      v-if="pick.eligiblePositions && pick.eligiblePositions.length > 1"
+                      class="text-[10px] text-dark-textMuted ml-1"
+                      :title="'Eligible: ' + pick.eligiblePositions.join(', ')"
+                    >
+                      ({{ pick.eligiblePositions.length }})
                     </span>
                   </div>
                 </td>
@@ -1364,19 +1390,108 @@ function getPickClass(pick: any) {
 
 function getPositionClass(position: string) {
   const classes: Record<string, string> = {
+    // Baseball
     'C': 'bg-blue-500/20 text-blue-400',
     '1B': 'bg-green-500/20 text-green-400',
     '2B': 'bg-yellow-500/20 text-yellow-400',
     '3B': 'bg-orange-500/20 text-orange-400',
     'SS': 'bg-purple-500/20 text-purple-400',
     'OF': 'bg-pink-500/20 text-pink-400',
+    'LF': 'bg-pink-500/20 text-pink-400',
+    'CF': 'bg-pink-500/20 text-pink-400',
+    'RF': 'bg-pink-500/20 text-pink-400',
     'SP': 'bg-red-500/20 text-red-400',
     'RP': 'bg-cyan-500/20 text-cyan-400',
     'P': 'bg-red-500/20 text-red-400',
+    'DH': 'bg-amber-500/20 text-amber-400',
     'Util': 'bg-gray-500/20 text-gray-400',
+    'UTIL': 'bg-gray-500/20 text-gray-400',
+    'MI': 'bg-indigo-500/20 text-indigo-400',
+    'CI': 'bg-lime-500/20 text-lime-400',
     'BN': 'bg-gray-500/20 text-gray-400',
+    // Football
+    'QB': 'bg-red-500/20 text-red-400',
+    'RB': 'bg-green-500/20 text-green-400',
+    'WR': 'bg-blue-500/20 text-blue-400',
+    'TE': 'bg-orange-500/20 text-orange-400',
+    'K': 'bg-purple-500/20 text-purple-400',
+    'DEF': 'bg-yellow-500/20 text-yellow-400',
+    'D/ST': 'bg-yellow-500/20 text-yellow-400',
+    'FLEX': 'bg-pink-500/20 text-pink-400',
+    'OP': 'bg-cyan-500/20 text-cyan-400',
+    // Basketball
+    'PG': 'bg-blue-500/20 text-blue-400',
+    'SG': 'bg-green-500/20 text-green-400',
+    'SF': 'bg-yellow-500/20 text-yellow-400',
+    'PF': 'bg-orange-500/20 text-orange-400',
+    'G': 'bg-teal-500/20 text-teal-400',
+    'F': 'bg-lime-500/20 text-lime-400',
+    // Hockey
+    'LW': 'bg-blue-500/20 text-blue-400',
+    'RW': 'bg-green-500/20 text-green-400',
+    'D': 'bg-orange-500/20 text-orange-400',
+    'G': 'bg-purple-500/20 text-purple-400',
   }
   return classes[position] || 'bg-gray-500/20 text-gray-400'
+}
+
+// Get eligible positions for a player based on their primary position and sport
+function getEligiblePositions(position: string, sport: string): string[] {
+  if (sport === 'baseball') {
+    const baseballEligibility: Record<string, string[]> = {
+      'C': ['C'],
+      '1B': ['1B', 'CI', 'UTIL'],
+      '2B': ['2B', 'MI', 'UTIL'],
+      '3B': ['3B', 'CI', 'UTIL'],
+      'SS': ['SS', 'MI', 'UTIL'],
+      'OF': ['OF', 'UTIL'],
+      'LF': ['LF', 'OF', 'UTIL'],
+      'CF': ['CF', 'OF', 'UTIL'],
+      'RF': ['RF', 'OF', 'UTIL'],
+      'DH': ['DH', 'UTIL'],
+      'SP': ['SP', 'P'],
+      'RP': ['RP', 'P'],
+      'P': ['P'],
+    }
+    return baseballEligibility[position] || [position]
+  }
+  
+  if (sport === 'football') {
+    const footballEligibility: Record<string, string[]> = {
+      'QB': ['QB', 'OP'],
+      'RB': ['RB', 'FLEX', 'OP'],
+      'WR': ['WR', 'FLEX', 'OP'],
+      'TE': ['TE', 'FLEX', 'OP'],
+      'K': ['K'],
+      'DEF': ['DEF'],
+      'D/ST': ['D/ST'],
+    }
+    return footballEligibility[position] || [position]
+  }
+  
+  if (sport === 'basketball') {
+    const basketballEligibility: Record<string, string[]> = {
+      'PG': ['PG', 'G', 'UTIL'],
+      'SG': ['SG', 'G', 'UTIL'],
+      'SF': ['SF', 'F', 'UTIL'],
+      'PF': ['PF', 'F', 'UTIL'],
+      'C': ['C', 'UTIL'],
+    }
+    return basketballEligibility[position] || [position]
+  }
+  
+  if (sport === 'hockey') {
+    const hockeyEligibility: Record<string, string[]> = {
+      'C': ['C', 'F', 'UTIL'],
+      'LW': ['LW', 'F', 'UTIL'],
+      'RW': ['RW', 'F', 'UTIL'],
+      'D': ['D', 'UTIL'],
+      'G': ['G'],
+    }
+    return hockeyEligibility[position] || [position]
+  }
+  
+  return [position]
 }
 
 function getGradeClass(grade: string) {
@@ -1431,6 +1546,38 @@ function getVerdictLabel(verdict: string): string {
     case 'DISASTER': return '💀 DISASTER'
     default: return verdict
   }
+}
+
+// Position difference helpers
+function getPositionDiffClass(diff: number): string {
+  if (diff > 0) return 'text-green-400'
+  if (diff < 0) return 'text-red-400'
+  return 'text-gray-400'
+}
+
+function formatPositionDiff(diff: number): string {
+  if (diff > 0) return `+${diff}`
+  if (diff < 0) return `${diff}`
+  return '±0'
+}
+
+// Position cycling for multi-eligible players
+function cyclePosition(pick: any, direction: number) {
+  if (!pick.eligiblePositions || pick.eligiblePositions.length <= 1) return
+  
+  const currentPos = pick.activePosition || pick.position
+  const currentIndex = pick.eligiblePositions.indexOf(currentPos)
+  let newIndex = currentIndex + direction
+  
+  // Wrap around
+  if (newIndex < 0) newIndex = pick.eligiblePositions.length - 1
+  if (newIndex >= pick.eligiblePositions.length) newIndex = 0
+  
+  // Update the active position
+  pick.activePosition = pick.eligiblePositions[newIndex]
+  
+  // TODO: Recalculate position ranks for the new position
+  // For now, just visual change - would need to track ranks per position
 }
 
 function handleImageError(e: Event) {
@@ -1717,6 +1864,9 @@ async function loadDraftData() {
           espnSport
         )
         
+        // Get eligible positions for multi-position support
+        const eligiblePositions = getEligiblePositions(position, espnSport)
+        
         return {
           pick: pick.overallPickNumber,
           round,
@@ -1727,6 +1877,8 @@ async function loadDraftData() {
           player_key: `espn_player_${pick.playerId}`,
           player_name: pick.playerName || `Player ${pick.playerId}`,
           position,
+          eligiblePositions,
+          activePosition: position, // Track currently selected position
           position_rank_drafted,
           current_position_rank,
           mlb_team: pick.proTeam || '',
@@ -1878,10 +2030,15 @@ async function loadDraftData() {
         
         const teamInfo = teamLookup.get(pick.roster_id)
         
+        // Get eligible positions for multi-position support
+        const eligiblePositions = getEligiblePositions(position, sleeperSport)
+        
         return {
           player_key: pick.player_id,
           player_name: playerName,
           position,
+          eligiblePositions,
+          activePosition: position,
           round: pick.round,
           pick: pick.pick_no || pick.draft_slot,
           pickInRound: ((pick.pick_no || pick.draft_slot) - 1) % numTeams + 1,
@@ -2104,6 +2261,9 @@ async function loadDraftData() {
         yahooSport
       )
       
+      // Get eligible positions for multi-position support
+      const eligiblePositions = getEligiblePositions(position, yahooSport)
+      
       return {
         pick: pick.pick,
         round: pick.round,
@@ -2114,6 +2274,8 @@ async function loadDraftData() {
         player_key: pick.player_key,
         player_name: player.name || 'Unknown Player',
         position,
+        eligiblePositions,
+        activePosition: position,
         position_rank_drafted,
         current_position_rank,
         mlb_team: player.team || '',
