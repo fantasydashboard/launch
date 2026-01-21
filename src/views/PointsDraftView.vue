@@ -1111,7 +1111,7 @@ const scoringTypeLabel = computed(() => {
 const tabOptions = [
   { id: 'board', name: 'Draft Board', icon: '📋' },
   { id: 'grades', name: 'Player Grades', icon: '🎯' },
-  { id: 'analysis', name: 'Deep Analysis', icon: '📊' },
+  { id: 'analysis', name: 'Steals & Busts', icon: '📊' },
   { id: 'actual', name: 'Actual Value', icon: '🏆' }
 ]
 
@@ -1436,61 +1436,12 @@ function getPositionClass(position: string) {
 }
 
 // Get eligible positions for a player based on their primary position and sport
+// This is a fallback for platforms that don't provide eligibility data
+// NOTE: This only returns the primary position since we can't determine dual eligibility without API data
 function getEligiblePositions(position: string, sport: string): string[] {
-  if (sport === 'baseball') {
-    const baseballEligibility: Record<string, string[]> = {
-      'C': ['C'],
-      '1B': ['1B', 'CI', 'UTIL'],
-      '2B': ['2B', 'MI', 'UTIL'],
-      '3B': ['3B', 'CI', 'UTIL'],
-      'SS': ['SS', 'MI', 'UTIL'],
-      'OF': ['OF', 'UTIL'],
-      'LF': ['LF', 'OF', 'UTIL'],
-      'CF': ['CF', 'OF', 'UTIL'],
-      'RF': ['RF', 'OF', 'UTIL'],
-      'DH': ['DH', 'UTIL'],
-      'SP': ['SP', 'P'],
-      'RP': ['RP', 'P'],
-      'P': ['P'],
-    }
-    return baseballEligibility[position] || [position]
-  }
-  
-  if (sport === 'football') {
-    const footballEligibility: Record<string, string[]> = {
-      'QB': ['QB', 'OP'],
-      'RB': ['RB', 'FLEX', 'OP'],
-      'WR': ['WR', 'FLEX', 'OP'],
-      'TE': ['TE', 'FLEX', 'OP'],
-      'K': ['K'],
-      'DEF': ['DEF'],
-      'D/ST': ['D/ST'],
-    }
-    return footballEligibility[position] || [position]
-  }
-  
-  if (sport === 'basketball') {
-    const basketballEligibility: Record<string, string[]> = {
-      'PG': ['PG', 'G', 'UTIL'],
-      'SG': ['SG', 'G', 'UTIL'],
-      'SF': ['SF', 'F', 'UTIL'],
-      'PF': ['PF', 'F', 'UTIL'],
-      'C': ['C', 'UTIL'],
-    }
-    return basketballEligibility[position] || [position]
-  }
-  
-  if (sport === 'hockey') {
-    const hockeyEligibility: Record<string, string[]> = {
-      'C': ['C', 'F', 'UTIL'],
-      'LW': ['LW', 'F', 'UTIL'],
-      'RW': ['RW', 'F', 'UTIL'],
-      'D': ['D', 'UTIL'],
-      'G': ['G'],
-    }
-    return hockeyEligibility[position] || [position]
-  }
-  
+  // For now, just return the primary position
+  // Dual eligibility (like 1B/OF) should come from the platform's API (ESPN eligibleSlots)
+  // We don't want to show generic flex slots like UTIL, FLEX, etc.
   return [position]
 }
 
@@ -1864,8 +1815,10 @@ async function loadDraftData() {
           espnSport
         )
         
-        // Get eligible positions for multi-position support
-        const eligiblePositions = getEligiblePositions(position, espnSport)
+        // Get eligible positions from ESPN API (or fallback to position-based list)
+        const eligiblePositions = pick.eligiblePositions && pick.eligiblePositions.length > 1 
+          ? pick.eligiblePositions 
+          : [position]
         
         return {
           pick: pick.overallPickNumber,

@@ -96,6 +96,30 @@ const LINEUP_SLOTS: Record<number, string> = {
   25: 'Rookie' // For dynasty
 }
 
+// Baseball lineup slots (for eligibleSlots conversion)
+const BASEBALL_LINEUP_SLOTS: Record<number, string> = {
+  0: 'C',
+  1: '1B',
+  2: '2B',
+  3: '3B',
+  4: 'SS',
+  5: 'LF',
+  6: 'CF',
+  7: 'RF',
+  8: 'DH',
+  9: 'UTIL',
+  10: 'MI',    // Middle Infield (2B/SS)
+  11: 'CI',    // Corner Infield (1B/3B)
+  12: 'OF',
+  13: 'SP',
+  14: 'RP',
+  15: 'P',
+  16: 'BE',    // Bench
+  17: 'IL',    // Injured List
+  18: 'IL+',   // IL+
+  19: 'NA'     // Not Active (minors)
+}
+
 // Pro team IDs to abbreviations (NFL)
 const PRO_TEAMS: Record<number, string> = {
   0: 'FA',
@@ -245,6 +269,7 @@ export interface EspnDraftPick {
   playerName: string
   position?: string
   positionId?: number
+  eligiblePositions?: string[]  // Array of positions this player can fill
   proTeam?: string
   teamId: number
   keeper: boolean
@@ -2780,16 +2805,30 @@ export class EspnFantasyService {
     const teamMapping = sport === 'baseball' ? MLB_TEAMS : PRO_TEAMS
     
     // Build player lookup from players array if available (from PLAYER_INFO view)
-    const playerLookup = new Map<number, { name: string; position: string; team: string }>()
+    const playerLookup = new Map<number, { name: string; position: string; team: string; eligiblePositions: string[] }>()
     if (data.players && Array.isArray(data.players)) {
       console.log('[ESPN parseDraft] Found', data.players.length, 'players in response')
       for (const entry of data.players) {
         const player = entry.player || entry
         if (player.id) {
+          // Get eligible positions from eligibleSlots array
+          const eligibleSlots = player.eligibleSlots || []
+          const slotMapping = sport === 'baseball' ? BASEBALL_LINEUP_SLOTS : LINEUP_SLOTS
+          
+          // Convert slot IDs to position names, filtering out bench/IR/utility slots for the main eligibility list
+          const excludedSlots = ['BE', 'IR', 'IL', 'IL+', 'NA', 'UTIL', 'FLEX', 'OP', 'Rookie']
+          const eligiblePositions = eligibleSlots
+            .map((slotId: number) => slotMapping[slotId])
+            .filter((pos: string | undefined) => pos && !excludedSlots.includes(pos))
+          
+          // Remove duplicates
+          const uniquePositions = [...new Set(eligiblePositions)] as string[]
+          
           playerLookup.set(player.id, {
             name: player.fullName || `${player.firstName || ''} ${player.lastName || ''}`.trim() || `Player ${player.id}`,
             position: this.getPositionName(player.defaultPositionId, sport),
-            team: teamMapping[player.proTeamId] || 'FA'
+            team: teamMapping[player.proTeamId] || 'FA',
+            eligiblePositions: uniquePositions.length > 0 ? uniquePositions : [this.getPositionName(player.defaultPositionId, sport)]
           })
         }
       }
@@ -2808,6 +2847,7 @@ export class EspnFantasyService {
       let position = 'Unknown'
       let positionId = 0
       let proTeam = ''
+      let eligiblePositions: string[] = []
       
       // Source 1: Check player lookup from response
       const lookupInfo = playerLookup.get(pick.playerId)
@@ -2815,6 +2855,7 @@ export class EspnFantasyService {
         playerName = lookupInfo.name
         position = lookupInfo.position
         proTeam = lookupInfo.team
+        eligiblePositions = lookupInfo.eligiblePositions || []
       }
       
       // Source 2: Check if pick has playerName directly
@@ -2830,12 +2871,27 @@ export class EspnFantasyService {
         positionId = pick.player.defaultPositionId || 0
         position = this.getPositionName(positionId, sport)
         proTeam = teamMapping[pick.player.proTeamId] || proTeam
+        
+        // Also check for eligibleSlots in the nested player object
+        if (pick.player.eligibleSlots && pick.player.eligibleSlots.length > 0) {
+          const slotMapping = sport === 'baseball' ? BASEBALL_LINEUP_SLOTS : LINEUP_SLOTS
+          const excludedSlots = ['BE', 'IR', 'IL', 'IL+', 'NA', 'UTIL', 'FLEX', 'OP', 'Rookie']
+          const positions = pick.player.eligibleSlots
+            .map((slotId: number) => slotMapping[slotId])
+            .filter((pos: string | undefined) => pos && !excludedSlots.includes(pos))
+          eligiblePositions = [...new Set(positions)] as string[]
+        }
       }
       
       // Source 4: Check direct properties on pick
       if (pick.defaultPositionId && position === 'Unknown') {
         positionId = pick.defaultPositionId
         position = this.getPositionName(positionId, sport)
+      }
+      
+      // Fallback: if no eligible positions found, use the default position
+      if (eligiblePositions.length === 0 && position !== 'Unknown') {
+        eligiblePositions = [position]
       }
       
       return {
@@ -2847,6 +2903,7 @@ export class EspnFantasyService {
         playerName,
         position,
         positionId,
+        eligiblePositions,
         proTeam,
         teamId: pick.teamId,
         keeper: pick.keeper || false,
