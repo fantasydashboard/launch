@@ -4364,163 +4364,7 @@ async function loadHistoricalData() {
       return
     }
     
-    // Handle Sleeper leagues
-    if (isSleeper.value) {
-      console.log('[SLEEPER] Loading historical data for Sleeper league')
-      updateProgress({ currentStep: 'Loading Sleeper league history...' })
-      
-      // Sleeper history is handled differently - seasons are stored in historicalSeasons
-      const { sleeperService } = await import('@/services/sleeper')
-      
-      // Get historical seasons from the store
-      const historicalSeasons = leagueStore.historicalSeasons || []
-      console.log('[SLEEPER] Historical seasons available:', historicalSeasons.length)
-      
-      if (historicalSeasons.length === 0) {
-        loadingMessage.value = 'No historical data available for this Sleeper league.'
-        isLoading.value = false
-        return
-      }
-      
-      updateProgress({ totalSeasons: historicalSeasons.length })
-      let successCount = 0
-      
-      for (const seasonInfo of historicalSeasons) {
-        const season = seasonInfo.season
-        loadingMessage.value = `Loading ${season} season...`
-        updateProgress({ currentStep: `Loading ${season} standings and matchups`, season: season })
-        
-        try {
-          // Get rosters/standings for this season
-          const rosters = await sleeperService.getRosters(seasonInfo.league_id)
-          const users = await sleeperService.getLeagueUsers(seasonInfo.league_id)
-          
-          if (!rosters || rosters.length === 0) continue
-          
-          // Transform to standings format
-          const standings = rosters.map((roster: any, idx: number) => {
-            const user = users.find((u: any) => u.user_id === roster.owner_id)
-            const teamName = sleeperService.getTeamName(roster, user)
-            const avatar = sleeperService.getAvatarUrl(roster, user, seasonInfo)
-            
-            return {
-              team_key: roster.owner_id || `roster_${roster.roster_id}`,
-              team_id: roster.roster_id.toString(),
-              name: teamName,
-              logo_url: avatar,
-              wins: roster.settings?.wins || 0,
-              losses: roster.settings?.losses || 0,
-              ties: roster.settings?.ties || 0,
-              points_for: roster.settings?.fpts || 0,
-              points_against: roster.settings?.fpts_against || 0,
-              rank: idx + 1,
-              is_champion: idx === 0,
-              owner_id: roster.owner_id || '',
-              season: season
-            }
-          }).sort((a: any, b: any) => {
-            if (b.wins !== a.wins) return b.wins - a.wins
-            return b.points_for - a.points_for
-          })
-          
-          historicalData.value[season] = { standings, trade_count: 0 }
-          
-          // Track teams
-          standings.forEach((team: any) => {
-            if (!currentMembers.value.includes(team.team_key)) {
-              currentMembers.value.push(team.team_key)
-            }
-            if (!allTeams.value[team.team_key]) {
-              allTeams.value[team.team_key] = {
-                team_key: team.team_key,
-                name: team.name,
-                logo_url: team.logo_url
-              }
-            }
-          })
-          
-          // Load matchups for H2H
-          updateProgress({ currentStep: `Loading ${season} matchups`, maxWeek: 18 })
-          const seasonMatchupsObj: Record<number, any[]> = {}
-          
-          for (let week = 1; week <= 18; week++) {
-            updateProgress({ week })
-            try {
-              const matchups = await sleeperService.getMatchups(seasonInfo.league_id, week)
-              if (matchups && matchups.length > 0) {
-                // Group matchups by matchup_id
-                const grouped = new Map()
-                for (const m of matchups) {
-                  if (!grouped.has(m.matchup_id)) grouped.set(m.matchup_id, [])
-                  grouped.get(m.matchup_id).push(m)
-                }
-                
-                const transformedMatchups = Array.from(grouped.values())
-                  .filter(pair => pair.length === 2)
-                  .map(([m1, m2]) => {
-                    const team1 = standings.find((t: any) => t.team_id === m1.roster_id.toString())
-                    const team2 = standings.find((t: any) => t.team_id === m2.roster_id.toString())
-                    return {
-                      matchup_id: m1.matchup_id,
-                      season,
-                      teams: [
-                        { team_key: team1?.team_key, name: team1?.name, points: m1.points || 0, logo_url: team1?.logo_url },
-                        { team_key: team2?.team_key, name: team2?.name, points: m2.points || 0, logo_url: team2?.logo_url }
-                      ]
-                    }
-                  })
-                
-                if (transformedMatchups.length > 0) {
-                  seasonMatchupsObj[week] = transformedMatchups
-                  
-                  // Build H2H records
-                  for (const matchup of transformedMatchups) {
-                    const [t1, t2] = matchup.teams
-                    if (!t1.team_key || !t2.team_key) continue
-                    const t1Won = (t1.points || 0) > (t2.points || 0)
-                    
-                    if (!h2hRecords.value[t1.team_key]) h2hRecords.value[t1.team_key] = {}
-                    if (!h2hRecords.value[t1.team_key][t2.team_key]) h2hRecords.value[t1.team_key][t2.team_key] = { wins: 0, losses: 0 }
-                    if (t1Won) h2hRecords.value[t1.team_key][t2.team_key].wins++
-                    else h2hRecords.value[t1.team_key][t2.team_key].losses++
-                    
-                    if (!h2hRecords.value[t2.team_key]) h2hRecords.value[t2.team_key] = {}
-                    if (!h2hRecords.value[t2.team_key][t1.team_key]) h2hRecords.value[t2.team_key][t1.team_key] = { wins: 0, losses: 0 }
-                    if (!t1Won) h2hRecords.value[t2.team_key][t1.team_key].wins++
-                    else h2hRecords.value[t2.team_key][t1.team_key].losses++
-                  }
-                }
-              }
-            } catch (e) {
-              // Week might not exist
-            }
-          }
-          
-          if (Object.keys(seasonMatchupsObj).length > 0) {
-            allMatchups.value[season] = seasonMatchupsObj
-          }
-          
-          successCount++
-          updateProgress({ seasonsLoaded: successCount })
-          console.log(`[SLEEPER] Loaded ${season}: ${standings.length} teams, ${Object.keys(seasonMatchupsObj).length} weeks`)
-          
-        } catch (e) {
-          console.log(`[SLEEPER] Could not load ${season}:`, e)
-        }
-      }
-      
-      if (availableSeasons.value.length > 0) {
-        selectedAwardSeason.value = availableSeasons.value[0]
-        selectedWeeklyAwardSeason.value = availableSeasons.value[0]
-      }
-      
-      loadingMessage.value = `Done! Loaded ${successCount} season${successCount !== 1 ? 's' : ''}.`
-      loadingProgress.value = { currentStep: 'Complete!', season: '', week: 0, maxWeek: 0, seasonsLoaded: successCount, totalSeasons: successCount }
-      isLoading.value = false
-      return
-    }
-    
-    // Handle ESPN leagues
+    // Handle ESPN leagues FIRST (most reliable detection via league key format)
     if (isEspn.value) {
       console.log('[ESPN] Loading historical data for ESPN league')
       updateProgress({ currentStep: 'Initializing ESPN connection...' })
@@ -4769,6 +4613,165 @@ async function loadHistoricalData() {
       console.log(`[ESPN] Finished loading: ${successCount} seasons, historicalData keys:`, Object.keys(historicalData.value))
       
       // Set default award season
+      if (availableSeasons.value.length > 0) {
+        selectedAwardSeason.value = availableSeasons.value[0]
+        selectedWeeklyAwardSeason.value = availableSeasons.value[0]
+      }
+      
+      loadingMessage.value = `Done! Loaded ${successCount} season${successCount !== 1 ? 's' : ''}.`
+      loadingProgress.value = { currentStep: 'Complete!', season: '', week: 0, maxWeek: 0, seasonsLoaded: successCount, totalSeasons: successCount }
+      isLoading.value = false
+      return
+    }
+    
+    // Handle Sleeper leagues
+    if (isSleeper.value) {
+      console.log('[SLEEPER] Loading historical data for Sleeper league')
+      console.log('[SLEEPER] leagueKey:', leagueKey)
+      console.log('[SLEEPER] activePlatform:', leagueStore.activePlatform)
+      updateProgress({ currentStep: 'Loading Sleeper league history...' })
+      
+      // Sleeper history is handled differently - seasons are stored in historicalSeasons
+      const { sleeperService } = await import('@/services/sleeper')
+      
+      // Get historical seasons from the store
+      const historicalSeasons = leagueStore.historicalSeasons || []
+      console.log('[SLEEPER] Historical seasons available:', historicalSeasons.length)
+      
+      if (historicalSeasons.length === 0) {
+        console.log('[SLEEPER] No historical seasons, ending loading')
+        loadingMessage.value = 'No historical data available for this Sleeper league.'
+        isLoading.value = false
+        return
+      }
+      
+      updateProgress({ totalSeasons: historicalSeasons.length })
+      let successCount = 0
+      
+      for (const seasonInfo of historicalSeasons) {
+        const season = seasonInfo.season
+        loadingMessage.value = `Loading ${season} season...`
+        updateProgress({ currentStep: `Loading ${season} standings and matchups`, season: season })
+        
+        try {
+          // Get rosters/standings for this season
+          const rosters = await sleeperService.getRosters(seasonInfo.league_id)
+          const users = await sleeperService.getLeagueUsers(seasonInfo.league_id)
+          
+          if (!rosters || rosters.length === 0) continue
+          
+          // Transform to standings format
+          const standings = rosters.map((roster: any, idx: number) => {
+            const user = users.find((u: any) => u.user_id === roster.owner_id)
+            const teamName = sleeperService.getTeamName(roster, user)
+            const avatar = sleeperService.getAvatarUrl(roster, user, seasonInfo)
+            
+            return {
+              team_key: roster.owner_id || `roster_${roster.roster_id}`,
+              team_id: roster.roster_id.toString(),
+              name: teamName,
+              logo_url: avatar,
+              wins: roster.settings?.wins || 0,
+              losses: roster.settings?.losses || 0,
+              ties: roster.settings?.ties || 0,
+              points_for: roster.settings?.fpts || 0,
+              points_against: roster.settings?.fpts_against || 0,
+              rank: idx + 1,
+              is_champion: idx === 0,
+              owner_id: roster.owner_id || '',
+              season: season
+            }
+          }).sort((a: any, b: any) => {
+            if (b.wins !== a.wins) return b.wins - a.wins
+            return b.points_for - a.points_for
+          })
+          
+          historicalData.value[season] = { standings, trade_count: 0 }
+          
+          // Track teams
+          standings.forEach((team: any) => {
+            if (!currentMembers.value.includes(team.team_key)) {
+              currentMembers.value.push(team.team_key)
+            }
+            if (!allTeams.value[team.team_key]) {
+              allTeams.value[team.team_key] = {
+                team_key: team.team_key,
+                name: team.name,
+                logo_url: team.logo_url
+              }
+            }
+          })
+          
+          // Load matchups for H2H
+          updateProgress({ currentStep: `Loading ${season} matchups`, maxWeek: 18 })
+          const seasonMatchupsObj: Record<number, any[]> = {}
+          
+          for (let week = 1; week <= 18; week++) {
+            updateProgress({ week })
+            try {
+              const matchups = await sleeperService.getMatchups(seasonInfo.league_id, week)
+              if (matchups && matchups.length > 0) {
+                // Group matchups by matchup_id
+                const grouped = new Map()
+                for (const m of matchups) {
+                  if (!grouped.has(m.matchup_id)) grouped.set(m.matchup_id, [])
+                  grouped.get(m.matchup_id).push(m)
+                }
+                
+                const transformedMatchups = Array.from(grouped.values())
+                  .filter(pair => pair.length === 2)
+                  .map(([m1, m2]) => {
+                    const team1 = standings.find((t: any) => t.team_id === m1.roster_id.toString())
+                    const team2 = standings.find((t: any) => t.team_id === m2.roster_id.toString())
+                    return {
+                      matchup_id: m1.matchup_id,
+                      season,
+                      teams: [
+                        { team_key: team1?.team_key, name: team1?.name, points: m1.points || 0, logo_url: team1?.logo_url },
+                        { team_key: team2?.team_key, name: team2?.name, points: m2.points || 0, logo_url: team2?.logo_url }
+                      ]
+                    }
+                  })
+                
+                if (transformedMatchups.length > 0) {
+                  seasonMatchupsObj[week] = transformedMatchups
+                  
+                  // Build H2H records
+                  for (const matchup of transformedMatchups) {
+                    const [t1, t2] = matchup.teams
+                    if (!t1.team_key || !t2.team_key) continue
+                    const t1Won = (t1.points || 0) > (t2.points || 0)
+                    
+                    if (!h2hRecords.value[t1.team_key]) h2hRecords.value[t1.team_key] = {}
+                    if (!h2hRecords.value[t1.team_key][t2.team_key]) h2hRecords.value[t1.team_key][t2.team_key] = { wins: 0, losses: 0 }
+                    if (t1Won) h2hRecords.value[t1.team_key][t2.team_key].wins++
+                    else h2hRecords.value[t1.team_key][t2.team_key].losses++
+                    
+                    if (!h2hRecords.value[t2.team_key]) h2hRecords.value[t2.team_key] = {}
+                    if (!h2hRecords.value[t2.team_key][t1.team_key]) h2hRecords.value[t2.team_key][t1.team_key] = { wins: 0, losses: 0 }
+                    if (!t1Won) h2hRecords.value[t2.team_key][t1.team_key].wins++
+                    else h2hRecords.value[t2.team_key][t1.team_key].losses++
+                  }
+                }
+              }
+            } catch (e) {
+              // Week might not exist
+            }
+          }
+          
+          if (Object.keys(seasonMatchupsObj).length > 0) {
+            allMatchups.value[season] = seasonMatchupsObj
+          }
+          
+          successCount++
+          updateProgress({ seasonsLoaded: successCount })
+          console.log(`[SLEEPER] Loaded ${season}: ${standings.length} teams, ${Object.keys(seasonMatchupsObj).length} weeks`)
+          
+        } catch (e) {
+          console.log(`[SLEEPER] Could not load ${season}:`, e)
+        }
+      }
+      
       if (availableSeasons.value.length > 0) {
         selectedAwardSeason.value = availableSeasons.value[0]
         selectedWeeklyAwardSeason.value = availableSeasons.value[0]
