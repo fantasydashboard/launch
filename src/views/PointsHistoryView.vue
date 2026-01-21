@@ -1371,7 +1371,20 @@ const isEspn = computed(() => {
   return false
 })
 
-const isSleeper = computed(() => leagueStore.activePlatform === 'sleeper')
+// Check if Sleeper platform - use both activePlatform AND league key format
+const isSleeper = computed(() => {
+  // Primary check: activePlatform
+  if (leagueStore.activePlatform === 'sleeper') {
+    // But make sure it's not ESPN or Yahoo (default is 'sleeper')
+    const leagueKey = leagueStore.currentLeague?.league_id || leagueStore.activeLeagueId
+    if (leagueKey) {
+      if (leagueKey.startsWith('espn_')) return false
+      if (/^\d+\.l\.\d+$/.test(leagueKey) || /^[a-z]+\.l\.\d+$/.test(leagueKey)) return false
+    }
+    return true
+  }
+  return false
+})
 
 // Platform display
 const platformName = computed(() => {
@@ -4305,6 +4318,13 @@ async function downloadHeadToHead() {
 
 async function loadHistoricalData() {
   console.log('loadHistoricalData called')
+  console.log('Platform detection:', {
+    activePlatform: leagueStore.activePlatform,
+    isEspn: isEspn.value,
+    isSleeper: isSleeper.value,
+    activeLeagueId: leagueStore.activeLeagueId,
+    currentLeagueId: leagueStore.currentLeague?.league_id
+  })
   
   // Prevent concurrent executions
   if (isLoading.value) {

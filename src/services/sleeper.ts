@@ -486,8 +486,15 @@ class SleeperService {
     let currentId: string | undefined = leagueId
     const visited = new Set<string>()
     
-    while (currentId && !visited.has(currentId)) {
-      visited.add(currentId)
+    // Helper to check if league ID is valid (not empty, not "0", not just whitespace)
+    const isValidLeagueId = (id: string | undefined | null): boolean => {
+      if (!id) return false
+      const trimmed = id.toString().trim()
+      return trimmed.length > 0 && trimmed !== '0'
+    }
+    
+    while (isValidLeagueId(currentId) && !visited.has(currentId!)) {
+      visited.add(currentId!)
       
       try {
         const league = await this.getLeague(currentId)
@@ -527,7 +534,9 @@ class SleeperService {
         }
         
         matchups.set(league.season, seasonMatchups)
-        currentId = league.previous_league_id
+        // Stop if previous_league_id is invalid (null, undefined, "0", empty)
+        const prevId = league.previous_league_id
+        currentId = (prevId && prevId !== '0' && prevId.trim() !== '') ? prevId : undefined
       } catch (error) {
         console.error('Error fetching historical data:', error)
         break
