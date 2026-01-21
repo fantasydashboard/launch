@@ -2534,7 +2534,7 @@ async function downloadStandings() {
         </div>
         <!-- Team Logo - 48px logo -->
         <div style="width: 60px; flex-shrink: 0; padding-top: 16px;">
-          <img src="${imageMap.get(team.team_key) || ''}" style="width: 48px; height: 48px; border-radius: 50%; border: 2px solid #3a3d52; background: #262a3a; object-fit: cover;" />
+          <img src="${imageMap.get(team.team_key) || createPlaceholderAvatar(team.name)}" style="width: 48px; height: 48px; border-radius: 50%; border: 2px solid #3a3d52; background: #262a3a; object-fit: cover;" />
         </div>
         <!-- Team Info with trophy -->
         <div style="flex: 1; min-width: 0; padding-top: 16px;">
@@ -2866,7 +2866,7 @@ async function downloadLeaderImage() {
         return `
           <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 10px;">
             <div style="width: 20px; text-align: center; font-weight: bold; font-size: 12px; color: ${isFirst ? accentColor : '#6b7280'};">${idx + 1}</div>
-            <img src="${imageMap.get(team.name) || createPlaceholder(team.name)}" style="width: 28px; height: 28px; border-radius: 50%; border: 2px solid ${isFirst ? accentColor : '#3a3d52'};" />
+            <img src="${imageMap.get(team.name) || createPlaceholderAvatar(team.name)}" style="width: 28px; height: 28px; border-radius: 50%; border: 2px solid ${isFirst ? accentColor : '#3a3d52'};" />
             <div style="flex: 1; min-width: 0;">
               <div style="font-size: 12px; font-weight: 600; color: #e5e7eb; margin-bottom: 5px;">${team.name}</div>
               <div style="height: 6px; background: rgba(58, 61, 82, 0.5); border-radius: 3px; overflow: hidden;">
@@ -2909,7 +2909,7 @@ async function downloadLeaderImage() {
         <!-- Featured Leader -->
         <div style="padding: 12px 16px; background: linear-gradient(135deg, ${accentColor}20 0%, transparent 100%); border-bottom: 1px solid ${accentColor}30;">
           <div style="display: flex; align-items: center; gap: 12px;">
-            <img src="${imageMap.get(leader.name) || createPlaceholder(leader.name)}" style="width: 44px; height: 44px; border-radius: 50%; border: 2px solid ${accentColor}80;" />
+            <img src="${imageMap.get(leader.name) || createPlaceholderAvatar(leader.name)}" style="width: 44px; height: 44px; border-radius: 50%; border: 2px solid ${accentColor}80;" />
             <div style="flex: 1;">
               <div style="font-size: 15px; font-weight: bold; color: #ffffff;">${leader.name}</div>
               <div style="font-size: 11px; color: #9ca3af;">${leader.wins || 0}-${leader.losses || 0}</div>
