@@ -988,16 +988,16 @@
                   <button 
                     @click.stop="downloadTeamLegacy(selectedLegacyTeamDetails)"
                     :disabled="isDownloadingTeamLegacy"
-                    class="p-2 rounded-lg hover:bg-yellow-500/20 text-yellow-400 transition-colors disabled:opacity-50"
-                    title="Share team legacy"
+                    class="px-3 py-1.5 border border-yellow-400 bg-transparent text-yellow-400 hover:bg-yellow-400 hover:text-gray-900 rounded-lg font-medium flex items-center gap-2 text-sm transition-colors disabled:opacity-50"
                   >
-                    <svg v-if="!isDownloadingTeamLegacy" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <svg v-if="!isDownloadingTeamLegacy" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
                     </svg>
-                    <svg v-else class="w-5 h-5 animate-spin" fill="none" viewBox="0 0 24 24">
+                    <svg v-else class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
                       <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                       <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                     </svg>
+                    {{ isDownloadingTeamLegacy ? 'Generating...' : 'Share' }}
                   </button>
                   <!-- Close button -->
                   <button 
@@ -1471,16 +1471,16 @@
                 <button 
                   @click.stop="downloadTeamLegacy(selectedLegacyTeam)"
                   :disabled="isDownloadingTeamLegacy"
-                  class="p-2 rounded-lg hover:bg-yellow-500/20 text-yellow-400 transition-colors disabled:opacity-50"
-                  title="Share team legacy"
+                  class="px-3 py-1.5 border border-yellow-400 bg-transparent text-yellow-400 hover:bg-yellow-400 hover:text-gray-900 rounded-lg font-medium flex items-center gap-2 text-sm transition-colors disabled:opacity-50"
                 >
-                  <svg v-if="!isDownloadingTeamLegacy" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <svg v-if="!isDownloadingTeamLegacy" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
                   </svg>
-                  <svg v-else class="w-5 h-5 animate-spin" fill="none" viewBox="0 0 24 24">
+                  <svg v-else class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
                     <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                     <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                   </svg>
+                  {{ isDownloadingTeamLegacy ? 'Generating...' : 'Share' }}
                 </button>
                 <!-- Close button -->
                 <button @click="closeLegacyModal" class="p-2 rounded-lg hover:bg-dark-border/50 transition-colors">
@@ -2775,6 +2775,8 @@ async function downloadLegacyLeaderboard() {
     const teams = filteredLegacyScores.value.slice(0, 10) // Top 10
     const maxScore = teams[0]?.total_score || 1
     
+    console.log('[Legacy Download] Teams:', teams.map(t => ({ name: t.team_name, logo: t.logo_url })))
+    
     // Load main UFD logo
     const loadLogo = async (): Promise<string> => {
       try {
@@ -2811,18 +2813,22 @@ async function downloadLegacyLeaderboard() {
         ctx.textBaseline = 'middle'
         ctx.fillText(teamName.charAt(0).toUpperCase(), 32, 34)
       }
-      return canvas.toDataURL('image/png')
+      const result = canvas.toDataURL('image/png')
+      console.log(`[Legacy Download] Created placeholder for ${teamName}`)
+      return result
     }
     
     const logoBase64 = await loadLogo()
     
     // Load team image - exactly like Power Rankings
     const loadTeamImage = async (team: LegacyScore): Promise<string> => {
+      console.log(`[Legacy Download] Loading image for ${team.team_name}: ${team.logo_url}`)
       try {
         const img = new Image()
         img.crossOrigin = 'anonymous'
         return new Promise((resolve) => {
           img.onload = () => {
+            console.log(`[Legacy Download] Image loaded successfully for ${team.team_name}`)
             try {
               const canvas = document.createElement('canvas')
               canvas.width = 64
@@ -2840,8 +2846,14 @@ async function downloadLegacyLeaderboard() {
               resolve(createPlaceholder(team.team_name))
             }
           }
-          img.onerror = () => resolve(createPlaceholder(team.team_name))
-          setTimeout(() => resolve(createPlaceholder(team.team_name)), 3000)
+          img.onerror = () => {
+            console.log(`[Legacy Download] Image error for ${team.team_name}`)
+            resolve(createPlaceholder(team.team_name))
+          }
+          setTimeout(() => {
+            console.log(`[Legacy Download] Image timeout for ${team.team_name}`)
+            resolve(createPlaceholder(team.team_name))
+          }, 3000)
           img.src = team.logo_url || ''
         })
       } catch {
@@ -2850,6 +2862,7 @@ async function downloadLegacyLeaderboard() {
     }
     
     // Pre-load all team images
+    console.log('[Legacy Download] Loading team images...')
     const imageMap = new Map<string, string>()
     const imagePromises = teams.map(async (team) => {
       const base64 = await loadTeamImage(team)
@@ -2860,6 +2873,7 @@ async function downloadLegacyLeaderboard() {
     results.forEach(({ teamKey, base64 }) => {
       imageMap.set(teamKey, base64)
     })
+    console.log(`[Legacy Download] Loaded ${imageMap.size} team images`)
     
     // Create container
     const container = document.createElement('div')
