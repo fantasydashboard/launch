@@ -2816,7 +2816,7 @@ async function downloadLegacyLeaderboard() {
     
     const logoBase64 = await loadLogo()
     
-    // Load team images
+    // Load team image - exactly like Power Rankings
     const loadTeamImage = async (team: LegacyScore): Promise<string> => {
       try {
         const img = new Image()
@@ -2840,22 +2840,9 @@ async function downloadLegacyLeaderboard() {
               resolve(createPlaceholder(team.team_name))
             }
           }
-          img.onerror = () => {
-            console.log(`[Legacy Download] Image load failed for ${team.team_name}, using placeholder`)
-            resolve(createPlaceholder(team.team_name))
-          }
-          setTimeout(() => {
-            console.log(`[Legacy Download] Image load timeout for ${team.team_name}, using placeholder`)
-            resolve(createPlaceholder(team.team_name))
-          }, 3000)
-          
-          // If no logo URL, immediately use placeholder
-          if (!team.logo_url) {
-            console.log(`[Legacy Download] No logo URL for ${team.team_name}, using placeholder`)
-            resolve(createPlaceholder(team.team_name))
-          } else {
-            img.src = team.logo_url
-          }
+          img.onerror = () => resolve(createPlaceholder(team.team_name))
+          setTimeout(() => resolve(createPlaceholder(team.team_name)), 3000)
+          img.src = team.logo_url || ''
         })
       } catch {
         return createPlaceholder(team.team_name)
@@ -2863,7 +2850,6 @@ async function downloadLegacyLeaderboard() {
     }
     
     // Pre-load all team images
-    console.log('[Legacy Download] Loading team images...')
     const imageMap = new Map<string, string>()
     const imagePromises = teams.map(async (team) => {
       const base64 = await loadTeamImage(team)
@@ -2872,7 +2858,6 @@ async function downloadLegacyLeaderboard() {
     
     const results = await Promise.all(imagePromises)
     results.forEach(({ teamKey, base64 }) => {
-      console.log(`[Legacy Download] Loaded image for ${teamKey}: length=${base64.length}, starts with data:=${base64.startsWith('data:')}`)
       imageMap.set(teamKey, base64)
     })
     
@@ -2891,8 +2876,6 @@ async function downloadLegacyLeaderboard() {
       const barColor = rank === 1 ? '#facc15' : rank === 2 ? '#9ca3af' : rank === 3 ? '#d97706' : '#3b82f6'
       const imgSrc = imageMap.get(team.team_key) || ''
       const rankColor = rank === 1 ? '#facc15' : rank === 2 ? '#9ca3af' : rank === 3 ? '#d97706' : '#ffffff'
-      
-      console.log(`[Legacy Download] Row ${rank} (${team.team_name}): imgSrc length=${imgSrc.length}, starts with data:=${imgSrc.startsWith('data:')}`)
       
       // Achievement badges
       const badges = []
@@ -2973,7 +2956,6 @@ async function downloadLegacyLeaderboard() {
     await new Promise(resolve => setTimeout(resolve, 500))
     
     // Capture image
-    console.log('[Legacy Download] Capturing image...')
     const canvas = await html2canvas(container, {
       backgroundColor: '#0a0c14',
       scale: 2,
@@ -3149,7 +3131,7 @@ async function downloadTeamLegacy(team: LegacyScore) {
         <div style="display: flex; padding: 16px 24px; border-bottom: 1px solid rgba(250, 204, 21, 0.2); position: relative; z-index: 10;">
           ${logoBase64 ? `<img src="${logoBase64}" style="height: 50px; width: auto; flex-shrink: 0; margin-right: 16px; display: block;" />` : ''}
           <div style="flex: 1; margin-top: -10px;">
-            <div style="font-size: 28px; font-weight: 900; color: #ffffff; text-transform: uppercase; letter-spacing: 1px; text-shadow: 0 2px 8px rgba(250, 204, 21, 0.4); line-height: 1;">Team Legacy</div>
+            <div style="font-size: 28px; font-weight: 900; color: #ffffff; text-transform: uppercase; letter-spacing: 1px; text-shadow: 0 2px 8px rgba(250, 204, 21, 0.4); line-height: 1;">Legacy Score</div>
             <div style="font-size: 14px; margin-top: 4px; font-weight: 600; line-height: 1;">
               <span style="color: #e5e7eb;">${leagueName}</span>
               <span style="color: #6b7280; margin: 0 6px;">•</span>
