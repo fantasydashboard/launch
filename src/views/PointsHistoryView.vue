@@ -1821,9 +1821,28 @@ const LEGACY_POINTS = {
 // Computed: Legacy Scores for all teams
 const legacyScores = computed((): LegacyScore[] => {
   const teams: Record<string, LegacyScore> = {}
-  const seasons = Object.keys(historicalData.value).sort()
+  const seasons = Object.keys(historicalData.value).sort((a, b) => parseInt(a) - parseInt(b)) // Ascending for streak tracking
   
   if (seasons.length === 0) return []
+  
+  // Track most recent season data for each team (for name/logo)
+  const mostRecentTeamData: Record<string, { name: string; logo_url: string; season: string }> = {}
+  
+  // Pre-populate with most recent data (process seasons in descending order for this)
+  const descendingSeasons = [...seasons].reverse()
+  for (const season of descendingSeasons) {
+    const seasonData = historicalData.value[season]
+    const standings = seasonData.standings || []
+    for (const team of standings) {
+      if (!mostRecentTeamData[team.team_key]) {
+        mostRecentTeamData[team.team_key] = {
+          name: team.name || 'Unknown',
+          logo_url: team.logo_url || allTeams.value[team.team_key]?.logo_url || '',
+          season: season
+        }
+      }
+    }
+  }
   
   // First pass: Collect all team data and calculate season-level metrics
   const seasonMetrics: Record<string, {
@@ -1916,12 +1935,13 @@ const legacyScores = computed((): LegacyScore[] => {
     for (const team of standings) {
       const teamKey = team.team_key
       
-      // Initialize team if needed
+      // Initialize team if needed - use most recent name/logo
       if (!teams[teamKey]) {
+        const recentData = mostRecentTeamData[teamKey]
         teams[teamKey] = {
           team_key: teamKey,
-          team_name: team.name || 'Unknown',
-          logo_url: team.logo_url || allTeams.value[teamKey]?.logo_url || '',
+          team_name: recentData?.name || team.name || 'Unknown',
+          logo_url: recentData?.logo_url || team.logo_url || allTeams.value[teamKey]?.logo_url || '',
           seasons: 0,
           total_score: 0,
           championships: 0,
@@ -1967,8 +1987,9 @@ const legacyScores = computed((): LegacyScore[] => {
       const madePlayoffs = team.playoff_seed > 0 || rank <= playoffTeamCount
       
       // Championships & Playoffs
-      if (rank === 1) t.championships++
-      if (rank === 2) t.runner_ups++
+      // Use is_champion flag (set from bracket data for Sleeper, rank for others)
+      if (team.is_champion) t.championships++
+      if (rank === 2 && !team.is_champion) t.runner_ups++ // Only if not champion (handles edge cases)
       if (rank === 3) t.third_places++
       if (madePlayoffs) t.playoff_appearances++
       
@@ -4660,8 +4681,18 @@ async function loadHistoricalData() {
           
           if (!rosters || rosters.length === 0) continue
           
+          // Fetch the winners bracket to determine actual champion
+          let championRosterId: number | null = null
+          try {
+            const bracket = await sleeperService.getWinnersBracket(seasonInfo.league_id)
+            championRosterId = sleeperService.getChampionFromBracket(bracket)
+            console.log(`[SLEEPER] ${season} champion roster_id:`, championRosterId)
+          } catch (e) {
+            console.log(`[SLEEPER] Could not get bracket for ${season}:`, e)
+          }
+          
           // Transform to standings format
-          const standings = rosters.map((roster: any, idx: number) => {
+          const standings = rosters.map((roster: any) => {
             const user = users.find((u: any) => u.user_id === roster.owner_id)
             const teamName = sleeperService.getTeamName(roster, user)
             const avatar = sleeperService.getAvatarUrl(roster, user, seasonInfo)
@@ -4676,8 +4707,8 @@ async function loadHistoricalData() {
               ties: roster.settings?.ties || 0,
               points_for: roster.settings?.fpts || 0,
               points_against: roster.settings?.fpts_against || 0,
-              rank: idx + 1,
-              is_champion: idx === 0,
+              rank: 0, // Will be set after sorting
+              is_champion: roster.roster_id === championRosterId,
               owner_id: roster.owner_id || '',
               season: season
             }
@@ -4686,18 +4717,26 @@ async function loadHistoricalData() {
             return b.points_for - a.points_for
           })
           
+          // Assign ranks AFTER sorting
+          standings.forEach((team: any, idx: number) => {
+            team.rank = idx + 1
+          })
+          
           historicalData.value[season] = { standings, trade_count: 0 }
           
-          // Track teams
+          // Track teams - ALWAYS update to use most recent name/logo
           standings.forEach((team: any) => {
             if (!currentMembers.value.includes(team.team_key)) {
               currentMembers.value.push(team.team_key)
             }
-            if (!allTeams.value[team.team_key]) {
+            // Always overwrite with most recent season's data (seasons are processed newest first)
+            // Only update if this is a newer season OR if we don't have data yet
+            if (!allTeams.value[team.team_key] || parseInt(season) >= parseInt(allTeams.value[team.team_key].season || '0')) {
               allTeams.value[team.team_key] = {
                 team_key: team.team_key,
                 name: team.name,
-                logo_url: team.logo_url
+                logo_url: team.logo_url,
+                season: season
               }
             }
           })
