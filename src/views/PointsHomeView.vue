@@ -1226,7 +1226,7 @@ async function downloadLeaderImage() {
   try {
     const html2canvas = (await import('html2canvas')).default
     
-    // Load main UFD logo - EXACTLY like Power Rankings
+    // Load main UFD logo
     const loadLogo = async (): Promise<string> => {
       try {
         const response = await fetch('/UFD_V5.png')
@@ -1243,76 +1243,8 @@ async function downloadLeaderImage() {
       }
     }
     
-    // Helper to create placeholder avatar - EXACTLY like Power Rankings
-    const createPlaceholder = (teamName: string): string => {
-      const canvas = document.createElement('canvas')
-      canvas.width = 64
-      canvas.height = 64
-      const ctx = canvas.getContext('2d')
-      if (ctx) {
-        const colors = ['#0D8ABC', '#3498DB', '#9B59B6', '#E91E63', '#F39C12', '#1ABC9C', '#2ECC71', '#E74C3C', '#00BCD4', '#8E44AD']
-        const colorIndex = teamName.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0) % colors.length
-        ctx.fillStyle = colors[colorIndex]
-        ctx.beginPath()
-        ctx.arc(32, 32, 32, 0, Math.PI * 2)
-        ctx.fill()
-        ctx.fillStyle = '#ffffff'
-        ctx.font = 'bold 28px sans-serif'
-        ctx.textAlign = 'center'
-        ctx.textBaseline = 'middle'
-        ctx.fillText(teamName.charAt(0).toUpperCase(), 32, 34)
-      }
-      return canvas.toDataURL('image/png')
-    }
-    
-    // Load team image - EXACTLY like Power Rankings
-    const loadTeamImage = async (team: any): Promise<string> => {
-      console.log(`[Leader Download] loadTeamImage for ${team.name}, logo_url: ${team.logo_url}`)
-      try {
-        const img = new Image()
-        img.crossOrigin = 'anonymous'
-        return new Promise((resolve) => {
-          img.onload = () => {
-            console.log(`[Leader Download] img.onload fired for ${team.name}`)
-            try {
-              const canvas = document.createElement('canvas')
-              canvas.width = 64
-              canvas.height = 64
-              const ctx = canvas.getContext('2d')
-              if (ctx) {
-                ctx.beginPath()
-                ctx.arc(32, 32, 32, 0, Math.PI * 2)
-                ctx.closePath()
-                ctx.clip()
-                ctx.drawImage(img, 0, 0, 64, 64)
-              }
-              resolve(canvas.toDataURL('image/png'))
-            } catch {
-              console.log(`[Leader Download] canvas error for ${team.name}, using placeholder`)
-              resolve(createPlaceholder(team.name))
-            }
-          }
-          img.onerror = () => {
-            console.log(`[Leader Download] img.onerror fired for ${team.name}`)
-            resolve(createPlaceholder(team.name))
-          }
-          setTimeout(() => {
-            console.log(`[Leader Download] timeout fired for ${team.name}`)
-            resolve(createPlaceholder(team.name))
-          }, 3000)
-          img.src = team.logo_url || ''
-        })
-      } catch {
-        return createPlaceholder(team.name)
-      }
-    }
-    
     const logoBase64 = await loadLogo()
     const rankings = leaderModalData.value.comparison.slice(0, 10)
-    
-    // DEBUG: Log the first team to see what we have
-    console.log('[Season Download] First team data:', JSON.stringify(rankings[0]))
-    console.log('[Season Download] First team logo_url:', rankings[0]?.logo_url)
     
     if (rankings.length === 0) {
       isGeneratingLeaderDownload.value = false
@@ -1320,23 +1252,6 @@ async function downloadLeaderImage() {
     }
     
     const leader = rankings[0]
-    
-    // Pre-load all team images - EXACTLY like Power Rankings
-    console.log('[Season Download] Loading team images...')
-    const imageMap = new Map<string, string>()
-    const imagePromises = rankings.map(async (team) => {
-      console.log(`[Season Download] Loading image for ${team.name}, logo_url: ${team.logo_url}`)
-      const base64 = await loadTeamImage(team)
-      console.log(`[Season Download] Got base64 for ${team.name}, length: ${base64.length}`)
-      return { teamKey: team.name, base64 }
-    })
-    
-    const results = await Promise.all(imagePromises)
-    results.forEach(({ teamKey, base64 }) => {
-      imageMap.set(teamKey, base64)
-    })
-    console.log(`[Season Download] Loaded ${imageMap.size} team images`)
-    
     const maxValue = leaderModalData.value.maxValue
     
     // Format value for display
@@ -1354,15 +1269,19 @@ async function downloadLeaderImage() {
       return ''
     }
     
-    // Generate ranking rows - matches Career Records style exactly
+    // Generate ranking rows with inline colored circles (no images!)
     const generateRows = () => {
       return rankings.map((team, idx) => {
         const barWidth = maxValue > 0 ? (team.value / maxValue) * 100 : 0
+        const colors = ['#0D8ABC', '#3498DB', '#9B59B6', '#E91E63', '#F39C12', '#1ABC9C', '#2ECC71', '#E74C3C', '#00BCD4', '#8E44AD']
+        const colorIndex = team.name.split('').reduce((acc: number, char: string) => acc + char.charCodeAt(0), 0) % colors.length
+        const bgColor = colors[colorIndex]
+        const initial = team.name.charAt(0).toUpperCase()
         
         return `
           <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 10px;">
             <div style="width: 20px; text-align: center; font-weight: bold; font-size: 12px; color: ${idx === 0 ? '#facc15' : '#6b7280'};">${idx + 1}</div>
-            <img src="${imageMap.get(team.name) || createPlaceholder(team.name)}" style="width: 28px; height: 28px; border-radius: 50%;" />
+            <div style="width: 28px; height: 28px; border-radius: 50%; background: ${bgColor}; display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: bold; color: white;">${initial}</div>
             <div style="flex: 1; min-width: 0;">
               <div style="font-size: 12px; font-weight: 600; color: #e5e7eb; margin-bottom: 5px;">${team.name}</div>
               <div style="height: 6px; background: rgba(58, 61, 82, 0.5); border-radius: 3px; overflow: hidden;">
@@ -1376,6 +1295,12 @@ async function downloadLeaderImage() {
         `
       }).join('')
     }
+    
+    // Leader avatar as colored div
+    const leaderColors = ['#0D8ABC', '#3498DB', '#9B59B6', '#E91E63', '#F39C12', '#1ABC9C', '#2ECC71', '#E74C3C', '#00BCD4', '#8E44AD']
+    const leaderColorIndex = leader.name.split('').reduce((acc: number, char: string) => acc + char.charCodeAt(0), 0) % leaderColors.length
+    const leaderBgColor = leaderColors[leaderColorIndex]
+    const leaderInitial = leader.name.charAt(0).toUpperCase()
     
     const container = document.createElement('div')
     container.style.cssText = 'position: absolute; left: -9999px; top: 0; width: 480px; font-family: system-ui, -apple-system, sans-serif;'
@@ -1404,7 +1329,7 @@ async function downloadLeaderImage() {
         <!-- Featured Leader -->
         <div style="padding: 12px 16px; background: linear-gradient(135deg, rgba(250, 204, 21, 0.15) 0%, transparent 100%); border-bottom: 1px solid rgba(250, 204, 21, 0.2);">
           <div style="display: flex; align-items: center; gap: 12px;">
-            <img src="${imageMap.get(leader.name) || createPlaceholder(leader.name)}" style="width: 44px; height: 44px; border-radius: 50%; border: 2px solid rgba(250, 204, 21, 0.5);" />
+            <div style="width: 44px; height: 44px; border-radius: 50%; background: ${leaderBgColor}; display: flex; align-items: center; justify-content: center; font-size: 22px; font-weight: bold; color: white; border: 2px solid rgba(250, 204, 21, 0.5);">${leaderInitial}</div>
             <div style="flex: 1;">
               <div style="font-size: 15px; font-weight: bold; color: #ffffff;">${leader.name}</div>
               <div style="font-size: 11px; color: #9ca3af;">${getLeaderDetail()}</div>
@@ -1559,97 +1484,13 @@ async function downloadStandings() {
       }
     }
     
-    // Helper to create placeholder avatar - EXACTLY like Power Rankings
-    const createPlaceholder = (teamName: string): string => {
-      const canvas = document.createElement('canvas')
-      canvas.width = 64
-      canvas.height = 64
-      const ctx = canvas.getContext('2d')
-      if (ctx) {
-        // Use a consistent color based on team name
-        const colors = ['#0D8ABC', '#3498DB', '#9B59B6', '#E91E63', '#F39C12', '#1ABC9C', '#2ECC71', '#E74C3C', '#00BCD4', '#8E44AD']
-        const colorIndex = teamName.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0) % colors.length
-        ctx.fillStyle = colors[colorIndex]
-        ctx.beginPath()
-        ctx.arc(32, 32, 32, 0, Math.PI * 2)
-        ctx.fill()
-        ctx.fillStyle = '#ffffff'
-        ctx.font = 'bold 28px sans-serif'
-        ctx.textAlign = 'center'
-        ctx.textBaseline = 'middle'
-        ctx.fillText(teamName.charAt(0).toUpperCase(), 32, 34)
-      }
-      return canvas.toDataURL('image/png')
-    }
-    
     const logoBase64 = await loadLogo()
-    
-    // DEBUG: Log the first team to see what we have
-    console.log('[Standings Download] First team data:', JSON.stringify(sortedTeams.value[0]))
-    console.log('[Standings Download] First team logo_url:', sortedTeams.value[0]?.logo_url)
-    
-    // Load team image - EXACTLY like Power Rankings
-    const loadTeamImage = async (team: any): Promise<string> => {
-      console.log(`[Standings Download] loadTeamImage for ${team.name}, logo_url: ${team.logo_url}`)
-      try {
-        const img = new Image()
-        img.crossOrigin = 'anonymous'
-        return new Promise((resolve) => {
-          img.onload = () => {
-            console.log(`[Standings Download] img.onload fired for ${team.name}`)
-            try {
-              const canvas = document.createElement('canvas')
-              canvas.width = 64
-              canvas.height = 64
-              const ctx = canvas.getContext('2d')
-              if (ctx) {
-                ctx.beginPath()
-                ctx.arc(32, 32, 32, 0, Math.PI * 2)
-                ctx.closePath()
-                ctx.clip()
-                ctx.drawImage(img, 0, 0, 64, 64)
-              }
-              resolve(canvas.toDataURL('image/png'))
-            } catch {
-              console.log(`[Standings Download] canvas error for ${team.name}, using placeholder`)
-              resolve(createPlaceholder(team.name))
-            }
-          }
-          img.onerror = () => {
-            console.log(`[Standings Download] img.onerror fired for ${team.name}`)
-            resolve(createPlaceholder(team.name))
-          }
-          setTimeout(() => {
-            console.log(`[Standings Download] timeout fired for ${team.name}`)
-            resolve(createPlaceholder(team.name))
-          }, 3000)
-          img.src = team.logo_url || ''
-        })
-      } catch {
-        return createPlaceholder(team.name)
-      }
-    }
-    
-    // Pre-load all team images - EXACTLY like Power Rankings
-    console.log('[Standings Download] Loading team images...')
-    const imageMap = new Map<string, string>()
-    const imagePromises = sortedTeams.value.map(async (team) => {
-      const base64 = await loadTeamImage(team)
-      console.log(`[Standings Download] Got base64 for ${team.name}, length: ${base64.length}`)
-      return { teamKey: team.team_key, base64 }
-    })
-    
-    const results = await Promise.all(imagePromises)
-    results.forEach(({ teamKey, base64 }) => {
-      imageMap.set(teamKey, base64)
-    })
-    console.log(`[Standings Download] Loaded ${imageMap.size} team images`)
     
     // Create container
     const container = document.createElement('div')
     container.style.cssText = 'position: absolute; left: -9999px; top: 0; width: 700px; font-family: system-ui, -apple-system, sans-serif;'
     
-    // Generate table rows
+    // Generate table rows with inline colored circles (no images!)
     const generateStandingsRow = (team: any, rank: number) => {
       const recordText = `${team.wins}-${team.losses}${team.ties > 0 ? `-${team.ties}` : ''}`
       const winPct = ((team.wins || 0) / Math.max(1, (team.wins || 0) + (team.losses || 0) + (team.ties || 0)) * 100).toFixed(0)
@@ -1661,7 +1502,11 @@ async function downloadStandings() {
       else if (rank === 2) { rankBg = 'rgba(156, 163, 175, 0.3)'; rankColor = '#d1d5db' }
       else if (rank === 3) { rankBg = 'rgba(249, 115, 22, 0.3)'; rankColor = '#fb923c' }
       
-      const teamLogo = imageMap.get(team.team_key) || createPlaceholder(team.name)
+      // Team avatar as colored div with initial
+      const colors = ['#0D8ABC', '#3498DB', '#9B59B6', '#E91E63', '#F39C12', '#1ABC9C', '#2ECC71', '#E74C3C', '#00BCD4', '#8E44AD']
+      const colorIndex = team.name.split('').reduce((acc: number, char: string) => acc + char.charCodeAt(0), 0) % colors.length
+      const bgColor = colors[colorIndex]
+      const initial = team.name.charAt(0).toUpperCase()
       
       return `
       <div style="display: flex; height: 56px; padding: 0 12px; background: rgba(38, 42, 58, 0.4); border-radius: 8px; margin-bottom: 4px; border: 1px solid rgba(58, 61, 82, 0.4);">
@@ -1669,9 +1514,9 @@ async function downloadStandings() {
         <div style="width: 36px; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
           <span style="width: 28px; height: 28px; border-radius: 50%; background: ${rankBg}; display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: 700; color: ${rankColor};">${rank}</span>
         </div>
-        <!-- Team Logo -->
+        <!-- Team Logo as colored div -->
         <div style="width: 48px; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
-          <img src="${teamLogo}" style="width: 36px; height: 36px; border-radius: 50%; border: 2px solid #3a3d52; object-fit: cover;" />
+          <div style="width: 36px; height: 36px; border-radius: 50%; background: ${bgColor}; border: 2px solid #3a3d52; display: flex; align-items: center; justify-content: center; font-size: 16px; font-weight: bold; color: white;">${initial}</div>
         </div>
         <!-- Team Name -->
         <div style="flex: 1; min-width: 0; display: flex; align-items: center; padding-left: 8px;">
