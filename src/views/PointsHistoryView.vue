@@ -4314,7 +4314,12 @@ async function loadHistoricalData() {
   
   isLoading.value = true
   loadingMessage.value = 'Loading historical data...'
-  loadingProgress.value = { currentStep: '', season: '', week: 0, maxWeek: 0, seasonsLoaded: 0, totalSeasons: 0 }
+  loadingProgress.value = { currentStep: 'Initializing...', season: '', week: 0, maxWeek: 0, seasonsLoaded: 0, totalSeasons: 0 }
+  
+  // Helper to update progress with reactivity
+  const updateProgress = (updates: Partial<typeof loadingProgress.value>) => {
+    loadingProgress.value = { ...loadingProgress.value, ...updates }
+  }
   
   // Reset all data at start to prevent accumulation from multiple calls
   historicalData.value = {}
@@ -4342,7 +4347,7 @@ async function loadHistoricalData() {
     // Handle Sleeper leagues
     if (isSleeper.value) {
       console.log('[SLEEPER] Loading historical data for Sleeper league')
-      loadingProgress.value.currentStep = 'Loading Sleeper league history...'
+      updateProgress({ currentStep: 'Loading Sleeper league history...' })
       
       // Sleeper history is handled differently - seasons are stored in historicalSeasons
       const { sleeperService } = await import('@/services/sleeper')
@@ -4357,14 +4362,13 @@ async function loadHistoricalData() {
         return
       }
       
-      loadingProgress.value.totalSeasons = historicalSeasons.length
+      updateProgress({ totalSeasons: historicalSeasons.length })
       let successCount = 0
       
       for (const seasonInfo of historicalSeasons) {
         const season = seasonInfo.season
         loadingMessage.value = `Loading ${season} season...`
-        loadingProgress.value.currentStep = `Loading ${season} standings and matchups`
-        loadingProgress.value.season = season
+        updateProgress({ currentStep: `Loading ${season} standings and matchups`, season: season })
         
         try {
           // Get rosters/standings for this season
@@ -4416,12 +4420,11 @@ async function loadHistoricalData() {
           })
           
           // Load matchups for H2H
-          loadingProgress.value.currentStep = `Loading ${season} matchups`
-          loadingProgress.value.maxWeek = 18
+          updateProgress({ currentStep: `Loading ${season} matchups`, maxWeek: 18 })
           const seasonMatchupsObj: Record<number, any[]> = {}
           
           for (let week = 1; week <= 18; week++) {
-            loadingProgress.value.week = week
+            updateProgress({ week })
             try {
               const matchups = await sleeperService.getMatchups(seasonInfo.league_id, week)
               if (matchups && matchups.length > 0) {
@@ -4478,7 +4481,7 @@ async function loadHistoricalData() {
           }
           
           successCount++
-          loadingProgress.value.seasonsLoaded = successCount
+          updateProgress({ seasonsLoaded: successCount })
           console.log(`[SLEEPER] Loaded ${season}: ${standings.length} teams, ${Object.keys(seasonMatchupsObj).length} weeks`)
           
         } catch (e) {
@@ -4500,7 +4503,7 @@ async function loadHistoricalData() {
     // Handle ESPN leagues
     if (isEspn.value) {
       console.log('[ESPN] Loading historical data for ESPN league')
-      loadingProgress.value.currentStep = 'Initializing ESPN connection...'
+      updateProgress({ currentStep: 'Initializing ESPN connection...' })
       
       // Parse league key to get ESPN details
       const parts = leagueKey.split('_')
@@ -4518,14 +4521,13 @@ async function loadHistoricalData() {
       }
       
       console.log('[ESPN] Will attempt to load seasons:', seasonsToTry)
-      loadingProgress.value.totalSeasons = seasonsToTry.length
+      updateProgress({ totalSeasons: seasonsToTry.length })
       
       let successCount = 0
       
       for (const season of seasonsToTry) {
         loadingMessage.value = `Loading ${season} season...`
-        loadingProgress.value.currentStep = `Fetching ${season} standings`
-        loadingProgress.value.season = season.toString()
+        updateProgress({ currentStep: `Fetching ${season} standings`, season: season.toString() })
         
         try {
           // Fetch teams for this season - use historical method for past seasons
@@ -4543,7 +4545,7 @@ async function loadHistoricalData() {
           }
           
           successCount++
-          loadingProgress.value.seasonsLoaded = successCount
+          updateProgress({ seasonsLoaded: successCount })
           
           // Log owner info for debugging
           console.log(`[ESPN ${season}] Teams with owners:`, teams.map((t: any) => ({
@@ -4609,7 +4611,7 @@ async function loadHistoricalData() {
           
           // Load matchups for H2H calculation
           loadingMessage.value = `Loading ${season} matchups...`
-          loadingProgress.value.currentStep = `Loading ${season} matchups`
+          updateProgress({ currentStep: `Loading ${season} matchups` })
           const seasonMatchupsObj: Record<number, any[]> = {}
           
           // For current season, use current week; for past seasons, load all weeks
@@ -4618,11 +4620,11 @@ async function loadHistoricalData() {
             ? Math.min(leagueStore.currentLeague?.settings?.leg || 25, 25)
             : 25
           
-          loadingProgress.value.maxWeek = maxWeek
+          updateProgress({ maxWeek })
           let consecutiveFailures = 0
           
           for (let week = 1; week <= maxWeek; week++) {
-            loadingProgress.value.week = week
+            updateProgress({ week })
             loadingMessage.value = `Loading ${season} week ${week}/${maxWeek}...`
             try {
               // Use historical method for past seasons
@@ -4769,7 +4771,7 @@ async function loadHistoricalData() {
       return
     }
     
-    loadingProgress.value.currentStep = 'Initializing Yahoo connection...'
+    updateProgress({ currentStep: 'Initializing Yahoo connection...' })
     await yahooService.initialize(authStore.user.id)
     
     // Get current league info to find game key
@@ -4797,7 +4799,7 @@ async function loadHistoricalData() {
     const currentYear = yearsByKey[gameKey] || '2024'
     const seasons = Object.keys(gameKeys).sort((a, b) => parseInt(b) - parseInt(a))
     console.log('Will attempt to load seasons:', seasons)
-    loadingProgress.value.totalSeasons = seasons.length
+    updateProgress({ totalSeasons: seasons.length })
     
     let successCount = 0
     let failCount = 0
@@ -4808,8 +4810,7 @@ async function loadHistoricalData() {
       
       const seasonLeagueKey = `${seasonGameKey}.l.${leagueNum}`
       loadingMessage.value = `Loading ${season} season...`
-      loadingProgress.value.currentStep = `Fetching ${season} standings`
-      loadingProgress.value.season = season
+      updateProgress({ currentStep: `Fetching ${season} standings`, season })
       
       try {
         // Get standings for this season
@@ -4821,7 +4822,7 @@ async function loadHistoricalData() {
         }
         
         successCount++
-        loadingProgress.value.seasonsLoaded = successCount
+        updateProgress({ seasonsLoaded: successCount })
         
         // Store season data - mark rank 1 as champion
         const enhancedStandings = standings.map((team: any) => ({
@@ -4844,13 +4845,12 @@ async function loadHistoricalData() {
         }
         
         // Load matchups for H2H calculation and to get team logos
-        loadingProgress.value.currentStep = `Loading ${season} matchups`
-        loadingProgress.value.maxWeek = 25
+        updateProgress({ currentStep: `Loading ${season} matchups`, maxWeek: 25 })
         const seasonMatchupsObj: Record<number, any[]> = {}
         let consecutiveFailures = 0
         
         for (let week = 1; week <= 25; week++) {
-          loadingProgress.value.week = week
+          updateProgress({ week })
           loadingMessage.value = `Loading ${season} week ${week}/25...`
           try {
             const weekMatchups = await yahooService.getMatchups(seasonLeagueKey, week)
@@ -4948,7 +4948,7 @@ async function loadHistoricalData() {
   } catch (e) {
     console.error('Error loading historical data:', e)
     loadingMessage.value = 'Error loading data. Please try refreshing.'
-    loadingProgress.value.currentStep = 'Error occurred'
+    loadingProgress.value = { ...loadingProgress.value, currentStep: 'Error occurred' }
   } finally {
     isLoading.value = false
   }
