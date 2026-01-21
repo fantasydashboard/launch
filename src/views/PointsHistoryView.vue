@@ -20,7 +20,34 @@
     <!-- Loading State -->
     <div v-if="isLoading" class="flex flex-col items-center justify-center py-20">
       <LoadingSpinner size="xl" :message="loadingMessage" />
-      <div class="text-xs text-dark-textMuted/70 mt-2">This may take a minute for leagues with many seasons</div>
+      
+      <!-- Detailed progress -->
+      <div class="mt-4 text-center space-y-2">
+        <div v-if="loadingProgress.currentStep" class="text-sm text-dark-textMuted">
+          {{ loadingProgress.currentStep }}
+        </div>
+        
+        <!-- Season progress -->
+        <div v-if="loadingProgress.totalSeasons > 0" class="text-xs text-dark-textMuted/70">
+          Seasons: {{ loadingProgress.seasonsLoaded }}/{{ loadingProgress.totalSeasons }}
+        </div>
+        
+        <!-- Week progress bar -->
+        <div v-if="loadingProgress.maxWeek > 0" class="w-64 mx-auto">
+          <div class="flex justify-between text-xs text-dark-textMuted/70 mb-1">
+            <span>{{ loadingProgress.season }} Week {{ loadingProgress.week }}</span>
+            <span>{{ loadingProgress.week }}/{{ loadingProgress.maxWeek }}</span>
+          </div>
+          <div class="h-1.5 bg-dark-border rounded-full overflow-hidden">
+            <div 
+              class="h-full bg-yellow-400 transition-all duration-300"
+              :style="{ width: `${(loadingProgress.week / loadingProgress.maxWeek) * 100}%` }"
+            ></div>
+          </div>
+        </div>
+      </div>
+      
+      <div class="text-xs text-dark-textMuted/50 mt-4">This may take a minute for leagues with many seasons</div>
     </div>
 
     <template v-else>
@@ -1075,8 +1102,16 @@ const isSeasonComplete = computed(() => {
 const defaultAvatar = 'https://s.yimg.com/cv/apiv2/default/mlb/mlb_1_100.png'
 
 // State
-const isLoading = ref(true)
-const loadingMessage = ref('Loading historical data...')
+const isLoading = ref(false)  // Start as false - loadHistoricalData will set to true
+const loadingMessage = ref('Initializing...')
+const loadingProgress = ref({
+  currentStep: '',
+  season: '',
+  week: 0,
+  maxWeek: 0,
+  seasonsLoaded: 0,
+  totalSeasons: 0
+})
 const activeHistoryTab = ref('career')
 const isDownloadingCareerStats = ref(false)
 const isDownloadingSeasonHistory = ref(false)
@@ -3525,6 +3560,8 @@ async function loadHistoricalData() {
   }
   
   isLoading.value = true
+  loadingMessage.value = 'Loading historical data...'
+  loadingProgress.value = { currentStep: '', season: '', week: 0, maxWeek: 0, seasonsLoaded: 0, totalSeasons: 0 }
   
   // Reset all data at start to prevent accumulation from multiple calls
   historicalData.value = {}
@@ -3538,6 +3575,171 @@ async function loadHistoricalData() {
     
     if (!leagueKey) {
       console.log('Missing leagueKey, waiting...')
+      loadingMessage.value = 'Waiting for league data...'
+      isLoading.value = false
+      // Retry after a delay
+      setTimeout(() => {
+        if (effectiveLeagueKey.value && !isLoading.value) {
+          loadHistoricalData()
+        }
+      }, 1000)
+      return
+    }
+    
+    // Handle Sleeper leagues
+    if (isSleeper.value) {
+      console.log('[SLEEPER] Loading historical data for Sleeper league')
+      loadingProgress.value.currentStep = 'Loading Sleeper league history...'
+      
+      // Sleeper history is handled differently - seasons are stored in historicalSeasons
+      const { sleeperService } = await import('@/services/sleeper')
+      
+      // Get historical seasons from the store
+      const historicalSeasons = leagueStore.historicalSeasons || []
+      console.log('[SLEEPER] Historical seasons available:', historicalSeasons.length)
+      
+      if (historicalSeasons.length === 0) {
+        loadingMessage.value = 'No historical data available for this Sleeper league.'
+        isLoading.value = false
+        return
+      }
+      
+      loadingProgress.value.totalSeasons = historicalSeasons.length
+      let successCount = 0
+      
+      for (const seasonInfo of historicalSeasons) {
+        const season = seasonInfo.season
+        loadingMessage.value = `Loading ${season} season...`
+        loadingProgress.value.currentStep = `Loading ${season} standings and matchups`
+        loadingProgress.value.season = season
+        
+        try {
+          // Get rosters/standings for this season
+          const rosters = await sleeperService.getRosters(seasonInfo.league_id)
+          const users = await sleeperService.getLeagueUsers(seasonInfo.league_id)
+          
+          if (!rosters || rosters.length === 0) continue
+          
+          // Transform to standings format
+          const standings = rosters.map((roster: any, idx: number) => {
+            const user = users.find((u: any) => u.user_id === roster.owner_id)
+            const teamName = sleeperService.getTeamName(roster, user)
+            const avatar = sleeperService.getAvatarUrl(roster, user, seasonInfo)
+            
+            return {
+              team_key: roster.owner_id || `roster_${roster.roster_id}`,
+              team_id: roster.roster_id.toString(),
+              name: teamName,
+              logo_url: avatar,
+              wins: roster.settings?.wins || 0,
+              losses: roster.settings?.losses || 0,
+              ties: roster.settings?.ties || 0,
+              points_for: roster.settings?.fpts || 0,
+              points_against: roster.settings?.fpts_against || 0,
+              rank: idx + 1,
+              is_champion: idx === 0,
+              owner_id: roster.owner_id || '',
+              season: season
+            }
+          }).sort((a: any, b: any) => {
+            if (b.wins !== a.wins) return b.wins - a.wins
+            return b.points_for - a.points_for
+          })
+          
+          historicalData.value[season] = { standings, trade_count: 0 }
+          
+          // Track teams
+          standings.forEach((team: any) => {
+            if (!currentMembers.value.includes(team.team_key)) {
+              currentMembers.value.push(team.team_key)
+            }
+            if (!allTeams.value[team.team_key]) {
+              allTeams.value[team.team_key] = {
+                team_key: team.team_key,
+                name: team.name,
+                logo_url: team.logo_url
+              }
+            }
+          })
+          
+          // Load matchups for H2H
+          loadingProgress.value.currentStep = `Loading ${season} matchups`
+          loadingProgress.value.maxWeek = 18
+          const seasonMatchupsObj: Record<number, any[]> = {}
+          
+          for (let week = 1; week <= 18; week++) {
+            loadingProgress.value.week = week
+            try {
+              const matchups = await sleeperService.getMatchups(seasonInfo.league_id, week)
+              if (matchups && matchups.length > 0) {
+                // Group matchups by matchup_id
+                const grouped = new Map()
+                for (const m of matchups) {
+                  if (!grouped.has(m.matchup_id)) grouped.set(m.matchup_id, [])
+                  grouped.get(m.matchup_id).push(m)
+                }
+                
+                const transformedMatchups = Array.from(grouped.values())
+                  .filter(pair => pair.length === 2)
+                  .map(([m1, m2]) => {
+                    const team1 = standings.find((t: any) => t.team_id === m1.roster_id.toString())
+                    const team2 = standings.find((t: any) => t.team_id === m2.roster_id.toString())
+                    return {
+                      matchup_id: m1.matchup_id,
+                      season,
+                      teams: [
+                        { team_key: team1?.team_key, name: team1?.name, points: m1.points || 0, logo_url: team1?.logo_url },
+                        { team_key: team2?.team_key, name: team2?.name, points: m2.points || 0, logo_url: team2?.logo_url }
+                      ]
+                    }
+                  })
+                
+                if (transformedMatchups.length > 0) {
+                  seasonMatchupsObj[week] = transformedMatchups
+                  
+                  // Build H2H records
+                  for (const matchup of transformedMatchups) {
+                    const [t1, t2] = matchup.teams
+                    if (!t1.team_key || !t2.team_key) continue
+                    const t1Won = (t1.points || 0) > (t2.points || 0)
+                    
+                    if (!h2hRecords.value[t1.team_key]) h2hRecords.value[t1.team_key] = {}
+                    if (!h2hRecords.value[t1.team_key][t2.team_key]) h2hRecords.value[t1.team_key][t2.team_key] = { wins: 0, losses: 0 }
+                    if (t1Won) h2hRecords.value[t1.team_key][t2.team_key].wins++
+                    else h2hRecords.value[t1.team_key][t2.team_key].losses++
+                    
+                    if (!h2hRecords.value[t2.team_key]) h2hRecords.value[t2.team_key] = {}
+                    if (!h2hRecords.value[t2.team_key][t1.team_key]) h2hRecords.value[t2.team_key][t1.team_key] = { wins: 0, losses: 0 }
+                    if (!t1Won) h2hRecords.value[t2.team_key][t1.team_key].wins++
+                    else h2hRecords.value[t2.team_key][t1.team_key].losses++
+                  }
+                }
+              }
+            } catch (e) {
+              // Week might not exist
+            }
+          }
+          
+          if (Object.keys(seasonMatchupsObj).length > 0) {
+            allMatchups.value[season] = seasonMatchupsObj
+          }
+          
+          successCount++
+          loadingProgress.value.seasonsLoaded = successCount
+          console.log(`[SLEEPER] Loaded ${season}: ${standings.length} teams, ${Object.keys(seasonMatchupsObj).length} weeks`)
+          
+        } catch (e) {
+          console.log(`[SLEEPER] Could not load ${season}:`, e)
+        }
+      }
+      
+      if (availableSeasons.value.length > 0) {
+        selectedAwardSeason.value = availableSeasons.value[0]
+        selectedWeeklyAwardSeason.value = availableSeasons.value[0]
+      }
+      
+      loadingMessage.value = `Done! Loaded ${successCount} season${successCount !== 1 ? 's' : ''}.`
+      loadingProgress.value = { currentStep: 'Complete!', season: '', week: 0, maxWeek: 0, seasonsLoaded: successCount, totalSeasons: successCount }
       isLoading.value = false
       return
     }
@@ -3545,6 +3747,7 @@ async function loadHistoricalData() {
     // Handle ESPN leagues
     if (isEspn.value) {
       console.log('[ESPN] Loading historical data for ESPN league')
+      loadingProgress.value.currentStep = 'Initializing ESPN connection...'
       
       // Parse league key to get ESPN details
       const parts = leagueKey.split('_')
@@ -3562,11 +3765,14 @@ async function loadHistoricalData() {
       }
       
       console.log('[ESPN] Will attempt to load seasons:', seasonsToTry)
+      loadingProgress.value.totalSeasons = seasonsToTry.length
       
       let successCount = 0
       
       for (const season of seasonsToTry) {
-        loadingMessage.value = `Loading ${season} season... (${successCount} loaded)`
+        loadingMessage.value = `Loading ${season} season...`
+        loadingProgress.value.currentStep = `Fetching ${season} standings`
+        loadingProgress.value.season = season.toString()
         
         try {
           // Fetch teams for this season - use historical method for past seasons
@@ -3584,6 +3790,7 @@ async function loadHistoricalData() {
           }
           
           successCount++
+          loadingProgress.value.seasonsLoaded = successCount
           
           // Log owner info for debugging
           console.log(`[ESPN ${season}] Teams with owners:`, teams.map((t: any) => ({
@@ -3647,6 +3854,7 @@ async function loadHistoricalData() {
           
           // Load matchups for H2H calculation
           loadingMessage.value = `Loading ${season} matchups...`
+          loadingProgress.value.currentStep = `Loading ${season} matchups`
           const seasonMatchupsObj: Record<number, any[]> = {}
           
           // For current season, use current week; for past seasons, load all weeks
@@ -3655,10 +3863,12 @@ async function loadHistoricalData() {
             ? Math.min(leagueStore.currentLeague?.settings?.leg || 25, 25)
             : 25
           
+          loadingProgress.value.maxWeek = maxWeek
           let consecutiveFailures = 0
           
           for (let week = 1; week <= maxWeek; week++) {
-            loadingMessage.value = `Loading ${season} week ${week}...`
+            loadingProgress.value.week = week
+            loadingMessage.value = `Loading ${season} week ${week}/${maxWeek}...`
             try {
               // Use historical method for past seasons
               const weekMatchups = isCurrentSeason
@@ -3788,6 +3998,7 @@ async function loadHistoricalData() {
       }
       
       loadingMessage.value = `Done! Loaded ${successCount} season${successCount !== 1 ? 's' : ''}.`
+      loadingProgress.value = { currentStep: 'Complete!', season: '', week: 0, maxWeek: 0, seasonsLoaded: successCount, totalSeasons: successCount }
       isLoading.value = false
       return
     }
@@ -3795,11 +4006,15 @@ async function loadHistoricalData() {
     // Yahoo leagues - original logic
     if (!authStore.user?.id) {
       console.log('Missing userId, retrying in 1 second...')
+      loadingMessage.value = 'Waiting for authentication...'
       isLoading.value = false
-      setTimeout(() => loadHistoricalData(), 1000)
+      setTimeout(() => {
+        if (!isLoading.value) loadHistoricalData()
+      }, 1000)
       return
     }
     
+    loadingProgress.value.currentStep = 'Initializing Yahoo connection...'
     await yahooService.initialize(authStore.user.id)
     
     // Get current league info to find game key
@@ -3827,6 +4042,7 @@ async function loadHistoricalData() {
     const currentYear = yearsByKey[gameKey] || '2024'
     const seasons = Object.keys(gameKeys).sort((a, b) => parseInt(b) - parseInt(a))
     console.log('Will attempt to load seasons:', seasons)
+    loadingProgress.value.totalSeasons = seasons.length
     
     let successCount = 0
     let failCount = 0
@@ -3836,7 +4052,9 @@ async function loadHistoricalData() {
       if (!seasonGameKey) continue
       
       const seasonLeagueKey = `${seasonGameKey}.l.${leagueNum}`
-      loadingMessage.value = `Loading ${season} season... (${successCount} loaded)`
+      loadingMessage.value = `Loading ${season} season...`
+      loadingProgress.value.currentStep = `Fetching ${season} standings`
+      loadingProgress.value.season = season
       
       try {
         // Get standings for this season
@@ -3848,6 +4066,7 @@ async function loadHistoricalData() {
         }
         
         successCount++
+        loadingProgress.value.seasonsLoaded = successCount
         
         // Store season data - mark rank 1 as champion
         const enhancedStandings = standings.map((team: any) => ({
@@ -3870,10 +4089,13 @@ async function loadHistoricalData() {
         }
         
         // Load matchups for H2H calculation and to get team logos
+        loadingProgress.value.currentStep = `Loading ${season} matchups`
+        loadingProgress.value.maxWeek = 25
         const seasonMatchupsObj: Record<number, any[]> = {}
         let consecutiveFailures = 0
         
         for (let week = 1; week <= 25; week++) {
+          loadingProgress.value.week = week
           loadingMessage.value = `Loading ${season} week ${week}/25...`
           try {
             const weekMatchups = await yahooService.getMatchups(seasonLeagueKey, week)
@@ -3966,9 +4188,12 @@ async function loadHistoricalData() {
     }
     
     loadingMessage.value = `Done! Loaded ${successCount} seasons.`
+    loadingProgress.value = { currentStep: 'Complete!', season: '', week: 0, maxWeek: 0, seasonsLoaded: successCount, totalSeasons: successCount }
     
   } catch (e) {
     console.error('Error loading historical data:', e)
+    loadingMessage.value = 'Error loading data. Please try refreshing.'
+    loadingProgress.value.currentStep = 'Error occurred'
   } finally {
     isLoading.value = false
   }
