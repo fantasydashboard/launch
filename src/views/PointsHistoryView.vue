@@ -4655,7 +4655,7 @@ async function loadHistoricalData() {
         
         try {
           // Get rosters/standings for this season
-          const rosters = await sleeperService.getRosters(seasonInfo.league_id)
+          const rosters = await sleeperService.getLeagueRosters(seasonInfo.league_id)
           const users = await sleeperService.getLeagueUsers(seasonInfo.league_id)
           
           if (!rosters || rosters.length === 0) continue
