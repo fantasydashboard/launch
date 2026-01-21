@@ -759,9 +759,25 @@
         <!-- Legacy Leaderboard -->
         <div class="card">
           <div class="card-header">
-            <div class="flex items-center gap-2">
-              <span class="text-2xl">🏅</span>
-              <h2 class="card-title">Legacy Leaderboard</h2>
+            <div class="flex items-center justify-between">
+              <div class="flex items-center gap-2">
+                <span class="text-2xl">🏅</span>
+                <h2 class="card-title">Legacy Leaderboard</h2>
+              </div>
+              <button 
+                @click="downloadLegacyLeaderboard"
+                :disabled="isDownloadingLegacy"
+                class="px-4 py-2 border border-yellow-400 bg-transparent text-yellow-400 hover:bg-yellow-400 hover:text-gray-900 rounded-lg font-medium flex items-center gap-2 text-sm transition-colors disabled:opacity-50"
+              >
+                <svg v-if="!isDownloadingLegacy" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
+                </svg>
+                <svg v-else class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                  <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                  <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                {{ isDownloadingLegacy ? 'Generating...' : 'Share' }}
+              </button>
             </div>
           </div>
           <div class="card-body p-0">
@@ -968,6 +984,21 @@
                     <div class="font-bold text-lg text-dark-text">{{ selectedLegacyTeamDetails.team_name }}</div>
                     <div class="text-sm text-dark-textMuted">{{ selectedLegacyTeamDetails.seasons }} seasons • {{ selectedLegacyTeamDetails.total_score.toLocaleString() }} total points</div>
                   </div>
+                  <!-- Share button -->
+                  <button 
+                    @click.stop="downloadTeamLegacy(selectedLegacyTeamDetails)"
+                    :disabled="isDownloadingTeamLegacy"
+                    class="p-2 rounded-lg hover:bg-yellow-500/20 text-yellow-400 transition-colors disabled:opacity-50"
+                    title="Share team legacy"
+                  >
+                    <svg v-if="!isDownloadingTeamLegacy" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
+                    </svg>
+                    <svg v-else class="w-5 h-5 animate-spin" fill="none" viewBox="0 0 24 24">
+                      <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                      <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                  </button>
                   <!-- Close button -->
                   <button 
                     @click="selectedLegacyTeamKey = null"
@@ -2711,6 +2742,465 @@ const legacyChartSeries = computed(() => {
 })
 
 // ==================== END LEGACY CHART ====================
+
+// ==================== LEGACY DOWNLOAD/SHARE ====================
+const isDownloadingLegacy = ref(false)
+const isDownloadingTeamLegacy = ref(false)
+
+// Download Legacy Leaderboard (top 10)
+async function downloadLegacyLeaderboard() {
+  isDownloadingLegacy.value = true
+  
+  try {
+    const html2canvas = (await import('html2canvas')).default
+    const leagueName = leagueStore.currentLeague?.name || 'League'
+    const teams = filteredLegacyScores.value.slice(0, 10) // Top 10
+    const maxScore = teams[0]?.total_score || 1
+    
+    // Load main UFD logo
+    const loadLogo = async (): Promise<string> => {
+      try {
+        const response = await fetch('/UFD_V5.png')
+        if (!response.ok) return ''
+        const blob = await response.blob()
+        return new Promise((resolve) => {
+          const reader = new FileReader()
+          reader.onloadend = () => resolve(reader.result as string)
+          reader.onerror = () => resolve('')
+          reader.readAsDataURL(blob)
+        })
+      } catch (e) {
+        return ''
+      }
+    }
+    
+    // Helper to create placeholder avatar
+    const createPlaceholder = (teamName: string): string => {
+      const canvas = document.createElement('canvas')
+      canvas.width = 64
+      canvas.height = 64
+      const ctx = canvas.getContext('2d')
+      if (ctx) {
+        const colors = ['#0D8ABC', '#3498DB', '#9B59B6', '#E91E63', '#F39C12', '#1ABC9C', '#2ECC71', '#E74C3C', '#00BCD4', '#8E44AD']
+        const colorIndex = teamName.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0) % colors.length
+        ctx.fillStyle = colors[colorIndex]
+        ctx.beginPath()
+        ctx.arc(32, 32, 32, 0, Math.PI * 2)
+        ctx.fill()
+        ctx.fillStyle = '#ffffff'
+        ctx.font = 'bold 28px sans-serif'
+        ctx.textAlign = 'center'
+        ctx.textBaseline = 'middle'
+        ctx.fillText(teamName.charAt(0).toUpperCase(), 32, 34)
+      }
+      return canvas.toDataURL('image/png')
+    }
+    
+    const logoBase64 = await loadLogo()
+    
+    // Load team images
+    const loadTeamImage = async (team: LegacyScore): Promise<string> => {
+      try {
+        const img = new Image()
+        img.crossOrigin = 'anonymous'
+        return new Promise((resolve) => {
+          img.onload = () => {
+            try {
+              const canvas = document.createElement('canvas')
+              canvas.width = 64
+              canvas.height = 64
+              const ctx = canvas.getContext('2d')
+              if (ctx) {
+                ctx.beginPath()
+                ctx.arc(32, 32, 32, 0, Math.PI * 2)
+                ctx.closePath()
+                ctx.clip()
+                ctx.drawImage(img, 0, 0, 64, 64)
+              }
+              resolve(canvas.toDataURL('image/png'))
+            } catch {
+              resolve(createPlaceholder(team.team_name))
+            }
+          }
+          img.onerror = () => resolve(createPlaceholder(team.team_name))
+          setTimeout(() => resolve(createPlaceholder(team.team_name)), 3000)
+          img.src = team.logo_url || ''
+        })
+      } catch {
+        return createPlaceholder(team.team_name)
+      }
+    }
+    
+    // Pre-load all team images
+    const imageMap = new Map<string, string>()
+    const imagePromises = teams.map(async (team) => {
+      const base64 = await loadTeamImage(team)
+      return { teamKey: team.team_key, base64 }
+    })
+    
+    const results = await Promise.all(imagePromises)
+    results.forEach(({ teamKey, base64 }) => {
+      imageMap.set(teamKey, base64)
+    })
+    
+    // Create container
+    const container = document.createElement('div')
+    container.style.cssText = 'position: absolute; left: -9999px; top: 0; width: 800px; font-family: system-ui, -apple-system, sans-serif;'
+    
+    // Split teams for two columns
+    const midpoint = Math.ceil(teams.length / 2)
+    const firstHalf = teams.slice(0, midpoint)
+    const secondHalf = teams.slice(midpoint)
+    
+    // Ranking row generator
+    const generateRankingRow = (team: LegacyScore, rank: number) => {
+      const barPct = Math.min(100, Math.max(0, (team.total_score / maxScore) * 100))
+      const barColor = rank === 1 ? '#facc15' : rank === 2 ? '#9ca3af' : rank === 3 ? '#d97706' : '#3b82f6'
+      const imgSrc = imageMap.get(team.team_key) || ''
+      
+      // Achievement badges
+      const badges = []
+      if (team.championships > 0) badges.push(`<span style="color: #facc15;">🏆${team.championships}</span>`)
+      if (team.playoff_appearances > 0) badges.push(`<span style="color: #3b82f6;">📈${team.playoff_appearances}</span>`)
+      if (team.regular_season_titles > 0) badges.push(`<span style="color: #a855f7;">👑${team.regular_season_titles}</span>`)
+      
+      return `
+      <div style="display: flex; align-items: center; padding: 12px; background: rgba(38, 42, 58, 0.4); border-radius: 10px; margin-bottom: 6px; border: 1px solid rgba(58, 61, 82, 0.4); box-sizing: border-box;">
+        <div style="width: 36px; flex-shrink: 0; text-align: center;">
+          <span style="font-size: 24px; font-weight: 900; color: ${rank <= 3 ? (rank === 1 ? '#facc15' : rank === 2 ? '#9ca3af' : '#d97706') : '#6b7280'}; font-family: 'Impact', 'Arial Black', sans-serif;">${rank}</span>
+        </div>
+        <div style="width: 48px; flex-shrink: 0; padding: 0 8px;">
+          <img src="${imgSrc}" style="width: 40px; height: 40px; border-radius: 50%; border: 2px solid #3a3d52; background: #262a3a; object-fit: cover;" />
+        </div>
+        <div style="flex: 1; min-width: 0;">
+          <div style="font-size: 13px; font-weight: 700; color: #f7f7ff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; line-height: 1.2;">${team.team_name}</div>
+          <div style="font-size: 10px; color: #9ca3af; line-height: 1.2; margin-top: 2px;">${team.seasons} season${team.seasons !== 1 ? 's' : ''} ${badges.length > 0 ? '• ' + badges.join(' ') : ''}</div>
+          <div style="width: 100%; height: 4px; background: rgba(58, 61, 82, 0.8); border-radius: 2px; overflow: hidden; margin-top: 6px;">
+            <div style="width: ${barPct}%; height: 100%; background: ${barColor}; border-radius: 2px;"></div>
+          </div>
+        </div>
+        <div style="width: 55px; flex-shrink: 0; text-align: right; padding-left: 8px;">
+          <div style="font-size: 16px; font-weight: bold; color: ${rank === 1 ? '#facc15' : '#ffffff'}; line-height: 1;">${team.total_score.toLocaleString()}</div>
+          <div style="font-size: 9px; color: #6b7280; margin-top: 2px;">pts</div>
+        </div>
+      </div>
+    `}
+    
+    container.innerHTML = `
+      <div style="background: linear-gradient(160deg, #0f1219 0%, #0a0c14 50%, #0d1117 100%); border-radius: 16px; box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5); position: relative; overflow: hidden;">
+        
+        <!-- Top Yellow Bar -->
+        <div style="background: #facc15; padding: 10px 24px 10px 24px; text-align: center; overflow: visible;">
+          <span style="font-size: 16px; font-weight: 700; color: #0a0c14; text-transform: uppercase; letter-spacing: 3px; display: block; margin-top: -17px;">Ultimate Fantasy Dashboard</span>
+        </div>
+        
+        <!-- Header -->
+        <div style="display: flex; padding: 16px 24px; border-bottom: 1px solid rgba(250, 204, 21, 0.2); position: relative; z-index: 10;">
+          ${logoBase64 ? `<img src="${logoBase64}" style="height: 70px; width: auto; flex-shrink: 0; margin-right: 24px; display: block;" />` : ''}
+          <div style="flex: 1; margin-top: -14px;">
+            <div style="font-size: 42px; font-weight: 900; color: #ffffff; text-transform: uppercase; letter-spacing: 2px; text-shadow: 0 2px 8px rgba(250, 204, 21, 0.4); line-height: 1;">Legacy Leaderboard</div>
+            <div style="font-size: 20px; margin-top: 6px; font-weight: 600; line-height: 1;">
+              <span style="color: #e5e7eb;">${leagueName}</span>
+              <span style="color: #6b7280; margin: 0 8px;">•</span>
+              <span style="color: #facc15; font-weight: 700;">All-Time</span>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Main content -->
+        <div style="padding: 16px 24px 12px 24px; position: relative;">
+          
+          <!-- Rankings (Two Columns) -->
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px; position: relative; z-index: 1;">
+            <div>${firstHalf.map((team, idx) => generateRankingRow(team, idx + 1)).join('')}</div>
+            <div>${secondHalf.map((team, idx) => generateRankingRow(team, idx + midpoint + 1)).join('')}</div>
+          </div>
+          
+          <!-- Legend -->
+          <div style="display: flex; justify-content: center; gap: 24px; font-size: 11px; color: #6b7280; margin-bottom: 8px;">
+            <span>🏆 Championships</span>
+            <span>📈 Playoff Appearances</span>
+            <span>👑 Reg Season Titles</span>
+          </div>
+        </div>
+        
+        <!-- Footer -->
+        <div style="padding: 20px 24px 20px 24px; text-align: center; position: relative; z-index: 1;">
+          <span style="font-size: 24px; font-weight: bold; color: #facc15; letter-spacing: -0.5px; display: block; margin-top: -35px;">ultimatefantasydashboard.com</span>
+        </div>
+      </div>
+    `
+    
+    document.body.appendChild(container)
+    
+    // Wait a moment for images to load
+    await new Promise(resolve => setTimeout(resolve, 300))
+    
+    // Capture image
+    const canvas = await html2canvas(container, {
+      backgroundColor: '#0a0c14',
+      scale: 2,
+      logging: false,
+      useCORS: true,
+      allowTaint: true,
+      width: 800
+    })
+    
+    document.body.removeChild(container)
+    
+    // Download
+    const link = document.createElement('a')
+    const safeLeagueName = leagueName.replace(/[^a-zA-Z0-9\s]/g, '').replace(/\s+/g, '-')
+    link.download = `Legacy-Leaderboard-${safeLeagueName}.png`
+    link.href = canvas.toDataURL('image/png')
+    link.click()
+    
+  } catch (e) {
+    console.error('Error generating legacy download:', e)
+    alert('Failed to generate image. Please try again.')
+  } finally {
+    isDownloadingLegacy.value = false
+  }
+}
+
+// Download individual team legacy
+async function downloadTeamLegacy(team: LegacyScore) {
+  isDownloadingTeamLegacy.value = true
+  
+  try {
+    const html2canvas = (await import('html2canvas')).default
+    const leagueName = leagueStore.currentLeague?.name || 'League'
+    const rank = getLegacyRank(team.team_key)
+    const yearlyData = legacyScoresByYearDetailed.value.details.get(team.team_key) || []
+    
+    // Load main UFD logo
+    const loadLogo = async (): Promise<string> => {
+      try {
+        const response = await fetch('/UFD_V5.png')
+        if (!response.ok) return ''
+        const blob = await response.blob()
+        return new Promise((resolve) => {
+          const reader = new FileReader()
+          reader.onloadend = () => resolve(reader.result as string)
+          reader.onerror = () => resolve('')
+          reader.readAsDataURL(blob)
+        })
+      } catch (e) {
+        return ''
+      }
+    }
+    
+    // Helper to create placeholder avatar
+    const createPlaceholder = (teamName: string): string => {
+      const canvas = document.createElement('canvas')
+      canvas.width = 128
+      canvas.height = 128
+      const ctx = canvas.getContext('2d')
+      if (ctx) {
+        const colors = ['#0D8ABC', '#3498DB', '#9B59B6', '#E91E63', '#F39C12', '#1ABC9C', '#2ECC71', '#E74C3C', '#00BCD4', '#8E44AD']
+        const colorIndex = teamName.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0) % colors.length
+        ctx.fillStyle = colors[colorIndex]
+        ctx.beginPath()
+        ctx.arc(64, 64, 64, 0, Math.PI * 2)
+        ctx.fill()
+        ctx.fillStyle = '#ffffff'
+        ctx.font = 'bold 56px sans-serif'
+        ctx.textAlign = 'center'
+        ctx.textBaseline = 'middle'
+        ctx.fillText(teamName.charAt(0).toUpperCase(), 64, 68)
+      }
+      return canvas.toDataURL('image/png')
+    }
+    
+    const logoBase64 = await loadLogo()
+    
+    // Load team image
+    const loadTeamImage = async (): Promise<string> => {
+      try {
+        const img = new Image()
+        img.crossOrigin = 'anonymous'
+        return new Promise((resolve) => {
+          img.onload = () => {
+            try {
+              const canvas = document.createElement('canvas')
+              canvas.width = 128
+              canvas.height = 128
+              const ctx = canvas.getContext('2d')
+              if (ctx) {
+                ctx.beginPath()
+                ctx.arc(64, 64, 64, 0, Math.PI * 2)
+                ctx.closePath()
+                ctx.clip()
+                ctx.drawImage(img, 0, 0, 128, 128)
+              }
+              resolve(canvas.toDataURL('image/png'))
+            } catch {
+              resolve(createPlaceholder(team.team_name))
+            }
+          }
+          img.onerror = () => resolve(createPlaceholder(team.team_name))
+          setTimeout(() => resolve(createPlaceholder(team.team_name)), 3000)
+          img.src = team.logo_url || ''
+        })
+      } catch {
+        return createPlaceholder(team.team_name)
+      }
+    }
+    
+    const teamImgBase64 = await loadTeamImage()
+    
+    // Create container
+    const container = document.createElement('div')
+    container.style.cssText = 'position: absolute; left: -9999px; top: 0; width: 600px; font-family: system-ui, -apple-system, sans-serif;'
+    
+    // Generate year boxes
+    const generateYearBox = (data: { year: string; points: number; isChampion: boolean; isRegSeasonChamp: boolean; madePlayoffs: boolean }) => {
+      let icon = ''
+      let iconColor = '#6b7280'
+      if (data.isChampion) {
+        icon = '🏆'
+        iconColor = '#facc15'
+      } else if (data.isRegSeasonChamp) {
+        icon = '👑'
+        iconColor = '#a855f7'
+      } else if (data.madePlayoffs) {
+        icon = '📈'
+        iconColor = '#3b82f6'
+      }
+      
+      return `
+        <div style="display: flex; align-items: center; justify-content: space-between; padding: 6px 10px; background: rgba(38, 42, 58, 0.6); border-radius: 6px; min-width: 70px;">
+          <div style="display: flex; align-items: center; gap: 4px;">
+            <span style="font-size: 11px; color: #9ca3af;">${data.year}</span>
+            <span style="font-size: 11px; font-weight: 700; color: #ffffff;">+${data.points}</span>
+          </div>
+          ${icon ? `<span style="font-size: 12px;">${icon}</span>` : ''}
+        </div>
+      `
+    }
+    
+    // Category breakdown
+    const categories = [
+      { label: 'Championships', value: team.championships, icon: '🏆', color: '#facc15', points: team.championships * LEGACY_POINTS.CHAMPIONSHIP },
+      { label: 'Runner-ups', value: team.runner_ups, icon: '🥈', color: '#9ca3af', points: team.runner_ups * LEGACY_POINTS.RUNNER_UP },
+      { label: 'Playoff Apps', value: team.playoff_appearances, icon: '📈', color: '#3b82f6', points: team.playoff_appearances * LEGACY_POINTS.PLAYOFF_APPEARANCE },
+      { label: 'Reg Season Titles', value: team.regular_season_titles, icon: '👑', color: '#a855f7', points: team.regular_season_titles * LEGACY_POINTS.REGULAR_SEASON_TITLE },
+      { label: 'Total Wins', value: team.total_wins, icon: '✅', color: '#10b981', points: team.total_wins * LEGACY_POINTS.WIN },
+      { label: 'Weekly High Scores', value: team.season_high_scores, icon: '⭐', color: '#f59e0b', points: team.season_high_scores * LEGACY_POINTS.SEASON_HIGH_SCORE },
+    ].filter(c => c.value > 0)
+    
+    const generateCategoryBox = (cat: typeof categories[0]) => `
+      <div style="display: flex; align-items: center; gap: 8px; padding: 8px 12px; background: rgba(38, 42, 58, 0.4); border-radius: 8px; border: 1px solid rgba(58, 61, 82, 0.4);">
+        <span style="font-size: 18px;">${cat.icon}</span>
+        <div style="flex: 1;">
+          <div style="font-size: 11px; color: #9ca3af;">${cat.label}</div>
+          <div style="font-size: 14px; font-weight: 700; color: ${cat.color};">${cat.value}</div>
+        </div>
+        <div style="font-size: 12px; color: #6b7280;">+${cat.points}</div>
+      </div>
+    `
+    
+    container.innerHTML = `
+      <div style="background: linear-gradient(160deg, #0f1219 0%, #0a0c14 50%, #0d1117 100%); border-radius: 16px; box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5); position: relative; overflow: hidden;">
+        
+        <!-- Top Yellow Bar -->
+        <div style="background: #facc15; padding: 10px 24px 10px 24px; text-align: center; overflow: visible;">
+          <span style="font-size: 14px; font-weight: 700; color: #0a0c14; text-transform: uppercase; letter-spacing: 3px; display: block; margin-top: -17px;">Ultimate Fantasy Dashboard</span>
+        </div>
+        
+        <!-- Header -->
+        <div style="display: flex; padding: 16px 24px; border-bottom: 1px solid rgba(250, 204, 21, 0.2); position: relative; z-index: 10;">
+          ${logoBase64 ? `<img src="${logoBase64}" style="height: 50px; width: auto; flex-shrink: 0; margin-right: 16px; display: block;" />` : ''}
+          <div style="flex: 1; margin-top: -10px;">
+            <div style="font-size: 28px; font-weight: 900; color: #ffffff; text-transform: uppercase; letter-spacing: 1px; text-shadow: 0 2px 8px rgba(250, 204, 21, 0.4); line-height: 1;">Team Legacy</div>
+            <div style="font-size: 14px; margin-top: 4px; font-weight: 600; line-height: 1;">
+              <span style="color: #e5e7eb;">${leagueName}</span>
+              <span style="color: #6b7280; margin: 0 6px;">•</span>
+              <span style="color: #facc15; font-weight: 700;">All-Time</span>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Team Info -->
+        <div style="padding: 20px 24px; display: flex; align-items: center; gap: 20px; border-bottom: 1px solid rgba(58, 61, 82, 0.4);">
+          <img src="${teamImgBase64}" style="width: 80px; height: 80px; border-radius: 50%; border: 3px solid #facc15; background: #262a3a; object-fit: cover;" />
+          <div style="flex: 1;">
+            <div style="font-size: 24px; font-weight: 800; color: #ffffff; line-height: 1;">${team.team_name}</div>
+            <div style="font-size: 14px; color: #9ca3af; margin-top: 4px;">${team.seasons} season${team.seasons !== 1 ? 's' : ''}</div>
+          </div>
+          <div style="text-align: center;">
+            <div style="font-size: 14px; color: #6b7280; margin-bottom: 2px;">Rank</div>
+            <div style="font-size: 36px; font-weight: 900; color: ${rank === 1 ? '#facc15' : rank === 2 ? '#9ca3af' : rank === 3 ? '#d97706' : '#ffffff'}; font-family: 'Impact', 'Arial Black', sans-serif;">#${rank}</div>
+          </div>
+          <div style="text-align: center;">
+            <div style="font-size: 14px; color: #6b7280; margin-bottom: 2px;">Legacy Score</div>
+            <div style="font-size: 36px; font-weight: 900; color: #facc15; font-family: 'Impact', 'Arial Black', sans-serif;">${team.total_score.toLocaleString()}</div>
+          </div>
+        </div>
+        
+        <!-- Category Breakdown -->
+        <div style="padding: 16px 24px;">
+          <div style="font-size: 14px; font-weight: 700; color: #ffffff; margin-bottom: 12px; text-transform: uppercase; letter-spacing: 1px;">Point Breakdown</div>
+          <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px;">
+            ${categories.map(generateCategoryBox).join('')}
+          </div>
+        </div>
+        
+        <!-- Season-by-Season -->
+        <div style="padding: 16px 24px;">
+          <div style="font-size: 14px; font-weight: 700; color: #ffffff; margin-bottom: 12px; text-transform: uppercase; letter-spacing: 1px;">Season-by-Season</div>
+          <div style="display: flex; flex-wrap: wrap; gap: 6px;">
+            ${yearlyData.map(generateYearBox).join('')}
+          </div>
+        </div>
+        
+        <!-- Legend -->
+        <div style="padding: 8px 24px 16px 24px; display: flex; justify-content: center; gap: 20px; font-size: 10px; color: #6b7280;">
+          <span>🏆 Championship</span>
+          <span>👑 Reg Season Title</span>
+          <span>📈 Playoffs</span>
+        </div>
+        
+        <!-- Footer -->
+        <div style="padding: 16px 24px 16px 24px; text-align: center; position: relative; z-index: 1;">
+          <span style="font-size: 20px; font-weight: bold; color: #facc15; letter-spacing: -0.5px; display: block; margin-top: -25px;">ultimatefantasydashboard.com</span>
+        </div>
+      </div>
+    `
+    
+    document.body.appendChild(container)
+    
+    // Wait a moment for images to load
+    await new Promise(resolve => setTimeout(resolve, 300))
+    
+    // Capture image
+    const canvas = await html2canvas(container, {
+      backgroundColor: '#0a0c14',
+      scale: 2,
+      logging: false,
+      useCORS: true,
+      allowTaint: true,
+      width: 600
+    })
+    
+    document.body.removeChild(container)
+    
+    // Download
+    const link = document.createElement('a')
+    const safeTeamName = team.team_name.replace(/[^a-zA-Z0-9\s]/g, '').replace(/\s+/g, '-')
+    link.download = `Legacy-${safeTeamName}.png`
+    link.href = canvas.toDataURL('image/png')
+    link.click()
+    
+  } catch (e) {
+    console.error('Error generating team legacy download:', e)
+    alert('Failed to generate image. Please try again.')
+  } finally {
+    isDownloadingTeamLegacy.value = false
+  }
+}
+
+// ==================== END LEGACY DOWNLOAD ====================
 
 // Functions: Legacy modal
 function openLegacyModal(team: LegacyScore) {
