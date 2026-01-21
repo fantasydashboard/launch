@@ -1466,11 +1466,29 @@
                   <p class="text-sm text-dark-textMuted">{{ selectedLegacyTeam.seasons }} season{{ selectedLegacyTeam.seasons !== 1 ? 's' : '' }} played</p>
                 </div>
               </div>
-              <button @click="closeLegacyModal" class="p-2 rounded-lg hover:bg-dark-border/50 transition-colors">
-                <svg class="w-5 h-5 text-dark-textMuted" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
+              <div class="flex items-center gap-2">
+                <!-- Share button -->
+                <button 
+                  @click.stop="downloadTeamLegacy(selectedLegacyTeam)"
+                  :disabled="isDownloadingTeamLegacy"
+                  class="p-2 rounded-lg hover:bg-yellow-500/20 text-yellow-400 transition-colors disabled:opacity-50"
+                  title="Share team legacy"
+                >
+                  <svg v-if="!isDownloadingTeamLegacy" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
+                  </svg>
+                  <svg v-else class="w-5 h-5 animate-spin" fill="none" viewBox="0 0 24 24">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                </button>
+                <!-- Close button -->
+                <button @click="closeLegacyModal" class="p-2 rounded-lg hover:bg-dark-border/50 transition-colors">
+                  <svg class="w-5 h-5 text-dark-textMuted" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
             </div>
           </div>
           
@@ -2822,9 +2840,22 @@ async function downloadLegacyLeaderboard() {
               resolve(createPlaceholder(team.team_name))
             }
           }
-          img.onerror = () => resolve(createPlaceholder(team.team_name))
-          setTimeout(() => resolve(createPlaceholder(team.team_name)), 3000)
-          img.src = team.logo_url || ''
+          img.onerror = () => {
+            console.log(`[Legacy Download] Image load failed for ${team.team_name}, using placeholder`)
+            resolve(createPlaceholder(team.team_name))
+          }
+          setTimeout(() => {
+            console.log(`[Legacy Download] Image load timeout for ${team.team_name}, using placeholder`)
+            resolve(createPlaceholder(team.team_name))
+          }, 3000)
+          
+          // If no logo URL, immediately use placeholder
+          if (!team.logo_url) {
+            console.log(`[Legacy Download] No logo URL for ${team.team_name}, using placeholder`)
+            resolve(createPlaceholder(team.team_name))
+          } else {
+            img.src = team.logo_url
+          }
         })
       } catch {
         return createPlaceholder(team.team_name)
@@ -2832,6 +2863,7 @@ async function downloadLegacyLeaderboard() {
     }
     
     // Pre-load all team images
+    console.log('[Legacy Download] Loading team images...')
     const imageMap = new Map<string, string>()
     const imagePromises = teams.map(async (team) => {
       const base64 = await loadTeamImage(team)
@@ -2840,6 +2872,7 @@ async function downloadLegacyLeaderboard() {
     
     const results = await Promise.all(imagePromises)
     results.forEach(({ teamKey, base64 }) => {
+      console.log(`[Legacy Download] Loaded image for ${teamKey}: length=${base64.length}, starts with data:=${base64.startsWith('data:')}`)
       imageMap.set(teamKey, base64)
     })
     
@@ -2852,11 +2885,14 @@ async function downloadLegacyLeaderboard() {
     const firstHalf = teams.slice(0, midpoint)
     const secondHalf = teams.slice(midpoint)
     
-    // Ranking row generator
+    // Ranking row generator - matching Power Rankings style
     const generateRankingRow = (team: LegacyScore, rank: number) => {
       const barPct = Math.min(100, Math.max(0, (team.total_score / maxScore) * 100))
       const barColor = rank === 1 ? '#facc15' : rank === 2 ? '#9ca3af' : rank === 3 ? '#d97706' : '#3b82f6'
       const imgSrc = imageMap.get(team.team_key) || ''
+      const rankColor = rank === 1 ? '#facc15' : rank === 2 ? '#9ca3af' : rank === 3 ? '#d97706' : '#ffffff'
+      
+      console.log(`[Legacy Download] Row ${rank} (${team.team_name}): imgSrc length=${imgSrc.length}, starts with data:=${imgSrc.startsWith('data:')}`)
       
       // Achievement badges
       const badges = []
@@ -2865,23 +2901,23 @@ async function downloadLegacyLeaderboard() {
       if (team.regular_season_titles > 0) badges.push(`<span style="color: #a855f7;">👑${team.regular_season_titles}</span>`)
       
       return `
-      <div style="display: flex; align-items: center; padding: 12px; background: rgba(38, 42, 58, 0.4); border-radius: 10px; margin-bottom: 6px; border: 1px solid rgba(58, 61, 82, 0.4); box-sizing: border-box;">
-        <div style="width: 36px; flex-shrink: 0; text-align: center;">
-          <span style="font-size: 24px; font-weight: 900; color: ${rank <= 3 ? (rank === 1 ? '#facc15' : rank === 2 ? '#9ca3af' : '#d97706') : '#6b7280'}; font-family: 'Impact', 'Arial Black', sans-serif;">${rank}</span>
+      <div style="display: flex; height: 80px; padding: 0 12px; background: rgba(38, 42, 58, 0.4); border-radius: 10px; margin-bottom: 6px; border: 1px solid rgba(58, 61, 82, 0.4); box-sizing: border-box;">
+        <div style="width: 44px; flex-shrink: 0; padding-top: 18px;">
+          <span style="font-size: 32px; font-weight: 900; color: ${rankColor}; font-family: 'Impact', 'Arial Black', sans-serif; letter-spacing: -2px; line-height: 1;">${rank}</span>
         </div>
-        <div style="width: 48px; flex-shrink: 0; padding: 0 8px;">
-          <img src="${imgSrc}" style="width: 40px; height: 40px; border-radius: 50%; border: 2px solid #3a3d52; background: #262a3a; object-fit: cover;" />
+        <div style="width: 60px; flex-shrink: 0; padding-top: 14px;">
+          <img src="${imgSrc}" style="width: 48px; height: 48px; border-radius: 50%; border: 2px solid #3a3d52; background: #262a3a; object-fit: cover;" />
         </div>
-        <div style="flex: 1; min-width: 0;">
-          <div style="font-size: 13px; font-weight: 700; color: #f7f7ff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; line-height: 1.2;">${team.team_name}</div>
-          <div style="font-size: 10px; color: #9ca3af; line-height: 1.2; margin-top: 2px;">${team.seasons} season${team.seasons !== 1 ? 's' : ''} ${badges.length > 0 ? '• ' + badges.join(' ') : ''}</div>
-          <div style="width: 100%; height: 4px; background: rgba(58, 61, 82, 0.8); border-radius: 2px; overflow: hidden; margin-top: 6px;">
-            <div style="width: ${barPct}%; height: 100%; background: ${barColor}; border-radius: 2px;"></div>
+        <div style="flex: 1; min-width: 0; padding-top: 14px;">
+          <div style="font-size: 14px; font-weight: 700; color: #f7f7ff; white-space: nowrap; overflow: visible; line-height: 1.2;">${team.team_name}</div>
+          <div style="font-size: 11px; color: #9ca3af; line-height: 1.2; margin-top: 3px;">${team.seasons} season${team.seasons !== 1 ? 's' : ''} ${badges.length > 0 ? '• ' + badges.join(' ') : ''}</div>
+          <div style="width: 100%; height: 5px; background: rgba(58, 61, 82, 0.8); border-radius: 3px; overflow: hidden; margin-top: 8px;">
+            <div style="width: ${barPct}%; height: 100%; background: ${barColor}; border-radius: 3px;"></div>
           </div>
         </div>
-        <div style="width: 55px; flex-shrink: 0; text-align: right; padding-left: 8px;">
-          <div style="font-size: 16px; font-weight: bold; color: ${rank === 1 ? '#facc15' : '#ffffff'}; line-height: 1;">${team.total_score.toLocaleString()}</div>
-          <div style="font-size: 9px; color: #6b7280; margin-top: 2px;">pts</div>
+        <div style="width: 60px; flex-shrink: 0; text-align: right; padding-top: 20px; padding-left: 8px;">
+          <div style="font-size: 18px; font-weight: bold; color: ${rank === 1 ? '#facc15' : '#ffffff'}; line-height: 1;">${team.total_score.toLocaleString()}</div>
+          <div style="font-size: 9px; color: #6b7280; margin-top: 3px;">pts</div>
         </div>
       </div>
     `}
@@ -2933,10 +2969,11 @@ async function downloadLegacyLeaderboard() {
     
     document.body.appendChild(container)
     
-    // Wait a moment for images to load
-    await new Promise(resolve => setTimeout(resolve, 300))
+    // Wait for images to render properly
+    await new Promise(resolve => setTimeout(resolve, 500))
     
     // Capture image
+    console.log('[Legacy Download] Capturing image...')
     const canvas = await html2canvas(container, {
       backgroundColor: '#0a0c14',
       scale: 2,
