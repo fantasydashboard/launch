@@ -771,6 +771,8 @@
                 :key="team.team_key"
                 class="p-4 hover:bg-dark-border/20 transition-colors cursor-pointer"
                 @click="openLegacyModal(team)"
+                @mouseenter="hoveredLegacyTeamKey = team.team_key"
+                @mouseleave="hoveredLegacyTeamKey = null"
               >
                 <div class="flex items-center gap-4">
                   <!-- Rank Badge -->
@@ -836,34 +838,102 @@
           </div>
         </div>
 
-        <!-- Score Distribution -->
-        <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mt-6">
-          <div class="card">
-            <div class="card-body text-center">
-              <div class="text-3xl mb-2">🏆</div>
-              <div class="text-2xl font-bold text-yellow-400">{{ totalChampionshipsAwarded }}</div>
-              <div class="text-xs text-dark-textMuted">Championships Awarded</div>
+        <!-- Legacy Trend Chart -->
+        <div v-if="legacyChartYears.length >= 2" class="card mt-6">
+          <div class="card-header">
+            <div class="flex items-center gap-2">
+              <span class="text-2xl">📈</span>
+              <h2 class="card-title">Legacy Score Trends</h2>
+            </div>
+            <p class="text-sm text-dark-textMuted mt-1">Track cumulative legacy scores throughout the years</p>
+          </div>
+          <div class="card-body">
+            <div 
+              v-if="legacyChartSeries.length > 0" 
+              class="relative legacy-chart-container"
+            >
+              <apexchart 
+                type="line" 
+                height="350" 
+                :options="legacyChartOptions" 
+                :series="legacyChartSeries"
+              />
+              <!-- Team avatars at end of lines -->
+              <div 
+                v-for="(team, idx) in filteredLegacyScores" 
+                :key="'legacy-avatar-' + team.team_key"
+                class="absolute cursor-pointer transition-opacity duration-200" 
+                :class="{ 'opacity-30': hoveredLegacyTeamKey && hoveredLegacyTeamKey !== team.team_key }"
+                :style="getLegacyAvatarPosition(team)"
+                @mouseenter="hoveredLegacyTeamKey = team.team_key"
+                @mouseleave="hoveredLegacyTeamKey = null"
+              >
+                <div class="relative">
+                  <img 
+                    :src="team.logo_url || defaultAvatar" 
+                    :alt="team.team_name"
+                    class="w-6 h-6 rounded-full object-cover"
+                    :style="{ 
+                      boxShadow: `0 0 0 2px ${getLegacyTeamColor(idx)}`
+                    }"
+                    @error="handleImageError" 
+                  />
+                </div>
+              </div>
+            </div>
+            <div v-else class="text-center py-12 text-dark-textMuted">
+              <p>Not enough data for trend chart</p>
+              <p class="text-sm mt-1">Chart will appear when there are at least 2 seasons of data</p>
             </div>
           </div>
-          <div class="card">
-            <div class="card-body text-center">
-              <div class="text-3xl mb-2">📈</div>
-              <div class="text-2xl font-bold text-blue-400">{{ totalPlayoffAppearances }}</div>
-              <div class="text-xs text-dark-textMuted">Playoff Appearances</div>
+        </div>
+
+        <!-- Legend -->
+        <div class="card mt-6">
+          <div class="card-header">
+            <div class="flex items-center gap-2">
+              <span class="text-2xl">📖</span>
+              <h2 class="card-title">Legend</h2>
             </div>
           </div>
-          <div class="card">
-            <div class="card-body text-center">
-              <div class="text-3xl mb-2">⭐</div>
-              <div class="text-2xl font-bold text-purple-400">{{ totalWeeklyHighScores }}</div>
-              <div class="text-xs text-dark-textMuted">Weekly High Scores</div>
-            </div>
-          </div>
-          <div class="card">
-            <div class="card-body text-center">
-              <div class="text-3xl mb-2">📊</div>
-              <div class="text-2xl font-bold text-green-400">{{ averageLegacyScore }}</div>
-              <div class="text-xs text-dark-textMuted">Average Legacy Score</div>
+          <div class="card-body">
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-full bg-yellow-500/10 flex items-center justify-center flex-shrink-0">
+                  <span class="text-xl">🏆</span>
+                </div>
+                <div>
+                  <div class="font-semibold text-dark-text text-sm">Championships</div>
+                  <div class="text-xs text-dark-textMuted">League titles won</div>
+                </div>
+              </div>
+              <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-full bg-blue-500/10 flex items-center justify-center flex-shrink-0">
+                  <span class="text-xl">📈</span>
+                </div>
+                <div>
+                  <div class="font-semibold text-dark-text text-sm">Playoff Appearances</div>
+                  <div class="text-xs text-dark-textMuted">Made the playoffs</div>
+                </div>
+              </div>
+              <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-full bg-purple-500/10 flex items-center justify-center flex-shrink-0">
+                  <span class="text-xl">👑</span>
+                </div>
+                <div>
+                  <div class="font-semibold text-dark-text text-sm">Regular Season Titles</div>
+                  <div class="text-xs text-dark-textMuted">Best record in regular season</div>
+                </div>
+              </div>
+              <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-full bg-emerald-500/10 flex items-center justify-center flex-shrink-0">
+                  <span class="text-xl">⭐</span>
+                </div>
+                <div>
+                  <div class="font-semibold text-dark-text text-sm">Weekly High Scores</div>
+                  <div class="text-xs text-dark-textMuted">Highest score of the week</div>
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -1357,6 +1427,9 @@ import { yahooService } from '@/services/yahoo'
 import { useAuthStore } from '@/stores/auth'
 import html2canvas from 'html2canvas'
 import LoadingSpinner from '@/components/LoadingSpinner.vue'
+import VueApexCharts from 'vue3-apexcharts'
+
+const apexchart = VueApexCharts
 
 const leagueStore = useLeagueStore()
 const authStore = useAuthStore()
@@ -2174,6 +2247,316 @@ function getLegacyBarWidth(score: number): string {
   const max = legacyScores.value[0]?.total_score || 1
   return `${(score / max * 100).toFixed(1)}%`
 }
+
+// ==================== LEGACY CHART ====================
+// Hover state for legacy chart
+const hoveredLegacyTeamKey = ref<string | null>(null)
+
+// Get team color for chart
+function getLegacyTeamColor(idx: number): string {
+  const colors = ['#3b82f6', '#ef4444', '#10b981', '#f59e0b', '#8b5cf6', '#ec4899', '#06b6d4', '#84cc16', '#f97316', '#6366f1', '#14b8a6', '#f43f5e']
+  return colors[idx % colors.length]
+}
+
+// Compute legacy scores by year for each team (cumulative)
+const legacyScoresByYear = computed(() => {
+  const seasons = Object.keys(historicalData.value).sort((a, b) => parseInt(a) - parseInt(b))
+  if (seasons.length === 0) return new Map<string, number[]>()
+  
+  const includePenalties = includeLegacyPenalties.value
+  const result = new Map<string, number[]>()
+  
+  // Track cumulative scores for each team
+  const teamCumulativeScores: Record<string, number> = {}
+  const teamStreaks: Record<string, { playoffStreak: number; winningStreak: number; maxPlayoffStreak: number; maxWinningStreak: number }> = {}
+  
+  // Pre-calculate season metrics (same as legacyScores)
+  const seasonMetrics: Record<string, {
+    standings: any[]
+    avgPPW: number
+    highScore: { value: number; team_key: string }
+    lowScore: { value: number; team_key: string }
+    pointsLeader: string
+    top3Scorers: string[]
+    numTeams: number
+    playoffTeamCount: number
+  }> = {}
+  
+  for (const season of seasons) {
+    const seasonData = historicalData.value[season]
+    const standings = seasonData.standings || []
+    const matchups = allMatchups.value[season] || {}
+    
+    if (standings.length === 0) continue
+    
+    let totalPoints = 0
+    let totalWeeks = 0
+    let highScore = { value: 0, team_key: '' }
+    let lowScore = { value: Infinity, team_key: '' }
+    
+    for (const [week, weekMatchups] of Object.entries(matchups)) {
+      for (const matchup of weekMatchups as any[]) {
+        for (const team of matchup.teams || []) {
+          const points = team.points || 0
+          if (points > 0) {
+            totalPoints += points
+            totalWeeks++
+            if (points > highScore.value) {
+              highScore = { value: points, team_key: team.team_key }
+            }
+            if (points < lowScore.value) {
+              lowScore = { value: points, team_key: team.team_key }
+            }
+          }
+        }
+      }
+    }
+    
+    const avgPPW = totalWeeks > 0 ? totalPoints / totalWeeks : 0
+    const sortedByPoints = [...standings].sort((a: any, b: any) => (b.points_for || 0) - (a.points_for || 0))
+    const pointsLeader = sortedByPoints[0]?.team_key || ''
+    const top3Scorers = sortedByPoints.slice(0, 3).map((t: any) => t.team_key)
+    
+    const teamsWithPlayoffSeed = standings.filter((t: any) => t.playoff_seed > 0)
+    let playoffTeamCount = teamsWithPlayoffSeed.length > 0 ? teamsWithPlayoffSeed.length : Math.min(Math.floor(standings.length / 2), 6)
+    
+    seasonMetrics[season] = {
+      standings,
+      avgPPW,
+      highScore,
+      lowScore: lowScore.value === Infinity ? { value: 0, team_key: '' } : lowScore,
+      pointsLeader,
+      top3Scorers,
+      numTeams: standings.length,
+      playoffTeamCount
+    }
+  }
+  
+  // Calculate year-by-year cumulative scores
+  for (const season of seasons) {
+    const metrics = seasonMetrics[season]
+    if (!metrics) continue
+    
+    const { standings, avgPPW, highScore, lowScore, pointsLeader, top3Scorers, numTeams, playoffTeamCount } = metrics
+    const sortedByWins = [...standings].sort((a: any, b: any) => {
+      if ((b.wins || 0) !== (a.wins || 0)) return (b.wins || 0) - (a.wins || 0)
+      return (b.points_for || 0) - (a.points_for || 0)
+    })
+    const sortedByPointsAsc = [...standings].sort((a: any, b: any) => (a.points_for || 0) - (b.points_for || 0))
+    
+    for (const team of standings) {
+      const teamKey = team.team_key
+      
+      // Initialize if needed
+      if (!teamCumulativeScores[teamKey]) {
+        teamCumulativeScores[teamKey] = 0
+      }
+      if (!teamStreaks[teamKey]) {
+        teamStreaks[teamKey] = { playoffStreak: 0, winningStreak: 0, maxPlayoffStreak: 0, maxWinningStreak: 0 }
+      }
+      if (!result.has(teamKey)) {
+        result.set(teamKey, [])
+      }
+      
+      const streak = teamStreaks[teamKey]
+      const wins = team.wins || 0
+      const losses = team.losses || 0
+      const rank = team.rank || 999
+      const pointsFor = team.points_for || 0
+      const teamPPW = (wins + losses) > 0 ? pointsFor / (wins + losses) : 0
+      const madePlayoffs = team.playoff_seed > 0 || rank <= playoffTeamCount
+      
+      let seasonPoints = 0
+      
+      // Championships & Playoffs
+      if (team.is_champion) seasonPoints += LEGACY_POINTS.CHAMPIONSHIP
+      if (rank === 2 && !team.is_champion) seasonPoints += LEGACY_POINTS.RUNNER_UP
+      if (rank === 3) seasonPoints += LEGACY_POINTS.THIRD_PLACE
+      if (madePlayoffs) seasonPoints += LEGACY_POINTS.PLAYOFF_APPEARANCE
+      if (sortedByWins[0]?.team_key === teamKey) seasonPoints += LEGACY_POINTS.REGULAR_SEASON_TITLE
+      
+      // Season Performance
+      seasonPoints += wins * LEGACY_POINTS.WIN
+      if (wins > losses) seasonPoints += LEGACY_POINTS.WINNING_SEASON
+      if (rank <= 3) seasonPoints += LEGACY_POINTS.TOP_3_FINISH
+      if (teamKey === pointsLeader) seasonPoints += LEGACY_POINTS.POINTS_LEADER
+      if (top3Scorers.includes(teamKey)) seasonPoints += LEGACY_POINTS.TOP_3_SCORING
+      if (teamPPW > avgPPW) seasonPoints += LEGACY_POINTS.ABOVE_AVG_PPW
+      if (teamKey === highScore.team_key) seasonPoints += LEGACY_POINTS.SEASON_HIGH_SCORE
+      
+      // Longevity
+      seasonPoints += LEGACY_POINTS.SEASON_PLAYED
+      
+      // Streak bonuses (check after updating streak)
+      if (madePlayoffs) {
+        streak.playoffStreak++
+        if (streak.playoffStreak === 3) seasonPoints += LEGACY_POINTS.PLAYOFF_STREAK_3
+        if (streak.playoffStreak === 5) seasonPoints += LEGACY_POINTS.PLAYOFF_STREAK_5 - LEGACY_POINTS.PLAYOFF_STREAK_3
+      } else {
+        streak.playoffStreak = 0
+      }
+      
+      if (wins > losses) {
+        streak.winningStreak++
+        if (streak.winningStreak === 3) seasonPoints += LEGACY_POINTS.WINNING_STREAK_3
+      } else {
+        streak.winningStreak = 0
+      }
+      
+      // Penalties (if enabled)
+      if (includePenalties) {
+        if (rank === numTeams) seasonPoints += LEGACY_POINTS.LAST_PLACE
+        if (teamKey === lowScore.team_key) seasonPoints += LEGACY_POINTS.SEASON_LOW_SCORE
+        if (sortedByPointsAsc[0]?.team_key === teamKey) seasonPoints += LEGACY_POINTS.SCORING_CELLAR
+        if (wins < losses) seasonPoints += LEGACY_POINTS.LOSING_SEASON
+      }
+      
+      teamCumulativeScores[teamKey] += seasonPoints
+      result.get(teamKey)!.push(teamCumulativeScores[teamKey])
+    }
+  }
+  
+  return result
+})
+
+// Available years for the chart
+const legacyChartYears = computed(() => {
+  return Object.keys(historicalData.value).sort((a, b) => parseInt(a) - parseInt(b))
+})
+
+// Legacy chart options
+const legacyChartOptions = computed(() => {
+  const teams = filteredLegacyScores.value
+  if (teams.length === 0 || legacyChartYears.value.length < 2) return null
+  
+  const hoveredIdx = hoveredLegacyTeamKey.value 
+    ? teams.findIndex(t => t.team_key === hoveredLegacyTeamKey.value)
+    : -1
+  
+  const colors = teams.map((_, idx) => {
+    const baseColor = getLegacyTeamColor(idx)
+    if (hoveredIdx !== -1 && idx !== hoveredIdx) {
+      const r = parseInt(baseColor.slice(1, 3), 16)
+      const g = parseInt(baseColor.slice(3, 5), 16)
+      const b = parseInt(baseColor.slice(5, 7), 16)
+      return `rgba(${r}, ${g}, ${b}, 0.2)`
+    }
+    return baseColor
+  })
+  
+  const strokeWidths = teams.map((_, idx) => {
+    if (hoveredIdx === -1) return 2
+    return idx === hoveredIdx ? 3 : 2
+  })
+  
+  const markerSizes = teams.map((_, idx) => {
+    if (hoveredIdx === -1) return 0
+    return idx === hoveredIdx ? 8 : 0
+  })
+  
+  return {
+    chart: { 
+      type: 'line', 
+      background: 'transparent', 
+      toolbar: { show: false }, 
+      zoom: { enabled: false },
+      animations: { enabled: false }
+    },
+    theme: { mode: 'dark' },
+    colors: colors,
+    stroke: { 
+      width: strokeWidths,
+      curve: 'smooth' 
+    },
+    markers: { 
+      size: markerSizes,
+      strokeWidth: 0,
+      hover: { size: 0 }
+    },
+    dataLabels: {
+      enabled: hoveredIdx !== -1,
+      enabledOnSeries: hoveredIdx !== -1 ? [hoveredIdx] : [],
+      formatter: function(val: number) {
+        return val.toLocaleString()
+      },
+      style: {
+        fontSize: '10px',
+        fontWeight: 'bold',
+        colors: ['#fff']
+      },
+      background: {
+        enabled: false
+      },
+      offsetY: -8
+    },
+    xaxis: {
+      categories: legacyChartYears.value,
+      labels: { style: { colors: '#9ca3af' } },
+      title: { text: 'Season', style: { color: '#9ca3af' } }
+    },
+    yaxis: {
+      min: 0,
+      labels: { 
+        style: { colors: '#9ca3af' }, 
+        formatter: (v: number) => v.toLocaleString()
+      },
+      title: { text: 'Legacy Score', style: { color: '#9ca3af' } }
+    },
+    legend: { show: false },
+    tooltip: { 
+      enabled: false
+    },
+    grid: { 
+      borderColor: '#374151', 
+      padding: { left: 10, right: 50, top: 10, bottom: 0 } 
+    },
+    states: {
+      hover: {
+        filter: { type: 'none' }
+      },
+      active: {
+        filter: { type: 'none' }
+      }
+    }
+  }
+})
+
+// Legacy chart series
+const legacyChartSeries = computed(() => {
+  const teams = filteredLegacyScores.value
+  if (teams.length === 0) return []
+  
+  return teams.map(team => ({
+    name: team.team_name,
+    data: legacyScoresByYear.value.get(team.team_key) || []
+  }))
+})
+
+// Get avatar position for legacy chart
+function getLegacyAvatarPosition(team: LegacyScore): { top: string; left: string } {
+  const scores = legacyScoresByYear.value.get(team.team_key) || []
+  if (scores.length === 0) return { top: '0px', left: '0px' }
+  
+  const chartHeight = 350
+  const chartPaddingTop = 10
+  const chartPaddingBottom = 50
+  const chartPaddingLeft = 60
+  const chartPaddingRight = 50
+  
+  const dataHeight = chartHeight - chartPaddingTop - chartPaddingBottom
+  
+  const allScores = Array.from(legacyScoresByYear.value.values()).flat()
+  const maxScore = Math.max(...allScores, 1)
+  const minScore = 0
+  
+  const lastScore = scores[scores.length - 1]
+  const yRatio = (lastScore - minScore) / (maxScore - minScore)
+  const top = chartPaddingTop + dataHeight * (1 - yRatio) - 12
+  
+  return { top: `${top}px`, left: 'calc(100% - 35px)' }
+}
+
+// ==================== END LEGACY CHART ====================
 
 // Functions: Legacy modal
 function openLegacyModal(team: LegacyScore) {
@@ -5079,5 +5462,13 @@ onMounted(() => {
 
 .scrollbar-thin::-webkit-scrollbar-thumb:hover {
   background: rgba(107, 114, 128, 0.7);
+}
+
+.legacy-chart-container :deep(.apexcharts-series path) {
+  transition: opacity 0.2s ease;
+}
+
+.legacy-chart-container :deep(.apexcharts-tooltip) {
+  display: none !important;
 }
 </style>
