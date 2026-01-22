@@ -264,7 +264,6 @@
                 <option value="projections">Projections</option>
                 <option value="history">History</option>
                 <option value="draft">Draft</option>
-                <option value="compare">Compare</option>
                 <option value="tools">Tools</option>
                 <option value="settings">Settings</option>
                 <option value="other">Other</option>

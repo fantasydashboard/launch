@@ -783,7 +783,6 @@ const tabs = [
   { name: 'Matchups', path: '/matchups' },
   { name: 'History', path: '/history' },
   { name: 'Draft', path: '/draft' },
-  { name: 'Compare', path: '/performance-comparison' },
   { name: 'Free Tools', path: '/free-tools' },
   { name: 'Ultimate Tools', path: '/ultimate-tools', isUltimate: true }
 ]
