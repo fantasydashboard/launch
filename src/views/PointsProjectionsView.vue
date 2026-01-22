@@ -254,9 +254,6 @@
                   <th class="px-3 py-3 text-left text-xs font-semibold uppercase w-12 cursor-pointer hover:text-yellow-400" @click="setRosSort('rosRank')">
                     Rank <span v-if="rosSortColumn === 'rosRank'" class="text-yellow-400">{{ rosSortDirection === 'asc' ? '↑' : '↓' }}</span>
                   </th>
-                  <th class="px-2 py-3 text-center text-xs font-semibold uppercase w-14 cursor-pointer hover:text-yellow-400" @click="setRosSort('tier')">
-                    Tier <span v-if="rosSortColumn === 'tier'" class="text-yellow-400">{{ rosSortDirection === 'asc' ? '↑' : '↓' }}</span>
-                  </th>
                   <th class="px-3 py-3 text-left text-xs font-semibold text-dark-textMuted uppercase">Player</th>
                   <th class="px-2 py-3 text-center text-xs font-semibold text-dark-textMuted uppercase w-12">Pos</th>
                   <th class="px-2 py-3 text-center text-xs font-semibold uppercase w-14 cursor-pointer hover:text-yellow-400" @click="setRosSort('positionRank')">
@@ -277,48 +274,59 @@
                 </tr>
               </thead>
               <tbody class="divide-y divide-dark-border/30">
-                <tr v-for="(player, idx) in gatedFilteredPlayers" :key="player.player_key" :class="[getRowClass(player), getTierBorderClass(player, idx)]" class="hover:bg-dark-border/20 transition-colors">
-                  <td class="px-3 py-3"><span class="font-bold text-lg text-dark-text">{{ player.rosRank }}</span></td>
-                  <td class="px-2 py-3 text-center">
-                    <span class="px-2 py-1 rounded-lg text-xs font-bold" :class="getTierBadgeClass(player.tier)">
-                      {{ player.tier }}
-                    </span>
-                  </td>
-                  <td class="px-3 py-3">
-                    <div class="flex items-center gap-3">
-                      <div class="relative">
-                        <div class="w-10 h-10 rounded-full bg-dark-border overflow-hidden ring-2" :class="getAvatarRingClass(player)">
-                          <img :src="player.headshot || defaultHeadshot" :alt="player.full_name" class="w-full h-full object-cover" @error="handleImageError" />
+                <template v-for="(player, idx) in gatedFilteredPlayers" :key="player.player_key">
+                  <!-- Tier Divider Row -->
+                  <tr v-if="shouldShowTierDivider(player, idx)" class="bg-dark-bg/80">
+                    <td colspan="8" class="py-2 px-4">
+                      <div class="flex items-center gap-3">
+                        <div class="h-px flex-1 bg-gradient-to-r from-transparent via-yellow-400/50 to-transparent"></div>
+                        <div class="flex items-center gap-2 px-4 py-1 rounded-full bg-yellow-400/10 border border-yellow-400/30">
+                          <span class="text-yellow-400 font-bold text-sm">Tier {{ player.tier }}</span>
+                          <span class="text-yellow-400/70 text-xs">{{ getTierDescription(player.tier) }}</span>
                         </div>
-                        <div v-if="isMyPlayer(player)" class="absolute -top-1 -right-1 w-5 h-5 bg-yellow-400 rounded-full flex items-center justify-center"><span class="text-xs text-gray-900 font-bold">★</span></div>
-                        <div v-else-if="isFreeAgent(player)" class="absolute -top-1 -right-1 w-5 h-5 bg-cyan-400 rounded-full flex items-center justify-center"><span class="text-xs text-gray-900 font-bold">+</span></div>
+                        <div class="h-px flex-1 bg-gradient-to-r from-transparent via-yellow-400/50 to-transparent"></div>
                       </div>
-                      <div>
-                        <span class="font-semibold" :class="getPlayerNameClass(player)">{{ player.full_name }}</span>
-                        <div class="flex items-center gap-2 text-xs text-dark-textMuted">
-                          <span>{{ player.mlb_team || 'FA' }}</span>
-                          <span class="text-dark-border">•</span>
-                          <template v-if="player.fantasy_team">
-                            <img :src="platformLogo" :alt="platformName" class="w-3 h-3 opacity-60" />
-                            <span :class="isMyPlayer(player) ? 'text-yellow-400' : ''">{{ player.fantasy_team }}</span>
-                          </template>
-                          <span v-else class="text-cyan-400">Free Agent</span>
+                    </td>
+                  </tr>
+                  <!-- Player Row -->
+                  <tr :class="getRowClass(player)" class="hover:bg-dark-border/20 transition-colors">
+                    <td class="px-3 py-3"><span class="font-bold text-lg text-dark-text">{{ player.rosRank }}</span></td>
+                    <td class="px-3 py-3">
+                      <div class="flex items-center gap-3">
+                        <div class="relative">
+                          <div class="w-10 h-10 rounded-full bg-dark-border overflow-hidden ring-2" :class="getAvatarRingClass(player)">
+                            <img :src="player.headshot || defaultHeadshot" :alt="player.full_name" class="w-full h-full object-cover" @error="handleImageError" />
+                          </div>
+                          <div v-if="isMyPlayer(player)" class="absolute -top-1 -right-1 w-5 h-5 bg-yellow-400 rounded-full flex items-center justify-center"><span class="text-xs text-gray-900 font-bold">★</span></div>
+                          <div v-else-if="isFreeAgent(player)" class="absolute -top-1 -right-1 w-5 h-5 bg-cyan-400 rounded-full flex items-center justify-center"><span class="text-xs text-gray-900 font-bold">+</span></div>
+                        </div>
+                        <div>
+                          <span class="font-semibold" :class="getPlayerNameClass(player)">{{ player.full_name }}</span>
+                          <div class="flex items-center gap-2 text-xs text-dark-textMuted">
+                            <span>{{ player.mlb_team || 'FA' }}</span>
+                            <span class="text-dark-border">•</span>
+                            <template v-if="player.fantasy_team">
+                              <img :src="platformLogo" :alt="platformName" class="w-3 h-3 opacity-60" />
+                              <span :class="isMyPlayer(player) ? 'text-yellow-400' : ''">{{ player.fantasy_team }}</span>
+                            </template>
+                            <span v-else class="text-cyan-400">Free Agent</span>
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  </td>
-                  <td class="px-2 py-3 text-center"><span class="px-2 py-1 rounded text-xs font-bold" :class="getPositionClass(player.position)">{{ player.position?.split(',')[0] }}</span></td>
-                  <td class="px-2 py-3 text-center text-dark-text font-medium">{{ player.positionRank }}</td>
-                  <td class="px-2 py-3 text-center">
-                    <div class="flex items-center justify-center gap-1">
-                      <span class="font-bold text-primary">{{ player.compositeScore?.toFixed(1) || '0' }}</span>
-                    </div>
-                  </td>
-                  <td class="px-2 py-3 text-center font-bold text-dark-text">{{ player.total_points?.toFixed(1) || '0' }}</td>
-                  <td class="px-2 py-3 text-center font-bold text-dark-text">{{ player.ppg?.toFixed(2) || '0' }}</td>
-                  <td class="px-2 py-3 text-center font-bold" :class="player.vor > 0 ? 'text-green-400' : player.vor < -3 ? 'text-red-400' : 'text-dark-textMuted'">{{ player.vor >= 0 ? '+' : '' }}{{ player.vor?.toFixed(1) || '0' }}</td>
-                </tr>
-                <tr v-if="gatedFilteredPlayers.length === 0"><td colspan="9" class="px-4 py-8 text-center text-dark-textMuted">No players match filters</td></tr>
+                    </td>
+                    <td class="px-2 py-3 text-center"><span class="px-2 py-1 rounded text-xs font-bold" :class="getPositionClass(player.position)">{{ player.position?.split(',')[0] }}</span></td>
+                    <td class="px-2 py-3 text-center text-dark-text font-medium">{{ player.positionRank }}</td>
+                    <td class="px-2 py-3 text-center">
+                      <div class="flex items-center justify-center gap-1">
+                        <span class="font-bold text-primary">{{ player.compositeScore?.toFixed(1) || '0' }}</span>
+                      </div>
+                    </td>
+                    <td class="px-2 py-3 text-center font-bold text-dark-text">{{ player.total_points?.toFixed(1) || '0' }}</td>
+                    <td class="px-2 py-3 text-center font-bold text-dark-text">{{ player.ppg?.toFixed(2) || '0' }}</td>
+                    <td class="px-2 py-3 text-center font-bold" :class="player.vor > 0 ? 'text-green-400' : player.vor < -3 ? 'text-red-400' : 'text-dark-textMuted'">{{ player.vor >= 0 ? '+' : '' }}{{ player.vor?.toFixed(1) || '0' }}</td>
+                  </tr>
+                </template>
+                <tr v-if="gatedFilteredPlayers.length === 0"><td colspan="8" class="px-4 py-8 text-center text-dark-textMuted">No players match filters</td></tr>
               </tbody>
             </table>
             
@@ -1825,22 +1833,6 @@ function getTeamStatusLabel(s: number) { if (s >= 70) return '🏆 Contender'; i
 function getPositionGradeClass(g: string) { if (g === 'N/A') return 'text-dark-textMuted'; if (g.startsWith('A')) return 'text-green-400'; if (g.startsWith('B')) return 'text-blue-400'; if (g.startsWith('C')) return 'text-yellow-400'; if (g.startsWith('D')) return 'text-orange-400'; return 'text-red-400' }
 function getProjectedPointsClass(proj: number) { if (proj >= 5) return 'text-green-400'; if (proj >= 3) return 'text-lime-400'; if (proj >= 1) return 'text-yellow-400'; return 'text-dark-textMuted' }
 function getTierColorClass(t: number) { if (t === 1) return 'text-green-400'; if (t === 2) return 'text-lime-400'; if (t === 3) return 'text-yellow-400'; if (t === 4) return 'text-orange-400'; return 'text-red-400' }
-function getTierBadgeClass(t: number) { 
-  if (t === 1) return 'bg-green-500/30 text-green-400 border border-green-500/50'
-  if (t === 2) return 'bg-lime-500/30 text-lime-400 border border-lime-500/50'
-  if (t === 3) return 'bg-yellow-500/30 text-yellow-400 border border-yellow-500/50'
-  if (t === 4) return 'bg-orange-500/30 text-orange-400 border border-orange-500/50'
-  return 'bg-red-500/30 text-red-400 border border-red-500/50'
-}
-function getTierBorderClass(player: any, idx: number) {
-  // Add visual separator when tier changes
-  if (idx === 0) return ''
-  const prevPlayer = gatedFilteredPlayers.value[idx - 1]
-  if (prevPlayer && prevPlayer.tier !== player.tier) {
-    return 'border-t-2 border-t-dark-border'
-  }
-  return ''
-}
 function getVerdictClass(v: string) { if (v === 'Must Start') return 'bg-green-500/30 text-green-400'; if (v === 'Start') return 'bg-lime-500/30 text-lime-400'; if (v === 'Flex') return 'bg-yellow-500/30 text-yellow-400'; if (v === 'Sit') return 'bg-orange-500/30 text-orange-400'; if (v === 'No Game') return 'bg-dark-border/30 text-dark-textMuted'; return 'bg-red-500/30 text-red-400' }
 
 function calculatePositionBaselines() { const byPos: Record<string, any[]> = {}; allPlayers.value.forEach(p => { const pos = p.position?.split(',')[0]?.trim(); if (pos) { if (!byPos[pos]) byPos[pos] = []; byPos[pos].push(p) } }); Object.entries(byPos).forEach(([pos, players]) => { players.sort((a, b) => (b.ppg || 0) - (a.ppg || 0)); positionBaselines.value[pos] = players[Math.min((vorBaselines.value[pos] || 15) - 1, players.length - 1)]?.ppg || 0 }) }
@@ -1938,63 +1930,114 @@ function recalculateRankings() {
 function calculateTiers() {
   if (allPlayers.value.length === 0) return
   
-  // Get scores sorted descending (should already be sorted)
-  const scores = allPlayers.value.map(p => p.compositeScore || 0)
-  const maxScore = scores[0] || 100
-  const minScore = scores[scores.length - 1] || 0
-  const range = maxScore - minScore
-  
-  if (range === 0) {
-    // All players have same score - put in tier 3
-    allPlayers.value.forEach(p => p.tier = 3)
-    return
+  // Position scarcity multipliers - scarcer positions get slight tier boost
+  const positionScarcity: Record<string, number> = {
+    'C': 1.15,    // Catchers are scarce
+    '2B': 1.08,   // Second basemen somewhat scarce
+    'SS': 1.08,   // Shortstops somewhat scarce
+    '3B': 1.05,   // Third basemen slightly scarce
+    '1B': 1.0,    // First basemen common
+    'OF': 0.95,   // Outfielders very common
+    'SP': 1.0,    // Starting pitchers standard
+    'RP': 0.98,   // Relief pitchers common
   }
   
-  // Calculate gaps between consecutive players
-  const gaps: { index: number; gap: number }[] = []
-  for (let i = 1; i < scores.length; i++) {
-    const gap = scores[i - 1] - scores[i]
-    gaps.push({ index: i, gap })
-  }
-  
-  // Find significant gaps (larger than average gap * threshold)
-  const avgGap = gaps.reduce((sum, g) => sum + g.gap, 0) / gaps.length
-  const threshold = 1.5 // Gaps 1.5x larger than average are tier breaks
-  
-  // Sort gaps by size to find the biggest natural breaks
-  const sortedGaps = [...gaps].sort((a, b) => b.gap - a.gap)
-  
-  // Take top 4 gaps (to create up to 5 tiers) that are significant
-  const tierBreaks = sortedGaps
-    .filter(g => g.gap > avgGap * threshold)
-    .slice(0, 4)
-    .map(g => g.index)
-    .sort((a, b) => a - b)
-  
-  // Assign tiers based on breaks
-  let currentTier = 1
-  let breakIndex = 0
-  
-  allPlayers.value.forEach((p, i) => {
-    // Check if we've passed a tier break
-    while (breakIndex < tierBreaks.length && i >= tierBreaks[breakIndex]) {
-      currentTier++
-      breakIndex++
-    }
-    p.tier = Math.min(currentTier, 5)
+  // Calculate adjusted scores with position scarcity
+  allPlayers.value.forEach(p => {
+    const pos = p.position?.split(',')[0]?.trim() || 'OF'
+    const scarcityMult = positionScarcity[pos] || 1.0
+    p.adjustedScore = (p.compositeScore || 0) * scarcityMult
   })
   
-  // Fallback: if no significant gaps found, use percentage-based tiers
-  if (tierBreaks.length === 0) {
-    allPlayers.value.forEach(p => {
-      const pct = range > 0 ? ((p.compositeScore || 0) - minScore) / range : 0.5
-      if (pct >= 0.85) p.tier = 1
-      else if (pct >= 0.65) p.tier = 2
-      else if (pct >= 0.45) p.tier = 3
-      else if (pct >= 0.25) p.tier = 4
-      else p.tier = 5
-    })
+  // Re-sort by adjusted score
+  allPlayers.value.sort((a, b) => (b.adjustedScore || 0) - (a.adjustedScore || 0))
+  
+  // Calculate standard deviation of scores
+  const scores = allPlayers.value.map(p => p.adjustedScore || 0)
+  const mean = scores.reduce((sum, s) => sum + s, 0) / scores.length
+  const variance = scores.reduce((sum, s) => sum + Math.pow(s - mean, 2), 0) / scores.length
+  const stdDev = Math.sqrt(variance)
+  
+  // Tier threshold: players within this score difference are in same tier
+  // Use 1/3 of standard deviation as the grouping threshold (creates tight tiers)
+  const tierThreshold = Math.max(stdDev / 3, 1.5) // Minimum threshold of 1.5 points
+  
+  // Assign tiers based on score clustering
+  let currentTier = 1
+  let tierStartScore = scores[0] || 100
+  
+  allPlayers.value.forEach((p, i) => {
+    const score = p.adjustedScore || 0
+    
+    // If score dropped more than threshold from tier start, new tier
+    if (tierStartScore - score > tierThreshold) {
+      currentTier++
+      tierStartScore = score
+    }
+    
+    p.tier = currentTier
+  })
+  
+  // Store tier info for descriptions
+  calculateTierInfo()
+}
+
+function calculateTierInfo() {
+  // Calculate tier summaries (avg score, player count per tier)
+  const tierData: Record<number, { count: number; avgScore: number; minScore: number; maxScore: number }> = {}
+  
+  allPlayers.value.forEach(p => {
+    const tier = p.tier || 1
+    if (!tierData[tier]) {
+      tierData[tier] = { count: 0, avgScore: 0, minScore: Infinity, maxScore: -Infinity }
+    }
+    tierData[tier].count++
+    tierData[tier].avgScore += p.compositeScore || 0
+    tierData[tier].minScore = Math.min(tierData[tier].minScore, p.compositeScore || 0)
+    tierData[tier].maxScore = Math.max(tierData[tier].maxScore, p.compositeScore || 0)
+  })
+  
+  // Finalize averages
+  Object.keys(tierData).forEach(tier => {
+    tierData[parseInt(tier)].avgScore /= tierData[parseInt(tier)].count
+  })
+  
+  // Store for use in getTierDescription
+  tierInfo.value = tierData
+}
+
+const tierInfo = ref<Record<number, { count: number; avgScore: number; minScore: number; maxScore: number }>>({})
+
+function shouldShowTierDivider(player: any, idx: number): boolean {
+  // Always show tier 1 divider at the start
+  if (idx === 0) return true
+  // Show divider when tier changes
+  const prevPlayer = gatedFilteredPlayers.value[idx - 1]
+  return prevPlayer && prevPlayer.tier !== player.tier
+}
+
+function getTierDescription(tier: number): string {
+  const info = tierInfo.value[tier]
+  if (!info) return ''
+  
+  const count = info.count
+  
+  // Tier labels based on value and interchangeability
+  const tierLabels: Record<number, string> = {
+    1: 'Elite - Untouchable',
+    2: 'Premium Starters',
+    3: 'Strong Starters', 
+    4: 'Solid Starters',
+    5: 'Reliable Options',
+    6: 'Fringe Starters',
+    7: 'Strong Bench',
+    8: 'Bench Depth',
+    9: 'Streaming Options',
+    10: 'Deep League Value',
   }
+  
+  const label = tier <= 10 ? tierLabels[tier] : 'Replacement Level'
+  return `${label} • ${count} player${count !== 1 ? 's' : ''}`
 }
 
 async function loadProjections() {
