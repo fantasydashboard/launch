@@ -685,7 +685,7 @@
                       <tr 
                         :class="[getStartSitRowClass(player), { 'cursor-pointer': isFreeAgent(player), 'bg-cyan-500/10': isInWaiverLineup(player) }]" 
                         class="hover:bg-dark-border/20 transition-colors"
-                        @click="isFreeAgent(player) && togglePlayerInLineup(player)"
+                        @click="isFreeAgent(player) && handleAddPlayer(player)"
                       >
                         <td class="px-3 py-2"><span class="font-bold text-lg text-dark-text">{{ index + 1 }}</span></td>
                         <td class="px-3 py-2">
@@ -896,13 +896,33 @@
                   <template v-if="rosterSpotsAvailable > 0">
                     • <span class="text-green-400">{{ rosterSpotsAvailable }} open spot{{ rosterSpotsAvailable > 1 ? 's' : '' }}</span>
                   </template>
+                  <template v-else-if="rosterSpotsAvailable === 0">
+                    • <span class="text-yellow-400">Roster full</span>
+                  </template>
                   <template v-else-if="rosterSpotsAvailable < 0">
                     • <span class="text-red-400">{{ Math.abs(rosterSpotsAvailable) }} over limit</span>
                   </template>
                 </p>
               </div>
             </div>
-            <div class="flex items-center gap-2">
+            <div class="flex items-center gap-3">
+              <!-- Projections/Stats Toggle -->
+              <div class="flex items-center bg-dark-border/30 rounded-lg p-0.5">
+                <button 
+                  @click="bestAvailableViewMode = 'projections'"
+                  class="px-3 py-1 text-xs font-medium rounded-md transition-colors"
+                  :class="bestAvailableViewMode === 'projections' ? 'bg-yellow-400 text-gray-900' : 'text-dark-textMuted hover:text-dark-text'"
+                >
+                  Projections
+                </button>
+                <button 
+                  @click="bestAvailableViewMode = 'stats'"
+                  class="px-3 py-1 text-xs font-medium rounded-md transition-colors"
+                  :class="bestAvailableViewMode === 'stats' ? 'bg-yellow-400 text-gray-900' : 'text-dark-textMuted hover:text-dark-text'"
+                >
+                  Stats
+                </button>
+              </div>
               <select v-model="bestAvailablePosition" class="px-3 py-1.5 rounded-lg bg-dark-border/50 text-dark-text text-sm border border-dark-border focus:border-yellow-400 focus:outline-none">
                 <option value="all">All Positions</option>
                 <option v-for="pos in startSitPositions" :key="pos.id" :value="pos.id">{{ pos.label }}</option>
@@ -918,9 +938,18 @@
                   <th class="px-3 py-2 text-left text-xs font-semibold text-dark-textMuted uppercase w-10">#</th>
                   <th class="px-3 py-2 text-left text-xs font-semibold text-dark-textMuted uppercase">Player</th>
                   <th class="px-2 py-2 text-center text-xs font-semibold text-dark-textMuted uppercase w-12">Pos</th>
-                  <th class="px-2 py-2 text-center text-xs font-semibold text-dark-textMuted uppercase w-14">PPG</th>
-                  <th class="px-2 py-2 text-center text-xs font-semibold text-dark-textMuted uppercase w-14">Score</th>
-                  <th class="px-2 py-2 text-center text-xs font-semibold text-dark-textMuted uppercase w-14">VOR</th>
+                  <template v-if="bestAvailableViewMode === 'projections'">
+                    <th class="px-2 py-2 text-center text-xs font-semibold text-dark-textMuted uppercase w-14">Today</th>
+                    <th class="px-2 py-2 text-center text-xs font-semibold text-dark-textMuted uppercase w-14">7 Day</th>
+                    <th class="px-2 py-2 text-center text-xs font-semibold text-dark-textMuted uppercase w-14">14 Day</th>
+                    <th class="px-2 py-2 text-center text-xs font-semibold text-dark-textMuted uppercase w-14">ROS</th>
+                  </template>
+                  <template v-else>
+                    <th class="px-2 py-2 text-center text-xs font-semibold text-dark-textMuted uppercase w-14">L7</th>
+                    <th class="px-2 py-2 text-center text-xs font-semibold text-dark-textMuted uppercase w-14">L14</th>
+                    <th class="px-2 py-2 text-center text-xs font-semibold text-dark-textMuted uppercase w-14">Season</th>
+                    <th class="px-2 py-2 text-center text-xs font-semibold text-dark-textMuted uppercase w-14">PPG</th>
+                  </template>
                   <th class="px-2 py-2 text-center text-xs font-semibold text-dark-textMuted uppercase w-20">Action</th>
                 </tr>
               </thead>
@@ -930,7 +959,7 @@
                   :key="player.player_key"
                   class="hover:bg-dark-border/20 transition-colors cursor-pointer"
                   :class="{ 'bg-cyan-500/10': isInWaiverLineup(player) }"
-                  @click="togglePlayerInLineup(player)"
+                  @click="handleAddPlayer(player)"
                 >
                   <td class="px-3 py-2 text-dark-textMuted">{{ idx + 1 }}</td>
                   <td class="px-3 py-2">
@@ -947,16 +976,23 @@
                   <td class="px-2 py-2 text-center">
                     <span class="px-1.5 py-0.5 rounded text-[10px] font-bold" :class="getPositionClass(player.position)">{{ player.position?.split(',')[0] }}</span>
                   </td>
-                  <td class="px-2 py-2 text-center font-bold text-dark-text">{{ player.ppg?.toFixed(1) || '0' }}</td>
-                  <td class="px-2 py-2 text-center font-bold text-yellow-400">{{ player.compositeScore?.toFixed(0) || '0' }}</td>
-                  <td class="px-2 py-2 text-center font-bold" :class="(player.vor || 0) >= 0 ? 'text-green-400' : 'text-red-400'">
-                    {{ (player.vor || 0) >= 0 ? '+' : '' }}{{ player.vor?.toFixed(1) || '0' }}
-                  </td>
+                  <template v-if="bestAvailableViewMode === 'projections'">
+                    <td class="px-2 py-2 text-center font-bold text-green-400">{{ getPlayerProjection(player, 'today').toFixed(1) }}</td>
+                    <td class="px-2 py-2 text-center font-bold text-green-400">{{ getPlayerProjection(player, '7day').toFixed(1) }}</td>
+                    <td class="px-2 py-2 text-center font-bold text-green-400">{{ getPlayerProjection(player, '14day').toFixed(1) }}</td>
+                    <td class="px-2 py-2 text-center font-bold text-yellow-400">{{ getPlayerProjection(player, 'ros').toFixed(1) }}</td>
+                  </template>
+                  <template v-else>
+                    <td class="px-2 py-2 text-center font-bold text-blue-400">{{ getPlayerStats(player, 'l7').toFixed(1) }}</td>
+                    <td class="px-2 py-2 text-center font-bold text-blue-400">{{ getPlayerStats(player, 'l14').toFixed(1) }}</td>
+                    <td class="px-2 py-2 text-center font-bold text-blue-400">{{ getPlayerStats(player, 'season').toFixed(1) }}</td>
+                    <td class="px-2 py-2 text-center font-bold text-dark-text">{{ player.ppg?.toFixed(1) || '0' }}</td>
+                  </template>
                   <td class="px-2 py-2 text-center">
                     <button 
                       v-if="!isInWaiverLineup(player)"
                       class="px-2 py-1 text-xs font-medium bg-cyan-500/20 text-cyan-400 rounded hover:bg-cyan-500/30 transition-colors"
-                      @click.stop="togglePlayerInLineup(player)"
+                      @click.stop="handleAddPlayer(player)"
                     >
                       + Add
                     </button>
@@ -970,7 +1006,7 @@
                   </td>
                 </tr>
                 <tr v-if="filteredBestAvailable.length === 0">
-                  <td colspan="7" class="px-4 py-6 text-center text-dark-textMuted">No free agents available at this position</td>
+                  <td colspan="8" class="px-4 py-6 text-center text-dark-textMuted">No free agents available at this position</td>
                 </tr>
               </tbody>
             </table>
@@ -1477,6 +1513,177 @@
       <div class="inline-flex items-center gap-2 px-4 py-2 rounded-full border" :class="platformBadgeClass">
         <img :src="platformLogo" :alt="platformName" class="w-5 h-5" />
         <span class="text-sm" :class="platformTextClass">{{ platformName }} Fantasy {{ sportName }}</span>
+      </div>
+    </div>
+    
+    <!-- Drop Player Modal -->
+    <div v-if="showDropModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/70" @click.self="closeDropModal">
+      <div class="bg-dark-card border border-dark-border rounded-xl shadow-2xl max-w-2xl w-full mx-4 max-h-[90vh] overflow-hidden">
+        <!-- Modal Header -->
+        <div class="px-6 py-4 border-b border-dark-border bg-dark-border/20">
+          <div class="flex items-center justify-between">
+            <div>
+              <h3 class="text-lg font-bold text-dark-text">Select Player to Drop</h3>
+              <p class="text-sm text-dark-textMuted mt-1">
+                Adding <span class="text-cyan-400 font-semibold">{{ dropModalPlayer?.full_name }}</span> requires dropping a player
+              </p>
+            </div>
+            <button @click="closeDropModal" class="text-dark-textMuted hover:text-dark-text transition-colors">
+              <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+          
+          <!-- View Toggle -->
+          <div class="flex items-center gap-4 mt-4">
+            <span class="text-xs text-dark-textMuted uppercase">View:</span>
+            <div class="flex items-center bg-dark-border/30 rounded-lg p-0.5">
+              <button 
+                @click="dropModalViewMode = 'projections'"
+                class="px-3 py-1 text-xs font-medium rounded-md transition-colors"
+                :class="dropModalViewMode === 'projections' ? 'bg-green-500 text-gray-900' : 'text-dark-textMuted hover:text-dark-text'"
+              >
+                Projections
+              </button>
+              <button 
+                @click="dropModalViewMode = 'stats'"
+                class="px-3 py-1 text-xs font-medium rounded-md transition-colors"
+                :class="dropModalViewMode === 'stats' ? 'bg-blue-500 text-gray-900' : 'text-dark-textMuted hover:text-dark-text'"
+              >
+                Stats
+              </button>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Player Comparison Header -->
+        <div class="px-6 py-3 bg-dark-bg/50 border-b border-dark-border/50">
+          <div class="grid grid-cols-12 gap-2 text-xs font-semibold text-dark-textMuted uppercase">
+            <div class="col-span-4">Player</div>
+            <template v-if="dropModalViewMode === 'projections'">
+              <div class="col-span-2 text-center">Today</div>
+              <div class="col-span-2 text-center">Next 7</div>
+              <div class="col-span-2 text-center">Next 14</div>
+              <div class="col-span-2 text-center">ROS</div>
+            </template>
+            <template v-else>
+              <div class="col-span-2 text-center">Last 7</div>
+              <div class="col-span-2 text-center">Last 14</div>
+              <div class="col-span-2 text-center">Season</div>
+              <div class="col-span-2 text-center">PPG</div>
+            </template>
+          </div>
+        </div>
+        
+        <!-- Pickup Player Row (for comparison) -->
+        <div class="px-6 py-3 bg-cyan-500/10 border-b border-cyan-500/30">
+          <div class="grid grid-cols-12 gap-2 items-center">
+            <div class="col-span-4 flex items-center gap-3">
+              <div class="w-10 h-10 rounded-full bg-dark-border overflow-hidden ring-2 ring-cyan-400">
+                <img :src="dropModalPlayer?.headshot || defaultHeadshot" class="w-full h-full object-cover" @error="handleImageError" />
+              </div>
+              <div>
+                <div class="font-semibold text-cyan-400">{{ dropModalPlayer?.full_name }}</div>
+                <div class="text-xs text-dark-textMuted">{{ dropModalPlayer?.position?.split(',')[0] }} • {{ dropModalPlayer?.mlb_team || 'FA' }} <span class="text-cyan-400">(PICKUP)</span></div>
+              </div>
+            </div>
+            <template v-if="dropModalViewMode === 'projections'">
+              <div class="col-span-2 text-center font-bold text-cyan-400">{{ getPlayerProjection(dropModalPlayer, 'today').toFixed(1) }}</div>
+              <div class="col-span-2 text-center font-bold text-cyan-400">{{ getPlayerProjection(dropModalPlayer, '7day').toFixed(1) }}</div>
+              <div class="col-span-2 text-center font-bold text-cyan-400">{{ getPlayerProjection(dropModalPlayer, '14day').toFixed(1) }}</div>
+              <div class="col-span-2 text-center font-bold text-cyan-400">{{ getPlayerProjection(dropModalPlayer, 'ros').toFixed(1) }}</div>
+            </template>
+            <template v-else>
+              <div class="col-span-2 text-center font-bold text-cyan-400">{{ getPlayerStats(dropModalPlayer, 'l7').toFixed(1) }}</div>
+              <div class="col-span-2 text-center font-bold text-cyan-400">{{ getPlayerStats(dropModalPlayer, 'l14').toFixed(1) }}</div>
+              <div class="col-span-2 text-center font-bold text-cyan-400">{{ getPlayerStats(dropModalPlayer, 'season').toFixed(1) }}</div>
+              <div class="col-span-2 text-center font-bold text-cyan-400">{{ dropModalPlayer?.ppg?.toFixed(1) || '0' }}</div>
+            </template>
+          </div>
+        </div>
+        
+        <!-- Droppable Players List -->
+        <div class="max-h-80 overflow-y-auto">
+          <div 
+            v-for="player in droppablePlayers" 
+            :key="player.player_key"
+            class="px-6 py-3 border-b border-dark-border/30 hover:bg-dark-border/20 cursor-pointer transition-colors"
+            :class="{ 'bg-red-500/10 border-red-500/30': selectedDropPlayer?.player_key === player.player_key }"
+            @click="selectedDropPlayer = player"
+          >
+            <div class="grid grid-cols-12 gap-2 items-center">
+              <div class="col-span-4 flex items-center gap-3">
+                <div class="relative">
+                  <div class="w-10 h-10 rounded-full bg-dark-border overflow-hidden" :class="selectedDropPlayer?.player_key === player.player_key ? 'ring-2 ring-red-400' : ''">
+                    <img :src="player.headshot || defaultHeadshot" class="w-full h-full object-cover" @error="handleImageError" />
+                  </div>
+                  <div v-if="selectedDropPlayer?.player_key === player.player_key" class="absolute -top-1 -right-1 w-5 h-5 bg-red-500 rounded-full flex items-center justify-center">
+                    <span class="text-xs text-white font-bold">✓</span>
+                  </div>
+                </div>
+                <div>
+                  <div class="font-semibold text-dark-text">{{ player.full_name }}</div>
+                  <div class="text-xs text-dark-textMuted">{{ player.position?.split(',')[0] }} • {{ player.mlb_team || 'FA' }}</div>
+                </div>
+              </div>
+              <template v-if="dropModalViewMode === 'projections'">
+                <div class="col-span-2 text-center">
+                  <div class="font-bold" :class="getComparisonClass(getPlayerProjection(dropModalPlayer, 'today'), getPlayerProjection(player, 'today'))">
+                    {{ getPlayerProjection(player, 'today').toFixed(1) }}
+                  </div>
+                  <div class="text-[10px]" :class="getPlayerProjection(dropModalPlayer, 'today') - getPlayerProjection(player, 'today') >= 0 ? 'text-green-400' : 'text-red-400'">
+                    {{ (getPlayerProjection(dropModalPlayer, 'today') - getPlayerProjection(player, 'today')) >= 0 ? '+' : '' }}{{ (getPlayerProjection(dropModalPlayer, 'today') - getPlayerProjection(player, 'today')).toFixed(1) }}
+                  </div>
+                </div>
+                <div class="col-span-2 text-center">
+                  <div class="font-bold" :class="getComparisonClass(getPlayerProjection(dropModalPlayer, '7day'), getPlayerProjection(player, '7day'))">
+                    {{ getPlayerProjection(player, '7day').toFixed(1) }}
+                  </div>
+                  <div class="text-[10px]" :class="getPlayerProjection(dropModalPlayer, '7day') - getPlayerProjection(player, '7day') >= 0 ? 'text-green-400' : 'text-red-400'">
+                    {{ (getPlayerProjection(dropModalPlayer, '7day') - getPlayerProjection(player, '7day')) >= 0 ? '+' : '' }}{{ (getPlayerProjection(dropModalPlayer, '7day') - getPlayerProjection(player, '7day')).toFixed(1) }}
+                  </div>
+                </div>
+                <div class="col-span-2 text-center">
+                  <div class="font-bold" :class="getComparisonClass(getPlayerProjection(dropModalPlayer, '14day'), getPlayerProjection(player, '14day'))">
+                    {{ getPlayerProjection(player, '14day').toFixed(1) }}
+                  </div>
+                  <div class="text-[10px]" :class="getPlayerProjection(dropModalPlayer, '14day') - getPlayerProjection(player, '14day') >= 0 ? 'text-green-400' : 'text-red-400'">
+                    {{ (getPlayerProjection(dropModalPlayer, '14day') - getPlayerProjection(player, '14day')) >= 0 ? '+' : '' }}{{ (getPlayerProjection(dropModalPlayer, '14day') - getPlayerProjection(player, '14day')).toFixed(1) }}
+                  </div>
+                </div>
+                <div class="col-span-2 text-center">
+                  <div class="font-bold" :class="getComparisonClass(getPlayerProjection(dropModalPlayer, 'ros'), getPlayerProjection(player, 'ros'))">
+                    {{ getPlayerProjection(player, 'ros').toFixed(1) }}
+                  </div>
+                  <div class="text-[10px]" :class="getPlayerProjection(dropModalPlayer, 'ros') - getPlayerProjection(player, 'ros') >= 0 ? 'text-green-400' : 'text-red-400'">
+                    {{ (getPlayerProjection(dropModalPlayer, 'ros') - getPlayerProjection(player, 'ros')) >= 0 ? '+' : '' }}{{ (getPlayerProjection(dropModalPlayer, 'ros') - getPlayerProjection(player, 'ros')).toFixed(1) }}
+                  </div>
+                </div>
+              </template>
+              <template v-else>
+                <div class="col-span-2 text-center font-bold text-dark-text">{{ getPlayerStats(player, 'l7').toFixed(1) }}</div>
+                <div class="col-span-2 text-center font-bold text-dark-text">{{ getPlayerStats(player, 'l14').toFixed(1) }}</div>
+                <div class="col-span-2 text-center font-bold text-dark-text">{{ getPlayerStats(player, 'season').toFixed(1) }}</div>
+                <div class="col-span-2 text-center font-bold text-dark-text">{{ player.ppg?.toFixed(1) || '0' }}</div>
+              </template>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Modal Footer -->
+        <div class="px-6 py-4 border-t border-dark-border bg-dark-border/20 flex items-center justify-between">
+          <button @click="closeDropModal" class="px-4 py-2 text-dark-textMuted hover:text-dark-text transition-colors">
+            Cancel
+          </button>
+          <button 
+            @click="confirmDrop"
+            :disabled="!selectedDropPlayer"
+            class="px-6 py-2 bg-gradient-to-r from-cyan-500 to-blue-500 text-white font-semibold rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:from-cyan-400 hover:to-blue-400 transition-all"
+          >
+            Add {{ dropModalPlayer?.full_name?.split(' ')[1] || 'Player' }}, Drop {{ selectedDropPlayer?.full_name?.split(' ')[1] || '...' }}
+          </button>
+        </div>
       </div>
     </div>
   </div>
@@ -2308,6 +2515,109 @@ const benchPlayers = computed(() => {
 // Waiver lineup management
 const waiverLineupPlayers = ref<any[]>([])
 const bestAvailablePosition = ref('all')
+const bestAvailableViewMode = ref<'projections' | 'stats'>('projections')
+
+// Drop player modal state
+const showDropModal = ref(false)
+const dropModalPlayer = ref<any>(null)
+const dropModalViewMode = ref<'projections' | 'stats'>('projections')
+const selectedDropPlayer = ref<any>(null)
+
+// Droppable players - all my roster players sorted by worst first
+const droppablePlayers = computed(() => {
+  return myTeamPlayers.value
+    .slice()
+    .sort((a, b) => (a.compositeScore || 0) - (b.compositeScore || 0))
+})
+
+// Projection calculations for free agents
+function getPlayerProjection(player: any, period: string): number {
+  if (!player) return 0
+  const ppg = player.ppg || 0
+  const gamesPerDay = 0.6 // ~60% chance of game on any day
+  
+  switch (period) {
+    case 'today':
+      return ppg * gamesPerDay
+    case '7day':
+      return ppg * 7 * gamesPerDay
+    case '14day':
+      return ppg * 14 * gamesPerDay
+    case 'ros':
+      return ppg * 60 * gamesPerDay // ~60 days remaining
+    default:
+      return ppg
+  }
+}
+
+// Stats calculations (using actual historical data if available, else estimate from PPG)
+function getPlayerStats(player: any, period: string): number {
+  if (!player) return 0
+  const ppg = player.ppg || 0
+  const totalPoints = player.total_points || player.season_total || (ppg * 100)
+  const gamesPlayed = player.games_played || Math.round(totalPoints / (ppg || 1)) || 100
+  
+  switch (period) {
+    case 'l7':
+      // Last 7 days - use recent_ppg if available, else estimate
+      const l7ppg = player.recent_7_ppg || player.recent_ppg || ppg
+      return l7ppg * 4 // ~4 games in last 7 days
+    case 'l14':
+      const l14ppg = player.recent_14_ppg || player.recent_ppg || ppg
+      return l14ppg * 8 // ~8 games in last 14 days
+    case 'season':
+      return totalPoints
+    default:
+      return ppg
+  }
+}
+
+// Comparison class for projections
+function getComparisonClass(pickupValue: number, dropValue: number): string {
+  if (pickupValue > dropValue) return 'text-red-400' // Drop player is worse
+  if (pickupValue < dropValue) return 'text-green-400' // Drop player is better
+  return 'text-dark-text'
+}
+
+// Handle adding player - check if roster is full
+function handleAddPlayer(player: any) {
+  if (!isFreeAgent(player)) return
+  
+  if (isInWaiverLineup(player)) {
+    removeFromWaiverLineup(player)
+    return
+  }
+  
+  // Check if roster is full
+  if (rosterSpotsAvailable.value <= 0) {
+    // Show drop modal
+    dropModalPlayer.value = player
+    selectedDropPlayer.value = null
+    showDropModal.value = true
+  } else {
+    // Directly add to lineup
+    togglePlayerInLineup(player)
+  }
+}
+
+function closeDropModal() {
+  showDropModal.value = false
+  dropModalPlayer.value = null
+  selectedDropPlayer.value = null
+}
+
+function confirmDrop() {
+  if (!dropModalPlayer.value || !selectedDropPlayer.value) return
+  
+  // Add the pickup player to waiver lineup
+  const enrichedPlayer = getStartSitPlayers('Util').find(p => p.player_key === dropModalPlayer.value.player_key) || dropModalPlayer.value
+  waiverLineupPlayers.value.push({
+    ...enrichedPlayer,
+    droppingPlayer: selectedDropPlayer.value // Track who we're dropping for this player
+  })
+  
+  closeDropModal()
+}
 
 const filteredBestAvailable = computed(() => {
   let freeAgents = allPlayers.value
@@ -2576,17 +2886,29 @@ const rosterSpotsAvailable = computed(() => {
   let maxRosterSize = 25 // Default
   
   if (isEspn.value) {
-    // Use ESPN roster size from settings
+    // Use ESPN roster size from settings (already excludes IL/IR slots)
     maxRosterSize = espnMaxRosterSize.value
   } else if (rosterPositions.value.length > 0) {
-    // Yahoo: sum up position counts
+    // Yahoo: sum up position counts, excluding IL/IR/DL positions
     maxRosterSize = rosterPositions.value.reduce((sum: number, pos: any) => {
+      const posType = (pos.position_type || pos.position || '').toUpperCase()
+      if (['IL', 'IR', 'IL+', 'DL', 'NA'].includes(posType)) {
+        return sum // Don't count IL/IR slots
+      }
       return sum + (pos.count || 1)
     }, 0)
   }
   
-  const currentRosterSize = myTeamPlayers.value.length
-  console.log('[Roster] Max:', maxRosterSize, 'Current:', currentRosterSize, 'Available:', maxRosterSize - currentRosterSize)
+  // Count only active roster players (exclude those on IL/IR)
+  const activeRosterPlayers = myTeamPlayers.value.filter(p => {
+    const slot = (p.lineupSlot || p.selected_position || '').toUpperCase()
+    const injury = (p.injuryStatus || '').toUpperCase()
+    // Exclude players in IL/IR slots or with IL-eligible injury status
+    return !['IL', 'IR', 'IL+', 'DL', 'NA'].includes(slot)
+  })
+  
+  const currentRosterSize = activeRosterPlayers.length
+  console.log('[Roster] Max Active:', maxRosterSize, 'Current Active:', currentRosterSize, 'Available:', maxRosterSize - currentRosterSize, '(Total players:', myTeamPlayers.value.length, ')')
   return maxRosterSize - currentRosterSize
 })
 
@@ -3200,15 +3522,29 @@ async function loadEspnProjections() {
     
     // Load league settings including roster configuration
     let maxRosterSizeFromSettings = 25 // Default
+    let activeRosterSize = 25 // Excludes IL/IR slots
     try {
       const league = await espnService.getLeague(sport as any, leagueId, season)
       if (league?.settings?.rosterSettings?.lineupSlotCounts) {
         // Sum up all lineup slot counts to get total roster size
         const slotCounts = league.settings.rosterSettings.lineupSlotCounts
         maxRosterSizeFromSettings = Object.values(slotCounts).reduce((sum: number, count: any) => sum + (count || 0), 0)
-        console.log('[ESPN Points Projections] Roster size from settings:', maxRosterSizeFromSettings, 'slots:', slotCounts)
+        
+        // Calculate active roster size (exclude IL/IR/IL+/NA slots)
+        // Baseball: 17=IL, 18=IL+, 19=NA
+        // Football/Other: 21=IR
+        const excludedSlotIds = [17, 18, 19, 21]
+        activeRosterSize = Object.entries(slotCounts).reduce((sum: number, [slotId, count]: [string, any]) => {
+          if (excludedSlotIds.includes(parseInt(slotId))) {
+            console.log(`[ESPN] Excluding slot ${slotId} (${count} slots) from active roster`)
+            return sum
+          }
+          return sum + (count || 0)
+        }, 0)
+        
+        console.log('[ESPN Points Projections] Total roster size:', maxRosterSizeFromSettings, 'Active (excl IL/IR):', activeRosterSize, 'slots:', slotCounts)
       }
-      espnMaxRosterSize.value = maxRosterSizeFromSettings
+      espnMaxRosterSize.value = activeRosterSize // Use active roster size, not total
     } catch (e) {
       console.log('[ESPN Points Projections] Could not load league settings:', e)
     }
