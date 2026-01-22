@@ -781,8 +781,8 @@ const tabs = [
   { name: 'Season', path: '/' },
   { name: 'Power Rankings', path: '/power-rankings' },
   { name: 'Matchups', path: '/matchups' },
-  { name: 'History', path: '/history' },
   { name: 'Draft', path: '/draft' },
+  { name: 'History', path: '/history' },
   { name: 'Free Tools', path: '/free-tools' },
   { name: 'Ultimate Tools', path: '/ultimate-tools', isUltimate: true }
 ]
