@@ -682,19 +682,24 @@
                           </div>
                         </td>
                       </tr>
-                      <tr :class="getStartSitRowClass(player)" class="hover:bg-dark-border/20 transition-colors">
+                      <tr 
+                        :class="[getStartSitRowClass(player), { 'cursor-pointer': isFreeAgent(player), 'bg-cyan-500/10': isInWaiverLineup(player) }]" 
+                        class="hover:bg-dark-border/20 transition-colors"
+                        @click="isFreeAgent(player) && togglePlayerInLineup(player)"
+                      >
                         <td class="px-3 py-2"><span class="font-bold text-lg text-dark-text">{{ index + 1 }}</span></td>
                         <td class="px-3 py-2">
                           <div class="flex items-center gap-3">
                             <div class="relative">
-                              <div class="w-10 h-10 rounded-full bg-dark-border overflow-hidden ring-2" :class="getStartSitAvatarRingClass(player)">
+                              <div class="w-10 h-10 rounded-full bg-dark-border overflow-hidden ring-2" :class="[getStartSitAvatarRingClass(player), { 'ring-cyan-400': isInWaiverLineup(player) }]">
                                 <img :src="player.headshot || defaultHeadshot" :alt="player.full_name" class="w-full h-full object-cover" @error="handleImageError" />
                               </div>
                               <div v-if="isMyPlayer(player)" class="absolute -top-1 -right-1 w-5 h-5 bg-yellow-400 rounded-full flex items-center justify-center"><span class="text-xs text-gray-900 font-bold">★</span></div>
+                              <div v-else-if="isInWaiverLineup(player)" class="absolute -top-1 -right-1 w-5 h-5 bg-cyan-400 rounded-full flex items-center justify-center"><span class="text-xs text-gray-900 font-bold">W</span></div>
                               <div v-else-if="isFreeAgent(player)" class="absolute -top-1 -right-1 w-5 h-5 bg-cyan-400 rounded-full flex items-center justify-center"><span class="text-xs text-gray-900 font-bold">+</span></div>
                             </div>
                             <div>
-                              <span class="font-semibold" :class="getStartSitPlayerNameClass(player)">{{ player.full_name }}</span>
+                              <span class="font-semibold" :class="[getStartSitPlayerNameClass(player), { 'text-cyan-400': isInWaiverLineup(player) }]">{{ player.full_name }}</span>
                               <div class="flex items-center gap-2 text-xs text-dark-textMuted">
                                 <span>{{ player.mlb_team || 'FA' }}</span>
                                 <span class="text-dark-border">•</span>
@@ -702,6 +707,7 @@
                                   <img :src="platformLogo" :alt="platformName" class="w-3 h-3 opacity-60" />
                                   <span :class="isMyPlayer(player) ? 'text-yellow-400' : ''">{{ player.fantasy_team }}</span>
                                 </template>
+                                <span v-else-if="isInWaiverLineup(player)" class="text-cyan-400">📋 Added to lineup</span>
                                 <span v-else class="text-cyan-400">Free Agent</span>
                               </div>
                             </div>
@@ -764,30 +770,80 @@
         <div class="w-80 flex-shrink-0">
           <div class="card sticky top-4">
             <div class="card-header py-3">
-              <div class="flex items-center gap-2">
-                <span class="text-xl">🏆</span>
-                <h2 class="text-base font-bold text-dark-text">Suggested Lineup</h2>
+              <div class="flex items-center justify-between">
+                <div class="flex items-center gap-2">
+                  <span class="text-xl">🏆</span>
+                  <h2 class="text-base font-bold text-dark-text">Suggested Lineup</h2>
+                </div>
+                <div class="flex items-center gap-2">
+                  <button 
+                    v-if="waiverLineupPlayers.length > 0"
+                    @click="clearWaiverLineup"
+                    class="px-2 py-1 text-xs font-medium bg-red-500/20 text-red-400 rounded hover:bg-red-500/30 transition-colors"
+                  >
+                    Clear
+                  </button>
+                  <button 
+                    @click="downloadSuggestedLineup"
+                    class="px-2 py-1 text-xs font-medium bg-yellow-500/20 text-yellow-400 rounded hover:bg-yellow-500/30 transition-colors flex items-center gap-1"
+                  >
+                    <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                    </svg>
+                    Export
+                  </button>
+                </div>
               </div>
+              <p v-if="waiverLineupPlayers.length > 0" class="text-xs text-cyan-400 mt-1">
+                {{ waiverLineupPlayers.length }} waiver pickup{{ waiverLineupPlayers.length > 1 ? 's' : '' }} added
+              </p>
             </div>
             <div class="card-body p-0">
               <div class="divide-y divide-dark-border/30">
-                <div v-for="(slot, idx) in suggestedLineup" :key="idx" class="flex items-center gap-2 px-3 py-2">
+                <div 
+                  v-for="(slot, idx) in modifiedSuggestedLineup" 
+                  :key="idx" 
+                  class="flex items-center gap-2 px-3 py-2"
+                  :class="{ 'bg-cyan-500/10 border-l-2 border-cyan-400': slot.isWaiver }"
+                >
                   <div class="w-10 text-center"><span class="px-1.5 py-0.5 rounded text-[10px] font-bold" :class="getPositionClass(slot.position)">{{ slot.position }}</span></div>
                   <div v-if="slot.player" class="flex items-center gap-2 flex-1 min-w-0">
-                    <div class="w-8 h-8 rounded-full bg-dark-border overflow-hidden"><img :src="slot.player.headshot || defaultHeadshot" class="w-full h-full object-cover" @error="handleImageError" /></div>
+                    <div class="relative">
+                      <div class="w-8 h-8 rounded-full bg-dark-border overflow-hidden" :class="slot.isWaiver ? 'ring-2 ring-cyan-400' : ''">
+                        <img :src="slot.player.headshot || defaultHeadshot" class="w-full h-full object-cover" @error="handleImageError" />
+                      </div>
+                      <div v-if="slot.isWaiver" class="absolute -top-1 -right-1 w-4 h-4 bg-cyan-400 rounded-full flex items-center justify-center">
+                        <span class="text-[8px] text-gray-900 font-bold">W</span>
+                      </div>
+                    </div>
                     <div class="flex-1 min-w-0">
-                      <div class="font-medium text-dark-text text-xs truncate">{{ slot.player.full_name }}</div>
+                      <div class="font-medium text-xs truncate" :class="slot.isWaiver ? 'text-cyan-400' : 'text-dark-text'">{{ slot.player.full_name }}</div>
                       <div class="text-[10px] text-dark-textMuted">{{ slot.player.opponent || (slot.player.gamesThisWeek + ' games') }}</div>
                     </div>
-                    <div class="font-bold text-yellow-400 text-sm">{{ slot.player.projection?.toFixed(1) || '—' }}</div>
+                    <div class="font-bold text-sm" :class="slot.isWaiver ? 'text-cyan-400' : 'text-yellow-400'">{{ slot.player.projection?.toFixed(1) || '—' }}</div>
+                    <button 
+                      v-if="slot.isWaiver"
+                      @click="removeFromWaiverLineup(slot.player)"
+                      class="text-red-400 hover:text-red-300 transition-colors"
+                    >
+                      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                      </svg>
+                    </button>
                   </div>
                   <div v-else class="flex items-center gap-2 flex-1"><div class="w-8 h-8 rounded-full bg-dark-border/30"></div><span class="text-xs text-dark-textMuted italic">Empty</span></div>
                 </div>
               </div>
               <div class="px-3 py-3 bg-dark-border/20 border-t border-dark-border/30">
-                <div class="flex items-center justify-between">
+                <div class="flex items-center justify-between mb-2">
                   <span class="text-dark-textMuted text-sm">Projected Total</span>
-                  <span class="text-xl font-bold text-yellow-400">{{ suggestedLineupTotal.toFixed(1) }}</span>
+                  <span class="text-xl font-bold text-yellow-400">{{ modifiedSuggestedLineupTotal.toFixed(1) }}</span>
+                </div>
+                <div v-if="waiverLineupPlayers.length > 0" class="flex items-center justify-between text-xs">
+                  <span class="text-dark-textMuted">vs Original</span>
+                  <span :class="modifiedSuggestedLineupTotal - suggestedLineupTotal >= 0 ? 'text-green-400' : 'text-red-400'">
+                    {{ modifiedSuggestedLineupTotal - suggestedLineupTotal >= 0 ? '+' : '' }}{{ (modifiedSuggestedLineupTotal - suggestedLineupTotal).toFixed(1) }}
+                  </span>
                 </div>
               </div>
             </div>
@@ -795,136 +851,97 @@
         </div>
       </div>
 
-      <!-- Recommended Moves Section -->
+      <!-- Best Available Section -->
       <div class="card mt-6">
         <div class="card-header">
-          <div class="flex items-center gap-3">
-            <span class="text-2xl">🔄</span>
-            <div>
-              <h2 class="card-title">Recommended Moves</h2>
-              <p class="text-xs text-dark-textMuted">
-                <template v-if="rosterSpotsAvailable > 0">
-                  <span class="text-green-400">{{ rosterSpotsAvailable }} open roster spot{{ rosterSpotsAvailable > 1 ? 's' : '' }}</span> — can add players without dropping
-                </template>
-                <template v-else-if="rosterSpotsAvailable < 0">
-                  <span class="text-red-400">{{ Math.abs(rosterSpotsAvailable) }} over roster limit</span> — must drop {{ Math.abs(rosterSpotsAvailable) }} player{{ Math.abs(rosterSpotsAvailable) > 1 ? 's' : '' }} before making moves
-                </template>
-                <template v-else>
-                  Roster full — must drop a player to make a pickup
-                </template>
-              </p>
+          <div class="flex items-center justify-between">
+            <div class="flex items-center gap-3">
+              <span class="text-2xl">🎯</span>
+              <div>
+                <h2 class="card-title">Best Available</h2>
+                <p class="text-xs text-dark-textMuted">
+                  Click any player to add them to your suggested lineup
+                  <template v-if="rosterSpotsAvailable > 0">
+                    • <span class="text-green-400">{{ rosterSpotsAvailable }} open spot{{ rosterSpotsAvailable > 1 ? 's' : '' }}</span>
+                  </template>
+                  <template v-else-if="rosterSpotsAvailable < 0">
+                    • <span class="text-red-400">{{ Math.abs(rosterSpotsAvailable) }} over limit</span>
+                  </template>
+                </p>
+              </div>
+            </div>
+            <div class="flex items-center gap-2">
+              <select v-model="bestAvailablePosition" class="px-3 py-1.5 rounded-lg bg-dark-border/50 text-dark-text text-sm border border-dark-border focus:border-yellow-400 focus:outline-none">
+                <option value="all">All Positions</option>
+                <option v-for="pos in startSitPositions" :key="pos.id" :value="pos.id">{{ pos.label }}</option>
+              </select>
             </div>
           </div>
         </div>
         <div class="card-body p-0">
-          <div v-if="recommendedMoves.length === 0" class="p-6 text-center text-dark-textMuted">
-            <span class="text-4xl mb-3 block">✅</span>
-            <p>No recommended moves at this time. Your roster looks strong!</p>
-          </div>
-          <div v-else class="divide-y divide-dark-border/30">
-            <div v-for="(move, idx) in recommendedMoves.slice(0, 5)" :key="idx" class="p-4">
-              <div class="flex items-start gap-4">
-                <!-- Pickup Player -->
-                <div class="flex-1">
-                  <div class="text-xs text-green-400 font-semibold uppercase mb-2">📈 Add</div>
-                  <div class="flex items-center gap-3">
-                    <div class="w-10 h-10 rounded-full bg-dark-border overflow-hidden ring-2 ring-green-500/50">
-                      <img :src="move.pickup.headshot || defaultHeadshot" class="w-full h-full object-cover" @error="handleImageError" />
+          <div class="overflow-x-auto">
+            <table class="w-full">
+              <thead class="bg-dark-border/30">
+                <tr>
+                  <th class="px-3 py-2 text-left text-xs font-semibold text-dark-textMuted uppercase w-10">#</th>
+                  <th class="px-3 py-2 text-left text-xs font-semibold text-dark-textMuted uppercase">Player</th>
+                  <th class="px-2 py-2 text-center text-xs font-semibold text-dark-textMuted uppercase w-12">Pos</th>
+                  <th class="px-2 py-2 text-center text-xs font-semibold text-dark-textMuted uppercase w-14">PPG</th>
+                  <th class="px-2 py-2 text-center text-xs font-semibold text-dark-textMuted uppercase w-14">Score</th>
+                  <th class="px-2 py-2 text-center text-xs font-semibold text-dark-textMuted uppercase w-14">VOR</th>
+                  <th class="px-2 py-2 text-center text-xs font-semibold text-dark-textMuted uppercase w-20">Action</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-dark-border/30">
+                <tr 
+                  v-for="(player, idx) in filteredBestAvailable" 
+                  :key="player.player_key"
+                  class="hover:bg-dark-border/20 transition-colors cursor-pointer"
+                  :class="{ 'bg-cyan-500/10': isInWaiverLineup(player) }"
+                  @click="togglePlayerInLineup(player)"
+                >
+                  <td class="px-3 py-2 text-dark-textMuted">{{ idx + 1 }}</td>
+                  <td class="px-3 py-2">
+                    <div class="flex items-center gap-2">
+                      <div class="w-8 h-8 rounded-full bg-dark-border overflow-hidden ring-2 ring-cyan-500/50">
+                        <img :src="player.headshot || defaultHeadshot" class="w-full h-full object-cover" @error="handleImageError" />
+                      </div>
+                      <div>
+                        <div class="font-medium text-dark-text text-sm">{{ player.full_name }}</div>
+                        <div class="text-xs text-dark-textMuted">{{ player.mlb_team || 'FA' }}</div>
+                      </div>
                     </div>
-                    <div>
-                      <div class="font-semibold text-dark-text">{{ move.pickup.full_name }}</div>
-                      <div class="text-xs text-dark-textMuted">{{ move.pickup.position?.split(',')[0] }} • {{ move.pickup.mlb_team || 'FA' }}</div>
-                    </div>
-                  </div>
-                </div>
-
-                <!-- Arrow -->
-                <div class="flex items-center justify-center w-10 h-10 mt-6">
-                  <svg class="w-6 h-6 text-yellow-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6" />
-                  </svg>
-                </div>
-
-                <!-- Drop Player -->
-                <div class="flex-1">
-                  <div class="text-xs text-red-400 font-semibold uppercase mb-2">📉 Drop</div>
-                  <div v-if="move.drop" class="flex items-center gap-3">
-                    <div class="w-10 h-10 rounded-full bg-dark-border overflow-hidden ring-2 ring-red-500/50">
-                      <img :src="move.drop.headshot || defaultHeadshot" class="w-full h-full object-cover" @error="handleImageError" />
-                    </div>
-                    <div>
-                      <div class="font-semibold text-dark-text">{{ move.drop.full_name }}</div>
-                      <div class="text-xs text-dark-textMuted">{{ move.drop.position?.split(',')[0] }} • {{ move.drop.mlb_team || 'FA' }}</div>
-                    </div>
-                  </div>
-                  <div v-else class="flex items-center gap-3 text-green-400">
-                    <div class="w-10 h-10 rounded-full bg-green-500/20 flex items-center justify-center">
-                      <span class="text-lg">✓</span>
-                    </div>
-                    <div class="text-sm">No drop needed (open slot)</div>
-                  </div>
-                </div>
-              </div>
-
-              <!-- Impact Projections -->
-              <div class="mt-4 grid grid-cols-4 gap-3">
-                <template v-if="sportName === 'Football'">
-                  <div class="bg-dark-bg/50 rounded-lg p-3 text-center">
-                    <div class="text-xs text-dark-textMuted uppercase mb-1">This Week</div>
-                    <div class="font-bold" :class="move.impact.thisWeek >= 0 ? 'text-green-400' : 'text-red-400'">
-                      {{ move.impact.thisWeek >= 0 ? '+' : '' }}{{ move.impact.thisWeek.toFixed(1) }}
-                    </div>
-                  </div>
-                  <div class="bg-dark-bg/50 rounded-lg p-3 text-center">
-                    <div class="text-xs text-dark-textMuted uppercase mb-1">Next 3 Wks</div>
-                    <div class="font-bold" :class="move.impact.next3Weeks >= 0 ? 'text-green-400' : 'text-red-400'">
-                      {{ move.impact.next3Weeks >= 0 ? '+' : '' }}{{ move.impact.next3Weeks.toFixed(1) }}
-                    </div>
-                  </div>
-                  <div class="bg-dark-bg/50 rounded-lg p-3 text-center">
-                    <div class="text-xs text-dark-textMuted uppercase mb-1">ROS</div>
-                    <div class="font-bold" :class="move.impact.ros >= 0 ? 'text-green-400' : 'text-red-400'">
-                      {{ move.impact.ros >= 0 ? '+' : '' }}{{ move.impact.ros.toFixed(1) }}
-                    </div>
-                  </div>
-                  <div class="bg-dark-bg/50 rounded-lg p-3 text-center">
-                    <div class="text-xs text-dark-textMuted uppercase mb-1">Verdict</div>
-                    <div class="font-bold" :class="getMoveVerdictClass(move.impact.ros)">{{ getMoveVerdict(move.impact.ros) }}</div>
-                  </div>
-                </template>
-                <template v-else>
-                  <div class="bg-dark-bg/50 rounded-lg p-3 text-center">
-                    <div class="text-xs text-dark-textMuted uppercase mb-1">Today</div>
-                    <div class="font-bold" :class="move.impact.today >= 0 ? 'text-green-400' : 'text-red-400'">
-                      {{ move.impact.today >= 0 ? '+' : '' }}{{ move.impact.today.toFixed(1) }}
-                    </div>
-                  </div>
-                  <div class="bg-dark-bg/50 rounded-lg p-3 text-center">
-                    <div class="text-xs text-dark-textMuted uppercase mb-1">Next 7 Days</div>
-                    <div class="font-bold" :class="move.impact.next7Days >= 0 ? 'text-green-400' : 'text-red-400'">
-                      {{ move.impact.next7Days >= 0 ? '+' : '' }}{{ move.impact.next7Days.toFixed(1) }}
-                    </div>
-                  </div>
-                  <div class="bg-dark-bg/50 rounded-lg p-3 text-center">
-                    <div class="text-xs text-dark-textMuted uppercase mb-1">Next 14 Days</div>
-                    <div class="font-bold" :class="move.impact.next14Days >= 0 ? 'text-green-400' : 'text-red-400'">
-                      {{ move.impact.next14Days >= 0 ? '+' : '' }}{{ move.impact.next14Days.toFixed(1) }}
-                    </div>
-                  </div>
-                  <div class="bg-dark-bg/50 rounded-lg p-3 text-center">
-                    <div class="text-xs text-dark-textMuted uppercase mb-1">ROS</div>
-                    <div class="font-bold" :class="move.impact.ros >= 0 ? 'text-green-400' : 'text-red-400'">
-                      {{ move.impact.ros >= 0 ? '+' : '' }}{{ move.impact.ros.toFixed(1) }}
-                    </div>
-                  </div>
-                </template>
-              </div>
-
-              <!-- Recommendation Reason -->
-              <div class="mt-3 text-xs text-dark-textMuted bg-dark-bg/30 rounded-lg p-2">
-                💡 {{ move.reason }}
-              </div>
-            </div>
+                  </td>
+                  <td class="px-2 py-2 text-center">
+                    <span class="px-1.5 py-0.5 rounded text-[10px] font-bold" :class="getPositionClass(player.position)">{{ player.position?.split(',')[0] }}</span>
+                  </td>
+                  <td class="px-2 py-2 text-center font-bold text-dark-text">{{ player.ppg?.toFixed(1) || '0' }}</td>
+                  <td class="px-2 py-2 text-center font-bold text-yellow-400">{{ player.compositeScore?.toFixed(0) || '0' }}</td>
+                  <td class="px-2 py-2 text-center font-bold" :class="(player.vor || 0) >= 0 ? 'text-green-400' : 'text-red-400'">
+                    {{ (player.vor || 0) >= 0 ? '+' : '' }}{{ player.vor?.toFixed(1) || '0' }}
+                  </td>
+                  <td class="px-2 py-2 text-center">
+                    <button 
+                      v-if="!isInWaiverLineup(player)"
+                      class="px-2 py-1 text-xs font-medium bg-cyan-500/20 text-cyan-400 rounded hover:bg-cyan-500/30 transition-colors"
+                      @click.stop="togglePlayerInLineup(player)"
+                    >
+                      + Add
+                    </button>
+                    <button 
+                      v-else
+                      class="px-2 py-1 text-xs font-medium bg-red-500/20 text-red-400 rounded hover:bg-red-500/30 transition-colors"
+                      @click.stop="togglePlayerInLineup(player)"
+                    >
+                      Remove
+                    </button>
+                  </td>
+                </tr>
+                <tr v-if="filteredBestAvailable.length === 0">
+                  <td colspan="7" class="px-4 py-6 text-center text-dark-textMuted">No free agents available at this position</td>
+                </tr>
+              </tbody>
+            </table>
           </div>
         </div>
       </div>
@@ -2223,6 +2240,144 @@ const suggestedLineup = computed(() => {
 })
 
 const suggestedLineupTotal = computed(() => suggestedLineup.value.reduce((sum, s) => sum + (s.player?.projection || 0), 0))
+
+// Waiver lineup management
+const waiverLineupPlayers = ref<any[]>([])
+const bestAvailablePosition = ref('all')
+
+const filteredBestAvailable = computed(() => {
+  let freeAgents = allPlayers.value
+    .filter(p => isFreeAgent(p))
+    .sort((a, b) => (b.compositeScore || 0) - (a.compositeScore || 0))
+  
+  if (bestAvailablePosition.value !== 'all') {
+    const pos = bestAvailablePosition.value
+    const outfieldPositions = ['OF', 'LF', 'CF', 'RF']
+    if (pos === 'OF') {
+      freeAgents = freeAgents.filter(p => outfieldPositions.some(ofPos => p.position?.includes(ofPos)))
+    } else {
+      freeAgents = freeAgents.filter(p => p.position?.includes(pos))
+    }
+  }
+  
+  return freeAgents.slice(0, 15) // Top 15 free agents
+})
+
+function isInWaiverLineup(player: any): boolean {
+  return waiverLineupPlayers.value.some(p => p.player_key === player.player_key)
+}
+
+function togglePlayerInLineup(player: any) {
+  if (!isFreeAgent(player)) return
+  
+  if (isInWaiverLineup(player)) {
+    removeFromWaiverLineup(player)
+  } else {
+    // Add player with their Start/Sit projection data
+    const enrichedPlayer = getStartSitPlayers('Util').find(p => p.player_key === player.player_key) || player
+    waiverLineupPlayers.value.push(enrichedPlayer)
+  }
+}
+
+function removeFromWaiverLineup(player: any) {
+  waiverLineupPlayers.value = waiverLineupPlayers.value.filter(p => p.player_key !== player.player_key)
+}
+
+function clearWaiverLineup() {
+  waiverLineupPlayers.value = []
+}
+
+const modifiedSuggestedLineup = computed(() => {
+  // Start with original suggested lineup
+  const slots = suggestedLineup.value.map(slot => ({ ...slot, isWaiver: false }))
+  
+  // Try to fit waiver players into appropriate slots
+  waiverLineupPlayers.value.forEach(waiverPlayer => {
+    const playerPos = waiverPlayer.position?.split(',')[0]?.trim() || 'Util'
+    const outfieldPositions = ['OF', 'LF', 'CF', 'RF']
+    
+    // Find best slot for this player
+    let bestSlotIdx = -1
+    let bestImprovement = -Infinity
+    
+    slots.forEach((slot, idx) => {
+      // Check if position matches
+      const slotMatches = slot.position === playerPos || 
+        slot.position === 'Util' ||
+        (slot.position === 'OF' && outfieldPositions.includes(playerPos))
+      
+      if (!slotMatches) return
+      
+      // Calculate improvement (prefer empty slots or replacing lower projection)
+      const currentProjection = slot.player?.projection || 0
+      const waiverProjection = waiverPlayer.projection || (waiverPlayer.ppg * 0.6) || 0
+      const improvement = waiverProjection - currentProjection
+      
+      // Prefer this slot if: empty, or better improvement, or replaces non-my-team player
+      const isMyTeamInSlot = slot.player && !slot.isWaiver && isMyPlayer(slot.player)
+      
+      if (!slot.player || (!isMyTeamInSlot && improvement > bestImprovement) || (improvement > 0 && improvement > bestImprovement)) {
+        bestSlotIdx = idx
+        bestImprovement = improvement
+      }
+    })
+    
+    if (bestSlotIdx >= 0) {
+      slots[bestSlotIdx] = {
+        position: slots[bestSlotIdx].position,
+        player: waiverPlayer,
+        isWaiver: true
+      }
+    }
+  })
+  
+  return slots
+})
+
+const modifiedSuggestedLineupTotal = computed(() => {
+  return modifiedSuggestedLineup.value.reduce((sum, s) => sum + (s.player?.projection || 0), 0)
+})
+
+function downloadSuggestedLineup() {
+  const date = selectedDate.value.toISOString().split('T')[0]
+  const mode = scoringMode.value === 'daily' ? 'Daily' : 'Weekly'
+  
+  let content = `Suggested Lineup - ${mode} (${date})\n`
+  content += `${'='.repeat(50)}\n\n`
+  
+  modifiedSuggestedLineup.value.forEach(slot => {
+    const pos = slot.position.padEnd(4)
+    if (slot.player) {
+      const name = slot.player.full_name.padEnd(25)
+      const proj = (slot.player.projection || 0).toFixed(1).padStart(6)
+      const waiver = slot.isWaiver ? ' [WAIVER PICKUP]' : ''
+      content += `${pos} ${name} ${proj}${waiver}\n`
+    } else {
+      content += `${pos} (Empty)\n`
+    }
+  })
+  
+  content += `\n${'='.repeat(50)}\n`
+  content += `Projected Total: ${modifiedSuggestedLineupTotal.value.toFixed(1)}\n`
+  
+  if (waiverLineupPlayers.value.length > 0) {
+    content += `\nWaiver Pickups (${waiverLineupPlayers.value.length}):\n`
+    waiverLineupPlayers.value.forEach(p => {
+      content += `  - ${p.full_name} (${p.position?.split(',')[0]}) - ${p.ppg?.toFixed(1) || '0.0'} PPG\n`
+    })
+  }
+  
+  // Create and download file
+  const blob = new Blob([content], { type: 'text/plain' })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = `lineup-${date}.txt`
+  document.body.appendChild(a)
+  a.click()
+  document.body.removeChild(a)
+  URL.revokeObjectURL(url)
+}
 
 // Roster spots calculation
 const rosterSpotsAvailable = computed(() => {
