@@ -1230,6 +1230,30 @@ export const useLeagueStore = defineStore('league', () => {
         throw new Error('Could not fetch ESPN league')
       }
       
+      // Update saved league with correct scoring_type if it's missing or different
+      const existingSavedLeague = savedLeagues.value.find(l => l.league_id === leagueKey)
+      if (existingSavedLeague && league.scoringType) {
+        const espnScoringType = league.scoringType // e.g., 'H2H_POINTS', 'H2H_CATEGORY'
+        if (existingSavedLeague.scoring_type !== espnScoringType) {
+          console.log(`[ESPN] Updating saved league scoring_type: ${existingSavedLeague.scoring_type} -> ${espnScoringType}`)
+          existingSavedLeague.scoring_type = espnScoringType
+          saveToLocalStorage()
+          
+          // Also update in Supabase if authenticated
+          if (supabase && currentUserId.value) {
+            supabase
+              .from('user_leagues')
+              .update({ scoring_type: espnScoringType })
+              .eq('user_id', currentUserId.value)
+              .eq('league_id', leagueKey)
+              .then(({ error }) => {
+                if (error) console.error('[ESPN] Failed to update scoring_type in Supabase:', error)
+                else console.log('[ESPN] Updated scoring_type in Supabase')
+              })
+          }
+        }
+      }
+      
       // Get teams with standings
       const espnTeams = await espnService.getTeams(sport, espnLeagueId, season)
       

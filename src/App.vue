@@ -839,7 +839,8 @@ function formatScoringType(league: any): string {
   
   // Handle Yahoo-style types
   if (type === 'headpoint' || type === 'head_point') return 'H2H Points'
-  if (type === 'head' || type === 'headone' || type === 'headcategory' || type === 'head_category') return 'H2H Categories'
+  if (type === 'head' || type === 'headone') return 'H2H Categories' // Yahoo category
+  if (type === 'headcategory' || type === 'head_category') return 'H2H Categories'
   if (type === 'point' || type === 'points') return 'H2H Points'
   
   // Check if type contains keywords
@@ -847,10 +848,15 @@ function formatScoringType(league: any): string {
   if (type.includes('categor')) return 'H2H Categories'
   if (type.includes('point')) return 'H2H Points'
   
-  // Default based on sport
-  const sport = league?.sport || ''
-  if (sport === 'baseball') return 'H2H Categories'
+  // If no scoring_type stored, try to get from the currently loaded league in the store
+  if (!scoringType && league?.league_id) {
+    const currentLeague = leagueStore.currentLeague
+    if (currentLeague?.scoring_type) {
+      return formatScoringType({ scoring_type: currentLeague.scoring_type })
+    }
+  }
   
+  // Default to Points (more common these days, especially for ESPN)
   return 'H2H Points'
 }
 
