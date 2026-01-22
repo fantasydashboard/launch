@@ -760,9 +760,17 @@
         <div class="card">
           <div class="card-header">
             <div class="flex items-center justify-between">
-              <div class="flex items-center gap-2">
-                <span class="text-2xl">🏅</span>
-                <h2 class="card-title">Legacy Leaderboard</h2>
+              <div>
+                <div class="flex items-center gap-2">
+                  <span class="text-2xl">🏅</span>
+                  <h2 class="card-title">Legacy Leaderboard</h2>
+                </div>
+                <button 
+                  @click="showLegacySettings = true" 
+                  class="text-yellow-400 hover:text-yellow-300 text-xs font-semibold transition-colors mt-1"
+                >
+                  Customize Scoring →
+                </button>
               </div>
               <button 
                 @click="downloadLegacyLeaderboard"
@@ -1556,6 +1564,174 @@
       </div>
     </Teleport>
 
+    <!-- Legacy Settings Modal -->
+    <Teleport to="body">
+      <div 
+        v-if="showLegacySettings" 
+        class="fixed inset-0 z-50 flex items-center justify-center p-4"
+        @click.self="showLegacySettings = false"
+      >
+        <div class="absolute inset-0 bg-black/70 backdrop-blur-sm"></div>
+        <div class="relative bg-dark-elevated rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto border border-dark-border">
+          <!-- Header -->
+          <div class="sticky top-0 z-10 px-6 py-4 border-b border-dark-border bg-dark-elevated flex items-center justify-between">
+            <div>
+              <h3 class="text-xl font-bold text-dark-text">Customize Legacy Scoring</h3>
+              <p class="text-sm text-dark-textMuted">Adjust point values to match your league's values</p>
+            </div>
+            <button @click="showLegacySettings = false" class="p-2 rounded-lg hover:bg-dark-border/50 transition-colors">
+              <svg class="w-5 h-5 text-dark-textMuted" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+
+          <!-- Presets -->
+          <div class="p-6 border-b border-dark-border">
+            <h4 class="text-sm font-semibold text-dark-textMuted uppercase tracking-wider mb-3">Quick Presets</h4>
+            <div class="flex flex-wrap gap-2">
+              <button 
+                v-for="preset in legacyPresets" 
+                :key="preset.id"
+                @click="applyLegacyPreset(preset)"
+                class="px-3 py-2 rounded-lg border border-dark-border text-sm hover:border-primary hover:text-primary transition-colors"
+                :class="{ 'border-primary text-primary': currentLegacyPreset === preset.id }"
+              >
+                {{ preset.icon }} {{ preset.name }}
+              </button>
+            </div>
+          </div>
+
+          <!-- Point Categories -->
+          <div class="p-6 space-y-6">
+            <!-- Championships & Playoffs -->
+            <div>
+              <h4 class="text-sm font-semibold text-yellow-400 uppercase tracking-wider mb-4 flex items-center gap-2">
+                <span>🏆</span> Championships & Playoffs
+              </h4>
+              <div class="space-y-4">
+                <div v-for="factor in legacyFactors.filter(f => f.category === 'championship')" :key="factor.id" class="bg-dark-border/30 rounded-xl p-4">
+                  <div class="flex items-center justify-between mb-2">
+                    <div class="flex items-center gap-2">
+                      <span class="text-lg">{{ factor.icon }}</span>
+                      <span class="font-medium text-dark-text">{{ factor.name }}</span>
+                    </div>
+                    <span class="text-sm font-bold" :class="factor.value >= 0 ? 'text-green-400' : 'text-red-400'">
+                      {{ factor.value >= 0 ? '+' : '' }}{{ factor.value }}
+                    </span>
+                  </div>
+                  <p class="text-xs text-dark-textMuted mb-3">{{ factor.description }}</p>
+                  <div class="flex items-center gap-3">
+                    <input 
+                      type="range" 
+                      v-model.number="legacyPoints[factor.id]" 
+                      :min="factor.min" 
+                      :max="factor.max" 
+                      :step="factor.step"
+                      class="flex-1 h-2 bg-dark-border rounded-lg appearance-none cursor-pointer accent-primary"
+                    />
+                    <input 
+                      type="number" 
+                      v-model.number="legacyPoints[factor.id]" 
+                      :min="factor.min" 
+                      :max="factor.max"
+                      class="w-16 px-2 py-1 bg-dark-card border border-dark-border rounded text-sm text-center text-dark-text"
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Season Performance -->
+            <div>
+              <h4 class="text-sm font-semibold text-blue-400 uppercase tracking-wider mb-4 flex items-center gap-2">
+                <span>📊</span> Season Performance
+              </h4>
+              <div class="space-y-4">
+                <div v-for="factor in legacyFactors.filter(f => f.category === 'season')" :key="factor.id" class="bg-dark-border/30 rounded-xl p-4">
+                  <div class="flex items-center justify-between mb-2">
+                    <div class="flex items-center gap-2">
+                      <span class="text-lg">{{ factor.icon }}</span>
+                      <span class="font-medium text-dark-text">{{ factor.name }}</span>
+                    </div>
+                    <span class="text-sm font-bold" :class="factor.value >= 0 ? 'text-green-400' : 'text-red-400'">
+                      {{ factor.value >= 0 ? '+' : '' }}{{ factor.value }}
+                    </span>
+                  </div>
+                  <p class="text-xs text-dark-textMuted mb-3">{{ factor.description }}</p>
+                  <div class="flex items-center gap-3">
+                    <input 
+                      type="range" 
+                      v-model.number="legacyPoints[factor.id]" 
+                      :min="factor.min" 
+                      :max="factor.max" 
+                      :step="factor.step"
+                      class="flex-1 h-2 bg-dark-border rounded-lg appearance-none cursor-pointer accent-primary"
+                    />
+                    <input 
+                      type="number" 
+                      v-model.number="legacyPoints[factor.id]" 
+                      :min="factor.min" 
+                      :max="factor.max"
+                      class="w-16 px-2 py-1 bg-dark-card border border-dark-border rounded text-sm text-center text-dark-text"
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Penalties -->
+            <div>
+              <h4 class="text-sm font-semibold text-red-400 uppercase tracking-wider mb-4 flex items-center gap-2">
+                <span>⚠️</span> Penalties
+              </h4>
+              <div class="space-y-4">
+                <div v-for="factor in legacyFactors.filter(f => f.category === 'penalty')" :key="factor.id" class="bg-dark-border/30 rounded-xl p-4">
+                  <div class="flex items-center justify-between mb-2">
+                    <div class="flex items-center gap-2">
+                      <span class="text-lg">{{ factor.icon }}</span>
+                      <span class="font-medium text-dark-text">{{ factor.name }}</span>
+                    </div>
+                    <span class="text-sm font-bold text-red-400">
+                      {{ factor.value }}
+                    </span>
+                  </div>
+                  <p class="text-xs text-dark-textMuted mb-3">{{ factor.description }}</p>
+                  <div class="flex items-center gap-3">
+                    <input 
+                      type="range" 
+                      v-model.number="legacyPoints[factor.id]" 
+                      :min="factor.min" 
+                      :max="factor.max" 
+                      :step="factor.step"
+                      class="flex-1 h-2 bg-dark-border rounded-lg appearance-none cursor-pointer accent-red-500"
+                    />
+                    <input 
+                      type="number" 
+                      v-model.number="legacyPoints[factor.id]" 
+                      :min="factor.min" 
+                      :max="factor.max"
+                      class="w-16 px-2 py-1 bg-dark-card border border-dark-border rounded text-sm text-center text-dark-text"
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Footer -->
+          <div class="sticky bottom-0 px-6 py-4 border-t border-dark-border bg-dark-elevated flex items-center justify-between">
+            <button @click="resetLegacyPoints" class="text-sm text-dark-textMuted hover:text-dark-text transition-colors">
+              Reset to Default
+            </button>
+            <button @click="showLegacySettings = false" class="btn-primary">
+              Apply Changes
+            </button>
+          </div>
+        </div>
+      </div>
+    </Teleport>
+
     <!-- Platform Badge -->
     <div class="flex justify-center mt-8">
       <div class="inline-flex items-center gap-2 px-4 py-2 rounded-full border" :class="platformBadgeClass">
@@ -2012,8 +2188,12 @@ interface LegacyScore {
   }[]
 }
 
-// Scoring constants
-const LEGACY_POINTS = {
+// Legacy Points Customization
+const showLegacySettings = ref(false)
+const currentLegacyPreset = ref('balanced')
+
+// Default legacy point values
+const DEFAULT_LEGACY_POINTS = {
   // Championships & Playoffs
   CHAMPIONSHIP: 100,
   RUNNER_UP: 50,
@@ -2040,6 +2220,121 @@ const LEGACY_POINTS = {
   SCORING_CELLAR: -10,
   LOSING_SEASON: -5
 }
+
+// Reactive legacy points (can be customized)
+const legacyPoints = ref({ ...DEFAULT_LEGACY_POINTS })
+
+// Legacy presets
+const legacyPresets = [
+  { 
+    id: 'balanced', 
+    name: 'Balanced', 
+    icon: '⚖️',
+    description: 'Default balanced scoring',
+    values: { ...DEFAULT_LEGACY_POINTS }
+  },
+  { 
+    id: 'championship', 
+    name: 'Championship Heavy', 
+    icon: '🏆',
+    description: 'Emphasizes winning championships',
+    values: {
+      CHAMPIONSHIP: 150, RUNNER_UP: 75, THIRD_PLACE: 40, PLAYOFF_APPEARANCE: 25, REGULAR_SEASON_TITLE: 40,
+      WIN: 2, WINNING_SEASON: 8, TOP_3_FINISH: 12, POINTS_LEADER: 15, TOP_3_SCORING: 8, ABOVE_AVG_PPW: 3,
+      SEASON_HIGH_SCORE: 8, SEASON_PLAYED: 3, PLAYOFF_STREAK_3: 20, PLAYOFF_STREAK_5: 40, WINNING_STREAK_3: 8,
+      LAST_PLACE: -15, SEASON_LOW_SCORE: -3, SCORING_CELLAR: -8, LOSING_SEASON: -3
+    }
+  },
+  { 
+    id: 'dynasty', 
+    name: 'Dynasty Builder', 
+    icon: '👑',
+    description: 'Rewards longevity and consistency',
+    values: {
+      CHAMPIONSHIP: 80, RUNNER_UP: 45, THIRD_PLACE: 25, PLAYOFF_APPEARANCE: 25, REGULAR_SEASON_TITLE: 35,
+      WIN: 4, WINNING_SEASON: 15, TOP_3_FINISH: 20, POINTS_LEADER: 25, TOP_3_SCORING: 15, ABOVE_AVG_PPW: 8,
+      SEASON_HIGH_SCORE: 12, SEASON_PLAYED: 10, PLAYOFF_STREAK_3: 25, PLAYOFF_STREAK_5: 50, WINNING_STREAK_3: 15,
+      LAST_PLACE: -10, SEASON_LOW_SCORE: -3, SCORING_CELLAR: -5, LOSING_SEASON: -3
+    }
+  },
+  { 
+    id: 'noMercy', 
+    name: 'No Mercy', 
+    icon: '💀',
+    description: 'Harsh penalties for poor performance',
+    values: {
+      CHAMPIONSHIP: 100, RUNNER_UP: 50, THIRD_PLACE: 25, PLAYOFF_APPEARANCE: 20, REGULAR_SEASON_TITLE: 30,
+      WIN: 3, WINNING_SEASON: 10, TOP_3_FINISH: 15, POINTS_LEADER: 20, TOP_3_SCORING: 10, ABOVE_AVG_PPW: 5,
+      SEASON_HIGH_SCORE: 10, SEASON_PLAYED: 5, PLAYOFF_STREAK_3: 15, PLAYOFF_STREAK_5: 30, WINNING_STREAK_3: 10,
+      LAST_PLACE: -50, SEASON_LOW_SCORE: -15, SCORING_CELLAR: -25, LOSING_SEASON: -15
+    }
+  },
+  { 
+    id: 'casual', 
+    name: 'Casual', 
+    icon: '😎',
+    description: 'Light penalties, rewards participation',
+    values: {
+      CHAMPIONSHIP: 75, RUNNER_UP: 40, THIRD_PLACE: 20, PLAYOFF_APPEARANCE: 15, REGULAR_SEASON_TITLE: 25,
+      WIN: 2, WINNING_SEASON: 8, TOP_3_FINISH: 12, POINTS_LEADER: 15, TOP_3_SCORING: 8, ABOVE_AVG_PPW: 5,
+      SEASON_HIGH_SCORE: 8, SEASON_PLAYED: 10, PLAYOFF_STREAK_3: 10, PLAYOFF_STREAK_5: 20, WINNING_STREAK_3: 8,
+      LAST_PLACE: -5, SEASON_LOW_SCORE: 0, SCORING_CELLAR: -3, LOSING_SEASON: 0
+    }
+  },
+  { 
+    id: 'winsOnly', 
+    name: 'Win at All Costs', 
+    icon: '🎯',
+    description: 'Heavily emphasizes wins',
+    values: {
+      CHAMPIONSHIP: 120, RUNNER_UP: 60, THIRD_PLACE: 30, PLAYOFF_APPEARANCE: 15, REGULAR_SEASON_TITLE: 25,
+      WIN: 5, WINNING_SEASON: 20, TOP_3_FINISH: 25, POINTS_LEADER: 15, TOP_3_SCORING: 8, ABOVE_AVG_PPW: 3,
+      SEASON_HIGH_SCORE: 5, SEASON_PLAYED: 3, PLAYOFF_STREAK_3: 20, PLAYOFF_STREAK_5: 40, WINNING_STREAK_3: 15,
+      LAST_PLACE: -30, SEASON_LOW_SCORE: -5, SCORING_CELLAR: -10, LOSING_SEASON: -10
+    }
+  }
+]
+
+// Legacy factors configuration for UI
+const legacyFactors = computed(() => [
+  // Championships & Playoffs
+  { id: 'CHAMPIONSHIP', name: 'Championship', description: 'Points for winning the league championship', icon: '🏆', category: 'championship', min: 0, max: 200, step: 5, value: legacyPoints.value.CHAMPIONSHIP },
+  { id: 'RUNNER_UP', name: 'Runner-up', description: 'Points for finishing second in the championship', icon: '🥈', category: 'championship', min: 0, max: 100, step: 5, value: legacyPoints.value.RUNNER_UP },
+  { id: 'THIRD_PLACE', name: 'Third Place', description: 'Points for finishing third', icon: '🥉', category: 'championship', min: 0, max: 75, step: 5, value: legacyPoints.value.THIRD_PLACE },
+  { id: 'PLAYOFF_APPEARANCE', name: 'Playoff Appearance', description: 'Points for making the playoffs', icon: '📈', category: 'championship', min: 0, max: 50, step: 5, value: legacyPoints.value.PLAYOFF_APPEARANCE },
+  { id: 'REGULAR_SEASON_TITLE', name: 'Regular Season Title', description: 'Points for best regular season record', icon: '👑', category: 'championship', min: 0, max: 75, step: 5, value: legacyPoints.value.REGULAR_SEASON_TITLE },
+  
+  // Season Performance
+  { id: 'WIN', name: 'Win', description: 'Points per regular season win', icon: '✅', category: 'season', min: 0, max: 10, step: 1, value: legacyPoints.value.WIN },
+  { id: 'WINNING_SEASON', name: 'Winning Season', description: 'Bonus for finishing above .500', icon: '📊', category: 'season', min: 0, max: 30, step: 5, value: legacyPoints.value.WINNING_SEASON },
+  { id: 'TOP_3_FINISH', name: 'Top 3 Finish', description: 'Points for finishing in top 3 standings', icon: '🎖️', category: 'season', min: 0, max: 50, step: 5, value: legacyPoints.value.TOP_3_FINISH },
+  { id: 'POINTS_LEADER', name: 'Points Leader', description: 'Points for leading the league in scoring', icon: '💯', category: 'season', min: 0, max: 50, step: 5, value: legacyPoints.value.POINTS_LEADER },
+  { id: 'TOP_3_SCORING', name: 'Top 3 Scoring', description: 'Points for being a top 3 scorer', icon: '🔥', category: 'season', min: 0, max: 30, step: 5, value: legacyPoints.value.TOP_3_SCORING },
+  { id: 'ABOVE_AVG_PPW', name: 'Above Avg PPW', description: 'Points for averaging above league average', icon: '📈', category: 'season', min: 0, max: 20, step: 1, value: legacyPoints.value.ABOVE_AVG_PPW },
+  { id: 'SEASON_HIGH_SCORE', name: 'Weekly High Score', description: 'Points for each weekly high score', icon: '⭐', category: 'season', min: 0, max: 25, step: 1, value: legacyPoints.value.SEASON_HIGH_SCORE },
+  { id: 'SEASON_PLAYED', name: 'Season Played', description: 'Points for each season of participation', icon: '📅', category: 'season', min: 0, max: 20, step: 1, value: legacyPoints.value.SEASON_PLAYED },
+  
+  // Penalties
+  { id: 'LAST_PLACE', name: 'Last Place', description: 'Penalty for finishing last', icon: '💩', category: 'penalty', min: -100, max: 0, step: 5, value: legacyPoints.value.LAST_PLACE },
+  { id: 'SEASON_LOW_SCORE', name: 'Weekly Low Score', description: 'Penalty for each weekly low score', icon: '📉', category: 'penalty', min: -25, max: 0, step: 1, value: legacyPoints.value.SEASON_LOW_SCORE },
+  { id: 'SCORING_CELLAR', name: 'Scoring Cellar', description: 'Penalty for being the lowest scorer', icon: '🥶', category: 'penalty', min: -50, max: 0, step: 5, value: legacyPoints.value.SCORING_CELLAR },
+  { id: 'LOSING_SEASON', name: 'Losing Season', description: 'Penalty for finishing below .500', icon: '👎', category: 'penalty', min: -30, max: 0, step: 1, value: legacyPoints.value.LOSING_SEASON }
+])
+
+// Apply a preset
+function applyLegacyPreset(preset: typeof legacyPresets[0]) {
+  currentLegacyPreset.value = preset.id
+  Object.assign(legacyPoints.value, preset.values)
+}
+
+// Reset to default
+function resetLegacyPoints() {
+  currentLegacyPreset.value = 'balanced'
+  Object.assign(legacyPoints.value, DEFAULT_LEGACY_POINTS)
+}
+
+// Alias for backwards compatibility - use .value in calculations
+const LEGACY_POINTS = legacyPoints
 
 // Computed: Legacy Scores for all teams
 const legacyScores = computed((): LegacyScore[] => {
@@ -2275,11 +2570,11 @@ const legacyScores = computed((): LegacyScore[] => {
     
     // Championships & Playoffs
     const champItems = [
-      { label: 'Championships', count: t.championships, points: t.championships * LEGACY_POINTS.CHAMPIONSHIP },
-      { label: 'Runner-ups', count: t.runner_ups, points: t.runner_ups * LEGACY_POINTS.RUNNER_UP },
-      { label: '3rd Place', count: t.third_places, points: t.third_places * LEGACY_POINTS.THIRD_PLACE },
-      { label: 'Playoff Appearances', count: t.playoff_appearances, points: t.playoff_appearances * LEGACY_POINTS.PLAYOFF_APPEARANCE },
-      { label: 'Regular Season Titles', count: t.regular_season_titles, points: t.regular_season_titles * LEGACY_POINTS.REGULAR_SEASON_TITLE }
+      { label: 'Championships', count: t.championships, points: t.championships * LEGACY_POINTS.value.CHAMPIONSHIP },
+      { label: 'Runner-ups', count: t.runner_ups, points: t.runner_ups * LEGACY_POINTS.value.RUNNER_UP },
+      { label: '3rd Place', count: t.third_places, points: t.third_places * LEGACY_POINTS.value.THIRD_PLACE },
+      { label: 'Playoff Appearances', count: t.playoff_appearances, points: t.playoff_appearances * LEGACY_POINTS.value.PLAYOFF_APPEARANCE },
+      { label: 'Regular Season Titles', count: t.regular_season_titles, points: t.regular_season_titles * LEGACY_POINTS.value.REGULAR_SEASON_TITLE }
     ].filter(i => i.count > 0)
     
     const champSubtotal = champItems.reduce((sum, i) => sum + i.points, 0)
@@ -2290,9 +2585,9 @@ const legacyScores = computed((): LegacyScore[] => {
     
     // Season Performance
     const perfItems = [
-      { label: 'Total Wins', count: t.total_wins, points: t.total_wins * LEGACY_POINTS.WIN },
-      { label: 'Winning Seasons', count: t.winning_seasons, points: t.winning_seasons * LEGACY_POINTS.WINNING_SEASON },
-      { label: 'Top 3 Finishes', count: t.top_3_finishes, points: t.top_3_finishes * LEGACY_POINTS.TOP_3_FINISH }
+      { label: 'Total Wins', count: t.total_wins, points: t.total_wins * LEGACY_POINTS.value.WIN },
+      { label: 'Winning Seasons', count: t.winning_seasons, points: t.winning_seasons * LEGACY_POINTS.value.WINNING_SEASON },
+      { label: 'Top 3 Finishes', count: t.top_3_finishes, points: t.top_3_finishes * LEGACY_POINTS.value.TOP_3_FINISH }
     ].filter(i => i.count > 0)
     
     const perfSubtotal = perfItems.reduce((sum, i) => sum + i.points, 0)
@@ -2303,10 +2598,10 @@ const legacyScores = computed((): LegacyScore[] => {
     
     // Scoring Achievements
     const scoreItems = [
-      { label: 'Points Leader Seasons', count: t.points_leader_seasons, points: t.points_leader_seasons * LEGACY_POINTS.POINTS_LEADER },
-      { label: 'Top 3 Scoring Seasons', count: t.top_3_scoring_seasons, points: t.top_3_scoring_seasons * LEGACY_POINTS.TOP_3_SCORING },
-      { label: 'Above Avg PPW Seasons', count: t.above_avg_ppw_seasons, points: t.above_avg_ppw_seasons * LEGACY_POINTS.ABOVE_AVG_PPW },
-      { label: 'Weekly High Scores', count: t.season_high_scores, points: t.season_high_scores * LEGACY_POINTS.SEASON_HIGH_SCORE }
+      { label: 'Points Leader Seasons', count: t.points_leader_seasons, points: t.points_leader_seasons * LEGACY_POINTS.value.POINTS_LEADER },
+      { label: 'Top 3 Scoring Seasons', count: t.top_3_scoring_seasons, points: t.top_3_scoring_seasons * LEGACY_POINTS.value.TOP_3_SCORING },
+      { label: 'Above Avg PPW Seasons', count: t.above_avg_ppw_seasons, points: t.above_avg_ppw_seasons * LEGACY_POINTS.value.ABOVE_AVG_PPW },
+      { label: 'Weekly High Scores', count: t.season_high_scores, points: t.season_high_scores * LEGACY_POINTS.value.SEASON_HIGH_SCORE }
     ].filter(i => i.count > 0)
     
     const scoreSubtotal = scoreItems.reduce((sum, i) => sum + i.points, 0)
@@ -2317,15 +2612,15 @@ const legacyScores = computed((): LegacyScore[] => {
     
     // Longevity
     const longItems = [
-      { label: 'Seasons Played', count: t.seasons, points: t.seasons * LEGACY_POINTS.SEASON_PLAYED }
+      { label: 'Seasons Played', count: t.seasons, points: t.seasons * LEGACY_POINTS.value.SEASON_PLAYED }
     ]
     if (t.playoff_streak_max >= 5) {
-      longItems.push({ label: '5+ Year Playoff Streak', count: 1, points: LEGACY_POINTS.PLAYOFF_STREAK_5 })
+      longItems.push({ label: '5+ Year Playoff Streak', count: 1, points: LEGACY_POINTS.value.PLAYOFF_STREAK_5 })
     } else if (t.playoff_streak_max >= 3) {
-      longItems.push({ label: '3+ Year Playoff Streak', count: 1, points: LEGACY_POINTS.PLAYOFF_STREAK_3 })
+      longItems.push({ label: '3+ Year Playoff Streak', count: 1, points: LEGACY_POINTS.value.PLAYOFF_STREAK_3 })
     }
     if (t.winning_streak_max >= 3) {
-      longItems.push({ label: '3+ Year Winning Streak', count: 1, points: LEGACY_POINTS.WINNING_STREAK_3 })
+      longItems.push({ label: '3+ Year Winning Streak', count: 1, points: LEGACY_POINTS.value.WINNING_STREAK_3 })
     }
     
     const longSubtotal = longItems.reduce((sum, i) => sum + i.points, 0)
@@ -2335,10 +2630,10 @@ const legacyScores = computed((): LegacyScore[] => {
     // Penalties (if enabled)
     if (includePenalties) {
       const penItems = [
-        { label: 'Last Place Finishes', count: t.last_place_finishes, points: t.last_place_finishes * LEGACY_POINTS.LAST_PLACE },
-        { label: 'Lowest Weekly Scores', count: t.season_low_scores, points: t.season_low_scores * LEGACY_POINTS.SEASON_LOW_SCORE },
-        { label: 'Scoring Cellar Seasons', count: t.scoring_cellar_seasons, points: t.scoring_cellar_seasons * LEGACY_POINTS.SCORING_CELLAR },
-        { label: 'Losing Seasons', count: t.losing_seasons, points: t.losing_seasons * LEGACY_POINTS.LOSING_SEASON }
+        { label: 'Last Place Finishes', count: t.last_place_finishes, points: t.last_place_finishes * LEGACY_POINTS.value.LAST_PLACE },
+        { label: 'Lowest Weekly Scores', count: t.season_low_scores, points: t.season_low_scores * LEGACY_POINTS.value.SEASON_LOW_SCORE },
+        { label: 'Scoring Cellar Seasons', count: t.scoring_cellar_seasons, points: t.scoring_cellar_seasons * LEGACY_POINTS.value.SCORING_CELLAR },
+        { label: 'Losing Seasons', count: t.losing_seasons, points: t.losing_seasons * LEGACY_POINTS.value.LOSING_SEASON }
       ].filter(i => i.count > 0)
       
       const penSubtotal = penItems.reduce((sum, i) => sum + i.points, 0)
@@ -2570,46 +2865,46 @@ const legacyScoresByYearDetailed = computed(() => {
       let seasonPoints = 0
       
       // Championships & Playoffs
-      if (isChampion) seasonPoints += LEGACY_POINTS.CHAMPIONSHIP
-      if (rank === 2 && !isChampion) seasonPoints += LEGACY_POINTS.RUNNER_UP
-      if (rank === 3) seasonPoints += LEGACY_POINTS.THIRD_PLACE
-      if (madePlayoffs) seasonPoints += LEGACY_POINTS.PLAYOFF_APPEARANCE
-      if (isRegSeasonChamp) seasonPoints += LEGACY_POINTS.REGULAR_SEASON_TITLE
+      if (isChampion) seasonPoints += LEGACY_POINTS.value.CHAMPIONSHIP
+      if (rank === 2 && !isChampion) seasonPoints += LEGACY_POINTS.value.RUNNER_UP
+      if (rank === 3) seasonPoints += LEGACY_POINTS.value.THIRD_PLACE
+      if (madePlayoffs) seasonPoints += LEGACY_POINTS.value.PLAYOFF_APPEARANCE
+      if (isRegSeasonChamp) seasonPoints += LEGACY_POINTS.value.REGULAR_SEASON_TITLE
       
       // Season Performance
-      seasonPoints += wins * LEGACY_POINTS.WIN
-      if (wins > losses) seasonPoints += LEGACY_POINTS.WINNING_SEASON
-      if (rank <= 3) seasonPoints += LEGACY_POINTS.TOP_3_FINISH
-      if (teamKey === pointsLeader) seasonPoints += LEGACY_POINTS.POINTS_LEADER
-      if (top3Scorers.includes(teamKey)) seasonPoints += LEGACY_POINTS.TOP_3_SCORING
-      if (teamPPW > avgPPW) seasonPoints += LEGACY_POINTS.ABOVE_AVG_PPW
-      if (teamKey === highScore.team_key) seasonPoints += LEGACY_POINTS.SEASON_HIGH_SCORE
+      seasonPoints += wins * LEGACY_POINTS.value.WIN
+      if (wins > losses) seasonPoints += LEGACY_POINTS.value.WINNING_SEASON
+      if (rank <= 3) seasonPoints += LEGACY_POINTS.value.TOP_3_FINISH
+      if (teamKey === pointsLeader) seasonPoints += LEGACY_POINTS.value.POINTS_LEADER
+      if (top3Scorers.includes(teamKey)) seasonPoints += LEGACY_POINTS.value.TOP_3_SCORING
+      if (teamPPW > avgPPW) seasonPoints += LEGACY_POINTS.value.ABOVE_AVG_PPW
+      if (teamKey === highScore.team_key) seasonPoints += LEGACY_POINTS.value.SEASON_HIGH_SCORE
       
       // Longevity
-      seasonPoints += LEGACY_POINTS.SEASON_PLAYED
+      seasonPoints += LEGACY_POINTS.value.SEASON_PLAYED
       
       // Streak bonuses (check after updating streak)
       if (madePlayoffs) {
         streak.playoffStreak++
-        if (streak.playoffStreak === 3) seasonPoints += LEGACY_POINTS.PLAYOFF_STREAK_3
-        if (streak.playoffStreak === 5) seasonPoints += LEGACY_POINTS.PLAYOFF_STREAK_5 - LEGACY_POINTS.PLAYOFF_STREAK_3
+        if (streak.playoffStreak === 3) seasonPoints += LEGACY_POINTS.value.PLAYOFF_STREAK_3
+        if (streak.playoffStreak === 5) seasonPoints += LEGACY_POINTS.value.PLAYOFF_STREAK_5 - LEGACY_POINTS.value.PLAYOFF_STREAK_3
       } else {
         streak.playoffStreak = 0
       }
       
       if (wins > losses) {
         streak.winningStreak++
-        if (streak.winningStreak === 3) seasonPoints += LEGACY_POINTS.WINNING_STREAK_3
+        if (streak.winningStreak === 3) seasonPoints += LEGACY_POINTS.value.WINNING_STREAK_3
       } else {
         streak.winningStreak = 0
       }
       
       // Penalties (if enabled)
       if (includePenalties) {
-        if (rank === numTeams) seasonPoints += LEGACY_POINTS.LAST_PLACE
-        if (teamKey === lowScore.team_key) seasonPoints += LEGACY_POINTS.SEASON_LOW_SCORE
-        if (sortedByPointsAsc[0]?.team_key === teamKey) seasonPoints += LEGACY_POINTS.SCORING_CELLAR
-        if (wins < losses) seasonPoints += LEGACY_POINTS.LOSING_SEASON
+        if (rank === numTeams) seasonPoints += LEGACY_POINTS.value.LAST_PLACE
+        if (teamKey === lowScore.team_key) seasonPoints += LEGACY_POINTS.value.SEASON_LOW_SCORE
+        if (sortedByPointsAsc[0]?.team_key === teamKey) seasonPoints += LEGACY_POINTS.value.SCORING_CELLAR
+        if (wins < losses) seasonPoints += LEGACY_POINTS.value.LOSING_SEASON
       }
       
       teamCumulativeScores[teamKey] += seasonPoints
@@ -3114,12 +3409,12 @@ async function downloadTeamLegacy(team: LegacyScore) {
     
     // Category breakdown
     const categories = [
-      { label: 'Championships', value: team.championships, icon: '🏆', color: '#facc15', points: team.championships * LEGACY_POINTS.CHAMPIONSHIP },
-      { label: 'Runner-ups', value: team.runner_ups, icon: '🥈', color: '#9ca3af', points: team.runner_ups * LEGACY_POINTS.RUNNER_UP },
-      { label: 'Playoff Apps', value: team.playoff_appearances, icon: '📈', color: '#3b82f6', points: team.playoff_appearances * LEGACY_POINTS.PLAYOFF_APPEARANCE },
-      { label: 'Reg Season Titles', value: team.regular_season_titles, icon: '👑', color: '#a855f7', points: team.regular_season_titles * LEGACY_POINTS.REGULAR_SEASON_TITLE },
-      { label: 'Total Wins', value: team.total_wins, icon: '✅', color: '#10b981', points: team.total_wins * LEGACY_POINTS.WIN },
-      { label: 'Weekly High Scores', value: team.season_high_scores, icon: '⭐', color: '#f59e0b', points: team.season_high_scores * LEGACY_POINTS.SEASON_HIGH_SCORE },
+      { label: 'Championships', value: team.championships, icon: '🏆', color: '#facc15', points: team.championships * LEGACY_POINTS.value.CHAMPIONSHIP },
+      { label: 'Runner-ups', value: team.runner_ups, icon: '🥈', color: '#9ca3af', points: team.runner_ups * LEGACY_POINTS.value.RUNNER_UP },
+      { label: 'Playoff Apps', value: team.playoff_appearances, icon: '📈', color: '#3b82f6', points: team.playoff_appearances * LEGACY_POINTS.value.PLAYOFF_APPEARANCE },
+      { label: 'Reg Season Titles', value: team.regular_season_titles, icon: '👑', color: '#a855f7', points: team.regular_season_titles * LEGACY_POINTS.value.REGULAR_SEASON_TITLE },
+      { label: 'Total Wins', value: team.total_wins, icon: '✅', color: '#10b981', points: team.total_wins * LEGACY_POINTS.value.WIN },
+      { label: 'Weekly High Scores', value: team.season_high_scores, icon: '⭐', color: '#f59e0b', points: team.season_high_scores * LEGACY_POINTS.value.SEASON_HIGH_SCORE },
     ].filter(c => c.value > 0)
     
     const generateCategoryBox = (cat: typeof categories[0]) => `
