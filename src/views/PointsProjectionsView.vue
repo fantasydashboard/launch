@@ -37,13 +37,49 @@
       </button>
     </div>
 
-    <!-- Loading State -->
-    <div v-if="isLoading" class="flex items-center justify-center py-20">
-      <LoadingSpinner size="xl" :message="loadingMessage" />
+    <!-- Loading State with Progress -->
+    <div v-if="isLoading" class="flex flex-col items-center justify-center py-20">
+      <LoadingSpinner size="xl" />
+      <div class="text-lg font-semibold text-dark-text mt-4">{{ loadingMessage }}</div>
+      <div v-if="loadingProgress.currentStep" class="text-sm text-dark-textMuted mt-2">
+        {{ loadingProgress.currentStep }}
+      </div>
+      <div v-if="loadingProgress.totalSteps > 0" class="mt-4 w-64">
+        <div class="flex justify-between text-xs text-dark-textMuted mb-1">
+          <span>{{ loadingProgress.currentStepName }}</span>
+          <span>{{ loadingProgress.completedSteps }}/{{ loadingProgress.totalSteps }}</span>
+        </div>
+        <div class="h-1.5 bg-dark-border rounded-full overflow-hidden">
+          <div 
+            class="h-full bg-yellow-400 rounded-full transition-all duration-300"
+            :style="{ width: `${(loadingProgress.completedSteps / loadingProgress.totalSteps) * 100}%` }"
+          ></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ESPN/Sleeper Not Supported Message -->
+    <div v-else-if="!isYahoo && !isLoading" class="card">
+      <div class="card-body text-center py-16">
+        <div class="text-6xl mb-4">🚧</div>
+        <h3 class="text-2xl font-bold text-dark-text mb-2">Coming Soon for {{ platformName }}</h3>
+        <p class="text-dark-textMuted max-w-md mx-auto">
+          Player projections and the Trade Analyzer are currently only available for Yahoo leagues. 
+          {{ platformName }} support is in development.
+        </p>
+        <div class="mt-6 flex justify-center gap-4">
+          <router-link to="/history" class="px-6 py-3 bg-yellow-400 text-gray-900 rounded-xl font-semibold hover:bg-yellow-300 transition-colors">
+            View League History
+          </router-link>
+          <router-link to="/power-rankings" class="px-6 py-3 bg-dark-border text-dark-text rounded-xl font-semibold hover:bg-dark-border/70 transition-colors">
+            Power Rankings
+          </router-link>
+        </div>
+      </div>
     </div>
 
     <!-- REST OF SEASON TAB -->
-    <template v-else-if="activeTab === 'ros'">
+    <template v-else-if="activeTab === 'ros' && isYahoo">
       <div class="card bg-gradient-to-r from-green-500/10 to-cyan-500/10 border-green-500/30">
         <div class="card-body py-3">
           <div class="flex items-center gap-3">
@@ -167,7 +203,7 @@
     </template>
 
     <!-- TEAMS TAB -->
-    <template v-else-if="activeTab === 'teams'">
+    <template v-else-if="activeTab === 'teams' && isYahoo">
       <div class="card">
         <div class="card-body py-3">
           <div class="flex flex-wrap items-center justify-center gap-4 text-sm">
@@ -279,7 +315,7 @@
     </template>
 
     <!-- START/SIT TAB -->
-    <template v-else-if="activeTab === 'startsit'">
+    <template v-else-if="activeTab === 'startsit' && isYahoo">
       <!-- Scoring Type Toggle -->
       <div class="card">
         <div class="card-body py-4">
@@ -506,7 +542,7 @@
     </template>
 
     <!-- TRADE ANALYZER TAB -->
-    <template v-else-if="activeTab === 'trade'">
+    <template v-else-if="activeTab === 'trade' && isYahoo">
       <!-- Simulated Data Banner for non-Premium users -->
       <SimulatedDataBanner v-if="!hasPremiumAccess" :is-ultimate-tier="true" class="mb-6" />
       
@@ -1078,6 +1114,18 @@ const tabs = [
 const activeTab = ref('ros')
 const isLoading = ref(true)
 const loadingMessage = ref('Loading...')
+const loadingProgress = ref({
+  currentStep: '',
+  currentStepName: '',
+  completedSteps: 0,
+  totalSteps: 0
+})
+
+// Platform detection
+const isYahoo = computed(() => {
+  return leagueStore.activePlatform === 'yahoo' || 
+         (!leagueStore.activePlatform && leagueStore.activeLeagueId && !leagueStore.activeLeagueId.startsWith('espn_') && !leagueStore.activeLeagueId.startsWith('sleeper_'))
+})
 const expandedTeamId = ref<string | null>(null)
 const allPlayers = ref<any[]>([])
 const myTeamKey = ref<string | null>(null)
@@ -1499,16 +1547,19 @@ function recalculateRankings() {
 
 async function loadProjections() {
   isLoading.value = true
-  loadingMessage.value = 'Connecting to Yahoo...'
+  loadingMessage.value = 'Loading Player Projections'
+  loadingProgress.value = { currentStep: 'Connecting to Yahoo...', currentStepName: 'Initializing', completedSteps: 0, totalSteps: 5 }
+  
   try {
     const leagueKey = effectiveLeagueKey.value
     if (!leagueKey || !authStore.user?.id) { isLoading.value = false; return }
     await yahooService.initialize(authStore.user.id)
-    loadingMessage.value = 'Loading league settings...'
+    
+    loadingProgress.value = { ...loadingProgress.value, currentStep: 'Loading league settings...', currentStepName: 'Settings', completedSteps: 1 }
     try { const settings = await yahooService.getLeagueSettings(leagueKey); rosterPositions.value = settings?.roster_positions || [] } catch (e) { console.log('Could not load roster settings') }
     
     // Load teams first (like Category page does)
-    loadingMessage.value = 'Loading teams...'
+    loadingProgress.value = { ...loadingProgress.value, currentStep: 'Loading teams...', currentStepName: 'Teams', completedSteps: 2 }
     const teams = await yahooService.getTeams(leagueKey)
     teamsData.value = teams || []
     
@@ -1534,7 +1585,7 @@ async function loadProjections() {
     myTeamKey.value = myTeam?.team_key || null
     console.log('Teams loaded:', teamsData.value.length, 'My team:', myTeam?.name, 'Key:', myTeamKey.value)
     
-    loadingMessage.value = 'Loading rostered players...'
+    loadingProgress.value = { ...loadingProgress.value, currentStep: 'Loading rostered players...', currentStepName: 'Rosters', completedSteps: 3 }
     const rostered = await yahooService.getAllRosteredPlayers(leagueKey)
     
     // Debug: log first few rostered players to see their team keys
@@ -1569,7 +1620,7 @@ async function loadProjections() {
       }
     }
     
-    loadingMessage.value = 'Loading free agents...'
+    loadingProgress.value = { ...loadingProgress.value, currentStep: 'Loading free agents...', currentStepName: 'Free Agents', completedSteps: 4 }
     const fa = await yahooService.getTopFreeAgents(leagueKey, 100)
     const combined = [...rostered, ...fa]
     combined.forEach(p => { p.ppg = p.total_points > 0 ? p.total_points / 25 : 0 })
@@ -1582,12 +1633,22 @@ async function loadProjections() {
     const myPlayers = allPlayers.value.filter(p => p.fantasy_team_key === myTeamKey.value)
     console.log('Players on my team:', myPlayers.length)
     
+    loadingProgress.value = { ...loadingProgress.value, currentStep: 'Calculating rankings...', currentStepName: 'Complete', completedSteps: 5 }
     recalculateRankings()
   } catch (e) { console.error('Error:', e); loadingMessage.value = 'Error loading data' }
   finally { isLoading.value = false }
 }
 
-watch(() => leagueStore.activeLeagueId, (id) => { if (id && leagueStore.activePlatform === 'yahoo') loadProjections() }, { immediate: true })
+watch(() => leagueStore.activeLeagueId, (id) => { 
+  if (id) {
+    if (leagueStore.activePlatform === 'yahoo') {
+      loadProjections()
+    } else {
+      // For non-Yahoo platforms, stop loading immediately
+      isLoading.value = false
+    }
+  }
+}, { immediate: true })
 
 // Watch for currentLeague changes (happens when fallback to previous season occurs)
 watch(() => leagueStore.currentLeague?.league_id, (newKey, oldKey) => {
@@ -1597,7 +1658,16 @@ watch(() => leagueStore.currentLeague?.league_id, (newKey, oldKey) => {
   }
 })
 
-onMounted(() => { if (effectiveLeagueKey.value && leagueStore.activePlatform === 'yahoo') loadProjections() })
+onMounted(() => { 
+  if (effectiveLeagueKey.value) {
+    if (leagueStore.activePlatform === 'yahoo') {
+      loadProjections()
+    } else {
+      // For non-Yahoo platforms, stop loading immediately
+      isLoading.value = false
+    }
+  }
+})
 
 // Trade Analyzer Functions
 function addGivePlayer(player: any) {
