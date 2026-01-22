@@ -846,6 +846,38 @@
                   </span>
                 </div>
               </div>
+              
+              <!-- Bench Section -->
+              <div v-if="benchPlayers.length > 0" class="border-t border-dark-border/30">
+                <div class="px-3 py-2 bg-dark-border/10">
+                  <span class="text-xs font-semibold text-dark-textMuted uppercase">Bench ({{ benchPlayers.length }})</span>
+                </div>
+                <div class="divide-y divide-dark-border/20 max-h-48 overflow-y-auto">
+                  <div 
+                    v-for="player in benchPlayers" 
+                    :key="player.player_key" 
+                    class="flex items-center gap-2 px-3 py-1.5 hover:bg-dark-border/10"
+                  >
+                    <div class="w-6 h-6 rounded-full bg-dark-border overflow-hidden flex-shrink-0">
+                      <img :src="player.headshot || defaultHeadshot" class="w-full h-full object-cover" @error="handleImageError" />
+                    </div>
+                    <div class="flex-1 min-w-0">
+                      <div class="font-medium text-dark-text text-xs truncate">{{ player.full_name }}</div>
+                      <div class="text-[10px] text-dark-textMuted">{{ player.position?.split(',')[0] }}</div>
+                    </div>
+                    <div class="text-right flex-shrink-0">
+                      <template v-if="scoringMode === 'daily'">
+                        <div v-if="player.hasGame" class="font-bold text-xs text-dark-textMuted">{{ player.projection?.toFixed(1) || '0' }}</div>
+                        <div v-else class="text-[10px] text-red-400 italic">No game</div>
+                      </template>
+                      <template v-else>
+                        <div class="font-bold text-xs text-dark-textMuted">{{ player.projection?.toFixed(1) || '0' }}</div>
+                        <div class="text-[10px] text-dark-textMuted">{{ player.gamesThisWeek }} games</div>
+                      </template>
+                    </div>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -2242,6 +2274,37 @@ const suggestedLineup = computed(() => {
 
 const suggestedLineupTotal = computed(() => suggestedLineup.value.reduce((sum, s) => sum + (s.player?.projection || 0), 0))
 
+// Bench players - my players not in suggested lineup
+const benchPlayers = computed(() => {
+  const usedPlayerKeys = new Set(
+    modifiedSuggestedLineup.value
+      .filter(slot => slot.player)
+      .map(slot => slot.player.player_key)
+  )
+  
+  const dateStr = selectedDate.value.toISOString().split('T')[0]
+  
+  return allPlayers.value
+    .filter(p => isMyPlayer(p) && !usedPlayerKeys.has(p.player_key))
+    .map(p => {
+      const hashInput = (p.player_key || '') + dateStr
+      const hash = hashInput.split('').reduce((a: number, b: string) => ((a << 5) - a) + b.charCodeAt(0), 0)
+      const hasGameToday = Math.abs(hash) % 10 < 6
+      const gamesThisWeek = 4 + (Math.abs(hash) % 4)
+      const ppg = p.ppg || 0
+      const projection = scoringMode.value === 'daily' ? (hasGameToday ? ppg : 0) : ppg * gamesThisWeek
+      const opponents = ['NYY', 'BOS', 'LAD', 'ATL', 'HOU']
+      return { 
+        ...p, 
+        projection, 
+        opponent: hasGameToday ? `vs ${opponents[Math.abs(hash) % 5]}` : null, 
+        gamesThisWeek,
+        hasGame: hasGameToday
+      }
+    })
+    .sort((a, b) => (b.projection || 0) - (a.projection || 0))
+})
+
 // Waiver lineup management
 const waiverLineupPlayers = ref<any[]>([])
 const bestAvailablePosition = ref('all')
@@ -2346,26 +2409,27 @@ async function downloadSuggestedLineup() {
   try {
     const html2canvas = (await import('html2canvas')).default
     
-    const WIDTH = 450
-    const primaryColor = '#f5c451' // Yellow
-    const bgDark = '#1a1d2e'
-    const bgCard = '#262a3a'
+    const WIDTH = 500
     
-    // Load UFD logo
-    let ufdLogoBase64 = ''
-    try {
-      const logoResponse = await fetch('/ufd-logo.png')
-      if (logoResponse.ok) {
-        const blob = await logoResponse.blob()
-        ufdLogoBase64 = await new Promise((resolve) => {
+    // Load main UFD logo (same as Power Rankings)
+    const loadLogo = async (): Promise<string> => {
+      try {
+        const response = await fetch('/UFD_V5.png')
+        if (!response.ok) return ''
+        const blob = await response.blob()
+        return new Promise((resolve) => {
           const reader = new FileReader()
           reader.onloadend = () => resolve(reader.result as string)
+          reader.onerror = () => resolve('')
           reader.readAsDataURL(blob)
         })
+      } catch (e) {
+        console.warn('Failed to load logo:', e)
+        return ''
       }
-    } catch (e) {
-      console.warn('Failed to load UFD logo:', e)
     }
+    
+    const logoBase64 = await loadLogo()
     
     // Position colors function
     const getPosColor = (pos: string) => {
@@ -2377,129 +2441,92 @@ async function downloadSuggestedLineup() {
       return colors[pos] || '#6b7280'
     }
     
-    // Build lineup rows HTML
-    const lineupRows = modifiedSuggestedLineup.value.map(slot => {
+    // Generate lineup row
+    const generateLineupRow = (slot: any) => {
       const pos = slot.position
       const player = slot.player
       const isWaiver = slot.isWaiver
       
       if (!player) {
         return `
-          <tr style="border-bottom: 1px solid rgba(58, 61, 82, 0.5);">
-            <td style="padding: 10px 8px; text-align: center;">
-              <span style="display: inline-block; font-size: 11px; font-weight: bold; padding: 3px 8px; border-radius: 4px; background: ${getPosColor(pos)}; color: white;">${pos}</span>
-            </td>
-            <td colspan="2" style="padding: 10px 8px; color: #6b7280; font-style: italic;">Empty slot</td>
-          </tr>
+          <div style="display: flex; height: 52px; padding: 0 12px; background: rgba(38, 42, 58, 0.4); border-radius: 8px; margin-bottom: 4px; border: 1px solid rgba(58, 61, 82, 0.4); align-items: center;">
+            <div style="width: 50px; flex-shrink: 0;">
+              <span style="display: inline-block; font-size: 11px; font-weight: bold; padding: 4px 8px; border-radius: 4px; background: ${getPosColor(pos)}; color: white;">${pos}</span>
+            </div>
+            <div style="flex: 1; color: #6b7280; font-style: italic; font-size: 13px;">Empty slot</div>
+          </div>
         `
       }
       
-      const waiverBadge = isWaiver ? `<span style="display: inline-block; font-size: 9px; font-weight: bold; padding: 2px 6px; border-radius: 9999px; background: #06b6d4; color: #1a1d2e; margin-left: 8px;">WAIVER</span>` : ''
+      const borderColor = isWaiver ? '#06b6d4' : 'rgba(58, 61, 82, 0.4)'
+      const bgColor = isWaiver ? 'rgba(6, 182, 212, 0.1)' : 'rgba(38, 42, 58, 0.4)'
       const nameColor = isWaiver ? '#06b6d4' : '#f7f7ff'
-      const projColor = isWaiver ? '#06b6d4' : primaryColor
+      const projColor = isWaiver ? '#06b6d4' : '#facc15'
+      const matchupText = player.opponent || (scoringMode.value === 'daily' ? 'No game' : `${player.gamesThisWeek || 0} games`)
+      const matchupColor = player.opponent ? '#9ca3af' : '#ef4444'
       
       return `
-        <tr style="border-bottom: 1px solid rgba(58, 61, 82, 0.5); ${isWaiver ? 'background: rgba(6, 182, 212, 0.1);' : ''}">
-          <td style="padding: 10px 8px; text-align: center;">
-            <span style="display: inline-block; font-size: 11px; font-weight: bold; padding: 3px 8px; border-radius: 4px; background: ${getPosColor(pos)}; color: white;">${pos}</span>
-          </td>
-          <td style="padding: 10px 8px;">
-            <span style="font-size: 14px; font-weight: 600; color: ${nameColor};">${player.full_name}</span>
-            ${waiverBadge}
-            <div style="font-size: 11px; color: #9ca3af; margin-top: 2px;">${player.mlb_team || 'FA'}</div>
-          </td>
-          <td style="padding: 10px 8px; text-align: right;">
-            <span style="font-size: 18px; font-weight: bold; color: ${projColor};">${(player.projection || 0).toFixed(1)}</span>
-          </td>
-        </tr>
-      `
-    }).join('')
-    
-    // Build waiver pickups section if any
-    let waiverSection = ''
-    if (waiverLineupPlayers.value.length > 0) {
-      const waiverRows = waiverLineupPlayers.value.map(p => `
-        <div style="display: flex; justify-content: space-between; align-items: center; padding: 8px 12px; background: rgba(6, 182, 212, 0.1); border-radius: 8px; margin-bottom: 6px;">
-          <div>
-            <span style="font-size: 13px; font-weight: 600; color: #06b6d4;">${p.full_name}</span>
-            <span style="font-size: 11px; color: #9ca3af; margin-left: 8px;">${p.position?.split(',')[0]} • ${p.mlb_team || 'FA'}</span>
+        <div style="display: flex; height: 52px; padding: 0 12px; background: ${bgColor}; border-radius: 8px; margin-bottom: 4px; border: 1px solid ${borderColor}; align-items: center;">
+          <div style="width: 50px; flex-shrink: 0;">
+            <span style="display: inline-block; font-size: 11px; font-weight: bold; padding: 4px 8px; border-radius: 4px; background: ${getPosColor(pos)}; color: white;">${pos}</span>
           </div>
-          <span style="font-size: 13px; font-weight: bold; color: #06b6d4;">${(p.ppg || 0).toFixed(1)} PPG</span>
-        </div>
-      `).join('')
-      
-      waiverSection = `
-        <div style="margin-top: 16px; padding-top: 16px; border-top: 1px solid rgba(245, 196, 81, 0.3);">
-          <div style="font-size: 14px; font-weight: bold; color: #06b6d4; margin-bottom: 10px;">📋 Waiver Pickups Needed (${waiverLineupPlayers.value.length})</div>
-          ${waiverRows}
+          <div style="flex: 1; min-width: 0;">
+            <div style="font-size: 14px; font-weight: 600; color: ${nameColor}; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${player.full_name}</div>
+            <div style="font-size: 11px; color: ${matchupColor};">${matchupText}</div>
+          </div>
+          <div style="width: 55px; flex-shrink: 0; text-align: right;">
+            <div style="font-size: 18px; font-weight: bold; color: ${projColor};">${(player.projection || 0).toFixed(1)}</div>
+          </div>
         </div>
       `
     }
     
-    // Improvement indicator
-    const improvement = modifiedSuggestedLineupTotal.value - suggestedLineupTotal.value
-    const improvementHtml = waiverLineupPlayers.value.length > 0 ? `
-      <div style="font-size: 12px; color: ${improvement >= 0 ? '#22c55e' : '#ef4444'}; margin-top: 4px;">
-        ${improvement >= 0 ? '+' : ''}${improvement.toFixed(1)} vs current roster
-      </div>
-    ` : ''
+    // Build all lineup rows
+    const lineupRows = modifiedSuggestedLineup.value.map(slot => generateLineupRow(slot)).join('')
     
     const container = document.createElement('div')
-    container.style.cssText = `
-      position: absolute;
-      left: -9999px;
-      width: ${WIDTH}px;
-      background: linear-gradient(135deg, ${bgDark} 0%, #0d0f18 100%);
-      color: #f7f7ff;
-      font-family: system-ui, -apple-system, sans-serif;
-      padding: 24px;
-      box-sizing: border-box;
-      border-radius: 16px;
-    `
+    container.style.cssText = 'position: absolute; left: -9999px; top: 0; width: ' + WIDTH + 'px; font-family: system-ui, -apple-system, sans-serif;'
     
     container.innerHTML = `
-      <!-- Header -->
-      <div style="display: flex; align-items: center; gap: 16px; margin-bottom: 20px;">
-        ${ufdLogoBase64 ? `<img src="${ufdLogoBase64}" style="width: 50px; height: 50px; object-fit: contain;" />` : ''}
-        <div>
-          <div style="font-size: 24px; font-weight: 800; color: #f7f7ff;">Suggested Lineup</div>
-          <div style="font-size: 13px; color: #9ca3af;">${mode} • ${date}</div>
+      <div style="background: linear-gradient(160deg, #0f1219 0%, #0a0c14 50%, #0d1117 100%); border-radius: 16px; box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5); position: relative; overflow: hidden;">
+        
+        <!-- Top Yellow Bar -->
+        <div style="background: #facc15; padding: 10px 24px 10px 24px; text-align: center; overflow: visible;">
+          <span style="font-size: 14px; font-weight: 700; color: #0a0c14; text-transform: uppercase; letter-spacing: 3px; display: block; margin-top: -14px;">Ultimate Fantasy Dashboard</span>
         </div>
-      </div>
-      
-      <!-- Divider -->
-      <div style="height: 2px; background: linear-gradient(to right, ${primaryColor}, rgba(245, 196, 81, 0.1)); margin-bottom: 20px; border-radius: 1px;"></div>
-      
-      <!-- Lineup Table -->
-      <div style="background: ${bgCard}; border-radius: 12px; overflow: hidden;">
-        <table style="width: 100%; border-collapse: collapse;">
-          <thead>
-            <tr style="background: rgba(245, 196, 81, 0.1);">
-              <th style="padding: 12px 8px; text-align: center; font-size: 11px; font-weight: 600; color: ${primaryColor}; text-transform: uppercase; width: 60px;">Pos</th>
-              <th style="padding: 12px 8px; text-align: left; font-size: 11px; font-weight: 600; color: ${primaryColor}; text-transform: uppercase;">Player</th>
-              <th style="padding: 12px 8px; text-align: right; font-size: 11px; font-weight: 600; color: ${primaryColor}; text-transform: uppercase; width: 70px;">Proj</th>
-            </tr>
-          </thead>
-          <tbody>
+        
+        <!-- Header -->
+        <div style="display: flex; padding: 16px 24px; border-bottom: 1px solid rgba(250, 204, 21, 0.2); position: relative; z-index: 10; align-items: center;">
+          ${logoBase64 ? `<img src="${logoBase64}" style="height: 60px; width: auto; flex-shrink: 0; margin-right: 20px; display: block;" />` : ''}
+          <div style="flex: 1; margin-top: -10px;">
+            <div style="font-size: 32px; font-weight: 900; color: #ffffff; text-transform: uppercase; letter-spacing: 1px; text-shadow: 0 2px 8px rgba(250, 204, 21, 0.4); line-height: 1;">Suggested Lineup</div>
+            <div style="font-size: 16px; margin-top: 4px; font-weight: 600; line-height: 1;">
+              <span style="color: #e5e7eb;">${mode}</span>
+              <span style="color: #6b7280; margin: 0 8px;">•</span>
+              <span style="color: #facc15; font-weight: 700;">${date}</span>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Main content -->
+        <div style="padding: 16px 24px 12px 24px; position: relative;">
+          
+          <!-- Lineup Rows -->
+          <div style="margin-bottom: 16px;">
             ${lineupRows}
-          </tbody>
-        </table>
-      </div>
-      
-      <!-- Total -->
-      <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 16px; padding: 16px; background: ${bgCard}; border-radius: 12px; border: 2px solid ${primaryColor};">
-        <div style="font-size: 16px; font-weight: 600; color: #f7f7ff;">Projected Total</div>
-        <div style="text-align: right;">
-          <div style="font-size: 28px; font-weight: 800; color: ${primaryColor};">${modifiedSuggestedLineupTotal.value.toFixed(1)}</div>
-          ${improvementHtml}
+          </div>
+          
+          <!-- Total Box -->
+          <div style="background: rgba(38, 42, 58, 0.6); border-radius: 12px; padding: 16px; border: 2px solid #facc15; display: flex; justify-content: space-between; align-items: center;">
+            <div style="font-size: 18px; font-weight: 700; color: #ffffff; text-transform: uppercase; letter-spacing: 1px;">Projected Total</div>
+            <div style="font-size: 36px; font-weight: 900; color: #facc15; text-shadow: 0 2px 8px rgba(250, 204, 21, 0.3);">${modifiedSuggestedLineupTotal.value.toFixed(1)}</div>
+          </div>
         </div>
-      </div>
-      
-      ${waiverSection}
-      
-      <!-- Footer -->
-      <div style="margin-top: 20px; text-align: center; font-size: 11px; color: #6b7280;">
-        ultimatefantasydashboard.com
+        
+        <!-- Footer -->
+        <div style="padding: 16px 24px 20px 24px; text-align: center; position: relative; z-index: 1;">
+          <span style="font-size: 20px; font-weight: bold; color: #facc15; letter-spacing: -0.5px; display: block; margin-top: -30px;">ultimatefantasydashboard.com</span>
+        </div>
       </div>
     `
     
@@ -2527,8 +2554,7 @@ async function downloadSuggestedLineup() {
       if (slot.player) {
         const name = slot.player.full_name.padEnd(25)
         const proj = (slot.player.projection || 0).toFixed(1).padStart(6)
-        const waiver = slot.isWaiver ? ' [WAIVER]' : ''
-        content += `${pos} ${name} ${proj}${waiver}\n`
+        content += `${pos} ${name} ${proj}\n`
       } else {
         content += `${pos} (Empty)\n`
       }
