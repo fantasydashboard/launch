@@ -2413,17 +2413,10 @@ const legacyScores = computed((): LegacyScore[] => {
     const top3Scorers = sortedByPoints.slice(0, 3).map((t: any) => t.team_key)
     
     // Determine playoff team count
-    // Use playoff_seed if available, otherwise use heuristic (top 50% or 6, whichever is smaller)
-    const teamsWithPlayoffSeed = standings.filter((t: any) => t.playoff_seed > 0)
-    let playoffTeamCount = 6 // default
-    
-    if (teamsWithPlayoffSeed.length > 0) {
-      // ESPN provides playoff_seed
-      playoffTeamCount = teamsWithPlayoffSeed.length
-    } else {
-      // Heuristic: typically top 50% or max 6
-      playoffTeamCount = Math.min(Math.floor(standings.length / 2), 6)
-    }
+    // Use heuristic: typically top 50% of league or max 6 teams
+    // NOTE: Don't use teamsWithPlayoffSeed.length because ESPN sets playoff_seed for ALL 
+    // teams in any bracket (including consolation), not just championship bracket teams
+    const playoffTeamCount = Math.min(Math.floor(standings.length / 2), 6)
     
     seasonMetrics[season] = {
       standings,
@@ -2501,8 +2494,12 @@ const legacyScores = computed((): LegacyScore[] => {
       const teamPPW = (wins + losses) > 0 ? pointsFor / (wins + losses) : 0
       
       // Determine if team made playoffs
-      // Use playoff_seed if available, otherwise use rank <= playoffTeamCount
-      const madePlayoffs = team.playoff_seed > 0 || rank <= playoffTeamCount
+      // For ESPN, playoff_seed is set for ALL teams in any bracket (including consolation)
+      // A team made the REAL playoffs only if their seed is <= playoffTeamCount
+      // If no playoff_seed, fall back to rank-based determination
+      const madePlayoffs = team.playoff_seed > 0 
+        ? team.playoff_seed <= playoffTeamCount 
+        : rank <= playoffTeamCount
       
       // Championships & Playoffs
       // Use is_champion flag (set from bracket data for Sleeper, rank for others)
@@ -2800,8 +2797,9 @@ const legacyScoresByYearDetailed = computed(() => {
     const pointsLeader = sortedByPoints[0]?.team_key || ''
     const top3Scorers = sortedByPoints.slice(0, 3).map((t: any) => t.team_key)
     
-    const teamsWithPlayoffSeed = standings.filter((t: any) => t.playoff_seed > 0)
-    let playoffTeamCount = teamsWithPlayoffSeed.length > 0 ? teamsWithPlayoffSeed.length : Math.min(Math.floor(standings.length / 2), 6)
+    // Determine playoff team count - use heuristic, don't count all teams with playoff seeds
+    // ESPN sets playoff_seed for ALL teams in any bracket (including consolation)
+    const playoffTeamCount = Math.min(Math.floor(standings.length / 2), 6)
     
     // Find regular season champion (most wins, tiebreaker: most points)
     const sortedByWins = [...standings].sort((a: any, b: any) => {
@@ -2858,7 +2856,11 @@ const legacyScoresByYearDetailed = computed(() => {
       const rank = team.rank || 999
       const pointsFor = team.points_for || 0
       const teamPPW = (wins + losses) > 0 ? pointsFor / (wins + losses) : 0
-      const madePlayoffs = team.playoff_seed > 0 || rank <= playoffTeamCount
+      // For ESPN, playoff_seed is set for ALL teams in any bracket (including consolation)
+      // A team made the REAL playoffs only if their seed is <= playoffTeamCount
+      const madePlayoffs = team.playoff_seed > 0 
+        ? team.playoff_seed <= playoffTeamCount 
+        : rank <= playoffTeamCount
       const isChampion = team.is_champion || false
       const isRegSeasonChamp = teamKey === regSeasonChamp
       
