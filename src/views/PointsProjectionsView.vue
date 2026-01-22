@@ -275,14 +275,13 @@
               </thead>
               <tbody class="divide-y divide-dark-border/30">
                 <template v-for="(player, idx) in gatedFilteredPlayers" :key="player.player_key">
-                  <!-- Tier Divider Row -->
+                  <!-- Tier Divider Row (only when sorted by rank/score) -->
                   <tr v-if="shouldShowTierDivider(player, idx)" class="bg-dark-bg/80">
                     <td colspan="8" class="py-2 px-4">
                       <div class="flex items-center gap-3">
                         <div class="h-px flex-1 bg-gradient-to-r from-transparent via-yellow-400/50 to-transparent"></div>
-                        <div class="flex items-center gap-2 px-4 py-1 rounded-full bg-yellow-400/10 border border-yellow-400/30">
+                        <div class="px-4 py-1 rounded-full bg-yellow-400/10 border border-yellow-400/30">
                           <span class="text-yellow-400 font-bold text-sm">Tier {{ player.tier }}</span>
-                          <span class="text-yellow-400/70 text-xs">{{ getTierDescription(player.tier) }}</span>
                         </div>
                         <div class="h-px flex-1 bg-gradient-to-r from-transparent via-yellow-400/50 to-transparent"></div>
                       </div>
@@ -1930,46 +1929,32 @@ function recalculateRankings() {
 function calculateTiers() {
   if (allPlayers.value.length === 0) return
   
-  // Position scarcity multipliers - scarcer positions get slight tier boost
-  const positionScarcity: Record<string, number> = {
-    'C': 1.15,    // Catchers are scarce
-    '2B': 1.08,   // Second basemen somewhat scarce
-    'SS': 1.08,   // Shortstops somewhat scarce
-    '3B': 1.05,   // Third basemen slightly scarce
-    '1B': 1.0,    // First basemen common
-    'OF': 0.95,   // Outfielders very common
-    'SP': 1.0,    // Starting pitchers standard
-    'RP': 0.98,   // Relief pitchers common
-  }
+  // Sort by compositeScore (same as display default) to ensure tier order matches
+  allPlayers.value.sort((a, b) => (b.compositeScore || 0) - (a.compositeScore || 0))
   
-  // Calculate adjusted scores with position scarcity
-  allPlayers.value.forEach(p => {
-    const pos = p.position?.split(',')[0]?.trim() || 'OF'
-    const scarcityMult = positionScarcity[pos] || 1.0
-    p.adjustedScore = (p.compositeScore || 0) * scarcityMult
-  })
+  // Update rosRank based on this sort
+  allPlayers.value.forEach((p, i) => p.rosRank = i + 1)
   
-  // Re-sort by adjusted score
-  allPlayers.value.sort((a, b) => (b.adjustedScore || 0) - (a.adjustedScore || 0))
+  // Calculate standard deviation of scores for threshold
+  const scores = allPlayers.value.map(p => p.compositeScore || 0)
+  if (scores.length === 0) return
   
-  // Calculate standard deviation of scores
-  const scores = allPlayers.value.map(p => p.adjustedScore || 0)
   const mean = scores.reduce((sum, s) => sum + s, 0) / scores.length
   const variance = scores.reduce((sum, s) => sum + Math.pow(s - mean, 2), 0) / scores.length
   const stdDev = Math.sqrt(variance)
   
-  // Tier threshold: players within this score difference are in same tier
-  // Use 1/3 of standard deviation as the grouping threshold (creates tight tiers)
-  const tierThreshold = Math.max(stdDev / 3, 1.5) // Minimum threshold of 1.5 points
+  // Tier threshold: use 1/4 of standard deviation for tight grouping
+  // Players within this score range are considered interchangeable
+  const tierThreshold = Math.max(stdDev / 4, 1.0) // Minimum 1 point difference
   
   // Assign tiers based on score clustering
   let currentTier = 1
   let tierStartScore = scores[0] || 100
   
   allPlayers.value.forEach((p, i) => {
-    const score = p.adjustedScore || 0
+    const score = p.compositeScore || 0
     
-    // If score dropped more than threshold from tier start, new tier
+    // If score dropped more than threshold from tier start, begin new tier
     if (tierStartScore - score > tierThreshold) {
       currentTier++
       tierStartScore = score
@@ -1978,7 +1963,7 @@ function calculateTiers() {
     p.tier = currentTier
   })
   
-  // Store tier info for descriptions
+  // Store tier info for any descriptions needed
   calculateTierInfo()
 }
 
@@ -2009,11 +1994,22 @@ function calculateTierInfo() {
 const tierInfo = ref<Record<number, { count: number; avgScore: number; minScore: number; maxScore: number }>>({})
 
 function shouldShowTierDivider(player: any, idx: number): boolean {
+  // Only show tier dividers when sorted by ranking columns (rosRank, compositeScore, tier)
+  // Otherwise tiers would appear out of order
+  const validSortColumns = ['rosRank', 'compositeScore', 'tier']
+  if (!validSortColumns.includes(rosSortColumn.value)) {
+    return false
+  }
+  
   // Always show tier 1 divider at the start
   if (idx === 0) return true
-  // Show divider when tier changes
+  
+  // Show divider when tier changes from previous player
   const prevPlayer = gatedFilteredPlayers.value[idx - 1]
-  return prevPlayer && prevPlayer.tier !== player.tier
+  if (!prevPlayer) return false
+  
+  // Only show if this tier is greater than previous (ensures ascending order)
+  return player.tier > prevPlayer.tier
 }
 
 function getTierDescription(tier: number): string {
