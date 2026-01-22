@@ -1665,7 +1665,7 @@ async function loadEspnProjections() {
   console.log('[ESPN Points Projections] ========== STARTING ==========')
   isLoading.value = true
   loadingMessage.value = 'Loading ESPN Projections'
-  loadingProgress.value = { currentStep: 'Connecting to ESPN...', currentStepName: 'Initializing', completedSteps: 0, totalSteps: 5 }
+  loadingProgress.value = { currentStep: 'Connecting to ESPN...', currentStepName: 'Initializing', completedSteps: 0, totalSteps: 6 }
   
   try {
     const leagueKey = leagueStore.activeLeagueId
@@ -1809,9 +1809,51 @@ async function loadEspnProjections() {
       }
     }
     
-    allPlayers.value = allRosteredPlayers
+    loadingProgress.value = { ...loadingProgress.value, currentStep: 'Loading free agents...', currentStepName: 'Free Agents', completedSteps: 5 }
     
-    loadingProgress.value = { ...loadingProgress.value, currentStep: 'Calculating rankings...', currentStepName: 'Complete', completedSteps: 5 }
+    // Fetch free agents
+    const freeAgentPlayers: any[] = []
+    try {
+      const freeAgents = await espnService.getFreeAgents(sport as any, leagueId, parseInt(season), 100)
+      console.log('[ESPN Points Projections] Got', freeAgents.length, 'free agents')
+      
+      for (const fa of freeAgents) {
+        // Calculate total points using scoring map
+        let totalPts = fa.actualPoints || 0
+        if (fa.stats && Object.keys(scoringMap).length > 0) {
+          let calculatedPts = 0
+          for (const [statId, value] of Object.entries(fa.stats)) {
+            const pts = scoringMap[parseInt(statId)] || 0
+            calculatedPts += pts * (value as number)
+          }
+          if (calculatedPts > 0) totalPts = calculatedPts
+        }
+        
+        freeAgentPlayers.push({
+          player_key: `espn_player_${fa.id}`,
+          player_id: fa.id,
+          full_name: fa.fullName || 'Unknown',
+          position: fa.position || getEspnPositionAbbrev(fa.positionId || 0),
+          mlb_team: fa.proTeam || getEspnTeamAbbrev(fa.proTeamId || 0),
+          headshot: getEspnHeadshotUrl(fa.id, sport),
+          fantasy_team: null,  // Free agent - no team
+          fantasy_team_key: null,
+          stats: fa.stats || {},
+          total_points: totalPts,
+          ppg: totalPts > 0 ? totalPts / 100 : 0,
+          ownership_pct: fa.percentOwned || 0
+        })
+      }
+      console.log('[ESPN Points Projections] Processed', freeAgentPlayers.length, 'free agents')
+    } catch (e) {
+      console.error('[ESPN Points Projections] Error fetching free agents:', e)
+    }
+    
+    // Combine rostered players and free agents
+    allPlayers.value = [...allRosteredPlayers, ...freeAgentPlayers]
+    console.log('[ESPN Points Projections] Total players:', allPlayers.value.length, '(rostered:', allRosteredPlayers.length, ', FA:', freeAgentPlayers.length, ')')
+    
+    loadingProgress.value = { ...loadingProgress.value, currentStep: 'Calculating rankings...', currentStepName: 'Complete', completedSteps: 6 }
     
     recalculateRankings()
     console.log('[ESPN Points Projections] Complete!')
