@@ -93,6 +93,157 @@
         </div>
       </div>
 
+      <!-- Ranking Customization Panel -->
+      <div class="card">
+        <div class="card-body">
+          <!-- Header -->
+          <div class="flex items-center justify-between mb-4">
+            <div class="flex items-center gap-3">
+              <span class="text-2xl">🎚️</span>
+              <div>
+                <h3 class="text-lg font-bold text-dark-text">Customize Rankings</h3>
+                <p class="text-xs text-dark-textMuted">Adjust factor weights to create your perfect ranking formula</p>
+              </div>
+            </div>
+            <button 
+              @click="showRankingCustomization = !showRankingCustomization"
+              class="px-4 py-2 rounded-lg bg-dark-border/50 hover:bg-dark-border text-dark-textSecondary transition-colors flex items-center gap-2"
+            >
+              <span>{{ showRankingCustomization ? 'Collapse' : 'Expand' }}</span>
+              <svg :class="{ 'rotate-180': showRankingCustomization }" class="w-4 h-4 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+              </svg>
+            </button>
+          </div>
+
+          <!-- Presets (always visible) -->
+          <div class="flex flex-wrap gap-2 mb-3">
+            <button
+              v-for="preset in rankingPresets"
+              :key="preset.id"
+              @click="applyRankingPreset(preset)"
+              :class="[
+                'px-4 py-2 rounded-xl font-medium transition-all flex items-center gap-2',
+                activeRankingPreset === preset.id 
+                  ? 'bg-yellow-400 text-gray-900' 
+                  : 'bg-dark-border/50 text-dark-textSecondary hover:bg-dark-border'
+              ]"
+            >
+              <span class="text-lg">{{ preset.icon }}</span>
+              <span>{{ preset.name }}</span>
+            </button>
+          </div>
+
+          <!-- Current Formula Display -->
+          <div class="bg-dark-bg/50 rounded-xl p-3 mb-4">
+            <div class="text-xs text-dark-textMuted uppercase tracking-wider mb-1">Current Formula</div>
+            <div class="text-sm text-dark-text">{{ currentRankingFormula }}</div>
+          </div>
+
+          <!-- Expanded Factor Controls -->
+          <div v-if="showRankingCustomization" class="space-y-5 pt-4 border-t border-dark-border">
+            <!-- Factor Category Tabs -->
+            <div class="flex gap-2 overflow-x-auto pb-2">
+              <button
+                v-for="category in rankingFactorCategories"
+                :key="category.id"
+                @click="activeFactorCategory = category.id"
+                :class="[
+                  'px-4 py-2 rounded-lg font-medium transition-all whitespace-nowrap flex items-center gap-2',
+                  activeFactorCategory === category.id
+                    ? 'bg-primary/20 text-primary border border-primary/30'
+                    : 'bg-dark-border/30 text-dark-textSecondary hover:bg-dark-border/50'
+                ]"
+              >
+                <span>{{ category.icon }}</span>
+                <span>{{ category.name }}</span>
+              </button>
+            </div>
+
+            <!-- Factors for Active Category -->
+            <div class="grid gap-3 md:grid-cols-2">
+              <div
+                v-for="factor in factorsForActiveCategory"
+                :key="factor.id"
+                class="bg-dark-bg/30 rounded-xl p-4 border border-dark-border/50"
+              >
+                <div class="flex items-center justify-between mb-2">
+                  <div class="flex items-center gap-3">
+                    <span class="text-xl">{{ factor.icon }}</span>
+                    <div>
+                      <span class="font-semibold text-dark-text">{{ factor.name }}</span>
+                      <span v-if="!factor.available" class="ml-2 text-xs bg-dark-border px-2 py-0.5 rounded text-dark-textMuted">Coming Soon</span>
+                    </div>
+                  </div>
+                  <label class="relative inline-flex items-center cursor-pointer">
+                    <input 
+                      type="checkbox" 
+                      v-model="factor.enabled" 
+                      :disabled="!factor.available"
+                      class="sr-only peer" 
+                      @change="onRankingFactorChange"
+                    >
+                    <div class="w-11 h-6 bg-dark-border peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary peer-disabled:opacity-50"></div>
+                  </label>
+                </div>
+                <p class="text-xs text-dark-textMuted mb-3">{{ factor.description }}</p>
+                <div v-if="factor.enabled && factor.available" class="flex items-center gap-3">
+                  <input
+                    type="range"
+                    v-model.number="factor.weight"
+                    min="0"
+                    max="100"
+                    step="5"
+                    @input="onRankingFactorChange"
+                    class="flex-1 h-2 bg-dark-border rounded-lg appearance-none cursor-pointer accent-primary"
+                  >
+                  <div 
+                    class="text-sm font-bold w-14 text-right px-2 py-1 rounded"
+                    :style="{ backgroundColor: factor.color + '20', color: factor.color }"
+                  >
+                    {{ factor.weight }}%
+                  </div>
+                </div>
+                <div v-else-if="!factor.available" class="text-xs text-dark-textMuted italic">
+                  Advanced data required - available in future update
+                </div>
+              </div>
+            </div>
+
+            <!-- Total Weight Info -->
+            <div v-if="totalRankingWeight !== 100" class="bg-orange-500/10 border border-orange-500/30 rounded-xl p-3 flex items-center gap-3">
+              <span class="text-orange-400 text-xl">⚠️</span>
+              <div>
+                <div class="text-orange-400 font-medium">Weights don't add up to 100%</div>
+                <div class="text-sm text-orange-400/80">Current total: {{ totalRankingWeight }}%. Rankings will be normalized.</div>
+              </div>
+            </div>
+
+            <!-- Action Buttons -->
+            <div class="flex items-center justify-between pt-4 border-t border-dark-border">
+              <button 
+                @click="resetRankingFactors" 
+                class="text-sm text-dark-textMuted hover:text-dark-text transition-colors flex items-center gap-2"
+              >
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                </svg>
+                Reset to Default
+              </button>
+              <button 
+                @click="applyRankingChanges" 
+                class="px-4 py-2 rounded-lg bg-primary text-gray-900 font-semibold hover:bg-primary/90 transition-colors flex items-center gap-2"
+              >
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                </svg>
+                Apply Rankings
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <!-- Rankings Table -->
       <div class="card">
         <div class="card-header">
@@ -113,6 +264,9 @@
                   <th class="px-2 py-3 text-center text-xs font-semibold text-dark-textMuted uppercase w-12">Pos</th>
                   <th class="px-2 py-3 text-center text-xs font-semibold uppercase w-14 cursor-pointer hover:text-yellow-400" @click="setRosSort('positionRank')">
                     Pos Rk <span v-if="rosSortColumn === 'positionRank'" class="text-yellow-400">{{ rosSortDirection === 'asc' ? '↑' : '↓' }}</span>
+                  </th>
+                  <th class="px-2 py-3 text-center text-xs font-semibold uppercase w-16 cursor-pointer hover:text-yellow-400" @click="setRosSort('compositeScore')">
+                    Score <span v-if="rosSortColumn === 'compositeScore'" class="text-yellow-400">{{ rosSortDirection === 'asc' ? '↑' : '↓' }}</span>
                   </th>
                   <th class="px-2 py-3 text-center text-xs font-semibold uppercase w-14 cursor-pointer hover:text-yellow-400" @click="setRosSort('total_points')">
                     Pts <span v-if="rosSortColumn === 'total_points'" class="text-yellow-400">{{ rosSortDirection === 'asc' ? '↑' : '↓' }}</span>
@@ -150,11 +304,16 @@
                   </td>
                   <td class="px-2 py-3 text-center"><span class="px-2 py-1 rounded text-xs font-bold" :class="getPositionClass(player.position)">{{ player.position?.split(',')[0] }}</span></td>
                   <td class="px-2 py-3 text-center text-dark-text font-medium">{{ player.positionRank }}</td>
+                  <td class="px-2 py-3 text-center">
+                    <div class="flex items-center justify-center gap-1">
+                      <span class="font-bold text-primary">{{ player.compositeScore?.toFixed(1) || '0' }}</span>
+                    </div>
+                  </td>
                   <td class="px-2 py-3 text-center font-bold text-dark-text">{{ player.total_points?.toFixed(1) || '0' }}</td>
                   <td class="px-2 py-3 text-center font-bold text-dark-text">{{ player.ppg?.toFixed(2) || '0' }}</td>
                   <td class="px-2 py-3 text-center font-bold" :class="player.vor > 0 ? 'text-green-400' : player.vor < -3 ? 'text-red-400' : 'text-dark-textMuted'">{{ player.vor >= 0 ? '+' : '' }}{{ player.vor?.toFixed(1) || '0' }}</td>
                 </tr>
-                <tr v-if="gatedFilteredPlayers.length === 0"><td colspan="7" class="px-4 py-8 text-center text-dark-textMuted">No players match filters</td></tr>
+                <tr v-if="gatedFilteredPlayers.length === 0"><td colspan="8" class="px-4 py-8 text-center text-dark-textMuted">No players match filters</td></tr>
               </tbody>
             </table>
             
@@ -1153,6 +1312,144 @@ const positionFilters = [
 const vorBaselines = ref<Record<string, number>>({ C: 12, '1B': 15, '2B': 15, '3B': 15, SS: 15, OF: 40, SP: 50, RP: 25 })
 const positionBaselines = ref<Record<string, number>>({})
 
+// Ranking Customization State
+const showRankingCustomization = ref(false)
+const activeRankingPreset = ref('balanced')
+const activeFactorCategory = ref('production')
+
+interface RankingFactor {
+  id: string
+  name: string
+  description: string
+  category: string
+  enabled: boolean
+  weight: number
+  icon: string
+  color: string
+  available: boolean
+}
+
+const rankingFactorCategories = [
+  { id: 'production', name: 'Production', icon: '⚡' },
+  { id: 'volume', name: 'Volume & Games', icon: '📊' },
+  { id: 'trending', name: 'Trending & Form', icon: '🔥' },
+  { id: 'efficiency', name: 'Efficiency', icon: '🎯' },
+  { id: 'advanced', name: 'Advanced Metrics', icon: '🧪' }
+]
+
+const rankingFactors = ref<RankingFactor[]>([
+  // Production factors
+  { id: 'ppg', name: 'Points Per Game', description: 'Average fantasy points per game played', category: 'production', enabled: true, weight: 35, icon: '📊', color: '#f5c451', available: true },
+  { id: 'vor', name: 'Value Over Replacement', description: 'Points above a replacement-level player at same position', category: 'production', enabled: true, weight: 20, icon: '💎', color: '#a855f7', available: true },
+  { id: 'seasonPoints', name: 'Season Total Points', description: 'Total fantasy points accumulated this season', category: 'production', enabled: true, weight: 20, icon: '📈', color: '#22c55e', available: true },
+  
+  // Volume factors
+  { id: 'gamesPlayed', name: 'Games Played', description: 'Number of games played - more games = more opportunity', category: 'volume', enabled: true, weight: 5, icon: '🎮', color: '#3b82f6', available: true },
+  { id: 'plateAppearances', name: 'Plate Appearances / Touches', description: 'Total opportunities (PA for hitters, touches for RBs)', category: 'volume', enabled: false, weight: 0, icon: '🏏', color: '#8b5cf6', available: false },
+  
+  // Trending factors
+  { id: 'recentForm', name: 'Recent Form (7 Days)', description: 'Performance over last 7 days vs season average', category: 'trending', enabled: true, weight: 15, icon: '🔥', color: '#ef4444', available: true },
+  { id: 'last14', name: 'Last 14 Days Trend', description: 'Performance trend over last 2 weeks', category: 'trending', enabled: false, weight: 0, icon: '📅', color: '#f97316', available: true },
+  { id: 'ownershipTrend', name: 'Ownership Trend', description: 'Rising or falling ownership percentage', category: 'trending', enabled: false, weight: 0, icon: '📈', color: '#06b6d4', available: false },
+  
+  // Efficiency factors  
+  { id: 'consistency', name: 'Consistency', description: 'Lower variance in scoring = more reliable floor', category: 'efficiency', enabled: true, weight: 5, icon: '🎯', color: '#ec4899', available: true },
+  { id: 'gamesStarted', name: 'Games Started %', description: 'Percentage of games where player was in starting lineup', category: 'efficiency', enabled: false, weight: 0, icon: '⭐', color: '#10b981', available: false },
+  
+  // Advanced factors (sport-specific, coming soon)
+  { id: 'xwoba', name: 'xwOBA (Expected wOBA)', description: 'Expected weighted on-base average based on contact quality', category: 'advanced', enabled: false, weight: 0, icon: '🧪', color: '#06b6d4', available: false },
+  { id: 'barrelRate', name: 'Barrel Rate', description: 'Percentage of batted balls that are barrels (98+ mph, optimal angle)', category: 'advanced', enabled: false, weight: 0, icon: '💥', color: '#dc2626', available: false },
+  { id: 'hardHitRate', name: 'Hard Hit Rate', description: 'Percentage of balls hit 95+ mph', category: 'advanced', enabled: false, weight: 0, icon: '🔨', color: '#f97316', available: false },
+  { id: 'exitVelo', name: 'Exit Velocity', description: 'Average exit velocity on batted balls', category: 'advanced', enabled: false, weight: 0, icon: '🚀', color: '#ef4444', available: false },
+])
+
+const rankingPresets = [
+  { id: 'balanced', name: 'Balanced', icon: '⚖️', factors: { ppg: 35, vor: 20, seasonPoints: 20, recentForm: 15, consistency: 5, gamesPlayed: 5 } },
+  { id: 'seasonTotal', name: 'Season Total', icon: '📊', factors: { ppg: 20, vor: 15, seasonPoints: 45, recentForm: 10, consistency: 5, gamesPlayed: 5 } },
+  { id: 'hotHand', name: 'Hot Hand', icon: '🔥', factors: { ppg: 20, vor: 10, seasonPoints: 15, recentForm: 40, consistency: 5, gamesPlayed: 5, last14: 5 } },
+  { id: 'rosValue', name: 'ROS Value', icon: '💎', factors: { ppg: 40, vor: 30, seasonPoints: 10, recentForm: 10, consistency: 5, gamesPlayed: 5 } },
+  { id: 'floorPlay', name: 'Floor Play', icon: '🛡️', factors: { ppg: 25, vor: 15, seasonPoints: 20, recentForm: 10, consistency: 25, gamesPlayed: 5 } },
+]
+
+const factorsForActiveCategory = computed(() => {
+  return rankingFactors.value.filter(f => f.category === activeFactorCategory.value)
+})
+
+const totalRankingWeight = computed(() => {
+  return rankingFactors.value.filter(f => f.enabled).reduce((sum, f) => sum + f.weight, 0)
+})
+
+const currentRankingFormula = computed(() => {
+  const enabled = rankingFactors.value.filter(f => f.enabled && f.weight > 0)
+  if (enabled.length === 0) return 'No factors enabled'
+  
+  const total = enabled.reduce((sum, f) => sum + f.weight, 0)
+  return enabled
+    .sort((a, b) => b.weight - a.weight)
+    .slice(0, 4)
+    .map(f => `${f.name} (${Math.round(f.weight / total * 100)}%)`)
+    .join(' + ') + (enabled.length > 4 ? ` + ${enabled.length - 4} more` : '')
+})
+
+function applyRankingPreset(preset: typeof rankingPresets[0]) {
+  activeRankingPreset.value = preset.id
+  
+  // Reset all factors
+  rankingFactors.value.forEach(f => {
+    f.enabled = false
+    f.weight = 0
+  })
+  
+  // Apply preset weights
+  Object.entries(preset.factors).forEach(([factorId, weight]) => {
+    const factor = rankingFactors.value.find(f => f.id === factorId)
+    if (factor && factor.available) {
+      factor.enabled = true
+      factor.weight = weight
+    }
+  })
+  
+  recalculateRankings()
+}
+
+function onRankingFactorChange() {
+  activeRankingPreset.value = 'custom'
+}
+
+function applyRankingChanges() {
+  saveRankingFactorsToStorage()
+  recalculateRankings()
+}
+
+function resetRankingFactors() {
+  applyRankingPreset(rankingPresets[0])
+}
+
+function saveRankingFactorsToStorage() {
+  const key = `playerRankingFactors_${leagueStore.activePlatform}`
+  localStorage.setItem(key, JSON.stringify(rankingFactors.value))
+}
+
+function loadRankingFactorsFromStorage() {
+  const key = `playerRankingFactors_${leagueStore.activePlatform}`
+  const saved = localStorage.getItem(key)
+  if (saved) {
+    try {
+      const parsed = JSON.parse(saved)
+      rankingFactors.value.forEach(f => {
+        const savedFactor = parsed.find((sf: RankingFactor) => sf.id === f.id)
+        if (savedFactor) {
+          f.enabled = savedFactor.enabled
+          f.weight = savedFactor.weight
+        }
+      })
+      activeRankingPreset.value = 'custom'
+    } catch (e) {
+      console.error('Error loading saved ranking factors:', e)
+    }
+  }
+}
+
 // Trade Analyzer State
 const tradePartnerKey = ref('')
 const tradeGivePlayers = ref<any[]>([])
@@ -1520,12 +1817,89 @@ function getVerdictClass(v: string) { if (v === 'Must Start') return 'bg-green-5
 function calculatePositionBaselines() { const byPos: Record<string, any[]> = {}; allPlayers.value.forEach(p => { const pos = p.position?.split(',')[0]?.trim(); if (pos) { if (!byPos[pos]) byPos[pos] = []; byPos[pos].push(p) } }); Object.entries(byPos).forEach(([pos, players]) => { players.sort((a, b) => (b.ppg || 0) - (a.ppg || 0)); positionBaselines.value[pos] = players[Math.min((vorBaselines.value[pos] || 15) - 1, players.length - 1)]?.ppg || 0 }) }
 
 function recalculateRankings() {
+  // Calculate position baselines and VOR for each player
   calculatePositionBaselines()
-  allPlayers.value.forEach(p => { const pos = p.position?.split(',')[0]?.trim(); p.vor = (p.ppg || 0) - (positionBaselines.value[pos] || 0) })
-  allPlayers.value.sort((a, b) => (b.ppg || 0) - (a.ppg || 0))
-  allPlayers.value.forEach((p, i) => p.rosRank = i + 1)
+  allPlayers.value.forEach(p => { 
+    const pos = p.position?.split(',')[0]?.trim()
+    p.vor = (p.ppg || 0) - (positionBaselines.value[pos] || 0) 
+  })
+  
+  // Get enabled factors and calculate normalized weights
+  const enabledFactors = rankingFactors.value.filter(f => f.enabled && f.available && f.weight > 0)
+  const totalWeight = enabledFactors.reduce((sum, f) => sum + f.weight, 0)
+  
+  if (enabledFactors.length === 0 || totalWeight === 0) {
+    // Fallback to PPG-only ranking
+    allPlayers.value.sort((a, b) => (b.ppg || 0) - (a.ppg || 0))
+    allPlayers.value.forEach((p, i) => { p.rosRank = i + 1; p.compositeScore = p.ppg || 0 })
+  } else {
+    // Calculate min/max for each factor to normalize scores
+    const factorStats: Record<string, { min: number; max: number; values: Map<string, number> }> = {}
+    
+    enabledFactors.forEach(factor => {
+      let values = new Map<string, number>()
+      let min = Infinity, max = -Infinity
+      
+      allPlayers.value.forEach(p => {
+        let val = 0
+        switch (factor.id) {
+          case 'ppg': val = p.ppg || 0; break
+          case 'vor': val = p.vor || 0; break
+          case 'seasonPoints': val = p.total_points || 0; break
+          case 'gamesPlayed': val = p.games_played || p.gp || 100; break
+          case 'recentForm': 
+            // Recent form: compare last 7 days to season average (simulated for now)
+            val = p.recent_ppg ? (p.recent_ppg / (p.ppg || 1)) * 100 : 100
+            break
+          case 'last14':
+            val = p.last14_ppg ? (p.last14_ppg / (p.ppg || 1)) * 100 : 100
+            break
+          case 'consistency':
+            // Consistency: inverse of standard deviation (lower variance = higher score)
+            val = p.std_dev ? Math.max(0, 100 - (p.std_dev * 10)) : 50
+            break
+          default: val = 0
+        }
+        values.set(p.player_key, val)
+        if (val < min) min = val
+        if (val > max) max = val
+      })
+      
+      factorStats[factor.id] = { min, max, values }
+    })
+    
+    // Calculate composite score for each player
+    allPlayers.value.forEach(p => {
+      let compositeScore = 0
+      
+      enabledFactors.forEach(factor => {
+        const stats = factorStats[factor.id]
+        if (!stats) return
+        
+        const rawValue = stats.values.get(p.player_key) || 0
+        const range = stats.max - stats.min
+        // Normalize to 0-100 scale
+        const normalizedValue = range > 0 ? ((rawValue - stats.min) / range) * 100 : 50
+        // Apply weight (normalized)
+        const weightedValue = normalizedValue * (factor.weight / totalWeight)
+        compositeScore += weightedValue
+      })
+      
+      p.compositeScore = compositeScore
+    })
+    
+    // Sort by composite score
+    allPlayers.value.sort((a, b) => (b.compositeScore || 0) - (a.compositeScore || 0))
+    allPlayers.value.forEach((p, i) => p.rosRank = i + 1)
+  }
+  
+  // Calculate position ranks
   const posCounts: Record<string, number> = {}
-  allPlayers.value.forEach(p => { const pos = p.position?.split(',')[0]?.trim() || 'X'; posCounts[pos] = (posCounts[pos] || 0) + 1; p.positionRank = posCounts[pos] })
+  allPlayers.value.forEach(p => { 
+    const pos = p.position?.split(',')[0]?.trim() || 'X'
+    posCounts[pos] = (posCounts[pos] || 0) + 1
+    p.positionRank = posCounts[pos] 
+  })
 }
 
 async function loadProjections() {
@@ -1907,6 +2281,10 @@ watch(() => leagueStore.activePlatform, (platform) => {
 
 onMounted(() => { 
   console.log('[PointsProjections] onMounted - platform:', leagueStore.activePlatform, 'leagueId:', effectiveLeagueKey.value, 'isEspn:', isEspn.value)
+  
+  // Load saved ranking factors
+  loadRankingFactorsFromStorage()
+  
   if (effectiveLeagueKey.value) {
     if (isEspn.value) {
       loadEspnProjections()
