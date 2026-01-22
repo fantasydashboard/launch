@@ -3142,49 +3142,148 @@ async function downloadTeamDetailImage() {
     })
     console.log(`[Download Team] Team logo loaded`)
     
-    // Get weekly results
-    const weeklyResults = teamDetailWeeklyResults.value.slice(0, 20) // Up to 20 weeks
-    
-    // Generate weekly results grid
-    const generateWeeklyResults = () => {
-      return weeklyResults.map((result: any, idx: number) => {
-        const bgColor = result.won ? 'rgba(34, 197, 94, 0.2)' : (result.tied ? 'rgba(234, 179, 8, 0.2)' : 'rgba(239, 68, 68, 0.2)')
-        const textColor = result.won ? '#22c55e' : (result.tied ? '#eab308' : '#ef4444')
-        const label = result.won ? 'W' : (result.tied ? 'T' : 'L')
-        
-        return `
-          <div style="width: 32px; height: 32px; border-radius: 6px; background: ${bgColor}; display: flex; align-items: center; justify-content: center;">
-            <span style="font-size: 11px; font-weight: bold; color: ${textColor};">${label}</span>
-          </div>
-        `
-      }).join('')
-    }
-    
-    // Get top categories for the team
-    const topCategories = teamDetailCategories.value.slice(0, 6)
-    
-    // Generate category breakdown
-    const generateCategories = () => {
-      return topCategories.map((cat: any) => {
-        const rankColor = cat.rank <= 3 ? '#22c55e' : (cat.rank <= 6 ? '#eab308' : '#ef4444')
-        
-        return `
-          <div style="background: rgba(58, 61, 82, 0.3); border-radius: 8px; padding: 8px 10px; display: flex; align-items: center; justify-content: space-between;">
-            <span style="font-size: 11px; color: #9ca3af;">${cat.display_name}</span>
-            <div style="display: flex; align-items: center; gap: 8px;">
-              <span style="font-size: 13px; font-weight: bold; color: #e5e7eb;">${cat.wins}-${cat.losses}${cat.ties > 0 ? '-' + cat.ties : ''}</span>
-              <span style="font-size: 10px; padding: 2px 6px; border-radius: 4px; background: ${rankColor}20; color: ${rankColor}; font-weight: 600;">#${cat.rank}</span>
-            </div>
-          </div>
-        `
-      }).join('')
-    }
-    
     const container = document.createElement('div')
     container.style.cssText = 'position: absolute; left: -9999px; top: 0; width: 480px; font-family: system-ui, -apple-system, sans-serif;'
     
     const tiesText = team.ties > 0 ? `-${team.ties}` : ''
     const playoffBadge = team.playoffFinish === 1 ? '🏆' : (team.playoffFinish === 2 ? '🥈' : (team.playoffFinish === 3 ? '🥉' : ''))
+    
+    // Check if this is a points league
+    const isPoints = isPointsLeague.value
+    const stats = pointsLeagueTeamDetailStats.value
+    
+    // Generate weekly results - different for points vs category leagues
+    const generateWeeklyResults = () => {
+      if (isPoints) {
+        // For points leagues, show weekly scores with W/L color
+        return stats.weeklyResults.slice(0, 20).map((result: any) => {
+          const bgColor = result.won ? 'rgba(34, 197, 94, 0.2)' : 'rgba(239, 68, 68, 0.2)'
+          const textColor = result.won ? '#22c55e' : '#ef4444'
+          return `
+            <div style="width: 40px; height: 32px; border-radius: 6px; background: ${bgColor}; display: flex; align-items: center; justify-content: center;">
+              <span style="font-size: 10px; font-weight: bold; color: ${textColor};">${result.points?.toFixed(0) || '0'}</span>
+            </div>
+          `
+        }).join('')
+      } else {
+        // For category leagues, show W/L/T indicators
+        const weeklyResults = teamDetailWeeklyResults.value.slice(0, 20)
+        return weeklyResults.map((result: any) => {
+          const bgColor = result.won ? 'rgba(34, 197, 94, 0.2)' : (result.tied ? 'rgba(234, 179, 8, 0.2)' : 'rgba(239, 68, 68, 0.2)')
+          const textColor = result.won ? '#22c55e' : (result.tied ? '#eab308' : '#ef4444')
+          const label = result.won ? 'W' : (result.tied ? 'T' : 'L')
+          return `
+            <div style="width: 32px; height: 32px; border-radius: 6px; background: ${bgColor}; display: flex; align-items: center; justify-content: center;">
+              <span style="font-size: 11px; font-weight: bold; color: ${textColor};">${label}</span>
+            </div>
+          `
+        }).join('')
+      }
+    }
+    
+    // Generate stats section - different for points vs category leagues
+    const generateStatsSection = () => {
+      if (isPoints) {
+        // Points league stats
+        return `
+          <div style="padding: 12px 16px; display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; border-bottom: 1px solid rgba(58, 61, 82, 0.5);">
+            <div style="background: rgba(58, 61, 82, 0.3); border-radius: 8px; padding: 10px; text-align: center;">
+              <div style="font-size: 18px; font-weight: 900; color: #ffffff;">${team.wins}-${team.losses}${tiesText}</div>
+              <div style="font-size: 10px; color: #9ca3af; margin-top: 2px;">Record</div>
+            </div>
+            <div style="background: rgba(58, 61, 82, 0.3); border-radius: 8px; padding: 10px; text-align: center;">
+              <div style="font-size: 18px; font-weight: 900; color: #eab308;">#${team.regularSeasonRank}</div>
+              <div style="font-size: 10px; color: #9ca3af; margin-top: 2px;">Rank</div>
+            </div>
+            <div style="background: rgba(58, 61, 82, 0.3); border-radius: 8px; padding: 10px; text-align: center;">
+              <div style="font-size: 18px; font-weight: 900; color: #22c55e;">${stats.ppg}</div>
+              <div style="font-size: 10px; color: #9ca3af; margin-top: 2px;">PPG</div>
+            </div>
+            <div style="background: rgba(58, 61, 82, 0.3); border-radius: 8px; padding: 10px; text-align: center;">
+              <div style="font-size: 18px; font-weight: 900; color: #06b6d4;">${team.all_play_wins}-${team.all_play_losses}</div>
+              <div style="font-size: 10px; color: #9ca3af; margin-top: 2px;">All-Play</div>
+            </div>
+          </div>
+          
+          <!-- Points Breakdown -->
+          <div style="padding: 12px 16px; border-bottom: 1px solid rgba(58, 61, 82, 0.5);">
+            <div style="font-size: 10px; font-weight: 600; color: #6b7280; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px;">Season Stats</div>
+            <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px;">
+              <div style="background: rgba(58, 61, 82, 0.3); border-radius: 8px; padding: 8px 10px; text-align: center;">
+                <div style="font-size: 14px; font-weight: bold; color: #22c55e;">${stats.highScore}</div>
+                <div style="font-size: 9px; color: #9ca3af;">High</div>
+              </div>
+              <div style="background: rgba(58, 61, 82, 0.3); border-radius: 8px; padding: 8px 10px; text-align: center;">
+                <div style="font-size: 14px; font-weight: bold; color: #ef4444;">${stats.lowScore}</div>
+                <div style="font-size: 9px; color: #9ca3af;">Low</div>
+              </div>
+              <div style="background: rgba(58, 61, 82, 0.3); border-radius: 8px; padding: 8px 10px; text-align: center;">
+                <div style="font-size: 14px; font-weight: bold; color: #facc15;">${stats.totalPoints}</div>
+                <div style="font-size: 9px; color: #9ca3af;">Total</div>
+              </div>
+              <div style="background: rgba(58, 61, 82, 0.3); border-radius: 8px; padding: 8px 10px; text-align: center;">
+                <div style="font-size: 14px; font-weight: bold; color: #9ca3af;">${stats.pointsAgainst}</div>
+                <div style="font-size: 9px; color: #9ca3af;">Pts Against</div>
+              </div>
+              <div style="background: rgba(58, 61, 82, 0.3); border-radius: 8px; padding: 8px 10px; text-align: center;">
+                <div style="font-size: 14px; font-weight: bold; color: ${parseFloat(stats.pointDiff) >= 0 ? '#22c55e' : '#ef4444'};">${parseFloat(stats.pointDiff) >= 0 ? '+' : ''}${stats.pointDiff}</div>
+                <div style="font-size: 9px; color: #9ca3af;">Diff</div>
+              </div>
+              <div style="background: rgba(58, 61, 82, 0.3); border-radius: 8px; padding: 8px 10px; text-align: center;">
+                <div style="font-size: 14px; font-weight: bold; color: #e5e7eb;">${stats.winStreak}</div>
+                <div style="font-size: 9px; color: #9ca3af;">Streak</div>
+              </div>
+            </div>
+          </div>
+        `
+      } else {
+        // Category league stats
+        const topCategories = teamDetailCategories.value.slice(0, 6)
+        const generateCategories = () => {
+          return topCategories.map((cat: any) => {
+            const rankColor = cat.rank <= 3 ? '#22c55e' : (cat.rank <= 6 ? '#eab308' : '#ef4444')
+            return `
+              <div style="background: rgba(58, 61, 82, 0.3); border-radius: 8px; padding: 8px 10px; display: flex; align-items: center; justify-content: space-between;">
+                <span style="font-size: 11px; color: #9ca3af;">${cat.display_name}</span>
+                <div style="display: flex; align-items: center; gap: 8px;">
+                  <span style="font-size: 13px; font-weight: bold; color: #e5e7eb;">${cat.wins}-${cat.losses}${cat.ties > 0 ? '-' + cat.ties : ''}</span>
+                  <span style="font-size: 10px; padding: 2px 6px; border-radius: 4px; background: ${rankColor}20; color: ${rankColor}; font-weight: 600;">#${cat.rank}</span>
+                </div>
+              </div>
+            `
+          }).join('')
+        }
+        
+        return `
+          <div style="padding: 12px 16px; display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; border-bottom: 1px solid rgba(58, 61, 82, 0.5);">
+            <div style="background: rgba(58, 61, 82, 0.3); border-radius: 8px; padding: 10px; text-align: center;">
+              <div style="font-size: 18px; font-weight: 900; color: #ffffff;">${team.wins}-${team.losses}${tiesText}</div>
+              <div style="font-size: 10px; color: #9ca3af; margin-top: 2px;">Record</div>
+            </div>
+            <div style="background: rgba(58, 61, 82, 0.3); border-radius: 8px; padding: 10px; text-align: center;">
+              <div style="font-size: 18px; font-weight: 900; color: #eab308;">#${team.regularSeasonRank}</div>
+              <div style="font-size: 10px; color: #9ca3af; margin-top: 2px;">Rank</div>
+            </div>
+            <div style="background: rgba(58, 61, 82, 0.3); border-radius: 8px; padding: 10px; text-align: center;">
+              <div style="font-size: 18px; font-weight: 900; color: #06b6d4;">${team.all_play_wins}-${team.all_play_losses}</div>
+              <div style="font-size: 10px; color: #9ca3af; margin-top: 2px;">All-Play</div>
+            </div>
+            <div style="background: rgba(58, 61, 82, 0.3); border-radius: 8px; padding: 10px; text-align: center;">
+              <div style="font-size: 18px; font-weight: 900; color: #22c55e;">${teamDetailAvgCatsPerWeek.value}</div>
+              <div style="font-size: 10px; color: #9ca3af; margin-top: 2px;">Cats/Week</div>
+            </div>
+          </div>
+          
+          <!-- Category Breakdown -->
+          <div style="padding: 12px 16px; border-bottom: 1px solid rgba(58, 61, 82, 0.5);">
+            <div style="font-size: 10px; font-weight: 600; color: #6b7280; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px;">Category Breakdown</div>
+            <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 6px;">
+              ${generateCategories()}
+            </div>
+          </div>
+        `
+      }
+    }
     
     container.innerHTML = `
       <div style="background: linear-gradient(160deg, #0f1219 0%, #0a0c14 50%, #0d1117 100%); border-radius: 16px; box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5); position: relative; overflow: hidden;">
@@ -3199,7 +3298,7 @@ async function downloadTeamDetailImage() {
           ${logoBase64 ? `<img src="${logoBase64}" style="height: 40px; width: auto; flex-shrink: 0; margin-right: 12px;" />` : ''}
           <div style="flex: 1;">
             <div style="font-size: 11px; color: #9ca3af; margin-bottom: 2px;">${leagueName.value}</div>
-            <div style="font-size: 12px; color: #facc15; font-weight: 600;">${currentSeason.value} Season</div>
+            <div style="font-size: 12px; color: #facc15; font-weight: 600;">${currentSeason.value} Season • ${isPoints ? 'H2H Points' : 'H2H Categories'}</div>
           </div>
         </div>
         
@@ -3217,37 +3316,11 @@ async function downloadTeamDetailImage() {
           </div>
         </div>
         
-        <!-- Stats Grid -->
-        <div style="padding: 12px 16px; display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; border-bottom: 1px solid rgba(58, 61, 82, 0.5);">
-          <div style="background: rgba(58, 61, 82, 0.3); border-radius: 8px; padding: 10px; text-align: center;">
-            <div style="font-size: 18px; font-weight: 900; color: #ffffff;">${team.wins}-${team.losses}${tiesText}</div>
-            <div style="font-size: 10px; color: #9ca3af; margin-top: 2px;">Record</div>
-          </div>
-          <div style="background: rgba(58, 61, 82, 0.3); border-radius: 8px; padding: 10px; text-align: center;">
-            <div style="font-size: 18px; font-weight: 900; color: #eab308;">#${team.regularSeasonRank}</div>
-            <div style="font-size: 10px; color: #9ca3af; margin-top: 2px;">Rank</div>
-          </div>
-          <div style="background: rgba(58, 61, 82, 0.3); border-radius: 8px; padding: 10px; text-align: center;">
-            <div style="font-size: 18px; font-weight: 900; color: #06b6d4;">${team.all_play_wins}-${team.all_play_losses}</div>
-            <div style="font-size: 10px; color: #9ca3af; margin-top: 2px;">All-Play</div>
-          </div>
-          <div style="background: rgba(58, 61, 82, 0.3); border-radius: 8px; padding: 10px; text-align: center;">
-            <div style="font-size: 18px; font-weight: 900; color: #22c55e;">${teamDetailAvgCatsPerWeek.value}</div>
-            <div style="font-size: 10px; color: #9ca3af; margin-top: 2px;">Cats/Week</div>
-          </div>
-        </div>
-        
-        <!-- Category Breakdown -->
-        <div style="padding: 12px 16px; border-bottom: 1px solid rgba(58, 61, 82, 0.5);">
-          <div style="font-size: 10px; font-weight: 600; color: #6b7280; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px;">Category Breakdown</div>
-          <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 6px;">
-            ${generateCategories()}
-          </div>
-        </div>
+        ${generateStatsSection()}
         
         <!-- Weekly Results -->
         <div style="padding: 12px 16px;">
-          <div style="font-size: 10px; font-weight: 600; color: #6b7280; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px;">Weekly Results</div>
+          <div style="font-size: 10px; font-weight: 600; color: #6b7280; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px;">Weekly ${isPoints ? 'Scores' : 'Results'}</div>
           <div style="display: flex; flex-wrap: wrap; gap: 4px;">
             ${generateWeeklyResults()}
           </div>
