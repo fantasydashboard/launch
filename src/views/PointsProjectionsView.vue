@@ -699,14 +699,10 @@
                                 <span>{{ player.mlb_team || 'FA' }}</span>
                                 <span class="text-dark-border">•</span>
                                 <template v-if="player.fantasy_team">
-                                  <div class="flex items-center gap-1" :class="isMyPlayer(player) ? 'text-yellow-400' : 'text-dark-textMuted'">
-                                    <svg class="w-3 h-3" viewBox="0 0 24 24" fill="currentColor"><path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4z"/></svg>
-                                    <span>{{ player.fantasy_team }}</span>
-                                  </div>
+                                  <img :src="platformLogo" :alt="platformName" class="w-3 h-3 opacity-60" />
+                                  <span :class="isMyPlayer(player) ? 'text-yellow-400' : ''">{{ player.fantasy_team }}</span>
                                 </template>
-                                <span v-else class="text-cyan-400 flex items-center gap-1">
-                                  <span>+</span> Free Agent
-                                </span>
+                                <span v-else class="text-cyan-400">Free Agent</span>
                               </div>
                             </div>
                           </div>
@@ -793,6 +789,140 @@
                   <span class="text-dark-textMuted text-sm">Projected Total</span>
                   <span class="text-xl font-bold text-yellow-400">{{ suggestedLineupTotal.toFixed(1) }}</span>
                 </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Recommended Moves Section -->
+      <div class="card mt-6">
+        <div class="card-header">
+          <div class="flex items-center gap-3">
+            <span class="text-2xl">🔄</span>
+            <div>
+              <h2 class="card-title">Recommended Moves</h2>
+              <p class="text-xs text-dark-textMuted">
+                <template v-if="rosterSpotsAvailable > 0">
+                  <span class="text-green-400">{{ rosterSpotsAvailable }} open roster spot{{ rosterSpotsAvailable > 1 ? 's' : '' }}</span> — can add players without dropping
+                </template>
+                <template v-else-if="rosterSpotsAvailable < 0">
+                  <span class="text-red-400">{{ Math.abs(rosterSpotsAvailable) }} over roster limit</span> — must drop {{ Math.abs(rosterSpotsAvailable) }} player{{ Math.abs(rosterSpotsAvailable) > 1 ? 's' : '' }} before making moves
+                </template>
+                <template v-else>
+                  Roster full — must drop a player to make a pickup
+                </template>
+              </p>
+            </div>
+          </div>
+        </div>
+        <div class="card-body p-0">
+          <div v-if="recommendedMoves.length === 0" class="p-6 text-center text-dark-textMuted">
+            <span class="text-4xl mb-3 block">✅</span>
+            <p>No recommended moves at this time. Your roster looks strong!</p>
+          </div>
+          <div v-else class="divide-y divide-dark-border/30">
+            <div v-for="(move, idx) in recommendedMoves.slice(0, 5)" :key="idx" class="p-4">
+              <div class="flex items-start gap-4">
+                <!-- Pickup Player -->
+                <div class="flex-1">
+                  <div class="text-xs text-green-400 font-semibold uppercase mb-2">📈 Add</div>
+                  <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-full bg-dark-border overflow-hidden ring-2 ring-green-500/50">
+                      <img :src="move.pickup.headshot || defaultHeadshot" class="w-full h-full object-cover" @error="handleImageError" />
+                    </div>
+                    <div>
+                      <div class="font-semibold text-dark-text">{{ move.pickup.full_name }}</div>
+                      <div class="text-xs text-dark-textMuted">{{ move.pickup.position?.split(',')[0] }} • {{ move.pickup.mlb_team || 'FA' }}</div>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Arrow -->
+                <div class="flex items-center justify-center w-10 h-10 mt-6">
+                  <svg class="w-6 h-6 text-yellow-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6" />
+                  </svg>
+                </div>
+
+                <!-- Drop Player -->
+                <div class="flex-1">
+                  <div class="text-xs text-red-400 font-semibold uppercase mb-2">📉 Drop</div>
+                  <div v-if="move.drop" class="flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-full bg-dark-border overflow-hidden ring-2 ring-red-500/50">
+                      <img :src="move.drop.headshot || defaultHeadshot" class="w-full h-full object-cover" @error="handleImageError" />
+                    </div>
+                    <div>
+                      <div class="font-semibold text-dark-text">{{ move.drop.full_name }}</div>
+                      <div class="text-xs text-dark-textMuted">{{ move.drop.position?.split(',')[0] }} • {{ move.drop.mlb_team || 'FA' }}</div>
+                    </div>
+                  </div>
+                  <div v-else class="flex items-center gap-3 text-green-400">
+                    <div class="w-10 h-10 rounded-full bg-green-500/20 flex items-center justify-center">
+                      <span class="text-lg">✓</span>
+                    </div>
+                    <div class="text-sm">No drop needed (open slot)</div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Impact Projections -->
+              <div class="mt-4 grid grid-cols-4 gap-3">
+                <template v-if="sportName === 'Football'">
+                  <div class="bg-dark-bg/50 rounded-lg p-3 text-center">
+                    <div class="text-xs text-dark-textMuted uppercase mb-1">This Week</div>
+                    <div class="font-bold" :class="move.impact.thisWeek >= 0 ? 'text-green-400' : 'text-red-400'">
+                      {{ move.impact.thisWeek >= 0 ? '+' : '' }}{{ move.impact.thisWeek.toFixed(1) }}
+                    </div>
+                  </div>
+                  <div class="bg-dark-bg/50 rounded-lg p-3 text-center">
+                    <div class="text-xs text-dark-textMuted uppercase mb-1">Next 3 Wks</div>
+                    <div class="font-bold" :class="move.impact.next3Weeks >= 0 ? 'text-green-400' : 'text-red-400'">
+                      {{ move.impact.next3Weeks >= 0 ? '+' : '' }}{{ move.impact.next3Weeks.toFixed(1) }}
+                    </div>
+                  </div>
+                  <div class="bg-dark-bg/50 rounded-lg p-3 text-center">
+                    <div class="text-xs text-dark-textMuted uppercase mb-1">ROS</div>
+                    <div class="font-bold" :class="move.impact.ros >= 0 ? 'text-green-400' : 'text-red-400'">
+                      {{ move.impact.ros >= 0 ? '+' : '' }}{{ move.impact.ros.toFixed(1) }}
+                    </div>
+                  </div>
+                  <div class="bg-dark-bg/50 rounded-lg p-3 text-center">
+                    <div class="text-xs text-dark-textMuted uppercase mb-1">Verdict</div>
+                    <div class="font-bold" :class="getMoveVerdictClass(move.impact.ros)">{{ getMoveVerdict(move.impact.ros) }}</div>
+                  </div>
+                </template>
+                <template v-else>
+                  <div class="bg-dark-bg/50 rounded-lg p-3 text-center">
+                    <div class="text-xs text-dark-textMuted uppercase mb-1">Today</div>
+                    <div class="font-bold" :class="move.impact.today >= 0 ? 'text-green-400' : 'text-red-400'">
+                      {{ move.impact.today >= 0 ? '+' : '' }}{{ move.impact.today.toFixed(1) }}
+                    </div>
+                  </div>
+                  <div class="bg-dark-bg/50 rounded-lg p-3 text-center">
+                    <div class="text-xs text-dark-textMuted uppercase mb-1">Next 7 Days</div>
+                    <div class="font-bold" :class="move.impact.next7Days >= 0 ? 'text-green-400' : 'text-red-400'">
+                      {{ move.impact.next7Days >= 0 ? '+' : '' }}{{ move.impact.next7Days.toFixed(1) }}
+                    </div>
+                  </div>
+                  <div class="bg-dark-bg/50 rounded-lg p-3 text-center">
+                    <div class="text-xs text-dark-textMuted uppercase mb-1">Next 14 Days</div>
+                    <div class="font-bold" :class="move.impact.next14Days >= 0 ? 'text-green-400' : 'text-red-400'">
+                      {{ move.impact.next14Days >= 0 ? '+' : '' }}{{ move.impact.next14Days.toFixed(1) }}
+                    </div>
+                  </div>
+                  <div class="bg-dark-bg/50 rounded-lg p-3 text-center">
+                    <div class="text-xs text-dark-textMuted uppercase mb-1">ROS</div>
+                    <div class="font-bold" :class="move.impact.ros >= 0 ? 'text-green-400' : 'text-red-400'">
+                      {{ move.impact.ros >= 0 ? '+' : '' }}{{ move.impact.ros.toFixed(1) }}
+                    </div>
+                  </div>
+                </template>
+              </div>
+
+              <!-- Recommendation Reason -->
+              <div class="mt-3 text-xs text-dark-textMuted bg-dark-bg/30 rounded-lg p-2">
+                💡 {{ move.reason }}
               </div>
             </div>
           </div>
@@ -1872,7 +2002,15 @@ function setTomorrow() {
 }
 
 function getStartSitPlayers(position: string): any[] {
-  let players = allPlayers.value.filter(p => position === 'Util' || p.position?.includes(position))
+  // For OF position, also include LF, CF, RF (ESPN uses specific OF positions)
+  const outfieldPositions = ['OF', 'LF', 'CF', 'RF']
+  let players = allPlayers.value.filter(p => {
+    if (position === 'Util') return true
+    if (position === 'OF') {
+      return outfieldPositions.some(ofPos => p.position?.includes(ofPos))
+    }
+    return p.position?.includes(position)
+  })
   
   // Apply player filter
   if (startSitPlayerFilter.value === 'mine') {
@@ -1885,7 +2023,7 @@ function getStartSitPlayers(position: string): any[] {
   const dateStr = selectedDate.value.toISOString().split('T')[0]
   
   // Get enabled factors and their normalized weights
-  const enabledFactors = startSitFactors.value.filter(f => f.enabled && f.weight > 0)
+  const enabledFactors = startSitFactors.value.filter(f => f.enabled && f.available && f.weight > 0)
   const totalWeight = enabledFactors.reduce((sum, f) => sum + f.weight, 0) || 1
   
   players = players.map(p => {
@@ -2085,6 +2223,161 @@ const suggestedLineup = computed(() => {
 })
 
 const suggestedLineupTotal = computed(() => suggestedLineup.value.reduce((sum, s) => sum + (s.player?.projection || 0), 0))
+
+// Roster spots calculation
+const rosterSpotsAvailable = computed(() => {
+  const maxRosterSize = rosterPositions.value.length || 25
+  const currentRosterSize = myTeamPlayers.value.length
+  return maxRosterSize - currentRosterSize
+})
+
+// Recommended moves calculation
+const recommendedMoves = computed(() => {
+  const moves: Array<{
+    pickup: any
+    drop: any | null
+    impact: {
+      today: number
+      next7Days: number
+      next14Days: number
+      thisWeek: number
+      next3Weeks: number
+      ros: number
+    }
+    reason: string
+  }> = []
+
+  // Get free agents sorted by composite score
+  const freeAgents = allPlayers.value
+    .filter(p => isFreeAgent(p))
+    .sort((a, b) => (b.compositeScore || 0) - (a.compositeScore || 0))
+    .slice(0, 20) // Top 20 free agents
+
+  // Get my weakest players at each position
+  const myPlayersByPos: Record<string, any[]> = {}
+  myTeamPlayers.value.forEach(p => {
+    const pos = p.position?.split(',')[0]?.trim() || 'Util'
+    if (!myPlayersByPos[pos]) myPlayersByPos[pos] = []
+    myPlayersByPos[pos].push(p)
+  })
+
+  // Sort my players by composite score (worst first)
+  Object.values(myPlayersByPos).forEach(arr => {
+    arr.sort((a, b) => (a.compositeScore || 0) - (b.compositeScore || 0))
+  })
+
+  // Find beneficial pickups
+  freeAgents.forEach(fa => {
+    const faPos = fa.position?.split(',')[0]?.trim() || 'Util'
+    const faScore = fa.compositeScore || 0
+    const faPpg = fa.ppg || 0
+
+    // Check if this FA is better than any of my players at this position
+    const outfieldPositions = ['OF', 'LF', 'CF', 'RF']
+    let relevantMyPlayers = myPlayersByPos[faPos] || []
+    
+    // For outfielders, check all OF positions
+    if (outfieldPositions.includes(faPos)) {
+      relevantMyPlayers = outfieldPositions
+        .flatMap(pos => myPlayersByPos[pos] || [])
+        .sort((a, b) => (a.compositeScore || 0) - (b.compositeScore || 0))
+    }
+
+    if (relevantMyPlayers.length === 0) {
+      // No players at this position - definite pickup opportunity
+      const hasOpenSlot = rosterSpotsAvailable.value > 0
+
+      // Find worst player on my roster if no open slot
+      const allMyPlayers = [...myTeamPlayers.value].sort((a, b) => (a.compositeScore || 0) - (b.compositeScore || 0))
+      const dropCandidate = hasOpenSlot ? null : allMyPlayers[0]
+
+      // Calculate impact
+      const impact = calculateMoveImpact(fa, dropCandidate)
+
+      if (impact.ros > 0) {
+        moves.push({
+          pickup: fa,
+          drop: dropCandidate,
+          impact,
+          reason: `Fills empty ${faPos} slot. ${fa.full_name} projects ${faPpg.toFixed(1)} PPG with a composite score of ${faScore.toFixed(0)}.`
+        })
+      }
+    } else {
+      // Compare to worst player at this position
+      const worstAtPos = relevantMyPlayers[0]
+      const worstScore = worstAtPos?.compositeScore || 0
+      const worstPpg = worstAtPos?.ppg || 0
+
+      // Only recommend if FA is significantly better
+      const scoreDiff = faScore - worstScore
+      const ppgDiff = faPpg - worstPpg
+
+      if (scoreDiff > 5 && ppgDiff > 0.3) {
+        const impact = calculateMoveImpact(fa, worstAtPos)
+
+        if (impact.ros > 2) { // Minimum 2 point ROS improvement
+          moves.push({
+            pickup: fa,
+            drop: worstAtPos,
+            impact,
+            reason: `${fa.full_name} (${faPpg.toFixed(1)} PPG) is significantly better than ${worstAtPos.full_name} (${worstPpg.toFixed(1)} PPG) at ${faPos}. +${scoreDiff.toFixed(0)} composite score improvement.`
+          })
+        }
+      }
+    }
+  })
+
+  // Sort by ROS impact and return top recommendations
+  return moves.sort((a, b) => b.impact.ros - a.impact.ros).slice(0, 10)
+})
+
+function calculateMoveImpact(pickup: any, drop: any | null): { today: number; next7Days: number; next14Days: number; thisWeek: number; next3Weeks: number; ros: number } {
+  const pickupPpg = pickup.ppg || 0
+  const dropPpg = drop?.ppg || 0
+  const ppgDiff = pickupPpg - dropPpg
+
+  // Estimate games for each timeframe
+  const isFootball = sportName.value === 'Football'
+  
+  if (isFootball) {
+    // Football: 1 game per week
+    return {
+      today: 0,
+      next7Days: 0,
+      next14Days: 0,
+      thisWeek: ppgDiff * 1,
+      next3Weeks: ppgDiff * 3,
+      ros: ppgDiff * 10 // ~10 weeks remaining in season
+    }
+  } else {
+    // Baseball/Basketball/Hockey: estimate games
+    const gamesPerDay = 0.6 // ~60% chance of game on any day
+    return {
+      today: ppgDiff * gamesPerDay,
+      next7Days: ppgDiff * 7 * gamesPerDay,
+      next14Days: ppgDiff * 14 * gamesPerDay,
+      thisWeek: ppgDiff * 7 * gamesPerDay,
+      next3Weeks: ppgDiff * 21 * gamesPerDay,
+      ros: ppgDiff * 60 * gamesPerDay // ~60 days remaining
+    }
+  }
+}
+
+function getMoveVerdict(rosImpact: number): string {
+  if (rosImpact >= 20) return 'Must Add'
+  if (rosImpact >= 10) return 'Add'
+  if (rosImpact >= 5) return 'Consider'
+  if (rosImpact >= 0) return 'Optional'
+  return 'Skip'
+}
+
+function getMoveVerdictClass(rosImpact: number): string {
+  if (rosImpact >= 20) return 'text-green-400'
+  if (rosImpact >= 10) return 'text-lime-400'
+  if (rosImpact >= 5) return 'text-yellow-400'
+  if (rosImpact >= 0) return 'text-dark-textMuted'
+  return 'text-red-400'
+}
 
 interface TeamRanking { teamKey: string; teamName: string; managerName: string; logoUrl: string; isMyTeam: boolean; players: any[]; positionGrades: Record<string, string>; overallGrade: string; statusScore: number }
 
