@@ -101,17 +101,17 @@
             <div class="flex items-center gap-3">
               <span class="text-2xl">🎚️</span>
               <div>
-                <h3 class="text-lg font-bold text-dark-text">Customize Rankings</h3>
-                <p class="text-xs text-dark-textMuted">Adjust factor weights to create your perfect ranking formula</p>
+                <h3 class="text-lg font-bold text-dark-text">Player Rankings</h3>
+                <p class="text-xs text-dark-textMuted">{{ currentRankingFormula }}</p>
               </div>
             </div>
             <button 
               @click="showRankingCustomization = !showRankingCustomization"
-              class="px-4 py-2 rounded-lg bg-dark-border/50 hover:bg-dark-border text-dark-textSecondary transition-colors flex items-center gap-2"
+              class="text-primary hover:text-primary/80 font-semibold transition-colors flex items-center gap-1"
             >
-              <span>{{ showRankingCustomization ? 'Collapse' : 'Expand' }}</span>
-              <svg :class="{ 'rotate-180': showRankingCustomization }" class="w-4 h-4 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+              <span>Customize formula</span>
+              <svg :class="{ 'rotate-90': showRankingCustomization }" class="w-4 h-4 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
               </svg>
             </button>
           </div>
@@ -132,12 +132,6 @@
               <span class="text-lg">{{ preset.icon }}</span>
               <span>{{ preset.name }}</span>
             </button>
-          </div>
-
-          <!-- Current Formula Display -->
-          <div class="bg-dark-bg/50 rounded-xl p-3 mb-4">
-            <div class="text-xs text-dark-textMuted uppercase tracking-wider mb-1">Current Formula</div>
-            <div class="text-sm text-dark-text">{{ currentRankingFormula }}</div>
           </div>
 
           <!-- Expanded Factor Controls -->
@@ -260,6 +254,9 @@
                   <th class="px-3 py-3 text-left text-xs font-semibold uppercase w-12 cursor-pointer hover:text-yellow-400" @click="setRosSort('rosRank')">
                     Rank <span v-if="rosSortColumn === 'rosRank'" class="text-yellow-400">{{ rosSortDirection === 'asc' ? '↑' : '↓' }}</span>
                   </th>
+                  <th class="px-2 py-3 text-center text-xs font-semibold uppercase w-14 cursor-pointer hover:text-yellow-400" @click="setRosSort('tier')">
+                    Tier <span v-if="rosSortColumn === 'tier'" class="text-yellow-400">{{ rosSortDirection === 'asc' ? '↑' : '↓' }}</span>
+                  </th>
                   <th class="px-3 py-3 text-left text-xs font-semibold text-dark-textMuted uppercase">Player</th>
                   <th class="px-2 py-3 text-center text-xs font-semibold text-dark-textMuted uppercase w-12">Pos</th>
                   <th class="px-2 py-3 text-center text-xs font-semibold uppercase w-14 cursor-pointer hover:text-yellow-400" @click="setRosSort('positionRank')">
@@ -280,8 +277,13 @@
                 </tr>
               </thead>
               <tbody class="divide-y divide-dark-border/30">
-                <tr v-for="(player, idx) in gatedFilteredPlayers" :key="player.player_key" :class="getRowClass(player)" class="hover:bg-dark-border/20 transition-colors">
+                <tr v-for="(player, idx) in gatedFilteredPlayers" :key="player.player_key" :class="[getRowClass(player), getTierBorderClass(player, idx)]" class="hover:bg-dark-border/20 transition-colors">
                   <td class="px-3 py-3"><span class="font-bold text-lg text-dark-text">{{ player.rosRank }}</span></td>
+                  <td class="px-2 py-3 text-center">
+                    <span class="px-2 py-1 rounded-lg text-xs font-bold" :class="getTierBadgeClass(player.tier)">
+                      {{ player.tier }}
+                    </span>
+                  </td>
                   <td class="px-3 py-3">
                     <div class="flex items-center gap-3">
                       <div class="relative">
@@ -296,7 +298,10 @@
                         <div class="flex items-center gap-2 text-xs text-dark-textMuted">
                           <span>{{ player.mlb_team || 'FA' }}</span>
                           <span class="text-dark-border">•</span>
-                          <span v-if="player.fantasy_team" :class="isMyPlayer(player) ? 'text-yellow-400' : ''">{{ player.fantasy_team }}</span>
+                          <template v-if="player.fantasy_team">
+                            <img :src="platformLogo" :alt="platformName" class="w-3 h-3 opacity-60" />
+                            <span :class="isMyPlayer(player) ? 'text-yellow-400' : ''">{{ player.fantasy_team }}</span>
+                          </template>
                           <span v-else class="text-cyan-400">Free Agent</span>
                         </div>
                       </div>
@@ -313,7 +318,7 @@
                   <td class="px-2 py-3 text-center font-bold text-dark-text">{{ player.ppg?.toFixed(2) || '0' }}</td>
                   <td class="px-2 py-3 text-center font-bold" :class="player.vor > 0 ? 'text-green-400' : player.vor < -3 ? 'text-red-400' : 'text-dark-textMuted'">{{ player.vor >= 0 ? '+' : '' }}{{ player.vor?.toFixed(1) || '0' }}</td>
                 </tr>
-                <tr v-if="gatedFilteredPlayers.length === 0"><td colspan="8" class="px-4 py-8 text-center text-dark-textMuted">No players match filters</td></tr>
+                <tr v-if="gatedFilteredPlayers.length === 0"><td colspan="9" class="px-4 py-8 text-center text-dark-textMuted">No players match filters</td></tr>
               </tbody>
             </table>
             
@@ -1534,8 +1539,16 @@ const filteredPlayers = computed(() => {
   if (selectedPositions.value.length > 0 && selectedPositions.value.length < positionFilters.length) {
     players = players.filter(p => selectedPositions.value.some(pos => p.position?.includes(pos)))
   }
-  if (showOnlyMyPlayers.value) players = players.filter(p => isMyPlayer(p))
-  if (showOnlyFreeAgents.value) players = players.filter(p => isFreeAgent(p))
+  
+  // Fix: If both checkboxes checked, show union (my players OR free agents)
+  // If only one checked, show just that filter
+  if (showOnlyMyPlayers.value && showOnlyFreeAgents.value) {
+    players = players.filter(p => isMyPlayer(p) || isFreeAgent(p))
+  } else if (showOnlyMyPlayers.value) {
+    players = players.filter(p => isMyPlayer(p))
+  } else if (showOnlyFreeAgents.value) {
+    players = players.filter(p => isFreeAgent(p))
+  }
   
   // Apply sorting
   const col = rosSortColumn.value
@@ -1812,6 +1825,22 @@ function getTeamStatusLabel(s: number) { if (s >= 70) return '🏆 Contender'; i
 function getPositionGradeClass(g: string) { if (g === 'N/A') return 'text-dark-textMuted'; if (g.startsWith('A')) return 'text-green-400'; if (g.startsWith('B')) return 'text-blue-400'; if (g.startsWith('C')) return 'text-yellow-400'; if (g.startsWith('D')) return 'text-orange-400'; return 'text-red-400' }
 function getProjectedPointsClass(proj: number) { if (proj >= 5) return 'text-green-400'; if (proj >= 3) return 'text-lime-400'; if (proj >= 1) return 'text-yellow-400'; return 'text-dark-textMuted' }
 function getTierColorClass(t: number) { if (t === 1) return 'text-green-400'; if (t === 2) return 'text-lime-400'; if (t === 3) return 'text-yellow-400'; if (t === 4) return 'text-orange-400'; return 'text-red-400' }
+function getTierBadgeClass(t: number) { 
+  if (t === 1) return 'bg-green-500/30 text-green-400 border border-green-500/50'
+  if (t === 2) return 'bg-lime-500/30 text-lime-400 border border-lime-500/50'
+  if (t === 3) return 'bg-yellow-500/30 text-yellow-400 border border-yellow-500/50'
+  if (t === 4) return 'bg-orange-500/30 text-orange-400 border border-orange-500/50'
+  return 'bg-red-500/30 text-red-400 border border-red-500/50'
+}
+function getTierBorderClass(player: any, idx: number) {
+  // Add visual separator when tier changes
+  if (idx === 0) return ''
+  const prevPlayer = gatedFilteredPlayers.value[idx - 1]
+  if (prevPlayer && prevPlayer.tier !== player.tier) {
+    return 'border-t-2 border-t-dark-border'
+  }
+  return ''
+}
 function getVerdictClass(v: string) { if (v === 'Must Start') return 'bg-green-500/30 text-green-400'; if (v === 'Start') return 'bg-lime-500/30 text-lime-400'; if (v === 'Flex') return 'bg-yellow-500/30 text-yellow-400'; if (v === 'Sit') return 'bg-orange-500/30 text-orange-400'; if (v === 'No Game') return 'bg-dark-border/30 text-dark-textMuted'; return 'bg-red-500/30 text-red-400' }
 
 function calculatePositionBaselines() { const byPos: Record<string, any[]> = {}; allPlayers.value.forEach(p => { const pos = p.position?.split(',')[0]?.trim(); if (pos) { if (!byPos[pos]) byPos[pos] = []; byPos[pos].push(p) } }); Object.entries(byPos).forEach(([pos, players]) => { players.sort((a, b) => (b.ppg || 0) - (a.ppg || 0)); positionBaselines.value[pos] = players[Math.min((vorBaselines.value[pos] || 15) - 1, players.length - 1)]?.ppg || 0 }) }
@@ -1900,6 +1929,72 @@ function recalculateRankings() {
     posCounts[pos] = (posCounts[pos] || 0) + 1
     p.positionRank = posCounts[pos] 
   })
+  
+  // Calculate tiers using gap-based algorithm
+  // Players with similar composite scores are grouped together
+  calculateTiers()
+}
+
+function calculateTiers() {
+  if (allPlayers.value.length === 0) return
+  
+  // Get scores sorted descending (should already be sorted)
+  const scores = allPlayers.value.map(p => p.compositeScore || 0)
+  const maxScore = scores[0] || 100
+  const minScore = scores[scores.length - 1] || 0
+  const range = maxScore - minScore
+  
+  if (range === 0) {
+    // All players have same score - put in tier 3
+    allPlayers.value.forEach(p => p.tier = 3)
+    return
+  }
+  
+  // Calculate gaps between consecutive players
+  const gaps: { index: number; gap: number }[] = []
+  for (let i = 1; i < scores.length; i++) {
+    const gap = scores[i - 1] - scores[i]
+    gaps.push({ index: i, gap })
+  }
+  
+  // Find significant gaps (larger than average gap * threshold)
+  const avgGap = gaps.reduce((sum, g) => sum + g.gap, 0) / gaps.length
+  const threshold = 1.5 // Gaps 1.5x larger than average are tier breaks
+  
+  // Sort gaps by size to find the biggest natural breaks
+  const sortedGaps = [...gaps].sort((a, b) => b.gap - a.gap)
+  
+  // Take top 4 gaps (to create up to 5 tiers) that are significant
+  const tierBreaks = sortedGaps
+    .filter(g => g.gap > avgGap * threshold)
+    .slice(0, 4)
+    .map(g => g.index)
+    .sort((a, b) => a - b)
+  
+  // Assign tiers based on breaks
+  let currentTier = 1
+  let breakIndex = 0
+  
+  allPlayers.value.forEach((p, i) => {
+    // Check if we've passed a tier break
+    while (breakIndex < tierBreaks.length && i >= tierBreaks[breakIndex]) {
+      currentTier++
+      breakIndex++
+    }
+    p.tier = Math.min(currentTier, 5)
+  })
+  
+  // Fallback: if no significant gaps found, use percentage-based tiers
+  if (tierBreaks.length === 0) {
+    allPlayers.value.forEach(p => {
+      const pct = range > 0 ? ((p.compositeScore || 0) - minScore) / range : 0.5
+      if (pct >= 0.85) p.tier = 1
+      else if (pct >= 0.65) p.tier = 2
+      else if (pct >= 0.45) p.tier = 3
+      else if (pct >= 0.25) p.tier = 4
+      else p.tier = 5
+    })
+  }
 }
 
 async function loadProjections() {
