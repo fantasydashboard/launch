@@ -276,14 +276,12 @@
               <tbody class="divide-y divide-dark-border/30">
                 <template v-for="(player, idx) in gatedFilteredPlayers" :key="player.player_key">
                   <!-- Tier Divider Row (only when sorted by rank/score) -->
-                  <tr v-if="shouldShowTierDivider(player, idx)" class="bg-dark-bg/80">
-                    <td colspan="8" class="py-2 px-4">
-                      <div class="flex items-center gap-3">
-                        <div class="h-px flex-1 bg-gradient-to-r from-transparent via-yellow-400/50 to-transparent"></div>
-                        <div class="px-4 py-1 rounded-full bg-yellow-400/10 border border-yellow-400/30">
-                          <span class="text-yellow-400 font-bold text-sm">Tier {{ player.tier }}</span>
-                        </div>
-                        <div class="h-px flex-1 bg-gradient-to-r from-transparent via-yellow-400/50 to-transparent"></div>
+                  <tr v-if="shouldShowTierDivider(player, idx)" class="bg-dark-border/10">
+                    <td colspan="8" class="px-4 py-2">
+                      <div class="flex items-center gap-2">
+                        <div class="h-px flex-1 bg-yellow-400/30"></div>
+                        <span class="text-xs font-bold text-yellow-400 uppercase">Tier {{ player.tier }}</span>
+                        <div class="h-px flex-1 bg-yellow-400/30"></div>
                       </div>
                     </td>
                   </tr>
@@ -500,10 +498,106 @@
           <div class="flex items-center gap-3">
             <span class="text-xl">ℹ️</span>
             <span class="text-sm text-purple-300">
-              <span class="font-semibold">Projections based on PPG × games.</span>
-              Yahoo's premium projections (RotoWire, The BLITZ) are not available via API.
-              {{ scoringMode === 'daily' ? 'Use Tomorrow tab to plan waiver pickups before overnight processing.' : 'Weekly mode accounts for games played this week.' }}
+              <span class="font-semibold">Start/Sit rankings use your league's real player stats (PPG, consistency).</span>
+              Game schedules and matchup difficulty are estimated. {{ scoringMode === 'daily' ? 'Use Tomorrow tab to plan waiver pickups before overnight processing.' : 'Weekly mode estimates games per week for each player.' }}
             </span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Start/Sit Ranking Customization -->
+      <div class="card">
+        <div class="card-body">
+          <div class="flex items-center justify-between mb-4">
+            <div class="flex items-center gap-3">
+              <span class="text-2xl">🎚️</span>
+              <div>
+                <h3 class="text-lg font-bold text-dark-text">Start/Sit Rankings</h3>
+                <p class="text-xs text-dark-textMuted">{{ startSitFormulaDescription }}</p>
+              </div>
+            </div>
+            <button 
+              @click="showStartSitCustomization = !showStartSitCustomization"
+              class="text-primary hover:text-primary/80 font-semibold transition-colors flex items-center gap-1"
+            >
+              <span>Customize formula</span>
+              <svg :class="{ 'rotate-90': showStartSitCustomization }" class="w-4 h-4 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+              </svg>
+            </button>
+          </div>
+
+          <!-- Presets -->
+          <div class="flex flex-wrap gap-2 mb-3">
+            <button
+              v-for="preset in startSitPresets"
+              :key="preset.id"
+              @click="applyStartSitPreset(preset)"
+              :class="[
+                'px-4 py-2 rounded-xl font-medium transition-all flex items-center gap-2',
+                activeStartSitPreset === preset.id 
+                  ? 'bg-yellow-400 text-gray-900' 
+                  : 'bg-dark-border/50 text-dark-textSecondary hover:bg-dark-border'
+              ]"
+            >
+              <span class="text-lg">{{ preset.icon }}</span>
+              <span>{{ preset.name }}</span>
+            </button>
+          </div>
+
+          <!-- Expanded Customization -->
+          <div v-if="showStartSitCustomization" class="space-y-4 pt-4 border-t border-dark-border">
+            <!-- Category Tabs -->
+            <div class="flex gap-2 overflow-x-auto pb-2">
+              <button
+                v-for="category in startSitFactorCategories"
+                :key="category.id"
+                @click="activeStartSitCategory = category.id"
+                :class="[
+                  'px-4 py-2 rounded-lg font-medium transition-all whitespace-nowrap flex items-center gap-2',
+                  activeStartSitCategory === category.id
+                    ? 'bg-primary/20 text-primary border border-primary/30'
+                    : 'bg-dark-border/30 text-dark-textSecondary hover:bg-dark-border/50'
+                ]"
+              >
+                <span>{{ category.icon }}</span>
+                <span>{{ category.name }}</span>
+              </button>
+            </div>
+
+            <!-- Factor Sliders for Active Category -->
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              <div v-for="factor in startSitFactorsForActiveCategory" :key="factor.id" class="bg-dark-bg/50 rounded-xl p-4" :class="{ 'opacity-50': !factor.available }">
+                <div class="flex items-center justify-between mb-2">
+                  <div class="flex items-center gap-2">
+                    <input 
+                      type="checkbox" 
+                      v-model="factor.enabled" 
+                      :disabled="!factor.available"
+                      class="rounded accent-yellow-400" 
+                      @change="recalculateStartSit" 
+                    />
+                    <span class="font-medium text-dark-text">{{ factor.name }}</span>
+                    <span v-if="!factor.available" class="text-xs bg-dark-border/50 px-2 py-0.5 rounded text-dark-textMuted">Coming Soon</span>
+                  </div>
+                  <span class="text-sm font-bold" :class="factor.enabled && factor.available ? 'text-yellow-400' : 'text-dark-textMuted'">{{ factor.weight }}%</span>
+                </div>
+                <input 
+                  type="range" 
+                  v-model.number="factor.weight" 
+                  min="0" max="100" step="5"
+                  :disabled="!factor.enabled || !factor.available"
+                  class="w-full accent-yellow-400"
+                  @input="onStartSitFactorChange"
+                />
+                <p class="text-xs text-dark-textMuted mt-1">{{ factor.description }}</p>
+              </div>
+            </div>
+
+            <!-- Weight Warning -->
+            <div v-if="totalStartSitWeight !== 100" class="bg-orange-500/10 border border-orange-500/30 rounded-lg p-3">
+              <span class="text-orange-400 text-sm">⚠️ Weights total {{ totalStartSitWeight }}% (will be normalized to 100%)</span>
+            </div>
           </div>
         </div>
       </div>
@@ -569,9 +663,10 @@
                     <tr>
                       <th class="px-3 py-3 text-left text-xs font-semibold text-dark-textMuted uppercase w-14">Rank</th>
                       <th class="px-3 py-3 text-left text-xs font-semibold text-dark-textMuted uppercase">Player</th>
-                      <th class="px-2 py-3 text-center text-xs font-semibold text-dark-textMuted uppercase w-28">{{ scoringMode === 'daily' ? 'Matchup' : 'Games' }}</th>
+                      <th class="px-2 py-3 text-center text-xs font-semibold text-dark-textMuted uppercase w-24">{{ scoringMode === 'daily' ? 'Matchup' : 'Games' }}</th>
+                      <th class="px-2 py-3 text-center text-xs font-semibold text-dark-textMuted uppercase w-20">Difficulty</th>
                       <th class="px-2 py-3 text-center text-xs font-semibold text-dark-textMuted uppercase w-16">PPG</th>
-                      <th class="px-2 py-3 text-center text-xs font-semibold text-dark-textMuted uppercase w-18"><span class="text-yellow-400">Proj</span></th>
+                      <th class="px-2 py-3 text-center text-xs font-semibold text-dark-textMuted uppercase w-16"><span class="text-yellow-400">Score</span></th>
                       <th class="px-2 py-3 text-center text-xs font-semibold text-dark-textMuted uppercase w-14">Tier</th>
                       <th class="px-2 py-3 text-center text-xs font-semibold text-dark-textMuted uppercase w-24">Verdict</th>
                     </tr>
@@ -579,7 +674,7 @@
                   <tbody class="divide-y divide-dark-border/30">
                     <template v-for="(player, index) in gatedGetStartSitPlayers(selectedStartSitPosition)" :key="player.player_key">
                       <tr v-if="showTierBreak(player, index, selectedStartSitPosition)" class="bg-dark-border/10">
-                        <td colspan="7" class="px-4 py-2">
+                        <td colspan="8" class="px-4 py-2">
                           <div class="flex items-center gap-2">
                             <div class="h-px flex-1 bg-yellow-400/30"></div>
                             <span class="text-xs font-bold text-yellow-400 uppercase">Tier {{ player.tier }}</span>
@@ -617,17 +712,30 @@
                           </div>
                         </td>
                         <td class="px-2 py-2 text-center">
-                          <span v-if="scoringMode === 'daily'" class="text-xs font-medium" :class="player.opponent ? 'text-dark-text' : 'text-dark-textMuted italic'">{{ player.opponent || 'No Game' }}</span>
+                          <span v-if="scoringMode === 'daily'" class="text-xs font-medium" :class="player.opponent ? 'text-dark-text' : 'text-dark-textMuted italic'">
+                            <span v-if="player.opponent">{{ player.opponent }}</span>
+                            <span v-else>No Game</span>
+                            <span v-if="player.isHome && player.hasGame" class="ml-1 text-[10px] text-green-400">(H)</span>
+                            <span v-else-if="player.hasGame" class="ml-1 text-[10px] text-dark-textMuted">(A)</span>
+                          </span>
                           <span v-else class="text-xs text-dark-text font-medium">{{ player.gamesThisWeek || 0 }} games</span>
                         </td>
+                        <td class="px-2 py-2 text-center">
+                          <template v-if="player.hasGame">
+                            <span class="px-2 py-0.5 rounded text-xs font-bold" :class="getMatchupClass(player.matchupDifficulty)">
+                              {{ getMatchupLabel(player.matchupDifficulty) }}
+                            </span>
+                          </template>
+                          <span v-else class="text-xs text-dark-textMuted">—</span>
+                        </td>
                         <td class="px-2 py-2 text-center"><span class="text-sm text-dark-textMuted">{{ player.ppg?.toFixed(1) || '0.0' }}</span></td>
-                        <td class="px-2 py-2 text-center"><span class="font-bold text-sm" :class="getProjectedPointsClass(player.projection)">{{ player.projection?.toFixed(1) || '—' }}</span></td>
+                        <td class="px-2 py-2 text-center"><span class="font-bold text-sm text-primary">{{ player.compositeScore?.toFixed(1) || '—' }}</span></td>
                         <td class="px-2 py-2 text-center"><span class="text-xs font-bold" :class="getTierColorClass(player.tier)">{{ player.tier || '—' }}</span></td>
                         <td class="px-2 py-2 text-center"><span class="px-2 py-1 rounded text-xs font-bold" :class="getVerdictClass(player.verdict)">{{ player.verdict }}</span></td>
                       </tr>
                     </template>
                     <tr v-if="gatedGetStartSitPlayers(selectedStartSitPosition).length === 0">
-                      <td colspan="7" class="px-4 py-8 text-center text-dark-textMuted">No {{ selectedStartSitPosition }} players found{{ scoringMode === 'daily' ? ' playing today' : '' }}</td>
+                      <td colspan="8" class="px-4 py-8 text-center text-dark-textMuted">No {{ selectedStartSitPosition }} players found{{ scoringMode === 'daily' ? ' playing today' : '' }}</td>
                     </tr>
                   </tbody>
                 </table>
@@ -1306,6 +1414,154 @@ const startSitPositions = [
   { id: 'SS', label: 'SS' }, { id: 'OF', label: 'OF' }, { id: 'SP', label: 'SP' }, { id: 'RP', label: 'RP' }, { id: 'Util', label: 'UTIL' }
 ]
 
+// Platform detection
+const platform = computed(() => {
+  if (isEspn.value) return 'espn'
+  if (isSleeper.value) return 'sleeper'
+  return 'yahoo'
+})
+
+// Start/Sit Customization State
+const showStartSitCustomization = ref(false)
+const activeStartSitPreset = ref('balanced')
+const activeStartSitCategory = ref('production')
+
+const startSitFactorCategories = [
+  { id: 'production', name: 'Production', icon: '⚡' },
+  { id: 'matchup', name: 'Matchup & Schedule', icon: '🎯' },
+  { id: 'trending', name: 'Trending & Form', icon: '🔥' },
+  { id: 'efficiency', name: 'Efficiency', icon: '📊' },
+  { id: 'advanced', name: 'Advanced Metrics', icon: '🧪' }
+]
+
+const startSitFactors = ref([
+  // Production factors
+  { id: 'ppg', name: 'Points Per Game', description: 'Season average fantasy points', category: 'production', enabled: true, weight: 35, available: true },
+  { id: 'vor', name: 'Value Over Replacement', description: 'Points above replacement-level at same position', category: 'production', enabled: false, weight: 0, available: true },
+  { id: 'seasonTotal', name: 'Season Total Points', description: 'Total fantasy points this season', category: 'production', enabled: false, weight: 0, available: true },
+  
+  // Matchup factors
+  { id: 'matchupDifficulty', name: 'Matchup Difficulty', description: 'Opponent strength vs this position', category: 'matchup', enabled: true, weight: 25, available: true },
+  { id: 'homeAway', name: 'Home/Away Split', description: 'Player performs better at home or away', category: 'matchup', enabled: true, weight: 10, available: true },
+  { id: 'parkFactor', name: 'Park Factor', description: 'Ballpark hitting friendliness (Coors, etc.)', category: 'matchup', enabled: false, weight: 0, available: false },
+  { id: 'weather', name: 'Weather Conditions', description: 'Wind, temperature effects on scoring', category: 'matchup', enabled: false, weight: 0, available: false },
+  
+  // Trending factors
+  { id: 'recentForm', name: 'Recent Form (7 days)', description: 'Performance trend over last week', category: 'trending', enabled: true, weight: 20, available: true },
+  { id: 'last14', name: 'Last 14 Days Trend', description: 'Two-week performance trajectory', category: 'trending', enabled: false, weight: 0, available: true },
+  { id: 'vsHandedness', name: 'vs L/R Pitcher', description: 'Platoon splits against today\'s pitcher', category: 'trending', enabled: false, weight: 0, available: false },
+  
+  // Efficiency factors
+  { id: 'consistency', name: 'Consistency', description: 'Lower variance = more reliable floor', category: 'efficiency', enabled: true, weight: 10, available: true },
+  { id: 'upside', name: 'Upside / Ceiling', description: 'Potential for big games (high variance)', category: 'efficiency', enabled: false, weight: 0, available: true },
+  { id: 'gamesStarted', name: 'Games Started %', description: 'Lineup regularity', category: 'efficiency', enabled: false, weight: 0, available: false },
+  
+  // Advanced factors
+  { id: 'xwoba', name: 'xwOBA', description: 'Expected weighted on-base average from contact quality', category: 'advanced', enabled: false, weight: 0, available: false },
+  { id: 'barrelRate', name: 'Barrel Rate', description: 'Optimal contact percentage (98+ mph, ideal angle)', category: 'advanced', enabled: false, weight: 0, available: false },
+  { id: 'hardHit', name: 'Hard Hit Rate', description: 'Balls hit 95+ mph', category: 'advanced', enabled: false, weight: 0, available: false },
+  { id: 'sprintSpeed', name: 'Sprint Speed', description: 'Baserunning and stolen base predictor', category: 'advanced', enabled: false, weight: 0, available: false },
+])
+
+const startSitPresets = [
+  { id: 'balanced', name: 'Balanced', icon: '⚖️', weights: { ppg: 35, matchupDifficulty: 25, recentForm: 20, homeAway: 10, consistency: 10 } },
+  { id: 'matchupFocused', name: 'Matchup Focused', icon: '🎯', weights: { ppg: 25, matchupDifficulty: 40, recentForm: 15, homeAway: 15, consistency: 5 } },
+  { id: 'hotHand', name: 'Hot Hand', icon: '🔥', weights: { ppg: 20, matchupDifficulty: 15, recentForm: 45, last14: 10, consistency: 10 } },
+  { id: 'safeFloor', name: 'Safe Floor', icon: '🛡️', weights: { ppg: 30, matchupDifficulty: 15, recentForm: 10, homeAway: 10, consistency: 35 } },
+  { id: 'highCeiling', name: 'High Ceiling', icon: '🚀', weights: { ppg: 25, matchupDifficulty: 25, recentForm: 20, upside: 25, consistency: 5 } },
+]
+
+// MLB Team Matchup Difficulty (points allowed to position - lower = harder matchup)
+// This would ideally come from real stats, using sample data for now
+const mlbTeamMatchupRatings = ref<Record<string, Record<string, number>>>({
+  // Team: { Position: difficulty rating 1-10 where 10 = easiest }
+  'NYY': { C: 5, '1B': 4, '2B': 6, '3B': 5, SS: 5, OF: 4, SP: 3, RP: 4 },
+  'BOS': { C: 6, '1B': 7, '2B': 5, '3B': 6, SS: 6, OF: 7, SP: 5, RP: 6 },
+  'LAD': { C: 4, '1B': 3, '2B': 4, '3B': 4, SS: 3, OF: 3, SP: 4, RP: 3 },
+  'ATL': { C: 5, '1B': 5, '2B': 5, '3B': 6, SS: 5, OF: 5, SP: 4, RP: 5 },
+  'HOU': { C: 4, '1B': 4, '2B': 5, '3B': 4, SS: 4, OF: 4, SP: 3, RP: 4 },
+  'SD': { C: 6, '1B': 6, '2B': 7, '3B': 6, SS: 7, OF: 6, SP: 5, RP: 6 },
+  'PHI': { C: 5, '1B': 6, '2B': 5, '3B': 5, SS: 6, OF: 5, SP: 5, RP: 5 },
+  'SEA': { C: 7, '1B': 6, '2B': 6, '3B': 7, SS: 6, OF: 6, SP: 6, RP: 7 },
+  'TB': { C: 5, '1B': 5, '2B': 4, '3B': 5, SS: 5, OF: 5, SP: 4, RP: 5 },
+  'MIN': { C: 6, '1B': 7, '2B': 6, '3B': 6, SS: 7, OF: 7, SP: 6, RP: 6 },
+  'CHC': { C: 7, '1B': 7, '2B': 8, '3B': 7, SS: 7, OF: 8, SP: 7, RP: 7 },
+  'STL': { C: 6, '1B': 6, '2B': 6, '3B': 6, SS: 6, OF: 6, SP: 5, RP: 6 },
+  'TEX': { C: 7, '1B': 8, '2B': 7, '3B': 8, SS: 7, OF: 8, SP: 7, RP: 8 },
+  'BAL': { C: 5, '1B': 5, '2B': 6, '3B': 5, SS: 5, OF: 5, SP: 5, RP: 5 },
+  'MIL': { C: 6, '1B': 6, '2B': 5, '3B': 6, SS: 6, OF: 6, SP: 5, RP: 6 },
+  'ARI': { C: 7, '1B': 7, '2B': 7, '3B': 7, SS: 8, OF: 7, SP: 6, RP: 7 },
+  'SF': { C: 5, '1B': 5, '2B': 5, '3B': 5, SS: 5, OF: 5, SP: 4, RP: 5 },
+  'CLE': { C: 5, '1B': 5, '2B': 4, '3B': 5, SS: 5, OF: 4, SP: 4, RP: 4 },
+  'DET': { C: 8, '1B': 8, '2B': 8, '3B': 8, SS: 8, OF: 9, SP: 8, RP: 8 },
+  'KC': { C: 8, '1B': 9, '2B': 8, '3B': 9, SS: 8, OF: 9, SP: 8, RP: 9 },
+  'LAA': { C: 7, '1B': 7, '2B': 7, '3B': 7, SS: 7, OF: 7, SP: 7, RP: 7 },
+  'OAK': { C: 9, '1B': 9, '2B': 9, '3B': 9, SS: 9, OF: 10, SP: 9, RP: 9 },
+  'PIT': { C: 8, '1B': 8, '2B': 7, '3B': 8, SS: 8, OF: 8, SP: 7, RP: 8 },
+  'CIN': { C: 7, '1B': 8, '2B': 7, '3B': 7, SS: 7, OF: 8, SP: 7, RP: 7 },
+  'COL': { C: 9, '1B': 10, '2B': 9, '3B': 9, SS: 9, OF: 10, SP: 9, RP: 9 }, // Coors Field bonus
+  'MIA': { C: 8, '1B': 8, '2B': 8, '3B': 8, SS: 8, OF: 8, SP: 8, RP: 8 },
+  'WSH': { C: 8, '1B': 8, '2B': 8, '3B': 8, SS: 8, OF: 8, SP: 8, RP: 8 },
+  'NYM': { C: 5, '1B': 5, '2B': 6, '3B': 5, SS: 5, OF: 5, SP: 4, RP: 5 },
+  'TOR': { C: 6, '1B': 6, '2B': 6, '3B': 6, SS: 6, OF: 6, SP: 5, RP: 6 },
+  'CHW': { C: 8, '1B': 9, '2B': 8, '3B': 8, SS: 8, OF: 9, SP: 8, RP: 8 },
+})
+
+const totalStartSitWeight = computed(() => {
+  return startSitFactors.value.filter(f => f.enabled).reduce((sum, f) => sum + f.weight, 0)
+})
+
+const startSitFactorsForActiveCategory = computed(() => {
+  return startSitFactors.value.filter(f => f.category === activeStartSitCategory.value)
+})
+
+const startSitFormulaDescription = computed(() => {
+  const enabled = startSitFactors.value.filter(f => f.enabled && f.weight > 0)
+  if (enabled.length === 0) return 'No factors enabled'
+  const sorted = [...enabled].sort((a, b) => b.weight - a.weight)
+  const top3 = sorted.slice(0, 3)
+  return top3.map(f => `${f.name} ${f.weight}%`).join(' • ')
+})
+
+function applyStartSitPreset(preset: typeof startSitPresets[0]) {
+  activeStartSitPreset.value = preset.id
+  startSitFactors.value.forEach(f => {
+    const weight = (preset.weights as Record<string, number>)[f.id] || 0
+    f.enabled = weight > 0
+    f.weight = weight
+  })
+}
+
+function onStartSitFactorChange() {
+  activeStartSitPreset.value = 'custom'
+}
+
+function recalculateStartSit() {
+  // Triggers reactivity - getStartSitPlayers will recalculate with new weights
+}
+
+function getMatchupDifficulty(opponentTeam: string, position: string): number {
+  const teamRatings = mlbTeamMatchupRatings.value[opponentTeam]
+  if (!teamRatings) return 5 // Default neutral
+  return teamRatings[position] || 5
+}
+
+function getMatchupClass(difficulty: number): string {
+  if (difficulty >= 8) return 'text-green-400' // Easy matchup
+  if (difficulty >= 6) return 'text-lime-400'
+  if (difficulty >= 4) return 'text-yellow-400' // Neutral
+  if (difficulty >= 2) return 'text-orange-400'
+  return 'text-red-400' // Hard matchup
+}
+
+function getMatchupLabel(difficulty: number): string {
+  if (difficulty >= 8) return 'Easy'
+  if (difficulty >= 6) return 'Favorable'
+  if (difficulty >= 4) return 'Neutral'
+  if (difficulty >= 2) return 'Tough'
+  return 'Hard'
+}
+
 // Sorting state for Rest of Season tab
 const rosSortColumn = ref<string>('rosRank')
 const rosSortDirection = ref<'asc' | 'desc'>('asc')
@@ -1626,8 +1882,11 @@ function getStartSitPlayers(position: string): any[] {
   }
   
   // Use the selected date to generate deterministic "games" data
-  // In a real implementation, this would come from MLB schedule API
   const dateStr = selectedDate.value.toISOString().split('T')[0]
+  
+  // Get enabled factors and their normalized weights
+  const enabledFactors = startSitFactors.value.filter(f => f.enabled && f.weight > 0)
+  const totalWeight = enabledFactors.reduce((sum, f) => sum + f.weight, 0) || 1
   
   players = players.map(p => {
     // Create deterministic hash from player key + date
@@ -1640,52 +1899,141 @@ function getStartSitPlayers(position: string): any[] {
     // Weekly mode: 4-7 games per week (realistic MLB schedule)
     const gamesThisWeek = 4 + (Math.abs(hash) % 4)
     
-    // Calculate projection
+    // Generate opponent based on hash (deterministic per player per date)
+    const opponents = ['NYY', 'BOS', 'LAD', 'ATL', 'HOU', 'SD', 'PHI', 'SEA', 'TB', 'MIN', 'CHC', 'STL', 'TEX', 'BAL', 'MIL', 'ARI', 'SF', 'CLE', 'DET', 'KC', 'LAA', 'OAK', 'PIT', 'CIN', 'COL', 'MIA', 'WSH', 'NYM', 'TOR', 'CHW']
+    const opponentTeam = opponents[Math.abs(hash) % opponents.length]
+    const opponent = hasGameToday ? `vs ${opponentTeam}` : null
+    
+    // Home/away based on hash (50/50)
+    const isHome = Math.abs(hash >> 4) % 2 === 0
+    
+    // Get matchup difficulty for this position vs opponent
+    const playerPos = p.position?.split(',')[0]?.trim() || position
+    const matchupDifficulty = hasGameToday ? getMatchupDifficulty(opponentTeam, playerPos) : 5
+    
+    // Calculate base stats
     const ppg = p.ppg || 0
+    const vor = p.vor || 0
+    const seasonTotal = p.total_points || 0
+    const recentPpg = p.recent_ppg || ppg
+    const last14Ppg = p.last14_ppg || ppg
+    const recentFormRatio = ppg > 0 ? recentPpg / ppg : 1
+    const last14FormRatio = ppg > 0 ? last14Ppg / ppg : 1
+    const stdDev = p.std_dev || (ppg * 0.3) // Estimate if not available
+    const consistencyScore = Math.max(0, 100 - (stdDev * 10)) // Lower variance = higher score
+    const upsideScore = Math.min(100, stdDev * 15) // Higher variance = higher upside potential
+    
+    // Home/away split bonus (simulated: +10% at home on average)
+    const homeAwayBonus = isHome ? 1.1 : 0.95
+    
+    // Calculate weighted composite score (0-100 scale)
+    let compositeScore = 0
+    
+    enabledFactors.forEach(factor => {
+      // Skip unavailable factors
+      if (!factor.available) return
+      
+      let factorScore = 0
+      const normalizedWeight = factor.weight / totalWeight
+      
+      switch (factor.id) {
+        case 'ppg':
+          // Normalize PPG to 0-100 (assume max ~10 PPG for elite players)
+          factorScore = Math.min(100, (ppg / 10) * 100)
+          break
+        case 'vor':
+          // VOR can be negative, normalize to 0-100 (assume range -5 to +10)
+          factorScore = Math.min(100, Math.max(0, (vor + 5) / 15 * 100))
+          break
+        case 'seasonTotal':
+          // Normalize season total (assume max ~500 points for elite)
+          factorScore = Math.min(100, (seasonTotal / 500) * 100)
+          break
+        case 'matchupDifficulty':
+          // Already on 1-10 scale, convert to 0-100
+          factorScore = matchupDifficulty * 10
+          break
+        case 'homeAway':
+          // Home = higher score
+          factorScore = isHome ? 70 : 30
+          break
+        case 'recentForm':
+          // Recent form ratio: 1.0 = avg, >1 = hot, <1 = cold
+          // Convert to 0-100 where 50 = average
+          factorScore = Math.min(100, Math.max(0, recentFormRatio * 50))
+          break
+        case 'last14':
+          // Same as recent form but 14-day window
+          factorScore = Math.min(100, Math.max(0, last14FormRatio * 50))
+          break
+        case 'consistency':
+          // Already 0-100
+          factorScore = consistencyScore
+          break
+        case 'upside':
+          // Higher variance = higher ceiling potential
+          factorScore = upsideScore
+          break
+      }
+      
+      compositeScore += factorScore * normalizedWeight
+    })
+    
+    // Calculate projection (PPG × games × matchup modifier)
+    const matchupModifier = 0.7 + (matchupDifficulty / 10 * 0.6) // 0.7 to 1.3 range
     let projection = 0
     
     if (scoringMode.value === 'daily') {
-      projection = hasGameToday ? ppg : 0
+      projection = hasGameToday ? ppg * matchupModifier * (isHome ? 1.05 : 0.98) : 0
     } else {
-      projection = ppg * gamesThisWeek
+      projection = ppg * gamesThisWeek * matchupModifier
     }
     
-    // Generate opponent based on hash (deterministic per player per date)
-    const opponents = ['NYY', 'BOS', 'LAD', 'ATL', 'HOU', 'SD', 'PHI', 'SEA', 'TB', 'MIN', 'CHC', 'STL']
-    const opponent = hasGameToday ? `vs ${opponents[Math.abs(hash) % opponents.length]}` : null
-    
-    // Calculate tier and verdict based on projection
+    // Calculate tier and verdict based on composite score
     let tier = 5
     let verdict = 'Avoid'
     
     if (scoringMode.value === 'daily') {
       if (!hasGameToday) { tier = 6; verdict = 'No Game' }
-      else if (ppg >= 5) { tier = 1; verdict = 'Must Start' }
-      else if (ppg >= 3.5) { tier = 2; verdict = 'Start' }
-      else if (ppg >= 2.5) { tier = 3; verdict = 'Flex' }
-      else if (ppg >= 1.5) { tier = 4; verdict = 'Sit' }
+      else if (compositeScore >= 75) { tier = 1; verdict = 'Must Start' }
+      else if (compositeScore >= 60) { tier = 2; verdict = 'Start' }
+      else if (compositeScore >= 45) { tier = 3; verdict = 'Flex' }
+      else if (compositeScore >= 30) { tier = 4; verdict = 'Sit' }
       else { tier = 5; verdict = 'Avoid' }
     } else {
-      // Weekly: based on total projected points
-      if (projection >= 30) { tier = 1; verdict = 'Must Start' }
-      else if (projection >= 22) { tier = 2; verdict = 'Start' }
-      else if (projection >= 15) { tier = 3; verdict = 'Flex' }
-      else if (projection >= 8) { tier = 4; verdict = 'Sit' }
+      // Weekly: based on composite + projection
+      const weeklyScore = compositeScore * 0.6 + (Math.min(100, projection / 35 * 100)) * 0.4
+      if (weeklyScore >= 75) { tier = 1; verdict = 'Must Start' }
+      else if (weeklyScore >= 60) { tier = 2; verdict = 'Start' }
+      else if (weeklyScore >= 45) { tier = 3; verdict = 'Flex' }
+      else if (weeklyScore >= 30) { tier = 4; verdict = 'Sit' }
       else { tier = 5; verdict = 'Avoid' }
     }
     
-    return { ...p, projection, opponent, gamesThisWeek, tier, verdict, hasGame: hasGameToday }
+    return { 
+      ...p, 
+      projection, 
+      opponent, 
+      opponentTeam,
+      gamesThisWeek, 
+      tier, 
+      verdict, 
+      hasGame: hasGameToday,
+      isHome,
+      matchupDifficulty,
+      compositeScore
+    }
   })
   
-  // In daily mode, sort by: has game first, then by projection
+  // Sort by: has game first, then by composite score
   if (scoringMode.value === 'daily') {
     players.sort((a, b) => {
       if (a.hasGame && !b.hasGame) return -1
       if (!a.hasGame && b.hasGame) return 1
-      return (b.projection || 0) - (a.projection || 0)
+      return (b.compositeScore || 0) - (a.compositeScore || 0)
     })
   } else {
-    players.sort((a, b) => (b.projection || 0) - (a.projection || 0))
+    players.sort((a, b) => (b.compositeScore || 0) - (a.compositeScore || 0))
   }
   
   return players
