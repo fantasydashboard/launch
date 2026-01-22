@@ -1718,6 +1718,7 @@ const teamsSortColumn = ref<string>('statusScore')
 const teamsSortDirection = ref<'asc' | 'desc'>('desc')
 
 const rosterPositions = ref<any[]>([])
+const espnMaxRosterSize = ref<number>(25) // Will be loaded from ESPN settings
 const teamsData = ref<any[]>([])
 const numTeams = computed(() => teamsData.value.length || 12)
 const positionFilters = [
@@ -2338,51 +2339,228 @@ const modifiedSuggestedLineupTotal = computed(() => {
   return modifiedSuggestedLineup.value.reduce((sum, s) => sum + (s.player?.projection || 0), 0)
 })
 
-function downloadSuggestedLineup() {
+async function downloadSuggestedLineup() {
   const date = selectedDate.value.toISOString().split('T')[0]
   const mode = scoringMode.value === 'daily' ? 'Daily' : 'Weekly'
   
-  let content = `Suggested Lineup - ${mode} (${date})\n`
-  content += `${'='.repeat(50)}\n\n`
-  
-  modifiedSuggestedLineup.value.forEach(slot => {
-    const pos = slot.position.padEnd(4)
-    if (slot.player) {
-      const name = slot.player.full_name.padEnd(25)
-      const proj = (slot.player.projection || 0).toFixed(1).padStart(6)
-      const waiver = slot.isWaiver ? ' [WAIVER PICKUP]' : ''
-      content += `${pos} ${name} ${proj}${waiver}\n`
-    } else {
-      content += `${pos} (Empty)\n`
+  try {
+    const html2canvas = (await import('html2canvas')).default
+    
+    const WIDTH = 450
+    const primaryColor = '#f5c451' // Yellow
+    const bgDark = '#1a1d2e'
+    const bgCard = '#262a3a'
+    
+    // Load UFD logo
+    let ufdLogoBase64 = ''
+    try {
+      const logoResponse = await fetch('/ufd-logo.png')
+      if (logoResponse.ok) {
+        const blob = await logoResponse.blob()
+        ufdLogoBase64 = await new Promise((resolve) => {
+          const reader = new FileReader()
+          reader.onloadend = () => resolve(reader.result as string)
+          reader.readAsDataURL(blob)
+        })
+      }
+    } catch (e) {
+      console.warn('Failed to load UFD logo:', e)
     }
-  })
-  
-  content += `\n${'='.repeat(50)}\n`
-  content += `Projected Total: ${modifiedSuggestedLineupTotal.value.toFixed(1)}\n`
-  
-  if (waiverLineupPlayers.value.length > 0) {
-    content += `\nWaiver Pickups (${waiverLineupPlayers.value.length}):\n`
-    waiverLineupPlayers.value.forEach(p => {
-      content += `  - ${p.full_name} (${p.position?.split(',')[0]}) - ${p.ppg?.toFixed(1) || '0.0'} PPG\n`
+    
+    // Position colors function
+    const getPosColor = (pos: string) => {
+      const colors: Record<string, string> = {
+        'C': '#ef4444', '1B': '#f97316', '2B': '#eab308', '3B': '#84cc16',
+        'SS': '#22c55e', 'OF': '#06b6d4', 'SP': '#8b5cf6', 'RP': '#ec4899',
+        'LF': '#06b6d4', 'CF': '#06b6d4', 'RF': '#06b6d4', 'Util': '#6b7280'
+      }
+      return colors[pos] || '#6b7280'
+    }
+    
+    // Build lineup rows HTML
+    const lineupRows = modifiedSuggestedLineup.value.map(slot => {
+      const pos = slot.position
+      const player = slot.player
+      const isWaiver = slot.isWaiver
+      
+      if (!player) {
+        return `
+          <tr style="border-bottom: 1px solid rgba(58, 61, 82, 0.5);">
+            <td style="padding: 10px 8px; text-align: center;">
+              <span style="display: inline-block; font-size: 11px; font-weight: bold; padding: 3px 8px; border-radius: 4px; background: ${getPosColor(pos)}; color: white;">${pos}</span>
+            </td>
+            <td colspan="2" style="padding: 10px 8px; color: #6b7280; font-style: italic;">Empty slot</td>
+          </tr>
+        `
+      }
+      
+      const waiverBadge = isWaiver ? `<span style="display: inline-block; font-size: 9px; font-weight: bold; padding: 2px 6px; border-radius: 9999px; background: #06b6d4; color: #1a1d2e; margin-left: 8px;">WAIVER</span>` : ''
+      const nameColor = isWaiver ? '#06b6d4' : '#f7f7ff'
+      const projColor = isWaiver ? '#06b6d4' : primaryColor
+      
+      return `
+        <tr style="border-bottom: 1px solid rgba(58, 61, 82, 0.5); ${isWaiver ? 'background: rgba(6, 182, 212, 0.1);' : ''}">
+          <td style="padding: 10px 8px; text-align: center;">
+            <span style="display: inline-block; font-size: 11px; font-weight: bold; padding: 3px 8px; border-radius: 4px; background: ${getPosColor(pos)}; color: white;">${pos}</span>
+          </td>
+          <td style="padding: 10px 8px;">
+            <span style="font-size: 14px; font-weight: 600; color: ${nameColor};">${player.full_name}</span>
+            ${waiverBadge}
+            <div style="font-size: 11px; color: #9ca3af; margin-top: 2px;">${player.mlb_team || 'FA'}</div>
+          </td>
+          <td style="padding: 10px 8px; text-align: right;">
+            <span style="font-size: 18px; font-weight: bold; color: ${projColor};">${(player.projection || 0).toFixed(1)}</span>
+          </td>
+        </tr>
+      `
+    }).join('')
+    
+    // Build waiver pickups section if any
+    let waiverSection = ''
+    if (waiverLineupPlayers.value.length > 0) {
+      const waiverRows = waiverLineupPlayers.value.map(p => `
+        <div style="display: flex; justify-content: space-between; align-items: center; padding: 8px 12px; background: rgba(6, 182, 212, 0.1); border-radius: 8px; margin-bottom: 6px;">
+          <div>
+            <span style="font-size: 13px; font-weight: 600; color: #06b6d4;">${p.full_name}</span>
+            <span style="font-size: 11px; color: #9ca3af; margin-left: 8px;">${p.position?.split(',')[0]} • ${p.mlb_team || 'FA'}</span>
+          </div>
+          <span style="font-size: 13px; font-weight: bold; color: #06b6d4;">${(p.ppg || 0).toFixed(1)} PPG</span>
+        </div>
+      `).join('')
+      
+      waiverSection = `
+        <div style="margin-top: 16px; padding-top: 16px; border-top: 1px solid rgba(245, 196, 81, 0.3);">
+          <div style="font-size: 14px; font-weight: bold; color: #06b6d4; margin-bottom: 10px;">📋 Waiver Pickups Needed (${waiverLineupPlayers.value.length})</div>
+          ${waiverRows}
+        </div>
+      `
+    }
+    
+    // Improvement indicator
+    const improvement = modifiedSuggestedLineupTotal.value - suggestedLineupTotal.value
+    const improvementHtml = waiverLineupPlayers.value.length > 0 ? `
+      <div style="font-size: 12px; color: ${improvement >= 0 ? '#22c55e' : '#ef4444'}; margin-top: 4px;">
+        ${improvement >= 0 ? '+' : ''}${improvement.toFixed(1)} vs current roster
+      </div>
+    ` : ''
+    
+    const container = document.createElement('div')
+    container.style.cssText = `
+      position: absolute;
+      left: -9999px;
+      width: ${WIDTH}px;
+      background: linear-gradient(135deg, ${bgDark} 0%, #0d0f18 100%);
+      color: #f7f7ff;
+      font-family: system-ui, -apple-system, sans-serif;
+      padding: 24px;
+      box-sizing: border-box;
+      border-radius: 16px;
+    `
+    
+    container.innerHTML = `
+      <!-- Header -->
+      <div style="display: flex; align-items: center; gap: 16px; margin-bottom: 20px;">
+        ${ufdLogoBase64 ? `<img src="${ufdLogoBase64}" style="width: 50px; height: 50px; object-fit: contain;" />` : ''}
+        <div>
+          <div style="font-size: 24px; font-weight: 800; color: #f7f7ff;">Suggested Lineup</div>
+          <div style="font-size: 13px; color: #9ca3af;">${mode} • ${date}</div>
+        </div>
+      </div>
+      
+      <!-- Divider -->
+      <div style="height: 2px; background: linear-gradient(to right, ${primaryColor}, rgba(245, 196, 81, 0.1)); margin-bottom: 20px; border-radius: 1px;"></div>
+      
+      <!-- Lineup Table -->
+      <div style="background: ${bgCard}; border-radius: 12px; overflow: hidden;">
+        <table style="width: 100%; border-collapse: collapse;">
+          <thead>
+            <tr style="background: rgba(245, 196, 81, 0.1);">
+              <th style="padding: 12px 8px; text-align: center; font-size: 11px; font-weight: 600; color: ${primaryColor}; text-transform: uppercase; width: 60px;">Pos</th>
+              <th style="padding: 12px 8px; text-align: left; font-size: 11px; font-weight: 600; color: ${primaryColor}; text-transform: uppercase;">Player</th>
+              <th style="padding: 12px 8px; text-align: right; font-size: 11px; font-weight: 600; color: ${primaryColor}; text-transform: uppercase; width: 70px;">Proj</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${lineupRows}
+          </tbody>
+        </table>
+      </div>
+      
+      <!-- Total -->
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 16px; padding: 16px; background: ${bgCard}; border-radius: 12px; border: 2px solid ${primaryColor};">
+        <div style="font-size: 16px; font-weight: 600; color: #f7f7ff;">Projected Total</div>
+        <div style="text-align: right;">
+          <div style="font-size: 28px; font-weight: 800; color: ${primaryColor};">${modifiedSuggestedLineupTotal.value.toFixed(1)}</div>
+          ${improvementHtml}
+        </div>
+      </div>
+      
+      ${waiverSection}
+      
+      <!-- Footer -->
+      <div style="margin-top: 20px; text-align: center; font-size: 11px; color: #6b7280;">
+        ultimatefantasydashboard.com
+      </div>
+    `
+    
+    document.body.appendChild(container)
+    
+    const canvas = await html2canvas(container, {
+      backgroundColor: null,
+      scale: 2,
+      logging: false
     })
+    
+    document.body.removeChild(container)
+    
+    const link = document.createElement('a')
+    link.href = canvas.toDataURL('image/png')
+    link.download = `lineup-${date}.png`
+    link.click()
+    
+  } catch (e) {
+    console.error('Failed to download lineup:', e)
+    // Fallback to text download
+    let content = `Suggested Lineup - ${mode} (${date})\n${'='.repeat(50)}\n\n`
+    modifiedSuggestedLineup.value.forEach(slot => {
+      const pos = slot.position.padEnd(4)
+      if (slot.player) {
+        const name = slot.player.full_name.padEnd(25)
+        const proj = (slot.player.projection || 0).toFixed(1).padStart(6)
+        const waiver = slot.isWaiver ? ' [WAIVER]' : ''
+        content += `${pos} ${name} ${proj}${waiver}\n`
+      } else {
+        content += `${pos} (Empty)\n`
+      }
+    })
+    content += `\nTotal: ${modifiedSuggestedLineupTotal.value.toFixed(1)}`
+    
+    const blob = new Blob([content], { type: 'text/plain' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `lineup-${date}.txt`
+    a.click()
+    URL.revokeObjectURL(url)
   }
-  
-  // Create and download file
-  const blob = new Blob([content], { type: 'text/plain' })
-  const url = URL.createObjectURL(blob)
-  const a = document.createElement('a')
-  a.href = url
-  a.download = `lineup-${date}.txt`
-  document.body.appendChild(a)
-  a.click()
-  document.body.removeChild(a)
-  URL.revokeObjectURL(url)
 }
 
 // Roster spots calculation
 const rosterSpotsAvailable = computed(() => {
-  const maxRosterSize = rosterPositions.value.length || 25
+  let maxRosterSize = 25 // Default
+  
+  if (isEspn.value) {
+    // Use ESPN roster size from settings
+    maxRosterSize = espnMaxRosterSize.value
+  } else if (rosterPositions.value.length > 0) {
+    // Yahoo: sum up position counts
+    maxRosterSize = rosterPositions.value.reduce((sum: number, pos: any) => {
+      return sum + (pos.count || 1)
+    }, 0)
+  }
+  
   const currentRosterSize = myTeamPlayers.value.length
+  console.log('[Roster] Max:', maxRosterSize, 'Current:', currentRosterSize, 'Available:', maxRosterSize - currentRosterSize)
   return maxRosterSize - currentRosterSize
 })
 
@@ -2993,6 +3171,21 @@ async function loadEspnProjections() {
     }
     
     loadingProgress.value = { ...loadingProgress.value, currentStep: 'Loading league settings...', currentStepName: 'Settings', completedSteps: 1 }
+    
+    // Load league settings including roster configuration
+    let maxRosterSizeFromSettings = 25 // Default
+    try {
+      const league = await espnService.getLeague(sport as any, leagueId, season)
+      if (league?.settings?.rosterSettings?.lineupSlotCounts) {
+        // Sum up all lineup slot counts to get total roster size
+        const slotCounts = league.settings.rosterSettings.lineupSlotCounts
+        maxRosterSizeFromSettings = Object.values(slotCounts).reduce((sum: number, count: any) => sum + (count || 0), 0)
+        console.log('[ESPN Points Projections] Roster size from settings:', maxRosterSizeFromSettings, 'slots:', slotCounts)
+      }
+      espnMaxRosterSize.value = maxRosterSizeFromSettings
+    } catch (e) {
+      console.log('[ESPN Points Projections] Could not load league settings:', e)
+    }
     
     // Load scoring settings to get point values
     let scoringMap: Record<number, number> = {}
