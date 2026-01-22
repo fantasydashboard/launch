@@ -58,33 +58,13 @@
       </div>
     </div>
 
-    <!-- ESPN/Sleeper Not Supported Message -->
-    <div v-else-if="!isYahoo" class="card">
-      <div class="card-body text-center py-16">
-        <div class="text-6xl mb-4">🚧</div>
-        <h3 class="text-2xl font-bold text-dark-text mb-2">Coming Soon for {{ platformName }}</h3>
-        <p class="text-dark-textMuted max-w-md mx-auto">
-          Player projections and the Trade Analyzer are currently only available for Yahoo leagues. 
-          {{ platformName }} support is in development.
-        </p>
-        <div class="mt-6 flex justify-center gap-4">
-          <router-link to="/history" class="px-6 py-3 bg-yellow-400 text-gray-900 rounded-xl font-semibold hover:bg-yellow-300 transition-colors">
-            View League History
-          </router-link>
-          <router-link to="/power-rankings" class="px-6 py-3 bg-dark-border text-dark-text rounded-xl font-semibold hover:bg-dark-border/70 transition-colors">
-            Power Rankings
-          </router-link>
-        </div>
-      </div>
-    </div>
-
     <!-- REST OF SEASON TAB -->
-    <template v-else-if="activeTab === 'ros' && isYahoo">
-      <div class="card bg-gradient-to-r from-green-500/10 to-cyan-500/10 border-green-500/30">
+    <template v-else-if="activeTab === 'ros'">
+      <div class="card" :class="platformBadgeClass">
         <div class="card-body py-3">
           <div class="flex items-center gap-3">
-            <span class="text-xl">✓</span>
-            <span class="font-semibold text-green-400">Live Yahoo Data</span>
+            <img :src="platformLogo" :alt="platformName" class="w-5 h-5" />
+            <span class="font-semibold" :class="platformTextClass">Live {{ platformName }} Data</span>
             <span class="text-dark-textMuted">{{ allPlayers.length }} players • Points League</span>
           </div>
         </div>
@@ -203,7 +183,7 @@
     </template>
 
     <!-- TEAMS TAB -->
-    <template v-else-if="activeTab === 'teams' && isYahoo">
+    <template v-else-if="activeTab === 'teams'">
       <div class="card">
         <div class="card-body py-3">
           <div class="flex flex-wrap items-center justify-center gap-4 text-sm">
@@ -315,7 +295,7 @@
     </template>
 
     <!-- START/SIT TAB -->
-    <template v-else-if="activeTab === 'startsit' && isYahoo">
+    <template v-else-if="activeTab === 'startsit'">
       <!-- Scoring Type Toggle -->
       <div class="card">
         <div class="card-body py-4">
@@ -542,7 +522,7 @@
     </template>
 
     <!-- TRADE ANALYZER TAB -->
-    <template v-else-if="activeTab === 'trade' && isYahoo">
+    <template v-else-if="activeTab === 'trade'">
       <!-- Simulated Data Banner for non-Premium users -->
       <SimulatedDataBanner v-if="!hasPremiumAccess" :is-ultimate-tier="true" class="mb-6" />
       
@@ -1048,13 +1028,16 @@
 import { ref, computed, watch, onMounted } from 'vue'
 import { useLeagueStore } from '@/stores/league'
 import { useAuthStore } from '@/stores/auth'
+import { usePlatformsStore } from '@/stores/platforms'
 import { yahooService } from '@/services/yahoo'
+import { espnService } from '@/services/espn'
 import { useFeatureAccess } from '@/composables/useFeatureAccess'
 import SimulatedDataBanner from '@/components/SimulatedDataBanner.vue'
 import LoadingSpinner from '@/components/LoadingSpinner.vue'
 
 const leagueStore = useLeagueStore()
 const authStore = useAuthStore()
+const platformsStore = usePlatformsStore()
 const { hasPremiumAccess } = useFeatureAccess()
 
 // Effective league key - use the actually loaded league (might be previous season)
@@ -1639,18 +1622,221 @@ async function loadProjections() {
   finally { isLoading.value = false }
 }
 
+// ESPN Helper Functions
+function parseEspnLeagueKey(leagueKey: string): { leagueId: string; season: string; sport: string } {
+  // Format: espn_baseball_1227422768_2025
+  const parts = leagueKey.replace('espn_', '').split('_')
+  return {
+    sport: parts[0] || 'baseball',
+    leagueId: parts[1] || '',
+    season: parts[2] || new Date().getFullYear().toString()
+  }
+}
+
+function getEspnHeadshotUrl(playerId: number, sport: string): string {
+  if (sport === 'baseball') {
+    return `https://a.espncdn.com/combiner/i?img=/i/headshots/mlb/players/full/${playerId}.png&w=96&h=70&cb=1`
+  } else if (sport === 'hockey') {
+    return `https://a.espncdn.com/combiner/i?img=/i/headshots/nhl/players/full/${playerId}.png&w=96&h=70&cb=1`
+  }
+  return `https://a.espncdn.com/combiner/i?img=/i/headshots/nophoto.png&w=96&h=70`
+}
+
+function getEspnPositionAbbrev(positionId: number): string {
+  const posMap: Record<number, string> = {
+    0: 'C', 1: '1B', 2: '2B', 3: '3B', 4: 'SS', 5: 'OF', 6: 'OF', 7: 'OF',
+    8: 'DH', 9: 'UTIL', 10: 'SP', 11: 'RP', 12: 'P', 13: 'BN', 14: 'IL'
+  }
+  return posMap[positionId] || 'UTIL'
+}
+
+function getEspnTeamAbbrev(teamId: number): string {
+  const teamMap: Record<number, string> = {
+    1: 'BAL', 2: 'BOS', 3: 'LAA', 4: 'CWS', 5: 'CLE', 6: 'DET', 7: 'KC', 8: 'MIL',
+    9: 'MIN', 10: 'NYY', 11: 'OAK', 12: 'SEA', 13: 'TEX', 14: 'TOR', 15: 'ATL',
+    16: 'CHC', 17: 'CIN', 18: 'HOU', 19: 'LAD', 20: 'WSH', 21: 'NYM', 22: 'PHI',
+    23: 'PIT', 24: 'STL', 25: 'SD', 26: 'SF', 27: 'COL', 28: 'MIA', 29: 'ARI', 30: 'TB'
+  }
+  return teamMap[teamId] || 'FA'
+}
+
+// ESPN version of loadProjections
+async function loadEspnProjections() {
+  console.log('[ESPN Points Projections] ========== STARTING ==========')
+  isLoading.value = true
+  loadingMessage.value = 'Loading ESPN Projections'
+  loadingProgress.value = { currentStep: 'Connecting to ESPN...', currentStepName: 'Initializing', completedSteps: 0, totalSteps: 5 }
+  
+  try {
+    const leagueKey = leagueStore.activeLeagueId
+    console.log('[ESPN Points Projections] League key:', leagueKey)
+    if (!leagueKey) { 
+      loadingMessage.value = 'No league selected'
+      isLoading.value = false
+      return 
+    }
+    
+    const { leagueId, season, sport } = parseEspnLeagueKey(leagueKey)
+    console.log('[ESPN Points Projections] Parsed - leagueId:', leagueId, 'season:', season, 'sport:', sport)
+    
+    // Load ESPN credentials
+    const credentials = platformsStore.getEspnCredentials()
+    if (credentials) {
+      console.log('[ESPN Points Projections] Credentials found, applying...')
+      espnService.setCredentials(credentials.espn_s2, credentials.swid)
+    } else {
+      console.log('[ESPN Points Projections] No credentials - my team highlighting may not work')
+    }
+    
+    loadingProgress.value = { ...loadingProgress.value, currentStep: 'Loading league settings...', currentStepName: 'Settings', completedSteps: 1 }
+    
+    // Load scoring settings to get point values
+    let scoringMap: Record<number, number> = {}
+    try {
+      const scoringSettings = await espnService.getScoringSettings(sport as any, leagueId, season)
+      if (scoringSettings?.scoringItems) {
+        for (const item of scoringSettings.scoringItems) {
+          scoringMap[item.statId] = item.pointsOverride ?? item.points ?? 0
+        }
+        console.log('[ESPN Points Projections] Scoring map loaded:', Object.keys(scoringMap).length, 'stats')
+      }
+    } catch (e) {
+      console.log('[ESPN Points Projections] Could not load scoring settings:', e)
+    }
+    
+    loadingProgress.value = { ...loadingProgress.value, currentStep: 'Loading teams...', currentStepName: 'Teams', completedSteps: 2 }
+    
+    // Load teams with rosters
+    const teams = await espnService.getTeamsWithRosters(sport as any, leagueId, season)
+    
+    // Get my team ID
+    let myTeamId: number | null = null
+    try {
+      const myTeam = await espnService.getMyTeam(sport as any, leagueId, season)
+      if (myTeam) {
+        myTeamId = myTeam.id
+        console.log('[ESPN Points Projections] Found my team:', myTeam.name, 'ID:', myTeamId)
+      }
+    } catch (e) {
+      console.log('[ESPN Points Projections] Could not get my team:', e)
+    }
+    
+    // Transform teams
+    teamsData.value = teams.map((team: any) => {
+      let logoUrl = team.logo
+      if (!logoUrl) {
+        logoUrl = `https://ui-avatars.com/api/?name=${encodeURIComponent(team.name)}&background=random&color=fff&size=64`
+      }
+      
+      return {
+        team_key: `espn_${leagueId}_${season}_${team.id}`,
+        team_id: team.id.toString(),
+        name: team.name,
+        logo: logoUrl,
+        logo_url: logoUrl,
+        is_my_team: myTeamId !== null && team.id === myTeamId,
+        wins: team.wins || 0,
+        losses: team.losses || 0,
+        ties: team.ties || 0
+      }
+    })
+    
+    console.log('[ESPN Points Projections] Teams loaded:', teamsData.value.length)
+    
+    const myTeam = teamsData.value.find((t: any) => t.is_my_team)
+    myTeamKey.value = myTeam?.team_key || null
+    console.log('[ESPN Points Projections] My team key:', myTeamKey.value)
+    
+    loadingProgress.value = { ...loadingProgress.value, currentStep: 'Loading rosters...', currentStepName: 'Rosters', completedSteps: 3 }
+    
+    // Extract all rostered players
+    const allRosteredPlayers: any[] = []
+    const playerIdList: number[] = []
+    
+    for (const team of teams) {
+      const roster = team.roster || []
+      for (const entry of roster) {
+        const playerId = entry.playerId || entry.id
+        const playerName = entry.fullName || entry.name || 'Unknown'
+        
+        if (playerId) playerIdList.push(playerId)
+        
+        allRosteredPlayers.push({
+          player_key: `espn_player_${playerId}`,
+          player_id: playerId,
+          full_name: playerName,
+          position: entry.position || getEspnPositionAbbrev(entry.positionId || entry.defaultPositionId),
+          mlb_team: entry.proTeam || getEspnTeamAbbrev(entry.proTeamId),
+          headshot: getEspnHeadshotUrl(playerId, sport),
+          fantasy_team: team.name,
+          fantasy_team_key: `espn_${leagueId}_${season}_${team.id}`,
+          stats: entry.stats || {},
+          total_points: entry.actualPoints || 0,
+          ppg: 0  // Will calculate below
+        })
+      }
+    }
+    
+    console.log('[ESPN Points Projections] Rostered players:', allRosteredPlayers.length)
+    
+    loadingProgress.value = { ...loadingProgress.value, currentStep: 'Loading player stats...', currentStepName: 'Stats', completedSteps: 4 }
+    
+    // Fetch player stats
+    if (playerIdList.length > 0) {
+      try {
+        const statsMap = await espnService.getPlayersWithStats(sport as any, leagueId, season, playerIdList)
+        console.log('[ESPN Points Projections] Got stats for', statsMap.size, 'players')
+        
+        for (const player of allRosteredPlayers) {
+          const playerStats = statsMap.get(player.player_id)
+          if (playerStats?.stats) {
+            player.stats = playerStats.stats
+            // Calculate total points from stats using scoring map
+            let totalPts = 0
+            for (const [statId, value] of Object.entries(playerStats.stats)) {
+              const pts = scoringMap[parseInt(statId)] || 0
+              totalPts += pts * (value as number)
+            }
+            if (totalPts > 0) {
+              player.total_points = totalPts
+            }
+          }
+          // Estimate PPG (points per game) - assume ~100 games played
+          player.ppg = player.total_points > 0 ? player.total_points / 100 : 0
+        }
+      } catch (e) {
+        console.error('[ESPN Points Projections] Error fetching stats:', e)
+      }
+    }
+    
+    allPlayers.value = allRosteredPlayers
+    
+    loadingProgress.value = { ...loadingProgress.value, currentStep: 'Calculating rankings...', currentStepName: 'Complete', completedSteps: 5 }
+    
+    recalculateRankings()
+    console.log('[ESPN Points Projections] Complete!')
+    
+  } catch (e) {
+    console.error('[ESPN Points Projections] Error:', e)
+    loadingMessage.value = 'Error loading ESPN data'
+  } finally {
+    isLoading.value = false
+  }
+}
+
 watch(() => leagueStore.activeLeagueId, (id) => { 
   console.log('[PointsProjections] Watch triggered - id:', id, 'platform:', leagueStore.activePlatform)
   if (id) {
-    if (leagueStore.activePlatform === 'yahoo') {
+    if (isEspn.value) {
+      loadEspnProjections()
+    } else if (leagueStore.activePlatform === 'yahoo') {
       loadProjections()
     } else {
-      // For non-Yahoo platforms, stop loading immediately
-      console.log('[PointsProjections] Non-Yahoo platform detected, stopping loading')
+      // For other platforms (Sleeper), stop loading
+      console.log('[PointsProjections] Unsupported platform, stopping loading')
       isLoading.value = false
     }
   } else {
-    // No league ID yet, stop loading to prevent infinite loading state
     isLoading.value = false
   }
 }, { immediate: true })
@@ -1659,8 +1845,9 @@ watch(() => leagueStore.activeLeagueId, (id) => {
 watch(() => leagueStore.currentLeague?.league_id, (newKey, oldKey) => {
   if (newKey && newKey !== oldKey) {
     console.log(`Projections: League changed from ${oldKey} to ${newKey}, reloading...`)
-    // Only reload for Yahoo leagues
-    if (leagueStore.activePlatform === 'yahoo') {
+    if (isEspn.value) {
+      loadEspnProjections()
+    } else if (leagueStore.activePlatform === 'yahoo') {
       loadProjections()
     }
   }
@@ -1669,34 +1856,36 @@ watch(() => leagueStore.currentLeague?.league_id, (newKey, oldKey) => {
 // Also watch for platform changes (in case platform is set after league ID)
 watch(() => leagueStore.activePlatform, (platform) => {
   console.log('[PointsProjections] Platform changed to:', platform)
-  if (platform && platform !== 'yahoo') {
-    isLoading.value = false
+  if (platform === 'espn' && leagueStore.activeLeagueId) {
+    loadEspnProjections()
+  } else if (platform === 'yahoo' && leagueStore.activeLeagueId) {
+    loadProjections()
   }
 })
 
 onMounted(() => { 
-  console.log('[PointsProjections] onMounted - platform:', leagueStore.activePlatform, 'leagueId:', effectiveLeagueKey.value)
+  console.log('[PointsProjections] onMounted - platform:', leagueStore.activePlatform, 'leagueId:', effectiveLeagueKey.value, 'isEspn:', isEspn.value)
   if (effectiveLeagueKey.value) {
-    if (leagueStore.activePlatform === 'yahoo') {
+    if (isEspn.value) {
+      loadEspnProjections()
+    } else if (leagueStore.activePlatform === 'yahoo') {
       loadProjections()
     } else {
-      // For non-Yahoo platforms, stop loading immediately
-      console.log('[PointsProjections] Non-Yahoo in onMounted, stopping loading')
+      console.log('[PointsProjections] Unsupported platform in onMounted')
       isLoading.value = false
     }
   } else {
-    // No league key, stop loading
     isLoading.value = false
   }
   
-  // Fallback: if still loading after 10 seconds, stop to prevent infinite loading
+  // Fallback: if still loading after 30 seconds, stop to prevent infinite loading
   setTimeout(() => {
     if (isLoading.value) {
       console.warn('[PointsProjections] Loading timeout - forcing stop')
       isLoading.value = false
-      loadingMessage.value = 'Unable to load data'
+      loadingMessage.value = 'Loading timed out'
     }
-  }, 10000)
+  }, 30000)
 })
 
 // Trade Analyzer Functions
