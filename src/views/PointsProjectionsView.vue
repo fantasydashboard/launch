@@ -59,7 +59,7 @@
     </div>
 
     <!-- ESPN/Sleeper Not Supported Message -->
-    <div v-else-if="!isYahoo && !isLoading" class="card">
+    <div v-else-if="!isYahoo" class="card">
       <div class="card-body text-center py-16">
         <div class="text-6xl mb-4">🚧</div>
         <h3 class="text-2xl font-bold text-dark-text mb-2">Coming Soon for {{ platformName }}</h3>
@@ -1640,13 +1640,18 @@ async function loadProjections() {
 }
 
 watch(() => leagueStore.activeLeagueId, (id) => { 
+  console.log('[PointsProjections] Watch triggered - id:', id, 'platform:', leagueStore.activePlatform)
   if (id) {
     if (leagueStore.activePlatform === 'yahoo') {
       loadProjections()
     } else {
       // For non-Yahoo platforms, stop loading immediately
+      console.log('[PointsProjections] Non-Yahoo platform detected, stopping loading')
       isLoading.value = false
     }
+  } else {
+    // No league ID yet, stop loading to prevent infinite loading state
+    isLoading.value = false
   }
 }, { immediate: true })
 
@@ -1654,19 +1659,44 @@ watch(() => leagueStore.activeLeagueId, (id) => {
 watch(() => leagueStore.currentLeague?.league_id, (newKey, oldKey) => {
   if (newKey && newKey !== oldKey) {
     console.log(`Projections: League changed from ${oldKey} to ${newKey}, reloading...`)
-    loadProjections()
+    // Only reload for Yahoo leagues
+    if (leagueStore.activePlatform === 'yahoo') {
+      loadProjections()
+    }
+  }
+})
+
+// Also watch for platform changes (in case platform is set after league ID)
+watch(() => leagueStore.activePlatform, (platform) => {
+  console.log('[PointsProjections] Platform changed to:', platform)
+  if (platform && platform !== 'yahoo') {
+    isLoading.value = false
   }
 })
 
 onMounted(() => { 
+  console.log('[PointsProjections] onMounted - platform:', leagueStore.activePlatform, 'leagueId:', effectiveLeagueKey.value)
   if (effectiveLeagueKey.value) {
     if (leagueStore.activePlatform === 'yahoo') {
       loadProjections()
     } else {
       // For non-Yahoo platforms, stop loading immediately
+      console.log('[PointsProjections] Non-Yahoo in onMounted, stopping loading')
       isLoading.value = false
     }
+  } else {
+    // No league key, stop loading
+    isLoading.value = false
   }
+  
+  // Fallback: if still loading after 10 seconds, stop to prevent infinite loading
+  setTimeout(() => {
+    if (isLoading.value) {
+      console.warn('[PointsProjections] Loading timeout - forcing stop')
+      isLoading.value = false
+      loadingMessage.value = 'Unable to load data'
+    }
+  }, 10000)
 })
 
 // Trade Analyzer Functions

@@ -63,10 +63,17 @@ export function useFeatureAccess() {
         .from('admin_users')
         .select('id, role')
         .eq('user_id', authStore.user.id)
-        .single()
+        .maybeSingle()
+
+      if (error) {
+        console.warn('Admin check failed:', error.message)
+        isAdmin.value = false
+        return
+      }
 
       isAdmin.value = !!data
     } catch (e) {
+      console.warn('Admin status check error:', e)
       isAdmin.value = false
     }
   }
@@ -86,7 +93,14 @@ export function useFeatureAccess() {
         .select('*')
         .eq('league_key', leagueStore.activeLeagueId)
         .eq('status', 'active')
-        .single()
+        .maybeSingle()  // Use maybeSingle to avoid errors when no row found
+
+      if (error) {
+        console.warn('League subscription check failed:', error.message)
+        hasRealLeagueAccess.value = false
+        leagueSubscription.value = null
+        return
+      }
 
       if (!subscription) {
         hasRealLeagueAccess.value = false
@@ -108,10 +122,11 @@ export function useFeatureAccess() {
         .select('id')
         .eq('league_subscription_id', subscription.id)
         .eq('user_id', authStore.user.id)
-        .single()
+        .maybeSingle()
 
       hasRealLeagueAccess.value = !!access
     } catch (e) {
+      console.warn('League access check error:', e)
       hasRealLeagueAccess.value = false
       leagueSubscription.value = null
     }
@@ -137,11 +152,19 @@ export function useFeatureAccess() {
         .eq('sport', sport)
         .eq('season', season)
         .eq('status', 'active')
-        .single()
+        .maybeSingle()  // Use maybeSingle to avoid errors when no row found
+
+      if (error) {
+        console.warn('Premium subscription check failed:', error.message)
+        hasRealPremiumAccess.value = false
+        premiumSubscription.value = null
+        return
+      }
 
       hasRealPremiumAccess.value = !!data
       premiumSubscription.value = data
     } catch (e) {
+      console.warn('Premium access check error:', e)
       hasRealPremiumAccess.value = false
       premiumSubscription.value = null
     }
@@ -153,13 +176,23 @@ export function useFeatureAccess() {
     accessError.value = null
 
     try {
-      await Promise.all([
-        checkAdminStatus(),
-        checkLeagueAccess(),
-        checkPremiumAccess()
+      // Add timeout to prevent hanging - 5 second max
+      const timeoutPromise = new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('Access check timeout')), 5000)
+      )
+      
+      await Promise.race([
+        Promise.allSettled([
+          checkAdminStatus(),
+          checkLeagueAccess(),
+          checkPremiumAccess()
+        ]),
+        timeoutPromise
       ])
     } catch (e: any) {
-      accessError.value = e.message || 'Error checking access'
+      console.warn('Access check error (continuing with free tier):', e.message || e)
+      // Don't block the app - just continue with free tier
+      accessError.value = null
     } finally {
       isCheckingAccess.value = false
     }

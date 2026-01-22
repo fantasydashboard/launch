@@ -1,9 +1,29 @@
 <template>
   <!-- H2H Category leagues (any platform, any sport) -->
-  <CategoryProjections v-if="isCategoryLeague" />
+  <Suspense v-if="isCategoryLeague">
+    <CategoryProjections />
+    <template #fallback>
+      <div class="flex items-center justify-center py-20">
+        <div class="text-center">
+          <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-yellow-400 mx-auto mb-4"></div>
+          <div class="text-lg font-semibold text-dark-text">Loading Ultimate Tools...</div>
+        </div>
+      </div>
+    </template>
+  </Suspense>
   
   <!-- Points leagues (any platform, any sport) -->
-  <PointsProjections v-else />
+  <Suspense v-else>
+    <PointsProjections />
+    <template #fallback>
+      <div class="flex items-center justify-center py-20">
+        <div class="text-center">
+          <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-yellow-400 mx-auto mb-4"></div>
+          <div class="text-lg font-semibold text-dark-text">Loading Ultimate Tools...</div>
+        </div>
+      </div>
+    </template>
+  </Suspense>
 </template>
 
 <script setup lang="ts">
