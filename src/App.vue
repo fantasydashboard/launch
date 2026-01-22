@@ -1,5 +1,5 @@
 <template>
-  <div class="min-h-screen transition-colors overflow-x-hidden overscroll-none" style="background: radial-gradient(circle at top, #1c2030, #05060a 55%);">
+  <div class="min-h-screen transition-colors overflow-x-hidden" style="background: radial-gradient(circle at top, #1c2030, #05060a 55%);">
     
     <!-- Show Landing Page for non-authenticated users -->
     <template v-if="!authStore.isAuthenticated">
