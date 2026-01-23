@@ -3675,7 +3675,7 @@ async function downloadLegacyLeaderboard() {
       const barPct = Math.min(100, Math.max(0, (team.total_score / maxScore) * 100))
       const barColor = rank === 1 ? '#facc15' : rank === 2 ? '#9ca3af' : rank === 3 ? '#d97706' : '#3b82f6'
       const imgSrc = imageMap.get(team.team_key) || ''
-      const rankColor = rank === 1 ? '#facc15' : rank === 2 ? '#9ca3af' : rank === 3 ? '#d97706' : '#ffffff'
+      const rankColor = rank === 1 ? '#facc15' : rank === 2 ? '#9ca3af' : rank === 3 ? '#d97706' : '#3b82f6'
       
       // Achievement badges
       const badges = []
@@ -3949,7 +3949,7 @@ async function downloadTeamLegacy(team: LegacyScore) {
           </div>
           <div style="text-align: center;">
             <div style="font-size: 14px; color: #6b7280; margin-bottom: 2px;">Rank</div>
-            <div style="font-size: 36px; font-weight: 900; color: ${rank === 1 ? '#facc15' : rank === 2 ? '#9ca3af' : rank === 3 ? '#d97706' : '#ffffff'}; font-family: 'Impact', 'Arial Black', sans-serif;">#${rank}</div>
+            <div style="font-size: 36px; font-weight: 900; color: ${rank === 1 ? '#facc15' : rank === 2 ? '#9ca3af' : rank === 3 ? '#d97706' : '#3b82f6'}; font-family: 'Impact', 'Arial Black', sans-serif;">#${rank}</div>
           </div>
           <div style="text-align: center;">
             <div style="font-size: 14px; color: #6b7280; margin-bottom: 2px;">Legacy Score</div>
