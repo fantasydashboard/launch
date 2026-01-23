@@ -2090,8 +2090,10 @@ async function loadPowerRankings() {
           for (const matchup of matchups) {
             if (!matchup.awayTeamId) continue // Skip bye weeks
             
-            const homeKey = `espn_${matchup.homeTeamId}`
-            const awayKey = `espn_${matchup.awayTeamId}`
+            // Build team keys that match the format used in teamStats
+            // teamStats uses team_key from yahooTeams which is: espn_LEAGUEID_SEASON_TEAMID
+            const homeKey = `espn_${espnLeagueId}_${espnSeason}_${matchup.homeTeamId}`
+            const awayKey = `espn_${espnLeagueId}_${espnSeason}_${matchup.awayTeamId}`
             
             const homeStats = teamStats.get(homeKey)
             const awayStats = teamStats.get(awayKey)
@@ -2102,7 +2104,8 @@ async function loadPowerRankings() {
                 homeKey,
                 awayKey,
                 homeFound: !!homeStats,
-                awayFound: !!awayStats
+                awayFound: !!awayStats,
+                availableKeys: [...teamStats.keys()].slice(0, 3)
               })
             }
             
@@ -2111,7 +2114,7 @@ async function loadPowerRankings() {
             totalMatchupsProcessed++
             
             // Process home team per-category results
-            if (matchup.homePerCategoryResults) {
+            if (matchup.homePerCategoryResults && Object.keys(matchup.homePerCategoryResults).length > 0) {
               const resultsCount = Object.keys(matchup.homePerCategoryResults).length
               if (week === 1 && totalMatchupsProcessed === 1) {
                 console.log('[Power Rankings ESPN] Processing homePerCategoryResults:', matchup.homePerCategoryResults)
@@ -2137,9 +2140,32 @@ async function loadPowerRankings() {
                   awayStats.totalCatTies++
                 }
               }
+            } else if (matchup.homeCategoryWins !== undefined || matchup.awayCategoryWins !== undefined) {
+              // Fallback: Use total category wins/losses when per-category results aren't available
+              if (week === 1 && totalMatchupsProcessed === 1) {
+                console.log('[Power Rankings ESPN] Using fallback category totals:', {
+                  homeCategoryWins: matchup.homeCategoryWins,
+                  homeCategoryLosses: matchup.homeCategoryLosses,
+                  awayCategoryWins: matchup.awayCategoryWins,
+                  awayCategoryLosses: matchup.awayCategoryLosses
+                })
+              }
+              
+              // Add total category wins (not per-category, but at least gives overall picture)
+              homeStats.totalCatWins += matchup.homeCategoryWins || 0
+              homeStats.totalCatLosses += matchup.homeCategoryLosses || 0
+              homeStats.totalCatTies += matchup.homeCategoryTies || 0
+              awayStats.totalCatWins += matchup.awayCategoryWins || 0
+              awayStats.totalCatLosses += matchup.awayCategoryLosses || 0
+              awayStats.totalCatTies += matchup.awayCategoryTies || 0
+              totalCategoryWinsRecorded += (matchup.homeCategoryWins || 0) + (matchup.awayCategoryWins || 0)
             } else {
               if (week === 1 && totalMatchupsProcessed === 1) {
-                console.log('[Power Rankings ESPN] NO homePerCategoryResults on matchup!')
+                console.log('[Power Rankings ESPN] NO category data on matchup!', {
+                  matchupKeys: Object.keys(matchup),
+                  homePerCategoryResults: matchup.homePerCategoryResults,
+                  homeCategoryWins: matchup.homeCategoryWins
+                })
               }
             }
           }
