@@ -4065,6 +4065,12 @@ async function loadEspnData() {
       const transactions = await espnService.getTransactions(sport, espnLeagueId, season)
       console.log('[ESPN] Fetched transactions:', transactions.length)
       
+      // Debug: log sample transaction structure
+      if (transactions.length > 0) {
+        console.log('[ESPN] Sample transaction structure:', JSON.stringify(transactions[0], null, 2))
+        console.log('[ESPN] Transaction keys:', Object.keys(transactions[0]))
+      }
+      
       // Build a mapping from ESPN team ID to team_key for lookup
       // team_key format is: espn_LEAGUEID_SEASON_TEAMID
       const espnIdToTeamKey = new Map<number, string>()
@@ -4083,6 +4089,7 @@ async function loadEspnData() {
           }
         }
       })
+      console.log('[ESPN] Team ID mapping:', Object.fromEntries(espnIdToTeamKey))
       
       // Count transactions per team
       const counts = new Map<string, number>()
@@ -4091,25 +4098,36 @@ async function loadEspnData() {
         counts.set(team.team_key, 0)
       })
       
+      // Track team IDs we find in transactions
+      const foundTeamIds = new Set<number>()
+      
       transactions.forEach((tx: any) => {
-        // ESPN transactions have different structures - try to get team ID
-        const teamId = tx.teamId || tx.team?.id
+        // ESPN transactions can have team info in multiple places
+        // Try multiple fields to find the team ID
+        const teamId = tx.teamId || tx.team?.id || tx.memberId
+        
         if (teamId) {
+          foundTeamIds.add(teamId)
           const teamKey = espnIdToTeamKey.get(teamId)
           if (teamKey) {
             counts.set(teamKey, (counts.get(teamKey) || 0) + 1)
           }
         }
-        // Also count by items array if present
-        if (tx.items) {
+        
+        // Also count by items array if present (for add/drop transactions)
+        if (tx.items && Array.isArray(tx.items)) {
           tx.items.forEach((item: any) => {
-            if (item.fromTeamId) {
+            // fromTeamId = team that dropped player
+            // toTeamId = team that picked up player
+            if (item.fromTeamId && item.fromTeamId > 0) {
+              foundTeamIds.add(item.fromTeamId)
               const fromKey = espnIdToTeamKey.get(item.fromTeamId)
               if (fromKey) {
                 counts.set(fromKey, (counts.get(fromKey) || 0) + 1)
               }
             }
-            if (item.toTeamId) {
+            if (item.toTeamId && item.toTeamId > 0) {
+              foundTeamIds.add(item.toTeamId)
               const toKey = espnIdToTeamKey.get(item.toTeamId)
               if (toKey) {
                 counts.set(toKey, (counts.get(toKey) || 0) + 1)
@@ -4117,7 +4135,22 @@ async function loadEspnData() {
             }
           })
         }
+        
+        // Check for executionType-based structure
+        if (tx.executionType && tx.bidAmount !== undefined) {
+          // This is a waiver/FA transaction - try to find team info
+          const txTeamId = tx.memberId || tx.teamId
+          if (txTeamId) {
+            foundTeamIds.add(txTeamId)
+            const teamKey = espnIdToTeamKey.get(txTeamId)
+            if (teamKey) {
+              counts.set(teamKey, (counts.get(teamKey) || 0) + 1)
+            }
+          }
+        }
       })
+      
+      console.log('[ESPN] Found team IDs in transactions:', Array.from(foundTeamIds))
       transactionCounts.value = counts
       console.log('[ESPN] Transaction counts from API:', Object.fromEntries(counts))
       

@@ -2069,6 +2069,15 @@ export class EspnFantasyService {
     try {
       const data = await this.apiRequest(sport, leagueId, season, [ESPN_VIEWS.TRANSACTIONS])
       
+      console.log('[ESPN getTransactions] Response keys:', Object.keys(data))
+      console.log('[ESPN getTransactions] Has transactions:', !!data.transactions)
+      console.log('[ESPN getTransactions] Transaction count:', data.transactions?.length || 0)
+      
+      // Debug: Check for alternative transaction locations
+      if (!data.transactions && data.communication) {
+        console.log('[ESPN getTransactions] Found communication object instead')
+      }
+      
       return data.transactions || []
     } catch (error) {
       console.error('Error fetching ESPN transactions:', error)
@@ -2460,7 +2469,8 @@ export class EspnFantasyService {
         nickname: team.nickname,
         abbrev: team.abbrev,
         primaryOwner: team.primaryOwner,
-        owners: team.owners
+        owners: team.owners,
+        transactionCounter: team.transactionCounter
       })
       
       // Get team name - ESPN uses different fields for different sports
@@ -2505,6 +2515,23 @@ export class EspnFantasyService {
       
       console.log(`[ESPN Team ${team.id}] Final name: "${teamName}", owner: "${ownerName}"`)
       
+      // Try to find transactionCounter from various possible locations
+      let txCounter = team.transactionCounter || 0
+      if (!txCounter && team.transactionStatus?.transactionCounter) {
+        txCounter = team.transactionStatus.transactionCounter
+      }
+      if (!txCounter && team.roster?.transactionCounter) {
+        txCounter = team.roster.transactionCounter
+      }
+      // Count from acquisitions if available (number of players acquired)
+      if (!txCounter && (team.totalAcquired !== undefined || team.waiverRank !== undefined)) {
+        // Use waiver rank as rough proxy - lower rank = more moves
+        const waiverRank = team.waiverRank || 5
+        txCounter = Math.max(0, 15 - waiverRank)
+      }
+      
+      console.log(`[ESPN Team ${team.id}] transactionCounter: ${txCounter}`)
+      
       return {
         id: team.id,
         abbrev: team.abbrev || `T${team.id}`,
@@ -2524,7 +2551,7 @@ export class EspnFantasyService {
         rank: team.playoffSeed || team.rankCalculatedFinal || 0,
         playoffSeed: team.playoffSeed || 0,
         divisionId: team.divisionId || 0,
-        transactionCounter: team.transactionCounter || 0,
+        transactionCounter: txCounter,
         record: team.record ? {
           overall: team.record.overall,
           home: team.record.home,
@@ -3130,8 +3157,9 @@ export class EspnFantasyService {
     const scoringItems = scoringSettings?.scoringItems || []
     console.log('[ESPN getCategoryStatsBreakdown] Scoring items count:', scoringItems.length)
     
-    // Map ESPN stat IDs to names - Baseball
+    // Map ESPN stat IDs to names - Baseball (comprehensive list)
     const espnBaseballStatNames: Record<number, { name: string; display: string; isNegative?: boolean }> = {
+      // Batting stats
       0: { name: 'At Bats', display: 'AB' },
       1: { name: 'Hits', display: 'H' },
       2: { name: 'Runs', display: 'R' },
@@ -3144,14 +3172,28 @@ export class EspnFantasyService {
       9: { name: 'On Base Percentage', display: 'OBP' },
       10: { name: 'Slugging Percentage', display: 'SLG' },
       11: { name: 'OPS', display: 'OPS' },
+      12: { name: 'Grounded Into DP', display: 'GIDP', isNegative: true },
       13: { name: 'Singles', display: '1B' },
       14: { name: 'Doubles', display: '2B' },
       15: { name: 'Triples', display: '3B' },
       16: { name: 'Total Bases', display: 'TB' },
       17: { name: 'Games Played', display: 'G' },
+      18: { name: 'Plate Appearances', display: 'PA' },
+      19: { name: 'Extra Base Hits', display: 'XBH' },
       20: { name: 'Hit By Pitch', display: 'HBP' },
+      21: { name: 'Intentional Walks', display: 'IBB' },
+      22: { name: 'Sac Bunts', display: 'SAC' },
       23: { name: 'Sacrifice Flies', display: 'SF' },
+      24: { name: 'Errors', display: 'E', isNegative: true },
+      25: { name: 'Fielder\'s Choice', display: 'FC' },
+      26: { name: 'Fielding Percentage', display: 'FPCT' },
+      27: { name: 'Outfield Assists', display: 'OFAST' },
+      28: { name: 'Double Plays Turned', display: 'DP' },
+      29: { name: 'Putouts', display: 'PO' },
+      30: { name: 'Assists', display: 'A' },
+      31: { name: 'Total Chances', display: 'TC' },
       32: { name: 'Caught Stealing', display: 'CS', isNegative: true },
+      33: { name: 'Stolen Base Percentage', display: 'SB%' },
       34: { name: 'Net Stolen Bases', display: 'NSB' },
       // Pitching stats
       35: { name: 'Wins', display: 'W' },
@@ -3168,10 +3210,41 @@ export class EspnFantasyService {
       46: { name: 'No Hitters', display: 'NH' },
       47: { name: 'ERA', display: 'ERA', isNegative: true },
       48: { name: 'WHIP', display: 'WHIP', isNegative: true },
+      49: { name: 'Opponent Batting Avg', display: 'OBA', isNegative: true },
+      50: { name: 'Runs Allowed', display: 'RA', isNegative: true },
+      51: { name: 'Home Runs Allowed', display: 'HRA', isNegative: true },
+      52: { name: 'Batters Faced', display: 'BF' },
       53: { name: 'Quality Starts', display: 'QS' },
+      54: { name: 'Pitches Thrown', display: 'PC' },
+      55: { name: 'Pickoffs', display: 'PKO' },
+      56: { name: 'Wild Pitches', display: 'WP', isNegative: true },
       57: { name: 'Blown Saves', display: 'BS', isNegative: true },
+      58: { name: 'Relief Wins', display: 'RW' },
+      59: { name: 'Relief Losses', display: 'RL', isNegative: true },
+      60: { name: 'Save Opportunities', display: 'SVO' },
+      61: { name: 'Inherited Runners Scored', display: 'IRS', isNegative: true },
       62: { name: 'Strikeout to Walk Ratio', display: 'K/BB' },
       63: { name: 'Games Started', display: 'GS' },
+      64: { name: 'Hit Batters', display: 'HB', isNegative: true },
+      65: { name: 'Balks', display: 'BK', isNegative: true },
+      66: { name: 'Ground Outs', display: 'GO' },
+      67: { name: 'Fly Outs', display: 'AO' },
+      68: { name: 'K/9', display: 'K/9' },
+      69: { name: 'BB/9', display: 'BB/9', isNegative: true },
+      70: { name: 'H/9', display: 'H/9', isNegative: true },
+      71: { name: 'Saves + Holds', display: 'SVHD' },
+      72: { name: 'Relief Appearances', display: 'RAPP' },
+      73: { name: 'Total Bases Allowed', display: 'TBA', isNegative: true },
+      74: { name: 'Win Percentage', display: 'W%' },
+      75: { name: 'Losses (Pitching)', display: 'L', isNegative: true },
+      76: { name: 'BABIP', display: 'BABIP' },
+      77: { name: 'FIP', display: 'FIP', isNegative: true },
+      78: { name: 'xFIP', display: 'xFIP', isNegative: true },
+      79: { name: 'WAR (Batting)', display: 'WAR' },
+      80: { name: 'WAR (Pitching)', display: 'WAR' },
+      81: { name: 'wOBA', display: 'wOBA' },
+      82: { name: 'wRC+', display: 'wRC+' },
+      83: { name: 'Perfect Games', display: 'PG' },
       99: { name: 'Games Pitched', display: 'GP' }
     }
     
@@ -3250,14 +3323,23 @@ export class EspnFantasyService {
       const statId = item.statId?.toString() || item.id?.toString()
       if (statId) {
         categoryStatIds.push(statId)
+        
+        // Try to get name from ESPN's scoring item first, fallback to our dictionary
+        const espnAbbrev = item.label || item.abbreviation || item.abbrev
+        const espnName = item.displayName || item.name
+        
         const statInfo = statNames[parseInt(statId)] || {
-          name: `Stat ${statId}`,
-          display: `S${statId}`
+          name: espnName || `Stat ${statId}`,
+          display: espnAbbrev || `S${statId}`
         }
+        
+        // Log for debugging
+        console.log(`[ESPN] Stat ${statId}: ESPN provided abbrev="${espnAbbrev}", name="${espnName}", using display="${espnAbbrev || statInfo.display}"`)
+        
         categories.push({
           stat_id: statId,
-          name: statInfo.name,
-          display_name: statInfo.display,
+          name: espnName || statInfo.name,
+          display_name: espnAbbrev || statInfo.display,
           is_negative: statInfo.isNegative
         })
       }
