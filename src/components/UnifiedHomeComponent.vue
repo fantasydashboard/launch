@@ -1171,8 +1171,8 @@ const scoringTypeLabel = computed(() => {
 
 const scoringTypeBadgeClass = computed(() => {
   if (scoringType.value?.includes('roto')) return 'bg-purple-500/20 text-purple-400'
-  if (isPointsLeague.value) return 'bg-green-500/20 text-green-400'
-  return 'bg-red-500/20 text-red-400'
+  // All league types use green badge
+  return 'bg-green-500/20 text-green-400'
 })
 
 // Format matchups with category win data
@@ -2372,6 +2372,42 @@ function buildChart() {
     return { name: team.name, data, color: colors[idx] }
   })
   
+  // Build a lookup for points/cat wins by team and week for the formatter
+  const weeklyDataLookup = new Map<string, Map<number, { rank: number, points: number, catWins?: number }>>()
+  leagueStore.yahooTeams.forEach((team: any) => {
+    const teamData = new Map<number, { rank: number, points: number, catWins?: number }>()
+    weeks.forEach((week, weekIdx) => {
+      const weekData = weeklyStandings.value.get(week) || []
+      const teamStanding = weekData.find((t: any) => t.team_key === team.team_key)
+      
+      // Get per-week matchup result for category wins and points
+      const matchupResult = weeklyMatchupResults.value.get(team.team_key)?.get(week)
+      
+      // Get per-week points from espnWeeklyScores (for ESPN) or matchupResult (for Yahoo/Sleeper)
+      let weekPoints = 0
+      if (espnWeeklyScores.value.has(team.team_key)) {
+        weekPoints = espnWeeklyScores.value.get(team.team_key)?.get(week) || 0
+      } else if (matchupResult?.points) {
+        weekPoints = matchupResult.points
+      }
+      
+      if (teamStanding) {
+        teamData.set(weekIdx, {
+          rank: teamStanding.rank || leagueStore.yahooTeams.length,
+          points: weekPoints || 0,
+          catWins: matchupResult?.catWins ?? teamStanding.wins ?? 0
+        })
+      }
+    })
+    weeklyDataLookup.set(team.team_key, teamData)
+  })
+  
+  // Store for formatter access
+  const hoveredTeamKey = standingsHoveredTeamKey.value
+  const hoveredTeam = hoveredIdx !== -1 ? leagueStore.yahooTeams[hoveredIdx] : null
+  const hoveredTeamData = hoveredTeam ? weeklyDataLookup.get(hoveredTeam.team_key) : null
+  const showPoints = isPointsLeague.value
+  
   chartSeries.value = series
   
   chartOptions.value = {
@@ -2396,8 +2432,24 @@ function buildChart() {
     dataLabels: {
       enabled: hoveredIdx !== -1,
       enabledOnSeries: hoveredIdx !== -1 ? [hoveredIdx] : [],
-      formatter: function(val: number) {
-        return val.toString()
+      formatter: function(val: number, opts: any) {
+        // opts contains seriesIndex, dataPointIndex, etc.
+        const weekIdx = opts.dataPointIndex
+        if (hoveredTeamData) {
+          const weekInfo = hoveredTeamData.get(weekIdx)
+          if (weekInfo) {
+            const rankStr = `#${weekInfo.rank}`
+            if (showPoints) {
+              // Points league: show points and rank
+              return `${weekInfo.points.toFixed(1)} (${rankStr})`
+            } else {
+              // Category league: show cat wins and rank  
+              const catWins = weekInfo.catWins ?? 0
+              return `${catWins} cats (${rankStr})`
+            }
+          }
+        }
+        return `#${val}`
       },
       style: {
         fontSize: '10px',
@@ -2405,9 +2457,15 @@ function buildChart() {
         colors: ['#fff']
       },
       background: {
-        enabled: false
+        enabled: true,
+        foreColor: '#fff',
+        padding: 4,
+        borderRadius: 4,
+        borderWidth: 0,
+        opacity: 0.8,
+        dropShadow: { enabled: false }
       },
-      offsetY: 0
+      offsetY: -8
     },
     xaxis: {
       categories: weeks.map(w => `Wk ${w}`),

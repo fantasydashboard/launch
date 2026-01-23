@@ -107,7 +107,7 @@
             </div>
             <button 
               @click="showRankingCustomization = !showRankingCustomization"
-              class="text-primary hover:text-primary/80 font-semibold transition-colors flex items-center gap-1"
+              class="text-yellow-400 hover:text-yellow-300 font-semibold transition-colors flex items-center gap-1"
             >
               <span>Customize formula</span>
               <svg :class="{ 'rotate-90': showRankingCustomization }" class="w-4 h-4 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -518,7 +518,7 @@
             </div>
             <button 
               @click="showStartSitCustomization = !showStartSitCustomization"
-              class="text-primary hover:text-primary/80 font-semibold transition-colors flex items-center gap-1"
+              class="text-yellow-400 hover:text-yellow-300 font-semibold transition-colors flex items-center gap-1"
             >
               <span>Customize formula</span>
               <svg :class="{ 'rotate-90': showStartSitCustomization }" class="w-4 h-4 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
