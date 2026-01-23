@@ -2372,42 +2372,6 @@ function buildChart() {
     return { name: team.name, data, color: colors[idx] }
   })
   
-  // Build a lookup for points/cat wins by team and week for the formatter
-  const weeklyDataLookup = new Map<string, Map<number, { rank: number, points: number, catWins?: number }>>()
-  leagueStore.yahooTeams.forEach((team: any) => {
-    const teamData = new Map<number, { rank: number, points: number, catWins?: number }>()
-    weeks.forEach((week, weekIdx) => {
-      const weekData = weeklyStandings.value.get(week) || []
-      const teamStanding = weekData.find((t: any) => t.team_key === team.team_key)
-      
-      // Get per-week matchup result for category wins and points
-      const matchupResult = weeklyMatchupResults.value.get(team.team_key)?.get(week)
-      
-      // Get per-week points from espnWeeklyScores (for ESPN) or matchupResult (for Yahoo/Sleeper)
-      let weekPoints = 0
-      if (espnWeeklyScores.value.has(team.team_key)) {
-        weekPoints = espnWeeklyScores.value.get(team.team_key)?.get(week) || 0
-      } else if (matchupResult?.points) {
-        weekPoints = matchupResult.points
-      }
-      
-      if (teamStanding) {
-        teamData.set(weekIdx, {
-          rank: teamStanding.rank || leagueStore.yahooTeams.length,
-          points: weekPoints || 0,
-          catWins: matchupResult?.catWins ?? teamStanding.wins ?? 0
-        })
-      }
-    })
-    weeklyDataLookup.set(team.team_key, teamData)
-  })
-  
-  // Store for formatter access
-  const hoveredTeamKey = standingsHoveredTeamKey.value
-  const hoveredTeam = hoveredIdx !== -1 ? leagueStore.yahooTeams[hoveredIdx] : null
-  const hoveredTeamData = hoveredTeam ? weeklyDataLookup.get(hoveredTeam.team_key) : null
-  const showPoints = isPointsLeague.value
-  
   chartSeries.value = series
   
   chartOptions.value = {
@@ -2432,40 +2396,19 @@ function buildChart() {
     dataLabels: {
       enabled: hoveredIdx !== -1,
       enabledOnSeries: hoveredIdx !== -1 ? [hoveredIdx] : [],
-      formatter: function(val: number, opts: any) {
-        // opts contains seriesIndex, dataPointIndex, etc.
-        const weekIdx = opts.dataPointIndex
-        if (hoveredTeamData) {
-          const weekInfo = hoveredTeamData.get(weekIdx)
-          if (weekInfo) {
-            const rankStr = `#${weekInfo.rank}`
-            if (showPoints) {
-              // Points league: show points and rank
-              return `${weekInfo.points.toFixed(1)} (${rankStr})`
-            } else {
-              // Category league: show cat wins and rank  
-              const catWins = weekInfo.catWins ?? 0
-              return `${catWins} cats (${rankStr})`
-            }
-          }
-        }
-        return `#${val}`
+      formatter: function(val: number) {
+        // Just show the rank number (val is the rank from the series data)
+        return val.toString()
       },
       style: {
-        fontSize: '10px',
+        fontSize: '11px',
         fontWeight: 'bold',
         colors: ['#fff']
       },
       background: {
-        enabled: true,
-        foreColor: '#fff',
-        padding: 4,
-        borderRadius: 4,
-        borderWidth: 0,
-        opacity: 0.8,
-        dropShadow: { enabled: false }
+        enabled: false
       },
-      offsetY: -8
+      offsetY: 0
     },
     xaxis: {
       categories: weeks.map(w => `Wk ${w}`),
@@ -4176,25 +4119,32 @@ async function loadEspnData() {
         }
       })
       transactionCounts.value = counts
-      console.log('[ESPN] Transaction counts:', Object.fromEntries(counts))
+      console.log('[ESPN] Transaction counts from API:', Object.fromEntries(counts))
+      
+      // If all counts are 0, try using transactionCounter from team data
+      const totalFromApi = Array.from(counts.values()).reduce((sum, c) => sum + c, 0)
+      if (totalFromApi === 0) {
+        console.log('[ESPN] API counts all zero, checking team transactionCounter...')
+        leagueStore.yahooTeams.forEach(team => {
+          const txCount = team.transactionCounter || team.transactions || team.moves || 0
+          if (txCount > 0) {
+            counts.set(team.team_key, txCount)
+          }
+        })
+        transactionCounts.value = counts
+        console.log('[ESPN] Transaction counts from team data:', Object.fromEntries(counts))
+      }
     } catch (txErr) {
       console.warn('[ESPN] Could not fetch transactions:', txErr)
-      // Fallback: use acquisitions/drops from team data if available
+      // Fallback: use transactionCounter from team data
       const counts = new Map<string, number>()
       leagueStore.yahooTeams.forEach(team => {
-        // Try to get transaction count from team data
-        const txCount = team.transactions || team.moves || team.acquisitions || 0
-        if (txCount > 0) {
-          counts.set(team.team_key, txCount)
-        } else {
-          // Estimate based on waiver priority (lower priority = more moves typically)
-          const waiverRank = team.waiver_rank || team.waiverRank || 5
-          const estimatedMoves = Math.max(0, 15 - waiverRank) // Higher waiver rank = fewer moves
-          counts.set(team.team_key, estimatedMoves)
-        }
+        // Try to get transaction count from team data (transactionCounter is what ESPN provides)
+        const txCount = team.transactionCounter || team.transactions || team.moves || team.acquisitions || 0
+        counts.set(team.team_key, txCount)
       })
       transactionCounts.value = counts
-      console.log('[ESPN] Using fallback transaction counts:', Object.fromEntries(counts))
+      console.log('[ESPN] Using fallback transaction counts from team data:', Object.fromEntries(counts))
     }
     
     // Fetch all historical matchups for proper streak/weekly data

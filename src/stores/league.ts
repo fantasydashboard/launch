@@ -1285,7 +1285,8 @@ export const useLeagueStore = defineStore('league', () => {
           losses: team.losses,
           pointsFor: team.pointsFor,
           record: team.record,
-          logo: team.logo
+          logo: team.logo,
+          transactionCounter: team.transactionCounter
         })
         
         // Use team's logo if available, otherwise use ui-avatars.com as fallback
@@ -1306,7 +1307,8 @@ export const useLeagueStore = defineStore('league', () => {
           points_against: team.pointsAgainst || team.record?.overall?.pointsAgainst || 0,
           rank: team.playoffSeed || team.rank || 0,
           is_my_team: myTeamId !== null && team.id === myTeamId,
-          transactions: 0
+          transactionCounter: team.transactionCounter || 0,
+          transactions: team.transactionCounter || 0
         }
       })
       

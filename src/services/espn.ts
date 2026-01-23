@@ -204,6 +204,7 @@ export interface EspnTeam {
   rank: number
   playoffSeed: number
   divisionId: number
+  transactionCounter?: number  // Total transactions (adds, drops, trades)
   roster?: EspnPlayer[]
   record?: {
     overall: { wins: number; losses: number; ties: number; percentage: number }
@@ -2523,6 +2524,7 @@ export class EspnFantasyService {
         rank: team.playoffSeed || team.rankCalculatedFinal || 0,
         playoffSeed: team.playoffSeed || 0,
         divisionId: team.divisionId || 0,
+        transactionCounter: team.transactionCounter || 0,
         record: team.record ? {
           overall: team.record.overall,
           home: team.record.home,
