@@ -41,8 +41,12 @@
     </div>
 
     <!-- Loading State -->
-    <div v-if="isLoading" class="flex items-center justify-center py-20">
+    <div v-if="isLoading" class="flex flex-col items-center justify-center py-20">
       <LoadingSpinner size="xl" message="Loading draft data..." />
+      <div v-if="loadingProgress.currentStep" class="mt-4 text-center">
+        <div class="text-sm text-dark-textMuted">{{ loadingProgress.currentStep }}</div>
+        <div v-if="loadingProgress.detail" class="text-xs text-dark-textMuted/70 mt-1">{{ loadingProgress.detail }}</div>
+      </div>
     </div>
 
     <!-- No Draft Data -->
@@ -150,7 +154,7 @@
                 class="bg-dark-card rounded-lg p-2 cursor-pointer hover:ring-2 hover:ring-yellow-400 transition-all h-full"
                 :class="[
                   getPickClass(getPickForRound(team.team_key, round)),
-                  positionFilter !== 'All' && getPickForRound(team.team_key, round)?.position !== positionFilter ? 'opacity-30' : ''
+                  positionFilter !== 'All' && !pickMatchesPositionFilter(getPickForRound(team.team_key, round)) ? 'opacity-30' : ''
                 ]"
               >
                 <div class="text-xs font-medium text-dark-text truncate">
@@ -1122,6 +1126,7 @@ const positionFilter = ref('All')
 const selectedTeamFilter = ref('')
 const gradeSort = ref('pick')
 const isLoading = ref(false)
+const loadingProgress = ref({ currentStep: '', detail: '' })
 const selectedPick = ref<any>(null)
 
 // Team Modal State
@@ -1179,6 +1184,32 @@ const availableSeasons = computed(() => {
 // Get available positions from draft picks
 const availablePositions = computed(() => {
   const positions = new Set<string>()
+  const sport = leagueStore.currentSportType || 'baseball'
+  
+  // For baseball, extract individual positions from multi-position strings
+  if (sport === 'baseball') {
+    draftPicks.value.forEach(pick => {
+      if (pick.position) {
+        // Split by comma and add each individual position
+        const posArray = pick.position.split(',').map((p: string) => p.trim())
+        posArray.forEach((pos: string) => {
+          if (pos) positions.add(pos)
+        })
+      }
+    })
+    // Return in logical baseball order
+    const baseballOrder = ['C', '1B', '2B', '3B', 'SS', 'LF', 'CF', 'RF', 'OF', 'DH', 'UTIL', 'SP', 'RP', 'P']
+    return Array.from(positions).sort((a, b) => {
+      const aIdx = baseballOrder.indexOf(a)
+      const bIdx = baseballOrder.indexOf(b)
+      if (aIdx === -1 && bIdx === -1) return a.localeCompare(b)
+      if (aIdx === -1) return 1
+      if (bIdx === -1) return -1
+      return aIdx - bIdx
+    })
+  }
+  
+  // For other sports, use full position strings
   draftPicks.value.forEach(pick => {
     if (pick.position) positions.add(pick.position)
   })
@@ -1188,8 +1219,35 @@ const availablePositions = computed(() => {
 // Filter picks by position
 const filteredPicks = computed(() => {
   if (positionFilter.value === 'All') return draftPicks.value
+  
+  const sport = leagueStore.currentSportType || 'baseball'
+  
+  // For baseball, check if player's position string includes the selected position
+  if (sport === 'baseball') {
+    return draftPicks.value.filter(p => {
+      if (!p.position) return false
+      const posArray = p.position.split(',').map((pos: string) => pos.trim())
+      return posArray.includes(positionFilter.value)
+    })
+  }
+  
+  // For other sports, exact match
   return draftPicks.value.filter(p => p.position === positionFilter.value)
 })
+
+// Helper function to check if a pick matches the position filter (for baseball multi-position)
+function pickMatchesPositionFilter(pick: any): boolean {
+  if (!pick || positionFilter.value === 'All') return true
+  if (!pick.position) return false
+  
+  const sport = leagueStore.currentSportType || 'baseball'
+  if (sport === 'baseball') {
+    const posArray = pick.position.split(',').map((pos: string) => pos.trim())
+    return posArray.includes(positionFilter.value)
+  }
+  
+  return pick.position === positionFilter.value
+}
 
 // Total rounds in draft
 const totalRounds = computed(() => {
@@ -1601,13 +1659,100 @@ async function downloadTeamImage() {
 async function downloadStealsImage() {
   isDownloadingSteals.value = true
   try {
-    const html2canvas = (await import('html2canvas')).default; const steals = topSteals.value.slice(0, 10); if (steals.length === 0) { isDownloadingSteals.value = false; return }
-    const loadLogo = async (): Promise<string> => { try { const r = await fetch('/UFD_V5.png'); if (!r.ok) return ''; const b = await r.blob(); return new Promise(res => { const rd = new FileReader(); rd.onloadend = () => res(rd.result as string); rd.onerror = () => res(''); rd.readAsDataURL(b) }) } catch { return '' } }
-    const logoBase64 = await loadLogo(); const leader = steals[0]; const maxValue = Math.max(...steals.map(s => s.score || 0))
-    const generateRows = () => steals.map((p, i) => { const w = maxValue > 0 ? ((p.score || 0) / maxValue) * 100 : 0; return `<div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;"><div style="width:20px;text-align:center;font-weight:bold;font-size:12px;color:${i === 0 ? '#22c55e' : '#6b7280'};">${i + 1}</div><div style="flex:1;min-width:0;"><div style="font-size:12px;font-weight:600;color:#e5e7eb;">${p.player_name}</div><div style="font-size:10px;color:#9ca3af;margin-top:1px;">Drafted by <span style="color:#facc15;font-weight:600;">${p.team_name}</span> • R${p.round}</div><div style="height:6px;background:rgba(58,61,82,0.5);border-radius:3px;overflow:hidden;margin-top:6px;"><div style="height:100%;width:${w}%;background:#22c55e;opacity:${i === 0 ? 1 : 0.6};border-radius:3px;"></div></div></div><div style="width:50px;text-align:right;"><div style="font-size:13px;font-weight:bold;color:${i === 0 ? '#22c55e' : '#e5e7eb'};">+${p.score?.toFixed(0)}</div></div></div>` }).join('')
-    const container = document.createElement('div'); container.style.cssText = 'position:absolute;left:-9999px;top:0;width:480px;font-family:system-ui,-apple-system,sans-serif;'
-    container.innerHTML = `<div style="background:linear-gradient(160deg,#0f1219 0%,#0a0c14 50%,#0d1117 100%);border-radius:16px;overflow:hidden;"><div style="background:#facc15;padding:8px 20px;text-align:center;"><span style="font-size:12px;font-weight:700;color:#0a0c14;text-transform:uppercase;letter-spacing:2px;">Ultimate Fantasy Dashboard</span></div><div style="display:flex;align-items:center;padding:10px 16px;border-bottom:1px solid rgba(220,38,38,0.2);">${logoBase64 ? `<img src="${logoBase64}" style="height:40px;width:auto;flex-shrink:0;margin-right:12px;margin-top:4px;" />` : ''}<div style="flex:1;"><div style="font-size:17px;font-weight:900;color:#fff;text-transform:uppercase;letter-spacing:0.5px;line-height:1.1;">🔥 Biggest Draft Steals</div><div style="font-size:12px;margin-top:2px;"><span style="color:#e5e7eb;">${getLeagueName()}</span><span style="color:#6b7280;margin:0 4px;">•</span><span style="color:#facc15;font-weight:600;">${selectedSeason.value} Draft</span></div></div></div><div style="padding:12px 16px;background:linear-gradient(135deg,rgba(34,197,94,0.15) 0%,transparent 100%);border-bottom:1px solid rgba(34,197,94,0.2);"><div style="display:flex;align-items:center;gap:12px;"><div style="flex:1;"><div style="font-size:15px;font-weight:bold;color:#fff;">${leader.player_name}</div><div style="font-size:11px;color:#9ca3af;">Drafted by <span style="color:#facc15;">${leader.team_name}</span></div></div><div style="text-align:right;"><div style="font-size:26px;font-weight:900;color:#22c55e;">+${leader.score?.toFixed(0)}</div></div></div></div><div style="padding:12px 16px;">${generateRows()}</div><div style="padding:8px 16px;background:rgba(34,197,94,0.1);border-top:1px solid rgba(34,197,94,0.2);"><div style="font-size:10px;color:#9ca3af;text-align:center;"><span style="color:#22c55e;font-weight:600;">Value Score</span> = Position Rank at Draft − Current Position Rank</div></div><div style="padding:10px 16px;text-align:center;border-top:1px solid rgba(220,38,38,0.2);"><span style="font-size:14px;font-weight:bold;color:#facc15;">ultimatefantasydashboard.com</span></div></div>`
-    document.body.appendChild(container); await new Promise(r => setTimeout(r, 300)); const finalCanvas = await html2canvas(container, { backgroundColor: '#0a0c14', scale: 2, useCORS: true, allowTaint: true }); document.body.removeChild(container); const link = document.createElement('a'); link.download = `${selectedSeason.value}-draft-steals.png`; link.href = finalCanvas.toDataURL('image/png'); link.click()
+    const html2canvas = (await import('html2canvas')).default
+    const steals = topSteals.value.slice(0, 10)
+    if (steals.length === 0) { isDownloadingSteals.value = false; return }
+    
+    const loadLogo = async (): Promise<string> => { 
+      try { 
+        const r = await fetch('/UFD_V5.png')
+        if (!r.ok) return ''
+        const b = await r.blob()
+        return new Promise(res => { 
+          const rd = new FileReader()
+          rd.onloadend = () => res(rd.result as string)
+          rd.onerror = () => res('')
+          rd.readAsDataURL(b) 
+        }) 
+      } catch { return '' } 
+    }
+    
+    const logoBase64 = await loadLogo()
+    const leader = steals[0]
+    const maxValue = Math.max(...steals.map(s => s.score || 0))
+    
+    // Generate player headshot placeholder
+    const getHeadshotHtml = (p: any, size: number = 32) => {
+      if (p.headshot) {
+        return `<img src="${p.headshot}" style="width:${size}px;height:${size}px;border-radius:50%;object-fit:cover;flex-shrink:0;" crossorigin="anonymous" />`
+      }
+      // Fallback placeholder
+      const colors = ['#0D8ABC', '#3498DB', '#9B59B6', '#E91E63', '#F39C12', '#1ABC9C', '#2ECC71', '#E74C3C']
+      const colorIndex = (p.player_name || '').split('').reduce((acc: number, char: string) => acc + char.charCodeAt(0), 0) % colors.length
+      const initial = (p.player_name || 'P').charAt(0).toUpperCase()
+      return `<div style="width:${size}px;height:${size}px;border-radius:50%;background:${colors[colorIndex]};display:flex;align-items:center;justify-content:center;flex-shrink:0;"><span style="color:#fff;font-weight:bold;font-size:${size * 0.45}px;">${initial}</span></div>`
+    }
+    
+    const generateRows = () => steals.map((p, i) => { 
+      const w = maxValue > 0 ? ((p.score || 0) / maxValue) * 100 : 0
+      return `<div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+        <div style="width:20px;text-align:center;font-weight:bold;font-size:12px;color:${i === 0 ? '#22c55e' : '#6b7280'};">${i + 1}</div>
+        ${getHeadshotHtml(p, 32)}
+        <div style="flex:1;min-width:0;">
+          <div style="font-size:12px;font-weight:600;color:#e5e7eb;">${p.player_name}</div>
+          <div style="font-size:10px;color:#9ca3af;margin-top:1px;">Drafted by <span style="color:#facc15;font-weight:600;">${p.team_name}</span> • R${p.round}</div>
+          <div style="height:6px;background:rgba(58,61,82,0.5);border-radius:3px;overflow:hidden;margin-top:6px;">
+            <div style="height:100%;width:${w}%;background:#22c55e;opacity:${i === 0 ? 1 : 0.6};border-radius:3px;"></div>
+          </div>
+        </div>
+        <div style="width:50px;text-align:right;">
+          <div style="font-size:13px;font-weight:bold;color:${i === 0 ? '#22c55e' : '#e5e7eb'};">+${p.score?.toFixed(0)}</div>
+        </div>
+      </div>` 
+    }).join('')
+    
+    const container = document.createElement('div')
+    container.style.cssText = 'position:absolute;left:-9999px;top:0;width:480px;font-family:system-ui,-apple-system,sans-serif;'
+    container.innerHTML = `<div style="background:linear-gradient(160deg,#0f1219 0%,#0a0c14 50%,#0d1117 100%);border-radius:16px;overflow:hidden;">
+      <div style="background:#facc15;padding:8px 20px;text-align:center;">
+        <span style="font-size:12px;font-weight:700;color:#0a0c14;text-transform:uppercase;letter-spacing:2px;">Ultimate Fantasy Dashboard</span>
+      </div>
+      <div style="display:flex;align-items:center;padding:10px 16px;border-bottom:1px solid rgba(220,38,38,0.2);">
+        ${logoBase64 ? `<img src="${logoBase64}" style="height:40px;width:auto;flex-shrink:0;margin-right:12px;margin-top:4px;" />` : ''}
+        <div style="flex:1;">
+          <div style="font-size:17px;font-weight:900;color:#fff;text-transform:uppercase;letter-spacing:0.5px;line-height:1.1;">🔥 Biggest Draft Steals</div>
+          <div style="font-size:12px;margin-top:2px;"><span style="color:#e5e7eb;">${getLeagueName()}</span><span style="color:#6b7280;margin:0 4px;">•</span><span style="color:#facc15;font-weight:600;">${selectedSeason.value} Draft</span></div>
+        </div>
+      </div>
+      <div style="padding:12px 16px;background:linear-gradient(135deg,rgba(34,197,94,0.15) 0%,transparent 100%);border-bottom:1px solid rgba(34,197,94,0.2);">
+        <div style="display:flex;align-items:center;gap:12px;">
+          ${getHeadshotHtml(leader, 48)}
+          <div style="flex:1;">
+            <div style="font-size:15px;font-weight:bold;color:#fff;">${leader.player_name}</div>
+            <div style="font-size:11px;color:#9ca3af;">Drafted by <span style="color:#facc15;">${leader.team_name}</span></div>
+          </div>
+          <div style="text-align:right;">
+            <div style="font-size:26px;font-weight:900;color:#22c55e;">+${leader.score?.toFixed(0)}</div>
+          </div>
+        </div>
+      </div>
+      <div style="padding:12px 16px;">${generateRows()}</div>
+      <div style="padding:8px 16px;background:rgba(34,197,94,0.1);border-top:1px solid rgba(34,197,94,0.2);">
+        <div style="font-size:10px;color:#9ca3af;text-align:center;"><span style="color:#22c55e;font-weight:600;">Value Score</span> = Position Rank at Draft − Current Position Rank</div>
+      </div>
+      <div style="padding:10px 16px;text-align:center;border-top:1px solid rgba(220,38,38,0.2);">
+        <span style="font-size:14px;font-weight:bold;color:#facc15;">ultimatefantasydashboard.com</span>
+      </div>
+    </div>`
+    
+    document.body.appendChild(container)
+    await new Promise(r => setTimeout(r, 300))
+    const finalCanvas = await html2canvas(container, { backgroundColor: '#0a0c14', scale: 2, useCORS: true, allowTaint: true })
+    document.body.removeChild(container)
+    const link = document.createElement('a')
+    link.download = `${selectedSeason.value}-draft-steals.png`
+    link.href = finalCanvas.toDataURL('image/png')
+    link.click()
   } finally { isDownloadingSteals.value = false }
 }
 
@@ -1615,13 +1760,100 @@ async function downloadStealsImage() {
 async function downloadBustsImage() {
   isDownloadingBusts.value = true
   try {
-    const html2canvas = (await import('html2canvas')).default; const busts = topReaches.value.slice(0, 10); if (busts.length === 0) { isDownloadingBusts.value = false; return }
-    const loadLogo = async (): Promise<string> => { try { const r = await fetch('/UFD_V5.png'); if (!r.ok) return ''; const b = await r.blob(); return new Promise(res => { const rd = new FileReader(); rd.onloadend = () => res(rd.result as string); rd.onerror = () => res(''); rd.readAsDataURL(b) }) } catch { return '' } }
-    const logoBase64 = await loadLogo(); const leader = busts[0]; const maxValue = Math.max(...busts.map(s => Math.abs(s.score || 0)))
-    const generateRows = () => busts.map((p, i) => { const w = maxValue > 0 ? (Math.abs(p.score || 0) / maxValue) * 100 : 0; return `<div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;"><div style="width:20px;text-align:center;font-weight:bold;font-size:12px;color:${i === 0 ? '#ef4444' : '#6b7280'};">${i + 1}</div><div style="flex:1;min-width:0;"><div style="font-size:12px;font-weight:600;color:#e5e7eb;">${p.player_name}</div><div style="font-size:10px;color:#9ca3af;margin-top:1px;">Drafted by <span style="color:#facc15;font-weight:600;">${p.team_name}</span> • R${p.round}</div><div style="height:6px;background:rgba(58,61,82,0.5);border-radius:3px;overflow:hidden;margin-top:6px;"><div style="height:100%;width:${w}%;background:#ef4444;opacity:${i === 0 ? 1 : 0.6};border-radius:3px;"></div></div></div><div style="width:50px;text-align:right;"><div style="font-size:13px;font-weight:bold;color:${i === 0 ? '#ef4444' : '#e5e7eb'};">${p.score?.toFixed(0)}</div></div></div>` }).join('')
-    const container = document.createElement('div'); container.style.cssText = 'position:absolute;left:-9999px;top:0;width:480px;font-family:system-ui,-apple-system,sans-serif;'
-    container.innerHTML = `<div style="background:linear-gradient(160deg,#0f1219 0%,#0a0c14 50%,#0d1117 100%);border-radius:16px;overflow:hidden;"><div style="background:#facc15;padding:8px 20px;text-align:center;"><span style="font-size:12px;font-weight:700;color:#0a0c14;text-transform:uppercase;letter-spacing:2px;">Ultimate Fantasy Dashboard</span></div><div style="display:flex;align-items:center;padding:10px 16px;border-bottom:1px solid rgba(220,38,38,0.2);">${logoBase64 ? `<img src="${logoBase64}" style="height:40px;width:auto;flex-shrink:0;margin-right:12px;margin-top:4px;" />` : ''}<div style="flex:1;"><div style="font-size:17px;font-weight:900;color:#fff;text-transform:uppercase;letter-spacing:0.5px;line-height:1.1;">💀 Biggest Draft Busts</div><div style="font-size:12px;margin-top:2px;"><span style="color:#e5e7eb;">${getLeagueName()}</span><span style="color:#6b7280;margin:0 4px;">•</span><span style="color:#facc15;font-weight:600;">${selectedSeason.value} Draft</span></div></div></div><div style="padding:12px 16px;background:linear-gradient(135deg,rgba(239,68,68,0.15) 0%,transparent 100%);border-bottom:1px solid rgba(239,68,68,0.2);"><div style="display:flex;align-items:center;gap:12px;"><div style="flex:1;"><div style="font-size:15px;font-weight:bold;color:#fff;">${leader.player_name}</div><div style="font-size:11px;color:#9ca3af;">Drafted by <span style="color:#facc15;">${leader.team_name}</span></div></div><div style="text-align:right;"><div style="font-size:26px;font-weight:900;color:#ef4444;">${leader.score?.toFixed(0)}</div></div></div></div><div style="padding:12px 16px;">${generateRows()}</div><div style="padding:8px 16px;background:rgba(239,68,68,0.1);border-top:1px solid rgba(239,68,68,0.2);"><div style="font-size:10px;color:#9ca3af;text-align:center;"><span style="color:#ef4444;font-weight:600;">Value Score</span> = Position Rank at Draft − Current Position Rank</div></div><div style="padding:10px 16px;text-align:center;border-top:1px solid rgba(220,38,38,0.2);"><span style="font-size:14px;font-weight:bold;color:#facc15;">ultimatefantasydashboard.com</span></div></div>`
-    document.body.appendChild(container); await new Promise(r => setTimeout(r, 300)); const finalCanvas = await html2canvas(container, { backgroundColor: '#0a0c14', scale: 2, useCORS: true, allowTaint: true }); document.body.removeChild(container); const link = document.createElement('a'); link.download = `${selectedSeason.value}-draft-busts.png`; link.href = finalCanvas.toDataURL('image/png'); link.click()
+    const html2canvas = (await import('html2canvas')).default
+    const busts = topReaches.value.slice(0, 10)
+    if (busts.length === 0) { isDownloadingBusts.value = false; return }
+    
+    const loadLogo = async (): Promise<string> => { 
+      try { 
+        const r = await fetch('/UFD_V5.png')
+        if (!r.ok) return ''
+        const b = await r.blob()
+        return new Promise(res => { 
+          const rd = new FileReader()
+          rd.onloadend = () => res(rd.result as string)
+          rd.onerror = () => res('')
+          rd.readAsDataURL(b) 
+        }) 
+      } catch { return '' } 
+    }
+    
+    const logoBase64 = await loadLogo()
+    const leader = busts[0]
+    const maxValue = Math.max(...busts.map(s => Math.abs(s.score || 0)))
+    
+    // Generate player headshot placeholder
+    const getHeadshotHtml = (p: any, size: number = 32) => {
+      if (p.headshot) {
+        return `<img src="${p.headshot}" style="width:${size}px;height:${size}px;border-radius:50%;object-fit:cover;flex-shrink:0;" crossorigin="anonymous" />`
+      }
+      // Fallback placeholder
+      const colors = ['#0D8ABC', '#3498DB', '#9B59B6', '#E91E63', '#F39C12', '#1ABC9C', '#2ECC71', '#E74C3C']
+      const colorIndex = (p.player_name || '').split('').reduce((acc: number, char: string) => acc + char.charCodeAt(0), 0) % colors.length
+      const initial = (p.player_name || 'P').charAt(0).toUpperCase()
+      return `<div style="width:${size}px;height:${size}px;border-radius:50%;background:${colors[colorIndex]};display:flex;align-items:center;justify-content:center;flex-shrink:0;"><span style="color:#fff;font-weight:bold;font-size:${size * 0.45}px;">${initial}</span></div>`
+    }
+    
+    const generateRows = () => busts.map((p, i) => { 
+      const w = maxValue > 0 ? (Math.abs(p.score || 0) / maxValue) * 100 : 0
+      return `<div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+        <div style="width:20px;text-align:center;font-weight:bold;font-size:12px;color:${i === 0 ? '#ef4444' : '#6b7280'};">${i + 1}</div>
+        ${getHeadshotHtml(p, 32)}
+        <div style="flex:1;min-width:0;">
+          <div style="font-size:12px;font-weight:600;color:#e5e7eb;">${p.player_name}</div>
+          <div style="font-size:10px;color:#9ca3af;margin-top:1px;">Drafted by <span style="color:#facc15;font-weight:600;">${p.team_name}</span> • R${p.round}</div>
+          <div style="height:6px;background:rgba(58,61,82,0.5);border-radius:3px;overflow:hidden;margin-top:6px;">
+            <div style="height:100%;width:${w}%;background:#ef4444;opacity:${i === 0 ? 1 : 0.6};border-radius:3px;"></div>
+          </div>
+        </div>
+        <div style="width:50px;text-align:right;">
+          <div style="font-size:13px;font-weight:bold;color:${i === 0 ? '#ef4444' : '#e5e7eb'};">${p.score?.toFixed(0)}</div>
+        </div>
+      </div>` 
+    }).join('')
+    
+    const container = document.createElement('div')
+    container.style.cssText = 'position:absolute;left:-9999px;top:0;width:480px;font-family:system-ui,-apple-system,sans-serif;'
+    container.innerHTML = `<div style="background:linear-gradient(160deg,#0f1219 0%,#0a0c14 50%,#0d1117 100%);border-radius:16px;overflow:hidden;">
+      <div style="background:#facc15;padding:8px 20px;text-align:center;">
+        <span style="font-size:12px;font-weight:700;color:#0a0c14;text-transform:uppercase;letter-spacing:2px;">Ultimate Fantasy Dashboard</span>
+      </div>
+      <div style="display:flex;align-items:center;padding:10px 16px;border-bottom:1px solid rgba(220,38,38,0.2);">
+        ${logoBase64 ? `<img src="${logoBase64}" style="height:40px;width:auto;flex-shrink:0;margin-right:12px;margin-top:4px;" />` : ''}
+        <div style="flex:1;">
+          <div style="font-size:17px;font-weight:900;color:#fff;text-transform:uppercase;letter-spacing:0.5px;line-height:1.1;">💀 Biggest Draft Busts</div>
+          <div style="font-size:12px;margin-top:2px;"><span style="color:#e5e7eb;">${getLeagueName()}</span><span style="color:#6b7280;margin:0 4px;">•</span><span style="color:#facc15;font-weight:600;">${selectedSeason.value} Draft</span></div>
+        </div>
+      </div>
+      <div style="padding:12px 16px;background:linear-gradient(135deg,rgba(239,68,68,0.15) 0%,transparent 100%);border-bottom:1px solid rgba(239,68,68,0.2);">
+        <div style="display:flex;align-items:center;gap:12px;">
+          ${getHeadshotHtml(leader, 48)}
+          <div style="flex:1;">
+            <div style="font-size:15px;font-weight:bold;color:#fff;">${leader.player_name}</div>
+            <div style="font-size:11px;color:#9ca3af;">Drafted by <span style="color:#facc15;">${leader.team_name}</span></div>
+          </div>
+          <div style="text-align:right;">
+            <div style="font-size:26px;font-weight:900;color:#ef4444;">${leader.score?.toFixed(0)}</div>
+          </div>
+        </div>
+      </div>
+      <div style="padding:12px 16px;">${generateRows()}</div>
+      <div style="padding:8px 16px;background:rgba(239,68,68,0.1);border-top:1px solid rgba(239,68,68,0.2);">
+        <div style="font-size:10px;color:#9ca3af;text-align:center;"><span style="color:#ef4444;font-weight:600;">Value Score</span> = Position Rank at Draft − Current Position Rank</div>
+      </div>
+      <div style="padding:10px 16px;text-align:center;border-top:1px solid rgba(220,38,38,0.2);">
+        <span style="font-size:14px;font-weight:bold;color:#facc15;">ultimatefantasydashboard.com</span>
+      </div>
+    </div>`
+    
+    document.body.appendChild(container)
+    await new Promise(r => setTimeout(r, 300))
+    const finalCanvas = await html2canvas(container, { backgroundColor: '#0a0c14', scale: 2, useCORS: true, allowTaint: true })
+    document.body.removeChild(container)
+    const link = document.createElement('a')
+    link.download = `${selectedSeason.value}-draft-busts.png`
+    link.href = finalCanvas.toDataURL('image/png')
+    link.click()
   } finally { isDownloadingBusts.value = false }
 }
 
@@ -1631,11 +1863,13 @@ async function loadDraftData() {
   if (!leagueKey || !authStore.user?.id) return
   
   isLoading.value = true
+  loadingProgress.value = { currentStep: 'Initializing...', detail: '' }
   
   try {
     // Handle ESPN leagues
     if (isEspn.value) {
       console.log('[ESPN DRAFT] Loading draft for ESPN league:', leagueKey)
+      loadingProgress.value = { currentStep: 'Loading ESPN service...', detail: '' }
       
       // Dynamically import ESPN service
       const { espnService } = await import('@/services/espn')
@@ -1648,6 +1882,7 @@ async function loadDraftData() {
       const season = parseInt(selectedSeason.value) || currentSeason
       
       console.log('[ESPN DRAFT] Fetching draft for:', { sport, espnLeagueId, season })
+      loadingProgress.value = { currentStep: 'Fetching draft picks...', detail: `${season} Season` }
       
       // Get draft picks with player info pre-resolved
       const espnDraftPicks = await espnService.getDraftWithPlayers(sport, espnLeagueId, season)
@@ -1668,6 +1903,8 @@ async function loadDraftData() {
         playerId: p.playerId
       })))
       
+      loadingProgress.value = { currentStep: 'Loading team data...', detail: `${espnDraftPicks.length} picks found` }
+      
       // Get teams for mapping
       const teams = await espnService.getTeams(sport, espnLeagueId, season)
       teamsData.value = teams
@@ -1678,6 +1915,8 @@ async function loadDraftData() {
       for (const team of teams) {
         teamMap.set(team.id, team)
       }
+      
+      loadingProgress.value = { currentStep: 'Fetching player stats...', detail: 'Calculating season totals' }
       
       // Get teams with rosters for player season points
       let playerSeasonPoints = new Map<number, number>()
@@ -1698,6 +1937,8 @@ async function loadDraftData() {
       } catch (e) {
         console.log('[ESPN DRAFT] Could not get player season points:', e)
       }
+      
+      loadingProgress.value = { currentStep: 'Calculating draft grades...', detail: '' }
       
       // Get matchups to calculate total points per team
       const teamTotalPoints = new Map<number, number>()
@@ -1860,6 +2101,7 @@ async function loadDraftData() {
     // Handle Sleeper leagues
     if (isSleeper.value) {
       console.log('[SLEEPER DRAFT] Loading draft for Sleeper league:', leagueKey)
+      loadingProgress.value = { currentStep: 'Loading Sleeper service...', detail: '' }
       
       // Import services
       const { sleeperService } = await import('@/services/sleeper')
@@ -1874,11 +2116,15 @@ async function loadDraftData() {
         return
       }
       
+      loadingProgress.value = { currentStep: 'Fetching draft picks...', detail: `${selectedSeason.value} Season` }
+      
       // Load draft if not already loaded
       if (!leagueStore.historicalDrafts.has(selectedSeason.value)) {
         console.log('[SLEEPER DRAFT] Loading draft from store for season:', selectedSeason.value)
         await leagueStore.loadHistoricalDraft(seasonInfo.league_id, selectedSeason.value)
       }
+      
+      loadingProgress.value = { currentStep: 'Loading matchup data...', detail: '' }
       
       // Load matchups if not already loaded
       if (!leagueStore.historicalMatchups.has(selectedSeason.value)) {
@@ -1894,6 +2140,7 @@ async function loadDraftData() {
       }
       
       console.log('[SLEEPER DRAFT] Got', draft.picks.length, 'draft picks')
+      loadingProgress.value = { currentStep: 'Calculating draft grades...', detail: `${draft.picks.length} picks found` }
       
       const rosters = leagueStore.historicalRosters.get(selectedSeason.value) || []
       const users = leagueStore.historicalUsers.get(selectedSeason.value) || []
@@ -2019,6 +2266,7 @@ async function loadDraftData() {
     }
     
     // Yahoo league handling (existing code)
+    loadingProgress.value = { currentStep: 'Loading Yahoo service...', detail: '' }
     await yahooService.initialize(authStore.user.id)
     
     // Get game key and build league key for selected season
@@ -2032,6 +2280,7 @@ async function loadDraftData() {
     let seasonLeagueKey = leagueKey
     
     console.log('[POINTS DRAFT] Loading draft for league:', seasonLeagueKey)
+    loadingProgress.value = { currentStep: 'Fetching draft results...', detail: seasonLeagueKey }
     
     // Get draft results
     let draftResults = await yahooService.getDraftResults(seasonLeagueKey)
@@ -2044,6 +2293,7 @@ async function loadDraftData() {
     // If no player keys (draft hasn't happened), try to fall back to previous season
     if (playerKeys.length === 0 && draftResults.picks?.length > 0) {
       console.log('[POINTS DRAFT] Draft has picks but no player keys (predraft). Checking for previous season...')
+      loadingProgress.value = { currentStep: 'Checking previous season...', detail: 'Draft not yet complete' }
       
       // Use renew field from draft results (already contains previous season info)
       const renewedFrom = draftResults.renew // Format: "431_136233" (previous year's game_leaguenum)
@@ -2053,6 +2303,7 @@ async function loadDraftData() {
         const [prevGameKey, prevLeagueNum] = renewedFrom.split('_')
         const prevLeagueKey = `${prevGameKey}.l.${prevLeagueNum}`
         console.log('[POINTS DRAFT] Found previous season:', prevLeagueKey, '- loading that draft instead')
+        loadingProgress.value = { currentStep: 'Loading previous season draft...', detail: prevLeagueKey }
         
         // Load previous season's draft
         draftResults = await yahooService.getDraftResults(prevLeagueKey)
@@ -2086,6 +2337,7 @@ async function loadDraftData() {
     // Get player details (re-calculate playerKeys in case we switched seasons)
     const finalPlayerKeys = draftResults.picks.map((p: any) => p.player_key).filter(Boolean)
     console.log('[POINTS DRAFT] Fetching details for', finalPlayerKeys.length, 'players from', seasonLeagueKey)
+    loadingProgress.value = { currentStep: 'Fetching player details...', detail: `${finalPlayerKeys.length} players` }
     const players = await yahooService.getPlayers(finalPlayerKeys, seasonLeagueKey)
     playerData.value = players
     console.log('[POINTS DRAFT] Got player details:', players.size)
@@ -2098,9 +2350,12 @@ async function loadDraftData() {
     console.log('[POINTS DRAFT] Players with headshots:', headshotCount, 'of', players.size)
     
     // Get player stats
+    loadingProgress.value = { currentStep: 'Fetching player stats...', detail: 'Calculating season totals' }
     const stats = await yahooService.getPlayerStats(seasonLeagueKey, finalPlayerKeys)
     playerStats.value = stats
     console.log('Got player stats:', stats.size)
+    
+    loadingProgress.value = { currentStep: 'Calculating draft grades...', detail: '' }
     
     // Debug: log a few player stats
     let debugCount = 0

@@ -1307,12 +1307,54 @@ const totalRounds = computed(() => {
 })
 
 const availablePositions = computed(() => {
-  const positions = new Set(draftPicks.value.map(p => p.position).filter(Boolean))
+  const positions = new Set<string>()
+  const sport = leagueStore.currentSportType || 'baseball'
+  
+  // For baseball, extract individual positions from multi-position strings
+  if (sport === 'baseball') {
+    draftPicks.value.forEach(pick => {
+      if (pick.position) {
+        // Split by comma and add each individual position
+        const posArray = pick.position.split(',').map((p: string) => p.trim())
+        posArray.forEach((pos: string) => {
+          if (pos) positions.add(pos)
+        })
+      }
+    })
+    // Return in logical baseball order
+    const baseballOrder = ['C', '1B', '2B', '3B', 'SS', 'LF', 'CF', 'RF', 'OF', 'DH', 'UTIL', 'SP', 'RP', 'P']
+    return Array.from(positions).sort((a, b) => {
+      const aIdx = baseballOrder.indexOf(a)
+      const bIdx = baseballOrder.indexOf(b)
+      if (aIdx === -1 && bIdx === -1) return a.localeCompare(b)
+      if (aIdx === -1) return 1
+      if (bIdx === -1) return -1
+      return aIdx - bIdx
+    })
+  }
+  
+  // For other sports, use full position strings
+  draftPicks.value.forEach(pick => {
+    if (pick.position) positions.add(pick.position)
+  })
   return Array.from(positions).sort()
 })
 
 const filteredPicks = computed(() => {
   if (positionFilter.value === 'All') return draftPicks.value
+  
+  const sport = leagueStore.currentSportType || 'baseball'
+  
+  // For baseball, check if player's position string includes the selected position
+  if (sport === 'baseball') {
+    return draftPicks.value.filter(p => {
+      if (!p.position) return false
+      const posArray = p.position.split(',').map((pos: string) => pos.trim())
+      return posArray.includes(positionFilter.value)
+    })
+  }
+  
+  // For other sports, exact match
   return draftPicks.value.filter(p => p.position === positionFilter.value)
 })
 
