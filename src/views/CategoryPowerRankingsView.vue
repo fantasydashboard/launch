@@ -38,8 +38,29 @@
     </div>
 
     <!-- Loading State -->
-    <div v-if="isLoading" class="flex items-center justify-center py-20">
+    <div v-if="isLoading" class="flex flex-col items-center justify-center py-20">
       <LoadingSpinner size="xl" :message="loadingMessage" />
+      
+      <!-- Detailed progress -->
+      <div class="mt-4 text-center space-y-2">
+        <div v-if="loadingProgress.currentStep" class="text-sm text-dark-textMuted">
+          {{ loadingProgress.currentStep }}
+        </div>
+        
+        <!-- Week progress bar -->
+        <div v-if="loadingProgress.maxWeek > 0" class="w-64 mx-auto">
+          <div class="flex justify-between text-xs text-dark-textMuted/70 mb-1">
+            <span>Week {{ loadingProgress.week }}</span>
+            <span>{{ loadingProgress.week }}/{{ loadingProgress.maxWeek }}</span>
+          </div>
+          <div class="h-1.5 bg-dark-border rounded-full overflow-hidden">
+            <div 
+              class="h-full bg-yellow-400 transition-all duration-300"
+              :style="{ width: `${(loadingProgress.week / loadingProgress.maxWeek) * 100}%` }"
+            ></div>
+          </div>
+        </div>
+      </div>
     </div>
 
     <template v-else-if="powerRankings.length > 0">
@@ -703,6 +724,11 @@ const isEspn = computed(() => leagueStore.activePlatform === 'espn')
 // State
 const isLoading = ref(false)
 const loadingMessage = ref('Loading...')
+const loadingProgress = ref({
+  currentStep: '',
+  week: 0,
+  maxWeek: 0
+})
 const selectedWeek = ref('')
 const powerRankings = ref<any[]>([])
 const displayCategories = ref<any[]>([])
@@ -2043,11 +2069,13 @@ async function loadPowerRankings() {
   
   isLoading.value = true
   const throughWeek = parseInt(selectedWeek.value)
+  loadingProgress.value = { currentStep: 'Initializing...', week: 0, maxWeek: throughWeek }
   
   try {
     // Ensure categories are loaded
     if (displayCategories.value.length === 0) {
       loadingMessage.value = 'Loading categories...'
+      loadingProgress.value = { ...loadingProgress.value, currentStep: 'Loading scoring categories...' }
       await loadCategories()
     }
     
@@ -2144,7 +2172,8 @@ async function loadPowerRankings() {
     
     // Load each week's matchup data and calculate running rankings
     for (let week = 1; week <= throughWeek; week++) {
-      loadingMessage.value = `Loading week ${week}/${throughWeek}...`
+      loadingMessage.value = `Loading matchup data...`
+      loadingProgress.value = { currentStep: `Processing week ${week} matchups...`, week, maxWeek: throughWeek }
       
       try {
         if (isEspn.value) {
@@ -2333,6 +2362,7 @@ async function loadPowerRankings() {
     
     // Calculate final rankings
     loadingMessage.value = 'Calculating final rankings...'
+    loadingProgress.value = { currentStep: 'Calculating power scores...', week: throughWeek, maxWeek: throughWeek }
     const finalRankings = calculatePowerScores(teamStats, throughWeek)
     
     // Calculate change from previous week

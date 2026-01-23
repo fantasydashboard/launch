@@ -29,8 +29,29 @@
     </div>
 
     <!-- Loading State -->
-    <div v-if="isLoading" class="flex items-center justify-center py-20">
-      <LoadingSpinner size="xl" message="Loading power rankings..." />
+    <div v-if="isLoading" class="flex flex-col items-center justify-center py-20">
+      <LoadingSpinner size="xl" :message="loadingMessage" />
+      
+      <!-- Detailed progress -->
+      <div class="mt-4 text-center space-y-2">
+        <div v-if="loadingProgress.currentStep" class="text-sm text-dark-textMuted">
+          {{ loadingProgress.currentStep }}
+        </div>
+        
+        <!-- Week progress bar -->
+        <div v-if="loadingProgress.maxWeek > 0" class="w-64 mx-auto">
+          <div class="flex justify-between text-xs text-dark-textMuted/70 mb-1">
+            <span>Week {{ loadingProgress.week }}</span>
+            <span>{{ loadingProgress.week }}/{{ loadingProgress.maxWeek }}</span>
+          </div>
+          <div class="h-1.5 bg-dark-border rounded-full overflow-hidden">
+            <div 
+              class="h-full bg-yellow-400 transition-all duration-300"
+              :style="{ width: `${(loadingProgress.week / loadingProgress.maxWeek) * 100}%` }"
+            ></div>
+          </div>
+        </div>
+      </div>
     </div>
 
     <template v-else-if="powerRankings.length > 0">
@@ -1068,6 +1089,12 @@ const scoringTypeLabel = computed(() => {
 
 // State
 const isLoading = ref(false)
+const loadingMessage = ref('Loading...')
+const loadingProgress = ref({
+  currentStep: '',
+  week: 0,
+  maxWeek: 0
+})
 const selectedWeek = ref('')
 const downloadFormat = ref<'png' | 'gif'>('png')
 const isGeneratingDownload = ref(false)
@@ -2559,15 +2586,18 @@ async function loadPowerRankings() {
   if (!selectedWeek.value) return
   
   isLoading.value = true
+  const throughWeek = parseInt(selectedWeek.value)
+  loadingMessage.value = 'Loading power rankings...'
+  loadingProgress.value = { currentStep: 'Initializing...', week: 0, maxWeek: throughWeek }
   
   try {
-    const throughWeek = parseInt(selectedWeek.value)
-    
     // Calculate rankings for current week
+    loadingProgress.value = { currentStep: 'Calculating current week rankings...', week: throughWeek, maxWeek: throughWeek }
     const currentRankings = await calculatePowerRankingsForWeek(throughWeek)
     
     // Calculate rankings for previous week to get change
     if (throughWeek > 3) {
+      loadingProgress.value = { currentStep: 'Calculating previous week for changes...', week: throughWeek - 1, maxWeek: throughWeek }
       const prevRankings = await calculatePowerRankingsForWeek(throughWeek - 1)
       
       currentRankings.forEach((team, idx) => {
@@ -2580,9 +2610,11 @@ async function loadPowerRankings() {
     }
     
     // Calculate historical rankings for chart
+    loadingMessage.value = 'Building historical data...'
     const historical = new Map<string, number[]>()
     
     for (let week = 3; week <= throughWeek; week++) {
+      loadingProgress.value = { currentStep: `Processing week ${week} history...`, week, maxWeek: throughWeek }
       const weekRankings = await calculatePowerRankingsForWeek(week)
       
       weekRankings.forEach((team, idx) => {

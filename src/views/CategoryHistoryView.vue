@@ -46,13 +46,36 @@
     </div>
 
     <!-- Loading State -->
-    <div v-if="isLoading" class="flex items-center justify-center py-20">
-      <div class="text-center">
-        <LoadingSpinner size="xl" />
-        <div class="text-lg font-semibold text-dark-text mb-2">Loading League History</div>
-        <div class="text-dark-textMuted text-sm">{{ loadingMessage }}</div>
-        <div class="text-xs text-dark-textMuted/70 mt-2">This may take a minute for leagues with many seasons</div>
+    <div v-if="isLoading" class="flex flex-col items-center justify-center py-20">
+      <LoadingSpinner size="xl" :message="loadingMessage" />
+      
+      <!-- Detailed progress -->
+      <div class="mt-4 text-center space-y-2">
+        <div v-if="loadingProgress.currentStep" class="text-sm text-dark-textMuted">
+          {{ loadingProgress.currentStep }}
+        </div>
+        
+        <!-- Season progress -->
+        <div v-if="loadingProgress.totalSeasons > 0" class="text-xs text-dark-textMuted/70">
+          Seasons: {{ loadingProgress.seasonsLoaded }}/{{ loadingProgress.totalSeasons }}
+        </div>
+        
+        <!-- Week progress bar -->
+        <div v-if="loadingProgress.maxWeek > 0" class="w-64 mx-auto">
+          <div class="flex justify-between text-xs text-dark-textMuted/70 mb-1">
+            <span>{{ loadingProgress.season }} Week {{ loadingProgress.week }}</span>
+            <span>{{ loadingProgress.week }}/{{ loadingProgress.maxWeek }}</span>
+          </div>
+          <div class="h-1.5 bg-dark-border rounded-full overflow-hidden">
+            <div 
+              class="h-full bg-yellow-400 transition-all duration-300"
+              :style="{ width: `${(loadingProgress.week / loadingProgress.maxWeek) * 100}%` }"
+            ></div>
+          </div>
+        </div>
       </div>
+      
+      <div class="text-xs text-dark-textMuted/50 mt-4">This may take a minute for leagues with many seasons</div>
     </div>
 
     <template v-else>
@@ -373,6 +396,273 @@
 
       <!-- ==================== HEAD-TO-HEAD TAB ==================== -->
       <template v-if="activeHistoryTab === 'h2h'">
+      
+      <!-- Team Comparison Section -->
+      <div class="card mb-6">
+        <div class="card-header">
+          <div class="flex items-center gap-2">
+            <span class="text-2xl">⚔️</span>
+            <h2 class="card-title">Compare Teams</h2>
+          </div>
+          <p class="card-subtitle mt-1">Select two teams to see their head-to-head history</p>
+        </div>
+        <div class="card-body">
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <!-- Team 1 Selector -->
+            <div>
+              <label class="block text-sm font-semibold text-dark-text mb-2">Team 1</label>
+              <select v-model="compareTeam1Key" class="select w-full">
+                <option value="">Select Team...</option>
+                <option v-for="team in compareAvailableTeams1" :key="team.team_key" :value="team.team_key">
+                  {{ team.team_name }}
+                </option>
+              </select>
+            </div>
+
+            <!-- Team 2 Selector -->
+            <div>
+              <label class="block text-sm font-semibold text-dark-text mb-2">Team 2</label>
+              <select v-model="compareTeam2Key" class="select w-full">
+                <option value="">Select Team...</option>
+                <option v-for="team in compareAvailableTeams2" :key="team.team_key" :value="team.team_key">
+                  {{ team.team_name }}
+                </option>
+              </select>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Comparison Results (only show when both teams selected) -->
+      <template v-if="compareTeam1Key && compareTeam2Key && compareData">
+        <!-- Tale of the Tape -->
+        <div class="card mb-6">
+          <div class="card-header">
+            <div class="flex items-center justify-between">
+              <div class="flex items-center gap-2">
+                <span class="text-2xl">🥊</span>
+                <h2 class="card-title">Tale of the Tape</h2>
+              </div>
+              <button 
+                @click="downloadComparison"
+                :disabled="isDownloadingComparison"
+                class="px-4 py-2 border border-yellow-400 bg-transparent text-yellow-400 hover:bg-yellow-400 hover:text-gray-900 rounded-lg font-medium flex items-center gap-2 text-sm transition-colors disabled:opacity-50"
+              >
+                <svg v-if="!isDownloadingComparison" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
+                </svg>
+                <svg v-else class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                  <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                  <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                {{ isDownloadingComparison ? 'Generating...' : 'Share' }}
+              </button>
+            </div>
+            <p class="card-subtitle mt-2">All-time comparison</p>
+          </div>
+          <div class="card-body">
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              <!-- Team 1 Stats -->
+              <div class="text-center p-6 bg-gradient-to-br from-cyan-500/10 to-cyan-600/5 rounded-xl border-2 border-cyan-500/30">
+                <img 
+                  :src="compareTeam1Data?.logo_url || defaultAvatar" 
+                  :alt="compareTeam1Data?.team_name" 
+                  class="w-20 h-20 rounded-full mx-auto mb-4 border-4 border-cyan-500 object-cover" 
+                  @error="handleImageError" 
+                />
+                <div class="font-bold text-xl text-dark-text mb-3">{{ compareTeam1Data?.team_name }}</div>
+                
+                <div class="space-y-2 text-left text-sm">
+                  <div class="flex justify-between">
+                    <span class="text-dark-textMuted">🏆 Championships:</span>
+                    <span class="font-bold text-dark-text">{{ compareData.team1.championships }}</span>
+                  </div>
+                  <div class="flex justify-between">
+                    <span class="text-dark-textMuted">📅 Seasons:</span>
+                    <span class="font-bold text-dark-text">{{ compareData.team1.seasons }}</span>
+                  </div>
+                  <div class="flex justify-between">
+                    <span class="text-dark-textMuted">Matchup Record:</span>
+                    <span class="font-bold text-dark-text">{{ compareData.team1.matchupWins }}-{{ compareData.team1.matchupLosses }}-{{ compareData.team1.matchupTies }}</span>
+                  </div>
+                  <div class="flex justify-between">
+                    <span class="text-dark-textMuted">Win %:</span>
+                    <span class="font-bold text-dark-text">{{ (compareData.team1.winPct * 100).toFixed(1) }}%</span>
+                  </div>
+                  <div class="flex justify-between">
+                    <span class="text-dark-textMuted">Avg Cat Wins:</span>
+                    <span class="font-bold text-dark-text">{{ compareData.team1.avgCatWins.toFixed(1) }}</span>
+                  </div>
+                  <div class="flex justify-between">
+                    <span class="text-dark-textMuted">Cat Diff:</span>
+                    <span class="font-bold" :class="compareData.team1.catDiff >= 0 ? 'text-green-400' : 'text-red-400'">{{ compareData.team1.catDiff >= 0 ? '+' : '' }}{{ compareData.team1.catDiff }}</span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- VS Section -->
+              <div class="flex flex-col items-center justify-center p-6">
+                <div class="text-5xl font-black text-dark-textMuted mb-4">VS</div>
+                
+                <!-- Head-to-Head Record -->
+                <div class="text-center mb-4">
+                  <div class="text-sm text-dark-textMuted mb-2">Head-to-Head Record</div>
+                  <div class="flex items-center justify-center gap-3">
+                    <div class="text-center">
+                      <div class="text-3xl font-bold" :class="compareData.h2h.team1Wins > compareData.h2h.team2Wins ? 'text-green-400' : 'text-dark-textMuted'">
+                        {{ compareData.h2h.team1Wins }}
+                      </div>
+                    </div>
+                    <div class="text-2xl text-dark-textMuted">-</div>
+                    <div class="text-center">
+                      <div class="text-3xl font-bold" :class="compareData.h2h.team2Wins > compareData.h2h.team1Wins ? 'text-green-400' : 'text-dark-textMuted'">
+                        {{ compareData.h2h.team2Wins }}
+                      </div>
+                    </div>
+                  </div>
+                  <div v-if="compareData.h2h.ties > 0" class="text-xs text-dark-textMuted mt-1">
+                    {{ compareData.h2h.ties }} tie(s)
+                  </div>
+                </div>
+
+                <!-- Rivalry Stats -->
+                <div class="w-full space-y-2 text-sm">
+                  <div class="flex justify-between p-2 bg-dark-border/20 rounded">
+                    <span class="text-dark-textMuted">Total Meetings:</span>
+                    <span class="font-semibold text-dark-text">{{ compareData.h2h.totalGames }}</span>
+                  </div>
+                  <div v-if="compareData.h2h.totalGames > 0" class="flex justify-between p-2 bg-dark-border/20 rounded">
+                    <span class="text-dark-textMuted">Cat Diff:</span>
+                    <span class="font-semibold" :class="compareData.h2h.catDiff > 0 ? 'text-cyan-400' : compareData.h2h.catDiff < 0 ? 'text-orange-400' : 'text-dark-text'">
+                      {{ compareData.h2h.catDiff > 0 ? '+' : '' }}{{ compareData.h2h.catDiff }}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Team 2 Stats -->
+              <div class="text-center p-6 bg-gradient-to-br from-orange-500/10 to-orange-600/5 rounded-xl border-2 border-orange-500/30">
+                <img 
+                  :src="compareTeam2Data?.logo_url || defaultAvatar" 
+                  :alt="compareTeam2Data?.team_name" 
+                  class="w-20 h-20 rounded-full mx-auto mb-4 border-4 border-orange-500 object-cover" 
+                  @error="handleImageError" 
+                />
+                <div class="font-bold text-xl text-dark-text mb-3">{{ compareTeam2Data?.team_name }}</div>
+                
+                <div class="space-y-2 text-left text-sm">
+                  <div class="flex justify-between">
+                    <span class="text-dark-textMuted">🏆 Championships:</span>
+                    <span class="font-bold text-dark-text">{{ compareData.team2.championships }}</span>
+                  </div>
+                  <div class="flex justify-between">
+                    <span class="text-dark-textMuted">📅 Seasons:</span>
+                    <span class="font-bold text-dark-text">{{ compareData.team2.seasons }}</span>
+                  </div>
+                  <div class="flex justify-between">
+                    <span class="text-dark-textMuted">Matchup Record:</span>
+                    <span class="font-bold text-dark-text">{{ compareData.team2.matchupWins }}-{{ compareData.team2.matchupLosses }}-{{ compareData.team2.matchupTies }}</span>
+                  </div>
+                  <div class="flex justify-between">
+                    <span class="text-dark-textMuted">Win %:</span>
+                    <span class="font-bold text-dark-text">{{ (compareData.team2.winPct * 100).toFixed(1) }}%</span>
+                  </div>
+                  <div class="flex justify-between">
+                    <span class="text-dark-textMuted">Avg Cat Wins:</span>
+                    <span class="font-bold text-dark-text">{{ compareData.team2.avgCatWins.toFixed(1) }}</span>
+                  </div>
+                  <div class="flex justify-between">
+                    <span class="text-dark-textMuted">Cat Diff:</span>
+                    <span class="font-bold" :class="compareData.team2.catDiff >= 0 ? 'text-green-400' : 'text-red-400'">{{ compareData.team2.catDiff >= 0 ? '+' : '' }}{{ compareData.team2.catDiff }}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Rivalry Highlights -->
+        <div v-if="compareRivalryHighlights" class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+          <div class="card">
+            <div class="card-body p-4">
+              <div class="text-xs text-dark-textMuted mb-2">💥 Biggest Blowout</div>
+              <div class="font-bold text-dark-text mb-1">{{ compareRivalryHighlights.biggestBlowout.winner }}</div>
+              <div class="text-lg text-primary font-bold">{{ compareRivalryHighlights.biggestBlowout.margin }} cat margin</div>
+              <div class="text-xs text-dark-textMuted mt-1">{{ compareRivalryHighlights.biggestBlowout.season }} Week {{ compareRivalryHighlights.biggestBlowout.week }}</div>
+            </div>
+          </div>
+          
+          <div class="card">
+            <div class="card-body p-4">
+              <div class="text-xs text-dark-textMuted mb-2">🎯 Closest Game</div>
+              <div class="font-bold text-dark-text mb-1">{{ compareRivalryHighlights.closestGame.winner }}</div>
+              <div class="text-lg text-primary font-bold">{{ compareRivalryHighlights.closestGame.margin }} cat margin</div>
+              <div class="text-xs text-dark-textMuted mt-1">{{ compareRivalryHighlights.closestGame.season }} Week {{ compareRivalryHighlights.closestGame.week }}</div>
+            </div>
+          </div>
+          
+          <div class="card">
+            <div class="card-body p-4">
+              <div class="text-xs text-dark-textMuted mb-2">🔥 Most Categories Won</div>
+              <div class="font-bold text-dark-text mb-1">{{ compareRivalryHighlights.highestCats.totalCats }} total cats</div>
+              <div class="text-lg text-primary font-bold">{{ compareRivalryHighlights.highestCats.score }}</div>
+              <div class="text-xs text-dark-textMuted mt-1">{{ compareRivalryHighlights.highestCats.season }} Week {{ compareRivalryHighlights.highestCats.week }}</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Rivalry History -->
+        <div class="card mb-6" v-if="compareRivalryHistory.length > 0">
+          <div class="card-header">
+            <div class="flex items-center gap-2">
+              <span class="text-2xl">📜</span>
+              <h2 class="card-title">Rivalry History</h2>
+            </div>
+            <p class="card-subtitle mt-2">All {{ compareRivalryHistory.length }} head-to-head matchups</p>
+          </div>
+          <div class="card-body">
+            <div class="space-y-3 max-h-96 overflow-y-auto">
+              <div 
+                v-for="(matchup, idx) in compareRivalryHistory" 
+                :key="idx"
+                class="p-3 bg-dark-border/20 rounded-lg border border-dark-border"
+              >
+                <div class="flex items-center justify-between">
+                  <div class="text-sm">
+                    <span class="font-semibold text-dark-text">{{ matchup.season }} Week {{ matchup.week }}</span>
+                    <span v-if="matchup.isPlayoff" class="ml-2 px-2 py-0.5 bg-primary/20 text-primary text-xs rounded">
+                      Playoff
+                    </span>
+                  </div>
+                  <div class="flex items-center gap-4">
+                    <div class="text-right">
+                      <div class="text-xs text-dark-textMuted">{{ compareTeam1Data?.team_name?.split(' ')[0] }}</div>
+                      <div class="font-bold" :class="matchup.team1Wins > matchup.team2Wins ? 'text-green-400' : matchup.team1Wins < matchup.team2Wins ? 'text-red-400' : 'text-dark-text'">
+                        {{ matchup.team1Wins }}-{{ matchup.team1Losses }}
+                      </div>
+                    </div>
+                    <div class="text-dark-textMuted text-sm">vs</div>
+                    <div class="text-left">
+                      <div class="text-xs text-dark-textMuted">{{ compareTeam2Data?.team_name?.split(' ')[0] }}</div>
+                      <div class="font-bold" :class="matchup.team2Wins > matchup.team1Wins ? 'text-green-400' : matchup.team2Wins < matchup.team1Wins ? 'text-red-400' : 'text-dark-text'">
+                        {{ matchup.team2Wins }}-{{ matchup.team2Losses }}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- No matchups found message -->
+        <div v-if="compareRivalryHistory.length === 0" class="card mb-6">
+          <div class="card-body text-center py-8">
+            <p class="text-dark-textMuted">No head-to-head matchups found between these teams</p>
+          </div>
+        </div>
+      </template>
+
       <!-- Head-to-Head Matrix -->
       <div class="card">
         <div class="card-header">
@@ -1296,6 +1586,14 @@ interface CareerStat {
 
 const isLoading = ref(false)
 const loadingMessage = ref('Loading historical data...')
+const loadingProgress = ref({
+  currentStep: '',
+  season: '',
+  week: 0,
+  maxWeek: 0,
+  seasonsLoaded: 0,
+  totalSeasons: 0
+})
 const isDownloading = ref(false)
 const isDownloadingSeason = ref(false)
 const isDownloadingH2H = ref(false)
@@ -1328,6 +1626,11 @@ const showCurrentMembersOnly = ref(false)
 const showCurrentMembersOnlyH2H = ref(false)
 const sortColumn = ref('matchup_wins')
 const sortDirection = ref<'asc' | 'desc'>('desc')
+
+// Team Comparison state
+const compareTeam1Key = ref('')
+const compareTeam2Key = ref('')
+const isDownloadingComparison = ref(false)
 
 const careerTableRef = ref<HTMLElement | null>(null)
 const seasonTableRef = ref<HTMLElement | null>(null)
@@ -2374,6 +2677,198 @@ const filteredH2HTeams = computed(() => {
   return h2hTeams.value.filter(t => currentMembers.value.has(t.team_key))
 })
 
+// ==================== TEAM COMPARISON COMPUTED ====================
+
+// Available teams for comparison dropdowns
+const compareAvailableTeams1 = computed(() => {
+  return h2hTeams.value.filter(t => t.team_key !== compareTeam2Key.value)
+})
+
+const compareAvailableTeams2 = computed(() => {
+  return h2hTeams.value.filter(t => t.team_key !== compareTeam1Key.value)
+})
+
+// Get full team data for selected teams
+const compareTeam1Data = computed(() => {
+  if (!compareTeam1Key.value) return null
+  return h2hTeams.value.find(t => t.team_key === compareTeam1Key.value) || null
+})
+
+const compareTeam2Data = computed(() => {
+  if (!compareTeam2Key.value) return null
+  return h2hTeams.value.find(t => t.team_key === compareTeam2Key.value) || null
+})
+
+// Get all H2H matchups between the two selected teams
+const compareRivalryHistory = computed(() => {
+  if (!compareTeam1Key.value || !compareTeam2Key.value) return []
+  
+  const matchups: Array<{
+    season: string
+    week: number
+    team1Wins: number
+    team1Losses: number
+    team2Wins: number
+    team2Losses: number
+    tie: boolean
+    winner: string
+    isPlayoff: boolean
+  }> = []
+  
+  // Iterate through all historical data
+  for (const [season, seasonData] of Object.entries(historicalData.value)) {
+    const seasonMatchups = seasonData.matchups || []
+    for (const matchup of seasonMatchups) {
+      const teams = matchup.teams || []
+      if (teams.length < 2) continue
+      
+      // Check if this matchup is between our two teams
+      const team1 = teams.find((t: any) => t.team_key === compareTeam1Key.value)
+      const team2 = teams.find((t: any) => t.team_key === compareTeam2Key.value)
+      
+      if (team1 && team2) {
+        const team1CatWins = team1.stat_winners || 0
+        const team1CatLosses = team1.stat_losers || 0
+        const team2CatWins = team2.stat_winners || 0
+        const team2CatLosses = team2.stat_losers || 0
+        
+        // Determine matchup winner based on category wins
+        let winner = 'Tie'
+        let tie = false
+        if (team1CatWins > team2CatWins) {
+          winner = compareTeam1Data.value?.team_name || 'Team 1'
+        } else if (team2CatWins > team1CatWins) {
+          winner = compareTeam2Data.value?.team_name || 'Team 2'
+        } else {
+          tie = true
+        }
+        
+        matchups.push({
+          season,
+          week: matchup.week || 0,
+          team1Wins: team1CatWins,
+          team1Losses: team1CatLosses,
+          team2Wins: team2CatWins,
+          team2Losses: team2CatLosses,
+          tie,
+          winner,
+          isPlayoff: (matchup.week || 0) > 20
+        })
+      }
+    }
+  }
+  
+  // Sort by season desc, then week desc
+  return matchups.sort((a, b) => {
+    if (a.season !== b.season) return parseInt(b.season) - parseInt(a.season)
+    return b.week - a.week
+  })
+})
+
+// Calculate comparison data between the two teams
+const compareData = computed(() => {
+  if (!compareTeam1Key.value || !compareTeam2Key.value) return null
+  
+  const team1Career = careerStats.value.find(t => t.team_key === compareTeam1Key.value)
+  const team2Career = careerStats.value.find(t => t.team_key === compareTeam2Key.value)
+  
+  if (!team1Career || !team2Career) return null
+  
+  // Get H2H record from h2hRecords
+  const h2hRecord = h2hRecords.value[compareTeam1Key.value]?.[compareTeam2Key.value]
+  const team1Wins = h2hRecord?.wins || 0
+  const team2Wins = h2hRecord?.losses || 0
+  const ties = h2hRecord?.ties || 0
+  const team1CatWins = h2hRecord?.catWins || 0
+  const team2CatWins = h2hRecord?.catLosses || 0
+  
+  return {
+    team1: {
+      championships: team1Career.championships,
+      seasons: team1Career.seasons,
+      matchupWins: team1Career.matchup_wins,
+      matchupLosses: team1Career.matchup_losses,
+      matchupTies: team1Career.matchup_ties,
+      winPct: team1Career.matchup_win_pct,
+      totalCatWins: team1Career.total_cat_wins,
+      avgCatWins: team1Career.avg_cat_wins,
+      catDiff: team1Career.cat_diff
+    },
+    team2: {
+      championships: team2Career.championships,
+      seasons: team2Career.seasons,
+      matchupWins: team2Career.matchup_wins,
+      matchupLosses: team2Career.matchup_losses,
+      matchupTies: team2Career.matchup_ties,
+      winPct: team2Career.matchup_win_pct,
+      totalCatWins: team2Career.total_cat_wins,
+      avgCatWins: team2Career.avg_cat_wins,
+      catDiff: team2Career.cat_diff
+    },
+    h2h: {
+      team1Wins,
+      team2Wins,
+      ties,
+      totalGames: team1Wins + team2Wins + ties,
+      team1CatWins,
+      team2CatWins,
+      catDiff: team1CatWins - team2CatWins
+    }
+  }
+})
+
+// Rivalry highlights
+const compareRivalryHighlights = computed(() => {
+  if (compareRivalryHistory.value.length === 0) return null
+  
+  let biggestBlowout = compareRivalryHistory.value[0]
+  let closestGame = compareRivalryHistory.value[0]
+  let highestCats = compareRivalryHistory.value[0]
+  
+  for (const matchup of compareRivalryHistory.value) {
+    const margin = Math.abs(matchup.team1Wins - matchup.team2Wins)
+    const biggestMargin = Math.abs(biggestBlowout.team1Wins - biggestBlowout.team2Wins)
+    const closestMargin = Math.abs(closestGame.team1Wins - closestGame.team2Wins)
+    const totalCats = matchup.team1Wins + matchup.team2Wins
+    const highestTotalCats = highestCats.team1Wins + highestCats.team2Wins
+    
+    if (margin > biggestMargin) {
+      biggestBlowout = matchup
+    }
+    if (margin < closestMargin) {
+      closestGame = matchup
+    }
+    if (totalCats > highestTotalCats) {
+      highestCats = matchup
+    }
+  }
+  
+  return {
+    biggestBlowout: {
+      winner: biggestBlowout.winner,
+      margin: Math.abs(biggestBlowout.team1Wins - biggestBlowout.team2Wins),
+      season: biggestBlowout.season,
+      week: biggestBlowout.week,
+      score: `${biggestBlowout.team1Wins}-${biggestBlowout.team1Losses} vs ${biggestBlowout.team2Wins}-${biggestBlowout.team2Losses}`
+    },
+    closestGame: {
+      winner: closestGame.winner,
+      margin: Math.abs(closestGame.team1Wins - closestGame.team2Wins),
+      season: closestGame.season,
+      week: closestGame.week,
+      score: `${closestGame.team1Wins}-${closestGame.team1Losses} vs ${closestGame.team2Wins}-${closestGame.team2Losses}`
+    },
+    highestCats: {
+      totalCats: highestCats.team1Wins + highestCats.team2Wins,
+      season: highestCats.season,
+      week: highestCats.week,
+      score: `${highestCats.team1Wins}-${highestCats.team1Losses} vs ${highestCats.team2Wins}-${highestCats.team2Losses}`
+    }
+  }
+})
+
+// ==================== END TEAM COMPARISON ====================
+
 // Get H2H record between two teams
 function getH2HRecord(team1Key: string, team2Key: string): string {
   const record = h2hRecords.value[team1Key]?.[team2Key]
@@ -2917,6 +3412,190 @@ async function downloadH2HMatrix() {
     link.click()
   } finally {
     isDownloadingH2H.value = false
+  }
+}
+
+// Download Team Comparison Image
+async function downloadComparison() {
+  if (!compareTeam1Data.value || !compareTeam2Data.value || !compareData.value) return
+  isDownloadingComparison.value = true
+  
+  try {
+    const html2canvas = (await import('html2canvas')).default
+    const activeId = leagueStore.activeLeagueId
+    const savedLeague = leagueStore.savedLeagues?.find((l: any) => l.league_id === activeId?.split('.l.')[1])
+    const leagueName = savedLeague?.league_name || leagueStore.yahooLeague?.name || 'Fantasy League'
+    
+    // Load UFD logo
+    const loadLogo = async (): Promise<string> => {
+      try {
+        const response = await fetch('/UFD_V5.png')
+        if (!response.ok) return ''
+        const blob = await response.blob()
+        return new Promise((resolve) => {
+          const reader = new FileReader()
+          reader.onloadend = () => resolve(reader.result as string)
+          reader.onerror = () => resolve('')
+          reader.readAsDataURL(blob)
+        })
+      } catch (e) { return '' }
+    }
+    
+    const createPlaceholder = (name: string, color: string): string => {
+      const canvas = document.createElement('canvas')
+      canvas.width = 64
+      canvas.height = 64
+      const ctx = canvas.getContext('2d')
+      if (ctx) {
+        ctx.fillStyle = color
+        ctx.beginPath()
+        ctx.arc(32, 32, 32, 0, Math.PI * 2)
+        ctx.fill()
+        ctx.fillStyle = '#ffffff'
+        ctx.font = 'bold 28px sans-serif'
+        ctx.textAlign = 'center'
+        ctx.textBaseline = 'middle'
+        ctx.fillText(name.charAt(0).toUpperCase(), 32, 34)
+      }
+      return canvas.toDataURL('image/png')
+    }
+    
+    const logoBase64 = await loadLogo()
+    
+    // Load team logos
+    const loadTeamLogo = async (url: string | undefined, name: string, color: string): Promise<string> => {
+      if (!url) return createPlaceholder(name, color)
+      try {
+        const img = new Image()
+        img.crossOrigin = 'anonymous'
+        return await new Promise<string>((resolve) => {
+          img.onload = () => {
+            const canvas = document.createElement('canvas')
+            canvas.width = 64
+            canvas.height = 64
+            const ctx = canvas.getContext('2d')
+            if (ctx) {
+              ctx.beginPath()
+              ctx.arc(32, 32, 32, 0, Math.PI * 2)
+              ctx.closePath()
+              ctx.clip()
+              ctx.drawImage(img, 0, 0, 64, 64)
+            }
+            resolve(canvas.toDataURL('image/png'))
+          }
+          img.onerror = () => resolve(createPlaceholder(name, color))
+          setTimeout(() => resolve(createPlaceholder(name, color)), 3000)
+          img.src = url
+        })
+      } catch { return createPlaceholder(name, color) }
+    }
+    
+    const team1Logo = await loadTeamLogo(compareTeam1Data.value.logo_url, compareTeam1Data.value.team_name, '#06b6d4')
+    const team2Logo = await loadTeamLogo(compareTeam2Data.value.logo_url, compareTeam2Data.value.team_name, '#f97316')
+    
+    const data = compareData.value
+    const h2h = data.h2h
+    
+    // Create container
+    const container = document.createElement('div')
+    container.style.cssText = 'position: absolute; left: -9999px; top: 0; width: 700px; font-family: system-ui, -apple-system, sans-serif;'
+    
+    container.innerHTML = `
+      <div style="background: linear-gradient(160deg, #0f1219 0%, #0a0c14 50%, #0d1117 100%); border-radius: 16px; box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5); position: relative; overflow: hidden;">
+        
+        <!-- Top Yellow Bar -->
+        <div style="background: #facc15; padding: 10px 24px; text-align: center;">
+          <span style="font-size: 16px; font-weight: 700; color: #0a0c14; text-transform: uppercase; letter-spacing: 3px;">Ultimate Fantasy Dashboard</span>
+        </div>
+        
+        <!-- Header -->
+        <div style="display: flex; align-items: center; padding: 16px 24px; border-bottom: 1px solid rgba(250, 204, 21, 0.2);">
+          ${logoBase64 ? `<img src="${logoBase64}" style="height: 50px; width: auto; flex-shrink: 0; margin-right: 16px;" />` : ''}
+          <div style="flex: 1;">
+            <div style="font-size: 28px; font-weight: 900; color: #ffffff; text-transform: uppercase; letter-spacing: 1px;">Tale of the Tape</div>
+            <div style="font-size: 14px; margin-top: 4px;">
+              <span style="color: #e5e7eb;">${leagueName}</span>
+              <span style="color: #6b7280; margin: 0 6px;">•</span>
+              <span style="color: #facc15; font-weight: 700;">H2H Categories • All-Time</span>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Comparison Grid -->
+        <div style="display: grid; grid-template-columns: 1fr auto 1fr; gap: 16px; padding: 24px;">
+          <!-- Team 1 -->
+          <div style="text-align: center; padding: 20px; background: linear-gradient(135deg, rgba(6, 182, 212, 0.1) 0%, rgba(6, 182, 212, 0.05) 100%); border-radius: 12px; border: 2px solid rgba(6, 182, 212, 0.3);">
+            <img src="${team1Logo}" style="width: 64px; height: 64px; border-radius: 50%; border: 3px solid #06b6d4; margin-bottom: 12px;" />
+            <div style="font-weight: 700; font-size: 16px; color: #ffffff; margin-bottom: 12px;">${compareTeam1Data.value.team_name}</div>
+            <div style="text-align: left; font-size: 13px;">
+              <div style="display: flex; justify-content: space-between; padding: 6px 0; border-bottom: 1px solid rgba(255,255,255,0.1);"><span style="color: #9ca3af;">🏆 Championships</span><span style="color: #ffffff; font-weight: 600;">${data.team1.championships}</span></div>
+              <div style="display: flex; justify-content: space-between; padding: 6px 0; border-bottom: 1px solid rgba(255,255,255,0.1);"><span style="color: #9ca3af;">📅 Seasons</span><span style="color: #ffffff; font-weight: 600;">${data.team1.seasons}</span></div>
+              <div style="display: flex; justify-content: space-between; padding: 6px 0; border-bottom: 1px solid rgba(255,255,255,0.1);"><span style="color: #9ca3af;">Matchup Record</span><span style="color: #ffffff; font-weight: 600;">${data.team1.matchupWins}-${data.team1.matchupLosses}-${data.team1.matchupTies}</span></div>
+              <div style="display: flex; justify-content: space-between; padding: 6px 0; border-bottom: 1px solid rgba(255,255,255,0.1);"><span style="color: #9ca3af;">Win %</span><span style="color: #ffffff; font-weight: 600;">${(data.team1.winPct * 100).toFixed(1)}%</span></div>
+              <div style="display: flex; justify-content: space-between; padding: 6px 0;"><span style="color: #9ca3af;">Avg Cat Wins</span><span style="color: #ffffff; font-weight: 600;">${data.team1.avgCatWins.toFixed(1)}</span></div>
+            </div>
+          </div>
+          
+          <!-- VS Section -->
+          <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 20px;">
+            <div style="font-size: 36px; font-weight: 900; color: #6b7280; margin-bottom: 16px;">VS</div>
+            <div style="text-align: center; margin-bottom: 12px;">
+              <div style="font-size: 11px; color: #9ca3af; margin-bottom: 6px;">HEAD-TO-HEAD</div>
+              <div style="display: flex; align-items: center; gap: 8px;">
+                <span style="font-size: 28px; font-weight: 900; color: ${h2h.team1Wins > h2h.team2Wins ? '#22c55e' : '#9ca3af'};">${h2h.team1Wins}</span>
+                <span style="font-size: 20px; color: #6b7280;">-</span>
+                <span style="font-size: 28px; font-weight: 900; color: ${h2h.team2Wins > h2h.team1Wins ? '#22c55e' : '#9ca3af'};">${h2h.team2Wins}</span>
+              </div>
+              ${h2h.ties > 0 ? `<div style="font-size: 11px; color: #6b7280; margin-top: 4px;">${h2h.ties} tie(s)</div>` : ''}
+            </div>
+            <div style="background: rgba(58, 61, 82, 0.3); border-radius: 8px; padding: 8px 12px; font-size: 12px;">
+              <div style="color: #9ca3af;">Total Games: <span style="color: #ffffff; font-weight: 600;">${h2h.totalGames}</span></div>
+              ${h2h.totalGames > 0 ? `<div style="color: #9ca3af; margin-top: 4px;">Cat Diff: <span style="color: ${h2h.catDiff > 0 ? '#06b6d4' : h2h.catDiff < 0 ? '#f97316' : '#ffffff'}; font-weight: 600;">${h2h.catDiff > 0 ? '+' : ''}${h2h.catDiff}</span></div>` : ''}
+            </div>
+          </div>
+          
+          <!-- Team 2 -->
+          <div style="text-align: center; padding: 20px; background: linear-gradient(135deg, rgba(249, 115, 22, 0.1) 0%, rgba(249, 115, 22, 0.05) 100%); border-radius: 12px; border: 2px solid rgba(249, 115, 22, 0.3);">
+            <img src="${team2Logo}" style="width: 64px; height: 64px; border-radius: 50%; border: 3px solid #f97316; margin-bottom: 12px;" />
+            <div style="font-weight: 700; font-size: 16px; color: #ffffff; margin-bottom: 12px;">${compareTeam2Data.value.team_name}</div>
+            <div style="text-align: left; font-size: 13px;">
+              <div style="display: flex; justify-content: space-between; padding: 6px 0; border-bottom: 1px solid rgba(255,255,255,0.1);"><span style="color: #9ca3af;">🏆 Championships</span><span style="color: #ffffff; font-weight: 600;">${data.team2.championships}</span></div>
+              <div style="display: flex; justify-content: space-between; padding: 6px 0; border-bottom: 1px solid rgba(255,255,255,0.1);"><span style="color: #9ca3af;">📅 Seasons</span><span style="color: #ffffff; font-weight: 600;">${data.team2.seasons}</span></div>
+              <div style="display: flex; justify-content: space-between; padding: 6px 0; border-bottom: 1px solid rgba(255,255,255,0.1);"><span style="color: #9ca3af;">Matchup Record</span><span style="color: #ffffff; font-weight: 600;">${data.team2.matchupWins}-${data.team2.matchupLosses}-${data.team2.matchupTies}</span></div>
+              <div style="display: flex; justify-content: space-between; padding: 6px 0; border-bottom: 1px solid rgba(255,255,255,0.1);"><span style="color: #9ca3af;">Win %</span><span style="color: #ffffff; font-weight: 600;">${(data.team2.winPct * 100).toFixed(1)}%</span></div>
+              <div style="display: flex; justify-content: space-between; padding: 6px 0;"><span style="color: #9ca3af;">Avg Cat Wins</span><span style="color: #ffffff; font-weight: 600;">${data.team2.avgCatWins.toFixed(1)}</span></div>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Footer -->
+        <div style="padding: 12px 24px; border-top: 1px solid rgba(58, 61, 82, 0.4); display: flex; justify-content: space-between; align-items: center;">
+          <span style="color: #6b7280; font-size: 11px;">Generated by Ultimate Fantasy Dashboard</span>
+          <span style="color: #facc15; font-size: 11px; font-weight: 600;">ultimatefantasydashboard.com</span>
+        </div>
+      </div>
+    `
+    
+    document.body.appendChild(container)
+    await new Promise(resolve => setTimeout(resolve, 300))
+    
+    const canvas = await html2canvas(container, {
+      backgroundColor: null,
+      scale: 2,
+      useCORS: true,
+      allowTaint: true
+    })
+    
+    document.body.removeChild(container)
+    
+    const link = document.createElement('a')
+    const team1Short = compareTeam1Data.value.team_name.replace(/[^a-z0-9]/gi, '-').substring(0, 15)
+    const team2Short = compareTeam2Data.value.team_name.replace(/[^a-z0-9]/gi, '-').substring(0, 15)
+    link.download = `comparison-${team1Short}-vs-${team2Short}.png`
+    link.href = canvas.toDataURL('image/png')
+    link.click()
+  } finally {
+    isDownloadingComparison.value = false
   }
 }
 

@@ -44,8 +44,9 @@
     </div>
 
     <!-- Loading State -->
-    <div v-if="isLoading" class="flex items-center justify-center py-20">
-      <LoadingSpinner size="xl" />
+    <div v-if="isLoading" class="flex flex-col items-center justify-center py-20">
+      <LoadingSpinner size="xl" :message="loadingMessage" />
+      <div class="mt-4 text-sm text-dark-textMuted">Loading matchup data...</div>
     </div>
 
     <template v-else-if="matchups.length > 0">
@@ -623,6 +624,7 @@ const defaultAvatar = computed(() => {
 // State
 const selectedWeek = ref('')
 const isLoading = ref(false)
+const loadingMessage = ref('Loading matchups...')
 const isRefreshing = ref(false)
 const isDownloading = ref(false)
 const isDownloadingComparison = ref(false)
