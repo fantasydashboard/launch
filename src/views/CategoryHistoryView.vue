@@ -166,68 +166,26 @@
             <thead>
               <tr class="border-b border-dark-border">
                 <th class="text-left py-3 px-4 font-semibold text-dark-textSecondary uppercase tracking-wider">Team</th>
-                <th class="text-center py-3 px-4 font-semibold text-dark-textSecondary uppercase tracking-wider cursor-pointer hover:bg-dark-border/30 transition-colors" @click="sortBy('seasons')">
-                  <div class="flex items-center justify-center gap-1">
-                    Seasons
-                    <span class="inline-flex flex-col" style="font-size: 10px; line-height: 8px;">
-                      <span :class="sortColumn === 'seasons' && sortDirection === 'asc' ? 'text-red-400' : 'text-dark-textMuted'">▲</span>
-                      <span :class="sortColumn === 'seasons' && sortDirection === 'desc' ? 'text-red-400' : 'text-dark-textMuted'">▼</span>
-                    </span>
-                  </div>
+                <th class="text-center py-3 px-4 font-semibold text-dark-textSecondary uppercase tracking-wider cursor-pointer hover:text-yellow-400 transition-colors" @click="sortBy('seasons')">
+                  Seasons <span v-if="sortColumn === 'seasons'" class="text-yellow-400">{{ sortDirection === 'asc' ? '↑' : '↓' }}</span>
                 </th>
-                <th class="text-center py-3 px-4 font-semibold text-dark-textSecondary uppercase tracking-wider cursor-pointer hover:bg-dark-border/30 transition-colors" @click="sortBy('championships')">
-                  <div class="flex items-center justify-center gap-1">
-                    🏆
-                    <span class="inline-flex flex-col" style="font-size: 10px; line-height: 8px;">
-                      <span :class="sortColumn === 'championships' && sortDirection === 'asc' ? 'text-red-400' : 'text-dark-textMuted'">▲</span>
-                      <span :class="sortColumn === 'championships' && sortDirection === 'desc' ? 'text-red-400' : 'text-dark-textMuted'">▼</span>
-                    </span>
-                  </div>
+                <th class="text-center py-3 px-4 font-semibold text-dark-textSecondary uppercase tracking-wider cursor-pointer hover:text-yellow-400 transition-colors" @click="sortBy('championships')">
+                  🏆 <span v-if="sortColumn === 'championships'" class="text-yellow-400">{{ sortDirection === 'asc' ? '↑' : '↓' }}</span>
                 </th>
-                <th class="text-center py-3 px-4 font-semibold text-dark-textSecondary uppercase tracking-wider cursor-pointer hover:bg-dark-border/30 transition-colors" @click="sortBy('matchup_wins')">
-                  <div class="flex items-center justify-center gap-1">
-                    Record
-                    <span class="inline-flex flex-col" style="font-size: 10px; line-height: 8px;">
-                      <span :class="sortColumn === 'matchup_wins' && sortDirection === 'asc' ? 'text-red-400' : 'text-dark-textMuted'">▲</span>
-                      <span :class="sortColumn === 'matchup_wins' && sortDirection === 'desc' ? 'text-red-400' : 'text-dark-textMuted'">▼</span>
-                    </span>
-                  </div>
+                <th class="text-center py-3 px-4 font-semibold text-dark-textSecondary uppercase tracking-wider cursor-pointer hover:text-yellow-400 transition-colors" @click="sortBy('matchup_wins')">
+                  Record <span v-if="sortColumn === 'matchup_wins'" class="text-yellow-400">{{ sortDirection === 'asc' ? '↑' : '↓' }}</span>
                 </th>
-                <th class="text-center py-3 px-4 font-semibold text-dark-textSecondary uppercase tracking-wider cursor-pointer hover:bg-dark-border/30 transition-colors" @click="sortBy('matchup_win_pct')">
-                  <div class="flex items-center justify-center gap-1">
-                    Win %
-                    <span class="inline-flex flex-col" style="font-size: 10px; line-height: 8px;">
-                      <span :class="sortColumn === 'matchup_win_pct' && sortDirection === 'asc' ? 'text-red-400' : 'text-dark-textMuted'">▲</span>
-                      <span :class="sortColumn === 'matchup_win_pct' && sortDirection === 'desc' ? 'text-red-400' : 'text-dark-textMuted'">▼</span>
-                    </span>
-                  </div>
+                <th class="text-center py-3 px-4 font-semibold text-dark-textSecondary uppercase tracking-wider cursor-pointer hover:text-yellow-400 transition-colors" @click="sortBy('matchup_win_pct')">
+                  Win % <span v-if="sortColumn === 'matchup_win_pct'" class="text-yellow-400">{{ sortDirection === 'asc' ? '↑' : '↓' }}</span>
                 </th>
-                <th class="text-center py-3 px-4 font-semibold text-dark-textSecondary uppercase tracking-wider cursor-pointer hover:bg-dark-border/30 transition-colors" @click="sortBy('hitting_cat_wins')">
-                  <div class="flex items-center justify-center gap-1">
-                    Hitting Cat W
-                    <span class="inline-flex flex-col" style="font-size: 10px; line-height: 8px;">
-                      <span :class="sortColumn === 'hitting_cat_wins' && sortDirection === 'asc' ? 'text-red-400' : 'text-dark-textMuted'">▲</span>
-                      <span :class="sortColumn === 'hitting_cat_wins' && sortDirection === 'desc' ? 'text-red-400' : 'text-dark-textMuted'">▼</span>
-                    </span>
-                  </div>
+                <th class="text-center py-3 px-4 font-semibold text-dark-textSecondary uppercase tracking-wider cursor-pointer hover:text-yellow-400 transition-colors" @click="sortBy('hitting_cat_wins')">
+                  Hitting Cat W <span v-if="sortColumn === 'hitting_cat_wins'" class="text-yellow-400">{{ sortDirection === 'asc' ? '↑' : '↓' }}</span>
                 </th>
-                <th class="text-center py-3 px-4 font-semibold text-dark-textSecondary uppercase tracking-wider cursor-pointer hover:bg-dark-border/30 transition-colors" @click="sortBy('pitching_cat_wins')">
-                  <div class="flex items-center justify-center gap-1">
-                    Pitching Cat W
-                    <span class="inline-flex flex-col" style="font-size: 10px; line-height: 8px;">
-                      <span :class="sortColumn === 'pitching_cat_wins' && sortDirection === 'asc' ? 'text-red-400' : 'text-dark-textMuted'">▲</span>
-                      <span :class="sortColumn === 'pitching_cat_wins' && sortDirection === 'desc' ? 'text-red-400' : 'text-dark-textMuted'">▼</span>
-                    </span>
-                  </div>
+                <th class="text-center py-3 px-4 font-semibold text-dark-textSecondary uppercase tracking-wider cursor-pointer hover:text-yellow-400 transition-colors" @click="sortBy('pitching_cat_wins')">
+                  Pitching Cat W <span v-if="sortColumn === 'pitching_cat_wins'" class="text-yellow-400">{{ sortDirection === 'asc' ? '↑' : '↓' }}</span>
                 </th>
-                <th class="text-center py-3 px-4 font-semibold text-dark-textSecondary uppercase tracking-wider cursor-pointer hover:bg-dark-border/30 transition-colors" @click="sortBy('cat_diff')">
-                  <div class="flex items-center justify-center gap-1">
-                    Cat +/-
-                    <span class="inline-flex flex-col" style="font-size: 10px; line-height: 8px;">
-                      <span :class="sortColumn === 'cat_diff' && sortDirection === 'asc' ? 'text-red-400' : 'text-dark-textMuted'">▲</span>
-                      <span :class="sortColumn === 'cat_diff' && sortDirection === 'desc' ? 'text-red-400' : 'text-dark-textMuted'">▼</span>
-                    </span>
-                  </div>
+                <th class="text-center py-3 px-4 font-semibold text-dark-textSecondary uppercase tracking-wider cursor-pointer hover:text-yellow-400 transition-colors" @click="sortBy('cat_diff')">
+                  Cat +/- <span v-if="sortColumn === 'cat_diff'" class="text-yellow-400">{{ sortDirection === 'asc' ? '↑' : '↓' }}</span>
                 </th>
                 <th class="text-center py-3 px-4 font-semibold text-dark-textSecondary uppercase tracking-wider">Best Cat</th>
                 <th class="text-center py-3 px-4 font-semibold text-dark-textSecondary uppercase tracking-wider">Worst Cat</th>
@@ -241,8 +199,10 @@
                     <div class="w-10 h-10 rounded-full overflow-hidden bg-dark-border flex-shrink-0">
                       <img
                         :src="stat.logo_url || defaultAvatar"
+                        :key="`career-${stat.team_key}`"
                         :alt="stat.team_name"
                         class="w-full h-full object-cover"
+                        loading="lazy"
                         @error="handleImageError"
                       />
                     </div>
@@ -345,7 +305,7 @@
                 <td class="text-center py-3 px-4">
                   <div class="flex items-center justify-center gap-2">
                     <div class="w-6 h-6 rounded-full overflow-hidden bg-dark-border flex-shrink-0">
-                      <img :src="season.mostDominant?.logo_url || defaultAvatar" class="w-full h-full object-cover" @error="handleImageError" />
+                      <img :src="season.mostDominant?.logo_url || defaultAvatar" :key="`dominant-${season.year}`" class="w-full h-full object-cover" loading="lazy" @error="handleImageError" />
                     </div>
                     <span class="font-semibold text-green-400">{{ season.mostDominant?.name || 'N/A' }}</span>
                   </div>
@@ -354,7 +314,7 @@
                 <td class="text-center py-3 px-4">
                   <div class="flex items-center justify-center gap-2">
                     <div class="w-6 h-6 rounded-full overflow-hidden bg-dark-border flex-shrink-0">
-                      <img :src="season.mostCatWins?.logo_url || defaultAvatar" class="w-full h-full object-cover" @error="handleImageError" />
+                      <img :src="season.mostCatWins?.logo_url || defaultAvatar" :key="`catwin-${season.year}`" class="w-full h-full object-cover" loading="lazy" @error="handleImageError" />
                     </div>
                     <span class="font-semibold text-green-400">{{ season.mostCatWins?.name || 'N/A' }}</span>
                   </div>
@@ -363,7 +323,7 @@
                 <td class="text-center py-3 px-4">
                   <div class="flex items-center justify-center gap-2">
                     <div class="w-6 h-6 rounded-full overflow-hidden bg-dark-border flex-shrink-0">
-                      <img :src="season.fewestCatWins?.logo_url || defaultAvatar" class="w-full h-full object-cover" @error="handleImageError" />
+                      <img :src="season.fewestCatWins?.logo_url || defaultAvatar" :key="`catlose-${season.year}`" class="w-full h-full object-cover" loading="lazy" @error="handleImageError" />
                     </div>
                     <span class="font-semibold text-red-400">{{ season.fewestCatWins?.name || 'N/A' }}</span>
                   </div>
@@ -377,7 +337,7 @@
                   <div class="flex items-center justify-center gap-2">
                     <span class="text-lg">🏆</span>
                     <div class="w-6 h-6 rounded-full overflow-hidden bg-dark-border flex-shrink-0">
-                      <img :src="season.champion?.logo_url || defaultAvatar" class="w-full h-full object-cover" @error="handleImageError" />
+                      <img :src="season.champion?.logo_url || defaultAvatar" :key="`champ-${season.year}`" class="w-full h-full object-cover" loading="lazy" @error="handleImageError" />
                     </div>
                     <span class="font-semibold text-yellow-400">{{ season.champion?.name || 'TBD' }}</span>
                   </div>
@@ -466,8 +426,10 @@
               <div class="text-center p-6 bg-gradient-to-br from-cyan-500/10 to-cyan-600/5 rounded-xl border-2 border-cyan-500/30">
                 <img 
                   :src="compareTeam1Data?.logo_url || defaultAvatar" 
+                  :key="`compare1-${compareTeam1Key}`"
                   :alt="compareTeam1Data?.team_name" 
                   class="w-20 h-20 rounded-full mx-auto mb-4 border-4 border-cyan-500 object-cover" 
+                  loading="lazy"
                   @error="handleImageError" 
                 />
                 <div class="font-bold text-xl text-dark-text mb-3">{{ compareTeam1Data?.team_name }}</div>
@@ -544,8 +506,10 @@
               <div class="text-center p-6 bg-gradient-to-br from-orange-500/10 to-orange-600/5 rounded-xl border-2 border-orange-500/30">
                 <img 
                   :src="compareTeam2Data?.logo_url || defaultAvatar" 
+                  :key="`compare2-${compareTeam2Key}`"
                   :alt="compareTeam2Data?.team_name" 
                   class="w-20 h-20 rounded-full mx-auto mb-4 border-4 border-orange-500 object-cover" 
+                  loading="lazy"
                   @error="handleImageError" 
                 />
                 <div class="font-bold text-xl text-dark-text mb-3">{{ compareTeam2Data?.team_name }}</div>
@@ -721,7 +685,7 @@
                 >
                   <div class="flex flex-col items-center gap-1">
                     <div class="w-6 h-6 rounded-full overflow-hidden bg-dark-border">
-                      <img :src="team.logo_url || defaultAvatar" class="w-full h-full object-cover" @error="handleImageError" />
+                      <img :src="team.logo_url || defaultAvatar" :key="`h2h-header-${team.team_key}`" class="w-full h-full object-cover" loading="lazy" @error="handleImageError" />
                     </div>
                     <div class="truncate text-[10px]" :title="team.team_name">{{ team.team_name.substring(0, 8) }}</div>
                   </div>
@@ -733,7 +697,7 @@
                 <td class="sticky left-0 bg-dark-elevated z-10 px-3 py-2 font-semibold text-dark-text border border-dark-border whitespace-nowrap">
                   <div class="flex items-center gap-2">
                     <div class="w-6 h-6 rounded-full overflow-hidden bg-dark-border flex-shrink-0">
-                      <img :src="rowTeam.logo_url || defaultAvatar" class="w-full h-full object-cover" @error="handleImageError" />
+                      <img :src="rowTeam.logo_url || defaultAvatar" :key="`h2h-row-${rowTeam.team_key}`" class="w-full h-full object-cover" loading="lazy" @error="handleImageError" />
                     </div>
                     <span class="truncate">{{ rowTeam.team_name }}</span>
                   </div>
@@ -839,7 +803,7 @@
                       </div>
                       <div v-if="award.winner" class="text-center">
                         <div class="w-10 h-10 rounded-full overflow-hidden bg-dark-border mx-auto mb-2 ring-2 ring-green-500/50">
-                          <img :src="award.winner.logo_url || defaultAvatar" class="w-full h-full object-cover" @error="handleImageError" />
+                          <img :src="award.winner.logo_url || defaultAvatar" :key="`award-${award.category}`" class="w-full h-full object-cover" loading="lazy" @error="handleImageError" />
                         </div>
                         <div class="font-semibold text-dark-text text-sm truncate">{{ award.winner.team_name }}</div>
                         <div class="text-2xl font-black text-green-400">{{ award.winner.value }}</div>
@@ -865,7 +829,7 @@
                       </div>
                       <div v-if="award.winner" class="text-center">
                         <div class="w-10 h-10 rounded-full overflow-hidden bg-dark-border mx-auto mb-2 ring-2 ring-purple-500/50">
-                          <img :src="award.winner.logo_url || defaultAvatar" class="w-full h-full object-cover" @error="handleImageError" />
+                          <img :src="award.winner.logo_url || defaultAvatar" :key="`award-${award.category}`" class="w-full h-full object-cover" loading="lazy" @error="handleImageError" />
                         </div>
                         <div class="font-semibold text-dark-text text-sm truncate">{{ award.winner.team_name }}</div>
                         <div class="text-2xl font-black text-purple-400">{{ award.winner.value }}</div>
@@ -899,7 +863,7 @@
                       </div>
                       <div v-if="award.winner" class="text-center">
                         <div class="w-10 h-10 rounded-full overflow-hidden bg-dark-border mx-auto mb-2 ring-2 ring-gray-500/50">
-                          <img :src="award.winner.logo_url || defaultAvatar" class="w-full h-full object-cover" @error="handleImageError" />
+                          <img :src="award.winner.logo_url || defaultAvatar" :key="`award-${award.category}`" class="w-full h-full object-cover" loading="lazy" @error="handleImageError" />
                         </div>
                         <div class="font-semibold text-dark-text text-sm truncate">{{ award.winner.team_name }}</div>
                         <div class="text-2xl font-black text-gray-400">{{ award.winner.value }}</div>
@@ -925,7 +889,7 @@
                       </div>
                       <div v-if="award.winner" class="text-center">
                         <div class="w-10 h-10 rounded-full overflow-hidden bg-dark-border mx-auto mb-2 ring-2 ring-gray-500/50">
-                          <img :src="award.winner.logo_url || defaultAvatar" class="w-full h-full object-cover" @error="handleImageError" />
+                          <img :src="award.winner.logo_url || defaultAvatar" :key="`award-${award.category}`" class="w-full h-full object-cover" loading="lazy" @error="handleImageError" />
                         </div>
                         <div class="font-semibold text-dark-text text-sm truncate">{{ award.winner.team_name }}</div>
                         <div class="text-2xl font-black text-gray-400">{{ award.winner.value }}</div>
@@ -972,7 +936,7 @@
                       </div>
                       <div v-if="award.winner" class="text-center">
                         <div class="w-10 h-10 rounded-full overflow-hidden bg-dark-border mx-auto mb-2 ring-2 ring-green-500/50">
-                          <img :src="award.winner.logo_url || defaultAvatar" class="w-full h-full object-cover" @error="handleImageError" />
+                          <img :src="award.winner.logo_url || defaultAvatar" :key="`award-${award.category}`" class="w-full h-full object-cover" loading="lazy" @error="handleImageError" />
                         </div>
                         <div class="font-semibold text-dark-text text-sm truncate">{{ award.winner.team_name }}</div>
                         <div class="text-2xl font-black text-green-400">{{ award.winner.value }}</div>
@@ -1025,7 +989,7 @@
                           </div>
                           <div class="w-10 h-10 rounded-full overflow-hidden bg-dark-border flex-shrink-0 ring-2" 
                                :class="idx === 0 ? 'ring-green-500' : 'ring-dark-border'">
-                            <img :src="team.logo_url || defaultAvatar" class="w-full h-full object-cover" @error="handleImageError" />
+                            <img :src="team.logo_url || defaultAvatar" :key="`team-${team.team_key || team.team_name}`" class="w-full h-full object-cover" loading="lazy" @error="handleImageError" />
                           </div>
                           <div class="w-40 flex-shrink-0">
                             <div class="font-semibold text-dark-text">{{ team.team_name }}</div>
@@ -1060,7 +1024,7 @@
                       </div>
                       <div v-if="award.winner" class="text-center">
                         <div class="w-10 h-10 rounded-full overflow-hidden bg-dark-border mx-auto mb-2 ring-2 ring-purple-500/50">
-                          <img :src="award.winner.logo_url || defaultAvatar" class="w-full h-full object-cover" @error="handleImageError" />
+                          <img :src="award.winner.logo_url || defaultAvatar" :key="`award-${award.category}`" class="w-full h-full object-cover" loading="lazy" @error="handleImageError" />
                         </div>
                         <div class="font-semibold text-dark-text text-sm truncate">{{ award.winner.team_name }}</div>
                         <div class="text-2xl font-black text-purple-400">{{ award.winner.value }}</div>
@@ -1113,7 +1077,7 @@
                           </div>
                           <div class="w-10 h-10 rounded-full overflow-hidden bg-dark-border flex-shrink-0 ring-2" 
                                :class="idx === 0 ? 'ring-purple-500' : 'ring-dark-border'">
-                            <img :src="team.logo_url || defaultAvatar" class="w-full h-full object-cover" @error="handleImageError" />
+                            <img :src="team.logo_url || defaultAvatar" :key="`team-${team.team_key || team.team_name}`" class="w-full h-full object-cover" loading="lazy" @error="handleImageError" />
                           </div>
                           <div class="w-40 flex-shrink-0">
                             <div class="font-semibold text-dark-text">{{ team.team_name }}</div>
@@ -1156,7 +1120,7 @@
                       </div>
                       <div v-if="award.winner" class="text-center">
                         <div class="w-10 h-10 rounded-full overflow-hidden bg-dark-border mx-auto mb-2 ring-2 ring-gray-500/50">
-                          <img :src="award.winner.logo_url || defaultAvatar" class="w-full h-full object-cover" @error="handleImageError" />
+                          <img :src="award.winner.logo_url || defaultAvatar" :key="`award-${award.category}`" class="w-full h-full object-cover" loading="lazy" @error="handleImageError" />
                         </div>
                         <div class="font-semibold text-dark-text text-sm truncate">{{ award.winner.team_name }}</div>
                         <div class="text-2xl font-black text-gray-400">{{ award.winner.value }}</div>
@@ -1209,7 +1173,7 @@
                           </div>
                           <div class="w-10 h-10 rounded-full overflow-hidden bg-dark-border flex-shrink-0 ring-2" 
                                :class="idx === 0 ? 'ring-red-500' : 'ring-dark-border'">
-                            <img :src="team.logo_url || defaultAvatar" class="w-full h-full object-cover" @error="handleImageError" />
+                            <img :src="team.logo_url || defaultAvatar" :key="`team-${team.team_key || team.team_name}`" class="w-full h-full object-cover" loading="lazy" @error="handleImageError" />
                           </div>
                           <div class="w-40 flex-shrink-0">
                             <div class="font-semibold text-dark-text">{{ team.team_name }}</div>
@@ -1244,7 +1208,7 @@
                       </div>
                       <div v-if="award.winner" class="text-center">
                         <div class="w-10 h-10 rounded-full overflow-hidden bg-dark-border mx-auto mb-2 ring-2 ring-gray-500/50">
-                          <img :src="award.winner.logo_url || defaultAvatar" class="w-full h-full object-cover" @error="handleImageError" />
+                          <img :src="award.winner.logo_url || defaultAvatar" :key="`award-${award.category}`" class="w-full h-full object-cover" loading="lazy" @error="handleImageError" />
                         </div>
                         <div class="font-semibold text-dark-text text-sm truncate">{{ award.winner.team_name }}</div>
                         <div class="text-2xl font-black text-gray-400">{{ award.winner.value }}</div>
@@ -1297,7 +1261,7 @@
                           </div>
                           <div class="w-10 h-10 rounded-full overflow-hidden bg-dark-border flex-shrink-0 ring-2" 
                                :class="idx === 0 ? 'ring-red-500' : 'ring-dark-border'">
-                            <img :src="team.logo_url || defaultAvatar" class="w-full h-full object-cover" @error="handleImageError" />
+                            <img :src="team.logo_url || defaultAvatar" :key="`team-${team.team_key || team.team_name}`" class="w-full h-full object-cover" loading="lazy" @error="handleImageError" />
                           </div>
                           <div class="w-40 flex-shrink-0">
                             <div class="font-semibold text-dark-text">{{ team.team_name }}</div>
@@ -1370,8 +1334,10 @@
           <div class="flex items-center gap-4">
             <img 
               :src="recordModalRankings[0].logo_url || defaultAvatar" 
+              :key="`recordmodal-${activeRecordModal}`"
               :alt="recordModalRankings[0].team_name"
               class="w-16 h-16 rounded-full ring-4 ring-yellow-500/50 object-cover"
+              loading="lazy"
               @error="handleImageError"
             />
             <div class="flex-1">
@@ -1395,7 +1361,7 @@
               <div class="w-6 text-center">
                 <span class="text-sm font-bold" :class="index === 0 ? 'text-yellow-400' : 'text-dark-textMuted'">{{ index + 1 }}</span>
               </div>
-              <img :src="team.logo_url || defaultAvatar" :alt="team.team_name" class="w-8 h-8 rounded-full object-cover" @error="handleImageError" />
+              <img :src="team.logo_url || defaultAvatar" :key="`modal-${team.team_key || team.team_name}`" :alt="team.team_name" class="w-8 h-8 rounded-full object-cover" loading="lazy" @error="handleImageError" />
               <div class="flex-1 min-w-0">
                 <div class="text-sm font-medium text-dark-text truncate mb-1">{{ team.team_name }}</div>
                 <div class="h-2.5 bg-dark-border rounded-full overflow-hidden">
@@ -1465,9 +1431,11 @@
           <div class="flex items-center gap-4">
             <img 
               :src="awardModalRankings[0].logo_url || defaultAvatar" 
+              :key="`awardmodal-${awardModalCategory}-${awardModalType}`"
               :alt="awardModalRankings[0].team_name"
               class="w-16 h-16 rounded-full ring-4 object-cover"
               :class="awardModalType === 'best' ? (awardModalCatType === 'hitting' ? 'ring-green-500/50' : 'ring-purple-500/50') : 'ring-red-500/50'"
+              loading="lazy"
               @error="handleImageError"
             />
             <div class="flex-1">
@@ -1498,7 +1466,7 @@
                   :class="index === 0 ? (awardModalType === 'best' ? (awardModalCatType === 'hitting' ? 'text-green-400' : 'text-purple-400') : 'text-red-400') : 'text-dark-textMuted'"
                 >{{ index + 1 }}</span>
               </div>
-              <img :src="team.logo_url || defaultAvatar" :alt="team.team_name" class="w-8 h-8 rounded-full object-cover" @error="handleImageError" />
+              <img :src="team.logo_url || defaultAvatar" :key="`modal-${team.team_key || team.team_name}`" :alt="team.team_name" class="w-8 h-8 rounded-full object-cover" loading="lazy" @error="handleImageError" />
               <div class="flex-1 min-w-0">
                 <div class="flex items-center gap-2 mb-1">
                   <span class="text-sm font-medium text-dark-text truncate">{{ team.team_name }}</span>
@@ -2727,10 +2695,13 @@ const compareRivalryHistory = computed(() => {
       const team2 = teams.find((t: any) => t.team_key === compareTeam2Key.value)
       
       if (team1 && team2) {
-        const team1CatWins = team1.stat_winners || 0
-        const team1CatLosses = team1.stat_losers || 0
-        const team2CatWins = team2.stat_winners || 0
-        const team2CatLosses = team2.stat_losers || 0
+        // Calculate category wins from stat_winners array (like other parts of the code do)
+        const statWinners = matchup.stat_winners || []
+        const team1CatWins = statWinners.filter((w: any) => w.winner_team_key === compareTeam1Key.value && !w.is_tied).length || 0
+        const team2CatWins = statWinners.filter((w: any) => w.winner_team_key === compareTeam2Key.value && !w.is_tied).length || 0
+        const totalCats = statWinners.length || (team1CatWins + team2CatWins) || 1
+        const team1CatLosses = totalCats - team1CatWins - statWinners.filter((w: any) => w.is_tied).length
+        const team2CatLosses = totalCats - team2CatWins - statWinners.filter((w: any) => w.is_tied).length
         
         // Determine matchup winner based on category wins
         let winner = 'Tie'
@@ -2745,14 +2716,14 @@ const compareRivalryHistory = computed(() => {
         
         matchups.push({
           season,
-          week: matchup.week || 0,
+          week: matchup.week || matchup.matchupPeriodId || 1,
           team1Wins: team1CatWins,
-          team1Losses: team1CatLosses,
+          team1Losses: team2CatWins,
           team2Wins: team2CatWins,
-          team2Losses: team2CatLosses,
+          team2Losses: team1CatWins,
           tie,
           winner,
-          isPlayoff: (matchup.week || 0) > 20
+          isPlayoff: (matchup.week || matchup.matchupPeriodId || 0) > 20
         })
       }
     }
@@ -3353,7 +3324,9 @@ async function downloadH2HMatrix() {
     // Capture the table
     const tableCanvas = await html2canvas(h2hTableRef.value, {
       backgroundColor: '#0a0c14',
-      scale: 2
+      scale: 2,
+      useCORS: true,
+      allowTaint: true
     })
     const tableDataUrl = tableCanvas.toDataURL('image/png')
     
@@ -4422,6 +4395,8 @@ async function loadEspnHistoricalData(leagueKey: string) {
               if (weekMatchups && weekMatchups.length > 0) {
                 // Transform ESPN matchups to match expected format
                 const transformedMatchups = weekMatchups.map((m: any) => ({
+                  week: week,
+                  matchupPeriodId: week,
                   teams: [
                     { 
                       team_key: `espn_${m.homeTeamId}`,
