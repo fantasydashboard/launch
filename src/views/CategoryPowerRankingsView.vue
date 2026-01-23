@@ -263,8 +263,11 @@
             <div 
               v-for="(team, idx) in powerRankings" 
               :key="'avatar-' + team.team_key"
-              class="absolute pointer-events-none transition-all duration-300"
+              class="absolute cursor-pointer transition-opacity duration-200"
+              :class="{ 'opacity-30': chartHoveredTeamKey && chartHoveredTeamKey !== team.team_key }"
               :style="getChartAvatarStyle(team)"
+              @mouseenter="chartHoveredTeamKey = team.team_key"
+              @mouseleave="chartHoveredTeamKey = null"
             >
               <div class="relative">
                 <img 
@@ -711,6 +714,7 @@ const chartHeight = 400
 // Chart refs for avatar positioning
 const apexChartRef = ref<any>(null)
 const avatarPositions = ref<Map<string, { top: number, right: number }>>(new Map())
+const chartHoveredTeamKey = ref<string | null>(null)
 
 // Team colors
 const teamColors = ['#F59E0B', '#10B981', '#3B82F6', '#EF4444', '#8B5CF6', '#EC4899', '#06B6D4', '#F97316', '#84CC16', '#6366F1', '#14B8A6', '#F43F5E']
@@ -2411,6 +2415,36 @@ function buildChart() {
     return
   }
   
+  // Get the index of the hovered team
+  const hoveredIdx = chartHoveredTeamKey.value 
+    ? powerRankings.value.findIndex((t: any) => t.team_key === chartHoveredTeamKey.value)
+    : -1
+  
+  // Get colors for each team - faded when another team is hovered
+  const colors = powerRankings.value.map((team: any, idx: number) => {
+    const baseColor = team.is_my_team ? '#F5C451' : getTeamColor(idx)
+    // If someone is hovered and it's not this team, fade it
+    if (hoveredIdx !== -1 && idx !== hoveredIdx) {
+      const r = parseInt(baseColor.slice(1, 3), 16)
+      const g = parseInt(baseColor.slice(3, 5), 16)
+      const b = parseInt(baseColor.slice(5, 7), 16)
+      return `rgba(${r}, ${g}, ${b}, 0.2)`
+    }
+    return baseColor
+  })
+  
+  // Stroke widths - hovered line is thicker
+  const strokeWidths = powerRankings.value.map((team: any, idx: number) => {
+    if (hoveredIdx === -1) return team.is_my_team ? 4 : 2
+    return idx === hoveredIdx ? 4 : 2
+  })
+  
+  // Marker sizes - only show markers for hovered team
+  const markerSizes = powerRankings.value.map((_: any, idx: number) => {
+    if (hoveredIdx === -1) return 0
+    return idx === hoveredIdx ? 10 : 0
+  })
+  
   // Build series data for each team
   const series = powerRankings.value.map((team, idx) => {
     const ranks = historicalRanks.value.get(team.team_key) || []
@@ -2428,32 +2462,46 @@ function buildChart() {
       background: 'transparent',
       toolbar: { show: false },
       zoom: { enabled: false },
+      animations: { enabled: false },
       events: {
         mounted: () => setTimeout(updateAvatarPositions, 100),
         updated: () => setTimeout(updateAvatarPositions, 100)
       }
     },
     theme: { mode: 'dark' },
-    colors: powerRankings.value.map((team, idx) => 
-      team.is_my_team ? '#F5C451' : getTeamColor(idx)
-    ),
+    colors: colors,
     stroke: {
-      width: powerRankings.value.map(team => team.is_my_team ? 4 : 2),
+      width: strokeWidths,
       curve: 'smooth'
     },
     markers: {
-      size: 0,
-      hover: { size: 6 }
+      size: markerSizes,
+      strokeWidth: 0,
+      hover: { size: 0 }
+    },
+    dataLabels: {
+      enabled: hoveredIdx !== -1,
+      enabledOnSeries: hoveredIdx !== -1 ? [hoveredIdx] : [],
+      formatter: function(val: number) {
+        return val.toString()
+      },
+      style: {
+        fontSize: '11px',
+        fontWeight: 'bold',
+        colors: ['#fff']
+      },
+      background: {
+        enabled: false
+      },
+      offsetY: 0
     },
     xaxis: {
       categories: chartWeeks.value.map(w => `Wk ${w}`),
       labels: {
         style: { colors: '#9ca3af' }
       },
-      title: {
-        text: 'Week',
-        style: { color: '#9ca3af' }
-      }
+      axisBorder: { show: false },
+      axisTicks: { show: false }
     },
     yaxis: {
       reversed: true,
@@ -2461,62 +2509,27 @@ function buildChart() {
       max: powerRankings.value.length,
       labels: {
         style: { colors: '#9ca3af' },
-        formatter: (value: number) => `#${Math.round(value)}`
-      },
-      title: {
-        text: 'Power Rank',
-        style: { color: '#9ca3af' }
+        formatter: (value: number) => Math.round(value).toString()
       }
     },
     legend: {
-      show: false // Hide legend since we show team avatars at end of lines
+      show: false
     },
-    tooltip: {
-      theme: 'dark',
-      shared: true,
-      intersect: false,
-      custom: function({ series, seriesIndex, dataPointIndex, w }: any) {
-        // Get all teams with their ranks at this data point
-        const teamsWithRanks = powerRankings.value.map((team, idx) => ({
-          name: team.name,
-          rank: series[idx]?.[dataPointIndex] || 0,
-          color: w.globals.colors[idx],
-          isMyTeam: team.is_my_team
-        })).filter(t => t.rank > 0)
-        
-        // Sort by rank (ascending - #1 first)
-        teamsWithRanks.sort((a, b) => a.rank - b.rank)
-        
-        const weekLabel = w.globals.categoryLabels?.[dataPointIndex] || `Week ${dataPointIndex + 1}`
-        
-        let html = `<div class="apexcharts-tooltip-title" style="font-weight: bold; padding: 6px 10px; background: #1f2937; border-bottom: 1px solid #374151;">${weekLabel}</div>`
-        html += `<div style="padding: 6px 10px; max-height: 300px; overflow-y: auto;">`
-        
-        teamsWithRanks.forEach((team, idx) => {
-          const highlight = team.isMyTeam ? 'font-weight: bold; color: #F5C451;' : ''
-          html += `<div style="display: flex; align-items: center; gap: 8px; padding: 3px 0; ${highlight}">
-            <span style="color: ${team.color}; font-size: 16px;">●</span>
-            <span style="min-width: 24px; color: #9ca3af;">#${team.rank}</span>
-            <span>${team.name}</span>
-          </div>`
-        })
-        
-        html += `</div>`
-        return html
-      }
+    grid: { 
+      borderColor: '#374151', 
+      strokeDashArray: 3, 
+      padding: { right: 50 } 
     },
-    grid: {
-      borderColor: '#374151',
-      strokeDashArray: 3,
-      padding: {
-        right: 50 // Add padding for avatars
-      }
-    }
+    tooltip: { enabled: false }
   }
-  
-  // Update avatar positions after chart data is ready
-  setTimeout(updateAvatarPositions, 100)
 }
+
+// Watch for hover changes and rebuild chart
+watch(chartHoveredTeamKey, () => {
+  if (powerRankings.value.length > 0) {
+    buildChart()
+  }
+})
 
 // Initialize
 watch(() => leagueStore.yahooTeams, async () => {
