@@ -1170,8 +1170,9 @@ async function loadCategories() {
       const scoringSettings = await espnService.getScoringSettings(sport, leagueId, season)
       const scoringItems = scoringSettings?.scoringItems || []
       
-      // ESPN stat ID mappings by sport
+      // ESPN stat ID mappings by sport - comprehensive list
       const espnBaseballStatNames: Record<number, { name: string; display: string; isNegative?: boolean }> = {
+        // Batting stats
         0: { name: 'At Bats', display: 'AB' },
         1: { name: 'Hits', display: 'H' },
         2: { name: 'Runs', display: 'R' },
@@ -1184,30 +1185,78 @@ async function loadCategories() {
         9: { name: 'On Base Pct', display: 'OBP' },
         10: { name: 'Slugging Pct', display: 'SLG' },
         11: { name: 'OPS', display: 'OPS' },
-        12: { name: 'Caught Stealing', display: 'CS', isNegative: true },
-        13: { name: 'Net Steals', display: 'NSB' },
-        14: { name: 'Ground into DP', display: 'GDP', isNegative: true },
-        15: { name: 'HBP', display: 'HBP' },
-        16: { name: 'Sacrifice Hits', display: 'SAC' },
-        17: { name: 'Innings Pitched', display: 'IP' },
-        18: { name: 'Earned Run Average', display: 'ERA', isNegative: true },
-        19: { name: 'WHIP', display: 'WHIP', isNegative: true },
-        20: { name: 'Strikeouts (Pitching)', display: 'Ks' },
-        21: { name: 'Walks (Pitching)', display: 'BBs', isNegative: true },
-        22: { name: 'Hits Against', display: 'HA', isNegative: true },
-        23: { name: 'Holds', display: 'HD' },
-        24: { name: 'Blown Saves', display: 'BS', isNegative: true },
-        32: { name: 'Wins', display: 'W' },
-        33: { name: 'Losses', display: 'L', isNegative: true },
-        34: { name: 'Saves', display: 'SV' },
-        35: { name: 'Quality Starts', display: 'QS' },
-        36: { name: 'Shutouts', display: 'SHO' },
-        37: { name: 'Complete Games', display: 'CG' },
-        40: { name: 'Total Bases', display: 'TB' },
-        41: { name: 'Doubles', display: '2B' },
-        42: { name: 'Triples', display: '3B' },
-        43: { name: 'Singles', display: '1B' },
-        45: { name: 'Errors', display: 'E', isNegative: true },
+        12: { name: 'Grounded Into DP', display: 'GIDP', isNegative: true },
+        13: { name: 'Singles', display: '1B' },
+        14: { name: 'Doubles', display: '2B' },
+        15: { name: 'Triples', display: '3B' },
+        16: { name: 'Total Bases', display: 'TB' },
+        17: { name: 'Games Played', display: 'G' },
+        18: { name: 'Plate Appearances', display: 'PA' },
+        19: { name: 'Extra Base Hits', display: 'XBH' },
+        20: { name: 'Hit By Pitch', display: 'HBP' },
+        21: { name: 'Intentional Walks', display: 'IBB' },
+        22: { name: 'Sac Bunts', display: 'SAC' },
+        23: { name: 'Sacrifice Flies', display: 'SF' },
+        24: { name: 'Errors', display: 'E', isNegative: true },
+        25: { name: 'Fielder\'s Choice', display: 'FC' },
+        26: { name: 'Fielding Percentage', display: 'FPCT' },
+        27: { name: 'Outfield Assists', display: 'OFAST' },
+        28: { name: 'Double Plays Turned', display: 'DP' },
+        29: { name: 'Putouts', display: 'PO' },
+        30: { name: 'Assists', display: 'A' },
+        31: { name: 'Total Chances', display: 'TC' },
+        32: { name: 'Caught Stealing', display: 'CS', isNegative: true },
+        33: { name: 'Stolen Base Percentage', display: 'SB%' },
+        34: { name: 'Net Stolen Bases', display: 'NSB' },
+        // Pitching stats
+        35: { name: 'Wins', display: 'W' },
+        36: { name: 'Losses', display: 'L', isNegative: true },
+        37: { name: 'Saves', display: 'SV' },
+        38: { name: 'Holds', display: 'HD' },
+        39: { name: 'Innings Pitched', display: 'IP' },
+        40: { name: 'Earned Runs', display: 'ER', isNegative: true },
+        41: { name: 'Hits Allowed', display: 'HA', isNegative: true },
+        42: { name: 'Walks Allowed', display: 'BBI', isNegative: true },
+        43: { name: 'Strikeouts (Pitching)', display: 'Ks' },
+        44: { name: 'Complete Games', display: 'CG' },
+        45: { name: 'Shutouts', display: 'SHO' },
+        46: { name: 'No Hitters', display: 'NH' },
+        47: { name: 'ERA', display: 'ERA', isNegative: true },
+        48: { name: 'WHIP', display: 'WHIP', isNegative: true },
+        49: { name: 'Opponent Batting Avg', display: 'OBA', isNegative: true },
+        50: { name: 'Runs Allowed', display: 'RA', isNegative: true },
+        51: { name: 'Home Runs Allowed', display: 'HRA', isNegative: true },
+        52: { name: 'Batters Faced', display: 'BF' },
+        53: { name: 'Quality Starts', display: 'QS' },
+        54: { name: 'Pitches Thrown', display: 'PC' },
+        55: { name: 'Pickoffs', display: 'PKO' },
+        56: { name: 'Wild Pitches', display: 'WP', isNegative: true },
+        57: { name: 'Blown Saves', display: 'BS', isNegative: true },
+        58: { name: 'Relief Wins', display: 'RW' },
+        59: { name: 'Relief Losses', display: 'RL', isNegative: true },
+        60: { name: 'Save Opportunities', display: 'SVO' },
+        61: { name: 'Inherited Runners Scored', display: 'IRS', isNegative: true },
+        62: { name: 'Strikeout to Walk Ratio', display: 'K/BB' },
+        63: { name: 'Games Started', display: 'GS' },
+        64: { name: 'Hit Batters', display: 'HB', isNegative: true },
+        65: { name: 'Balks', display: 'BK', isNegative: true },
+        66: { name: 'Ground Outs', display: 'GO' },
+        67: { name: 'Fly Outs', display: 'AO' },
+        68: { name: 'K/9', display: 'K/9' },
+        69: { name: 'BB/9', display: 'BB/9', isNegative: true },
+        70: { name: 'H/9', display: 'H/9', isNegative: true },
+        71: { name: 'Saves + Holds', display: 'SVHD' },
+        72: { name: 'Relief Appearances', display: 'RAPP' },
+        73: { name: 'Total Bases Allowed', display: 'TBA', isNegative: true },
+        74: { name: 'Win Percentage', display: 'W%' },
+        76: { name: 'BABIP', display: 'BABIP' },
+        77: { name: 'FIP', display: 'FIP', isNegative: true },
+        78: { name: 'xFIP', display: 'xFIP', isNegative: true },
+        79: { name: 'WAR (Batting)', display: 'WAR' },
+        80: { name: 'WAR (Pitching)', display: 'WAR' },
+        81: { name: 'wOBA', display: 'wOBA' },
+        82: { name: 'wRC+', display: 'wRC+' },
+        83: { name: 'Perfect Games', display: 'PG' },
         99: { name: 'Games Pitched', display: 'GP' }
       }
       
@@ -1279,11 +1328,20 @@ async function loadCategories() {
       categories.value = scoringItems
         .map((item: any) => {
           const statId = String(item.statId || item.id)
-          const statInfo = statNames[parseInt(statId)] || { name: `Stat ${statId}`, display: `S${statId}` }
+          
+          // Try to get name from ESPN's scoring item first, fallback to our dictionary
+          const espnAbbrev = item.label || item.abbreviation || item.abbrev
+          const espnName = item.displayName || item.name
+          
+          const statInfo = statNames[parseInt(statId)] || { 
+            name: espnName || `Stat ${statId}`, 
+            display: espnAbbrev || `S${statId}` 
+          }
+          
           return {
             stat_id: statId,
-            name: statInfo.name,
-            display_name: statInfo.display,
+            name: espnName || statInfo.name,
+            display_name: espnAbbrev || statInfo.display,
             is_negative: statInfo.isNegative
           }
         })
