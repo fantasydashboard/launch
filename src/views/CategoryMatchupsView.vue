@@ -479,6 +479,18 @@ function parseEspnLeagueKey(leagueKey: string) {
 
 const leagueInfo = computed(() => { const l = leagueStore.yahooLeague; return Array.isArray(l) ? l[0] || {} : l || {} })
 
+// Get current sport type
+const currentSport = computed(() => {
+  if (isEspn.value) {
+    const k = leagueStore.activeLeagueId
+    if (k) {
+      const { sport } = parseEspnLeagueKey(k)
+      return sport
+    }
+  }
+  return 'baseball'
+})
+
 const currentWeek = computed(() => {
   if (isEspn.value) {
     // Try yahooLeague first (holds ESPN data in same format)
@@ -1524,6 +1536,24 @@ async function loadMatchups() {
 
 function selectMatchup(m: any) { selectedMatchup.value = m; nextTick(() => buildWinProbChart()) }
 
+// Get daily weights for a sport (how stats are distributed across the week)
+function getDailyWeights(sport: string): number[] {
+  // Baseball: games every day, fairly even
+  if (sport === 'baseball') {
+    return [0.14, 0.15, 0.15, 0.14, 0.14, 0.14, 0.14]
+  }
+  // Hockey: varies by day
+  if (sport === 'hockey') {
+    return [0.10, 0.15, 0.12, 0.16, 0.14, 0.17, 0.16]
+  }
+  // Basketball: varies by day  
+  if (sport === 'basketball') {
+    return [0.12, 0.14, 0.15, 0.14, 0.15, 0.16, 0.14]
+  }
+  // Default: even distribution
+  return [1/7, 1/7, 1/7, 1/7, 1/7, 1/7, 1/7]
+}
+
 function buildWinProbChart() {
   if (!winProbChartEl.value || !selectedMatchup.value) return
   if (winProbChart) { winProbChart.destroy(); winProbChart = null }
@@ -1540,16 +1570,37 @@ function buildWinProbChart() {
   const dayMap: Record<number, number> = { 1: 0, 2: 1, 3: 2, 4: 3, 5: 4, 6: 5, 0: 6 }
   const todayIndex = dayMap[dayOfWeek]
   
-  // Get current stats from the matchup
-  const team1Stats = matchup.team1Stats || {}
-  const team2Stats = matchup.team2Stats || {}
-  const categoryIds = Object.keys(team1Stats)
+  // Get current/final stats from the matchup
+  const team1FinalStats = matchup.team1Stats || {}
+  const team2FinalStats = matchup.team2Stats || {}
+  const categoryIds = Object.keys(team1FinalStats)
+  
+  if (categoryIds.length === 0) {
+    console.log('[WinProb Chart] No category data available')
+    return
+  }
   
   // Calculate final winner for completed matchups
   const team1FinalWins = matchup.team1CatWins || 0
   const team2FinalWins = matchup.team2CatWins || 0
   const team1IsFinalWinner = team1FinalWins > team2FinalWins
   const team2IsFinalWinner = team2FinalWins > team1FinalWins
+  
+  // Get sport-specific daily weights
+  const sport = currentSport.value
+  const dailyWeights = getDailyWeights(sport)
+  
+  // Calculate cumulative weights
+  let cumulativeWeight = 0
+  const cumulativeWeights: number[] = []
+  for (let i = 0; i < 7; i++) {
+    cumulativeWeight += dailyWeights[i]
+    cumulativeWeights.push(cumulativeWeight)
+  }
+  
+  console.log('[WinProb Chart] Building chart for matchup:', matchup.team1.name, 'vs', matchup.team2.name)
+  console.log('[WinProb Chart] isCompletedWeek:', isCompletedWeek, 'todayIndex:', todayIndex)
+  console.log('[WinProb Chart] Categories:', categoryIds.length, 'Final wins:', team1FinalWins, '-', team2FinalWins)
   
   // Build probability data for all 7 days
   const d1: number[] = []
@@ -1571,23 +1622,76 @@ function buildWinProbChart() {
         team1Prob = 50
         team2Prob = 50
       }
-    } else if (isCompletedWeek) {
-      // Completed week - interpolate from 50% to final result
-      const progress = (day + 1) / 7
-      const finalProb = team1IsFinalWinner ? 100 : (team2IsFinalWinner ? 0 : 50)
-      team1Prob = 50 + (finalProb - 50) * progress
-      team2Prob = 100 - team1Prob
     } else {
-      // Live matchup - run Monte Carlo simulation
+      // Calculate cumulative stats at end of this day
+      const team1CumulativeStats: Record<string, number> = {}
+      const team2CumulativeStats: Record<string, number> = {}
+      
+      if (isCompletedWeek) {
+        // Distribute final stats across the week based on daily weights
+        for (const catId of categoryIds) {
+          team1CumulativeStats[catId] = (team1FinalStats[catId] || 0) * cumulativeWeights[day]
+          team2CumulativeStats[catId] = (team2FinalStats[catId] || 0) * cumulativeWeights[day]
+        }
+      } else {
+        // For live matchups
+        if (day <= todayIndex) {
+          // Pro-rate current stats back to this day
+          const dayFraction = cumulativeWeights[day] / cumulativeWeights[todayIndex]
+          for (const catId of categoryIds) {
+            team1CumulativeStats[catId] = (team1FinalStats[catId] || 0) * dayFraction
+            team2CumulativeStats[catId] = (team2FinalStats[catId] || 0) * dayFraction
+          }
+        } else {
+          // Project forward from current using linear extrapolation
+          const remainingFraction = (cumulativeWeights[day] - cumulativeWeights[todayIndex]) / (1 - cumulativeWeights[todayIndex])
+          for (const catId of categoryIds) {
+            const currentStat1 = team1FinalStats[catId] || 0
+            const currentStat2 = team2FinalStats[catId] || 0
+            // Estimate what the full week would be, then scale to this day
+            const estimatedFull1 = currentStat1 / cumulativeWeights[todayIndex]
+            const estimatedFull2 = currentStat2 / cumulativeWeights[todayIndex]
+            team1CumulativeStats[catId] = estimatedFull1 * cumulativeWeights[day]
+            team2CumulativeStats[catId] = estimatedFull2 * cumulativeWeights[day]
+          }
+        }
+      }
+      
+      // Days remaining from THIS day's perspective
       const daysRemaining = 6 - day
       
       if (daysRemaining <= 0) {
-        // No days remaining, use current probability
+        // Sunday - use current probability (no more variance)
         team1Prob = matchup.team1WinProb || 50
         team2Prob = matchup.team2WinProb || 50
       } else {
         // Run Monte Carlo simulation for this day
-        const mcResult = runCategoryMonteCarlo(team1Stats, team2Stats, categoryIds, daysRemaining)
+        // Calculate expected remaining stats (what's left to accumulate from this day to Sunday)
+        const remainingFraction = 1 - cumulativeWeights[day]
+        const team1ExpectedRemaining: Record<string, number> = {}
+        const team2ExpectedRemaining: Record<string, number> = {}
+        
+        for (const catId of categoryIds) {
+          // Estimate full week stats, then calculate remaining
+          const fullWeekEstimate1 = isCompletedWeek 
+            ? team1FinalStats[catId] || 0
+            : (team1FinalStats[catId] || 0) / cumulativeWeights[Math.min(todayIndex, day)]
+          const fullWeekEstimate2 = isCompletedWeek 
+            ? team2FinalStats[catId] || 0
+            : (team2FinalStats[catId] || 0) / cumulativeWeights[Math.min(todayIndex, day)]
+          
+          team1ExpectedRemaining[catId] = fullWeekEstimate1 * remainingFraction
+          team2ExpectedRemaining[catId] = fullWeekEstimate2 * remainingFraction
+        }
+        
+        const mcResult = runCategoryMonteCarloWithCumulative(
+          team1CumulativeStats,
+          team2CumulativeStats,
+          team1ExpectedRemaining,
+          team2ExpectedRemaining,
+          categoryIds,
+          daysRemaining
+        )
         team1Prob = mcResult.team1
         team2Prob = mcResult.team2
       }
@@ -1597,12 +1701,14 @@ function buildWinProbChart() {
     d2.push(Math.round(team2Prob * 10) / 10)
   }
   
+  console.log('[WinProb Chart] Final probabilities:', d1.map((p, i) => `${allDays[i]}: ${p}%`).join(', '))
+  
   // Always use cyan/orange colors
   const c1 = '#06b6d4' // cyan
   const c2 = '#f97316' // orange
   
   winProbChart = new ApexCharts(winProbChartEl.value, {
-    chart: { type: 'area', height: 192, background: 'transparent', toolbar: { show: false }, zoom: { enabled: false } },
+    chart: { type: 'area', height: 192, background: 'transparent', toolbar: { show: false }, zoom: { enabled: false }, animations: { enabled: true, speed: 500 } },
     series: [{ name: matchup.team1.name, data: d1 }, { name: matchup.team2.name, data: d2 }],
     colors: [c1, c2],
     fill: { type: 'gradient', gradient: { shadeIntensity: 1, opacityFrom: 0.4, opacityTo: 0.1, stops: [0, 100] } },
@@ -1611,15 +1717,18 @@ function buildWinProbChart() {
     yaxis: { min: 0, max: 100, labels: { style: { colors: '#9ca3af', fontSize: '10px' }, formatter: (v: number) => `${v.toFixed(0)}%` } },
     legend: { show: true, position: 'top', labels: { colors: '#9ca3af' }, fontSize: '11px' },
     grid: { borderColor: '#374151', strokeDashArray: 3 },
-    tooltip: { theme: 'dark', y: { formatter: (v: number) => `${v.toFixed(0)}%` } }
+    tooltip: { theme: 'dark', y: { formatter: (v: number) => `${v.toFixed(0)}%` } },
+    markers: { size: 4, strokeWidth: 0, hover: { size: 6 } }
   })
   winProbChart.render()
 }
 
-// Monte Carlo simulation for category matchups - returns win probability at end of given day
-function runCategoryMonteCarlo(
-  team1Stats: Record<string, number>,
-  team2Stats: Record<string, number>,
+// Monte Carlo simulation for category matchups with cumulative stats
+function runCategoryMonteCarloWithCumulative(
+  team1CurrentStats: Record<string, number>,
+  team2CurrentStats: Record<string, number>,
+  team1ExpectedRemaining: Record<string, number>,
+  team2ExpectedRemaining: Record<string, number>,
   categoryIds: string[],
   daysRemaining: number
 ): { team1: number, team2: number } {
@@ -1628,26 +1737,39 @@ function runCategoryMonteCarlo(
   let team2Wins = 0
   let ties = 0
   
-  // Volatility per category
+  // Volatility per category - scales with remaining time
   const yahooVol: Record<string,number> = { '60':8,'7':3,'12':8,'16':2,'3':0.02,'55':0.02,'56':0.03,'28':0.5,'32':0.5,'42':15,'26':0.5,'27':0.15,'48':0.5 }
   const espnVol: Record<string,number> = { '2':8,'3':3,'4':8,'5':2,'8':0.02,'9':0.02,'10':0.03,'17':0.5,'20':0.5,'34':15,'18':0.5,'19':0.15,'32':0.5,'47':0.5,'48':0.15 }
   const vol = isEspn.value ? espnVol : yahooVol
   const inverseStats = isEspn.value ? ESPN_INVERSE_STATS : INVERSE_STATS
+  
+  // Variance scale based on days remaining
+  const varianceScale = Math.sqrt(daysRemaining / 7)
   
   for (let sim = 0; sim < SIMULATIONS; sim++) {
     let t1CatsWon = 0
     let t2CatsWon = 0
     
     for (const catId of categoryIds) {
-      const v1 = team1Stats[catId] || 0
-      const v2 = team2Stats[catId] || 0
-      const dailyVol = vol[catId] || 5
-      const totalVol = dailyVol * Math.sqrt(Math.max(0.5, daysRemaining))
-      const isInverse = inverseStats.includes(catId)
+      const current1 = team1CurrentStats[catId] || 0
+      const current2 = team2CurrentStats[catId] || 0
+      const expected1 = team1ExpectedRemaining[catId] || 0
+      const expected2 = team2ExpectedRemaining[catId] || 0
       
-      // Project final values with random variance
-      const final1 = v1 + randomNormal(0, totalVol)
-      const final2 = v2 + randomNormal(0, totalVol)
+      // Calculate standard deviation for remaining stats
+      const dailyVol = vol[catId] || 5
+      const stdDev1 = expected1 * 0.3 * varianceScale + dailyVol * varianceScale
+      const stdDev2 = expected2 * 0.3 * varianceScale + dailyVol * varianceScale
+      
+      // Project remaining stats with variance
+      const remaining1 = Math.max(0, expected1 + randomNormal(0, stdDev1))
+      const remaining2 = Math.max(0, expected2 + randomNormal(0, stdDev2))
+      
+      // Final projected stats
+      const final1 = current1 + remaining1
+      const final2 = current2 + remaining2
+      
+      const isInverse = inverseStats.includes(catId)
       
       // Determine category winner
       if (isInverse) {
