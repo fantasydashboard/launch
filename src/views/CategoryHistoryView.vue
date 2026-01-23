@@ -295,11 +295,9 @@
             <thead>
               <tr class="border-b border-dark-border">
                 <th class="text-left py-3 px-4 font-semibold text-dark-textSecondary uppercase tracking-wider">Season</th>
-                <th class="text-center py-3 px-4 font-semibold text-dark-textSecondary uppercase tracking-wider">Teams</th>
-                <th class="text-center py-3 px-4 font-semibold text-dark-textSecondary uppercase tracking-wider">Most Dominant</th>
-                <th class="text-center py-3 px-4 font-semibold text-dark-textSecondary uppercase tracking-wider">Most Categories Won</th>
-                <th class="text-center py-3 px-4 font-semibold text-dark-textSecondary uppercase tracking-wider">Fewest Categories Won</th>
-                <th class="text-center py-3 px-4 font-semibold text-dark-textSecondary uppercase tracking-wider">Closest Matchup</th>
+                <th class="text-center py-3 px-4 font-semibold text-dark-textSecondary uppercase tracking-wider">Most Categories</th>
+                <th class="text-center py-3 px-4 font-semibold text-dark-textSecondary uppercase tracking-wider">Fewest Categories</th>
+                <th class="text-center py-3 px-4 font-semibold text-dark-textSecondary uppercase tracking-wider">Trades</th>
                 <th class="text-center py-3 px-4 font-semibold text-dark-textSecondary uppercase tracking-wider">Champion</th>
               </tr>
             </thead>
@@ -307,16 +305,6 @@
               <tr v-for="season in seasonRecords" :key="season.year" 
                   class="border-b border-dark-border hover:bg-dark-border/30 transition-colors">
                 <td class="py-3 px-4 font-bold text-dark-text text-lg">{{ season.year }}</td>
-                <td class="text-center py-3 px-4 text-dark-text">{{ season.teamCount }}</td>
-                <td class="text-center py-3 px-4">
-                  <div class="flex items-center justify-center gap-2">
-                    <div class="w-6 h-6 rounded-full overflow-hidden bg-dark-border flex-shrink-0">
-                      <img :src="getSeasonRecordLogo(season.mostDominant)" class="w-full h-full object-cover" @error="handleImageError" />
-                    </div>
-                    <span class="font-semibold text-green-400">{{ season.mostDominant?.name || 'N/A' }}</span>
-                  </div>
-                  <div class="text-xs text-dark-textMuted">{{ season.mostDominant?.record || '' }}</div>
-                </td>
                 <td class="text-center py-3 px-4">
                   <div class="flex items-center justify-center gap-2">
                     <div class="w-6 h-6 rounded-full overflow-hidden bg-dark-border flex-shrink-0">
@@ -336,8 +324,8 @@
                   <div class="text-xs text-dark-textMuted">{{ season.fewestCatWins?.value || '' }} cat wins</div>
                 </td>
                 <td class="text-center py-3 px-4">
-                  <div class="text-yellow-400 font-semibold">{{ season.closestMatchup?.score || 'N/A' }}</div>
-                  <div class="text-xs text-dark-textMuted">{{ season.closestMatchup?.teams || '' }}</div>
+                  <div class="text-blue-400 font-semibold text-lg">{{ season.tradeCount ?? 'N/A' }}</div>
+                  <div class="text-xs text-dark-textMuted">trades</div>
                 </td>
                 <td class="text-center py-3 px-4">
                   <div class="flex items-center justify-center gap-2">
@@ -350,7 +338,7 @@
                 </td>
               </tr>
               <tr v-if="seasonRecords.length === 0">
-                <td colspan="7" class="py-8 text-center text-dark-textMuted">
+                <td colspan="5" class="py-8 text-center text-dark-textMuted">
                   No season data available
                 </td>
               </tr>
@@ -2554,20 +2542,27 @@ const seasonRecords = computed(() => {
     const mostCatWinsTeam = catWinEntries[0]
     const fewestCatWinsTeam = catWinEntries[catWinEntries.length - 1]
     
+    // Count trades for this season
+    const transactions = data.transactions || []
+    const tradeCount = transactions.filter((t: any) => {
+      // ESPN transaction types: 'TRADE' or type === 4
+      // Yahoo transaction types: 'trade'
+      const typeStr = String(t.type || '').toLowerCase()
+      return typeStr === 'trade' || t.type === 4 || t.type === 'TRADE' || (t.items && t.items.some((i: any) => {
+        const itemType = String(i.type || '').toLowerCase()
+        return itemType === 'trade' || i.type === 4 || i.type === 'TRADE'
+      }))
+    }).length
+    
     records.push({
       year,
       teamCount: standings.length,
       avgCatWins,
+      tradeCount,
       champion: champion ? {
         name: champion.name,
         team_key: champion.team_key,
         logo_url: champion.logo_url || allTeams.value[champion.team_key]?.logo_url || ''
-      } : null,
-      mostDominant: mostDominant ? {
-        name: mostDominant.name,
-        team_key: mostDominant.team_key,
-        logo_url: mostDominant.logo_url || allTeams.value[mostDominant.team_key]?.logo_url || '',
-        record: `${mostDominant.wins || 0}-${mostDominant.losses || 0}-${mostDominant.ties || 0}`
       } : null,
       mostCatWins: mostCatWinsTeam ? {
         name: allTeams.value[mostCatWinsTeam[0]]?.name || standings.find((t: any) => t.team_key === mostCatWinsTeam[0])?.name || 'Unknown',
@@ -2580,8 +2575,7 @@ const seasonRecords = computed(() => {
         team_key: fewestCatWinsTeam[0],
         logo_url: allTeams.value[fewestCatWinsTeam[0]]?.logo_url || '',
         value: fewestCatWinsTeam[1]
-      } : null,
-      closestMatchup: closestMatchup || { score: 'N/A', teams: '' }
+      } : null
     })
   }
   
@@ -5671,6 +5665,18 @@ async function loadEspnHistoricalData(leagueKey: string) {
         console.log(`[History ESPN] Could not load matchups for ${year}:`, e)
       }
       
+      // Load transactions for trade counts
+      try {
+        loadingMessage.value = `Loading ${year} transactions...`
+        const transactions = await espnService.getTransactions('baseball', leagueId, year)
+        console.log(`[History ESPN] Loaded ${transactions?.length || 0} transactions for ${year}`)
+        if (transactions && transactions.length > 0) {
+          data[year.toString()].transactions = transactions
+        }
+      } catch (e) {
+        console.log(`[History ESPN] Could not load transactions for ${year}:`, e)
+      }
+      
       // Small delay between seasons
       await new Promise(resolve => setTimeout(resolve, 100))
       
@@ -5805,6 +5811,18 @@ async function loadYahooHistoricalData(leagueKey: string) {
             }
           } catch (e) {
             console.log(`Could not load matchups for ${year}:`, e)
+          }
+          
+          // Load transactions for trade counts
+          try {
+            loadingMessage.value = `Loading ${year} transactions...`
+            const transactions = await yahooService.getTransactions(yearLeagueKey)
+            console.log(`Loaded ${transactions?.length || 0} transactions for ${year}`)
+            if (transactions && transactions.length > 0) {
+              data[year].transactions = transactions
+            }
+          } catch (e) {
+            console.log(`Could not load transactions for ${year}:`, e)
           }
           
           // Small delay between seasons to avoid rate limiting
