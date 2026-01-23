@@ -4198,9 +4198,49 @@ const allTimeHallOfShame = computed((): Award[] => {
 
 // League display name
 const leagueDisplayName = computed(() => {
-  const league = leagueStore.yahooLeague
-  if (Array.isArray(league)) return league[0]?.name || 'Fantasy League'
-  return league?.name || 'Fantasy League'
+  const activeId = leagueStore.activeLeagueId
+  
+  // For ESPN leagues (priority order: savedLeagues -> currentLeague)
+  if (activeId?.startsWith('espn_')) {
+    // Try savedLeagues first
+    const savedLeague = leagueStore.savedLeagues?.find((l: any) => l.league_id === activeId)
+    if (savedLeague?.league_name) {
+      return savedLeague.league_name
+    }
+    // Fall back to currentLeague name
+    if (leagueStore.currentLeague?.name && leagueStore.currentLeague.name !== 'ESPN League') {
+      return leagueStore.currentLeague.name
+    }
+  }
+  
+  // For Yahoo leagues
+  if (activeId?.includes('.l.')) {
+    const savedLeague = leagueStore.savedLeagues?.find((l: any) => 
+      l.league_id === activeId || l.league_id === activeId.split('.l.')[1]
+    )
+    if (savedLeague?.league_name) {
+      return savedLeague.league_name
+    }
+  }
+  
+  // For Sleeper or other
+  const savedLeague = leagueStore.savedLeagues?.find((l: any) => l.league_id === activeId)
+  if (savedLeague?.league_name) {
+    return savedLeague.league_name
+  }
+  
+  // Fall back to currentLeague
+  if (leagueStore.currentLeague?.name) {
+    return leagueStore.currentLeague.name
+  }
+  
+  // Then try yahooLeague (handle both array and object)
+  const yahooLeague = Array.isArray(leagueStore.yahooLeague) ? leagueStore.yahooLeague[0] : leagueStore.yahooLeague
+  if (yahooLeague?.name) {
+    return yahooLeague.name
+  }
+  
+  return 'Fantasy League'
 })
 
 // Record Modal Rankings
@@ -4897,7 +4937,7 @@ async function downloadRecordRankings(recordType: string) {
     // Get league name
     const activeId = leagueStore.activeLeagueId
     const savedLeague = leagueStore.savedLeagues?.find((l: any) => l.league_id === activeId?.split('.l.')[1])
-    const leagueName = savedLeague?.league_name || leagueStore.yahooLeague?.name || 'Fantasy League'
+    const leagueName = leagueDisplayName.value
     
     const rankings = recordModalRankings.value.slice(0, 10)
     if (rankings.length === 0) {
@@ -5104,7 +5144,7 @@ async function downloadAwardRankings(awardTitle: string, type: 'best' | 'worst')
     // Get league name
     const activeId = leagueStore.activeLeagueId
     const savedLeague = leagueStore.savedLeagues?.find((l: any) => l.league_id === activeId?.split('.l.')[1])
-    const leagueName = savedLeague?.league_name || leagueStore.yahooLeague?.name || 'Fantasy League'
+    const leagueName = leagueDisplayName.value
     
     const rankings = awardModalRankings.value.slice(0, 10)
     if (rankings.length === 0) {
@@ -5320,7 +5360,7 @@ async function downloadSeasonAwardRankings(awardTitle: string, type: 'best' | 'w
   try {
     const activeId = leagueStore.activeLeagueId
     const savedLeague = leagueStore.savedLeagues?.find((l: any) => l.league_id === activeId?.split('.l.')[1])
-    const leagueName = savedLeague?.league_name || leagueStore.yahooLeague?.name || 'Fantasy League'
+    const leagueName = leagueDisplayName.value
     
     const rankings = seasonAwardModalRankings.value.slice(0, 10)
     if (rankings.length === 0) {
@@ -5514,7 +5554,7 @@ async function downloadWeeklyAwardRankings(awardTitle: string, type: 'best' | 'w
   try {
     const activeId = leagueStore.activeLeagueId
     const savedLeague = leagueStore.savedLeagues?.find((l: any) => l.league_id === activeId?.split('.l.')[1])
-    const leagueName = savedLeague?.league_name || leagueStore.yahooLeague?.name || 'Fantasy League'
+    const leagueName = leagueDisplayName.value
     
     const rankings = weeklyAwardModalRankings.value.slice(0, 10)
     if (rankings.length === 0) {
@@ -5702,7 +5742,7 @@ async function downloadCareerStats() {
     // Get league name from saved leagues or yahooLeague
     const activeId = leagueStore.activeLeagueId
     const savedLeague = leagueStore.savedLeagues?.find((l: any) => l.league_id === activeId?.split('.l.')[1])
-    const leagueName = savedLeague?.league_name || leagueStore.yahooLeague?.name || 'Fantasy League'
+    const leagueName = leagueDisplayName.value
     
     // Load UFD logo
     const loadLogo = async (): Promise<string> => {
@@ -5893,7 +5933,7 @@ async function downloadSeasonHistory() {
   if (!seasonTableRef.value) return
   isDownloadingSeasonHistory.value = true
   try {
-    const leagueName = leagueStore.yahooLeague?.name || 'Fantasy League'
+    const leagueName = leagueDisplayName.value
     
     // Load logo
     const loadLogo = async (): Promise<string> => {
@@ -5980,7 +6020,7 @@ async function downloadSeasonHistory() {
 async function downloadHeadToHead() {
   isDownloadingH2H.value = true
   try {
-    const leagueName = leagueStore.yahooLeague?.name || 'Fantasy League'
+    const leagueName = leagueDisplayName.value
     
     // Load logo
     const loadLogo = async (): Promise<string> => {
