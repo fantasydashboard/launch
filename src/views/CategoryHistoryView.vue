@@ -1944,8 +1944,48 @@ const activeHistoryTab = ref('career')
 // League display name
 const leagueDisplayName = computed(() => {
   const activeId = leagueStore.activeLeagueId
-  const savedLeague = leagueStore.savedLeagues?.find((l: any) => l.league_id === activeId?.split('.l.')[1])
-  return savedLeague?.league_name || leagueStore.yahooLeague?.name || 'Fantasy League'
+  
+  // For ESPN leagues (priority order: savedLeagues -> currentLeague)
+  if (activeId?.startsWith('espn_')) {
+    // Try savedLeagues first
+    const savedLeague = leagueStore.savedLeagues?.find((l: any) => l.league_id === activeId)
+    if (savedLeague?.league_name) {
+      return savedLeague.league_name
+    }
+    // Fall back to currentLeague name
+    if (leagueStore.currentLeague?.name && leagueStore.currentLeague.name !== 'ESPN League') {
+      return leagueStore.currentLeague.name
+    }
+  }
+  
+  // For Yahoo leagues
+  if (activeId?.includes('.l.')) {
+    const savedLeague = leagueStore.savedLeagues?.find((l: any) => 
+      l.league_id === activeId || l.league_id === activeId.split('.l.')[1]
+    )
+    if (savedLeague?.league_name) {
+      return savedLeague.league_name
+    }
+  }
+  
+  // For Sleeper or other
+  const savedLeague = leagueStore.savedLeagues?.find((l: any) => l.league_id === activeId)
+  if (savedLeague?.league_name) {
+    return savedLeague.league_name
+  }
+  
+  // Fall back to currentLeague
+  if (leagueStore.currentLeague?.name) {
+    return leagueStore.currentLeague.name
+  }
+  
+  // Then try yahooLeague (handle both array and object)
+  const yahooLeague = Array.isArray(leagueStore.yahooLeague) ? leagueStore.yahooLeague[0] : leagueStore.yahooLeague
+  if (yahooLeague?.name) {
+    return yahooLeague.name
+  }
+  
+  return 'Fantasy League'
 })
 
 // Modal state for career records
@@ -2989,8 +3029,8 @@ const LEGACY_POINTS = {
   THIRD_PLACE: 25,
   PLAYOFF_APPEARANCE: 20,
   REGULAR_SEASON_TITLE: 30,
-  // Season Performance
-  WIN: 3,
+  // Season Performance (WIN is 1 for category leagues since there are many more category wins)
+  WIN: 1,
   WINNING_SEASON: 10,
   TOP_3_FINISH: 15,
   CATEGORY_LEADER: 20,
@@ -3371,13 +3411,17 @@ function closeLegacyModal() {
 }
 
 async function downloadLegacyLeaderboard() {
-  if (filteredLegacyScores.value.length === 0) return
   isDownloadingLegacy.value = true
   
   try {
+    const html2canvas = (await import('html2canvas')).default
     const leagueName = leagueDisplayName.value
+    const teams = filteredLegacyScores.value.slice(0, 10) // Top 10
+    const maxScore = teams[0]?.total_score || 1
     
-    // Load logo
+    console.log('[Legacy Download] Teams:', teams.map(t => ({ name: t.team_name, logo: t.logo_url })))
+    
+    // Load main UFD logo
     const loadLogo = async (): Promise<string> => {
       try {
         const response = await fetch('/UFD_V5.png')
@@ -3389,82 +3433,208 @@ async function downloadLegacyLeaderboard() {
           reader.onerror = () => resolve('')
           reader.readAsDataURL(blob)
         })
-      } catch (e) { return '' }
+      } catch (e) {
+        return ''
+      }
+    }
+    
+    // Helper to create placeholder avatar
+    const createPlaceholder = (teamName: string): string => {
+      const canvas = document.createElement('canvas')
+      canvas.width = 64
+      canvas.height = 64
+      const ctx = canvas.getContext('2d')
+      if (ctx) {
+        const colors = ['#0D8ABC', '#3498DB', '#9B59B6', '#E91E63', '#F39C12', '#1ABC9C', '#2ECC71', '#E74C3C', '#00BCD4', '#8E44AD']
+        const colorIndex = teamName.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0) % colors.length
+        ctx.fillStyle = colors[colorIndex]
+        ctx.beginPath()
+        ctx.arc(32, 32, 32, 0, Math.PI * 2)
+        ctx.fill()
+        ctx.fillStyle = '#ffffff'
+        ctx.font = 'bold 28px sans-serif'
+        ctx.textAlign = 'center'
+        ctx.textBaseline = 'middle'
+        ctx.fillText(teamName.charAt(0).toUpperCase(), 32, 34)
+      }
+      const result = canvas.toDataURL('image/png')
+      console.log(`[Legacy Download] Created placeholder for ${teamName}`)
+      return result
     }
     
     const logoBase64 = await loadLogo()
-    const teams = filteredLegacyScores.value.slice(0, 12)
-    const maxScore = teams[0]?.total_score || 1
     
+    // Load team image - exactly like Power Rankings
+    const loadTeamImage = async (team: LegacyScore): Promise<string> => {
+      console.log(`[Legacy Download] Loading image for ${team.team_name}: ${team.logo_url}`)
+      try {
+        const img = new Image()
+        img.crossOrigin = 'anonymous'
+        return new Promise((resolve) => {
+          img.onload = () => {
+            console.log(`[Legacy Download] Image loaded successfully for ${team.team_name}`)
+            try {
+              const canvas = document.createElement('canvas')
+              canvas.width = 64
+              canvas.height = 64
+              const ctx = canvas.getContext('2d')
+              if (ctx) {
+                ctx.beginPath()
+                ctx.arc(32, 32, 32, 0, Math.PI * 2)
+                ctx.closePath()
+                ctx.clip()
+                ctx.drawImage(img, 0, 0, 64, 64)
+              }
+              resolve(canvas.toDataURL('image/png'))
+            } catch {
+              resolve(createPlaceholder(team.team_name))
+            }
+          }
+          img.onerror = () => {
+            console.log(`[Legacy Download] Image error for ${team.team_name}`)
+            resolve(createPlaceholder(team.team_name))
+          }
+          setTimeout(() => {
+            console.log(`[Legacy Download] Image timeout for ${team.team_name}`)
+            resolve(createPlaceholder(team.team_name))
+          }, 3000)
+          img.src = team.logo_url || ''
+        })
+      } catch {
+        return createPlaceholder(team.team_name)
+      }
+    }
+    
+    // Pre-load all team images
+    console.log('[Legacy Download] Loading team images...')
+    const imageMap = new Map<string, string>()
+    const imagePromises = teams.map(async (team) => {
+      const base64 = await loadTeamImage(team)
+      return { teamKey: team.team_key, base64 }
+    })
+    
+    const results = await Promise.all(imagePromises)
+    results.forEach(({ teamKey, base64 }) => {
+      imageMap.set(teamKey, base64)
+    })
+    console.log(`[Legacy Download] Loaded ${imageMap.size} team images`)
+    
+    // Create container
     const container = document.createElement('div')
-    container.style.cssText = 'position: absolute; left: -9999px; top: 0; width: 700px; font-family: system-ui, -apple-system, sans-serif;'
+    container.style.cssText = 'position: absolute; left: -9999px; top: 0; width: 800px; font-family: system-ui, -apple-system, sans-serif;'
     
-    const teamRows = teams.map((team, idx) => {
-      const barWidth = Math.max(5, (team.total_score / maxScore) * 100)
-      const rankBg = idx === 0 ? 'background: #facc15; color: #000;' : idx === 1 ? 'background: #d1d5db; color: #000;' : idx === 2 ? 'background: #d97706; color: #fff;' : 'background: #3b82f6; color: #fff;'
-      const barGradient = idx === 0 ? 'linear-gradient(90deg, #facc15, #fbbf24)' : idx === 1 ? 'linear-gradient(90deg, #9ca3af, #d1d5db)' : idx === 2 ? 'linear-gradient(90deg, #d97706, #f59e0b)' : 'linear-gradient(90deg, #3b82f6, #60a5fa)'
+    // Split teams for two columns
+    const midpoint = Math.ceil(teams.length / 2)
+    const firstHalf = teams.slice(0, midpoint)
+    const secondHalf = teams.slice(midpoint)
+    
+    // Ranking row generator - matching Power Rankings style
+    const generateRankingRow = (team: LegacyScore, rank: number) => {
+      const barPct = Math.min(100, Math.max(0, (team.total_score / maxScore) * 100))
+      const barColor = rank === 1 ? '#facc15' : rank === 2 ? '#9ca3af' : rank === 3 ? '#d97706' : '#3b82f6'
+      const imgSrc = imageMap.get(team.team_key) || ''
+      const rankColor = rank === 1 ? '#facc15' : rank === 2 ? '#9ca3af' : rank === 3 ? '#d97706' : '#3b82f6'
+      
+      // Achievement badges
+      const badges = []
+      if (team.championships > 0) badges.push(`<span style="color: #facc15;">🏆${team.championships}</span>`)
+      if (team.playoff_appearances > 0) badges.push(`<span style="color: #3b82f6;">📈${team.playoff_appearances}</span>`)
+      if (team.regular_season_titles > 0) badges.push(`<span style="color: #a855f7;">👑${team.regular_season_titles}</span>`)
       
       return `
-        <div style="display: flex; align-items: center; gap: 12px; padding: 12px 0; border-bottom: 1px solid rgba(255,255,255,0.1);">
-          <div style="width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 14px; ${rankBg}">${idx + 1}</div>
-          <div style="width: 40px; height: 40px; border-radius: 50%; background: #1f2937; overflow: hidden;">
-            <img src="${team.logo_url || defaultAvatar}" style="width: 100%; height: 100%; object-fit: cover;" />
-          </div>
-          <div style="flex: 1; min-width: 0;">
-            <div style="font-weight: bold; color: #fff; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${team.team_name}</div>
-            <div style="height: 6px; background: #1f2937; border-radius: 999px; margin-top: 4px; overflow: hidden;">
-              <div style="height: 100%; width: ${barWidth}%; background: ${barGradient}; border-radius: 999px;"></div>
-            </div>
-          </div>
-          <div style="text-align: right; flex-shrink: 0;">
-            <div style="font-size: 18px; font-weight: 900; color: ${idx < 3 ? '#facc15' : '#60a5fa'};">${team.total_score.toLocaleString()}</div>
-            <div style="font-size: 10px; color: #6b7280;">Legacy Score</div>
+      <div style="display: flex; height: 80px; padding: 0 12px; background: rgba(38, 42, 58, 0.4); border-radius: 10px; margin-bottom: 6px; border: 1px solid rgba(58, 61, 82, 0.4); box-sizing: border-box;">
+        <div style="width: 44px; flex-shrink: 0; padding-top: 18px;">
+          <span style="font-size: 32px; font-weight: 900; color: ${rankColor}; font-family: 'Impact', 'Arial Black', sans-serif; letter-spacing: -2px; line-height: 1;">${rank}</span>
+        </div>
+        <div style="width: 60px; flex-shrink: 0; padding-top: 14px;">
+          <img src="${imgSrc}" style="width: 48px; height: 48px; border-radius: 50%; border: 2px solid #3a3d52; background: #262a3a; object-fit: cover;" />
+        </div>
+        <div style="flex: 1; min-width: 0; padding-top: 14px;">
+          <div style="font-size: 14px; font-weight: 700; color: #f7f7ff; white-space: nowrap; overflow: visible; line-height: 1.2;">${team.team_name}</div>
+          <div style="font-size: 11px; color: #9ca3af; line-height: 1.2; margin-top: 3px;">${team.seasons} season${team.seasons !== 1 ? 's' : ''} ${badges.length > 0 ? '• ' + badges.join(' ') : ''}</div>
+          <div style="width: 100%; height: 5px; background: rgba(58, 61, 82, 0.8); border-radius: 3px; overflow: hidden; margin-top: 8px;">
+            <div style="width: ${barPct}%; height: 100%; background: ${barColor}; border-radius: 3px;"></div>
           </div>
         </div>
-      `
-    }).join('')
+        <div style="width: 60px; flex-shrink: 0; text-align: right; padding-top: 20px; padding-left: 8px;">
+          <div style="font-size: 18px; font-weight: bold; color: ${rank === 1 ? '#facc15' : '#ffffff'}; line-height: 1;">${team.total_score.toLocaleString()}</div>
+          <div style="font-size: 9px; color: #6b7280; margin-top: 3px;">pts</div>
+        </div>
+      </div>
+    `}
     
     container.innerHTML = `
       <div style="background: linear-gradient(160deg, #0f1219 0%, #0a0c14 50%, #0d1117 100%); border-radius: 16px; box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5); position: relative; overflow: hidden;">
-        <div style="background: #facc15; padding: 10px 24px; text-align: center;">
-          <span style="font-size: 16px; font-weight: 700; color: #0a0c14; text-transform: uppercase; letter-spacing: 3px;">Ultimate Fantasy Dashboard</span>
+        
+        <!-- Top Yellow Bar -->
+        <div style="background: #facc15; padding: 10px 24px 10px 24px; text-align: center; overflow: visible;">
+          <span style="font-size: 16px; font-weight: 700; color: #0a0c14; text-transform: uppercase; letter-spacing: 3px; display: block; margin-top: -17px;">Ultimate Fantasy Dashboard</span>
         </div>
-        <div style="display: flex; padding: 16px 24px; border-bottom: 1px solid rgba(250, 204, 21, 0.2);">
-          ${logoBase64 ? `<img src="${logoBase64}" style="height: 70px; width: auto; flex-shrink: 0; margin-right: 24px;" />` : ''}
-          <div style="flex: 1;">
-            <div style="font-size: 36px; font-weight: 900; color: #ffffff; text-transform: uppercase; letter-spacing: 2px; text-shadow: 0 2px 8px rgba(250, 204, 21, 0.4);">Legacy Leaderboard</div>
-            <div style="font-size: 18px; margin-top: 6px; font-weight: 600;">
+        
+        <!-- Header -->
+        <div style="display: flex; padding: 16px 24px; border-bottom: 1px solid rgba(250, 204, 21, 0.2); position: relative; z-index: 10;">
+          ${logoBase64 ? `<img src="${logoBase64}" style="height: 70px; width: auto; flex-shrink: 0; margin-right: 24px; display: block;" />` : ''}
+          <div style="flex: 1; margin-top: -14px;">
+            <div style="font-size: 42px; font-weight: 900; color: #ffffff; text-transform: uppercase; letter-spacing: 2px; text-shadow: 0 2px 8px rgba(250, 204, 21, 0.4); line-height: 1;">Legacy Leaderboard</div>
+            <div style="font-size: 20px; margin-top: 6px; font-weight: 600; line-height: 1;">
               <span style="color: #e5e7eb;">${leagueName}</span>
               <span style="color: #6b7280; margin: 0 8px;">•</span>
-              <span style="color: #facc15; font-weight: 700;">All-Time Rankings</span>
+              <span style="color: #facc15; font-weight: 700;">All-Time</span>
             </div>
           </div>
         </div>
-        <div style="padding: 8px 24px;">
-          ${teamRows}
+        
+        <!-- Main content -->
+        <div style="padding: 16px 24px 12px 24px; position: relative;">
+          
+          <!-- Rankings (Two Columns) -->
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px; position: relative; z-index: 1;">
+            <div>${firstHalf.map((team, idx) => generateRankingRow(team, idx + 1)).join('')}</div>
+            <div>${secondHalf.map((team, idx) => generateRankingRow(team, idx + midpoint + 1)).join('')}</div>
+          </div>
+          
+          <!-- Legend -->
+          <div style="display: flex; justify-content: center; gap: 24px; font-size: 11px; color: #6b7280; margin-bottom: 8px;">
+            <span>🏆 Championships</span>
+            <span>📈 Playoff Appearances</span>
+            <span>👑 Reg Season Titles</span>
+          </div>
         </div>
-        <div style="padding: 16px 24px; text-align: center;">
-          <span style="font-size: 20px; font-weight: bold; color: #facc15;">ultimatefantasydashboard.com</span>
+        
+        <!-- Footer -->
+        <div style="padding: 20px 24px 20px 24px; text-align: center; position: relative; z-index: 1;">
+          <span style="font-size: 24px; font-weight: bold; color: #facc15; letter-spacing: -0.5px; display: block; margin-top: -35px;">ultimatefantasydashboard.com</span>
         </div>
       </div>
     `
     
     document.body.appendChild(container)
-    await new Promise(r => setTimeout(r, 300))
     
-    const finalCanvas = await html2canvas(container, {
+    // Wait for images to render properly
+    await new Promise(resolve => setTimeout(resolve, 500))
+    
+    // Capture image
+    const canvas = await html2canvas(container, {
       backgroundColor: '#0a0c14',
       scale: 2,
+      logging: false,
       useCORS: true,
-      allowTaint: true
+      allowTaint: true,
+      width: 800
     })
     
     document.body.removeChild(container)
     
+    // Download
     const link = document.createElement('a')
-    link.download = 'category-legacy-leaderboard.png'
-    link.href = finalCanvas.toDataURL('image/png')
+    const safeLeagueName = leagueName.replace(/[^a-zA-Z0-9\s]/g, '').replace(/\s+/g, '-')
+    link.download = `Legacy-Leaderboard-${safeLeagueName}.png`
+    link.href = canvas.toDataURL('image/png')
     link.click()
+    
+  } catch (e) {
+    console.error('Error generating legacy download:', e)
+    alert('Failed to generate image. Please try again.')
   } finally {
     isDownloadingLegacy.value = false
   }
@@ -3958,7 +4128,7 @@ async function downloadCareerStats() {
     // Get league name from saved leagues or yahooLeague
     const activeId = leagueStore.activeLeagueId
     const savedLeague = leagueStore.savedLeagues?.find((l: any) => l.league_id === activeId?.split('.l.')[1])
-    const leagueName = savedLeague?.league_name || leagueStore.yahooLeague?.name || 'Fantasy League'
+    const leagueName = leagueDisplayName.value
     
     // Load UFD logo
     const loadLogo = async (): Promise<string> => {
@@ -4153,7 +4323,7 @@ async function downloadSeasonHistory() {
   isDownloadingSeason.value = true
   try {
     const html2canvas = (await import('html2canvas')).default
-    const leagueName = leagueStore.yahooLeague?.name || 'Fantasy League'
+    const leagueName = leagueDisplayName.value
     
     // Load logo
     const loadLogo = async (): Promise<string> => {
@@ -4238,15 +4408,14 @@ async function downloadSeasonHistory() {
 }
 
 async function downloadH2HMatrix() {
-  if (filteredH2HTeams.value.length === 0) return
   isDownloadingH2H.value = true
   try {
     const html2canvas = (await import('html2canvas')).default
-    const activeId = leagueStore.activeLeagueId
-    const savedLeague = leagueStore.savedLeagues?.find((l: any) => l.league_id === activeId?.split('.l.')[1])
-    const leagueName = savedLeague?.league_name || leagueStore.yahooLeague?.name || leagueDisplayName.value
+    const leagueName = leagueDisplayName.value
     
-    // Load UFD logo
+    console.log('[H2H Download] Starting download, league:', leagueName)
+    
+    // Load logo
     const loadLogo = async (): Promise<string> => {
       try {
         const response = await fetch('/UFD_V5.png')
@@ -4261,209 +4430,196 @@ async function downloadH2HMatrix() {
       } catch (e) { return '' }
     }
     
-    // Create placeholder for team logos using ui-avatars (same as Power Rankings)
+    // Helper to create colored placeholder avatar (same as Legacy)
     const createPlaceholder = (name: string): string => {
-      return `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=3a3d52&color=fff&size=64`
-    }
-    
-    // Load ui-avatars fallback
-    const loadFromUiAvatars = async (name: string): Promise<string> => {
-      try {
-        const url = `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=3a3d52&color=fff&size=64`
-        const response = await fetch(url, { signal: AbortSignal.timeout(3000) })
-        if (!response.ok) return ''
-        const blob = await response.blob()
-        return new Promise<string>((resolve) => {
-          const reader = new FileReader()
-          reader.onloadend = () => resolve(reader.result as string)
-          reader.onerror = () => resolve('')
-          reader.readAsDataURL(blob)
-        })
-      } catch (e) { return '' }
-    }
-    
-    // Load team logo with CORS proxy (same pattern as Power Rankings)
-    const loadTeamLogo = async (url: string, name: string): Promise<string> => {
-      if (!url) {
-        // No URL, use ui-avatars
-        const avatarResult = await loadFromUiAvatars(name)
-        return avatarResult || createPlaceholder(name)
+      const canvas = document.createElement('canvas')
+      canvas.width = 64
+      canvas.height = 64
+      const ctx = canvas.getContext('2d')
+      if (ctx) {
+        const colors = ['#0D8ABC', '#3498DB', '#9B59B6', '#E91E63', '#F39C12', '#1ABC9C', '#2ECC71', '#E74C3C', '#00BCD4', '#8E44AD']
+        const colorIndex = name.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0) % colors.length
+        ctx.fillStyle = colors[colorIndex]
+        ctx.beginPath()
+        ctx.arc(32, 32, 32, 0, Math.PI * 2)
+        ctx.fill()
+        ctx.fillStyle = '#ffffff'
+        ctx.font = 'bold 28px sans-serif'
+        ctx.textAlign = 'center'
+        ctx.textBaseline = 'middle'
+        ctx.fillText(name.charAt(0).toUpperCase(), 32, 34)
       }
-      
-      const corsProxies = [
-        (u: string) => `https://corsproxy.io/?${encodeURIComponent(u)}`,
-        (u: string) => `https://api.allorigins.win/raw?url=${encodeURIComponent(u)}`,
-      ]
-      
-      for (const proxyFn of corsProxies) {
-        try {
-          const proxyUrl = proxyFn(url)
-          const response = await fetch(proxyUrl, { signal: AbortSignal.timeout(3000) })
-          if (!response.ok) continue
-          
-          const blob = await response.blob()
-          if (!blob.type.startsWith('image/') || blob.size < 100) continue
-          
-          return new Promise<string>((resolve) => {
-            const reader = new FileReader()
-            reader.onloadend = () => {
-              const result = reader.result as string
-              if (result && result.startsWith('data:image')) {
-                resolve(result)
-              } else {
-                resolve(createPlaceholder(name))
-              }
-            }
-            reader.onerror = () => resolve(createPlaceholder(name))
-            reader.readAsDataURL(blob)
-          })
-        } catch (e) {
-          continue
-        }
-      }
-      
-      // Fallback to ui-avatars
-      const avatarResult = await loadFromUiAvatars(name)
-      return avatarResult || createPlaceholder(name)
+      return canvas.toDataURL('image/png')
     }
     
     const logoBase64 = await loadLogo()
     
-    // Pre-load all team images using stable logo URLs
+    // Get current members only for the matrix
+    const teams = [...currentMembers.value].map(key => {
+      const team = allTeams.value[key]
+      return {
+        team_key: key,
+        team_name: team?.name || team?.team_name || 'Unknown',
+        logo_url: team?.logo_url || ''
+      }
+    }).filter(t => t.team_name !== 'Unknown')
+    
+    console.log('[H2H Download] Teams:', teams.map(t => ({ name: t.team_name, logo: t.logo_url })))
+    
+    if (teams.length === 0) {
+      console.log('[H2H Download] No teams found')
+      isDownloadingH2H.value = false
+      return
+    }
+    
+    // Pre-load all team images with logging
     const imageMap = new Map<string, string>()
-    const teams = filteredH2HTeams.value
+    for (const team of teams) {
+      try {
+        const img = new Image()
+        img.crossOrigin = 'anonymous'
+        const loadPromise = new Promise<string>((resolve) => {
+          img.onload = () => {
+            console.log(`[H2H Download] Image loaded for ${team.team_name}`)
+            try {
+              const canvas = document.createElement('canvas')
+              canvas.width = 64
+              canvas.height = 64
+              const ctx = canvas.getContext('2d')
+              if (ctx) {
+                ctx.beginPath()
+                ctx.arc(32, 32, 32, 0, Math.PI * 2)
+                ctx.closePath()
+                ctx.clip()
+                ctx.drawImage(img, 0, 0, 64, 64)
+              }
+              resolve(canvas.toDataURL('image/png'))
+            } catch {
+              resolve(createPlaceholder(team.team_name))
+            }
+          }
+          img.onerror = () => {
+            console.log(`[H2H Download] Image error for ${team.team_name}`)
+            resolve(createPlaceholder(team.team_name))
+          }
+          setTimeout(() => {
+            console.log(`[H2H Download] Image timeout for ${team.team_name}`)
+            resolve(createPlaceholder(team.team_name))
+          }, 3000)
+        })
+        img.src = team.logo_url || ''
+        imageMap.set(team.team_key, await loadPromise)
+      } catch {
+        imageMap.set(team.team_key, createPlaceholder(team.team_name))
+      }
+    }
     
-    const imagePromises = teams.map(async (team) => {
-      // Use getTeamLogoUrl for stable logo resolution (handles ESPN key format)
-      const logoUrl = getTeamLogoUrl(team.team_key, team.logo_url)
-      const base64 = await loadTeamLogo(logoUrl, team.team_name)
-      return { teamKey: team.team_key, base64 }
-    })
+    console.log(`[H2H Download] Loaded ${imageMap.size} team images`)
     
-    const results = await Promise.all(imagePromises)
-    results.forEach(({ teamKey, base64 }) => {
-      imageMap.set(teamKey, base64)
-    })
+    // Build matrix header (opponent logos)
+    const headerCells = teams.map(t => `
+      <th style="padding: 4px; text-align: center; width: 50px;">
+        <img src="${imageMap.get(t.team_key) || createPlaceholder(t.team_name)}" style="width: 24px; height: 24px; border-radius: 50%;" />
+      </th>
+    `).join('')
     
-    // Calculate cell width based on team count
-    const cellWidth = Math.max(50, Math.min(70, 600 / teams.length))
-    const rowHeaderWidth = 140 // Fixed width for row headers
-    const containerWidth = rowHeaderWidth + 24 + (teams.length * cellWidth) + 48 // Add extra padding
-    
-    // Build header row (logos only, no team names)
-    const headerCells = teams.map(team => {
-      const imgSrc = imageMap.get(team.team_key) || createPlaceholder(team.team_name)
-      return `<th style="width: ${cellWidth}px; padding: 8px 4px; text-align: center; border: 1px solid #374151; background: #1f2937; vertical-align: middle;">
-        <div style="display: flex; justify-content: center; align-items: center;">
-          <img src="${imgSrc}" style="width: 28px; height: 28px; border-radius: 50%; object-fit: cover; border: 1px solid #374151;" />
-        </div>
-      </th>`
-    }).join('')
-    
-    // Build data rows (logo + team name in row header, data in cells)
-    const dataRows = teams.map(rowTeam => {
-      const rowImgSrc = imageMap.get(rowTeam.team_key) || createPlaceholder(rowTeam.team_name)
+    // Build matrix rows
+    const matrixRows = teams.map(rowTeam => {
       const cells = teams.map(colTeam => {
         if (rowTeam.team_key === colTeam.team_key) {
-          return `<td style="width: ${cellWidth}px; padding: 6px 4px; text-align: center; border: 1px solid #374151; background: #0f172a; color: #6b7280;">—</td>`
+          return `<td style="padding: 4px; text-align: center; background: rgba(58, 61, 82, 0.3); color: #6b7280;">—</td>`
         }
-        
         const record = h2hRecords.value[rowTeam.team_key]?.[colTeam.team_key]
-        const w = record?.wins || 0
-        const l = record?.losses || 0
-        const t = record?.ties || 0
-        const catDiff = (record?.catWins || 0) - (record?.catLosses || 0)
+        if (!record) {
+          return `<td style="padding: 4px; text-align: center; color: #6b7280; font-size: 10px;">0-0-0</td>`
+        }
+        const w = record.wins || 0
+        const l = record.losses || 0
+        const t = record.ties || 0
+        const isWinning = w > l
+        const isLosing = l > w
+        const color = isWinning ? '#22c55e' : isLosing ? '#ef4444' : '#e5e7eb'
+        const catDiff = (record.catWins || 0) - (record.catLosses || 0)
         const catDiffStr = catDiff >= 0 ? `+${catDiff}` : `${catDiff}`
-        
-        let bgColor = '#1e293b' // neutral
-        if (w > l) bgColor = 'rgba(34, 197, 94, 0.15)' // green
-        else if (l > w) bgColor = 'rgba(239, 68, 68, 0.15)' // red
-        else if (w === l && (w + l) > 0) bgColor = 'rgba(250, 204, 21, 0.15)' // yellow tie
-        
-        return `<td style="width: ${cellWidth}px; padding: 6px 4px; text-align: center; border: 1px solid #374151; background: ${bgColor};">
-          <div style="font-weight: bold; color: #ffffff; font-size: 11px;">${w}-${l}-${t}</div>
-          <div style="font-size: 9px; color: #9ca3af;">${catDiffStr}</div>
+        return `<td style="padding: 4px; text-align: center;">
+          <div style="color: ${color}; font-weight: ${isWinning || isLosing ? '600' : '400'}; font-size: 11px;">${w}-${l}-${t}</div>
+          <div style="color: #6b7280; font-size: 9px;">${catDiffStr}</div>
         </td>`
       }).join('')
       
-      return `<tr>
-        <td style="width: ${rowHeaderWidth}px; min-width: ${rowHeaderWidth}px; padding: 8px; border: 1px solid #374151; background: #1f2937;">
-          <div style="display: flex; align-items: center; gap: 8px;">
-            <img src="${rowImgSrc}" style="width: 24px; height: 24px; border-radius: 50%; object-fit: cover; flex-shrink: 0; border: 1px solid #374151;" />
-            <span style="font-weight: 600; color: #ffffff; font-size: 11px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 95px;">${rowTeam.team_name}</span>
-          </div>
-        </td>
-        ${cells}
-      </tr>`
+      return `
+        <tr style="border-bottom: 1px solid rgba(58, 61, 82, 0.3);">
+          <td style="padding: 6px 8px; white-space: nowrap; min-width: 140px;">
+            <div style="display: flex; align-items: center; gap: 6px;">
+              <img src="${imageMap.get(rowTeam.team_key) || createPlaceholder(rowTeam.team_name)}" style="width: 24px; height: 24px; border-radius: 50%; flex-shrink: 0;" />
+              <span style="color: #ffffff; font-size: 11px; font-weight: 500; overflow: visible;">${rowTeam.team_name}</span>
+            </div>
+          </td>
+          ${cells}
+        </tr>
+      `
     }).join('')
     
-    // Create container
+    // Calculate container width based on team count (wider for team names)
+    const containerWidth = Math.max(700, 180 + (teams.length * 50))
+    
+    // Create wrapper with header/footer
     const container = document.createElement('div')
-    container.style.cssText = `position: absolute; left: -9999px; top: 0; width: ${containerWidth + 48}px; font-family: system-ui, -apple-system, sans-serif;`
+    container.style.cssText = `position: absolute; left: -9999px; top: 0; width: ${containerWidth}px; font-family: system-ui, -apple-system, sans-serif;`
     
     container.innerHTML = `
       <div style="background: linear-gradient(160deg, #0f1219 0%, #0a0c14 50%, #0d1117 100%); border-radius: 16px; box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5); position: relative; overflow: hidden;">
         
         <!-- Top Yellow Bar -->
-        <div style="background: #facc15; padding: 10px 24px 10px 24px; text-align: center; overflow: visible;">
-          <span style="font-size: 16px; font-weight: 700; color: #0a0c14; text-transform: uppercase; letter-spacing: 3px; display: block; margin-top: -17px;">Ultimate Fantasy Dashboard</span>
+        <div style="background: #facc15; padding: 10px 24px; text-align: center;">
+          <span style="font-size: 16px; font-weight: 700; color: #0a0c14; text-transform: uppercase; letter-spacing: 3px;">Ultimate Fantasy Dashboard</span>
         </div>
         
-        <!-- Header - Logo on left with text next to it -->
-        <div style="display: flex; padding: 16px 24px; border-bottom: 1px solid rgba(250, 204, 21, 0.2); position: relative; z-index: 10;">
-          ${logoBase64 ? `<img src="${logoBase64}" style="height: 70px; width: auto; flex-shrink: 0; margin-right: 24px; display: block;" />` : ''}
-          <!-- Title and League Info - use margin-top to move up -->
-          <div style="flex: 1; margin-top: -14px;">
-            <div style="font-size: 42px; font-weight: 900; color: #ffffff; text-transform: uppercase; letter-spacing: 2px; text-shadow: 0 2px 8px rgba(250, 204, 21, 0.4); line-height: 1;">Head-to-Head</div>
-            <div style="font-size: 20px; margin-top: 6px; font-weight: 600; line-height: 1;">
+        <!-- Header -->
+        <div style="display: flex; align-items: center; padding: 12px 24px; border-bottom: 1px solid rgba(250, 204, 21, 0.2);">
+          ${logoBase64 ? `<img src="${logoBase64}" style="height: 50px; width: auto; flex-shrink: 0; margin-right: 16px; margin-top: 6px;" />` : ''}
+          <div style="flex: 1;">
+            <div style="font-size: 24px; font-weight: 900; color: #ffffff; text-transform: uppercase; letter-spacing: 1px; line-height: 1.1;">Head-to-Head Matrix</div>
+            <div style="font-size: 14px; margin-top: 3px; font-weight: 600;">
               <span style="color: #e5e7eb;">${leagueName}</span>
-              <span style="color: #6b7280; margin: 0 8px;">•</span>
-              <span style="color: #facc15; font-weight: 700;">All-Time Records</span>
+              <span style="color: #6b7280; margin: 0 6px;">•</span>
+              <span style="color: #facc15; font-weight: 700;">Current Members • All-Time</span>
             </div>
           </div>
         </div>
         
         <!-- Table Content -->
         <div style="padding: 16px 24px; overflow-x: auto;">
-          <table style="border-collapse: collapse; width: 100%; font-size: 11px;">
+          <table style="width: 100%; border-collapse: collapse; font-size: 12px;">
             <thead>
-              <tr>
-                <th style="width: ${rowHeaderWidth}px; min-width: ${rowHeaderWidth}px; padding: 8px; text-align: left; border: 1px solid #374151; background: #1f2937; color: #9ca3af; font-weight: 600; text-transform: uppercase; font-size: 10px;">Team</th>
+              <tr style="border-bottom: 2px solid rgba(250, 204, 21, 0.3);">
+                <th style="padding: 8px; text-align: left; color: #9ca3af; font-size: 10px; text-transform: uppercase; min-width: 140px;">Team</th>
                 ${headerCells}
               </tr>
             </thead>
             <tbody>
-              ${dataRows}
+              ${matrixRows}
             </tbody>
           </table>
         </div>
         
         <!-- Legend -->
-        <div style="padding: 12px 24px; display: flex; justify-content: center; gap: 24px; border-top: 1px solid #374151;">
-          <div style="display: flex; align-items: center; gap: 6px;">
-            <div style="width: 14px; height: 14px; border-radius: 3px; background: rgba(34, 197, 94, 0.3); border: 1px solid rgba(34, 197, 94, 0.5);"></div>
-            <span style="font-size: 11px; color: #9ca3af;">Winning</span>
-          </div>
-          <div style="display: flex; align-items: center; gap: 6px;">
-            <div style="width: 14px; height: 14px; border-radius: 3px; background: rgba(239, 68, 68, 0.3); border: 1px solid rgba(239, 68, 68, 0.5);"></div>
-            <span style="font-size: 11px; color: #9ca3af;">Losing</span>
-          </div>
-          <div style="display: flex; align-items: center; gap: 6px;">
-            <div style="width: 14px; height: 14px; border-radius: 3px; background: rgba(250, 204, 21, 0.3); border: 1px solid rgba(250, 204, 21, 0.5);"></div>
-            <span style="font-size: 11px; color: #9ca3af;">Even</span>
-          </div>
+        <div style="padding: 8px 24px 16px 24px; display: flex; justify-content: center; gap: 16px;">
+          <span style="font-size: 11px; color: #22c55e;">● Winning record</span>
+          <span style="font-size: 11px; color: #ef4444;">● Losing record</span>
+          <span style="font-size: 11px; color: #e5e7eb;">● Even record</span>
           <span style="font-size: 11px; color: #6b7280;">Format: W-L-T (Cat +/-)</span>
         </div>
         
         <!-- Footer -->
-        <div style="padding: 16px 24px; text-align: center;">
-          <span style="font-size: 20px; font-weight: bold; color: #facc15;">ultimatefantasydashboard.com</span>
+        <div style="padding: 12px 24px; text-align: center; border-top: 1px solid rgba(250, 204, 21, 0.2);">
+          <span style="font-size: 18px; font-weight: bold; color: #facc15;">ultimatefantasydashboard.com</span>
         </div>
       </div>
     `
     
     document.body.appendChild(container)
-    await new Promise(r => setTimeout(r, 300))
+    await new Promise(r => setTimeout(r, 500))
     
     const finalCanvas = await html2canvas(container, {
       backgroundColor: '#0a0c14',
@@ -4492,7 +4648,7 @@ async function downloadComparison() {
     const html2canvas = (await import('html2canvas')).default
     const activeId = leagueStore.activeLeagueId
     const savedLeague = leagueStore.savedLeagues?.find((l: any) => l.league_id === activeId?.split('.l.')[1])
-    const leagueName = savedLeague?.league_name || leagueStore.yahooLeague?.name || 'Fantasy League'
+    const leagueName = leagueDisplayName.value
     
     // Load UFD logo
     const loadLogo = async (): Promise<string> => {
@@ -4676,7 +4832,7 @@ async function downloadRecordRankings(recordLabel: string) {
     // Get league name
     const activeId = leagueStore.activeLeagueId
     const savedLeague = leagueStore.savedLeagues?.find((l: any) => l.league_id === activeId?.split('.l.')[1])
-    const leagueName = savedLeague?.league_name || leagueStore.yahooLeague?.name || 'Fantasy League'
+    const leagueName = leagueDisplayName.value
     
     const rankings = getRecordRankings(recordLabel).slice(0, 10)
     
@@ -4888,7 +5044,7 @@ async function downloadSeasonCategoryRankings(category: string, type: 'best' | '
     // Get league name
     const activeId = leagueStore.activeLeagueId
     const savedLeague = leagueStore.savedLeagues?.find((l: any) => l.league_id === activeId?.split('.l.')[1])
-    const leagueName = savedLeague?.league_name || leagueStore.yahooLeague?.name || 'Fantasy League'
+    const leagueName = leagueDisplayName.value
     
     const rankings = getSeasonCategoryRankings(category, type).slice(0, 10)
     
@@ -5077,7 +5233,7 @@ async function downloadAwardRankings(category: string, type: 'best' | 'worst', c
     // Get league name properly
     const activeId = leagueStore.activeLeagueId
     const savedLeague = leagueStore.savedLeagues?.find((l: any) => l.league_id === activeId?.split('.l.')[1])
-    const leagueName = savedLeague?.league_name || leagueStore.yahooLeague?.name || 'Fantasy League'
+    const leagueName = leagueDisplayName.value
     
     const rankings = getCategoryRankings(category, type).slice(0, 10)
     
@@ -5382,184 +5538,152 @@ async function loadEspnHistoricalData(leagueKey: string) {
     console.log(`[History ESPN] Attempting to load ${year}`)
     
     try {
-      // Get league info to check if it exists for this season
-      const league = await espnService.getLeague('baseball', leagueId, year)
+      const isCurrentSeason = year === currentYear
       
-      if (!league) {
-        console.log(`[History ESPN] ✗ ${year} - League not found (null response)`)
-        // Don't count as failure - league just didn't exist that year
+      // Use getHistoricalTeams for past seasons (like PointsHistoryView does)
+      // This method tries both regular endpoint and leagueHistory endpoint
+      console.log(`[History ESPN] Fetching teams for ${year} using ${isCurrentSeason ? 'getTeams' : 'getHistoricalTeams'}...`)
+      const teams = isCurrentSeason
+        ? await espnService.getTeams('baseball', leagueId, year)
+        : await espnService.getHistoricalTeams('baseball', leagueId, year)
+      
+      console.log(`[History ESPN] ${year} returned ${teams?.length || 0} teams`)
+      
+      if (!teams || teams.length === 0) {
+        console.log(`[History ESPN] ✗ ${year} - No teams data returned`)
         continue
       }
       
-      console.log(`[History ESPN] ${year} league found:`, league.name, 'status:', league.status)
+      console.log(`[History ESPN] ✓ Loaded ${year} season: ${teams.length} teams`)
+      successCount++
+      consecutiveFailures = 0
+      loadingMessage.value = `Found ${year} season (${teams.length} teams)...`
       
-      // Get standings/teams
-      const standings = await espnService.getStandings('baseball', leagueId, year)
-      console.log(`[History ESPN] ${year} standings response:`, standings?.length || 0, 'teams')
+      // Determine if season is finished
+      const nowYear = new Date().getFullYear()
+      const isPastSeason = year < nowYear
+      const isFinished = isPastSeason
       
-      if (standings && standings.length > 0) {
-        console.log(`[History ESPN] ✓ Loaded ${year} season: ${standings.length} teams`)
-        successCount++
-        consecutiveFailures = 0 // Reset consecutive failure count
-        loadingMessage.value = `Found ${year} season (${standings.length} teams)...`
+      // Transform ESPN teams to standings format
+      const transformedStandings = teams.map((team: any, index: number) => {
+        const finalRank = team.rankCalculatedFinal || team.rank || team.playoffSeed || (index + 1)
+        const isChampion = isFinished && finalRank === 1
         
-        // Determine champion - look for rankCalculatedFinal === 1 or rank === 1 for finished seasons
-        // For past seasons (year < current year), assume finished
-        const nowYear = new Date().getFullYear()
-        const isPastSeason = year < nowYear
-        const isFinished = isPastSeason || league.status?.isFinished === true || !league.status?.isActive
-        console.log(`[History ESPN] ${year} isFinished:`, isFinished, `(isPastSeason: ${isPastSeason}, status.isFinished: ${league.status?.isFinished}, status.isActive: ${league.status?.isActive})`)
-        
-        // Log raw standings data for debugging
-        if (standings.length > 0) {
-          console.log(`[History ESPN] ${year} first team raw data:`, {
-            name: standings[0].name,
-            rank: standings[0].rank,
-            rankCalculatedFinal: standings[0].rankCalculatedFinal,
-            playoffSeed: standings[0].playoffSeed
-          })
+        return {
+          team_key: `espn_${team.id}`,
+          team_id: team.id,
+          name: team.name || team.teamName || `Team ${team.id}`,
+          team_name: team.name || team.teamName || `Team ${team.id}`,
+          logo_url: team.logo || '',
+          rank: finalRank,
+          wins: team.wins || team.record?.overall?.wins || 0,
+          losses: team.losses || team.record?.overall?.losses || 0,
+          ties: team.ties || team.record?.overall?.ties || 0,
+          points_for: team.pointsFor || team.record?.overall?.pointsFor || 0,
+          is_champion: isChampion
         }
-        
-        // Transform ESPN standings to match Yahoo format
-        const transformedStandings = standings.map((team: any, index: number) => {
-          // For champion detection:
-          // - rankCalculatedFinal is the final standings after playoffs (preferred)
-          // - rank is current/final rank
-          // - playoffSeed is seed going INTO playoffs (not the result)
-          // Priority: rankCalculatedFinal > rank > playoffSeed > index
-          const finalRank = team.rankCalculatedFinal || team.rank || team.playoffSeed || (index + 1)
-          const isChampion = isFinished && finalRank === 1
-          
-          if (finalRank === 1) {
-            console.log(`[History ESPN] ${year} Rank 1 team: ${team.name} (isFinished: ${isFinished}, isChampion: ${isChampion})`)
-          }
-          
-          return {
-            team_key: `espn_${team.id}`,
-            team_id: team.id,
-            name: team.name || team.teamName || `Team ${team.id}`,
-            team_name: team.name || team.teamName || `Team ${team.id}`,
-            logo_url: team.logo || '',
-            rank: finalRank,
-            wins: team.record?.overall?.wins || team.wins || 0,
-            losses: team.record?.overall?.losses || team.losses || 0,
-            ties: team.record?.overall?.ties || team.ties || 0,
-            points_for: team.record?.overall?.pointsFor || team.pointsFor || 0,
-            is_champion: isChampion
+      })
+      
+      data[year.toString()] = { standings: transformedStandings, matchups: [] }
+      
+      // Store current members from most recent season
+      if (Object.keys(data).length === 1) {
+        transformedStandings.forEach((t: any) => {
+          currentMembers.value.add(t.team_key)
+          allTeams.value[t.team_key] = t
+        })
+      } else {
+        transformedStandings.forEach((t: any) => {
+          if (!allTeams.value[t.team_key]) {
+            allTeams.value[t.team_key] = t
           }
         })
+      }
+      
+      // Load matchups for category data
+      try {
+        loadingMessage.value = `Loading ${year} matchups...`
+        const allMatchups: any[] = []
         
-        data[year.toString()] = { standings: transformedStandings, matchups: [] }
+        const totalWeeks = 25 // Standard ESPN season length
+        let weekFailures = 0
         
-        // Store current members from most recent season
-        if (Object.keys(data).length === 1) {
-          transformedStandings.forEach((t: any) => {
-            currentMembers.value.add(t.team_key)
-            allTeams.value[t.team_key] = t
-          })
-        } else {
-          transformedStandings.forEach((t: any) => {
-            if (!allTeams.value[t.team_key]) {
-              allTeams.value[t.team_key] = t
-            }
-          })
-        }
-        
-        // Load matchups for category data
-        try {
-          loadingMessage.value = `Loading ${year} matchups...`
-          const allMatchups: any[] = []
-          
-          // Get total weeks from league info
-          const totalWeeks = league.status?.finalMatchupPeriod || 25
-          let weekFailures = 0
-          
-          // For historical data, we don't need forceRefresh - cached data is fine
-          // Only force refresh for current season's current week
-          const needsForceRefresh = year === currentYear
-          
-          for (let week = 1; week <= totalWeeks; week++) {
-            try {
-              // Update progress every few weeks to not spam the UI
-              if (week === 1 || week % 5 === 0 || week === totalWeeks) {
-                loadingMessage.value = `${year}: Loading week ${week}/${totalWeeks}...`
-              }
-              
-              const weekMatchups = await espnService.getMatchups('baseball', leagueId, year, week, needsForceRefresh)
-              
-              if (weekMatchups && weekMatchups.length > 0) {
-                // Transform ESPN matchups to match expected format
-                const transformedMatchups = weekMatchups.map((m: any) => ({
-                  week: week,
-                  matchupPeriodId: week,
-                  teams: [
-                    { 
-                      team_key: `espn_${m.homeTeamId}`,
-                      name: allTeams.value[`espn_${m.homeTeamId}`]?.name || `Team ${m.homeTeamId}`,
-                      stats: {}
-                    },
-                    { 
-                      team_key: `espn_${m.awayTeamId}`,
-                      name: allTeams.value[`espn_${m.awayTeamId}`]?.name || `Team ${m.awayTeamId}`,
-                      stats: {}
-                    }
-                  ],
-                  // Store ESPN-specific data for processing
-                  espn_data: {
-                    homePerCategoryResults: m.homePerCategoryResults,
-                    awayPerCategoryResults: m.awayPerCategoryResults,
-                    homeTeamId: m.homeTeamId,
-                    awayTeamId: m.awayTeamId
-                  },
-                  // Create stat_winners from homePerCategoryResults for compatibility
-                  stat_winners: m.homePerCategoryResults ? Object.entries(m.homePerCategoryResults).map(([statId, result]) => ({
-                    stat_id: statId,
-                    winner_team_key: result === 'WIN' ? `espn_${m.homeTeamId}` : result === 'LOSS' ? `espn_${m.awayTeamId}` : null,
-                    is_tied: result === 'TIE'
-                  })) : []
-                }))
-                allMatchups.push(...transformedMatchups)
-                weekFailures = 0
-              } else {
-                weekFailures++
-              }
-            } catch (weekError) {
-              weekFailures++
+        for (let week = 1; week <= totalWeeks; week++) {
+          try {
+            if (week === 1 || week % 5 === 0 || week === totalWeeks) {
+              loadingMessage.value = `${year}: Loading week ${week}/${totalWeeks}...`
             }
             
-            if (weekFailures >= 3 && allMatchups.length > 0) {
-              console.log(`[History ESPN] Stopping at week ${week} for ${year} - season appears to have ended`)
-              break
+            // Use getHistoricalMatchups for past seasons
+            const weekMatchups = isCurrentSeason
+              ? await espnService.getMatchups('baseball', leagueId, year, week, false)
+              : await espnService.getHistoricalMatchups('baseball', leagueId, year, week)
+            
+            if (weekMatchups && weekMatchups.length > 0) {
+              // Transform ESPN matchups to match expected format
+              const transformedMatchups = weekMatchups.map((m: any) => ({
+                week: week,
+                matchupPeriodId: week,
+                teams: [
+                  { 
+                    team_key: `espn_${m.homeTeamId}`,
+                    name: allTeams.value[`espn_${m.homeTeamId}`]?.name || `Team ${m.homeTeamId}`,
+                    stats: {}
+                  },
+                  { 
+                    team_key: `espn_${m.awayTeamId}`,
+                    name: allTeams.value[`espn_${m.awayTeamId}`]?.name || `Team ${m.awayTeamId}`,
+                    stats: {}
+                  }
+                ],
+                espn_data: {
+                  homePerCategoryResults: m.homePerCategoryResults,
+                  awayPerCategoryResults: m.awayPerCategoryResults,
+                  homeTeamId: m.homeTeamId,
+                  awayTeamId: m.awayTeamId
+                },
+                stat_winners: m.homePerCategoryResults ? Object.entries(m.homePerCategoryResults).map(([statId, result]) => ({
+                  stat_id: statId,
+                  winner_team_key: result === 'WIN' ? `espn_${m.homeTeamId}` : result === 'LOSS' ? `espn_${m.awayTeamId}` : null,
+                  is_tied: result === 'TIE'
+                })) : []
+              }))
+              allMatchups.push(...transformedMatchups)
+              weekFailures = 0
+            } else {
+              weekFailures++
             }
+          } catch (weekError) {
+            weekFailures++
           }
           
-          console.log(`[History ESPN] Loaded ${allMatchups.length} total matchups for ${year}`)
-          if (allMatchups.length > 0) {
-            data[year.toString()].matchups = allMatchups
+          if (weekFailures >= 3 && allMatchups.length > 0) {
+            console.log(`[History ESPN] Stopping at week ${week} for ${year} - season appears to have ended`)
+            break
           }
-        } catch (e) {
-          console.log(`[History ESPN] Could not load matchups for ${year}:`, e)
         }
         
-        // Small delay between seasons
-        await new Promise(resolve => setTimeout(resolve, 100))
-      } else {
-        console.log(`[History ESPN] ✗ ${year} - No standings data returned`)
-        // Don't count as failure - might just be empty data
+        console.log(`[History ESPN] Loaded ${allMatchups.length} total matchups for ${year}`)
+        if (allMatchups.length > 0) {
+          data[year.toString()].matchups = allMatchups
+        }
+      } catch (e) {
+        console.log(`[History ESPN] Could not load matchups for ${year}:`, e)
       }
+      
+      // Small delay between seasons
+      await new Promise(resolve => setTimeout(resolve, 100))
+      
     } catch (e: any) {
       const errorMsg = e?.message || String(e)
       console.log(`[History ESPN] ✗ Could not load ${year} season:`, errorMsg)
       
-      // Don't count 404 "League not found" as a failure - league just didn't exist that year
       if (errorMsg.includes('not found') || errorMsg.includes('404')) {
         console.log(`[History ESPN] ${year} - League didn't exist this year, continuing to check older years`)
         continue
       }
       
-      // For other errors (network, auth, etc), count as failure
       consecutiveFailures++
-      // If we've had 5 consecutive real failures, stop
       if (consecutiveFailures >= 5) {
         console.log(`[History ESPN] Stopping after ${consecutiveFailures} consecutive failures`)
         break
