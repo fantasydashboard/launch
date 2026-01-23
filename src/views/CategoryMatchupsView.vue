@@ -874,8 +874,8 @@ async function loadTeamSeasonStats(leagueKey: string, currentWeekNum: number) {
         for (const matchup of weekMatchups) {
           if (!matchup.awayTeamId) continue // Skip bye weeks
           
-          const homeKey = `espn_${matchup.homeTeamId}`
-          const awayKey = `espn_${matchup.awayTeamId}`
+          const homeKey = `espn_${leagueId}_${season}_${matchup.homeTeamId}`
+          const awayKey = `espn_${leagueId}_${season}_${matchup.awayTeamId}`
           
           // Count category wins for each team from homePerCategoryResults
           let homeWins = 0, awayWins = 0
@@ -916,8 +916,8 @@ async function loadTeamSeasonStats(leagueKey: string, currentWeekNum: number) {
           for (const matchup of weekMatchups) {
             if (!matchup.awayTeamId) continue
             
-            const homeKey = `espn_${matchup.homeTeamId}`
-            const awayKey = `espn_${matchup.awayTeamId}`
+            const homeKey = `espn_${leagueId}_${season}_${matchup.homeTeamId}`
+            const awayKey = `espn_${leagueId}_${season}_${matchup.awayTeamId}`
             
             const isHome = team.team_key === homeKey
             const isAway = team.team_key === awayKey
@@ -975,8 +975,8 @@ async function loadTeamSeasonStats(leagueKey: string, currentWeekNum: number) {
           for (const matchup of weekResult.data) {
             if (!matchup.awayTeamId) continue
             
-            const homeKey = `espn_${matchup.homeTeamId}`
-            const awayKey = `espn_${matchup.awayTeamId}`
+            const homeKey = `espn_${leagueId}_${season}_${matchup.homeTeamId}`
+            const awayKey = `espn_${leagueId}_${season}_${matchup.awayTeamId}`
             const isHome = team.team_key === homeKey
             const isAway = team.team_key === awayKey
             if (!isHome && !isAway) continue
@@ -1330,15 +1330,16 @@ async function loadMatchups() {
       for (const m of raw) {
         if (!m.awayTeamId) continue // Skip bye weeks
         
-        const homeKey = `espn_${m.homeTeamId}`
-        const awayKey = `espn_${m.awayTeamId}`
+        // Team keys must match the format used in yahooTeams: espn_leagueId_season_teamId
+        const homeKey = `espn_${leagueId}_${season}_${m.homeTeamId}`
+        const awayKey = `espn_${leagueId}_${season}_${m.awayTeamId}`
         
         // Find team info from yahooTeams (which holds ESPN team data)
         const homeTeam = leagueStore.yahooTeams.find(t => t.team_key === homeKey)
         const awayTeam = leagueStore.yahooTeams.find(t => t.team_key === awayKey)
         
         if (!homeTeam || !awayTeam) {
-          console.log('[Matchups ESPN] Team not found:', homeKey, awayKey)
+          console.log('[Matchups ESPN] Team not found:', homeKey, awayKey, 'Available keys:', leagueStore.yahooTeams.slice(0, 3).map(t => t.team_key))
           continue
         }
         
