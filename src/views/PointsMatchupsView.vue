@@ -813,7 +813,7 @@ const isCompletedWeek = computed(() => {
   return false
 })
 
-// Win probability calculation
+// Win probability calculation - uses Monte Carlo for all platforms
 const winProbability = computed(() => {
   if (!selectedMatchup.value?.team1 || !selectedMatchup.value?.team2) return { team1: 50, team2: 50 }
   
@@ -827,29 +827,11 @@ const winProbability = computed(() => {
     return { team1: 50, team2: 50 }
   }
   
-  // For ESPN live games, use Monte Carlo simulation
-  if (isEspn.value) {
-    const jsDay = new Date().getDay()
-    const currentDayIndex = jsDay === 0 ? 6 : jsDay - 1
-    const mcResult = getMonteCarloWinProbability(selectedMatchup.value, currentDayIndex)
-    return { team1: mcResult.team1, team2: mcResult.team2 }
-  }
-  
-  // For Yahoo live weeks, calculate based on current + projected
-  const team1Total = team1.projected_points || team1.points || 0
-  const team2Total = team2.projected_points || team2.points || 0
-  
-  if (team1Total === 0 && team2Total === 0) return { team1: 50, team2: 50 }
-  
-  const total = team1Total + team2Total
-  const team1Prob = (team1Total / total) * 100
-  const team2Prob = (team2Total / total) * 100
-  
-  // Add some variance for uncertainty
-  const adjustedTeam1 = Math.min(95, Math.max(5, team1Prob))
-  const adjustedTeam2 = 100 - adjustedTeam1
-  
-  return { team1: adjustedTeam1, team2: adjustedTeam2 }
+  // For all platforms (ESPN, Yahoo, Sleeper), use Monte Carlo simulation
+  const jsDay = new Date().getDay()
+  const currentDayIndex = jsDay === 0 ? 6 : jsDay - 1
+  const mcResult = getMonteCarloWinProbability(selectedMatchup.value, currentDayIndex)
+  return { team1: mcResult.team1, team2: mcResult.team2 }
 })
 
 // Get snapshots for the currently selected matchup
