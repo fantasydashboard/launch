@@ -606,9 +606,10 @@ export class YahooFantasyService {
         }
       }
       
-      // Look for team_standings in ALL elements of teamArray (not just index 1)
+      // Look for team_standings, team_points, and team_stats in ALL elements of teamArray
       let teamStandings: any = null
       let teamPoints: any = null
+      let teamStats: any = null
       
       for (let i = 1; i < teamArray.length; i++) {
         const element = teamArray[i]
@@ -619,6 +620,10 @@ export class YahooFantasyService {
         if (element?.team_points) {
           teamPoints = element.team_points
           console.log(`Found team_points at index ${i} for ${name}:`, JSON.stringify(teamPoints))
+        }
+        if (element?.team_stats) {
+          teamStats = element.team_stats
+          console.log(`Found team_stats at index ${i} for ${name}:`, JSON.stringify(teamStats))
         }
       }
       
@@ -632,7 +637,27 @@ export class YahooFantasyService {
       const wins = parseInt(teamStandings?.outcome_totals?.wins || '0')
       const losses = parseInt(teamStandings?.outcome_totals?.losses || '0')
       const ties = parseInt(teamStandings?.outcome_totals?.ties || '0')
-      const points_for = parseFloat(teamStandings?.points_for || teamPoints?.total || '0')
+      
+      // For points_for, check multiple sources:
+      // 1. team_standings.points_for (H2H points leagues)
+      // 2. team_points.total (some configurations)
+      // 3. team_points.season (cumulative season points)
+      // 4. team_stats.coverage_value (sometimes contains points)
+      let points_for = 0
+      if (teamStandings?.points_for) {
+        points_for = parseFloat(teamStandings.points_for)
+        console.log(`${name}: Using team_standings.points_for = ${points_for}`)
+      } else if (teamPoints?.total) {
+        points_for = parseFloat(teamPoints.total)
+        console.log(`${name}: Using team_points.total = ${points_for}`)
+      } else if (teamPoints?.season) {
+        points_for = parseFloat(teamPoints.season)
+        console.log(`${name}: Using team_points.season = ${points_for}`)
+      } else if (teamStats?.coverage_value) {
+        points_for = parseFloat(teamStats.coverage_value)
+        console.log(`${name}: Using team_stats.coverage_value = ${points_for}`)
+      }
+      
       const points_against = parseFloat(teamStandings?.points_against || '0')
       
       console.log(`Final parsed ${name}: rank=${rank}, wins=${wins}, losses=${losses}, pf=${points_for}`)

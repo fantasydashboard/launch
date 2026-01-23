@@ -1068,7 +1068,7 @@
                   <!-- Rank Badge -->
                   <div 
                     class="w-10 h-10 rounded-full flex items-center justify-center font-bold text-lg flex-shrink-0"
-                    :class="idx === 0 ? 'bg-yellow-500 text-black' : idx === 1 ? 'bg-gray-300 text-black' : idx === 2 ? 'bg-amber-600 text-white' : 'bg-dark-border text-dark-textMuted'"
+                    :class="idx === 0 ? 'bg-yellow-500 text-black' : idx === 1 ? 'bg-gray-300 text-black' : idx === 2 ? 'bg-amber-600 text-white' : 'bg-blue-500 text-white'"
                   >
                     {{ idx + 1 }}
                   </div>
@@ -2291,7 +2291,7 @@ const careerStats = computed((): CareerStat[] => {
   
   console.log('Computing career stats from historicalData:', Object.keys(historicalData.value).length, 'seasons')
   
-  // Aggregate stats across all seasons
+  // First pass: aggregate from standings
   for (const [season, seasonData] of Object.entries(historicalData.value)) {
     const standings = seasonData.standings || []
     console.log(`Processing ${season} standings:`, standings.length, 'teams')
@@ -2328,6 +2328,37 @@ const careerStats = computed((): CareerStat[] => {
           avg_ppw: 0,
           total_pf: team.points_for || 0,
           total_weeks: (team.wins || 0) + (team.losses || 0)
+        }
+      }
+    }
+  }
+  
+  // Second pass: if total_pf is 0, try to calculate from matchups
+  for (const teamKey of Object.keys(statsMap)) {
+    if (statsMap[teamKey].total_pf === 0) {
+      console.log(`[Career Stats] No points_for in standings for ${statsMap[teamKey].team_name}, calculating from matchups...`)
+      let totalFromMatchups = 0
+      let weeksFromMatchups = 0
+      
+      for (const [season, seasonMatchups] of Object.entries(allMatchups.value)) {
+        for (const [week, weekMatchups] of Object.entries(seasonMatchups as Record<string, any[]>)) {
+          for (const matchup of weekMatchups) {
+            for (const team of matchup.teams || []) {
+              if (team.team_key === teamKey) {
+                totalFromMatchups += team.points || 0
+                weeksFromMatchups++
+              }
+            }
+          }
+        }
+      }
+      
+      if (totalFromMatchups > 0) {
+        console.log(`[Career Stats] Calculated ${totalFromMatchups} points from ${weeksFromMatchups} weeks for ${statsMap[teamKey].team_name}`)
+        statsMap[teamKey].total_pf = totalFromMatchups
+        // Also update total_weeks if we got more data from matchups
+        if (weeksFromMatchups > statsMap[teamKey].total_weeks) {
+          statsMap[teamKey].total_weeks = weeksFromMatchups
         }
       }
     }
