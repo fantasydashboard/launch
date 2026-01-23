@@ -50,8 +50,29 @@
     </div>
 
     <!-- Loading State -->
-    <div v-if="isLoading" class="flex items-center justify-center py-20">
+    <div v-if="isLoading" class="flex flex-col items-center justify-center py-20">
       <LoadingSpinner size="xl" :message="loadingMessage" />
+      
+      <!-- Detailed progress -->
+      <div class="mt-4 text-center space-y-2">
+        <div v-if="loadingProgress.currentStep" class="text-sm text-dark-textMuted">
+          {{ loadingProgress.currentStep }}
+        </div>
+        
+        <!-- Progress bar -->
+        <div v-if="loadingProgress.maxWeek > 0" class="w-64 mx-auto">
+          <div class="flex justify-between text-xs text-dark-textMuted/70 mb-1">
+            <span>Step {{ loadingProgress.week }}</span>
+            <span>{{ loadingProgress.week }}/{{ loadingProgress.maxWeek }}</span>
+          </div>
+          <div class="h-1.5 bg-dark-border rounded-full overflow-hidden">
+            <div 
+              class="h-full bg-yellow-400 transition-all duration-300"
+              :style="{ width: `${(loadingProgress.week / loadingProgress.maxWeek) * 100}%` }"
+            ></div>
+          </div>
+        </div>
+      </div>
     </div>
 
     <!-- No Draft Data -->
@@ -1209,6 +1230,11 @@ function parseEspnLeagueKey(leagueKey: string) {
 // State
 const isLoading = ref(true)
 const loadingMessage = ref('Loading draft data...')
+const loadingProgress = ref({
+  currentStep: '',
+  week: 0,
+  maxWeek: 0
+})
 const activeTab = ref('board')
 const selectedSeason = ref('2025')
 const availableSeasons = ref(['2025', '2024', '2023', '2022'])
@@ -1987,6 +2013,7 @@ async function loadDraftData() {
   
   isLoading.value = true
   loadingMessage.value = 'Loading draft data...'
+  loadingProgress.value = { currentStep: 'Initializing...', week: 1, maxWeek: 5 }
   
   try {
     if (isEspn.value) {
@@ -2007,6 +2034,7 @@ async function loadEspnDraftData(leagueKey: string) {
   console.log('[ESPN Draft] Loading draft for league:', leagueId, 'season:', season)
   
   loadingMessage.value = 'Fetching ESPN draft results...'
+  loadingProgress.value = { currentStep: 'Fetching draft results...', week: 2, maxWeek: 5 }
   
   // Get draft with player names
   const espnDraftPicks = await espnService.getDraftWithPlayers('baseball', leagueId, season)
@@ -2020,6 +2048,7 @@ async function loadEspnDraftData(leagueKey: string) {
   
   // Get league categories from scoring settings
   loadingMessage.value = 'Loading league categories...'
+  loadingProgress.value = { currentStep: 'Loading league categories...', week: 3, maxWeek: 5 }
   
   // ESPN baseball stat ID mapping (statId -> display name)
   const espnBaseballStatNames: Record<number, string> = {

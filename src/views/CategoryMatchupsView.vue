@@ -32,7 +32,27 @@
     <!-- Loading State -->
     <div v-if="isLoading" class="flex flex-col items-center justify-center py-20">
       <LoadingSpinner size="xl" :message="loadingMessage" />
-      <div class="mt-4 text-sm text-dark-textMuted">Loading matchup data...</div>
+      
+      <!-- Detailed progress -->
+      <div class="mt-4 text-center space-y-2">
+        <div v-if="loadingProgress.currentStep" class="text-sm text-dark-textMuted">
+          {{ loadingProgress.currentStep }}
+        </div>
+        
+        <!-- Week progress bar -->
+        <div v-if="loadingProgress.maxWeek > 0" class="w-64 mx-auto">
+          <div class="flex justify-between text-xs text-dark-textMuted/70 mb-1">
+            <span>Week {{ loadingProgress.week }}</span>
+            <span>{{ loadingProgress.week }}/{{ loadingProgress.maxWeek }}</span>
+          </div>
+          <div class="h-1.5 bg-dark-border rounded-full overflow-hidden">
+            <div 
+              class="h-full bg-yellow-400 transition-all duration-300"
+              :style="{ width: `${(loadingProgress.week / loadingProgress.maxWeek) * 100}%` }"
+            ></div>
+          </div>
+        </div>
+      </div>
     </div>
 
     <template v-else-if="matchups.length > 0">
@@ -440,6 +460,11 @@ const isDownloadingCategories = ref(false)
 const isDownloadingAll = ref(false)
 const downloadProgress = ref('')
 const loadingMessage = ref('Loading matchups...')
+const loadingProgress = ref({
+  currentStep: '',
+  week: 0,
+  maxWeek: 0
+})
 const selectedWeek = ref('')
 const matchups = ref<any[]>([])
 const selectedMatchup = ref<any>(null)
@@ -1384,15 +1409,23 @@ async function loadCategories() {
 async function loadMatchups() {
   if (!selectedWeek.value) return
   const k = leagueStore.activeLeagueId; if (!k) return
-  isLoading.value = true; loadingMessage.value = 'Loading matchups...'
+  isLoading.value = true
+  loadingMessage.value = 'Loading matchups...'
+  loadingProgress.value = { currentStep: 'Initializing...', week: 0, maxWeek: parseInt(selectedWeek.value) }
   try {
-    if (!categories.value.length) await loadCategories()
+    if (!categories.value.length) {
+      loadingProgress.value = { ...loadingProgress.value, currentStep: 'Loading scoring categories...' }
+      await loadCategories()
+    }
     const week = parseInt(selectedWeek.value)
     const isCurrent = week === currentWeek.value && !isSeasonComplete.value
     const days = isCurrent ? 3 : 0
     
     // Load historical data to calculate avg/high for each team
+    loadingProgress.value = { currentStep: 'Loading team season stats...', week, maxWeek: week }
     await loadTeamSeasonStats(k, week)
+    
+    loadingProgress.value = { currentStep: `Processing week ${week} matchups...`, week, maxWeek: week }
     
     const processed: any[] = []
     

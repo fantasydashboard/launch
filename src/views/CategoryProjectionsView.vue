@@ -61,8 +61,29 @@
     </div>
 
     <!-- Loading State -->
-    <div v-if="isLoading" class="flex items-center justify-center py-20">
-      <LoadingSpinner size="lg" :message="loadingMessage" />
+    <div v-if="isLoading" class="flex flex-col items-center justify-center py-20">
+      <LoadingSpinner size="xl" :message="loadingMessage" />
+      
+      <!-- Detailed progress -->
+      <div class="mt-4 text-center space-y-2">
+        <div v-if="loadingProgress.currentStep" class="text-sm text-dark-textMuted">
+          {{ loadingProgress.currentStep }}
+        </div>
+        
+        <!-- Progress bar -->
+        <div v-if="loadingProgress.maxWeek > 0" class="w-64 mx-auto">
+          <div class="flex justify-between text-xs text-dark-textMuted/70 mb-1">
+            <span>Step {{ loadingProgress.week }}</span>
+            <span>{{ loadingProgress.week }}/{{ loadingProgress.maxWeek }}</span>
+          </div>
+          <div class="h-1.5 bg-dark-border rounded-full overflow-hidden">
+            <div 
+              class="h-full bg-yellow-400 transition-all duration-300"
+              :style="{ width: `${(loadingProgress.week / loadingProgress.maxWeek) * 100}%` }"
+            ></div>
+          </div>
+        </div>
+      </div>
     </div>
 
     <template v-else>
@@ -2148,6 +2169,11 @@ function detectSportFromGameKey(gameKey: string): string | null {
 
 const isLoading = ref(true)
 const loadingMessage = ref('Loading...')
+const loadingProgress = ref({
+  currentStep: '',
+  week: 0,
+  maxWeek: 0
+})
 const statCategories = ref<any[]>([])
 const selectedCategory = ref<string>('')
 const allPlayers = ref<any[]>([])
@@ -3193,6 +3219,7 @@ const getCategoryBadgeClass = computed(() => isPitchingCategory.value ? 'bg-purp
 async function loadProjections() {
   isLoading.value = true
   loadingMessage.value = 'Loading league settings...'
+  loadingProgress.value = { currentStep: 'Loading league settings...', week: 1, maxWeek: 4 }
   try {
     const leagueKey = leagueStore.activeLeagueId
     if (!leagueKey) { loadingMessage.value = 'No league selected'; return }
@@ -3212,6 +3239,7 @@ async function loadProjections() {
       }
     }
     
+    loadingProgress.value = { currentStep: 'Loading scoring categories...', week: 2, maxWeek: 4 }
     const settings = await yahooService.getLeagueScoringSettings(leagueKey)
     if (settings) {
       const cats = settings.stat_categories || []
@@ -3232,6 +3260,7 @@ async function loadProjections() {
     }
     
     loadingMessage.value = 'Loading teams...'
+    loadingProgress.value = { currentStep: 'Loading team data...', week: 3, maxWeek: 4 }
     const teams = await yahooService.getTeams(leagueKey)
     teamsData.value = teams || []
     
@@ -3258,6 +3287,7 @@ async function loadProjections() {
     console.log('Teams loaded:', teamsData.value.length, 'My team:', myTeam?.name, 'Key:', myTeamKey.value)
     
     loadingMessage.value = 'Loading player data...'
+    loadingProgress.value = { currentStep: 'Loading player data and projections...', week: 4, maxWeek: 4 }
     const rosteredPlayers = await yahooService.getAllRosteredPlayers(leagueKey)
     const freeAgents = await yahooService.getTopFreeAgents(leagueKey, 100)
     
