@@ -169,17 +169,14 @@
             <input type="checkbox" v-model="showOnlyFreeAgents" class="w-4 h-4 rounded border-dark-border bg-dark-card text-cyan-400" />
             <span class="text-sm text-dark-textMuted">Free Agents</span>
           </label>
-          <button 
-            @click="showRankingSettings = true"
-            class="px-3 py-1.5 text-sm rounded-lg border transition-all flex items-center gap-2 bg-dark-card text-dark-textMuted border-dark-border hover:border-yellow-400 hover:text-yellow-400"
-          >
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4" />
-            </svg>
-            Customize Rankings
-          </button>
         </div>
       </div>
+
+      <!-- Ranking Customizer -->
+      <CategoryRankingCustomizer 
+        v-model="rosRankingFactors"
+        @apply="onRankingFactorsApplied"
+      />
 
       <!-- Rankings Table -->
       <div class="card">
@@ -1573,130 +1570,6 @@
       </template>
 
     </template>
-    
-    <!-- ROS Rankings Settings Modal -->
-    <div v-if="showRankingSettings" class="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4" @click.self="showRankingSettings = false">
-      <div class="bg-dark-elevated rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-hidden border border-dark-border">
-        <!-- Header -->
-        <div class="px-6 py-4 border-b border-dark-border flex items-center justify-between">
-          <div>
-            <h3 class="text-xl font-bold text-dark-text">ROS Rankings Settings</h3>
-            <p class="text-sm text-dark-textMuted">Customize how player value scores are calculated</p>
-          </div>
-          <button @click="showRankingSettings = false" class="p-2 hover:bg-dark-border/50 rounded-lg transition-colors">
-            <svg class="w-5 h-5 text-dark-textMuted" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          </button>
-        </div>
-        
-        <!-- Presets -->
-        <div class="px-6 py-4 border-b border-dark-border">
-          <h4 class="text-sm font-semibold text-dark-textMuted uppercase tracking-wider mb-3">Quick Presets</h4>
-          <div class="grid grid-cols-2 sm:grid-cols-3 gap-3">
-            <button
-              v-for="preset in rosRankingPresets"
-              :key="preset.id"
-              @click="applyPreset(preset)"
-              class="p-3 rounded-xl border transition-colors text-left"
-              :class="currentPresetId === preset.id 
-                ? 'border-yellow-400 bg-yellow-400/10' 
-                : 'border-dark-border hover:border-dark-textMuted bg-dark-border/20'"
-            >
-              <div class="flex items-start gap-2">
-                <span class="text-xl flex-shrink-0">{{ preset.icon }}</span>
-                <div class="min-w-0 flex-1">
-                  <div class="text-sm font-semibold" :class="currentPresetId === preset.id ? 'text-yellow-400' : 'text-dark-text'">{{ preset.name }}</div>
-                  <div class="text-xs text-dark-textMuted mt-0.5 leading-tight">{{ preset.description }}</div>
-                </div>
-              </div>
-            </button>
-          </div>
-        </div>
-        
-        <!-- Factors -->
-        <div class="px-6 py-4 overflow-y-auto max-h-[45vh]">
-          <div class="flex items-center justify-between mb-3">
-            <h4 class="text-sm font-semibold text-dark-textMuted uppercase tracking-wider">Ranking Factors</h4>
-            <span class="text-xs" :class="totalWeight === 100 ? 'text-green-400' : 'text-yellow-400'">Total: {{ totalWeight }}%</span>
-          </div>
-          
-          <div class="space-y-3">
-            <div 
-              v-for="factor in rosRankingFactors" 
-              :key="factor.id"
-              class="bg-dark-border/20 rounded-xl p-4"
-            >
-              <div class="flex items-start justify-between gap-4 mb-2">
-                <div class="flex items-start gap-3 flex-1 min-w-0">
-                  <span class="text-2xl flex-shrink-0 mt-0.5">{{ factor.icon }}</span>
-                  <div class="flex-1 min-w-0">
-                    <div class="font-semibold text-dark-text text-sm">{{ factor.name }}</div>
-                    <p class="text-xs text-dark-textMuted mt-1 leading-relaxed">{{ factor.description }}</p>
-                  </div>
-                </div>
-                <label class="relative inline-flex items-center cursor-pointer flex-shrink-0 mt-1">
-                  <input 
-                    type="checkbox" 
-                    v-model="factor.enabled" 
-                    @change="onFactorChange"
-                    class="sr-only peer"
-                  />
-                  <div class="w-11 h-6 bg-dark-border rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-yellow-400"></div>
-                </label>
-              </div>
-              
-              <div v-if="factor.enabled" class="flex items-center gap-4 mt-3 pt-3 border-t border-dark-border/30">
-                <input 
-                  type="range" 
-                  v-model.number="factor.weight" 
-                  min="0" 
-                  max="100" 
-                  step="5"
-                  @input="onFactorChange"
-                  class="flex-1 h-2 bg-dark-border rounded-lg appearance-none cursor-pointer accent-yellow-400"
-                />
-                <div class="w-16 flex items-center gap-1 flex-shrink-0">
-                  <input 
-                    type="number" 
-                    v-model.number="factor.weight" 
-                    min="0" 
-                    max="100"
-                    @input="onFactorChange"
-                    class="w-12 px-2 py-1 rounded bg-dark-bg border border-dark-border text-dark-text text-sm text-center"
-                  />
-                  <span class="text-dark-textMuted text-sm">%</span>
-                </div>
-              </div>
-              
-              <!-- Weight bar visualization -->
-              <div v-if="factor.enabled" class="mt-2 h-1.5 bg-dark-border rounded-full overflow-hidden">
-                <div 
-                  class="h-full rounded-full transition-all"
-                  :style="{ width: `${factor.weight}%`, backgroundColor: factor.color }"
-                ></div>
-              </div>
-            </div>
-          </div>
-        </div>
-        
-        <!-- Footer -->
-        <div class="px-6 py-4 border-t border-dark-border flex items-center justify-between">
-          <button 
-            @click="resetWeights"
-            class="px-4 py-2 text-sm text-dark-textMuted hover:text-dark-text transition-colors"
-          >
-            Reset to Default
-          </button>
-          <button 
-            @click="showRankingSettings = false"
-            class="px-6 py-2 bg-yellow-400 text-gray-900 rounded-lg font-semibold text-sm hover:bg-yellow-300 transition-colors"
-          >
-            Done
-          </button>
-        </div>
-      </div>
-    </div>
 
     <!-- Player Detail Modal -->
     <div v-if="selectedPlayer" class="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4" @click.self="expandedPlayerKey = null">
@@ -2112,6 +1985,13 @@ import { espnService } from '@/services/espn'
 import { useFeatureAccess } from '@/composables/useFeatureAccess'
 import SimulatedDataBanner from '@/components/SimulatedDataBanner.vue'
 import LoadingSpinner from '@/components/LoadingSpinner.vue'
+import CategoryRankingCustomizer from '@/components/CategoryRankingCustomizer.vue'
+import { 
+  DEFAULT_CATEGORY_ROS_FACTORS, 
+  CATEGORY_ROS_PRESETS,
+  type CategoryRankingFactor,
+  type CategoryRankingPreset 
+} from '@/services/categoryRankingFactors'
 
 const leagueStore = useLeagueStore()
 const { hasPremiumAccess } = useFeatureAccess()
@@ -2214,139 +2094,11 @@ function getDefaultLogo(sport?: string): string {
 // Ranking customization - factor-based like Power Rankings
 const showRankingSettings = ref(false)
 
-interface RankingFactor {
-  id: string
-  name: string
-  description: string
-  enabled: boolean
-  weight: number
-  icon: string
-  color: string
-}
+// Use imported types from categoryRankingFactors service
+const rosRankingFactors = ref<CategoryRankingFactor[]>(JSON.parse(JSON.stringify(DEFAULT_CATEGORY_ROS_FACTORS)))
 
-const DEFAULT_ROS_FACTORS: RankingFactor[] = [
-  {
-    id: 'categoryRank',
-    name: 'Category Rank',
-    description: 'How the player ranks in this specific category based on ROS projections',
-    enabled: true,
-    weight: 40,
-    icon: '📊',
-    color: '#facc15' // yellow-400
-  },
-  {
-    id: 'multiCategory',
-    name: 'Multi-Category Value',
-    description: 'Contribution across multiple scoring categories - rewards versatile players',
-    enabled: true,
-    weight: 25,
-    icon: '🎯',
-    color: '#22c55e' // green-500
-  },
-  {
-    id: 'scarcity',
-    name: 'Position Scarcity',
-    description: 'Value boost for positions with fewer quality options (C, SS, RP)',
-    enabled: true,
-    weight: 20,
-    icon: '💎',
-    color: '#06b6d4' // cyan-400
-  },
-  {
-    id: 'consistency',
-    name: 'Consistency',
-    description: 'How reliable and consistent the player\'s production has been',
-    enabled: true,
-    weight: 15,
-    icon: '📈',
-    color: '#a855f7' // purple-400
-  }
-]
-
-const rosRankingFactors = ref<RankingFactor[]>(JSON.parse(JSON.stringify(DEFAULT_ROS_FACTORS)))
-
-interface RankingPreset {
-  id: string
-  name: string
-  description: string
-  icon: string
-  factors: Record<string, { enabled: boolean; weight: number }>
-}
-
-const rosRankingPresets: RankingPreset[] = [
-  {
-    id: 'balanced',
-    name: 'Balanced',
-    description: 'Default balanced approach',
-    icon: '⚖️',
-    factors: {
-      categoryRank: { enabled: true, weight: 40 },
-      multiCategory: { enabled: true, weight: 25 },
-      scarcity: { enabled: true, weight: 20 },
-      consistency: { enabled: true, weight: 15 }
-    }
-  },
-  {
-    id: 'categoryFocused',
-    name: 'Category Focused',
-    description: 'Prioritize single-category dominance',
-    icon: '🎯',
-    factors: {
-      categoryRank: { enabled: true, weight: 70 },
-      multiCategory: { enabled: true, weight: 10 },
-      scarcity: { enabled: true, weight: 10 },
-      consistency: { enabled: true, weight: 10 }
-    }
-  },
-  {
-    id: 'versatile',
-    name: 'Versatile',
-    description: 'Favor players who contribute everywhere',
-    icon: '🌟',
-    factors: {
-      categoryRank: { enabled: true, weight: 25 },
-      multiCategory: { enabled: true, weight: 50 },
-      scarcity: { enabled: true, weight: 15 },
-      consistency: { enabled: true, weight: 10 }
-    }
-  },
-  {
-    id: 'scarcityHunter',
-    name: 'Scarcity Hunter',
-    description: 'Find value at thin positions',
-    icon: '💎',
-    factors: {
-      categoryRank: { enabled: true, weight: 30 },
-      multiCategory: { enabled: true, weight: 15 },
-      scarcity: { enabled: true, weight: 45 },
-      consistency: { enabled: true, weight: 10 }
-    }
-  },
-  {
-    id: 'reliable',
-    name: 'Reliable Floor',
-    description: 'Prioritize consistent performers',
-    icon: '🛡️',
-    factors: {
-      categoryRank: { enabled: true, weight: 30 },
-      multiCategory: { enabled: true, weight: 20 },
-      scarcity: { enabled: true, weight: 10 },
-      consistency: { enabled: true, weight: 40 }
-    }
-  },
-  {
-    id: 'simple',
-    name: 'Simple Rank',
-    description: 'Pure category ranking only',
-    icon: '📋',
-    factors: {
-      categoryRank: { enabled: true, weight: 100 },
-      multiCategory: { enabled: false, weight: 0 },
-      scarcity: { enabled: false, weight: 0 },
-      consistency: { enabled: false, weight: 0 }
-    }
-  }
-]
+// Use imported presets from categoryRankingFactors service
+const rosRankingPresets = CATEGORY_ROS_PRESETS
 
 const currentPresetId = ref<string | null>('balanced')
 
@@ -2371,12 +2123,12 @@ const saveWeights = () => {
 }
 
 const resetWeights = () => {
-  rosRankingFactors.value = JSON.parse(JSON.stringify(DEFAULT_ROS_FACTORS))
+  rosRankingFactors.value = JSON.parse(JSON.stringify(DEFAULT_CATEGORY_ROS_FACTORS))
   currentPresetId.value = 'balanced'
   saveWeights()
 }
 
-const applyPreset = (preset: RankingPreset) => {
+const applyPreset = (preset: CategoryRankingPreset) => {
   rosRankingFactors.value.forEach(factor => {
     const presetFactor = preset.factors[factor.id]
     if (presetFactor) {
@@ -2412,6 +2164,13 @@ const updateCurrentPreset = () => {
 
 const onFactorChange = () => {
   saveWeights()
+}
+
+// Handler for when ranking factors are applied from the customizer
+const onRankingFactorsApplied = () => {
+  saveWeights()
+  // Optionally trigger a re-sort or refresh of the rankings
+  console.log('[CategoryProjections] Ranking factors applied:', rosRankingFactors.value.filter(f => f.enabled).map(f => f.name).join(', '))
 }
 
 const totalWeight = computed(() => {
