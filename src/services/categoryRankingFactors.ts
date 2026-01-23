@@ -172,41 +172,51 @@ export const DEFAULT_CATEGORY_ROS_FACTORS: CategoryRankingFactor[] = [
     color: '#14b8a6' // teal-500
   },
   
-  // ADVANCED FACTORS
+  // ADVANCED FACTORS (Baseball-Specific)
   {
-    id: 'puntStrategy',
-    name: 'Punt Strategy Fit',
-    description: 'Value players that excel in specific categories while ignoring others - great for punt builds',
+    id: 'parkFactors',
+    name: 'Park Factors',
+    description: 'Coors Field boost, pitcher park penalties - adjusts for home ballpark effects on HR, R, ERA',
+    category: 'advanced',
+    enabled: false,
+    weight: 10,
+    icon: '🏟️',
+    color: '#78716c' // stone-500
+  },
+  {
+    id: 'platoonSplits',
+    name: 'Platoon Splits',
+    description: 'Performance vs LHP/RHP - identifies hitters who crush one side but struggle against the other',
+    category: 'advanced',
+    enabled: false,
+    weight: 10,
+    icon: '⚾',
+    color: '#8b5cf6' // violet-500
+  },
+  {
+    id: 'babipRegression',
+    name: 'BABIP Regression',
+    description: 'Luck-adjusted batting average - high BABIP players due for regression, low BABIP due for bounce back',
+    category: 'advanced',
+    enabled: false,
+    weight: 10,
+    icon: '🎲',
+    color: '#f43f5e' // rose-500
+  },
+  {
+    id: 'xStats',
+    name: 'Statcast xStats',
+    description: 'Expected stats (xBA, xERA, xWOBA) based on quality of contact - better predictor than actual stats',
     category: 'advanced',
     enabled: false,
     weight: 15,
-    icon: '🎳',
-    color: '#ec4899' // pink-500
-  },
-  {
-    id: 'streamingValue',
-    name: 'Streaming Potential',
-    description: 'For pitchers: how valuable for weekly streaming based on matchups',
-    category: 'advanced',
-    enabled: false,
-    weight: 10,
-    icon: '🌊',
+    icon: '📊',
     color: '#0ea5e9' // sky-500
   },
   {
-    id: 'playingTime',
-    name: 'Playing Time Security',
-    description: 'Risk adjustment for platoon players, injury concerns, or job security',
-    category: 'advanced',
-    enabled: false,
-    weight: 10,
-    icon: '⏰',
-    color: '#84cc16' // lime-500
-  },
-  {
-    id: 'scheduleStrength',
-    name: 'ROS Schedule',
-    description: 'Remaining schedule difficulty - favorable matchups boost value',
+    id: 'scheduleDensity',
+    name: 'Schedule Density',
+    description: 'Games remaining, double-headers, off-days - more games = more counting stat opportunities',
     category: 'advanced',
     enabled: false,
     weight: 10,
@@ -214,14 +224,34 @@ export const DEFAULT_CATEGORY_ROS_FACTORS: CategoryRankingFactor[] = [
     color: '#6366f1' // indigo-500
   },
   {
-    id: 'parkFactors',
-    name: 'Park Factors',
-    description: 'Home ballpark effects on hitting/pitching stats',
+    id: 'ilRisk',
+    name: 'IL Risk',
+    description: 'Injury history and fragility - discount players with recurring injuries or high workload concerns',
     category: 'advanced',
     enabled: false,
-    weight: 5,
-    icon: '🏟️',
-    color: '#78716c' // stone-500
+    weight: 10,
+    icon: '🏥',
+    color: '#ef4444' // red-500
+  },
+  {
+    id: 'streamingValue',
+    name: 'Streaming Potential',
+    description: 'For pitchers: matchup-based value for weekly streaming - favorable opponents boost ranking',
+    category: 'advanced',
+    enabled: false,
+    weight: 10,
+    icon: '🌊',
+    color: '#14b8a6' // teal-500
+  },
+  {
+    id: 'puntStrategy',
+    name: 'Punt Strategy Fit',
+    description: 'Value players that dominate specific categories - great for punt builds ignoring AVG/ERA',
+    category: 'advanced',
+    enabled: false,
+    weight: 15,
+    icon: '🎳',
+    color: '#ec4899' // pink-500
   }
 ]
 
@@ -246,11 +276,14 @@ export const CATEGORY_ROS_PRESETS: CategoryRankingPreset[] = [
       recentTrend: { enabled: false, weight: 0 },
       ceilingMode: { enabled: false, weight: 0 },
       floorMode: { enabled: false, weight: 0 },
-      puntStrategy: { enabled: false, weight: 0 },
+      parkFactors: { enabled: false, weight: 0 },
+      platoonSplits: { enabled: false, weight: 0 },
+      babipRegression: { enabled: false, weight: 0 },
+      xStats: { enabled: false, weight: 0 },
+      scheduleDensity: { enabled: false, weight: 0 },
+      ilRisk: { enabled: false, weight: 0 },
       streamingValue: { enabled: false, weight: 0 },
-      playingTime: { enabled: false, weight: 0 },
-      scheduleStrength: { enabled: false, weight: 0 },
-      parkFactors: { enabled: false, weight: 0 }
+      puntStrategy: { enabled: false, weight: 0 }
     }
   },
   {
@@ -269,11 +302,14 @@ export const CATEGORY_ROS_PRESETS: CategoryRankingPreset[] = [
       recentTrend: { enabled: false, weight: 0 },
       ceilingMode: { enabled: false, weight: 0 },
       floorMode: { enabled: false, weight: 0 },
-      puntStrategy: { enabled: false, weight: 0 },
+      parkFactors: { enabled: false, weight: 0 },
+      platoonSplits: { enabled: false, weight: 0 },
+      babipRegression: { enabled: false, weight: 0 },
+      xStats: { enabled: false, weight: 0 },
+      scheduleDensity: { enabled: false, weight: 0 },
+      ilRisk: { enabled: false, weight: 0 },
       streamingValue: { enabled: false, weight: 0 },
-      playingTime: { enabled: false, weight: 0 },
-      scheduleStrength: { enabled: false, weight: 0 },
-      parkFactors: { enabled: false, weight: 0 }
+      puntStrategy: { enabled: false, weight: 0 }
     }
   },
   {
@@ -292,11 +328,14 @@ export const CATEGORY_ROS_PRESETS: CategoryRankingPreset[] = [
       recentTrend: { enabled: false, weight: 0 },
       ceilingMode: { enabled: false, weight: 0 },
       floorMode: { enabled: false, weight: 0 },
-      puntStrategy: { enabled: false, weight: 0 },
+      parkFactors: { enabled: false, weight: 0 },
+      platoonSplits: { enabled: false, weight: 0 },
+      babipRegression: { enabled: false, weight: 0 },
+      xStats: { enabled: false, weight: 0 },
+      scheduleDensity: { enabled: false, weight: 0 },
+      ilRisk: { enabled: false, weight: 0 },
       streamingValue: { enabled: false, weight: 0 },
-      playingTime: { enabled: false, weight: 0 },
-      scheduleStrength: { enabled: false, weight: 0 },
-      parkFactors: { enabled: false, weight: 0 }
+      puntStrategy: { enabled: false, weight: 0 }
     }
   },
   {
@@ -315,11 +354,14 @@ export const CATEGORY_ROS_PRESETS: CategoryRankingPreset[] = [
       recentTrend: { enabled: false, weight: 0 },
       ceilingMode: { enabled: false, weight: 0 },
       floorMode: { enabled: false, weight: 0 },
-      puntStrategy: { enabled: false, weight: 0 },
+      parkFactors: { enabled: false, weight: 0 },
+      platoonSplits: { enabled: false, weight: 0 },
+      babipRegression: { enabled: false, weight: 0 },
+      xStats: { enabled: false, weight: 0 },
+      scheduleDensity: { enabled: false, weight: 0 },
+      ilRisk: { enabled: false, weight: 0 },
       streamingValue: { enabled: false, weight: 0 },
-      playingTime: { enabled: false, weight: 0 },
-      scheduleStrength: { enabled: false, weight: 0 },
-      parkFactors: { enabled: false, weight: 0 }
+      puntStrategy: { enabled: false, weight: 0 }
     }
   },
   {
@@ -338,11 +380,14 @@ export const CATEGORY_ROS_PRESETS: CategoryRankingPreset[] = [
       recentTrend: { enabled: true, weight: 30 },
       ceilingMode: { enabled: true, weight: 5 },
       floorMode: { enabled: false, weight: 0 },
-      puntStrategy: { enabled: false, weight: 0 },
+      parkFactors: { enabled: false, weight: 0 },
+      platoonSplits: { enabled: false, weight: 0 },
+      babipRegression: { enabled: false, weight: 0 },
+      xStats: { enabled: false, weight: 0 },
+      scheduleDensity: { enabled: false, weight: 0 },
+      ilRisk: { enabled: false, weight: 0 },
       streamingValue: { enabled: false, weight: 0 },
-      playingTime: { enabled: false, weight: 0 },
-      scheduleStrength: { enabled: false, weight: 0 },
-      parkFactors: { enabled: false, weight: 0 }
+      puntStrategy: { enabled: false, weight: 0 }
     }
   },
   {
@@ -361,11 +406,14 @@ export const CATEGORY_ROS_PRESETS: CategoryRankingPreset[] = [
       recentTrend: { enabled: false, weight: 0 },
       ceilingMode: { enabled: false, weight: 0 },
       floorMode: { enabled: true, weight: 10 },
-      puntStrategy: { enabled: false, weight: 0 },
+      parkFactors: { enabled: false, weight: 0 },
+      platoonSplits: { enabled: false, weight: 0 },
+      babipRegression: { enabled: false, weight: 0 },
+      xStats: { enabled: false, weight: 0 },
+      scheduleDensity: { enabled: false, weight: 0 },
+      ilRisk: { enabled: true, weight: 5 },
       streamingValue: { enabled: false, weight: 0 },
-      playingTime: { enabled: true, weight: 5 },
-      scheduleStrength: { enabled: false, weight: 0 },
-      parkFactors: { enabled: false, weight: 0 }
+      puntStrategy: { enabled: false, weight: 0 }
     }
   },
   {
@@ -384,11 +432,14 @@ export const CATEGORY_ROS_PRESETS: CategoryRankingPreset[] = [
       recentTrend: { enabled: true, weight: 15 },
       ceilingMode: { enabled: true, weight: 20 },
       floorMode: { enabled: false, weight: 0 },
-      puntStrategy: { enabled: false, weight: 0 },
+      parkFactors: { enabled: false, weight: 0 },
+      platoonSplits: { enabled: false, weight: 0 },
+      babipRegression: { enabled: false, weight: 0 },
+      xStats: { enabled: false, weight: 0 },
+      scheduleDensity: { enabled: false, weight: 0 },
+      ilRisk: { enabled: false, weight: 0 },
       streamingValue: { enabled: false, weight: 0 },
-      playingTime: { enabled: false, weight: 0 },
-      scheduleStrength: { enabled: false, weight: 0 },
-      parkFactors: { enabled: false, weight: 0 }
+      puntStrategy: { enabled: false, weight: 0 }
     }
   },
   {
@@ -407,11 +458,40 @@ export const CATEGORY_ROS_PRESETS: CategoryRankingPreset[] = [
       recentTrend: { enabled: false, weight: 0 },
       ceilingMode: { enabled: false, weight: 0 },
       floorMode: { enabled: false, weight: 0 },
-      puntStrategy: { enabled: true, weight: 15 },
+      parkFactors: { enabled: false, weight: 0 },
+      platoonSplits: { enabled: false, weight: 0 },
+      babipRegression: { enabled: false, weight: 0 },
+      xStats: { enabled: false, weight: 0 },
+      scheduleDensity: { enabled: false, weight: 0 },
+      ilRisk: { enabled: false, weight: 0 },
       streamingValue: { enabled: false, weight: 0 },
-      playingTime: { enabled: false, weight: 0 },
-      scheduleStrength: { enabled: false, weight: 0 },
-      parkFactors: { enabled: false, weight: 0 }
+      puntStrategy: { enabled: true, weight: 15 }
+    }
+  },
+  {
+    id: 'statcast',
+    name: 'Statcast Believer',
+    description: 'Trust the advanced metrics - xStats, BABIP regression, park factors',
+    icon: '📊',
+    factors: {
+      categoryRank: { enabled: true, weight: 20 },
+      projectedVolume: { enabled: true, weight: 15 },
+      multiCategory: { enabled: true, weight: 10 },
+      positionScarcity: { enabled: true, weight: 10 },
+      categoryScarcity: { enabled: false, weight: 0 },
+      eliteStatus: { enabled: false, weight: 0 },
+      consistency: { enabled: false, weight: 0 },
+      recentTrend: { enabled: false, weight: 0 },
+      ceilingMode: { enabled: false, weight: 0 },
+      floorMode: { enabled: false, weight: 0 },
+      parkFactors: { enabled: true, weight: 10 },
+      platoonSplits: { enabled: true, weight: 5 },
+      babipRegression: { enabled: true, weight: 10 },
+      xStats: { enabled: true, weight: 20 },
+      scheduleDensity: { enabled: false, weight: 0 },
+      ilRisk: { enabled: false, weight: 0 },
+      streamingValue: { enabled: false, weight: 0 },
+      puntStrategy: { enabled: false, weight: 0 }
     }
   },
   {
@@ -430,11 +510,14 @@ export const CATEGORY_ROS_PRESETS: CategoryRankingPreset[] = [
       recentTrend: { enabled: false, weight: 0 },
       ceilingMode: { enabled: false, weight: 0 },
       floorMode: { enabled: false, weight: 0 },
-      puntStrategy: { enabled: false, weight: 0 },
+      parkFactors: { enabled: false, weight: 0 },
+      platoonSplits: { enabled: false, weight: 0 },
+      babipRegression: { enabled: false, weight: 0 },
+      xStats: { enabled: false, weight: 0 },
+      scheduleDensity: { enabled: false, weight: 0 },
+      ilRisk: { enabled: false, weight: 0 },
       streamingValue: { enabled: false, weight: 0 },
-      playingTime: { enabled: false, weight: 0 },
-      scheduleStrength: { enabled: false, weight: 0 },
-      parkFactors: { enabled: false, weight: 0 }
+      puntStrategy: { enabled: false, weight: 0 }
     }
   }
 ]
