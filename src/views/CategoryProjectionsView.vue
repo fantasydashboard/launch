@@ -647,6 +647,50 @@
                     <button @click="startSitMode = 'weekly'" :class="startSitMode === 'weekly' ? 'bg-yellow-400 text-gray-900' : 'bg-dark-card text-dark-textMuted'" class="px-4 py-2 text-sm font-medium transition-colors">📆 Weekly</button>
                   </div>
                 </div>
+                
+                <!-- Time Period Selector -->
+                <div class="flex items-center gap-3">
+                  <span class="text-dark-textMuted text-sm">Period:</span>
+                  <div class="flex rounded-lg overflow-hidden border border-dark-border/50">
+                    <button 
+                      @click="startSitTimePeriod = 'today'" 
+                      :class="startSitTimePeriod === 'today' ? 'bg-yellow-400 text-gray-900' : 'bg-dark-card text-dark-textMuted hover:bg-dark-border/50'" 
+                      class="px-3 py-1.5 text-xs font-medium transition-colors"
+                    >Today</button>
+                    <button 
+                      @click="startSitTimePeriod = 'next7'" 
+                      :class="startSitTimePeriod === 'next7' ? 'bg-yellow-400 text-gray-900' : 'bg-dark-card text-dark-textMuted hover:bg-dark-border/50'" 
+                      class="px-3 py-1.5 text-xs font-medium transition-colors"
+                    >Next 7</button>
+                    <button 
+                      @click="startSitTimePeriod = 'next14'" 
+                      :class="startSitTimePeriod === 'next14' ? 'bg-yellow-400 text-gray-900' : 'bg-dark-card text-dark-textMuted hover:bg-dark-border/50'" 
+                      class="px-3 py-1.5 text-xs font-medium transition-colors"
+                    >Next 14</button>
+                    <button 
+                      @click="startSitTimePeriod = 'ros'" 
+                      :class="startSitTimePeriod === 'ros' ? 'bg-yellow-400 text-gray-900' : 'bg-dark-card text-dark-textMuted hover:bg-dark-border/50'" 
+                      class="px-3 py-1.5 text-xs font-medium transition-colors"
+                    >ROS</button>
+                  </div>
+                </div>
+
+                <!-- Projections vs Stats Toggle -->
+                <div class="flex items-center gap-3">
+                  <div class="flex rounded-lg overflow-hidden border border-dark-border/50">
+                    <button 
+                      @click="startSitViewMode = 'projections'" 
+                      :class="startSitViewMode === 'projections' ? 'bg-green-500 text-gray-900' : 'bg-dark-card text-dark-textMuted hover:bg-dark-border/50'" 
+                      class="px-3 py-1.5 text-xs font-medium transition-colors"
+                    >📈 Projections</button>
+                    <button 
+                      @click="startSitViewMode = 'stats'" 
+                      :class="startSitViewMode === 'stats' ? 'bg-blue-500 text-gray-900' : 'bg-dark-card text-dark-textMuted hover:bg-dark-border/50'" 
+                      class="px-3 py-1.5 text-xs font-medium transition-colors"
+                    >📊 Stats</button>
+                  </div>
+                </div>
+
                 <div class="flex items-center gap-3">
                   <template v-if="startSitMode === 'daily'">
                     <div class="flex rounded-lg overflow-hidden border border-dark-border/50">
@@ -840,12 +884,34 @@
                       <span class="text-xl">🏆</span>
                       <h2 class="text-base font-bold text-dark-text">{{ startSitMode === 'daily' ? "Today's" : "This Week's" }} Lineup</h2>
                     </div>
-                    <span class="text-xs text-dark-textMuted">{{ suggestedLineupPlayerCount }} starters</span>
+                    <div class="flex items-center gap-2">
+                      <button 
+                        v-if="waiverLineupPlayers.length > 0"
+                        @click="clearWaiverLineup"
+                        class="px-2 py-1 text-xs font-medium bg-red-500/20 text-red-400 rounded hover:bg-red-500/30 transition-colors"
+                      >
+                        Clear
+                      </button>
+                      <span class="text-xs text-dark-textMuted">{{ suggestedLineupPlayerCount }} starters</span>
+                    </div>
+                  </div>
+                  <p v-if="waiverLineupPlayers.length > 0" class="text-xs text-cyan-400 mt-1">
+                    {{ waiverLineupPlayers.length }} waiver pickup{{ waiverLineupPlayers.length > 1 ? 's' : '' }} added
+                  </p>
+                  <!-- Roster Status -->
+                  <div v-if="rosterSpotsAvailable <= 0" class="flex items-center gap-2 mt-2 text-xs">
+                    <span class="text-red-400">⚠️ Roster full</span>
+                    <span class="text-dark-textMuted">• Must drop to add</span>
                   </div>
                 </div>
                 <div class="card-body p-0">
                   <div class="divide-y divide-dark-border/30 max-h-[35vh] overflow-y-auto">
-                    <div v-for="(slot, idx) in suggestedCategoryLineup" :key="idx" class="flex items-center gap-2 px-3 py-2 hover:bg-dark-border/20">
+                    <div 
+                      v-for="(slot, idx) in modifiedSuggestedLineup" 
+                      :key="idx" 
+                      class="flex items-center gap-2 px-3 py-2 hover:bg-dark-border/20"
+                      :class="{ 'bg-cyan-500/10 border-l-2 border-cyan-400': slot.isWaiver }"
+                    >
                       <div class="w-10 text-center">
                         <span class="px-1.5 py-0.5 rounded text-[10px] font-bold" :class="getStartSitPositionClass(slot.position)">{{ slot.position }}</span>
                       </div>
@@ -1796,7 +1862,7 @@
               <div>
                 <div class="text-xs text-dark-textMuted uppercase tracking-wider mb-2">Could Use</div>
                 <div class="flex flex-wrap gap-2">
-                  <span v-for="cat in (selectedTeam.weakCategories || []).slice(0, 4)" :key="cat" class="px-2 py-1 bg-red-500/20 text-red-400 rounded text-xs font-medium">
+                  <span v-for="cat in (selectedTeam.weakestCategories || []).slice(0, 4)" :key="cat" class="px-2 py-1 bg-red-500/20 text-red-400 rounded text-xs font-medium">
                     {{ cat }}
                   </span>
                 </div>
@@ -1958,6 +2024,151 @@
           <div v-else-if="!selectedSwapTarget" class="text-center py-6 text-dark-textMuted">
             Select a player above to see the matchup impact
           </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Drop Player Modal (for waiver pickups at roster limit) -->
+    <div v-if="showDropModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/70" @click.self="closeDropModal">
+      <div class="bg-dark-card border border-dark-border rounded-xl shadow-2xl max-w-2xl w-full mx-4 max-h-[90vh] overflow-hidden">
+        <!-- Modal Header -->
+        <div class="px-6 py-4 border-b border-dark-border bg-dark-border/20">
+          <div class="flex items-center justify-between">
+            <div>
+              <h3 class="text-lg font-bold text-dark-text">Select Player to Drop</h3>
+              <p class="text-sm text-dark-textMuted mt-1">
+                Adding <span class="text-cyan-400 font-semibold">{{ dropModalPlayer?.full_name }}</span> requires dropping a player
+              </p>
+            </div>
+            <button @click="closeDropModal" class="text-dark-textMuted hover:text-dark-text transition-colors">
+              <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+          
+          <!-- View Toggle -->
+          <div class="flex items-center gap-4 mt-4">
+            <span class="text-xs text-dark-textMuted uppercase">View:</span>
+            <div class="flex items-center bg-dark-border/30 rounded-lg p-0.5">
+              <button 
+                @click="dropModalViewMode = 'projections'"
+                class="px-3 py-1 text-xs font-medium rounded-md transition-colors"
+                :class="dropModalViewMode === 'projections' ? 'bg-green-500 text-gray-900' : 'text-dark-textMuted hover:text-dark-text'"
+              >
+                Projections
+              </button>
+              <button 
+                @click="dropModalViewMode = 'stats'"
+                class="px-3 py-1 text-xs font-medium rounded-md transition-colors"
+                :class="dropModalViewMode === 'stats' ? 'bg-blue-500 text-gray-900' : 'text-dark-textMuted hover:text-dark-text'"
+              >
+                Stats
+              </button>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Player Comparison Header -->
+        <div class="px-6 py-3 bg-dark-bg/50 border-b border-dark-border/50">
+          <div class="grid grid-cols-12 gap-2 text-xs font-semibold text-dark-textMuted uppercase">
+            <div class="col-span-4">Player</div>
+            <template v-if="dropModalViewMode === 'projections'">
+              <div class="col-span-2 text-center">Today</div>
+              <div class="col-span-2 text-center">Next 7</div>
+              <div class="col-span-2 text-center">Next 14</div>
+              <div class="col-span-2 text-center">ROS</div>
+            </template>
+            <template v-else>
+              <div class="col-span-2 text-center">Last 7</div>
+              <div class="col-span-2 text-center">Last 14</div>
+              <div class="col-span-2 text-center">Season</div>
+              <div class="col-span-2 text-center">Value</div>
+            </template>
+          </div>
+        </div>
+        
+        <!-- Pickup Player Row (for comparison) -->
+        <div class="px-6 py-3 bg-cyan-500/10 border-b border-cyan-500/30">
+          <div class="grid grid-cols-12 gap-2 items-center">
+            <div class="col-span-4 flex items-center gap-3">
+              <div class="w-10 h-10 rounded-full bg-dark-border overflow-hidden ring-2 ring-cyan-400">
+                <img :src="dropModalPlayer?.headshot || defaultHeadshot" class="w-full h-full object-cover" @error="handleImageError" />
+              </div>
+              <div>
+                <div class="font-semibold text-cyan-400">{{ dropModalPlayer?.full_name }}</div>
+                <div class="text-xs text-dark-textMuted">{{ dropModalPlayer?.position?.split(',')[0] }} • {{ dropModalPlayer?.mlb_team || 'FA' }} <span class="text-cyan-400">(PICKUP)</span></div>
+              </div>
+            </div>
+            <template v-if="dropModalViewMode === 'projections'">
+              <div class="col-span-2 text-center font-bold text-cyan-400">{{ (dropModalPlayer?.projectedValue / 10 || 0).toFixed(1) }}</div>
+              <div class="col-span-2 text-center font-bold text-cyan-400">{{ (dropModalPlayer?.projectedValue / 3 || 0).toFixed(1) }}</div>
+              <div class="col-span-2 text-center font-bold text-cyan-400">{{ (dropModalPlayer?.projectedValue / 1.5 || 0).toFixed(1) }}</div>
+              <div class="col-span-2 text-center font-bold text-cyan-400">{{ dropModalPlayer?.projectedValue?.toFixed(1) || '0' }}</div>
+            </template>
+            <template v-else>
+              <div class="col-span-2 text-center font-bold text-cyan-400">{{ (dropModalPlayer?.currentValue / 3 || 0).toFixed(1) }}</div>
+              <div class="col-span-2 text-center font-bold text-cyan-400">{{ (dropModalPlayer?.currentValue / 1.5 || 0).toFixed(1) }}</div>
+              <div class="col-span-2 text-center font-bold text-cyan-400">{{ dropModalPlayer?.currentValue?.toFixed(1) || '0' }}</div>
+              <div class="col-span-2 text-center font-bold text-cyan-400">{{ dropModalPlayer?.overallValue?.toFixed(0) || '0' }}</div>
+            </template>
+          </div>
+        </div>
+        
+        <!-- Droppable Players List -->
+        <div class="max-h-80 overflow-y-auto">
+          <div 
+            v-for="player in droppablePlayers" 
+            :key="player.player_key"
+            class="px-6 py-3 border-b border-dark-border/30 hover:bg-dark-border/20 cursor-pointer transition-colors"
+            :class="{ 'bg-red-500/10 border-red-500/30': selectedDropPlayer?.player_key === player.player_key }"
+            @click="selectedDropPlayer = player"
+          >
+            <div class="grid grid-cols-12 gap-2 items-center">
+              <div class="col-span-4 flex items-center gap-3">
+                <div class="relative">
+                  <div class="w-10 h-10 rounded-full bg-dark-border overflow-hidden" :class="selectedDropPlayer?.player_key === player.player_key ? 'ring-2 ring-red-400' : ''">
+                    <img :src="player.headshot || defaultHeadshot" class="w-full h-full object-cover" @error="handleImageError" />
+                  </div>
+                  <div v-if="selectedDropPlayer?.player_key === player.player_key" class="absolute -top-1 -right-1 w-5 h-5 bg-red-500 rounded-full flex items-center justify-center">
+                    <span class="text-xs text-white font-bold">✓</span>
+                  </div>
+                </div>
+                <div>
+                  <div class="font-semibold text-dark-text">{{ player.full_name }}</div>
+                  <div class="text-xs text-dark-textMuted">{{ player.position?.split(',')[0] }} • {{ player.mlb_team || 'FA' }}</div>
+                </div>
+              </div>
+              <template v-if="dropModalViewMode === 'projections'">
+                <div class="col-span-2 text-center font-bold text-dark-text">{{ (player.projectedValue / 10 || 0).toFixed(1) }}</div>
+                <div class="col-span-2 text-center font-bold text-dark-text">{{ (player.projectedValue / 3 || 0).toFixed(1) }}</div>
+                <div class="col-span-2 text-center font-bold text-dark-text">{{ (player.projectedValue / 1.5 || 0).toFixed(1) }}</div>
+                <div class="col-span-2 text-center font-bold text-dark-text">{{ player.projectedValue?.toFixed(1) || '0' }}</div>
+              </template>
+              <template v-else>
+                <div class="col-span-2 text-center font-bold text-dark-text">{{ (player.currentValue / 3 || 0).toFixed(1) }}</div>
+                <div class="col-span-2 text-center font-bold text-dark-text">{{ (player.currentValue / 1.5 || 0).toFixed(1) }}</div>
+                <div class="col-span-2 text-center font-bold text-dark-text">{{ player.currentValue?.toFixed(1) || '0' }}</div>
+                <div class="col-span-2 text-center font-bold text-dark-text">{{ player.overallValue?.toFixed(0) || '0' }}</div>
+              </template>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Modal Footer -->
+        <div class="px-6 py-4 border-t border-dark-border bg-dark-border/20 flex items-center justify-between">
+          <button @click="closeDropModal" class="px-4 py-2 text-dark-textMuted hover:text-dark-text transition-colors">
+            Cancel
+          </button>
+          <button 
+            @click="confirmDrop"
+            :disabled="!selectedDropPlayer"
+            :class="selectedDropPlayer ? 'bg-cyan-500 hover:bg-cyan-600 text-gray-900' : 'bg-dark-border text-dark-textMuted cursor-not-allowed'"
+            class="px-6 py-2 rounded-lg font-semibold text-sm transition-colors flex items-center gap-2"
+          >
+            <span>Add {{ dropModalPlayer?.full_name?.split(' ')[1] }}</span>
+            <span v-if="selectedDropPlayer">& Drop {{ selectedDropPlayer.full_name?.split(' ')[1] }}</span>
+          </button>
         </div>
       </div>
     </div>
@@ -2198,6 +2409,23 @@ const selectedStartSitPosition = ref('C')
 const currentMatchupWeek = ref(1)
 const currentMatchup = ref<any>(null)
 const startSitPlayerFilter = ref<'all' | 'mine' | 'fa'>('all')
+
+// Enhanced Start/Sit features
+const startSitTimePeriod = ref<'today' | 'next7' | 'next14' | 'ros'>('today')
+const startSitViewMode = ref<'projections' | 'stats'>('projections')
+const waiverLineupPlayers = ref<any[]>([])  // Players added from FA for comparison
+const showDropModal = ref(false)
+const dropModalPlayer = ref<any>(null)
+const selectedDropPlayer = ref<any>(null)
+const dropModalViewMode = ref<'projections' | 'stats'>('projections')
+
+// Roster limits - loaded from platform
+const rosterLimits = ref({
+  maxRosterSize: 25,
+  currentRosterSize: 0,
+  irSpots: 0,
+  usedIrSpots: 0
+})
 
 // Player swap state
 const swapSourcePlayer = ref<any>(null)  // Player to potentially add
@@ -2549,14 +2777,45 @@ const categoryRankedPlayers = computed(() => {
       const actualPerGame = p.perGameValue
       if (actualPerGame > 0 && expectedPerGame > 0) { consistencyScore = Math.min(100, Math.max(0, (actualPerGame / expectedPerGame) * 50)) } 
     }
-    // Use custom weights, normalized to sum to 1
+    // Use custom weights from ranking factors
     const weights = rankingWeights.value
-    const totalW = weights.categoryRank + weights.multiCategory + weights.scarcity + weights.consistency
+    
+    // Core factors: categoryRank, multiCategory, projectedVolume, positionScarcity
+    // Performance factors: consistency, recentTrend, ceilingMode, floorMode, eliteStatus
+    // Calculate enabled weight total for normalization
+    const coreW = (weights.categoryRank || 0) + (weights.multiCategory || 0) + 
+                  (weights.projectedVolume || 0) + (weights.positionScarcity || 0)
+    const perfW = (weights.consistency || 0) + (weights.recentTrend || 0) + 
+                  (weights.eliteStatus || 0)
+    const scarcityW = (weights.categoryScarcity || 0)
+    const totalW = coreW + perfW + scarcityW
     const normFactor = totalW > 0 ? 100 / totalW : 1
-    const overallValue = (categoryRankScore * (weights.categoryRank / 100 * normFactor)) + 
-                        (multiCatScore * (weights.multiCategory / 100 * normFactor)) + 
-                        (scarcityScore * (weights.scarcity / 100 * normFactor)) + 
-                        (consistencyScore * (weights.consistency / 100 * normFactor))
+    
+    // Calculate volume score (based on projected volume/games)
+    const volumeScore = p.projectedValue > 0 ? Math.min(100, (p.projectedValue / (players[0]?.projectedValue || 1)) * 100) : 0
+    
+    // Elite status bonus (top 5% in category)
+    const eliteBonus = percentile <= 0.05 ? 20 : 0
+    
+    // Recent trend score (placeholder - would need historical data)
+    const trendScore = 50 // Neutral for now
+    
+    // Calculate overall value with all enabled factors
+    let overallValue = 0
+    overallValue += categoryRankScore * ((weights.categoryRank || 0) / 100 * normFactor)
+    overallValue += multiCatScore * ((weights.multiCategory || 0) / 100 * normFactor)
+    overallValue += volumeScore * ((weights.projectedVolume || 0) / 100 * normFactor)
+    overallValue += scarcityScore * ((weights.positionScarcity || 0) / 100 * normFactor)
+    overallValue += consistencyScore * ((weights.consistency || 0) / 100 * normFactor)
+    overallValue += trendScore * ((weights.recentTrend || 0) / 100 * normFactor)
+    overallValue += eliteBonus * ((weights.eliteStatus || 0) / 100 * normFactor)
+    
+    // Category scarcity adjustment (for rare cats like SB, SV)
+    if (weights.categoryScarcity) {
+      const catScarcity = getCategoryScarcityMultiplier(selectedCategory.value)
+      overallValue += (catScarcity * 50) * ((weights.categoryScarcity || 0) / 100 * normFactor)
+    }
+    
     return { ...p, tier, categoryRank: index + 1, overallValue: Math.round(overallValue * 10) / 10, categoriesContributing, scarcityScore: Math.round(scarcityScore) }
   })
   return players
@@ -2681,6 +2940,32 @@ function getChartY(value: number): number {
   const range = bottom - top
   const ratio = value / chartYMax.value
   return bottom - (ratio * range)
+}
+
+// Category scarcity multipliers for rare categories
+function getCategoryScarcityMultiplier(statId: string): number {
+  const scarcityMap: Record<string, number> = {
+    // Very scarce categories (higher multiplier = more valuable)
+    'SB': 1.25,
+    '16': 1.25, // Yahoo SB
+    'SV': 1.30,
+    '32': 1.30, // Yahoo SV
+    'HLD': 1.20,
+    'SV+H': 1.25,
+    // Moderately scarce
+    'W': 1.10,
+    '28': 1.10, // Yahoo W
+    'QS': 1.05,
+    // Common (baseline)
+    'HR': 1.0,
+    'R': 1.0,
+    'RBI': 1.0,
+    'K': 0.95,
+    'AVG': 1.0,
+    'ERA': 1.0,
+    'WHIP': 1.0
+  }
+  return scarcityMap[statId] || 1.0
 }
 
 // Functions
@@ -4253,11 +4538,116 @@ function getStartSitPlayerNameClass(player: any): string {
 
 // ==================== PLAYER SWAP FUNCTIONS ====================
 
+// Computed: Roster spots available (accounting for IR)
+const rosterSpotsAvailable = computed(() => {
+  const activeRosterSize = rosterLimits.value.currentRosterSize - rosterLimits.value.usedIrSpots
+  const activeRosterLimit = rosterLimits.value.maxRosterSize - rosterLimits.value.irSpots
+  return activeRosterLimit - activeRosterSize - waiverLineupPlayers.value.length
+})
+
+// Computed: Droppable players (my team, sorted by value)
+const droppablePlayers = computed(() => {
+  return allPlayers.value
+    .filter(p => p.fantasy_team_key === myTeamKey.value)
+    .sort((a, b) => (a.overallValue || 0) - (b.overallValue || 0)) // Lowest value first
+})
+
+// Computed: Modified lineup including waiver pickups
+const modifiedSuggestedLineup = computed(() => {
+  const lineup = [...suggestedCategoryLineup.value]
+  
+  // Add waiver players to their appropriate slots
+  for (const waiverPlayer of waiverLineupPlayers.value) {
+    const pos = waiverPlayer.position?.split(',')[0]?.trim() || 'Util'
+    const slotIdx = lineup.findIndex(s => 
+      (s.position === pos || s.position === 'Util') && 
+      (!s.player || s.player.overallValue < waiverPlayer.overallValue)
+    )
+    if (slotIdx >= 0) {
+      lineup[slotIdx] = { ...lineup[slotIdx], player: waiverPlayer, isWaiver: true }
+    }
+  }
+  
+  return lineup
+})
+
 function openSwapModal(player: any) {
+  // If clicking a free agent and at roster limit, show drop modal
+  if (!player.fantasy_team_key && rosterSpotsAvailable.value <= 0) {
+    dropModalPlayer.value = player
+    selectedDropPlayer.value = null
+    showDropModal.value = true
+    return
+  }
+  
+  // If clicking a free agent with roster space, add directly
+  if (!player.fantasy_team_key) {
+    addToWaiverLineup(player)
+    return
+  }
+  
+  // Otherwise show regular swap modal for rostered players
   swapSourcePlayer.value = player
   selectedSwapTarget.value = null
   swapImpact.value = null
   showSwapModal.value = true
+}
+
+function addToWaiverLineup(player: any) {
+  if (waiverLineupPlayers.value.some(p => p.player_key === player.player_key)) return
+  waiverLineupPlayers.value.push({ ...player, isWaiver: true })
+}
+
+function removeFromWaiverLineup(player: any) {
+  waiverLineupPlayers.value = waiverLineupPlayers.value.filter(p => p.player_key !== player.player_key)
+}
+
+function clearWaiverLineup() {
+  waiverLineupPlayers.value = []
+}
+
+function closeDropModal() {
+  showDropModal.value = false
+  dropModalPlayer.value = null
+  selectedDropPlayer.value = null
+}
+
+function confirmDrop() {
+  if (!selectedDropPlayer.value || !dropModalPlayer.value) return
+  
+  // Remove the dropped player from our "virtual roster"
+  // In a real implementation, this would queue up a waiver claim
+  
+  // Add the pickup to waiver lineup
+  addToWaiverLineup(dropModalPlayer.value)
+  
+  closeDropModal()
+}
+
+// Get player projection for different time periods
+function getPlayerCategoryProjection(player: any, period: string, category: any): number {
+  const basePerGame = player.perGameValue || player.stats?.[category?.stat_id] || 0
+  
+  switch (period) {
+    case 'today': return player.hasGame ? basePerGame : 0
+    case 'next7': return basePerGame * 5.5 // ~5.5 games in 7 days
+    case 'next14': return basePerGame * 11
+    case 'ros': return player.projectedValue || basePerGame * 60
+    default: return basePerGame
+  }
+}
+
+// Get player stats for looking back
+function getPlayerCategoryStats(player: any, period: string, category: any): number {
+  const seasonTotal = player.currentValue || player.stats?.[category?.stat_id] || 0
+  const perGame = player.perGameValue || 0
+  
+  switch (period) {
+    case 'l7': return perGame * 5 // Last 7 days estimate
+    case 'l14': return perGame * 10
+    case 'season': return seasonTotal
+    default: return perGame
+  }
 }
 
 function closeSwapModal() {
