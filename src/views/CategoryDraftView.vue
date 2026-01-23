@@ -211,7 +211,10 @@
                 v-if="getPickForRound(team.team_key, round)"
                 @click="selectPick(getPickForRound(team.team_key, round))"
                 class="bg-dark-card rounded-lg p-2 cursor-pointer hover:ring-2 hover:ring-primary transition-all h-full"
-                :class="getPickClassWithHighlight(getPickForRound(team.team_key, round))"
+                :class="[
+                  getPickClassWithHighlight(getPickForRound(team.team_key, round)),
+                  positionFilter !== 'All' && !pickMatchesPositionFilter(getPickForRound(team.team_key, round)) ? 'opacity-30' : ''
+                ]"
               >
                 <div class="flex items-center justify-between">
                   <div class="text-xs font-medium text-dark-text truncate flex-1 mr-1">
@@ -1358,6 +1361,20 @@ const filteredPicks = computed(() => {
   return draftPicks.value.filter(p => p.position === positionFilter.value)
 })
 
+// Check if a pick matches the current position filter
+function pickMatchesPositionFilter(pick: any): boolean {
+  if (!pick || positionFilter.value === 'All') return true
+  if (!pick.position) return false
+  
+  const sport = leagueStore.currentSportType || 'baseball'
+  if (sport === 'baseball') {
+    const posArray = pick.position.split(',').map((pos: string) => pos.trim())
+    return posArray.includes(positionFilter.value)
+  }
+  
+  return pick.position === positionFilter.value
+}
+
 // Category Leaders
 const categoryLeaders = computed(() => {
   return leagueCategories.value.map(cat => {
@@ -1848,23 +1865,23 @@ function isHittingCategory(cat: string): boolean {
 }
 
 function getCategoryScoreClass(score: number) {
-  if (score >= 75) return 'text-green-400'
-  if (score >= 50) return 'text-yellow-400'
-  if (score >= 25) return 'text-orange-400'
+  // Green for good, yellow for middle, red for bad
+  if (score >= 67) return 'text-green-400'
+  if (score >= 33) return 'text-yellow-400'
   return 'text-red-400'
 }
 
 function getBarColorClass(percentile: number) {
-  if (percentile >= 75) return 'bg-green-500'
-  if (percentile >= 50) return 'bg-yellow-500'
-  if (percentile >= 25) return 'bg-orange-500'
-  return 'bg-red-500'
+  // Match the text colors: green for good, yellow for middle, red for bad
+  if (percentile >= 67) return 'bg-green-400'
+  if (percentile >= 33) return 'bg-yellow-400'
+  return 'bg-red-400'
 }
 
 function getCategoryStrengthClass(percentile: number) {
-  if (percentile >= 75) return 'bg-green-500/30 text-green-400'
-  if (percentile >= 50) return 'bg-yellow-500/30 text-yellow-400'
-  if (percentile >= 25) return 'bg-orange-500/30 text-orange-400'
+  // Green for good, yellow for middle, red for bad
+  if (percentile >= 67) return 'bg-green-500/30 text-green-400'
+  if (percentile >= 33) return 'bg-yellow-500/30 text-yellow-400'
   return 'bg-red-500/30 text-red-400'
 }
 
