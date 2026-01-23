@@ -101,10 +101,10 @@
               :class="[
                 'p-4 rounded-xl border-2 transition-all text-left',
                 selectedMatchup?.matchup_id === matchup.matchup_id 
-                  ? 'border-yellow-400 bg-yellow-400/10 ring-2 ring-yellow-400/40' 
+                  ? 'border-yellow-400 bg-yellow-500/10 ring-2 ring-yellow-400/30' 
                   : (matchup.team1.is_my_team || matchup.team2.is_my_team)
                     ? 'border-yellow-400/50 bg-yellow-400/5 hover:border-yellow-400'
-                    : 'border-dark-border bg-dark-card hover:border-primary/50'
+                    : 'border-dark-border bg-dark-card hover:border-yellow-400/50 hover:bg-dark-border/30'
               ]">
               <!-- Team 1 -->
               <div class="flex items-center justify-between mb-2">
@@ -182,29 +182,29 @@
             <!-- Big Team Cards -->
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
               <!-- Team 1 -->
-              <div :class="['text-center p-6 rounded-xl border-2', selectedMatchup.team1.is_my_team ? 'bg-gradient-to-br from-primary/15 to-primary/5 border-primary/40' : 'bg-gradient-to-br from-cyan-500/10 to-cyan-600/5 border-cyan-500/30']">
+              <div class="text-center p-6 rounded-xl border-2 bg-gradient-to-br from-cyan-500/10 to-cyan-600/5 border-cyan-500/30">
                 <div class="relative inline-block">
-                  <img :src="selectedMatchup.team1.logo_url || defaultAvatar" :class="['w-20 h-20 rounded-full mx-auto mb-3 border-4', selectedMatchup.team1.is_my_team ? 'border-primary' : 'border-cyan-500']" @error="handleImageError"/>
+                  <img :src="selectedMatchup.team1.logo_url || defaultAvatar" class="w-20 h-20 rounded-full mx-auto mb-3 border-4 border-cyan-500" @error="handleImageError"/>
                   <div v-if="selectedMatchup.team1.is_my_team" class="absolute -top-1 -right-1 w-6 h-6 bg-yellow-400 rounded-full flex items-center justify-center shadow-lg"><span class="text-sm text-gray-900">★</span></div>
                 </div>
-                <div :class="['font-bold text-xl mb-2', selectedMatchup.team1.is_my_team ? 'text-primary' : 'text-cyan-400']">{{ selectedMatchup.team1.name }}</div>
-                <div :class="['text-5xl font-black mb-3', selectedMatchup.team1.is_my_team ? 'text-primary' : 'text-cyan-400']">{{ selectedMatchup.team1WinProb.toFixed(0) }}%</div>
+                <div class="font-bold text-xl mb-2 text-cyan-400">{{ selectedMatchup.team1.name }}</div>
+                <div class="text-5xl font-black mb-3 text-cyan-400">{{ selectedMatchup.team1WinProb.toFixed(0) }}%</div>
                 <div class="space-y-1 text-sm">
                   <div class="text-white">Current: {{ selectedMatchup.team1CatWins }}-{{ selectedMatchup.team2CatWins }}-{{ selectedMatchup.ties }}</div>
-                  <div :class="selectedMatchup.team1.is_my_team ? 'text-primary' : 'text-cyan-400'">Projected: {{ selectedMatchup.projectedTeam1Wins }}-{{ selectedMatchup.projectedTeam2Wins }}-{{ selectedMatchup.projectedTies }}</div>
+                  <div class="text-cyan-400">Projected: {{ selectedMatchup.projectedTeam1Wins }}-{{ selectedMatchup.projectedTeam2Wins }}-{{ selectedMatchup.projectedTies }}</div>
                 </div>
               </div>
               <!-- Team 2 -->
-              <div :class="['text-center p-6 rounded-xl border-2', selectedMatchup.team2.is_my_team ? 'bg-gradient-to-br from-primary/15 to-primary/5 border-primary/40' : 'bg-gradient-to-br from-orange-500/10 to-orange-600/5 border-orange-500/30']">
+              <div class="text-center p-6 rounded-xl border-2 bg-gradient-to-br from-orange-500/10 to-orange-600/5 border-orange-500/30">
                 <div class="relative inline-block">
-                  <img :src="selectedMatchup.team2.logo_url || defaultAvatar" :class="['w-20 h-20 rounded-full mx-auto mb-3 border-4', selectedMatchup.team2.is_my_team ? 'border-primary' : 'border-orange-500']" @error="handleImageError"/>
+                  <img :src="selectedMatchup.team2.logo_url || defaultAvatar" class="w-20 h-20 rounded-full mx-auto mb-3 border-4 border-orange-500" @error="handleImageError"/>
                   <div v-if="selectedMatchup.team2.is_my_team" class="absolute -top-1 -right-1 w-6 h-6 bg-yellow-400 rounded-full flex items-center justify-center shadow-lg"><span class="text-sm text-gray-900">★</span></div>
                 </div>
-                <div :class="['font-bold text-xl mb-2', selectedMatchup.team2.is_my_team ? 'text-primary' : 'text-orange-400']">{{ selectedMatchup.team2.name }}</div>
-                <div :class="['text-5xl font-black mb-3', selectedMatchup.team2.is_my_team ? 'text-primary' : 'text-orange-400']">{{ selectedMatchup.team2WinProb.toFixed(0) }}%</div>
+                <div class="font-bold text-xl mb-2 text-orange-400">{{ selectedMatchup.team2.name }}</div>
+                <div class="text-5xl font-black mb-3 text-orange-400">{{ selectedMatchup.team2WinProb.toFixed(0) }}%</div>
                 <div class="space-y-1 text-sm">
                   <div class="text-white">Current: {{ selectedMatchup.team2CatWins }}-{{ selectedMatchup.team1CatWins }}-{{ selectedMatchup.ties }}</div>
-                  <div :class="selectedMatchup.team2.is_my_team ? 'text-primary' : 'text-orange-400'">Projected: {{ selectedMatchup.projectedTeam2Wins }}-{{ selectedMatchup.projectedTeam1Wins }}-{{ selectedMatchup.projectedTies }}</div>
+                  <div class="text-orange-400">Projected: {{ selectedMatchup.projectedTeam2Wins }}-{{ selectedMatchup.projectedTeam1Wins }}-{{ selectedMatchup.projectedTies }}</div>
                 </div>
               </div>
             </div>
@@ -229,11 +229,14 @@
           <div class="card-header"><div class="flex items-center gap-2"><span class="text-2xl">🔍</span><h2 class="card-title">Scouting Reports</h2></div></div>
           <div class="card-body">
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div :class="['p-4 rounded-xl border', selectedMatchup.team1.is_my_team ? 'bg-gradient-to-br from-primary/10 to-primary/5 border-primary/30' : 'bg-gradient-to-br from-cyan-500/10 to-cyan-600/5 border-cyan-500/30']">
+              <div class="p-4 rounded-xl border bg-gradient-to-br from-cyan-500/10 to-cyan-600/5 border-cyan-500/30">
                 <div class="flex items-center gap-3 mb-4">
-                  <img :src="selectedMatchup.team1.logo_url || defaultAvatar" class="w-12 h-12 rounded-full border-2 border-cyan-500" @error="handleImageError"/>
+                  <div class="relative">
+                    <img :src="selectedMatchup.team1.logo_url || defaultAvatar" class="w-12 h-12 rounded-full border-2 border-cyan-500" @error="handleImageError"/>
+                    <div v-if="selectedMatchup.team1.is_my_team" class="absolute -top-1 -right-1 w-4 h-4 bg-yellow-400 rounded-full flex items-center justify-center"><span class="text-[10px] text-gray-900">★</span></div>
+                  </div>
                   <div>
-                    <div class="font-bold text-lg" :class="selectedMatchup.team1.is_my_team ? 'text-primary' : 'text-cyan-400'">{{ selectedMatchup.team1.name }}</div>
+                    <div class="font-bold text-lg text-cyan-400">{{ selectedMatchup.team1.name }}</div>
                     <div class="flex gap-1 mt-1">
                       <span v-for="(r, i) in scoutingReports.team1.recentForm" :key="i" :class="['w-6 h-6 rounded flex items-center justify-center text-xs font-bold', r === 'W' ? 'bg-green-500/20 text-green-400' : r === 'L' ? 'bg-red-500/20 text-red-400' : 'bg-gray-500/20 text-gray-400']">{{ r }}</span>
                     </div>
@@ -244,11 +247,14 @@
                   <div v-if="scoutingReports.team1.weaknesses.length"><div class="text-xs font-semibold text-red-400 mb-1">✗ Category Weaknesses</div><ul class="space-y-1 text-sm text-dark-textMuted"><li v-for="(w, i) in scoutingReports.team1.weaknesses.slice(0,3)" :key="i">• {{ w }}</li></ul></div>
                 </div>
               </div>
-              <div :class="['p-4 rounded-xl border', selectedMatchup.team2.is_my_team ? 'bg-gradient-to-br from-primary/10 to-primary/5 border-primary/30' : 'bg-gradient-to-br from-orange-500/10 to-orange-600/5 border-orange-500/30']">
+              <div class="p-4 rounded-xl border bg-gradient-to-br from-orange-500/10 to-orange-600/5 border-orange-500/30">
                 <div class="flex items-center gap-3 mb-4">
-                  <img :src="selectedMatchup.team2.logo_url || defaultAvatar" class="w-12 h-12 rounded-full border-2 border-orange-500" @error="handleImageError"/>
+                  <div class="relative">
+                    <img :src="selectedMatchup.team2.logo_url || defaultAvatar" class="w-12 h-12 rounded-full border-2 border-orange-500" @error="handleImageError"/>
+                    <div v-if="selectedMatchup.team2.is_my_team" class="absolute -top-1 -right-1 w-4 h-4 bg-yellow-400 rounded-full flex items-center justify-center"><span class="text-[10px] text-gray-900">★</span></div>
+                  </div>
                   <div>
-                    <div class="font-bold text-lg" :class="selectedMatchup.team2.is_my_team ? 'text-primary' : 'text-orange-400'">{{ selectedMatchup.team2.name }}</div>
+                    <div class="font-bold text-lg text-orange-400">{{ selectedMatchup.team2.name }}</div>
                     <div class="flex gap-1 mt-1">
                       <span v-for="(r, i) in scoutingReports.team2.recentForm" :key="i" :class="['w-6 h-6 rounded flex items-center justify-center text-xs font-bold', r === 'W' ? 'bg-green-500/20 text-green-400' : r === 'L' ? 'bg-red-500/20 text-red-400' : 'bg-gray-500/20 text-gray-400']">{{ r }}</span>
                     </div>
@@ -523,6 +529,13 @@ const isSeasonComplete = computed(() => {
   return leagueInfo.value?.is_finished === 1 || leagueInfo.value?.is_finished === '1'
 })
 
+// Check if viewing current week (vs historical)
+const isCurrentWeek = computed(() => {
+  if (isSeasonComplete.value) return false
+  const selected = parseInt(selectedWeek.value) || 0
+  return selected === currentWeek.value
+})
+
 const currentSeason = computed(() => leagueStore.currentLeague?.season || new Date().getFullYear().toString())
 
 const availableWeeks = computed(() => {
@@ -600,8 +613,8 @@ const weekStats = computed(() => {
 const gradientBarStyle = computed(() => {
   if (!selectedMatchup.value) return {}
   const prob1 = selectedMatchup.value.team1WinProb
-  const c1 = selectedMatchup.value.team1.is_my_team ? '#f5c451' : '#06b6d4'
-  const c2 = selectedMatchup.value.team2.is_my_team ? '#f5c451' : '#f97316'
+  const c1 = '#06b6d4' // cyan
+  const c2 = '#f97316' // orange
   return { background: `linear-gradient(to right, ${c1} 0%, ${c1} ${Math.max(0, prob1-10)}%, ${c2} ${Math.min(100, prob1+10)}%, ${c2} 100%)` }
 })
 
@@ -1515,78 +1528,148 @@ function buildWinProbChart() {
   if (!winProbChartEl.value || !selectedMatchup.value) return
   if (winProbChart) { winProbChart.destroy(); winProbChart = null }
   
-  // Determine what day of the week it is (0 = Sunday, 1 = Monday, etc.)
+  const matchup = selectedMatchup.value
+  const allDays = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
+  
+  // Check if this is a completed week (all games done)
+  const isCompletedWeek = !isCurrentWeek.value
+  
+  // Determine what day of the week it is for live matchups
   const now = new Date()
   const dayOfWeek = now.getDay()
-  
-  // Map day of week to index in our chart (Mon=0, Tue=1, Wed=2, Thu=3, Fri=4, Sat=5, Sun=6)
-  // JavaScript: Sun=0, Mon=1, Tue=2, Wed=3, Thu=4, Fri=5, Sat=6
   const dayMap: Record<number, number> = { 1: 0, 2: 1, 3: 2, 4: 3, 5: 4, 6: 5, 0: 6 }
   const todayIndex = dayMap[dayOfWeek]
   
-  // We show data through yesterday (completed days only)
-  // On Monday (todayIndex=0), show nothing yet
-  // On Tuesday (todayIndex=1), show Mon
-  // On Saturday (todayIndex=5), show Mon-Fri
-  const completedDays = todayIndex // Number of completed days (0 on Monday)
+  // Get current stats from the matchup
+  const team1Stats = matchup.team1Stats || {}
+  const team2Stats = matchup.team2Stats || {}
+  const categoryIds = Object.keys(team1Stats)
   
-  const allDays = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
-  const p1Final = selectedMatchup.value.team1WinProb
+  // Calculate final winner for completed matchups
+  const team1FinalWins = matchup.team1CatWins || 0
+  const team2FinalWins = matchup.team2CatWins || 0
+  const team1IsFinalWinner = team1FinalWins > team2FinalWins
+  const team2IsFinalWinner = team2FinalWins > team1FinalWins
   
-  // If no days completed yet, show just the starting point
-  if (completedDays === 0) {
-    const days = ['Start']
-    const d1 = [50]
-    const d2 = [50]
-    const c1 = selectedMatchup.value.team1.is_my_team ? '#f5c451' : '#06b6d4'
-    const c2 = selectedMatchup.value.team2.is_my_team ? '#f5c451' : '#f97316'
-    winProbChart = new ApexCharts(winProbChartEl.value, {
-      chart: { type: 'area', height: 192, background: 'transparent', toolbar: { show: false }, zoom: { enabled: false } },
-      series: [{ name: selectedMatchup.value.team1.name, data: d1 }, { name: selectedMatchup.value.team2.name, data: d2 }],
-      colors: [c1, c2],
-      fill: { type: 'gradient', gradient: { shadeIntensity: 1, opacityFrom: 0.4, opacityTo: 0.1, stops: [0, 100] } },
-      stroke: { width: 2, curve: 'smooth' },
-      xaxis: { categories: days, labels: { style: { colors: '#9ca3af', fontSize: '10px' } } },
-      yaxis: { min: 0, max: 100, labels: { style: { colors: '#9ca3af', fontSize: '10px' }, formatter: (v: number) => `${v.toFixed(0)}%` } },
-      legend: { show: true, position: 'top', labels: { colors: '#9ca3af' }, fontSize: '11px' },
-      grid: { borderColor: '#374151', strokeDashArray: 3 },
-      tooltip: { theme: 'dark', y: { formatter: (v: number) => `${v.toFixed(0)}%` } }
-    })
-    winProbChart.render()
-    return
-  }
-  
-  // Build probability progression for completed days
-  // Probabilities evolve from 50% on day 0 to current probability
-  const days = allDays.slice(0, completedDays)
+  // Build probability data for all 7 days
   const d1: number[] = []
+  const d2: number[] = []
   
-  for (let i = 0; i < completedDays; i++) {
-    // Progress ratio: how far through the week we are
-    const progress = (i + 1) / 7
-    // Interpolate from 50% towards current probability
-    // Early days have more variance/uncertainty
-    const prob = 50 + (p1Final - 50) * progress
-    d1.push(Math.round(prob * 100) / 100)
+  for (let day = 0; day < 7; day++) {
+    let team1Prob: number
+    let team2Prob: number
+    
+    if (day === 6 && isCompletedWeek) {
+      // SUNDAY on completed matchup - deterministic 100/0
+      if (team1IsFinalWinner) {
+        team1Prob = 100
+        team2Prob = 0
+      } else if (team2IsFinalWinner) {
+        team1Prob = 0
+        team2Prob = 100
+      } else {
+        team1Prob = 50
+        team2Prob = 50
+      }
+    } else if (isCompletedWeek) {
+      // Completed week - interpolate from 50% to final result
+      const progress = (day + 1) / 7
+      const finalProb = team1IsFinalWinner ? 100 : (team2IsFinalWinner ? 0 : 50)
+      team1Prob = 50 + (finalProb - 50) * progress
+      team2Prob = 100 - team1Prob
+    } else {
+      // Live matchup - run Monte Carlo simulation
+      const daysRemaining = 6 - day
+      
+      if (daysRemaining <= 0) {
+        // No days remaining, use current probability
+        team1Prob = matchup.team1WinProb || 50
+        team2Prob = matchup.team2WinProb || 50
+      } else {
+        // Run Monte Carlo simulation for this day
+        const mcResult = runCategoryMonteCarlo(team1Stats, team2Stats, categoryIds, daysRemaining)
+        team1Prob = mcResult.team1
+        team2Prob = mcResult.team2
+      }
+    }
+    
+    d1.push(Math.round(team1Prob * 10) / 10)
+    d2.push(Math.round(team2Prob * 10) / 10)
   }
   
-  const d2 = d1.map(x => Math.round((100 - x) * 100) / 100)
-  const c1 = selectedMatchup.value.team1.is_my_team ? '#f5c451' : '#06b6d4'
-  const c2 = selectedMatchup.value.team2.is_my_team ? '#f5c451' : '#f97316'
+  // Always use cyan/orange colors
+  const c1 = '#06b6d4' // cyan
+  const c2 = '#f97316' // orange
   
   winProbChart = new ApexCharts(winProbChartEl.value, {
     chart: { type: 'area', height: 192, background: 'transparent', toolbar: { show: false }, zoom: { enabled: false } },
-    series: [{ name: selectedMatchup.value.team1.name, data: d1 }, { name: selectedMatchup.value.team2.name, data: d2 }],
+    series: [{ name: matchup.team1.name, data: d1 }, { name: matchup.team2.name, data: d2 }],
     colors: [c1, c2],
     fill: { type: 'gradient', gradient: { shadeIntensity: 1, opacityFrom: 0.4, opacityTo: 0.1, stops: [0, 100] } },
     stroke: { width: 2, curve: 'smooth' },
-    xaxis: { categories: days, labels: { style: { colors: '#9ca3af', fontSize: '10px' } } },
+    xaxis: { categories: allDays, labels: { style: { colors: '#9ca3af', fontSize: '10px' } } },
     yaxis: { min: 0, max: 100, labels: { style: { colors: '#9ca3af', fontSize: '10px' }, formatter: (v: number) => `${v.toFixed(0)}%` } },
     legend: { show: true, position: 'top', labels: { colors: '#9ca3af' }, fontSize: '11px' },
     grid: { borderColor: '#374151', strokeDashArray: 3 },
     tooltip: { theme: 'dark', y: { formatter: (v: number) => `${v.toFixed(0)}%` } }
   })
   winProbChart.render()
+}
+
+// Monte Carlo simulation for category matchups - returns win probability at end of given day
+function runCategoryMonteCarlo(
+  team1Stats: Record<string, number>,
+  team2Stats: Record<string, number>,
+  categoryIds: string[],
+  daysRemaining: number
+): { team1: number, team2: number } {
+  const SIMULATIONS = 3000
+  let team1Wins = 0
+  let team2Wins = 0
+  let ties = 0
+  
+  // Volatility per category
+  const yahooVol: Record<string,number> = { '60':8,'7':3,'12':8,'16':2,'3':0.02,'55':0.02,'56':0.03,'28':0.5,'32':0.5,'42':15,'26':0.5,'27':0.15,'48':0.5 }
+  const espnVol: Record<string,number> = { '2':8,'3':3,'4':8,'5':2,'8':0.02,'9':0.02,'10':0.03,'17':0.5,'20':0.5,'34':15,'18':0.5,'19':0.15,'32':0.5,'47':0.5,'48':0.15 }
+  const vol = isEspn.value ? espnVol : yahooVol
+  const inverseStats = isEspn.value ? ESPN_INVERSE_STATS : INVERSE_STATS
+  
+  for (let sim = 0; sim < SIMULATIONS; sim++) {
+    let t1CatsWon = 0
+    let t2CatsWon = 0
+    
+    for (const catId of categoryIds) {
+      const v1 = team1Stats[catId] || 0
+      const v2 = team2Stats[catId] || 0
+      const dailyVol = vol[catId] || 5
+      const totalVol = dailyVol * Math.sqrt(Math.max(0.5, daysRemaining))
+      const isInverse = inverseStats.includes(catId)
+      
+      // Project final values with random variance
+      const final1 = v1 + randomNormal(0, totalVol)
+      const final2 = v2 + randomNormal(0, totalVol)
+      
+      // Determine category winner
+      if (isInverse) {
+        if (final1 < final2) t1CatsWon++
+        else if (final2 < final1) t2CatsWon++
+      } else {
+        if (final1 > final2) t1CatsWon++
+        else if (final2 > final1) t2CatsWon++
+      }
+    }
+    
+    // Determine matchup winner
+    if (t1CatsWon > t2CatsWon) team1Wins++
+    else if (t2CatsWon > t1CatsWon) team2Wins++
+    else ties++
+  }
+  
+  // Calculate win probability (ties split evenly)
+  const t1Prob = ((team1Wins + ties / 2) / SIMULATIONS) * 100
+  const t2Prob = ((team2Wins + ties / 2) / SIMULATIONS) * 100
+  
+  return { team1: t1Prob, team2: t2Prob }
 }
 
 async function downloadMatchupAnalysis() {
