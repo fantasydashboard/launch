@@ -292,12 +292,16 @@
       <!-- Rankings Insights -->
       <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <!-- Biggest Climber -->
-        <div :class="[
-          'card rounded-xl border-2 transition-all',
+        <div 
+          :class="[
+          'card rounded-xl border-2 transition-all cursor-pointer',
           biggestClimber && biggestClimber.is_my_team 
             ? 'border-yellow-500/40 bg-gradient-to-br from-yellow-500/10 to-yellow-500/5' 
             : 'border-dark-border'
-        ]">
+        ]"
+          @mouseenter="biggestClimber && (chartHoveredTeamKey = biggestClimber.team_key)"
+          @mouseleave="chartHoveredTeamKey = null"
+        >
           <div class="card-header pb-2">
             <div class="text-sm text-dark-textMuted uppercase tracking-wide">📈 Biggest Climber</div>
           </div>
@@ -336,12 +340,16 @@
         </div>
 
         <!-- Biggest Faller -->
-        <div :class="[
-          'card rounded-xl border-2 transition-all',
+        <div 
+          :class="[
+          'card rounded-xl border-2 transition-all cursor-pointer',
           biggestFaller && biggestFaller.is_my_team 
             ? 'border-yellow-500/40 bg-gradient-to-br from-yellow-500/10 to-yellow-500/5' 
             : 'border-dark-border'
-        ]">
+        ]"
+          @mouseenter="biggestFaller && (chartHoveredTeamKey = biggestFaller.team_key)"
+          @mouseleave="chartHoveredTeamKey = null"
+        >
           <div class="card-header pb-2">
             <div class="text-sm text-dark-textMuted uppercase tracking-wide">📉 Biggest Faller</div>
           </div>
@@ -380,12 +388,16 @@
         </div>
 
         <!-- Most Consistent -->
-        <div :class="[
-          'card rounded-xl border-2 transition-all',
+        <div 
+          :class="[
+          'card rounded-xl border-2 transition-all cursor-pointer',
           mostConsistent && mostConsistent.is_my_team 
             ? 'border-yellow-500/40 bg-gradient-to-br from-yellow-500/10 to-yellow-500/5' 
             : 'border-dark-border'
-        ]">
+        ]"
+          @mouseenter="mostConsistent && (chartHoveredTeamKey = mostConsistent.team_key)"
+          @mouseleave="chartHoveredTeamKey = null"
+        >
           <div class="card-header pb-2">
             <div class="text-sm text-dark-textMuted uppercase tracking-wide">🎯 Most Consistent</div>
           </div>
@@ -424,12 +436,16 @@
         </div>
 
         <!-- Most Volatile -->
-        <div :class="[
-          'card rounded-xl border-2 transition-all',
+        <div 
+          :class="[
+          'card rounded-xl border-2 transition-all cursor-pointer',
           mostVolatile && mostVolatile.is_my_team 
             ? 'border-yellow-500/40 bg-gradient-to-br from-yellow-500/10 to-yellow-500/5' 
             : 'border-dark-border'
-        ]">
+        ]"
+          @mouseenter="mostVolatile && (chartHoveredTeamKey = mostVolatile.team_key)"
+          @mouseleave="chartHoveredTeamKey = null"
+        >
           <div class="card-header pb-2">
             <div class="text-sm text-dark-textMuted uppercase tracking-wide">🎢 Most Volatile</div>
           </div>
