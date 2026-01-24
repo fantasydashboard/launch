@@ -502,10 +502,10 @@
         </div>
         <div class="card-body">
           <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <!-- Hitting Categories -->
+            <!-- Primary Categories (Hitting/Offensive/Skater) -->
             <div>
               <div class="text-sm font-bold text-green-400 mb-3 flex items-center gap-2">
-                <span>⚾</span> Hitting Categories
+                <span>{{ primaryCategoryLabel.icon }}</span> {{ primaryCategoryLabel.label }}
               </div>
               <div class="space-y-3">
                 <div v-for="cat in categoryValueByRound.hitting" :key="cat.category" class="bg-dark-border/20 rounded-lg p-3">
@@ -527,10 +527,10 @@
                 </div>
               </div>
             </div>
-            <!-- Pitching Categories -->
+            <!-- Secondary Categories (Pitching/Defensive/Goalie) -->
             <div>
               <div class="text-sm font-bold text-purple-400 mb-3 flex items-center gap-2">
-                <span>🎯</span> Pitching Categories
+                <span>{{ secondaryCategoryLabel.icon }}</span> {{ secondaryCategoryLabel.label }}
               </div>
               <div class="space-y-3">
                 <div v-for="cat in categoryValueByRound.pitching" :key="cat.category" class="bg-dark-border/20 rounded-lg p-3">
@@ -769,10 +769,10 @@
             <div class="p-6">
               <!-- Category Breakdown -->
               <div class="grid grid-cols-2 gap-6">
-                <!-- Hitting Categories -->
+                <!-- Primary Categories -->
                 <div>
                   <div class="text-sm font-bold text-green-400 mb-3 flex items-center gap-2">
-                    <span>⚾</span> Hitting Categories
+                    <span>{{ primaryCategoryLabel.icon }}</span> {{ primaryCategoryLabel.label }}
                   </div>
                   <div class="space-y-2">
                     <div v-for="cat in selectedTeamHittingCategories" :key="cat.category" class="flex items-center gap-2">
@@ -790,10 +790,10 @@
                     </div>
                   </div>
                 </div>
-                <!-- Pitching Categories -->
+                <!-- Secondary Categories -->
                 <div>
                   <div class="text-sm font-bold text-purple-400 mb-3 flex items-center gap-2">
-                    <span>🎯</span> Pitching Categories
+                    <span>{{ secondaryCategoryLabel.icon }}</span> {{ secondaryCategoryLabel.label }}
                   </div>
                   <div class="space-y-2">
                     <div v-for="cat in selectedTeamPitchingCategories" :key="cat.category" class="flex items-center gap-2">
@@ -1275,8 +1275,9 @@ const tabOptions = [
   { id: 'steals', name: 'Steals & Busts', icon: '🎯' }
 ]
 
-// Stat ID mapping
-const statIdMapping: Record<string, string> = {
+// Sport-specific stat ID mappings for Yahoo
+// Baseball stat IDs
+const baseballStatIdMapping: Record<string, string> = {
   'R': '7', 'HR': '12', 'RBI': '13', 'SB': '16', 'AVG': '3',
   'OBP': '55', 'SLG': '56', 'OPS': '60', 'H': '8', 'BB': '18',
   'W': '28', 'SV': '32', 'K': '42', 'Ks': '42', 'ERA': '26', 'WHIP': '27',
@@ -1284,24 +1285,144 @@ const statIdMapping: Record<string, string> = {
   '2B': '10', '3B': '11', 'TB': '86'
 }
 
-const reverseStatIdMapping: Record<string, string> = Object.fromEntries(
-  Object.entries(statIdMapping).map(([k, v]) => [v, k])
-)
+// Basketball stat IDs (Yahoo)
+const basketballStatIdMapping: Record<string, string> = {
+  'PTS': '12', 'Points': '12',
+  'REB': '15', 'Rebounds': '15', 'OREB': '13', 'DREB': '14',
+  'AST': '16', 'Assists': '16',
+  'STL': '17', 'Steals': '17',
+  'BLK': '18', 'Blocks': '18',
+  'TO': '19', 'Turnovers': '19',
+  '3PM': '10', '3PTM': '10', 'Threes Made': '10',
+  'FG%': '5', 'FGM': '3', 'FGA': '4',
+  'FT%': '8', 'FTM': '6', 'FTA': '7',
+  'MIN': '2', 'GP': '0',
+  'DD': '24', 'TD': '25', // Double-doubles, Triple-doubles
+  'A/T': '20', '+/-': '21'
+}
+
+// Hockey stat IDs (Yahoo)
+const hockeyStatIdMapping: Record<string, string> = {
+  'G': '1', 'Goals': '1',
+  'A': '2', 'Assists': '2',
+  'PTS': '3', 'Points': '3',
+  '+/-': '4',
+  'PIM': '5', 'PPP': '8', 'SHP': '9',
+  'SOG': '14', 'Shots': '14',
+  'HIT': '31', 'Hits': '31',
+  'BLK': '32', 'Blocks': '32',
+  'W': '19', 'Wins': '19',
+  'GAA': '23', 'SV%': '25', 'SO': '27'
+}
+
+// Football stat IDs (Yahoo)
+const footballStatIdMapping: Record<string, string> = {
+  'Pass Yds': '4', 'Pass TD': '5', 'INT': '6',
+  'Rush Yds': '9', 'Rush TD': '10',
+  'Rec': '11', 'Rec Yds': '12', 'Rec TD': '13',
+  'Ret TD': '15', 'Fum': '18',
+  '2-PT': '19',
+  'FG': '33', 'PAT': '35',
+  'Pts Allow': '57', 'Sack': '45',
+  'D/ST TD': '53', 'D Int': '54', 'Fum Rec': '55', 'Safe': '56'
+}
+
+// Get the appropriate mapping based on sport
+function getStatIdMapping(): Record<string, string> {
+  const sport = leagueStore.currentSportType || 'baseball'
+  switch (sport) {
+    case 'basketball': return basketballStatIdMapping
+    case 'hockey': return hockeyStatIdMapping
+    case 'football': return footballStatIdMapping
+    default: return baseballStatIdMapping
+  }
+}
+
+// Compute reverse mapping dynamically
+const reverseStatIdMapping = computed(() => {
+  const mapping = getStatIdMapping()
+  return Object.fromEntries(
+    Object.entries(mapping).map(([k, v]) => [v, k])
+  )
+})
 
 function getStatIdForCategory(cat: string): string {
   // For ESPN leagues, stats are stored with category names as keys
-  // For Yahoo leagues, stats use Yahoo stat IDs
+  // For Yahoo leagues, stats use Yahoo stat IDs (sport-specific)
   if (isEspn.value) {
     return cat // ESPN stats use category name as key
   }
-  return statIdMapping[cat] || cat
+  const mapping = getStatIdMapping()
+  return mapping[cat] || cat
 }
 
 function getCategoryDisplayName(statId: string): string {
-  return reverseStatIdMapping[statId] || statId
+  return reverseStatIdMapping.value[statId] || statId
+}
+
+// Detect sport from Yahoo league key (format: xxx.l.xxxxxx where xxx is game key)
+function detectSportFromLeagueKey(leagueKey: string): string {
+  const gameKey = leagueKey.split('.')[0]
+  const key = parseInt(gameKey)
+  if (!key) return 'baseball'
+  
+  // Yahoo game keys map to specific sports
+  // Basketball (NBA) - keys in 400s range typically
+  const basketballKeys = [428, 418, 410, 402, 395, 385, 375, 364, 353, 340, 322, 304, 282, 265, 249, 433, 438]
+  if (basketballKeys.includes(key) || (key >= 400 && key < 500)) return 'basketball'
+  
+  // Football (NFL) - keys in 300s-400s range
+  const footballKeys = [423, 414, 406, 399, 390, 380, 371, 359, 348, 331, 314, 273]
+  if (footballKeys.includes(key)) return 'football'
+  
+  // Hockey (NHL) - keys in 400s range
+  const hockeyKeys = [427, 419, 411, 403, 396, 386, 376, 352, 341, 321, 303]
+  if (hockeyKeys.includes(key)) return 'hockey'
+  
+  // Baseball (MLB) - keys typically 400+
+  const baseballKeys = [431, 422, 412, 404, 398, 388, 378, 365, 355, 342, 324, 308]
+  if (baseballKeys.includes(key)) return 'baseball'
+  
+  return 'baseball' // Default
+}
+
+// Get default categories for each sport
+function getDefaultCategoriesForSport(sport: string): string[] {
+  switch (sport) {
+    case 'basketball':
+      return ['PTS', 'REB', 'AST', 'STL', 'BLK', '3PM', 'FG%', 'FT%', 'TO']
+    case 'hockey':
+      return ['G', 'A', 'PTS', '+/-', 'PIM', 'PPP', 'SOG', 'HIT', 'BLK', 'W', 'GAA', 'SV%']
+    case 'football':
+      return ['Pass Yds', 'Pass TD', 'INT', 'Rush Yds', 'Rush TD', 'Rec', 'Rec Yds', 'Rec TD']
+    default:
+      return ['R', 'HR', 'RBI', 'SB', 'AVG', 'W', 'SV', 'K', 'ERA', 'WHIP']
+  }
 }
 
 // Computed
+
+// Sport-aware category labels
+const primaryCategoryLabel = computed(() => {
+  const sport = leagueStore.currentSportType || 'baseball'
+  switch (sport) {
+    case 'basketball': return { icon: '🏀', label: 'Offensive Stats' }
+    case 'hockey': return { icon: '🏒', label: 'Skater Stats' }
+    case 'football': return { icon: '🏈', label: 'Offensive Stats' }
+    default: return { icon: '⚾', label: 'Hitting Categories' }
+  }
+})
+
+const secondaryCategoryLabel = computed(() => {
+  const sport = leagueStore.currentSportType || 'baseball'
+  switch (sport) {
+    case 'basketball': return { icon: '🛡️', label: 'Defensive Stats' }
+    case 'hockey': return { icon: '🥅', label: 'Goalie Stats' }
+    case 'football': return { icon: '🛡️', label: 'Defensive Stats' }
+    default: return { icon: '🎯', label: 'Pitching Categories' }
+  }
+})
+
 const draftBoard = computed(() => {
   const teams: Record<string, any> = {}
   
@@ -1884,8 +2005,29 @@ function getCategoryColorClass(cat: string) {
 }
 
 function isHittingCategory(cat: string): boolean {
-  // Note: 'K' and 'Ks' are pitcher strikeouts (pitching category)
-  // Hitter strikeouts are rarely used in fantasy
+  const sport = leagueStore.currentSportType || 'baseball'
+  
+  if (sport === 'basketball') {
+    // Basketball: Offensive categories (vs defensive)
+    const offensiveCats = ['PTS', 'Points', 'AST', 'Assists', '3PM', '3PTM', 'Threes Made', 
+                          'FG%', 'FGM', 'FT%', 'FTM', 'FGA', 'FTA', 'MIN', 'DD', 'TD', 'A/T']
+    return offensiveCats.some(c => cat.includes(c))
+  }
+  
+  if (sport === 'hockey') {
+    // Hockey: Skater categories (vs goalie)
+    const skaterCats = ['G', 'Goals', 'A', 'Assists', 'PTS', 'Points', '+/-', 'PIM', 
+                        'PPP', 'PPG', 'PPA', 'SHP', 'SOG', 'Shots', 'HIT', 'Hits', 'BLK', 'Blocks']
+    return skaterCats.some(c => cat.includes(c))
+  }
+  
+  if (sport === 'football') {
+    // Football: Offensive categories
+    const offensiveCats = ['Pass', 'Rush', 'Rec', 'TD', 'Yds', 'PPR']
+    return offensiveCats.some(c => cat.includes(c))
+  }
+  
+  // Baseball: Hitting categories (vs pitching)
   const hittingCats = ['HR', 'RBI', 'R', 'SB', 'AVG', 'OPS', 'OBP', 'SLG', 'H', 'TB', 'BB', 'XBH', 'AB', '2B', '3B']
   return hittingCats.includes(cat)
 }
@@ -2332,32 +2474,50 @@ async function loadYahooDraftData(leagueKey: string) {
       return
     }
     
+    // Detect sport from league key
+    const sport = leagueStore.currentSportType || detectSportFromLeagueKey(leagueKey)
+    console.log('[CATEGORY DRAFT] Detected sport:', sport)
+    
     // Get league settings for categories
     loadingMessage.value = 'Loading league categories...'
     try {
       const settings = await yahooService.getLeagueSettings(leagueKey)
       leagueSettings.value = settings
+      console.log('[CATEGORY DRAFT] League settings:', settings)
       
-      // Extract stat categories
-      const statCats = settings?.stat_categories || []
+      // Extract stat categories - use display_name directly from Yahoo
+      // Yahoo sends stat_categories as an array with stat objects
+      const statCats = settings?.stat_categories?.stats || settings?.stat_categories || []
+      console.log('[CATEGORY DRAFT] Stat categories from Yahoo:', statCats)
+      
       leagueCategories.value = statCats
-        .filter((cat: any) => cat.is_only_display_stat !== '1')
-        .map((cat: any) => getCategoryDisplayName(cat.stat_id) || cat.display_name)
-        .filter((name: string) => name)
+        .filter((cat: any) => {
+          // Filter out display-only stats (not actual scoring categories)
+          return cat.is_only_display_stat !== '1' && cat.is_only_display_stat !== 1
+        })
+        .map((cat: any) => {
+          // Use display_name from Yahoo, or fall back to our mapping
+          const displayName = cat.display_name || cat.name || getCategoryDisplayName(String(cat.stat_id))
+          console.log('[CATEGORY DRAFT] Category:', cat.stat_id, '->', displayName)
+          return displayName
+        })
+        .filter((name: string) => name && name.trim() !== '')
+      
+      console.log('[CATEGORY DRAFT] Final categories:', leagueCategories.value)
       
       if (leagueCategories.value.length === 0) {
-        // Default categories if none found
-        leagueCategories.value = ['R', 'HR', 'RBI', 'SB', 'AVG', 'W', 'SV', 'K', 'ERA', 'WHIP']
+        // Default categories based on sport
+        leagueCategories.value = getDefaultCategoriesForSport(sport)
       }
       
-      // Set default steal category to first hitting category
+      // Set default steal category to first category
       if (leagueCategories.value.length > 0) {
         selectedStealCategory.value = leagueCategories.value[0]
       }
     } catch (e) {
-      console.log('Could not load league settings, using defaults')
-      leagueCategories.value = ['R', 'HR', 'RBI', 'SB', 'AVG', 'W', 'SV', 'K', 'ERA', 'WHIP']
-      selectedStealCategory.value = 'HR'
+      console.log('Could not load league settings, using defaults for', sport)
+      leagueCategories.value = getDefaultCategoriesForSport(sport)
+      selectedStealCategory.value = leagueCategories.value[0] || 'PTS'
     }
     
     // Get player details and stats (re-calculate playerKeys in case we switched seasons)
