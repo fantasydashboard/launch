@@ -2414,6 +2414,8 @@ const startSitPlayerFilter = ref<'all' | 'mine' | 'fa'>('all')
 const startSitTimePeriod = ref<'today' | 'next7' | 'next14' | 'ros'>('today')
 const startSitViewMode = ref<'projections' | 'stats'>('projections')
 const waiverLineupPlayers = ref<any[]>([])  // Players added from FA for comparison
+const currentMatchupData = ref<any>(null)  // Real matchup data from Yahoo API
+const isLoadingMatchup = ref(false)
 const showDropModal = ref(false)
 const dropModalPlayer = ref<any>(null)
 const selectedDropPlayer = ref<any>(null)
@@ -4204,10 +4206,90 @@ const opponentName = computed(() => {
   return opponent?.name || 'Opponent'
 })
 
+// Load real matchup data from Yahoo API
+async function loadCurrentMatchup() {
+  if (!leagueKey.value || !myTeamKey.value || isEspn.value) return
+  
+  isLoadingMatchup.value = true
+  try {
+    const metadata = await yahooService.getLeagueMetadata(leagueKey.value)
+    const currentWeek = metadata.currentWeek
+    
+    console.log(`[loadCurrentMatchup] Loading matchup data for week ${currentWeek}`)
+    
+    // Get category matchups for current week
+    const matchups = await yahooService.getCategoryMatchups(leagueKey.value, currentWeek)
+    
+    // Find my matchup
+    const myMatchup = matchups.find(m => 
+      m.teams.some((t: any) => t.team_key === myTeamKey.value)
+    )
+    
+    if (myMatchup) {
+      currentMatchupData.value = myMatchup
+      console.log('[loadCurrentMatchup] Current matchup loaded:', {
+        teams: myMatchup.teams.map((t: any) => t.name),
+        stat_winners: myMatchup.stat_winners?.length || 0
+      })
+    } else {
+      console.warn('[loadCurrentMatchup] Could not find matchup for team:', myTeamKey.value)
+    }
+  } catch (error) {
+    console.error('[loadCurrentMatchup] Error loading matchup:', error)
+    currentMatchupData.value = null
+  } finally {
+    isLoadingMatchup.value = false
+  }
+}
+
 // Computed: Matchup category wins/losses/ties (simulated)
 const matchupCategoryStatus = computed(() => {
   const status: Record<string, { myValue: number, oppValue: number, status: 'winning' | 'losing' | 'tied' | 'close' }> = {}
   
+  // If we have real matchup data from Yahoo, use it
+  if (currentMatchupData.value && currentMatchupData.value.teams) {
+    const myTeam = currentMatchupData.value.teams.find((t: any) => t.team_key === myTeamKey.value)
+    const oppTeam = currentMatchupData.value.teams.find((t: any) => t.team_key !== myTeamKey.value)
+    
+    if (myTeam && oppTeam) {
+      for (const cat of displayCategories.value) {
+        const statId = cat.stat_id
+        const myValue = parseFloat(myTeam.stats?.[statId] || '0')
+        const oppValue = parseFloat(oppTeam.stats?.[statId] || '0')
+        
+        // Check stat_winners from Yahoo for actual category result
+        const statWinner = currentMatchupData.value.stat_winners?.find((sw: any) => sw.stat_id === statId)
+        
+        let catStatus: 'winning' | 'losing' | 'tied' | 'close'
+        if (statWinner?.is_tied) {
+          catStatus = 'tied'
+        } else if (statWinner?.winner_team_key === myTeamKey.value) {
+          catStatus = 'winning'
+        } else if (statWinner?.winner_team_key && statWinner.winner_team_key !== myTeamKey.value) {
+          catStatus = 'losing'
+        } else {
+          // Week in progress - calculate based on current values
+          const isLowerBetter = isLowerBetterStat(cat)
+          const diff = Math.abs(myValue - oppValue)
+          const threshold = Math.max(myValue, oppValue) * 0.05 // 5% threshold for close
+          
+          if (diff < threshold) {
+            catStatus = 'close'
+          } else if (isLowerBetter) {
+            catStatus = myValue < oppValue ? 'winning' : 'losing'
+          } else {
+            catStatus = myValue > oppValue ? 'winning' : 'losing'
+          }
+        }
+        
+        status[statId] = { myValue, oppValue, status: catStatus }
+      }
+      
+      return status
+    }
+  }
+  
+  // Fallback: use season totals (old behavior when real matchup data unavailable)
   for (const cat of displayCategories.value) {
     const statId = cat.stat_id
     // Simulate matchup values based on team totals
@@ -5957,6 +6039,8 @@ onMounted(() => {
   } else {
     console.log('[CategoryProjections] Calling loadProjections (Yahoo/Sleeper)...')
     loadProjections()
+    // Load real matchup data for Yahoo leagues
+    setTimeout(() => loadCurrentMatchup(), 1000) // Wait for data to load
   }
 })
 
@@ -5974,6 +6058,8 @@ watch(() => leagueStore.activeLeagueId, (newId, oldId) => {
     } else {
       console.log('[CategoryProjections] Calling loadProjections (Yahoo/Sleeper)...')
       loadProjections()
+      // Load real matchup data for Yahoo leagues
+      setTimeout(() => loadCurrentMatchup(), 1000)
     }
   }
 })
