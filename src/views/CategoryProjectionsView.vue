@@ -892,7 +892,16 @@
                       >
                         Clear
                       </button>
-                      <span class="text-xs text-dark-textMuted">{{ suggestedLineupPlayerCount }} starters</span>
+                      <button 
+                        @click="downloadSuggestedCategoryLineup"
+                        class="px-2 py-1 text-xs font-medium bg-yellow-500/20 text-yellow-400 rounded hover:bg-yellow-500/30 transition-colors flex items-center gap-1"
+                        title="Download lineup as text file"
+                      >
+                        <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                        </svg>
+                        Export
+                      </button>
                     </div>
                   </div>
                   <p v-if="waiverLineupPlayers.length > 0" class="text-xs text-cyan-400 mt-1">
@@ -902,6 +911,9 @@
                   <div v-if="rosterSpotsAvailable <= 0" class="flex items-center gap-2 mt-2 text-xs">
                     <span class="text-red-400">⚠️ Roster full</span>
                     <span class="text-dark-textMuted">• Must drop to add</span>
+                  </div>
+                  <div v-else-if="rosterSpotsAvailable > 0" class="flex items-center gap-2 mt-2 text-xs">
+                    <span class="text-green-400">✓ {{ rosterSpotsAvailable }} open spot{{ rosterSpotsAvailable > 1 ? 's' : '' }}</span>
                   </div>
                 </div>
                 <div class="card-body p-0">
@@ -916,20 +928,67 @@
                         <span class="px-1.5 py-0.5 rounded text-[10px] font-bold" :class="getStartSitPositionClass(slot.position)">{{ slot.position }}</span>
                       </div>
                       <div v-if="slot.player" class="flex items-center gap-2 flex-1 min-w-0">
-                        <div class="w-8 h-8 rounded-full bg-dark-border overflow-hidden">
-                          <img :src="slot.player.headshot || defaultHeadshot" class="w-full h-full object-cover" @error="handleImageError" />
+                        <div class="relative">
+                          <div class="w-8 h-8 rounded-full bg-dark-border overflow-hidden" :class="slot.isWaiver ? 'ring-2 ring-cyan-400' : ''">
+                            <img :src="slot.player.headshot || defaultHeadshot" class="w-full h-full object-cover" @error="handleImageError" />
+                          </div>
+                          <div v-if="slot.isWaiver" class="absolute -top-1 -right-1 w-4 h-4 bg-cyan-400 rounded-full flex items-center justify-center">
+                            <span class="text-[8px] text-gray-900 font-bold">W</span>
+                          </div>
                         </div>
                         <div class="flex-1 min-w-0">
-                          <div class="font-medium text-dark-text text-xs truncate">{{ slot.player.full_name }}</div>
-                          <div class="text-[10px] text-dark-textMuted">{{ slot.player.opponent || (slot.player.gamesThisWeek + ' games') }}</div>
+                          <div class="font-medium text-xs truncate" :class="slot.isWaiver ? 'text-cyan-400' : 'text-dark-text'">{{ slot.player.full_name }}</div>
+                          <div class="text-[10px]" :class="slot.player.hasGame ? 'text-dark-textMuted' : 'text-red-400'">
+                            {{ slot.player.opponent || (slot.player.hasGame ? (slot.player.gamesThisWeek + ' games') : 'No game') }}
+                          </div>
                         </div>
                         <div class="text-right">
                           <div class="text-[10px] text-dark-textMuted">{{ slot.player.impactCats || 0 }} cats</div>
                         </div>
+                        <button 
+                          v-if="slot.isWaiver"
+                          @click="removeFromWaiverLineup(slot.player)"
+                          class="text-red-400 hover:text-red-300 transition-colors ml-1"
+                        >
+                          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                          </svg>
+                        </button>
                       </div>
                       <div v-else class="flex items-center gap-2 flex-1">
                         <div class="w-8 h-8 rounded-full bg-dark-border/30"></div>
                         <span class="text-xs text-dark-textMuted italic">Empty</span>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <!-- Bench Section -->
+                  <div v-if="benchPlayers.length > 0" class="border-t border-dark-border/30">
+                    <div class="px-3 py-2 bg-dark-border/10">
+                      <span class="text-xs font-semibold text-dark-textMuted uppercase">Bench ({{ benchPlayers.length }})</span>
+                    </div>
+                    <div class="divide-y divide-dark-border/20 max-h-48 overflow-y-auto">
+                      <div 
+                        v-for="player in benchPlayers" 
+                        :key="player.player_key" 
+                        class="flex items-center gap-2 px-3 py-1.5 hover:bg-dark-border/10"
+                      >
+                        <div class="w-6 h-6 rounded-full bg-dark-border overflow-hidden flex-shrink-0">
+                          <img :src="player.headshot || defaultHeadshot" class="w-full h-full object-cover" @error="handleImageError" />
+                        </div>
+                        <div class="flex-1 min-w-0">
+                          <div class="font-medium text-dark-text text-xs truncate">{{ player.full_name }}</div>
+                          <div class="text-[10px] text-dark-textMuted">{{ player.position?.split(',')[0] }}</div>
+                        </div>
+                        <div class="text-right flex-shrink-0">
+                          <template v-if="startSitMode === 'daily'">
+                            <div v-if="player.hasGame" class="text-[10px] text-green-400">{{ player.opponent }}</div>
+                            <div v-else class="text-[10px] text-red-400 italic">No game</div>
+                          </template>
+                          <template v-else>
+                            <div class="text-[10px] text-dark-textMuted">{{ player.gamesThisWeek }} games</div>
+                          </template>
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -4756,6 +4815,55 @@ function clearWaiverLineup() {
   waiverLineupPlayers.value = []
 }
 
+// Download suggested lineup as text file
+function downloadSuggestedCategoryLineup() {
+  const date = startSitDay.value === 'today' 
+    ? new Date().toISOString().split('T')[0]
+    : new Date(Date.now() + 86400000).toISOString().split('T')[0]
+  const mode = startSitMode.value === 'daily' ? 'Daily' : 'Weekly'
+  
+  let content = `Suggested Lineup - ${mode} (${date})\n`
+  content += `${'='.repeat(60)}\n\n`
+  content += `STARTERS\n`
+  content += `${'='.repeat(60)}\n`
+  
+  modifiedSuggestedLineup.value.forEach(slot => {
+    const pos = slot.position.padEnd(6)
+    if (slot.player) {
+      const name = slot.player.full_name.padEnd(25)
+      const opponent = slot.player.opponent || (slot.player.hasGame ? `${slot.player.gamesThisWeek} games` : 'No game')
+      const oppStr = opponent.padEnd(15)
+      const cats = `${slot.player.impactCats || 0} cats`
+      const waiverTag = slot.isWaiver ? ' [WAIVER]' : ''
+      content += `${pos} ${name} ${oppStr} ${cats}${waiverTag}\n`
+    } else {
+      content += `${pos} (Empty)\n`
+    }
+  })
+  
+  if (benchPlayers.value.length > 0) {
+    content += `\nBENCH (${benchPlayers.value.length})\n`
+    content += `${'='.repeat(60)}\n`
+    benchPlayers.value.forEach(player => {
+      const name = player.full_name.padEnd(25)
+      const pos = (player.position?.split(',')[0] || '').padEnd(6)
+      const opponent = player.opponent || (player.hasGame ? `${player.gamesThisWeek} games` : 'No game')
+      content += `${pos} ${name} ${opponent}\n`
+    })
+  }
+  
+  content += `\nGenerated by Ultimate Fantasy Dashboard\n`
+  content += `ultimatefantasydashboard.com\n`
+  
+  const blob = new Blob([content], { type: 'text/plain' })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = `category-lineup-${date}.txt`
+  a.click()
+  URL.revokeObjectURL(url)
+}
+
 function closeDropModal() {
   showDropModal.value = false
   dropModalPlayer.value = null
@@ -5821,6 +5929,51 @@ const suggestedCategoryLineup = computed(() => {
 
 const suggestedLineupPlayerCount = computed(() => {
   return suggestedCategoryLineup.value.filter(s => s.player).length
+})
+
+// Bench players - my players not in suggested lineup
+const benchPlayers = computed(() => {
+  const usedPlayerKeys = new Set(
+    modifiedSuggestedLineup.value
+      .filter(slot => slot.player)
+      .map(slot => slot.player.player_key)
+  )
+  
+  const dateStr = startSitDay.value === 'today' 
+    ? new Date().toISOString().split('T')[0]
+    : new Date(Date.now() + 86400000).toISOString().split('T')[0]
+  
+  return allPlayers.value
+    .filter(p => isMyPlayer(p) && !usedPlayerKeys.has(p.player_key))
+    .map(p => {
+      // Deterministic hasGame based on player key + date
+      const hashInput = (p.player_key || '') + dateStr
+      const hash = hashInput.split('').reduce((a: number, b: string) => ((a << 5) - a) + b.charCodeAt(0), 0)
+      const hasGameToday = Math.abs(hash) % 10 < 6 // ~60% have games
+      const gamesThisWeek = 4 + (Math.abs(hash) % 4)
+      const opponents = currentSport.value === 'basketball' 
+        ? ['LAL', 'BOS', 'GSW', 'MIA', 'PHI', 'BKN', 'DAL', 'DEN']
+        : currentSport.value === 'hockey'
+        ? ['TOR', 'MTL', 'BOS', 'EDM', 'VGK', 'COL', 'TBL']
+        : ['NYY', 'BOS', 'LAD', 'ATL', 'HOU', 'CHC', 'PHI']
+      
+      const impactCats = getImpactCategoryCount(p)
+      
+      return { 
+        ...p, 
+        opponent: hasGameToday ? `vs ${opponents[Math.abs(hash) % opponents.length]}` : null, 
+        gamesThisWeek,
+        hasGame: hasGameToday,
+        impactCats,
+        impactScore: calculatePlayerImpact(p)
+      }
+    })
+    .sort((a, b) => {
+      // Sort by: has game first, then by impact score
+      if (a.hasGame && !b.hasGame) return -1
+      if (!a.hasGame && b.hasGame) return 1
+      return (b.impactScore || 0) - (a.impactScore || 0)
+    })
 })
 
 // Projected category totals with lineup
