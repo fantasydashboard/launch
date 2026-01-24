@@ -1713,15 +1713,15 @@
                     <line x1="50" y1="160" x2="380" y2="160" />
                   </g>
                   <g class="y-labels" fill="#9CA3AF" font-size="10">
-                    <text x="45" y="25" text-anchor="end">{{ chartYMax.toFixed(1) }}</text>
-                    <text x="45" y="95" text-anchor="end">{{ (chartYMax / 2).toFixed(1) }}</text>
+                    <text x="45" y="25" text-anchor="end">{{ formatChartValue(chartYMax) }}</text>
+                    <text x="45" y="95" text-anchor="end">{{ formatChartValue(chartYMax / 2) }}</text>
                     <text x="45" y="165" text-anchor="end">0</text>
                   </g>
                   <polyline :points="leagueAvgLinePoints" fill="none" stroke="#EAB308" stroke-width="2" stroke-dasharray="6,4" opacity="0.8" />
                   <polyline :points="playerLinePoints" fill="none" stroke="#F59E0B" stroke-width="3" />
                   <g v-for="(perf, idx) in recentPerformances" :key="'p'+idx">
                     <circle :cx="getChartX(idx)" :cy="getChartY(perf.playerValue)" r="6" fill="#F59E0B" stroke="#1F2937" stroke-width="2" />
-                    <text :x="getChartX(idx)" :y="getChartY(perf.playerValue) - 12" fill="#F59E0B" font-size="10" font-weight="bold" text-anchor="middle">{{ perf.playerValue.toFixed(1) }}</text>
+                    <text :x="getChartX(idx)" :y="getChartY(perf.playerValue) - 12" fill="#F59E0B" font-size="10" font-weight="bold" text-anchor="middle">{{ formatChartValue(perf.playerValue) }}</text>
                   </g>
                   <g v-for="(perf, idx) in recentPerformances" :key="'l'+idx">
                     <circle :cx="getChartX(idx)" :cy="getChartY(perf.leagueAvg)" r="4" fill="#EAB308" stroke="#1F2937" stroke-width="2" opacity="0.8" />
@@ -1762,8 +1762,8 @@
               <h4 class="font-semibold text-dark-text mb-3 flex items-center gap-2"><span>💎</span> Value Score Breakdown</h4>
               <div class="space-y-4">
                 <div>
-                  <div class="flex justify-between text-sm mb-1"><span class="text-dark-textMuted">Category Rank ({{ rankingWeights.categoryRank }}%)</span><span class="text-dark-text font-medium">{{ ((1 - (selectedPlayer.categoryRank - 1) / Math.max(filteredPlayers.length, 1)) * 100).toFixed(0) }}</span></div>
-                  <div class="h-2 bg-dark-border rounded-full overflow-hidden"><div class="h-full bg-yellow-400 rounded-full" :style="{ width: `${(1 - (selectedPlayer.categoryRank - 1) / Math.max(filteredPlayers.length, 1)) * 100}%` }"></div></div>
+                  <div class="flex justify-between text-sm mb-1"><span class="text-dark-textMuted">Category Rank ({{ rankingWeights.categoryRank }}%)</span><span class="text-dark-text font-medium">{{ Math.max(0, Math.min(100, ((1 - (selectedPlayer.categoryRank - 1) / Math.max(filteredPlayers.length, 1)) * 100))).toFixed(0) }}</span></div>
+                  <div class="h-2 bg-dark-border rounded-full overflow-hidden"><div class="h-full bg-yellow-400 rounded-full" :style="{ width: `${Math.max(0, Math.min(100, (1 - (selectedPlayer.categoryRank - 1) / Math.max(filteredPlayers.length, 1)) * 100))}%` }"></div></div>
                 </div>
                 <div>
                   <div class="flex justify-between text-sm mb-1"><span class="text-dark-textMuted">Multi-Category ({{ rankingWeights.multiCategory }}%)</span><span class="text-dark-text font-medium">{{ ((selectedPlayer.categoriesContributing || 0) / Math.max(relevantCategories.length, 1) * 100).toFixed(0) }}</span></div>
@@ -2577,7 +2577,7 @@ const columnTooltips = computed(() => ({
 const baseballPitchingStatNames = ['ERA', 'WHIP', 'W', 'SV', 'K', 'IP', 'QS', 'HLD', 'Wins', 'Saves', 'Strikeouts', 'Innings', 'Quality', 'Holds', 'L', 'Losses', 'BB', 'Walks', 'CG', 'SHO', 'BSV', 'Blown']
 // Hockey goalie stats (these are the "pitching" equivalent for hockey)
 const hockeyGoalieStatNames = ['GAA', 'SV%', 'SO', 'Shutouts', 'Saves', 'Goals Against', 'Goalie', 'GW', 'GA', 'MIN', 'GS', 'SA']
-const ratioStatNames = ['ERA', 'WHIP', 'AVG', 'OPS', 'OBP', 'SLG', 'BABIP', 'K/9', 'BB/9', 'K/BB', 'GAA', 'SV%', 'SH%']
+const ratioStatNames = ['ERA', 'WHIP', 'AVG', 'OPS', 'OBP', 'SLG', 'BABIP', 'K/9', 'BB/9', 'K/BB', 'GAA', 'SV%', 'SH%', 'FG%', 'FT%', '3P%', 'FGA', 'FTA']
 const lowerIsBetterNames = ['ERA', 'WHIP', 'BB', 'L', 'ER', 'H', 'Losses', 'Walks', 'GAA', 'GA', 'GV']
 
 function isPitchingStat(cat: any): boolean {
@@ -2609,6 +2609,15 @@ function isRatioStat(cat: any): boolean {
   const name = (cat.name || '').toUpperCase()
   const display = (cat.display_name || '').toUpperCase()
   return ratioStatNames.some(rn => name.includes(rn.toUpperCase()) || display.includes(rn.toUpperCase()))
+}
+
+function isPercentageStat(cat: any): boolean {
+  if (!cat) return false
+  const name = (cat.name || '').toUpperCase()
+  const display = (cat.display_name || '').toUpperCase()
+  return name.includes('FG%') || name.includes('FT%') || name.includes('3P%') || 
+         display.includes('FG%') || display.includes('FT%') || display.includes('3P%') ||
+         name.includes('FIELD GOAL') || name.includes('FREE THROW') || name.includes('THREE POINT')
 }
 
 function isLowerBetterStat(cat: any): boolean {
@@ -2926,6 +2935,15 @@ const playerAvgVsLeague = computed(() => {
   return playerRecentAvg.value - leagueRecentAvg.value
 })
 
+// Format chart values based on stat type (percentages vs regular stats)
+const formatChartValue = (value: number): string => {
+  const cat = displayCategories.value.find(c => c.stat_id === chartCategory.value)
+  if (isPercentageStat(cat)) {
+    return (value * 100).toFixed(1) + '%'
+  }
+  return value.toFixed(1)
+}
+
 // Chart helper functions
 function getChartX(index: number): number {
   const padding = 70
@@ -3031,8 +3049,39 @@ async function loadWeeklyStatsFromYahoo(leagueKey: string, playerKey: string, st
     
     const weeklyStats = await yahooService.getPlayerWeeklyStats(leagueKey, playerKey, weeks)
     
-    // Calculate league average per week
-    const relevantPlayers = allPlayers.value.filter(p => isPitchingCategory.value ? isPitcher(p) : !isPitcher(p)).slice(0, 10)
+    // Calculate league average per week (get weekly stats for top players)
+    const relevantPlayers = allPlayers.value.filter(p => isPitchingCategory.value ? isPitcher(p) : !isPitcher(p)).slice(0, 20)
+    
+    // Try to get weekly stats for league players (for proper league avg calculation)
+    const leagueWeeklyStats = new Map<number, number>()
+    for (const week of weeks) {
+      const weekAvgValues: number[] = []
+      
+      for (const p of relevantPlayers.slice(0, 10)) {  // Sample top 10 players
+        try {
+          const playerWeekStats = await yahooService.getPlayerWeeklyStats(leagueKey, p.player_key, [week])
+          const weekData = playerWeekStats.get(week)
+          if (weekData?.stats) {
+            const statEntry = weekData.stats.find((s: any) => s.stat?.stat_id === statId)
+            const value = statEntry ? parseFloat(statEntry.stat?.value || '0') : 0
+            if (value > 0) weekAvgValues.push(value)
+          }
+        } catch (e) {
+          // Skip players that error
+        }
+      }
+      
+      // Calculate avg for this week, or fall back to season avg estimate
+      if (weekAvgValues.length > 0) {
+        leagueWeeklyStats.set(week, weekAvgValues.reduce((a, b) => a + b, 0) / weekAvgValues.length)
+      } else {
+        // Fallback: use season avg divided by weeks with some variance
+        const allStatValues = relevantPlayers.map(p => (p.stats?.[statId] || 0) / 25).filter(v => v > 0)
+        const baseAvg = allStatValues.length > 0 ? allStatValues.reduce((a, b) => a + b, 0) / allStatValues.length : 0
+        const variance = 0.8 + (Math.random() * 0.4) // 0.8 to 1.2 variance
+        leagueWeeklyStats.set(week, baseAvg * variance)
+      }
+    }
     
     for (const week of weeks) {
       const playerWeekData = weeklyStats.get(week)
@@ -3042,9 +3091,8 @@ async function loadWeeklyStatsFromYahoo(leagueKey: string, playerKey: string, st
       const statEntry = playerWeekData.stats?.find((s: any) => s.stat?.stat_id === statId)
       const playerValue = statEntry ? parseFloat(statEntry.stat?.value || '0') : 0
       
-      // Calculate league average for this week (simplified - use season avg divided by weeks)
-      const allStatValues = relevantPlayers.map(p => (p.stats?.[statId] || 0) / 25).filter(v => v > 0)
-      const leagueAvg = allStatValues.length > 0 ? allStatValues.reduce((a, b) => a + b, 0) / allStatValues.length : 0
+      // Get league average for this specific week
+      const leagueAvg = leagueWeeklyStats.get(week) || 0
       
       performances.push({
         date: `Wk ${week}`,
@@ -3144,6 +3192,14 @@ watch(chartCategory, async () => {
 function formatStatValue(value: number | undefined, decimals: number = 1): string { 
   if (value === undefined || value === null) return '-'
   if (value === 0) return '0'
+  
+  // Check if current selected category is a percentage stat
+  const cat = selectedCategoryInfo.value
+  if (isPercentageStat(cat)) {
+    // Convert decimal (0.5) to percentage (50%)
+    return (value * 100).toFixed(1) + '%'
+  }
+  
   if (isRatioCategory.value) { 
     if (value < 1 && value > 0) return value.toFixed(3).replace(/^0/, '')
     return value.toFixed(2) 
@@ -3155,8 +3211,15 @@ function formatStatValue(value: number | undefined, decimals: number = 1): strin
 function formatCategoryStat(player: any, statId: string): string { 
   const value = player.stats?.[statId]
   if (value === undefined || value === null) return '-'
+  
   // Check if this is a ratio stat by looking up the category
   const cat = displayCategories.value.find(c => c.stat_id === statId)
+  
+  // Handle percentage stats
+  if (isPercentageStat(cat)) {
+    return (value * 100).toFixed(1) + '%'
+  }
+  
   if (isRatioStat(cat)) { 
     if (value < 1 && value > 0) return value.toFixed(3).replace(/^0/, '')
     return value.toFixed(2) 
@@ -3165,7 +3228,9 @@ function formatCategoryStat(player: any, statId: string): string {
 }
 
 function getCategoryRank(player: any, statId: string): number { 
-  const value = player.stats?.[statId] || 0
+  const value = player.stats?.[statId]
+  if (!value || value === 0) return 999 // Unranked if no value
+  
   // Find the category info to check if it's pitching/ratio
   const cat = displayCategories.value.find(c => c.stat_id === statId)
   const isPitchingStatCat = isPitchingStat(cat)
@@ -3177,6 +3242,9 @@ function getCategoryRank(player: any, statId: string): number {
     .map(p => p.stats?.[statId] || 0)
     .filter(v => v > 0)
     .sort((a, b) => isLowerBetterCat ? a - b : b - a)
+  
+  if (allValues.length === 0) return 999
+  
   const rank = allValues.indexOf(value) + 1
   return rank > 0 ? rank : allValues.length + 1 
 }
