@@ -2484,6 +2484,41 @@ const startSitPlayerFilter = ref<'all' | 'mine' | 'fa'>('all')
 // Enhanced Start/Sit features
 const startSitTimePeriod = ref<'today' | 'next7' | 'next14' | 'ros'>('today')
 const startSitViewMode = ref<'projections' | 'stats'>('projections')
+
+/**
+ * Get the number of games for a player based on selected time period
+ */
+function getGameCountForPeriod(player: any): number {
+  const period = startSitTimePeriod.value
+  
+  switch(period) {
+    case 'today':
+      // 1 game if player has game today, 0 if not
+      return player.hasGame ? 1 : 0
+      
+    case 'next7':
+      // TODO: Calculate from games_schedule table
+      // For now, estimate ~3 games per week (varies by sport)
+      return currentSport.value === 'baseball' ? 6 : 
+             currentSport.value === 'basketball' ? 3 :
+             currentSport.value === 'hockey' ? 3 : 3
+      
+    case 'next14':
+      // TODO: Calculate from games_schedule table
+      // For now, estimate ~6-7 games per 2 weeks
+      return currentSport.value === 'baseball' ? 12 : 
+             currentSport.value === 'basketball' ? 6 :
+             currentSport.value === 'hockey' ? 6 : 6
+      
+    case 'ros':
+      // Remaining games in season - varies by sport and current date
+      // TODO: Calculate actual remaining games
+      // For now, rough estimates
+      return currentSport.value === 'baseball' ? 50 : 
+             currentSport.value === 'basketball' ? 30 :
+             currentSport.value === 'hockey' ? 30 : 30
+  }
+}
 const waiverLineupPlayers = ref<any[]>([])  // Players added from FA for comparison
 const currentMatchupData = ref<any>(null)  // Real matchup data from Yahoo API
 const isLoadingMatchup = ref(false)
@@ -4704,7 +4739,10 @@ function formatCategoryProjection(player: any, cat: any): string {
   const seasonValue = parseFloat(player.stats?.[cat.stat_id] || 0)
   if (seasonValue <= 0) return '-'
   
-  const games = startSitMode.value === 'daily' ? 1 : (player.gamesThisWeek || 4)
+  // Use time period toggle to determine game count
+  const games = getGameCountForPeriod(player)
+  if (games === 0) return '-' // No games in this period
+  
   const gamesPlayed = isPitcher(player) ? 30 : 140
   const perGame = seasonValue / gamesPlayed
   const projected = perGame * games
@@ -4735,7 +4773,7 @@ function getProjectedCategoryTotal(cat: any): string {
   let total = 0
   for (const player of players) {
     const seasonValue = parseFloat(player.stats?.[cat.stat_id] || 0)
-    const games = startSitMode.value === 'daily' ? 1 : (player.gamesThisWeek || 4)
+    const games = getGameCountForPeriod(player)
     const gamesPlayed = isPitcher(player) ? 30 : 140
     const perGame = seasonValue / gamesPlayed
     total += perGame * games
@@ -6051,7 +6089,7 @@ const projectedCategoryTotals = computed(() => {
         const playerValue = parseFloat(slot.player.stats?.[statId] || 0)
         const gamesPlayed = isPitcher(slot.player) ? 30 : 140
         const perGame = playerValue / gamesPlayed
-        const games = startSitMode.value === 'daily' ? 1 : (slot.player.gamesThisWeek || 4)
+        const games = getGameCountForPeriod(slot.player)
         myTotal += perGame * games * 0.3 // Scale factor for daily projection
       }
     }
