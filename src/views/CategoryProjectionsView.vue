@@ -4700,12 +4700,44 @@ function getCategoryProjectionClass(player: any, cat: any): string {
   return 'text-dark-text'
 }
 
+// Helper: Get estimated game count for time period based on sport
+function getGameCountForPeriod(player: any): number {
+  const sport = currentSport.value
+  const period = startSitTimePeriod.value
+  const hasGame = player.hasGameToday || false
+  
+  // Today: 1 game if playing, 0 if not
+  if (period === 'today') {
+    return hasGame ? 1 : 0
+  }
+  
+  // Next 7/14/ROS: estimate based on sport schedules
+  if (sport === 'baseball') {
+    if (period === 'next7') return 6   // ~6 games per week
+    if (period === 'next14') return 12 // ~12 games per 2 weeks
+    return 50 // ROS: ~50 games remaining (average)
+  } else if (sport === 'basketball' || sport === 'hockey') {
+    if (period === 'next7') return 3   // ~3 games per week
+    if (period === 'next14') return 6  // ~6 games per 2 weeks
+    return 30 // ROS: ~30 games remaining (average)
+  } else if (sport === 'football') {
+    if (period === 'next7') return 1   // 1 game per week
+    if (period === 'next14') return 2  // 2 games per 2 weeks
+    return 8  // ROS: ~8 games remaining (average)
+  }
+  
+  // Fallback
+  return period === 'ros' ? 30 : 4
+}
+
 function formatCategoryProjection(player: any, cat: any): string {
   const seasonValue = parseFloat(player.stats?.[cat.stat_id] || 0)
   if (seasonValue <= 0) return '-'
   
-  // Simple game count - works with daily/weekly mode
-  const games = startSitMode.value === 'daily' ? 1 : (player.gamesThisWeek || 4)
+  // Use time period to determine game count
+  const games = getGameCountForPeriod(player)
+  if (games === 0) return '-' // No games in period
+  
   const gamesPlayed = isPitcher(player) ? 30 : 140
   const perGame = seasonValue / gamesPlayed
   const projected = perGame * games
@@ -4736,7 +4768,9 @@ function getProjectedCategoryTotal(cat: any): string {
   let total = 0
   for (const player of players) {
     const seasonValue = parseFloat(player.stats?.[cat.stat_id] || 0)
-    const games = startSitMode.value === 'daily' ? 1 : (player.gamesThisWeek || 4)
+    const games = getGameCountForPeriod(player)
+    if (games === 0) continue // Skip players with no games
+    
     const gamesPlayed = isPitcher(player) ? 30 : 140
     const perGame = seasonValue / gamesPlayed
     total += perGame * games
@@ -6056,8 +6090,10 @@ const projectedCategoryTotals = computed(() => {
         const playerValue = parseFloat(slot.player.stats?.[statId] || 0)
         const gamesPlayed = isPitcher(slot.player) ? 30 : 140
         const perGame = playerValue / gamesPlayed
-        const games = startSitMode.value === 'daily' ? 1 : (slot.player.gamesThisWeek || 4)
-        myTotal += perGame * games * 0.3 // Scale factor for daily projection
+        const games = getGameCountForPeriod(slot.player)
+        if (games > 0) {
+          myTotal += perGame * games * 0.3 // Scale factor for daily projection
+        }
       }
     }
     
