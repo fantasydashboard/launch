@@ -652,26 +652,48 @@
                 <div class="flex items-center gap-3">
                   <span class="text-dark-textMuted text-sm">Period:</span>
                   <div class="flex rounded-lg overflow-hidden border border-dark-border/50">
-                    <button 
-                      @click="startSitTimePeriod = 'today'" 
-                      :class="startSitTimePeriod === 'today' ? 'bg-yellow-400 text-gray-900' : 'bg-dark-card text-dark-textMuted hover:bg-dark-border/50'" 
-                      class="px-3 py-1.5 text-xs font-medium transition-colors"
-                    >Today</button>
-                    <button 
-                      @click="startSitTimePeriod = 'next7'" 
-                      :class="startSitTimePeriod === 'next7' ? 'bg-yellow-400 text-gray-900' : 'bg-dark-card text-dark-textMuted hover:bg-dark-border/50'" 
-                      class="px-3 py-1.5 text-xs font-medium transition-colors"
-                    >Next 7</button>
-                    <button 
-                      @click="startSitTimePeriod = 'next14'" 
-                      :class="startSitTimePeriod === 'next14' ? 'bg-yellow-400 text-gray-900' : 'bg-dark-card text-dark-textMuted hover:bg-dark-border/50'" 
-                      class="px-3 py-1.5 text-xs font-medium transition-colors"
-                    >Next 14</button>
-                    <button 
-                      @click="startSitTimePeriod = 'ros'" 
-                      :class="startSitTimePeriod === 'ros' ? 'bg-yellow-400 text-gray-900' : 'bg-dark-card text-dark-textMuted hover:bg-dark-border/50'" 
-                      class="px-3 py-1.5 text-xs font-medium transition-colors"
-                    >ROS</button>
+                    <!-- Projections mode: Today/Next 7/Next 14/ROS -->
+                    <template v-if="startSitViewMode === 'projections'">
+                      <button 
+                        @click="startSitTimePeriod = 'today'" 
+                        :class="startSitTimePeriod === 'today' ? 'bg-yellow-400 text-gray-900' : 'bg-dark-card text-dark-textMuted hover:bg-dark-border/50'" 
+                        class="px-3 py-1.5 text-xs font-medium transition-colors"
+                      >Today</button>
+                      <button 
+                        @click="startSitTimePeriod = 'next7'" 
+                        :class="startSitTimePeriod === 'next7' ? 'bg-yellow-400 text-gray-900' : 'bg-dark-card text-dark-textMuted hover:bg-dark-border/50'" 
+                        class="px-3 py-1.5 text-xs font-medium transition-colors"
+                      >Next 7</button>
+                      <button 
+                        @click="startSitTimePeriod = 'next14'" 
+                        :class="startSitTimePeriod === 'next14' ? 'bg-yellow-400 text-gray-900' : 'bg-dark-card text-dark-textMuted hover:bg-dark-border/50'" 
+                        class="px-3 py-1.5 text-xs font-medium transition-colors"
+                      >Next 14</button>
+                      <button 
+                        @click="startSitTimePeriod = 'ros'" 
+                        :class="startSitTimePeriod === 'ros' ? 'bg-yellow-400 text-gray-900' : 'bg-dark-card text-dark-textMuted hover:bg-dark-border/50'" 
+                        class="px-3 py-1.5 text-xs font-medium transition-colors"
+                      >ROS</button>
+                    </template>
+                    
+                    <!-- Stats mode: Last 7/Last 14/Season -->
+                    <template v-else>
+                      <button 
+                        @click="startSitTimePeriod = 'next7'" 
+                        :class="startSitTimePeriod === 'next7' ? 'bg-yellow-400 text-gray-900' : 'bg-dark-card text-dark-textMuted hover:bg-dark-border/50'" 
+                        class="px-3 py-1.5 text-xs font-medium transition-colors"
+                      >Last 7</button>
+                      <button 
+                        @click="startSitTimePeriod = 'next14'" 
+                        :class="startSitTimePeriod === 'next14' ? 'bg-yellow-400 text-gray-900' : 'bg-dark-card text-dark-textMuted hover:bg-dark-border/50'" 
+                        class="px-3 py-1.5 text-xs font-medium transition-colors"
+                      >Last 14</button>
+                      <button 
+                        @click="startSitTimePeriod = 'ros'" 
+                        :class="startSitTimePeriod === 'ros' ? 'bg-yellow-400 text-gray-900' : 'bg-dark-card text-dark-textMuted hover:bg-dark-border/50'" 
+                        class="px-3 py-1.5 text-xs font-medium transition-colors"
+                      >Season</button>
+                    </template>
                   </div>
                 </div>
 
@@ -4734,19 +4756,51 @@ function formatCategoryProjection(player: any, cat: any): string {
   const seasonValue = parseFloat(player.stats?.[cat.stat_id] || 0)
   if (seasonValue <= 0) return '-'
   
-  // Use time period to determine game count
-  const games = getGameCountForPeriod(player)
-  if (games === 0) return '-' // No games in period
+  const mode = startSitViewMode.value
+  const period = startSitTimePeriod.value
   
-  const gamesPlayed = isPitcher(player) ? 30 : 140
-  const perGame = seasonValue / gamesPlayed
-  const projected = perGame * games
-  
-  if (isRatioStat(cat)) {
-    if (projected < 1) return projected.toFixed(3).replace(/^0/, '')
-    return projected.toFixed(2)
+  if (mode === 'stats') {
+    // STATS MODE: Show actual stats from the past
+    // For stats mode, we're showing what they DID score
+    const gamesPlayed = isPitcher(player) ? 30 : 140 // Season games played so far
+    
+    if (period === 'ros') {
+      // Season total
+      if (isRatioStat(cat)) {
+        if (seasonValue < 1) return seasonValue.toFixed(3).replace(/^0/, '')
+        return seasonValue.toFixed(2)
+      }
+      return seasonValue.toFixed(1)
+    } else {
+      // Last 7 or Last 14 days - scale down from season
+      const games = period === 'next7' ? 
+        (currentSport.value === 'baseball' ? 6 : 3) : 
+        (currentSport.value === 'baseball' ? 12 : 6)
+      
+      const perGame = seasonValue / gamesPlayed
+      const periodTotal = perGame * games
+      
+      if (isRatioStat(cat)) {
+        if (periodTotal < 1) return periodTotal.toFixed(3).replace(/^0/, '')
+        return periodTotal.toFixed(2)
+      }
+      return periodTotal.toFixed(1)
+    }
+  } else {
+    // PROJECTIONS MODE: Show what we project they WILL score
+    const games = getGameCountForPeriod(player)
+    if (games === 0) return '-' // No games in period
+    
+    const gamesPlayed = isPitcher(player) ? 30 : 140
+    const perGame = seasonValue / gamesPlayed
+    const projected = perGame * games
+    
+    if (isRatioStat(cat)) {
+      if (projected < 1) return projected.toFixed(3).replace(/^0/, '')
+      return projected.toFixed(2)
+    }
+    return projected.toFixed(1)
   }
-  return projected.toFixed(1)
 }
 
 function getCategoryPerGame(player: any, cat: any): string {
@@ -4765,15 +4819,35 @@ function getProjectedCategoryTotal(cat: any): string {
   const players = getStartSitPlayersForPosition(selectedStartSitPosition.value)
     .filter(p => p.fantasy_team_key === myTeamKey.value)
   
+  const mode = startSitViewMode.value
+  const period = startSitTimePeriod.value
+  
   let total = 0
   for (const player of players) {
     const seasonValue = parseFloat(player.stats?.[cat.stat_id] || 0)
-    const games = getGameCountForPeriod(player)
-    if (games === 0) continue // Skip players with no games
-    
     const gamesPlayed = isPitcher(player) ? 30 : 140
-    const perGame = seasonValue / gamesPlayed
-    total += perGame * games
+    
+    if (mode === 'stats') {
+      // STATS MODE: actual past performance
+      if (period === 'ros') {
+        // Full season
+        total += seasonValue
+      } else {
+        // Last 7 or Last 14 - scale from season
+        const games = period === 'next7' ? 
+          (currentSport.value === 'baseball' ? 6 : 3) : 
+          (currentSport.value === 'baseball' ? 12 : 6)
+        const perGame = seasonValue / gamesPlayed
+        total += perGame * games
+      }
+    } else {
+      // PROJECTIONS MODE: future projections
+      const games = getGameCountForPeriod(player)
+      if (games === 0) continue // Skip players with no games
+      
+      const perGame = seasonValue / gamesPlayed
+      total += perGame * games
+    }
   }
   
   if (isRatioStat(cat)) return total.toFixed(2)
@@ -5937,8 +6011,19 @@ const suggestedCategoryLineup = computed(() => {
     lineupOrder = leagueRosterPositions.value.map((rp: any) => {
       // Handle both string format ("PG") and object format ({position: "PG", count: 1})
       if (typeof rp === 'string') return rp
-      return rp.position || rp.abbr || rp.display_name || rp
-    }).filter((p: any) => p && p !== 'BN' && p !== 'IL' && p !== 'IR') // Exclude bench/IL spots
+      // Try multiple possible keys for the position value
+      const posValue = rp.position || rp.abbr || rp.display_name || rp.position_type || rp
+      // If it's still an object, stringify and extract
+      if (typeof posValue === 'object') {
+        return Object.values(posValue)[0] || 'Util'
+      }
+      return posValue
+    })
+    .filter((p: any) => {
+      // Filter out bench/IL spots and non-strings
+      if (typeof p !== 'string') return false
+      return p !== 'BN' && p !== 'IL' && p !== 'IR' && p !== 'Bench'
+    })
     
     console.log('[suggestedCategoryLineup] Using league roster positions:', lineupOrder)
   } else {
@@ -6075,6 +6160,8 @@ const benchPlayers = computed(() => {
 // Projected category totals with lineup
 const projectedCategoryTotals = computed(() => {
   const totals: Record<string, { my: number; opp: number }> = {}
+  const mode = startSitViewMode.value
+  const period = startSitTimePeriod.value
   
   for (const cat of displayCategories.value) {
     const statId = cat.stat_id
@@ -6084,15 +6171,29 @@ const projectedCategoryTotals = computed(() => {
     let myTotal = currentStatus?.myValue || 0
     let oppTotal = currentStatus?.oppValue || 0
     
-    // Add projected contributions from lineup
+    // Add projected/historical contributions from lineup
     for (const slot of suggestedCategoryLineup.value) {
       if (slot.player) {
         const playerValue = parseFloat(slot.player.stats?.[statId] || 0)
         const gamesPlayed = isPitcher(slot.player) ? 30 : 140
         const perGame = playerValue / gamesPlayed
-        const games = getGameCountForPeriod(slot.player)
-        if (games > 0) {
-          myTotal += perGame * games * 0.3 // Scale factor for daily projection
+        
+        if (mode === 'stats') {
+          // STATS MODE: past performance
+          if (period === 'ros') {
+            myTotal += playerValue * 0.3 // Scale factor
+          } else {
+            const games = period === 'next7' ? 
+              (currentSport.value === 'baseball' ? 6 : 3) : 
+              (currentSport.value === 'baseball' ? 12 : 6)
+            myTotal += perGame * games * 0.3
+          }
+        } else {
+          // PROJECTIONS MODE: future projections
+          const games = getGameCountForPeriod(slot.player)
+          if (games > 0) {
+            myTotal += perGame * games * 0.3 // Scale factor for daily projection
+          }
         }
       }
     }
@@ -6390,6 +6491,17 @@ onUnmounted(() => {
 watch(() => startSitDay.value, async () => {
   await loadLiveGames()
   subscribeToLiveGames()
+})
+
+// Watch for projections/stats mode toggle - adjust period accordingly
+watch(() => startSitViewMode.value, (newMode) => {
+  if (newMode === 'stats') {
+    // Switching to stats mode - default to Last 7 if currently on Today
+    if (startSitTimePeriod.value === 'today') {
+      startSitTimePeriod.value = 'next7'
+    }
+  }
+  // When switching to projections, keep current period
 })
 
 // Watch for sport changes to reload games
