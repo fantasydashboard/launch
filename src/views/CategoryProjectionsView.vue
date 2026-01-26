@@ -3426,6 +3426,14 @@ async function loadProjections() {
     
     loadingProgress.value = { currentStep: 'Loading scoring categories...', week: 2, maxWeek: 4 }
     const settings = await yahooService.getLeagueScoringSettings(leagueKey)
+    
+    // DEBUG: Log entire settings object to see what we're getting
+    console.log('[CategoryProjections] ===== SETTINGS DEBUG =====')
+    console.log('[CategoryProjections] settings:', settings)
+    console.log('[CategoryProjections] settings.roster_positions:', settings?.roster_positions)
+    console.log('[CategoryProjections] typeof roster_positions:', typeof settings?.roster_positions)
+    console.log('[CategoryProjections] ===== END SETTINGS DEBUG =====')
+    
     if (settings) {
       const cats = settings.stat_categories || []
       statCategories.value = cats.map((c: any) => ({ 
@@ -3438,7 +3446,12 @@ async function loadProjections() {
       // Capture roster positions from league settings
       if (settings.roster_positions) {
         leagueRosterPositions.value = settings.roster_positions
-        console.log('[CategoryProjections] Loaded roster positions:', leagueRosterPositions.value)
+        console.log('[CategoryProjections] ✅ Loaded roster positions:', leagueRosterPositions.value)
+        console.log('[CategoryProjections] Roster positions type:', typeof leagueRosterPositions.value)
+        console.log('[CategoryProjections] Roster positions length:', leagueRosterPositions.value.length)
+        console.log('[CategoryProjections] First position:', leagueRosterPositions.value[0])
+      } else {
+        console.warn('[CategoryProjections] ⚠️ No roster_positions in settings!', settings)
       }
       
       console.log('Loaded categories:', statCategories.value.map(c => `${c.display_name} (${c.stat_id})`))
