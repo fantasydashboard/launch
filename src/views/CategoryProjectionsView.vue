@@ -5896,6 +5896,7 @@ const suggestedCategoryLineup = computed(() => {
   
   // Use actual league roster positions if available, otherwise fall back to sport defaults
   let lineupOrder: string[]
+  const sport = currentSport.value // Define sport at top level so it's available throughout
   
   if (leagueRosterPositions.value && leagueRosterPositions.value.length > 0) {
     // Use actual roster positions from league settings
@@ -5908,8 +5909,6 @@ const suggestedCategoryLineup = computed(() => {
     console.log('[suggestedCategoryLineup] Using league roster positions:', lineupOrder)
   } else {
     // Fallback to sport-specific defaults
-    const sport = currentSport.value
-    
     if (sport === 'basketball') {
       lineupOrder = ['PG', 'SG', 'SF', 'PF', 'C', 'G', 'F', 'Util', 'Util', 'Util']
     } else if (sport === 'hockey') {
