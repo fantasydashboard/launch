@@ -2484,41 +2484,6 @@ const startSitPlayerFilter = ref<'all' | 'mine' | 'fa'>('all')
 // Enhanced Start/Sit features
 const startSitTimePeriod = ref<'today' | 'next7' | 'next14' | 'ros'>('today')
 const startSitViewMode = ref<'projections' | 'stats'>('projections')
-
-/**
- * Get the number of games for a player based on selected time period
- */
-function getGameCountForPeriod(player: any): number {
-  const period = startSitTimePeriod.value
-  
-  // For today, check if player has game
-  if (period === 'today') {
-    return player?.hasGame ? 1 : 0
-  }
-  
-  // Sport-specific game estimates
-  const sport = currentSport.value
-  
-  if (period === 'next7') {
-    if (sport === 'baseball') return 6
-    if (sport === 'basketball') return 3
-    if (sport === 'hockey') return 3
-    return 3
-  }
-  
-  if (period === 'next14') {
-    if (sport === 'baseball') return 12
-    if (sport === 'basketball') return 6
-    if (sport === 'hockey') return 6
-    return 6
-  }
-  
-  // ROS (rest of season)
-  if (sport === 'baseball') return 50
-  if (sport === 'basketball') return 30
-  if (sport === 'hockey') return 30
-  return 30
-}
 const waiverLineupPlayers = ref<any[]>([])  // Players added from FA for comparison
 const currentMatchupData = ref<any>(null)  // Real matchup data from Yahoo API
 const isLoadingMatchup = ref(false)
@@ -4739,10 +4704,8 @@ function formatCategoryProjection(player: any, cat: any): string {
   const seasonValue = parseFloat(player.stats?.[cat.stat_id] || 0)
   if (seasonValue <= 0) return '-'
   
-  // Use time period toggle to determine game count
-  const games = getGameCountForPeriod(player)
-  if (games === 0) return '-' // No games in this period
-  
+  // Simple game count - works with daily/weekly mode
+  const games = startSitMode.value === 'daily' ? 1 : (player.gamesThisWeek || 4)
   const gamesPlayed = isPitcher(player) ? 30 : 140
   const perGame = seasonValue / gamesPlayed
   const projected = perGame * games
@@ -4773,7 +4736,7 @@ function getProjectedCategoryTotal(cat: any): string {
   let total = 0
   for (const player of players) {
     const seasonValue = parseFloat(player.stats?.[cat.stat_id] || 0)
-    const games = getGameCountForPeriod(player)
+    const games = startSitMode.value === 'daily' ? 1 : (player.gamesThisWeek || 4)
     const gamesPlayed = isPitcher(player) ? 30 : 140
     const perGame = seasonValue / gamesPlayed
     total += perGame * games
@@ -6089,7 +6052,7 @@ const projectedCategoryTotals = computed(() => {
         const playerValue = parseFloat(slot.player.stats?.[statId] || 0)
         const gamesPlayed = isPitcher(slot.player) ? 30 : 140
         const perGame = playerValue / gamesPlayed
-        const games = getGameCountForPeriod(slot.player)
+        const games = startSitMode.value === 'daily' ? 1 : (slot.player.gamesThisWeek || 4)
         myTotal += perGame * games * 0.3 // Scale factor for daily projection
       }
     }
