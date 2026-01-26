@@ -2491,33 +2491,33 @@ const startSitViewMode = ref<'projections' | 'stats'>('projections')
 function getGameCountForPeriod(player: any): number {
   const period = startSitTimePeriod.value
   
-  switch(period) {
-    case 'today':
-      // 1 game if player has game today, 0 if not
-      return player.hasGame ? 1 : 0
-      
-    case 'next7':
-      // TODO: Calculate from games_schedule table
-      // For now, estimate ~3 games per week (varies by sport)
-      return currentSport.value === 'baseball' ? 6 : 
-             currentSport.value === 'basketball' ? 3 :
-             currentSport.value === 'hockey' ? 3 : 3
-      
-    case 'next14':
-      // TODO: Calculate from games_schedule table
-      // For now, estimate ~6-7 games per 2 weeks
-      return currentSport.value === 'baseball' ? 12 : 
-             currentSport.value === 'basketball' ? 6 :
-             currentSport.value === 'hockey' ? 6 : 6
-      
-    case 'ros':
-      // Remaining games in season - varies by sport and current date
-      // TODO: Calculate actual remaining games
-      // For now, rough estimates
-      return currentSport.value === 'baseball' ? 50 : 
-             currentSport.value === 'basketball' ? 30 :
-             currentSport.value === 'hockey' ? 30 : 30
+  // For today, check if player has game
+  if (period === 'today') {
+    return player?.hasGame ? 1 : 0
   }
+  
+  // Sport-specific game estimates
+  const sport = currentSport.value
+  
+  if (period === 'next7') {
+    if (sport === 'baseball') return 6
+    if (sport === 'basketball') return 3
+    if (sport === 'hockey') return 3
+    return 3
+  }
+  
+  if (period === 'next14') {
+    if (sport === 'baseball') return 12
+    if (sport === 'basketball') return 6
+    if (sport === 'hockey') return 6
+    return 6
+  }
+  
+  // ROS (rest of season)
+  if (sport === 'baseball') return 50
+  if (sport === 'basketball') return 30
+  if (sport === 'hockey') return 30
+  return 30
 }
 const waiverLineupPlayers = ref<any[]>([])  // Players added from FA for comparison
 const currentMatchupData = ref<any>(null)  // Real matchup data from Yahoo API
