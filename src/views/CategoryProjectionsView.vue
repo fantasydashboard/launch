@@ -2247,7 +2247,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useLeagueStore } from '@/stores/league'
 import { usePlatformsStore } from '@/stores/platforms'
 import { yahooService } from '@/services/yahoo'
@@ -2256,6 +2256,8 @@ import { useFeatureAccess } from '@/composables/useFeatureAccess'
 import SimulatedDataBanner from '@/components/SimulatedDataBanner.vue'
 import LoadingSpinner from '@/components/LoadingSpinner.vue'
 import CategoryRankingCustomizer from '@/components/CategoryRankingCustomizer.vue'
+import { liveGamesService, type LiveGame } from '@/services/live-games'
+import type { RealtimeChannel } from '@supabase/supabase-js'
 import { 
   DEFAULT_CATEGORY_ROS_FACTORS, 
   CATEGORY_ROS_PRESETS,
@@ -2324,6 +2326,14 @@ const loadingProgress = ref({
   week: 0,
   maxWeek: 0
 })
+
+// Live games state
+const todaysGames = ref<LiveGame[]>([])
+const tomorrowsGames = ref<LiveGame[]>([])
+const liveGamesSubscription = ref<RealtimeChannel | null>(null)
+const gamesLoading = ref(false)
+const scraperHealth = ref<Record<string, any>>({})
+
 const statCategories = ref<any[]>([])
 const selectedCategory = ref<string>('')
 const allPlayers = ref<any[]>([])
@@ -5884,14 +5894,28 @@ const suggestedCategoryLineup = computed(() => {
       return playerPos.includes(pos)
     })
     
-    // Add game info and impact score
-    // Use deterministic "hasGame" based on player key hash to ensure consistency
+    // Add game info and impact score - USE REAL LIVE GAMES DATA
+    const activeGames = startSitDay.value === 'today' ? todaysGames.value : tomorrowsGames.value
+    
     eligible = eligible.map(p => {
-      // Create a simple hash from player_key for deterministic hasGame
-      const hash = (p.player_key || '').split('').reduce((acc, char) => acc + char.charCodeAt(0), 0)
-      const hasGame = (hash % 10) >= 2 // ~80% have games, but deterministic per player
+      // Get REAL game info from live data
+      const gameInfo = liveGamesService.getPlayerGameInfo(p.mlb_team, activeGames)
       const impactCats = getImpactCategoryCount(p)
-      return { ...p, hasGame, impactCats, impactScore: calculatePlayerImpact(p) }
+      
+      return { 
+        ...p, 
+        hasGame: gameInfo.hasGame,
+        opponent: gameInfo.opponent,
+        isHome: gameInfo.isHome,
+        gameTime: gameInfo.gameTime,
+        status: gameInfo.status,
+        period: gameInfo.period,
+        timeRemaining: gameInfo.timeRemaining,
+        liveScore: gameInfo.score,
+        isLive: gameInfo.isLive,
+        impactCats,
+        impactScore: calculatePlayerImpact(p)
+      }
     })
     
     // In daily mode, filter by game availability BUT ensure we have at least some players
@@ -5910,15 +5934,6 @@ const suggestedCategoryLineup = computed(() => {
     const best = eligible[0] || null
     if (best) {
       used.add(best.player_key)
-      // Sport-specific opponent labels
-      if (sport === 'basketball') {
-        best.opponent = ['vs LAL', 'vs BOS', '@ GSW', '@ MIA', 'vs PHI'][Math.floor(Math.random() * 5)]
-      } else if (sport === 'hockey') {
-        best.opponent = ['vs TOR', 'vs BOS', '@ EDM', '@ VGK', 'vs COL'][Math.floor(Math.random() * 5)]
-      } else {
-        best.opponent = ['vs NYY', 'vs BOS', '@ LAD', '@ CHC', 'vs HOU'][Math.floor(Math.random() * 5)]
-      }
-      best.gamesThisWeek = Math.floor(Math.random() * 3) + 4
     }
     
     slots.push({ position: pos, player: best })
@@ -5939,31 +5954,25 @@ const benchPlayers = computed(() => {
       .map(slot => slot.player.player_key)
   )
   
-  const dateStr = startSitDay.value === 'today' 
-    ? new Date().toISOString().split('T')[0]
-    : new Date(Date.now() + 86400000).toISOString().split('T')[0]
+  // Get active games list
+  const activeGames = startSitDay.value === 'today' ? todaysGames.value : tomorrowsGames.value
   
   return allPlayers.value
     .filter(p => isMyPlayer(p) && !usedPlayerKeys.has(p.player_key))
     .map(p => {
-      // Deterministic hasGame based on player key + date
-      const hashInput = (p.player_key || '') + dateStr
-      const hash = hashInput.split('').reduce((a: number, b: string) => ((a << 5) - a) + b.charCodeAt(0), 0)
-      const hasGameToday = Math.abs(hash) % 10 < 6 // ~60% have games
-      const gamesThisWeek = 4 + (Math.abs(hash) % 4)
-      const opponents = currentSport.value === 'basketball' 
-        ? ['LAL', 'BOS', 'GSW', 'MIA', 'PHI', 'BKN', 'DAL', 'DEN']
-        : currentSport.value === 'hockey'
-        ? ['TOR', 'MTL', 'BOS', 'EDM', 'VGK', 'COL', 'TBL']
-        : ['NYY', 'BOS', 'LAD', 'ATL', 'HOU', 'CHC', 'PHI']
-      
+      // Get REAL game info from live data
+      const gameInfo = liveGamesService.getPlayerGameInfo(p.mlb_team, activeGames)
       const impactCats = getImpactCategoryCount(p)
       
       return { 
         ...p, 
-        opponent: hasGameToday ? `vs ${opponents[Math.abs(hash) % opponents.length]}` : null, 
-        gamesThisWeek,
-        hasGame: hasGameToday,
+        hasGame: gameInfo.hasGame,
+        opponent: gameInfo.opponent,
+        isHome: gameInfo.isHome,
+        gameTime: gameInfo.gameTime,
+        status: gameInfo.status,
+        liveScore: gameInfo.score,
+        isLive: gameInfo.isLive,
         impactCats,
         impactScore: calculatePlayerImpact(p)
       }
@@ -6178,8 +6187,86 @@ watch(currentSport, (newSport) => {
   }
 })
 
+/**
+ * Load live games schedule
+ */
+async function loadLiveGames() {
+  gamesLoading.value = true
+  
+  try {
+    const date = startSitDay.value === 'today' 
+      ? new Date() 
+      : new Date(Date.now() + 86400000)
+    
+    console.log(`[LiveGames] Loading ${currentSport.value} games for ${startSitDay.value}`)
+    
+    const games = await liveGamesService.getGamesByDate(currentSport.value, date)
+    
+    if (startSitDay.value === 'today') {
+      todaysGames.value = games
+    } else {
+      tomorrowsGames.value = games
+    }
+    
+    console.log(`[LiveGames] Loaded ${games.length} games`)
+    
+  } catch (error) {
+    console.error('[LiveGames] Error loading games:', error)
+  } finally {
+    gamesLoading.value = false
+  }
+}
+
+/**
+ * Subscribe to live game updates
+ */
+function subscribeToLiveGames() {
+  if (liveGamesSubscription.value) {
+    liveGamesSubscription.value.unsubscribe()
+    liveGamesSubscription.value = null
+  }
+  
+  const date = startSitDay.value === 'today' 
+    ? new Date() 
+    : new Date(Date.now() + 86400000)
+  
+  liveGamesSubscription.value = liveGamesService.subscribeToLiveGames(
+    currentSport.value,
+    date,
+    (games) => {
+      console.log('[LiveGames] Received update:', games.length, 'games')
+      
+      if (startSitDay.value === 'today') {
+        todaysGames.value = games
+      } else {
+        tomorrowsGames.value = games
+      }
+    }
+  )
+}
+
+/**
+ * Check scraper health
+ */
+async function checkScraperHealth() {
+  try {
+    const scraperName = currentSport.value === 'basketball' ? 'nba_games'
+                       : currentSport.value === 'hockey' ? 'nhl_games'
+                       : 'mlb_games'
+    
+    const health = await liveGamesService.checkScraperHealth(scraperName)
+    scraperHealth.value[scraperName] = health
+    
+    if (!health.isHealthy) {
+      console.warn(`[LiveGames] Scraper ${scraperName} is unhealthy!`, health)
+    }
+  } catch (error) {
+    console.error('[LiveGames] Error checking scraper health:', error)
+  }
+}
+
 // Load data on mount - use appropriate loader based on platform
-onMounted(() => { 
+onMounted(async () => { 
   console.log('[CategoryProjections] ===== onMounted =====')
   console.log('[CategoryProjections] activePlatform:', leagueStore.activePlatform)
   console.log('[CategoryProjections] activeLeagueId:', leagueStore.activeLeagueId)
@@ -6195,6 +6282,32 @@ onMounted(() => {
     // Load real matchup data for Yahoo leagues
     setTimeout(() => loadCurrentMatchup(), 1000) // Wait for data to load
   }
+  
+  // Load live games
+  await loadLiveGames()
+  subscribeToLiveGames()
+  await checkScraperHealth()
+})
+
+// Cleanup on unmount
+onUnmounted(() => {
+  if (liveGamesSubscription.value) {
+    liveGamesSubscription.value.unsubscribe()
+    liveGamesSubscription.value = null
+  }
+})
+
+// Watch for today/tomorrow toggle
+watch(() => startSitDay.value, async () => {
+  await loadLiveGames()
+  subscribeToLiveGames()
+})
+
+// Watch for sport changes to reload games
+const originalWatchCurrentSport = watch(currentSport, async (newSport) => {
+  await loadLiveGames()
+  subscribeToLiveGames()
+  await checkScraperHealth()
 })
 
 // Watch for league changes
