@@ -2346,6 +2346,8 @@ const expandedPlayerKey = ref<string | null>(null)
 const sortColumn = ref<string>('rank')
 const sortDirection = ref<'asc' | 'desc'>('asc')
 const currentSport = ref<string>('baseball')
+const leagueRosterPositions = ref<any[]>([]) // Actual roster positions from league settings
+const totalRosterSlots = computed(() => leagueRosterPositions.value.length)
 
 // Sport-specific headshot URL generation
 function getEspnHeadshotUrl(playerId: string | number, sport: string): string {
@@ -3432,6 +3434,12 @@ async function loadProjections() {
         display_name: c.stat?.display_name || c.display_name || c.stat?.abbr || c.abbr, 
         is_only_display_stat: c.stat?.is_only_display_stat || c.is_only_display_stat 
       })).filter((c: any) => c.stat_id)
+      
+      // Capture roster positions from league settings
+      if (settings.roster_positions) {
+        leagueRosterPositions.value = settings.roster_positions
+        console.log('[CategoryProjections] Loaded roster positions:', leagueRosterPositions.value)
+      }
       
       console.log('Loaded categories:', statCategories.value.map(c => `${c.display_name} (${c.stat_id})`))
       console.log('Hitting categories:', hittingCategories.value.map(c => c.display_name))
@@ -4760,9 +4768,20 @@ function getStartSitPlayerNameClass(player: any): string {
 
 // Computed: Roster spots available (accounting for IR)
 const rosterSpotsAvailable = computed(() => {
-  const activeRosterSize = rosterLimits.value.currentRosterSize - rosterLimits.value.usedIrSpots
-  const activeRosterLimit = rosterLimits.value.maxRosterSize - rosterLimits.value.irSpots
-  return activeRosterLimit - activeRosterSize - waiverLineupPlayers.value.length
+  // Calculate from actual roster: total slots - current players
+  const myPlayers = allPlayers.value.filter(p => p.fantasy_team_key === myTeamKey.value)
+  const totalSlots = totalRosterSlots.value || 25 // Use league roster positions or default
+  const currentPlayers = myPlayers.length
+  const openSpots = totalSlots - currentPlayers
+  
+  console.log('[rosterSpotsAvailable]', {
+    totalSlots,
+    currentPlayers,
+    openSpots,
+    rosterPositions: leagueRosterPositions.value.length
+  })
+  
+  return Math.max(0, openSpots) // Never negative
 })
 
 // Computed: Droppable players (my team, sorted by value)
@@ -5856,19 +5875,34 @@ const suggestedCategoryLineup = computed(() => {
   const used = new Set<string>()
   const myPlayers = allPlayers.value.filter(p => p.fantasy_team_key === myTeamKey.value)
   
-  // Sport-specific lineup positions
-  const sport = currentSport.value
+  // Use actual league roster positions if available, otherwise fall back to sport defaults
   let lineupOrder: string[]
   
-  if (sport === 'basketball') {
-    lineupOrder = ['PG', 'SG', 'SF', 'PF', 'C', 'G', 'F', 'Util', 'Util', 'Util']
-  } else if (sport === 'hockey') {
-    lineupOrder = ['C', 'C', 'LW', 'LW', 'RW', 'RW', 'D', 'D', 'D', 'D', 'G', 'G', 'Util', 'Util']
-  } else if (sport === 'football') {
-    lineupOrder = ['QB', 'RB', 'RB', 'WR', 'WR', 'TE', 'Flex', 'K', 'DEF']
+  if (leagueRosterPositions.value && leagueRosterPositions.value.length > 0) {
+    // Use actual roster positions from league settings
+    lineupOrder = leagueRosterPositions.value.map((rp: any) => {
+      // Handle both string format ("PG") and object format ({position: "PG", count: 1})
+      if (typeof rp === 'string') return rp
+      return rp.position || rp.abbr || rp.display_name || rp
+    }).filter((p: any) => p && p !== 'BN' && p !== 'IL' && p !== 'IR') // Exclude bench/IL spots
+    
+    console.log('[suggestedCategoryLineup] Using league roster positions:', lineupOrder)
   } else {
-    // Baseball (default)
-    lineupOrder = ['C', '1B', '2B', '3B', 'SS', 'OF', 'OF', 'OF', 'Util', 'SP', 'SP', 'RP', 'RP']
+    // Fallback to sport-specific defaults
+    const sport = currentSport.value
+    
+    if (sport === 'basketball') {
+      lineupOrder = ['PG', 'SG', 'SF', 'PF', 'C', 'G', 'F', 'Util', 'Util', 'Util']
+    } else if (sport === 'hockey') {
+      lineupOrder = ['C', 'C', 'LW', 'LW', 'RW', 'RW', 'D', 'D', 'D', 'D', 'G', 'G', 'Util', 'Util']
+    } else if (sport === 'football') {
+      lineupOrder = ['QB', 'RB', 'RB', 'WR', 'WR', 'TE', 'Flex', 'K', 'DEF']
+    } else {
+      // Baseball (default)
+      lineupOrder = ['C', '1B', '2B', '3B', 'SS', 'OF', 'OF', 'OF', 'Util', 'SP', 'SP', 'RP', 'RP']
+    }
+    
+    console.log('[suggestedCategoryLineup] Using default positions for', sport, ':', lineupOrder)
   }
   
   for (const pos of lineupOrder) {
