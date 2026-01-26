@@ -4758,10 +4758,17 @@ function formatCategoryProjection(player: any, cat: any): string {
   
   const mode = startSitViewMode.value
   const period = startSitTimePeriod.value
+  const isPercentage = isPercentageStat(cat)
+  
+  // Percentages don't change based on time period - they're rates, not totals
+  if (isPercentage) {
+    // Convert from decimal to percentage (0.472 -> 47.2%)
+    const percentValue = seasonValue * 100
+    return percentValue.toFixed(1) + '%'
+  }
   
   if (mode === 'stats') {
     // STATS MODE: Show actual stats from the past
-    // For stats mode, we're showing what they DID score
     const gamesPlayed = isPitcher(player) ? 30 : 140 // Season games played so far
     
     if (period === 'ros') {
@@ -4805,6 +4812,13 @@ function formatCategoryProjection(player: any, cat: any): string {
 
 function getCategoryPerGame(player: any, cat: any): string {
   const seasonValue = parseFloat(player.stats?.[cat.stat_id] || 0)
+  
+  // Percentages don't have "per game" - they're rates
+  if (isPercentageStat(cat)) {
+    const percentValue = seasonValue * 100
+    return percentValue.toFixed(1) + '%'
+  }
+  
   const gamesPlayed = isPitcher(player) ? 30 : 140
   const perGame = seasonValue / gamesPlayed
   
@@ -4821,6 +4835,23 @@ function getProjectedCategoryTotal(cat: any): string {
   
   const mode = startSitViewMode.value
   const period = startSitTimePeriod.value
+  const isPercentage = isPercentageStat(cat)
+  
+  // Percentages are averaged, not summed
+  if (isPercentage) {
+    let sum = 0
+    let count = 0
+    for (const player of players) {
+      const seasonValue = parseFloat(player.stats?.[cat.stat_id] || 0)
+      if (seasonValue > 0) {
+        sum += seasonValue
+        count++
+      }
+    }
+    if (count === 0) return '-'
+    const avgValue = (sum / count) * 100
+    return avgValue.toFixed(1) + '%'
+  }
   
   let total = 0
   for (const player of players) {
