@@ -2347,7 +2347,7 @@ const sortColumn = ref<string>('rank')
 const sortDirection = ref<'asc' | 'desc'>('asc')
 const currentSport = ref<string>('baseball')
 const leagueRosterPositions = ref<any[]>([]) // Actual roster positions from league settings
-const totalRosterSlots = computed(() => leagueRosterPositions.value.length)
+const totalRosterSlots = computed(() => leagueRosterPositions.value?.length || 0)
 
 // Sport-specific headshot URL generation
 function getEspnHeadshotUrl(playerId: string | number, sport: string): string {
@@ -4782,20 +4782,25 @@ function getStartSitPlayerNameClass(player: any): string {
 
 // Computed: Roster spots available (accounting for IR)
 const rosterSpotsAvailable = computed(() => {
-  // Calculate from actual roster: total slots - current players
-  const myPlayers = allPlayers.value.filter(p => p.fantasy_team_key === myTeamKey.value)
-  const totalSlots = totalRosterSlots.value || 25 // Use league roster positions or default
-  const currentPlayers = myPlayers.length
-  const openSpots = totalSlots - currentPlayers
-  
-  console.log('[rosterSpotsAvailable]', {
-    totalSlots,
-    currentPlayers,
-    openSpots,
-    rosterPositions: leagueRosterPositions.value.length
-  })
-  
-  return Math.max(0, openSpots) // Never negative
+  try {
+    // Calculate from actual roster: total slots - current players
+    const myPlayers = allPlayers.value?.filter(p => p.fantasy_team_key === myTeamKey.value) || []
+    const totalSlots = totalRosterSlots.value || 25 // Use league roster positions or default
+    const currentPlayers = myPlayers.length
+    const openSpots = totalSlots - currentPlayers
+    
+    console.log('[rosterSpotsAvailable]', {
+      totalSlots,
+      currentPlayers,
+      openSpots,
+      rosterPositions: leagueRosterPositions.value?.length || 0
+    })
+    
+    return Math.max(0, openSpots) // Never negative
+  } catch (error) {
+    console.error('[rosterSpotsAvailable] Error:', error)
+    return 0
+  }
 })
 
 // Computed: Droppable players (my team, sorted by value)
