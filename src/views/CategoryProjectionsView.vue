@@ -4277,17 +4277,18 @@ const opponentName = computed(() => {
 
 // Load real matchup data from Yahoo API
 async function loadCurrentMatchup() {
-  if (!leagueKey.value || !myTeamKey.value || isEspn.value) return
+  const leagueKey = leagueStore.activeLeagueId
+  if (!leagueKey || !myTeamKey.value || isEspn.value) return
   
   isLoadingMatchup.value = true
   try {
-    const metadata = await yahooService.getLeagueMetadata(leagueKey.value)
+    const metadata = await yahooService.getLeagueMetadata(leagueKey)
     const currentWeek = metadata.currentWeek
     
     console.log(`[loadCurrentMatchup] Loading matchup data for week ${currentWeek}`)
     
     // Get category matchups for current week
-    const matchups = await yahooService.getCategoryMatchups(leagueKey.value, currentWeek)
+    const matchups = await yahooService.getCategoryMatchups(leagueKey, currentWeek)
     
     // Find my matchup
     const myMatchup = matchups.find(m => 
