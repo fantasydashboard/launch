@@ -6782,21 +6782,39 @@ const benchPlayers = computed(() => {
 // Available free agents with games today/tomorrow (for "Available" view)
 const availableFreeAgents = computed(() => {
   // Safety check - only run if on startsit tab and data is loaded
-  if (!allPlayers.value || allPlayers.value.length === 0) return []
-  if (!liveGamesService) return []
+  if (!allPlayers.value || allPlayers.value.length === 0) {
+    console.log('[availableFreeAgents] No players loaded')
+    return []
+  }
+  if (!liveGamesService) {
+    console.log('[availableFreeAgents] No liveGamesService')
+    return []
+  }
   
   const activeGames = startSitDay.value === 'today' ? todaysGames.value : tomorrowsGames.value
-  if (!activeGames) return []
+  if (!activeGames) {
+    console.log('[availableFreeAgents] No active games')
+    return []
+  }
+  
+  console.log('[availableFreeAgents] Processing...', {
+    totalPlayers: allPlayers.value.length,
+    activeGamesCount: activeGames.length,
+    sport: currentSport.value
+  })
   
   try {
-    return allPlayers.value
+    const results = allPlayers.value
       .filter(p => {
         // Must be free agent
         if (p.fantasy_team_key) return false
         
         // Must have a game - use sport-agnostic team property
         const teamCode = p.mlb_team || p.nba_team || p.nhl_team || p.editorial_team_abbr || p.team_abbr
-        if (!teamCode) return false
+        if (!teamCode) {
+          console.log('[availableFreeAgents] Player missing team code:', p.full_name)
+          return false
+        }
         
         const gameInfo = liveGamesService.getPlayerGameInfo(teamCode, activeGames)
         if (!gameInfo || !gameInfo.hasGame) return false
@@ -6825,6 +6843,9 @@ const availableFreeAgents = computed(() => {
       })
       .sort((a, b) => b.impactScore - a.impactScore)
       .slice(0, 50) // Top 50 free agents
+    
+    console.log('[availableFreeAgents] Found', results.length, 'free agents with games')
+    return results
   } catch (error) {
     console.error('[availableFreeAgents] Error:', error)
     return []
@@ -7460,8 +7481,8 @@ function getPlayerProjection(player: any, category: any, period: 'today' | 'next
   
   const projected = perGame * games
   
-  // Format based on stat type
-  const statId = category.stat_id.toLowerCase()
+  // Format based on stat type - FIX: stat_id might not be a string
+  const statId = String(category.stat_id || '').toLowerCase()
   if (statId.includes('%') || statId.includes('pct')) {
     // Percentage - show as decimal
     return projected.toFixed(3)
