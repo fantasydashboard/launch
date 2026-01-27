@@ -939,49 +939,64 @@
                   </div>
                 </div>
                 <div class="card-body p-0">
-                  <div class="divide-y divide-dark-border/30 max-h-[35vh] overflow-y-auto">
-                    <div 
-                      v-for="(slot, idx) in modifiedSuggestedLineup" 
-                      :key="idx" 
-                      class="flex items-center gap-2 px-3 py-2 hover:bg-dark-border/20"
-                      :class="{ 'bg-cyan-500/10 border-l-2 border-cyan-400': slot.isWaiver }"
-                    >
-                      <div class="w-10 text-center">
-                        <span class="px-1.5 py-0.5 rounded text-[10px] font-bold" :class="getStartSitPositionClass(slot.position)">{{ slot.position }}</span>
+                  <div class="max-h-[35vh] overflow-y-auto">
+                    <!-- Group lineup by position type -->
+                    <template v-for="(group, groupIdx) in groupedLineup" :key="groupIdx">
+                      <!-- Position Group Header -->
+                      <div class="sticky top-0 z-10 px-3 py-1.5 bg-dark-elevated border-b border-dark-border/50">
+                        <div class="flex items-center justify-between">
+                          <span class="text-xs font-bold uppercase tracking-wide" :class="getStartSitPositionClass(group.position)">
+                            {{ group.position }}
+                          </span>
+                          <span class="text-[10px] text-dark-textMuted">
+                            {{ group.filled }}/{{ group.total }}
+                          </span>
+                        </div>
                       </div>
-                      <div v-if="slot.player" class="flex items-center gap-2 flex-1 min-w-0">
-                        <div class="relative">
-                          <div class="w-8 h-8 rounded-full bg-dark-border overflow-hidden" :class="slot.isWaiver ? 'ring-2 ring-cyan-400' : ''">
-                            <img :src="slot.player.headshot || defaultHeadshot" class="w-full h-full object-cover" @error="handleImageError" />
-                          </div>
-                          <div v-if="slot.isWaiver" class="absolute -top-1 -right-1 w-4 h-4 bg-cyan-400 rounded-full flex items-center justify-center">
-                            <span class="text-[8px] text-gray-900 font-bold">W</span>
-                          </div>
-                        </div>
-                        <div class="flex-1 min-w-0">
-                          <div class="font-medium text-xs truncate" :class="slot.isWaiver ? 'text-cyan-400' : 'text-dark-text'">{{ slot.player.full_name }}</div>
-                          <div class="text-[10px]" :class="slot.player.hasGame ? 'text-dark-textMuted' : 'text-red-400'">
-                            {{ slot.player.opponent || (slot.player.hasGame ? (slot.player.gamesThisWeek + ' games') : 'No game') }}
-                          </div>
-                        </div>
-                        <div class="text-right">
-                          <div class="text-[10px] text-dark-textMuted">{{ slot.player.impactCats || 0 }} cats</div>
-                        </div>
-                        <button 
-                          v-if="slot.isWaiver"
-                          @click="removeFromWaiverLineup(slot.player)"
-                          class="text-red-400 hover:text-red-300 transition-colors ml-1"
+                      
+                      <!-- Players in this position group -->
+                      <div class="divide-y divide-dark-border/20">
+                        <div 
+                          v-for="(slot, slotIdx) in group.slots" 
+                          :key="`${groupIdx}-${slotIdx}`" 
+                          class="flex items-center gap-2 px-3 py-2 hover:bg-dark-border/20"
+                          :class="{ 'bg-cyan-500/10 border-l-2 border-cyan-400': slot.isWaiver }"
                         >
-                          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-                          </svg>
-                        </button>
+                          <div v-if="slot.player" class="flex items-center gap-2 flex-1 min-w-0">
+                            <div class="relative">
+                              <div class="w-8 h-8 rounded-full bg-dark-border overflow-hidden" :class="slot.isWaiver ? 'ring-2 ring-cyan-400' : ''">
+                                <img :src="slot.player.headshot || defaultHeadshot" class="w-full h-full object-cover" @error="handleImageError" />
+                              </div>
+                              <div v-if="slot.isWaiver" class="absolute -top-1 -right-1 w-4 h-4 bg-cyan-400 rounded-full flex items-center justify-center">
+                                <span class="text-[8px] text-gray-900 font-bold">W</span>
+                              </div>
+                            </div>
+                            <div class="flex-1 min-w-0">
+                              <div class="font-medium text-xs truncate" :class="slot.isWaiver ? 'text-cyan-400' : 'text-dark-text'">{{ slot.player.full_name }}</div>
+                              <div class="text-[10px]" :class="slot.player.hasGame ? 'text-dark-textMuted' : 'text-red-400'">
+                                {{ slot.player.opponent || (slot.player.hasGame ? (slot.player.gamesThisWeek + ' games') : 'No game') }}
+                              </div>
+                            </div>
+                            <div class="text-right">
+                              <div class="text-[10px] text-dark-textMuted">{{ slot.player.impactCats || 0 }} cats</div>
+                            </div>
+                            <button 
+                              v-if="slot.isWaiver"
+                              @click="removeFromWaiverLineup(slot.player)"
+                              class="text-red-400 hover:text-red-300 transition-colors ml-1"
+                            >
+                              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                              </svg>
+                            </button>
+                          </div>
+                          <div v-else class="flex items-center gap-2 flex-1">
+                            <div class="w-8 h-8 rounded-full bg-dark-border/30"></div>
+                            <span class="text-xs text-dark-textMuted italic">Empty</span>
+                          </div>
+                        </div>
                       </div>
-                      <div v-else class="flex items-center gap-2 flex-1">
-                        <div class="w-8 h-8 rounded-full bg-dark-border/30"></div>
-                        <span class="text-xs text-dark-textMuted italic">Empty</span>
-                      </div>
-                    </div>
+                    </template>
                   </div>
                   
                   <!-- Bench Section -->
@@ -4966,6 +4981,32 @@ const modifiedSuggestedLineup = computed(() => {
   }
   
   return lineup
+})
+
+// Group lineup by position type for better organization
+const groupedLineup = computed(() => {
+  const groups: { position: string; slots: any[]; total: number; filled: number }[] = []
+  const positionMap = new Map<string, any[]>()
+  
+  // Group slots by position
+  for (const slot of modifiedSuggestedLineup.value) {
+    if (!positionMap.has(slot.position)) {
+      positionMap.set(slot.position, [])
+    }
+    positionMap.get(slot.position)!.push(slot)
+  }
+  
+  // Convert to array with stats
+  for (const [position, slots] of positionMap.entries()) {
+    groups.push({
+      position,
+      slots,
+      total: slots.length,
+      filled: slots.filter(s => s.player).length
+    })
+  }
+  
+  return groups
 })
 
 function openSwapModal(player: any) {
