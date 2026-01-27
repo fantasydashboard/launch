@@ -674,9 +674,6 @@
           </div>
 
           <!-- MAIN CONTENT AREA -->
-<!-- This is the new DAILY COMMAND CENTER redesign for the Start/Sit tab -->
-<!-- Replace lines 677-1070 in CategoryProjectionsView.vue with this content -->
-
           <!-- VIEW 1: OPTIMAL LINEUP -->
           <template v-if="commandCenterView === 'lineup'">
             <div class="card">
@@ -757,7 +754,7 @@
                         <div class="flex-1">
                           <span class="text-dark-textMuted italic text-sm">Empty slot</span>
                         </div>
-                        <button class="px-3 py-1 text-xs bg-cyan-500/20 text-cyan-400 rounded hover:bg-cyan-500/30 transition-colors">
+                        <button class="px-3 py-1 text-xs bg-cyan-500/20 text-cyan-400 rounded hover:bg-cyan-500/30 transition-colors" @click="commandCenterView = 'available'">
                           Find Player
                         </button>
                       </template>
@@ -979,6 +976,7 @@
                           Approve Move
                         </button>
                         <button 
+                          @click="analyzeWaiverMove(rec.addPlayer)"
                           class="px-4 py-2 bg-dark-border text-dark-textMuted font-semibold rounded-lg hover:bg-dark-border/50 transition-colors"
                         >
                           View Details
@@ -1000,6 +998,8 @@
 
         </div>
       </template>
+
+      <!-- TRADE ANALYZER TAB -->
       <template v-if="activeTab === 'trade'">
         <div class="space-y-6">
           <!-- Header -->
