@@ -623,16 +623,27 @@
                 </div>
                 
                 <!-- Category Pills -->
-                <div class="flex flex-wrap gap-1.5">
-                  <span 
-                    v-for="cat in displayCategories" 
-                    :key="cat.stat_id"
-                    class="px-2 py-1 rounded text-xs font-bold"
-                    :class="getCategoryMatchupClass(cat.stat_id)"
-                    :title="getCategoryMatchupTooltip(cat.stat_id)"
+                <div class="flex items-center gap-4">
+                  <div class="flex flex-wrap gap-1.5">
+                    <span 
+                      v-for="cat in displayCategories" 
+                      :key="cat.stat_id"
+                      class="px-2 py-1 rounded text-xs font-bold"
+                      :class="getCategoryMatchupClass(cat.stat_id)"
+                      :title="getCategoryMatchupTooltip(cat.stat_id)"
+                    >
+                      {{ cat.display_name }}
+                    </span>
+                  </div>
+                  <button
+                    @click="showMatchupAnalysisModal = true"
+                    class="px-4 py-2 bg-purple-500/20 text-purple-400 rounded-lg hover:bg-purple-500/30 transition-colors font-semibold text-sm flex items-center gap-2 whitespace-nowrap"
                   >
-                    {{ cat.display_name }}
-                  </span>
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                    </svg>
+                    Analyze Matchup
+                  </button>
                 </div>
               </div>
             </div>
@@ -754,7 +765,7 @@
                         <div class="flex-1">
                           <span class="text-dark-textMuted italic text-sm">Empty slot</span>
                         </div>
-                        <button class="px-3 py-1 text-xs bg-cyan-500/20 text-cyan-400 rounded hover:bg-cyan-500/30 transition-colors" @click="commandCenterView = 'available'">
+                        <button class="px-3 py-1 text-xs bg-cyan-500/20 text-cyan-400 rounded hover:bg-cyan-500/30 transition-colors" @click="openPositionPicker(group.position)">
                           Find Player
                         </button>
                       </template>
@@ -866,7 +877,7 @@
                         </td>
                         <td class="px-3 py-3 text-center">
                           <button 
-                            @click="analyzeWaiverMove(player)"
+                            @click="openPlayerAnalysis(player)"
                             class="px-3 py-1.5 text-xs font-semibold bg-cyan-500/20 text-cyan-400 rounded hover:bg-cyan-500/30 transition-colors"
                           >
                             Analyze
@@ -996,6 +1007,339 @@
             </div>
           </template>
 
+
+          <!-- MODAL 1: POSITION PICKER (Find Player by Position) -->
+          <div v-if="showPositionPickerModal" class="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4" @click.self="showPositionPickerModal = false">
+            <div class="bg-dark-card rounded-2xl max-w-5xl w-full max-h-[90vh] overflow-hidden border border-dark-border shadow-2xl" @click.stop>
+              <div class="bg-gradient-to-r from-cyan-500/20 to-blue-500/20 px-6 py-4 border-b border-dark-border flex items-center justify-between">
+                <div>
+                  <h2 class="text-2xl font-bold text-dark-text">Find {{ positionPickerPosition }} Player</h2>
+                  <p class="text-sm text-dark-textMuted mt-1">Free agents with games {{ startSitDay === 'today' ? 'today' : 'tomorrow' }}</p>
+                </div>
+                <button @click="showPositionPickerModal = false" class="text-dark-textMuted hover:text-dark-text transition-colors">
+                  <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+              
+              <div class="p-6 overflow-y-auto max-h-[calc(90vh-140px)]">
+                <div class="overflow-x-auto">
+                  <table class="w-full">
+                    <thead class="bg-dark-border/30 sticky top-0 z-10">
+                      <tr>
+                        <th class="px-4 py-3 text-left text-xs font-semibold text-dark-textMuted uppercase">Player</th>
+                        <th class="px-3 py-3 text-center text-xs font-semibold text-dark-textMuted uppercase w-20">Matchup</th>
+                        <th 
+                          v-for="cat in relevantStartSitCategories" 
+                          :key="cat.stat_id" 
+                          class="px-2 py-3 text-center text-xs font-semibold uppercase w-14"
+                          :class="getCategoryHeaderClass(cat.stat_id)"
+                        >
+                          {{ cat.display_name }}
+                        </th>
+                        <th class="px-3 py-3 text-center text-xs font-semibold text-dark-textMuted uppercase w-28">Impact</th>
+                        <th class="px-3 py-3 text-center text-xs font-semibold text-dark-textMuted uppercase w-32">Action</th>
+                      </tr>
+                    </thead>
+                    <tbody class="divide-y divide-dark-border/30">
+                      <tr 
+                        v-for="player in getPositionFilteredPlayers(positionPickerPosition)" 
+                        :key="player.player_key"
+                        class="hover:bg-dark-border/20 transition-colors"
+                      >
+                        <td class="px-4 py-3">
+                          <div class="flex items-center gap-3">
+                            <div class="w-10 h-10 rounded-full bg-dark-border overflow-hidden">
+                              <img :src="player.headshot || defaultHeadshot" class="w-full h-full object-cover" @error="handleImageError" />
+                            </div>
+                            <div>
+                              <div class="font-semibold text-dark-text">{{ player.full_name }}</div>
+                              <div class="text-xs text-dark-textMuted">{{ player.mlb_team }} • {{ player.position }}</div>
+                            </div>
+                          </div>
+                        </td>
+                        <td class="px-3 py-3 text-center">
+                          <span class="text-xs font-medium text-green-400">{{ player.opponent }}</span>
+                        </td>
+                        <td 
+                          v-for="cat in relevantStartSitCategories" 
+                          :key="cat.stat_id" 
+                          class="px-2 py-3 text-center"
+                        >
+                          <span class="text-sm font-bold" :class="getCategoryProjectionClass(player, cat)">
+                            {{ formatCategoryProjection(player, cat) }}
+                          </span>
+                        </td>
+                        <td class="px-3 py-3 text-center">
+                          <div class="flex flex-col items-center">
+                            <span class="text-lg font-black text-green-400">{{ player.impactCats || 0 }}</span>
+                            <span class="text-[10px] text-dark-textMuted">categories</span>
+                          </div>
+                        </td>
+                        <td class="px-3 py-3 text-center">
+                          <div class="flex gap-2 justify-center">
+                            <button 
+                              @click="openPlayerAnalysis(player)"
+                              class="px-3 py-1.5 text-xs font-semibold bg-purple-500/20 text-purple-400 rounded hover:bg-purple-500/30 transition-colors"
+                            >
+                              Analyze
+                            </button>
+                            <button 
+                              @click="analyzeWaiverMove(player)"
+                              class="px-3 py-1.5 text-xs font-semibold bg-cyan-500/20 text-cyan-400 rounded hover:bg-cyan-500/30 transition-colors"
+                            >
+                              Add
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                      <tr v-if="getPositionFilteredPlayers(positionPickerPosition).length === 0">
+                        <td :colspan="6 + relevantStartSitCategories.length" class="px-4 py-8 text-center text-dark-textMuted">
+                          No {{ positionPickerPosition }} players found with games {{ startSitDay === 'today' ? 'today' : 'tomorrow' }}
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- MODAL 2: PLAYER ANALYSIS (Detailed Stats & Charts) -->
+          <div v-if="showPlayerAnalysisModal && playerAnalysisData" class="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4" @click.self="showPlayerAnalysisModal = false">
+            <div class="bg-dark-card rounded-2xl max-w-6xl w-full max-h-[90vh] overflow-hidden border border-dark-border shadow-2xl" @click.stop>
+              <div class="bg-gradient-to-r from-purple-500/20 to-pink-500/20 px-6 py-4 border-b border-dark-border flex items-center justify-between">
+                <div class="flex items-center gap-4">
+                  <div class="w-16 h-16 rounded-full bg-dark-border overflow-hidden">
+                    <img :src="playerAnalysisData.headshot || defaultHeadshot" class="w-full h-full object-cover" @error="handleImageError" />
+                  </div>
+                  <div>
+                    <h2 class="text-2xl font-bold text-dark-text">{{ playerAnalysisData.full_name }}</h2>
+                    <p class="text-sm text-dark-textMuted">{{ playerAnalysisData.mlb_team }} • {{ playerAnalysisData.position }}</p>
+                  </div>
+                </div>
+                <button @click="showPlayerAnalysisModal = false" class="text-dark-textMuted hover:text-dark-text transition-colors">
+                  <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+              
+              <div class="p-6 overflow-y-auto max-h-[calc(90vh-180px)]">
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                  
+                  <!-- Today's Game Info -->
+                  <div class="card">
+                    <div class="card-header py-3">
+                      <h3 class="text-lg font-bold">{{ startSitDay === 'today' ? "Today's" : "Tomorrow's" }} Game</h3>
+                    </div>
+                    <div class="card-body">
+                      <div v-if="playerAnalysisData.hasGame" class="space-y-3">
+                        <div class="flex items-center justify-between p-3 bg-dark-elevated rounded-lg">
+                          <span class="text-dark-textMuted">Opponent</span>
+                          <span class="font-bold text-dark-text">{{ playerAnalysisData.isHome ? 'vs' : '@' }} {{ playerAnalysisData.opponent }}</span>
+                        </div>
+                        <div class="flex items-center justify-between p-3 bg-dark-elevated rounded-lg">
+                          <span class="text-dark-textMuted">Status</span>
+                          <span class="px-2 py-1 bg-green-500/20 text-green-400 rounded text-sm font-bold">Playing</span>
+                        </div>
+                        <div class="flex items-center justify-between p-3 bg-dark-elevated rounded-lg">
+                          <span class="text-dark-textMuted">Impact Categories</span>
+                          <span class="text-2xl font-black text-green-400">{{ playerAnalysisData.impactCats || 0 }}</span>
+                        </div>
+                      </div>
+                      <div v-else class="p-6 text-center">
+                        <div class="text-red-400 text-4xl mb-2">🔴</div>
+                        <div class="font-bold text-dark-text">No Game {{ startSitDay === 'today' ? 'Today' : 'Tomorrow' }}</div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- Projected Stats -->
+                  <div class="card">
+                    <div class="card-header py-3">
+                      <h3 class="text-lg font-bold">Projected Stats ({{ startSitDay === 'today' ? 'Today' : 'Tomorrow' }})</h3>
+                    </div>
+                    <div class="card-body">
+                      <div class="space-y-2">
+                        <div v-for="cat in relevantStartSitCategories" :key="cat.stat_id" class="flex items-center justify-between p-2 bg-dark-elevated rounded">
+                          <span class="text-sm text-dark-textMuted">{{ cat.display_name }}</span>
+                          <span class="font-bold text-dark-text">{{ formatCategoryProjection(playerAnalysisData, cat) }}</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- Season Stats -->
+                  <div class="card lg:col-span-2">
+                    <div class="card-header py-3">
+                      <h3 class="text-lg font-bold">Season Performance</h3>
+                    </div>
+                    <div class="card-body">
+                      <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                        <div v-for="cat in relevantStartSitCategories" :key="'season-'+cat.stat_id" class="p-3 bg-dark-elevated rounded-lg text-center">
+                          <div class="text-xs text-dark-textMuted uppercase mb-1">{{ cat.display_name }}</div>
+                          <div class="text-2xl font-black text-dark-text">{{ playerAnalysisData.stats?.[cat.stat_id] || '0' }}</div>
+                          <div class="text-[10px] text-dark-textMuted mt-1">Season Total</div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- Matchup Impact -->
+                  <div class="card lg:col-span-2">
+                    <div class="card-header py-3">
+                      <h3 class="text-lg font-bold">Matchup Impact Analysis</h3>
+                    </div>
+                    <div class="card-body">
+                      <div class="space-y-3">
+                        <div v-for="cat in displayCategories" :key="'impact-'+cat.stat_id" class="flex items-center justify-between p-3 rounded-lg" :class="getCategoryMatchupClass(cat.stat_id) + ' bg-opacity-10'">
+                          <div class="flex items-center gap-3">
+                            <span class="px-2 py-1 rounded text-xs font-bold" :class="getCategoryMatchupClass(cat.stat_id)">
+                              {{ cat.display_name }}
+                            </span>
+                            <span class="text-sm text-dark-text">{{ getCategoryMatchupStatus(cat.stat_id) }}</span>
+                          </div>
+                          <div class="text-right">
+                            <div class="text-sm font-bold text-dark-text">{{ formatCategoryProjection(playerAnalysisData, cat) }}</div>
+                            <div class="text-[10px] text-dark-textMuted">Projected</div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="px-6 py-4 border-t border-dark-border flex justify-end gap-3">
+                <button @click="showPlayerAnalysisModal = false" class="px-4 py-2 bg-dark-border text-dark-textMuted rounded-lg hover:bg-dark-border/50 transition-colors font-semibold">
+                  Close
+                </button>
+                <button @click="analyzeWaiverMove(playerAnalysisData); showPlayerAnalysisModal = false" class="px-4 py-2 bg-cyan-500 text-gray-900 rounded-lg hover:bg-cyan-400 transition-colors font-semibold">
+                  Add to Lineup
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- MODAL 3: MATCHUP ANALYSIS -->
+          <div v-if="showMatchupAnalysisModal" class="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4" @click.self="showMatchupAnalysisModal = false">
+            <div class="bg-dark-card rounded-2xl max-w-5xl w-full max-h-[90vh] overflow-hidden border border-dark-border shadow-2xl" @click.stop>
+              <div class="bg-gradient-to-r from-purple-500/20 via-pink-500/20 to-blue-500/20 px-6 py-4 border-b border-dark-border flex items-center justify-between">
+                <div>
+                  <h2 class="text-2xl font-bold text-dark-text">Matchup Analysis</h2>
+                  <p class="text-sm text-dark-textMuted mt-1">{{ myTeamName }} vs {{ opponentName }}</p>
+                </div>
+                <button @click="showMatchupAnalysisModal = false" class="text-dark-textMuted hover:text-dark-text transition-colors">
+                  <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+              
+              <div class="p-6 overflow-y-auto max-h-[calc(90vh-140px)]">
+                
+                <!-- Overall Status -->
+                <div class="grid grid-cols-3 gap-4 mb-6">
+                  <div class="card bg-green-500/10 border-green-500/30">
+                    <div class="card-body text-center py-4">
+                      <div class="text-xs text-green-400 uppercase mb-1">Winning</div>
+                      <div class="text-4xl font-black text-green-400">{{ matchupWins }}</div>
+                      <div class="text-xs text-dark-textMuted mt-1">categories</div>
+                    </div>
+                  </div>
+                  <div class="card bg-yellow-500/10 border-yellow-500/30">
+                    <div class="card-body text-center py-4">
+                      <div class="text-xs text-yellow-400 uppercase mb-1">Close</div>
+                      <div class="text-4xl font-black text-yellow-400">{{ matchupTies }}</div>
+                      <div class="text-xs text-dark-textMuted mt-1">categories</div>
+                    </div>
+                  </div>
+                  <div class="card bg-red-500/10 border-red-500/30">
+                    <div class="card-body text-center py-4">
+                      <div class="text-xs text-red-400 uppercase mb-1">Losing</div>
+                      <div class="text-4xl font-black text-red-400">{{ matchupLosses }}</div>
+                      <div class="text-xs text-dark-textMuted mt-1">categories</div>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Category Breakdown -->
+                <div class="card mb-6">
+                  <div class="card-header py-3">
+                    <h3 class="text-lg font-bold">Category-by-Category Breakdown</h3>
+                  </div>
+                  <div class="card-body p-0">
+                    <div class="divide-y divide-dark-border/30">
+                      <div v-for="cat in displayCategories" :key="'matchup-'+cat.stat_id" class="flex items-center justify-between p-4 hover:bg-dark-border/10 transition-colors">
+                        <div class="flex items-center gap-3">
+                          <span class="px-3 py-1.5 rounded font-bold text-sm" :class="getCategoryMatchupClass(cat.stat_id)">
+                            {{ cat.display_name }}
+                          </span>
+                          <span class="text-sm font-medium" :class="getCategoryMatchupTextClass(cat.stat_id)">
+                            {{ getCategoryMatchupStatus(cat.stat_id) }}
+                          </span>
+                        </div>
+                        <div class="flex items-center gap-6">
+                          <div class="text-right">
+                            <div class="text-xs text-dark-textMuted">You</div>
+                            <div class="text-lg font-bold text-dark-text">{{ matchupCategoryStatus[cat.stat_id]?.myValue || '0' }}</div>
+                          </div>
+                          <div class="text-dark-textMuted">vs</div>
+                          <div class="text-right">
+                            <div class="text-xs text-dark-textMuted">Opponent</div>
+                            <div class="text-lg font-bold text-dark-text">{{ matchupCategoryStatus[cat.stat_id]?.oppValue || '0' }}</div>
+                          </div>
+                          <div class="text-right min-w-[80px]">
+                            <div class="text-xs text-dark-textMuted">Difference</div>
+                            <div class="text-lg font-bold" :class="getCategoryDifferenceClass(cat.stat_id)">
+                              {{ getCategoryDifference(cat.stat_id) }}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Strategic Insights -->
+                <div class="card">
+                  <div class="card-header py-3">
+                    <h3 class="text-lg font-bold">💡 Strategic Insights</h3>
+                  </div>
+                  <div class="card-body">
+                    <div class="space-y-3">
+                      <div class="p-4 bg-green-500/10 border border-green-500/30 rounded-lg">
+                        <div class="font-bold text-green-400 mb-2">✓ Lock These In</div>
+                        <div class="text-sm text-dark-text">
+                          Categories you're safely winning: {{ getSafeCategoryNames }}
+                        </div>
+                      </div>
+                      <div class="p-4 bg-yellow-500/10 border border-yellow-500/30 rounded-lg">
+                        <div class="font-bold text-yellow-400 mb-2">⚠️ Focus Here</div>
+                        <div class="text-sm text-dark-text">
+                          Close categories to target: {{ getCloseCategoryNames }}
+                        </div>
+                      </div>
+                      <div class="p-4 bg-red-500/10 border border-red-500/30 rounded-lg">
+                        <div class="font-bold text-red-400 mb-2">📈 Comeback Needed</div>
+                        <div class="text-sm text-dark-text">
+                          Categories to chase: {{ getLosingCategoryNames }}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="px-6 py-4 border-t border-dark-border flex justify-end">
+                <button @click="showMatchupAnalysisModal = false" class="px-6 py-2 bg-purple-500 text-gray-900 rounded-lg hover:bg-purple-400 transition-colors font-semibold">
+                  Close
+                </button>
+              </div>
+            </div>
+          </div>
         </div>
       </template>
 
@@ -2390,6 +2734,13 @@ const showDropModal = ref(false)
 const dropModalPlayer = ref<any>(null)
 const selectedDropPlayer = ref<any>(null)
 const dropModalViewMode = ref<'projections' | 'stats'>('projections')
+
+// New modal states
+const showPositionPickerModal = ref(false)
+const positionPickerPosition = ref<string>('')
+const showPlayerAnalysisModal = ref(false)
+const playerAnalysisData = ref<any>(null)
+const showMatchupAnalysisModal = ref(false)
 
 // Roster limits - loaded from platform
 const rosterLimits = ref({
@@ -4984,6 +5335,105 @@ function approveWaiverMove(recommendation: any) {
   // 3. Update UI
 }
 
+// Open position picker modal
+function openPositionPicker(position: string) {
+  positionPickerPosition.value = position
+  // Set the selected position filter
+  selectedStartSitPosition.value = position
+  showPositionPickerModal.value = true
+}
+
+// Get players filtered by position for the modal
+function getPositionFilteredPlayers(position: string) {
+  if (!availableFreeAgents.value) return []
+  
+  return availableFreeAgents.value.filter(p => {
+    const playerPos = p.position || ''
+    
+    // Handle Util/Flex positions
+    if (position === 'Util' || position === 'Flex') {
+      const sport = currentSport.value
+      if (sport === 'baseball') return !playerPos.includes('SP') && !playerPos.includes('RP')
+      if (sport === 'hockey') return !playerPos.includes('G')
+      return true
+    }
+    
+    // Handle guard/forward positions in basketball
+    if (currentSport.value === 'basketball') {
+      if (position === 'G') return playerPos.includes('PG') || playerPos.includes('SG') || playerPos.includes('G')
+      if (position === 'F') return playerPos.includes('SF') || playerPos.includes('PF') || playerPos.includes('F')
+    }
+    
+    // Handle OF in baseball
+    if (position === 'OF') return playerPos.includes('OF') || playerPos.includes('LF') || playerPos.includes('CF') || playerPos.includes('RF')
+    
+    return playerPos.includes(position)
+  })
+}
+
+// Open player analysis modal
+function openPlayerAnalysis(player: any) {
+  playerAnalysisData.value = player
+  showPlayerAnalysisModal.value = true
+}
+
+// Helper functions for matchup analysis modal
+function getCategoryMatchupStatus(statId: string): string {
+  const status = matchupCategoryStatus.value[statId]?.status
+  if (status === 'winning') return 'Winning'
+  if (status === 'losing') return 'Losing'
+  if (status === 'close') return 'Close'
+  return 'Tied'
+}
+
+function getCategoryMatchupTextClass(statId: string): string {
+  const status = matchupCategoryStatus.value[statId]?.status
+  if (status === 'winning') return 'text-green-400'
+  if (status === 'losing') return 'text-red-400'
+  if (status === 'close') return 'text-yellow-400'
+  return 'text-dark-textMuted'
+}
+
+function getCategoryDifference(statId: string): string {
+  const data = matchupCategoryStatus.value[statId]
+  if (!data) return '0'
+  
+  const diff = data.myValue - data.oppValue
+  const sign = diff > 0 ? '+' : ''
+  return `${sign}${diff.toFixed(1)}`
+}
+
+function getCategoryDifferenceClass(statId: string): string {
+  const data = matchupCategoryStatus.value[statId]
+  if (!data) return 'text-dark-textMuted'
+  
+  const diff = data.myValue - data.oppValue
+  if (diff > 0) return 'text-green-400'
+  if (diff < 0) return 'text-red-400'
+  return 'text-yellow-400'
+}
+
+const getSafeCategoryNames = computed(() => {
+  const safe = displayCategories.value
+    .filter(cat => matchupCategoryStatus.value[cat.stat_id]?.status === 'winning')
+    .map(cat => cat.display_name)
+  return safe.length > 0 ? safe.join(', ') : 'None yet'
+})
+
+const getCloseCategoryNames = computed(() => {
+  const close = displayCategories.value
+    .filter(cat => matchupCategoryStatus.value[cat.stat_id]?.status === 'close')
+    .map(cat => cat.display_name)
+  return close.length > 0 ? close.join(', ') : 'None'
+})
+
+const getLosingCategoryNames = computed(() => {
+  const losing = displayCategories.value
+    .filter(cat => matchupCategoryStatus.value[cat.stat_id]?.status === 'losing')
+    .map(cat => cat.display_name)
+  return losing.length > 0 ? losing.join(', ') : 'None'
+})
+
 function closeDropModal() {
   showDropModal.value = false
   dropModalPlayer.value = null
@@ -5971,24 +6421,39 @@ const suggestedCategoryLineup = computed(() => {
   
   if (leagueRosterPositions.value && leagueRosterPositions.value.length > 0) {
     // Use actual roster positions from league settings
+    console.log('[suggestedCategoryLineup] Raw roster positions:', JSON.stringify(leagueRosterPositions.value))
+    
     lineupOrder = leagueRosterPositions.value.map((rp: any) => {
       // Handle both string format ("PG") and object format ({position: "PG", count: 1})
-      if (typeof rp === 'string') return rp
+      if (typeof rp === 'string') {
+        console.log('[suggestedCategoryLineup] String position:', rp)
+        return rp
+      }
+      
       // Try multiple possible keys for the position value
-      const posValue = rp.position || rp.abbr || rp.display_name || rp.position_type || rp
+      const posValue = rp.position || rp.abbr || rp.display_name || rp.position_type || rp.name || rp
+      console.log('[suggestedCategoryLineup] Object position:', rp, '-> parsed:', posValue)
+      
       // If it's still an object, stringify and extract
       if (typeof posValue === 'object') {
-        return Object.values(posValue)[0] || 'Util'
+        const firstValue = Object.values(posValue)[0]
+        console.log('[suggestedCategoryLineup] Nested object, extracting:', firstValue)
+        return firstValue || 'Util'
       }
       return posValue
     })
     .filter((p: any) => {
       // Filter out bench/IL spots and non-strings
-      if (typeof p !== 'string') return false
-      return p !== 'BN' && p !== 'IL' && p !== 'IR' && p !== 'Bench'
+      if (typeof p !== 'string') {
+        console.log('[suggestedCategoryLineup] Filtered non-string:', p)
+        return false
+      }
+      const isFiltered = p !== 'BN' && p !== 'IL' && p !== 'IR' && p !== 'Bench' && p !== 'BN*'
+      if (!isFiltered) console.log('[suggestedCategoryLineup] Filtered bench/IL:', p)
+      return isFiltered
     })
     
-    console.log('[suggestedCategoryLineup] Using league roster positions:', lineupOrder)
+    console.log('[suggestedCategoryLineup] Final lineup order:', lineupOrder)
   } else {
     // Fallback to sport-specific defaults
     if (sport === 'basketball') {
