@@ -623,16 +623,27 @@
                 </div>
                 
                 <!-- Category Pills -->
-                <div class="flex flex-wrap gap-1.5">
-                  <span 
-                    v-for="cat in displayCategories" 
-                    :key="cat.stat_id"
-                    class="px-2 py-1 rounded text-xs font-bold"
-                    :class="getCategoryMatchupClass(cat.stat_id)"
-                    :title="getCategoryMatchupTooltip(cat.stat_id)"
+                <div class="flex items-center gap-4">
+                  <div class="flex flex-wrap gap-1.5">
+                    <span 
+                      v-for="cat in displayCategories" 
+                      :key="cat.stat_id"
+                      class="px-2 py-1 rounded text-xs font-bold"
+                      :class="getCategoryMatchupClass(cat.stat_id)"
+                      :title="getCategoryMatchupTooltip(cat.stat_id)"
+                    >
+                      {{ cat.display_name }}
+                    </span>
+                  </div>
+                  <button
+                    @click="showMatchupAnalysisModal = true"
+                    class="px-4 py-2 bg-purple-500/20 text-purple-400 rounded-lg hover:bg-purple-500/30 transition-colors font-semibold text-sm flex items-center gap-2 whitespace-nowrap"
                   >
-                    {{ cat.display_name }}
-                  </span>
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                    </svg>
+                    Analyze Matchup
+                  </button>
                 </div>
               </div>
             </div>
@@ -674,9 +685,6 @@
           </div>
 
           <!-- MAIN CONTENT AREA -->
-<!-- This is the new DAILY COMMAND CENTER redesign for the Start/Sit tab -->
-<!-- Replace lines 677-1070 in CategoryProjectionsView.vue with this content -->
-
           <!-- VIEW 1: OPTIMAL LINEUP -->
           <template v-if="commandCenterView === 'lineup'">
             <div class="card">
@@ -757,7 +765,7 @@
                         <div class="flex-1">
                           <span class="text-dark-textMuted italic text-sm">Empty slot</span>
                         </div>
-                        <button class="px-3 py-1 text-xs bg-cyan-500/20 text-cyan-400 rounded hover:bg-cyan-500/30 transition-colors">
+                        <button class="px-3 py-1 text-xs bg-cyan-500/20 text-cyan-400 rounded hover:bg-cyan-500/30 transition-colors" @click="openPositionPicker(group.position)">
                           Find Player
                         </button>
                       </template>
@@ -869,7 +877,7 @@
                         </td>
                         <td class="px-3 py-3 text-center">
                           <button 
-                            @click="analyzeWaiverMove(player)"
+                            @click="openPlayerAnalysis(player)"
                             class="px-3 py-1.5 text-xs font-semibold bg-cyan-500/20 text-cyan-400 rounded hover:bg-cyan-500/30 transition-colors"
                           >
                             Analyze
@@ -979,6 +987,7 @@
                           Approve Move
                         </button>
                         <button 
+                          @click="analyzeWaiverMove(rec.addPlayer)"
                           class="px-4 py-2 bg-dark-border text-dark-textMuted font-semibold rounded-lg hover:bg-dark-border/50 transition-colors"
                         >
                           View Details
@@ -998,8 +1007,583 @@
             </div>
           </template>
 
+
+          <!-- MODAL 1: POSITION PICKER (Find Player by Position) -->
+          <div v-if="showPositionPickerModal" class="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4" @click.self="showPositionPickerModal = false">
+            <div class="bg-dark-card rounded-2xl max-w-5xl w-full max-h-[90vh] overflow-hidden border border-dark-border shadow-2xl" @click.stop>
+              <div class="bg-gradient-to-r from-cyan-500/20 to-blue-500/20 px-6 py-4 border-b border-dark-border flex items-center justify-between">
+                <div>
+                  <h2 class="text-2xl font-bold text-dark-text">Find {{ positionPickerPosition }} Player</h2>
+                  <p class="text-sm text-dark-textMuted mt-1">Free agents with games {{ startSitDay === 'today' ? 'today' : 'tomorrow' }}</p>
+                </div>
+                <button @click="showPositionPickerModal = false" class="text-dark-textMuted hover:text-dark-text transition-colors">
+                  <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+              
+              <div class="p-6 overflow-y-auto max-h-[calc(90vh-140px)]">
+                <div class="overflow-x-auto">
+                  <table class="w-full">
+                    <thead class="bg-dark-border/30 sticky top-0 z-10">
+                      <tr>
+                        <th class="px-4 py-3 text-left text-xs font-semibold text-dark-textMuted uppercase">Player</th>
+                        <th class="px-3 py-3 text-center text-xs font-semibold text-dark-textMuted uppercase w-20">Matchup</th>
+                        <th 
+                          v-for="cat in relevantStartSitCategories" 
+                          :key="cat.stat_id" 
+                          class="px-2 py-3 text-center text-xs font-semibold uppercase w-14"
+                          :class="getCategoryHeaderClass(cat.stat_id)"
+                        >
+                          {{ cat.display_name }}
+                        </th>
+                        <th class="px-3 py-3 text-center text-xs font-semibold text-dark-textMuted uppercase w-28">Impact</th>
+                        <th class="px-3 py-3 text-center text-xs font-semibold text-dark-textMuted uppercase w-32">Action</th>
+                      </tr>
+                    </thead>
+                    <tbody class="divide-y divide-dark-border/30">
+                      <tr 
+                        v-for="player in getPositionFilteredPlayers(positionPickerPosition)" 
+                        :key="player.player_key"
+                        class="hover:bg-dark-border/20 transition-colors"
+                      >
+                        <td class="px-4 py-3">
+                          <div class="flex items-center gap-3">
+                            <div class="w-10 h-10 rounded-full bg-dark-border overflow-hidden">
+                              <img :src="player.headshot || defaultHeadshot" class="w-full h-full object-cover" @error="handleImageError" />
+                            </div>
+                            <div>
+                              <div class="font-semibold text-dark-text">{{ player.full_name }}</div>
+                              <div class="text-xs text-dark-textMuted">{{ player.mlb_team }} • {{ player.position }}</div>
+                            </div>
+                          </div>
+                        </td>
+                        <td class="px-3 py-3 text-center">
+                          <span class="text-xs font-medium text-green-400">{{ player.opponent }}</span>
+                        </td>
+                        <td 
+                          v-for="cat in relevantStartSitCategories" 
+                          :key="cat.stat_id" 
+                          class="px-2 py-3 text-center"
+                        >
+                          <span class="text-sm font-bold" :class="getCategoryProjectionClass(player, cat)">
+                            {{ formatCategoryProjection(player, cat) }}
+                          </span>
+                        </td>
+                        <td class="px-3 py-3 text-center">
+                          <div class="flex flex-col items-center">
+                            <span class="text-lg font-black text-green-400">{{ player.impactCats || 0 }}</span>
+                            <span class="text-[10px] text-dark-textMuted">categories</span>
+                          </div>
+                        </td>
+                        <td class="px-3 py-3 text-center">
+                          <div class="flex gap-2 justify-center">
+                            <button 
+                              @click="openPlayerAnalysis(player)"
+                              class="px-3 py-1.5 text-xs font-semibold bg-purple-500/20 text-purple-400 rounded hover:bg-purple-500/30 transition-colors"
+                            >
+                              Analyze
+                            </button>
+                            <button 
+                              @click="analyzeWaiverMove(player)"
+                              class="px-3 py-1.5 text-xs font-semibold bg-cyan-500/20 text-cyan-400 rounded hover:bg-cyan-500/30 transition-colors"
+                            >
+                              Add
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                      <tr v-if="getPositionFilteredPlayers(positionPickerPosition).length === 0">
+                        <td :colspan="6 + relevantStartSitCategories.length" class="px-4 py-8 text-center text-dark-textMuted">
+                          No {{ positionPickerPosition }} players found with games {{ startSitDay === 'today' ? 'today' : 'tomorrow' }}
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- MODAL 2: PLAYER ANALYSIS (Detailed Stats & Charts) -->
+                    <!-- MODAL 2: ENHANCED PLAYER ANALYSIS (Premium Strategic Tool) -->
+          <div v-if="showPlayerAnalysisModal && playerAnalysisData" class="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4" @click.self="showPlayerAnalysisModal = false">
+            <div class="bg-dark-card rounded-2xl max-w-7xl w-full max-h-[90vh] overflow-hidden border border-dark-border shadow-2xl" @click.stop>
+              
+              <!-- Header -->
+              <div class="bg-gradient-to-r from-purple-500/20 to-pink-500/20 px-6 py-4 border-b border-dark-border">
+                <div class="flex items-center justify-between">
+                  <div class="flex items-center gap-4">
+                    <div class="w-16 h-16 rounded-full bg-dark-border overflow-hidden ring-2 ring-purple-500">
+                      <img :src="playerAnalysisData.headshot || defaultHeadshot" class="w-full h-full object-cover" @error="handleImageError" />
+                    </div>
+                    <div>
+                      <h2 class="text-2xl font-bold text-dark-text">{{ playerAnalysisData.full_name }}</h2>
+                      <p class="text-sm text-dark-textMuted">{{ playerAnalysisData.mlb_team }} • {{ playerAnalysisData.position }}</p>
+                    </div>
+                    <div class="ml-4 px-4 py-2 bg-yellow-500/20 rounded-lg border border-yellow-500/30">
+                      <div class="text-xs text-yellow-400 uppercase mb-1">Value Score</div>
+                      <div class="text-2xl font-black text-yellow-400">{{ playerAnalysisData.overallValue?.toFixed(1) || 'N/A' }}</div>
+                    </div>
+                  </div>
+                  <button @click="showPlayerAnalysisModal = false" class="text-dark-textMuted hover:text-dark-text transition-colors">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                </div>
+              </div>
+              
+              <div class="p-6 overflow-y-auto max-h-[calc(90vh-180px)]">
+                
+                <!-- Top Row: Game Info + Value Breakdown -->
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
+                  
+                  <!-- Game Status -->
+                  <div class="card">
+                    <div class="card-header py-3">
+                      <h3 class="text-lg font-bold">{{ startSitDay === 'today' ? "Today's" : "Tomorrow's" }} Game</h3>
+                    </div>
+                    <div class="card-body">
+                      <div v-if="playerAnalysisData.hasGame" class="space-y-3">
+                        <div class="flex items-center justify-between p-3 bg-dark-elevated rounded-lg">
+                          <span class="text-dark-textMuted">Opponent</span>
+                          <span class="font-bold text-dark-text">{{ playerAnalysisData.isHome ? 'vs' : '@' }} {{ playerAnalysisData.opponent }}</span>
+                        </div>
+                        <div class="flex items-center justify-between p-3 bg-dark-elevated rounded-lg">
+                          <span class="text-dark-textMuted">Status</span>
+                          <span class="px-2 py-1 bg-green-500/20 text-green-400 rounded text-sm font-bold">✓ Playing</span>
+                        </div>
+                      </div>
+                      <div v-else class="p-6 text-center">
+                        <div class="text-red-400 text-4xl mb-2">🔴</div>
+                        <div class="font-bold text-dark-text">No Game {{ startSitDay === 'today' ? 'Today' : 'Tomorrow' }}</div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- Value Score Breakdown -->
+                  <div class="card lg:col-span-2">
+                    <div class="card-header py-3">
+                      <h3 class="text-lg font-bold">Value Score Breakdown</h3>
+                    </div>
+                    <div class="card-body">
+                      <div class="grid grid-cols-2 gap-3">
+                        <div class="p-3 bg-dark-elevated rounded-lg">
+                          <div class="text-xs text-dark-textMuted uppercase mb-1">Overall Value</div>
+                          <div class="text-3xl font-black text-yellow-400">{{ playerAnalysisData.overallValue?.toFixed(1) || 'N/A' }}</div>
+                        </div>
+                        <div class="p-3 bg-dark-elevated rounded-lg">
+                          <div class="text-xs text-dark-textMuted uppercase mb-1">Rank (Position)</div>
+                          <div class="text-3xl font-black text-dark-text">#{{ getPlayerPositionRank(playerAnalysisData) }}</div>
+                        </div>
+                        <div class="p-3 bg-dark-elevated rounded-lg">
+                          <div class="text-xs text-dark-textMuted uppercase mb-1">Categories Helped</div>
+                          <div class="text-3xl font-black text-green-400">{{ getPlayerCategoryCount(playerAnalysisData) }}</div>
+                        </div>
+                        <div class="p-3 bg-dark-elevated rounded-lg">
+                          <div class="text-xs text-dark-textMuted uppercase mb-1">Schedule Grade</div>
+                          <div class="text-3xl font-black" :class="getScheduleGradeClass(playerAnalysisData)">{{ getPlayerScheduleGrade(playerAnalysisData) }}</div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Multi-Period Projections Table -->
+                <div class="card mb-6">
+                  <div class="card-header py-3">
+                    <h3 class="text-lg font-bold">📊 Projected Performance</h3>
+                  </div>
+                  <div class="card-body p-0">
+                    <div class="overflow-x-auto">
+                      <table class="w-full">
+                        <thead class="bg-dark-border/30">
+                          <tr>
+                            <th class="px-4 py-3 text-left text-xs font-semibold text-dark-textMuted uppercase sticky left-0 bg-dark-border/30">Category</th>
+                            <th class="px-4 py-3 text-center text-xs font-semibold text-dark-textMuted uppercase">Today</th>
+                            <th class="px-4 py-3 text-center text-xs font-semibold text-dark-textMuted uppercase">Next 7 Days</th>
+                            <th class="px-4 py-3 text-center text-xs font-semibold text-dark-textMuted uppercase">Next 14 Days</th>
+                            <th class="px-4 py-3 text-center text-xs font-semibold text-dark-textMuted uppercase">Season Avg</th>
+                          </tr>
+                        </thead>
+                        <tbody class="divide-y divide-dark-border/30">
+                          <tr v-for="cat in displayCategories" :key="'proj-'+cat.stat_id" class="hover:bg-dark-border/10">
+                            <td class="px-4 py-3 font-semibold text-dark-text sticky left-0 bg-dark-card">{{ cat.display_name }}</td>
+                            <td class="px-4 py-3 text-center font-bold text-dark-text">{{ getPlayerProjection(playerAnalysisData, cat, 'today') }}</td>
+                            <td class="px-4 py-3 text-center font-bold text-dark-text">{{ getPlayerProjection(playerAnalysisData, cat, 'next7') }}</td>
+                            <td class="px-4 py-3 text-center font-bold text-dark-text">{{ getPlayerProjection(playerAnalysisData, cat, 'next14') }}</td>
+                            <td class="px-4 py-3 text-center text-dark-textMuted">{{ getPlayerSeasonAvg(playerAnalysisData, cat) }}</td>
+                          </tr>
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Schedule Strength Analysis -->
+                <div class="card">
+                  <div class="card-header py-3">
+                    <h3 class="text-lg font-bold">📅 Strength of Schedule (Next 14 Days)</h3>
+                  </div>
+                  <div class="card-body">
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      <div class="p-4 bg-dark-elevated rounded-lg text-center">
+                        <div class="text-xs text-dark-textMuted uppercase mb-2">Total Games</div>
+                        <div class="text-4xl font-black text-dark-text mb-1">{{ getPlayerUpcomingGames(playerAnalysisData, 14) }}</div>
+                        <div class="text-xs text-dark-textMuted">Next 2 weeks</div>
+                      </div>
+                      <div class="p-4 bg-dark-elevated rounded-lg text-center">
+                        <div class="text-xs text-dark-textMuted uppercase mb-2">Schedule Difficulty</div>
+                        <div class="text-4xl font-black" :class="getScheduleDifficultyClass(playerAnalysisData)">
+                          {{ getScheduleDifficulty(playerAnalysisData) }}
+                        </div>
+                        <div class="text-xs text-dark-textMuted">vs average</div>
+                      </div>
+                      <div class="p-4 bg-dark-elevated rounded-lg text-center">
+                        <div class="text-xs text-dark-textMuted uppercase mb-2">Opportunity Score</div>
+                        <div class="text-4xl font-black text-green-400">{{ getOpportunityScore(playerAnalysisData) }}</div>
+                        <div class="text-xs text-dark-textMuted">Games × Difficulty</div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+              </div>
+
+              <!-- Footer Actions -->
+              <div class="px-6 py-4 border-t border-dark-border flex justify-between items-center">
+                <div class="text-xs text-dark-textMuted">
+                  💎 Premium Analysis Tool
+                </div>
+                <div class="flex gap-3">
+                  <button @click="showPlayerAnalysisModal = false" class="px-4 py-2 bg-dark-border text-dark-textMuted rounded-lg hover:bg-dark-border/50 transition-colors font-semibold">
+                    Close
+                  </button>
+                  <button @click="analyzeWaiverMove(playerAnalysisData); showPlayerAnalysisModal = false" class="px-4 py-2 bg-cyan-500 text-gray-900 rounded-lg hover:bg-cyan-400 transition-colors font-semibold">
+                    Add to Lineup
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+          <!-- MODAL: PLAYER COMPARISON (Add vs Drop Analysis) -->
+          <div v-if="showSwapModal && swapSourcePlayer" class="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4" @click.self="showSwapModal = false">
+            <div class="bg-dark-card rounded-2xl max-w-7xl w-full max-h-[90vh] overflow-hidden border border-dark-border shadow-2xl" @click.stop>
+              
+              <!-- Header -->
+              <div class="bg-gradient-to-r from-green-500/20 via-cyan-500/20 to-blue-500/20 px-6 py-4 border-b border-dark-border">
+                <div class="flex items-center justify-between">
+                  <div>
+                    <h2 class="text-2xl font-bold text-dark-text">Player Comparison</h2>
+                    <p class="text-sm text-dark-textMuted mt-1">Analyze the strategic impact of this move</p>
+                  </div>
+                  <button @click="showSwapModal = false" class="text-dark-textMuted hover:text-dark-text transition-colors">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                </div>
+              </div>
+              
+              <div class="p-6 overflow-y-auto max-h-[calc(90vh-220px)]">
+                
+                <!-- Player Headers with Value Scores -->
+                <div class="grid grid-cols-2 gap-4 mb-6">
+                  <!-- ADD Player -->
+                  <div class="card bg-gradient-to-br from-green-500/10 to-cyan-500/10 border-green-500/30">
+                    <div class="card-body text-center">
+                      <div class="text-xs text-green-400 uppercase font-bold mb-2">➕ ADDING</div>
+                      <div class="w-20 h-20 rounded-full bg-dark-border overflow-hidden mx-auto mb-3 ring-2 ring-green-400">
+                        <img :src="swapSourcePlayer.headshot || defaultHeadshot" class="w-full h-full object-cover" @error="handleImageError" />
+                      </div>
+                      <div class="font-bold text-xl text-dark-text mb-1">{{ swapSourcePlayer.full_name }}</div>
+                      <div class="text-sm text-dark-textMuted mb-3">{{ swapSourcePlayer.position }} • {{ swapSourcePlayer.mlb_team }}</div>
+                      <div class="inline-block px-4 py-2 bg-yellow-500/20 rounded-lg border border-yellow-500/30">
+                        <div class="text-xs text-yellow-400 uppercase">Value Score</div>
+                        <div class="text-3xl font-black text-yellow-400">{{ swapSourcePlayer.overallValue?.toFixed(1) || 'N/A' }}</div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- DROP Player -->
+                  <div class="card bg-gradient-to-br from-red-500/10 to-orange-500/10 border-red-500/30">
+                    <div class="card-body text-center">
+                      <div class="text-xs text-red-400 uppercase font-bold mb-2">➖ DROPPING</div>
+                      <div class="w-20 h-20 rounded-full bg-dark-border overflow-hidden mx-auto mb-3 ring-2 ring-red-400">
+                        <img :src="selectedSwapTarget?.headshot || defaultHeadshot" class="w-full h-full object-cover" @error="handleImageError" />
+                      </div>
+                      <div class="font-bold text-xl text-dark-text mb-1">{{ selectedSwapTarget?.full_name || 'Select player below' }}</div>
+                      <div v-if="selectedSwapTarget" class="text-sm text-dark-textMuted mb-3">{{ selectedSwapTarget.position }} • {{ selectedSwapTarget.mlb_team }}</div>
+                      <div v-else class="text-sm text-dark-textMuted mb-3">Choose from your roster</div>
+                      <div v-if="selectedSwapTarget" class="inline-block px-4 py-2 bg-yellow-500/20 rounded-lg border border-yellow-500/30">
+                        <div class="text-xs text-yellow-400 uppercase">Value Score</div>
+                        <div class="text-3xl font-black text-yellow-400">{{ selectedSwapTarget.overallValue?.toFixed(1) || 'N/A' }}</div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Net Impact Summary -->
+                <div v-if="selectedSwapTarget" class="card mb-6 bg-gradient-to-r from-purple-500/10 to-blue-500/10 border-purple-500/30">
+                  <div class="card-body">
+                    <div class="grid grid-cols-3 gap-4">
+                      <div class="text-center">
+                        <div class="text-xs text-dark-textMuted uppercase mb-1">Value Change</div>
+                        <div class="text-3xl font-black" :class="getValueChangeClass(swapSourcePlayer, selectedSwapTarget)">
+                          {{ getValueChange(swapSourcePlayer, selectedSwapTarget) }}
+                        </div>
+                      </div>
+                      <div class="text-center">
+                        <div class="text-xs text-dark-textMuted uppercase mb-1">Categories Improved</div>
+                        <div class="text-3xl font-black text-green-400">{{ getCategoriesImproved(swapSourcePlayer, selectedSwapTarget) }}</div>
+                      </div>
+                      <div class="text-center">
+                        <div class="text-xs text-dark-textMuted uppercase mb-1">Recommendation</div>
+                        <div class="text-lg font-black" :class="getSwapRecommendationClass(swapSourcePlayer, selectedSwapTarget)">
+                          {{ getSwapRecommendation(swapSourcePlayer, selectedSwapTarget) }}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- View Mode Toggle -->
+                <div class="flex justify-center mb-4">
+                  <div class="inline-flex rounded-lg border border-dark-border overflow-hidden">
+                    <button 
+                      @click="swapComparisonMode = 'projections'" 
+                      :class="swapComparisonMode === 'projections' ? 'bg-green-500 text-gray-900' : 'bg-dark-card text-dark-textMuted'"
+                      class="px-4 py-2 text-sm font-semibold transition-colors"
+                    >
+                      📈 Upcoming Projections
+                    </button>
+                    <button 
+                      @click="swapComparisonMode = 'recent'" 
+                      :class="swapComparisonMode === 'recent' ? 'bg-blue-500 text-gray-900' : 'bg-dark-card text-dark-textMuted'"
+                      class="px-4 py-2 text-sm font-semibold transition-colors"
+                    >
+                      📊 Recent Stats (L14)
+                    </button>
+                  </div>
+                </div>
+
+                <!-- Category-by-Category Comparison Charts -->
+                <div v-if="selectedSwapTarget" class="card">
+                  <div class="card-header py-3">
+                    <h3 class="text-lg font-bold">
+                      {{ swapComparisonMode === 'projections' ? '📈 Projected Performance (Next 14 Days)' : '📊 Recent Performance (Last 14 Days)' }}
+                    </h3>
+                  </div>
+                  <div class="card-body space-y-3">
+                    <div v-for="cat in displayCategories" :key="'compare-'+cat.stat_id">
+                      <div class="flex items-center justify-between mb-2">
+                        <span class="font-semibold text-dark-text">{{ cat.display_name }}</span>
+                        <div class="flex items-center gap-2">
+                          <span class="text-xs text-dark-textMuted">Difference:</span>
+                          <span class="font-bold text-sm" :class="getCategoryDifferenceColor(swapSourcePlayer, selectedSwapTarget, cat)">
+                            {{ getCategoryComparisonDiff(swapSourcePlayer, selectedSwapTarget, cat) }}
+                          </span>
+                        </div>
+                      </div>
+                      
+                      <!-- Horizontal Bar Comparison -->
+                      <div class="relative h-8 bg-dark-elevated rounded-lg overflow-hidden">
+                        <div class="absolute inset-y-0 left-0 right-1/2 flex items-center justify-end pr-2">
+                          <div 
+                            class="h-full bg-red-500/50 rounded-l flex items-center justify-end pr-2"
+                            :style="{ width: getCategoryBarWidth(selectedSwapTarget, cat, swapComparisonMode) }"
+                          >
+                            <span class="text-xs font-bold text-dark-text">{{ getCategoryValue(selectedSwapTarget, cat, swapComparisonMode) }}</span>
+                          </div>
+                        </div>
+                        <div class="absolute inset-y-0 left-1/2 right-0 flex items-center justify-start pl-2">
+                          <div 
+                            class="h-full bg-green-500/50 rounded-r flex items-center justify-start pl-2"
+                            :style="{ width: getCategoryBarWidth(swapSourcePlayer, cat, swapComparisonMode) }"
+                          >
+                            <span class="text-xs font-bold text-dark-text">{{ getCategoryValue(swapSourcePlayer, cat, swapComparisonMode) }}</span>
+                          </div>
+                        </div>
+                        <div class="absolute inset-0 flex items-center justify-center pointer-events-none">
+                          <div class="w-px h-full bg-dark-border"></div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Select Drop Candidate -->
+                <div v-if="!selectedSwapTarget" class="card">
+                  <div class="card-header py-3">
+                    <h3 class="text-lg font-bold">Select Player to Drop</h3>
+                  </div>
+                  <div class="card-body">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                      <div 
+                        v-for="player in droppablePlayers.slice(0, 8)" 
+                        :key="player.player_key"
+                        @click="selectedSwapTarget = player"
+                        class="p-3 bg-dark-elevated rounded-lg hover:bg-dark-border/30 cursor-pointer transition-colors border-2 border-transparent hover:border-red-500/50 flex items-center gap-3"
+                      >
+                        <div class="w-12 h-12 rounded-full bg-dark-border overflow-hidden">
+                          <img :src="player.headshot || defaultHeadshot" class="w-full h-full object-cover" @error="handleImageError" />
+                        </div>
+                        <div class="flex-1">
+                          <div class="font-semibold text-dark-text">{{ player.full_name }}</div>
+                          <div class="text-xs text-dark-textMuted">{{ player.position }} • Value: {{ player.overallValue?.toFixed(1) || 'N/A' }}</div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+              </div>
+
+              <!-- Footer -->
+              <div class="px-6 py-4 border-t border-dark-border flex justify-between items-center">
+                <div class="text-xs text-dark-textMuted">
+                  💎 Premium Strategic Analysis
+                </div>
+                <div class="flex gap-3">
+                  <button @click="showSwapModal = false; selectedSwapTarget = null" class="px-4 py-2 bg-dark-border text-dark-textMuted rounded-lg hover:bg-dark-border/50 transition-colors font-semibold">
+                    Cancel
+                  </button>
+                  <button 
+                    v-if="selectedSwapTarget"
+                    @click="confirmSwap"
+                    class="px-6 py-2 bg-green-500 text-gray-900 rounded-lg hover:bg-green-400 transition-colors font-semibold"
+                  >
+                    Confirm Move
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+
+          <!-- MODAL 3: MATCHUP ANALYSIS -->
+          <div v-if="showMatchupAnalysisModal" class="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4" @click.self="showMatchupAnalysisModal = false">
+            <div class="bg-dark-card rounded-2xl max-w-5xl w-full max-h-[90vh] overflow-hidden border border-dark-border shadow-2xl" @click.stop>
+              <div class="bg-gradient-to-r from-purple-500/20 via-pink-500/20 to-blue-500/20 px-6 py-4 border-b border-dark-border flex items-center justify-between">
+                <div>
+                  <h2 class="text-2xl font-bold text-dark-text">Matchup Analysis</h2>
+                  <p class="text-sm text-dark-textMuted mt-1">{{ myTeamName }} vs {{ opponentName }}</p>
+                </div>
+                <button @click="showMatchupAnalysisModal = false" class="text-dark-textMuted hover:text-dark-text transition-colors">
+                  <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+              
+              <div class="p-6 overflow-y-auto max-h-[calc(90vh-140px)]">
+                
+                <!-- Overall Status -->
+                <div class="grid grid-cols-3 gap-4 mb-6">
+                  <div class="card bg-green-500/10 border-green-500/30">
+                    <div class="card-body text-center py-4">
+                      <div class="text-xs text-green-400 uppercase mb-1">Winning</div>
+                      <div class="text-4xl font-black text-green-400">{{ matchupWins }}</div>
+                      <div class="text-xs text-dark-textMuted mt-1">categories</div>
+                    </div>
+                  </div>
+                  <div class="card bg-yellow-500/10 border-yellow-500/30">
+                    <div class="card-body text-center py-4">
+                      <div class="text-xs text-yellow-400 uppercase mb-1">Close</div>
+                      <div class="text-4xl font-black text-yellow-400">{{ matchupTies }}</div>
+                      <div class="text-xs text-dark-textMuted mt-1">categories</div>
+                    </div>
+                  </div>
+                  <div class="card bg-red-500/10 border-red-500/30">
+                    <div class="card-body text-center py-4">
+                      <div class="text-xs text-red-400 uppercase mb-1">Losing</div>
+                      <div class="text-4xl font-black text-red-400">{{ matchupLosses }}</div>
+                      <div class="text-xs text-dark-textMuted mt-1">categories</div>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Category Breakdown -->
+                <div class="card mb-6">
+                  <div class="card-header py-3">
+                    <h3 class="text-lg font-bold">Category-by-Category Breakdown</h3>
+                  </div>
+                  <div class="card-body p-0">
+                    <div class="divide-y divide-dark-border/30">
+                      <div v-for="cat in displayCategories" :key="'matchup-'+cat.stat_id" class="flex items-center justify-between p-4 hover:bg-dark-border/10 transition-colors">
+                        <div class="flex items-center gap-3">
+                          <span class="px-3 py-1.5 rounded font-bold text-sm" :class="getCategoryMatchupClass(cat.stat_id)">
+                            {{ cat.display_name }}
+                          </span>
+                          <span class="text-sm font-medium" :class="getCategoryMatchupTextClass(cat.stat_id)">
+                            {{ getCategoryMatchupStatus(cat.stat_id) }}
+                          </span>
+                        </div>
+                        <div class="flex items-center gap-6">
+                          <div class="text-right">
+                            <div class="text-xs text-dark-textMuted">You</div>
+                            <div class="text-lg font-bold text-dark-text">{{ matchupCategoryStatus[cat.stat_id]?.myValue || '0' }}</div>
+                          </div>
+                          <div class="text-dark-textMuted">vs</div>
+                          <div class="text-right">
+                            <div class="text-xs text-dark-textMuted">Opponent</div>
+                            <div class="text-lg font-bold text-dark-text">{{ matchupCategoryStatus[cat.stat_id]?.oppValue || '0' }}</div>
+                          </div>
+                          <div class="text-right min-w-[80px]">
+                            <div class="text-xs text-dark-textMuted">Difference</div>
+                            <div class="text-lg font-bold" :class="getCategoryDifferenceClass(cat.stat_id)">
+                              {{ getCategoryDifference(cat.stat_id) }}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Strategic Insights -->
+                <div class="card">
+                  <div class="card-header py-3">
+                    <h3 class="text-lg font-bold">💡 Strategic Insights</h3>
+                  </div>
+                  <div class="card-body">
+                    <div class="space-y-3">
+                      <div class="p-4 bg-green-500/10 border border-green-500/30 rounded-lg">
+                        <div class="font-bold text-green-400 mb-2">✓ Lock These In</div>
+                        <div class="text-sm text-dark-text">
+                          Categories you're safely winning: {{ getSafeCategoryNames }}
+                        </div>
+                      </div>
+                      <div class="p-4 bg-yellow-500/10 border border-yellow-500/30 rounded-lg">
+                        <div class="font-bold text-yellow-400 mb-2">⚠️ Focus Here</div>
+                        <div class="text-sm text-dark-text">
+                          Close categories to target: {{ getCloseCategoryNames }}
+                        </div>
+                      </div>
+                      <div class="p-4 bg-red-500/10 border border-red-500/30 rounded-lg">
+                        <div class="font-bold text-red-400 mb-2">📈 Comeback Needed</div>
+                        <div class="text-sm text-dark-text">
+                          Categories to chase: {{ getLosingCategoryNames }}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="px-6 py-4 border-t border-dark-border flex justify-end">
+                <button @click="showMatchupAnalysisModal = false" class="px-6 py-2 bg-purple-500 text-gray-900 rounded-lg hover:bg-purple-400 transition-colors font-semibold">
+                  Close
+                </button>
+              </div>
+            </div>
+          </div>
         </div>
       </template>
+
+      <!-- TRADE ANALYZER TAB -->
       <template v-if="activeTab === 'trade'">
         <div class="space-y-6">
           <!-- Header -->
@@ -2390,6 +2974,13 @@ const showDropModal = ref(false)
 const dropModalPlayer = ref<any>(null)
 const selectedDropPlayer = ref<any>(null)
 const dropModalViewMode = ref<'projections' | 'stats'>('projections')
+
+// New modal states
+const showPositionPickerModal = ref(false)
+const positionPickerPosition = ref<string>('')
+const showPlayerAnalysisModal = ref(false)
+const playerAnalysisData = ref<any>(null)
+const showMatchupAnalysisModal = ref(false)
 
 // Roster limits - loaded from platform
 const rosterLimits = ref({
@@ -4629,62 +5220,16 @@ function getGameCountForPeriod(player: any): number {
   return period === 'ros' ? 30 : 4
 }
 
-function formatCategoryProjection(player: any, cat: any): string {
-  const seasonValue = parseFloat(player.stats?.[cat.stat_id] || 0)
-  if (seasonValue <= 0) return '-'
+function formatCategoryProjection(player: any, category: any): string {
+  if (!player || !category) return '-'
   
-  const mode = startSitViewMode.value
-  const period = startSitTimePeriod.value
-  const isPercentage = isPercentageStat(cat)
+  // Use the getPlayerProjection function for today's projection
+  const projection = getPlayerProjection(player, category, 'today')
   
-  // Percentages don't change based on time period - they're rates, not totals
-  if (isPercentage) {
-    // Convert from decimal to percentage (0.472 -> 47.2%)
-    const percentValue = seasonValue * 100
-    return percentValue.toFixed(1) + '%'
-  }
+  // If it's actually zero/empty, show dash
+  if (projection === '0' || projection === '0.0' || projection === '0.00') return '-'
   
-  if (mode === 'stats') {
-    // STATS MODE: Show actual stats from the past
-    const gamesPlayed = isPitcher(player) ? 30 : 140 // Season games played so far
-    
-    if (period === 'ros') {
-      // Season total
-      if (isRatioStat(cat)) {
-        if (seasonValue < 1) return seasonValue.toFixed(3).replace(/^0/, '')
-        return seasonValue.toFixed(2)
-      }
-      return seasonValue.toFixed(1)
-    } else {
-      // Last 7 or Last 14 days - scale down from season
-      const games = period === 'next7' ? 
-        (currentSport.value === 'baseball' ? 6 : 3) : 
-        (currentSport.value === 'baseball' ? 12 : 6)
-      
-      const perGame = seasonValue / gamesPlayed
-      const periodTotal = perGame * games
-      
-      if (isRatioStat(cat)) {
-        if (periodTotal < 1) return periodTotal.toFixed(3).replace(/^0/, '')
-        return periodTotal.toFixed(2)
-      }
-      return periodTotal.toFixed(1)
-    }
-  } else {
-    // PROJECTIONS MODE: Show what we project they WILL score
-    const games = getGameCountForPeriod(player)
-    if (games === 0) return '-' // No games in period
-    
-    const gamesPlayed = isPitcher(player) ? 30 : 140
-    const perGame = seasonValue / gamesPlayed
-    const projected = perGame * games
-    
-    if (isRatioStat(cat)) {
-      if (projected < 1) return projected.toFixed(3).replace(/^0/, '')
-      return projected.toFixed(2)
-    }
-    return projected.toFixed(1)
-  }
+  return projection
 }
 
 function getCategoryPerGame(player: any, cat: any): string {
@@ -4847,28 +5392,37 @@ const modifiedSuggestedLineup = computed(() => {
 
 // Group lineup by position type for better organization
 const groupedLineup = computed(() => {
-  const groups: { position: string; slots: any[]; total: number; filled: number }[] = []
-  const positionMap = new Map<string, any[]>()
+  // Safety check
+  if (!modifiedSuggestedLineup.value || modifiedSuggestedLineup.value.length === 0) return []
   
-  // Group slots by position
-  for (const slot of modifiedSuggestedLineup.value) {
-    if (!positionMap.has(slot.position)) {
-      positionMap.set(slot.position, [])
+  try {
+    const groups: { position: string; slots: any[]; total: number; filled: number }[] = []
+    const positionMap = new Map<string, any[]>()
+    
+    // Group slots by position
+    for (const slot of modifiedSuggestedLineup.value) {
+      if (!slot || !slot.position) continue
+      if (!positionMap.has(slot.position)) {
+        positionMap.set(slot.position, [])
+      }
+      positionMap.get(slot.position)!.push(slot)
     }
-    positionMap.get(slot.position)!.push(slot)
+    
+    // Convert to array with stats
+    for (const [position, slots] of positionMap.entries()) {
+      groups.push({
+        position,
+        slots,
+        total: slots.length,
+        filled: slots.filter(s => s && s.player).length
+      })
+    }
+    
+    return groups
+  } catch (error) {
+    console.error('[groupedLineup] Error:', error)
+    return []
   }
-  
-  // Convert to array with stats
-  for (const [position, slots] of positionMap.entries()) {
-    groups.push({
-      position,
-      slots,
-      total: slots.length,
-      filled: slots.filter(s => s.player).length
-    })
-  }
-  
-  return groups
 })
 
 function openSwapModal(player: any) {
@@ -4974,6 +5528,105 @@ function approveWaiverMove(recommendation: any) {
   // 2. Queue waiver claim
   // 3. Update UI
 }
+
+// Open position picker modal
+function openPositionPicker(position: string) {
+  positionPickerPosition.value = position
+  // Set the selected position filter
+  selectedStartSitPosition.value = position
+  showPositionPickerModal.value = true
+}
+
+// Get players filtered by position for the modal
+function getPositionFilteredPlayers(position: string) {
+  if (!availableFreeAgents.value) return []
+  
+  return availableFreeAgents.value.filter(p => {
+    const playerPos = p.position || ''
+    
+    // Handle Util/Flex positions
+    if (position === 'Util' || position === 'Flex') {
+      const sport = currentSport.value
+      if (sport === 'baseball') return !playerPos.includes('SP') && !playerPos.includes('RP')
+      if (sport === 'hockey') return !playerPos.includes('G')
+      return true
+    }
+    
+    // Handle guard/forward positions in basketball
+    if (currentSport.value === 'basketball') {
+      if (position === 'G') return playerPos.includes('PG') || playerPos.includes('SG') || playerPos.includes('G')
+      if (position === 'F') return playerPos.includes('SF') || playerPos.includes('PF') || playerPos.includes('F')
+    }
+    
+    // Handle OF in baseball
+    if (position === 'OF') return playerPos.includes('OF') || playerPos.includes('LF') || playerPos.includes('CF') || playerPos.includes('RF')
+    
+    return playerPos.includes(position)
+  })
+}
+
+// Open player analysis modal
+function openPlayerAnalysis(player: any) {
+  playerAnalysisData.value = player
+  showPlayerAnalysisModal.value = true
+}
+
+// Helper functions for matchup analysis modal
+function getCategoryMatchupStatus(statId: string): string {
+  const status = matchupCategoryStatus.value[statId]?.status
+  if (status === 'winning') return 'Winning'
+  if (status === 'losing') return 'Losing'
+  if (status === 'close') return 'Close'
+  return 'Tied'
+}
+
+function getCategoryMatchupTextClass(statId: string): string {
+  const status = matchupCategoryStatus.value[statId]?.status
+  if (status === 'winning') return 'text-green-400'
+  if (status === 'losing') return 'text-red-400'
+  if (status === 'close') return 'text-yellow-400'
+  return 'text-dark-textMuted'
+}
+
+function getCategoryDifference(statId: string): string {
+  const data = matchupCategoryStatus.value[statId]
+  if (!data) return '0'
+  
+  const diff = data.myValue - data.oppValue
+  const sign = diff > 0 ? '+' : ''
+  return `${sign}${diff.toFixed(1)}`
+}
+
+function getCategoryDifferenceClass(statId: string): string {
+  const data = matchupCategoryStatus.value[statId]
+  if (!data) return 'text-dark-textMuted'
+  
+  const diff = data.myValue - data.oppValue
+  if (diff > 0) return 'text-green-400'
+  if (diff < 0) return 'text-red-400'
+  return 'text-yellow-400'
+}
+
+const getSafeCategoryNames = computed(() => {
+  const safe = displayCategories.value
+    .filter(cat => matchupCategoryStatus.value[cat.stat_id]?.status === 'winning')
+    .map(cat => cat.display_name)
+  return safe.length > 0 ? safe.join(', ') : 'None yet'
+})
+
+const getCloseCategoryNames = computed(() => {
+  const close = displayCategories.value
+    .filter(cat => matchupCategoryStatus.value[cat.stat_id]?.status === 'close')
+    .map(cat => cat.display_name)
+  return close.length > 0 ? close.join(', ') : 'None'
+})
+
+const getLosingCategoryNames = computed(() => {
+  const losing = displayCategories.value
+    .filter(cat => matchupCategoryStatus.value[cat.stat_id]?.status === 'losing')
+    .map(cat => cat.display_name)
+  return losing.length > 0 ? losing.join(', ') : 'None'
+})
 
 function closeDropModal() {
   showDropModal.value = false
@@ -5962,24 +6615,39 @@ const suggestedCategoryLineup = computed(() => {
   
   if (leagueRosterPositions.value && leagueRosterPositions.value.length > 0) {
     // Use actual roster positions from league settings
+    console.log('[suggestedCategoryLineup] Raw roster positions:', JSON.stringify(leagueRosterPositions.value))
+    
     lineupOrder = leagueRosterPositions.value.map((rp: any) => {
       // Handle both string format ("PG") and object format ({position: "PG", count: 1})
-      if (typeof rp === 'string') return rp
+      if (typeof rp === 'string') {
+        console.log('[suggestedCategoryLineup] String position:', rp)
+        return rp
+      }
+      
       // Try multiple possible keys for the position value
-      const posValue = rp.position || rp.abbr || rp.display_name || rp.position_type || rp
+      const posValue = rp.position || rp.abbr || rp.display_name || rp.position_type || rp.name || rp
+      console.log('[suggestedCategoryLineup] Object position:', rp, '-> parsed:', posValue)
+      
       // If it's still an object, stringify and extract
       if (typeof posValue === 'object') {
-        return Object.values(posValue)[0] || 'Util'
+        const firstValue = Object.values(posValue)[0]
+        console.log('[suggestedCategoryLineup] Nested object, extracting:', firstValue)
+        return firstValue || 'Util'
       }
       return posValue
     })
     .filter((p: any) => {
       // Filter out bench/IL spots and non-strings
-      if (typeof p !== 'string') return false
-      return p !== 'BN' && p !== 'IL' && p !== 'IR' && p !== 'Bench'
+      if (typeof p !== 'string') {
+        console.log('[suggestedCategoryLineup] Filtered non-string:', p)
+        return false
+      }
+      const isFiltered = p !== 'BN' && p !== 'IL' && p !== 'IR' && p !== 'Bench' && p !== 'BN*'
+      if (!isFiltered) console.log('[suggestedCategoryLineup] Filtered bench/IL:', p)
+      return isFiltered
     })
     
-    console.log('[suggestedCategoryLineup] Using league roster positions:', lineupOrder)
+    console.log('[suggestedCategoryLineup] Final lineup order:', lineupOrder)
   } else {
     // Fallback to sport-specific defaults
     if (sport === 'basketball') {
@@ -6113,133 +6781,184 @@ const benchPlayers = computed(() => {
 
 // Available free agents with games today/tomorrow (for "Available" view)
 const availableFreeAgents = computed(() => {
-  const activeGames = startSitDay.value === 'today' ? todaysGames.value : tomorrowsGames.value
+  // Safety check - only run if on startsit tab and data is loaded
+  if (!allPlayers.value || allPlayers.value.length === 0) return []
+  if (!liveGamesService) return []
   
-  return allPlayers.value
-    .filter(p => {
-      // Must be free agent
-      if (p.fantasy_team_key) return false
-      
-      // Must have a game
-      const gameInfo = liveGamesService.getPlayerGameInfo(p.mlb_team, activeGames)
-      if (!gameInfo.hasGame) return false
-      
-      // Position filter
-      if (selectedStartSitPosition.value !== 'All') {
-        const playerPos = p.position || ''
-        if (!playerPos.includes(selectedStartSitPosition.value)) return false
-      }
-      
-      return true
-    })
-    .map(p => {
-      const gameInfo = liveGamesService.getPlayerGameInfo(p.mlb_team, activeGames)
-      const impactCats = getImpactCategoryCount(p)
-      
-      return {
-        ...p,
-        hasGame: gameInfo.hasGame,
-        opponent: gameInfo.opponent,
-        isHome: gameInfo.isHome,
-        impactCats,
-        impactScore: calculatePlayerImpact(p)
-      }
-    })
-    .sort((a, b) => b.impactScore - a.impactScore)
-    .slice(0, 50) // Top 50 free agents
+  const activeGames = startSitDay.value === 'today' ? todaysGames.value : tomorrowsGames.value
+  if (!activeGames) return []
+  
+  try {
+    return allPlayers.value
+      .filter(p => {
+        // Must be free agent
+        if (p.fantasy_team_key) return false
+        
+        // Must have a game
+        const gameInfo = liveGamesService.getPlayerGameInfo(p.mlb_team, activeGames)
+        if (!gameInfo || !gameInfo.hasGame) return false
+        
+        // Position filter
+        if (selectedStartSitPosition.value !== 'All') {
+          const playerPos = p.position || ''
+          if (!playerPos.includes(selectedStartSitPosition.value)) return false
+        }
+        
+        return true
+      })
+      .map(p => {
+        const gameInfo = liveGamesService.getPlayerGameInfo(p.mlb_team, activeGames)
+        const impactCats = getImpactCategoryCount(p)
+        
+        return {
+          ...p,
+          hasGame: gameInfo.hasGame,
+          opponent: gameInfo.opponent,
+          isHome: gameInfo.isHome,
+          impactCats,
+          impactScore: calculatePlayerImpact(p)
+        }
+      })
+      .sort((a, b) => b.impactScore - a.impactScore)
+      .slice(0, 50) // Top 50 free agents
+  } catch (error) {
+    console.error('[availableFreeAgents] Error:', error)
+    return []
+  }
 })
 
 // Smart waiver recommendations (for "Smart Moves" view)
 const smartWaiverRecommendations = computed(() => {
-  const recommendations: any[] = []
-  const myPlayers = allPlayers.value.filter(p => p.fantasy_team_key === myTeamKey.value)
+  // Safety check - only run if data is loaded
+  if (!allPlayers.value || allPlayers.value.length === 0) return []
+  if (!myTeamKey.value) return []
+  if (!liveGamesService) return []
+  
   const activeGames = startSitDay.value === 'today' ? todaysGames.value : tomorrowsGames.value
+  if (!activeGames) return []
   
-  // Get FAs with games today
-  const freeAgentsWithGames = allPlayers.value
-    .filter(p => !p.fantasy_team_key)
-    .map(p => {
-      const gameInfo = liveGamesService.getPlayerGameInfo(p.mlb_team, activeGames)
-      return {
-        ...p,
-        hasGame: gameInfo.hasGame,
-        opponent: gameInfo.opponent,
-        impactCats: getImpactCategoryCount(p),
-        impactScore: calculatePlayerImpact(p),
-        rosValue: p.overallValue || 0
-      }
-    })
-    .filter(p => p.hasGame)
-    .sort((a, b) => b.impactScore - a.impactScore)
-    .slice(0, 20) // Top 20 FAs
-  
-  // Get my droppable players
-  const droppablePlayers = myPlayers
-    .map(p => {
-      const gameInfo = liveGamesService.getPlayerGameInfo(p.mlb_team, activeGames)
-      return {
-        ...p,
-        hasGame: gameInfo.hasGame,
-        opponent: gameInfo.opponent,
-        impactCats: getImpactCategoryCount(p),
-        impactScore: calculatePlayerImpact(p),
-        rosValue: p.overallValue || 0
-      }
-    })
-    .sort((a, b) => (a.rosValue || 0) - (b.rosValue || 0)) // Lowest ROS value first
-  
-  // Find best add/drop combinations
-  for (const addPlayer of freeAgentsWithGames.slice(0, 10)) {
-    for (const dropPlayer of droppablePlayers.slice(0, 5)) {
-      // Don't recommend dropping someone with a game for someone with similar impact
-      if (dropPlayer.hasGame && addPlayer.impactScore <= dropPlayer.impactScore * 1.2) continue
-      
-      const todayImpact = addPlayer.impactCats - (dropPlayer.hasGame ? dropPlayer.impactCats : 0)
-      const rosImpact = (addPlayer.rosValue || 0) - (dropPlayer.rosValue || 0)
-      
-      // Only recommend if there's a clear benefit
-      if (todayImpact <= 0 && rosImpact <= 5) continue
-      
-      // Build reasoning
-      let reasoning = ''
-      if (todayImpact > 0 && rosImpact > 0) {
-        reasoning = `Adds ${todayImpact} categories today and improves ROS value by ${rosImpact.toFixed(0)}. `
-      } else if (todayImpact > 0) {
-        reasoning = `Strong boost for today's matchup (+${todayImpact} cats). `
-      } else {
-        reasoning = `Improves long-term value (+${rosImpact.toFixed(0)}). `
-      }
-      
-      if (!dropPlayer.hasGame) {
-        reasoning += `${dropPlayer.full_name} has no game today, making this a low-risk swap.`
-      }
-      
-      // Calculate confidence score
-      let confidence = 50
-      if (todayImpact >= 3) confidence += 20
-      if (rosImpact >= 10) confidence += 15
-      if (!dropPlayer.hasGame) confidence += 15
-      confidence = Math.min(95, confidence)
-      
-      recommendations.push({
-        addPlayer,
-        dropPlayer,
-        todayImpact,
-        rosImpact,
-        reasoning,
-        confidence
+  try {
+    const recommendations: any[] = []
+    const myPlayers = allPlayers.value.filter(p => p.fantasy_team_key === myTeamKey.value)
+    
+    // Get FAs with games today - WITH INJURY FILTERING AND QUALITY CHECKS
+    const freeAgentsWithGames = allPlayers.value
+      .filter(p => {
+        if (p.fantasy_team_key) return false // Must be FA
+        
+        // Filter out injured players
+        const injuryStatus = p.injury_status || p.status || ''
+        if (injuryStatus === 'O' || injuryStatus === 'IL' || injuryStatus === 'INJ') return false
+        
+        // Must have minimum value (prevents recommending scrubs)
+        if ((p.overallValue || 0) < 20) return false
+        
+        return true
       })
+      .map(p => {
+        const gameInfo = liveGamesService.getPlayerGameInfo(p.mlb_team, activeGames)
+        return {
+          ...p,
+          hasGame: gameInfo?.hasGame || false,
+          opponent: gameInfo?.opponent || '',
+          impactCats: getImpactCategoryCount(p),
+          impactScore: calculatePlayerImpact(p),
+          rosValue: p.overallValue || 0
+        }
+      })
+      .filter(p => p.hasGame && p.rosValue >= 25) // Only quality players with games
+      .sort((a, b) => b.rosValue - a.rosValue) // Sort by ROS value first
+      .slice(0, 20) // Top 20 FAs
+    
+    // Get droppable players - ONLY bottom tier
+    const droppablePlayers = myPlayers
+      .map(p => {
+        const gameInfo = liveGamesService.getPlayerGameInfo(p.mlb_team, activeGames)
+        return {
+          ...p,
+          hasGame: gameInfo?.hasGame || false,
+          opponent: gameInfo?.opponent || '',
+          impactCats: getImpactCategoryCount(p),
+          impactScore: calculatePlayerImpact(p),
+          rosValue: p.overallValue || 0
+        }
+      })
+      .filter(p => (p.rosValue || 0) < 60) // Only consider dropping players with value < 60
+      .sort((a, b) => (a.rosValue || 0) - (b.rosValue || 0)) // Lowest value first
+    
+    // Find best add/drop combinations
+    for (const addPlayer of freeAgentsWithGames.slice(0, 10)) {
+      for (const dropPlayer of droppablePlayers.slice(0, 8)) {
+        
+        // CRITICAL SAFEGUARDS
+        // Never drop a player with significantly higher ROS value
+        if ((dropPlayer.rosValue || 0) > (addPlayer.rosValue || 0) + 5) continue
+        
+        // Never drop elite players (value > 60)
+        if ((dropPlayer.rosValue || 0) > 60) continue
+        
+        // Only recommend if clear upgrade
+        const rosImpact = (addPlayer.rosValue || 0) - (dropPlayer.rosValue || 0)
+        const todayImpact = addPlayer.impactCats - (dropPlayer.hasGame ? dropPlayer.impactCats : 0)
+        
+        // Must be at least +3 ROS value OR +2 today impact
+        if (rosImpact < 3 && todayImpact < 2) continue
+        
+        // Build reasoning
+        let reasoning = ''
+        if (rosImpact >= 10 && todayImpact > 0) {
+          reasoning = `Significant upgrade: +${rosImpact.toFixed(0)} value and helps ${todayImpact} categories today. `
+        } else if (rosImpact >= 10) {
+          reasoning = `Strong ROS upgrade (+${rosImpact.toFixed(0)} value). `
+        } else if (todayImpact >= 3) {
+          reasoning = `Helps ${todayImpact} critical categories today. `
+        } else {
+          reasoning = `Moderate upgrade (+${rosImpact.toFixed(0)} value). `
+        }
+        
+        if (!dropPlayer.hasGame) {
+          reasoning += `${dropPlayer.full_name} has no game today.`
+        }
+        
+        // Calculate confidence - weighted heavily toward ROS value
+        let confidence = 50
+        if (rosImpact >= 15) confidence += 30
+        else if (rosImpact >= 10) confidence += 20
+        else if (rosImpact >= 5) confidence += 10
+        
+        if (todayImpact >= 3) confidence += 10
+        else if (todayImpact >= 2) confidence += 5
+        
+        if (!dropPlayer.hasGame) confidence += 10
+        
+        confidence = Math.min(95, confidence)
+        
+        // Only recommend if confidence is decent
+        if (confidence < 60) continue
+        
+        recommendations.push({
+          addPlayer,
+          dropPlayer,
+          todayImpact,
+          rosImpact,
+          reasoning,
+          confidence
+        })
+      }
     }
+    
+    // Sort by combined score (70% ROS, 30% today)
+    return recommendations
+      .sort((a, b) => {
+        const scoreA = (a.rosImpact * 0.7) + (a.todayImpact * 0.3)
+        const scoreB = (b.rosImpact * 0.7) + (b.todayImpact * 0.3)
+        return scoreB - scoreA
+      })
+      .slice(0, 5) // Top 5 recommendations
+  } catch (error) {
+    console.error('[smartWaiverRecommendations] Error:', error)
+    return []
   }
-  
-  // Sort by combined impact (prioritize today's impact)
-  return recommendations
-    .sort((a, b) => {
-      const scoreA = a.todayImpact * 3 + a.rosImpact
-      const scoreB = b.todayImpact * 3 + b.rosImpact
-      return scoreB - scoreA
-    })
-    .slice(0, 5) // Top 5 recommendations
 })
 
 // Projected category totals with lineup
@@ -6615,4 +7334,378 @@ watch(() => leagueStore.activeLeagueId, (newId, oldId) => {
     }
   }
 })
+// New state variable for comparison mode
+const swapComparisonMode = ref<'projections' | 'recent'>('projections')
+
+// ====================================================================================
+// PLAYER ANALYSIS MODAL FUNCTIONS
+// ====================================================================================
+
+// Get player's rank within their position
+function getPlayerPositionRank(player: any): number {
+  if (!player || !allPlayers.value) return 0
+  
+  const samePosition = allPlayers.value.filter(p => {
+    const pPos = p.position?.split(',')[0] || ''
+    const playerPos = player.position?.split(',')[0] || ''
+    return pPos === playerPos
+  })
+  
+  const sorted = samePosition.sort((a, b) => (b.overallValue || 0) - (a.overallValue || 0))
+  const rank = sorted.findIndex(p => p.player_key === player.player_key)
+  return rank >= 0 ? rank + 1 : 0
+}
+
+// Get count of categories player significantly contributes to
+function getPlayerCategoryCount(player: any): number {
+  if (!player || !displayCategories.value) return 0
+  
+  let count = 0
+  for (const cat of displayCategories.value) {
+    const value = parseFloat(player.stats?.[cat.stat_id] || 0)
+    const gamesPlayed = isPitcher(player) ? 30 : 140
+    const perGame = value / gamesPlayed
+    
+    // Count if above threshold
+    if (perGame > 0.1) count++
+  }
+  return count
+}
+
+// Get player's schedule grade (A, B, C, D, F)
+function getPlayerScheduleGrade(player: any): string {
+  const games = getPlayerUpcomingGames(player, 14)
+  if (games >= 7) return 'A'
+  if (games >= 6) return 'B'
+  if (games >= 5) return 'C'
+  if (games >= 4) return 'D'
+  return 'F'
+}
+
+function getScheduleGradeClass(player: any): string {
+  const grade = getPlayerScheduleGrade(player)
+  if (grade === 'A') return 'text-green-400'
+  if (grade === 'B') return 'text-blue-400'
+  if (grade === 'C') return 'text-yellow-400'
+  if (grade === 'D') return 'text-orange-400'
+  return 'text-red-400'
+}
+
+// Get projected stat for specific time period
+function getPlayerProjection(player: any, category: any, period: 'today' | 'next7' | 'next14'): string {
+  if (!player || !category) return '0'
+  
+  // Get the stat value - try multiple possible locations
+  let statValue = 0
+  
+  // Try player.stats first (most common)
+  if (player.stats && player.stats[category.stat_id] !== undefined) {
+    statValue = parseFloat(player.stats[category.stat_id])
+  }
+  // Try projections if available
+  else if (player.projections && player.projections[category.stat_id] !== undefined) {
+    statValue = parseFloat(player.projections[category.stat_id])
+  }
+  // Try season totals
+  else if (player.season_stats && player.season_stats[category.stat_id] !== undefined) {
+    statValue = parseFloat(player.season_stats[category.stat_id])
+  }
+  
+  // If still no data, return 0
+  if (isNaN(statValue)) return '0'
+  
+  // Calculate per-game average
+  const sport = currentSport.value
+  let estimatedGamesPlayed = 140
+  if (sport === 'basketball') estimatedGamesPlayed = 70
+  else if (sport === 'hockey') estimatedGamesPlayed = 70
+  else if (sport === 'baseball') estimatedGamesPlayed = 140
+  else if (sport === 'football') estimatedGamesPlayed = 17
+  
+  // For pitchers, use different baseline
+  if (isPitcher(player)) {
+    estimatedGamesPlayed = 30
+  }
+  
+  const perGame = estimatedGamesPlayed > 0 ? statValue / estimatedGamesPlayed : 0
+  
+  // Calculate games for period
+  let games = 0
+  if (period === 'today') {
+    games = player.hasGame ? 1 : 0
+  } else if (period === 'next7') {
+    games = getPlayerUpcomingGames(player, 7)
+  } else if (period === 'next14') {
+    games = getPlayerUpcomingGames(player, 14)
+  }
+  
+  const projected = perGame * games
+  
+  // Format based on stat type
+  const statId = category.stat_id.toLowerCase()
+  if (statId.includes('%') || statId.includes('pct')) {
+    // Percentage - show as decimal
+    return projected.toFixed(3)
+  } else if (projected < 1) {
+    return projected.toFixed(2)
+  } else if (projected < 10) {
+    return projected.toFixed(1)
+  } else {
+    return Math.round(projected).toString()
+  }
+}
+
+// Get season average per game
+function getPlayerSeasonAvg(player: any, category: any): string {
+  if (!player || !category) return '0'
+  
+  const statValue = parseFloat(player.stats?.[category.stat_id] || 0)
+  const gamesPlayed = isPitcher(player) ? 30 : 140
+  const perGame = gamesPlayed > 0 ? statValue / gamesPlayed : 0
+  
+  if (category.stat_id.includes('%') || category.stat_id.includes('PCT')) {
+    return (statValue * 100).toFixed(1) + '%'
+  } else if (perGame < 1) {
+    return perGame.toFixed(2)
+  } else {
+    return perGame.toFixed(1)
+  }
+}
+
+// Calculate upcoming games (placeholder - would need real schedule data)
+function getPlayerUpcomingGames(player: any, days: number): number {
+  if (!player || !player.mlb_team) return 0
+  
+  // Estimate: basketball ~3.5 games per week, baseball ~6 per week, hockey ~3.5 per week
+  const sport = currentSport.value
+  let gamesPerWeek = 4
+  if (sport === 'baseball') gamesPerWeek = 6
+  else if (sport === 'hockey') gamesPerWeek = 3.5
+  else if (sport === 'basketball') gamesPerWeek = 3.5
+  
+  const weeks = days / 7
+  return Math.round(gamesPerWeek * weeks)
+}
+
+// Get schedule difficulty rating
+function getScheduleDifficulty(player: any): string {
+  // This would ideally use real opponent strength data
+  // For now, randomize between Easy/Average/Hard
+  const games = getPlayerUpcomingGames(player, 14)
+  if (games >= 7) return 'Easy'
+  if (games >= 5) return 'Average'
+  return 'Hard'
+}
+
+function getScheduleDifficultyClass(player: any): string {
+  const diff = getScheduleDifficulty(player)
+  if (diff === 'Easy') return 'text-green-400'
+  if (diff === 'Average') return 'text-yellow-400'
+  return 'text-red-400'
+}
+
+// Calculate opportunity score
+function getOpportunityScore(player: any): number {
+  const games = getPlayerUpcomingGames(player, 14)
+  const difficulty = getScheduleDifficulty(player)
+  
+  let multiplier = 1
+  if (difficulty === 'Easy') multiplier = 1.2
+  else if (difficulty === 'Hard') multiplier = 0.8
+  
+  return Math.round(games * multiplier * 10) / 10
+}
+
+// ====================================================================================
+// PLAYER COMPARISON MODAL FUNCTIONS
+// ====================================================================================
+
+// Calculate value change from swap
+function getValueChange(addPlayer: any, dropPlayer: any): string {
+  const addValue = addPlayer?.overallValue || 0
+  const dropValue = dropPlayer?.overallValue || 0
+  const diff = addValue - dropValue
+  
+  if (diff > 0) return `+${diff.toFixed(1)}`
+  return diff.toFixed(1)
+}
+
+function getValueChangeClass(addPlayer: any, dropPlayer: any): string {
+  const addValue = addPlayer?.overallValue || 0
+  const dropValue = dropPlayer?.overallValue || 0
+  
+  if (addValue > dropValue) return 'text-green-400'
+  if (addValue < dropValue) return 'text-red-400'
+  return 'text-yellow-400'
+}
+
+// Count categories improved
+function getCategoriesImproved(addPlayer: any, dropPlayer: any): number {
+  if (!addPlayer || !dropPlayer) return 0
+  
+  let improved = 0
+  for (const cat of displayCategories.value) {
+    const addValue = parseFloat(addPlayer.stats?.[cat.stat_id] || 0)
+    const dropValue = parseFloat(dropPlayer.stats?.[cat.stat_id] || 0)
+    
+    if (addValue > dropValue) improved++
+  }
+  return improved
+}
+
+// Get swap recommendation
+function getSwapRecommendation(addPlayer: any, dropPlayer: any): string {
+  const valueDiff = (addPlayer?.overallValue || 0) - (dropPlayer?.overallValue || 0)
+  const catsImproved = getCategoriesImproved(addPlayer, dropPlayer)
+  
+  if (valueDiff >= 10 && catsImproved >= 5) return '🔥 MUST DO'
+  if (valueDiff >= 5 && catsImproved >= 3) return '✅ DO IT'
+  if (valueDiff > 0 && catsImproved > 0) return '👍 GOOD'
+  if (valueDiff > -5) return '🤷 MEH'
+  return '❌ BAD'
+}
+
+function getSwapRecommendationClass(addPlayer: any, dropPlayer: any): string {
+  const rec = getSwapRecommendation(addPlayer, dropPlayer)
+  if (rec.includes('MUST') || rec.includes('DO IT')) return 'text-green-400'
+  if (rec.includes('GOOD')) return 'text-blue-400'
+  if (rec.includes('MEH')) return 'text-yellow-400'
+  return 'text-red-400'
+}
+
+// Get category value for comparison
+function getCategoryValue(player: any, category: any, mode: 'projections' | 'recent'): string {
+  if (!player || !category) return '0'
+  
+  if (mode === 'recent') {
+    // Recent stats (last 14 days estimate)
+    const seasonValue = parseFloat(player.stats?.[category.stat_id] || 0)
+    const gamesPlayed = isPitcher(player) ? 30 : 140
+    const perGame = gamesPlayed > 0 ? seasonValue / gamesPlayed : 0
+    const recent = perGame * 10 // Assume ~10 games in last 14 days
+    
+    return recent.toFixed(1)
+  } else {
+    // Projections (next 14 days)
+    return getPlayerProjection(player, category, 'next14')
+  }
+}
+
+// Get bar width for visualization (0-100%)
+function getCategoryBarWidth(player: any, category: any, mode: 'projections' | 'recent'): string {
+  const value = parseFloat(getCategoryValue(player, category, mode))
+  
+  // Find max value between both players for scaling
+  const addValue = swapSourcePlayer.value ? parseFloat(getCategoryValue(swapSourcePlayer.value, category, mode)) : 0
+  const dropValue = selectedSwapTarget.value ? parseFloat(getCategoryValue(selectedSwapTarget.value, category, mode)) : 0
+  const maxValue = Math.max(addValue, dropValue, 0.1)
+  
+  const percentage = (value / maxValue) * 100
+  return `${Math.min(percentage, 100)}%`
+}
+
+// Get comparison difference
+function getCategoryComparisonDiff(addPlayer: any, dropPlayer: any, category: any): string {
+  const mode = swapComparisonMode.value
+  const addValue = parseFloat(getCategoryValue(addPlayer, category, mode))
+  const dropValue = parseFloat(getCategoryValue(dropPlayer, category, mode))
+  const diff = addValue - dropValue
+  
+  if (diff > 0) return `+${diff.toFixed(1)}`
+  return diff.toFixed(1)
+}
+
+function getCategoryDifferenceColor(addPlayer: any, dropPlayer: any, category: any): string {
+  const mode = swapComparisonMode.value
+  const addValue = parseFloat(getCategoryValue(addPlayer, category, mode))
+  const dropValue = parseFloat(getCategoryValue(dropPlayer, category, mode))
+  
+  if (addValue > dropValue) return 'text-green-400'
+  if (addValue < dropValue) return 'text-red-400'
+  return 'text-yellow-400'
+}
+
+// Confirm the swap
+function confirmSwap() {
+  if (!swapSourcePlayer.value || !selectedSwapTarget.value) return
+  
+  alert(`Move confirmed: Add ${swapSourcePlayer.value.full_name}, Drop ${selectedSwapTarget.value.full_name}`)
+  
+  // Close modal and reset
+  showSwapModal.value = false
+  selectedSwapTarget.value = null
+  swapSourcePlayer.value = null
+}
+
+// Get actual category abbreviation from platform
+function getCategoryDisplayName(category: any): string {
+  if (!category) return ''
+  
+  // Try these in order of preference
+  return category.display_name || 
+         category.abbr || 
+         category.name || 
+         category.stat_id || 
+         ''
+}
+
+// Add injury indicator to player cards
+function getInjuryStatus(player: any): { status: string; description: string; color: string } | null {
+  const injuryStatus = player.injury_status || player.status || ''
+  const injuryNote = player.injury_note || player.injury_description || ''
+  
+  if (!injuryStatus) return null
+  
+  const statusMap: Record<string, { description: string; color: string }> = {
+    'O': { description: 'Out', color: 'text-red-500' },
+    'IL': { description: 'Injured List', color: 'text-red-500' },
+    'INJ': { description: 'Injured', color: 'text-red-500' },
+    'DTD': { description: 'Day-to-Day', color: 'text-yellow-500' },
+    'Q': { description: 'Questionable', color: 'text-yellow-500' },
+    'D': { description: 'Doubtful', color: 'text-orange-500' },
+    'P': { description: 'Probable', color: 'text-green-500' },
+    'SUSP': { description: 'Suspended', color: 'text-red-500' }
+  }
+  
+  const info = statusMap[injuryStatus.toUpperCase()]
+  if (!info) return null
+  
+  return {
+    status: injuryStatus.toUpperCase(),
+    description: injuryNote || info.description,
+    color: info.color
+  }
+}
+
+// ====================================================================================
+// YAHOO ROSTER POSITIONS FIX
+// ====================================================================================
+
+// Add this at the end of loadYahooLeague function to manually construct roster positions if needed
+async function fixYahooRosterPositions(leagueKey: string) {
+  console.log('[fixYahooRosterPositions] Attempting to fix Yahoo roster positions...')
+  
+  // If we don't have roster positions, construct them from the first team's roster
+  if (!leagueRosterPositions.value || leagueRosterPositions.value.length === 0) {
+    try {
+      const myTeam = teamsData.value.find(t => t.is_my_team || t.is_owned_by_current_login)
+      if (myTeam && myTeam.roster) {
+        console.log('[fixYahooRosterPositions] Building from roster:', myTeam.roster)
+        
+        // Extract positions from actual roster
+        const positions: string[] = []
+        for (const player of myTeam.roster.players || []) {
+          if (player.selected_position && player.selected_position !== 'BN' && player.selected_position !== 'IL') {
+            positions.push(player.selected_position)
+          }
+        }
+        
+        leagueRosterPositions.value = positions
+        console.log('[fixYahooRosterPositions] ✅ Fixed positions:', leagueRosterPositions.value)
+      }
+    } catch (error) {
+      console.error('[fixYahooRosterPositions] Error:', error)
+    }
+  }
+}
 </script>

@@ -3893,8 +3893,6 @@ const getCategoryBadgeClass = computed(() => isPitchingCategory.value ? 'bg-purp
 
 async function loadProjections() {
   isLoading.value = true
-  // Fix Yahoo roster positions if needed  
-await fixYahooRosterPositions(leagueKey)
   loadingMessage.value = 'Loading league settings...'
   loadingProgress.value = { currentStep: 'Loading league settings...', week: 1, maxWeek: 4 }
   try {
@@ -5222,62 +5220,16 @@ function getGameCountForPeriod(player: any): number {
   return period === 'ros' ? 30 : 4
 }
 
-function formatCategoryProjection(player: any, cat: any): string {
-  const seasonValue = parseFloat(player.stats?.[cat.stat_id] || 0)
-  if (seasonValue <= 0) return '-'
+function formatCategoryProjection(player: any, category: any): string {
+  if (!player || !category) return '-'
   
-  const mode = startSitViewMode.value
-  const period = startSitTimePeriod.value
-  const isPercentage = isPercentageStat(cat)
+  // Use the getPlayerProjection function for today's projection
+  const projection = getPlayerProjection(player, category, 'today')
   
-  // Percentages don't change based on time period - they're rates, not totals
-  if (isPercentage) {
-    // Convert from decimal to percentage (0.472 -> 47.2%)
-    const percentValue = seasonValue * 100
-    return percentValue.toFixed(1) + '%'
-  }
+  // If it's actually zero/empty, show dash
+  if (projection === '0' || projection === '0.0' || projection === '0.00') return '-'
   
-  if (mode === 'stats') {
-    // STATS MODE: Show actual stats from the past
-    const gamesPlayed = isPitcher(player) ? 30 : 140 // Season games played so far
-    
-    if (period === 'ros') {
-      // Season total
-      if (isRatioStat(cat)) {
-        if (seasonValue < 1) return seasonValue.toFixed(3).replace(/^0/, '')
-        return seasonValue.toFixed(2)
-      }
-      return seasonValue.toFixed(1)
-    } else {
-      // Last 7 or Last 14 days - scale down from season
-      const games = period === 'next7' ? 
-        (currentSport.value === 'baseball' ? 6 : 3) : 
-        (currentSport.value === 'baseball' ? 12 : 6)
-      
-      const perGame = seasonValue / gamesPlayed
-      const periodTotal = perGame * games
-      
-      if (isRatioStat(cat)) {
-        if (periodTotal < 1) return periodTotal.toFixed(3).replace(/^0/, '')
-        return periodTotal.toFixed(2)
-      }
-      return periodTotal.toFixed(1)
-    }
-  } else {
-    // PROJECTIONS MODE: Show what we project they WILL score
-    const games = getGameCountForPeriod(player)
-    if (games === 0) return '-' // No games in period
-    
-    const gamesPlayed = isPitcher(player) ? 30 : 140
-    const perGame = seasonValue / gamesPlayed
-    const projected = perGame * games
-    
-    if (isRatioStat(cat)) {
-      if (projected < 1) return projected.toFixed(3).replace(/^0/, '')
-      return projected.toFixed(2)
-    }
-    return projected.toFixed(1)
-  }
+  return projection
 }
 
 function getCategoryPerGame(player: any, cat: any): string {
@@ -6889,9 +6841,20 @@ const smartWaiverRecommendations = computed(() => {
     const recommendations: any[] = []
     const myPlayers = allPlayers.value.filter(p => p.fantasy_team_key === myTeamKey.value)
     
-    // Get FAs with games today
+    // Get FAs with games today - WITH INJURY FILTERING AND QUALITY CHECKS
     const freeAgentsWithGames = allPlayers.value
-      .filter(p => !p.fantasy_team_key)
+      .filter(p => {
+        if (p.fantasy_team_key) return false // Must be FA
+        
+        // Filter out injured players
+        const injuryStatus = p.injury_status || p.status || ''
+        if (injuryStatus === 'O' || injuryStatus === 'IL' || injuryStatus === 'INJ') return false
+        
+        // Must have minimum value (prevents recommending scrubs)
+        if ((p.overallValue || 0) < 20) return false
+        
+        return true
+      })
       .map(p => {
         const gameInfo = liveGamesService.getPlayerGameInfo(p.mlb_team, activeGames)
         return {
@@ -6903,11 +6866,11 @@ const smartWaiverRecommendations = computed(() => {
           rosValue: p.overallValue || 0
         }
       })
-      .filter(p => p.hasGame)
-      .sort((a, b) => b.impactScore - a.impactScore)
+      .filter(p => p.hasGame && p.rosValue >= 25) // Only quality players with games
+      .sort((a, b) => b.rosValue - a.rosValue) // Sort by ROS value first
       .slice(0, 20) // Top 20 FAs
     
-    // Get my droppable players
+    // Get droppable players - ONLY bottom tier
     const droppablePlayers = myPlayers
       .map(p => {
         const gameInfo = liveGamesService.getPlayerGameInfo(p.mlb_team, activeGames)
@@ -6920,40 +6883,58 @@ const smartWaiverRecommendations = computed(() => {
           rosValue: p.overallValue || 0
         }
       })
-      .sort((a, b) => (a.rosValue || 0) - (b.rosValue || 0)) // Lowest ROS value first
+      .filter(p => (p.rosValue || 0) < 60) // Only consider dropping players with value < 60
+      .sort((a, b) => (a.rosValue || 0) - (b.rosValue || 0)) // Lowest value first
     
     // Find best add/drop combinations
     for (const addPlayer of freeAgentsWithGames.slice(0, 10)) {
-      for (const dropPlayer of droppablePlayers.slice(0, 5)) {
-        // Don't recommend dropping someone with a game for someone with similar impact
-        if (dropPlayer.hasGame && addPlayer.impactScore <= dropPlayer.impactScore * 1.2) continue
+      for (const dropPlayer of droppablePlayers.slice(0, 8)) {
         
-        const todayImpact = addPlayer.impactCats - (dropPlayer.hasGame ? dropPlayer.impactCats : 0)
+        // CRITICAL SAFEGUARDS
+        // Never drop a player with significantly higher ROS value
+        if ((dropPlayer.rosValue || 0) > (addPlayer.rosValue || 0) + 5) continue
+        
+        // Never drop elite players (value > 60)
+        if ((dropPlayer.rosValue || 0) > 60) continue
+        
+        // Only recommend if clear upgrade
         const rosImpact = (addPlayer.rosValue || 0) - (dropPlayer.rosValue || 0)
+        const todayImpact = addPlayer.impactCats - (dropPlayer.hasGame ? dropPlayer.impactCats : 0)
         
-        // Only recommend if there's a clear benefit
-        if (todayImpact <= 0 && rosImpact <= 5) continue
+        // Must be at least +3 ROS value OR +2 today impact
+        if (rosImpact < 3 && todayImpact < 2) continue
         
         // Build reasoning
         let reasoning = ''
-        if (todayImpact > 0 && rosImpact > 0) {
-          reasoning = `Adds ${todayImpact} categories today and improves ROS value by ${rosImpact.toFixed(0)}. `
-        } else if (todayImpact > 0) {
-          reasoning = `Strong boost for today's matchup (+${todayImpact} cats). `
+        if (rosImpact >= 10 && todayImpact > 0) {
+          reasoning = `Significant upgrade: +${rosImpact.toFixed(0)} value and helps ${todayImpact} categories today. `
+        } else if (rosImpact >= 10) {
+          reasoning = `Strong ROS upgrade (+${rosImpact.toFixed(0)} value). `
+        } else if (todayImpact >= 3) {
+          reasoning = `Helps ${todayImpact} critical categories today. `
         } else {
-          reasoning = `Improves long-term value (+${rosImpact.toFixed(0)}). `
+          reasoning = `Moderate upgrade (+${rosImpact.toFixed(0)} value). `
         }
         
         if (!dropPlayer.hasGame) {
-          reasoning += `${dropPlayer.full_name} has no game today, making this a low-risk swap.`
+          reasoning += `${dropPlayer.full_name} has no game today.`
         }
         
-        // Calculate confidence score
+        // Calculate confidence - weighted heavily toward ROS value
         let confidence = 50
-        if (todayImpact >= 3) confidence += 20
-        if (rosImpact >= 10) confidence += 15
-        if (!dropPlayer.hasGame) confidence += 15
+        if (rosImpact >= 15) confidence += 30
+        else if (rosImpact >= 10) confidence += 20
+        else if (rosImpact >= 5) confidence += 10
+        
+        if (todayImpact >= 3) confidence += 10
+        else if (todayImpact >= 2) confidence += 5
+        
+        if (!dropPlayer.hasGame) confidence += 10
+        
         confidence = Math.min(95, confidence)
+        
+        // Only recommend if confidence is decent
+        if (confidence < 60) continue
         
         recommendations.push({
           addPlayer,
@@ -6966,11 +6947,11 @@ const smartWaiverRecommendations = computed(() => {
       }
     }
     
-    // Sort by combined impact (prioritize today's impact)
+    // Sort by combined score (70% ROS, 30% today)
     return recommendations
       .sort((a, b) => {
-        const scoreA = a.todayImpact * 3 + a.rosImpact
-        const scoreB = b.todayImpact * 3 + b.rosImpact
+        const scoreA = (a.rosImpact * 0.7) + (a.todayImpact * 0.3)
+        const scoreB = (b.rosImpact * 0.7) + (b.todayImpact * 0.3)
         return scoreB - scoreA
       })
       .slice(0, 5) // Top 5 recommendations
@@ -7414,24 +7395,63 @@ function getScheduleGradeClass(player: any): string {
 function getPlayerProjection(player: any, category: any, period: 'today' | 'next7' | 'next14'): string {
   if (!player || !category) return '0'
   
-  const statValue = parseFloat(player.stats?.[category.stat_id] || 0)
-  const gamesPlayed = isPitcher(player) ? 30 : 140
-  const perGame = gamesPlayed > 0 ? statValue / gamesPlayed : 0
+  // Get the stat value - try multiple possible locations
+  let statValue = 0
   
+  // Try player.stats first (most common)
+  if (player.stats && player.stats[category.stat_id] !== undefined) {
+    statValue = parseFloat(player.stats[category.stat_id])
+  }
+  // Try projections if available
+  else if (player.projections && player.projections[category.stat_id] !== undefined) {
+    statValue = parseFloat(player.projections[category.stat_id])
+  }
+  // Try season totals
+  else if (player.season_stats && player.season_stats[category.stat_id] !== undefined) {
+    statValue = parseFloat(player.season_stats[category.stat_id])
+  }
+  
+  // If still no data, return 0
+  if (isNaN(statValue)) return '0'
+  
+  // Calculate per-game average
+  const sport = currentSport.value
+  let estimatedGamesPlayed = 140
+  if (sport === 'basketball') estimatedGamesPlayed = 70
+  else if (sport === 'hockey') estimatedGamesPlayed = 70
+  else if (sport === 'baseball') estimatedGamesPlayed = 140
+  else if (sport === 'football') estimatedGamesPlayed = 17
+  
+  // For pitchers, use different baseline
+  if (isPitcher(player)) {
+    estimatedGamesPlayed = 30
+  }
+  
+  const perGame = estimatedGamesPlayed > 0 ? statValue / estimatedGamesPlayed : 0
+  
+  // Calculate games for period
   let games = 0
-  if (period === 'today') games = player.hasGame ? 1 : 0
-  else if (period === 'next7') games = getPlayerUpcomingGames(player, 7)
-  else if (period === 'next14') games = getPlayerUpcomingGames(player, 14)
+  if (period === 'today') {
+    games = player.hasGame ? 1 : 0
+  } else if (period === 'next7') {
+    games = getPlayerUpcomingGames(player, 7)
+  } else if (period === 'next14') {
+    games = getPlayerUpcomingGames(player, 14)
+  }
   
   const projected = perGame * games
   
   // Format based on stat type
-  if (category.stat_id.includes('%') || category.stat_id.includes('PCT')) {
+  const statId = category.stat_id.toLowerCase()
+  if (statId.includes('%') || statId.includes('pct')) {
+    // Percentage - show as decimal
     return projected.toFixed(3)
   } else if (projected < 1) {
     return projected.toFixed(2)
-  } else {
+  } else if (projected < 10) {
     return projected.toFixed(1)
+  } else {
+    return Math.round(projected).toString()
   }
 }
 
@@ -7615,6 +7635,46 @@ function confirmSwap() {
   showSwapModal.value = false
   selectedSwapTarget.value = null
   swapSourcePlayer.value = null
+}
+
+// Get actual category abbreviation from platform
+function getCategoryDisplayName(category: any): string {
+  if (!category) return ''
+  
+  // Try these in order of preference
+  return category.display_name || 
+         category.abbr || 
+         category.name || 
+         category.stat_id || 
+         ''
+}
+
+// Add injury indicator to player cards
+function getInjuryStatus(player: any): { status: string; description: string; color: string } | null {
+  const injuryStatus = player.injury_status || player.status || ''
+  const injuryNote = player.injury_note || player.injury_description || ''
+  
+  if (!injuryStatus) return null
+  
+  const statusMap: Record<string, { description: string; color: string }> = {
+    'O': { description: 'Out', color: 'text-red-500' },
+    'IL': { description: 'Injured List', color: 'text-red-500' },
+    'INJ': { description: 'Injured', color: 'text-red-500' },
+    'DTD': { description: 'Day-to-Day', color: 'text-yellow-500' },
+    'Q': { description: 'Questionable', color: 'text-yellow-500' },
+    'D': { description: 'Doubtful', color: 'text-orange-500' },
+    'P': { description: 'Probable', color: 'text-green-500' },
+    'SUSP': { description: 'Suspended', color: 'text-red-500' }
+  }
+  
+  const info = statusMap[injuryStatus.toUpperCase()]
+  if (!info) return null
+  
+  return {
+    status: injuryStatus.toUpperCase(),
+    description: injuryNote || info.description,
+    color: info.color
+  }
 }
 
 // ====================================================================================
