@@ -1107,29 +1107,40 @@
           </div>
 
           <!-- MODAL 2: PLAYER ANALYSIS (Detailed Stats & Charts) -->
+                    <!-- MODAL 2: ENHANCED PLAYER ANALYSIS (Premium Strategic Tool) -->
           <div v-if="showPlayerAnalysisModal && playerAnalysisData" class="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4" @click.self="showPlayerAnalysisModal = false">
-            <div class="bg-dark-card rounded-2xl max-w-6xl w-full max-h-[90vh] overflow-hidden border border-dark-border shadow-2xl" @click.stop>
-              <div class="bg-gradient-to-r from-purple-500/20 to-pink-500/20 px-6 py-4 border-b border-dark-border flex items-center justify-between">
-                <div class="flex items-center gap-4">
-                  <div class="w-16 h-16 rounded-full bg-dark-border overflow-hidden">
-                    <img :src="playerAnalysisData.headshot || defaultHeadshot" class="w-full h-full object-cover" @error="handleImageError" />
+            <div class="bg-dark-card rounded-2xl max-w-7xl w-full max-h-[90vh] overflow-hidden border border-dark-border shadow-2xl" @click.stop>
+              
+              <!-- Header -->
+              <div class="bg-gradient-to-r from-purple-500/20 to-pink-500/20 px-6 py-4 border-b border-dark-border">
+                <div class="flex items-center justify-between">
+                  <div class="flex items-center gap-4">
+                    <div class="w-16 h-16 rounded-full bg-dark-border overflow-hidden ring-2 ring-purple-500">
+                      <img :src="playerAnalysisData.headshot || defaultHeadshot" class="w-full h-full object-cover" @error="handleImageError" />
+                    </div>
+                    <div>
+                      <h2 class="text-2xl font-bold text-dark-text">{{ playerAnalysisData.full_name }}</h2>
+                      <p class="text-sm text-dark-textMuted">{{ playerAnalysisData.mlb_team }} • {{ playerAnalysisData.position }}</p>
+                    </div>
+                    <div class="ml-4 px-4 py-2 bg-yellow-500/20 rounded-lg border border-yellow-500/30">
+                      <div class="text-xs text-yellow-400 uppercase mb-1">Value Score</div>
+                      <div class="text-2xl font-black text-yellow-400">{{ playerAnalysisData.overallValue?.toFixed(1) || 'N/A' }}</div>
+                    </div>
                   </div>
-                  <div>
-                    <h2 class="text-2xl font-bold text-dark-text">{{ playerAnalysisData.full_name }}</h2>
-                    <p class="text-sm text-dark-textMuted">{{ playerAnalysisData.mlb_team }} • {{ playerAnalysisData.position }}</p>
-                  </div>
+                  <button @click="showPlayerAnalysisModal = false" class="text-dark-textMuted hover:text-dark-text transition-colors">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
                 </div>
-                <button @click="showPlayerAnalysisModal = false" class="text-dark-textMuted hover:text-dark-text transition-colors">
-                  <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-                  </svg>
-                </button>
               </div>
               
               <div class="p-6 overflow-y-auto max-h-[calc(90vh-180px)]">
-                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                
+                <!-- Top Row: Game Info + Value Breakdown -->
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
                   
-                  <!-- Today's Game Info -->
+                  <!-- Game Status -->
                   <div class="card">
                     <div class="card-header py-3">
                       <h3 class="text-lg font-bold">{{ startSitDay === 'today' ? "Today's" : "Tomorrow's" }} Game</h3>
@@ -1142,11 +1153,7 @@
                         </div>
                         <div class="flex items-center justify-between p-3 bg-dark-elevated rounded-lg">
                           <span class="text-dark-textMuted">Status</span>
-                          <span class="px-2 py-1 bg-green-500/20 text-green-400 rounded text-sm font-bold">Playing</span>
-                        </div>
-                        <div class="flex items-center justify-between p-3 bg-dark-elevated rounded-lg">
-                          <span class="text-dark-textMuted">Impact Categories</span>
-                          <span class="text-2xl font-black text-green-400">{{ playerAnalysisData.impactCats || 0 }}</span>
+                          <span class="px-2 py-1 bg-green-500/20 text-green-400 rounded text-sm font-bold">✓ Playing</span>
                         </div>
                       </div>
                       <div v-else class="p-6 text-center">
@@ -1156,72 +1163,305 @@
                     </div>
                   </div>
 
-                  <!-- Projected Stats -->
-                  <div class="card">
-                    <div class="card-header py-3">
-                      <h3 class="text-lg font-bold">Projected Stats ({{ startSitDay === 'today' ? 'Today' : 'Tomorrow' }})</h3>
-                    </div>
-                    <div class="card-body">
-                      <div class="space-y-2">
-                        <div v-for="cat in relevantStartSitCategories" :key="cat.stat_id" class="flex items-center justify-between p-2 bg-dark-elevated rounded">
-                          <span class="text-sm text-dark-textMuted">{{ cat.display_name }}</span>
-                          <span class="font-bold text-dark-text">{{ formatCategoryProjection(playerAnalysisData, cat) }}</span>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  <!-- Season Stats -->
+                  <!-- Value Score Breakdown -->
                   <div class="card lg:col-span-2">
                     <div class="card-header py-3">
-                      <h3 class="text-lg font-bold">Season Performance</h3>
+                      <h3 class="text-lg font-bold">Value Score Breakdown</h3>
                     </div>
                     <div class="card-body">
-                      <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
-                        <div v-for="cat in relevantStartSitCategories" :key="'season-'+cat.stat_id" class="p-3 bg-dark-elevated rounded-lg text-center">
-                          <div class="text-xs text-dark-textMuted uppercase mb-1">{{ cat.display_name }}</div>
-                          <div class="text-2xl font-black text-dark-text">{{ playerAnalysisData.stats?.[cat.stat_id] || '0' }}</div>
-                          <div class="text-[10px] text-dark-textMuted mt-1">Season Total</div>
+                      <div class="grid grid-cols-2 gap-3">
+                        <div class="p-3 bg-dark-elevated rounded-lg">
+                          <div class="text-xs text-dark-textMuted uppercase mb-1">Overall Value</div>
+                          <div class="text-3xl font-black text-yellow-400">{{ playerAnalysisData.overallValue?.toFixed(1) || 'N/A' }}</div>
                         </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  <!-- Matchup Impact -->
-                  <div class="card lg:col-span-2">
-                    <div class="card-header py-3">
-                      <h3 class="text-lg font-bold">Matchup Impact Analysis</h3>
-                    </div>
-                    <div class="card-body">
-                      <div class="space-y-3">
-                        <div v-for="cat in displayCategories" :key="'impact-'+cat.stat_id" class="flex items-center justify-between p-3 rounded-lg" :class="getCategoryMatchupClass(cat.stat_id) + ' bg-opacity-10'">
-                          <div class="flex items-center gap-3">
-                            <span class="px-2 py-1 rounded text-xs font-bold" :class="getCategoryMatchupClass(cat.stat_id)">
-                              {{ cat.display_name }}
-                            </span>
-                            <span class="text-sm text-dark-text">{{ getCategoryMatchupStatus(cat.stat_id) }}</span>
-                          </div>
-                          <div class="text-right">
-                            <div class="text-sm font-bold text-dark-text">{{ formatCategoryProjection(playerAnalysisData, cat) }}</div>
-                            <div class="text-[10px] text-dark-textMuted">Projected</div>
-                          </div>
+                        <div class="p-3 bg-dark-elevated rounded-lg">
+                          <div class="text-xs text-dark-textMuted uppercase mb-1">Rank (Position)</div>
+                          <div class="text-3xl font-black text-dark-text">#{{ getPlayerPositionRank(playerAnalysisData) }}</div>
+                        </div>
+                        <div class="p-3 bg-dark-elevated rounded-lg">
+                          <div class="text-xs text-dark-textMuted uppercase mb-1">Categories Helped</div>
+                          <div class="text-3xl font-black text-green-400">{{ getPlayerCategoryCount(playerAnalysisData) }}</div>
+                        </div>
+                        <div class="p-3 bg-dark-elevated rounded-lg">
+                          <div class="text-xs text-dark-textMuted uppercase mb-1">Schedule Grade</div>
+                          <div class="text-3xl font-black" :class="getScheduleGradeClass(playerAnalysisData)">{{ getPlayerScheduleGrade(playerAnalysisData) }}</div>
                         </div>
                       </div>
                     </div>
                   </div>
                 </div>
+
+                <!-- Multi-Period Projections Table -->
+                <div class="card mb-6">
+                  <div class="card-header py-3">
+                    <h3 class="text-lg font-bold">📊 Projected Performance</h3>
+                  </div>
+                  <div class="card-body p-0">
+                    <div class="overflow-x-auto">
+                      <table class="w-full">
+                        <thead class="bg-dark-border/30">
+                          <tr>
+                            <th class="px-4 py-3 text-left text-xs font-semibold text-dark-textMuted uppercase sticky left-0 bg-dark-border/30">Category</th>
+                            <th class="px-4 py-3 text-center text-xs font-semibold text-dark-textMuted uppercase">Today</th>
+                            <th class="px-4 py-3 text-center text-xs font-semibold text-dark-textMuted uppercase">Next 7 Days</th>
+                            <th class="px-4 py-3 text-center text-xs font-semibold text-dark-textMuted uppercase">Next 14 Days</th>
+                            <th class="px-4 py-3 text-center text-xs font-semibold text-dark-textMuted uppercase">Season Avg</th>
+                          </tr>
+                        </thead>
+                        <tbody class="divide-y divide-dark-border/30">
+                          <tr v-for="cat in displayCategories" :key="'proj-'+cat.stat_id" class="hover:bg-dark-border/10">
+                            <td class="px-4 py-3 font-semibold text-dark-text sticky left-0 bg-dark-card">{{ cat.display_name }}</td>
+                            <td class="px-4 py-3 text-center font-bold text-dark-text">{{ getPlayerProjection(playerAnalysisData, cat, 'today') }}</td>
+                            <td class="px-4 py-3 text-center font-bold text-dark-text">{{ getPlayerProjection(playerAnalysisData, cat, 'next7') }}</td>
+                            <td class="px-4 py-3 text-center font-bold text-dark-text">{{ getPlayerProjection(playerAnalysisData, cat, 'next14') }}</td>
+                            <td class="px-4 py-3 text-center text-dark-textMuted">{{ getPlayerSeasonAvg(playerAnalysisData, cat) }}</td>
+                          </tr>
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Schedule Strength Analysis -->
+                <div class="card">
+                  <div class="card-header py-3">
+                    <h3 class="text-lg font-bold">📅 Strength of Schedule (Next 14 Days)</h3>
+                  </div>
+                  <div class="card-body">
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      <div class="p-4 bg-dark-elevated rounded-lg text-center">
+                        <div class="text-xs text-dark-textMuted uppercase mb-2">Total Games</div>
+                        <div class="text-4xl font-black text-dark-text mb-1">{{ getPlayerUpcomingGames(playerAnalysisData, 14) }}</div>
+                        <div class="text-xs text-dark-textMuted">Next 2 weeks</div>
+                      </div>
+                      <div class="p-4 bg-dark-elevated rounded-lg text-center">
+                        <div class="text-xs text-dark-textMuted uppercase mb-2">Schedule Difficulty</div>
+                        <div class="text-4xl font-black" :class="getScheduleDifficultyClass(playerAnalysisData)">
+                          {{ getScheduleDifficulty(playerAnalysisData) }}
+                        </div>
+                        <div class="text-xs text-dark-textMuted">vs average</div>
+                      </div>
+                      <div class="p-4 bg-dark-elevated rounded-lg text-center">
+                        <div class="text-xs text-dark-textMuted uppercase mb-2">Opportunity Score</div>
+                        <div class="text-4xl font-black text-green-400">{{ getOpportunityScore(playerAnalysisData) }}</div>
+                        <div class="text-xs text-dark-textMuted">Games × Difficulty</div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
               </div>
 
-              <div class="px-6 py-4 border-t border-dark-border flex justify-end gap-3">
-                <button @click="showPlayerAnalysisModal = false" class="px-4 py-2 bg-dark-border text-dark-textMuted rounded-lg hover:bg-dark-border/50 transition-colors font-semibold">
-                  Close
-                </button>
-                <button @click="analyzeWaiverMove(playerAnalysisData); showPlayerAnalysisModal = false" class="px-4 py-2 bg-cyan-500 text-gray-900 rounded-lg hover:bg-cyan-400 transition-colors font-semibold">
-                  Add to Lineup
-                </button>
+              <!-- Footer Actions -->
+              <div class="px-6 py-4 border-t border-dark-border flex justify-between items-center">
+                <div class="text-xs text-dark-textMuted">
+                  💎 Premium Analysis Tool
+                </div>
+                <div class="flex gap-3">
+                  <button @click="showPlayerAnalysisModal = false" class="px-4 py-2 bg-dark-border text-dark-textMuted rounded-lg hover:bg-dark-border/50 transition-colors font-semibold">
+                    Close
+                  </button>
+                  <button @click="analyzeWaiverMove(playerAnalysisData); showPlayerAnalysisModal = false" class="px-4 py-2 bg-cyan-500 text-gray-900 rounded-lg hover:bg-cyan-400 transition-colors font-semibold">
+                    Add to Lineup
+                  </button>
+                </div>
               </div>
             </div>
           </div>
+          <!-- MODAL: PLAYER COMPARISON (Add vs Drop Analysis) -->
+          <div v-if="showSwapModal && swapSourcePlayer" class="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4" @click.self="showSwapModal = false">
+            <div class="bg-dark-card rounded-2xl max-w-7xl w-full max-h-[90vh] overflow-hidden border border-dark-border shadow-2xl" @click.stop>
+              
+              <!-- Header -->
+              <div class="bg-gradient-to-r from-green-500/20 via-cyan-500/20 to-blue-500/20 px-6 py-4 border-b border-dark-border">
+                <div class="flex items-center justify-between">
+                  <div>
+                    <h2 class="text-2xl font-bold text-dark-text">Player Comparison</h2>
+                    <p class="text-sm text-dark-textMuted mt-1">Analyze the strategic impact of this move</p>
+                  </div>
+                  <button @click="showSwapModal = false" class="text-dark-textMuted hover:text-dark-text transition-colors">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                </div>
+              </div>
+              
+              <div class="p-6 overflow-y-auto max-h-[calc(90vh-220px)]">
+                
+                <!-- Player Headers with Value Scores -->
+                <div class="grid grid-cols-2 gap-4 mb-6">
+                  <!-- ADD Player -->
+                  <div class="card bg-gradient-to-br from-green-500/10 to-cyan-500/10 border-green-500/30">
+                    <div class="card-body text-center">
+                      <div class="text-xs text-green-400 uppercase font-bold mb-2">➕ ADDING</div>
+                      <div class="w-20 h-20 rounded-full bg-dark-border overflow-hidden mx-auto mb-3 ring-2 ring-green-400">
+                        <img :src="swapSourcePlayer.headshot || defaultHeadshot" class="w-full h-full object-cover" @error="handleImageError" />
+                      </div>
+                      <div class="font-bold text-xl text-dark-text mb-1">{{ swapSourcePlayer.full_name }}</div>
+                      <div class="text-sm text-dark-textMuted mb-3">{{ swapSourcePlayer.position }} • {{ swapSourcePlayer.mlb_team }}</div>
+                      <div class="inline-block px-4 py-2 bg-yellow-500/20 rounded-lg border border-yellow-500/30">
+                        <div class="text-xs text-yellow-400 uppercase">Value Score</div>
+                        <div class="text-3xl font-black text-yellow-400">{{ swapSourcePlayer.overallValue?.toFixed(1) || 'N/A' }}</div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- DROP Player -->
+                  <div class="card bg-gradient-to-br from-red-500/10 to-orange-500/10 border-red-500/30">
+                    <div class="card-body text-center">
+                      <div class="text-xs text-red-400 uppercase font-bold mb-2">➖ DROPPING</div>
+                      <div class="w-20 h-20 rounded-full bg-dark-border overflow-hidden mx-auto mb-3 ring-2 ring-red-400">
+                        <img :src="selectedSwapTarget?.headshot || defaultHeadshot" class="w-full h-full object-cover" @error="handleImageError" />
+                      </div>
+                      <div class="font-bold text-xl text-dark-text mb-1">{{ selectedSwapTarget?.full_name || 'Select player below' }}</div>
+                      <div v-if="selectedSwapTarget" class="text-sm text-dark-textMuted mb-3">{{ selectedSwapTarget.position }} • {{ selectedSwapTarget.mlb_team }}</div>
+                      <div v-else class="text-sm text-dark-textMuted mb-3">Choose from your roster</div>
+                      <div v-if="selectedSwapTarget" class="inline-block px-4 py-2 bg-yellow-500/20 rounded-lg border border-yellow-500/30">
+                        <div class="text-xs text-yellow-400 uppercase">Value Score</div>
+                        <div class="text-3xl font-black text-yellow-400">{{ selectedSwapTarget.overallValue?.toFixed(1) || 'N/A' }}</div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Net Impact Summary -->
+                <div v-if="selectedSwapTarget" class="card mb-6 bg-gradient-to-r from-purple-500/10 to-blue-500/10 border-purple-500/30">
+                  <div class="card-body">
+                    <div class="grid grid-cols-3 gap-4">
+                      <div class="text-center">
+                        <div class="text-xs text-dark-textMuted uppercase mb-1">Value Change</div>
+                        <div class="text-3xl font-black" :class="getValueChangeClass(swapSourcePlayer, selectedSwapTarget)">
+                          {{ getValueChange(swapSourcePlayer, selectedSwapTarget) }}
+                        </div>
+                      </div>
+                      <div class="text-center">
+                        <div class="text-xs text-dark-textMuted uppercase mb-1">Categories Improved</div>
+                        <div class="text-3xl font-black text-green-400">{{ getCategoriesImproved(swapSourcePlayer, selectedSwapTarget) }}</div>
+                      </div>
+                      <div class="text-center">
+                        <div class="text-xs text-dark-textMuted uppercase mb-1">Recommendation</div>
+                        <div class="text-lg font-black" :class="getSwapRecommendationClass(swapSourcePlayer, selectedSwapTarget)">
+                          {{ getSwapRecommendation(swapSourcePlayer, selectedSwapTarget) }}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- View Mode Toggle -->
+                <div class="flex justify-center mb-4">
+                  <div class="inline-flex rounded-lg border border-dark-border overflow-hidden">
+                    <button 
+                      @click="swapComparisonMode = 'projections'" 
+                      :class="swapComparisonMode === 'projections' ? 'bg-green-500 text-gray-900' : 'bg-dark-card text-dark-textMuted'"
+                      class="px-4 py-2 text-sm font-semibold transition-colors"
+                    >
+                      📈 Upcoming Projections
+                    </button>
+                    <button 
+                      @click="swapComparisonMode = 'recent'" 
+                      :class="swapComparisonMode === 'recent' ? 'bg-blue-500 text-gray-900' : 'bg-dark-card text-dark-textMuted'"
+                      class="px-4 py-2 text-sm font-semibold transition-colors"
+                    >
+                      📊 Recent Stats (L14)
+                    </button>
+                  </div>
+                </div>
+
+                <!-- Category-by-Category Comparison Charts -->
+                <div v-if="selectedSwapTarget" class="card">
+                  <div class="card-header py-3">
+                    <h3 class="text-lg font-bold">
+                      {{ swapComparisonMode === 'projections' ? '📈 Projected Performance (Next 14 Days)' : '📊 Recent Performance (Last 14 Days)' }}
+                    </h3>
+                  </div>
+                  <div class="card-body space-y-3">
+                    <div v-for="cat in displayCategories" :key="'compare-'+cat.stat_id">
+                      <div class="flex items-center justify-between mb-2">
+                        <span class="font-semibold text-dark-text">{{ cat.display_name }}</span>
+                        <div class="flex items-center gap-2">
+                          <span class="text-xs text-dark-textMuted">Difference:</span>
+                          <span class="font-bold text-sm" :class="getCategoryDifferenceColor(swapSourcePlayer, selectedSwapTarget, cat)">
+                            {{ getCategoryComparisonDiff(swapSourcePlayer, selectedSwapTarget, cat) }}
+                          </span>
+                        </div>
+                      </div>
+                      
+                      <!-- Horizontal Bar Comparison -->
+                      <div class="relative h-8 bg-dark-elevated rounded-lg overflow-hidden">
+                        <div class="absolute inset-y-0 left-0 right-1/2 flex items-center justify-end pr-2">
+                          <div 
+                            class="h-full bg-red-500/50 rounded-l flex items-center justify-end pr-2"
+                            :style="{ width: getCategoryBarWidth(selectedSwapTarget, cat, swapComparisonMode) }"
+                          >
+                            <span class="text-xs font-bold text-dark-text">{{ getCategoryValue(selectedSwapTarget, cat, swapComparisonMode) }}</span>
+                          </div>
+                        </div>
+                        <div class="absolute inset-y-0 left-1/2 right-0 flex items-center justify-start pl-2">
+                          <div 
+                            class="h-full bg-green-500/50 rounded-r flex items-center justify-start pl-2"
+                            :style="{ width: getCategoryBarWidth(swapSourcePlayer, cat, swapComparisonMode) }"
+                          >
+                            <span class="text-xs font-bold text-dark-text">{{ getCategoryValue(swapSourcePlayer, cat, swapComparisonMode) }}</span>
+                          </div>
+                        </div>
+                        <div class="absolute inset-0 flex items-center justify-center pointer-events-none">
+                          <div class="w-px h-full bg-dark-border"></div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Select Drop Candidate -->
+                <div v-if="!selectedSwapTarget" class="card">
+                  <div class="card-header py-3">
+                    <h3 class="text-lg font-bold">Select Player to Drop</h3>
+                  </div>
+                  <div class="card-body">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                      <div 
+                        v-for="player in droppablePlayers.slice(0, 8)" 
+                        :key="player.player_key"
+                        @click="selectedSwapTarget = player"
+                        class="p-3 bg-dark-elevated rounded-lg hover:bg-dark-border/30 cursor-pointer transition-colors border-2 border-transparent hover:border-red-500/50 flex items-center gap-3"
+                      >
+                        <div class="w-12 h-12 rounded-full bg-dark-border overflow-hidden">
+                          <img :src="player.headshot || defaultHeadshot" class="w-full h-full object-cover" @error="handleImageError" />
+                        </div>
+                        <div class="flex-1">
+                          <div class="font-semibold text-dark-text">{{ player.full_name }}</div>
+                          <div class="text-xs text-dark-textMuted">{{ player.position }} • Value: {{ player.overallValue?.toFixed(1) || 'N/A' }}</div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+              </div>
+
+              <!-- Footer -->
+              <div class="px-6 py-4 border-t border-dark-border flex justify-between items-center">
+                <div class="text-xs text-dark-textMuted">
+                  💎 Premium Strategic Analysis
+                </div>
+                <div class="flex gap-3">
+                  <button @click="showSwapModal = false; selectedSwapTarget = null" class="px-4 py-2 bg-dark-border text-dark-textMuted rounded-lg hover:bg-dark-border/50 transition-colors font-semibold">
+                    Cancel
+                  </button>
+                  <button 
+                    v-if="selectedSwapTarget"
+                    @click="confirmSwap"
+                    class="px-6 py-2 bg-green-500 text-gray-900 rounded-lg hover:bg-green-400 transition-colors font-semibold"
+                  >
+                    Confirm Move
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+
 
           <!-- MODAL 3: MATCHUP ANALYSIS -->
           <div v-if="showMatchupAnalysisModal" class="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4" @click.self="showMatchupAnalysisModal = false">
@@ -3653,6 +3893,8 @@ const getCategoryBadgeClass = computed(() => isPitchingCategory.value ? 'bg-purp
 
 async function loadProjections() {
   isLoading.value = true
+  // Fix Yahoo roster positions if needed  
+await fixYahooRosterPositions(leagueKey)
   loadingMessage.value = 'Loading league settings...'
   loadingProgress.value = { currentStep: 'Loading league settings...', week: 1, maxWeek: 4 }
   try {
@@ -7111,4 +7353,299 @@ watch(() => leagueStore.activeLeagueId, (newId, oldId) => {
     }
   }
 })
+// New state variable for comparison mode
+const swapComparisonMode = ref<'projections' | 'recent'>('projections')
+
+// ====================================================================================
+// PLAYER ANALYSIS MODAL FUNCTIONS
+// ====================================================================================
+
+// Get player's rank within their position
+function getPlayerPositionRank(player: any): number {
+  if (!player || !allPlayers.value) return 0
+  
+  const samePosition = allPlayers.value.filter(p => {
+    const pPos = p.position?.split(',')[0] || ''
+    const playerPos = player.position?.split(',')[0] || ''
+    return pPos === playerPos
+  })
+  
+  const sorted = samePosition.sort((a, b) => (b.overallValue || 0) - (a.overallValue || 0))
+  const rank = sorted.findIndex(p => p.player_key === player.player_key)
+  return rank >= 0 ? rank + 1 : 0
+}
+
+// Get count of categories player significantly contributes to
+function getPlayerCategoryCount(player: any): number {
+  if (!player || !displayCategories.value) return 0
+  
+  let count = 0
+  for (const cat of displayCategories.value) {
+    const value = parseFloat(player.stats?.[cat.stat_id] || 0)
+    const gamesPlayed = isPitcher(player) ? 30 : 140
+    const perGame = value / gamesPlayed
+    
+    // Count if above threshold
+    if (perGame > 0.1) count++
+  }
+  return count
+}
+
+// Get player's schedule grade (A, B, C, D, F)
+function getPlayerScheduleGrade(player: any): string {
+  const games = getPlayerUpcomingGames(player, 14)
+  if (games >= 7) return 'A'
+  if (games >= 6) return 'B'
+  if (games >= 5) return 'C'
+  if (games >= 4) return 'D'
+  return 'F'
+}
+
+function getScheduleGradeClass(player: any): string {
+  const grade = getPlayerScheduleGrade(player)
+  if (grade === 'A') return 'text-green-400'
+  if (grade === 'B') return 'text-blue-400'
+  if (grade === 'C') return 'text-yellow-400'
+  if (grade === 'D') return 'text-orange-400'
+  return 'text-red-400'
+}
+
+// Get projected stat for specific time period
+function getPlayerProjection(player: any, category: any, period: 'today' | 'next7' | 'next14'): string {
+  if (!player || !category) return '0'
+  
+  const statValue = parseFloat(player.stats?.[category.stat_id] || 0)
+  const gamesPlayed = isPitcher(player) ? 30 : 140
+  const perGame = gamesPlayed > 0 ? statValue / gamesPlayed : 0
+  
+  let games = 0
+  if (period === 'today') games = player.hasGame ? 1 : 0
+  else if (period === 'next7') games = getPlayerUpcomingGames(player, 7)
+  else if (period === 'next14') games = getPlayerUpcomingGames(player, 14)
+  
+  const projected = perGame * games
+  
+  // Format based on stat type
+  if (category.stat_id.includes('%') || category.stat_id.includes('PCT')) {
+    return projected.toFixed(3)
+  } else if (projected < 1) {
+    return projected.toFixed(2)
+  } else {
+    return projected.toFixed(1)
+  }
+}
+
+// Get season average per game
+function getPlayerSeasonAvg(player: any, category: any): string {
+  if (!player || !category) return '0'
+  
+  const statValue = parseFloat(player.stats?.[category.stat_id] || 0)
+  const gamesPlayed = isPitcher(player) ? 30 : 140
+  const perGame = gamesPlayed > 0 ? statValue / gamesPlayed : 0
+  
+  if (category.stat_id.includes('%') || category.stat_id.includes('PCT')) {
+    return (statValue * 100).toFixed(1) + '%'
+  } else if (perGame < 1) {
+    return perGame.toFixed(2)
+  } else {
+    return perGame.toFixed(1)
+  }
+}
+
+// Calculate upcoming games (placeholder - would need real schedule data)
+function getPlayerUpcomingGames(player: any, days: number): number {
+  if (!player || !player.mlb_team) return 0
+  
+  // Estimate: basketball ~3.5 games per week, baseball ~6 per week, hockey ~3.5 per week
+  const sport = currentSport.value
+  let gamesPerWeek = 4
+  if (sport === 'baseball') gamesPerWeek = 6
+  else if (sport === 'hockey') gamesPerWeek = 3.5
+  else if (sport === 'basketball') gamesPerWeek = 3.5
+  
+  const weeks = days / 7
+  return Math.round(gamesPerWeek * weeks)
+}
+
+// Get schedule difficulty rating
+function getScheduleDifficulty(player: any): string {
+  // This would ideally use real opponent strength data
+  // For now, randomize between Easy/Average/Hard
+  const games = getPlayerUpcomingGames(player, 14)
+  if (games >= 7) return 'Easy'
+  if (games >= 5) return 'Average'
+  return 'Hard'
+}
+
+function getScheduleDifficultyClass(player: any): string {
+  const diff = getScheduleDifficulty(player)
+  if (diff === 'Easy') return 'text-green-400'
+  if (diff === 'Average') return 'text-yellow-400'
+  return 'text-red-400'
+}
+
+// Calculate opportunity score
+function getOpportunityScore(player: any): number {
+  const games = getPlayerUpcomingGames(player, 14)
+  const difficulty = getScheduleDifficulty(player)
+  
+  let multiplier = 1
+  if (difficulty === 'Easy') multiplier = 1.2
+  else if (difficulty === 'Hard') multiplier = 0.8
+  
+  return Math.round(games * multiplier * 10) / 10
+}
+
+// ====================================================================================
+// PLAYER COMPARISON MODAL FUNCTIONS
+// ====================================================================================
+
+// Calculate value change from swap
+function getValueChange(addPlayer: any, dropPlayer: any): string {
+  const addValue = addPlayer?.overallValue || 0
+  const dropValue = dropPlayer?.overallValue || 0
+  const diff = addValue - dropValue
+  
+  if (diff > 0) return `+${diff.toFixed(1)}`
+  return diff.toFixed(1)
+}
+
+function getValueChangeClass(addPlayer: any, dropPlayer: any): string {
+  const addValue = addPlayer?.overallValue || 0
+  const dropValue = dropPlayer?.overallValue || 0
+  
+  if (addValue > dropValue) return 'text-green-400'
+  if (addValue < dropValue) return 'text-red-400'
+  return 'text-yellow-400'
+}
+
+// Count categories improved
+function getCategoriesImproved(addPlayer: any, dropPlayer: any): number {
+  if (!addPlayer || !dropPlayer) return 0
+  
+  let improved = 0
+  for (const cat of displayCategories.value) {
+    const addValue = parseFloat(addPlayer.stats?.[cat.stat_id] || 0)
+    const dropValue = parseFloat(dropPlayer.stats?.[cat.stat_id] || 0)
+    
+    if (addValue > dropValue) improved++
+  }
+  return improved
+}
+
+// Get swap recommendation
+function getSwapRecommendation(addPlayer: any, dropPlayer: any): string {
+  const valueDiff = (addPlayer?.overallValue || 0) - (dropPlayer?.overallValue || 0)
+  const catsImproved = getCategoriesImproved(addPlayer, dropPlayer)
+  
+  if (valueDiff >= 10 && catsImproved >= 5) return '🔥 MUST DO'
+  if (valueDiff >= 5 && catsImproved >= 3) return '✅ DO IT'
+  if (valueDiff > 0 && catsImproved > 0) return '👍 GOOD'
+  if (valueDiff > -5) return '🤷 MEH'
+  return '❌ BAD'
+}
+
+function getSwapRecommendationClass(addPlayer: any, dropPlayer: any): string {
+  const rec = getSwapRecommendation(addPlayer, dropPlayer)
+  if (rec.includes('MUST') || rec.includes('DO IT')) return 'text-green-400'
+  if (rec.includes('GOOD')) return 'text-blue-400'
+  if (rec.includes('MEH')) return 'text-yellow-400'
+  return 'text-red-400'
+}
+
+// Get category value for comparison
+function getCategoryValue(player: any, category: any, mode: 'projections' | 'recent'): string {
+  if (!player || !category) return '0'
+  
+  if (mode === 'recent') {
+    // Recent stats (last 14 days estimate)
+    const seasonValue = parseFloat(player.stats?.[category.stat_id] || 0)
+    const gamesPlayed = isPitcher(player) ? 30 : 140
+    const perGame = gamesPlayed > 0 ? seasonValue / gamesPlayed : 0
+    const recent = perGame * 10 // Assume ~10 games in last 14 days
+    
+    return recent.toFixed(1)
+  } else {
+    // Projections (next 14 days)
+    return getPlayerProjection(player, category, 'next14')
+  }
+}
+
+// Get bar width for visualization (0-100%)
+function getCategoryBarWidth(player: any, category: any, mode: 'projections' | 'recent'): string {
+  const value = parseFloat(getCategoryValue(player, category, mode))
+  
+  // Find max value between both players for scaling
+  const addValue = swapSourcePlayer.value ? parseFloat(getCategoryValue(swapSourcePlayer.value, category, mode)) : 0
+  const dropValue = selectedSwapTarget.value ? parseFloat(getCategoryValue(selectedSwapTarget.value, category, mode)) : 0
+  const maxValue = Math.max(addValue, dropValue, 0.1)
+  
+  const percentage = (value / maxValue) * 100
+  return `${Math.min(percentage, 100)}%`
+}
+
+// Get comparison difference
+function getCategoryComparisonDiff(addPlayer: any, dropPlayer: any, category: any): string {
+  const mode = swapComparisonMode.value
+  const addValue = parseFloat(getCategoryValue(addPlayer, category, mode))
+  const dropValue = parseFloat(getCategoryValue(dropPlayer, category, mode))
+  const diff = addValue - dropValue
+  
+  if (diff > 0) return `+${diff.toFixed(1)}`
+  return diff.toFixed(1)
+}
+
+function getCategoryDifferenceColor(addPlayer: any, dropPlayer: any, category: any): string {
+  const mode = swapComparisonMode.value
+  const addValue = parseFloat(getCategoryValue(addPlayer, category, mode))
+  const dropValue = parseFloat(getCategoryValue(dropPlayer, category, mode))
+  
+  if (addValue > dropValue) return 'text-green-400'
+  if (addValue < dropValue) return 'text-red-400'
+  return 'text-yellow-400'
+}
+
+// Confirm the swap
+function confirmSwap() {
+  if (!swapSourcePlayer.value || !selectedSwapTarget.value) return
+  
+  alert(`Move confirmed: Add ${swapSourcePlayer.value.full_name}, Drop ${selectedSwapTarget.value.full_name}`)
+  
+  // Close modal and reset
+  showSwapModal.value = false
+  selectedSwapTarget.value = null
+  swapSourcePlayer.value = null
+}
+
+// ====================================================================================
+// YAHOO ROSTER POSITIONS FIX
+// ====================================================================================
+
+// Add this at the end of loadYahooLeague function to manually construct roster positions if needed
+async function fixYahooRosterPositions(leagueKey: string) {
+  console.log('[fixYahooRosterPositions] Attempting to fix Yahoo roster positions...')
+  
+  // If we don't have roster positions, construct them from the first team's roster
+  if (!leagueRosterPositions.value || leagueRosterPositions.value.length === 0) {
+    try {
+      const myTeam = teamsData.value.find(t => t.is_my_team || t.is_owned_by_current_login)
+      if (myTeam && myTeam.roster) {
+        console.log('[fixYahooRosterPositions] Building from roster:', myTeam.roster)
+        
+        // Extract positions from actual roster
+        const positions: string[] = []
+        for (const player of myTeam.roster.players || []) {
+          if (player.selected_position && player.selected_position !== 'BN' && player.selected_position !== 'IL') {
+            positions.push(player.selected_position)
+          }
+        }
+        
+        leagueRosterPositions.value = positions
+        console.log('[fixYahooRosterPositions] ✅ Fixed positions:', leagueRosterPositions.value)
+      }
+    } catch (error) {
+      console.error('[fixYahooRosterPositions] Error:', error)
+    }
+  }
+}
 </script>
