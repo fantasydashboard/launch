@@ -858,7 +858,7 @@
                           </div>
                         </td>
                         <td class="px-3 py-3 text-center">
-                          <span class="text-xs font-medium :class="getMatchupDifficultyClass(player)">{{ player.opponent }}</span>
+                          <span class="text-xs font-medium" :class="getMatchupDifficultyClass(player)">{{ player.opponent }}</span>
                         </td>
                         <td 
                           v-for="cat in relevantStartSitCategories" 
