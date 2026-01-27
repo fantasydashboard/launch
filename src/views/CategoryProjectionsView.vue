@@ -4847,28 +4847,37 @@ const modifiedSuggestedLineup = computed(() => {
 
 // Group lineup by position type for better organization
 const groupedLineup = computed(() => {
-  const groups: { position: string; slots: any[]; total: number; filled: number }[] = []
-  const positionMap = new Map<string, any[]>()
+  // Safety check
+  if (!modifiedSuggestedLineup.value || modifiedSuggestedLineup.value.length === 0) return []
   
-  // Group slots by position
-  for (const slot of modifiedSuggestedLineup.value) {
-    if (!positionMap.has(slot.position)) {
-      positionMap.set(slot.position, [])
+  try {
+    const groups: { position: string; slots: any[]; total: number; filled: number }[] = []
+    const positionMap = new Map<string, any[]>()
+    
+    // Group slots by position
+    for (const slot of modifiedSuggestedLineup.value) {
+      if (!slot || !slot.position) continue
+      if (!positionMap.has(slot.position)) {
+        positionMap.set(slot.position, [])
+      }
+      positionMap.get(slot.position)!.push(slot)
     }
-    positionMap.get(slot.position)!.push(slot)
+    
+    // Convert to array with stats
+    for (const [position, slots] of positionMap.entries()) {
+      groups.push({
+        position,
+        slots,
+        total: slots.length,
+        filled: slots.filter(s => s && s.player).length
+      })
+    }
+    
+    return groups
+  } catch (error) {
+    console.error('[groupedLineup] Error:', error)
+    return []
   }
-  
-  // Convert to array with stats
-  for (const [position, slots] of positionMap.entries()) {
-    groups.push({
-      position,
-      slots,
-      total: slots.length,
-      filled: slots.filter(s => s.player).length
-    })
-  }
-  
-  return groups
 })
 
 function openSwapModal(player: any) {
@@ -6113,133 +6122,155 @@ const benchPlayers = computed(() => {
 
 // Available free agents with games today/tomorrow (for "Available" view)
 const availableFreeAgents = computed(() => {
-  const activeGames = startSitDay.value === 'today' ? todaysGames.value : tomorrowsGames.value
+  // Safety check - only run if on startsit tab and data is loaded
+  if (!allPlayers.value || allPlayers.value.length === 0) return []
+  if (!liveGamesService) return []
   
-  return allPlayers.value
-    .filter(p => {
-      // Must be free agent
-      if (p.fantasy_team_key) return false
-      
-      // Must have a game
-      const gameInfo = liveGamesService.getPlayerGameInfo(p.mlb_team, activeGames)
-      if (!gameInfo.hasGame) return false
-      
-      // Position filter
-      if (selectedStartSitPosition.value !== 'All') {
-        const playerPos = p.position || ''
-        if (!playerPos.includes(selectedStartSitPosition.value)) return false
-      }
-      
-      return true
-    })
-    .map(p => {
-      const gameInfo = liveGamesService.getPlayerGameInfo(p.mlb_team, activeGames)
-      const impactCats = getImpactCategoryCount(p)
-      
-      return {
-        ...p,
-        hasGame: gameInfo.hasGame,
-        opponent: gameInfo.opponent,
-        isHome: gameInfo.isHome,
-        impactCats,
-        impactScore: calculatePlayerImpact(p)
-      }
-    })
-    .sort((a, b) => b.impactScore - a.impactScore)
-    .slice(0, 50) // Top 50 free agents
+  const activeGames = startSitDay.value === 'today' ? todaysGames.value : tomorrowsGames.value
+  if (!activeGames) return []
+  
+  try {
+    return allPlayers.value
+      .filter(p => {
+        // Must be free agent
+        if (p.fantasy_team_key) return false
+        
+        // Must have a game
+        const gameInfo = liveGamesService.getPlayerGameInfo(p.mlb_team, activeGames)
+        if (!gameInfo || !gameInfo.hasGame) return false
+        
+        // Position filter
+        if (selectedStartSitPosition.value !== 'All') {
+          const playerPos = p.position || ''
+          if (!playerPos.includes(selectedStartSitPosition.value)) return false
+        }
+        
+        return true
+      })
+      .map(p => {
+        const gameInfo = liveGamesService.getPlayerGameInfo(p.mlb_team, activeGames)
+        const impactCats = getImpactCategoryCount(p)
+        
+        return {
+          ...p,
+          hasGame: gameInfo.hasGame,
+          opponent: gameInfo.opponent,
+          isHome: gameInfo.isHome,
+          impactCats,
+          impactScore: calculatePlayerImpact(p)
+        }
+      })
+      .sort((a, b) => b.impactScore - a.impactScore)
+      .slice(0, 50) // Top 50 free agents
+  } catch (error) {
+    console.error('[availableFreeAgents] Error:', error)
+    return []
+  }
 })
 
 // Smart waiver recommendations (for "Smart Moves" view)
 const smartWaiverRecommendations = computed(() => {
-  const recommendations: any[] = []
-  const myPlayers = allPlayers.value.filter(p => p.fantasy_team_key === myTeamKey.value)
+  // Safety check - only run if data is loaded
+  if (!allPlayers.value || allPlayers.value.length === 0) return []
+  if (!myTeamKey.value) return []
+  if (!liveGamesService) return []
+  
   const activeGames = startSitDay.value === 'today' ? todaysGames.value : tomorrowsGames.value
+  if (!activeGames) return []
   
-  // Get FAs with games today
-  const freeAgentsWithGames = allPlayers.value
-    .filter(p => !p.fantasy_team_key)
-    .map(p => {
-      const gameInfo = liveGamesService.getPlayerGameInfo(p.mlb_team, activeGames)
-      return {
-        ...p,
-        hasGame: gameInfo.hasGame,
-        opponent: gameInfo.opponent,
-        impactCats: getImpactCategoryCount(p),
-        impactScore: calculatePlayerImpact(p),
-        rosValue: p.overallValue || 0
-      }
-    })
-    .filter(p => p.hasGame)
-    .sort((a, b) => b.impactScore - a.impactScore)
-    .slice(0, 20) // Top 20 FAs
-  
-  // Get my droppable players
-  const droppablePlayers = myPlayers
-    .map(p => {
-      const gameInfo = liveGamesService.getPlayerGameInfo(p.mlb_team, activeGames)
-      return {
-        ...p,
-        hasGame: gameInfo.hasGame,
-        opponent: gameInfo.opponent,
-        impactCats: getImpactCategoryCount(p),
-        impactScore: calculatePlayerImpact(p),
-        rosValue: p.overallValue || 0
-      }
-    })
-    .sort((a, b) => (a.rosValue || 0) - (b.rosValue || 0)) // Lowest ROS value first
-  
-  // Find best add/drop combinations
-  for (const addPlayer of freeAgentsWithGames.slice(0, 10)) {
-    for (const dropPlayer of droppablePlayers.slice(0, 5)) {
-      // Don't recommend dropping someone with a game for someone with similar impact
-      if (dropPlayer.hasGame && addPlayer.impactScore <= dropPlayer.impactScore * 1.2) continue
-      
-      const todayImpact = addPlayer.impactCats - (dropPlayer.hasGame ? dropPlayer.impactCats : 0)
-      const rosImpact = (addPlayer.rosValue || 0) - (dropPlayer.rosValue || 0)
-      
-      // Only recommend if there's a clear benefit
-      if (todayImpact <= 0 && rosImpact <= 5) continue
-      
-      // Build reasoning
-      let reasoning = ''
-      if (todayImpact > 0 && rosImpact > 0) {
-        reasoning = `Adds ${todayImpact} categories today and improves ROS value by ${rosImpact.toFixed(0)}. `
-      } else if (todayImpact > 0) {
-        reasoning = `Strong boost for today's matchup (+${todayImpact} cats). `
-      } else {
-        reasoning = `Improves long-term value (+${rosImpact.toFixed(0)}). `
-      }
-      
-      if (!dropPlayer.hasGame) {
-        reasoning += `${dropPlayer.full_name} has no game today, making this a low-risk swap.`
-      }
-      
-      // Calculate confidence score
-      let confidence = 50
-      if (todayImpact >= 3) confidence += 20
-      if (rosImpact >= 10) confidence += 15
-      if (!dropPlayer.hasGame) confidence += 15
-      confidence = Math.min(95, confidence)
-      
-      recommendations.push({
-        addPlayer,
-        dropPlayer,
-        todayImpact,
-        rosImpact,
-        reasoning,
-        confidence
+  try {
+    const recommendations: any[] = []
+    const myPlayers = allPlayers.value.filter(p => p.fantasy_team_key === myTeamKey.value)
+    
+    // Get FAs with games today
+    const freeAgentsWithGames = allPlayers.value
+      .filter(p => !p.fantasy_team_key)
+      .map(p => {
+        const gameInfo = liveGamesService.getPlayerGameInfo(p.mlb_team, activeGames)
+        return {
+          ...p,
+          hasGame: gameInfo?.hasGame || false,
+          opponent: gameInfo?.opponent || '',
+          impactCats: getImpactCategoryCount(p),
+          impactScore: calculatePlayerImpact(p),
+          rosValue: p.overallValue || 0
+        }
       })
+      .filter(p => p.hasGame)
+      .sort((a, b) => b.impactScore - a.impactScore)
+      .slice(0, 20) // Top 20 FAs
+    
+    // Get my droppable players
+    const droppablePlayers = myPlayers
+      .map(p => {
+        const gameInfo = liveGamesService.getPlayerGameInfo(p.mlb_team, activeGames)
+        return {
+          ...p,
+          hasGame: gameInfo?.hasGame || false,
+          opponent: gameInfo?.opponent || '',
+          impactCats: getImpactCategoryCount(p),
+          impactScore: calculatePlayerImpact(p),
+          rosValue: p.overallValue || 0
+        }
+      })
+      .sort((a, b) => (a.rosValue || 0) - (b.rosValue || 0)) // Lowest ROS value first
+    
+    // Find best add/drop combinations
+    for (const addPlayer of freeAgentsWithGames.slice(0, 10)) {
+      for (const dropPlayer of droppablePlayers.slice(0, 5)) {
+        // Don't recommend dropping someone with a game for someone with similar impact
+        if (dropPlayer.hasGame && addPlayer.impactScore <= dropPlayer.impactScore * 1.2) continue
+        
+        const todayImpact = addPlayer.impactCats - (dropPlayer.hasGame ? dropPlayer.impactCats : 0)
+        const rosImpact = (addPlayer.rosValue || 0) - (dropPlayer.rosValue || 0)
+        
+        // Only recommend if there's a clear benefit
+        if (todayImpact <= 0 && rosImpact <= 5) continue
+        
+        // Build reasoning
+        let reasoning = ''
+        if (todayImpact > 0 && rosImpact > 0) {
+          reasoning = `Adds ${todayImpact} categories today and improves ROS value by ${rosImpact.toFixed(0)}. `
+        } else if (todayImpact > 0) {
+          reasoning = `Strong boost for today's matchup (+${todayImpact} cats). `
+        } else {
+          reasoning = `Improves long-term value (+${rosImpact.toFixed(0)}). `
+        }
+        
+        if (!dropPlayer.hasGame) {
+          reasoning += `${dropPlayer.full_name} has no game today, making this a low-risk swap.`
+        }
+        
+        // Calculate confidence score
+        let confidence = 50
+        if (todayImpact >= 3) confidence += 20
+        if (rosImpact >= 10) confidence += 15
+        if (!dropPlayer.hasGame) confidence += 15
+        confidence = Math.min(95, confidence)
+        
+        recommendations.push({
+          addPlayer,
+          dropPlayer,
+          todayImpact,
+          rosImpact,
+          reasoning,
+          confidence
+        })
+      }
     }
+    
+    // Sort by combined impact (prioritize today's impact)
+    return recommendations
+      .sort((a, b) => {
+        const scoreA = a.todayImpact * 3 + a.rosImpact
+        const scoreB = b.todayImpact * 3 + b.rosImpact
+        return scoreB - scoreA
+      })
+      .slice(0, 5) // Top 5 recommendations
+  } catch (error) {
+    console.error('[smartWaiverRecommendations] Error:', error)
+    return []
   }
-  
-  // Sort by combined impact (prioritize today's impact)
-  return recommendations
-    .sort((a, b) => {
-      const scoreA = a.todayImpact * 3 + a.rosImpact
-      const scoreB = b.todayImpact * 3 + b.rosImpact
-      return scoreB - scoreA
-    })
-    .slice(0, 5) // Top 5 recommendations
 })
 
 // Projected category totals with lineup
