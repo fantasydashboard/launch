@@ -6794,11 +6794,8 @@ const availableFreeAgents = computed(() => {
         // Must be free agent
         if (p.fantasy_team_key) return false
         
-        // Must have a game - use sport-agnostic team property
-        const teamCode = p.mlb_team || p.nba_team || p.nhl_team || p.editorial_team_abbr || p.team_abbr
-        if (!teamCode) return false
-        
-        const gameInfo = liveGamesService.getPlayerGameInfo(teamCode, activeGames)
+        // Must have a game
+        const gameInfo = liveGamesService.getPlayerGameInfo(p.mlb_team, activeGames)
         if (!gameInfo || !gameInfo.hasGame) return false
         
         // Position filter
@@ -6810,8 +6807,7 @@ const availableFreeAgents = computed(() => {
         return true
       })
       .map(p => {
-        const teamCode = p.mlb_team || p.nba_team || p.nhl_team || p.editorial_team_abbr || p.team_abbr
-        const gameInfo = liveGamesService.getPlayerGameInfo(teamCode, activeGames)
+        const gameInfo = liveGamesService.getPlayerGameInfo(p.mlb_team, activeGames)
         const impactCats = getImpactCategoryCount(p)
         
         return {
@@ -6845,23 +6841,22 @@ const smartWaiverRecommendations = computed(() => {
     const recommendations: any[] = []
     const myPlayers = allPlayers.value.filter(p => p.fantasy_team_key === myTeamKey.value)
     
-    // Get FAs with games today - RELAXED FILTERS
+    // Get FAs with games today - WITH INJURY FILTERING AND QUALITY CHECKS
     const freeAgentsWithGames = allPlayers.value
       .filter(p => {
         if (p.fantasy_team_key) return false // Must be FA
         
-        // Filter out severely injured players only (relaxed - allow DTD, Q)
-        const injuryStatus = (p.injury_status || p.status || '').toUpperCase()
-        if (injuryStatus === 'O' || injuryStatus === 'IL') return false
+        // Filter out injured players
+        const injuryStatus = p.injury_status || p.status || ''
+        if (injuryStatus === 'O' || injuryStatus === 'IL' || injuryStatus === 'INJ') return false
         
-        // RELAXED: Minimum value 15 (was 20)
-        if ((p.overallValue || 0) < 15) return false
+        // Must have minimum value (prevents recommending scrubs)
+        if ((p.overallValue || 0) < 20) return false
         
         return true
       })
       .map(p => {
-        const teamCode = p.mlb_team || p.nba_team || p.nhl_team || p.editorial_team_abbr || p.team_abbr
-        const gameInfo = liveGamesService.getPlayerGameInfo(teamCode, activeGames)
+        const gameInfo = liveGamesService.getPlayerGameInfo(p.mlb_team, activeGames)
         return {
           ...p,
           hasGame: gameInfo?.hasGame || false,
@@ -6871,15 +6866,14 @@ const smartWaiverRecommendations = computed(() => {
           rosValue: p.overallValue || 0
         }
       })
-      .filter(p => p.hasGame && p.rosValue >= 18) // RELAXED: was 25
-      .sort((a, b) => b.rosValue - a.rosValue)
-      .slice(0, 20)
+      .filter(p => p.hasGame && p.rosValue >= 25) // Only quality players with games
+      .sort((a, b) => b.rosValue - a.rosValue) // Sort by ROS value first
+      .slice(0, 20) // Top 20 FAs
     
-    // Get droppable players - MORE PERMISSIVE
+    // Get droppable players - ONLY bottom tier
     const droppablePlayers = myPlayers
       .map(p => {
-        const teamCode = p.mlb_team || p.nba_team || p.nhl_team || p.editorial_team_abbr || p.team_abbr
-        const gameInfo = liveGamesService.getPlayerGameInfo(teamCode, activeGames)
+        const gameInfo = liveGamesService.getPlayerGameInfo(p.mlb_team, activeGames)
         return {
           ...p,
           hasGame: gameInfo?.hasGame || false,
@@ -6889,23 +6883,26 @@ const smartWaiverRecommendations = computed(() => {
           rosValue: p.overallValue || 0
         }
       })
-      .filter(p => (p.rosValue || 0) < 70) // RELAXED: was 60
-      .sort((a, b) => (a.rosValue || 0) - (b.rosValue || 0))
+      .filter(p => (p.rosValue || 0) < 60) // Only consider dropping players with value < 60
+      .sort((a, b) => (a.rosValue || 0) - (b.rosValue || 0)) // Lowest value first
     
     // Find best add/drop combinations
     for (const addPlayer of freeAgentsWithGames.slice(0, 10)) {
-      for (const dropPlayer of droppablePlayers.slice(0, 10)) {
+      for (const dropPlayer of droppablePlayers.slice(0, 8)) {
         
-        // CRITICAL SAFEGUARDS (but more lenient)
-        // Never drop elite players (value > 65)
-        if ((dropPlayer.rosValue || 0) > 65) continue
+        // CRITICAL SAFEGUARDS
+        // Never drop a player with significantly higher ROS value
+        if ((dropPlayer.rosValue || 0) > (addPlayer.rosValue || 0) + 5) continue
         
-        // Only recommend if some benefit
+        // Never drop elite players (value > 60)
+        if ((dropPlayer.rosValue || 0) > 60) continue
+        
+        // Only recommend if clear upgrade
         const rosImpact = (addPlayer.rosValue || 0) - (dropPlayer.rosValue || 0)
         const todayImpact = addPlayer.impactCats - (dropPlayer.hasGame ? dropPlayer.impactCats : 0)
         
-        // RELAXED: Show if +1 ROS value OR +1 today impact (was +3/+2)
-        if (rosImpact < 1 && todayImpact < 1) continue
+        // Must be at least +3 ROS value OR +2 today impact
+        if (rosImpact < 3 && todayImpact < 2) continue
         
         // Build reasoning
         let reasoning = ''
@@ -6913,47 +6910,31 @@ const smartWaiverRecommendations = computed(() => {
           reasoning = `Significant upgrade: +${rosImpact.toFixed(0)} value and helps ${todayImpact} categories today. `
         } else if (rosImpact >= 10) {
           reasoning = `Strong ROS upgrade (+${rosImpact.toFixed(0)} value). `
-        } else if (rosImpact >= 5) {
-          reasoning = `Moderate upgrade (+${rosImpact.toFixed(0)} value). `
         } else if (todayImpact >= 3) {
           reasoning = `Helps ${todayImpact} critical categories today. `
-        } else if (rosImpact > 0) {
-          reasoning = `Small upgrade (+${rosImpact.toFixed(0)} value). `
         } else {
-          reasoning = `Today's matchup benefit (+${todayImpact} cats) but slight ROS downgrade (${rosImpact.toFixed(0)}). `
+          reasoning = `Moderate upgrade (+${rosImpact.toFixed(0)} value). `
         }
         
         if (!dropPlayer.hasGame) {
-          reasoning += `${dropPlayer.full_name} has no game today. `
+          reasoning += `${dropPlayer.full_name} has no game today.`
         }
         
-        // Add warning if dropping valuable player
-        if ((dropPlayer.rosValue || 0) > 55) {
-          reasoning += `⚠️ Warning: Dropping a quality player (value ${dropPlayer.rosValue?.toFixed(0)}). `
-        }
-        
-        // Calculate confidence - weighted 60% ROS, 40% today
+        // Calculate confidence - weighted heavily toward ROS value
         let confidence = 50
-        if (rosImpact >= 15) confidence += 25
+        if (rosImpact >= 15) confidence += 30
         else if (rosImpact >= 10) confidence += 20
-        else if (rosImpact >= 5) confidence += 15
-        else if (rosImpact >= 3) confidence += 10
-        else if (rosImpact > 0) confidence += 5
+        else if (rosImpact >= 5) confidence += 10
         
-        if (todayImpact >= 3) confidence += 15
-        else if (todayImpact >= 2) confidence += 10
-        else if (todayImpact >= 1) confidence += 5
+        if (todayImpact >= 3) confidence += 10
+        else if (todayImpact >= 2) confidence += 5
         
         if (!dropPlayer.hasGame) confidence += 10
         
-        // PENALTY for risky moves
-        if ((dropPlayer.rosValue || 0) > 60) confidence -= 15
-        else if ((dropPlayer.rosValue || 0) > 55) confidence -= 10
+        confidence = Math.min(95, confidence)
         
-        confidence = Math.max(30, Math.min(95, confidence))
-        
-        // SHOW MORE: Only skip if confidence < 45 (was 60)
-        if (confidence < 45) continue
+        // Only recommend if confidence is decent
+        if (confidence < 60) continue
         
         recommendations.push({
           addPlayer,
@@ -6966,14 +6947,14 @@ const smartWaiverRecommendations = computed(() => {
       }
     }
     
-    // Sort by combined score (60% ROS, 40% today for better balance)
+    // Sort by combined score (70% ROS, 30% today)
     return recommendations
       .sort((a, b) => {
-        const scoreA = (a.rosImpact * 0.6) + (a.todayImpact * 0.4)
-        const scoreB = (b.rosImpact * 0.6) + (b.todayImpact * 0.4)
+        const scoreA = (a.rosImpact * 0.7) + (a.todayImpact * 0.3)
+        const scoreB = (b.rosImpact * 0.7) + (b.todayImpact * 0.3)
         return scoreB - scoreA
       })
-      .slice(0, 10) // Show up to 10 (was 5)
+      .slice(0, 5) // Top 5 recommendations
   } catch (error) {
     console.error('[smartWaiverRecommendations] Error:', error)
     return []
