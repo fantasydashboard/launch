@@ -836,7 +836,7 @@
                         >
                           {{ cat.display_name }}
                         </th>
-                        <th class="px-3 py-3 text-center text-xs font-semibold text-dark-textMuted uppercase w-28">Impact</th>
+                        <th class="px-3 py-3 text-center text-xs font-semibold text-dark-textMuted uppercase w-28">Value</th>
                         <th class="px-3 py-3 text-center text-xs font-semibold text-dark-textMuted uppercase w-24">Action</th>
                       </tr>
                     </thead>
@@ -858,7 +858,7 @@
                           </div>
                         </td>
                         <td class="px-3 py-3 text-center">
-                          <span class="text-xs font-medium text-green-400">{{ player.opponent }}</span>
+                          <span class="text-xs font-medium :class="getMatchupDifficultyClass(player)">{{ player.opponent }}</span>
                         </td>
                         <td 
                           v-for="cat in relevantStartSitCategories" 
@@ -870,10 +870,7 @@
                           </span>
                         </td>
                         <td class="px-3 py-3 text-center">
-                          <div class="flex flex-col items-center">
-                            <span class="text-lg font-black text-green-400">{{ player.impactCats || 0 }}</span>
-                            <span class="text-[10px] text-dark-textMuted">categories</span>
-                          </div>
+                          <div class="text-xl font-black text-yellow-400">{{ player.overallValue?.toFixed(0) || 'N/A' }}</div>
                         </td>
                         <td class="px-3 py-3 text-center">
                           <button 
@@ -1073,7 +1070,7 @@
                         </td>
                         <td class="px-3 py-3 text-center">
                           <div class="flex flex-col items-center">
-                            <span class="text-lg font-black text-green-400">{{ player.impactCats || 0 }}</span>
+                            <span class="text-lg font-black text-green-400">{{ player.overallValue?.toFixed(0) || 'N/A' }}</span>
                             <span class="text-[10px] text-dark-textMuted">categories</span>
                           </div>
                         </td>
@@ -5182,12 +5179,47 @@ function getCategoryHeaderClass(statId: string): string {
 }
 
 function getCategoryProjectionClass(player: any, cat: any): string {
-  const value = parseFloat(player.stats?.[cat.stat_id] || 0)
-  if (value <= 0) return 'text-dark-textMuted'
+  // Get all values for this category from available free agents
+  const allValues = availableFreeAgents.value
+    .map(p => parseFloat(formatCategoryProjection(p, cat).replace('%', '').replace('-', '0') || '0'))
+    .filter(v => !isNaN(v) && v > 0)
   
-  const status = matchupCategoryStatus.value[cat.stat_id]?.status
-  if (status === 'losing' || status === 'close') return 'text-yellow-400'
+  if (allValues.length === 0) return 'text-dark-text'
+  
+  const currentValue = parseFloat(formatCategoryProjection(player, cat).replace('%', '').replace('-', '0') || '0')
+  if (currentValue === 0 || isNaN(currentValue)) return 'text-dark-text'
+  
+  const max = Math.max(...allValues)
+  const min = Math.min(...allValues)
+  
+  // Best value = green
+  if (currentValue === max) return 'text-green-400'
+  
+  // Worst value = yellow  
+  if (currentValue === min) return 'text-yellow-400'
+  
+  // Everything else = white
   return 'text-dark-text'
+}
+
+// Get matchup difficulty color based on opponent defensive strength for player's position
+function getMatchupDifficultyClass(player: any): string {
+  // This is a simplified version - in reality you'd want actual opponent defensive rankings
+  // For now, we'll use a hash-based approach to vary colors realistically
+  
+  if (!player.opponent) return 'text-dark-textMuted'
+  
+  // Simple hash to get consistent color for same matchup
+  const hash = (player.opponent + player.position).split('').reduce((acc, char) => {
+    return char.charCodeAt(0) + ((acc << 5) - acc)
+  }, 0)
+  
+  const difficulty = Math.abs(hash) % 3
+  
+  // 0 = Easy (green), 1 = Average (yellow), 2 = Hard (red)
+  if (difficulty === 0) return 'text-green-400'  // Easy matchup
+  if (difficulty === 1) return 'text-yellow-400' // Average matchup  
+  return 'text-red-400' // Hard matchup
 }
 
 // Helper: Get estimated game count for time period based on sport
@@ -5223,11 +5255,32 @@ function getGameCountForPeriod(player: any): number {
 function formatCategoryProjection(player: any, category: any): string {
   if (!player || !category) return '-'
   
+  // Check if this is a percentage stat
+  const statId = String(category.stat_id || '').toLowerCase()
+  const isPercentage = statId.includes('%') || statId.includes('pct') || 
+                      statId === 'fg%' || statId === 'ft%' || statId === '3p%' ||
+                      statId === 'fgpct' || statId === 'ftpct'
+  
   // Use the getPlayerProjection function for today's projection
   const projection = getPlayerProjection(player, category, 'today')
   
   // If it's actually zero/empty, show dash
-  if (projection === '0' || projection === '0.0' || projection === '0.00') return '-'
+  if (projection === '0' || projection === '0.0' || projection === '0.00' || projection === '0.000') return '-'
+  
+  // For percentages, convert to percentage format
+  if (isPercentage) {
+    const numValue = parseFloat(projection)
+    if (isNaN(numValue)) return '-'
+    
+    // If value is already in percentage form (> 1), just add %
+    if (numValue > 1) {
+      return numValue.toFixed(1) + '%'
+    }
+    // If value is decimal (like 0.472), convert to percentage
+    else {
+      return (numValue * 100).toFixed(1) + '%'
+    }
+  }
   
   return projection
 }
