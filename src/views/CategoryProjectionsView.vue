@@ -737,8 +737,6 @@
                               <span class="text-gray-400 font-light ml-1">{{ formatGameTime(slot.player.gameTime) }}</span>
                             </span>
                             <span v-else class="text-red-400">No game</span>
-                            <span class="text-dark-textMuted">•</span>
-                            <span class="text-dark-textMuted">{{ slot.player.mlb_team || slot.player.nba_team || slot.player.nhl_team }}</span>
                           </div>
                         </div>
                         
@@ -7360,8 +7358,15 @@ const suggestedCategoryLineup = computed(() => {
     const activeGames = startSitDay.value === 'today' ? todaysGames.value : tomorrowsGames.value
     
     eligible = eligible.map(p => {
+      // Get team code based on sport (corrected team from team correction service)
+      const teamCode = currentSport.value === 'basketball'
+        ? (p.nba_team || p.mlb_team || p.editorial_team_abbr || p.team_abbr)
+        : currentSport.value === 'hockey'
+        ? (p.nhl_team || p.mlb_team || p.editorial_team_abbr || p.team_abbr)
+        : (p.mlb_team || p.editorial_team_abbr || p.team_abbr)
+      
       // Get REAL game info from live data
-      const gameInfo = liveGamesService.getPlayerGameInfo(p.mlb_team, activeGames)
+      const gameInfo = liveGamesService.getPlayerGameInfo(teamCode, activeGames)
       const impactCats = getImpactCategoryCount(p)
       
       return { 
@@ -7381,7 +7386,7 @@ const suggestedCategoryLineup = computed(() => {
     })
     
     // In daily mode, filter by game availability BUT ensure we have at least some players
-    // If no players have games for this position, don't show the slot
+    // If no players have games for this position, show empty slot
     if (startSitMode.value === 'daily') {
       eligible = eligible.filter(p => p.hasGame)
     }
@@ -7391,11 +7396,11 @@ const suggestedCategoryLineup = computed(() => {
     
     const best = eligible[0] || null
     
-    // Only add slot if we have a player (in daily mode, only if they have a game)
+    // ALWAYS add the slot (even if empty) so user can see all positions and add players
     if (best) {
       used.add(best.player_key)
-      slots.push({ position: pos, player: best })
     }
+    slots.push({ position: pos, player: best })
   }
   
   return slots
@@ -7472,10 +7477,26 @@ const availableFreeAgents = computed(() => {
     // Get ALL free agents and add game info to each
     let debugCounter = 0 // Track how many we've checked for debug logging
     
+    // Get list of all team keys in the league for ESPN filtering
+    const allTeamKeys = new Set(
+      allPlayersWithValues.value
+        .filter(p => p.fantasy_team_key)
+        .map(p => p.fantasy_team_key)
+    )
+    
     let results = allPlayersWithValues.value
       .filter(p => {
-        // Must be free agent
+        // Must be free agent - comprehensive checks
         if (p.fantasy_team_key) return false
+        if (p.fantasy_team) return false
+        if (p.team_key) return false
+        
+        // ESPN-specific: Check if player is on any roster
+        // If a player appears in any team's roster, they're not a FA
+        const isOnRoster = allPlayersWithValues.value.some(other => 
+          other.player_key === p.player_key && other.fantasy_team_key
+        )
+        if (isOnRoster) return false
         
         // Position filter
         if (selectedStartSitPosition.value !== 'All') {
@@ -7617,10 +7638,16 @@ const smartWaiverRecommendations = computed(() => {
     // Get FAs with games today - VERY RELAXED FILTERS
     const freeAgentsWithGames = allPlayersWithValues.value
       .filter(p => {
-        // Must be FA - check multiple ways
+        // Must be FA - comprehensive checks
         if (p.fantasy_team_key) return false
         if (p.fantasy_team) return false
         if (p.team_key) return false
+        
+        // ESPN-specific: Check if player is on any roster
+        const isOnRoster = allPlayersWithValues.value.some(other => 
+          other.player_key === p.player_key && other.fantasy_team_key
+        )
+        if (isOnRoster) return false
         
         // Filter out severely injured players only (relaxed - allow DTD, Q)
         const injuryStatus = (p.injury_status || p.status || '').toUpperCase()
