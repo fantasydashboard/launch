@@ -3943,12 +3943,21 @@ async function loadProjections() {
     
     if (settings) {
       const cats = settings.stat_categories || []
+      console.log('[CategoryProjections] ===== CATEGORIES DEBUG =====')
+      console.log('[CategoryProjections] Raw stat_categories:', cats)
+      console.log('[CategoryProjections] Number of categories:', cats.length)
+      console.log('[CategoryProjections] First category structure:', cats[0])
+      
       statCategories.value = cats.map((c: any) => ({ 
         stat_id: c.stat?.stat_id || c.stat_id, 
         name: c.stat?.name || c.name, 
         display_name: c.stat?.display_name || c.display_name || c.stat?.abbr || c.abbr, 
         is_only_display_stat: c.stat?.is_only_display_stat || c.is_only_display_stat 
       })).filter((c: any) => c.stat_id)
+      
+      console.log('[CategoryProjections] Mapped categories:', statCategories.value)
+      console.log('[CategoryProjections] Display categories:', displayCategories.value)
+      console.log('[CategoryProjections] ===== END CATEGORIES DEBUG =====')
       
       // Capture roster positions from league settings
       if (settings.roster_positions) {
@@ -5689,8 +5698,22 @@ function getPositionFilteredPlayers(position: string) {
 
 // Open player analysis modal
 function openPlayerAnalysis(player: any) {
-  playerAnalysisData.value = player
-  showPlayerAnalysisModal.value = true
+  try {
+    console.log('[openPlayerAnalysis] Opening analysis for:', player?.full_name || player?.name)
+    console.log('[openPlayerAnalysis] Player data:', player)
+    
+    if (!player) {
+      console.error('[openPlayerAnalysis] No player data provided!')
+      return
+    }
+    
+    playerAnalysisData.value = player
+    showPlayerAnalysisModal.value = true
+    
+    console.log('[openPlayerAnalysis] Modal opened successfully')
+  } catch (error) {
+    console.error('[openPlayerAnalysis] Error opening modal:', error)
+  }
 }
 
 // Helper functions for matchup analysis modal
@@ -6775,20 +6798,39 @@ const suggestedCategoryLineup = computed(() => {
     
     // YAHOO FALLBACK: Try to extract positions from actual team roster
     const myTeam = teamsData.value.find(t => t.is_my_team || t.is_owned_by_current_login)
-    console.log('[suggestedCategoryLineup] Looking for my team:', myTeam?.name)
+    console.log('[suggestedCategoryLineup] ===== YAHOO ROSTER DEBUG =====')
+    console.log('[suggestedCategoryLineup] teamsData.value:', teamsData.value)
+    console.log('[suggestedCategoryLineup] Looking for my team...')
+    console.log('[suggestedCategoryLineup] Found team:', myTeam)
+    console.log('[suggestedCategoryLineup] Team name:', myTeam?.name)
+    console.log('[suggestedCategoryLineup] Has roster?:', !!myTeam?.roster)
+    console.log('[suggestedCategoryLineup] Roster structure:', myTeam?.roster)
     
     if (myTeam && myTeam.roster && myTeam.roster.players) {
       console.log('[suggestedCategoryLineup] Found roster with', myTeam.roster.players.length, 'players')
       const extractedPositions: string[] = []
       
       for (const player of myTeam.roster.players) {
-        const selectedPos = player.selected_position || player.roster_position
-        console.log('[suggestedCategoryLineup] Player:', player.name, 'Selected position:', selectedPos)
+        console.log('[suggestedCategoryLineup] ===== PLAYER DEBUG =====')
+        console.log('[suggestedCategoryLineup] Full player object:', player)
+        console.log('[suggestedCategoryLineup] Player name:', player.name || player.full_name)
+        console.log('[suggestedCategoryLineup] player.selected_position:', player.selected_position)
+        console.log('[suggestedCategoryLineup] player.roster_position:', player.roster_position)
+        console.log('[suggestedCategoryLineup] player.position:', player.position)
+        console.log('[suggestedCategoryLineup] All player keys:', Object.keys(player))
+        
+        const selectedPos = player.selected_position || player.roster_position || player.position
+        console.log('[suggestedCategoryLineup] Final selectedPos:', selectedPos)
         
         if (selectedPos && selectedPos !== 'BN' && selectedPos !== 'IL' && selectedPos !== 'IR' && selectedPos !== 'Bench') {
           extractedPositions.push(selectedPos)
+          console.log('[suggestedCategoryLineup] ✅ Added position:', selectedPos)
+        } else {
+          console.log('[suggestedCategoryLineup] ❌ Skipped (bench/IL or empty):', selectedPos)
         }
       }
+      
+      console.log('[suggestedCategoryLineup] ===== END ROSTER DEBUG =====')
       
       if (extractedPositions.length > 0) {
         lineupOrder = extractedPositions
@@ -6798,7 +6840,11 @@ const suggestedCategoryLineup = computed(() => {
         lineupOrder = getSportDefaultPositions(sport)
       }
     } else {
-      console.log('[suggestedCategoryLineup] ⚠️ No team roster found, using sport defaults')
+      console.log('[suggestedCategoryLineup] ⚠️ No team roster found')
+      console.log('[suggestedCategoryLineup] myTeam exists?:', !!myTeam)
+      console.log('[suggestedCategoryLineup] myTeam.roster exists?:', !!myTeam?.roster)
+      console.log('[suggestedCategoryLineup] myTeam.roster.players exists?:', !!myTeam?.roster?.players)
+      console.log('[suggestedCategoryLineup] Using sport defaults')
       lineupOrder = getSportDefaultPositions(sport)
     }
     
