@@ -701,69 +701,61 @@
                 </div>
               </div>
               <div class="card-body p-0">
-                <!-- Grouped by Position -->
-                <template v-for="(group, groupIdx) in groupedLineup" :key="groupIdx">
-                  <!-- Position Header -->
-                  <div class="sticky top-0 z-10 px-4 py-2 bg-dark-elevated border-b border-dark-border/50 flex items-center justify-between">
-                    <div class="flex items-center gap-2">
-                      <span class="px-2 py-1 rounded text-xs font-bold uppercase" :class="getStartSitPositionClass(group.position)">
-                        {{ group.position }}
-                      </span>
-                      <span class="text-xs text-dark-textMuted">
-                        {{ group.filled }}/{{ group.total }} filled
-                      </span>
-                    </div>
-                    <span v-if="group.filled < group.total" class="text-xs text-orange-400">
-                      ⚠️ {{ group.total - group.filled }} empty
-                    </span>
-                  </div>
-                  
-                  <!-- Players in Position -->
-                  <div class="divide-y divide-dark-border/20">
+                <!-- Flat List - Each Roster Position as Individual Row -->
+                <div class="divide-y divide-dark-border/20">
+                  <template v-for="(slot, idx) in modifiedSuggestedLineup" :key="idx">
+                    <!-- Skip bench slots -->
                     <div 
-                      v-for="(slot, slotIdx) in group.slots" 
-                      :key="`${groupIdx}-${slotIdx}`" 
+                      v-if="slot.position !== 'BN' && slot.position !== 'Bench'"
                       class="flex items-center gap-3 px-4 py-3 hover:bg-dark-border/10 transition-colors"
                     >
+                      <!-- Position Label (Left Side) -->
+                      <div class="flex-shrink-0 w-12">
+                        <span class="px-2 py-1 rounded text-xs font-bold uppercase inline-block" :class="getStartSitPositionClass(slot.position)">
+                          {{ slot.position }}
+                        </span>
+                      </div>
+                      
                       <template v-if="slot.player">
                         <!-- Player Avatar -->
-                        <div class="w-12 h-12 rounded-full bg-dark-border overflow-hidden flex-shrink-0">
+                        <div class="w-10 h-10 rounded-full bg-dark-border overflow-hidden flex-shrink-0">
                           <img :src="slot.player.headshot || defaultHeadshot" class="w-full h-full object-cover" @error="handleImageError" />
                         </div>
                         
                         <!-- Player Info -->
                         <div class="flex-1 min-w-0">
-                          <div class="font-semibold text-dark-text">{{ slot.player.full_name }}</div>
+                          <div class="font-semibold text-dark-text text-sm">{{ slot.player.full_name }}</div>
                           <div class="flex items-center gap-2 text-xs">
                             <span :class="slot.player.hasGame ? 'text-green-400' : 'text-red-400'">
-                              {{ slot.player.hasGame ? `🟢 vs ${slot.player.opponent}` : '🔴 No game' }}
+                              {{ slot.player.hasGame ? `vs ${slot.player.opponent}` : 'No game' }}
                             </span>
                             <span class="text-dark-textMuted">•</span>
-                            <span class="text-dark-textMuted">{{ slot.player.mlb_team }}</span>
+                            <span class="text-dark-textMuted">{{ slot.player.mlb_team || slot.player.nba_team || slot.player.nhl_team }}</span>
                           </div>
                         </div>
                         
-                        <!-- Impact Stats -->
-                        <div class="text-right flex-shrink-0">
-                          <div class="text-lg font-bold text-dark-text">{{ slot.player.impactCats || 0 }}</div>
-                          <div class="text-[10px] text-dark-textMuted">key cats</div>
+                        <!-- Value Score -->
+                        <div class="text-right flex-shrink-0 px-2">
+                          <div class="text-base font-bold text-yellow-400">{{ slot.player.overallValue?.toFixed(0) || 'N/A' }}</div>
+                          <div class="text-[9px] text-dark-textMuted uppercase">Value</div>
                         </div>
                         
-                        <!-- Game Status Indicator -->
-                        <div class="w-3 h-3 rounded-full flex-shrink-0" :class="slot.player.hasGame ? 'bg-green-400' : 'bg-red-400/50'"></div>
+                        <!-- Game Status Dot -->
+                        <div class="w-2 h-2 rounded-full flex-shrink-0" :class="slot.player.hasGame ? 'bg-green-400' : 'bg-red-400/50'"></div>
                       </template>
                       <template v-else>
-                        <div class="w-12 h-12 rounded-full bg-dark-border/30 flex-shrink-0"></div>
+                        <!-- Empty Slot -->
+                        <div class="w-10 h-10 rounded-full bg-dark-border/30 flex-shrink-0"></div>
                         <div class="flex-1">
                           <span class="text-dark-textMuted italic text-sm">Empty slot</span>
                         </div>
-                        <button class="px-3 py-1 text-xs bg-cyan-500/20 text-cyan-400 rounded hover:bg-cyan-500/30 transition-colors" @click="openPositionPicker(group.position)">
+                        <button class="px-3 py-1 text-xs bg-cyan-500/20 text-cyan-400 rounded hover:bg-cyan-500/30 transition-colors" @click="openPositionPicker(slot.position)">
                           Find Player
                         </button>
                       </template>
                     </div>
-                  </div>
-                </template>
+                  </template>
+                </div>
                 
                 <!-- Bench Section -->
                 <div v-if="benchPlayers.length > 0" class="border-t-2 border-dark-border">
@@ -5269,11 +5261,22 @@ function getGameCountForPeriod(player: any): number {
 function formatCategoryProjection(player: any, category: any): string {
   if (!player || !category) return '-'
   
-  // Check if this is a percentage stat
+  // Check if this is a percentage stat - be very thorough
   const statId = String(category.stat_id || '').toLowerCase()
-  const isPercentage = statId.includes('%') || statId.includes('pct') || 
-                      statId === 'fg%' || statId === 'ft%' || statId === '3p%' ||
-                      statId === 'fgpct' || statId === 'ftpct'
+  const displayName = String(category.display_name || '').toLowerCase()
+  const isPercentage = 
+    statId.includes('%') || 
+    statId.includes('pct') || 
+    statId.includes('percentage') ||
+    displayName.includes('%') ||
+    displayName.includes('pct') ||
+    displayName.includes('percentage') ||
+    statId === 'fg%' || statId === 'ft%' || statId === '3p%' || statId === 'fg_pct' || statId === 'ft_pct' ||
+    statId === 'fgpct' || statId === 'ftpct' || statId === '3ppct' ||
+    statId === '5' || // Yahoo FG%
+    statId === '15' || // Yahoo FT%
+    category.stat_id === 5 || // Numeric Yahoo FG%
+    category.stat_id === 15 // Numeric Yahoo FT%
   
   // Determine if we're showing projections or stats
   const period = availableTimePeriod.value
@@ -5305,9 +5308,20 @@ function formatCategoryProjection(player: any, category: any): string {
     const numValue = parseFloat(projection)
     if (isNaN(numValue)) return '-'
     
+    console.log('[formatCategoryProjection] Percentage detected:', {
+      statId: category.stat_id,
+      displayName: category.display_name,
+      value: numValue,
+      player: player.full_name
+    })
+    
     // If value is already in percentage form (> 1), just add %
-    if (numValue > 1) {
+    if (numValue >= 1) {
       return numValue.toFixed(1) + '%'
+    }
+    // If value is very small (< 0.01), it's probably a decimal that needs conversion
+    else if (numValue < 0.01) {
+      return (numValue * 100).toFixed(2) + '%'
     }
     // If value is decimal (like 0.472), convert to percentage
     else {
@@ -6890,7 +6904,8 @@ const availableFreeAgents = computed(() => {
   })
   
   try {
-    const results = allPlayers.value
+    // First, try to get players WITH games
+    let results = allPlayers.value
       .filter(p => {
         // Must be free agent
         if (p.fantasy_team_key) return false
@@ -6927,11 +6942,49 @@ const availableFreeAgents = computed(() => {
           impactScore: calculatePlayerImpact(p)
         }
       })
-      .sort((a, b) => b.impactScore - a.impactScore)
-      .slice(0, 100) // Top 100 free agents (increased from 50)
+      .sort((a, b) => (b.overallValue || 0) - (a.overallValue || 0))
     
-    console.log('[availableFreeAgents] Found', results.length, 'free agents with games')
-    return results
+    // If we got fewer than 20 results, also include top players without games
+    if (results.length < 20) {
+      const playersWithoutGames = allPlayers.value
+        .filter(p => {
+          // Must be free agent
+          if (p.fantasy_team_key) return false
+          
+          // Position filter
+          if (selectedStartSitPosition.value !== 'All') {
+            const playerPos = p.position || ''
+            if (!playerPos.includes(selectedStartSitPosition.value)) return false
+          }
+          
+          // Not already in results
+          const alreadyIncluded = results.some(r => r.player_key === p.player_key)
+          if (alreadyIncluded) return false
+          
+          return true
+        })
+        .map(p => {
+          const teamCode = p.mlb_team || p.nba_team || p.nhl_team || p.editorial_team_abbr || p.team_abbr
+          const gameInfo = teamCode ? liveGamesService.getPlayerGameInfo(teamCode, activeGames) : null
+          const impactCats = getImpactCategoryCount(p)
+          
+          return {
+            ...p,
+            hasGame: false,
+            opponent: '',
+            isHome: false,
+            impactCats,
+            impactScore: calculatePlayerImpact(p)
+          }
+        })
+        .sort((a, b) => (b.overallValue || 0) - (a.overallValue || 0))
+        .slice(0, 20 - results.length) // Fill up to 20
+      
+      results = [...results, ...playersWithoutGames]
+    }
+    
+    console.log('[availableFreeAgents] Found', results.length, 'free agents')
+    return results.slice(0, 100) // Top 100 total
   } catch (error) {
     console.error('[availableFreeAgents] Error:', error)
     return []
@@ -7521,11 +7574,19 @@ function getScheduleGradeClass(player: any): string {
 function getPlayerProjection(player: any, category: any, period: 'today' | 'next7' | 'next14'): string {
   if (!player || !category) return '0'
   
-  // Check if this is a percentage stat
+  // Check if this is a percentage stat - comprehensive detection
   const statId = String(category.stat_id || '').toLowerCase()
-  const isPercentage = statId.includes('%') || statId.includes('pct') || 
-                      statId === 'fg%' || statId === 'ft%' || statId === '3p%' ||
-                      statId === 'fgpct' || statId === 'ftpct' || statId === 'fg_pct' || statId === 'ft_pct'
+  const displayName = String(category.display_name || '').toLowerCase()
+  const isPercentage = 
+    statId.includes('%') || 
+    statId.includes('pct') || 
+    statId.includes('percentage') ||
+    displayName.includes('%') ||
+    displayName.includes('pct') ||
+    statId === 'fg%' || statId === 'ft%' || statId === '3p%' ||
+    statId === 'fgpct' || statId === 'ftpct' || statId === 'fg_pct' || statId === 'ft_pct' ||
+    statId === '5' || statId === '15' || // Yahoo numeric IDs
+    category.stat_id === 5 || category.stat_id === 15
   
   // Get the stat value - try multiple possible locations
   let statValue = 0
