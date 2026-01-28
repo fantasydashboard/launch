@@ -6895,7 +6895,7 @@ const availableFreeAgents = computed(() => {
         }
       })
       .sort((a, b) => b.impactScore - a.impactScore)
-      .slice(0, 50) // Top 50 free agents
+      .slice(0, 100) // Top 100 free agents (increased from 50)
     
     console.log('[availableFreeAgents] Found', results.length, 'free agents with games')
     return results
@@ -6919,7 +6919,7 @@ const smartWaiverRecommendations = computed(() => {
     const recommendations: any[] = []
     const myPlayers = allPlayers.value.filter(p => p.fantasy_team_key === myTeamKey.value)
     
-    // Get FAs with games today - RELAXED FILTERS
+    // Get FAs with games today - VERY RELAXED FILTERS
     const freeAgentsWithGames = allPlayers.value
       .filter(p => {
         if (p.fantasy_team_key) return false // Must be FA
@@ -6928,8 +6928,8 @@ const smartWaiverRecommendations = computed(() => {
         const injuryStatus = (p.injury_status || p.status || '').toUpperCase()
         if (injuryStatus === 'O' || injuryStatus === 'IL') return false
         
-        // RELAXED: Minimum value 15 (was 20)
-        if ((p.overallValue || 0) < 15) return false
+        // VERY RELAXED: Minimum value 10 (was 15)
+        if ((p.overallValue || 0) < 10) return false
         
         return true
       })
@@ -6945,11 +6945,11 @@ const smartWaiverRecommendations = computed(() => {
           rosValue: p.overallValue || 0
         }
       })
-      .filter(p => p.hasGame && p.rosValue >= 18) // RELAXED: was 25
+      .filter(p => p.hasGame && p.rosValue >= 12) // VERY RELAXED: was 18
       .sort((a, b) => b.rosValue - a.rosValue)
-      .slice(0, 20)
+      .slice(0, 30) // More candidates (was 20)
     
-    // Get droppable players - MORE PERMISSIVE
+    // Get droppable players - VERY PERMISSIVE
     const droppablePlayers = myPlayers
       .map(p => {
         const teamCode = p.mlb_team || p.nba_team || p.nhl_team || p.editorial_team_abbr || p.team_abbr
@@ -6963,16 +6963,16 @@ const smartWaiverRecommendations = computed(() => {
           rosValue: p.overallValue || 0
         }
       })
-      .filter(p => (p.rosValue || 0) < 70) // RELAXED: was 60
+      .filter(p => (p.rosValue || 0) < 75) // VERY RELAXED: was 70
       .sort((a, b) => (a.rosValue || 0) - (b.rosValue || 0))
     
     // Find best add/drop combinations
-    for (const addPlayer of freeAgentsWithGames.slice(0, 10)) {
-      for (const dropPlayer of droppablePlayers.slice(0, 10)) {
+    for (const addPlayer of freeAgentsWithGames.slice(0, 15)) { // More FAs (was 10)
+      for (const dropPlayer of droppablePlayers.slice(0, 12)) { // More droppable (was 10)
         
-        // CRITICAL SAFEGUARDS (but more lenient)
-        // Never drop elite players (value > 65)
-        if ((dropPlayer.rosValue || 0) > 65) continue
+        // CRITICAL SAFEGUARDS (very lenient)
+        // Never drop elite players (value > 70, was 65)
+        if ((dropPlayer.rosValue || 0) > 70) continue
         
         // Only recommend if some benefit
         const rosImpact = (addPlayer.rosValue || 0) - (dropPlayer.rosValue || 0)
@@ -7020,14 +7020,14 @@ const smartWaiverRecommendations = computed(() => {
         
         if (!dropPlayer.hasGame) confidence += 10
         
-        // PENALTY for risky moves
-        if ((dropPlayer.rosValue || 0) > 60) confidence -= 15
-        else if ((dropPlayer.rosValue || 0) > 55) confidence -= 10
+        // PENALTY for risky moves (relaxed thresholds)
+        if ((dropPlayer.rosValue || 0) > 65) confidence -= 15 // was 60
+        else if ((dropPlayer.rosValue || 0) > 60) confidence -= 10 // was 55
         
         confidence = Math.max(30, Math.min(95, confidence))
         
-        // SHOW MORE: Only skip if confidence < 45 (was 60)
-        if (confidence < 45) continue
+        // SHOW EVEN MORE: Only skip if confidence < 35 (was 45)
+        if (confidence < 35) continue
         
         recommendations.push({
           addPlayer,
@@ -7488,6 +7488,12 @@ function getScheduleGradeClass(player: any): string {
 function getPlayerProjection(player: any, category: any, period: 'today' | 'next7' | 'next14'): string {
   if (!player || !category) return '0'
   
+  // Check if this is a percentage stat
+  const statId = String(category.stat_id || '').toLowerCase()
+  const isPercentage = statId.includes('%') || statId.includes('pct') || 
+                      statId === 'fg%' || statId === 'ft%' || statId === '3p%' ||
+                      statId === 'fgpct' || statId === 'ftpct' || statId === 'fg_pct' || statId === 'ft_pct'
+  
   // Get the stat value - try multiple possible locations
   let statValue = 0
   
@@ -7505,9 +7511,22 @@ function getPlayerProjection(player: any, category: any, period: 'today' | 'next
   }
   
   // If still no data, return 0
-  if (isNaN(statValue)) return '0'
+  if (isNaN(statValue) || statValue === 0) return '0'
   
-  // Calculate per-game average
+  // CRITICAL FIX: Percentages don't project - they're rates, not counting stats
+  if (isPercentage) {
+    // Just return the percentage value (don't multiply by games)
+    // If it's already in percentage form (> 1), return as-is
+    if (statValue > 1) {
+      return statValue.toFixed(1)
+    }
+    // If it's in decimal form (0.472), return as decimal for formatCategoryProjection to convert
+    else {
+      return statValue.toFixed(3)
+    }
+  }
+  
+  // For counting stats (points, rebounds, etc.), calculate per-game and project
   const sport = currentSport.value
   let estimatedGamesPlayed = 140
   if (sport === 'basketball') estimatedGamesPlayed = 70
@@ -7534,12 +7553,8 @@ function getPlayerProjection(player: any, category: any, period: 'today' | 'next
   
   const projected = perGame * games
   
-  // Format based on stat type - FIX: stat_id might not be a string
-  const statId = String(category.stat_id || '').toLowerCase()
-  if (statId.includes('%') || statId.includes('pct')) {
-    // Percentage - show as decimal
-    return projected.toFixed(3)
-  } else if (projected < 1) {
+  // Format counting stats
+  if (projected < 1) {
     return projected.toFixed(2)
   } else if (projected < 10) {
     return projected.toFixed(1)
