@@ -3266,6 +3266,20 @@ const availablePositions = computed(() => {
 })
 
 // Helper to check if player is a pitcher/goalie (the "other" position type)
+// Get default roster positions for a sport
+function getSportDefaultPositions(sport: string): string[] {
+  if (sport === 'basketball') {
+    return ['PG', 'SG', 'SF', 'PF', 'C', 'G', 'F', 'Util', 'Util', 'Util']
+  } else if (sport === 'hockey') {
+    return ['C', 'C', 'LW', 'LW', 'RW', 'RW', 'D', 'D', 'D', 'D', 'G', 'G', 'Util', 'Util']
+  } else if (sport === 'football') {
+    return ['QB', 'RB', 'RB', 'WR', 'WR', 'TE', 'Flex', 'K', 'DEF']
+  } else {
+    // Baseball (default)
+    return ['C', '1B', '2B', '3B', 'SS', 'OF', 'OF', 'OF', 'Util', 'SP', 'SP', 'RP', 'RP']
+  }
+}
+
 function isPitcher(player: any): boolean {
   const pos = (player.position || '').toUpperCase()
   const sport = currentSport.value
@@ -4935,8 +4949,16 @@ const closeOrLosingCategories = computed(() => {
 
 // Computed: Relevant categories for current position type
 const relevantStartSitCategories = computed(() => {
-  const isPitching = ['SP', 'RP'].includes(selectedStartSitPosition.value)
-  return isPitching ? pitchingCategories.value : hittingCategories.value
+  const sport = currentSport.value
+  
+  // Baseball: Filter by hitting vs pitching
+  if (sport === 'baseball') {
+    const isPitching = ['SP', 'RP', 'P'].includes(selectedStartSitPosition.value)
+    return isPitching ? pitchingCategories.value : hittingCategories.value
+  }
+  
+  // All other sports: Use all display categories
+  return displayCategories.value
 })
 
 // Computed: Format date for display
@@ -6749,19 +6771,38 @@ const suggestedCategoryLineup = computed(() => {
     
     console.log('[suggestedCategoryLineup] Final lineup order:', lineupOrder)
   } else {
-    // Fallback to sport-specific defaults
-    if (sport === 'basketball') {
-      lineupOrder = ['PG', 'SG', 'SF', 'PF', 'C', 'G', 'F', 'Util', 'Util', 'Util']
-    } else if (sport === 'hockey') {
-      lineupOrder = ['C', 'C', 'LW', 'LW', 'RW', 'RW', 'D', 'D', 'D', 'D', 'G', 'G', 'Util', 'Util']
-    } else if (sport === 'football') {
-      lineupOrder = ['QB', 'RB', 'RB', 'WR', 'WR', 'TE', 'Flex', 'K', 'DEF']
+    console.log('[suggestedCategoryLineup] ⚠️ No roster positions from settings')
+    
+    // YAHOO FALLBACK: Try to extract positions from actual team roster
+    const myTeam = teamsData.value.find(t => t.is_my_team || t.is_owned_by_current_login)
+    console.log('[suggestedCategoryLineup] Looking for my team:', myTeam?.name)
+    
+    if (myTeam && myTeam.roster && myTeam.roster.players) {
+      console.log('[suggestedCategoryLineup] Found roster with', myTeam.roster.players.length, 'players')
+      const extractedPositions: string[] = []
+      
+      for (const player of myTeam.roster.players) {
+        const selectedPos = player.selected_position || player.roster_position
+        console.log('[suggestedCategoryLineup] Player:', player.name, 'Selected position:', selectedPos)
+        
+        if (selectedPos && selectedPos !== 'BN' && selectedPos !== 'IL' && selectedPos !== 'IR' && selectedPos !== 'Bench') {
+          extractedPositions.push(selectedPos)
+        }
+      }
+      
+      if (extractedPositions.length > 0) {
+        lineupOrder = extractedPositions
+        console.log('[suggestedCategoryLineup] ✅ Extracted', extractedPositions.length, 'positions from roster:', lineupOrder)
+      } else {
+        console.log('[suggestedCategoryLineup] ⚠️ No positions extracted, using sport defaults')
+        lineupOrder = getSportDefaultPositions(sport)
+      }
     } else {
-      // Baseball (default)
-      lineupOrder = ['C', '1B', '2B', '3B', 'SS', 'OF', 'OF', 'OF', 'Util', 'SP', 'SP', 'RP', 'RP']
+      console.log('[suggestedCategoryLineup] ⚠️ No team roster found, using sport defaults')
+      lineupOrder = getSportDefaultPositions(sport)
     }
     
-    console.log('[suggestedCategoryLineup] Using default positions for', sport, ':', lineupOrder)
+    console.log('[suggestedCategoryLineup] Final lineup order:', lineupOrder)
   }
   
   for (const pos of lineupOrder) {
