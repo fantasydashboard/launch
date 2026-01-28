@@ -727,9 +727,11 @@
                         <div class="flex-1 min-w-0">
                           <div class="font-semibold text-dark-text text-sm">{{ slot.player.full_name }}</div>
                           <div class="flex items-center gap-2 text-xs">
-                            <span :class="slot.player.hasGame ? 'text-green-400' : 'text-red-400'">
-                              {{ slot.player.hasGame ? `vs ${slot.player.opponent}` : 'No game' }}
+                            <span v-if="slot.player.hasGame" class="text-green-400">
+                              {{ slot.player.opponent }}
+                              <span class="text-gray-400 font-light ml-1">{{ slot.player.gameTime }}</span>
                             </span>
+                            <span v-else class="text-red-400">No game</span>
                             <span class="text-dark-textMuted">•</span>
                             <span class="text-dark-textMuted">{{ slot.player.mlb_team || slot.player.nba_team || slot.player.nhl_team }}</span>
                           </div>
@@ -907,7 +909,7 @@
                           :key="cat.stat_id" 
                           class="px-2 py-3 text-center"
                         >
-                          <span class="text-sm font-bold" :class="getCategoryProjectionClass(player, cat)">
+                          <span class="text-sm font-bold text-white">
                             {{ formatCategoryProjection(player, cat) }}
                           </span>
                         </td>
@@ -976,7 +978,11 @@
                               <div class="text-xs text-dark-textMuted">{{ rec.addPlayer.position }} • {{ rec.addPlayer.mlb_team }}</div>
                             </div>
                           </div>
-                          <div class="text-xs text-dark-textMuted">vs {{ rec.addPlayer.opponent }} {{ startSitDay === 'today' ? 'today' : 'tomorrow' }}</div>
+                          <div class="text-xs text-dark-textMuted">
+                            {{ rec.addPlayer.opponent }} 
+                            <span class="text-gray-400 font-light ml-1">{{ rec.addPlayer.gameTime }}</span>
+                            {{ startSitDay === 'today' ? 'today' : 'tomorrow' }}
+                          </div>
                         </div>
                         
                         <!-- Drop Player -->
@@ -991,7 +997,13 @@
                               <div class="text-xs text-dark-textMuted">{{ rec.dropPlayer.position }} • {{ rec.dropPlayer.mlb_team }}</div>
                             </div>
                           </div>
-                          <div class="text-xs text-dark-textMuted">{{ rec.dropPlayer.hasGame ? `vs ${rec.dropPlayer.opponent}` : 'No game today' }}</div>
+                          <div class="text-xs text-dark-textMuted">
+                            <span v-if="rec.dropPlayer.hasGame">
+                              {{ rec.dropPlayer.opponent }}
+                              <span class="text-gray-400 font-light ml-1">{{ rec.dropPlayer.gameTime }}</span>
+                            </span>
+                            <span v-else>No game today</span>
+                          </div>
                         </div>
                       </div>
                       
@@ -1006,7 +1018,7 @@
                         <div class="bg-dark-card rounded-lg p-2">
                           <div class="text-[10px] text-dark-textMuted uppercase mb-1">Impact ROS</div>
                           <div class="text-lg font-black" :class="rec.rosImpact >= 0 ? 'text-green-400' : 'text-red-400'">
-                            {{ rec.rosImpact >= 0 ? '+' : '' }}{{ rec.rosImpact }}
+                            {{ rec.rosImpact >= 0 ? '+' : '' }}{{ rec.rosImpact.toFixed(1) }}
                           </div>
                         </div>
                       </div>
@@ -7327,24 +7339,21 @@ const suggestedCategoryLineup = computed(() => {
     })
     
     // In daily mode, filter by game availability BUT ensure we have at least some players
-    // If no players have games for this position, show all players
+    // If no players have games for this position, don't show the slot
     if (startSitMode.value === 'daily') {
-      const withGames = eligible.filter(p => p.hasGame)
-      if (withGames.length > 0) {
-        eligible = withGames
-      }
-      // If no one has a game, keep all eligible players (don't filter)
+      eligible = eligible.filter(p => p.hasGame)
     }
     
     // Sort by impact score
     eligible.sort((a, b) => b.impactScore - a.impactScore)
     
     const best = eligible[0] || null
+    
+    // Only add slot if we have a player (in daily mode, only if they have a game)
     if (best) {
       used.add(best.player_key)
+      slots.push({ position: pos, player: best })
     }
-    
-    slots.push({ position: pos, player: best })
   }
   
   return slots
@@ -7566,7 +7575,10 @@ const smartWaiverRecommendations = computed(() => {
     // Get FAs with games today - VERY RELAXED FILTERS
     const freeAgentsWithGames = allPlayersWithValues.value
       .filter(p => {
-        if (p.fantasy_team_key) return false // Must be FA
+        // Must be FA - check multiple ways
+        if (p.fantasy_team_key) return false
+        if (p.fantasy_team) return false
+        if (p.team_key) return false
         
         // Filter out severely injured players only (relaxed - allow DTD, Q)
         const injuryStatus = (p.injury_status || p.status || '').toUpperCase()
