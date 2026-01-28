@@ -6809,7 +6809,7 @@ function getTradeGradeColor(grade: string): string {
 const suggestedCategoryLineup = computed(() => {
   const slots: { position: string; player: any }[] = []
   const used = new Set<string>()
-  const myPlayers = allPlayers.value.filter(p => p.fantasy_team_key === myTeamKey.value)
+  const myPlayers = allPlayersWithValues.value.filter(p => p.fantasy_team_key === myTeamKey.value)
   
   // Use actual league roster positions if available, otherwise fall back to sport defaults
   let lineupOrder: string[]
@@ -7032,7 +7032,7 @@ const benchPlayers = computed(() => {
 // Available free agents with games today/tomorrow (for "Available" view)
 const availableFreeAgents = computed(() => {
   // Safety check - only run if on startsit tab and data is loaded
-  if (!allPlayers.value || allPlayers.value.length === 0) {
+  if (!allPlayersWithValues.value || allPlayersWithValues.value.length === 0) {
     console.log('[availableFreeAgents] No players loaded')
     return []
   }
@@ -7048,14 +7048,14 @@ const availableFreeAgents = computed(() => {
   }
   
   console.log('[availableFreeAgents] Processing...', {
-    totalPlayers: allPlayers.value.length,
+    totalPlayers: allPlayersWithValues.value.length,
     activeGamesCount: activeGames.length,
     sport: currentSport.value
   })
   
   try {
     // First, try to get players WITH games
-    let results = allPlayers.value
+    let results = allPlayersWithValues.value
       .filter(p => {
         // Must be free agent
         if (p.fantasy_team_key) return false
@@ -7096,7 +7096,7 @@ const availableFreeAgents = computed(() => {
     
     // If we got fewer than 20 results, also include top players without games
     if (results.length < 20) {
-      const playersWithoutGames = allPlayers.value
+      const playersWithoutGames = allPlayersWithValues.value
         .filter(p => {
           // Must be free agent
           if (p.fantasy_team_key) return false
@@ -7144,7 +7144,7 @@ const availableFreeAgents = computed(() => {
 // Smart waiver recommendations (for "Smart Moves" view)
 const smartWaiverRecommendations = computed(() => {
   // Safety check - only run if data is loaded
-  if (!allPlayers.value || allPlayers.value.length === 0) return []
+  if (!allPlayersWithValues.value || allPlayersWithValues.value.length === 0) return []
   if (!myTeamKey.value) return []
   if (!liveGamesService) return []
   
@@ -7153,10 +7153,10 @@ const smartWaiverRecommendations = computed(() => {
   
   try {
     const recommendations: any[] = []
-    const myPlayers = allPlayers.value.filter(p => p.fantasy_team_key === myTeamKey.value)
+    const myPlayers = allPlayersWithValues.value.filter(p => p.fantasy_team_key === myTeamKey.value)
     
     // Get FAs with games today - VERY RELAXED FILTERS
-    const freeAgentsWithGames = allPlayers.value
+    const freeAgentsWithGames = allPlayersWithValues.value
       .filter(p => {
         if (p.fantasy_team_key) return false // Must be FA
         
