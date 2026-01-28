@@ -7253,6 +7253,8 @@ const availableFreeAgents = computed(() => {
   
   try {
     // First, try to get players WITH games
+    let debugCounter = 0 // Track how many we've checked for debug logging
+    
     let results = allPlayersWithValues.value
       .filter(p => {
         // Must be free agent
@@ -7268,8 +7270,9 @@ const availableFreeAgents = computed(() => {
         const gameInfo = liveGamesService.getPlayerGameInfo(teamCode, activeGames)
         
         // DEBUG: Always log first 10 players to see what's happening
-        if (results.length < 10) {
-          console.log(`[availableFreeAgents] ========== PLAYER ${results.length + 1} ==========`)
+        debugCounter++
+        if (debugCounter <= 10) {
+          console.log(`[availableFreeAgents] ========== PLAYER ${debugCounter} ==========`)
           console.log('[availableFreeAgents] Player:', p.full_name)
           console.log('[availableFreeAgents] Team code:', teamCode)
           console.log('[availableFreeAgents] All team properties:', {
