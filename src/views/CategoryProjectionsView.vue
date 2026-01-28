@@ -4192,6 +4192,42 @@ async function loadEspnProjections() {
         41: { name: 'Blown Saves', display: 'BS', isHitting: false }
       }
       
+      // ESPN stat ID to display name mapping - basketball
+      const espnBasketballStatNames: Record<number, { name: string; display: string; isHitting: boolean }> = {
+        0: { name: 'Points', display: 'PTS', isHitting: true },
+        1: { name: 'Blocks', display: 'BLK', isHitting: true },
+        2: { name: 'Steals', display: 'STL', isHitting: true },
+        3: { name: 'Assists', display: 'AST', isHitting: true },
+        4: { name: 'Offensive Rebounds', display: 'OREB', isHitting: true },
+        5: { name: 'Defensive Rebounds', display: 'DREB', isHitting: true },
+        6: { name: 'Rebounds', display: 'REB', isHitting: true },
+        7: { name: 'Turnovers', display: 'TO', isHitting: true },
+        8: { name: 'Field Goals Attempted', display: 'FGA', isHitting: true },
+        9: { name: 'Field Goals Made', display: 'FGM', isHitting: true },
+        10: { name: 'Free Throws Attempted', display: 'FTA', isHitting: true },
+        11: { name: 'Free Throws Made', display: 'FTM', isHitting: true },
+        12: { name: 'Three Pointers Attempted', display: '3PTA', isHitting: true },
+        13: { name: 'Three Pointers Made', display: '3PM', isHitting: true },
+        14: { name: 'Personal Fouls', display: 'PF', isHitting: true },
+        15: { name: 'Field Goal Percentage', display: 'FG%', isHitting: true },
+        16: { name: 'Free Throw Percentage', display: 'FT%', isHitting: true },
+        17: { name: 'Free Throw Percentage', display: 'FT%', isHitting: true },
+        18: { name: 'Three Point Percentage', display: '3P%', isHitting: true },
+        19: { name: 'Three Pointers Made', display: '3PM', isHitting: true },
+        20: { name: 'Three Pointers Attempted', display: '3PA', isHitting: true },
+        21: { name: 'Minutes', display: 'MIN', isHitting: true },
+        22: { name: 'Games Played', display: 'GP', isHitting: true },
+        23: { name: 'Games Started', display: 'GS', isHitting: true },
+        24: { name: 'Technical Fouls', display: 'TECH', isHitting: true },
+        25: { name: 'Flagrant Fouls', display: 'FLAG', isHitting: true },
+        26: { name: 'Ejections', display: 'EJ', isHitting: true },
+        27: { name: 'Double Doubles', display: 'DD', isHitting: true },
+        28: { name: 'Triple Doubles', display: 'TD', isHitting: true },
+        29: { name: 'Efficiency', display: 'EFF', isHitting: true },
+        30: { name: 'Disqualifications', display: 'DQ', isHitting: true },
+        31: { name: 'Player Efficiency Rating', display: 'PER', isHitting: true }
+      }
+      
       // ESPN stat ID to display name mapping - hockey
       const espnHockeyStatNames: Record<number, { name: string; display: string; isHitting: boolean }> = {
         0: { name: 'Goals', display: 'G', isHitting: true },
@@ -4237,7 +4273,17 @@ async function loadEspnProjections() {
       }
       
       // Select appropriate stat names based on sport
-      const espnStatNames = sport === 'hockey' ? espnHockeyStatNames : espnBaseballStatNames
+      let espnStatNames
+      if (sport === 'basketball') {
+        espnStatNames = espnBasketballStatNames
+      } else if (sport === 'hockey') {
+        espnStatNames = espnHockeyStatNames
+      } else {
+        espnStatNames = espnBaseballStatNames
+      }
+      
+      console.log('[ESPN] Loading categories for sport:', sport)
+      console.log('[ESPN] Using stat mapping:', sport === 'basketball' ? 'Basketball' : sport === 'hockey' ? 'Hockey' : 'Baseball')
       
       statCategories.value = scoringSettings.scoringItems.map((item: any) => {
         const statInfo = espnStatNames[item.statId] || { name: `Stat ${item.statId}`, display: `S${item.statId}`, isHitting: item.statId < 20 }
