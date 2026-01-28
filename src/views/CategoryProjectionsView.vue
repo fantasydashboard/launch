@@ -3236,6 +3236,20 @@ const currentMatchup = ref<any>(null)
 const startSitPlayerFilter = ref<'all' | 'mine' | 'fa'>('all')
 const commandCenterView = ref<'lineup' | 'available' | 'moves'>('lineup') // New: Daily Command Center view switcher
 
+// Watch for view changes - reload games when switching to Available to ensure fresh data
+watch(commandCenterView, async (newView) => {
+  if (newView === 'available') {
+    console.log('[Watch] Switched to Available view - reloading games to ensure fresh data')
+    await loadLiveGames()
+  }
+})
+
+// Watch for day changes - reload games when switching between Today/Tomorrow
+watch(startSitDay, async (newDay) => {
+  console.log(`[Watch] Day changed to ${newDay} - reloading games`)
+  await loadLiveGames()
+})
+
 // Enhanced Start/Sit features
 const startSitTimePeriod = ref<'today' | 'next7' | 'next14' | 'ros'>('today')
 const startSitViewMode = ref<'projections' | 'stats'>('projections')
