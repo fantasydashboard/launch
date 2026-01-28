@@ -7942,20 +7942,16 @@ async function loadLiveGames() {
     console.log(`[LiveGames] Local date: ${localDateString}`)
     console.log(`[LiveGames] UTC date: ${now.toISOString().split('T')[0]}`)
     
-    // TIMEZONE FIX: NBA games that happen "tonight" in US timezones
-    // are actually "tomorrow" in UTC because they start late evening
-    // Example: 7pm EST Jan 28 = 12am UTC Jan 29
-    // So when requesting "today's" games, we need tomorrow's UTC date
-    
+    // Request today's date (no timezone adjustment)
+    // We'll filter out finished games instead
     let targetDate: Date
     if (startSitDay.value === 'today') {
-      // Add 1 day to get tonight's games (which are tomorrow in UTC)
-      targetDate = new Date(now.getTime() + 86400000)
-      console.log(`[LiveGames] Loading games for TODAY (adjusted for timezone - requesting UTC tomorrow)`)
+      targetDate = now
+      console.log(`[LiveGames] Loading games for TODAY`)
     } else {
-      // Tomorrow - add 2 days (tomorrow in local + 1 for UTC offset)
-      targetDate = new Date(now.getTime() + (86400000 * 2))
-      console.log(`[LiveGames] Loading games for TOMORROW (adjusted for timezone - requesting UTC +2 days)`)
+      // Tomorrow - add 1 day
+      targetDate = new Date(now.getTime() + 86400000)
+      console.log(`[LiveGames] Loading games for TOMORROW`)
     }
     
     console.log(`[LiveGames] Target date: ${targetDate.toLocaleDateString()} ${targetDate.toLocaleTimeString()}`)
@@ -7963,19 +7959,27 @@ async function loadLiveGames() {
     
     const games = await liveGamesService.getGamesByDate(currentSport.value, targetDate)
     
+    // Filter out finished games if showing "today" - we only want upcoming/live games
+    let filteredGames = games
     if (startSitDay.value === 'today') {
-      todaysGames.value = games
+      const beforeFilter = games.length
+      filteredGames = games.filter((g: any) => g.status !== 'final')
+      console.log(`[LiveGames] Filtered ${beforeFilter} games → ${filteredGames.length} (removed ${beforeFilter - filteredGames.length} finished games)`)
+    }
+    
+    if (startSitDay.value === 'today') {
+      todaysGames.value = filteredGames
     } else {
-      tomorrowsGames.value = games
+      tomorrowsGames.value = filteredGames
     }
     
     console.log(`[LiveGames] ========== GAMES LOADED ==========`)
-    console.log(`[LiveGames] Count: ${games.length}`)
-    console.log(`[LiveGames] Games array:`, games)
+    console.log(`[LiveGames] Count: ${filteredGames.length}`)
+    console.log(`[LiveGames] Games array:`, filteredGames)
     
-    if (games.length > 0) {
-      console.log('[LiveGames] First game structure:', games[0])
-      console.log('[LiveGames] Sample games:', games.slice(0, 3).map((g: any) => ({
+    if (filteredGames.length > 0) {
+      console.log('[LiveGames] First game structure:', filteredGames[0])
+      console.log('[LiveGames] Sample games:', filteredGames.slice(0, 3).map((g: any) => ({
         home: g.homeTeam || g.home_team || g.home,
         away: g.awayTeam || g.away_team || g.away,
         status: g.status,
@@ -8003,11 +8007,11 @@ function subscribeToLiveGames() {
     liveGamesSubscription.value = null
   }
   
-  // Calculate target date with timezone adjustment
+  // Calculate target date (no timezone adjustment)
   const now = new Date()
   const targetDate = startSitDay.value === 'today' 
-    ? new Date(now.getTime() + 86400000)  // Today's games = tomorrow UTC
-    : new Date(now.getTime() + (86400000 * 2))  // Tomorrow's games = +2 days UTC
+    ? now
+    : new Date(now.getTime() + 86400000)
   
   console.log('[LiveGames] Subscribing to games for:', targetDate.toLocaleDateString())
   
@@ -8017,10 +8021,16 @@ function subscribeToLiveGames() {
     (games) => {
       console.log('[LiveGames] Received update:', games.length, 'games')
       
+      // Filter finished games for today view
+      let filteredGames = games
       if (startSitDay.value === 'today') {
-        todaysGames.value = games
+        filteredGames = games.filter((g: any) => g.status !== 'final')
+      }
+      
+      if (startSitDay.value === 'today') {
+        todaysGames.value = filteredGames
       } else {
-        tomorrowsGames.value = games
+        tomorrowsGames.value = filteredGames
       }
     }
   )
