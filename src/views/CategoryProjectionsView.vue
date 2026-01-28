@@ -2888,6 +2888,104 @@ import {
   type CategoryRankingPreset 
 } from '@/services/categoryRankingFactors'
 
+// ===== TEAM CORRECTION SERVICE (INLINE) =====
+// Fixes incorrect team codes from ESPN/Yahoo APIs
+
+// NBA Player to Team Mappings (2025-26 Season)
+const nbaPlayerTeamMappings: Record<string, string> = {
+  "Precious Achiuwa": "NYK", "Bam Adebayo": "MIA", "Steven Adams": "HOU",
+  "LaMelo Ball": "CHA", "Lonzo Ball": "CHI", "Paolo Banchero": "ORL",
+  "Scottie Barnes": "TOR", "Desmond Bane": "MEM", "RJ Barrett": "TOR",
+  "Keegan Murray": "SAC", "Dejounte Murray": "NOP", "Jamal Murray": "DEN",
+  "Giannis Antetokounmpo": "MIL", "OG Anunoby": "NYK", "Cole Anthony": "ORL",
+  "Wendell Carter Jr.": "ORL", "Alex Caruso": "OKC", "Jimmy Butler": "MIA",
+  "Jalen Brunson": "NYK", "Jaylen Brown": "BOS", "Brook Lopez": "MIL",
+  "Anthony Davis": "LAL", "DeMar DeRozan": "SAC", "Luka Doncic": "DAL",
+  "Kevin Durant": "PHX", "Anthony Edwards": "MIN", "Joel Embiid": "PHI",
+  "De'Andre Hunter": "ATL", "Trae Young": "ATL", "Kyrie Irving": "DAL",
+  "LeBron James": "LAL", "Jaren Jackson Jr.": "MEM", "Nikola Jokic": "DEN",
+  "Nikola Jovic": "MIA", "Tyrese Haliburton": "IND", "James Harden": "LAC",
+  "Tyler Herro": "MIA", "Buddy Hield": "GSW", "Jrue Holiday": "BOS",
+  "Brandon Ingram": "NOP", "Derrick Jones Jr.": "LAC", "Tyrese Maxey": "PHI",
+  "CJ McCollum": "NOP", "Donovan Mitchell": "CLE", "Ja Morant": "MEM",
+  "Kawhi Leonard": "LAC", "Damian Lillard": "MIL", "Karl-Anthony Towns": "NYK",
+  "Myles Turner": "IND", "Jonas Valanciunas": "WAS", "Nikola Vucevic": "CHI",
+  "Russell Westbrook": "DEN", "Zion Williamson": "NOP", "Chet Holmgren": "OKC",
+  "Shai Gilgeous-Alexander": "OKC", "Darius Garland": "CLE", "Evan Mobley": "CLE",
+  "Jarrett Allen": "CLE", "Alperen Sengun": "HOU", "Pascal Siakam": "IND",
+  "Ben Simmons": "BKN", "Jalen Smith": "CHI", "Marcus Smart": "MEM",
+  "Jayson Tatum": "BOS", "Klay Thompson": "DAL", "Franz Wagner": "ORL",
+  "Derrick White": "BOS", "Jalen Williams": "OKC", "Zach LaVine": "CHI",
+  "Devin Booker": "PHX", "Bradley Beal": "PHX", "Chris Paul": "SAS",
+  "Draymond Green": "GSW", "Stephen Curry": "GSW", "Andrew Wiggins": "GSW",
+  "Jordan Poole": "WAS", "Kristaps Porzingis": "BOS", "Al Horford": "BOS",
+  "Malcolm Brogdon": "WAS", "Bennedict Mathurin": "IND", "Obi Toppin": "IND",
+  "Rui Hachimura": "LAL", "Austin Reaves": "LAL", "D'Angelo Russell": "LAL",
+  "Jarred Vanderbilt": "LAL", "Christian Wood": "LAL", "Paul George": "PHI",
+  "Tobias Harris": "DET", "Kelly Oubre Jr.": "PHI", "Nicolas Batum": "LAC",
+  "Norman Powell": "LAC", "Ivica Zubac": "LAC", "Bones Hyland": "LAC",
+  "Victor Wembanyama": "SAS", "Devin Vassell": "SAS", "Keldon Johnson": "SAS",
+  "Jeremy Sochan": "SAS", "Tre Jones": "SAS", "Lauri Markkanen": "UTA",
+  "Jordan Clarkson": "UTA", "Collin Sexton": "UTA", "Walker Kessler": "UTA",
+  "John Collins": "UTA", "Scoot Henderson": "POR", "Anfernee Simons": "POR",
+  "Jerami Grant": "POR", "Deandre Ayton": "POR", "Shaedon Sharpe": "POR",
+  "Brandon Miller": "CHA", "Miles Bridges": "CHA", "Terry Rozier": "MIA",
+  "Gordon Hayward": "OKC", "Cade Cunningham": "DET", "Jaden Ivey": "DET",
+  "Ausar Thompson": "DET", "Isaiah Stewart": "DET", "Jalen Duren": "DET",
+  "Bojan Bogdanovic": "BKN", "Marcus Sasser": "DET", "Killian Hayes": "BKN",
+  "Donte DiVincenzo": "MIN", "Julius Randle": "MIN", "Rudy Gobert": "MIN",
+  "Mike Conley": "MIN", "Naz Reid": "MIN", "Kyle Anderson": "GSW",
+  "Trayce Jackson-Davis": "GSW", "Jonathan Kuminga": "GSW", "Moses Moody": "GSW",
+  "Gary Payton II": "GSW", "De'Anthony Melton": "GSW", "Kevon Looney": "GSW"
+}
+
+// Team Correction Service
+function correctPlayerTeam(player: any, sport: string): any {
+  if (!player || sport !== 'basketball') return player
+  
+  const playerName = player.full_name || player.name
+  const currentTeamCode = player.mlb_team || player.nba_team || player.nhl_team || 
+                         player.editorial_team_abbr || player.team_abbr
+  
+  // Check if we have a mapping for this player
+  if (nbaPlayerTeamMappings[playerName]) {
+    const correctTeam = nbaPlayerTeamMappings[playerName]
+    
+    // Log correction if different
+    if (currentTeamCode && currentTeamCode !== correctTeam) {
+      console.log(`[TeamCorrection] Fixed ${playerName}: ${currentTeamCode} -> ${correctTeam}`)
+    }
+    
+    return {
+      ...player,
+      nba_team: correctTeam,
+      mlb_team: undefined,
+      nhl_team: undefined,
+      correctedTeam: true
+    }
+  }
+  
+  // Check if current code is obviously wrong (NFL/MLB code for NBA)
+  const invalidNBACodes = ['PIT', 'TEN', 'CAR', 'NE', 'FA', 'GB', 'KC', 'BAL', 'CIN', 'JAX', 'TB', 'ARI', 'SEA', 'LAR', 'SF']
+  if (currentTeamCode && invalidNBACodes.includes(currentTeamCode)) {
+    console.warn(`[TeamCorrection] Invalid NBA code for ${playerName}: ${currentTeamCode} (no mapping available)`)
+    return {
+      ...player,
+      nba_team: null,
+      mlb_team: undefined,
+      nhl_team: undefined
+    }
+  }
+  
+  return player
+}
+
+function correctPlayerTeams(players: any[], sport: string): any[] {
+  if (sport !== 'basketball') return players
+  return players.map(p => correctPlayerTeam(p, sport))
+}
+// ===== END TEAM CORRECTION SERVICE =====
+
 const leagueStore = useLeagueStore()
 const { hasPremiumAccess } = useFeatureAccess()
 
@@ -4272,7 +4370,17 @@ async function loadProjections() {
       console.log('======================================================')
     }
     
-    allPlayers.value = [...rostered, ...fas]
+    // Apply team corrections for basketball
+    if (currentSport.value === 'basketball') {
+      console.log('[TeamCorrection] Applying corrections to Yahoo players...')
+      const correctedRostered = correctPlayerTeams(rostered, 'basketball')
+      const correctedFas = correctPlayerTeams(fas, 'basketball')
+      allPlayers.value = [...correctedRostered, ...correctedFas]
+      console.log('[TeamCorrection] ✅ Corrections applied to', allPlayers.value.length, 'Yahoo players')
+    } else {
+      allPlayers.value = [...rostered, ...fas]
+    }
+    
     selectAllPositions()
     
     // Debug logging
@@ -4691,7 +4799,17 @@ async function loadEspnProjections() {
       console.error('[ESPN Projections] Error loading free agents:', e)
     }
     
-    allPlayers.value = [...allRosteredPlayers, ...freeAgents]
+    // Apply team corrections for basketball
+    if (currentSport.value === 'basketball') {
+      console.log('[TeamCorrection] Applying corrections to ESPN players...')
+      const correctedRostered = correctPlayerTeams(allRosteredPlayers, 'basketball')
+      const correctedFas = correctPlayerTeams(freeAgents, 'basketball')
+      allPlayers.value = [...correctedRostered, ...correctedFas]
+      console.log('[TeamCorrection] ✅ Corrections applied to', allPlayers.value.length, 'ESPN players')
+    } else {
+      allPlayers.value = [...allRosteredPlayers, ...freeAgents]
+    }
+    
     selectAllPositions()
     
     const pitchers = allPlayers.value.filter(p => isPitcher(p))
@@ -7277,7 +7395,7 @@ const availableFreeAgents = computed(() => {
   })
   
   try {
-    // First, try to get players WITH games
+    // Get ALL free agents and add game info to each
     let debugCounter = 0 // Track how many we've checked for debug logging
     
     let results = allPlayersWithValues.value
@@ -7285,14 +7403,21 @@ const availableFreeAgents = computed(() => {
         // Must be free agent
         if (p.fantasy_team_key) return false
         
-        // Must have a game - use sport-agnostic team property
-        const teamCode = p.mlb_team || p.nba_team || p.nhl_team || p.editorial_team_abbr || p.team_abbr
-        if (!teamCode) {
-          console.log('[availableFreeAgents] Player missing team code:', p.full_name)
-          return false
+        // Position filter
+        if (selectedStartSitPosition.value !== 'All') {
+          const playerPos = p.position || ''
+          if (!playerPos.includes(selectedStartSitPosition.value)) return false
         }
         
-        const gameInfo = liveGamesService.getPlayerGameInfo(teamCode, activeGames)
+        return true
+      })
+      .map(p => {
+        // Get team code - for basketball, prefer nba_team (corrected)
+        const teamCode = currentSport.value === 'basketball'
+          ? (p.nba_team || p.mlb_team || p.editorial_team_abbr || p.team_abbr)
+          : (p.mlb_team || p.nba_team || p.nhl_team || p.editorial_team_abbr || p.team_abbr)
+        
+        const gameInfo = teamCode ? liveGamesService.getPlayerGameInfo(teamCode, activeGames) : null
         
         // DEBUG: Always log first 10 players to see what's happening
         debugCounter++
@@ -7321,73 +7446,21 @@ const availableFreeAgents = computed(() => {
           console.log(`[availableFreeAgents] ===================================`)
         }
         
-        if (!gameInfo || !gameInfo.hasGame) return false
-        
-        // Position filter
-        if (selectedStartSitPosition.value !== 'All') {
-          const playerPos = p.position || ''
-          if (!playerPos.includes(selectedStartSitPosition.value)) return false
-        }
-        
-        return true
-      })
-      .map(p => {
-        const teamCode = p.mlb_team || p.nba_team || p.nhl_team || p.editorial_team_abbr || p.team_abbr
-        const gameInfo = liveGamesService.getPlayerGameInfo(teamCode, activeGames)
         const impactCats = getImpactCategoryCount(p)
         
         return {
           ...p,
-          hasGame: gameInfo.hasGame,
-          opponent: gameInfo.opponent,
-          isHome: gameInfo.isHome,
+          hasGame: gameInfo?.hasGame || false,
+          opponent: gameInfo?.opponent || null,
+          isHome: gameInfo?.isHome || false,
           impactCats,
           impactScore: calculatePlayerImpact(p)
         }
       })
       .sort((a, b) => (b.overallValue || 0) - (a.overallValue || 0))
     
-    // If we got fewer than 20 results, also include top players without games
-    if (results.length < 20) {
-      const playersWithoutGames = allPlayersWithValues.value
-        .filter(p => {
-          // Must be free agent
-          if (p.fantasy_team_key) return false
-          
-          // Position filter
-          if (selectedStartSitPosition.value !== 'All') {
-            const playerPos = p.position || ''
-            if (!playerPos.includes(selectedStartSitPosition.value)) return false
-          }
-          
-          // Not already in results
-          const alreadyIncluded = results.some(r => r.player_key === p.player_key)
-          if (alreadyIncluded) return false
-          
-          return true
-        })
-        .map(p => {
-          const teamCode = p.mlb_team || p.nba_team || p.nhl_team || p.editorial_team_abbr || p.team_abbr
-          const gameInfo = teamCode ? liveGamesService.getPlayerGameInfo(teamCode, activeGames) : null
-          const impactCats = getImpactCategoryCount(p)
-          
-          return {
-            ...p,
-            hasGame: false,
-            opponent: '',
-            isHome: false,
-            impactCats,
-            impactScore: calculatePlayerImpact(p)
-          }
-        })
-        .sort((a, b) => (b.overallValue || 0) - (a.overallValue || 0))
-        .slice(0, 20 - results.length) // Fill up to 20
-      
-      results = [...results, ...playersWithoutGames]
-    }
-    
-    console.log('[availableFreeAgents] Found', results.length, 'free agents')
-    return results.slice(0, 100) // Top 100 total
+    console.log('[availableFreeAgents] Found', results.length, 'free agents (all players, filtered by day selection)')
+    return results.slice(0, 200) // Top 200 total (increased from 100)
   } catch (error) {
     console.error('[availableFreeAgents] Error:', error)
     return []
@@ -7396,11 +7469,29 @@ const availableFreeAgents = computed(() => {
 
 // Sorted available free agents for display
 const sortedAvailableFreeAgents = computed(() => {
-  const players = [...availableFreeAgents.value]
+  let players = [...availableFreeAgents.value]
+  
+  // FILTER: When "Today" is selected, only show players with games today
+  if (startSitDay.value === 'today') {
+    players = players.filter(p => p.hasGame)
+    console.log('[sortedAvailableFreeAgents] Filtered to players with games today:', players.length)
+  }
+  
   const column = availableSortColumn.value
   const direction = availableSortDirection.value === 'asc' ? 1 : -1
   
-  if (column === 'name') {
+  // DEFAULT SORT: When "Today" is selected, sort by game time (earliest first)
+  if (startSitDay.value === 'today' && column === 'value') {
+    players.sort((a, b) => {
+      // Primary: Sort by game time (earliest first)
+      const aTime = a.gameTime ? new Date(a.gameTime).getTime() : Infinity
+      const bTime = b.gameTime ? new Date(b.gameTime).getTime() : Infinity
+      if (aTime !== bTime) return aTime - bTime
+      
+      // Secondary: Sort by value (highest first)
+      return ((b.overallValue || 0) - (a.overallValue || 0))
+    })
+  } else if (column === 'name') {
     players.sort((a, b) => direction * (a.full_name || '').localeCompare(b.full_name || ''))
   } else if (column === 'value') {
     players.sort((a, b) => direction * ((a.overallValue || 0) - (b.overallValue || 0)))
@@ -7464,7 +7555,9 @@ const smartWaiverRecommendations = computed(() => {
         return true
       })
       .map(p => {
-        const teamCode = p.mlb_team || p.nba_team || p.nhl_team || p.editorial_team_abbr || p.team_abbr
+        const teamCode = currentSport.value === 'basketball'
+          ? (p.nba_team || p.mlb_team || p.editorial_team_abbr || p.team_abbr)
+          : (p.mlb_team || p.nba_team || p.nhl_team || p.editorial_team_abbr || p.team_abbr)
         const gameInfo = liveGamesService.getPlayerGameInfo(teamCode, activeGames)
         return {
           ...p,
@@ -7482,7 +7575,9 @@ const smartWaiverRecommendations = computed(() => {
     // Get droppable players - VERY PERMISSIVE
     const droppablePlayers = myPlayers
       .map(p => {
-        const teamCode = p.mlb_team || p.nba_team || p.nhl_team || p.editorial_team_abbr || p.team_abbr
+        const teamCode = currentSport.value === 'basketball'
+          ? (p.nba_team || p.mlb_team || p.editorial_team_abbr || p.team_abbr)
+          : (p.mlb_team || p.nba_team || p.nhl_team || p.editorial_team_abbr || p.team_abbr)
         const gameInfo = liveGamesService.getPlayerGameInfo(teamCode, activeGames)
         return {
           ...p,
