@@ -7942,15 +7942,20 @@ async function loadLiveGames() {
     console.log(`[LiveGames] Local date: ${localDateString}`)
     console.log(`[LiveGames] UTC date: ${now.toISOString().split('T')[0]}`)
     
-    // Calculate the date to load
+    // TIMEZONE FIX: NBA games that happen "tonight" in US timezones
+    // are actually "tomorrow" in UTC because they start late evening
+    // Example: 7pm EST Jan 28 = 12am UTC Jan 29
+    // So when requesting "today's" games, we need tomorrow's UTC date
+    
     let targetDate: Date
     if (startSitDay.value === 'today') {
-      targetDate = now
-      console.log(`[LiveGames] Loading games for TODAY`)
-    } else {
-      // Tomorrow - add 24 hours
+      // Add 1 day to get tonight's games (which are tomorrow in UTC)
       targetDate = new Date(now.getTime() + 86400000)
-      console.log(`[LiveGames] Loading games for TOMORROW`)
+      console.log(`[LiveGames] Loading games for TODAY (adjusted for timezone - requesting UTC tomorrow)`)
+    } else {
+      // Tomorrow - add 2 days (tomorrow in local + 1 for UTC offset)
+      targetDate = new Date(now.getTime() + (86400000 * 2))
+      console.log(`[LiveGames] Loading games for TOMORROW (adjusted for timezone - requesting UTC +2 days)`)
     }
     
     console.log(`[LiveGames] Target date: ${targetDate.toLocaleDateString()} ${targetDate.toLocaleTimeString()}`)
@@ -7998,11 +8003,11 @@ function subscribeToLiveGames() {
     liveGamesSubscription.value = null
   }
   
-  // Calculate target date
+  // Calculate target date with timezone adjustment
   const now = new Date()
   const targetDate = startSitDay.value === 'today' 
-    ? now
-    : new Date(now.getTime() + 86400000)
+    ? new Date(now.getTime() + 86400000)  // Today's games = tomorrow UTC
+    : new Date(now.getTime() + (86400000 * 2))  // Tomorrow's games = +2 days UTC
   
   console.log('[LiveGames] Subscribing to games for:', targetDate.toLocaleDateString())
   
