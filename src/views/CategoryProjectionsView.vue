@@ -5516,6 +5516,18 @@ function getGameCountForPeriod(player: any): number {
 function formatCategoryProjection(player: any, category: any): string {
   if (!player || !category) return '-'
   
+  // DEBUG: Log the first time we see a player
+  if (Math.random() < 0.01) { // Only log 1% of the time to avoid spam
+    console.log('[formatCategoryProjection] DEBUG:', {
+      player: player.full_name,
+      categoryId: category.stat_id,
+      categoryName: category.display_name,
+      playerStats: player.stats,
+      statKeys: player.stats ? Object.keys(player.stats) : 'no stats',
+      statValue: player.stats?.[category.stat_id]
+    })
+  }
+  
   // Check if this is a percentage stat - be very thorough
   const statId = String(category.stat_id || '').toLowerCase()
   const displayName = String(category.display_name || '').toLowerCase()
@@ -7979,6 +7991,19 @@ function getPlayerProjection(player: any, category: any, period: 'today' | 'next
   // Try season totals
   else if (player.season_stats && player.season_stats[category.stat_id] !== undefined) {
     statValue = parseFloat(player.season_stats[category.stat_id])
+  }
+  
+  // DEBUG: If no stat value found, log details
+  if (statValue === 0 && Math.random() < 0.05) {
+    console.log('[getPlayerProjection] No stat found:', {
+      player: player.full_name,
+      categoryId: category.stat_id,
+      categoryName: category.display_name,
+      hasStats: !!player.stats,
+      statsKeys: player.stats ? Object.keys(player.stats).slice(0, 5) : 'none',
+      hasProjections: !!player.projections,
+      hasSeason: !!player.season_stats
+    })
   }
   
   // If still no data, return 0
