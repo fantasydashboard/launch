@@ -7266,6 +7266,33 @@ const availableFreeAgents = computed(() => {
         }
         
         const gameInfo = liveGamesService.getPlayerGameInfo(teamCode, activeGames)
+        
+        // DEBUG: Always log first 10 players to see what's happening
+        if (results.length < 10) {
+          console.log(`[availableFreeAgents] ========== PLAYER ${results.length + 1} ==========`)
+          console.log('[availableFreeAgents] Player:', p.full_name)
+          console.log('[availableFreeAgents] Team code:', teamCode)
+          console.log('[availableFreeAgents] All team properties:', {
+            mlb_team: p.mlb_team,
+            nba_team: p.nba_team,
+            nhl_team: p.nhl_team,
+            editorial_team_abbr: p.editorial_team_abbr,
+            team_abbr: p.team_abbr
+          })
+          console.log('[availableFreeAgents] Active games count:', activeGames.length)
+          console.log('[availableFreeAgents] Game info result:', gameInfo)
+          console.log('[availableFreeAgents] Has game?:', gameInfo?.hasGame)
+          console.log('[availableFreeAgents] Opponent:', gameInfo?.opponent)
+          
+          if (activeGames.length > 0 && activeGames.length < 5) {
+            console.log('[availableFreeAgents] All games:', activeGames.map((g: any) => ({
+              home: g.homeTeam || g.home_team || g.home,
+              away: g.awayTeam || g.away_team || g.away
+            })))
+          }
+          console.log(`[availableFreeAgents] ===================================`)
+        }
+        
         if (!gameInfo || !gameInfo.hasGame) return false
         
         // Position filter
@@ -7770,7 +7797,22 @@ async function loadLiveGames() {
       tomorrowsGames.value = games
     }
     
-    console.log(`[LiveGames] Loaded ${games.length} games`)
+    console.log(`[LiveGames] ========== GAMES LOADED ==========`)
+    console.log(`[LiveGames] Count: ${games.length}`)
+    console.log(`[LiveGames] Games array:`, games)
+    
+    if (games.length > 0) {
+      console.log('[LiveGames] First game structure:', games[0])
+      console.log('[LiveGames] Sample games:', games.slice(0, 3).map((g: any) => ({
+        home: g.homeTeam || g.home_team || g.home,
+        away: g.awayTeam || g.away_team || g.away,
+        status: g.status,
+        time: g.time || g.gameTime
+      })))
+    } else {
+      console.warn('[LiveGames] ⚠️ No games loaded! This might be why players show wrong game info.')
+    }
+    console.log(`[LiveGames] ================================`)
     
   } catch (error) {
     console.error('[LiveGames] Error loading games:', error)
