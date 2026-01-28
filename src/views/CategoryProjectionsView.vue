@@ -727,9 +727,14 @@
                         <div class="flex-1 min-w-0">
                           <div class="font-semibold text-dark-text text-sm">{{ slot.player.full_name }}</div>
                           <div class="flex items-center gap-2 text-xs">
-                            <span v-if="slot.player.hasGame" class="text-green-400">
-                              {{ slot.player.opponent }}
-                              <span class="text-gray-400 font-light ml-1">{{ slot.player.gameTime }}</span>
+                            <span v-if="slot.player.hasGame" class="text-green-400 flex items-center gap-1">
+                              <img 
+                                :src="`https://a.espncdn.com/combiner/i?img=/i/teamlogos/${currentSport === 'basketball' ? 'nba' : currentSport === 'hockey' ? 'nhl' : 'mlb'}/500/${getOpponentTeamCode(slot.player.opponent)}.png&h=20&w=20`" 
+                                class="w-4 h-4 object-contain"
+                                @error="e => e.target.style.display = 'none'"
+                              />
+                              <span>{{ slot.player.opponent }}</span>
+                              <span class="text-gray-400 font-light ml-1">{{ formatGameTime(slot.player.gameTime) }}</span>
                             </span>
                             <span v-else class="text-red-400">No game</span>
                             <span class="text-dark-textMuted">•</span>
@@ -980,7 +985,7 @@
                           </div>
                           <div class="text-xs text-dark-textMuted">
                             {{ rec.addPlayer.opponent }} 
-                            <span class="text-gray-400 font-light ml-1">{{ rec.addPlayer.gameTime }}</span>
+                            <span class="text-gray-400 font-light ml-1">{{ formatGameTime(rec.addPlayer.gameTime) }}</span>
                             {{ startSitDay === 'today' ? 'today' : 'tomorrow' }}
                           </div>
                         </div>
@@ -1000,7 +1005,7 @@
                           <div class="text-xs text-dark-textMuted">
                             <span v-if="rec.dropPlayer.hasGame">
                               {{ rec.dropPlayer.opponent }}
-                              <span class="text-gray-400 font-light ml-1">{{ rec.dropPlayer.gameTime }}</span>
+                              <span class="text-gray-400 font-light ml-1">{{ formatGameTime(rec.dropPlayer.gameTime) }}</span>
                             </span>
                             <span v-else>No game today</span>
                           </div>
@@ -1163,7 +1168,16 @@
                     </div>
                     <div>
                       <h2 class="text-2xl font-bold text-dark-text">{{ playerAnalysisData.full_name }}</h2>
-                      <p class="text-sm text-dark-textMuted">{{ playerAnalysisData.mlb_team }} • {{ playerAnalysisData.position }}</p>
+                      <div class="flex items-center gap-2 text-sm text-dark-textMuted">
+                        <img 
+                          :src="`https://a.espncdn.com/combiner/i?img=/i/teamlogos/${currentSport === 'basketball' ? 'nba' : currentSport === 'hockey' ? 'nhl' : 'mlb'}/500/${playerAnalysisData.mlb_team || playerAnalysisData.nba_team || playerAnalysisData.nhl_team}.png&h=16&w=16`" 
+                          class="w-4 h-4 object-contain"
+                          @error="e => e.target.style.display = 'none'"
+                        />
+                        <span>{{ playerAnalysisData.mlb_team || playerAnalysisData.nba_team || playerAnalysisData.nhl_team }}</span>
+                        <span>•</span>
+                        <span>{{ playerAnalysisData.position }}</span>
+                      </div>
                     </div>
                     <div class="ml-4 px-4 py-2 bg-yellow-500/20 rounded-lg border border-yellow-500/30">
                       <div class="text-xs text-yellow-400 uppercase mb-1">Value Score</div>
@@ -1192,7 +1206,7 @@
                       <div v-if="playerAnalysisData.hasGame" class="space-y-3">
                         <div class="flex items-center justify-between p-3 bg-dark-elevated rounded-lg">
                           <span class="text-dark-textMuted">Opponent</span>
-                          <span class="font-bold text-dark-text">{{ playerAnalysisData.isHome ? 'vs' : '@' }} {{ playerAnalysisData.opponent }}</span>
+                          <span class="font-bold text-dark-text">{{ playerAnalysisData.opponent }}</span>
                         </div>
                         <div class="flex items-center justify-between p-3 bg-dark-elevated rounded-lg">
                           <span class="text-dark-textMuted">Status</span>
@@ -5691,6 +5705,34 @@ function getGameCountForPeriod(player: any): number {
   return period === 'ros' ? 30 : 4
 }
 
+/**
+ * Format game time to show just the time (7:00 PM, 10:30 PM)
+ */
+function formatGameTime(gameTimeString: string | null | undefined): string {
+  if (!gameTimeString) return ''
+  
+  try {
+    const date = new Date(gameTimeString)
+    // Format as time only: 7:00 PM or 10:30 PM
+    return date.toLocaleTimeString('en-US', { 
+      hour: 'numeric', 
+      minute: '2-digit',
+      hour12: true 
+    })
+  } catch (e) {
+    return ''
+  }
+}
+
+/**
+ * Extract team code from opponent string (e.g., "vs LAL" -> "LAL", "@ BOS" -> "BOS")
+ */
+function getOpponentTeamCode(opponent: string | null | undefined): string {
+  if (!opponent) return ''
+  // Remove "vs " or "@ " prefix
+  return opponent.replace(/^(vs|@)\s+/, '').trim()
+}
+
 function formatCategoryProjection(player: any, category: any): string {
   if (!player || !category) return '-'
   
@@ -8235,8 +8277,15 @@ function getPlayerProjection(player: any, category: any, period: 'today' | 'next
     })
   }
   
-  // If still no data, return 0
-  if (isNaN(statValue) || statValue === 0) return '0'
+  // ESPN FIX: If no data found for projections, show N/A instead of 0
+  // ESPN doesn't have next7/next14 projections
+  if (isNaN(statValue) || statValue === 0) {
+    // Only return N/A for projection periods, not for current stats
+    if (period === 'next7' || period === 'next14') {
+      return 'N/A'
+    }
+    return '0'
+  }
   
   // CRITICAL FIX: Percentages don't project - they're rates, not counting stats
   if (isPercentage) {
