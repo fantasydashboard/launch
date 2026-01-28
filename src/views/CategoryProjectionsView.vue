@@ -4195,6 +4195,8 @@ async function loadProjections() {
       full_name: p.full_name || p.name || 'Unknown', 
       position: p.position || 'Util', 
       mlb_team: p.mlb_team || '', 
+      nba_team: p.nba_team || '', 
+      nhl_team: p.nhl_team || '',
       headshot: p.headshot || '', 
       fantasy_team: p.fantasy_team || p.team_name, 
       fantasy_team_key: p.fantasy_team_key || p.team_key, 
@@ -4202,13 +4204,20 @@ async function loadProjections() {
       total_points: p.total_points || 0 
     }))
     
-    // Debug: log first few rostered players to see their team keys
+    // Debug: log first few rostered players to see their team data
     if (rostered.length > 0) {
-      console.log('Sample rostered players:', rostered.slice(0, 3).map(p => ({
+      console.log('========== YAHOO PLAYER TEAM DATA DEBUG ==========')
+      console.log('Sample rostered players:', rostered.slice(0, 5).map(p => ({
         name: p.full_name,
+        mlb_team: p.mlb_team,
+        nba_team: p.nba_team,
+        nhl_team: p.nhl_team,
+        editorial_team_abbr: p.editorial_team_abbr,
+        team_abbr: p.team_abbr,
         fantasy_team: p.fantasy_team,
         fantasy_team_key: p.fantasy_team_key
       })))
+      console.log('==================================================')
     }
     
     // If myTeamKey is set, check if any players match
@@ -4240,12 +4249,28 @@ async function loadProjections() {
       full_name: p.full_name || p.name || 'Unknown', 
       position: p.position || 'Util', 
       mlb_team: p.mlb_team || '', 
+      nba_team: p.nba_team || '',
+      nhl_team: p.nhl_team || '',
       headshot: p.headshot || '', 
       fantasy_team: null, 
       fantasy_team_key: null, 
       stats: p.stats || {}, 
       total_points: p.total_points || 0 
     }))
+    
+    // Debug: log free agents team data
+    if (fas.length > 0) {
+      console.log('========== YAHOO FREE AGENT TEAM DATA DEBUG ==========')
+      console.log('Sample free agents:', fas.slice(0, 5).map(p => ({
+        name: p.full_name,
+        mlb_team: p.mlb_team,
+        nba_team: p.nba_team,
+        nhl_team: p.nhl_team,
+        editorial_team_abbr: p.editorial_team_abbr,
+        team_abbr: p.team_abbr
+      })))
+      console.log('======================================================')
+    }
     
     allPlayers.value = [...rostered, ...fas]
     selectAllPositions()
