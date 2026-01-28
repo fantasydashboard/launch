@@ -1306,26 +1306,10 @@
                 </div>
 
               </div>
-
-              <!-- Footer Actions -->
-              <div class="px-6 py-4 border-t border-dark-border flex justify-between items-center">
-                <div class="text-xs text-dark-textMuted">
-                  💎 Premium Analysis Tool
-                </div>
-                <div class="flex gap-3">
-                  <button @click="showPlayerAnalysisModal = false" class="px-4 py-2 bg-dark-border text-dark-textMuted rounded-lg hover:bg-dark-border/50 transition-colors font-semibold">
-                    Close
-                  </button>
-                  <button 
-                    @click="showComparisonPickerInAnalysis = !showComparisonPickerInAnalysis" 
-                    class="px-4 py-2 bg-purple-500 text-white rounded-lg hover:bg-purple-400 transition-colors font-semibold"
-                  >
-                    {{ showComparisonPickerInAnalysis ? 'Hide Comparison' : 'Compare vs My Players' }}
-                  </button>
-                </div>
-                
-                <!-- Comparison Player Picker -->
-                <div v-if="showComparisonPickerInAnalysis" class="mt-6 bg-dark-elevated rounded-xl p-4 border border-purple-500/30">
+              
+              <!-- Comparison Player Picker (in scrollable area) -->
+              <div v-if="showComparisonPickerInAnalysis" class="px-6 pb-6">
+                <div class="bg-dark-elevated rounded-xl p-4 border border-purple-500/30">
                   <h3 class="text-lg font-bold text-purple-400 mb-4">Select Player to Compare</h3>
                   <div class="grid grid-cols-1 gap-2 max-h-96 overflow-y-auto">
                     <button
@@ -1381,6 +1365,24 @@
                       </div>
                     </button>
                   </div>
+                </div>
+              </div>
+
+              <!-- Footer Actions -->
+              <div class="px-6 py-4 border-t border-dark-border flex justify-between items-center">
+                <div class="text-xs text-dark-textMuted">
+                  💎 Premium Analysis Tool
+                </div>
+                <div class="flex gap-3">
+                  <button @click="showPlayerAnalysisModal = false" class="px-4 py-2 bg-dark-border text-dark-textMuted rounded-lg hover:bg-dark-border/50 transition-colors font-semibold">
+                    Close
+                  </button>
+                  <button 
+                    @click="showComparisonPickerInAnalysis = !showComparisonPickerInAnalysis" 
+                    class="px-4 py-2 bg-purple-500 text-white rounded-lg hover:bg-purple-400 transition-colors font-semibold"
+                  >
+                    {{ showComparisonPickerInAnalysis ? 'Hide Comparison' : 'Compare vs My Players' }}
+                  </button>
                 </div>
               </div>
             </div>
