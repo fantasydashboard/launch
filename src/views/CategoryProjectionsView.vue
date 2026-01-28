@@ -660,6 +660,7 @@
                     <button @click="startSitDay = 'today'" :class="startSitDay === 'today' ? 'bg-yellow-400 text-gray-900' : 'bg-dark-card text-dark-textMuted'" class="px-3 py-1.5 text-xs font-semibold transition-colors">Today</button>
                     <button @click="startSitDay = 'tomorrow'" :class="startSitDay === 'tomorrow' ? 'bg-yellow-400 text-gray-900' : 'bg-dark-card text-dark-textMuted'" class="px-3 py-1.5 text-xs font-semibold transition-colors">Tomorrow</button>
                   </div>
+                  <span class="text-xs text-yellow-400 font-mono">{{ requestedGameDate }}</span>
                 </div>
 
                 <!-- View Selector -->
@@ -3219,6 +3220,14 @@ const expandedTeamKey = ref<string | null>(null)
 // Start/Sit state
 const startSitMode = ref<'daily' | 'weekly'>('daily')
 const startSitDay = ref<'today' | 'tomorrow'>('today')
+
+// Debug: Show what date we're actually requesting
+const requestedGameDate = computed(() => {
+  const now = new Date()
+  const target = startSitDay.value === 'today' ? now : new Date(now.getTime() + 86400000)
+  return target.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+})
+
 const selectedStartSitPosition = ref('C')
 const availableSortColumn = ref<string>('value') // Default sort by value
 const availableSortDirection = ref<'asc' | 'desc'>('desc') // Default descending
@@ -7906,13 +7915,34 @@ async function loadLiveGames() {
   gamesLoading.value = true
   
   try {
-    const date = startSitDay.value === 'today' 
-      ? new Date() 
-      : new Date(Date.now() + 86400000)
+    // Get current local date/time
+    const now = new Date()
+    const localDateString = now.toLocaleDateString('en-US', { 
+      timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit'
+    })
     
+    console.log(`[LiveGames] Current time: ${now.toLocaleString()}`)
+    console.log(`[LiveGames] Local date: ${localDateString}`)
+    console.log(`[LiveGames] UTC date: ${now.toISOString().split('T')[0]}`)
+    
+    // Calculate the date to load
+    let targetDate: Date
+    if (startSitDay.value === 'today') {
+      targetDate = now
+      console.log(`[LiveGames] Loading games for TODAY`)
+    } else {
+      // Tomorrow - add 24 hours
+      targetDate = new Date(now.getTime() + 86400000)
+      console.log(`[LiveGames] Loading games for TOMORROW`)
+    }
+    
+    console.log(`[LiveGames] Target date: ${targetDate.toLocaleDateString()} ${targetDate.toLocaleTimeString()}`)
     console.log(`[LiveGames] Loading ${currentSport.value} games for ${startSitDay.value}`)
     
-    const games = await liveGamesService.getGamesByDate(currentSport.value, date)
+    const games = await liveGamesService.getGamesByDate(currentSport.value, targetDate)
     
     if (startSitDay.value === 'today') {
       todaysGames.value = games
@@ -7930,7 +7960,8 @@ async function loadLiveGames() {
         home: g.homeTeam || g.home_team || g.home,
         away: g.awayTeam || g.away_team || g.away,
         status: g.status,
-        time: g.time || g.gameTime
+        time: g.time || g.gameTime,
+        gameDate: g.gameDate
       })))
     } else {
       console.warn('[LiveGames] ⚠️ No games loaded! This might be why players show wrong game info.')
@@ -7953,13 +7984,17 @@ function subscribeToLiveGames() {
     liveGamesSubscription.value = null
   }
   
-  const date = startSitDay.value === 'today' 
-    ? new Date() 
-    : new Date(Date.now() + 86400000)
+  // Calculate target date
+  const now = new Date()
+  const targetDate = startSitDay.value === 'today' 
+    ? now
+    : new Date(now.getTime() + 86400000)
+  
+  console.log('[LiveGames] Subscribing to games for:', targetDate.toLocaleDateString())
   
   liveGamesSubscription.value = liveGamesService.subscribeToLiveGames(
     currentSport.value,
-    date,
+    targetDate,
     (games) => {
       console.log('[LiveGames] Received update:', games.length, 'games')
       
