@@ -672,14 +672,6 @@
                   </div>
                 </div>
 
-                <!-- Projection Mode -->
-                <div class="flex items-center gap-2">
-                  <span class="text-xs text-dark-textMuted uppercase">Data:</span>
-                  <div class="flex rounded-lg overflow-hidden border border-dark-border/50">
-                    <button @click="startSitViewMode = 'projections'" :class="startSitViewMode === 'projections' ? 'bg-green-500 text-gray-900' : 'bg-dark-card text-dark-textMuted'" class="px-3 py-1.5 text-xs font-semibold transition-colors">📈 Projections</button>
-                    <button @click="startSitViewMode = 'stats'" :class="startSitViewMode === 'stats' ? 'bg-blue-500 text-gray-900' : 'bg-dark-card text-dark-textMuted'" class="px-3 py-1.5 text-xs font-semibold transition-colors">📊 Stats</button>
-                  </div>
-                </div>
               </div>
             </div>
           </div>
@@ -810,11 +802,32 @@
                 <div class="flex items-center gap-2">
                   <span class="text-2xl">📊</span>
                   <div>
-                    <h2 class="text-xl font-bold text-dark-text">Available Impact Players</h2>
+                    <h2 class="text-xl font-bold text-dark-text">Available Players</h2>
                     <p class="text-xs text-dark-textMuted">Free agents with games {{ startSitDay === 'today' ? 'today' : 'tomorrow' }}</p>
                   </div>
                 </div>
-                <div class="flex items-center gap-2">
+                <div class="flex items-center gap-3">
+                  <!-- Time Period Dropdown -->
+                  <div class="relative">
+                    <select 
+                      v-model="availableTimePeriod" 
+                      class="bg-dark-border border border-dark-border/50 rounded-lg px-3 py-2 text-sm text-dark-text appearance-none pr-8 cursor-pointer"
+                    >
+                      <optgroup label="📈 PROJECTIONS">
+                        <option value="today">Today</option>
+                        <option value="next7">Next 7 Days</option>
+                        <option value="next14">Next 14 Days</option>
+                        <option value="ros">Rest of Season</option>
+                      </optgroup>
+                      <optgroup label="📊 STATS">
+                        <option value="last7">Last 7 Days</option>
+                        <option value="last14">Last 14 Days</option>
+                        <option value="season">Season</option>
+                      </optgroup>
+                    </select>
+                  </div>
+                  
+                  <!-- Position Filter -->
                   <select v-model="selectedStartSitPosition" class="bg-dark-border border border-dark-border/50 rounded-lg px-3 py-2 text-sm text-dark-text">
                     <option value="All">All Positions</option>
                     <option v-for="pos in startSitPositions" :key="pos.id" :value="pos.id">{{ pos.label }}</option>
@@ -2964,6 +2977,7 @@ const commandCenterView = ref<'lineup' | 'available' | 'moves'>('lineup') // New
 // Enhanced Start/Sit features
 const startSitTimePeriod = ref<'today' | 'next7' | 'next14' | 'ros'>('today')
 const startSitViewMode = ref<'projections' | 'stats'>('projections')
+const availableTimePeriod = ref<'today' | 'next7' | 'next14' | 'ros' | 'last7' | 'last14' | 'season'>('today')
 const waiverLineupPlayers = ref<any[]>([])  // Players added from FA for comparison
 const currentMatchupData = ref<any>(null)  // Real matchup data from Yahoo API
 const isLoadingMatchup = ref(false)
@@ -5261,8 +5275,27 @@ function formatCategoryProjection(player: any, category: any): string {
                       statId === 'fg%' || statId === 'ft%' || statId === '3p%' ||
                       statId === 'fgpct' || statId === 'ftpct'
   
-  // Use the getPlayerProjection function for today's projection
-  const projection = getPlayerProjection(player, category, 'today')
+  // Determine if we're showing projections or stats
+  const period = availableTimePeriod.value
+  const isProjection = ['today', 'next7', 'next14', 'ros'].includes(period)
+  
+  let projection: string
+  
+  if (isProjection) {
+    // Use projection function
+    if (period === 'today') {
+      projection = getPlayerProjection(player, category, 'today')
+    } else if (period === 'next7') {
+      projection = getPlayerProjection(player, category, 'next7')
+    } else if (period === 'next14') {
+      projection = getPlayerProjection(player, category, 'next14')
+    } else { // ros
+      projection = getPlayerSeasonProjection(player, category)
+    }
+  } else {
+    // Show historical stats
+    projection = getPlayerHistoricalStat(player, category, period as 'last7' | 'last14' | 'season')
+  }
   
   // If it's actually zero/empty, show dash
   if (projection === '0' || projection === '0.0' || projection === '0.00' || projection === '0.000') return '-'
@@ -7578,6 +7611,82 @@ function getPlayerSeasonAvg(player: any, category: any): string {
   } else {
     return perGame.toFixed(1)
   }
+}
+
+// Get rest of season projection
+function getPlayerSeasonProjection(player: any, category: any): string {
+  if (!player || !category) return '0'
+  
+  // Check if percentage
+  const statId = String(category.stat_id || '').toLowerCase()
+  const isPercentage = statId.includes('%') || statId.includes('pct')
+  
+  const statValue = parseFloat(player.stats?.[category.stat_id] || 0)
+  if (isNaN(statValue) || statValue === 0) return '0'
+  
+  if (isPercentage) {
+    // Return season average for percentages
+    if (statValue > 1) return statValue.toFixed(1)
+    else return statValue.toFixed(3)
+  }
+  
+  // For counting stats, estimate remaining games
+  const sport = currentSport.value
+  let remainingGames = 30
+  if (sport === 'basketball') remainingGames = 25
+  else if (sport === 'hockey') remainingGames = 25
+  else if (sport === 'baseball') remainingGames = 50
+  
+  const gamesPlayed = isPitcher(player) ? 30 : (sport === 'baseball' ? 140 : 70)
+  const perGame = gamesPlayed > 0 ? statValue / gamesPlayed : 0
+  const projected = perGame * remainingGames
+  
+  if (projected < 1) return projected.toFixed(2)
+  else if (projected < 10) return projected.toFixed(1)
+  else return Math.round(projected).toString()
+}
+
+// Get historical stat for last N days or season
+function getPlayerHistoricalStat(player: any, category: any, period: 'last7' | 'last14' | 'season'): string {
+  if (!player || !category) return '0'
+  
+  // Check if percentage
+  const statId = String(category.stat_id || '').toLowerCase()
+  const isPercentage = statId.includes('%') || statId.includes('pct')
+  
+  const statValue = parseFloat(player.stats?.[category.stat_id] || 0)
+  if (isNaN(statValue) || statValue === 0) return '0'
+  
+  if (period === 'season') {
+    // Return full season stats
+    if (isPercentage) {
+      if (statValue > 1) return statValue.toFixed(1)
+      else return statValue.toFixed(3)
+    }
+    return statValue.toFixed(1)
+  }
+  
+  // For last 7 or 14 days, estimate based on per-game
+  if (isPercentage) {
+    // Percentages stay the same
+    if (statValue > 1) return statValue.toFixed(1)
+    else return statValue.toFixed(3)
+  }
+  
+  const sport = currentSport.value
+  const gamesPlayed = isPitcher(player) ? 30 : (sport === 'baseball' ? 140 : 70)
+  const perGame = gamesPlayed > 0 ? statValue / gamesPlayed : 0
+  
+  // Estimate games in period
+  const games = period === 'last7' ? 
+    (sport === 'baseball' ? 6 : 3) : 
+    (sport === 'baseball' ? 12 : 6)
+  
+  const periodTotal = perGame * games
+  
+  if (periodTotal < 1) return periodTotal.toFixed(2)
+  else if (periodTotal < 10) return periodTotal.toFixed(1)
+  else return Math.round(periodTotal).toString()
 }
 
 // Calculate upcoming games (placeholder - would need real schedule data)
