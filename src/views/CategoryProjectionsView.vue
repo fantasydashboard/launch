@@ -1316,9 +1316,71 @@
                   <button @click="showPlayerAnalysisModal = false" class="px-4 py-2 bg-dark-border text-dark-textMuted rounded-lg hover:bg-dark-border/50 transition-colors font-semibold">
                     Close
                   </button>
-                  <button @click="analyzeWaiverMove(playerAnalysisData); showPlayerAnalysisModal = false" class="px-4 py-2 bg-cyan-500 text-gray-900 rounded-lg hover:bg-cyan-400 transition-colors font-semibold">
-                    Add to Lineup
+                  <button 
+                    @click="showComparisonPickerInAnalysis = !showComparisonPickerInAnalysis" 
+                    class="px-4 py-2 bg-purple-500 text-white rounded-lg hover:bg-purple-400 transition-colors font-semibold"
+                  >
+                    {{ showComparisonPickerInAnalysis ? 'Hide Comparison' : 'Compare vs My Players' }}
                   </button>
+                </div>
+                
+                <!-- Comparison Player Picker -->
+                <div v-if="showComparisonPickerInAnalysis" class="mt-6 bg-dark-elevated rounded-xl p-4 border border-purple-500/30">
+                  <h3 class="text-lg font-bold text-purple-400 mb-4">Select Player to Compare</h3>
+                  <div class="grid grid-cols-1 gap-2 max-h-96 overflow-y-auto">
+                    <button
+                      v-for="myPlayer in myPlayersWithGameInfo"
+                      :key="myPlayer.player_key"
+                      @click="comparisonPlayerAdd = playerAnalysisData; comparisonPlayerDrop = myPlayer; showPlayerComparisonModal = true; showPlayerAnalysisModal = false; showComparisonPickerInAnalysis = false"
+                      class="flex items-center gap-3 p-3 bg-dark-card hover:bg-dark-border/50 rounded-lg transition-colors text-left group"
+                    >
+                      <!-- Player Avatar -->
+                      <div class="w-12 h-12 rounded-full bg-dark-border overflow-hidden flex-shrink-0">
+                        <img :src="myPlayer.headshot || defaultHeadshot" class="w-full h-full object-cover" @error="handleImageError" />
+                      </div>
+                      
+                      <!-- Player Info -->
+                      <div class="flex-1 min-w-0">
+                        <div class="font-semibold text-dark-text text-sm group-hover:text-purple-400 transition-colors">
+                          {{ myPlayer.full_name }}
+                        </div>
+                        <div class="text-xs text-dark-textMuted">
+                          {{ myPlayer.position }} • {{ myPlayer.mlb_team || myPlayer.nba_team || myPlayer.nhl_team }}
+                        </div>
+                        <div class="flex items-center gap-2 mt-1">
+                          <span v-if="myPlayer.hasGame" class="text-xs text-green-400 flex items-center gap-1">
+                            <span class="w-1.5 h-1.5 bg-green-400 rounded-full"></span>
+                            {{ myPlayer.opponent }} {{ formatGameTime(myPlayer.gameTime) }}
+                          </span>
+                          <span v-else class="text-xs text-red-400 flex items-center gap-1">
+                            <span class="w-1.5 h-1.5 bg-red-400 rounded-full"></span>
+                            No game
+                          </span>
+                        </div>
+                      </div>
+                      
+                      <!-- Value Score -->
+                      <div class="text-right flex-shrink-0 px-3">
+                        <div class="text-lg font-bold text-yellow-400">{{ myPlayer.overallValue?.toFixed(0) || 'N/A' }}</div>
+                        <div class="text-[9px] text-dark-textMuted uppercase">Value</div>
+                      </div>
+                      
+                      <!-- Category Stats Preview -->
+                      <div class="flex gap-1 flex-shrink-0">
+                        <div v-for="cat in displayCategories.slice(0, 3)" :key="cat.stat_id" class="text-center">
+                          <div class="text-[9px] text-dark-textMuted uppercase">{{ cat.display_name }}</div>
+                          <div class="text-xs font-bold text-white">{{ formatCategoryProjection(myPlayer, cat) }}</div>
+                        </div>
+                      </div>
+                      
+                      <!-- Compare Arrow -->
+                      <div class="text-purple-400 flex-shrink-0">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+                        </svg>
+                      </div>
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>
@@ -3085,6 +3147,34 @@ const selectedCategory = ref<string>('')
 const allPlayers = ref<any[]>([])
 const teamsData = ref<any[]>([])
 const myTeamKey = ref<string | null>(null)
+
+// My players with game info for comparison picker
+const myPlayersWithGameInfo = computed(() => {
+  if (!myTeamKey.value) return []
+  
+  const activeGames = startSitDay.value === 'today' ? todaysGames.value : tomorrowsGames.value
+  
+  return allPlayersWithValues.value
+    .filter(p => p.fantasy_team_key === myTeamKey.value)
+    .map(p => {
+      // Get team code based on sport
+      const teamCode = currentSport.value === 'basketball'
+        ? (p.nba_team || p.mlb_team || p.editorial_team_abbr || p.team_abbr)
+        : currentSport.value === 'hockey'
+        ? (p.nhl_team || p.mlb_team || p.editorial_team_abbr || p.team_abbr)
+        : (p.mlb_team || p.editorial_team_abbr || p.team_abbr)
+      
+      const gameInfo = liveGamesService.getPlayerGameInfo(teamCode, activeGames)
+      
+      return {
+        ...p,
+        hasGame: gameInfo.hasGame,
+        opponent: gameInfo.opponent,
+        gameTime: gameInfo.gameTime
+      }
+    })
+    .sort((a, b) => (b.overallValue || 0) - (a.overallValue || 0)) // Sort by value
+})
 const selectedPositions = ref<string[]>([])
 const showOnlyMyPlayers = ref(false)
 const showOnlyFreeAgents = ref(false)
@@ -3290,6 +3380,7 @@ const dropModalViewMode = ref<'projections' | 'stats'>('projections')
 const showPositionPickerModal = ref(false)
 const positionPickerPosition = ref<string>('')
 const showPlayerAnalysisModal = ref(false)
+const showComparisonPickerInAnalysis = ref(false) // For picking comparison player in analysis modal
 const showPlayerComparisonModal = ref(false)
 const comparisonPlayerAdd = ref<any>(null)
 const comparisonPlayerDrop = ref<any>(null)
