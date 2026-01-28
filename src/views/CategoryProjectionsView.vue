@@ -7942,16 +7942,16 @@ async function loadLiveGames() {
     console.log(`[LiveGames] Local date: ${localDateString}`)
     console.log(`[LiveGames] UTC date: ${now.toISOString().split('T')[0]}`)
     
-    // Request today's date (no timezone adjustment)
-    // We'll filter out finished games instead
+    // YAHOO FIX: Add +1 day because games service returns previous day's games
+    // ESPN works fine with current date, but Yahoo needs +1
     let targetDate: Date
     if (startSitDay.value === 'today') {
-      targetDate = now
-      console.log(`[LiveGames] Loading games for TODAY`)
+      targetDate = new Date(now.getTime() + 86400000) // Add 1 day
+      console.log(`[LiveGames] Loading games for TODAY (+1 day offset for Yahoo)`)
     } else {
-      // Tomorrow - add 1 day
-      targetDate = new Date(now.getTime() + 86400000)
-      console.log(`[LiveGames] Loading games for TOMORROW`)
+      // Tomorrow - add 2 days
+      targetDate = new Date(now.getTime() + (86400000 * 2))
+      console.log(`[LiveGames] Loading games for TOMORROW (+2 day offset for Yahoo)`)
     }
     
     console.log(`[LiveGames] Target date: ${targetDate.toLocaleDateString()} ${targetDate.toLocaleTimeString()}`)
@@ -7959,27 +7959,20 @@ async function loadLiveGames() {
     
     const games = await liveGamesService.getGamesByDate(currentSport.value, targetDate)
     
-    // Filter out finished games if showing "today" - we only want upcoming/live games
-    let filteredGames = games
+    // No filtering - show ALL games for the day
     if (startSitDay.value === 'today') {
-      const beforeFilter = games.length
-      filteredGames = games.filter((g: any) => g.status !== 'final')
-      console.log(`[LiveGames] Filtered ${beforeFilter} games → ${filteredGames.length} (removed ${beforeFilter - filteredGames.length} finished games)`)
-    }
-    
-    if (startSitDay.value === 'today') {
-      todaysGames.value = filteredGames
+      todaysGames.value = games
     } else {
-      tomorrowsGames.value = filteredGames
+      tomorrowsGames.value = games
     }
     
     console.log(`[LiveGames] ========== GAMES LOADED ==========`)
-    console.log(`[LiveGames] Count: ${filteredGames.length}`)
-    console.log(`[LiveGames] Games array:`, filteredGames)
+    console.log(`[LiveGames] Count: ${games.length}`)
+    console.log(`[LiveGames] Games array:`, games)
     
-    if (filteredGames.length > 0) {
-      console.log('[LiveGames] First game structure:', filteredGames[0])
-      console.log('[LiveGames] Sample games:', filteredGames.slice(0, 3).map((g: any) => ({
+    if (games.length > 0) {
+      console.log('[LiveGames] First game structure:', games[0])
+      console.log('[LiveGames] Sample games:', games.slice(0, 3).map((g: any) => ({
         home: g.homeTeam || g.home_team || g.home,
         away: g.awayTeam || g.away_team || g.away,
         status: g.status,
@@ -8007,11 +8000,11 @@ function subscribeToLiveGames() {
     liveGamesSubscription.value = null
   }
   
-  // Calculate target date (no timezone adjustment)
+  // Calculate target date with +1 day offset
   const now = new Date()
   const targetDate = startSitDay.value === 'today' 
-    ? now
-    : new Date(now.getTime() + 86400000)
+    ? new Date(now.getTime() + 86400000)  // +1 day
+    : new Date(now.getTime() + (86400000 * 2))  // +2 days
   
   console.log('[LiveGames] Subscribing to games for:', targetDate.toLocaleDateString())
   
@@ -8021,16 +8014,11 @@ function subscribeToLiveGames() {
     (games) => {
       console.log('[LiveGames] Received update:', games.length, 'games')
       
-      // Filter finished games for today view
-      let filteredGames = games
+      // No filtering - show all games
       if (startSitDay.value === 'today') {
-        filteredGames = games.filter((g: any) => g.status !== 'final')
-      }
-      
-      if (startSitDay.value === 'today') {
-        todaysGames.value = filteredGames
+        todaysGames.value = games
       } else {
-        tomorrowsGames.value = filteredGames
+        tomorrowsGames.value = games
       }
     }
   )
