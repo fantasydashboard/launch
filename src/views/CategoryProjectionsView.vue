@@ -3947,6 +3947,11 @@ async function loadProjections() {
       console.log('[CategoryProjections] Raw stat_categories:', cats)
       console.log('[CategoryProjections] Number of categories:', cats.length)
       console.log('[CategoryProjections] First category structure:', cats[0])
+      console.log('[CategoryProjections] All category structures:', cats.map((c: any) => ({
+        stat_id: c.stat?.stat_id || c.stat_id,
+        name: c.stat?.name || c.name,
+        display_name: c.stat?.display_name || c.display_name || c.stat?.abbr || c.abbr
+      })))
       
       statCategories.value = cats.map((c: any) => ({ 
         stat_id: c.stat?.stat_id || c.stat_id, 
@@ -3956,9 +3961,15 @@ async function loadProjections() {
       })).filter((c: any) => c.stat_id)
       
       console.log('[CategoryProjections] Mapped categories:', statCategories.value)
-      console.log('[CategoryProjections] Display categories:', displayCategories.value)
+      console.log('[CategoryProjections] Display categories (filtered):', displayCategories.value)
+      console.log('[CategoryProjections] Display categories count:', displayCategories.value.length)
       console.log('[CategoryProjections] ===== END CATEGORIES DEBUG =====')
       
+      // If we have very few categories, something might be wrong - log warning
+      if (displayCategories.value.length < 5) {
+        console.warn('[CategoryProjections] ⚠️ WARNING: Only', displayCategories.value.length, 'categories loaded. This seems low!')
+        console.warn('[CategoryProjections] Full settings object:', settings)
+      }
       // Capture roster positions from league settings
       if (settings.roster_positions) {
         leagueRosterPositions.value = settings.roster_positions
@@ -6762,35 +6773,41 @@ const suggestedCategoryLineup = computed(() => {
     // Use actual roster positions from league settings
     console.log('[suggestedCategoryLineup] Raw roster positions:', JSON.stringify(leagueRosterPositions.value))
     
-    lineupOrder = leagueRosterPositions.value.map((rp: any) => {
-      // Handle both string format ("PG") and object format ({position: "PG", count: 1})
+    lineupOrder = []
+    
+    for (const rp of leagueRosterPositions.value) {
+      // Handle string format (ESPN)
       if (typeof rp === 'string') {
         console.log('[suggestedCategoryLineup] String position:', rp)
-        return rp
+        lineupOrder.push(rp)
+        continue
       }
       
-      // Try multiple possible keys for the position value
-      const posValue = rp.position || rp.abbr || rp.display_name || rp.position_type || rp.name || rp
-      console.log('[suggestedCategoryLineup] Object position:', rp, '-> parsed:', posValue)
+      // Handle Yahoo nested object format: {roster_position: {position: "PG", count: 2, is_starting_position: 1}}
+      let positionObj = rp
+      if (rp.roster_position) {
+        positionObj = rp.roster_position
+        console.log('[suggestedCategoryLineup] Found nested roster_position:', positionObj)
+      }
       
-      // If it's still an object, stringify and extract
-      if (typeof posValue === 'object') {
-        const firstValue = Object.values(posValue)[0]
-        console.log('[suggestedCategoryLineup] Nested object, extracting:', firstValue)
-        return firstValue || 'Util'
+      // Extract position name
+      const position = positionObj.position || positionObj.abbr || positionObj.display_name || positionObj.position_type
+      const count = parseInt(positionObj.count || 1)
+      const isStarting = positionObj.is_starting_position === 1 || positionObj.is_starting_position === '1' || positionObj.is_starting_position === true
+      
+      console.log('[suggestedCategoryLineup] Position:', position, 'Count:', count, 'IsStarting:', isStarting)
+      
+      // Only add starting positions (not bench)
+      if (position && isStarting) {
+        // Add position 'count' times
+        for (let i = 0; i < count; i++) {
+          lineupOrder.push(position)
+        }
+        console.log('[suggestedCategoryLineup] Added', count, 'x', position)
+      } else if (position && !isStarting) {
+        console.log('[suggestedCategoryLineup] Skipped bench position:', position)
       }
-      return posValue
-    })
-    .filter((p: any) => {
-      // Filter out bench/IL spots and non-strings
-      if (typeof p !== 'string') {
-        console.log('[suggestedCategoryLineup] Filtered non-string:', p)
-        return false
-      }
-      const isFiltered = p !== 'BN' && p !== 'IL' && p !== 'IR' && p !== 'Bench' && p !== 'BN*'
-      if (!isFiltered) console.log('[suggestedCategoryLineup] Filtered bench/IL:', p)
-      return isFiltered
-    })
+    }
     
     console.log('[suggestedCategoryLineup] Final lineup order:', lineupOrder)
   } else {
@@ -7752,7 +7769,8 @@ function getPlayerSeasonAvg(player: any, category: any): string {
   const gamesPlayed = isPitcher(player) ? 30 : 140
   const perGame = gamesPlayed > 0 ? statValue / gamesPlayed : 0
   
-  if (category.stat_id.includes('%') || category.stat_id.includes('PCT')) {
+  const statIdStr = String(category.stat_id || '')
+  if (statIdStr.includes('%') || statIdStr.includes('PCT')) {
     return (statValue * 100).toFixed(1) + '%'
   } else if (perGame < 1) {
     return perGame.toFixed(2)
