@@ -7803,16 +7803,15 @@ async function loadLiveGames() {
     console.log(`[LiveGames] Local date: ${localDateString}`)
     console.log(`[LiveGames] UTC date: ${now.toISOString().split('T')[0]}`)
     
-    // YAHOO FIX: Add +1 day because games service returns previous day's games
-    // ESPN works fine with current date, but Yahoo needs +1
+    // Request actual date (no offset)
     let targetDate: Date
     if (startSitDay.value === 'today') {
-      targetDate = new Date(now.getTime() + 86400000) // Add 1 day
-      console.log(`[LiveGames] Loading games for TODAY (+1 day offset for Yahoo)`)
+      targetDate = now
+      console.log(`[LiveGames] Loading games for TODAY`)
     } else {
-      // Tomorrow - add 2 days
-      targetDate = new Date(now.getTime() + (86400000 * 2))
-      console.log(`[LiveGames] Loading games for TOMORROW (+2 day offset for Yahoo)`)
+      // Tomorrow - add 1 day
+      targetDate = new Date(now.getTime() + 86400000)
+      console.log(`[LiveGames] Loading games for TOMORROW`)
     }
     
     console.log(`[LiveGames] Target date: ${targetDate.toLocaleDateString()} ${targetDate.toLocaleTimeString()}`)
@@ -7861,11 +7860,11 @@ function subscribeToLiveGames() {
     liveGamesSubscription.value = null
   }
   
-  // Calculate target date with +1 day offset
+  // Calculate target date (no offset)
   const now = new Date()
   const targetDate = startSitDay.value === 'today' 
-    ? new Date(now.getTime() + 86400000)  // +1 day
-    : new Date(now.getTime() + (86400000 * 2))  // +2 days
+    ? now
+    : new Date(now.getTime() + 86400000)  // +1 day for tomorrow
   
   console.log('[LiveGames] Subscribing to games for:', targetDate.toLocaleDateString())
   
