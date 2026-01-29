@@ -5959,11 +5959,6 @@ function openPlayerAnalysisForWaiver(player: any) {
   openPlayerAnalysis(player)
   showComparisonPickerInAnalysis.value = false // Reset picker state
 }
-    console.log('[openPlayerAnalysis] Modal opened successfully')
-  } catch (error) {
-    console.error('[openPlayerAnalysis] Error opening modal:', error)
-  }
-}
 
 function openPlayerComparison(addPlayer: any, dropPlayer: any) {
   console.log('[openPlayerComparison] Opening comparison:', addPlayer?.full_name, 'vs', dropPlayer?.full_name)
