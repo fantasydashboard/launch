@@ -1196,15 +1196,15 @@
             </div>
           </div>
           
-          <!-- MODAL: SMART MOVES PLAYER COMPARISON -->
+          <!-- MODAL: REDESIGNED PLAYER COMPARISON -->
           <div v-if="showPlayerComparisonModal && comparisonPlayerAdd && comparisonPlayerDrop" class="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4" @click.self="showPlayerComparisonModal = false">
-            <div class="bg-dark-card rounded-2xl max-w-6xl w-full max-h-[90vh] overflow-y-auto border border-dark-border shadow-2xl" @click.stop>
+            <div class="bg-dark-card rounded-2xl max-w-7xl w-full max-h-[90vh] overflow-y-auto border border-dark-border shadow-2xl" @click.stop>
               
               <!-- Header -->
-              <div class="bg-gradient-to-r from-green-500/20 to-red-500/20 px-6 py-4 border-b border-dark-border flex items-center justify-between">
+              <div class="bg-gradient-to-r from-red-500/20 to-green-500/20 px-6 py-4 border-b border-dark-border flex items-center justify-between">
                 <div>
-                  <h2 class="text-2xl font-bold text-dark-text">Compare Players</h2>
-                  <p class="text-sm text-dark-textMuted mt-1">Analyze last 5 weeks performance</p>
+                  <h2 class="text-2xl font-bold text-dark-text">Waiver Comparison</h2>
+                  <p class="text-sm text-dark-textMuted mt-1">Side-by-side player analysis</p>
                 </div>
                 <button @click="showPlayerComparisonModal = false" class="text-dark-textMuted hover:text-dark-text transition-colors">
                   <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1213,114 +1213,208 @@
                 </button>
               </div>
               
-              <!-- Player Headers -->
-              <div class="grid grid-cols-2 gap-4 p-6 border-b border-dark-border">
-                <!-- ADD Player -->
-                <div class="bg-green-500/10 border border-green-500/30 rounded-xl p-4">
-                  <div class="text-xs font-semibold text-green-400 uppercase mb-2">⬆️ ADD</div>
-                  <div class="flex items-center gap-3">
-                    <div class="w-16 h-16 rounded-full bg-dark-border overflow-hidden">
-                      <img :src="comparisonPlayerAdd.headshot || defaultHeadshot" class="w-full h-full object-cover" @error="handleImageError" />
+              <!-- Side-by-Side Player Cards -->
+              <div class="grid grid-cols-2 gap-6 p-6 border-b border-dark-border">
+                
+                <!-- LEFT: Drop Player -->
+                <div class="bg-gradient-to-br from-red-500/10 to-red-500/5 rounded-xl p-5 border border-red-500/20">
+                  <div class="text-xs font-bold text-red-400 uppercase mb-3">Your Player (Drop)</div>
+                  
+                  <div class="flex items-center gap-3 mb-4">
+                    <div class="w-16 h-16 rounded-full bg-dark-border overflow-hidden ring-2 ring-red-500">
+                      <img :src="comparisonPlayerDrop.headshot || defaultHeadshot" class="w-full h-full object-cover" @error="handleImageError" />
                     </div>
                     <div class="flex-1">
-                      <div class="font-bold text-dark-text">{{ comparisonPlayerAdd.full_name }}</div>
-                      <div class="text-xs text-dark-textMuted">{{ comparisonPlayerAdd.position }} • {{ comparisonPlayerAdd.mlb_team || comparisonPlayerAdd.nba_team || comparisonPlayerAdd.nhl_team }}</div>
-                      <div class="text-sm font-semibold text-green-400 mt-1">Value: {{ comparisonPlayerAdd.overallValue?.toFixed(0) || 'N/A' }}</div>
+                      <h3 class="text-xl font-bold text-dark-text">{{ comparisonPlayerDrop.full_name }}</h3>
+                      <div class="flex items-center gap-2 text-sm text-dark-textMuted">
+                        <img 
+                          :src="`https://a.espncdn.com/combiner/i?img=/i/teamlogos/${currentSport === 'basketball' ? 'nba' : currentSport === 'hockey' ? 'nhl' : 'mlb'}/500/${comparisonPlayerDrop.mlb_team || comparisonPlayerDrop.nba_team || comparisonPlayerDrop.nhl_team}.png&h=16&w=16`" 
+                          class="w-4 h-4"
+                          @error="e => e.target.style.display = 'none'"
+                        />
+                        <span>{{ comparisonPlayerDrop.position }}</span>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <div class="grid grid-cols-2 gap-3 mb-4">
+                    <div class="bg-dark-card rounded-lg p-3 text-center">
+                      <div class="text-2xl font-black text-yellow-400">{{ comparisonPlayerDrop.overallValue?.toFixed(1) || 'N/A' }}</div>
+                      <div class="text-[10px] text-dark-textMuted uppercase">ROS Value</div>
+                    </div>
+                    <div class="bg-dark-card rounded-lg p-3 text-center">
+                      <div class="text-xl font-bold text-cyan-400">{{ comparisonPlayerDrop.percent_owned || comparisonPlayerDrop.percentOwned || 'N/A' }}%</div>
+                      <div class="text-[10px] text-dark-textMuted uppercase">Rostered</div>
+                    </div>
+                  </div>
+                  
+                  <div class="bg-dark-card rounded-lg p-3">
+                    <div class="text-[10px] font-bold text-dark-textMuted uppercase mb-2">Top Categories</div>
+                    <div class="space-y-1">
+                      <div v-for="cat in displayCategories.slice(0, 5)" :key="cat.stat_id" class="flex justify-between text-sm">
+                        <span class="text-dark-textMuted">{{ cat.display_name }}</span>
+                        <span class="font-bold text-white">{{ formatCategoryProjection(comparisonPlayerDrop, cat) }}</span>
+                      </div>
                     </div>
                   </div>
                 </div>
                 
-                <!-- DROP Player -->
-                <div class="bg-red-500/10 border border-red-500/30 rounded-xl p-4">
-                  <div class="text-xs font-semibold text-red-400 uppercase mb-2">⬇️ DROP</div>
-                  <div class="flex items-center gap-3">
-                    <div class="w-16 h-16 rounded-full bg-dark-border overflow-hidden">
-                      <img :src="comparisonPlayerDrop.headshot || defaultHeadshot" class="w-full h-full object-cover" @error="handleImageError" />
+                <!-- RIGHT: Add Player -->
+                <div class="bg-gradient-to-br from-green-500/10 to-green-500/5 rounded-xl p-5 border border-green-500/20">
+                  <div class="text-xs font-bold text-green-400 uppercase mb-3">Waiver Target (Add)</div>
+                  
+                  <div class="flex items-center gap-3 mb-4">
+                    <div class="w-16 h-16 rounded-full bg-dark-border overflow-hidden ring-2 ring-green-500">
+                      <img :src="comparisonPlayerAdd.headshot || defaultHeadshot" class="w-full h-full object-cover" @error="handleImageError" />
                     </div>
                     <div class="flex-1">
-                      <div class="font-bold text-dark-text">{{ comparisonPlayerDrop.full_name }}</div>
-                      <div class="text-xs text-dark-textMuted">{{ comparisonPlayerDrop.position }} • {{ comparisonPlayerDrop.mlb_team || comparisonPlayerDrop.nba_team || comparisonPlayerDrop.nhl_team }}</div>
-                      <div class="text-sm font-semibold text-red-400 mt-1">Value: {{ comparisonPlayerDrop.overallValue?.toFixed(0) || 'N/A' }}</div>
+                      <h3 class="text-xl font-bold text-dark-text">{{ comparisonPlayerAdd.full_name }}</h3>
+                      <div class="flex items-center gap-2 text-sm text-dark-textMuted">
+                        <img 
+                          :src="`https://a.espncdn.com/combiner/i?img=/i/teamlogos/${currentSport === 'basketball' ? 'nba' : currentSport === 'hockey' ? 'nhl' : 'mlb'}/500/${comparisonPlayerAdd.mlb_team || comparisonPlayerAdd.nba_team || comparisonPlayerAdd.nhl_team}.png&h=16&w=16`" 
+                          class="w-4 h-4"
+                          @error="e => e.target.style.display = 'none'"
+                        />
+                        <span>{{ comparisonPlayerAdd.position }}</span>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <div class="grid grid-cols-2 gap-3 mb-4">
+                    <div class="bg-dark-card rounded-lg p-3 text-center">
+                      <div class="text-2xl font-black text-yellow-400">{{ comparisonPlayerAdd.overallValue?.toFixed(1) || 'N/A' }}</div>
+                      <div class="text-[10px] text-dark-textMuted uppercase">ROS Value</div>
+                    </div>
+                    <div class="bg-dark-card rounded-lg p-3 text-center">
+                      <div class="text-xl font-bold text-cyan-400">{{ comparisonPlayerAdd.percent_owned || comparisonPlayerAdd.percentOwned || 'N/A' }}%</div>
+                      <div class="text-[10px] text-dark-textMuted uppercase">Rostered</div>
+                    </div>
+                  </div>
+                  
+                  <div class="bg-dark-card rounded-lg p-3">
+                    <div class="text-[10px] font-bold text-dark-textMuted uppercase mb-2">Top Categories</div>
+                    <div class="space-y-1">
+                      <div v-for="cat in displayCategories.slice(0, 5)" :key="cat.stat_id" class="flex justify-between text-sm">
+                        <span class="text-dark-textMuted">{{ cat.display_name }}</span>
+                        <span class="font-bold text-white">{{ formatCategoryProjection(comparisonPlayerAdd, cat) }}</span>
+                      </div>
                     </div>
                   </div>
                 </div>
+                
               </div>
               
               <!-- Category Selector -->
-              <div class="p-6 border-b border-dark-border">
-                <label class="block text-sm font-semibold text-dark-textMuted uppercase mb-2">Select Category to Compare</label>
-                <select v-model="comparisonSelectedCategory" class="w-full bg-dark-border border border-dark-border/50 rounded-lg px-4 py-3 text-dark-text">
-                  <option value="">-- Choose a category --</option>
-                  <option v-for="cat in displayCategories" :key="cat.stat_id" :value="cat.stat_id">
-                    {{ cat.display_name }}
-                  </option>
+              <div class="px-6 py-4 bg-dark-elevated border-b border-dark-border">
+                <label class="text-sm font-bold text-purple-400 uppercase mb-2 block">Select Category to Compare:</label>
+                <select 
+                  v-model="selectedComparisonCategory" 
+                  class="w-full px-4 py-3 bg-dark-card text-dark-text border border-purple-500/30 rounded-lg focus:outline-none focus:border-purple-400 focus:ring-2 focus:ring-purple-500/20 transition-all font-semibold"
+                >
+                  <option :value="null" disabled>Choose a category to see detailed comparison...</option>
+                  <option v-for="cat in displayCategories" :key="cat.stat_id" :value="cat">{{ cat.display_name }}</option>
                 </select>
               </div>
               
-              <!-- Comparison Chart -->
-              <div v-if="comparisonSelectedCategory" class="p-6">
-                <div class="bg-dark-elevated rounded-xl p-6">
-                  <h3 class="text-lg font-bold text-dark-text mb-4">
-                    {{ displayCategories.find(c => c.stat_id === comparisonSelectedCategory)?.display_name }} - Last 5 Weeks
-                  </h3>
-                  
-                  <!-- Line Chart Placeholder -->
-                  <div class="bg-dark-card rounded-lg p-8 text-center border border-dark-border">
-                    <div class="text-6xl mb-4">📊</div>
-                    <div class="text-lg font-semibold text-dark-text mb-2">5-Week Trend Comparison</div>
-                    <div class="text-sm text-dark-textMuted max-w-md mx-auto">
-                      Line chart showing weekly performance for {{ displayCategories.find(c => c.stat_id === comparisonSelectedCategory)?.display_name }}
-                      over the last 5 weeks. Green line for {{ comparisonPlayerAdd.full_name }}, Red line for {{ comparisonPlayerDrop.full_name }}.
-                    </div>
-                    <div class="mt-6 text-xs text-dark-textMuted italic">
-                      Note: Historical weekly data would be displayed here with actual implementation
-                    </div>
-                  </div>
-                  
-                  <!-- Stats Comparison Table -->
-                  <div class="mt-6 grid grid-cols-2 gap-4">
-                    <div class="bg-green-500/10 border border-green-500/30 rounded-lg p-4">
-                      <div class="text-xs font-semibold text-green-400 uppercase mb-2">{{ comparisonPlayerAdd.full_name }}</div>
-                      <div class="space-y-2">
-                        <div class="flex justify-between text-sm">
-                          <span class="text-dark-textMuted">Season Avg:</span>
-                          <span class="font-semibold text-dark-text">{{ getPlayerSeasonAvg(comparisonPlayerAdd, displayCategories.find(c => c.stat_id === comparisonSelectedCategory)) }}</span>
-                        </div>
-                        <div class="flex justify-between text-sm">
-                          <span class="text-dark-textMuted">Today's Proj:</span>
-                          <span class="font-semibold text-dark-text">{{ getPlayerProjection(comparisonPlayerAdd, displayCategories.find(c => c.stat_id === comparisonSelectedCategory), 'today') }}</span>
-                        </div>
-                        <div class="flex justify-between text-sm">
-                          <span class="text-dark-textMuted">Next 7 Days:</span>
-                          <span class="font-semibold text-dark-text">{{ getPlayerProjection(comparisonPlayerAdd, displayCategories.find(c => c.stat_id === comparisonSelectedCategory), 'next7') }}</span>
-                        </div>
-                      </div>
-                    </div>
-                    
-                    <div class="bg-red-500/10 border border-red-500/30 rounded-lg p-4">
-                      <div class="text-xs font-semibold text-red-400 uppercase mb-2">{{ comparisonPlayerDrop.full_name }}</div>
-                      <div class="space-y-2">
-                        <div class="flex justify-between text-sm">
-                          <span class="text-dark-textMuted">Season Avg:</span>
-                          <span class="font-semibold text-dark-text">{{ getPlayerSeasonAvg(comparisonPlayerDrop, displayCategories.find(c => c.stat_id === comparisonSelectedCategory)) }}</span>
-                        </div>
-                        <div class="flex justify-between text-sm">
-                          <span class="text-dark-textMuted">Today's Proj:</span>
-                          <span class="font-semibold text-dark-text">{{ getPlayerProjection(comparisonPlayerDrop, displayCategories.find(c => c.stat_id === comparisonSelectedCategory), 'today') }}</span>
-                        </div>
-                        <div class="flex justify-between text-sm">
-                          <span class="text-dark-textMuted">Next 7 Days:</span>
-                          <span class="font-semibold text-dark-text">{{ getPlayerProjection(comparisonPlayerDrop, displayCategories.find(c => c.stat_id === comparisonSelectedCategory), 'next7') }}</span>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
+              <!-- Stats Comparison Table -->
+              <div v-if="selectedComparisonCategory" class="p-6">
+                <h3 class="text-lg font-bold text-dark-text mb-4 flex items-center gap-2">
+                  <svg class="w-5 h-5 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                  </svg>
+                  {{ selectedComparisonCategory.display_name }} Comparison
+                </h3>
+                
+                <div class="bg-dark-elevated rounded-xl overflow-hidden">
+                  <table class="w-full">
+                    <thead class="bg-dark-border/50">
+                      <tr>
+                        <th class="px-4 py-3 text-left text-xs font-bold text-dark-textMuted uppercase">Period</th>
+                        <th class="px-4 py-3 text-center text-xs font-bold uppercase">
+                          <span class="text-red-400">{{ comparisonPlayerDrop.full_name.split(' ').pop() }}</span>
+                        </th>
+                        <th class="px-4 py-3 text-center text-xs font-bold uppercase">
+                          <span class="text-green-400">{{ comparisonPlayerAdd.full_name.split(' ').pop() }}</span>
+                        </th>
+                        <th class="px-4 py-3 text-center text-xs font-bold text-purple-400 uppercase">Winner</th>
+                      </tr>
+                    </thead>
+                    <tbody class="divide-y divide-dark-border/20">
+                      <tr class="hover:bg-dark-border/10 transition-colors">
+                        <td class="px-4 py-4 text-sm font-semibold text-dark-text">Today</td>
+                        <td class="px-4 py-4 text-center text-xl font-bold text-white">{{ getPlayerProjection(comparisonPlayerDrop, selectedComparisonCategory, 'today') }}</td>
+                        <td class="px-4 py-4 text-center text-xl font-bold text-white">{{ getPlayerProjection(comparisonPlayerAdd, selectedComparisonCategory, 'today') }}</td>
+                        <td class="px-4 py-4 text-center">
+                          <span v-if="parseFloat(getPlayerProjection(comparisonPlayerAdd, selectedComparisonCategory, 'today')) > parseFloat(getPlayerProjection(comparisonPlayerDrop, selectedComparisonCategory, 'today'))" class="inline-flex items-center gap-1 text-green-400 font-bold">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 10l7-7m0 0l7 7m-7-7v18" /></svg>
+                            Add
+                          </span>
+                          <span v-else-if="parseFloat(getPlayerProjection(comparisonPlayerAdd, selectedComparisonCategory, 'today')) < parseFloat(getPlayerProjection(comparisonPlayerDrop, selectedComparisonCategory, 'today'))" class="inline-flex items-center gap-1 text-red-400 font-bold">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 14l-7 7m0 0l-7-7m7 7V3" /></svg>
+                            Drop
+                          </span>
+                          <span v-else class="text-dark-textMuted font-semibold">Tie</span>
+                        </td>
+                      </tr>
+                      <tr class="hover:bg-dark-border/10 transition-colors">
+                        <td class="px-4 py-4 text-sm font-semibold text-dark-text">Next 7</td>
+                        <td class="px-4 py-4 text-center text-xl font-bold text-white">{{ getPlayerProjection(comparisonPlayerDrop, selectedComparisonCategory, 'next7') }}</td>
+                        <td class="px-4 py-4 text-center text-xl font-bold text-white">{{ getPlayerProjection(comparisonPlayerAdd, selectedComparisonCategory, 'next7') }}</td>
+                        <td class="px-4 py-4 text-center">
+                          <span v-if="parseFloat(getPlayerProjection(comparisonPlayerAdd, selectedComparisonCategory, 'next7')) > parseFloat(getPlayerProjection(comparisonPlayerDrop, selectedComparisonCategory, 'next7'))" class="inline-flex items-center gap-1 text-green-400 font-bold">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 10l7-7m0 0l7 7m-7-7v18" /></svg>
+                            Add
+                          </span>
+                          <span v-else-if="parseFloat(getPlayerProjection(comparisonPlayerAdd, selectedComparisonCategory, 'next7')) < parseFloat(getPlayerProjection(comparisonPlayerDrop, selectedComparisonCategory, 'next7'))" class="inline-flex items-center gap-1 text-red-400 font-bold">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 14l-7 7m0 0l-7-7m7 7V3" /></svg>
+                            Drop
+                          </span>
+                          <span v-else class="text-dark-textMuted font-semibold">Tie</span>
+                        </td>
+                      </tr>
+                      <tr class="hover:bg-dark-border/10 transition-colors">
+                        <td class="px-4 py-4 text-sm font-semibold text-dark-text">Next 14</td>
+                        <td class="px-4 py-4 text-center text-xl font-bold text-white">{{ getPlayerProjection(comparisonPlayerDrop, selectedComparisonCategory, 'next14') }}</td>
+                        <td class="px-4 py-4 text-center text-xl font-bold text-white">{{ getPlayerProjection(comparisonPlayerAdd, selectedComparisonCategory, 'next14') }}</td>
+                        <td class="px-4 py-4 text-center">
+                          <span v-if="parseFloat(getPlayerProjection(comparisonPlayerAdd, selectedComparisonCategory, 'next14')) > parseFloat(getPlayerProjection(comparisonPlayerDrop, selectedComparisonCategory, 'next14'))" class="inline-flex items-center gap-1 text-green-400 font-bold">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 10l7-7m0 0l7 7m-7-7v18" /></svg>
+                            Add
+                          </span>
+                          <span v-else-if="parseFloat(getPlayerProjection(comparisonPlayerAdd, selectedComparisonCategory, 'next14')) < parseFloat(getPlayerProjection(comparisonPlayerDrop, selectedComparisonCategory, 'next14'))" class="inline-flex items-center gap-1 text-red-400 font-bold">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 14l-7 7m0 0l-7-7m7 7V3" /></svg>
+                            Drop
+                          </span>
+                          <span v-else class="text-dark-textMuted font-semibold">Tie</span>
+                        </td>
+                      </tr>
+                      <tr class="bg-purple-500/10 hover:bg-purple-500/20 transition-colors">
+                        <td class="px-4 py-4 text-sm font-black text-purple-400 uppercase">Rest of Season</td>
+                        <td class="px-4 py-4 text-center text-2xl font-black text-white">{{ formatCategoryProjection(comparisonPlayerDrop, selectedComparisonCategory) }}</td>
+                        <td class="px-4 py-4 text-center text-2xl font-black text-white">{{ formatCategoryProjection(comparisonPlayerAdd, selectedComparisonCategory) }}</td>
+                        <td class="px-4 py-4 text-center">
+                          <span v-if="parseFloat(formatCategoryProjection(comparisonPlayerAdd, selectedComparisonCategory)) > parseFloat(formatCategoryProjection(comparisonPlayerDrop, selectedComparisonCategory))" class="inline-flex items-center gap-1 text-green-400 font-black text-lg">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 10l7-7m0 0l7 7m-7-7v18" /></svg>
+                            ADD
+                          </span>
+                          <span v-else-if="parseFloat(formatCategoryProjection(comparisonPlayerAdd, selectedComparisonCategory)) < parseFloat(formatCategoryProjection(comparisonPlayerDrop, selectedComparisonCategory))" class="inline-flex items-center gap-1 text-red-400 font-black text-lg">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 14l-7 7m0 0l-7-7m7 7V3" /></svg>
+                            DROP
+                          </span>
+                          <span v-else class="text-dark-textMuted font-black">TIE</span>
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
                 </div>
               </div>
               
-              <!-- Close Button -->
-              <div class="p-6 border-t border-dark-border">
-                <button @click="showPlayerComparisonModal = false" class="w-full px-4 py-3 bg-dark-border text-dark-text font-semibold rounded-lg hover:bg-dark-border/50 transition-colors">
+              <!-- Footer -->
+              <div class="px-6 py-4 border-t border-dark-border flex justify-between items-center">
+                <div class="text-xs text-dark-textMuted">
+                  💎 Waiver Analysis Tool
+                </div>
+                <button @click="showPlayerComparisonModal = false" class="px-4 py-2 bg-purple-500 text-white rounded-lg hover:bg-purple-400 transition-colors font-semibold">
                   Close
                 </button>
               </div>
@@ -3183,6 +3277,7 @@ const showPlayerAnalysisModal = ref(false)
 const showComparisonPickerInAnalysis = ref(false) // For picking comparison player in analysis modal
 const showPlayerDetailModal = ref(false) // ROS-style player detail modal
 const playerDetailData = ref<any>(null)
+const selectedComparisonCategory = ref<any>(null) // Category selector for comparison
 const showPlayerComparisonModal = ref(false)
 const comparisonPlayerAdd = ref<any>(null)
 const comparisonPlayerDrop = ref<any>(null)
