@@ -3477,22 +3477,35 @@ export class EspnFantasyService {
     }
     
     // Map ESPN stat IDs to names - Basketball
+    // These IDs match ESPN's Fantasy Basketball API stat IDs
     const espnBasketballStatNames: Record<number, { name: string; display: string; isNegative?: boolean }> = {
       0: { name: 'Points', display: 'PTS' },
       1: { name: 'Blocks', display: 'BLK' },
       2: { name: 'Steals', display: 'STL' },
       3: { name: 'Assists', display: 'AST' },
+      4: { name: 'Offensive Rebounds', display: 'OREB' },
+      5: { name: 'Defensive Rebounds', display: 'DREB' },
       6: { name: 'Rebounds', display: 'REB' },
+      7: { name: 'Ejections', display: 'EJ', isNegative: true },
+      8: { name: 'Flagrant Fouls', display: 'FF', isNegative: true },
+      9: { name: 'Personal Fouls', display: 'PF', isNegative: true },
+      10: { name: 'Technical Fouls', display: 'TF', isNegative: true },
       11: { name: 'Turnovers', display: 'TO', isNegative: true },
+      12: { name: 'Disqualifications', display: 'DQ', isNegative: true },
       13: { name: 'Field Goals Made', display: 'FGM' },
       14: { name: 'Field Goals Attempted', display: 'FGA' },
-      15: { name: 'Field Goal Pct', display: 'FG%' },
-      16: { name: 'Free Throws Made', display: 'FTM' },
-      17: { name: 'Free Throws Attempted', display: 'FTA' },
-      18: { name: 'Free Throw Pct', display: 'FT%' },
-      19: { name: '3-Pointers Made', display: '3PM' },
-      20: { name: '3-Pointers Attempted', display: '3PA' },
-      21: { name: '3-Point Pct', display: '3P%' }
+      15: { name: 'Free Throws Made', display: 'FTM' },
+      16: { name: 'Free Throws Attempted', display: 'FTA' },
+      17: { name: '3-Pointers Made', display: '3PM' },
+      18: { name: '3-Pointers Attempted', display: '3PA' },
+      19: { name: 'Field Goal Pct', display: 'FG%' },
+      20: { name: 'Free Throw Pct', display: 'FT%' },
+      21: { name: '3-Point Pct', display: '3P%' },
+      37: { name: 'Double-Doubles', display: 'DD' },
+      38: { name: 'Triple-Doubles', display: 'TD' },
+      40: { name: 'Games Played', display: 'GP' },
+      41: { name: 'Minutes', display: 'MIN' },
+      42: { name: 'Games Started', display: 'GS' }
     }
     
     // Select the appropriate stat names based on sport

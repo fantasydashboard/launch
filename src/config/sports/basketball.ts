@@ -194,19 +194,25 @@ const platformMappings = {
     DREB: '5',
     REB: '6',
     EJ: '7',
-    TF: '8',
+    FF: '8',     // Flagrant Fouls
+    PF: '9',     // Personal Fouls
+    TF: '10',    // Technical Fouls
     TO: '11',
-    'FG%': '19',
-    'FT%': '20',
-    '3PM': '17',
+    DQ: '12',    // Disqualifications
     FGM: '13',
     FGA: '14',
     FTM: '15',
     FTA: '16',
-    GP: '40',
-    MIN: '41',
+    '3PM': '17',
+    '3PA': '18',
+    'FG%': '19',
+    'FT%': '20',
+    '3P%': '21',
     DD: '37',
     TD: '38',
+    GP: '40',
+    MIN: '41',
+    GS: '42',
   }
 }
 
