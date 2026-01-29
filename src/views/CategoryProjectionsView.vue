@@ -1018,66 +1018,66 @@
                     </div>
                   </div>
                 </div>
+                
+                <!-- Comparison Player Picker (INSIDE scrollable area) -->
+                <div v-if="showComparisonPickerInAnalysis" class="mt-6">
+                  <div class="bg-dark-elevated rounded-xl p-4 border border-purple-500/30">
+                    <h3 class="text-lg font-bold text-purple-400 mb-4">Select Player to Drop</h3>
+                    <p class="text-xs text-dark-textMuted mb-3">Sorted by Rest of Season value (lowest first)</p>
+                    <div class="grid grid-cols-1 gap-2 max-h-96 overflow-y-auto">
+                      <button
+                        v-for="myPlayer in myPlayersWithGameInfo"
+                        :key="myPlayer.player_key"
+                        @click="comparisonPlayerAdd = playerAnalysisData; comparisonPlayerDrop = myPlayer; showPlayerComparisonModal = true; showPlayerAnalysisModal = false; showComparisonPickerInAnalysis = false"
+                        class="flex items-center gap-3 p-3 bg-dark-card hover:bg-dark-border/50 rounded-lg transition-colors text-left group"
+                      >
+                        <!-- Player Avatar -->
+                        <div class="w-12 h-12 rounded-full bg-dark-border overflow-hidden flex-shrink-0">
+                          <img :src="myPlayer.headshot || defaultHeadshot" class="w-full h-full object-cover" @error="handleImageError" />
+                        </div>
+                        
+                        <!-- Player Info -->
+                        <div class="flex-1 min-w-0">
+                          <div class="font-semibold text-dark-text text-sm group-hover:text-purple-400 transition-colors">
+                            {{ myPlayer.full_name }}
+                          </div>
+                          <div class="text-xs text-dark-textMuted">
+                            {{ myPlayer.position }} • {{ myPlayer.mlb_team || myPlayer.nba_team || myPlayer.nhl_team }}
+                          </div>
+                          <div class="flex items-center gap-3 mt-1">
+                            <span v-if="myPlayer.hasGame" class="text-xs text-green-400 flex items-center gap-1">
+                              <span class="w-1.5 h-1.5 bg-green-400 rounded-full"></span>
+                              {{ myPlayer.opponent }} {{ formatGameTime(myPlayer.gameTime) }}
+                            </span>
+                            <span v-else class="text-xs text-red-400 flex items-center gap-1">
+                              <span class="w-1.5 h-1.5 bg-red-400 rounded-full"></span>
+                              No game
+                            </span>
+                            <span class="text-xs text-cyan-400">
+                              {{ myPlayer.percent_owned || myPlayer.percentOwned || 'N/A' }}% owned
+                            </span>
+                          </div>
+                        </div>
+                        
+                        <!-- ROS Value Score -->
+                        <div class="text-right flex-shrink-0 px-3">
+                          <div class="text-lg font-bold text-yellow-400">{{ myPlayer.overallValue?.toFixed(0) || 'N/A' }}</div>
+                          <div class="text-[9px] text-dark-textMuted uppercase">ROS Value</div>
+                        </div>
+                        
+                        <!-- Compare Arrow -->
+                        <div class="text-purple-400 flex-shrink-0">
+                          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+                          </svg>
+                        </div>
+                      </button>
+                    </div>
+                  </div>
+                </div>
 
               </div>
               
-              <!-- Comparison Player Picker (in scrollable area) -->
-              <div v-if="showComparisonPickerInAnalysis" class="px-6 pb-6">
-                <div class="bg-dark-elevated rounded-xl p-4 border border-purple-500/30">
-                  <h3 class="text-lg font-bold text-purple-400 mb-4">Select Player to Drop</h3>
-                  <p class="text-xs text-dark-textMuted mb-3">Sorted by Rest of Season value (lowest first)</p>
-                  <div class="grid grid-cols-1 gap-2 max-h-96 overflow-y-auto">
-                    <button
-                      v-for="myPlayer in myPlayersWithGameInfo"
-                      :key="myPlayer.player_key"
-                      @click="comparisonPlayerAdd = playerAnalysisData; comparisonPlayerDrop = myPlayer; showPlayerComparisonModal = true; showPlayerAnalysisModal = false; showComparisonPickerInAnalysis = false"
-                      class="flex items-center gap-3 p-3 bg-dark-card hover:bg-dark-border/50 rounded-lg transition-colors text-left group"
-                    >
-                      <!-- Player Avatar -->
-                      <div class="w-12 h-12 rounded-full bg-dark-border overflow-hidden flex-shrink-0">
-                        <img :src="myPlayer.headshot || defaultHeadshot" class="w-full h-full object-cover" @error="handleImageError" />
-                      </div>
-                      
-                      <!-- Player Info -->
-                      <div class="flex-1 min-w-0">
-                        <div class="font-semibold text-dark-text text-sm group-hover:text-purple-400 transition-colors">
-                          {{ myPlayer.full_name }}
-                        </div>
-                        <div class="text-xs text-dark-textMuted">
-                          {{ myPlayer.position }} • {{ myPlayer.mlb_team || myPlayer.nba_team || myPlayer.nhl_team }}
-                        </div>
-                        <div class="flex items-center gap-3 mt-1">
-                          <span v-if="myPlayer.hasGame" class="text-xs text-green-400 flex items-center gap-1">
-                            <span class="w-1.5 h-1.5 bg-green-400 rounded-full"></span>
-                            {{ myPlayer.opponent }} {{ formatGameTime(myPlayer.gameTime) }}
-                          </span>
-                          <span v-else class="text-xs text-red-400 flex items-center gap-1">
-                            <span class="w-1.5 h-1.5 bg-red-400 rounded-full"></span>
-                            No game
-                          </span>
-                          <span class="text-xs text-cyan-400">
-                            {{ myPlayer.percent_owned || myPlayer.percentOwned || 'N/A' }}% owned
-                          </span>
-                        </div>
-                      </div>
-                      
-                      <!-- ROS Value Score -->
-                      <div class="text-right flex-shrink-0 px-3">
-                        <div class="text-lg font-bold text-yellow-400">{{ myPlayer.overallValue?.toFixed(0) || 'N/A' }}</div>
-                        <div class="text-[9px] text-dark-textMuted uppercase">ROS Value</div>
-                      </div>
-                      
-                      <!-- Compare Arrow -->
-                      <div class="text-purple-400 flex-shrink-0">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
-                        </svg>
-                      </div>
-                    </button>
-                  </div>
-                </div>
-              </div>
-
               <!-- Footer Actions -->
               <div class="px-6 py-4 border-t border-dark-border flex justify-between items-center">
                 <div class="text-xs text-dark-textMuted">
