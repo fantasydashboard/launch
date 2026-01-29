@@ -689,8 +689,16 @@
                     <p class="text-xs text-dark-textMuted">Optimized players with games</p>
                   </div>
                 </div>
-                <div class="text-xs text-dark-textMuted">
-                  {{ modifiedSuggestedLineup.filter(s => s.player).length }} / {{ modifiedSuggestedLineup.length }} slots filled
+                <div class="flex items-center gap-3">
+                  <div class="flex items-center gap-1 text-xs text-yellow-400">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 15l-2 5L9 9l11 4-5 2zm0 0l5 5M7.188 2.239l.777 2.897M5.136 7.965l-2.898-.777M13.95 4.05l-2.122 2.122m-5.657 5.656l-2.12 2.122" />
+                    </svg>
+                    <span>Click player for details</span>
+                  </div>
+                  <div class="text-xs text-dark-textMuted">
+                    {{ modifiedSuggestedLineup.filter(s => s.player).length }} / {{ modifiedSuggestedLineup.length }} slots filled
+                  </div>
                 </div>
               </div>
             </div>
@@ -700,6 +708,8 @@
                   <div 
                     v-if="slot.position !== 'BN' && slot.position !== 'Bench'"
                     class="flex items-center gap-3 px-4 py-3 hover:bg-dark-border/10 transition-colors"
+                    :class="slot.player ? 'cursor-pointer' : ''"
+                    @click="slot.player ? openPlayerModal(slot.player) : null"
                   >
                     <!-- Position -->
                     <div class="flex-shrink-0 w-12">
@@ -720,7 +730,7 @@
                         <div class="flex items-center gap-2 text-xs">
                           <span v-if="slot.player.hasGame" class="text-green-400 flex items-center gap-1">
                             <img 
-                              :src="`https://a.espncdn.com/combiner/i?img=/i/teamlogos/${currentSport === 'basketball' ? 'nba' : currentSport === 'hockey' ? 'nhl' : 'mlb'}/500/${getOpponentTeamCode(slot.player.opponent)}.png&h=20&w=20`" 
+                              :src="`https://a.espncdn.com/combiner/i?img=/i/teamlogos/${currentSport === 'basketball' ? 'nba' : currentSport === 'hockey' ? 'nhl' : 'mlb'}/500/${slot.player.mlb_team || slot.player.nba_team || slot.player.nhl_team}.png&h=20&w=20`" 
                               class="w-4 h-4 object-contain"
                               @error="e => e.target.style.display = 'none'"
                             />
@@ -767,8 +777,16 @@
                     <p class="text-xs text-dark-textMuted">Free agents with games {{ startSitDay === 'today' ? 'today' : 'tomorrow' }}</p>
                   </div>
                 </div>
-                <div class="text-xs text-dark-textMuted">
-                  {{ sortedAvailableFreeAgents.length }} players
+                <div class="flex items-center gap-3">
+                  <div class="flex items-center gap-1 text-xs text-yellow-400">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 15l-2 5L9 9l11 4-5 2zm0 0l5 5M7.188 2.239l.777 2.897M5.136 7.965l-2.898-.777M13.95 4.05l-2.122 2.122m-5.657 5.656l-2.12 2.122" />
+                    </svg>
+                    <span>Click player for details</span>
+                  </div>
+                  <div class="text-xs text-dark-textMuted">
+                    {{ sortedAvailableFreeAgents.length }} players
+                  </div>
                 </div>
               </div>
             </div>
@@ -802,12 +820,12 @@
                   class="grid grid-cols-[2fr_1fr_repeat(3,80px)_80px_auto] gap-2 px-4 py-3 hover:bg-dark-border/10 transition-colors items-center"
                 >
                   <!-- Player -->
-                  <div class="flex items-center gap-2 min-w-0">
+                  <div class="flex items-center gap-2 min-w-0 cursor-pointer" @click="openPlayerModal(player)">
                     <div class="w-8 h-8 rounded-full bg-dark-border overflow-hidden flex-shrink-0">
                       <img :src="player.headshot || defaultHeadshot" class="w-full h-full object-cover" @error="handleImageError" />
                     </div>
                     <div class="min-w-0">
-                      <div class="font-semibold text-dark-text text-sm truncate">{{ player.full_name }}</div>
+                      <div class="font-semibold text-dark-text text-sm truncate hover:text-yellow-400 transition-colors">{{ player.full_name }}</div>
                       <div class="text-xs text-dark-textMuted">{{ player.position }}</div>
                     </div>
                   </div>
@@ -7803,15 +7821,16 @@ async function loadLiveGames() {
     console.log(`[LiveGames] Local date: ${localDateString}`)
     console.log(`[LiveGames] UTC date: ${now.toISOString().split('T')[0]}`)
     
-    // Request actual date (no offset)
+    // Add +1 day offset because API returns games in UTC
+    // NBA games at 7 PM EST on Jan 28 = midnight UTC Jan 29
     let targetDate: Date
     if (startSitDay.value === 'today') {
-      targetDate = now
-      console.log(`[LiveGames] Loading games for TODAY`)
+      targetDate = new Date(now.getTime() + 86400000) // Add 1 day
+      console.log(`[LiveGames] Loading games for TODAY (+1 day UTC offset)`)
     } else {
-      // Tomorrow - add 1 day
-      targetDate = new Date(now.getTime() + 86400000)
-      console.log(`[LiveGames] Loading games for TOMORROW`)
+      // Tomorrow - add 2 days
+      targetDate = new Date(now.getTime() + (86400000 * 2))
+      console.log(`[LiveGames] Loading games for TOMORROW (+2 day UTC offset)`)
     }
     
     console.log(`[LiveGames] Target date: ${targetDate.toLocaleDateString()} ${targetDate.toLocaleTimeString()}`)
@@ -7860,11 +7879,11 @@ function subscribeToLiveGames() {
     liveGamesSubscription.value = null
   }
   
-  // Calculate target date (no offset)
+  // Calculate target date with +1 day offset (UTC timezone)
   const now = new Date()
   const targetDate = startSitDay.value === 'today' 
-    ? now
-    : new Date(now.getTime() + 86400000)  // +1 day for tomorrow
+    ? new Date(now.getTime() + 86400000)  // +1 day
+    : new Date(now.getTime() + (86400000 * 2))  // +2 days
   
   console.log('[LiveGames] Subscribing to games for:', targetDate.toLocaleDateString())
   
