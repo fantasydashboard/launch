@@ -1357,6 +1357,7 @@ export const useLeagueStore = defineStore('league', () => {
       
       // Get teams with standings - use getStandings for better category league support
       const isCategoryLeague = league.scoringType === 'H2H_CATEGORY'
+      console.log('[ESPN] League scoringType:', league.scoringType, 'isCategoryLeague:', isCategoryLeague)
       const espnTeams = isCategoryLeague 
         ? await espnService.getStandings(sport, espnLeagueId, season)
         : await espnService.getTeams(sport, espnLeagueId, season)

@@ -863,12 +863,19 @@ export class EspnFantasyService {
    * Get current standings
    */
   async getStandings(sport: Sport, leagueId: string | number, season: number): Promise<EspnTeam[]> {
+    console.log('[ESPN getStandings] Called for sport:', sport, 'league:', leagueId, 'season:', season)
+    
     const teams = await this.getTeams(sport, leagueId, season)
     const league = await this.getLeague(sport, leagueId, season)
+    
+    console.log('[ESPN getStandings] League scoringType:', league?.scoringType)
+    console.log('[ESPN getStandings] Teams records:', teams.map(t => ({ name: t.name, wins: t.wins, losses: t.losses })))
     
     // Check if this is a category league with all zero records
     const isCategoryLeague = league?.scoringType === 'H2H_CATEGORY'
     const allZeroRecords = teams.every(t => t.wins === 0 && t.losses === 0)
+    
+    console.log('[ESPN getStandings] isCategoryLeague:', isCategoryLeague, 'allZeroRecords:', allZeroRecords)
     
     // For category leagues with zero records, try to calculate from matchup history
     if (isCategoryLeague && allZeroRecords && league) {
@@ -901,8 +908,11 @@ export class EspnFantasyService {
   ): Promise<EspnTeam[] | null> {
     try {
       // Get all schedule data to analyze matchup winners
+      console.log('[ESPN calculateStandingsFromMatchupHistory] Fetching schedule data...')
       const data = await this.apiRequest(sport, leagueId, season, [ESPN_VIEWS.MATCHUP, ESPN_VIEWS.MATCHUP_SCORE])
       const schedule = data.schedule || []
+      
+      console.log('[ESPN calculateStandingsFromMatchupHistory] Schedule entries:', schedule.length)
       
       if (schedule.length === 0) {
         console.log('[ESPN calculateStandingsFromMatchupHistory] No schedule data found')
@@ -919,7 +929,19 @@ export class EspnFantasyService {
       const currentWeek = league.status?.currentMatchupPeriod || 1
       const regularSeasonWeeks = league.settings?.regularSeasonMatchupPeriodCount || 25
       
+      console.log('[ESPN calculateStandingsFromMatchupHistory] currentWeek:', currentWeek, 'regularSeasonWeeks:', regularSeasonWeeks)
+      
+      // Log first few schedule entries to understand structure
+      console.log('[ESPN calculateStandingsFromMatchupHistory] First 3 schedule entries:', 
+        schedule.slice(0, 3).map((m: any) => ({
+          matchupPeriodId: m.matchupPeriodId,
+          winner: m.winner,
+          home: m.home ? { teamId: m.home.teamId, cumulativeScore: m.home.cumulativeScore } : null,
+          away: m.away ? { teamId: m.away.teamId, cumulativeScore: m.away.cumulativeScore } : null
+        })))
+      
       // Process each completed matchup
+      let processedCount = 0
       for (const match of schedule) {
         // Skip future matchups and bye weeks
         if (!match.home || !match.away) continue
@@ -933,14 +955,19 @@ export class EspnFantasyService {
         
         if (!homeStats || !awayStats) continue
         
+        processedCount++
+        
         // Method 1: Use winner field if available
         if (match.winner === 'HOME') {
+          console.log(`[ESPN] Week ${match.matchupPeriodId}: HOME team ${homeTeamId} wins`)
           homeStats.wins++
           awayStats.losses++
         } else if (match.winner === 'AWAY') {
+          console.log(`[ESPN] Week ${match.matchupPeriodId}: AWAY team ${awayTeamId} wins`)
           awayStats.wins++
           homeStats.losses++
         } else if (match.winner === 'TIE') {
+          console.log(`[ESPN] Week ${match.matchupPeriodId}: TIE`)
           homeStats.ties++
           awayStats.ties++
         }
@@ -950,6 +977,8 @@ export class EspnFantasyService {
           const awayWins = match.away.cumulativeScore.wins || 0
           const homeLosses = match.home.cumulativeScore.losses || 0
           const awayLosses = match.away.cumulativeScore.losses || 0
+          
+          console.log(`[ESPN] Week ${match.matchupPeriodId}: Categories - Home ${homeWins}-${homeLosses}, Away ${awayWins}-${awayLosses}`)
           
           // Track category wins/losses
           homeStats.categoryWins += homeWins
@@ -969,8 +998,12 @@ export class EspnFantasyService {
             homeStats.ties++
             awayStats.ties++
           }
+        } else {
+          console.log(`[ESPN] Week ${match.matchupPeriodId}: No winner data available, winner field:`, match.winner)
         }
       }
+      
+      console.log('[ESPN calculateStandingsFromMatchupHistory] Processed', processedCount, 'matchups')
       
       // Check if we found any data
       let foundAnyData = false
