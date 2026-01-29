@@ -1355,8 +1355,11 @@ export const useLeagueStore = defineStore('league', () => {
         }
       }
       
-      // Get teams with standings
-      const espnTeams = await espnService.getTeams(sport, espnLeagueId, season)
+      // Get teams with standings - use getStandings for better category league support
+      const isCategoryLeague = league.scoringType === 'H2H_CATEGORY'
+      const espnTeams = isCategoryLeague 
+        ? await espnService.getStandings(sport, espnLeagueId, season)
+        : await espnService.getTeams(sport, espnLeagueId, season)
       
       // Get user's team ID for highlighting
       let myTeamId: number | null = null
@@ -1409,25 +1412,53 @@ export const useLeagueStore = defineStore('league', () => {
           rank: team.playoffSeed || team.rank || 0,
           is_my_team: myTeamId !== null && team.id === myTeamId,
           transactionCounter: team.transactionCounter || 0,
-          transactions: team.transactionCounter || 0
+          transactions: team.transactionCounter || 0,
+          // Category league specific fields
+          category_wins: (team as any).categoryWins || 0,
+          category_losses: (team as any).categoryLosses || 0
         }
       })
       
-      // Sort by rank
-      yahooTeams.value.sort((a, b) => (a.rank || 99) - (b.rank || 99))
+      // Sort teams - for category leagues, sort by wins then category win percentage
+      const sortedByWins = [...yahooTeams.value].sort((a, b) => {
+        // First by wins
+        if (b.wins !== a.wins) return b.wins - a.wins
+        // Then by ties
+        if ((b.ties || 0) !== (a.ties || 0)) return (b.ties || 0) - (a.ties || 0)
+        // For category leagues, use category win percentage as tiebreaker
+        const aCatTotal = (a.category_wins || 0) + (a.category_losses || 0) || 1
+        const bCatTotal = (b.category_wins || 0) + (b.category_losses || 0) || 1
+        const aCatPct = (a.category_wins || 0) / aCatTotal
+        const bCatPct = (b.category_wins || 0) / bCatTotal
+        if (bCatPct !== aCatPct) return bCatPct - aCatPct
+        // Finally by points for
+        return (b.points_for || 0) - (a.points_for || 0)
+      })
+      
+      // If teams have rank from ESPN, use that; otherwise use calculated order
+      if (sortedByWins.some(t => t.rank > 0)) {
+        yahooTeams.value.sort((a, b) => (a.rank || 99) - (b.rank || 99))
+      } else {
+        // Assign ranks based on sorted order
+        sortedByWins.forEach((team, idx) => {
+          const original = yahooTeams.value.find(t => t.team_id === team.team_id)
+          if (original) {
+            original.rank = idx + 1
+          }
+        })
+        yahooTeams.value = sortedByWins
+      }
       
       // Log final mapped teams
       console.log('[ESPN] Final mapped teams:', yahooTeams.value.map(t => ({
         name: t.name,
         wins: t.wins,
         losses: t.losses,
+        category_wins: t.category_wins,
+        category_losses: t.category_losses,
         points_for: t.points_for,
         rank: t.rank
       })))
-      
-      // Check if this is a category league
-      const isCategoryLeague = league.scoringType === 'H2H_CATEGORY'
-      console.log('[ESPN] Is category league:', isCategoryLeague)
       
       // Map ESPN matchups to Yahoo-compatible format
       yahooMatchups.value = espnMatchups.map(matchup => {

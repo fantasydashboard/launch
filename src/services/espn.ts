@@ -205,6 +205,8 @@ export interface EspnTeam {
   playoffSeed: number
   divisionId: number
   transactionCounter?: number  // Total transactions (adds, drops, trades)
+  categoryWins?: number  // For H2H_CATEGORY leagues - total category wins across all matchups
+  categoryLosses?: number  // For H2H_CATEGORY leagues - total category losses across all matchups
   roster?: EspnPlayer[]
   record?: {
     overall: { wins: number; losses: number; ties: number; percentage: number }
@@ -862,6 +864,20 @@ export class EspnFantasyService {
    */
   async getStandings(sport: Sport, leagueId: string | number, season: number): Promise<EspnTeam[]> {
     const teams = await this.getTeams(sport, leagueId, season)
+    const league = await this.getLeague(sport, leagueId, season)
+    
+    // Check if this is a category league with all zero records
+    const isCategoryLeague = league?.scoringType === 'H2H_CATEGORY'
+    const allZeroRecords = teams.every(t => t.wins === 0 && t.losses === 0)
+    
+    // For category leagues with zero records, try to calculate from matchup history
+    if (isCategoryLeague && allZeroRecords && league) {
+      console.log('[ESPN getStandings] Category league with zero records - calculating from matchup history')
+      const calculatedStandings = await this.calculateStandingsFromMatchupHistory(sport, leagueId, season, league, teams)
+      if (calculatedStandings) {
+        return calculatedStandings
+      }
+    }
     
     // Sort by rank or calculate from record
     return teams.sort((a, b) => {
@@ -870,6 +886,141 @@ export class EspnFantasyService {
       // Then by points for
       return b.pointsFor - a.pointsFor
     })
+  }
+
+  /**
+   * Calculate standings from matchup history for category leagues
+   * This is used when ESPN returns all zeros in team records
+   */
+  private async calculateStandingsFromMatchupHistory(
+    sport: Sport, 
+    leagueId: string | number, 
+    season: number,
+    league: EspnLeague,
+    teams: EspnTeam[]
+  ): Promise<EspnTeam[] | null> {
+    try {
+      // Get all schedule data to analyze matchup winners
+      const data = await this.apiRequest(sport, leagueId, season, [ESPN_VIEWS.MATCHUP, ESPN_VIEWS.MATCHUP_SCORE])
+      const schedule = data.schedule || []
+      
+      if (schedule.length === 0) {
+        console.log('[ESPN calculateStandingsFromMatchupHistory] No schedule data found')
+        return null
+      }
+      
+      // Track wins/losses for each team
+      const teamStats = new Map<number, { wins: number; losses: number; ties: number; categoryWins: number; categoryLosses: number }>()
+      teams.forEach(t => {
+        teamStats.set(t.id, { wins: 0, losses: 0, ties: 0, categoryWins: 0, categoryLosses: 0 })
+      })
+      
+      // Current week to know which matchups are completed
+      const currentWeek = league.status?.currentMatchupPeriod || 1
+      const regularSeasonWeeks = league.settings?.regularSeasonMatchupPeriodCount || 25
+      
+      // Process each completed matchup
+      for (const match of schedule) {
+        // Skip future matchups and bye weeks
+        if (!match.home || !match.away) continue
+        if (match.matchupPeriodId >= currentWeek) continue // Not yet completed
+        if (match.matchupPeriodId > regularSeasonWeeks) continue // Playoff matchup
+        
+        const homeTeamId = match.home.teamId
+        const awayTeamId = match.away.teamId
+        const homeStats = teamStats.get(homeTeamId)
+        const awayStats = teamStats.get(awayTeamId)
+        
+        if (!homeStats || !awayStats) continue
+        
+        // Method 1: Use winner field if available
+        if (match.winner === 'HOME') {
+          homeStats.wins++
+          awayStats.losses++
+        } else if (match.winner === 'AWAY') {
+          awayStats.wins++
+          homeStats.losses++
+        } else if (match.winner === 'TIE') {
+          homeStats.ties++
+          awayStats.ties++
+        }
+        // Method 2: Use cumulativeScore wins/losses for category leagues
+        else if (match.home.cumulativeScore && match.away.cumulativeScore) {
+          const homeWins = match.home.cumulativeScore.wins || 0
+          const awayWins = match.away.cumulativeScore.wins || 0
+          const homeLosses = match.home.cumulativeScore.losses || 0
+          const awayLosses = match.away.cumulativeScore.losses || 0
+          
+          // Track category wins/losses
+          homeStats.categoryWins += homeWins
+          homeStats.categoryLosses += homeLosses
+          awayStats.categoryWins += awayWins
+          awayStats.categoryLosses += awayLosses
+          
+          // Determine matchup winner based on category wins
+          if (homeWins > awayWins) {
+            homeStats.wins++
+            awayStats.losses++
+          } else if (awayWins > homeWins) {
+            awayStats.wins++
+            homeStats.losses++
+          } else if (homeWins > 0 || awayWins > 0) {
+            // Tied on category wins
+            homeStats.ties++
+            awayStats.ties++
+          }
+        }
+      }
+      
+      // Check if we found any data
+      let foundAnyData = false
+      for (const stats of teamStats.values()) {
+        if (stats.wins > 0 || stats.losses > 0 || stats.ties > 0) {
+          foundAnyData = true
+          break
+        }
+      }
+      
+      if (!foundAnyData) {
+        console.log('[ESPN calculateStandingsFromMatchupHistory] No completed matchups found in schedule')
+        return null
+      }
+      
+      // Update teams with calculated stats
+      const updatedTeams = teams.map(team => {
+        const stats = teamStats.get(team.id)
+        if (stats) {
+          return {
+            ...team,
+            wins: stats.wins,
+            losses: stats.losses,
+            ties: stats.ties,
+            // Store category totals for display
+            categoryWins: stats.categoryWins,
+            categoryLosses: stats.categoryLosses
+          }
+        }
+        return team
+      })
+      
+      console.log('[ESPN calculateStandingsFromMatchupHistory] Calculated standings:', 
+        updatedTeams.map(t => ({ name: t.name, wins: t.wins, losses: t.losses })))
+      
+      // Sort by wins, then by category win percentage
+      return updatedTeams.sort((a, b) => {
+        if (b.wins !== a.wins) return b.wins - a.wins
+        if (b.ties !== a.ties) return b.ties - a.ties
+        // For category leagues, sort by category win percentage as tiebreaker
+        const aTotal = (a as any).categoryWins + (a as any).categoryLosses || 1
+        const bTotal = (b as any).categoryWins + (b as any).categoryLosses || 1
+        const aWinPct = (a as any).categoryWins / aTotal
+        const bWinPct = (b as any).categoryWins / bTotal
+        return bWinPct - aWinPct
+      })
+    } catch (error) {
+      console.error('[ESPN calculateStandingsFromMatchupHistory] Error:', error)
+      return null
+    }
   }
 
   // ============================================================
