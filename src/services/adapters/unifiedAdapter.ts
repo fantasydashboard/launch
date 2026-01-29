@@ -54,10 +54,10 @@ export function normalizeYahooTeam(team: any): UnifiedTeam {
   const standings = team.team_standings || {}
   
   return {
-    teamId: String(team.team_id || team.team_key),
+    teamId: String(team.team_id || team.team_key?.split('.').pop() || team.team_key),
     name: team.name || team.team_name || `Team ${team.team_id}`,
     owner: team.managers?.[0]?.nickname || team.manager?.nickname,
-    avatar: team.team_logos?.[0]?.url || team.logo,
+    avatar: team.team_logos?.[0]?.url || team.logo || team.logo_url,
     record: {
       wins: parseInt(standings.outcome_totals?.wins || team.wins || 0),
       losses: parseInt(standings.outcome_totals?.losses || team.losses || 0),
@@ -170,15 +170,33 @@ export function normalizeYahooCategoryMatchups(
     const team2Stats: Record<string, number> = {}
     
     // Extract category stats from Yahoo format
+    // Try multiple possible locations for stats
     const team1StatsList = m.teams?.[0]?.team_stats?.stats || []
     const team2StatsList = m.teams?.[1]?.team_stats?.stats || []
     
+    // Old format with nested stats array
     for (const stat of team1StatsList) {
       team1Stats[String(stat.stat_id)] = parseFloat(stat.value) || 0
     }
     for (const stat of team2StatsList) {
       team2Stats[String(stat.stat_id)] = parseFloat(stat.value) || 0
     }
+    
+    // New format with flat stats object from getCategoryMatchups
+    const team1StatsObj = m.teams?.[0]?.stats || {}
+    const team2StatsObj = m.teams?.[1]?.stats || {}
+    
+    for (const [statId, value] of Object.entries(team1StatsObj)) {
+      team1Stats[statId] = parseFloat(value as string) || 0
+    }
+    for (const [statId, value] of Object.entries(team2StatsObj)) {
+      team2Stats[statId] = parseFloat(value as string) || 0
+    }
+    
+    // Get wins - try multiple sources
+    const team1Wins = m.team1_wins ?? parseInt(m.teams?.[0]?.team_stats?.wins || m.teams?.[0]?.win_count || '0')
+    const team2Wins = m.team2_wins ?? parseInt(m.teams?.[1]?.team_stats?.wins || m.teams?.[1]?.win_count || '0')
+    const ties = m.ties ?? parseInt(m.teams?.[0]?.team_stats?.ties || m.tie_count || '0')
     
     return {
       matchupId: String(m.matchup_id || idx),
@@ -187,10 +205,10 @@ export function normalizeYahooCategoryMatchups(
       team2: normalizeYahooTeam(m.teams?.[1] || {}),
       team1Categories: team1Stats,
       team2Categories: team2Stats,
-      team1Wins: parseInt(m.teams?.[0]?.team_stats?.wins || m.teams?.[0]?.win_count || 0),
-      team2Wins: parseInt(m.teams?.[1]?.team_stats?.wins || m.teams?.[1]?.win_count || 0),
-      ties: parseInt(m.teams?.[0]?.team_stats?.ties || m.tie_count || 0),
-      isCompleted: m.status === 'postevent' || m.is_completed,
+      team1Wins,
+      team2Wins,
+      ties,
+      isCompleted: m.status === 'postevent' || m.is_completed || (team1Wins + team2Wins + ties) > 0,
     }
   })
 }

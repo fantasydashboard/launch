@@ -2,7 +2,6 @@
   <div class="space-y-6">
     <!-- League Header -->
     <div class="card overflow-hidden">
-      <!-- Gradient Header with Sport Color -->
       <div 
         class="h-32 relative"
         :style="{ background: `linear-gradient(135deg, ${sportConfig.color}40, ${sportConfig.color}10)` }"
@@ -57,7 +56,7 @@
               <span class="text-lg">🏆</span>
             </div>
             <div>
-              <div class="text-2xl font-bold text-dark-text">{{ leaderName }}</div>
+              <div class="text-2xl font-bold text-dark-text truncate" :title="leaderName">{{ leaderName || '-' }}</div>
               <div class="text-xs text-dark-textMuted">League Leader</div>
             </div>
           </div>
@@ -87,6 +86,75 @@
             <div>
               <div class="text-2xl font-bold text-dark-text">{{ matchups.length }}</div>
               <div class="text-xs text-dark-textMuted">Matchups This Week</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- League Leaders Section -->
+      <div class="card">
+        <div class="card-header">
+          <div class="flex items-center gap-2">
+            <span class="text-2xl">🏅</span>
+            <h2 class="card-title">League Leaders</h2>
+          </div>
+        </div>
+        <div class="card-body">
+          <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+            <!-- Hottest Team -->
+            <div class="p-4 bg-dark-border/20 rounded-xl">
+              <div class="flex items-center gap-2 mb-2">
+                <span class="text-xl">🔥</span>
+                <span class="text-sm font-medium text-dark-textMuted">Hottest</span>
+              </div>
+              <div class="text-lg font-bold text-dark-text truncate" :title="hottestTeam?.name">
+                {{ hottestTeam?.name || '-' }}
+              </div>
+              <div class="text-xs text-green-400">
+                {{ hottestTeam?.value || '-' }}
+              </div>
+            </div>
+
+            <!-- Coldest Team -->
+            <div class="p-4 bg-dark-border/20 rounded-xl">
+              <div class="flex items-center gap-2 mb-2">
+                <span class="text-xl">🥶</span>
+                <span class="text-sm font-medium text-dark-textMuted">Coldest</span>
+              </div>
+              <div class="text-lg font-bold text-dark-text truncate" :title="coldestTeam?.name">
+                {{ coldestTeam?.name || '-' }}
+              </div>
+              <div class="text-xs text-red-400">
+                {{ coldestTeam?.value || '-' }}
+              </div>
+            </div>
+
+            <!-- Most Moves -->
+            <div class="p-4 bg-dark-border/20 rounded-xl">
+              <div class="flex items-center gap-2 mb-2">
+                <span class="text-xl">🔄</span>
+                <span class="text-sm font-medium text-dark-textMuted">Most Moves</span>
+              </div>
+              <div class="text-lg font-bold text-dark-text truncate" :title="mostMoves?.name">
+                {{ mostMoves?.name || '-' }}
+              </div>
+              <div class="text-xs text-blue-400">
+                {{ mostMoves?.transactions !== undefined ? `${mostMoves.transactions} transactions` : '-' }}
+              </div>
+            </div>
+
+            <!-- Fewest Moves -->
+            <div class="p-4 bg-dark-border/20 rounded-xl">
+              <div class="flex items-center gap-2 mb-2">
+                <span class="text-xl">🪨</span>
+                <span class="text-sm font-medium text-dark-textMuted">Fewest Moves</span>
+              </div>
+              <div class="text-lg font-bold text-dark-text truncate" :title="fewestMoves?.name">
+                {{ fewestMoves?.name || '-' }}
+              </div>
+              <div class="text-xs text-purple-400">
+                {{ fewestMoves?.transactions !== undefined ? `${fewestMoves.transactions} transactions` : '-' }}
+              </div>
             </div>
           </div>
         </div>
@@ -130,7 +198,10 @@
               </div>
             </div>
             <div class="card-body space-y-3">
-              <template v-if="isPointsLeague">
+              <div v-if="matchups.length === 0" class="text-center py-6 text-dark-textMuted">
+                No matchups available for this week
+              </div>
+              <template v-else-if="isPointsLeague">
                 <PointsMatchupCard
                   v-for="matchup in matchups.slice(0, 4)"
                   :key="matchup.matchupId"
@@ -160,7 +231,7 @@
             </div>
           </div>
 
-          <!-- League Activity / Recent Results -->
+          <!-- League Highlights -->
           <div class="card">
             <div class="card-header">
               <div class="flex items-center gap-2">
@@ -181,9 +252,9 @@
                 <div v-if="topScorer" class="flex items-start gap-3 p-3 bg-dark-border/20 rounded-lg">
                   <span class="text-lg">🔥</span>
                   <div>
-                    <div class="text-sm font-medium text-dark-text">{{ topScorer.name }} on fire</div>
+                    <div class="text-sm font-medium text-dark-text">{{ topScorer.name }} on fire this week</div>
                     <div class="text-xs text-dark-textMuted">
-                      {{ isPointsLeague ? `${topScorer.points.toFixed(1)} points this week` : `${topScorer.categoryWins} categories won` }}
+                      {{ isPointsLeague ? `${topScorer.points.toFixed(1)} points` : `${topScorer.categoryWins} categories won` }}
                     </div>
                   </div>
                 </div>
@@ -224,6 +295,7 @@ const loading = ref(false)
 const loadingMessage = ref('Loading league data...')
 const matchups = ref<UnifiedMatchup[]>([])
 const standings = ref<UnifiedStandingsEntry[]>([])
+const teamsWithStats = ref<any[]>([])
 
 // Computed - League Info
 const leagueId = computed(() => leagueStore.activeLeagueId)
@@ -291,7 +363,6 @@ const currentWeek = computed(() => {
 })
 
 const playoffTeams = computed(() => 6)
-
 const myTeamId = computed((): string | undefined => undefined)
 
 const adapterOptions = computed((): AdapterOptions => ({
@@ -309,19 +380,130 @@ const leaderName = computed(() => {
 const leaderRecord = computed(() => {
   if (standings.value.length === 0) return ''
   const leader = standings.value[0]
+  if (isPointsLeague.value) {
+    return `${leader.wins}-${leader.losses}${leader.ties ? `-${leader.ties}` : ''} (${(leader.pointsFor || 0).toFixed(1)} PF)`
+  }
   return `${leader.wins}-${leader.losses}${leader.ties ? `-${leader.ties}` : ''}`
 })
 
 const avgPointsFor = computed(() => {
   if (standings.value.length === 0) return 0
   const total = standings.value.reduce((sum, s) => sum + (s.pointsFor || 0), 0)
-  return total / standings.value.length / Math.max(1, currentWeek.value)
+  const weeks = Math.max(1, currentWeek.value)
+  return total / standings.value.length / weeks
 })
 
 const avgCategoryWins = computed(() => {
   if (standings.value.length === 0) return 0
-  const total = standings.value.reduce((sum, s) => sum + (s.categoryWins || 0), 0)
-  return total / standings.value.length / Math.max(1, currentWeek.value)
+  const total = standings.value.reduce((sum, s) => {
+    if (s.categoryWins !== undefined) return sum + s.categoryWins
+    return sum + (s.wins * 5)
+  }, 0)
+  const weeks = Math.max(1, currentWeek.value)
+  return total / standings.value.length / weeks
+})
+
+// Hottest Team - based on points for points leagues, wins for category
+const hottestTeam = computed(() => {
+  if (teamsWithStats.value.length === 0 && standings.value.length === 0) return null
+  
+  const teams = teamsWithStats.value.length > 0 ? teamsWithStats.value : standings.value.map(s => ({
+    name: s.team.name,
+    points_for: s.pointsFor || 0,
+    wins: s.wins || 0,
+    streak: s.streak
+  }))
+  
+  if (teams.length === 0) return null
+  
+  if (isPointsLeague.value) {
+    const sorted = [...teams].sort((a, b) => (b.points_for || 0) - (a.points_for || 0))
+    const top = sorted[0]
+    return {
+      name: top.name,
+      value: `${(top.points_for || 0).toFixed(1)} total pts`
+    }
+  } else {
+    const sorted = [...teams].sort((a, b) => (b.wins || 0) - (a.wins || 0))
+    const top = sorted[0]
+    return {
+      name: top.name,
+      value: top.streak || `${top.wins} matchup wins`
+    }
+  }
+})
+
+// Coldest Team
+const coldestTeam = computed(() => {
+  if (teamsWithStats.value.length === 0 && standings.value.length === 0) return null
+  
+  const teams = teamsWithStats.value.length > 0 ? teamsWithStats.value : standings.value.map(s => ({
+    name: s.team.name,
+    points_for: s.pointsFor || 0,
+    losses: s.losses || 0,
+    streak: s.streak
+  }))
+  
+  if (teams.length === 0) return null
+  
+  if (isPointsLeague.value) {
+    const sorted = [...teams].sort((a, b) => (a.points_for || 0) - (b.points_for || 0))
+    const bottom = sorted[0]
+    return {
+      name: bottom.name,
+      value: `${(bottom.points_for || 0).toFixed(1)} total pts`
+    }
+  } else {
+    const sorted = [...teams].sort((a, b) => (b.losses || 0) - (a.losses || 0))
+    const bottom = sorted[0]
+    return {
+      name: bottom.name,
+      value: bottom.streak || `${bottom.losses} matchup losses`
+    }
+  }
+})
+
+// Most Moves
+const mostMoves = computed(() => {
+  if (teamsWithStats.value.length === 0) return null
+  
+  const teamsWithTransactions = teamsWithStats.value.filter(t => 
+    (t.transactions !== undefined && t.transactions > 0) || 
+    (t.transactionCounter !== undefined && t.transactionCounter > 0)
+  )
+  
+  if (teamsWithTransactions.length === 0) return null
+  
+  const sorted = [...teamsWithTransactions].sort((a, b) => 
+    (b.transactions || b.transactionCounter || 0) - (a.transactions || a.transactionCounter || 0)
+  )
+  
+  const top = sorted[0]
+  return {
+    name: top.name,
+    transactions: top.transactions || top.transactionCounter || 0
+  }
+})
+
+// Fewest Moves  
+const fewestMoves = computed(() => {
+  if (teamsWithStats.value.length === 0) return null
+  
+  const teamsWithTransactions = teamsWithStats.value.filter(t => 
+    t.transactions !== undefined || t.transactionCounter !== undefined
+  )
+  
+  if (teamsWithTransactions.length === 0) return null
+  
+  const sorted = [...teamsWithTransactions].sort((a, b) => 
+    (a.transactions || a.transactionCounter || 0) - (b.transactions || b.transactionCounter || 0)
+  )
+  
+  const bottom = sorted[0]
+  return {
+    name: bottom.name,
+    transactions: bottom.transactions || bottom.transactionCounter || 0
+  }
 })
 
 const topScorer = computed(() => {
@@ -362,9 +544,14 @@ const closestMatchup = computed(() => {
         closest = { teams: `${m.team1.name} vs ${m.team2.name}`, margin }
       }
     } else {
-      const margin = Math.abs((m.team1Wins || 0) - (m.team2Wins || 0))
-      if (margin < closest.margin) {
-        closest = { teams: `${m.team1.name} vs ${m.team2.name} (${m.team1Wins}-${m.team2Wins})`, margin }
+      const t1Wins = m.team1Wins || 0
+      const t2Wins = m.team2Wins || 0
+      const margin = Math.abs(t1Wins - t2Wins)
+      if (margin < closest.margin && (t1Wins + t2Wins) > 0) {
+        closest = { 
+          teams: `${m.team1.name} vs ${m.team2.name} (${t1Wins}-${t2Wins})`, 
+          margin 
+        }
       }
     }
   }
@@ -386,8 +573,31 @@ async function loadData() {
     const rawData = await fetchRawData()
     
     if (rawData) {
-      matchups.value = normalizeMatchups(rawData, adapterOptions.value, currentWeek.value)
-      standings.value = normalizeStandings(rawData, adapterOptions.value)
+      console.log('[UnifiedSeasonView] Raw data:', {
+        platform: platform.value,
+        leagueType: leagueType.value,
+        isPointsLeague: isPointsLeague.value,
+        matchupsCount: rawData.matchups?.length,
+        teamsCount: rawData.teams?.length,
+        preTransformed: rawData.preTransformed
+      })
+      
+      // Store raw team data for transaction counts
+      teamsWithStats.value = rawData.teams || rawData.rosters || []
+      
+      if (rawData.preTransformed) {
+        matchups.value = convertPreTransformedMatchups(rawData.matchups, currentWeek.value, rawData.isCategoryLeague)
+        standings.value = convertPreTransformedStandings(rawData.teams)
+      } else {
+        matchups.value = normalizeMatchups(rawData, adapterOptions.value, currentWeek.value)
+        standings.value = normalizeStandings(rawData, adapterOptions.value)
+      }
+      
+      console.log('[UnifiedSeasonView] Processed:', {
+        matchups: matchups.value.length,
+        standings: standings.value.length,
+        sampleMatchup: matchups.value[0]
+      })
     }
   } catch (e) {
     console.error('[UnifiedSeasonView] Error:', e)
@@ -396,7 +606,92 @@ async function loadData() {
   }
 }
 
+function convertPreTransformedMatchups(matchupsData: any[], week: number, forceCategory?: boolean): UnifiedMatchup[] {
+  if (!matchupsData || matchupsData.length === 0) return []
+  
+  return matchupsData.map((m, idx) => {
+    const team1 = m.team1 || m.teams?.[0]
+    const team2 = m.team2 || m.teams?.[1]
+    
+    if (!team1 || !team2) return null
+    
+    const unified: UnifiedMatchup = {
+      matchupId: String(m.matchup_id || idx),
+      week,
+      team1: {
+        teamId: team1?.team_id?.toString() || String(idx * 2),
+        name: team1?.name || `Team ${idx * 2 + 1}`,
+        avatar: team1?.logo_url,
+        record: {
+          wins: team1?.wins || 0,
+          losses: team1?.losses || 0,
+          ties: team1?.ties || 0
+        }
+      },
+      team2: {
+        teamId: team2?.team_id?.toString() || String(idx * 2 + 1),
+        name: team2?.name || `Team ${idx * 2 + 2}`,
+        avatar: team2?.logo_url,
+        record: {
+          wins: team2?.wins || 0,
+          losses: team2?.losses || 0,
+          ties: team2?.ties || 0
+        }
+      },
+      isCompleted: false
+    }
+    
+    const isCat = forceCategory || !isPointsLeague.value || 
+                  m.is_category_league || 
+                  m.team1_wins !== undefined || 
+                  m.home_category_wins !== undefined
+    
+    if (isCat) {
+      unified.team1Wins = m.home_category_wins ?? m.team1_wins ?? team1?.category_wins ?? team1?.win_count ?? 0
+      unified.team2Wins = m.away_category_wins ?? m.team2_wins ?? team2?.category_wins ?? team2?.win_count ?? 0
+      unified.ties = m.ties ?? 0
+    } else {
+      unified.team1Score = team1?.points ?? m.team1_points ?? 0
+      unified.team2Score = team2?.points ?? m.team2_points ?? 0
+    }
+    
+    return unified
+  }).filter(Boolean) as UnifiedMatchup[]
+}
+
+function convertPreTransformedStandings(teamsData: any[]): UnifiedStandingsEntry[] {
+  if (!teamsData || teamsData.length === 0) return []
+  
+  return teamsData.map((team, idx) => {
+    const wins = team.wins || 0
+    const losses = team.losses || 0
+    const ties = team.ties || 0
+    const totalGames = wins + losses + ties
+    
+    return {
+      team: {
+        teamId: team.team_id?.toString() || String(idx),
+        name: team.name || `Team ${idx + 1}`,
+        avatar: team.logo_url,
+        record: { wins, losses, ties }
+      },
+      rank: team.rank || idx + 1,
+      wins,
+      losses,
+      ties,
+      pointsFor: team.points_for || 0,
+      pointsAgainst: team.points_against || 0,
+      winPercentage: totalGames > 0 ? wins / totalGames : 0,
+      streak: team.streak,
+      categoryWins: team.category_wins,
+      categoryLosses: team.category_losses
+    }
+  }).sort((a, b) => a.rank - b.rank)
+}
+
 async function fetchRawData(): Promise<any> {
+  const isCat = !isPointsLeague.value
+  
   switch (platform.value) {
     case 'sleeper':
       return {
@@ -407,16 +702,30 @@ async function fetchRawData(): Promise<any> {
       }
     
     case 'yahoo':
-      return {
-        matchups: leagueStore.yahooMatchups || [],
-        teams: leagueStore.yahooStandings || []
+      const yahooMatchups = leagueStore.yahooMatchups || []
+      const yahooTeams = leagueStore.yahooStandings || leagueStore.yahooTeams || []
+      
+      const hasCategoryData = yahooMatchups.some(m => 
+        m.is_category_league || m.team1_wins !== undefined || m.teams?.[0]?.win_count !== undefined
+      )
+      
+      if (hasCategoryData || isCat) {
+        return {
+          preTransformed: true,
+          isCategoryLeague: true,
+          matchups: yahooMatchups,
+          teams: yahooTeams
+        }
       }
+      
+      return { matchups: yahooMatchups, teams: yahooTeams }
     
     case 'espn':
       return {
-        schedule: leagueStore.espnSchedule || [],
-        teams: leagueStore.espnTeams || [],
-        members: leagueStore.espnMembers || []
+        preTransformed: true,
+        isCategoryLeague: isCat,
+        matchups: leagueStore.yahooMatchups || [],
+        teams: leagueStore.yahooTeams || []
       }
     
     default:
@@ -424,13 +733,9 @@ async function fetchRawData(): Promise<any> {
   }
 }
 
-// Initialize
-onMounted(() => {
-  loadData()
-})
-
-// Watch for league changes
-watch(leagueId, () => {
-  loadData()
-})
+onMounted(() => loadData())
+watch(leagueId, () => loadData())
+watch(() => leagueStore.yahooMatchups, () => {
+  if (platform.value !== 'sleeper') loadData()
+}, { deep: true })
 </script>

@@ -1075,12 +1075,51 @@ export const useLeagueStore = defineStore('league', () => {
               const standings = await yahooService.getStandings(previousLeagueKey)
               yahooStandings.value = standings
               
-              // Fetch matchups for previous season
-              const matchups = await yahooService.getMatchups(previousLeagueKey, prevMetadata.currentWeek)
+              // Check if this is a category league for previous season
+              const savedLeague = savedLeagues.value.find(l => l.league_id === leagueKey)
+              const scoringType = savedLeague?.scoring_type || prevLeagueDetails?.[0]?.scoring_type || ''
+              const isCategoryLeague = scoringType === 'head' || scoringType === 'headone' || scoringType === 'roto'
+              
+              // Fetch matchups for previous season - use getCategoryMatchups for category leagues
+              let matchups: any[]
+              if (isCategoryLeague) {
+                const categoryMatchups = await yahooService.getCategoryMatchups(previousLeagueKey, prevMetadata.currentWeek)
+                matchups = categoryMatchups.map((m, idx) => {
+                  const team1 = m.teams?.[0]
+                  const team2 = m.teams?.[1]
+                  const team1Key = team1?.team_key
+                  const team2Key = team2?.team_key
+                  
+                  let team1Wins = 0
+                  let team2Wins = 0
+                  let ties = 0
+                  
+                  for (const sw of (m.stat_winners || [])) {
+                    if (sw.is_tied) ties++
+                    else if (sw.winner_team_key === team1Key) team1Wins++
+                    else if (sw.winner_team_key === team2Key) team2Wins++
+                  }
+                  
+                  return {
+                    matchup_id: idx + 1,
+                    week: m.week,
+                    teams: [
+                      { ...team1, team_id: team1Key?.split('.').pop(), win_count: team1Wins },
+                      { ...team2, team_id: team2Key?.split('.').pop(), win_count: team2Wins }
+                    ],
+                    team1_wins: team1Wins,
+                    team2_wins: team2Wins,
+                    ties,
+                    is_category_league: true,
+                    stat_winners: m.stat_winners
+                  }
+                })
+              } else {
+                matchups = await yahooService.getMatchups(previousLeagueKey, prevMetadata.currentWeek)
+              }
               yahooMatchups.value = matchups
               
               // Create a currentLeague object that's compatible with the UI
-              const savedLeague = savedLeagues.value.find(l => l.league_id === leagueKey)
               const prevSeason = prevLeagueDetails?.[0]?.season || (parseInt(savedLeague?.season || '2025') - 1).toString()
               
               currentLeague.value = {
@@ -1147,12 +1186,74 @@ export const useLeagueStore = defineStore('league', () => {
       const standings = await yahooService.getStandings(leagueKey)
       yahooStandings.value = standings
       
-      // Fetch current week matchups
-      const matchups = await yahooService.getMatchups(leagueKey, metadata.currentWeek)
+      // Check if this is a category league
+      const savedLeague = savedLeagues.value.find(l => l.league_id === leagueKey)
+      const scoringType = savedLeague?.scoring_type || leagueDetails?.[0]?.scoring_type || ''
+      const isCategoryLeague = scoringType === 'head' || scoringType === 'headone' || scoringType === 'roto'
+      
+      console.log('[Yahoo] Loading matchups, scoring_type:', scoringType, 'isCategoryLeague:', isCategoryLeague)
+      
+      // Fetch current week matchups - use getCategoryMatchups for category leagues
+      let matchups: any[]
+      if (isCategoryLeague) {
+        const categoryMatchups = await yahooService.getCategoryMatchups(leagueKey, metadata.currentWeek)
+        // Transform category matchups to include win counts
+        matchups = categoryMatchups.map((m, idx) => {
+          const team1 = m.teams?.[0]
+          const team2 = m.teams?.[1]
+          const team1Key = team1?.team_key
+          const team2Key = team2?.team_key
+          
+          // Count wins from stat_winners
+          let team1Wins = 0
+          let team2Wins = 0
+          let ties = 0
+          
+          for (const sw of (m.stat_winners || [])) {
+            if (sw.is_tied) {
+              ties++
+            } else if (sw.winner_team_key === team1Key) {
+              team1Wins++
+            } else if (sw.winner_team_key === team2Key) {
+              team2Wins++
+            }
+          }
+          
+          return {
+            matchup_id: idx + 1,
+            week: m.week,
+            teams: [
+              {
+                ...team1,
+                team_id: team1Key?.split('.').pop(),
+                win_count: team1Wins
+              },
+              {
+                ...team2,
+                team_id: team2Key?.split('.').pop(),
+                win_count: team2Wins
+              }
+            ],
+            team1_wins: team1Wins,
+            team2_wins: team2Wins,
+            ties: ties,
+            is_category_league: true,
+            stat_winners: m.stat_winners,
+            winner_team_key: m.winner_team_key,
+            is_tied: m.is_tied
+          }
+        })
+        console.log('[Yahoo] Transformed category matchups:', matchups.map(m => ({
+          team1: m.teams?.[0]?.name,
+          team2: m.teams?.[1]?.name,
+          wins: `${m.team1_wins}-${m.team2_wins}-${m.ties}`
+        })))
+      } else {
+        matchups = await yahooService.getMatchups(leagueKey, metadata.currentWeek)
+      }
       yahooMatchups.value = matchups
       
       // Create a currentLeague object that's compatible with the UI
-      const savedLeague = savedLeagues.value.find(l => l.league_id === leagueKey)
       currentLeague.value = {
         league_id: leagueKey,
         name: savedLeague?.league_name || leagueDetails?.[0]?.name || 'Yahoo League',
@@ -1588,6 +1689,23 @@ export const useLeagueStore = defineStore('league', () => {
     historicalBrackets,
     currentUserId,
     currentUsername,
+    
+    // Sleeper aliases for backward compatibility
+    leagueRosters: rosters,
+    leagueUsers: users,
+    leagueUsersArray: users,
+    leagueMatchups: computed(() => {
+      // For Sleeper, matchups are stored in historicalMatchups by week
+      const currentWeekValue = currentWeek.value
+      const currentLeagueId = currentLeague.value?.league_id
+      if (currentLeagueId && historicalMatchups.value.has(currentLeagueId)) {
+        const leagueMatchups = historicalMatchups.value.get(currentLeagueId)
+        if (leagueMatchups?.has(currentWeekValue)) {
+          return leagueMatchups.get(currentWeekValue) || []
+        }
+      }
+      return []
+    }),
     
     // Yahoo state
     yahooLeague,
