@@ -1098,6 +1098,104 @@
             </div>
           </div>
           
+          <!-- MODAL: PLAYER DETAIL (ROS-style) -->
+          <div v-if="showPlayerDetailModal && playerDetailData" class="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4" @click.self="showPlayerDetailModal = false">
+            <div class="bg-dark-card rounded-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto border border-dark-border shadow-2xl" @click.stop>
+              
+              <!-- Header -->
+              <div class="bg-gradient-to-r from-purple-500/20 to-pink-500/20 px-6 py-4 border-b border-dark-border">
+                <div class="flex items-center justify-between">
+                  <div class="flex items-center gap-4">
+                    <div class="w-16 h-16 rounded-full bg-dark-border overflow-hidden ring-2 ring-purple-500">
+                      <img :src="playerDetailData.headshot || defaultHeadshot" class="w-full h-full object-cover" @error="handleImageError" />
+                    </div>
+                    <div>
+                      <h2 class="text-2xl font-bold text-dark-text">{{ playerDetailData.full_name }}</h2>
+                      <div class="flex items-center gap-2 text-sm text-dark-textMuted mt-1">
+                        <img 
+                          :src="`https://a.espncdn.com/combiner/i?img=/i/teamlogos/${currentSport === 'basketball' ? 'nba' : currentSport === 'hockey' ? 'nhl' : 'mlb'}/500/${playerDetailData.mlb_team || playerDetailData.nba_team || playerDetailData.nhl_team}.png&h=16&w=16`" 
+                          class="w-4 h-4 object-contain"
+                          @error="e => e.target.style.display = 'none'"
+                        />
+                        <span>{{ playerDetailData.position }}</span>
+                        <span>•</span>
+                        <span>{{ playerDetailData.mlb_team || playerDetailData.nba_team || playerDetailData.nhl_team }}</span>
+                      </div>
+                    </div>
+                  </div>
+                  <button @click="showPlayerDetailModal = false" class="text-dark-textMuted hover:text-dark-text transition-colors">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                </div>
+              </div>
+              
+              <!-- Key Stats -->
+              <div class="p-6 grid grid-cols-4 gap-4 border-b border-dark-border">
+                <div class="text-center bg-dark-elevated rounded-lg p-4">
+                  <div class="text-3xl font-black text-yellow-400">{{ playerDetailData.overallValue?.toFixed(1) || 'N/A' }}</div>
+                  <div class="text-xs text-dark-textMuted uppercase mt-1">Value Score</div>
+                </div>
+                <div class="text-center bg-dark-elevated rounded-lg p-4">
+                  <div class="text-2xl font-bold text-cyan-400">{{ playerDetailData.percent_owned || playerDetailData.percentOwned || 'N/A' }}%</div>
+                  <div class="text-xs text-dark-textMuted uppercase mt-1">Rostered</div>
+                </div>
+                <div class="text-center bg-dark-elevated rounded-lg p-4">
+                  <div class="text-2xl font-bold text-green-400">{{ playerDetailData.rank || 'N/A' }}</div>
+                  <div class="text-xs text-dark-textMuted uppercase mt-1">Rank</div>
+                </div>
+                <div class="text-center bg-dark-elevated rounded-lg p-4">
+                  <div class="text-2xl font-bold text-purple-400">
+                    <span v-if="playerDetailData.hasGame" class="text-green-400">{{ playerDetailData.opponent }}</span>
+                    <span v-else class="text-red-400">No Game</span>
+                  </div>
+                  <div class="text-xs text-dark-textMuted uppercase mt-1">{{ startSitDay === 'today' ? 'Today' : 'Tomorrow' }}</div>
+                </div>
+              </div>
+              
+              <!-- Category Breakdown -->
+              <div class="p-6">
+                <h3 class="text-lg font-bold text-dark-text mb-4 flex items-center gap-2">
+                  <svg class="w-5 h-5 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                  </svg>
+                  Category Breakdown (ROS)
+                </h3>
+                
+                <div class="space-y-3">
+                  <div v-for="cat in displayCategories" :key="cat.stat_id" class="bg-dark-elevated rounded-lg p-3">
+                    <div class="flex items-center justify-between mb-2">
+                      <span class="text-sm font-semibold text-dark-text">{{ cat.display_name }}</span>
+                      <span class="text-lg font-bold text-white">{{ formatCategoryProjection(playerDetailData, cat) }}</span>
+                    </div>
+                    <div class="w-full bg-dark-border rounded-full h-2">
+                      <div 
+                        class="bg-gradient-to-r from-purple-500 to-pink-500 h-2 rounded-full transition-all"
+                        :style="{ width: `${Math.min(100, (parseFloat(formatCategoryProjection(playerDetailData, cat)) / getMaxCategoryValue(cat)) * 100)}%` }"
+                      ></div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              
+              <!-- Action Buttons -->
+              <div class="px-6 py-4 border-t border-dark-border flex justify-between items-center">
+                <button @click="showPlayerDetailModal = false" class="px-4 py-2 bg-dark-border text-dark-textMuted rounded-lg hover:bg-dark-border/50 transition-colors font-semibold">
+                  Close
+                </button>
+                <button 
+                  v-if="!playerDetailData.fantasy_team_key"
+                  @click="openPlayerAnalysisForWaiver(playerDetailData); showPlayerDetailModal = false"
+                  class="px-4 py-2 bg-purple-500 text-white rounded-lg hover:bg-purple-400 transition-colors font-semibold"
+                >
+                  Compare for Waiver
+                </button>
+              </div>
+              
+            </div>
+          </div>
+          
           <!-- MODAL: SMART MOVES PLAYER COMPARISON -->
           <div v-if="showPlayerComparisonModal && comparisonPlayerAdd && comparisonPlayerDrop" class="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4" @click.self="showPlayerComparisonModal = false">
             <div class="bg-dark-card rounded-2xl max-w-6xl w-full max-h-[90vh] overflow-y-auto border border-dark-border shadow-2xl" @click.stop>
@@ -3083,6 +3181,8 @@ const showPositionPickerModal = ref(false)
 const positionPickerPosition = ref<string>('')
 const showPlayerAnalysisModal = ref(false)
 const showComparisonPickerInAnalysis = ref(false) // For picking comparison player in analysis modal
+const showPlayerDetailModal = ref(false) // ROS-style player detail modal
+const playerDetailData = ref<any>(null)
 const showPlayerComparisonModal = ref(false)
 const comparisonPlayerAdd = ref<any>(null)
 const comparisonPlayerDrop = ref<any>(null)
@@ -5516,6 +5616,55 @@ function formatGameTime(gameTimeString: string | null | undefined): string {
 }
 
 /**
+ * Get maximum value for a category to calculate progress bar width
+ */
+function getMaxCategoryValue(category: any): number {
+  if (!category) return 100
+  
+  // Get stat type to determine reasonable max
+  const statId = String(category.stat_id || '').toLowerCase()
+  const displayName = String(category.display_name || '').toLowerCase()
+  
+  // Percentages
+  if (statId.includes('%') || statId.includes('pct') || displayName.includes('%')) {
+    return 100
+  }
+  
+  // Points/scoring stats - typically 20-30 per game
+  if (displayName.includes('pts') || displayName.includes('points')) {
+    return 30
+  }
+  
+  // Rebounds - typically 10-15 per game
+  if (displayName.includes('reb')) {
+    return 15
+  }
+  
+  // Assists - typically 8-10 per game
+  if (displayName.includes('ast') || displayName.includes('assists')) {
+    return 10
+  }
+  
+  // Steals/Blocks - typically 2-3 per game
+  if (displayName.includes('stl') || displayName.includes('blk')) {
+    return 3
+  }
+  
+  // 3-pointers - typically 3-4 per game
+  if (displayName.includes('3p') || displayName.includes('three')) {
+    return 4
+  }
+  
+  // Turnovers - typically 2-3 per game
+  if (displayName.includes('to') || displayName.includes('turnover')) {
+    return 3
+  }
+  
+  // Default for unknown categories
+  return 20
+}
+
+/**
  * Extract team code from opponent string (e.g., "vs LAL" -> "LAL", "@ BOS" -> "BOS")
  */
 function getOpponentTeamCode(opponent: string | null | undefined): string {
@@ -5966,6 +6115,13 @@ function openPlayerAnalysis(player: any) {
 function openPlayerAnalysisForWaiver(player: any) {
   openPlayerAnalysis(player)
   showComparisonPickerInAnalysis.value = false // Reset picker state
+}
+
+// Open ROS-style player detail modal
+function openPlayerModal(player: any) {
+  console.log('[openPlayerModal] Opening detail modal for:', player?.full_name)
+  playerDetailData.value = player
+  showPlayerDetailModal.value = true
 }
 
 function openPlayerComparison(addPlayer: any, dropPlayer: any) {
