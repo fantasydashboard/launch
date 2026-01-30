@@ -959,15 +959,15 @@ export class EspnFantasyService {
         
         // Method 1: Use winner field if available
         if (match.winner === 'HOME') {
-          console.log(`[ESPN] Week ${match.matchupPeriodId}: HOME team ${homeTeamId} wins`)
+          console.log(`[ESPN] Week ${match.matchupPeriodId}: HOME team ${homeTeamId} wins (winner field)`)
           homeStats.wins++
           awayStats.losses++
         } else if (match.winner === 'AWAY') {
-          console.log(`[ESPN] Week ${match.matchupPeriodId}: AWAY team ${awayTeamId} wins`)
+          console.log(`[ESPN] Week ${match.matchupPeriodId}: AWAY team ${awayTeamId} wins (winner field)`)
           awayStats.wins++
           homeStats.losses++
         } else if (match.winner === 'TIE') {
-          console.log(`[ESPN] Week ${match.matchupPeriodId}: TIE`)
+          console.log(`[ESPN] Week ${match.matchupPeriodId}: TIE (winner field)`)
           homeStats.ties++
           awayStats.ties++
         }
@@ -978,25 +978,49 @@ export class EspnFantasyService {
           const homeLosses = match.home.cumulativeScore.losses || 0
           const awayLosses = match.away.cumulativeScore.losses || 0
           
-          console.log(`[ESPN] Week ${match.matchupPeriodId}: Categories - Home ${homeWins}-${homeLosses}, Away ${awayWins}-${awayLosses}`)
+          if (homeWins > 0 || awayWins > 0) {
+            console.log(`[ESPN] Week ${match.matchupPeriodId}: Categories - Home ${homeWins}-${homeLosses}, Away ${awayWins}-${awayLosses}`)
+            
+            // Track category wins/losses
+            homeStats.categoryWins += homeWins
+            homeStats.categoryLosses += homeLosses
+            awayStats.categoryWins += awayWins
+            awayStats.categoryLosses += awayLosses
+            
+            // Determine matchup winner based on category wins
+            if (homeWins > awayWins) {
+              homeStats.wins++
+              awayStats.losses++
+            } else if (awayWins > homeWins) {
+              awayStats.wins++
+              homeStats.losses++
+            } else {
+              // Tied on category wins
+              homeStats.ties++
+              awayStats.ties++
+            }
+          } else {
+            console.log(`[ESPN] Week ${match.matchupPeriodId}: cumulativeScore has no wins data`)
+          }
+        }
+        // Method 3: Use totalPoints (for points leagues or as fallback)
+        else if (match.home.totalPoints !== undefined || match.away.totalPoints !== undefined) {
+          const homeScore = match.home.totalPoints || 0
+          const awayScore = match.away.totalPoints || 0
           
-          // Track category wins/losses
-          homeStats.categoryWins += homeWins
-          homeStats.categoryLosses += homeLosses
-          awayStats.categoryWins += awayWins
-          awayStats.categoryLosses += awayLosses
-          
-          // Determine matchup winner based on category wins
-          if (homeWins > awayWins) {
-            homeStats.wins++
-            awayStats.losses++
-          } else if (awayWins > homeWins) {
-            awayStats.wins++
-            homeStats.losses++
-          } else if (homeWins > 0 || awayWins > 0) {
-            // Tied on category wins
-            homeStats.ties++
-            awayStats.ties++
+          if (homeScore > 0 || awayScore > 0) {
+            console.log(`[ESPN] Week ${match.matchupPeriodId}: Using totalPoints - Home ${homeScore}, Away ${awayScore}`)
+            
+            if (homeScore > awayScore) {
+              homeStats.wins++
+              awayStats.losses++
+            } else if (awayScore > homeScore) {
+              awayStats.wins++
+              homeStats.losses++
+            } else {
+              homeStats.ties++
+              awayStats.ties++
+            }
           }
         } else {
           console.log(`[ESPN] Week ${match.matchupPeriodId}: No winner data available, winner field:`, match.winner)

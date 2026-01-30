@@ -826,9 +826,10 @@ async function fetchRawData(): Promise<any> {
               
               // Get current week
               const week = currentWeek.value
-              const completedWeeks = Math.max(0, week - 1)
+              // Include current week in calculation (it might have matchups in progress)
+              const completedWeeks = Math.max(1, week)
               
-              console.log('[UnifiedSeasonView] Current week:', week, 'Completed weeks:', completedWeeks)
+              console.log('[UnifiedSeasonView] Current week:', week, 'Processing weeks 1 through:', completedWeeks)
               
               // Track matchup wins/losses and category totals for each team
               const teamStats = new Map<string, {
@@ -889,23 +890,53 @@ async function fetchRawData(): Promise<any> {
                     const homeCatWins = m.homeCategoryWins || 0
                     const awayCatWins = m.awayCategoryWins || 0
                     
-                    // Add to category totals
-                    homeStats.categoryWins += homeCatWins
-                    homeStats.categoryLosses += (m.homeCategoryLosses || awayCatWins)
-                    awayStats.categoryWins += awayCatWins
-                    awayStats.categoryLosses += (m.awayCategoryLosses || homeCatWins)
-                    
-                    // Determine matchup winner (who won more categories)
-                    if (homeCatWins > awayCatWins) {
-                      homeStats.matchupWins++
-                      awayStats.matchupLosses++
-                    } else if (awayCatWins > homeCatWins) {
-                      awayStats.matchupWins++
-                      homeStats.matchupLosses++
-                    } else if (homeCatWins > 0 || awayCatWins > 0) {
-                      // Tie
-                      homeStats.matchupTies++
-                      awayStats.matchupTies++
+                    // Add to category totals if available
+                    if (homeCatWins > 0 || awayCatWins > 0) {
+                      homeStats.categoryWins += homeCatWins
+                      homeStats.categoryLosses += (m.homeCategoryLosses || awayCatWins)
+                      awayStats.categoryWins += awayCatWins
+                      awayStats.categoryLosses += (m.awayCategoryLosses || homeCatWins)
+                      
+                      // Determine matchup winner from category wins
+                      if (homeCatWins > awayCatWins) {
+                        homeStats.matchupWins++
+                        awayStats.matchupLosses++
+                      } else if (awayCatWins > homeCatWins) {
+                        awayStats.matchupWins++
+                        homeStats.matchupLosses++
+                      } else {
+                        // Tie
+                        homeStats.matchupTies++
+                        awayStats.matchupTies++
+                      }
+                    }
+                    // Fallback: use winner field if category wins not available
+                    else if (m.winner) {
+                      console.log(`[UnifiedSeasonView] Week ${w}: Using winner field:`, m.winner)
+                      if (m.winner === 'HOME') {
+                        homeStats.matchupWins++
+                        awayStats.matchupLosses++
+                      } else if (m.winner === 'AWAY') {
+                        awayStats.matchupWins++
+                        homeStats.matchupLosses++
+                      } else if (m.winner === 'TIE') {
+                        homeStats.matchupTies++
+                        awayStats.matchupTies++
+                      }
+                    }
+                    // Fallback 2: Use scores to determine winner (works for both points and category)
+                    else if (m.homeScore > 0 || m.awayScore > 0) {
+                      console.log(`[UnifiedSeasonView] Week ${w}: Using scores to determine winner: ${m.homeScore} vs ${m.awayScore}`)
+                      if (m.homeScore > m.awayScore) {
+                        homeStats.matchupWins++
+                        awayStats.matchupLosses++
+                      } else if (m.awayScore > m.homeScore) {
+                        awayStats.matchupWins++
+                        homeStats.matchupLosses++
+                      } else {
+                        homeStats.matchupTies++
+                        awayStats.matchupTies++
+                      }
                     }
                   }
                 } catch (e) {
@@ -918,7 +949,7 @@ async function fetchRawData(): Promise<any> {
               const currentMatchups = await espnService.getMatchups(espnSport, espnLeagueId, espnSeason, week)
               
               // Build teams with accurate data
-              const teamsWithCategoryData = leagueStore.yahooTeams.map(team => {
+              let teamsWithCategoryData = leagueStore.yahooTeams.map(team => {
                 const stats = teamStats.get(team.team_id) || {
                   matchupWins: 0,
                   matchupLosses: 0,
@@ -936,6 +967,18 @@ async function fetchRawData(): Promise<any> {
                   category_losses: stats.categoryLosses
                 }
               })
+              
+              // Check if our calculation found any wins - if not, use store data as fallback
+              const hasAnyWins = teamsWithCategoryData.some(t => t.wins > 0 || t.losses > 0)
+              if (!hasAnyWins) {
+                console.log('[UnifiedSeasonView] No wins calculated from matchups - using store data as fallback')
+                // Use the original store data which might have data from getStandings()
+                teamsWithCategoryData = leagueStore.yahooTeams.map(team => ({
+                  ...team,
+                  category_wins: team.category_wins || 0,
+                  category_losses: team.category_losses || 0
+                }))
+              }
               
               // Sort teams by wins, then category win percentage
               teamsWithCategoryData.sort((a, b) => {
