@@ -114,30 +114,30 @@
         <span class="text-2xl">👑</span>League Leaders
       </h2>
       <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <!-- Most Category Wins / Most Points -->
+        <!-- Points League: Most Points / Category League: Best Cat Win % -->
         <div 
-          @click="openLeaderModal('mostCatWins')"
+          @click="openLeaderModal(isPointsLeague ? 'mostPoints' : 'bestCatWinPct')"
           class="group relative overflow-hidden rounded-xl bg-dark-card border border-yellow-500/20 hover:border-yellow-500/40 transition-all cursor-pointer"
         >
           <div class="absolute top-0 right-0 w-24 h-24 bg-yellow-500/5 rounded-full -translate-y-1/2 translate-x-1/2 group-hover:scale-150 transition-transform duration-500"></div>
           <div class="relative p-5">
             <div class="text-xs uppercase tracking-wider text-yellow-400 font-bold mb-3">
-              {{ isPointsLeague ? 'Most Points' : 'Most Category Wins' }}
+              {{ isPointsLeague ? 'Most Points' : 'Best Category Win %' }}
             </div>
             <div class="flex items-center gap-3 mb-3">
               <img 
-                :src="getLogoUrl(isPointsLeague ? leaders.mostPoints?.logo_url : leaders.mostCatWins?.logo_url)" 
+                :src="getLogoUrl(isPointsLeague ? leaders.mostPoints?.logo_url : leaders.bestCatWinPct?.logo_url)" 
                 class="w-12 h-12 rounded-full border-2 border-yellow-500/50 object-cover" 
                 @error="handleImageError" 
               />
               <div class="flex-1 min-w-0">
                 <div class="font-bold text-lg text-dark-text truncate">
-                  {{ isPointsLeague ? (leaders.mostPoints?.name || 'N/A') : (leaders.mostCatWins?.name || 'N/A') }}
+                  {{ isPointsLeague ? (leaders.mostPoints?.name || 'N/A') : (leaders.bestCatWinPct?.name || 'N/A') }}
                 </div>
                 <div class="text-sm text-dark-textMuted">
                   {{ isPointsLeague 
                     ? `${leaders.mostPoints?.wins || 0}-${leaders.mostPoints?.losses || 0}` 
-                    : `${leaders.mostCatWins?.wins || 0}-${leaders.mostCatWins?.losses || 0}` }}
+                    : `${leaders.bestCatWinPct?.totalCategoryWins || 0}-${leaders.bestCatWinPct?.totalCategoryLosses || 0}` }}
                 </div>
               </div>
             </div>
@@ -145,34 +145,46 @@
               <div class="text-2xl font-black text-yellow-400">
                 {{ isPointsLeague 
                   ? (leaders.mostPoints?.points_for?.toFixed(1) || '0.0') 
-                  : `${leaders.mostCatWins?.wins || 0} wins` }}
+                  : getCatWinPct(leaders.bestCatWinPct) + '%' }}
               </div>
               <div class="text-xs text-yellow-400/70 group-hover:text-yellow-400 transition-colors">Click for details →</div>
             </div>
           </div>
         </div>
         
-        <!-- Best All-Play -->
+        <!-- Points League: Best All-Play / Category League: Most Dominant Wins -->
         <div 
-          @click="openLeaderModal('bestAllPlay')"
+          @click="openLeaderModal(isPointsLeague ? 'bestAllPlay' : 'mostDominant')"
           class="group relative overflow-hidden rounded-xl bg-dark-card border border-blue-500/20 hover:border-blue-500/40 transition-all cursor-pointer"
         >
           <div class="absolute top-0 right-0 w-24 h-24 bg-blue-500/5 rounded-full -translate-y-1/2 translate-x-1/2 group-hover:scale-150 transition-transform duration-500"></div>
           <div class="relative p-5">
-            <div class="text-xs uppercase tracking-wider text-blue-400 font-bold mb-3">Best All-Play</div>
+            <div class="text-xs uppercase tracking-wider text-blue-400 font-bold mb-3">
+              {{ isPointsLeague ? 'Best All-Play' : 'Most Dominant Wins' }}
+            </div>
             <div class="flex items-center gap-3 mb-3">
               <img 
-                :src="getLogoUrl(leaders.bestAllPlay?.logo_url)" 
+                :src="getLogoUrl(isPointsLeague ? leaders.bestAllPlay?.logo_url : leaders.mostDominant?.logo_url)" 
                 class="w-12 h-12 rounded-full border-2 border-blue-500/50 object-cover" 
                 @error="handleImageError" 
               />
               <div class="flex-1 min-w-0">
-                <div class="font-bold text-lg text-dark-text truncate">{{ leaders.bestAllPlay?.name || 'N/A' }}</div>
-                <div class="text-sm text-dark-textMuted">{{ leaders.bestAllPlay ? `${leaders.bestAllPlay.wins}-${leaders.bestAllPlay.losses}` : '' }}</div>
+                <div class="font-bold text-lg text-dark-text truncate">
+                  {{ isPointsLeague ? (leaders.bestAllPlay?.name || 'N/A') : (leaders.mostDominant?.name || 'N/A') }}
+                </div>
+                <div class="text-sm text-dark-textMuted">
+                  {{ isPointsLeague 
+                    ? (leaders.bestAllPlay ? `${leaders.bestAllPlay.wins}-${leaders.bestAllPlay.losses}` : '') 
+                    : (leaders.mostDominant ? `${leaders.mostDominant.totalCategoryWins || 0}-${leaders.mostDominant.totalCategoryLosses || 0}` : '') }}
+                </div>
               </div>
             </div>
             <div class="flex items-center justify-between">
-              <div class="text-2xl font-black text-blue-400">{{ leaders.bestAllPlay?.all_play_wins || 0 }}-{{ leaders.bestAllPlay?.all_play_losses || 0 }}</div>
+              <div class="text-2xl font-black text-blue-400">
+                {{ isPointsLeague 
+                  ? `${leaders.bestAllPlay?.all_play_wins || 0}-${leaders.bestAllPlay?.all_play_losses || 0}` 
+                  : `${teamDominantWins.get(leaders.mostDominant?.team_key) || 0} weeks` }}
+              </div>
               <div class="text-xs text-blue-400/70 group-hover:text-blue-400 transition-colors">Click for details →</div>
             </div>
           </div>
@@ -1411,10 +1423,68 @@ const sortedTeams = computed(() => {
 
 const defaultTeam = { name: 'N/A', logo_url: defaultAvatar, wins: 0, losses: 0, points_for: 0, all_play_wins: 0, all_play_losses: 0, all_play_ties: 0 }
 
+// Calculate dominant wins per team (weeks with 0, 1, or 2 category losses)
+const teamDominantWins = computed(() => {
+  const result = new Map<string, number>()
+  
+  if (isPointsLeague.value) {
+    return result
+  }
+  
+  // Get weeks from weeklyStandings
+  const standingsWeeks = Array.from(weeklyStandings.value.keys()).sort((a, b) => a - b)
+  
+  // Find active weeks (where cumulative wins changed)
+  const activeWeeks: number[] = []
+  let prevTotalWins = -1
+  
+  for (const week of standingsWeeks) {
+    const weekData = weeklyStandings.value.get(week)
+    if (!weekData || weekData.length === 0) continue
+    
+    const totalWins = weekData.reduce((sum: number, t: any) => sum + (t.wins || 0), 0)
+    
+    if (prevTotalWins >= 0 && totalWins !== prevTotalWins) {
+      activeWeeks.push(week)
+    }
+    prevTotalWins = totalWins
+  }
+  
+  // Initialize all teams
+  leagueStore.yahooTeams.forEach(team => result.set(team.team_key, 0))
+  
+  // For each active week, calculate weekly category losses and check if ≤2
+  for (const week of activeWeeks) {
+    const weekIdx = standingsWeeks.indexOf(week)
+    if (weekIdx <= 0) continue
+    
+    const prevWeek = standingsWeeks[weekIdx - 1]
+    const currentStandings = weeklyStandings.value.get(week)
+    const prevStandings = weeklyStandings.value.get(prevWeek)
+    
+    leagueStore.yahooTeams.forEach(team => {
+      const currentTeamData = currentStandings?.find((t: any) => t.team_key === team.team_key)
+      const prevTeamData = prevStandings?.find((t: any) => t.team_key === team.team_key)
+      
+      const currentCumLosses = currentTeamData?.losses || 0
+      const prevCumLosses = prevTeamData?.losses || 0
+      
+      const weeklyLosses = currentCumLosses - prevCumLosses
+      
+      // Dominant win = 0, 1, or 2 category losses that week
+      if (weeklyLosses >= 0 && weeklyLosses <= 2) {
+        result.set(team.team_key, (result.get(team.team_key) || 0) + 1)
+      }
+    })
+  }
+  
+  return result
+})
+
 const leaders = computed(() => {
   const teams = teamsWithStats.value
   if (!teams || teams.length === 0) {
-    return { bestRecord: defaultTeam, mostPoints: defaultTeam, mostCatWins: defaultTeam, bestAllPlay: defaultTeam }
+    return { bestRecord: defaultTeam, mostPoints: defaultTeam, mostCatWins: defaultTeam, bestAllPlay: defaultTeam, bestCatWinPct: defaultTeam, mostDominant: defaultTeam }
   }
   
   const sortedByRecord = [...teams].sort((a, b) => {
@@ -1427,11 +1497,29 @@ const leaders = computed(() => {
   const sortedByCatWins = [...teams].sort((a, b) => (b.wins || 0) - (a.wins || 0))
   const sortedByAllPlay = [...teams].sort((a, b) => (b.all_play_wins || 0) - (a.all_play_wins || 0))
   
+  // Category win percentage (totalCategoryWins / (totalCategoryWins + totalCategoryLosses))
+  const sortedByCatWinPct = [...teams].sort((a, b) => {
+    const aTotal = (a.totalCategoryWins || 0) + (a.totalCategoryLosses || 0)
+    const bTotal = (b.totalCategoryWins || 0) + (b.totalCategoryLosses || 0)
+    const aPct = aTotal > 0 ? (a.totalCategoryWins || 0) / aTotal : 0
+    const bPct = bTotal > 0 ? (b.totalCategoryWins || 0) / bTotal : 0
+    return bPct - aPct
+  })
+  
+  // Most dominant wins (weeks with ≤2 category losses)
+  const sortedByDominant = [...teams].sort((a, b) => {
+    const aDom = teamDominantWins.value.get(a.team_key) || 0
+    const bDom = teamDominantWins.value.get(b.team_key) || 0
+    return bDom - aDom
+  })
+  
   return {
     bestRecord: sortedByRecord[0] || defaultTeam,
     mostPoints: sortedByPoints[0] || defaultTeam,
     mostCatWins: sortedByCatWins[0] || defaultTeam,
-    bestAllPlay: sortedByAllPlay[0] || defaultTeam
+    bestAllPlay: sortedByAllPlay[0] || defaultTeam,
+    bestCatWinPct: sortedByCatWinPct[0] || defaultTeam,
+    mostDominant: sortedByDominant[0] || defaultTeam
   }
 })
 
@@ -1465,14 +1553,32 @@ const leaderModalData = computed(() => {
       return aLast3 - bLast3
     }).map(t => ({ ...t, value: last3WeeksWins.value.get(t.team_key) || 0 }))
     maxValue = Math.max(...teams.map(t => last3WeeksWins.value.get(t.team_key) || 0), 1)
-  } else if (leaderModalType.value === 'mostCatWins') {
-    if (isPointsLeague.value) {
-      comparison = [...teams].sort((a, b) => (b.points_for || 0) - (a.points_for || 0)).map(t => ({ ...t, value: t.points_for || 0 }))
-      maxValue = Math.max(...teams.map(t => t.points_for || 0), 1)
-    } else {
-      comparison = [...teams].sort((a, b) => (b.wins || 0) - (a.wins || 0)).map(t => ({ ...t, value: t.wins || 0 }))
-      maxValue = Math.max(...teams.map(t => t.wins || 0), 1)
-    }
+  } else if (leaderModalType.value === 'mostPoints') {
+    // Most points (points leagues)
+    comparison = [...teams].sort((a, b) => (b.points_for || 0) - (a.points_for || 0)).map(t => ({ ...t, value: t.points_for || 0 }))
+    maxValue = Math.max(...teams.map(t => t.points_for || 0), 1)
+  } else if (leaderModalType.value === 'bestCatWinPct') {
+    // Best category win percentage (category leagues)
+    comparison = [...teams].sort((a, b) => {
+      const aTotal = (a.totalCategoryWins || 0) + (a.totalCategoryLosses || 0)
+      const bTotal = (b.totalCategoryWins || 0) + (b.totalCategoryLosses || 0)
+      const aPct = aTotal > 0 ? (a.totalCategoryWins || 0) / aTotal : 0
+      const bPct = bTotal > 0 ? (b.totalCategoryWins || 0) / bTotal : 0
+      return bPct - aPct
+    }).map(t => {
+      const total = (t.totalCategoryWins || 0) + (t.totalCategoryLosses || 0)
+      const pct = total > 0 ? ((t.totalCategoryWins || 0) / total) * 100 : 0
+      return { ...t, value: pct }
+    })
+    maxValue = 100
+  } else if (leaderModalType.value === 'mostDominant') {
+    // Most dominant wins (weeks with ≤2 category losses)
+    comparison = [...teams].sort((a, b) => {
+      const aDom = teamDominantWins.value.get(a.team_key) || 0
+      const bDom = teamDominantWins.value.get(b.team_key) || 0
+      return bDom - aDom
+    }).map(t => ({ ...t, value: teamDominantWins.value.get(t.team_key) || 0 }))
+    maxValue = Math.max(...teams.map(t => teamDominantWins.value.get(t.team_key) || 0), 1)
   } else if (leaderModalType.value === 'bestAllPlay') {
     comparison = [...teams].sort((a, b) => (b.all_play_wins || 0) - (a.all_play_wins || 0)).map(t => ({ ...t, value: t.all_play_wins || 0 }))
     maxValue = Math.max(...teams.map(t => t.all_play_wins || 0), 1)
@@ -1492,7 +1598,9 @@ const leaderModalData = computed(() => {
 
 const leaderModalTitle = computed(() => {
   if (leaderModalType.value === 'bestRecord') return 'Best Record'
-  if (leaderModalType.value === 'mostCatWins') return isPointsLeague.value ? 'Most Points' : 'Most Category Wins'
+  if (leaderModalType.value === 'mostPoints') return 'Most Points'
+  if (leaderModalType.value === 'bestCatWinPct') return 'Best Category Win %'
+  if (leaderModalType.value === 'mostDominant') return 'Most Dominant Wins'
   if (leaderModalType.value === 'bestAllPlay') return 'Best All-Play Record'
   if (leaderModalType.value === 'luckiest') return '🍀 Luckiest Teams'
   if (leaderModalType.value === 'unluckiest') return '😢 Unluckiest Teams'
@@ -1505,8 +1613,8 @@ const leaderModalTitle = computed(() => {
 
 const leaderModalTextColor = computed(() => {
   if (leaderModalType.value === 'bestRecord' || leaderModalType.value === 'luckiest') return 'text-green-400'
-  if (leaderModalType.value === 'mostCatWins' || leaderModalType.value === 'hottest') return 'text-yellow-400'
-  if (leaderModalType.value === 'bestAllPlay' || leaderModalType.value === 'mostMoves') return 'text-blue-400'
+  if (leaderModalType.value === 'mostPoints' || leaderModalType.value === 'bestCatWinPct' || leaderModalType.value === 'hottest') return 'text-yellow-400'
+  if (leaderModalType.value === 'mostDominant' || leaderModalType.value === 'bestAllPlay' || leaderModalType.value === 'mostMoves') return 'text-blue-400'
   if (leaderModalType.value === 'unluckiest') return 'text-red-400'
   if (leaderModalType.value === 'coldest') return 'text-cyan-400'
   if (leaderModalType.value === 'fewestMoves') return 'text-purple-400'
@@ -1515,8 +1623,8 @@ const leaderModalTextColor = computed(() => {
 
 const leaderModalBarColor = computed(() => {
   if (leaderModalType.value === 'bestRecord' || leaderModalType.value === 'luckiest') return 'bg-green-500'
-  if (leaderModalType.value === 'mostCatWins' || leaderModalType.value === 'hottest') return 'bg-yellow-500'
-  if (leaderModalType.value === 'bestAllPlay' || leaderModalType.value === 'mostMoves') return 'bg-blue-500'
+  if (leaderModalType.value === 'mostPoints' || leaderModalType.value === 'bestCatWinPct' || leaderModalType.value === 'hottest') return 'bg-yellow-500'
+  if (leaderModalType.value === 'mostDominant' || leaderModalType.value === 'bestAllPlay' || leaderModalType.value === 'mostMoves') return 'bg-blue-500'
   if (leaderModalType.value === 'unluckiest') return 'bg-red-500'
   if (leaderModalType.value === 'coldest') return 'bg-cyan-500'
   if (leaderModalType.value === 'fewestMoves') return 'bg-purple-500'
@@ -1525,8 +1633,8 @@ const leaderModalBarColor = computed(() => {
 
 const leaderModalRingColor = computed(() => {
   if (leaderModalType.value === 'bestRecord' || leaderModalType.value === 'luckiest') return 'ring-green-500'
-  if (leaderModalType.value === 'mostCatWins' || leaderModalType.value === 'hottest') return 'ring-yellow-500'
-  if (leaderModalType.value === 'bestAllPlay' || leaderModalType.value === 'mostMoves') return 'ring-blue-500'
+  if (leaderModalType.value === 'mostPoints' || leaderModalType.value === 'bestCatWinPct' || leaderModalType.value === 'hottest') return 'ring-yellow-500'
+  if (leaderModalType.value === 'mostDominant' || leaderModalType.value === 'bestAllPlay' || leaderModalType.value === 'mostMoves') return 'ring-blue-500'
   if (leaderModalType.value === 'unluckiest') return 'ring-red-500'
   if (leaderModalType.value === 'coldest') return 'ring-cyan-500'
   if (leaderModalType.value === 'fewestMoves') return 'ring-purple-500'
@@ -1535,8 +1643,8 @@ const leaderModalRingColor = computed(() => {
 
 const leaderModalGradient = computed(() => {
   if (leaderModalType.value === 'bestRecord' || leaderModalType.value === 'luckiest') return 'bg-gradient-to-r from-green-500/10 to-transparent'
-  if (leaderModalType.value === 'mostCatWins' || leaderModalType.value === 'hottest') return 'bg-gradient-to-r from-yellow-500/10 to-transparent'
-  if (leaderModalType.value === 'bestAllPlay' || leaderModalType.value === 'mostMoves') return 'bg-gradient-to-r from-blue-500/10 to-transparent'
+  if (leaderModalType.value === 'mostPoints' || leaderModalType.value === 'bestCatWinPct' || leaderModalType.value === 'hottest') return 'bg-gradient-to-r from-yellow-500/10 to-transparent'
+  if (leaderModalType.value === 'mostDominant' || leaderModalType.value === 'bestAllPlay' || leaderModalType.value === 'mostMoves') return 'bg-gradient-to-r from-blue-500/10 to-transparent'
   if (leaderModalType.value === 'unluckiest') return 'bg-gradient-to-r from-red-500/10 to-transparent'
   if (leaderModalType.value === 'coldest') return 'bg-gradient-to-r from-cyan-500/10 to-transparent'
   if (leaderModalType.value === 'fewestMoves') return 'bg-gradient-to-r from-purple-500/10 to-transparent'
@@ -1548,7 +1656,9 @@ const leaderModalValue = computed(() => {
   if (!leader) return '0'
   if (leaderModalType.value === 'bestRecord') return getWinPercentage(leader)
   if (leaderModalType.value === 'hottest' || leaderModalType.value === 'coldest') return `${last3WeeksWins.value.get(leader.team_key) || 0}`
-  if (leaderModalType.value === 'mostCatWins') return isPointsLeague.value ? (leader.points_for?.toFixed(1) || '0') : `${leader.wins || 0}`
+  if (leaderModalType.value === 'mostPoints') return leader.points_for?.toFixed(1) || '0'
+  if (leaderModalType.value === 'bestCatWinPct') return getCatWinPct(leader) + '%'
+  if (leaderModalType.value === 'mostDominant') return `${teamDominantWins.value.get(leader.team_key) || 0}`
   if (leaderModalType.value === 'bestAllPlay') return `${leader.all_play_wins || 0}-${leader.all_play_losses || 0}`
   if (leaderModalType.value === 'luckiest' || leaderModalType.value === 'unluckiest') return (leader.luckScore > 0 ? '+' : '') + (leader.luckScore || 0).toFixed(0)
   if (leaderModalType.value === 'mostMoves' || leaderModalType.value === 'fewestMoves') return leader.transactions?.toString() || '0'
@@ -1558,7 +1668,9 @@ const leaderModalValue = computed(() => {
 const leaderModalUnit = computed(() => {
   if (leaderModalType.value === 'bestRecord') return 'Win %'
   if (leaderModalType.value === 'hottest' || leaderModalType.value === 'coldest') return isPointsLeague.value ? 'Wins (Last 3)' : 'Cats (Last 3)'
-  if (leaderModalType.value === 'mostCatWins') return isPointsLeague.value ? 'Total Points' : 'Category Wins'
+  if (leaderModalType.value === 'mostPoints') return 'Total Points'
+  if (leaderModalType.value === 'bestCatWinPct') return 'Category Win %'
+  if (leaderModalType.value === 'mostDominant') return 'Dominant Weeks'
   if (leaderModalType.value === 'bestAllPlay') return 'All-Play Wins'
   if (leaderModalType.value === 'luckiest' || leaderModalType.value === 'unluckiest') return 'Luck Score'
   if (leaderModalType.value === 'mostMoves' || leaderModalType.value === 'fewestMoves') return 'Transactions'
@@ -2216,6 +2328,12 @@ function getWinPercentage(team: any) {
   const total = (team.wins || 0) + (team.losses || 0)
   if (total === 0) return '0%'
   return ((team.wins / total) * 100).toFixed(0) + '%'
+}
+
+function getCatWinPct(team: any) {
+  const total = (team?.totalCategoryWins || 0) + (team?.totalCategoryLosses || 0)
+  if (total === 0) return '0'
+  return ((team.totalCategoryWins / total) * 100).toFixed(1)
 }
 
 function getMatchupScoreClass(matchup: any, teamIndex: number) {
@@ -3694,21 +3812,6 @@ async function loadAllMatchups() {
             let t1CatWins = 0
             let t2CatWins = 0
             let ties = 0
-            
-            // Debug: log stat_winners for first matchup of first week
-            if (week === startWeek && matchups.indexOf(matchup) === 0) {
-              console.log('[CategoryMatchup] First matchup stat_winners:', {
-                hasStatWinners: !!matchup.stat_winners,
-                statWinnersLength: matchup.stat_winners?.length,
-                statWinners: matchup.stat_winners?.slice(0, 3),
-                fullMatchupKeys: Object.keys(matchup),
-                t1Keys: Object.keys(t1 || {}),
-                t2Keys: Object.keys(t2 || {}),
-                t1WinCount: t1?.win_count,
-                t2WinCount: t2?.win_count,
-                t1TeamStats: t1?.team_stats
-              })
-            }
             
             if (matchup.stat_winners && matchup.stat_winners.length > 0) {
               for (const sw of matchup.stat_winners) {
