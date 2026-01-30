@@ -1202,9 +1202,18 @@ const formattedMatchups = computed(() => {
     let team2CatWins = '-'
     
     // First try pre-calculated values from store (for category matchups)
+    // Check multiple field name formats (Yahoo uses team1_wins, ESPN uses home_category_wins)
     if (m.team1_wins !== undefined || m.team2_wins !== undefined) {
       team1CatWins = (m.team1_wins ?? 0).toString()
       team2CatWins = (m.team2_wins ?? 0).toString()
+    } else if (m.home_category_wins !== undefined || m.away_category_wins !== undefined) {
+      // ESPN format
+      team1CatWins = (m.home_category_wins ?? 0).toString()
+      team2CatWins = (m.away_category_wins ?? 0).toString()
+    } else if (team1?.category_wins !== undefined || team2?.category_wins !== undefined) {
+      // Team-level category wins
+      team1CatWins = (team1?.category_wins ?? 0).toString()
+      team2CatWins = (team2?.category_wins ?? 0).toString()
     } else if (m.stat_winners && m.stat_winners.length > 0 && team1 && team2) {
       // Calculate from stat_winners if not pre-calculated
       const t1Key = team1.team_key
@@ -1289,15 +1298,35 @@ const teamsWithStats = computed(() => {
     console.log('[teamsWithStats CATEGORY] teamCategoryWins size:', teamCategoryWins.value.size)
     console.log('[teamsWithStats CATEGORY] teamTotalCategoryWins size:', teamTotalCategoryWins.value.size)
     console.log('[teamsWithStats CATEGORY] weeklyMatchupResults size:', weeklyMatchupResults.value.size)
-    if (leagueStore.yahooTeams[0]) {
-      const firstTeam = leagueStore.yahooTeams[0]
-      console.log('[teamsWithStats CATEGORY] First team:', {
-        name: firstTeam.name,
-        team_key: firstTeam.team_key,
-        wins: firstTeam.wins,
-        losses: firstTeam.losses,
-        category_wins: firstTeam.category_wins,
-        category_losses: firstTeam.category_losses
+    console.log('[teamsWithStats CATEGORY] weeklyStandings size:', weeklyStandings.value.size)
+  }
+  
+  // For category leagues with zero wins in store, get calculated wins from weeklyStandings
+  // This happens with ESPN Basketball where API returns zeros but we calculate from matchups
+  const calculatedStandings = new Map<string, { wins: number; losses: number; ties: number; points_for: number }>()
+  if (!isPointsLeague.value && weeklyStandings.value.size > 0) {
+    // Get the latest week's standings (which has cumulative wins/losses)
+    const weeks = Array.from(weeklyStandings.value.keys()).sort((a, b) => b - a)
+    const latestWeek = weeks[0]
+    const latestStandings = weeklyStandings.value.get(latestWeek) || []
+    
+    console.log('[teamsWithStats CATEGORY] Using calculated standings from week', latestWeek, 'with', latestStandings.length, 'teams')
+    
+    latestStandings.forEach((standing: any) => {
+      calculatedStandings.set(standing.team_key, {
+        wins: standing.wins || 0,
+        losses: standing.losses || 0,
+        ties: standing.ties || 0,
+        points_for: standing.points_for || 0
+      })
+    })
+    
+    if (latestStandings.length > 0) {
+      console.log('[teamsWithStats CATEGORY] Sample calculated standing:', {
+        team_key: latestStandings[0].team_key,
+        name: latestStandings[0].name,
+        wins: latestStandings[0].wins,
+        losses: latestStandings[0].losses
       })
     }
   }
@@ -1306,6 +1335,23 @@ const teamsWithStats = computed(() => {
     const transactions = transactionCounts.value.get(team.team_key) || 0
     const categoryWins = teamCategoryWins.value.get(team.team_key) || {}
     const numTeams = leagueStore.yahooTeams.length
+    
+    // Use calculated standings if available (for ESPN category leagues with zero store data)
+    const calculated = calculatedStandings.get(team.team_key)
+    const teamWins = calculated?.wins ?? team.wins ?? 0
+    const teamLosses = calculated?.losses ?? team.losses ?? 0
+    const teamTies = calculated?.ties ?? team.ties ?? 0
+    const teamPointsFor = calculated?.points_for ?? team.points_for ?? 0
+    
+    // Debug: log when we're using calculated values
+    if (calculated && (team.wins === 0 || team.wins === undefined)) {
+      console.log('[teamsWithStats] Using calculated standings for', team.name, ':', { 
+        calculatedWins: teamWins, 
+        calculatedLosses: teamLosses,
+        storeWins: team.wins,
+        storeLosses: team.losses
+      })
+    }
     
     let all_play_wins = 0
     let all_play_losses = 0
@@ -1369,8 +1415,8 @@ const teamsWithStats = computed(() => {
         } else {
           // Fallback: estimate from total points (less accurate but better than nothing)
           // This gives "power ranking" style result based on season totals
-          const teamPoints = team.points_for || 0
-          const weeksPlayed = (team.wins || 0) + (team.losses || 0) + (team.ties || 0)
+          const teamPoints = teamPointsFor
+          const weeksPlayed = teamWins + teamLosses + teamTies
           
           for (const opponent of leagueStore.yahooTeams) {
             if (opponent.team_key === team.team_key) continue
@@ -1383,19 +1429,19 @@ const teamsWithStats = computed(() => {
         }
       }
     } else {
-      // For H2H Categories, wins/losses from Yahoo ARE cumulative category wins
-      // Calculate all-play based on category win percentage
-      const totalGames = (team.wins || 0) + (team.losses || 0) + (team.ties || 0)
-      const weeksPlayed = Math.ceil(totalGames / numCategories.value) || 1
+      // For H2H Categories, use calculated wins/losses (matchup wins, not category wins)
+      // Calculate all-play based on matchup win percentage
+      const totalGames = teamWins + teamLosses + teamTies
+      const weeksPlayed = totalGames || 1
       
-      const catWinPct = (team.wins || 0) / Math.max(1, totalGames)
-      all_play_wins = Math.round(catWinPct * weeksPlayed * (numTeams - 1))
+      const matchupWinPct = teamWins / Math.max(1, totalGames)
+      all_play_wins = Math.round(matchupWinPct * weeksPlayed * (numTeams - 1))
       all_play_losses = weeksPlayed * (numTeams - 1) - all_play_wins
     }
     
     // Calculate luck score based on all-play vs actual matchup wins
-    const matchupWins = team.wins ?? 0
-    const matchupLosses = team.losses ?? 0
+    const matchupWins = teamWins
+    const matchupLosses = teamLosses
     const totalMatchups = matchupWins + matchupLosses
     const totalAllPlay = all_play_wins + all_play_losses + all_play_ties
     const expectedMatchupWinPct = totalAllPlay > 0 ? all_play_wins / totalAllPlay : 0.5
@@ -1414,6 +1460,11 @@ const teamsWithStats = computed(() => {
     
     return {
       ...team,
+      // Override with calculated values (fixes ESPN category leagues with zero store data)
+      wins: teamWins,
+      losses: teamLosses,
+      ties: teamTies,
+      points_for: teamPointsFor,
       all_play_wins,
       all_play_losses,
       all_play_ties,
