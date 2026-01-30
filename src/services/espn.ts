@@ -349,6 +349,7 @@ export class EspnFantasyService {
    * @param views - Array of view parameters to request
    * @param scoringPeriod - Optional scoring period (week)
    * @param historical - If true, use leagueHistory endpoint (for pre-2018)
+   * @param fantasyFilter - Optional x-fantasy-filter JSON object for filtering
    */
   private async apiRequest(
     sport: Sport,
@@ -356,7 +357,8 @@ export class EspnFantasyService {
     season: number,
     views: string[] = [],
     scoringPeriod?: number,
-    historical: boolean = false
+    historical: boolean = false,
+    fantasyFilter?: object
   ): Promise<any> {
     // Get access token - try multiple methods
     let accessToken: string | null = null
@@ -432,6 +434,12 @@ export class EspnFantasyService {
     if (this.credentials?.espn_s2 && this.credentials?.swid) {
       requestBody.espn_s2 = this.credentials.espn_s2
       requestBody.swid = this.credentials.swid
+    }
+    
+    // Include x-fantasy-filter if provided (for filtering matchups by week, etc.)
+    if (fantasyFilter) {
+      requestBody.fantasyFilter = JSON.stringify(fantasyFilter)
+      console.log('[ESPN] Using x-fantasy-filter:', requestBody.fantasyFilter)
     }
 
     // Add timeout to prevent hanging
@@ -749,13 +757,26 @@ export class EspnFantasyService {
     try {
       console.log(`[ESPN getMatchups] League scoring type: ${scoringType}`)
       
-      // Request mScoreboard and mBoxscore along with mMatchup for stat values in category leagues
+      // Build x-fantasy-filter to get per-category results for specific week
+      // This is critical for category leagues - without it, scoreByStat is null
+      const fantasyFilter = {
+        schedule: {
+          filterMatchupPeriodIds: { value: [week] }
+        }
+      }
+      
+      console.log(`[ESPN getMatchups] Using filterMatchupPeriodIds for week ${week}`)
+      
+      // Request mScoreboard and mMatchupScore for category stats
+      // Note: mBoxscore adds a lot of data but isn't needed for category W-L-T
       const data = await this.apiRequest(
         sport, 
         leagueId, 
         season, 
-        [ESPN_VIEWS.MATCHUP, ESPN_VIEWS.MATCHUP_SCORE, ESPN_VIEWS.SCOREBOARD, ESPN_VIEWS.BOXSCORE],
-        week
+        [ESPN_VIEWS.MATCHUP_SCORE, ESPN_VIEWS.SCOREBOARD],
+        week,
+        false, // not historical
+        fantasyFilter // pass the filter!
       )
       
       // Pass scoring type to parseMatchups for category league handling
@@ -785,14 +806,23 @@ export class EspnFantasyService {
       return cached
     }
 
+    // Build x-fantasy-filter for category leagues
+    const fantasyFilter = {
+      schedule: {
+        filterMatchupPeriodIds: { value: [week] }
+      }
+    }
+
     // Try regular endpoint first
     try {
       const data = await this.apiRequest(
         sport, 
         leagueId, 
         season, 
-        [ESPN_VIEWS.MATCHUP, ESPN_VIEWS.MATCHUP_SCORE],
-        week
+        [ESPN_VIEWS.MATCHUP_SCORE, ESPN_VIEWS.SCOREBOARD],
+        week,
+        false, // not historical
+        fantasyFilter
       )
       
       const matchups = this.parseMatchups(data, week)
@@ -810,9 +840,10 @@ export class EspnFantasyService {
         sport, 
         leagueId, 
         season, 
-        [ESPN_VIEWS.MATCHUP, ESPN_VIEWS.MATCHUP_SCORE],
+        [ESPN_VIEWS.MATCHUP_SCORE, ESPN_VIEWS.SCOREBOARD],
         week,
-        true // historical flag
+        true, // historical flag
+        fantasyFilter
       )
       
       // leagueHistory returns array format
