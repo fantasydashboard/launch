@@ -829,6 +829,17 @@ export class YahooFantasyService {
       
       const matchupInfo = matchupWrapper.matchup
       
+      // Debug: log first matchup structure
+      if (matchups.length === 0 && week <= 2) {
+        console.log(`[getCategoryMatchups] Week ${week} first matchup structure:`, {
+          matchupInfoKeys: Object.keys(matchupInfo),
+          hasStatWinners: !!matchupInfo.stat_winners,
+          statWinnersLength: matchupInfo.stat_winners?.length,
+          firstStatWinner: matchupInfo.stat_winners?.[0],
+          matchupInfo0Keys: matchupInfo[0] ? Object.keys(matchupInfo[0]) : 'no [0]'
+        })
+      }
+      
       // Get stat_winners - this contains which team won each category
       const statWinners = matchupInfo.stat_winners || []
       

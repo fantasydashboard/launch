@@ -1917,7 +1917,14 @@ const last3WeeksWins = computed(() => {
       const debugWeeks: any[] = []
       last3Weeks.forEach(week => {
         const weekResult = teamMatchups.get(week)
-        debugWeeks.push({ week, hasResult: !!weekResult, catWins: weekResult?.catWins })
+        debugWeeks.push({ 
+          week, 
+          hasResult: !!weekResult, 
+          catWins: weekResult?.catWins,
+          // Log ALL properties of weekResult to see what's actually stored
+          allProps: weekResult ? Object.keys(weekResult) : [],
+          fullData: weekResult
+        })
         if (weekResult) {
           totalWins += weekResult.catWins || 0
         }
@@ -3668,9 +3675,25 @@ async function loadAllMatchups() {
             let t2CatWins = 0
             let ties = 0
             
+            // Debug: log stat_winners for first matchup of first week
+            if (week === startWeek && matchups.indexOf(matchup) === 0) {
+              console.log('[CategoryMatchup] First matchup stat_winners:', {
+                hasStatWinners: !!matchup.stat_winners,
+                statWinnersLength: matchup.stat_winners?.length,
+                statWinners: matchup.stat_winners?.slice(0, 3),
+                fullMatchupKeys: Object.keys(matchup),
+                t1Keys: Object.keys(t1 || {}),
+                t2Keys: Object.keys(t2 || {}),
+                t1WinCount: t1?.win_count,
+                t2WinCount: t2?.win_count,
+                t1TeamStats: t1?.team_stats
+              })
+            }
+            
             if (matchup.stat_winners && matchup.stat_winners.length > 0) {
               for (const sw of matchup.stat_winners) {
-                if (sw.is_tied === '1') {
+                // is_tied can be boolean true or string '1'
+                if (sw.is_tied === true || sw.is_tied === '1') {
                   ties++
                 } else if (sw.winner_team_key === t1Key) {
                   t1CatWins++
@@ -3678,6 +3701,11 @@ async function loadAllMatchups() {
                   t2CatWins++
                 }
               }
+            } else {
+              // Fallback: try to get wins from team data directly
+              t1CatWins = parseInt(t1?.win_count || t1?.wins || '0', 10)
+              t2CatWins = parseInt(t2?.win_count || t2?.wins || '0', 10)
+              ties = parseInt(t1?.tie_count || matchup.ties || '0', 10)
             }
             
             // Determine matchup winner
