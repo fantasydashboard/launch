@@ -3246,10 +3246,7 @@ async function downloadTeamDetailImage() {
             return `
               <div style="background: rgba(58, 61, 82, 0.3); border-radius: 8px; padding: 8px 10px; display: flex; align-items: center; justify-content: space-between;">
                 <span style="font-size: 11px; color: #9ca3af;">${cat.display_name}</span>
-                <div style="display: flex; align-items: center; gap: 8px;">
-                  <span style="font-size: 13px; font-weight: bold; color: #e5e7eb;">${cat.wins}-${cat.losses}${cat.ties > 0 ? '-' + cat.ties : ''}</span>
-                  <span style="font-size: 10px; padding: 2px 6px; border-radius: 4px; background: ${rankColor}20; color: ${rankColor}; font-weight: 600;">#${cat.rank}</span>
-                </div>
+                <span style="font-size: 11px; padding: 3px 8px; border-radius: 4px; background: ${rankColor}20; color: ${rankColor}; font-weight: 700;">#${cat.rank}</span>
               </div>
             `
           }).join('')

@@ -454,7 +454,7 @@ const avgCategoryWins = computed(() => {
   return total / standings.value.length / weeks
 })
 
-// Hottest Team - based on points for points leagues, wins for category
+// Hottest Team - based on points for points leagues, category wins for category leagues
 const hottestTeam = computed(() => {
   if (teamsWithStats.value.length === 0 && standings.value.length === 0) return null
   
@@ -462,7 +462,8 @@ const hottestTeam = computed(() => {
     name: s.team.name,
     points_for: s.pointsFor || 0,
     wins: s.wins || 0,
-    streak: s.streak
+    streak: s.streak,
+    category_wins: s.categoryWins || 0
   }))
   
   if (teams.length === 0) return null
@@ -475,11 +476,13 @@ const hottestTeam = computed(() => {
       value: `${(top.points_for || 0).toFixed(1)} total pts`
     }
   } else {
-    const sorted = [...teams].sort((a, b) => (b.wins || 0) - (a.wins || 0))
+    // For category leagues, use category_wins (total individual category wins across all matchups)
+    const sorted = [...teams].sort((a, b) => (b.category_wins || 0) - (a.category_wins || 0))
     const top = sorted[0]
+    const catWins = top.category_wins || 0
     return {
       name: top.name,
-      value: top.streak || `${top.wins} matchup wins`
+      value: catWins > 0 ? `${catWins} cat wins` : (top.streak || `${top.wins || 0} matchup wins`)
     }
   }
 })
@@ -492,7 +495,9 @@ const coldestTeam = computed(() => {
     name: s.team.name,
     points_for: s.pointsFor || 0,
     losses: s.losses || 0,
-    streak: s.streak
+    streak: s.streak,
+    category_wins: s.categoryWins || 0,
+    category_losses: s.categoryLosses || 0
   }))
   
   if (teams.length === 0) return null
@@ -505,11 +510,13 @@ const coldestTeam = computed(() => {
       value: `${(bottom.points_for || 0).toFixed(1)} total pts`
     }
   } else {
-    const sorted = [...teams].sort((a, b) => (b.losses || 0) - (a.losses || 0))
+    // For category leagues, find team with most category losses (fewest category wins)
+    const sorted = [...teams].sort((a, b) => (a.category_wins || 0) - (b.category_wins || 0))
     const bottom = sorted[0]
+    const catLosses = bottom.category_losses || 0
     return {
       name: bottom.name,
-      value: bottom.streak || `${bottom.losses} matchup losses`
+      value: catLosses > 0 ? `${catLosses} cat losses` : (bottom.streak || `${bottom.losses || 0} matchup losses`)
     }
   }
 })
