@@ -1286,7 +1286,15 @@ const teamsWithStats = computed(() => {
   // Debug for category leagues
   if (leagueStore.yahooTeams.length > 0 && !isPointsLeague.value) {
     console.log('[teamsWithStats CATEGORY] Computing for', leagueStore.yahooTeams.length, 'teams')
-    console.log('[teamsWithStats CATEGORY] espnCalculatedStandings size:', espnCalculatedStandings.value.size)
+    // Log actual store data
+    const sample = leagueStore.yahooTeams[0]
+    console.log('[teamsWithStats CATEGORY] Sample team from store:', {
+      name: sample?.name,
+      wins: sample?.wins,
+      losses: sample?.losses,
+      category_wins: sample?.category_wins,
+      category_losses: sample?.category_losses
+    })
   }
   
   return leagueStore.yahooTeams.map(team => {
@@ -1294,24 +1302,11 @@ const teamsWithStats = computed(() => {
     const categoryWins = teamCategoryWins.value.get(team.team_key) || {}
     const numTeams = leagueStore.yahooTeams.length
     
-    // For ESPN category leagues, use espnCalculatedStandings (from getStandings API)
-    // This has the correct wins/losses calculated from matchup history
-    const espnStanding = espnCalculatedStandings.value.get(team.team_key)
-    const teamWins = espnStanding?.wins ?? team.wins ?? 0
-    const teamLosses = espnStanding?.losses ?? team.losses ?? 0
-    const teamTies = espnStanding?.ties ?? team.ties ?? 0
+    // Use store data directly - same as Matchups page does
+    const teamWins = team.wins || 0
+    const teamLosses = team.losses || 0
+    const teamTies = team.ties || 0
     const teamPointsFor = team.points_for ?? 0
-    
-    // Debug: log when we're using ESPN calculated values
-    if (espnStanding && leagueStore.activePlatform === 'espn') {
-      if (team.wins === 0 && espnStanding.wins > 0) {
-        console.log('[teamsWithStats] Using ESPN standings for', team.name, ':', { 
-          espnWins: teamWins, 
-          espnLosses: teamLosses,
-          storeWins: team.wins
-        })
-      }
-    }
     
     let all_play_wins = 0
     let all_play_losses = 0
