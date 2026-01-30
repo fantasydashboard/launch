@@ -623,7 +623,20 @@ function goToMatchup(matchup: UnifiedMatchup) {
 }
 
 async function loadData() {
-  if (!leagueId.value) return
+  console.log('[UnifiedSeasonView] loadData called:', {
+    leagueId: leagueId.value,
+    platform: platform.value,
+    leagueType: leagueType.value,
+    isPointsLeague: isPointsLeague.value,
+    yahooTeamsLength: leagueStore.yahooTeams?.length,
+    yahooMatchupsLength: leagueStore.yahooMatchups?.length,
+    currentLeagueScoringType: leagueStore.currentLeague?.scoring_type
+  })
+  
+  if (!leagueId.value) {
+    console.log('[UnifiedSeasonView] No leagueId, returning early')
+    return
+  }
   
   loading.value = true
   
@@ -749,6 +762,12 @@ function convertPreTransformedStandings(teamsData: any[]): UnifiedStandingsEntry
 
 async function fetchRawData(): Promise<any> {
   const isCat = !isPointsLeague.value
+  
+  console.log('[UnifiedSeasonView fetchRawData] Starting:', {
+    platform: platform.value,
+    isCat,
+    leagueId: leagueId.value
+  })
   
   switch (platform.value) {
     case 'sleeper':
@@ -1044,6 +1063,12 @@ async function fetchRawData(): Promise<any> {
       }
       
       // Default: use store data (for points leagues or if category fetch failed)
+      console.log('[UnifiedSeasonView ESPN] Using store data fallback:', {
+        isEspnCategoryLeague,
+        isCat,
+        yahooMatchupsLength: leagueStore.yahooMatchups?.length,
+        yahooTeamsLength: leagueStore.yahooTeams?.length
+      })
       return {
         preTransformed: true,
         isCategoryLeague: isEspnCategoryLeague || isCat,
