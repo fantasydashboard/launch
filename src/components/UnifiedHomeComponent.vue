@@ -1196,13 +1196,43 @@ const formattedMatchups = computed(() => {
     // Handle both formats: teams[] array (Yahoo) or team1/team2 directly (ESPN)
     const team1 = m.teams?.[0] || m.team1 || null
     const team2 = m.teams?.[1] || m.team2 || null
+    
+    // For category leagues, count wins from stat_winners array or use pre-calculated values
+    let team1CatWins = '-'
+    let team2CatWins = '-'
+    
+    // First try pre-calculated values from store (for category matchups)
+    if (m.team1_wins !== undefined || m.team2_wins !== undefined) {
+      team1CatWins = (m.team1_wins ?? 0).toString()
+      team2CatWins = (m.team2_wins ?? 0).toString()
+    } else if (m.stat_winners && m.stat_winners.length > 0 && team1 && team2) {
+      // Calculate from stat_winners if not pre-calculated
+      const t1Key = team1.team_key
+      const t2Key = team2.team_key
+      let t1Wins = 0
+      let t2Wins = 0
+      
+      for (const sw of m.stat_winners) {
+        if (sw.is_tied === true || sw.is_tied === '1') {
+          // Tie - don't count for either
+        } else if (sw.winner_team_key === t1Key) {
+          t1Wins++
+        } else if (sw.winner_team_key === t2Key) {
+          t2Wins++
+        }
+      }
+      
+      team1CatWins = t1Wins.toString()
+      team2CatWins = t2Wins.toString()
+    }
+    
     return {
       ...m,
       matchup_id: m.matchup_id || m.id,
       team1,
       team2,
-      team1_cat_wins: m.stat_winners?.[0]?.stat_winner_count || m.teams?.[0]?.win_probability || '-',
-      team2_cat_wins: m.stat_winners?.[1]?.stat_winner_count || m.teams?.[1]?.win_probability || '-'
+      team1_cat_wins: team1CatWins,
+      team2_cat_wins: team2CatWins
     }
   })
 })
@@ -2481,9 +2511,11 @@ function openLeaderModal(type: string) { leaderModalType.value = type; showLeade
 function closeLeaderModal() { showLeaderModal.value = false }
 function formatLeaderValue(value: number) {
   if (leaderModalType.value === 'bestRecord') return value.toFixed(0) + '%'
+  if (leaderModalType.value === 'bestCatWinPct') return value.toFixed(2) + '%'
   if (leaderModalType.value === 'hottest' || leaderModalType.value === 'coldest') return Math.round(value).toString()
   if (leaderModalType.value === 'mostCatWins' && !isPointsLeague.value) return value + ' wins'
   if (leaderModalType.value === 'mostCatWins' && isPointsLeague.value) return value.toFixed(1)
+  if (leaderModalType.value === 'mostDominant') return value + ' weeks'
   return value.toString()
 }
 
@@ -3132,9 +3164,9 @@ async function downloadLeaderImage() {
     // Get accent color based on modal type
     const getAccentColor = (): string => {
       if (leaderModalType.value === 'bestRecord') return '#22c55e' // green
-      if (leaderModalType.value === 'mostCatWins') return '#eab308' // yellow
+      if (leaderModalType.value === 'mostPoints' || leaderModalType.value === 'bestCatWinPct') return '#eab308' // yellow
       if (leaderModalType.value === 'hottest') return '#f97316' // orange
-      if (leaderModalType.value === 'bestAllPlay') return '#3b82f6' // blue
+      if (leaderModalType.value === 'mostDominant' || leaderModalType.value === 'bestAllPlay') return '#3b82f6' // blue
       if (leaderModalType.value === 'coldest') return '#06b6d4' // cyan
       if (leaderModalType.value === 'mostMoves') return '#3b82f6' // blue
       if (leaderModalType.value === 'fewestMoves') return '#a855f7' // purple
@@ -3145,12 +3177,16 @@ async function downloadLeaderImage() {
     // Format value for display
     const formatValue = (val: number): string => {
       if (leaderModalType.value === 'bestRecord') return val.toFixed(0) + '%'
+      if (leaderModalType.value === 'bestCatWinPct') return val.toFixed(2) + '%'
+      if (leaderModalType.value === 'mostDominant') return Math.round(val).toString()
       return Math.round(val).toString()
     }
     
     // Get value unit for display in rows
     const getValueUnit = (): string => {
-      if (leaderModalType.value === 'mostCatWins') return isPointsLeague.value ? 'Points' : 'Cat Wins'
+      if (leaderModalType.value === 'mostPoints') return 'Points'
+      if (leaderModalType.value === 'bestCatWinPct') return 'Cat Win %'
+      if (leaderModalType.value === 'mostDominant') return 'Dom. Weeks'
       if (leaderModalType.value === 'bestAllPlay') return 'All-Play Wins'
       if (leaderModalType.value === 'hottest' || leaderModalType.value === 'coldest') return 'Cats (Last 3)'
       if (leaderModalType.value === 'mostMoves' || leaderModalType.value === 'fewestMoves') return 'Moves'
@@ -3782,6 +3818,12 @@ async function loadAllMatchups() {
   
   console.log(`Loading matchups for weeks ${startWeek}-${endWeek}, isSeasonComplete: ${isSeasonComplete.value}`)
   
+  // Set displayMatchups from store initially while we load full data
+  if (leagueStore.yahooMatchups?.length > 0) {
+    displayMatchups.value = leagueStore.yahooMatchups
+    console.log(`[Yahoo] Initial displayMatchups from store: ${displayMatchups.value.length}`)
+  }
+  
   try {
     // For category leagues, load actual matchup data per week
     if (!isPointsLeague.value) {
@@ -3909,8 +3951,11 @@ async function loadAllMatchups() {
           weekStandings.forEach((t, idx) => (t as any).rank = idx + 1)
           standings.set(week, weekStandings)
           
-          if (week === endWeek) {
+          // Always store the most recent matchups that have data
+          // (not just the last week, in case playoffs/offseason has no matchups)
+          if (matchups.length > 0) {
             displayMatchups.value = matchups
+            console.log(`[Category] Set displayMatchups from week ${week} with ${matchups.length} matchups`)
           }
           
         } catch (e) {
@@ -3925,7 +3970,7 @@ async function loadAllMatchups() {
       teamTotalCategoryWins.value = cumulativeCatWins
       teamTotalCategoryLosses.value = cumulativeCatLosses
       
-      console.log(`Loaded ${standings.size} weeks of category matchup data`)
+      console.log(`Loaded ${standings.size} weeks of category matchup data, displayMatchups: ${displayMatchups.value.length}`)
       
     } else {
       // For points leagues, load actual matchup data
@@ -4750,9 +4795,12 @@ watch(() => leagueStore.yahooTeams, () => {
 
 // Watch for matchups changes (they might load after teams)
 watch(() => leagueStore.yahooMatchups, () => {
-  if (leagueStore.activePlatform === 'espn' && leagueStore.yahooMatchups?.length > 0) {
-    console.log('[Watch yahooMatchups] ESPN matchups changed:', leagueStore.yahooMatchups.length)
-    displayMatchups.value = leagueStore.yahooMatchups
+  if (leagueStore.yahooMatchups?.length > 0) {
+    console.log('[Watch yahooMatchups] matchups changed:', leagueStore.yahooMatchups.length, 'platform:', leagueStore.activePlatform)
+    // Only auto-set if displayMatchups is currently empty (don't override chart-loaded matchups)
+    if (displayMatchups.value.length === 0) {
+      displayMatchups.value = leagueStore.yahooMatchups
+    }
   }
 }, { immediate: true })
 
