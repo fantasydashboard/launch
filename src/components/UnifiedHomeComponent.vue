@@ -1904,12 +1904,27 @@ const last3WeeksWins = computed(() => {
       }
       
       let totalWins = 0
+      const debugWeeks: any[] = []
       last3Weeks.forEach(week => {
         const weekResult = teamMatchups.get(week)
+        debugWeeks.push({ week, hasResult: !!weekResult, catWins: weekResult?.catWins })
         if (weekResult) {
           totalWins += weekResult.catWins || 0
         }
       })
+      
+      // Log first team's details for debugging
+      if (team.team_key === leagueStore.yahooTeams[0]?.team_key) {
+        console.log('[last3WeeksWins] First team debug:', {
+          teamKey: team.team_key,
+          teamMatchupsSize: teamMatchups.size,
+          teamMatchupsWeeks: [...teamMatchups.keys()],
+          last3Weeks,
+          debugWeeks,
+          totalWins
+        })
+      }
+      
       result.set(team.team_key, totalWins)
     }
   })
@@ -1927,12 +1942,22 @@ const quickStats = computed(() => {
     ...t,
     last3Wins: last3WeeksWins.value.get(t.team_key) || 0
   }))
+  
+  // Debug log
+  if (teams.length > 0 && !isPointsLeague.value) {
+    console.log('[quickStats] Category league - teamsWithLast3:', teamsWithLast3.map(t => ({ name: t.name, team_key: t.team_key, last3Wins: t.last3Wins })))
+    console.log('[quickStats] last3WeeksWins map size:', last3WeeksWins.value.size)
+    console.log('[quickStats] last3WeeksWins entries:', [...last3WeeksWins.value.entries()].slice(0, 3))
+  }
+  
   const hottest = [...teamsWithLast3].sort((a, b) => b.last3Wins - a.last3Wins)[0]
   const coldest = [...teamsWithLast3].sort((a, b) => a.last3Wins - b.last3Wins)[0]
   
   // For points leagues, show "X wins" in last 3 weeks
   // For category leagues, show "X cat wins" in last 3 weeks
   const winsLabel = isPointsLeague.value ? 'wins' : 'cat wins'
+  
+  console.log('[quickStats] hottest:', hottest?.name, hottest?.last3Wins, '| coldest:', coldest?.name, coldest?.last3Wins)
   
   // Most/Fewest Moves - works for all platforms
   const mostActive = [...teams].sort((a, b) => (b.transactions || 0) - (a.transactions || 0))[0]
