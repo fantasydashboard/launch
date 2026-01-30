@@ -855,6 +855,21 @@ export class EspnFantasyService {
     return allMatchups
   }
 
+  /**
+   * Get raw schedule data with winner field and cumulativeScore
+   * This is better for historical matchup analysis than getAllMatchups
+   * because it returns the raw ESPN data with winner determination
+   */
+  async getRawSchedule(sport: Sport, leagueId: string | number, season: number): Promise<any[]> {
+    try {
+      const data = await this.apiRequest(sport, leagueId, season, [ESPN_VIEWS.MATCHUP, ESPN_VIEWS.MATCHUP_SCORE])
+      return data.schedule || []
+    } catch (error) {
+      console.error('[ESPN getRawSchedule] Error:', error)
+      return []
+    }
+  }
+
   // ============================================================
   // Standings Methods
   // ============================================================
@@ -3213,6 +3228,25 @@ export class EspnFantasyService {
   }
 
   private determineWinner(match: any): EspnMatchup['winner'] {
+    // Method 1: Check if ESPN provides a direct winner field
+    if (match.winner) {
+      const winner = match.winner.toString().toUpperCase()
+      if (winner === 'HOME') return 'HOME'
+      if (winner === 'AWAY') return 'AWAY'
+      if (winner === 'TIE') return 'TIE'
+      // UNDECIDED or unknown values
+    }
+    
+    // Method 2: Use cumulativeScore wins for category leagues
+    const homeWins = match.home?.cumulativeScore?.wins || match.home?.totalWins
+    const awayWins = match.away?.cumulativeScore?.wins || match.away?.totalWins
+    if (homeWins !== undefined && awayWins !== undefined) {
+      if (homeWins > awayWins) return 'HOME'
+      if (awayWins > homeWins) return 'AWAY'
+      if (homeWins === awayWins && homeWins > 0) return 'TIE'
+    }
+    
+    // Method 3: Use totalPoints (points leagues, or category wins stored as points)
     const homeScore = match.home?.totalPoints || 0
     const awayScore = match.away?.totalPoints || 0
     

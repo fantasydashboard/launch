@@ -4513,33 +4513,41 @@ async function loadEspnData() {
     }
     
     // Fetch all historical matchups for proper streak/weekly data
+    // Use raw schedule fetch (like calculateStandingsFromMatchupHistory) to get winner field
     loadingStatus.value = 'Fetching matchup history...'
     try {
-      const allMatchups = await espnService.getAllMatchups(sport, espnLeagueId, season)
-      console.log('[ESPN] Fetched all matchups for', allMatchups.size, 'weeks')
+      // Fetch raw schedule data directly - this includes the winner field
+      const rawSchedule = await espnService.getRawSchedule(sport, espnLeagueId, season)
       
-      // DEBUG: Log detailed matchup data to see what ESPN provides
-      if (allMatchups.size > 0) {
-        const firstWeekMatchups = allMatchups.get(1) || allMatchups.values().next().value
-        if (firstWeekMatchups && firstWeekMatchups.length > 0) {
-          console.log('[ESPN DEBUG] First matchup full data:', JSON.stringify(firstWeekMatchups[0], null, 2))
-          console.log('[ESPN DEBUG] Matchup keys:', Object.keys(firstWeekMatchups[0]))
-          // Check for stat data
-          const m = firstWeekMatchups[0]
-          if (m.homeTeam) console.log('[ESPN DEBUG] homeTeam keys:', Object.keys(m.homeTeam))
-          if (m.awayTeam) console.log('[ESPN DEBUG] awayTeam keys:', Object.keys(m.awayTeam))
-        }
+      console.log('[ESPN] Raw schedule entries:', rawSchedule.length)
+      
+      // Get league settings for current week
+      const league = await espnService.getLeague(sport, espnLeagueId, season)
+      const currentWeek = league?.status?.currentMatchupPeriod || 15
+      const regularSeasonWeeks = league?.settings?.regularSeasonMatchupPeriodCount || 25
+      
+      console.log('[ESPN] League currentWeek:', currentWeek, 'regularSeasonWeeks:', regularSeasonWeeks)
+      
+      // DEBUG: Log first schedule entry to see structure
+      if (rawSchedule.length > 0) {
+        const first = rawSchedule[0]
+        console.log('[ESPN DEBUG] First raw schedule entry:', {
+          matchupPeriodId: first.matchupPeriodId,
+          winner: first.winner,
+          homeTeamId: first.home?.teamId,
+          awayTeamId: first.away?.teamId,
+          homeCumulativeScore: first.home?.cumulativeScore,
+          awayCumulativeScore: first.away?.cumulativeScore
+        })
       }
       
-      // Build weekly matchup results from actual data
+      // Build weekly matchup results from raw schedule data
       const allMatchupResults = new Map<string, Map<number, any>>()
       const weeklyScores = new Map<string, Map<number, number>>()
       
       // Build a mapping from ESPN team ID to team_key for lookup
-      // team_key format is: espn_LEAGUEID_SEASON_TEAMID (e.g., espn_12345_2024_1)
       const espnIdToTeamKey = new Map<number, string>()
       leagueStore.yahooTeams.forEach(team => {
-        // Extract ESPN team ID from team_key - it's the LAST number in the format espn_leagueId_season_teamId
         const parts = team.team_key.split('_')
         if (parts.length >= 4 && parts[0] === 'espn') {
           const teamId = parseInt(parts[parts.length - 1])
@@ -4547,7 +4555,6 @@ async function loadEspnData() {
             espnIdToTeamKey.set(teamId, team.team_key)
           }
         }
-        // Also try team_id field directly
         if (team.team_id) {
           const teamIdNum = parseInt(team.team_id)
           if (!isNaN(teamIdNum)) {
@@ -4564,76 +4571,139 @@ async function loadEspnData() {
       // Check if this is a category league for proper catWins tracking
       const isCategoryLeague = !isPointsLeague.value
       
-      // Process each week's matchups
+      // Process each matchup from raw schedule
       let matchupsProcessed = 0
       let scoresRecorded = 0
       
-      allMatchups.forEach((matchups, week) => {
-        matchups.forEach(matchup => {
-          // Get team keys using the mapping
-          const homeTeamKey = espnIdToTeamKey.get(matchup.homeTeamId) || `espn_${matchup.homeTeamId}`
-          const awayTeamKey = espnIdToTeamKey.get(matchup.awayTeamId) || `espn_${matchup.awayTeamId}`
-          const homeScore = matchup.homeScore || 0
-          const awayScore = matchup.awayScore || 0
-          
-          matchupsProcessed++
-          
-          // For category leagues, use category wins from matchup data
-          const homeCatWins = matchup.homeCategoryWins || 0
-          const awayCatWins = matchup.awayCategoryWins || 0
-          
-          // Record for home team
-          const homeResults = allMatchupResults.get(homeTeamKey)
-          if (homeResults) {
-            homeResults.set(week, {
-              won: isCategoryLeague ? (homeCatWins > awayCatWins) : (homeScore > awayScore),
-              tied: isCategoryLeague ? (homeCatWins === awayCatWins) : (homeScore === awayScore),
-              points: homeScore,
-              opponentPoints: awayScore,
-              opponent: awayTeamKey,
-              // Add catWins for category league hottest/coldest calculation
-              catWins: isCategoryLeague ? homeCatWins : (homeScore > awayScore ? 1 : 0),
-              catLosses: isCategoryLeague ? (matchup.homeCategoryLosses || 0) : (homeScore < awayScore ? 1 : 0)
-            })
+      // Debug counters for winner determination methods
+      let methodWinnerField = 0
+      let methodCumulativeScore = 0
+      let methodTotalPoints = 0
+      let methodFallback = 0
+      
+      for (const match of rawSchedule) {
+        // Skip bye weeks (no opponent)
+        if (!match.home || !match.away) continue
+        
+        // Skip future/incomplete matchups
+        if (match.matchupPeriodId >= currentWeek) continue
+        
+        // Skip playoff matchups (only process regular season)
+        if (match.matchupPeriodId > regularSeasonWeeks) continue
+        
+        const week = match.matchupPeriodId
+        const homeTeamId = match.home.teamId
+        const awayTeamId = match.away.teamId
+        const homeTeamKey = espnIdToTeamKey.get(homeTeamId) || `espn_${homeTeamId}`
+        const awayTeamKey = espnIdToTeamKey.get(awayTeamId) || `espn_${awayTeamId}`
+        
+        matchupsProcessed++
+        
+        // Determine winner using same logic as calculateStandingsFromMatchupHistory
+        let homeWon = false
+        let awayWon = false
+        let isTied = false
+        
+        // Get category wins from cumulativeScore (for category leagues)
+        const homeCatWins = match.home.cumulativeScore?.wins || 0
+        const awayCatWins = match.away.cumulativeScore?.wins || 0
+        const homeCatLosses = match.home.cumulativeScore?.losses || 0
+        const awayCatLosses = match.away.cumulativeScore?.losses || 0
+        
+        // Get points (for points leagues or as fallback)
+        const homeScore = match.home.totalPoints || 0
+        const awayScore = match.away.totalPoints || 0
+        
+        // Method 1: Use winner field directly from ESPN (most reliable)
+        if (match.winner === 'HOME') {
+          homeWon = true
+          methodWinnerField++
+        } else if (match.winner === 'AWAY') {
+          awayWon = true
+          methodWinnerField++
+        } else if (match.winner === 'TIE') {
+          isTied = true
+          methodWinnerField++
+        }
+        // Method 2: Use cumulativeScore wins for category leagues
+        else if (isCategoryLeague && (homeCatWins > 0 || awayCatWins > 0)) {
+          if (homeCatWins > awayCatWins) {
+            homeWon = true
+          } else if (awayCatWins > homeCatWins) {
+            awayWon = true
           } else {
-            console.warn(`[ESPN] No map entry for home team: ${homeTeamKey} (ID: ${matchup.homeTeamId})`)
+            isTied = true
           }
-          
-          // Record for away team
-          const awayResults = allMatchupResults.get(awayTeamKey)
-          if (awayResults) {
-            awayResults.set(week, {
-              won: isCategoryLeague ? (awayCatWins > homeCatWins) : (awayScore > homeScore),
-              tied: isCategoryLeague ? (awayCatWins === homeCatWins) : (homeScore === awayScore),
-              points: awayScore,
-              opponentPoints: homeScore,
-              opponent: homeTeamKey,
-              // Add catWins for category league hottest/coldest calculation
-              catWins: isCategoryLeague ? awayCatWins : (awayScore > homeScore ? 1 : 0),
-              catLosses: isCategoryLeague ? (matchup.awayCategoryLosses || 0) : (awayScore < homeScore ? 1 : 0)
-            })
+          methodCumulativeScore++
+        }
+        // Method 3: Use totalPoints
+        else if (homeScore > 0 || awayScore > 0) {
+          if (homeScore > awayScore) {
+            homeWon = true
+          } else if (awayScore > homeScore) {
+            awayWon = true
           } else {
-            console.warn(`[ESPN] No map entry for away team: ${awayTeamKey} (ID: ${matchup.awayTeamId})`)
+            isTied = true
           }
-          
-          // Record weekly scores
-          const homeScoresMap = weeklyScores.get(homeTeamKey)
-          if (homeScoresMap) {
-            homeScoresMap.set(week, homeScore)
-            scoresRecorded++
-          }
-          const awayScoresMap = weeklyScores.get(awayTeamKey)
-          if (awayScoresMap) {
-            awayScoresMap.set(week, awayScore)
-            scoresRecorded++
-          }
-        })
-      })
+          methodTotalPoints++
+        }
+        // Fallback: Skip incomplete matchups
+        else {
+          methodFallback++
+          continue // Don't record incomplete matchups
+        }
+        
+        // Record for home team
+        const homeResults = allMatchupResults.get(homeTeamKey)
+        if (homeResults) {
+          homeResults.set(week, {
+            won: homeWon,
+            tied: isTied,
+            points: homeScore,
+            opponentPoints: awayScore,
+            opponent: awayTeamKey,
+            catWins: homeCatWins,
+            catLosses: homeCatLosses
+          })
+        }
+        
+        // Record for away team
+        const awayResults = allMatchupResults.get(awayTeamKey)
+        if (awayResults) {
+          awayResults.set(week, {
+            won: awayWon,
+            tied: isTied,
+            points: awayScore,
+            opponentPoints: homeScore,
+            opponent: homeTeamKey,
+            catWins: awayCatWins,
+            catLosses: awayCatLosses
+          })
+        }
+        
+        // Record weekly scores
+        const homeScoresMap = weeklyScores.get(homeTeamKey)
+        if (homeScoresMap) {
+          homeScoresMap.set(week, homeScore)
+          scoresRecorded++
+        }
+        const awayScoresMap = weeklyScores.get(awayTeamKey)
+        if (awayScoresMap) {
+          awayScoresMap.set(week, awayScore)
+          scoresRecorded++
+        }
+      }
       
       weeklyMatchupResults.value = allMatchupResults
       espnWeeklyScores.value = weeklyScores
       console.log('[ESPN] Built matchup results for', allMatchupResults.size, 'teams')
       console.log('[ESPN] Processed', matchupsProcessed, 'matchups, recorded', scoresRecorded, 'scores')
+      console.log('[ESPN] Winner determination methods used:', {
+        winnerField: methodWinnerField,
+        cumulativeScore: methodCumulativeScore,
+        totalPoints: methodTotalPoints,
+        fallback: methodFallback
+      })
       
       // Debug: show sample data
       const sampleTeam = leagueStore.yahooTeams[0]
