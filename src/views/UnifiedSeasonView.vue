@@ -314,11 +314,62 @@ const sport = computed((): SportType => {
 
 const leagueType = computed((): LeagueType => {
   const league = leagueStore.savedLeagues.find(l => l.league_id === leagueId.value)
+  
+  // For ESPN leagues, also check currentLeague scoring_type as it's more up-to-date
+  if (platform.value === 'espn') {
+    const currentScoringType = leagueStore.currentLeague?.scoring_type
+    if (currentScoringType) {
+      const espnType = getLeagueType(currentScoringType)
+      console.log('[UnifiedSeasonView] ESPN league type from currentLeague:', currentScoringType, '->', espnType)
+      return espnType
+    }
+  }
+  
   return getLeagueType(league?.scoring_type)
 })
 
 const sportConfig = computed(() => getSportConfig(sport.value))
-const isPointsLeague = computed(() => leagueType.value === 'points')
+const isPointsLeague = computed(() => {
+  // For ESPN leagues, use multiple signals to determine league type
+  if (platform.value === 'espn') {
+    // Check 1: currentLeague scoring_type
+    const currentScoringType = leagueStore.currentLeague?.scoring_type
+    if (currentScoringType === 'head' || currentScoringType?.toLowerCase().includes('cat')) {
+      console.log('[UnifiedSeasonView] ESPN isPointsLeague = false (currentLeague scoring_type:', currentScoringType, ')')
+      return false
+    }
+    
+    // Check 2: savedLeague scoring_type
+    const savedLeague = leagueStore.savedLeagues.find(l => l.league_id === leagueId.value)
+    if (savedLeague?.scoring_type === 'head' || savedLeague?.scoring_type?.toLowerCase().includes('cat')) {
+      console.log('[UnifiedSeasonView] ESPN isPointsLeague = false (savedLeague scoring_type:', savedLeague.scoring_type, ')')
+      return false
+    }
+    
+    // Check 3: matchup data has category wins
+    const hasMatchupCategoryData = leagueStore.yahooMatchups?.some(m => 
+      m.is_category_league || 
+      m.home_category_wins !== undefined ||
+      m.team1?.category_wins !== undefined
+    )
+    if (hasMatchupCategoryData) {
+      console.log('[UnifiedSeasonView] ESPN isPointsLeague = false (matchup has category data)')
+      return false
+    }
+    
+    // Check 4: team data has category wins
+    const hasTeamCategoryData = leagueStore.yahooTeams?.some(t => 
+      t.category_wins !== undefined && t.category_wins > 0
+    )
+    if (hasTeamCategoryData) {
+      console.log('[UnifiedSeasonView] ESPN isPointsLeague = false (teams have category data)')
+      return false
+    }
+    
+    console.log('[UnifiedSeasonView] ESPN isPointsLeague check - no category signals found, using leagueType:', leagueType.value)
+  }
+  return leagueType.value === 'points'
+})
 
 const leagueName = computed(() => {
   const league = leagueStore.savedLeagues.find(l => l.league_id === leagueId.value)
@@ -723,7 +774,34 @@ async function fetchRawData(): Promise<any> {
     case 'espn':
       // For ESPN category leagues, fetch fresh data from the ESPN service
       // to get accurate category wins/losses (similar to how Matchups and Power Rankings pages work)
-      if (isCat) {
+      
+      // Debug logging
+      console.log('[UnifiedSeasonView ESPN] Checking league type:', {
+        isCat,
+        isPointsLeague: isPointsLeague.value,
+        leagueType: leagueType.value,
+        currentLeagueScoringType: leagueStore.currentLeague?.scoring_type,
+        savedLeagueScoringType: leagueStore.savedLeagues.find(l => l.league_id === leagueId.value)?.scoring_type,
+        yahooTeamsCount: leagueStore.yahooTeams?.length
+      })
+      
+      // Also check if this appears to be a category league based on matchup data
+      const espnMatchupsHaveCategoryData = leagueStore.yahooMatchups?.some(m => 
+        m.is_category_league || 
+        m.home_category_wins !== undefined || 
+        m.team1?.category_wins !== undefined
+      )
+      
+      // Use multiple signals to determine if it's a category league
+      const isEspnCategoryLeague = isCat || espnMatchupsHaveCategoryData
+      
+      console.log('[UnifiedSeasonView ESPN] Category detection:', {
+        isCat,
+        espnMatchupsHaveCategoryData,
+        isEspnCategoryLeague
+      })
+      
+      if (isEspnCategoryLeague) {
         try {
           const leagueKey = leagueStore.activeLeagueId
           if (leagueKey && typeof leagueKey === 'string' && leagueKey.startsWith('espn_')) {
@@ -737,10 +815,13 @@ async function fetchRawData(): Promise<any> {
               const { espnService } = await import('@/services/espn')
               
               console.log('[UnifiedSeasonView] Fetching ESPN category data for', espnSport, espnLeagueId, espnSeason)
+              console.log('[UnifiedSeasonView] yahooTeams:', leagueStore.yahooTeams?.map(t => ({ id: t.team_id, name: t.name })))
               
               // Get current week
               const week = currentWeek.value
               const completedWeeks = Math.max(0, week - 1)
+              
+              console.log('[UnifiedSeasonView] Current week:', week, 'Completed weeks:', completedWeeks)
               
               // Track matchup wins/losses and category totals for each team
               const teamStats = new Map<string, {
@@ -762,6 +843,8 @@ async function fetchRawData(): Promise<any> {
                 })
               }
               
+              console.log('[UnifiedSeasonView] Initialized teamStats for', teamStats.size, 'teams')
+              
               // Fetch all completed weeks to calculate standings
               loadingMessage.value = `Loading standings data (0/${completedWeeks} weeks)...`
               for (let w = 1; w <= completedWeeks; w++) {
@@ -769,13 +852,31 @@ async function fetchRawData(): Promise<any> {
                 try {
                   const weekMatchups = await espnService.getMatchups(espnSport, espnLeagueId, espnSeason, w)
                   
+                  console.log(`[UnifiedSeasonView] Week ${w}: ${weekMatchups.length} matchups`)
+                  if (w === 1 && weekMatchups.length > 0) {
+                    console.log('[UnifiedSeasonView] Week 1 first matchup:', {
+                      homeTeamId: weekMatchups[0].homeTeamId,
+                      awayTeamId: weekMatchups[0].awayTeamId,
+                      homeCategoryWins: weekMatchups[0].homeCategoryWins,
+                      awayCategoryWins: weekMatchups[0].awayCategoryWins,
+                      hasHomePerCategoryResults: !!weekMatchups[0].homePerCategoryResults
+                    })
+                  }
+                  
                   for (const m of weekMatchups) {
                     if (!m.awayTeamId) continue // Skip bye weeks
                     
                     const homeStats = teamStats.get(String(m.homeTeamId))
                     const awayStats = teamStats.get(String(m.awayTeamId))
                     
-                    if (!homeStats || !awayStats) continue
+                    if (!homeStats || !awayStats) {
+                      console.log('[UnifiedSeasonView] Team not found in teamStats:', {
+                        homeTeamId: m.homeTeamId,
+                        awayTeamId: m.awayTeamId,
+                        availableKeys: [...teamStats.keys()].slice(0, 5)
+                      })
+                      continue
+                    }
                     
                     // Get category wins for this matchup
                     const homeCatWins = m.homeCategoryWins || 0
@@ -895,7 +996,7 @@ async function fetchRawData(): Promise<any> {
       // Default: use store data (for points leagues or if category fetch failed)
       return {
         preTransformed: true,
-        isCategoryLeague: isCat,
+        isCategoryLeague: isEspnCategoryLeague || isCat,
         matchups: leagueStore.yahooMatchups || [],
         teams: leagueStore.yahooTeams || []
       }
