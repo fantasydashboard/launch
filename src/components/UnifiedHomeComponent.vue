@@ -1915,21 +1915,21 @@ const last3WeeksWins = computed(() => {
       
       // Log first team's details for debugging
       if (team.team_key === leagueStore.yahooTeams[0]?.team_key) {
-        console.log('[last3WeeksWins] First team debug:', {
+        console.log('[last3WeeksWins] First team debug:', JSON.stringify({
           teamKey: team.team_key,
           teamMatchupsSize: teamMatchups.size,
           teamMatchupsWeeks: [...teamMatchups.keys()],
           last3Weeks,
           debugWeeks,
           totalWins
-        })
+        }, null, 2))
       }
       
       result.set(team.team_key, totalWins)
     }
   })
   
-  console.log('[last3WeeksWins] result:', Object.fromEntries(result))
+  console.log('[last3WeeksWins] result (first 3):', JSON.stringify([...result.entries()].slice(0, 3)))
   return result
 })
 
@@ -1945,9 +1945,9 @@ const quickStats = computed(() => {
   
   // Debug log
   if (teams.length > 0 && !isPointsLeague.value) {
-    console.log('[quickStats] Category league - teamsWithLast3:', teamsWithLast3.map(t => ({ name: t.name, team_key: t.team_key, last3Wins: t.last3Wins })))
+    console.log('[quickStats] Category league - teams count:', teams.length)
     console.log('[quickStats] last3WeeksWins map size:', last3WeeksWins.value.size)
-    console.log('[quickStats] last3WeeksWins entries:', [...last3WeeksWins.value.entries()].slice(0, 3))
+    console.log('[quickStats] Sample team last3Wins values:', teamsWithLast3.slice(0, 3).map(t => ({ name: t.name, last3Wins: t.last3Wins })))
   }
   
   const hottest = [...teamsWithLast3].sort((a, b) => b.last3Wins - a.last3Wins)[0]
@@ -1957,7 +1957,8 @@ const quickStats = computed(() => {
   // For category leagues, show "X cat wins" in last 3 weeks
   const winsLabel = isPointsLeague.value ? 'wins' : 'cat wins'
   
-  console.log('[quickStats] hottest:', hottest?.name, hottest?.last3Wins, '| coldest:', coldest?.name, coldest?.last3Wins)
+  // ALWAYS log this
+  console.log('[quickStats] RESULT - hottest:', hottest?.name, 'with', hottest?.last3Wins, winsLabel, '| coldest:', coldest?.name, 'with', coldest?.last3Wins, winsLabel)
   
   // Most/Fewest Moves - works for all platforms
   const mostActive = [...teams].sort((a, b) => (b.transactions || 0) - (a.transactions || 0))[0]
