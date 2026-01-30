@@ -1844,54 +1844,71 @@ const last3WeeksWins = computed(() => {
   console.log('[last3WeeksWins] platform:', leagueStore.activePlatform)
   
   if (standingsWeeks.length < 2) {
-    // Not enough data, return zeros
     leagueStore.yahooTeams.forEach(team => result.set(team.team_key, 0))
     console.log('[last3WeeksWins] Not enough weeks, returning zeros')
     return result
   }
   
   // For CATEGORY leagues: calculate weekly category wins from cumulative standings
-  // weeklyStandings has cumulative wins per week, so week N wins = standings[N].wins - standings[N-1].wins
   if (!isPointsLeague.value) {
-    // Get last 4 weeks (need 4 to calculate 3 weeks of gains: baseline + 3 diffs)
-    const last4Weeks = standingsWeeks.slice(-4)
-    console.log('[last3WeeksWins] Category league - using weeks:', last4Weeks)
+    // Find weeks where cumulative wins actually changed (not playoff/inactive weeks)
+    // Look at total category wins across all teams to find active weeks
+    const activeWeeks: number[] = []
+    let prevTotalWins = -1
     
-    // Debug: show first week's standings structure
-    if (last4Weeks.length > 0) {
-      const firstWeekData = weeklyStandings.value.get(last4Weeks[0])
-      if (firstWeekData && firstWeekData.length > 0) {
-        console.log('[last3WeeksWins] Sample standings data structure:', {
-          week: last4Weeks[0],
-          firstTeam: firstWeekData[0],
-          keys: Object.keys(firstWeekData[0] || {})
-        })
+    for (const week of standingsWeeks) {
+      const weekData = weeklyStandings.value.get(week)
+      if (!weekData || weekData.length === 0) continue
+      
+      // Sum all teams' cumulative wins for this week
+      const totalWins = weekData.reduce((sum: number, t: any) => sum + (t.wins || 0), 0)
+      
+      // If total changed from previous week, this is an active week
+      if (prevTotalWins >= 0 && totalWins !== prevTotalWins) {
+        activeWeeks.push(week)
       }
+      prevTotalWins = totalWins
     }
+    
+    console.log('[last3WeeksWins] Active weeks (where wins changed):', activeWeeks)
+    
+    // Use last 3 active weeks
+    const last3ActiveWeeks = activeWeeks.slice(-3)
+    
+    if (last3ActiveWeeks.length === 0) {
+      // Fallback: just use last 3 weeks even if no change detected
+      const last3Weeks = standingsWeeks.slice(-3)
+      console.log('[last3WeeksWins] No active weeks found, using last 3:', last3Weeks)
+      leagueStore.yahooTeams.forEach(team => result.set(team.team_key, 0))
+      return result
+    }
+    
+    console.log('[last3WeeksWins] Using last 3 active weeks:', last3ActiveWeeks)
     
     leagueStore.yahooTeams.forEach(team => {
       let totalCatWins = 0
       const weeklyGains: any[] = []
       
-      // Calculate category wins for each of the last 3 weeks (need diff from prev week)
-      for (let i = 1; i < last4Weeks.length; i++) {
-        const currentWeek = last4Weeks[i]
-        const prevWeek = last4Weeks[i - 1]
+      for (const week of last3ActiveWeeks) {
+        // Find the week before this one in standingsWeeks
+        const weekIdx = standingsWeeks.indexOf(week)
+        if (weekIdx <= 0) continue
         
-        const currentStandings = weeklyStandings.value.get(currentWeek)
+        const prevWeek = standingsWeeks[weekIdx - 1]
+        
+        const currentStandings = weeklyStandings.value.get(week)
         const prevStandings = weeklyStandings.value.get(prevWeek)
         
         const currentTeamData = currentStandings?.find((t: any) => t.team_key === team.team_key)
         const prevTeamData = prevStandings?.find((t: any) => t.team_key === team.team_key)
         
-        // 'wins' in weeklyStandings is cumulative category wins for category leagues
         const currentCumWins = currentTeamData?.wins || 0
         const prevCumWins = prevTeamData?.wins || 0
         
         const weeklyGain = currentCumWins - prevCumWins
         totalCatWins += Math.max(0, weeklyGain)
         
-        weeklyGains.push({ week: currentWeek, prevWins: prevCumWins, currWins: currentCumWins, gain: weeklyGain })
+        weeklyGains.push({ week, prevWeek, prevWins: prevCumWins, currWins: currentCumWins, gain: weeklyGain })
       }
       
       // Debug for first team
