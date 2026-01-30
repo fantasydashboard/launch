@@ -877,8 +877,10 @@ export class EspnFantasyService {
   /**
    * Get current standings
    */
+  // VERSION: 2026-01-30-fix-basketball-category-v2
   async getStandings(sport: Sport, leagueId: string | number, season: number): Promise<EspnTeam[]> {
     console.log('[ESPN getStandings] Called for sport:', sport, 'league:', leagueId, 'season:', season)
+    console.log('[ESPN getStandings] VERSION CHECK - If you see this, new code is deployed!')
     
     const teams = await this.getTeams(sport, leagueId, season)
     const league = await this.getLeague(sport, leagueId, season)

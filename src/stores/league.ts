@@ -1394,8 +1394,10 @@ export const useLeagueStore = defineStore('league', () => {
       }
       
       // Get teams with standings - use getStandings for better category league support
+      // VERSION: 2026-01-30-fix-basketball-category-v2
       const isCategoryLeague = league.scoringType === 'H2H_CATEGORY'
       console.log('[ESPN] League scoringType:', league.scoringType, 'isCategoryLeague:', isCategoryLeague)
+      console.log('[ESPN] VERSION CHECK - If you see this, league.ts is updated!')
       let espnTeams = isCategoryLeague 
         ? await espnService.getStandings(sport, espnLeagueId, season)
         : await espnService.getTeams(sport, espnLeagueId, season)
