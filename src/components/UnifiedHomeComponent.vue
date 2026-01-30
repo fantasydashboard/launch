@@ -1834,17 +1834,27 @@ const teamDetailCategories = computed(() => {
 
 // Calculate last 3 weeks category wins for each team
 const last3WeeksWins = computed(() => {
-  const weeks = Array.from(weeklyStandings.value.keys()).sort((a, b) => a - b)
-  const last3Weeks = weeks.slice(-3)
-  
   const result = new Map<string, number>()
   
   // Debug logging
-  console.log('[last3WeeksWins] weeks count:', weeks.length, 'last3Weeks:', last3Weeks)
+  const standingsWeeks = Array.from(weeklyStandings.value.keys()).sort((a, b) => a - b)
+  console.log('[last3WeeksWins] standingsWeeks count:', standingsWeeks.length)
   console.log('[last3WeeksWins] weeklyMatchupResults size:', weeklyMatchupResults.value.size)
   console.log('[last3WeeksWins] espnWeeklyScores size:', espnWeeklyScores.value.size)
   console.log('[last3WeeksWins] isPointsLeague:', isPointsLeague.value)
   console.log('[last3WeeksWins] platform:', leagueStore.activePlatform)
+  
+  // Get the weeks that actually have matchup data
+  // Find the weeks from the first team's matchup results
+  const firstTeam = leagueStore.yahooTeams[0]
+  const firstTeamMatchups = firstTeam ? weeklyMatchupResults.value.get(firstTeam.team_key) : null
+  const matchupWeeks = firstTeamMatchups ? Array.from(firstTeamMatchups.keys()).sort((a, b) => a - b) : []
+  
+  // Use the last 3 weeks that have actual matchup data
+  const last3Weeks = matchupWeeks.slice(-3)
+  
+  console.log('[last3WeeksWins] matchupWeeks:', matchupWeeks)
+  console.log('[last3WeeksWins] last3Weeks (from matchup data):', last3Weeks)
   
   leagueStore.yahooTeams.forEach(team => {
     const teamMatchups = weeklyMatchupResults.value.get(team.team_key)
@@ -1918,7 +1928,6 @@ const last3WeeksWins = computed(() => {
         console.log('[last3WeeksWins] First team debug:', JSON.stringify({
           teamKey: team.team_key,
           teamMatchupsSize: teamMatchups.size,
-          teamMatchupsWeeks: [...teamMatchups.keys()],
           last3Weeks,
           debugWeeks,
           totalWins
