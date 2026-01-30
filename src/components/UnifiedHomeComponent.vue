@@ -3815,7 +3815,7 @@ async function loadAllMatchups() {
   
   // For ESPN, fetch matchups week-by-week (like Power Rankings does)
   if (leagueStore.activePlatform === 'espn') {
-    console.log('[ESPN loadAllMatchups v3.0] FETCHING REAL MATCHUPS')
+    console.log('[ESPN loadAllMatchups v4.0] FETCHING REAL MATCHUPS WITH CREDENTIALS')
     displayMatchups.value = leagueStore.yahooMatchups || []
     
     try {
@@ -3824,6 +3824,19 @@ async function loadAllMatchups() {
       const sport = parts[1] as 'football' | 'baseball' | 'basketball' | 'hockey'
       const espnLeagueId = parts[2]
       const season = parseInt(parts[3])
+      
+      // Set ESPN credentials if available (CRITICAL for category data!)
+      // This is what Power Rankings does and why it works
+      const savedLeague = leagueStore.savedLeagues?.find((l: any) => l.league_id === leagueKey)
+      if (savedLeague?.espn_s2 && savedLeague?.swid) {
+        console.log('[ESPN loadAllMatchups] Setting credentials from saved league')
+        espnService.setCredentials({
+          espn_s2: savedLeague.espn_s2,
+          swid: savedLeague.swid
+        })
+      } else {
+        console.log('[ESPN loadAllMatchups] WARNING: No ESPN credentials found!')
+      }
       
       // Use static espnService import (like Power Rankings does)
       const league = await espnService.getLeague(sport, espnLeagueId, season)
@@ -4247,7 +4260,7 @@ async function loadAllMatchups() {
 // we simulate the progression based on final standings
 // Build standings from REAL weekly matchup results - NO SIMULATION
 function buildStandingsFromRealMatchups(startWeek: number, endWeek: number) {
-  console.log('=== BUILD v3.0 STATIC IMPORT FIX ===')
+  console.log('=== BUILD v4.0 CREDENTIALS FIX ===')
   console.log(`[Standings] Building REAL standings from matchups, weeks ${startWeek}-${endWeek}`)
   console.log('[Standings] yahooTeams count:', leagueStore.yahooTeams?.length)
   console.log('[Standings] weeklyMatchupResults size:', weeklyMatchupResults.value.size)
@@ -4469,6 +4482,19 @@ async function loadEspnData() {
     const sport = parts[1] as 'football' | 'baseball' | 'basketball' | 'hockey'
     const espnLeagueId = parts[2]
     const season = parseInt(parts[3])
+    
+    // Set ESPN credentials if available (required for category data in some leagues)
+    // This is the same approach Power Rankings uses
+    const savedLeague = leagueStore.savedLeagues?.find((l: any) => l.league_id === leagueKey)
+    if (savedLeague?.espn_s2 && savedLeague?.swid) {
+      console.log('[ESPN HOME] Setting credentials from saved league')
+      espnService.setCredentials({
+        espn_s2: savedLeague.espn_s2,
+        swid: savedLeague.swid
+      })
+    } else {
+      console.log('[ESPN HOME] No ESPN credentials found in saved league')
+    }
     
     // Use static espnService import
     loadingStatus.value = 'Loading ESPN data...'
@@ -4832,10 +4858,11 @@ async function loadEspnData() {
                 isTied = homeScore === awayScore
                 methodTotalPoints++
               }
-              // Fallback: skip this matchup
+              // Fallback: Still record matchup as tie (don't skip!)
               else {
                 methodFallback++
-                continue
+                isTied = true  // Treat unknown as tie rather than skipping
+                console.log(`[ESPN] Week ${week}: No winner data available, treating as incomplete`)
               }
             } else {
               // Points league
@@ -5169,12 +5196,24 @@ function checkScrollHint() {
   }
 }
 
-onMounted(() => {
+onMounted(async () => {
   console.log('[HOME onMounted]', {
     yahooTeamsLength: leagueStore.yahooTeams?.length,
     activePlatform: leagueStore.activePlatform,
     activeLeagueId: leagueStore.activeLeagueId
   })
+  
+  // Set ESPN credentials if available (like Power Rankings does)
+  if (leagueStore.activePlatform === 'espn') {
+    const savedLeague = leagueStore.savedLeagues?.find((l: any) => l.league_id === leagueStore.activeLeagueId)
+    if (savedLeague?.espn_s2 && savedLeague?.swid) {
+      console.log('[HOME onMounted] Setting ESPN credentials')
+      espnService.setCredentials({
+        espn_s2: savedLeague.espn_s2,
+        swid: savedLeague.swid
+      })
+    }
+  }
   
   if (leagueStore.yahooTeams.length > 0) {
     if (leagueStore.activePlatform === 'yahoo') loadAllData()
