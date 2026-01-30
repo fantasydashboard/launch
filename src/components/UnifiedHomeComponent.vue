@@ -3812,21 +3812,148 @@ async function loadAllMatchups() {
     return
   }
   
-  // For ESPN, use matchups from store (already loaded)
+  // For ESPN, fetch matchups week-by-week (like Power Rankings does)
   if (leagueStore.activePlatform === 'espn') {
-    console.log('[ESPN] Using matchups from store:', leagueStore.yahooMatchups?.length || 0)
+    console.log('[ESPN loadAllMatchups] FETCHING REAL MATCHUPS')
     displayMatchups.value = leagueStore.yahooMatchups || []
     
-    // Build standings from REAL matchup data
+    try {
+      // Parse league key to get ESPN details
+      const parts = leagueKey.split('_')
+      const sport = parts[1] as 'football' | 'baseball' | 'basketball' | 'hockey'
+      const espnLeagueId = parts[2]
+      const season = parseInt(parts[3])
+      
+      // Import ESPN service
+      const { espnService } = await import('@/services/espn')
+      const league = await espnService.getLeague(sport, espnLeagueId, season)
+      
+      const currentWeek = league?.status?.currentMatchupPeriod || 15
+      const completedWeeks = Math.max(1, currentWeek - 1)
+      
+      console.log('[ESPN loadAllMatchups] Fetching', completedWeeks, 'weeks of matchups')
+      
+      // Initialize maps
+      const allMatchupResults = new Map<string, Map<number, any>>()
+      leagueStore.yahooTeams.forEach(t => {
+        allMatchupResults.set(t.team_key, new Map())
+      })
+      
+      // Track cumulative wins for standings
+      const teamStats = new Map<string, { wins: number; losses: number; ties: number; catWins: number; catLosses: number }>()
+      leagueStore.yahooTeams.forEach(t => {
+        teamStats.set(t.team_key, { wins: 0, losses: 0, ties: 0, catWins: 0, catLosses: 0 })
+      })
+      
+      // Fetch each week's matchups (like Power Rankings does)
+      for (let week = 1; week <= completedWeeks; week++) {
+        try {
+          const matchups = await espnService.getMatchups(sport, espnLeagueId, season, week, true)
+          
+          for (const matchup of matchups) {
+            if (!matchup.awayTeamId) continue
+            
+            const homeKey = `espn_${espnLeagueId}_${season}_${matchup.homeTeamId}`
+            const awayKey = `espn_${espnLeagueId}_${season}_${matchup.awayTeamId}`
+            
+            const homeStats = teamStats.get(homeKey)
+            const awayStats = teamStats.get(awayKey)
+            if (!homeStats || !awayStats) continue
+            
+            // Count category wins
+            let homeCatWins = 0
+            let awayCatWins = 0
+            
+            if (matchup.homePerCategoryResults && Object.keys(matchup.homePerCategoryResults).length > 0) {
+              for (const result of Object.values(matchup.homePerCategoryResults)) {
+                if (result === 'WIN') homeCatWins++
+                else if (result === 'LOSS') awayCatWins++
+              }
+              if (week === 1) console.log('[ESPN loadAllMatchups] Week 1 - using homePerCategoryResults, home:', homeCatWins, 'away:', awayCatWins)
+            } else if ((matchup.homeCategoryWins || 0) > 0 || (matchup.awayCategoryWins || 0) > 0) {
+              homeCatWins = matchup.homeCategoryWins || 0
+              awayCatWins = matchup.awayCategoryWins || 0
+              if (week === 1) console.log('[ESPN loadAllMatchups] Week 1 - using homeCategoryWins, home:', homeCatWins, 'away:', awayCatWins)
+            }
+            
+            // Track category totals
+            homeStats.catWins += homeCatWins
+            homeStats.catLosses += awayCatWins
+            awayStats.catWins += awayCatWins
+            awayStats.catLosses += homeCatWins
+            
+            // Determine matchup winner and store result
+            let homeWon = false
+            let awayWon = false
+            let tied = false
+            
+            if (homeCatWins > awayCatWins) {
+              homeStats.wins++
+              awayStats.losses++
+              homeWon = true
+            } else if (awayCatWins > homeCatWins) {
+              awayStats.wins++
+              homeStats.losses++
+              awayWon = true
+            } else if (homeCatWins > 0 || awayCatWins > 0) {
+              homeStats.ties++
+              awayStats.ties++
+              tied = true
+            }
+            
+            // Store matchup results
+            allMatchupResults.get(homeKey)?.set(week, {
+              week,
+              opponent: awayKey,
+              won: homeWon,
+              tied,
+              catWins: homeCatWins,
+              catLosses: awayCatWins
+            })
+            allMatchupResults.get(awayKey)?.set(week, {
+              week,
+              opponent: homeKey,
+              won: awayWon,
+              tied,
+              catWins: awayCatWins,
+              catLosses: homeCatWins
+            })
+          }
+        } catch (weekErr) {
+          console.warn('[ESPN loadAllMatchups] Week', week, 'error:', weekErr)
+        }
+      }
+      
+      // Update the reactive refs
+      weeklyMatchupResults.value = allMatchupResults
+      
+      // Also update team records in store
+      leagueStore.yahooTeams.forEach(team => {
+        const stats = teamStats.get(team.team_key)
+        if (stats && (stats.wins > 0 || stats.losses > 0)) {
+          console.log('[ESPN loadAllMatchups] Updating', team.name, ':', stats.wins, '-', stats.losses)
+          team.wins = stats.wins
+          team.losses = stats.losses
+          team.ties = stats.ties
+          team.category_wins = stats.catWins
+          team.category_losses = stats.catLosses
+        }
+      })
+      
+      console.log('[ESPN loadAllMatchups] DONE - weeklyMatchupResults size:', allMatchupResults.size)
+      
+    } catch (err) {
+      console.error('[ESPN loadAllMatchups] Error:', err)
+    }
+    
+    // Now build standings from the data we just fetched
     const yahooLeagueData = Array.isArray(leagueStore.yahooLeague) ? leagueStore.yahooLeague[0] : leagueStore.yahooLeague
     const endWeek = yahooLeagueData?.end_week || 25
     const startWeek = yahooLeagueData?.start_week || 1
     const currWeek = yahooLeagueData?.current_week || currentWeek.value || 1
     
-    // Only show weeks up to current week (not future weeks)
     const chartEndWeek = isSeasonComplete.value ? endWeek : Math.min(currWeek, endWeek)
     
-    // Use REAL matchup data to build standings (not simulated)
     buildStandingsFromRealMatchups(startWeek, chartEndWeek)
     buildChart()
     
@@ -4120,6 +4247,7 @@ async function loadAllMatchups() {
 // we simulate the progression based on final standings
 // Build standings from REAL weekly matchup results - NO SIMULATION
 function buildStandingsFromRealMatchups(startWeek: number, endWeek: number) {
+  console.log('=== BUILD v2.0 FIX DEPLOYED ===')
   console.log(`[Standings] Building REAL standings from matchups, weeks ${startWeek}-${endWeek}`)
   console.log('[Standings] yahooTeams count:', leagueStore.yahooTeams?.length)
   console.log('[Standings] weeklyMatchupResults size:', weeklyMatchupResults.value.size)
