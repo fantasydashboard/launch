@@ -1396,9 +1396,104 @@ export const useLeagueStore = defineStore('league', () => {
       // Get teams with standings - use getStandings for better category league support
       const isCategoryLeague = league.scoringType === 'H2H_CATEGORY'
       console.log('[ESPN] League scoringType:', league.scoringType, 'isCategoryLeague:', isCategoryLeague)
-      const espnTeams = isCategoryLeague 
+      let espnTeams = isCategoryLeague 
         ? await espnService.getStandings(sport, espnLeagueId, season)
         : await espnService.getTeams(sport, espnLeagueId, season)
+      
+      // FALLBACK: If category league still has all zero records, calculate directly from matchups
+      // This uses the same approach as Power Rankings which works correctly
+      if (isCategoryLeague && espnTeams.every(t => t.wins === 0 && t.losses === 0)) {
+        console.log('[ESPN FALLBACK] getStandings returned all zeros, calculating from weekly matchups...')
+        
+        const currentWeek = league.status?.currentMatchupPeriod || 1
+        const regularSeasonWeeks = league.settings?.regularSeasonMatchupPeriodCount || 25
+        const completedWeeks = Math.min(currentWeek - 1, regularSeasonWeeks)
+        
+        console.log('[ESPN FALLBACK] Will process', completedWeeks, 'completed weeks')
+        
+        // Initialize team stats
+        const teamStats = new Map<number, { wins: number; losses: number; ties: number; catWins: number; catLosses: number }>()
+        espnTeams.forEach(t => {
+          teamStats.set(t.id, { wins: 0, losses: 0, ties: 0, catWins: 0, catLosses: 0 })
+        })
+        
+        // Fetch each week's matchups and count category wins
+        for (let week = 1; week <= completedWeeks; week++) {
+          try {
+            const matchups = await espnService.getMatchups(sport, espnLeagueId, season, week, true)
+            console.log(`[ESPN FALLBACK] Week ${week}: Got ${matchups.length} matchups`)
+            
+            for (const matchup of matchups) {
+              if (!matchup.awayTeamId) continue
+              
+              const homeStats = teamStats.get(matchup.homeTeamId)
+              const awayStats = teamStats.get(matchup.awayTeamId)
+              if (!homeStats || !awayStats) continue
+              
+              let homeCatWins = 0
+              let awayCatWins = 0
+              
+              // Method 1: Use per-category results (best method)
+              if (matchup.homePerCategoryResults && Object.keys(matchup.homePerCategoryResults).length > 0) {
+                for (const result of Object.values(matchup.homePerCategoryResults)) {
+                  if (result === 'WIN') homeCatWins++
+                  else if (result === 'LOSS') awayCatWins++
+                }
+                if (week === 1) {
+                  console.log(`[ESPN FALLBACK] Week ${week}: Using homePerCategoryResults, home=${homeCatWins} away=${awayCatWins}`)
+                }
+              }
+              // Method 2: Use cumulativeScore category wins
+              else if ((matchup.homeCategoryWins || 0) > 0 || (matchup.awayCategoryWins || 0) > 0) {
+                homeCatWins = matchup.homeCategoryWins || 0
+                awayCatWins = matchup.awayCategoryWins || 0
+                if (week === 1) {
+                  console.log(`[ESPN FALLBACK] Week ${week}: Using homeCategoryWins, home=${homeCatWins} away=${awayCatWins}`)
+                }
+              }
+              
+              // Track category totals
+              homeStats.catWins += homeCatWins
+              homeStats.catLosses += awayCatWins
+              awayStats.catWins += awayCatWins
+              awayStats.catLosses += homeCatWins
+              
+              // Determine matchup winner
+              if (homeCatWins > awayCatWins) {
+                homeStats.wins++
+                awayStats.losses++
+              } else if (awayCatWins > homeCatWins) {
+                awayStats.wins++
+                homeStats.losses++
+              } else if (homeCatWins > 0 || awayCatWins > 0) {
+                homeStats.ties++
+                awayStats.ties++
+              }
+            }
+          } catch (weekErr) {
+            console.warn(`[ESPN FALLBACK] Error fetching week ${week}:`, weekErr)
+          }
+        }
+        
+        // Update espnTeams with calculated stats
+        espnTeams = espnTeams.map(team => {
+          const stats = teamStats.get(team.id)
+          if (stats) {
+            console.log(`[ESPN FALLBACK] ${team.name}: ${stats.wins}-${stats.losses} (Cat: ${stats.catWins}-${stats.catLosses})`)
+            return {
+              ...team,
+              wins: stats.wins,
+              losses: stats.losses,
+              ties: stats.ties,
+              categoryWins: stats.catWins,
+              categoryLosses: stats.catLosses
+            }
+          }
+          return team
+        })
+        
+        console.log('[ESPN FALLBACK] Calculation complete')
+      }
       
       // Get user's team ID for highlighting
       let myTeamId: number | null = null
