@@ -1196,7 +1196,31 @@ export const useLeagueStore = defineStore('league', () => {
       // Fetch current week matchups - use getCategoryMatchups for category leagues
       let matchups: any[]
       if (isCategoryLeague) {
-        const categoryMatchups = await yahooService.getCategoryMatchups(leagueKey, metadata.currentWeek)
+        let weekToLoad = metadata.currentWeek
+        
+        // If season is finished, start from end week instead of current week
+        if (metadata.isFinished && metadata.endWeek) {
+          weekToLoad = metadata.endWeek
+        }
+        
+        let categoryMatchups = await yahooService.getCategoryMatchups(leagueKey, weekToLoad)
+        
+        // If current week has no matchups with stat_winners (playoffs/season over),
+        // try a few previous weeks to find one with data
+        if (categoryMatchups.every(m => !m.stat_winners?.length)) {
+          console.log(`[Yahoo] Week ${weekToLoad} has no matchup data, searching backwards...`)
+          const minWeek = Math.max(1, weekToLoad - 5) // Only go back 5 weeks max
+          for (let w = weekToLoad - 1; w >= minWeek; w--) {
+            const weekMatchups = await yahooService.getCategoryMatchups(leagueKey, w)
+            if (weekMatchups.some(m => m.stat_winners?.length > 0)) {
+              console.log(`[Yahoo] Found active week: ${w}`)
+              categoryMatchups = weekMatchups
+              weekToLoad = w
+              break
+            }
+          }
+        }
+        
         // Transform category matchups to include win counts
         matchups = categoryMatchups.map((m, idx) => {
           const team1 = m.teams?.[0]
@@ -1209,8 +1233,20 @@ export const useLeagueStore = defineStore('league', () => {
           let team2Wins = 0
           let ties = 0
           
+          // Debug: log stat_winners for first matchup
+          if (idx === 0) {
+            console.log(`[Yahoo] First matchup stat_winners (${m.stat_winners?.length || 0}):`, 
+              m.stat_winners?.slice(0, 3)?.map((sw: any) => ({
+                stat_id: sw.stat_id,
+                winner: sw.winner_team_key,
+                is_tied: sw.is_tied
+              }))
+            )
+          }
+          
           for (const sw of (m.stat_winners || [])) {
-            if (sw.is_tied) {
+            // is_tied can be boolean true or string '1'
+            if (sw.is_tied === true || sw.is_tied === '1') {
               ties++
             } else if (sw.winner_team_key === team1Key) {
               team1Wins++
@@ -1218,6 +1254,8 @@ export const useLeagueStore = defineStore('league', () => {
               team2Wins++
             }
           }
+          
+          console.log(`[Yahoo] Matchup ${idx + 1}: ${team1?.name} vs ${team2?.name} = ${team1Wins}-${team2Wins}-${ties}`)
           
           return {
             matchup_id: idx + 1,

@@ -70,7 +70,7 @@
                 <div class="text-xl font-black" :class="getMatchupScoreClass(matchup, 0)">
                   {{ isPointsLeague ? (matchup.team1?.points || 0).toFixed(1) : (matchup.team1_cat_wins ?? '-') }}
                 </div>
-                <div v-if="!isPointsLeague" class="text-xs text-dark-textMuted">cat wins</div>
+                <div v-if="!isPointsLeague" class="text-xs text-dark-textMuted">categories</div>
               </div>
             </div>
             
@@ -99,7 +99,7 @@
                 <div class="text-xl font-black" :class="getMatchupScoreClass(matchup, 1)">
                   {{ isPointsLeague ? (matchup.team2?.points || 0).toFixed(1) : (matchup.team2_cat_wins ?? '-') }}
                 </div>
-                <div v-if="!isPointsLeague" class="text-xs text-dark-textMuted">cat wins</div>
+                <div v-if="!isPointsLeague" class="text-xs text-dark-textMuted">categories</div>
               </div>
             </div>
           </div>
