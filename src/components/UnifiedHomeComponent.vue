@@ -1283,6 +1283,25 @@ const teamsWithStats = computed(() => {
     }
   }
   
+  // Debug for category leagues
+  if (leagueStore.yahooTeams.length > 0 && !isPointsLeague.value) {
+    console.log('[teamsWithStats CATEGORY] Computing for', leagueStore.yahooTeams.length, 'teams')
+    console.log('[teamsWithStats CATEGORY] teamCategoryWins size:', teamCategoryWins.value.size)
+    console.log('[teamsWithStats CATEGORY] teamTotalCategoryWins size:', teamTotalCategoryWins.value.size)
+    console.log('[teamsWithStats CATEGORY] weeklyMatchupResults size:', weeklyMatchupResults.value.size)
+    if (leagueStore.yahooTeams[0]) {
+      const firstTeam = leagueStore.yahooTeams[0]
+      console.log('[teamsWithStats CATEGORY] First team:', {
+        name: firstTeam.name,
+        team_key: firstTeam.team_key,
+        wins: firstTeam.wins,
+        losses: firstTeam.losses,
+        category_wins: firstTeam.category_wins,
+        category_losses: firstTeam.category_losses
+      })
+    }
+  }
+  
   return leagueStore.yahooTeams.map(team => {
     const transactions = transactionCounts.value.get(team.team_key) || 0
     const categoryWins = teamCategoryWins.value.get(team.team_key) || {}
@@ -4096,6 +4115,8 @@ async function loadAllMatchups() {
 // Build standings from REAL weekly matchup results - NO SIMULATION
 function buildStandingsFromRealMatchups(startWeek: number, endWeek: number) {
   console.log(`[Standings] Building REAL standings from matchups, weeks ${startWeek}-${endWeek}`)
+  console.log('[Standings] yahooTeams count:', leagueStore.yahooTeams?.length)
+  console.log('[Standings] weeklyMatchupResults size:', weeklyMatchupResults.value.size)
   
   const standings = new Map<number, any[]>()
   const teams = leagueStore.yahooTeams
@@ -4289,9 +4310,19 @@ async function loadAllData() {
 // Load all data for ESPN
 async function loadEspnData() {
   const leagueKey = leagueStore.activeLeagueId
-  if (!leagueKey || leagueStore.activePlatform !== 'espn') return
+  console.log('[ESPN HOME] loadEspnData called:', {
+    leagueKey,
+    activePlatform: leagueStore.activePlatform,
+    yahooTeamsCount: leagueStore.yahooTeams?.length,
+    isPointsLeague: isPointsLeague.value
+  })
   
-  console.log('[ESPN] loadEspnData for:', leagueKey)
+  if (!leagueKey || leagueStore.activePlatform !== 'espn') {
+    console.log('[ESPN HOME] Early return:', { leagueKey, platform: leagueStore.activePlatform })
+    return
+  }
+  
+  console.log('[ESPN HOME] loadEspnData for:', leagueKey)
   isLoading.value = true
   loadingStatus.value = 'Initializing ESPN data...'
   
@@ -4786,6 +4817,11 @@ watch(() => leagueStore.currentLeague?.league_id, (newKey, oldKey) => {
 })
 
 watch(() => leagueStore.yahooTeams, () => {
+  console.log('[HOME watch yahooTeams]', {
+    yahooTeamsLength: leagueStore.yahooTeams?.length,
+    activePlatform: leagueStore.activePlatform
+  })
+  
   if (leagueStore.yahooTeams.length > 0) {
     if (leagueStore.activePlatform === 'yahoo') loadAllData()
     if (leagueStore.activePlatform === 'espn') loadEspnData()
@@ -4812,6 +4848,12 @@ function checkScrollHint() {
 }
 
 onMounted(() => {
+  console.log('[HOME onMounted]', {
+    yahooTeamsLength: leagueStore.yahooTeams?.length,
+    activePlatform: leagueStore.activePlatform,
+    activeLeagueId: leagueStore.activeLeagueId
+  })
+  
   if (leagueStore.yahooTeams.length > 0) {
     if (leagueStore.activePlatform === 'yahoo') loadAllData()
     if (leagueStore.activePlatform === 'espn') loadEspnData()
