@@ -137,7 +137,7 @@
                 <div class="text-sm text-dark-textMuted">
                   {{ isPointsLeague 
                     ? `${leaders.mostPoints?.wins || 0}-${leaders.mostPoints?.losses || 0}` 
-                    : `${leaders.bestCatWinPct?.totalCategoryWins || 0}-${leaders.bestCatWinPct?.totalCategoryLosses || 0}` }}
+                    : `${leaders.bestCatWinPct?.totalCategoryWins || leaders.bestCatWinPct?.wins || 0}-${leaders.bestCatWinPct?.totalCategoryLosses || leaders.bestCatWinPct?.losses || 0}` }}
                 </div>
               </div>
             </div>
@@ -159,9 +159,11 @@
         >
           <div class="absolute top-0 right-0 w-24 h-24 bg-blue-500/5 rounded-full -translate-y-1/2 translate-x-1/2 group-hover:scale-150 transition-transform duration-500"></div>
           <div class="relative p-5">
-            <div class="text-xs uppercase tracking-wider text-blue-400 font-bold mb-3">
+            <div class="text-xs uppercase tracking-wider text-blue-400 font-bold mb-1">
               {{ isPointsLeague ? 'Best All-Play' : 'Most Dominant Wins' }}
             </div>
+            <div v-if="!isPointsLeague" class="text-[10px] text-dark-textMuted mb-2">Weeks with ≤2 category losses</div>
+            <div v-else class="mb-3"></div>
             <div class="flex items-center gap-3 mb-3">
               <img 
                 :src="getLogoUrl(isPointsLeague ? leaders.bestAllPlay?.logo_url : leaders.mostDominant?.logo_url)" 
@@ -175,7 +177,7 @@
                 <div class="text-sm text-dark-textMuted">
                   {{ isPointsLeague 
                     ? (leaders.bestAllPlay ? `${leaders.bestAllPlay.wins}-${leaders.bestAllPlay.losses}` : '') 
-                    : (leaders.mostDominant ? `${leaders.mostDominant.totalCategoryWins || 0}-${leaders.mostDominant.totalCategoryLosses || 0}` : '') }}
+                    : (leaders.mostDominant ? `${leaders.mostDominant.totalCategoryWins || leaders.mostDominant.wins || 0}-${leaders.mostDominant.totalCategoryLosses || leaders.mostDominant.losses || 0}` : '') }}
                 </div>
               </div>
             </div>
@@ -1498,11 +1500,16 @@ const leaders = computed(() => {
   const sortedByAllPlay = [...teams].sort((a, b) => (b.all_play_wins || 0) - (a.all_play_wins || 0))
   
   // Category win percentage (totalCategoryWins / (totalCategoryWins + totalCategoryLosses))
+  // Falls back to team.wins/losses if totalCategoryWins not available
   const sortedByCatWinPct = [...teams].sort((a, b) => {
-    const aTotal = (a.totalCategoryWins || 0) + (a.totalCategoryLosses || 0)
-    const bTotal = (b.totalCategoryWins || 0) + (b.totalCategoryLosses || 0)
-    const aPct = aTotal > 0 ? (a.totalCategoryWins || 0) / aTotal : 0
-    const bPct = bTotal > 0 ? (b.totalCategoryWins || 0) / bTotal : 0
+    const aWins = a.totalCategoryWins || a.wins || 0
+    const aLosses = a.totalCategoryLosses || a.losses || 0
+    const bWins = b.totalCategoryWins || b.wins || 0
+    const bLosses = b.totalCategoryLosses || b.losses || 0
+    const aTotal = aWins + aLosses
+    const bTotal = bWins + bLosses
+    const aPct = aTotal > 0 ? aWins / aTotal : 0
+    const bPct = bTotal > 0 ? bWins / bTotal : 0
     return bPct - aPct
   })
   
@@ -1559,15 +1566,22 @@ const leaderModalData = computed(() => {
     maxValue = Math.max(...teams.map(t => t.points_for || 0), 1)
   } else if (leaderModalType.value === 'bestCatWinPct') {
     // Best category win percentage (category leagues)
+    // Falls back to team.wins/losses if totalCategoryWins not available
     comparison = [...teams].sort((a, b) => {
-      const aTotal = (a.totalCategoryWins || 0) + (a.totalCategoryLosses || 0)
-      const bTotal = (b.totalCategoryWins || 0) + (b.totalCategoryLosses || 0)
-      const aPct = aTotal > 0 ? (a.totalCategoryWins || 0) / aTotal : 0
-      const bPct = bTotal > 0 ? (b.totalCategoryWins || 0) / bTotal : 0
+      const aWins = a.totalCategoryWins || a.wins || 0
+      const aLosses = a.totalCategoryLosses || a.losses || 0
+      const bWins = b.totalCategoryWins || b.wins || 0
+      const bLosses = b.totalCategoryLosses || b.losses || 0
+      const aTotal = aWins + aLosses
+      const bTotal = bWins + bLosses
+      const aPct = aTotal > 0 ? aWins / aTotal : 0
+      const bPct = bTotal > 0 ? bWins / bTotal : 0
       return bPct - aPct
     }).map(t => {
-      const total = (t.totalCategoryWins || 0) + (t.totalCategoryLosses || 0)
-      const pct = total > 0 ? ((t.totalCategoryWins || 0) / total) * 100 : 0
+      const wins = t.totalCategoryWins || t.wins || 0
+      const losses = t.totalCategoryLosses || t.losses || 0
+      const total = wins + losses
+      const pct = total > 0 ? (wins / total) * 100 : 0
       return { ...t, value: pct }
     })
     maxValue = 100
@@ -1600,7 +1614,7 @@ const leaderModalTitle = computed(() => {
   if (leaderModalType.value === 'bestRecord') return 'Best Record'
   if (leaderModalType.value === 'mostPoints') return 'Most Points'
   if (leaderModalType.value === 'bestCatWinPct') return 'Best Category Win %'
-  if (leaderModalType.value === 'mostDominant') return 'Most Dominant Wins'
+  if (leaderModalType.value === 'mostDominant') return 'Most Dominant Wins (≤2 cat losses)'
   if (leaderModalType.value === 'bestAllPlay') return 'Best All-Play Record'
   if (leaderModalType.value === 'luckiest') return '🍀 Luckiest Teams'
   if (leaderModalType.value === 'unluckiest') return '😢 Unluckiest Teams'
@@ -2331,9 +2345,12 @@ function getWinPercentage(team: any) {
 }
 
 function getCatWinPct(team: any) {
-  const total = (team?.totalCategoryWins || 0) + (team?.totalCategoryLosses || 0)
+  // Try totalCategoryWins first, fallback to regular wins (which are category wins for category leagues)
+  const catWins = team?.totalCategoryWins || team?.wins || 0
+  const catLosses = team?.totalCategoryLosses || team?.losses || 0
+  const total = catWins + catLosses
   if (total === 0) return '0'
-  return ((team.totalCategoryWins / total) * 100).toFixed(1)
+  return ((catWins / total) * 100).toFixed(1)
 }
 
 function getMatchupScoreClass(matchup: any, teamIndex: number) {
@@ -3903,6 +3920,11 @@ async function loadAllMatchups() {
       
       weeklyStandings.value = standings
       weeklyMatchupResults.value = allMatchupResults
+      
+      // Store final cumulative category wins/losses for use in computed properties
+      teamTotalCategoryWins.value = cumulativeCatWins
+      teamTotalCategoryLosses.value = cumulativeCatLosses
+      
       console.log(`Loaded ${standings.size} weeks of category matchup data`)
       
     } else {
