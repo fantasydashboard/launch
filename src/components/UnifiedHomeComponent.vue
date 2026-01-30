@@ -1083,6 +1083,9 @@ const teamTotalCategoryWins = ref<Map<string, number>>(new Map())
 const teamTotalCategoryLosses = ref<Map<string, number>>(new Map())
 const espnHasRealStatValues = ref(false) // Track if ESPN provided real per-category stat values
 const weeklyStandings = ref<Map<number, any[]>>(new Map())
+
+// ESPN calculated standings from getStandings() - has correct wins/losses for category leagues
+const espnCalculatedStandings = ref<Map<string, { wins: number; losses: number; ties: number; categoryWins: number; categoryLosses: number }>>(new Map())
 const displayMatchups = ref<any[]>([])
 
 // Computed: Get regular season ranks based on category win percentage
@@ -1278,57 +1281,12 @@ const teamsWithStats = computed(() => {
   if (leagueStore.yahooTeams.length > 0 && isPointsLeague.value) {
     console.log('[teamsWithStats] Computing for', leagueStore.yahooTeams.length, 'teams')
     console.log('[teamsWithStats] espnWeeklyScores size:', espnWeeklyScores.value.size)
-    console.log('[teamsWithStats] espnWeeklyScores keys:', [...espnWeeklyScores.value.keys()])
-    console.log('[teamsWithStats] weeklyMatchupResults size:', weeklyMatchupResults.value.size)
-    console.log('[teamsWithStats] Sample team_key:', leagueStore.yahooTeams[0]?.team_key)
-    
-    // Check if keys match
-    const firstTeamKey = leagueStore.yahooTeams[0]?.team_key
-    const hasScoresForFirstTeam = espnWeeklyScores.value.has(firstTeamKey)
-    console.log('[teamsWithStats] First team has scores?', hasScoresForFirstTeam)
-    if (hasScoresForFirstTeam) {
-      const scores = espnWeeklyScores.value.get(firstTeamKey)
-      console.log('[teamsWithStats] First team score count:', scores?.size, 'sample:', scores?.size ? [...scores.entries()].slice(0, 3) : 'none')
-    }
   }
   
   // Debug for category leagues
   if (leagueStore.yahooTeams.length > 0 && !isPointsLeague.value) {
     console.log('[teamsWithStats CATEGORY] Computing for', leagueStore.yahooTeams.length, 'teams')
-    console.log('[teamsWithStats CATEGORY] teamCategoryWins size:', teamCategoryWins.value.size)
-    console.log('[teamsWithStats CATEGORY] teamTotalCategoryWins size:', teamTotalCategoryWins.value.size)
-    console.log('[teamsWithStats CATEGORY] weeklyMatchupResults size:', weeklyMatchupResults.value.size)
-    console.log('[teamsWithStats CATEGORY] weeklyStandings size:', weeklyStandings.value.size)
-  }
-  
-  // For category leagues with zero wins in store, get calculated wins from weeklyStandings
-  // This happens with ESPN Basketball where API returns zeros but we calculate from matchups
-  const calculatedStandings = new Map<string, { wins: number; losses: number; ties: number; points_for: number }>()
-  if (!isPointsLeague.value && weeklyStandings.value.size > 0) {
-    // Get the latest week's standings (which has cumulative wins/losses)
-    const weeks = Array.from(weeklyStandings.value.keys()).sort((a, b) => b - a)
-    const latestWeek = weeks[0]
-    const latestStandings = weeklyStandings.value.get(latestWeek) || []
-    
-    console.log('[teamsWithStats CATEGORY] Using calculated standings from week', latestWeek, 'with', latestStandings.length, 'teams')
-    
-    latestStandings.forEach((standing: any) => {
-      calculatedStandings.set(standing.team_key, {
-        wins: standing.wins || 0,
-        losses: standing.losses || 0,
-        ties: standing.ties || 0,
-        points_for: standing.points_for || 0
-      })
-    })
-    
-    if (latestStandings.length > 0) {
-      console.log('[teamsWithStats CATEGORY] Sample calculated standing:', {
-        team_key: latestStandings[0].team_key,
-        name: latestStandings[0].name,
-        wins: latestStandings[0].wins,
-        losses: latestStandings[0].losses
-      })
-    }
+    console.log('[teamsWithStats CATEGORY] espnCalculatedStandings size:', espnCalculatedStandings.value.size)
   }
   
   return leagueStore.yahooTeams.map(team => {
@@ -1336,21 +1294,23 @@ const teamsWithStats = computed(() => {
     const categoryWins = teamCategoryWins.value.get(team.team_key) || {}
     const numTeams = leagueStore.yahooTeams.length
     
-    // Use calculated standings if available (for ESPN category leagues with zero store data)
-    const calculated = calculatedStandings.get(team.team_key)
-    const teamWins = calculated?.wins ?? team.wins ?? 0
-    const teamLosses = calculated?.losses ?? team.losses ?? 0
-    const teamTies = calculated?.ties ?? team.ties ?? 0
-    const teamPointsFor = calculated?.points_for ?? team.points_for ?? 0
+    // For ESPN category leagues, use espnCalculatedStandings (from getStandings API)
+    // This has the correct wins/losses calculated from matchup history
+    const espnStanding = espnCalculatedStandings.value.get(team.team_key)
+    const teamWins = espnStanding?.wins ?? team.wins ?? 0
+    const teamLosses = espnStanding?.losses ?? team.losses ?? 0
+    const teamTies = espnStanding?.ties ?? team.ties ?? 0
+    const teamPointsFor = team.points_for ?? 0
     
-    // Debug: log when we're using calculated values
-    if (calculated && (team.wins === 0 || team.wins === undefined)) {
-      console.log('[teamsWithStats] Using calculated standings for', team.name, ':', { 
-        calculatedWins: teamWins, 
-        calculatedLosses: teamLosses,
-        storeWins: team.wins,
-        storeLosses: team.losses
-      })
+    // Debug: log when we're using ESPN calculated values
+    if (espnStanding && leagueStore.activePlatform === 'espn') {
+      if (team.wins === 0 && espnStanding.wins > 0) {
+        console.log('[teamsWithStats] Using ESPN standings for', team.name, ':', { 
+          espnWins: teamWins, 
+          espnLosses: teamLosses,
+          storeWins: team.wins
+        })
+      }
     }
     
     let all_play_wins = 0
@@ -4390,6 +4350,41 @@ async function loadEspnData() {
     // Dynamically import ESPN service
     loadingStatus.value = 'Loading ESPN service...'
     const { espnService } = await import('@/services/espn')
+    
+    // FIRST: Get standings from ESPN service - this uses calculateStandingsFromMatchupHistory
+    // which correctly determines winners for category leagues
+    loadingStatus.value = 'Fetching standings...'
+    try {
+      const standings = await espnService.getStandings(sport, espnLeagueId, season)
+      console.log('[ESPN] Got standings for', standings.length, 'teams')
+      
+      // Build espnCalculatedStandings map using team_key format
+      const standingsMap = new Map<string, { wins: number; losses: number; ties: number; categoryWins: number; categoryLosses: number }>()
+      
+      for (const team of standings) {
+        // Find matching team in yahooTeams to get the team_key
+        const yahooTeam = leagueStore.yahooTeams.find(t => 
+          t.team_id === team.id.toString() || 
+          t.team_key.endsWith(`_${team.id}`)
+        )
+        
+        if (yahooTeam) {
+          standingsMap.set(yahooTeam.team_key, {
+            wins: team.wins || 0,
+            losses: team.losses || 0,
+            ties: team.ties || 0,
+            categoryWins: (team as any).categoryWins || 0,
+            categoryLosses: (team as any).categoryLosses || 0
+          })
+          console.log(`[ESPN] Standings for ${team.name}: ${team.wins}-${team.losses}`)
+        }
+      }
+      
+      espnCalculatedStandings.value = standingsMap
+      console.log('[ESPN] Populated espnCalculatedStandings with', standingsMap.size, 'teams')
+    } catch (standingsErr) {
+      console.warn('[ESPN] Could not fetch standings:', standingsErr)
+    }
     
     // Fetch transactions for move counts
     loadingStatus.value = 'Fetching transactions...'
