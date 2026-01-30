@@ -721,6 +721,178 @@ async function fetchRawData(): Promise<any> {
       return { matchups: yahooMatchups, teams: yahooTeams }
     
     case 'espn':
+      // For ESPN category leagues, fetch fresh data from the ESPN service
+      // to get accurate category wins/losses (similar to how Matchups and Power Rankings pages work)
+      if (isCat) {
+        try {
+          const leagueKey = leagueStore.activeLeagueId
+          if (leagueKey && typeof leagueKey === 'string' && leagueKey.startsWith('espn_')) {
+            const parts = leagueKey.split('_')
+            if (parts.length >= 4) {
+              const espnSport = parts[1] as 'football' | 'baseball' | 'basketball' | 'hockey'
+              const espnLeagueId = parts[2]
+              const espnSeason = parseInt(parts[3]) || new Date().getFullYear()
+              
+              // Import ESPN service dynamically
+              const { espnService } = await import('@/services/espn')
+              
+              console.log('[UnifiedSeasonView] Fetching ESPN category data for', espnSport, espnLeagueId, espnSeason)
+              
+              // Get current week
+              const week = currentWeek.value
+              const completedWeeks = Math.max(0, week - 1)
+              
+              // Track matchup wins/losses and category totals for each team
+              const teamStats = new Map<string, {
+                matchupWins: number
+                matchupLosses: number
+                matchupTies: number
+                categoryWins: number
+                categoryLosses: number
+              }>()
+              
+              // Initialize all teams
+              for (const team of leagueStore.yahooTeams) {
+                teamStats.set(team.team_id, {
+                  matchupWins: 0,
+                  matchupLosses: 0,
+                  matchupTies: 0,
+                  categoryWins: 0,
+                  categoryLosses: 0
+                })
+              }
+              
+              // Fetch all completed weeks to calculate standings
+              loadingMessage.value = `Loading standings data (0/${completedWeeks} weeks)...`
+              for (let w = 1; w <= completedWeeks; w++) {
+                loadingMessage.value = `Loading standings data (${w}/${completedWeeks} weeks)...`
+                try {
+                  const weekMatchups = await espnService.getMatchups(espnSport, espnLeagueId, espnSeason, w)
+                  
+                  for (const m of weekMatchups) {
+                    if (!m.awayTeamId) continue // Skip bye weeks
+                    
+                    const homeStats = teamStats.get(String(m.homeTeamId))
+                    const awayStats = teamStats.get(String(m.awayTeamId))
+                    
+                    if (!homeStats || !awayStats) continue
+                    
+                    // Get category wins for this matchup
+                    const homeCatWins = m.homeCategoryWins || 0
+                    const awayCatWins = m.awayCategoryWins || 0
+                    
+                    // Add to category totals
+                    homeStats.categoryWins += homeCatWins
+                    homeStats.categoryLosses += (m.homeCategoryLosses || awayCatWins)
+                    awayStats.categoryWins += awayCatWins
+                    awayStats.categoryLosses += (m.awayCategoryLosses || homeCatWins)
+                    
+                    // Determine matchup winner (who won more categories)
+                    if (homeCatWins > awayCatWins) {
+                      homeStats.matchupWins++
+                      awayStats.matchupLosses++
+                    } else if (awayCatWins > homeCatWins) {
+                      awayStats.matchupWins++
+                      homeStats.matchupLosses++
+                    } else if (homeCatWins > 0 || awayCatWins > 0) {
+                      // Tie
+                      homeStats.matchupTies++
+                      awayStats.matchupTies++
+                    }
+                  }
+                } catch (e) {
+                  console.warn(`[UnifiedSeasonView] Error fetching week ${w}:`, e)
+                }
+              }
+              
+              // Get current week matchups
+              loadingMessage.value = 'Loading current matchups...'
+              const currentMatchups = await espnService.getMatchups(espnSport, espnLeagueId, espnSeason, week)
+              
+              // Build teams with accurate data
+              const teamsWithCategoryData = leagueStore.yahooTeams.map(team => {
+                const stats = teamStats.get(team.team_id) || {
+                  matchupWins: 0,
+                  matchupLosses: 0,
+                  matchupTies: 0,
+                  categoryWins: 0,
+                  categoryLosses: 0
+                }
+                
+                return {
+                  ...team,
+                  wins: stats.matchupWins,
+                  losses: stats.matchupLosses,
+                  ties: stats.matchupTies,
+                  category_wins: stats.categoryWins,
+                  category_losses: stats.categoryLosses
+                }
+              })
+              
+              // Sort teams by wins, then category win percentage
+              teamsWithCategoryData.sort((a, b) => {
+                if (b.wins !== a.wins) return b.wins - a.wins
+                if ((b.ties || 0) !== (a.ties || 0)) return (b.ties || 0) - (a.ties || 0)
+                const aCatTotal = (a.category_wins || 0) + (a.category_losses || 0) || 1
+                const bCatTotal = (b.category_wins || 0) + (b.category_losses || 0) || 1
+                return (b.category_wins / bCatTotal) - (a.category_wins / aCatTotal)
+              })
+              
+              // Assign ranks
+              teamsWithCategoryData.forEach((team, idx) => {
+                team.rank = idx + 1
+              })
+              
+              // Build matchups with category data
+              const processedMatchups = currentMatchups.map(m => {
+                if (!m.awayTeamId) return null
+                
+                const homeTeam = teamsWithCategoryData.find(t => t.team_id === String(m.homeTeamId))
+                const awayTeam = teamsWithCategoryData.find(t => t.team_id === String(m.awayTeamId))
+                
+                if (!homeTeam || !awayTeam) return null
+                
+                return {
+                  matchup_id: m.id,
+                  week,
+                  team1: { ...homeTeam, points: m.homeScore || 0, category_wins: m.homeCategoryWins || 0 },
+                  team2: { ...awayTeam, points: m.awayScore || 0, category_wins: m.awayCategoryWins || 0 },
+                  teams: [homeTeam, awayTeam],
+                  is_category_league: true,
+                  home_category_wins: m.homeCategoryWins || 0,
+                  away_category_wins: m.awayCategoryWins || 0,
+                  home_category_losses: m.homeCategoryLosses || 0,
+                  away_category_losses: m.awayCategoryLosses || 0
+                }
+              }).filter(Boolean)
+              
+              console.log('[UnifiedSeasonView] ESPN category data loaded:', {
+                teams: teamsWithCategoryData.length,
+                matchups: processedMatchups.length,
+                completedWeeks,
+                sampleTeam: teamsWithCategoryData[0] ? {
+                  name: teamsWithCategoryData[0].name,
+                  wins: teamsWithCategoryData[0].wins,
+                  losses: teamsWithCategoryData[0].losses,
+                  category_wins: teamsWithCategoryData[0].category_wins
+                } : null
+              })
+              
+              return {
+                preTransformed: true,
+                isCategoryLeague: true,
+                matchups: processedMatchups,
+                teams: teamsWithCategoryData
+              }
+            }
+          }
+        } catch (e) {
+          console.error('[UnifiedSeasonView] Error fetching ESPN category data:', e)
+          // Fall back to store data
+        }
+      }
+      
+      // Default: use store data (for points leagues or if category fetch failed)
       return {
         preTransformed: true,
         isCategoryLeague: isCat,
