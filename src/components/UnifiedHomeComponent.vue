@@ -815,6 +815,7 @@ import { ref, computed, watch, onMounted, Teleport } from 'vue'
 import { useLeagueStore } from '@/stores/league'
 import { useAuthStore } from '@/stores/auth'
 import { yahooService } from '@/services/yahoo'
+import { espnService } from '@/services/espn'
 import LoadingSpinner from '@/components/LoadingSpinner.vue'
 
 const leagueStore = useLeagueStore()
@@ -3814,7 +3815,7 @@ async function loadAllMatchups() {
   
   // For ESPN, fetch matchups week-by-week (like Power Rankings does)
   if (leagueStore.activePlatform === 'espn') {
-    console.log('[ESPN loadAllMatchups] FETCHING REAL MATCHUPS')
+    console.log('[ESPN loadAllMatchups v3.0] FETCHING REAL MATCHUPS')
     displayMatchups.value = leagueStore.yahooMatchups || []
     
     try {
@@ -3824,8 +3825,7 @@ async function loadAllMatchups() {
       const espnLeagueId = parts[2]
       const season = parseInt(parts[3])
       
-      // Import ESPN service
-      const { espnService } = await import('@/services/espn')
+      // Use static espnService import (like Power Rankings does)
       const league = await espnService.getLeague(sport, espnLeagueId, season)
       
       const currentWeek = league?.status?.currentMatchupPeriod || 15
@@ -4247,7 +4247,7 @@ async function loadAllMatchups() {
 // we simulate the progression based on final standings
 // Build standings from REAL weekly matchup results - NO SIMULATION
 function buildStandingsFromRealMatchups(startWeek: number, endWeek: number) {
-  console.log('=== BUILD v2.0 FIX DEPLOYED ===')
+  console.log('=== BUILD v3.0 STATIC IMPORT FIX ===')
   console.log(`[Standings] Building REAL standings from matchups, weeks ${startWeek}-${endWeek}`)
   console.log('[Standings] yahooTeams count:', leagueStore.yahooTeams?.length)
   console.log('[Standings] weeklyMatchupResults size:', weeklyMatchupResults.value.size)
@@ -4470,9 +4470,8 @@ async function loadEspnData() {
     const espnLeagueId = parts[2]
     const season = parseInt(parts[3])
     
-    // Dynamically import ESPN service
-    loadingStatus.value = 'Loading ESPN service...'
-    const { espnService } = await import('@/services/espn')
+    // Use static espnService import
+    loadingStatus.value = 'Loading ESPN data...'
     
     // For category leagues, calculate standings from matchups (like Power Rankings does)
     // This bypasses the API's zero values and calculates real wins/losses
