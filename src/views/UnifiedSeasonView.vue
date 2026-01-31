@@ -987,22 +987,79 @@ async function fetchRawData(): Promise<any> {
                 }
               })
               
-              // Check if our calculation found any wins - if not, use store data as fallback
+              // Check if our calculation found any wins - if not, try roto fallback
               const hasAnyWins = teamsWithCategoryData.some(t => t.wins > 0 || t.losses > 0)
               if (!hasAnyWins) {
-                console.log('[UnifiedSeasonView] No wins calculated from matchups - using store data as fallback')
-                // Use the original store data which might have data from getStandings()
-                teamsWithCategoryData = leagueStore.yahooTeams.map(team => ({
-                  ...team,
-                  category_wins: team.category_wins || 0,
-                  category_losses: team.category_losses || 0
-                }))
+                console.log('[UnifiedSeasonView] No wins calculated from matchups - trying roto calculation fallback')
+                
+                try {
+                  // Fetch ESPN teams with valuesByStat for roto calculation
+                  const espnTeamsWithStats = await espnService.getTeams(espnSport, espnLeagueId, espnSeason)
+                  const teamsWithValuesByStat = espnTeamsWithStats.filter(t => t.valuesByStat && Object.keys(t.valuesByStat).length > 0)
+                  
+                  if (teamsWithValuesByStat.length > 0) {
+                    console.log('[UnifiedSeasonView] Found teams with valuesByStat - calculating roto standings')
+                    
+                    // Calculate roto standings from stat values
+                    const teamsWithRoto = espnService.calculateRotoStandings(teamsWithValuesByStat, espnSport)
+                    
+                    // Map roto points to our team format
+                    const rotoMap = new Map<number, number>()
+                    teamsWithRoto.forEach(t => rotoMap.set(t.id, t.rotoPoints || 0))
+                    
+                    // Update teams with roto points
+                    teamsWithCategoryData = teamsWithCategoryData.map(team => {
+                      const rotoPoints = rotoMap.get(Number(team.team_id)) || 0
+                      return {
+                        ...team,
+                        category_wins: rotoPoints, // Use roto points as "category wins" for display
+                        category_losses: 0,
+                        roto_points: rotoPoints
+                      }
+                    })
+                    
+                    console.log('[UnifiedSeasonView] Roto standings calculated:', teamsWithCategoryData.map(t => ({
+                      name: t.name,
+                      roto: (t as any).roto_points
+                    })))
+                  } else {
+                    console.log('[UnifiedSeasonView] No valuesByStat data in ESPN teams')
+                    // Use the original store data
+                    teamsWithCategoryData = leagueStore.yahooTeams.map(team => ({
+                      ...team,
+                      category_wins: team.category_wins || 0,
+                      category_losses: team.category_losses || 0
+                    }))
+                  }
+                } catch (rotoErr) {
+                  console.warn('[UnifiedSeasonView] Error calculating roto standings:', rotoErr)
+                  // Use the original store data which might have data from getStandings()
+                  teamsWithCategoryData = leagueStore.yahooTeams.map(team => ({
+                    ...team,
+                    category_wins: team.category_wins || 0,
+                    category_losses: team.category_losses || 0
+                  }))
+                }
               }
               
-              // Sort teams by wins, then category win percentage
+              // Sort teams - by wins if available, otherwise by roto points/category wins
               teamsWithCategoryData.sort((a, b) => {
-                if (b.wins !== a.wins) return b.wins - a.wins
-                if ((b.ties || 0) !== (a.ties || 0)) return (b.ties || 0) - (a.ties || 0)
+                // First, check if we have actual matchup wins
+                const aWins = a.wins || 0
+                const bWins = b.wins || 0
+                if (aWins > 0 || bWins > 0) {
+                  if (bWins !== aWins) return bWins - aWins
+                  if ((b.ties || 0) !== (a.ties || 0)) return (b.ties || 0) - (a.ties || 0)
+                }
+                
+                // If using roto points, sort by those
+                const aRoto = (a as any).roto_points
+                const bRoto = (b as any).roto_points
+                if (aRoto !== undefined || bRoto !== undefined) {
+                  return (bRoto || 0) - (aRoto || 0)
+                }
+                
+                // Fall back to category win percentage
                 const aCatTotal = (a.category_wins || 0) + (a.category_losses || 0) || 1
                 const bCatTotal = (b.category_wins || 0) + (b.category_losses || 0) || 1
                 return (b.category_wins / bCatTotal) - (a.category_wins / aCatTotal)

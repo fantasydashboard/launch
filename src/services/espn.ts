@@ -214,6 +214,10 @@ export interface EspnTeam {
     away: { wins: number; losses: number; ties: number }
     division: { wins: number; losses: number; ties: number }
   }
+  // Raw stat values for category leagues (stat ID -> value)
+  valuesByStat?: Record<string, number> | null
+  // Calculated roto-style points when ESPN doesn't provide category win/loss data
+  rotoPoints?: number
 }
 
 export interface EspnPlayer {
@@ -595,6 +599,73 @@ export class EspnFantasyService {
       console.error('Error fetching ESPN teams:', error)
       throw error
     }
+  }
+
+  /**
+   * Calculate roto-style standings from team stats when ESPN doesn't provide category win/loss data.
+   * This is a fallback for category leagues where scoreByStat returns null.
+   * 
+   * For each stat category, teams are ranked and awarded points based on position.
+   * In a 10-team league: 1st place gets 10 points, 2nd gets 9, etc.
+   */
+  calculateRotoStandings(teams: EspnTeam[], sport: Sport): EspnTeam[] {
+    // Filter teams that have valuesByStat data
+    const teamsWithStats = teams.filter(t => t.valuesByStat && Object.keys(t.valuesByStat).length > 0)
+    
+    if (teamsWithStats.length === 0) {
+      console.log('[ESPN calculateRotoStandings] No teams with valuesByStat data')
+      return teams
+    }
+    
+    const numTeams = teamsWithStats.length
+    console.log(`[ESPN calculateRotoStandings] Calculating for ${numTeams} teams`)
+    
+    // Get all stat categories from the first team
+    const statIds = Object.keys(teamsWithStats[0].valuesByStat!)
+    console.log(`[ESPN calculateRotoStandings] Stat categories:`, statIds)
+    
+    // Stats where LOWER is better (turnovers)
+    // ESPN stat ID 11 = turnovers for basketball
+    // ESPN stat ID 17 = goals against for hockey
+    const lowerIsBetter: Record<Sport, string[]> = {
+      football: [],
+      basketball: ['11'], // Turnovers
+      baseball: ['26', '27'], // ERA, WHIP
+      hockey: ['17'] // Goals Against
+    }
+    
+    const reversedStats = lowerIsBetter[sport] || []
+    
+    // Initialize roto points for each team
+    const rotoPoints: Record<number, number> = {}
+    teamsWithStats.forEach(t => { rotoPoints[t.id] = 0 })
+    
+    // For each stat category, rank teams and award points
+    for (const statId of statIds) {
+      // Get all teams' values for this stat
+      const teamValues = teamsWithStats.map(t => ({
+        teamId: t.id,
+        value: t.valuesByStat![statId] ?? 0
+      }))
+      
+      // Sort by value (descending for most stats, ascending for "lower is better" stats)
+      const isReversed = reversedStats.includes(statId)
+      teamValues.sort((a, b) => isReversed ? a.value - b.value : b.value - a.value)
+      
+      // Award points based on rank (1st place = numTeams points, last = 1 point)
+      teamValues.forEach((tv, index) => {
+        const points = numTeams - index
+        rotoPoints[tv.teamId] += points
+      })
+    }
+    
+    console.log('[ESPN calculateRotoStandings] Roto points:', rotoPoints)
+    
+    // Return teams with rotoPoints populated
+    return teams.map(t => ({
+      ...t,
+      rotoPoints: rotoPoints[t.id] || 0
+    }))
   }
 
   /**
@@ -2843,7 +2914,9 @@ export class EspnFantasyService {
           home: team.record.home,
           away: team.record.away,
           division: team.record.division
-        } : undefined
+        } : undefined,
+        // Store raw stat values for category league calculations
+        valuesByStat: team.valuesByStat || null
       }
     })
   }
