@@ -1306,10 +1306,22 @@ const teamsWithStats = computed(() => {
     const numTeams = leagueStore.yahooTeams.length
     
     // Use store data directly - same as Matchups page does
-    const teamWins = team.wins || 0
-    const teamLosses = team.losses || 0
-    const teamTies = team.ties || 0
+    let teamWins = team.wins || 0
+    let teamLosses = team.losses || 0
+    let teamTies = team.ties || 0
     const teamPointsFor = team.points_for ?? 0
+    
+    // For ESPN category leagues with ROTO calculation, use category totals as the "record"
+    // since we don't have actual matchup win/loss data
+    const totalCatWins = teamTotalCategoryWins.value.get(team.team_key) || 0
+    const totalCatLosses = teamTotalCategoryLosses.value.get(team.team_key) || 0
+    
+    if (!isPointsLeague.value && leagueStore.activePlatform === 'espn' && teamWins === 0 && teamLosses === 0) {
+      // Use category totals as record for display
+      teamWins = totalCatWins
+      teamLosses = totalCatLosses
+      console.log('[teamsWithStats] ESPN category - using category totals as record for', team.name, ':', teamWins, '-', teamLosses)
+    }
     
     let all_play_wins = 0
     let all_play_losses = 0
@@ -2027,6 +2039,18 @@ const last3WeeksWins = computed(() => {
   console.log('[last3WeeksWins] isPointsLeague:', isPointsLeague.value)
   console.log('[last3WeeksWins] platform:', leagueStore.activePlatform)
   
+  // For ESPN category leagues with ROTO calculation, use total category wins as fallback
+  // since we don't have weekly data
+  if (!isPointsLeague.value && leagueStore.activePlatform === 'espn' && standingsWeeks.length < 2) {
+    console.log('[last3WeeksWins] ESPN category - using total category wins as fallback')
+    leagueStore.yahooTeams.forEach(team => {
+      const totalCatWins = teamTotalCategoryWins.value.get(team.team_key) || 0
+      result.set(team.team_key, totalCatWins)
+    })
+    console.log('[last3WeeksWins] ESPN fallback result:', [...result.entries()].slice(0, 3))
+    return result
+  }
+  
   if (standingsWeeks.length < 2) {
     leagueStore.yahooTeams.forEach(team => result.set(team.team_key, 0))
     console.log('[last3WeeksWins] Not enough weeks, returning zeros')
@@ -2174,8 +2198,10 @@ const quickStats = computed(() => {
   const coldest = [...teamsWithLast3].sort((a, b) => a.last3Wins - b.last3Wins)[0]
   
   // For points leagues, show "X wins" in last 3 weeks
-  // For category leagues, show "X cat wins" in last 3 weeks
-  const winsLabel = isPointsLeague.value ? 'wins' : 'cat wins'
+  // For category leagues, show "X cat wins"
+  // For ESPN category leagues with ROTO fallback, we're showing total cat wins (not last 3 weeks)
+  const isEspnCategoryWithRoto = !isPointsLeague.value && leagueStore.activePlatform === 'espn' && Array.from(weeklyStandings.value.keys()).length < 2
+  const winsLabel = isPointsLeague.value ? 'wins' : (isEspnCategoryWithRoto ? 'total cat' : 'cat wins')
   
   // ALWAYS log this
   console.log('[quickStats] RESULT - hottest:', hottest?.name, 'with', hottest?.last3Wins, winsLabel, '| coldest:', coldest?.name, 'with', coldest?.last3Wins, winsLabel)
