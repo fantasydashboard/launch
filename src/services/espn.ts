@@ -508,6 +508,13 @@ export class EspnFantasyService {
     try {
       const data = await this.apiRequest(sport, leagueId, season, [ESPN_VIEWS.SETTINGS, ESPN_VIEWS.STATUS])
       
+      // Validate that ESPN returned actual league data
+      // If the sport/league combo is wrong, ESPN returns minimal data without settings.name or teams
+      if (!data.settings?.name && (!data.teams || data.teams.length === 0)) {
+        console.log(`[ESPN getLeague] Invalid response for ${sport} ${leagueId} ${season} - no name and no teams`)
+        return null
+      }
+      
       const league = this.parseLeague(data, sport)
       
       // Cache for metadata duration
