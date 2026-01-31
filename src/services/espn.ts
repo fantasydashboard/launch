@@ -3937,6 +3937,9 @@ export class EspnFantasyService {
           }
           
           console.log('[ESPN getCategoryStatsBreakdown] ROTO calculation complete. Sample team:', [...teamTotalCategoryWins.entries()][0])
+          
+          // Mark that we have real stat values (calculated via ROTO)
+          hasRealStatValues = true
         } else {
           console.log('[ESPN getCategoryStatsBreakdown] No teams with valuesByStat found')
         }
