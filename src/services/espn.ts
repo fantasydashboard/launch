@@ -779,13 +779,14 @@ export class EspnFantasyService {
       
       console.log(`[ESPN getMatchups] Using filterMatchupPeriodIds for week ${week}`)
       
-      // Request mScoreboard and mMatchupScore for category stats
-      // Note: mBoxscore adds a lot of data but isn't needed for category W-L-T
+      // Request all views ESPN website uses for category stats
+      // ESPN website uses: modular, mNav, mMatchupScore, mScoreboard, mSettings, mTopPerformers, mTeam
+      // We need mTeam to get team data and mScoreboard/mMatchupScore for scoreByStat
       const data = await this.apiRequest(
         sport, 
         leagueId, 
         season, 
-        [ESPN_VIEWS.MATCHUP_SCORE, ESPN_VIEWS.SCOREBOARD],
+        [ESPN_VIEWS.MATCHUP_SCORE, ESPN_VIEWS.SCOREBOARD, ESPN_VIEWS.TEAM, ESPN_VIEWS.MODULAR],
         week,
         false, // not historical
         fantasyFilter // pass the filter!
