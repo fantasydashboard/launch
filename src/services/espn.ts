@@ -441,6 +441,11 @@ export class EspnFantasyService {
       requestBody.fantasyFilter = JSON.stringify(fantasyFilter)
       console.log('[ESPN] Using x-fantasy-filter:', requestBody.fantasyFilter)
     }
+    
+    // CRITICAL: These headers are required for ESPN to return scoreByStat data
+    // Without them, category leagues get scoreByStat: null
+    requestBody.fantasyPlatform = 'espn-fantasy-web'
+    requestBody.fantasySource = 'kona'
 
     // Add timeout to prevent hanging
     const controller = new AbortController()
