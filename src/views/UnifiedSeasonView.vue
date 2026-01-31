@@ -176,7 +176,17 @@
               </router-link>
             </div>
             <div class="card-body">
+              <!-- Use CategoryStandingsTable for category leagues with per-category data -->
+              <CategoryStandingsTable
+                v-if="statCategories.length > 0 && categoryStandingsData.length > 0"
+                :standings="categoryStandingsData"
+                :categories="statCategories"
+                :my-team-id="myTeamId"
+                :playoff-teams="playoffTeams"
+              />
+              <!-- Fall back to regular StandingsTable for points leagues or when no category data -->
               <StandingsTable
+                v-else
                 :standings="standings"
                 :league-type="leagueType"
                 :my-team-id="myTeamId"
@@ -284,6 +294,7 @@ import type { UnifiedMatchup, UnifiedStandingsEntry, SportType, LeagueType } fro
 import { normalizeMatchups, normalizeStandings, type AdapterOptions } from '@/services/adapters'
 import LoadingSpinner from '@/components/LoadingSpinner.vue'
 import StandingsTable from '@/components/unified/StandingsTable.vue'
+import CategoryStandingsTable from '@/components/unified/CategoryStandingsTable.vue'
 import PointsMatchupCard from '@/components/unified/PointsMatchupCard.vue'
 import CategoryMatchupCard from '@/components/unified/CategoryMatchupCard.vue'
 
@@ -296,6 +307,8 @@ const loadingMessage = ref('Loading league data...')
 const matchups = ref<UnifiedMatchup[]>([])
 const standings = ref<UnifiedStandingsEntry[]>([])
 const teamsWithStats = ref<any[]>([])
+const statCategories = ref<any[]>([])
+const categoryStandingsData = ref<any[]>([])
 
 // Computed - League Info
 const leagueId = computed(() => leagueStore.activeLeagueId)
@@ -872,203 +885,51 @@ async function fetchRawData(): Promise<any> {
               
               console.log('[UnifiedSeasonView] Initialized teamStats for', teamStats.size, 'teams')
               
-              // Fetch all completed weeks to calculate standings
-              loadingMessage.value = `Loading standings data (0/${completedWeeks} weeks)...`
-              for (let w = 1; w <= completedWeeks; w++) {
-                loadingMessage.value = `Loading standings data (${w}/${completedWeeks} weeks)...`
-                try {
-                  const weekMatchups = await espnService.getMatchups(espnSport, espnLeagueId, espnSeason, w)
-                  
-                  console.log(`[UnifiedSeasonView] Week ${w}: ${weekMatchups.length} matchups`)
-                  if (w === 1 && weekMatchups.length > 0) {
-                    console.log('[UnifiedSeasonView] Week 1 first matchup:', {
-                      homeTeamId: weekMatchups[0].homeTeamId,
-                      awayTeamId: weekMatchups[0].awayTeamId,
-                      homeCategoryWins: weekMatchups[0].homeCategoryWins,
-                      awayCategoryWins: weekMatchups[0].awayCategoryWins,
-                      hasHomePerCategoryResults: !!weekMatchups[0].homePerCategoryResults
-                    })
-                  }
-                  
-                  for (const m of weekMatchups) {
-                    if (!m.awayTeamId) continue // Skip bye weeks
-                    
-                    const homeStats = teamStats.get(String(m.homeTeamId))
-                    const awayStats = teamStats.get(String(m.awayTeamId))
-                    
-                    if (!homeStats || !awayStats) {
-                      console.log('[UnifiedSeasonView] Team not found in teamStats:', {
-                        homeTeamId: m.homeTeamId,
-                        awayTeamId: m.awayTeamId,
-                        availableKeys: [...teamStats.keys()].slice(0, 5)
-                      })
-                      continue
-                    }
-                    
-                    // Get category wins for this matchup
-                    const homeCatWins = m.homeCategoryWins || 0
-                    const awayCatWins = m.awayCategoryWins || 0
-                    
-                    // Add to category totals if available
-                    if (homeCatWins > 0 || awayCatWins > 0) {
-                      homeStats.categoryWins += homeCatWins
-                      homeStats.categoryLosses += (m.homeCategoryLosses || awayCatWins)
-                      awayStats.categoryWins += awayCatWins
-                      awayStats.categoryLosses += (m.awayCategoryLosses || homeCatWins)
-                      
-                      // Determine matchup winner from category wins
-                      if (homeCatWins > awayCatWins) {
-                        homeStats.matchupWins++
-                        awayStats.matchupLosses++
-                      } else if (awayCatWins > homeCatWins) {
-                        awayStats.matchupWins++
-                        homeStats.matchupLosses++
-                      } else {
-                        // Tie
-                        homeStats.matchupTies++
-                        awayStats.matchupTies++
-                      }
-                    }
-                    // Fallback: use winner field if category wins not available
-                    else if (m.winner) {
-                      console.log(`[UnifiedSeasonView] Week ${w}: Using winner field:`, m.winner)
-                      if (m.winner === 'HOME') {
-                        homeStats.matchupWins++
-                        awayStats.matchupLosses++
-                      } else if (m.winner === 'AWAY') {
-                        awayStats.matchupWins++
-                        homeStats.matchupLosses++
-                      } else if (m.winner === 'TIE') {
-                        homeStats.matchupTies++
-                        awayStats.matchupTies++
-                      }
-                    }
-                    // Fallback 2: Use scores to determine winner (works for both points and category)
-                    else if (m.homeScore > 0 || m.awayScore > 0) {
-                      console.log(`[UnifiedSeasonView] Week ${w}: Using scores to determine winner: ${m.homeScore} vs ${m.awayScore}`)
-                      if (m.homeScore > m.awayScore) {
-                        homeStats.matchupWins++
-                        awayStats.matchupLosses++
-                      } else if (m.awayScore > m.homeScore) {
-                        awayStats.matchupWins++
-                        homeStats.matchupLosses++
-                      } else {
-                        homeStats.matchupTies++
-                        awayStats.matchupTies++
-                      }
-                    }
-                  }
-                } catch (e) {
-                  console.warn(`[UnifiedSeasonView] Error fetching week ${w}:`, e)
-                }
-              }
+              // Use getCategoryStatsBreakdown which has ROTO fallback built in
+              loadingMessage.value = `Calculating category standings...`
+              const categoryBreakdown = await espnService.getCategoryStatsBreakdown(espnSport, espnLeagueId, espnSeason)
               
-              // Get current week matchups
-              loadingMessage.value = 'Loading current matchups...'
-              const currentMatchups = await espnService.getMatchups(espnSport, espnLeagueId, espnSeason, week)
+              console.log('[UnifiedSeasonView] Got category breakdown:', {
+                categoriesCount: categoryBreakdown.categories.length,
+                teamsCount: categoryBreakdown.teamCategoryWins.size,
+                hasRealStatValues: categoryBreakdown.hasRealStatValues
+              })
               
-              // Build teams with accurate data
+              // Build teams with category data from the breakdown
               let teamsWithCategoryData = leagueStore.yahooTeams.map(team => {
-                const stats = teamStats.get(team.team_id) || {
-                  matchupWins: 0,
-                  matchupLosses: 0,
-                  matchupTies: 0,
-                  categoryWins: 0,
-                  categoryLosses: 0
-                }
+                const teamKey = `espn_${team.team_id}`
+                const totalWins = categoryBreakdown.teamTotalCategoryWins.get(teamKey) || 0
+                const totalLosses = categoryBreakdown.teamTotalCategoryLosses.get(teamKey) || 0
+                const perCategoryWins = categoryBreakdown.teamCategoryWins.get(teamKey) || {}
+                const perCategoryLosses = categoryBreakdown.teamCategoryLosses.get(teamKey) || {}
                 
                 return {
                   ...team,
-                  wins: stats.matchupWins,
-                  losses: stats.matchupLosses,
-                  ties: stats.matchupTies,
-                  category_wins: stats.categoryWins,
-                  category_losses: stats.categoryLosses
+                  wins: 0, // We don't have matchup-level wins
+                  losses: 0,
+                  ties: 0,
+                  category_wins: totalWins,
+                  category_losses: totalLosses,
+                  per_category_wins: perCategoryWins,
+                  per_category_losses: perCategoryLosses
                 }
               })
               
-              // Check if our calculation found any wins - if not, try roto fallback
-              const hasAnyWins = teamsWithCategoryData.some(t => t.wins > 0 || t.losses > 0)
-              if (!hasAnyWins) {
-                console.log('[UnifiedSeasonView] No wins calculated from matchups - trying roto calculation fallback')
-                
-                try {
-                  // Fetch ESPN teams with valuesByStat for roto calculation
-                  const espnTeamsWithStats = await espnService.getTeams(espnSport, espnLeagueId, espnSeason)
-                  const teamsWithValuesByStat = espnTeamsWithStats.filter(t => t.valuesByStat && Object.keys(t.valuesByStat).length > 0)
-                  
-                  if (teamsWithValuesByStat.length > 0) {
-                    console.log('[UnifiedSeasonView] Found teams with valuesByStat - calculating roto standings')
-                    
-                    // Calculate roto standings from stat values
-                    const teamsWithRoto = espnService.calculateRotoStandings(teamsWithValuesByStat, espnSport)
-                    
-                    // Map roto points to our team format
-                    const rotoMap = new Map<number, number>()
-                    teamsWithRoto.forEach(t => rotoMap.set(t.id, t.rotoPoints || 0))
-                    
-                    // Update teams with roto points
-                    teamsWithCategoryData = teamsWithCategoryData.map(team => {
-                      const rotoPoints = rotoMap.get(Number(team.team_id)) || 0
-                      return {
-                        ...team,
-                        category_wins: rotoPoints, // Use roto points as "category wins" for display
-                        category_losses: 0,
-                        roto_points: rotoPoints
-                      }
-                    })
-                    
-                    console.log('[UnifiedSeasonView] Roto standings calculated:', teamsWithCategoryData.map(t => ({
-                      name: t.name,
-                      roto: (t as any).roto_points
-                    })))
-                  } else {
-                    console.log('[UnifiedSeasonView] No valuesByStat data in ESPN teams')
-                    // Use the original store data
-                    teamsWithCategoryData = leagueStore.yahooTeams.map(team => ({
-                      ...team,
-                      category_wins: team.category_wins || 0,
-                      category_losses: team.category_losses || 0
-                    }))
-                  }
-                } catch (rotoErr) {
-                  console.warn('[UnifiedSeasonView] Error calculating roto standings:', rotoErr)
-                  // Use the original store data which might have data from getStandings()
-                  teamsWithCategoryData = leagueStore.yahooTeams.map(team => ({
-                    ...team,
-                    category_wins: team.category_wins || 0,
-                    category_losses: team.category_losses || 0
-                  }))
-                }
-              }
-              
-              // Sort teams - by wins if available, otherwise by roto points/category wins
+              // Sort teams by total category wins
               teamsWithCategoryData.sort((a, b) => {
-                // First, check if we have actual matchup wins
-                const aWins = a.wins || 0
-                const bWins = b.wins || 0
-                if (aWins > 0 || bWins > 0) {
-                  if (bWins !== aWins) return bWins - aWins
-                  if ((b.ties || 0) !== (a.ties || 0)) return (b.ties || 0) - (a.ties || 0)
-                }
-                
-                // If using roto points, sort by those
-                const aRoto = (a as any).roto_points
-                const bRoto = (b as any).roto_points
-                if (aRoto !== undefined || bRoto !== undefined) {
-                  return (bRoto || 0) - (aRoto || 0)
-                }
-                
-                // Fall back to category win percentage
-                const aCatTotal = (a.category_wins || 0) + (a.category_losses || 0) || 1
-                const bCatTotal = (b.category_wins || 0) + (b.category_losses || 0) || 1
-                return (b.category_wins / bCatTotal) - (a.category_wins / aCatTotal)
+                const aTotal = (a.category_wins || 0) - (a.category_losses || 0)
+                const bTotal = (b.category_wins || 0) - (b.category_losses || 0)
+                return bTotal - aTotal
               })
               
               // Assign ranks
               teamsWithCategoryData.forEach((team, idx) => {
                 team.rank = idx + 1
               })
+              
+              // Get current week matchups
+              loadingMessage.value = 'Loading current matchups...'
+              const currentMatchups = await espnService.getMatchups(espnSport, espnLeagueId, espnSeason, week)
               
               // Build matchups with category data
               const processedMatchups = currentMatchups.map(m => {
@@ -1093,15 +954,29 @@ async function fetchRawData(): Promise<any> {
                 }
               }).filter(Boolean)
               
+              // Set the category data for the CategoryStandingsTable component
+              statCategories.value = categoryBreakdown.categories
+              categoryStandingsData.value = teamsWithCategoryData.map(team => ({
+                team: {
+                  teamId: team.team_id,
+                  name: team.name,
+                  avatar: team.logo || team.avatar,
+                  owner: team.owner_name || ''
+                },
+                categoryWins: team.category_wins || 0,
+                categoryLosses: team.category_losses || 0,
+                perCategoryWins: team.per_category_wins || {},
+                perCategoryLosses: team.per_category_losses || {}
+              }))
+              
               console.log('[UnifiedSeasonView] ESPN category data loaded:', {
                 teams: teamsWithCategoryData.length,
                 matchups: processedMatchups.length,
-                completedWeeks,
+                categories: statCategories.value.length,
                 sampleTeam: teamsWithCategoryData[0] ? {
                   name: teamsWithCategoryData[0].name,
-                  wins: teamsWithCategoryData[0].wins,
-                  losses: teamsWithCategoryData[0].losses,
-                  category_wins: teamsWithCategoryData[0].category_wins
+                  category_wins: teamsWithCategoryData[0].category_wins,
+                  per_category_wins: teamsWithCategoryData[0].per_category_wins
                 } : null
               })
               
