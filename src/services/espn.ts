@@ -425,6 +425,9 @@ export class EspnFantasyService {
     if (scoringPeriod !== undefined) {
       endpoint += endpoint.includes('?') ? `&scoringPeriodId=${scoringPeriod}` : `?scoringPeriodId=${scoringPeriod}`
     }
+    
+    // Add platformVersion - ESPN's website includes this and it may be required for scoreByStat
+    endpoint += endpoint.includes('?') ? '&platformVersion=0d7e8ddda4e6030cd7f20ef03de89ed9b1c71848' : '?platformVersion=0d7e8ddda4e6030cd7f20ef03de89ed9b1c71848'
 
     const proxyUrl = `${this.supabaseUrl}/functions/v1/espn-api`
     
