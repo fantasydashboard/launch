@@ -769,24 +769,38 @@ export class EspnFantasyService {
     try {
       console.log(`[ESPN getMatchups] League scoring type: ${scoringType}`)
       
-      // Build x-fantasy-filter to get per-category results for specific week
-      // This is critical for category leagues - without it, scoreByStat is null
-      const fantasyFilter = {
-        schedule: {
-          filterMatchupPeriodIds: { value: [week] }
-        }
-      }
+      // Determine current week from league status
+      const currentWeek = league?.status?.currentMatchupPeriod || 1
+      const isCurrentWeek = week === currentWeek
       
-      console.log(`[ESPN getMatchups] Using filterMatchupPeriodIds for week ${week}`)
+      // ESPN website uses different filter formats:
+      // - Current week: filterCurrentMatchupPeriod: true
+      // - Historical weeks: filterMatchupPeriodIds: [week]
+      // The current week filter is more reliable for getting scoreByStat data
+      let fantasyFilter: any
+      if (isCurrentWeek) {
+        fantasyFilter = {
+          schedule: {
+            filterCurrentMatchupPeriod: { value: true }
+          }
+        }
+        console.log(`[ESPN getMatchups] Using filterCurrentMatchupPeriod for current week ${week}`)
+      } else {
+        fantasyFilter = {
+          schedule: {
+            filterMatchupPeriodIds: { value: [week] }
+          }
+        }
+        console.log(`[ESPN getMatchups] Using filterMatchupPeriodIds for historical week ${week}`)
+      }
       
       // Request all views ESPN website uses for category stats
       // ESPN website uses: modular, mNav, mMatchupScore, mScoreboard, mSettings, mTopPerformers, mTeam
-      // We need mTeam to get team data and mScoreboard/mMatchupScore for scoreByStat
       const data = await this.apiRequest(
         sport, 
         leagueId, 
         season, 
-        [ESPN_VIEWS.MATCHUP_SCORE, ESPN_VIEWS.SCOREBOARD, ESPN_VIEWS.TEAM, ESPN_VIEWS.MODULAR],
+        [ESPN_VIEWS.MATCHUP_SCORE, ESPN_VIEWS.SCOREBOARD, ESPN_VIEWS.TEAM, ESPN_VIEWS.MODULAR, ESPN_VIEWS.SETTINGS],
         week,
         false, // not historical
         fantasyFilter // pass the filter!
@@ -795,8 +809,7 @@ export class EspnFantasyService {
       // Pass scoring type to parseMatchups for category league handling
       const matchups = this.parseMatchups(data, week, scoringType)
       
-      // Determine cache TTL based on week status
-      const currentWeek = league?.status?.currentMatchupPeriod || 1
+      // Determine cache TTL based on week status (reuse currentWeek from above)
       const isCompletedWeek = week < currentWeek
       const ttl = isCompletedWeek ? CACHE_TTL.COMPLETED : CACHE_TTL.CURRENT
       
