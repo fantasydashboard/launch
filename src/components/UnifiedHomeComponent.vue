@@ -2224,10 +2224,9 @@ const quickStats = computed(() => {
   const hottest = [...teamsWithLast3].sort((a, b) => b.last3Wins - a.last3Wins)[0]
   const coldest = [...teamsWithLast3].sort((a, b) => a.last3Wins - b.last3Wins)[0]
   
-  // For points leagues, show "X wins" in last 3 weeks
-  // For category leagues, show "X cat wins"
-  // For ESPN category leagues we're showing cat wins from last 3 weeks of simulated progression
-  const winsLabel = isPointsLeague.value ? 'wins' : 'cat wins'
+  // For points leagues, show "X wins (last 3)" in last 3 weeks
+  // For category leagues, show "X cat wins (last 3)"
+  const winsLabel = isPointsLeague.value ? 'wins (last 3)' : 'cat wins (last 3)'
   
   // ALWAYS log this
   console.log('[quickStats] RESULT - hottest:', hottest?.name, 'with', hottest?.last3Wins, winsLabel, '| coldest:', coldest?.name, 'with', coldest?.last3Wins, winsLabel)
@@ -5063,41 +5062,56 @@ async function loadEspnData() {
         teamTotalCategoryLosses.value = convertedTotalLosses
         espnHasRealStatValues.value = categoryBreakdown.hasRealStatValues
         
-        // Build weeklyStandings for the chart and stats calculations
-        // We'll create weekly progression from total category wins/losses
+        // Build weeklyStandings from REAL per-week matchup data
+        // ESPN matchup scores in category leagues = number of categories won per team
         const currentWeek = leagueStore.yahooLeague?.current_week || 14
-        const startWeek = 1
         const numWeeks = currentWeek
         
         const standings = new Map<number, any[]>()
         
-        // Get final standings sorted by category differential
-        const finalStandings = leagueStore.yahooTeams.map(team => {
-          const totalWins = convertedTotalWins.get(team.team_key) || 0
-          const totalLosses = convertedTotalLosses.get(team.team_key) || 0
-          return {
+        // Track cumulative category wins/losses per team
+        const cumulativeWins = new Map<string, number>()
+        const cumulativeLosses = new Map<string, number>()
+        leagueStore.yahooTeams.forEach(team => {
+          cumulativeWins.set(team.team_key, 0)
+          cumulativeLosses.set(team.team_key, 0)
+        })
+        
+        console.log('[ESPN] Building weekly standings from matchup scores for weeks 1-' + numWeeks)
+        
+        for (let week = 1; week <= numWeeks; week++) {
+          try {
+            const weekMatchups = await espnService.getMatchups(espnSport, espnLeagueId, season, week)
+            
+            for (const m of weekMatchups) {
+              if (!m.awayTeamId) continue // Skip bye weeks
+              
+              // In category leagues, homeScore/awayScore = number of categories won
+              const homeKey = leagueStore.yahooTeams.find(t => t.team_id === String(m.homeTeamId))?.team_key
+              const awayKey = leagueStore.yahooTeams.find(t => t.team_id === String(m.awayTeamId))?.team_key
+              
+              if (!homeKey || !awayKey) continue
+              
+              const homeCatWins = m.homeCategoryWins || m.homeScore || 0
+              const awayCatWins = m.awayCategoryWins || m.awayScore || 0
+              
+              // Accumulate category wins/losses
+              cumulativeWins.set(homeKey, (cumulativeWins.get(homeKey) || 0) + homeCatWins)
+              cumulativeLosses.set(homeKey, (cumulativeLosses.get(homeKey) || 0) + awayCatWins)
+              cumulativeWins.set(awayKey, (cumulativeWins.get(awayKey) || 0) + awayCatWins)
+              cumulativeLosses.set(awayKey, (cumulativeLosses.get(awayKey) || 0) + homeCatWins)
+            }
+          } catch (e) {
+            console.warn(`[ESPN] Error fetching week ${week} matchups for standings:`, e)
+          }
+          
+          // Build standings snapshot for this week
+          const weekStandings = leagueStore.yahooTeams.map(team => ({
             team_key: team.team_key,
             name: team.name,
-            totalWins,
-            totalLosses
-          }
-        }).sort((a, b) => (b.totalWins - b.totalLosses) - (a.totalWins - a.totalLosses))
-        
-        // Generate weekly standings by distributing wins/losses proportionally
-        for (let week = startWeek; week <= numWeeks; week++) {
-          const weekProgress = week / numWeeks
-          
-          const weekStandings = finalStandings.map(team => {
-            const winsToDate = Math.round(team.totalWins * weekProgress)
-            const lossesToDate = Math.round(team.totalLosses * weekProgress)
-            
-            return {
-              team_key: team.team_key,
-              name: team.name,
-              wins: winsToDate,
-              losses: lossesToDate
-            }
-          }).sort((a, b) => {
+            wins: cumulativeWins.get(team.team_key) || 0,
+            losses: cumulativeLosses.get(team.team_key) || 0
+          })).sort((a, b) => {
             const aDiff = a.wins - a.losses
             const bDiff = b.wins - b.losses
             if (bDiff !== aDiff) return bDiff - aDiff
@@ -5109,8 +5123,11 @@ async function loadEspnData() {
         }
         
         weeklyStandings.value = standings
-        console.log('[ESPN] Built weeklyStandings for', standings.size, 'weeks')
-        console.log('[ESPN] Week', numWeeks, 'sample:', standings.get(numWeeks)?.slice(0, 3).map(t => `${t.name}: ${t.wins}-${t.losses}`))
+        console.log('[ESPN] Built weeklyStandings from REAL matchups for', standings.size, 'weeks')
+        if (standings.size > 0) {
+          const lastWeek = Math.max(...standings.keys())
+          console.log('[ESPN] Week', lastWeek, 'sample:', standings.get(lastWeek)?.slice(0, 3).map(t => `${t.name}: ${t.wins}-${t.losses}`))
+        }
         
         console.log('[ESPN] Category wins set for', convertedCatWins.size, 'teams')
         console.log('[ESPN] hasRealStatValues:', categoryBreakdown.hasRealStatValues)
