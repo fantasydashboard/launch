@@ -3887,10 +3887,12 @@ async function loadAllMatchups() {
       })
       
       // Fetch each week's matchups (like Power Rankings does)
+      let weeksWithMatchupWinners = 0
       for (let week = 1; week <= completedWeeks; week++) {
         try {
           const matchups = await espnService.getMatchups(sport, espnLeagueId, season, week, true)
           
+          let weekHadWinnerData = false
           for (const matchup of matchups) {
             if (!matchup.awayTeamId) continue
             
@@ -3932,14 +3934,17 @@ async function loadAllMatchups() {
               homeStats.wins++
               awayStats.losses++
               homeWon = true
+              weekHadWinnerData = true
             } else if (awayCatWins > homeCatWins) {
               awayStats.wins++
               homeStats.losses++
               awayWon = true
+              weekHadWinnerData = true
             } else if (homeCatWins > 0 || awayCatWins > 0) {
               homeStats.ties++
               awayStats.ties++
               tied = true
+              weekHadWinnerData = true
             }
             
             // Store matchup results
@@ -3960,28 +3965,41 @@ async function loadAllMatchups() {
               catLosses: homeCatWins
             })
           }
+          
+          if (weekHadWinnerData) weeksWithMatchupWinners++
         } catch (weekErr) {
           console.warn('[ESPN loadAllMatchups] Week', week, 'error:', weekErr)
         }
       }
       
-      // Update the reactive refs
-      weeklyMatchupResults.value = allMatchupResults
+      const matchupCoverage = completedWeeks > 0 ? weeksWithMatchupWinners / completedWeeks : 0
+      console.log('[ESPN loadAllMatchups] Matchup winner coverage:', weeksWithMatchupWinners, '/', completedWeeks, '(' + Math.round(matchupCoverage * 100) + '%)')
       
-      // Also update team records in store
-      leagueStore.yahooTeams.forEach(team => {
-        const stats = teamStats.get(team.team_key)
-        if (stats && (stats.wins > 0 || stats.losses > 0)) {
-          console.log('[ESPN loadAllMatchups] Updating', team.name, ':', stats.wins, '-', stats.losses)
-          team.wins = stats.wins
-          team.losses = stats.losses
-          team.ties = stats.ties
-          team.category_wins = stats.catWins
-          team.category_losses = stats.catLosses
-        }
-      })
+      // Only trust matchup-derived records if we got data for most weeks
+      // Otherwise ESPN API is returning empty scoreByStat and we'd overwrite good record.overall data
+      if (matchupCoverage >= 0.75) {
+        // Update the reactive refs with full matchup data
+        weeklyMatchupResults.value = allMatchupResults
+        
+        // Update team records from matchup data
+        leagueStore.yahooTeams.forEach(team => {
+          const stats = teamStats.get(team.team_key)
+          if (stats && (stats.wins > 0 || stats.losses > 0)) {
+            console.log('[ESPN loadAllMatchups] Updating', team.name, ':', stats.wins, '-', stats.losses)
+            team.wins = stats.wins
+            team.losses = stats.losses
+            team.ties = stats.ties
+            team.category_wins = stats.catWins
+            team.category_losses = stats.catLosses
+          }
+        })
+      } else {
+        console.log('[ESPN loadAllMatchups] Insufficient matchup data (' + weeksWithMatchupWinners + '/' + completedWeeks + ' weeks) - keeping original team records from record.overall')
+        // Clear the matchup results so buildStandingsFromRealMatchups uses the team records fallback
+        weeklyMatchupResults.value = new Map()
+      }
       
-      console.log('[ESPN loadAllMatchups] DONE - weeklyMatchupResults size:', allMatchupResults.size)
+      console.log('[ESPN loadAllMatchups] DONE - weeklyMatchupResults size:', weeklyMatchupResults.value.size)
       
     } catch (err) {
       console.error('[ESPN loadAllMatchups] Error:', err)
@@ -4556,10 +4574,12 @@ async function loadEspnData() {
       }
       
       // Fetch each week's matchups and calculate wins (exactly like Power Rankings)
+      let weeksWithWinnerData = 0
       for (let week = 1; week <= completedWeeks; week++) {
         try {
           const matchups = await espnService.getMatchups(sport, espnLeagueId, season, week, true)
           
+          let weekHadWinner = false
           for (const matchup of matchups) {
             if (!matchup.awayTeamId) continue // Skip bye weeks
             
@@ -4595,20 +4615,30 @@ async function loadEspnData() {
             if (homeCatWins > awayCatWins) {
               homeStats.wins++
               awayStats.losses++
+              weekHadWinner = true
             } else if (awayCatWins > homeCatWins) {
               awayStats.wins++
               homeStats.losses++
+              weekHadWinner = true
             } else if (homeCatWins > 0 || awayCatWins > 0) {
               homeStats.ties++
               awayStats.ties++
+              weekHadWinner = true
             }
           }
+          if (weekHadWinner) weeksWithWinnerData++
         } catch (weekErr) {
           console.warn(`[ESPN HOME] Error fetching week ${week}:`, weekErr)
         }
       }
       
-      // Update espnCalculatedStandings AND directly update yahooTeams in the store
+      // Only use calculated standings if we got winner data for most weeks
+      // ESPN API often returns scoreByStat: null, so partial data would be worse than record.overall
+      const winnerCoverage = completedWeeks > 0 ? weeksWithWinnerData / completedWeeks : 0
+      console.log('[ESPN HOME] Winner data coverage:', weeksWithWinnerData, '/', completedWeeks, '(' + Math.round(winnerCoverage * 100) + '%)')
+      
+      if (winnerCoverage >= 0.75) {
+        // Update espnCalculatedStandings AND directly update yahooTeams in the store
       const standingsMap = new Map<string, { wins: number; losses: number; ties: number; categoryWins: number; categoryLosses: number }>()
       
       for (const [teamKey, stats] of teamStats) {
@@ -4634,6 +4664,14 @@ async function loadEspnData() {
       
       espnCalculatedStandings.value = standingsMap
       console.log('[ESPN HOME] Calculated standings for', standingsMap.size, 'teams')
+      } else {
+        console.log('[ESPN HOME] Insufficient matchup winner data (' + weeksWithWinnerData + '/' + completedWeeks + ' weeks) - keeping original record.overall data')
+        // Don't overwrite team records - the record.overall from ESPN API is correct
+        // Just log what record.overall has
+        leagueStore.yahooTeams.forEach(team => {
+          console.log(`[ESPN HOME] Keeping original record for ${team.name}: ${team.wins}-${team.losses}`)
+        })
+      }
       
     } catch (standingsErr) {
       console.warn('[ESPN HOME] Could not calculate standings:', standingsErr)
@@ -4808,12 +4846,14 @@ async function loadEspnData() {
       let methodWinnerField = 0
       let methodTotalPoints = 0
       let methodFallback = 0
+      let weeksWithRealWinners = 0
       
       // Only process completed weeks (up to currentWeek - 1)
       const completedWeeks = Math.min(currentWeek - 1, regularSeasonWeeks)
       console.log('[ESPN] Will process', completedWeeks, 'completed weeks')
       
       for (let week = 1; week <= completedWeeks; week++) {
+        let weekHadRealWinner = false
         try {
           // Fetch this week's matchups with full views (like Power Rankings)
           const matchups = await espnService.getMatchups(sport, espnLeagueId, season, week, true)
@@ -4872,6 +4912,7 @@ async function loadEspnData() {
                 awayWon = awayCatWins > homeCatWins
                 isTied = homeCatWins === awayCatWins
                 methodPerCategory++
+                weekHadRealWinner = true
               }
               // Method 2: Use cumulativeScore category wins
               else if ((matchup.homeCategoryWins || 0) > 0 || (matchup.awayCategoryWins || 0) > 0) {
@@ -4883,6 +4924,7 @@ async function loadEspnData() {
                 awayWon = awayCatWins > homeCatWins
                 isTied = homeCatWins === awayCatWins
                 methodCumulativeScore++
+                weekHadRealWinner = true
               }
               // Method 3: Use winner field
               else if (matchup.winner && matchup.winner !== 'UNDECIDED') {
@@ -4890,6 +4932,7 @@ async function loadEspnData() {
                 awayWon = matchup.winner === 'AWAY'
                 isTied = matchup.winner === 'TIE'
                 methodWinnerField++
+                weekHadRealWinner = true
               }
               // Method 4: Use totalPoints (might be category wins)
               else if (homeScore > 0 || awayScore > 0) {
@@ -4897,6 +4940,7 @@ async function loadEspnData() {
                 awayWon = awayScore > homeScore
                 isTied = homeScore === awayScore
                 methodTotalPoints++
+                weekHadRealWinner = true
               }
               // Fallback: Still record matchup as tie (don't skip!)
               else {
@@ -4954,10 +4998,24 @@ async function loadEspnData() {
         } catch (weekErr) {
           console.warn(`[ESPN] Could not fetch week ${week}:`, weekErr)
         }
+        if (weekHadRealWinner) weeksWithRealWinners++
       }
       
-      weeklyMatchupResults.value = allMatchupResults
-      espnWeeklyScores.value = weeklyScores
+      // Check if we got real winner data for enough weeks
+      const matchupWinnerCoverage = completedWeeks > 0 ? weeksWithRealWinners / completedWeeks : 0
+      console.log('[ESPN] Matchup winner coverage:', weeksWithRealWinners, '/', completedWeeks, '(' + Math.round(matchupWinnerCoverage * 100) + '%)')
+      
+      // Only use matchup results if we got real data for most weeks
+      // Otherwise clear the data so buildStandingsFromRealMatchups falls back to team records
+      if (matchupWinnerCoverage >= 0.75) {
+        weeklyMatchupResults.value = allMatchupResults
+        espnWeeklyScores.value = weeklyScores
+      } else {
+        console.log('[ESPN] Insufficient matchup winner coverage - clearing weeklyMatchupResults to use record.overall fallback')
+        weeklyMatchupResults.value = new Map()
+        espnWeeklyScores.value = new Map()
+      }
+      
       console.log('[ESPN] Built matchup results for', allMatchupResults.size, 'teams')
       console.log('[ESPN] Processed', matchupsProcessed, 'matchups, recorded', scoresRecorded, 'scores')
       console.log('[ESPN] Winner determination methods used:', {
