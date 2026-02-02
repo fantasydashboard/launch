@@ -446,12 +446,6 @@
             </div>
           </div>
         </div>
-        <div v-else-if="isEspnCategoryLeague" class="text-center py-12 text-dark-textMuted">
-          <span class="text-4xl mb-3 block">📊</span>
-          <p class="font-medium text-dark-text">Weekly standings chart unavailable</p>
-          <p class="text-sm mt-1">ESPN doesn't provide per-week category data through their API</p>
-          <p class="text-sm mt-1">See the standings table above for current season rankings</p>
-        </div>
         <div v-else class="text-center py-12 text-dark-textMuted">
           <p>Not enough data to show standings over time</p>
           <p class="text-sm mt-1">Chart will appear after matchup data loads</p>
@@ -1187,10 +1181,6 @@ const isPointsLeague = computed(() => {
   return result
 })
 
-const isEspnCategoryLeague = computed(() => {
-  return leagueStore.activePlatform === 'espn' && !isPointsLeague.value
-})
-
 const scoringTypeLabel = computed(() => {
   const st = (scoringType.value || '').toLowerCase()
   if (st.includes('roto')) return 'Roto'
@@ -1516,55 +1506,37 @@ const teamDominantWins = computed(() => {
   // Initialize all teams
   leagueStore.yahooTeams.forEach(team => result.set(team.team_key, 0))
   
-  // For ESPN category leagues without weekly data, estimate dominant weeks
-  // from per-category wins. A team that leads many categories likely had dominant weeks.
-  if (leagueStore.activePlatform === 'espn' && weeklyStandings.value.size < 2) {
-    const numCategories = statCategories.value.length || 8
-    const numTeams = leagueStore.yahooTeams.length
-    // Estimate: if a team averages winning (numCategories - 2) or more per week, count as dominant
-    // Use per-category wins to estimate
-    leagueStore.yahooTeams.forEach(team => {
-      const catWins = teamCategoryWins.value.get(team.team_key) || {}
-      const totalCatWins = teamTotalCategoryWins.value.get(team.team_key) || 0
-      const totalCatLosses = teamTotalCategoryLosses.value.get(team.team_key) || 0
-      const totalDecisions = totalCatWins + totalCatLosses
-      
-      if (totalDecisions > 0) {
-        // Estimate weeks played
-        const weeksPlayed = Math.round(totalDecisions / numCategories) || 1
-        // Average losses per week
-        const avgLossesPerWeek = totalCatLosses / weeksPlayed
-        // If average losses is low, estimate dominant weeks proportionally
-        // Dominant = losing 2 or fewer categories in a week
-        const dominantRatio = avgLossesPerWeek <= 2 ? 1.0 : Math.max(0, 1 - (avgLossesPerWeek - 2) / numCategories)
-        const estimatedDominant = Math.round(weeksPlayed * dominantRatio)
-        result.set(team.team_key, estimatedDominant)
-      }
-    })
-    
-    console.log('[teamDominantWins] ESPN estimated from per-category data:', [...result.entries()].slice(0, 3))
-    return result
-  }
-  
   // Get weeks from weeklyStandings
   const standingsWeeks = Array.from(weeklyStandings.value.keys()).sort((a, b) => a - b)
   
-  console.log('[teamDominantWins] standingsWeeks count:', standingsWeeks.length)
-  
   if (standingsWeeks.length < 2) {
-    console.log('[teamDominantWins] Not enough weeks, returning zeros')
     return result
   }
   
-  // For each week (starting from week 2 so we can compare to previous)
-  for (let i = 1; i < standingsWeeks.length; i++) {
-    const week = standingsWeeks[i]
-    const prevWeek = standingsWeeks[i - 1]
+  // Find active weeks (where cumulative wins changed)
+  const activeWeeks: number[] = []
+  let prevTotalWins = -1
+  
+  for (const week of standingsWeeks) {
+    const weekData = weeklyStandings.value.get(week)
+    if (!weekData || weekData.length === 0) continue
     
+    const totalWins = weekData.reduce((sum: number, t: any) => sum + (t.wins || 0), 0)
+    
+    if (prevTotalWins >= 0 && totalWins !== prevTotalWins) {
+      activeWeeks.push(week)
+    }
+    prevTotalWins = totalWins
+  }
+  
+  // For each active week, calculate weekly category losses and check if ≤2
+  for (const week of activeWeeks) {
+    const weekIdx = standingsWeeks.indexOf(week)
+    if (weekIdx <= 0) continue
+    
+    const prevWeek = standingsWeeks[weekIdx - 1]
     const currentStandings = weeklyStandings.value.get(week)
     const prevStandings = weeklyStandings.value.get(prevWeek)
-    
-    if (!currentStandings || !prevStandings) continue
     
     leagueStore.yahooTeams.forEach(team => {
       const currentTeamData = currentStandings?.find((t: any) => t.team_key === team.team_key)
@@ -1582,7 +1554,6 @@ const teamDominantWins = computed(() => {
     })
   }
   
-  console.log('[teamDominantWins] Result sample:', [...result.entries()].slice(0, 3))
   return result
 })
 
@@ -2073,29 +2044,11 @@ const last3WeeksWins = computed(() => {
   console.log('[last3WeeksWins] platform:', leagueStore.activePlatform)
   
   // For ESPN category leagues, use total category wins from ROTO calculation
-  // (we don't have per-week data from ESPN API)
   if (!isPointsLeague.value && leagueStore.activePlatform === 'espn') {
-    console.log('[last3WeeksWins] ESPN category league detected')
-    console.log('[last3WeeksWins] teamTotalCategoryWins size:', teamTotalCategoryWins.value.size)
-    console.log('[last3WeeksWins] teamTotalCategoryWins keys:', [...teamTotalCategoryWins.value.keys()].slice(0, 3))
-    console.log('[last3WeeksWins] teamTotalCategoryWins values:', [...teamTotalCategoryWins.value.values()].slice(0, 3))
-    console.log('[last3WeeksWins] yahooTeams keys:', leagueStore.yahooTeams.slice(0, 3).map(t => t.team_key))
-    
     leagueStore.yahooTeams.forEach(team => {
       const totalCatWins = teamTotalCategoryWins.value.get(team.team_key) || 0
       result.set(team.team_key, totalCatWins)
-      if (totalCatWins === 0) {
-        console.log('[last3WeeksWins] ZERO for team:', team.team_key, team.name)
-      }
     })
-    console.log('[last3WeeksWins] ESPN result sample:', [...result.entries()].slice(0, 3))
-    
-    // If all zeros, something went wrong with the ROTO calculation
-    const allZero = [...result.values()].every(v => v === 0)
-    if (allZero && leagueStore.yahooTeams.length > 0) {
-      console.warn('[last3WeeksWins] ALL ZEROS - ROTO data may not have loaded yet or key mismatch')
-    }
-    
     return result
   }
   
@@ -5067,28 +5020,15 @@ async function loadEspnData() {
         for (const team of leagueStore.yahooTeams) {
           const espnKey = `espn_${team.team_id}`
           
-          // Per-category wins (for Yahoo compatibility)
           const catWins = categoryBreakdown.teamCategoryWins.get(espnKey)
           if (catWins) {
             convertedCatWins.set(team.team_key, catWins)
           }
           
-          // Total category wins/losses (for ESPN display)
           const totalWins = categoryBreakdown.teamTotalCategoryWins.get(espnKey) || 0
           const totalLosses = categoryBreakdown.teamTotalCategoryLosses.get(espnKey) || 0
           convertedTotalWins.set(team.team_key, totalWins)
           convertedTotalLosses.set(team.team_key, totalLosses)
-          
-          // Debug first team
-          if (leagueStore.yahooTeams.indexOf(team) === 0) {
-            console.log('[ESPN] KEY MAPPING: team_id:', team.team_id, '→ espnKey:', espnKey, '→ team_key:', team.team_key)
-            console.log('[ESPN] ROTO lookup:', {
-              totalWins,
-              totalLosses,
-              hasCatWins: !!catWins,
-              allBreakdownKeys: [...categoryBreakdown.teamTotalCategoryWins.keys()].slice(0, 5)
-            })
-          }
         }
         
         teamCategoryWins.value = convertedCatWins
@@ -5096,23 +5036,7 @@ async function loadEspnData() {
         teamTotalCategoryLosses.value = convertedTotalLosses
         espnHasRealStatValues.value = categoryBreakdown.hasRealStatValues
         
-        console.log('[ESPN] AFTER SETTING - teamTotalCategoryWins size:', teamTotalCategoryWins.value.size)
-        console.log('[ESPN] AFTER SETTING - sample values:', [...teamTotalCategoryWins.value.entries()].slice(0, 3))
-        console.log('[ESPN] AFTER SETTING - all values sum:', [...teamTotalCategoryWins.value.values()].reduce((a, b) => a + b, 0))
-        
-        // For ESPN category leagues, we cannot get per-week category data
-        // (ESPN API returns no scores in matchup data for category leagues through proxy)
-        // So we DON'T build weeklyStandings - the chart will show a message instead
-        // The ROTO totals are correct for the standings table
-        console.log('[ESPN] Category league - weekly matchup scores unavailable, skipping weeklyStandings')
-        console.log('[ESPN] Chart will show unavailable message for ESPN category leagues')
-        
-        console.log('[ESPN] Category wins set for', convertedCatWins.size, 'teams')
-        console.log('[ESPN] hasRealStatValues:', categoryBreakdown.hasRealStatValues)
-        console.log('[ESPN] espnHasRealStatValues.value is now:', espnHasRealStatValues.value)
-        console.log('[ESPN] statCategories count:', statCategories.value.length)
-        console.log('[ESPN] statCategories sample:', statCategories.value.slice(0, 3))
-        console.log('[ESPN] Sample per-category wins:', convertedCatWins.size > 0 ? Object.fromEntries([...convertedCatWins.entries()].slice(0, 1)) : 'none')
+        console.log('[ESPN] Category wins set for', convertedCatWins.size, 'teams, hasRealStatValues:', categoryBreakdown.hasRealStatValues)
         console.log('[ESPN] Total category wins sample:', Object.fromEntries([...convertedTotalWins.entries()].slice(0, 3)))
         
       } catch (error) {
@@ -5125,7 +5049,6 @@ async function loadEspnData() {
     }
     
     // Build standings from REAL matchup data (not simulated)
-    // Skip for ESPN category leagues - ESPN doesn't provide per-week category scores through the proxy
     loadingStatus.value = 'Building standings chart...'
     const yahooLeagueData = Array.isArray(leagueStore.yahooLeague) ? leagueStore.yahooLeague[0] : leagueStore.yahooLeague
     const endWeek = yahooLeagueData?.end_week || 25
@@ -5135,14 +5058,8 @@ async function loadEspnData() {
     // Only show weeks up to current week (not future weeks)
     const chartEndWeek = isSeasonComplete.value ? endWeek : Math.min(currWeek, endWeek)
     
-    if (!isPointsLeague.value) {
-      // ESPN category league - do NOT build weekly standings or chart
-      // We don't have per-week category scores from the API
-      console.log('[ESPN] Category league - skipping buildStandingsFromRealMatchups (no per-week data)')
-    } else {
-      // ESPN points league - build from real matchup data
-      buildStandingsFromRealMatchups(startWeek, chartEndWeek)
-    }
+    // Use REAL matchup data to build standings
+    buildStandingsFromRealMatchups(startWeek, chartEndWeek)
     buildChart()
     
     loadingStatus.value = ''
