@@ -2043,12 +2043,15 @@ const last3WeeksWins = computed(() => {
   console.log('[last3WeeksWins] isPointsLeague:', isPointsLeague.value)
   console.log('[last3WeeksWins] platform:', leagueStore.activePlatform)
   
-  // For ESPN category leagues, use total category wins from ROTO calculation
-  if (!isPointsLeague.value && leagueStore.activePlatform === 'espn') {
+  // For ESPN category leagues with ROTO calculation, use total category wins as fallback
+  // since we don't have weekly data
+  if (!isPointsLeague.value && leagueStore.activePlatform === 'espn' && standingsWeeks.length < 2) {
+    console.log('[last3WeeksWins] ESPN category - using total category wins as fallback')
     leagueStore.yahooTeams.forEach(team => {
       const totalCatWins = teamTotalCategoryWins.value.get(team.team_key) || 0
       result.set(team.team_key, totalCatWins)
     })
+    console.log('[last3WeeksWins] ESPN fallback result:', [...result.entries()].slice(0, 3))
     return result
   }
   
@@ -2198,11 +2201,11 @@ const quickStats = computed(() => {
   const hottest = [...teamsWithLast3].sort((a, b) => b.last3Wins - a.last3Wins)[0]
   const coldest = [...teamsWithLast3].sort((a, b) => a.last3Wins - b.last3Wins)[0]
   
-  // For points leagues, show "X wins (last 3)" in last 3 weeks
-  // For category leagues, show "X cat wins (last 3)"
-  // For ESPN category leagues, we show total cat wins since we don't have weekly data
-  const isEspnCategory = !isPointsLeague.value && leagueStore.activePlatform === 'espn'
-  const winsLabel = isPointsLeague.value ? 'wins (last 3)' : (isEspnCategory ? 'total cat wins' : 'cat wins (last 3)')
+  // For points leagues, show "X wins" in last 3 weeks
+  // For category leagues, show "X cat wins"
+  // For ESPN category leagues with ROTO fallback, we're showing total cat wins (not last 3 weeks)
+  const isEspnCategoryWithRoto = !isPointsLeague.value && leagueStore.activePlatform === 'espn' && Array.from(weeklyStandings.value.keys()).length < 2
+  const winsLabel = isPointsLeague.value ? 'wins' : (isEspnCategoryWithRoto ? 'total cat' : 'cat wins')
   
   // ALWAYS log this
   console.log('[quickStats] RESULT - hottest:', hottest?.name, 'with', hottest?.last3Wins, winsLabel, '| coldest:', coldest?.name, 'with', coldest?.last3Wins, winsLabel)
