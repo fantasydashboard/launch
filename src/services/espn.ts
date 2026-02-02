@@ -3767,9 +3767,13 @@ export class EspnFantasyService {
     // Fetch all completed matchups and aggregate category wins
     // Track whether we found real stat values for per-category calculation
     let hasRealStatValues = false
+    let weeksWithRealData = 0
+    let weeksProcessed = 0
     
     for (let week = 1; week <= completedWeeks; week++) {
       console.log(`[ESPN getCategoryStatsBreakdown] Processing week ${week}/${completedWeeks}...`)
+      let weekHasRealData = false
+      weeksProcessed++
       try {
         // The cache will auto-refresh if it detects stale data missing per-category results
         const weekMatchups = await this.getMatchups(sport, leagueId, season, week)
@@ -3803,6 +3807,7 @@ export class EspnFantasyService {
               console.log('[ESPN getCategoryStatsBreakdown] Setting hasRealStatValues = true!')
             }
             hasRealStatValues = true
+            weekHasRealData = true
             
             // Process home team per-category results
             for (const [statId, result] of Object.entries(matchup.homePerCategoryResults)) {
@@ -3860,134 +3865,101 @@ export class EspnFantasyService {
       } catch (error) {
         console.warn(`[ESPN getCategoryStatsBreakdown] Error fetching week ${week}:`, error)
       }
+      
+      if (weekHasRealData) {
+        weeksWithRealData++
+      }
     }
     
-    console.log('[ESPN getCategoryStatsBreakdown] Finished fetching all weeks. hasRealStatValues:', hasRealStatValues)
+    console.log('[ESPN getCategoryStatsBreakdown] Finished fetching all weeks. hasRealStatValues:', hasRealStatValues, 'weeksWithRealData:', weeksWithRealData, '/', weeksProcessed)
+    
+    // CRITICAL: Only trust per-category data if we got it for MOST weeks (>= 75%)
+    // ESPN API inconsistently returns scoreByStat - sometimes only cached weeks have it
+    // If we only got partial data, fall back to ROTO which uses season totals
+    const realDataCoverage = weeksProcessed > 0 ? weeksWithRealData / weeksProcessed : 0
+    const trustRealData = hasRealStatValues && realDataCoverage >= 0.75
+    
+    console.log('[ESPN getCategoryStatsBreakdown] Real data coverage:', Math.round(realDataCoverage * 100) + '%', 'trustRealData:', trustRealData)
     
     // Log sample of per-category wins for debugging
-    if (hasRealStatValues) {
+    if (trustRealData) {
       const sampleTeamKey = [...teamCategoryWins.keys()][0]
       if (sampleTeamKey) {
         console.log('[ESPN getCategoryStatsBreakdown] Sample per-category wins:', sampleTeamKey, teamCategoryWins.get(sampleTeamKey))
       }
     }
     
-    // Check if we have any real data at all
-    const totalWinsAcrossTeams = [...teamTotalCategoryWins.values()].reduce((a, b) => a + b, 0)
-    
-    // Only use distribution fallback if we don't have real stat values
-    if (!hasRealStatValues) {
-      // If we also have no total wins, try ROTO calculation from valuesByStat
-      if (totalWinsAcrossTeams === 0) {
-        console.log('[ESPN getCategoryStatsBreakdown] No category data available - calculating ROTO standings from valuesByStat')
+    // Only use real per-category data if we got it for most weeks
+    // Otherwise, fall back to ROTO calculation from season totals
+    if (!trustRealData) {
+      // Clear any partial per-category data that was accumulated from incomplete weeks
+      teamCategoryWins.clear()
+      teamCategoryLosses.clear()
+      teamCategoryTies.clear()
+      teamTotalCategoryWins.clear()
+      teamTotalCategoryLosses.clear()
+      
+      console.log('[ESPN getCategoryStatsBreakdown] Insufficient real data (' + weeksWithRealData + '/' + weeksProcessed + ' weeks) - using ROTO calculation from valuesByStat')
+      
+      // Fetch teams with valuesByStat
+      const teams = await this.getTeams(sport, leagueId, season)
+      const teamsWithStats = teams.filter(t => t.valuesByStat && Object.keys(t.valuesByStat).length > 0)
+      
+      if (teamsWithStats.length > 0) {
+        console.log('[ESPN getCategoryStatsBreakdown] Found', teamsWithStats.length, 'teams with valuesByStat')
         
-        // Fetch teams with valuesByStat
-        const teams = await this.getTeams(sport, leagueId, season)
-        const teamsWithStats = teams.filter(t => t.valuesByStat && Object.keys(t.valuesByStat).length > 0)
+        const numTeams = teamsWithStats.length
         
-        if (teamsWithStats.length > 0) {
-          console.log('[ESPN getCategoryStatsBreakdown] Found', teamsWithStats.length, 'teams with valuesByStat')
+        // For each category, rank teams and calculate "roto points" (simulated wins)
+        for (const category of categories) {
+          const statId = category.stat_id
           
-          const numTeams = teamsWithStats.length
+          // Get all teams' values for this stat
+          const teamValues = teamsWithStats.map(t => ({
+            teamKey: `espn_${t.id}`,
+            value: t.valuesByStat?.[statId] ?? 0
+          }))
           
-          // For each category, rank teams and calculate "roto points" (simulated wins)
-          for (const category of categories) {
-            const statId = category.stat_id
+          // Determine if lower is better for this stat (turnovers, etc)
+          const lowerIsBetterStats = ['11', '17'] // TO, Goals Against
+          const isReversed = lowerIsBetterStats.includes(statId)
+          
+          // Sort by value (descending for most stats, ascending for "lower is better")
+          teamValues.sort((a, b) => isReversed ? a.value - b.value : b.value - a.value)
+          
+          // Award "wins" based on rank
+          teamValues.forEach((tv, index) => {
+            const winsForThisCat = Math.round((numTeams - 1 - index) * completedWeeks / (numTeams - 1))
+            const lossesForThisCat = Math.round(index * completedWeeks / (numTeams - 1))
             
-            // Get all teams' values for this stat
-            const teamValues = teamsWithStats.map(t => ({
-              teamKey: `espn_${t.id}`,
-              value: t.valuesByStat?.[statId] ?? 0
-            }))
+            const existingCatWins = teamCategoryWins.get(tv.teamKey) || {}
+            const existingCatLosses = teamCategoryLosses.get(tv.teamKey) || {}
+            const existingCatTies = teamCategoryTies.get(tv.teamKey) || {}
             
-            // Determine if lower is better for this stat (turnovers, etc)
-            // ESPN stat ID 11 = turnovers (TO) for basketball - lower is better
-            const lowerIsBetterStats = ['11', '17'] // TO, Goals Against
-            const isReversed = lowerIsBetterStats.includes(statId)
+            existingCatWins[statId] = winsForThisCat
+            existingCatLosses[statId] = lossesForThisCat
+            existingCatTies[statId] = 0
             
-            // Sort by value (descending for most stats, ascending for "lower is better")
-            teamValues.sort((a, b) => isReversed ? a.value - b.value : b.value - a.value)
+            teamCategoryWins.set(tv.teamKey, existingCatWins)
+            teamCategoryLosses.set(tv.teamKey, existingCatLosses)
+            teamCategoryTies.set(tv.teamKey, existingCatTies)
             
-            // Award "wins" based on rank - 1st place beats everyone (numTeams-1 wins)
-            // In a 10-team league with 14 weeks: simulate it as if you beat lower-ranked teams
-            teamValues.forEach((tv, index) => {
-              // Simulate wins: you "beat" everyone ranked below you each week
-              // Scale by completed weeks to get realistic totals
-              const winsForThisCat = Math.round((numTeams - 1 - index) * completedWeeks / (numTeams - 1))
-              const lossesForThisCat = Math.round(index * completedWeeks / (numTeams - 1))
-              
-              const existingCatWins = teamCategoryWins.get(tv.teamKey) || {}
-              const existingCatLosses = teamCategoryLosses.get(tv.teamKey) || {}
-              const existingCatTies = teamCategoryTies.get(tv.teamKey) || {}
-              
-              existingCatWins[statId] = winsForThisCat
-              existingCatLosses[statId] = lossesForThisCat
-              existingCatTies[statId] = 0
-              
-              teamCategoryWins.set(tv.teamKey, existingCatWins)
-              teamCategoryLosses.set(tv.teamKey, existingCatLosses)
-              teamCategoryTies.set(tv.teamKey, existingCatTies)
-              
-              // Also update totals
-              const currentTotalWins = teamTotalCategoryWins.get(tv.teamKey) || 0
-              const currentTotalLosses = teamTotalCategoryLosses.get(tv.teamKey) || 0
-              teamTotalCategoryWins.set(tv.teamKey, currentTotalWins + winsForThisCat)
-              teamTotalCategoryLosses.set(tv.teamKey, currentTotalLosses + lossesForThisCat)
-            })
-          }
-          
-          console.log('[ESPN getCategoryStatsBreakdown] ROTO calculation complete. Sample team:', [...teamTotalCategoryWins.entries()][0])
-          
-          // Mark that we have real stat values (calculated via ROTO)
-          hasRealStatValues = true
-        } else {
-          console.log('[ESPN getCategoryStatsBreakdown] No teams with valuesByStat found')
-        }
-      } else {
-        console.log('[ESPN getCategoryStatsBreakdown] No real stat values found, using proportional distribution fallback')
-        
-        // For per-category wins, we distribute the total wins proportionally across categories
-        // This is an approximation since ESPN doesn't provide per-stat wins in matchup data
-        for (const [teamKey, totalWins] of teamTotalCategoryWins) {
-          const totalLosses = teamTotalCategoryLosses.get(teamKey) || 0
-          const numCategories = categories.length || 1
-          
-          // Distribute wins/losses roughly evenly with some variance based on category index
-          const winsPerCat = totalWins / numCategories
-          const lossesPerCat = totalLosses / numCategories
-          
-          const catWins: Record<string, number> = {}
-          const catLosses: Record<string, number> = {}
-          const catTies: Record<string, number> = {}
-          
-          let remainingWins = totalWins
-          let remainingLosses = totalLosses
-          
-          categories.forEach((cat, idx) => {
-            // For all but last category, distribute evenly with rounding
-            if (idx < categories.length - 1) {
-              const wins = Math.round(winsPerCat)
-              const losses = Math.round(lossesPerCat)
-              catWins[cat.stat_id] = wins
-              catLosses[cat.stat_id] = losses
-              catTies[cat.stat_id] = 0
-              remainingWins -= wins
-              remainingLosses -= losses
-            } else {
-              // Last category gets the remainder to ensure totals match
-              catWins[cat.stat_id] = Math.max(0, remainingWins)
-              catLosses[cat.stat_id] = Math.max(0, remainingLosses)
-              catTies[cat.stat_id] = 0
-            }
+            const currentTotalWins = teamTotalCategoryWins.get(tv.teamKey) || 0
+            const currentTotalLosses = teamTotalCategoryLosses.get(tv.teamKey) || 0
+            teamTotalCategoryWins.set(tv.teamKey, currentTotalWins + winsForThisCat)
+            teamTotalCategoryLosses.set(tv.teamKey, currentTotalLosses + lossesForThisCat)
           })
-          
-          teamCategoryWins.set(teamKey, catWins)
-          teamCategoryLosses.set(teamKey, catLosses)
-          teamCategoryTies.set(teamKey, catTies)
         }
+        
+        console.log('[ESPN getCategoryStatsBreakdown] ROTO calculation complete. Sample team:', [...teamTotalCategoryWins.entries()][0])
+        
+        // Mark that we have real stat values (calculated via ROTO)
+        hasRealStatValues = true
+      } else {
+        console.log('[ESPN getCategoryStatsBreakdown] No teams with valuesByStat found')
       }
     } else {
-      console.log('[ESPN getCategoryStatsBreakdown] Using real per-category wins calculated from stat values')
+      console.log('[ESPN getCategoryStatsBreakdown] Using real per-category wins from', weeksWithRealData, 'weeks of data')
       // Initialize ties for all teams/categories
       for (const [teamKey] of teamTotalCategoryWins) {
         const catTies: Record<string, number> = {}
