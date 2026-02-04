@@ -2717,6 +2717,9 @@ function buildChart() {
 }
 
 // Shared image loading helpers for download functions (CORS-friendly)
+// Pre-cache: stores base64 images keyed by URL so downloads don't need to re-fetch
+const teamImageCache = new Map<string, string>()
+
 function createTeamPlaceholder(teamName: string): string {
   const canvas = document.createElement('canvas')
   canvas.width = 64
@@ -2753,48 +2756,80 @@ function drawCircularImage(img: HTMLImageElement): string {
   return canvas.toDataURL('image/png')
 }
 
+// Pre-cache all team images in background (called after data loads)
+async function preCacheTeamImages(teams: any[]) {
+  console.log(`[Image Cache] Pre-caching ${teams.length} team images...`)
+  for (const team of teams) {
+    if (!team.logo_url || teamImageCache.has(team.logo_url)) continue
+    try {
+      const base64 = await loadSingleTeamImage(team.logo_url, team.name)
+      teamImageCache.set(team.logo_url, base64)
+    } catch {
+      // Skip failures during pre-cache, will retry during download
+    }
+    // Small delay between loads to avoid throttling
+    await new Promise(r => setTimeout(r, 50))
+  }
+  console.log(`[Image Cache] Cached ${teamImageCache.size} team images`)
+}
+
+// Core image loading - single image, with retries
+async function loadSingleTeamImage(logoUrl: string, teamName: string): Promise<string> {
+  // Helper to convert blob to data URL
+  const blobToDataUrl = (blob: Blob): Promise<string> => {
+    return new Promise((resolve) => {
+      const reader = new FileReader()
+      reader.onloadend = () => resolve(reader.result as string)
+      reader.onerror = () => resolve('')
+      reader.readAsDataURL(blob)
+    })
+  }
+  
+  const dataUrlToCircular = (dataUrl: string): Promise<string> => {
+    return new Promise((resolve) => {
+      const img = new Image()
+      img.onload = () => {
+        try { resolve(drawCircularImage(img)) } catch { resolve('') }
+      }
+      img.onerror = () => resolve('')
+      img.src = dataUrl
+    })
+  }
+
+  // Try fetch+blob (with retry)
+  for (let attempt = 0; attempt < 2; attempt++) {
+    try {
+      const response = await fetch(logoUrl, { mode: 'cors' })
+      if (response.ok) {
+        const blob = await response.blob()
+        const dataUrl = await blobToDataUrl(blob)
+        if (dataUrl) {
+          const result = await dataUrlToCircular(dataUrl)
+          if (result) return result
+        }
+      }
+    } catch { /* retry */ }
+    if (attempt === 0) await new Promise(r => setTimeout(r, 200))
+  }
+  
+  return createTeamPlaceholder(teamName)
+}
+
 async function loadTeamImageCORS(team: any): Promise<string> {
   if (!team.logo_url) return createTeamPlaceholder(team.name)
   
-  // Try fetch+blob first (handles more CORS scenarios than img.crossOrigin)
-  try {
-    const response = await fetch(team.logo_url, { mode: 'cors' })
-    if (response.ok) {
-      const blob = await response.blob()
-      const dataUrl = await new Promise<string>((resolve) => {
-        const reader = new FileReader()
-        reader.onloadend = () => resolve(reader.result as string)
-        reader.onerror = () => resolve('')
-        reader.readAsDataURL(blob)
-      })
-      if (dataUrl) {
-        return new Promise((resolve) => {
-          const img = new Image()
-          img.onload = () => {
-            try { resolve(drawCircularImage(img)) } catch { resolve(createTeamPlaceholder(team.name)) }
-          }
-          img.onerror = () => resolve(createTeamPlaceholder(team.name))
-          img.src = dataUrl
-        })
-      }
-    }
-  } catch { /* fetch failed, try fallback */ }
-  
-  // Fallback: img.crossOrigin approach
-  try {
-    return new Promise((resolve) => {
-      const img = new Image()
-      img.crossOrigin = 'anonymous'
-      img.onload = () => {
-        try { resolve(drawCircularImage(img)) } catch { resolve(createTeamPlaceholder(team.name)) }
-      }
-      img.onerror = () => resolve(createTeamPlaceholder(team.name))
-      setTimeout(() => resolve(createTeamPlaceholder(team.name)), 3000)
-      img.src = team.logo_url
-    })
-  } catch {
-    return createTeamPlaceholder(team.name)
+  // Check cache first
+  const cached = teamImageCache.get(team.logo_url)
+  if (cached) {
+    console.log(`[Image] ${team.name}: loaded from cache`)
+    return cached
   }
+  
+  // Not cached, load and cache it
+  const result = await loadSingleTeamImage(team.logo_url, team.name)
+  teamImageCache.set(team.logo_url, result)
+  console.log(`[Image] ${team.name}: loaded and cached`)
+  return result
 }
 
 // Download standings as shareable image
@@ -2831,18 +2866,13 @@ async function downloadStandings() {
     
     const logoBase64 = await loadLogo()
     
-    // Pre-load all team images - EXACTLY like Power Rankings
+    // Pre-load all team images SEQUENTIALLY (parallel can throttle/drop some)
     console.log('[Download Standings] Loading team images...')
     const imageMap = new Map<string, string>()
-    const imagePromises = sortedTeams.value.map(async (team) => {
+    for (const team of sortedTeams.value) {
       const base64 = await loadTeamImage(team)
-      return { teamKey: team.team_key, base64 }
-    })
-    
-    const results = await Promise.all(imagePromises)
-    results.forEach(({ teamKey, base64 }) => {
-      imageMap.set(teamKey, base64)
-    })
+      imageMap.set(team.team_key, base64)
+    }
     console.log(`[Download Standings] Loaded ${imageMap.size} team images`)
     
     // Create container - use fixed width of 800px for consistent downloads regardless of team count
@@ -3181,18 +3211,13 @@ async function downloadLeaderImage() {
     const createPlaceholder = createTeamPlaceholder
     const loadTeamImage = loadTeamImageCORS
     
-    // Pre-load all team images - EXACTLY like Power Rankings
+    // Pre-load all team images SEQUENTIALLY
     console.log('[Download Leader] Loading team images...')
     const imageMap = new Map<string, string>()
-    const imagePromises = rankings.map(async (team: any) => {
+    for (const team of rankings) {
       const base64 = await loadTeamImage(team)
-      return { teamName: team.name, base64 }
-    })
-    
-    const results = await Promise.all(imagePromises)
-    results.forEach(({ teamName, base64 }) => {
-      imageMap.set(teamName, base64)
-    })
+      imageMap.set(team.name, base64)
+    }
     
     console.log(`[Download Leader] Loaded ${imageMap.size} team images`)
     
@@ -4444,6 +4469,9 @@ async function loadAllData() {
     
     isLoading.value = false
     
+    // Pre-cache team images for downloads
+    preCacheTeamImages(sortedTeams.value)
+    
     // Load matchups in background for chart
     loadAllMatchups()
     
@@ -5064,6 +5092,9 @@ async function loadEspnData() {
     isLoading.value = false
     isLoadingChart.value = false
     
+    // Pre-cache team images for downloads
+    preCacheTeamImages(sortedTeams.value)
+    
   } catch (e) {
     console.error('[ESPN] Error loading data:', e)
     loadingStatus.value = ''
@@ -5093,6 +5124,9 @@ async function loadSleeperData() {
     
     isLoading.value = false
     loadingStatus.value = ''
+    
+    // Pre-cache team images for downloads
+    preCacheTeamImages(sortedTeams.value)
     
     // Load matchups in background for chart
     loadAllMatchups()
