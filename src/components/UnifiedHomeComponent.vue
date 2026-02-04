@@ -258,14 +258,15 @@
               <!-- Category columns (for Yahoo H2H/Roto Category leagues with per-category data) -->
               <template v-if="hasRealPerCategoryData">
                 <th 
-                  v-for="cat in displayCategories" 
+                  v-for="(cat, idx) in displayCategories" 
                   :key="cat.stat_id"
                   class="py-3 px-2 text-center cursor-pointer hover:text-yellow-400 whitespace-nowrap"
-                  :title="cat.name + ' - Times won this category'"
+                  :title="cat.name + ' — Total times won this category across all matchup weeks'"
                   @click="setSortColumn('cat_' + cat.stat_id)"
                 >
                   <div class="flex flex-col items-center">
                     <span class="text-[10px]">{{ cat.display_name }}</span>
+                    <span v-if="idx === 0 && sortColumn !== 'cat_' + cat.stat_id" class="text-[8px] text-dark-textMuted italic">(wins)</span>
                     <span v-if="sortColumn === 'cat_' + cat.stat_id" class="text-[8px] text-yellow-400">{{ sortDirection === 'asc' ? '↑' : '↓' }}</span>
                   </div>
                 </th>
@@ -1506,7 +1507,24 @@ const teamDominantWins = computed(() => {
   // Initialize all teams
   leagueStore.yahooTeams.forEach(team => result.set(team.team_key, 0))
   
-  // Get weeks from weeklyStandings
+  // METHOD 1: Use weeklyMatchupResults directly (most reliable - works for ESPN + Yahoo + Sleeper)
+  // weeklyMatchupResults: team_key -> week -> { catWins, catLosses, opponent, won, tied }
+  if (weeklyMatchupResults.value.size > 0) {
+    for (const [teamKey, weekMap] of weeklyMatchupResults.value) {
+      let dominantCount = 0
+      for (const [, matchup] of weekMap) {
+        // Dominant win = won the matchup with 0, 1, or 2 category losses
+        const catLosses = matchup.catLosses || 0
+        if (matchup.won && catLosses <= 2) {
+          dominantCount++
+        }
+      }
+      result.set(teamKey, dominantCount)
+    }
+    return result
+  }
+  
+  // METHOD 2: Fallback to weeklyStandings differential (original approach for Yahoo)
   const standingsWeeks = Array.from(weeklyStandings.value.keys()).sort((a, b) => a - b)
   
   if (standingsWeeks.length < 2) {
@@ -3832,9 +3850,20 @@ async function loadAllMatchups() {
       const league = await espnService.getLeague(sport, espnLeagueId, season)
       
       const currentWeek = league?.status?.currentMatchupPeriod || 15
-      const completedWeeks = Math.max(1, currentWeek - 1)
+      const espnCompletedWeeks = Math.max(1, currentWeek - 1)
       
-      console.log('[ESPN loadAllMatchups] Fetching', completedWeeks, 'weeks of matchups')
+      // ESPN basketball matchup periods don't always match actual matchup weeks
+      // Use team records to determine actual matchups played
+      const actualMatchupsPlayed = Math.max(1, ...leagueStore.yahooTeams.map(t => 
+        (t.wins || 0) + (t.losses || 0) + (t.ties || 0)
+      ))
+      
+      // Use the smaller of ESPN's period count and actual matchups * 2 (ESPN sometimes numbers periods higher than matchups)
+      // But fetch all ESPN periods to not miss data
+      const completedWeeks = espnCompletedWeeks
+      const actualMatchupWeeks = actualMatchupsPlayed
+      
+      console.log('[ESPN loadAllMatchups] Fetching', completedWeeks, 'ESPN periods (actual matchup weeks:', actualMatchupWeeks, ')')
       
       // Initialize maps
       const allMatchupResults = new Map<string, Map<number, any>>()
@@ -3934,8 +3963,8 @@ async function loadAllMatchups() {
         }
       }
       
-      const matchupCoverage = completedWeeks > 0 ? weeksWithMatchupWinners / completedWeeks : 0
-      console.log('[ESPN loadAllMatchups] Matchup winner coverage:', weeksWithMatchupWinners, '/', completedWeeks, '(' + Math.round(matchupCoverage * 100) + '%)')
+      const matchupCoverage = actualMatchupWeeks > 0 ? weeksWithMatchupWinners / actualMatchupWeeks : 0
+      console.log('[ESPN loadAllMatchups] Matchup winner coverage:', weeksWithMatchupWinners, '/', actualMatchupWeeks, '(' + Math.round(matchupCoverage * 100) + '%) [ESPN periods:', completedWeeks, ']')
       
       // Only trust matchup-derived records if we got data for most weeks
       // Otherwise ESPN API is returning empty scoreByStat and we'd overwrite good record.overall data
@@ -4493,6 +4522,12 @@ async function loadEspnData() {
   
   if (!leagueKey || leagueStore.activePlatform !== 'espn') {
     console.log('[ESPN HOME] Early return:', { leagueKey, platform: leagueStore.activePlatform })
+    return
+  }
+  
+  // Prevent double-loading from multiple watchers firing simultaneously
+  if (isLoading.value) {
+    console.log('[ESPN HOME] Already loading, skipping duplicate call')
     return
   }
   

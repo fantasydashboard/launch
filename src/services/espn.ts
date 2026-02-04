@@ -3910,6 +3910,16 @@ export class EspnFantasyService {
         
         const numTeams = teamsWithStats.length
         
+        // Calculate ACTUAL matchup periods from team records
+        // ESPN's currentMatchupPeriod can be much higher than actual matchups played
+        // (e.g., basketball might say period 16 but only 8 matchups have been played)
+        const actualMatchupPeriods = Math.max(1, ...teamsWithStats.map(t => {
+          return (t.wins || 0) + (t.losses || 0) + (t.ties || 0)
+        }))
+        
+        const weeksToUse = actualMatchupPeriods > 0 ? actualMatchupPeriods : completedWeeks
+        console.log('[ESPN getCategoryStatsBreakdown] ROTO using actualMatchupPeriods:', actualMatchupPeriods, '(vs completedWeeks:', completedWeeks + ')')
+        
         // For each category, rank teams and calculate "roto points" (simulated wins)
         for (const category of categories) {
           const statId = category.stat_id
@@ -3927,10 +3937,10 @@ export class EspnFantasyService {
           // Sort by value (descending for most stats, ascending for "lower is better")
           teamValues.sort((a, b) => isReversed ? a.value - b.value : b.value - a.value)
           
-          // Award "wins" based on rank
+          // Award "wins" based on rank (using actual matchup periods, not ESPN's completedWeeks)
           teamValues.forEach((tv, index) => {
-            const winsForThisCat = Math.round((numTeams - 1 - index) * completedWeeks / (numTeams - 1))
-            const lossesForThisCat = Math.round(index * completedWeeks / (numTeams - 1))
+            const winsForThisCat = Math.round((numTeams - 1 - index) * weeksToUse / (numTeams - 1))
+            const lossesForThisCat = Math.round(index * weeksToUse / (numTeams - 1))
             
             const existingCatWins = teamCategoryWins.get(tv.teamKey) || {}
             const existingCatLosses = teamCategoryLosses.get(tv.teamKey) || {}
