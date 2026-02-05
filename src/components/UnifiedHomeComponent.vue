@@ -2839,6 +2839,28 @@ async function loadSingleTeamImage(logoUrl: string, teamName: string): Promise<s
     if (attempt === 0) await new Promise(r => setTimeout(r, 200))
   }
   
+  // Direct fetch failed (e.g. sleepercdn.com has no CORS headers) - try CORS proxies
+  const corsProxies = [
+    (u: string) => `https://corsproxy.io/?${encodeURIComponent(u)}`,
+    (u: string) => `https://api.allorigins.win/raw?url=${encodeURIComponent(u)}`,
+  ]
+  for (const proxyFn of corsProxies) {
+    try {
+      const proxyUrl = proxyFn(logoUrl)
+      const response = await fetch(proxyUrl, { signal: AbortSignal.timeout(4000) })
+      if (response.ok) {
+        const blob = await response.blob()
+        if (blob.type.startsWith('image/') && blob.size > 100) {
+          const dataUrl = await blobToDataUrl(blob)
+          if (dataUrl) {
+            const result = await dataUrlToCircular(dataUrl)
+            if (result) return result
+          }
+        }
+      }
+    } catch { /* try next proxy */ }
+  }
+  
   return createTeamPlaceholder(teamName)
 }
 

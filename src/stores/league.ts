@@ -945,9 +945,16 @@ export const useLeagueStore = defineStore('league', () => {
       const user = userMap.get(roster.owner_id)
       const teamName = user?.metadata?.team_name || user?.display_name || `Team ${roster.roster_id}`
       
-      // Generate avatar URL
+      // Generate avatar URL - prioritize league-specific avatar over account avatar
       let logoUrl = ''
-      if (user?.avatar) {
+      if (roster.metadata?.avatar) {
+        // League-specific team avatar (set in league settings)
+        logoUrl = `https://sleepercdn.com/avatars/thumbs/${roster.metadata.avatar}`
+      } else if (roster.settings?.avatar) {
+        // Roster settings avatar
+        logoUrl = `https://sleepercdn.com/avatars/thumbs/${roster.settings.avatar}`
+      } else if (user?.avatar) {
+        // User's account avatar (fallback)
         logoUrl = `https://sleepercdn.com/avatars/thumbs/${user.avatar}`
       } else {
         logoUrl = `https://ui-avatars.com/api/?name=${encodeURIComponent(teamName)}&background=random&color=fff&size=64`
