@@ -204,7 +204,8 @@ export interface EspnTeam {
   rank: number
   playoffSeed: number
   divisionId: number
-  transactionCounter?: number  // Total transactions (adds, drops, trades)
+  transactionCounter?: number | { acquisitions?: number; drops?: number; trades?: number; moveToIR?: number; moveToActive?: number; misc?: number }  // Transaction details object or count
+  totalMoves?: number  // Pre-calculated total transactions (acquisitions + drops + trades)
   categoryWins?: number  // For H2H_CATEGORY leagues - total category wins across all matchups
   categoryLosses?: number  // For H2H_CATEGORY leagues - total category losses across all matchups
   roster?: EspnPlayer[]
@@ -2872,22 +2873,25 @@ export class EspnFantasyService {
       
       console.log(`[ESPN Team ${team.id}] Final name: "${teamName}", owner: "${ownerName}"`)
       
-      // Try to find transactionCounter from various possible locations
-      let txCounter = team.transactionCounter || 0
+      // Store the full transactionCounter object (has acquisitions, drops, trades, etc.)
+      // or fall back to various locations where it might be stored
+      let txCounter = team.transactionCounter || null
       if (!txCounter && team.transactionStatus?.transactionCounter) {
         txCounter = team.transactionStatus.transactionCounter
       }
       if (!txCounter && team.roster?.transactionCounter) {
         txCounter = team.roster.transactionCounter
       }
-      // Count from acquisitions if available (number of players acquired)
-      if (!txCounter && (team.totalAcquired !== undefined || team.waiverRank !== undefined)) {
-        // Use waiver rank as rough proxy - lower rank = more moves
-        const waiverRank = team.waiverRank || 5
-        txCounter = Math.max(0, 15 - waiverRank)
+      
+      // Calculate total moves from the object if available
+      let totalMoves = 0
+      if (txCounter && typeof txCounter === 'object') {
+        totalMoves = (txCounter.acquisitions || 0) + (txCounter.drops || 0) + (txCounter.trades || 0)
+      } else if (typeof txCounter === 'number') {
+        totalMoves = txCounter
       }
       
-      console.log(`[ESPN Team ${team.id}] transactionCounter: ${txCounter}`)
+      console.log(`[ESPN Team ${team.id}] transactionCounter:`, txCounter, 'totalMoves:', totalMoves)
       
       return {
         id: team.id,
@@ -2909,6 +2913,7 @@ export class EspnFantasyService {
         playoffSeed: team.playoffSeed || 0,
         divisionId: team.divisionId || 0,
         transactionCounter: txCounter,
+        totalMoves: totalMoves,  // Pre-calculated total for convenience
         record: team.record ? {
           overall: team.record.overall,
           home: team.record.home,

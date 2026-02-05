@@ -4756,10 +4756,18 @@ async function loadEspnData() {
       if (totalFromApi === 0) {
         console.log('[ESPN] API counts all zero, checking team transactionCounter...')
         leagueStore.yahooTeams.forEach(team => {
-          const txCount = team.transactionCounter || team.transactions || team.moves || 0
-          if (txCount > 0) {
-            counts.set(team.team_key, txCount)
+          // First try pre-calculated totalMoves, then fall back to extracting from object
+          let txCount = team.totalMoves || 0
+          if (!txCount) {
+            // transactionCounter is an object with acquisitions, drops, trades, etc.
+            const txData = team.transactionCounter || team.transactions || {}
+            if (typeof txData === 'object' && txData !== null) {
+              txCount = (txData.acquisitions || 0) + (txData.drops || 0) + (txData.trades || 0) + (txData.moveToIR || 0) + (txData.moveToActive || 0)
+            } else if (typeof txData === 'number') {
+              txCount = txData
+            }
           }
+          counts.set(team.team_key, txCount)
         })
         transactionCounts.value = counts
         console.log('[ESPN] Transaction counts from team data:', Object.fromEntries(counts))
@@ -4769,8 +4777,17 @@ async function loadEspnData() {
       // Fallback: use transactionCounter from team data
       const counts = new Map<string, number>()
       leagueStore.yahooTeams.forEach(team => {
-        // Try to get transaction count from team data (transactionCounter is what ESPN provides)
-        const txCount = team.transactionCounter || team.transactions || team.moves || team.acquisitions || 0
+        // First try pre-calculated totalMoves, then fall back to extracting from object
+        let txCount = team.totalMoves || 0
+        if (!txCount) {
+          // transactionCounter is an object with acquisitions, drops, trades, etc.
+          const txData = team.transactionCounter || team.transactions || {}
+          if (typeof txData === 'object' && txData !== null) {
+            txCount = (txData.acquisitions || 0) + (txData.drops || 0) + (txData.trades || 0) + (txData.moveToIR || 0) + (txData.moveToActive || 0)
+          } else if (typeof txData === 'number') {
+            txCount = txData
+          }
+        }
         counts.set(team.team_key, txCount)
       })
       transactionCounts.value = counts
