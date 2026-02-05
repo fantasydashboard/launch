@@ -2823,7 +2823,29 @@ async function loadSingleTeamImage(logoUrl: string, teamName: string): Promise<s
     })
   }
 
-  // Try fetch+blob (with retry)
+  // Helper: try loading via <img> tag (works when browser has cached the image or server allows img but not fetch CORS)
+  const loadViaImgTag = (url: string): Promise<string> => {
+    return new Promise((resolve) => {
+      const img = new Image()
+      img.crossOrigin = 'anonymous'
+      img.onload = () => {
+        try { resolve(drawCircularImage(img)) } catch { resolve('') }
+      }
+      img.onerror = () => resolve('')
+      img.src = url
+      // Timeout after 3s
+      setTimeout(() => resolve(''), 3000)
+    })
+  }
+
+  // Method 1: Try <img> tag with crossOrigin (works if browser has it cached or server allows it)
+  const imgResult = await loadViaImgTag(logoUrl)
+  if (imgResult) {
+    console.log(`[Download] ${teamName}: loaded via img tag`)
+    return imgResult
+  }
+
+  // Method 2: Try fetch+blob (with retry)
   for (let attempt = 0; attempt < 2; attempt++) {
     try {
       const response = await fetch(logoUrl, { mode: 'cors' })
@@ -2832,14 +2854,17 @@ async function loadSingleTeamImage(logoUrl: string, teamName: string): Promise<s
         const dataUrl = await blobToDataUrl(blob)
         if (dataUrl) {
           const result = await dataUrlToCircular(dataUrl)
-          if (result) return result
+          if (result) {
+            console.log(`[Download] ${teamName}: loaded via direct fetch`)
+            return result
+          }
         }
       }
     } catch { /* retry */ }
     if (attempt === 0) await new Promise(r => setTimeout(r, 200))
   }
   
-  // Direct fetch failed (e.g. sleepercdn.com has no CORS headers) - try CORS proxies
+  // Method 3: Direct fetch failed - try CORS proxies
   const corsProxies = [
     (u: string) => `https://corsproxy.io/?${encodeURIComponent(u)}`,
     (u: string) => `https://api.allorigins.win/raw?url=${encodeURIComponent(u)}`,
@@ -2854,13 +2879,50 @@ async function loadSingleTeamImage(logoUrl: string, teamName: string): Promise<s
           const dataUrl = await blobToDataUrl(blob)
           if (dataUrl) {
             const result = await dataUrlToCircular(dataUrl)
-            if (result) return result
+            if (result) {
+              console.log(`[Download] ${teamName}: loaded via CORS proxy`)
+              return result
+            }
           }
         }
       }
     } catch { /* try next proxy */ }
   }
   
+  // Method 4: Try loading the image via <img> tag WITHOUT crossOrigin
+  // This taints the canvas but we can still draw it to a new canvas
+  try {
+    const taintedResult = await new Promise<string>((resolve) => {
+      const img = new Image()
+      img.onload = () => {
+        try {
+          const canvas = document.createElement('canvas')
+          canvas.width = 64
+          canvas.height = 64
+          const ctx = canvas.getContext('2d')
+          if (ctx) {
+            ctx.beginPath()
+            ctx.arc(32, 32, 32, 0, Math.PI * 2)
+            ctx.closePath()
+            ctx.clip()
+            ctx.drawImage(img, 0, 0, 64, 64)
+            resolve(canvas.toDataURL('image/png'))
+          } else {
+            resolve('')
+          }
+        } catch { resolve('') }
+      }
+      img.onerror = () => resolve('')
+      img.src = logoUrl
+      setTimeout(() => resolve(''), 3000)
+    })
+    if (taintedResult && taintedResult.length > 100) {
+      console.log(`[Download] ${teamName}: loaded via tainted canvas`)
+      return taintedResult
+    }
+  } catch { /* fall through */ }
+
+  console.log(`[Download] ${teamName}: all methods failed, using placeholder`)
   return createTeamPlaceholder(teamName)
 }
 
