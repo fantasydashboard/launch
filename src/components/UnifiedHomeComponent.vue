@@ -2786,17 +2786,38 @@ function drawCircularImage(img: HTMLImageElement): string {
 // Pre-cache all team images in background (called after data loads)
 async function preCacheTeamImages(teams: any[]) {
   console.log(`[Image Cache] Pre-caching ${teams.length} team images...`)
+  const failedTeams: any[] = []
+  
   for (const team of teams) {
     if (!team.logo_url || teamImageCache.has(team.logo_url)) continue
     try {
       const base64 = await loadSingleTeamImage(team.logo_url, team.name)
-      teamImageCache.set(team.logo_url, base64)
+      // Check if we got a real image or a placeholder
+      if (base64 && !base64.includes('createTeamPlaceholder') && base64.length > 500) {
+        teamImageCache.set(team.logo_url, base64)
+      } else {
+        teamImageCache.set(team.logo_url, base64)
+        failedTeams.push(team)
+      }
     } catch {
-      // Skip failures during pre-cache, will retry during download
+      failedTeams.push(team)
     }
-    // Small delay between loads to avoid throttling
-    await new Promise(r => setTimeout(r, 50))
+    await new Promise(r => setTimeout(r, 100))
   }
+  
+  // Retry failed teams after a delay (CORS proxies may have been rate-limited)
+  if (failedTeams.length > 0) {
+    console.log(`[Image Cache] Retrying ${failedTeams.length} failed images after delay...`)
+    await new Promise(r => setTimeout(r, 2000))
+    for (const team of failedTeams) {
+      try {
+        const base64 = await loadSingleTeamImage(team.logo_url, team.name)
+        teamImageCache.set(team.logo_url, base64)
+      } catch { /* give up */ }
+      await new Promise(r => setTimeout(r, 300))
+    }
+  }
+  
   console.log(`[Image Cache] Cached ${teamImageCache.size} team images`)
 }
 
@@ -2845,82 +2866,53 @@ async function loadSingleTeamImage(logoUrl: string, teamName: string): Promise<s
     return imgResult
   }
 
-  // Method 2: Try fetch+blob (with retry)
-  for (let attempt = 0; attempt < 2; attempt++) {
-    try {
-      const response = await fetch(logoUrl, { mode: 'cors' })
-      if (response.ok) {
-        const blob = await response.blob()
-        const dataUrl = await blobToDataUrl(blob)
-        if (dataUrl) {
-          const result = await dataUrlToCircular(dataUrl)
-          if (result) {
-            console.log(`[Download] ${teamName}: loaded via direct fetch`)
-            return result
-          }
+  // Method 2: Try fetch+blob
+  try {
+    const response = await fetch(logoUrl, { mode: 'cors', signal: AbortSignal.timeout(3000) })
+    if (response.ok) {
+      const blob = await response.blob()
+      const dataUrl = await blobToDataUrl(blob)
+      if (dataUrl) {
+        const result = await dataUrlToCircular(dataUrl)
+        if (result) {
+          console.log(`[Download] ${teamName}: loaded via direct fetch`)
+          return result
         }
       }
-    } catch { /* retry */ }
-    if (attempt === 0) await new Promise(r => setTimeout(r, 200))
-  }
+    }
+  } catch { /* expected for sleepercdn */ }
   
-  // Method 3: Direct fetch failed - try CORS proxies
+  // Method 3: Try multiple CORS proxies with retries
   const corsProxies = [
     (u: string) => `https://corsproxy.io/?${encodeURIComponent(u)}`,
     (u: string) => `https://api.allorigins.win/raw?url=${encodeURIComponent(u)}`,
+    (u: string) => `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(u)}`,
   ]
-  for (const proxyFn of corsProxies) {
-    try {
-      const proxyUrl = proxyFn(logoUrl)
-      const response = await fetch(proxyUrl, { signal: AbortSignal.timeout(4000) })
-      if (response.ok) {
-        const blob = await response.blob()
-        if (blob.type.startsWith('image/') && blob.size > 100) {
-          const dataUrl = await blobToDataUrl(blob)
-          if (dataUrl) {
-            const result = await dataUrlToCircular(dataUrl)
-            if (result) {
-              console.log(`[Download] ${teamName}: loaded via CORS proxy`)
-              return result
+  
+  // Try each proxy up to 2 times with delay between attempts
+  for (let attempt = 0; attempt < 2; attempt++) {
+    for (const proxyFn of corsProxies) {
+      try {
+        const proxyUrl = proxyFn(logoUrl)
+        const response = await fetch(proxyUrl, { signal: AbortSignal.timeout(5000) })
+        if (response.ok) {
+          const blob = await response.blob()
+          if (blob.size > 100) {
+            const dataUrl = await blobToDataUrl(blob)
+            if (dataUrl && dataUrl.startsWith('data:')) {
+              const result = await dataUrlToCircular(dataUrl)
+              if (result) {
+                console.log(`[Download] ${teamName}: loaded via CORS proxy (attempt ${attempt + 1})`)
+                return result
+              }
             }
           }
         }
-      }
-    } catch { /* try next proxy */ }
-  }
-  
-  // Method 4: Try loading the image via <img> tag WITHOUT crossOrigin
-  // This taints the canvas but we can still draw it to a new canvas
-  try {
-    const taintedResult = await new Promise<string>((resolve) => {
-      const img = new Image()
-      img.onload = () => {
-        try {
-          const canvas = document.createElement('canvas')
-          canvas.width = 64
-          canvas.height = 64
-          const ctx = canvas.getContext('2d')
-          if (ctx) {
-            ctx.beginPath()
-            ctx.arc(32, 32, 32, 0, Math.PI * 2)
-            ctx.closePath()
-            ctx.clip()
-            ctx.drawImage(img, 0, 0, 64, 64)
-            resolve(canvas.toDataURL('image/png'))
-          } else {
-            resolve('')
-          }
-        } catch { resolve('') }
-      }
-      img.onerror = () => resolve('')
-      img.src = logoUrl
-      setTimeout(() => resolve(''), 3000)
-    })
-    if (taintedResult && taintedResult.length > 100) {
-      console.log(`[Download] ${teamName}: loaded via tainted canvas`)
-      return taintedResult
+      } catch { /* try next */ }
     }
-  } catch { /* fall through */ }
+    // Wait before retry
+    if (attempt === 0) await new Promise(r => setTimeout(r, 500))
+  }
 
   console.log(`[Download] ${teamName}: all methods failed, using placeholder`)
   return createTeamPlaceholder(teamName)
