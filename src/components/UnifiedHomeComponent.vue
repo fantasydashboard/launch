@@ -752,6 +752,7 @@ import { useAuthStore } from '@/stores/auth'
 import { usePlatformsStore } from '@/stores/platforms'
 import { yahooService } from '@/services/yahoo'
 import { espnService } from '@/services/espn'
+import { sleeperService } from '@/services/sleeper'
 import LoadingSpinner from '@/components/LoadingSpinner.vue'
 
 const leagueStore = useLeagueStore()
@@ -5254,11 +5255,37 @@ async function loadSleeperData() {
     // Data is already in store from transformation, just set up the display
     loadLeagueSettings()
     
-    // Transaction counts from yahooTeams (already mapped from Sleeper)
+    // Transaction counts - fetch from Sleeper API since roster.settings.total_moves is unreliable
     const counts = new Map<string, number>()
-    leagueStore.yahooTeams.forEach(team => {
-      counts.set(team.team_key, team.transactions || 0)
-    })
+    leagueStore.yahooTeams.forEach(team => counts.set(team.team_key, 0))
+    
+    try {
+      const leagueId = leagueStore.activeLeagueId || ''
+      const currentWeek = leagueStore.currentLeague?.settings?.leg || 18
+      console.log('[Sleeper] Fetching transactions for weeks 1-' + currentWeek)
+      
+      const allTransactions = await sleeperService.getAllTransactions(leagueId, currentWeek)
+      console.log('[Sleeper] Total transactions fetched:', allTransactions.length)
+      
+      // Count completed add/drop/trade transactions per roster
+      for (const tx of allTransactions) {
+        if (tx.status !== 'complete') continue
+        // roster_ids contains all rosters involved in this transaction
+        const rosterIds = tx.roster_ids || []
+        for (const rosterId of rosterIds) {
+          const teamKey = `sleeper_${rosterId}`
+          counts.set(teamKey, (counts.get(teamKey) || 0) + 1)
+        }
+      }
+      
+      console.log('[Sleeper] Transaction counts:', Object.fromEntries(counts))
+    } catch (txErr) {
+      console.warn('[Sleeper] Failed to fetch transactions:', txErr)
+      // Fallback to roster data
+      leagueStore.yahooTeams.forEach(team => {
+        counts.set(team.team_key, team.transactions || 0)
+      })
+    }
     transactionCounts.value = counts
     
     isLoading.value = false
