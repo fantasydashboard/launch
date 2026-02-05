@@ -2054,17 +2054,51 @@ const teamDetailCategories = computed(() => {
 const last3WeeksWins = computed(() => {
   const result = new Map<string, number>()
   
-  // Get weeks from weeklyStandings (cumulative data)
-  const standingsWeeks = Array.from(weeklyStandings.value.keys()).sort((a, b) => a - b)
-  
-  console.log('[last3WeeksWins] standingsWeeks count:', standingsWeeks.length)
+  console.log('[last3WeeksWins] Computing...')
   console.log('[last3WeeksWins] isPointsLeague:', isPointsLeague.value)
   console.log('[last3WeeksWins] platform:', leagueStore.activePlatform)
+  console.log('[last3WeeksWins] weeklyMatchupResults size:', weeklyMatchupResults.value.size)
   
-  // For ESPN category leagues with ROTO calculation, use total category wins as fallback
-  // since we don't have weekly data
-  if (!isPointsLeague.value && leagueStore.activePlatform === 'espn' && standingsWeeks.length < 2) {
-    console.log('[last3WeeksWins] ESPN category - using total category wins as fallback')
+  // Initialize all teams with 0
+  leagueStore.yahooTeams.forEach(team => result.set(team.team_key, 0))
+  
+  // METHOD 1: Use weeklyMatchupResults directly (most reliable - has catWins per week)
+  // This works for ESPN, Yahoo, and Sleeper category leagues
+  if (weeklyMatchupResults.value.size > 0) {
+    // Get all weeks that have matchup data, sorted
+    const matchupWeeks = Array.from(
+      new Set([...weeklyMatchupResults.value.values()].flatMap(m => [...m.keys()]))
+    ).sort((a, b) => a - b)
+    
+    const last3Weeks = matchupWeeks.slice(-3)
+    console.log('[last3WeeksWins] Using weeklyMatchupResults - all weeks:', matchupWeeks, 'last 3:', last3Weeks)
+    
+    for (const [teamKey, weekMap] of weeklyMatchupResults.value) {
+      let totalCatWins = 0
+      
+      for (const week of last3Weeks) {
+        const matchup = weekMap.get(week)
+        if (matchup) {
+          if (isPointsLeague.value) {
+            // Points league: count matchup wins
+            if (matchup.won) totalCatWins++
+          } else {
+            // Category league: sum up category wins
+            totalCatWins += matchup.catWins || 0
+          }
+        }
+      }
+      
+      result.set(teamKey, totalCatWins)
+    }
+    
+    console.log('[last3WeeksWins] Result from weeklyMatchupResults (first 3):', [...result.entries()].slice(0, 3))
+    return result
+  }
+  
+  // METHOD 2: Fallback to total category wins for ESPN category leagues without weekly data
+  if (!isPointsLeague.value && leagueStore.activePlatform === 'espn') {
+    console.log('[last3WeeksWins] ESPN category fallback - using total category wins')
     leagueStore.yahooTeams.forEach(team => {
       const totalCatWins = teamTotalCategoryWins.value.get(team.team_key) || 0
       result.set(team.team_key, totalCatWins)
@@ -2073,16 +2107,18 @@ const last3WeeksWins = computed(() => {
     return result
   }
   
+  // METHOD 3: Fallback to weeklyStandings differential (original approach for Yahoo)
+  const standingsWeeks = Array.from(weeklyStandings.value.keys()).sort((a, b) => a - b)
+  console.log('[last3WeeksWins] Fallback to weeklyStandings - weeks:', standingsWeeks.length)
+  
   if (standingsWeeks.length < 2) {
-    leagueStore.yahooTeams.forEach(team => result.set(team.team_key, 0))
-    console.log('[last3WeeksWins] Not enough weeks, returning zeros')
+    console.log('[last3WeeksWins] Not enough standings weeks, returning zeros')
     return result
   }
   
   // For CATEGORY leagues: calculate weekly category wins from cumulative standings
   if (!isPointsLeague.value) {
     // Find weeks where cumulative wins actually changed (not playoff/inactive weeks)
-    // Look at total category wins across all teams to find active weeks
     const activeWeeks: number[] = []
     let prevTotalWins = -1
     
@@ -2090,10 +2126,8 @@ const last3WeeksWins = computed(() => {
       const weekData = weeklyStandings.value.get(week)
       if (!weekData || weekData.length === 0) continue
       
-      // Sum all teams' cumulative wins for this week
       const totalWins = weekData.reduce((sum: number, t: any) => sum + (t.wins || 0), 0)
       
-      // If total changed from previous week, this is an active week
       if (prevTotalWins >= 0 && totalWins !== prevTotalWins) {
         activeWeeks.push(week)
       }
@@ -2102,14 +2136,10 @@ const last3WeeksWins = computed(() => {
     
     console.log('[last3WeeksWins] Active weeks (where wins changed):', activeWeeks)
     
-    // Use last 3 active weeks
     const last3ActiveWeeks = activeWeeks.slice(-3)
     
     if (last3ActiveWeeks.length === 0) {
-      // Fallback: just use last 3 weeks even if no change detected
-      const last3Weeks = standingsWeeks.slice(-3)
-      console.log('[last3WeeksWins] No active weeks found, using last 3:', last3Weeks)
-      leagueStore.yahooTeams.forEach(team => result.set(team.team_key, 0))
+      console.log('[last3WeeksWins] No active weeks found, returning zeros')
       return result
     }
     
@@ -2117,15 +2147,12 @@ const last3WeeksWins = computed(() => {
     
     leagueStore.yahooTeams.forEach(team => {
       let totalCatWins = 0
-      const weeklyGains: any[] = []
       
       for (const week of last3ActiveWeeks) {
-        // Find the week before this one in standingsWeeks
         const weekIdx = standingsWeeks.indexOf(week)
         if (weekIdx <= 0) continue
         
         const prevWeek = standingsWeeks[weekIdx - 1]
-        
         const currentStandings = weeklyStandings.value.get(week)
         const prevStandings = weeklyStandings.value.get(prevWeek)
         
@@ -2135,67 +2162,18 @@ const last3WeeksWins = computed(() => {
         const currentCumWins = currentTeamData?.wins || 0
         const prevCumWins = prevTeamData?.wins || 0
         
-        const weeklyGain = currentCumWins - prevCumWins
-        totalCatWins += Math.max(0, weeklyGain)
-        
-        weeklyGains.push({ week, prevWeek, prevWins: prevCumWins, currWins: currentCumWins, gain: weeklyGain })
-      }
-      
-      // Debug for first team
-      if (team.team_key === leagueStore.yahooTeams[0]?.team_key) {
-        console.log('[last3WeeksWins] First team weekly gains:', JSON.stringify({
-          teamKey: team.team_key,
-          teamName: team.name,
-          weeklyGains,
-          totalCatWins
-        }, null, 2))
+        totalCatWins += Math.max(0, currentCumWins - prevCumWins)
       }
       
       result.set(team.team_key, totalCatWins)
     })
     
-    console.log('[last3WeeksWins] Category result (first 3):', JSON.stringify([...result.entries()].slice(0, 3)))
+    console.log('[last3WeeksWins] Category standings result (first 3):', [...result.entries()].slice(0, 3))
     return result
   }
   
-  // For POINTS leagues: use matchup results to count wins
-  const matchupWeeks = Array.from(
-    new Set([...weeklyMatchupResults.value.values()].flatMap(m => [...m.keys()]))
-  ).sort((a, b) => a - b)
-  const last3Weeks = matchupWeeks.slice(-3)
-  
-  console.log('[last3WeeksWins] Points league - matchupWeeks:', matchupWeeks.length, 'last3:', last3Weeks)
-  
-  leagueStore.yahooTeams.forEach(team => {
-    const teamMatchups = weeklyMatchupResults.value.get(team.team_key)
-    
-    if (leagueStore.activePlatform === 'espn' && espnWeeklyScores.value.size > 0) {
-      let totalWins = 0
-      const teamScores = espnWeeklyScores.value.get(team.team_key)
-      
-      if (teamScores) {
-        last3Weeks.forEach(week => {
-          const weekResult = teamMatchups?.get(week)
-          if (weekResult?.won) totalWins++
-        })
-      }
-      
-      result.set(team.team_key, totalWins)
-    } else if (teamMatchups) {
-      let totalWins = 0
-      last3Weeks.forEach(week => {
-        const weekResult = teamMatchups.get(week)
-        if (weekResult?.won) {
-          totalWins++
-        }
-      })
-      result.set(team.team_key, totalWins)
-    } else {
-      result.set(team.team_key, 0)
-    }
-  })
-  
-  console.log('[last3WeeksWins] Points result (first 3):', JSON.stringify([...result.entries()].slice(0, 3)))
+  // For POINTS leagues without weeklyMatchupResults: use team records
+  console.log('[last3WeeksWins] Points league fallback - no matchup data')
   return result
 })
 
@@ -2220,10 +2198,9 @@ const quickStats = computed(() => {
   const coldest = [...teamsWithLast3].sort((a, b) => a.last3Wins - b.last3Wins)[0]
   
   // For points leagues, show "X wins" in last 3 weeks
-  // For category leagues, show "X cat wins"
-  // For ESPN category leagues with ROTO fallback, we're showing total cat wins (not last 3 weeks)
-  const isEspnCategoryWithRoto = !isPointsLeague.value && leagueStore.activePlatform === 'espn' && Array.from(weeklyStandings.value.keys()).length < 2
-  const winsLabel = isPointsLeague.value ? 'wins' : (isEspnCategoryWithRoto ? 'total cat' : 'cat wins')
+  // For category leagues, show "X cat wins" (or "total cat" if no weekly data available)
+  const hasWeeklyData = weeklyMatchupResults.value.size > 0
+  const winsLabel = isPointsLeague.value ? 'wins' : (hasWeeklyData ? 'cat wins' : 'total cat')
   
   // ALWAYS log this
   console.log('[quickStats] RESULT - hottest:', hottest?.name, 'with', hottest?.last3Wins, winsLabel, '| coldest:', coldest?.name, 'with', coldest?.last3Wins, winsLabel)
