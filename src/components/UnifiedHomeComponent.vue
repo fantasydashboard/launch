@@ -794,14 +794,7 @@ async function loadImageAsBase64(url: string, fallbackName: string): Promise<str
     return url
   }
   
-  // For Sleeper CDN URLs, don't even try to proxy - go straight to ui-avatars.com
-  // sleepercdn.com blocks all CORS attempts
-  if (url.includes('sleepercdn.com')) {
-    console.log(`[Download] Sleeper URL detected for ${fallbackName}, using ui-avatars`)
-    return await loadFromUiAvatars(fallbackName)
-  }
-  
-  // For Yahoo and ESPN URLs, try CORS proxy first
+  // For external CDN URLs (Yahoo, ESPN, Sleeper), try CORS proxy first
   const corsProxies = [
     (u: string) => `https://corsproxy.io/?${encodeURIComponent(u)}`,
     (u: string) => `https://api.allorigins.win/raw?url=${encodeURIComponent(u)}`,
