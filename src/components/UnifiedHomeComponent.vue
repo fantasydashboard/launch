@@ -1576,21 +1576,39 @@ const leaderModalData = computed(() => {
     }).map(t => ({ ...t, value: (t.wins || 0) / Math.max(1, (t.wins || 0) + (t.losses || 0)) * 100 }))
     maxValue = 100
   } else if (leaderModalType.value === 'hottest') {
-    // Hottest based on last 3 weeks category wins (most wins first)
-    comparison = [...teams].sort((a, b) => {
-      const aLast3 = last3WeeksWins.value.get(a.team_key) || 0
-      const bLast3 = last3WeeksWins.value.get(b.team_key) || 0
-      return bLast3 - aLast3
-    }).map(t => ({ ...t, value: last3WeeksWins.value.get(t.team_key) || 0 }))
-    maxValue = Math.max(...teams.map(t => last3WeeksWins.value.get(t.team_key) || 0), 1)
+    // Hottest: points leagues = most points last 3 weeks, category leagues = most cat wins
+    if (isPointsLeague.value) {
+      comparison = [...teams].sort((a, b) => {
+        const aLast3 = last3WeeksPoints.value.get(a.team_key) || 0
+        const bLast3 = last3WeeksPoints.value.get(b.team_key) || 0
+        return bLast3 - aLast3
+      }).map(t => ({ ...t, value: last3WeeksPoints.value.get(t.team_key) || 0 }))
+      maxValue = Math.max(...teams.map(t => last3WeeksPoints.value.get(t.team_key) || 0), 1)
+    } else {
+      comparison = [...teams].sort((a, b) => {
+        const aLast3 = last3WeeksWins.value.get(a.team_key) || 0
+        const bLast3 = last3WeeksWins.value.get(b.team_key) || 0
+        return bLast3 - aLast3
+      }).map(t => ({ ...t, value: last3WeeksWins.value.get(t.team_key) || 0 }))
+      maxValue = Math.max(...teams.map(t => last3WeeksWins.value.get(t.team_key) || 0), 1)
+    }
   } else if (leaderModalType.value === 'coldest') {
-    // Coldest based on last 3 weeks category wins (fewest wins first)
-    comparison = [...teams].sort((a, b) => {
-      const aLast3 = last3WeeksWins.value.get(a.team_key) || 0
-      const bLast3 = last3WeeksWins.value.get(b.team_key) || 0
-      return aLast3 - bLast3
-    }).map(t => ({ ...t, value: last3WeeksWins.value.get(t.team_key) || 0 }))
-    maxValue = Math.max(...teams.map(t => last3WeeksWins.value.get(t.team_key) || 0), 1)
+    // Coldest: points leagues = fewest points last 3 weeks, category leagues = fewest cat wins
+    if (isPointsLeague.value) {
+      comparison = [...teams].sort((a, b) => {
+        const aLast3 = last3WeeksPoints.value.get(a.team_key) || 0
+        const bLast3 = last3WeeksPoints.value.get(b.team_key) || 0
+        return aLast3 - bLast3
+      }).map(t => ({ ...t, value: last3WeeksPoints.value.get(t.team_key) || 0 }))
+      maxValue = Math.max(...teams.map(t => last3WeeksPoints.value.get(t.team_key) || 0), 1)
+    } else {
+      comparison = [...teams].sort((a, b) => {
+        const aLast3 = last3WeeksWins.value.get(a.team_key) || 0
+        const bLast3 = last3WeeksWins.value.get(b.team_key) || 0
+        return aLast3 - bLast3
+      }).map(t => ({ ...t, value: last3WeeksWins.value.get(t.team_key) || 0 }))
+      maxValue = Math.max(...teams.map(t => last3WeeksWins.value.get(t.team_key) || 0), 1)
+    }
   } else if (leaderModalType.value === 'mostPoints') {
     // Most points (points leagues)
     comparison = [...teams].sort((a, b) => (b.points_for || 0) - (a.points_for || 0)).map(t => ({ ...t, value: t.points_for || 0 }))
@@ -1700,7 +1718,12 @@ const leaderModalValue = computed(() => {
   const leader = leaderModalData.value.leader
   if (!leader) return '0'
   if (leaderModalType.value === 'bestRecord') return getWinPercentage(leader)
-  if (leaderModalType.value === 'hottest' || leaderModalType.value === 'coldest') return `${last3WeeksWins.value.get(leader.team_key) || 0}`
+  if (leaderModalType.value === 'hottest' || leaderModalType.value === 'coldest') {
+    if (isPointsLeague.value) {
+      return `${(last3WeeksPoints.value.get(leader.team_key) || 0).toFixed(1)}`
+    }
+    return `${last3WeeksWins.value.get(leader.team_key) || 0}`
+  }
   if (leaderModalType.value === 'mostPoints') return leader.points_for?.toFixed(1) || '0'
   if (leaderModalType.value === 'bestCatWinPct') return getCatWinPct(leader) + '%'
   if (leaderModalType.value === 'mostDominant') return `${teamDominantWins.value.get(leader.team_key) || 0}`
@@ -2116,18 +2139,99 @@ const last3WeeksWins = computed(() => {
   return result
 })
 
+// Last 3 weeks POINTS scored (for points leagues hottest/coldest)
+const last3WeeksPoints = computed(() => {
+  const result = new Map<string, number>()
+  
+  // Initialize all teams with 0
+  leagueStore.yahooTeams.forEach(team => result.set(team.team_key, 0))
+  
+  if (!isPointsLeague.value) return result
+  
+  // METHOD 1: Use weeklyMatchupResults (Yahoo/Sleeper - has .points per week)
+  if (weeklyMatchupResults.value.size > 0) {
+    const matchupWeeks = Array.from(
+      new Set([...weeklyMatchupResults.value.values()].flatMap(m => [...m.keys()]))
+    ).sort((a, b) => a - b)
+    
+    const last3Weeks = matchupWeeks.slice(-3)
+    console.log('[last3WeeksPoints] Using weeklyMatchupResults - last 3 weeks:', last3Weeks)
+    
+    for (const [teamKey, weekMap] of weeklyMatchupResults.value) {
+      let totalPoints = 0
+      for (const week of last3Weeks) {
+        const matchup = weekMap.get(week)
+        if (matchup) {
+          totalPoints += matchup.points || 0
+        }
+      }
+      result.set(teamKey, totalPoints)
+    }
+    
+    console.log('[last3WeeksPoints] Result (first 3):', [...result.entries()].slice(0, 3))
+    return result
+  }
+  
+  // METHOD 2: Use espnWeeklyScores (ESPN - has score per week)
+  if (espnWeeklyScores.value.size > 0) {
+    const allWeeks = new Set<number>()
+    espnWeeklyScores.value.forEach(weekMap => weekMap.forEach((_, week) => allWeeks.add(week)))
+    const sortedWeeks = [...allWeeks].sort((a, b) => a - b)
+    const last3Weeks = sortedWeeks.slice(-3)
+    console.log('[last3WeeksPoints] Using espnWeeklyScores - last 3 weeks:', last3Weeks)
+    
+    for (const [teamKey, weekMap] of espnWeeklyScores.value) {
+      let totalPoints = 0
+      for (const week of last3Weeks) {
+        totalPoints += weekMap.get(week) || 0
+      }
+      result.set(teamKey, totalPoints)
+    }
+    
+    console.log('[last3WeeksPoints] Result (first 3):', [...result.entries()].slice(0, 3))
+    return result
+  }
+  
+  console.log('[last3WeeksPoints] No weekly score data available')
+  return result
+})
+
 // Quick Stats - without luckiest/unluckiest
 const quickStats = computed(() => {
   const teams = teamsWithStats.value
   
-  // Hottest/Coldest based on last 3 weeks performance
+  // For points leagues: hottest/coldest = most/fewest points in last 3 weeks
+  // For category leagues: hottest/coldest = most/fewest cat wins in last 3 weeks
+  if (isPointsLeague.value) {
+    const teamsWithLast3 = teams.map(t => ({
+      ...t,
+      last3Points: last3WeeksPoints.value.get(t.team_key) || 0
+    }))
+    
+    const hottest = [...teamsWithLast3].sort((a, b) => b.last3Points - a.last3Points)[0]
+    const coldest = [...teamsWithLast3].sort((a, b) => a.last3Points - b.last3Points)[0]
+    
+    console.log('[quickStats] Points league - hottest:', hottest?.name, hottest?.last3Points.toFixed(1), 'pts | coldest:', coldest?.name, coldest?.last3Points.toFixed(1), 'pts')
+    
+    const mostActive = [...teams].sort((a, b) => (b.transactions || 0) - (a.transactions || 0))[0]
+    const leastActive = [...teams].sort((a, b) => (a.transactions || 0) - (b.transactions || 0))[0]
+    
+    return [
+      { icon: '🔥', label: 'Hottest', team: hottest, value: hottest ? `${hottest.last3Points.toFixed(1)} pts` : '-', valueClass: 'text-orange-400', type: 'hottest' },
+      { icon: '❄️', label: 'Coldest', team: coldest, value: coldest ? `${coldest.last3Points.toFixed(1)} pts` : '-', valueClass: 'text-cyan-400', type: 'coldest' },
+      { icon: '📈', label: 'Most Moves', team: mostActive, value: mostActive?.transactions?.toString() || '0', valueClass: 'text-blue-400', type: 'mostMoves' },
+      { icon: '🪨', label: 'Fewest Moves', team: leastActive, value: leastActive?.transactions?.toString() || '0', valueClass: 'text-purple-400', type: 'fewestMoves' }
+    ]
+  }
+  
+  // Category leagues: use wins
   const teamsWithLast3 = teams.map(t => ({
     ...t,
     last3Wins: last3WeeksWins.value.get(t.team_key) || 0
   }))
   
   // Debug log
-  if (teams.length > 0 && !isPointsLeague.value) {
+  if (teams.length > 0) {
     console.log('[quickStats] Category league - teams count:', teams.length)
     console.log('[quickStats] last3WeeksWins map size:', last3WeeksWins.value.size)
     console.log('[quickStats] Sample team last3Wins values:', teamsWithLast3.slice(0, 3).map(t => ({ name: t.name, last3Wins: t.last3Wins })))
@@ -2136,15 +2240,11 @@ const quickStats = computed(() => {
   const hottest = [...teamsWithLast3].sort((a, b) => b.last3Wins - a.last3Wins)[0]
   const coldest = [...teamsWithLast3].sort((a, b) => a.last3Wins - b.last3Wins)[0]
   
-  // For points leagues, show "X wins" in last 3 weeks
-  // For category leagues, show "X cat wins" (or "total cat" if no weekly data available)
   const hasWeeklyData = weeklyMatchupResults.value.size > 0
-  const winsLabel = isPointsLeague.value ? 'wins' : (hasWeeklyData ? 'cat wins' : 'total cat')
+  const winsLabel = hasWeeklyData ? 'cat wins' : 'total cat'
   
-  // ALWAYS log this
   console.log('[quickStats] RESULT - hottest:', hottest?.name, 'with', hottest?.last3Wins, winsLabel, '| coldest:', coldest?.name, 'with', coldest?.last3Wins, winsLabel)
   
-  // Most/Fewest Moves - works for all platforms
   const mostActive = [...teams].sort((a, b) => (b.transactions || 0) - (a.transactions || 0))[0]
   const leastActive = [...teams].sort((a, b) => (a.transactions || 0) - (b.transactions || 0))[0]
   
