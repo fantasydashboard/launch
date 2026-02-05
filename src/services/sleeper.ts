@@ -435,22 +435,31 @@ class SleeperService {
 
   // Get avatar URL for a roster (league-specific avatar or user avatar)
   getAvatarUrl(roster: SleeperRoster, user: SleeperUser | undefined, league: SleeperLeague): string {
-    // Priority 1: Roster's metadata avatar (team-specific in league)
+    // Priority 1: User's league-specific avatar (set per-league in Sleeper settings)
+    if (user?.metadata?.avatar) {
+      // This is typically a full URL like https://sleepercdn.com/uploads/...
+      if (user.metadata.avatar.startsWith('http')) {
+        return user.metadata.avatar
+      }
+      return `${CDN_URL}/avatars/thumbs/${user.metadata.avatar}`
+    }
+    
+    // Priority 2: Roster's metadata avatar
     if (roster.metadata?.avatar) {
       return `${CDN_URL}/avatars/thumbs/${roster.metadata.avatar}`
     }
     
-    // Priority 2: Roster's settings avatar
+    // Priority 3: Roster's settings avatar
     if (roster.settings?.avatar) {
       return `${CDN_URL}/avatars/thumbs/${roster.settings.avatar}`
     }
     
-    // Priority 3: User's avatar
+    // Priority 4: User's account avatar (global, not league-specific)
     if (user?.avatar) {
       return `${CDN_URL}/avatars/thumbs/${user.avatar}`
     }
     
-    // Priority 4: League's default avatar
+    // Priority 5: League's default avatar
     if (league.avatar) {
       return `${CDN_URL}/avatars/thumbs/${league.avatar}`
     }
