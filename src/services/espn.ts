@@ -3873,13 +3873,24 @@ export class EspnFantasyService {
     
     console.log('[ESPN getCategoryStatsBreakdown] Finished fetching all weeks. hasRealStatValues:', hasRealStatValues, 'weeksWithRealData:', weeksWithRealData, '/', weeksProcessed)
     
-    // CRITICAL: Only trust per-category data if we got it for MOST weeks (>= 75%)
-    // ESPN API inconsistently returns scoreByStat - sometimes only cached weeks have it
-    // If we only got partial data, fall back to ROTO which uses season totals
-    const realDataCoverage = weeksProcessed > 0 ? weeksWithRealData / weeksProcessed : 0
+    // CRITICAL: For H2H Each Category leagues, team.wins/losses are CATEGORY totals, not matchup weeks
+    // e.g., 8-0 means won 8 categories in 1 week (with 8 categories), NOT 8 matchup weeks
+    // Calculate actual matchup weeks: max(W+L+T) / numCategories
+    const numCategories = categories.length || 1
+    const maxRecord = Math.max(1, ...teams.map(t => {
+      const teamKey = `espn_${t.id}`
+      const catW = teamTotalCategoryWins.get(teamKey) || t.wins || 0
+      const catL = teamTotalCategoryLosses.get(teamKey) || t.losses || 0
+      return catW + catL + (t.ties || 0)
+    }))
+    const actualWeeksPlayed = Math.max(1, Math.round(maxRecord / numCategories))
+    
+    // Compare real data coverage against ACTUAL weeks played, not ESPN's matchup period count
+    const realDataCoverage = actualWeeksPlayed > 0 ? weeksWithRealData / actualWeeksPlayed : 0
     const trustRealData = hasRealStatValues && realDataCoverage >= 0.75
     
-    console.log('[ESPN getCategoryStatsBreakdown] Real data coverage:', Math.round(realDataCoverage * 100) + '%', 'trustRealData:', trustRealData)
+    console.log('[ESPN getCategoryStatsBreakdown] numCategories:', numCategories, 'maxRecord:', maxRecord, 'actualWeeksPlayed:', actualWeeksPlayed)
+    console.log('[ESPN getCategoryStatsBreakdown] Real data coverage:', Math.round(realDataCoverage * 100) + '% (' + weeksWithRealData + '/' + actualWeeksPlayed + ' actual weeks)', 'trustRealData:', trustRealData)
     
     // Log sample of per-category wins for debugging
     if (trustRealData) {
@@ -3910,15 +3921,14 @@ export class EspnFantasyService {
         
         const numTeams = teamsWithStats.length
         
-        // Calculate ACTUAL matchup periods from team records
-        // ESPN's currentMatchupPeriod can be much higher than actual matchups played
-        // (e.g., basketball might say period 16 but only 8 matchups have been played)
-        const actualMatchupPeriods = Math.max(1, ...teamsWithStats.map(t => {
+        // Calculate ACTUAL matchup weeks from team records and number of categories
+        // For H2H Each Category: W+L = total category results, NOT matchup weeks
+        // actualWeeksPlayed = max(W+L) / numCategories
+        const maxTeamRecord = Math.max(1, ...teamsWithStats.map(t => {
           return (t.wins || 0) + (t.losses || 0) + (t.ties || 0)
         }))
-        
-        const weeksToUse = actualMatchupPeriods > 0 ? actualMatchupPeriods : completedWeeks
-        console.log('[ESPN getCategoryStatsBreakdown] ROTO using actualMatchupPeriods:', actualMatchupPeriods, '(vs completedWeeks:', completedWeeks + ')')
+        const weeksToUse = Math.max(1, Math.round(maxTeamRecord / numCategories))
+        console.log('[ESPN getCategoryStatsBreakdown] ROTO using weeksToUse:', weeksToUse, '(maxRecord:', maxTeamRecord, '/ numCategories:', numCategories, ', vs completedWeeks:', completedWeeks + ')')
         
         // For each category, rank teams and calculate "roto points" (simulated wins)
         for (const category of categories) {

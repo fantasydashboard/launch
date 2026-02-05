@@ -3853,17 +3853,19 @@ async function loadAllMatchups() {
       const espnCompletedWeeks = Math.max(1, currentWeek - 1)
       
       // ESPN basketball matchup periods don't always match actual matchup weeks
-      // Use team records to determine actual matchups played
-      const actualMatchupsPlayed = Math.max(1, ...leagueStore.yahooTeams.map(t => 
+      // For H2H Each Category: team.wins/losses are CATEGORY totals, not matchup weeks
+      // e.g., 8-0 = won 8 categories in 1 week (with 8 categories)
+      // actualWeeks = max(W+L+T) / numCategories
+      const maxTeamRecord = Math.max(1, ...leagueStore.yahooTeams.map(t => 
         (t.wins || 0) + (t.losses || 0) + (t.ties || 0)
       ))
+      const catCount = numCategories.value || 8 // H2H Each Category leagues have category count
+      const actualMatchupWeeks = !isPointsLeague.value ? Math.max(1, Math.round(maxTeamRecord / catCount)) : maxTeamRecord
       
-      // Use the smaller of ESPN's period count and actual matchups * 2 (ESPN sometimes numbers periods higher than matchups)
-      // But fetch all ESPN periods to not miss data
+      // Fetch all ESPN periods to not miss data
       const completedWeeks = espnCompletedWeeks
-      const actualMatchupWeeks = actualMatchupsPlayed
       
-      console.log('[ESPN loadAllMatchups] Fetching', completedWeeks, 'ESPN periods (actual matchup weeks:', actualMatchupWeeks, ')')
+      console.log('[ESPN loadAllMatchups] Fetching', completedWeeks, 'ESPN periods (actual matchup weeks:', actualMatchupWeeks, ', maxRecord:', maxTeamRecord, ', categories:', catCount, ')')
       
       // Initialize maps
       const allMatchupResults = new Map<string, Map<number, any>>()
