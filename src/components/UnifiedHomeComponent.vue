@@ -2735,7 +2735,8 @@ function buildChart() {
       reversed: true,
       min: 1,
       max: leagueStore.yahooTeams.length,
-      tickAmount: Math.min(leagueStore.yahooTeams.length - 1, 7),
+      tickAmount: leagueStore.yahooTeams.length - 1,
+      forceNiceScale: false,
       labels: { style: { colors: '#9CA3AF', fontSize: '11px' }, formatter: (val: number) => Math.round(val).toString() }
     },
     grid: { borderColor: '#374151', strokeDashArray: 3, padding: { right: 50 } },
@@ -3161,6 +3162,8 @@ async function downloadStandings() {
           reversed: true,
           min: 1,
           max: sortedTeams.value.length,
+          tickAmount: sortedTeams.value.length - 1,
+          forceNiceScale: false,
           labels: {
             style: {
               colors: '#9ca3af',
