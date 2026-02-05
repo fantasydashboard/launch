@@ -1302,7 +1302,10 @@ const teamsWithStats = computed(() => {
   }
   
   return leagueStore.yahooTeams.map(team => {
-    const transactions = transactionCounts.value.get(team.team_key) || 0
+    // Try transactionCounts map first (Yahoo/Sleeper), then fall back to ESPN's transactionCounter object
+    const transactions = transactionCounts.value.get(team.team_key) 
+      || ((team.transactionCounter?.acquisitions || 0) + (team.transactionCounter?.drops || 0) + (team.transactionCounter?.trades || 0))
+      || (team.totalMoves ?? 0)
     const categoryWins = teamCategoryWins.value.get(team.team_key) || {}
     const numTeams = leagueStore.yahooTeams.length
     
