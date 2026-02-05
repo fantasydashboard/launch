@@ -1735,7 +1735,7 @@ const leaderModalValue = computed(() => {
 
 const leaderModalUnit = computed(() => {
   if (leaderModalType.value === 'bestRecord') return 'Win %'
-  if (leaderModalType.value === 'hottest' || leaderModalType.value === 'coldest') return isPointsLeague.value ? 'Wins (Last 3)' : 'Cats (Last 3)'
+  if (leaderModalType.value === 'hottest' || leaderModalType.value === 'coldest') return isPointsLeague.value ? 'Points (Last 3)' : 'Cats (Last 3)'
   if (leaderModalType.value === 'mostPoints') return 'Total Points'
   if (leaderModalType.value === 'bestCatWinPct') return 'Category Win %'
   if (leaderModalType.value === 'mostDominant') return 'Dominant Weeks'
@@ -2604,7 +2604,7 @@ function closeLeaderModal() { showLeaderModal.value = false }
 function formatLeaderValue(value: number) {
   if (leaderModalType.value === 'bestRecord') return value.toFixed(0) + '%'
   if (leaderModalType.value === 'bestCatWinPct') return value.toFixed(2) + '%'
-  if (leaderModalType.value === 'hottest' || leaderModalType.value === 'coldest') return Math.round(value).toString()
+  if (leaderModalType.value === 'hottest' || leaderModalType.value === 'coldest') return isPointsLeague.value ? value.toFixed(1) : Math.round(value).toString()
   if (leaderModalType.value === 'mostCatWins' && !isPointsLeague.value) return value + ' wins'
   if (leaderModalType.value === 'mostCatWins' && isPointsLeague.value) return value.toFixed(1)
   if (leaderModalType.value === 'mostDominant') return value + ' weeks'
@@ -3284,7 +3284,7 @@ async function downloadLeaderImage() {
       if (leaderModalType.value === 'bestCatWinPct') return 'Cat Win %'
       if (leaderModalType.value === 'mostDominant') return 'Dom. Weeks'
       if (leaderModalType.value === 'bestAllPlay') return 'All-Play Wins'
-      if (leaderModalType.value === 'hottest' || leaderModalType.value === 'coldest') return 'Cats (Last 3)'
+      if (leaderModalType.value === 'hottest' || leaderModalType.value === 'coldest') return isPointsLeague.value ? 'Points (Last 3)' : 'Cats (Last 3)'
       if (leaderModalType.value === 'mostMoves' || leaderModalType.value === 'fewestMoves') return 'Moves'
       return ''
     }
