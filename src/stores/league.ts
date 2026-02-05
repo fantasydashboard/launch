@@ -1549,6 +1549,7 @@ export const useLeagueStore = defineStore('league', () => {
           is_my_team: myTeamId !== null && team.id === myTeamId,
           transactionCounter: team.transactionCounter || 0,
           transactions: team.transactionCounter || 0,
+          totalMoves: team.totalMoves || 0,  // Pre-calculated transaction total
           // Category league specific fields
           category_wins: (team as any).categoryWins || 0,
           category_losses: (team as any).categoryLosses || 0
