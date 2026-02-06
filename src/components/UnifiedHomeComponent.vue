@@ -668,7 +668,7 @@
                   :key="idx"
                   class="w-10 h-10 rounded-lg flex items-center justify-center text-xs font-bold"
                   :class="result.won ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'"
-                  :title="`Week ${idx + 1}: ${result.points?.toFixed(1) || '0.0'} pts`"
+                  :title="`Week ${result.week || (idx + 1)}: ${result.points?.toFixed(1) || '0.0'} pts`"
                 >
                   {{ result.won ? 'W' : 'L' }}
                 </div>
@@ -1781,7 +1781,7 @@ const pointsLeagueTeamDetailStats = computed(() => {
   
   // Get weekly results from weeklyMatchupResults map - REAL DATA ONLY
   const teamMatchups = weeklyMatchupResults.value.get(team.team_key)
-  const weeklyResults: { won: boolean; points: number }[] = []
+  const weeklyResults: { won: boolean; points: number; week: number }[] = []
   let highScore = 0
   let lowScore = Infinity
   let totalPointsAgainst = 0
@@ -1798,7 +1798,7 @@ const pointsLeagueTeamDetailStats = computed(() => {
       const result = teamMatchups.get(week)
       if (result) {
         const pts = result.points || 0
-        weeklyResults.push({ won: result.won, points: pts })
+        weeklyResults.push({ won: result.won, points: pts, week })
         
         if (pts > highScore) highScore = pts
         if (pts > 0 && pts < lowScore) lowScore = pts
@@ -1834,7 +1834,7 @@ const pointsLeagueTeamDetailStats = computed(() => {
         const prevCumWins = prevWeekIdx >= 0 ? (cumulativeWinsPerWeek.get(standingsWeeks[prevWeekIdx]) || 0) : 0
         const won = cumWins > prevCumWins
         
-        weeklyResults.push({ won, points: pts })
+        weeklyResults.push({ won, points: pts, week })
         
         if (pts > highScore) highScore = pts
         if (pts > 0 && pts < lowScore) lowScore = pts
@@ -1898,13 +1898,21 @@ const pointsLeagueTeamDetailChartOptions = computed(() => {
   const weeklyResults = pointsLeagueTeamDetailStats.value.weeklyResults
   if (weeklyResults.length === 0) return null
   
-  // Build week labels - use real week numbers if from espnWeeklyScores
+  // Build week labels - use real week numbers from matchup data
   let weekLabels = weeklyResults.map((_, i) => `Wk ${i + 1}`)
-  if (weeklyMatchupResults.value.size === 0 && espnWeeklyScores.value.size > 0 && selectedTeamDetail.value) {
-    const teamScores = espnWeeklyScores.value.get(selectedTeamDetail.value.team_key)
-    if (teamScores) {
-      const sortedWeeks = Array.from(teamScores.keys()).sort((a, b) => a - b)
+  if (selectedTeamDetail.value) {
+    // Try weeklyMatchupResults first (Yahoo, Sleeper)
+    const teamMatchups = weeklyMatchupResults.value.get(selectedTeamDetail.value.team_key)
+    if (teamMatchups && teamMatchups.size > 0) {
+      const sortedWeeks = Array.from(teamMatchups.keys()).sort((a, b) => a - b)
       weekLabels = sortedWeeks.map(w => `Wk ${w}`)
+    } else if (espnWeeklyScores.value.size > 0) {
+      // Fallback to espnWeeklyScores (ESPN)
+      const teamScores = espnWeeklyScores.value.get(selectedTeamDetail.value.team_key)
+      if (teamScores) {
+        const sortedWeeks = Array.from(teamScores.keys()).sort((a, b) => a - b)
+        weekLabels = sortedWeeks.map(w => `Wk ${w}`)
+      }
     }
   }
   
@@ -1967,11 +1975,32 @@ const pointsLeagueTeamDetailChartSeries = computed(() => {
   // Calculate weekly league averages from all teams' REAL matchup results
   const weeklyLeagueAvgs: number[] = []
   
-  // Determine which weeks we're showing
-  const weekCount = weeklyResults.length
+  // Get actual week numbers from the selected team's matchup data
+  // (weeks may not start at 1 - e.g., hockey starts at week 15)
+  const selectedTeam = selectedTeamDetail.value
+  let actualWeekNums: number[] = []
   
-  for (let weekIdx = 0; weekIdx < weekCount; weekIdx++) {
-    const weekNum = weekIdx + 1 // Weeks are 1-indexed
+  if (selectedTeam) {
+    const teamMatchups = weeklyMatchupResults.value.get(selectedTeam.team_key)
+    if (teamMatchups && teamMatchups.size > 0) {
+      actualWeekNums = Array.from(teamMatchups.keys()).sort((a, b) => a - b)
+    }
+  }
+  
+  // Fallback: collect all week numbers from espnWeeklyScores
+  if (actualWeekNums.length === 0 && espnWeeklyScores.value.size > 0) {
+    const allWeeks = new Set<number>()
+    espnWeeklyScores.value.forEach(weekMap => weekMap.forEach((_, week) => allWeeks.add(week)))
+    actualWeekNums = [...allWeeks].sort((a, b) => a - b)
+  }
+  
+  // Fallback: generate sequential week numbers starting at 1
+  if (actualWeekNums.length === 0) {
+    actualWeekNums = weeklyResults.map((_, i) => i + 1)
+  }
+  
+  for (let weekIdx = 0; weekIdx < weeklyResults.length; weekIdx++) {
+    const weekNum = actualWeekNums[weekIdx] || (weekIdx + 1)
     let totalPoints = 0
     let teamCount = 0
     
@@ -4416,6 +4445,12 @@ async function loadAllMatchups() {
             // Get points for this week
             const t1Points = parseFloat(t1.team_points?.total || t1.points || '0')
             const t2Points = parseFloat(t2.team_points?.total || t2.points || '0')
+            
+            // Skip incomplete matchups (in-progress week with no winner yet)
+            if (!matchup.winner_team_key) {
+              console.log(`[Yahoo Points] Skipping week ${week} matchup - no winner yet (in-progress)`)
+              continue
+            }
             
             // Store matchup results for each team
             const t1Results = allMatchupResults.get(t1.team_key)
