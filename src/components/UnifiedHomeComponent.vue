@@ -3907,7 +3907,11 @@ async function loadAllMatchups() {
     console.log('[Sleeper] Loading REAL matchups from historical data')
     const season = leagueStore.currentLeague?.season || new Date().getFullYear().toString()
     const currentWeek = leagueStore.currentLeague?.settings?.leg || 1
-    const endWeek = Math.min(currentWeek, leagueStore.currentLeague?.settings?.playoff_week_start || 14)
+    const sleeperSport = (leagueStore.currentLeague as any)?.sport || 
+      leagueStore.savedLeagues?.find(l => l.id === leagueStore.activeLeagueId)?.sport || 'nfl'
+    const playoffStart = leagueStore.currentLeague?.settings?.playoff_week_start || 
+      (sleeperSport === 'nba' ? 22 : 15)
+    const endWeek = Math.min(currentWeek, playoffStart)
     const startWeek = 1
     
     // Get current week matchups for display
@@ -3948,11 +3952,13 @@ async function loadAllMatchups() {
     // Track cumulative wins/losses per team
     const cumulativeWins = new Map<string, number>()
     const cumulativeLosses = new Map<string, number>()
+    const cumulativeTies = new Map<string, number>()
     const cumulativePoints = new Map<string, number>()
     
     leagueStore.yahooTeams.forEach(t => {
       cumulativeWins.set(t.team_key, 0)
       cumulativeLosses.set(t.team_key, 0)
+      cumulativeTies.set(t.team_key, 0)
       cumulativePoints.set(t.team_key, 0)
     })
     
@@ -4001,6 +4007,8 @@ async function loadAllMatchups() {
             cumulativeLosses.set(team1Key, (cumulativeLosses.get(team1Key) || 0) + 1)
           } else {
             isTied = true
+            cumulativeTies.set(team1Key, (cumulativeTies.get(team1Key) || 0) + 1)
+            cumulativeTies.set(team2Key, (cumulativeTies.get(team2Key) || 0) + 1)
           }
         }
         
@@ -4040,12 +4048,19 @@ async function loadAllMatchups() {
         name: t.name,
         wins: cumulativeWins.get(t.team_key) || 0,
         losses: cumulativeLosses.get(t.team_key) || 0,
+        ties: cumulativeTies.get(t.team_key) || 0,
         points_for: cumulativePoints.get(t.team_key) || 0,
         rank: 0
       })).sort((a, b) => {
-        // Sort by wins desc, then points_for desc
-        if (b.wins !== a.wins) return b.wins - a.wins
-        return b.points_for - a.points_for
+        // Sort by win percentage, then points_for as tiebreaker
+        const aTotal = a.wins + a.losses + a.ties
+        const bTotal = b.wins + b.losses + b.ties
+        const aWinPct = aTotal > 0 ? a.wins / aTotal : 0
+        const bWinPct = bTotal > 0 ? b.wins / bTotal : 0
+        if (Math.abs(aWinPct - bWinPct) < 0.001) {
+          return b.points_for - a.points_for
+        }
+        return bWinPct - aWinPct
       })
       
       weekStandings.forEach((t, idx) => t.rank = idx + 1)
