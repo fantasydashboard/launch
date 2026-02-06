@@ -3972,7 +3972,7 @@ async function loadAllMatchups() {
     const season = leagueStore.currentLeague?.season || new Date().getFullYear().toString()
     const currentWeek = leagueStore.currentLeague?.settings?.leg || 1
     const sleeperSport = (leagueStore.currentLeague as any)?.sport || 
-      leagueStore.savedLeagues?.find(l => l.id === leagueStore.activeLeagueId)?.sport || 'nfl'
+      leagueStore.savedLeagues?.find((l: any) => l.league_id === leagueStore.activeLeagueId)?.sport || 'nfl'
     const playoffStart = leagueStore.currentLeague?.settings?.playoff_week_start || 
       (sleeperSport === 'nba' ? 22 : 15)
     // Regular season only: playoff_week_start is the FIRST playoff week, so regular season ends at playoffStart - 1
