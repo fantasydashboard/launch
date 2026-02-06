@@ -1569,7 +1569,8 @@ const currentSeason = computed(() => leagueStore.currentLeague?.season || new Da
 const numCategories = computed(() => displayCategories.value.length || 12)
 
 const availableWeeks = computed(() => {
-  const endWeek = isSeasonComplete.value ? totalWeeks.value : currentWeek.value
+  // For in-season leagues, currentWeek is the in-progress week, so completed = currentWeek - 1
+  const endWeek = isSeasonComplete.value ? totalWeeks.value : Math.max(0, currentWeek.value - 1)
   console.log(`availableWeeks: isComplete=${isSeasonComplete.value}, totalWeeks=${totalWeeks.value}, currentWeek=${currentWeek.value}, endWeek=${endWeek}`)
   return Array.from({ length: endWeek }, (_, i) => i + 1)
 })
@@ -1758,7 +1759,12 @@ function sortPowerRankings(column: string) {
 }
 
 // Helpers
-function handleImageError(e: Event) { (e.target as HTMLImageElement).src = defaultAvatar.value }
+function handleImageError(e: Event) {
+  const img = e.target as HTMLImageElement
+  if (img.dataset.errored) return
+  img.dataset.errored = 'true'
+  img.src = defaultAvatar.value
+}
 function getRankClass(rank: number) {
   return 'bg-dark-border text-dark-text'
 }
@@ -2656,7 +2662,8 @@ watch(() => leagueStore.yahooTeams, async () => {
     const endWeek = totalWeeks.value
     const currWeek = currentWeek.value
     const isFinished = isSeasonComplete.value
-    const defaultWeek = isFinished ? endWeek : currWeek
+    // For in-season leagues, default to last completed week (currentWeek is in-progress)
+    const defaultWeek = isFinished ? endWeek : Math.max(1, currWeek - 1)
     
     console.log(`Init: endWeek=${endWeek}, currWeek=${currWeek}, isFinished=${isFinished}, default=${defaultWeek}`)
     console.log('yahooLeague raw:', leagueStore.yahooLeague)
