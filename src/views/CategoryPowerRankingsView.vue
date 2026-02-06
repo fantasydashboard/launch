@@ -1242,7 +1242,7 @@ async function downloadRankings() {
           team.is_my_team ? '#F5C451' : getTeamColor(idx)
         ),
         stroke: {
-          width: powerRankings.value.map(team => team.is_my_team ? 4 : 2),
+          width: 2,
           curve: 'smooth'
         },
         markers: {
@@ -1251,6 +1251,7 @@ async function downloadRankings() {
         },
         xaxis: {
           categories: weeksToShow.map(w => `Wk ${w}`),
+          tickAmount: weeksToShow.length,
           labels: {
             style: {
               colors: '#9ca3af',
@@ -2539,9 +2540,9 @@ function buildChart() {
     return baseColor
   })
   
-  // Stroke widths - hovered line is thicker
+  // Stroke widths - hovered line is thicker, otherwise all uniform
   const strokeWidths = powerRankings.value.map((team: any, idx: number) => {
-    if (hoveredIdx === -1) return team.is_my_team ? 4 : 2
+    if (hoveredIdx === -1) return 2
     return idx === hoveredIdx ? 4 : 2
   })
   
@@ -2603,6 +2604,7 @@ function buildChart() {
     },
     xaxis: {
       categories: chartWeeks.value.map(w => `Wk ${w}`),
+      tickAmount: chartWeeks.value.length,
       labels: {
         style: { colors: '#9ca3af' }
       },

@@ -1510,6 +1510,7 @@ const chartOptions = computed(() => {
     },
     xaxis: {
       categories: historicalWeeks.value.map(w => `Wk ${w}`),
+      tickAmount: historicalWeeks.value.length,
       labels: { style: { colors: '#9ca3af' } }
     },
     yaxis: {
@@ -2251,6 +2252,7 @@ async function downloadRankings() {
         markers: { size: 0, strokeWidth: 0 },
         xaxis: {
           categories: weeksToShow.map(w => `Wk ${w}`),
+          tickAmount: weeksToShow.length,
           labels: { style: { colors: '#9ca3af', fontSize: '10px' } }
         },
         yaxis: {
