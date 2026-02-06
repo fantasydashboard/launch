@@ -1723,6 +1723,8 @@ const mostVolatile = computed(() => {
 // Methods
 function handleImageError(e: Event) {
   const img = e.target as HTMLImageElement
+  if (img.dataset.errored) return
+  img.dataset.errored = 'true'
   img.src = defaultAvatar.value
 }
 
@@ -2071,24 +2073,36 @@ function getOrdinal(n: number): string {
   return n + (s[(v - 20) % 10] || s[v] || s[0])
 }
 
+// ESPN sport-to-headshot path mapping
+const espnHeadshotSport: Record<string, string> = {
+  baseball: 'mlb',
+  basketball: 'nba',
+  football: 'nfl',
+  hockey: 'nhl'
+}
+
 // Get player headshot URL - ESPN players don't have headshots in the roster API
 function getPlayerHeadshot(player: any): string {
   // If player has a headshot URL, use it
   if (player.headshot) return player.headshot
   
-  // For ESPN, try to construct headshot URL from player ID
+  // For ESPN, try to construct headshot URL from player ID using correct sport
   if (player.player_id && leagueStore.activePlatform === 'espn') {
-    return `https://a.espncdn.com/combiner/i?img=/i/headshots/mlb/players/full/${player.player_id}.png&w=96&h=70&cb=1`
+    const sport = currentSport.value
+    const espnSport = espnHeadshotSport[sport] || 'nfl'
+    return `https://a.espncdn.com/combiner/i?img=/i/headshots/${espnSport}/players/full/${player.player_id}.png&w=96&h=70&cb=1`
   }
   
   // Fallback to default avatar
   return defaultAvatar.value
 }
 
-// Handle player image error - show initials fallback
+// Handle player image error - show initials fallback (prevents flicker loop)
 function handlePlayerImageError(event: Event) {
   const img = event.target as HTMLImageElement
-  // Set to a generic player silhouette
+  // Prevent infinite error loop - only replace once
+  if (img.dataset.errored) return
+  img.dataset.errored = 'true'
   img.src = defaultAvatar.value
 }
 
