@@ -1802,7 +1802,7 @@ const pointsLeagueTeamDetailStats = computed(() => {
         
         if (pts > highScore) highScore = pts
         if (pts > 0 && pts < lowScore) lowScore = pts
-        // Handle both field names: oppPoints (Yahoo) and opponentPoints (ESPN)
+        // Handle both field names for backward compatibility with cached data
         totalPointsAgainst += result.opponentPoints || result.oppPoints || 0
       }
     })
@@ -3989,6 +3989,7 @@ async function loadAllMatchups() {
         // Determine winner (only if points exist - game was played)
         let team1Won = false
         let team2Won = false
+        let isTied = false
         if (team1Points > 0 || team2Points > 0) {
           if (team1Points > team2Points) {
             team1Won = true
@@ -3998,8 +3999,14 @@ async function loadAllMatchups() {
             team2Won = true
             cumulativeWins.set(team2Key, (cumulativeWins.get(team2Key) || 0) + 1)
             cumulativeLosses.set(team1Key, (cumulativeLosses.get(team1Key) || 0) + 1)
+          } else {
+            isTied = true
           }
         }
+        
+        // Get team names for display
+        const team1Data = leagueStore.yahooTeams.find(t => t.team_key === team1Key)
+        const team2Data = leagueStore.yahooTeams.find(t => t.team_key === team2Key)
         
         // Store matchup results for team detail view
         const team1Results = allMatchupResults.get(team1Key)
@@ -4008,15 +4015,21 @@ async function loadAllMatchups() {
         if (team1Results) {
           team1Results.set(week, {
             points: team1Points,
-            oppPoints: team2Points,
-            won: team1Won
+            opponentPoints: team2Points,
+            won: team1Won,
+            tied: isTied,
+            opponent: team2Key,
+            opponentName: team2Data?.name || 'Unknown'
           })
         }
         if (team2Results) {
           team2Results.set(week, {
             points: team2Points,
-            oppPoints: team1Points,
-            won: team2Won
+            opponentPoints: team1Points,
+            won: team2Won,
+            tied: isTied,
+            opponent: team1Key,
+            opponentName: team1Data?.name || 'Unknown'
           })
         }
       }
@@ -4491,6 +4504,7 @@ async function loadAllMatchups() {
           
           const cumulativeWins = new Map<string, number>()
           const cumulativeLosses = new Map<string, number>()
+          const cumulativeTies = new Map<string, number>()
           const cumulativePoints = new Map<string, number>()
           
           if (week > startWeek) {
@@ -4498,12 +4512,14 @@ async function loadAllMatchups() {
             prevStandings.forEach(t => {
               cumulativeWins.set(t.team_key, t.wins || 0)
               cumulativeLosses.set(t.team_key, t.losses || 0)
+              cumulativeTies.set(t.team_key, t.ties || 0)
               cumulativePoints.set(t.team_key, t.points_for || 0)
             })
           } else {
             leagueStore.yahooTeams.forEach(t => {
               cumulativeWins.set(t.team_key, 0)
               cumulativeLosses.set(t.team_key, 0)
+              cumulativeTies.set(t.team_key, 0)
               cumulativePoints.set(t.team_key, 0)
             })
           }
@@ -4517,11 +4533,26 @@ async function loadAllMatchups() {
             const t1Points = parseFloat(t1.team_points?.total || t1.points || '0')
             const t2Points = parseFloat(t2.team_points?.total || t2.points || '0')
             
-            // Skip incomplete matchups (in-progress week with no winner yet)
-            if (!matchup.winner_team_key) {
+            // Skip incomplete matchups (in-progress week with no winner yet AND no scores)
+            if (!matchup.winner_team_key && !(matchup.is_tied === true || matchup.is_tied === '1') && t1Points === 0 && t2Points === 0) {
+              console.log(`[Yahoo Points] Skipping week ${week} matchup - no winner and no scores (in-progress)`)
+              continue
+            }
+            
+            // Determine winner/tie
+            const isTied = matchup.is_tied === true || matchup.is_tied === '1' || (!matchup.winner_team_key && t1Points === t2Points && t1Points > 0)
+            const t1Won = !isTied && matchup.winner_team_key === t1.team_key
+            const t2Won = !isTied && matchup.winner_team_key === t2.team_key
+            
+            // If still no winner and not a tie, skip (truly in-progress)
+            if (!t1Won && !t2Won && !isTied) {
               console.log(`[Yahoo Points] Skipping week ${week} matchup - no winner yet (in-progress)`)
               continue
             }
+            
+            // Get team names for display
+            const t1TeamData = leagueStore.yahooTeams.find(t => t.team_key === t1.team_key)
+            const t2TeamData = leagueStore.yahooTeams.find(t => t.team_key === t2.team_key)
             
             // Store matchup results for each team
             const t1Results = allMatchupResults.get(t1.team_key)
@@ -4530,15 +4561,21 @@ async function loadAllMatchups() {
             if (t1Results) {
               t1Results.set(week, {
                 points: t1Points,
-                oppPoints: t2Points,
-                won: matchup.winner_team_key === t1.team_key
+                opponentPoints: t2Points,
+                won: t1Won,
+                tied: isTied,
+                opponent: t2.team_key,
+                opponentName: t2TeamData?.name || 'Unknown'
               })
             }
             if (t2Results) {
               t2Results.set(week, {
                 points: t2Points,
-                oppPoints: t1Points,
-                won: matchup.winner_team_key === t2.team_key
+                opponentPoints: t1Points,
+                won: t2Won,
+                tied: isTied,
+                opponent: t1.team_key,
+                opponentName: t1TeamData?.name || 'Unknown'
               })
             }
             
@@ -4546,7 +4583,10 @@ async function loadAllMatchups() {
             cumulativePoints.set(t1.team_key, (cumulativePoints.get(t1.team_key) || 0) + t1Points)
             cumulativePoints.set(t2.team_key, (cumulativePoints.get(t2.team_key) || 0) + t2Points)
             
-            if (matchup.winner_team_key) {
+            if (isTied) {
+              cumulativeTies.set(t1.team_key, (cumulativeTies.get(t1.team_key) || 0) + 1)
+              cumulativeTies.set(t2.team_key, (cumulativeTies.get(t2.team_key) || 0) + 1)
+            } else if (matchup.winner_team_key) {
               if (matchup.winner_team_key === t1.team_key) {
                 cumulativeWins.set(t1.team_key, (cumulativeWins.get(t1.team_key) || 0) + 1)
                 cumulativeLosses.set(t2.team_key, (cumulativeLosses.get(t2.team_key) || 0) + 1)
@@ -4562,10 +4602,14 @@ async function loadAllMatchups() {
             name: t.name,
             wins: cumulativeWins.get(t.team_key) || 0,
             losses: cumulativeLosses.get(t.team_key) || 0,
+            ties: cumulativeTies.get(t.team_key) || 0,
             points_for: cumulativePoints.get(t.team_key) || 0
           })).sort((a, b) => {
-            const aWinPct = a.wins / Math.max(1, a.wins + a.losses)
-            const bWinPct = b.wins / Math.max(1, b.wins + b.losses)
+            const aWinPct = a.wins / Math.max(1, a.wins + a.losses + a.ties)
+            const bWinPct = b.wins / Math.max(1, b.wins + b.losses + b.ties)
+            if (Math.abs(aWinPct - bWinPct) < 0.001) {
+              return b.points_for - a.points_for
+            }
             return bWinPct - aWinPct
           })
           
