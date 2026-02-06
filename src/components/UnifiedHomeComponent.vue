@@ -2186,7 +2186,40 @@ const last3WeeksPoints = computed(() => {
     return result
   }
   
-  console.log('[last3WeeksPoints] No weekly score data available')
+  console.log('[last3WeeksPoints] No weekly score data available from matchups/scores')
+  
+  // METHOD 3: Use weeklyStandings cumulative points_for (ESPN basketball fallback)
+  // Derive weekly points by subtracting consecutive weeks' cumulative totals
+  const standingsWeeks = Array.from(weeklyStandings.value.keys()).sort((a, b) => a - b)
+  if (standingsWeeks.length >= 2) {
+    console.log('[last3WeeksPoints] Using weeklyStandings cumulative points - weeks available:', standingsWeeks.length)
+    
+    // Get the last 4 weeks of standings (need N+1 to calculate N weeks of diffs)
+    const relevantWeeks = standingsWeeks.slice(-4)
+    
+    leagueStore.yahooTeams.forEach(team => {
+      let totalPoints = 0
+      
+      // Calculate points per week from cumulative differences
+      for (let i = 1; i < relevantWeeks.length; i++) {
+        const currentWeekData = weeklyStandings.value.get(relevantWeeks[i])
+        const prevWeekData = weeklyStandings.value.get(relevantWeeks[i - 1])
+        
+        const currentTeam = currentWeekData?.find((t: any) => t.team_key === team.team_key)
+        const prevTeam = prevWeekData?.find((t: any) => t.team_key === team.team_key)
+        
+        const weekPoints = (currentTeam?.points_for || 0) - (prevTeam?.points_for || 0)
+        if (weekPoints > 0) totalPoints += weekPoints
+      }
+      
+      result.set(team.team_key, totalPoints)
+    })
+    
+    console.log('[last3WeeksPoints] Standings-derived result (first 3):', [...result.entries()].slice(0, 3).map(([k, v]) => [k, v.toFixed(1)]))
+    return result
+  }
+  
+  console.log('[last3WeeksPoints] No data available at all')
   return result
 })
 
@@ -5115,12 +5148,19 @@ async function loadEspnData() {
       
       // Only use matchup results if we got real data for most weeks
       // Otherwise clear the data so buildStandingsFromRealMatchups falls back to team records
+      // BUT always keep espnWeeklyScores - the actual scores are valid for hottest/coldest even when winners can't be determined
       if (matchupWinnerCoverage >= 0.75) {
         weeklyMatchupResults.value = allMatchupResults
-        espnWeeklyScores.value = weeklyScores
       } else {
         console.log('[ESPN] Insufficient matchup winner coverage - clearing weeklyMatchupResults to use record.overall fallback')
         weeklyMatchupResults.value = new Map()
+      }
+      // Always set weekly scores if we have any data (used for hottest/coldest points calculation)
+      const totalScoresRecorded = [...weeklyScores.values()].reduce((sum, m) => sum + m.size, 0)
+      if (totalScoresRecorded > 0) {
+        espnWeeklyScores.value = weeklyScores
+        console.log('[ESPN] Preserved espnWeeklyScores with', totalScoresRecorded, 'score entries')
+      } else {
         espnWeeklyScores.value = new Map()
       }
       
