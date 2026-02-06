@@ -5271,14 +5271,24 @@ async function loadEspnData() {
                 homeWon = matchup.winner === 'HOME'
                 awayWon = matchup.winner === 'AWAY'
                 isTied = matchup.winner === 'TIE'
+                // For category leagues, scores represent category wins
+                homeCatWins = homeScore
+                awayCatWins = awayScore
+                homeCatLosses = awayScore
+                awayCatLosses = homeScore
                 methodWinnerField++
                 weekHadRealWinner = true
               }
-              // Method 4: Use totalPoints (might be category wins)
+              // Method 4: Use totalPoints (which ARE category wins in H2H Each Category)
               else if (homeScore > 0 || awayScore > 0) {
                 homeWon = homeScore > awayScore
                 awayWon = awayScore > homeScore
                 isTied = homeScore === awayScore
+                // Scores = category wins for category leagues
+                homeCatWins = homeScore
+                awayCatWins = awayScore
+                homeCatLosses = awayScore
+                awayCatLosses = homeScore
                 methodTotalPoints++
                 weekHadRealWinner = true
               }
