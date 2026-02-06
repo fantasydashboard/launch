@@ -1638,13 +1638,14 @@ const biggestClimber = computed(() => {
     const ranks = historicalPowerRanks.value.get(team.team_key) || []
     if (ranks.length < 2) return
     
-    const firstRank = ranks[0]
-    const lastRank = ranks[ranks.length - 1]
-    const climb = firstRank - lastRank
+    const currentRank = ranks[ranks.length - 1]
+    // Find worst (highest number) rank this team has held
+    const worstRank = Math.max(...ranks)
+    const climb = worstRank - currentRank
     
     if (climb > maxClimb) {
       maxClimb = climb
-      climber = { ...team, climb, firstRank, lastRank }
+      climber = { ...team, climb, firstRank: worstRank, lastRank: currentRank }
     }
   })
   
@@ -1661,13 +1662,14 @@ const biggestFaller = computed(() => {
     const ranks = historicalPowerRanks.value.get(team.team_key) || []
     if (ranks.length < 2) return
     
-    const firstRank = ranks[0]
-    const lastRank = ranks[ranks.length - 1]
-    const fall = lastRank - firstRank
+    const currentRank = ranks[ranks.length - 1]
+    // Find best (lowest number) rank this team has held
+    const bestRank = Math.min(...ranks)
+    const fall = currentRank - bestRank
     
     if (fall > maxFall) {
       maxFall = fall
-      faller = { ...team, fall, firstRank, lastRank }
+      faller = { ...team, fall, firstRank: bestRank, lastRank: currentRank }
     }
   })
   
