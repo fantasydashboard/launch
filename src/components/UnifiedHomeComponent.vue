@@ -4147,40 +4147,85 @@ async function loadAllMatchups() {
             let awayWon = false
             let tied = false
             
-            if (homeCatWins > awayCatWins) {
-              homeStats.wins++
-              awayStats.losses++
-              homeWon = true
-              weekHadWinnerData = true
-            } else if (awayCatWins > homeCatWins) {
-              awayStats.wins++
-              homeStats.losses++
-              awayWon = true
-              weekHadWinnerData = true
-            } else if (homeCatWins > 0 || awayCatWins > 0) {
-              homeStats.ties++
-              awayStats.ties++
-              tied = true
-              weekHadWinnerData = true
-            }
+            if (isPointsLeague.value) {
+              // Points league: winner is determined by total score
+              const homeScore = matchup.homeScore || 0
+              const awayScore = matchup.awayScore || 0
+              if (homeScore > awayScore) {
+                homeStats.wins++
+                awayStats.losses++
+                homeWon = true
+                weekHadWinnerData = true
+              } else if (awayScore > homeScore) {
+                awayStats.wins++
+                homeStats.losses++
+                awayWon = true
+                weekHadWinnerData = true
+              } else if (homeScore > 0 || awayScore > 0) {
+                homeStats.ties++
+                awayStats.ties++
+                tied = true
+                weekHadWinnerData = true
+              }
+              
+              // Store matchup results with points
+              allMatchupResults.get(homeKey)?.set(week, {
+                week,
+                opponent: awayKey,
+                won: homeWon,
+                tied,
+                points: homeScore,
+                opponentPoints: awayScore,
+                catWins: homeCatWins,
+                catLosses: awayCatWins
+              })
+              allMatchupResults.get(awayKey)?.set(week, {
+                week,
+                opponent: homeKey,
+                won: awayWon,
+                tied,
+                points: awayScore,
+                opponentPoints: homeScore,
+                catWins: awayCatWins,
+                catLosses: homeCatWins
+              })
+            } else {
+              // Category league: winner by category wins
+              if (homeCatWins > awayCatWins) {
+                homeStats.wins++
+                awayStats.losses++
+                homeWon = true
+                weekHadWinnerData = true
+              } else if (awayCatWins > homeCatWins) {
+                awayStats.wins++
+                homeStats.losses++
+                awayWon = true
+                weekHadWinnerData = true
+              } else if (homeCatWins > 0 || awayCatWins > 0) {
+                homeStats.ties++
+                awayStats.ties++
+                tied = true
+                weekHadWinnerData = true
+              }
             
-            // Store matchup results
-            allMatchupResults.get(homeKey)?.set(week, {
-              week,
-              opponent: awayKey,
-              won: homeWon,
-              tied,
-              catWins: homeCatWins,
-              catLosses: awayCatWins
-            })
-            allMatchupResults.get(awayKey)?.set(week, {
-              week,
-              opponent: homeKey,
-              won: awayWon,
-              tied,
-              catWins: awayCatWins,
-              catLosses: homeCatWins
-            })
+              // Store matchup results
+              allMatchupResults.get(homeKey)?.set(week, {
+                week,
+                opponent: awayKey,
+                won: homeWon,
+                tied,
+                catWins: homeCatWins,
+                catLosses: awayCatWins
+              })
+              allMatchupResults.get(awayKey)?.set(week, {
+                week,
+                opponent: homeKey,
+                won: awayWon,
+                tied,
+                catWins: awayCatWins,
+                catLosses: homeCatWins
+              })
+            }
           }
           
           if (weekHadWinnerData) weeksWithMatchupWinners++
@@ -5205,6 +5250,9 @@ async function loadEspnData() {
               homeWon = homeScore > awayScore
               awayWon = awayScore > homeScore
               isTied = homeScore === awayScore
+              if (homeScore > 0 || awayScore > 0) {
+                weekHadRealWinner = true
+              }
             }
             
             // Record for home team
