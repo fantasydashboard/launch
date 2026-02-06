@@ -1001,7 +1001,7 @@ async function validateEspnLeague() {
     console.log('[ESPN] Discovery result:', discovered)
     
     if (!discovered) {
-      errorMessage.value = 'Could not find this league. Please check the League ID and make sure it\'s a public league. Check the browser console for more details.'
+      errorMessage.value = 'Could not find this league in any sport (football, baseball, basketball, hockey) for the last 3 seasons. Please double-check the League ID. If this is a private league, you may need to provide ESPN credentials first.'
       return
     }
     
@@ -1049,13 +1049,19 @@ async function validateEspnLeague() {
   } catch (err: any) {
     console.error('[ESPN] Error discovering league:', err)
     
-    if (err.message?.includes('private') || err.message?.includes('403') || err.message?.includes('401')) {
+    if (err.message?.includes('private') || err.message?.includes('403')) {
       espnNeedsCredentials.value = true
       errorMessage.value = ''
     } else if (err.message?.includes('Not authenticated') || err.message?.includes('sign in')) {
       errorMessage.value = 'Please sign in to add ESPN leagues.'
+    } else if (err.message?.includes('session may have expired') || err.message?.includes('credentials expired') || err.message?.includes('authentication failed')) {
+      errorMessage.value = 'Your session appears to have expired. Try signing out and back in, then try again.'
+    } else if (err.message?.includes('Unable to reach ESPN') || err.message?.includes('proxy')) {
+      errorMessage.value = 'Unable to reach the ESPN API service. Please try again in a few minutes. If the problem persists, the proxy service may need to be restarted.'
     } else if (err.message?.includes('timed out')) {
       errorMessage.value = 'Request timed out. ESPN servers may be slow. Please try again.'
+    } else if (err.message?.includes('server error') || err.message?.includes('500') || err.message?.includes('502') || err.message?.includes('503')) {
+      errorMessage.value = 'ESPN API is returning server errors. Please try again later.'
     } else {
       errorMessage.value = err.message || 'An error occurred. Please try again.'
     }

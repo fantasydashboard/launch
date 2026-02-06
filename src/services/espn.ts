@@ -475,17 +475,18 @@ export class EspnFantasyService {
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({ error: 'Unknown error' }))
         console.error('ESPN API proxy error:', response.status, errorData)
+        console.error('ESPN API proxy request was:', { endpoint: endpoint.substring(0, 100), sport: endpoint.match(/games\/(\w+)/)?.[1] })
         
         // Provide helpful error messages
         if (response.status === 401) {
-          throw new Error('ESPN credentials expired or invalid. Please reconnect your ESPN account.')
+          throw new Error('ESPN proxy auth failed (401). Session may have expired - try signing out and back in.')
         } else if (response.status === 404) {
-          throw new Error('League not found. Please check the league ID.')
+          throw new Error(`League not found (404) for endpoint: ${endpoint.substring(0, 80)}`)
         } else if (response.status === 403) {
-          throw new Error('This is a private league. Please provide ESPN cookies (espn_s2 and SWID).')
+          throw new Error('This is a private league (403). Please provide ESPN cookies (espn_s2 and SWID).')
         }
         
-        throw new Error(errorData.error || `ESPN API error: ${response.status}`)
+        throw new Error(errorData.error || `ESPN API error: ${response.status} - ${JSON.stringify(errorData).substring(0, 200)}`)
       }
 
       return response.json()
@@ -516,10 +517,17 @@ export class EspnFantasyService {
     try {
       const data = await this.apiRequest(sport, leagueId, season, [ESPN_VIEWS.SETTINGS, ESPN_VIEWS.STATUS])
       
+      // Log the response structure for debugging
+      console.log(`[ESPN getLeague] Response keys for ${sport} ${leagueId} ${season}:`, Object.keys(data || {}))
+      if (data?.settings) {
+        console.log(`[ESPN getLeague] Settings keys:`, Object.keys(data.settings))
+        console.log(`[ESPN getLeague] Settings name:`, data.settings?.name)
+      }
+      
       // Validate that ESPN returned actual league data
       // If the sport/league combo is wrong, ESPN returns minimal data without settings.name or teams
       if (!data.settings?.name && (!data.teams || data.teams.length === 0)) {
-        console.log(`[ESPN getLeague] Invalid response for ${sport} ${leagueId} ${season} - no name and no teams`)
+        console.log(`[ESPN getLeague] Invalid response for ${sport} ${leagueId} ${season} - no name and no teams. Full response keys: ${JSON.stringify(Object.keys(data || {}))}`)
         return null
       }
       
@@ -2475,6 +2483,7 @@ export class EspnFantasyService {
   async detectLeagueSport(leagueId: string | number, season?: number): Promise<{
     sport: Sport
     league: EspnLeague
+    error?: string
   } | null> {
     const currentYear = new Date().getFullYear()
     const currentMonth = new Date().getMonth() + 1 // 1-12
@@ -2488,9 +2497,13 @@ export class EspnFantasyService {
     console.log(`[ESPN] Detecting sport for league ${leagueId}, trying seasons: ${seasonsToTry.join(', ')}...`)
     
     let lastError: string = ''
+    let authErrorCount = 0
+    let totalAttempts = 0
+    let proxyErrorCount = 0
     
     for (const targetSeason of seasonsToTry) {
       for (const sport of sports) {
+        totalAttempts++
         try {
           console.log(`[ESPN] Trying ${sport} ${targetSeason}...`)
           const league = await this.getLeague(sport, leagueId, targetSeason)
@@ -2529,13 +2542,50 @@ export class EspnFantasyService {
               } as EspnLeague
             }
           }
+          
+          // Track auth/global errors - these affect ALL attempts
+          if (errorMsg.includes('Not authenticated') || errorMsg.includes('sign in')) {
+            authErrorCount++
+            // Fail fast - no point trying more combos if we can't authenticate
+            console.error(`[ESPN] Authentication failed - stopping detection. Error: ${errorMsg}`)
+            throw new Error('Not authenticated - please sign in to add ESPN leagues.')
+          }
+          
+          if (errorMsg.includes('401') || errorMsg.includes('credentials expired')) {
+            authErrorCount++
+            // After 2 consecutive auth failures, bail out
+            if (authErrorCount >= 2) {
+              console.error(`[ESPN] Repeated auth errors (${authErrorCount}) - stopping detection.`)
+              throw new Error('ESPN authentication failed. Your session may have expired - please try signing out and back in.')
+            }
+          }
+          
+          if (errorMsg.includes('timed out') || errorMsg.includes('AbortError') || errorMsg.includes('Failed to fetch') || errorMsg.includes('NetworkError') || errorMsg.includes('fetch')) {
+            proxyErrorCount++
+            // After 3 consecutive network errors, bail out
+            if (proxyErrorCount >= 3) {
+              console.error(`[ESPN] Repeated network/proxy errors (${proxyErrorCount}) - stopping detection.`)
+              throw new Error('Unable to reach ESPN API. The proxy service may be down or ESPN may be blocking requests. Please try again in a few minutes.')
+            }
+          }
+          
+          // If it's a proxy/server error (500), also track
+          if (errorMsg.includes('500') || errorMsg.includes('502') || errorMsg.includes('503')) {
+            proxyErrorCount++
+            if (proxyErrorCount >= 3) {
+              console.error(`[ESPN] Repeated server errors - stopping detection.`)
+              throw new Error('ESPN API proxy is returning server errors. Please try again later.')
+            }
+          }
+          
           // 404 or other errors - keep trying
           console.log(`[ESPN] ${sport} ${targetSeason}: not found (${errorMsg})`)
         }
       }
     }
     
-    console.log(`[ESPN] Could not find league ${leagueId} in any sport/season combination. Last error: ${lastError}`)
+    console.log(`[ESPN] Could not find league ${leagueId} in any sport/season combination (tried ${totalAttempts}). Last error: ${lastError}`)
+    console.log(`[ESPN] Error summary: auth errors=${authErrorCount}, proxy errors=${proxyErrorCount}`)
     return null
   }
 
@@ -2679,7 +2729,8 @@ export class EspnFantasyService {
     size: number
     currentSeason: number
   } | null> {
-    // Just detect the sport and get current season info
+    // detectLeagueSport now throws on auth/network errors instead of swallowing them
+    // Let those errors propagate up to the caller for proper error messaging
     const detected = await this.detectLeagueSport(leagueId)
     if (!detected) {
       return null
