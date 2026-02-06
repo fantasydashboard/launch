@@ -1153,17 +1153,88 @@ const powerRankingPresets = [
 ]
 
 // Baseball positions
-const baseballPositions = [
-  { id: 'C', name: 'Catcher', abbrev: 'C', icon: '🥎' },
-  { id: '1B', name: 'First Base', abbrev: '1B', icon: '1️⃣' },
-  { id: '2B', name: 'Second Base', abbrev: '2B', icon: '2️⃣' },
-  { id: '3B', name: 'Third Base', abbrev: '3B', icon: '3️⃣' },
-  { id: 'SS', name: 'Shortstop', abbrev: 'SS', icon: '⚡' },
-  { id: 'OF', name: 'Outfield', abbrev: 'OF', icon: '🌿' },
-  { id: 'SP', name: 'Starting Pitcher', abbrev: 'SP', icon: '⚾' },
-  { id: 'RP', name: 'Relief Pitcher', abbrev: 'RP', icon: '🔥' },
-  { id: 'UTIL', name: 'Utility', abbrev: 'UTIL', icon: '🔧' }
-]
+// Sport-specific position configurations
+const positionsBySport: Record<string, Array<{ id: string; name: string; abbrev: string; icon: string }>> = {
+  baseball: [
+    { id: 'C', name: 'Catcher', abbrev: 'C', icon: '🥎' },
+    { id: '1B', name: 'First Base', abbrev: '1B', icon: '1️⃣' },
+    { id: '2B', name: 'Second Base', abbrev: '2B', icon: '2️⃣' },
+    { id: '3B', name: 'Third Base', abbrev: '3B', icon: '3️⃣' },
+    { id: 'SS', name: 'Shortstop', abbrev: 'SS', icon: '⚡' },
+    { id: 'OF', name: 'Outfield', abbrev: 'OF', icon: '🌿' },
+    { id: 'SP', name: 'Starting Pitcher', abbrev: 'SP', icon: '⚾' },
+    { id: 'RP', name: 'Relief Pitcher', abbrev: 'RP', icon: '🔥' },
+  ],
+  basketball: [
+    { id: 'PG', name: 'Point Guard', abbrev: 'PG', icon: '🏀' },
+    { id: 'SG', name: 'Shooting Guard', abbrev: 'SG', icon: '🎯' },
+    { id: 'SF', name: 'Small Forward', abbrev: 'SF', icon: '🏃' },
+    { id: 'PF', name: 'Power Forward', abbrev: 'PF', icon: '💪' },
+    { id: 'C', name: 'Center', abbrev: 'C', icon: '🗼' },
+  ],
+  football: [
+    { id: 'QB', name: 'Quarterback', abbrev: 'QB', icon: '🏈' },
+    { id: 'RB', name: 'Running Back', abbrev: 'RB', icon: '🏃' },
+    { id: 'WR', name: 'Wide Receiver', abbrev: 'WR', icon: '🎯' },
+    { id: 'TE', name: 'Tight End', abbrev: 'TE', icon: '🤲' },
+    { id: 'K', name: 'Kicker', abbrev: 'K', icon: '🦵' },
+    { id: 'DEF', name: 'Defense', abbrev: 'DEF', icon: '🛡️' },
+  ],
+  hockey: [
+    { id: 'C', name: 'Center', abbrev: 'C', icon: '🏒' },
+    { id: 'LW', name: 'Left Wing', abbrev: 'LW', icon: '⬅️' },
+    { id: 'RW', name: 'Right Wing', abbrev: 'RW', icon: '➡️' },
+    { id: 'D', name: 'Defenseman', abbrev: 'D', icon: '🛡️' },
+    { id: 'G', name: 'Goalie', abbrev: 'G', icon: '🥅' },
+  ]
+}
+
+// Position color palettes per sport
+const positionColorsBySport: Record<string, Record<string, string>> = {
+  baseball: {
+    'C': '#ef4444', '1B': '#10b981', '2B': '#3b82f6', '3B': '#f59e0b',
+    'SS': '#ec4899', 'OF': '#8b5cf6', 'SP': '#06b6d4', 'RP': '#f97316',
+  },
+  basketball: {
+    'PG': '#3b82f6', 'SG': '#10b981', 'SF': '#f59e0b', 'PF': '#ef4444', 'C': '#8b5cf6',
+  },
+  football: {
+    'QB': '#ef4444', 'RB': '#3b82f6', 'WR': '#10b981', 'TE': '#f59e0b', 'K': '#ec4899', 'DEF': '#8b5cf6',
+  },
+  hockey: {
+    'C': '#3b82f6', 'LW': '#10b981', 'RW': '#f59e0b', 'D': '#ef4444', 'G': '#8b5cf6',
+  }
+}
+
+// Position normalization rules per sport (maps variant positions to display positions)
+const positionNormalizationBySport: Record<string, Record<string, string>> = {
+  baseball: {
+    'LF': 'OF', 'CF': 'OF', 'RF': 'OF', 'P': 'SP', 'DH': 'OF', 'UTIL': 'OF',
+  },
+  basketball: {
+    'G': 'SG', 'F': 'SF', 'UTIL': 'PF', 'G-F': 'SF', 'F-C': 'PF',
+  },
+  football: {
+    'D/ST': 'DEF', 'DST': 'DEF', 'FLEX': 'RB', 'UTIL': 'RB',
+  },
+  hockey: {
+    'W': 'LW', 'F': 'C', 'UTIL': 'C',
+  }
+}
+
+// Current sport detection
+const currentSport = computed(() => {
+  const saved = leagueStore.savedLeagues.find(l => l.league_id === leagueStore.activeLeagueId)
+  return saved?.sport || 'football'
+})
+
+// Dynamic position list based on current sport
+const sportPositions = computed(() => {
+  return positionsBySport[currentSport.value] || positionsBySport.football
+})
+
+// Keep baseballPositions as alias for backward compat in template
+const baseballPositions = sportPositions
 
 // Interfaces
 interface PowerRankingData {
@@ -1276,32 +1347,30 @@ const positionStrengthData = computed(() => {
   
   // Calculate position totals for each team
   const positionTotals = new Map<string, Map<string, number>>()
-  const displayPositions = ['C', '1B', '2B', '3B', 'SS', 'OF', 'SP', 'RP']
+  const sport = currentSport.value
+  const displayPositions = sportPositions.value.map(p => p.id)
+  const normRules = positionNormalizationBySport[sport] || {}
   
   for (const [teamKey, players] of teamPlayers) {
     const totals = new Map<string, number>()
     
     for (const player of players) {
       const pos = player.position || 'UTIL'
-      // Normalize position to one of the display positions
       let normalizedPos = pos
       
-      // Outfielders
-      if (['LF', 'CF', 'RF', 'OF'].includes(pos)) normalizedPos = 'OF'
-      // Pitchers - treat generic "P" as SP
-      else if (pos === 'P') normalizedPos = 'SP'
-      // DH goes to UTIL (we'll add to OF as fallback since UTIL isn't displayed)
-      else if (pos === 'DH' || pos === 'UTIL') normalizedPos = 'OF'
-      // Handle multi-position players (e.g., "1B/DH", "SS/2B")
+      // Apply sport-specific normalization
+      if (normRules[pos]) {
+        normalizedPos = normRules[pos]
+      }
+      // Handle multi-position players (e.g., "PG/SG", "1B/DH", "SS/2B")
       else if (pos.includes('/')) {
         const positions = pos.split('/')
-        // Find first position that's in our display list
-        normalizedPos = positions.find(p => displayPositions.includes(p)) || positions[0]
+        normalizedPos = positions.find(p => displayPositions.includes(p)) || normRules[positions[0]] || positions[0]
       }
       
-      // If still not in display positions, default to OF
+      // If still not in display positions, try normalization or default to first display position
       if (!displayPositions.includes(normalizedPos)) {
-        normalizedPos = 'OF'
+        normalizedPos = displayPositions[0]
       }
       
       const currentTotal = totals.get(normalizedPos) || 0
@@ -1312,7 +1381,7 @@ const positionStrengthData = computed(() => {
   }
   
   // Calculate rankings per position
-  const positions = ['C', '1B', '2B', '3B', 'SS', 'OF', 'SP', 'RP']
+  const positions = displayPositions
   const positionRankings = new Map<string, Map<string, number>>() // teamKey -> position -> rank
   
   for (const pos of positions) {
@@ -1798,46 +1867,42 @@ function getTeamsRankedByPosition(posId: string): any[] {
 }
 
 function getTeamPlayersAtPosition(teamKey: string, posId: string): any[] {
+  const sport = currentSport.value
+  const normRules = positionNormalizationBySport[sport] || {}
+  
   return allRosteredPlayers.value.filter(p => {
     if (p.fantasy_team_key !== teamKey) return false
     const pos = p.position || ''
-    // Normalize position
-    if (posId === 'OF' && ['LF', 'CF', 'RF', 'OF'].includes(pos)) return true
+    // Check if position normalizes to the target posId
+    if (normRules[pos] === posId) return true
     if (pos.includes('/')) {
       const positions = pos.split('/')
-      return positions.includes(posId)
+      return positions.includes(posId) || positions.some(pp => normRules[pp] === posId)
     }
     return pos === posId
   })
 }
 
 function getTopPlayersAtPosition(posId: string): any[] {
+  const sport = currentSport.value
+  const normRules = positionNormalizationBySport[sport] || {}
+  
   return allRosteredPlayers.value
     .filter(p => {
       const pos = p.position || ''
-      if (posId === 'OF' && ['LF', 'CF', 'RF', 'OF'].includes(pos)) return true
+      if (normRules[pos] === posId) return true
       if (pos.includes('/')) {
         const positions = pos.split('/')
-        return positions.includes(posId)
+        return positions.includes(posId) || positions.some(pp => normRules[pp] === posId)
       }
       return pos === posId
     })
     .sort((a, b) => (b.total_points || 0) - (a.total_points || 0))
 }
 
-// Get color for baseball position in ROS chart
+// Get color for position in ROS chart (sport-aware)
 function getBaseballPositionColor(position: string): string {
-  const colors: Record<string, string> = {
-    'C': '#ef4444',    // red
-    '1B': '#10b981',   // emerald
-    '2B': '#3b82f6',   // blue
-    '3B': '#f59e0b',   // amber
-    'SS': '#ec4899',   // pink
-    'OF': '#8b5cf6',   // violet
-    'SP': '#06b6d4',   // cyan
-    'RP': '#f97316',   // orange
-    'UTIL': '#a855f7'  // purple (more visible)
-  }
+  const colors = positionColorsBySport[currentSport.value] || positionColorsBySport.football
   return colors[position] || '#a855f7'
 }
 
@@ -2694,8 +2759,9 @@ async function loadRosteredPlayers() {
         console.log(`[ESPN] Team ${team.name}: teamKey=${teamKey}, found=${!!teamData}, logo=${teamData?.logo_url?.slice(0, 50)}...`)
         
         for (const player of team.roster) {
-          // Calculate PPG (actualPoints is season total, divide by ~25 weeks for baseball)
-          const ppg = player.actualPoints > 0 ? player.actualPoints / 25 : 0
+          // Calculate PPG using completed weeks from the league
+          const completedWeeks = Math.max(1, (leagueStore.currentLeague?.settings?.leg || 1) - 1)
+          const ppg = player.actualPoints > 0 ? player.actualPoints / completedWeeks : 0
           
           // Track position counts for debugging
           const pos = player.position || 'Unknown'
