@@ -36,6 +36,25 @@
 
     <!-- Main Content -->
     <template v-else>
+      <!-- ESPN Data Access Warning -->
+      <div v-if="showEspnDataWarning" class="rounded-card border border-amber-500/30 bg-amber-500/10 p-4">
+        <div class="flex items-start gap-3">
+          <span class="text-xl mt-0.5 shrink-0">⚠️</span>
+          <div>
+            <h3 class="font-semibold text-amber-300 mb-1">ESPN Data Not Available for This Season</h3>
+            <p class="text-sm text-dark-textSecondary leading-relaxed">
+              ESPN only allows access to season data for years you were a member of this league. 
+              Since you may not have been in this league during the {{ season }} season, all stats are showing as zeros.
+            </p>
+            <p class="text-sm text-dark-textSecondary leading-relaxed mt-2">
+              <span class="text-amber-300 font-medium">How to fix this:</span> If another member of your league signs into 
+              Ultimate Fantasy Dashboard with their ESPN account, their credentials will unlock the seasons they were a part of 
+              for everyone in the league.
+            </p>
+          </div>
+        </div>
+      </div>
+
       <!-- Quick Stats Row -->
       <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <div class="card p-4">
@@ -434,6 +453,22 @@ const adapterOptions = computed((): AdapterOptions => ({
   platform: platform.value,
   leagueType: leagueType.value
 }))
+
+// Detect ESPN leagues where data appears empty (all zeros)
+// This typically happens when the user wasn't in the league during the displayed season
+const showEspnDataWarning = computed(() => {
+  if (platform.value !== 'espn') return false
+  if (loading.value) return false
+  if (standings.value.length === 0) return false
+  
+  // Check if all standings have zero data
+  const allZeroWinsLosses = standings.value.every(s => s.wins === 0 && s.losses === 0)
+  const allZeroPoints = standings.value.every(s => !s.pointsFor || s.pointsFor === 0)
+  const allZeroCategoryWins = standings.value.every(s => !s.categoryWins || s.categoryWins === 0)
+  
+  // If every team has 0-0 record AND zero points/category wins, data is likely restricted
+  return allZeroWinsLosses && allZeroPoints && allZeroCategoryWins
+})
 
 // Derived stats
 const leaderName = computed(() => {
