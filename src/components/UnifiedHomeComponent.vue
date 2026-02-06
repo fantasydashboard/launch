@@ -1025,18 +1025,32 @@ const displayMatchups = ref<any[]>([])
 const regularSeasonRanks = computed(() => {
   const ranks = new Map<string, number>()
   
-  // Sort teams by category win percentage (this is how H2H Categories leagues rank)
+  // BEST: Use the final week of weeklyStandings (same data the chart uses)
+  // This guarantees the standings table and chart always agree
+  if (weeklyStandings.value.size > 0) {
+    const weeks = [...weeklyStandings.value.keys()].sort((a, b) => a - b)
+    const finalWeek = weeks[weeks.length - 1]
+    const finalStandings = weeklyStandings.value.get(finalWeek)
+    if (finalStandings && finalStandings.length > 0) {
+      finalStandings.forEach((team: any) => {
+        ranks.set(team.team_key, team.rank || 999)
+      })
+      return ranks
+    }
+  }
+  
+  // FALLBACK: Sort teams by win percentage with points_for tiebreaker
   const sortedTeams = [...leagueStore.yahooTeams].sort((a, b) => {
-    const aTotal = (a.wins || 0) + (a.losses || 0)
-    const bTotal = (b.wins || 0) + (b.losses || 0)
+    const aTotal = (a.wins || 0) + (a.losses || 0) + (a.ties || 0)
+    const bTotal = (b.wins || 0) + (b.losses || 0) + (b.ties || 0)
     const aWinPct = aTotal > 0 ? (a.wins || 0) / aTotal : 0
     const bWinPct = bTotal > 0 ? (b.wins || 0) / bTotal : 0
     
     // Sort by win percentage descending
-    if (bWinPct !== aWinPct) return bWinPct - aWinPct
+    if (Math.abs(bWinPct - aWinPct) > 0.001) return bWinPct - aWinPct
     
-    // Tiebreaker: more total games played
-    return bTotal - aTotal
+    // Tiebreaker: points scored
+    return (b.points_for || 0) - (a.points_for || 0)
   })
   
   // Assign ranks
@@ -1049,6 +1063,67 @@ const regularSeasonRanks = computed(() => {
 
 // Store weekly matchup results per team: team_key -> week -> { catWins, catLosses, opponent, won, tied }
 const weeklyMatchupResults = ref<Map<string, Map<number, any>>>(new Map())
+
+// Determine actual playoff finish from bracket data (not regular season rank)
+// Returns Map<team_key, finish> where finish = 1 (champion), 2 (runner-up), 3 (third place)
+const playoffFinishMap = computed(() => {
+  const finishes = new Map<string, number>()
+  
+  if (!isSeasonComplete.value) return finishes
+  
+  // SLEEPER: Use actual winners bracket data
+  if (leagueStore.activePlatform === 'sleeper') {
+    const season = leagueStore.currentLeague?.season || new Date().getFullYear().toString()
+    const bracket = leagueStore.historicalBrackets?.get(season)
+    
+    if (bracket && bracket.length > 0) {
+      // Find the highest round number (championship round)
+      const maxRound = Math.max(...bracket.map((m: any) => m.r || 0))
+      
+      // Championship match: highest round, match 1
+      const championship = bracket.find((m: any) => m.r === maxRound && m.m === 1)
+      if (championship) {
+        if (championship.w) {
+          finishes.set(`sleeper_${championship.w}`, 1) // Champion
+        }
+        if (championship.l) {
+          finishes.set(`sleeper_${championship.l}`, 2) // Runner-up
+        }
+      }
+      
+      // 3rd place match: highest round, match 2
+      const thirdPlace = bracket.find((m: any) => m.r === maxRound && m.m === 2)
+      if (thirdPlace && thirdPlace.w) {
+        finishes.set(`sleeper_${thirdPlace.w}`, 3) // Third place
+      }
+      
+      console.log('[PlayoffFinish] Sleeper bracket results:', Object.fromEntries(finishes))
+    } else {
+      console.log('[PlayoffFinish] No bracket data available for Sleeper season', season)
+    }
+    return finishes
+  }
+  
+  // YAHOO: team.rank from standings API reflects final placement for completed seasons
+  if (leagueStore.activePlatform === 'yahoo') {
+    leagueStore.yahooTeams.forEach(team => {
+      if (team.rank && team.rank <= 3) {
+        finishes.set(team.team_key, team.rank)
+      }
+    })
+    return finishes
+  }
+  
+  // ESPN: Use team.rank (playoffSeed) - may not reflect actual finish
+  // TODO: Add ESPN bracket support when available
+  if (leagueStore.activePlatform === 'espn') {
+    // For ESPN, we don't have reliable playoff finish data
+    // Don't assign trophies based on regular season rank alone
+    return finishes
+  }
+  
+  return finishes
+})
 const espnWeeklyScores = ref<Map<string, Map<number, number>>>(new Map())
 
 // Computed
@@ -1356,11 +1431,9 @@ const teamsWithStats = computed(() => {
     // Falls back to Yahoo's rank if weeklyStandings hasn't loaded yet
     const regularSeasonRank = regularSeasonRanks.value.get(team.team_key) || team.rank || 999
     
-    // Playoff finish: Only set if season is complete
+    // Playoff finish: Use ACTUAL playoff/bracket results, not regular season rank
     // 1 = Champion (🏆), 2 = Runner-up (🥈), 3 = Third place (🥉)
-    // Use team.rank first (Yahoo's final rank), fallback to regularSeasonRank for ESPN/Sleeper
-    const finalRank = team.rank || regularSeasonRank
-    const playoffFinish = isSeasonComplete.value && finalRank && finalRank <= 3 ? finalRank : null
+    const playoffFinish = playoffFinishMap.value.get(team.team_key) || null
     
     return {
       ...team,
