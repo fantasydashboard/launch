@@ -1216,8 +1216,10 @@ const isSeasonComplete = computed(() => {
 
 const availableWeeks = computed(() => {
   const weeks = []
-  const week = currentWeek.value
-  for (let i = 3; i <= week; i++) {
+  // For in-season leagues, currentWeek is the in-progress week, so completed = currentWeek - 1
+  // For completed seasons, use currentWeek as-is
+  const maxWeek = isSeasonComplete.value ? currentWeek.value : Math.max(0, currentWeek.value - 1)
+  for (let i = 1; i <= maxWeek; i++) {
     weeks.push(i)
   }
   return weeks
@@ -1227,7 +1229,7 @@ const historicalWeeks = computed(() => {
   if (!selectedWeek.value) return []
   const weeks = []
   const endWeek = parseInt(selectedWeek.value)
-  for (let i = 3; i <= endWeek; i++) {
+  for (let i = 1; i <= endWeek; i++) {
     weeks.push(i)
   }
   return weeks
@@ -2611,7 +2613,7 @@ async function loadPowerRankings() {
     const currentRankings = await calculatePowerRankingsForWeek(throughWeek)
     
     // Calculate rankings for previous week to get change
-    if (throughWeek > 3) {
+    if (throughWeek > 1) {
       loadingProgress.value = { currentStep: 'Calculating previous week for changes...', week: throughWeek - 1, maxWeek: throughWeek }
       const prevRankings = await calculatePowerRankingsForWeek(throughWeek - 1)
       
@@ -2628,7 +2630,7 @@ async function loadPowerRankings() {
     loadingMessage.value = 'Building historical data...'
     const historical = new Map<string, number[]>()
     
-    for (let week = 3; week <= throughWeek; week++) {
+    for (let week = 1; week <= throughWeek; week++) {
       loadingProgress.value = { currentStep: `Processing week ${week} history...`, week, maxWeek: throughWeek }
       const weekRankings = await calculatePowerRankingsForWeek(week)
       
@@ -2761,9 +2763,9 @@ function recalculatePowerRankings() {
 watch(() => leagueStore.yahooTeams, () => {
   if (leagueStore.yahooTeams.length > 0) {
     if (!selectedWeek.value) {
-      const week = currentWeek.value
-      if (week >= 1) {
-        selectedWeek.value = Math.max(1, week).toString()
+      const completedWeek = isSeasonComplete.value ? currentWeek.value : Math.max(1, currentWeek.value - 1)
+      if (completedWeek >= 1) {
+        selectedWeek.value = completedWeek.toString()
         loadPowerRankings()
       }
     }
@@ -2777,7 +2779,7 @@ watch(() => leagueStore.currentLeague?.league_id, (newKey, oldKey) => {
     // Clear cached matchups since we're loading a different league
     allMatchups.value.clear()
     // Reload if we have a selected week
-    if (selectedWeek.value && currentWeek.value >= 3) {
+    if (selectedWeek.value && currentWeek.value >= 1) {
       loadPowerRankings()
     }
   }
@@ -2786,9 +2788,9 @@ watch(() => leagueStore.currentLeague?.league_id, (newKey, oldKey) => {
 onMounted(() => {
   // Always try to load power rankings if we have teams
   if (leagueStore.yahooTeams.length > 0) {
-    // Default to current week or week 1 if early season
-    const weekToUse = Math.max(1, currentWeek.value)
-    selectedWeek.value = weekToUse.toString()
+    // Default to last completed week (currentWeek is the in-progress week)
+    const completedWeek = isSeasonComplete.value ? currentWeek.value : Math.max(1, currentWeek.value - 1)
+    selectedWeek.value = completedWeek.toString()
     loadPowerRankings()
   }
   
