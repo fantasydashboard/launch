@@ -4190,7 +4190,17 @@ async function loadAllMatchups() {
                 catLosses: homeCatWins
               })
             } else {
-              // Category league: winner by category wins
+              // Category league: use category wins, fall back to scores if needed
+              // For some ESPN sports, homeScore/awayScore ARE the category win totals
+              if (homeCatWins === 0 && awayCatWins === 0) {
+                const homeScore = matchup.homeScore || 0
+                const awayScore = matchup.awayScore || 0
+                if (homeScore > 0 || awayScore > 0) {
+                  homeCatWins = homeScore
+                  awayCatWins = awayScore
+                }
+              }
+              
               if (homeCatWins > awayCatWins) {
                 homeStats.wins++
                 awayStats.losses++
@@ -4208,12 +4218,14 @@ async function loadAllMatchups() {
                 weekHadWinnerData = true
               }
             
-              // Store matchup results
+              // Store matchup results with catWins and points
               allMatchupResults.get(homeKey)?.set(week, {
                 week,
                 opponent: awayKey,
                 won: homeWon,
                 tied,
+                points: matchup.homeScore || 0,
+                opponentPoints: matchup.awayScore || 0,
                 catWins: homeCatWins,
                 catLosses: awayCatWins
               })
@@ -4222,6 +4234,8 @@ async function loadAllMatchups() {
                 opponent: homeKey,
                 won: awayWon,
                 tied,
+                points: matchup.awayScore || 0,
+                opponentPoints: matchup.homeScore || 0,
                 catWins: awayCatWins,
                 catLosses: homeCatWins
               })
