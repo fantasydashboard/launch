@@ -628,7 +628,7 @@ export const useLeagueStore = defineStore('league', () => {
           name: sl.league_name,
           season: sl.season,
           status: 'in_season',
-          sport: 'nfl',
+          sport: sl.sport || 'nfl',
           settings: {},
           scoring_settings: {},
           roster_positions: [],
@@ -1136,7 +1136,7 @@ export const useLeagueStore = defineStore('league', () => {
                 name: savedLeague?.league_name || prevLeagueDetails?.[0]?.name || 'Yahoo League',
                 season: prevSeason,
                 status: prevMetadata.isFinished ? 'complete' : 'in_season',
-                sport: 'nfl',
+                sport: savedLeague?.sport || 'nfl',
                 settings: {
                   leg: prevMetadata.currentWeek,
                   playoff_week_start: 15,
@@ -1306,7 +1306,7 @@ export const useLeagueStore = defineStore('league', () => {
         name: savedLeague?.league_name || leagueDetails?.[0]?.name || 'Yahoo League',
         season: savedLeague?.season || new Date().getFullYear().toString(),
         status: metadata.isFinished ? 'complete' : 'in_season',
-        sport: 'nfl',
+        sport: savedLeague?.sport || 'nfl',
         settings: {
           leg: metadata.currentWeek,
           playoff_week_start: 15, // TODO: Get from Yahoo settings

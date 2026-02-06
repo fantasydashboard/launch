@@ -4210,10 +4210,13 @@ async function loadAllMatchups() {
   // For H2H Categories, we need to simulate standings over time
   // since Yahoo doesn't give us weekly W-L for category leagues
   // Instead, we'll generate estimated standings based on final standings
-  const endWeek = totalWeeks.value || 25
-  const startWeek = parseInt(leagueStore.yahooLeague?.start_week) || 1
+  const yahooLeagueArr = Array.isArray(leagueStore.yahooLeague) ? leagueStore.yahooLeague[0] : leagueStore.yahooLeague
+  const maxWeek = totalWeeks.value || 25
+  const startWeek = parseInt(yahooLeagueArr?.start_week) || 1
+  const currWeek = parseInt(yahooLeagueArr?.current_week) || currentWeek.value || maxWeek
+  const endWeek = isSeasonComplete.value ? maxWeek : Math.min(currWeek, maxWeek)
   
-  console.log(`Loading matchups for weeks ${startWeek}-${endWeek}, isSeasonComplete: ${isSeasonComplete.value}`)
+  console.log(`[Yahoo] Loading matchups for weeks ${startWeek}-${endWeek}, isSeasonComplete: ${isSeasonComplete.value}, isPointsLeague: ${isPointsLeague.value}`)
   
   // Set displayMatchups from store initially while we load full data
   if (leagueStore.yahooMatchups?.length > 0) {
