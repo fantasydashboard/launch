@@ -980,8 +980,8 @@ const statCategories = ref<any[]>([])
 const loadedSeason = ref<string>('')
 
 // Sorting
-const sortColumn = ref('rank')
-const sortDirection = ref<'asc' | 'desc'>('asc')
+const sortColumn = ref('record')
+const sortDirection = ref<'asc' | 'desc'>('desc')
 
 // Modal
 const showLeaderModal = ref(false)
@@ -1025,36 +1025,19 @@ const displayMatchups = ref<any[]>([])
 const regularSeasonRanks = computed(() => {
   const ranks = new Map<string, number>()
   
-  // BEST: Use the final week of weeklyStandings (same data the chart uses)
-  // This guarantees the standings table and chart always agree
-  if (weeklyStandings.value.size > 0) {
-    const weeks = [...weeklyStandings.value.keys()].sort((a, b) => a - b)
-    const finalWeek = weeks[weeks.length - 1]
-    const finalStandings = weeklyStandings.value.get(finalWeek)
-    if (finalStandings && finalStandings.length > 0) {
-      finalStandings.forEach((team: any) => {
-        ranks.set(team.team_key, team.rank || 999)
-      })
-      return ranks
-    }
-  }
-  
-  // FALLBACK: Sort teams by win percentage with points_for tiebreaker
-  const sortedTeams = [...leagueStore.yahooTeams].sort((a, b) => {
-    const aTotal = (a.wins || 0) + (a.losses || 0) + (a.ties || 0)
-    const bTotal = (b.wins || 0) + (b.losses || 0) + (b.ties || 0)
-    const aWinPct = aTotal > 0 ? (a.wins || 0) / aTotal : 0
-    const bWinPct = bTotal > 0 ? (b.wins || 0) / bTotal : 0
-    
-    // Sort by win percentage descending
-    if (Math.abs(bWinPct - aWinPct) > 0.001) return bWinPct - aWinPct
-    
-    // Tiebreaker: points scored
+  // Use the store's official team order - this comes directly from the platform API
+  // and uses the platform's real tiebreaker rules (head-to-head, division record, etc.)
+  // The store sorts by wins desc, then points_for desc, and assigns team.rank
+  const storeTeams = [...leagueStore.yahooTeams].sort((a, b) => {
+    // Primary: wins descending
+    if ((b.wins || 0) !== (a.wins || 0)) return (b.wins || 0) - (a.wins || 0)
+    // Secondary: fewer losses
+    if ((a.losses || 0) !== (b.losses || 0)) return (a.losses || 0) - (b.losses || 0)
+    // Tertiary: points for descending
     return (b.points_for || 0) - (a.points_for || 0)
   })
   
-  // Assign ranks
-  sortedTeams.forEach((team, idx) => {
+  storeTeams.forEach((team, idx) => {
     ranks.set(team.team_key, idx + 1)
   })
   
@@ -1463,12 +1446,20 @@ const sortedTeams = computed(() => {
     let aVal: number, bVal: number
     
     if (sortColumn.value === 'rank') {
-      // Use regular season rank (matches chart) instead of Yahoo's final rank
       aVal = a.regularSeasonRank || 999
       bVal = b.regularSeasonRank || 999
     } else if (sortColumn.value === 'record') {
-      aVal = (a.wins || 0) / Math.max(1, (a.wins || 0) + (a.losses || 0))
-      bVal = (b.wins || 0) / Math.max(1, (b.wins || 0) + (b.losses || 0))
+      // Multi-level sort: wins desc, losses asc, points_for desc
+      const winDiff = (b.wins || 0) - (a.wins || 0)
+      if (winDiff !== 0) {
+        return sortDirection.value === 'desc' ? winDiff : -winDiff
+      }
+      const lossDiff = (a.losses || 0) - (b.losses || 0)
+      if (lossDiff !== 0) {
+        return sortDirection.value === 'desc' ? lossDiff : -lossDiff
+      }
+      const pfDiff = (b.points_for || 0) - (a.points_for || 0)
+      return sortDirection.value === 'desc' ? pfDiff : -pfDiff
     } else if (sortColumn.value === 'allPlay') {
       aVal = a.all_play_wins / Math.max(1, a.all_play_wins + a.all_play_losses + (a.all_play_ties || 0))
       bVal = b.all_play_wins / Math.max(1, b.all_play_wins + b.all_play_losses + (b.all_play_ties || 0))
@@ -3984,8 +3975,11 @@ async function loadAllMatchups() {
       leagueStore.savedLeagues?.find(l => l.id === leagueStore.activeLeagueId)?.sport || 'nfl'
     const playoffStart = leagueStore.currentLeague?.settings?.playoff_week_start || 
       (sleeperSport === 'nba' ? 22 : 15)
-    const endWeek = Math.min(currentWeek, playoffStart)
+    // Regular season only: playoff_week_start is the FIRST playoff week, so regular season ends at playoffStart - 1
+    const endWeek = Math.min(currentWeek, playoffStart - 1)
     const startWeek = 1
+    
+    console.log(`[Sleeper] Regular season weeks ${startWeek}-${endWeek} (playoffStart: ${playoffStart}, currentWeek: ${currentWeek})`)
     
     // Get current week matchups for display
     const currentWeekMatchups = leagueStore.historicalMatchups.get(season)?.get(currentWeek) || []
@@ -4125,15 +4119,12 @@ async function loadAllMatchups() {
         points_for: cumulativePoints.get(t.team_key) || 0,
         rank: 0
       })).sort((a, b) => {
-        // Sort by win percentage, then points_for as tiebreaker
-        const aTotal = a.wins + a.losses + a.ties
-        const bTotal = b.wins + b.losses + b.ties
-        const aWinPct = aTotal > 0 ? a.wins / aTotal : 0
-        const bWinPct = bTotal > 0 ? b.wins / bTotal : 0
-        if (Math.abs(aWinPct - bWinPct) < 0.001) {
-          return b.points_for - a.points_for
-        }
-        return bWinPct - aWinPct
+        // Sort by wins descending (record-based, not percentage)
+        if (b.wins !== a.wins) return b.wins - a.wins
+        // Fewer losses is better
+        if (a.losses !== b.losses) return a.losses - b.losses
+        // Points for as final tiebreaker
+        return b.points_for - a.points_for
       })
       
       weekStandings.forEach((t, idx) => t.rank = idx + 1)
@@ -4143,6 +4134,17 @@ async function loadAllMatchups() {
     weeklyStandings.value = standings
     weeklyMatchupResults.value = allMatchupResults
     console.log(`[Sleeper] Loaded REAL data for ${standings.size} weeks, ${allMatchupResults.size} teams`)
+    
+    // DEBUG: Compare our calculated final standings with store data
+    if (standings.size > 0) {
+      const lastWeek = Math.max(...standings.keys())
+      const finalCalc = standings.get(lastWeek)
+      console.log(`[Sleeper DEBUG] Final week ${lastWeek} calculated standings:`)
+      finalCalc?.forEach((t: any) => {
+        const storeTeam = leagueStore.yahooTeams.find(st => st.team_key === t.team_key)
+        console.log(`  #${t.rank} ${t.name}: ${t.wins}-${t.losses} (calc) vs ${storeTeam?.wins}-${storeTeam?.losses} (store, rank ${storeTeam?.rank})`)
+      })
+    }
     
     buildChart()
     isLoadingChart.value = false
@@ -4693,12 +4695,10 @@ async function loadAllMatchups() {
             ties: cumulativeTies.get(t.team_key) || 0,
             points_for: cumulativePoints.get(t.team_key) || 0
           })).sort((a, b) => {
-            const aWinPct = a.wins / Math.max(1, a.wins + a.losses + a.ties)
-            const bWinPct = b.wins / Math.max(1, b.wins + b.losses + b.ties)
-            if (Math.abs(aWinPct - bWinPct) < 0.001) {
-              return b.points_for - a.points_for
-            }
-            return bWinPct - aWinPct
+            // Sort by wins descending (record-based)
+            if (b.wins !== a.wins) return b.wins - a.wins
+            if (a.losses !== b.losses) return a.losses - b.losses
+            return (b.points_for || 0) - (a.points_for || 0)
           })
           
           weekStandings.forEach((t, idx) => (t as any).rank = idx + 1)
@@ -4775,12 +4775,9 @@ function buildStandingsFromRealMatchups(startWeek: number, endWeek: number) {
         ties: team.ties || 0,
         points_for: team.points_for || 0
       })).sort((a, b) => {
-        const aWinPct = a.wins / Math.max(1, a.wins + a.losses)
-        const bWinPct = b.wins / Math.max(1, b.wins + b.losses)
-        if (Math.abs(aWinPct - bWinPct) < 0.001) {
-          return (b.points_for || 0) - (a.points_for || 0)
-        }
-        return bWinPct - aWinPct
+        if (b.wins !== a.wins) return b.wins - a.wins
+        if (a.losses !== b.losses) return a.losses - b.losses
+        return (b.points_for || 0) - (a.points_for || 0)
       })
       weekStandings.forEach((t, idx) => (t as any).rank = idx + 1)
       standings.set(week, weekStandings)
@@ -4852,13 +4849,12 @@ function buildStandingsFromRealMatchups(startWeek: number, endWeek: number) {
       ties: cumulativeTies.get(team.team_key) || 0,
       points_for: cumulativePoints.get(team.team_key) || 0
     })).sort((a, b) => {
-      // Sort by win percentage, then by total points as tiebreaker
-      const aWinPct = a.wins / Math.max(1, a.wins + a.losses + a.ties)
-      const bWinPct = b.wins / Math.max(1, b.wins + b.losses + b.ties)
-      if (Math.abs(aWinPct - bWinPct) < 0.001) {
-        return b.points_for - a.points_for
-      }
-      return bWinPct - aWinPct
+      // Sort by wins descending (record-based, not percentage)
+      if (b.wins !== a.wins) return b.wins - a.wins
+      // Fewer losses is better
+      if (a.losses !== b.losses) return a.losses - b.losses
+      // Points for as final tiebreaker
+      return (b.points_for || 0) - (a.points_for || 0)
     })
     
     weekStandings.forEach((t, idx) => (t as any).rank = idx + 1)
