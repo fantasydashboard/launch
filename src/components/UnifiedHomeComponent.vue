@@ -4237,24 +4237,24 @@ async function loadAllMatchups() {
       const matchupCoverage = actualMatchupWeeks > 0 ? weeksWithMatchupWinners / actualMatchupWeeks : 0
       console.log('[ESPN loadAllMatchups] Matchup winner coverage:', weeksWithMatchupWinners, '/', actualMatchupWeeks, '(' + Math.round(matchupCoverage * 100) + '%) [ESPN periods:', completedWeeks, ']')
       
-      // Only trust matchup-derived records if we got data for most weeks
-      // For POINTS leagues: always keep the data, filter to weeks with actual scores
-      // For CATEGORY leagues: require 75% coverage
-      if (isPointsLeague.value) {
-        // Filter to only weeks with actual scores
-        const filteredResults = new Map<string, Map<number, any>>()
-        allMatchupResults.forEach((teamMatchups, teamKey) => {
-          const filtered = new Map<number, any>()
-          teamMatchups.forEach((result, week) => {
-            if ((result.points || 0) > 0 || (result.opponentPoints || 0) > 0) {
-              filtered.set(week, result)
-            }
-          })
-          filteredResults.set(teamKey, filtered)
+      // Always keep matchup data, filter to weeks with actual results
+      const filteredResults = new Map<string, Map<number, any>>()
+      allMatchupResults.forEach((teamMatchups, teamKey) => {
+        const filtered = new Map<number, any>()
+        teamMatchups.forEach((result, week) => {
+          const hasPoints = (result.points || 0) > 0 || (result.opponentPoints || 0) > 0
+          const hasCatData = (result.catWins || 0) > 0 || (result.catLosses || 0) > 0
+          const hasWinner = result.won || result.tied
+          if (hasPoints || hasCatData || hasWinner) {
+            filtered.set(week, result)
+          }
         })
-        weeklyMatchupResults.value = filteredResults
-        
-        // Update team records from matchup data
+        filteredResults.set(teamKey, filtered)
+      })
+      weeklyMatchupResults.value = filteredResults
+      
+      // Update team records from matchup data if we have enough
+      if (matchupCoverage >= 0.5) {
         leagueStore.yahooTeams.forEach(team => {
           const stats = teamStats.get(team.team_key)
           if (stats && (stats.wins > 0 || stats.losses > 0)) {
@@ -4266,30 +4266,10 @@ async function loadAllMatchups() {
             team.category_losses = stats.catLosses
           }
         })
-        
-        const weeksKept = filteredResults.size > 0 ? [...filteredResults.values()][0].size : 0
-        console.log(`[ESPN loadAllMatchups] Points league: kept ${weeksKept} weeks with actual scores`)
-      } else if (matchupCoverage >= 0.75) {
-        // Update the reactive refs with full matchup data
-        weeklyMatchupResults.value = allMatchupResults
-        
-        // Update team records from matchup data
-        leagueStore.yahooTeams.forEach(team => {
-          const stats = teamStats.get(team.team_key)
-          if (stats && (stats.wins > 0 || stats.losses > 0)) {
-            console.log('[ESPN loadAllMatchups] Updating', team.name, ':', stats.wins, '-', stats.losses)
-            team.wins = stats.wins
-            team.losses = stats.losses
-            team.ties = stats.ties
-            team.category_wins = stats.catWins
-            team.category_losses = stats.catLosses
-          }
-        })
-      } else {
-        console.log('[ESPN loadAllMatchups] Insufficient matchup data (' + weeksWithMatchupWinners + '/' + completedWeeks + ' weeks) - keeping original team records from record.overall')
-        // Clear the matchup results so buildStandingsFromRealMatchups uses the team records fallback
-        weeklyMatchupResults.value = new Map()
       }
+      
+      const weeksKept = filteredResults.size > 0 ? [...filteredResults.values()][0].size : 0
+      console.log(`[ESPN loadAllMatchups] Kept ${weeksKept} weeks with actual data (coverage: ${Math.round(matchupCoverage * 100)}%)`)
       
       console.log('[ESPN loadAllMatchups] DONE - weeklyMatchupResults size:', weeklyMatchupResults.value.size)
       
@@ -5358,31 +5338,25 @@ async function loadEspnData() {
       const matchupWinnerCoverage = completedWeeks > 0 ? weeksWithRealWinners / completedWeeks : 0
       console.log('[ESPN] Matchup winner coverage:', weeksWithRealWinners, '/', completedWeeks, '(' + Math.round(matchupWinnerCoverage * 100) + '%)')
       
-      // Only use matchup results if we got real data for most weeks
-      // For POINTS leagues: always keep the data - coverage gaps are just weeks with 0-0 scores (ESPN period numbering)
-      // For CATEGORY leagues: require 75% coverage since per-category data may be unavailable
-      if (isPointsLeague.value) {
-        // Points league: keep all matchup data, filter to only weeks with actual scores
-        const filteredResults = new Map<string, Map<number, any>>()
-        allMatchupResults.forEach((teamMatchups, teamKey) => {
-          const filtered = new Map<number, any>()
-          teamMatchups.forEach((result, week) => {
-            // Keep weeks where at least one team scored
-            if ((result.points || 0) > 0 || (result.opponentPoints || 0) > 0) {
-              filtered.set(week, result)
-            }
-          })
-          filteredResults.set(teamKey, filtered)
+      // Always keep matchup data, filter to only weeks with actual results
+      // ESPN period numbering doesn't map 1:1 to real weeks, so coverage % is unreliable
+      const filteredResults = new Map<string, Map<number, any>>()
+      allMatchupResults.forEach((teamMatchups, teamKey) => {
+        const filtered = new Map<number, any>()
+        teamMatchups.forEach((result, week) => {
+          // Keep weeks where there was actual activity
+          const hasPoints = (result.points || 0) > 0 || (result.opponentPoints || 0) > 0
+          const hasCatData = (result.catWins || 0) > 0 || (result.catLosses || 0) > 0
+          const hasWinner = result.won || result.tied
+          if (hasPoints || hasCatData || hasWinner) {
+            filtered.set(week, result)
+          }
         })
-        weeklyMatchupResults.value = filteredResults
-        const weeksKept = filteredResults.size > 0 ? [...filteredResults.values()][0].size : 0
-        console.log(`[ESPN] Points league: kept ${weeksKept} weeks with actual scores out of ${completedWeeks} periods`)
-      } else if (matchupWinnerCoverage >= 0.75) {
-        weeklyMatchupResults.value = allMatchupResults
-      } else {
-        console.log('[ESPN] Insufficient matchup winner coverage - clearing weeklyMatchupResults to use record.overall fallback')
-        weeklyMatchupResults.value = new Map()
-      }
+        filteredResults.set(teamKey, filtered)
+      })
+      weeklyMatchupResults.value = filteredResults
+      const weeksKept = filteredResults.size > 0 ? [...filteredResults.values()][0].size : 0
+      console.log(`[ESPN] Kept ${weeksKept} weeks with actual data out of ${completedWeeks} periods (coverage: ${Math.round(matchupWinnerCoverage * 100)}%)`)
       // Always set weekly scores if we have any data (used for hottest/coldest points calculation)
       const totalScoresRecorded = [...weeklyScores.values()].reduce((sum, m) => sum + m.size, 0)
       if (totalScoresRecorded > 0) {
