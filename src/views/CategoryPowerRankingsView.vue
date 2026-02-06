@@ -1252,11 +1252,15 @@ async function downloadRankings() {
         xaxis: {
           categories: weeksToShow.map(w => `Wk ${w}`),
           tickAmount: weeksToShow.length,
+          tickPlacement: 'on',
           labels: {
             style: {
               colors: '#9ca3af',
               fontSize: '10px'
-            }
+            },
+            rotate: 0,
+            hideOverlappingLabels: false,
+            trim: false
           }
         },
         yaxis: {
@@ -2605,8 +2609,12 @@ function buildChart() {
     xaxis: {
       categories: chartWeeks.value.map(w => `Wk ${w}`),
       tickAmount: chartWeeks.value.length,
+      tickPlacement: 'on',
       labels: {
-        style: { colors: '#9ca3af' }
+        style: { colors: '#9ca3af', fontSize: '11px' },
+        rotate: 0,
+        hideOverlappingLabels: false,
+        trim: false
       },
       axisBorder: { show: false },
       axisTicks: { show: false }

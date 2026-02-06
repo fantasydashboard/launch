@@ -1511,7 +1511,13 @@ const chartOptions = computed(() => {
     xaxis: {
       categories: historicalWeeks.value.map(w => `Wk ${w}`),
       tickAmount: historicalWeeks.value.length,
-      labels: { style: { colors: '#9ca3af' } }
+      tickPlacement: 'on',
+      labels: {
+        style: { colors: '#9ca3af', fontSize: '11px' },
+        rotate: 0,
+        hideOverlappingLabels: false,
+        trim: false
+      }
     },
     yaxis: {
       reversed: true,
@@ -2253,7 +2259,13 @@ async function downloadRankings() {
         xaxis: {
           categories: weeksToShow.map(w => `Wk ${w}`),
           tickAmount: weeksToShow.length,
-          labels: { style: { colors: '#9ca3af', fontSize: '10px' } }
+          tickPlacement: 'on',
+          labels: {
+            style: { colors: '#9ca3af', fontSize: '10px' },
+            rotate: 0,
+            hideOverlappingLabels: false,
+            trim: false
+          }
         },
         yaxis: {
           reversed: true,
