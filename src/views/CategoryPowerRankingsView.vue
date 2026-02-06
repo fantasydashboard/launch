@@ -2327,8 +2327,8 @@ async function loadPowerRankings() {
           }
         }
         
-        // Calculate power rankings at this point in the season (every 2 weeks for chart)
-        if (week >= 2 && (week % 2 === 0 || week === throughWeek)) {
+        // Calculate power rankings at this point in the season (every week for chart)
+        if (week >= 1) {
           weeksForChart.push(week)
           
           // Calculate current power scores for all teams
