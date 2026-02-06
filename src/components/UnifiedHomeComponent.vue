@@ -2735,7 +2735,9 @@ function formatLeaderValue(value: number) {
   if (leaderModalType.value === 'mostCatWins' && !isPointsLeague.value) return value + ' wins'
   if (leaderModalType.value === 'mostCatWins' && isPointsLeague.value) return value.toFixed(1)
   if (leaderModalType.value === 'mostDominant') return value + ' weeks'
-  return value.toString()
+  if (leaderModalType.value === 'mostPoints' || leaderModalType.value === 'fewestPoints') return value.toFixed(2)
+  // Default: cap at 2 decimal places
+  return Number.isInteger(value) ? value.toString() : value.toFixed(2)
 }
 
 // Distribute total category wins proportionally across categories
