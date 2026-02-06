@@ -2455,15 +2455,16 @@ async function calculatePowerRankingsForWeek(throughWeek: number): Promise<Power
       // ESPN: Use ESPN service to load matchups
       console.log(`[ESPN] Loading matchups for power rankings, league: ${leagueKey}`)
       
-      // Parse ESPN league info from league key (format: espn_baseball_LEAGUEID_SEASON)
+      // Parse ESPN league info from league key (format: espn_{sport}_LEAGUEID_SEASON)
       const parts = leagueKey.split('_')
+      const espnSport = parts[1] as 'football' | 'baseball' | 'basketball' | 'hockey'
       const espnLeagueId = parts[2]
       const season = parseInt(parts[3]) || new Date().getFullYear()
       
       for (let w = 1; w <= throughWeek; w++) {
         if (!allMatchups.value.has(w)) {
           try {
-            const espnMatchups = await espnService.getMatchups('baseball', espnLeagueId, season, w)
+            const espnMatchups = await espnService.getMatchups(espnSport, espnLeagueId, season, w)
             // Convert ESPN matchup format to Yahoo format
             const convertedMatchups = espnMatchups.map(m => {
               const homeTeam = teams.find(t => t.team_id === m.homeTeamId?.toString())
