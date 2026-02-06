@@ -446,7 +446,23 @@ const currentWeek = computed(() => {
 })
 
 const playoffTeams = computed(() => 6)
-const myTeamId = computed((): string | undefined => undefined)
+const myTeamId = computed((): string | undefined => {
+  // Find the user's team from the pre-transformed Yahoo/Sleeper team data
+  const myTeam = leagueStore.yahooTeams?.find((t: any) => t.is_my_team)
+  if (myTeam) {
+    return myTeam.team_id?.toString()
+  }
+  
+  // For Sleeper: match currentUserId against roster owner_id
+  if (platform.value === 'sleeper' && leagueStore.currentUserId) {
+    const myRoster = leagueStore.leagueRosters?.find((r: any) => r.owner_id === leagueStore.currentUserId)
+    if (myRoster) {
+      return String(myRoster.roster_id)
+    }
+  }
+  
+  return undefined
+})
 
 const adapterOptions = computed((): AdapterOptions => ({
   sport: sport.value,

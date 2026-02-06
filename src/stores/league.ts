@@ -977,7 +977,7 @@ export const useLeagueStore = defineStore('league', () => {
         points_for: pointsFor,
         points_against: pointsAgainst,
         rank: index + 1, // Will be sorted below
-        is_my_team: false, // TODO: Detect user's team
+        is_my_team: !!(currentUserId.value && roster.owner_id === currentUserId.value),
         transactions: roster.settings?.total_moves || 0,
         roster_id: roster.roster_id,
         owner_id: roster.owner_id,
