@@ -1471,35 +1471,69 @@ const leagueInfo = computed(() => {
   return league || {}
 })
 
-const currentWeek = computed(() => {
+const isSeasonComplete = computed(() => {
   // Get yahooLeague data (may be array or object)
   const yahooLeagueData = Array.isArray(leagueStore.yahooLeague) 
     ? leagueStore.yahooLeague[0] 
     : leagueStore.yahooLeague
   
   if (isEspn.value) {
+    if (leagueStore.currentLeague?.status === 'complete') return true
+    if (yahooLeagueData?.is_finished === 1 || yahooLeagueData?.is_finished === true) return true
+    if (leagueStore.currentLeague?.status?.isFinished) return true
+    return false
+  }
+  // Yahoo/Sleeper
+  if (leagueStore.currentLeague?.status === 'complete') return true
+  const finished = leagueInfo.value?.is_finished
+  return finished === 1 || finished === '1'
+})
+
+const currentWeek = computed(() => {
+  // Get yahooLeague data (may be array or object)
+  const yahooLeagueData = Array.isArray(leagueStore.yahooLeague) 
+    ? leagueStore.yahooLeague[0] 
+    : leagueStore.yahooLeague
+  
+  // Helper: get end_week for fallback
+  const getEndWeek = (): number => {
+    if (leagueStore.currentLeague?.settings?.end_week) return parseInt(leagueStore.currentLeague.settings.end_week) || 0
+    if (yahooLeagueData?.end_week) return parseInt(yahooLeagueData.end_week) || 0
+    return 0
+  }
+  
+  let week = 1
+  
+  if (isEspn.value) {
     // For ESPN, try multiple sources
     // 1. currentLeague settings
     if (leagueStore.currentLeague?.settings?.leg) {
-      console.log('currentWeek computed (ESPN from currentLeague.settings.leg):', leagueStore.currentLeague.settings.leg)
-      return parseInt(leagueStore.currentLeague.settings.leg) || 1
+      week = parseInt(leagueStore.currentLeague.settings.leg) || 1
     }
     // 2. yahooLeague (which holds ESPN data too)
-    if (yahooLeagueData?.current_week) {
-      console.log('currentWeek computed (ESPN from yahooLeague):', yahooLeagueData.current_week)
-      return parseInt(yahooLeagueData.current_week) || 1
+    else if (yahooLeagueData?.current_week) {
+      week = parseInt(yahooLeagueData.current_week) || 1
     }
     // 3. currentLeague status
-    if (leagueStore.currentLeague?.status?.currentMatchupPeriod) {
-      console.log('currentWeek computed (ESPN from status):', leagueStore.currentLeague.status.currentMatchupPeriod)
-      return parseInt(leagueStore.currentLeague.status.currentMatchupPeriod) || 1
+    else if (leagueStore.currentLeague?.status?.currentMatchupPeriod) {
+      week = parseInt(leagueStore.currentLeague.status.currentMatchupPeriod) || 1
     }
-    console.log('currentWeek computed (ESPN): defaulting to 1')
-    return 1
+  } else {
+    week = parseInt(leagueInfo.value?.current_week) || 1
   }
-  const week = leagueInfo.value?.current_week
-  console.log('currentWeek computed:', week, 'from leagueInfo:', leagueInfo.value)
-  return parseInt(week) || 1
+  
+  // For completed seasons, leg/current_week can reset to 1 during offseason
+  // Use end_week as fallback
+  const endWeek = getEndWeek()
+  if (isSeasonComplete.value && endWeek > 0) {
+    const result = Math.max(week, endWeek)
+    if (result !== week) {
+      console.log(`[CategoryPowerRankings] Season complete, currentWeek ${week} → ${result} (using end_week)`)
+    }
+    return result
+  }
+  
+  return week
 })
 
 const totalWeeks = computed(() => {
@@ -1531,37 +1565,6 @@ const totalWeeks = computed(() => {
   const endWeek = leagueInfo.value?.end_week
   console.log('totalWeeks computed:', endWeek)
   return parseInt(endWeek) || 25
-})
-
-const isSeasonComplete = computed(() => {
-  // Get yahooLeague data (may be array or object)
-  const yahooLeagueData = Array.isArray(leagueStore.yahooLeague) 
-    ? leagueStore.yahooLeague[0] 
-    : leagueStore.yahooLeague
-  
-  if (isEspn.value) {
-    // For ESPN, check multiple sources
-    // 1. currentLeague status
-    if (leagueStore.currentLeague?.status === 'complete') {
-      console.log('isSeasonComplete computed (ESPN): true from status string')
-      return true
-    }
-    // 2. yahooLeague is_finished
-    if (yahooLeagueData?.is_finished === 1 || yahooLeagueData?.is_finished === true) {
-      console.log('isSeasonComplete computed (ESPN): true from yahooLeague')
-      return true
-    }
-    // 3. currentLeague status object
-    if (leagueStore.currentLeague?.status?.isFinished) {
-      console.log('isSeasonComplete computed (ESPN): true from status.isFinished')
-      return true
-    }
-    console.log('isSeasonComplete computed (ESPN): false')
-    return false
-  }
-  const finished = leagueInfo.value?.is_finished
-  console.log('isSeasonComplete computed:', finished)
-  return finished === 1 || finished === '1'
 })
 
 const currentSeason = computed(() => leagueStore.currentLeague?.season || new Date().getFullYear().toString())

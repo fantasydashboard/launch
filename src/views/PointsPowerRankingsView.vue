@@ -1269,7 +1269,35 @@ interface PowerRankingFactorConfig {
 }
 
 // Computed
-const currentWeek = computed(() => leagueStore.currentLeague?.settings?.leg || 1)
+const isSeasonComplete = computed(() => {
+  if (leagueStore.currentLeague?.status === 'complete') return true
+  // yahooLeague can be an array - check first element
+  const yahooData = Array.isArray(leagueStore.yahooLeague) 
+    ? leagueStore.yahooLeague[0] 
+    : leagueStore.yahooLeague
+  if (yahooData?.is_finished === 1 || yahooData?.is_finished === '1') return true
+  // Also check ESPN status object
+  if (leagueStore.currentLeague?.status?.isFinished) return true
+  return false
+})
+
+const currentWeek = computed(() => {
+  const leg = leagueStore.currentLeague?.settings?.leg || 1
+  const endWeek = parseInt(leagueStore.currentLeague?.settings?.end_week) || 0
+  
+  // For completed seasons, leg can reset to 1 during offseason
+  // Use end_week (regular season length) as fallback
+  if (isSeasonComplete.value && leg <= 1 && endWeek > 1) {
+    console.log(`[PowerRankings] Season complete but leg=${leg}, using end_week=${endWeek}`)
+    return endWeek
+  }
+  // Also handle case where season is complete and leg is valid but end_week might be better
+  // (e.g., leg stuck at some intermediate value)
+  if (isSeasonComplete.value && endWeek > 0) {
+    return Math.max(leg, endWeek)
+  }
+  return leg
+})
 
 // Effective league key - use the actually loaded league (might be previous season)
 const effectiveLeagueKey = computed(() => {
@@ -1280,10 +1308,6 @@ const effectiveLeagueKey = computed(() => {
 })
 
 const currentSeason = computed(() => leagueStore.currentLeague?.season || new Date().getFullYear().toString())
-const isSeasonComplete = computed(() => {
-  if (leagueStore.currentLeague?.status === 'complete') return true
-  return leagueStore.yahooLeague?.is_finished === 1
-})
 
 const availableWeeks = computed(() => {
   const weeks = []
@@ -2776,7 +2800,10 @@ async function loadRosteredPlayers() {
         
         for (const player of team.roster) {
           // Calculate PPG using completed weeks from the league
-          const completedWeeks = Math.max(1, (leagueStore.currentLeague?.settings?.leg || 1) - 1)
+          const leg = leagueStore.currentLeague?.settings?.leg || 1
+          const endWk = parseInt(leagueStore.currentLeague?.settings?.end_week) || leg
+          const effectiveWeeks = isSeasonComplete.value ? Math.max(leg, endWk) : Math.max(1, leg - 1)
+          const completedWeeks = Math.max(1, effectiveWeeks)
           const ppg = player.actualPoints > 0 ? player.actualPoints / completedWeeks : 0
           
           // Track position counts for debugging
