@@ -1621,6 +1621,141 @@ export const useLeagueStore = defineStore('league', () => {
         rank: t.rank
       })))
       
+      // Check if this league has actual data (all zeros means season hasn't started)
+      const espnHasData = yahooTeams.value.some(t => 
+        (t.wins || 0) > 0 || (t.losses || 0) > 0 || (t.points_for || 0) > 0
+      )
+      
+      if (!espnHasData && season > 2020) {
+        console.log('[ESPN] Current season has no data, trying previous season...')
+        const prevSeason = season - 1
+        try {
+          const prevLeague = await espnService.getLeague(sport, espnLeagueId, prevSeason)
+          if (prevLeague) {
+            const prevTeams = await espnService.getTeams(sport, espnLeagueId, prevSeason)
+            const prevHasData = prevTeams.some(t => 
+              (t.wins || 0) > 0 || (t.losses || 0) > 0 || (t.pointsFor || 0) > 0
+            )
+            
+            if (prevHasData) {
+              console.log('[ESPN] Previous season has data! Using that instead.')
+              
+              // Get my team from previous season
+              let prevMyTeamId: number | null = null
+              try {
+                const prevMyTeam = await espnService.getMyTeam(sport, espnLeagueId, prevSeason)
+                if (prevMyTeam) prevMyTeamId = prevMyTeam.id
+              } catch (e) { /* ignore */ }
+              
+              const prevRegularSeasonWeeks = prevLeague.settings?.regularSeasonMatchupPeriodCount || 25
+              const prevIsActive = prevLeague.status?.isActive ?? true
+              const prevCurrentWeek = !prevIsActive ? prevRegularSeasonWeeks : (prevLeague.status?.currentMatchupPeriod || 1)
+              
+              // Re-map teams from previous season
+              yahooTeams.value = prevTeams.map(team => {
+                let logoUrl = team.logo
+                if (!logoUrl || logoUrl === '') {
+                  logoUrl = `https://ui-avatars.com/api/?name=${encodeURIComponent(team.name)}&background=3a3d52&color=fff&size=64`
+                }
+                return {
+                  team_key: `espn_${espnLeagueId}_${prevSeason}_${team.id}`,
+                  team_id: team.id.toString(),
+                  name: team.name,
+                  logo_url: logoUrl,
+                  wins: team.wins || team.record?.overall?.wins || 0,
+                  losses: team.losses || team.record?.overall?.losses || 0,
+                  ties: team.ties || team.record?.overall?.ties || 0,
+                  points_for: team.pointsFor || team.record?.overall?.pointsFor || 0,
+                  points_against: team.pointsAgainst || team.record?.overall?.pointsAgainst || 0,
+                  rank: team.playoffSeed || team.rank || 0,
+                  is_my_team: prevMyTeamId !== null && team.id === prevMyTeamId,
+                  transactionCounter: team.transactionCounter || 0,
+                  transactions: team.transactionCounter || 0,
+                  totalMoves: team.totalMoves || 0,
+                  category_wins: (team as any).categoryWins || 0,
+                  category_losses: (team as any).categoryLosses || 0
+                }
+              })
+              
+              // Sort by wins
+              yahooTeams.value.sort((a, b) => {
+                if (b.wins !== a.wins) return b.wins - a.wins
+                return (b.points_for || 0) - (a.points_for || 0)
+              })
+              yahooTeams.value.forEach((t, idx) => { t.rank = idx + 1 })
+              yahooStandings.value = yahooTeams.value
+              
+              // Get matchups from previous season
+              const prevMatchups = await espnService.getMatchups(sport, espnLeagueId, prevSeason, Math.min(prevCurrentWeek, prevRegularSeasonWeeks))
+              
+              // Check if previous season was category
+              const prevIsCategoryLeague = prevLeague.scoringType === 'H2H_CATEGORY'
+              
+              yahooMatchups.value = prevMatchups.map(matchup => {
+                const homeTeam = yahooTeams.value.find(t => t.team_id === matchup.homeTeamId?.toString())
+                const awayTeam = yahooTeams.value.find(t => t.team_id === matchup.awayTeamId?.toString())
+                return {
+                  matchup_id: matchup.id,
+                  week: prevCurrentWeek,
+                  team1: homeTeam ? { ...homeTeam, points: matchup.homeScore || 0 } : null,
+                  team2: awayTeam ? { ...awayTeam, points: matchup.awayScore || 0 } : null,
+                  teams: [homeTeam, awayTeam].filter(Boolean).map((t, i) => ({
+                    ...t,
+                    points: i === 0 ? (matchup.homeScore || 0) : (matchup.awayScore || 0)
+                  })),
+                  is_category_league: prevIsCategoryLeague,
+                  home_category_wins: matchup.homeCategoryWins,
+                  away_category_wins: matchup.awayCategoryWins,
+                  home_category_losses: matchup.homeCategoryLosses,
+                  away_category_losses: matchup.awayCategoryLosses
+                }
+              })
+              
+              // Update league metadata to previous season
+              const prevLeagueKey = `espn_${sport}_${espnLeagueId}_${prevSeason}`
+              const scoringTypeMap2: Record<string, string> = {
+                'H2H_POINTS': 'headpoint', 'H2H_CATEGORY': 'head', 'ROTO': 'roto', 'TOTAL_POINTS': 'point'
+              }
+              
+              yahooLeague.value = [{
+                name: prevLeague.name,
+                season: prevSeason.toString(),
+                scoring_type: scoringTypeMap2[prevLeague.scoringType || 'H2H_POINTS'] || 'head',
+                start_week: 1,
+                end_week: prevRegularSeasonWeeks,
+                current_week: prevCurrentWeek,
+                is_finished: 1
+              }]
+              
+              const savedLeague = savedLeagues.value.find(l => l.league_id === leagueKey)
+              currentLeague.value = {
+                league_id: prevLeagueKey,
+                name: savedLeague?.league_name || prevLeague.name || 'ESPN League',
+                season: prevSeason.toString(),
+                status: 'complete',
+                sport: sport,
+                settings: {
+                  leg: prevCurrentWeek,
+                  playoff_week_start: (prevRegularSeasonWeeks || 14) + 1,
+                  start_week: 1,
+                  end_week: prevRegularSeasonWeeks
+                },
+                scoring_settings: {},
+                roster_positions: [],
+                total_rosters: savedLeague?.num_teams || prevTeams.length || 12,
+                scoring_type: scoringTypeMap2[prevLeague.scoringType || 'H2H_POINTS'] || 'head'
+              } as any
+              
+              console.log('[ESPN] Loaded previous season:', prevSeason, 'teams:', yahooTeams.value.length)
+              isLoading.value = false
+              return // Exit early - loaded previous season
+            }
+          }
+        } catch (prevError) {
+          console.warn('[ESPN] Failed to load previous season:', prevError)
+        }
+      }
+      
       // Map ESPN matchups to Yahoo-compatible format
       yahooMatchups.value = espnMatchups.map(matchup => {
         const homeTeam = yahooTeams.value.find(t => t.team_id === matchup.homeTeamId?.toString())

@@ -1569,6 +1569,12 @@ const totalWeeks = computed(() => {
 
 const currentSeason = computed(() => leagueStore.currentLeague?.season || new Date().getFullYear().toString())
 
+// Effective league key - use the actually loaded league (might be previous season after fallback)
+const effectiveLeagueKey = computed(() => {
+  if (leagueStore.currentLeague?.league_id) return leagueStore.currentLeague.league_id
+  return leagueStore.activeLeagueId
+})
+
 const numCategories = computed(() => displayCategories.value.length || 12)
 
 const availableWeeks = computed(() => {
@@ -1810,7 +1816,7 @@ function openTeamModal(team: any) { selectedTeam.value = team; showTeamModal.val
 
 // Load categories
 async function loadCategories() {
-  const leagueKey = leagueStore.activeLeagueId
+  const leagueKey = effectiveLeagueKey.value || leagueStore.activeLeagueId
   if (!leagueKey) {
     console.log('[loadCategories] No leagueKey, returning')
     return
@@ -2080,7 +2086,7 @@ async function loadCategories() {
 async function loadPowerRankings() {
   if (!selectedWeek.value) return
   
-  const leagueKey = leagueStore.activeLeagueId
+  const leagueKey = effectiveLeagueKey.value || leagueStore.activeLeagueId
   if (!leagueKey) return
   
   isLoading.value = true
@@ -2658,9 +2664,40 @@ watch(chartHoveredTeamKey, () => {
   }
 })
 
+// Watch for currentLeague changes (happens when fallback to previous season occurs)
+watch(() => leagueStore.currentLeague?.league_id, async (newKey, oldKey) => {
+  if (newKey && newKey !== oldKey) {
+    console.log(`[CategoryPowerRankings] League changed from ${oldKey} to ${newKey}, reloading...`)
+    
+    // Reload categories and power rankings with the new league key
+    await loadCategories()
+    
+    const endWeek = totalWeeks.value
+    const currWeek = currentWeek.value
+    const isFinished = isSeasonComplete.value
+    const defaultWeek = isFinished ? endWeek : Math.max(1, currWeek - 1)
+    
+    console.log(`[CategoryPowerRankings] After league change: endWeek=${endWeek}, currWeek=${currWeek}, isFinished=${isFinished}, default=${defaultWeek}`)
+    
+    if (defaultWeek >= 1) {
+      selectedWeek.value = defaultWeek.toString()
+      loadPowerRankings()
+    }
+  }
+})
+
 // Initialize
 watch(() => leagueStore.yahooTeams, async () => {
   if (leagueStore.yahooTeams.length > 0) {
+    // Skip if all teams have zero data - store may be about to fallback to previous season
+    const hasData = leagueStore.yahooTeams.some(t => 
+      (t.wins || 0) > 0 || (t.losses || 0) > 0 || (t.points_for || 0) > 0
+    )
+    if (!hasData) {
+      console.log('[CategoryPowerRankings] Teams have no data, waiting for possible fallback...')
+      return
+    }
+    
     await loadCategories()
     
     // Use the computed values which now correctly parse the array

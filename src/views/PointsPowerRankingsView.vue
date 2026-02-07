@@ -2871,6 +2871,15 @@ function recalculatePowerRankings() {
 // Watch for league changes
 watch(() => leagueStore.yahooTeams, () => {
   if (leagueStore.yahooTeams.length > 0) {
+    // Skip if all teams have zero data - store may be about to fallback to previous season
+    const hasData = leagueStore.yahooTeams.some(t => 
+      (t.wins || 0) > 0 || (t.losses || 0) > 0 || (t.points_for || 0) > 0
+    )
+    if (!hasData) {
+      console.log('[PointsPowerRankings] Teams have no data, waiting for possible fallback...')
+      return
+    }
+    
     if (!selectedWeek.value) {
       const completedWeek = isSeasonComplete.value ? currentWeek.value : Math.max(1, currentWeek.value - 1)
       if (completedWeek >= 1) {
@@ -2884,19 +2893,31 @@ watch(() => leagueStore.yahooTeams, () => {
 // Watch for currentLeague changes (happens when fallback to previous season occurs)
 watch(() => leagueStore.currentLeague?.league_id, (newKey, oldKey) => {
   if (newKey && newKey !== oldKey) {
-    console.log(`Power Rankings: League changed from ${oldKey} to ${newKey}, clearing cache...`)
+    console.log(`[PointsPowerRankings] League changed from ${oldKey} to ${newKey}, clearing cache...`)
     // Clear cached matchups since we're loading a different league
     allMatchups.value.clear()
-    // Reload if we have a selected week
-    if (selectedWeek.value && currentWeek.value >= 1) {
+    
+    // Recalculate week and reload
+    const completedWeek = isSeasonComplete.value ? currentWeek.value : Math.max(1, currentWeek.value - 1)
+    console.log(`[PointsPowerRankings] After league change: isComplete=${isSeasonComplete.value}, currentWeek=${currentWeek.value}, completedWeek=${completedWeek}`)
+    if (completedWeek >= 1) {
+      selectedWeek.value = completedWeek.toString()
       loadPowerRankings()
     }
   }
 })
 
 onMounted(() => {
-  // Always try to load power rankings if we have teams
+  // Always try to load power rankings if we have teams with actual data
   if (leagueStore.yahooTeams.length > 0) {
+    const hasData = leagueStore.yahooTeams.some(t => 
+      (t.wins || 0) > 0 || (t.losses || 0) > 0 || (t.points_for || 0) > 0
+    )
+    if (!hasData) {
+      console.log('[PointsPowerRankings] onMounted: Teams have no data, waiting for fallback...')
+      return
+    }
+    
     // Default to last completed week (currentWeek is the in-progress week)
     const completedWeek = isSeasonComplete.value ? currentWeek.value : Math.max(1, currentWeek.value - 1)
     selectedWeek.value = completedWeek.toString()
