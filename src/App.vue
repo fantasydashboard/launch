@@ -146,6 +146,22 @@
                   
                   <!-- Add League (at bottom when leagues exist) -->
                   <div class="border-t border-dark-border p-2">
+                    <!-- Update ESPN Cookies -->
+                    <button
+                      v-if="hasEspnLeagues"
+                      @click="openEspnCookieModal()"
+                      class="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-orange-500/10 transition-colors mb-1"
+                    >
+                      <div class="w-8 h-8 rounded-lg bg-orange-500/20 flex items-center justify-center">
+                        <svg class="w-4 h-4 text-orange-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" />
+                        </svg>
+                      </div>
+                      <div class="text-left">
+                        <div class="font-medium text-orange-500 text-sm">Update ESPN Cookies</div>
+                        <div class="text-xs text-dark-textMuted">Refresh expired session</div>
+                      </div>
+                    </button>
                     <button
                       @click="showAddLeagueModal = true; showLeagueDropdown = false"
                       class="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-yellow-500/10 transition-colors"
@@ -365,9 +381,23 @@
                       
                       <!-- Add League -->
                       <div class="border-t border-dark-border p-2">
+                        <!-- Update ESPN Cookies -->
                         <button
-                          @click="showAddLeagueModal = true; showLeagueDropdown = false"
-                          class="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-yellow-500/10 active:bg-yellow-500/20 transition-colors"
+                          v-if="hasEspnLeagues"
+                          @click="openEspnCookieModal()"
+                          class="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-orange-500/10 active:bg-orange-500/20 transition-colors mb-1"
+                        >
+                          <div class="w-8 h-8 rounded-lg bg-orange-500/20 flex items-center justify-center">
+                            <svg class="w-4 h-4 text-orange-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" />
+                            </svg>
+                          </div>
+                          <div class="text-left">
+                            <div class="font-medium text-orange-500 text-sm">Update ESPN Cookies</div>
+                            <div class="text-xs text-dark-textMuted">Refresh expired session</div>
+                          </div>
+                        </button>
+                        <button
                         >
                           <div class="w-8 h-8 rounded-lg bg-yellow-500/20 flex items-center justify-center">
                             <svg class="w-4 h-4 text-yellow-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -497,6 +527,22 @@
                       
                       <!-- Add League -->
                       <div class="border-t border-dark-border p-2">
+                        <!-- Update ESPN Cookies -->
+                        <button
+                          v-if="hasEspnLeagues"
+                          @click="openEspnCookieModal()"
+                          class="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-orange-500/10 transition-colors mb-1"
+                        >
+                          <div class="w-8 h-8 rounded-lg bg-orange-500/20 flex items-center justify-center">
+                            <svg class="w-4 h-4 text-orange-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" />
+                            </svg>
+                          </div>
+                          <div class="text-left">
+                            <div class="font-medium text-orange-500 text-sm">Update ESPN Cookies</div>
+                            <div class="text-xs text-dark-textMuted">Refresh expired session</div>
+                          </div>
+                        </button>
                         <button
                           @click="showAddLeagueModal = true; showLeagueDropdown = false"
                           class="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-yellow-500/10 transition-colors"
@@ -738,6 +784,91 @@
         </div>
       </div>
     </Teleport>
+
+    <!-- ESPN Cookie Update Modal -->
+    <Teleport to="body">
+      <div v-if="showEspnCookieModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50" @click.self="showEspnCookieModal = false">
+        <div class="bg-dark-card border border-dark-border rounded-xl p-6 max-w-md w-full shadow-xl">
+          <div class="flex items-center gap-3 mb-4">
+            <div class="w-10 h-10 rounded-lg bg-orange-500/20 flex items-center justify-center">
+              <svg class="w-5 h-5 text-orange-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" />
+              </svg>
+            </div>
+            <div>
+              <h3 class="text-lg font-bold text-dark-text">Update ESPN Cookies</h3>
+              <p class="text-xs text-dark-textMuted">Refresh your ESPN session</p>
+            </div>
+            <button @click="showEspnCookieModal = false" class="ml-auto p-1.5 rounded-lg hover:bg-dark-border/50 transition-colors">
+              <svg class="w-5 h-5 text-dark-textMuted" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+
+          <!-- Success State -->
+          <div v-if="espnCookieSuccess" class="text-center py-6">
+            <div class="text-4xl mb-3">✅</div>
+            <div class="text-green-400 font-bold text-lg">Cookies Updated!</div>
+            <div class="text-dark-textMuted text-sm mt-1">Reloading league data...</div>
+          </div>
+
+          <!-- Form -->
+          <div v-else>
+            <div class="bg-dark-border/20 rounded-lg p-3 mb-4">
+              <p class="text-xs text-dark-textMuted leading-relaxed">
+                <strong class="text-dark-text">How to get your cookies:</strong><br/>
+                1. Go to <a href="https://www.espn.com/fantasy/" target="_blank" class="text-primary hover:underline">espn.com/fantasy</a> and sign in<br/>
+                2. Open DevTools (F12) → Application → Cookies<br/>
+                3. Find and copy <strong class="text-dark-text">espn_s2</strong> and <strong class="text-dark-text">SWID</strong> values
+              </p>
+            </div>
+
+            <div class="space-y-3 mb-4">
+              <div>
+                <label class="block text-sm font-medium text-dark-text mb-1">espn_s2 Cookie</label>
+                <input
+                  v-model="espnS2Input"
+                  type="text"
+                  placeholder="Paste your espn_s2 cookie value..."
+                  class="w-full px-3 py-2 bg-dark-bg border border-dark-border rounded-lg text-dark-text text-sm placeholder-dark-textMuted focus:outline-none focus:border-orange-500/50"
+                />
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-dark-text mb-1">SWID Cookie</label>
+                <input
+                  v-model="espnSwidInput"
+                  type="text"
+                  placeholder="Paste your SWID cookie value (with { } brackets)..."
+                  class="w-full px-3 py-2 bg-dark-bg border border-dark-border rounded-lg text-dark-text text-sm placeholder-dark-textMuted focus:outline-none focus:border-orange-500/50"
+                />
+              </div>
+            </div>
+
+            <!-- Error -->
+            <div v-if="espnCookieError" class="bg-red-500/10 border border-red-500/30 rounded-lg p-3 mb-4">
+              <p class="text-red-400 text-sm">{{ espnCookieError }}</p>
+            </div>
+
+            <div class="flex gap-3">
+              <button
+                @click="showEspnCookieModal = false"
+                class="flex-1 px-4 py-2.5 rounded-lg bg-dark-border text-dark-text font-medium hover:bg-dark-border/70 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                @click="saveEspnCookies"
+                :disabled="espnCookieSaving || !espnS2Input.trim() || !espnSwidInput.trim()"
+                class="flex-1 px-4 py-2.5 rounded-lg bg-orange-500 text-white font-medium hover:bg-orange-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {{ espnCookieSaving ? 'Saving...' : 'Save & Reload' }}
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </Teleport>
     
     <!-- Dev Mode Panel (Admin Only) -->
     <DevModePanel />
@@ -751,6 +882,8 @@ import { useLeagueStore } from '@/stores/league'
 import { useDarkModeStore } from '@/stores/darkMode'
 import { useAuthStore } from '@/stores/auth'
 import { useSportStore, type Sport } from '@/stores/sport'
+import { usePlatformsStore } from '@/stores/platforms'
+import { espnService } from '@/services/espn'
 import AuthModal from '@/components/AuthModal.vue'
 import LandingPage from '@/components/LandingPage.vue'
 import AddLeagueModal from '@/components/AddLeagueModal.vue'
@@ -764,6 +897,7 @@ const leagueStore = useLeagueStore()
 const darkModeStore = useDarkModeStore()
 const authStore = useAuthStore()
 const sportStore = useSportStore()
+const platformsStore = usePlatformsStore()
 
 const showAuthModal = ref(false)
 const authMode = ref<'login' | 'signup'>('signup')
@@ -776,6 +910,14 @@ const mobileLeagueDropdownRef = ref<HTMLElement | null>(null)
 const scrolledLeagueDropdownRef = ref<HTMLElement | null>(null)
 const leagueToRemove = ref<any>(null)
 const isScrolled = ref(false)
+
+// ESPN Cookie Update Modal
+const showEspnCookieModal = ref(false)
+const espnS2Input = ref('')
+const espnSwidInput = ref('')
+const espnCookieSaving = ref(false)
+const espnCookieError = ref('')
+const espnCookieSuccess = ref(false)
 
 const tabs = [
   { name: 'Season', path: '/' },
@@ -930,6 +1072,66 @@ async function removeLeague() {
   if (!leagueToRemove.value) return
   await leagueStore.removeLeague(leagueToRemove.value.league_id, authStore.user?.id)
   leagueToRemove.value = null
+}
+
+// ESPN Cookie Management
+const hasEspnLeagues = computed(() => {
+  return leagueStore.allLeagues?.some(l => l.platform === 'espn') || false
+})
+
+function openEspnCookieModal() {
+  showLeagueDropdown.value = false
+  espnCookieError.value = ''
+  espnCookieSuccess.value = false
+  espnCookieSaving.value = false
+  // Pre-fill with existing values if available
+  const existing = platformsStore.getEspnCredentials()
+  espnS2Input.value = existing?.espn_s2 || ''
+  espnSwidInput.value = existing?.swid || ''
+  showEspnCookieModal.value = true
+}
+
+async function saveEspnCookies() {
+  const s2 = espnS2Input.value.trim()
+  const swid = espnSwidInput.value.trim()
+  
+  if (!s2 || !swid) {
+    espnCookieError.value = 'Both cookies are required.'
+    return
+  }
+  
+  espnCookieSaving.value = true
+  espnCookieError.value = ''
+  
+  try {
+    // Store in localStorage and apply to service
+    localStorage.setItem('espn_credentials', JSON.stringify({ espn_s2: s2, swid: swid, stored_at: Date.now() }))
+    espnService.setCredentials(s2, swid)
+    
+    // Also update any saved ESPN leagues that store credentials
+    for (const league of (leagueStore.allLeagues || [])) {
+      if (league.platform === 'espn') {
+        league.espn_s2 = s2
+        league.swid = swid
+      }
+    }
+    
+    espnCookieSuccess.value = true
+    
+    // Reload current league if it's ESPN
+    if (leagueStore.activePlatform === 'espn' && leagueStore.activeLeagueId) {
+      setTimeout(() => {
+        showEspnCookieModal.value = false
+        leagueStore.setActiveLeague(leagueStore.activeLeagueId!)
+      }, 1200)
+    } else {
+      setTimeout(() => { showEspnCookieModal.value = false }, 1200)
+    }
+  } catch (err: any) {
+    espnCookieError.value = err.message || 'Failed to save cookies.'
+  } finally {
+    espnCookieSaving.value = false
+  }
 }
 
 async function handleAuthSuccess() {
