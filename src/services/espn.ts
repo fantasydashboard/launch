@@ -854,7 +854,9 @@ export class EspnFantasyService {
       
       // Determine current week from league status
       const currentWeek = league?.status?.currentMatchupPeriod || 1
-      const isCurrentWeek = week === currentWeek
+      const isSeasonActive = league?.status?.isActive ?? true
+      // For completed seasons, never use filterCurrentMatchupPeriod (it may point to next season)
+      const isCurrentWeek = isSeasonActive && week === currentWeek
       
       // ESPN website uses different filter formats:
       // - Current week: filterCurrentMatchupPeriod: true
@@ -892,8 +894,9 @@ export class EspnFantasyService {
       // Pass scoring type to parseMatchups for category league handling
       const matchups = this.parseMatchups(data, week, scoringType)
       
-      // Determine cache TTL based on week status (reuse currentWeek from above)
-      const isCompletedWeek = week < currentWeek
+      // Determine cache TTL based on week status
+      // For completed seasons, all weeks are completed
+      const isCompletedWeek = !isSeasonActive || week < currentWeek
       const ttl = isCompletedWeek ? CACHE_TTL.COMPLETED : CACHE_TTL.CURRENT
       
       cache.set('espn_matchups', matchups, ttl, cacheKey)
@@ -1075,7 +1078,9 @@ export class EspnFantasyService {
       // Current week to know which matchups are completed
       const currentWeek = league.status?.currentMatchupPeriod || 1
       const regularSeasonWeeks = league.settings?.regularSeasonMatchupPeriodCount || 25
-      const completedWeeks = Math.min(currentWeek - 1, regularSeasonWeeks)
+      const isSeasonActive = league.status?.isActive ?? true
+      // For completed seasons, all regular season weeks are completed
+      const completedWeeks = !isSeasonActive ? regularSeasonWeeks : Math.min(currentWeek - 1, regularSeasonWeeks)
       
       console.log('[ESPN calculateStandingsFromMatchupHistory] currentWeek:', currentWeek, 'completedWeeks:', completedWeeks)
       
@@ -3816,7 +3821,8 @@ export class EspnFantasyService {
     // Calculate how many weeks to fetch (completed weeks only)
     const currentWeek = league.status?.currentMatchupPeriod || 1
     const regularSeasonWeeks = league.settings?.regularSeasonMatchupPeriodCount || 25
-    const completedWeeks = Math.min(currentWeek - 1, regularSeasonWeeks)
+    const isSeasonActive = league.status?.isActive ?? true
+    const completedWeeks = !isSeasonActive ? regularSeasonWeeks : Math.min(currentWeek - 1, regularSeasonWeeks)
     
     console.log('[ESPN getCategoryStatsBreakdown] Fetching', completedWeeks, 'weeks of matchups')
     

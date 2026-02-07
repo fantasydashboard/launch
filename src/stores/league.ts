@@ -1416,9 +1416,11 @@ export const useLeagueStore = defineStore('league', () => {
       if (isCategoryLeague && espnTeams.every(t => t.wins === 0 && t.losses === 0)) {
         console.log('[ESPN FALLBACK] getStandings returned all zeros, calculating from weekly matchups...')
         
-        const currentWeek = league.status?.currentMatchupPeriod || 1
+        const fallbackCurrentWeek = league.status?.currentMatchupPeriod || 1
         const regularSeasonWeeks = league.settings?.regularSeasonMatchupPeriodCount || 25
-        const completedWeeks = Math.min(currentWeek - 1, regularSeasonWeeks)
+        const fallbackIsActive = league.status?.isActive ?? true
+        // For completed seasons, use all regular season weeks
+        const completedWeeks = !fallbackIsActive ? regularSeasonWeeks : Math.min(fallbackCurrentWeek - 1, regularSeasonWeeks)
         
         console.log('[ESPN FALLBACK] Will process', completedWeeks, 'completed weeks')
         
@@ -1521,8 +1523,21 @@ export const useLeagueStore = defineStore('league', () => {
       }
       
       // Get current week matchups
-      const currentWeek = league.status?.currentMatchupPeriod || 1
-      const espnMatchups = await espnService.getMatchups(sport, espnLeagueId, season, currentWeek)
+      // For completed seasons, currentMatchupPeriod may reset to 1 (offseason)
+      // Use regularSeasonMatchupPeriodCount as the effective last week instead
+      const isSeasonActive = league.status?.isActive ?? true
+      const regularSeasonWeeks = league.settings?.regularSeasonMatchupPeriodCount || 25
+      const rawCurrentWeek = league.status?.currentMatchupPeriod || 1
+      const currentWeek = !isSeasonActive ? regularSeasonWeeks : rawCurrentWeek
+      
+      console.log('[ESPN] Week calculation:', {
+        isSeasonActive,
+        rawCurrentWeek,
+        regularSeasonWeeks,
+        effectiveCurrentWeek: currentWeek
+      })
+      
+      const espnMatchups = await espnService.getMatchups(sport, espnLeagueId, season, Math.min(currentWeek, regularSeasonWeeks))
       
       // Map ESPN teams to Yahoo-compatible format
       yahooTeams.value = espnTeams.map(team => {
