@@ -1540,7 +1540,9 @@ export const useLeagueStore = defineStore('league', () => {
       const espnMatchups = await espnService.getMatchups(sport, espnLeagueId, season, Math.min(currentWeek, regularSeasonWeeks))
       
       // Map ESPN teams to Yahoo-compatible format
-      yahooTeams.value = espnTeams.map(team => {
+      // Use local variable first to avoid triggering watchers prematurely
+      // (if season has no data, we'll fallback to previous season instead)
+      let mappedTeams = espnTeams.map(team => {
         // Debug: log what we're receiving from ESPN
         console.log('[ESPN] Mapping team:', {
           id: team.id,
@@ -1581,7 +1583,7 @@ export const useLeagueStore = defineStore('league', () => {
       })
       
       // Sort teams - for category leagues, sort by wins then category win percentage
-      const sortedByWins = [...yahooTeams.value].sort((a, b) => {
+      const sortedByWins = [...mappedTeams].sort((a, b) => {
         // First by wins
         if (b.wins !== a.wins) return b.wins - a.wins
         // Then by ties
@@ -1598,20 +1600,20 @@ export const useLeagueStore = defineStore('league', () => {
       
       // If teams have rank from ESPN, use that; otherwise use calculated order
       if (sortedByWins.some(t => t.rank > 0)) {
-        yahooTeams.value.sort((a, b) => (a.rank || 99) - (b.rank || 99))
+        mappedTeams.sort((a, b) => (a.rank || 99) - (b.rank || 99))
       } else {
         // Assign ranks based on sorted order
         sortedByWins.forEach((team, idx) => {
-          const original = yahooTeams.value.find(t => t.team_id === team.team_id)
+          const original = mappedTeams.find(t => t.team_id === team.team_id)
           if (original) {
             original.rank = idx + 1
           }
         })
-        yahooTeams.value = sortedByWins
+        mappedTeams = sortedByWins
       }
       
       // Log final mapped teams
-      console.log('[ESPN] Final mapped teams:', yahooTeams.value.map(t => ({
+      console.log('[ESPN] Final mapped teams:', mappedTeams.map(t => ({
         name: t.name,
         wins: t.wins,
         losses: t.losses,
@@ -1622,8 +1624,8 @@ export const useLeagueStore = defineStore('league', () => {
       })))
       
       // Check if this league has actual data (all zeros means season hasn't started)
-      const espnHasData = yahooTeams.value.some(t => 
-        (t.wins || 0) > 0 || (t.losses || 0) > 0 || (t.points_for || 0) > 0
+      const espnHasData = mappedTeams.some(t => 
+        (t.wins || 0) > 0 || (t.losses || 0) > 0 || (t.points_for || 0) > 0 || (t.category_wins || 0) > 0
       )
       
       if (!espnHasData && season > 2020) {
@@ -1632,9 +1634,70 @@ export const useLeagueStore = defineStore('league', () => {
         try {
           const prevLeague = await espnService.getLeague(sport, espnLeagueId, prevSeason)
           if (prevLeague) {
-            const prevTeams = await espnService.getTeams(sport, espnLeagueId, prevSeason)
+            const prevIsCategoryLeague = prevLeague.scoringType === 'H2H_CATEGORY'
+            
+            // Use getStandings for category leagues (same as normal path)
+            let prevTeams = prevIsCategoryLeague
+              ? await espnService.getStandings(sport, espnLeagueId, prevSeason)
+              : await espnService.getTeams(sport, espnLeagueId, prevSeason)
+            
+            // For category leagues with zero standings, calculate from matchups (same as normal path)
+            if (prevIsCategoryLeague && prevTeams.every(t => t.wins === 0 && t.losses === 0)) {
+              console.log('[ESPN Fallback] getStandings returned all zeros, calculating from weekly matchups...')
+              
+              const prevRegWeeks = prevLeague.settings?.regularSeasonMatchupPeriodCount || 25
+              const prevIsActiveCalc = prevLeague.status?.isActive ?? true
+              const prevCompletedWeeks = !prevIsActiveCalc ? prevRegWeeks : Math.min((prevLeague.status?.currentMatchupPeriod || 1) - 1, prevRegWeeks)
+              
+              const teamStats = new Map<number, { wins: number; losses: number; ties: number; catWins: number; catLosses: number }>()
+              prevTeams.forEach(t => teamStats.set(t.id, { wins: 0, losses: 0, ties: 0, catWins: 0, catLosses: 0 }))
+              
+              for (let week = 1; week <= prevCompletedWeeks; week++) {
+                try {
+                  const matchups = await espnService.getMatchups(sport, espnLeagueId, prevSeason, week, true)
+                  for (const matchup of matchups) {
+                    if (!matchup.awayTeamId) continue
+                    const homeStats = teamStats.get(matchup.homeTeamId)
+                    const awayStats = teamStats.get(matchup.awayTeamId)
+                    if (!homeStats || !awayStats) continue
+                    
+                    let homeCatWins = 0, awayCatWins = 0
+                    if (matchup.homePerCategoryResults && Object.keys(matchup.homePerCategoryResults).length > 0) {
+                      for (const result of Object.values(matchup.homePerCategoryResults)) {
+                        if (result === 'WIN') homeCatWins++
+                        else if (result === 'LOSS') awayCatWins++
+                      }
+                    } else if ((matchup.homeCategoryWins || 0) > 0 || (matchup.awayCategoryWins || 0) > 0) {
+                      homeCatWins = matchup.homeCategoryWins || 0
+                      awayCatWins = matchup.awayCategoryWins || 0
+                    }
+                    
+                    homeStats.catWins += homeCatWins
+                    homeStats.catLosses += awayCatWins
+                    awayStats.catWins += awayCatWins
+                    awayStats.catLosses += homeCatWins
+                    
+                    if (homeCatWins > awayCatWins) { homeStats.wins++; awayStats.losses++ }
+                    else if (awayCatWins > homeCatWins) { awayStats.wins++; homeStats.losses++ }
+                    else if (homeCatWins > 0 || awayCatWins > 0) { homeStats.ties++; awayStats.ties++ }
+                  }
+                } catch (weekErr) {
+                  console.warn(`[ESPN Fallback] Error fetching week ${week}:`, weekErr)
+                }
+              }
+              
+              prevTeams = prevTeams.map(team => {
+                const stats = teamStats.get(team.id)
+                if (stats) {
+                  console.log(`[ESPN Fallback] ${team.name}: ${stats.wins}-${stats.losses} (Cat: ${stats.catWins}-${stats.catLosses})`)
+                  return { ...team, wins: stats.wins, losses: stats.losses, ties: stats.ties, categoryWins: stats.catWins, categoryLosses: stats.catLosses }
+                }
+                return team
+              })
+            }
+            
             const prevHasData = prevTeams.some(t => 
-              (t.wins || 0) > 0 || (t.losses || 0) > 0 || (t.pointsFor || 0) > 0
+              (t.wins || 0) > 0 || (t.losses || 0) > 0 || (t.pointsFor || 0) > 0 || ((t as any).categoryWins || 0) > 0
             )
             
             if (prevHasData) {
@@ -1687,9 +1750,6 @@ export const useLeagueStore = defineStore('league', () => {
               
               // Get matchups from previous season
               const prevMatchups = await espnService.getMatchups(sport, espnLeagueId, prevSeason, Math.min(prevCurrentWeek, prevRegularSeasonWeeks))
-              
-              // Check if previous season was category
-              const prevIsCategoryLeague = prevLeague.scoringType === 'H2H_CATEGORY'
               
               yahooMatchups.value = prevMatchups.map(matchup => {
                 const homeTeam = yahooTeams.value.find(t => t.team_id === matchup.homeTeamId?.toString())
@@ -1755,6 +1815,9 @@ export const useLeagueStore = defineStore('league', () => {
           console.warn('[ESPN] Failed to load previous season:', prevError)
         }
       }
+      
+      // Now assign mapped teams to reactive ref (only reaches here if we have data)
+      yahooTeams.value = mappedTeams
       
       // Map ESPN matchups to Yahoo-compatible format
       yahooMatchups.value = espnMatchups.map(matchup => {
