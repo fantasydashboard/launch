@@ -2531,6 +2531,14 @@ async function loadYahooDraftData(leagueKey: string) {
     const stats = await yahooService.getPlayerStats(leagueKey, finalPlayerKeys)
     playerStats.value = stats
     
+    // DEBUG: Check what's in the stats Map
+    console.log('[CATEGORY DRAFT DEBUG] Stats Map size:', stats.size)
+    if (stats.size > 0) {
+      const firstEntry = [...stats.entries()][0]
+      console.log('[CATEGORY DRAFT DEBUG] First stats entry key:', firstEntry[0])
+      console.log('[CATEGORY DRAFT DEBUG] First stats entry value:', JSON.stringify(firstEntry[1]).substring(0, 500))
+    }
+    
     // Get teams
     const standings = await yahooService.getStandings(leagueKey)
     teamsData.value = standings
@@ -2563,6 +2571,13 @@ async function loadYahooDraftData(leagueKey: string) {
     }
     
     // Calculate percentiles
+    // DEBUG: Log category totals summary
+    console.log('[CATEGORY DRAFT DEBUG] Category totals summary:')
+    for (const cat of leagueCategories.value) {
+      const statId = getStatIdForCategory(cat)
+      console.log(`[CATEGORY DRAFT DEBUG]   ${cat} (statId=${statId}): ${categoryTotals[cat].length} players with value > 0`)
+    }
+    
     const categoryPercentiles: Record<string, number[]> = {}
     for (const cat of leagueCategories.value) {
       const isLowerBetter = ['ERA', 'WHIP', 'L', 'BS'].includes(cat)
@@ -2594,6 +2609,18 @@ async function loadYahooDraftData(leagueKey: string) {
       let catCount = 0
       const playerStats = stat.stats || {}
       const categoryPerformance: Array<{category: string, value: number, percentile: number}> = []
+      
+      // DEBUG: Log first 3 picks in detail
+      if (pick.pick <= 3) {
+        console.log(`[CATEGORY DRAFT DEBUG] Pick ${pick.pick}: ${pick.player_key}`)
+        console.log(`[CATEGORY DRAFT DEBUG] stat object from Map:`, JSON.stringify(stat).substring(0, 500))
+        console.log(`[CATEGORY DRAFT DEBUG] playerStats keys:`, Object.keys(playerStats).slice(0, 20))
+        for (const cat of leagueCategories.value) {
+          const statId = getStatIdForCategory(cat)
+          const rawValue = playerStats[statId]
+          console.log(`[CATEGORY DRAFT DEBUG]   ${cat} -> statId="${statId}" -> rawValue=${rawValue} (type: ${typeof rawValue})`)
+        }
+      }
       
       for (const cat of leagueCategories.value) {
         const statId = getStatIdForCategory(cat)
