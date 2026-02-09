@@ -1366,22 +1366,22 @@ function detectSportFromLeagueKey(leagueKey: string): string {
   const key = parseInt(gameKey)
   if (!key) return 'baseball'
   
-  // Yahoo game keys map to specific sports
-  // Basketball (NBA) - keys in 400s range typically
-  const basketballKeys = [428, 418, 410, 402, 395, 385, 375, 364, 353, 340, 322, 304, 282, 265, 249, 433, 438]
-  if (basketballKeys.includes(key) || (key >= 400 && key < 500)) return 'basketball'
-  
-  // Football (NFL) - keys in 300s-400s range
-  const footballKeys = [423, 414, 406, 399, 390, 380, 371, 359, 348, 331, 314, 273]
+  // Yahoo game keys map to specific sports - check SPECIFIC lists first before any catch-all
+  // Football (NFL)
+  const footballKeys = [423, 414, 406, 399, 390, 380, 371, 359, 348, 331, 314, 273, 449]
   if (footballKeys.includes(key)) return 'football'
   
-  // Hockey (NHL) - keys in 400s range
-  const hockeyKeys = [427, 419, 411, 403, 396, 386, 376, 352, 341, 321, 303]
+  // Hockey (NHL)
+  const hockeyKeys = [427, 419, 411, 403, 396, 386, 376, 352, 341, 321, 303, 453, 465]
   if (hockeyKeys.includes(key)) return 'hockey'
   
-  // Baseball (MLB) - keys typically 400+
-  const baseballKeys = [431, 422, 412, 404, 398, 388, 378, 365, 355, 342, 324, 308]
+  // Baseball (MLB)
+  const baseballKeys = [431, 422, 412, 404, 398, 388, 378, 365, 355, 342, 324, 308, 458]
   if (baseballKeys.includes(key)) return 'baseball'
+  
+  // Basketball (NBA) - check last with catch-all for 400+ range
+  const basketballKeys = [428, 418, 410, 402, 395, 385, 375, 364, 353, 340, 322, 304, 282, 265, 249, 433, 438, 454, 466]
+  if (basketballKeys.includes(key) || (key >= 400 && key < 500)) return 'basketball'
   
   return 'baseball' // Default
 }
@@ -2486,19 +2486,23 @@ async function loadYahooDraftData(leagueKey: string) {
       console.log('[CATEGORY DRAFT] League settings:', settings)
       
       // Extract stat categories - use display_name directly from Yahoo
-      // Yahoo sends stat_categories as an array with stat objects
+      // Yahoo wraps each stat in {stat: {stat_id, display_name, ...}} 
       const statCats = settings?.stat_categories?.stats || settings?.stat_categories || []
       console.log('[CATEGORY DRAFT] Stat categories from Yahoo:', statCats)
       
       leagueCategories.value = statCats
         .filter((cat: any) => {
+          // Unwrap Yahoo's {stat: {...}} wrapper
+          const s = cat.stat || cat
           // Filter out display-only stats (not actual scoring categories)
-          return cat.is_only_display_stat !== '1' && cat.is_only_display_stat !== 1
+          return s.is_only_display_stat !== '1' && s.is_only_display_stat !== 1
         })
         .map((cat: any) => {
+          // Unwrap Yahoo's {stat: {...}} wrapper
+          const s = cat.stat || cat
           // Use display_name from Yahoo, or fall back to our mapping
-          const displayName = cat.display_name || cat.name || getCategoryDisplayName(String(cat.stat_id))
-          console.log('[CATEGORY DRAFT] Category:', cat.stat_id, '->', displayName)
+          const displayName = s.display_name || s.name || getCategoryDisplayName(String(s.stat_id))
+          console.log('[CATEGORY DRAFT] Category:', s.stat_id, '->', displayName)
           return displayName
         })
         .filter((name: string) => name && name.trim() !== '')
