@@ -3664,12 +3664,27 @@ async function downloadBalanceImage() {
 // Watch for league changes
 watch(() => leagueStore.activeLeagueId, (newId) => {
   if (newId) {
+    // Sync selectedSeason from ESPN league key
+    if (newId.startsWith('espn_')) {
+      const parts = newId.split('_')
+      if (parts.length >= 4) {
+        selectedSeason.value = parts[3]
+      }
+    }
     loadDraftData()
   }
 }, { immediate: true })
 
 onMounted(() => {
-  if (leagueStore.activeLeagueId) {
+  const leagueKey = leagueStore.activeLeagueId
+  if (leagueKey) {
+    // Sync selectedSeason from ESPN league key
+    if (leagueKey.startsWith('espn_')) {
+      const parts = leagueKey.split('_')
+      if (parts.length >= 4) {
+        selectedSeason.value = parts[3]
+      }
+    }
     loadDraftData()
   }
 })

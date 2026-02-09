@@ -1869,8 +1869,8 @@ async function loadDraftData() {
       const parts = leagueKey.split('_')
       const sport = parts[1] as 'football' | 'baseball' | 'basketball' | 'hockey'
       const espnLeagueId = parts[2]
-      const currentSeason = parseInt(parts[3])
-      const season = parseInt(selectedSeason.value) || currentSeason
+      const keySeason = parseInt(parts[3])
+      const season = parseInt(selectedSeason.value) || keySeason
       
       console.log('[ESPN DRAFT] Fetching draft for:', { sport, espnLeagueId, season })
       loadingProgress.value = { currentStep: 'Fetching draft picks...', detail: `${season} Season` }
@@ -2502,6 +2502,13 @@ async function loadDraftData() {
 // Watch for league changes
 watch(() => leagueStore.activeLeagueId, (newId) => {
   if (newId) {
+    // For ESPN leagues, sync selectedSeason to the season in the league key
+    if (newId.startsWith('espn_')) {
+      const parts = newId.split('_')
+      if (parts.length >= 4) {
+        selectedSeason.value = parts[3]
+      }
+    }
     loadDraftData()
   }
 }, { immediate: true })
@@ -2528,6 +2535,15 @@ onMounted(() => {
   if (isSleeper.value && leagueStore.historicalSeasons.length > 0) {
     const seasons = leagueStore.historicalSeasons.map(s => s.season).sort((a, b) => b.localeCompare(a))
     selectedSeason.value = seasons[0] || '2024'
+  }
+  
+  // For ESPN, sync selectedSeason from the league key
+  const leagueKey = effectiveLeagueKey.value
+  if (leagueKey && leagueKey.startsWith('espn_')) {
+    const parts = leagueKey.split('_')
+    if (parts.length >= 4) {
+      selectedSeason.value = parts[3]
+    }
   }
   
   if (effectiveLeagueKey.value) {
