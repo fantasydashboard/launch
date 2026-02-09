@@ -279,7 +279,7 @@
                       v-for="cat in getPickForRound(team.team_key, round)?.bestCategories?.slice(0, 3)" 
                       :key="cat.category"
                       class="text-[10px] px-1.5 py-0.5 rounded font-bold"
-                      :class="getCategoryColorClass(cat.category)"
+                      :class="getCategoryStrengthClass(cat.percentile)"
                       :title="`${cat.category}: ${formatStatValue(cat.value, cat.category)} (${cat.percentile}%)`"
                     >
                       {{ cat.category }}
@@ -2077,14 +2077,32 @@ function getStatCellClass(value: number, cat: string) {
 
 function formatStatValue(value: number, cat: string): string {
   if (value === 0 || value === undefined) return '-'
+  
+  // Baseball batting averages - show as .XXX
   if (['AVG', 'OBP', 'SLG', 'OPS'].includes(cat)) {
     return value.toFixed(3).replace(/^0/, '')
   }
+  // Baseball pitching rates
   if (['ERA', 'WHIP'].includes(cat)) {
     return value.toFixed(2)
   }
   if (['IP'].includes(cat)) {
     return value.toFixed(1)
+  }
+  // Percentage categories (basketball, hockey) - Yahoo sends as decimals (0.594 = 59.4%)
+  if (cat.includes('%') || ['FG%', 'FT%', '3PT%', '3P%', 'SV%', 'SB%', 'FO%', 'SH%'].includes(cat)) {
+    // If value is already > 1, it's already a percentage
+    if (value > 1) return value.toFixed(1) + '%'
+    // Otherwise convert from decimal
+    return (value * 100).toFixed(1) + '%'
+  }
+  // Ratio stats (A/T, K/BB, K/9, etc.)
+  if (['A/T', 'K/BB', 'K/9', 'BB/9', 'H/9'].includes(cat)) {
+    return value.toFixed(2)
+  }
+  // Hockey goalie stats
+  if (['GAA'].includes(cat)) {
+    return value.toFixed(2)
   }
   return Math.round(value).toString()
 }
