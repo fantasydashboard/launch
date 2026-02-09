@@ -838,77 +838,55 @@
           </div>
           
           <div class="p-6">
-            <!-- Grade Summary -->
-            <div class="flex items-center justify-between mb-6 p-4 bg-dark-border/20 rounded-xl">
-              <div class="grid grid-cols-3 gap-4 flex-1 text-center">
+            <!-- Grade Summary - matching category draft style -->
+            <div class="p-4 mb-6 bg-gradient-to-r from-yellow-500/10 to-transparent rounded-xl border-b border-dark-border/50">
+              <div class="grid grid-cols-3 gap-4 text-center">
                 <div>
-                  <div class="text-2xl font-bold text-dark-text">{{ selectedTeamData?.totalScore >= 0 ? '+' : '' }}{{ selectedTeamData?.totalScore?.toFixed(1) }}</div>
-                  <div class="text-xs text-dark-textMuted">Total Score</div>
-                </div>
-                <div>
-                  <div class="text-2xl font-bold text-green-400">{{ selectedTeamData?.hits }}</div>
-                  <div class="text-xs text-dark-textMuted">Hits</div>
+                  <div class="text-3xl font-black" :class="getGradeClass(selectedTeamData?.grade)">{{ selectedTeamData?.grade }}</div>
+                  <div class="text-xs text-dark-textMuted">Draft Score</div>
                 </div>
                 <div>
-                  <div class="text-2xl font-bold text-red-400">{{ selectedTeamData?.misses }}</div>
-                  <div class="text-xs text-dark-textMuted">Misses</div>
+                  <div class="text-3xl font-black text-green-400">{{ selectedTeamData?.steals || 0 }}</div>
+                  <div class="text-xs text-dark-textMuted">Steals</div>
                 </div>
-              </div>
-              <div class="text-center pl-6 border-l border-dark-border">
-                <div class="text-5xl font-black" :class="getGradeClass(selectedTeamData?.grade)">
-                  {{ selectedTeamData?.grade }}
-                </div>
-                <div class="text-xs text-dark-textMuted mt-1">Overall Grade</div>
-              </div>
-            </div>
-
-            <!-- Position Breakdown -->
-            <div class="mb-6">
-              <h4 class="text-sm font-bold text-dark-textMuted uppercase mb-3">Position Breakdown</h4>
-              <div class="grid grid-cols-5 gap-2">
-                <div 
-                  v-for="pos in getTeamPositionBreakdown(selectedTeamData?.team_key)" 
-                  :key="pos.position"
-                  class="text-center p-2 rounded-lg"
-                  :class="getPositionStrengthClass(pos.avgScore)"
-                >
-                  <div class="text-sm font-bold">{{ pos.position }}</div>
-                  <div class="text-xs opacity-75">{{ pos.count }} picks</div>
-                  <div class="text-xs font-semibold mt-1">
-                    {{ pos.avgScore >= 0 ? '+' : '' }}{{ pos.avgScore.toFixed(1) }}
-                  </div>
+                <div>
+                  <div class="text-3xl font-black text-red-400">{{ selectedTeamData?.busts || 0 }}</div>
+                  <div class="text-xs text-dark-textMuted">Busts</div>
                 </div>
               </div>
             </div>
 
-            <!-- All Picks -->
+            <!-- All Picks with verdict labels -->
             <div>
-              <h4 class="text-sm font-bold text-dark-textMuted uppercase mb-3">All Picks</h4>
+              <div class="flex items-center justify-between mb-4">
+                <h4 class="text-sm font-semibold text-dark-textMuted uppercase tracking-wider">Draft Picks</h4>
+              </div>
               <div class="space-y-2">
                 <div 
                   v-for="pick in selectedTeamData?.picks" 
                   :key="pick.pick"
                   class="flex items-center gap-3 p-3 bg-dark-border/20 rounded-lg"
-                  :class="pick.score >= 3 ? 'border-l-2 border-green-500' : pick.score <= -3 ? 'border-l-2 border-red-500' : ''"
                 >
-                  <div class="w-8 text-center text-sm font-bold text-dark-textMuted">R{{ pick.round }}</div>
+                  <div class="w-8 text-center">
+                    <div class="text-xs font-bold text-dark-textMuted">R{{ pick.round }}</div>
+                  </div>
                   <div class="w-10 h-10 rounded-full bg-dark-border overflow-hidden flex-shrink-0">
                     <img v-if="pick.headshot" :src="pick.headshot" class="w-full h-full object-cover" @error="handleImageError" />
                   </div>
                   <div class="flex-1 min-w-0">
                     <div class="font-semibold text-dark-text truncate">{{ pick.player_name }}</div>
                     <div class="text-xs text-dark-textMuted">
-                      {{ pick.position }}{{ pick.position_rank_drafted || '' }}
-                      <template v-if="pick.current_position_rank && pick.current_position_rank < 900">
-                        → {{ pick.position }}{{ pick.current_position_rank }}
-                      </template>
+                      {{ pick.position }} • {{ pick.mlb_team || pick.team || '' }} • Pick #{{ pick.pick }}
                     </div>
                   </div>
                   <div class="text-right">
-                    <div class="font-bold" :class="getGradeClass(pick.grade)">{{ pick.grade }}</div>
-                    <div class="text-xs" :class="pick.score >= 0 ? 'text-green-400' : 'text-red-400'">
-                      {{ pick.score >= 0 ? '+' : '' }}{{ pick.score?.toFixed(1) }}
+                    <div 
+                      class="text-lg font-bold"
+                      :class="getVerdictTextClass(pick.verdict)"
+                    >
+                      {{ pick.score >= 0 ? '+' : '' }}{{ pick.score?.toFixed(0) }}
                     </div>
+                    <div class="text-xs font-bold" :class="getVerdictTextClass(pick.verdict)">{{ pick.verdict || '' }}</div>
                   </div>
                 </div>
               </div>
@@ -1554,6 +1532,19 @@ function getVerdictLabel(verdict: string): string {
     case 'BUST': return '💥 BUST'
     case 'DISASTER': return '💀 DISASTER'
     default: return verdict
+  }
+}
+
+function getVerdictTextClass(verdict: string): string {
+  switch (verdict) {
+    case 'JACKPOT': return 'text-emerald-400'
+    case 'STEAL': return 'text-green-400'
+    case 'HIT': return 'text-lime-400'
+    case 'SOLID': return 'text-gray-400'
+    case 'MISS': return 'text-yellow-400'
+    case 'BUST': return 'text-orange-400'
+    case 'DISASTER': return 'text-red-400'
+    default: return 'text-dark-textMuted'
   }
 }
 
