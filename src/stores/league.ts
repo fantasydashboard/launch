@@ -1714,8 +1714,8 @@ export const useLeagueStore = defineStore('league', () => {
               const prevIsActive = prevLeague.status?.isActive ?? true
               const prevCurrentWeek = !prevIsActive ? prevRegularSeasonWeeks : (prevLeague.status?.currentMatchupPeriod || 1)
               
-              // Re-map teams from previous season
-              yahooTeams.value = prevTeams.map(team => {
+              // Re-map teams from previous season (local variable first)
+              let prevMappedTeams = prevTeams.map(team => {
                 let logoUrl = team.logo
                 if (!logoUrl || logoUrl === '') {
                   logoUrl = `https://ui-avatars.com/api/?name=${encodeURIComponent(team.name)}&background=3a3d52&color=fff&size=64`
@@ -1741,19 +1741,18 @@ export const useLeagueStore = defineStore('league', () => {
               })
               
               // Sort by wins
-              yahooTeams.value.sort((a, b) => {
+              prevMappedTeams.sort((a, b) => {
                 if (b.wins !== a.wins) return b.wins - a.wins
                 return (b.points_for || 0) - (a.points_for || 0)
               })
-              yahooTeams.value.forEach((t, idx) => { t.rank = idx + 1 })
-              yahooStandings.value = yahooTeams.value
+              prevMappedTeams.forEach((t, idx) => { t.rank = idx + 1 })
               
-              // Get matchups from previous season
+              // Get matchups from previous season (use local array for lookups)
               const prevMatchups = await espnService.getMatchups(sport, espnLeagueId, prevSeason, Math.min(prevCurrentWeek, prevRegularSeasonWeeks))
               
-              yahooMatchups.value = prevMatchups.map(matchup => {
-                const homeTeam = yahooTeams.value.find(t => t.team_id === matchup.homeTeamId?.toString())
-                const awayTeam = yahooTeams.value.find(t => t.team_id === matchup.awayTeamId?.toString())
+              const prevMappedMatchups = prevMatchups.map(matchup => {
+                const homeTeam = prevMappedTeams.find(t => t.team_id === matchup.homeTeamId?.toString())
+                const awayTeam = prevMappedTeams.find(t => t.team_id === matchup.awayTeamId?.toString())
                 return {
                   matchup_id: matchup.id,
                   week: prevCurrentWeek,
@@ -1771,7 +1770,8 @@ export const useLeagueStore = defineStore('league', () => {
                 }
               })
               
-              // Update league metadata to previous season
+              // CRITICAL: Set currentLeague BEFORE yahooTeams
+              // because yahooTeams triggers watchers that need currentLeague context
               const prevLeagueKey = `espn_${sport}_${espnLeagueId}_${prevSeason}`
               const scoringTypeMap2: Record<string, string> = {
                 'H2H_POINTS': 'headpoint', 'H2H_CATEGORY': 'head', 'ROTO': 'roto', 'TOTAL_POINTS': 'point'
@@ -1806,6 +1806,11 @@ export const useLeagueStore = defineStore('league', () => {
                 scoring_type: scoringTypeMap2[prevLeague.scoringType || 'H2H_POINTS'] || 'head'
               } as any
               
+              // NOW assign reactive refs (triggers watchers with correct currentLeague)
+              yahooTeams.value = prevMappedTeams
+              yahooMatchups.value = prevMappedMatchups
+              yahooStandings.value = yahooTeams.value
+              
               console.log('[ESPN] Loaded previous season:', prevSeason, 'teams:', yahooTeams.value.length)
               isLoading.value = false
               return // Exit early - loaded previous season
@@ -1816,13 +1821,10 @@ export const useLeagueStore = defineStore('league', () => {
         }
       }
       
-      // Now assign mapped teams to reactive ref (only reaches here if we have data)
-      yahooTeams.value = mappedTeams
-      
-      // Map ESPN matchups to Yahoo-compatible format
-      yahooMatchups.value = espnMatchups.map(matchup => {
-        const homeTeam = yahooTeams.value.find(t => t.team_id === matchup.homeTeamId?.toString())
-        const awayTeam = yahooTeams.value.find(t => t.team_id === matchup.awayTeamId?.toString())
+      // Build matchups using local mappedTeams (before triggering reactive watchers)
+      const mappedMatchups = espnMatchups.map(matchup => {
+        const homeTeam = mappedTeams.find(t => t.team_id === matchup.homeTeamId?.toString())
+        const awayTeam = mappedTeams.find(t => t.team_id === matchup.awayTeamId?.toString())
         
         console.log('[ESPN] Mapping matchup:', {
           homeTeamId: matchup.homeTeamId,
@@ -1838,7 +1840,6 @@ export const useLeagueStore = defineStore('league', () => {
         const team1Data = homeTeam ? { 
           ...homeTeam, 
           points: matchup.homeScore || 0,
-          // Add category wins for category leagues
           category_wins: isCategoryLeague ? (matchup.homeCategoryWins || 0) : undefined,
           category_losses: isCategoryLeague ? (matchup.homeCategoryLosses || 0) : undefined
         } : null
@@ -1846,7 +1847,6 @@ export const useLeagueStore = defineStore('league', () => {
         const team2Data = awayTeam ? { 
           ...awayTeam, 
           points: matchup.awayScore || 0,
-          // Add category wins for category leagues
           category_wins: isCategoryLeague ? (matchup.awayCategoryWins || 0) : undefined,
           category_losses: isCategoryLeague ? (matchup.awayCategoryLosses || 0) : undefined
         } : null
@@ -1856,9 +1856,7 @@ export const useLeagueStore = defineStore('league', () => {
           week: currentWeek,
           team1: team1Data,
           team2: team2Data,
-          // Include full team data in teams array too (for compatibility with formattedMatchups)
           teams: [team1Data, team2Data].filter(Boolean),
-          // ESPN-specific category data (for views to use)
           is_category_league: isCategoryLeague,
           home_category_wins: matchup.homeCategoryWins,
           away_category_wins: matchup.awayCategoryWins,
@@ -1875,6 +1873,8 @@ export const useLeagueStore = defineStore('league', () => {
         'TOTAL_POINTS': 'point'
       }
       
+      // CRITICAL: Set yahooLeague and currentLeague BEFORE yahooTeams
+      // because yahooTeams triggers watchers that need currentLeague to be correct
       yahooLeague.value = [{
         name: league.name,
         season: season.toString(),
@@ -1884,9 +1884,6 @@ export const useLeagueStore = defineStore('league', () => {
         current_week: currentWeek
       }]
       
-      yahooStandings.value = yahooTeams.value
-      
-      // Create currentLeague object
       const savedLeague = savedLeagues.value.find(l => l.league_id === leagueKey)
       currentLeague.value = {
         league_id: leagueKey,
@@ -1906,6 +1903,11 @@ export const useLeagueStore = defineStore('league', () => {
         total_rosters: savedLeague?.num_teams || espnTeams.length || 12,
         scoring_type: scoringTypeMap[league.scoringType || 'H2H_POINTS'] || 'head'
       } as any
+      
+      // NOW assign reactive refs (triggers watchers with correct currentLeague context)
+      yahooTeams.value = mappedTeams
+      yahooMatchups.value = mappedMatchups
+      yahooStandings.value = yahooTeams.value
       
       console.log('[ESPN] League loaded:', {
         league: yahooLeague.value,
