@@ -1263,6 +1263,7 @@ const draftPicks = ref<any[]>([])
 const teamsData = ref<any[]>([])
 const playerStats = ref<Map<string, any>>(new Map())
 const leagueCategories = ref<string[]>([])
+const categoryStatIdMap = ref<Record<string, string>>({}) // display_name -> Yahoo stat_id
 const leagueSettings = ref<any>(null)
 
 const defaultAvatar = 'https://s.yimg.com/cv/apiv2/default/mlb/mlb_dp_2_72.png'
@@ -1347,11 +1348,16 @@ const reverseStatIdMapping = computed(() => {
 })
 
 function getStatIdForCategory(cat: string): string {
-  // For ESPN leagues, stats are stored with category names as keys
-  // For Yahoo leagues, stats use Yahoo stat IDs (sport-specific)
-  if (isEspn.value) {
-    return cat // ESPN stats use category name as key
+  // First check direct map (populated from Yahoo settings with exact stat_id)
+  // This avoids relying on isEspn which can change during async execution
+  if (categoryStatIdMap.value[cat]) {
+    return categoryStatIdMap.value[cat]
   }
+  // For ESPN leagues, stats are stored with category names as keys
+  if (isEspn.value) {
+    return cat
+  }
+  // Fall back to hardcoded mapping
   const mapping = getStatIdMapping()
   return mapping[cat] || cat
 }
@@ -2156,6 +2162,7 @@ async function loadDraftData() {
   isLoading.value = true
   loadingMessage.value = 'Loading draft data...'
   loadingProgress.value = { currentStep: 'Initializing...', week: 1, maxWeek: 5 }
+  categoryStatIdMap.value = {} // Clear stale mappings from previous league
   
   try {
     if (isEspn.value) {
@@ -2502,12 +2509,17 @@ async function loadYahooDraftData(leagueKey: string) {
           const s = cat.stat || cat
           // Use display_name from Yahoo, or fall back to our mapping
           const displayName = s.display_name || s.name || getCategoryDisplayName(String(s.stat_id))
+          // Build direct mapping from display_name -> Yahoo stat_id
+          if (s.stat_id !== undefined) {
+            categoryStatIdMap.value[displayName] = String(s.stat_id)
+          }
           console.log('[CATEGORY DRAFT] Category:', s.stat_id, '->', displayName)
           return displayName
         })
         .filter((name: string) => name && name.trim() !== '')
       
       console.log('[CATEGORY DRAFT] Final categories:', leagueCategories.value)
+      console.log('[CATEGORY DRAFT] Category -> StatID map:', JSON.stringify(categoryStatIdMap.value))
       
       if (leagueCategories.value.length === 0) {
         // Default categories based on sport
@@ -2530,14 +2542,6 @@ async function loadYahooDraftData(leagueKey: string) {
     const players = await yahooService.getPlayers(finalPlayerKeys, leagueKey)
     const stats = await yahooService.getPlayerStats(leagueKey, finalPlayerKeys)
     playerStats.value = stats
-    
-    // DEBUG: Check what's in the stats Map
-    console.log('[CATEGORY DRAFT DEBUG] Stats Map size:', stats.size)
-    if (stats.size > 0) {
-      const firstEntry = [...stats.entries()][0]
-      console.log('[CATEGORY DRAFT DEBUG] First stats entry key:', firstEntry[0])
-      console.log('[CATEGORY DRAFT DEBUG] First stats entry value:', JSON.stringify(firstEntry[1]).substring(0, 500))
-    }
     
     // Get teams
     const standings = await yahooService.getStandings(leagueKey)
@@ -2571,12 +2575,8 @@ async function loadYahooDraftData(leagueKey: string) {
     }
     
     // Calculate percentiles
-    // DEBUG: Log category totals summary
-    console.log('[CATEGORY DRAFT DEBUG] Category totals summary:')
-    for (const cat of leagueCategories.value) {
-      const statId = getStatIdForCategory(cat)
-      console.log(`[CATEGORY DRAFT DEBUG]   ${cat} (statId=${statId}): ${categoryTotals[cat].length} players with value > 0`)
-    }
+    console.log('[CATEGORY DRAFT] Category totals - players with data per cat:',
+      Object.fromEntries(leagueCategories.value.map(cat => [cat, categoryTotals[cat].length])))
     
     const categoryPercentiles: Record<string, number[]> = {}
     for (const cat of leagueCategories.value) {
@@ -2609,18 +2609,6 @@ async function loadYahooDraftData(leagueKey: string) {
       let catCount = 0
       const playerStats = stat.stats || {}
       const categoryPerformance: Array<{category: string, value: number, percentile: number}> = []
-      
-      // DEBUG: Log first 3 picks in detail
-      if (pick.pick <= 3) {
-        console.log(`[CATEGORY DRAFT DEBUG] Pick ${pick.pick}: ${pick.player_key}`)
-        console.log(`[CATEGORY DRAFT DEBUG] stat object from Map:`, JSON.stringify(stat).substring(0, 500))
-        console.log(`[CATEGORY DRAFT DEBUG] playerStats keys:`, Object.keys(playerStats).slice(0, 20))
-        for (const cat of leagueCategories.value) {
-          const statId = getStatIdForCategory(cat)
-          const rawValue = playerStats[statId]
-          console.log(`[CATEGORY DRAFT DEBUG]   ${cat} -> statId="${statId}" -> rawValue=${rawValue} (type: ${typeof rawValue})`)
-        }
-      }
       
       for (const cat of leagueCategories.value) {
         const statId = getStatIdForCategory(cat)
