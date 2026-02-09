@@ -409,11 +409,11 @@
                   <div v-if="pick.hasStats !== false" class="text-right">
                     <div 
                       class="text-lg font-bold"
-                      :class="pick.valueScore >= 10 ? 'text-green-400' : pick.valueScore <= -10 ? 'text-red-400' : 'text-dark-textMuted'"
+                      :class="getVerdictDisplayClass(pick.verdict)"
                     >
                       {{ pick.valueScore >= 0 ? '+' : '' }}{{ pick.valueScore?.toFixed(0) }}
                     </div>
-                    <div class="text-xs text-dark-textMuted">value</div>
+                    <div class="text-xs font-bold" :class="getVerdictDisplayClass(pick.verdict)">{{ pick.verdict || '' }}</div>
                   </div>
                 </div>
               </div>
@@ -1109,8 +1109,8 @@
                   <div class="text-2xl font-bold" :class="selectedPick.valueScore >= 0 ? 'text-green-400' : 'text-red-400'">
                     {{ selectedPick.valueScore >= 0 ? '+' : '' }}{{ selectedPick.valueScore?.toFixed(0) || '0' }}
                   </div>
-                  <div class="text-xs text-dark-textMuted mt-1">
-                    {{ selectedPick.valueScore >= 10 ? 'Steal!' : selectedPick.valueScore <= -10 ? 'Bust' : 'As expected' }}
+                  <div class="text-xs font-bold mt-1" :class="getVerdictDisplayClass(selectedPick.verdict)">
+                    {{ getVerdictDisplayLabel(selectedPick.verdict) }}
                   </div>
                 </div>
               </template>
@@ -1201,6 +1201,12 @@ import { useAuthStore } from '@/stores/auth'
 import { yahooService } from '@/services/yahoo'
 import { espnService } from '@/services/espn'
 import LoadingSpinner from '@/components/LoadingSpinner.vue'
+import { 
+  getTierMovementScore, 
+  scoreToGrade, 
+  getPositionScarcity,
+  type Tier 
+} from '@/services/draftGrading'
 
 const leagueStore = useLeagueStore()
 const authStore = useAuthStore()
@@ -1749,19 +1755,26 @@ const selectedBoardTeamData = computed(() => {
   return draftBoard.value.find(t => t.team_key === selectedBoardTeam.value)
 })
 
-// Team Draft Score helpers
+// Team Draft Score helpers - weighted by round importance
 function getTeamDraftScore(team: any): string {
   if (!team?.picks) return 'N/A'
-  const totalValue = team.picks.reduce((sum: number, p: any) => sum + (p.valueScore || 0), 0)
-  const avgValue = totalValue / team.picks.length
-  if (avgValue >= 10) return 'A+'
-  if (avgValue >= 5) return 'A'
-  if (avgValue >= 2) return 'B+'
-  if (avgValue >= 0) return 'B'
-  if (avgValue >= -2) return 'C+'
-  if (avgValue >= -5) return 'C'
-  if (avgValue >= -10) return 'D'
-  return 'F'
+  
+  let weightedScore = 0
+  let totalWeight = 0
+  
+  for (const pick of team.picks) {
+    // Round 1-2: weight 5, Round 3-5: weight 3, Round 6-10: weight 2, Round 11+: weight 1
+    let weight = 1
+    if (pick.round <= 2) weight = 5
+    else if (pick.round <= 5) weight = 3
+    else if (pick.round <= 10) weight = 2
+    
+    weightedScore += (pick.valueScore || 0) * weight
+    totalWeight += weight
+  }
+  
+  const gradeScore = totalWeight > 0 ? weightedScore / totalWeight : 0
+  return scoreToGrade(gradeScore)
 }
 
 function getTeamDraftScoreClass(team: any): string {
@@ -1774,25 +1787,25 @@ function getTeamDraftScoreClass(team: any): string {
 
 function getTeamStealsCount(team: any): number {
   if (!team?.picks) return 0
-  return team.picks.filter((p: any) => (p.valueScore || 0) >= 10).length
+  return team.picks.filter((p: any) => (p.valueScore || 0) >= 22).length
 }
 
 function getTeamBustsCount(team: any): number {
   if (!team?.picks) return 0
-  return team.picks.filter((p: any) => (p.valueScore || 0) <= -10).length
+  return team.picks.filter((p: any) => (p.valueScore || 0) <= -15).length
 }
 
 // Top Steals & Busts
 const topSteals = computed(() => {
   return [...draftPicks.value]
-    .filter(p => (p.valueScore || 0) >= 10)
+    .filter(p => (p.valueScore || 0) >= 22)
     .sort((a, b) => (b.valueScore || 0) - (a.valueScore || 0))
     .slice(0, 10)
 })
 
 const topBusts = computed(() => {
   return [...draftPicks.value]
-    .filter(p => (p.valueScore || 0) <= -10)
+    .filter(p => (p.valueScore || 0) <= -15)
     .sort((a, b) => (a.valueScore || 0) - (b.valueScore || 0))
     .slice(0, 10)
 })
@@ -1904,11 +1917,39 @@ function getPickClassWithHighlight(pick: any) {
 
 // Get value score class for display on cards
 function getValueScoreClass(valueScore: number) {
-  if (valueScore >= 20) return 'bg-green-500/30 text-green-400'
-  if (valueScore >= 10) return 'bg-green-500/20 text-green-400'
-  if (valueScore >= 0) return 'bg-dark-border/30 text-dark-textMuted'
-  if (valueScore >= -10) return 'bg-orange-500/20 text-orange-400'
-  return 'bg-red-500/20 text-red-400'
+  if (valueScore >= 40) return 'bg-emerald-500/30 text-emerald-400'  // JACKPOT
+  if (valueScore >= 22) return 'bg-green-500/30 text-green-400'      // STEAL
+  if (valueScore >= 10) return 'bg-green-500/20 text-green-400'      // HIT
+  if (valueScore >= -5) return 'bg-dark-border/30 text-dark-textMuted' // SOLID
+  if (valueScore >= -15) return 'bg-yellow-500/20 text-yellow-400'    // MISS
+  if (valueScore >= -30) return 'bg-orange-500/20 text-orange-400'    // BUST
+  return 'bg-red-500/20 text-red-400'                                 // DISASTER
+}
+
+function getVerdictDisplayLabel(verdict: string): string {
+  switch (verdict) {
+    case 'JACKPOT': return '💎 JACKPOT'
+    case 'STEAL': return '🔥 STEAL'
+    case 'HIT': return '✓ HIT'
+    case 'SOLID': return '○ SOLID'
+    case 'MISS': return '✗ MISS'
+    case 'BUST': return '💥 BUST'
+    case 'DISASTER': return '💀 DISASTER'
+    default: return 'As Expected'
+  }
+}
+
+function getVerdictDisplayClass(verdict: string): string {
+  switch (verdict) {
+    case 'JACKPOT': return 'text-emerald-400'
+    case 'STEAL': return 'text-green-400'
+    case 'HIT': return 'text-lime-400'
+    case 'SOLID': return 'text-gray-400'
+    case 'MISS': return 'text-yellow-400'
+    case 'BUST': return 'text-orange-400'
+    case 'DISASTER': return 'text-red-400'
+    default: return 'text-dark-textMuted'
+  }
 }
 
 // Get a player's rank in a specific category
@@ -2124,16 +2165,125 @@ function getGradeRingClass(grade: string) {
 }
 
 function calculateGrade(score: number): string {
-  if (score >= 8) return 'A+'
-  if (score >= 7) return 'A'
-  if (score >= 6) return 'A-'
-  if (score >= 5) return 'B+'
-  if (score >= 4) return 'B'
-  if (score >= 3) return 'B-'
-  if (score >= 2) return 'C+'
-  if (score >= 1) return 'C'
-  if (score >= 0) return 'C-'
-  return 'D'
+  return scoreToGrade(score)
+}
+
+/**
+ * Category Draft Tier System
+ * 
+ * Unlike points leagues where players are ranked per-position,
+ * category leagues rank ALL players by overall category contribution.
+ * Tiers scale to total draft size, not just numTeams.
+ */
+function getCategoryTierConfig(totalPicks: number) {
+  return {
+    elite: Math.ceil(totalPicks * 0.08),        // Top 8% (~15 in 192-pick draft)
+    starter: Math.ceil(totalPicks * 0.25),       // Top 25% (~48)
+    bench: Math.ceil(totalPicks * 0.50),         // Top 50% (~96)
+    replacement: Math.ceil(totalPicks * 0.75),   // Top 75% (~144)
+    // Beyond 75% = WAIVER
+  }
+}
+
+function getCategoryTier(rank: number, totalPicks: number): Tier {
+  const config = getCategoryTierConfig(totalPicks)
+  if (rank <= config.elite) return 'ELITE'
+  if (rank <= config.starter) return 'STARTER'
+  if (rank <= config.bench) return 'BENCH'
+  if (rank <= config.replacement) return 'REPLACEMENT'
+  return 'WAIVER'
+}
+
+interface CategoryPickScore {
+  tierScore: number
+  eliteBonus: number
+  roundMultiplier: number
+  positionScarcityBonus: number
+  bustPenalty: number
+  totalScore: number
+  draftedTier: Tier
+  finishedTier: Tier
+  tierMovement: string
+  verdict: 'JACKPOT' | 'STEAL' | 'HIT' | 'SOLID' | 'MISS' | 'BUST' | 'DISASTER'
+}
+
+function calculateCategoryPickScore(
+  pickNumber: number,
+  round: number,
+  draftRank: number,       // Where they were drafted (overall)
+  performanceRank: number, // Where they actually finished (by avg percentile)
+  position: string,
+  totalPicks: number,
+  sport: string = 'baseball'
+): CategoryPickScore {
+  // Handle players who didn't produce
+  const effectiveFinishRank = performanceRank >= 900 
+    ? Math.ceil(totalPicks * 0.85) 
+    : performanceRank
+  
+  const draftedTier = getCategoryTier(draftRank, totalPicks)
+  const finishedTier = getCategoryTier(effectiveFinishRank, totalPicks)
+  const tierMovement = `${draftedTier}→${finishedTier}`
+  
+  // Base tier movement score (asymmetric - busts hurt more)
+  let tierScore = getTierMovementScore(draftedTier, finishedTier)
+  
+  // Elite finish bonus
+  let eliteBonus = 0
+  if (finishedTier === 'ELITE') {
+    eliteBonus = 8
+  }
+  
+  // Bust penalty - extra penalty for early picks that completely bust
+  // In category leagues, "early" means roughly first 5 rounds
+  let bustPenalty = 0
+  if (round <= 5 && (finishedTier === 'WAIVER' || finishedTier === 'REPLACEMENT')) {
+    bustPenalty = -10 * (6 - round) // Round 1 bust = -50 extra, Round 5 = -10 extra
+  }
+  
+  // Round multiplier - early round mistakes hurt MORE, late round finds help MORE
+  let roundMultiplier = 1.0
+  if (tierScore > 0) {
+    // Outperformed - late round picks get bigger bonus
+    if (round >= 15) roundMultiplier = 1.6
+    else if (round >= 10) roundMultiplier = 1.4
+    else if (round >= 7) roundMultiplier = 1.2
+  } else if (tierScore < 0) {
+    // Underperformed - early round picks penalized more heavily
+    if (round <= 2) roundMultiplier = 1.5
+    else if (round <= 4) roundMultiplier = 1.3
+    else if (round <= 6) roundMultiplier = 1.15
+  }
+  
+  // Position scarcity bonus (still relevant - centers for blocks, catchers, etc.)
+  const scarcityFactor = getPositionScarcity(position, sport)
+  const positionScarcityBonus = tierScore > 0 ? (scarcityFactor - 1) * 15 : 0
+  
+  // Calculate total score
+  const totalScore = (tierScore * roundMultiplier) + eliteBonus + positionScarcityBonus + bustPenalty
+  
+  // Determine verdict
+  let verdict: CategoryPickScore['verdict']
+  if (totalScore >= 40) verdict = 'JACKPOT'
+  else if (totalScore >= 22) verdict = 'STEAL'
+  else if (totalScore >= 10) verdict = 'HIT'
+  else if (totalScore >= -5) verdict = 'SOLID'
+  else if (totalScore >= -15) verdict = 'MISS'
+  else if (totalScore >= -30) verdict = 'BUST'
+  else verdict = 'DISASTER'
+  
+  return {
+    tierScore,
+    eliteBonus,
+    roundMultiplier,
+    positionScarcityBonus,
+    bustPenalty,
+    totalScore,
+    draftedTier,
+    finishedTier,
+    tierMovement,
+    verdict
+  }
 }
 
 // Track images that have already errored to prevent infinite loops
@@ -2402,6 +2552,10 @@ async function loadEspnDraftData(leagueKey: string) {
       categoryPercentile: avgPercentile,
       bestCategories,
       valueScore: 0, // Will calculate below
+      verdict: 'SOLID' as string,
+      tierMovement: '',
+      draftedTier: 'BENCH' as string,
+      finishedTier: 'BENCH' as string,
       grade: 'C',
       keeper: pick.keeper || false,
       bidAmount: pick.bidAmount,
@@ -2409,24 +2563,47 @@ async function loadEspnDraftData(leagueKey: string) {
     }
   })
   
-  // Calculate value scores (expected vs actual performance)
+  // Calculate value scores using tier-based system
+  const totalPicks = processedPicks.length
   const allScores = processedPicks
     .filter((p: any) => p.hasStats)
     .map((p: any) => ({
       pick: p.pick,
+      player_key: p.player_key,
       score: p.categoryPercentile
     }))
     .sort((a: any, b: any) => b.score - a.score)
   
+  // Build performance rank lookup
+  const perfRankMap = new Map<string, number>()
+  allScores.forEach((entry: any, idx: number) => {
+    perfRankMap.set(entry.player_key, idx + 1)
+  })
+  
+  const sport = leagueStore.currentSportType || 'baseball'
+  
   for (const pick of processedPicks) {
     if (pick.hasStats) {
-      const expectedRank = pick.pick
-      const actualRank = allScores.findIndex((s: any) => s.pick === pick.pick) + 1
-      pick.valueScore = expectedRank - actualRank
-      pick.grade = calculateGrade(pick.valueScore / 5)
+      const performanceRank = perfRankMap.get(pick.player_key) || totalPicks
+      const pickResult = calculateCategoryPickScore(
+        pick.pick,
+        pick.round,
+        pick.pick,
+        performanceRank,
+        pick.position || 'UTIL',
+        totalPicks,
+        sport
+      )
+      pick.valueScore = pickResult.totalScore
+      pick.verdict = pickResult.verdict
+      pick.tierMovement = pickResult.tierMovement
+      pick.draftedTier = pickResult.draftedTier
+      pick.finishedTier = pickResult.finishedTier
+      pick.grade = scoreToGrade(pickResult.totalScore)
     } else {
       pick.grade = '-'
       pick.valueScore = 0
+      pick.verdict = 'SOLID'
     }
   }
   
@@ -2615,6 +2792,30 @@ async function loadYahooDraftData(leagueKey: string) {
     
     // Process draft picks
     const numTeams = standings.length || 12
+    const totalPicks = draftResults.picks.length
+    
+    // Pre-compute performance rankings ONCE (avoid O(n²) by doing this outside the map)
+    const performanceScores = draftResults.picks.map((p: any) => {
+      const s = stats.get(p.player_key)
+      let score = 0
+      let count = 0
+      for (const cat of leagueCategories.value) {
+        const statId = getStatIdForCategory(cat)
+        const value = s?.stats?.[statId] || 0
+        if (value > 0) {
+          score += getPercentile(cat, value)
+          count++
+        }
+      }
+      return { pick: p.pick, player_key: p.player_key, avgPercentile: count > 0 ? score / count : 0 }
+    }).sort((a, b) => b.avgPercentile - a.avgPercentile)
+    
+    // Build lookup: player_key -> performance rank (1-indexed)
+    const performanceRankMap = new Map<string, number>()
+    performanceScores.forEach((entry, idx) => {
+      performanceRankMap.set(entry.player_key, idx + 1)
+    })
+    
     draftPicks.value = draftResults.picks.map((pick: any) => {
       const player = players.get(pick.player_key) || {}
       const stat = stats.get(pick.player_key) || {}
@@ -2646,25 +2847,18 @@ async function loadYahooDraftData(leagueKey: string) {
       
       const avgPercentile = catCount > 0 ? categoryScore / catCount : 0
       
-      // Calculate value score (expected vs actual)
-      const expectedRank = pick.pick
-      const allScores = draftResults.picks.map((p: any) => {
-        const s = stats.get(p.player_key)
-        let score = 0
-        let count = 0
-        for (const cat of leagueCategories.value) {
-          const statId = getStatIdForCategory(cat)
-          const value = s?.stats?.[statId] || 0
-          if (value > 0) {
-            score += getPercentile(cat, value)
-            count++
-          }
-        }
-        return { pick: p.pick, score: count > 0 ? score / count : 0 }
-      }).sort((a, b) => b.score - a.score)
-      
-      const actualRank = allScores.findIndex(s => s.pick === pick.pick) + 1
-      const valueScore = expectedRank - actualRank
+      // Tier-based value scoring
+      const draftRank = pick.pick
+      const performanceRank = performanceRankMap.get(pick.player_key) || totalPicks
+      const pickResult = calculateCategoryPickScore(
+        pick.pick,
+        pick.round,
+        draftRank,
+        catCount === 0 ? 900 : performanceRank, // No stats = treat as didn't produce
+        player.position || 'UTIL',
+        totalPicks,
+        sport
+      )
       
       return {
         pick: pick.pick,
@@ -2682,8 +2876,12 @@ async function loadYahooDraftData(leagueKey: string) {
         categoryScore: avgPercentile,
         categoryPercentile: avgPercentile,
         bestCategories,
-        valueScore,
-        grade: calculateGrade(valueScore / 5)
+        valueScore: pickResult.totalScore,
+        verdict: pickResult.verdict,
+        tierMovement: pickResult.tierMovement,
+        draftedTier: pickResult.draftedTier,
+        finishedTier: pickResult.finishedTier,
+        grade: scoreToGrade(pickResult.totalScore)
       }
     })
     
