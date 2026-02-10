@@ -752,6 +752,7 @@ import { useAuthStore } from '@/stores/auth'
 import { usePlatformsStore } from '@/stores/platforms'
 import { yahooService } from '@/services/yahoo'
 import { espnService } from '@/services/espn'
+import { getEspnCookiesFromExtension } from '@/services/espnExtension'
 import { sleeperService } from '@/services/sleeper'
 import LoadingSpinner from '@/components/LoadingSpinner.vue'
 
@@ -5827,6 +5828,25 @@ onMounted(async () => {
     } else {
       console.log('[HOME onMounted] No ESPN credentials in platformsStore')
     }
+    
+    // Try to auto-refresh credentials from Chrome extension (non-blocking)
+    getEspnCookiesFromExtension().then(result => {
+      if (result.espn_s2 && result.swid) {
+        console.log('[HOME] Auto-refreshed ESPN credentials from Chrome extension')
+        espnService.setCredentials(result.espn_s2, result.swid)
+        
+        // Also update the stored credentials
+        platformsStore.storeEspnCredentials({
+          espn_s2: result.espn_s2,
+          swid: result.swid,
+          leagueId: leagueStore.activeLeagueId?.split('_')[2] || '',
+          sport: (leagueStore.activeSport as any) || 'football',
+          season: leagueStore.activeSeason || new Date().getFullYear()
+        })
+      }
+    }).catch(() => {
+      // Extension not installed or not available - that's fine
+    })
   }
   
   if (leagueStore.yahooTeams.length > 0) {

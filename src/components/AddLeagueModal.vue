@@ -374,7 +374,7 @@
           <!-- Step 1b: ESPN - Private League, need credentials -->
           <div v-if="step === 1 && selectedPlatform === 'espn' && espnNeedsCredentials">
             <div class="flex items-center gap-2 mb-4">
-              <button @click="espnNeedsCredentials = false; errorMessage = ''" class="p-1 hover:bg-dark-border/50 rounded-lg transition-colors">
+              <button @click="espnNeedsCredentials = false; errorMessage = ''; extensionStatus = null; showManualFallback = false" class="p-1 hover:bg-dark-border/50 rounded-lg transition-colors">
                 <svg class="w-5 h-5 text-dark-textMuted" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
                 </svg>
@@ -396,75 +396,154 @@
               </div>
             </div>
             
-            <!-- One-time Setup Notice -->
-            <div class="bg-blue-500/10 border border-blue-500/30 rounded-xl p-4 mb-4">
-              <div class="flex items-start gap-3">
-                <svg class="w-5 h-5 text-blue-400 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            <!-- Extension Status Messages -->
+            <div v-if="extensionStatus === 'checking'" class="bg-blue-500/10 border border-blue-500/30 rounded-xl p-4 mb-4">
+              <div class="flex items-center gap-3">
+                <svg class="animate-spin h-5 w-5 text-blue-400 flex-shrink-0" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                  <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                  <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                 </svg>
-                <div>
-                  <p class="text-sm text-blue-200 font-medium">One-time ESPN setup</p>
-                  <p class="text-xs text-blue-200/70 mt-1">
-                    To identify your team and highlight your players, we need your ESPN cookies. This is a <strong>one-time setup</strong> - future ESPN leagues will use these automatically.
-                  </p>
-                </div>
+                <p class="text-sm text-blue-200">Reading ESPN cookies from extension...</p>
               </div>
             </div>
             
-            <!-- ESPN S2 Cookie -->
-            <label class="block text-sm font-medium text-dark-textMuted mb-2">
-              espn_s2 Cookie
-            </label>
-            <textarea
-              v-model="espnS2Cookie"
-              placeholder="Paste your espn_s2 cookie value here..."
-              rows="2"
-              class="w-full px-4 py-3 rounded-xl bg-dark-bg border border-dark-border focus:border-[#0719b2] focus:ring-1 focus:ring-[#0719b2] transition-colors text-dark-text text-xs font-mono resize-none"
-            ></textarea>
-            
-            <!-- SWID Cookie -->
-            <label class="block text-sm font-medium text-dark-textMuted mb-2 mt-3">
-              SWID Cookie
-            </label>
-            <input
-              v-model="espnSwidCookie"
-              type="text"
-              placeholder="{XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX}"
-              class="w-full px-4 py-3 rounded-xl bg-dark-bg border border-dark-border focus:border-[#0719b2] focus:ring-1 focus:ring-[#0719b2] transition-colors text-dark-text text-xs font-mono"
-            />
-            
-            <!-- How to find cookies -->
-            <button 
-              @click="showCookieHelp = !showCookieHelp"
-              class="text-xs text-[#0719b2] hover:text-[#0719b2]/80 mt-2 flex items-center gap-1"
-            >
-              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-              How do I find these cookies?
-            </button>
-            
-            <div v-if="showCookieHelp" class="mt-3 p-3 rounded-lg bg-dark-bg border border-dark-border text-xs text-dark-textMuted">
-              <ol class="list-decimal list-inside space-y-2">
-                <li>Log in to ESPN Fantasy in Chrome</li>
-                <li>Press <kbd class="px-1.5 py-0.5 rounded bg-dark-border text-dark-text">F12</kbd> to open Developer Tools</li>
-                <li>Go to <strong>Application</strong> → <strong>Cookies</strong> → <strong>espn.com</strong></li>
-                <li>Find and copy <strong>espn_s2</strong> and <strong>SWID</strong> values</li>
-              </ol>
+            <div v-if="extensionStatus === 'no_cookies'" class="bg-yellow-500/10 border border-yellow-500/30 rounded-xl p-4 mb-4">
+              <div class="flex items-start gap-3">
+                <svg class="w-5 h-5 text-yellow-400 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                </svg>
+                <div>
+                  <p class="text-sm text-yellow-200 font-medium">Not logged in to ESPN</p>
+                  <p class="text-xs text-yellow-200/70 mt-1">
+                    The extension is installed but couldn't find your ESPN cookies. Please 
+                    <a href="https://www.espn.com/fantasy/" target="_blank" class="text-yellow-300 underline hover:text-yellow-200">log in to ESPN Fantasy</a> 
+                    first, then try again.
+                  </p>
+                </div>
+              </div>
+              <button
+                @click="tryExtensionConnect"
+                class="w-full mt-3 px-4 py-2.5 rounded-xl bg-yellow-500/20 text-yellow-300 font-semibold hover:bg-yellow-500/30 transition-colors text-sm"
+              >
+                Try Again
+              </button>
             </div>
             
-            <div v-if="errorMessage" class="text-red-400 text-sm mt-3">
+            <!-- Primary: Auto-Connect via Extension -->
+            <div v-if="extensionStatus !== 'checking' && extensionStatus !== 'found'">
+              
+              <!-- Extension Available or First Try -->
+              <div v-if="extensionStatus !== 'not_installed'">
+                <button
+                  @click="tryExtensionConnect"
+                  :disabled="loading"
+                  class="w-full px-4 py-3 rounded-xl bg-[#0719b2] text-white font-semibold hover:bg-[#0719b2]/80 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2"
+                >
+                  <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
+                  </svg>
+                  <span>Auto-Connect via Chrome Extension</span>
+                </button>
+                <p class="text-xs text-dark-textMuted text-center mt-2">Reads your ESPN cookies automatically — no manual setup needed</p>
+              </div>
+              
+              <!-- Extension Not Installed -->
+              <div v-if="extensionStatus === 'not_installed'" class="mb-4">
+                <div class="bg-dark-bg border border-dark-border rounded-xl p-4 text-center">
+                  <div class="text-3xl mb-2">🧩</div>
+                  <p class="text-sm text-dark-text font-semibold mb-1">Chrome Extension Required</p>
+                  <p class="text-xs text-dark-textMuted mb-3">
+                    Install our free Chrome extension to automatically sync your ESPN cookies. No more manual copying!
+                  </p>
+                  <a 
+                    :href="extensionStoreUrl" 
+                    target="_blank"
+                    class="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[#0719b2] text-white font-semibold hover:bg-[#0719b2]/80 transition-colors text-sm"
+                  >
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                    </svg>
+                    Install Extension
+                  </a>
+                  <button
+                    @click="tryExtensionConnect"
+                    class="block w-full mt-3 text-xs text-[#0719b2] hover:text-[#0719b2]/80"
+                  >
+                    I've installed it — try again
+                  </button>
+                </div>
+              </div>
+              
+              <!-- Manual Fallback Toggle -->
+              <div class="mt-4 pt-4 border-t border-dark-border">
+                <button
+                  @click="showManualFallback = !showManualFallback"
+                  class="text-xs text-dark-textMuted hover:text-dark-text flex items-center gap-1 mx-auto"
+                >
+                  <svg class="w-3.5 h-3.5 transition-transform" :class="showManualFallback ? 'rotate-90' : ''" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+                  </svg>
+                  Or paste cookies manually
+                </button>
+              </div>
+              
+              <!-- Manual Cookie Entry (collapsed by default) -->
+              <div v-if="showManualFallback" class="mt-4 space-y-3">
+                <div class="bg-blue-500/10 border border-blue-500/30 rounded-xl p-4">
+                  <p class="text-xs text-blue-200/70">
+                    Open ESPN Fantasy in Chrome → press <kbd class="px-1 py-0.5 rounded bg-dark-border text-dark-text text-xs">F12</kbd> → 
+                    <strong>Application</strong> → <strong>Cookies</strong> → <strong>espn.com</strong> → copy <strong>espn_s2</strong> and <strong>SWID</strong>.
+                  </p>
+                </div>
+                
+                <div>
+                  <label class="block text-sm font-medium text-dark-textMuted mb-2">espn_s2 Cookie</label>
+                  <textarea
+                    v-model="espnS2Cookie"
+                    placeholder="Paste your espn_s2 cookie value here..."
+                    rows="2"
+                    class="w-full px-4 py-3 rounded-xl bg-dark-bg border border-dark-border focus:border-[#0719b2] focus:ring-1 focus:ring-[#0719b2] transition-colors text-dark-text text-xs font-mono resize-none"
+                  ></textarea>
+                </div>
+                
+                <div>
+                  <label class="block text-sm font-medium text-dark-textMuted mb-2">SWID Cookie</label>
+                  <input
+                    v-model="espnSwidCookie"
+                    type="text"
+                    placeholder="{XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX}"
+                    class="w-full px-4 py-3 rounded-xl bg-dark-bg border border-dark-border focus:border-[#0719b2] focus:ring-1 focus:ring-[#0719b2] transition-colors text-dark-text text-xs font-mono"
+                  />
+                </div>
+                
+                <div v-if="errorMessage" class="text-red-400 text-sm">
+                  {{ errorMessage }}
+                </div>
+                
+                <button
+                  @click="connectEspnPrivate"
+                  :disabled="!espnS2Cookie.trim() || !espnSwidCookie.trim() || loading"
+                  class="w-full px-4 py-3 rounded-xl bg-[#0719b2] text-white font-semibold hover:bg-[#0719b2]/80 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2"
+                >
+                  <span v-if="loading">Connecting...</span>
+                  <span v-else>Connect & Save</span>
+                </button>
+              </div>
+            </div>
+            
+            <!-- Loading/connecting after extension found cookies -->
+            <div v-if="extensionStatus === 'found'" class="text-center py-4">
+              <svg class="animate-spin h-8 w-8 text-[#0719b2] mx-auto mb-3" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+              </svg>
+              <p class="text-sm text-dark-text font-semibold">Cookies found! Connecting...</p>
+              <p class="text-xs text-dark-textMuted mt-1">{{ espnDiscoveryStatus }}</p>
+            </div>
+            
+            <div v-if="errorMessage && extensionStatus !== 'no_cookies'" class="text-red-400 text-sm mt-3">
               {{ errorMessage }}
             </div>
-            
-            <button
-              @click="connectEspnPrivate"
-              :disabled="!espnS2Cookie.trim() || !espnSwidCookie.trim() || loading"
-              class="w-full mt-4 px-4 py-3 rounded-xl bg-[#0719b2] text-white font-semibold hover:bg-[#0719b2]/80 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2"
-            >
-              <span v-if="loading">Connecting...</span>
-              <span v-else>Connect & Save</span>
-            </button>
           </div>
           
           <!-- Step 2: Select Sleeper League -->
@@ -565,6 +644,7 @@ import { usePlatformsStore } from '@/stores/platforms'
 import { useSportStore } from '@/stores/sport'
 import { yahooService } from '@/services/yahoo'
 import { espnService } from '@/services/espn'
+import { getEspnCookiesFromExtension, isExtensionInstalled, isChromiumBrowser, getExtensionStoreUrl } from '@/services/espnExtension'
 import { useAuthStore } from '@/stores/auth'
 import type { SleeperLeague } from '@/types/sleeper'
 import type { Sport } from '@/types/supabase'
@@ -637,6 +717,8 @@ const espnDiscoveredLeague = ref<any>(null)
 const espnS2Cookie = ref('')
 const espnSwidCookie = ref('')
 const showCookieHelp = ref(false)
+const extensionStatus = ref<'checking' | 'installed' | 'not_installed' | 'no_cookies' | 'found' | null>(null)
+const showManualFallback = ref(false)
 
 // Available sports for ESPN
 const availableSports = [
@@ -645,6 +727,8 @@ const availableSports = [
   { id: 'basketball' as Sport, label: 'NBA', icon: '🏀' },
   { id: 'hockey' as Sport, label: 'NHL', icon: '🏒' }
 ]
+
+const extensionStoreUrl = computed(() => getExtensionStoreUrl())
 
 // Calculate current season year based on sport
 const currentSeasonYear = computed(() => {
@@ -783,6 +867,8 @@ watch(() => props.isOpen, async (isOpen) => {
     espnDiscoveryStatus.value = ''
     espnDiscoveredLeague.value = null
     showCookieHelp.value = false
+    extensionStatus.value = null
+    showManualFallback.value = false
     
     // Fetch platforms status
     if (authStore.isAuthenticated) {
@@ -1068,6 +1154,42 @@ async function validateEspnLeague() {
   } finally {
     loading.value = false
     espnDiscoveryStatus.value = ''
+  }
+}
+
+async function tryExtensionConnect() {
+  extensionStatus.value = 'checking'
+  errorMessage.value = ''
+  
+  try {
+    console.log('[ESPN] Attempting to get cookies via Chrome extension...')
+    
+    const result = await getEspnCookiesFromExtension()
+    
+    if (result.error === 'extension_not_installed') {
+      console.log('[ESPN] Extension not installed')
+      extensionStatus.value = 'not_installed'
+      return
+    }
+    
+    if (!result.espn_s2 || !result.swid) {
+      console.log('[ESPN] Extension installed but no cookies found')
+      extensionStatus.value = 'no_cookies'
+      return
+    }
+    
+    // Cookies found! Auto-fill and connect
+    console.log('[ESPN] Extension provided cookies successfully')
+    extensionStatus.value = 'found'
+    espnS2Cookie.value = result.espn_s2
+    espnSwidCookie.value = result.swid
+    
+    // Auto-proceed with connection
+    await connectEspnPrivate()
+    
+  } catch (err: any) {
+    console.error('[ESPN] Extension error:', err)
+    extensionStatus.value = 'not_installed'
   }
 }
 
