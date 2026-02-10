@@ -658,9 +658,7 @@ const espnDiscoveryStatus = ref('')
 const espnDiscoveredLeague = ref<any>(null)
 const espnS2Cookie = ref('')
 const espnSwidCookie = ref('')
-const showCookieHelp = ref(false)
 const extensionStatus = ref<'checking' | 'installed' | 'not_installed' | 'no_cookies' | 'found' | null>(null)
-const showManualFallback = ref(false)
 
 // Available sports for ESPN
 const availableSports = [
@@ -808,9 +806,7 @@ watch(() => props.isOpen, async (isOpen) => {
     espnSwidCookie.value = ''
     espnDiscoveryStatus.value = ''
     espnDiscoveredLeague.value = null
-    showCookieHelp.value = false
     extensionStatus.value = null
-    showManualFallback.value = false
     
     // Fetch platforms status
     if (authStore.isAuthenticated) {

@@ -146,20 +146,20 @@
                   
                   <!-- Add League (at bottom when leagues exist) -->
                   <div class="border-t border-dark-border p-2">
-                    <!-- Update ESPN Cookies -->
+                    <!-- Refresh ESPN Session -->
                     <button
                       v-if="hasEspnLeagues"
                       @click="openEspnCookieModal()"
-                      class="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-orange-500/10 transition-colors mb-1"
+                      class="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-blue-500/10 transition-colors mb-1"
                     >
-                      <div class="w-8 h-8 rounded-lg bg-orange-500/20 flex items-center justify-center">
-                        <svg class="w-4 h-4 text-orange-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" />
+                      <div class="w-8 h-8 rounded-lg bg-blue-500/20 flex items-center justify-center">
+                        <svg class="w-4 h-4 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
                         </svg>
                       </div>
                       <div class="text-left">
-                        <div class="font-medium text-orange-500 text-sm">Update ESPN Cookies</div>
-                        <div class="text-xs text-dark-textMuted">Refresh expired session</div>
+                        <div class="font-medium text-blue-400 text-sm">Refresh ESPN Session</div>
+                        <div class="text-xs text-dark-textMuted">Sync via Chrome extension</div>
                       </div>
                     </button>
                     <button
@@ -381,20 +381,20 @@
                       
                       <!-- Add League -->
                       <div class="border-t border-dark-border p-2">
-                        <!-- Update ESPN Cookies -->
+                        <!-- Refresh ESPN Session -->
                         <button
                           v-if="hasEspnLeagues"
                           @click="openEspnCookieModal()"
-                          class="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-orange-500/10 active:bg-orange-500/20 transition-colors mb-1"
+                          class="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-blue-500/10 active:bg-blue-500/20 transition-colors mb-1"
                         >
-                          <div class="w-8 h-8 rounded-lg bg-orange-500/20 flex items-center justify-center">
-                            <svg class="w-4 h-4 text-orange-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" />
+                          <div class="w-8 h-8 rounded-lg bg-blue-500/20 flex items-center justify-center">
+                            <svg class="w-4 h-4 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
                             </svg>
                           </div>
                           <div class="text-left">
-                            <div class="font-medium text-orange-500 text-sm">Update ESPN Cookies</div>
-                            <div class="text-xs text-dark-textMuted">Refresh expired session</div>
+                            <div class="font-medium text-blue-400 text-sm">Refresh ESPN Session</div>
+                            <div class="text-xs text-dark-textMuted">Sync via Chrome extension</div>
                           </div>
                         </button>
                         <button
@@ -527,20 +527,20 @@
                       
                       <!-- Add League -->
                       <div class="border-t border-dark-border p-2">
-                        <!-- Update ESPN Cookies -->
+                        <!-- Refresh ESPN Session -->
                         <button
                           v-if="hasEspnLeagues"
                           @click="openEspnCookieModal()"
-                          class="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-orange-500/10 transition-colors mb-1"
+                          class="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-blue-500/10 transition-colors mb-1"
                         >
-                          <div class="w-8 h-8 rounded-lg bg-orange-500/20 flex items-center justify-center">
-                            <svg class="w-4 h-4 text-orange-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" />
+                          <div class="w-8 h-8 rounded-lg bg-blue-500/20 flex items-center justify-center">
+                            <svg class="w-4 h-4 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
                             </svg>
                           </div>
                           <div class="text-left">
-                            <div class="font-medium text-orange-500 text-sm">Update ESPN Cookies</div>
-                            <div class="text-xs text-dark-textMuted">Refresh expired session</div>
+                            <div class="font-medium text-blue-400 text-sm">Refresh ESPN Session</div>
+                            <div class="text-xs text-dark-textMuted">Sync via Chrome extension</div>
                           </div>
                         </button>
                         <button
@@ -790,14 +790,14 @@
       <div v-if="showEspnCookieModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50" @click.self="showEspnCookieModal = false">
         <div class="bg-dark-card border border-dark-border rounded-xl p-6 max-w-md w-full shadow-xl">
           <div class="flex items-center gap-3 mb-4">
-            <div class="w-10 h-10 rounded-lg bg-orange-500/20 flex items-center justify-center">
-              <svg class="w-5 h-5 text-orange-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" />
+            <div class="w-10 h-10 rounded-lg bg-blue-500/20 flex items-center justify-center">
+              <svg class="w-5 h-5 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
               </svg>
             </div>
             <div>
-              <h3 class="text-lg font-bold text-dark-text">Update ESPN Cookies</h3>
-              <p class="text-xs text-dark-textMuted">Refresh your ESPN session</p>
+              <h3 class="text-lg font-bold text-dark-text">Refresh ESPN Session</h3>
+              <p class="text-xs text-dark-textMuted">Sync cookies via Chrome extension</p>
             </div>
             <button @click="showEspnCookieModal = false" class="ml-auto p-1.5 rounded-lg hover:bg-dark-border/50 transition-colors">
               <svg class="w-5 h-5 text-dark-textMuted" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -809,62 +809,82 @@
           <!-- Success State -->
           <div v-if="espnCookieSuccess" class="text-center py-6">
             <div class="text-4xl mb-3">✅</div>
-            <div class="text-green-400 font-bold text-lg">Cookies Updated!</div>
+            <div class="text-green-400 font-bold text-lg">Session Refreshed!</div>
             <div class="text-dark-textMuted text-sm mt-1">Reloading league data...</div>
           </div>
 
-          <!-- Form -->
-          <div v-else>
-            <div class="bg-dark-border/20 rounded-lg p-3 mb-4">
-              <p class="text-xs text-dark-textMuted leading-relaxed">
-                <strong class="text-dark-text">How to get your cookies:</strong><br/>
-                1. Go to <a href="https://www.espn.com/fantasy/" target="_blank" class="text-primary hover:underline">espn.com/fantasy</a> and sign in<br/>
-                2. Open DevTools (F12) → Application → Cookies<br/>
-                3. Find and copy <strong class="text-dark-text">espn_s2</strong> and <strong class="text-dark-text">SWID</strong> values
+          <!-- Checking Extension -->
+          <div v-else-if="espnExtensionStatus === 'checking'" class="text-center py-8">
+            <svg class="animate-spin h-10 w-10 text-blue-400 mx-auto mb-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+              <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+            <p class="text-sm text-dark-text font-semibold">Reading ESPN cookies...</p>
+            <p class="text-xs text-dark-textMuted mt-1">Syncing via Chrome extension</p>
+          </div>
+
+          <!-- Extension Not Installed -->
+          <div v-else-if="espnExtensionStatus === 'not_installed'" class="text-center py-4">
+            <div class="text-4xl mb-3">🧩</div>
+            <p class="text-base text-dark-text font-bold mb-2">Chrome Extension Needed</p>
+            <p class="text-sm text-dark-textMuted mb-4">
+              Install our free Chrome extension to automatically refresh your ESPN session.
+            </p>
+            <a 
+              :href="espnExtensionStoreUrl" 
+              target="_blank"
+              class="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-[#0719b2] text-white font-bold hover:bg-[#0719b2]/80 transition-colors text-sm mb-4"
+            >
+              Add to Chrome — It's Free
+            </a>
+            <div class="bg-blue-500/10 border border-blue-500/30 rounded-xl p-3 mb-4">
+              <p class="text-xs text-blue-200/80">
+                After installing, make sure you're logged in to 
+                <a href="https://www.espn.com/fantasy/" target="_blank" class="text-blue-300 underline">ESPN Fantasy</a>, 
+                then click below.
               </p>
             </div>
+            <button
+              @click="refreshEspnViaExtension"
+              class="w-full px-4 py-2.5 rounded-lg bg-blue-500 text-white font-medium hover:bg-blue-600 transition-colors"
+            >
+              I've Installed It — Refresh Now
+            </button>
+          </div>
 
-            <div class="space-y-3 mb-4">
-              <div>
-                <label class="block text-sm font-medium text-dark-text mb-1">espn_s2 Cookie</label>
-                <input
-                  v-model="espnS2Input"
-                  type="text"
-                  placeholder="Paste your espn_s2 cookie value..."
-                  class="w-full px-3 py-2 bg-dark-bg border border-dark-border rounded-lg text-dark-text text-sm placeholder-dark-textMuted focus:outline-none focus:border-orange-500/50"
-                />
-              </div>
-              <div>
-                <label class="block text-sm font-medium text-dark-text mb-1">SWID Cookie</label>
-                <input
-                  v-model="espnSwidInput"
-                  type="text"
-                  placeholder="Paste your SWID cookie value (with { } brackets)..."
-                  class="w-full px-3 py-2 bg-dark-bg border border-dark-border rounded-lg text-dark-text text-sm placeholder-dark-textMuted focus:outline-none focus:border-orange-500/50"
-                />
-              </div>
-            </div>
+          <!-- No ESPN Cookies -->
+          <div v-else-if="espnExtensionStatus === 'no_cookies'" class="text-center py-4">
+            <div class="text-4xl mb-3">🔑</div>
+            <p class="text-base text-dark-text font-bold mb-2">Log in to ESPN First</p>
+            <p class="text-sm text-dark-textMuted mb-4">
+              The extension is installed but you're not logged in to ESPN. Log in first, then try again.
+            </p>
+            <a 
+              href="https://www.espn.com/fantasy/" 
+              target="_blank"
+              class="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-red-600 text-white font-bold hover:bg-red-500 transition-colors text-sm mb-4"
+            >
+              Log in to ESPN Fantasy →
+            </a>
+            <button
+              @click="refreshEspnViaExtension"
+              class="w-full px-4 py-2.5 rounded-lg bg-blue-500 text-white font-medium hover:bg-blue-600 transition-colors"
+            >
+              I'm Logged In — Try Again
+            </button>
+          </div>
 
-            <!-- Error -->
-            <div v-if="espnCookieError" class="bg-red-500/10 border border-red-500/30 rounded-lg p-3 mb-4">
+          <!-- Error -->
+          <div v-else-if="espnCookieError" class="py-4">
+            <div class="bg-red-500/10 border border-red-500/30 rounded-lg p-3 mb-4">
               <p class="text-red-400 text-sm">{{ espnCookieError }}</p>
             </div>
-
-            <div class="flex gap-3">
-              <button
-                @click="showEspnCookieModal = false"
-                class="flex-1 px-4 py-2.5 rounded-lg bg-dark-border text-dark-text font-medium hover:bg-dark-border/70 transition-colors"
-              >
-                Cancel
-              </button>
-              <button
-                @click="saveEspnCookies"
-                :disabled="espnCookieSaving || !espnS2Input.trim() || !espnSwidInput.trim()"
-                class="flex-1 px-4 py-2.5 rounded-lg bg-orange-500 text-white font-medium hover:bg-orange-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {{ espnCookieSaving ? 'Saving...' : 'Save & Reload' }}
-              </button>
-            </div>
+            <button
+              @click="refreshEspnViaExtension"
+              class="w-full px-4 py-2.5 rounded-lg bg-blue-500 text-white font-medium hover:bg-blue-600 transition-colors"
+            >
+              Try Again
+            </button>
           </div>
         </div>
       </div>
@@ -884,6 +904,7 @@ import { useAuthStore } from '@/stores/auth'
 import { useSportStore, type Sport } from '@/stores/sport'
 import { usePlatformsStore } from '@/stores/platforms'
 import { espnService } from '@/services/espn'
+import { getEspnCookiesFromExtension, getExtensionStoreUrl } from '@/services/espnExtension'
 import AuthModal from '@/components/AuthModal.vue'
 import LandingPage from '@/components/LandingPage.vue'
 import AddLeagueModal from '@/components/AddLeagueModal.vue'
@@ -911,13 +932,13 @@ const scrolledLeagueDropdownRef = ref<HTMLElement | null>(null)
 const leagueToRemove = ref<any>(null)
 const isScrolled = ref(false)
 
-// ESPN Cookie Update Modal
+// ESPN Cookie Update Modal (Extension-based)
 const showEspnCookieModal = ref(false)
-const espnS2Input = ref('')
-const espnSwidInput = ref('')
 const espnCookieSaving = ref(false)
 const espnCookieError = ref('')
 const espnCookieSuccess = ref(false)
+const espnExtensionStatus = ref<'checking' | 'found' | 'not_installed' | 'no_cookies' | null>(null)
+const espnExtensionStoreUrl = getExtensionStoreUrl()
 
 const tabs = [
   { name: 'Season', path: '/' },
@@ -1084,31 +1105,37 @@ function openEspnCookieModal() {
   espnCookieError.value = ''
   espnCookieSuccess.value = false
   espnCookieSaving.value = false
-  // Pre-fill with existing values if available
-  const existing = platformsStore.getEspnCredentials()
-  espnS2Input.value = existing?.espn_s2 || ''
-  espnSwidInput.value = existing?.swid || ''
+  espnExtensionStatus.value = null
   showEspnCookieModal.value = true
+  // Auto-trigger extension check
+  refreshEspnViaExtension()
 }
 
-async function saveEspnCookies() {
-  const s2 = espnS2Input.value.trim()
-  const swid = espnSwidInput.value.trim()
-  
-  if (!s2 || !swid) {
-    espnCookieError.value = 'Both cookies are required.'
-    return
-  }
-  
-  espnCookieSaving.value = true
+async function refreshEspnViaExtension() {
+  espnExtensionStatus.value = 'checking'
   espnCookieError.value = ''
   
   try {
-    // Store in localStorage and apply to service
+    const result = await getEspnCookiesFromExtension()
+    
+    if (result.error === 'extension_not_installed') {
+      espnExtensionStatus.value = 'not_installed'
+      return
+    }
+    
+    if (!result.espn_s2 || !result.swid) {
+      espnExtensionStatus.value = 'no_cookies'
+      return
+    }
+    
+    // Success — apply cookies
+    espnExtensionStatus.value = 'found'
+    const s2 = result.espn_s2
+    const swid = result.swid
+    
     localStorage.setItem('espn_credentials', JSON.stringify({ espn_s2: s2, swid: swid, stored_at: Date.now() }))
     espnService.setCredentials(s2, swid)
     
-    // Also update any saved ESPN leagues that store credentials
     for (const league of (leagueStore.allLeagues || [])) {
       if (league.platform === 'espn') {
         league.espn_s2 = s2
@@ -1118,7 +1145,6 @@ async function saveEspnCookies() {
     
     espnCookieSuccess.value = true
     
-    // Reload current league if it's ESPN
     if (leagueStore.activePlatform === 'espn' && leagueStore.activeLeagueId) {
       setTimeout(() => {
         showEspnCookieModal.value = false
@@ -1128,9 +1154,7 @@ async function saveEspnCookies() {
       setTimeout(() => { showEspnCookieModal.value = false }, 1200)
     }
   } catch (err: any) {
-    espnCookieError.value = err.message || 'Failed to save cookies.'
-  } finally {
-    espnCookieSaving.value = false
+    espnExtensionStatus.value = 'not_installed'
   }
 }
 
