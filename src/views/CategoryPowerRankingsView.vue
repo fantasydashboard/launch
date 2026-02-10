@@ -2301,7 +2301,7 @@ async function loadPowerRankings() {
             }
           }
         } else {
-          // Yahoo matchups - use stat_winners
+          // Yahoo matchups - use stat_winners (already filtered to scoring-only by service)
           const matchups = await yahooService.getCategoryMatchups(leagueKey, week)
           
           // Process this week's matchups

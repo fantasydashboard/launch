@@ -234,7 +234,7 @@ export const CACHE_KEYS = {
   YAHOO_MATCHUPS: 'yahoo_matchups',
   YAHOO_SETTINGS: 'yahoo_settings',
   YAHOO_TRANSACTIONS: 'yahoo_transactions',
-  YAHOO_CATEGORY_MATCHUPS: 'yahoo_cat_matchups',
+  YAHOO_CATEGORY_MATCHUPS: 'yahoo_cat_matchups_v2',
   SLEEPER_MATCHUPS: 'sleeper_matchups',
   SLEEPER_ROSTERS: 'sleeper_rosters',
 }

@@ -810,6 +810,24 @@ export class YahooFantasyService {
       return cached
     }
     
+    // Get scoring settings to know which stats are actual scoring categories
+    // vs display-only stats (like GP, H/AB, IP) that Yahoo includes in stat_winners
+    let scoringStatIds: Set<string> | null = null
+    try {
+      const settings = await this.getLeagueScoringSettings(leagueKey)
+      if (settings?.stat_categories) {
+        const scoringCats = settings.stat_categories
+          .filter((c: any) => {
+            const isDisplay = c.stat?.is_only_display_stat || c.is_only_display_stat
+            return isDisplay !== '1' && isDisplay !== 1
+          })
+        scoringStatIds = new Set(scoringCats.map((c: any) => String(c.stat?.stat_id || c.stat_id)))
+        console.log(`[Yahoo Matchups] Scoring stat IDs (${scoringStatIds.size}):`, [...scoringStatIds])
+      }
+    } catch (e) {
+      console.log('[Yahoo Matchups] Could not load scoring settings, will include all stat_winners')
+    }
+    
     const data = await this.apiRequest(
       `/league/${leagueKey}/scoreboard;week=${week}?format=json`
     )
@@ -867,16 +885,29 @@ export class YahooFantasyService {
         })
       }
       
-      // Parse stat winners
+      // Parse stat winners - filter out display-only stats
       const categoryResults: any[] = []
+      let filteredCount = 0
       for (const sw of statWinners) {
         if (sw?.stat_winner) {
+          const statId = String(sw.stat_winner.stat_id)
+          
+          // Skip display-only stats (not actual scoring categories)
+          if (scoringStatIds && !scoringStatIds.has(statId)) {
+            filteredCount++
+            continue
+          }
+          
           categoryResults.push({
             stat_id: sw.stat_winner.stat_id,
             winner_team_key: sw.stat_winner.winner_team_key,
             is_tied: sw.stat_winner.is_tied === '1'
           })
         }
+      }
+      
+      if (filteredCount > 0) {
+        console.log(`[Yahoo Matchups] Week ${week}: filtered ${filteredCount} display-only stats from stat_winners (${statWinners.length} → ${categoryResults.length})`)
       }
       
       matchups.push({

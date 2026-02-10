@@ -1079,7 +1079,7 @@ async function loadTeamSeasonStats(leagueKey: string, currentWeekNum: number) {
           const t1 = matchup.teams[0]
           const t2 = matchup.teams[1]
           
-          // Count category wins for each team
+          // Count category wins for each team (stat_winners already filtered by service)
           let t1Wins = 0, t2Wins = 0
           for (const sw of (matchup.stat_winners || [])) {
             if (sw.is_tied) continue
@@ -1123,7 +1123,7 @@ async function loadTeamSeasonStats(leagueKey: string, currentWeekNum: number) {
             weeksPlayed++
             let catsWonThisWeek = 0
             
-            // Count category wins
+            // Count category wins (stat_winners already filtered by service)
             for (const sw of (matchup.stat_winners || [])) {
               if (!sw.is_tied && sw.winner_team_key === team.team_key) {
                 catsWonThisWeek++
@@ -1526,7 +1526,7 @@ async function loadMatchups() {
         let w1 = 0, w2 = 0, ties = 0
         const catProbs: Record<string, { team1: number, team2: number }> = {}
         
-        // Get category IDs from stat_winners
+        // Get category IDs from stat_winners (already filtered to scoring-only by service)
         const categoryIds: string[] = []
         for (const sw of (m.stat_winners || [])) {
           const id = String(sw.stat_id)
