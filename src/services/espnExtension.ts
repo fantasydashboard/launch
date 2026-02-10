@@ -38,18 +38,32 @@ export async function isExtensionInstalled(): Promise<boolean> {
  * Request ESPN cookies from the Chrome extension
  */
 export async function getEspnCookiesFromExtension(): Promise<EspnCookieResult> {
+  // Must be in a Chrome-based browser with extension messaging support
   if (!window.chrome?.runtime?.sendMessage) {
     return {
       espn_s2: null,
       swid: null,
-      error: 'Chrome extension messaging not available. Please use a Chromium-based browser (Chrome, Edge, Brave, etc.).'
+      error: 'extension_not_installed'
     }
   }
 
   try {
     const response = await sendExtensionMessage({ action: 'getEspnCookies' })
 
-    if (response?.error) {
+    // If response is undefined/null, extension is not installed
+    // (Chrome silently fails when extension ID doesn't exist)
+    if (!response) {
+      console.log('[ESPN Extension] No response received - extension not installed')
+      return {
+        espn_s2: null,
+        swid: null,
+        error: 'extension_not_installed'
+      }
+    }
+
+    if (response.error) {
+      // Extension responded but reported an error (e.g. "no cookies found")
+      // This means extension IS installed, just no ESPN login
       return {
         espn_s2: null,
         swid: null,
@@ -58,23 +72,16 @@ export async function getEspnCookiesFromExtension(): Promise<EspnCookieResult> {
     }
 
     return {
-      espn_s2: response?.espn_s2 || null,
-      swid: response?.swid || null
+      espn_s2: response.espn_s2 || null,
+      swid: response.swid || null
     }
   } catch (err: any) {
-    // Extension not installed or not responding
-    if (err.message?.includes('Could not establish connection') ||
-        err.message?.includes('Receiving end does not exist')) {
-      return {
-        espn_s2: null,
-        swid: null,
-        error: 'extension_not_installed'
-      }
-    }
+    // ANY failure to communicate = extension not installed
+    console.log('[ESPN Extension] Communication failed:', err.message)
     return {
       espn_s2: null,
       swid: null,
-      error: err.message || 'Failed to communicate with extension'
+      error: 'extension_not_installed'
     }
   }
 }
@@ -111,8 +118,12 @@ function sendExtensionMessage(message: any, timeoutMs = 3000): Promise<any> {
     try {
       chrome.runtime.sendMessage(EXTENSION_ID, message, (response: any) => {
         clearTimeout(timer)
-        if (chrome.runtime.lastError) {
-          reject(new Error(chrome.runtime.lastError.message))
+        const lastError = chrome.runtime.lastError
+        if (lastError) {
+          reject(new Error(lastError.message || 'Extension communication error'))
+        } else if (response === undefined) {
+          // Chrome may return undefined without setting lastError when extension doesn't exist
+          reject(new Error('No response from extension'))
         } else {
           resolve(response)
         }

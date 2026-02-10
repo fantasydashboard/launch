@@ -950,13 +950,20 @@ async function checkEspnExtension() {
   try {
     const result = await getEspnCookiesFromExtension()
     
+    console.log('[ESPN] Extension check result:', { 
+      hasS2: !!result.espn_s2, 
+      hasSwid: !!result.swid, 
+      error: result.error 
+    })
+    
     if (result.error === 'extension_not_installed') {
       extensionStatus.value = 'not_installed'
       espnExtensionReady.value = false
       return
     }
     
-    if (!result.espn_s2 || !result.swid) {
+    // Extension responded but no cookies (user not logged in to ESPN)
+    if (result.error || !result.espn_s2 || !result.swid) {
       extensionStatus.value = 'no_cookies'
       espnExtensionReady.value = false
       return
@@ -978,6 +985,7 @@ async function checkEspnExtension() {
     
     espnExtensionReady.value = true
   } catch (err) {
+    console.error('[ESPN] Extension check error:', err)
     extensionStatus.value = 'not_installed'
     espnExtensionReady.value = false
   }
