@@ -2351,15 +2351,41 @@ async function loadDraftData() {
 }
 
 async function loadEspnDraftData(leagueKey: string) {
-  const { sport, leagueId, season } = parseEspnLeagueKey(leagueKey)
+  let { sport, leagueId, season } = parseEspnLeagueKey(leagueKey)
   console.log('[ESPN Draft] Loading draft for league:', leagueId, 'season:', season, 'sport:', sport)
   
   loadingMessage.value = 'Fetching ESPN draft results...'
   loadingProgress.value = { currentStep: 'Fetching draft results...', week: 2, maxWeek: 5 }
   
   // Get draft with player names - use parsed sport
-  const espnDraftPicks = await espnService.getDraftWithPlayers(sport, leagueId, season)
+  let espnDraftPicks = await espnService.getDraftWithPlayers(sport, leagueId, season)
   console.log('[ESPN Draft] Got', espnDraftPicks.length, 'draft picks')
+  
+  // Check for predraft state: most picks have playerId = -1
+  const validPickCount = espnDraftPicks.filter((p: any) => p.playerId > 0).length
+  console.log('[ESPN Draft] Valid player IDs:', validPickCount, 'of', espnDraftPicks.length)
+  
+  if (espnDraftPicks.length > 0 && validPickCount < espnDraftPicks.length * 0.25) {
+    // Draft hasn't happened yet for this season — try previous season
+    const prevSeason = season - 1
+    console.log(`[ESPN Draft] Predraft state detected (${validPickCount} valid picks). Trying ${prevSeason} season draft...`)
+    loadingMessage.value = `Draft not yet held for ${season}. Loading ${prevSeason} draft...`
+    
+    try {
+      const prevPicks = await espnService.getDraftWithPlayers(sport, leagueId, prevSeason)
+      const prevValidCount = prevPicks.filter((p: any) => p.playerId > 0).length
+      console.log(`[ESPN Draft] Previous season ${prevSeason}: ${prevPicks.length} picks, ${prevValidCount} valid`)
+      
+      if (prevValidCount > validPickCount) {
+        espnDraftPicks = prevPicks
+        season = prevSeason
+        selectedSeason.value = prevSeason.toString()
+        console.log(`[ESPN Draft] Using ${prevSeason} draft data`)
+      }
+    } catch (e) {
+      console.log('[ESPN Draft] Previous season draft failed:', e)
+    }
+  }
   
   if (!espnDraftPicks || espnDraftPicks.length === 0) {
     console.log('[ESPN Draft] No draft data available')
@@ -2476,8 +2502,15 @@ async function loadEspnDraftData(leagueKey: string) {
   // === GET PLAYER STATS FROM ESPN ===
   loadingMessage.value = 'Loading player stats from ESPN...'
   
-  const playerIds = espnDraftPicks.map((p: any) => p.playerId).filter(Boolean)
-  console.log('[ESPN Draft] Getting stats for', playerIds.length, 'drafted players')
+  const playerIds = espnDraftPicks.map((p: any) => p.playerId).filter((id: number) => id > 0)
+  console.log('[ESPN Draft] Getting stats for', playerIds.length, 'drafted players (filtered from', espnDraftPicks.length, 'picks)')
+  
+  if (playerIds.length === 0) {
+    console.log('[ESPN Draft] No valid player IDs — cannot load stats')
+    draftPicks.value = []
+    isLoading.value = false
+    return
+  }
   
   // Use ESPN's getPlayersWithStats which tries multiple methods including public API
   let playerStatsMap = await espnService.getPlayersWithStats(sport, leagueId, season, playerIds)
@@ -2514,25 +2547,17 @@ async function loadEspnDraftData(leagueKey: string) {
     }
   }
   
-  // === DIAGNOSTIC: Check for type mismatches between map keys and pick playerIds ===
-  const mapKeys = [...playerStatsMap.keys()]
-  const sampleMapKey = mapKeys[0]
-  const samplePickId = espnDraftPicks[0]?.playerId
-  console.log('[ESPN Draft DIAG] Map key sample:', sampleMapKey, 'type:', typeof sampleMapKey)
-  console.log('[ESPN Draft DIAG] Pick playerId sample:', samplePickId, 'type:', typeof samplePickId)
-  console.log('[ESPN Draft DIAG] First 5 map keys:', mapKeys.slice(0, 5))
-  console.log('[ESPN Draft DIAG] First 5 pick IDs:', espnDraftPicks.slice(0, 5).map((p: any) => p.playerId))
-  console.log('[ESPN Draft DIAG] Direct lookup test:', playerStatsMap.get(samplePickId), '| by number:', playerStatsMap.get(Number(sampleMapKey)))
-  
   // Build a normalized lookup that handles both string and number keys
   const normalizedStatsMap = new Map<number, any>()
   for (const [key, value] of playerStatsMap.entries()) {
     normalizedStatsMap.set(Number(key), value)
   }
-  // Also check if pick IDs overlap with map keys at all
+  
+  // Check overlap between stats map and draft picks
   const pickIdSet = new Set(espnDraftPicks.map((p: any) => Number(p.playerId)))
-  const overlap = mapKeys.filter(k => pickIdSet.has(Number(k)))
-  console.log('[ESPN Draft DIAG] Overlap between map keys and pick IDs:', overlap.length, 'of', mapKeys.length)
+  const mapKeys = [...normalizedStatsMap.keys()]
+  const overlap = mapKeys.filter(k => pickIdSet.has(k))
+  console.log('[ESPN Draft] Stats/picks overlap:', overlap.length, 'of', mapKeys.length, 'stats matched to', espnDraftPicks.length, 'picks')
   
   // Debug: Check what stats look like for first few players
   let debugCount = 0
