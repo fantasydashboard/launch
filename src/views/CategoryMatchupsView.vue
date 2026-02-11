@@ -578,9 +578,16 @@ const isCurrentWeek = computed(() => {
 
 const currentSeason = computed(() => leagueStore.currentLeague?.season || new Date().getFullYear().toString())
 
+const startWeek = computed(() => {
+  if (isEspn.value) return 1
+  return parseInt(leagueInfo.value?.start_week) || 1
+})
+
 const availableWeeks = computed(() => {
-  const weeks = Array.from({ length: isSeasonComplete.value ? totalWeeks.value : currentWeek.value }, (_, i) => i + 1)
-  console.log('[Matchups] availableWeeks:', weeks.length, 'weeks, isComplete:', isSeasonComplete.value, 'total:', totalWeeks.value, 'current:', currentWeek.value)
+  const start = startWeek.value
+  const end = isSeasonComplete.value ? totalWeeks.value : currentWeek.value
+  const weeks = Array.from({ length: end - start + 1 }, (_, i) => start + i)
+  console.log('[Matchups] availableWeeks:', weeks.length, 'weeks, start:', start, 'end:', end)
   return weeks
 })
 const allCategories = computed(() => {
@@ -1085,8 +1092,9 @@ async function loadTeamSeasonStats(leagueKey: string, currentWeekNum: number) {
         })
       }
     } else {
-      // Yahoo historical data
-      for (let w = 1; w < currentWeekNum; w++) {
+      // Yahoo historical data - start from league's start_week (not always 1)
+      const histStart = startWeek.value
+      for (let w = histStart; w < currentWeekNum; w++) {
         weekPromises.push(yahooService.getCategoryMatchups(leagueKey, w).then(data => ({ week: w, data })))
       }
     
