@@ -236,7 +236,7 @@
             </div>
             <!-- Chart -->
             <div class="bg-dark-border/30 rounded-xl p-4">
-              <h4 class="text-sm font-semibold text-dark-textMuted mb-3">Win Probability Trend</h4>
+              <h4 class="text-sm font-semibold text-dark-textMuted mb-3">{{ chartTitle }}</h4>
               <div v-if="chartLoading" class="h-48 flex items-center justify-center">
                 <div class="text-dark-textMuted text-sm animate-pulse">Loading daily stats...</div>
               </div>
@@ -473,6 +473,7 @@ const matchups = ref<any[]>([])
 const selectedMatchup = ref<any>(null)
 const categories = ref<any[]>([])
 const teamSeasonStats = ref<Map<string, any>>(new Map())
+const gameWeeks = ref<{ week: number, start: string, end: string }[]>([])
 const winProbChartEl = ref<HTMLElement | null>(null)
 let winProbChart: ApexCharts | null = null
 
@@ -595,6 +596,73 @@ const allCategories = computed(() => {
   // This ensures hockey, basketball, and any other sport's categories are shown
   return categories.value
 })
+
+// Get the start/end dates for a given matchup week from game weeks data
+function getMatchupDates(weekNum: number): { start: string, end: string, totalDays: number, isExtended: boolean } | null {
+  const gw = gameWeeks.value.find(w => w.week === weekNum)
+  if (!gw || !gw.start || !gw.end) return null
+  const startDate = new Date(gw.start + 'T00:00:00')
+  const endDate = new Date(gw.end + 'T00:00:00')
+  const totalDays = Math.round((endDate.getTime() - startDate.getTime()) / 86400000) + 1
+  return { start: gw.start, end: gw.end, totalDays, isExtended: totalDays > 7 }
+}
+
+// Calculate days remaining from today until matchup end date
+function getMatchupDaysRemaining(weekNum: number, isCurrent: boolean): number {
+  if (!isCurrent) return 0
+  const md = getMatchupDates(weekNum)
+  if (md) {
+    const today = new Date()
+    const endDate = new Date(md.end + 'T23:59:59')
+    const diff = Math.ceil((endDate.getTime() - today.getTime()) / 86400000)
+    return Math.max(0, diff)
+  }
+  // Fallback: standard 7-day week calculation
+  const dayOfWeek = new Date().getDay()
+  return (7 - dayOfWeek) % 7
+}
+
+// For extended matchups, determine which sub-week (0-indexed) we're in and total sub-weeks
+function getMatchupSubWeekInfo(weekNum: number): { subWeek: number, totalSubWeeks: number, subWeekStartDate: string, subWeekDates: string[] } {
+  const md = getMatchupDates(weekNum)
+  if (!md || !md.isExtended) {
+    return { subWeek: 0, totalSubWeeks: 1, subWeekStartDate: '', subWeekDates: [] }
+  }
+  const startDate = new Date(md.start + 'T00:00:00')
+  const today = new Date()
+  const daysSinceStart = Math.floor((today.getTime() - startDate.getTime()) / 86400000)
+  const subWeek = Math.floor(daysSinceStart / 7)
+  const totalSubWeeks = Math.ceil(md.totalDays / 7)
+  
+  // Calculate the Mon-Sun dates for this sub-week
+  const subWeekStart = new Date(startDate)
+  subWeekStart.setDate(subWeekStart.getDate() + subWeek * 7)
+  const endDate = new Date(md.end + 'T00:00:00')
+  const subWeekDates: string[] = []
+  for (let i = 0; i < 7; i++) {
+    const d = new Date(subWeekStart)
+    d.setDate(subWeekStart.getDate() + i)
+    if (d > endDate) break
+    subWeekDates.push(d.toISOString().split('T')[0])
+  }
+  
+  return { subWeek, totalSubWeeks, subWeekStartDate: subWeekStart.toISOString().split('T')[0], subWeekDates }
+}
+
+// Get ALL dates from matchup start up to (and including) a given date
+function getMatchupDatesThrough(weekNum: number, throughDate: string): string[] {
+  const md = getMatchupDates(weekNum)
+  if (!md) return []
+  const startDate = new Date(md.start + 'T00:00:00')
+  const endDate = new Date(throughDate + 'T00:00:00')
+  const dates: string[] = []
+  const d = new Date(startDate)
+  while (d <= endDate) {
+    dates.push(d.toISOString().split('T')[0])
+    d.setDate(d.getDate() + 1)
+  }
+  return dates
+}
 
 const weekStats = computed(() => {
   if (!matchups.value.length) return { 
@@ -730,8 +798,16 @@ function getCategoryStat(m: any, id: string, team: 1|2) { return parseFloat((tea
 function getCategoryLeader(m: any, id: string): 0|1|2 { const v1 = getCategoryStat(m, id, 1), v2 = getCategoryStat(m, id, 2), inv = INVERSE_STATS.includes(id); if (v1 === v2) return 0; return inv ? (v1 < v2 ? 1 : 2) : (v1 > v2 ? 1 : 2) }
 function getCategoryWinProb(m: any, id: string, team: 1|2) { const p = m.categoryWinProbs?.[id]; return p ? (team === 1 ? p.team1 : p.team2) : 50 }
 function getCategoryWinProbClass(p: number) { return p >= 65 ? 'text-green-400' : p >= 55 ? 'text-green-300' : p >= 45 ? 'text-dark-textMuted' : p >= 35 ? 'text-orange-300' : 'text-red-400' }
-function getCategoryAvg(k: string, id: string) { return teamSeasonStats.value.get(k)?.categoryAvgs?.[id] || 0 }
-function getCategoryHigh(k: string, id: string) { return teamSeasonStats.value.get(k)?.categoryHighs?.[id] || 0 }
+function getCategoryAvg(k: string, id: string): number | null { 
+  const avgs = teamSeasonStats.value.get(k)?.categoryAvgs
+  if (!avgs || !(id in avgs)) return null
+  return avgs[id]
+}
+function getCategoryHigh(k: string, id: string): number | null { 
+  const highs = teamSeasonStats.value.get(k)?.categoryHighs
+  if (!highs || !(id in highs)) return null
+  return highs[id]
+}
 // Build a set of stat IDs that are percentage categories (display_name contains "%")
 function isPercentageStat(id: string): boolean {
   const cat = categories.value.find((c: any) => String(c.stat_id) === id)
@@ -742,7 +818,8 @@ function isRatioStat(id: string): boolean {
   const cat = categories.value.find((c: any) => String(c.stat_id) === id)
   return !!(cat && (cat.display_name || cat.name || '').includes('/'))
 }
-function formatStat(v: number, id: string) {
+function formatStat(v: number | null, id: string) {
+  if (v === null || v === undefined) return '—'
   if (isPercentageStat(id)) return (v * 100).toFixed(1) + '%'
   if (isRatioStat(id)) return v.toFixed(2)
   if (['26','27'].includes(id)) return v.toFixed(2)
@@ -1434,6 +1511,11 @@ async function loadCategories() {
       // Yahoo categories
       const s = await yahooService.getLeagueScoringSettings(k)
       if (s?.stat_categories) categories.value = s.stat_categories.map((c: any) => ({ stat_id: String(c.stat?.stat_id || c.stat_id), name: c.stat?.name || c.name, display_name: c.stat?.display_name || c.display_name, is_only_display_stat: c.stat?.is_only_display_stat || c.is_only_display_stat })).filter((c: any) => c.stat_id && c.is_only_display_stat !== '1' && c.is_only_display_stat !== 1)
+      // Fetch game week dates (for detecting extended matchups like Olympic breaks)
+      try {
+        gameWeeks.value = await yahooService.getGameWeeks(k)
+        console.log('[Matchups] Loaded', gameWeeks.value.length, 'game weeks')
+      } catch (e) { console.warn('[Matchups] Could not load game weeks:', e) }
     }
   } catch (e) { console.error('Error loading categories:', e) }
 }
@@ -1451,9 +1533,12 @@ async function loadMatchups() {
     }
     const week = parseInt(selectedWeek.value)
     const isCurrent = week === currentWeek.value && !isSeasonComplete.value
-    // Calculate actual days remaining in matchup week (Mon-Sun)
-    const dayOfWeek = new Date().getDay() // 0=Sun, 1=Mon, ..., 6=Sat
-    const days = isCurrent ? (7 - dayOfWeek) % 7 : 0
+    // Calculate actual days remaining in matchup (supports extended matchups like Olympic breaks)
+    const days = getMatchupDaysRemaining(week, isCurrent)
+    const matchupDates = getMatchupDates(week)
+    if (matchupDates?.isExtended) {
+      console.log(`[Matchups] Extended matchup detected: ${matchupDates.start} to ${matchupDates.end} (${matchupDates.totalDays} days, ${days} remaining)`)
+    }
     
     // Load historical data to calculate avg/high for each team
     loadingProgress.value = { currentStep: 'Loading team season stats...', week, maxWeek: week }
@@ -1637,6 +1722,7 @@ function getDailyWeights(sport: string): number[] {
 }
 
 const chartLoading = ref(false)
+const chartTitle = ref('Win Probability Trend')
 
 async function buildWinProbChart() {
   if (!winProbChartEl.value || !selectedMatchup.value) return
@@ -1647,6 +1733,8 @@ async function buildWinProbChart() {
   
   const isCompletedWeek = !isCurrentWeek.value
   const weekNum = parseInt(selectedWeek.value)
+  const matchupDates = getMatchupDates(weekNum)
+  const isExtended = matchupDates?.isExtended || false
   
   const now = new Date()
   const hourOfDay = now.getHours()
@@ -1654,56 +1742,99 @@ async function buildWinProbChart() {
   const dayMap: Record<number, number> = { 1: 0, 2: 1, 3: 2, 4: 3, 5: 4, 6: 5, 0: 6 }
   const todayIndex = dayMap[dayOfWeek]
   
-  // Last completed day = yesterday (stats settle by ~3am)
-  const lastCompletedDayIndex = hourOfDay >= 3 ? todayIndex - 1 : todayIndex - 2
-  const daysToShow = isCompletedWeek ? 7 : Math.max(0, lastCompletedDayIndex + 1)
+  // For extended matchups, determine sub-week info
+  const subWeekInfo = isExtended ? getMatchupSubWeekInfo(weekNum) : null
   
-  if (daysToShow === 0 && isCompletedWeek) {
+  // Determine chart dates (the Mon-Sun currently being displayed)
+  let chartDates: string[] = []
+  let chartDayLabels: string[] = []
+  let allPriorDates: string[] = [] // Dates before the chart sub-week (for cumulative base)
+  
+  if (isExtended && subWeekInfo && matchupDates) {
+    chartDates = subWeekInfo.subWeekDates
+    chartDayLabels = chartDates.map(d => {
+      const dt = new Date(d + 'T12:00:00')
+      return allDayLabels[dayMap[dt.getDay()] ?? 0] || d.slice(5)
+    })
+    // All dates from matchup start through the day before current sub-week start
+    if (subWeekInfo.subWeekStartDate && subWeekInfo.subWeekStartDate > matchupDates.start) {
+      const startDate = new Date(matchupDates.start + 'T00:00:00')
+      const subStart = new Date(subWeekInfo.subWeekStartDate + 'T00:00:00')
+      const d = new Date(startDate)
+      while (d < subStart) {
+        allPriorDates.push(d.toISOString().split('T')[0])
+        d.setDate(d.getDate() + 1)
+      }
+    }
+    console.log(`[WinProb Chart] Extended matchup: sub-week ${subWeekInfo.subWeek + 1} of ${subWeekInfo.totalSubWeeks}, ${allPriorDates.length} prior days, ${chartDates.length} chart days`)
+  } else {
+    const weekDatesArr = getWeekDates(weekNum, currentWeek.value)
+    chartDates = weekDatesArr
+    chartDayLabels = [...allDayLabels]
+  }
+  
+  // Determine completed days in the chart sub-week
+  const todayStr = now.toISOString().split('T')[0]
+  const yesterdayDate = new Date(now)
+  yesterdayDate.setDate(yesterdayDate.getDate() - (hourOfDay >= 3 ? 1 : 2))
+  const lastCompletedDateStr = yesterdayDate.toISOString().split('T')[0]
+  
+  let daysToShowOnChart: number
+  if (isCompletedWeek) {
+    daysToShowOnChart = chartDates.length
+  } else {
+    // Count how many chart dates are completed (on or before lastCompletedDateStr)
+    daysToShowOnChart = chartDates.filter(d => d <= lastCompletedDateStr).length
+  }
+  
+  // For extended completed matchups past the current sub-week, show full 7 days
+  if (isExtended && isCompletedWeek) {
+    daysToShowOnChart = chartDates.length
+  }
+  
+  if (daysToShowOnChart === 0 && isCompletedWeek) {
     console.log('[WinProb Chart] No completed days to show for completed week')
     return
   }
   
-  // Even if no days completed yet (Monday), we can still show today's live point
-  
   const team1Key = matchup.team1?.team_key
   const team2Key = matchup.team2?.team_key
   
-  // Get scoring category IDs
   const scoringCatIds = categories.value
     .filter((c: any) => c.is_only_display_stat !== '1' && c.is_only_display_stat !== 1)
     .map((c: any) => String(c.stat_id))
   
   if (scoringCatIds.length === 0 || !team1Key || !team2Key) {
     console.log('[WinProb Chart] Missing data - falling back to simple chart')
-    buildSimpleWinProbChart(matchup, daysToShow, allDayLabels)
+    buildSimpleWinProbChart(matchup, daysToShowOnChart, chartDayLabels)
     return
   }
   
-  // For Yahoo leagues, fetch real daily stats
   const isYahoo = !isEspn.value
   
   if (!isYahoo) {
-    buildSimpleWinProbChart(matchup, daysToShow, allDayLabels)
+    buildSimpleWinProbChart(matchup, daysToShowOnChart, chartDayLabels)
     return
   }
   
   chartLoading.value = true
   
   try {
-    const weekDates = getWeekDates(weekNum, currentWeek.value)
-    const datesToFetch = weekDates.slice(0, daysToShow)
+    // Dates to fetch: prior dates (base cumulative) + chart dates (displayed)
+    const chartDatesToFetch = chartDates.slice(0, daysToShowOnChart)
+    const allDatesToFetch = [...allPriorDates, ...chartDatesToFetch]
     
-    console.log('[WinProb Chart] Fetching real daily stats for', datesToFetch.length, 'days:', datesToFetch)
+    console.log('[WinProb Chart] Fetching real daily stats for', allDatesToFetch.length, 'total days (' + allPriorDates.length + ' prior +', chartDatesToFetch.length, 'chart)')
     
     // Fetch daily stats for both teams - all days in parallel
     const [team1DailyResults, team2DailyResults] = await Promise.all([
-      Promise.all(datesToFetch.map(date => 
+      Promise.all(allDatesToFetch.map(date => 
         yahooService.getTeamDailyStats(team1Key, date).catch(err => {
           console.warn(`[WinProb Chart] Failed to fetch ${team1Key} on ${date}:`, err)
           return {} as Record<string, string>
         })
       )),
-      Promise.all(datesToFetch.map(date => 
+      Promise.all(allDatesToFetch.map(date => 
         yahooService.getTeamDailyStats(team2Key, date).catch(err => {
           console.warn(`[WinProb Chart] Failed to fetch ${team2Key} on ${date}:`, err)
           return {} as Record<string, string>
@@ -1711,33 +1842,42 @@ async function buildWinProbChart() {
       ))
     ])
     
-    console.log('[WinProb Chart] Got daily stats. Day 0 sample:', 
-      Object.entries(team1DailyResults[0] || {}).slice(0, 3))
-    
-    // Build cumulative stats day by day and run Monte Carlo at each point
-    const d1: number[] = []
-    const d2: number[] = []
-    
+    // Build base cumulative from prior dates (pre-chart sub-week)
     const team1Cumulative: Record<string, number> = {}
     const team2Cumulative: Record<string, number> = {}
     
-    for (let day = 0; day < daysToShow; day++) {
-      const t1Daily = team1DailyResults[day] || {}
-      const t2Daily = team2DailyResults[day] || {}
-      
-      // Accumulate all stats from this day
-      const allStatIds = new Set([
-        ...Object.keys(t1Daily), ...Object.keys(t2Daily), 
-        ...Object.keys(team1Cumulative), ...Object.keys(team2Cumulative)
-      ])
+    for (let i = 0; i < allPriorDates.length; i++) {
+      const t1Daily = team1DailyResults[i] || {}
+      const t2Daily = team2DailyResults[i] || {}
+      const allStatIds = new Set([...Object.keys(t1Daily), ...Object.keys(t2Daily), ...Object.keys(team1Cumulative), ...Object.keys(team2Cumulative)])
       for (const statId of allStatIds) {
-        const v1 = parseFloat(t1Daily[statId] || '0') || 0
-        const v2 = parseFloat(t2Daily[statId] || '0') || 0
-        team1Cumulative[statId] = (team1Cumulative[statId] || 0) + v1
-        team2Cumulative[statId] = (team2Cumulative[statId] || 0) + v2
+        team1Cumulative[statId] = (team1Cumulative[statId] || 0) + (parseFloat(t1Daily[statId] || '0') || 0)
+        team2Cumulative[statId] = (team2Cumulative[statId] || 0) + (parseFloat(t2Daily[statId] || '0') || 0)
+      }
+    }
+    
+    if (allPriorDates.length > 0) {
+      console.log('[WinProb Chart] Base cumulative from', allPriorDates.length, 'prior days built')
+    }
+    
+    // Now add chart days on top and run Monte Carlo at each
+    const d1: number[] = []
+    const d2: number[] = []
+    
+    // Calculate matchup end date for days remaining
+    const matchupEndDate = matchupDates?.end || chartDates[chartDates.length - 1] || ''
+    
+    for (let day = 0; day < daysToShowOnChart; day++) {
+      const fetchIndex = allPriorDates.length + day // offset by prior dates
+      const t1Daily = team1DailyResults[fetchIndex] || {}
+      const t2Daily = team2DailyResults[fetchIndex] || {}
+      
+      const allStatIds = new Set([...Object.keys(t1Daily), ...Object.keys(t2Daily), ...Object.keys(team1Cumulative), ...Object.keys(team2Cumulative)])
+      for (const statId of allStatIds) {
+        team1Cumulative[statId] = (team1Cumulative[statId] || 0) + (parseFloat(t1Daily[statId] || '0') || 0)
+        team2Cumulative[statId] = (team2Cumulative[statId] || 0) + (parseFloat(t2Daily[statId] || '0') || 0)
       }
       
-      // Extract scoring category stats for Monte Carlo
       const t1Stats: Record<string, number> = {}
       const t2Stats: Record<string, number> = {}
       for (const catId of scoringCatIds) {
@@ -1745,10 +1885,13 @@ async function buildWinProbChart() {
         t2Stats[catId] = team2Cumulative[catId] || 0
       }
       
-      const daysRemaining = 6 - day
+      // Days remaining = days from this chart date to matchup end
+      const chartDate = chartDatesToFetch[day]
+      const daysRemaining = matchupEndDate && chartDate
+        ? Math.max(0, Math.round((new Date(matchupEndDate + 'T00:00:00').getTime() - new Date(chartDate + 'T00:00:00').getTime()) / 86400000))
+        : 6 - day
       
       if (daysRemaining <= 0) {
-        // Final day (Sunday) - deterministic
         const inverseStats = INVERSE_STATS
         let w1 = 0, w2 = 0
         for (const catId of scoringCatIds) {
@@ -1762,7 +1905,6 @@ async function buildWinProbChart() {
         d1.push(w1 > w2 ? 100 : w1 === w2 ? 50 : 0)
         d2.push(w2 > w1 ? 100 : w1 === w2 ? 50 : 0)
       } else {
-        // Run Monte Carlo with real cumulative stats + remaining variance
         const mcResult = calcOverallWinProb(t1Stats, t2Stats, scoringCatIds, daysRemaining)
         d1.push(Math.round(mcResult.team1 * 10) / 10)
         d2.push(Math.round(mcResult.team2 * 10) / 10)
@@ -1770,22 +1912,28 @@ async function buildWinProbChart() {
     }
     
     console.log('[WinProb Chart] Real data probabilities:', 
-      d1.map((p, i) => `${allDayLabels[i]}: ${p}%`).join(', '))
+      d1.map((p, i) => `${chartDayLabels[i]}: ${p}%`).join(', '))
     
-    // For current week: append today's live point using the matchup's current win probability
-    // This matches the big win % numbers shown in the matchup header
-    const chartLabels = allDayLabels.slice(0, daysToShow)
-    if (!isCompletedWeek && todayIndex < 7 && todayIndex > lastCompletedDayIndex) {
+    // For current week: append today's live point
+    const chartLabels = chartDayLabels.slice(0, daysToShowOnChart)
+    const todayInChart = chartDates.indexOf(todayStr)
+    const lastShownIndex = daysToShowOnChart - 1
+    if (!isCompletedWeek && todayInChart > -1 && todayInChart > lastShownIndex) {
       d1.push(Math.round((matchup.team1WinProb || 50) * 10) / 10)
       d2.push(Math.round((matchup.team2WinProb || 50) * 10) / 10)
-      chartLabels.push(allDayLabels[todayIndex])
-      console.log('[WinProb Chart] Added live point for', allDayLabels[todayIndex], ':', matchup.team1WinProb, '/', matchup.team2WinProb)
+      chartLabels.push(chartDayLabels[todayInChart] || 'Now')
+      console.log('[WinProb Chart] Added live point for', chartDayLabels[todayInChart], ':', matchup.team1WinProb, '/', matchup.team2WinProb)
     }
     
-    renderWinProbChart(matchup, d1, d2, chartLabels)
+    // Add sub-week indicator to chart title if extended
+    const chartTitle = isExtended && subWeekInfo 
+      ? `Win Probability Trend (Week ${subWeekInfo.subWeek + 1} of ${subWeekInfo.totalSubWeeks})`
+      : 'Win Probability Trend'
+    
+    renderWinProbChart(matchup, d1, d2, chartLabels, chartTitle)
   } catch (e) {
     console.error('[WinProb Chart] Error fetching daily stats, falling back:', e)
-    buildSimpleWinProbChart(matchup, daysToShow, allDayLabels)
+    buildSimpleWinProbChart(matchup, daysToShowOnChart, chartDayLabels)
   } finally {
     chartLoading.value = false
   }
@@ -1887,9 +2035,10 @@ function buildSimpleWinProbChart(matchup: any, daysToShow: number, allDayLabels:
 }
 
 // Render the ApexCharts win probability chart
-function renderWinProbChart(matchup: any, d1: number[], d2: number[], dayLabels: string[]) {
+function renderWinProbChart(matchup: any, d1: number[], d2: number[], dayLabels: string[], title?: string) {
   if (!winProbChartEl.value) return
   if (winProbChart) { winProbChart.destroy(); winProbChart = null }
+  chartTitle.value = title || 'Win Probability Trend'
   
   const c1 = '#06b6d4' // cyan
   const c2 = '#f97316' // orange

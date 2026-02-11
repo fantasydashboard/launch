@@ -1604,6 +1604,45 @@ export class YahooFantasyService {
   }
 
   /**
+   * Get game week dates for the sport/season (start/end dates for each matchup week)
+   * Returns array of { week: number, start: string, end: string }
+   */
+  async getGameWeeks(leagueKey: string): Promise<{ week: number, start: string, end: string }[]> {
+    const gameKey = leagueKey.split('.')[0]
+    const cacheKey = 'yahoo_game_weeks'
+    const cached = cache.get<{ week: number, start: string, end: string }[]>(cacheKey, gameKey)
+    if (cached) {
+      console.log(`[Cache HIT] Game weeks for ${gameKey}`)
+      return cached
+    }
+    
+    console.log(`[Yahoo] Fetching game weeks for game ${gameKey}`)
+    
+    const data = await this.apiRequest(
+      `/game/${gameKey}/game_weeks?format=json`
+    )
+    
+    const weeks: { week: number, start: string, end: string }[] = []
+    const gameWeeks = data.fantasy_content?.game?.[1]?.game_weeks || []
+    for (const gw of gameWeeks) {
+      if (gw?.game_week) {
+        weeks.push({
+          week: parseInt(gw.game_week.week) || 0,
+          start: gw.game_week.start || '',
+          end: gw.game_week.end || ''
+        })
+      }
+    }
+    
+    console.log(`[Yahoo] Got ${weeks.length} game weeks for ${gameKey}`)
+    
+    // Cache for 24 hours - game weeks rarely change (only during breaks)
+    cache.set(cacheKey, weeks, CACHE_TTL.COMPLETED, gameKey)
+    
+    return weeks
+  }
+
+  /**
    * Clear all Yahoo caches
    */
   clearAllCache(): void {
