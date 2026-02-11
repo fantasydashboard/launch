@@ -841,11 +841,13 @@ function calcOverallWinProb(
   team2Stats: Record<string, number>,
   categoryIds: string[],
   days: number
-): { team1: number, team2: number } {
+): { team1: number, team2: number, avgT1Cats: number, avgT2Cats: number } {
   const SIMULATIONS = 10000
   let team1Wins = 0
   let team2Wins = 0
   let ties = 0
+  let totalT1Cats = 0
+  let totalT2Cats = 0
   
   // Volatility per category
   const yahooVol: Record<string,number> = { '60':8,'7':3,'12':8,'16':2,'3':0.02,'55':0.02,'56':0.03,'28':0.5,'32':0.5,'42':15,'26':0.5,'27':0.15,'48':0.5 }
@@ -883,6 +885,8 @@ function calcOverallWinProb(
     if (t1CatsWon > t2CatsWon) team1Wins++
     else if (t2CatsWon > t1CatsWon) team2Wins++
     else ties++
+    totalT1Cats += t1CatsWon
+    totalT2Cats += t2CatsWon
   }
   
   // Calculate win probability (ties split evenly)
@@ -891,7 +895,9 @@ function calcOverallWinProb(
   
   return { 
     team1: Math.round(t1Prob * 100) / 100, 
-    team2: Math.round(t2Prob * 100) / 100 
+    team2: Math.round(t2Prob * 100) / 100,
+    avgT1Cats: Math.round(totalT1Cats / SIMULATIONS * 10) / 10,
+    avgT2Cats: Math.round(totalT2Cats / SIMULATIONS * 10) / 10
   }
 }
 
@@ -1419,7 +1425,9 @@ async function loadMatchups() {
     }
     const week = parseInt(selectedWeek.value)
     const isCurrent = week === currentWeek.value && !isSeasonComplete.value
-    const days = isCurrent ? 3 : 0
+    // Calculate actual days remaining in matchup week (Mon-Sun)
+    const dayOfWeek = new Date().getDay() // 0=Sun, 1=Mon, ..., 6=Sat
+    const days = isCurrent ? (7 - dayOfWeek) % 7 : 0
     
     // Load historical data to calculate avg/high for each team
     loadingProgress.value = { currentStep: 'Loading team season stats...', week, maxWeek: week }
@@ -1496,12 +1504,10 @@ async function loadMatchups() {
         // Monte Carlo simulation
         const op = calcOverallWinProb(homeStats, awayStats, categoryIds, days)
         
-        let pj1 = 0, pj2 = 0, pjt = 0
-        for (const p of Object.values(catProbs)) { 
-          if (p.team1 > 55) pj1++
-          else if (p.team2 > 55) pj2++
-          else pjt++ 
-        }
+        // Use Monte Carlo average projected category wins
+        const pj1 = Math.round(op.avgT1Cats)
+        const pj2 = Math.round(op.avgT2Cats)
+        const pjt = Math.max(0, categoryIds.length - pj1 - pj2)
         
         processed.push({
           matchup_id: processed.length + 1,
@@ -1548,8 +1554,10 @@ async function loadMatchups() {
         // Run Monte Carlo simulation for overall win probability
         const op = calcOverallWinProb(t1StatsNum, t2StatsNum, categoryIds, days)
         
-        let pj1 = 0, pj2 = 0, pjt = 0
-        for (const p of Object.values(catProbs)) { if (p.team1 > 55) pj1++; else if (p.team2 > 55) pj2++; else pjt++ }
+        // Use Monte Carlo average projected category wins
+        const pj1 = Math.round(op.avgT1Cats)
+        const pj2 = Math.round(op.avgT2Cats)
+        const pjt = Math.max(0, categoryIds.length - pj1 - pj2)
         processed.push({
           matchup_id: processed.length + 1,
           team1: { team_key: t1.team_key, name: t1.name, logo_url: t1.logo_url, is_my_team: leagueStore.yahooTeams.find(x => x.team_key === t1.team_key)?.is_my_team || false },
