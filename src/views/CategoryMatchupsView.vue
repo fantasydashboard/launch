@@ -1635,10 +1635,12 @@ async function buildWinProbChart() {
   const lastCompletedDayIndex = hourOfDay >= 3 ? todayIndex - 1 : todayIndex - 2
   const daysToShow = isCompletedWeek ? 7 : Math.max(0, lastCompletedDayIndex + 1)
   
-  if (daysToShow === 0) {
-    console.log('[WinProb Chart] No completed days yet to show')
+  if (daysToShow === 0 && isCompletedWeek) {
+    console.log('[WinProb Chart] No completed days to show for completed week')
     return
   }
+  
+  // Even if no days completed yet (Monday), we can still show today's live point
   
   const team1Key = matchup.team1?.team_key
   const team2Key = matchup.team2?.team_key
@@ -1747,7 +1749,17 @@ async function buildWinProbChart() {
     console.log('[WinProb Chart] Real data probabilities:', 
       d1.map((p, i) => `${allDayLabels[i]}: ${p}%`).join(', '))
     
-    renderWinProbChart(matchup, d1, d2, allDayLabels.slice(0, daysToShow))
+    // For current week: append today's live point using the matchup's current win probability
+    // This matches the big win % numbers shown in the matchup header
+    const chartLabels = allDayLabels.slice(0, daysToShow)
+    if (!isCompletedWeek && todayIndex < 7 && todayIndex > lastCompletedDayIndex) {
+      d1.push(Math.round((matchup.team1WinProb || 50) * 10) / 10)
+      d2.push(Math.round((matchup.team2WinProb || 50) * 10) / 10)
+      chartLabels.push(allDayLabels[todayIndex])
+      console.log('[WinProb Chart] Added live point for', allDayLabels[todayIndex], ':', matchup.team1WinProb, '/', matchup.team2WinProb)
+    }
+    
+    renderWinProbChart(matchup, d1, d2, chartLabels)
   } catch (e) {
     console.error('[WinProb Chart] Error fetching daily stats, falling back:', e)
     buildSimpleWinProbChart(matchup, daysToShow, allDayLabels)
@@ -1783,7 +1795,8 @@ function buildSimpleWinProbChart(matchup: any, daysToShow: number, allDayLabels:
   const hourOfDay = now.getHours()
   const dayOfWeek = now.getDay()
   const dayMap: Record<number, number> = { 1: 0, 2: 1, 3: 2, 4: 3, 5: 4, 6: 5, 0: 6 }
-  const lastCompletedDayIndex = (hourOfDay >= 3 ? dayMap[dayOfWeek] - 1 : dayMap[dayOfWeek] - 2)
+  const todayIndex = dayMap[dayOfWeek]
+  const lastCompletedDayIndex = (hourOfDay >= 3 ? todayIndex - 1 : todayIndex - 2)
   
   const d1: number[] = []
   const d2: number[] = []
@@ -1839,7 +1852,15 @@ function buildSimpleWinProbChart(matchup: any, daysToShow: number, allDayLabels:
     d2.push(Math.round(team2Prob * 10) / 10)
   }
   
-  renderWinProbChart(matchup, d1, d2, allDayLabels.slice(0, daysToShow))
+  // For current week: append today's live point
+  const chartLabels = allDayLabels.slice(0, daysToShow)
+  if (!isCompletedWeek && todayIndex < 7 && todayIndex > lastCompletedDayIndex) {
+    d1.push(Math.round((matchup.team1WinProb || 50) * 10) / 10)
+    d2.push(Math.round((matchup.team2WinProb || 50) * 10) / 10)
+    chartLabels.push(allDayLabels[todayIndex])
+  }
+  
+  renderWinProbChart(matchup, d1, d2, chartLabels)
 }
 
 // Render the ApexCharts win probability chart
