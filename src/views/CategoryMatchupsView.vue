@@ -238,8 +238,8 @@
             <div class="bg-dark-border/30 rounded-xl p-4">
               <h4 class="text-sm font-semibold text-dark-textMuted mb-3">Win Probability Trend</h4>
               <div ref="winProbChartEl" class="h-48"></div>
-              <p class="text-xs text-dark-textMuted mt-2 text-center">Win probability changes throughout the week based on daily stat updates</p>
-              <p class="text-xs text-dark-textMuted mt-1 text-center italic">Based on 10,000 Monte Carlo simulations using current stats and historical category volatility.</p>
+              <p class="text-xs text-dark-textMuted mt-2 text-center">Each day shows the estimated win probability after that night's games (settled by 3am).</p>
+              <p class="text-xs text-dark-textMuted mt-1 text-center italic">Based on 10,000 Monte Carlo simulations. Past days are estimated from current cumulative stats.</p>
             </div>
           </div>
         </div>
@@ -1608,8 +1608,13 @@ function buildWinProbChart() {
   // Determine what day of the week it is for live matchups
   const now = new Date()
   const dayOfWeek = now.getDay()
+  const hourOfDay = now.getHours()
   const dayMap: Record<number, number> = { 1: 0, 2: 1, 3: 2, 4: 3, 5: 4, 6: 5, 0: 6 }
   const todayIndex = dayMap[dayOfWeek]
+  
+  // Last completed day = yesterday (games finish overnight, stats settled by ~3am)
+  // If before 3am, treat 2 days ago as last completed day
+  const lastCompletedDayIndex = hourOfDay >= 3 ? todayIndex - 1 : todayIndex - 2
   
   // Get current/final stats from the matchup
   const team1FinalStats = matchup.team1Stats || {}
@@ -1639,15 +1644,25 @@ function buildWinProbChart() {
     cumulativeWeights.push(cumulativeWeight)
   }
   
+  // How many days to show
+  const daysToShow = isCompletedWeek ? 7 : Math.max(0, lastCompletedDayIndex + 1)
+  const dayLabels = allDays.slice(0, daysToShow)
+  
   console.log('[WinProb Chart] Building chart for matchup:', matchup.team1.name, 'vs', matchup.team2.name)
-  console.log('[WinProb Chart] isCompletedWeek:', isCompletedWeek, 'todayIndex:', todayIndex)
+  console.log('[WinProb Chart] isCompletedWeek:', isCompletedWeek, 'todayIndex:', todayIndex, 'lastCompletedDay:', lastCompletedDayIndex, 'daysToShow:', daysToShow)
   console.log('[WinProb Chart] Categories:', categoryIds.length, 'Final wins:', team1FinalWins, '-', team2FinalWins)
   
-  // Build probability data for all 7 days
+  if (daysToShow === 0) {
+    // Not enough data yet (e.g., Monday before 3am)
+    console.log('[WinProb Chart] No completed days yet to show')
+    return
+  }
+  
+  // Build probability data for each completed day
   const d1: number[] = []
   const d2: number[] = []
   
-  for (let day = 0; day < 7; day++) {
+  for (let day = 0; day < daysToShow; day++) {
     let team1Prob: number
     let team2Prob: number
     
@@ -1675,30 +1690,26 @@ function buildWinProbChart() {
           team2CumulativeStats[catId] = (team2FinalStats[catId] || 0) * cumulativeWeights[day]
         }
       } else {
-        // For live matchups
-        if (day <= todayIndex) {
-          // Pro-rate current stats back to this day
-          const dayFraction = cumulativeWeights[day] / cumulativeWeights[todayIndex]
+        // For current week: estimate cumulative stats at end of this day
+        // The last data point (lastCompletedDayIndex) uses current stats directly
+        // Earlier days are pro-rated backward from current stats
+        if (day === lastCompletedDayIndex) {
+          // Last completed day = current stats (settled by 3am today)
           for (const catId of categoryIds) {
-            team1CumulativeStats[catId] = (team1FinalStats[catId] || 0) * dayFraction
-            team2CumulativeStats[catId] = (team2FinalStats[catId] || 0) * dayFraction
+            team1CumulativeStats[catId] = parseFloat(team1FinalStats[catId]) || 0
+            team2CumulativeStats[catId] = parseFloat(team2FinalStats[catId]) || 0
           }
         } else {
-          // Project forward from current using linear extrapolation
-          const remainingFraction = (cumulativeWeights[day] - cumulativeWeights[todayIndex]) / (1 - cumulativeWeights[todayIndex])
+          // Earlier days: pro-rate current stats backward
+          const dayFraction = cumulativeWeights[day] / cumulativeWeights[lastCompletedDayIndex]
           for (const catId of categoryIds) {
-            const currentStat1 = team1FinalStats[catId] || 0
-            const currentStat2 = team2FinalStats[catId] || 0
-            // Estimate what the full week would be, then scale to this day
-            const estimatedFull1 = currentStat1 / cumulativeWeights[todayIndex]
-            const estimatedFull2 = currentStat2 / cumulativeWeights[todayIndex]
-            team1CumulativeStats[catId] = estimatedFull1 * cumulativeWeights[day]
-            team2CumulativeStats[catId] = estimatedFull2 * cumulativeWeights[day]
+            team1CumulativeStats[catId] = (parseFloat(team1FinalStats[catId]) || 0) * dayFraction
+            team2CumulativeStats[catId] = (parseFloat(team2FinalStats[catId]) || 0) * dayFraction
           }
         }
       }
       
-      // Days remaining from THIS day's perspective
+      // Days remaining from THIS day's perspective (until end of week)
       const daysRemaining = 6 - day
       
       if (daysRemaining <= 0) {
@@ -1707,19 +1718,19 @@ function buildWinProbChart() {
         team2Prob = matchup.team2WinProb || 50
       } else {
         // Run Monte Carlo simulation for this day
-        // Calculate expected remaining stats (what's left to accumulate from this day to Sunday)
         const remainingFraction = 1 - cumulativeWeights[day]
         const team1ExpectedRemaining: Record<string, number> = {}
         const team2ExpectedRemaining: Record<string, number> = {}
         
         for (const catId of categoryIds) {
-          // Estimate full week stats, then calculate remaining
+          // Estimate full week stats from current data, then calculate remaining
+          const refDayWeight = isCompletedWeek ? 1.0 : cumulativeWeights[Math.min(lastCompletedDayIndex, day)]
           const fullWeekEstimate1 = isCompletedWeek 
-            ? team1FinalStats[catId] || 0
-            : (team1FinalStats[catId] || 0) / cumulativeWeights[Math.min(todayIndex, day)]
+            ? (parseFloat(team1FinalStats[catId]) || 0)
+            : (parseFloat(team1FinalStats[catId]) || 0) / refDayWeight
           const fullWeekEstimate2 = isCompletedWeek 
-            ? team2FinalStats[catId] || 0
-            : (team2FinalStats[catId] || 0) / cumulativeWeights[Math.min(todayIndex, day)]
+            ? (parseFloat(team2FinalStats[catId]) || 0)
+            : (parseFloat(team2FinalStats[catId]) || 0) / refDayWeight
           
           team1ExpectedRemaining[catId] = fullWeekEstimate1 * remainingFraction
           team2ExpectedRemaining[catId] = fullWeekEstimate2 * remainingFraction
@@ -1742,7 +1753,7 @@ function buildWinProbChart() {
     d2.push(Math.round(team2Prob * 10) / 10)
   }
   
-  console.log('[WinProb Chart] Final probabilities:', d1.map((p, i) => `${allDays[i]}: ${p}%`).join(', '))
+  console.log('[WinProb Chart] Final probabilities:', d1.map((p, i) => `${dayLabels[i]}: ${p}%`).join(', '))
   
   // Always use cyan/orange colors
   const c1 = '#06b6d4' // cyan
@@ -1754,7 +1765,7 @@ function buildWinProbChart() {
     colors: [c1, c2],
     fill: { type: 'gradient', gradient: { shadeIntensity: 1, opacityFrom: 0.4, opacityTo: 0.1, stops: [0, 100] } },
     stroke: { width: 2, curve: 'smooth' },
-    xaxis: { categories: allDays, labels: { style: { colors: '#9ca3af', fontSize: '10px' } } },
+    xaxis: { categories: dayLabels, labels: { style: { colors: '#9ca3af', fontSize: '10px' } } },
     yaxis: { min: 0, max: 100, labels: { style: { colors: '#9ca3af', fontSize: '10px' }, formatter: (v: number) => `${v.toFixed(0)}%` } },
     legend: { show: true, position: 'top', labels: { colors: '#9ca3af' }, fontSize: '11px' },
     grid: { borderColor: '#374151', strokeDashArray: 3 },
@@ -2010,9 +2021,11 @@ async function generateMatchupAnalysisImage(matchup: any, html2canvas: any) {
   // Determine what day of the week it is
   const now = new Date()
   const dayOfWeek = now.getDay()
+  const hourOfDay = now.getHours()
   const dayMap: Record<number, number> = { 1: 0, 2: 1, 3: 2, 4: 3, 5: 4, 6: 5, 0: 6 }
   const todayIndex = dayMap[dayOfWeek]
-  const completedDays = Math.max(1, todayIndex) // At least 1 point for the chart
+  const lastCompletedDayIndex = hourOfDay >= 3 ? todayIndex - 1 : todayIndex - 2
+  const completedDays = isCurrentWeek.value ? Math.max(1, lastCompletedDayIndex + 1) : 7
   
   const allDays = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
   const chartLabels = allDays.slice(0, completedDays)
