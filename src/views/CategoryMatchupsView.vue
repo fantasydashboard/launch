@@ -332,9 +332,9 @@
                   <th class="text-center py-2 px-1 cursor-help" title="Current week's stat total for this category">Current</th>
                   <th class="text-center py-2 px-1 cursor-help" title="Average weekly total for this category this season">Avg</th>
                   <th class="text-center py-2 px-1 cursor-help" title="Best single-week total for this category this season">High</th>
-                  <th class="text-center py-2 px-1 cursor-help" title="Probability of winning this category by end of week">Win%</th>
+                  <th class="text-center py-2 px-1 cursor-help" title="Probability of winning this category by end of week">Win Prob</th>
                   <th class="text-center py-2 px-1 w-10 cursor-help" title="Current category leader">ADV</th>
-                  <th class="text-center py-2 px-1 cursor-help" title="Probability of winning this category by end of week">Win%</th>
+                  <th class="text-center py-2 px-1 cursor-help" title="Probability of winning this category by end of week">Win Prob</th>
                   <th class="text-center py-2 px-1 cursor-help" title="Best single-week total for this category this season">High</th>
                   <th class="text-center py-2 px-1 cursor-help" title="Average weekly total for this category this season">Avg</th>
                   <th class="text-center py-2 px-1 cursor-help" title="Current week's stat total for this category">Current</th>
@@ -725,7 +725,22 @@ function getCategoryWinProb(m: any, id: string, team: 1|2) { const p = m.categor
 function getCategoryWinProbClass(p: number) { return p >= 65 ? 'text-green-400' : p >= 55 ? 'text-green-300' : p >= 45 ? 'text-dark-textMuted' : p >= 35 ? 'text-orange-300' : 'text-red-400' }
 function getCategoryAvg(k: string, id: string) { return teamSeasonStats.value.get(k)?.categoryAvgs?.[id] || 0 }
 function getCategoryHigh(k: string, id: string) { return teamSeasonStats.value.get(k)?.categoryHighs?.[id] || 0 }
-function formatStat(v: number, id: string) { return ['3','55','56'].includes(id) ? v.toFixed(3).replace(/^0/,'') : ['26','27'].includes(id) ? v.toFixed(2) : Math.round(v).toString() }
+// Build a set of stat IDs that are percentage categories (display_name contains "%")
+function isPercentageStat(id: string): boolean {
+  const cat = categories.value.find((c: any) => String(c.stat_id) === id)
+  return !!(cat && (cat.display_name || cat.name || '').includes('%'))
+}
+// Build a set of stat IDs that are ratio categories (display_name contains "/")
+function isRatioStat(id: string): boolean {
+  const cat = categories.value.find((c: any) => String(c.stat_id) === id)
+  return !!(cat && (cat.display_name || cat.name || '').includes('/'))
+}
+function formatStat(v: number, id: string) {
+  if (isPercentageStat(id)) return (v * 100).toFixed(1) + '%'
+  if (isRatioStat(id)) return v.toFixed(2)
+  if (['26','27'].includes(id)) return v.toFixed(2)
+  return Math.round(v).toString()
+}
 function generateScoutingReport(teamKey: string) {
   const stats = teamSeasonStats.value.get(teamKey)
   if (!stats) return { recentForm: [], strengths: [], weaknesses: [] }
@@ -2505,13 +2520,13 @@ async function generateCategoryBreakdownImage(matchup: any, html2canvas: any) {
           <table style="width: 100%; border-collapse: collapse;">
             <thead>
               <tr style="border-bottom: 1px solid rgba(250, 204, 21, 0.3);">
-                <th style="padding: 6px 4px; text-align: center; color: ${team1Color}; font-size: 10px; text-transform: uppercase;">Win%</th>
+                <th style="padding: 6px 4px; text-align: center; color: ${team1Color}; font-size: 10px; text-transform: uppercase;">Win Prob</th>
                 <th style="padding: 6px 4px; text-align: center; color: ${team1Color}; font-size: 10px; text-transform: uppercase;">Stat</th>
                 <th style="padding: 6px 4px; width: 30px; text-align: center; color: ${team1Color}; font-size: 10px; text-transform: uppercase;">Adv</th>
                 <th style="padding: 6px 4px; text-align: center; color: #6b7280; font-size: 10px; text-transform: uppercase;">Category</th>
                 <th style="padding: 6px 4px; width: 30px; text-align: center; color: ${team2Color}; font-size: 10px; text-transform: uppercase;">Adv</th>
                 <th style="padding: 6px 4px; text-align: center; color: ${team2Color}; font-size: 10px; text-transform: uppercase;">Stat</th>
-                <th style="padding: 6px 4px; text-align: center; color: ${team2Color}; font-size: 10px; text-transform: uppercase;">Win%</th>
+                <th style="padding: 6px 4px; text-align: center; color: ${team2Color}; font-size: 10px; text-transform: uppercase;">Win Prob</th>
               </tr>
             </thead>
             <tbody>
