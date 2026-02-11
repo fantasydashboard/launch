@@ -1084,7 +1084,7 @@ async function loadTeamSeasonStats(leagueKey: string, currentWeekNum: number) {
           for (const sw of (matchup.stat_winners || [])) {
             if (sw.is_tied) continue
             if (sw.winner_team_key === t1.team_key) t1Wins++
-            else t2Wins++
+            else if (sw.winner_team_key === t2.team_key) t2Wins++
           }
           
           // Store in matchup history (use sorted key so we find it regardless of order)
@@ -1533,7 +1533,7 @@ async function loadMatchups() {
           categoryIds.push(id)
           if (sw.is_tied) { ties++; catProbs[id] = { team1: 50, team2: 50 } }
           else if (sw.winner_team_key === t1.team_key) w1++
-          else w2++
+          else if (sw.winner_team_key === t2.team_key) w2++
           catProbs[id] = calcCatWinProb(parseFloat(t1.stats?.[id]||0), parseFloat(t2.stats?.[id]||0), id, days)
         }
         
