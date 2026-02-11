@@ -237,9 +237,12 @@
             <!-- Chart -->
             <div class="bg-dark-border/30 rounded-xl p-4">
               <h4 class="text-sm font-semibold text-dark-textMuted mb-3">Win Probability Trend</h4>
+              <div v-if="chartLoading" class="h-48 flex items-center justify-center">
+                <div class="text-dark-textMuted text-sm animate-pulse">Loading daily stats...</div>
+              </div>
               <div ref="winProbChartEl" class="h-48"></div>
-              <p class="text-xs text-dark-textMuted mt-2 text-center">Each day shows the estimated win probability after that night's games (settled by 3am).</p>
-              <p class="text-xs text-dark-textMuted mt-1 text-center italic">Based on 10,000 Monte Carlo simulations. Past days are estimated from current cumulative stats.</p>
+              <p class="text-xs text-dark-textMuted mt-2 text-center">Win probability after each day based on real cumulative stats.</p>
+              <p class="text-xs text-dark-textMuted mt-1 text-center italic">10,000 Monte Carlo simulations per day using actual daily stat data.</p>
             </div>
           </div>
         </div>
@@ -1577,66 +1580,198 @@ async function loadMatchups() {
 
 function selectMatchup(m: any) { selectedMatchup.value = m; nextTick(() => buildWinProbChart()) }
 
-// Get daily weights for a sport (how stats are distributed across the week)
+// Compute the 7 dates (Mon-Sun) for a given matchup week number
+function getWeekDates(weekNum: number, currentWeekNum: number): string[] {
+  const today = new Date()
+  // Find Monday of current week
+  const dayOfWeek = today.getDay() // 0=Sun, 1=Mon...
+  const daysFromMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1
+  const currentMonday = new Date(today.getFullYear(), today.getMonth(), today.getDate() - daysFromMonday)
+  
+  // Calculate Monday of target week
+  const weekDiff = weekNum - currentWeekNum
+  const targetMonday = new Date(currentMonday)
+  targetMonday.setDate(currentMonday.getDate() + weekDiff * 7)
+  
+  const dates: string[] = []
+  for (let i = 0; i < 7; i++) {
+    const d = new Date(targetMonday)
+    d.setDate(targetMonday.getDate() + i)
+    const yyyy = d.getFullYear()
+    const mm = String(d.getMonth() + 1).padStart(2, '0')
+    const dd = String(d.getDate()).padStart(2, '0')
+    dates.push(`${yyyy}-${mm}-${dd}`)
+  }
+  return dates
+}
+
+// Get daily weights for a sport (how stats are distributed across the week) - used by ESPN fallback
 function getDailyWeights(sport: string): number[] {
-  // Baseball: games every day, fairly even
-  if (sport === 'baseball') {
-    return [0.14, 0.15, 0.15, 0.14, 0.14, 0.14, 0.14]
-  }
-  // Hockey: varies by day
-  if (sport === 'hockey') {
-    return [0.10, 0.15, 0.12, 0.16, 0.14, 0.17, 0.16]
-  }
-  // Basketball: varies by day  
-  if (sport === 'basketball') {
-    return [0.12, 0.14, 0.15, 0.14, 0.15, 0.16, 0.14]
-  }
-  // Default: even distribution
+  if (sport === 'baseball') return [0.14, 0.15, 0.15, 0.14, 0.14, 0.14, 0.14]
+  if (sport === 'hockey') return [0.10, 0.15, 0.12, 0.16, 0.14, 0.17, 0.16]
+  if (sport === 'basketball') return [0.12, 0.14, 0.15, 0.14, 0.15, 0.16, 0.14]
   return [1/7, 1/7, 1/7, 1/7, 1/7, 1/7, 1/7]
 }
 
-function buildWinProbChart() {
+const chartLoading = ref(false)
+
+async function buildWinProbChart() {
   if (!winProbChartEl.value || !selectedMatchup.value) return
   if (winProbChart) { winProbChart.destroy(); winProbChart = null }
   
   const matchup = selectedMatchup.value
-  const allDays = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
+  const allDayLabels = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
   
-  // Check if this is a completed week (all games done)
   const isCompletedWeek = !isCurrentWeek.value
+  const weekNum = parseInt(selectedWeek.value)
   
-  // Determine what day of the week it is for live matchups
   const now = new Date()
-  const dayOfWeek = now.getDay()
   const hourOfDay = now.getHours()
+  const dayOfWeek = now.getDay()
   const dayMap: Record<number, number> = { 1: 0, 2: 1, 3: 2, 4: 3, 5: 4, 6: 5, 0: 6 }
   const todayIndex = dayMap[dayOfWeek]
   
-  // Last completed day = yesterday (games finish overnight, stats settled by ~3am)
-  // If before 3am, treat 2 days ago as last completed day
+  // Last completed day = yesterday (stats settle by ~3am)
   const lastCompletedDayIndex = hourOfDay >= 3 ? todayIndex - 1 : todayIndex - 2
+  const daysToShow = isCompletedWeek ? 7 : Math.max(0, lastCompletedDayIndex + 1)
   
-  // Get current/final stats from the matchup
+  if (daysToShow === 0) {
+    console.log('[WinProb Chart] No completed days yet to show')
+    return
+  }
+  
+  const team1Key = matchup.team1?.team_key
+  const team2Key = matchup.team2?.team_key
+  
+  // Get scoring category IDs
+  const scoringCatIds = categories.value
+    .filter((c: any) => c.is_only_display_stat !== '1' && c.is_only_display_stat !== 1)
+    .map((c: any) => String(c.stat_id))
+  
+  if (scoringCatIds.length === 0 || !team1Key || !team2Key) {
+    console.log('[WinProb Chart] Missing data - falling back to simple chart')
+    buildSimpleWinProbChart(matchup, daysToShow, allDayLabels)
+    return
+  }
+  
+  // For Yahoo leagues, fetch real daily stats
+  const isYahoo = !isEspn.value
+  
+  if (!isYahoo) {
+    buildSimpleWinProbChart(matchup, daysToShow, allDayLabels)
+    return
+  }
+  
+  chartLoading.value = true
+  
+  try {
+    const weekDates = getWeekDates(weekNum, currentWeek.value)
+    const datesToFetch = weekDates.slice(0, daysToShow)
+    
+    console.log('[WinProb Chart] Fetching real daily stats for', datesToFetch.length, 'days:', datesToFetch)
+    
+    // Fetch daily stats for both teams - all days in parallel
+    const [team1DailyResults, team2DailyResults] = await Promise.all([
+      Promise.all(datesToFetch.map(date => 
+        yahooService.getTeamDailyStats(team1Key, date).catch(err => {
+          console.warn(`[WinProb Chart] Failed to fetch ${team1Key} on ${date}:`, err)
+          return {} as Record<string, string>
+        })
+      )),
+      Promise.all(datesToFetch.map(date => 
+        yahooService.getTeamDailyStats(team2Key, date).catch(err => {
+          console.warn(`[WinProb Chart] Failed to fetch ${team2Key} on ${date}:`, err)
+          return {} as Record<string, string>
+        })
+      ))
+    ])
+    
+    console.log('[WinProb Chart] Got daily stats. Day 0 sample:', 
+      Object.entries(team1DailyResults[0] || {}).slice(0, 3))
+    
+    // Build cumulative stats day by day and run Monte Carlo at each point
+    const d1: number[] = []
+    const d2: number[] = []
+    
+    const team1Cumulative: Record<string, number> = {}
+    const team2Cumulative: Record<string, number> = {}
+    
+    for (let day = 0; day < daysToShow; day++) {
+      const t1Daily = team1DailyResults[day] || {}
+      const t2Daily = team2DailyResults[day] || {}
+      
+      // Accumulate all stats from this day
+      const allStatIds = new Set([
+        ...Object.keys(t1Daily), ...Object.keys(t2Daily), 
+        ...Object.keys(team1Cumulative), ...Object.keys(team2Cumulative)
+      ])
+      for (const statId of allStatIds) {
+        const v1 = parseFloat(t1Daily[statId] || '0') || 0
+        const v2 = parseFloat(t2Daily[statId] || '0') || 0
+        team1Cumulative[statId] = (team1Cumulative[statId] || 0) + v1
+        team2Cumulative[statId] = (team2Cumulative[statId] || 0) + v2
+      }
+      
+      // Extract scoring category stats for Monte Carlo
+      const t1Stats: Record<string, number> = {}
+      const t2Stats: Record<string, number> = {}
+      for (const catId of scoringCatIds) {
+        t1Stats[catId] = team1Cumulative[catId] || 0
+        t2Stats[catId] = team2Cumulative[catId] || 0
+      }
+      
+      const daysRemaining = 6 - day
+      
+      if (daysRemaining <= 0) {
+        // Final day (Sunday) - deterministic
+        const inverseStats = INVERSE_STATS
+        let w1 = 0, w2 = 0
+        for (const catId of scoringCatIds) {
+          const v1 = t1Stats[catId], v2 = t2Stats[catId]
+          if (inverseStats.includes(catId)) {
+            if (v1 < v2) w1++; else if (v2 < v1) w2++
+          } else {
+            if (v1 > v2) w1++; else if (v2 > v1) w2++
+          }
+        }
+        d1.push(w1 > w2 ? 100 : w1 === w2 ? 50 : 0)
+        d2.push(w2 > w1 ? 100 : w1 === w2 ? 50 : 0)
+      } else {
+        // Run Monte Carlo with real cumulative stats + remaining variance
+        const mcResult = calcOverallWinProb(t1Stats, t2Stats, scoringCatIds, daysRemaining)
+        d1.push(Math.round(mcResult.team1 * 10) / 10)
+        d2.push(Math.round(mcResult.team2 * 10) / 10)
+      }
+    }
+    
+    console.log('[WinProb Chart] Real data probabilities:', 
+      d1.map((p, i) => `${allDayLabels[i]}: ${p}%`).join(', '))
+    
+    renderWinProbChart(matchup, d1, d2, allDayLabels.slice(0, daysToShow))
+  } catch (e) {
+    console.error('[WinProb Chart] Error fetching daily stats, falling back:', e)
+    buildSimpleWinProbChart(matchup, daysToShow, allDayLabels)
+  } finally {
+    chartLoading.value = false
+  }
+}
+
+// Fallback chart for ESPN or when Yahoo daily stats fail (uses estimation)
+function buildSimpleWinProbChart(matchup: any, daysToShow: number, allDayLabels: string[]) {
+  if (!winProbChartEl.value) return
+  
+  const isCompletedWeek = !isCurrentWeek.value
   const team1FinalStats = matchup.team1Stats || {}
   const team2FinalStats = matchup.team2Stats || {}
   const categoryIds = Object.keys(team1FinalStats)
   
-  if (categoryIds.length === 0) {
-    console.log('[WinProb Chart] No category data available')
-    return
-  }
+  if (categoryIds.length === 0) return
   
-  // Calculate final winner for completed matchups
   const team1FinalWins = matchup.team1CatWins || 0
   const team2FinalWins = matchup.team2CatWins || 0
-  const team1IsFinalWinner = team1FinalWins > team2FinalWins
-  const team2IsFinalWinner = team2FinalWins > team1FinalWins
   
-  // Get sport-specific daily weights
   const sport = currentSport.value
   const dailyWeights = getDailyWeights(sport)
-  
-  // Calculate cumulative weights
   let cumulativeWeight = 0
   const cumulativeWeights: number[] = []
   for (let i = 0; i < 7; i++) {
@@ -1644,106 +1779,57 @@ function buildWinProbChart() {
     cumulativeWeights.push(cumulativeWeight)
   }
   
-  // How many days to show
-  const daysToShow = isCompletedWeek ? 7 : Math.max(0, lastCompletedDayIndex + 1)
-  const dayLabels = allDays.slice(0, daysToShow)
+  const now = new Date()
+  const hourOfDay = now.getHours()
+  const dayOfWeek = now.getDay()
+  const dayMap: Record<number, number> = { 1: 0, 2: 1, 3: 2, 4: 3, 5: 4, 6: 5, 0: 6 }
+  const lastCompletedDayIndex = (hourOfDay >= 3 ? dayMap[dayOfWeek] - 1 : dayMap[dayOfWeek] - 2)
   
-  console.log('[WinProb Chart] Building chart for matchup:', matchup.team1.name, 'vs', matchup.team2.name)
-  console.log('[WinProb Chart] isCompletedWeek:', isCompletedWeek, 'todayIndex:', todayIndex, 'lastCompletedDay:', lastCompletedDayIndex, 'daysToShow:', daysToShow)
-  console.log('[WinProb Chart] Categories:', categoryIds.length, 'Final wins:', team1FinalWins, '-', team2FinalWins)
-  
-  if (daysToShow === 0) {
-    // Not enough data yet (e.g., Monday before 3am)
-    console.log('[WinProb Chart] No completed days yet to show')
-    return
-  }
-  
-  // Build probability data for each completed day
   const d1: number[] = []
   const d2: number[] = []
   
   for (let day = 0; day < daysToShow; day++) {
-    let team1Prob: number
-    let team2Prob: number
+    let team1Prob: number, team2Prob: number
     
     if (day === 6 && isCompletedWeek) {
-      // SUNDAY on completed matchup - deterministic 100/0
-      if (team1IsFinalWinner) {
-        team1Prob = 100
-        team2Prob = 0
-      } else if (team2IsFinalWinner) {
-        team1Prob = 0
-        team2Prob = 100
-      } else {
-        team1Prob = 50
-        team2Prob = 50
-      }
+      const t1w = team1FinalWins > team2FinalWins
+      const t2w = team2FinalWins > team1FinalWins
+      team1Prob = t1w ? 100 : t2w ? 0 : 50
+      team2Prob = t2w ? 100 : t1w ? 0 : 50
     } else {
-      // Calculate cumulative stats at end of this day
       const team1CumulativeStats: Record<string, number> = {}
       const team2CumulativeStats: Record<string, number> = {}
       
       if (isCompletedWeek) {
-        // Distribute final stats across the week based on daily weights
         for (const catId of categoryIds) {
-          team1CumulativeStats[catId] = (team1FinalStats[catId] || 0) * cumulativeWeights[day]
-          team2CumulativeStats[catId] = (team2FinalStats[catId] || 0) * cumulativeWeights[day]
+          team1CumulativeStats[catId] = (parseFloat(team1FinalStats[catId]) || 0) * cumulativeWeights[day]
+          team2CumulativeStats[catId] = (parseFloat(team2FinalStats[catId]) || 0) * cumulativeWeights[day]
         }
       } else {
-        // For current week: estimate cumulative stats at end of this day
-        // The last data point (lastCompletedDayIndex) uses current stats directly
-        // Earlier days are pro-rated backward from current stats
-        if (day === lastCompletedDayIndex) {
-          // Last completed day = current stats (settled by 3am today)
-          for (const catId of categoryIds) {
-            team1CumulativeStats[catId] = parseFloat(team1FinalStats[catId]) || 0
-            team2CumulativeStats[catId] = parseFloat(team2FinalStats[catId]) || 0
-          }
-        } else {
-          // Earlier days: pro-rate current stats backward
-          const dayFraction = cumulativeWeights[day] / cumulativeWeights[lastCompletedDayIndex]
-          for (const catId of categoryIds) {
-            team1CumulativeStats[catId] = (parseFloat(team1FinalStats[catId]) || 0) * dayFraction
-            team2CumulativeStats[catId] = (parseFloat(team2FinalStats[catId]) || 0) * dayFraction
-          }
+        const refDay = Math.max(0, lastCompletedDayIndex)
+        const dayFraction = day <= refDay ? cumulativeWeights[day] / cumulativeWeights[refDay] : 1
+        for (const catId of categoryIds) {
+          team1CumulativeStats[catId] = (parseFloat(team1FinalStats[catId]) || 0) * dayFraction
+          team2CumulativeStats[catId] = (parseFloat(team2FinalStats[catId]) || 0) * dayFraction
         }
       }
       
-      // Days remaining from THIS day's perspective (until end of week)
       const daysRemaining = 6 - day
-      
       if (daysRemaining <= 0) {
-        // Sunday - use current probability (no more variance)
         team1Prob = matchup.team1WinProb || 50
         team2Prob = matchup.team2WinProb || 50
       } else {
-        // Run Monte Carlo simulation for this day
         const remainingFraction = 1 - cumulativeWeights[day]
         const team1ExpectedRemaining: Record<string, number> = {}
         const team2ExpectedRemaining: Record<string, number> = {}
-        
+        const refDayWeight = isCompletedWeek ? 1.0 : cumulativeWeights[Math.max(0, Math.min(lastCompletedDayIndex, day))]
         for (const catId of categoryIds) {
-          // Estimate full week stats from current data, then calculate remaining
-          const refDayWeight = isCompletedWeek ? 1.0 : cumulativeWeights[Math.min(lastCompletedDayIndex, day)]
-          const fullWeekEstimate1 = isCompletedWeek 
-            ? (parseFloat(team1FinalStats[catId]) || 0)
-            : (parseFloat(team1FinalStats[catId]) || 0) / refDayWeight
-          const fullWeekEstimate2 = isCompletedWeek 
-            ? (parseFloat(team2FinalStats[catId]) || 0)
-            : (parseFloat(team2FinalStats[catId]) || 0) / refDayWeight
-          
-          team1ExpectedRemaining[catId] = fullWeekEstimate1 * remainingFraction
-          team2ExpectedRemaining[catId] = fullWeekEstimate2 * remainingFraction
+          const full1 = isCompletedWeek ? (parseFloat(team1FinalStats[catId]) || 0) : (parseFloat(team1FinalStats[catId]) || 0) / refDayWeight
+          const full2 = isCompletedWeek ? (parseFloat(team2FinalStats[catId]) || 0) : (parseFloat(team2FinalStats[catId]) || 0) / refDayWeight
+          team1ExpectedRemaining[catId] = full1 * remainingFraction
+          team2ExpectedRemaining[catId] = full2 * remainingFraction
         }
-        
-        const mcResult = runCategoryMonteCarloWithCumulative(
-          team1CumulativeStats,
-          team2CumulativeStats,
-          team1ExpectedRemaining,
-          team2ExpectedRemaining,
-          categoryIds,
-          daysRemaining
-        )
+        const mcResult = runCategoryMonteCarloWithCumulative(team1CumulativeStats, team2CumulativeStats, team1ExpectedRemaining, team2ExpectedRemaining, categoryIds, daysRemaining)
         team1Prob = mcResult.team1
         team2Prob = mcResult.team2
       }
@@ -1753,9 +1839,14 @@ function buildWinProbChart() {
     d2.push(Math.round(team2Prob * 10) / 10)
   }
   
-  console.log('[WinProb Chart] Final probabilities:', d1.map((p, i) => `${dayLabels[i]}: ${p}%`).join(', '))
+  renderWinProbChart(matchup, d1, d2, allDayLabels.slice(0, daysToShow))
+}
+
+// Render the ApexCharts win probability chart
+function renderWinProbChart(matchup: any, d1: number[], d2: number[], dayLabels: string[]) {
+  if (!winProbChartEl.value) return
+  if (winProbChart) { winProbChart.destroy(); winProbChart = null }
   
-  // Always use cyan/orange colors
   const c1 = '#06b6d4' // cyan
   const c2 = '#f97316' // orange
   

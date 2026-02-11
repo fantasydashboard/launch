@@ -1571,6 +1571,39 @@ export class YahooFantasyService {
   }
   
   /**
+   * Get a team's stats for a specific date (e.g., "2026-02-10")
+   * Returns stats map like { "60": "123", "7": "45", ... }
+   */
+  async getTeamDailyStats(teamKey: string, date: string): Promise<Record<string, string>> {
+    const cacheKey = 'yahoo_daily_stats'
+    const cached = cache.get<Record<string, string>>(cacheKey, teamKey, date)
+    if (cached) {
+      return cached
+    }
+    
+    console.log(`[Yahoo] Fetching daily stats for ${teamKey} on ${date}`)
+    
+    const data = await this.apiRequest(
+      `/team/${teamKey}/stats;type=date;date=${date}?format=json`
+    )
+    
+    const stats: Record<string, string> = {}
+    const teamStats = data.fantasy_content?.team?.[1]?.team_stats?.stats || []
+    for (const statWrapper of teamStats) {
+      if (statWrapper?.stat) {
+        stats[String(statWrapper.stat.stat_id)] = statWrapper.stat.value
+      }
+    }
+    
+    // Past dates cached for 24h, today gets short TTL
+    const today = new Date().toISOString().split('T')[0]
+    const ttl = date < today ? CACHE_TTL.COMPLETED : CACHE_TTL.CURRENT
+    cache.set(cacheKey, stats, ttl, teamKey, date)
+    
+    return stats
+  }
+
+  /**
    * Clear all Yahoo caches
    */
   clearAllCache(): void {
