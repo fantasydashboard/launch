@@ -1339,6 +1339,16 @@ async function loadCategories() {
       const scoringSettings = await espnService.getScoringSettings(sport, leagueId, season)
       const scoringItems = scoringSettings?.scoringItems || []
       
+      // DEBUG: Log raw scoring items to see what ESPN actually returns
+      console.log(`[Matchups ESPN DEBUG] Raw scoringSettings keys:`, Object.keys(scoringSettings))
+      console.log(`[Matchups ESPN DEBUG] scoringItems count:`, scoringItems.length)
+      console.log(`[Matchups ESPN DEBUG] Raw scoringItems:`, JSON.stringify(scoringItems.slice(0, 5), null, 2))
+      console.log(`[Matchups ESPN DEBUG] All scoringItem statIds:`, scoringItems.map((i: any) => `${i.statId}(${i.label||i.abbreviation||i.abbrev||'?'})`).join(', '))
+      
+      // Also check if there's a statCategories or other useful field
+      if (scoringSettings.statCategories) console.log('[Matchups ESPN DEBUG] statCategories:', JSON.stringify(scoringSettings.statCategories))
+      if (scoringSettings.scoringType) console.log('[Matchups ESPN DEBUG] scoringType:', scoringSettings.scoringType)
+      
       // ESPN stat ID mappings by sport - comprehensive list
       const espnBaseballStatNames: Record<number, { name: string; display: string; isNegative?: boolean }> = {
         // Batting stats
@@ -1477,17 +1487,29 @@ async function loadCategories() {
         1: { name: 'Blocks', display: 'BLK' },
         2: { name: 'Steals', display: 'STL' },
         3: { name: 'Assists', display: 'AST' },
+        4: { name: 'Offensive Rebounds', display: 'OREB' },
+        5: { name: 'Defensive Rebounds', display: 'DREB' },
         6: { name: 'Rebounds', display: 'REB' },
+        7: { name: 'Ejections', display: 'EJ', isNegative: true },
+        8: { name: 'Flagrant Fouls', display: 'FF', isNegative: true },
+        9: { name: 'Personal Fouls', display: 'PF', isNegative: true },
+        10: { name: 'Technical Fouls', display: 'TF', isNegative: true },
         11: { name: 'Turnovers', display: 'TO', isNegative: true },
+        12: { name: 'Disqualifications', display: 'DQ', isNegative: true },
         13: { name: 'Field Goals Made', display: 'FGM' },
         14: { name: 'Field Goals Attempted', display: 'FGA' },
-        15: { name: 'Field Goal Pct', display: 'FG%' },
-        16: { name: 'Free Throws Made', display: 'FTM' },
-        17: { name: 'Free Throws Attempted', display: 'FTA' },
-        18: { name: 'Free Throw Pct', display: 'FT%' },
-        19: { name: '3-Pointers Made', display: '3PM' },
-        20: { name: '3-Pointers Attempted', display: '3PA' },
-        21: { name: '3-Point Pct', display: '3P%' }
+        15: { name: 'Free Throws Made', display: 'FTM' },
+        16: { name: 'Free Throws Attempted', display: 'FTA' },
+        17: { name: '3-Pointers Made', display: '3PM' },
+        18: { name: '3-Pointers Attempted', display: '3PA' },
+        19: { name: 'Field Goal Pct', display: 'FG%' },
+        20: { name: 'Free Throw Pct', display: 'FT%' },
+        21: { name: '3-Point Pct', display: '3P%' },
+        37: { name: 'Double-Doubles', display: 'DD' },
+        38: { name: 'Triple-Doubles', display: 'TD' },
+        40: { name: 'Games Played', display: 'GP' },
+        41: { name: 'Minutes', display: 'MIN' },
+        42: { name: 'Games Started', display: 'GS' }
       }
       
       const statNames = sport === 'hockey' ? espnHockeyStatNames 
@@ -1529,6 +1551,17 @@ async function loadCategories() {
           try {
             const sampleMatchups = await espnService.getMatchups(sport, leagueId, season, w)
             for (const m of sampleMatchups) {
+              // DEBUG: Log raw matchup data to see scoreByStat structure
+              if (w === currentWeekNum && !activeStatIds) {
+                console.log(`[Matchups ESPN DEBUG] Week ${w} matchup scoreByStat keys:`, m.homeScoreByStat ? Object.keys(m.homeScoreByStat) : 'null')
+                console.log(`[Matchups ESPN DEBUG] Week ${w} matchup homePerCategoryResults:`, m.homePerCategoryResults)
+                if (m.homeScoreByStat) {
+                  // Show first few entries with their result field
+                  const entries = Object.entries(m.homeScoreByStat).slice(0, 15)
+                  console.log(`[Matchups ESPN DEBUG] scoreByStat sample:`, entries.map(([id, data]: [string, any]) => `${id}: result=${data.result}, score=${data.score}`).join(' | '))
+                }
+              }
+              
               // homePerCategoryResults only has stats with WIN/LOSS/TIE results (true categories)
               const perCatResults = m.homePerCategoryResults || m.awayPerCategoryResults
               if (perCatResults && Object.keys(perCatResults).length > 0) {
