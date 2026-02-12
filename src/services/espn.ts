@@ -3878,11 +3878,13 @@ export class EspnFantasyService {
             hasRealStatValues = true
             weekHasRealData = true
             
-            // Discover active category stat IDs from scoreByStat (first time only)
+            // Discover active category stat IDs from perCategoryResults (first time only)
+            // homePerCategoryResults only contains stats with WIN/LOSS/TIE results (true categories)
+            // scoreByStat contains ALL stats including ones with result:null (not categories)
             if (!activeStatIds) {
-              const sbs = matchup.homeScoreByStat
-              if (sbs && Object.keys(sbs).length > 0) {
-                activeStatIds = new Set(Object.keys(sbs))
+              const perCatKeys = Object.keys(matchup.homePerCategoryResults)
+              if (perCatKeys.length > 0) {
+                activeStatIds = new Set(perCatKeys)
                 const beforeCount = categories.length
                 const filteredCategories = categories.filter(c => activeStatIds!.has(c.stat_id))
                 if (filteredCategories.length > 0 && filteredCategories.length < beforeCount) {
@@ -3890,7 +3892,7 @@ export class EspnFantasyService {
                   categories.push(...filteredCategories)
                   categoryStatIds.length = 0
                   categoryStatIds.push(...filteredCategories.map(c => c.stat_id))
-                  console.log(`[ESPN getCategoryStatsBreakdown] Filtered categories from ${beforeCount} to ${categories.length} using scoreByStat keys:`, [...activeStatIds])
+                  console.log(`[ESPN getCategoryStatsBreakdown] Filtered categories from ${beforeCount} to ${categories.length} using perCategoryResults:`, categories.map(c => c.display_name))
                 }
               }
             }
