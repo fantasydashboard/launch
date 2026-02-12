@@ -1632,6 +1632,9 @@ async function loadCategories() {
         console.warn('[Matchups ESPN] Category filtering failed:', e)
       }
       
+      // ESPN's scoringItems array comes in reverse order from their on-site display
+      categories.value = categories.value.reverse()
+      
       console.log(`[Matchups ESPN ${sport}] Final`, categories.value.length, 'categories:', categories.value.map(c => c.display_name))
     } else {
       // Yahoo categories
