@@ -1508,91 +1508,60 @@ async function loadCategories() {
         : espnBaseballStatNames
       
       // ESPN scoringItems is the authoritative list of H2H categories.
-      // CRITICAL: For hockey and baseball, scoringItems use LOCAL stat IDs per statSourceId:
-      //   Hockey: statSourceId=0 (skater), statSourceId=1 (goalie, offset +19)
-      //   Baseball: statSourceId=0 (batting), statSourceId=1 (pitching, offset +35)
-      //   Basketball: no statSourceId distinction
-      // We must convert local IDs to global IDs to match our mapping dictionaries and valuesByStat.
-      const sourceOffsets: Record<string, Record<number, number>> = {
-        hockey: { 0: 0, 1: 19 },    // Goalie stats start at global ID 19
-        baseball: { 0: 0, 1: 35 },   // Pitching stats start at global ID 35
-        basketball: { 0: 0 },
-        football: { 0: 0 }
-      }
-      const offsets = sourceOffsets[sport] || { 0: 0 }
-      
-      // Build categories from scoringItems with proper global IDs
+      // IMPORTANT: scoringItems already uses GLOBAL stat IDs (e.g., hockey W=19, GAA=22, SV%=24).
+      // statSourceId is just metadata — do NOT apply an offset.
+      // Offsets are only needed for PLAYER-LEVEL stats from roster data.
       const scoringCategories = scoringItems.map((item: any) => {
-        const localStatId = item.statId ?? item.id ?? 0
-        const sourceId = item.statSourceId ?? 0
-        const offset = offsets[sourceId] ?? 0
-        const globalStatId = localStatId + offset
-        const globalStatIdStr = String(globalStatId)
+        const statId = item.statId ?? item.id ?? 0
+        const statIdStr = String(statId)
         
-        const statInfo = statNames[globalStatId] || { 
-          name: `Stat ${globalStatId}`, display: `S${globalStatId}` 
+        const statInfo = statNames[statId] || { 
+          name: `Stat ${statId}`, display: `S${statId}` 
         }
         
-        console.log(`[Matchups ESPN] scoringItem: local=${localStatId}, source=${sourceId}, offset=${offset}, global=${globalStatId} → ${statInfo.display}`)
+        console.log(`[Matchups ESPN] scoringItem: statId=${statId}, source=${item.statSourceId ?? '?'} → ${statInfo.display}`)
         
         return {
-          stat_id: globalStatIdStr,
+          stat_id: statIdStr,
           name: statInfo.name,
           display_name: statInfo.display,
           is_negative: statInfo.isNegative
         }
       }).filter((c: any) => c.stat_id !== '')
       
+      // Use scoringItems directly — they ARE the H2H categories
+      categories.value = scoringCategories
       console.log(`[Matchups ESPN] ${scoringCategories.length} categories from scoringItems:`, scoringCategories.map((c: any) => `${c.stat_id}=${c.display_name}`))
       
-      // Cross-reference with valuesByStat to validate — only keep categories that have actual data
-      try {
-        const teams = await espnService.getTeams(sport, leagueId, season)
-        const teamWithStats = teams.find(t => t.valuesByStat && Object.keys(t.valuesByStat).length > 0)
-        
-        if (teamWithStats?.valuesByStat) {
-          const valuesByStatKeys = new Set(Object.keys(teamWithStats.valuesByStat))
-          console.log(`[Matchups ESPN] valuesByStat has ${valuesByStatKeys.size} stats:`, [...valuesByStatKeys].map(id => `${id}=${statNames[parseInt(id)]?.display || '?'}`).join(', '))
-          
-          // Filter scoringCategories to only those present in valuesByStat
-          const validCategories = scoringCategories.filter((c: any) => valuesByStatKeys.has(c.stat_id))
-          
-          if (validCategories.length > 0) {
-            categories.value = validCategories
-            console.log(`[Matchups ESPN] After valuesByStat cross-reference: ${validCategories.length} categories (was ${scoringCategories.length})`)
-          } else {
-            // If cross-reference removed everything, scoringItems might already have global IDs
-            // (this happens when there's no statSourceId). Use scoringCategories as-is.
-            console.warn(`[Matchups ESPN] Cross-reference removed all categories — using scoringItems directly`)
-            categories.value = scoringCategories
-          }
-        } else {
-          categories.value = scoringCategories
-        }
-      } catch (e) {
-        console.warn('[Matchups ESPN] Team data fetch failed, using scoringItems:', e)
-        categories.value = scoringCategories
-      }
-      
       // Order categories to match ESPN's standard display order per sport
-      // ESPN groups: skater stats first, then goalie stats (hockey); batting then pitching (baseball)
       const espnDisplayOrder: Record<string, string[]> = {
         hockey: ['0','1','3','4','7','5','6','8','9','10','11','12','13','14','15','16','17','29','30','31','19','20','22','24','25','26','27','28','38'],
         basketball: ['19','20','17','6','3','2','1','0','11','13','14','15','16','18','21','37','38','40','41'],
         baseball: ['8','2','3','4','5','6','1','7','9','10','11','16','35','37','43','47','48','53','36','39','44','45','41','42','56','57'],
-        football: [] // Use as-is
+        football: []
       }
       const displayOrder = espnDisplayOrder[sport] || []
       if (displayOrder.length > 0) {
         categories.value.sort((a: any, b: any) => {
           const ai = displayOrder.indexOf(a.stat_id)
           const bi = displayOrder.indexOf(b.stat_id)
-          // Known stats sorted by ESPN order, unknown stats appended at end
           if (ai === -1 && bi === -1) return 0
           if (ai === -1) return 1
           if (bi === -1) return -1
           return ai - bi
         })
+      }
+      
+      // Store schedule settings for extended matchup detection
+      const scheduleSettings = scoringSettings?._scheduleSettings
+      if (scheduleSettings?.matchupPeriods) {
+        console.log(`[Matchups ESPN] Schedule has ${Object.keys(scheduleSettings.matchupPeriods).length} matchup periods`)
+        for (const [mpId, spIds] of Object.entries(scheduleSettings.matchupPeriods)) {
+          const periods = spIds as number[]
+          if (periods.length > 1) {
+            console.log(`[Matchups ESPN] ⚡ Extended matchup period ${mpId}: scoring periods ${periods.join(', ')}`)
+          }
+        }
       }
       
       console.log(`[Matchups ESPN ${sport}] Final`, categories.value.length, 'categories:', categories.value.map(c => `${c.stat_id}=${c.display_name}`))
@@ -1677,10 +1646,10 @@ async function loadMatchups() {
         const awayStats: Record<string, number> = {}
         
         if (m.homePerCategoryResults) {
+          // BEST: scoreByStat has per-category results AND values
           for (const [statId, result] of Object.entries(m.homePerCategoryResults)) {
             categoryIds.push(statId)
             
-            // Get stat values from scoreByStat if available
             const homeStatValue = m.homeScoreByStat?.[statId]?.score || 0
             const awayStatValue = m.awayScoreByStat?.[statId]?.score || 0
             homeStats[statId] = homeStatValue
@@ -1699,17 +1668,82 @@ async function loadMatchups() {
             
             catProbs[statId] = calcCatWinProb(homeStatValue, awayStatValue, statId, days)
           }
+          console.log(`[Matchups ESPN] Used scoreByStat for stat values`)
         } else if (categories.value.length > 0) {
-          // FALLBACK: scoreByStat was null (common for some ESPN leagues).
-          // Use team valuesByStat to get stat values and calculate category winners.
-          const homeTeamData = m.homeTeam as any
-          const awayTeamData = m.awayTeam as any
-          const homeVBS = homeTeamData?.valuesByStat || {}
-          const awayVBS = awayTeamData?.valuesByStat || {}
+          // FALLBACK: scoreByStat was null. Try multiple data sources in order.
+          // Priority: 1) match.valuesByStat  2) roster aggregation  3) team valuesByStat
           
-          console.log(`[Matchups ESPN] scoreByStat null — using team valuesByStat fallback.`,
-            `Home team ${m.homeTeamId} has ${Object.keys(homeVBS).length} stats,`,
-            `Away team ${m.awayTeamId} has ${Object.keys(awayVBS).length} stats`)
+          let homeVBS: Record<string, number> = {}
+          let awayVBS: Record<string, number> = {}
+          let statSource = 'none'
+          
+          // Source 1: Match-level valuesByStat (matchup-period cumulative stats)
+          if (m.homeValuesByStat && Object.keys(m.homeValuesByStat).length > 0) {
+            homeVBS = m.homeValuesByStat
+            awayVBS = m.awayValuesByStat || {}
+            statSource = 'match.valuesByStat'
+          }
+          
+          // Source 2: Aggregate from rosterForMatchupPeriod (player-level stats)
+          if (statSource === 'none' && m.homeRosterEntries && m.homeRosterEntries.length > 0) {
+            // Aggregate player stats into team totals
+            // For hockey/baseball, player stats use LOCAL IDs per statSourceId
+            // Need to apply offset for goalie/pitcher stats to get global IDs
+            const playerSourceOffsets: Record<string, Record<number, number>> = {
+              hockey: { 0: 0, 1: 19 },    // Goalie stats: local 0→global 19 (W), etc.
+              baseball: { 0: 0, 1: 35 },
+              basketball: { 0: 0 },
+              football: { 0: 0 }
+            }
+            const pOffsets = playerSourceOffsets[sport] || { 0: 0 }
+            
+            const aggregateRoster = (entries: any[]): Record<string, number> => {
+              const totals: Record<string, number> = {}
+              for (const entry of entries) {
+                // Only count active lineup slots (not bench/IR)
+                const lineupSlot = entry.lineupSlotId
+                // Bench = 20/21, IR = 22/23/24 for most sports
+                if (lineupSlot >= 20) continue
+                
+                const player = entry.playerPoolEntry?.player || entry.player || {}
+                const statsArray = player.stats || []
+                
+                // Find the matchup-period stats (statSplitTypeId=0 is full period, statSourceId=0 is actual)
+                const actualStats = statsArray.find((s: any) => s.statSourceId === 0 && s.statSplitTypeId === 0) ||
+                                     statsArray.find((s: any) => s.statSourceId === 0) || {}
+                
+                if (actualStats.stats) {
+                  // Determine source offset based on player position
+                  // ESPN uses defaultPositionId: 5=G for hockey goalie, etc.
+                  const isGoalie = sport === 'hockey' && player.defaultPositionId === 5
+                  const isPitcher = sport === 'baseball' && player.defaultPositionId === 1
+                  const sourceOffset = (isGoalie || isPitcher) ? (pOffsets[1] || 0) : 0
+                  
+                  for (const [localId, val] of Object.entries(actualStats.stats)) {
+                    const globalId = String(parseInt(localId) + sourceOffset)
+                    totals[globalId] = (totals[globalId] || 0) + (val as number)
+                  }
+                }
+              }
+              return totals
+            }
+            
+            homeVBS = aggregateRoster(m.homeRosterEntries)
+            awayVBS = m.awayRosterEntries ? aggregateRoster(m.awayRosterEntries) : {}
+            statSource = 'rosterForMatchupPeriod'
+          }
+          
+          // Source 3: Team-level valuesByStat (season totals — last resort)
+          if (statSource === 'none') {
+            const homeTeamData = m.homeTeam as any
+            const awayTeamData = m.awayTeam as any
+            homeVBS = homeTeamData?.valuesByStat || {}
+            awayVBS = awayTeamData?.valuesByStat || {}
+            statSource = 'team.valuesByStat (season totals)'
+          }
+          
+          console.log(`[Matchups ESPN] Using ${statSource} for stats.`,
+            `Home: ${Object.keys(homeVBS).length} stats, Away: ${Object.keys(awayVBS).length} stats`)
           
           for (const cat of categories.value) {
             const statId = cat.stat_id
@@ -1720,14 +1754,13 @@ async function loadMatchups() {
             homeStats[statId] = homeVal
             awayStats[statId] = awayVal
             
-            // Determine winner: for negative stats (TO, GAA, etc.) lower is better
+            // Determine winner: for negative stats (GAA, etc.) lower is better
             const isNeg = cat.is_negative
-            let homeWins: boolean
             if (homeVal === awayVal) {
               ties++
               statWinners.push({ stat_id: statId, winner_team_key: null, is_tied: true })
             } else {
-              homeWins = isNeg ? (homeVal < awayVal) : (homeVal > awayVal)
+              const homeWins = isNeg ? (homeVal < awayVal) : (homeVal > awayVal)
               if (homeWins) {
                 w1++
                 statWinners.push({ stat_id: statId, winner_team_key: homeKey, is_tied: false })

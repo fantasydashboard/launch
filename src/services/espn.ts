@@ -263,6 +263,12 @@ export interface EspnMatchup {
   // Raw stat values per category (for matchups page display)
   homeScoreByStat?: Record<string, { result?: string | null; score: number }>
   awayScoreByStat?: Record<string, { result?: string | null; score: number }>
+  // Match-level valuesByStat (matchup-period cumulative stats, uses GLOBAL stat IDs)
+  homeValuesByStat?: Record<string, number>
+  awayValuesByStat?: Record<string, number>
+  // Roster data for matchup period (player-level stats for aggregation)
+  homeRosterEntries?: any[]
+  awayRosterEntries?: any[]
   isCategoryLeague?: boolean
   winner: 'HOME' | 'AWAY' | 'TIE' | 'UNDECIDED'
   playoffTierType: string
@@ -2398,7 +2404,32 @@ export class EspnFantasyService {
     try {
       const data = await this.apiRequest(sport, leagueId, season, [ESPN_VIEWS.SETTINGS])
       
-      const scoringSettings = data.settings?.scoringSettings || {}
+      // Log FULL settings structure to discover category-related fields
+      const allSettings = data.settings || {}
+      console.log('[ESPN getScoringSettings] ALL settings keys:', Object.keys(allSettings))
+      
+      const scoringSettings = allSettings.scoringSettings || {}
+      console.log('[ESPN getScoringSettings] scoringSettings keys:', Object.keys(scoringSettings))
+      
+      // Log schedule settings for extended matchup detection
+      if (allSettings.scheduleSettings) {
+        console.log('[ESPN getScoringSettings] scheduleSettings:', JSON.stringify(allSettings.scheduleSettings))
+      }
+      
+      // Attach schedule settings and full settings keys for CategoryMatchupsView to use
+      scoringSettings._scheduleSettings = allSettings.scheduleSettings
+      scoringSettings._allSettingsKeys = Object.keys(allSettings)
+      scoringSettings._fullSettings = allSettings
+      
+      // Log first scoringItem FULLY to see all available fields
+      if (scoringSettings.scoringItems?.length > 0) {
+        console.log('[ESPN getScoringSettings] First scoringItem FULL:', JSON.stringify(scoringSettings.scoringItems[0]))
+        console.log('[ESPN getScoringSettings] scoringItems count:', scoringSettings.scoringItems.length)
+        // Log ALL items with key fields
+        console.log('[ESPN getScoringSettings] ALL scoringItems:', scoringSettings.scoringItems.map((item: any, i: number) => {
+          return `[${i}] statId=${item.statId} src=${item.statSourceId ?? '?'} pts=${item.pointsOverride ?? '?'} isReverse=${item.isReverseItem ?? '?'}`
+        }).join(' | '))
+      }
       
       cache.set('espn_scoring', scoringSettings, CACHE_TTL.SETTINGS, cacheKey)
       
@@ -3219,6 +3250,23 @@ export class EspnFantasyService {
           }
         }
         
+        // Extract stat values from all available sources
+        const homeValuesByStat = match.home?.valuesByStat || null
+        const awayValuesByStat = match.away?.valuesByStat || null
+        
+        // Get roster entries for player-level stat aggregation (fallback)
+        const homeRosterEntries = match.home?.rosterForMatchupPeriod?.entries || 
+                                   match.home?.rosterForCurrentScoringPeriod?.entries || null
+        const awayRosterEntries = match.away?.rosterForMatchupPeriod?.entries ||
+                                   match.away?.rosterForCurrentScoringPeriod?.entries || null
+        
+        if (isCategoryLeague) {
+          console.log(`[ESPN parseMatchups] Matchup ${match.home?.teamId} vs ${match.away?.teamId}:`,
+            `scoreByStat=${match.home?.cumulativeScore?.scoreByStat ? 'YES' : 'null'},`,
+            `homeValuesByStat=${homeValuesByStat ? Object.keys(homeValuesByStat).length + ' stats' : 'null'},`,
+            `homeRoster=${homeRosterEntries ? homeRosterEntries.length + ' entries' : 'null'}`)
+        }
+        
         return {
           id: match.id,
           matchupPeriodId: match.matchupPeriodId,
@@ -3241,6 +3289,12 @@ export class EspnFantasyService {
           // Raw stat values (for display in matchups page)
           homeScoreByStat: match.home?.cumulativeScore?.scoreByStat,
           awayScoreByStat: match.away?.cumulativeScore?.scoreByStat,
+          // Match-level valuesByStat (matchup period cumulative stats)
+          homeValuesByStat: homeValuesByStat,
+          awayValuesByStat: awayValuesByStat,
+          // Roster entries for player-level aggregation
+          homeRosterEntries: homeRosterEntries,
+          awayRosterEntries: awayRosterEntries,
           isCategoryLeague,
           winner: this.determineWinner(match),
           playoffTierType: match.playoffTierType || 'NONE'
@@ -3769,37 +3823,27 @@ export class EspnFantasyService {
       : espnBaseballStatNames
     
     // Build categories array from scoring items
-    // CRITICAL: For hockey/baseball, scoringItems use LOCAL stat IDs per statSourceId.
-    // Must convert to global IDs using source offsets.
-    const sourceOffsets: Record<string, Record<number, number>> = {
-      hockey: { 0: 0, 1: 19 },    // Goalie stats start at global ID 19
-      baseball: { 0: 0, 1: 35 },   // Pitching stats start at global ID 35
-      basketball: { 0: 0 },
-      football: { 0: 0 }
-    }
-    const offsets = sourceOffsets[sport] || { 0: 0 }
-    
+    // NOTE: scoringItems already use GLOBAL stat IDs (e.g., hockey W=19, GAA=22, SV%=24).
+    // statSourceId is metadata only, NOT an offset to apply.
+    // The offset is only needed for PLAYER-LEVEL stats (rosterForMatchupPeriod).
     const categories: Array<{ stat_id: string; name: string; display_name: string; is_negative?: boolean }> = []
     const categoryStatIds: string[] = []
     for (const item of scoringItems) {
-      const localStatId = item.statId ?? item.id ?? 0
-      const sourceId = item.statSourceId ?? 0
-      const offset = offsets[sourceId] ?? 0
-      const globalStatId = localStatId + offset
-      const globalStatIdStr = String(globalStatId)
+      const statId = item.statId ?? item.id ?? 0
+      const statIdStr = String(statId)
       
-      if (globalStatIdStr) {
-        categoryStatIds.push(globalStatIdStr)
+      if (statIdStr) {
+        categoryStatIds.push(statIdStr)
         
-        const statInfo = statNames[globalStatId] || {
-          name: `Stat ${globalStatId}`,
-          display: `S${globalStatId}`
+        const statInfo = statNames[statId] || {
+          name: `Stat ${statId}`,
+          display: `S${statId}`
         }
         
-        console.log(`[ESPN] Stat local=${localStatId} source=${sourceId} → global=${globalStatId} = ${statInfo.display}`)
+        console.log(`[ESPN] scoringItem: statId=${statId} source=${item.statSourceId ?? '?'} → ${statInfo.display}`)
         
         categories.push({
-          stat_id: globalStatIdStr,
+          stat_id: statIdStr,
           name: statInfo.name,
           display_name: statInfo.display,
           is_negative: statInfo.isNegative
