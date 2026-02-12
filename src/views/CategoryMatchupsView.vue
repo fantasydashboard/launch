@@ -1516,7 +1516,52 @@ async function loadCategories() {
         })
         .filter((c: any) => c.stat_id)
       
-      console.log(`[Matchups ESPN ${sport}] Loaded`, categories.value.length, 'categories:', categories.value.map(c => c.display_name))
+      // CRITICAL: scoringItems contains ALL stats with scoring weights, but category leagues
+      // only use a subset as actual H2H categories. The ground truth is scoreByStat from 
+      // real matchup data - it only contains the active category stat IDs.
+      // Fetch the current week's matchups to discover which stats are actual categories.
+      try {
+        const currentWeekNum = currentWeek.value || 1
+        const sampleMatchups = await espnService.getMatchups(sport, leagueId, season, currentWeekNum)
+        
+        // Find scoreByStat keys from any matchup that has them
+        let activeStatIds: Set<string> | null = null
+        for (const m of sampleMatchups) {
+          const sbs = m.homeScoreByStat || m.awayScoreByStat
+          if (sbs && Object.keys(sbs).length > 0) {
+            activeStatIds = new Set(Object.keys(sbs))
+            break
+          }
+        }
+        
+        // If we couldn't find scoreByStat on current week, try previous weeks
+        if (!activeStatIds) {
+          for (let w = currentWeekNum - 1; w >= 1 && !activeStatIds; w--) {
+            try {
+              const pastMatchups = await espnService.getMatchups(sport, leagueId, season, w)
+              for (const m of pastMatchups) {
+                const sbs = m.homeScoreByStat || m.awayScoreByStat
+                if (sbs && Object.keys(sbs).length > 0) {
+                  activeStatIds = new Set(Object.keys(sbs))
+                  break
+                }
+              }
+            } catch (e) { /* continue to next week */ }
+          }
+        }
+        
+        if (activeStatIds && activeStatIds.size > 0) {
+          const beforeCount = categories.value.length
+          categories.value = categories.value.filter((c: any) => activeStatIds!.has(c.stat_id))
+          console.log(`[Matchups ESPN] Filtered categories from ${beforeCount} to ${categories.value.length} using scoreByStat keys:`, [...activeStatIds])
+        } else {
+          console.warn('[Matchups ESPN] Could not find scoreByStat in any matchup - using all scoringItems as fallback')
+        }
+      } catch (e) {
+        console.warn('[Matchups ESPN] Could not fetch matchups to filter categories:', e)
+      }
+      
+      console.log(`[Matchups ESPN ${sport}] Final`, categories.value.length, 'categories:', categories.value.map(c => c.display_name))
     } else {
       // Yahoo categories
       const s = await yahooService.getLeagueScoringSettings(k)

@@ -3796,7 +3796,14 @@ export class EspnFantasyService {
         })
       }
     }
-    console.log('[ESPN getCategoryStatsBreakdown] Found', categories.length, 'categories:', categoryStatIds)
+    console.log('[ESPN getCategoryStatsBreakdown] Found', categories.length, 'initial categories from scoringItems:', categoryStatIds)
+    
+    // CRITICAL: scoringItems returns ALL stats with scoring weights, but category leagues 
+    // only use a subset as actual H2H categories. The ground truth is scoreByStat from 
+    // real matchup data — it only contains the active category stat IDs.
+    // We'll discover active categories from the first week that has scoreByStat data,
+    // then filter our categories list down to only the real ones.
+    let activeStatIds: Set<string> | null = null
     
     // Get teams
     const teams = await this.getTeams(sport, leagueId, season)
@@ -3870,6 +3877,23 @@ export class EspnFantasyService {
             }
             hasRealStatValues = true
             weekHasRealData = true
+            
+            // Discover active category stat IDs from scoreByStat (first time only)
+            if (!activeStatIds) {
+              const sbs = matchup.homeScoreByStat
+              if (sbs && Object.keys(sbs).length > 0) {
+                activeStatIds = new Set(Object.keys(sbs))
+                const beforeCount = categories.length
+                const filteredCategories = categories.filter(c => activeStatIds!.has(c.stat_id))
+                if (filteredCategories.length > 0 && filteredCategories.length < beforeCount) {
+                  categories.length = 0
+                  categories.push(...filteredCategories)
+                  categoryStatIds.length = 0
+                  categoryStatIds.push(...filteredCategories.map(c => c.stat_id))
+                  console.log(`[ESPN getCategoryStatsBreakdown] Filtered categories from ${beforeCount} to ${categories.length} using scoreByStat keys:`, [...activeStatIds])
+                }
+              }
+            }
             
             // Process home team per-category results
             for (const [statId, result] of Object.entries(matchup.homePerCategoryResults)) {
