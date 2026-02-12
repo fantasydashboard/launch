@@ -839,7 +839,7 @@ const matchupSnapshots = computed(() => {
 // Check if we have real snapshot data (not simulated)
 const hasRealSnapshots = computed(() => matchupSnapshots.value.length > 0)
 
-// Probability history for chart - ALWAYS uses Monte Carlo reconstruction for completed weeks
+// Probability history for chart - only shows completed days + today's live point
 const probabilityHistory = computed(() => {
   if (!selectedMatchup.value?.team1 || !selectedMatchup.value?.team2) return []
   
@@ -873,28 +873,23 @@ const probabilityHistory = computed(() => {
   const team1StdDev = team1Stats.stdDev > 0 ? team1Stats.stdDev : (team1AvgWeekly * 0.15)
   const team2StdDev = team2Stats.stdDev > 0 ? team2Stats.stdDev : (team2AvgWeekly * 0.15)
   
-  // Scale averages for extended matchups (if matchup spans 3 weeks, avg is 3x weekly)
+  // Scale averages for extended matchups
   const matchupWeeks = totalMatchupDays / 7
   const team1AvgMatchup = team1AvgWeekly * matchupWeeks
   const team2AvgMatchup = team2AvgWeekly * matchupWeeks
   const team1MatchupStdDev = team1StdDev * Math.sqrt(matchupWeeks)
   const team2MatchupStdDev = team2StdDev * Math.sqrt(matchupWeeks)
   
-  console.log(`[WinProb Chart] Team1 avg: ${team1AvgWeekly.toFixed(1)} (matchup: ${team1AvgMatchup.toFixed(1)}), stdDev: ${team1StdDev.toFixed(1)}`)
-  console.log(`[WinProb Chart] Team2 avg: ${team2AvgWeekly.toFixed(1)} (matchup: ${team2AvgMatchup.toFixed(1)}), stdDev: ${team2StdDev.toFixed(1)}`)
-  
   // Get sport-specific daily weights
   const sport = leagueStore.currentSportType || 'baseball'
   const dailyWeights = getDailyWeights(sport)
   
-  // For extended matchups, determine which sub-week to display on the chart
+  // For extended matchups, determine which sub-week to display
   const subWeekInfo = isExtended ? getMatchupSubWeekInfo(weekNum) : null
   const chartDayCount = (isExtended && subWeekInfo) ? subWeekInfo.subWeekDates.length : 7
-  
-  // How many days have elapsed from matchup start to the current sub-week start
   const priorDays = (isExtended && subWeekInfo) ? subWeekInfo.subWeek * 7 : 0
   
-  // Calculate cumulative weights for 7-day cycle
+  // Calculate cumulative weights
   let cumulativeWeight = 0
   const cumulativeWeights: number[] = []
   for (let i = 0; i < 7; i++) {
@@ -902,7 +897,7 @@ const probabilityHistory = computed(() => {
     cumulativeWeights.push(cumulativeWeight)
   }
   
-  // Day labels for chart
+  // Day labels
   const chartDayLabels = (isExtended && subWeekInfo) 
     ? subWeekInfo.subWeekDates.map(d => {
         const dt = new Date(d + 'T12:00:00')
@@ -911,12 +906,21 @@ const probabilityHistory = computed(() => {
       })
     : days
   
+  // Determine how many days to show on chart
+  const now = new Date()
+  const hourOfDay = now.getHours()
+  const jsDay = now.getDay()
+  const todayIndex = jsDay === 0 ? 6 : jsDay - 1 // 0=Mon, 6=Sun
+  // Last completed day = yesterday if after 3am, day before yesterday if before 3am
+  const lastCompletedDayIndex = hourOfDay >= 3 ? todayIndex - 1 : todayIndex - 2
+  
+  // For completed weeks show all days, for live weeks show only completed days
+  const daysToShow = isCompleted ? chartDayCount : Math.max(0, lastCompletedDayIndex + 1)
+  
   const history: any[] = []
   
-  for (let day = 0; day < chartDayCount; day++) {
-    // Total day index within the full matchup period
+  for (let day = 0; day < daysToShow; day++) {
     const matchupDayIndex = priorDays + day
-    // Fraction of total matchup days completed
     const matchupFraction = (matchupDayIndex + 1) / totalMatchupDays
     
     let team1Cumulative: number
@@ -926,36 +930,22 @@ const probabilityHistory = computed(() => {
       team1Cumulative = team1FinalPoints * matchupFraction
       team2Cumulative = team2FinalPoints * matchupFraction
     } else {
-      const jsDay = new Date().getDay()
-      const currentDayIndex = jsDay === 0 ? 6 : jsDay - 1
-      
-      if (day <= currentDayIndex) {
-        // For current sub-week days up to today, pro-rate current score
-        const dayFraction = cumulativeWeights[day] / cumulativeWeights[currentDayIndex]
-        // Current points already include all prior days (Yahoo gives cumulative)
-        team1Cumulative = team1FinalPoints * dayFraction
-        team2Cumulative = team2FinalPoints * dayFraction
-      } else {
-        // Project forward from current
-        team1Cumulative = team1FinalPoints + (team1AvgWeekly / 7) * (day - currentDayIndex)
-        team2Cumulative = team2FinalPoints + (team2AvgWeekly / 7) * (day - currentDayIndex)
-      }
+      // Pro-rate current score back to this completed day
+      const dayFraction = cumulativeWeights[day] / cumulativeWeights[Math.max(0, lastCompletedDayIndex)]
+      team1Cumulative = team1FinalPoints * dayFraction
+      team2Cumulative = team2FinalPoints * dayFraction
     }
     
-    // Calculate win probability
     let team1Prob: number
     let team2Prob: number
     
-    // Days remaining in the full matchup from this chart point
     const daysRemainingInMatchup = Math.max(0, totalMatchupDays - matchupDayIndex - 1)
     
     if (daysRemainingInMatchup <= 0 && isCompleted) {
-      // Final day - deterministic
       if (team1IsFinalWinner) { team1Prob = 100; team2Prob = 0 }
       else if (team2IsFinalWinner) { team1Prob = 0; team2Prob = 100 }
       else { team1Prob = 50; team2Prob = 50 }
     } else {
-      // Run Monte Carlo
       const remainingFraction = Math.max(0, 1 - matchupFraction)
       const team1ExpectedRemaining = team1AvgMatchup * remainingFraction
       const team2ExpectedRemaining = team2AvgMatchup * remainingFraction
@@ -964,15 +954,11 @@ const probabilityHistory = computed(() => {
       const team2RemainingStdDev = team2MatchupStdDev * varianceScale
       
       const mcResult = runMonteCarloInline(
-        team1Cumulative,
-        team2Cumulative,
-        team1ExpectedRemaining,
-        team1RemainingStdDev,
-        team2ExpectedRemaining,
-        team2RemainingStdDev,
+        team1Cumulative, team2Cumulative,
+        team1ExpectedRemaining, team1RemainingStdDev,
+        team2ExpectedRemaining, team2RemainingStdDev,
         3000
       )
-      
       team1Prob = mcResult.team1WinPct
       team2Prob = mcResult.team2WinPct
     }
@@ -981,7 +967,7 @@ const probabilityHistory = computed(() => {
       day: chartDayLabels[day] || days[day % 7],
       team1: Math.round(team1Prob * 10) / 10,
       team2: Math.round(team2Prob * 10) / 10,
-      isFuture: !isCompleted && day > (new Date().getDay() === 0 ? 6 : new Date().getDay() - 1),
+      isFuture: false,
       isReal: false,
       isMonteCarlo: true,
       points: {
@@ -991,7 +977,25 @@ const probabilityHistory = computed(() => {
     })
   }
   
-  console.log(`[WinProb Chart] Final history:`, history.map(h => `${h.day}: ${h.team1}/${h.team2}`).join(', '))
+  // For current (non-completed) week: append today's live point using current win probability
+  // This matches the big win % numbers shown in the matchup header
+  if (!isCompleted && todayIndex < chartDayCount && todayIndex > lastCompletedDayIndex) {
+    history.push({
+      day: chartDayLabels[todayIndex] || days[todayIndex % 7],
+      team1: Math.round(winProbability.value.team1 * 10) / 10,
+      team2: Math.round(winProbability.value.team2 * 10) / 10,
+      isFuture: false,
+      isReal: false,
+      isMonteCarlo: true,
+      points: {
+        team1: team1FinalPoints,
+        team2: team2FinalPoints
+      }
+    })
+    console.log(`[WinProb Chart] Added live point for ${chartDayLabels[todayIndex]}: ${winProbability.value.team1}% / ${winProbability.value.team2}%`)
+  }
+  
+  console.log(`[WinProb Chart] Final history (${history.length} points):`, history.map(h => `${h.day}: ${h.team1}/${h.team2}`).join(', '))
   
   return history
 })
