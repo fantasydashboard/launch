@@ -1585,8 +1585,11 @@ async function loadMatchups() {
   loadingMessage.value = 'Loading matchups...'
   loadingProgress.value = { currentStep: 'Initializing...', week: 0, maxWeek: parseInt(selectedWeek.value) }
   try {
-    if (!categories.value.length) {
+    // Always reload categories for ESPN leagues to ensure we have the right sport's categories
+    // (categories from a different sport may be cached from prior navigation)
+    if (!categories.value.length || isEspn.value) {
       loadingProgress.value = { ...loadingProgress.value, currentStep: 'Loading scoring categories...' }
+      categories.value = [] // Clear any stale categories
       await loadCategories()
     }
     const week = parseInt(selectedWeek.value)
@@ -1612,12 +1615,46 @@ async function loadMatchups() {
       console.log('[Matchups ESPN] Loading week', week, 'for league:', leagueId, 'season:', season, 'sport:', sport)
       console.log('[Matchups ESPN] selectedWeek.value:', selectedWeek.value)
       
+      // DIAGNOSTIC: Dump current categories and scoring settings every time
+      console.log('[Matchups ESPN DIAG] Current categories:', categories.value.map(c => `${c.stat_id}=${c.display_name}`).join(', '))
+      console.log('[Matchups ESPN DIAG] Category count:', categories.value.length)
+      
+      // DIAGNOSTIC: Fetch and dump raw scoringSettings to see actual scoringItems
+      try {
+        const diagSettings = await espnService.getScoringSettings(sport, leagueId, season)
+        const diagItems = diagSettings?.scoringItems || []
+        console.log('[Matchups ESPN DIAG] Raw scoringItems count:', diagItems.length)
+        console.log('[Matchups ESPN DIAG] Raw scoringItems FULL:', JSON.stringify(diagItems.map((item: any) => ({
+          statId: item.statId,
+          id: item.id,
+          statSourceId: item.statSourceId,
+          pointsOverride: item.pointsOverride,
+          isReverseItem: item.isReverseItem,
+          forTeamId: item.forTeamId,
+          isScoringCategory: item.isScoringCategory
+        }))))
+        // Log first 3 items completely
+        for (let i = 0; i < Math.min(3, diagItems.length); i++) {
+          console.log(`[Matchups ESPN DIAG] scoringItem[${i}] ALL KEYS:`, JSON.stringify(diagItems[i]))
+        }
+      } catch (e) { console.warn('[Matchups ESPN DIAG] Settings fetch error:', e) }
+      
       const raw = await espnService.getMatchups(sport, leagueId, season, week)
       console.log('[Matchups ESPN] Got', raw.length, 'matchups for week', week)
       
       if (raw.length > 0) {
         console.log('[Matchups ESPN] First matchup:', raw[0])
         console.log('[Matchups ESPN] First matchup matchupPeriodId:', raw[0].matchupPeriodId)
+        // DIAGNOSTIC: Dump all available stat sources
+        const m0 = raw[0]
+        console.log('[Matchups ESPN DIAG] First matchup data sources:',
+          `homePerCategoryResults=${m0.homePerCategoryResults ? Object.keys(m0.homePerCategoryResults).length : 'null'},`,
+          `homeScoreByStat=${m0.homeScoreByStat ? Object.keys(m0.homeScoreByStat).length : 'null'},`,
+          `homeValuesByStat=${m0.homeValuesByStat ? Object.keys(m0.homeValuesByStat).length : 'null'},`,
+          `homeRosterEntries=${m0.homeRosterEntries ? m0.homeRosterEntries.length : 'null'}`)
+        if (m0.homeValuesByStat) {
+          console.log('[Matchups ESPN DIAG] homeValuesByStat:', JSON.stringify(m0.homeValuesByStat))
+        }
       }
       
       for (const m of raw) {

@@ -826,7 +826,7 @@ export class EspnFantasyService {
    * @param forceRefresh - If true, bypass cache and fetch fresh data
    */
   async getMatchups(sport: Sport, leagueId: string | number, season: number, week: number, forceRefresh: boolean = false): Promise<EspnMatchup[]> {
-    const cacheKey = `espn_matchups_${sport}_${leagueId}_${season}_${week}`
+    const cacheKey = `espn_matchups_v2_${sport}_${leagueId}_${season}_${week}`
     
     // Get league scoring type first to check if it's a category league
     const league = await this.getLeague(sport, leagueId, season)
@@ -2394,7 +2394,7 @@ export class EspnFantasyService {
    * Get scoring settings for the league
    */
   async getScoringSettings(sport: Sport, leagueId: string | number, season: number): Promise<any> {
-    const cacheKey = `espn_scoring_${sport}_${leagueId}_${season}`
+    const cacheKey = `espn_scoring_v4_${sport}_${leagueId}_${season}`
     const cached = cache.get<any>('espn_scoring', cacheKey)
     if (cached) {
       console.log(`[Cache HIT] ESPN scoring settings for ${leagueId}`)
