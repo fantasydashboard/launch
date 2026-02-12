@@ -122,15 +122,13 @@
                 'p-4 rounded-xl border-2 transition-all text-left',
                 selectedMatchup?.matchup_id === matchup.matchup_id 
                   ? 'border-yellow-400 bg-yellow-500/10 ring-2 ring-yellow-400/30' 
-                  : (matchup.team1.is_my_team || matchup.team2.is_my_team)
-                    ? 'border-yellow-400/50 bg-yellow-400/5 hover:border-yellow-400'
-                    : 'border-dark-border bg-dark-card hover:border-yellow-400/50 hover:bg-dark-border/30'
+                  : 'border-dark-border bg-dark-card hover:border-yellow-400/50 hover:bg-dark-border/30'
               ]">
               <!-- Team 1 -->
               <div class="flex items-center justify-between mb-2">
                 <div class="flex items-center gap-2 flex-1 min-w-0">
                   <div class="relative">
-                    <img :src="matchup.team1.logo_url || defaultAvatar" class="w-9 h-9 rounded-full ring-2" :class="matchup.team1Leading ? 'ring-green-500' : 'ring-dark-border'" @error="handleImageError"/>
+                    <img :src="matchup.team1.logo_url || defaultAvatar" class="w-9 h-9 rounded-full ring-2 ring-dark-border" @error="handleImageError"/>
                     <div v-if="matchup.team1.is_my_team" class="absolute -top-1 -right-1 w-4 h-4 bg-yellow-400 rounded-full flex items-center justify-center"><span class="text-[10px] text-gray-900">★</span></div>
                   </div>
                   <div class="min-w-0">
@@ -153,7 +151,7 @@
               <div class="flex items-center justify-between">
                 <div class="flex items-center gap-2 flex-1 min-w-0">
                   <div class="relative">
-                    <img :src="matchup.team2.logo_url || defaultAvatar" class="w-9 h-9 rounded-full ring-2" :class="matchup.team2Leading ? 'ring-green-500' : 'ring-dark-border'" @error="handleImageError"/>
+                    <img :src="matchup.team2.logo_url || defaultAvatar" class="w-9 h-9 rounded-full ring-2 ring-dark-border" @error="handleImageError"/>
                     <div v-if="matchup.team2.is_my_team" class="absolute -top-1 -right-1 w-4 h-4 bg-yellow-400 rounded-full flex items-center justify-center"><span class="text-[10px] text-gray-900">★</span></div>
                   </div>
                   <div class="min-w-0">
@@ -742,6 +740,16 @@ const comparisonStats = computed(() => {
   if (!selectedMatchup.value) return []
   const s1 = teamSeasonStats.value.get(selectedMatchup.value.team1.team_key) || {}
   const s2 = teamSeasonStats.value.get(selectedMatchup.value.team2.team_key) || {}
+  const hasHistory = (s1.weeksPlayed || 0) > 0 || (s2.weeksPlayed || 0) > 0
+  if (!hasHistory) {
+    return [
+      { label: 'Record', team1Value: '—', team2Value: '—', team1Better: false, team2Better: false },
+      { label: 'Avg Cats/Week', team1Value: '—', team2Value: '—', team1Better: false, team2Better: false },
+      { label: 'Most Cats Won', team1Value: '—', team2Value: '—', team1Better: false, team2Better: false },
+      { label: 'Least Cats Won', team1Value: '—', team2Value: '—', team1Better: false, team2Better: false },
+      { label: 'Consistency (σ)', team1Value: '—', team2Value: '—', team1Better: false, team2Better: false }
+    ]
+  }
   return [
     { label: 'Record', team1Value: s1.record || '0-0', team2Value: s2.record || '0-0', team1Better: (s1.wins||0) > (s2.wins||0), team2Better: (s2.wins||0) > (s1.wins||0) },
     { label: 'Avg Cats/Week', team1Value: (s1.avgCatsPerWeek||0).toFixed(1), team2Value: (s2.avgCatsPerWeek||0).toFixed(1), team1Better: (s1.avgCatsPerWeek||0) > (s2.avgCatsPerWeek||0), team2Better: (s2.avgCatsPerWeek||0) > (s1.avgCatsPerWeek||0) },
@@ -1158,6 +1166,7 @@ async function loadTeamSeasonStats(leagueKey: string, currentWeekNum: number) {
         newStats.set(team.team_key, {
           record: `${team.wins || 0}-${team.losses || 0}`,
           wins: team.wins || 0,
+          weeksPlayed,
           avgCatsPerWeek: weeksPlayed > 0 ? totalCatsWon / weeksPlayed : 0,
           mostCatsWon: weeklyWins.length > 0 ? Math.max(...weeklyWins) : 0,
           leastCatsWon: weeklyWins.length > 0 ? Math.min(...weeklyWins) : 0,
@@ -1300,6 +1309,7 @@ async function loadTeamSeasonStats(leagueKey: string, currentWeekNum: number) {
         newStats.set(team.team_key, {
           record: `${team.wins || 0}-${team.losses || 0}`,
           wins: team.wins || 0,
+          weeksPlayed,
           avgCatsPerWeek: weeksPlayed > 0 ? totalCatsWon / weeksPlayed : 0,
           mostCatsWon: weeklyWins.length > 0 ? Math.max(...weeklyWins) : 0,
           leastCatsWon: weeklyWins.length > 0 ? Math.min(...weeklyWins) : 0,

@@ -115,12 +115,7 @@
               {{ isDownloadingAll ? `Sharing ${downloadProgress}` : 'Share All' }}
             </button>
           </div>
-          <p class="text-sm text-dark-textMuted mt-2 flex items-center gap-2">
-            <svg class="w-4 h-4 text-yellow-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 15l-2 5L9 9l11 4-5 2zm0 0l5 5M7.188 2.239l.777 2.897M5.136 7.965l-2.898-.777M13.95 4.05l-2.122 2.122m-5.657 5.656l-2.12 2.122" />
-            </svg>
-            <span class="text-yellow-400 font-medium">Select matchup for details</span>
-          </p>
+          <p class="text-sm text-dark-textMuted mt-2">💡 <span class="text-yellow-400 font-medium">Click any matchup</span> to see scoring breakdown and win probability</p>
         </div>
         <div class="card-body">
           <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -135,81 +130,62 @@
                   : 'border-dark-border bg-dark-card hover:border-yellow-400/50 hover:bg-dark-border/30'
               ]"
             >
-              <!-- Status Badge -->
-              <div class="flex items-center justify-between mb-4">
-                <span class="text-xs font-semibold text-dark-textMuted uppercase tracking-wide">Matchup {{ matchup.matchup_id }}</span>
-                <span :class="getMatchupStatusClass(matchup)" class="text-xs px-2.5 py-1 rounded-full border font-medium flex items-center gap-1">
-                  <span v-if="matchup.status === 'live'" class="w-2 h-2 bg-yellow-400 rounded-full animate-pulse"></span>
-                  {{ matchup.status === 'final' ? 'Final' : matchup.status === 'live' ? 'Live' : 'Upcoming' }}
-                </span>
-              </div>
-              
               <!-- Team 1 -->
-              <div class="space-y-1.5 mb-3">
-                <div class="flex items-center justify-between">
-                  <div class="flex items-center gap-2.5 flex-1 min-w-0">
-                    <div class="relative">
-                      <img 
-                        :src="matchup.team1.logo_url || defaultAvatar" 
-                        :alt="matchup.team1.name" 
-                        :class="['w-9 h-9 rounded-full ring-2', matchup.team1_won ? 'ring-green-500' : 'ring-dark-border']"
-                        @error="handleImageError" 
-                      />
-                      <div v-if="matchup.team1.is_my_team" class="absolute -top-1 -right-1 w-4 h-4 bg-yellow-400 rounded-full flex items-center justify-center">
-                        <span class="text-[10px] text-gray-900">★</span>
-                      </div>
+              <div class="flex items-center justify-between mb-2">
+                <div class="flex items-center gap-2 flex-1 min-w-0">
+                  <div class="relative">
+                    <img 
+                      :src="matchup.team1.logo_url || defaultAvatar" 
+                      :alt="matchup.team1.name" 
+                      class="w-9 h-9 rounded-full ring-2 ring-dark-border"
+                      @error="handleImageError" 
+                    />
+                    <div v-if="matchup.team1.is_my_team" class="absolute -top-1 -right-1 w-4 h-4 bg-yellow-400 rounded-full flex items-center justify-center">
+                      <span class="text-[10px] text-gray-900">★</span>
                     </div>
-                    <span :class="['text-sm font-semibold truncate', matchup.team1_won ? 'text-green-400' : 'text-dark-text']">
-                      {{ matchup.team1.name }}
-                    </span>
                   </div>
-                  <div class="text-right flex-shrink-0 ml-2">
-                    <span class="text-lg font-bold text-white">{{ matchup.team1.points.toFixed(1) }}</span>
-                    <div v-if="matchup.team1.projected_points" class="text-xs text-primary">
-                      proj {{ matchup.team1.projected_points.toFixed(1) }}
-                    </div>
+                  <div class="min-w-0">
+                    <div class="font-semibold text-dark-text truncate text-sm">{{ matchup.team1.name }}</div>
+                    <div class="text-xs text-dark-textMuted">{{ getTeamRecord(matchup.team1.team_key) }}</div>
                   </div>
                 </div>
-                <div class="text-xs text-dark-textMuted pl-11">
-                  {{ getTeamRecord(matchup.team1.team_key) }}
+                <div class="text-right">
+                  <div class="text-xl font-bold text-white">{{ matchup.team1.points.toFixed(1) }}</div>
+                  <div v-if="matchup.team1.projected_points" class="text-xs text-cyan-400">
+                    proj {{ matchup.team1.projected_points.toFixed(1) }}
+                  </div>
                 </div>
               </div>
-              
-              <!-- VS Divider -->
+              <!-- VS -->
               <div class="flex items-center gap-2 my-2">
                 <div class="flex-1 h-px bg-dark-border"></div>
-                <span class="text-xs font-medium text-dark-textMuted px-2">VS</span>
+                <span class="text-xs text-dark-textMuted px-2">VS</span>
                 <div class="flex-1 h-px bg-dark-border"></div>
               </div>
-              
               <!-- Team 2 -->
-              <div class="space-y-1.5">
-                <div class="flex items-center justify-between">
-                  <div class="flex items-center gap-2.5 flex-1 min-w-0">
-                    <div class="relative">
-                      <img 
-                        :src="matchup.team2.logo_url || defaultAvatar" 
-                        :alt="matchup.team2.name" 
-                        :class="['w-9 h-9 rounded-full ring-2', matchup.team2_won ? 'ring-green-500' : 'ring-dark-border']"
-                        @error="handleImageError" 
-                      />
-                      <div v-if="matchup.team2.is_my_team" class="absolute -top-1 -right-1 w-4 h-4 bg-yellow-400 rounded-full flex items-center justify-center">
-                        <span class="text-[10px] text-gray-900">★</span>
-                      </div>
+              <div class="flex items-center justify-between">
+                <div class="flex items-center gap-2 flex-1 min-w-0">
+                  <div class="relative">
+                    <img 
+                      :src="matchup.team2.logo_url || defaultAvatar" 
+                      :alt="matchup.team2.name" 
+                      class="w-9 h-9 rounded-full ring-2 ring-dark-border"
+                      @error="handleImageError" 
+                    />
+                    <div v-if="matchup.team2.is_my_team" class="absolute -top-1 -right-1 w-4 h-4 bg-yellow-400 rounded-full flex items-center justify-center">
+                      <span class="text-[10px] text-gray-900">★</span>
                     </div>
-                    <span :class="['text-sm font-semibold truncate', matchup.team2_won ? 'text-green-400' : 'text-dark-text']">
-                      {{ matchup.team2.name }}
-                    </span>
                   </div>
-                  <div class="text-right flex-shrink-0 ml-2">
-                    <span class="text-lg font-bold text-white">{{ matchup.team2.points.toFixed(1) }}</span>
-                    <div v-if="matchup.team2.projected_points" class="text-xs text-primary">
-                      proj {{ matchup.team2.projected_points.toFixed(1) }}
-                    </div>
+                  <div class="min-w-0">
+                    <div class="font-semibold text-dark-text truncate text-sm">{{ matchup.team2.name }}</div>
+                    <div class="text-xs text-dark-textMuted">{{ getTeamRecord(matchup.team2.team_key) }}</div>
                   </div>
                 </div>
-                <div class="text-xs text-dark-textMuted pl-11">
-                  {{ getTeamRecord(matchup.team2.team_key) }}
+                <div class="text-right">
+                  <div class="text-xl font-bold text-white">{{ matchup.team2.points.toFixed(1) }}</div>
+                  <div v-if="matchup.team2.projected_points" class="text-xs text-orange-400">
+                    proj {{ matchup.team2.projected_points.toFixed(1) }}
+                  </div>
                 </div>
               </div>
             </button>
@@ -245,6 +221,9 @@
             <p class="card-subtitle mt-2">
               <span v-if="hasRealSnapshots">Historical win probability from daily snapshots</span>
               <span v-else>Monte Carlo simulation (5,000 iterations) based on historical scoring patterns</span>
+            </p>
+            <p v-if="extendedMatchupLabel" class="text-xs text-yellow-400 mt-1 flex items-center gap-1">
+              <span>📅</span> {{ extendedMatchupLabel }} — chart resets each week, cumulative stats carry forward
             </p>
           </div>
           <div class="card-body">
@@ -633,6 +612,8 @@ const downloadProgress = ref('')
 const matchupsData = ref<any[]>([])
 const selectedMatchup = ref<any>(null)
 const allMatchupsHistory = ref<Map<number, any[]>>(new Map())
+const gameWeeks = ref<{ week: number, start: string, end: string }[]>([])
+const extendedMatchupLabel = ref('')
 
 // Snapshot state
 const weekSnapshots = ref<Map<number, MatchupSnapshot[]>>(new Map())
@@ -663,11 +644,15 @@ const effectiveLeagueKey = computed(() => {
 })
 
 const availableWeeks = computed(() => {
-  const weeks = []
-  for (let i = 1; i <= currentWeek.value; i++) {
-    weeks.push(i)
-  }
-  return weeks
+  const start = startWeek.value
+  const end = currentWeek.value
+  return Array.from({ length: end - start + 1 }, (_, i) => start + i)
+})
+
+const startWeek = computed(() => {
+  if (isEspn.value || leagueStore.activePlatform === 'sleeper') return 1
+  const sw = leagueStore.yahooLeague?.start_week
+  return sw ? parseInt(sw) : 1
 })
 
 // Platform display
@@ -832,7 +817,15 @@ const winProbability = computed(() => {
   // For all platforms (ESPN, Yahoo, Sleeper), use Monte Carlo simulation
   const jsDay = new Date().getDay()
   const currentDayIndex = jsDay === 0 ? 6 : jsDay - 1
-  const mcResult = getMonteCarloWinProbability(selectedMatchup.value, currentDayIndex)
+  
+  // For extended matchups, calculate actual days remaining to matchup end
+  const weekNum = parseInt(selectedWeek.value)
+  const matchupDates = getMatchupDates(weekNum)
+  const actualDaysRemaining = matchupDates 
+    ? getMatchupDaysRemaining(weekNum)
+    : Math.max(0, 6 - currentDayIndex)
+  
+  const mcResult = getMonteCarloWinProbability(selectedMatchup.value, currentDayIndex, false, actualDaysRemaining)
   return { team1: mcResult.team1, team2: mcResult.team2 }
 })
 
@@ -856,7 +849,12 @@ const probabilityHistory = computed(() => {
   const team1FinalPoints = matchup.team1.points || 0
   const team2FinalPoints = matchup.team2.points || 0
   
-  console.log(`[WinProb Chart] Matchup ${matchup.matchup_id}, isCompleted: ${isCompleted}, team1: ${team1FinalPoints}, team2: ${team2FinalPoints}`)
+  const weekNum = parseInt(selectedWeek.value)
+  const matchupDates = getMatchupDates(weekNum)
+  const isExtended = matchupDates?.isExtended || false
+  const totalMatchupDays = matchupDates?.totalDays || 7
+  
+  console.log(`[WinProb Chart] Matchup ${matchup.matchup_id}, isCompleted: ${isCompleted}, isExtended: ${isExtended}, totalDays: ${totalMatchupDays}, team1: ${team1FinalPoints}, team2: ${team2FinalPoints}`)
   
   // Determine the winner for completed matchups
   let team1IsFinalWinner = false
@@ -870,21 +868,33 @@ const probabilityHistory = computed(() => {
   const team1Stats = getTeamStats(matchup.team1.team_key || '')
   const team2Stats = getTeamStats(matchup.team2.team_key || '')
   
-  // Use historical PPW (points per week) as the expected average
-  // Fall back to league average if no history
   const team1AvgWeekly = team1Stats.ppw > 0 ? team1Stats.ppw : (team1FinalPoints || 100)
   const team2AvgWeekly = team2Stats.ppw > 0 ? team2Stats.ppw : (team2FinalPoints || 100)
   const team1StdDev = team1Stats.stdDev > 0 ? team1Stats.stdDev : (team1AvgWeekly * 0.15)
   const team2StdDev = team2Stats.stdDev > 0 ? team2Stats.stdDev : (team2AvgWeekly * 0.15)
   
-  console.log(`[WinProb Chart] Team1 avg: ${team1AvgWeekly.toFixed(1)}, stdDev: ${team1StdDev.toFixed(1)}`)
-  console.log(`[WinProb Chart] Team2 avg: ${team2AvgWeekly.toFixed(1)}, stdDev: ${team2StdDev.toFixed(1)}`)
+  // Scale averages for extended matchups (if matchup spans 3 weeks, avg is 3x weekly)
+  const matchupWeeks = totalMatchupDays / 7
+  const team1AvgMatchup = team1AvgWeekly * matchupWeeks
+  const team2AvgMatchup = team2AvgWeekly * matchupWeeks
+  const team1MatchupStdDev = team1StdDev * Math.sqrt(matchupWeeks)
+  const team2MatchupStdDev = team2StdDev * Math.sqrt(matchupWeeks)
+  
+  console.log(`[WinProb Chart] Team1 avg: ${team1AvgWeekly.toFixed(1)} (matchup: ${team1AvgMatchup.toFixed(1)}), stdDev: ${team1StdDev.toFixed(1)}`)
+  console.log(`[WinProb Chart] Team2 avg: ${team2AvgWeekly.toFixed(1)} (matchup: ${team2AvgMatchup.toFixed(1)}), stdDev: ${team2StdDev.toFixed(1)}`)
   
   // Get sport-specific daily weights
   const sport = leagueStore.currentSportType || 'baseball'
   const dailyWeights = getDailyWeights(sport)
   
-  // Calculate cumulative weights
+  // For extended matchups, determine which sub-week to display on the chart
+  const subWeekInfo = isExtended ? getMatchupSubWeekInfo(weekNum) : null
+  const chartDayCount = (isExtended && subWeekInfo) ? subWeekInfo.subWeekDates.length : 7
+  
+  // How many days have elapsed from matchup start to the current sub-week start
+  const priorDays = (isExtended && subWeekInfo) ? subWeekInfo.subWeek * 7 : 0
+  
+  // Calculate cumulative weights for 7-day cycle
   let cumulativeWeight = 0
   const cumulativeWeights: number[] = []
   for (let i = 0; i < 7; i++) {
@@ -892,27 +902,37 @@ const probabilityHistory = computed(() => {
     cumulativeWeights.push(cumulativeWeight)
   }
   
+  // Day labels for chart
+  const chartDayLabels = (isExtended && subWeekInfo) 
+    ? subWeekInfo.subWeekDates.map(d => {
+        const dt = new Date(d + 'T12:00:00')
+        const dayMap: Record<number, number> = { 1: 0, 2: 1, 3: 2, 4: 3, 5: 4, 6: 5, 0: 6 }
+        return days[dayMap[dt.getDay()] ?? 0] || d.slice(5)
+      })
+    : days
+  
   const history: any[] = []
   
-  for (let day = 0; day < 7; day++) {
-    // Calculate cumulative points at end of this day
-    // For completed matchups, distribute actual final score across days
-    // For live matchups, use current scores
+  for (let day = 0; day < chartDayCount; day++) {
+    // Total day index within the full matchup period
+    const matchupDayIndex = priorDays + day
+    // Fraction of total matchup days completed
+    const matchupFraction = (matchupDayIndex + 1) / totalMatchupDays
+    
     let team1Cumulative: number
     let team2Cumulative: number
     
     if (isCompleted) {
-      // Distribute final score across the week based on daily weights
-      team1Cumulative = team1FinalPoints * cumulativeWeights[day]
-      team2Cumulative = team2FinalPoints * cumulativeWeights[day]
+      team1Cumulative = team1FinalPoints * matchupFraction
+      team2Cumulative = team2FinalPoints * matchupFraction
     } else {
-      // For live matchups, current scores are what we have
       const jsDay = new Date().getDay()
       const currentDayIndex = jsDay === 0 ? 6 : jsDay - 1
       
       if (day <= currentDayIndex) {
-        // Pro-rate current score back to this day
+        // For current sub-week days up to today, pro-rate current score
         const dayFraction = cumulativeWeights[day] / cumulativeWeights[currentDayIndex]
+        // Current points already include all prior days (Yahoo gives cumulative)
         team1Cumulative = team1FinalPoints * dayFraction
         team2Cumulative = team2FinalPoints * dayFraction
       } else {
@@ -926,33 +946,23 @@ const probabilityHistory = computed(() => {
     let team1Prob: number
     let team2Prob: number
     
-    if (day === 6 && isCompleted) {
-      // SUNDAY on completed matchup - deterministic 100/0
-      if (team1IsFinalWinner) {
-        team1Prob = 100
-        team2Prob = 0
-      } else if (team2IsFinalWinner) {
-        team1Prob = 0
-        team2Prob = 100
-      } else {
-        team1Prob = 50
-        team2Prob = 50
-      }
+    // Days remaining in the full matchup from this chart point
+    const daysRemainingInMatchup = Math.max(0, totalMatchupDays - matchupDayIndex - 1)
+    
+    if (daysRemainingInMatchup <= 0 && isCompleted) {
+      // Final day - deterministic
+      if (team1IsFinalWinner) { team1Prob = 100; team2Prob = 0 }
+      else if (team2IsFinalWinner) { team1Prob = 0; team2Prob = 100 }
+      else { team1Prob = 50; team2Prob = 50 }
     } else {
-      // Run Monte Carlo: what would an observer think at end of this day?
-      const daysRemaining = 6 - day
-      const remainingFraction = 1 - cumulativeWeights[day]
+      // Run Monte Carlo
+      const remainingFraction = Math.max(0, 1 - matchupFraction)
+      const team1ExpectedRemaining = team1AvgMatchup * remainingFraction
+      const team2ExpectedRemaining = team2AvgMatchup * remainingFraction
+      const varianceScale = Math.sqrt(daysRemainingInMatchup / totalMatchupDays)
+      const team1RemainingStdDev = team1MatchupStdDev * varianceScale
+      const team2RemainingStdDev = team2MatchupStdDev * varianceScale
       
-      // Expected remaining points based on HISTORICAL AVERAGE (not actual remaining)
-      const team1ExpectedRemaining = team1AvgWeekly * remainingFraction
-      const team2ExpectedRemaining = team2AvgWeekly * remainingFraction
-      
-      // Variance scales with remaining time
-      const varianceScale = Math.sqrt(daysRemaining / 7)
-      const team1RemainingStdDev = team1StdDev * varianceScale
-      const team2RemainingStdDev = team2StdDev * varianceScale
-      
-      // Run Monte Carlo simulation
       const mcResult = runMonteCarloInline(
         team1Cumulative,
         team2Cumulative,
@@ -968,7 +978,7 @@ const probabilityHistory = computed(() => {
     }
     
     history.push({
-      day: days[day],
+      day: chartDayLabels[day] || days[day % 7],
       team1: Math.round(team1Prob * 10) / 10,
       team2: Math.round(team2Prob * 10) / 10,
       isFuture: !isCompleted && day > (new Date().getDay() === 0 ? 6 : new Date().getDay() - 1),
@@ -1033,6 +1043,56 @@ function runMonteCarloInline(
 }
 
 // Get daily weights for a sport (how points are distributed across the week)
+// Get the start/end dates for a given matchup week from game weeks data
+function getMatchupDates(weekNum: number): { start: string, end: string, totalDays: number, isExtended: boolean } | null {
+  const gw = gameWeeks.value.find(w => w.week === weekNum)
+  if (!gw || !gw.start || !gw.end) return null
+  const startDate = new Date(gw.start + 'T00:00:00')
+  const endDate = new Date(gw.end + 'T00:00:00')
+  const totalDays = Math.round((endDate.getTime() - startDate.getTime()) / 86400000) + 1
+  return { start: gw.start, end: gw.end, totalDays, isExtended: totalDays > 7 }
+}
+
+// Calculate days remaining from today until matchup end date
+function getMatchupDaysRemaining(weekNum: number): number {
+  const md = getMatchupDates(weekNum)
+  if (md) {
+    const today = new Date()
+    const endDate = new Date(md.end + 'T23:59:59')
+    const diff = Math.ceil((endDate.getTime() - today.getTime()) / 86400000)
+    return Math.max(0, diff)
+  }
+  // Fallback: standard 7-day week
+  const dayOfWeek = new Date().getDay()
+  return (7 - dayOfWeek) % 7
+}
+
+// For extended matchups, determine which sub-week (0-indexed) we're in and total sub-weeks
+function getMatchupSubWeekInfo(weekNum: number): { subWeek: number, totalSubWeeks: number, subWeekStartDate: string, subWeekDates: string[] } {
+  const md = getMatchupDates(weekNum)
+  if (!md || !md.isExtended) {
+    return { subWeek: 0, totalSubWeeks: 1, subWeekStartDate: '', subWeekDates: [] }
+  }
+  const mStart = new Date(md.start + 'T00:00:00')
+  const today = new Date()
+  const daysSinceStart = Math.floor((today.getTime() - mStart.getTime()) / 86400000)
+  const subWeek = Math.floor(daysSinceStart / 7)
+  const totalSubWeeks = Math.ceil(md.totalDays / 7)
+
+  const subWeekStart = new Date(mStart)
+  subWeekStart.setDate(subWeekStart.getDate() + subWeek * 7)
+  const endDate = new Date(md.end + 'T00:00:00')
+  const subWeekDates: string[] = []
+  for (let i = 0; i < 7; i++) {
+    const d = new Date(subWeekStart)
+    d.setDate(subWeekStart.getDate() + i)
+    if (d > endDate) break
+    subWeekDates.push(d.toISOString().split('T')[0])
+  }
+
+  return { subWeek, totalSubWeeks, subWeekStartDate: subWeekStart.toISOString().split('T')[0], subWeekDates }
+}
+
 function getDailyWeights(sport: string): number[] {
   // Baseball: games every day, fairly even
   if (sport === 'baseball') {
@@ -1063,7 +1123,7 @@ const probabilityChartOptions = computed(() => ({
   fill: { type: 'gradient', gradient: { shadeIntensity: 1, opacityFrom: 0.4, opacityTo: 0.1, stops: [0, 100] } },
   colors: ['#06b6d4', '#f97316'],
   xaxis: { 
-    categories: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
+    categories: probabilityHistory.value.map(h => h.day),
     labels: { style: { colors: '#8b8ea1' } },
     axisBorder: { show: false },
     axisTicks: { show: false }
@@ -1122,6 +1182,21 @@ const comparisonStats = computed(() => {
   
   const team1Stats = getTeamStats(selectedMatchup.value.team1.team_key)
   const team2Stats = getTeamStats(selectedMatchup.value.team2.team_key)
+  
+  // Check if there's any historical data
+  const hasHistory = team1Stats.totalPoints > 0 || team2Stats.totalPoints > 0
+  if (!hasHistory) {
+    return [
+      { label: 'Record', team1Value: '—', team2Value: '—', team1Better: false, team2Better: false },
+      { label: 'Points Per Week', team1Value: '—', team2Value: '—', team1Better: false, team2Better: false },
+      { label: 'Total Points', team1Value: '—', team2Value: '—', team1Better: false, team2Better: false },
+      { label: 'High Score', team1Value: '—', team2Value: '—', team1Better: false, team2Better: false },
+      { label: 'Low Score', team1Value: '—', team2Value: '—', team1Better: false, team2Better: false },
+      { label: 'All-Play Record', team1Value: '—', team2Value: '—', team1Better: false, team2Better: false },
+      { label: 'Consistency (StdDev)', team1Value: '—', team2Value: '—', team1Better: false, team2Better: false },
+      { label: 'Last 3 Weeks Avg', team1Value: '—', team2Value: '—', team1Better: false, team2Better: false }
+    ]
+  }
   
   const stats = [
     { label: 'Record', team1Value: `${team1Stats.wins}-${team1Stats.losses}`, team2Value: `${team2Stats.wins}-${team2Stats.losses}`, 
@@ -1458,7 +1533,7 @@ function calculateTeamDailyStats(teamKey: string): { avgDaily: number; stdDev: n
 }
 
 // Get Monte Carlo win probability for a matchup at END of a specific day
-function getMonteCarloWinProbability(matchup: any, dayOfWeek: number, isCompletedMatchup: boolean = false): { team1: number; team2: number } {
+function getMonteCarloWinProbability(matchup: any, dayOfWeek: number, isCompletedMatchup: boolean = false, overrideDaysRemaining?: number): { team1: number; team2: number } {
   if (!matchup?.team1 || !matchup?.team2) return { team1: 50, team2: 50 }
   
   const team1Key = matchup.team1.team_key
@@ -1470,7 +1545,7 @@ function getMonteCarloWinProbability(matchup: any, dayOfWeek: number, isComplete
   
   // dayOfWeek: 0 = Monday, 6 = Sunday
   const daysCompleted = dayOfWeek + 1 // 1-7
-  const daysRemaining = 7 - daysCompleted // 6-0
+  const daysRemaining = overrideDaysRemaining !== undefined ? overrideDaysRemaining : (7 - daysCompleted) // Use override for extended matchups
   
   // Get team stats for simulation
   const team1Stats = calculateTeamDailyStats(team1Key)
@@ -1721,6 +1796,19 @@ async function loadMatchups() {
       
       await yahooService.initialize(authStore.user.id)
       matchups = await yahooService.getMatchups(leagueKey, week)
+      
+      // Fetch game week dates for extended matchup detection
+      try {
+        gameWeeks.value = await yahooService.getGameWeeks(leagueKey)
+        const md = getMatchupDates(week)
+        if (md?.isExtended) {
+          const swInfo = getMatchupSubWeekInfo(week)
+          extendedMatchupLabel.value = `Extended Matchup: Week ${swInfo.subWeek + 1} of ${swInfo.totalSubWeeks}`
+          console.log(`[Points] Extended matchup detected: ${md.start} to ${md.end} (${md.totalDays} days)`)
+        } else {
+          extendedMatchupLabel.value = ''
+        }
+      } catch (e) { console.warn('[Points] Could not load game weeks:', e) }
     }
     
     console.log('Matchups received:', matchups.length, matchups)
@@ -1918,8 +2006,9 @@ async function loadMatchupHistory() {
       }
     }
   } else {
-    // Handle Yahoo leagues
-    for (let week = 1; week <= currentWeekNum; week++) {
+    // Handle Yahoo leagues - start from league's start_week (not always 1)
+    const histStart = startWeek.value
+    for (let week = histStart; week <= currentWeekNum; week++) {
       if (!allMatchupsHistory.value.has(week)) {
         try {
           const matchups = await yahooService.getMatchups(leagueKey, week)
