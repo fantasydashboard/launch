@@ -880,12 +880,12 @@ export class EspnFantasyService {
       }
       
       // Request all views ESPN website uses for category stats
-      // ESPN website uses: modular, mNav, mMatchupScore, mScoreboard, mSettings, mTopPerformers, mTeam
+      // Include mMatchup and mBoxscore which may contain per-stat data when mMatchupScore doesn't
       const data = await this.apiRequest(
         sport, 
         leagueId, 
         season, 
-        [ESPN_VIEWS.MATCHUP_SCORE, ESPN_VIEWS.SCOREBOARD, ESPN_VIEWS.TEAM, ESPN_VIEWS.MODULAR, ESPN_VIEWS.SETTINGS],
+        [ESPN_VIEWS.MATCHUP, ESPN_VIEWS.MATCHUP_SCORE, ESPN_VIEWS.SCOREBOARD, ESPN_VIEWS.BOXSCORE, ESPN_VIEWS.TEAM, ESPN_VIEWS.MODULAR, ESPN_VIEWS.SETTINGS],
         week,
         false, // not historical
         fantasyFilter // pass the filter!
@@ -3769,29 +3769,39 @@ export class EspnFantasyService {
       : espnBaseballStatNames
     
     // Build categories array from scoring items
+    // CRITICAL: For hockey/baseball, scoringItems use LOCAL stat IDs per statSourceId.
+    // Must convert to global IDs using source offsets.
+    const sourceOffsets: Record<string, Record<number, number>> = {
+      hockey: { 0: 0, 1: 19 },    // Goalie stats start at global ID 19
+      baseball: { 0: 0, 1: 35 },   // Pitching stats start at global ID 35
+      basketball: { 0: 0 },
+      football: { 0: 0 }
+    }
+    const offsets = sourceOffsets[sport] || { 0: 0 }
+    
     const categories: Array<{ stat_id: string; name: string; display_name: string; is_negative?: boolean }> = []
     const categoryStatIds: string[] = []
     for (const item of scoringItems) {
-      const statId = item.statId?.toString() || item.id?.toString()
-      if (statId) {
-        categoryStatIds.push(statId)
+      const localStatId = item.statId ?? item.id ?? 0
+      const sourceId = item.statSourceId ?? 0
+      const offset = offsets[sourceId] ?? 0
+      const globalStatId = localStatId + offset
+      const globalStatIdStr = String(globalStatId)
+      
+      if (globalStatIdStr) {
+        categoryStatIds.push(globalStatIdStr)
         
-        // Try to get name from ESPN's scoring item first, fallback to our dictionary
-        const espnAbbrev = item.label || item.abbreviation || item.abbrev
-        const espnName = item.displayName || item.name
-        
-        const statInfo = statNames[parseInt(statId)] || {
-          name: espnName || `Stat ${statId}`,
-          display: espnAbbrev || `S${statId}`
+        const statInfo = statNames[globalStatId] || {
+          name: `Stat ${globalStatId}`,
+          display: `S${globalStatId}`
         }
         
-        // Log for debugging
-        console.log(`[ESPN] Stat ${statId}: ESPN provided abbrev="${espnAbbrev}", name="${espnName}", using display="${espnAbbrev || statInfo.display}"`)
+        console.log(`[ESPN] Stat local=${localStatId} source=${sourceId} → global=${globalStatId} = ${statInfo.display}`)
         
         categories.push({
-          stat_id: statId,
-          name: espnName || statInfo.name,
-          display_name: espnAbbrev || statInfo.display,
+          stat_id: globalStatIdStr,
+          name: statInfo.name,
+          display_name: statInfo.display,
           is_negative: statInfo.isNegative
         })
       }
