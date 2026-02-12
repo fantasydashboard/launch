@@ -1336,18 +1336,23 @@ async function loadCategories() {
       const { sport, leagueId, season } = parseEspnLeagueKey(k)
       console.log('[Matchups ESPN] Loading categories for league:', leagueId, 'season:', season, 'sport:', sport)
       
+      // Also fetch full settings to check for category-specific fields
+      const fullSettingsData = await espnService.getLeague(sport, leagueId, season)
+      if (fullSettingsData) {
+        console.log(`[Matchups ESPN] League settings keys:`, Object.keys(fullSettingsData))
+        console.log(`[Matchups ESPN] League scoringType:`, fullSettingsData.scoringType)
+      }
+      
       const scoringSettings = await espnService.getScoringSettings(sport, leagueId, season)
       const scoringItems = scoringSettings?.scoringItems || []
       
-      // DEBUG: Log raw scoring items to see what ESPN actually returns
-      console.log(`[Matchups ESPN DEBUG] Raw scoringSettings keys:`, Object.keys(scoringSettings))
-      console.log(`[Matchups ESPN DEBUG] scoringItems count:`, scoringItems.length)
-      console.log(`[Matchups ESPN DEBUG] Raw scoringItems:`, JSON.stringify(scoringItems.slice(0, 5), null, 2))
-      console.log(`[Matchups ESPN DEBUG] All scoringItem statIds:`, scoringItems.map((i: any) => `${i.statId}(${i.label||i.abbreviation||i.abbrev||'?'})`).join(', '))
-      
-      // Also check if there's a statCategories or other useful field
-      if (scoringSettings.statCategories) console.log('[Matchups ESPN DEBUG] statCategories:', JSON.stringify(scoringSettings.statCategories))
-      if (scoringSettings.scoringType) console.log('[Matchups ESPN DEBUG] scoringType:', scoringSettings.scoringType)
+      // Log FULL structure of scoringSettings to find category-distinguishing fields
+      console.log(`[Matchups ESPN] scoringSettings keys:`, Object.keys(scoringSettings || {}))
+      console.log(`[Matchups ESPN] scoringItems count:`, scoringItems.length)
+      // Log full structure of ALL items for this sport to see every available field
+      scoringItems.forEach((item: any, i: number) => {
+        console.log(`[Matchups ESPN] scoringItem[${i}] FULL:`, JSON.stringify(item))
+      })
       
       // ESPN stat ID mappings by sport - comprehensive list
       const espnBaseballStatNames: Record<number, { name: string; display: string; isNegative?: boolean }> = {
@@ -1516,126 +1521,116 @@ async function loadCategories() {
         : sport === 'basketball' ? espnBasketballStatNames 
         : espnBaseballStatNames
       
-      categories.value = scoringItems
-        .map((item: any) => {
-          // CRITICAL: Use ?? instead of || because statId can be 0 (e.g. PTS in basketball, G in hockey)
-          // and 0 is falsy in JavaScript, which would skip to item.id
-          const rawStatId = item.statId ?? item.id
-          const statId = rawStatId !== undefined && rawStatId !== null ? String(rawStatId) : ''
-          
-          // Try to get name from ESPN's scoring item first, fallback to our dictionary
-          const espnAbbrev = item.label || item.abbreviation || item.abbrev
-          const espnName = item.displayName || item.name
-          
-          const statInfo = statNames[parseInt(statId)] || { 
-            name: espnName || `Stat ${statId}`, 
-            display: espnAbbrev || `S${statId}` 
-          }
-          
-          return {
-            stat_id: statId,
-            name: espnName || statInfo.name,
-            display_name: espnAbbrev || statInfo.display,
-            is_negative: statInfo.isNegative
-          }
-        })
-        .filter((c: any) => c.stat_id !== '')
-      
-      console.log(`[Matchups ESPN] Initial categories from scoringItems (${categories.value.length}):`, categories.value.map(c => `${c.stat_id}=${c.display_name}`))
-      
-      // Filter to only actual H2H categories (scoringItems can include non-category stats).
-      // Strategy 1: Use perCategoryResults from matchup data (most reliable when available)
-      // Strategy 2: Use valuesByStat from team data as fallback (when scoreByStat is null)
+      // APPROACH: Use team valuesByStat as ground truth for this league's active categories.
+      // ESPN's scoringItems is unreliable (includes non-category stats), and scoreByStat is 
+      // often null. But team.valuesByStat always contains exactly the stats this league tracks.
       try {
-        const currentWeekNum = currentWeek.value || 1
-        let activeStatIds: Set<string> | null = null
+        const teams = await espnService.getTeams(sport, leagueId, season)
+        const teamWithStats = teams.find(t => t.valuesByStat && Object.keys(t.valuesByStat).length > 0)
         
-        // Strategy 1: Try to find perCategoryResults from any week's matchup data
-        for (let w = currentWeekNum; w >= Math.max(1, currentWeekNum - 3) && !activeStatIds; w--) {
-          try {
-            const sampleMatchups = await espnService.getMatchups(sport, leagueId, season, w)
-            for (const m of sampleMatchups) {
-              const perCatResults = m.homePerCategoryResults || m.awayPerCategoryResults
-              if (perCatResults && Object.keys(perCatResults).length > 0) {
-                activeStatIds = new Set(Object.keys(perCatResults))
-                console.log(`[Matchups ESPN] Strategy 1: Found ${activeStatIds.size} active categories from week ${w} perCategoryResults:`, [...activeStatIds])
-                break
-              }
+        if (teamWithStats?.valuesByStat) {
+          const valuesByStatKeys = Object.keys(teamWithStats.valuesByStat)
+          console.log(`[Matchups ESPN] valuesByStat keys from team data (${valuesByStatKeys.length} stats):`, valuesByStatKeys)
+          console.log(`[Matchups ESPN] valuesByStat mapped:`, valuesByStatKeys.map(id => {
+            const info = statNames[parseInt(id)]
+            return `${id}=${info?.display || '?'}`
+          }).join(', '))
+          
+          // Build categories from valuesByStat keys using our stat name dictionary
+          categories.value = valuesByStatKeys.map(statId => {
+            const statInfo = statNames[parseInt(statId)] || { 
+              name: `Stat ${statId}`, display: `S${statId}` 
             }
-          } catch (e) { /* continue to next week */ }
-        }
-        
-        // Strategy 2: If scoreByStat was null (no perCategoryResults), cross-reference 
-        // scoringItems with valuesByStat from team data. valuesByStat contains only stats 
-        // that are actively tracked for this league's scoring.
-        if (!activeStatIds) {
-          console.log('[Matchups ESPN] scoreByStat null for all weeks, trying valuesByStat fallback')
-          try {
-            const { sport: sp, leagueId: lid, season: sn } = parseEspnLeagueKey(leagueStore.activeLeagueId!)
-            const sampleMatchups = await espnService.getMatchups(sp, lid, sn, currentWeekNum)
-            
-            // Get valuesByStat keys from any team in the league
-            // These come from team.valuesByStat in the raw ESPN data
-            let valuesByStatKeys: Set<string> | null = null
-            for (const m of sampleMatchups) {
-              // Check if the matchup response includes team stat data
-              if (m.homeScoreByStat) {
-                valuesByStatKeys = new Set(Object.keys(m.homeScoreByStat))
-                break
-              }
+            return {
+              stat_id: statId,
+              name: statInfo.name,
+              display_name: statInfo.display,
+              is_negative: statInfo.isNegative
             }
-            
-            // If we still don't have valuesByStat from matchups, the scoringItems IS our best bet
-            // But filter out obvious component stats for percentage categories
-            if (!valuesByStatKeys) {
-              console.log('[Matchups ESPN] No valuesByStat available, filtering scoringItems for percentage components')
-              const scoringItemIds = new Set(categories.value.map((c: any) => c.stat_id))
-              
-              // If both a percentage stat and its components are present, keep only the percentage
-              // Basketball: FG%(19) from FGM(13)/FGA(14), FT%(20) from FTM(15)/FTA(16), 3P%(21) from 3PM(17)/3PA(18)
-              // Baseball: AVG(8) from H(1)/AB(0), ERA(47) from ER(40)/IP(39), WHIP(48), etc.
-              const percentComponentPairs: Record<string, string[]> = sport === 'basketball' ? {
-                '19': ['13', '14'], // FG% uses FGM, FGA
-                '20': ['15', '16'], // FT% uses FTM, FTA
-                '21': ['17', '18'], // 3P% uses 3PM, 3PA
-              } : {}
-              
-              const idsToRemove = new Set<string>()
-              for (const [pctId, componentIds] of Object.entries(percentComponentPairs)) {
-                if (scoringItemIds.has(pctId)) {
-                  // If the percentage stat is present, remove its components
-                  for (const compId of componentIds) {
-                    if (scoringItemIds.has(compId)) {
-                      idsToRemove.add(compId)
-                    }
-                  }
+          })
+          
+          // Remove component stats when the percentage stat is also present
+          // (e.g., if FG%(19) is in the list, remove FGM(13) and FGA(14))
+          const activeIds = new Set(valuesByStatKeys)
+          const percentComponentPairs: Record<string, string[]> = sport === 'basketball' ? {
+            '19': ['13', '14'], // FG% from FGM, FGA
+            '20': ['15', '16'], // FT% from FTM, FTA
+            '21': ['17', '18'], // 3P% from 3PM, 3PA
+          } : sport === 'hockey' ? {
+            // Hockey: SV%(24) from SV(23)/SA(38), GAA(22) from GA(21)/GS(27)
+            '24': ['23', '38'], // SV% from Saves, Shots Against
+            '22': ['21', '27'], // GAA from Goals Against, Games Started
+            '13': ['12'],       // SH% from SOG (only if SH% present — usually not a category)
+            '34': ['14', '15'], // FO% from FOW, FOL (only if FO% present)
+          } : sport === 'baseball' ? {
+            '8': ['0', '1'],    // AVG from AB, H
+            '47': ['40', '39'], // ERA from ER, IP  
+            '48': ['41', '42'], // WHIP from HA, BBI
+          } : {}
+          
+          const idsToRemove = new Set<string>()
+          for (const [pctId, componentIds] of Object.entries(percentComponentPairs)) {
+            if (activeIds.has(pctId)) {
+              for (const compId of componentIds) {
+                if (activeIds.has(compId)) {
+                  idsToRemove.add(compId)
                 }
               }
-              
-              if (idsToRemove.size > 0) {
-                const beforeCount = categories.value.length
-                categories.value = categories.value.filter((c: any) => !idsToRemove.has(c.stat_id))
-                console.log(`[Matchups ESPN] Removed ${beforeCount - categories.value.length} component stats:`, [...idsToRemove])
-              }
             }
-          } catch (e) {
-            console.warn('[Matchups ESPN] valuesByStat fallback failed:', e)
           }
-        }
-        
-        if (activeStatIds && activeStatIds.size > 0) {
-          const beforeCount = categories.value.length
-          categories.value = categories.value.filter((c: any) => activeStatIds!.has(c.stat_id))
-          console.log(`[Matchups ESPN] Filtered to ${categories.value.length} categories (from ${beforeCount}):`, categories.value.map(c => `${c.stat_id}=${c.display_name}`))
+          
+          if (idsToRemove.size > 0) {
+            const beforeCount = categories.value.length
+            categories.value = categories.value.filter((c: any) => !idsToRemove.has(c.stat_id))
+            console.log(`[Matchups ESPN] Removed ${idsToRemove.size} component stats:`, [...idsToRemove], `(${beforeCount} → ${categories.value.length})`)
+          }
+        } else {
+          // Fallback: use scoringItems if no team data available
+          console.warn('[Matchups ESPN] No team valuesByStat available, falling back to scoringItems')
+          categories.value = scoringItems
+            .map((item: any) => {
+              const rawStatId = item.statId ?? item.id
+              const statId = rawStatId !== undefined && rawStatId !== null ? String(rawStatId) : ''
+              const statInfo = statNames[parseInt(statId)] || { name: `Stat ${statId}`, display: `S${statId}` }
+              return { stat_id: statId, name: statInfo.name, display_name: statInfo.display, is_negative: statInfo.isNegative }
+            })
+            .filter((c: any) => c.stat_id !== '')
         }
       } catch (e) {
-        console.warn('[Matchups ESPN] Category filtering failed:', e)
+        console.warn('[Matchups ESPN] Failed to load team data for categories:', e)
+        // Fallback to scoringItems
+        categories.value = scoringItems
+          .map((item: any) => {
+            const rawStatId = item.statId ?? item.id
+            const statId = rawStatId !== undefined && rawStatId !== null ? String(rawStatId) : ''
+            const statInfo = statNames[parseInt(statId)] || { name: `Stat ${statId}`, display: `S${statId}` }
+            return { stat_id: statId, name: statInfo.name, display_name: statInfo.display, is_negative: statInfo.isNegative }
+          })
+          .filter((c: any) => c.stat_id !== '')
       }
       
-      // ESPN's scoringItems array comes in reverse order from their on-site display
-      categories.value = categories.value.reverse()
+      // Order categories to match ESPN's standard display order per sport
+      // ESPN groups: skater stats first, then goalie stats (hockey); batting then pitching (baseball)
+      const espnDisplayOrder: Record<string, string[]> = {
+        hockey: ['0','1','3','4','7','5','6','8','9','10','11','12','13','14','15','16','17','29','30','31','19','20','22','24','25','26','27','28','38'],
+        basketball: ['19','20','17','6','3','2','1','0','11','13','14','15','16','18','21','37','38','40','41'],
+        baseball: ['8','2','3','4','5','6','1','7','9','10','11','16','35','37','43','47','48','53','36','39','44','45','41','42','56','57'],
+        football: [] // Use as-is
+      }
+      const displayOrder = espnDisplayOrder[sport] || []
+      if (displayOrder.length > 0) {
+        categories.value.sort((a: any, b: any) => {
+          const ai = displayOrder.indexOf(a.stat_id)
+          const bi = displayOrder.indexOf(b.stat_id)
+          // Known stats sorted by ESPN order, unknown stats appended at end
+          if (ai === -1 && bi === -1) return 0
+          if (ai === -1) return 1
+          if (bi === -1) return -1
+          return ai - bi
+        })
+      }
       
-      console.log(`[Matchups ESPN ${sport}] Final`, categories.value.length, 'categories:', categories.value.map(c => c.display_name))
+      console.log(`[Matchups ESPN ${sport}] Final`, categories.value.length, 'categories:', categories.value.map(c => `${c.stat_id}=${c.display_name}`))
     } else {
       // Yahoo categories
       const s = await yahooService.getLeagueScoringSettings(k)
