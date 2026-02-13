@@ -488,46 +488,53 @@ const ESPN_INVERSE_STATS = ['7', '12', '14', '18', '19', '21', '22', '24', '33',
 // Shared between loadCategories() and loadMatchups() for category rebuild
 function getEspnStatNames(sport: string): Record<number, { name: string; display: string; isNegative?: boolean }> {
   if (sport === 'hockey') return {
-    0: { name: 'Goals', display: 'G' },
-    1: { name: 'Assists', display: 'A' },
-    2: { name: 'Points', display: 'PTS' },
-    3: { name: 'Plus/Minus', display: '+/-' },
-    4: { name: 'Penalty Minutes', display: 'PIM' },
-    5: { name: 'Powerplay Goals', display: 'PPG' },
-    6: { name: 'Powerplay Assists', display: 'PPA' },
-    7: { name: 'Powerplay Points', display: 'PPP' },
-    8: { name: 'Shorthanded Goals', display: 'SHG' },
-    9: { name: 'Shorthanded Assists', display: 'SHA' },
-    10: { name: 'Shorthanded Points', display: 'SHP' },
-    11: { name: 'Game-Winning Goals', display: 'GWG' },
-    12: { name: 'Shots on Goal', display: 'SOG' },
-    13: { name: 'Shooting Percentage', display: 'SH%' },
-    14: { name: 'Faceoffs Won', display: 'FOW' },
-    15: { name: 'Faceoffs Lost', display: 'FOL', isNegative: true },
-    16: { name: 'Hits', display: 'HIT' },
-    17: { name: 'Blocks', display: 'BLK' },
-    18: { name: 'Takeaways', display: 'TK' },
-    19: { name: 'Wins', display: 'W' },
-    20: { name: 'Losses', display: 'L', isNegative: true },
-    21: { name: 'Goals Against', display: 'GA', isNegative: true },
-    22: { name: 'Goals Against Average', display: 'GAA', isNegative: true },
-    23: { name: 'Saves', display: 'SV' },
-    24: { name: 'Save Percentage', display: 'SV%' },
-    25: { name: 'Shutouts', display: 'SHO' },
-    26: { name: 'Overtime Losses', display: 'OTL' },
-    27: { name: 'Games Started', display: 'GS' },
-    28: { name: 'Giveaways', display: 'GV', isNegative: true },
-    29: { name: 'Avg Time on Ice', display: 'ATOI' },
+    // ESPN Fantasy Hockey stat IDs (DIFFERENT from other sports!)
+    // Goalie stats use IDs 0-12, Skater stats use IDs 13+
+    // Goalie stats
+    0: { name: 'Games Started', display: 'GS' },
+    1: { name: 'Wins', display: 'W' },
+    2: { name: 'Losses', display: 'L', isNegative: true },
+    3: { name: 'Shots Against', display: 'SA' },
+    4: { name: 'Goals Against', display: 'GA', isNegative: true },
+    5: { name: 'Saves', display: 'SV' },
+    6: { name: 'Saves', display: 'SV' },
+    7: { name: 'Shutouts', display: 'SHO' },
+    8: { name: 'Minutes', display: 'MIN' },
+    9: { name: 'Overtime Losses', display: 'OTL' },
+    10: { name: 'Goals Against Average', display: 'GAA', isNegative: true },
+    11: { name: 'Save Percentage', display: 'SV%' },
+    12: { name: 'Shutouts', display: 'SHO' },
+    // Skater stats (IDs 13+)
+    13: { name: 'Goals', display: 'G' },
+    14: { name: 'Assists', display: 'A' },
+    15: { name: 'Plus/Minus', display: '+/-' },
+    16: { name: 'Points', display: 'PTS' },
+    17: { name: 'Penalty Minutes', display: 'PIM' },
+    18: { name: 'Powerplay Goals', display: 'PPG' },
+    19: { name: 'Powerplay Assists', display: 'PPA' },
+    20: { name: 'Shorthanded Goals', display: 'SHG' },
+    21: { name: 'Shorthanded Assists', display: 'SHA' },
+    22: { name: 'Game-Winning Goals', display: 'GWG' },
+    23: { name: 'Shorthanded Points', display: 'SHP' },
+    24: { name: 'Shots on Goal', display: 'SOG' },
+    25: { name: 'Time on Ice', display: 'TOI' },
+    26: { name: 'Time on Ice (total)', display: 'TOI' },
+    27: { name: 'Avg Time on Ice', display: 'ATOI' },
+    28: { name: 'Hat Tricks', display: 'HAT' },
+    29: { name: 'Shots on Goal', display: 'SOG' },
     30: { name: 'Games Played', display: 'GP' },
-    31: { name: 'Hat Tricks', display: 'HAT' },
-    32: { name: 'Defensemen Points', display: 'DEF' },
-    33: { name: 'Special Teams Points', display: 'STP' },
-    34: { name: 'Faceoff Win Pct', display: 'FO%' },
-    35: { name: 'Minutes', display: 'MIN' },
-    36: { name: 'Shots', display: 'SH' },
-    37: { name: 'Goalie Wins', display: 'GW' },
-    38: { name: 'Shots Against', display: 'SA' },
-    39: { name: 'Goals Saved Above Avg', display: 'GSAA' }
+    31: { name: 'Blocked Shots', display: 'BLK' },
+    32: { name: 'Takeaways', display: 'TK' },
+    33: { name: 'Giveaways', display: 'GV', isNegative: true },
+    34: { name: 'Games Started', display: 'GS' },
+    35: { name: 'Faceoffs Won', display: 'FOW' },
+    36: { name: 'Faceoffs Lost', display: 'FOL', isNegative: true },
+    37: { name: 'Faceoff Total', display: 'FO' },
+    38: { name: 'Powerplay Points', display: 'PPP' },
+    39: { name: 'Shorthanded Points', display: 'SHP' },
+    40: { name: 'Hits', display: 'HIT' },
+    41: { name: 'Shooting Percentage', display: 'SH%' },
+    42: { name: 'Faceoff Win Pct', display: 'FO%' }
   }
   if (sport === 'basketball') return {
     0: { name: 'Points', display: 'PTS' },
@@ -649,23 +656,27 @@ function getEspnStatNames(sport: string): Record<number, { name: string; display
 
 // ESPN standard display order by sport (stat IDs in ESPN's left-to-right order)
 const ESPN_DISPLAY_ORDER: Record<string, string[]> = {
-  hockey: ['0','1','3','4','7','5','6','8','9','10','11','12','13','14','15','16','17','29','30','31','19','20','22','24','25','26','27','28','38'],
+  // Hockey: Skater stats first (G,A,+/-,PIM,PPP,ATOI,SOG,PPG,PPA,SHG,SHA,GWG,HIT,BLK), then Goalie (W,L,GAA,SV%,SHO,SA)
+  hockey: ['13','14','15','17','38','27','29','18','19','20','21','22','40','31','32','30','1','2','10','11','7','12','3','0'],
   basketball: ['19','20','17','6','3','2','1','0','11','13','14','15','16','18','21','37','38','40','41'],
   baseball: ['8','2','3','4','5','6','1','7','9','10','11','16','35','37','43','47','48','53','36','39','44','45','41','42','56','57'],
   football: []
 }
 
 // Helper: build category objects from stat IDs using ESPN mappings, sorted by display order
-function buildEspnCategories(sport: string, statIds: string[]): { stat_id: string; name: string; display_name: string; is_negative?: boolean }[] {
+// Optional reverseMap overrides is_negative from scoringItems' isReverseItem (most accurate source)
+function buildEspnCategories(sport: string, statIds: string[], reverseMap?: Record<string, boolean>): { stat_id: string; name: string; display_name: string; is_negative?: boolean }[] {
   const statNames = getEspnStatNames(sport)
   const cats = statIds.map(sid => {
     const statId = parseInt(sid)
     const info = statNames[statId] || { name: `Stat ${statId}`, display: `S${statId}` }
+    // Use isReverseItem from scoringItems if available, otherwise fall back to mapping
+    const isNeg = reverseMap ? (reverseMap[sid] ?? info.isNegative) : info.isNegative
     return {
       stat_id: sid,
       name: info.name,
       display_name: info.display,
-      is_negative: info.isNegative
+      is_negative: isNeg
     }
   })
   // Sort by ESPN's standard display order
@@ -1029,7 +1040,12 @@ function formatStat(v: number | null, id: string) {
   if (v === null || v === undefined) return '—'
   if (isPercentageStat(id)) return (v * 100).toFixed(1) + '%'
   if (isRatioStat(id)) return v.toFixed(2)
+  // Yahoo ERA/WHIP and ESPN GAA/SV%-like stats that need decimal formatting
   if (['26','27'].includes(id)) return v.toFixed(2)
+  // ESPN hockey: GAA (stat 10) needs decimal formatting
+  if (id === '10' && v > 0 && v < 20) return v.toFixed(3)
+  // ESPN hockey: ATOI (stat 27 for ESPN) — if value > 100, it's likely in seconds, convert to mm:ss
+  // Note: stat 27 is already handled by the isRatioStat/display check above via display_name
   return Math.round(v).toString()
 }
 function generateScoutingReport(teamKey: string) {
@@ -1543,10 +1559,18 @@ async function loadCategories() {
       // NOTE: scoringItems is NOT always reliable for H2H category leagues (e.g., hockey).
       // The definitive category list comes from scoreByStat in actual matchup data.
       // loadMatchups() will rebuild categories from matchup data when available.
+      const reverseMap: Record<string, boolean> = {}
+      for (const item of scoringItems) {
+        reverseMap[String(item.statId ?? item.id ?? 0)] = !!item.isReverseItem
+      }
       const scoringCategories = buildEspnCategories(
         sport,
-        scoringItems.map((item: any) => String(item.statId ?? item.id ?? 0)).filter((s: string) => s !== '')
+        scoringItems.map((item: any) => String(item.statId ?? item.id ?? 0)).filter((s: string) => s !== ''),
+        reverseMap
       )
+      
+      // Store reverseMap for later use in matchup rebuild
+      ;(window as any).__espnReverseMap = reverseMap
       
       categories.value = scoringCategories
       console.log(`[Matchups ESPN] ${scoringCategories.length} initial categories from scoringItems:`, scoringCategories.map((c: any) => `${c.stat_id}=${c.display_name}`))
@@ -1673,7 +1697,7 @@ async function loadMatchups() {
             console.log('[Matchups ESPN]   scoringItems had:', [...currentCatIds].join(', '))
             console.log('[Matchups ESPN]   Actual scoring categories:', actualStatIds.join(', '))
             
-            categories.value = buildEspnCategories(sport, actualStatIds)
+            categories.value = buildEspnCategories(sport, actualStatIds, (window as any).__espnReverseMap)
             console.log('[Matchups ESPN] ✅ Rebuilt categories from matchup results:', categories.value.map((c: any) => `${c.stat_id}=${c.display_name}`))
           } else {
             console.log('[Matchups ESPN] ✅ Categories match matchup scoring data — no rebuild needed')
