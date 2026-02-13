@@ -484,6 +484,205 @@ const ESPN_BATTING_STAT_IDS = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9',
 const ESPN_PITCHING_STAT_IDS = ['17', '18', '19', '20', '21', '22', '23', '24', '32', '33', '34', '35', '36', '37', '99']
 const ESPN_INVERSE_STATS = ['7', '12', '14', '18', '19', '21', '22', '24', '33', '45'] // Lower is better
 
+// ESPN stat ID → display name mappings by sport
+// Shared between loadCategories() and loadMatchups() for category rebuild
+function getEspnStatNames(sport: string): Record<number, { name: string; display: string; isNegative?: boolean }> {
+  if (sport === 'hockey') return {
+    0: { name: 'Goals', display: 'G' },
+    1: { name: 'Assists', display: 'A' },
+    2: { name: 'Points', display: 'PTS' },
+    3: { name: 'Plus/Minus', display: '+/-' },
+    4: { name: 'Penalty Minutes', display: 'PIM' },
+    5: { name: 'Powerplay Goals', display: 'PPG' },
+    6: { name: 'Powerplay Assists', display: 'PPA' },
+    7: { name: 'Powerplay Points', display: 'PPP' },
+    8: { name: 'Shorthanded Goals', display: 'SHG' },
+    9: { name: 'Shorthanded Assists', display: 'SHA' },
+    10: { name: 'Shorthanded Points', display: 'SHP' },
+    11: { name: 'Game-Winning Goals', display: 'GWG' },
+    12: { name: 'Shots on Goal', display: 'SOG' },
+    13: { name: 'Shooting Percentage', display: 'SH%' },
+    14: { name: 'Faceoffs Won', display: 'FOW' },
+    15: { name: 'Faceoffs Lost', display: 'FOL', isNegative: true },
+    16: { name: 'Hits', display: 'HIT' },
+    17: { name: 'Blocks', display: 'BLK' },
+    18: { name: 'Takeaways', display: 'TK' },
+    19: { name: 'Wins', display: 'W' },
+    20: { name: 'Losses', display: 'L', isNegative: true },
+    21: { name: 'Goals Against', display: 'GA', isNegative: true },
+    22: { name: 'Goals Against Average', display: 'GAA', isNegative: true },
+    23: { name: 'Saves', display: 'SV' },
+    24: { name: 'Save Percentage', display: 'SV%' },
+    25: { name: 'Shutouts', display: 'SHO' },
+    26: { name: 'Overtime Losses', display: 'OTL' },
+    27: { name: 'Games Started', display: 'GS' },
+    28: { name: 'Giveaways', display: 'GV', isNegative: true },
+    29: { name: 'Avg Time on Ice', display: 'ATOI' },
+    30: { name: 'Games Played', display: 'GP' },
+    31: { name: 'Hat Tricks', display: 'HAT' },
+    32: { name: 'Defensemen Points', display: 'DEF' },
+    33: { name: 'Special Teams Points', display: 'STP' },
+    34: { name: 'Faceoff Win Pct', display: 'FO%' },
+    35: { name: 'Minutes', display: 'MIN' },
+    36: { name: 'Shots', display: 'SH' },
+    37: { name: 'Goalie Wins', display: 'GW' },
+    38: { name: 'Shots Against', display: 'SA' },
+    39: { name: 'Goals Saved Above Avg', display: 'GSAA' }
+  }
+  if (sport === 'basketball') return {
+    0: { name: 'Points', display: 'PTS' },
+    1: { name: 'Blocks', display: 'BLK' },
+    2: { name: 'Steals', display: 'STL' },
+    3: { name: 'Assists', display: 'AST' },
+    4: { name: 'Offensive Rebounds', display: 'OREB' },
+    5: { name: 'Defensive Rebounds', display: 'DREB' },
+    6: { name: 'Rebounds', display: 'REB' },
+    7: { name: 'Ejections', display: 'EJ', isNegative: true },
+    8: { name: 'Flagrant Fouls', display: 'FF', isNegative: true },
+    9: { name: 'Personal Fouls', display: 'PF', isNegative: true },
+    10: { name: 'Technical Fouls', display: 'TF', isNegative: true },
+    11: { name: 'Turnovers', display: 'TO', isNegative: true },
+    12: { name: 'Disqualifications', display: 'DQ', isNegative: true },
+    13: { name: 'Field Goals Made', display: 'FGM' },
+    14: { name: 'Field Goals Attempted', display: 'FGA' },
+    15: { name: 'Free Throws Made', display: 'FTM' },
+    16: { name: 'Free Throws Attempted', display: 'FTA' },
+    17: { name: '3-Pointers Made', display: '3PM' },
+    18: { name: '3-Pointers Attempted', display: '3PA' },
+    19: { name: 'Field Goal Pct', display: 'FG%' },
+    20: { name: 'Free Throw Pct', display: 'FT%' },
+    21: { name: '3-Point Pct', display: '3P%' },
+    37: { name: 'Double-Doubles', display: 'DD' },
+    38: { name: 'Triple-Doubles', display: 'TD' },
+    40: { name: 'Games Played', display: 'GP' },
+    41: { name: 'Minutes', display: 'MIN' },
+    42: { name: 'Games Started', display: 'GS' }
+  }
+  // baseball (default)
+  return {
+    0: { name: 'At Bats', display: 'AB' },
+    1: { name: 'Hits', display: 'H' },
+    2: { name: 'Runs', display: 'R' },
+    3: { name: 'Home Runs', display: 'HR' },
+    4: { name: 'RBI', display: 'RBI' },
+    5: { name: 'Stolen Bases', display: 'SB' },
+    6: { name: 'Walks (Batting)', display: 'BB' },
+    7: { name: 'Strikeouts (Batting)', display: 'K', isNegative: true },
+    8: { name: 'Batting Average', display: 'AVG' },
+    9: { name: 'On Base Pct', display: 'OBP' },
+    10: { name: 'Slugging Pct', display: 'SLG' },
+    11: { name: 'OPS', display: 'OPS' },
+    12: { name: 'Grounded Into DP', display: 'GIDP', isNegative: true },
+    13: { name: 'Singles', display: '1B' },
+    14: { name: 'Doubles', display: '2B' },
+    15: { name: 'Triples', display: '3B' },
+    16: { name: 'Total Bases', display: 'TB' },
+    17: { name: 'Games Played', display: 'G' },
+    18: { name: 'Plate Appearances', display: 'PA' },
+    19: { name: 'Extra Base Hits', display: 'XBH' },
+    20: { name: 'Hit By Pitch', display: 'HBP' },
+    21: { name: 'Intentional Walks', display: 'IBB' },
+    22: { name: 'Sac Bunts', display: 'SAC' },
+    23: { name: 'Sacrifice Flies', display: 'SF' },
+    24: { name: 'Errors', display: 'E', isNegative: true },
+    25: { name: 'Fielder\'s Choice', display: 'FC' },
+    26: { name: 'Fielding Percentage', display: 'FPCT' },
+    27: { name: 'Outfield Assists', display: 'OFAST' },
+    28: { name: 'Double Plays Turned', display: 'DP' },
+    29: { name: 'Putouts', display: 'PO' },
+    30: { name: 'Assists', display: 'A' },
+    31: { name: 'Total Chances', display: 'TC' },
+    32: { name: 'Caught Stealing', display: 'CS', isNegative: true },
+    33: { name: 'Stolen Base Percentage', display: 'SB%' },
+    34: { name: 'Net Stolen Bases', display: 'NSB' },
+    35: { name: 'Wins', display: 'W' },
+    36: { name: 'Losses', display: 'L', isNegative: true },
+    37: { name: 'Saves', display: 'SV' },
+    38: { name: 'Holds', display: 'HD' },
+    39: { name: 'Innings Pitched', display: 'IP' },
+    40: { name: 'Earned Runs', display: 'ER', isNegative: true },
+    41: { name: 'Hits Allowed', display: 'HA', isNegative: true },
+    42: { name: 'Walks Allowed', display: 'BBI', isNegative: true },
+    43: { name: 'Strikeouts (Pitching)', display: 'Ks' },
+    44: { name: 'Complete Games', display: 'CG' },
+    45: { name: 'Shutouts', display: 'SHO' },
+    46: { name: 'No Hitters', display: 'NH' },
+    47: { name: 'ERA', display: 'ERA', isNegative: true },
+    48: { name: 'WHIP', display: 'WHIP', isNegative: true },
+    49: { name: 'Opponent Batting Avg', display: 'OBA', isNegative: true },
+    50: { name: 'Runs Allowed', display: 'RA', isNegative: true },
+    51: { name: 'Home Runs Allowed', display: 'HRA', isNegative: true },
+    52: { name: 'Batters Faced', display: 'BF' },
+    53: { name: 'Quality Starts', display: 'QS' },
+    54: { name: 'Pitches Thrown', display: 'PC' },
+    55: { name: 'Pickoffs', display: 'PKO' },
+    56: { name: 'Wild Pitches', display: 'WP', isNegative: true },
+    57: { name: 'Blown Saves', display: 'BS', isNegative: true },
+    58: { name: 'Relief Wins', display: 'RW' },
+    59: { name: 'Relief Losses', display: 'RL', isNegative: true },
+    60: { name: 'Save Opportunities', display: 'SVO' },
+    61: { name: 'Inherited Runners Scored', display: 'IRS', isNegative: true },
+    62: { name: 'Strikeout to Walk Ratio', display: 'K/BB' },
+    63: { name: 'Games Started', display: 'GS' },
+    64: { name: 'Hit Batters', display: 'HB', isNegative: true },
+    65: { name: 'Balks', display: 'BK', isNegative: true },
+    66: { name: 'Ground Outs', display: 'GO' },
+    67: { name: 'Fly Outs', display: 'AO' },
+    68: { name: 'K/9', display: 'K/9' },
+    69: { name: 'BB/9', display: 'BB/9', isNegative: true },
+    70: { name: 'H/9', display: 'H/9', isNegative: true },
+    71: { name: 'Saves + Holds', display: 'SVHD' },
+    72: { name: 'Relief Appearances', display: 'RAPP' },
+    73: { name: 'Total Bases Allowed', display: 'TBA', isNegative: true },
+    74: { name: 'Win Percentage', display: 'W%' },
+    76: { name: 'BABIP', display: 'BABIP' },
+    77: { name: 'FIP', display: 'FIP', isNegative: true },
+    78: { name: 'xFIP', display: 'xFIP', isNegative: true },
+    79: { name: 'WAR (Batting)', display: 'WAR' },
+    80: { name: 'WAR (Pitching)', display: 'WAR' },
+    81: { name: 'wOBA', display: 'wOBA' },
+    82: { name: 'wRC+', display: 'wRC+' },
+    83: { name: 'Perfect Games', display: 'PG' },
+    99: { name: 'Games Pitched', display: 'GP' }
+  }
+}
+
+// ESPN standard display order by sport (stat IDs in ESPN's left-to-right order)
+const ESPN_DISPLAY_ORDER: Record<string, string[]> = {
+  hockey: ['0','1','3','4','7','5','6','8','9','10','11','12','13','14','15','16','17','29','30','31','19','20','22','24','25','26','27','28','38'],
+  basketball: ['19','20','17','6','3','2','1','0','11','13','14','15','16','18','21','37','38','40','41'],
+  baseball: ['8','2','3','4','5','6','1','7','9','10','11','16','35','37','43','47','48','53','36','39','44','45','41','42','56','57'],
+  football: []
+}
+
+// Helper: build category objects from stat IDs using ESPN mappings, sorted by display order
+function buildEspnCategories(sport: string, statIds: string[]): { stat_id: string; name: string; display_name: string; is_negative?: boolean }[] {
+  const statNames = getEspnStatNames(sport)
+  const cats = statIds.map(sid => {
+    const statId = parseInt(sid)
+    const info = statNames[statId] || { name: `Stat ${statId}`, display: `S${statId}` }
+    return {
+      stat_id: sid,
+      name: info.name,
+      display_name: info.display,
+      is_negative: info.isNegative
+    }
+  })
+  // Sort by ESPN's standard display order
+  const order = ESPN_DISPLAY_ORDER[sport] || []
+  if (order.length > 0) {
+    cats.sort((a, b) => {
+      const ai = order.indexOf(a.stat_id)
+      const bi = order.indexOf(b.stat_id)
+      if (ai === -1 && bi === -1) return 0
+      if (ai === -1) return 1
+      if (bi === -1) return -1
+      return ai - bi
+    })
+  }
+  return cats
+}
+
 const defaultAvatar = computed(() => {
   if (isEspn.value) return 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMDAgMTAwIj48Y2lyY2xlIGN4PSI1MCIgY3k9IjUwIiByPSI0NSIgZmlsbD0iIzMzMyIvPjx0ZXh0IHg9IjUwIiB5PSI1OCIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZmlsbD0iIzg4OCIgZm9udC1zaXplPSIxOCIgZm9udC1mYW1pbHk9InNhbnMtc2VyaWYiPkVTUE48L3RleHQ+PC9zdmc+'
   return 'https://s.yimg.com/cv/apiv2/default/mlb/mlb_2_g.png'
@@ -1340,217 +1539,17 @@ async function loadCategories() {
       const scoringItems = scoringSettings?.scoringItems || []
       console.log(`[Matchups ESPN] scoringItems count: ${scoringItems.length}`)
       
-      // ESPN stat ID mappings by sport - comprehensive list
-      const espnBaseballStatNames: Record<number, { name: string; display: string; isNegative?: boolean }> = {
-        // Batting stats
-        0: { name: 'At Bats', display: 'AB' },
-        1: { name: 'Hits', display: 'H' },
-        2: { name: 'Runs', display: 'R' },
-        3: { name: 'Home Runs', display: 'HR' },
-        4: { name: 'RBI', display: 'RBI' },
-        5: { name: 'Stolen Bases', display: 'SB' },
-        6: { name: 'Walks (Batting)', display: 'BB' },
-        7: { name: 'Strikeouts (Batting)', display: 'K', isNegative: true },
-        8: { name: 'Batting Average', display: 'AVG' },
-        9: { name: 'On Base Pct', display: 'OBP' },
-        10: { name: 'Slugging Pct', display: 'SLG' },
-        11: { name: 'OPS', display: 'OPS' },
-        12: { name: 'Grounded Into DP', display: 'GIDP', isNegative: true },
-        13: { name: 'Singles', display: '1B' },
-        14: { name: 'Doubles', display: '2B' },
-        15: { name: 'Triples', display: '3B' },
-        16: { name: 'Total Bases', display: 'TB' },
-        17: { name: 'Games Played', display: 'G' },
-        18: { name: 'Plate Appearances', display: 'PA' },
-        19: { name: 'Extra Base Hits', display: 'XBH' },
-        20: { name: 'Hit By Pitch', display: 'HBP' },
-        21: { name: 'Intentional Walks', display: 'IBB' },
-        22: { name: 'Sac Bunts', display: 'SAC' },
-        23: { name: 'Sacrifice Flies', display: 'SF' },
-        24: { name: 'Errors', display: 'E', isNegative: true },
-        25: { name: 'Fielder\'s Choice', display: 'FC' },
-        26: { name: 'Fielding Percentage', display: 'FPCT' },
-        27: { name: 'Outfield Assists', display: 'OFAST' },
-        28: { name: 'Double Plays Turned', display: 'DP' },
-        29: { name: 'Putouts', display: 'PO' },
-        30: { name: 'Assists', display: 'A' },
-        31: { name: 'Total Chances', display: 'TC' },
-        32: { name: 'Caught Stealing', display: 'CS', isNegative: true },
-        33: { name: 'Stolen Base Percentage', display: 'SB%' },
-        34: { name: 'Net Stolen Bases', display: 'NSB' },
-        // Pitching stats
-        35: { name: 'Wins', display: 'W' },
-        36: { name: 'Losses', display: 'L', isNegative: true },
-        37: { name: 'Saves', display: 'SV' },
-        38: { name: 'Holds', display: 'HD' },
-        39: { name: 'Innings Pitched', display: 'IP' },
-        40: { name: 'Earned Runs', display: 'ER', isNegative: true },
-        41: { name: 'Hits Allowed', display: 'HA', isNegative: true },
-        42: { name: 'Walks Allowed', display: 'BBI', isNegative: true },
-        43: { name: 'Strikeouts (Pitching)', display: 'Ks' },
-        44: { name: 'Complete Games', display: 'CG' },
-        45: { name: 'Shutouts', display: 'SHO' },
-        46: { name: 'No Hitters', display: 'NH' },
-        47: { name: 'ERA', display: 'ERA', isNegative: true },
-        48: { name: 'WHIP', display: 'WHIP', isNegative: true },
-        49: { name: 'Opponent Batting Avg', display: 'OBA', isNegative: true },
-        50: { name: 'Runs Allowed', display: 'RA', isNegative: true },
-        51: { name: 'Home Runs Allowed', display: 'HRA', isNegative: true },
-        52: { name: 'Batters Faced', display: 'BF' },
-        53: { name: 'Quality Starts', display: 'QS' },
-        54: { name: 'Pitches Thrown', display: 'PC' },
-        55: { name: 'Pickoffs', display: 'PKO' },
-        56: { name: 'Wild Pitches', display: 'WP', isNegative: true },
-        57: { name: 'Blown Saves', display: 'BS', isNegative: true },
-        58: { name: 'Relief Wins', display: 'RW' },
-        59: { name: 'Relief Losses', display: 'RL', isNegative: true },
-        60: { name: 'Save Opportunities', display: 'SVO' },
-        61: { name: 'Inherited Runners Scored', display: 'IRS', isNegative: true },
-        62: { name: 'Strikeout to Walk Ratio', display: 'K/BB' },
-        63: { name: 'Games Started', display: 'GS' },
-        64: { name: 'Hit Batters', display: 'HB', isNegative: true },
-        65: { name: 'Balks', display: 'BK', isNegative: true },
-        66: { name: 'Ground Outs', display: 'GO' },
-        67: { name: 'Fly Outs', display: 'AO' },
-        68: { name: 'K/9', display: 'K/9' },
-        69: { name: 'BB/9', display: 'BB/9', isNegative: true },
-        70: { name: 'H/9', display: 'H/9', isNegative: true },
-        71: { name: 'Saves + Holds', display: 'SVHD' },
-        72: { name: 'Relief Appearances', display: 'RAPP' },
-        73: { name: 'Total Bases Allowed', display: 'TBA', isNegative: true },
-        74: { name: 'Win Percentage', display: 'W%' },
-        76: { name: 'BABIP', display: 'BABIP' },
-        77: { name: 'FIP', display: 'FIP', isNegative: true },
-        78: { name: 'xFIP', display: 'xFIP', isNegative: true },
-        79: { name: 'WAR (Batting)', display: 'WAR' },
-        80: { name: 'WAR (Pitching)', display: 'WAR' },
-        81: { name: 'wOBA', display: 'wOBA' },
-        82: { name: 'wRC+', display: 'wRC+' },
-        83: { name: 'Perfect Games', display: 'PG' },
-        99: { name: 'Games Pitched', display: 'GP' }
-      }
+      // Build initial categories from scoringItems (may be overridden by matchup data later)
+      // NOTE: scoringItems is NOT always reliable for H2H category leagues (e.g., hockey).
+      // The definitive category list comes from scoreByStat in actual matchup data.
+      // loadMatchups() will rebuild categories from matchup data when available.
+      const scoringCategories = buildEspnCategories(
+        sport,
+        scoringItems.map((item: any) => String(item.statId ?? item.id ?? 0)).filter((s: string) => s !== '')
+      )
       
-      const espnHockeyStatNames: Record<number, { name: string; display: string; isNegative?: boolean }> = {
-        0: { name: 'Goals', display: 'G' },
-        1: { name: 'Assists', display: 'A' },
-        2: { name: 'Points', display: 'PTS' },
-        3: { name: 'Plus/Minus', display: '+/-' },
-        4: { name: 'Penalty Minutes', display: 'PIM' },
-        5: { name: 'Powerplay Goals', display: 'PPG' },
-        6: { name: 'Powerplay Assists', display: 'PPA' },
-        7: { name: 'Powerplay Points', display: 'PPP' },
-        8: { name: 'Shorthanded Goals', display: 'SHG' },
-        9: { name: 'Shorthanded Assists', display: 'SHA' },
-        10: { name: 'Shorthanded Points', display: 'SHP' },
-        11: { name: 'Game-Winning Goals', display: 'GWG' },
-        12: { name: 'Shots on Goal', display: 'SOG' },
-        13: { name: 'Shooting Percentage', display: 'SH%' },
-        14: { name: 'Faceoffs Won', display: 'FOW' },
-        15: { name: 'Faceoffs Lost', display: 'FOL', isNegative: true },
-        16: { name: 'Hits', display: 'HIT' },
-        17: { name: 'Blocks', display: 'BLK' },
-        18: { name: 'Takeaways', display: 'TK' },
-        19: { name: 'Wins', display: 'W' },
-        20: { name: 'Losses', display: 'L', isNegative: true },
-        21: { name: 'Goals Against', display: 'GA', isNegative: true },
-        22: { name: 'Goals Against Average', display: 'GAA', isNegative: true },
-        23: { name: 'Saves', display: 'SV' },
-        24: { name: 'Save Percentage', display: 'SV%' },
-        25: { name: 'Shutouts', display: 'SHO' },
-        26: { name: 'Overtime Losses', display: 'OTL' },
-        27: { name: 'Games Started', display: 'GS' },
-        28: { name: 'Giveaways', display: 'GV', isNegative: true },
-        29: { name: 'Avg Time on Ice', display: 'ATOI' },
-        30: { name: 'Games Played', display: 'GP' },
-        31: { name: 'Hat Tricks', display: 'HAT' },
-        32: { name: 'Defensemen Points', display: 'DEF' },
-        33: { name: 'Special Teams Points', display: 'STP' },
-        34: { name: 'Faceoff Win Pct', display: 'FO%' },
-        35: { name: 'Minutes', display: 'MIN' },
-        36: { name: 'Shots', display: 'SH' },
-        37: { name: 'Goalie Wins', display: 'GW' },
-        38: { name: 'Shots Against', display: 'SA' },
-        39: { name: 'Goals Saved Above Avg', display: 'GSAA' }
-      }
-      
-      const espnBasketballStatNames: Record<number, { name: string; display: string; isNegative?: boolean }> = {
-        0: { name: 'Points', display: 'PTS' },
-        1: { name: 'Blocks', display: 'BLK' },
-        2: { name: 'Steals', display: 'STL' },
-        3: { name: 'Assists', display: 'AST' },
-        4: { name: 'Offensive Rebounds', display: 'OREB' },
-        5: { name: 'Defensive Rebounds', display: 'DREB' },
-        6: { name: 'Rebounds', display: 'REB' },
-        7: { name: 'Ejections', display: 'EJ', isNegative: true },
-        8: { name: 'Flagrant Fouls', display: 'FF', isNegative: true },
-        9: { name: 'Personal Fouls', display: 'PF', isNegative: true },
-        10: { name: 'Technical Fouls', display: 'TF', isNegative: true },
-        11: { name: 'Turnovers', display: 'TO', isNegative: true },
-        12: { name: 'Disqualifications', display: 'DQ', isNegative: true },
-        13: { name: 'Field Goals Made', display: 'FGM' },
-        14: { name: 'Field Goals Attempted', display: 'FGA' },
-        15: { name: 'Free Throws Made', display: 'FTM' },
-        16: { name: 'Free Throws Attempted', display: 'FTA' },
-        17: { name: '3-Pointers Made', display: '3PM' },
-        18: { name: '3-Pointers Attempted', display: '3PA' },
-        19: { name: 'Field Goal Pct', display: 'FG%' },
-        20: { name: 'Free Throw Pct', display: 'FT%' },
-        21: { name: '3-Point Pct', display: '3P%' },
-        37: { name: 'Double-Doubles', display: 'DD' },
-        38: { name: 'Triple-Doubles', display: 'TD' },
-        40: { name: 'Games Played', display: 'GP' },
-        41: { name: 'Minutes', display: 'MIN' },
-        42: { name: 'Games Started', display: 'GS' }
-      }
-      
-      const statNames = sport === 'hockey' ? espnHockeyStatNames 
-        : sport === 'basketball' ? espnBasketballStatNames 
-        : espnBaseballStatNames
-      
-      // ESPN scoringItems is the authoritative list of H2H categories.
-      // IMPORTANT: scoringItems already uses GLOBAL stat IDs (e.g., hockey W=19, GAA=22, SV%=24).
-      // statSourceId is just metadata — do NOT apply an offset.
-      // Offsets are only needed for PLAYER-LEVEL stats from roster data.
-      const scoringCategories = scoringItems.map((item: any) => {
-        const statId = item.statId ?? item.id ?? 0
-        const statIdStr = String(statId)
-        
-        const statInfo = statNames[statId] || { 
-          name: `Stat ${statId}`, display: `S${statId}` 
-        }
-        
-        console.log(`[Matchups ESPN] scoringItem: statId=${statId}, source=${item.statSourceId ?? '?'} → ${statInfo.display}`)
-        
-        return {
-          stat_id: statIdStr,
-          name: statInfo.name,
-          display_name: statInfo.display,
-          is_negative: statInfo.isNegative
-        }
-      }).filter((c: any) => c.stat_id !== '')
-      
-      // Use scoringItems directly — they ARE the H2H categories
       categories.value = scoringCategories
-      console.log(`[Matchups ESPN] ${scoringCategories.length} categories from scoringItems:`, scoringCategories.map((c: any) => `${c.stat_id}=${c.display_name}`))
-      
-      // Order categories to match ESPN's standard display order per sport
-      const espnDisplayOrder: Record<string, string[]> = {
-        hockey: ['0','1','3','4','7','5','6','8','9','10','11','12','13','14','15','16','17','29','30','31','19','20','22','24','25','26','27','28','38'],
-        basketball: ['19','20','17','6','3','2','1','0','11','13','14','15','16','18','21','37','38','40','41'],
-        baseball: ['8','2','3','4','5','6','1','7','9','10','11','16','35','37','43','47','48','53','36','39','44','45','41','42','56','57'],
-        football: []
-      }
-      const displayOrder = espnDisplayOrder[sport] || []
-      if (displayOrder.length > 0) {
-        categories.value.sort((a: any, b: any) => {
-          const ai = displayOrder.indexOf(a.stat_id)
-          const bi = displayOrder.indexOf(b.stat_id)
-          if (ai === -1 && bi === -1) return 0
-          if (ai === -1) return 1
-          if (bi === -1) return -1
-          return ai - bi
-        })
-      }
+      console.log(`[Matchups ESPN] ${scoringCategories.length} initial categories from scoringItems:`, scoringCategories.map((c: any) => `${c.stat_id}=${c.display_name}`))
       
       // Store schedule settings for extended matchup detection
       const scheduleSettings = scoringSettings?._scheduleSettings
@@ -1654,6 +1653,30 @@ async function loadMatchups() {
           `homeRosterEntries=${m0.homeRosterEntries ? m0.homeRosterEntries.length : 'null'}`)
         if (m0.homeValuesByStat) {
           console.log('[Matchups ESPN DIAG] homeValuesByStat:', JSON.stringify(m0.homeValuesByStat))
+        }
+        
+        // FIX: Rebuild categories from actual matchup scoreByStat data.
+        // ESPN's scoringItems is NOT reliable for H2H category leagues (especially hockey).
+        // The definitive H2H categories are the stat IDs present in scoreByStat.
+        const matchupWithScoreByStat = raw.find((r: any) => r.homeScoreByStat && Object.keys(r.homeScoreByStat).length > 0)
+        if (matchupWithScoreByStat) {
+          const actualStatIds = Object.keys(matchupWithScoreByStat.homeScoreByStat)
+          const currentCatIds = new Set(categories.value.map((c: any) => c.stat_id))
+          
+          // Check if categories need rebuilding (different stat IDs)
+          const needsRebuild = actualStatIds.length !== currentCatIds.size ||
+            actualStatIds.some(id => !currentCatIds.has(id))
+          
+          if (needsRebuild) {
+            console.log('[Matchups ESPN] ⚠️ scoringItems categories MISMATCH actual matchup data!')
+            console.log('[Matchups ESPN]   scoringItems had:', [...currentCatIds].join(', '))
+            console.log('[Matchups ESPN]   scoreByStat has:', actualStatIds.join(', '))
+            
+            categories.value = buildEspnCategories(sport, actualStatIds)
+            console.log('[Matchups ESPN] ✅ Rebuilt categories from matchup data:', categories.value.map((c: any) => `${c.stat_id}=${c.display_name}`))
+          } else {
+            console.log('[Matchups ESPN] ✅ Categories match matchup data — no rebuild needed')
+          }
         }
       }
       
