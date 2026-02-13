@@ -479,6 +479,138 @@ class SleeperService {
   }
 
   // Fetch historical data for all linked leagues
+  /**
+   * Get projections for any sport for a single week
+   * Returns a map of player_id -> projected stats
+   */
+  async getWeekProjections(
+    sport: string,
+    season: string,
+    week: number
+  ): Promise<Record<string, Record<string, number>>> {
+    // Map our sport names to Sleeper's API sport codes
+    const sportMap: Record<string, string> = {
+      'football': 'nfl',
+      'nfl': 'nfl',
+      'basketball': 'nba',
+      'nba': 'nba',
+      'baseball': 'mlb', 
+      'mlb': 'mlb',
+      'hockey': 'nhl',
+      'nhl': 'nhl'
+    }
+    const sleeperSport = sportMap[sport] || sport
+    
+    const cacheKey = `projections_${sleeperSport}_${season}_${week}`
+    const cached = cache.get<Record<string, Record<string, number>>>('sleeper_projections', cacheKey)
+    if (cached) return cached
+    
+    try {
+      // Try REST projections endpoint first
+      const url = `https://api.sleeper.app/projections/${sleeperSport}/${season}/${week}?season_type=regular`
+      const response = await fetch(url)
+      if (!response.ok) {
+        console.warn(`[Sleeper] Projections endpoint returned ${response.status} for ${sleeperSport}`)
+        return {}
+      }
+      const data = await response.json()
+      
+      // Data is either an array or object keyed by player_id
+      // Each entry has a `stats` object with stat projections
+      const projMap: Record<string, Record<string, number>> = {}
+      
+      if (Array.isArray(data)) {
+        for (const entry of data) {
+          if (entry.player_id && entry.stats) {
+            projMap[entry.player_id] = entry.stats
+          }
+        }
+      } else if (typeof data === 'object') {
+        for (const [playerId, entry] of Object.entries(data)) {
+          const e = entry as any
+          if (e?.stats) {
+            projMap[playerId] = e.stats
+          } else if (typeof e === 'object' && e !== null) {
+            // Some endpoints return stats directly
+            projMap[playerId] = e
+          }
+        }
+      }
+      
+      // Cache for 30 minutes
+      cache.set('sleeper_projections', projMap, 30 * 60 * 1000, cacheKey)
+      
+      console.log(`[Sleeper] Got projections for ${Object.keys(projMap).length} players (${sleeperSport} week ${week})`)
+      return projMap
+    } catch (error) {
+      console.warn(`[Sleeper] Failed to fetch projections for ${sleeperSport}:`, error)
+      return {}
+    }
+  }
+
+  /**
+   * Calculate projected fantasy points for each team in a matchup week
+   * Returns a map of roster_id -> projected points
+   */
+  async calculateProjectedPoints(
+    leagueId: string,
+    season: string,
+    week: number,
+    sport: string
+  ): Promise<Map<number, number>> {
+    const result = new Map<number, number>()
+    
+    try {
+      // Get league scoring settings
+      const league = await this.getLeague(leagueId)
+      const scoringSettings = league.scoring_settings || {}
+      
+      if (Object.keys(scoringSettings).length === 0) {
+        console.warn('[Sleeper] No scoring settings found')
+        return result
+      }
+      
+      // Get projections for this week
+      const projections = await this.getWeekProjections(sport, season, week)
+      if (Object.keys(projections).length === 0) {
+        console.log('[Sleeper] No projections available for this sport/week')
+        return result
+      }
+      
+      // Get matchups to know each team's starters
+      const matchups = await this.getMatchups(leagueId, week)
+      
+      for (const matchup of matchups) {
+        const starters = matchup.starters || []
+        let projectedTotal = 0
+        
+        for (const playerId of starters) {
+          if (!playerId || playerId === '0') continue
+          const playerProj = projections[playerId]
+          if (!playerProj) continue
+          
+          // Apply scoring settings to projected stats
+          let playerPoints = 0
+          for (const [stat, value] of Object.entries(playerProj)) {
+            const multiplier = scoringSettings[stat]
+            if (multiplier !== undefined && typeof value === 'number') {
+              playerPoints += value * multiplier
+            }
+          }
+          projectedTotal += playerPoints
+        }
+        
+        result.set(matchup.roster_id, Math.round(projectedTotal * 100) / 100)
+      }
+      
+      console.log(`[Sleeper] Calculated projected points for ${result.size} teams`)
+      return result
+    } catch (error) {
+      console.warn('[Sleeper] Error calculating projected points:', error)
+      return result
+    }
+  }
+
   async getHistoricalData(leagueId: string): Promise<{
     seasons: SleeperLeague[]
     rosters: Map<string, SleeperRoster[]>

@@ -375,7 +375,7 @@
                       <span 
                         v-for="(result, idx) in scoutingReports.team1.recentForm" 
                         :key="idx"
-                        :class="['w-6 h-6 rounded flex items-center justify-center text-xs font-bold', result === 'W' ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400']"
+                        :class="['w-6 h-6 rounded flex items-center justify-center text-xs font-bold', result === 'W' ? 'bg-green-500/20 text-green-400' : result === 'L' ? 'bg-red-500/20 text-red-400' : 'bg-gray-500/20 text-gray-400']"
                       >
                         {{ result }}
                       </span>
@@ -418,7 +418,7 @@
                       <span 
                         v-for="(result, idx) in scoutingReports.team2.recentForm" 
                         :key="idx"
-                        :class="['w-6 h-6 rounded flex items-center justify-center text-xs font-bold', result === 'W' ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400']"
+                        :class="['w-6 h-6 rounded flex items-center justify-center text-xs font-bold', result === 'W' ? 'bg-green-500/20 text-green-400' : result === 'L' ? 'bg-red-500/20 text-red-400' : 'bg-gray-500/20 text-gray-400']"
                       >
                         {{ result }}
                       </span>
@@ -586,6 +586,7 @@
 import { ref, computed, onMounted, watch } from 'vue'
 import { useLeagueStore } from '@/stores/league'
 import { yahooService } from '@/services/yahoo'
+import { sleeperService } from '@/services/sleeper'
 import { useAuthStore } from '@/stores/auth'
 import { matchupSnapshotsService, type MatchupSnapshot } from '@/services/matchupSnapshots'
 import html2canvas from 'html2canvas'
@@ -1327,6 +1328,9 @@ function getTeamStats(teamKey: string): any {
   let allPlayLosses = 0
   
   for (const [week, weekMatchups] of allMatchupsHistory.value) {
+    // Skip the current (in-progress) week — only count completed weeks
+    if (week >= currentWeek.value) continue
+    
     // Find this team's score for the week
     let myWeekScore = 0
     let foundMyTeam = false
@@ -1393,7 +1397,7 @@ function getTeamStats(teamKey: string): any {
     allPlayLosses,
     stdDev,
     last3Avg,
-    recentResults: results.slice(-5).reverse()
+    recentResults: results.slice(-5)
   }
 }
 
@@ -1741,6 +1745,31 @@ async function loadMatchups() {
           is_consolation: false
         }
       })
+      
+      // Fetch projected points for non-completed weeks
+      const sleeperCurrentWeek = leagueStore.currentLeague?.settings?.leg || 1
+      if (week >= sleeperCurrentWeek) {
+        try {
+          const sport = leagueStore.activeSport || 'football'
+          const leagueId = leagueStore.currentLeague?.league_id || leagueKey
+          const projectedPoints = await sleeperService.calculateProjectedPoints(leagueId, season, week, sport)
+          
+          if (projectedPoints.size > 0) {
+            // Apply projected points to matchup teams
+            for (const matchup of matchups) {
+              for (const team of matchup.teams) {
+                const rosterId = team.roster_id
+                if (rosterId && projectedPoints.has(rosterId)) {
+                  team.projected_points = projectedPoints.get(rosterId) || 0
+                }
+              }
+            }
+            console.log(`[Sleeper] Applied projected points to ${projectedPoints.size} teams`)
+          }
+        } catch (e) {
+          console.warn('[Sleeper] Could not fetch projected points:', e)
+        }
+      }
     }
     // Handle ESPN leagues
     else if (leagueStore.activePlatform === 'espn') {
@@ -1768,7 +1797,7 @@ async function loadMatchups() {
               team_key: homeTeam?.team_key || `espn_${m.homeTeamId}`,
               name: homeTeam?.name || m.homeTeam?.name || 'Home Team',
               points: m.homeScore || 0,
-              projected_points: 0,
+              projected_points: m.homeProjectedPoints || 0,
               logo_url: homeTeam?.logo_url || '',
               is_my_team: homeTeam?.is_my_team || false,
               wins: homeTeam?.wins || 0,
@@ -1778,7 +1807,7 @@ async function loadMatchups() {
               team_key: awayTeam?.team_key || `espn_${m.awayTeamId}`,
               name: awayTeam?.name || m.awayTeam?.name || 'Away Team',
               points: m.awayScore || 0,
-              projected_points: 0,
+              projected_points: m.awayProjectedPoints || 0,
               logo_url: awayTeam?.logo_url || '',
               is_my_team: awayTeam?.is_my_team || false,
               wins: awayTeam?.wins || 0,

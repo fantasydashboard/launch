@@ -270,6 +270,8 @@ export interface EspnMatchup {
   homeRosterEntries?: any[]
   awayRosterEntries?: any[]
   isCategoryLeague?: boolean
+  homeProjectedPoints?: number
+  awayProjectedPoints?: number
   winner: 'HOME' | 'AWAY' | 'TIE' | 'UNDECIDED'
   playoffTierType: string
 }
@@ -898,7 +900,7 @@ export class EspnFantasyService {
       )
       
       // Pass scoring type to parseMatchups for category league handling
-      const matchups = this.parseMatchups(data, week, scoringType)
+      const matchups = this.parseMatchups(data, week, scoringType, sport)
       
       // Determine cache TTL based on week status
       // For completed seasons, all weeks are completed
@@ -943,7 +945,7 @@ export class EspnFantasyService {
         fantasyFilter
       )
       
-      const matchups = this.parseMatchups(data, week)
+      const matchups = this.parseMatchups(data, week, undefined, sport)
       if (matchups.length > 0) {
         cache.set('espn_matchups', matchups, CACHE_TTL.COMPLETED, cacheKey)
         return matchups
@@ -966,7 +968,7 @@ export class EspnFantasyService {
       
       // leagueHistory returns array format
       const scheduleData = Array.isArray(data) ? data[0] : data
-      const matchups = this.parseMatchups(scheduleData, week)
+      const matchups = this.parseMatchups(scheduleData, week, undefined, sport)
       
       if (matchups.length > 0) {
         cache.set('espn_matchups', matchups, CACHE_TTL.COMPLETED, cacheKey)
@@ -3072,7 +3074,7 @@ export class EspnFantasyService {
     }
   }
 
-  private parseMatchups(data: any, week: number, scoringType?: string): EspnMatchup[] {
+  private parseMatchups(data: any, week: number, scoringType?: string, sport?: Sport): EspnMatchup[] {
     const schedule = data.schedule || []
     console.log('[ESPN parseMatchups] Raw schedule length:', schedule.length, 'for week:', week)
     console.log('[ESPN parseMatchups] Scoring type:', scoringType)
@@ -3267,6 +3269,23 @@ export class EspnFantasyService {
             `homeRoster=${homeRosterEntries ? homeRosterEntries.length + ' entries' : 'null'}`)
         }
         
+        // Calculate projected points for points leagues
+        // Primary source: ESPN's team-level projected points (most reliable)
+        // Fallback: sum projected points from individual roster entries
+        const homeProjectedRaw = match.home?.totalProjectedPointsLive
+        const awayProjectedRaw = match.away?.totalProjectedPointsLive
+        
+        let homeProjectedPoints = typeof homeProjectedRaw === 'number' ? homeProjectedRaw : 0
+        let awayProjectedPoints = typeof awayProjectedRaw === 'number' ? awayProjectedRaw : 0
+        
+        // If no team-level projections, calculate from roster entries
+        if (!homeProjectedPoints && homeRosterEntries) {
+          homeProjectedPoints = this.sumProjectedPointsFromRoster(homeRosterEntries, sport)
+        }
+        if (!awayProjectedPoints && awayRosterEntries) {
+          awayProjectedPoints = this.sumProjectedPointsFromRoster(awayRosterEntries, sport)
+        }
+        
         return {
           id: match.id,
           matchupPeriodId: match.matchupPeriodId,
@@ -3296,10 +3315,39 @@ export class EspnFantasyService {
           homeRosterEntries: homeRosterEntries,
           awayRosterEntries: awayRosterEntries,
           isCategoryLeague,
+          homeProjectedPoints: homeProjectedPoints || undefined,
+          awayProjectedPoints: awayProjectedPoints || undefined,
           winner: this.determineWinner(match),
           playoffTierType: match.playoffTierType || 'NONE'
         }
       })
+  }
+
+  // Sum projected fantasy points from roster entries (starters only, excluding bench/IR)
+  private sumProjectedPointsFromRoster(entries: any[], sport?: Sport): number {
+    if (!entries || entries.length === 0) return 0
+    
+    // Inactive/bench slot names across all sports
+    const INACTIVE_SLOTS = new Set(['BE', 'Bench', 'IR', 'IL', 'IL+', 'NA', 'DL'])
+    const slotMapping = sport === 'baseball' ? BASEBALL_LINEUP_SLOTS : LINEUP_SLOTS
+    
+    let total = 0
+    for (const entry of entries) {
+      const slotName = slotMapping[entry.lineupSlotId] || ''
+      if (INACTIVE_SLOTS.has(slotName)) continue
+      
+      const player = entry.playerPoolEntry?.player
+      if (!player?.stats) continue
+      
+      // Find projected stats (statSourceId === 1) for the current period
+      // Prefer matchup-period projection, fall back to any projection
+      const projStats = player.stats.find((s: any) => s.statSourceId === 1 && s.appliedTotal > 0) ||
+                        player.stats.find((s: any) => s.statSourceId === 1)
+      if (projStats?.appliedTotal) {
+        total += projStats.appliedTotal
+      }
+    }
+    return Math.round(total * 100) / 100
   }
 
   private parseDraft(data: any, sport?: string): EspnDraftPick[] {
