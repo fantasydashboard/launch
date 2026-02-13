@@ -1655,12 +1655,13 @@ async function loadMatchups() {
           console.log('[Matchups ESPN DIAG] homeValuesByStat:', JSON.stringify(m0.homeValuesByStat))
         }
         
-        // FIX: Rebuild categories from actual matchup scoreByStat data.
+        // FIX: Rebuild categories from actual matchup per-category RESULTS data.
         // ESPN's scoringItems is NOT reliable for H2H category leagues (especially hockey).
-        // The definitive H2H categories are the stat IDs present in scoreByStat.
-        const matchupWithScoreByStat = raw.find((r: any) => r.homeScoreByStat && Object.keys(r.homeScoreByStat).length > 0)
-        if (matchupWithScoreByStat) {
-          const actualStatIds = Object.keys(matchupWithScoreByStat.homeScoreByStat)
+        // homePerCategoryResults only contains stats with WIN/LOSS/TIE results (i.e., actual scoring categories),
+        // while homeScoreByStat contains ALL stats including informational/non-scoring ones (result: null).
+        const matchupWithResults = raw.find((r: any) => r.homePerCategoryResults && Object.keys(r.homePerCategoryResults).length > 0)
+        if (matchupWithResults) {
+          const actualStatIds = Object.keys(matchupWithResults.homePerCategoryResults)
           const currentCatIds = new Set(categories.value.map((c: any) => c.stat_id))
           
           // Check if categories need rebuilding (different stat IDs)
@@ -1668,14 +1669,14 @@ async function loadMatchups() {
             actualStatIds.some(id => !currentCatIds.has(id))
           
           if (needsRebuild) {
-            console.log('[Matchups ESPN] ⚠️ scoringItems categories MISMATCH actual matchup data!')
+            console.log('[Matchups ESPN] ⚠️ scoringItems categories MISMATCH actual scoring categories from matchup data!')
             console.log('[Matchups ESPN]   scoringItems had:', [...currentCatIds].join(', '))
-            console.log('[Matchups ESPN]   scoreByStat has:', actualStatIds.join(', '))
+            console.log('[Matchups ESPN]   Actual scoring categories:', actualStatIds.join(', '))
             
             categories.value = buildEspnCategories(sport, actualStatIds)
-            console.log('[Matchups ESPN] ✅ Rebuilt categories from matchup data:', categories.value.map((c: any) => `${c.stat_id}=${c.display_name}`))
+            console.log('[Matchups ESPN] ✅ Rebuilt categories from matchup results:', categories.value.map((c: any) => `${c.stat_id}=${c.display_name}`))
           } else {
-            console.log('[Matchups ESPN] ✅ Categories match matchup data — no rebuild needed')
+            console.log('[Matchups ESPN] ✅ Categories match matchup scoring data — no rebuild needed')
           }
         }
       }
