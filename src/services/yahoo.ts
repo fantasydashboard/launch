@@ -410,6 +410,22 @@ export class YahooFantasyService {
         }
       }
       
+      // Get team info by iterating (positions vary when is_owned_by_current_login is injected)
+      let logoUrl = ''
+      let teamKey = ''
+      let teamId = ''
+      let teamName = 'Unknown'
+      if (Array.isArray(teamInfo)) {
+        for (const item of teamInfo) {
+          if (item?.team_key) teamKey = item.team_key
+          if (item?.team_id) teamId = item.team_id
+          if (item?.name) teamName = item.name
+          if (item?.team_logos) {
+            logoUrl = item.team_logos[0]?.team_logo?.url || ''
+          }
+        }
+      }
+      
       // Check if this is the current user's team - search for managers more robustly
       let managers: any[] = []
       let isMyTeam = false
@@ -433,16 +449,7 @@ export class YahooFantasyService {
       for (const m of managers) {
         if (m.manager?.is_current_login === '1' || m.manager?.is_current_login === 1) {
           isMyTeam = true
-          console.log('Found current login team:', teamInfo[2]?.name, 'via manager:', m.manager?.nickname)
-          break
-        }
-      }
-      
-      // Get team logo
-      let logoUrl = ''
-      for (const item of teamInfo) {
-        if (item?.team_logos) {
-          logoUrl = item.team_logos[0]?.team_logo?.url || ''
+          console.log('Found current login team:', teamName, 'via manager:', m.manager?.nickname)
           break
         }
       }
@@ -451,12 +458,11 @@ export class YahooFantasyService {
       const points_for = parseFloat(teamStandings?.points_for || teamPoints?.total || '0')
       const points_against = parseFloat(teamStandings?.points_against || '0')
       
-      const teamName = teamInfo[2]?.name || 'Unknown'
       console.log(`getTeams: ${teamName} - wins=${teamStandings?.outcome_totals?.wins}, pf=${points_for}, pa=${points_against}`)
       
       teams.push({
-        team_key: teamInfo[0]?.team_key,
-        team_id: teamInfo[1]?.team_id,
+        team_key: teamKey,
+        team_id: teamId,
         name: teamName,
         logo_url: logoUrl,
         managers: managers,
@@ -734,10 +740,15 @@ export class YahooFantasyService {
         
         // Get team logo
         let logoUrl = ''
+        let teamKey = ''
+        let teamId = ''
+        let teamName = ''
         for (const item of teamInfo) {
+          if (item?.team_key) teamKey = item.team_key
+          if (item?.team_id) teamId = item.team_id
+          if (item?.name) teamName = item.name
           if (item?.team_logos) {
             logoUrl = item.team_logos[0]?.team_logo?.url || ''
-            break
           }
         }
         
@@ -755,9 +766,9 @@ export class YahooFantasyService {
         const projectedPoints = parseFloat(teamProjected?.total || '0')
         
         parsedTeams.push({
-          team_key: teamInfo[0]?.team_key,
-          team_id: teamInfo[1]?.team_id,
-          name: teamInfo[2]?.name,
+          team_key: teamKey,
+          team_id: teamId,
+          name: teamName,
           logo_url: logoUrl,
           managers: managers,
           points: points,
@@ -997,7 +1008,10 @@ export class YahooFantasyService {
         if (typeof teamWrapper !== 'object' || !teamWrapper.team) continue
         
         const teamInfo = teamWrapper.team[0]
-        const teamKey = teamInfo[0]?.team_key
+        let teamKey = ''
+        for (const item of teamInfo) {
+          if (item?.team_key) { teamKey = item.team_key; break }
+        }
         
         // Look for number_of_moves and number_of_trades in the team info array
         let moves = 0
