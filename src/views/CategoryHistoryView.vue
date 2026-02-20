@@ -2015,6 +2015,8 @@ const h2hTableRef = ref<HTMLElement | null>(null)
 const historicalData = ref<Record<string, any>>({})
 const currentMembers = ref<Set<string>>(new Set())
 const allTeams = ref<Record<string, any>>({})
+// Dynamic stat name map populated from league settings
+const leagueStatNames = ref<Record<string, string>>({})
 const leagueCategories = ref<string[]>([])
 const h2hRecords = ref<Record<string, Record<string, { wins: number; losses: number; ties: number; catWins: number; catLosses: number }>>>({})
 
@@ -3952,17 +3954,21 @@ function getRecordClass(stat: CareerStat, column: string): string {
 }
 
 function getCategoryDisplayName(statId: string): string {
-  // Map stat IDs to display names - comprehensive Yahoo baseball stat IDs
+  // First check dynamic stat names from league settings (works for ALL sports)
+  if (leagueStatNames.value[statId]) {
+    return leagueStatNames.value[statId]
+  }
+  
+  // Fallback: Map stat IDs to display names for Yahoo
   const yahooMapping: Record<string, string> = {
-    // Hitting
+    // Baseball - Hitting
     '3': 'AVG', '7': 'R', '8': 'H', '12': 'HR', '13': 'RBI', '16': 'SB',
     '55': 'OBP', '56': 'SLG', '60': 'OPS', '2': 'AB', '4': 'BB', '6': 'TB',
     '17': 'CS', '18': 'BB', '21': '2B', '22': '3B', '23': 'SF', '24': 'GDP',
-    // Pitching  
+    // Baseball - Pitching  
     '26': 'ERA', '27': 'WHIP', '28': 'W', '29': 'L', '32': 'SV', '42': 'K',
     '34': 'IP', '37': 'H', '38': 'ER', '39': 'HR', '40': 'BB', '41': 'HBP',
     '48': 'QS', '50': 'HD', '57': 'K/9', '58': 'BB/9', '83': 'K/BB',
-    // Additional
     '84': 'SVHD', '33': 'BS', '25': 'CG', '30': 'SO', '31': 'GS'
   }
   
@@ -3989,16 +3995,24 @@ function isValidCategory(statId: string): boolean {
 }
 
 function isHittingCategory(catName: string): boolean {
-  // Hitting categories - includes both Yahoo and ESPN naming conventions
+  // Baseball hitting categories
   const hittingCats = ['HR', 'RBI', 'R', 'SB', 'AVG', 'OPS', 'OBP', 'SLG', 'H', 'TB', 'BB', 'XBH', 'AB', 'PA', '2B', '3B', 'CS', 'SF', 'GDP', 'NSB', '1B', 'HBP', 'SAC', 'E', 'K']
-  // Note: 'K' (strikeouts batting) is hitting, 'Ks' (strikeouts pitching) is pitching
-  return hittingCats.includes(catName)
+  // Basketball categories (treat as "offense")
+  const basketballOffense = ['PTS', 'FG%', 'FT%', '3PTM', '3PT%', 'FGM', 'FTM', 'FGA', 'FTA', 'AST', 'DD', 'TD']
+  // Hockey offense
+  const hockeyOffense = ['G', 'A', 'PTS', '+/-', 'PPG', 'PPA', 'PPP', 'SOG', 'GWG', 'SHG', 'SHA', 'SHP']
+  return hittingCats.includes(catName) || basketballOffense.includes(catName) || hockeyOffense.includes(catName)
 }
 
 function getCategoryColorClass(cat: string): string {
-  // Hitting categories - includes both Yahoo and ESPN naming conventions
+  // Baseball hitting
   const hittingCats = ['HR', 'RBI', 'R', 'SB', 'AVG', 'OPS', 'OBP', 'SLG', 'H', 'TB', 'BB', 'AB', '2B', '3B', '1B', 'K', 'CS', 'NSB', 'GDP', 'HBP', 'SAC', 'E']
-  if (hittingCats.includes(cat)) return 'bg-green-500/30 text-green-400'
+  // Basketball offense
+  const basketballOffense = ['PTS', 'FG%', 'FT%', '3PTM', '3PT%', 'FGM', 'FTM', 'FGA', 'FTA', 'AST', 'DD', 'TD']
+  // Hockey offense
+  const hockeyOffense = ['G', 'A', 'PTS', '+/-', 'PPG', 'PPA', 'PPP', 'SOG', 'GWG', 'SHG', 'SHA', 'SHP']
+  
+  if (hittingCats.includes(cat) || basketballOffense.includes(cat) || hockeyOffense.includes(cat)) return 'bg-green-500/30 text-green-400'
   return 'bg-purple-500/30 text-purple-400'
 }
 
@@ -5471,6 +5485,7 @@ function buildH2HRecords() {
 async function loadHistoricalData() {
   isLoading.value = true
   loadingMessage.value = isEspn.value ? 'Connecting to ESPN...' : 'Connecting to Yahoo...'
+  leagueStatNames.value = {} // Reset stat names for new league
   
   try {
     const leagueKey = leagueStore.activeLeagueId
@@ -5722,6 +5737,23 @@ async function loadYahooHistoricalData(leagueKey: string) {
     const sport = (saved?.sport || leagueStore.activeSport || 'baseball') as 'football' | 'baseball' | 'basketball' | 'hockey'
     const maxMatchupWeeks = sport === 'football' ? 17 : 30
     console.log('[CategoryHistory] Detected sport:', sport)
+    
+    // Fetch stat category names from league settings (stat IDs are sport-specific)
+    try {
+      const settings = await yahooService.getLeagueScoringSettings(leagueKey)
+      if (settings?.stat_categories) {
+        for (const cat of settings.stat_categories) {
+          const statId = String(cat.stat?.stat_id || cat.stat_id)
+          const displayName = cat.stat?.display_name || cat.display_name
+          if (statId && displayName) {
+            leagueStatNames.value[statId] = displayName
+          }
+        }
+        console.log('[CategoryHistory] Loaded stat names from settings:', Object.keys(leagueStatNames.value).length, 'stats', leagueStatNames.value)
+      }
+    } catch (e) {
+      console.log('[CategoryHistory] Could not load stat names from settings, will use fallback mapping')
+    }
     
     // Chain backwards through seasons using the `renew` field
     // Yahoo league IDs change between seasons, so we can't just swap game keys
