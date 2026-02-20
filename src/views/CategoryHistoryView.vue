@@ -5753,6 +5753,23 @@ async function loadYahooHistoricalData(leagueKey: string) {
           console.log(`✓ Loaded ${year} season: ${standings.length} teams`)
           successCount++
           
+          // Build a map to normalize team_keys by manager GUID
+          // Yahoo team_keys change every season but manager GUIDs are stable
+          const guidMap = new Map<string, string>()
+          for (const team of standings) {
+            if (team.manager_guid) {
+              guidMap.set(team.team_key, team.manager_guid)
+            }
+          }
+          console.log(`[CategoryHistory] Built GUID map for ${year}: ${guidMap.size} teams mapped`)
+          
+          // Normalize team_keys in standings
+          for (const team of standings) {
+            if (team.manager_guid) {
+              team.team_key = team.manager_guid
+            }
+          }
+          
           const champion = standings.find((t: any) => t.rank === 1)
           if (champion) champion.is_champion = true
           
@@ -5783,6 +5800,22 @@ async function loadYahooHistoricalData(leagueKey: string) {
                 loadingMessage.value = `Loading ${year} week ${week}/${maxMatchupWeeks}...`
                 const weekMatchups = await yahooService.getCategoryMatchups(currentSeasonKey, week)
                 if (weekMatchups && weekMatchups.length > 0) {
+                  // Normalize team_keys in matchups
+                  for (const matchup of weekMatchups) {
+                    for (const team of matchup.teams || []) {
+                      const guid = guidMap.get(team.team_key)
+                      if (guid) team.team_key = guid
+                    }
+                    // Also normalize winner_team_key and stat_winners
+                    if (matchup.winner_team_key) {
+                      matchup.winner_team_key = guidMap.get(matchup.winner_team_key) || matchup.winner_team_key
+                    }
+                    for (const sw of matchup.stat_winners || []) {
+                      if (sw.winner_team_key) {
+                        sw.winner_team_key = guidMap.get(sw.winner_team_key) || sw.winner_team_key
+                      }
+                    }
+                  }
                   allMatchups.push(...weekMatchups)
                   consecutiveFailures = 0
                 } else {

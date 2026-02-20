@@ -6944,9 +6944,21 @@ async function loadHistoricalData() {
         successCount++
         updateProgress({ seasonsLoaded: successCount })
         
-        // Store season data - mark rank 1 as champion
+        // Build a map to normalize team_keys by manager GUID
+        // Yahoo team_keys change every season (466.l.21735.t.10 → 454.l.46106.t.5)
+        // but manager GUIDs are stable, so we use those as consistent keys
+        const guidMap = new Map<string, string>()
+        for (const team of standings) {
+          if (team.manager_guid) {
+            guidMap.set(team.team_key, team.manager_guid)
+          }
+        }
+        console.log(`[Yahoo History] Built GUID map for ${season}: ${guidMap.size} teams mapped`)
+        
+        // Store season data - normalize team_keys and mark rank 1 as champion
         const enhancedStandings = standings.map((team: any) => ({
           ...team,
+          team_key: team.manager_guid || team.team_key, // normalize
           is_champion: team.rank === 1
         }))
         
@@ -6976,6 +6988,15 @@ async function loadHistoricalData() {
             const weekMatchups = await yahooService.getMatchups(currentSeasonKey, week)
             if (weekMatchups && weekMatchups.length > 0) {
               consecutiveFailures = 0
+              
+              // Normalize team_keys in matchups using manager GUID map
+              for (const matchup of weekMatchups) {
+                for (const team of matchup.teams || []) {
+                  const guid = guidMap.get(team.team_key)
+                  if (guid) team.team_key = guid
+                }
+              }
+              
               seasonMatchupsObj[week] = weekMatchups
               
               // Build H2H records and collect team info with logos

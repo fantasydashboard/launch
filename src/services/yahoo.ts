@@ -332,7 +332,7 @@ export class YahooFantasyService {
     
     // If cached data exists but is missing scoring_type, we need to refetch
     // This handles migration from old cache format to new format
-    if (cached && cached.scoring_type) {
+    if (cached && cached.scoring_type && cached.season) {
       console.log(`[Cache HIT] League metadata for ${leagueKey} scoring_type=${cached.scoring_type}`)
       return cached
     } else if (cached) {
@@ -602,6 +602,7 @@ export class YahooFantasyService {
       let team_id = ''
       let name = ''
       let logo_url = ''
+      let manager_guid = ''
       
       const teamInfoArray = teamArray[0]
       if (Array.isArray(teamInfoArray)) {
@@ -610,6 +611,10 @@ export class YahooFantasyService {
           if (item?.team_id) team_id = item.team_id
           if (item?.name) name = item.name
           if (item?.team_logos) logo_url = item.team_logos[0]?.team_logo?.url || ''
+          if (item?.managers) {
+            const primaryManager = item.managers[0]?.manager
+            if (primaryManager?.guid) manager_guid = primaryManager.guid
+          }
         }
       }
       
@@ -674,6 +679,7 @@ export class YahooFantasyService {
         team_id,
         name,
         logo_url,
+        manager_guid,
         rank,
         wins,
         losses,
