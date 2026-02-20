@@ -2017,7 +2017,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from 'vue'
 import { useLeagueStore } from '@/stores/league'
-import { yahooService, GAME_KEYS } from '@/services/yahoo'
+import { yahooService } from '@/services/yahoo'
 import { useAuthStore } from '@/stores/auth'
 import html2canvas from 'html2canvas'
 import LoadingSpinner from '@/components/LoadingSpinner.vue'
@@ -6904,55 +6904,41 @@ async function loadHistoricalData() {
     updateProgress({ currentStep: 'Initializing Yahoo connection...' })
     await yahooService.initialize(authStore.user.id)
     
-    // Get current league info to find game key
-    const gameKey = leagueKey.split('.')[0] // e.g., "431" from "431.l.136233"
-    console.log('Game key:', gameKey)
-    
     // Determine sport from saved league info
     const saved = leagueStore.savedLeagues.find(l => l.league_id === leagueStore.activeLeagueId)
     const sport = (saved?.sport || leagueStore.activeSport || 'football') as 'football' | 'baseball' | 'basketball' | 'hockey'
+    const maxMatchupWeeks = sport === 'football' ? 17 : 30
     console.log('Detected sport:', sport)
     
-    // Get game keys for the correct sport
-    const sportGameKeys = GAME_KEYS[sport] || GAME_KEYS.football
-    const gameKeys: Record<string, string> = {}
-    for (const [year, key] of Object.entries(sportGameKeys)) {
-      gameKeys[year.toString()] = key
-    }
-    
-    // Reverse lookup - find year from game key
-    const yearsByKey = Object.fromEntries(
-      Object.entries(gameKeys).map(([year, key]) => [key, year])
-    )
-    
-    // Get league number from current league key
-    const leagueNum = leagueKey.split('.l.')[1]
-    console.log('League number:', leagueNum)
-    
-    // Load ALL available seasons (will skip years where league didn't exist)
-    const currentYear = yearsByKey[gameKey] || '2024'
-    const seasons = Object.keys(gameKeys).sort((a, b) => parseInt(b) - parseInt(a))
-    console.log('Will attempt to load seasons:', seasons)
-    updateProgress({ totalSeasons: seasons.length })
-    
+    // Chain backwards through seasons using the `renew` field
+    // Yahoo league IDs change between seasons, so we can't just swap game keys
+    // The `renew` field format is "{game_key}_{league_id}" e.g. "454_46106"
+    let currentSeasonKey = leagueKey
+    const visited = new Set<string>()
     let successCount = 0
-    let failCount = 0
+    const maxSeasons = 15 // Safety limit
     
-    for (const season of seasons) {
-      const seasonGameKey = gameKeys[season]
-      if (!seasonGameKey) continue
-      
-      const seasonLeagueKey = `${seasonGameKey}.l.${leagueNum}`
-      loadingMessage.value = `Loading ${season} season...`
-      updateProgress({ currentStep: `Fetching ${season} standings`, season })
+    console.log('Starting Yahoo history chain from:', currentSeasonKey)
+    
+    while (currentSeasonKey && !visited.has(currentSeasonKey) && successCount < maxSeasons) {
+      visited.add(currentSeasonKey)
       
       try {
+        // Get metadata first to find the season year and renew link
+        const metadata = await yahooService.getLeagueMetadata(currentSeasonKey)
+        const season = metadata.season || currentSeasonKey.split('.')[0] // fallback to game key
+        
+        loadingMessage.value = `Loading ${season} season...`
+        updateProgress({ currentStep: `Fetching ${season} standings`, season })
+        console.log(`[Yahoo History] Loading season ${season} from key: ${currentSeasonKey}`)
+        
         // Get standings for this season
-        const standings = await yahooService.getStandings(seasonLeagueKey)
+        const standings = await yahooService.getStandings(currentSeasonKey)
         console.log(`Got standings for ${season}:`, standings?.length || 0, 'teams')
+        
         if (!standings || standings.length === 0) {
-          failCount++
-          continue
+          console.log(`✗ No standings for ${season}, stopping chain`)
+          break
         }
         
         successCount++
@@ -6966,11 +6952,11 @@ async function loadHistoricalData() {
         
         historicalData.value[season] = {
           standings: enhancedStandings,
-          trade_count: 0 // Would need separate API call
+          trade_count: 0
         }
         
-        // If this is the current season, track current members
-        if (season === currentYear) {
+        // Track current members from the most recent season
+        if (successCount === 1) {
           enhancedStandings.forEach((team: any) => {
             if (!currentMembers.value.includes(team.team_key)) {
               currentMembers.value.push(team.team_key)
@@ -6979,8 +6965,6 @@ async function loadHistoricalData() {
         }
         
         // Load matchups for H2H calculation and to get team logos
-        // Max weeks varies by sport: baseball ~25, basketball/hockey ~24-26, football ~17
-        const maxMatchupWeeks = sport === 'football' ? 17 : 30
         updateProgress({ currentStep: `Loading ${season} matchups`, maxWeek: maxMatchupWeeks })
         const seasonMatchupsObj: Record<number, any[]> = {}
         let consecutiveFailures = 0
@@ -6989,7 +6973,7 @@ async function loadHistoricalData() {
           updateProgress({ week })
           loadingMessage.value = `Loading ${season} week ${week}/${maxMatchupWeeks}...`
           try {
-            const weekMatchups = await yahooService.getMatchups(seasonLeagueKey, week)
+            const weekMatchups = await yahooService.getMatchups(currentSeasonKey, week)
             if (weekMatchups && weekMatchups.length > 0) {
               consecutiveFailures = 0
               seasonMatchupsObj[week] = weekMatchups
@@ -7000,7 +6984,7 @@ async function loadHistoricalData() {
                 if (teams.length === 2) {
                   const [team1, team2] = teams
                   
-                  // Store team info with logo (only by team_key, not by name)
+                  // Store team info with logo
                   if (!allTeams.value[team1.team_key]) {
                     allTeams.value[team1.team_key] = {
                       team_key: team1.team_key,
@@ -7018,23 +7002,14 @@ async function loadHistoricalData() {
                   
                   const team1Won = (team1.points || 0) > (team2.points || 0)
                   
-                  // Update team1's record vs team2
-                  if (!h2hRecords.value[team1.team_key]) {
-                    h2hRecords.value[team1.team_key] = {}
-                  }
-                  if (!h2hRecords.value[team1.team_key][team2.team_key]) {
-                    h2hRecords.value[team1.team_key][team2.team_key] = { wins: 0, losses: 0 }
-                  }
+                  // Update H2H records
+                  if (!h2hRecords.value[team1.team_key]) h2hRecords.value[team1.team_key] = {}
+                  if (!h2hRecords.value[team1.team_key][team2.team_key]) h2hRecords.value[team1.team_key][team2.team_key] = { wins: 0, losses: 0 }
                   if (team1Won) h2hRecords.value[team1.team_key][team2.team_key].wins++
                   else h2hRecords.value[team1.team_key][team2.team_key].losses++
                   
-                  // Update team2's record vs team1
-                  if (!h2hRecords.value[team2.team_key]) {
-                    h2hRecords.value[team2.team_key] = {}
-                  }
-                  if (!h2hRecords.value[team2.team_key][team1.team_key]) {
-                    h2hRecords.value[team2.team_key][team1.team_key] = { wins: 0, losses: 0 }
-                  }
+                  if (!h2hRecords.value[team2.team_key]) h2hRecords.value[team2.team_key] = {}
+                  if (!h2hRecords.value[team2.team_key][team1.team_key]) h2hRecords.value[team2.team_key][team1.team_key] = { wins: 0, losses: 0 }
                   if (!team1Won) h2hRecords.value[team2.team_key][team1.team_key].wins++
                   else h2hRecords.value[team2.team_key][team1.team_key].losses++
                 }
@@ -7043,11 +7018,9 @@ async function loadHistoricalData() {
               consecutiveFailures++
             }
           } catch (e) {
-            // Week doesn't exist or error
             consecutiveFailures++
           }
           
-          // If 3 consecutive failures, season has likely ended
           if (consecutiveFailures >= 3 && Object.keys(seasonMatchupsObj).length > 0) {
             console.log(`Stopping at week ${week} for ${season} - season appears to have ended`)
             break
@@ -7060,12 +7033,23 @@ async function loadHistoricalData() {
         
         console.log(`✓ Loaded ${season}: ${standings.length} teams, ${Object.keys(seasonMatchupsObj).length} weeks`)
         
+        // Follow the renew chain to the previous season
+        // Format: "454_46106" → league key "454.l.46106"
+        const renewField = metadata.renew
+        if (renewField && renewField.includes('_')) {
+          const [renewGameKey, renewLeagueId] = renewField.split('_')
+          currentSeasonKey = `${renewGameKey}.l.${renewLeagueId}`
+          console.log(`[Yahoo History] Following renew chain → ${currentSeasonKey}`)
+        } else {
+          console.log(`[Yahoo History] No renew field, end of chain`)
+          currentSeasonKey = ''
+        }
+        
         // Small delay between seasons to avoid rate limiting
         await new Promise(resolve => setTimeout(resolve, 100))
       } catch (e) {
-        // Season doesn't exist for this league
-        console.log(`✗ Could not load ${season} season`)
-        failCount++
+        console.log(`✗ Could not load season from key ${currentSeasonKey}:`, e)
+        break
       }
     }
     

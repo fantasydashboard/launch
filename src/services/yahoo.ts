@@ -324,9 +324,9 @@ export class YahooFantasyService {
   /**
    * Get current week and league metadata
    */
-  async getLeagueMetadata(leagueKey: string): Promise<{ currentWeek: number; startWeek: number; endWeek: number; isFinished: boolean; scoring_type?: string; renew?: string }> {
+  async getLeagueMetadata(leagueKey: string): Promise<{ currentWeek: number; startWeek: number; endWeek: number; isFinished: boolean; scoring_type?: string; renew?: string; season?: string }> {
     // Check cache first
-    const cached = cache.get<{ currentWeek: number; startWeek: number; endWeek: number; isFinished: boolean; scoring_type?: string; renew?: string }>(
+    const cached = cache.get<{ currentWeek: number; startWeek: number; endWeek: number; isFinished: boolean; scoring_type?: string; renew?: string; season?: string }>(
       CACHE_KEYS.YAHOO_METADATA, leagueKey
     )
     
@@ -351,7 +351,8 @@ export class YahooFantasyService {
       endWeek: parseInt(league?.end_week || '16'),
       isFinished: league?.is_finished === '1' || league?.is_finished === 1,
       scoring_type: league?.scoring_type,
-      renew: league?.renew
+      renew: league?.renew,
+      season: league?.season
     }
     
     console.log(`[Cache MISS] League metadata for ${leagueKey}: scoring_type=${result.scoring_type}`)
