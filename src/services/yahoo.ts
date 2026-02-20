@@ -20,10 +20,10 @@ const SPORT_KEYS: Record<Sport, string> = {
   hockey: 'nhl'
 }
 
-// Game keys by sport and year
+// Game keys by sport and year - EXPORTED for use in history views
 // These change each season - format is typically a 3-digit number
 // Keys are confirmed from Yahoo's API - new seasons get new keys
-const GAME_KEYS: Record<Sport, Record<number, string>> = {
+export const GAME_KEYS: Record<Sport, Record<number, string>> = {
   football: {
     // NFL seasons (September - February)
     2025: '449',  // NFL 2025 (current season - playoffs starting)

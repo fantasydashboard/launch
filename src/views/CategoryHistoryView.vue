@@ -1820,7 +1820,7 @@
 import { ref, computed, onMounted, watch } from 'vue'
 import { useLeagueStore } from '@/stores/league'
 import { useAuthStore } from '@/stores/auth'
-import { yahooService } from '@/services/yahoo'
+import { yahooService, GAME_KEYS } from '@/services/yahoo'
 import { espnService } from '@/services/espn'
 import html2canvas from 'html2canvas'
 import LoadingSpinner from '@/components/LoadingSpinner.vue'
@@ -1844,10 +1844,14 @@ function parseEspnLeagueKey(leagueKey: string) {
   if (typeof leagueKey === 'string' && leagueKey.startsWith('espn_')) {
     const parts = leagueKey.split('_')
     if (parts.length >= 4) {
-      return { leagueId: parts[2], season: parseInt(parts[3]) || new Date().getFullYear() }
+      return { 
+        sport: parts[1] as 'football' | 'baseball' | 'basketball' | 'hockey',
+        leagueId: parts[2], 
+        season: parseInt(parts[3]) || new Date().getFullYear() 
+      }
     }
   }
-  return { leagueId: leagueKey, season: new Date().getFullYear() }
+  return { sport: 'baseball' as const, leagueId: leagueKey, season: new Date().getFullYear() }
 }
 
 interface CareerStat {
@@ -5492,14 +5496,14 @@ async function loadHistoricalData() {
 }
 
 async function loadEspnHistoricalData(leagueKey: string) {
-  const { leagueId, season: currentSeason } = parseEspnLeagueKey(leagueKey)
-  console.log('[History ESPN] Loading history for league:', leagueId, 'current season:', currentSeason)
+  const { sport: espnSport, leagueId, season: currentSeason } = parseEspnLeagueKey(leagueKey)
+  console.log('[History ESPN] Loading history for league:', leagueId, 'sport:', espnSport, 'current season:', currentSeason)
   
   loadingMessage.value = `Connecting to ESPN for league ${leagueId}...`
   
   // Quick check - verify we can access the current season
   try {
-    const testLeague = await espnService.getLeague('baseball', leagueId, currentSeason)
+    const testLeague = await espnService.getLeague(espnSport, leagueId, currentSeason)
     if (!testLeague) {
       loadingMessage.value = 'League not found or not accessible'
       console.log('[History ESPN] Failed initial league check')
@@ -5538,8 +5542,8 @@ async function loadEspnHistoricalData(leagueKey: string) {
       // This method tries both regular endpoint and leagueHistory endpoint
       console.log(`[History ESPN] Fetching teams for ${year} using ${isCurrentSeason ? 'getTeams' : 'getHistoricalTeams'}...`)
       const teams = isCurrentSeason
-        ? await espnService.getTeams('baseball', leagueId, year)
-        : await espnService.getHistoricalTeams('baseball', leagueId, year)
+        ? await espnService.getTeams(espnSport, leagueId, year)
+        : await espnService.getHistoricalTeams(espnSport, leagueId, year)
       
       console.log(`[History ESPN] ${year} returned ${teams?.length || 0} teams`)
       
@@ -5599,7 +5603,7 @@ async function loadEspnHistoricalData(leagueKey: string) {
         loadingMessage.value = `Loading ${year} matchups...`
         const allMatchups: any[] = []
         
-        const totalWeeks = 25 // Standard ESPN season length
+        const totalWeeks = espnSport === 'football' ? 18 : 30 // Football ~18, other sports ~25+
         let weekFailures = 0
         
         for (let week = 1; week <= totalWeeks; week++) {
@@ -5610,8 +5614,8 @@ async function loadEspnHistoricalData(leagueKey: string) {
             
             // Use getHistoricalMatchups for past seasons
             const weekMatchups = isCurrentSeason
-              ? await espnService.getMatchups('baseball', leagueId, year, week, false)
-              : await espnService.getHistoricalMatchups('baseball', leagueId, year, week)
+              ? await espnService.getMatchups(espnSport, leagueId, year, week, false)
+              : await espnService.getHistoricalMatchups(espnSport, leagueId, year, week)
             
             if (weekMatchups && weekMatchups.length > 0) {
               // Transform ESPN matchups to match expected format
@@ -5668,7 +5672,7 @@ async function loadEspnHistoricalData(leagueKey: string) {
       // Load transactions for trade counts
       try {
         loadingMessage.value = `Loading ${year} transactions...`
-        const transactions = await espnService.getTransactions('baseball', leagueId, year)
+        const transactions = await espnService.getTransactions(espnSport, leagueId, year)
         console.log(`[History ESPN] Loaded ${transactions?.length || 0} transactions for ${year}`)
         if (transactions && transactions.length > 0) {
           data[year.toString()].transactions = transactions
@@ -5715,12 +5719,16 @@ async function loadYahooHistoricalData(leagueKey: string) {
     
     const gameKey = leagueKey.split('.')[0]
     
-    // Baseball game keys by year - includes all available years
-    const gameKeys: Record<string, string> = {
-      '2025': '458', '2024': '431', '2023': '422', '2022': '412',
-      '2021': '404', '2020': '398', '2019': '388', '2018': '378',
-      '2017': '370', '2016': '357', '2015': '346', '2014': '328',
-      '2013': '308', '2012': '283', '2011': '268', '2010': '253'
+    // Determine sport from saved league info
+    const saved = leagueStore.savedLeagues.find(l => l.league_id === leagueStore.activeLeagueId)
+    const sport = (saved?.sport || leagueStore.activeSport || 'baseball') as 'football' | 'baseball' | 'basketball' | 'hockey'
+    console.log('[CategoryHistory] Detected sport:', sport)
+    
+    // Get game keys for the correct sport
+    const sportGameKeys = GAME_KEYS[sport] || GAME_KEYS.baseball
+    const gameKeys: Record<string, string> = {}
+    for (const [year, key] of Object.entries(sportGameKeys)) {
+      gameKeys[year.toString()] = key
     }
     
     // Extract league ID from current league key
@@ -5778,8 +5786,8 @@ async function loadYahooHistoricalData(leagueKey: string) {
             loadingMessage.value = `Loading ${year} matchups...`
             const allMatchups: any[] = []
             
-            // Get total weeks from standings or default to 25 for baseball
-            const totalWeeks = 25 // Baseball regular season typically has ~25 weeks
+            // Get total weeks - varies by sport
+            const totalWeeks = sport === 'football' ? 17 : 30
             let consecutiveFailures = 0
             
             // Load matchups for each week (break early if season seems to have ended)

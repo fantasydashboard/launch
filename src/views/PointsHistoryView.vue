@@ -2017,7 +2017,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from 'vue'
 import { useLeagueStore } from '@/stores/league'
-import { yahooService } from '@/services/yahoo'
+import { yahooService, GAME_KEYS } from '@/services/yahoo'
 import { useAuthStore } from '@/stores/auth'
 import html2canvas from 'html2canvas'
 import LoadingSpinner from '@/components/LoadingSpinner.vue'
@@ -6908,12 +6908,16 @@ async function loadHistoricalData() {
     const gameKey = leagueKey.split('.')[0] // e.g., "431" from "431.l.136233"
     console.log('Game key:', gameKey)
     
-    // Baseball game keys by year - CORRECTED MAPPING
-    const gameKeys: Record<string, string> = {
-      '2025': '458', '2024': '431', '2023': '422', '2022': '412',
-      '2021': '404', '2020': '398', '2019': '388', '2018': '378',
-      '2017': '370', '2016': '357', '2015': '346', '2014': '328',
-      '2013': '308', '2012': '283', '2011': '268', '2010': '253'
+    // Determine sport from saved league info
+    const saved = leagueStore.savedLeagues.find(l => l.league_id === leagueStore.activeLeagueId)
+    const sport = (saved?.sport || leagueStore.activeSport || 'football') as 'football' | 'baseball' | 'basketball' | 'hockey'
+    console.log('Detected sport:', sport)
+    
+    // Get game keys for the correct sport
+    const sportGameKeys = GAME_KEYS[sport] || GAME_KEYS.football
+    const gameKeys: Record<string, string> = {}
+    for (const [year, key] of Object.entries(sportGameKeys)) {
+      gameKeys[year.toString()] = key
     }
     
     // Reverse lookup - find year from game key
@@ -6975,13 +6979,15 @@ async function loadHistoricalData() {
         }
         
         // Load matchups for H2H calculation and to get team logos
-        updateProgress({ currentStep: `Loading ${season} matchups`, maxWeek: 25 })
+        // Max weeks varies by sport: baseball ~25, basketball/hockey ~24-26, football ~17
+        const maxMatchupWeeks = sport === 'football' ? 17 : 30
+        updateProgress({ currentStep: `Loading ${season} matchups`, maxWeek: maxMatchupWeeks })
         const seasonMatchupsObj: Record<number, any[]> = {}
         let consecutiveFailures = 0
         
-        for (let week = 1; week <= 25; week++) {
+        for (let week = 1; week <= maxMatchupWeeks; week++) {
           updateProgress({ week })
-          loadingMessage.value = `Loading ${season} week ${week}/25...`
+          loadingMessage.value = `Loading ${season} week ${week}/${maxMatchupWeeks}...`
           try {
             const weekMatchups = await yahooService.getMatchups(seasonLeagueKey, week)
             if (weekMatchups && weekMatchups.length > 0) {
