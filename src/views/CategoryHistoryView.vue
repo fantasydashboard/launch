@@ -2329,8 +2329,9 @@ const careerStats = computed((): CareerStat[] => {
   
   console.log('careerStats computing... historicalData has', Object.keys(historicalData.value).length, 'seasons:', Object.keys(historicalData.value))
   
-  // Aggregate stats across all seasons
-  for (const [season, seasonData] of Object.entries(historicalData.value)) {
+  // Aggregate stats across all seasons (process NEWEST first for correct team names)
+  const sortedSeasons = Object.entries(historicalData.value).sort((a, b) => parseInt(b[0]) - parseInt(a[0]))
+  for (const [season, seasonData] of sortedSeasons) {
     const standings = seasonData.standings || []
     const matchups = seasonData.matchups || []
     console.log(`Processing ${season}: ${standings.length} teams, ${matchups.length} matchups`)
