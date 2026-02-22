@@ -6487,9 +6487,14 @@ async function loadHistoricalData() {
           // Fetch teams for this season - use historical method for past seasons
           console.log(`[ESPN History] Fetching teams for ${season}...`)
           const isCurrentSeason = season === currentSeason
-          const teams = isCurrentSeason 
-            ? await espnService.getTeams(sport, espnLeagueId, season)
-            : await espnService.getHistoricalTeams(sport, espnLeagueId, season)
+          
+          // Skip unfinished seasons — history only shows completed years
+          if (isCurrentSeason) {
+            console.log(`[ESPN History] Skipping ${season} — current season not finished`)
+            continue
+          }
+          
+          const teams = await espnService.getHistoricalTeams(sport, espnLeagueId, season)
           
           console.log(`[ESPN History] ${season} returned ${teams?.length || 0} teams`)
           
@@ -6568,11 +6573,8 @@ async function loadHistoricalData() {
           updateProgress({ currentStep: `Loading ${season} matchups` })
           const seasonMatchupsObj: Record<number, any[]> = {}
           
-          // For current season, use current week; for past seasons, load all weeks
-          // Note: isCurrentSeason already defined above when fetching teams
-          const maxWeek = isCurrentSeason 
-            ? Math.min(leagueStore.currentLeague?.settings?.leg || 25, 25)
-            : 25
+          // For past seasons, load all weeks up to 25
+          const maxWeek = 25
           
           updateProgress({ maxWeek })
           let consecutiveFailures = 0
@@ -6581,10 +6583,7 @@ async function loadHistoricalData() {
             updateProgress({ week })
             loadingMessage.value = `Loading ${season} week ${week}/${maxWeek}...`
             try {
-              // Use historical method for past seasons
-              const weekMatchups = isCurrentSeason
-                ? await espnService.getMatchups(sport, espnLeagueId, season, week)
-                : await espnService.getHistoricalMatchups(sport, espnLeagueId, season, week)
+              const weekMatchups = await espnService.getHistoricalMatchups(sport, espnLeagueId, season, week)
               
               if (weekMatchups && weekMatchups.length > 0) {
                 consecutiveFailures = 0
@@ -6740,6 +6739,13 @@ async function loadHistoricalData() {
       
       for (const seasonInfo of historicalSeasons) {
         const season = seasonInfo.season
+        
+        // Skip unfinished seasons — history only shows completed years
+        if (seasonInfo.status && seasonInfo.status !== 'complete') {
+          console.log(`[SLEEPER] Skipping ${season} — status: ${seasonInfo.status}`)
+          continue
+        }
+        
         loadingMessage.value = `Loading ${season} season...`
         updateProgress({ currentStep: `Loading ${season} standings and matchups`, season: season })
         
@@ -6932,6 +6938,19 @@ async function loadHistoricalData() {
         loadingMessage.value = `Loading ${season} season...`
         updateProgress({ currentStep: `Fetching ${season} standings`, season })
         console.log(`[Yahoo History] Loading season ${season} from key: ${currentSeasonKey}`)
+        
+        // Skip unfinished seasons — history only shows completed years
+        if (!metadata.isFinished) {
+          console.log(`[Yahoo History] Skipping ${season} — season not finished`)
+          const renewField = metadata.renew
+          if (renewField && renewField.includes('_')) {
+            const [renewGameKey, renewLeagueId] = renewField.split('_')
+            currentSeasonKey = `${renewGameKey}.l.${renewLeagueId}`
+          } else {
+            currentSeasonKey = ''
+          }
+          continue
+        }
         
         // Get standings for this season
         const standings = await yahooService.getStandings(currentSeasonKey)

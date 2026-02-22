@@ -305,7 +305,7 @@
             <tbody>
               <tr v-for="season in seasonRecords" :key="season.year" 
                   class="border-b border-dark-border hover:bg-dark-border/30 transition-colors">
-                <td class="py-3 px-4 font-bold text-dark-text text-lg">{{ season.year }}<span v-if="season.isActive" class="text-yellow-400">*</span></td>
+                <td class="py-3 px-4 font-bold text-dark-text text-lg">{{ season.year }}</td>
                 <td class="text-center py-3 px-4">
                   <template v-if="season.mostCatWins && season.mostCatWins.value > 0">
                     <div class="flex items-center justify-center gap-2">
@@ -314,7 +314,7 @@
                       </div>
                       <span class="font-semibold text-green-400">{{ season.mostCatWins.name }}</span>
                     </div>
-                    <div class="text-xs text-dark-textMuted">{{ season.mostCatWins.value }} cat wins<span v-if="season.isActive" class="text-yellow-400">*</span></div>
+                    <div class="text-xs text-dark-textMuted">{{ season.mostCatWins.value }} cat wins</div>
                   </template>
                   <template v-else>
                     <span class="text-dark-textMuted">—</span>
@@ -328,24 +328,24 @@
                       </div>
                       <span class="font-semibold text-red-400">{{ season.fewestCatWins.name }}</span>
                     </div>
-                    <div class="text-xs text-dark-textMuted">{{ season.fewestCatWins.value }} cat wins<span v-if="season.isActive" class="text-yellow-400">*</span></div>
+                    <div class="text-xs text-dark-textMuted">{{ season.fewestCatWins.value }} cat wins</div>
                   </template>
                   <template v-else>
                     <span class="text-dark-textMuted">—</span>
                   </template>
                 </td>
                 <td class="text-center py-3 px-4">
-                  <div class="text-cyan-400 font-semibold text-lg">{{ season.transactionCount }}<span v-if="season.isActive" class="text-yellow-400">*</span></div>
+                  <div class="text-cyan-400 font-semibold text-lg">{{ season.transactionCount }}</div>
                   <div class="text-xs text-dark-textMuted">moves</div>
                 </td>
                 <td class="text-center py-3 px-4">
-                  <div class="text-blue-400 font-semibold text-lg">{{ season.tradeCount }}<span v-if="season.isActive" class="text-yellow-400">*</span></div>
+                  <div class="text-blue-400 font-semibold text-lg">{{ season.tradeCount }}</div>
                   <div class="text-xs text-dark-textMuted">trades</div>
                 </td>
                 <td class="text-center py-3 px-4">
                   <div class="flex items-center justify-center gap-2">
                     <span class="text-lg">🏆</span>
-                    <template v-if="!season.isActive && season.champion">
+                    <template v-if="season.champion">
                       <div class="w-6 h-6 rounded-full overflow-hidden bg-dark-border flex-shrink-0">
                         <img :src="getSeasonRecordLogo(season.champion)" class="w-full h-full object-cover" @error="handleImageError" />
                       </div>
@@ -364,9 +364,6 @@
               </tr>
             </tbody>
           </table>
-          <div v-if="seasonRecords.some(s => s.isActive)" class="mt-3 px-4 text-xs text-yellow-400/80 italic">
-            * Season is currently active — stats reflect data through the current week
-          </div>
         </div>
       </div>
       </template>
@@ -2605,16 +2602,12 @@ const seasonRecords = computed(() => {
       return typeStr !== 'commish'
     }).length
     
-    // Determine if this season is active (not finished)
-    const isActive = data.isFinished === false
-    
     records.push({
       year,
       teamCount: standings.length,
       avgCatWins,
       tradeCount,
       transactionCount,
-      isActive,
       champion: champion ? {
         name: champion.name,
         team_key: champion.team_key,
@@ -5603,12 +5596,15 @@ async function loadEspnHistoricalData(leagueKey: string) {
     try {
       const isCurrentSeason = year === currentYear
       
-      // Use getHistoricalTeams for past seasons (like PointsHistoryView does)
-      // This method tries both regular endpoint and leagueHistory endpoint
-      console.log(`[History ESPN] Fetching teams for ${year} using ${isCurrentSeason ? 'getTeams' : 'getHistoricalTeams'}...`)
-      const teams = isCurrentSeason
-        ? await espnService.getTeams(espnSport, leagueId, year)
-        : await espnService.getHistoricalTeams(espnSport, leagueId, year)
+      // Skip unfinished seasons — history only shows completed years
+      if (isCurrentSeason) {
+        console.log(`[History ESPN] Skipping ${year} — current season not finished`)
+        continue
+      }
+      
+      // Use getHistoricalTeams for past seasons
+      console.log(`[History ESPN] Fetching teams for ${year} using getHistoricalTeams...`)
+      const teams = await espnService.getHistoricalTeams(espnSport, leagueId, year)
       
       console.log(`[History ESPN] ${year} returned ${teams?.length || 0} teams`)
       
@@ -5622,10 +5618,8 @@ async function loadEspnHistoricalData(leagueKey: string) {
       consecutiveFailures = 0
       loadingMessage.value = `Found ${year} season (${teams.length} teams)...`
       
-      // Determine if season is finished
-      const nowYear = new Date().getFullYear()
-      const isPastSeason = year < nowYear
-      const isFinished = isPastSeason
+      // All remaining seasons are past/finished since current is skipped above
+      const isFinished = true
       
       // Transform ESPN teams to standings format
       const transformedStandings = teams.map((team: any, index: number) => {
@@ -5678,9 +5672,7 @@ async function loadEspnHistoricalData(leagueKey: string) {
             }
             
             // Use getHistoricalMatchups for past seasons
-            const weekMatchups = isCurrentSeason
-              ? await espnService.getMatchups(espnSport, leagueId, year, week, false)
-              : await espnService.getHistoricalMatchups(espnSport, leagueId, year, week)
+            const weekMatchups = await espnService.getHistoricalMatchups(espnSport, leagueId, year, week)
             
             if (weekMatchups && weekMatchups.length > 0) {
               // Transform ESPN matchups to match expected format
@@ -5827,6 +5819,20 @@ async function loadYahooHistoricalData(leagueKey: string) {
         
         loadingMessage.value = `Loading ${year} season... (${successCount} loaded, ${failCount} not found)`
         console.log(`[Yahoo History] Loading season ${year} from key: ${currentSeasonKey}`)
+        
+        // Skip unfinished seasons — history only shows completed years
+        if (!metadata.isFinished) {
+          console.log(`[Yahoo History] Skipping ${year} — season not finished`)
+          // Still follow the renew chain
+          const renewField = metadata.renew
+          if (renewField && renewField.includes('_')) {
+            const [renewGameKey, renewLeagueId] = renewField.split('_')
+            currentSeasonKey = `${renewGameKey}.l.${renewLeagueId}`
+          } else {
+            currentSeasonKey = ''
+          }
+          continue
+        }
         
         const standings = await yahooService.getStandings(currentSeasonKey)
         console.log(`${year} standings response:`, standings?.length || 0, 'teams')
