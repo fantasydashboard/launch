@@ -297,6 +297,7 @@
                 <th class="text-left py-3 px-4 font-semibold text-dark-textSecondary uppercase tracking-wider">Season</th>
                 <th class="text-center py-3 px-4 font-semibold text-dark-textSecondary uppercase tracking-wider">Most Categories</th>
                 <th class="text-center py-3 px-4 font-semibold text-dark-textSecondary uppercase tracking-wider">Fewest Categories</th>
+                <th class="text-center py-3 px-4 font-semibold text-dark-textSecondary uppercase tracking-wider">Transactions</th>
                 <th class="text-center py-3 px-4 font-semibold text-dark-textSecondary uppercase tracking-wider">Trades</th>
                 <th class="text-center py-3 px-4 font-semibold text-dark-textSecondary uppercase tracking-wider">Champion</th>
               </tr>
@@ -304,7 +305,7 @@
             <tbody>
               <tr v-for="season in seasonRecords" :key="season.year" 
                   class="border-b border-dark-border hover:bg-dark-border/30 transition-colors">
-                <td class="py-3 px-4 font-bold text-dark-text text-lg">{{ season.year }}</td>
+                <td class="py-3 px-4 font-bold text-dark-text text-lg">{{ season.year }}<span v-if="season.isActive" class="text-yellow-400">*</span></td>
                 <td class="text-center py-3 px-4">
                   <div class="flex items-center justify-center gap-2">
                     <div class="w-6 h-6 rounded-full overflow-hidden bg-dark-border flex-shrink-0">
@@ -312,7 +313,7 @@
                     </div>
                     <span class="font-semibold text-green-400">{{ season.mostCatWins?.name || 'N/A' }}</span>
                   </div>
-                  <div class="text-xs text-dark-textMuted">{{ season.mostCatWins?.value || '' }} cat wins</div>
+                  <div class="text-xs text-dark-textMuted">{{ season.mostCatWins?.value || '' }} cat wins<span v-if="season.isActive">*</span></div>
                 </td>
                 <td class="text-center py-3 px-4">
                   <div class="flex items-center justify-center gap-2">
@@ -321,29 +322,46 @@
                     </div>
                     <span class="font-semibold text-red-400">{{ season.fewestCatWins?.name || 'N/A' }}</span>
                   </div>
-                  <div class="text-xs text-dark-textMuted">{{ season.fewestCatWins?.value || '' }} cat wins</div>
+                  <div class="text-xs text-dark-textMuted">{{ season.fewestCatWins?.value || '' }} cat wins<span v-if="season.isActive">*</span></div>
                 </td>
                 <td class="text-center py-3 px-4">
-                  <div class="text-blue-400 font-semibold text-lg">{{ season.tradeCount ?? 'N/A' }}</div>
+                  <div class="text-cyan-400 font-semibold text-lg">{{ season.transactionCount ?? 'N/A' }}<span v-if="season.isActive" class="text-yellow-400">*</span></div>
+                  <div class="text-xs text-dark-textMuted">moves</div>
+                </td>
+                <td class="text-center py-3 px-4">
+                  <div class="text-blue-400 font-semibold text-lg">{{ season.tradeCount ?? 'N/A' }}<span v-if="season.isActive" class="text-yellow-400">*</span></div>
                   <div class="text-xs text-dark-textMuted">trades</div>
                 </td>
                 <td class="text-center py-3 px-4">
-                  <div class="flex items-center justify-center gap-2">
-                    <span class="text-lg">🏆</span>
-                    <div class="w-6 h-6 rounded-full overflow-hidden bg-dark-border flex-shrink-0">
-                      <img :src="getSeasonRecordLogo(season.champion)" class="w-full h-full object-cover" @error="handleImageError" />
+                  <template v-if="season.isActive">
+                    <div class="flex items-center justify-center gap-2">
+                      <span class="text-xs text-yellow-400 italic">In Progress*</span>
                     </div>
-                    <span class="font-semibold text-yellow-400">{{ season.champion?.name || 'TBD' }}</span>
-                  </div>
+                  </template>
+                  <template v-else-if="season.champion">
+                    <div class="flex items-center justify-center gap-2">
+                      <span class="text-lg">🏆</span>
+                      <div class="w-6 h-6 rounded-full overflow-hidden bg-dark-border flex-shrink-0">
+                        <img :src="getSeasonRecordLogo(season.champion)" class="w-full h-full object-cover" @error="handleImageError" />
+                      </div>
+                      <span class="font-semibold text-yellow-400">{{ season.champion?.name }}</span>
+                    </div>
+                  </template>
+                  <template v-else>
+                    <span class="text-dark-textMuted">—</span>
+                  </template>
                 </td>
               </tr>
               <tr v-if="seasonRecords.length === 0">
-                <td colspan="5" class="py-8 text-center text-dark-textMuted">
+                <td colspan="6" class="py-8 text-center text-dark-textMuted">
                   No season data available
                 </td>
               </tr>
             </tbody>
           </table>
+          <div v-if="seasonRecords.some(s => s.isActive)" class="mt-3 px-4 text-xs text-yellow-400/80 italic">
+            * Season is currently active — stats reflect data through the current week
+          </div>
         </div>
       </div>
       </template>
@@ -2561,11 +2579,23 @@ const seasonRecords = computed(() => {
       }))
     }).length
     
+    // Count total transactions (each add/drop = 1, each trade = 1, each add = 1, each drop = 1)
+    // Filter out commissioner actions and count unique transaction entries
+    const transactionCount = transactions.filter((t: any) => {
+      const typeStr = String(t.type || '').toLowerCase()
+      return typeStr !== 'commish'
+    }).length
+    
+    // Determine if this season is active (not finished)
+    const isActive = data.isFinished === false
+    
     records.push({
       year,
       teamCount: standings.length,
       avgCatWins,
       tradeCount,
+      transactionCount,
+      isActive,
       champion: champion ? {
         name: champion.name,
         team_key: champion.team_key,
@@ -5598,7 +5628,7 @@ async function loadEspnHistoricalData(leagueKey: string) {
         }
       })
       
-      data[year.toString()] = { standings: transformedStandings, matchups: [] }
+      data[year.toString()] = { standings: transformedStandings, matchups: [], isFinished }
       
       // Store current members from most recent season
       if (Object.keys(data).length === 1) {
@@ -5806,7 +5836,7 @@ async function loadYahooHistoricalData(leagueKey: string) {
           const champion = standings.find((t: any) => t.rank === 1)
           if (champion) champion.is_champion = true
           
-          data[year] = { standings, matchups: [] }
+          data[year] = { standings, matchups: [], isFinished: metadata.isFinished }
           
           // Store current members from most recent season
           if (Object.keys(data).length === 1) {
