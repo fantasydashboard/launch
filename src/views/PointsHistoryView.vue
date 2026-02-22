@@ -2437,7 +2437,10 @@ const seasonRecords = computed((): SeasonRecord[] => {
     })
   }
   
-  return records.sort((a, b) => parseInt(b.season) - parseInt(a.season))
+  // Only show completed seasons in season-by-season table (career stats still use all data)
+  return records
+    .filter(r => historicalData.value[r.season]?.isFinished !== false)
+    .sort((a, b) => parseInt(b.season) - parseInt(a.season))
 })
 
 // Computed: H2H Teams
@@ -6488,13 +6491,9 @@ async function loadHistoricalData() {
           console.log(`[ESPN History] Fetching teams for ${season}...`)
           const isCurrentSeason = season === currentSeason
           
-          // Skip unfinished seasons — history only shows completed years
-          if (isCurrentSeason) {
-            console.log(`[ESPN History] Skipping ${season} — current season not finished`)
-            continue
-          }
-          
-          const teams = await espnService.getHistoricalTeams(sport, espnLeagueId, season)
+          const teams = isCurrentSeason 
+            ? await espnService.getTeams(sport, espnLeagueId, season)
+            : await espnService.getHistoricalTeams(sport, espnLeagueId, season)
           
           console.log(`[ESPN History] ${season} returned ${teams?.length || 0} teams`)
           
@@ -6547,7 +6546,8 @@ async function loadHistoricalData() {
           // Store season data
           historicalData.value[season.toString()] = {
             standings: standings,
-            trade_count: 0
+            trade_count: 0,
+            isFinished: !isCurrentSeason
           }
           
           // Track team info
@@ -6573,8 +6573,10 @@ async function loadHistoricalData() {
           updateProgress({ currentStep: `Loading ${season} matchups` })
           const seasonMatchupsObj: Record<number, any[]> = {}
           
-          // For past seasons, load all weeks up to 25
-          const maxWeek = 25
+          // For current season, use current week; for past seasons, load all weeks
+          const maxWeek = isCurrentSeason 
+            ? Math.min(leagueStore.currentLeague?.settings?.leg || 25, 25)
+            : 25
           
           updateProgress({ maxWeek })
           let consecutiveFailures = 0
@@ -6583,7 +6585,9 @@ async function loadHistoricalData() {
             updateProgress({ week })
             loadingMessage.value = `Loading ${season} week ${week}/${maxWeek}...`
             try {
-              const weekMatchups = await espnService.getHistoricalMatchups(sport, espnLeagueId, season, week)
+              const weekMatchups = isCurrentSeason
+                ? await espnService.getMatchups(sport, espnLeagueId, season, week)
+                : await espnService.getHistoricalMatchups(sport, espnLeagueId, season, week)
               
               if (weekMatchups && weekMatchups.length > 0) {
                 consecutiveFailures = 0
@@ -6739,12 +6743,7 @@ async function loadHistoricalData() {
       
       for (const seasonInfo of historicalSeasons) {
         const season = seasonInfo.season
-        
-        // Skip unfinished seasons — history only shows completed years
-        if (seasonInfo.status && seasonInfo.status !== 'complete') {
-          console.log(`[SLEEPER] Skipping ${season} — status: ${seasonInfo.status}`)
-          continue
-        }
+        const isSeasonComplete = !seasonInfo.status || seasonInfo.status === 'complete'
         
         loadingMessage.value = `Loading ${season} season...`
         updateProgress({ currentStep: `Loading ${season} standings and matchups`, season: season })
@@ -6797,7 +6796,7 @@ async function loadHistoricalData() {
             team.rank = idx + 1
           })
           
-          historicalData.value[season] = { standings, trade_count: 0 }
+          historicalData.value[season] = { standings, trade_count: 0, isFinished: isSeasonComplete }
           
           // Track teams - ALWAYS update to use most recent name/logo
           standings.forEach((team: any) => {
@@ -6939,19 +6938,6 @@ async function loadHistoricalData() {
         updateProgress({ currentStep: `Fetching ${season} standings`, season })
         console.log(`[Yahoo History] Loading season ${season} from key: ${currentSeasonKey}`)
         
-        // Skip unfinished seasons — history only shows completed years
-        if (!metadata.isFinished) {
-          console.log(`[Yahoo History] Skipping ${season} — season not finished`)
-          const renewField = metadata.renew
-          if (renewField && renewField.includes('_')) {
-            const [renewGameKey, renewLeagueId] = renewField.split('_')
-            currentSeasonKey = `${renewGameKey}.l.${renewLeagueId}`
-          } else {
-            currentSeasonKey = ''
-          }
-          continue
-        }
-        
         // Get standings for this season
         const standings = await yahooService.getStandings(currentSeasonKey)
         console.log(`Got standings for ${season}:`, standings?.length || 0, 'teams')
@@ -6984,7 +6970,8 @@ async function loadHistoricalData() {
         
         historicalData.value[season] = {
           standings: enhancedStandings,
-          trade_count: 0
+          trade_count: 0,
+          isFinished: metadata.isFinished
         }
         
         // Track current members from the most recent season
