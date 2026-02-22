@@ -307,49 +307,54 @@
                   class="border-b border-dark-border hover:bg-dark-border/30 transition-colors">
                 <td class="py-3 px-4 font-bold text-dark-text text-lg">{{ season.year }}<span v-if="season.isActive" class="text-yellow-400">*</span></td>
                 <td class="text-center py-3 px-4">
-                  <div class="flex items-center justify-center gap-2">
-                    <div class="w-6 h-6 rounded-full overflow-hidden bg-dark-border flex-shrink-0">
-                      <img :src="getSeasonRecordLogo(season.mostCatWins)" class="w-full h-full object-cover" @error="handleImageError" />
-                    </div>
-                    <span class="font-semibold text-green-400">{{ season.mostCatWins?.name || 'N/A' }}</span>
-                  </div>
-                  <div class="text-xs text-dark-textMuted">{{ season.mostCatWins?.value || '' }} cat wins<span v-if="season.isActive">*</span></div>
-                </td>
-                <td class="text-center py-3 px-4">
-                  <div class="flex items-center justify-center gap-2">
-                    <div class="w-6 h-6 rounded-full overflow-hidden bg-dark-border flex-shrink-0">
-                      <img :src="getSeasonRecordLogo(season.fewestCatWins)" class="w-full h-full object-cover" @error="handleImageError" />
-                    </div>
-                    <span class="font-semibold text-red-400">{{ season.fewestCatWins?.name || 'N/A' }}</span>
-                  </div>
-                  <div class="text-xs text-dark-textMuted">{{ season.fewestCatWins?.value || '' }} cat wins<span v-if="season.isActive">*</span></div>
-                </td>
-                <td class="text-center py-3 px-4">
-                  <div class="text-cyan-400 font-semibold text-lg">{{ season.transactionCount ?? 'N/A' }}<span v-if="season.isActive" class="text-yellow-400">*</span></div>
-                  <div class="text-xs text-dark-textMuted">moves</div>
-                </td>
-                <td class="text-center py-3 px-4">
-                  <div class="text-blue-400 font-semibold text-lg">{{ season.tradeCount ?? 'N/A' }}<span v-if="season.isActive" class="text-yellow-400">*</span></div>
-                  <div class="text-xs text-dark-textMuted">trades</div>
-                </td>
-                <td class="text-center py-3 px-4">
-                  <template v-if="season.isActive">
+                  <template v-if="season.mostCatWins && season.mostCatWins.value > 0">
                     <div class="flex items-center justify-center gap-2">
-                      <span class="text-xs text-yellow-400 italic">In Progress*</span>
-                    </div>
-                  </template>
-                  <template v-else-if="season.champion">
-                    <div class="flex items-center justify-center gap-2">
-                      <span class="text-lg">🏆</span>
                       <div class="w-6 h-6 rounded-full overflow-hidden bg-dark-border flex-shrink-0">
-                        <img :src="getSeasonRecordLogo(season.champion)" class="w-full h-full object-cover" @error="handleImageError" />
+                        <img :src="getSeasonRecordLogo(season.mostCatWins)" class="w-full h-full object-cover" @error="handleImageError" />
                       </div>
-                      <span class="font-semibold text-yellow-400">{{ season.champion?.name }}</span>
+                      <span class="font-semibold text-green-400">{{ season.mostCatWins.name }}</span>
                     </div>
+                    <div class="text-xs text-dark-textMuted">{{ season.mostCatWins.value }} cat wins<span v-if="season.isActive" class="text-yellow-400">*</span></div>
                   </template>
                   <template v-else>
                     <span class="text-dark-textMuted">—</span>
                   </template>
+                </td>
+                <td class="text-center py-3 px-4">
+                  <template v-if="season.fewestCatWins && season.fewestCatWins.name !== 'Unknown' && season.fewestCatWins.value >= 0 && season.mostCatWins?.value > 0">
+                    <div class="flex items-center justify-center gap-2">
+                      <div class="w-6 h-6 rounded-full overflow-hidden bg-dark-border flex-shrink-0">
+                        <img :src="getSeasonRecordLogo(season.fewestCatWins)" class="w-full h-full object-cover" @error="handleImageError" />
+                      </div>
+                      <span class="font-semibold text-red-400">{{ season.fewestCatWins.name }}</span>
+                    </div>
+                    <div class="text-xs text-dark-textMuted">{{ season.fewestCatWins.value }} cat wins<span v-if="season.isActive" class="text-yellow-400">*</span></div>
+                  </template>
+                  <template v-else>
+                    <span class="text-dark-textMuted">—</span>
+                  </template>
+                </td>
+                <td class="text-center py-3 px-4">
+                  <div class="text-cyan-400 font-semibold text-lg">{{ season.transactionCount }}<span v-if="season.isActive" class="text-yellow-400">*</span></div>
+                  <div class="text-xs text-dark-textMuted">moves</div>
+                </td>
+                <td class="text-center py-3 px-4">
+                  <div class="text-blue-400 font-semibold text-lg">{{ season.tradeCount }}<span v-if="season.isActive" class="text-yellow-400">*</span></div>
+                  <div class="text-xs text-dark-textMuted">trades</div>
+                </td>
+                <td class="text-center py-3 px-4">
+                  <div class="flex items-center justify-center gap-2">
+                    <span class="text-lg">🏆</span>
+                    <template v-if="!season.isActive && season.champion">
+                      <div class="w-6 h-6 rounded-full overflow-hidden bg-dark-border flex-shrink-0">
+                        <img :src="getSeasonRecordLogo(season.champion)" class="w-full h-full object-cover" @error="handleImageError" />
+                      </div>
+                      <span class="font-semibold text-yellow-400">{{ season.champion.name }}</span>
+                    </template>
+                    <template v-else>
+                      <span class="font-semibold text-dark-textMuted">TBD</span>
+                    </template>
+                  </div>
                 </td>
               </tr>
               <tr v-if="seasonRecords.length === 0">
@@ -2567,6 +2572,20 @@ const seasonRecords = computed(() => {
     const mostCatWinsTeam = catWinEntries[0]
     const fewestCatWinsTeam = catWinEntries[catWinEntries.length - 1]
     
+    // Helper to resolve team name from GUID key
+    const resolveTeamName = (teamKey: string) => {
+      return allTeams.value[teamKey]?.name 
+        || standings.find((t: any) => t.team_key === teamKey)?.name 
+        || standings.find((t: any) => t.manager_guid === teamKey)?.name
+        || 'Unknown'
+    }
+    const resolveTeamLogo = (teamKey: string) => {
+      return allTeams.value[teamKey]?.logo_url 
+        || standings.find((t: any) => t.team_key === teamKey)?.logo_url
+        || standings.find((t: any) => t.manager_guid === teamKey)?.logo_url
+        || ''
+    }
+    
     // Count trades for this season
     const transactions = data.transactions || []
     const tradeCount = transactions.filter((t: any) => {
@@ -2602,15 +2621,15 @@ const seasonRecords = computed(() => {
         logo_url: champion.logo_url || allTeams.value[champion.team_key]?.logo_url || ''
       } : null,
       mostCatWins: mostCatWinsTeam ? {
-        name: allTeams.value[mostCatWinsTeam[0]]?.name || standings.find((t: any) => t.team_key === mostCatWinsTeam[0])?.name || 'Unknown',
+        name: resolveTeamName(mostCatWinsTeam[0]),
         team_key: mostCatWinsTeam[0],
-        logo_url: allTeams.value[mostCatWinsTeam[0]]?.logo_url || '',
+        logo_url: resolveTeamLogo(mostCatWinsTeam[0]),
         value: mostCatWinsTeam[1]
       } : null,
       fewestCatWins: fewestCatWinsTeam ? {
-        name: allTeams.value[fewestCatWinsTeam[0]]?.name || standings.find((t: any) => t.team_key === fewestCatWinsTeam[0])?.name || 'Unknown',
+        name: resolveTeamName(fewestCatWinsTeam[0]),
         team_key: fewestCatWinsTeam[0],
-        logo_url: allTeams.value[fewestCatWinsTeam[0]]?.logo_url || '',
+        logo_url: resolveTeamLogo(fewestCatWinsTeam[0]),
         value: fewestCatWinsTeam[1]
       } : null
     })
