@@ -2638,7 +2638,11 @@ const seasonRecords = computed(() => {
 const seasonCategoryData = computed(() => {
   const data: any[] = []
   
-  for (const [year, seasonData] of Object.entries(historicalData.value)) {
+  // Only use completed seasons for awards
+  const finishedSeasons = Object.entries(historicalData.value)
+    .filter(([_, sd]) => sd.isFinished !== false)
+  
+  for (const [year, seasonData] of finishedSeasons) {
     const matchups = seasonData.matchups || []
     const standings = seasonData.standings || []
     
@@ -3099,7 +3103,10 @@ const LEGACY_POINTS = {
 // Computed: Legacy Scores for category leagues
 const legacyScores = computed((): LegacyScore[] => {
   const teams: Record<string, LegacyScore> = {}
-  const seasons = Object.keys(historicalData.value).sort((a, b) => parseInt(a) - parseInt(b)) // Ascending for streak tracking
+  // Only use completed seasons for legacy scores — no credit for in-progress achievements
+  const seasons = Object.keys(historicalData.value)
+    .filter(s => historicalData.value[s]?.isFinished !== false)
+    .sort((a, b) => parseInt(a) - parseInt(b)) // Ascending for streak tracking
   
   if (seasons.length === 0) return []
   

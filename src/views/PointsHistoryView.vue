@@ -2832,7 +2832,10 @@ const LEGACY_POINTS = legacyPoints
 // Computed: Legacy Scores for all teams
 const legacyScores = computed((): LegacyScore[] => {
   const teams: Record<string, LegacyScore> = {}
-  const seasons = Object.keys(historicalData.value).sort((a, b) => parseInt(a) - parseInt(b)) // Ascending for streak tracking
+  // Only use completed seasons for legacy scores — no credit for in-progress achievements
+  const seasons = Object.keys(historicalData.value)
+    .filter(s => historicalData.value[s]?.isFinished !== false)
+    .sort((a, b) => parseInt(a) - parseInt(b)) // Ascending for streak tracking
   
   if (seasons.length === 0) return []
   
