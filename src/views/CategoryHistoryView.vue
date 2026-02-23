@@ -5864,8 +5864,11 @@ async function loadYahooHistoricalData(leagueKey: string) {
             }
           }
           
-          const champion = standings.find((t: any) => t.rank === 1)
-          if (champion) champion.is_champion = true
+          // Only credit championship for finished seasons
+          if (metadata.isFinished) {
+            const champion = standings.find((t: any) => t.rank === 1)
+            if (champion) champion.is_champion = true
+          }
           
           data[year] = { standings, matchups: [], isFinished: metadata.isFinished }
           

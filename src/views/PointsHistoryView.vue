@@ -6968,11 +6968,11 @@ async function loadHistoricalData() {
         }
         console.log(`[Yahoo History] Built GUID map for ${season}: ${guidMap.size} teams mapped`)
         
-        // Store season data - normalize team_keys and mark rank 1 as champion
+        // Store season data - normalize team_keys and mark rank 1 as champion (only for finished seasons)
         const enhancedStandings = standings.map((team: any) => ({
           ...team,
           team_key: team.manager_guid || team.team_key, // normalize
-          is_champion: team.rank === 1
+          is_champion: metadata.isFinished && team.rank === 1
         }))
         
         historicalData.value[season] = {
