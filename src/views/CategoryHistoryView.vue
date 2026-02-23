@@ -5577,6 +5577,13 @@ async function loadEspnHistoricalData(leagueKey: string) {
     return
   }
   
+  // Load sport-specific stat display names for ESPN
+  const espnStatNames = espnService.getStatDisplayNames(espnSport)
+  for (const [statId, displayName] of Object.entries(espnStatNames)) {
+    leagueStatNames.value[statId] = displayName
+  }
+  console.log('[History ESPN] Loaded stat names for', espnSport, ':', Object.keys(leagueStatNames.value).length, 'stats')
+  
   // For ESPN, we'll try to load seasons going back in time
   const data: Record<string, any> = {}
   let successCount = 0

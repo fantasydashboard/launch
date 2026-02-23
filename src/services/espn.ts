@@ -2393,6 +2393,41 @@ export class EspnFantasyService {
   // ============================================================
 
   /**
+   * Get stat ID → display name mapping for a given sport
+   * Used by history pages to resolve ESPN stat IDs to human-readable names
+   */
+  getStatDisplayNames(sport: Sport): Record<string, string> {
+    const hockey: Record<number, string> = {
+      0: 'G', 1: 'A', 2: 'PTS', 3: '+/-', 4: 'PIM', 5: 'PPG', 6: 'PPA', 7: 'PPP',
+      8: 'SHG', 9: 'SHA', 10: 'SHP', 11: 'GWG', 12: 'SOG', 13: 'SH%', 14: 'FOW',
+      15: 'FOL', 16: 'HIT', 17: 'BLK', 18: 'TK', 19: 'W', 20: 'L', 21: 'GA',
+      22: 'GAA', 23: 'SV', 24: 'SV%', 25: 'SHO', 26: 'OTL', 27: 'GS', 28: 'GV',
+      29: 'ATOI', 30: 'GP', 31: 'HAT', 32: 'DEF', 33: 'STP', 34: 'FO%', 35: 'MIN',
+      36: 'SH', 37: 'GW', 38: 'SA', 39: 'GSAA'
+    }
+    const basketball: Record<number, string> = {
+      0: 'PTS', 1: 'BLK', 2: 'STL', 3: 'AST', 4: 'OREB', 5: 'DREB', 6: 'REB',
+      7: 'EJ', 8: 'FF', 9: 'PF', 10: 'TF', 11: 'TO', 12: 'DQ', 13: 'FGM',
+      14: 'FGA', 15: 'FTM', 16: 'FTA', 17: '3PM', 18: '3PA', 19: 'FG%', 20: 'FT%',
+      21: '3P%', 37: 'DD', 38: 'TD', 40: 'GP', 41: 'MIN', 42: 'GS'
+    }
+    const baseball: Record<number, string> = {
+      0: 'AB', 1: 'H', 2: 'R', 3: 'HR', 4: 'RBI', 5: 'SB', 6: 'BB', 7: 'K',
+      8: 'AVG', 9: 'OBP', 10: 'SLG', 11: 'OPS', 12: 'CS', 13: 'NSB', 14: 'GDP',
+      15: 'HBP', 16: 'SAC', 17: 'IP', 18: 'ERA', 19: 'WHIP', 20: 'Ks', 21: 'BBs',
+      22: 'HA', 23: 'HD', 24: 'BS', 32: 'W', 33: 'L', 34: 'SV', 35: 'QS',
+      36: 'SHO', 37: 'CG', 40: 'TB', 41: '2B', 42: '3B', 43: '1B', 45: 'E', 99: 'GP'
+    }
+    
+    const map = sport === 'hockey' ? hockey : sport === 'basketball' ? basketball : baseball
+    const result: Record<string, string> = {}
+    for (const [id, name] of Object.entries(map)) {
+      result[String(id)] = name
+    }
+    return result
+  }
+
+  /**
    * Get scoring settings for the league
    */
   async getScoringSettings(sport: Sport, leagueId: string | number, season: number): Promise<any> {
