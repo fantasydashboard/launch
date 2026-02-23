@@ -3103,9 +3103,7 @@ const LEGACY_POINTS = {
 // Computed: Legacy Scores for category leagues
 const legacyScores = computed((): LegacyScore[] => {
   const teams: Record<string, LegacyScore> = {}
-  // Only use completed seasons for legacy scores — no credit for in-progress achievements
   const seasons = Object.keys(historicalData.value)
-    .filter(s => historicalData.value[s]?.isFinished !== false)
     .sort((a, b) => parseInt(a) - parseInt(b)) // Ascending for streak tracking
   
   if (seasons.length === 0) return []
@@ -3275,37 +3273,42 @@ const legacyScores = computed((): LegacyScore[] => {
       const teamMatchups = metrics.matchups.filter(m => m.teams?.some((t: any) => t.team_key === teamKey)).length
       const teamCatWinRate = teamMatchups > 0 ? teamSeasonCatWins / teamMatchups : 0
       
-      // Determine if team made playoffs
-      const madePlayoffs = team.playoff_seed > 0 
+      // Determine if this season is complete
+      const isSeasonFinished = historicalData.value[season]?.isFinished !== false
+      
+      // Determine if team made playoffs (only count for finished seasons)
+      const madePlayoffs = isSeasonFinished && (team.playoff_seed > 0 
         ? team.playoff_seed <= playoffTeamCount 
-        : rank <= playoffTeamCount
+        : rank <= playoffTeamCount)
       
-      // Championships & Playoffs
-      if (team.is_champion) t.championships++
-      if (rank === 2 && !team.is_champion) t.runner_ups++
-      if (rank === 3) t.third_places++
-      if (madePlayoffs) t.playoff_appearances++
+      // Championships & Playoffs (season-end only)
+      if (isSeasonFinished) {
+        if (team.is_champion) t.championships++
+        if (rank === 2 && !team.is_champion) t.runner_ups++
+        if (rank === 3) t.third_places++
+        if (madePlayoffs) t.playoff_appearances++
       
-      // Check for regular season title (most wins)
-      const sortedByWins = [...standings].sort((a: any, b: any) => {
-        if ((b.wins || 0) !== (a.wins || 0)) return (b.wins || 0) - (a.wins || 0)
-        return 0
-      })
-      if (sortedByWins[0]?.team_key === teamKey) t.regular_season_titles++
+        // Check for regular season title (most wins)
+        const sortedByWins = [...standings].sort((a: any, b: any) => {
+          if ((b.wins || 0) !== (a.wins || 0)) return (b.wins || 0) - (a.wins || 0)
+          return 0
+        })
+        if (sortedByWins[0]?.team_key === teamKey) t.regular_season_titles++
+      }
       
-      // Season Performance
+      // Season Performance (in-progress safe)
       t.total_wins += wins
-      if (wins > losses) t.winning_seasons++
-      if (rank <= 3) t.top_3_finishes++
-      if (teamKey === categoryLeader) t.category_leader_seasons++
-      if (top3Category.includes(teamKey)) t.top_3_category_seasons++
+      if (isSeasonFinished && wins > losses) t.winning_seasons++
+      if (isSeasonFinished && rank <= 3) t.top_3_finishes++
+      if (isSeasonFinished && teamKey === categoryLeader) t.category_leader_seasons++
+      if (isSeasonFinished && top3Category.includes(teamKey)) t.top_3_category_seasons++
       if (teamCatWinRate > avgCatWinRate) t.above_avg_cat_win_rate++
       
       // Historic Moments
       if (teamKey === bestWeeklyCat.team_key) t.best_weekly_cat_performances++
       
-      // Penalties
-      if (rank === numTeams) t.last_place_finishes++
+      // Penalties (season-end only for position-based, in-progress safe for weekly)
+      if (isSeasonFinished && rank === numTeams) t.last_place_finishes++
       if (teamKey === worstWeeklyCat.team_key) t.worst_weekly_performances++
       const sortedByCatsAsc = Object.entries(metrics.matchups.reduce((acc: Record<string, number>, matchup) => {
         const statWinners = matchup.stat_winners || []
@@ -3314,22 +3317,24 @@ const legacyScores = computed((): LegacyScore[] => {
         }
         return acc
       }, {})).sort((a, b) => a[1] - b[1])
-      if (sortedByCatsAsc[0]?.[0] === teamKey) t.category_cellar_seasons++
-      if (wins < losses) t.losing_seasons++
+      if (isSeasonFinished && sortedByCatsAsc[0]?.[0] === teamKey) t.category_cellar_seasons++
+      if (isSeasonFinished && wins < losses) t.losing_seasons++
       
-      // Streak tracking
-      if (madePlayoffs) {
-        streak.playoffStreak++
-        streak.maxPlayoffStreak = Math.max(streak.maxPlayoffStreak, streak.playoffStreak)
-      } else {
-        streak.playoffStreak = 0
-      }
-      
-      if (wins > losses) {
-        streak.winningStreak++
-        streak.maxWinningStreak = Math.max(streak.maxWinningStreak, streak.winningStreak)
-      } else {
-        streak.winningStreak = 0
+      // Streak tracking (only for finished seasons)
+      if (isSeasonFinished) {
+        if (madePlayoffs) {
+          streak.playoffStreak++
+          streak.maxPlayoffStreak = Math.max(streak.maxPlayoffStreak, streak.playoffStreak)
+        } else {
+          streak.playoffStreak = 0
+        }
+        
+        if (wins > losses) {
+          streak.winningStreak++
+          streak.maxWinningStreak = Math.max(streak.maxWinningStreak, streak.winningStreak)
+        } else {
+          streak.winningStreak = 0
+        }
       }
     }
   }

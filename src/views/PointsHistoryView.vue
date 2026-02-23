@@ -2832,9 +2832,7 @@ const LEGACY_POINTS = legacyPoints
 // Computed: Legacy Scores for all teams
 const legacyScores = computed((): LegacyScore[] => {
   const teams: Record<string, LegacyScore> = {}
-  // Only use completed seasons for legacy scores — no credit for in-progress achievements
   const seasons = Object.keys(historicalData.value)
-    .filter(s => historicalData.value[s]?.isFinished !== false)
     .sort((a, b) => parseInt(a) - parseInt(b)) // Ascending for streak tracking
   
   if (seasons.length === 0) return []
@@ -2989,59 +2987,65 @@ const legacyScores = computed((): LegacyScore[] => {
       const pointsFor = team.points_for || 0
       const teamPPW = (wins + losses) > 0 ? pointsFor / (wins + losses) : 0
       
-      // Determine if team made playoffs
+      // Determine if this season is complete
+      const isSeasonFinished = historicalData.value[season]?.isFinished !== false
+      
+      // Determine if team made playoffs (only count for finished seasons)
       // For ESPN, playoff_seed is set for ALL teams in any bracket (including consolation)
       // A team made the REAL playoffs only if their seed is <= playoffTeamCount
       // If no playoff_seed, fall back to rank-based determination
-      const madePlayoffs = team.playoff_seed > 0 
+      const madePlayoffs = isSeasonFinished && (team.playoff_seed > 0 
         ? team.playoff_seed <= playoffTeamCount 
-        : rank <= playoffTeamCount
+        : rank <= playoffTeamCount)
       
-      // Championships & Playoffs
-      // Use is_champion flag (set from bracket data for Sleeper, rank for others)
-      if (team.is_champion) t.championships++
-      if (rank === 2 && !team.is_champion) t.runner_ups++ // Only if not champion (handles edge cases)
-      if (rank === 3) t.third_places++
-      if (madePlayoffs) t.playoff_appearances++
+      // Championships & Playoffs (season-end only)
+      if (isSeasonFinished) {
+        if (team.is_champion) t.championships++
+        if (rank === 2 && !team.is_champion) t.runner_ups++
+        if (rank === 3) t.third_places++
+        if (madePlayoffs) t.playoff_appearances++
       
-      // Check for regular season title (most wins, or if tied, most points)
-      const sortedByWins = [...standings].sort((a: any, b: any) => {
-        if ((b.wins || 0) !== (a.wins || 0)) return (b.wins || 0) - (a.wins || 0)
-        return (b.points_for || 0) - (a.points_for || 0)
-      })
-      if (sortedByWins[0]?.team_key === teamKey) t.regular_season_titles++
-      
-      // Season Performance
-      t.total_wins += wins
-      if (wins > losses) t.winning_seasons++
-      if (rank <= 3) t.top_3_finishes++
-      if (teamKey === pointsLeader) t.points_leader_seasons++
-      if (top3Scorers.includes(teamKey)) t.top_3_scoring_seasons++
-      if (teamPPW > avgPPW) t.above_avg_ppw_seasons++
-      
-      // Historic Moments
-      if (teamKey === highScore.team_key) t.season_high_scores++
-      
-      // Penalties
-      if (rank === numTeams) t.last_place_finishes++
-      if (teamKey === lowScore.team_key) t.season_low_scores++
-      const sortedByPointsAsc = [...standings].sort((a: any, b: any) => (a.points_for || 0) - (b.points_for || 0))
-      if (sortedByPointsAsc[0]?.team_key === teamKey) t.scoring_cellar_seasons++
-      if (wins < losses) t.losing_seasons++
-      
-      // Streak tracking
-      if (madePlayoffs) {
-        streak.playoffStreak++
-        streak.maxPlayoffStreak = Math.max(streak.maxPlayoffStreak, streak.playoffStreak)
-      } else {
-        streak.playoffStreak = 0
+        // Check for regular season title (most wins, or if tied, most points)
+        const sortedByWins = [...standings].sort((a: any, b: any) => {
+          if ((b.wins || 0) !== (a.wins || 0)) return (b.wins || 0) - (a.wins || 0)
+          return (b.points_for || 0) - (a.points_for || 0)
+        })
+        if (sortedByWins[0]?.team_key === teamKey) t.regular_season_titles++
       }
       
-      if (wins > losses) {
-        streak.winningStreak++
-        streak.maxWinningStreak = Math.max(streak.maxWinningStreak, streak.winningStreak)
-      } else {
-        streak.winningStreak = 0
+      // Season Performance (in-progress safe: total_wins, above_avg; season-end: winning_seasons, top 3, leader)
+      t.total_wins += wins
+      if (isSeasonFinished && wins > losses) t.winning_seasons++
+      if (isSeasonFinished && rank <= 3) t.top_3_finishes++
+      if (isSeasonFinished && teamKey === pointsLeader) t.points_leader_seasons++
+      if (isSeasonFinished && top3Scorers.includes(teamKey)) t.top_3_scoring_seasons++
+      if (teamPPW > avgPPW) t.above_avg_ppw_seasons++
+      
+      // Historic Moments (in-progress safe — weekly achievements)
+      if (teamKey === highScore.team_key) t.season_high_scores++
+      
+      // Penalties (season-end only for position-based, in-progress safe for weekly)
+      if (isSeasonFinished && rank === numTeams) t.last_place_finishes++
+      if (teamKey === lowScore.team_key) t.season_low_scores++
+      const sortedByPointsAsc = [...standings].sort((a: any, b: any) => (a.points_for || 0) - (b.points_for || 0))
+      if (isSeasonFinished && sortedByPointsAsc[0]?.team_key === teamKey) t.scoring_cellar_seasons++
+      if (isSeasonFinished && wins < losses) t.losing_seasons++
+      
+      // Streak tracking (only for finished seasons)
+      if (isSeasonFinished) {
+        if (madePlayoffs) {
+          streak.playoffStreak++
+          streak.maxPlayoffStreak = Math.max(streak.maxPlayoffStreak, streak.playoffStreak)
+        } else {
+          streak.playoffStreak = 0
+        }
+        
+        if (wins > losses) {
+          streak.winningStreak++
+          streak.maxWinningStreak = Math.max(streak.maxWinningStreak, streak.winningStreak)
+        } else {
+          streak.winningStreak = 0
+        }
       }
     }
   }
