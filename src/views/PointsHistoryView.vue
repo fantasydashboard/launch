@@ -2295,7 +2295,8 @@ const careerStats = computed((): CareerStat[] => {
   const sortedSeasons = Object.entries(historicalData.value).sort((a, b) => parseInt(b[0]) - parseInt(a[0]))
   for (const [season, seasonData] of sortedSeasons) {
     const standings = seasonData.standings || []
-    console.log(`Processing ${season} standings:`, standings.length, 'teams')
+    const isFinished = seasonData.isFinished !== false
+    console.log(`Processing ${season} standings:`, standings.length, 'teams, finished:', isFinished)
     
     for (const team of standings) {
       const teamKey = team.team_key
@@ -2308,7 +2309,7 @@ const careerStats = computed((): CareerStat[] => {
       console.log(`Team ${team.name}: wins=${team.wins}, losses=${team.losses}, points_for=${team.points_for}, rank=${team.rank}, is_champion=${team.is_champion}`)
       
       if (existing) {
-        existing.seasons++
+        if (isFinished) existing.seasons++
         existing.wins += team.wins || 0
         existing.losses += team.losses || 0
         existing.total_pf += team.points_for || 0
@@ -2321,7 +2322,7 @@ const careerStats = computed((): CareerStat[] => {
           team_key: teamKey,
           team_name: team.name || 'Unknown Team',
           logo_url: logoUrl,
-          seasons: 1,
+          seasons: isFinished ? 1 : 0,
           championships: team.is_champion ? 1 : 0,
           wins: team.wins || 0,
           losses: team.losses || 0,
@@ -2979,16 +2980,16 @@ const legacyScores = computed((): LegacyScore[] => {
       const t = teams[teamKey]
       const streak = teamStreaks[teamKey]
       
-      t.seasons++
+      // Determine if this season is complete
+      const isSeasonFinished = historicalData.value[season]?.isFinished !== false
+      
+      if (isSeasonFinished) t.seasons++
       
       const wins = team.wins || 0
       const losses = team.losses || 0
       const rank = team.rank || 999
       const pointsFor = team.points_for || 0
       const teamPPW = (wins + losses) > 0 ? pointsFor / (wins + losses) : 0
-      
-      // Determine if this season is complete
-      const isSeasonFinished = historicalData.value[season]?.isFinished !== false
       
       // Determine if team made playoffs (only count for finished seasons)
       // For ESPN, playoff_seed is set for ALL teams in any bracket (including consolation)
