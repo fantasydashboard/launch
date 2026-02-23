@@ -6541,7 +6541,7 @@ async function loadHistoricalData() {
               points_against: team.pointsAgainst || 0,
               rank: team.rank || idx + 1,
               playoff_seed: team.playoffSeed || 0,
-              is_champion: (team.rank || idx + 1) === 1,
+              is_champion: !isCurrentSeason && (team.rank || idx + 1) === 1,
               owner_id: team.primaryOwner || '',
               season: season,
               num_teams: teams.length
@@ -6789,7 +6789,7 @@ async function loadHistoricalData() {
               points_for: roster.settings?.fpts || 0,
               points_against: roster.settings?.fpts_against || 0,
               rank: 0, // Will be set after sorting
-              is_champion: roster.roster_id === championRosterId,
+              is_champion: isSeasonComplete && roster.roster_id === championRosterId,
               owner_id: roster.owner_id || '',
               season: season
             }
