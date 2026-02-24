@@ -3134,7 +3134,21 @@ export class EspnFantasyService {
     }
     
     // Detect if this is a category league
-    const isCategoryLeague = scoringType === 'H2H_CATEGORY'
+    // If scoringType is explicitly provided, use it. Otherwise, auto-detect from data.
+    let isCategoryLeague = scoringType === 'H2H_CATEGORY'
+    
+    // Auto-detect: if any matchup has scoreByStat with result fields, it's a category league
+    if (!isCategoryLeague && !scoringType && schedule.length > 0) {
+      const firstMatch = schedule[0]
+      const scoreByStat = firstMatch?.home?.cumulativeScore?.scoreByStat
+      if (scoreByStat) {
+        const firstStat = Object.values(scoreByStat)[0] as any
+        if (firstStat?.result !== undefined) {
+          isCategoryLeague = true
+          console.log('[ESPN parseMatchups] Auto-detected category league from scoreByStat result fields')
+        }
+      }
+    }
     console.log('[ESPN parseMatchups] Is category league:', isCategoryLeague)
     
     if (schedule.length > 0) {
