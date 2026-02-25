@@ -5507,6 +5507,9 @@ function buildH2HRecords() {
       
       if (!team1Key || !team2Key) continue
       
+      // Skip matchups with no category data (playoff weeks, bye weeks, or missing data)
+      if (statWinners.length === 0) continue
+      
       // Initialize records if needed
       if (!records[team1Key]) records[team1Key] = {}
       if (!records[team2Key]) records[team2Key] = {}
