@@ -254,13 +254,15 @@ class SleeperService {
     
     // Find the championship matchup:
     // - Highest round
-    // - No 'p' field (placement games have 'p' field for 3rd place, 5th place, etc.)
+    // - p=1 means "1st place game" (championship), p=3 means 3rd place, etc.
+    // - No 'p' field means earlier rounds (not a placement game)
     // - Has a winner (w field)
     const championshipMatchups = bracket.filter(m => {
       const isMaxRound = m.r === maxRound
-      const isNotPlacement = m.p === undefined || m.p === null
-      console.log(`Matchup r=${m.r}, m=${m.m}, t1=${m.t1}, t2=${m.t2}, w=${m.w}, l=${m.l}, p=${m.p} | isMaxRound=${isMaxRound}, isNotPlacement=${isNotPlacement}`)
-      return isMaxRound && isNotPlacement
+      // Championship game: either p=1 (1st place game) or no p field (in leagues without placement tags)
+      const isChampionshipGame = m.p === 1 || m.p === undefined || m.p === null
+      console.log(`Matchup r=${m.r}, m=${m.m}, t1=${m.t1}, t2=${m.t2}, w=${m.w}, l=${m.l}, p=${m.p} | isMaxRound=${isMaxRound}, isChampionshipGame=${isChampionshipGame}`)
+      return isMaxRound && isChampionshipGame
     })
     
     console.log(`Championship matchups found: ${championshipMatchups.length}`)
@@ -274,9 +276,14 @@ class SleeperService {
       }
     }
     
-    // If multiple matchups at max round (shouldn't happen), find the one without placement
+    // If multiple matchups at max round, prefer the one with p=1 (explicit championship)
     if (championshipMatchups.length > 1) {
-      // Look for the actual championship (matchup 1 or 2 usually in final round)
+      const p1Game = championshipMatchups.find(m => m.p === 1 && m.w)
+      if (p1Game) {
+        console.log(`✓ Champion found from p=1 game: roster_id ${p1Game.w}`)
+        return p1Game.w
+      }
+      // Fallback: matchup 1 or 2 usually in final round
       const actualChamp = championshipMatchups.find(m => m.w && (m.m === 1 || m.m === 2))
       if (actualChamp) {
         console.log(`✓ Champion found from multiple: roster_id ${actualChamp.w}`)
@@ -288,7 +295,9 @@ class SleeperService {
     const finalsWithWinner = bracket
       .filter(m => m.r === maxRound && m.w)
       .sort((a, b) => {
-        // Prefer non-placement games
+        // Prefer p=1 (championship game), then no-p, then higher p values last
+        if (a.p === 1 && b.p !== 1) return -1
+        if (a.p !== 1 && b.p === 1) return 1
         if (a.p === undefined && b.p !== undefined) return -1
         if (a.p !== undefined && b.p === undefined) return 1
         return 0

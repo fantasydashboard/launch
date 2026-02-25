@@ -266,6 +266,7 @@
                 <th class="text-center py-3 px-4 font-semibold text-dark-textSecondary uppercase tracking-wider">Avg PPW</th>
                 <th class="text-center py-3 px-4 font-semibold text-dark-textSecondary uppercase tracking-wider">High Score</th>
                 <th class="text-center py-3 px-4 font-semibold text-dark-textSecondary uppercase tracking-wider">Low Score</th>
+                <th class="text-center py-3 px-4 font-semibold text-dark-textSecondary uppercase tracking-wider">Transactions</th>
                 <th class="text-center py-3 px-4 font-semibold text-dark-textSecondary uppercase tracking-wider">Trades</th>
                 <th class="text-center py-3 px-4 font-semibold text-dark-textSecondary uppercase tracking-wider">Champion</th>
               </tr>
@@ -283,6 +284,7 @@
                   <div class="text-red-400 font-semibold">{{ season.low_score.toFixed(1) }}</div>
                   <div class="text-xs text-dark-textMuted">{{ season.low_scorer }}</div>
                 </td>
+                <td class="text-center py-3 px-4 text-cyan-400 font-semibold">{{ season.transaction_count }}</td>
                 <td class="text-center py-3 px-4 text-dark-text font-semibold">{{ season.trade_count }}</td>
                 <td class="text-center py-3 px-4">
                   <div class="flex items-center justify-center gap-2">
@@ -2207,6 +2209,7 @@ interface SeasonRecord {
   high_scorer: string
   low_score: number
   low_scorer: string
+  transaction_count: number
   trade_count: number
   champion: string
 }
@@ -2423,8 +2426,8 @@ const seasonRecords = computed((): SeasonRecord[] => {
       }
     }
     
-    // Find champion
-    const champion = standings.find((t: any) => t.rank === 1)
+    // Find champion - prefer is_champion flag (from bracket data), fallback to rank 1
+    const champion = standings.find((t: any) => t.is_champion) || standings.find((t: any) => t.rank === 1)
     
     records.push({
       season,
@@ -2433,8 +2436,9 @@ const seasonRecords = computed((): SeasonRecord[] => {
       high_scorer: highScorer,
       low_score: lowScore === Infinity ? 0 : lowScore,
       low_scorer: lowScorer,
+      transaction_count: seasonData.transaction_count || 0,
       trade_count: seasonData.trade_count || 0,
-      champion: champion?.name || 'TBD'
+      champion: champion?.is_champion ? champion.name : (champion?.name || 'TBD')
     })
   }
   
@@ -6700,6 +6704,28 @@ async function loadHistoricalData() {
             allMatchups.value[season.toString()] = seasonMatchupsObj
           }
           
+          // Load transactions for this season
+          try {
+            loadingMessage.value = `Loading ${season} transactions...`
+            const transactions = await espnService.getTransactions(sport, espnLeagueId, season)
+            let tradeCount = 0
+            let transactionCount = 0
+            for (const tx of transactions) {
+              const txType = tx.type || ''
+              if (txType === 'TRADE_ACCEPTED' || txType === 'TRADED') {
+                tradeCount++
+                transactionCount++
+              } else if (txType === 'FREEAGENT' || txType === 'WAIVER' || txType === 'DROP' || txType === 'ADD') {
+                transactionCount++
+              }
+            }
+            historicalData.value[season.toString()].trade_count = tradeCount
+            historicalData.value[season.toString()].transaction_count = transactionCount
+            console.log(`[ESPN] ${season} transactions: ${transactionCount} total, ${tradeCount} trades`)
+          } catch (e) {
+            console.log(`[ESPN] Could not load transactions for ${season}:`, e)
+          }
+          
           console.log(`[ESPN] ✓ Loaded ${season}: ${standings.length} teams, ${Object.keys(seasonMatchupsObj).length} weeks`)
           
           // Small delay between seasons
@@ -6884,6 +6910,33 @@ async function loadHistoricalData() {
             allMatchups.value[season] = seasonMatchupsObj
           }
           
+          // Load transactions for this season
+          let tradeCount = 0
+          let transactionCount = 0
+          try {
+            loadingMessage.value = `Loading ${season} transactions...`
+            const maxWeek = Object.keys(seasonMatchupsObj).length || 18
+            const transactions = await sleeperService.getAllTransactions(seasonInfo.league_id, maxWeek)
+            
+            for (const tx of transactions) {
+              if (tx.status === 'complete') {
+                if (tx.type === 'trade') {
+                  tradeCount++
+                  transactionCount++
+                } else if (tx.type === 'free_agent' || tx.type === 'waiver') {
+                  transactionCount++
+                }
+              }
+            }
+            console.log(`[SLEEPER] ${season} transactions: ${transactionCount} total, ${tradeCount} trades`)
+          } catch (e) {
+            console.log(`[SLEEPER] Could not load transactions for ${season}:`, e)
+          }
+          
+          // Update season data with transaction counts
+          historicalData.value[season].trade_count = tradeCount
+          historicalData.value[season].transaction_count = transactionCount
+          
           successCount++
           updateProgress({ seasonsLoaded: successCount })
           console.log(`[SLEEPER] Loaded ${season}: ${standings.length} teams, ${Object.keys(seasonMatchupsObj).length} weeks`)
@@ -7065,6 +7118,25 @@ async function loadHistoricalData() {
         
         if (Object.keys(seasonMatchupsObj).length > 0) {
           allMatchups.value[season] = seasonMatchupsObj
+        }
+        
+        // Load transactions for this season
+        try {
+          loadingMessage.value = `Loading ${season} transactions...`
+          const transactions = await yahooService.getTransactions(currentSeasonKey)
+          let tradeCount = 0
+          let transactionCount = 0
+          for (const tx of transactions) {
+            const typeStr = String(tx.type || '').toLowerCase()
+            if (typeStr === 'commish') continue
+            transactionCount++
+            if (typeStr === 'trade') tradeCount++
+          }
+          historicalData.value[season].trade_count = tradeCount
+          historicalData.value[season].transaction_count = transactionCount
+          console.log(`[Yahoo History] ${season} transactions: ${transactionCount} total, ${tradeCount} trades`)
+        } catch (e) {
+          console.log(`[Yahoo History] Could not load transactions for ${season}:`, e)
         }
         
         console.log(`✓ Loaded ${season}: ${standings.length} teams, ${Object.keys(seasonMatchupsObj).length} weeks`)
