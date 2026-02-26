@@ -106,7 +106,7 @@
             <div class="flex items-center gap-4 mb-4">
               <div class="relative">
                 <div class="w-14 h-14 rounded-xl bg-dark-border overflow-hidden ring-2" :class="team.is_my_team ? 'ring-yellow-400' : 'ring-dark-border'">
-                  <img :src="team.logo || defaultLogo" :alt="team.name" class="w-full h-full object-cover" @error="handleImageError" />
+                  <img :src="team.logo || team.logo_url || defaultLogo" :alt="team.name" class="w-full h-full object-cover" @error="handleImageError" />
                 </div>
                 <div v-if="team.is_my_team" class="absolute -top-1 -right-1 w-5 h-5 bg-yellow-400 rounded-full flex items-center justify-center shadow-lg">
                   <span class="text-xs text-gray-900 font-bold">★</span>
@@ -354,7 +354,7 @@
               >
                 <td class="py-3 px-4">
                   <div class="flex items-center gap-3">
-                    <img :src="team.logo || defaultLogo" class="w-8 h-8 rounded-lg" @error="handleImageError" />
+                    <img :src="team.logo || team.logo_url || defaultLogo" class="w-8 h-8 rounded-lg" @error="handleImageError" />
                     <div>
                       <div class="font-medium text-dark-text flex items-center gap-2">
                         {{ team.name }}
