@@ -1151,6 +1151,8 @@ export class YahooFantasyService {
                 let team = ''
                 let position = ''
                 let headshot = ''
+                let status = ''
+                let injury_note = ''
                 
                 for (const item of playerInfo) {
                   if (item?.player_key) player_key = item.player_key
@@ -1159,6 +1161,9 @@ export class YahooFantasyService {
                   if (item?.editorial_team_abbr) team = item.editorial_team_abbr
                   if (item?.display_position) position = item.display_position
                   if (item?.headshot) headshot = item.headshot.url || ''
+                  if (item?.status) status = item.status
+                  if (item?.status_full) status = item.status_full || status
+                  if (item?.injury_note) injury_note = item.injury_note
                 }
                 
                 if (player_key && name) {
@@ -1168,7 +1173,9 @@ export class YahooFantasyService {
                     name,
                     team,
                     position,
-                    headshot
+                    headshot,
+                    status,
+                    injury_note
                   })
                 }
               }
@@ -1204,6 +1211,8 @@ export class YahooFantasyService {
           let team = ''
           let position = ''
           let headshot = ''
+          let status = ''
+          let injury_note = ''
           
           for (const item of playerInfo) {
             if (item?.player_key) player_key = item.player_key
@@ -1212,6 +1221,9 @@ export class YahooFantasyService {
             if (item?.editorial_team_abbr) team = item.editorial_team_abbr
             if (item?.display_position) position = item.display_position
             if (item?.headshot) headshot = item.headshot.url || ''
+            if (item?.status) status = item.status
+            if (item?.status_full) status = item.status_full || status
+            if (item?.injury_note) injury_note = item.injury_note
           }
           
           if (player_key && name) {
@@ -1221,7 +1233,9 @@ export class YahooFantasyService {
               name,
               team,
               position,
-              headshot
+              headshot,
+              status,
+              injury_note
             })
           }
         }
@@ -1403,7 +1417,9 @@ export class YahooFantasyService {
             stats: stats?.stats || {},
             fantasy_team: ownership?.teamName || null,
             fantasy_team_key: ownership?.teamKey || null,
-            manager_name: ownership?.managerName || null
+            manager_name: ownership?.managerName || null,
+            status: details.status || '',
+            injury_note: details.injury_note || ''
           })
         }
       }
@@ -1448,6 +1464,8 @@ export class YahooFantasyService {
         let position = ''
         let headshot = ''
         let percentOwned = 0
+        let status = ''
+        let injury_note = ''
         
         for (const item of playerInfo) {
           if (item?.player_key) playerKey = item.player_key
@@ -1457,6 +1475,9 @@ export class YahooFantasyService {
           if (item?.display_position) position = item.display_position
           if (item?.headshot) headshot = item.headshot.url || ''
           if (item?.percent_owned) percentOwned = parseFloat(item.percent_owned.value || '0')
+          if (item?.status) status = item.status
+          if (item?.status_full) status = item.status_full || status
+          if (item?.injury_note) injury_note = item.injury_note
         }
         
         if (playerKey) {
@@ -1471,7 +1492,9 @@ export class YahooFantasyService {
             percent_owned: percentOwned,
             fantasy_team: null,
             fantasy_team_key: null,
-            manager_name: null
+            manager_name: null,
+            status,
+            injury_note
           })
         }
       }

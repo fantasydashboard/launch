@@ -300,6 +300,12 @@
                         </div>
                         <div>
                           <span class="font-semibold" :class="getPlayerNameClass(player)">{{ player.full_name }}</span>
+                          <span 
+                            v-if="getInjuryInfo(player)" 
+                            class="inline-flex items-center ml-1.5 px-1.5 py-0.5 rounded text-[10px] font-bold cursor-help"
+                            :class="getInjuryInfo(player)?.color"
+                            :title="getInjuryInfo(player)?.tooltip"
+                          >{{ getInjuryInfo(player)?.icon }} {{ getInjuryInfo(player)?.label }}</span>
                           <div class="flex items-center gap-2 text-xs text-dark-textMuted">
                             <span>{{ player.mlb_team || player.nba_team || player.nhl_team || 'FA' }}</span>
                             <span class="text-dark-border">•</span>
@@ -791,7 +797,10 @@
                       
                       <!-- Player Info -->
                       <div class="flex-1 min-w-0">
-                        <div class="font-semibold text-dark-text text-sm">{{ slot.player.full_name }}</div>
+                        <div class="font-semibold text-dark-text text-sm">
+                          {{ slot.player.full_name }}
+                          <span v-if="getInjuryInfo(slot.player)" class="inline-flex items-center ml-1 px-1 py-0.5 rounded text-[10px] font-bold cursor-help" :class="getInjuryInfo(slot.player)?.color" :title="getInjuryInfo(slot.player)?.tooltip">{{ getInjuryInfo(slot.player)?.icon }} {{ getInjuryInfo(slot.player)?.label }}</span>
+                        </div>
                         <div class="flex items-center gap-2 text-xs">
                           <span v-if="slot.player.hasGame" class="text-green-400 flex items-center gap-1">
                             <img 
@@ -897,7 +906,10 @@
                           <img :src="player.headshot || defaultHeadshot" class="w-full h-full object-cover" @error="handleImageError" />
                         </div>
                         <div class="min-w-0">
-                          <div class="font-semibold text-dark-text text-sm truncate hover:text-yellow-400 transition-colors">{{ player.full_name }}</div>
+                          <div class="font-semibold text-dark-text text-sm truncate hover:text-yellow-400 transition-colors">
+                            {{ player.full_name }}
+                            <span v-if="getInjuryInfo(player)" class="inline-flex items-center ml-1 px-1 py-0.5 rounded text-[10px] font-bold cursor-help" :class="getInjuryInfo(player)?.color" :title="getInjuryInfo(player)?.tooltip">{{ getInjuryInfo(player)?.icon }} {{ getInjuryInfo(player)?.label }}</span>
+                          </div>
                           <div class="flex items-center gap-1.5 text-xs">
                             <span class="text-dark-textMuted">{{ player.position }}</span>
                             <template v-if="player.hasGame">
@@ -3677,6 +3689,90 @@ function getSportDefaultPositions(sport: string): string[] {
   }
 }
 
+// Injury status helpers
+function getInjuryInfo(player: any): { icon: string, label: string, color: string, tooltip: string, severity: number } | null {
+  const status = (player.status || player.injuryStatus || player.injury_status || '').toUpperCase()
+  const note = player.injury_note || player.injury_description || player.injuryDetail || ''
+  
+  if (!status && !note) return null
+  
+  // Check for season-ending / major injury keywords in note
+  const noteLower = note.toLowerCase()
+  const isSeasonEnding = noteLower.includes('out for season') || noteLower.includes('season-ending') || 
+    noteLower.includes('torn acl') || noteLower.includes('torn achilles') || noteLower.includes('fracture') ||
+    noteLower.includes('surgery') || noteLower.includes('indefinitely')
+  
+  if (status === 'O' || status === 'OUT') {
+    return { 
+      icon: '🔴', label: 'OUT', color: 'text-red-400 bg-red-500/20', 
+      tooltip: note ? `Out - ${note}` : 'Out',
+      severity: isSeasonEnding ? 1.0 : 0.7  // 100% or 70% penalty
+    }
+  }
+  if (status === 'INJ' || status === 'IL' || status === 'IL+' || status === 'DL') {
+    return { 
+      icon: '🔴', label: status, color: 'text-red-400 bg-red-500/20',
+      tooltip: note ? `${status} - ${note}` : `Injured (${status})`,
+      severity: isSeasonEnding ? 1.0 : 0.6  // 100% or 60% penalty
+    }
+  }
+  if (status === 'DTD' || status === 'DAY-TO-DAY') {
+    return { 
+      icon: '🟡', label: 'DTD', color: 'text-yellow-400 bg-yellow-500/20',
+      tooltip: note ? `Day-to-Day - ${note}` : 'Day-to-Day',
+      severity: 0.15  // 15% penalty
+    }
+  }
+  if (status === 'GTD' || status === 'Q' || status === 'QUESTIONABLE') {
+    return { 
+      icon: '🟡', label: status === 'Q' ? 'Q' : 'GTD', color: 'text-yellow-400 bg-yellow-500/20',
+      tooltip: note ? `Game-Time Decision - ${note}` : 'Game-Time Decision',
+      severity: 0.1  // 10% penalty
+    }
+  }
+  if (status === 'D' || status === 'DOUBTFUL') {
+    return {
+      icon: '🟠', label: 'DOUBT', color: 'text-orange-400 bg-orange-500/20',
+      tooltip: note ? `Doubtful - ${note}` : 'Doubtful',
+      severity: 0.5  // 50% penalty
+    }
+  }
+  if (status === 'P' || status === 'PROBABLE') {
+    return {
+      icon: '🟢', label: 'PROB', color: 'text-green-400 bg-green-500/20',
+      tooltip: note ? `Probable - ${note}` : 'Probable',
+      severity: 0.02  // 2% penalty - basically healthy
+    }
+  }
+  if (status === 'SUSP' || status === 'SUS') {
+    return { 
+      icon: '🟠', label: 'SUSP', color: 'text-orange-400 bg-orange-500/20',
+      tooltip: note ? `Suspended - ${note}` : 'Suspended',
+      severity: 0.8  // 80% penalty
+    }
+  }
+  // ESPN "ACTIVE" means healthy - skip
+  if (status === 'ACTIVE' || status === 'A') return null
+  
+  // Catch-all for any other status
+  if (status) {
+    return { 
+      icon: '⚠️', label: status, color: 'text-yellow-400 bg-yellow-500/20',
+      tooltip: note ? `${status} - ${note}` : status,
+      severity: 0.2  // 20% penalty
+    }
+  }
+  // Has injury note but no status code
+  if (note) {
+    return {
+      icon: '⚠️', label: 'INJ', color: 'text-yellow-400 bg-yellow-500/20',
+      tooltip: note,
+      severity: isSeasonEnding ? 0.9 : 0.2
+    }
+  }
+  return null
+}
+
 function isPitcher(player: any): boolean {
   const pos = (player.position || '').toUpperCase()
   const sport = currentSport.value
@@ -3819,6 +3915,12 @@ const categoryRankedPlayers = computed(() => {
     if (weights.categoryScarcity) {
       const catScarcity = getCategoryScarcityMultiplier(selectedCategory.value)
       overallValue += (catScarcity * 50) * ((weights.categoryScarcity || 0) / 100 * normFactor)
+    }
+    
+    // Apply injury penalty
+    const injury = getInjuryInfo(p)
+    if (injury) {
+      overallValue = overallValue * (1 - injury.severity)
     }
     
     return { ...p, tier, categoryRank: index + 1, overallValue: Math.round(overallValue * 10) / 10, categoriesContributing, scarcityScore: Math.round(scarcityScore) }
@@ -4490,7 +4592,9 @@ async function loadProjections() {
       fantasy_team: p.fantasy_team || p.team_name, 
       fantasy_team_key: p.fantasy_team_key || p.team_key, 
       stats: p.stats || {}, 
-      total_points: p.total_points || 0 
+      total_points: p.total_points || 0,
+      status: p.status || '',
+      injury_note: p.injury_note || ''
     }))
     
     // Debug: log first few rostered players to see their team data
@@ -4544,7 +4648,9 @@ async function loadProjections() {
       fantasy_team: null, 
       fantasy_team_key: null, 
       stats: p.stats || {}, 
-      total_points: p.total_points || 0 
+      total_points: p.total_points || 0,
+      status: p.status || '',
+      injury_note: p.injury_note || ''
     }))
     
     // Debug: log free agents team data
@@ -4584,6 +4690,14 @@ async function loadProjections() {
       const samplePlayer = allPlayers.value[0]
       console.log('Sample player stats:', samplePlayer.full_name, samplePlayer.stats)
       console.log('Available stat IDs:', Object.keys(samplePlayer.stats || {}))
+      
+      // Debug: log players with injury status
+      const injuredPlayers = allPlayers.value.filter(p => p.status || p.injury_note)
+      console.log(`[Injury] ${injuredPlayers.length} players with injury data:`, 
+        injuredPlayers.slice(0, 10).map(p => ({ 
+          name: p.full_name, status: p.status, note: p.injury_note, 
+          severity: getInjuryInfo(p)?.severity 
+        })))
     }
     
     const myPlayers = allPlayers.value.filter(p => p.fantasy_team_key === myTeamKey.value)
@@ -6788,7 +6902,14 @@ const allPlayersWithValues = computed(() => {
   
   return playersWithRawScores.map(p => {
     const stats = p.isPlayerPitcher ? pitcherStats : hitterStats
-    const overallValue = normalizeScore(p.rawScore, stats)
+    let overallValue = normalizeScore(p.rawScore, stats)
+    
+    // Apply injury penalty
+    const injury = getInjuryInfo(p)
+    if (injury) {
+      overallValue = overallValue * (1 - injury.severity)
+    }
+    
     return { ...p, overallValue: Math.round(overallValue * 10) / 10 }
   })
 })
