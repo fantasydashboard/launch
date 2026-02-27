@@ -223,12 +223,12 @@
         <div class="card-body p-0">
           <div class="overflow-x-auto max-h-[70vh] overflow-y-auto">
             <table class="w-full" :class="isOverallView ? 'min-w-[1000px]' : ''">
-              <thead class="bg-dark-border/30 sticky top-0 z-10">
+              <thead class="bg-[#1e2028] sticky top-0 z-30">
                 <tr>
                   <th class="px-3 py-3 text-left text-xs font-semibold text-dark-textMuted uppercase w-14 cursor-pointer hover:text-yellow-400" @click="toggleSort('rank')">
                     <div class="flex items-center gap-1"># <span v-if="sortColumn === 'rank'" class="text-yellow-400">{{ sortDirection === 'asc' ? '↑' : '↓' }}</span></div>
                   </th>
-                  <th class="px-3 py-3 text-left text-xs font-semibold text-dark-textMuted uppercase cursor-pointer hover:text-yellow-400 sticky left-0 bg-dark-border/30 z-20" @click="toggleSort('name')">
+                  <th class="px-3 py-3 text-left text-xs font-semibold text-dark-textMuted uppercase cursor-pointer hover:text-yellow-400 sticky left-0 bg-[#1e2028] z-40" @click="toggleSort('name')">
                     <div class="flex items-center gap-1">Player <span v-if="sortColumn === 'name'" class="text-yellow-400">{{ sortDirection === 'asc' ? '↑' : '↓' }}</span></div>
                   </th>
                   <th class="px-2 py-3 text-center text-xs font-semibold text-dark-textMuted uppercase w-14 cursor-pointer hover:text-yellow-400" @click="toggleSort('position')">
@@ -285,7 +285,7 @@
                     <td class="px-3 py-3">
                       <span class="w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold bg-dark-border text-dark-textMuted">{{ player.categoryRank }}</span>
                     </td>
-                    <td class="px-3 py-3 sticky left-0 z-10" :class="[getRowClass(player), expandedPlayerKey === player.player_key ? 'bg-dark-border/30' : 'bg-dark-card']">
+                    <td class="px-3 py-3 sticky left-0 z-10" :class="isMyPlayer(player) ? 'bg-[#2a2517] border-l-4 border-l-yellow-400' : isFreeAgent(player) ? 'bg-[#152029] border-l-4 border-l-cyan-400' : expandedPlayerKey === player.player_key ? 'bg-[#252830]' : 'bg-dark-card'">
                       <div class="flex items-center gap-3">
                         <div class="relative">
                           <div class="w-10 h-10 rounded-full bg-dark-border overflow-hidden ring-2" :class="getAvatarRingClass(player)">
@@ -593,7 +593,7 @@
           <div v-if="teamsViewMode === 'table'" class="card">
             <div class="overflow-x-auto">
               <table class="w-full">
-                <thead class="bg-dark-border/30">
+                <thead class="bg-[#1e2028]">
                   <tr>
                     <th class="text-left py-3 px-4 text-dark-textMuted font-medium text-sm">Team</th>
                     <th class="text-center py-3 px-2 text-dark-textMuted font-medium text-sm">Grade</th>
@@ -867,9 +867,9 @@
             <div class="card-body p-0 overflow-x-auto">
               <div class="max-h-[600px] overflow-y-auto">
               <table class="w-full min-w-[900px]">
-                <thead>
-                  <tr class="bg-dark-border/20 text-xs font-bold text-dark-textMuted uppercase border-b border-dark-border/20">
-                    <th class="text-left px-4 py-2 sticky left-0 bg-dark-card z-10 min-w-[220px] cursor-pointer hover:text-dark-text" @click="toggleAvailableSort('name')">
+                <thead class="sticky top-0 z-30">
+                  <tr class="bg-[#1e2028] text-xs font-bold text-dark-textMuted uppercase border-b border-dark-border/20">
+                    <th class="text-left px-4 py-2 sticky left-0 bg-[#1e2028] z-40 min-w-[220px] cursor-pointer hover:text-dark-text" @click="toggleAvailableSort('name')">
                       Player
                       <span v-if="availableSortColumn === 'name'" class="ml-1">{{ availableSortDirection === 'asc' ? '↑' : '↓' }}</span>
                     </th>
@@ -1076,7 +1076,7 @@
                   <div class="card-body p-0">
                     <div class="overflow-x-auto">
                       <table class="w-full">
-                        <thead class="bg-dark-border/30">
+                        <thead class="bg-[#1e2028]">
                           <tr>
                             <th class="px-4 py-3 text-left text-xs font-semibold text-dark-textMuted uppercase sticky left-0 bg-dark-border/30">Category</th>
                             <th class="px-4 py-3 text-center text-xs font-semibold text-dark-textMuted uppercase">Today</th>
@@ -1435,7 +1435,7 @@
                 
                 <div class="bg-dark-elevated rounded-xl overflow-hidden">
                   <table class="w-full">
-                    <thead class="bg-dark-border/50">
+                    <thead class="bg-[#1e2028]">
                       <tr>
                         <th class="px-4 py-3 text-left text-xs font-bold text-dark-textMuted uppercase">Period</th>
                         <th class="px-4 py-3 text-center text-xs font-bold uppercase">
@@ -2232,7 +2232,7 @@
                 <div class="card-body p-0">
                   <div class="overflow-x-auto">
                     <table class="w-full text-sm">
-                      <thead class="bg-dark-border/30">
+                      <thead class="bg-[#1e2028]">
                         <tr>
                           <th class="text-left py-2 px-3 text-dark-textMuted font-medium">Category</th>
                           <th class="text-center py-2 px-3 text-dark-textMuted font-medium">Before</th>
@@ -4454,7 +4454,7 @@ function handleLogoError(e: Event) {
     img.src = getDefaultLogo() 
   }
 }
-function getRowClass(player: any): string { if (isMyPlayer(player)) return 'bg-yellow-500/20 border-l-4 border-l-yellow-400'; if (isFreeAgent(player)) return 'bg-cyan-500/20 border-l-4 border-l-cyan-400'; return '' }
+function getRowClass(player: any): string { if (isMyPlayer(player)) return 'bg-yellow-500/10 border-l-4 border-l-yellow-400'; if (isFreeAgent(player)) return 'bg-cyan-500/10 border-l-4 border-l-cyan-400'; return '' }
 function getAvatarRingClass(player: any): string { if (isMyPlayer(player)) return 'ring-yellow-400 ring-offset-2 ring-offset-dark-card'; if (isFreeAgent(player)) return 'ring-cyan-400 ring-offset-2 ring-offset-dark-card'; return 'ring-dark-border' }
 function getPlayerNameClass(player: any): string { if (isMyPlayer(player)) return 'text-yellow-400'; if (isFreeAgent(player)) return 'text-cyan-400'; return 'text-dark-text' }
 function getPositionClass(position: string): string { const pos = position?.split(',')[0]?.trim(); const colors: Record<string, string> = { 'C': 'bg-purple-500/20 text-purple-400', '1B': 'bg-red-500/20 text-red-400', '2B': 'bg-green-500/20 text-green-400', '3B': 'bg-blue-500/20 text-blue-400', 'SS': 'bg-yellow-500/20 text-yellow-400', 'OF': 'bg-orange-500/20 text-orange-400', 'SP': 'bg-cyan-500/20 text-cyan-400', 'RP': 'bg-pink-500/20 text-pink-400' }; return colors[pos] || 'bg-dark-border text-dark-textMuted' }
