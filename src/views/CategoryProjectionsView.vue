@@ -5206,8 +5206,13 @@ const myTeamName = computed(() => {
   return myTeam?.name || 'My Team'
 })
 
-// Computed: Opponent name (simulated for now)
+// Computed: Opponent name - use real matchup data first
 const opponentName = computed(() => {
+  // Use real matchup data from Yahoo API
+  if (currentMatchupData.value?.teams) {
+    const oppTeam = currentMatchupData.value.teams.find((t: any) => t.team_key !== myTeamKey.value)
+    if (oppTeam) return oppTeam.name
+  }
   if (currentMatchup.value?.opponent) return currentMatchup.value.opponent.name
   // Find a different team as placeholder
   const opponent = teamsData.value.find(t => t.team_key !== myTeamKey.value)
@@ -5251,7 +5256,7 @@ async function loadCurrentMatchup() {
   }
 }
 
-// Computed: Matchup category wins/losses/ties (simulated)
+// Computed: Matchup category wins/losses/ties
 const matchupCategoryStatus = computed(() => {
   const status: Record<string, { myValue: number, oppValue: number, status: 'winning' | 'losing' | 'tied' | 'close' }> = {}
   
@@ -5261,13 +5266,24 @@ const matchupCategoryStatus = computed(() => {
     const oppTeam = currentMatchupData.value.teams.find((t: any) => t.team_key !== myTeamKey.value)
     
     if (myTeam && oppTeam) {
+      // Debug: log stat_winners format vs displayCategories format
+      if (currentMatchupData.value.stat_winners?.length > 0 && displayCategories.value.length > 0) {
+        const firstSW = currentMatchupData.value.stat_winners[0]
+        const firstCat = displayCategories.value[0]
+        console.log('[matchupCategoryStatus] stat_winner sample:', { stat_id: firstSW.stat_id, type: typeof firstSW.stat_id, winner_team_key: firstSW.winner_team_key })
+        console.log('[matchupCategoryStatus] category sample:', { stat_id: firstCat.stat_id, type: typeof firstCat.stat_id })
+        console.log('[matchupCategoryStatus] myTeamKey:', myTeamKey.value)
+        console.log('[matchupCategoryStatus] myTeam name:', myTeam.name, 'oppTeam name:', oppTeam.name)
+      }
+      
       for (const cat of displayCategories.value) {
         const statId = cat.stat_id
-        const myValue = parseFloat(myTeam.stats?.[statId] || '0')
-        const oppValue = parseFloat(oppTeam.stats?.[statId] || '0')
+        const myValue = parseFloat(myTeam.stats?.[statId] || myTeam.stats?.[String(statId)] || '0')
+        const oppValue = parseFloat(oppTeam.stats?.[statId] || oppTeam.stats?.[String(statId)] || '0')
         
         // Check stat_winners from Yahoo for actual category result
-        const statWinner = currentMatchupData.value.stat_winners?.find((sw: any) => sw.stat_id === statId)
+        // Use String() comparison since Yahoo may return stat_id as string or number
+        const statWinner = currentMatchupData.value.stat_winners?.find((sw: any) => String(sw.stat_id) === String(statId))
         
         let catStatus: 'winning' | 'losing' | 'tied' | 'close'
         if (statWinner?.is_tied) {
@@ -5277,7 +5293,7 @@ const matchupCategoryStatus = computed(() => {
         } else if (statWinner?.winner_team_key && statWinner.winner_team_key !== myTeamKey.value) {
           catStatus = 'losing'
         } else {
-          // Week in progress - calculate based on current values
+          // No stat_winner found or week in progress - calculate based on current values
           const isLowerBetter = isLowerBetterStat(cat)
           const diff = Math.abs(myValue - oppValue)
           const threshold = Math.max(myValue, oppValue) * 0.05 // 5% threshold for close
@@ -5293,6 +5309,11 @@ const matchupCategoryStatus = computed(() => {
         
         status[statId] = { myValue, oppValue, status: catStatus }
       }
+      
+      // Debug: log final results
+      const wins = Object.values(status).filter(s => s.status === 'winning').length
+      const losses = Object.values(status).filter(s => s.status === 'losing').length
+      console.log(`[matchupCategoryStatus] Result: ${wins}-${losses} (${Object.keys(status).length} cats, ${currentMatchupData.value.stat_winners?.length || 0} stat_winners)`)
       
       return status
     }
@@ -8072,16 +8093,16 @@ async function loadLiveGames() {
     console.log(`[LiveGames] Local date: ${localDateString}`)
     console.log(`[LiveGames] UTC date: ${now.toISOString().split('T')[0]}`)
     
-    // Add +1 day offset because API returns games in UTC
-    // NBA games at 7 PM EST on Jan 28 = midnight UTC Jan 29
+    // Use local date directly - games are stored by their local date in the database
+    // No UTC offset needed since getGamesByDate handles UTC conversion internally
     let targetDate: Date
     if (startSitDay.value === 'today') {
-      targetDate = new Date(now.getTime() + 86400000) // Add 1 day
-      console.log(`[LiveGames] Loading games for TODAY (+1 day UTC offset)`)
+      targetDate = now
+      console.log(`[LiveGames] Loading games for TODAY: ${now.toLocaleDateString()}`)
     } else {
-      // Tomorrow - add 2 days
-      targetDate = new Date(now.getTime() + (86400000 * 2))
-      console.log(`[LiveGames] Loading games for TOMORROW (+2 day UTC offset)`)
+      // Tomorrow
+      targetDate = new Date(now.getTime() + 86400000)
+      console.log(`[LiveGames] Loading games for TOMORROW: ${targetDate.toLocaleDateString()}`)
     }
     
     console.log(`[LiveGames] Target date: ${targetDate.toLocaleDateString()} ${targetDate.toLocaleTimeString()}`)
@@ -8130,11 +8151,11 @@ function subscribeToLiveGames() {
     liveGamesSubscription.value = null
   }
   
-  // Calculate target date with +1 day offset (UTC timezone)
+  // Calculate target date - use local dates, no UTC offset needed
   const now = new Date()
   const targetDate = startSitDay.value === 'today' 
-    ? new Date(now.getTime() + 86400000)  // +1 day
-    : new Date(now.getTime() + (86400000 * 2))  // +2 days
+    ? now
+    : new Date(now.getTime() + 86400000)  // +1 day for tomorrow
   
   console.log('[LiveGames] Subscribing to games for:', targetDate.toLocaleDateString())
   
