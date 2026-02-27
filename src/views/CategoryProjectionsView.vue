@@ -94,8 +94,9 @@
         <div class="card-body py-4">
           <div class="flex flex-col gap-4">
             <div class="flex items-center gap-3">
-              <span class="text-dark-textMuted font-medium">Select Category:</span>
+              <span class="text-dark-textMuted font-medium">View:</span>
               <select v-model="selectedCategory" class="select bg-dark-card border-dark-border text-dark-text px-4 py-2 rounded-lg min-w-[200px]">
+                <option value="overall">📊 Overall Value Rankings</option>
                 <optgroup :label="skaterCategoryLabel">
                   <option v-for="cat in hittingCategories" :key="cat.stat_id" :value="cat.stat_id">
                     {{ cat.name }} ({{ cat.display_name }})
@@ -111,6 +112,14 @@
             <div class="flex flex-wrap gap-2">
               <span class="text-dark-textMuted text-sm mr-2 self-center">Quick:</span>
               <button 
+                @click="selectedCategory = 'overall'"
+                :class="selectedCategory === 'overall' ? 'bg-yellow-400 text-gray-900' : 'bg-dark-border/50 text-dark-textSecondary hover:bg-dark-border'"
+                class="px-3 py-1.5 rounded-lg text-sm font-medium transition-all"
+              >
+                📊 Overall
+              </button>
+              <span class="text-dark-border self-center">|</span>
+              <button 
                 v-for="cat in displayCategories" 
                 :key="cat.stat_id"
                 @click="selectedCategory = cat.stat_id"
@@ -124,8 +133,31 @@
         </div>
       </div>
 
+      <!-- Overall View Info -->
+      <div v-if="isOverallView" class="card bg-gradient-to-r from-yellow-500/10 to-purple-500/10 border-yellow-500/30">
+        <div class="card-body py-4">
+          <div class="flex items-center justify-between flex-wrap gap-4">
+            <div class="flex items-center gap-4">
+              <div class="w-14 h-14 rounded-xl flex items-center justify-center text-2xl font-black bg-yellow-400/20 text-yellow-400">
+                📊
+              </div>
+              <div>
+                <h2 class="text-xl font-bold text-dark-text">Overall Player Rankings</h2>
+                <p class="text-sm text-dark-textMuted">
+                  Composite value across all {{ displayCategories.length }} categories · Click a column header to sort by category
+                </p>
+              </div>
+            </div>
+            <div class="text-right">
+              <div class="text-sm text-dark-textMuted">Players Ranked</div>
+              <div class="text-2xl font-bold text-dark-text">{{ filteredPlayers.length }}</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <!-- Selected Category Info -->
-      <div v-if="selectedCategoryInfo" class="card" :class="getCategoryCardClass">
+      <div v-else-if="selectedCategoryInfo" class="card" :class="getCategoryCardClass">
         <div class="card-body py-4">
           <div class="flex items-center justify-between flex-wrap gap-4">
             <div class="flex items-center gap-4">
@@ -172,8 +204,9 @@
         </div>
       </div>
 
-      <!-- Ranking Customizer -->
+      <!-- Ranking Customizer (category view only) -->
       <CategoryRankingCustomizer 
+        v-if="!isOverallView"
         v-model="rosRankingFactors"
         @apply="onRankingFactorsApplied"
       />
@@ -183,35 +216,55 @@
         <div class="card-header">
           <div class="flex items-center gap-2">
             <span class="text-2xl">📊</span>
-            <h2 class="card-title">{{ selectedCategoryInfo?.name || 'Category' }} Rankings - Rest of Season</h2>
+            <h2 class="card-title">{{ isOverallView ? 'Overall Player Rankings' : (selectedCategoryInfo?.name || 'Category') + ' Rankings' }} - Rest of Season</h2>
           </div>
-          <p class="card-subtitle">Click on a player to see detailed stats and performance chart</p>
+          <p class="card-subtitle">{{ isOverallView ? 'Ranked by composite value across all categories · Click column headers to sort' : 'Click on a player to see detailed stats and performance chart' }}</p>
         </div>
         <div class="card-body p-0">
           <div class="overflow-x-auto max-h-[70vh] overflow-y-auto">
-            <table class="w-full">
+            <table class="w-full" :class="isOverallView ? 'min-w-[1000px]' : ''">
               <thead class="bg-dark-border/30 sticky top-0 z-10">
                 <tr>
-                  <th class="px-3 py-3 text-left text-xs font-semibold text-dark-textMuted uppercase w-14 cursor-pointer hover:text-yellow-400" @click="toggleSort('rank')" :title="columnTooltips.rank">
-                    <div class="flex items-center gap-1">Rank <span v-if="sortColumn === 'rank'" class="text-yellow-400">{{ sortDirection === 'asc' ? '↑' : '↓' }}</span></div>
+                  <th class="px-3 py-3 text-left text-xs font-semibold text-dark-textMuted uppercase w-14 cursor-pointer hover:text-yellow-400" @click="toggleSort('rank')">
+                    <div class="flex items-center gap-1"># <span v-if="sortColumn === 'rank'" class="text-yellow-400">{{ sortDirection === 'asc' ? '↑' : '↓' }}</span></div>
                   </th>
-                  <th class="px-3 py-3 text-left text-xs font-semibold text-dark-textMuted uppercase cursor-pointer hover:text-yellow-400" @click="toggleSort('name')" :title="columnTooltips.player">
+                  <th class="px-3 py-3 text-left text-xs font-semibold text-dark-textMuted uppercase cursor-pointer hover:text-yellow-400 sticky left-0 bg-dark-border/30 z-20" @click="toggleSort('name')">
                     <div class="flex items-center gap-1">Player <span v-if="sortColumn === 'name'" class="text-yellow-400">{{ sortDirection === 'asc' ? '↑' : '↓' }}</span></div>
                   </th>
-                  <th class="px-2 py-3 text-center text-xs font-semibold text-dark-textMuted uppercase w-14 cursor-pointer hover:text-yellow-400" @click="toggleSort('position')" :title="columnTooltips.position">
+                  <th class="px-2 py-3 text-center text-xs font-semibold text-dark-textMuted uppercase w-14 cursor-pointer hover:text-yellow-400" @click="toggleSort('position')">
                     <div class="flex items-center justify-center gap-1">Pos <span v-if="sortColumn === 'position'" class="text-yellow-400">{{ sortDirection === 'asc' ? '↑' : '↓' }}</span></div>
                   </th>
-                  <th class="px-2 py-3 text-center text-xs font-semibold uppercase w-20 cursor-pointer hover:text-yellow-400" @click="toggleSort('projected')" :title="columnTooltips.rosProj">
-                    <div class="flex items-center justify-center gap-1"><span class="text-yellow-400">ROS Proj</span> <span v-if="sortColumn === 'projected'" class="text-yellow-400">{{ sortDirection === 'asc' ? '↑' : '↓' }}</span></div>
-                  </th>
-                  <th class="px-2 py-3 text-center text-xs font-semibold text-dark-textMuted uppercase w-16 cursor-pointer hover:text-yellow-400" @click="toggleSort('current')" :title="columnTooltips.current">
-                    <div class="flex items-center justify-center gap-1">Current <span v-if="sortColumn === 'current'" class="text-yellow-400">{{ sortDirection === 'asc' ? '↑' : '↓' }}</span></div>
-                  </th>
-                  <th class="px-2 py-3 text-center text-xs font-semibold text-dark-textMuted uppercase w-16 cursor-pointer hover:text-yellow-400" @click="toggleSort('perGame')" :title="columnTooltips.perGame">
-                    <div class="flex items-center justify-center gap-1">Per Game <span v-if="sortColumn === 'perGame'" class="text-yellow-400">{{ sortDirection === 'asc' ? '↑' : '↓' }}</span></div>
-                  </th>
+                  
+                  <!-- OVERALL VIEW: Show all category columns -->
+                  <template v-if="isOverallView">
+                    <th 
+                      v-for="cat in displayCategories" 
+                      :key="cat.stat_id" 
+                      class="px-2 py-3 text-center text-xs font-semibold text-dark-textMuted uppercase cursor-pointer hover:text-yellow-400 min-w-[60px]"
+                      @click="toggleSort(cat.stat_id)"
+                    >
+                      <div class="flex items-center justify-center gap-0.5">
+                        {{ cat.display_name }} 
+                        <span v-if="sortColumn === cat.stat_id" class="text-yellow-400">{{ sortDirection === 'asc' ? '↑' : '↓' }}</span>
+                      </div>
+                    </th>
+                  </template>
+                  
+                  <!-- CATEGORY VIEW: Show ROS Proj / Current / Per Game -->
+                  <template v-else>
+                    <th class="px-2 py-3 text-center text-xs font-semibold uppercase w-20 cursor-pointer hover:text-yellow-400" @click="toggleSort('projected')" :title="columnTooltips.rosProj">
+                      <div class="flex items-center justify-center gap-1"><span class="text-yellow-400">ROS Proj</span> <span v-if="sortColumn === 'projected'" class="text-yellow-400">{{ sortDirection === 'asc' ? '↑' : '↓' }}</span></div>
+                    </th>
+                    <th class="px-2 py-3 text-center text-xs font-semibold text-dark-textMuted uppercase w-16 cursor-pointer hover:text-yellow-400" @click="toggleSort('current')" :title="columnTooltips.current">
+                      <div class="flex items-center justify-center gap-1">Current <span v-if="sortColumn === 'current'" class="text-yellow-400">{{ sortDirection === 'asc' ? '↑' : '↓' }}</span></div>
+                    </th>
+                    <th class="px-2 py-3 text-center text-xs font-semibold text-dark-textMuted uppercase w-16 cursor-pointer hover:text-yellow-400" @click="toggleSort('perGame')" :title="columnTooltips.perGame">
+                      <div class="flex items-center justify-center gap-1">Per Game <span v-if="sortColumn === 'perGame'" class="text-yellow-400">{{ sortDirection === 'asc' ? '↑' : '↓' }}</span></div>
+                    </th>
+                  </template>
+                  
                   <th class="px-2 py-3 text-center text-xs font-semibold text-dark-textMuted uppercase w-24 cursor-pointer hover:text-yellow-400" @click="toggleSort('value')" :title="columnTooltips.value">
-                    <div class="flex items-center justify-center gap-1">Value <span class="text-dark-textMuted/50 text-[10px]">ⓘ</span> <span v-if="sortColumn === 'value'" class="text-yellow-400">{{ sortDirection === 'asc' ? '↑' : '↓' }}</span></div>
+                    <div class="flex items-center justify-center gap-1"><span :class="isOverallView ? 'text-yellow-400' : ''">Value</span> <span class="text-dark-textMuted/50 text-[10px]">ⓘ</span> <span v-if="sortColumn === 'value'" class="text-yellow-400">{{ sortDirection === 'asc' ? '↑' : '↓' }}</span></div>
                   </th>
                 </tr>
               </thead>
@@ -219,7 +272,7 @@
                 <template v-for="(player, idx) in gatedSortedPlayers" :key="player.player_key">
                   <!-- Tier Break -->
                   <tr v-if="showTierBreak(player, idx)" class="bg-dark-border/10">
-                    <td colspan="7" class="px-4 py-2">
+                    <td :colspan="isOverallView ? displayCategories.length + 4 : 7" class="px-4 py-2">
                       <div class="flex items-center gap-2">
                         <div class="h-px flex-1 bg-yellow-400/30"></div>
                         <span class="text-xs font-bold text-yellow-400 uppercase tracking-wider">{{ getTierLabel(player.tier) }}</span>
@@ -232,7 +285,7 @@
                     <td class="px-3 py-3">
                       <span class="w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold bg-dark-border text-dark-textMuted">{{ player.categoryRank }}</span>
                     </td>
-                    <td class="px-3 py-3">
+                    <td class="px-3 py-3 sticky left-0 z-10" :class="[getRowClass(player), expandedPlayerKey === player.player_key ? 'bg-dark-border/30' : 'bg-dark-card']">
                       <div class="flex items-center gap-3">
                         <div class="relative">
                           <div class="w-10 h-10 rounded-full bg-dark-border overflow-hidden ring-2" :class="getAvatarRingClass(player)">
@@ -248,7 +301,7 @@
                         <div>
                           <span class="font-semibold" :class="getPlayerNameClass(player)">{{ player.full_name }}</span>
                           <div class="flex items-center gap-2 text-xs text-dark-textMuted">
-                            <span>{{ player.mlb_team || 'FA' }}</span>
+                            <span>{{ player.mlb_team || player.nba_team || player.nhl_team || 'FA' }}</span>
                             <span class="text-dark-border">•</span>
                             <template v-if="player.fantasy_team">
                               <span class="flex items-center gap-1" :class="isMyPlayer(player) ? 'text-yellow-400' : ''">
@@ -264,11 +317,23 @@
                     <td class="px-2 py-3 text-center">
                       <span class="px-2 py-1 rounded text-xs font-bold" :class="getPositionClass(player.position)">{{ player.position?.split(',')[0] }}</span>
                     </td>
-                    <td class="px-2 py-3 text-center">
-                      <span class="text-lg font-bold text-yellow-400">{{ formatStatValue(player.projectedValue) }}</span>
-                    </td>
-                    <td class="px-2 py-3 text-center text-dark-text font-medium">{{ formatStatValue(player.currentValue) }}</td>
-                    <td class="px-2 py-3 text-center text-dark-textMuted">{{ formatStatValue(player.perGameValue, 3) }}</td>
+                    
+                    <!-- OVERALL VIEW: All category stat values -->
+                    <template v-if="isOverallView">
+                      <td v-for="cat in displayCategories" :key="cat.stat_id" class="px-2 py-3 text-center">
+                        <span class="text-sm font-medium text-dark-text">{{ formatCategoryStat(player, cat.stat_id) }}</span>
+                      </td>
+                    </template>
+                    
+                    <!-- CATEGORY VIEW: ROS Proj / Current / Per Game -->
+                    <template v-else>
+                      <td class="px-2 py-3 text-center">
+                        <span class="text-lg font-bold text-yellow-400">{{ formatStatValue(player.projectedValue) }}</span>
+                      </td>
+                      <td class="px-2 py-3 text-center text-dark-text font-medium">{{ formatStatValue(player.currentValue) }}</td>
+                      <td class="px-2 py-3 text-center text-dark-textMuted">{{ formatStatValue(player.perGameValue, 3) }}</td>
+                    </template>
+                    
                     <td class="px-2 py-3 text-center">
                       <div class="flex flex-col items-center gap-1">
                         <span class="text-lg font-black" :class="getValueClass(player.overallValue)">{{ player.overallValue?.toFixed(1) || '-' }}</span>
@@ -279,7 +344,7 @@
                     </td>
                   </tr>
                 </template>
-                <tr v-if="gatedSortedPlayers.length === 0"><td colspan="7" class="px-4 py-8 text-center text-dark-textMuted">No players match filters</td></tr>
+                <tr v-if="gatedSortedPlayers.length === 0"><td :colspan="isOverallView ? displayCategories.length + 4 : 7" class="px-4 py-8 text-center text-dark-textMuted">No players match filters</td></tr>
               </tbody>
             </table>
             
@@ -306,8 +371,8 @@
         </div>
       </div>
 
-      <!-- Your Team's Category Strength -->
-      <div v-if="myTeamKey" class="card">
+      <!-- Your Team's Category Strength (category view only) -->
+      <div v-if="myTeamKey && !isOverallView" class="card">
         <div class="card-header">
           <div class="flex items-center gap-2"><span class="text-2xl">💪</span><h2 class="card-title">Your Team's {{ selectedCategoryInfo?.display_name }} Strength</h2></div>
         </div>
@@ -3078,7 +3143,7 @@ const gamesLoading = ref(false)
 const scraperHealth = ref<Record<string, any>>({})
 
 const statCategories = ref<any[]>([])
-const selectedCategory = ref<string>('')
+const selectedCategory = ref<string>('overall')
 const allPlayers = ref<any[]>([])
 const teamsData = ref<any[]>([])
 const myTeamKey = ref<string | null>(null)
@@ -3528,6 +3593,7 @@ const displayCategories = computed(() => statCategories.value.filter(c => !c.is_
 const hittingCategories = computed(() => displayCategories.value.filter(c => !isPitchingStat(c)))
 const pitchingCategories = computed(() => displayCategories.value.filter(c => isPitchingStat(c)))
 const selectedCategoryInfo = computed(() => displayCategories.value.find(c => c.stat_id === selectedCategory.value))
+const isOverallView = computed(() => selectedCategory.value === 'overall')
 
 const isPitchingCategory = computed(() => {
   const cat = selectedCategoryInfo.value
@@ -3760,8 +3826,40 @@ const categoryRankedPlayers = computed(() => {
   return players
 })
 
+// Overall ranked players - uses allPlayersWithValues sorted by overallValue
+const overallRankedPlayers = computed(() => {
+  if (!isOverallView.value) return []
+  
+  let players = [...allPlayersWithValues.value]
+  
+  // Sort by overallValue descending
+  players.sort((a, b) => (b.overallValue || 0) - (a.overallValue || 0))
+  
+  // Add ranking, tiers, and per-category stats for display
+  players = players.map((p, index) => {
+    const percentile = players.length > 0 ? index / players.length : 1
+    let tier = 5
+    if (percentile <= 0.05) tier = 1
+    else if (percentile <= 0.15) tier = 2
+    else if (percentile <= 0.35) tier = 3
+    else if (percentile <= 0.60) tier = 4
+    
+    return { 
+      ...p, 
+      tier, 
+      categoryRank: index + 1,
+      // These are needed for compatibility with the table display
+      projectedValue: p.overallValue || 0,
+      currentValue: p.overallValue || 0,
+      perGameValue: 0
+    }
+  })
+  
+  return players
+})
+
 const filteredPlayers = computed(() => {
-  let players = [...categoryRankedPlayers.value]
+  let players = isOverallView.value ? [...overallRankedPlayers.value] : [...categoryRankedPlayers.value]
   if (selectedPositions.value.length > 0 && selectedPositions.value.length < availablePositions.value.length) { 
     players = players.filter(p => selectedPositions.value.some(pos => p.position?.includes(pos))) 
   }
@@ -3780,7 +3878,15 @@ const sortedPlayers = computed(() => {
     case 'current': players.sort((a, b) => dir * ((a.currentValue || 0) - (b.currentValue || 0))); break
     case 'perGame': players.sort((a, b) => dir * ((a.perGameValue || 0) - (b.perGameValue || 0))); break
     case 'value': players.sort((a, b) => dir * ((a.overallValue || 0) - (b.overallValue || 0))); break
-    case 'rank': default: if (sortDirection.value === 'desc') players.reverse(); break
+    case 'rank': default: 
+      // Check if sorting by a category stat_id (for overall view)
+      if (sortColumn.value !== 'rank') {
+        const statId = sortColumn.value
+        players.sort((a, b) => dir * ((parseFloat(a.stats?.[statId] || 0)) - (parseFloat(b.stats?.[statId] || 0))))
+      } else if (sortDirection.value === 'desc') {
+        players.reverse()
+      }
+      break
   }
   return players
 })
