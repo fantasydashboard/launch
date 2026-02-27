@@ -4998,7 +4998,9 @@ async function loadEspnProjections() {
           fantasy_team: team.name,
           fantasy_team_key: `espn_${leagueId}_${season}_${team.id}`,
           stats: playerStats,  // Initial stats from roster (may be empty)
-          total_points: entry.actualPoints || 0
+          total_points: entry.actualPoints || 0,
+          status: entry.injuryStatus || '',
+          injury_note: entry.injuryDetail || ''
         })
       }
     }
@@ -5081,7 +5083,9 @@ async function loadEspnProjections() {
         fantasy_team: null,  // Free agents have no team
         fantasy_team_key: null,  // Free agents have no team key
         stats: player.stats || {},
-        total_points: player.actualPoints || 0
+        total_points: player.actualPoints || 0,
+        status: player.injuryStatus || '',
+        injury_note: player.injuryDetail || ''
       }))
       
       // If free agents don't have stats, fetch them
@@ -5120,6 +5124,14 @@ async function loadEspnProjections() {
     const pitchers = allPlayers.value.filter(p => isPitcher(p))
     const hitters = allPlayers.value.filter(p => !isPitcher(p))
     console.log('[ESPN Projections] Players loaded:', allPlayers.value.length, '- Pitchers:', pitchers.length, '- Hitters:', hitters.length, '- Free Agents:', freeAgents.length)
+    
+    // Debug: log players with injury status
+    const injuredPlayers = allPlayers.value.filter(p => p.status && p.status !== 'ACTIVE')
+    console.log(`[ESPN Injury] ${injuredPlayers.length} players with injury data:`, 
+      injuredPlayers.slice(0, 10).map(p => ({ 
+        name: p.full_name, status: p.status, note: p.injury_note,
+        severity: getInjuryInfo(p)?.severity 
+      })))
     
     // Process teams for Teams tab
     processTeamsData()
