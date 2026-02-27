@@ -774,7 +774,7 @@
                   <span class="text-2xl">📋</span>
                   <div>
                     <h2 class="text-xl font-bold text-dark-text">Available Players</h2>
-                    <p class="text-xs text-dark-textMuted">Free agents with games {{ startSitDay === 'today' ? 'today' : 'tomorrow' }}</p>
+                    <p class="text-xs text-dark-textMuted">Free agents with games {{ startSitDay === 'today' ? 'today' : 'tomorrow' }} · Today's projections</p>
                   </div>
                 </div>
                 <div class="flex items-center gap-3">
@@ -790,71 +790,102 @@
                 </div>
               </div>
             </div>
-            <div class="card-body p-0">
-              <!-- Table Header -->
-              <div class="grid grid-cols-[2fr_1fr_repeat(3,80px)_80px_auto] gap-2 px-4 py-2 bg-dark-border/20 text-xs font-bold text-dark-textMuted uppercase border-b border-dark-border/20">
-                <div @click="toggleAvailableSort('name')" class="cursor-pointer hover:text-dark-text flex items-center gap-1">
-                  Player
-                  <span v-if="availableSortColumn === 'name'">{{ availableSortDirection === 'asc' ? '↑' : '↓' }}</span>
-                </div>
-                <div @click="toggleAvailableSort('matchup')" class="cursor-pointer hover:text-dark-text text-center flex items-center justify-center gap-1">
-                  Matchup
-                  <span v-if="availableSortColumn === 'matchup'">{{ availableSortDirection === 'asc' ? '↑' : '↓' }}</span>
-                </div>
-                <div v-for="cat in relevantStartSitCategories.slice(0, 3)" :key="cat.stat_id" @click="toggleAvailableSort(cat.stat_id)" class="cursor-pointer hover:text-dark-text text-center flex items-center justify-center gap-1">
-                  {{ cat.display_name }}
-                  <span v-if="availableSortColumn === cat.stat_id">{{ availableSortDirection === 'asc' ? '↑' : '↓' }}</span>
-                </div>
-                <div @click="toggleAvailableSort('value')" class="cursor-pointer hover:text-dark-text text-center flex items-center justify-center gap-1">
-                  Value
-                  <span v-if="availableSortColumn === 'value'">{{ availableSortDirection === 'asc' ? '↑' : '↓' }}</span>
-                </div>
-                <div></div>
-              </div>
-              
-              <!-- Player Rows -->
-              <div class="divide-y divide-dark-border/10 max-h-[600px] overflow-y-auto">
-                <div 
-                  v-for="player in sortedAvailableFreeAgents.slice(0, 50)" 
-                  :key="player.player_key"
-                  class="grid grid-cols-[2fr_1fr_repeat(3,80px)_80px_auto] gap-2 px-4 py-3 hover:bg-dark-border/10 transition-colors items-center"
-                >
-                  <!-- Player -->
-                  <div class="flex items-center gap-2 min-w-0 cursor-pointer" @click="openPlayerModal(player)">
-                    <div class="w-8 h-8 rounded-full bg-dark-border overflow-hidden flex-shrink-0">
-                      <img :src="player.headshot || defaultHeadshot" class="w-full h-full object-cover" @error="handleImageError" />
-                    </div>
-                    <div class="min-w-0">
-                      <div class="font-semibold text-dark-text text-sm truncate hover:text-yellow-400 transition-colors">{{ player.full_name }}</div>
-                      <div class="text-xs text-dark-textMuted">{{ player.position }}</div>
-                    </div>
-                  </div>
-                  
-                  <!-- Matchup -->
-                  <div class="text-center">
-                    <span class="text-xs font-medium" :class="getMatchupDifficultyClass(player)">{{ player.opponent || 'No game' }}</span>
-                  </div>
-                  
-                  <!-- Category Stats -->
-                  <div v-for="cat in relevantStartSitCategories.slice(0, 3)" :key="cat.stat_id" class="text-center">
-                    <span class="text-sm font-bold text-white">{{ formatCategoryProjection(player, cat) }}</span>
-                  </div>
-                  
-                  <!-- Value -->
-                  <div class="text-center">
-                    <div class="text-lg font-black text-yellow-400">{{ player.overallValue?.toFixed(0) || 'N/A' }}</div>
-                  </div>
-                  
-                  <!-- Analyze Button -->
-                  <div class="flex justify-end">
-                    <button 
-                      @click="openPlayerAnalysisForWaiver(player)"
-                      class="px-3 py-1.5 text-xs font-semibold bg-purple-500/20 text-purple-400 rounded hover:bg-purple-500/30 transition-colors"
+            <div class="card-body p-0 overflow-x-auto">
+              <div class="max-h-[600px] overflow-y-auto">
+              <table class="w-full min-w-[900px]">
+                <thead>
+                  <tr class="bg-dark-border/20 text-xs font-bold text-dark-textMuted uppercase border-b border-dark-border/20">
+                    <th class="text-left px-4 py-2 sticky left-0 bg-dark-card z-10 min-w-[220px] cursor-pointer hover:text-dark-text" @click="toggleAvailableSort('name')">
+                      Player
+                      <span v-if="availableSortColumn === 'name'" class="ml-1">{{ availableSortDirection === 'asc' ? '↑' : '↓' }}</span>
+                    </th>
+                    <th class="text-center px-2 py-2 min-w-[90px] cursor-pointer hover:text-dark-text" @click="toggleAvailableSort('matchup')">
+                      Matchup
+                      <span v-if="availableSortColumn === 'matchup'" class="ml-1">{{ availableSortDirection === 'asc' ? '↑' : '↓' }}</span>
+                    </th>
+                    <th 
+                      v-for="cat in relevantStartSitCategories" 
+                      :key="cat.stat_id" 
+                      class="text-center px-2 py-2 min-w-[55px] cursor-pointer hover:text-dark-text"
+                      @click="toggleAvailableSort(cat.stat_id)"
                     >
-                      Analyze
-                    </button>
-                  </div>
-                </div>
+                      {{ cat.display_name }}
+                      <span v-if="availableSortColumn === cat.stat_id" class="ml-0.5">{{ availableSortDirection === 'asc' ? '↑' : '↓' }}</span>
+                    </th>
+                    <th class="text-center px-2 py-2 min-w-[60px] cursor-pointer hover:text-dark-text" @click="toggleAvailableSort('value')">
+                      Value
+                      <span v-if="availableSortColumn === 'value'" class="ml-1">{{ availableSortDirection === 'asc' ? '↑' : '↓' }}</span>
+                    </th>
+                    <th class="px-2 py-2 w-[70px]"></th>
+                  </tr>
+                </thead>
+                <tbody class="divide-y divide-dark-border/10">
+                  <tr 
+                    v-for="player in sortedAvailableFreeAgents.slice(0, 50)" 
+                    :key="player.player_key"
+                    class="hover:bg-dark-border/10 transition-colors"
+                  >
+                    <!-- Player Info -->
+                    <td class="px-4 py-2.5 sticky left-0 bg-dark-card z-10">
+                      <div class="flex items-center gap-2 min-w-0 cursor-pointer" @click="openPlayerModal(player)">
+                        <div class="w-9 h-9 rounded-full bg-dark-border overflow-hidden flex-shrink-0">
+                          <img :src="player.headshot || defaultHeadshot" class="w-full h-full object-cover" @error="handleImageError" />
+                        </div>
+                        <div class="min-w-0">
+                          <div class="font-semibold text-dark-text text-sm truncate hover:text-yellow-400 transition-colors">{{ player.full_name }}</div>
+                          <div class="flex items-center gap-1.5 text-xs">
+                            <span class="text-dark-textMuted">{{ player.position }}</span>
+                            <template v-if="player.hasGame">
+                              <span class="text-dark-textMuted">·</span>
+                              <img 
+                                :src="`https://a.espncdn.com/combiner/i?img=/i/teamlogos/${currentSport === 'basketball' ? 'nba' : currentSport === 'hockey' ? 'nhl' : 'mlb'}/500/${player.nba_team || player.mlb_team || player.nhl_team}.png&h=20&w=20`" 
+                                class="w-3.5 h-3.5 object-contain"
+                                @error="e => e.target.style.display = 'none'"
+                              />
+                              <span class="text-green-400">{{ player.isHome ? 'vs' : '@' }} {{ player.opponent }}</span>
+                              <span class="text-dark-textMuted">{{ formatGameTime(player.gameTime) }}</span>
+                            </template>
+                            <template v-else>
+                              <span class="text-red-400">No game</span>
+                            </template>
+                          </div>
+                        </div>
+                      </div>
+                    </td>
+                    
+                    <!-- Matchup Difficulty -->
+                    <td class="px-2 py-2.5 text-center">
+                      <div v-if="player.opponent" class="inline-flex items-center gap-1 px-2 py-1 rounded-full text-[10px] font-bold uppercase"
+                        :class="getMatchupDifficultyBadge(player).class"
+                      >
+                        <span>{{ getMatchupDifficultyBadge(player).icon }}</span>
+                        <span>{{ getMatchupDifficultyBadge(player).label }}</span>
+                      </div>
+                      <span v-else class="text-xs text-dark-textMuted">—</span>
+                    </td>
+                    
+                    <!-- All Category Stats -->
+                    <td v-for="cat in relevantStartSitCategories" :key="cat.stat_id" class="px-2 py-2.5 text-center">
+                      <span class="text-sm font-bold text-white">{{ formatCategoryProjection(player, cat) }}</span>
+                    </td>
+                    
+                    <!-- Value -->
+                    <td class="px-2 py-2.5 text-center">
+                      <div class="text-base font-black text-yellow-400">{{ player.overallValue?.toFixed(0) || 'N/A' }}</div>
+                    </td>
+                    
+                    <!-- Analyze Button -->
+                    <td class="px-2 py-2.5 text-right">
+                      <button 
+                        @click="openPlayerAnalysisForWaiver(player)"
+                        class="px-2.5 py-1.5 text-xs font-semibold bg-purple-500/20 text-purple-400 rounded hover:bg-purple-500/30 transition-colors"
+                      >
+                        Analyze
+                      </button>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
               </div>
               
               <!-- Empty State -->
@@ -5682,6 +5713,25 @@ function getMatchupDifficultyClass(player: any): string {
   return 'text-red-400' // Hard matchup
 }
 
+function getMatchupDifficultyBadge(player: any): { class: string, label: string, icon: string } {
+  if (!player.opponent) return { class: 'bg-gray-500/20 text-gray-400', label: '—', icon: '' }
+  
+  // Hash-based consistent difficulty per matchup+position combo
+  const hash = (player.opponent + player.position).split('').reduce((acc: number, char: string) => {
+    return char.charCodeAt(0) + ((acc << 5) - acc)
+  }, 0)
+  
+  const bucket = Math.abs(hash) % 5
+  
+  if (bucket <= 1) {
+    return { class: 'bg-green-500/20 text-green-400', label: 'Easy', icon: '🟢' }
+  } else if (bucket <= 3) {
+    return { class: 'bg-yellow-500/20 text-yellow-400', label: 'Avg', icon: '🟡' }
+  } else {
+    return { class: 'bg-red-500/20 text-red-400', label: 'Hard', icon: '🔴' }
+  }
+}
+
 // Helper: Get estimated game count for time period based on sport
 function getGameCountForPeriod(player: any): number {
   const sport = currentSport.value
@@ -7618,6 +7668,7 @@ const availableFreeAgents = computed(() => {
           hasGame: gameInfo?.hasGame || false,
           opponent: gameInfo?.opponent || null,
           isHome: gameInfo?.isHome || false,
+          gameTime: gameInfo?.gameTime || null,
           impactCats,
           impactScore: calculatePlayerImpact(p)
         }
