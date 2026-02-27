@@ -3468,6 +3468,10 @@ function getEspnHeadshotUrl(playerId: number, sport: string): string {
     return `https://a.espncdn.com/combiner/i?img=/i/headshots/mlb/players/full/${playerId}.png&w=96&h=70&cb=1`
   } else if (sport === 'hockey') {
     return `https://a.espncdn.com/combiner/i?img=/i/headshots/nhl/players/full/${playerId}.png&w=96&h=70&cb=1`
+  } else if (sport === 'basketball') {
+    return `https://a.espncdn.com/combiner/i?img=/i/headshots/nba/players/full/${playerId}.png&w=96&h=70&cb=1`
+  } else if (sport === 'football') {
+    return `https://a.espncdn.com/combiner/i?img=/i/headshots/nfl/players/full/${playerId}.png&w=96&h=70&cb=1`
   }
   return `https://a.espncdn.com/combiner/i?img=/i/headshots/nophoto.png&w=96&h=70`
 }
