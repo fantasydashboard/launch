@@ -1753,6 +1753,57 @@ const sportName = computed(() => {
   return names[sport] || 'Fantasy'
 })
 
+// Detect current sport from active league across all platforms
+const currentSport = computed(() => {
+  const saved = leagueStore.savedLeagues.find(l => l.league_id === leagueStore.activeLeagueId)
+  if (saved?.sport) return saved.sport
+  // Fallback: parse from ESPN league key (espn_basketball_XXXX_2025)
+  const id = leagueStore.activeLeagueId || ''
+  if (id.startsWith('espn_')) {
+    const parts = id.replace('espn_', '').split('_')
+    if (['baseball', 'basketball', 'football', 'hockey'].includes(parts[0])) return parts[0]
+  }
+  return 'baseball'
+})
+
+// Sport-specific position configuration
+const SPORT_POSITION_CONFIG: Record<string, {
+  positions: string[]
+  baselines: Record<string, number>
+  rosterDefaults: Record<string, number>
+  positionColors: Record<string, string>
+  positionTextColors: Record<string, string>
+}> = {
+  baseball: {
+    positions: ['C', '1B', '2B', '3B', 'SS', 'OF', 'SP', 'RP'],
+    baselines: { C: 12, '1B': 15, '2B': 15, '3B': 15, SS: 15, OF: 40, SP: 50, RP: 25 },
+    rosterDefaults: { C: 1, '1B': 1, '2B': 1, '3B': 1, SS: 1, OF: 3, SP: 2, RP: 2, Util: 1 },
+    positionColors: { C: 'bg-purple-500/30 text-purple-400', '1B': 'bg-red-500/30 text-red-400', '2B': 'bg-orange-500/30 text-orange-400', '3B': 'bg-yellow-500/30 text-yellow-400', SS: 'bg-green-500/30 text-green-400', OF: 'bg-blue-500/30 text-blue-400', SP: 'bg-cyan-500/30 text-cyan-400', RP: 'bg-pink-500/30 text-pink-400', Util: 'bg-gray-500/30 text-gray-400' },
+    positionTextColors: { C: 'text-purple-400', '1B': 'text-red-400', '2B': 'text-orange-400', '3B': 'text-yellow-400', SS: 'text-green-400', OF: 'text-blue-400', SP: 'text-cyan-400', RP: 'text-pink-400', Util: 'text-gray-400' }
+  },
+  basketball: {
+    positions: ['PG', 'SG', 'SF', 'PF', 'C', 'G', 'F', 'Util'],
+    baselines: { PG: 15, SG: 15, SF: 15, PF: 15, C: 12, G: 20, F: 20, Util: 10 },
+    rosterDefaults: { PG: 2, SG: 2, SF: 2, PF: 2, C: 1, G: 1, F: 1, Util: 1 },
+    positionColors: { PG: 'bg-blue-500/30 text-blue-400', SG: 'bg-cyan-500/30 text-cyan-400', SF: 'bg-green-500/30 text-green-400', PF: 'bg-yellow-500/30 text-yellow-400', C: 'bg-purple-500/30 text-purple-400', G: 'bg-sky-500/30 text-sky-400', F: 'bg-lime-500/30 text-lime-400', Util: 'bg-gray-500/30 text-gray-400' },
+    positionTextColors: { PG: 'text-blue-400', SG: 'text-cyan-400', SF: 'text-green-400', PF: 'text-yellow-400', C: 'text-purple-400', G: 'text-sky-400', F: 'text-lime-400', Util: 'text-gray-400' }
+  },
+  football: {
+    positions: ['QB', 'RB', 'WR', 'TE', 'K', 'DEF', 'Flex'],
+    baselines: { QB: 12, RB: 20, WR: 30, TE: 12, K: 12, DEF: 12, Flex: 15 },
+    rosterDefaults: { QB: 1, RB: 2, WR: 2, TE: 1, K: 1, DEF: 1, Flex: 1 },
+    positionColors: { QB: 'bg-red-500/30 text-red-400', RB: 'bg-green-500/30 text-green-400', WR: 'bg-blue-500/30 text-blue-400', TE: 'bg-orange-500/30 text-orange-400', K: 'bg-gray-500/30 text-gray-400', DEF: 'bg-purple-500/30 text-purple-400', Flex: 'bg-yellow-500/30 text-yellow-400' },
+    positionTextColors: { QB: 'text-red-400', RB: 'text-green-400', WR: 'text-blue-400', TE: 'text-orange-400', K: 'text-gray-400', DEF: 'text-purple-400', Flex: 'text-yellow-400' }
+  },
+  hockey: {
+    positions: ['C', 'LW', 'RW', 'D', 'G'],
+    baselines: { C: 15, LW: 15, RW: 15, D: 15, G: 8 },
+    rosterDefaults: { C: 2, LW: 2, RW: 2, D: 4, G: 2 },
+    positionColors: { C: 'bg-purple-500/30 text-purple-400', LW: 'bg-blue-500/30 text-blue-400', RW: 'bg-cyan-500/30 text-cyan-400', D: 'bg-green-500/30 text-green-400', G: 'bg-orange-500/30 text-orange-400' },
+    positionTextColors: { C: 'text-purple-400', LW: 'text-blue-400', RW: 'text-cyan-400', D: 'text-green-400', G: 'text-orange-400' }
+  }
+}
+
 const tabs = [
   { id: 'ros', name: 'Rest of Season', icon: '📊' },
   { id: 'teams', name: 'Teams', icon: '👥' },
@@ -1777,7 +1828,7 @@ const isYahoo = computed(() => {
 const expandedTeamId = ref<string | null>(null)
 const allPlayers = ref<any[]>([])
 const myTeamKey = ref<string | null>(null)
-const selectedPositions = ref<string[]>(['C', '1B', '2B', '3B', 'SS', 'OF', 'SP', 'RP'])
+const selectedPositions = ref<string[]>([])
 const showOnlyMyPlayers = ref(false)
 const showOnlyFreeAgents = ref(false)
 const defaultHeadshot = 'https://a.espncdn.com/combiner/i?img=/i/headshots/nophoto.png&w=200&h=145'
@@ -1793,12 +1844,12 @@ const currentWeek = computed(() => {
   const diffWeeks = Math.ceil(diffTime / (1000 * 60 * 60 * 24 * 7))
   return Math.max(1, Math.min(26, diffWeeks)) // MLB season is ~26 weeks
 })
-const selectedStartSitPosition = ref('C')
+const selectedStartSitPosition = ref('')
 const startSitPlayerFilter = ref<'all' | 'mine' | 'fa'>('mine')
-const startSitPositions = [
-  { id: 'C', label: 'C' }, { id: '1B', label: '1B' }, { id: '2B', label: '2B' }, { id: '3B', label: '3B' },
-  { id: 'SS', label: 'SS' }, { id: 'OF', label: 'OF' }, { id: 'SP', label: 'SP' }, { id: 'RP', label: 'RP' }, { id: 'Util', label: 'UTIL' }
-]
+const startSitPositions = computed(() => {
+  const config = SPORT_POSITION_CONFIG[currentSport.value] || SPORT_POSITION_CONFIG.baseball
+  return config.positions.map(p => ({ id: p, label: p }))
+})
 
 // Platform detection
 const platform = computed(() => {
@@ -1960,11 +2011,14 @@ const rosterPositions = ref<any[]>([])
 const espnMaxRosterSize = ref<number>(25) // Will be loaded from ESPN settings
 const teamsData = ref<any[]>([])
 const numTeams = computed(() => teamsData.value.length || 12)
-const positionFilters = [
-  { id: 'C', label: 'C' }, { id: '1B', label: '1B' }, { id: '2B', label: '2B' }, { id: '3B', label: '3B' },
-  { id: 'SS', label: 'SS' }, { id: 'OF', label: 'OF' }, { id: 'SP', label: 'SP' }, { id: 'RP', label: 'RP' }
-]
-const vorBaselines = ref<Record<string, number>>({ C: 12, '1B': 15, '2B': 15, '3B': 15, SS: 15, OF: 40, SP: 50, RP: 25 })
+const positionFilters = computed(() => {
+  const config = SPORT_POSITION_CONFIG[currentSport.value] || SPORT_POSITION_CONFIG.baseball
+  return config.positions.map(p => ({ id: p, label: p }))
+})
+const vorBaselines = computed(() => {
+  const config = SPORT_POSITION_CONFIG[currentSport.value] || SPORT_POSITION_CONFIG.baseball
+  return { ...config.baselines }
+})
 const positionBaselines = ref<Record<string, number>>({})
 
 // Ranking Customization State
@@ -2166,27 +2220,31 @@ const otherTeams = computed(() => {
 })
 
 const rosterRequirements = computed(() => {
-  const reqs: Record<string, number> = { C: 0, '1B': 0, '2B': 0, '3B': 0, SS: 0, OF: 0, SP: 0, RP: 0, Util: 0 }
+  const config = SPORT_POSITION_CONFIG[currentSport.value] || SPORT_POSITION_CONFIG.baseball
+  const reqs: Record<string, number> = {}
+  Object.keys(config.rosterDefaults).forEach(pos => { reqs[pos] = 0 })
   rosterPositions.value.forEach((pos: any) => { const p = pos.position_type || pos.position; if (reqs[p] !== undefined) reqs[p]++ })
   return reqs
 })
 
 const displayRosterPositions = computed(() => {
+  const config = SPORT_POSITION_CONFIG[currentSport.value] || SPORT_POSITION_CONFIG.baseball
   const display: { pos: string; count: number }[] = []
-  const order = ['C', '1B', '2B', '3B', 'SS', 'OF', 'SP', 'RP', 'Util']
+  const order = [...config.positions, 'Util']
   order.forEach(pos => { const c = getRosterSlotCount(pos); if (c > 0) display.push({ pos, count: c }) })
   return display
 })
 
 const uniquePositions = computed(() => {
+  const config = SPORT_POSITION_CONFIG[currentSport.value] || SPORT_POSITION_CONFIG.baseball
   const set = new Set<string>()
   allPlayers.value.forEach(p => { const pos = p.position?.split(',')[0]?.trim(); if (pos) set.add(pos) })
-  return ['C', '1B', '2B', '3B', 'SS', 'OF', 'SP', 'RP'].filter(pos => set.has(pos))
+  return config.positions.filter(pos => set.has(pos))
 })
 
 const filteredPlayers = computed(() => {
   let players = [...allPlayers.value]
-  if (selectedPositions.value.length > 0 && selectedPositions.value.length < positionFilters.length) {
+  if (selectedPositions.value.length > 0 && selectedPositions.value.length < positionFilters.value.length) {
     players = players.filter(p => selectedPositions.value.some(pos => p.position?.includes(pos)))
   }
   
@@ -3130,12 +3188,12 @@ const hiddenTeamsCount = computed(() => {
   return Math.max(0, rankedTeams.value.length - 3)
 })
 
-function getRosterSlotCount(pos: string): number { const r = rosterRequirements.value; if (r[pos] > 0) return r[pos]; const d: Record<string, number> = { C: 1, '1B': 1, '2B': 1, '3B': 1, SS: 1, OF: 3, SP: 2, RP: 2, Util: 1 }; return d[pos] || 1 }
+function getRosterSlotCount(pos: string): number { const r = rosterRequirements.value; if (r[pos] > 0) return r[pos]; const config = SPORT_POSITION_CONFIG[currentSport.value] || SPORT_POSITION_CONFIG.baseball; return config.rosterDefaults[pos] || 1 }
 function calculateStarterGrade(players: any[], numStarters: number): string { if (!players.length) return 'F'; const n = numTeams.value || 12; const starters = players.slice(0, Math.max(numStarters, 1)); const valid = starters.filter(p => p.positionRank); if (!valid.length) { const avg = starters.reduce((s, p) => s + (p.ppg || 0), 0) / starters.length; if (avg >= 5) return 'A'; if (avg >= 4) return 'B+'; if (avg >= 3) return 'B'; if (avg >= 2) return 'C+'; return 'C' }; const avgRank = valid.reduce((s, p) => s + p.positionRank, 0) / valid.length; const pct = avgRank / Math.max(n * numStarters, 1); if (pct <= 0.25) return 'A+'; if (pct <= 0.4) return 'A'; if (pct <= 0.55) return 'A-'; if (pct <= 0.7) return 'B+'; if (pct <= 0.85) return 'B'; if (pct <= 1) return 'B-'; if (pct <= 1.2) return 'C+'; if (pct <= 1.4) return 'C'; if (pct <= 1.6) return 'C-'; if (pct <= 1.8) return 'D+'; if (pct <= 2) return 'D'; if (pct <= 2.5) return 'D-'; return 'F' }
 function getGradeFromValue(v: number): string { if (v >= 95) return 'A+'; if (v >= 88) return 'A'; if (v >= 82) return 'A-'; if (v >= 75) return 'B+'; if (v >= 68) return 'B'; if (v >= 60) return 'B-'; if (v >= 52) return 'C+'; if (v >= 44) return 'C'; if (v >= 36) return 'C-'; if (v >= 28) return 'D+'; if (v >= 20) return 'D'; if (v >= 12) return 'D-'; return 'F' }
 function getTeamPositionPlayers(team: TeamRanking, pos: string): any[] { return team.players.filter(p => p.position?.split(',')[0]?.trim() === pos).sort((a, b) => (b.ppg || 0) - (a.ppg || 0)) }
 
-function selectAllPositions() { selectedPositions.value = selectedPositions.value.length === positionFilters.length ? [] : positionFilters.map(p => p.id) }
+function selectAllPositions() { selectedPositions.value = selectedPositions.value.length === positionFilters.value.length ? [] : positionFilters.value.map(p => p.id) }
 function togglePositionFilter(pos: string) { const i = selectedPositions.value.indexOf(pos); i >= 0 ? selectedPositions.value.splice(i, 1) : selectedPositions.value.push(pos) }
 function isMyPlayer(p: any) { return p.fantasy_team_key === myTeamKey.value }
 function isFreeAgent(p: any) { return !p.fantasy_team }
@@ -3146,8 +3204,8 @@ function getPlayerNameClass(p: any) { return isMyPlayer(p) ? 'text-yellow-400' :
 function getStartSitRowClass(p: any) { return isMyPlayer(p) ? 'bg-yellow-500/10 border-l-4 border-yellow-400' : isFreeAgent(p) ? 'bg-cyan-500/5 border-l-4 border-cyan-400' : '' }
 function getStartSitAvatarRingClass(p: any) { return isMyPlayer(p) ? 'ring-yellow-400' : isFreeAgent(p) ? 'ring-cyan-400' : 'ring-dark-border' }
 function getStartSitPlayerNameClass(p: any) { return isMyPlayer(p) ? 'text-yellow-400' : isFreeAgent(p) ? 'text-cyan-400' : 'text-dark-text' }
-function getPositionClass(pos: string) { const p = pos?.split(',')[0]?.trim() || pos; const c: Record<string, string> = { C: 'bg-purple-500/30 text-purple-400', '1B': 'bg-red-500/30 text-red-400', '2B': 'bg-orange-500/30 text-orange-400', '3B': 'bg-yellow-500/30 text-yellow-400', SS: 'bg-green-500/30 text-green-400', OF: 'bg-blue-500/30 text-blue-400', SP: 'bg-cyan-500/30 text-cyan-400', RP: 'bg-pink-500/30 text-pink-400', Util: 'bg-gray-500/30 text-gray-400' }; return c[p] || 'bg-dark-border/50 text-dark-textMuted' }
-function getPositionTextClass(pos: string) { const c: Record<string, string> = { C: 'text-purple-400', '1B': 'text-red-400', '2B': 'text-orange-400', '3B': 'text-yellow-400', SS: 'text-green-400', OF: 'text-blue-400', SP: 'text-cyan-400', RP: 'text-pink-400', Util: 'text-gray-400' }; return c[pos] || 'text-dark-textMuted' }
+function getPositionClass(pos: string) { const p = pos?.split(',')[0]?.trim() || pos; const config = SPORT_POSITION_CONFIG[currentSport.value] || SPORT_POSITION_CONFIG.baseball; return config.positionColors[p] || 'bg-dark-border/50 text-dark-textMuted' }
+function getPositionTextClass(pos: string) { const config = SPORT_POSITION_CONFIG[currentSport.value] || SPORT_POSITION_CONFIG.baseball; return config.positionTextColors[pos] || 'text-dark-textMuted' }
 function getTeamGradeClass(g: string) { if (g.startsWith('A')) return 'text-green-400'; if (g.startsWith('B')) return 'text-blue-400'; if (g.startsWith('C')) return 'text-yellow-400'; if (g.startsWith('D')) return 'text-orange-400'; return 'text-red-400' }
 function getTeamStatusClass(s: number) { if (s >= 70) return 'bg-green-500/30 text-green-400'; if (s >= 55) return 'bg-blue-500/30 text-blue-400'; if (s >= 40) return 'bg-yellow-500/30 text-yellow-400'; return 'bg-red-500/30 text-red-400' }
 function getTeamStatusLabel(s: number) { if (s >= 70) return '🏆 Contender'; if (s >= 55) return '⚔️ Competitive'; if (s >= 40) return '🎭 Pretender'; return '🔨 Rebuilding' }
@@ -3546,6 +3604,28 @@ async function loadEspnProjections() {
           return sum + (count || 0)
         }, 0)
         
+        // Build rosterPositions from ESPN lineup slot maps so rosterRequirements works correctly
+        // ESPN lineup slot IDs mapped to position abbreviations per sport
+        const espnSlotToPosition: Record<string, Record<number, string>> = {
+          basketball: { 0: 'PG', 1: 'SG', 2: 'SF', 3: 'PF', 4: 'C', 5: 'G', 6: 'F', 11: 'Util', 12: 'BN', 13: 'IL' },
+          football: { 0: 'QB', 2: 'RB', 4: 'WR', 6: 'TE', 16: 'DEF', 17: 'K', 23: 'Flex', 20: 'BN', 21: 'IR' },
+          baseball: { 0: 'C', 1: '1B', 2: '2B', 3: '3B', 4: 'SS', 5: 'OF', 6: 'OF', 7: 'OF', 12: 'Util', 13: 'BN', 14: 'SP', 15: 'RP', 17: 'IL', 18: 'IL', 19: 'NA' },
+          hockey: { 0: 'C', 1: 'LW', 2: 'RW', 3: 'D', 4: 'G', 5: 'Util', 8: 'BN', 13: 'IR' }
+        }
+        const slotMap = espnSlotToPosition[sport] || {}
+        const nonRosterSlots = new Set(['BN', 'IL', 'IR', 'NA'])
+        const builtPositions: any[] = []
+        Object.entries(slotCounts).forEach(([slotId, count]: [string, any]) => {
+          const pos = slotMap[parseInt(slotId)]
+          if (pos && !nonRosterSlots.has(pos)) {
+            for (let i = 0; i < (count || 0); i++) { builtPositions.push({ position_type: pos, position: pos }) }
+          }
+        })
+        if (builtPositions.length > 0) {
+          rosterPositions.value = builtPositions
+          console.log('[ESPN Points Projections] Built rosterPositions:', builtPositions.map(p => p.position).join(', '))
+        }
+        
         console.log('[ESPN Points Projections] Total roster size:', maxRosterSizeFromSettings, 'Active (excl IL/IR):', activeRosterSize, 'slots:', slotCounts)
       }
       espnMaxRosterSize.value = activeRosterSize // Use active roster size, not total
@@ -3767,6 +3847,13 @@ watch(() => leagueStore.activePlatform, (platform) => {
     loadProjections()
   }
 })
+
+// When sport changes, reset position filters and start/sit position to sport defaults
+watch(currentSport, (sport) => {
+  const config = SPORT_POSITION_CONFIG[sport] || SPORT_POSITION_CONFIG.baseball
+  selectedPositions.value = [...config.positions]
+  selectedStartSitPosition.value = config.positions[0] || ''
+}, { immediate: true })
 
 onMounted(() => { 
   console.log('[PointsProjections] onMounted - platform:', leagueStore.activePlatform, 'leagueId:', effectiveLeagueKey.value, 'isEspn:', isEspn.value)
