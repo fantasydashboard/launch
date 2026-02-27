@@ -1773,34 +1773,44 @@ const SPORT_POSITION_CONFIG: Record<string, {
   rosterDefaults: Record<string, number>
   positionColors: Record<string, string>
   positionTextColors: Record<string, string>
+  lineupSlots: string[]
+  flexPositions: Record<string, string[]>
 }> = {
   baseball: {
     positions: ['C', '1B', '2B', '3B', 'SS', 'OF', 'SP', 'RP'],
     baselines: { C: 12, '1B': 15, '2B': 15, '3B': 15, SS: 15, OF: 40, SP: 50, RP: 25 },
     rosterDefaults: { C: 1, '1B': 1, '2B': 1, '3B': 1, SS: 1, OF: 3, SP: 2, RP: 2, Util: 1 },
     positionColors: { C: 'bg-purple-500/30 text-purple-400', '1B': 'bg-red-500/30 text-red-400', '2B': 'bg-orange-500/30 text-orange-400', '3B': 'bg-yellow-500/30 text-yellow-400', SS: 'bg-green-500/30 text-green-400', OF: 'bg-blue-500/30 text-blue-400', SP: 'bg-cyan-500/30 text-cyan-400', RP: 'bg-pink-500/30 text-pink-400', Util: 'bg-gray-500/30 text-gray-400' },
-    positionTextColors: { C: 'text-purple-400', '1B': 'text-red-400', '2B': 'text-orange-400', '3B': 'text-yellow-400', SS: 'text-green-400', OF: 'text-blue-400', SP: 'text-cyan-400', RP: 'text-pink-400', Util: 'text-gray-400' }
+    positionTextColors: { C: 'text-purple-400', '1B': 'text-red-400', '2B': 'text-orange-400', '3B': 'text-yellow-400', SS: 'text-green-400', OF: 'text-blue-400', SP: 'text-cyan-400', RP: 'text-pink-400', Util: 'text-gray-400' },
+    lineupSlots: ['C', '1B', '2B', '3B', 'SS', 'OF', 'OF', 'OF', 'SP', 'SP', 'RP', 'RP', 'Util'],
+    flexPositions: { Util: ['C','1B','2B','3B','SS','OF'], OF: ['OF','LF','CF','RF'] }
   },
   basketball: {
     positions: ['PG', 'SG', 'SF', 'PF', 'C', 'G', 'F', 'Util'],
     baselines: { PG: 15, SG: 15, SF: 15, PF: 15, C: 12, G: 20, F: 20, Util: 10 },
     rosterDefaults: { PG: 2, SG: 2, SF: 2, PF: 2, C: 1, G: 1, F: 1, Util: 1 },
     positionColors: { PG: 'bg-blue-500/30 text-blue-400', SG: 'bg-cyan-500/30 text-cyan-400', SF: 'bg-green-500/30 text-green-400', PF: 'bg-yellow-500/30 text-yellow-400', C: 'bg-purple-500/30 text-purple-400', G: 'bg-sky-500/30 text-sky-400', F: 'bg-lime-500/30 text-lime-400', Util: 'bg-gray-500/30 text-gray-400' },
-    positionTextColors: { PG: 'text-blue-400', SG: 'text-cyan-400', SF: 'text-green-400', PF: 'text-yellow-400', C: 'text-purple-400', G: 'text-sky-400', F: 'text-lime-400', Util: 'text-gray-400' }
+    positionTextColors: { PG: 'text-blue-400', SG: 'text-cyan-400', SF: 'text-green-400', PF: 'text-yellow-400', C: 'text-purple-400', G: 'text-sky-400', F: 'text-lime-400', Util: 'text-gray-400' },
+    lineupSlots: ['PG', 'SG', 'SF', 'PF', 'C', 'G', 'F', 'Util'],
+    flexPositions: { G: ['PG','SG'], F: ['SF','PF'], Util: ['PG','SG','SF','PF','C'] }
   },
   football: {
     positions: ['QB', 'RB', 'WR', 'TE', 'K', 'DEF', 'Flex'],
     baselines: { QB: 12, RB: 20, WR: 30, TE: 12, K: 12, DEF: 12, Flex: 15 },
     rosterDefaults: { QB: 1, RB: 2, WR: 2, TE: 1, K: 1, DEF: 1, Flex: 1 },
     positionColors: { QB: 'bg-red-500/30 text-red-400', RB: 'bg-green-500/30 text-green-400', WR: 'bg-blue-500/30 text-blue-400', TE: 'bg-orange-500/30 text-orange-400', K: 'bg-gray-500/30 text-gray-400', DEF: 'bg-purple-500/30 text-purple-400', Flex: 'bg-yellow-500/30 text-yellow-400' },
-    positionTextColors: { QB: 'text-red-400', RB: 'text-green-400', WR: 'text-blue-400', TE: 'text-orange-400', K: 'text-gray-400', DEF: 'text-purple-400', Flex: 'text-yellow-400' }
+    positionTextColors: { QB: 'text-red-400', RB: 'text-green-400', WR: 'text-blue-400', TE: 'text-orange-400', K: 'text-gray-400', DEF: 'text-purple-400', Flex: 'text-yellow-400' },
+    lineupSlots: ['QB', 'RB', 'RB', 'WR', 'WR', 'TE', 'Flex', 'K', 'DEF'],
+    flexPositions: { Flex: ['RB','WR','TE'] }
   },
   hockey: {
     positions: ['C', 'LW', 'RW', 'D', 'G'],
     baselines: { C: 15, LW: 15, RW: 15, D: 15, G: 8 },
     rosterDefaults: { C: 2, LW: 2, RW: 2, D: 4, G: 2 },
     positionColors: { C: 'bg-purple-500/30 text-purple-400', LW: 'bg-blue-500/30 text-blue-400', RW: 'bg-cyan-500/30 text-cyan-400', D: 'bg-green-500/30 text-green-400', G: 'bg-orange-500/30 text-orange-400' },
-    positionTextColors: { C: 'text-purple-400', LW: 'text-blue-400', RW: 'text-cyan-400', D: 'text-green-400', G: 'text-orange-400' }
+    positionTextColors: { C: 'text-purple-400', LW: 'text-blue-400', RW: 'text-cyan-400', D: 'text-green-400', G: 'text-orange-400' },
+    lineupSlots: ['C', 'C', 'LW', 'LW', 'RW', 'RW', 'D', 'D', 'D', 'D', 'G', 'G'],
+    flexPositions: {}
   }
 }
 
@@ -2513,12 +2523,28 @@ const suggestedLineup = computed(() => {
   const slots: { position: string; player: any }[] = []
   const used = new Set<string>()
   const myPlayers = allPlayers.value.filter(p => isMyPlayer(p))
-  const order = ['C', '1B', '2B', '3B', 'SS', 'OF', 'OF', 'OF', 'SP', 'SP', 'RP', 'RP', 'Util']
+  const config = SPORT_POSITION_CONFIG[currentSport.value] || SPORT_POSITION_CONFIG.baseball
+  
+  // Build order from actual rosterPositions if available, else fall back to config defaults
+  let order: string[]
+  if (rosterPositions.value.length > 0) {
+    const nonRoster = new Set(['BN', 'IL', 'IR', 'NA', 'IL+'])
+    order = rosterPositions.value
+      .map((p: any) => p.position_type || p.position)
+      .filter((p: string) => !nonRoster.has(p))
+  } else {
+    order = config.lineupSlots
+  }
   
   const dateStr = selectedDate.value.toISOString().split('T')[0]
   
   order.forEach(pos => {
-    let eligible = myPlayers.filter(p => !used.has(p.player_key) && (pos === 'Util' || p.position?.includes(pos)))
+    const flexEligible = config.flexPositions[pos] || []
+    let eligible = myPlayers.filter(p => {
+      if (used.has(p.player_key)) return false
+      const playerPos = p.position?.split(',')[0]?.trim() || ''
+      return playerPos === pos || flexEligible.includes(playerPos)
+    })
     eligible = eligible.map(p => {
       const hashInput = (p.player_key || '') + dateStr
       const hash = hashInput.split('').reduce((a: number, b: string) => ((a << 5) - a) + b.charCodeAt(0), 0)
@@ -2528,7 +2554,7 @@ const suggestedLineup = computed(() => {
       const projection = scoringMode.value === 'daily' ? (hasGameToday ? ppg : 0) : ppg * gamesThisWeek
       const opponents = ['NYY', 'BOS', 'LAD', 'ATL', 'HOU']
       return { ...p, projection, opponent: hasGameToday ? `vs ${opponents[Math.abs(hash) % 5]}` : null, gamesThisWeek }
-    }).filter(p => scoringMode.value === 'weekly' || p.projection > 0) // Only include players with games in daily mode
+    }).filter(p => scoringMode.value === 'weekly' || p.projection > 0)
     .sort((a, b) => (b.projection || 0) - (a.projection || 0))
     const best = eligible[0]
     if (best) { used.add(best.player_key); slots.push({ position: pos, player: best }) }
@@ -2722,21 +2748,20 @@ function clearWaiverLineup() {
 const modifiedSuggestedLineup = computed(() => {
   // Start with original suggested lineup
   const slots = suggestedLineup.value.map(slot => ({ ...slot, isWaiver: false }))
+  const config = SPORT_POSITION_CONFIG[currentSport.value] || SPORT_POSITION_CONFIG.baseball
   
   // Try to fit waiver players into appropriate slots
   waiverLineupPlayers.value.forEach(waiverPlayer => {
     const playerPos = waiverPlayer.position?.split(',')[0]?.trim() || 'Util'
-    const outfieldPositions = ['OF', 'LF', 'CF', 'RF']
     
     // Find best slot for this player
     let bestSlotIdx = -1
     let bestImprovement = -Infinity
     
     slots.forEach((slot, idx) => {
-      // Check if position matches
-      const slotMatches = slot.position === playerPos || 
-        slot.position === 'Util' ||
-        (slot.position === 'OF' && outfieldPositions.includes(playerPos))
+      // Check if position matches using sport-aware flex rules
+      const flexEligible = config.flexPositions[slot.position] || []
+      const slotMatches = slot.position === playerPos || flexEligible.includes(playerPos)
       
       if (!slotMatches) return
       
