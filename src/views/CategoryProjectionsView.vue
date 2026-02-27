@@ -3628,7 +3628,26 @@ const categoryRankedPlayers = computed(() => {
   if (!selectedCategory.value) return []
   const catInfo = selectedCategoryInfo.value
   if (!catInfo) return []
-  const gamesRemaining = 65, gamesPlayed = 97, statId = catInfo.stat_id
+  // Sport-aware game estimates
+  const sport = currentSport.value
+  let gamesPlayed: number, gamesRemaining: number
+  if (sport === 'basketball') {
+    // NBA: 82 game season, estimate based on time of year
+    const now = new Date()
+    const seasonStart = new Date(now.getFullYear(), 9, 22) // Oct 22
+    const seasonEnd = new Date(now.getFullYear() + (now.getMonth() < 6 ? 0 : 1), 3, 13) // Apr 13
+    const totalDays = (seasonEnd.getTime() - seasonStart.getTime()) / 86400000
+    const elapsedDays = Math.max(0, (now.getTime() - seasonStart.getTime()) / 86400000)
+    const pctComplete = Math.min(1, Math.max(0.1, elapsedDays / totalDays))
+    gamesPlayed = Math.round(82 * pctComplete)
+    gamesRemaining = 82 - gamesPlayed
+  } else if (sport === 'hockey') {
+    gamesPlayed = 55; gamesRemaining = 27 // NHL: 82 games
+  } else {
+    // Baseball default
+    gamesPlayed = 97; gamesRemaining = 65
+  }
+  const statId = catInfo.stat_id
   
   console.log(`[categoryRankedPlayers] sport=${currentSport.value}, category=${catInfo.display_name}, isPitchingCategory=${isPitchingCategory.value}`)
   console.log(`[categoryRankedPlayers] allPlayers count: ${allPlayers.value.length}`)
@@ -3650,7 +3669,7 @@ const categoryRankedPlayers = computed(() => {
     let projectedValue = 0, perGameValue = 0
     if (isRatioCategory.value) { projectedValue = currentValue; perGameValue = currentValue }
     else { perGameValue = gamesPlayed > 0 ? currentValue / gamesPlayed : 0; projectedValue = currentValue + (perGameValue * gamesRemaining) }
-    return { ...p, currentValue, projectedValue: Math.round(projectedValue * 10) / 10, perGameValue: Math.round(perGameValue * 1000) / 1000 }
+    return { ...p, currentValue, projectedValue: isRatioCategory.value ? projectedValue : Math.round(projectedValue * 10) / 10, perGameValue: Math.round(perGameValue * 1000) / 1000 }
   })
   
   if (isLowerBetter.value) { 
