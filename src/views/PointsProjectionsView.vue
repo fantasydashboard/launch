@@ -1696,6 +1696,7 @@ import { useAuthStore } from '@/stores/auth'
 import { usePlatformsStore } from '@/stores/platforms'
 import { yahooService } from '@/services/yahoo'
 import { espnService } from '@/services/espn'
+import { sleeperService } from '@/services/sleeper'
 import { useFeatureAccess } from '@/composables/useFeatureAccess'
 import SimulatedDataBanner from '@/components/SimulatedDataBanner.vue'
 import LoadingSpinner from '@/components/LoadingSpinner.vue'
@@ -3535,6 +3536,136 @@ async function loadProjections() {
   finally { isLoading.value = false }
 }
 
+// Sleeper version of loadProjections
+async function loadSleeperProjections() {
+  isLoading.value = true
+  loadingMessage.value = 'Loading Sleeper Data'
+  loadingProgress.value = { currentStep: 'Connecting to Sleeper...', currentStepName: 'Initializing', completedSteps: 0, totalSteps: 5 }
+
+  try {
+    const leagueId = leagueStore.activeLeagueId?.replace('sleeper_', '') || leagueStore.currentLeague?.league_id || ''
+    if (!leagueId) { isLoading.value = false; return }
+
+    // Load league info to get sport + roster positions
+    loadingProgress.value = { ...loadingProgress.value, currentStep: 'Loading league settings...', currentStepName: 'Settings', completedSteps: 1 }
+    const league = await sleeperService.getLeague(leagueId)
+    const sport = league.sport || 'nfl'
+    const mappedSport = sport === 'nba' ? 'basketball' : sport === 'nfl' ? 'football' : sport === 'mlb' ? 'baseball' : sport === 'nhl' ? 'hockey' : 'football'
+
+    // Build rosterPositions from league.roster_positions
+    if (league.roster_positions?.length) {
+      const nonRoster = new Set(['BN', 'IL', 'IR'])
+      rosterPositions.value = league.roster_positions
+        .filter((p: string) => !nonRoster.has(p))
+        .map((p: string) => ({ position_type: p, position: p }))
+    }
+
+    // Load users + rosters in parallel
+    loadingProgress.value = { ...loadingProgress.value, currentStep: 'Loading teams...', currentStepName: 'Teams', completedSteps: 2 }
+    const [users, rosters] = await Promise.all([
+      sleeperService.getLeagueUsers(leagueId),
+      sleeperService.getLeagueRosters(leagueId)
+    ])
+
+    // Build user map
+    const userMap = new Map(users.map((u: any) => [u.user_id, u]))
+
+    // Find my roster
+    const myUserId = leagueStore.currentLeague?.metadata?.user_id || authStore.user?.id
+    const myRoster = rosters.find((r: any) => r.owner_id === myUserId)
+    myTeamKey.value = myRoster ? `sleeper_${leagueId}_${myRoster.roster_id}` : null
+
+    // Build teamsData
+    teamsData.value = rosters.map((r: any) => {
+      const user = userMap.get(r.owner_id) as any
+      return {
+        team_key: `sleeper_${leagueId}_${r.roster_id}`,
+        team_id: String(r.roster_id),
+        name: user?.metadata?.team_name || user?.display_name || `Team ${r.roster_id}`,
+        logo_url: user?.avatar ? `https://sleepercdn.com/avatars/thumbs/${user.avatar}` : '',
+        is_my_team: r.owner_id === myUserId,
+        wins: r.settings?.wins || 0,
+        losses: r.settings?.losses || 0,
+        ties: r.settings?.ties || 0
+      }
+    })
+
+    // Load all players for the sport
+    loadingProgress.value = { ...loadingProgress.value, currentStep: 'Loading player database...', currentStepName: 'Players', completedSteps: 3 }
+    const allPlayerData = await sleeperService.getPlayersBySport(mappedSport)
+
+    // Flatten all player IDs from all rosters
+    loadingProgress.value = { ...loadingProgress.value, currentStep: 'Building rosters...', currentStepName: 'Rosters', completedSteps: 4 }
+    const allRosteredPlayers: any[] = []
+    const freeAgentPlayers: any[] = []
+    const rosteredIds = new Set<string>()
+
+    for (const roster of rosters) {
+      const team = teamsData.value.find((t: any) => t.team_id === String(roster.roster_id))
+      const teamKey = team?.team_key || null
+      const teamName = team?.name || `Team ${roster.roster_id}`
+
+      for (const playerId of (roster.players || [])) {
+        rosteredIds.add(playerId)
+        const p = allPlayerData[playerId]
+        if (!p) continue
+        const ppg = (roster.settings?.fpts || 0) > 0
+          ? ((roster.settings.fpts + (roster.settings.fpts_decimal || 0) / 100) / Math.max(roster.settings.wins + roster.settings.losses + (roster.settings.ties || 0), 1))
+          : 0
+        allRosteredPlayers.push({
+          player_key: `sleeper_${playerId}`,
+          player_id: playerId,
+          full_name: p.full_name || `${p.first_name || ''} ${p.last_name || ''}`.trim() || 'Unknown',
+          position: p.fantasy_positions?.[0] || p.position || 'UTIL',
+          mlb_team: p.team || 'FA',
+          headshot: `https://sleepercdn.com/content/${sport}/players/thumb/${playerId}.jpg`,
+          fantasy_team: teamName,
+          fantasy_team_key: teamKey,
+          stats: {},
+          total_points: roster.settings?.fpts || 0,
+          ppg: p.pts_ppr || p.pts_half_ppr || p.pts_std || 0
+        })
+      }
+    }
+
+    // Top free agents = players in allPlayerData not rostered, with some projected value
+    // Sleeper doesn't have a free agent endpoint for non-NFL, so we approximate
+    for (const [playerId, p] of Object.entries(allPlayerData as Record<string, any>)) {
+      if (rosteredIds.has(playerId)) continue
+      if (!p.active && p.status !== 'Active') continue
+      const pts = p.pts_ppr || p.pts_half_ppr || p.pts_std || 0
+      if (pts <= 0) continue
+      freeAgentPlayers.push({
+        player_key: `sleeper_${playerId}`,
+        player_id: playerId,
+        full_name: p.full_name || `${p.first_name || ''} ${p.last_name || ''}`.trim(),
+        position: p.fantasy_positions?.[0] || p.position || 'UTIL',
+        mlb_team: p.team || 'FA',
+        headshot: `https://sleepercdn.com/content/${sport}/players/thumb/${playerId}.jpg`,
+        fantasy_team: null,
+        fantasy_team_key: null,
+        stats: {},
+        total_points: 0,
+        ppg: pts
+      })
+    }
+
+    // Sort FAs by ppg and take top 150
+    freeAgentPlayers.sort((a, b) => (b.ppg || 0) - (a.ppg || 0))
+    const combined = [...allRosteredPlayers, ...freeAgentPlayers.slice(0, 150)]
+    allPlayers.value = combined
+
+    loadingProgress.value = { ...loadingProgress.value, currentStep: 'Calculating rankings...', currentStepName: 'Complete', completedSteps: 5 }
+    recalculateRankings()
+    console.log('[Sleeper Projections] Loaded', allRosteredPlayers.length, 'rostered +', Math.min(freeAgentPlayers.length, 150), 'FAs for sport:', mappedSport)
+  } catch (e) {
+    console.error('[Sleeper Projections] Error:', e)
+    loadingMessage.value = 'Error loading Sleeper data'
+  } finally {
+    isLoading.value = false
+  }
+}
+
 // ESPN Helper Functions
 function parseEspnLeagueKey(leagueKey: string): { leagueId: string; season: string; sport: string } {
   // Format: espn_baseball_1227422768_2025
@@ -3841,8 +3972,10 @@ watch(() => leagueStore.activeLeagueId, (id) => {
       loadEspnProjections()
     } else if (leagueStore.activePlatform === 'yahoo') {
       loadProjections()
+    } else if (leagueStore.activePlatform === 'sleeper') {
+      loadSleeperProjections()
     } else {
-      // For other platforms (Sleeper), stop loading
+      // For other platforms, stop loading
       console.log('[PointsProjections] Unsupported platform, stopping loading')
       isLoading.value = false
     }
@@ -3859,6 +3992,8 @@ watch(() => leagueStore.currentLeague?.league_id, (newKey, oldKey) => {
       loadEspnProjections()
     } else if (leagueStore.activePlatform === 'yahoo') {
       loadProjections()
+    } else if (leagueStore.activePlatform === 'sleeper') {
+      loadSleeperProjections()
     }
   }
 })
@@ -3870,6 +4005,8 @@ watch(() => leagueStore.activePlatform, (platform) => {
     loadEspnProjections()
   } else if (platform === 'yahoo' && leagueStore.activeLeagueId) {
     loadProjections()
+  } else if (platform === 'sleeper' && leagueStore.activeLeagueId) {
+    loadSleeperProjections()
   }
 })
 
@@ -3891,6 +4028,8 @@ onMounted(() => {
       loadEspnProjections()
     } else if (leagueStore.activePlatform === 'yahoo') {
       loadProjections()
+    } else if (leagueStore.activePlatform === 'sleeper') {
+      loadSleeperProjections()
     } else {
       console.log('[PointsProjections] Unsupported platform in onMounted')
       isLoading.value = false

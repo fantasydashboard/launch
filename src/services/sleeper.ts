@@ -110,6 +110,26 @@ class SleeperService {
     return this.playersCache
   }
 
+  async getPlayersBySport(sport: string): Promise<Record<string, SleeperPlayer>> {
+    const sportMap: Record<string, string> = {
+      football: 'nfl', nfl: 'nfl',
+      basketball: 'nba', nba: 'nba',
+      baseball: 'mlb', mlb: 'mlb',
+      hockey: 'nhl', nhl: 'nhl'
+    }
+    const sleeperSport = sportMap[sport] || 'nfl'
+    if (sleeperSport === 'nfl' && this.playersCache) return this.playersCache
+    const cacheKey = `sleeper_players_${sleeperSport}`
+    const cached = cache.get<Record<string, SleeperPlayer>>(cacheKey, sleeperSport)
+    if (cached) return cached
+    const response = await fetch(`${BASE_URL}/players/${sleeperSport}`)
+    if (!response.ok) throw new Error(`Failed to fetch ${sleeperSport} players`)
+    const data = await response.json()
+    cache.set(cacheKey, data, 24 * 60 * 60 * 1000, sleeperSport) // cache 24h - player list rarely changes
+    if (sleeperSport === 'nfl') this.playersCache = data
+    return data
+  }
+
   /**
    * Get all transactions for a league in a given week
    */
