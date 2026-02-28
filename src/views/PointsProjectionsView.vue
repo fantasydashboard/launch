@@ -3540,7 +3540,7 @@ async function loadProjections() {
 async function loadSleeperProjections() {
   isLoading.value = true
   loadingMessage.value = 'Loading Sleeper Data'
-  loadingProgress.value = { currentStep: 'Connecting to Sleeper...', currentStepName: 'Initializing', completedSteps: 0, totalSteps: 5 }
+  loadingProgress.value = { currentStep: 'Connecting to Sleeper...', currentStepName: 'Initializing', completedSteps: 0, totalSteps: 6 }
 
   try {
     const leagueId = leagueStore.activeLeagueId?.replace('sleeper_', '') || leagueStore.currentLeague?.league_id || ''
@@ -3549,7 +3549,7 @@ async function loadSleeperProjections() {
     // Load league info to get sport + roster positions
     loadingProgress.value = { ...loadingProgress.value, currentStep: 'Loading league settings...', currentStepName: 'Settings', completedSteps: 1 }
     const league = await sleeperService.getLeague(leagueId)
-    const sport = league.sport || 'nfl'
+    const sport = (league as any).sport || 'nfl'
     const mappedSport = sport === 'nba' ? 'basketball' : sport === 'nfl' ? 'football' : sport === 'mlb' ? 'baseball' : sport === 'nhl' ? 'hockey' : 'football'
 
     // Build rosterPositions from league.roster_positions
@@ -3567,15 +3567,11 @@ async function loadSleeperProjections() {
       sleeperService.getLeagueRosters(leagueId)
     ])
 
-    // Build user map
     const userMap = new Map(users.map((u: any) => [u.user_id, u]))
-
-    // Find my roster
     const myUserId = leagueStore.currentLeague?.metadata?.user_id || authStore.user?.id
     const myRoster = rosters.find((r: any) => r.owner_id === myUserId)
     myTeamKey.value = myRoster ? `sleeper_${leagueId}_${myRoster.roster_id}` : null
 
-    // Build teamsData
     teamsData.value = rosters.map((r: any) => {
       const user = userMap.get(r.owner_id) as any
       return {
@@ -3590,12 +3586,40 @@ async function loadSleeperProjections() {
       }
     })
 
-    // Load all players for the sport
-    loadingProgress.value = { ...loadingProgress.value, currentStep: 'Loading player database...', currentStepName: 'Players', completedSteps: 3 }
+    // Fetch all completed weeks of matchup data to get per-player actual fantasy points
+    // This is the most accurate approach - uses the league's own scoring settings
+    loadingProgress.value = { ...loadingProgress.value, currentStep: 'Loading season stats...', currentStepName: 'Stats', completedSteps: 3 }
+    const currentWeek = Math.max(1, league.settings?.leg || league.settings?.week || 1)
+    const weeksToFetch = Math.min(currentWeek, 25)
+
+    const weekPromises: Promise<any[]>[] = []
+    for (let w = 1; w <= weeksToFetch; w++) {
+      weekPromises.push(sleeperService.getMatchups(leagueId, w).catch(() => []))
+    }
+    const allWeekMatchups = await Promise.all(weekPromises)
+
+    // Build per-player points map: playerId -> { totalPoints, weeksWithGame }
+    const playerPointsMap = new Map<string, { total: number; weeks: number }>()
+    for (const weekMatchups of allWeekMatchups) {
+      for (const matchup of weekMatchups) {
+        if (!matchup.players_points) continue
+        for (const [playerId, pts] of Object.entries(matchup.players_points as Record<string, number>)) {
+          if (!playerPointsMap.has(playerId)) playerPointsMap.set(playerId, { total: 0, weeks: 0 })
+          const entry = playerPointsMap.get(playerId)!
+          if ((pts as number) > 0) { // only count weeks the player actually scored
+            entry.total += pts as number
+            entry.weeks += 1
+          }
+        }
+      }
+    }
+
+    // Load player database for names/positions/headshots
+    loadingProgress.value = { ...loadingProgress.value, currentStep: 'Loading player database...', currentStepName: 'Players', completedSteps: 4 }
     const allPlayerData = await sleeperService.getPlayersBySport(mappedSport)
 
-    // Flatten all player IDs from all rosters
-    loadingProgress.value = { ...loadingProgress.value, currentStep: 'Building rosters...', currentStepName: 'Rosters', completedSteps: 4 }
+    // Build rostered players with real PPG from matchup history
+    loadingProgress.value = { ...loadingProgress.value, currentStep: 'Building rosters...', currentStepName: 'Rosters', completedSteps: 5 }
     const allRosteredPlayers: any[] = []
     const freeAgentPlayers: any[] = []
     const rosteredIds = new Set<string>()
@@ -3606,15 +3630,16 @@ async function loadSleeperProjections() {
       const teamName = team?.name || `Team ${roster.roster_id}`
 
       for (const playerId of (roster.players || [])) {
-        rosteredIds.add(playerId)
-        const p = allPlayerData[playerId]
+        rosteredIds.add(String(playerId))
+        const p = allPlayerData[String(playerId)]
         if (!p) continue
-        const ppg = (roster.settings?.fpts || 0) > 0
-          ? ((roster.settings.fpts + (roster.settings.fpts_decimal || 0) / 100) / Math.max(roster.settings.wins + roster.settings.losses + (roster.settings.ties || 0), 1))
-          : 0
+        const pointsEntry = playerPointsMap.get(String(playerId))
+        const totalPts = pointsEntry?.total || 0
+        const weeksPlayed = Math.max(pointsEntry?.weeks || 1, 1)
+        const ppg = totalPts / weeksPlayed
         allRosteredPlayers.push({
           player_key: `sleeper_${playerId}`,
-          player_id: playerId,
+          player_id: String(playerId),
           full_name: p.full_name || `${p.first_name || ''} ${p.last_name || ''}`.trim() || 'Unknown',
           position: p.fantasy_positions?.[0] || p.position || 'UTIL',
           mlb_team: p.team || 'FA',
@@ -3622,19 +3647,21 @@ async function loadSleeperProjections() {
           fantasy_team: teamName,
           fantasy_team_key: teamKey,
           stats: {},
-          total_points: roster.settings?.fpts || 0,
-          ppg: p.pts_ppr || p.pts_half_ppr || p.pts_std || 0
+          total_points: totalPts,
+          ppg,
+          games_played: weeksPlayed
         })
       }
     }
 
-    // Top free agents = players in allPlayerData not rostered, with some projected value
-    // Sleeper doesn't have a free agent endpoint for non-NFL, so we approximate
-    for (const [playerId, p] of Object.entries(allPlayerData as Record<string, any>)) {
+    // Free agents: players NOT on a roster who actually scored this season
+    for (const [playerId, pointsEntry] of playerPointsMap.entries()) {
       if (rosteredIds.has(playerId)) continue
-      if (!p.active && p.status !== 'Active') continue
-      const pts = p.pts_ppr || p.pts_half_ppr || p.pts_std || 0
-      if (pts <= 0) continue
+      const p = allPlayerData[playerId]
+      if (!p) continue
+      const weeksPlayed = Math.max(pointsEntry.weeks, 1)
+      const ppg = pointsEntry.total / weeksPlayed
+      if (ppg <= 0) continue
       freeAgentPlayers.push({
         player_key: `sleeper_${playerId}`,
         player_id: playerId,
@@ -3645,19 +3672,19 @@ async function loadSleeperProjections() {
         fantasy_team: null,
         fantasy_team_key: null,
         stats: {},
-        total_points: 0,
-        ppg: pts
+        total_points: pointsEntry.total,
+        ppg,
+        games_played: weeksPlayed
       })
     }
 
-    // Sort FAs by ppg and take top 150
     freeAgentPlayers.sort((a, b) => (b.ppg || 0) - (a.ppg || 0))
     const combined = [...allRosteredPlayers, ...freeAgentPlayers.slice(0, 150)]
     allPlayers.value = combined
 
-    loadingProgress.value = { ...loadingProgress.value, currentStep: 'Calculating rankings...', currentStepName: 'Complete', completedSteps: 5 }
+    loadingProgress.value = { ...loadingProgress.value, currentStep: 'Calculating rankings...', currentStepName: 'Complete', completedSteps: 6 }
     recalculateRankings()
-    console.log('[Sleeper Projections] Loaded', allRosteredPlayers.length, 'rostered +', Math.min(freeAgentPlayers.length, 150), 'FAs for sport:', mappedSport)
+    console.log('[Sleeper Projections] Loaded', allRosteredPlayers.length, 'rostered +', freeAgentPlayers.length, 'FAs | Weeks:', weeksToFetch, '| Sport:', mappedSport)
   } catch (e) {
     console.error('[Sleeper Projections] Error:', e)
     loadingMessage.value = 'Error loading Sleeper data'
