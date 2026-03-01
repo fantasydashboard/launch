@@ -3155,7 +3155,14 @@ const rankedTeams = computed<TeamRanking[]>(() => {
     const first = players[0]
     const teamData = teamsData.value.find(t => t.team_key === teamKey)
     const byPos: Record<string, any[]> = {}
-    players.forEach(p => { const pos = p.position?.split(',')[0]?.trim() || 'Util'; if (!byPos[pos]) byPos[pos] = []; byPos[pos].push(p) })
+    const config = SPORT_POSITION_CONFIG[currentSport.value] || SPORT_POSITION_CONFIG.baseball
+    players.forEach(p => {
+      // Use all eligible positions so multi-position players show up in each bucket they qualify for
+      const eligiblePositions = (p.eligible_positions || [p.position?.split(',')[0]?.trim() || 'Util'])
+        .filter((ep: string) => config.positions.includes(ep))
+      const positionsToAdd = eligiblePositions.length > 0 ? eligiblePositions : [p.position?.split(',')[0]?.trim() || 'Util']
+      positionsToAdd.forEach((pos: string) => { if (!byPos[pos]) byPos[pos] = []; byPos[pos].push(p) })
+    })
     Object.values(byPos).forEach(arr => arr.sort((a, b) => (b.ppg || 0) - (a.ppg || 0)))
     const positionGrades: Record<string, string> = {}
     uniquePositions.value.forEach(pos => { positionGrades[pos] = calculateStarterGrade(byPos[pos] || [], getRosterSlotCount(pos)) })
@@ -3170,7 +3177,7 @@ const rankedTeams = computed<TeamRanking[]>(() => {
     const grades = Object.values(positionGrades)
     const depthScore = Math.max(0, 100 - grades.filter(g => g === 'F').length * 20 - grades.filter(g => g.startsWith('D')).length * 8)
     const statusScore = Math.round(avgVal * 0.5 + starScore * 0.25 + depthScore * 0.25)
-    teams.push({ teamKey, teamName: teamData?.name || first?.fantasy_team || 'Unknown', managerName: first?.manager_name || 'Unknown', logoUrl: teamData?.team_logos?.[0]?.url || teamData?.logo_url || '', isMyTeam: teamKey === myTeamKey.value, players: allTeamPlayers, positionGrades, overallGrade: getGradeFromValue(avgVal), statusScore })
+    teams.push({ teamKey, teamName: teamData?.name || first?.fantasy_team || 'Unknown', managerName: teamData?.manager_name || teamData?.owner_name || first?.manager_name || '', logoUrl: teamData?.team_logos?.[0]?.url || teamData?.logo_url || '', isMyTeam: teamKey === myTeamKey.value, players: allTeamPlayers, positionGrades, overallGrade: getGradeFromValue(avgVal), statusScore })
   })
   
   // Apply sorting
@@ -3578,6 +3585,8 @@ async function loadSleeperProjections() {
         team_key: `sleeper_${leagueId}_${r.roster_id}`,
         team_id: String(r.roster_id),
         name: user?.metadata?.team_name || user?.display_name || `Team ${r.roster_id}`,
+        owner_name: user?.display_name || user?.username || '',
+        manager_name: user?.display_name || user?.username || '',
         logo_url: user?.avatar ? `https://sleepercdn.com/avatars/thumbs/${user.avatar}` : '',
         is_my_team: r.owner_id === myUserId,
         wins: r.settings?.wins || 0,
@@ -3642,6 +3651,7 @@ async function loadSleeperProjections() {
           player_id: String(playerId),
           full_name: p.full_name || `${p.first_name || ''} ${p.last_name || ''}`.trim() || 'Unknown',
           position: p.fantasy_positions?.[0] || p.position || 'UTIL',
+          eligible_positions: p.fantasy_positions || [p.position || 'UTIL'],
           mlb_team: p.team || 'FA',
           headshot: `https://sleepercdn.com/content/${sport}/players/thumb/${playerId}.jpg`,
           fantasy_team: teamName,
@@ -3667,6 +3677,7 @@ async function loadSleeperProjections() {
         player_id: playerId,
         full_name: p.full_name || `${p.first_name || ''} ${p.last_name || ''}`.trim(),
         position: p.fantasy_positions?.[0] || p.position || 'UTIL',
+        eligible_positions: p.fantasy_positions || [p.position || 'UTIL'],
         mlb_team: p.team || 'FA',
         headshot: `https://sleepercdn.com/content/${sport}/players/thumb/${playerId}.jpg`,
         fantasy_team: null,
