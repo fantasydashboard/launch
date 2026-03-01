@@ -3582,9 +3582,13 @@ async function loadSleeperProjections() {
     ])
 
     const userMap = new Map(users.map((u: any) => [u.user_id, u]))
-    const myUserId = leagueStore.currentLeague?.metadata?.user_id || authStore.user?.id
+    // Use the Sleeper-specific currentUserId from leagueStore (set when Sleeper username was entered)
+    // Fall back to localStorage where it's persisted, then Supabase auth user ID as last resort
+    const myUserId = leagueStore.currentUserId || localStorage.getItem('ufd_current_user_id') || leagueStore.currentLeague?.metadata?.user_id || authStore.user?.id
+    console.log('[Sleeper Projections] Resolving myUserId:', myUserId, '(leagueStore.currentUserId:', leagueStore.currentUserId, ')')
     const myRoster = rosters.find((r: any) => r.owner_id === myUserId)
     myTeamKey.value = myRoster ? `sleeper_${leagueId}_${myRoster.roster_id}` : null
+    console.log('[Sleeper Projections] myRoster:', myRoster?.roster_id, '→ myTeamKey:', myTeamKey.value)
 
     teamsData.value = rosters.map((r: any) => {
       const user = userMap.get(r.owner_id) as any
@@ -3595,7 +3599,7 @@ async function loadSleeperProjections() {
         owner_name: user?.display_name || user?.username || '',
         manager_name: user?.display_name || user?.username || '',
         logo_url: user?.avatar ? `https://sleepercdn.com/avatars/thumbs/${user.avatar}` : '',
-        is_my_team: r.owner_id === myUserId,
+        is_my_team: !!(myUserId && r.owner_id === myUserId),
         wins: r.settings?.wins || 0,
         losses: r.settings?.losses || 0,
         ties: r.settings?.ties || 0
