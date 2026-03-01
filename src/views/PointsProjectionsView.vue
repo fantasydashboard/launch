@@ -465,300 +465,435 @@
 
     <!-- START/SIT TAB -->
     <template v-else-if="activeTab === 'startsit'">
-      <!-- Scoring Type Toggle -->
-      <div class="card">
-        <div class="card-body py-4">
-          <div class="flex items-center justify-between flex-wrap gap-4">
-            <div class="flex items-center gap-3">
-              <span class="text-dark-textMuted font-medium">Scoring Type:</span>
-              <div class="flex rounded-lg overflow-hidden border border-dark-border/50">
-                <button @click="scoringMode = 'daily'" :class="scoringMode === 'daily' ? 'bg-yellow-400 text-gray-900' : 'bg-dark-card text-dark-textMuted'" class="px-4 py-2 text-sm font-medium transition-colors">📅 Daily</button>
-                <button @click="scoringMode = 'weekly'" :class="scoringMode === 'weekly' ? 'bg-yellow-400 text-gray-900' : 'bg-dark-card text-dark-textMuted'" class="px-4 py-2 text-sm font-medium transition-colors">📆 Weekly</button>
-              </div>
-            </div>
-            <div class="flex items-center gap-3">
-              <template v-if="scoringMode === 'daily'">
-                <div class="flex rounded-lg overflow-hidden border border-dark-border/50">
-                  <button @click="setToday" :class="isToday ? 'bg-yellow-400 text-gray-900' : 'bg-dark-card text-dark-textMuted hover:bg-dark-border/50'" class="px-4 py-2 text-sm font-medium transition-colors">Today</button>
-                  <button @click="setTomorrow" :class="isTomorrow ? 'bg-yellow-400 text-gray-900' : 'bg-dark-card text-dark-textMuted hover:bg-dark-border/50'" class="px-4 py-2 text-sm font-medium transition-colors">Tomorrow</button>
-                </div>
-                <span class="text-dark-text font-semibold">{{ formatSelectedDate }}</span>
-              </template>
-              <template v-else>
-                <span class="text-dark-text font-semibold">Week {{ currentWeek }}</span>
-              </template>
-            </div>
-          </div>
-        </div>
-      </div>
-      
-      <!-- Projections Note -->
-      <div class="card bg-gradient-to-r from-purple-500/10 to-pink-500/10 border-purple-500/30">
-        <div class="card-body py-3">
-          <div class="flex items-center gap-3">
-            <span class="text-xl">ℹ️</span>
-            <span class="text-sm text-purple-300">
-              <span class="font-semibold">Start/Sit rankings use your league's real player stats (PPG, consistency).</span>
-              Game schedules and matchup difficulty are estimated. {{ scoringMode === 'daily' ? 'Use Tomorrow tab to plan waiver pickups before overnight processing.' : 'Weekly mode estimates games per week for each player.' }}
-            </span>
-          </div>
-        </div>
-      </div>
+      <div class="space-y-5">
 
-      <!-- Start/Sit Ranking Customization -->
-      <div class="card">
-        <div class="card-body">
-          <div class="flex items-center justify-between mb-4">
-            <div class="flex items-center gap-3">
-              <span class="text-2xl">🎚️</span>
-              <div>
-                <h3 class="text-lg font-bold text-dark-text">Start/Sit Rankings</h3>
-                <p class="text-xs text-dark-textMuted">{{ startSitFormulaDescription }}</p>
-              </div>
-            </div>
-            <button 
-              @click="showStartSitCustomization = !showStartSitCustomization"
-              class="text-yellow-400 hover:text-yellow-300 font-semibold transition-colors flex items-center gap-1"
-            >
-              <span>Customize formula</span>
-              <svg :class="{ 'rotate-90': showStartSitCustomization }" class="w-4 h-4 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
-              </svg>
-            </button>
-          </div>
-
-          <!-- Presets -->
-          <div class="flex flex-wrap gap-2 mb-3">
-            <button
-              v-for="preset in startSitPresets"
-              :key="preset.id"
-              @click="applyStartSitPreset(preset)"
-              :class="[
-                'px-4 py-2 rounded-xl font-medium transition-all flex items-center gap-2',
-                activeStartSitPreset === preset.id 
-                  ? 'bg-yellow-400 text-gray-900' 
-                  : 'bg-dark-border/50 text-dark-textSecondary hover:bg-dark-border'
-              ]"
-            >
-              <span class="text-lg">{{ preset.icon }}</span>
-              <span>{{ preset.name }}</span>
-            </button>
-          </div>
-
-          <!-- Expanded Customization -->
-          <div v-if="showStartSitCustomization" class="space-y-4 pt-4 border-t border-dark-border">
-            <!-- Category Tabs -->
-            <div class="flex gap-2 overflow-x-auto pb-2">
-              <button
-                v-for="category in startSitFactorCategories"
-                :key="category.id"
-                @click="activeStartSitCategory = category.id"
-                :class="[
-                  'px-4 py-2 rounded-lg font-medium transition-all whitespace-nowrap flex items-center gap-2',
-                  activeStartSitCategory === category.id
-                    ? 'bg-primary/20 text-primary border border-primary/30'
-                    : 'bg-dark-border/30 text-dark-textSecondary hover:bg-dark-border/50'
-                ]"
-              >
-                <span>{{ category.icon }}</span>
-                <span>{{ category.name }}</span>
-              </button>
-            </div>
-
-            <!-- Factor Sliders for Active Category -->
-            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              <div v-for="factor in startSitFactorsForActiveCategory" :key="factor.id" class="bg-dark-bg/50 rounded-xl p-4" :class="{ 'opacity-50': !factor.available }">
-                <div class="flex items-center justify-between mb-2">
+        <!-- HEADER: Date + Scoring Mode + Matchup Context -->
+        <div class="card bg-gradient-to-br from-purple-500/10 via-pink-500/10 to-blue-500/10 border-purple-500/30">
+          <div class="card-body py-4">
+            <div class="flex items-center justify-between flex-wrap gap-4">
+              <!-- Left: Date + mode -->
+              <div class="flex items-center gap-5">
+                <div>
+                  <div class="text-xs text-dark-textMuted uppercase mb-1">📅 {{ formatSelectedDate }}</div>
                   <div class="flex items-center gap-2">
-                    <input 
-                      type="checkbox" 
-                      v-model="factor.enabled" 
-                      :disabled="!factor.available"
-                      class="rounded accent-yellow-400" 
-                      @change="recalculateStartSit" 
-                    />
-                    <span class="font-medium text-dark-text">{{ factor.name }}</span>
-                    <span v-if="!factor.available" class="text-xs bg-dark-border/50 px-2 py-0.5 rounded text-dark-textMuted">Coming Soon</span>
+                    <div class="flex rounded-lg overflow-hidden border border-dark-border/50">
+                      <button @click="scoringMode = 'daily'" :class="scoringMode === 'daily' ? 'bg-yellow-400 text-gray-900' : 'bg-dark-card text-dark-textMuted hover:bg-dark-border/50'" class="px-3 py-1.5 text-xs font-semibold transition-colors">Daily</button>
+                      <button @click="scoringMode = 'weekly'" :class="scoringMode === 'weekly' ? 'bg-yellow-400 text-gray-900' : 'bg-dark-card text-dark-textMuted hover:bg-dark-border/50'" class="px-3 py-1.5 text-xs font-semibold transition-colors">Weekly</button>
+                    </div>
+                    <span v-if="scoringMode === 'daily'" class="text-xs text-yellow-400 font-mono">{{ formatSelectedDate }}</span>
+                    <span v-else class="text-xs text-yellow-400 font-mono">Week {{ currentWeek }}</span>
                   </div>
-                  <span class="text-sm font-bold" :class="factor.enabled && factor.available ? 'text-yellow-400' : 'text-dark-textMuted'">{{ factor.weight }}%</span>
                 </div>
-                <input 
-                  type="range" 
-                  v-model.number="factor.weight" 
-                  min="0" max="100" step="5"
-                  :disabled="!factor.enabled || !factor.available"
-                  class="w-full accent-yellow-400"
-                  @input="onStartSitFactorChange"
-                />
-                <p class="text-xs text-dark-textMuted mt-1">{{ factor.description }}</p>
+              </div>
+              <!-- Right: Ranking preset pills -->
+              <div class="flex items-center gap-2 flex-wrap">
+                <button v-for="preset in startSitPresets" :key="preset.id" @click="applyStartSitPreset(preset)"
+                  :class="activeStartSitPreset === preset.id ? 'bg-yellow-400 text-gray-900' : 'bg-dark-border/50 text-dark-textSecondary hover:bg-dark-border'"
+                  class="px-3 py-1.5 rounded-lg text-xs font-semibold transition-all flex items-center gap-1">
+                  <span>{{ preset.icon }}</span><span>{{ preset.name }}</span>
+                </button>
+                <button @click="showStartSitCustomization = !showStartSitCustomization"
+                  class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-dark-border/30 text-yellow-400 hover:bg-dark-border/50 transition-colors flex items-center gap-1">
+                  <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4" /></svg>
+                  Customize
+                </button>
               </div>
             </div>
 
-            <!-- Weight Warning -->
-            <div v-if="totalStartSitWeight !== 100" class="bg-orange-500/10 border border-orange-500/30 rounded-lg p-3">
-              <span class="text-orange-400 text-sm">⚠️ Weights total {{ totalStartSitWeight }}% (will be normalized to 100%)</span>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Legend & Filters -->
-      <div class="card">
-        <div class="card-body py-3">
-          <div class="flex items-center justify-between flex-wrap gap-4">
-            <div class="flex items-center gap-4">
-              <span class="text-dark-textMuted text-sm font-medium">Show:</span>
-              <div class="flex rounded-lg overflow-hidden border border-dark-border/50">
-                <button 
-                  @click="startSitPlayerFilter = 'all'" 
-                  :class="startSitPlayerFilter === 'all' ? 'bg-yellow-400 text-gray-900' : 'bg-dark-card text-dark-textMuted hover:bg-dark-border/50'" 
-                  class="px-3 py-1.5 text-sm font-medium transition-colors"
-                >All Players</button>
-                <button 
-                  @click="startSitPlayerFilter = 'mine'" 
-                  :class="startSitPlayerFilter === 'mine' ? 'bg-yellow-500 text-gray-900' : 'bg-dark-card text-dark-textMuted hover:bg-dark-border/50'" 
-                  class="px-3 py-1.5 text-sm font-medium transition-colors"
-                >My Team + FA</button>
-                <button 
-                  @click="startSitPlayerFilter = 'fa'" 
-                  :class="startSitPlayerFilter === 'fa' ? 'bg-cyan-500 text-gray-900' : 'bg-dark-card text-dark-textMuted hover:bg-dark-border/50'" 
-                  class="px-3 py-1.5 text-sm font-medium transition-colors"
-                >Free Agents</button>
+            <!-- Expanded Customization Panel -->
+            <div v-if="showStartSitCustomization" class="mt-4 pt-4 border-t border-dark-border/30 space-y-4">
+              <div class="flex gap-2 overflow-x-auto pb-1">
+                <button v-for="category in startSitFactorCategories" :key="category.id" @click="activeStartSitCategory = category.id"
+                  :class="activeStartSitCategory === category.id ? 'bg-primary/20 text-primary border border-primary/30' : 'bg-dark-border/30 text-dark-textSecondary hover:bg-dark-border/50'"
+                  class="px-3 py-1.5 rounded-lg text-xs font-medium transition-all whitespace-nowrap flex items-center gap-1">
+                  <span>{{ category.icon }}</span><span>{{ category.name }}</span>
+                </button>
+              </div>
+              <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+                <div v-for="factor in startSitFactorsForActiveCategory" :key="factor.id" class="bg-dark-bg/50 rounded-lg p-3" :class="{ 'opacity-50': !factor.available }">
+                  <div class="flex items-center justify-between mb-1">
+                    <div class="flex items-center gap-1.5">
+                      <input type="checkbox" v-model="factor.enabled" :disabled="!factor.available" class="rounded accent-yellow-400" @change="recalculateStartSit" />
+                      <span class="text-xs font-medium text-dark-text">{{ factor.name }}</span>
+                    </div>
+                    <span class="text-xs font-bold" :class="factor.enabled && factor.available ? 'text-yellow-400' : 'text-dark-textMuted'">{{ factor.weight }}%</span>
+                  </div>
+                  <input type="range" v-model.number="factor.weight" min="0" max="100" step="5" :disabled="!factor.enabled || !factor.available" class="w-full accent-yellow-400" @input="onStartSitFactorChange" />
+                </div>
+              </div>
+              <div v-if="totalStartSitWeight !== 100" class="bg-orange-500/10 border border-orange-500/30 rounded-lg p-2">
+                <span class="text-orange-400 text-xs">⚠️ Weights total {{ totalStartSitWeight }}% (will be normalized)</span>
               </div>
             </div>
-            <div class="flex items-center gap-6 text-sm">
-              <div class="flex items-center gap-2"><div class="w-4 h-4 rounded bg-yellow-500/30 border-l-2 border-yellow-400"></div><span class="text-dark-textMuted">My Players</span></div>
-              <div class="flex items-center gap-2"><div class="w-4 h-4 rounded bg-cyan-500/20 border-l-2 border-cyan-400"></div><span class="text-dark-textMuted">Free Agents</span></div>
-            </div>
-            <div class="text-sm text-dark-textMuted">
-              <span class="text-green-400">Must Start</span> / <span class="text-lime-400">Start</span> / <span class="text-yellow-400">Flex</span> / <span class="text-orange-400">Sit</span> / <span class="text-red-400">Avoid</span>
+          </div>
+        </div>
+
+        <!-- CONTROLS BAR -->
+        <div class="card">
+          <div class="card-body py-3">
+            <div class="flex items-center justify-between flex-wrap gap-3">
+              <div class="flex items-center gap-2">
+                <span class="text-xs text-dark-textMuted uppercase">Date:</span>
+                <div class="flex rounded-lg overflow-hidden border border-dark-border/50">
+                  <button @click="setToday" :class="isToday ? 'bg-yellow-400 text-gray-900' : 'bg-dark-card text-dark-textMuted hover:bg-dark-border/50'" class="px-3 py-1.5 text-xs font-semibold transition-colors">Today</button>
+                  <button @click="setTomorrow" :class="isTomorrow ? 'bg-yellow-400 text-gray-900' : 'bg-dark-card text-dark-textMuted hover:bg-dark-border/50'" class="px-3 py-1.5 text-xs font-semibold transition-colors">Tomorrow</button>
+                </div>
+                <span class="text-xs text-yellow-400 font-mono">{{ formatSelectedDate }}</span>
+              </div>
+              <div class="flex items-center gap-2">
+                <span class="text-xs text-dark-textMuted uppercase">Position:</span>
+                <select v-model="selectedStartSitPosition" class="px-3 py-1.5 text-xs font-semibold bg-dark-card text-dark-text border border-dark-border/50 rounded-lg focus:outline-none focus:border-yellow-400">
+                  <option value="">All Positions</option>
+                  <option v-for="pos in startSitPositions" :key="pos.id" :value="pos.id">{{ pos.label }}</option>
+                </select>
+              </div>
+              <div class="flex items-center gap-2">
+                <span class="text-xs text-dark-textMuted uppercase">Show:</span>
+                <div class="flex rounded-lg overflow-hidden border border-dark-border/50">
+                  <button @click="startSitPlayerFilter = 'mine'" :class="startSitPlayerFilter === 'mine' ? 'bg-yellow-500 text-gray-900' : 'bg-dark-card text-dark-textMuted hover:bg-dark-border/50'" class="px-3 py-1.5 text-xs font-semibold transition-colors">My Team + FA</button>
+                  <button @click="startSitPlayerFilter = 'all'" :class="startSitPlayerFilter === 'all' ? 'bg-yellow-400 text-gray-900' : 'bg-dark-card text-dark-textMuted hover:bg-dark-border/50'" class="px-3 py-1.5 text-xs font-semibold transition-colors">All Players</button>
+                </div>
+              </div>
             </div>
           </div>
         </div>
-      </div>
 
-      <!-- Main Content -->
-      <div class="flex gap-6">
-        <div class="flex-1 min-w-0">
-          <!-- Position Selector -->
-          <div class="flex items-center gap-2 mb-4 flex-wrap">
-            <button v-for="pos in startSitPositions" :key="pos.id" @click="selectedStartSitPosition = pos.id"
-              :class="selectedStartSitPosition === pos.id ? 'bg-yellow-400 text-gray-900' : 'bg-dark-border/30 text-dark-textSecondary hover:text-dark-text'"
-              class="px-4 py-2 rounded-lg text-sm font-medium transition-all">{{ pos.label }}</button>
-          </div>
-
-          <!-- Position Card -->
-          <div class="card">
-            <div class="card-header">
+        <!-- TODAY'S LINEUP -->
+        <div class="card">
+          <div class="card-header">
+            <div class="flex items-center justify-between">
+              <div class="flex items-center gap-2">
+                <span class="text-2xl">🏆</span>
+                <div>
+                  <h2 class="text-xl font-bold text-dark-text">{{ scoringMode === 'daily' ? (isToday ? "Today's" : "Tomorrow's") : "This Week's" }} Lineup</h2>
+                  <p class="text-xs text-dark-textMuted">Optimized players with games</p>
+                </div>
+              </div>
               <div class="flex items-center gap-3">
-                <span class="px-3 py-1 rounded text-sm font-bold" :class="getPositionClass(selectedStartSitPosition)">{{ selectedStartSitPosition }}</span>
-                <h2 class="card-title">{{ scoringMode === 'daily' ? "Today's" : "This Week's" }} Rankings</h2>
+                <div class="flex items-center gap-1 text-xs text-yellow-400">
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 15l-2 5L9 9l11 4-5 2zm0 0l5 5M7.188 2.239l.777 2.897M5.136 7.965l-2.898-.777M13.95 4.05l-2.122 2.122m-5.657 5.656l-2.12 2.122" /></svg>
+                  <span>Click player for details</span>
+                </div>
+                <div class="text-xs text-dark-textMuted">
+                  {{ modifiedSuggestedLineup.filter(s => s.player).length }} / {{ modifiedSuggestedLineup.length }} slots filled
+                </div>
+                <button v-if="waiverLineupPlayers.length > 0" @click="clearWaiverLineup" class="px-2 py-1 text-xs font-medium bg-red-500/20 text-red-400 rounded hover:bg-red-500/30 transition-colors">Clear</button>
+                <button @click="downloadSuggestedLineup" class="px-2 py-1 text-xs font-medium bg-yellow-500/20 text-yellow-400 rounded hover:bg-yellow-500/30 transition-colors flex items-center gap-1">
+                  <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
+                  Export
+                </button>
               </div>
-              <div class="text-sm text-dark-textMuted">{{ getStartSitPlayers(selectedStartSitPosition).filter(p => isMyPlayer(p)).length }} rostered</div>
             </div>
-            <div class="card-body p-0">
-              <div class="overflow-x-auto max-h-[65vh] overflow-y-auto">
-                <table class="w-full">
-                  <thead class="bg-dark-border/30 sticky top-0 z-10">
-                    <tr>
-                      <th class="px-3 py-3 text-left text-xs font-semibold text-dark-textMuted uppercase w-14">Rank</th>
-                      <th class="px-3 py-3 text-left text-xs font-semibold text-dark-textMuted uppercase">Player</th>
-                      <th class="px-2 py-3 text-center text-xs font-semibold text-dark-textMuted uppercase w-24">{{ scoringMode === 'daily' ? 'Matchup' : 'Games' }}</th>
-                      <th class="px-2 py-3 text-center text-xs font-semibold text-dark-textMuted uppercase w-20">Difficulty</th>
-                      <th class="px-2 py-3 text-center text-xs font-semibold text-dark-textMuted uppercase w-16">PPG</th>
-                      <th class="px-2 py-3 text-center text-xs font-semibold text-dark-textMuted uppercase w-16"><span class="text-yellow-400">Score</span></th>
-                      <th class="px-2 py-3 text-center text-xs font-semibold text-dark-textMuted uppercase w-14">Tier</th>
-                      <th class="px-2 py-3 text-center text-xs font-semibold text-dark-textMuted uppercase w-24">Verdict</th>
-                    </tr>
-                  </thead>
-                  <tbody class="divide-y divide-dark-border/30">
-                    <template v-for="(player, index) in gatedGetStartSitPlayers(selectedStartSitPosition)" :key="player.player_key">
-                      <tr v-if="showTierBreak(player, index, selectedStartSitPosition)" class="bg-dark-border/10">
-                        <td colspan="8" class="px-4 py-2">
-                          <div class="flex items-center gap-2">
-                            <div class="h-px flex-1 bg-yellow-400/30"></div>
-                            <span class="text-xs font-bold text-yellow-400 uppercase">Tier {{ player.tier }}</span>
-                            <div class="h-px flex-1 bg-yellow-400/30"></div>
-                          </div>
-                        </td>
-                      </tr>
-                      <tr 
-                        :class="[getStartSitRowClass(player), { 'cursor-pointer': isFreeAgent(player), 'bg-cyan-500/10': isInWaiverLineup(player) }]" 
-                        class="hover:bg-dark-border/20 transition-colors"
-                        @click="isFreeAgent(player) && handleAddPlayer(player)"
-                      >
-                        <td class="px-3 py-2"><span class="font-bold text-lg text-dark-text">{{ index + 1 }}</span></td>
-                        <td class="px-3 py-2">
-                          <div class="flex items-center gap-3">
-                            <div class="relative">
-                              <div class="w-10 h-10 rounded-full bg-dark-border overflow-hidden ring-2" :class="[getStartSitAvatarRingClass(player), { 'ring-cyan-400': isInWaiverLineup(player) }]">
-                                <img :src="player.headshot || defaultHeadshot" :alt="player.full_name" class="w-full h-full object-cover" @error="handleImageError" />
-                              </div>
-                              <div v-if="isMyPlayer(player)" class="absolute -top-1 -right-1 w-5 h-5 bg-yellow-400 rounded-full flex items-center justify-center"><span class="text-xs text-gray-900 font-bold">★</span></div>
-                              <div v-else-if="isInWaiverLineup(player)" class="absolute -top-1 -right-1 w-5 h-5 bg-cyan-400 rounded-full flex items-center justify-center"><span class="text-xs text-gray-900 font-bold">W</span></div>
-                              <div v-else-if="isFreeAgent(player)" class="absolute -top-1 -right-1 w-5 h-5 bg-cyan-400 rounded-full flex items-center justify-center"><span class="text-xs text-gray-900 font-bold">+</span></div>
-                            </div>
-                            <div>
-                              <span class="font-semibold" :class="[getStartSitPlayerNameClass(player), { 'text-cyan-400': isInWaiverLineup(player) }]">{{ player.full_name }}</span>
-                              <div class="flex items-center gap-2 text-xs text-dark-textMuted">
-                                <span>{{ player.mlb_team || 'FA' }}</span>
-                                <span class="text-dark-border">•</span>
-                                <template v-if="player.fantasy_team">
-                                  <img :src="platformLogo" :alt="platformName" class="w-3 h-3 opacity-60" />
-                                  <span :class="isMyPlayer(player) ? 'text-yellow-400' : ''">{{ player.fantasy_team }}</span>
-                                </template>
-                                <span v-else-if="isInWaiverLineup(player)" class="text-cyan-400">📋 Added to lineup</span>
-                                <span v-else class="text-cyan-400">Free Agent</span>
-                              </div>
-                            </div>
-                          </div>
-                        </td>
-                        <td class="px-2 py-2 text-center">
-                          <span v-if="scoringMode === 'daily'" class="text-xs font-medium" :class="player.opponent ? 'text-dark-text' : 'text-dark-textMuted italic'">
-                            <span v-if="player.opponent">{{ player.opponent }}</span>
-                            <span v-else>No Game</span>
-                            <span v-if="player.isHome && player.hasGame" class="ml-1 text-[10px] text-green-400">(H)</span>
-                            <span v-else-if="player.hasGame" class="ml-1 text-[10px] text-dark-textMuted">(A)</span>
-                          </span>
-                          <span v-else class="text-xs text-dark-text font-medium">{{ player.gamesThisWeek || 0 }} games</span>
-                        </td>
-                        <td class="px-2 py-2 text-center">
-                          <template v-if="player.hasGame">
-                            <span class="px-2 py-0.5 rounded text-xs font-bold" :class="getMatchupClass(player.matchupDifficulty)">
-                              {{ getMatchupLabel(player.matchupDifficulty) }}
-                            </span>
-                          </template>
-                          <span v-else class="text-xs text-dark-textMuted">—</span>
-                        </td>
-                        <td class="px-2 py-2 text-center"><span class="text-sm text-dark-textMuted">{{ player.ppg?.toFixed(1) || '0.0' }}</span></td>
-                        <td class="px-2 py-2 text-center"><span class="font-bold text-sm text-primary">{{ player.compositeScore?.toFixed(1) || '—' }}</span></td>
-                        <td class="px-2 py-2 text-center"><span class="text-xs font-bold" :class="getTierColorClass(player.tier)">{{ player.tier || '—' }}</span></td>
-                        <td class="px-2 py-2 text-center"><span class="px-2 py-1 rounded text-xs font-bold" :class="getVerdictClass(player.verdict)">{{ player.verdict }}</span></td>
-                      </tr>
-                    </template>
-                    <tr v-if="gatedGetStartSitPlayers(selectedStartSitPosition).length === 0">
-                      <td colspan="8" class="px-4 py-8 text-center text-dark-textMuted">No {{ selectedStartSitPosition }} players found{{ scoringMode === 'daily' ? ' playing today' : '' }}</td>
-                    </tr>
-                  </tbody>
-                </table>
-                
-                <!-- Gated start/sit overlay -->
-                <div v-if="getHiddenStartSitCount(selectedStartSitPosition) > 0" class="relative">
-                  <div class="blur-sm select-none pointer-events-none opacity-50 border-t border-dark-border/30">
-                    <div v-for="i in Math.min(getHiddenStartSitCount(selectedStartSitPosition), 3)" :key="'startsit-preview-' + i" class="flex items-center gap-4 px-4 py-3 border-b border-dark-border/20">
-                      <div class="w-6 h-4 bg-dark-border/50 rounded"></div>
-                      <div class="w-10 h-10 rounded-full bg-dark-border/50"></div>
-                      <div class="flex-1"><div class="h-4 w-32 bg-dark-border/50 rounded mb-1"></div><div class="h-3 w-20 bg-dark-border/40 rounded"></div></div>
-                      <div class="h-6 w-16 bg-dark-border/40 rounded"></div>
+          </div>
+          <div class="card-body p-0">
+            <div class="divide-y divide-dark-border/20">
+              <template v-for="(slot, idx) in modifiedSuggestedLineup" :key="idx">
+                <div class="flex items-center gap-3 px-4 py-3 hover:bg-dark-border/10 transition-colors"
+                  :class="slot.isWaiver ? 'bg-cyan-500/5 border-l-2 border-cyan-400' : ''"
+                >
+                  <!-- Position badge -->
+                  <div class="flex-shrink-0 w-12">
+                    <span class="px-2 py-1 rounded text-xs font-bold uppercase inline-block" :class="getPositionClass(slot.position)">{{ slot.position }}</span>
+                  </div>
+
+                  <template v-if="slot.player">
+                    <!-- Avatar -->
+                    <div class="w-10 h-10 rounded-full bg-dark-border overflow-hidden flex-shrink-0" :class="slot.isWaiver ? 'ring-2 ring-cyan-400' : ''">
+                      <img :src="slot.player.headshot || defaultHeadshot" class="w-full h-full object-cover" @error="handleImageError" />
+                    </div>
+                    <!-- Player Info -->
+                    <div class="flex-1 min-w-0">
+                      <div class="font-semibold text-dark-text text-sm" :class="slot.isWaiver ? 'text-cyan-400' : isMyPlayer(slot.player) ? 'text-yellow-400' : ''">
+                        {{ slot.player.full_name }}
+                        <span v-if="slot.isWaiver" class="ml-1.5 text-[10px] bg-cyan-500/20 text-cyan-400 px-1.5 py-0.5 rounded font-bold">WAIVER</span>
+                      </div>
+                      <div class="flex items-center gap-2 text-xs">
+                        <span v-if="slot.player.opponent" class="text-green-400 flex items-center gap-1">
+                          <span>{{ slot.player.opponent }}</span>
+                        </span>
+                        <span v-else-if="scoringMode === 'weekly'" class="text-dark-textMuted">{{ slot.player.gamesThisWeek || 0 }} games this week</span>
+                        <span v-else class="text-red-400">No game</span>
+                      </div>
+                    </div>
+                    <!-- Projected score -->
+                    <div class="text-right flex-shrink-0 px-2">
+                      <div class="text-base font-bold text-yellow-400">{{ slot.player.projection?.toFixed(0) || slot.player.compositeScore?.toFixed(0) || '—' }}</div>
+                      <div class="text-[9px] text-dark-textMuted uppercase">Score</div>
+                    </div>
+                    <!-- Status dot -->
+                    <div class="w-2 h-2 rounded-full flex-shrink-0" :class="slot.player.opponent ? 'bg-green-400' : 'bg-red-400/50'"></div>
+                    <!-- Remove waiver -->
+                    <button v-if="slot.isWaiver" @click="removeFromWaiverLineup(slot.player)" class="text-red-400 hover:text-red-300 transition-colors flex-shrink-0">
+                      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
+                    </button>
+                  </template>
+
+                  <template v-else>
+                    <div class="w-10 h-10 rounded-full bg-dark-border/30 flex-shrink-0"></div>
+                    <div class="flex-1">
+                      <span class="text-dark-textMuted italic text-sm">Empty slot</span>
+                    </div>
+                    <button class="px-3 py-1 text-xs bg-cyan-500/20 text-cyan-400 rounded hover:bg-cyan-500/30 transition-colors" @click="selectedStartSitPosition = slot.position">
+                      Find Player
+                    </button>
+                  </template>
+                </div>
+              </template>
+            </div>
+
+            <!-- Projected Total Bar -->
+            <div class="px-4 py-3 bg-dark-border/20 border-t border-dark-border/30 flex items-center justify-between">
+              <span class="text-dark-textMuted text-sm">Projected Total</span>
+              <div class="flex items-center gap-3">
+                <span v-if="waiverLineupPlayers.length > 0" :class="modifiedSuggestedLineupTotal - suggestedLineupTotal >= 0 ? 'text-green-400' : 'text-red-400'" class="text-sm font-semibold">
+                  {{ modifiedSuggestedLineupTotal - suggestedLineupTotal >= 0 ? '+' : '' }}{{ (modifiedSuggestedLineupTotal - suggestedLineupTotal).toFixed(1) }} vs original
+                </span>
+                <span class="text-xl font-bold text-yellow-400">{{ modifiedSuggestedLineupTotal.toFixed(1) }}</span>
+              </div>
+            </div>
+
+            <!-- Bench -->
+            <div v-if="benchPlayers.length > 0" class="border-t border-dark-border/30">
+              <div class="px-4 py-2 bg-dark-border/10">
+                <span class="text-xs font-semibold text-dark-textMuted uppercase">Bench ({{ benchPlayers.length }})</span>
+              </div>
+              <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-0 divide-y divide-x divide-dark-border/20">
+                <div v-for="player in benchPlayers" :key="player.player_key" class="flex items-center gap-2 px-3 py-2">
+                  <div class="w-7 h-7 rounded-full bg-dark-border overflow-hidden flex-shrink-0">
+                    <img :src="player.headshot || defaultHeadshot" class="w-full h-full object-cover" @error="handleImageError" />
+                  </div>
+                  <div class="flex-1 min-w-0">
+                    <div class="text-xs font-medium text-dark-text truncate">{{ player.full_name }}</div>
+                    <div class="text-[10px] text-dark-textMuted">
+                      <span class="mr-1">{{ player.position?.split(',')[0] }}</span>
+                      <span v-if="player.opponent" class="text-green-400">{{ player.opponent }}</span>
+                      <span v-else class="text-red-400/60">No game</span>
                     </div>
                   </div>
-                  <div class="absolute inset-0 flex items-center justify-center bg-gradient-to-t from-dark-bg via-dark-bg/95 to-transparent">
-                    <div class="text-center p-6">
-                      <div class="text-4xl mb-3">🔒</div>
-                      <h3 class="text-lg font-bold text-dark-text mb-2">{{ getHiddenStartSitCount(selectedStartSitPosition) }} More Players</h3>
-                      <p class="text-sm text-dark-textMuted mb-4">Unlock full start/sit recommendations</p>
-                      <button @click="$router.push('/pricing')" class="px-6 py-2.5 bg-gradient-to-r from-yellow-500 to-orange-500 text-gray-900 font-bold rounded-lg transition-all transform hover:scale-105">Go Ultimate - $4.99/mo</button>
-                    </div>
+                  <div class="text-xs font-bold text-dark-textMuted flex-shrink-0">{{ player.projection?.toFixed(0) || '—' }}</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- AVAILABLE PLAYERS TABLE -->
+        <div class="card">
+          <div class="card-header">
+            <div class="flex items-center justify-between">
+              <div class="flex items-center gap-2">
+                <span class="text-2xl">📋</span>
+                <div>
+                  <h2 class="text-xl font-bold text-dark-text">Available Players</h2>
+                  <p class="text-xs text-dark-textMuted">Free agents with games {{ isToday ? 'today' : 'tomorrow' }} · Today's projections</p>
+                </div>
+              </div>
+              <div class="flex items-center gap-2 text-xs text-dark-textMuted">
+                <svg class="w-4 h-4 text-yellow-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 15l-2 5L9 9l11 4-5 2zm0 0l5 5" /></svg>
+                <span class="text-yellow-400">Click to add to lineup</span>
+                <span>· {{ filteredBestAvailable.length }} players</span>
+              </div>
+            </div>
+          </div>
+          <div class="card-body p-0 overflow-x-auto">
+            <div class="max-h-[600px] overflow-y-auto">
+              <table class="w-full min-w-[700px]">
+                <thead class="sticky top-0 z-30">
+                  <tr class="bg-[#1e2028] text-xs font-bold text-dark-textMuted uppercase border-b border-dark-border/20">
+                    <th class="text-left px-4 py-2.5 sticky left-0 bg-[#1e2028] z-40 min-w-[220px]">Player</th>
+                    <th class="text-center px-2 py-2.5 min-w-[90px]">Matchup</th>
+                    <th class="text-center px-2 py-2.5 min-w-[55px]">PPG</th>
+                    <th class="text-center px-2 py-2.5 min-w-[60px] text-yellow-400">Score ↓</th>
+                    <th class="text-center px-2 py-2.5 min-w-[50px]">Tier</th>
+                    <th class="text-center px-2 py-2.5 min-w-[80px]">Verdict</th>
+                    <th class="px-2 py-2.5 w-[80px]"></th>
+                  </tr>
+                </thead>
+                <tbody class="divide-y divide-dark-border/10">
+                  <tr
+                    v-for="player in filteredBestAvailable"
+                    :key="player.player_key"
+                    class="hover:bg-dark-border/10 transition-colors cursor-pointer"
+                    :class="{ 'bg-cyan-500/10 border-l-2 border-cyan-400': isInWaiverLineup(player) }"
+                    @click="handleAddPlayer(player)"
+                  >
+                    <!-- Player -->
+                    <td class="px-4 py-2.5 sticky left-0 bg-dark-card z-10">
+                      <div class="flex items-center gap-2 min-w-0">
+                        <div class="w-9 h-9 rounded-full bg-dark-border overflow-hidden flex-shrink-0 ring-2 ring-cyan-500/50">
+                          <img :src="player.headshot || defaultHeadshot" class="w-full h-full object-cover" @error="handleImageError" />
+                        </div>
+                        <div class="min-w-0">
+                          <div class="font-semibold text-dark-text text-sm truncate" :class="{ 'text-cyan-400': isInWaiverLineup(player) }">{{ player.full_name }}</div>
+                          <div class="flex items-center gap-1.5 text-xs">
+                            <span class="px-1.5 py-0.5 rounded text-[10px] font-bold" :class="getPositionClass(player.position)">{{ player.position?.split(',')[0] }}</span>
+                            <span class="text-dark-textMuted">{{ player.mlb_team || 'FA' }}</span>
+                            <template v-if="player.opponent">
+                              <span class="text-dark-textMuted">·</span>
+                              <span class="text-green-400">{{ player.opponent }}</span>
+                            </template>
+                            <template v-else>
+                              <span class="text-dark-textMuted">·</span>
+                              <span class="text-red-400">No game</span>
+                            </template>
+                          </div>
+                        </div>
+                      </div>
+                    </td>
+                    <!-- Matchup Difficulty -->
+                    <td class="px-2 py-2.5 text-center">
+                      <template v-if="player.opponent">
+                        <span class="inline-flex items-center gap-1 px-2 py-1 rounded-full text-[10px] font-bold uppercase" :class="getMatchupClass(player.matchupDifficulty)">
+                          {{ getMatchupLabel(player.matchupDifficulty) }}
+                        </span>
+                      </template>
+                      <span v-else class="text-xs text-dark-textMuted">—</span>
+                    </td>
+                    <!-- PPG -->
+                    <td class="px-2 py-2.5 text-center">
+                      <span class="text-sm font-semibold text-dark-text">{{ player.ppg?.toFixed(1) || '0.0' }}</span>
+                    </td>
+                    <!-- Score -->
+                    <td class="px-2 py-2.5 text-center">
+                      <span class="text-base font-black text-yellow-400">{{ player.compositeScore?.toFixed(0) || '—' }}</span>
+                    </td>
+                    <!-- Tier -->
+                    <td class="px-2 py-2.5 text-center">
+                      <span class="text-xs font-bold" :class="getTierColorClass(player.tier)">{{ player.tier || '—' }}</span>
+                    </td>
+                    <!-- Verdict -->
+                    <td class="px-2 py-2.5 text-center">
+                      <span class="px-2 py-1 rounded text-xs font-bold" :class="getVerdictClass(player.verdict)">{{ player.verdict || '—' }}</span>
+                    </td>
+                    <!-- Add/Remove -->
+                    <td class="px-2 py-2.5 text-right">
+                      <button v-if="!isInWaiverLineup(player)"
+                        class="px-2.5 py-1.5 text-xs font-semibold bg-cyan-500/20 text-cyan-400 rounded hover:bg-cyan-500/30 transition-colors"
+                        @click.stop="handleAddPlayer(player)">
+                        + Add
+                      </button>
+                      <button v-else
+                        class="px-2.5 py-1.5 text-xs font-semibold bg-red-500/20 text-red-400 rounded hover:bg-red-500/30 transition-colors"
+                        @click.stop="togglePlayerInLineup(player)">
+                        Remove
+                      </button>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <div v-if="filteredBestAvailable.length === 0" class="p-12 text-center">
+              <div class="text-4xl mb-3">📭</div>
+              <div class="text-lg font-bold text-dark-text mb-2">No Available Players</div>
+              <div class="text-sm text-dark-textMuted">No free agents have games {{ isToday ? 'today' : 'tomorrow' }}</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- My Roster Rankings (collapsed position table kept for reference/power users) -->
+        <div class="card">
+          <div class="card-header cursor-pointer" @click="showStartSitRankings = !showStartSitRankings">
+            <div class="flex items-center gap-2">
+              <span class="text-xl">📊</span>
+              <h2 class="card-title">My Roster Rankings</h2>
+              <span class="text-xs text-dark-textMuted ml-2">{{ getStartSitPlayers(selectedStartSitPosition || 'PG').filter(p => isMyPlayer(p)).length }} rostered · all positions</span>
+            </div>
+            <svg :class="{ 'rotate-180': showStartSitRankings }" class="w-5 h-5 text-dark-textMuted transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+            </svg>
+          </div>
+          <div v-if="showStartSitRankings" class="card-body p-0">
+            <!-- Position tabs -->
+            <div class="flex items-center gap-2 px-4 pt-3 pb-2 flex-wrap border-b border-dark-border/20">
+              <button v-for="pos in startSitPositions" :key="pos.id" @click="selectedStartSitPosition = pos.id"
+                :class="selectedStartSitPosition === pos.id ? 'bg-yellow-400 text-gray-900' : 'bg-dark-border/30 text-dark-textSecondary hover:text-dark-text'"
+                class="px-3 py-1.5 rounded-lg text-xs font-semibold transition-all">{{ pos.label }}</button>
+            </div>
+            <div class="overflow-x-auto max-h-[500px] overflow-y-auto">
+              <table class="w-full">
+                <thead class="bg-dark-border/30 sticky top-0 z-10">
+                  <tr>
+                    <th class="px-3 py-2.5 text-left text-xs font-semibold text-dark-textMuted uppercase w-12">Rank</th>
+                    <th class="px-3 py-2.5 text-left text-xs font-semibold text-dark-textMuted uppercase">Player</th>
+                    <th class="px-2 py-2.5 text-center text-xs font-semibold text-dark-textMuted uppercase w-24">{{ scoringMode === 'daily' ? 'Matchup' : 'Games' }}</th>
+                    <th class="px-2 py-2.5 text-center text-xs font-semibold text-dark-textMuted uppercase w-20">Difficulty</th>
+                    <th class="px-2 py-2.5 text-center text-xs font-semibold text-dark-textMuted uppercase w-16">PPG</th>
+                    <th class="px-2 py-2.5 text-center text-xs font-semibold text-dark-textMuted uppercase w-16"><span class="text-yellow-400">Score</span></th>
+                    <th class="px-2 py-2.5 text-center text-xs font-semibold text-dark-textMuted uppercase w-14">Tier</th>
+                    <th class="px-2 py-2.5 text-center text-xs font-semibold text-dark-textMuted uppercase w-24">Verdict</th>
+                  </tr>
+                </thead>
+                <tbody class="divide-y divide-dark-border/30">
+                  <template v-for="(player, index) in gatedGetStartSitPlayers(selectedStartSitPosition || startSitPositions[0]?.id)" :key="player.player_key">
+                    <tr v-if="showTierBreak(player, index, selectedStartSitPosition || startSitPositions[0]?.id)" class="bg-dark-border/10">
+                      <td colspan="8" class="px-4 py-1.5">
+                        <div class="flex items-center gap-2">
+                          <div class="h-px flex-1 bg-yellow-400/30"></div>
+                          <span class="text-xs font-bold text-yellow-400 uppercase">Tier {{ player.tier }}</span>
+                          <div class="h-px flex-1 bg-yellow-400/30"></div>
+                        </div>
+                      </td>
+                    </tr>
+                    <tr :class="[getStartSitRowClass(player)]" class="hover:bg-dark-border/20 transition-colors">
+                      <td class="px-3 py-2"><span class="font-bold text-dark-text">{{ index + 1 }}</span></td>
+                      <td class="px-3 py-2">
+                        <div class="flex items-center gap-2">
+                          <div class="relative">
+                            <div class="w-9 h-9 rounded-full bg-dark-border overflow-hidden ring-2" :class="getStartSitAvatarRingClass(player)">
+                              <img :src="player.headshot || defaultHeadshot" :alt="player.full_name" class="w-full h-full object-cover" @error="handleImageError" />
+                            </div>
+                            <div v-if="isMyPlayer(player)" class="absolute -top-1 -right-1 w-4 h-4 bg-yellow-400 rounded-full flex items-center justify-center"><span class="text-[9px] text-gray-900 font-bold">★</span></div>
+                          </div>
+                          <div>
+                            <span class="font-semibold text-sm" :class="getStartSitPlayerNameClass(player)">{{ player.full_name }}</span>
+                            <div class="flex items-center gap-2 text-xs text-dark-textMuted">
+                              <span>{{ player.mlb_team || 'FA' }}</span>
+                              <template v-if="player.fantasy_team">
+                                <span class="text-dark-border">·</span>
+                                <span :class="isMyPlayer(player) ? 'text-yellow-400' : ''">{{ player.fantasy_team }}</span>
+                              </template>
+                              <span v-else class="text-cyan-400">Free Agent</span>
+                            </div>
+                          </div>
+                        </div>
+                      </td>
+                      <td class="px-2 py-2 text-center">
+                        <span v-if="scoringMode === 'daily'" class="text-xs font-medium" :class="player.opponent ? 'text-dark-text' : 'text-dark-textMuted italic'">
+                          {{ player.opponent || 'No Game' }}
+                        </span>
+                        <span v-else class="text-xs text-dark-text">{{ player.gamesThisWeek || 0 }} games</span>
+                      </td>
+                      <td class="px-2 py-2 text-center">
+                        <span v-if="player.opponent" class="px-2 py-0.5 rounded text-xs font-bold" :class="getMatchupClass(player.matchupDifficulty)">{{ getMatchupLabel(player.matchupDifficulty) }}</span>
+                        <span v-else class="text-xs text-dark-textMuted">—</span>
+                      </td>
+                      <td class="px-2 py-2 text-center"><span class="text-sm text-dark-textMuted">{{ player.ppg?.toFixed(1) || '0.0' }}</span></td>
+                      <td class="px-2 py-2 text-center"><span class="font-bold text-sm text-primary">{{ player.compositeScore?.toFixed(1) || '—' }}</span></td>
+                      <td class="px-2 py-2 text-center"><span class="text-xs font-bold" :class="getTierColorClass(player.tier)">{{ player.tier || '—' }}</span></td>
+                      <td class="px-2 py-2 text-center"><span class="px-2 py-1 rounded text-xs font-bold" :class="getVerdictClass(player.verdict)">{{ player.verdict }}</span></td>
+                    </tr>
+                  </template>
+                  <tr v-if="gatedGetStartSitPlayers(selectedStartSitPosition || startSitPositions[0]?.id).length === 0">
+                    <td colspan="8" class="px-4 py-8 text-center text-dark-textMuted">No players found at this position</td>
+                  </tr>
+                </tbody>
+              </table>
+              <!-- Gated overlay -->
+              <div v-if="getHiddenStartSitCount(selectedStartSitPosition || startSitPositions[0]?.id) > 0" class="relative">
+                <div class="blur-sm select-none pointer-events-none opacity-50 border-t border-dark-border/30">
+                  <div v-for="i in Math.min(getHiddenStartSitCount(selectedStartSitPosition || startSitPositions[0]?.id), 3)" :key="'preview-' + i" class="flex items-center gap-4 px-4 py-3 border-b border-dark-border/20">
+                    <div class="w-6 h-4 bg-dark-border/50 rounded"></div>
+                    <div class="w-9 h-9 rounded-full bg-dark-border/50"></div>
+                    <div class="flex-1"><div class="h-4 w-32 bg-dark-border/50 rounded mb-1"></div><div class="h-3 w-20 bg-dark-border/40 rounded"></div></div>
+                    <div class="h-6 w-16 bg-dark-border/40 rounded"></div>
+                  </div>
+                </div>
+                <div class="absolute inset-0 flex items-center justify-center bg-gradient-to-t from-dark-bg via-dark-bg/95 to-transparent">
+                  <div class="text-center p-6">
+                    <div class="text-4xl mb-3">🔒</div>
+                    <h3 class="text-lg font-bold text-dark-text mb-2">{{ getHiddenStartSitCount(selectedStartSitPosition || startSitPositions[0]?.id) }} More Players</h3>
+                    <p class="text-sm text-dark-textMuted mb-4">Unlock full start/sit recommendations</p>
+                    <button @click="$router.push('/pricing')" class="px-6 py-2.5 bg-gradient-to-r from-yellow-500 to-orange-500 text-gray-900 font-bold rounded-lg transition-all transform hover:scale-105">Go Ultimate - $4.99/mo</button>
                   </div>
                 </div>
               </div>
@@ -766,252 +901,6 @@
           </div>
         </div>
 
-        <!-- Sidebar -->
-        <div class="w-80 flex-shrink-0">
-          <div class="card sticky top-4">
-            <div class="card-header py-3">
-              <div class="flex items-center justify-between">
-                <div class="flex items-center gap-2">
-                  <span class="text-xl">🏆</span>
-                  <h2 class="text-base font-bold text-dark-text">Suggested Lineup</h2>
-                </div>
-                <div class="flex items-center gap-2">
-                  <button 
-                    v-if="waiverLineupPlayers.length > 0"
-                    @click="clearWaiverLineup"
-                    class="px-2 py-1 text-xs font-medium bg-red-500/20 text-red-400 rounded hover:bg-red-500/30 transition-colors"
-                  >
-                    Clear
-                  </button>
-                  <button 
-                    @click="downloadSuggestedLineup"
-                    class="px-2 py-1 text-xs font-medium bg-yellow-500/20 text-yellow-400 rounded hover:bg-yellow-500/30 transition-colors flex items-center gap-1"
-                  >
-                    <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-                    </svg>
-                    Export
-                  </button>
-                </div>
-              </div>
-              <p v-if="waiverLineupPlayers.length > 0" class="text-xs text-cyan-400 mt-1">
-                {{ waiverLineupPlayers.length }} waiver pickup{{ waiverLineupPlayers.length > 1 ? 's' : '' }} added
-              </p>
-            </div>
-            <div class="card-body p-0">
-              <div class="divide-y divide-dark-border/30">
-                <div 
-                  v-for="(slot, idx) in modifiedSuggestedLineup" 
-                  :key="idx" 
-                  class="flex items-center gap-2 px-3 py-2"
-                  :class="{ 'bg-cyan-500/10 border-l-2 border-cyan-400': slot.isWaiver }"
-                >
-                  <div class="w-10 text-center"><span class="px-1.5 py-0.5 rounded text-[10px] font-bold" :class="getPositionClass(slot.position)">{{ slot.position }}</span></div>
-                  <div v-if="slot.player" class="flex items-center gap-2 flex-1 min-w-0">
-                    <div class="relative">
-                      <div class="w-8 h-8 rounded-full bg-dark-border overflow-hidden" :class="slot.isWaiver ? 'ring-2 ring-cyan-400' : ''">
-                        <img :src="slot.player.headshot || defaultHeadshot" class="w-full h-full object-cover" @error="handleImageError" />
-                      </div>
-                      <div v-if="slot.isWaiver" class="absolute -top-1 -right-1 w-4 h-4 bg-cyan-400 rounded-full flex items-center justify-center">
-                        <span class="text-[8px] text-gray-900 font-bold">W</span>
-                      </div>
-                    </div>
-                    <div class="flex-1 min-w-0">
-                      <div class="font-medium text-xs truncate" :class="slot.isWaiver ? 'text-cyan-400' : 'text-dark-text'">{{ slot.player.full_name }}</div>
-                      <div class="text-[10px] text-dark-textMuted">{{ slot.player.opponent || (slot.player.gamesThisWeek + ' games') }}</div>
-                    </div>
-                    <div class="font-bold text-sm" :class="slot.isWaiver ? 'text-cyan-400' : 'text-yellow-400'">{{ slot.player.projection?.toFixed(1) || '—' }}</div>
-                    <button 
-                      v-if="slot.isWaiver"
-                      @click="removeFromWaiverLineup(slot.player)"
-                      class="text-red-400 hover:text-red-300 transition-colors"
-                    >
-                      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-                      </svg>
-                    </button>
-                  </div>
-                  <div v-else class="flex items-center gap-2 flex-1"><div class="w-8 h-8 rounded-full bg-dark-border/30"></div><span class="text-xs text-dark-textMuted italic">Empty</span></div>
-                </div>
-              </div>
-              <div class="px-3 py-3 bg-dark-border/20 border-t border-dark-border/30">
-                <div class="flex items-center justify-between mb-2">
-                  <span class="text-dark-textMuted text-sm">Projected Total</span>
-                  <span class="text-xl font-bold text-yellow-400">{{ modifiedSuggestedLineupTotal.toFixed(1) }}</span>
-                </div>
-                <div v-if="waiverLineupPlayers.length > 0" class="flex items-center justify-between text-xs">
-                  <span class="text-dark-textMuted">vs Original</span>
-                  <span :class="modifiedSuggestedLineupTotal - suggestedLineupTotal >= 0 ? 'text-green-400' : 'text-red-400'">
-                    {{ modifiedSuggestedLineupTotal - suggestedLineupTotal >= 0 ? '+' : '' }}{{ (modifiedSuggestedLineupTotal - suggestedLineupTotal).toFixed(1) }}
-                  </span>
-                </div>
-              </div>
-              
-              <!-- Bench Section -->
-              <div v-if="benchPlayers.length > 0" class="border-t border-dark-border/30">
-                <div class="px-3 py-2 bg-dark-border/10">
-                  <span class="text-xs font-semibold text-dark-textMuted uppercase">Bench ({{ benchPlayers.length }})</span>
-                </div>
-                <div class="divide-y divide-dark-border/20 max-h-48 overflow-y-auto">
-                  <div 
-                    v-for="player in benchPlayers" 
-                    :key="player.player_key" 
-                    class="flex items-center gap-2 px-3 py-1.5 hover:bg-dark-border/10"
-                  >
-                    <div class="w-6 h-6 rounded-full bg-dark-border overflow-hidden flex-shrink-0">
-                      <img :src="player.headshot || defaultHeadshot" class="w-full h-full object-cover" @error="handleImageError" />
-                    </div>
-                    <div class="flex-1 min-w-0">
-                      <div class="font-medium text-dark-text text-xs truncate">{{ player.full_name }}</div>
-                      <div class="text-[10px] text-dark-textMuted">{{ player.position?.split(',')[0] }}</div>
-                    </div>
-                    <div class="text-right flex-shrink-0">
-                      <template v-if="scoringMode === 'daily'">
-                        <div v-if="player.hasGame" class="font-bold text-xs text-dark-textMuted">{{ player.projection?.toFixed(1) || '0' }}</div>
-                        <div v-else class="text-[10px] text-red-400 italic">No game</div>
-                      </template>
-                      <template v-else>
-                        <div class="font-bold text-xs text-dark-textMuted">{{ player.projection?.toFixed(1) || '0' }}</div>
-                        <div class="text-[10px] text-dark-textMuted">{{ player.gamesThisWeek }} games</div>
-                      </template>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Best Available Section -->
-      <div class="card mt-6">
-        <div class="card-header">
-          <div class="flex items-center justify-between">
-            <div class="flex items-center gap-3">
-              <span class="text-2xl">🎯</span>
-              <div>
-                <h2 class="card-title">Best Available</h2>
-                <p class="text-xs text-dark-textMuted">
-                  Click any player to add them to your suggested lineup
-                  <template v-if="rosterSpotsAvailable > 0">
-                    • <span class="text-green-400">{{ rosterSpotsAvailable }} open spot{{ rosterSpotsAvailable > 1 ? 's' : '' }}</span>
-                  </template>
-                  <template v-else-if="rosterSpotsAvailable === 0">
-                    • <span class="text-yellow-400">Roster full</span>
-                  </template>
-                  <template v-else-if="rosterSpotsAvailable < 0">
-                    • <span class="text-red-400">{{ Math.abs(rosterSpotsAvailable) }} over limit</span>
-                  </template>
-                </p>
-              </div>
-            </div>
-            <div class="flex items-center gap-3">
-              <!-- Projections/Stats Toggle -->
-              <div class="flex items-center bg-dark-border/30 rounded-lg p-0.5">
-                <button 
-                  @click="bestAvailableViewMode = 'projections'"
-                  class="px-3 py-1 text-xs font-medium rounded-md transition-colors"
-                  :class="bestAvailableViewMode === 'projections' ? 'bg-yellow-400 text-gray-900' : 'text-dark-textMuted hover:text-dark-text'"
-                >
-                  Projections
-                </button>
-                <button 
-                  @click="bestAvailableViewMode = 'stats'"
-                  class="px-3 py-1 text-xs font-medium rounded-md transition-colors"
-                  :class="bestAvailableViewMode === 'stats' ? 'bg-yellow-400 text-gray-900' : 'text-dark-textMuted hover:text-dark-text'"
-                >
-                  Stats
-                </button>
-              </div>
-              <select v-model="bestAvailablePosition" class="px-3 py-1.5 rounded-lg bg-dark-border/50 text-dark-text text-sm border border-dark-border focus:border-yellow-400 focus:outline-none">
-                <option value="all">All Positions</option>
-                <option v-for="pos in startSitPositions" :key="pos.id" :value="pos.id">{{ pos.label }}</option>
-              </select>
-            </div>
-          </div>
-        </div>
-        <div class="card-body p-0">
-          <div class="overflow-x-auto">
-            <table class="w-full">
-              <thead class="bg-dark-border/30">
-                <tr>
-                  <th class="px-3 py-2 text-left text-xs font-semibold text-dark-textMuted uppercase w-10">#</th>
-                  <th class="px-3 py-2 text-left text-xs font-semibold text-dark-textMuted uppercase">Player</th>
-                  <th class="px-2 py-2 text-center text-xs font-semibold text-dark-textMuted uppercase w-12">Pos</th>
-                  <template v-if="bestAvailableViewMode === 'projections'">
-                    <th class="px-2 py-2 text-center text-xs font-semibold text-dark-textMuted uppercase w-14">Today</th>
-                    <th class="px-2 py-2 text-center text-xs font-semibold text-dark-textMuted uppercase w-14">7 Day</th>
-                    <th class="px-2 py-2 text-center text-xs font-semibold text-dark-textMuted uppercase w-14">14 Day</th>
-                    <th class="px-2 py-2 text-center text-xs font-semibold text-dark-textMuted uppercase w-14">ROS</th>
-                  </template>
-                  <template v-else>
-                    <th class="px-2 py-2 text-center text-xs font-semibold text-dark-textMuted uppercase w-14">L7</th>
-                    <th class="px-2 py-2 text-center text-xs font-semibold text-dark-textMuted uppercase w-14">L14</th>
-                    <th class="px-2 py-2 text-center text-xs font-semibold text-dark-textMuted uppercase w-14">Season</th>
-                    <th class="px-2 py-2 text-center text-xs font-semibold text-dark-textMuted uppercase w-14">PPG</th>
-                  </template>
-                  <th class="px-2 py-2 text-center text-xs font-semibold text-dark-textMuted uppercase w-20">Action</th>
-                </tr>
-              </thead>
-              <tbody class="divide-y divide-dark-border/30">
-                <tr 
-                  v-for="(player, idx) in filteredBestAvailable" 
-                  :key="player.player_key"
-                  class="hover:bg-dark-border/20 transition-colors cursor-pointer"
-                  :class="{ 'bg-cyan-500/10': isInWaiverLineup(player) }"
-                  @click="handleAddPlayer(player)"
-                >
-                  <td class="px-3 py-2 text-dark-textMuted">{{ idx + 1 }}</td>
-                  <td class="px-3 py-2">
-                    <div class="flex items-center gap-2">
-                      <div class="w-8 h-8 rounded-full bg-dark-border overflow-hidden ring-2 ring-cyan-500/50">
-                        <img :src="player.headshot || defaultHeadshot" class="w-full h-full object-cover" @error="handleImageError" />
-                      </div>
-                      <div>
-                        <div class="font-medium text-dark-text text-sm">{{ player.full_name }}</div>
-                        <div class="text-xs text-dark-textMuted">{{ player.mlb_team || 'FA' }}</div>
-                      </div>
-                    </div>
-                  </td>
-                  <td class="px-2 py-2 text-center">
-                    <span class="px-1.5 py-0.5 rounded text-[10px] font-bold" :class="getPositionClass(player.position)">{{ player.position?.split(',')[0] }}</span>
-                  </td>
-                  <template v-if="bestAvailableViewMode === 'projections'">
-                    <td class="px-2 py-2 text-center font-bold text-green-400">{{ getPlayerProjection(player, 'today').toFixed(1) }}</td>
-                    <td class="px-2 py-2 text-center font-bold text-green-400">{{ getPlayerProjection(player, '7day').toFixed(1) }}</td>
-                    <td class="px-2 py-2 text-center font-bold text-green-400">{{ getPlayerProjection(player, '14day').toFixed(1) }}</td>
-                    <td class="px-2 py-2 text-center font-bold text-yellow-400">{{ getPlayerProjection(player, 'ros').toFixed(1) }}</td>
-                  </template>
-                  <template v-else>
-                    <td class="px-2 py-2 text-center font-bold text-blue-400">{{ getPlayerStats(player, 'l7').toFixed(1) }}</td>
-                    <td class="px-2 py-2 text-center font-bold text-blue-400">{{ getPlayerStats(player, 'l14').toFixed(1) }}</td>
-                    <td class="px-2 py-2 text-center font-bold text-blue-400">{{ getPlayerStats(player, 'season').toFixed(1) }}</td>
-                    <td class="px-2 py-2 text-center font-bold text-dark-text">{{ player.ppg?.toFixed(1) || '0' }}</td>
-                  </template>
-                  <td class="px-2 py-2 text-center">
-                    <button 
-                      v-if="!isInWaiverLineup(player)"
-                      class="px-2 py-1 text-xs font-medium bg-cyan-500/20 text-cyan-400 rounded hover:bg-cyan-500/30 transition-colors"
-                      @click.stop="handleAddPlayer(player)"
-                    >
-                      + Add
-                    </button>
-                    <button 
-                      v-else
-                      class="px-2 py-1 text-xs font-medium bg-red-500/20 text-red-400 rounded hover:bg-red-500/30 transition-colors"
-                      @click.stop="togglePlayerInLineup(player)"
-                    >
-                      Remove
-                    </button>
-                  </td>
-                </tr>
-                <tr v-if="filteredBestAvailable.length === 0">
-                  <td colspan="8" class="px-4 py-6 text-center text-dark-textMuted">No free agents available at this position</td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-        </div>
       </div>
     </template>
 
@@ -1871,6 +1760,7 @@ const platform = computed(() => {
 
 // Start/Sit Customization State
 const showStartSitCustomization = ref(false)
+const showStartSitRankings = ref(false)
 const activeStartSitPreset = ref('balanced')
 const activeStartSitCategory = ref('production')
 
@@ -2719,7 +2609,7 @@ const filteredBestAvailable = computed(() => {
     }
   }
   
-  return freeAgents.slice(0, 15) // Top 15 free agents
+  return freeAgents.slice(0, 50) // Top 50 free agents
 })
 
 function isInWaiverLineup(player: any): boolean {
