@@ -3169,7 +3169,7 @@ const rankedTeams = computed<TeamRanking[]>(() => {
     let totalVal = 0, totalWt = 0
     Object.entries(positionGrades).forEach(([pos, grade]) => { const wt = getRosterSlotCount(pos) || 1; totalVal += (gradeValues[grade] || 50) * wt; totalWt += wt })
     const avgVal = totalWt > 0 ? totalVal / totalWt : 50
-    const allTeamPlayers = Object.values(byPos).flat()
+    const allTeamPlayers = players // deduplicated original list, not the expanded byPos buckets
     const n = numTeams.value
     const elites = allTeamPlayers.filter(p => p.positionRank && p.positionRank <= n * 0.5).length
     const starters = allTeamPlayers.filter(p => p.positionRank && p.positionRank <= n).length
@@ -3224,7 +3224,14 @@ const hiddenTeamsCount = computed(() => {
 function getRosterSlotCount(pos: string): number { const r = rosterRequirements.value; if (r[pos] > 0) return r[pos]; const config = SPORT_POSITION_CONFIG[currentSport.value] || SPORT_POSITION_CONFIG.baseball; return config.rosterDefaults[pos] || 1 }
 function calculateStarterGrade(players: any[], numStarters: number): string { if (!players.length) return 'F'; const n = numTeams.value || 12; const starters = players.slice(0, Math.max(numStarters, 1)); const valid = starters.filter(p => p.positionRank); if (!valid.length) { const avg = starters.reduce((s, p) => s + (p.ppg || 0), 0) / starters.length; if (avg >= 5) return 'A'; if (avg >= 4) return 'B+'; if (avg >= 3) return 'B'; if (avg >= 2) return 'C+'; return 'C' }; const avgRank = valid.reduce((s, p) => s + p.positionRank, 0) / valid.length; const pct = avgRank / Math.max(n * numStarters, 1); if (pct <= 0.25) return 'A+'; if (pct <= 0.4) return 'A'; if (pct <= 0.55) return 'A-'; if (pct <= 0.7) return 'B+'; if (pct <= 0.85) return 'B'; if (pct <= 1) return 'B-'; if (pct <= 1.2) return 'C+'; if (pct <= 1.4) return 'C'; if (pct <= 1.6) return 'C-'; if (pct <= 1.8) return 'D+'; if (pct <= 2) return 'D'; if (pct <= 2.5) return 'D-'; return 'F' }
 function getGradeFromValue(v: number): string { if (v >= 95) return 'A+'; if (v >= 88) return 'A'; if (v >= 82) return 'A-'; if (v >= 75) return 'B+'; if (v >= 68) return 'B'; if (v >= 60) return 'B-'; if (v >= 52) return 'C+'; if (v >= 44) return 'C'; if (v >= 36) return 'C-'; if (v >= 28) return 'D+'; if (v >= 20) return 'D'; if (v >= 12) return 'D-'; return 'F' }
-function getTeamPositionPlayers(team: TeamRanking, pos: string): any[] { return team.players.filter(p => p.position?.split(',')[0]?.trim() === pos).sort((a, b) => (b.ppg || 0) - (a.ppg || 0)) }
+function getTeamPositionPlayers(team: TeamRanking, pos: string): any[] {
+  return team.players
+    .filter(p => {
+      const eligible = p.eligible_positions || [p.position?.split(',')[0]?.trim() || 'Util']
+      return eligible.includes(pos)
+    })
+    .sort((a, b) => (b.ppg || 0) - (a.ppg || 0))
+}
 
 function selectAllPositions() { selectedPositions.value = selectedPositions.value.length === positionFilters.value.length ? [] : positionFilters.value.map(p => p.id) }
 function togglePositionFilter(pos: string) { const i = selectedPositions.value.indexOf(pos); i >= 0 ? selectedPositions.value.splice(i, 1) : selectedPositions.value.push(pos) }
