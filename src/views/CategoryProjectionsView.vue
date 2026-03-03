@@ -4988,12 +4988,15 @@ async function loadEspnProjections() {
           console.log('[ESPN Projections] Sample player stats keys:', Object.keys(playerStats))
         }
         
+        const espnTeamAbbr = entry.proTeam || getEspnTeamAbbrev(entry.proTeamId)
         allRosteredPlayers.push({
           player_key: `espn_player_${playerId}`,
           player_id: playerId,
           full_name: playerName,
           position: entry.position || getEspnPositionAbbrev(entry.positionId || entry.defaultPositionId),
-          mlb_team: entry.proTeam || getEspnTeamAbbrev(entry.proTeamId),
+          mlb_team: sport === 'baseball' ? espnTeamAbbr : '',
+          nhl_team: sport === 'hockey' ? espnTeamAbbr : '',
+          nba_team: sport === 'basketball' ? espnTeamAbbr : '',
           headshot: getEspnHeadshotUrl(playerId, sport),
           fantasy_team: team.name,
           fantasy_team_key: `espn_${leagueId}_${season}_${team.id}`,
@@ -5154,13 +5157,32 @@ function getEspnPositionAbbrev(positionId: number): string {
 }
 
 function getEspnTeamAbbrev(teamId: number): string {
-  const teams: Record<number, string> = {
+  // MLB teams
+  const mlbTeams: Record<number, string> = {
     1: 'BAL', 2: 'BOS', 3: 'LAA', 4: 'CWS', 5: 'CLE', 6: 'DET', 7: 'KC', 8: 'MIL',
     9: 'MIN', 10: 'NYY', 11: 'OAK', 12: 'SEA', 13: 'TEX', 14: 'TOR', 15: 'ATL',
     16: 'CHC', 17: 'CIN', 18: 'HOU', 19: 'LAD', 20: 'WSH', 21: 'NYM', 22: 'PHI',
     23: 'PIT', 24: 'STL', 25: 'SD', 26: 'SF', 27: 'COL', 28: 'MIA', 29: 'ARI', 30: 'TB'
   }
-  return teams[teamId] || ''
+  // NHL teams (ESPN proTeamId mapping)
+  const nhlTeams: Record<number, string> = {
+    1: 'ANA', 2: 'ARI', 3: 'BOS', 4: 'BUF', 5: 'CGY', 6: 'CAR', 7: 'CHI', 8: 'COL',
+    9: 'CBJ', 10: 'DAL', 11: 'DET', 12: 'EDM', 13: 'FLA', 14: 'LAK', 15: 'MIN',
+    16: 'MTL', 17: 'NSH', 18: 'NJD', 19: 'NYI', 20: 'NYR', 21: 'OTT', 22: 'PHI',
+    23: 'PIT', 24: 'STL', 25: 'SJS', 26: 'TBL', 27: 'TOR', 28: 'VAN', 29: 'WSH',
+    30: 'WPG', 31: 'VGK', 32: 'SEA', 33: 'UTA'
+  }
+  // NBA teams (ESPN proTeamId mapping)
+  const nbaTeams: Record<number, string> = {
+    1: 'ATL', 2: 'BOS', 3: 'NOP', 4: 'CHI', 5: 'CLE', 6: 'DAL', 7: 'DEN', 8: 'DET',
+    9: 'GSW', 10: 'HOU', 11: 'IND', 12: 'LAC', 13: 'LAL', 14: 'MIA', 15: 'MIL',
+    16: 'MIN', 17: 'BKN', 18: 'NYK', 19: 'ORL', 20: 'PHI', 21: 'PHX', 22: 'POR',
+    23: 'SAC', 24: 'SAS', 25: 'OKC', 26: 'UTA', 27: 'WAS', 28: 'TOR', 29: 'MEM', 30: 'CHA'
+  }
+  const sport = currentSport.value
+  if (sport === 'hockey') return nhlTeams[teamId] || ''
+  if (sport === 'basketball') return nbaTeams[teamId] || ''
+  return mlbTeams[teamId] || ''
 }
 
 function transformEspnPlayerStats(statsArray: any[]): Record<string, number> {
@@ -7772,14 +7794,12 @@ const suggestedCategoryLineup = computed(() => {
       }
     })
     
-    // In daily mode, filter by game availability BUT ensure we have at least some players
-    // If no players have games for this position, show empty slot
-    if (startSitMode.value === 'daily') {
-      eligible = eligible.filter(p => p.hasGame)
-    }
-    
-    // Sort by impact score
-    eligible.sort((a, b) => b.impactScore - a.impactScore)
+    // Sort: game-players first (by impact score), then non-game players
+    // NEVER hard-filter out non-game players - that causes empty lineups when live game data is unavailable
+    eligible.sort((a, b) => {
+      if (a.hasGame !== b.hasGame) return a.hasGame ? -1 : 1
+      return (b.impactScore || 0) - (a.impactScore || 0)
+    })
     
     const best = eligible[0] || null
     
@@ -7812,7 +7832,12 @@ const benchPlayers = computed(() => {
     .filter(p => isMyPlayer(p) && !usedPlayerKeys.has(p.player_key))
     .map(p => {
       // Get REAL game info from live data
-      const gameInfo = liveGamesService.getPlayerGameInfo(p.mlb_team, activeGames)
+      const benchTeamCode = currentSport.value === 'basketball'
+        ? (p.nba_team || p.mlb_team || p.editorial_team_abbr || p.team_abbr)
+        : currentSport.value === 'hockey'
+        ? (p.nhl_team || p.mlb_team || p.editorial_team_abbr || p.team_abbr)
+        : (p.mlb_team || p.editorial_team_abbr || p.team_abbr)
+      const gameInfo = liveGamesService.getPlayerGameInfo(benchTeamCode, activeGames)
       const impactCats = getImpactCategoryCount(p)
       
       return { 

@@ -94,7 +94,8 @@ class LiveGamesService {
    * Get games for a specific date
    */
   async getGamesByDate(sport: Sport, date: Date): Promise<LiveGame[]> {
-    const dateStr = date.toISOString().split('T')[0]
+    // Use local date string to avoid UTC timezone shift causing wrong day queries
+    const dateStr = `${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,'0')}-${String(date.getDate()).padStart(2,'0')}`
     
     const { data, error } = await supabase
       .from('games_schedule')
@@ -197,7 +198,8 @@ class LiveGamesService {
     date: Date,
     callback: (games: LiveGame[]) => void
   ): RealtimeChannel {
-    const dateStr = date.toISOString().split('T')[0]
+    // Use local date string to avoid UTC timezone shift causing wrong day queries
+    const dateStr = `${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,'0')}-${String(date.getDate()).padStart(2,'0')}`
     const sportStr = this.mapSportToDbValue(sport)
     
     console.log(`[LiveGames] Subscribing to ${sport} games on ${dateStr}`)
