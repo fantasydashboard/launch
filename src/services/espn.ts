@@ -132,6 +132,29 @@ const PRO_TEAMS: Record<number, string> = {
   33: 'BAL', 34: 'HOU'
 }
 
+// NHL Pro team IDs to abbreviations (ESPN proTeamId mapping for hockey)
+const NHL_TEAMS: Record<number, string> = {
+  0: 'FA',
+  1: 'ANA', 2: 'ARI', 3: 'BOS', 4: 'BUF', 5: 'CGY',
+  6: 'CAR', 7: 'CHI', 8: 'COL', 9: 'CBJ', 10: 'DAL',
+  11: 'DET', 12: 'EDM', 13: 'FLA', 14: 'LAK', 15: 'MIN',
+  16: 'MTL', 17: 'NSH', 18: 'NJD', 19: 'NYI', 20: 'NYR',
+  21: 'OTT', 22: 'PHI', 23: 'PIT', 24: 'STL', 25: 'SJS',
+  26: 'TBL', 27: 'TOR', 28: 'VAN', 29: 'WSH', 30: 'WPG',
+  31: 'VGK', 32: 'SEA', 33: 'UTA'
+}
+
+// NBA Pro team IDs to abbreviations (ESPN proTeamId mapping for basketball)
+const NBA_TEAMS: Record<number, string> = {
+  0: 'FA',
+  1: 'ATL', 2: 'BOS', 3: 'NOP', 4: 'CHI', 5: 'CLE',
+  6: 'DAL', 7: 'DEN', 8: 'DET', 9: 'GSW', 10: 'HOU',
+  11: 'IND', 12: 'LAC', 13: 'LAL', 14: 'MIA', 15: 'MIL',
+  16: 'MIN', 17: 'BKN', 18: 'NYK', 19: 'ORL', 20: 'PHI',
+  21: 'PHX', 22: 'POR', 23: 'SAC', 24: 'SAS', 25: 'OKC',
+  26: 'UTA', 27: 'WAS', 28: 'TOR', 29: 'MEM', 30: 'CHA'
+}
+
 // MLB Pro team IDs to abbreviations
 const MLB_TEAMS: Record<number, string> = {
   0: 'FA',
@@ -1349,7 +1372,7 @@ export class EspnFantasyService {
       const picks = await this.getDraft(sport, leagueId, season)
       
       // Get team mapping based on sport
-      const teamMapping = sport === 'baseball' ? MLB_TEAMS : PRO_TEAMS
+      const teamMapping = sport === 'baseball' ? MLB_TEAMS : sport === 'hockey' ? NHL_TEAMS : sport === 'basketball' ? NBA_TEAMS : PRO_TEAMS
       
       // Extract all player IDs
       const playerIds = picks.map(p => p.playerId)
@@ -1491,7 +1514,7 @@ export class EspnFantasyService {
       return cached
     }
 
-    const teamMapping = sport === 'baseball' ? MLB_TEAMS : PRO_TEAMS
+    const teamMapping = sport === 'baseball' ? MLB_TEAMS : sport === 'hockey' ? NHL_TEAMS : sport === 'basketball' ? NBA_TEAMS : PRO_TEAMS
     const freeAgents: EspnPlayer[] = []
     
     try {
@@ -1560,7 +1583,7 @@ export class EspnFantasyService {
    * Get players from the waiver/free agent list view (broader player pool)
    */
   private async getPlayersFromWaiverList(sport: Sport, leagueId: string | number, season: number, playerIds: number[]): Promise<Map<number, { name: string; position: string; team: string }>> {
-    const teamMapping = sport === 'baseball' ? MLB_TEAMS : PRO_TEAMS
+    const teamMapping = sport === 'baseball' ? MLB_TEAMS : sport === 'hockey' ? NHL_TEAMS : sport === 'basketball' ? NBA_TEAMS : PRO_TEAMS
     const playerMap = new Map<number, { name: string; position: string; team: string }>()
     
     try {
@@ -1607,7 +1630,7 @@ export class EspnFantasyService {
    * Get a single player's info by ID (fallback method)
    */
   private async getPlayerById(sport: Sport, leagueId: string | number, season: number, playerId: number): Promise<{ name: string; position: string; team: string } | null> {
-    const teamMapping = sport === 'baseball' ? MLB_TEAMS : PRO_TEAMS
+    const teamMapping = sport === 'baseball' ? MLB_TEAMS : sport === 'hockey' ? NHL_TEAMS : sport === 'basketball' ? NBA_TEAMS : PRO_TEAMS
     
     try {
       const filterObj = {
@@ -1974,7 +1997,7 @@ export class EspnFantasyService {
     }
 
     // Get correct team mapping based on sport
-    const teamMapping = sport === 'baseball' ? MLB_TEAMS : PRO_TEAMS
+    const teamMapping = sport === 'baseball' ? MLB_TEAMS : sport === 'hockey' ? NHL_TEAMS : sport === 'basketball' ? NBA_TEAMS : PRO_TEAMS
 
     try {
       // Batch player IDs into chunks of 50 to avoid URL length limits
@@ -2064,7 +2087,7 @@ export class EspnFantasyService {
       return map
     }
 
-    const teamMapping = sport === 'baseball' ? MLB_TEAMS : PRO_TEAMS
+    const teamMapping = sport === 'baseball' ? MLB_TEAMS : sport === 'hockey' ? NHL_TEAMS : sport === 'basketball' ? NBA_TEAMS : PRO_TEAMS
     const playerMap = new Map<number, { name: string; position: string; team: string; stats: Record<string, number> }>()
     
     console.log(`[ESPN getPlayersWithStats] Fetching stats for ${playerIds.length} players, season ${season}`)
@@ -2431,7 +2454,7 @@ export class EspnFantasyService {
    * Get scoring settings for the league
    */
   async getScoringSettings(sport: Sport, leagueId: string | number, season: number): Promise<any> {
-    const cacheKey = `espn_scoring_v4_${sport}_${leagueId}_${season}`
+    const cacheKey = `espn_scoring_v5_${sport}_${leagueId}_${season}`
     const cached = cache.get<any>('espn_scoring', cacheKey)
     if (cached) {
       console.log(`[Cache HIT] ESPN scoring settings for ${leagueId}`)
@@ -2458,6 +2481,19 @@ export class EspnFantasyService {
       scoringSettings._allSettingsKeys = Object.keys(allSettings)
       scoringSettings._fullSettings = allSettings
       
+      // Capture proTeams - ESPN returns this at BOTH top-level (data.proTeams)
+      // AND inside settings (data.settings.proTeams) depending on the sport/view.
+      // We check both locations and store whichever has data.
+      const proTeamsData = data.proTeams || allSettings.proTeams || []
+      if (proTeamsData.length > 0) {
+        scoringSettings._proTeams = proTeamsData
+        console.log('[ESPN getScoringSettings] Found proTeams array:', proTeamsData.length, 'entries')
+        console.log('[ESPN getScoringSettings] Sample proTeams:', JSON.stringify(proTeamsData.slice(0, 5)))
+      } else {
+        console.warn('[ESPN getScoringSettings] proTeams not found in response - will use static mapping')
+        console.log('[ESPN getScoringSettings] Top-level data keys:', Object.keys(data || {}))
+      }
+      
       // Log first scoringItem FULLY to see all available fields
       if (scoringSettings.scoringItems?.length > 0) {
         console.log('[ESPN getScoringSettings] First scoringItem FULL:', JSON.stringify(scoringSettings.scoringItems[0]))
@@ -2474,6 +2510,41 @@ export class EspnFantasyService {
     } catch (error) {
       console.error('Error fetching ESPN scoring settings:', error)
       throw error
+    }
+  }
+
+  /**
+   * Get a mapping of ESPN proTeamId -> team abbreviation for this sport/league.
+   * Uses the proTeams array from the ESPN settings API response, which is the ONLY
+   * reliable source since ESPN uses different non-sequential IDs per sport.
+   * Falls back to hardcoded static maps if settings don't include proTeams.
+   */
+  async getProTeamMap(sport: Sport, leagueId: string | number, season: number): Promise<Record<number, string>> {
+    try {
+      const scoringSettings = await this.getScoringSettings(sport, leagueId, season)
+      const proTeamsArray: any[] = scoringSettings?._proTeams || []
+      
+      if (proTeamsArray.length > 0) {
+        const map: Record<number, string> = {}
+        proTeamsArray.forEach((t: any) => {
+          if (t.id != null && t.abbrev && t.abbrev !== 'None' && t.abbrev !== 'FA') {
+            map[t.id] = t.abbrev
+          }
+        })
+        if (Object.keys(map).length > 0) {
+          console.log(`[ESPN getProTeamMap] Built from API: ${Object.keys(map).length} teams for ${sport}`)
+          return map
+        }
+      }
+      
+      // Fallback to static maps (may have wrong IDs but better than nothing)
+      console.warn(`[ESPN getProTeamMap] No API proTeams for ${sport} - using static fallback`)
+      return sport === 'baseball' ? MLB_TEAMS :
+             sport === 'hockey' ? NHL_TEAMS :
+             sport === 'basketball' ? NBA_TEAMS : PRO_TEAMS
+    } catch (e) {
+      console.error('[ESPN getProTeamMap] Error:', e)
+      return {}
     }
   }
 
@@ -3086,7 +3157,7 @@ export class EspnFantasyService {
     const projectedStats = stats.find((s: any) => s.statSourceId === 1) || {}
     
     // Get correct team mapping based on sport
-    const teamMapping = sport === 'baseball' ? MLB_TEAMS : PRO_TEAMS
+    const teamMapping = sport === 'baseball' ? MLB_TEAMS : sport === 'hockey' ? NHL_TEAMS : sport === 'basketball' ? NBA_TEAMS : PRO_TEAMS
     
     return {
       id: entry.playerId,
@@ -3402,7 +3473,7 @@ export class EspnFantasyService {
   private parseDraft(data: any, sport?: string): EspnDraftPick[] {
     const draftDetail = data.draftDetail || {}
     const picks = draftDetail.picks || []
-    const teamMapping = sport === 'baseball' ? MLB_TEAMS : PRO_TEAMS
+    const teamMapping = sport === 'baseball' ? MLB_TEAMS : sport === 'hockey' ? NHL_TEAMS : sport === 'basketball' ? NBA_TEAMS : PRO_TEAMS
     
     // Build player lookup from players array if available (from PLAYER_INFO view)
     const playerLookup = new Map<number, { name: string; position: string; team: string; eligiblePositions: string[] }>()

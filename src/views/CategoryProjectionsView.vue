@@ -3753,6 +3753,12 @@ function getInjuryInfo(player: any): { icon: string, label: string, color: strin
   }
   // ESPN "ACTIVE" means healthy - skip
   if (status === 'ACTIVE' || status === 'A') return null
+  // Game statuses - not injury statuses, handle separately
+  if (status === 'SCHEDULED') return null  // Just show game time, no badge needed
+  if (status === 'LIVE' || status === 'IN_PROGRESS') return { 
+    icon: '🟢', label: 'LIVE', color: 'text-green-400 bg-green-500/20',
+    tooltip: 'Game is live', severity: 0
+  }
   
   // Catch-all for any other status
   if (status) {
@@ -4765,6 +4771,13 @@ async function loadEspnProjections() {
     
     // Load scoring settings
     const scoringSettings = await espnService.getScoringSettings(sport as any, leagueId, season)
+    
+    // Load the authoritative proTeamId -> abbreviation map from ESPN's own API.
+    // ESPN uses non-sequential, sport-specific IDs that differ between fhl/fba/flb/ffl.
+    // The API's proTeams array is the ONLY reliable source.
+    const proTeamMap = await espnService.getProTeamMap(sport as any, leagueId, season)
+    console.log('[ESPN Projections] proTeamMap loaded:', Object.keys(proTeamMap).length, 'teams')
+    
     if (scoringSettings?.scoringItems) {
       // ESPN stat ID to display name mapping - baseball
       const espnBaseballStatNames: Record<number, { name: string; display: string; isHitting: boolean }> = {
@@ -4988,7 +5001,15 @@ async function loadEspnProjections() {
           console.log('[ESPN Projections] Sample player stats keys:', Object.keys(playerStats))
         }
         
-        const espnTeamAbbr = entry.proTeam || getEspnTeamAbbrev(entry.proTeamId)
+        // Use the dynamic proTeamMap built from ESPN's own settings API.
+        // entry.proTeam is set using the static NHL_TEAMS/NBA_TEAMS mapping which
+        // may have wrong IDs - the proTeamMap from the API is the reliable source.
+        const espnTeamAbbr = (entry.proTeamId && proTeamMap[entry.proTeamId])
+          || proTeamMap[entry.proTeamId]
+          || getEspnTeamAbbrev(entry.proTeamId)  // static fallback only
+        if (allRosteredPlayers.length < 3) {
+          console.log(`[ESPN Projections] Player ${playerName}: proTeamId=${entry.proTeamId} → teamAbbr=${espnTeamAbbr} (proTeam was: ${entry.proTeam})`)
+        }
         allRosteredPlayers.push({
           player_key: `espn_player_${playerId}`,
           player_id: playerId,
@@ -5076,20 +5097,26 @@ async function loadEspnProjections() {
       const espnFreeAgents = await espnService.getFreeAgents(sport as any, leagueId, season, 100)
       console.log('[ESPN Projections] Loaded', espnFreeAgents.length, 'free agents')
       
-      freeAgents = espnFreeAgents.map((player: any) => ({
-        player_key: `espn_player_${player.playerId || player.id}`,
-        player_id: player.playerId || player.id,
-        full_name: player.fullName || 'Unknown',
-        position: player.position || 'Util',
-        mlb_team: player.proTeam || '',
-        headshot: getEspnHeadshotUrl(player.playerId || player.id, sport),
-        fantasy_team: null,  // Free agents have no team
-        fantasy_team_key: null,  // Free agents have no team key
-        stats: player.stats || {},
-        total_points: player.actualPoints || 0,
-        status: player.injuryStatus || '',
-        injury_note: player.injuryDetail || ''
-      }))
+      freeAgents = espnFreeAgents.map((player: any) => {
+        const faTeamAbbr = (player.proTeamId && proTeamMap[player.proTeamId])
+          || getEspnTeamAbbrev(player.proTeamId)
+        return {
+          player_key: `espn_player_${player.playerId || player.id}`,
+          player_id: player.playerId || player.id,
+          full_name: player.fullName || 'Unknown',
+          position: player.position || 'Util',
+          mlb_team: sport === 'baseball' ? faTeamAbbr : '',
+          nhl_team: sport === 'hockey' ? faTeamAbbr : '',
+          nba_team: sport === 'basketball' ? faTeamAbbr : '',
+          headshot: getEspnHeadshotUrl(player.playerId || player.id, sport),
+          fantasy_team: null,  // Free agents have no team
+          fantasy_team_key: null,  // Free agents have no team key
+          stats: player.stats || {},
+          total_points: player.actualPoints || 0,
+          status: player.injuryStatus || '',
+          injury_note: player.injuryDetail || ''
+        }
+      })
       
       // If free agents don't have stats, fetch them
       const faIdsWithoutStats = freeAgents.filter(p => Object.keys(p.stats || {}).length === 0).map(p => p.player_id)
@@ -5200,17 +5227,19 @@ function transformEspnPlayerStats(statsArray: any[]): Record<string, number> {
   
   // Look for season stats - try multiple sources
   // statSourceId: 0 = actuals, 1 = projections
-  // statSplitTypeId: 0 = season total
+  // statSplitTypeId: 0 = season total, 1 = last 7 days, 2 = last 15 days, 5 = single period
   let seasonStats = statsArray.find((s: any) => s.statSourceId === 0 && s.statSplitTypeId === 0)
   
-  // If not found, try just statSourceId 0
+  // If not found, try statSourceId 0 with any season-level split (avoid weekly/per-period splits)
   if (!seasonStats?.stats) {
-    seasonStats = statsArray.find((s: any) => s.statSourceId === 0)
+    seasonStats = statsArray.find((s: any) => s.statSourceId === 0 && (s.statSplitTypeId === 0 || s.statSplitTypeId === null || s.statSplitTypeId === undefined))
   }
   
-  // If still not found, try the first entry with stats
+  // Last resort: any actual stats (but prefer larger stat objects to avoid single-game entries)
   if (!seasonStats?.stats) {
-    seasonStats = statsArray.find((s: any) => s.stats && Object.keys(s.stats).length > 0)
+    const candidates = statsArray.filter((s: any) => s.stats && Object.keys(s.stats).length > 0)
+    // Pick the entry with the most stat keys - more keys = more likely to be full season
+    seasonStats = candidates.sort((a: any, b: any) => Object.keys(b.stats).length - Object.keys(a.stats).length)[0]
   }
   
   if (seasonStats?.stats) {
@@ -6880,8 +6909,10 @@ const allPlayersWithValues = computed(() => {
       
       if (value === 0) continue
       
-      // Get all non-zero values for this stat
-      const allValues = samePlayers
+      // Get all non-zero values for this stat among ROSTERED players only (prevent FA outliers)
+      const rosteredSamePlayers = samePlayers.filter(pl => !isFreeAgent(pl))
+      const refPool = rosteredSamePlayers.length >= 3 ? rosteredSamePlayers : samePlayers
+      const allValues = refPool
         .map(pl => parseFloat(pl.stats?.[statId] || 0))
         .filter(v => v > 0)
       
@@ -6917,13 +6948,20 @@ const allPlayersWithValues = computed(() => {
   })
   
   // Second pass: normalize scores within each group (pitchers vs hitters)
+  // CRITICAL: Normalize using ROSTERED players only as reference pool.
+  // Including free agents skews the distribution - one FA with a bad stat mapping
+  // (e.g. wrong ESPN stat ID returning a huge number) becomes the max and 
+  // compresses all rostered players into a low range.
   const pitchers = playersWithRawScores.filter(p => p.isPlayerPitcher)
   const hitters = playersWithRawScores.filter(p => !p.isPlayerPitcher)
+  const rosteredPitchers = pitchers.filter(p => !isFreeAgent(p))
+  const rosteredHitters = hitters.filter(p => !isFreeAgent(p))
   
-  // Calculate stats for normalization
-  const getStats = (players: any[]) => {
-    if (players.length === 0) return { min: 0, max: 100, avg: 50 }
-    const scores = players.map(p => p.rawScore)
+  // Calculate stats for normalization - use rostered players as reference, fall back to all
+  const getStats = (rosteredPlayers: any[], allPlayers: any[]) => {
+    const ref = rosteredPlayers.length >= 3 ? rosteredPlayers : allPlayers
+    if (ref.length === 0) return { min: 0, max: 100, avg: 50 }
+    const scores = ref.map(p => p.rawScore)
     return {
       min: Math.min(...scores),
       max: Math.max(...scores),
@@ -6931,8 +6969,8 @@ const allPlayersWithValues = computed(() => {
     }
   }
   
-  const pitcherStats = getStats(pitchers)
-  const hitterStats = getStats(hitters)
+  const pitcherStats = getStats(rosteredPitchers, pitchers)
+  const hitterStats = getStats(rosteredHitters, hitters)
   
   // Normalize to 0-100 scale within each group, then blend
   // Target: both groups should have similar distribution centered around 50
