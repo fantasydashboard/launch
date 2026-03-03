@@ -2462,8 +2462,11 @@ const suggestedLineup = computed(() => {
     const flexEligible = config.flexPositions[pos] || []
     let eligible = myPlayers.filter(p => {
       if (used.has(p.player_key)) return false
-      const playerPos = p.position?.split(',')[0]?.trim() || ''
-      return playerPos === pos || flexEligible.includes(playerPos)
+      // Use all eligible positions (comma-separated from Yahoo/ESPN, array from Sleeper)
+      const eligiblePositions: string[] = p.eligible_positions?.length
+        ? p.eligible_positions
+        : (p.position || '').split(',').map((s: string) => s.trim()).filter(Boolean)
+      return eligiblePositions.includes(pos) || flexEligible.some((fp: string) => eligiblePositions.includes(fp))
     })
     eligible = eligible.map(p => {
       const hashInput = (p.player_key || '') + dateStr
@@ -2473,9 +2476,13 @@ const suggestedLineup = computed(() => {
       const ppg = p.ppg || 0
       const projection = scoringMode.value === 'daily' ? (hasGameToday ? ppg : 0) : ppg * gamesThisWeek
       const sportOpps = getSportOpponents()
-      return { ...p, projection, opponent: hasGameToday ? `vs ${sportOpps[Math.abs(hash) % sportOpps.length]}` : null, gamesThisWeek }
-    }).filter(p => scoringMode.value === 'weekly' || p.projection > 0)
-    .sort((a, b) => (b.projection || 0) - (a.projection || 0))
+      return { ...p, projection, ppg, hasGame: hasGameToday, opponent: hasGameToday ? `vs ${sportOpps[Math.abs(hash) % sportOpps.length]}` : null, gamesThisWeek }
+    })
+    // Sort: game-players first (by ppg), then non-game players (by ppg) - never leave slots empty due to fake schedule
+    .sort((a, b) => {
+      if (a.hasGame !== b.hasGame) return a.hasGame ? -1 : 1
+      return (b.ppg || 0) - (a.ppg || 0)
+    })
     const best = eligible[0]
     if (best) { used.add(best.player_key); slots.push({ position: pos, player: best }) }
     else slots.push({ position: pos, player: null })
@@ -3453,7 +3460,13 @@ async function loadProjections() {
     loadingProgress.value = { ...loadingProgress.value, currentStep: 'Loading free agents...', currentStepName: 'Free Agents', completedSteps: 4 }
     const fa = await yahooService.getTopFreeAgents(leagueKey, 100)
     const combined = [...rostered, ...fa]
-    combined.forEach(p => { p.ppg = p.total_points > 0 ? p.total_points / 25 : 0 })
+    combined.forEach(p => {
+      p.ppg = p.total_points > 0 ? p.total_points / 25 : 0
+      // Parse all eligible positions from comma-separated position string
+      if (!p.eligible_positions) {
+        p.eligible_positions = (p.position || '').split(',').map((s: string) => s.trim()).filter(Boolean)
+      }
+    })
     allPlayers.value = combined
     
     // Debug logging
@@ -3917,6 +3930,12 @@ async function loadEspnProjections() {
     }
     
     // Combine rostered players and free agents
+    // Set eligible_positions for multi-position ESPN players
+    ;[...allRosteredPlayers, ...freeAgentPlayers].forEach(p => {
+      if (!p.eligible_positions) {
+        p.eligible_positions = (p.position || '').split(',').map((s: string) => s.trim()).filter(Boolean)
+      }
+    })
     allPlayers.value = [...allRosteredPlayers, ...freeAgentPlayers]
     console.log('[ESPN Points Projections] Total players:', allPlayers.value.length, '(rostered:', allRosteredPlayers.length, ', FA:', freeAgentPlayers.length, ')')
     
