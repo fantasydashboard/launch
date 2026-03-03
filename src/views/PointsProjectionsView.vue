@@ -606,11 +606,18 @@
                       <div class="font-semibold text-dark-text text-sm" :class="slot.isWaiver ? 'text-cyan-400' : isMyPlayer(slot.player) ? 'text-yellow-400' : ''">
                         {{ slot.player.full_name }}
                         <span v-if="slot.isWaiver" class="ml-1.5 text-[10px] bg-cyan-500/20 text-cyan-400 px-1.5 py-0.5 rounded font-bold">WAIVER</span>
+                        <span v-if="slot.player.isLive" class="ml-1.5 inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold text-green-400 bg-green-500/20">🟢 LIVE</span>
                       </div>
                       <div class="flex items-center gap-2 text-xs">
-                        <span v-if="slot.player.opponent" class="text-green-400 flex items-center gap-1">
-                          <span>{{ slot.player.opponent }}</span>
-                        </span>
+                        <template v-if="slot.player.opponent">
+                          <img
+                            :src="`https://a.espncdn.com/combiner/i?img=/i/teamlogos/${currentSport === 'basketball' ? 'nba' : currentSport === 'hockey' ? 'nhl' : 'mlb'}/500/${slot.player.nhl_team || slot.player.nba_team || slot.player.mlb_team || ''}.png&h=20&w=20`"
+                            class="w-4 h-4 object-contain"
+                            @error="(e: any) => e.target.style.display = 'none'"
+                          />
+                          <span class="text-green-400">{{ slot.player.opponent }}</span>
+                          <span v-if="slot.player.gameTime" class="text-gray-400 font-light">{{ formatGameTime(slot.player.gameTime) }}</span>
+                        </template>
                         <span v-else-if="scoringMode === 'weekly'" class="text-dark-textMuted">{{ slot.player.gamesThisWeek || 0 }} games this week</span>
                         <span v-else class="text-red-400">No game</span>
                       </div>
@@ -621,7 +628,7 @@
                       <div class="text-[9px] text-dark-textMuted uppercase">Score</div>
                     </div>
                     <!-- Status dot -->
-                    <div class="w-2 h-2 rounded-full flex-shrink-0" :class="slot.player.opponent ? 'bg-green-400' : 'bg-red-400/50'"></div>
+                    <div class="w-2 h-2 rounded-full flex-shrink-0" :class="slot.player.isLive ? 'bg-green-400 animate-pulse' : slot.player.hasGame ? 'bg-green-400' : 'bg-red-400/50'"></div>
                     <!-- Remove waiver -->
                     <button v-if="slot.isWaiver" @click="removeFromWaiverLineup(slot.player)" class="text-red-400 hover:text-red-300 transition-colors flex-shrink-0">
                       <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
@@ -724,13 +731,21 @@
                           <img :src="player.headshot || defaultHeadshot" class="w-full h-full object-cover" @error="handleImageError" />
                         </div>
                         <div class="min-w-0">
-                          <div class="font-semibold text-dark-text text-sm truncate" :class="{ 'text-cyan-400': isInWaiverLineup(player) }">{{ player.full_name }}</div>
+                          <div class="font-semibold text-dark-text text-sm truncate" :class="{ 'text-cyan-400': isInWaiverLineup(player) }">
+                            {{ player.full_name }}
+                            <span v-if="player.isLive" class="ml-1 inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold text-green-400 bg-green-500/20">🟢 LIVE</span>
+                          </div>
                           <div class="flex items-center gap-1.5 text-xs">
                             <span class="px-1.5 py-0.5 rounded text-[10px] font-bold" :class="getPositionClass(player.position)">{{ player.position?.split(',')[0] }}</span>
-                            <span class="text-dark-textMuted">{{ player.mlb_team || 'FA' }}</span>
                             <template v-if="player.opponent">
                               <span class="text-dark-textMuted">·</span>
+                              <img
+                                :src="`https://a.espncdn.com/combiner/i?img=/i/teamlogos/${currentSport === 'basketball' ? 'nba' : currentSport === 'hockey' ? 'nhl' : 'mlb'}/500/${player.nhl_team || player.nba_team || player.mlb_team || ''}.png&h=20&w=20`"
+                                class="w-3.5 h-3.5 object-contain"
+                                @error="(e: any) => e.target.style.display = 'none'"
+                              />
                               <span class="text-green-400">{{ player.opponent }}</span>
+                              <span v-if="player.gameTime" class="text-dark-textMuted">{{ formatGameTime(player.gameTime) }}</span>
                             </template>
                             <template v-else>
                               <span class="text-dark-textMuted">·</span>
@@ -1589,6 +1604,7 @@ import { sleeperService } from '@/services/sleeper'
 import { useFeatureAccess } from '@/composables/useFeatureAccess'
 import SimulatedDataBanner from '@/components/SimulatedDataBanner.vue'
 import LoadingSpinner from '@/components/LoadingSpinner.vue'
+import { liveGamesService } from '@/services/live-games'
 
 const leagueStore = useLeagueStore()
 const authStore = useAuthStore()
@@ -1736,6 +1752,8 @@ const defaultTeamAvatar = 'https://s.yimg.com/cv/apiv2/default/mlb/mlb_2_g.png'
 
 const scoringMode = ref<'daily' | 'weekly'>('daily')
 const selectedDate = ref(new Date())
+const todaysGames = ref<any[]>([])
+const tomorrowsGames = ref<any[]>([])
 const currentWeek = computed(() => {
   // Calculate approximate MLB week (season typically starts late March/early April)
   const seasonStart = new Date(new Date().getFullYear(), 2, 28) // March 28
@@ -2468,15 +2486,25 @@ const suggestedLineup = computed(() => {
         : (p.position || '').split(',').map((s: string) => s.trim()).filter(Boolean)
       return eligiblePositions.includes(pos) || flexEligible.some((fp: string) => eligiblePositions.includes(fp))
     })
+    const activeGames = todaysGames.value
     eligible = eligible.map(p => {
       const hashInput = (p.player_key || '') + dateStr
       const hash = hashInput.split('').reduce((a: number, b: string) => ((a << 5) - a) + b.charCodeAt(0), 0)
-      const hasGameToday = Math.abs(hash) % 10 < 6
       const gamesThisWeek = 4 + (Math.abs(hash) % 4)
       const ppg = p.ppg || 0
+      // Try real live game data first
+      // mlb_team is the final fallback for ALL sports: Yahoo stores team abbrev in mlb_team
+      // regardless of sport (nhl_team/nba_team fields may not be set by Yahoo service)
+      const teamCode = currentSport.value === 'basketball' ? (p.nba_team || p.editorial_team_abbr || p.team_abbr || p.mlb_team)
+        : currentSport.value === 'hockey' ? (p.nhl_team || p.editorial_team_abbr || p.team_abbr || p.mlb_team)
+        : (p.mlb_team || p.editorial_team_abbr || p.team_abbr)
+      const liveInfo = teamCode && activeGames.length ? liveGamesService.getPlayerGameInfo(teamCode, activeGames) : null
+      const hasGameToday = liveInfo?.hasGame ?? (Math.abs(hash) % 10 < 6)
+      const isLive = liveInfo?.isLive ?? false
+      const gameTime = liveInfo?.gameTime ?? null
+      const opponent = liveInfo?.hasGame ? liveInfo.opponent : (hasGameToday ? `vs ${getSportOpponents()[Math.abs(hash) % getSportOpponents().length]}` : null)
       const projection = scoringMode.value === 'daily' ? (hasGameToday ? ppg : 0) : ppg * gamesThisWeek
-      const sportOpps = getSportOpponents()
-      return { ...p, projection, ppg, hasGame: hasGameToday, opponent: hasGameToday ? `vs ${sportOpps[Math.abs(hash) % sportOpps.length]}` : null, gamesThisWeek }
+      return { ...p, projection, ppg, hasGame: hasGameToday, isLive, gameTime, opponent, gamesThisWeek }
     })
     // Sort: game-players first (by ppg), then non-game players (by ppg) - never leave slots empty due to fake schedule
     .sort((a, b) => {
@@ -2507,17 +2535,22 @@ const benchPlayers = computed(() => {
     .map(p => {
       const hashInput = (p.player_key || '') + dateStr
       const hash = hashInput.split('').reduce((a: number, b: string) => ((a << 5) - a) + b.charCodeAt(0), 0)
-      const hasGameToday = Math.abs(hash) % 10 < 6
       const gamesThisWeek = 4 + (Math.abs(hash) % 4)
       const ppg = p.ppg || 0
+      const bTeamCode = currentSport.value === 'basketball' ? (p.nba_team || p.editorial_team_abbr || p.team_abbr || p.mlb_team)
+        : currentSport.value === 'hockey' ? (p.nhl_team || p.editorial_team_abbr || p.team_abbr || p.mlb_team)
+        : (p.mlb_team || p.editorial_team_abbr || p.team_abbr)
+      const bLiveInfo = bTeamCode && todaysGames.value.length ? liveGamesService.getPlayerGameInfo(bTeamCode, todaysGames.value) : null
+      const hasGameToday = bLiveInfo?.hasGame ?? (Math.abs(hash) % 10 < 6)
       const projection = scoringMode.value === 'daily' ? (hasGameToday ? ppg : 0) : ppg * gamesThisWeek
-      const sportOpps = getSportOpponents()
       return { 
         ...p, 
-        projection, 
-        opponent: hasGameToday ? `vs ${sportOpps[Math.abs(hash) % sportOpps.length]}` : null, 
+        projection,
+        opponent: bLiveInfo?.hasGame ? bLiveInfo.opponent : (hasGameToday ? `vs ${getSportOpponents()[Math.abs(hash) % getSportOpponents().length]}` : null),
         gamesThisWeek,
-        hasGame: hasGameToday
+        hasGame: hasGameToday,
+        isLive: bLiveInfo?.isLive ?? false,
+        gameTime: bLiveInfo?.gameTime ?? null
       }
     })
     .sort((a, b) => (b.projection || 0) - (a.projection || 0))
@@ -3162,6 +3195,16 @@ function getTeamPositionPlayers(team: TeamRanking, pos: string): any[] {
 function selectAllPositions() { selectedPositions.value = selectedPositions.value.length === positionFilters.value.length ? [] : positionFilters.value.map(p => p.id) }
 function togglePositionFilter(pos: string) { const i = selectedPositions.value.indexOf(pos); i >= 0 ? selectedPositions.value.splice(i, 1) : selectedPositions.value.push(pos) }
 function isMyPlayer(p: any) { return p.fantasy_team_key === myTeamKey.value }
+
+function formatGameTime(gameTimeString: string | null | undefined): string {
+  if (!gameTimeString) return ''
+  try {
+    const date = new Date(gameTimeString)
+    return date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })
+  } catch (e) { return '' }
+}
+
+
 function isFreeAgent(p: any) { return !p.fantasy_team }
 function handleImageError(e: Event) { (e.target as HTMLImageElement).src = defaultHeadshot }
 function getRowClass(p: any) { return isMyPlayer(p) ? 'bg-yellow-500/10 border-l-2 border-yellow-400' : isFreeAgent(p) ? 'bg-cyan-500/5 border-l-2 border-cyan-400' : '' }
@@ -3380,6 +3423,21 @@ function getTierDescription(tier: number): string {
   
   const label = tier <= 10 ? tierLabels[tier] : 'Replacement Level'
   return `${label} • ${count} player${count !== 1 ? 's' : ''}`
+}
+
+async function loadGamesForPoints() {
+  try {
+    const targetDate = selectedDate.value
+    const tomorrow = new Date(targetDate.getTime() + 86400000)
+    const [todayGames, tmrwGames] = await Promise.all([
+      liveGamesService.getGamesByDate(currentSport.value, targetDate),
+      liveGamesService.getGamesByDate(currentSport.value, tomorrow)
+    ])
+    todaysGames.value = todayGames
+    tomorrowsGames.value = tmrwGames
+  } catch (e) {
+    console.warn('[PointsView] Could not load live games:', e)
+  }
 }
 
 async function loadProjections() {
@@ -3786,6 +3844,16 @@ async function loadEspnProjections() {
     
     loadingProgress.value = { ...loadingProgress.value, currentStep: 'Loading teams...', currentStepName: 'Teams', completedSteps: 2 }
     
+    // Load authoritative proTeamId -> abbreviation map from ESPN's settings API
+    // ESPN uses non-sequential sport-specific IDs — only the API itself knows the correct mapping
+    let proTeamMap: Record<number, string> = {}
+    try {
+      proTeamMap = await espnService.getProTeamMap(sport as any, leagueId, season)
+      console.log('[ESPN Points Projections] proTeamMap loaded:', Object.keys(proTeamMap).length, 'teams')
+    } catch (e) {
+      console.log('[ESPN Points Projections] Could not load proTeamMap:', e)
+    }
+    
     // Load teams with rosters
     const teams = await espnService.getTeamsWithRosters(sport as any, leagueId, season)
     
@@ -3841,12 +3909,18 @@ async function loadEspnProjections() {
         
         if (playerId) playerIdList.push(playerId)
         
+        // Use proTeamMap (from ESPN's own API) for accurate team abbreviations
+        const espnTeamAbbr = (entry.proTeamId && proTeamMap[entry.proTeamId])
+          || getEspnTeamAbbrev(entry.proTeamId)
+        
         allRosteredPlayers.push({
           player_key: `espn_player_${playerId}`,
           player_id: playerId,
           full_name: playerName,
           position: entry.position || getEspnPositionAbbrev(entry.positionId || entry.defaultPositionId),
-          mlb_team: entry.proTeam || getEspnTeamAbbrev(entry.proTeamId),
+          mlb_team: sport === 'baseball' ? espnTeamAbbr : '',
+          nhl_team: sport === 'hockey' ? espnTeamAbbr : '',
+          nba_team: sport === 'basketball' ? espnTeamAbbr : '',
           headshot: getEspnHeadshotUrl(playerId, sport),
           fantasy_team: team.name,
           fantasy_team_key: `espn_${leagueId}_${season}_${team.id}`,
@@ -3914,7 +3988,9 @@ async function loadEspnProjections() {
           player_id: fa.id,
           full_name: fa.fullName || 'Unknown',
           position: fa.position || getEspnPositionAbbrev(fa.positionId || 0),
-          mlb_team: fa.proTeam || getEspnTeamAbbrev(fa.proTeamId || 0),
+          mlb_team: sport === 'baseball' ? (proTeamMap[fa.proTeamId] || fa.proTeam || getEspnTeamAbbrev(fa.proTeamId || 0)) : '',
+          nhl_team: sport === 'hockey' ? (proTeamMap[fa.proTeamId] || fa.proTeam || getEspnTeamAbbrev(fa.proTeamId || 0)) : '',
+          nba_team: sport === 'basketball' ? (proTeamMap[fa.proTeamId] || fa.proTeam || getEspnTeamAbbrev(fa.proTeamId || 0)) : '',
           headshot: getEspnHeadshotUrl(fa.id, sport),
           fantasy_team: null,  // Free agent - no team
           fantasy_team_key: null,
@@ -4009,6 +4085,9 @@ onMounted(() => {
   
   // Load saved ranking factors
   loadRankingFactorsFromStorage()
+  
+  // Load live game schedule for real game times and live status
+  loadGamesForPoints()
   
   if (effectiveLeagueKey.value) {
     if (isEspn.value) {
