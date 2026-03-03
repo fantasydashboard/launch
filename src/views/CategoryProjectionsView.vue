@@ -428,11 +428,11 @@
                 <div class="flex gap-6">
                   <div class="text-center">
                     <div class="text-2xl font-bold text-green-400">{{ hittingCategories.length }}</div>
-                    <div class="text-xs text-dark-textMuted">Hitting</div>
+                    <div class="text-xs text-dark-textMuted">{{ currentSport === 'hockey' ? 'Skater' : currentSport === 'basketball' ? 'Offense' : 'Hitting' }}</div>
                   </div>
                   <div class="text-center">
                     <div class="text-2xl font-bold text-purple-400">{{ pitchingCategories.length }}</div>
-                    <div class="text-xs text-dark-textMuted">Pitching</div>
+                    <div class="text-xs text-dark-textMuted">{{ currentSport === 'hockey' ? 'Goalie' : currentSport === 'basketball' ? 'Defense' : 'Pitching' }}</div>
                   </div>
                 </div>
               </div>
@@ -5235,11 +5235,16 @@ function processTeamsData() {
     
     for (const cat of displayCategories.value) {
       const statId = cat.stat_id
+      const catIsPitching = isPitchingStat(cat)
       let total = 0
       let topPlayer: any = null
       let topValue = -Infinity
       
-      for (const player of teamPlayers) {
+      // Only include players eligible for this category type (skaters for skater stats, goalies for goalie stats)
+      const eligiblePlayers = teamPlayers.filter(p => catIsPitching ? isPitcher(p) : !isPitcher(p))
+      const playersToScore = eligiblePlayers.length > 0 ? eligiblePlayers : teamPlayers
+      
+      for (const player of playersToScore) {
         const value = parseFloat(player.stats?.[statId] || 0)
         if (!isNaN(value)) {
           // For counting stats, sum them up
@@ -5384,8 +5389,10 @@ function detectTeamStrategy(team: any): string {
     const avgHitting = hittingRanks.reduce((a, b) => a + b, 0) / hittingRanks.length
     const avgPitching = pitchingRanks.reduce((a, b) => a + b, 0) / pitchingRanks.length
     
-    if (avgHitting < avgPitching - 2) return 'Hitting Heavy'
-    if (avgPitching < avgHitting - 2) return 'Pitching Heavy'
+    const heavyLabel1 = currentSport.value === 'hockey' ? 'Skater Heavy' : currentSport.value === 'basketball' ? 'Offense Heavy' : 'Hitting Heavy'
+    const heavyLabel2 = currentSport.value === 'hockey' ? 'Goalie Heavy' : currentSport.value === 'basketball' ? 'Defense Heavy' : 'Pitching Heavy'
+    if (avgHitting < avgPitching - 2) return heavyLabel1
+    if (avgPitching < avgHitting - 2) return heavyLabel2
   }
   
   return 'Balanced'
@@ -5455,8 +5462,10 @@ function getStrategyClass(strategy: string): string {
 function getStrategyIcon(strategy: string): string {
   if (strategy?.includes('Punt')) return '🎯'
   if (strategy === 'Balanced') return '⚖️'
-  if (strategy?.includes('Pitching')) return '⚾'
-  if (strategy?.includes('Hitting')) return '🏏'
+  if (strategy?.includes('Pitching') || strategy?.includes('Goalie')) return currentSport.value === 'hockey' ? '🥅' : '⚾'
+  if (strategy?.includes('Hitting') || strategy?.includes('Skater')) return currentSport.value === 'hockey' ? '⛸️' : '🏏'
+  if (strategy?.includes('Offense')) return '🏀'
+  if (strategy?.includes('Defense')) return '🛡️'
   return '📊'
 }
 
