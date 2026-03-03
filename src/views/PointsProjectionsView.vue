@@ -1809,41 +1809,65 @@ const startSitPresets = [
   { id: 'highCeiling', name: 'High Ceiling', icon: '🚀', weights: { ppg: 25, matchupDifficulty: 25, recentForm: 20, upside: 25, consistency: 5 } },
 ]
 
-// MLB Team Matchup Difficulty (points allowed to position - lower = harder matchup)
-// This would ideally come from real stats, using sample data for now
-const mlbTeamMatchupRatings = ref<Record<string, Record<string, number>>>({
-  // Team: { Position: difficulty rating 1-10 where 10 = easiest }
-  'NYY': { C: 5, '1B': 4, '2B': 6, '3B': 5, SS: 5, OF: 4, SP: 3, RP: 4 },
-  'BOS': { C: 6, '1B': 7, '2B': 5, '3B': 6, SS: 6, OF: 7, SP: 5, RP: 6 },
-  'LAD': { C: 4, '1B': 3, '2B': 4, '3B': 4, SS: 3, OF: 3, SP: 4, RP: 3 },
-  'ATL': { C: 5, '1B': 5, '2B': 5, '3B': 6, SS: 5, OF: 5, SP: 4, RP: 5 },
-  'HOU': { C: 4, '1B': 4, '2B': 5, '3B': 4, SS: 4, OF: 4, SP: 3, RP: 4 },
-  'SD': { C: 6, '1B': 6, '2B': 7, '3B': 6, SS: 7, OF: 6, SP: 5, RP: 6 },
-  'PHI': { C: 5, '1B': 6, '2B': 5, '3B': 5, SS: 6, OF: 5, SP: 5, RP: 5 },
-  'SEA': { C: 7, '1B': 6, '2B': 6, '3B': 7, SS: 6, OF: 6, SP: 6, RP: 7 },
-  'TB': { C: 5, '1B': 5, '2B': 4, '3B': 5, SS: 5, OF: 5, SP: 4, RP: 5 },
-  'MIN': { C: 6, '1B': 7, '2B': 6, '3B': 6, SS: 7, OF: 7, SP: 6, RP: 6 },
-  'CHC': { C: 7, '1B': 7, '2B': 8, '3B': 7, SS: 7, OF: 8, SP: 7, RP: 7 },
-  'STL': { C: 6, '1B': 6, '2B': 6, '3B': 6, SS: 6, OF: 6, SP: 5, RP: 6 },
-  'TEX': { C: 7, '1B': 8, '2B': 7, '3B': 8, SS: 7, OF: 8, SP: 7, RP: 8 },
-  'BAL': { C: 5, '1B': 5, '2B': 6, '3B': 5, SS: 5, OF: 5, SP: 5, RP: 5 },
-  'MIL': { C: 6, '1B': 6, '2B': 5, '3B': 6, SS: 6, OF: 6, SP: 5, RP: 6 },
-  'ARI': { C: 7, '1B': 7, '2B': 7, '3B': 7, SS: 8, OF: 7, SP: 6, RP: 7 },
-  'SF': { C: 5, '1B': 5, '2B': 5, '3B': 5, SS: 5, OF: 5, SP: 4, RP: 5 },
-  'CLE': { C: 5, '1B': 5, '2B': 4, '3B': 5, SS: 5, OF: 4, SP: 4, RP: 4 },
-  'DET': { C: 8, '1B': 8, '2B': 8, '3B': 8, SS: 8, OF: 9, SP: 8, RP: 8 },
-  'KC': { C: 8, '1B': 9, '2B': 8, '3B': 9, SS: 8, OF: 9, SP: 8, RP: 9 },
-  'LAA': { C: 7, '1B': 7, '2B': 7, '3B': 7, SS: 7, OF: 7, SP: 7, RP: 7 },
-  'OAK': { C: 9, '1B': 9, '2B': 9, '3B': 9, SS: 9, OF: 10, SP: 9, RP: 9 },
-  'PIT': { C: 8, '1B': 8, '2B': 7, '3B': 8, SS: 8, OF: 8, SP: 7, RP: 8 },
-  'CIN': { C: 7, '1B': 8, '2B': 7, '3B': 7, SS: 7, OF: 8, SP: 7, RP: 7 },
-  'COL': { C: 9, '1B': 10, '2B': 9, '3B': 9, SS: 9, OF: 10, SP: 9, RP: 9 }, // Coors Field bonus
-  'MIA': { C: 8, '1B': 8, '2B': 8, '3B': 8, SS: 8, OF: 8, SP: 8, RP: 8 },
-  'WSH': { C: 8, '1B': 8, '2B': 8, '3B': 8, SS: 8, OF: 8, SP: 8, RP: 8 },
-  'NYM': { C: 5, '1B': 5, '2B': 6, '3B': 5, SS: 5, OF: 5, SP: 4, RP: 5 },
-  'TOR': { C: 6, '1B': 6, '2B': 6, '3B': 6, SS: 6, OF: 6, SP: 5, RP: 6 },
-  'CHW': { C: 8, '1B': 9, '2B': 8, '3B': 8, SS: 8, OF: 9, SP: 8, RP: 8 },
-})
+// Sport-aware team abbreviations for opponent generation
+const SPORT_TEAM_ABBREVS: Record<string, string[]> = {
+  baseball: ['NYY','BOS','LAD','ATL','HOU','SD','PHI','SEA','TB','MIN','CHC','STL','TEX','BAL','MIL','ARI','SF','CLE','DET','KC','LAA','OAK','PIT','CIN','COL','MIA','WSH','NYM','TOR','CHW'],
+  basketball: ['LAL','GSW','BOS','MIA','MIL','PHX','DEN','PHI','BKN','DAL','CHI','ATL','NYK','TOR','MEM','SAC','NOP','LAC','POR','IND','UTA','OKC','MIN','CLE','DET','ORL','HOU','WAS','CHA','SAS'],
+  football: ['NE','KC','SF','DAL','GB','BUF','PHI','BAL','CIN','LAR','SEA','MIA','DEN','NO','TB','NYG','ARI','CAR','CHI','ATL','JAX','CLE','IND','MIN','DET','WAS','LV','LAC','TEN','HOU','NYJ','PIT'],
+  hockey: ['BOS','TBL','COL','VGK','TOR','EDM','CAR','FLA','PIT','NYR','WSH','DAL','ANA','CHI','MTL','MIN','NSH','CBJ','PHI','BUF','ARI','NYI','SJS','VAN','WPG','OTT','CGY','STL','DET','NJD','LAK','SEA']
+}
+
+// Sport-aware matchup difficulty ratings (1-10, higher = easier for scorer)
+const SPORT_MATCHUP_RATINGS: Record<string, Record<string, Record<string, number>>> = {
+  baseball: {
+    'NYY': { C: 5, '1B': 4, '2B': 6, '3B': 5, SS: 5, OF: 4, SP: 3, RP: 4 },
+    'BOS': { C: 6, '1B': 7, '2B': 5, '3B': 6, SS: 6, OF: 7, SP: 5, RP: 6 },
+    'LAD': { C: 4, '1B': 3, '2B': 4, '3B': 4, SS: 3, OF: 3, SP: 4, RP: 3 },
+    'ATL': { C: 5, '1B': 5, '2B': 5, '3B': 6, SS: 5, OF: 5, SP: 4, RP: 5 },
+    'HOU': { C: 4, '1B': 4, '2B': 5, '3B': 4, SS: 4, OF: 4, SP: 3, RP: 4 },
+    'COL': { C: 9, '1B': 10, '2B': 9, '3B': 9, SS: 9, OF: 10, SP: 9, RP: 9 },
+    'DET': { C: 8, '1B': 8, '2B': 8, '3B': 8, SS: 8, OF: 9, SP: 8, RP: 8 },
+    'OAK': { C: 9, '1B': 9, '2B': 9, '3B': 9, SS: 9, OF: 10, SP: 9, RP: 9 },
+  },
+  basketball: {
+    // Top defensive teams (hard = low score), weaker teams (easy = high score)
+    'BOS': { PG: 4, SG: 4, SF: 4, PF: 5, C: 5, G: 4, F: 4, Util: 5 }, // elite defense
+    'MIL': { PG: 5, SG: 5, SF: 5, PF: 4, C: 4, G: 5, F: 5, Util: 5 },
+    'MIN': { PG: 5, SG: 4, SF: 5, PF: 4, C: 4, G: 5, F: 5, Util: 5 },
+    'NYK': { PG: 5, SG: 5, SF: 5, PF: 5, C: 5, G: 5, F: 5, Util: 5 },
+    'GSW': { PG: 5, SG: 5, SF: 5, PF: 6, C: 6, G: 5, F: 6, Util: 6 },
+    'LAL': { PG: 6, SG: 6, SF: 6, PF: 6, C: 6, G: 6, F: 6, Util: 6 },
+    'DEN': { PG: 6, SG: 6, SF: 6, PF: 5, C: 5, G: 6, F: 6, Util: 6 },
+    'PHX': { PG: 6, SG: 6, SF: 7, PF: 7, C: 7, G: 6, F: 7, Util: 7 },
+    'HOU': { PG: 7, SG: 7, SF: 7, PF: 7, C: 7, G: 7, F: 7, Util: 7 },
+    'SAS': { PG: 8, SG: 8, SF: 8, PF: 8, C: 8, G: 8, F: 8, Util: 8 }, // weak team
+    'DET': { PG: 8, SG: 8, SF: 8, PF: 8, C: 8, G: 8, F: 8, Util: 8 },
+    'WAS': { PG: 8, SG: 8, SF: 8, PF: 8, C: 8, G: 8, F: 8, Util: 8 },
+    'CHA': { PG: 9, SG: 9, SF: 8, PF: 8, C: 8, G: 9, F: 8, Util: 8 },
+    'ORL': { PG: 7, SG: 7, SF: 7, PF: 7, C: 6, G: 7, F: 7, Util: 7 },
+  },
+  football: {
+    'NE': { QB: 4, RB: 4, WR: 4, TE: 5, K: 5, DEF: 3, Flex: 4 },
+    'SF': { QB: 4, RB: 4, WR: 4, TE: 5, K: 5, DEF: 3, Flex: 4 },
+    'BUF': { QB: 5, RB: 5, WR: 5, TE: 5, K: 5, DEF: 4, Flex: 5 },
+    'DAL': { QB: 6, RB: 6, WR: 7, TE: 6, K: 6, DEF: 5, Flex: 6 },
+    'IND': { QB: 7, RB: 8, WR: 7, TE: 7, K: 7, DEF: 7, Flex: 7 },
+    'NYG': { QB: 8, RB: 8, WR: 8, TE: 8, K: 8, DEF: 8, Flex: 8 },
+    'CAR': { QB: 8, RB: 7, WR: 8, TE: 8, K: 7, DEF: 8, Flex: 8 },
+  },
+  hockey: {
+    'BOS': { C: 4, LW: 4, RW: 4, D: 4, G: 4 },
+    'TBL': { C: 4, LW: 4, RW: 4, D: 4, G: 4 },
+    'COL': { C: 5, LW: 5, RW: 5, D: 5, G: 5 },
+    'VGK': { C: 5, LW: 5, RW: 5, D: 5, G: 5 },
+    'ARI': { C: 8, LW: 8, RW: 8, D: 8, G: 8 },
+    'CBJ': { C: 8, LW: 8, RW: 8, D: 8, G: 8 },
+    'CHI': { C: 8, LW: 8, RW: 8, D: 8, G: 8 },
+  }
+}
+
+// Keep old ref name for backward compat but it's no longer used directly
+const mlbTeamMatchupRatings = ref(SPORT_MATCHUP_RATINGS.baseball)
 
 const totalStartSitWeight = computed(() => {
   return startSitFactors.value.filter(f => f.enabled).reduce((sum, f) => sum + f.weight, 0)
@@ -1879,9 +1903,14 @@ function recalculateStartSit() {
 }
 
 function getMatchupDifficulty(opponentTeam: string, position: string): number {
-  const teamRatings = mlbTeamMatchupRatings.value[opponentTeam]
+  const sportRatings = SPORT_MATCHUP_RATINGS[currentSport.value] || SPORT_MATCHUP_RATINGS.baseball
+  const teamRatings = sportRatings[opponentTeam]
   if (!teamRatings) return 5 // Default neutral
   return teamRatings[position] || 5
+}
+
+function getSportOpponents(): string[] {
+  return SPORT_TEAM_ABBREVS[currentSport.value] || SPORT_TEAM_ABBREVS.baseball
 }
 
 function getMatchupClass(difficulty: number): string {
@@ -2254,7 +2283,7 @@ function getStartSitPlayers(position: string): any[] {
     const gamesThisWeek = 4 + (Math.abs(hash) % 4)
     
     // Generate opponent based on hash (deterministic per player per date)
-    const opponents = ['NYY', 'BOS', 'LAD', 'ATL', 'HOU', 'SD', 'PHI', 'SEA', 'TB', 'MIN', 'CHC', 'STL', 'TEX', 'BAL', 'MIL', 'ARI', 'SF', 'CLE', 'DET', 'KC', 'LAA', 'OAK', 'PIT', 'CIN', 'COL', 'MIA', 'WSH', 'NYM', 'TOR', 'CHW']
+    const opponents = getSportOpponents()
     const opponentTeam = opponents[Math.abs(hash) % opponents.length]
     const opponent = hasGameToday ? `vs ${opponentTeam}` : null
     
@@ -2443,8 +2472,8 @@ const suggestedLineup = computed(() => {
       const gamesThisWeek = 4 + (Math.abs(hash) % 4)
       const ppg = p.ppg || 0
       const projection = scoringMode.value === 'daily' ? (hasGameToday ? ppg : 0) : ppg * gamesThisWeek
-      const opponents = ['NYY', 'BOS', 'LAD', 'ATL', 'HOU']
-      return { ...p, projection, opponent: hasGameToday ? `vs ${opponents[Math.abs(hash) % 5]}` : null, gamesThisWeek }
+      const sportOpps = getSportOpponents()
+      return { ...p, projection, opponent: hasGameToday ? `vs ${sportOpps[Math.abs(hash) % sportOpps.length]}` : null, gamesThisWeek }
     }).filter(p => scoringMode.value === 'weekly' || p.projection > 0)
     .sort((a, b) => (b.projection || 0) - (a.projection || 0))
     const best = eligible[0]
@@ -2475,11 +2504,11 @@ const benchPlayers = computed(() => {
       const gamesThisWeek = 4 + (Math.abs(hash) % 4)
       const ppg = p.ppg || 0
       const projection = scoringMode.value === 'daily' ? (hasGameToday ? ppg : 0) : ppg * gamesThisWeek
-      const opponents = ['NYY', 'BOS', 'LAD', 'ATL', 'HOU']
+      const sportOpps = getSportOpponents()
       return { 
         ...p, 
         projection, 
-        opponent: hasGameToday ? `vs ${opponents[Math.abs(hash) % 5]}` : null, 
+        opponent: hasGameToday ? `vs ${sportOpps[Math.abs(hash) % sportOpps.length]}` : null, 
         gamesThisWeek,
         hasGame: hasGameToday
       }
