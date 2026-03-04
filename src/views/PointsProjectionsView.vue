@@ -603,10 +603,9 @@
                     </div>
                     <!-- Player Info -->
                     <div class="flex-1 min-w-0">
-                      <div class="font-semibold text-dark-text text-sm" :class="slot.isWaiver ? 'text-cyan-400' : isMyPlayer(slot.player) ? 'text-yellow-400' : ''">
+                      <div class="font-semibold text-dark-text text-sm" :class="slot.isWaiver ? 'text-cyan-400' : ''">
                         {{ slot.player.full_name }}
                         <span v-if="slot.isWaiver" class="ml-1.5 text-[10px] bg-cyan-500/20 text-cyan-400 px-1.5 py-0.5 rounded font-bold">WAIVER</span>
-                        <span v-if="slot.player.isLive" class="ml-1.5 inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold text-green-400 bg-green-500/20">🟢 LIVE</span>
                       </div>
                       <div class="flex items-center gap-2 text-xs">
                         <template v-if="slot.player.opponent">
@@ -733,7 +732,6 @@
                         <div class="min-w-0">
                           <div class="font-semibold text-dark-text text-sm truncate" :class="{ 'text-cyan-400': isInWaiverLineup(player) }">
                             {{ player.full_name }}
-                            <span v-if="player.isLive" class="ml-1 inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold text-green-400 bg-green-500/20">🟢 LIVE</span>
                           </div>
                           <div class="flex items-center gap-1.5 text-xs">
                             <span class="px-1.5 py-0.5 rounded text-[10px] font-bold" :class="getPositionClass(player.position)">{{ player.position?.split(',')[0] }}</span>

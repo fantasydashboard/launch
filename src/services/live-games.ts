@@ -152,10 +152,17 @@ class LiveGamesService {
       return this.noGameInfo()
     }
     
+    // Always compare uppercase - Yahoo returns mixed case like "Wpg", "Tor", "TB"
+    const upper = playerTeam.toUpperCase()
+    const normalized = this.normalizeTeamAbbr(upper)
+    
     // Find game where player's team is playing
-    const game = games.find(g => 
-      g.homeTeam === playerTeam || g.awayTeam === playerTeam
-    )
+    // DB team values are stored in whatever case the scraper used, so compare uppercase on both sides
+    const game = games.find(g => {
+      const home = (g.homeTeam || '').toUpperCase()
+      const away = (g.awayTeam || '').toUpperCase()
+      return home === upper || away === upper || home === normalized || away === normalized
+    })
     
     if (!game) {
       return this.noGameInfo()
@@ -341,6 +348,31 @@ class LiveGamesService {
     return mapping[sport] || sport
   }
   
+  /**
+   * Normalize team abbreviations across platforms
+   * Yahoo, ESPN, and the DB may use slightly different formats
+   */
+  private normalizeTeamAbbr(team: string): string {
+    // All inputs should already be uppercase. Maps alternate/short forms to common forms.
+    const MAP: Record<string, string> = {
+      // NHL alternates (Yahoo uses these)
+      'TB': 'TBL', 'NJ': 'NJD', 'LA': 'LAK', 'SJ': 'SJS',
+      'VGS': 'VGK', 'PHX': 'ARI', 'ATL': 'WPG',
+      // NHL reverse (if DB uses short form)
+      'TBL': 'TB', 'NJD': 'NJ', 'LAK': 'LA', 'SJS': 'SJ', 'VGK': 'VGS',
+      // NBA alternates
+      'GS': 'GSW', 'NY': 'NYK', 'NO': 'NOP', 'SA': 'SAS', 'UTAH': 'UTA',
+      'GS WARRIORS': 'GSW', 'NETS': 'BKN', 'KNICKS': 'NYK',
+      // NBA reverse
+      'GSW': 'GS', 'NYK': 'NY', 'NOP': 'NO', 'SAS': 'SA',
+      // MLB alternates
+      'CWS': 'CHW', 'CHW': 'CWS', 'KC': 'KCR', 'KCR': 'KC',
+      'TB': 'TBR', 'TBR': 'TB', 'WSH': 'WAS', 'WAS': 'WSH',
+      'SD': 'SDP', 'SDP': 'SD', 'SF': 'SFG', 'SFG': 'SF',
+    }
+    return MAP[team] || team
+  }
+
   private mapDbGameToLiveGame(dbGame: any): LiveGame {
     return {
       gameId: dbGame.game_id,

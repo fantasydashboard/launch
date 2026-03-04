@@ -301,7 +301,7 @@
                         <div>
                           <span class="font-semibold" :class="getPlayerNameClass(player)">{{ player.full_name }}</span>
                           <span 
-                            v-if="getInjuryInfo(player)" 
+                            v-if="getInjuryInfo(player) && ['OUT','DTD','GTD','Q','SUSP','DOUBT','IL','IL+','DL','OFS'].includes(getInjuryInfo(player)?.label || '')" 
                             class="inline-flex items-center ml-1.5 px-1.5 py-0.5 rounded text-[10px] font-bold cursor-help"
                             :class="getInjuryInfo(player)?.color"
                             :title="getInjuryInfo(player)?.tooltip"
@@ -799,7 +799,6 @@
                       <div class="flex-1 min-w-0">
                         <div class="font-semibold text-dark-text text-sm">
                           {{ slot.player.full_name }}
-                          <span v-if="getInjuryInfo(slot.player)" class="inline-flex items-center ml-1 px-1 py-0.5 rounded text-[10px] font-bold cursor-help" :class="getInjuryInfo(slot.player)?.color" :title="getInjuryInfo(slot.player)?.tooltip">{{ getInjuryInfo(slot.player)?.icon }} {{ getInjuryInfo(slot.player)?.label }}</span>
                         </div>
                         <div class="flex items-center gap-2 text-xs">
                           <span v-if="slot.player.hasGame" class="text-green-400 flex items-center gap-1">
@@ -908,7 +907,7 @@
                         <div class="min-w-0">
                           <div class="font-semibold text-dark-text text-sm truncate hover:text-yellow-400 transition-colors">
                             {{ player.full_name }}
-                            <span v-if="getInjuryInfo(player)" class="inline-flex items-center ml-1 px-1 py-0.5 rounded text-[10px] font-bold cursor-help" :class="getInjuryInfo(player)?.color" :title="getInjuryInfo(player)?.tooltip">{{ getInjuryInfo(player)?.icon }} {{ getInjuryInfo(player)?.label }}</span>
+                            <span v-if="getInjuryInfo(player) && ['OUT','DTD','GTD','Q','SUSP','DOUBT','IL','IL+'].includes(getInjuryInfo(player)?.label || '')" class="inline-flex items-center ml-1 px-1 py-0.5 rounded text-[10px] font-bold cursor-help" :class="getInjuryInfo(player)?.color" :title="getInjuryInfo(player)?.tooltip">{{ getInjuryInfo(player)?.icon }} {{ getInjuryInfo(player)?.label }}</span>
                           </div>
                           <div class="flex items-center gap-1.5 text-xs">
                             <span class="text-dark-textMuted">{{ player.position }}</span>
@@ -3753,12 +3752,11 @@ function getInjuryInfo(player: any): { icon: string, label: string, color: strin
   }
   // ESPN "ACTIVE" means healthy - skip
   if (status === 'ACTIVE' || status === 'A') return null
-  // Game statuses - not injury statuses, handle separately
-  if (status === 'SCHEDULED') return null  // Just show game time, no badge needed
-  if (status === 'LIVE' || status === 'IN_PROGRESS') return { 
-    icon: '🟢', label: 'LIVE', color: 'text-green-400 bg-green-500/20',
-    tooltip: 'Game is live', severity: 0
-  }
+  // Game statuses - not injury statuses, never show as badges in lineup
+  if (status === 'SCHEDULED' || status === 'FINAL' || status === 'F' || 
+      status === 'IN_PROGRESS' || status === 'LIVE' ||
+      status === 'POSTPONED' || status === 'CANCELLED' || status === 'CANCELED' ||
+      status === 'PRE_GAME' || status === 'PREGAME') return null
   
   // Catch-all for any other status
   if (status) {
