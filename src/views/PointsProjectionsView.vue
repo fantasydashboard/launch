@@ -1708,13 +1708,16 @@ const SPORT_POSITION_CONFIG: Record<string, {
     flexPositions: { Flex: ['RB','WR','TE'] }
   },
   hockey: {
-    positions: ['C', 'LW', 'RW', 'D', 'G'],
-    baselines: { C: 15, LW: 15, RW: 15, D: 15, G: 8 },
-    rosterDefaults: { C: 2, LW: 2, RW: 2, D: 4, G: 2 },
-    positionColors: { C: 'bg-purple-500/30 text-purple-400', LW: 'bg-blue-500/30 text-blue-400', RW: 'bg-cyan-500/30 text-cyan-400', D: 'bg-green-500/30 text-green-400', G: 'bg-orange-500/30 text-orange-400' },
-    positionTextColors: { C: 'text-purple-400', LW: 'text-blue-400', RW: 'text-cyan-400', D: 'text-green-400', G: 'text-orange-400' },
+    positions: ['C', 'LW', 'RW', 'D', 'G', 'Util', 'F'],
+    baselines: { C: 15, LW: 15, RW: 15, D: 15, G: 8, Util: 12, F: 12 },
+    rosterDefaults: { C: 2, LW: 2, RW: 2, D: 4, G: 2, Util: 1 },
+    positionColors: { C: 'bg-purple-500/30 text-purple-400', LW: 'bg-blue-500/30 text-blue-400', RW: 'bg-cyan-500/30 text-cyan-400', D: 'bg-green-500/30 text-green-400', G: 'bg-orange-500/30 text-orange-400', Util: 'bg-gray-500/30 text-gray-400', F: 'bg-sky-500/30 text-sky-400' },
+    positionTextColors: { C: 'text-purple-400', LW: 'text-blue-400', RW: 'text-cyan-400', D: 'text-green-400', G: 'text-orange-400', Util: 'text-gray-400', F: 'text-sky-400' },
     lineupSlots: ['C', 'C', 'LW', 'LW', 'RW', 'RW', 'D', 'D', 'D', 'D', 'G', 'G'],
-    flexPositions: {}
+    flexPositions: { 
+      Util: ['C', 'LW', 'RW', 'D'],  // Util can hold any skater
+      F: ['C', 'LW', 'RW']           // F = forward slot (Yahoo uses this)
+    }
   }
 }
 
@@ -3192,7 +3195,7 @@ function getTeamPositionPlayers(team: TeamRanking, pos: string): any[] {
 
 function selectAllPositions() { selectedPositions.value = selectedPositions.value.length === positionFilters.value.length ? [] : positionFilters.value.map(p => p.id) }
 function togglePositionFilter(pos: string) { const i = selectedPositions.value.indexOf(pos); i >= 0 ? selectedPositions.value.splice(i, 1) : selectedPositions.value.push(pos) }
-function isMyPlayer(p: any) { return p.fantasy_team_key === myTeamKey.value }
+function isMyPlayer(p: any) { return !!myTeamKey.value && p.fantasy_team_key === myTeamKey.value }
 
 function formatGameTime(gameTimeString: string | null | undefined): string {
   if (!gameTimeString) return ''
@@ -3428,8 +3431,8 @@ async function loadGamesForPoints() {
     const targetDate = selectedDate.value
     const tomorrow = new Date(targetDate.getTime() + 86400000)
     const [todayGames, tmrwGames] = await Promise.all([
-      liveGamesService.getGamesByDate(currentSport.value, targetDate),
-      liveGamesService.getGamesByDate(currentSport.value, tomorrow)
+      liveGamesService.getGamesForLocalDate(currentSport.value as any, targetDate),
+      liveGamesService.getGamesForLocalDate(currentSport.value as any, tomorrow)
     ])
     todaysGames.value = todayGames
     tomorrowsGames.value = tmrwGames
@@ -3490,26 +3493,41 @@ async function loadProjections() {
       })))
     }
     
-    // If myTeamKey is set, check if any players match
+    // If myTeamKey is set, verify players match; if no match try team name fallback
     if (myTeamKey.value) {
       const matchingPlayers = rostered.filter(p => p.fantasy_team_key === myTeamKey.value)
       console.log(`Players matching myTeamKey (${myTeamKey.value}):`, matchingPlayers.length)
       
-      // If no match, try matching by team name
       if (matchingPlayers.length === 0 && myTeam?.name) {
         const byName = rostered.filter(p => p.fantasy_team === myTeam.name)
         console.log(`Players matching by team name (${myTeam.name}):`, byName.length)
-        
-        // If we found players by name, update their team keys
         if (byName.length > 0) {
           console.log('Fixing player team keys to match myTeamKey')
           byName.forEach(p => {
             const idx = rostered.findIndex(r => r.player_key === p.player_key)
-            if (idx >= 0) {
-              rostered[idx].fantasy_team_key = myTeamKey.value
-            }
+            if (idx >= 0) rostered[idx].fantasy_team_key = myTeamKey.value
           })
         }
+      }
+    }
+    
+    // If myTeamKey is STILL null (getMyTeam failed), infer from the league key prefix.
+    // Yahoo team keys follow the pattern: leagueKey.t.teamNumber  e.g. "414.l.12345.t.3"
+    // Try each team key to find which team's players appear in the rostered list.
+    if (!myTeamKey.value && teamsData.value.length > 0) {
+      console.log('[Points] myTeamKey is null - attempting to infer from rostered player keys')
+      // Count how many rostered players belong to each team key
+      const teamKeyCounts: Record<string, number> = {}
+      for (const p of rostered) {
+        if (p.fantasy_team_key) teamKeyCounts[p.fantasy_team_key] = (teamKeyCounts[p.fantasy_team_key] || 0) + 1
+      }
+      // The team that "owns" the most players AND is in teamsData is likely ours if getMyTeam failed
+      // Fall back to trying each team key against the Yahoo "me" endpoint indirectly
+      // Best we can do without a working getMyTeam: pick team with is_my_team flag in teamsData
+      const teamWithFlag = teamsData.value.find((t: any) => t.is_my_team || t.is_owned_by_current_login)
+      if (teamWithFlag) {
+        myTeamKey.value = teamWithFlag.team_key
+        console.log('[Points] Inferred myTeamKey from is_my_team flag:', myTeamKey.value)
       }
     }
     

@@ -111,6 +111,63 @@ class LiveGamesService {
     
     return (data || []).map(this.mapDbGameToLiveGame)
   }
+
+  /**
+   * Get games for a LOCAL calendar date, handling UTC storage offset.
+   *
+   * Problem: Scrapers may store game_date in UTC. An NBA game at 7 PM EST on
+   * March 4 = 00:00 UTC March 5, so it gets stored under game_date='2026-03-05'.
+   * Conversely, a March 3 game finishing at 11 PM EST = 04:00 UTC March 4, so
+   * it might appear under game_date='2026-03-04'.
+   *
+   * Solution: Query BOTH localDate AND localDate+1 in UTC, then filter to only
+   * games whose game_time actually falls within ±14 hours of the local midnight.
+   * That window captures all games that a user would consider "today".
+   */
+  async getGamesForLocalDate(sport: Sport, localDate: Date): Promise<LiveGame[]> {
+    const fmt = (d: Date) => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`
+    const localDateStr = fmt(localDate)
+    const nextDay = new Date(localDate.getTime() + 86400000)
+    const nextDateStr = fmt(nextDay)
+
+    // Fetch both dates in parallel
+    const [r1, r2] = await Promise.all([
+      supabase.from('games_schedule').select('*')
+        .eq('sport', this.mapSportToDbValue(sport)).eq('game_date', localDateStr)
+        .order('game_time', { ascending: true }),
+      supabase.from('games_schedule').select('*')
+        .eq('sport', this.mapSportToDbValue(sport)).eq('game_date', nextDateStr)
+        .order('game_time', { ascending: true })
+    ])
+
+    const allRows = [...(r1.data || []), ...(r2.data || [])]
+    
+    // Define the valid window: local midnight  -2h  to  local midnight +26h
+    // This gives us a 28-hour window that catches every game a user would consider "today"
+    const localMidnight = new Date(localDate.getFullYear(), localDate.getMonth(), localDate.getDate(), 0, 0, 0)
+    const windowStart = localMidnight.getTime() - 2 * 3600 * 1000    // 2h before midnight
+    const windowEnd   = localMidnight.getTime() + 26 * 3600 * 1000   // 26h after midnight (2 AM next day)
+
+    const games = allRows
+      .map(this.mapDbGameToLiveGame)
+      // Deduplicate by gameId in case same game returned from both date queries
+      .filter((g, idx, arr) => !g.gameId || arr.findIndex(x => x.gameId === g.gameId) === idx)
+      // Keep only games whose start time falls within today's local window
+      .filter(g => {
+        if (!g.gameTime) return true // no timestamp? keep it
+        const t = new Date(g.gameTime).getTime()
+        return t >= windowStart && t <= windowEnd
+      })
+      // Sort by game time
+      .sort((a, b) => {
+        if (!a.gameTime) return 1
+        if (!b.gameTime) return -1
+        return new Date(a.gameTime).getTime() - new Date(b.gameTime).getTime()
+      })
+
+    console.log(`[LiveGames] getGamesForLocalDate(${localDateStr}): queried ${localDateStr}+${nextDateStr}, found ${allRows.length} raw → ${games.length} in window`)
+    return games
+  }
   
   /**
    * Get all live games across all sports
@@ -156,19 +213,32 @@ class LiveGamesService {
     const upper = playerTeam.toUpperCase()
     const normalized = this.normalizeTeamAbbr(upper)
     
-    // Find game where player's team is playing
-    // DB team values are stored in whatever case the scraper used, so compare uppercase on both sides
+    // Find game where player's team is playing.
+    // DB team values are stored uppercase from scrapers.
+    // Exclude 'final' games that appear in today's date due to UTC storage
+    // (e.g. a 7:30 PM ET March 3 game stored as game_date='March 4' in UTC).
+    // We still include finals that started recently (within last 5 hours) for live score display.
+    const now = Date.now()
+    const FIVE_HOURS = 5 * 60 * 60 * 1000
     const game = games.find(g => {
       const home = (g.homeTeam || '').toUpperCase()
       const away = (g.awayTeam || '').toUpperCase()
-      return home === upper || away === upper || home === normalized || away === normalized
+      const teamMatches = home === upper || away === upper || home === normalized || away === normalized
+      if (!teamMatches) return false
+      // Skip games that are 'final' and started more than 5 hours ago
+      // (these are yesterday's games stored with UTC date)
+      if (g.status === 'final' && g.gameTime) {
+        const gameStart = new Date(g.gameTime).getTime()
+        if (now - gameStart > FIVE_HOURS) return false
+      }
+      return true
     })
     
     if (!game) {
       return this.noGameInfo()
     }
     
-    const isHome = game.homeTeam === playerTeam
+    const isHome = (game.homeTeam || '').toUpperCase() === upper || (game.homeTeam || '').toUpperCase() === normalized
     const opponent = isHome ? game.awayTeam : game.homeTeam
     const myScore = isHome ? game.homeScore : game.awayScore
     const oppScore = isHome ? game.awayScore : game.homeScore
@@ -224,8 +294,8 @@ class LiveGamesService {
         async (payload) => {
           console.log(`[LiveGames] Game update received:`, payload)
           
-          // Refetch all games for the day
-          const games = await this.getGamesByDate(sport, date)
+          // Refetch all games for the day (using the local-date aware method)
+          const games = await this.getGamesForLocalDate(sport, date)
           callback(games)
         }
       )

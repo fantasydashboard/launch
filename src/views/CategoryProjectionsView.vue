@@ -8487,7 +8487,9 @@ async function loadLiveGames() {
     console.log(`[LiveGames] Target date: ${targetDate.toLocaleDateString()} ${targetDate.toLocaleTimeString()}`)
     console.log(`[LiveGames] Loading ${currentSport.value} games for ${startSitDay.value}`)
     
-    const games = await liveGamesService.getGamesByDate(currentSport.value, targetDate)
+    // Use getGamesForLocalDate which queries both local-date AND UTC+1 date,
+    // handling the case where evening games are stored under tomorrow's UTC date
+    const games = await liveGamesService.getGamesForLocalDate(currentSport.value as any, targetDate)
     
     // No filtering - show ALL games for the day
     if (startSitDay.value === 'today') {
