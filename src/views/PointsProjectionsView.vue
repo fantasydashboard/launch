@@ -578,9 +578,11 @@
                   {{ modifiedSuggestedLineup.filter(s => s.player).length }} / {{ modifiedSuggestedLineup.length }} slots filled
                 </div>
                 <button v-if="waiverLineupPlayers.length > 0" @click="clearWaiverLineup" class="px-2 py-1 text-xs font-medium bg-red-500/20 text-red-400 rounded hover:bg-red-500/30 transition-colors">Clear</button>
-                <button @click="downloadSuggestedLineup" class="px-2 py-1 text-xs font-medium bg-yellow-500/20 text-yellow-400 rounded hover:bg-yellow-500/30 transition-colors flex items-center gap-1">
-                  <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
-                  Export
+                <button @click="downloadSuggestedLineup" :disabled="copyToast === 'copying'" class="px-2 py-1 text-xs font-medium rounded transition-all flex items-center gap-1" :class="copyToast === 'success' ? 'bg-green-500/20 text-green-400' : copyToast === 'error' ? 'bg-red-500/20 text-red-400' : 'bg-yellow-500/20 text-yellow-400 hover:bg-yellow-500/30'">
+                  <svg v-if="copyToast !== 'success' && copyToast !== 'error'" class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" /></svg>
+                  <svg v-else-if="copyToast === 'success'" class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" /></svg>
+                  <svg v-else class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
+                  {{ copyToast === 'copying' ? 'Copying...' : copyToast === 'success' ? 'Copied! 📋' : copyToast === 'error' ? 'Download instead ↓' : 'Copy Image' }}
                 </button>
               </div>
             </div>
@@ -1751,7 +1753,7 @@ const showOnlyFreeAgents = ref(false)
 const defaultHeadshot = 'https://a.espncdn.com/combiner/i?img=/i/headshots/nophoto.png&w=200&h=145'
 const defaultTeamAvatar = 'https://s.yimg.com/cv/apiv2/default/mlb/mlb_2_g.png'
 
-const scoringMode = ref<'daily' | 'weekly'>('daily')
+const copyToast = ref<'idle' | 'copying' | 'success' | 'error'>('idle')
 const selectedDate = ref(new Date())
 const todaysGames = ref<any[]>([])
 const tomorrowsGames = ref<any[]>([])
@@ -2757,6 +2759,8 @@ const modifiedSuggestedLineupTotal = computed(() => {
 })
 
 async function downloadSuggestedLineup() {
+  if (copyToast.value === 'copying') return
+  copyToast.value = 'copying'
   const date = selectedDate.value.toISOString().split('T')[0]
   const mode = scoringMode.value === 'daily' ? 'Daily' : 'Weekly'
   
@@ -2894,34 +2898,31 @@ async function downloadSuggestedLineup() {
     
     document.body.removeChild(container)
     
-    const link = document.createElement('a')
-    link.href = canvas.toDataURL('image/png')
-    link.download = `lineup-${date}.png`
-    link.click()
+    // Convert canvas to blob
+    const blob = await new Promise<Blob>((resolve, reject) => {
+      canvas.toBlob(b => b ? resolve(b) : reject(new Error('toBlob failed')), 'image/png')
+    })
+
+    // Try clipboard first — works in Chrome/Edge/Safari 13.1+
+    if (navigator.clipboard && typeof ClipboardItem !== 'undefined') {
+      await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })])
+      copyToast.value = 'success'
+      setTimeout(() => { copyToast.value = 'idle' }, 3000)
+    } else {
+      // Clipboard API not available — fall back to downloading the file
+      const url = URL.createObjectURL(blob)
+      const link = document.createElement('a')
+      link.href = url
+      link.download = `lineup-${date}.png`
+      link.click()
+      URL.revokeObjectURL(url)
+      copyToast.value = 'idle'
+    }
     
   } catch (e) {
-    console.error('Failed to download lineup:', e)
-    // Fallback to text download
-    let content = `Suggested Lineup - ${mode} (${date})\n${'='.repeat(50)}\n\n`
-    modifiedSuggestedLineup.value.forEach(slot => {
-      const pos = slot.position.padEnd(4)
-      if (slot.player) {
-        const name = slot.player.full_name.padEnd(25)
-        const proj = (slot.player.projection || 0).toFixed(1).padStart(6)
-        content += `${pos} ${name} ${proj}\n`
-      } else {
-        content += `${pos} (Empty)\n`
-      }
-    })
-    content += `\nTotal: ${modifiedSuggestedLineupTotal.value.toFixed(1)}`
-    
-    const blob = new Blob([content], { type: 'text/plain' })
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = url
-    a.download = `lineup-${date}.txt`
-    a.click()
-    URL.revokeObjectURL(url)
+    console.error('Failed to copy lineup:', e)
+    copyToast.value = 'error'
+    setTimeout(() => { copyToast.value = 'idle' }, 4000)
   }
 }
 
