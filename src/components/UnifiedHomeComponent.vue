@@ -3668,6 +3668,7 @@ async function downloadLeaderImage() {
     
     document.body.removeChild(container)
     
+    const canvas = finalCanvas
     const safeTitle = leaderModalTitle.value.replace(/[^a-zA-Z0-9\s]/g, '').replace(/\s+/g, '-')
     const _shareBlob = await new Promise<Blob>((resolve, reject) => {
       canvas.toBlob(b => b ? resolve(b) : reject(new Error('toBlob failed')), 'image/png')
@@ -3932,6 +3933,7 @@ async function downloadTeamDetailImage() {
     
     document.body.removeChild(container)
     
+    const canvas = finalCanvas
     const safeTeamName = team.name.replace(/[^a-zA-Z0-9\s]/g, '').replace(/\s+/g, '-')
     const _shareBlob = await new Promise<Blob>((resolve, reject) => {
       canvas.toBlob(b => b ? resolve(b) : reject(new Error('toBlob failed')), 'image/png')
