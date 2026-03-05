@@ -106,7 +106,7 @@
               class="px-4 py-2 border border-yellow-400 bg-transparent text-yellow-400 hover:bg-yellow-400 hover:text-gray-900 rounded-lg font-medium flex items-center gap-2 transition-colors disabled:opacity-50"
             >
               <svg v-if="!isDownloadingAll" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
+                <path v-if="!isDownloadingAll || matchups.length === 0" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
               </svg>
               <svg v-else class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
                 <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
@@ -209,7 +209,7 @@
                 class="px-4 py-2 border border-yellow-400 bg-transparent text-yellow-400 hover:bg-yellow-400 hover:text-gray-900 rounded-lg font-medium flex items-center gap-2 transition-colors disabled:opacity-50"
               >
                 <svg v-if="!isDownloading" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
+                  <path v-if="!isDownloading" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
                 </svg>
                 <svg v-else class="w-5 h-5 animate-spin" fill="none" viewBox="0 0 24 24">
                   <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
@@ -445,7 +445,7 @@
               <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
               </svg>
-              {{ isDownloadingComparison ? 'Generating...' : 'Share' }}
+              {{ isDownloadingComparison ? 'Generating...' : shareToast === 'success' ? 'Copied! 📋' : 'Share' }}
             </button>
           </div>
           <div class="card-body">
@@ -609,6 +609,7 @@ const isRefreshing = ref(false)
 const isDownloading = ref(false)
 const isDownloadingComparison = ref(false)
 const isDownloadingAll = ref(false)
+const shareToast = ref<'idle'|'success'|'error'>('idle')
 const downloadProgress = ref('')
 const matchupsData = ref<any[]>([])
 const selectedMatchup = ref<any>(null)
@@ -2375,9 +2376,21 @@ async function generateMatchupImage(matchup: any, html2canvas: any) {
   document.body.removeChild(container)
   
   const link = document.createElement('a')
-  link.download = `matchup-${matchup.team1.name.replace(/\s+/g, '-')}-vs-${matchup.team2.name.replace(/\s+/g, '-')}-week-${selectedWeek.value}.png`
-  link.href = canvas.toDataURL('image/png')
-  link.click()
+      const _shareBlob = await new Promise<Blob>((resolve, reject) => {
+        canvas.toBlob(b => b ? resolve(b) : reject(new Error('toBlob failed')), 'image/png')
+      })
+      if (navigator.clipboard && typeof ClipboardItem !== 'undefined') {
+        await navigator.clipboard.write([new ClipboardItem({ 'image/png': _shareBlob })])
+        shareToast.value = 'success'
+        setTimeout(() => { shareToast.value = 'idle' }, 3000)
+      } else {
+        const _shareUrl = URL.createObjectURL(_shareBlob)
+        const link = document.createElement('a')
+        link.download = `matchup-${matchup.team1.name.replace(/\s+/g, '-')}-vs-${matchup.team2.name.replace(/\s+/g, '-')}-week-${selectedWeek.value}.png`
+        link.href = _shareUrl
+        link.click()
+        URL.revokeObjectURL(_shareUrl)
+      }
 }
 
 async function downloadComparison() {
@@ -2487,9 +2500,21 @@ async function downloadComparison() {
     document.body.removeChild(container)
     
     const link = document.createElement('a')
-    link.download = `stat-comparison-${selectedMatchup.value.team1.name.replace(/\s+/g, '-')}-vs-${selectedMatchup.value.team2.name.replace(/\s+/g, '-')}-week-${selectedWeek.value}.png`
-    link.href = canvas.toDataURL('image/png')
-    link.click()
+        const _shareBlob = await new Promise<Blob>((resolve, reject) => {
+          canvas.toBlob(b => b ? resolve(b) : reject(new Error('toBlob failed')), 'image/png')
+        })
+        if (navigator.clipboard && typeof ClipboardItem !== 'undefined') {
+          await navigator.clipboard.write([new ClipboardItem({ 'image/png': _shareBlob })])
+          shareToast.value = 'success'
+          setTimeout(() => { shareToast.value = 'idle' }, 3000)
+        } else {
+          const _shareUrl = URL.createObjectURL(_shareBlob)
+          const link = document.createElement('a')
+          link.download = `stat-comparison-${selectedMatchup.value.team1.name.replace(/\s+/g, '-')}-vs-${selectedMatchup.value.team2.name.replace(/\s+/g, '-')}-week-${selectedWeek.value}.png`
+          link.href = _shareUrl
+          link.click()
+          URL.revokeObjectURL(_shareUrl)
+        }
   } catch (e) {
     console.error('Error downloading:', e)
   } finally {

@@ -229,13 +229,13 @@
                 class="btn-primary flex items-center gap-2"
               >
                 <svg v-if="!isDownloadingFullAnalysis" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
+                  <path v-if="!isDownloadingFullAnalysis" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
                 </svg>
                 <svg v-else class="w-5 h-5 animate-spin" fill="none" viewBox="0 0 24 24">
                   <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                   <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                 </svg>
-                {{ isDownloadingFullAnalysis ? 'Generating...' : 'Share Probability' }}
+                {{ isDownloadingFullAnalysis ? 'Generating...' : shareToast === 'success' ? 'Copied! 📋' : 'Share Probability' }}
               </button>
             </div>
             <p class="card-subtitle mt-2">Live probability based on current scores and projections</p>
@@ -518,13 +518,13 @@
                 class="btn-primary flex items-center gap-2"
               >
                 <svg v-if="!isDownloadingPreview" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
+                  <path v-if="!isDownloadingPreview" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
                 </svg>
                 <svg v-else class="w-5 h-5 animate-spin" fill="none" viewBox="0 0 24 24">
                   <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                   <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                 </svg>
-                {{ isDownloadingPreview ? 'Generating...' : 'Share Preview' }}
+                {{ isDownloadingPreview ? 'Generating...' : shareToast === 'success' ? 'Copied! 📋' : 'Share Preview' }}
               </button>
             </div>
           </div>
@@ -765,7 +765,7 @@
               <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
               </svg>
-              {{ isDownloadingComparison ? 'Generating...' : 'Share Comparison' }}
+              {{ isDownloadingComparison ? 'Generating...' : shareToast === 'success' ? 'Copied! 📋' : 'Share Comparison' }}
             </button>
           </div>
           <div class="card-body">
@@ -927,6 +927,7 @@ const matchupPreviewContainer = ref<HTMLElement | null>(null)
 const isDownloadingPreview = ref(false)
 const isDownloadingFullAnalysis = ref(false)
 const isDownloadingComparison = ref(false)
+const shareToast = ref<'idle'|'success'|'error'>('idle')
 
 // Win Probability Chart state
 const showWinProbChart = ref(false)
@@ -3269,13 +3270,26 @@ async function downloadMatchupPreview() {
     
     // Download
     const link = document.createElement('a')
-    link.download = `matchup-preview-week-${selectedWeek.value}-${selectedMatchup.value.team1_name.replace(/[^a-z0-9]/gi, '-')}-vs-${selectedMatchup.value.team2_name.replace(/[^a-z0-9]/gi, '-')}.png`.toLowerCase()
-    link.href = canvas.toDataURL('image/png')
-    link.click()
+        const _shareBlob = await new Promise<Blob>((resolve, reject) => {
+          canvas.toBlob(b => b ? resolve(b) : reject(new Error('toBlob failed')), 'image/png')
+        })
+        if (navigator.clipboard && typeof ClipboardItem !== 'undefined') {
+          await navigator.clipboard.write([new ClipboardItem({ 'image/png': _shareBlob })])
+          shareToast.value = 'success'
+          setTimeout(() => { shareToast.value = 'idle' }, 3000)
+        } else {
+          const _shareUrl = URL.createObjectURL(_shareBlob)
+          const link = document.createElement('a')
+          link.download = `matchup-preview-week-${selectedWeek.value}-${selectedMatchup.value.team1_name.replace(/[^a-z0-9]/gi, '-')}-vs-${selectedMatchup.value.team2_name.replace(/[^a-z0-9]/gi, '-')}.png`.toLowerCase()
+          link.href = _shareUrl
+          link.click()
+          URL.revokeObjectURL(_shareUrl)
+        }
     
   } catch (error) {
     console.error('Failed to generate matchup preview image:', error)
-    alert('Failed to generate image. Please try again.')
+    shareToast.value = 'error'
+      setTimeout(() => { shareToast.value = 'idle' }, 4000)
   } finally {
     isDownloadingPreview.value = false
   }
@@ -3655,13 +3669,26 @@ async function downloadFullMatchupAnalysis() {
     
     // Download
     const link = document.createElement('a')
-    link.download = `matchup-week-${selectedWeek.value}-${selectedMatchup.value.team1_name.replace(/[^a-z0-9]/gi, '-')}-vs-${selectedMatchup.value.team2_name.replace(/[^a-z0-9]/gi, '-')}.png`.toLowerCase()
-    link.href = canvas.toDataURL('image/png')
-    link.click()
+        const _shareBlob = await new Promise<Blob>((resolve, reject) => {
+          canvas.toBlob(b => b ? resolve(b) : reject(new Error('toBlob failed')), 'image/png')
+        })
+        if (navigator.clipboard && typeof ClipboardItem !== 'undefined') {
+          await navigator.clipboard.write([new ClipboardItem({ 'image/png': _shareBlob })])
+          shareToast.value = 'success'
+          setTimeout(() => { shareToast.value = 'idle' }, 3000)
+        } else {
+          const _shareUrl = URL.createObjectURL(_shareBlob)
+          const link = document.createElement('a')
+          link.download = `matchup-week-${selectedWeek.value}-${selectedMatchup.value.team1_name.replace(/[^a-z0-9]/gi, '-')}-vs-${selectedMatchup.value.team2_name.replace(/[^a-z0-9]/gi, '-')}.png`.toLowerCase()
+          link.href = _shareUrl
+          link.click()
+          URL.revokeObjectURL(_shareUrl)
+        }
     
   } catch (error) {
     console.error('Failed to generate matchup analysis image:', error)
-    alert('Failed to generate image. Please try again.')
+    shareToast.value = 'error'
+      setTimeout(() => { shareToast.value = 'idle' }, 4000)
   } finally {
     isDownloadingFullAnalysis.value = false
   }
@@ -3928,13 +3955,26 @@ async function downloadStatComparison() {
     
     // Download
     const link = document.createElement('a')
-    link.download = `matchup-comparison-${selectedMatchup.value.team1_name.replace(/[^a-z0-9]/gi, '-')}-vs-${selectedMatchup.value.team2_name.replace(/[^a-z0-9]/gi, '-')}.png`.toLowerCase()
-    link.href = canvas.toDataURL('image/png')
-    link.click()
+        const _shareBlob = await new Promise<Blob>((resolve, reject) => {
+          canvas.toBlob(b => b ? resolve(b) : reject(new Error('toBlob failed')), 'image/png')
+        })
+        if (navigator.clipboard && typeof ClipboardItem !== 'undefined') {
+          await navigator.clipboard.write([new ClipboardItem({ 'image/png': _shareBlob })])
+          shareToast.value = 'success'
+          setTimeout(() => { shareToast.value = 'idle' }, 3000)
+        } else {
+          const _shareUrl = URL.createObjectURL(_shareBlob)
+          const link = document.createElement('a')
+          link.download = `matchup-comparison-${selectedMatchup.value.team1_name.replace(/[^a-z0-9]/gi, '-')}-vs-${selectedMatchup.value.team2_name.replace(/[^a-z0-9]/gi, '-')}.png`.toLowerCase()
+          link.href = _shareUrl
+          link.click()
+          URL.revokeObjectURL(_shareUrl)
+        }
     
   } catch (error) {
     console.error('Failed to generate stat comparison image:', error)
-    alert('Failed to generate image. Please try again.')
+    shareToast.value = 'error'
+      setTimeout(() => { shareToast.value = 'idle' }, 4000)
   } finally {
     isDownloadingComparison.value = false
   }

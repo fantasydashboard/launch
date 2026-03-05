@@ -562,7 +562,7 @@
                 </div>
               </div>
               <button @click="downloadStealsImage" :disabled="isDownloadingSteals" class="flex items-center gap-2 text-sm px-3 py-1.5 rounded-lg font-semibold transition-colors disabled:opacity-50" style="background:transparent;color:#facc15;border:1px solid #facc15;" @mouseover="$event.currentTarget.style.background='#facc15';$event.currentTarget.style.color='#111827'" @mouseout="$event.currentTarget.style.background='transparent';$event.currentTarget.style.color='#facc15'">
-                <svg v-if="!isDownloadingSteals" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
+                <svg v-if="!isDownloadingSteals" class="w-4 h-4 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" /></svg>
                 <svg v-else class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path></svg>
                 {{ isDownloadingSteals ? 'Saving...' : 'Share' }}
               </button>
@@ -605,7 +605,7 @@
                 </div>
               </div>
               <button @click="downloadBustsImage" :disabled="isDownloadingBusts" class="flex items-center gap-2 text-sm px-3 py-1.5 rounded-lg font-semibold transition-colors disabled:opacity-50" style="background:transparent;color:#facc15;border:1px solid #facc15;" @mouseover="$event.currentTarget.style.background='#facc15';$event.currentTarget.style.color='#111827'" @mouseout="$event.currentTarget.style.background='transparent';$event.currentTarget.style.color='#facc15'">
-                <svg v-if="!isDownloadingBusts" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
+                <svg v-if="!isDownloadingBusts" class="w-4 h-4 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" /></svg>
                 <svg v-else class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path></svg>
                 {{ isDownloadingBusts ? 'Saving...' : 'Share' }}
               </button>
@@ -820,9 +820,7 @@
                 @mouseover="$event.currentTarget.style.background = '#facc15'; $event.currentTarget.style.color = '#111827'"
                 @mouseout="$event.currentTarget.style.background = 'transparent'; $event.currentTarget.style.color = '#facc15'"
               >
-                <svg v-if="!isDownloadingTeam" class="w-4 h-4 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-                </svg>
+                <svg v-if="!isDownloadingTeam" class="w-4 h-4 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" /></svg>
                 <svg v-else class="w-4 h-4 animate-spin pointer-events-none" fill="none" viewBox="0 0 24 24">
                   <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                   <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
@@ -1113,6 +1111,7 @@ const selectedTeamData = ref<any>(null)
 const isDownloadingTeam = ref(false)
 const isDownloadingSteals = ref(false)
 const isDownloadingBusts = ref(false)
+const shareToast = ref<'idle'|'success'|'error'>('idle')
 
 // Grading info UI
 const showGradingInfo = ref(false)
@@ -1642,7 +1641,21 @@ async function downloadTeamImage() {
     container.innerHTML = `<div style="background:linear-gradient(160deg,#0f1219 0%,#0a0c14 50%,#0d1117 100%);border-radius:16px;overflow:hidden;"><div style="background:#facc15;padding:8px 20px;text-align:center;"><span style="font-size:12px;font-weight:700;color:#0a0c14;text-transform:uppercase;letter-spacing:2px;">Ultimate Fantasy Dashboard</span></div><div style="display:flex;align-items:center;padding:12px 16px;border-bottom:1px solid rgba(220,38,38,0.2);">${logoBase64 ? `<img src="${logoBase64}" style="height:40px;width:auto;flex-shrink:0;margin-right:12px;" />` : ''}<div style="flex:1;"><div style="font-size:16px;font-weight:900;color:#fff;">Draft Report Card</div><div style="font-size:12px;margin-top:2px;"><span style="color:#e5e7eb;">${getLeagueName()}</span><span style="color:#6b7280;margin:0 4px;">•</span><span style="color:#facc15;font-weight:600;">${selectedSeason.value}</span></div></div></div><div style="padding:16px;background:linear-gradient(135deg,rgba(34,197,94,0.1) 0%,transparent 100%);"><div style="display:flex;align-items:center;gap:16px;"><img src="${teamLogoBase64}" style="width:56px;height:56px;border-radius:50%;border:2px solid rgba(255,255,255,0.1);" /><div style="flex:1;"><div style="font-size:18px;font-weight:bold;color:#fff;">${team.team_name}</div><div style="font-size:12px;color:#9ca3af;margin-top:2px;">${team.picks.length} picks</div></div><div style="text-align:center;"><div style="font-size:48px;font-weight:900;color:${team.grade?.startsWith('A') ? '#22c55e' : team.grade?.startsWith('B') ? '#eab308' : team.grade?.startsWith('C') ? '#f97316' : '#ef4444'};">${team.grade}</div></div></div><div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:16px;"><div style="text-align:center;padding:8px;background:rgba(255,255,255,0.05);border-radius:8px;"><div style="font-size:18px;font-weight:bold;color:#e5e7eb;">${team.totalScore >= 0 ? '+' : ''}${team.totalScore?.toFixed(1)}</div><div style="font-size:10px;color:#6b7280;">Total Score</div></div><div style="text-align:center;padding:8px;background:rgba(255,255,255,0.05);border-radius:8px;"><div style="font-size:18px;font-weight:bold;color:#22c55e;">${team.hits}</div><div style="font-size:10px;color:#6b7280;">Hits</div></div><div style="text-align:center;padding:8px;background:rgba(255,255,255,0.05);border-radius:8px;"><div style="font-size:18px;font-weight:bold;color:#ef4444;">${team.misses}</div><div style="font-size:10px;color:#6b7280;">Misses</div></div></div></div><div style="padding:12px 16px;">${generatePickRows()}</div><div style="padding:10px 16px;text-align:center;border-top:1px solid rgba(220,38,38,0.2);"><span style="font-size:14px;font-weight:bold;color:#facc15;">ultimatefantasydashboard.com</span></div></div>`
     document.body.appendChild(container); await new Promise(r => setTimeout(r, 300))
     const finalCanvas = await html2canvas(container, { backgroundColor: '#0a0c14', scale: 2, useCORS: true, allowTaint: true }); document.body.removeChild(container)
-    const link = document.createElement('a'); link.download = `${team.team_name.replace(/\s+/g, '-')}-draft-report.png`; link.href = finalCanvas.toDataURL('image/png'); link.click()
+        const _shareBlob = await new Promise<Blob>((resolve, reject) => {
+          canvas.toBlob(b => b ? resolve(b) : reject(new Error('toBlob failed')), 'image/png')
+        })
+        if (navigator.clipboard && typeof ClipboardItem !== 'undefined') {
+          await navigator.clipboard.write([new ClipboardItem({ 'image/png': _shareBlob })])
+          shareToast.value = 'success'
+          setTimeout(() => { shareToast.value = 'idle' }, 3000)
+        } else {
+          const _shareUrl = URL.createObjectURL(_shareBlob)
+          const link = document.createElement('a')
+          link.download = `${team.team_name.replace(/\s+/g, '-')}-draft-report.png`
+          link.href = _shareUrl
+          link.click()
+          URL.revokeObjectURL(_shareUrl)
+        }
   } finally { isDownloadingTeam.value = false }
 }
 
@@ -1741,9 +1754,21 @@ async function downloadStealsImage() {
     const finalCanvas = await html2canvas(container, { backgroundColor: '#0a0c14', scale: 2, useCORS: true, allowTaint: true })
     document.body.removeChild(container)
     const link = document.createElement('a')
-    link.download = `${selectedSeason.value}-draft-steals.png`
-    link.href = finalCanvas.toDataURL('image/png')
-    link.click()
+        const _shareBlob = await new Promise<Blob>((resolve, reject) => {
+          canvas.toBlob(b => b ? resolve(b) : reject(new Error('toBlob failed')), 'image/png')
+        })
+        if (navigator.clipboard && typeof ClipboardItem !== 'undefined') {
+          await navigator.clipboard.write([new ClipboardItem({ 'image/png': _shareBlob })])
+          shareToast.value = 'success'
+          setTimeout(() => { shareToast.value = 'idle' }, 3000)
+        } else {
+          const _shareUrl = URL.createObjectURL(_shareBlob)
+          const link = document.createElement('a')
+          link.download = `${selectedSeason.value}-draft-steals.png`
+          link.href = _shareUrl
+          link.click()
+          URL.revokeObjectURL(_shareUrl)
+        }
   } finally { isDownloadingSteals.value = false }
 }
 
@@ -1842,9 +1867,21 @@ async function downloadBustsImage() {
     const finalCanvas = await html2canvas(container, { backgroundColor: '#0a0c14', scale: 2, useCORS: true, allowTaint: true })
     document.body.removeChild(container)
     const link = document.createElement('a')
-    link.download = `${selectedSeason.value}-draft-busts.png`
-    link.href = finalCanvas.toDataURL('image/png')
-    link.click()
+        const _shareBlob = await new Promise<Blob>((resolve, reject) => {
+          canvas.toBlob(b => b ? resolve(b) : reject(new Error('toBlob failed')), 'image/png')
+        })
+        if (navigator.clipboard && typeof ClipboardItem !== 'undefined') {
+          await navigator.clipboard.write([new ClipboardItem({ 'image/png': _shareBlob })])
+          shareToast.value = 'success'
+          setTimeout(() => { shareToast.value = 'idle' }, 3000)
+        } else {
+          const _shareUrl = URL.createObjectURL(_shareBlob)
+          const link = document.createElement('a')
+          link.download = `${selectedSeason.value}-draft-busts.png`
+          link.href = _shareUrl
+          link.click()
+          URL.revokeObjectURL(_shareUrl)
+        }
   } finally { isDownloadingBusts.value = false }
 }
 

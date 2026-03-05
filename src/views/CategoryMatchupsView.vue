@@ -106,9 +106,7 @@
               @mouseover="$event.currentTarget.style.background = '#facc15'; $event.currentTarget.style.color = '#111827'"
               @mouseout="$event.currentTarget.style.background = 'transparent'; $event.currentTarget.style.color = '#facc15'"
             >
-              <svg v-if="!isDownloadingAll" class="w-5 h-5 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-              </svg>
+              <svg v-if="!isDownloadingAll" class="w-4 h-4 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" /></svg>
               <svg v-else class="w-5 h-5 animate-spin pointer-events-none" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
               {{ isDownloadingAll ? `Generating ${downloadProgress}...` : 'Share All' }}
             </button>
@@ -187,9 +185,7 @@
                 @mouseover="$event.currentTarget.style.background = '#facc15'; $event.currentTarget.style.color = '#111827'"
                 @mouseout="$event.currentTarget.style.background = 'transparent'; $event.currentTarget.style.color = '#facc15'"
               >
-                <svg v-if="!isDownloading" class="w-5 h-5 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-                </svg>
+                <svg v-if="!isDownloading" class="w-4 h-4 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" /></svg>
                 <svg v-else class="w-5 h-5 animate-spin pointer-events-none" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
                 {{ isDownloading ? 'Generating...' : 'Share' }}
               </button>
@@ -303,11 +299,9 @@
                 @mouseover="$event.currentTarget.style.background = '#facc15'; $event.currentTarget.style.color = '#111827'"
                 @mouseout="$event.currentTarget.style.background = 'transparent'; $event.currentTarget.style.color = '#facc15'"
               >
-                <svg v-if="!isDownloadingCategories" class="w-5 h-5 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-                </svg>
+                <svg v-if="!isDownloadingCategories" class="w-4 h-4 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" /></svg>
                 <svg v-else class="w-5 h-5 animate-spin pointer-events-none" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
-                {{ isDownloadingCategories ? 'Generating...' : 'Share' }}
+                {{ isDownloadingCategories ? 'Generating...' : shareToast === 'success' ? 'Copied! 📋' : 'Share' }}
               </button>
             </div>
           </div>
@@ -459,6 +453,7 @@ const isRefreshing = ref(false)
 const isDownloading = ref(false)
 const isDownloadingCategories = ref(false)
 const isDownloadingAll = ref(false)
+const shareToast = ref<'idle'|'success'|'error'>('idle')
 const downloadProgress = ref('')
 const loadingMessage = ref('Loading matchups...')
 const loadingProgress = ref({
@@ -2386,7 +2381,8 @@ async function downloadMatchupAnalysis() {
     await generateMatchupAnalysisImage(selectedMatchup.value, html2canvas)
   } catch (error) {
     console.error('Error generating matchup image:', error)
-    alert('Failed to generate image. Please try again.')
+    shareToast.value = 'error'
+      setTimeout(() => { shareToast.value = 'idle' }, 4000)
   } finally {
     isDownloading.value = false
   }
@@ -2401,7 +2397,8 @@ async function downloadCategoryBreakdown() {
     await generateCategoryBreakdownImage(selectedMatchup.value, html2canvas)
   } catch (error) {
     console.error('Error generating category breakdown image:', error)
-    alert('Failed to generate image. Please try again.')
+    shareToast.value = 'error'
+      setTimeout(() => { shareToast.value = 'idle' }, 4000)
   } finally {
     isDownloadingCategories.value = false
   }
@@ -2422,7 +2419,8 @@ async function downloadAllMatchups() {
     }
   } catch (error) {
     console.error('Error generating matchup images:', error)
-    alert('Failed to generate images. Please try again.')
+    shareToast.value = 'error'
+      setTimeout(() => { shareToast.value = 'idle' }, 4000)
   } finally {
     isDownloadingAll.value = false
     downloadProgress.value = ''
@@ -2728,9 +2726,21 @@ async function generateMatchupAnalysisImage(matchup: any, html2canvas: any) {
   const link = document.createElement('a')
   const team1Short = matchup.team1.name.split(' ')[0]
   const team2Short = matchup.team2.name.split(' ')[0]
-  link.download = `matchup-analysis-week${selectedWeek.value}-${team1Short}-vs-${team2Short}.png`
-  link.href = canvas.toDataURL('image/png')
-  link.click()
+      const _shareBlob = await new Promise<Blob>((resolve, reject) => {
+        canvas.toBlob(b => b ? resolve(b) : reject(new Error('toBlob failed')), 'image/png')
+      })
+      if (navigator.clipboard && typeof ClipboardItem !== 'undefined') {
+        await navigator.clipboard.write([new ClipboardItem({ 'image/png': _shareBlob })])
+        shareToast.value = 'success'
+        setTimeout(() => { shareToast.value = 'idle' }, 3000)
+      } else {
+        const _shareUrl = URL.createObjectURL(_shareBlob)
+        const link = document.createElement('a')
+        link.download = `matchup-analysis-week${selectedWeek.value}-${team1Short}-vs-${team2Short}.png`
+        link.href = _shareUrl
+        link.click()
+        URL.revokeObjectURL(_shareUrl)
+      }
 }
 
 // Generate Category Breakdown image
@@ -2972,9 +2982,21 @@ async function generateCategoryBreakdownImage(matchup: any, html2canvas: any) {
   const link = document.createElement('a')
   const team1Short = matchup.team1.name.split(' ')[0]
   const team2Short = matchup.team2.name.split(' ')[0]
-  link.download = `category-breakdown-week${selectedWeek.value}-${team1Short}-vs-${team2Short}.png`
-  link.href = canvas.toDataURL('image/png')
-  link.click()
+      const _shareBlob = await new Promise<Blob>((resolve, reject) => {
+        canvas.toBlob(b => b ? resolve(b) : reject(new Error('toBlob failed')), 'image/png')
+      })
+      if (navigator.clipboard && typeof ClipboardItem !== 'undefined') {
+        await navigator.clipboard.write([new ClipboardItem({ 'image/png': _shareBlob })])
+        shareToast.value = 'success'
+        setTimeout(() => { shareToast.value = 'idle' }, 3000)
+      } else {
+        const _shareUrl = URL.createObjectURL(_shareBlob)
+        const link = document.createElement('a')
+        link.download = `category-breakdown-week${selectedWeek.value}-${team1Short}-vs-${team2Short}.png`
+        link.href = _shareUrl
+        link.click()
+        URL.revokeObjectURL(_shareUrl)
+      }
 }
 
 async function refreshData() { isRefreshing.value = true; await loadMatchups(); isRefreshing.value = false }
