@@ -2496,8 +2496,8 @@ async function generateMatchupAnalysisImage(matchup: any, html2canvas: any) {
   container.style.cssText = 'position: absolute; left: -9999px; top: 0; width: 700px; font-family: system-ui, -apple-system, sans-serif;'
   
   // Get team colors
-  const team1Color = matchup.team1.is_my_team ? '#F5C451' : '#06b6d4'
-  const team2Color = matchup.team2.is_my_team ? '#F5C451' : '#f97316'
+  const team1Color = '#06b6d4'
+  const team2Color = '#f97316'
   
   // Get scouting report data
   const team1Report = generateScoutingReport(matchup.team1.team_key)
@@ -2811,8 +2811,8 @@ async function generateCategoryBreakdownImage(matchup: any, html2canvas: any) {
   container.style.cssText = 'position: absolute; left: -9999px; top: 0; width: 700px; font-family: system-ui, -apple-system, sans-serif;'
   
   // Get team colors
-  const team1Color = matchup.team1.is_my_team ? '#F5C451' : '#06b6d4'
-  const team2Color = matchup.team2.is_my_team ? '#F5C451' : '#f97316'
+  const team1Color = '#06b6d4'
+  const team2Color = '#f97316'
   
   // Generate category rows
   const generateCategoryRow = (cat: any) => {
