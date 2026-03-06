@@ -266,7 +266,7 @@
                 <div class="mt-1.5">
                   <!-- When a category is highlighted, show that stat prominently -->
                   <div v-if="highlightCategory" class="flex items-center justify-between">
-                    <span class="text-[10px] px-1.5 py-0.5 rounded font-bold" :class="getCategoryColorClass(highlightCategory)">
+                    <span class="text-[10px] px-1.5 py-0.5 rounded font-bold" :style="getCategoryColorStyle(highlightCategory)">
                       {{ highlightCategory }}
                     </span>
                     <span class="text-sm font-bold" :class="getHighlightedStatClass(getPickForRound(team.team_key, round))">
@@ -279,7 +279,7 @@
                       v-for="cat in getPickForRound(team.team_key, round)?.bestCategories?.slice(0, 3)" 
                       :key="cat.category"
                       class="text-[10px] px-1.5 py-0.5 rounded font-bold"
-                      :class="getCategoryStrengthClass(cat.percentile)"
+                      :style="getCategoryStrengthStyle(cat.percentile)"
                       :title="`${cat.category}: ${formatStatValue(cat.value, cat.category)} (${cat.percentile}%)`"
                     >
                       {{ cat.category }}
@@ -457,7 +457,7 @@
               <div class="text-center mb-3">
                 <span 
                   class="px-3 py-1 rounded-full text-sm font-bold"
-                  :class="getCategoryColorClass(cat.category)"
+                  :style="getCategoryColorStyle(cat.category)"
                 >
                   {{ cat.category }}
                 </span>
@@ -495,8 +495,33 @@
           <p class="card-subtitle mt-1">Where was value found in each category?</p>
         </div>
         <div class="card-body">
-          <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <!-- Primary Categories (Hitting/Offensive/Skater) -->
+          <!-- Basketball: single wide column -->
+          <div v-if="leagueStore.activeSport === 'basketball'" class="space-y-3">
+            <div class="text-sm font-bold text-green-400 mb-3 flex items-center gap-2">
+              <span>🏀</span> All Categories
+            </div>
+            <div v-for="cat in [...categoryValueByRound.hitting, ...categoryValueByRound.pitching]" :key="cat.category" class="bg-dark-border/20 rounded-lg p-3">
+              <div class="flex items-center justify-between mb-2">
+                <span class="font-bold text-dark-text">{{ cat.category }}</span>
+                <span class="text-xs text-dark-textMuted">Best value: R{{ cat.bestValueRound }}</span>
+              </div>
+              <div class="flex gap-1">
+                <div
+                  v-for="round in cat.rounds"
+                  :key="round.round"
+                  class="flex-1 h-8 rounded flex items-center justify-center text-xs font-bold cursor-pointer hover:ring-1 hover:ring-primary"
+                  :style="getRoundValueStyle(round.avgPercentile)"
+                  :title="`R${round.round}: ${round.avgPercentile.toFixed(0)}% avg percentile (${round.count} players)`"
+                >
+                  {{ round.round }}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- All other sports: two columns -->
+          <div v-else class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <!-- Primary (Hitting / Skater / Offense) -->
             <div>
               <div class="text-sm font-bold text-green-400 mb-3 flex items-center gap-2">
                 <span>{{ primaryCategoryLabel.icon }}</span> {{ primaryCategoryLabel.label }}
@@ -512,7 +537,7 @@
                       v-for="round in cat.rounds" 
                       :key="round.round"
                       class="flex-1 h-8 rounded flex items-center justify-center text-xs font-bold cursor-pointer hover:ring-1 hover:ring-primary"
-                      :class="getRoundValueClass(round.avgPercentile)"
+                      :style="getRoundValueStyle(round.avgPercentile)"
                       :title="`R${round.round}: ${round.avgPercentile.toFixed(0)}% avg percentile (${round.count} players)`"
                     >
                       {{ round.round }}
@@ -521,7 +546,7 @@
                 </div>
               </div>
             </div>
-            <!-- Secondary Categories (Pitching/Defensive/Goalie) -->
+            <!-- Secondary (Pitching / Goalie / Defense) -->
             <div>
               <div class="text-sm font-bold text-purple-400 mb-3 flex items-center gap-2">
                 <span>{{ secondaryCategoryLabel.icon }}</span> {{ secondaryCategoryLabel.label }}
@@ -537,7 +562,7 @@
                       v-for="round in cat.rounds" 
                       :key="round.round"
                       class="flex-1 h-8 rounded flex items-center justify-center text-xs font-bold cursor-pointer hover:ring-1 hover:ring-primary"
-                      :class="getRoundValueClass(round.avgPercentile)"
+                      :style="getRoundValueStyle(round.avgPercentile)"
                       :title="`R${round.round}: ${round.avgPercentile.toFixed(0)}% avg percentile (${round.count} players)`"
                     >
                       {{ round.round }}
@@ -584,7 +609,7 @@
                   v-for="cat in leagueCategories" 
                   :key="cat"
                   class="text-center p-3 font-semibold text-dark-textMuted min-w-[60px]"
-                  :class="getCategoryColorClass(cat)"
+                  :style="getCategoryColorStyle(cat)"
                 >
                   {{ cat }}
                 </th>
@@ -622,7 +647,7 @@
                   {{ formatStatValue(pick.stats?.[getStatIdForCategory(cat)] || 0, cat) }}
                 </td>
                 <td class="p-3 text-center">
-                  <span class="font-bold" :class="getCategoryScoreClass(pick.categoryScore)">
+                  <span class="font-bold" :style="getCategoryScoreStyle(pick.categoryScore)">
                     {{ pick.categoryScore?.toFixed(0) || '0' }}
                   </span>
                 </td>
@@ -692,7 +717,7 @@
                   v-for="cat in team.categoryStrengths.slice(0, 10)" 
                   :key="cat.category"
                   class="text-center p-1.5 rounded"
-                  :class="getCategoryStrengthClass(cat.percentile)"
+                  :style="getCategoryStrengthStyle(cat.percentile)"
                   :title="`${cat.category}: ${cat.percentile}th percentile`"
                 >
                   <div class="text-xs font-bold">{{ cat.category }}</div>
@@ -756,8 +781,29 @@
             
             <div class="p-6">
               <!-- Category Breakdown -->
-              <div class="grid grid-cols-2 gap-6">
-                <!-- Primary Categories -->
+
+              <!-- Basketball: single column, all cats together -->
+              <div v-if="leagueStore.activeSport === 'basketball'" class="space-y-2">
+                <div class="text-sm font-bold text-green-400 mb-3 flex items-center gap-2">
+                  <span>🏀</span> All Categories
+                </div>
+                <div v-for="cat in selectedTeamData?.categoryStrengths" :key="cat.category" class="flex items-center gap-2">
+                  <div class="w-12 text-xs font-medium text-dark-textMuted">{{ cat.category }}</div>
+                  <div class="flex-1 h-4 bg-dark-border/30 rounded-full overflow-hidden">
+                    <div
+                      class="h-full rounded-full transition-all duration-500"
+                      :style="{ width: Math.max(cat.percentile || 0, 8) + '%', background: cat.percentile >= 67 ? '#4ade80' : cat.percentile >= 33 ? '#facc15' : '#f87171' }"
+                    ></div>
+                  </div>
+                  <div class="w-10 text-xs font-bold text-right" :style="getCategoryScoreStyle(cat.percentile)">
+                    {{ cat.percentile }}%
+                  </div>
+                </div>
+              </div>
+
+              <!-- Baseball / Hockey / Football: two columns -->
+              <div v-else class="grid grid-cols-2 gap-6">
+                <!-- Primary (Hitting / Skater / Offense) -->
                 <div>
                   <div class="text-sm font-bold text-green-400 mb-3 flex items-center gap-2">
                     <span>{{ primaryCategoryLabel.icon }}</span> {{ primaryCategoryLabel.label }}
@@ -766,19 +812,18 @@
                     <div v-for="cat in selectedTeamHittingCategories" :key="cat.category" class="flex items-center gap-2">
                       <div class="w-12 text-xs font-medium text-dark-textMuted">{{ cat.category }}</div>
                       <div class="flex-1 h-4 bg-dark-border/30 rounded-full overflow-hidden">
-                        <div 
+                        <div
                           class="h-full rounded-full transition-all duration-500"
-                          :class="getBarColorClass(cat.percentile)"
-                          :style="{ width: Math.max(cat.percentile || 0, 8) + '%' }"
+                          :style="{ width: Math.max(cat.percentile || 0, 8) + '%', background: cat.percentile >= 67 ? '#4ade80' : cat.percentile >= 33 ? '#facc15' : '#f87171' }"
                         ></div>
                       </div>
-                      <div class="w-10 text-xs font-bold text-right" :class="getCategoryScoreClass(cat.percentile)">
+                      <div class="w-10 text-xs font-bold text-right" :style="getCategoryScoreStyle(cat.percentile)">
                         {{ cat.percentile }}%
                       </div>
                     </div>
                   </div>
                 </div>
-                <!-- Secondary Categories -->
+                <!-- Secondary (Pitching / Goalie / Defense) -->
                 <div>
                   <div class="text-sm font-bold text-purple-400 mb-3 flex items-center gap-2">
                     <span>{{ secondaryCategoryLabel.icon }}</span> {{ secondaryCategoryLabel.label }}
@@ -787,13 +832,12 @@
                     <div v-for="cat in selectedTeamPitchingCategories" :key="cat.category" class="flex items-center gap-2">
                       <div class="w-12 text-xs font-medium text-dark-textMuted">{{ cat.category }}</div>
                       <div class="flex-1 h-4 bg-dark-border/30 rounded-full overflow-hidden">
-                        <div 
+                        <div
                           class="h-full rounded-full transition-all duration-500"
-                          :class="getBarColorClass(cat.percentile)"
-                          :style="{ width: Math.max(cat.percentile || 0, 8) + '%' }"
+                          :style="{ width: Math.max(cat.percentile || 0, 8) + '%', background: cat.percentile >= 67 ? '#4ade80' : cat.percentile >= 33 ? '#facc15' : '#f87171' }"
                         ></div>
                       </div>
-                      <div class="w-10 text-xs font-bold text-right" :class="getCategoryScoreClass(cat.percentile)">
+                      <div class="w-10 text-xs font-bold text-right" :style="getCategoryScoreStyle(cat.percentile)">
                         {{ cat.percentile }}%
                       </div>
                     </div>
@@ -1002,7 +1046,7 @@
             >
               <span 
                 class="px-2 py-1 rounded-full text-xs font-bold mb-2 inline-block"
-                :class="getCategoryColorClass(gem.category)"
+                :style="getCategoryColorStyle(gem.category)"
               >
                 {{ gem.category }}
               </span>
@@ -1065,7 +1109,7 @@
               <template v-if="selectedPick.hasStats !== false">
                 <div class="bg-dark-border/30 rounded-xl p-4 text-center">
                   <div class="text-sm text-dark-textMuted mb-1">Category Score</div>
-                  <div class="text-2xl font-bold" :class="getCategoryScoreClass(selectedPick.categoryScore)">
+                  <div class="text-2xl font-bold" :style="getCategoryScoreStyle(selectedPick.categoryScore)">
                     {{ selectedPick.categoryScore?.toFixed(0) || '0' }}
                   </div>
                   <div class="text-xs text-dark-textMuted mt-1">Avg percentile across categories</div>
@@ -1119,7 +1163,7 @@
                   :key="cat"
                   class="text-center p-3 rounded-lg bg-dark-border/30"
                 >
-                  <div class="text-xs font-bold mb-1" :class="getCategoryColorClass(cat).replace('bg-', 'text-').replace('/20', '')">{{ cat }}</div>
+                  <div class="text-xs font-bold mb-1" :style="getCategoryColorStyle(cat).replace('bg-', 'text-').replace('/20', '')">{{ cat }}</div>
                   <div class="text-lg font-black text-dark-text">
                     {{ formatStatValue(selectedPick.stats?.[getStatIdForCategory(cat)] || 0, cat) }}
                   </div>
@@ -1311,7 +1355,7 @@ const footballStatIdMapping: Record<string, string> = {
 
 // Get the appropriate mapping based on sport
 function getStatIdMapping(): Record<string, string> {
-  const sport = leagueStore.currentSportType || 'baseball'
+  const sport = leagueStore.activeSport || 'baseball'
   switch (sport) {
     case 'basketball': return basketballStatIdMapping
     case 'hockey': return hockeyStatIdMapping
@@ -1391,7 +1435,7 @@ function getDefaultCategoriesForSport(sport: string): string[] {
 
 // Sport-aware category labels
 const primaryCategoryLabel = computed(() => {
-  const sport = leagueStore.currentSportType || 'baseball'
+  const sport = leagueStore.activeSport || 'baseball'
   switch (sport) {
     case 'basketball': return { icon: '🏀', label: 'Offensive Stats' }
     case 'hockey': return { icon: '🏒', label: 'Skater Stats' }
@@ -1401,7 +1445,7 @@ const primaryCategoryLabel = computed(() => {
 })
 
 const secondaryCategoryLabel = computed(() => {
-  const sport = leagueStore.currentSportType || 'baseball'
+  const sport = leagueStore.activeSport || 'baseball'
   switch (sport) {
     case 'basketball': return { icon: '🛡️', label: 'Defensive Stats' }
     case 'hockey': return { icon: '🥅', label: 'Goalie Stats' }
@@ -1445,7 +1489,7 @@ const totalRounds = computed(() => {
 
 const availablePositions = computed(() => {
   const positions = new Set<string>()
-  const sport = leagueStore.currentSportType || 'baseball'
+  const sport = leagueStore.activeSport || 'baseball'
   
   // For baseball, extract individual positions from multi-position strings
   if (sport === 'baseball') {
@@ -1480,7 +1524,7 @@ const availablePositions = computed(() => {
 const filteredPicks = computed(() => {
   if (positionFilter.value === 'All') return draftPicks.value
   
-  const sport = leagueStore.currentSportType || 'baseball'
+  const sport = leagueStore.activeSport || 'baseball'
   
   // For baseball, check if player's position string includes the selected position
   if (sport === 'baseball') {
@@ -1500,7 +1544,7 @@ function pickMatchesPositionFilter(pick: any): boolean {
   if (!pick || positionFilter.value === 'All') return true
   if (!pick.position) return false
   
-  const sport = leagueStore.currentSportType || 'baseball'
+  const sport = leagueStore.activeSport || 'baseball'
   if (sport === 'baseball') {
     const posArray = pick.position.split(',').map((pos: string) => pos.trim())
     return posArray.includes(positionFilter.value)
@@ -2021,13 +2065,13 @@ function getPositionClass(position: string) {
   return classes[position] || 'bg-gray-500/20 text-gray-400'
 }
 
-function getCategoryColorClass(cat: string) {
-  if (isHittingCategory(cat)) return 'bg-green-500/20 text-green-400'
-  return 'bg-purple-500/20 text-purple-400'
+function getCategoryColorStyle(cat: string) {
+  if (isHittingCategory(cat)) return 'background:rgba(34,197,94,0.15); color:#4ade80;'
+  return 'background:rgba(168,85,247,0.15); color:#c084fc;'
 }
 
 function isHittingCategory(cat: string): boolean {
-  const sport = leagueStore.currentSportType || 'baseball'
+  const sport = leagueStore.activeSport || 'baseball'
   const cats = leagueCategories.value
 
   if (sport === 'basketball') {
@@ -2104,35 +2148,32 @@ function isHittingCategory(cat: string): boolean {
   return false
 }
 
-function getCategoryScoreClass(score: number) {
-  // Green for good, yellow for middle, red for bad
-  if (score >= 67) return 'text-green-400'
-  if (score >= 33) return 'text-yellow-400'
-  return 'text-red-400'
+function getCategoryScoreStyle(score: number) {
+  if (score >= 67) return 'color:#4ade80'
+  if (score >= 33) return 'color:#facc15'
+  return 'color:#f87171'
 }
 
-function getBarColorClass(percentile: number) {
-  // Match the text colors: green for good, yellow for middle, red for bad
-  if (percentile >= 67) return 'bg-green-400'
-  if (percentile >= 33) return 'bg-yellow-400'
-  return 'bg-red-400'
+function getBarColorStyle(percentile: number) {
+  if (percentile >= 67) return 'background:#4ade80'
+  if (percentile >= 33) return 'background:#facc15'
+  return 'background:#f87171'
 }
 
-function getCategoryStrengthClass(percentile: number) {
-  // Green for good, yellow for middle, red for bad
-  if (percentile >= 67) return 'bg-green-500/30 text-green-400'
-  if (percentile >= 33) return 'bg-yellow-500/30 text-yellow-400'
-  return 'bg-red-500/30 text-red-400'
+function getCategoryStrengthStyle(percentile: number) {
+  if (percentile >= 67) return 'background:rgba(34,197,94,0.2); color:#4ade80;'
+  if (percentile >= 33) return 'background:rgba(234,179,8,0.2); color:#facc15;'
+  return 'background:rgba(239,68,68,0.2); color:#f87171;'
 }
 
 // Get class for round value heatmap
-function getRoundValueClass(avgPercentile: number) {
-  if (avgPercentile >= 70) return 'bg-green-500 text-white'
-  if (avgPercentile >= 55) return 'bg-green-500/60 text-white'
-  if (avgPercentile >= 45) return 'bg-yellow-500/60 text-white'
-  if (avgPercentile >= 30) return 'bg-orange-500/60 text-white'
-  if (avgPercentile > 0) return 'bg-red-500/40 text-white'
-  return 'bg-dark-border/30 text-dark-textMuted'
+function getRoundValueStyle(avgPercentile: number) {
+  if (avgPercentile >= 70) return 'background:#22c55e; color:#fff;'
+  if (avgPercentile >= 55) return 'background:rgba(34,197,94,0.6); color:#fff;'
+  if (avgPercentile >= 45) return 'background:rgba(234,179,8,0.6); color:#fff;'
+  if (avgPercentile >= 30) return 'background:rgba(249,115,22,0.6); color:#fff;'
+  if (avgPercentile > 0) return 'background:rgba(239,68,68,0.4); color:#fff;'
+  return 'background:rgba(58,65,86,0.3); color:#6b7280;'
 }
 
 function getStatCellClass(value: number, cat: string) {
@@ -2823,7 +2864,7 @@ async function loadYahooDraftData(leagueKey: string) {
     }
     
     // Detect sport from league key
-    const sport = leagueStore.currentSportType || detectSportFromLeagueKey(leagueKey)
+    const sport = leagueStore.activeSport || detectSportFromLeagueKey(leagueKey)
     console.log('[CATEGORY DRAFT] Detected sport:', sport)
     
     // Get league settings for categories
@@ -3746,20 +3787,26 @@ async function downloadBalanceImage() {
             </div>
           </div>
         </div>
-        <div style="padding: 16px; display: flex; gap: 16px;">
-          <div style="flex: 1;">
-            <div style="font-size: 12px; font-weight: bold; color: #60a5fa; margin-bottom: 10px; display: flex; align-items: center; gap: 6px;">
-              <span>${primaryCategoryLabel.value.icon}</span> ${primaryCategoryLabel.value.label}
-            </div>
-            ${hittingCats.map(generateCategoryRow).join('')}
-          </div>
-          <div style="flex: 1;">
-            <div style="font-size: 12px; font-weight: bold; color: #a78bfa; margin-bottom: 10px; display: flex; align-items: center; gap: 6px;">
-              <span>${secondaryCategoryLabel.value.icon}</span> ${secondaryCategoryLabel.value.label}
-            </div>
-            ${pitchingCats.map(generateCategoryRow).join('')}
-          </div>
-        </div>
+        ${leagueStore.activeSport === 'basketball'
+          ? `<div style="padding: 16px;">
+              <div style="font-size: 12px; font-weight: bold; color: #60a5fa; margin-bottom: 10px;">🏀 All Categories</div>
+              ${team.categoryStrengths.map(generateCategoryRow).join('')}
+            </div>`
+          : `<div style="padding: 16px; display: flex; gap: 16px;">
+              <div style="flex: 1;">
+                <div style="font-size: 12px; font-weight: bold; color: #60a5fa; margin-bottom: 10px; display: flex; align-items: center; gap: 6px;">
+                  <span>${primaryCategoryLabel.value.icon}</span> ${primaryCategoryLabel.value.label}
+                </div>
+                ${hittingCats.map(generateCategoryRow).join('')}
+              </div>
+              <div style="flex: 1;">
+                <div style="font-size: 12px; font-weight: bold; color: #a78bfa; margin-bottom: 10px; display: flex; align-items: center; gap: 6px;">
+                  <span>${secondaryCategoryLabel.value.icon}</span> ${secondaryCategoryLabel.value.label}
+                </div>
+                ${pitchingCats.map(generateCategoryRow).join('')}
+              </div>
+            </div>`
+        }
         <div style="padding: 12px 16px; border-top: 1px solid rgba(58, 61, 82, 0.5);">
           <div style="display: flex; align-items: center; gap: 10px;">
             <span style="font-size: 20px;">${team.strategyIcon}</span>
