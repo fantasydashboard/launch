@@ -154,7 +154,8 @@
                 <button 
                   @click="downloadCareerStats"
                   :disabled="isDownloadingCareerStats"
-                  class="px-4 py-2 border border-yellow-400 bg-transparent text-yellow-400 hover:bg-yellow-400 hover:text-gray-900 rounded-lg font-medium flex items-center gap-2 text-sm transition-colors disabled:opacity-50"
+                  class="px-4 py-2 rounded-lg font-medium flex items-center gap-2 text-sm transition-all disabled:opacity-50"
+                  :style="shareToast === 'success' ? 'background: rgba(16,185,129,0.15); color: #10b981; border: 1px solid #10b981;' : 'background: transparent; color: #facc15; border: 1px solid #facc15;'"
                 >
                   <svg v-if="!isDownloadingCareerStats" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path v-if="!isDownloadingCareerStats" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
@@ -244,7 +245,8 @@
             <button 
               @click="downloadSeasonHistory"
               :disabled="isDownloadingSeasonHistory"
-              class="px-4 py-2 border border-yellow-400 bg-transparent text-yellow-400 hover:bg-yellow-400 hover:text-gray-900 rounded-lg font-medium flex items-center gap-2 text-sm transition-colors disabled:opacity-50"
+              class="px-4 py-2 rounded-lg font-medium flex items-center gap-2 text-sm transition-all disabled:opacity-50"
+              :style="shareToast === 'success' ? 'background: rgba(16,185,129,0.15); color: #10b981; border: 1px solid #10b981;' : 'background: transparent; color: #facc15; border: 1px solid #facc15;'"
             >
               <svg v-if="!isDownloadingSeasonHistory" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path v-if="!isDownloadingSeasonHistory" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
@@ -351,7 +353,8 @@
               <button 
                 @click="downloadComparison"
                 :disabled="isDownloadingComparison"
-                class="px-4 py-2 border border-yellow-400 bg-transparent text-yellow-400 hover:bg-yellow-400 hover:text-gray-900 rounded-lg font-medium flex items-center gap-2 text-sm transition-colors disabled:opacity-50"
+                class="px-4 py-2 rounded-lg font-medium flex items-center gap-2 text-sm transition-all disabled:opacity-50"
+                  :style="shareToast === 'success' ? 'background: rgba(16,185,129,0.15); color: #10b981; border: 1px solid #10b981;' : 'background: transparent; color: #facc15; border: 1px solid #facc15;'"
               >
                 <svg v-if="!isDownloadingComparison" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path v-if="!isDownloadingComparison" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
@@ -596,7 +599,8 @@
               <button 
                 @click="downloadHeadToHead"
                 :disabled="isDownloadingH2H"
-                class="px-4 py-2 border border-yellow-400 bg-transparent text-yellow-400 hover:bg-yellow-400 hover:text-gray-900 rounded-lg font-medium flex items-center gap-2 text-sm transition-colors disabled:opacity-50"
+                class="px-4 py-2 rounded-lg font-medium flex items-center gap-2 text-sm transition-all disabled:opacity-50"
+                  :style="shareToast === 'success' ? 'background: rgba(16,185,129,0.15); color: #10b981; border: 1px solid #10b981;' : 'background: transparent; color: #facc15; border: 1px solid #facc15;'"
               >
                 <svg v-if="!isDownloadingH2H" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path v-if="!isDownloadingH2H" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
@@ -1045,7 +1049,8 @@
               <button 
                 @click="downloadLegacyLeaderboard"
                 :disabled="isDownloadingLegacy"
-                class="px-4 py-2 border border-yellow-400 bg-transparent text-yellow-400 hover:bg-yellow-400 hover:text-gray-900 rounded-lg font-medium flex items-center gap-2 text-sm transition-colors disabled:opacity-50"
+                class="px-4 py-2 rounded-lg font-medium flex items-center gap-2 text-sm transition-all disabled:opacity-50"
+                  :style="shareToast === 'success' ? 'background: rgba(16,185,129,0.15); color: #10b981; border: 1px solid #10b981;' : 'background: transparent; color: #facc15; border: 1px solid #facc15;'"
               >
                 <svg v-if="!isDownloadingLegacy" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path v-if="!isDownloadingLegacy" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
@@ -1266,7 +1271,8 @@
                   <button 
                     @click.stop="downloadTeamLegacy(selectedLegacyTeamDetails)"
                     :disabled="isDownloadingTeamLegacy"
-                    class="px-3 py-1.5 border border-yellow-400 bg-transparent text-yellow-400 hover:bg-yellow-400 hover:text-gray-900 rounded-lg font-medium flex items-center gap-2 text-sm transition-colors disabled:opacity-50"
+                    class="px-3 py-1.5 rounded-lg font-medium flex items-center gap-2 text-sm transition-all disabled:opacity-50"
+                  :style="shareToast === 'success' ? 'background: rgba(16,185,129,0.15); color: #10b981; border: 1px solid #10b981;' : 'background: transparent; color: #facc15; border: 1px solid #facc15;'"
                   >
                     <svg v-if="!isDownloadingTeamLegacy" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path v-if="!isDownloadingTeamLegacy" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
@@ -1365,20 +1371,19 @@
               <p class="text-sm"><span class="text-dark-textMuted">{{ leagueDisplayName }}</span> <span class="text-dark-textMuted">•</span> <span class="text-red-500 font-semibold">All-Time</span></p>
             </div>
             <div class="flex items-center gap-2">
-              <button 
+<button 
                 @click="downloadRecordRankings(recordModalLabel)" 
                 :disabled="isDownloadingRecord"
-                class="flex items-center gap-2 text-sm px-3 py-1.5 rounded-lg font-semibold transition-colors disabled:opacity-50"
-                style="background: transparent; color: #facc15; border: 1px solid #facc15;"
-                @mouseover="$event.currentTarget.style.background = '#facc15'; $event.currentTarget.style.color = '#111827'"
-                @mouseout="$event.currentTarget.style.background = 'transparent'; $event.currentTarget.style.color = '#facc15'"
+                class="flex items-center gap-2 text-sm px-3 py-1.5 rounded-lg font-semibold transition-all disabled:opacity-50"
+                :style="recordToast === 'success' ? 'background: rgba(16,185,129,0.15); color: #10b981; border: 1px solid #10b981;' : 'background: transparent; color: #facc15; border: 1px solid #facc15;'"
               >
-                <svg v-if="!isDownloadingRecord" class="w-4 h-4 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" /></svg>
-                <svg v-else class="w-4 h-4 animate-spin pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg v-if="!isDownloadingRecord && recordToast !== 'success'" class="w-4 h-4 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" /></svg>
+                <svg v-else-if="isDownloadingRecord" class="w-4 h-4 animate-spin pointer-events-none" fill="none" viewBox="0 0 24 24">
                   <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                   <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                 </svg>
-                {{ isDownloadingRecord ? 'Saving...' : 'Share' }}
+                <svg v-else class="w-4 h-4 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" /></svg>
+                {{ isDownloadingRecord ? 'Generating...' : recordToast === 'success' ? 'Copied! 📋' : 'Share' }}
               </button>
               <button @click="closeRecordModal" class="p-2 rounded-lg hover:bg-dark-border/50 transition-colors">
                 <svg class="w-5 h-5 text-dark-textMuted" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1454,20 +1459,19 @@
               <p class="text-sm"><span class="text-dark-textMuted">{{ leagueDisplayName }}</span> <span class="text-dark-textMuted">•</span> <span class="text-red-500 font-semibold">All-Time {{ awardModalType === 'best' ? 'Best' : 'Worst' }}</span></p>
             </div>
             <div class="flex items-center gap-2">
-              <button 
+<button 
                 @click="downloadAwardRankings(awardModalTitle, awardModalType)" 
                 :disabled="isDownloadingAward"
-                class="flex items-center gap-2 text-sm px-3 py-1.5 rounded-lg font-semibold transition-colors disabled:opacity-50"
-                style="background: transparent; color: #facc15; border: 1px solid #facc15;"
-                @mouseover="$event.currentTarget.style.background = '#facc15'; $event.currentTarget.style.color = '#111827'"
-                @mouseout="$event.currentTarget.style.background = 'transparent'; $event.currentTarget.style.color = '#facc15'"
+                class="flex items-center gap-2 text-sm px-3 py-1.5 rounded-lg font-semibold transition-all disabled:opacity-50"
+                :style="awardToast === 'success' ? 'background: rgba(16,185,129,0.15); color: #10b981; border: 1px solid #10b981;' : 'background: transparent; color: #facc15; border: 1px solid #facc15;'"
               >
-                <svg v-if="!isDownloadingAward" class="w-4 h-4 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" /></svg>
-                <svg v-else class="w-4 h-4 animate-spin pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg v-if="!isDownloadingAward && awardToast !== 'success'" class="w-4 h-4 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" /></svg>
+                <svg v-else-if="isDownloadingAward" class="w-4 h-4 animate-spin pointer-events-none" fill="none" viewBox="0 0 24 24">
                   <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                   <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                 </svg>
-                {{ isDownloadingAward ? 'Saving...' : 'Share' }}
+                <svg v-else class="w-4 h-4 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" /></svg>
+                {{ isDownloadingAward ? 'Generating...' : awardToast === 'success' ? 'Copied! 📋' : 'Share' }}
               </button>
               <button @click="closeAwardModal" class="p-2 rounded-lg hover:bg-dark-border/50 transition-colors">
                 <svg class="w-5 h-5 text-dark-textMuted" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1545,20 +1549,19 @@
               <p class="text-sm"><span class="text-dark-textMuted">{{ leagueDisplayName }}</span> <span class="text-dark-textMuted">•</span> <span class="text-red-500 font-semibold">{{ selectedAwardSeason }} {{ seasonAwardModalType === 'best' ? 'Best' : 'Worst' }}</span></p>
             </div>
             <div class="flex items-center gap-2">
-              <button 
+<button 
                 @click="downloadSeasonAwardRankings(seasonAwardModalTitle, seasonAwardModalType)" 
                 :disabled="isDownloadingSeasonAward"
-                class="flex items-center gap-2 text-sm px-3 py-1.5 rounded-lg font-semibold transition-colors disabled:opacity-50"
-                style="background: transparent; color: #facc15; border: 1px solid #facc15;"
-                @mouseover="$event.currentTarget.style.background = '#facc15'; $event.currentTarget.style.color = '#111827'"
-                @mouseout="$event.currentTarget.style.background = 'transparent'; $event.currentTarget.style.color = '#facc15'"
+                class="flex items-center gap-2 text-sm px-3 py-1.5 rounded-lg font-semibold transition-all disabled:opacity-50"
+                :style="seasonAwardToast === 'success' ? 'background: rgba(16,185,129,0.15); color: #10b981; border: 1px solid #10b981;' : 'background: transparent; color: #facc15; border: 1px solid #facc15;'"
               >
-                <svg v-if="!isDownloadingSeasonAward" class="w-4 h-4 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" /></svg>
-                <svg v-else class="w-4 h-4 animate-spin pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg v-if="!isDownloadingSeasonAward && seasonAwardToast !== 'success'" class="w-4 h-4 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" /></svg>
+                <svg v-else-if="isDownloadingSeasonAward" class="w-4 h-4 animate-spin pointer-events-none" fill="none" viewBox="0 0 24 24">
                   <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                   <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                 </svg>
-                {{ isDownloadingSeasonAward ? 'Saving...' : 'Share' }}
+                <svg v-else class="w-4 h-4 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" /></svg>
+                {{ isDownloadingSeasonAward ? 'Generating...' : seasonAwardToast === 'success' ? 'Copied! 📋' : 'Share' }}
               </button>
               <button @click="closeSeasonAwardModal" class="p-2 rounded-lg hover:bg-dark-border/50 transition-colors">
                 <svg class="w-5 h-5 text-dark-textMuted" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1636,20 +1639,19 @@
               <p class="text-sm"><span class="text-dark-textMuted">{{ leagueDisplayName }}</span> <span class="text-dark-textMuted">•</span> <span class="text-red-500 font-semibold">{{ selectedWeeklyAwardSeason }} Week {{ selectedWeeklyAwardWeek }}</span></p>
             </div>
             <div class="flex items-center gap-2">
-              <button 
+<button 
                 @click="downloadWeeklyAwardRankings(weeklyAwardModalTitle, weeklyAwardModalType)" 
                 :disabled="isDownloadingWeeklyAward"
-                class="flex items-center gap-2 text-sm px-3 py-1.5 rounded-lg font-semibold transition-colors disabled:opacity-50"
-                style="background: transparent; color: #facc15; border: 1px solid #facc15;"
-                @mouseover="$event.currentTarget.style.background = '#facc15'; $event.currentTarget.style.color = '#111827'"
-                @mouseout="$event.currentTarget.style.background = 'transparent'; $event.currentTarget.style.color = '#facc15'"
+                class="flex items-center gap-2 text-sm px-3 py-1.5 rounded-lg font-semibold transition-all disabled:opacity-50"
+                :style="weeklyAwardToast === 'success' ? 'background: rgba(16,185,129,0.15); color: #10b981; border: 1px solid #10b981;' : 'background: transparent; color: #facc15; border: 1px solid #facc15;'"
               >
-                <svg v-if="!isDownloadingWeeklyAward" class="w-4 h-4 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" /></svg>
-                <svg v-else class="w-4 h-4 animate-spin pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg v-if="!isDownloadingWeeklyAward && weeklyAwardToast !== 'success'" class="w-4 h-4 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" /></svg>
+                <svg v-else-if="isDownloadingWeeklyAward" class="w-4 h-4 animate-spin pointer-events-none" fill="none" viewBox="0 0 24 24">
                   <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                   <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                 </svg>
-                {{ isDownloadingWeeklyAward ? 'Saving...' : 'Share' }}
+                <svg v-else class="w-4 h-4 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" /></svg>
+                {{ isDownloadingWeeklyAward ? 'Generating...' : weeklyAwardToast === 'success' ? 'Copied! 📋' : 'Share' }}
               </button>
               <button @click="closeWeeklyAwardModal" class="p-2 rounded-lg hover:bg-dark-border/50 transition-colors">
                 <svg class="w-5 h-5 text-dark-textMuted" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1741,7 +1743,8 @@
                 <button 
                   @click.stop="downloadTeamLegacy(selectedLegacyTeam)"
                   :disabled="isDownloadingTeamLegacy"
-                  class="px-3 py-1.5 border border-yellow-400 bg-transparent text-yellow-400 hover:bg-yellow-400 hover:text-gray-900 rounded-lg font-medium flex items-center gap-2 text-sm transition-colors disabled:opacity-50"
+                  class="px-3 py-1.5 rounded-lg font-medium flex items-center gap-2 text-sm transition-all disabled:opacity-50"
+                  :style="shareToast === 'success' ? 'background: rgba(16,185,129,0.15); color: #10b981; border: 1px solid #10b981;' : 'background: transparent; color: #facc15; border: 1px solid #facc15;'"
                 >
                   <svg v-if="!isDownloadingTeamLegacy" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path v-if="!isDownloadingTeamLegacy" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
@@ -2123,23 +2126,27 @@ const isDownloadingH2H = ref(false)
 const showRecordModal = ref(false)
 const recordModalLabel = ref('')
 const isDownloadingRecord = ref(false)
+const recordToast = ref<'idle'|'success'|'error'>('idle')
 
 const showAwardModal = ref(false)
 const awardModalTitle = ref('')
 const awardModalType = ref<'best' | 'worst'>('best')
 const isDownloadingAward = ref(false)
+const awardToast = ref<'idle'|'success'|'error'>('idle')
 
 // Season Award Modal state
 const showSeasonAwardModal = ref(false)
 const seasonAwardModalTitle = ref('')
 const seasonAwardModalType = ref<'best' | 'worst'>('best')
 const isDownloadingSeasonAward = ref(false)
+const seasonAwardToast = ref<'idle'|'success'|'error'>('idle')
 
 // Weekly Award Modal state
 const showWeeklyAwardModal = ref(false)
 const weeklyAwardModalTitle = ref('')
 const weeklyAwardModalType = ref<'best' | 'worst'>('best')
 const isDownloadingWeeklyAward = ref(false)
+const weeklyAwardToast = ref<'idle'|'success'|'error'>('idle')
 
 // Sort state
 const sortColumn = ref<string>('wins')
@@ -3776,24 +3783,22 @@ async function downloadLegacyLeaderboard() {
     
     document.body.removeChild(container)
     
-    // Download
-    const link = document.createElement('a')
     const safeLeagueName = leagueName.replace(/[^a-zA-Z0-9\s]/g, '').replace(/\s+/g, '-')
-        const _shareBlob = await new Promise<Blob>((resolve, reject) => {
-          canvas.toBlob(b => b ? resolve(b) : reject(new Error('toBlob failed')), 'image/png')
-        })
-        if (navigator.clipboard && typeof ClipboardItem !== 'undefined') {
-          await navigator.clipboard.write([new ClipboardItem({ 'image/png': _shareBlob })])
-          shareToast.value = 'success'
-          setTimeout(() => { shareToast.value = 'idle' }, 3000)
-        } else {
-          const _shareUrl = URL.createObjectURL(_shareBlob)
-          const link = document.createElement('a')
-          link.download = `Legacy-Leaderboard-${safeLeagueName}.png`
-          link.href = _shareUrl
-          link.click()
-          URL.revokeObjectURL(_shareUrl)
-        }
+    const _shareBlob = await new Promise<Blob>((resolve, reject) => {
+      canvas.toBlob(b => b ? resolve(b) : reject(new Error('toBlob failed')), 'image/png')
+    })
+    if (navigator.clipboard && typeof ClipboardItem !== 'undefined') {
+      await navigator.clipboard.write([new ClipboardItem({ 'image/png': _shareBlob })])
+      shareToast.value = 'success'
+      setTimeout(() => { shareToast.value = 'idle' }, 3000)
+    } else {
+      const _shareUrl = URL.createObjectURL(_shareBlob)
+      const _fallbackLink = document.createElement('a')
+      _fallbackLink.download = `Legacy-Leaderboard-${safeLeagueName}.png`
+      _fallbackLink.href = _shareUrl
+      _fallbackLink.click()
+      URL.revokeObjectURL(_shareUrl)
+    }
     
   } catch (e) {
     console.error('Error generating legacy download:', e)
@@ -4026,24 +4031,22 @@ async function downloadTeamLegacy(team: LegacyScore) {
     
     document.body.removeChild(container)
     
-    // Download
-    const link = document.createElement('a')
     const safeTeamName = team.team_name.replace(/[^a-zA-Z0-9\s]/g, '').replace(/\s+/g, '-')
-        const _shareBlob = await new Promise<Blob>((resolve, reject) => {
-          canvas.toBlob(b => b ? resolve(b) : reject(new Error('toBlob failed')), 'image/png')
-        })
-        if (navigator.clipboard && typeof ClipboardItem !== 'undefined') {
-          await navigator.clipboard.write([new ClipboardItem({ 'image/png': _shareBlob })])
-          shareToast.value = 'success'
-          setTimeout(() => { shareToast.value = 'idle' }, 3000)
-        } else {
-          const _shareUrl = URL.createObjectURL(_shareBlob)
-          const link = document.createElement('a')
-          link.download = `Legacy-${safeTeamName}.png`
-          link.href = _shareUrl
-          link.click()
-          URL.revokeObjectURL(_shareUrl)
-        }
+    const _shareBlob = await new Promise<Blob>((resolve, reject) => {
+      canvas.toBlob(b => b ? resolve(b) : reject(new Error('toBlob failed')), 'image/png')
+    })
+    if (navigator.clipboard && typeof ClipboardItem !== 'undefined') {
+      await navigator.clipboard.write([new ClipboardItem({ 'image/png': _shareBlob })])
+      shareToast.value = 'success'
+      setTimeout(() => { shareToast.value = 'idle' }, 3000)
+    } else {
+      const _shareUrl = URL.createObjectURL(_shareBlob)
+      const _fallbackLink = document.createElement('a')
+      _fallbackLink.download = `Legacy-${safeTeamName}.png`
+      _fallbackLink.href = _shareUrl
+      _fallbackLink.click()
+      URL.revokeObjectURL(_shareUrl)
+    }
     
   } catch (e) {
     console.error('Error generating team legacy download:', e)
@@ -5163,20 +5166,19 @@ async function downloadRecordRankings(recordType: string) {
     
     document.body.removeChild(container)
     
-    const link = document.createElement('a')
         const _shareBlob = await new Promise<Blob>((resolve, reject) => {
-          canvas.toBlob(b => b ? resolve(b) : reject(new Error('toBlob failed')), 'image/png')
+          finalCanvas.toBlob(b => b ? resolve(b) : reject(new Error('toBlob failed')), 'image/png')
         })
         if (navigator.clipboard && typeof ClipboardItem !== 'undefined') {
           await navigator.clipboard.write([new ClipboardItem({ 'image/png': _shareBlob })])
-          shareToast.value = 'success'
-          setTimeout(() => { shareToast.value = 'idle' }, 3000)
+          recordToast.value = 'success'
+          setTimeout(() => { recordToast.value = 'idle' }, 3000)
         } else {
           const _shareUrl = URL.createObjectURL(_shareBlob)
-          const link = document.createElement('a')
-          link.download = `career-${recordType.toLowerCase().replace(/\s+/g, '-')}.png`
-          link.href = _shareUrl
-          link.click()
+          const _fallbackLink = document.createElement('a')
+          _fallbackLink.download = `career-${recordType.toLowerCase().replace(/\s+/g, '-')}.png`
+          _fallbackLink.href = _shareUrl
+          _fallbackLink.click()
           URL.revokeObjectURL(_shareUrl)
         }
   } finally {
@@ -5393,20 +5395,19 @@ async function downloadAwardRankings(awardTitle: string, type: 'best' | 'worst')
     
     document.body.removeChild(container)
     
-    const link = document.createElement('a')
         const _shareBlob = await new Promise<Blob>((resolve, reject) => {
-          canvas.toBlob(b => b ? resolve(b) : reject(new Error('toBlob failed')), 'image/png')
+          finalCanvas.toBlob(b => b ? resolve(b) : reject(new Error('toBlob failed')), 'image/png')
         })
         if (navigator.clipboard && typeof ClipboardItem !== 'undefined') {
           await navigator.clipboard.write([new ClipboardItem({ 'image/png': _shareBlob })])
-          shareToast.value = 'success'
-          setTimeout(() => { shareToast.value = 'idle' }, 3000)
+          awardToast.value = 'success'
+          setTimeout(() => { awardToast.value = 'idle' }, 3000)
         } else {
           const _shareUrl = URL.createObjectURL(_shareBlob)
-          const link = document.createElement('a')
-          link.download = `${awardTitle.toLowerCase().replace(/\s+/g, '-')}-${type}.png`
-          link.href = _shareUrl
-          link.click()
+          const _fallbackLink = document.createElement('a')
+          _fallbackLink.download = `${awardTitle.toLowerCase().replace(/\s+/g, '-')}-${type}.png`
+          _fallbackLink.href = _shareUrl
+          _fallbackLink.click()
           URL.revokeObjectURL(_shareUrl)
         }
   } finally {
@@ -5599,20 +5600,19 @@ async function downloadSeasonAwardRankings(awardTitle: string, type: 'best' | 'w
     
     document.body.removeChild(container)
     
-    const link = document.createElement('a')
         const _shareBlob = await new Promise<Blob>((resolve, reject) => {
-          canvas.toBlob(b => b ? resolve(b) : reject(new Error('toBlob failed')), 'image/png')
+          finalCanvas.toBlob(b => b ? resolve(b) : reject(new Error('toBlob failed')), 'image/png')
         })
         if (navigator.clipboard && typeof ClipboardItem !== 'undefined') {
           await navigator.clipboard.write([new ClipboardItem({ 'image/png': _shareBlob })])
-          shareToast.value = 'success'
-          setTimeout(() => { shareToast.value = 'idle' }, 3000)
+          seasonAwardToast.value = 'success'
+          setTimeout(() => { seasonAwardToast.value = 'idle' }, 3000)
         } else {
           const _shareUrl = URL.createObjectURL(_shareBlob)
-          const link = document.createElement('a')
-          link.download = `${selectedAwardSeason.value}-${awardTitle.toLowerCase().replace(/\s+/g, '-')}-${type}.png`
-          link.href = _shareUrl
-          link.click()
+          const _fallbackLink = document.createElement('a')
+          _fallbackLink.download = `${selectedAwardSeason.value}-${awardTitle.toLowerCase().replace(/\s+/g, '-')}-${type}.png`
+          _fallbackLink.href = _shareUrl
+          _fallbackLink.click()
           URL.revokeObjectURL(_shareUrl)
         }
   } finally {
@@ -5798,20 +5798,19 @@ async function downloadWeeklyAwardRankings(awardTitle: string, type: 'best' | 'w
     
     document.body.removeChild(container)
     
-    const link = document.createElement('a')
         const _shareBlob = await new Promise<Blob>((resolve, reject) => {
-          canvas.toBlob(b => b ? resolve(b) : reject(new Error('toBlob failed')), 'image/png')
+          finalCanvas.toBlob(b => b ? resolve(b) : reject(new Error('toBlob failed')), 'image/png')
         })
         if (navigator.clipboard && typeof ClipboardItem !== 'undefined') {
           await navigator.clipboard.write([new ClipboardItem({ 'image/png': _shareBlob })])
-          shareToast.value = 'success'
-          setTimeout(() => { shareToast.value = 'idle' }, 3000)
+          weeklyAwardToast.value = 'success'
+          setTimeout(() => { weeklyAwardToast.value = 'idle' }, 3000)
         } else {
           const _shareUrl = URL.createObjectURL(_shareBlob)
-          const link = document.createElement('a')
-          link.download = `${selectedWeeklyAwardSeason.value}-week${selectedWeeklyAwardWeek.value}-${awardTitle.toLowerCase().replace(/\s+/g, '-')}.png`
-          link.href = _shareUrl
-          link.click()
+          const _fallbackLink = document.createElement('a')
+          _fallbackLink.download = `${selectedWeeklyAwardSeason.value}-week${selectedWeeklyAwardWeek.value}-${awardTitle.toLowerCase().replace(/\s+/g, '-')}.png`
+          _fallbackLink.href = _shareUrl
+          _fallbackLink.click()
           URL.revokeObjectURL(_shareUrl)
         }
   } finally {
@@ -6003,9 +6002,8 @@ async function downloadCareerStats() {
     
     document.body.removeChild(container)
     
-    const link = document.createElement('a')
         const _shareBlob = await new Promise<Blob>((resolve, reject) => {
-          canvas.toBlob(b => b ? resolve(b) : reject(new Error('toBlob failed')), 'image/png')
+          finalCanvas.toBlob(b => b ? resolve(b) : reject(new Error('toBlob failed')), 'image/png')
         })
         if (navigator.clipboard && typeof ClipboardItem !== 'undefined') {
           await navigator.clipboard.write([new ClipboardItem({ 'image/png': _shareBlob })])
@@ -6013,10 +6011,10 @@ async function downloadCareerStats() {
           setTimeout(() => { shareToast.value = 'idle' }, 3000)
         } else {
           const _shareUrl = URL.createObjectURL(_shareBlob)
-          const link = document.createElement('a')
-          link.download = 'points-league-career-stats.png'
-          link.href = _shareUrl
-          link.click()
+          const _fallbackLink = document.createElement('a')
+          _fallbackLink.download = 'points-league-career-stats.png'
+          _fallbackLink.href = _shareUrl
+          _fallbackLink.click()
           URL.revokeObjectURL(_shareUrl)
         }
   } finally {
@@ -6103,9 +6101,8 @@ async function downloadSeasonHistory() {
     
     document.body.removeChild(container)
     
-    const link = document.createElement('a')
         const _shareBlob = await new Promise<Blob>((resolve, reject) => {
-          canvas.toBlob(b => b ? resolve(b) : reject(new Error('toBlob failed')), 'image/png')
+          finalCanvas.toBlob(b => b ? resolve(b) : reject(new Error('toBlob failed')), 'image/png')
         })
         if (navigator.clipboard && typeof ClipboardItem !== 'undefined') {
           await navigator.clipboard.write([new ClipboardItem({ 'image/png': _shareBlob })])
@@ -6113,10 +6110,10 @@ async function downloadSeasonHistory() {
           setTimeout(() => { shareToast.value = 'idle' }, 3000)
         } else {
           const _shareUrl = URL.createObjectURL(_shareBlob)
-          const link = document.createElement('a')
-          link.download = 'points-league-season-history.png'
-          link.href = _shareUrl
-          link.click()
+          const _fallbackLink = document.createElement('a')
+          _fallbackLink.download = 'points-league-season-history.png'
+          _fallbackLink.href = _shareUrl
+          _fallbackLink.click()
           URL.revokeObjectURL(_shareUrl)
         }
   } finally {
@@ -6321,9 +6318,8 @@ async function downloadHeadToHead() {
     
     document.body.removeChild(container)
     
-    const link = document.createElement('a')
         const _shareBlob = await new Promise<Blob>((resolve, reject) => {
-          canvas.toBlob(b => b ? resolve(b) : reject(new Error('toBlob failed')), 'image/png')
+          finalCanvas.toBlob(b => b ? resolve(b) : reject(new Error('toBlob failed')), 'image/png')
         })
         if (navigator.clipboard && typeof ClipboardItem !== 'undefined') {
           await navigator.clipboard.write([new ClipboardItem({ 'image/png': _shareBlob })])
@@ -6331,10 +6327,10 @@ async function downloadHeadToHead() {
           setTimeout(() => { shareToast.value = 'idle' }, 3000)
         } else {
           const _shareUrl = URL.createObjectURL(_shareBlob)
-          const link = document.createElement('a')
-          link.download = 'points-league-h2h-matrix.png'
-          link.href = _shareUrl
-          link.click()
+          const _fallbackLink = document.createElement('a')
+          _fallbackLink.download = 'points-league-h2h-matrix.png'
+          _fallbackLink.href = _shareUrl
+          _fallbackLink.click()
           URL.revokeObjectURL(_shareUrl)
         }
   } finally {
@@ -6513,24 +6509,23 @@ async function downloadComparison() {
     
     document.body.removeChild(container)
     
-    const link = document.createElement('a')
     const team1Short = compareTeam1Data.value.team_name.replace(/[^a-z0-9]/gi, '-').substring(0, 15)
     const team2Short = compareTeam2Data.value.team_name.replace(/[^a-z0-9]/gi, '-').substring(0, 15)
-        const _shareBlob = await new Promise<Blob>((resolve, reject) => {
-          canvas.toBlob(b => b ? resolve(b) : reject(new Error('toBlob failed')), 'image/png')
-        })
-        if (navigator.clipboard && typeof ClipboardItem !== 'undefined') {
-          await navigator.clipboard.write([new ClipboardItem({ 'image/png': _shareBlob })])
-          shareToast.value = 'success'
-          setTimeout(() => { shareToast.value = 'idle' }, 3000)
-        } else {
-          const _shareUrl = URL.createObjectURL(_shareBlob)
-          const link = document.createElement('a')
-          link.download = `comparison-${team1Short}-vs-${team2Short}.png`
-          link.href = _shareUrl
-          link.click()
-          URL.revokeObjectURL(_shareUrl)
-        }
+    const _shareBlob = await new Promise<Blob>((resolve, reject) => {
+      canvas.toBlob(b => b ? resolve(b) : reject(new Error('toBlob failed')), 'image/png')
+    })
+    if (navigator.clipboard && typeof ClipboardItem !== 'undefined') {
+      await navigator.clipboard.write([new ClipboardItem({ 'image/png': _shareBlob })])
+      shareToast.value = 'success'
+      setTimeout(() => { shareToast.value = 'idle' }, 3000)
+    } else {
+      const _shareUrl = URL.createObjectURL(_shareBlob)
+      const _fallbackLink = document.createElement('a')
+      _fallbackLink.download = `comparison-${team1Short}-vs-${team2Short}.png`
+      _fallbackLink.href = _shareUrl
+      _fallbackLink.click()
+      URL.revokeObjectURL(_shareUrl)
+    }
   } finally {
     isDownloadingComparison.value = false
   }
