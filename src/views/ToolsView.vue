@@ -1571,77 +1571,65 @@ async function downloadDraftOrderImage() {
     }
     
     // Preload all team avatars as base64
+
+    const _blobToDataUrl = (blob: Blob): Promise<string> => new Promise((resolve) => {
+      const reader = new FileReader()
+      reader.onloadend = () => resolve((reader.result as string) || '')
+      reader.onerror = () => resolve('')
+      reader.readAsDataURL(blob)
+    })
+    const _drawCircle = (img: HTMLImageElement): string => {
+      const c2 = document.createElement('canvas')
+      c2.width = 64; c2.height = 64
+      const ctx = c2.getContext('2d')
+      if (ctx) {
+        ctx.beginPath(); ctx.arc(32, 32, 32, 0, Math.PI * 2); ctx.closePath(); ctx.clip()
+        ctx.drawImage(img, 0, 0, 64, 64)
+      }
+      return c2.toDataURL('image/png')
+    }
+    const _loadLogoUrl = async (url: string, name: string): Promise<string> => {
+      if (!url) return createPlaceholder(name)
+      const tryF = async (u: string): Promise<string> => {
+        try {
+          const res = await fetch(u, { signal: AbortSignal.timeout(8000) })
+          if (!res.ok) return ''
+          const blob = await res.blob()
+          if (blob.size < 100) return ''
+          const du = await _blobToDataUrl(blob)
+          if (!du.startsWith('data:')) return ''
+          return await new Promise<string>((resolve) => {
+            const img = new Image()
+            img.onload = () => { try { resolve(_drawCircle(img)) } catch { resolve('') } }
+            img.onerror = () => resolve('')
+            img.src = du
+          })
+        } catch { return '' }
+      }
+      const r1 = await tryF(`/api/proxy-image?url=${encodeURIComponent(url)}`)
+      if (r1) return r1
+      const r2 = await tryF(url)
+      if (r2) return r2
+      const r3 = await new Promise<string>((resolve) => {
+        const img = new Image()
+        img.crossOrigin = 'anonymous'
+        img.onload = () => { try { resolve(_drawCircle(img)) } catch { resolve('') } }
+        img.onerror = () => resolve('')
+        img.src = url
+        setTimeout(() => resolve(''), 3000)
+      })
+      return r3 || createPlaceholder(name)
+    }
+
     const loadTeamAvatar = async (pick: any): Promise<{ pickNumber: number; dataUrl: string }> => {
       const avatarUrl = pick.avatar ? getAvatarUrl(pick.avatar) : null
       if (!avatarUrl) {
         return { pickNumber: pick.pickNumber, dataUrl: createPlaceholder(pick.team) }
       }
       
-      // Approach 1: Try direct load with CORS
-      try {
-        const img = new Image()
-        img.crossOrigin = 'anonymous'
-        const loadPromise = new Promise<string>((resolve, reject) => {
-          img.onload = () => {
-            try {
-              const canvas = document.createElement('canvas')
-              canvas.width = 64
-              canvas.height = 64
-              const ctx = canvas.getContext('2d')
-              if (ctx) {
-                ctx.beginPath()
-                ctx.arc(32, 32, 32, 0, Math.PI * 2)
-                ctx.closePath()
-                ctx.clip()
-                ctx.drawImage(img, 0, 0, 64, 64)
-              }
-              resolve(canvas.toDataURL('image/png'))
-            } catch (e) { reject(e) }
-          }
-          img.onerror = () => reject(new Error('Failed'))
-          setTimeout(() => reject(new Error('Timeout')), 3000)
-        })
-        img.src = avatarUrl
-        const dataUrl = await loadPromise
-        return { pickNumber: pick.pickNumber, dataUrl }
-      } catch (e) {
-        console.log(`Direct CORS failed for ${pick.team}, trying proxy...`)
-      }
-      
-      // Approach 2: Try CORS proxy
-      try {
-        const proxyUrl = `https://corsproxy.io/?${encodeURIComponent(avatarUrl)}`
-        const img = new Image()
-        img.crossOrigin = 'anonymous'
-        const loadPromise = new Promise<string>((resolve, reject) => {
-          img.onload = () => {
-            try {
-              const canvas = document.createElement('canvas')
-              canvas.width = 64
-              canvas.height = 64
-              const ctx = canvas.getContext('2d')
-              if (ctx) {
-                ctx.beginPath()
-                ctx.arc(32, 32, 32, 0, Math.PI * 2)
-                ctx.closePath()
-                ctx.clip()
-                ctx.drawImage(img, 0, 0, 64, 64)
-              }
-              resolve(canvas.toDataURL('image/png'))
-            } catch (e) { reject(e) }
-          }
-          img.onerror = () => reject(new Error('Proxy failed'))
-          setTimeout(() => reject(new Error('Timeout')), 5000)
-        })
-        img.src = proxyUrl
-        const dataUrl = await loadPromise
-        return { pickNumber: pick.pickNumber, dataUrl }
-      } catch (e) {
-        console.log(`CORS proxy failed for ${pick.team}, using placeholder`)
-      }
-      
-      // Approach 3: Use placeholder
-      return { pickNumber: pick.pickNumber, dataUrl: createPlaceholder(pick.team) }
+      // Load via own Vercel proxy (server-side, no CORS)
+      const _r1 = await _loadLogoUrl(avatarUrl, pick.team)
+      return { pickNumber: pick.pickNumber, dataUrl: _r1 }
     }
     
     const logoBase64 = await loadLogo()
@@ -1768,71 +1756,9 @@ async function downloadDraftAnimation() {
         return { pickNumber: pick.pickNumber, dataUrl: createPlaceholder(pick.team) }
       }
       
-      // Approach 1: Try direct load with CORS
-      try {
-        const img = new Image()
-        img.crossOrigin = 'anonymous'
-        const loadPromise = new Promise<string>((resolve, reject) => {
-          img.onload = () => {
-            try {
-              const canvas = document.createElement('canvas')
-              canvas.width = 64
-              canvas.height = 64
-              const ctx = canvas.getContext('2d')
-              if (ctx) {
-                ctx.beginPath()
-                ctx.arc(32, 32, 32, 0, Math.PI * 2)
-                ctx.closePath()
-                ctx.clip()
-                ctx.drawImage(img, 0, 0, 64, 64)
-              }
-              resolve(canvas.toDataURL('image/png'))
-            } catch (e) { reject(e) }
-          }
-          img.onerror = () => reject(new Error('Failed'))
-          setTimeout(() => reject(new Error('Timeout')), 3000)
-        })
-        img.src = avatarUrl
-        const dataUrl = await loadPromise
-        return { pickNumber: pick.pickNumber, dataUrl }
-      } catch (e) {
-        console.log(`Direct CORS failed for ${pick.team}, trying proxy...`)
-      }
-      
-      // Approach 2: Try CORS proxy
-      try {
-        const proxyUrl = `https://corsproxy.io/?${encodeURIComponent(avatarUrl)}`
-        const img = new Image()
-        img.crossOrigin = 'anonymous'
-        const loadPromise = new Promise<string>((resolve, reject) => {
-          img.onload = () => {
-            try {
-              const canvas = document.createElement('canvas')
-              canvas.width = 64
-              canvas.height = 64
-              const ctx = canvas.getContext('2d')
-              if (ctx) {
-                ctx.beginPath()
-                ctx.arc(32, 32, 32, 0, Math.PI * 2)
-                ctx.closePath()
-                ctx.clip()
-                ctx.drawImage(img, 0, 0, 64, 64)
-              }
-              resolve(canvas.toDataURL('image/png'))
-            } catch (e) { reject(e) }
-          }
-          img.onerror = () => reject(new Error('Proxy failed'))
-          setTimeout(() => reject(new Error('Timeout')), 5000)
-        })
-        img.src = proxyUrl
-        const dataUrl = await loadPromise
-        return { pickNumber: pick.pickNumber, dataUrl }
-      } catch (e) {
-        console.log(`CORS proxy failed for ${pick.team}, using placeholder`)
-      }
-      
-      // Approach 3: Use placeholder
-      return { pickNumber: pick.pickNumber, dataUrl: createPlaceholder(pick.team) }
+      // Load via own Vercel proxy (server-side, no CORS)
+      const _r1 = await _loadLogoUrl(avatarUrl, pick.team)
+      return { pickNumber: pick.pickNumber, dataUrl: _r1 }
     }
     
     // Preload all avatars

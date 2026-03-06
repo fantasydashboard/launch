@@ -2135,36 +2135,54 @@ async function generateMatchupImage(matchup: any, html2canvas: any) {
   }
   
   // Load team images
+const _blobToDataUrl2 = (blob: Blob): Promise<string> => new Promise((resolve) => {
+    const reader = new FileReader()
+    reader.onloadend = () => resolve((reader.result as string) || '')
+    reader.onerror = () => resolve('')
+    reader.readAsDataURL(blob)
+  })
+  const _drawCircle2 = (img: HTMLImageElement): string => {
+    const c2 = document.createElement('canvas')
+    c2.width = 64; c2.height = 64
+    const ctx = c2.getContext('2d')
+    if (ctx) {
+      ctx.beginPath(); ctx.arc(32, 32, 32, 0, Math.PI * 2); ctx.closePath(); ctx.clip()
+      ctx.drawImage(img, 0, 0, 64, 64)
+    }
+    return c2.toDataURL('image/png')
+  }
   const loadTeamImage = async (team: any): Promise<string> => {
-    try {
+    const url = team.logo_url || ''
+    if (!url) return createPlaceholder(team.name)
+    const tryF = async (u: string): Promise<string> => {
+      try {
+        const res = await fetch(u, { signal: AbortSignal.timeout(8000) })
+        if (!res.ok) return ''
+        const blob = await res.blob()
+        if (blob.size < 100) return ''
+        const du = await _blobToDataUrl2(blob)
+        if (!du.startsWith('data:')) return ''
+        return await new Promise<string>((resolve) => {
+          const img = new Image()
+          img.onload = () => { try { resolve(_drawCircle2(img)) } catch { resolve('') } }
+          img.onerror = () => resolve('')
+          img.src = du
+        })
+      } catch { return '' }
+    }
+    const r1 = await tryF(`/api/proxy-image?url=${encodeURIComponent(url)}`)
+    if (r1) return r1
+    const r2 = await tryF(url)
+    if (r2) return r2
+    const r3 = await new Promise<string>((resolve) => {
       const img = new Image()
       img.crossOrigin = 'anonymous'
-      return new Promise((resolve) => {
-        img.onload = () => {
-          try {
-            const canvas = document.createElement('canvas')
-            canvas.width = 64
-            canvas.height = 64
-            const ctx = canvas.getContext('2d')
-            if (ctx) {
-              ctx.beginPath()
-              ctx.arc(32, 32, 32, 0, Math.PI * 2)
-              ctx.closePath()
-              ctx.clip()
-              ctx.drawImage(img, 0, 0, 64, 64)
-            }
-            resolve(canvas.toDataURL('image/png'))
-          } catch {
-            resolve(createPlaceholder(team.name))
-          }
-        }
-        img.onerror = () => resolve(createPlaceholder(team.name))
-        setTimeout(() => resolve(createPlaceholder(team.name)), 3000)
-        img.src = team.logo_url || ''
-      })
-    } catch {
-      return createPlaceholder(team.name)
-    }
+      img.onload = () => { try { resolve(_drawCircle2(img)) } catch { resolve('') } }
+      img.onerror = () => resolve('')
+      img.src = url
+      setTimeout(() => resolve(''), 3000)
+    })
+    return r3 || createPlaceholder(team.name)
   }
   
   const logoBase64 = await loadLogo()
