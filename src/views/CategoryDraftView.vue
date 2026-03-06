@@ -327,20 +327,16 @@
                 </div>
               </div>
               <div class="flex items-center gap-2">
-                <button 
+<button 
                   @click="downloadTeamDraftImage" 
                   :disabled="isDownloadingTeamDraft"
-                  class="flex items-center gap-2 text-sm px-3 py-1.5 rounded-lg font-semibold transition-colors disabled:opacity-50"
-                  style="background: transparent; color: #facc15; border: 1px solid #facc15;"
-                  @mouseover="$event.currentTarget.style.background = '#facc15'; $event.currentTarget.style.color = '#111827'"
-                  @mouseout="$event.currentTarget.style.background = 'transparent'; $event.currentTarget.style.color = '#facc15'"
+                  class="flex items-center gap-2 text-sm px-3 py-1.5 rounded-lg font-semibold transition-all disabled:opacity-50"
+                  :style="teamDraftToast === 'success' ? 'background: rgba(16,185,129,0.15); color: #10b981; border: 1px solid #10b981;' : 'background: transparent; color: #facc15; border: 1px solid #facc15;'"
                 >
-                  <svg v-if="!isDownloadingTeamDraft" class="w-4 h-4 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" /></svg>
-                  <svg v-else class="w-4 h-4 animate-spin pointer-events-none" fill="none" viewBox="0 0 24 24">
-                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                  </svg>
-                  {{ isDownloadingTeamDraft ? 'Saving...' : 'Share' }}
+                    <svg v-if="isDownloadingTeamDraft" class="w-4 h-4 animate-spin pointer-events-none" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                  <svg v-else-if="teamDraftToast === 'success'" class="w-4 h-4 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" /></svg>
+                  <svg v-else class="w-4 h-4 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" /></svg>
+                  {{ isDownloadingTeamDraft ? 'Generating...' : teamDraftToast === 'success' ? 'Copied! 📋' : 'Share' }}
                 </button>
                 <button @click="showBoardTeamModal = false" class="p-2 rounded-lg hover:bg-dark-border/50 transition-colors">
                   <svg class="w-5 h-5 text-dark-textMuted" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -739,20 +735,16 @@
                 </div>
               </div>
               <div class="flex items-center gap-2">
-                <button 
+<button 
                   @click="downloadBalanceImage" 
                   :disabled="isDownloadingBalance"
-                  class="flex items-center gap-2 text-sm px-3 py-1.5 rounded-lg font-semibold transition-colors disabled:opacity-50"
-                  style="background: transparent; color: #facc15; border: 1px solid #facc15;"
-                  @mouseover="$event.currentTarget.style.background = '#facc15'; $event.currentTarget.style.color = '#111827'"
-                  @mouseout="$event.currentTarget.style.background = 'transparent'; $event.currentTarget.style.color = '#facc15'"
+                  class="flex items-center gap-2 text-sm px-3 py-1.5 rounded-lg font-semibold transition-all disabled:opacity-50"
+                  :style="balanceToast === 'success' ? 'background: rgba(16,185,129,0.15); color: #10b981; border: 1px solid #10b981;' : 'background: transparent; color: #facc15; border: 1px solid #facc15;'"
                 >
-                  <svg v-if="!isDownloadingBalance" class="w-4 h-4 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" /></svg>
-                  <svg v-else class="w-4 h-4 animate-spin pointer-events-none" fill="none" viewBox="0 0 24 24">
-                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                  </svg>
-                  {{ isDownloadingBalance ? 'Saving...' : 'Share' }}
+                    <svg v-if="isDownloadingBalance" class="w-4 h-4 animate-spin pointer-events-none" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                  <svg v-else-if="balanceToast === 'success'" class="w-4 h-4 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" /></svg>
+                  <svg v-else class="w-4 h-4 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" /></svg>
+                  {{ isDownloadingBalance ? 'Generating...' : balanceToast === 'success' ? 'Copied! 📋' : 'Share' }}
                 </button>
                 <button @click="showBalanceModal = false" class="p-2 rounded-lg hover:bg-dark-border/50 transition-colors">
                   <svg class="w-5 h-5 text-dark-textMuted" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -859,20 +851,11 @@
                   <p class="card-subtitle mt-1">Best value relative to draft position</p>
                 </div>
               </div>
-              <button 
-                @click="downloadStealsImage" 
-                :disabled="isDownloadingSteals"
-                class="flex items-center gap-2 text-sm px-3 py-1.5 rounded-lg font-semibold transition-colors disabled:opacity-50"
-                style="background: transparent; color: #facc15; border: 1px solid #facc15;"
-                @mouseover="$event.currentTarget.style.background = '#22c55e'"
-                @mouseout="$event.currentTarget.style.background = 'transparent'; $event.currentTarget.style.color = '#facc15'"
-              >
-                <svg v-if="!isDownloadingSteals" class="w-4 h-4 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" /></svg>
-                <svg v-else class="w-4 h-4 animate-spin pointer-events-none" fill="none" viewBox="0 0 24 24">
-                  <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                  <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                </svg>
-                {{ isDownloadingSteals ? 'Saving...' : 'Share' }}
+              <button @click="downloadStealsImage" :disabled="isDownloadingSteals" class="flex items-center gap-2 text-sm px-3 py-1.5 rounded-lg font-semibold transition-all disabled:opacity-50" :style="stealsToast === 'success' ? 'background: rgba(16,185,129,0.15); color: #10b981; border: 1px solid #10b981;' : 'background: transparent; color: #facc15; border: 1px solid #facc15;'">
+                <svg v-if="isDownloadingSteals" class="w-4 h-4 animate-spin pointer-events-none" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                <svg v-else-if="stealsToast === 'success'" class="w-4 h-4 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" /></svg>
+                <svg v-else class="w-4 h-4 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" /></svg>
+                {{ isDownloadingSteals ? 'Generating...' : stealsToast === 'success' ? 'Copied! 📋' : 'Share' }}
               </button>
             </div>
           </div>
@@ -913,20 +896,11 @@
                   <p class="card-subtitle mt-1">Underperformed relative to draft position</p>
                 </div>
               </div>
-              <button 
-                @click="downloadBustsImage" 
-                :disabled="isDownloadingBusts"
-                class="flex items-center gap-2 text-sm px-3 py-1.5 rounded-lg font-semibold transition-colors disabled:opacity-50"
-                style="background: transparent; color: #facc15; border: 1px solid #facc15;"
-                @mouseover="$event.currentTarget.style.background = '#ef4444'"
-                @mouseout="$event.currentTarget.style.background = 'transparent'; $event.currentTarget.style.color = '#facc15'"
-              >
-                <svg v-if="!isDownloadingBusts" class="w-4 h-4 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" /></svg>
-                <svg v-else class="w-4 h-4 animate-spin pointer-events-none" fill="none" viewBox="0 0 24 24">
-                  <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                  <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                </svg>
-                {{ isDownloadingBusts ? 'Saving...' : 'Share' }}
+              <button @click="downloadBustsImage" :disabled="isDownloadingBusts" class="flex items-center gap-2 text-sm px-3 py-1.5 rounded-lg font-semibold transition-all disabled:opacity-50" :style="bustsToast === 'success' ? 'background: rgba(16,185,129,0.15); color: #10b981; border: 1px solid #10b981;' : 'background: transparent; color: #facc15; border: 1px solid #facc15;'">
+                <svg v-if="isDownloadingBusts" class="w-4 h-4 animate-spin pointer-events-none" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                <svg v-else-if="bustsToast === 'success'" class="w-4 h-4 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" /></svg>
+                <svg v-else class="w-4 h-4 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" /></svg>
+                {{ isDownloadingBusts ? 'Generating...' : bustsToast === 'success' ? 'Copied! 📋' : 'Share' }}
               </button>
             </div>
           </div>
@@ -1260,6 +1234,10 @@ const isDownloadingBusts = ref(false)
 const isDownloadingTeamDraft = ref(false)
 const isDownloadingBalance = ref(false)
 const shareToast = ref<'idle'|'success'|'error'>('idle')
+const stealsToast = ref<'idle'|'success'|'error'>('idle')
+const bustsToast = ref<'idle'|'success'|'error'>('idle')
+const teamDraftToast = ref<'idle'|'success'|'error'>('idle')
+const balanceToast = ref<'idle'|'success'|'error'>('idle')
 
 // Data
 const draftPicks = ref<any[]>([])
@@ -3178,22 +3156,21 @@ async function downloadStealsImage() {
     const finalCanvas = await html2canvas(container, { backgroundColor: '#0a0c14', scale: 2, useCORS: true, allowTaint: true })
     document.body.removeChild(container)
     
-    const link = document.createElement('a')
-        const _shareBlob = await new Promise<Blob>((resolve, reject) => {
-          canvas.toBlob(b => b ? resolve(b) : reject(new Error('toBlob failed')), 'image/png')
-        })
-        if (navigator.clipboard && typeof ClipboardItem !== 'undefined') {
-          await navigator.clipboard.write([new ClipboardItem({ 'image/png': _shareBlob })])
-          shareToast.value = 'success'
-          setTimeout(() => { shareToast.value = 'idle' }, 3000)
-        } else {
-          const _shareUrl = URL.createObjectURL(_shareBlob)
-          const link = document.createElement('a')
-          link.download = `${selectedSeason.value}-draft-steals.png`
-          link.href = _shareUrl
-          link.click()
-          URL.revokeObjectURL(_shareUrl)
-        }
+    const _shareBlob = await new Promise<Blob>((resolve, reject) => {
+      finalCanvas.toBlob(b => b ? resolve(b) : reject(new Error('toBlob failed')), 'image/png')
+    })
+    if (navigator.clipboard && typeof ClipboardItem !== 'undefined') {
+      await navigator.clipboard.write([new ClipboardItem({ 'image/png': _shareBlob })])
+      stealsToast.value = 'success'
+      setTimeout(() => { stealsToast.value = 'idle' }, 3000)
+    } else {
+      const _shareUrl = URL.createObjectURL(_shareBlob)
+      const link = document.createElement('a')
+      link.download = `${selectedSeason.value}-draft-steals.png`
+      link.href = _shareUrl
+      link.click()
+      URL.revokeObjectURL(_shareUrl)
+    }
   } finally {
     isDownloadingSteals.value = false
   }
@@ -3353,22 +3330,21 @@ async function downloadBustsImage() {
     const finalCanvas = await html2canvas(container, { backgroundColor: '#0a0c14', scale: 2, useCORS: true, allowTaint: true })
     document.body.removeChild(container)
     
-    const link = document.createElement('a')
-        const _shareBlob = await new Promise<Blob>((resolve, reject) => {
-          canvas.toBlob(b => b ? resolve(b) : reject(new Error('toBlob failed')), 'image/png')
-        })
-        if (navigator.clipboard && typeof ClipboardItem !== 'undefined') {
-          await navigator.clipboard.write([new ClipboardItem({ 'image/png': _shareBlob })])
-          shareToast.value = 'success'
-          setTimeout(() => { shareToast.value = 'idle' }, 3000)
-        } else {
-          const _shareUrl = URL.createObjectURL(_shareBlob)
-          const link = document.createElement('a')
-          link.download = `${selectedSeason.value}-draft-busts.png`
-          link.href = _shareUrl
-          link.click()
-          URL.revokeObjectURL(_shareUrl)
-        }
+    const _shareBlob = await new Promise<Blob>((resolve, reject) => {
+      finalCanvas.toBlob(b => b ? resolve(b) : reject(new Error('toBlob failed')), 'image/png')
+    })
+    if (navigator.clipboard && typeof ClipboardItem !== 'undefined') {
+      await navigator.clipboard.write([new ClipboardItem({ 'image/png': _shareBlob })])
+      bustsToast.value = 'success'
+      setTimeout(() => { bustsToast.value = 'idle' }, 3000)
+    } else {
+      const _shareUrl = URL.createObjectURL(_shareBlob)
+      const link = document.createElement('a')
+      link.download = `${selectedSeason.value}-draft-busts.png`
+      link.href = _shareUrl
+      link.click()
+      URL.revokeObjectURL(_shareUrl)
+    }
   } finally {
     isDownloadingBusts.value = false
   }
@@ -3574,23 +3550,22 @@ async function downloadTeamDraftImage() {
     const finalCanvas = await html2canvas(container, { backgroundColor: '#0a0c14', scale: 2, useCORS: true, allowTaint: true, width: 580 })
     document.body.removeChild(container)
     
-    const link = document.createElement('a')
     const safeTeamName = team.team_name.replace(/[^a-zA-Z0-9\s]/g, '').replace(/\s+/g, '-').toLowerCase()
-        const _shareBlob = await new Promise<Blob>((resolve, reject) => {
-          canvas.toBlob(b => b ? resolve(b) : reject(new Error('toBlob failed')), 'image/png')
-        })
-        if (navigator.clipboard && typeof ClipboardItem !== 'undefined') {
-          await navigator.clipboard.write([new ClipboardItem({ 'image/png': _shareBlob })])
-          shareToast.value = 'success'
-          setTimeout(() => { shareToast.value = 'idle' }, 3000)
-        } else {
-          const _shareUrl = URL.createObjectURL(_shareBlob)
-          const link = document.createElement('a')
-          link.download = `${selectedSeason.value}-draft-${safeTeamName}.png`
-          link.href = _shareUrl
-          link.click()
-          URL.revokeObjectURL(_shareUrl)
-        }
+    const _shareBlob = await new Promise<Blob>((resolve, reject) => {
+      finalCanvas.toBlob(b => b ? resolve(b) : reject(new Error('toBlob failed')), 'image/png')
+    })
+    if (navigator.clipboard && typeof ClipboardItem !== 'undefined') {
+      await navigator.clipboard.write([new ClipboardItem({ 'image/png': _shareBlob })])
+      teamDraftToast.value = 'success'
+      setTimeout(() => { teamDraftToast.value = 'idle' }, 3000)
+    } else {
+      const _shareUrl = URL.createObjectURL(_shareBlob)
+      const link = document.createElement('a')
+      link.download = `${selectedSeason.value}-draft-${safeTeamName}.png`
+      link.href = _shareUrl
+      link.click()
+      URL.revokeObjectURL(_shareUrl)
+    }
   } finally {
     isDownloadingTeamDraft.value = false
   }
@@ -3756,23 +3731,22 @@ async function downloadBalanceImage() {
     const finalCanvas = await html2canvas(container, { backgroundColor: '#0a0c14', scale: 2, useCORS: true, allowTaint: true, width: 480 })
     document.body.removeChild(container)
     
-    const link = document.createElement('a')
     const safeTeamName = team.team_name.replace(/[^a-zA-Z0-9\s]/g, '').replace(/\s+/g, '-').toLowerCase()
-        const _shareBlob = await new Promise<Blob>((resolve, reject) => {
-          canvas.toBlob(b => b ? resolve(b) : reject(new Error('toBlob failed')), 'image/png')
-        })
-        if (navigator.clipboard && typeof ClipboardItem !== 'undefined') {
-          await navigator.clipboard.write([new ClipboardItem({ 'image/png': _shareBlob })])
-          shareToast.value = 'success'
-          setTimeout(() => { shareToast.value = 'idle' }, 3000)
-        } else {
-          const _shareUrl = URL.createObjectURL(_shareBlob)
-          const link = document.createElement('a')
-          link.download = `${selectedSeason.value}-draft-balance-${safeTeamName}.png`
-          link.href = _shareUrl
-          link.click()
-          URL.revokeObjectURL(_shareUrl)
-        }
+    const _shareBlob = await new Promise<Blob>((resolve, reject) => {
+      finalCanvas.toBlob(b => b ? resolve(b) : reject(new Error('toBlob failed')), 'image/png')
+    })
+    if (navigator.clipboard && typeof ClipboardItem !== 'undefined') {
+      await navigator.clipboard.write([new ClipboardItem({ 'image/png': _shareBlob })])
+      balanceToast.value = 'success'
+      setTimeout(() => { balanceToast.value = 'idle' }, 3000)
+    } else {
+      const _shareUrl = URL.createObjectURL(_shareBlob)
+      const link = document.createElement('a')
+      link.download = `${selectedSeason.value}-draft-balance-${safeTeamName}.png`
+      link.href = _shareUrl
+      link.click()
+      URL.revokeObjectURL(_shareUrl)
+    }
   } finally {
     isDownloadingBalance.value = false
   }
