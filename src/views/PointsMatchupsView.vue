@@ -95,25 +95,9 @@
       <!-- Matchup Selector -->
       <div class="card">
         <div class="card-header">
-          <div class="flex items-center justify-between">
-            <div class="flex items-center gap-2">
+          <div class="flex items-center gap-2">
               <span class="text-2xl">⚔️</span>
               <h2 class="card-title">Select Matchup to Analyze</h2>
-            </div>
-            <button 
-              @click="downloadAllMatchups" 
-              :disabled="isDownloadingAll || matchups.length === 0"
-              class="px-4 py-2 border border-yellow-400 bg-transparent text-yellow-400 hover:bg-yellow-400 hover:text-gray-900 rounded-lg font-medium flex items-center gap-2 transition-colors disabled:opacity-50"
-            >
-              <svg v-if="!isDownloadingAll" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path v-if="!isDownloadingAll || matchups.length === 0" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
-              </svg>
-              <svg v-else class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
-                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-              </svg>
-              {{ isDownloadingAll ? `Sharing ${downloadProgress}` : 'Share All' }}
-            </button>
           </div>
           <p class="text-sm text-dark-textMuted mt-2">💡 <span class="text-yellow-400 font-medium">Click any matchup</span> to see scoring breakdown and win probability</p>
         </div>
@@ -206,16 +190,18 @@
               <button 
                 @click="downloadWinProbability"
                 :disabled="isDownloading"
-                class="px-4 py-2 border border-yellow-400 bg-transparent text-yellow-400 hover:bg-yellow-400 hover:text-gray-900 rounded-lg font-medium flex items-center gap-2 transition-colors disabled:opacity-50"
+                class="flex items-center gap-2 px-4 py-2 rounded-lg font-semibold transition-all disabled:opacity-50"
+                :style="shareToast === 'success' ? 'background: rgba(16,185,129,0.15); color: #10b981; border: 1px solid #10b981;' : 'background: transparent; color: #facc15; border: 1px solid #facc15;'"
               >
-                <svg v-if="!isDownloading" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path v-if="!isDownloading" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
-                </svg>
-                <svg v-else class="w-5 h-5 animate-spin" fill="none" viewBox="0 0 24 24">
+                <svg v-if="isDownloading" class="w-5 h-5 animate-spin pointer-events-none" fill="none" viewBox="0 0 24 24">
                   <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                   <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                 </svg>
-                {{ isDownloading ? 'Generating...' : 'Share' }}
+                <svg v-else-if="shareToast === 'success'" class="w-5 h-5 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                </svg>
+                <svg v-else class="w-5 h-5 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" /></svg>
+                {{ isDownloading ? 'Generating...' : shareToast === 'success' ? 'Copied! 📋' : 'Share' }}
               </button>
             </div>
             <p class="card-subtitle mt-2">
@@ -2392,23 +2378,22 @@ const _blobToDataUrl2 = (blob: Blob): Promise<string> => new Promise((resolve) =
   })
   
   document.body.removeChild(container)
-  
-  const link = document.createElement('a')
-      const _shareBlob = await new Promise<Blob>((resolve, reject) => {
-        canvas.toBlob(b => b ? resolve(b) : reject(new Error('toBlob failed')), 'image/png')
-      })
-      if (navigator.clipboard && typeof ClipboardItem !== 'undefined') {
-        await navigator.clipboard.write([new ClipboardItem({ 'image/png': _shareBlob })])
-        shareToast.value = 'success'
-        setTimeout(() => { shareToast.value = 'idle' }, 3000)
-      } else {
-        const _shareUrl = URL.createObjectURL(_shareBlob)
-        const link = document.createElement('a')
-        link.download = `matchup-${matchup.team1.name.replace(/\s+/g, '-')}-vs-${matchup.team2.name.replace(/\s+/g, '-')}-week-${selectedWeek.value}.png`
-        link.href = _shareUrl
-        link.click()
-        URL.revokeObjectURL(_shareUrl)
-      }
+
+  const _shareBlob = await new Promise<Blob>((resolve, reject) => {
+    canvas.toBlob(b => b ? resolve(b) : reject(new Error('toBlob failed')), 'image/png')
+  })
+  if (navigator.clipboard && typeof ClipboardItem !== 'undefined') {
+    await navigator.clipboard.write([new ClipboardItem({ 'image/png': _shareBlob })])
+    shareToast.value = 'success'
+    setTimeout(() => { shareToast.value = 'idle' }, 3000)
+  } else {
+    const _shareUrl = URL.createObjectURL(_shareBlob)
+    const link = document.createElement('a')
+    link.download = `matchup-${matchup.team1.name.replace(/\s+/g, '-')}-vs-${matchup.team2.name.replace(/\s+/g, '-')}-week-${selectedWeek.value}.png`
+    link.href = _shareUrl
+    link.click()
+    URL.revokeObjectURL(_shareUrl)
+  }
 }
 
 async function downloadComparison() {

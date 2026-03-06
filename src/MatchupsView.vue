@@ -3268,9 +3268,8 @@ async function downloadMatchupPreview() {
     
     document.body.removeChild(container)
     
-    // Download
-    const link = document.createElement('a')
-        const _shareBlob = await new Promise<Blob>((resolve, reject) => {
+    // Share to clipboard
+    const _shareBlob = await new Promise<Blob>((resolve, reject) => {
           canvas.toBlob(b => b ? resolve(b) : reject(new Error('toBlob failed')), 'image/png')
         })
         if (navigator.clipboard && typeof ClipboardItem !== 'undefined') {
@@ -3667,9 +3666,8 @@ async function downloadFullMatchupAnalysis() {
     
     document.body.removeChild(container)
     
-    // Download
-    const link = document.createElement('a')
-        const _shareBlob = await new Promise<Blob>((resolve, reject) => {
+    // Share to clipboard
+    const _shareBlob = await new Promise<Blob>((resolve, reject) => {
           canvas.toBlob(b => b ? resolve(b) : reject(new Error('toBlob failed')), 'image/png')
         })
         if (navigator.clipboard && typeof ClipboardItem !== 'undefined') {
@@ -3953,9 +3951,8 @@ async function downloadStatComparison() {
     
     document.body.removeChild(container)
     
-    // Download
-    const link = document.createElement('a')
-        const _shareBlob = await new Promise<Blob>((resolve, reject) => {
+    // Share to clipboard
+    const _shareBlob = await new Promise<Blob>((resolve, reject) => {
           canvas.toBlob(b => b ? resolve(b) : reject(new Error('toBlob failed')), 'image/png')
         })
         if (navigator.clipboard && typeof ClipboardItem !== 'undefined') {
