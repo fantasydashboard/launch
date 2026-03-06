@@ -3026,9 +3026,8 @@ async function preCacheTeamImages(teams: any[]) {
   console.log(`[Image Cache] Cached ${teamImageCache.size} team images`)
 }
 
-// Core image loading - single image, with retries
+// Core image loading - single image via our own Vercel proxy (no CORS issues)
 async function loadSingleTeamImage(logoUrl: string, teamName: string): Promise<string> {
-  // Helper to convert blob to data URL
   const blobToDataUrl = (blob: Blob): Promise<string> => {
     return new Promise((resolve) => {
       const reader = new FileReader()
@@ -3037,7 +3036,7 @@ async function loadSingleTeamImage(logoUrl: string, teamName: string): Promise<s
       reader.readAsDataURL(blob)
     })
   }
-  
+
   const dataUrlToCircular = (dataUrl: string): Promise<string> => {
     return new Promise((resolve) => {
       const img = new Image()
@@ -3049,74 +3048,41 @@ async function loadSingleTeamImage(logoUrl: string, teamName: string): Promise<s
     })
   }
 
-  // Helper: try loading via <img> tag (works when browser has cached the image or server allows img but not fetch CORS)
-  const loadViaImgTag = (url: string): Promise<string> => {
-    return new Promise((resolve) => {
-      const img = new Image()
-      img.crossOrigin = 'anonymous'
-      img.onload = () => {
-        try { resolve(drawCircularImage(img)) } catch { resolve('') }
-      }
-      img.onerror = () => resolve('')
-      img.src = url
-      // Timeout after 3s
-      setTimeout(() => resolve(''), 3000)
-    })
-  }
-
-  // Method 1: Try <img> tag with crossOrigin (works if browser has it cached or server allows it)
-  const imgResult = await loadViaImgTag(logoUrl)
-  if (imgResult) {
-    console.log(`[Download] ${teamName}: loaded via img tag`)
-    return imgResult
-  }
-
-  // Method 2: Try fetch+blob
-  try {
-    const response = await fetch(logoUrl, { mode: 'cors', signal: AbortSignal.timeout(3000) })
-    if (response.ok) {
+  const tryFetch = async (url: string, label: string): Promise<string> => {
+    try {
+      const response = await fetch(url, { signal: AbortSignal.timeout(8000) })
+      if (!response.ok) return ''
       const blob = await response.blob()
+      if (blob.size < 100) return ''
       const dataUrl = await blobToDataUrl(blob)
-      if (dataUrl) {
-        const result = await dataUrlToCircular(dataUrl)
-        if (result) {
-          console.log(`[Download] ${teamName}: loaded via direct fetch`)
-          return result
-        }
-      }
-    }
-  } catch { /* expected for sleepercdn */ }
-  
-  // Method 3: Try multiple CORS proxies with retries
-  const corsProxies = [
-    (u: string) => `https://corsproxy.io/?${encodeURIComponent(u)}`,
-    (u: string) => `https://api.allorigins.win/raw?url=${encodeURIComponent(u)}`,
-    (u: string) => `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(u)}`,
-  ]
-  
-  // Try each proxy up to 2 times with delay between attempts
-  for (let attempt = 0; attempt < 2; attempt++) {
-    for (const proxyFn of corsProxies) {
-      try {
-        const proxyUrl = proxyFn(logoUrl)
-        const response = await fetch(proxyUrl, { signal: AbortSignal.timeout(5000) })
-        if (response.ok) {
-          const blob = await response.blob()
-          if (blob.size > 100) {
-            const dataUrl = await blobToDataUrl(blob)
-            if (dataUrl && dataUrl.startsWith('data:')) {
-              const result = await dataUrlToCircular(dataUrl)
-              if (result) {
-                console.log(`[Download] ${teamName}: loaded via CORS proxy (attempt ${attempt + 1})`)
-                return result
-              }
-            }
-          }
-        }
-      } catch { /* try next */ }
-    }
-    // Wait before retry
-    if (attempt === 0) await new Promise(r => setTimeout(r, 500))
+      if (!dataUrl?.startsWith('data:')) return ''
+      const result = await dataUrlToCircular(dataUrl)
+      if (result) console.log(`[Download] ${teamName}: ✓ ${label}`)
+      return result
+    } catch { return '' }
+  }
+
+  // Method 1: Our own Vercel serverless proxy (same-origin, no CORS, reliable)
+  const ownProxy = `/api/proxy-image?url=${encodeURIComponent(logoUrl)}`
+  const proxyResult = await tryFetch(ownProxy, 'own proxy')
+  if (proxyResult) return proxyResult
+
+  // Method 2: Direct fetch (works for some CDNs that allow CORS)
+  const directResult = await tryFetch(logoUrl, 'direct fetch')
+  if (directResult) return directResult
+
+  // Method 3: img tag with crossOrigin (works if browser already cached it)
+  const imgTagResult = await new Promise<string>((resolve) => {
+    const img = new Image()
+    img.crossOrigin = 'anonymous'
+    img.onload = () => { try { resolve(drawCircularImage(img)) } catch { resolve('') } }
+    img.onerror = () => resolve('')
+    img.src = logoUrl
+    setTimeout(() => resolve(''), 3000)
+  })
+  if (imgTagResult) {
+    console.log(`[Download] ${teamName}: ✓ img tag`)
+    return imgTagResult
   }
 
   console.log(`[Download] ${teamName}: all methods failed, using placeholder`)
