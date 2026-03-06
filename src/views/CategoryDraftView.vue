@@ -2028,30 +2028,80 @@ function getCategoryColorClass(cat: string) {
 
 function isHittingCategory(cat: string): boolean {
   const sport = leagueStore.currentSportType || 'baseball'
-  
+  const cats = leagueCategories.value
+
   if (sport === 'basketball') {
-    // Basketball: Offensive categories (vs defensive)
-    const offensiveCats = ['PTS', 'Points', 'AST', 'Assists', '3PM', '3PTM', 'Threes Made', 
-                          'FG%', 'FGM', 'FT%', 'FTM', 'FGA', 'FTA', 'MIN', 'DD', 'TD', 'A/T']
-    return offensiveCats.some(c => cat.includes(c))
+    // Exact names from both Yahoo and ESPN basketball mappings
+    // Scoring/offensive stats go in primary column; efficiency/defensive in secondary
+    const primaryExact = new Set([
+      'PTS', 'Points', 'AST', 'Assists', '3PM', '3PTM', 'Threes Made', '3-PT Made',
+      'FGM', 'FGA', 'FG%', 'Field Goal %', 'FTM', 'FTA', 'FT%', 'Free Throw %',
+      'MIN', 'Minutes', 'DD', 'Double-Doubles', 'TD', 'Triple-Doubles', 'A/T', 'Ast/TO'
+    ])
+    if (primaryExact.has(cat)) return true
+
+    // If we have actual league categories, split at the midpoint as fallback
+    if (cats.length > 0) {
+      const idx = cats.indexOf(cat)
+      if (idx !== -1) return idx < Math.ceil(cats.length / 2)
+    }
+    return false
   }
-  
+
   if (sport === 'hockey') {
-    // Hockey: Skater categories (vs goalie)
-    const skaterCats = ['G', 'Goals', 'A', 'Assists', 'PTS', 'Points', '+/-', 'PIM', 
-                        'PPP', 'PPG', 'PPA', 'SHP', 'SOG', 'Shots', 'HIT', 'Hits', 'BLK', 'Blocks']
-    return skaterCats.some(c => cat.includes(c))
+    // Skater stats (primary) vs goalie stats (secondary)
+    const skaterExact = new Set([
+      'G', 'Goals', 'A', 'Assists', 'PTS', 'Points', '+/-', 'Plus/Minus',
+      'PIM', 'Pen. Min.', 'PPP', 'PP Points', 'PPG', 'PP Goals', 'PPA', 'PP Assists',
+      'SHP', 'SH Points', 'SHG', 'SHA',
+      'SOG', 'Shots', 'Shots on Goal', 'HIT', 'Hits', 'BLK', 'Blocks', 'Blocked Shots',
+      'FOW', 'Faceoff Wins', 'GWG', 'Game-Winning Goals'
+    ])
+    if (skaterExact.has(cat)) return true
+
+    if (cats.length > 0) {
+      const idx = cats.indexOf(cat)
+      if (idx !== -1) return idx < Math.ceil(cats.length / 2)
+    }
+    return false
   }
-  
+
   if (sport === 'football') {
-    // Football: Offensive categories
-    const offensiveCats = ['Pass', 'Rush', 'Rec', 'TD', 'Yds', 'PPR']
-    return offensiveCats.some(c => cat.includes(c))
+    const offensiveExact = new Set([
+      'Pass Yds', 'Pass TD', 'INT', 'Completions', 'Pass Attempts',
+      'Rush Yds', 'Rush TD', 'Rush Att',
+      'Rec', 'Rec Yds', 'Rec TD', 'Targets',
+      'PPR', '2-PT', 'Ret TD', 'Total TD'
+    ])
+    if (offensiveExact.has(cat)) return true
+
+    if (cats.length > 0) {
+      const idx = cats.indexOf(cat)
+      if (idx !== -1) return idx < Math.ceil(cats.length / 2)
+    }
+    return false
   }
-  
-  // Baseball: Hitting categories (vs pitching)
-  const hittingCats = ['HR', 'RBI', 'R', 'SB', 'AVG', 'OPS', 'OBP', 'SLG', 'H', 'TB', 'BB', 'XBH', 'AB', '2B', '3B']
-  return hittingCats.includes(cat)
+
+  // Baseball: Hitting (primary) vs Pitching (secondary) — exact match
+  const hittingExact = new Set([
+    'R', 'HR', 'RBI', 'SB', 'AVG', 'OPS', 'OBP', 'SLG',
+    'H', 'TB', 'BB', 'XBH', 'AB', '2B', '3B', 'CS', 'HBP', 'SF', 'GIDP', 'RC'
+  ])
+  if (hittingExact.has(cat)) return true
+
+  // Pitching cats — anything not in hitting
+  const pitchingExact = new Set([
+    'W', 'SV', 'K', 'Ks', 'ERA', 'WHIP', 'QS', 'HD', 'IP', 'L', 'BS',
+    'HLD', 'SVO', 'BB9', 'K9', 'K/BB', 'ER', 'CG', 'SHO'
+  ])
+  if (pitchingExact.has(cat)) return true
+
+  // Fallback: midpoint split on actual league categories
+  if (cats.length > 0) {
+    const idx = cats.indexOf(cat)
+    if (idx !== -1) return idx < Math.ceil(cats.length / 2)
+  }
+  return false
 }
 
 function getCategoryScoreClass(score: number) {
@@ -3699,13 +3749,13 @@ async function downloadBalanceImage() {
         <div style="padding: 16px; display: flex; gap: 16px;">
           <div style="flex: 1;">
             <div style="font-size: 12px; font-weight: bold; color: #60a5fa; margin-bottom: 10px; display: flex; align-items: center; gap: 6px;">
-              <span>⚾</span> Hitting
+              <span>${primaryCategoryLabel.value.icon}</span> ${primaryCategoryLabel.value.label}
             </div>
             ${hittingCats.map(generateCategoryRow).join('')}
           </div>
           <div style="flex: 1;">
             <div style="font-size: 12px; font-weight: bold; color: #a78bfa; margin-bottom: 10px; display: flex; align-items: center; gap: 6px;">
-              <span>🎯</span> Pitching
+              <span>${secondaryCategoryLabel.value.icon}</span> ${secondaryCategoryLabel.value.label}
             </div>
             ${pitchingCats.map(generateCategoryRow).join('')}
           </div>
