@@ -190,9 +190,19 @@
                 <span class="text-2xl">🏆</span>
                 <h2 class="card-title">Standings</h2>
               </div>
-              <router-link to="/unified/matchups" class="text-sm text-primary hover:underline">
-                View Matchups →
-              </router-link>
+              <div class="flex items-center gap-4">
+                <!-- Division toggle -->
+                <label class="flex items-center gap-2 cursor-pointer select-none">
+                  <span class="text-xs text-dark-textMuted font-medium">By Division</span>
+                  <div class="relative" @click="showByDivision = !showByDivision">
+                    <div class="w-9 h-5 rounded-full transition-colors" :class="showByDivision ? 'bg-primary' : 'bg-dark-border'"></div>
+                    <div class="absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform" :class="showByDivision ? 'translate-x-4' : 'translate-x-0'"></div>
+                  </div>
+                </label>
+                <router-link to="/unified/matchups" class="text-sm text-primary hover:underline">
+                  View Matchups →
+                </router-link>
+              </div>
             </div>
             <div class="card-body">
               <!-- Use CategoryStandingsTable for category leagues with per-category data -->
@@ -211,6 +221,7 @@
                 :my-team-id="myTeamId"
                 :playoff-teams="playoffTeams"
                 :show-streak="true"
+                :show-by-division="showByDivision"
               />
             </div>
           </div>
@@ -325,6 +336,7 @@ const loading = ref(false)
 const loadingMessage = ref('Loading league data...')
 const matchups = ref<UnifiedMatchup[]>([])
 const standings = ref<UnifiedStandingsEntry[]>([])
+const showByDivision = ref(false)
 const teamsWithStats = ref<any[]>([])
 const statCategories = ref<any[]>([])
 const categoryStandingsData = ref<any[]>([])

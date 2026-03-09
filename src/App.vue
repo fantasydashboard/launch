@@ -199,49 +199,17 @@
               </div>
             </div>
 
-            <!-- User Menu -->
-            <div class="relative ml-3" data-user-menu>
-              <button 
-                @click="showUserMenu = !showUserMenu"
-                class="flex items-center gap-2 px-2 py-1 rounded-lg hover:bg-dark-border/30 transition-colors"
-              >
-                <div class="w-6 h-6 rounded-full bg-gradient-to-br from-primary to-cyan-500 flex items-center justify-center">
-                  <span class="text-[10px] font-bold text-gray-900">{{ userInitials }}</span>
-                </div>
-                <span class="hidden xl:inline text-xs text-dark-text font-medium">{{ displayName }}</span>
-              </button>
-              
-              <!-- User Dropdown (only when not scrolled) -->
-              <div 
-                v-if="showUserMenu && !isScrolled"
-                class="absolute top-full right-0 mt-2 w-48 bg-dark-card border border-dark-border rounded-xl shadow-xl z-50 overflow-hidden"
-              >
-                <div class="p-3 border-b border-dark-border">
-                  <div class="font-medium text-dark-text text-sm truncate">{{ displayName }}</div>
-                  <div class="text-xs text-dark-textMuted truncate">{{ authStore.user?.email }}</div>
-                </div>
-                <router-link
-                  to="/settings"
-                  @click="showUserMenu = false"
-                  class="w-full flex items-center gap-2 px-3 py-2.5 text-dark-text hover:bg-dark-border/30 transition-colors text-sm"
-                >
-                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                  </svg>
-                  <span>Settings</span>
-                </router-link>
-                <button
-                  @click="handleSignOut; showUserMenu = false"
-                  class="w-full flex items-center gap-2 px-3 py-2.5 text-red-400 hover:bg-red-500/10 transition-colors text-sm"
-                >
-                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-                  </svg>
-                  <span>Sign Out</span>
-                </button>
-              </div>
-            </div>
+            <!-- Settings Gear -->
+            <router-link
+              to="/settings"
+              class="ml-3 p-2 rounded-lg hover:bg-dark-border/30 transition-colors text-dark-textMuted hover:text-dark-text"
+              title="Settings"
+            >
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+              </svg>
+            </router-link>
           </div>
         </header>
 
@@ -580,46 +548,17 @@
                   </div>
                 </div>
                 
-                <!-- Compact User with Dropdown -->
-                <div class="relative" data-user-menu>
-                  <button 
-                    @click="showUserMenu = !showUserMenu"
-                    class="w-8 h-8 rounded-full bg-gradient-to-br from-primary to-cyan-500 flex items-center justify-center hover:opacity-90 transition-opacity"
-                  >
-                    <span class="text-xs font-bold text-gray-900">{{ userInitials }}</span>
-                  </button>
-                  
-                  <!-- Scrolled User Dropdown -->
-                  <div 
-                    v-if="showUserMenu"
-                    class="absolute top-full right-0 mt-2 w-48 bg-dark-card border border-dark-border rounded-xl shadow-xl z-[60] overflow-hidden"
-                  >
-                    <div class="p-3 border-b border-dark-border">
-                      <div class="font-medium text-dark-text text-sm truncate">{{ displayName }}</div>
-                      <div class="text-xs text-dark-textMuted truncate">{{ authStore.user?.email }}</div>
-                    </div>
-                    <router-link
-                      to="/settings"
-                      @click="showUserMenu = false"
-                      class="w-full flex items-center gap-2 px-3 py-2.5 text-dark-text hover:bg-dark-border/30 transition-colors text-sm"
-                    >
-                      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                      </svg>
-                      <span>Settings</span>
-                    </router-link>
-                    <button
-                      @click="handleSignOut; showUserMenu = false"
-                      class="w-full flex items-center gap-2 px-3 py-2.5 text-red-400 hover:bg-red-500/10 transition-colors text-sm"
-                    >
-                      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-                      </svg>
-                      <span>Sign Out</span>
-                    </button>
-                  </div>
-                </div>
+                <!-- Settings Gear (Scrolled) -->
+                <router-link
+                  to="/settings"
+                  class="p-2 rounded-lg hover:bg-white/10 transition-colors text-white/70 hover:text-white"
+                  title="Settings"
+                >
+                  <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                  </svg>
+                </router-link>
               </div>
             </div>
           </div>
@@ -696,19 +635,20 @@
             </router-link>
           </div>
           
-          <!-- Demo Mode Banner (Mobile) -->
-          <!-- User Info at Bottom -->
+          <!-- Settings & Sign Out at Bottom -->
           <div class="absolute bottom-0 left-0 right-0 p-4 border-t border-dark-border">
             <div class="flex items-center justify-between">
-              <div class="flex items-center gap-3">
-                <div class="w-10 h-10 rounded-full bg-gradient-to-br from-primary to-cyan-500 flex items-center justify-center">
-                  <span class="text-sm font-bold text-gray-900">{{ userInitials }}</span>
-                </div>
-                <div>
-                  <div class="font-medium text-dark-text">{{ displayName }}</div>
-                  <div class="text-xs text-dark-textMuted">{{ authStore.user?.email }}</div>
-                </div>
-              </div>
+              <router-link
+                to="/settings"
+                @click="showMobileMenu = false"
+                class="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-dark-border/30 transition-colors text-dark-textMuted hover:text-dark-text text-sm font-medium"
+              >
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                </svg>
+                Settings
+              </router-link>
               <button
                 @click="handleSignOut"
                 class="p-2 rounded-lg text-red-400 hover:bg-red-500/10 transition-colors"
