@@ -44,6 +44,90 @@ export interface GamesSummary {
   final: number
 }
 
+// =====================================================
+// ESPN PUBLIC API FALLBACK
+// =====================================================
+// Fetches schedule from ESPN's free public scoreboard
+// API when Supabase returns no games for a date.
+// No auth required.
+// =====================================================
+
+const ESPN_SPORT_PATHS: Record<string, string> = {
+  basketball: 'basketball/nba',
+  hockey: 'hockey/nhl',
+  baseball: 'baseball/mlb',
+  football: 'football/nfl',
+}
+
+async function fetchEspnGames(sport: Sport, localDate: Date): Promise<LiveGame[]> {
+  const path = ESPN_SPORT_PATHS[sport]
+  if (!path) return []
+
+  // ESPN uses YYYYMMDD format for the dates param
+  const y = localDate.getFullYear()
+  const m = String(localDate.getMonth() + 1).padStart(2, '0')
+  const d = String(localDate.getDate()).padStart(2, '0')
+  const dateStr = `${y}${m}${d}`
+
+  const url = `https://site.api.espn.com/apis/site/v2/sports/${path}/scoreboard?dates=${dateStr}`
+  console.log(`[LiveGames][ESPN Fallback] Fetching: ${url}`)
+
+  try {
+    const resp = await fetch(url)
+    if (!resp.ok) {
+      console.warn(`[LiveGames][ESPN Fallback] HTTP ${resp.status} for ${url}`)
+      return []
+    }
+    const data = await resp.json()
+    const events: any[] = data.events || []
+    console.log(`[LiveGames][ESPN Fallback] Got ${events.length} events for ${sport} on ${dateStr}`)
+
+    const games: LiveGame[] = []
+    for (const event of events) {
+      const competition = event.competitions?.[0]
+      if (!competition) continue
+
+      const homeComp = competition.competitors?.find((c: any) => c.homeAway === 'home')
+      const awayComp = competition.competitors?.find((c: any) => c.homeAway === 'away')
+      if (!homeComp || !awayComp) continue
+
+      const homeTeam: string = (homeComp.team?.abbreviation || '').toUpperCase()
+      const awayTeam: string = (awayComp.team?.abbreviation || '').toUpperCase()
+
+      const espnStatus = competition.status?.type?.name || ''
+      let status: LiveGame['status'] = 'scheduled'
+      if (espnStatus === 'STATUS_IN_PROGRESS') status = 'live'
+      else if (espnStatus === 'STATUS_FINAL' || espnStatus === 'STATUS_FINAL_OT' || espnStatus === 'STATUS_FINAL_SHOOTOUT') status = 'final'
+      else if (espnStatus === 'STATUS_POSTPONED') status = 'postponed'
+      else if (espnStatus === 'STATUS_CANCELLED') status = 'cancelled'
+
+      const period = competition.status?.period
+        ? `${competition.status.period > 4 && sport === 'basketball' ? 'OT' : 'Q'}${competition.status.period}`
+        : null
+      const clock = competition.status?.displayClock || null
+
+      games.push({
+        gameId: `espn_${event.id}`,
+        sport,
+        homeTeam,
+        awayTeam,
+        homeScore: parseInt(homeComp.score || '0', 10),
+        awayScore: parseInt(awayComp.score || '0', 10),
+        status,
+        period: status === 'live' ? period : null,
+        timeRemaining: status === 'live' ? clock : null,
+        gameTime: event.date || '',
+        gameDate: `${y}-${m}-${d}`,
+        venue: competition.venue?.fullName || null,
+      })
+    }
+    return games
+  } catch (err) {
+    console.error('[LiveGames][ESPN Fallback] Error:', err)
+    return []
+  }
+}
+
 class LiveGamesService {
   
   /**
@@ -115,14 +199,11 @@ class LiveGamesService {
   /**
    * Get games for a LOCAL calendar date, handling UTC storage offset.
    *
-   * Problem: Scrapers may store game_date in UTC. An NBA game at 7 PM EST on
-   * March 4 = 00:00 UTC March 5, so it gets stored under game_date='2026-03-05'.
-   * Conversely, a March 3 game finishing at 11 PM EST = 04:00 UTC March 4, so
-   * it might appear under game_date='2026-03-04'.
+   * Primary source: Supabase games_schedule table (scraped data).
+   * Fallback: ESPN public scoreboard API (no auth required).
    *
-   * Solution: Query BOTH localDate AND localDate+1 in UTC, then filter to only
-   * games whose game_time actually falls within ±14 hours of the local midnight.
-   * That window captures all games that a user would consider "today".
+   * The fallback kicks in when Supabase returns 0 games, which can happen
+   * if the scraper is down, hasn't run yet today, or is behind on data.
    */
   async getGamesForLocalDate(sport: Sport, localDate: Date): Promise<LiveGame[]> {
     const fmt = (d: Date) => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`
@@ -143,30 +224,35 @@ class LiveGamesService {
     const allRows = [...(r1.data || []), ...(r2.data || [])]
     
     // Define the valid window: local midnight  -2h  to  local midnight +26h
-    // This gives us a 28-hour window that catches every game a user would consider "today"
     const localMidnight = new Date(localDate.getFullYear(), localDate.getMonth(), localDate.getDate(), 0, 0, 0)
-    const windowStart = localMidnight.getTime() - 2 * 3600 * 1000    // 2h before midnight
-    const windowEnd   = localMidnight.getTime() + 26 * 3600 * 1000   // 26h after midnight (2 AM next day)
+    const windowStart = localMidnight.getTime() - 2 * 3600 * 1000
+    const windowEnd   = localMidnight.getTime() + 26 * 3600 * 1000
 
-    const games = allRows
+    const supabaseGames = allRows
       .map(this.mapDbGameToLiveGame)
-      // Deduplicate by gameId in case same game returned from both date queries
       .filter((g, idx, arr) => !g.gameId || arr.findIndex(x => x.gameId === g.gameId) === idx)
-      // Keep only games whose start time falls within today's local window
       .filter(g => {
-        if (!g.gameTime) return true // no timestamp? keep it
+        if (!g.gameTime) return true
         const t = new Date(g.gameTime).getTime()
         return t >= windowStart && t <= windowEnd
       })
-      // Sort by game time
       .sort((a, b) => {
         if (!a.gameTime) return 1
         if (!b.gameTime) return -1
         return new Date(a.gameTime).getTime() - new Date(b.gameTime).getTime()
       })
 
-    console.log(`[LiveGames] getGamesForLocalDate(${localDateStr}): queried ${localDateStr}+${nextDateStr}, found ${allRows.length} raw → ${games.length} in window`)
-    return games
+    console.log(`[LiveGames] getGamesForLocalDate(${localDateStr}): Supabase found ${allRows.length} raw → ${supabaseGames.length} in window`)
+
+    // ── FALLBACK: If Supabase returned no games, hit ESPN directly ──
+    if (supabaseGames.length === 0) {
+      console.warn(`[LiveGames] ⚠️ Supabase returned 0 games for ${sport} on ${localDateStr} — falling back to ESPN API`)
+      const espnGames = await fetchEspnGames(sport, localDate)
+      console.log(`[LiveGames][ESPN Fallback] Got ${espnGames.length} games for ${sport} on ${localDateStr}`)
+      return espnGames
+    }
+
+    return supabaseGames
   }
   
   /**
@@ -212,21 +298,19 @@ class LiveGamesService {
     // Always compare uppercase - Yahoo returns mixed case like "Wpg", "Tor", "TB"
     const upper = playerTeam.toUpperCase()
     const normalized = this.normalizeTeamAbbr(upper)
+    // Also try the reverse mapping (e.g. if Yahoo gives "GS" but ESPN stores "GSW")
+    const reversedNorm = this.normalizeTeamAbbr(normalized)
     
-    // Find game where player's team is playing.
-    // DB team values are stored uppercase from scrapers.
-    // Exclude 'final' games that appear in today's date due to UTC storage
-    // (e.g. a 7:30 PM ET March 3 game stored as game_date='March 4' in UTC).
-    // We still include finals that started recently (within last 5 hours) for live score display.
     const now = Date.now()
     const FIVE_HOURS = 5 * 60 * 60 * 1000
     const game = games.find(g => {
       const home = (g.homeTeam || '').toUpperCase()
       const away = (g.awayTeam || '').toUpperCase()
-      const teamMatches = home === upper || away === upper || home === normalized || away === normalized
+      const teamMatches = 
+        home === upper || away === upper ||
+        home === normalized || away === normalized ||
+        home === reversedNorm || away === reversedNorm
       if (!teamMatches) return false
-      // Skip games that are 'final' and started more than 5 hours ago
-      // (these are yesterday's games stored with UTC date)
       if (g.status === 'final' && g.gameTime) {
         const gameStart = new Date(g.gameTime).getTime()
         if (now - gameStart > FIVE_HOURS) return false
@@ -238,15 +322,14 @@ class LiveGamesService {
       return this.noGameInfo()
     }
     
-    const isHome = (game.homeTeam || '').toUpperCase() === upper || (game.homeTeam || '').toUpperCase() === normalized
+    const homeUpper = (game.homeTeam || '').toUpperCase()
+    const isHome = homeUpper === upper || homeUpper === normalized || homeUpper === reversedNorm
     const opponent = isHome ? game.awayTeam : game.homeTeam
     const myScore = isHome ? game.homeScore : game.awayScore
     const oppScore = isHome ? game.awayScore : game.homeScore
     
-    // Format opponent string
     const opponentStr = `${isHome ? 'vs' : '@'} ${opponent}`
     
-    // Format score if game is live or final
     let scoreStr = null
     if (game.status === 'live' || game.status === 'final') {
       scoreStr = `${myScore}-${oppScore}`
@@ -275,7 +358,6 @@ class LiveGamesService {
     date: Date,
     callback: (games: LiveGame[]) => void
   ): RealtimeChannel {
-    // Use local date string to avoid UTC timezone shift causing wrong day queries
     const dateStr = `${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,'0')}-${String(date.getDate()).padStart(2,'0')}`
     const sportStr = this.mapSportToDbValue(sport)
     
@@ -286,15 +368,13 @@ class LiveGamesService {
       .on(
         'postgres_changes',
         {
-          event: '*', // All events (INSERT, UPDATE, DELETE)
+          event: '*',
           schema: 'public',
           table: 'games_schedule',
           filter: `sport=eq.${sportStr},game_date=eq.${dateStr}`
         },
         async (payload) => {
           console.log(`[LiveGames] Game update received:`, payload)
-          
-          // Refetch all games for the day (using the local-date aware method)
           const games = await this.getGamesForLocalDate(sport, date)
           callback(games)
         }
@@ -345,7 +425,6 @@ class LiveGamesService {
       return '❌ CANCELLED'
     }
     
-    // Scheduled - show time
     return `⏰ ${this.formatGameTime(game.gameTime)}`
   }
   
@@ -419,25 +498,28 @@ class LiveGamesService {
   }
   
   /**
-   * Normalize team abbreviations across platforms
-   * Yahoo, ESPN, and the DB may use slightly different formats
+   * Normalize team abbreviations across platforms.
+   * Yahoo, ESPN, Supabase scrapers may use different formats.
+   * All inputs should already be uppercase.
    */
   private normalizeTeamAbbr(team: string): string {
-    // All inputs should already be uppercase. Maps alternate/short forms to common forms.
     const MAP: Record<string, string> = {
       // NHL alternates (Yahoo uses these)
       'TB': 'TBL', 'NJ': 'NJD', 'LA': 'LAK', 'SJ': 'SJS',
       'VGS': 'VGK', 'PHX': 'ARI', 'ATL': 'WPG',
       // NHL reverse (if DB uses short form)
       'TBL': 'TB', 'NJD': 'NJ', 'LAK': 'LA', 'SJS': 'SJ', 'VGK': 'VGS',
-      // NBA alternates
+      // NBA alternates (Yahoo vs ESPN vs DB)
       'GS': 'GSW', 'NY': 'NYK', 'NO': 'NOP', 'SA': 'SAS', 'UTAH': 'UTA',
       'GS WARRIORS': 'GSW', 'NETS': 'BKN', 'KNICKS': 'NYK',
+      'PHO': 'PHX', 'PHX': 'PHO',   // Phoenix - Yahoo uses PHX, ESPN uses PHO
+      'UTA': 'UTAH', 'UTAH': 'UTA', // Utah
+      'NOP': 'NO',                   // New Orleans
       // NBA reverse
-      'GSW': 'GS', 'NYK': 'NY', 'NOP': 'NO', 'SAS': 'SA',
+      'GSW': 'GS', 'NYK': 'NY', 'SAS': 'SA',
       // MLB alternates
       'CWS': 'CHW', 'CHW': 'CWS', 'KC': 'KCR', 'KCR': 'KC',
-      'TB': 'TBR', 'TBR': 'TB', 'WSH': 'WAS', 'WAS': 'WSH',
+      'TBR': 'TB', 'WSH': 'WAS', 'WAS': 'WSH',
       'SD': 'SDP', 'SDP': 'SD', 'SF': 'SFG', 'SFG': 'SF',
     }
     return MAP[team] || team
