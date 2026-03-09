@@ -25,8 +25,8 @@
       </div>
     </div>
 
-    <!-- Simulated Data Banner for non-Ultimate users -->
-    <SimulatedDataBanner v-if="!hasPremiumAccess" :is-ultimate-tier="true" class="mb-6" />
+    <!-- Beta Banner -->
+    <SimulatedDataBanner class="mb-6" />
 
     <!-- Tab Navigation -->
     <div class="flex gap-2">
@@ -921,11 +921,8 @@
 
     <!-- TRADE ANALYZER TAB -->
     <template v-else-if="activeTab === 'trade'">
-      <!-- Simulated Data Banner for non-Premium users -->
-      <SimulatedDataBanner v-if="!hasPremiumAccess" :is-ultimate-tier="true" class="mb-6" />
-      
       <div class="relative">
-        <div :class="!hasPremiumAccess ? 'blur-sm select-none pointer-events-none' : ''">
+        <div>
           <!-- Trade Setup Card -->
           <div class="card">
             <div class="card-header">
@@ -1387,28 +1384,6 @@
           </template>
         </div>
 
-        <!-- Premium Upgrade Overlay -->
-        <div 
-          v-if="!hasPremiumAccess" 
-          class="absolute inset-0 flex items-center justify-center bg-gradient-to-t from-dark-bg via-dark-bg/80 to-transparent"
-        >
-          <div class="text-center p-8 max-w-md">
-            <div class="text-5xl mb-4">🔒</div>
-            <h3 class="text-2xl font-bold text-dark-text mb-3">Unlock Trade Analyzer</h3>
-            <p class="text-dark-textMuted mb-6">
-              Get instant trade grades, point projections, and team impact analysis with Premium.
-            </p>
-            <div class="space-y-3">
-              <button 
-                @click="$router.push('/pricing')"
-                class="w-full px-6 py-3 bg-gradient-to-r from-yellow-500 to-orange-500 hover:from-yellow-400 hover:to-orange-400 text-gray-900 font-bold rounded-xl transition-all transform hover:scale-105 shadow-lg"
-              >
-                Upgrade to Premium
-              </button>
-              <p class="text-xs text-dark-textMuted">Unlock all features • Trade analyzer • Full projections</p>
-            </div>
-          </div>
-        </div>
       </div>
     </template>
 

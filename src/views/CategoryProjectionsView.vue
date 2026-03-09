@@ -26,7 +26,7 @@
     </div>
 
     <!-- Simulated Data Banner for non-Ultimate users -->
-    <SimulatedDataBanner v-if="!hasPremiumAccess" :is-ultimate-tier="true" class="mb-6" />
+    <SimulatedDataBanner class="mb-6" />
 
     <!-- Tab Navigation -->
     <div class="flex items-center gap-2 border-b border-dark-border pb-2">

@@ -1,9 +1,7 @@
 // composables/useFeatureAccess.ts
 // Handles subscription tier checking and feature gating
 
-import { ref, computed, onMounted, watch } from 'vue'
-import { useRoute } from 'vue-router'
-import { supabase } from '@/lib/supabase'
+import { ref, computed } from 'vue'
 import { useAuthStore } from '@/stores/auth'
 import { useLeagueStore } from '@/stores/league'
 
@@ -27,247 +25,36 @@ export function useFeatureAccess() {
   const leagueStore = useLeagueStore()
   const route = useRoute()
 
-  // Loading states
-  const isCheckingAccess = ref(true)
+  // Stubs kept for interface compatibility
+  const isCheckingAccess = ref(false)
   const accessError = ref<string | null>(null)
 
-  // Real access values (from database)
+  // ── BETA MODE: All features are free while Ultimate Tools is in beta ──
+  // Subscription checks are skipped. Re-enable by restoring the Supabase
+  // checks below when paid access is ready to launch.
   const isAdmin = ref(false)
-  const hasRealLeagueAccess = ref(false)
-  const hasRealPremiumAccess = ref(false)
+  const hasRealLeagueAccess = ref(true)
+  const hasRealPremiumAccess = ref(true)
   const leagueSubscription = ref<any>(null)
   const premiumSubscription = ref<any>(null)
-
-  // Dev mode override (admin only)
   const devTierOverride = ref<string | null>(null)
 
-  // Initialize dev mode from localStorage or URL
-  onMounted(() => {
-    const urlTier = route.query.dev_tier as string
-    if (urlTier) {
-      devTierOverride.value = urlTier
-    } else {
-      devTierOverride.value = localStorage.getItem('dev_tier_override')
-    }
-  })
-
-  // Check if user is an admin
-  async function checkAdminStatus() {
-    if (!authStore.user?.id) {
-      isAdmin.value = false
-      return
-    }
-
-    try {
-      const { data, error } = await supabase
-        .from('admin_users')
-        .select('id, role')
-        .eq('user_id', authStore.user.id)
-        .maybeSingle()
-
-      if (error) {
-        console.warn('Admin check failed:', error.message)
-        isAdmin.value = false
-        return
-      }
-
-      isAdmin.value = !!data
-    } catch (e) {
-      console.warn('Admin status check error:', e)
-      isAdmin.value = false
-    }
-  }
-
-  // Check league access for current league
-  async function checkLeagueAccess() {
-    if (!authStore.user?.id || !leagueStore.activeLeagueId) {
-      hasRealLeagueAccess.value = false
-      leagueSubscription.value = null
-      return
-    }
-
-    try {
-      // First check if there's an active subscription for this league
-      const { data: subscription, error } = await supabase
-        .from('league_subscriptions')
-        .select('*')
-        .eq('league_key', leagueStore.activeLeagueId)
-        .eq('status', 'active')
-        .maybeSingle()  // Use maybeSingle to avoid errors when no row found
-
-      if (error) {
-        console.warn('League subscription check failed:', error.message)
-        hasRealLeagueAccess.value = false
-        leagueSubscription.value = null
-        return
-      }
-
-      if (!subscription) {
-        hasRealLeagueAccess.value = false
-        leagueSubscription.value = null
-        return
-      }
-
-      leagueSubscription.value = subscription
-
-      // Check if user is the purchaser
-      if (subscription.purchaser_id === authStore.user.id) {
-        hasRealLeagueAccess.value = true
-        return
-      }
-
-      // Check if user has been granted access
-      const { data: access } = await supabase
-        .from('league_access')
-        .select('id')
-        .eq('league_subscription_id', subscription.id)
-        .eq('user_id', authStore.user.id)
-        .maybeSingle()
-
-      hasRealLeagueAccess.value = !!access
-    } catch (e) {
-      console.warn('League access check error:', e)
-      hasRealLeagueAccess.value = false
-      leagueSubscription.value = null
-    }
-  }
-
-  // Check premium access for current sport/season
-  async function checkPremiumAccess() {
-    if (!authStore.user?.id) {
-      hasRealPremiumAccess.value = false
-      premiumSubscription.value = null
-      return
-    }
-
-    // Get sport and season from current league
-    const sport = leagueStore.activeSport || 'baseball'
-    const season = leagueStore.currentSeason || new Date().getFullYear().toString()
-
-    try {
-      const { data, error } = await supabase
-        .from('user_premium_subscriptions')
-        .select('*')
-        .eq('user_id', authStore.user.id)
-        .eq('sport', sport)
-        .eq('season', season)
-        .eq('status', 'active')
-        .maybeSingle()  // Use maybeSingle to avoid errors when no row found
-
-      if (error) {
-        console.warn('Premium subscription check failed:', error.message)
-        hasRealPremiumAccess.value = false
-        premiumSubscription.value = null
-        return
-      }
-
-      hasRealPremiumAccess.value = !!data
-      premiumSubscription.value = data
-    } catch (e) {
-      console.warn('Premium access check error:', e)
-      hasRealPremiumAccess.value = false
-      premiumSubscription.value = null
-    }
-  }
-
-  // Main function to check all access
+  // No-op: access checks bypassed during beta
   async function checkAllAccess() {
-    isCheckingAccess.value = true
-    accessError.value = null
-
-    try {
-      // Add timeout to prevent hanging - 5 second max
-      const timeoutPromise = new Promise((_, reject) => 
-        setTimeout(() => reject(new Error('Access check timeout')), 5000)
-      )
-      
-      await Promise.race([
-        Promise.allSettled([
-          checkAdminStatus(),
-          checkLeagueAccess(),
-          checkPremiumAccess()
-        ]),
-        timeoutPromise
-      ])
-    } catch (e: any) {
-      console.warn('Access check error (continuing with free tier):', e.message || e)
-      // Don't block the app - just continue with free tier
-      accessError.value = null
-    } finally {
-      isCheckingAccess.value = false
-    }
+    isCheckingAccess.value = false
   }
 
-  // Watch for auth and league changes
-  watch(
-    () => authStore.user?.id,
-    () => checkAllAccess(),
-    { immediate: true }
-  )
+  // Effective access — always full during beta
+  const effectiveAccess = computed(() => ({
+    tier: 'premium' as SubscriptionTier,
+    hasLeague: true,
+    hasPremium: true
+  }))
 
-  watch(
-    () => leagueStore.activeLeagueId,
-    () => {
-      checkLeagueAccess()
-      checkPremiumAccess()
-    }
-  )
+  function setDevTier(_tier: string | null) { /* no-op in beta */ }
+  function clearDevMode() { /* no-op in beta */ }
 
-  // Effective access (respects dev mode for admins)
-  const effectiveAccess = computed(() => {
-    // Only allow override for admins
-    if (!isAdmin.value || !devTierOverride.value) {
-      return {
-        tier: isAdmin.value ? 'admin' : (hasRealPremiumAccess.value ? 'premium' : (hasRealLeagueAccess.value ? 'league' : 'free')),
-        hasLeague: isAdmin.value || hasRealLeagueAccess.value,
-        hasPremium: isAdmin.value || hasRealPremiumAccess.value
-      }
-    }
-
-    switch (devTierOverride.value) {
-      case 'free':
-        return { tier: 'free' as SubscriptionTier, hasLeague: false, hasPremium: false }
-      case 'league':
-        return { tier: 'league' as SubscriptionTier, hasLeague: true, hasPremium: false }
-      case 'premium':
-        return { tier: 'premium' as SubscriptionTier, hasLeague: true, hasPremium: true }
-      default:
-        return {
-          tier: 'admin' as SubscriptionTier,
-          hasLeague: true,
-          hasPremium: true
-        }
-    }
-  })
-
-  // Set dev mode tier (admin only)
-  function setDevTier(tier: string | null) {
-    if (!isAdmin.value) return
-
-    devTierOverride.value = tier
-    if (tier) {
-      localStorage.setItem('dev_tier_override', tier)
-    } else {
-      localStorage.removeItem('dev_tier_override')
-    }
-  }
-
-  // Clear dev mode
-  function clearDevMode() {
-    setDevTier(null)
-  }
-
-  // Current tier label for display
-  const currentTierLabel = computed(() => {
-    if (devTierOverride.value && isAdmin.value) {
-      return `${devTierOverride.value.charAt(0).toUpperCase() + devTierOverride.value.slice(1)} (Dev Mode)`
-    }
-    
-    if (isAdmin.value) return 'Admin'
-    if (hasRealPremiumAccess.value) return 'Premium'
-    if (hasRealLeagueAccess.value) return 'League Pass'
-    return 'Free'
-  })
+  const currentTierLabel = computed(() => 'Beta')
 
   return {
     // Loading state
