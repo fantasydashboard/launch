@@ -191,8 +191,8 @@
                 <h2 class="card-title">Standings</h2>
               </div>
               <div class="flex items-center gap-4">
-                <!-- Division toggle -->
-                <label class="flex items-center gap-2 cursor-pointer select-none">
+                <!-- Division toggle — only shown when league has divisions -->
+                <label v-if="hasDivisions" class="flex items-center gap-2 cursor-pointer select-none">
                   <span class="text-xs text-dark-textMuted font-medium">By Division</span>
                   <div class="relative" @click="showByDivision = !showByDivision">
                     <div class="w-9 h-5 rounded-full transition-colors" :class="showByDivision ? 'bg-primary' : 'bg-dark-border'"></div>
@@ -205,24 +205,55 @@
               </div>
             </div>
             <div class="card-body">
-              <!-- Use CategoryStandingsTable for category leagues with per-category data -->
-              <CategoryStandingsTable
-                v-if="statCategories.length > 0 && categoryStandingsData.length > 0"
-                :standings="categoryStandingsData"
-                :categories="statCategories"
-                :my-team-id="myTeamId"
-                :playoff-teams="playoffTeams"
-              />
-              <!-- Fall back to regular StandingsTable for points leagues or when no category data -->
-              <StandingsTable
-                v-else
-                :standings="standings"
-                :league-type="leagueType"
-                :my-team-id="myTeamId"
-                :playoff-teams="playoffTeams"
-                :show-streak="true"
-                :show-by-division="showByDivision"
-              />
+
+              <!-- ── BY DIVISION: split standings ── -->
+              <template v-if="showByDivision && standingsByDivision.length > 0">
+                <div
+                  v-for="(group, gi) in standingsByDivision"
+                  :key="group.name"
+                  :class="gi > 0 ? 'mt-6' : ''"
+                >
+                  <div class="flex items-center gap-2 mb-3">
+                    <span class="text-xs font-bold uppercase tracking-widest text-dark-textMuted">{{ group.name }}</span>
+                    <div class="flex-1 h-px bg-dark-border/40"></div>
+                  </div>
+                  <CategoryStandingsTable
+                    v-if="statCategories.length > 0 && categoryStandingsData.length > 0"
+                    :standings="categoryStandingsData.filter(e => divisionMap.get(e.team?.teamId) === gi + 1)"
+                    :categories="statCategories"
+                    :my-team-id="myTeamId"
+                    :playoff-teams="0"
+                  />
+                  <StandingsTable
+                    v-else
+                    :standings="group.entries"
+                    :league-type="leagueType"
+                    :my-team-id="myTeamId"
+                    :playoff-teams="0"
+                    :show-streak="true"
+                  />
+                </div>
+              </template>
+
+              <!-- ── NORMAL flat standings ── -->
+              <template v-else>
+                <CategoryStandingsTable
+                  v-if="statCategories.length > 0 && categoryStandingsData.length > 0"
+                  :standings="categoryStandingsData"
+                  :categories="statCategories"
+                  :my-team-id="myTeamId"
+                  :playoff-teams="playoffTeams"
+                />
+                <StandingsTable
+                  v-else
+                  :standings="standings"
+                  :league-type="leagueType"
+                  :my-team-id="myTeamId"
+                  :playoff-teams="playoffTeams"
+                  :show-streak="true"
+                />
+              </template>
+
             </div>
           </div>
         </div>
@@ -241,6 +272,37 @@
               <div v-if="matchups.length === 0" class="text-center py-6 text-dark-textMuted">
                 No matchups available for this week
               </div>
+
+              <!-- ── BY DIVISION matchups ── -->
+              <template v-else-if="showByDivision && matchupsByDivision">
+                <div v-for="group in matchupsByDivision" :key="group.label" class="space-y-2">
+                  <div class="flex items-center gap-2 pt-1">
+                    <span class="text-xs font-bold uppercase tracking-widest text-dark-textMuted">{{ group.label }}</span>
+                    <div class="flex-1 h-px bg-dark-border/40"></div>
+                  </div>
+                  <template v-if="isPointsLeague">
+                    <PointsMatchupCard
+                      v-for="matchup in group.matchups"
+                      :key="matchup.matchupId"
+                      :matchup="matchup"
+                      :my-team-id="myTeamId"
+                      @select="goToMatchup"
+                    />
+                  </template>
+                  <template v-else>
+                    <CategoryMatchupCard
+                      v-for="matchup in group.matchups"
+                      :key="matchup.matchupId"
+                      :matchup="matchup"
+                      :sport="sport"
+                      :my-team-id="myTeamId"
+                      @select="goToMatchup"
+                    />
+                  </template>
+                </div>
+              </template>
+
+              <!-- ── NORMAL matchups ── -->
               <template v-else-if="isPointsLeague">
                 <PointsMatchupCard
                   v-for="matchup in matchups.slice(0, 4)"
@@ -262,7 +324,7 @@
               </template>
               
               <router-link 
-                v-if="matchups.length > 4"
+                v-if="matchups.length > 4 && !showByDivision"
                 to="/unified/matchups" 
                 class="block text-center py-3 text-sm text-primary hover:underline"
               >
@@ -311,6 +373,30 @@
           </div>
         </div>
       </div>
+
+      <!-- ── Division Performance Charts (shown when By Division is ON) ── -->
+      <div v-if="showByDivision && hasDivisions && weeklyTeamPoints.size > 0" class="space-y-6 mt-6">
+        <div
+          v-for="(group, gi) in standingsByDivision"
+          :key="'chart-' + group.name"
+          class="card"
+        >
+          <div class="card-header">
+            <div class="flex items-center gap-2">
+              <span class="text-2xl">📈</span>
+              <h2 class="card-title">{{ group.name }} — Weekly Points</h2>
+            </div>
+          </div>
+          <div class="card-body">
+            <DivisionPointsChart
+              :entries="group.entries"
+              :weekly-team-points="weeklyTeamPoints"
+              :current-week="currentWeek"
+            />
+          </div>
+        </div>
+      </div>
+
     </template>
   </div>
 </template>
@@ -327,6 +413,7 @@ import StandingsTable from '@/components/unified/StandingsTable.vue'
 import CategoryStandingsTable from '@/components/unified/CategoryStandingsTable.vue'
 import PointsMatchupCard from '@/components/unified/PointsMatchupCard.vue'
 import CategoryMatchupCard from '@/components/unified/CategoryMatchupCard.vue'
+import DivisionPointsChart from '@/components/unified/DivisionPointsChart.vue'
 
 const router = useRouter()
 const leagueStore = useLeagueStore()
@@ -336,10 +423,122 @@ const loading = ref(false)
 const loadingMessage = ref('Loading league data...')
 const matchups = ref<UnifiedMatchup[]>([])
 const standings = ref<UnifiedStandingsEntry[]>([])
-const showByDivision = ref(false)
 const teamsWithStats = ref<any[]>([])
 const statCategories = ref<any[]>([])
 const categoryStandingsData = ref<any[]>([])
+const showByDivision = ref(false)
+
+// ── Division helpers ──────────────────────────────────────────────────────────
+
+// True if the league has 2+ divisions configured
+const hasDivisions = computed(() => {
+  if (platform.value === 'sleeper') {
+    const divCount = leagueStore.currentLeague?.settings?.divisions
+    if (!divCount || divCount < 2) return false
+    // Also verify rosters actually have division set
+    const rosters = leagueStore.leagueRosters as any[]
+    return rosters?.some(r => r.settings?.division != null)
+  }
+  // ESPN / Yahoo: look for division info on teamsWithStats
+  if (teamsWithStats.value.length > 0) {
+    return teamsWithStats.value.some(t => t.division_id != null || t.division != null)
+  }
+  return false
+})
+
+// Map teamId → division number (1-indexed)
+const divisionMap = computed((): Map<string, number> => {
+  const map = new Map<string, number>()
+  if (!hasDivisions.value) return map
+
+  if (platform.value === 'sleeper') {
+    const rosters = leagueStore.leagueRosters as any[]
+    for (const r of rosters || []) {
+      if (r.settings?.division != null) {
+        map.set(String(r.roster_id), Number(r.settings.division))
+      }
+    }
+  } else {
+    // ESPN / Yahoo
+    for (const t of teamsWithStats.value) {
+      const div = t.division_id ?? t.division
+      if (div != null) map.set(String(t.team_id || t.team_key), Number(div))
+    }
+  }
+  return map
+})
+
+// Division names (Sleeper API doesn't expose custom names in the basic endpoint; default to "Division N")
+const divisionNames = computed((): string[] => {
+  const count = leagueStore.currentLeague?.settings?.divisions || 2
+  return Array.from({ length: count }, (_, i) => `Division ${i + 1}`)
+})
+
+// Weekly points per team: Map<teamId, points[]> (index 0 = week 1)
+const weeklyTeamPoints = computed((): Map<string, number[]> => {
+  const map = new Map<string, number[]>()
+  if (platform.value !== 'sleeper') return map
+
+  const season = leagueStore.currentLeague?.season || String(new Date().getFullYear())
+  const leagueMatchups = leagueStore.historicalMatchups.get(season)
+  if (!leagueMatchups) return map
+
+  const weeks = Array.from(leagueMatchups.keys()).sort((a, b) => a - b)
+  const regSeasonEnd = leagueStore.currentLeague?.settings?.playoff_week_start
+    ? leagueStore.currentLeague.settings.playoff_week_start - 1
+    : (leagueStore.currentLeague?.settings?.leg || currentWeek.value)
+
+  for (const week of weeks) {
+    if (week > regSeasonEnd) continue
+    const weekData = leagueMatchups.get(week) || []
+    for (const entry of weekData) {
+      const id = String(entry.roster_id)
+      if (!map.has(id)) map.set(id, [])
+      map.get(id)!.push(entry.points || 0)
+    }
+  }
+  return map
+})
+
+// Group standings entries by division
+const standingsByDivision = computed((): Array<{ name: string; entries: UnifiedStandingsEntry[] }> => {
+  if (!hasDivisions.value || divisionMap.value.size === 0) return []
+  const groups = new Map<number, UnifiedStandingsEntry[]>()
+  for (const entry of standings.value) {
+    const div = divisionMap.value.get(entry.team.teamId) ?? 1
+    if (!groups.has(div)) groups.set(div, [])
+    groups.get(div)!.push(entry)
+  }
+  return Array.from(groups.entries())
+    .sort((a, b) => a[0] - b[0])
+    .map(([divNum, entries]) => ({
+      name: divisionNames.value[divNum - 1] || `Division ${divNum}`,
+      entries: [...entries].sort((a, b) => (b.wins - a.wins) || ((b.pointsFor || 0) - (a.pointsFor || 0)))
+    }))
+})
+
+// Group matchups by division involvement (intra-division vs cross-division)
+const matchupsByDivision = computed(() => {
+  if (!hasDivisions.value || divisionMap.value.size === 0) return null
+  const divGroups = new Map<string, UnifiedMatchup[]>()
+
+  for (const m of matchups.value) {
+    const d1 = divisionMap.value.get(m.team1.teamId)
+    const d2 = divisionMap.value.get(m.team2.teamId)
+    const key = d1 === d2
+      ? (divisionNames.value[(d1 || 1) - 1] || `Division ${d1}`)
+      : 'Cross-Division'
+    if (!divGroups.has(key)) divGroups.set(key, [])
+    divGroups.get(key)!.push(m)
+  }
+  // Sort: division groups first, cross-division last
+  const result: Array<{ label: string; matchups: UnifiedMatchup[] }> = []
+  for (const name of divisionNames.value) {
+    if (divGroups.has(name)) result.push({ label: name, matchups: divGroups.get(name)! })
+  }
+  if (divGroups.has('Cross-Division')) result.push({ label: 'Cross-Division', matchups: divGroups.get('Cross-Division')! })
+  return result
+})
 
 // Computed - League Info
 const leagueId = computed(() => leagueStore.activeLeagueId)
