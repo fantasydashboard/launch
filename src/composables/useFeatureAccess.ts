@@ -2,8 +2,6 @@
 // Handles subscription tier checking and feature gating
 
 import { ref, computed } from 'vue'
-import { useAuthStore } from '@/stores/auth'
-import { useLeagueStore } from '@/stores/league'
 
 // Pricing constants
 export const PRICING = {
@@ -21,9 +19,6 @@ export const PRICING = {
 export type SubscriptionTier = 'free' | 'league' | 'premium' | 'admin'
 
 export function useFeatureAccess() {
-  const authStore = useAuthStore()
-  const leagueStore = useLeagueStore()
-  const route = useRoute()
 
   // Stubs kept for interface compatibility
   const isCheckingAccess = ref(false)
