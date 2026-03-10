@@ -13,10 +13,9 @@
       <div class="hero-glow"></div>
 
       <div class="hero-inner">
-        <!-- Eyebrow badge -->
-        <div class="eyebrow-badge">
-          <span class="badge-dot"></span>
-          Now in Beta — All Features Free
+        <!-- Logo -->
+        <div class="hero-logo-wrap">
+          <img src="/UFD_V5.png" alt="Ultimate Fantasy Dashboard" class="hero-logo" />
         </div>
 
         <!-- Headline -->
@@ -61,44 +60,257 @@
           </span>
         </div>
 
-        <!-- Floating hero cards -->
+        <!-- Authentic app UI panels -->
         <div class="hero-cards-row">
-          <div class="hero-card hc-left">
-            <div class="hcard-label">POWER RANKINGS</div>
-            <div class="hcard-rank-row"><span class="hcard-num yellow">1</span><span class="hcard-name">Mahomes Magic</span><span class="hcard-arrow up">↑2</span></div>
-            <div class="hcard-rank-row"><span class="hcard-num">2</span><span class="hcard-name">Trash Can Wins</span><span class="hcard-arrow down">↓1</span></div>
-            <div class="hcard-rank-row"><span class="hcard-num">3</span><span class="hcard-name">The Algorithm</span><span class="hcard-arrow flat">—</span></div>
-            <div class="hcard-footer">Week 11 · 12-team PPR</div>
-          </div>
-          <div class="hero-card hc-center">
-            <div class="hcard-matchup-header">WEEK 11</div>
-            <div class="hcard-matchup-vs">
-              <div class="hcard-team">
-                <div class="hcard-avatar" style="background: linear-gradient(135deg,#f59e0b,#d97706)">🔥</div>
-                <span>Mahomes Magic</span>
-                <strong class="score-yellow">142.7</strong>
+
+          <!-- LEFT: Power Rankings table — exact app UI -->
+          <div class="app-panel hc-left">
+            <div class="ap-header">
+              <div class="ap-header-left">
+                <span class="ap-icon">⚡</span>
+                <span class="ap-title">Power Rankings</span>
               </div>
-              <div class="hcard-vs-badge">VS</div>
-              <div class="hcard-team">
-                <div class="hcard-avatar" style="background: linear-gradient(135deg,#6366f1,#4338ca)">⚡</div>
-                <span>The Algorithm</span>
-                <strong class="score-dim">98.4</strong>
+              <span class="ap-badge-week">Week 11</span>
+            </div>
+            <div class="ap-table-head">
+              <span class="apt-rank">Rank</span>
+              <span class="apt-change">+/-</span>
+              <span class="apt-team">Team</span>
+              <span class="apt-score">Score</span>
+              <span class="apt-rec">Record</span>
+            </div>
+            <!-- Row 1 — My Team highlighted yellow -->
+            <div class="apt-row my-team-row">
+              <span class="apt-rank-circle rank-1">1</span>
+              <span class="apt-chg up">▲2</span>
+              <div class="apt-team-cell">
+                <div class="apt-avatar apt-avatar-yellow">
+                  <span>MM</span>
+                  <div class="apt-my-star">★</div>
+                </div>
+                <span class="apt-name my-name">Mahomes Magic</span>
+              </div>
+              <div class="apt-bar-wrap"><div class="apt-bar" style="width:92%"></div><span class="apt-bar-val">87.4</span></div>
+              <span class="apt-rec-val">9-2</span>
+            </div>
+            <!-- Row 2 -->
+            <div class="apt-row">
+              <span class="apt-rank-circle">2</span>
+              <span class="apt-chg down">▼1</span>
+              <div class="apt-team-cell">
+                <div class="apt-avatar apt-avatar-blue"><span>TC</span></div>
+                <span class="apt-name">Trash Can Wins</span>
+              </div>
+              <div class="apt-bar-wrap"><div class="apt-bar apt-bar-dim" style="width:78%"></div><span class="apt-bar-val dim">74.1</span></div>
+              <span class="apt-rec-val dim">8-3</span>
+            </div>
+            <!-- Row 3 -->
+            <div class="apt-row">
+              <span class="apt-rank-circle">3</span>
+              <span class="apt-chg flat">—</span>
+              <div class="apt-team-cell">
+                <div class="apt-avatar apt-avatar-purple"><span>TA</span></div>
+                <span class="apt-name">The Algorithm</span>
+              </div>
+              <div class="apt-bar-wrap"><div class="apt-bar apt-bar-dim" style="width:66%"></div><span class="apt-bar-val dim">68.9</span></div>
+              <span class="apt-rec-val dim">7-4</span>
+            </div>
+            <!-- Row 4 -->
+            <div class="apt-row">
+              <span class="apt-rank-circle">4</span>
+              <span class="apt-chg up">▲1</span>
+              <div class="apt-team-cell">
+                <div class="apt-avatar apt-avatar-green"><span>WK</span></div>
+                <span class="apt-name">Waiver Wire Kid</span>
+              </div>
+              <div class="apt-bar-wrap"><div class="apt-bar apt-bar-dim" style="width:55%"></div><span class="apt-bar-val dim">61.2</span></div>
+              <span class="apt-rec-val dim">6-5</span>
+            </div>
+            <!-- Row 5 -->
+            <div class="apt-row">
+              <span class="apt-rank-circle">5</span>
+              <span class="apt-chg down">▼2</span>
+              <div class="apt-team-cell">
+                <div class="apt-avatar apt-avatar-gray"><span>TB</span></div>
+                <span class="apt-name">Toilet Bowl FC</span>
+              </div>
+              <div class="apt-bar-wrap"><div class="apt-bar apt-bar-dim" style="width:38%"></div><span class="apt-bar-val dim">44.8</span></div>
+              <span class="apt-rec-val dim">3-8</span>
+            </div>
+            <div class="ap-footer-link">View Full Rankings →</div>
+          </div>
+
+          <!-- CENTER: Week 11 Matchups — exact PointsMatchupCard UI -->
+          <div class="app-panel hc-center">
+            <div class="ap-header">
+              <div class="ap-header-left">
+                <span class="ap-icon">⚔️</span>
+                <span class="ap-title">Week 11 Matchups</span>
               </div>
             </div>
-            <div class="hcard-win-bar">
-              <div class="win-fill" style="width:64%"></div>
+
+            <!-- Matchup 1 — My team, LIVE -->
+            <div class="apm-card apm-mine">
+              <div class="apm-top-row">
+                <span class="apm-label">PPR · Week 11</span>
+                <span class="apm-status live">● Live</span>
+              </div>
+              <div class="apm-team-row">
+                <div class="apm-team-info">
+                  <div class="apm-avatar apm-av-yellow ring-yellow">
+                    <span>MM</span>
+                    <div class="apm-star">★</div>
+                  </div>
+                  <div>
+                    <div class="apm-name mine">Mahomes Magic</div>
+                    <div class="apm-record">9-2</div>
+                  </div>
+                </div>
+                <div class="apm-score mine-score">142.7</div>
+              </div>
+              <div class="apm-team-row">
+                <div class="apm-team-info">
+                  <div class="apm-avatar apm-av-blue ring-dark"><span>TA</span></div>
+                  <div>
+                    <div class="apm-name">The Algorithm</div>
+                    <div class="apm-record">7-4</div>
+                  </div>
+                </div>
+                <div class="apm-score dim-score">98.4</div>
+              </div>
+              <div class="apm-prob-bar"><div class="apm-prob-fill" style="width:64%"></div></div>
+              <div class="apm-prob-row">
+                <span class="apm-prob-pct">64%</span>
+                <span class="apm-prob-label">win probability</span>
+              </div>
             </div>
-            <div class="hcard-footer hcard-footer-row"><span class="win-pct">64% win probability</span><span class="live-dot">● LIVE</span></div>
+
+            <!-- Matchup 2 — Final -->
+            <div class="apm-card">
+              <div class="apm-top-row">
+                <span class="apm-label">PPR · Week 11</span>
+                <span class="apm-status final">Final</span>
+              </div>
+              <div class="apm-team-row">
+                <div class="apm-team-info">
+                  <div class="apm-avatar apm-av-green ring-green"><span>TC</span></div>
+                  <div>
+                    <div class="apm-name winner">Trash Can Wins</div>
+                    <div class="apm-record">8-3</div>
+                  </div>
+                </div>
+                <div class="apm-score winner-score">164.2</div>
+              </div>
+              <div class="apm-team-row">
+                <div class="apm-team-info">
+                  <div class="apm-avatar apm-av-red ring-dark"><span>TB</span></div>
+                  <div>
+                    <div class="apm-name loser">Toilet Bowl FC</div>
+                    <div class="apm-record">3-8</div>
+                  </div>
+                </div>
+                <div class="apm-score dim-score">101.6</div>
+              </div>
+            </div>
+
+            <!-- Matchup 3 — Upcoming -->
+            <div class="apm-card">
+              <div class="apm-top-row">
+                <span class="apm-label">PPR · Week 11</span>
+                <span class="apm-status upcoming">Upcoming</span>
+              </div>
+              <div class="apm-team-row">
+                <div class="apm-team-info">
+                  <div class="apm-avatar apm-av-purple ring-dark"><span>WK</span></div>
+                  <div>
+                    <div class="apm-name">Waiver Wire Kid</div>
+                    <div class="apm-record">6-5</div>
+                  </div>
+                </div>
+                <div class="apm-score dim-score">—</div>
+              </div>
+              <div class="apm-team-row">
+                <div class="apm-team-info">
+                  <div class="apm-avatar apm-av-gray ring-dark"><span>BB</span></div>
+                  <div>
+                    <div class="apm-name">Bench Boss</div>
+                    <div class="apm-record">5-6</div>
+                  </div>
+                </div>
+                <div class="apm-score dim-score">—</div>
+              </div>
+            </div>
           </div>
-          <div class="hero-card hc-right">
-            <div class="hcard-label">WEEK RECAP</div>
-            <div class="hcard-stat-row"><span>Top Scorer</span><strong class="yellow">Trash Can Wins · 189.2</strong></div>
-            <div class="hcard-stat-row"><span>Biggest Blowout</span><strong>44.3 pts</strong></div>
-            <div class="hcard-stat-row"><span>Lucky Win</span><strong class="red">Toilet Bowl FC</strong></div>
-            <div class="hcard-divider"></div>
-            <div class="hcard-stat-row"><span>Most Adds</span><strong>Waiver Wire Kid · 3</strong></div>
-            <div class="hcard-footer">Share → Drop in chat</div>
+
+          <!-- RIGHT: Season Overview — quick stats + leaders -->
+          <div class="app-panel hc-right">
+            <div class="ap-header">
+              <div class="ap-header-left">
+                <span class="ap-icon">📊</span>
+                <span class="ap-title">Season Overview</span>
+              </div>
+            </div>
+            <!-- Quick stats 2x2 grid -->
+            <div class="aso-stats-grid">
+              <div class="aso-stat">
+                <div class="aso-stat-icon" style="background:rgba(234,179,8,0.15)">📅</div>
+                <div class="aso-stat-val">Week 11</div>
+                <div class="aso-stat-lbl">Current Week</div>
+              </div>
+              <div class="aso-stat">
+                <div class="aso-stat-icon" style="background:rgba(34,197,94,0.15)">🏆</div>
+                <div class="aso-stat-val aso-truncate">Mahomes Magic</div>
+                <div class="aso-stat-lbl">League Leader</div>
+              </div>
+              <div class="aso-stat">
+                <div class="aso-stat-icon" style="background:rgba(59,130,246,0.15)">📈</div>
+                <div class="aso-stat-val">118.4</div>
+                <div class="aso-stat-lbl">Avg Pts/Week</div>
+              </div>
+              <div class="aso-stat">
+                <div class="aso-stat-icon" style="background:rgba(234,179,8,0.15)">⚔️</div>
+                <div class="aso-stat-val">6</div>
+                <div class="aso-stat-lbl">Active Matchups</div>
+              </div>
+            </div>
+            <!-- League leaders mini -->
+            <div class="aso-leaders-header">🏅 League Leaders</div>
+            <div class="aso-leaders-grid">
+              <div class="aso-leader">
+                <div class="aso-leader-top">
+                  <span>🔥</span>
+                  <span class="aso-leader-lbl">Hottest</span>
+                </div>
+                <div class="aso-leader-name">Mahomes Magic</div>
+                <div class="aso-leader-sub green">W3 · 142.7 ppg</div>
+              </div>
+              <div class="aso-leader">
+                <div class="aso-leader-top">
+                  <span>🥶</span>
+                  <span class="aso-leader-lbl">Coldest</span>
+                </div>
+                <div class="aso-leader-name">Toilet Bowl FC</div>
+                <div class="aso-leader-sub red">L4 · 88.3 ppg</div>
+              </div>
+              <div class="aso-leader">
+                <div class="aso-leader-top">
+                  <span>🔄</span>
+                  <span class="aso-leader-lbl">Most Moves</span>
+                </div>
+                <div class="aso-leader-name">Waiver Wire Kid</div>
+                <div class="aso-leader-sub blue">34 transactions</div>
+              </div>
+              <div class="aso-leader">
+                <div class="aso-leader-top">
+                  <span>🪨</span>
+                  <span class="aso-leader-lbl">Fewest Moves</span>
+                </div>
+                <div class="aso-leader-name">The Algorithm</div>
+                <div class="aso-leader-sub purple">4 transactions</div>
+              </div>
+            </div>
           </div>
+
         </div>
       </div>
     </section>
@@ -212,113 +424,175 @@
           <template v-for="card in filteredCards" :key="card.id">
             <div class="share-card" :class="card.size">
 
-              <!-- POWER RANKINGS CARD -->
+              <!-- POWER RANKINGS CARD — matches actual app PR table output -->
               <template v-if="card.type === 'power-rankings'">
-                <div class="sc-card football-card">
-                  <div class="sc-header"><span class="sc-sport-badge">🏈 NFL FANTASY</span><span class="sc-week">WK {{ card.week }}</span></div>
-                  <div class="sc-title">POWER RANKINGS</div>
-                  <div class="sc-ranks">
-                    <div v-for="(t,i) in card.teams" :key="i" class="sc-rank-row">
-                      <span class="sc-num" :class="i===0?'sc-gold':''">{{ i+1 }}</span>
-                      <div class="sc-bar-bg"><div class="sc-bar" :style="{width: t.score+'%', opacity: 1-(i*0.15)}"></div></div>
-                      <span class="sc-team-name">{{ t.name }}</span>
-                      <span class="sc-trend" :class="t.trend>0?'up':t.trend<0?'dn':'fl'">{{ t.trend>0?'↑'+t.trend:t.trend<0?'↓'+Math.abs(t.trend):'—' }}</span>
+                <div class="sc-card sc-pr-card">
+                  <div class="sc-brand-row">
+                    <span class="sc-brand-logo">UFD</span>
+                    <span class="sc-brand-sport">🏈 NFL Fantasy · PPR</span>
+                    <span class="sc-brand-week">WK {{ card.week }}</span>
+                  </div>
+                  <div class="sc-pr-title">⚡ POWER RANKINGS</div>
+                  <div class="sc-pr-table">
+                    <div class="sc-pr-thead">
+                      <span>Rank</span><span>+/-</span><span>Team</span><span>Score</span><span>W-L</span>
+                    </div>
+                    <div v-for="(t,i) in card.teams" :key="i" class="sc-pr-row" :class="i===0?'sc-pr-leader':''">
+                      <span class="sc-pr-num" :class="i===0?'num-gold':i===1?'num-silver':i===2?'num-bronze':''">{{ i+1 }}</span>
+                      <span class="sc-pr-chg" :class="t.trend>0?'chg-up':t.trend<0?'chg-dn':'chg-flat'">
+                        {{ t.trend>0?'▲'+t.trend : t.trend<0?'▼'+Math.abs(t.trend):'—' }}
+                      </span>
+                      <div class="sc-pr-team-cell">
+                        <div class="sc-pr-initials" :class="'init-'+i">{{ t.name.split(' ').map(w=>w[0]).join('').slice(0,2) }}</div>
+                        <span class="sc-pr-name" :class="i===0?'name-gold':''">{{ t.name }}</span>
+                      </div>
+                      <div class="sc-pr-bar-wrap">
+                        <div class="sc-pr-bar" :style="{width: t.score+'%', opacity: Math.max(0.3, 1-(i*0.15))}"></div>
+                        <span class="sc-pr-bar-num">{{ t.pscore }}</span>
+                      </div>
+                      <span class="sc-pr-rec">{{ t.record }}</span>
                     </div>
                   </div>
-                  <div class="sc-footer">ultimatefantasydashboard.com</div>
+                  <div class="sc-watermark">ultimatefantasydashboard.com</div>
                 </div>
               </template>
 
-              <!-- BLOWOUT CARD -->
-              <template v-else-if="card.type === 'blowout'">
-                <div class="sc-card blowout-card">
-                  <div class="sc-header"><span class="sc-sport-badge">🏀 NBA FANTASY</span><span class="sc-week">WK {{ card.week }}</span></div>
-                  <div class="sc-blowout-title">💣 BIGGEST<br/>BLOWOUT</div>
-                  <div class="sc-blowout-score">
-                    <div class="sc-bl-team win">
-                      <span class="sc-bl-name">{{ card.winner }}</span>
-                      <span class="sc-bl-pts win-pts">{{ card.winScore }}</span>
-                    </div>
-                    <div class="sc-bl-vs">def.</div>
-                    <div class="sc-bl-team lose">
-                      <span class="sc-bl-name">{{ card.loser }}</span>
-                      <span class="sc-bl-pts lose-pts">{{ card.loseScore }}</span>
-                    </div>
-                  </div>
-                  <div class="sc-margin">{{ card.margin }} point margin · Week {{ card.week }}</div>
-                  <div class="sc-footer">ultimatefantasydashboard.com</div>
-                </div>
-              </template>
-
-              <!-- MATCHUP CARD -->
+              <!-- MATCHUP CARD — matches PointsMatchupCard exactly -->
               <template v-else-if="card.type === 'matchup'">
-                <div class="sc-card matchup-card">
-                  <div class="sc-header"><span class="sc-sport-badge">⚾ MLB FANTASY</span><span class="sc-week">WK {{ card.week }}</span></div>
-                  <div class="sc-title small">HEAD-TO-HEAD</div>
-                  <div class="sc-matchup-row">
-                    <div class="sc-team-block">
-                      <div class="sc-team-circle" :style="{background: card.team1Color}">{{ card.team1Icon }}</div>
-                      <div class="sc-team-nm">{{ card.team1 }}</div>
-                      <div class="sc-team-sc">{{ card.score1 }}</div>
+                <div class="sc-card sc-matchup-card">
+                  <div class="sc-brand-row">
+                    <span class="sc-brand-logo">UFD</span>
+                    <span class="sc-brand-sport">{{ card.sportLabel }}</span>
+                    <span class="sc-matchup-status" :class="card.status === 'Live' ? 'status-live' : card.status === 'Final' ? 'status-final' : 'status-upcoming'">
+                      {{ card.status === 'Live' ? '● ' + card.status : card.status }}
+                    </span>
+                  </div>
+                  <div class="sc-matchup-label">⚔️ WEEK {{ card.week }} MATCHUP</div>
+                  <!-- Team 1 -->
+                  <div class="sc-mu-team" :class="card.team1Won ? 'mu-winner' : ''">
+                    <div class="sc-mu-avatar" :style="{background: card.team1Color}">
+                      <span>{{ card.team1.split(' ').map(w=>w[0]).join('').slice(0,2) }}</span>
+                      <div v-if="card.myTeam === 1" class="sc-mu-star">★</div>
                     </div>
-                    <div class="sc-vs-circle">VS</div>
-                    <div class="sc-team-block right">
-                      <div class="sc-team-circle" :style="{background: card.team2Color}">{{ card.team2Icon }}</div>
-                      <div class="sc-team-nm">{{ card.team2 }}</div>
-                      <div class="sc-team-sc dim">{{ card.score2 }}</div>
+                    <div class="sc-mu-info">
+                      <div class="sc-mu-name" :class="card.myTeam===1?'mu-mine':card.team1Won?'mu-win-name':''">{{ card.team1 }}</div>
+                      <div class="sc-mu-rec">{{ card.record1 }}</div>
+                    </div>
+                    <div class="sc-mu-score" :class="card.team1Won?'sc-score-win':card.status==='Final'?'sc-score-loss':card.myTeam===1?'sc-score-mine':'sc-score-neutral'">
+                      {{ card.score1 }}
                     </div>
                   </div>
-                  <div class="sc-win-bar-wrap">
-                    <div class="sc-win-fill" :style="{width: card.prob+'%'}"></div>
+                  <!-- Divider with vs -->
+                  <div class="sc-mu-divider"><span>vs</span></div>
+                  <!-- Team 2 -->
+                  <div class="sc-mu-team" :class="card.team2Won ? 'mu-winner' : ''">
+                    <div class="sc-mu-avatar" :style="{background: card.team2Color}">
+                      <span>{{ card.team2.split(' ').map(w=>w[0]).join('').slice(0,2) }}</span>
+                    </div>
+                    <div class="sc-mu-info">
+                      <div class="sc-mu-name" :class="card.team2Won?'mu-win-name':''">{{ card.team2 }}</div>
+                      <div class="sc-mu-rec">{{ card.record2 }}</div>
+                    </div>
+                    <div class="sc-mu-score" :class="card.team2Won?'sc-score-win':card.status==='Final'?'sc-score-loss':'sc-score-neutral'">
+                      {{ card.score2 }}
+                    </div>
                   </div>
-                  <div class="sc-win-label">{{ card.prob }}% win probability</div>
-                  <div class="sc-footer">ultimatefantasydashboard.com</div>
+                  <!-- Win probability bar (if not final or upcoming) -->
+                  <template v-if="card.prob && card.status !== 'Final'">
+                    <div class="sc-mu-prob-bar"><div class="sc-mu-prob-fill" :style="{width: card.prob+'%'}"></div></div>
+                    <div class="sc-mu-prob-label">{{ card.prob }}% win probability · {{ card.team1 }}</div>
+                  </template>
+                  <div class="sc-watermark">ultimatefantasydashboard.com</div>
                 </div>
               </template>
 
-              <!-- MVP RACE CARD -->
-              <template v-else-if="card.type === 'mvp'">
-                <div class="sc-card mvp-card">
-                  <div class="sc-header"><span class="sc-sport-badge">🏒 NHL FANTASY</span><span class="sc-week">SEASON</span></div>
-                  <div class="sc-mvp-crown">👑</div>
-                  <div class="sc-title">MVP RACE</div>
-                  <div class="sc-mvp-list">
-                    <div v-for="(m,i) in card.managers" :key="i" class="sc-mvp-row">
-                      <span class="sc-mvp-rank">{{ ['🥇','🥈','🥉'][i] || (i+1) }}</span>
-                      <span class="sc-mvp-name">{{ m.name }}</span>
-                      <div class="sc-mvp-bar-wrap"><div class="sc-mvp-bar" :style="{width: m.pct+'%'}"></div></div>
-                      <span class="sc-mvp-pts">{{ m.pts }}</span>
-                    </div>
-                  </div>
-                  <div class="sc-footer">ultimatefantasydashboard.com</div>
-                </div>
-              </template>
-
-              <!-- ELIMINATED CARD -->
-              <template v-else-if="card.type === 'eliminated'">
-                <div class="sc-card elim-card">
-                  <div class="sc-header"><span class="sc-sport-badge">🏈 NFL FANTASY</span><span class="sc-week">PLAYOFFS</span></div>
-                  <div class="sc-elim-top">☠️</div>
-                  <div class="sc-elim-title">YOU JUST<br/>GOT BOUNCED</div>
-                  <div class="sc-elim-name">{{ card.eliminated }}</div>
-                  <div class="sc-elim-score">Lost {{ card.score1 }} – {{ card.score2 }}</div>
-                  <div class="sc-elim-by">Eliminated by <strong>{{ card.by }}</strong></div>
-                  <div class="sc-footer">ultimatefantasydashboard.com</div>
-                </div>
-              </template>
-
-              <!-- WEEKLY RECAP CARD -->
+              <!-- WEEKLY RECAP — matches the League Highlights + leaders style -->
               <template v-else-if="card.type === 'recap'">
-                <div class="sc-card recap-card">
-                  <div class="sc-header"><span class="sc-sport-badge">🏈 NFL FANTASY</span><span class="sc-week">WK {{ card.week }} RECAP</span></div>
-                  <div class="sc-title small">LEAGUE DIGEST</div>
-                  <div class="sc-recap-stats">
-                    <div class="sc-rs-item"><span class="sc-rs-label">🔥 Top Score</span><strong>{{ card.topScore }}</strong></div>
-                    <div class="sc-rs-item"><span class="sc-rs-label">💀 Lowest</span><strong class="red">{{ card.lowScore }}</strong></div>
-                    <div class="sc-rs-item"><span class="sc-rs-label">💣 Blowout</span><strong>{{ card.blowout }}</strong></div>
-                    <div class="sc-rs-item"><span class="sc-rs-label">😤 Closest</span><strong>{{ card.closest }}</strong></div>
+                <div class="sc-card sc-recap-card2">
+                  <div class="sc-brand-row">
+                    <span class="sc-brand-logo">UFD</span>
+                    <span class="sc-brand-sport">{{ card.sportLabel }}</span>
+                    <span class="sc-brand-week">WK {{ card.week }} RECAP</span>
                   </div>
-                  <div class="sc-footer">ultimatefantasydashboard.com</div>
+                  <div class="sc-recap-title">📰 LEAGUE DIGEST</div>
+                  <div class="sc-recap-rows">
+                    <div class="sc-recap-row"><span class="rcap-icon">🏆</span><div><div class="rcap-lbl">Top Score</div><div class="rcap-val yellow-val">{{ card.topScore }}</div></div></div>
+                    <div class="sc-recap-row"><span class="rcap-icon">💀</span><div><div class="rcap-lbl">Lowest Score</div><div class="rcap-val red-val">{{ card.lowScore }}</div></div></div>
+                    <div class="sc-recap-row"><span class="rcap-icon">💣</span><div><div class="rcap-lbl">Biggest Blowout</div><div class="rcap-val">{{ card.blowout }}</div></div></div>
+                    <div class="sc-recap-row"><span class="rcap-icon">😤</span><div><div class="rcap-lbl">Closest Game</div><div class="rcap-val green-val">{{ card.closest }}</div></div></div>
+                    <div class="sc-recap-row"><span class="rcap-icon">🔥</span><div><div class="rcap-lbl">On Fire</div><div class="rcap-val">{{ card.onFire }}</div></div></div>
+                  </div>
+                  <div class="sc-watermark">ultimatefantasydashboard.com</div>
+                </div>
+              </template>
+
+              <!-- STANDINGS CARD — exact standings table output -->
+              <template v-else-if="card.type === 'standings'">
+                <div class="sc-card sc-standings-card">
+                  <div class="sc-brand-row">
+                    <span class="sc-brand-logo">UFD</span>
+                    <span class="sc-brand-sport">{{ card.sportLabel }}</span>
+                    <span class="sc-brand-week">WK {{ card.week }}</span>
+                  </div>
+                  <div class="sc-standings-title">🏆 STANDINGS</div>
+                  <div class="sc-standings-thead">
+                    <span class="std-rank">#</span>
+                    <span class="std-team">Team</span>
+                    <span class="std-rec">W-L</span>
+                    <span class="std-pf">PF</span>
+                    <span class="std-streak">Streak</span>
+                  </div>
+                  <div v-for="(t, i) in card.teams" :key="i" class="sc-standings-row" :class="[t.playoff?'std-playoff':'', t.myTeam?'std-myteam':'']">
+                    <span class="std-rank-val" :class="i===0?'rank-gold':i===1?'rank-silver':i===2?'rank-bronze':''">
+                      {{ i+1 }}<span v-if="t.playoff" class="std-playoff-dot">●</span>
+                    </span>
+                    <div class="std-team-cell">
+                      <div class="std-avatar" :class="'stdav-'+i">
+                        {{ t.name.split(' ').map(w=>w[0]).join('').slice(0,2) }}
+                        <div v-if="t.myTeam" class="std-my-star">★</div>
+                      </div>
+                      <span class="std-name" :class="t.myTeam?'std-mine-name':''">{{ t.name }}</span>
+                    </div>
+                    <span class="std-rec-val">{{ t.wins }}-{{ t.losses }}</span>
+                    <span class="std-pf-val">{{ t.pf }}</span>
+                    <span class="std-streak-val" :class="t.streak.startsWith('W')?'str-w':'str-l'">{{ t.streak }}</span>
+                  </div>
+                  <div class="sc-watermark">ultimatefantasydashboard.com</div>
+                </div>
+              </template>
+
+              <!-- TRADE ANALYZER CARD -->
+              <template v-else-if="card.type === 'trade'">
+                <div class="sc-card sc-trade-card">
+                  <div class="sc-brand-row">
+                    <span class="sc-brand-logo">UFD</span>
+                    <span class="sc-brand-sport">{{ card.sportLabel }}</span>
+                    <span class="sc-brand-week">TRADE ALERT</span>
+                  </div>
+                  <div class="sc-trade-title">🤝 TRADE ANALYSIS</div>
+                  <div class="sc-trade-teams">
+                    <div class="sc-trade-side">
+                      <div class="sc-trade-manager">{{ card.team1 }} receives</div>
+                      <div v-for="p in card.gives2" :key="p.name" class="sc-trade-player">
+                        <div class="sc-trade-player-pos" :class="'pos-'+p.pos.toLowerCase()">{{ p.pos }}</div>
+                        <span class="sc-trade-player-name">{{ p.name }}</span>
+                        <span class="sc-trade-player-val green-val">+{{ p.val }}</span>
+                      </div>
+                    </div>
+                    <div class="sc-trade-arrow">⇄</div>
+                    <div class="sc-trade-side">
+                      <div class="sc-trade-manager">{{ card.team2 }} receives</div>
+                      <div v-for="p in card.gives1" :key="p.name" class="sc-trade-player">
+                        <div class="sc-trade-player-pos" :class="'pos-'+p.pos.toLowerCase()">{{ p.pos }}</div>
+                        <span class="sc-trade-player-name">{{ p.name }}</span>
+                        <span class="sc-trade-player-val" :class="p.val > 0 ? 'green-val' : 'red-val'">{{ p.val > 0 ? '+' : '' }}{{ p.val }}</span>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="sc-trade-verdict" :class="card.verdict === 'Fair' ? 'verdict-fair' : card.verdict === 'Win' ? 'verdict-win' : 'verdict-loss'">
+                    {{ card.verdict === 'Win' ? '✓ ' + card.team1 + ' wins this trade' : card.verdict === 'Fair' ? '≈ Fair trade' : '✗ Unfavorable for ' + card.team1 }}
+                  </div>
+                  <div class="sc-watermark">ultimatefantasydashboard.com</div>
                 </div>
               </template>
 
@@ -585,10 +859,11 @@ const previewTeams = computed(() => previewTeamsBySport[selectedSport.value] || 
 // ── Gallery ─────────────────────────────────────────────────────────────────
 const galleryFilters = [
   { id: 'all', label: 'All Cards' },
-  { id: 'football', label: '🏈 Football' },
-  { id: 'baseball', label: '⚾ Baseball' },
-  { id: 'basketball', label: '🏀 Basketball' },
-  { id: 'hockey', label: '🏒 Hockey' },
+  { id: 'power-rankings', label: '⚡ Power Rankings' },
+  { id: 'matchup', label: '⚔️ Matchups' },
+  { id: 'standings', label: '🏆 Standings' },
+  { id: 'recap', label: '📰 Weekly Recap' },
+  { id: 'trade', label: '🤝 Trade Analysis' },
 ]
 const activeGalleryFilter = ref('all')
 
@@ -596,50 +871,67 @@ const galleryCards = [
   {
     id: 1, sport: 'football', type: 'power-rankings', size: 'card-tall', week: 11,
     teams: [
-      { name: 'Mahomes Magic', score: 92, trend: 2 },
-      { name: 'The Algorithm', score: 84, trend: -1 },
-      { name: 'Trash Can Wins', score: 76, trend: 1 },
-      { name: 'Waiver Wire Kid', score: 64, trend: -2 },
-      { name: 'Toilet Bowl FC', score: 44, trend: 0 },
+      { name: 'Mahomes Magic', score: 92, trend: 2, pscore: '87.4', record: '9-2' },
+      { name: 'Trash Can Wins', score: 78, trend: -1, pscore: '74.1', record: '8-3' },
+      { name: 'The Algorithm',  score: 66, trend:  0, pscore: '68.9', record: '7-4' },
+      { name: 'Waiver Wire Kid',score: 55, trend:  1, pscore: '61.2', record: '6-5' },
+      { name: 'Toilet Bowl FC', score: 38, trend: -2, pscore: '44.8', record: '3-8' },
     ]
   },
   {
-    id: 2, sport: 'basketball', type: 'blowout', size: 'card-normal', week: 14,
-    winner: 'Triple Double', winScore: '1,312.4',
-    loser: 'Box Score Fraud', loseScore: '891.2', margin: '421.2'
+    id: 2, sport: 'football', type: 'matchup', size: 'card-normal', week: 11,
+    sportLabel: '🏈 NFL Fantasy · PPR',
+    team1: 'Mahomes Magic', team1Color: 'linear-gradient(135deg,#eab308,#d97706)', record1: '9-2 · proj 148.2', score1: '142.7', team1Won: true, myTeam: 1,
+    team2: 'The Algorithm',  team2Color: 'linear-gradient(135deg,#6366f1,#4f46e5)', record2: '7-4 · proj 121.4', score2: '98.4',  team2Won: false,
+    prob: 64, status: 'Live'
   },
   {
-    id: 3, sport: 'baseball', type: 'matchup', size: 'card-normal', week: 18,
-    team1: 'Dingers Only', team1Icon: '💣', team1Color: 'linear-gradient(135deg,#f59e0b,#d97706)', score1: '102.5',
-    team2: 'ERA Zero', team2Icon: '⚾', team2Color: 'linear-gradient(135deg,#06b6d4,#0891b2)', score2: '88.0',
-    prob: 67
+    id: 3, sport: 'football', type: 'recap', size: 'card-normal', week: 11,
+    sportLabel: '🏈 NFL Fantasy · PPR',
+    topScore:  'Trash Can Wins · 164.2',
+    lowScore:  'Toilet Bowl FC · 72.4',
+    blowout:   'Trash Can def. TB · 91.8 pts',
+    closest:   'WW Kid def. B.Boss · 2.1 pts',
+    onFire:    'Mahomes Magic · W3'
   },
   {
-    id: 4, sport: 'hockey', type: 'mvp', size: 'card-tall', week: 12,
-    managers: [
-      { name: 'Save % Kings', pts: '1,567', pct: 94 },
-      { name: 'Hat Trick City', pts: '1,423', pct: 85 },
-      { name: 'Power Play FC', pts: '1,312', pct: 74 },
-      { name: 'Empty Net Bros', pts: '1,189', pct: 61 },
+    id: 4, sport: 'football', type: 'standings', size: 'card-tall', week: 11,
+    sportLabel: '🏈 NFL Fantasy · PPR',
+    teams: [
+      { name: 'Mahomes Magic',  wins: 9, losses: 2, pf: '1,456', streak: 'W3', playoff: true,  myTeam: true  },
+      { name: 'Trash Can Wins', wins: 8, losses: 3, pf: '1,342', streak: 'W2', playoff: true,  myTeam: false },
+      { name: 'The Algorithm',  wins: 7, losses: 4, pf: '1,298', streak: 'L1', playoff: true,  myTeam: false },
+      { name: 'Waiver Wire Kid',wins: 6, losses: 5, pf: '1,187', streak: 'W1', playoff: false, myTeam: false },
+      { name: 'Bench Boss',     wins: 5, losses: 6, pf: '1,102', streak: 'L2', playoff: false, myTeam: false },
+      { name: 'Toilet Bowl FC', wins: 3, losses: 8, pf: '982',   streak: 'L4', playoff: false, myTeam: false },
     ]
   },
   {
-    id: 5, sport: 'football', type: 'eliminated', size: 'card-normal',
-    eliminated: 'Toilet Bowl FC', score1: '98.4', score2: '142.7', by: 'Mahomes Magic'
+    id: 5, sport: 'baseball', type: 'matchup', size: 'card-normal', week: 18,
+    sportLabel: '⚾ MLB Fantasy · H2H',
+    team1: 'Dingers Only', team1Color: 'linear-gradient(135deg,#f59e0b,#d97706)', record1: '82-68 · proj 98.5', score1: '94.0', team1Won: false, myTeam: null,
+    team2: 'ERA Zero',     team2Color: 'linear-gradient(135deg,#06b6d4,#0891b2)', record2: '88-62 · proj 105.0', score2: '102.5', team2Won: true,
+    prob: null, status: 'Final'
   },
   {
-    id: 6, sport: 'football', type: 'recap', size: 'card-normal', week: 11,
-    topScore: 'Mahomes Magic · 189.2',
-    lowScore: 'Toilet Bowl FC · 72.4',
-    blowout: '116.8 pts',
-    closest: '2.1 pts'
+    id: 6, sport: 'football', type: 'trade', size: 'card-normal',
+    sportLabel: '🏈 NFL Fantasy · PPR',
+    team1: 'Mahomes Magic', team2: 'Waiver Wire Kid',
+    gives1: [
+      { name: 'Justin Jefferson', pos: 'WR', val: 8.2 },
+    ],
+    gives2: [
+      { name: 'Amon-Ra St. Brown', pos: 'WR', val: 6.4 },
+      { name: 'Rhamondre Stevenson', pos: 'RB', val: 4.1 },
+    ],
+    verdict: 'Win'
   },
 ]
 
 const filteredCards = computed(() =>
   activeGalleryFilter.value === 'all'
     ? galleryCards
-    : galleryCards.filter(c => c.sport === activeGalleryFilter.value)
+    : galleryCards.filter(c => c.type === activeGalleryFilter.value)
 )
 
 // ── Chat messages ────────────────────────────────────────────────────────────
@@ -813,26 +1105,6 @@ function scrollTo(id: string) {
   text-align: center;
 }
 
-.eyebrow-badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  padding: 6px 14px;
-  background: rgba(234,179,8,0.08);
-  border: 1px solid rgba(234,179,8,0.25);
-  border-radius: 999px;
-  font-size: 0.8rem;
-  font-weight: 600;
-  color: #eab308;
-  margin-bottom: 28px;
-  letter-spacing: 0.04em;
-}
-.badge-dot {
-  width: 7px; height: 7px;
-  background: #eab308;
-  border-radius: 50%;
-  animation: pulse-dot 2s infinite;
-}
 @keyframes pulse-dot {
   0%, 100% { opacity: 1; }
   50% { opacity: 0.3; }
@@ -889,60 +1161,251 @@ function scrollTo(id: string) {
 .trust-item svg { color: #eab308; }
 .trust-sep { color: #374151; }
 
-/* ── Hero floating cards ────────────────────────────────────────── */
+/* ── Logo ─────────────────────────────────────────────────────── */
+.hero-logo-wrap {
+  margin-bottom: 32px;
+}
+.hero-logo {
+  height: 100px;
+  width: auto;
+  object-fit: contain;
+  filter: drop-shadow(0 0 30px rgba(234,179,8,0.2));
+}
+
+/* ── Authentic App UI Panels ─────────────────────────────────── */
 .hero-cards-row {
   display: grid;
-  grid-template-columns: 1fr 1.15fr 1fr;
+  grid-template-columns: 1.05fr 1fr 1.05fr;
   gap: 16px;
-  max-width: 1000px;
+  max-width: 1100px;
   margin: 0 auto;
-  padding-bottom: 0;
+  align-items: start;
 }
-.hero-card {
-  background: #0d0f1a;
+/* Base panel — exact app card visual */
+.app-panel {
+  background: linear-gradient(135deg, rgba(19,22,32,0.98), rgba(10,12,20,0.98));
   border: 1px solid #1e2130;
-  border-radius: 14px;
-  padding: 18px;
-  font-size: 0.8rem;
+  border-radius: 16px;
+  overflow: hidden;
   box-shadow: 0 24px 60px rgba(0,0,0,0.5);
+  font-size: 0.75rem;
 }
-.hc-left { transform: rotate(-1.5deg) translateY(8px); }
+.hc-left  { transform: rotate(-1.5deg) translateY(12px); }
 .hc-right { transform: rotate(1.5deg) translateY(12px); }
-.hc-center { transform: translateY(-8px); border-color: rgba(234,179,8,0.3); box-shadow: 0 24px 60px rgba(0,0,0,0.5), 0 0 40px rgba(234,179,8,0.08); }
+.hc-center {
+  border-color: rgba(234,179,8,0.25);
+  box-shadow: 0 24px 60px rgba(0,0,0,0.5), 0 0 50px rgba(234,179,8,0.07);
+}
 
-.hcard-label { font-family: 'Barlow Condensed', sans-serif; font-size: 0.65rem; font-weight: 700; letter-spacing: 0.15em; color: #4b5563; margin-bottom: 12px; text-transform: uppercase; }
-.hcard-rank-row { display: flex; align-items: center; gap: 8px; padding: 5px 0; border-bottom: 1px solid #1a1d28; }
-.hcard-rank-row:last-of-type { border-bottom: none; }
-.hcard-num { font-family: 'Barlow Condensed', sans-serif; font-weight: 900; font-size: 1rem; color: #4b5563; width: 18px; text-align: right; }
-.hcard-num.yellow { color: #eab308; }
-.hcard-name { flex: 1; color: #d1d5db; font-size: 0.78rem; }
-.hcard-arrow { font-family: 'Barlow Condensed', sans-serif; font-size: 0.75rem; font-weight: 700; }
-.hcard-arrow.up { color: #10b981; }
-.hcard-arrow.down { color: #ef4444; }
-.hcard-arrow.flat { color: #4b5563; }
-.hcard-footer { font-size: 0.65rem; color: #374151; margin-top: 12px; }
-.hcard-footer-row { display: flex; justify-content: space-between; align-items: center; }
+/* Panel header — matches card-header from style.css */
+.ap-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  border-bottom: 1px solid #1e2130;
+}
+.ap-header-left { display: flex; align-items: center; gap: 8px; }
+.ap-icon { font-size: 1rem; }
+.ap-title { font-family: 'Barlow', sans-serif; font-size: 0.85rem; font-weight: 700; color: #e5e7eb; }
+.ap-badge-week {
+  font-size: 0.65rem; font-weight: 600; color: #9ca3af;
+  background: #1e2130; border-radius: 4px; padding: 2px 7px;
+}
 
-.hcard-matchup-header { font-family: 'Barlow Condensed', sans-serif; font-size: 0.65rem; font-weight: 700; letter-spacing: 0.15em; color: #4b5563; margin-bottom: 14px; text-transform: uppercase; text-align: center; }
-.hcard-matchup-vs { display: flex; flex-direction: column; gap: 8px; margin-bottom: 14px; }
-.hcard-team { display: flex; align-items: center; gap: 8px; }
-.hcard-avatar { width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 0.75rem; flex-shrink: 0; }
-.hcard-team span { flex: 1; font-size: 0.78rem; color: #d1d5db; }
-.hcard-vs-badge { font-family: 'Barlow Condensed', sans-serif; font-weight: 900; font-size: 0.7rem; color: #374151; text-align: center; letter-spacing: 0.1em; }
-.score-yellow { font-family: 'Barlow Condensed', sans-serif; font-weight: 900; color: #eab308; font-size: 1rem; }
-.score-dim { font-family: 'Barlow Condensed', sans-serif; font-weight: 900; color: #4b5563; font-size: 1rem; }
-.win-bar { height: 4px; background: #1a1d28; border-radius: 2px; overflow: hidden; margin-bottom: 10px; }
-.win-fill { height: 100%; background: linear-gradient(90deg, #eab308, #fbbf24); border-radius: 2px; }
-.win-pct { color: #9ca3af; font-size: 0.7rem; }
-.live-dot { color: #10b981; font-size: 0.65rem; font-weight: 700; letter-spacing: 0.05em; animation: pulse-dot 1.5s infinite; }
+/* ─ Power Rankings table (matches app exactly) */
+.ap-table-head {
+  display: grid;
+  grid-template-columns: 28px 20px 1fr 80px 40px;
+  gap: 6px;
+  padding: 6px 16px;
+  font-size: 0.6rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: #4b5563;
+  border-bottom: 1px solid #1a1d28;
+}
+.apt-row {
+  display: grid;
+  grid-template-columns: 28px 20px 1fr 80px 40px;
+  gap: 6px;
+  align-items: center;
+  padding: 7px 16px;
+  border-bottom: 1px solid #1a1d28;
+  transition: background 0.15s;
+}
+.apt-row:last-of-type { border-bottom: none; }
+.my-team-row { background: rgba(234,179,8,0.06); }
 
-.hcard-stat-row { display: flex; justify-content: space-between; align-items: center; padding: 5px 0; border-bottom: 1px solid #1a1d28; font-size: 0.76rem; }
-.hcard-stat-row:last-of-type { border-bottom: none; }
-.hcard-stat-row span { color: #6b7280; }
-.hcard-stat-row strong { color: #d1d5db; font-weight: 600; }
-.hcard-stat-row strong.yellow { color: #eab308; }
-.hcard-stat-row strong.red { color: #ef4444; }
-.hcard-divider { height: 1px; background: #1a1d28; margin: 8px 0; }
+.apt-rank-circle {
+  width: 20px; height: 20px;
+  border-radius: 50%;
+  background: #1e2130;
+  color: #9ca3af;
+  font-family: 'Barlow Condensed', sans-serif;
+  font-weight: 900;
+  font-size: 0.7rem;
+  display: flex; align-items: center; justify-content: center;
+}
+.rank-1 { background: rgba(234,179,8,0.15); color: #eab308; }
+
+.apt-chg { font-family: 'Barlow Condensed', sans-serif; font-size: 0.7rem; font-weight: 700; }
+.apt-chg.up   { color: #10b981; }
+.apt-chg.down { color: #ef4444; }
+.apt-chg.flat { color: #374151; }
+
+.apt-team-cell { display: flex; align-items: center; gap: 6px; min-width: 0; }
+.apt-avatar {
+  width: 22px; height: 22px; border-radius: 50%; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 0.55rem; font-weight: 700;
+  border: 2px solid #2a2d3a; position: relative;
+  color: #fff;
+}
+.apt-avatar-yellow { background: linear-gradient(135deg,#eab308,#d97706); border-color: #eab308 !important; }
+.apt-avatar-blue   { background: linear-gradient(135deg,#3b82f6,#2563eb); }
+.apt-avatar-purple { background: linear-gradient(135deg,#8b5cf6,#7c3aed); }
+.apt-avatar-green  { background: linear-gradient(135deg,#10b981,#059669); }
+.apt-avatar-red    { background: linear-gradient(135deg,#ef4444,#dc2626); }
+.apt-avatar-gray   { background: linear-gradient(135deg,#6b7280,#4b5563); }
+.apt-my-star {
+  position: absolute; top: -3px; right: -3px;
+  width: 9px; height: 9px; border-radius: 50%;
+  background: #eab308; color: #0a0c14;
+  font-size: 5px; display: flex; align-items: center; justify-content: center;
+}
+.apt-name { font-size: 0.72rem; color: #e5e7eb; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.apt-name.my-name { color: #eab308; }
+
+.apt-bar-wrap { display: flex; align-items: center; gap: 4px; }
+.apt-bar {
+  height: 5px; border-radius: 3px; flex-shrink: 0;
+  background: linear-gradient(90deg, #22c55e, #16a34a);
+  width: 0; /* set inline */
+}
+.apt-bar-dim { background: #2a2d3a; }
+.apt-bar-val { font-family: 'Barlow Condensed', sans-serif; font-size: 0.7rem; font-weight: 700; color: #22c55e; white-space: nowrap; }
+.apt-bar-val.dim { color: #4b5563; }
+.apt-rec-val { font-size: 0.68rem; color: #e5e7eb; text-align: right; }
+.apt-rec-val.dim { color: #4b5563; }
+.ap-footer-link {
+  padding: 8px 16px;
+  font-size: 0.65rem;
+  color: #22c55e;
+  border-top: 1px solid #1a1d28;
+  font-weight: 600;
+}
+
+/* ─ Matchup cards (center panel — matches PointsMatchupCard) */
+.apm-card {
+  padding: 12px 16px;
+  border-bottom: 1px solid #1a1d28;
+}
+.apm-card:last-of-type { border-bottom: none; }
+.apm-mine { background: rgba(234,179,8,0.04); }
+
+.apm-top-row {
+  display: flex; justify-content: space-between; align-items: center;
+  margin-bottom: 8px;
+}
+.apm-label { font-size: 0.6rem; font-weight: 700; letter-spacing: 0.08em; color: #4b5563; text-transform: uppercase; }
+.apm-status { font-size: 0.62rem; font-weight: 700; padding: 2px 7px; border-radius: 999px; }
+.apm-status.live { background: rgba(16,185,129,0.15); color: #10b981; animation: pulse-dot 2s infinite; }
+.apm-status.final { background: #1e2130; color: #6b7280; }
+.apm-status.upcoming { background: rgba(59,130,246,0.15); color: #60a5fa; }
+
+.apm-team-row {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 5px;
+}
+.apm-team-info { display: flex; align-items: center; gap: 8px; }
+.apm-avatar {
+  width: 28px; height: 28px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 0.6rem; font-weight: 700; color: #fff;
+  border: 2px solid transparent; flex-shrink: 0; position: relative;
+}
+.apm-av-yellow { background: linear-gradient(135deg,#eab308,#d97706); }
+.apm-av-blue   { background: linear-gradient(135deg,#3b82f6,#2563eb); }
+.apm-av-green  { background: linear-gradient(135deg,#10b981,#059669); }
+.apm-av-red    { background: linear-gradient(135deg,#ef4444,#dc2626); }
+.apm-av-purple { background: linear-gradient(135deg,#8b5cf6,#7c3aed); }
+.apm-av-gray   { background: linear-gradient(135deg,#6b7280,#4b5563); }
+.ring-yellow { border-color: #eab308 !important; }
+.ring-green  { border-color: #10b981 !important; }
+.ring-dark   { border-color: #2a2d3a; }
+.apm-star {
+  position: absolute; top: -3px; right: -3px;
+  width: 10px; height: 10px; border-radius: 50%;
+  background: #eab308; color: #0a0c14;
+  font-size: 6px; display: flex; align-items: center; justify-content: center;
+}
+.apm-name { font-size: 0.75rem; font-weight: 600; color: #e5e7eb; }
+.apm-name.mine   { color: #eab308; }
+.apm-name.winner { color: #10b981; }
+.apm-name.loser  { color: #6b7280; }
+.apm-record { font-size: 0.62rem; color: #6b7280; }
+
+.apm-score { font-family: 'Barlow Condensed', sans-serif; font-size: 1.1rem; font-weight: 900; }
+.mine-score   { color: #eab308; }
+.winner-score { color: #10b981; }
+.dim-score    { color: #4b5563; }
+
+.apm-prob-bar { height: 3px; background: #1a1d28; border-radius: 2px; overflow: hidden; margin: 8px 0 4px; }
+.apm-prob-fill { height: 100%; background: linear-gradient(90deg, #eab308, #fbbf24); border-radius: 2px; }
+.apm-prob-row { display: flex; align-items: center; gap: 4px; }
+.apm-prob-pct { font-family: 'Barlow Condensed', sans-serif; font-size: 0.72rem; font-weight: 700; color: #eab308; }
+.apm-prob-label { font-size: 0.65rem; color: #6b7280; }
+
+/* ─ Season Overview panel (right) */
+.aso-stats-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  padding: 12px 16px;
+  border-bottom: 1px solid #1a1d28;
+}
+.aso-stat {
+  background: #1a1d28;
+  border-radius: 10px;
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.aso-stat-icon { width: 28px; height: 28px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 0.9rem; margin-bottom: 4px; }
+.aso-stat-val { font-family: 'Barlow Condensed', sans-serif; font-size: 1rem; font-weight: 900; color: #e5e7eb; line-height: 1; }
+.aso-stat-val.aso-truncate { font-size: 0.72rem; }
+.aso-stat-lbl { font-size: 0.6rem; color: #6b7280; }
+
+.aso-leaders-header {
+  padding: 10px 16px 6px;
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: #9ca3af;
+  border-bottom: 1px solid #1a1d28;
+}
+.aso-leaders-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0;
+}
+.aso-leader {
+  padding: 10px 16px;
+  border-bottom: 1px solid #1a1d28;
+  border-right: 1px solid #1a1d28;
+}
+.aso-leader:nth-child(even) { border-right: none; }
+.aso-leader:nth-child(3), .aso-leader:nth-child(4) { border-bottom: none; }
+.aso-leader-top { display: flex; align-items: center; gap: 5px; margin-bottom: 4px; }
+.aso-leader-lbl { font-size: 0.6rem; color: #6b7280; font-weight: 600; }
+.aso-leader-name { font-size: 0.72rem; font-weight: 700; color: #e5e7eb; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.aso-leader-sub { font-size: 0.62rem; margin-top: 2px; font-weight: 600; }
+.aso-leader-sub.green  { color: #10b981; }
+.aso-leader-sub.red    { color: #ef4444; }
+.aso-leader-sub.blue   { color: #60a5fa; }
+.aso-leader-sub.purple { color: #a78bfa; }
 
 /* ══════════════════════════════════════════════
    PICKER SECTION
@@ -1073,114 +1536,275 @@ function scrollTo(id: string) {
 }
 .share-card { }
 
-/* ── Base share card styles ─────────────────── */
+/* ══════════════════════════════════════════════
+   SHARE CARDS — authentic UFD output style
+══════════════════════════════════════════════ */
 .sc-card {
   border-radius: 14px;
-  padding: 20px;
-  font-family: 'Barlow Condensed', sans-serif;
-  position: relative;
   overflow: hidden;
-  transition: transform 0.2s;
+  position: relative;
+  transition: transform 0.2s, box-shadow 0.2s;
   cursor: pointer;
+  font-family: 'Barlow', sans-serif;
 }
-.sc-card:hover { transform: scale(1.02) rotate(-0.5deg); }
+.sc-card:hover { transform: scale(1.02) rotate(-0.4deg); box-shadow: 0 20px 60px rgba(0,0,0,0.6); }
 
-.football-card {
-  background: linear-gradient(145deg, #0d1117 0%, #111827 100%);
+/* Brand header row on every card */
+.sc-brand-row {
+  display: flex; align-items: center; gap: 8px;
+  padding: 10px 16px 8px;
+  border-bottom: 1px solid rgba(255,255,255,0.05);
+}
+.sc-brand-logo {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 0.65rem; font-weight: 900;
+  color: #eab308;
+  letter-spacing: 0.08em;
+  background: rgba(234,179,8,0.08);
   border: 1px solid rgba(234,179,8,0.2);
+  border-radius: 4px;
+  padding: 1px 5px;
 }
-.blowout-card {
-  background: linear-gradient(145deg, #120a0a 0%, #1c1010 100%);
-  border: 1px solid rgba(239,68,68,0.2);
-}
-.matchup-card {
-  background: linear-gradient(145deg, #0a0d14 0%, #0f1220 100%);
-  border: 1px solid rgba(99,102,241,0.2);
-}
-.mvp-card {
-  background: linear-gradient(145deg, #0a0f0a 0%, #0f1a0f 100%);
-  border: 1px solid rgba(16,185,129,0.2);
-}
-.elim-card {
-  background: linear-gradient(145deg, #120a0a 0%, #1a0d0d 100%);
-  border: 1px solid rgba(239,68,68,0.35);
-  text-align: center;
-}
-.recap-card {
-  background: linear-gradient(145deg, #0a0c16 0%, #111827 100%);
+.sc-brand-sport { font-size: 0.65rem; font-weight: 600; color: #6b7280; flex: 1; }
+.sc-brand-week  { font-size: 0.6rem; color: #374151; font-weight: 700; letter-spacing: 0.08em; }
+.sc-watermark   { font-size: 0.55rem; color: #1e2130; font-weight: 500; padding: 6px 16px; font-family: 'Barlow', sans-serif; }
+
+/* ─ Power Rankings card */
+.sc-pr-card {
+  background: linear-gradient(145deg, #0c0f1a 0%, #0f1220 100%);
   border: 1px solid rgba(234,179,8,0.15);
 }
+.sc-pr-title {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 1rem; font-weight: 900; letter-spacing: 0.04em;
+  color: #fff; padding: 10px 16px 8px; text-transform: uppercase;
+}
+.sc-pr-table { display: flex; flex-direction: column; }
+.sc-pr-thead {
+  display: grid;
+  grid-template-columns: 26px 18px 1fr 72px 38px;
+  gap: 6px;
+  padding: 4px 16px;
+  font-size: 0.55rem; font-weight: 700; letter-spacing: 0.1em;
+  text-transform: uppercase; color: #374151;
+  border-bottom: 1px solid #1a1d28;
+}
+.sc-pr-row {
+  display: grid;
+  grid-template-columns: 26px 18px 1fr 72px 38px;
+  gap: 6px; align-items: center;
+  padding: 6px 16px;
+  border-bottom: 1px solid #1a1d28;
+}
+.sc-pr-row:last-of-type { border-bottom: none; }
+.sc-pr-leader { background: rgba(234,179,8,0.05); }
+.sc-pr-num {
+  width: 20px; height: 20px; border-radius: 50%;
+  background: #1e2130; color: #6b7280;
+  font-family: 'Barlow Condensed', sans-serif; font-weight: 900; font-size: 0.68rem;
+  display: flex; align-items: center; justify-content: center;
+}
+.num-gold   { background: rgba(234,179,8,0.15); color: #eab308; }
+.num-silver { background: rgba(156,163,175,0.1); color: #9ca3af; }
+.num-bronze { background: rgba(180,83,9,0.1);   color: #b45309; }
+.sc-pr-chg { font-family: 'Barlow Condensed', sans-serif; font-size: 0.68rem; font-weight: 700; }
+.chg-up   { color: #10b981; }
+.chg-dn   { color: #ef4444; }
+.chg-flat { color: #374151; }
+.sc-pr-team-cell { display: flex; align-items: center; gap: 5px; min-width: 0; }
+.sc-pr-initials {
+  width: 20px; height: 20px; border-radius: 50%; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 0.5rem; font-weight: 700; color: #fff;
+  border: 1.5px solid #2a2d3a;
+}
+.init-0 { background: linear-gradient(135deg,#eab308,#d97706); border-color: #eab308; }
+.init-1 { background: linear-gradient(135deg,#10b981,#059669); }
+.init-2 { background: linear-gradient(135deg,#8b5cf6,#7c3aed); }
+.init-3 { background: linear-gradient(135deg,#ef4444,#dc2626); }
+.init-4 { background: linear-gradient(135deg,#6b7280,#4b5563); }
+.sc-pr-name { font-size: 0.7rem; color: #d1d5db; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.name-gold { color: #eab308; font-weight: 700; }
+.sc-pr-bar-wrap { display: flex; align-items: center; gap: 4px; }
+.sc-pr-bar { height: 4px; border-radius: 2px; flex-shrink: 0; background: linear-gradient(90deg,#22c55e,#16a34a); }
+.sc-pr-bar-num { font-family: 'Barlow Condensed', sans-serif; font-size: 0.68rem; font-weight: 700; color: #22c55e; }
+.sc-pr-rec { font-size: 0.65rem; color: #6b7280; text-align: right; }
 
-.sc-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; }
-.sc-sport-badge { font-size: 0.58rem; font-weight: 700; letter-spacing: 0.15em; color: #4b5563; text-transform: uppercase; }
-.sc-week { font-size: 0.58rem; color: #374151; }
-.sc-title { font-size: 1.2rem; font-weight: 900; color: #fff; letter-spacing: 0.04em; margin-bottom: 14px; text-transform: uppercase; }
-.sc-title.small { font-size: 0.95rem; margin-bottom: 12px; }
-.sc-footer { font-size: 0.55rem; color: #2a2d3a; margin-top: 14px; font-family: 'Barlow', sans-serif; }
+/* ─ Matchup card (share version — more visual than hero panel) */
+.sc-matchup-card {
+  background: linear-gradient(145deg, #0a0d16 0%, #0f1322 100%);
+  border: 1px solid rgba(99,102,241,0.2);
+}
+.sc-matchup-label {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 0.9rem; font-weight: 900; letter-spacing: 0.04em;
+  color: #fff; padding: 8px 16px; text-transform: uppercase;
+}
+.sc-mu-team {
+  display: flex; align-items: center; gap: 10px;
+  padding: 10px 16px;
+  border-bottom: 1px solid rgba(255,255,255,0.04);
+}
+.sc-mu-team.mu-winner { background: rgba(16,185,129,0.05); }
+.sc-mu-avatar {
+  width: 32px; height: 32px; border-radius: 50%; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 0.62rem; font-weight: 700; color: #fff;
+  position: relative;
+}
+.sc-mu-star {
+  position: absolute; top: -3px; right: -3px;
+  width: 10px; height: 10px; border-radius: 50%;
+  background: #eab308; color: #0a0c14;
+  font-size: 5px; display: flex; align-items: center; justify-content: center;
+}
+.sc-mu-info { flex: 1; min-width: 0; }
+.sc-mu-name { font-size: 0.8rem; font-weight: 600; color: #e5e7eb; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sc-mu-name.mu-mine   { color: #eab308; }
+.sc-mu-name.mu-win-name { color: #10b981; }
+.sc-mu-rec  { font-size: 0.62rem; color: #6b7280; }
+.sc-mu-score { font-family: 'Barlow Condensed', sans-serif; font-size: 1.3rem; font-weight: 900; flex-shrink: 0; }
+.sc-score-win  { color: #10b981; }
+.sc-score-loss { color: #4b5563; }
+.sc-score-mine { color: #eab308; }
+.sc-score-neutral { color: #9ca3af; }
+.sc-mu-divider { display: flex; align-items: center; padding: 2px 16px; }
+.sc-mu-divider span { font-size: 0.6rem; color: #374151; font-weight: 700; letter-spacing: 0.1em; }
+.sc-mu-prob-bar { height: 3px; background: #1a1d28; border-radius: 2px; overflow: hidden; margin: 0 16px 4px; }
+.sc-mu-prob-fill { height: 100%; background: linear-gradient(90deg,#6366f1,#818cf8); border-radius: 2px; }
+.sc-mu-prob-label { font-size: 0.62rem; color: #6b7280; padding: 0 16px 8px; }
+.sc-matchup-status {
+  font-size: 0.62rem; font-weight: 700; padding: 2px 7px; border-radius: 999px;
+}
+.status-live { background: rgba(16,185,129,0.15); color: #10b981; }
+.status-final { background: #1e2130; color: #6b7280; }
+.status-upcoming { background: rgba(59,130,246,0.15); color: #60a5fa; }
 
-/* Power rankings */
-.sc-ranks { display: flex; flex-direction: column; gap: 8px; }
-.sc-rank-row { display: grid; grid-template-columns: 18px 1fr auto; gap: 8px; align-items: center; }
-.sc-num { font-size: 0.85rem; font-weight: 900; color: #374151; }
-.sc-num.sc-gold { color: #eab308; }
-.sc-bar-bg { height: 5px; background: #1a1d28; border-radius: 3px; overflow: hidden; }
-.sc-bar { height: 100%; background: linear-gradient(90deg, #eab308, #fbbf24); border-radius: 3px; }
-.sc-team-name { font-size: 0.75rem; color: #d1d5db; grid-column: 2 / 3; }
-.sc-trend { font-size: 0.72rem; font-weight: 700; }
-.sc-trend.up { color: #10b981; }
-.sc-trend.dn { color: #ef4444; }
-.sc-trend.fl { color: #374151; }
+/* ─ Weekly Recap card */
+.sc-recap-card2 {
+  background: linear-gradient(145deg, #0c0f18 0%, #111827 100%);
+  border: 1px solid rgba(234,179,8,0.12);
+}
+.sc-recap-title {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 1rem; font-weight: 900; letter-spacing: 0.04em;
+  color: #fff; padding: 10px 16px 8px; text-transform: uppercase;
+}
+.sc-recap-rows { display: flex; flex-direction: column; gap: 1px; padding: 0 16px 8px; }
+.sc-recap-row { display: flex; align-items: center; gap: 10px; padding: 7px 0; border-bottom: 1px solid #1a1d28; }
+.sc-recap-row:last-of-type { border-bottom: none; }
+.rcap-icon { font-size: 1rem; width: 22px; text-align: center; flex-shrink: 0; }
+.rcap-lbl { font-size: 0.62rem; color: #6b7280; font-weight: 600; }
+.rcap-val { font-size: 0.78rem; font-weight: 700; color: #e5e7eb; margin-top: 1px; }
+.yellow-val { color: #eab308; }
+.green-val  { color: #10b981; }
+.red-val    { color: #ef4444; }
 
-/* Blowout */
-.sc-blowout-title { font-size: 2rem; font-weight: 900; line-height: 1; color: #ef4444; margin-bottom: 16px; text-transform: uppercase; }
-.sc-blowout-score { display: flex; flex-direction: column; gap: 6px; margin-bottom: 10px; }
-.sc-bl-team { display: flex; justify-content: space-between; align-items: center; padding: 6px 8px; border-radius: 6px; }
-.sc-bl-team.win { background: rgba(239,68,68,0.1); }
-.sc-bl-team.lose { background: rgba(17,24,39,0.5); }
-.sc-bl-name { font-size: 0.78rem; color: #d1d5db; }
-.sc-bl-pts { font-size: 1rem; font-weight: 900; }
-.win-pts { color: #ef4444; }
-.lose-pts { color: #374151; }
-.sc-bl-vs { text-align: center; font-size: 0.65rem; color: #4b5563; letter-spacing: 0.1em; }
-.sc-margin { font-size: 0.65rem; color: #6b7280; text-align: center; margin-top: 4px; }
+/* ─ Standings card */
+.sc-standings-card {
+  background: linear-gradient(145deg, #0c0f18 0%, #0f1222 100%);
+  border: 1px solid rgba(34,197,94,0.12);
+}
+.sc-standings-title {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 1rem; font-weight: 900; letter-spacing: 0.04em;
+  color: #fff; padding: 10px 16px 6px; text-transform: uppercase;
+}
+.sc-standings-thead {
+  display: grid;
+  grid-template-columns: 28px 1fr 40px 44px 36px;
+  gap: 6px;
+  padding: 4px 16px;
+  font-size: 0.55rem; font-weight: 700; letter-spacing: 0.1em;
+  text-transform: uppercase; color: #374151;
+  border-bottom: 1px solid #1a1d28;
+}
+.sc-standings-row {
+  display: grid;
+  grid-template-columns: 28px 1fr 40px 44px 36px;
+  gap: 6px; align-items: center;
+  padding: 6px 16px;
+  border-bottom: 1px solid #1a1d28;
+}
+.sc-standings-row:last-of-type { border-bottom: none; }
+.std-playoff { background: rgba(34,197,94,0.03); }
+.std-myteam  { background: rgba(234,179,8,0.06); }
+.std-rank-val {
+  font-family: 'Barlow Condensed', sans-serif; font-weight: 900;
+  font-size: 0.8rem; color: #4b5563; display: flex; align-items: center; gap: 2px;
+}
+.rank-gold   { color: #eab308; }
+.rank-silver { color: #9ca3af; }
+.rank-bronze { color: #b45309; }
+.std-playoff-dot { color: #22c55e; font-size: 0.5rem; }
+.std-team-cell { display: flex; align-items: center; gap: 5px; min-width: 0; }
+.std-avatar {
+  width: 20px; height: 20px; border-radius: 50%; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 0.5rem; font-weight: 700; color: #fff;
+  border: 1.5px solid #2a2d3a;
+  position: relative;
+}
+.stdav-0 { background: linear-gradient(135deg,#eab308,#d97706); border-color: #eab308; }
+.stdav-1 { background: linear-gradient(135deg,#10b981,#059669); }
+.stdav-2 { background: linear-gradient(135deg,#8b5cf6,#7c3aed); }
+.stdav-3 { background: linear-gradient(135deg,#ef4444,#dc2626); }
+.stdav-4 { background: linear-gradient(135deg,#3b82f6,#2563eb); }
+.stdav-5 { background: linear-gradient(135deg,#6b7280,#4b5563); }
+.std-my-star {
+  position: absolute; top: -3px; right: -3px;
+  width: 8px; height: 8px; border-radius: 50%;
+  background: #eab308; color: #0a0c14;
+  font-size: 4px; display: flex; align-items: center; justify-content: center;
+}
+.std-name { font-size: 0.7rem; color: #d1d5db; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.std-mine-name { color: #eab308; font-weight: 700; }
+.std-rec-val { font-size: 0.68rem; color: #9ca3af; font-weight: 600; }
+.std-pf-val  { font-size: 0.68rem; color: #9ca3af; text-align: right; }
+.std-streak-val { font-size: 0.65rem; font-weight: 700; text-align: right; }
+.str-w { color: #10b981; }
+.str-l { color: #ef4444; }
 
-/* Matchup */
-.sc-matchup-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
-.sc-team-block { display: flex; flex-direction: column; align-items: center; gap: 6px; flex: 1; }
-.sc-team-block.right { align-items: flex-end; }
-.sc-team-circle { width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 1rem; }
-.sc-team-nm { font-size: 0.72rem; color: #d1d5db; text-align: center; }
-.sc-team-sc { font-size: 1.1rem; font-weight: 900; color: #eab308; }
-.sc-team-sc.dim { color: #374151; }
-.sc-vs-circle { width: 30px; height: 30px; border-radius: 50%; background: #1a1d28; border: 1px solid #374151; display: flex; align-items: center; justify-content: center; font-size: 0.65rem; color: #6b7280; font-weight: 900; flex-shrink: 0; }
-.sc-win-bar-wrap { height: 4px; background: #1a1d28; border-radius: 2px; overflow: hidden; margin-bottom: 6px; }
-.sc-win-fill { height: 100%; background: linear-gradient(90deg, #6366f1, #818cf8); border-radius: 2px; }
-.sc-win-label { font-size: 0.62rem; color: #6b7280; text-align: center; }
-
-/* MVP */
-.sc-mvp-crown { font-size: 1.5rem; text-align: center; margin-bottom: 4px; }
-.sc-mvp-list { display: flex; flex-direction: column; gap: 8px; margin-top: 10px; }
-.sc-mvp-row { display: grid; grid-template-columns: 22px 1fr 60px 40px; align-items: center; gap: 6px; }
-.sc-mvp-rank { font-size: 0.85rem; }
-.sc-mvp-name { font-size: 0.75rem; color: #d1d5db; }
-.sc-mvp-bar-wrap { height: 4px; background: #1a1d28; border-radius: 2px; overflow: hidden; }
-.sc-mvp-bar { height: 100%; background: linear-gradient(90deg, #10b981, #34d399); border-radius: 2px; }
-.sc-mvp-pts { font-size: 0.72rem; font-weight: 700; color: #10b981; text-align: right; }
-
-/* Eliminated */
-.sc-elim-top { font-size: 2.5rem; margin-bottom: 8px; }
-.sc-elim-title { font-size: 1.6rem; font-weight: 900; color: #ef4444; text-transform: uppercase; line-height: 1; margin-bottom: 12px; }
-.sc-elim-name { font-size: 0.85rem; color: #d1d5db; margin-bottom: 6px; }
-.sc-elim-score { font-size: 1.1rem; font-weight: 900; color: #374151; margin-bottom: 8px; }
-.sc-elim-by { font-size: 0.72rem; color: #6b7280; }
-.sc-elim-by strong { color: #eab308; }
-
-/* Recap */
-.sc-recap-stats { display: flex; flex-direction: column; gap: 10px; }
-.sc-rs-item { display: flex; justify-content: space-between; align-items: center; padding: 7px 8px; background: rgba(255,255,255,0.02); border-radius: 6px; }
-.sc-rs-label { font-size: 0.72rem; color: #6b7280; }
-.sc-rs-item strong { font-size: 0.75rem; color: #d1d5db; }
-.sc-rs-item strong.red { color: #ef4444; }
+/* ─ Trade Analyzer card */
+.sc-trade-card {
+  background: linear-gradient(145deg, #0c1016 0%, #0f1420 100%);
+  border: 1px solid rgba(139,92,246,0.2);
+}
+.sc-trade-title {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 1rem; font-weight: 900; letter-spacing: 0.04em;
+  color: #fff; padding: 10px 16px 8px; text-transform: uppercase;
+}
+.sc-trade-teams {
+  display: grid; grid-template-columns: 1fr 24px 1fr;
+  gap: 8px; align-items: start;
+  padding: 0 16px 12px;
+}
+.sc-trade-arrow { font-size: 1.1rem; color: #6b7280; text-align: center; padding-top: 20px; }
+.sc-trade-manager { font-size: 0.62rem; color: #6b7280; font-weight: 700; margin-bottom: 8px; }
+.sc-trade-player {
+  display: flex; align-items: center; gap: 5px;
+  padding: 5px 6px; background: #1a1d28; border-radius: 6px; margin-bottom: 5px;
+}
+.sc-trade-player-pos {
+  font-family: 'Barlow Condensed', sans-serif; font-size: 0.58rem; font-weight: 700;
+  padding: 1px 4px; border-radius: 3px; flex-shrink: 0;
+}
+.pos-wr { background: rgba(59,130,246,0.2); color: #60a5fa; }
+.pos-rb { background: rgba(34,197,94,0.2); color: #22c55e; }
+.pos-qb { background: rgba(239,68,68,0.2); color: #ef4444; }
+.pos-te { background: rgba(234,179,8,0.2); color: #eab308; }
+.sc-trade-player-name { font-size: 0.68rem; color: #d1d5db; flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sc-trade-player-val  { font-family: 'Barlow Condensed', sans-serif; font-size: 0.72rem; font-weight: 700; flex-shrink: 0; }
+.sc-trade-verdict {
+  margin: 0 16px 4px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  font-size: 0.75rem; font-weight: 600;
+}
+.verdict-win  { background: rgba(16,185,129,0.1); color: #10b981; border: 1px solid rgba(16,185,129,0.2); }
+.verdict-fair { background: rgba(234,179,8,0.08); color: #eab308; border: 1px solid rgba(234,179,8,0.2); }
+.verdict-loss { background: rgba(239,68,68,0.08); color: #ef4444; border: 1px solid rgba(239,68,68,0.2); }
 
 /* ══════════════════════════════════════════════
    HOW IT WORKS
