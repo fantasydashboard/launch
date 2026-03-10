@@ -445,6 +445,14 @@
       </div>
     </section>
 
+    <!-- Section CTA: Picker -->
+    <div class="section-cta-strip">
+      <button class="cta-primary" @click="$emit('open-signup')">
+        That's my league. Connect it free.
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+      </button>
+    </div>
+
     <!-- ══════════════════════════════════════════════
          SHARE CARD GALLERY
     ══════════════════════════════════════════════ -->
@@ -858,6 +866,14 @@
       </div>
     </section>
 
+    <!-- Section CTA: Gallery -->
+    <div class="section-cta-strip">
+      <button class="cta-primary" @click="$emit('open-signup')">
+        I need these cards in my group chat immediately.
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+      </button>
+    </div>
+
     <!-- ══════════════════════════════════════════════
          HOW IT WORKS
     ══════════════════════════════════════════════ -->
@@ -890,6 +906,14 @@
         </div>
       </div>
     </section>
+
+    <!-- Section CTA: How It Works -->
+    <div class="section-cta-strip">
+      <button class="cta-primary" @click="$emit('open-signup')">
+        3 minutes. That's all it takes.
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+      </button>
+    </div>
 
     <!-- ══════════════════════════════════════════════
          SOCIAL PROOF
@@ -934,81 +958,56 @@
       </div>
     </section>
 
-    <!-- ══════════════════════════════════════════════
-         PRICING TEASER
-    ══════════════════════════════════════════════ -->
-    <section class="pricing-section">
-      <div class="section-inner">
-        <div class="section-eyebrow">Pricing</div>
-        <h2 class="section-headline">Start free. <span class="accent">Go deeper</span> when you're ready.</h2>
-        <p class="section-sub">Preview your league at no cost. Unlock the full arsenal when your league is ready.</p>
+    <!-- Section CTA: Social Proof -->
+    <div class="section-cta-strip">
+      <button class="cta-primary" @click="$emit('open-signup')">
+        Join them. Break your group chat.
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+      </button>
+    </div>
 
-        <!-- Beta banner -->
-        <div class="beta-banner">
-          <span class="beta-dot"></span>
-          <strong>Currently in Beta</strong> — All features are completely free right now. Lock in early access pricing before we launch.
+    <!-- ══════════════════════════════════════════════
+         FEATURES / PRICING CTA
+    ══════════════════════════════════════════════ -->
+    <section class="features-section">
+      <div class="section-inner">
+        <div class="section-eyebrow">Everything in the box</div>
+        <h2 class="section-headline">Start free. <span class="accent">Go deeper</span> when you're ready.</h2>
+        <p class="section-sub">No feature-gating on the good stuff. Connect your league and see what you've been missing.</p>
+
+        <div class="features-grid">
+          <div class="feature-item"><span class="feat-check">✓</span><span>Power rankings — auto-generated every week</span></div>
+          <div class="feature-item"><span class="feat-check">✓</span><span>Shareable cards for any platform's group chat</span></div>
+          <div class="feature-item"><span class="feat-check">✓</span><span>Full season standings & weekly matchup breakdowns</span></div>
+          <div class="feature-item"><span class="feat-check">✓</span><span>Win probability — live & Monte Carlo projected</span></div>
+          <div class="feature-item"><span class="feat-check">✓</span><span>Season history going back years, not just this season</span></div>
+          <div class="feature-item"><span class="feat-check">✓</span><span>All-time head-to-head matrix for every rivalry</span></div>
+          <div class="feature-item"><span class="feat-check">✓</span><span>Legacy standings — who's actually won this league</span></div>
+          <div class="feature-item"><span class="feat-check">✓</span><span>Trade analyzer with fair value grades</span></div>
+          <div class="feature-item"><span class="feat-check">✓</span><span>Start/sit projections across all roster spots</span></div>
+          <div class="feature-item"><span class="feat-check">✓</span><span>Sleeper, Yahoo & ESPN — all in one dashboard</span></div>
+          <div class="feature-item"><span class="feat-check">✓</span><span>Football, baseball, basketball & hockey</span></div>
+          <div class="feature-item"><span class="feat-check">✓</span><span>Draft history & balance reports</span></div>
         </div>
 
-        <div class="pricing-cards">
-          <div class="pricing-card free-card">
-            <div class="pc-tier">Free Preview</div>
-            <div class="pc-price">$0</div>
-            <div class="pc-desc">See what your league looks like. No commitment, no card.</div>
-            <ul class="pc-features">
-              <li><span class="check">✓</span> Connect any league</li>
-              <li><span class="check">✓</span> Current week standings</li>
-              <li><span class="check">✓</span> This week's matchups</li>
-              <li><span class="x">✗</span> <span class="muted">Power rankings</span></li>
-              <li><span class="x">✗</span> <span class="muted">Share cards</span></li>
-              <li><span class="x">✗</span> <span class="muted">Season history</span></li>
-            </ul>
-            <button class="pc-cta free-cta" @click="$emit('open-signup')">Start Free →</button>
-          </div>
-
-          <div class="pricing-card league-card popular">
-            <div class="popular-badge">Most Popular</div>
-            <div class="pc-tier">League Pass</div>
-            <div class="pc-price">Early Access Pricing</div>
-            <div class="pc-desc">Everything your league needs. Per league, per season.</div>
-            <ul class="pc-features">
-              <li><span class="check">✓</span> Full season history</li>
-              <li><span class="check">✓</span> Weekly power rankings</li>
-              <li><span class="check">✓</span> All share cards</li>
-              <li><span class="check">✓</span> Commissioner tools</li>
-              <li><span class="check">✓</span> Trade analyzer</li>
-              <li><span class="check">✓</span> Weekly recaps</li>
-            </ul>
-            <button class="pc-cta league-cta" @click="$emit('open-signup')">Get Early Access →</button>
-          </div>
-
-          <div class="pricing-card ultimate-card">
-            <div class="pc-tier">Ultimate</div>
-            <div class="pc-price">Coming Soon</div>
-            <div class="pc-desc">The full edge. For the manager who doesn't lose on purpose.</div>
-            <ul class="pc-features">
-              <li><span class="check">✓</span> Everything in League Pass</li>
-              <li><span class="check">✓</span> Start/sit projections</li>
-              <li><span class="check">✓</span> Waiver wire grades</li>
-              <li><span class="check">✓</span> Cross-league analytics</li>
-              <li><span class="check">✓</span> Multi-sport dashboard</li>
-              <li><span class="check">✓</span> Priority features</li>
-            </ul>
-            <button class="pc-cta ultimate-cta" @click="$emit('open-signup')">Join Waitlist →</button>
-          </div>
+        <div class="features-cta-row">
+          <button class="cta-primary cta-xl" @click="$emit('open-signup')">
+            Connect Your League Free
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+          </button>
+          <a href="/pricing" class="cta-ghost">See pricing details →</a>
         </div>
       </div>
     </section>
 
     <!-- ══════════════════════════════════════════════
-         FAQ TEASER
+         FAQ
     ══════════════════════════════════════════════ -->
     <section class="faq-section">
-      <div class="section-inner faq-inner">
-        <div>
-          <div class="section-eyebrow">Questions</div>
-          <h2 class="section-headline faq-headline">Got questions?<br/><span class="accent">We've got answers.</span></h2>
-        </div>
-        <div class="faq-list">
+      <div class="section-inner">
+        <div class="section-eyebrow">Questions</div>
+        <h2 class="section-headline faq-headline">Got questions?<br/><span class="accent">We've got answers.</span></h2>
+        <div class="faq-list faq-list-full">
           <div v-for="(faq, i) in faqs" :key="i" class="faq-item" @click="toggleFaq(i)">
             <div class="faq-q">
               <span>{{ faq.q }}</span>
@@ -1016,10 +1015,17 @@
             </div>
             <div class="faq-a" :class="{ visible: openFaq === i }">{{ faq.a }}</div>
           </div>
-          <a href="/faq" class="faq-more-link">See all FAQs →</a>
         </div>
       </div>
     </section>
+
+    <!-- Section CTA: FAQ -->
+    <div class="section-cta-strip">
+      <button class="cta-primary" @click="$emit('open-signup')">
+        Clear enough. Let's go.
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+      </button>
+    </div>
 
     <!-- ══════════════════════════════════════════════
          FINAL CTA
@@ -1345,6 +1351,18 @@ const faqs = [
     a: 'Nope. Only the person connecting the league needs an account. You can share cards and recaps with your whole league without them needing to log in.',
   },
   {
+    q: 'How do I share the cards?',
+    a: 'Every card has a Share button. Hit it, and the card gets automatically copied to your clipboard as an image. Then just paste it straight into your league group chat. That\'s it.',
+  },
+  {
+    q: 'Will it ruin the trash talk?',
+    a: 'No. It feeds it. When Mahomes Magic drops a power rankings card showing they\'ve been #1 for six straight weeks, the group chat writes itself.',
+  },
+  {
+    q: 'Is this just for commissioners?',
+    a: 'Not even close. It\'s built by fantasy managers, for fantasy managers. If you care about knowing your league better, clowning on your friends with data, or just seeing your stats go back years — this is for you.',
+  },
+  {
     q: 'How current is the data?',
     a: 'Standings, matchup scores, and rosters update throughout the week. Power rankings and weekly recaps generate automatically after each week locks.',
   },
@@ -1594,6 +1612,10 @@ function scrollTo(id: string) {
 /* ── Logo ─────────────────────────────────────────────────────── */
 .hero-logo-wrap {
   margin-bottom: 32px;
+  text-align: center;
+  width: 100%;
+  display: flex;
+  justify-content: center;
 }
 .hero-logo {
   height: 100px;
@@ -2631,112 +2653,62 @@ function scrollTo(id: string) {
 .stat-divider { width: 1px; height: 60px; background: #1e2130; flex-shrink: 0; }
 
 /* ══════════════════════════════════════════════
-   PRICING
+   SECTION CTA STRIPS
 ══════════════════════════════════════════════ */
-.pricing-section {
+.section-cta-strip {
+  padding: 32px 24px;
+  display: flex;
+  justify-content: center;
+  background: #05060a;
+  border-top: 1px solid #0f1018;
+  border-bottom: 1px solid #0f1018;
+}
+
+/* ══════════════════════════════════════════════
+   FEATURES SECTION
+══════════════════════════════════════════════ */
+.features-section {
   padding: 100px 0;
   background: #05060a;
 }
-.beta-banner {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 14px 20px;
-  background: rgba(59,130,246,0.08);
-  border: 1px solid rgba(59,130,246,0.25);
-  border-radius: 10px;
-  font-size: 0.88rem;
-  color: #93c5fd;
-  margin-bottom: 40px;
-  max-width: 700px;
-}
-.beta-dot {
-  width: 8px; height: 8px;
-  background: #3b82f6;
-  border-radius: 50%;
-  flex-shrink: 0;
-  animation: pulse-dot 2s infinite;
-}
-
-.pricing-cards {
+.features-grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: 20px;
-  align-items: start;
-}
-.pricing-card {
-  background: #0a0c14;
+  gap: 0;
   border: 1px solid #1e2130;
   border-radius: 16px;
-  padding: 32px;
-  position: relative;
-  transition: border-color 0.2s;
+  overflow: hidden;
+  margin-bottom: 48px;
 }
-.pricing-card:hover { border-color: #374151; }
-.league-card {
-  border-color: rgba(234,179,8,0.35);
-  background: linear-gradient(145deg, #0d0f1a, #111622);
-  box-shadow: 0 0 60px rgba(234,179,8,0.06);
+.feature-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 18px 24px;
+  border-right: 1px solid #1e2130;
+  border-bottom: 1px solid #1e2130;
+  font-size: 0.88rem;
+  color: #9ca3af;
+  line-height: 1.45;
+  transition: background 0.15s;
 }
-.popular-badge {
-  position: absolute;
-  top: -12px;
-  left: 50%;
-  transform: translateX(-50%);
-  padding: 4px 16px;
-  background: #eab308;
-  color: #0a0c14;
-  font-family: 'Barlow Condensed', sans-serif;
-  font-size: 0.72rem;
-  font-weight: 800;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  border-radius: 999px;
-  white-space: nowrap;
-}
-
-.pc-tier {
-  font-family: 'Barlow Condensed', sans-serif;
-  font-size: 0.7rem;
+.feature-item:hover { background: rgba(234,179,8,0.03); color: #d1d5db; }
+.feature-item:nth-child(3n) { border-right: none; }
+.feature-item:nth-last-child(-n+3) { border-bottom: none; }
+.feat-check {
+  color: #10b981;
   font-weight: 700;
-  letter-spacing: 0.15em;
-  text-transform: uppercase;
-  color: #6b7280;
-  margin-bottom: 10px;
+  font-size: 0.9rem;
+  flex-shrink: 0;
+  margin-top: 1px;
 }
-.pc-price {
-  font-family: 'Barlow Condensed', sans-serif;
-  font-size: 1.6rem;
-  font-weight: 900;
-  color: #fff;
-  margin-bottom: 10px;
-  line-height: 1;
+.features-cta-row {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  flex-wrap: wrap;
 }
-.league-card .pc-price { color: #eab308; }
-.pc-desc { font-size: 0.85rem; color: #6b7280; margin-bottom: 24px; line-height: 1.5; }
-.pc-features { list-style: none; padding: 0; margin: 0 0 28px; display: flex; flex-direction: column; gap: 10px; }
-.pc-features li { display: flex; align-items: center; gap: 10px; font-size: 0.85rem; color: #9ca3af; }
-.check { color: #10b981; font-weight: 700; font-size: 0.9rem; }
-.x { color: #374151; font-weight: 700; font-size: 0.9rem; }
 
-.pc-cta {
-  width: 100%;
-  padding: 12px 20px;
-  border: none;
-  border-radius: 8px;
-  font-family: 'Barlow Condensed', sans-serif;
-  font-size: 1rem;
-  font-weight: 800;
-  letter-spacing: 0.03em;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-.free-cta { background: #1e2130; color: #9ca3af; border: 1px solid #2a2d3a; }
-.free-cta:hover { background: #2a2d3a; color: #d1d5db; }
-.league-cta { background: #eab308; color: #0a0c14; }
-.league-cta:hover { background: #fbbf24; transform: translateY(-1px); }
-.ultimate-cta { background: transparent; color: #9ca3af; border: 1px solid #2a2d3a; }
-.ultimate-cta:hover { border-color: #4b5563; color: #d1d5db; }
 
 /* ══════════════════════════════════════════════
    FAQ
@@ -2745,14 +2717,8 @@ function scrollTo(id: string) {
   padding: 100px 0;
   background: #08090f;
 }
-.faq-inner {
-  display: grid;
-  grid-template-columns: 1fr 1.4fr;
-  gap: 80px;
-  align-items: start;
-}
-.faq-headline { font-size: clamp(1.8rem, 4vw, 2.8rem); }
-.faq-list { display: flex; flex-direction: column; }
+.faq-headline { font-size: clamp(1.8rem, 4vw, 2.8rem); margin-bottom: 40px; }
+.faq-list-full { display: flex; flex-direction: column; max-width: 800px; }
 .faq-item {
   border-bottom: 1px solid #1e2130;
   padding: 18px 0;
@@ -2787,18 +2753,6 @@ function scrollTo(id: string) {
   transition: max-height 0.3s ease, margin-top 0.2s;
 }
 .faq-a.visible { max-height: 200px; margin-top: 12px; }
-.faq-more-link {
-  display: inline-block;
-  margin-top: 20px;
-  font-family: 'Barlow Condensed', sans-serif;
-  font-size: 0.95rem;
-  font-weight: 700;
-  color: #eab308;
-  text-decoration: none;
-  letter-spacing: 0.04em;
-  transition: color 0.15s;
-}
-.faq-more-link:hover { color: #fbbf24; }
 
 /* ══════════════════════════════════════════════
    FINAL CTA
@@ -2851,8 +2805,8 @@ function scrollTo(id: string) {
   .card-grid { grid-template-columns: 1fr 1fr; }
   .hiw-steps { grid-template-columns: 1fr; gap: 16px; }
   .hiw-step { margin: 0; }
-  .pricing-cards { grid-template-columns: 1fr; }
-  .faq-inner { grid-template-columns: 1fr; gap: 40px; }
+  .features-grid { grid-template-columns: 1fr 1fr; }
+  .features-cta-row { flex-direction: column; align-items: flex-start; }
   .chat-grid { grid-template-columns: 1fr; }
   .stats-row { flex-wrap: wrap; }
   .preview-rank-row { grid-template-columns: 24px 28px 1fr 60px; }
