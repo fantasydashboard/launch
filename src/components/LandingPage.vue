@@ -334,7 +334,7 @@
                 v-for="s in sports" :key="s.id"
                 class="picker-option"
                 :class="{ active: selectedSport === s.id }"
-                @click="selectedSport = s.id"
+                @click="selectedSport = s.id; ensureValidFormat()"
               >
                 <span class="picker-emoji">{{ s.emoji }}</span>
                 <span>{{ s.name }}</span>
@@ -348,11 +348,11 @@
             <div class="picker-options">
               <button
                 v-for="p in platforms" :key="p.id"
-                class="picker-option"
+                class="picker-option picker-option-platform"
                 :class="{ active: selectedPlatform === p.id }"
                 @click="selectedPlatform = p.id"
               >
-                <span class="picker-emoji">{{ p.emoji }}</span>
+                <img :src="p.logo" :alt="p.name" class="platform-btn-logo" />
                 <span>{{ p.name }}</span>
               </button>
             </div>
@@ -363,7 +363,7 @@
             <div class="picker-step-label"><span class="step-num">03</span> Your format</div>
             <div class="picker-options">
               <button
-                v-for="f in formats[selectedSport]" :key="f"
+                v-for="f in formats" :key="f"
                 class="picker-option"
                 :class="{ active: selectedFormat === f }"
                 @click="selectedFormat = f"
@@ -374,25 +374,71 @@
 
         <!-- Dynamic preview card -->
         <div class="picker-preview">
-          <div class="preview-badge">{{ activeSport.emoji }} {{ activeSport.name }} · {{ selectedPlatform.toUpperCase() }} · {{ selectedFormat }}</div>
+          <!-- Card header badge row -->
+          <div class="preview-badge-row">
+            <img :src="activePlatform.logo" :alt="activePlatform.name" class="preview-platform-logo" />
+            <span class="preview-badge">{{ activeSport.emoji }} {{ activeSport.name }} · {{ activePlatform.name }} · {{ selectedFormat }}</span>
+          </div>
+
           <div class="preview-card">
+            <!-- Card header — platform logo + title + week -->
             <div class="preview-header">
-              <span class="preview-title">Your Dashboard Would Look Like This</span>
+              <div class="preview-header-left">
+                <img :src="activePlatform.logo" :alt="activePlatform.name" class="preview-header-logo" />
+                <span class="preview-title">Standings</span>
+              </div>
               <span class="preview-week">Week {{ currentWeek }}</span>
             </div>
-            <div class="preview-rankings">
-              <div v-for="(team, i) in previewTeams" :key="i" class="preview-rank-row">
-                <span class="prev-rank" :class="i === 0 ? 'gold' : i === 1 ? 'silver' : i === 2 ? 'bronze' : ''">{{ i + 1 }}</span>
-                <span class="prev-avatar" :style="{ background: team.color }">{{ team.icon }}</span>
+
+            <!-- Table header — columns depend on format -->
+            <div class="preview-thead" :class="selectedFormat === 'Categories' ? 'thead-cat' : 'thead-pts'">
+              <span class="pth-rank">#</span>
+              <span class="pth-team">Team</span>
+              <span class="pth-rec">{{ selectedFormat === 'Categories' ? 'W-L-T' : 'W-L' }}</span>
+              <template v-if="selectedFormat === 'Points'">
+                <span class="pth-col">PF</span>
+                <span class="pth-col">All-Play</span>
+              </template>
+              <template v-else>
+                <span class="pth-col pth-cat" v-for="cat in activeCategoryColumns" :key="cat">{{ cat }}</span>
+              </template>
+            </div>
+
+            <!-- Rows -->
+            <div
+              v-for="(team, i) in previewTeams"
+              :key="team.name"
+              class="preview-rank-row"
+              :class="[selectedFormat === 'Categories' ? 'row-cat' : 'row-pts', i === 0 ? 'row-first' : '']"
+            >
+              <!-- Rank -->
+              <span class="prev-rank" :class="i === 0 ? 'gold' : i === 1 ? 'silver' : i === 2 ? 'bronze' : ''">{{ i + 1 }}</span>
+
+              <!-- Avatar + name -->
+              <div class="prev-team-cell">
+                <span class="prev-avatar" :style="{ background: team.color }">
+                  {{ team.name.split(' ').map((w: string) => w[0]).join('').slice(0, 2) }}
+                </span>
                 <span class="prev-name">{{ team.name }}</span>
-                <span class="prev-record">{{ team.record }}</span>
-                <div class="prev-bar-wrap"><div class="prev-bar" :style="{ width: team.score + '%', background: i === 0 ? '#eab308' : '#374151' }"></div></div>
-                <span class="prev-pts">{{ team.pts }}</span>
               </div>
+
+              <!-- Points columns -->
+              <template v-if="selectedFormat === 'Points'">
+                <span class="prev-record">{{ team.record }}</span>
+                <span class="prev-pts">{{ team.pts }}</span>
+                <span class="prev-allplay">{{ team.allPlay }}</span>
+              </template>
+
+              <!-- Category columns -->
+              <template v-else>
+                <span class="prev-record cat-rec">{{ team.catRecord }}</span>
+                <span class="prev-cat" v-for="(cv, ci) in team.cats" :key="ci">{{ cv }}</span>
+              </template>
             </div>
           </div>
+
           <button class="cta-primary mt-6" @click="$emit('open-signup')">
-            Connect My {{ selectedPlatform.charAt(0).toUpperCase() + selectedPlatform.slice(1) }} League Free
+            Connect My {{ activePlatform.name }} League Free
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
           </button>
         </div>
@@ -800,61 +846,140 @@ defineEmits<{ (e: 'open-signup'): void }>()
 
 // ── Sport / Platform / Format Picker ────────────────────────────────────────
 const sports = [
-  { id: 'football', name: 'Football', emoji: '🏈' },
-  { id: 'baseball', name: 'Baseball', emoji: '⚾' },
+  { id: 'football',   name: 'Football',   emoji: '🏈' },
+  { id: 'baseball',   name: 'Baseball',   emoji: '⚾' },
   { id: 'basketball', name: 'Basketball', emoji: '🏀' },
-  { id: 'hockey', name: 'Hockey', emoji: '🏒' },
+  { id: 'hockey',     name: 'Hockey',     emoji: '🏒' },
 ]
 const platforms = [
-  { id: 'sleeper', name: 'Sleeper', emoji: '💤' },
-  { id: 'yahoo', name: 'Yahoo', emoji: 'Y!' },
-  { id: 'espn', name: 'ESPN', emoji: 'E' },
+  { id: 'sleeper', name: 'Sleeper', logo: '/sleeper.svg' },
+  { id: 'yahoo',   name: 'Yahoo',   logo: '/yahoo-fantasy.svg' },
+  { id: 'espn',    name: 'ESPN',    logo: '/espn-logo.svg' },
 ]
-const formats: Record<string, string[]> = {
-  football: ['H2H Points', 'H2H Categories', 'Dynasty', 'Keeper'],
-  baseball: ['H2H Points', 'H2H Categories', 'Roto'],
-  basketball: ['H2H Points', 'H2H Categories', 'Roto'],
-  hockey: ['H2H Points', 'H2H Categories', 'Roto'],
-}
+const formats = ['Points', 'Categories']
 
-const selectedSport = ref('football')
+const selectedSport    = ref('football')
 const selectedPlatform = ref('sleeper')
-const selectedFormat = ref('H2H Points')
+const selectedFormat   = ref('Points')
 
-const activeSport = computed(() => sports.find(s => s.id === selectedSport.value)!)
-const currentWeek = computed(() => selectedSport.value === 'baseball' ? 18 : selectedSport.value === 'football' ? 11 : 14)
+const activeSport    = computed(() => sports.find(s => s.id === selectedSport.value)!)
+const activePlatform = computed(() => platforms.find(p => p.id === selectedPlatform.value)!)
+const currentWeek    = computed(() => selectedSport.value === 'baseball' ? 18 : selectedSport.value === 'football' ? 11 : 14)
 
-const previewTeamsBySport: Record<string, any[]> = {
-  football: [
-    { name: 'Mahomes Magic', record: '9-2', pts: '1,456', score: 92, color: 'linear-gradient(135deg,#f59e0b,#d97706)', icon: '🔥' },
-    { name: 'The Algorithm', record: '8-3', pts: '1,342', score: 84, color: 'linear-gradient(135deg,#6366f1,#4f46e5)', icon: '⚡' },
-    { name: 'Trash Can Wins', record: '7-4', pts: '1,298', score: 78, color: 'linear-gradient(135deg,#10b981,#059669)', icon: '🗑️' },
-    { name: 'Waiver Wire Kid', record: '6-5', pts: '1,187', score: 68, color: 'linear-gradient(135deg,#ef4444,#dc2626)', icon: '📋' },
-    { name: 'Toilet Bowl FC', record: '3-8', pts: '982', score: 44, color: 'linear-gradient(135deg,#6b7280,#4b5563)', icon: '🚽' },
-  ],
-  baseball: [
-    { name: 'Dingers Only', record: '88-62', pts: '87.5', score: 92, color: 'linear-gradient(135deg,#f59e0b,#d97706)', icon: '💣' },
-    { name: 'ERA Zero', record: '82-68', pts: '82.0', score: 82, color: 'linear-gradient(135deg,#06b6d4,#0891b2)', icon: '⚾' },
-    { name: 'Steals & Deals', record: '79-71', pts: '78.5', score: 76, color: 'linear-gradient(135deg,#10b981,#059669)', icon: '🏃' },
-    { name: 'K-Rate Kings', record: '74-76', pts: '73.0', score: 67, color: 'linear-gradient(135deg,#8b5cf6,#7c3aed)', icon: '🔺' },
-    { name: 'Sub-.35 ERA or Bust', record: '61-89', pts: '58.5', score: 42, color: 'linear-gradient(135deg,#6b7280,#4b5563)', icon: '😤' },
-  ],
-  basketball: [
-    { name: 'Triple Double', record: '9-3', pts: '1,234', score: 90, color: 'linear-gradient(135deg,#f59e0b,#d97706)', icon: '🏀' },
-    { name: 'Giannis Mode', record: '8-4', pts: '1,189', score: 84, color: 'linear-gradient(135deg,#ef4444,#dc2626)', icon: '🦌' },
-    { name: 'Points Only', record: '7-5', pts: '1,102', score: 75, color: 'linear-gradient(135deg,#6366f1,#4f46e5)', icon: '📊' },
-    { name: 'Bench Warmers', record: '6-6', pts: '1,041', score: 64, color: 'linear-gradient(135deg,#10b981,#059669)', icon: '🪑' },
-    { name: 'Box Score Fraud', record: '4-8', pts: '891', score: 40, color: 'linear-gradient(135deg,#6b7280,#4b5563)', icon: '📋' },
-  ],
-  hockey: [
-    { name: 'Save % Kings', record: '10-2', pts: '1,567', score: 94, color: 'linear-gradient(135deg,#f59e0b,#d97706)', icon: '🥅' },
-    { name: 'Hat Trick City', record: '8-4', pts: '1,423', score: 85, color: 'linear-gradient(135deg,#06b6d4,#0891b2)', icon: '🏒' },
-    { name: 'Power Play FC', record: '7-5', pts: '1,312', score: 74, color: 'linear-gradient(135deg,#8b5cf6,#7c3aed)', icon: '⚡' },
-    { name: 'Empty Net Bros', record: '5-7', pts: '1,189', score: 61, color: 'linear-gradient(135deg,#10b981,#059669)', icon: '🥶' },
-    { name: 'Penalty Box FC', record: '3-9', pts: '978', score: 38, color: 'linear-gradient(135deg,#6b7280,#4b5563)', icon: '📦' },
-  ],
+// Reset to valid format when sport changes (not needed now since both formats apply to all sports)
+function ensureValidFormat() { /* both formats work for all sports */ }
+
+// Category columns per sport
+const categoryColumnsBySport: Record<string, string[]> = {
+  football:   ['PTS', 'YDS', 'TD'],
+  baseball:   ['HR',  'SB',  'ERA'],
+  basketball: ['PTS', 'REB', 'AST'],
+  hockey:     ['G',   'A',   'SOG'],
 }
-const previewTeams = computed(() => previewTeamsBySport[selectedSport.value] || previewTeamsBySport.football)
+const activeCategoryColumns = computed(() => categoryColumnsBySport[selectedSport.value] ?? ['Cat1','Cat2','Cat3'])
+
+// Teams per platform × sport
+// Each team has: name, color, record (W-L), pts (PF), allPlay, catRecord (W-L-T), cats [3 cat win strings]
+type PreviewTeam = {
+  name: string; color: string; record: string; pts: string; allPlay: string
+  catRecord: string; cats: string[]
+}
+const previewData: Record<string, Record<string, PreviewTeam[]>> = {
+  sleeper: {
+    football: [
+      { name: 'Mahomes Magic',   color: 'linear-gradient(135deg,#eab308,#d97706)', record: '9-2', pts: '1,456', allPlay: '7-4',  catRecord: '9-2-0', cats: ['8-3','7-4','9-2'] },
+      { name: 'Trash Can Wins',  color: 'linear-gradient(135deg,#10b981,#059669)', record: '8-3', pts: '1,342', allPlay: '8-3',  catRecord: '8-3-0', cats: ['7-4','8-3','6-5'] },
+      { name: 'The Algorithm',   color: 'linear-gradient(135deg,#6366f1,#4f46e5)', record: '7-4', pts: '1,298', allPlay: '6-5',  catRecord: '7-3-1', cats: ['5-6','7-4','8-3'] },
+      { name: 'Waiver Wire Kid', color: 'linear-gradient(135deg,#ef4444,#dc2626)', record: '6-5', pts: '1,187', allPlay: '5-6',  catRecord: '6-4-1', cats: ['6-5','5-6','4-7'] },
+      { name: 'Toilet Bowl FC',  color: 'linear-gradient(135deg,#6b7280,#4b5563)', record: '3-8', pts: '982',   allPlay: '2-9',  catRecord: '3-8-0', cats: ['2-9','3-8','2-9'] },
+    ],
+    baseball: [
+      { name: 'Dingers Only',       color: 'linear-gradient(135deg,#eab308,#d97706)', record: '9-1',  pts: '87.5', allPlay: '8-2',  catRecord: '9-1-0', cats: ['9-1','7-3','6-4'] },
+      { name: 'ERA Zero',           color: 'linear-gradient(135deg,#06b6d4,#0891b2)', record: '7-3',  pts: '82.0', allPlay: '7-3',  catRecord: '7-3-0', cats: ['5-5','8-2','9-1'] },
+      { name: 'Steals & Deals',     color: 'linear-gradient(135deg,#10b981,#059669)', record: '6-4',  pts: '78.5', allPlay: '5-5',  catRecord: '6-4-0', cats: ['7-3','6-4','4-6'] },
+      { name: 'K-Rate Kings',       color: 'linear-gradient(135deg,#8b5cf6,#7c3aed)', record: '5-5',  pts: '73.0', allPlay: '4-6',  catRecord: '5-5-0', cats: ['4-6','5-5','7-3'] },
+      { name: 'Sub-.35 ERA or Bust',color: 'linear-gradient(135deg,#6b7280,#4b5563)', record: '2-8',  pts: '58.5', allPlay: '2-8',  catRecord: '2-8-0', cats: ['2-8','2-8','3-7'] },
+    ],
+    basketball: [
+      { name: 'Triple Double',   color: 'linear-gradient(135deg,#eab308,#d97706)', record: '9-3',  pts: '1,234', allPlay: '9-3',  catRecord: '9-3-0', cats: ['8-4','9-3','7-5'] },
+      { name: 'Giannis Mode',    color: 'linear-gradient(135deg,#ef4444,#dc2626)', record: '8-4',  pts: '1,189', allPlay: '8-4',  catRecord: '8-4-0', cats: ['7-5','8-4','9-3'] },
+      { name: 'Points Only',     color: 'linear-gradient(135deg,#6366f1,#4f46e5)', record: '7-5',  pts: '1,102', allPlay: '6-6',  catRecord: '7-5-0', cats: ['9-3','6-6','5-7'] },
+      { name: 'Bench Warmers',   color: 'linear-gradient(135deg,#10b981,#059669)', record: '6-6',  pts: '1,041', allPlay: '5-7',  catRecord: '6-6-0', cats: ['5-7','7-5','6-6'] },
+      { name: 'Box Score Fraud', color: 'linear-gradient(135deg,#6b7280,#4b5563)', record: '4-8',  pts: '891',   allPlay: '3-9',  catRecord: '4-8-0', cats: ['4-8','3-9','4-8'] },
+    ],
+    hockey: [
+      { name: 'Save % Kings',   color: 'linear-gradient(135deg,#eab308,#d97706)', record: '10-2', pts: '1,567', allPlay: '9-3',  catRecord: '10-2-0', cats: ['8-4','9-3','10-2'] },
+      { name: 'Hat Trick City', color: 'linear-gradient(135deg,#06b6d4,#0891b2)', record: '8-4',  pts: '1,423', allPlay: '8-4',  catRecord: '8-3-1',  cats: ['9-3','7-5','8-4'] },
+      { name: 'Power Play FC',  color: 'linear-gradient(135deg,#8b5cf6,#7c3aed)', record: '7-5',  pts: '1,312', allPlay: '6-6',  catRecord: '7-5-0',  cats: ['7-5','8-4','6-6'] },
+      { name: 'Empty Net Bros', color: 'linear-gradient(135deg,#10b981,#059669)', record: '5-7',  pts: '1,189', allPlay: '5-7',  catRecord: '5-6-1',  cats: ['5-7','5-7','7-5'] },
+      { name: 'Penalty Box FC', color: 'linear-gradient(135deg,#6b7280,#4b5563)', record: '3-9',  pts: '978',   allPlay: '2-10', catRecord: '3-9-0',  cats: ['3-9','3-9','2-10'] },
+    ],
+  },
+  yahoo: {
+    football: [
+      { name: 'Fantasy Felons',    color: 'linear-gradient(135deg,#7c3aed,#6d28d9)', record: '10-1', pts: '1,512', allPlay: '8-3',  catRecord: '10-1-0', cats: ['9-2','8-3','10-1'] },
+      { name: 'Sunday Funday',     color: 'linear-gradient(135deg,#f97316,#ea580c)', record: '8-3',  pts: '1,398', allPlay: '7-4',  catRecord: '8-3-0',  cats: ['7-4','8-3','7-4'] },
+      { name: 'Touch Down Town',   color: 'linear-gradient(135deg,#06b6d4,#0891b2)', record: '7-4',  pts: '1,276', allPlay: '6-5',  catRecord: '7-4-0',  cats: ['6-5','7-4','8-3'] },
+      { name: 'No Kickers Needed', color: 'linear-gradient(135deg,#10b981,#059669)', record: '5-6',  pts: '1,144', allPlay: '5-6',  catRecord: '5-6-0',  cats: ['5-6','4-7','5-6'] },
+      { name: 'IR\'d Out',         color: 'linear-gradient(135deg,#6b7280,#4b5563)', record: '2-9',  pts: '901',   allPlay: '1-10', catRecord: '2-9-0',  cats: ['2-9','2-9','1-10'] },
+    ],
+    baseball: [
+      { name: 'Diamond Dogs',    color: 'linear-gradient(135deg,#7c3aed,#6d28d9)', record: '8-2',  pts: '91.0', allPlay: '8-2',  catRecord: '8-2-0', cats: ['8-2','7-3','9-1'] },
+      { name: 'Swing Kings',     color: 'linear-gradient(135deg,#f97316,#ea580c)', record: '7-3',  pts: '84.5', allPlay: '6-4',  catRecord: '7-3-0', cats: ['6-4','8-2','7-3'] },
+      { name: 'Launch Angle Lab',color: 'linear-gradient(135deg,#06b6d4,#0891b2)', record: '5-5',  pts: '76.0', allPlay: '5-5',  catRecord: '5-5-0', cats: ['5-5','4-6','6-4'] },
+      { name: 'Bullpen Burners', color: 'linear-gradient(135deg,#10b981,#059669)', record: '4-6',  pts: '69.0', allPlay: '4-6',  catRecord: '4-6-0', cats: ['4-6','5-5','4-6'] },
+      { name: 'WHIP It Good',    color: 'linear-gradient(135deg,#6b7280,#4b5563)', record: '1-9',  pts: '54.0', allPlay: '2-8',  catRecord: '1-9-0', cats: ['2-8','1-9','1-9'] },
+    ],
+    basketball: [
+      { name: 'Dunk Tank',      color: 'linear-gradient(135deg,#7c3aed,#6d28d9)', record: '10-2', pts: '1,301', allPlay: '9-3',  catRecord: '10-2-0', cats: ['10-2','9-3','8-4'] },
+      { name: 'Mid-Range Mafia',color: 'linear-gradient(135deg,#f97316,#ea580c)', record: '8-4',  pts: '1,198', allPlay: '8-4',  catRecord: '8-4-0',  cats: ['8-4','8-4','9-3'] },
+      { name: 'Steal Happy',    color: 'linear-gradient(135deg,#06b6d4,#0891b2)', record: '7-5',  pts: '1,089', allPlay: '6-6',  catRecord: '7-5-0',  cats: ['7-5','6-6','7-5'] },
+      { name: 'FG% or Bust',    color: 'linear-gradient(135deg,#10b981,#059669)', record: '5-7',  pts: '987',   allPlay: '5-7',  catRecord: '5-7-0',  cats: ['5-7','7-5','4-8'] },
+      { name: 'Benchland',      color: 'linear-gradient(135deg,#6b7280,#4b5563)', record: '3-9',  pts: '876',   allPlay: '3-9',  catRecord: '3-9-0',  cats: ['3-9','2-10','4-8'] },
+    ],
+    hockey: [
+      { name: 'Five Hole FC',   color: 'linear-gradient(135deg,#7c3aed,#6d28d9)', record: '9-3',  pts: '1,498', allPlay: '9-3',  catRecord: '9-3-0',  cats: ['9-3','8-4','9-3'] },
+      { name: 'Zamboni Riders', color: 'linear-gradient(135deg,#f97316,#ea580c)', record: '8-4',  pts: '1,345', allPlay: '7-5',  catRecord: '8-4-0',  cats: ['8-4','9-3','7-5'] },
+      { name: 'Breakaway Boys', color: 'linear-gradient(135deg,#06b6d4,#0891b2)', record: '6-6',  pts: '1,201', allPlay: '6-6',  catRecord: '6-6-0',  cats: ['6-6','6-6','8-4'] },
+      { name: 'PP Specialists', color: 'linear-gradient(135deg,#10b981,#059669)', record: '5-7',  pts: '1,089', allPlay: '5-7',  catRecord: '5-6-1',  cats: ['5-7','5-7','6-6'] },
+      { name: 'Icing All Day',  color: 'linear-gradient(135deg,#6b7280,#4b5563)', record: '2-10', pts: '912',   allPlay: '2-10', catRecord: '2-10-0', cats: ['2-10','3-9','2-10'] },
+    ],
+  },
+  espn: {
+    football: [
+      { name: 'Gronk Spike FC',   color: 'linear-gradient(135deg,#e11d48,#be123c)', record: '9-2', pts: '1,487', allPlay: '8-3',  catRecord: '9-2-0', cats: ['8-3','9-2','7-4'] },
+      { name: 'Scoreboard Watch', color: 'linear-gradient(135deg,#f97316,#ea580c)', record: '8-3', pts: '1,361', allPlay: '7-4',  catRecord: '8-3-0', cats: ['7-4','7-4','9-2'] },
+      { name: 'Commissioner Veto',color: 'linear-gradient(135deg,#a855f7,#9333ea)', record: '6-5', pts: '1,241', allPlay: '6-5',  catRecord: '6-5-0', cats: ['6-5','6-5','6-5'] },
+      { name: 'Garbage Time Guru',color: 'linear-gradient(135deg,#0ea5e9,#0284c7)', record: '5-6', pts: '1,129', allPlay: '4-7',  catRecord: '5-6-0', cats: ['4-7','5-6','5-6'] },
+      { name: 'Punt the Season',  color: 'linear-gradient(135deg,#6b7280,#4b5563)', record: '2-9', pts: '944',   allPlay: '2-9',  catRecord: '2-9-0', cats: ['2-9','2-9','3-8'] },
+    ],
+    baseball: [
+      { name: 'Clutch Factor',    color: 'linear-gradient(135deg,#e11d48,#be123c)', record: '8-2',  pts: '89.0', allPlay: '7-3',  catRecord: '8-2-0', cats: ['7-3','9-1','8-2'] },
+      { name: 'Exit Velocity FC', color: 'linear-gradient(135deg,#f97316,#ea580c)', record: '7-3',  pts: '83.0', allPlay: '7-3',  catRecord: '7-3-0', cats: ['8-2','6-4','7-3'] },
+      { name: 'OPS Kings',        color: 'linear-gradient(135deg,#a855f7,#9333ea)', record: '5-5',  pts: '74.5', allPlay: '5-5',  catRecord: '5-5-0', cats: ['5-5','5-5','5-5'] },
+      { name: 'Five Tool Bros',   color: 'linear-gradient(135deg,#0ea5e9,#0284c7)', record: '4-6',  pts: '67.0', allPlay: '4-6',  catRecord: '4-6-0', cats: ['3-7','4-6','4-6'] },
+      { name: 'BABIP Believers',  color: 'linear-gradient(135deg,#6b7280,#4b5563)', record: '1-9',  pts: '51.0', allPlay: '1-9',  catRecord: '1-9-0', cats: ['2-8','1-9','1-9'] },
+    ],
+    basketball: [
+      { name: 'Zion Mode',         color: 'linear-gradient(135deg,#e11d48,#be123c)', record: '9-3',  pts: '1,289', allPlay: '10-2', catRecord: '9-3-0',  cats: ['10-2','9-3','8-4'] },
+      { name: 'Three Point Land',  color: 'linear-gradient(135deg,#f97316,#ea580c)', record: '8-4',  pts: '1,201', allPlay: '7-5',  catRecord: '8-4-0',  cats: ['8-4','7-5','9-3'] },
+      { name: 'Lottery Pick FC',   color: 'linear-gradient(135deg,#a855f7,#9333ea)', record: '7-5',  pts: '1,099', allPlay: '6-6',  catRecord: '7-5-0',  cats: ['6-6','8-4','7-5'] },
+      { name: 'Trade Deadline All',color: 'linear-gradient(135deg,#0ea5e9,#0284c7)', record: '5-7',  pts: '982',   allPlay: '5-7',  catRecord: '5-7-0',  cats: ['5-7','6-6','5-7'] },
+      { name: 'DNP Status',        color: 'linear-gradient(135deg,#6b7280,#4b5563)', record: '3-9',  pts: '844',   allPlay: '2-10', catRecord: '3-9-0',  cats: ['3-9','2-10','3-9'] },
+    ],
+    hockey: [
+      { name: 'Brodeur\'s Legacy', color: 'linear-gradient(135deg,#e11d48,#be123c)', record: '10-2', pts: '1,612', allPlay: '10-2', catRecord: '10-2-0', cats: ['10-2','9-3','10-2'] },
+      { name: 'Slap Shot Kings',   color: 'linear-gradient(135deg,#f97316,#ea580c)', record: '8-4',  pts: '1,401', allPlay: '8-4',  catRecord: '8-4-0',  cats: ['8-4','8-4','8-4'] },
+      { name: 'PPG All Day',       color: 'linear-gradient(135deg,#a855f7,#9333ea)', record: '7-5',  pts: '1,287', allPlay: '7-5',  catRecord: '7-4-1',  cats: ['7-5','7-5','6-6'] },
+      { name: 'Enforcers Only',    color: 'linear-gradient(135deg,#0ea5e9,#0284c7)', record: '5-7',  pts: '1,102', allPlay: '5-7',  catRecord: '5-7-0',  cats: ['5-7','5-7','6-6'] },
+      { name: 'Offsides Again',    color: 'linear-gradient(135deg,#6b7280,#4b5563)', record: '2-10', pts: '934',   allPlay: '2-10', catRecord: '2-10-0', cats: ['2-10','3-9','2-10'] },
+    ],
+  },
+}
+
+const previewTeams = computed<PreviewTeam[]>(() =>
+  previewData[selectedPlatform.value]?.[selectedSport.value] ?? previewData.sleeper.football
+)
 
 // ── Gallery ─────────────────────────────────────────────────────────────────
 const galleryFilters = [
@@ -1462,41 +1587,133 @@ function scrollTo(id: string) {
 .picker-option.active { background: rgba(234,179,8,0.1); border-color: rgba(234,179,8,0.4); color: #eab308; }
 .picker-emoji { font-size: 1rem; }
 
+/* Platform button with logo */
+.picker-option-platform { gap: 8px; }
+.platform-btn-logo {
+  width: 18px; height: 18px;
+  object-fit: contain; flex-shrink: 0;
+  filter: grayscale(1) brightness(0.6);
+  transition: filter 0.15s;
+}
+.picker-option.active .platform-btn-logo { filter: none; }
+.picker-option:hover .platform-btn-logo  { filter: grayscale(0.3) brightness(0.8); }
+
+/* Preview area */
 .picker-preview { text-align: center; }
-.preview-badge {
-  display: inline-block;
+
+.preview-badge-row {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
   padding: 5px 14px;
   background: rgba(234,179,8,0.08);
   border: 1px solid rgba(234,179,8,0.2);
   border-radius: 999px;
-  font-size: 0.78rem;
-  color: #eab308;
-  font-weight: 600;
   margin-bottom: 20px;
 }
+.preview-platform-logo {
+  width: 18px; height: 18px;
+  object-fit: contain; flex-shrink: 0;
+}
+.preview-badge {
+  font-size: 0.78rem; color: #eab308; font-weight: 600;
+}
+
+/* Preview card — authentic app card style */
 .preview-card {
-  background: #0d0f1a;
+  background: linear-gradient(135deg, rgba(19,22,32,0.98), rgba(10,12,20,0.98));
   border: 1px solid #1e2130;
   border-radius: 16px;
-  padding: 24px;
+  overflow: hidden;
   max-width: 680px;
   margin: 0 auto;
 }
-.preview-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
-.preview-title { font-family: 'Barlow Condensed', sans-serif; font-size: 0.85rem; font-weight: 700; letter-spacing: 0.1em; color: #4b5563; text-transform: uppercase; }
-.preview-week { font-size: 0.78rem; color: #374151; }
-.preview-rankings { display: flex; flex-direction: column; gap: 10px; }
-.preview-rank-row { display: grid; grid-template-columns: 24px 32px 1fr 70px 120px 56px; align-items: center; gap: 10px; }
-.prev-rank { font-family: 'Barlow Condensed', sans-serif; font-weight: 900; font-size: 1rem; color: #374151; text-align: right; }
-.prev-rank.gold { color: #eab308; }
+/* Card header row */
+.preview-header {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 14px 20px;
+  border-bottom: 1px solid #1e2130;
+}
+.preview-header-left { display: flex; align-items: center; gap: 8px; }
+.preview-header-logo {
+  width: 22px; height: 22px;
+  object-fit: contain; flex-shrink: 0;
+}
+.preview-title {
+  font-family: 'Barlow', sans-serif;
+  font-size: 0.9rem; font-weight: 700; color: #e5e7eb;
+}
+.preview-week { font-size: 0.75rem; color: #4b5563; }
+
+/* Table thead */
+.preview-thead {
+  display: grid;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 20px;
+  border-bottom: 1px solid #1a1d28;
+  font-size: 0.62rem; font-weight: 700; letter-spacing: 0.1em;
+  text-transform: uppercase; color: #374151;
+}
+.thead-pts { grid-template-columns: 24px 1fr 52px 64px 64px; }
+.thead-cat { grid-template-columns: 24px 1fr 56px 48px 48px 48px; }
+.pth-rank  { text-align: right; }
+.pth-team  { text-align: left; }
+.pth-rec   { text-align: center; }
+.pth-col   { text-align: center; }
+.pth-cat   { text-align: center; color: #4b5563; }
+
+/* Rows */
+.preview-rank-row {
+  display: grid;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 20px;
+  border-bottom: 1px solid #1a1d28;
+  transition: background 0.1s;
+}
+.preview-rank-row:last-of-type { border-bottom: none; }
+.row-pts { grid-template-columns: 24px 1fr 52px 64px 64px; }
+.row-cat { grid-template-columns: 24px 1fr 56px 48px 48px 48px; }
+.row-first { background: rgba(234,179,8,0.04); }
+
+.prev-rank {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-weight: 900; font-size: 0.9rem; color: #4b5563; text-align: right;
+}
+.prev-rank.gold   { color: #eab308; }
 .prev-rank.silver { color: #9ca3af; }
 .prev-rank.bronze { color: #b45309; }
-.prev-avatar { width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 0.75rem; }
-.prev-name { font-size: 0.85rem; color: #d1d5db; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.prev-record { font-size: 0.75rem; color: #4b5563; text-align: right; }
-.prev-bar-wrap { height: 5px; background: #1a1d28; border-radius: 3px; overflow: hidden; }
-.prev-bar { height: 100%; border-radius: 3px; transition: width 0.4s ease; }
-.prev-pts { font-family: 'Barlow Condensed', sans-serif; font-size: 0.85rem; font-weight: 700; color: #9ca3af; text-align: right; }
+
+.prev-team-cell { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.prev-avatar {
+  width: 26px; height: 26px; border-radius: 50%; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 0.55rem; font-weight: 700; color: #fff;
+  border: 1.5px solid rgba(255,255,255,0.1);
+}
+.prev-name { font-size: 0.82rem; color: #d1d5db; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.prev-record {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 0.78rem; font-weight: 700; color: #9ca3af; text-align: center;
+}
+.prev-record.cat-rec { font-size: 0.72rem; }
+.prev-pts {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 0.78rem; font-weight: 700; color: #9ca3af; text-align: center;
+}
+.prev-allplay {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 0.72rem; color: #6b7280; text-align: center;
+}
+.prev-cat {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 0.72rem; font-weight: 700; color: #6b7280; text-align: center;
+}
+.row-first .prev-cat { color: #9ca3af; }
+.row-first .prev-record { color: #e5e7eb; }
+.row-first .prev-pts { color: #eab308; }
+
 
 /* ══════════════════════════════════════════════
    GALLERY SECTION
@@ -2164,7 +2381,7 @@ function scrollTo(id: string) {
   .chat-grid { grid-template-columns: 1fr; }
   .stats-row { flex-wrap: wrap; }
   .preview-rank-row { grid-template-columns: 24px 28px 1fr 60px; }
-  .prev-bar-wrap, .prev-pts { display: none; }
+  .prev-name { font-size: 0.75rem; }
 }
 
 @media (max-width: 600px) {
