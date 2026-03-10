@@ -470,7 +470,7 @@
           <template v-for="card in filteredCards" :key="card.id">
             <div class="share-card" :class="card.size">
 
-              <!-- POWER RANKINGS CARD — matches actual app PR table output -->
+              <!-- ═══ POWER RANKINGS TABLE ════════════════════════════════ -->
               <template v-if="card.type === 'power-rankings'">
                 <div class="sc-card sc-pr-card">
                   <div class="sc-brand-row">
@@ -485,15 +485,13 @@
                     </div>
                     <div v-for="(t,i) in card.teams" :key="i" class="sc-pr-row" :class="i===0?'sc-pr-leader':''">
                       <span class="sc-pr-num" :class="i===0?'num-gold':i===1?'num-silver':i===2?'num-bronze':''">{{ i+1 }}</span>
-                      <span class="sc-pr-chg" :class="t.trend>0?'chg-up':t.trend<0?'chg-dn':'chg-flat'">
-                        {{ t.trend>0?'▲'+t.trend : t.trend<0?'▼'+Math.abs(t.trend):'—' }}
-                      </span>
+                      <span class="sc-pr-chg" :class="t.trend>0?'chg-up':t.trend<0?'chg-dn':'chg-flat'">{{ t.trend>0?'▲'+t.trend:t.trend<0?'▼'+Math.abs(t.trend):'—' }}</span>
                       <div class="sc-pr-team-cell">
-                        <div class="sc-pr-initials" :class="'init-'+i">{{ t.name.split(' ').map(w=>w[0]).join('').slice(0,2) }}</div>
+                        <div class="sc-pr-initials" :class="'init-'+i">{{ t.name.split(' ').map((w:string)=>w[0]).join('').slice(0,2) }}</div>
                         <span class="sc-pr-name" :class="i===0?'name-gold':''">{{ t.name }}</span>
                       </div>
                       <div class="sc-pr-bar-wrap">
-                        <div class="sc-pr-bar" :style="{width: t.score+'%', opacity: Math.max(0.3, 1-(i*0.15))}"></div>
+                        <div class="sc-pr-bar" :style="{width:t.score+'%',opacity:Math.max(0.3,1-(i*0.15))}"></div>
                         <span class="sc-pr-bar-num">{{ t.pscore }}</span>
                       </div>
                       <span class="sc-pr-rec">{{ t.record }}</span>
@@ -503,76 +501,170 @@
                 </div>
               </template>
 
-              <!-- MATCHUP CARD — matches PointsMatchupCard exactly -->
-              <template v-else-if="card.type === 'matchup'">
-                <div class="sc-card sc-matchup-card">
+              <!-- ═══ POWER RANKINGS LINE GRAPH ════════════════════════════ -->
+              <template v-else-if="card.type === 'pr-chart'">
+                <div class="sc-card sc-pr-chart-card">
                   <div class="sc-brand-row">
                     <span class="sc-brand-logo">UFD</span>
-                    <span class="sc-brand-sport">{{ card.sportLabel }}</span>
-                    <span class="sc-matchup-status" :class="card.status === 'Live' ? 'status-live' : card.status === 'Final' ? 'status-final' : 'status-upcoming'">
-                      {{ card.status === 'Live' ? '● ' + card.status : card.status }}
+                    <span class="sc-brand-sport">🏈 NFL Fantasy · PPR</span>
+                    <span class="sc-brand-week">WK 1–{{ card.week }}</span>
+                  </div>
+                  <div class="sc-pr-title">⚡ RANKING TRENDS</div>
+                  <!-- SVG line chart — y-axis inverted (rank 1 = top) -->
+                  <div class="sc-prc-chart-wrap">
+                    <svg viewBox="0 0 260 130" class="sc-prc-svg" preserveAspectRatio="none">
+                      <!-- Horizontal grid lines for ranks 1–5 -->
+                      <line v-for="r in 5" :key="r" x1="0" :y1="(r-1)*24+8" x2="260" :y2="(r-1)*24+8" stroke="#1e2130" stroke-width="1"/>
+                      <!-- Rank labels -->
+                      <text v-for="r in 5" :key="'l'+r" x="4" :y="(r-1)*24+12" font-size="7" fill="#374151">{{ r }}</text>
+                      <!-- Lines per team -->
+                      <template v-for="(t,ti) in card.teams" :key="ti">
+                        <polyline
+                          :points="t.ranks.map((r:number,wi:number)=>`${22+wi*22},${(r-1)*24+8}`).join(' ')"
+                          fill="none" :stroke="t.color" stroke-width="1.8"
+                          :stroke-opacity="ti===0?1:0.5"
+                          stroke-linejoin="round" stroke-linecap="round"
+                        />
+                        <!-- dot at last point -->
+                        <circle
+                          :cx="22+(t.ranks.length-1)*22"
+                          :cy="(t.ranks[t.ranks.length-1]-1)*24+8"
+                          r="3" :fill="t.color" :fill-opacity="ti===0?1:0.6"
+                        />
+                        <!-- label at end -->
+                        <text
+                          :x="22+(t.ranks.length-1)*22+5"
+                          :y="(t.ranks[t.ranks.length-1]-1)*24+11"
+                          font-size="6.5" :fill="t.color" :fill-opacity="ti===0?1:0.7"
+                        >{{ t.name.split(' ')[0] }}</text>
+                      </template>
+                      <!-- Week tick labels -->
+                      <text v-for="(r,wi) in card.teams[0].ranks" :key="'w'+wi" :x="22+wi*22" y="126" font-size="6" fill="#374151" text-anchor="middle">{{ wi+1 }}</text>
+                    </svg>
+                    <!-- X axis label -->
+                    <div class="sc-prc-xlabel">Week</div>
+                  </div>
+                  <!-- Mini legend -->
+                  <div class="sc-prc-legend">
+                    <span v-for="(t,ti) in card.teams.slice(0,3)" :key="ti" class="sc-prc-legend-item">
+                      <span class="sc-prc-dot" :style="{background:t.color}"></span>
+                      <span>{{ t.name.split(' ')[0] }}</span>
                     </span>
                   </div>
-                  <div class="sc-matchup-label">⚔️ WEEK {{ card.week }} MATCHUP</div>
-                  <!-- Team 1 -->
-                  <div class="sc-mu-team" :class="card.team1Won ? 'mu-winner' : ''">
-                    <div class="sc-mu-avatar" :style="{background: card.team1Color}">
-                      <span>{{ card.team1.split(' ').map(w=>w[0]).join('').slice(0,2) }}</span>
-                      <div v-if="card.myTeam === 1" class="sc-mu-star">★</div>
-                    </div>
-                    <div class="sc-mu-info">
-                      <div class="sc-mu-name" :class="card.myTeam===1?'mu-mine':card.team1Won?'mu-win-name':''">{{ card.team1 }}</div>
-                      <div class="sc-mu-rec">{{ card.record1 }}</div>
-                    </div>
-                    <div class="sc-mu-score" :class="card.team1Won?'sc-score-win':card.status==='Final'?'sc-score-loss':card.myTeam===1?'sc-score-mine':'sc-score-neutral'">
-                      {{ card.score1 }}
-                    </div>
-                  </div>
-                  <!-- Divider with vs -->
-                  <div class="sc-mu-divider"><span>vs</span></div>
-                  <!-- Team 2 -->
-                  <div class="sc-mu-team" :class="card.team2Won ? 'mu-winner' : ''">
-                    <div class="sc-mu-avatar" :style="{background: card.team2Color}">
-                      <span>{{ card.team2.split(' ').map(w=>w[0]).join('').slice(0,2) }}</span>
-                    </div>
-                    <div class="sc-mu-info">
-                      <div class="sc-mu-name" :class="card.team2Won?'mu-win-name':''">{{ card.team2 }}</div>
-                      <div class="sc-mu-rec">{{ card.record2 }}</div>
-                    </div>
-                    <div class="sc-mu-score" :class="card.team2Won?'sc-score-win':card.status==='Final'?'sc-score-loss':'sc-score-neutral'">
-                      {{ card.score2 }}
-                    </div>
-                  </div>
-                  <!-- Win probability bar (if not final or upcoming) -->
-                  <template v-if="card.prob && card.status !== 'Final'">
-                    <div class="sc-mu-prob-bar"><div class="sc-mu-prob-fill" :style="{width: card.prob+'%'}"></div></div>
-                    <div class="sc-mu-prob-label">{{ card.prob }}% win probability · {{ card.team1 }}</div>
-                  </template>
                   <div class="sc-watermark">ultimatefantasydashboard.com</div>
                 </div>
               </template>
 
-              <!-- WEEKLY RECAP — matches the League Highlights + leaders style -->
-              <template v-else-if="card.type === 'recap'">
-                <div class="sc-card sc-recap-card2">
+              <!-- ═══ WIN PROBABILITY CARD ═════════════════════════════════ -->
+              <template v-else-if="card.type === 'win-prob'">
+                <div class="sc-card sc-winprob-card">
                   <div class="sc-brand-row">
                     <span class="sc-brand-logo">UFD</span>
                     <span class="sc-brand-sport">{{ card.sportLabel }}</span>
-                    <span class="sc-brand-week">WK {{ card.week }} RECAP</span>
+                    <span class="sc-matchup-status status-live">● Live</span>
                   </div>
-                  <div class="sc-recap-title">📰 LEAGUE DIGEST</div>
-                  <div class="sc-recap-rows">
-                    <div class="sc-recap-row"><span class="rcap-icon">🏆</span><div><div class="rcap-lbl">Top Score</div><div class="rcap-val yellow-val">{{ card.topScore }}</div></div></div>
-                    <div class="sc-recap-row"><span class="rcap-icon">💀</span><div><div class="rcap-lbl">Lowest Score</div><div class="rcap-val red-val">{{ card.lowScore }}</div></div></div>
-                    <div class="sc-recap-row"><span class="rcap-icon">💣</span><div><div class="rcap-lbl">Biggest Blowout</div><div class="rcap-val">{{ card.blowout }}</div></div></div>
-                    <div class="sc-recap-row"><span class="rcap-icon">😤</span><div><div class="rcap-lbl">Closest Game</div><div class="rcap-val green-val">{{ card.closest }}</div></div></div>
-                    <div class="sc-recap-row"><span class="rcap-icon">🔥</span><div><div class="rcap-lbl">On Fire</div><div class="rcap-val">{{ card.onFire }}</div></div></div>
+                  <div class="sc-pr-title" style="font-size:0.82rem;padding:8px 16px 4px">🎯 WIN PROBABILITY · WK {{ card.week }}</div>
+                  <!-- Two team prob blocks side by side -->
+                  <div class="sc-wp-teams">
+                    <div class="sc-wp-team sc-wp-t1">
+                      <div class="sc-wp-avatar" :style="{borderColor: card.t1color}">
+                        {{ card.team1.split(' ').map((w:string)=>w[0]).join('').slice(0,2) }}
+                      </div>
+                      <div class="sc-wp-name" :style="{color: card.t1color}">{{ card.team1 }}</div>
+                      <div class="sc-wp-pct" :style="{color: card.t1color}">{{ card.t1prob.toFixed(1) }}%</div>
+                      <div class="sc-wp-sub">{{ card.t1pts.toFixed(1) }} pts</div>
+                      <div class="sc-wp-proj" :style="{color: card.t1color}">proj {{ card.t1proj.toFixed(1) }}</div>
+                    </div>
+                    <div class="sc-wp-vs">VS</div>
+                    <div class="sc-wp-team sc-wp-t2">
+                      <div class="sc-wp-avatar" :style="{borderColor: card.t2color}">
+                        {{ card.team2.split(' ').map((w:string)=>w[0]).join('').slice(0,2) }}
+                      </div>
+                      <div class="sc-wp-name" :style="{color: card.t2color}">{{ card.team2 }}</div>
+                      <div class="sc-wp-pct" :style="{color: card.t2color}">{{ card.t2prob.toFixed(1) }}%</div>
+                      <div class="sc-wp-sub">{{ card.t2pts.toFixed(1) }} pts</div>
+                      <div class="sc-wp-proj" :style="{color: card.t2color}">proj {{ card.t2proj.toFixed(1) }}</div>
+                    </div>
+                  </div>
+                  <!-- Gradient probability bar -->
+                  <div class="sc-wp-bar-wrap">
+                    <div class="sc-wp-bar-fill" :style="{background: `linear-gradient(90deg, ${card.t1color} ${card.t1prob}%, ${card.t2color} ${card.t1prob}%)`}"></div>
+                    <div class="sc-wp-bar-t1">{{ card.team1.split(' ')[0] }}</div>
+                    <div class="sc-wp-bar-t2">{{ card.team2.split(' ')[0] }}</div>
                   </div>
                   <div class="sc-watermark">ultimatefantasydashboard.com</div>
                 </div>
               </template>
 
-              <!-- STANDINGS CARD — exact standings table output -->
+              <!-- ═══ WIN PROBABILITY TREND CHART ══════════════════════════ -->
+              <template v-else-if="card.type === 'win-prob-chart'">
+                <div class="sc-card sc-wpc-card">
+                  <div class="sc-brand-row">
+                    <span class="sc-brand-logo">UFD</span>
+                    <span class="sc-brand-sport">{{ card.sportLabel }}</span>
+                    <span class="sc-brand-week">WK {{ card.week }}</span>
+                  </div>
+                  <div class="sc-pr-title" style="font-size:0.82rem;padding:8px 16px 4px">📈 WIN PROBABILITY TREND</div>
+                  <!-- Area chart SVG -->
+                  <div class="sc-wpc-chart-wrap">
+                    <svg viewBox="0 0 240 110" class="sc-wpc-svg" preserveAspectRatio="none">
+                      <!-- 50% midline -->
+                      <line x1="0" y1="55" x2="240" y2="55" stroke="#1e2130" stroke-width="1" stroke-dasharray="3,3"/>
+                      <!-- Y labels -->
+                      <text x="2" y="12" font-size="6.5" fill="#374151">100%</text>
+                      <text x="2" y="57" font-size="6.5" fill="#374151">50%</text>
+                      <text x="2" y="102" font-size="6.5" fill="#374151">0%</text>
+                      <!-- compute actual points from probs (null = skip) -->
+                      <template v-if="card.probs.filter((p:number|null)=>p!==null).length > 1">
+                        <!-- t1 area fill -->
+                        <path
+                          :d="'M '+card.probs.map((p:number|null,i:number)=>p===null?null:`${30+i*30},${110-(p/100)*100}`).filter((v:string|null)=>v!==null).join(' L ')+' L '+(30+(card.probs.filter((p:number|null)=>p!==null).length-1)*30)+',110 L 30,110 Z'"
+                          :fill="card.t1color" fill-opacity="0.15"
+                        />
+                        <!-- t1 line -->
+                        <polyline
+                          :points="card.probs.map((p:number|null,i:number)=>p===null?null:`${30+i*30},${110-(p/100)*100}`).filter((v:string|null)=>v!==null).join(' ')"
+                          fill="none" :stroke="card.t1color" stroke-width="2"
+                          stroke-linejoin="round" stroke-linecap="round"
+                        />
+                        <!-- t2 area (mirror) fill -->
+                        <path
+                          :d="'M '+card.probs.map((p:number|null,i:number)=>p===null?null:`${30+i*30},${110-((100-p)/100)*100}`).filter((v:string|null)=>v!==null).join(' L ')+' L '+(30+(card.probs.filter((p:number|null)=>p!==null).length-1)*30)+',110 L 30,110 Z'"
+                          :fill="card.t2color" fill-opacity="0.12"
+                        />
+                        <!-- t2 line -->
+                        <polyline
+                          :points="card.probs.map((p:number|null,i:number)=>p===null?null:`${30+i*30},${110-((100-p)/100)*100}`).filter((v:string|null)=>v!==null).join(' ')"
+                          fill="none" :stroke="card.t2color" stroke-width="2"
+                          stroke-linejoin="round" stroke-linecap="round" stroke-dasharray="4,2"
+                        />
+                        <!-- dot at last real point -->
+                        <circle
+                          :cx="30+(card.probs.filter((p:number|null)=>p!==null).length-1)*30"
+                          :cy="110-(card.probs.filter((p:number|null)=>p!==null).slice(-1)[0]/100)*100"
+                          r="3.5" :fill="card.t1color"
+                        />
+                      </template>
+                      <!-- Day labels -->
+                      <text v-for="(d,di) in card.days" :key="d" :x="30+di*30" y="108" font-size="7" fill="#4b5563" text-anchor="middle">{{ d }}</text>
+                    </svg>
+                  </div>
+                  <!-- Legend -->
+                  <div class="sc-prc-legend" style="padding:0 16px 4px">
+                    <span class="sc-prc-legend-item">
+                      <span class="sc-prc-dot" :style="{background:card.t1color}"></span>
+                      <span :style="{color:card.t1color}">{{ card.team1 }}</span>
+                    </span>
+                    <span class="sc-prc-legend-item">
+                      <span class="sc-prc-dot" :style="{background:card.t2color,opacity:0.7}"></span>
+                      <span :style="{color:card.t2color,opacity:0.8}">{{ card.team2 }}</span>
+                    </span>
+                  </div>
+                  <div class="sc-watermark">ultimatefantasydashboard.com</div>
+                </div>
+              </template>
+
+              <!-- ═══ STANDINGS TABLE ═══════════════════════════════════════ -->
               <template v-else-if="card.type === 'standings'">
                 <div class="sc-card sc-standings-card">
                   <div class="sc-brand-row">
@@ -588,13 +680,13 @@
                     <span class="std-pf">PF</span>
                     <span class="std-streak">Streak</span>
                   </div>
-                  <div v-for="(t, i) in card.teams" :key="i" class="sc-standings-row" :class="[t.playoff?'std-playoff':'', t.myTeam?'std-myteam':'']">
+                  <div v-for="(t,i) in card.teams" :key="i" class="sc-standings-row" :class="[t.playoff?'std-playoff':'',t.myTeam?'std-myteam':'']">
                     <span class="std-rank-val" :class="i===0?'rank-gold':i===1?'rank-silver':i===2?'rank-bronze':''">
                       {{ i+1 }}<span v-if="t.playoff" class="std-playoff-dot">●</span>
                     </span>
                     <div class="std-team-cell">
                       <div class="std-avatar" :class="'stdav-'+i">
-                        {{ t.name.split(' ').map(w=>w[0]).join('').slice(0,2) }}
+                        {{ t.name.split(' ').map((w:string)=>w[0]).join('').slice(0,2) }}
                         <div v-if="t.myTeam" class="std-my-star">★</div>
                       </div>
                       <span class="std-name" :class="t.myTeam?'std-mine-name':''">{{ t.name }}</span>
@@ -607,7 +699,115 @@
                 </div>
               </template>
 
-              <!-- TRADE ANALYZER CARD -->
+              <!-- ═══ HISTORY: SEASON-BY-SEASON STANDINGS ══════════════════ -->
+              <template v-else-if="card.type === 'history-standings'">
+                <div class="sc-card sc-hist-card">
+                  <div class="sc-brand-row">
+                    <span class="sc-brand-logo">UFD</span>
+                    <span class="sc-brand-sport">{{ card.sportLabel }}</span>
+                    <span class="sc-brand-week">HISTORY</span>
+                  </div>
+                  <div class="sc-standings-title">📅 SEASON FINISHES</div>
+                  <!-- Season column headers -->
+                  <div class="sc-hist-thead">
+                    <span class="sc-hist-th-team">Team</span>
+                    <span v-for="s in card.seasons" :key="s" class="sc-hist-th-yr">{{ s }}</span>
+                    <span class="sc-hist-th-avg">Avg</span>
+                  </div>
+                  <div v-for="(t,ti) in card.teams" :key="ti" class="sc-hist-row" :class="ti===0?'sc-hist-first':''">
+                    <div class="sc-hist-team-cell">
+                      <div class="sc-hist-dot" :style="{background:t.color}"></div>
+                      <span class="sc-hist-name">{{ t.name }}</span>
+                    </div>
+                    <span v-for="(f,fi) in t.finishes" :key="fi" class="sc-hist-finish"
+                      :class="f===1?'fin-gold':f===2?'fin-silver':f<=3?'fin-bronze':f>=6?'fin-last':''">
+                      {{ f }}
+                    </span>
+                    <span class="sc-hist-avg" :class="(t.finishes.reduce((a:number,b:number)=>a+b,0)/t.finishes.length)<=2?'avg-good':'avg-meh'">
+                      {{ (t.finishes.reduce((a:number,b:number)=>a+b,0)/t.finishes.length).toFixed(1) }}
+                    </span>
+                  </div>
+                  <div class="sc-watermark">ultimatefantasydashboard.com</div>
+                </div>
+              </template>
+
+              <!-- ═══ HISTORY: H2H MATRIX ═══════════════════════════════════ -->
+              <template v-else-if="card.type === 'h2h-matrix'">
+                <div class="sc-card sc-h2h-card">
+                  <div class="sc-brand-row">
+                    <span class="sc-brand-logo">UFD</span>
+                    <span class="sc-brand-sport">{{ card.sportLabel }}</span>
+                    <span class="sc-brand-week">ALL-TIME</span>
+                  </div>
+                  <div class="sc-standings-title">🆚 HEAD-TO-HEAD MATRIX</div>
+                  <div class="sc-h2h-subtitle">All-time records · read horizontally</div>
+                  <div class="sc-h2h-table-wrap">
+                    <table class="sc-h2h-table">
+                      <thead>
+                        <tr>
+                          <th class="sc-h2h-corner"></th>
+                          <th v-for="(abbr,ci) in card.teams" :key="ci" class="sc-h2h-th">
+                            <div class="sc-h2h-th-dot" :style="{background:card.colors[ci]}"></div>
+                            <span>{{ abbr }}</span>
+                          </th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <tr v-for="(row,ri) in card.records" :key="ri">
+                          <td class="sc-h2h-row-label">
+                            <div class="sc-h2h-th-dot" :style="{background:card.colors[ri]}"></div>
+                            <span>{{ card.teams[ri] }}</span>
+                          </td>
+                          <td v-for="(cell,ci) in row" :key="ci" class="sc-h2h-cell"
+                            :class="cell===null?'h2h-self':cell&&cell.split('-')[0]>cell.split('-')[1]?'h2h-win':cell&&cell.split('-')[0]<cell.split('-')[1]?'h2h-loss':'h2h-even'">
+                            <span v-if="cell===null" class="h2h-dash">—</span>
+                            <span v-else>{{ cell }}</span>
+                          </td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+                  <div class="sc-h2h-legend">
+                    <span class="h2h-leg-item"><span class="h2h-leg-swatch h2h-win"></span>Win record</span>
+                    <span class="h2h-leg-item"><span class="h2h-leg-swatch h2h-loss"></span>Loss record</span>
+                    <span class="h2h-leg-item"><span class="h2h-leg-swatch h2h-even"></span>Even</span>
+                  </div>
+                  <div class="sc-watermark">ultimatefantasydashboard.com</div>
+                </div>
+              </template>
+
+              <!-- ═══ HISTORY: LEGACY STANDINGS ════════════════════════════ -->
+              <template v-else-if="card.type === 'legacy'">
+                <div class="sc-card sc-legacy-card">
+                  <div class="sc-brand-row">
+                    <span class="sc-brand-logo">UFD</span>
+                    <span class="sc-brand-sport">{{ card.sportLabel }}</span>
+                    <span class="sc-brand-week">LEGACY</span>
+                  </div>
+                  <div class="sc-standings-title">👑 LEGACY STANDINGS</div>
+                  <div class="sc-leg-list">
+                    <div v-for="(t,i) in card.teams" :key="i" class="sc-leg-row" :class="t.myTeam?'leg-myteam':''">
+                      <div class="sc-leg-rank" :class="i===0?'leg-gold':i===1?'leg-silver':i===2?'leg-bronze':'leg-other'">{{ i+1 }}</div>
+                      <div class="sc-leg-avatar" :style="{background:t.color}">{{ t.name.split(' ').map((w:string)=>w[0]).join('').slice(0,2) }}<div v-if="t.myTeam" class="sc-leg-star">★</div></div>
+                      <div class="sc-leg-info">
+                        <div class="sc-leg-name" :class="t.myTeam?'leg-mine':''">{{ t.name }}</div>
+                        <div class="sc-leg-badges">
+                          <span v-if="t.champs>0" class="sc-leg-badge badge-champ">🏆 {{ t.champs }}</span>
+                          <span v-if="t.playoffs>0" class="sc-leg-badge badge-playoff">📈 {{ t.playoffs }}</span>
+                          <span class="sc-leg-badge badge-seasons">{{ t.seasons }}yr</span>
+                        </div>
+                        <div class="sc-leg-bar-wrap">
+                          <div class="sc-leg-bar" :style="{width:(t.score/card.teams[0].score*100)+'%',background:t.color}"></div>
+                        </div>
+                      </div>
+                      <div class="sc-leg-score" :class="i===0?'leg-score-gold':''">{{ t.score.toLocaleString() }}</div>
+                    </div>
+                  </div>
+                  <div class="sc-watermark">ultimatefantasydashboard.com</div>
+                </div>
+              </template>
+
+              <!-- ═══ TRADE ANALYSIS ════════════════════════════════════════ -->
               <template v-else-if="card.type === 'trade'">
                 <div class="sc-card sc-trade-card">
                   <div class="sc-brand-row">
@@ -631,12 +831,12 @@
                       <div v-for="p in card.gives1" :key="p.name" class="sc-trade-player">
                         <div class="sc-trade-player-pos" :class="'pos-'+p.pos.toLowerCase()">{{ p.pos }}</div>
                         <span class="sc-trade-player-name">{{ p.name }}</span>
-                        <span class="sc-trade-player-val" :class="p.val > 0 ? 'green-val' : 'red-val'">{{ p.val > 0 ? '+' : '' }}{{ p.val }}</span>
+                        <span class="sc-trade-player-val" :class="p.val>0?'green-val':'red-val'">{{ p.val>0?'+':'' }}{{ p.val }}</span>
                       </div>
                     </div>
                   </div>
-                  <div class="sc-trade-verdict" :class="card.verdict === 'Fair' ? 'verdict-fair' : card.verdict === 'Win' ? 'verdict-win' : 'verdict-loss'">
-                    {{ card.verdict === 'Win' ? '✓ ' + card.team1 + ' wins this trade' : card.verdict === 'Fair' ? '≈ Fair trade' : '✗ Unfavorable for ' + card.team1 }}
+                  <div class="sc-trade-verdict" :class="card.verdict==='Fair'?'verdict-fair':card.verdict==='Win'?'verdict-win':'verdict-loss'">
+                    {{ card.verdict==='Win'?'✓ '+card.team1+' wins this trade':card.verdict==='Fair'?'≈ Fair trade':'✗ Unfavorable for '+card.team1 }}
                   </div>
                   <div class="sc-watermark">ultimatefantasydashboard.com</div>
                 </div>
@@ -983,45 +1183,62 @@ const previewTeams = computed<PreviewTeam[]>(() =>
 
 // ── Gallery ─────────────────────────────────────────────────────────────────
 const galleryFilters = [
-  { id: 'all', label: 'All Cards' },
+  { id: 'all',            label: 'All Cards' },
   { id: 'power-rankings', label: '⚡ Power Rankings' },
-  { id: 'matchup', label: '⚔️ Matchups' },
-  { id: 'standings', label: '🏆 Standings' },
-  { id: 'recap', label: '📰 Weekly Recap' },
-  { id: 'trade', label: '🤝 Trade Analysis' },
+  { id: 'matchup',        label: '⚔️ Matchups' },
+  { id: 'standings',      label: '🏆 Standings' },
+  { id: 'history',        label: '📜 History' },
+  { id: 'trade',          label: '🤝 Trade Analysis' },
 ]
 const activeGalleryFilter = ref('all')
 
 const galleryCards = [
+  // ── Power Rankings: table ──────────────────────────────────────────────────
   {
-    id: 1, sport: 'football', type: 'power-rankings', size: 'card-tall', week: 11,
+    id: 1, type: 'power-rankings', size: 'card-tall',
+    week: 11,
     teams: [
-      { name: 'Mahomes Magic', score: 92, trend: 2, pscore: '87.4', record: '9-2' },
-      { name: 'Trash Can Wins', score: 78, trend: -1, pscore: '74.1', record: '8-3' },
-      { name: 'The Algorithm',  score: 66, trend:  0, pscore: '68.9', record: '7-4' },
-      { name: 'Waiver Wire Kid',score: 55, trend:  1, pscore: '61.2', record: '6-5' },
-      { name: 'Toilet Bowl FC', score: 38, trend: -2, pscore: '44.8', record: '3-8' },
-    ]
+      { name: 'Mahomes Magic',   score: 92, trend: 2,  pscore: '87.4', record: '9-2' },
+      { name: 'Trash Can Wins',  score: 78, trend: -1, pscore: '74.1', record: '8-3' },
+      { name: 'The Algorithm',   score: 66, trend:  0, pscore: '68.9', record: '7-4' },
+      { name: 'Waiver Wire Kid', score: 55, trend:  1, pscore: '61.2', record: '6-5' },
+      { name: 'Toilet Bowl FC',  score: 38, trend: -2, pscore: '44.8', record: '3-8' },
+    ],
   },
+  // ── Power Rankings: line graph ─────────────────────────────────────────────
   {
-    id: 2, sport: 'football', type: 'matchup', size: 'card-normal', week: 11,
-    sportLabel: '🏈 NFL Fantasy · PPR',
-    team1: 'Mahomes Magic', team1Color: 'linear-gradient(135deg,#eab308,#d97706)', record1: '9-2 · proj 148.2', score1: '142.7', team1Won: true, myTeam: 1,
-    team2: 'The Algorithm',  team2Color: 'linear-gradient(135deg,#6366f1,#4f46e5)', record2: '7-4 · proj 121.4', score2: '98.4',  team2Won: false,
-    prob: 64, status: 'Live'
+    id: 2, type: 'pr-chart', size: 'card-normal',
+    week: 11,
+    // week-by-week rank (1=best) for each team — lower is better → invert on render
+    teams: [
+      { name: 'Mahomes Magic',   color: '#eab308', ranks: [3,2,1,1,1,2,1,1,2,1,1] },
+      { name: 'Trash Can Wins',  color: '#10b981', ranks: [1,1,2,3,2,1,2,2,1,2,2] },
+      { name: 'The Algorithm',   color: '#6366f1', ranks: [2,3,3,2,3,3,3,3,3,3,3] },
+      { name: 'Waiver Wire Kid', color: '#f97316', ranks: [4,5,4,4,4,4,4,4,4,4,4] },
+      { name: 'Toilet Bowl FC',  color: '#6b7280', ranks: [5,4,5,5,5,5,5,5,5,5,5] },
+    ],
   },
+  // ── Matchups: win probability card ────────────────────────────────────────
   {
-    id: 3, sport: 'football', type: 'recap', size: 'card-normal', week: 11,
-    sportLabel: '🏈 NFL Fantasy · PPR',
-    topScore:  'Trash Can Wins · 164.2',
-    lowScore:  'Toilet Bowl FC · 72.4',
-    blowout:   'Trash Can def. TB · 91.8 pts',
-    closest:   'WW Kid def. B.Boss · 2.1 pts',
-    onFire:    'Mahomes Magic · W3'
+    id: 3, type: 'win-prob', size: 'card-normal',
+    week: 11, sportLabel: '🏈 NFL Fantasy · PPR',
+    team1: 'Mahomes Magic', t1color: '#06b6d4', t1pts: 142.7, t1proj: 161.4, t1prob: 64.2, t1rec: '9-2',
+    team2: 'The Algorithm', t2color: '#f97316', t2pts:  98.4, t2proj: 127.8, t2prob: 35.8, t2rec: '7-4',
   },
+  // ── Matchups: win probability trend Mon–Sun ────────────────────────────────
   {
-    id: 4, sport: 'football', type: 'standings', size: 'card-tall', week: 11,
-    sportLabel: '🏈 NFL Fantasy · PPR',
+    id: 4, type: 'win-prob-chart', size: 'card-normal',
+    week: 11, sportLabel: '🏈 NFL Fantasy · PPR',
+    team1: 'Mahomes Magic', t1color: '#06b6d4',
+    team2: 'The Algorithm', t2color: '#f97316',
+    // Mon–Sun win probability for team1 (team2 = 100 - this)
+    days: ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'],
+    probs: [50, 52, 55, 58, 61, 64, null], // null = not yet
+  },
+  // ── Standings ─────────────────────────────────────────────────────────────
+  {
+    id: 5, type: 'standings', size: 'card-tall',
+    sportLabel: '🏈 NFL Fantasy · PPR', week: 11,
     teams: [
       { name: 'Mahomes Magic',  wins: 9, losses: 2, pf: '1,456', streak: 'W3', playoff: true,  myTeam: true  },
       { name: 'Trash Can Wins', wins: 8, losses: 3, pf: '1,342', streak: 'W2', playoff: true,  myTeam: false },
@@ -1029,34 +1246,70 @@ const galleryCards = [
       { name: 'Waiver Wire Kid',wins: 6, losses: 5, pf: '1,187', streak: 'W1', playoff: false, myTeam: false },
       { name: 'Bench Boss',     wins: 5, losses: 6, pf: '1,102', streak: 'L2', playoff: false, myTeam: false },
       { name: 'Toilet Bowl FC', wins: 3, losses: 8, pf: '982',   streak: 'L4', playoff: false, myTeam: false },
-    ]
+    ],
   },
+  // ── History: season-by-season standings ───────────────────────────────────
   {
-    id: 5, sport: 'baseball', type: 'matchup', size: 'card-normal', week: 18,
-    sportLabel: '⚾ MLB Fantasy · H2H',
-    team1: 'Dingers Only', team1Color: 'linear-gradient(135deg,#f59e0b,#d97706)', record1: '82-68 · proj 98.5', score1: '94.0', team1Won: false, myTeam: null,
-    team2: 'ERA Zero',     team2Color: 'linear-gradient(135deg,#06b6d4,#0891b2)', record2: '88-62 · proj 105.0', score2: '102.5', team2Won: true,
-    prob: null, status: 'Final'
+    id: 6, type: 'history-standings', size: 'card-tall',
+    sportLabel: '🏈 NFL Fantasy · PPR',
+    seasons: ['2021','2022','2023','2024'],
+    teams: [
+      { name: 'Mahomes Magic',  color: '#eab308', finishes: [2,1,1,1] },
+      { name: 'Trash Can Wins', color: '#10b981', finishes: [1,3,2,2] },
+      { name: 'The Algorithm',  color: '#6366f1', finishes: [3,2,4,3] },
+      { name: 'Waiver Wire Kid',color: '#f97316', finishes: [5,4,3,4] },
+      { name: 'Toilet Bowl FC', color: '#6b7280', finishes: [6,6,6,6] },
+    ],
   },
+  // ── History: H2H matrix ───────────────────────────────────────────────────
   {
-    id: 6, sport: 'football', type: 'trade', size: 'card-normal',
+    id: 7, type: 'h2h-matrix', size: 'card-tall',
+    sportLabel: '🏈 NFL Fantasy · PPR',
+    teams: ['MM','TC','TA','WK','BB','TB'],
+    fullNames: ['Mahomes Magic','Trash Can Wins','The Algorithm','Waiver Wire Kid','Bench Boss','Toilet Bowl FC'],
+    colors: ['#eab308','#10b981','#6366f1','#f97316','#06b6d4','#6b7280'],
+    // each row: this team's record vs every col team (null = self)
+    records: [
+      [null,  '3-1', '4-0', '3-1', '4-0', '4-0'],
+      ['1-3',  null, '3-1', '3-1', '4-0', '4-0'],
+      ['0-4', '1-3',  null, '3-1', '3-1', '3-1'],
+      ['1-3', '1-3', '1-3',  null, '2-2', '3-1'],
+      ['0-4', '0-4', '1-3', '2-2',  null, '3-1'],
+      ['0-4', '0-4', '1-3', '1-3', '1-3',  null],
+    ],
+  },
+  // ── History: legacy standings ─────────────────────────────────────────────
+  {
+    id: 8, type: 'legacy', size: 'card-tall',
+    sportLabel: '🏈 NFL Fantasy · PPR',
+    teams: [
+      { name: 'Mahomes Magic',  score: 1847, seasons: 4, champs: 2, playoffs: 4, color: '#eab308', myTeam: true  },
+      { name: 'Trash Can Wins', score: 1623, seasons: 4, champs: 1, playoffs: 3, color: '#10b981', myTeam: false },
+      { name: 'The Algorithm',  score: 1401, seasons: 4, champs: 0, playoffs: 3, color: '#6366f1', myTeam: false },
+      { name: 'Waiver Wire Kid',score: 1198, seasons: 4, champs: 1, playoffs: 2, color: '#f97316', myTeam: false },
+      { name: 'Bench Boss',     score:  987, seasons: 4, champs: 0, playoffs: 1, color: '#06b6d4', myTeam: false },
+      { name: 'Toilet Bowl FC', score:  612, seasons: 4, champs: 0, playoffs: 0, color: '#6b7280', myTeam: false },
+    ],
+  },
+  // ── Trade Analysis ────────────────────────────────────────────────────────
+  {
+    id: 9, type: 'trade', size: 'card-normal',
     sportLabel: '🏈 NFL Fantasy · PPR',
     team1: 'Mahomes Magic', team2: 'Waiver Wire Kid',
-    gives1: [
-      { name: 'Justin Jefferson', pos: 'WR', val: 8.2 },
-    ],
-    gives2: [
-      { name: 'Amon-Ra St. Brown', pos: 'WR', val: 6.4 },
-      { name: 'Rhamondre Stevenson', pos: 'RB', val: 4.1 },
-    ],
-    verdict: 'Win'
+    gives1: [{ name: 'Justin Jefferson',    pos: 'WR', val:  8.2 }],
+    gives2: [{ name: 'Amon-Ra St. Brown',   pos: 'WR', val:  6.4 },
+             { name: 'Rhamondre Stevenson', pos: 'RB', val:  4.1 }],
+    verdict: 'Win',
   },
 ]
 
 const filteredCards = computed(() =>
   activeGalleryFilter.value === 'all'
     ? galleryCards
-    : galleryCards.filter(c => c.type === activeGalleryFilter.value)
+    : galleryCards.filter(c => c.type === activeGalleryFilter.value ||
+        (activeGalleryFilter.value === 'matchup'  && (c.type === 'win-prob' || c.type === 'win-prob-chart')) ||
+        (activeGalleryFilter.value === 'history'  && (c.type === 'history-standings' || c.type === 'h2h-matrix' || c.type === 'legacy'))
+      )
 )
 
 // ── Chat messages ────────────────────────────────────────────────────────────
@@ -2023,9 +2276,179 @@ function scrollTo(id: string) {
 .verdict-fair { background: rgba(234,179,8,0.08); color: #eab308; border: 1px solid rgba(234,179,8,0.2); }
 .verdict-loss { background: rgba(239,68,68,0.08); color: #ef4444; border: 1px solid rgba(239,68,68,0.2); }
 
-/* ══════════════════════════════════════════════
-   HOW IT WORKS
-══════════════════════════════════════════════ */
+/* ─ Power Rankings line chart card */
+.sc-pr-chart-card {
+  background: linear-gradient(145deg, #0c0f1a 0%, #0f1220 100%);
+  border: 1px solid rgba(234,179,8,0.15);
+}
+.sc-prc-chart-wrap { padding: 4px 16px 0; }
+.sc-prc-svg { width: 100%; height: auto; display: block; }
+.sc-prc-xlabel { font-size: 0.6rem; color: #374151; text-align: center; padding-bottom: 4px; }
+.sc-prc-legend { display: flex; gap: 12px; flex-wrap: wrap; padding: 4px 16px 8px; }
+.sc-prc-legend-item { display: flex; align-items: center; gap: 4px; font-size: 0.65rem; color: #6b7280; }
+.sc-prc-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+
+/* ─ Win Probability card */
+.sc-winprob-card {
+  background: linear-gradient(145deg, #080d14 0%, #0a1020 100%);
+  border: 1px solid rgba(6,182,212,0.2);
+}
+.sc-wp-teams { display: grid; grid-template-columns: 1fr 32px 1fr; align-items: center; gap: 4px; padding: 8px 16px 10px; }
+.sc-wp-team { display: flex; flex-direction: column; align-items: center; gap: 2px; text-align: center; }
+.sc-wp-t1 { align-items: flex-start; text-align: left; }
+.sc-wp-t2 { align-items: flex-end; text-align: right; }
+.sc-wp-avatar {
+  width: 40px; height: 40px; border-radius: 50%;
+  border: 3px solid transparent; display: flex; align-items: center; justify-content: center;
+  font-family: 'Barlow Condensed', sans-serif; font-size: 0.65rem; font-weight: 700; color: #fff;
+  background: #1a1d28; margin-bottom: 4px;
+}
+.sc-wp-name { font-size: 0.78rem; font-weight: 700; line-height: 1.1; }
+.sc-wp-pct  { font-family: 'Barlow Condensed', sans-serif; font-size: 2rem; font-weight: 900; line-height: 1; }
+.sc-wp-sub  { font-size: 0.72rem; color: #e5e7eb; font-weight: 600; }
+.sc-wp-proj { font-size: 0.65rem; font-weight: 600; }
+.sc-wp-vs   { font-family: 'Barlow Condensed', sans-serif; font-size: 0.7rem; font-weight: 900; color: #374151; text-align: center; letter-spacing: 0.1em; }
+.sc-wp-bar-wrap {
+  position: relative; height: 28px; margin: 0 16px 8px; border-radius: 6px; overflow: hidden;
+  background: #1a1d28;
+}
+.sc-wp-bar-fill { position: absolute; inset: 0; border-radius: 6px; }
+.sc-wp-bar-t1, .sc-wp-bar-t2 {
+  position: absolute; top: 0; height: 100%;
+  display: flex; align-items: center; font-size: 0.62rem; font-weight: 700; color: rgba(255,255,255,0.85);
+}
+.sc-wp-bar-t1 { left: 8px; }
+.sc-wp-bar-t2 { right: 8px; }
+
+/* ─ Win Probability trend chart card */
+.sc-wpc-card {
+  background: linear-gradient(145deg, #080d14 0%, #0a1020 100%);
+  border: 1px solid rgba(6,182,212,0.15);
+}
+.sc-wpc-chart-wrap { padding: 4px 16px 0; }
+.sc-wpc-svg { width: 100%; height: auto; display: block; }
+
+/* ─ History: Season finishes card */
+.sc-hist-card {
+  background: linear-gradient(145deg, #0c0f18 0%, #0f1224 100%);
+  border: 1px solid rgba(139,92,246,0.15);
+}
+.sc-hist-thead {
+  display: grid; grid-template-columns: 1fr 44px 44px 44px 44px 40px;
+  gap: 4px; padding: 5px 16px;
+  font-size: 0.58rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: #374151;
+  border-bottom: 1px solid #1a1d28;
+}
+.sc-hist-th-team { text-align: left; }
+.sc-hist-th-yr, .sc-hist-th-avg { text-align: center; }
+.sc-hist-row {
+  display: grid; grid-template-columns: 1fr 44px 44px 44px 44px 40px;
+  gap: 4px; align-items: center;
+  padding: 6px 16px; border-bottom: 1px solid #1a1d28;
+}
+.sc-hist-row:last-of-type { border-bottom: none; }
+.sc-hist-first { background: rgba(234,179,8,0.04); }
+.sc-hist-team-cell { display: flex; align-items: center; gap: 6px; min-width: 0; }
+.sc-hist-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+.sc-hist-name { font-size: 0.72rem; color: #d1d5db; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sc-hist-finish {
+  font-family: 'Barlow Condensed', sans-serif; font-size: 0.85rem; font-weight: 900;
+  text-align: center; color: #4b5563;
+  width: 26px; height: 26px; border-radius: 6px; display: flex; align-items: center; justify-content: center;
+  margin: 0 auto;
+}
+.fin-gold   { background: rgba(234,179,8,0.15); color: #eab308; }
+.fin-silver { background: rgba(156,163,175,0.1); color: #9ca3af; }
+.fin-bronze { background: rgba(180,83,9,0.1);   color: #b45309; }
+.fin-last   { background: rgba(239,68,68,0.08); color: #ef4444; opacity: 0.6; }
+.sc-hist-avg { font-family: 'Barlow Condensed', sans-serif; font-size: 0.8rem; font-weight: 700; text-align: center; color: #6b7280; }
+.avg-good { color: #10b981; }
+.avg-meh  { color: #6b7280; }
+
+/* ─ H2H Matrix card */
+.sc-h2h-card {
+  background: linear-gradient(145deg, #0c0f18 0%, #0f1222 100%);
+  border: 1px solid rgba(99,102,241,0.15);
+}
+.sc-h2h-subtitle { font-size: 0.62rem; color: #4b5563; padding: 0 16px 8px; }
+.sc-h2h-table-wrap { overflow-x: auto; padding: 0 16px; }
+.sc-h2h-table { width: 100%; border-collapse: collapse; font-size: 0.65rem; }
+.sc-h2h-corner { width: 48px; padding: 4px; }
+.sc-h2h-th {
+  padding: 4px 2px; text-align: center; border: 1px solid #1e2130;
+  font-size: 0.6rem; color: #9ca3af;
+}
+.sc-h2h-th-dot { width: 8px; height: 8px; border-radius: 50%; margin: 0 auto 2px; }
+.sc-h2h-row-label {
+  display: flex; align-items: center; gap: 4px;
+  padding: 4px 6px; border: 1px solid #1e2130;
+  font-weight: 700; color: #9ca3af; white-space: nowrap;
+}
+.sc-h2h-cell {
+  padding: 5px 3px; text-align: center; border: 1px solid #1a1d28;
+  font-family: 'Barlow Condensed', sans-serif; font-weight: 700; font-size: 0.72rem;
+}
+.h2h-self  { background: #0f1220; color: #374151; }
+.h2h-win   { background: rgba(16,185,129,0.1); color: #10b981; }
+.h2h-loss  { background: rgba(239,68,68,0.08); color: #ef4444; }
+.h2h-even  { background: rgba(234,179,8,0.06); color: #eab308; }
+.h2h-dash  { color: #1e2130; }
+.sc-h2h-legend { display: flex; gap: 10px; padding: 6px 16px 4px; flex-wrap: wrap; }
+.h2h-leg-item { display: flex; align-items: center; gap: 4px; font-size: 0.6rem; color: #6b7280; }
+.h2h-leg-swatch { width: 10px; height: 10px; border-radius: 2px; }
+
+/* ─ Legacy standings card */
+.sc-legacy-card {
+  background: linear-gradient(145deg, #0c0f14 0%, #101420 100%);
+  border: 1px solid rgba(234,179,8,0.15);
+}
+.sc-leg-list { display: flex; flex-direction: column; }
+.sc-leg-row {
+  display: flex; align-items: center; gap: 8px;
+  padding: 8px 16px; border-bottom: 1px solid #1a1d28;
+}
+.sc-leg-row:last-of-type { border-bottom: none; }
+.leg-myteam { background: rgba(234,179,8,0.05); }
+.sc-leg-rank {
+  width: 24px; height: 24px; border-radius: 50%; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+  font-family: 'Barlow Condensed', sans-serif; font-size: 0.8rem; font-weight: 900;
+}
+.leg-gold   { background: #eab308; color: #0a0c14; }
+.leg-silver { background: #9ca3af; color: #0a0c14; }
+.leg-bronze { background: #b45309; color: #fff; }
+.leg-other  { background: #1e2130; color: #9ca3af; }
+.sc-leg-avatar {
+  width: 28px; height: 28px; border-radius: 50%; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 0.55rem; font-weight: 700; color: #fff;
+  position: relative;
+}
+.sc-leg-star {
+  position: absolute; top: -3px; right: -3px;
+  width: 9px; height: 9px; border-radius: 50%;
+  background: #eab308; color: #0a0c14;
+  font-size: 5px; display: flex; align-items: center; justify-content: center;
+}
+.sc-leg-info { flex: 1; min-width: 0; }
+.sc-leg-name { font-size: 0.75rem; font-weight: 600; color: #d1d5db; margin-bottom: 2px; }
+.leg-mine { color: #eab308; }
+.sc-leg-badges { display: flex; gap: 4px; margin-bottom: 4px; flex-wrap: wrap; }
+.sc-leg-badge {
+  font-size: 0.55rem; font-weight: 700; padding: 1px 5px; border-radius: 999px;
+}
+.badge-champ   { background: rgba(234,179,8,0.15); color: #eab308; }
+.badge-playoff { background: rgba(59,130,246,0.12); color: #60a5fa; }
+.badge-seasons { background: rgba(255,255,255,0.05); color: #6b7280; }
+.sc-leg-bar-wrap { height: 3px; background: #1a1d28; border-radius: 2px; overflow: hidden; }
+.sc-leg-bar { height: 100%; border-radius: 2px; transition: width 0.5s ease; opacity: 0.7; }
+.sc-leg-score {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 1.1rem; font-weight: 900; color: #6b7280; flex-shrink: 0; text-align: right;
+}
+.leg-score-gold { color: #eab308; }
+
+
 .hiw-section {
   padding: 100px 0;
   background: #05060a;
