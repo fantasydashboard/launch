@@ -510,38 +510,39 @@
                     <span class="sc-brand-week">WK 1–{{ card.week }}</span>
                   </div>
                   <div class="sc-pr-title">⚡ RANKING TRENDS</div>
-                  <!-- SVG line chart — y-axis inverted (rank 1 = top) -->
+                  <!-- SVG line chart — y-axis inverted (rank 1 = top) — smooth curves -->
                   <div class="sc-prc-chart-wrap">
-                    <svg viewBox="0 0 260 130" class="sc-prc-svg" preserveAspectRatio="none">
+                    <svg viewBox="0 0 280 140" class="sc-prc-svg">
                       <!-- Horizontal grid lines for ranks 1–5 -->
-                      <line v-for="r in 5" :key="r" x1="0" :y1="(r-1)*24+8" x2="260" :y2="(r-1)*24+8" stroke="#1e2130" stroke-width="1"/>
-                      <!-- Rank labels -->
-                      <text v-for="r in 5" :key="'l'+r" x="4" :y="(r-1)*24+12" font-size="7" fill="#374151">{{ r }}</text>
-                      <!-- Lines per team -->
+                      <line v-for="r in 5" :key="r" x1="28" :y1="16+(r-1)*22" x2="276" :y2="16+(r-1)*22" stroke="#1e2130" stroke-width="0.8"/>
+                      <!-- Rank labels on y-axis -->
+                      <text v-for="r in 5" :key="'l'+r" x="22" :y="20+(r-1)*22" font-size="7" fill="#374151" text-anchor="end">{{ r }}</text>
+                      <!-- Smooth bezier path per team -->
                       <template v-for="(t,ti) in card.teams" :key="ti">
-                        <polyline
-                          :points="t.ranks.map((r:number,wi:number)=>`${22+wi*22},${(r-1)*24+8}`).join(' ')"
-                          fill="none" :stroke="t.color" stroke-width="1.8"
-                          :stroke-opacity="ti===0?1:0.5"
+                        <path
+                          :d="smoothPath(t.ranks, 28, 22, 22, 16)"
+                          fill="none" :stroke="t.color" :stroke-width="ti===0?2.2:1.5"
+                          :stroke-opacity="ti===0?1:ti===1?0.8:ti<=3?0.55:0.35"
                           stroke-linejoin="round" stroke-linecap="round"
                         />
                         <!-- dot at last point -->
                         <circle
-                          :cx="22+(t.ranks.length-1)*22"
-                          :cy="(t.ranks[t.ranks.length-1]-1)*24+8"
-                          r="3" :fill="t.color" :fill-opacity="ti===0?1:0.6"
+                          :cx="28+(t.ranks.length-1)*22"
+                          :cy="16+(t.ranks[t.ranks.length-1]-1)*22"
+                          :r="ti===0?3.5:2.5" :fill="t.color"
+                          :fill-opacity="ti===0?1:0.7"
                         />
-                        <!-- label at end -->
+                        <!-- name label at end -->
                         <text
-                          :x="22+(t.ranks.length-1)*22+5"
-                          :y="(t.ranks[t.ranks.length-1]-1)*24+11"
-                          font-size="6.5" :fill="t.color" :fill-opacity="ti===0?1:0.7"
+                          :x="28+(t.ranks.length-1)*22+5"
+                          :y="20+(t.ranks[t.ranks.length-1]-1)*22"
+                          font-size="7" :fill="t.color" :fill-opacity="ti===0?1:0.75"
                         >{{ t.name.split(' ')[0] }}</text>
                       </template>
                       <!-- Week tick labels -->
-                      <text v-for="(r,wi) in card.teams[0].ranks" :key="'w'+wi" :x="22+wi*22" y="126" font-size="6" fill="#374151" text-anchor="middle">{{ wi+1 }}</text>
+                      <text v-for="(r,wi) in card.teams[0].ranks" :key="'w'+wi"
+                        :x="28+wi*22" y="138" font-size="6.5" fill="#374151" text-anchor="middle">{{ wi+1 }}</text>
                     </svg>
-                    <!-- X axis label -->
                     <div class="sc-prc-xlabel">Week</div>
                   </div>
                   <!-- Mini legend -->
@@ -605,48 +606,57 @@
                     <span class="sc-brand-week">WK {{ card.week }}</span>
                   </div>
                   <div class="sc-pr-title" style="font-size:0.82rem;padding:8px 16px 4px">📈 WIN PROBABILITY TREND</div>
-                  <!-- Area chart SVG -->
+                  <!-- Area chart SVG — rich version matching actual app -->
                   <div class="sc-wpc-chart-wrap">
-                    <svg viewBox="0 0 240 110" class="sc-wpc-svg" preserveAspectRatio="none">
-                      <!-- 50% midline -->
-                      <line x1="0" y1="55" x2="240" y2="55" stroke="#1e2130" stroke-width="1" stroke-dasharray="3,3"/>
-                      <!-- Y labels -->
-                      <text x="2" y="12" font-size="6.5" fill="#374151">100%</text>
-                      <text x="2" y="57" font-size="6.5" fill="#374151">50%</text>
-                      <text x="2" y="102" font-size="6.5" fill="#374151">0%</text>
-                      <!-- compute actual points from probs (null = skip) -->
-                      <template v-if="card.probs.filter((p:number|null)=>p!==null).length > 1">
-                        <!-- t1 area fill -->
-                        <path
-                          :d="'M '+card.probs.map((p:number|null,i:number)=>p===null?null:`${30+i*30},${110-(p/100)*100}`).filter((v:string|null)=>v!==null).join(' L ')+' L '+(30+(card.probs.filter((p:number|null)=>p!==null).length-1)*30)+',110 L 30,110 Z'"
-                          :fill="card.t1color" fill-opacity="0.15"
-                        />
-                        <!-- t1 line -->
-                        <polyline
-                          :points="card.probs.map((p:number|null,i:number)=>p===null?null:`${30+i*30},${110-(p/100)*100}`).filter((v:string|null)=>v!==null).join(' ')"
-                          fill="none" :stroke="card.t1color" stroke-width="2"
-                          stroke-linejoin="round" stroke-linecap="round"
-                        />
-                        <!-- t2 area (mirror) fill -->
-                        <path
-                          :d="'M '+card.probs.map((p:number|null,i:number)=>p===null?null:`${30+i*30},${110-((100-p)/100)*100}`).filter((v:string|null)=>v!==null).join(' L ')+' L '+(30+(card.probs.filter((p:number|null)=>p!==null).length-1)*30)+',110 L 30,110 Z'"
-                          :fill="card.t2color" fill-opacity="0.12"
-                        />
-                        <!-- t2 line -->
-                        <polyline
-                          :points="card.probs.map((p:number|null,i:number)=>p===null?null:`${30+i*30},${110-((100-p)/100)*100}`).filter((v:string|null)=>v!==null).join(' ')"
-                          fill="none" :stroke="card.t2color" stroke-width="2"
-                          stroke-linejoin="round" stroke-linecap="round" stroke-dasharray="4,2"
-                        />
-                        <!-- dot at last real point -->
-                        <circle
-                          :cx="30+(card.probs.filter((p:number|null)=>p!==null).length-1)*30"
-                          :cy="110-(card.probs.filter((p:number|null)=>p!==null).slice(-1)[0]/100)*100"
-                          r="3.5" :fill="card.t1color"
-                        />
+                    <svg viewBox="0 0 300 140" class="sc-wpc-svg">
+                      <!-- Y grid lines + labels -->
+                      <text x="4"  y="14"  font-size="6.5" fill="#4b5563">100%</text>
+                      <text x="4"  y="77"  font-size="6.5" fill="#4b5563">50%</text>
+                      <text x="4"  y="134" font-size="6.5" fill="#4b5563">0%</text>
+                      <line x1="32" y1="10"  x2="296" y2="10"  stroke="#1e2130" stroke-width="0.6" stroke-dasharray="3,3"/>
+                      <line x1="32" y1="73"  x2="296" y2="73"  stroke="#374151" stroke-width="0.8" stroke-dasharray="3,3"/>
+                      <line x1="32" y1="135" x2="296" y2="135" stroke="#1e2130" stroke-width="0.6"/>
+
+                      <!-- compute: xStep = (296-32)/6 = 44, y(p) = 135 - (p/100)*125 -->
+                      <!-- t1 area fill (team 1 line area to bottom) -->
+                      <path
+                        :d="wpcAreaPath(card.probs, 32, 44, 135, 125, false)"
+                        :fill="card.t1color" fill-opacity="0.12"
+                      />
+                      <!-- t2 area fill (inverted, area to top) -->
+                      <path
+                        :d="wpcAreaPath(card.probs, 32, 44, 135, 125, true)"
+                        :fill="card.t2color" fill-opacity="0.1"
+                      />
+                      <!-- t1 smooth line -->
+                      <path
+                        :d="wpcLinePath(card.probs, 32, 44, 135, 125, false)"
+                        fill="none" :stroke="card.t1color" stroke-width="2.2"
+                        stroke-linecap="round" stroke-linejoin="round"
+                      />
+                      <!-- t2 smooth line (dashed) -->
+                      <path
+                        :d="wpcLinePath(card.probs, 32, 44, 135, 125, true)"
+                        fill="none" :stroke="card.t2color" stroke-width="2"
+                        stroke-linecap="round" stroke-linejoin="round"
+                        stroke-dasharray="5,2.5"
+                      />
+
+                      <!-- Data point labels for each day -->
+                      <template v-for="(p,di) in card.probs" :key="'dp'+di">
+                        <!-- t1 dot + label -->
+                        <circle :cx="32+di*44" :cy="135-(p/100)*125" r="3.5" :fill="card.t1color"/>
+                        <rect :x="32+di*44-12" :y="135-(p/100)*125-18" width="24" height="13" rx="3" :fill="card.t1color" fill-opacity="0.9"/>
+                        <text :x="32+di*44" :y="135-(p/100)*125-9" font-size="6.5" fill="#000" font-weight="700" text-anchor="middle">{{ p.toFixed(1) }}</text>
+                        <!-- t2 dot + label -->
+                        <circle :cx="32+di*44" :cy="135-((100-p)/100)*125" r="3" :fill="card.t2color" fill-opacity="0.85"/>
+                        <rect :x="32+di*44-12" :y="135-((100-p)/100)*125+6" width="24" height="13" rx="3" :fill="card.t2color" fill-opacity="0.9"/>
+                        <text :x="32+di*44" :y="135-((100-p)/100)*125+15" font-size="6.5" fill="#000" font-weight="700" text-anchor="middle">{{ (100-p).toFixed(1) }}</text>
                       </template>
-                      <!-- Day labels -->
-                      <text v-for="(d,di) in card.days" :key="d" :x="30+di*30" y="108" font-size="7" fill="#4b5563" text-anchor="middle">{{ d }}</text>
+
+                      <!-- Day labels on x-axis -->
+                      <text v-for="(d,di) in card.days" :key="'day'+di"
+                        :x="32+di*44" y="148" font-size="7.5" fill="#6b7280" text-anchor="middle">{{ d }}</text>
                     </svg>
                   </div>
                   <!-- Legend -->
@@ -1231,9 +1241,9 @@ const galleryCards = [
     week: 11, sportLabel: '🏈 NFL Fantasy · PPR',
     team1: 'Mahomes Magic', t1color: '#06b6d4',
     team2: 'The Algorithm', t2color: '#f97316',
-    // Mon–Sun win probability for team1 (team2 = 100 - this)
+    // Mon–Sun win probability for team1 — dramatic crossover story
     days: ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'],
-    probs: [50, 52, 55, 58, 61, 64, null], // null = not yet
+    probs: [60.4, 56.6, 47.0, 53.0, 39.4, 27.3, 0],
   },
   // ── Standings ─────────────────────────────────────────────────────────────
   {
@@ -1307,6 +1317,7 @@ const filteredCards = computed(() =>
   activeGalleryFilter.value === 'all'
     ? galleryCards
     : galleryCards.filter(c => c.type === activeGalleryFilter.value ||
+        (activeGalleryFilter.value === 'power-rankings' && c.type === 'pr-chart') ||
         (activeGalleryFilter.value === 'matchup'  && (c.type === 'win-prob' || c.type === 'win-prob-chart')) ||
         (activeGalleryFilter.value === 'history'  && (c.type === 'history-standings' || c.type === 'h2h-matrix' || c.type === 'legacy'))
       )
@@ -1345,6 +1356,47 @@ const faqs = [
 
 function toggleFaq(i: number) {
   openFaq.value = openFaq.value === i ? null : i
+}
+
+// ── SVG chart helpers ────────────────────────────────────────────────────────
+// Smooth catmull-rom style cubic bezier for rank trend lines
+// xStart: first x, xStep: pixels per week, yStart: y offset for rank 1, yStep: y per rank
+function smoothPath(ranks: number[], xStart: number, xStep: number, yStep: number, yStart: number): string {
+  if (!ranks || ranks.length < 2) return ''
+  const pts = ranks.map((r, i) => ({ x: xStart + i * xStep, y: yStart + (r - 1) * yStep }))
+  let d = `M ${pts[0].x},${pts[0].y}`
+  for (let i = 1; i < pts.length; i++) {
+    const prev = pts[i - 1]
+    const curr = pts[i]
+    const cpOffset = (curr.x - prev.x) * 0.45
+    d += ` C ${prev.x + cpOffset},${prev.y} ${curr.x - cpOffset},${curr.y} ${curr.x},${curr.y}`
+  }
+  return d
+}
+
+// Smooth bezier line path for win-prob chart
+function wpcLinePath(probs: number[], x0: number, xStep: number, yBase: number, yScale: number, invert: boolean): string {
+  const pts = probs.map((p, i) => ({
+    x: x0 + i * xStep,
+    y: yBase - ((invert ? 100 - p : p) / 100) * yScale
+  }))
+  if (pts.length < 2) return ''
+  let d = `M ${pts[0].x},${pts[0].y}`
+  for (let i = 1; i < pts.length; i++) {
+    const prev = pts[i - 1]
+    const curr = pts[i]
+    const cp = (curr.x - prev.x) * 0.4
+    d += ` C ${prev.x + cp},${prev.y} ${curr.x - cp},${curr.y} ${curr.x},${curr.y}`
+  }
+  return d
+}
+
+// Area fill path (line + close to bottom)
+function wpcAreaPath(probs: number[], x0: number, xStep: number, yBase: number, yScale: number, invert: boolean): string {
+  const line = wpcLinePath(probs, x0, xStep, yBase, yScale, invert)
+  if (!line) return ''
+  const lastX = x0 + (probs.length - 1) * xStep
+  return `${line} L ${lastX},${yBase} L ${x0},${yBase} Z`
 }
 
 // ── Utils ────────────────────────────────────────────────────────────────────
@@ -2281,8 +2333,8 @@ function scrollTo(id: string) {
   background: linear-gradient(145deg, #0c0f1a 0%, #0f1220 100%);
   border: 1px solid rgba(234,179,8,0.15);
 }
-.sc-prc-chart-wrap { padding: 4px 16px 0; }
-.sc-prc-svg { width: 100%; height: auto; display: block; }
+.sc-prc-chart-wrap { padding: 4px 8px 0; }
+.sc-prc-svg { width: 100%; height: auto; display: block; overflow: visible; }
 .sc-prc-xlabel { font-size: 0.6rem; color: #374151; text-align: center; padding-bottom: 4px; }
 .sc-prc-legend { display: flex; gap: 12px; flex-wrap: wrap; padding: 4px 16px 8px; }
 .sc-prc-legend-item { display: flex; align-items: center; gap: 4px; font-size: 0.65rem; color: #6b7280; }
@@ -2325,8 +2377,8 @@ function scrollTo(id: string) {
   background: linear-gradient(145deg, #080d14 0%, #0a1020 100%);
   border: 1px solid rgba(6,182,212,0.15);
 }
-.sc-wpc-chart-wrap { padding: 4px 16px 0; }
-.sc-wpc-svg { width: 100%; height: auto; display: block; }
+.sc-wpc-chart-wrap { padding: 4px 8px 0; }
+.sc-wpc-svg { width: 100%; height: auto; display: block; overflow: visible; }
 
 /* ─ History: Season finishes card */
 .sc-hist-card {
