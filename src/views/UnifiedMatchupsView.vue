@@ -225,47 +225,43 @@
               </div>
             </div>
 
-            <!-- Matchup Insight -->
-            <div v-if="matchupInsight" class="p-4 bg-dark-border/10 border border-dark-border/30 rounded-xl">
-              <div class="flex items-start gap-3">
-                <span class="text-2xl">💡</span>
-                <div>
-                  <div class="font-semibold text-dark-text mb-1">Matchup Insight</div>
-                  <p class="text-sm text-dark-textMuted">{{ matchupInsight }}</p>
+            <!-- Matchup Insight — gated -->
+            <LeagueGate wrap :locked="!hasLeagueAccess" label="Full Matchup Analysis">
+              <div v-if="matchupInsight" class="p-4 bg-dark-border/10 border border-dark-border/30 rounded-xl">
+                <div class="flex items-start gap-3">
+                  <span class="text-2xl">💡</span>
+                  <div>
+                    <div class="font-semibold text-dark-text mb-1">Matchup Insight</div>
+                    <p class="text-sm text-dark-textMuted">{{ matchupInsight }}</p>
+                  </div>
                 </div>
               </div>
-            </div>
+            </LeagueGate>
           </template>
 
-          <!-- Category League Analysis -->
+          <!-- Category League Analysis — gated -->
           <template v-else>
-            <CategoryComparison 
-              :matchup="selectedMatchup" 
-              :sport="sport"
-            />
+            <LeagueGate wrap :locked="!hasLeagueAccess" label="Category Breakdown">
+              <CategoryComparison :matchup="selectedMatchup" :sport="sport" />
+            </LeagueGate>
           </template>
         </div>
       </div>
 
-      <!-- Standings -->
-      <div class="card">
-        <div class="card-header">
-          <div class="flex items-center gap-2">
-            <span class="text-2xl">🏆</span>
-            <h2 class="card-title">Current Standings</h2>
+      <!-- Standings — gated -->
+      <LeagueGate wrap :locked="!hasLeagueAccess" label="Current Standings">
+        <div class="card">
+          <div class="card-header">
+            <div class="flex items-center gap-2">
+              <span class="text-2xl">🏆</span>
+              <h2 class="card-title">Current Standings</h2>
+            </div>
+          </div>
+          <div class="card-body">
+            <StandingsTable :standings="standings" :league-type="leagueType" :my-team-id="myTeamId" :playoff-teams="6" :show-streak="true" @select-team="onTeamSelect" />
           </div>
         </div>
-        <div class="card-body">
-          <StandingsTable
-            :standings="standings"
-            :league-type="leagueType"
-            :my-team-id="myTeamId"
-            :playoff-teams="6"
-            :show-streak="true"
-            @select-team="onTeamSelect"
-          />
-        </div>
-      </div>
+      </LeagueGate>
     </template>
 
     <!-- No Data State -->
@@ -286,12 +282,15 @@ import { getSportConfig, getLeagueType, getCategoryStats } from '@/config/sports
 import type { UnifiedMatchup, UnifiedStandingsEntry, SportType, LeagueType, StatDefinition } from '@/config/sports'
 import { normalizeMatchups, normalizeStandings, type AdapterOptions } from '@/services/adapters'
 import LoadingSpinner from '@/components/LoadingSpinner.vue'
+import LeagueGate from '@/components/LeagueGate.vue'
+import { useFeatureAccess } from '@/composables/useFeatureAccess'
 import PointsMatchupCard from '@/components/unified/PointsMatchupCard.vue'
 import CategoryMatchupCard from '@/components/unified/CategoryMatchupCard.vue'
 import CategoryComparison from '@/components/unified/CategoryComparison.vue'
 import StandingsTable from '@/components/unified/StandingsTable.vue'
 
 const leagueStore = useLeagueStore()
+const { hasLeagueAccess } = useFeatureAccess()
 
 // State
 const loading = ref(false)

@@ -196,7 +196,7 @@
               </tr>
             </thead>
             <tbody>
-              <tr v-for="(stat, idx) in filteredCareerStats" :key="stat.team_key" 
+              <tr v-for="(stat, idx) in gatedCareerStats" :key="stat.team_key" 
                   class="border-b border-dark-border hover:bg-dark-border/30 transition-colors">
                 <td class="py-3 px-4">
                   <div class="flex items-center gap-3">
@@ -231,6 +231,7 @@
               </tr>
             </tbody>
           </table>
+          <LeagueGate :locked="!hasLeagueAccess && filteredCareerStats.length > 3" />
         </div>
       </div>
 
@@ -274,7 +275,7 @@
               </tr>
             </thead>
             <tbody>
-              <tr v-for="season in seasonRecords" :key="season.season" 
+              <tr v-for="season in gatedSeasonRecords" :key="season.season" 
                   class="border-b border-dark-border hover:bg-dark-border/30 transition-colors">
                 <td class="py-3 px-4 font-bold text-dark-text">{{ season.season }}</td>
                 <td class="text-center py-3 px-4 text-dark-text">{{ season.avg_ppw.toFixed(1) }}</td>
@@ -297,6 +298,7 @@
               </tr>
             </tbody>
           </table>
+        <LeagueGate :locked="!hasLeagueAccess && seasonRecords.length > 3" />
         </div>
       </div>
       </template>
@@ -487,7 +489,8 @@
           </div>
         </div>
 
-        <!-- Rivalry Highlights -->
+        <!-- Rivalry Highlights — gated -->
+        <LeagueGate wrap :locked="!hasLeagueAccess" label="Rivalry Deep Stats">
         <div v-if="compareRivalryHighlights" class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
           <div class="card">
             <div class="card-body p-4">
@@ -516,6 +519,7 @@
             </div>
           </div>
         </div>
+        </LeagueGate>
 
         <!-- Rivalry History -->
         <div class="card mb-6" v-if="compareRivalryHistory.length > 0">
@@ -621,7 +625,7 @@
               <tr>
                 <th class="sticky left-0 bg-dark-elevated z-10 px-3 py-2 text-left border border-dark-border min-w-[120px]">Team</th>
                 <th 
-                  v-for="team in filteredH2HTeams" 
+                  v-for="team in gatedH2HTeams" 
                   :key="`header-${team.team_key}`"
                   class="px-2 py-2 text-center border border-dark-border font-semibold text-dark-textSecondary uppercase tracking-wider"
                   style="min-width: 90px;"
@@ -636,7 +640,7 @@
               </tr>
             </thead>
             <tbody>
-              <tr v-for="rowTeam in filteredH2HTeams" :key="`row-${rowTeam.team_key}`">
+              <tr v-for="rowTeam in gatedH2HTeams" :key="`row-${rowTeam.team_key}`">
                 <td class="sticky left-0 bg-dark-elevated z-10 px-3 py-2 font-semibold text-dark-text border border-dark-border whitespace-nowrap">
                   <div class="flex items-center gap-2">
                     <div class="w-6 h-6 rounded-full overflow-hidden bg-dark-border flex-shrink-0">
@@ -646,7 +650,7 @@
                   </div>
                 </td>
                 <td 
-                  v-for="colTeam in filteredH2HTeams" 
+                  v-for="colTeam in gatedH2HTeams" 
                   :key="`cell-${rowTeam.team_key}-${colTeam.team_key}`"
                   class="px-2 py-2 text-center border border-dark-border"
                   :class="getH2HCellClass(rowTeam.team_key, colTeam.team_key)"
@@ -737,7 +741,7 @@
               </h3>
               <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div 
-                  v-for="award in allTimeHallOfFame" 
+                  v-for="award in gatedAllTimeHoF" 
                   :key="award.title" 
                   class="bg-green-500/10 border border-green-500/30 rounded-xl p-4 cursor-pointer hover:bg-green-500/20 transition-colors"
                   @click="openAwardModal(award.title, 'best')"
@@ -766,6 +770,7 @@
                 </div>
               </div>
             </div>
+            <LeagueGate :locked="!hasLeagueAccess && allTimeHallOfFame.length > 1" />
 
             <!-- Hall of Shame -->
             <div class="mb-8">
@@ -775,7 +780,7 @@
               </h3>
               <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div 
-                  v-for="award in allTimeHallOfShame" 
+                  v-for="award in gatedAllTimeHoS" 
                   :key="award.title" 
                   class="bg-dark-border/30 rounded-xl p-4 cursor-pointer hover:bg-dark-border/50 transition-colors"
                   @click="openAwardModal(award.title, 'worst')"
@@ -803,6 +808,7 @@
                   <div class="text-xs text-red-400 mt-2 opacity-70">Click for bottom 10 →</div>
                 </div>
               </div>
+            <LeagueGate :locked="!hasLeagueAccess && allTimeHallOfShame.length > 1" />
             </div>
           </div>
 
@@ -816,7 +822,7 @@
               </h3>
               <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div 
-                  v-for="award in seasonHallOfFame" 
+                  v-for="award in gatedSeasonHoF" 
                   :key="award.title" 
                   class="bg-green-500/10 border border-green-500/30 rounded-xl p-4 cursor-pointer hover:bg-green-500/20 transition-colors"
                   @click="openSeasonAwardModal(award.title, 'best')"
@@ -853,7 +859,7 @@
               </h3>
               <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div 
-                  v-for="award in seasonHallOfShame" 
+                  v-for="award in gatedSeasonHoS" 
                   :key="award.title" 
                   class="bg-dark-border/30 rounded-xl p-4 cursor-pointer hover:bg-dark-border/50 transition-colors"
                   @click="openSeasonAwardModal(award.title, 'worst')"
@@ -880,6 +886,7 @@
                   <div class="text-xs text-red-400 mt-2 opacity-70">Click for bottom 10 →</div>
                 </div>
               </div>
+            <LeagueGate :locked="!hasLeagueAccess && seasonHallOfShame.length > 1" />
             </div>
           </div>
 
@@ -887,7 +894,7 @@
           <div v-if="selectedAwardTab === 'Weekly'">
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div 
-                v-for="award in weeklyAwards" 
+                v-for="award in gatedWeeklyAwards" 
                 :key="award.title" 
                 class="bg-dark-border/30 rounded-xl p-4 cursor-pointer hover:bg-dark-border/50 transition-colors"
                 @click="openWeeklyAwardModal(award.title, award.isShame ? 'worst' : 'best')"
@@ -1066,7 +1073,7 @@
           <div class="card-body p-0">
             <div class="divide-y divide-dark-border">
               <div 
-                v-for="(team, idx) in filteredLegacyScores" 
+                v-for="(team, idx) in gatedLegacyScores" 
                 :key="team.team_key"
                 class="p-4 hover:bg-dark-border/20 transition-colors cursor-pointer"
                 @click="openLegacyModal(team)"
@@ -1127,6 +1134,7 @@
                   </div>
                 </div>
               </div>
+              <LeagueGate :locked="!hasLeagueAccess && filteredLegacyScores.length > 3" />
               
               <div v-if="filteredLegacyScores.length === 0" class="p-8 text-center text-dark-textMuted">
                 No legacy data available. Load historical data to see legacy scores.
@@ -1210,7 +1218,7 @@
                   @scroll="updateScrollState"
                 >
                   <div 
-                    v-for="(team, idx) in filteredLegacyScores" 
+                    v-for="(team, idx) in gatedLegacyScores" 
                     :key="'selector-' + team.team_key"
                     class="flex flex-col items-center gap-1.5 px-3 py-2 rounded-lg cursor-pointer transition-all flex-shrink-0 min-w-[80px]"
                     :class="[
@@ -2018,11 +2026,22 @@ import { yahooService } from '@/services/yahoo'
 import { useAuthStore } from '@/stores/auth'
 import html2canvas from 'html2canvas'
 import LoadingSpinner from '@/components/LoadingSpinner.vue'
+import LeagueGate from '@/components/LeagueGate.vue'
+import { useFeatureAccess } from '@/composables/useFeatureAccess'
 import VueApexCharts from 'vue3-apexcharts'
 
 const apexchart = VueApexCharts
 
 const leagueStore = useLeagueStore()
+const { hasLeagueAccess } = useFeatureAccess()
+
+// Gated computeds
+const gatedSeasonRecords = computed(() => hasLeagueAccess.value ? seasonRecords.value : seasonRecords.value.slice(0, 3))
+const gatedAllTimeHoF = computed(() => hasLeagueAccess.value ? allTimeHallOfFame.value : allTimeHallOfFame.value.slice(0, 1))
+const gatedAllTimeHoS = computed(() => hasLeagueAccess.value ? allTimeHallOfShame.value : allTimeHallOfShame.value.slice(0, 1))
+const gatedSeasonHoF = computed(() => hasLeagueAccess.value ? seasonHallOfFame.value : seasonHallOfFame.value.slice(0, 1))
+const gatedSeasonHoS = computed(() => hasLeagueAccess.value ? seasonHallOfShame.value : seasonHallOfShame.value.slice(0, 1))
+const gatedWeeklyAwards = computed(() => hasLeagueAccess.value ? weeklyAwards.value : weeklyAwards.value.slice(0, 1))
 const authStore = useAuthStore()
 
 // Check if ESPN platform - use both activePlatform AND league key format for robustness
@@ -2389,6 +2408,9 @@ const filteredCareerStats = computed(() => {
   if (!showCurrentMembersOnlyCareer.value) return careerStats.value
   return careerStats.value.filter(stat => currentMembers.value.includes(stat.team_key))
 })
+const gatedCareerStats = computed(() =>
+  hasLeagueAccess.value ? filteredCareerStats.value : filteredCareerStats.value.slice(0, 3)
+)
 
 // Computed: Season Records
 const seasonRecords = computed((): SeasonRecord[] => {
@@ -2460,6 +2482,9 @@ const filteredH2HTeams = computed(() => {
   if (!showCurrentMembersOnlyH2H.value) return h2hTeams.value
   return h2hTeams.value.filter(team => currentMembers.value.includes(team.team_key))
 })
+const gatedH2HTeams = computed(() =>
+  hasLeagueAccess.value ? filteredH2HTeams.value : filteredH2HTeams.value.slice(0, 3)
+)
 
 // ==================== TEAM COMPARISON COMPUTED ====================
 
@@ -3157,6 +3182,9 @@ const filteredLegacyScores = computed(() => {
   if (!showCurrentMembersOnlyLegacy.value) return legacyScores.value
   return legacyScores.value.filter(team => currentMembers.value.includes(team.team_key))
 })
+const gatedLegacyScores = computed(() =>
+  hasLeagueAccess.value ? filteredLegacyScores.value : filteredLegacyScores.value.slice(0, 3)
+)
 
 // Computed: Legacy statistics for summary cards
 const totalChampionshipsAwarded = computed(() => {

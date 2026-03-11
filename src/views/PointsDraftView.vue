@@ -136,7 +136,7 @@
           </div>
 
           <!-- Round Rows -->
-          <div v-for="round in totalRounds" :key="round" class="flex gap-1 mb-1">
+          <div v-for="round in gatedRounds" :key="round" class="flex gap-1 mb-1">
             <!-- Round Label -->
             <div class="w-12 flex-shrink-0 bg-dark-card/50 rounded-l-lg flex items-center justify-center">
               <span class="text-xs font-bold text-dark-textMuted">R{{ round }}</span>
@@ -194,11 +194,11 @@
             </div>
           </div>
         </div>
+        <LeagueGate :locked="!hasLeagueAccess && totalRounds > 3" />
       </div>
     </template>
-
-    <!-- ==================== PLAYER GRADES TAB ==================== -->
     <template v-else-if="activeTab === 'grades'">
+      <LeagueGate wrap :locked="!hasLeagueAccess" label="Player Grades — Full Draft Analysis">
       <!-- Grading Methodology Explainer -->
       <div class="card mb-4 border border-yellow-500/30">
         <div class="card-body">
@@ -529,10 +529,12 @@
           </table>
         </div>
       </div>
+      </LeagueGate>
     </template>
 
     <!-- ==================== DEEP ANALYSIS TAB ==================== -->
     <template v-else-if="activeTab === 'analysis'">
+      <LeagueGate wrap :locked="!hasLeagueAccess" label="Deep Draft Analysis">
       <!-- Explanation Card -->
       <div class="card mb-6">
         <div class="card-body py-4">
@@ -713,10 +715,12 @@
           </div>
         </div>
       </div>
+      </LeagueGate>
     </template>
 
     <!-- ==================== ACTUAL VALUE TAB ==================== -->
     <template v-else-if="activeTab === 'actual'">
+      <LeagueGate wrap :locked="!hasLeagueAccess" label="Actual Draft Value">
       <div class="card">
         <div class="card-header">
           <h3 class="text-lg font-bold text-dark-text">🏆 Actual Season Value</h3>
@@ -792,6 +796,7 @@
           </div>
         </div>
       </div>
+      </LeagueGate>
     </template>
 
     <!-- ==================== TEAM DETAIL MODAL ==================== -->
@@ -993,6 +998,8 @@ import { useLeagueStore } from '@/stores/league'
 import { useAuthStore } from '@/stores/auth'
 import { yahooService } from '@/services/yahoo'
 import LoadingSpinner from '@/components/LoadingSpinner.vue'
+import LeagueGate from '@/components/LeagueGate.vue'
+import { useFeatureAccess } from '@/composables/useFeatureAccess'
 import { 
   getTierConfig, 
   getTier, 
@@ -1005,6 +1012,10 @@ import {
 } from '@/services/draftGrading'
 
 const leagueStore = useLeagueStore()
+const { hasLeagueAccess } = useFeatureAccess()
+
+// Gated computeds
+const gatedRounds = computed(() => hasLeagueAccess.value ? totalRounds.value : Math.min(totalRounds.value, 3))
 const authStore = useAuthStore()
 
 // Effective league key - use the actually loaded league (might be previous season)

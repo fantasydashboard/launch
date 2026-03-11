@@ -216,7 +216,7 @@
           </div>
 
           <!-- Round Rows -->
-          <div v-for="round in totalRounds" :key="round" class="flex gap-1 mb-1">
+          <div v-for="round in gatedRounds" :key="round" class="flex gap-1 mb-1">
             <!-- Round Label -->
             <div class="w-12 flex-shrink-0 bg-dark-card/50 rounded-l-lg flex items-center justify-center">
               <span class="text-xs font-bold text-dark-textMuted">R{{ round }}</span>
@@ -415,6 +415,7 @@
           </div>
         </div>
       </Teleport>
+      <LeagueGate :locked="!hasLeagueAccess && totalRounds > 3" />
     </template>
 
     <!-- ==================== CATEGORY IMPACT TAB ==================== -->
@@ -618,7 +619,7 @@
             </thead>
             <tbody>
               <tr 
-                v-for="pick in sortedImpactPicks" 
+                v-for="pick in gatedImpactPicks" 
                 :key="pick.pick"
                 class="border-b border-dark-border/50 hover:bg-dark-border/20 cursor-pointer"
                 @click="selectPick(pick)"
@@ -654,11 +655,10 @@
               </tr>
             </tbody>
           </table>
+          <LeagueGate :locked="!hasLeagueAccess && sortedImpactPicks.length > 3" />
         </div>
       </div>
     </template>
-
-    <!-- ==================== DRAFT BALANCE TAB ==================== -->
     <template v-else-if="activeTab === 'balance'">
       <!-- Explanation Card -->
       <div class="card mb-6">
@@ -686,7 +686,7 @@
       <!-- Team Balance Overview -->
       <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
         <div 
-          v-for="team in teamBalanceData" 
+          v-for="team in gatedTeamBalance" 
           :key="team.team_key"
           class="card cursor-pointer hover:ring-2 hover:ring-primary transition-all"
           @click="selectedBalanceTeam = team.team_key; showBalanceModal = true"
@@ -738,6 +738,7 @@
             </div>
           </div>
         </div>
+      <LeagueGate :locked="!hasLeagueAccess && teamBalanceData.length > 3" />
       </div>
 
       <!-- Balance Modal -->
@@ -905,7 +906,7 @@
           </div>
           <div class="card-body space-y-2">
             <div 
-              v-for="(pick, idx) in topSteals" 
+              v-for="(pick, idx) in gatedTopSteals" 
               :key="pick.pick"
               class="flex items-center gap-3 p-3 bg-green-500/10 rounded-lg cursor-pointer hover:bg-green-500/20 transition-all"
               @click="selectPick(pick)"
@@ -927,6 +928,7 @@
               No significant steals found
             </div>
           </div>
+          <LeagueGate :locked="!hasLeagueAccess && topSteals.length > 3" />
         </div>
 
         <!-- Biggest Busts -->
@@ -950,7 +952,7 @@
           </div>
           <div class="card-body space-y-2">
             <div 
-              v-for="(pick, idx) in topBusts" 
+              v-for="(pick, idx) in gatedTopBusts" 
               :key="pick.pick"
               class="flex items-center gap-3 p-3 bg-red-500/10 rounded-lg cursor-pointer hover:bg-red-500/20 transition-all"
               @click="selectPick(pick)"
@@ -972,6 +974,7 @@
               No significant busts found
             </div>
           </div>
+          <LeagueGate :locked="!hasLeagueAccess && topBusts.length > 3" />
         </div>
       </div>
 
@@ -995,7 +998,7 @@
         <div class="card-body">
           <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             <div 
-              v-for="(steal, idx) in categorySteals" 
+              v-for="(steal, idx) in gatedCategorySteals" 
               :key="steal.pick"
               class="bg-dark-border/20 rounded-xl p-4 cursor-pointer hover:ring-2 hover:ring-primary transition-all"
               @click="selectPick(steal)"
@@ -1024,6 +1027,7 @@
               </div>
             </div>
           </div>
+          <LeagueGate :locked="!hasLeagueAccess && categorySteals.length > 3" />
         </div>
       </div>
 
@@ -1211,6 +1215,8 @@ import { useAuthStore } from '@/stores/auth'
 import { yahooService } from '@/services/yahoo'
 import { espnService } from '@/services/espn'
 import LoadingSpinner from '@/components/LoadingSpinner.vue'
+import LeagueGate from '@/components/LeagueGate.vue'
+import { useFeatureAccess } from '@/composables/useFeatureAccess'
 import { 
   getTierMovementScore, 
   scoreToGrade, 
@@ -1219,7 +1225,16 @@ import {
 } from '@/services/draftGrading'
 
 const leagueStore = useLeagueStore()
+const { hasLeagueAccess } = useFeatureAccess()
 const authStore = useAuthStore()
+
+// Gated list computeds (avoid ternary in v-for which crashes Vue compiler)
+const gatedRounds = computed(() => hasLeagueAccess.value ? totalRounds.value : Math.min(totalRounds.value, 3))
+const gatedImpactPicks = computed(() => hasLeagueAccess.value ? sortedImpactPicks.value : sortedImpactPicks.value.slice(0, 3))
+const gatedTeamBalance = computed(() => hasLeagueAccess.value ? teamBalanceData.value : teamBalanceData.value.slice(0, 3))
+const gatedTopSteals = computed(() => hasLeagueAccess.value ? topSteals.value : topSteals.value.slice(0, 3))
+const gatedTopBusts = computed(() => hasLeagueAccess.value ? topBusts.value : topBusts.value.slice(0, 3))
+const gatedCategorySteals = computed(() => hasLeagueAccess.value ? categorySteals.value : categorySteals.value.slice(0, 3))
 
 // Platform detection
 const isEspn = computed(() => leagueStore.activePlatform === 'espn')

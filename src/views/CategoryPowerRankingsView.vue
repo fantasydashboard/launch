@@ -183,7 +183,7 @@
               </thead>
               <tbody>
                 <tr 
-                  v-for="team in sortedPowerRankings" 
+                  v-for="team in gatedSortedPowerRankings" 
                   :key="team.team_key"
                   @click="openTeamModal(team)"
                   class="border-b border-dark-border/50 hover:bg-dark-border/20 transition-colors cursor-pointer"
@@ -264,10 +264,12 @@
               </tbody>
             </table>
           </div>
+          <LeagueGate :locked="!hasLeagueAccess && powerRankings.length > 3" />
         </div>
       </div>
 
-      <!-- Historical Chart (Power Rankings Over Time) -->
+      <!-- Historical Chart — gated -->
+      <LeagueGate wrap label="Power Rankings Over Time">
       <div class="card">
         <div class="card-header">
           <div class="flex items-center gap-2">
@@ -308,8 +310,10 @@
           </div>
         </div>
       </div>
+      </LeagueGate>
 
-      <!-- Rankings Insights -->
+      <!-- Rankings Insights — gated -->
+      <LeagueGate wrap label="Rankings Insights">
       <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <!-- Biggest Climber -->
         <div 
@@ -503,6 +507,7 @@
           </div>
         </div>
       </div>
+      </LeagueGate>
     </template>
 
     <!-- Empty State -->
@@ -713,8 +718,11 @@ import { yahooService } from '@/services/yahoo'
 import { espnService } from '@/services/espn'
 import { calculateCategoryBalance } from '@/services/categoryPowerRankingFactors'
 import LoadingSpinner from '@/components/LoadingSpinner.vue'
+import LeagueGate from '@/components/LeagueGate.vue'
+import { useFeatureAccess } from '@/composables/useFeatureAccess'
 
 const leagueStore = useLeagueStore()
+const { hasLeagueAccess } = useFeatureAccess()
 const authStore = useAuthStore()
 
 // Platform detection
@@ -730,6 +738,9 @@ const loadingProgress = ref({
 })
 const selectedWeek = ref('')
 const powerRankings = ref<any[]>([])
+const gatedPowerRankings = computed(() =>
+  hasLeagueAccess.value ? powerRankings.value : powerRankings.value.slice(0, 3)
+)
 const displayCategories = ref<any[]>([])
 const totalWeeksLoaded = ref(0)
 const defaultAvatar = computed(() => {
@@ -1731,6 +1742,10 @@ const sortedPowerRankings = computed(() => {
   
   return teams
 })
+
+const gatedSortedPowerRankings = computed(() =>
+  hasLeagueAccess.value ? sortedPowerRankings.value : sortedPowerRankings.value.slice(0, 3)
+)
 
 // Sort power rankings table
 function sortPowerRankings(column: string) {

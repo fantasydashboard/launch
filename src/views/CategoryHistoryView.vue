@@ -196,7 +196,7 @@
               </tr>
             </thead>
             <tbody>
-              <tr v-for="(stat, idx) in filteredCareerStats" :key="`career-row-${stat.team_key}`" 
+              <tr v-for="(stat, idx) in gatedCareerStats" :key="`career-row-${stat.team_key}`" 
                   class="border-b border-dark-border hover:bg-dark-border/30 transition-colors">
                 <td class="py-3 px-4">
                   <div class="flex items-center gap-3">
@@ -248,13 +248,9 @@
                   </span>
                 </td>
               </tr>
-              <tr v-if="filteredCareerStats.length === 0">
-                <td colspan="10" class="py-8 text-center text-dark-textMuted">
-                  No historical data available
-                </td>
-              </tr>
-            </tbody>
-          </table>
+              </tbody>
+            </table>
+            <LeagueGate :locked="!hasLeagueAccess && filteredCareerStats.length > 3" />
         </div>
       </div>
 
@@ -295,7 +291,7 @@
               </tr>
             </thead>
             <tbody>
-              <tr v-for="season in seasonRecords" :key="season.year" 
+              <tr v-for="season in gatedSeasonRecords" :key="season.year" 
                   class="border-b border-dark-border hover:bg-dark-border/30 transition-colors">
                 <td class="py-3 px-4 font-bold text-dark-text text-lg">{{ season.year }}</td>
                 <td class="text-center py-3 px-4">
@@ -349,13 +345,9 @@
                   </div>
                 </td>
               </tr>
-              <tr v-if="seasonRecords.length === 0">
-                <td colspan="6" class="py-8 text-center text-dark-textMuted">
-                  No season data available
-                </td>
-              </tr>
             </tbody>
           </table>
+          <LeagueGate :locked="!hasLeagueAccess && seasonRecords.length > 3" />
         </div>
       </div>
       </template>
@@ -552,7 +544,8 @@
           </div>
         </div>
 
-        <!-- Rivalry Highlights -->
+        <!-- Rivalry Highlights — gated -->
+        <LeagueGate wrap :locked="!hasLeagueAccess" label="Rivalry Deep Stats">
         <div v-if="compareRivalryHighlights" class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
           <div class="card">
             <div class="card-body p-4">
@@ -581,6 +574,7 @@
             </div>
           </div>
         </div>
+        </LeagueGate>
 
         <!-- Rivalry History -->
         <div class="card mb-6" v-if="compareRivalryHistory.length > 0">
@@ -681,7 +675,7 @@
               <tr>
                 <th class="sticky left-0 bg-dark-elevated z-10 px-3 py-2 text-left border border-dark-border min-w-[120px]">Team</th>
                 <th 
-                  v-for="team in filteredH2HTeams" 
+                  v-for="team in gatedH2HTeams" 
                   :key="`header-${team.team_key}`"
                   class="px-2 py-2 text-center border border-dark-border font-semibold text-dark-textSecondary uppercase tracking-wider"
                   style="min-width: 90px;"
@@ -696,7 +690,7 @@
               </tr>
             </thead>
             <tbody>
-              <tr v-for="rowTeam in filteredH2HTeams" :key="`row-${rowTeam.team_key}`">
+              <tr v-for="rowTeam in gatedH2HTeams" :key="`row-${rowTeam.team_key}`">
                 <td class="sticky left-0 bg-dark-elevated z-10 px-3 py-2 font-semibold text-dark-text border border-dark-border whitespace-nowrap">
                   <div class="flex items-center gap-2">
                     <div class="w-6 h-6 rounded-full overflow-hidden bg-dark-border flex-shrink-0">
@@ -706,7 +700,7 @@
                   </div>
                 </td>
                 <td 
-                  v-for="colTeam in filteredH2HTeams" 
+                  v-for="colTeam in gatedH2HTeams" 
                   :key="`cell-${rowTeam.team_key}-${colTeam.team_key}`"
                   class="px-2 py-2 text-center border border-dark-border"
                   :class="getH2HCellClass(rowTeam.team_key, colTeam.team_key)"
@@ -722,6 +716,7 @@
               </tr>
             </tbody>
           </table>
+          <LeagueGate :locked="!hasLeagueAccess && filteredH2HTeams.length > 3" />
         </div>
         
         <!-- H2H Legend -->
@@ -797,7 +792,7 @@
               <div class="mb-6">
                 <h4 class="text-sm font-semibold text-dark-textMuted uppercase tracking-wider mb-3">👑 Hitting Category Kings (Best Single Season)</h4>
                 <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
-                  <div v-for="award in hallOfFameHitting" :key="award.category" 
+                  <div v-for="award in gatedHoFHitting" :key="award.category" 
                        class="cursor-pointer"
                        @click="openAwardModal(award.category, 'best', 'hitting')">
                     <div class="bg-gradient-to-br from-green-500/10 to-green-600/5 rounded-xl p-4 border border-green-500/20 hover:border-green-500/40 transition-all">
@@ -823,7 +818,7 @@
               <div class="mb-6">
                 <h4 class="text-sm font-semibold text-dark-textMuted uppercase tracking-wider mb-3">👑 Pitching Category Kings (Best Single Season)</h4>
                 <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
-                  <div v-for="award in hallOfFamePitching" :key="award.category"
+                  <div v-for="award in gatedHoFPitching" :key="award.category"
                        class="cursor-pointer"
                        @click="openAwardModal(award.category, 'best', 'pitching')">
                     <div class="bg-gradient-to-br from-purple-500/10 to-purple-600/5 rounded-xl p-4 border border-purple-500/20 hover:border-purple-500/40 transition-all">
@@ -844,6 +839,7 @@
                   </div>
                 </div>
               </div>
+              <LeagueGate :locked="!hasLeagueAccess" />
             </div>
 
             <!-- Hall of Shame -->
@@ -857,7 +853,7 @@
               <div class="mb-6">
                 <h4 class="text-sm font-semibold text-dark-textMuted uppercase tracking-wider mb-3">💀 Hitting Category Struggles (Worst Single Season)</h4>
                 <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
-                  <div v-for="award in hallOfShameHitting" :key="award.category"
+                  <div v-for="award in gatedHoSHitting" :key="award.category"
                        class="cursor-pointer"
                        @click="openAwardModal(award.category, 'worst', 'hitting')">
                     <div class="bg-gradient-to-br from-gray-500/10 to-gray-600/5 rounded-xl p-4 border border-gray-500/20 hover:border-red-500/40 transition-all">
@@ -883,7 +879,7 @@
               <div>
                 <h4 class="text-sm font-semibold text-dark-textMuted uppercase tracking-wider mb-3">💀 Pitching Category Struggles (Worst Single Season)</h4>
                 <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
-                  <div v-for="award in hallOfShamePitching" :key="award.category"
+                  <div v-for="award in gatedHoSPitching" :key="award.category"
                        class="cursor-pointer"
                        @click="openAwardModal(award.category, 'worst', 'pitching')">
                     <div class="bg-gradient-to-br from-gray-500/10 to-gray-600/5 rounded-xl p-4 border border-gray-500/20 hover:border-red-500/40 transition-all">
@@ -929,7 +925,7 @@
               <div class="mb-6">
                 <h4 class="text-sm font-semibold text-dark-textMuted uppercase tracking-wider mb-3">👑 Hitting Category Leaders</h4>
                 <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
-                  <div v-for="award in seasonHallOfFameHitting" :key="award.category" 
+                  <div v-for="award in gatedSeasonHoFHitting" :key="award.category" 
                        class="cursor-pointer"
                        @click="toggleSeasonAwardCard(`season-fame-hitting-${award.category}`)">
                     <div class="bg-gradient-to-br from-green-500/10 to-green-600/5 rounded-xl p-4 border border-green-500/20 hover:border-green-500/40 transition-all"
@@ -1013,7 +1009,7 @@
               <div class="mb-6">
                 <h4 class="text-sm font-semibold text-dark-textMuted uppercase tracking-wider mb-3">👑 Pitching Category Leaders</h4>
                 <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
-                  <div v-for="award in seasonHallOfFamePitching" :key="award.category"
+                  <div v-for="award in gatedSeasonHoFPitching" :key="award.category"
                        class="cursor-pointer"
                        @click="toggleSeasonAwardCard(`season-fame-pitching-${award.category}`)">
                     <div class="bg-gradient-to-br from-purple-500/10 to-purple-600/5 rounded-xl p-4 border border-purple-500/20 hover:border-purple-500/40 transition-all"
@@ -1105,7 +1101,7 @@
               <div class="mb-6">
                 <h4 class="text-sm font-semibold text-dark-textMuted uppercase tracking-wider mb-3">💀 Hitting Category Struggles</h4>
                 <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
-                  <div v-for="award in seasonHallOfShameHitting" :key="award.category"
+                  <div v-for="award in gatedSeasonHoSHitting" :key="award.category"
                        class="cursor-pointer"
                        @click="toggleSeasonAwardCard(`season-shame-hitting-${award.category}`)">
                     <div class="bg-gradient-to-br from-gray-500/10 to-gray-600/5 rounded-xl p-4 border border-gray-500/20 hover:border-gray-500/40 transition-all"
@@ -1189,7 +1185,7 @@
               <div>
                 <h4 class="text-sm font-semibold text-dark-textMuted uppercase tracking-wider mb-3">💀 Pitching Category Struggles</h4>
                 <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
-                  <div v-for="award in seasonHallOfShamePitching" :key="award.category"
+                  <div v-for="award in gatedSeasonHoSPitching" :key="award.category"
                        class="cursor-pointer"
                        @click="toggleSeasonAwardCard(`season-shame-pitching-${award.category}`)">
                     <div class="bg-gradient-to-br from-gray-500/10 to-gray-600/5 rounded-xl p-4 border border-gray-500/20 hover:border-gray-500/40 transition-all"
@@ -1415,7 +1411,7 @@
           <div class="card-body p-0">
             <div class="divide-y divide-dark-border">
               <div 
-                v-for="(team, idx) in filteredLegacyScores" 
+                v-for="(team, idx) in gatedLegacyScores" 
                 :key="team.team_key"
                 class="p-4 hover:bg-dark-border/20 transition-colors cursor-pointer"
                 @click="openLegacyModal(team)"
@@ -1476,6 +1472,7 @@
                   </div>
                 </div>
               </div>
+              <LeagueGate :locked="!hasLeagueAccess && filteredLegacyScores.length > 3" />
               
               <div v-if="filteredLegacyScores.length === 0" class="p-8 text-center text-dark-textMuted">
                 No legacy data available. Load historical data to see legacy scores.
@@ -1810,8 +1807,22 @@ import { yahooService } from '@/services/yahoo'
 import { espnService } from '@/services/espn'
 import html2canvas from 'html2canvas'
 import LoadingSpinner from '@/components/LoadingSpinner.vue'
+import LeagueGate from '@/components/LeagueGate.vue'
+import { useFeatureAccess } from '@/composables/useFeatureAccess'
 
 const leagueStore = useLeagueStore()
+const { hasLeagueAccess } = useFeatureAccess()
+
+// Gated computeds
+const gatedSeasonRecords = computed(() => hasLeagueAccess.value ? seasonRecords.value : seasonRecords.value.slice(0, 3))
+const gatedHoFHitting = computed(() => hasLeagueAccess.value ? hallOfFameHitting.value : hallOfFameHitting.value.slice(0, 1))
+const gatedHoFPitching = computed(() => hasLeagueAccess.value ? hallOfFamePitching.value : hallOfFamePitching.value.slice(0, 1))
+const gatedHoSHitting = computed(() => hasLeagueAccess.value ? hallOfShameHitting.value : hallOfShameHitting.value.slice(0, 1))
+const gatedHoSPitching = computed(() => hasLeagueAccess.value ? hallOfShamePitching.value : hallOfShamePitching.value.slice(0, 1))
+const gatedSeasonHoFHitting = computed(() => hasLeagueAccess.value ? seasonHallOfFameHitting.value : seasonHallOfFameHitting.value.slice(0, 1))
+const gatedSeasonHoFPitching = computed(() => hasLeagueAccess.value ? seasonHallOfFamePitching.value : seasonHallOfFamePitching.value.slice(0, 1))
+const gatedSeasonHoSHitting = computed(() => hasLeagueAccess.value ? seasonHallOfShameHitting.value : seasonHallOfShameHitting.value.slice(0, 1))
+const gatedSeasonHoSPitching = computed(() => hasLeagueAccess.value ? seasonHallOfShamePitching.value : seasonHallOfShamePitching.value.slice(0, 1))
 const authStore = useAuthStore()
 
 // Platform detection
@@ -2450,6 +2461,9 @@ const filteredCareerStats = computed(() => {
   if (!showCurrentMembersOnly.value) return careerStats.value
   return careerStats.value.filter(stat => currentMembers.value.has(stat.team_key))
 })
+const gatedCareerStats = computed(() =>
+  hasLeagueAccess.value ? filteredCareerStats.value : filteredCareerStats.value.slice(0, 3)
+)
 
 // Season-by-Season Records
 const seasonRecords = computed(() => {
@@ -3413,6 +3427,9 @@ const filteredLegacyScores = computed(() => {
   if (!showCurrentMembersOnlyLegacy.value) return legacyScores.value
   return legacyScores.value.filter(team => currentMembers.value.has(team.team_key))
 })
+const gatedLegacyScores = computed(() =>
+  hasLeagueAccess.value ? filteredLegacyScores.value : filteredLegacyScores.value.slice(0, 3)
+)
 
 // Legacy helper functions
 function getLegacyScoreColor(score: number): string {
@@ -3729,6 +3746,9 @@ const filteredH2HTeams = computed(() => {
   if (!showCurrentMembersOnlyH2H.value) return h2hTeams.value
   return h2hTeams.value.filter(t => currentMembers.value.has(t.team_key))
 })
+const gatedH2HTeams = computed(() =>
+  hasLeagueAccess.value ? filteredH2HTeams.value : filteredH2HTeams.value.slice(0, 3)
+)
 
 // ==================== TEAM COMPARISON COMPUTED ====================
 

@@ -129,7 +129,7 @@
               </thead>
               <tbody>
                 <tr 
-                  v-for="(team, idx) in powerRankings" 
+                  v-for="(team, idx) in gatedPowerRankings" 
                   :key="team.team_key"
                   @click="openTeamDetailModal(team)"
                   class="border-b border-dark-border/50 hover:bg-dark-border/20 transition-colors cursor-pointer"
@@ -201,10 +201,13 @@
               </tbody>
             </table>
           </div>
+          <!-- Gate: show after row 3 -->
+          <LeagueGate :locked="!hasLeagueAccess && powerRankings.length > 3" />
         </div>
       </div>
 
-      <!-- Power Score Trend Chart -->
+      <!-- Power Score Trend Chart — gated -->
+      <LeagueGate wrap label="Power Score Trend">
       <div class="card">
         <div class="card-header">
           <div class="flex items-center gap-2">
@@ -257,8 +260,10 @@
           </div>
         </div>
       </div>
+      </LeagueGate>
 
-      <!-- Movers & Shakers -->
+      <!-- Movers & Shakers — gated -->
+      <LeagueGate wrap label="Biggest Movers">
       <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <!-- Biggest Climber -->
         <div 
@@ -360,6 +365,7 @@
           </div>
         </div>
       </div>
+      </LeagueGate>
 
       <!-- Projected Points by Position - Stacked Bar Visualization -->
       <div class="card">
@@ -1038,8 +1044,11 @@ import { espnService } from '@/services/espn'
 import { useAuthStore } from '@/stores/auth'
 import html2canvas from 'html2canvas'
 import LoadingSpinner from '@/components/LoadingSpinner.vue'
+import LeagueGate from '@/components/LeagueGate.vue'
+import { useFeatureAccess } from '@/composables/useFeatureAccess'
 
 const leagueStore = useLeagueStore()
+const { hasLeagueAccess } = useFeatureAccess()
 const authStore = useAuthStore()
 
 const defaultAvatar = computed(() => {
@@ -1135,6 +1144,9 @@ const positionSortDirection = ref<'asc' | 'desc'>('desc')
 
 // Power rankings data
 const powerRankings = ref<PowerRankingData[]>([])
+const gatedPowerRankings = computed(() =>
+  hasLeagueAccess.value ? powerRankings.value : powerRankings.value.slice(0, 3)
+)
 const historicalPowerRanks = ref<Map<string, number[]>>(new Map())
 const allMatchups = ref<Map<number, any[]>>(new Map())
 
