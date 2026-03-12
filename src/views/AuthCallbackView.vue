@@ -28,58 +28,27 @@ const error = ref<string | null>(null)
 
 onMounted(async () => {
   try {
-    // ── PKCE flow: ?code= query param (modern Supabase default) ──
     const urlParams = new URLSearchParams(window.location.search)
     const code = urlParams.get('code')
 
     if (code) {
-      console.log('[AuthCallback] PKCE code found, exchanging for session…')
+      // Exchange PKCE code for session
       const { error: exchangeError } = await supabase!.auth.exchangeCodeForSession(code)
       if (exchangeError) {
         console.error('[AuthCallback] Code exchange failed:', exchangeError)
         error.value = exchangeError.message
         return
       }
-      console.log('[AuthCallback] Session established, redirecting home')
-      window.location.href = '/'
-      return
     }
 
-    // ── Implicit flow fallback: #access_token= hash ──
-    const hashParams = new URLSearchParams(window.location.hash.substring(1))
-    const accessToken = hashParams.get('access_token')
-    const refreshToken = hashParams.get('refresh_token')
-
-    if (accessToken) {
-      console.log('[AuthCallback] Implicit token found, setting session…')
-      const { error: setError } = await supabase!.auth.setSession({
-        access_token: accessToken,
-        refresh_token: refreshToken || ''
-      })
-      if (setError) {
-        console.error('[AuthCallback] setSession failed:', setError)
-        error.value = setError.message
-        return
-      }
-      console.log('[AuthCallback] Session set, redirecting home')
-      window.location.href = '/'
-      return
-    }
-
-    // ── No token/code — maybe session already exists ──
-    const { data } = await supabase!.auth.getSession()
-    if (data.session) {
-      console.log('[AuthCallback] Existing session found, redirecting home')
-      window.location.href = '/'
-    } else {
-      console.warn('[AuthCallback] No token or session found in callback URL')
-      window.location.href = '/'
-    }
-
+    // Wait briefly for onAuthStateChange to fire and update the store,
+    // then navigate via router (no hard reload — keeps store state)
+    await new Promise(resolve => setTimeout(resolve, 300))
+    router.replace('/')
   } catch (err: any) {
     console.error('[AuthCallback] Unexpected error:', err)
     error.value = err.message || 'Authentication failed'
-    setTimeout(() => { window.location.href = '/' }, 2000)
+    setTimeout(() => router.replace('/'), 2000)
   }
 })
 </script>
