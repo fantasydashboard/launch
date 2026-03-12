@@ -129,11 +129,15 @@
               </thead>
               <tbody>
                 <tr 
-                  v-for="(team, idx) in gatedPowerRankings" 
+                  v-for="(team, idx) in powerRankings" 
                   :key="team.team_key"
-                  @click="openTeamDetailModal(team)"
-                  class="border-b border-dark-border/50 hover:bg-dark-border/20 transition-colors cursor-pointer"
-                  :class="{ 'bg-yellow-500/10 ring-2 ring-yellow-500/50 ring-inset': team.is_my_team }"
+                  @click="hasLeagueAccess || idx < 3 ? openTeamDetailModal(team) : null"
+                  class="border-b border-dark-border/50 transition-colors"
+                  :class="{
+                    'bg-yellow-500/10 ring-2 ring-yellow-500/50 ring-inset': team.is_my_team && (hasLeagueAccess || idx < 3),
+                    'cursor-pointer hover:bg-dark-border/20': hasLeagueAccess || idx < 3,
+                    'blur-row': !hasLeagueAccess && idx >= 3
+                  }"
                 >
                   <td class="py-3 px-4">
                     <span 
@@ -201,13 +205,11 @@
               </tbody>
             </table>
           </div>
-          <!-- Gate: show after row 3 -->
-          <LeagueGate :locked="!hasLeagueAccess && powerRankings.length > 3" />
         </div>
       </div>
 
-      <!-- Power Score Trend Chart — gated -->
-      <LeagueGate wrap label="Power Score Trend">
+      <!-- Power Score Trend Chart — blurred when locked -->
+      <div :class="!hasLeagueAccess ? 'locked-section' : ''">
       <div class="card">
         <div class="card-header">
           <div class="flex items-center gap-2">
@@ -260,10 +262,10 @@
           </div>
         </div>
       </div>
-      </LeagueGate>
+      </div>
 
-      <!-- Movers & Shakers — gated -->
-      <LeagueGate wrap label="Biggest Movers">
+      <!-- Movers & Shakers — blurred when locked -->
+      <div :class="!hasLeagueAccess ? 'locked-section' : ''">
       <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <!-- Biggest Climber -->
         <div 
@@ -365,7 +367,22 @@
           </div>
         </div>
       </div>
-      </LeagueGate>
+      </div>
+
+      <!-- Single unlock gate -->
+      <div v-if="!hasLeagueAccess && powerRankings.length > 3" class="single-gate">
+        <div class="single-gate-inner">
+          <span class="single-gate-lock">🔒</span>
+          <div>
+            <div class="single-gate-headline">Unlock the full Power Rankings</div>
+            <div class="single-gate-sub">See every team's score, the historical trend chart, and biggest movers.</div>
+          </div>
+          <button class="single-gate-btn" @click="goToPricing">
+            Unlock League Pass
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+          </button>
+        </div>
+      </div>
 
       <!-- Projected Points by Position - Stacked Bar Visualization -->
       <div class="card">
@@ -1049,6 +1066,13 @@ import { useFeatureAccess } from '@/composables/useFeatureAccess'
 
 const leagueStore = useLeagueStore()
 const { hasLeagueAccess } = useFeatureAccess()
+
+function goToPricing() {
+  const params = new URLSearchParams()
+  if (leagueStore.activeLeagueId) params.set('league', leagueStore.activeLeagueId)
+  if (leagueStore.activePlatform) params.set('platform', leagueStore.activePlatform)
+  router.push(`/pricing?${params.toString()}`)
+}
 const authStore = useAuthStore()
 
 const defaultAvatar = computed(() => {
@@ -3004,4 +3028,47 @@ onMounted(() => {
 .power-chart-container :deep(.apexcharts-tooltip) {
   z-index: 100;
 }
+</style>
+
+<style scoped>
+.blur-row {
+  filter: blur(4px);
+  pointer-events: none;
+  user-select: none;
+}
+.locked-section {
+  filter: blur(5px);
+  pointer-events: none;
+  user-select: none;
+  opacity: 0.45;
+}
+.single-gate {
+  margin-top: -48px;
+  position: relative;
+  z-index: 10;
+  padding: 0 0 24px;
+  background: linear-gradient(to bottom, transparent 0%, #0a0c14 30%);
+}
+.single-gate-inner {
+  display: flex; align-items: center; gap: 16px; flex-wrap: wrap;
+  justify-content: center;
+  background: linear-gradient(135deg, #0d0f1a, #0a0d18);
+  border: 1px solid rgba(234,179,8,0.3); border-radius: 14px;
+  padding: 22px 28px; box-shadow: 0 0 40px rgba(0,0,0,0.6);
+  max-width: 580px; margin: 0 auto; text-align: center;
+}
+.single-gate-lock { font-size: 1.5rem; }
+.single-gate-headline {
+  font-size: 1rem; font-weight: 800; color: #fff; margin-bottom: 3px;
+  font-family: 'Barlow Condensed', sans-serif; letter-spacing: 0.02em;
+}
+.single-gate-sub { font-size: 0.77rem; color: #6b7280; }
+.single-gate-btn {
+  display: inline-flex; align-items: center; gap: 8px; padding: 11px 22px;
+  background: #eab308; color: #0a0c14;
+  font-family: 'Barlow Condensed', sans-serif; font-size: 0.95rem; font-weight: 800;
+  letter-spacing: 0.04em; border: none; border-radius: 8px; cursor: pointer;
+  transition: background 0.15s, transform 0.15s; white-space: nowrap;
+}
+.single-gate-btn:hover { background: #fbbf24; transform: translateY(-1px); }
 </style>
