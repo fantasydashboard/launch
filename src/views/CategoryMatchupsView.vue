@@ -2714,7 +2714,7 @@ async function generateMatchupAnalysisImage(matchup: any, html2canvas: any) {
     canvas.toBlob(b => b ? resolve(b) : reject(new Error('toBlob failed')), 'image/png')
   })
   if (navigator.clipboard && typeof ClipboardItem !== 'undefined') {
-    await navigator.clipboard.write([new ClipboardItem({ 'image/png': _shareBlob })])
+    await navigator.clipboard.write([new ClipboardItem({ 'image/png': Promise.resolve(_shareBlob) })])
     shareToast.value = 'success'
     setTimeout(() => { shareToast.value = 'idle' }, 3000)
   } else {
@@ -2970,7 +2970,7 @@ async function generateCategoryBreakdownImage(matchup: any, html2canvas: any) {
         canvas.toBlob(b => b ? resolve(b) : reject(new Error('toBlob failed')), 'image/png')
       })
       if (navigator.clipboard && typeof ClipboardItem !== 'undefined') {
-        await navigator.clipboard.write([new ClipboardItem({ 'image/png': _shareBlob })])
+        await navigator.clipboard.write([new ClipboardItem({ 'image/png': Promise.resolve(_shareBlob) })])
         shareToast.value = 'success'
         setTimeout(() => { shareToast.value = 'idle' }, 3000)
       } else {

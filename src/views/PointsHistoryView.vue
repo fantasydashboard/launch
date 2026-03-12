@@ -3816,7 +3816,9 @@ async function downloadLegacyLeaderboard() {
       canvas.toBlob(b => b ? resolve(b) : reject(new Error('toBlob failed')), 'image/png')
     })
     if (navigator.clipboard && typeof ClipboardItem !== 'undefined') {
-      await navigator.clipboard.write([new ClipboardItem({ 'image/png': _shareBlob })])
+      // Safari requires passing a Promise directly to ClipboardItem
+      const item = new ClipboardItem({ 'image/png': Promise.resolve(_shareBlob) })
+      await navigator.clipboard.write([item])
       shareToast.value = 'success'
       setTimeout(() => { shareToast.value = 'idle' }, 3000)
     } else {
@@ -4064,7 +4066,9 @@ async function downloadTeamLegacy(team: LegacyScore) {
       canvas.toBlob(b => b ? resolve(b) : reject(new Error('toBlob failed')), 'image/png')
     })
     if (navigator.clipboard && typeof ClipboardItem !== 'undefined') {
-      await navigator.clipboard.write([new ClipboardItem({ 'image/png': _shareBlob })])
+      // Safari requires passing a Promise directly to ClipboardItem
+      const item = new ClipboardItem({ 'image/png': Promise.resolve(_shareBlob) })
+      await navigator.clipboard.write([item])
       shareToast.value = 'success'
       setTimeout(() => { shareToast.value = 'idle' }, 3000)
     } else {
@@ -5198,7 +5202,7 @@ async function downloadRecordRankings(recordType: string) {
           finalCanvas.toBlob(b => b ? resolve(b) : reject(new Error('toBlob failed')), 'image/png')
         })
         if (navigator.clipboard && typeof ClipboardItem !== 'undefined') {
-          await navigator.clipboard.write([new ClipboardItem({ 'image/png': _shareBlob })])
+          await navigator.clipboard.write([new ClipboardItem({ 'image/png': Promise.resolve(_shareBlob) })])
           recordToast.value = 'success'
           setTimeout(() => { recordToast.value = 'idle' }, 3000)
         } else {
@@ -5427,7 +5431,7 @@ async function downloadAwardRankings(awardTitle: string, type: 'best' | 'worst')
           finalCanvas.toBlob(b => b ? resolve(b) : reject(new Error('toBlob failed')), 'image/png')
         })
         if (navigator.clipboard && typeof ClipboardItem !== 'undefined') {
-          await navigator.clipboard.write([new ClipboardItem({ 'image/png': _shareBlob })])
+          await navigator.clipboard.write([new ClipboardItem({ 'image/png': Promise.resolve(_shareBlob) })])
           awardToast.value = 'success'
           setTimeout(() => { awardToast.value = 'idle' }, 3000)
         } else {
@@ -5632,7 +5636,7 @@ async function downloadSeasonAwardRankings(awardTitle: string, type: 'best' | 'w
           finalCanvas.toBlob(b => b ? resolve(b) : reject(new Error('toBlob failed')), 'image/png')
         })
         if (navigator.clipboard && typeof ClipboardItem !== 'undefined') {
-          await navigator.clipboard.write([new ClipboardItem({ 'image/png': _shareBlob })])
+          await navigator.clipboard.write([new ClipboardItem({ 'image/png': Promise.resolve(_shareBlob) })])
           seasonAwardToast.value = 'success'
           setTimeout(() => { seasonAwardToast.value = 'idle' }, 3000)
         } else {
@@ -5830,7 +5834,7 @@ async function downloadWeeklyAwardRankings(awardTitle: string, type: 'best' | 'w
           finalCanvas.toBlob(b => b ? resolve(b) : reject(new Error('toBlob failed')), 'image/png')
         })
         if (navigator.clipboard && typeof ClipboardItem !== 'undefined') {
-          await navigator.clipboard.write([new ClipboardItem({ 'image/png': _shareBlob })])
+          await navigator.clipboard.write([new ClipboardItem({ 'image/png': Promise.resolve(_shareBlob) })])
           weeklyAwardToast.value = 'success'
           setTimeout(() => { weeklyAwardToast.value = 'idle' }, 3000)
         } else {
@@ -6034,7 +6038,7 @@ async function downloadCareerStats() {
           finalCanvas.toBlob(b => b ? resolve(b) : reject(new Error('toBlob failed')), 'image/png')
         })
         if (navigator.clipboard && typeof ClipboardItem !== 'undefined') {
-          await navigator.clipboard.write([new ClipboardItem({ 'image/png': _shareBlob })])
+          await navigator.clipboard.write([new ClipboardItem({ 'image/png': Promise.resolve(_shareBlob) })])
           shareToast.value = 'success'
           setTimeout(() => { shareToast.value = 'idle' }, 3000)
         } else {
@@ -6133,7 +6137,7 @@ async function downloadSeasonHistory() {
           finalCanvas.toBlob(b => b ? resolve(b) : reject(new Error('toBlob failed')), 'image/png')
         })
         if (navigator.clipboard && typeof ClipboardItem !== 'undefined') {
-          await navigator.clipboard.write([new ClipboardItem({ 'image/png': _shareBlob })])
+          await navigator.clipboard.write([new ClipboardItem({ 'image/png': Promise.resolve(_shareBlob) })])
           shareToast.value = 'success'
           setTimeout(() => { shareToast.value = 'idle' }, 3000)
         } else {
@@ -6350,7 +6354,7 @@ async function downloadHeadToHead() {
           finalCanvas.toBlob(b => b ? resolve(b) : reject(new Error('toBlob failed')), 'image/png')
         })
         if (navigator.clipboard && typeof ClipboardItem !== 'undefined') {
-          await navigator.clipboard.write([new ClipboardItem({ 'image/png': _shareBlob })])
+          await navigator.clipboard.write([new ClipboardItem({ 'image/png': Promise.resolve(_shareBlob) })])
           shareToast.value = 'success'
           setTimeout(() => { shareToast.value = 'idle' }, 3000)
         } else {
@@ -6543,7 +6547,9 @@ async function downloadComparison() {
       canvas.toBlob(b => b ? resolve(b) : reject(new Error('toBlob failed')), 'image/png')
     })
     if (navigator.clipboard && typeof ClipboardItem !== 'undefined') {
-      await navigator.clipboard.write([new ClipboardItem({ 'image/png': _shareBlob })])
+      // Safari requires passing a Promise directly to ClipboardItem
+      const item = new ClipboardItem({ 'image/png': Promise.resolve(_shareBlob) })
+      await navigator.clipboard.write([item])
       shareToast.value = 'success'
       setTimeout(() => { shareToast.value = 'idle' }, 3000)
     } else {

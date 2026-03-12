@@ -3445,7 +3445,9 @@ async function downloadStandings() {
     })
 
     if (navigator.clipboard && typeof ClipboardItem !== 'undefined') {
-      await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })])
+      // Safari requires passing a Promise directly to ClipboardItem
+      const item = new ClipboardItem({ 'image/png': Promise.resolve(blob) })
+      await navigator.clipboard.write([item])
       standingsCopyState.value = 'success'
       setTimeout(() => { standingsCopyState.value = 'idle' }, 3000)
     } else {
@@ -3640,7 +3642,9 @@ async function downloadLeaderImage() {
       canvas.toBlob(b => b ? resolve(b) : reject(new Error('toBlob failed')), 'image/png')
     })
     if (navigator.clipboard && typeof ClipboardItem !== 'undefined') {
-      await navigator.clipboard.write([new ClipboardItem({ 'image/png': _shareBlob })])
+      // Safari requires passing a Promise directly to ClipboardItem
+      const item = new ClipboardItem({ 'image/png': Promise.resolve(_shareBlob) })
+      await navigator.clipboard.write([item])
       leaderCopyState.value = 'success'
       setTimeout(() => { leaderCopyState.value = 'idle' }, 3000)
     } else {
@@ -3905,7 +3909,9 @@ async function downloadTeamDetailImage() {
       canvas.toBlob(b => b ? resolve(b) : reject(new Error('toBlob failed')), 'image/png')
     })
     if (navigator.clipboard && typeof ClipboardItem !== 'undefined') {
-      await navigator.clipboard.write([new ClipboardItem({ 'image/png': _shareBlob })])
+      // Safari requires passing a Promise directly to ClipboardItem
+      const item = new ClipboardItem({ 'image/png': Promise.resolve(_shareBlob) })
+      await navigator.clipboard.write([item])
       teamDetailCopyState.value = 'success'
       setTimeout(() => { teamDetailCopyState.value = 'idle' }, 3000)
     } else {

@@ -3266,7 +3266,9 @@ async function downloadStealsImage() {
       finalCanvas.toBlob(b => b ? resolve(b) : reject(new Error('toBlob failed')), 'image/png')
     })
     if (navigator.clipboard && typeof ClipboardItem !== 'undefined') {
-      await navigator.clipboard.write([new ClipboardItem({ 'image/png': _shareBlob })])
+      // Safari requires passing a Promise directly to ClipboardItem
+      const item = new ClipboardItem({ 'image/png': Promise.resolve(_shareBlob) })
+      await navigator.clipboard.write([item])
       stealsToast.value = 'success'
       setTimeout(() => { stealsToast.value = 'idle' }, 3000)
     } else {
@@ -3440,7 +3442,9 @@ async function downloadBustsImage() {
       finalCanvas.toBlob(b => b ? resolve(b) : reject(new Error('toBlob failed')), 'image/png')
     })
     if (navigator.clipboard && typeof ClipboardItem !== 'undefined') {
-      await navigator.clipboard.write([new ClipboardItem({ 'image/png': _shareBlob })])
+      // Safari requires passing a Promise directly to ClipboardItem
+      const item = new ClipboardItem({ 'image/png': Promise.resolve(_shareBlob) })
+      await navigator.clipboard.write([item])
       bustsToast.value = 'success'
       setTimeout(() => { bustsToast.value = 'idle' }, 3000)
     } else {
@@ -3661,7 +3665,9 @@ async function downloadTeamDraftImage() {
       finalCanvas.toBlob(b => b ? resolve(b) : reject(new Error('toBlob failed')), 'image/png')
     })
     if (navigator.clipboard && typeof ClipboardItem !== 'undefined') {
-      await navigator.clipboard.write([new ClipboardItem({ 'image/png': _shareBlob })])
+      // Safari requires passing a Promise directly to ClipboardItem
+      const item = new ClipboardItem({ 'image/png': Promise.resolve(_shareBlob) })
+      await navigator.clipboard.write([item])
       teamDraftToast.value = 'success'
       setTimeout(() => { teamDraftToast.value = 'idle' }, 3000)
     } else {
@@ -3848,7 +3854,9 @@ async function downloadBalanceImage() {
       finalCanvas.toBlob(b => b ? resolve(b) : reject(new Error('toBlob failed')), 'image/png')
     })
     if (navigator.clipboard && typeof ClipboardItem !== 'undefined') {
-      await navigator.clipboard.write([new ClipboardItem({ 'image/png': _shareBlob })])
+      // Safari requires passing a Promise directly to ClipboardItem
+      const item = new ClipboardItem({ 'image/png': Promise.resolve(_shareBlob) })
+      await navigator.clipboard.write([item])
       balanceToast.value = 'success'
       setTimeout(() => { balanceToast.value = 'idle' }, 3000)
     } else {

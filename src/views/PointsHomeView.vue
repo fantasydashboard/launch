@@ -1371,7 +1371,7 @@ async function downloadLeaderImage() {
           canvas.toBlob(b => b ? resolve(b) : reject(new Error('toBlob failed')), 'image/png')
         })
         if (navigator.clipboard && typeof ClipboardItem !== 'undefined') {
-          await navigator.clipboard.write([new ClipboardItem({ 'image/png': _shareBlob })])
+          await navigator.clipboard.write([new ClipboardItem({ 'image/png': Promise.resolve(_shareBlob) })])
           shareToast.value = 'success'
           setTimeout(() => { shareToast.value = 'idle' }, 3000)
         } else {
@@ -1688,7 +1688,9 @@ async function downloadStandings() {
     })
 
     if (navigator.clipboard && typeof ClipboardItem !== 'undefined') {
-      await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })])
+      // Safari requires passing a Promise directly to ClipboardItem
+      const item = new ClipboardItem({ 'image/png': Promise.resolve(blob) })
+      await navigator.clipboard.write([item])
       standingsCopyState.value = 'success'
       setTimeout(() => { standingsCopyState.value = 'idle' }, 3000)
     } else {
