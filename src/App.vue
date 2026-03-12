@@ -203,12 +203,13 @@
             <div class="relative ml-3" data-user-menu>
               <button 
                 @click="showUserMenu = !showUserMenu"
-                class="flex items-center gap-2 px-2 py-1 rounded-lg hover:bg-dark-border/30 transition-colors"
+                class="group p-2 rounded-lg hover:bg-dark-border/30 transition-colors"
+                title="Settings"
               >
-                <div class="w-6 h-6 rounded-full bg-gradient-to-br from-primary to-cyan-500 flex items-center justify-center">
-                  <span class="text-[10px] font-bold text-gray-900">{{ userInitials }}</span>
-                </div>
-                <span class="hidden xl:inline text-xs text-dark-text font-medium">{{ displayName }}</span>
+                <svg class="w-5 h-5 text-dark-textMuted group-hover:text-white transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                </svg>
               </button>
               
               <!-- User Dropdown (only when not scrolled) -->
@@ -584,9 +585,13 @@
                 <div class="relative" data-user-menu>
                   <button 
                     @click="showUserMenu = !showUserMenu"
-                    class="w-8 h-8 rounded-full bg-gradient-to-br from-primary to-cyan-500 flex items-center justify-center hover:opacity-90 transition-opacity"
+                    class="group p-2 rounded-lg hover:bg-dark-border/30 transition-colors"
+                    title="Settings"
                   >
-                    <span class="text-xs font-bold text-gray-900">{{ userInitials }}</span>
+                    <svg class="w-5 h-5 text-dark-textMuted group-hover:text-white transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                </svg>
                   </button>
                   
                   <!-- Scrolled User Dropdown -->
