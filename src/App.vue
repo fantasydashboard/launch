@@ -2,7 +2,7 @@
   <div class="min-h-screen transition-colors overflow-x-hidden" style="background: radial-gradient(circle at top, #1c2030, #05060a 55%);">
 
     <!-- Auth initializing — show spinner to avoid flash-of-landing-page after OAuth redirect -->
-    <div v-if="authStore.loading" class="min-h-screen flex items-center justify-center">
+    <div v-if="!authStore.initialized" class="min-h-screen flex items-center justify-center">
       <div style="text-align:center">
         <div style="width:48px;height:48px;border:3px solid #1e2130;border-top-color:#eab308;border-radius:50%;animation:spin 0.7s linear infinite;margin:0 auto 16px"></div>
         <p style="color:#6b7280;font-size:0.85rem">Loading…</p>

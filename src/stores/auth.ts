@@ -17,6 +17,7 @@ export const useAuthStore = defineStore('auth', () => {
   const profile = ref<Profile | null>(null)
   const session = ref<Session | null>(null)
   const loading = ref(true)
+  const initialized = ref(false)  // flips true once, never goes back
   const error = ref<string | null>(null)
 
   // Computed
@@ -116,6 +117,7 @@ export const useAuthStore = defineStore('auth', () => {
       error.value = 'Failed to initialize authentication'
     } finally {
       loading.value = false
+      initialized.value = true
       console.log('[Auth] Loading set to false')
     }
   }
@@ -331,6 +333,7 @@ export const useAuthStore = defineStore('auth', () => {
     profile,
     session,
     loading,
+    initialized,
     error,
     
     // Computed
