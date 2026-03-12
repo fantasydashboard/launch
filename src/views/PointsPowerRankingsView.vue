@@ -1054,6 +1054,7 @@
 </template>
 
 <script setup lang="ts">
+import { useRouter } from 'vue-router'
 import { ref, computed, onMounted, watch } from 'vue'
 import { useLeagueStore } from '@/stores/league'
 import { yahooService } from '@/services/yahoo'
@@ -1065,6 +1066,7 @@ import LeagueGate from '@/components/LeagueGate.vue'
 import { useFeatureAccess } from '@/composables/useFeatureAccess'
 
 const leagueStore = useLeagueStore()
+const router = useRouter()
 const { hasLeagueAccess } = useFeatureAccess()
 
 function goToPricing() {

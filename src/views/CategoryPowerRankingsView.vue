@@ -727,6 +727,7 @@
 </template>
 
 <script setup lang="ts">
+import { useRouter } from 'vue-router'
 import { ref, computed, watch, onMounted, Teleport } from 'vue'
 import { useLeagueStore } from '@/stores/league'
 import { useAuthStore } from '@/stores/auth'
@@ -738,6 +739,7 @@ import LeagueGate from '@/components/LeagueGate.vue'
 import { useFeatureAccess } from '@/composables/useFeatureAccess'
 
 const leagueStore = useLeagueStore()
+const router = useRouter()
 const { hasLeagueAccess } = useFeatureAccess()
 
 function goToPricing() {
