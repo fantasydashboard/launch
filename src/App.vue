@@ -1,17 +1,8 @@
 <template>
   <div class="min-h-screen transition-colors overflow-x-hidden" style="background: radial-gradient(circle at top, #1c2030, #05060a 55%);">
 
-    <!-- Auth initializing — show spinner to avoid flash-of-landing-page after OAuth redirect -->
-    <div v-if="!authStore.initialized" class="min-h-screen flex items-center justify-center">
-      <div style="text-align:center">
-        <div style="width:48px;height:48px;border:3px solid #1e2130;border-top-color:#eab308;border-radius:50%;animation:spin 0.7s linear infinite;margin:0 auto 16px"></div>
-        <p style="color:#6b7280;font-size:0.85rem">Loading…</p>
-      </div>
-      <style>@keyframes spin{to{transform:rotate(360deg)}}</style>
-    </div>
-    
     <!-- Show Landing Page for non-authenticated users -->
-    <template v-else-if="!authStore.isAuthenticated">
+    <template v-if="!authStore.isAuthenticated">
       <!-- Simple Header for Landing Page -->
       <header class="fixed top-0 left-0 right-0 z-50 border-b border-dark-border/50" style="background: rgba(10, 12, 20, 0.95); backdrop-filter: blur(10px);">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">

@@ -39,16 +39,19 @@ export const useAuthStore = defineStore('auth', () => {
 
     console.log('[Auth] Supabase client exists, getting session...')
 
+    // Set initialized immediately so the app never hangs on the spinner
+    initialized.value = true
+
     try {
-      // Read session directly — no timeout, getSession is synchronous from localStorage
+      // Try getSession with a short timeout — it reads localStorage so should be instant
       let currentSession = null
 
       try {
-        const { data, error: sessionError } = await supabase.auth.getSession()
-        if (sessionError) {
-          console.error('[Auth] Error getting session:', sessionError)
-        } else {
-          currentSession = data?.session
+        const sessionPromise = supabase.auth.getSession()
+        const timeout = new Promise<null>((resolve) => setTimeout(() => resolve(null), 2000))
+        const result = await Promise.race([sessionPromise, timeout]) as any
+        if (result && result.data) {
+          currentSession = result.data.session
         }
       } catch (err) {
         console.error('[Auth] getSession failed:', err)
@@ -93,7 +96,6 @@ export const useAuthStore = defineStore('auth', () => {
       error.value = 'Failed to initialize authentication'
     } finally {
       loading.value = false
-      initialized.value = true
       console.log('[Auth] Loading set to false')
     }
   }
