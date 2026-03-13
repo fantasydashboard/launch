@@ -1233,6 +1233,7 @@ async function handleSignOut() {
   showUserMenu.value = false
   await authStore.signOut()
   leagueStore.reset()
+  router.push('/')
 }
 
 // Handle scroll for header behavior - triggers when top header scrolls away
