@@ -11,6 +11,32 @@ import { supabase, isSupabaseConfigured } from '@/lib/supabase'
 import type { User, Session } from '@supabase/supabase-js'
 import type { Profile } from '@/types/supabase'
 
+/**
+ * Safely extract a human-readable message from any thrown value.
+ * Handles AuthError, Error, plain strings, and mystery objects like {}.
+ */
+function extractErrorMessage(err: unknown, fallback: string): string {
+  if (!err) return fallback
+  if (typeof err === 'string' && err.trim()) return err
+  if (typeof err === 'object') {
+    const e = err as Record<string, unknown>
+    // Supabase AuthError shape
+    if (typeof e.message === 'string' && e.message.trim()) return e.message
+    // Some Supabase errors nest under .error_description (OAuth)
+    if (typeof e.error_description === 'string' && (e.error_description as string).trim())
+      return e.error_description as string
+    // Proxy returned a JSON body with an error field
+    if (typeof e.error === 'string' && (e.error as string).trim())
+      return e.error as string
+    // Last resort: try JSON stringifying — at least shows something useful in dev
+    try {
+      const s = JSON.stringify(err)
+      if (s && s !== '{}') return `Auth error: ${s}`
+    } catch {}
+  }
+  return fallback
+}
+
 export const useAuthStore = defineStore('auth', () => {
   // State
   const user = ref<User | null>(null)
@@ -177,7 +203,7 @@ export const useAuthStore = defineStore('auth', () => {
 
       return { success: true, data }
     } catch (err: any) {
-      error.value = err.message || 'Sign up failed'
+      error.value = extractErrorMessage(err, 'Sign up failed')
       return { success: false, error: error.value }
     } finally {
       loading.value = false
@@ -203,7 +229,7 @@ export const useAuthStore = defineStore('auth', () => {
 
       return { success: true, data }
     } catch (err: any) {
-      error.value = err.message || 'Sign in failed'
+      error.value = extractErrorMessage(err, 'Sign in failed')
       return { success: false, error: error.value }
     } finally {
       loading.value = false
@@ -231,7 +257,7 @@ export const useAuthStore = defineStore('auth', () => {
 
       return { success: true, data }
     } catch (err: any) {
-      error.value = err.message || 'OAuth sign in failed'
+      error.value = extractErrorMessage(err, 'OAuth sign in failed')
       return { success: false, error: error.value }
     }
   }
@@ -249,7 +275,7 @@ export const useAuthStore = defineStore('auth', () => {
       profile.value = null
       session.value = null
     } catch (err: any) {
-      error.value = err.message || 'Sign out failed'
+      error.value = extractErrorMessage(err, 'Sign out failed')
     } finally {
       loading.value = false
     }
@@ -273,7 +299,7 @@ export const useAuthStore = defineStore('auth', () => {
 
       return { success: true }
     } catch (err: any) {
-      error.value = err.message || 'Password reset failed'
+      error.value = extractErrorMessage(err, 'Password reset failed')
       return { success: false, error: error.value }
     }
   }
@@ -295,7 +321,7 @@ export const useAuthStore = defineStore('auth', () => {
       profile.value = data
       return { success: true, data }
     } catch (err: any) {
-      return { success: false, error: err.message }
+      return { success: false, error: extractErrorMessage(err, 'Profile update failed') }
     }
   }
 
