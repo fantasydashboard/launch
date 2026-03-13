@@ -195,12 +195,9 @@ export const useAuthStore = defineStore('auth', () => {
       error.value = null
       loading.value = true
 
-      // Safari can stall on fetch — race against a 12s timeout
-      const timeoutPromise = new Promise<never>((_, reject) =>
-        setTimeout(() => reject(new Error('Sign in timed out. Check your connection and try again.')), 12000)
-      )
-      const signInPromise = supabase.auth.signInWithPassword({ email, password })
-      const { data, error: signInError } = await Promise.race([signInPromise, timeoutPromise]) as any
+      console.log('[Auth] signIn attempt, supabase URL:', import.meta.env.VITE_SUPABASE_URL)
+      const { data, error: signInError } = await supabase.auth.signInWithPassword({ email, password })
+      console.log('[Auth] signIn result:', { data: !!data, error: signInError })
 
       if (signInError) throw signInError
 
