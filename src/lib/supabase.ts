@@ -8,8 +8,13 @@
 import { createClient } from '@supabase/supabase-js'
 import type { Database } from '@/types/supabase'
 
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY
+
+// In production/Safari, route through same-origin Vercel proxy to bypass ITP.
+// In dev, use the real Supabase URL directly.
+const supabaseUrl = import.meta.env.DEV
+  ? import.meta.env.VITE_SUPABASE_URL
+  : `${window.location.origin}/api/supabase`
 
 // Validate environment variables
 if (!supabaseUrl || !supabaseAnonKey) {
