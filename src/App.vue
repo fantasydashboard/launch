@@ -233,7 +233,7 @@
                   <span>Settings</span>
                 </router-link>
                 <button
-                  @click="handleSignOut; showUserMenu = false"
+                  @click="handleSignOut(); showUserMenu = false"
                   class="w-full flex items-center gap-2 px-3 py-2.5 text-red-400 hover:bg-red-500/10 transition-colors text-sm"
                 >
                   <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -615,7 +615,7 @@
                       <span>Settings</span>
                     </router-link>
                     <button
-                      @click="handleSignOut; showUserMenu = false"
+                      @click="handleSignOut(); showUserMenu = false"
                       class="w-full flex items-center gap-2 px-3 py-2.5 text-red-400 hover:bg-red-500/10 transition-colors text-sm"
                     >
                       <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -715,7 +715,7 @@
                 </div>
               </div>
               <button
-                @click="handleSignOut"
+                @click="handleSignOut()"
                 class="p-2 rounded-lg text-red-400 hover:bg-red-500/10 transition-colors"
               >
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
