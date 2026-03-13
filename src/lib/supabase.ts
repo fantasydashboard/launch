@@ -1,8 +1,9 @@
 /**
  * Supabase Client Configuration
- * 
- * This file initializes the Supabase client for authentication and database access.
- * Make sure to set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY in your environment.
+ *
+ * Uses a Vercel proxy at /api/supabase/* in production so all Supabase traffic
+ * is same-origin. This is required for Safari, which blocks cross-origin fetch
+ * to supabase.co due to ITP (Intelligent Tracking Prevention).
  */
 
 import { createClient } from '@supabase/supabase-js'
@@ -11,7 +12,6 @@ import type { Database } from '@/types/supabase'
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY
 
-// Validate environment variables
 if (!supabaseUrl || !supabaseAnonKey) {
   console.warn(
     '⚠️ Supabase credentials not configured. Authentication features will be disabled.',
@@ -19,36 +19,68 @@ if (!supabaseUrl || !supabaseAnonKey) {
   )
 }
 
-// Create a single supabase client for interacting with your database
-// Custom fetch that routes through our Vercel proxy in production.
-// This bypasses Safari ITP which blocks direct calls to supabase.co.
-const proxyFetch: typeof fetch = (input, init) => {
-  if (typeof input === 'string' && supabaseUrl) {
-    const proxyBase = import.meta.env.DEV
-      ? null
-      : `${window.location.origin}/api/supabase`
-    if (proxyBase) {
-      input = input.replace(supabaseUrl, proxyBase)
-    }
+/**
+ * Rewrite a Supabase URL to go through our Vercel same-origin proxy.
+ * Works whether the input is a string or a URL object.
+ */
+function rewriteUrl(input: string | URL | Request): string | Request {
+  // In dev, skip the proxy — direct requests work fine
+  if (import.meta.env.DEV) return input
+
+  const proxyBase = `${window.location.origin}/api/supabase`
+
+  if (typeof input === 'string') {
+    return supabaseUrl ? input.replace(supabaseUrl, proxyBase) : input
   }
-  return fetch(input, init)
+
+  if (input instanceof URL) {
+    const rewritten = input.href.replace(supabaseUrl ?? '', proxyBase)
+    return rewritten
+  }
+
+  if (input instanceof Request) {
+    const rewritten = input.url.replace(supabaseUrl ?? '', proxyBase)
+    // Clone the request with the new URL — preserves method, headers, body
+    return new Request(rewritten, {
+      method: input.method,
+      headers: input.headers,
+      body: input.body,
+      // @ts-ignore — duplex is needed for POST with body in some environments
+      duplex: 'half',
+      credentials: input.credentials,
+      cache: input.cache,
+      redirect: input.redirect,
+      referrer: input.referrer,
+      integrity: input.integrity,
+    })
+  }
+
+  return input
 }
 
-export const supabase = supabaseUrl && supabaseAnonKey 
-  ? createClient<Database>(supabaseUrl, supabaseAnonKey, {
-      auth: {
-        autoRefreshToken: true,
-        persistSession: true,
-        detectSessionInUrl: true
-      },
-      global: {
-        fetch: proxyFetch
-      }
-    })
-  : null
+/**
+ * Custom fetch that routes all Supabase requests through /api/supabase/*
+ * in production to bypass Safari ITP.
+ */
+const proxyFetch: typeof fetch = (input, init) => {
+  const rewritten = rewriteUrl(input as string | URL | Request)
+  return fetch(rewritten as Parameters<typeof fetch>[0], init)
+}
 
-// Helper to check if Supabase is configured
+export const supabase =
+  supabaseUrl && supabaseAnonKey
+    ? createClient<Database>(supabaseUrl, supabaseAnonKey, {
+        auth: {
+          autoRefreshToken: true,
+          persistSession: true,
+          detectSessionInUrl: true,
+        },
+        global: {
+          fetch: proxyFetch,
+        },
+      })
+    : null
+
 export const isSupabaseConfigured = () => !!supabase
 
-// Export types for use in components
 export type { User, Session } from '@supabase/supabase-js'
