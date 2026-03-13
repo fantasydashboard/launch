@@ -1685,15 +1685,15 @@ async function downloadDraftOrderImage() {
     document.body.removeChild(container)
     
     const link = document.createElement('a')
-        const _shareBlob = await new Promise<Blob>((resolve, reject) => {
+        const _shareBlobPromise = new Promise<Blob>((resolve, reject) => {
           canvas.toBlob(b => b ? resolve(b) : reject(new Error('toBlob failed')), 'image/png')
         })
         if (navigator.clipboard && typeof ClipboardItem !== 'undefined') {
-          await navigator.clipboard.write([new ClipboardItem({ 'image/png': Promise.resolve(_shareBlob) })])
+          await navigator.clipboard.write([new ClipboardItem({ 'image/png': _shareBlobPromise })])
           shareToast.value = 'success'
           setTimeout(() => { shareToast.value = 'idle' }, 3000)
         } else {
-          const _shareUrl = URL.createObjectURL(_shareBlob)
+          const _shareUrl = URL.createObjectURL(await _shareBlobPromise)
           const link = document.createElement('a')
           link.download = `draft-order-${numTeams}teams.png`
           link.href = _shareUrl
@@ -2695,15 +2695,15 @@ async function downloadTeamScheduleImage() {
     document.body.removeChild(container)
     
     const link = document.createElement('a')
-        const _shareBlob = await new Promise<Blob>((resolve, reject) => {
+        const _shareBlobPromise = new Promise<Blob>((resolve, reject) => {
           canvas.toBlob(b => b ? resolve(b) : reject(new Error('toBlob failed')), 'image/png')
         })
         if (navigator.clipboard && typeof ClipboardItem !== 'undefined') {
-          await navigator.clipboard.write([new ClipboardItem({ 'image/png': Promise.resolve(_shareBlob) })])
+          await navigator.clipboard.write([new ClipboardItem({ 'image/png': _shareBlobPromise })])
           shareToast.value = 'success'
           setTimeout(() => { shareToast.value = 'idle' }, 3000)
         } else {
-          const _shareUrl = URL.createObjectURL(_shareBlob)
+          const _shareUrl = URL.createObjectURL(await _shareBlobPromise)
           const link = document.createElement('a')
           link.download = `${teamName.replace(/[^a-zA-Z0-9]/g, '-')}-schedule.png`
           link.href = _shareUrl
@@ -3040,15 +3040,15 @@ async function downloadScheduleImage() {
     document.body.removeChild(container)
     
     const link = document.createElement('a')
-        const _shareBlob = await new Promise<Blob>((resolve, reject) => {
+        const _shareBlobPromise = new Promise<Blob>((resolve, reject) => {
           canvas.toBlob(b => b ? resolve(b) : reject(new Error('toBlob failed')), 'image/png')
         })
         if (navigator.clipboard && typeof ClipboardItem !== 'undefined') {
-          await navigator.clipboard.write([new ClipboardItem({ 'image/png': Promise.resolve(_shareBlob) })])
+          await navigator.clipboard.write([new ClipboardItem({ 'image/png': _shareBlobPromise })])
           shareToast.value = 'success'
           setTimeout(() => { shareToast.value = 'idle' }, 3000)
         } else {
-          const _shareUrl = URL.createObjectURL(_shareBlob)
+          const _shareUrl = URL.createObjectURL(await _shareBlobPromise)
           const link = document.createElement('a')
           link.download = `schedule-${n}teams-${w}weeks.png`
           link.href = _shareUrl

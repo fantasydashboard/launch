@@ -2379,15 +2379,15 @@ const _blobToDataUrl2 = (blob: Blob): Promise<string> => new Promise((resolve) =
   
   document.body.removeChild(container)
 
-  const _shareBlob = await new Promise<Blob>((resolve, reject) => {
+  const _shareBlobPromise = new Promise<Blob>((resolve, reject) => {
     canvas.toBlob(b => b ? resolve(b) : reject(new Error('toBlob failed')), 'image/png')
   })
   if (navigator.clipboard && typeof ClipboardItem !== 'undefined') {
-    await navigator.clipboard.write([new ClipboardItem({ 'image/png': Promise.resolve(_shareBlob) })])
+    await navigator.clipboard.write([new ClipboardItem({ 'image/png': _shareBlobPromise })])
     shareToast.value = 'success'
     setTimeout(() => { shareToast.value = 'idle' }, 3000)
   } else {
-    const _shareUrl = URL.createObjectURL(_shareBlob)
+    const _shareUrl = URL.createObjectURL(await _shareBlobPromise)
     const link = document.createElement('a')
     link.download = `matchup-${matchup.team1.name.replace(/\s+/g, '-')}-vs-${matchup.team2.name.replace(/\s+/g, '-')}-week-${selectedWeek.value}.png`
     link.href = _shareUrl
@@ -2503,15 +2503,15 @@ async function downloadComparison() {
     document.body.removeChild(container)
     
     const link = document.createElement('a')
-        const _shareBlob = await new Promise<Blob>((resolve, reject) => {
+        const _shareBlobPromise = new Promise<Blob>((resolve, reject) => {
           canvas.toBlob(b => b ? resolve(b) : reject(new Error('toBlob failed')), 'image/png')
         })
         if (navigator.clipboard && typeof ClipboardItem !== 'undefined') {
-          await navigator.clipboard.write([new ClipboardItem({ 'image/png': Promise.resolve(_shareBlob) })])
+          await navigator.clipboard.write([new ClipboardItem({ 'image/png': _shareBlobPromise })])
           shareToast.value = 'success'
           setTimeout(() => { shareToast.value = 'idle' }, 3000)
         } else {
-          const _shareUrl = URL.createObjectURL(_shareBlob)
+          const _shareUrl = URL.createObjectURL(await _shareBlobPromise)
           const link = document.createElement('a')
           link.download = `stat-comparison-${selectedMatchup.value.team1.name.replace(/\s+/g, '-')}-vs-${selectedMatchup.value.team2.name.replace(/\s+/g, '-')}-week-${selectedWeek.value}.png`
           link.href = _shareUrl

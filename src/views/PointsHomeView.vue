@@ -1367,15 +1367,15 @@ async function downloadLeaderImage() {
     
     const link = document.createElement('a')
     const safeTitle = leaderModalTitle.value.replace(/[^a-zA-Z0-9\s]/g, '').replace(/\s+/g, '-').toLowerCase()
-        const _shareBlob = await new Promise<Blob>((resolve, reject) => {
+        const _shareBlobPromise = new Promise<Blob>((resolve, reject) => {
           canvas.toBlob(b => b ? resolve(b) : reject(new Error('toBlob failed')), 'image/png')
         })
         if (navigator.clipboard && typeof ClipboardItem !== 'undefined') {
-          await navigator.clipboard.write([new ClipboardItem({ 'image/png': Promise.resolve(_shareBlob) })])
+          await navigator.clipboard.write([new ClipboardItem({ 'image/png': _shareBlobPromise })])
           shareToast.value = 'success'
           setTimeout(() => { shareToast.value = 'idle' }, 3000)
         } else {
-          const _shareUrl = URL.createObjectURL(_shareBlob)
+          const _shareUrl = URL.createObjectURL(await _shareBlobPromise)
           const link = document.createElement('a')
           link.download = `${safeTitle}-week-${displayWeek.value}.png`
           link.href = _shareUrl
@@ -1683,16 +1683,21 @@ async function downloadStandings() {
     document.body.removeChild(container)
     
     // Convert canvas to blob then copy to clipboard
-    const blob = await new Promise<Blob>((resolve, reject) => {
+    // Safari fix: call clipboard.write() synchronously with a Promise<Blob>
+    // so it's within the user gesture, but resolves async after canvas renders
+    const blobPromise = new Promise<Blob>((resolve, reject) => {
       canvas.toBlob(b => b ? resolve(b) : reject(new Error('toBlob failed')), 'image/png')
     })
+    const blob = blobPromise  // alias for fallback download path
 
     if (navigator.clipboard && typeof ClipboardItem !== 'undefined') {
-      // Safari requires passing a Promise directly to ClipboardItem
-      const item = new ClipboardItem({ 'image/png': Promise.resolve(blob) })
-      await navigator.clipboard.write([item])
-      standingsCopyState.value = 'success'
-      setTimeout(() => { standingsCopyState.value = 'idle' }, 3000)
+      try {
+        await navigator.clipboard.write([new ClipboardItem({ 'image/png': blobPromise })])
+        standingsCopyState.value = 'success'
+        setTimeout(() => { standingsCopyState.value = 'idle' }, 3000)
+      } catch (_clipErr) {
+        console.warn('Clipboard write failed, falling back', _clipErr)
+      }
     } else {
       // Fallback: download file if clipboard API unavailable
       const url = URL.createObjectURL(blob)

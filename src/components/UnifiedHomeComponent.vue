@@ -3440,24 +3440,33 @@ async function downloadStandings() {
     
     // Copy to clipboard instead of downloading
     const safeLeagueName = leagueName.value.replace(/[^a-zA-Z0-9\s]/g, '').replace(/\s+/g, '-')
-    const blob = await new Promise<Blob>((resolve, reject) => {
+    // Safari fix: call clipboard.write() synchronously with a Promise<Blob>
+    // so it's within the user gesture, but resolves async after canvas renders
+    const blobPromise = new Promise<Blob>((resolve, reject) => {
       canvas.toBlob(b => b ? resolve(b) : reject(new Error('toBlob failed')), 'image/png')
     })
+    const blob = blobPromise  // alias for fallback download path
 
     if (navigator.clipboard && typeof ClipboardItem !== 'undefined') {
-      // Safari requires passing a Promise directly to ClipboardItem
-      const item = new ClipboardItem({ 'image/png': Promise.resolve(blob) })
-      await navigator.clipboard.write([item])
-      standingsCopyState.value = 'success'
-      setTimeout(() => { standingsCopyState.value = 'idle' }, 3000)
+      try {
+        await navigator.clipboard.write([new ClipboardItem({ 'image/png': blobPromise })])
+        standingsCopyState.value = 'success'
+        setTimeout(() => { standingsCopyState.value = 'idle' }, 3000)
+      } catch (_clipErr) {
+        const b = await blobPromise
+        const url = URL.createObjectURL(b)
+        const link = document.createElement('a')
+        link.download = `Standings - Week ${displayWeek.value} - ${safeLeagueName}.png`
+        link.href = url; link.click(); URL.revokeObjectURL(url)
+        standingsCopyState.value = 'success'
+        setTimeout(() => { standingsCopyState.value = 'idle' }, 3000)
+      }
     } else {
-      // Fallback: download file if clipboard API unavailable
-      const url = URL.createObjectURL(blob)
+      const b = await blobPromise
+      const url = URL.createObjectURL(b)
       const link = document.createElement('a')
       link.download = `Standings - Week ${displayWeek.value} - ${safeLeagueName}.png`
-      link.href = url
-      link.click()
-      URL.revokeObjectURL(url)
+      link.href = url; link.click(); URL.revokeObjectURL(url)
     }
 
   } catch (error) {
@@ -3638,22 +3647,29 @@ async function downloadLeaderImage() {
     
     const canvas = finalCanvas
     const safeTitle = leaderModalTitle.value.replace(/[^a-zA-Z0-9\s]/g, '').replace(/\s+/g, '-')
-    const _shareBlob = await new Promise<Blob>((resolve, reject) => {
+    const _shareBlobPromise = new Promise<Blob>((resolve, reject) => {
       canvas.toBlob(b => b ? resolve(b) : reject(new Error('toBlob failed')), 'image/png')
     })
     if (navigator.clipboard && typeof ClipboardItem !== 'undefined') {
-      // Safari requires passing a Promise directly to ClipboardItem
-      const item = new ClipboardItem({ 'image/png': Promise.resolve(_shareBlob) })
-      await navigator.clipboard.write([item])
-      leaderCopyState.value = 'success'
-      setTimeout(() => { leaderCopyState.value = 'idle' }, 3000)
+      try {
+        await navigator.clipboard.write([new ClipboardItem({ 'image/png': _shareBlobPromise })])
+        leaderCopyState.value = 'success'
+        setTimeout(() => { leaderCopyState.value = 'idle' }, 3000)
+      } catch (_clipErr) {
+        const _shareBlob = await _shareBlobPromise
+        const _shareUrl = URL.createObjectURL(_shareBlob)
+        const link = document.createElement('a')
+        link.download = `${safeTitle}-${currentSeason.value}.png`
+        link.href = _shareUrl; link.click(); URL.revokeObjectURL(_shareUrl)
+        leaderCopyState.value = 'success'
+        setTimeout(() => { leaderCopyState.value = 'idle' }, 3000)
+      }
     } else {
+      const _shareBlob = await _shareBlobPromise
       const _shareUrl = URL.createObjectURL(_shareBlob)
       const link = document.createElement('a')
       link.download = `${safeTitle}-${currentSeason.value}.png`
-      link.href = _shareUrl
-      link.click()
-      URL.revokeObjectURL(_shareUrl)
+      link.href = _shareUrl; link.click(); URL.revokeObjectURL(_shareUrl)
     }
   } catch (error) {
     console.error('Error generating leader image:', error)
@@ -3905,22 +3921,29 @@ async function downloadTeamDetailImage() {
     
     const canvas = finalCanvas
     const safeTeamName = team.name.replace(/[^a-zA-Z0-9\s]/g, '').replace(/\s+/g, '-')
-    const _shareBlob = await new Promise<Blob>((resolve, reject) => {
+    const _shareBlobPromise = new Promise<Blob>((resolve, reject) => {
       canvas.toBlob(b => b ? resolve(b) : reject(new Error('toBlob failed')), 'image/png')
     })
     if (navigator.clipboard && typeof ClipboardItem !== 'undefined') {
-      // Safari requires passing a Promise directly to ClipboardItem
-      const item = new ClipboardItem({ 'image/png': Promise.resolve(_shareBlob) })
-      await navigator.clipboard.write([item])
-      teamDetailCopyState.value = 'success'
-      setTimeout(() => { teamDetailCopyState.value = 'idle' }, 3000)
+      try {
+        await navigator.clipboard.write([new ClipboardItem({ 'image/png': _shareBlobPromise })])
+        teamDetailCopyState.value = 'success'
+        setTimeout(() => { teamDetailCopyState.value = 'idle' }, 3000)
+      } catch (_clipErr) {
+        const _shareBlob = await _shareBlobPromise
+        const _shareUrl = URL.createObjectURL(_shareBlob)
+        const link = document.createElement('a')
+        link.download = `${safeTeamName}-${currentSeason.value}.png`
+        link.href = _shareUrl; link.click(); URL.revokeObjectURL(_shareUrl)
+        teamDetailCopyState.value = 'success'
+        setTimeout(() => { teamDetailCopyState.value = 'idle' }, 3000)
+      }
     } else {
+      const _shareBlob = await _shareBlobPromise
       const _shareUrl = URL.createObjectURL(_shareBlob)
       const link = document.createElement('a')
       link.download = `${safeTeamName}-${currentSeason.value}.png`
-      link.href = _shareUrl
-      link.click()
-      URL.revokeObjectURL(_shareUrl)
+      link.href = _shareUrl; link.click(); URL.revokeObjectURL(_shareUrl)
     }
   } catch (error) {
     console.error('Error generating team detail image:', error)

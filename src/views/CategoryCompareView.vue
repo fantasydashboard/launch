@@ -1562,15 +1562,15 @@ async function downloadComparisonImage() {
     const link = document.createElement('a')
     const safeTeam1 = team1Data.value.name.replace(/[^a-zA-Z0-9\s]/g, '').replace(/\s+/g, '-').toLowerCase().substring(0, 15)
     const safeTeam2 = team2Data.value.name.replace(/[^a-zA-Z0-9\s]/g, '').replace(/\s+/g, '-').toLowerCase().substring(0, 15)
-        const _shareBlob = await new Promise<Blob>((resolve, reject) => {
+        const _shareBlobPromise = new Promise<Blob>((resolve, reject) => {
           canvas.toBlob(b => b ? resolve(b) : reject(new Error('toBlob failed')), 'image/png')
         })
         if (navigator.clipboard && typeof ClipboardItem !== 'undefined') {
-          await navigator.clipboard.write([new ClipboardItem({ 'image/png': Promise.resolve(_shareBlob) })])
+          await navigator.clipboard.write([new ClipboardItem({ 'image/png': _shareBlobPromise })])
           shareToast.value = 'success'
           setTimeout(() => { shareToast.value = 'idle' }, 3000)
         } else {
-          const _shareUrl = URL.createObjectURL(_shareBlob)
+          const _shareUrl = URL.createObjectURL(await _shareBlobPromise)
           const link = document.createElement('a')
           link.download = `comparison-${safeTeam1}-vs-${safeTeam2}.png`
           link.href = _shareUrl

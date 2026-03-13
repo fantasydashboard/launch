@@ -3269,15 +3269,15 @@ async function downloadMatchupPreview() {
     document.body.removeChild(container)
     
     // Share to clipboard
-    const _shareBlob = await new Promise<Blob>((resolve, reject) => {
+    const _shareBlobPromise = new Promise<Blob>((resolve, reject) => {
           canvas.toBlob(b => b ? resolve(b) : reject(new Error('toBlob failed')), 'image/png')
         })
         if (navigator.clipboard && typeof ClipboardItem !== 'undefined') {
-          await navigator.clipboard.write([new ClipboardItem({ 'image/png': Promise.resolve(_shareBlob) })])
+          await navigator.clipboard.write([new ClipboardItem({ 'image/png': _shareBlobPromise })])
           shareToast.value = 'success'
           setTimeout(() => { shareToast.value = 'idle' }, 3000)
         } else {
-          const _shareUrl = URL.createObjectURL(_shareBlob)
+          const _shareUrl = URL.createObjectURL(await _shareBlobPromise)
           const link = document.createElement('a')
           link.download = `matchup-preview-week-${selectedWeek.value}-${selectedMatchup.value.team1_name.replace(/[^a-z0-9]/gi, '-')}-vs-${selectedMatchup.value.team2_name.replace(/[^a-z0-9]/gi, '-')}.png`.toLowerCase()
           link.href = _shareUrl
@@ -3667,15 +3667,15 @@ async function downloadFullMatchupAnalysis() {
     document.body.removeChild(container)
     
     // Share to clipboard
-    const _shareBlob = await new Promise<Blob>((resolve, reject) => {
+    const _shareBlobPromise = new Promise<Blob>((resolve, reject) => {
           canvas.toBlob(b => b ? resolve(b) : reject(new Error('toBlob failed')), 'image/png')
         })
         if (navigator.clipboard && typeof ClipboardItem !== 'undefined') {
-          await navigator.clipboard.write([new ClipboardItem({ 'image/png': Promise.resolve(_shareBlob) })])
+          await navigator.clipboard.write([new ClipboardItem({ 'image/png': _shareBlobPromise })])
           shareToast.value = 'success'
           setTimeout(() => { shareToast.value = 'idle' }, 3000)
         } else {
-          const _shareUrl = URL.createObjectURL(_shareBlob)
+          const _shareUrl = URL.createObjectURL(await _shareBlobPromise)
           const link = document.createElement('a')
           link.download = `matchup-week-${selectedWeek.value}-${selectedMatchup.value.team1_name.replace(/[^a-z0-9]/gi, '-')}-vs-${selectedMatchup.value.team2_name.replace(/[^a-z0-9]/gi, '-')}.png`.toLowerCase()
           link.href = _shareUrl
@@ -3952,15 +3952,15 @@ async function downloadStatComparison() {
     document.body.removeChild(container)
     
     // Share to clipboard
-    const _shareBlob = await new Promise<Blob>((resolve, reject) => {
+    const _shareBlobPromise = new Promise<Blob>((resolve, reject) => {
           canvas.toBlob(b => b ? resolve(b) : reject(new Error('toBlob failed')), 'image/png')
         })
         if (navigator.clipboard && typeof ClipboardItem !== 'undefined') {
-          await navigator.clipboard.write([new ClipboardItem({ 'image/png': Promise.resolve(_shareBlob) })])
+          await navigator.clipboard.write([new ClipboardItem({ 'image/png': _shareBlobPromise })])
           shareToast.value = 'success'
           setTimeout(() => { shareToast.value = 'idle' }, 3000)
         } else {
-          const _shareUrl = URL.createObjectURL(_shareBlob)
+          const _shareUrl = URL.createObjectURL(await _shareBlobPromise)
           const link = document.createElement('a')
           link.download = `matchup-comparison-${selectedMatchup.value.team1_name.replace(/[^a-z0-9]/gi, '-')}-vs-${selectedMatchup.value.team2_name.replace(/[^a-z0-9]/gi, '-')}.png`.toLowerCase()
           link.href = _shareUrl

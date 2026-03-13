@@ -2530,15 +2530,15 @@ async function downloadRankings() {
     // Download
     const link = document.createElement('a')
     const safeLeagueName = leagueName.replace(/[^a-zA-Z0-9\s]/g, '').replace(/\s+/g, '-')
-        const _shareBlob = await new Promise<Blob>((resolve, reject) => {
+        const _shareBlobPromise = new Promise<Blob>((resolve, reject) => {
           canvas.toBlob(b => b ? resolve(b) : reject(new Error('toBlob failed')), 'image/png')
         })
         if (navigator.clipboard && typeof ClipboardItem !== 'undefined') {
-          await navigator.clipboard.write([new ClipboardItem({ 'image/png': Promise.resolve(_shareBlob) })])
+          await navigator.clipboard.write([new ClipboardItem({ 'image/png': _shareBlobPromise })])
           shareToast.value = 'success'
           setTimeout(() => { shareToast.value = 'idle' }, 3000)
         } else {
-          const _shareUrl = URL.createObjectURL(_shareBlob)
+          const _shareUrl = URL.createObjectURL(await _shareBlobPromise)
           const link = document.createElement('a')
           link.download = `Power-Rankings-Week-${selectedWeek.value}-${safeLeagueName}.png`
           link.href = _shareUrl

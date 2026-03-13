@@ -2710,15 +2710,15 @@ async function generateMatchupAnalysisImage(matchup: any, html2canvas: any) {
 
   const team1Short = matchup.team1.name.split(' ')[0]
   const team2Short = matchup.team2.name.split(' ')[0]
-  const _shareBlob = await new Promise<Blob>((resolve, reject) => {
+  const _shareBlobPromise = new Promise<Blob>((resolve, reject) => {
     canvas.toBlob(b => b ? resolve(b) : reject(new Error('toBlob failed')), 'image/png')
   })
   if (navigator.clipboard && typeof ClipboardItem !== 'undefined') {
-    await navigator.clipboard.write([new ClipboardItem({ 'image/png': Promise.resolve(_shareBlob) })])
+    await navigator.clipboard.write([new ClipboardItem({ 'image/png': _shareBlobPromise })])
     shareToast.value = 'success'
     setTimeout(() => { shareToast.value = 'idle' }, 3000)
   } else {
-    const _shareUrl = URL.createObjectURL(_shareBlob)
+    const _shareUrl = URL.createObjectURL(await _shareBlobPromise)
     const link = document.createElement('a')
     link.download = `matchup-analysis-week${selectedWeek.value}-${team1Short}-vs-${team2Short}.png`
     link.href = _shareUrl
@@ -2966,15 +2966,15 @@ async function generateCategoryBreakdownImage(matchup: any, html2canvas: any) {
   const link = document.createElement('a')
   const team1Short = matchup.team1.name.split(' ')[0]
   const team2Short = matchup.team2.name.split(' ')[0]
-      const _shareBlob = await new Promise<Blob>((resolve, reject) => {
+      const _shareBlobPromise = new Promise<Blob>((resolve, reject) => {
         canvas.toBlob(b => b ? resolve(b) : reject(new Error('toBlob failed')), 'image/png')
       })
       if (navigator.clipboard && typeof ClipboardItem !== 'undefined') {
-        await navigator.clipboard.write([new ClipboardItem({ 'image/png': Promise.resolve(_shareBlob) })])
+        await navigator.clipboard.write([new ClipboardItem({ 'image/png': _shareBlobPromise })])
         shareToast.value = 'success'
         setTimeout(() => { shareToast.value = 'idle' }, 3000)
       } else {
-        const _shareUrl = URL.createObjectURL(_shareBlob)
+        const _shareUrl = URL.createObjectURL(await _shareBlobPromise)
         const link = document.createElement('a')
         link.download = `category-breakdown-week${selectedWeek.value}-${team1Short}-vs-${team2Short}.png`
         link.href = _shareUrl

@@ -3672,17 +3672,19 @@ async function downloadLegacyLeaderboard() {
     document.body.removeChild(container)
     
     const safeLeagueName = leagueName.replace(/[^a-zA-Z0-9\s]/g, '').replace(/\s+/g, '-')
-    const _shareBlob = await new Promise<Blob>((resolve, reject) => {
+    const _shareBlobPromise = new Promise<Blob>((resolve, reject) => {
       canvas.toBlob(b => b ? resolve(b) : reject(new Error('toBlob failed')), 'image/png')
     })
     if (navigator.clipboard && typeof ClipboardItem !== 'undefined') {
-      // Safari requires passing a Promise directly to ClipboardItem
-      const item = new ClipboardItem({ 'image/png': Promise.resolve(_shareBlob) })
-      await navigator.clipboard.write([item])
-      shareToast.value = 'success'
-      setTimeout(() => { shareToast.value = 'idle' }, 3000)
+      try {
+        await navigator.clipboard.write([new ClipboardItem({ 'image/png': _shareBlobPromise })])
+        shareToast.value = 'success'
+        setTimeout(() => { shareToast.value = 'idle' }, 3000)
+      } catch (_clipErr) {
+        console.warn('Clipboard write failed, falling back', _clipErr)
+      }
     } else {
-      const _shareUrl = URL.createObjectURL(_shareBlob)
+      const _shareUrl = URL.createObjectURL(await _shareBlobPromise)
       const _fallbackLink = document.createElement('a')
       _fallbackLink.download = `Legacy-Leaderboard-${safeLeagueName}.png`
       _fallbackLink.href = _shareUrl
@@ -4383,15 +4385,15 @@ async function downloadCareerStats() {
     
     document.body.removeChild(container)
     
-        const _shareBlob = await new Promise<Blob>((resolve, reject) => {
+        const _shareBlobPromise = new Promise<Blob>((resolve, reject) => {
           finalCanvas.toBlob(b => b ? resolve(b) : reject(new Error('toBlob failed')), 'image/png')
         })
         if (navigator.clipboard && typeof ClipboardItem !== 'undefined') {
-          await navigator.clipboard.write([new ClipboardItem({ 'image/png': Promise.resolve(_shareBlob) })])
+          await navigator.clipboard.write([new ClipboardItem({ 'image/png': _shareBlobPromise })])
           shareToast.value = 'success'
           setTimeout(() => { shareToast.value = 'idle' }, 3000)
         } else {
-          const _shareUrl = URL.createObjectURL(_shareBlob)
+          const _shareUrl = URL.createObjectURL(await _shareBlobPromise)
           const _fallbackLink = document.createElement('a')
           _fallbackLink.download = 'category-league-career-stats.png'
           _fallbackLink.href = _shareUrl
@@ -4483,15 +4485,15 @@ async function downloadSeasonHistory() {
     
     document.body.removeChild(container)
     
-        const _shareBlob = await new Promise<Blob>((resolve, reject) => {
+        const _shareBlobPromise = new Promise<Blob>((resolve, reject) => {
           finalCanvas.toBlob(b => b ? resolve(b) : reject(new Error('toBlob failed')), 'image/png')
         })
         if (navigator.clipboard && typeof ClipboardItem !== 'undefined') {
-          await navigator.clipboard.write([new ClipboardItem({ 'image/png': Promise.resolve(_shareBlob) })])
+          await navigator.clipboard.write([new ClipboardItem({ 'image/png': _shareBlobPromise })])
           shareToast.value = 'success'
           setTimeout(() => { shareToast.value = 'idle' }, 3000)
         } else {
-          const _shareUrl = URL.createObjectURL(_shareBlob)
+          const _shareUrl = URL.createObjectURL(await _shareBlobPromise)
           const _fallbackLink = document.createElement('a')
           _fallbackLink.download = 'category-league-season-history.png'
           _fallbackLink.href = _shareUrl
@@ -4726,15 +4728,15 @@ async function downloadH2HMatrix() {
     
     document.body.removeChild(container)
     
-        const _shareBlob = await new Promise<Blob>((resolve, reject) => {
+        const _shareBlobPromise = new Promise<Blob>((resolve, reject) => {
           finalCanvas.toBlob(b => b ? resolve(b) : reject(new Error('toBlob failed')), 'image/png')
         })
         if (navigator.clipboard && typeof ClipboardItem !== 'undefined') {
-          await navigator.clipboard.write([new ClipboardItem({ 'image/png': Promise.resolve(_shareBlob) })])
+          await navigator.clipboard.write([new ClipboardItem({ 'image/png': _shareBlobPromise })])
           shareToast.value = 'success'
           setTimeout(() => { shareToast.value = 'idle' }, 3000)
         } else {
-          const _shareUrl = URL.createObjectURL(_shareBlob)
+          const _shareUrl = URL.createObjectURL(await _shareBlobPromise)
           const _fallbackLink = document.createElement('a')
           _fallbackLink.download = 'category-league-h2h-matrix.png'
           _fallbackLink.href = _shareUrl
@@ -4921,17 +4923,19 @@ async function downloadComparison() {
     
     const team1Short = compareTeam1Data.value.team_name.replace(/[^a-z0-9]/gi, '-').substring(0, 15)
     const team2Short = compareTeam2Data.value.team_name.replace(/[^a-z0-9]/gi, '-').substring(0, 15)
-    const _shareBlob = await new Promise<Blob>((resolve, reject) => {
+    const _shareBlobPromise = new Promise<Blob>((resolve, reject) => {
       canvas.toBlob(b => b ? resolve(b) : reject(new Error('toBlob failed')), 'image/png')
     })
     if (navigator.clipboard && typeof ClipboardItem !== 'undefined') {
-      // Safari requires passing a Promise directly to ClipboardItem
-      const item = new ClipboardItem({ 'image/png': Promise.resolve(_shareBlob) })
-      await navigator.clipboard.write([item])
-      shareToast.value = 'success'
-      setTimeout(() => { shareToast.value = 'idle' }, 3000)
+      try {
+        await navigator.clipboard.write([new ClipboardItem({ 'image/png': _shareBlobPromise })])
+        shareToast.value = 'success'
+        setTimeout(() => { shareToast.value = 'idle' }, 3000)
+      } catch (_clipErr) {
+        console.warn('Clipboard write failed, falling back', _clipErr)
+      }
     } else {
-      const _shareUrl = URL.createObjectURL(_shareBlob)
+      const _shareUrl = URL.createObjectURL(await _shareBlobPromise)
       const _fallbackLink = document.createElement('a')
       _fallbackLink.download = `comparison-${team1Short}-vs-${team2Short}.png`
       _fallbackLink.href = _shareUrl
@@ -5146,15 +5150,15 @@ async function downloadRecordRankings(recordLabel: string) {
     
     document.body.removeChild(container)
     
-        const _shareBlob = await new Promise<Blob>((resolve, reject) => {
+        const _shareBlobPromise = new Promise<Blob>((resolve, reject) => {
           finalCanvas.toBlob(b => b ? resolve(b) : reject(new Error('toBlob failed')), 'image/png')
         })
         if (navigator.clipboard && typeof ClipboardItem !== 'undefined') {
-          await navigator.clipboard.write([new ClipboardItem({ 'image/png': Promise.resolve(_shareBlob) })])
+          await navigator.clipboard.write([new ClipboardItem({ 'image/png': _shareBlobPromise })])
           recordToast.value = 'success'
           setTimeout(() => { recordToast.value = 'idle' }, 3000)
         } else {
-          const _shareUrl = URL.createObjectURL(_shareBlob)
+          const _shareUrl = URL.createObjectURL(await _shareBlobPromise)
           const _fallbackLink = document.createElement('a')
           _fallbackLink.download = `career-${recordLabel.toLowerCase().replace(/\s+/g, '-')}.png`
           _fallbackLink.href = _shareUrl
@@ -5346,15 +5350,15 @@ async function downloadSeasonCategoryRankings(category: string, type: 'best' | '
     
     document.body.removeChild(container)
     
-        const _shareBlob = await new Promise<Blob>((resolve, reject) => {
+        const _shareBlobPromise = new Promise<Blob>((resolve, reject) => {
           finalCanvas.toBlob(b => b ? resolve(b) : reject(new Error('toBlob failed')), 'image/png')
         })
         if (navigator.clipboard && typeof ClipboardItem !== 'undefined') {
-          await navigator.clipboard.write([new ClipboardItem({ 'image/png': Promise.resolve(_shareBlob) })])
+          await navigator.clipboard.write([new ClipboardItem({ 'image/png': _shareBlobPromise })])
           awardToast.value = 'success'
           setTimeout(() => { awardToast.value = 'idle' }, 3000)
         } else {
-          const _shareUrl = URL.createObjectURL(_shareBlob)
+          const _shareUrl = URL.createObjectURL(await _shareBlobPromise)
           const _fallbackLink = document.createElement('a')
           _fallbackLink.download = `${selectedAwardsSeason.value}-${category.toLowerCase()}-leaders.png`
           _fallbackLink.href = _shareUrl
@@ -5551,15 +5555,15 @@ async function downloadAwardRankings(category: string, type: 'best' | 'worst', c
     
     document.body.removeChild(container)
     
-        const _shareBlob = await new Promise<Blob>((resolve, reject) => {
+        const _shareBlobPromise = new Promise<Blob>((resolve, reject) => {
           finalCanvas.toBlob(b => b ? resolve(b) : reject(new Error('toBlob failed')), 'image/png')
         })
         if (navigator.clipboard && typeof ClipboardItem !== 'undefined') {
-          await navigator.clipboard.write([new ClipboardItem({ 'image/png': Promise.resolve(_shareBlob) })])
+          await navigator.clipboard.write([new ClipboardItem({ 'image/png': _shareBlobPromise })])
           seasonCategoryToast.value = 'success'
           setTimeout(() => { seasonCategoryToast.value = 'idle' }, 3000)
         } else {
-          const _shareUrl = URL.createObjectURL(_shareBlob)
+          const _shareUrl = URL.createObjectURL(await _shareBlobPromise)
           const _fallbackLink = document.createElement('a')
           _fallbackLink.download = `${type}-${catType}-${category.toLowerCase()}.png`
           _fallbackLink.href = _shareUrl

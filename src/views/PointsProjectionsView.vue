@@ -2899,20 +2899,18 @@ async function downloadSuggestedLineup() {
     document.body.removeChild(container)
     
     // Convert canvas to blob
-    const blob = await new Promise<Blob>((resolve, reject) => {
+    const blobPromise = new Promise<Blob>((resolve, reject) => {
       canvas.toBlob(b => b ? resolve(b) : reject(new Error('toBlob failed')), 'image/png')
     })
 
-    // Try clipboard first — works in Chrome/Edge/Safari 13.1+
+    // Safari fix: clipboard.write() called synchronously with Promise<Blob>
     if (navigator.clipboard && typeof ClipboardItem !== 'undefined') {
-      // Safari requires passing a Promise directly to ClipboardItem
-      const item = new ClipboardItem({ 'image/png': Promise.resolve(blob) })
-      await navigator.clipboard.write([item])
+      await navigator.clipboard.write([new ClipboardItem({ 'image/png': blobPromise })])
       copyToast.value = 'success'
       setTimeout(() => { copyToast.value = 'idle' }, 3000)
     } else {
       // Clipboard API not available — fall back to downloading the file
-      const url = URL.createObjectURL(blob)
+      const url = URL.createObjectURL(await blobPromise)
       const link = document.createElement('a')
       link.href = url
       link.download = `lineup-${date}.png`
