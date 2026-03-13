@@ -62,7 +62,7 @@
           </div>
 
           <!-- Email Form -->
-          <form @submit.prevent="handleSubmit" class="space-y-4">
+          <div class="space-y-4">
             <div v-if="mode === 'signup'">
               <label class="block text-sm font-medium text-dark-textMuted mb-1">Full Name</label>
               <input
@@ -91,6 +91,7 @@
                 type="password"
                 required
                 minlength="6"
+                @keyup.enter="handleSubmit"
                 class="w-full px-4 py-3 rounded-xl bg-dark-bg border border-dark-border/50 text-dark-text placeholder-dark-textMuted focus:border-primary focus:outline-none"
                 placeholder="••••••••"
               />
@@ -107,14 +108,15 @@
             </div>
 
             <button
-              type="submit"
+              type="button"
+              @click="handleSubmit"
               :disabled="loading"
               class="w-full px-4 py-3 rounded-xl bg-primary text-gray-900 font-semibold hover:bg-primary/90 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
             >
               <span v-if="loading" class="animate-spin rounded-full h-5 w-5 border-b-2 border-gray-900"></span>
               <span v-else>{{ mode === 'login' ? 'Sign In' : 'Create Account' }}</span>
             </button>
-          </form>
+          </div>
 
           <!-- Forgot Password -->
           <div v-if="mode === 'login'" class="text-center">
