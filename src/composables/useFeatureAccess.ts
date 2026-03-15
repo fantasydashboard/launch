@@ -1,7 +1,17 @@
 // composables/useFeatureAccess.ts
-// Handles subscription tier checking and feature gating
+// Handles subscription tier checking and feature gating.
+//
+// Access model:
+//   League Pass  — purchased once per league; unlocks league-wide features for
+//                  ANY user who loads that league. Stored in `league_subscriptions`.
+//   Premium      — individual per-user subscription; unlocks personal tools
+//                  (projections, start/sit, waiver analysis). Stored in `profiles`.
+//   Admin        — full access; set via profiles.subscription_tier = 'admin'.
 
-import { ref, computed } from 'vue'
+import { ref, computed, watch } from 'vue'
+import { supabase } from '@/lib/supabase'
+import { useLeagueStore } from '@/stores/league'
+import { useAuthStore } from '@/stores/auth'
 
 // Pricing constants
 export const PRICING = {
@@ -19,44 +29,135 @@ export const PRICING = {
 export type SubscriptionTier = 'free' | 'league' | 'premium' | 'admin'
 
 export function useFeatureAccess() {
+  const leagueStore = useLeagueStore()
+  const authStore = useAuthStore()
 
-  // Stubs kept for interface compatibility
+  // Loading / error state
   const isCheckingAccess = ref(false)
   const accessError = ref<string | null>(null)
 
-  // ── BETA MODE: All features are free while Ultimate Tools is in beta ──
-  // Subscription checks are skipped. Re-enable by restoring the Supabase
-  // checks below when paid access is ready to launch.
+  // Raw subscription data
   const isAdmin = ref(false)
-  const hasRealLeagueAccess = ref(true)
-  const hasRealPremiumAccess = ref(true)
+  const hasRealLeagueAccess = ref(false)
+  const hasRealPremiumAccess = ref(false)
   const leagueSubscription = ref<any>(null)
   const premiumSubscription = ref<any>(null)
+
+  // Dev-mode tier override (admin only)
   const devTierOverride = ref<string | null>(null)
 
-  // No-op: access checks bypassed during beta
+  // ── Core access check ──────────────────────────────────────────────────────
+  // Called on mount and whenever the active league changes.
+  // 1. Checks profiles for admin / premium tier (per-user).
+  // 2. Checks league_subscriptions for an active League Pass (per-league).
   async function checkAllAccess() {
-    isCheckingAccess.value = false
+    if (!supabase) return
+
+    isCheckingAccess.value = true
+    accessError.value = null
+
+    try {
+      // ── 1. Profile-level checks (admin + individual premium) ──
+      const tier = authStore.profile?.subscription_tier || 'free'
+      isAdmin.value = tier === 'admin'
+      hasRealPremiumAccess.value = isAdmin.value || ['premium', 'pro'].includes(tier)
+
+      // ── 2. League Pass check ──
+      // Any user loading a league that has an active subscription gets access.
+      const leagueId = leagueStore.activeLeagueId
+      const platform = leagueStore.activePlatform
+
+      if (leagueId && platform) {
+        const { data, error } = await supabase
+          .from('league_subscriptions')
+          .select('*')
+          .eq('league_id', leagueId)
+          .eq('platform', platform)
+          .eq('status', 'active')
+          .maybeSingle()
+
+        if (error) {
+          console.error('[FeatureAccess] League subscription check failed:', error)
+          hasRealLeagueAccess.value = isAdmin.value
+          leagueSubscription.value = null
+        } else {
+          leagueSubscription.value = data
+          hasRealLeagueAccess.value = isAdmin.value || !!data
+        }
+      } else {
+        // No active league selected — no league access
+        hasRealLeagueAccess.value = isAdmin.value
+        leagueSubscription.value = null
+      }
+    } catch (err: any) {
+      console.error('[FeatureAccess] checkAllAccess error:', err)
+      accessError.value = err?.message || 'Access check failed'
+    } finally {
+      isCheckingAccess.value = false
+    }
   }
 
-  // Effective access — always full during beta
-  const effectiveAccess = computed(() => ({
-    tier: 'premium' as SubscriptionTier,
-    hasLeague: true,
-    hasPremium: true
-  }))
+  // Re-check whenever the active league changes
+  watch(
+    () => [leagueStore.activeLeagueId, leagueStore.activePlatform],
+    () => checkAllAccess(),
+    { immediate: true }
+  )
 
-  function setDevTier(_tier: string | null) { /* no-op in beta */ }
-  function clearDevMode() { /* no-op in beta */ }
+  // Also re-check if the user's profile updates (e.g. after purchase)
+  watch(
+    () => authStore.profile?.subscription_tier,
+    () => checkAllAccess()
+  )
 
-  const currentTierLabel = computed(() => 'Beta')
+  // ── Effective access (respects dev-mode override for admins) ──────────────
+  const effectiveAccess = computed(() => {
+    if (isAdmin.value && devTierOverride.value) {
+      const t = devTierOverride.value as SubscriptionTier
+      return {
+        tier: t,
+        hasLeague: t !== 'free',
+        hasPremium: t === 'premium' || t === 'admin'
+      }
+    }
+    const tier: SubscriptionTier = isAdmin.value
+      ? 'admin'
+      : hasRealPremiumAccess.value
+        ? 'premium'
+        : hasRealLeagueAccess.value
+          ? 'league'
+          : 'free'
+    return {
+      tier,
+      hasLeague: hasRealLeagueAccess.value || hasRealPremiumAccess.value || isAdmin.value,
+      hasPremium: hasRealPremiumAccess.value || isAdmin.value
+    }
+  })
+
+  // Dev-mode helpers (admin only)
+  function setDevTier(tier: string | null) {
+    if (!isAdmin.value) return
+    devTierOverride.value = tier
+  }
+  function clearDevMode() {
+    devTierOverride.value = null
+  }
+
+  const currentTierLabel = computed(() => {
+    if (isAdmin.value && devTierOverride.value) return `Dev: ${devTierOverride.value}`
+    const t = effectiveAccess.value.tier
+    if (t === 'admin') return 'Admin'
+    if (t === 'premium') return 'Premium'
+    if (t === 'league') return 'League Pass'
+    return 'Free'
+  })
 
   return {
     // Loading state
     isCheckingAccess,
     accessError,
 
-    // Real values (ignores dev mode)
+    // Raw subscription data
     isAdmin,
     hasRealLeagueAccess,
     hasRealPremiumAccess,
@@ -75,11 +176,11 @@ export function useFeatureAccess() {
     setDevTier,
     clearDevMode,
 
-    // Feature flags - FREE TIER
+    // Feature flags — FREE TIER
     canViewHomepage: computed(() => true),
     canViewBasicMatchups: computed(() => true),
 
-    // Feature flags - LEAGUE PASS TIER
+    // Feature flags — LEAGUE PASS TIER
     canViewFullMatchups: computed(() => effectiveAccess.value.hasLeague),
     canViewHistory: computed(() => effectiveAccess.value.hasLeague),
     canViewPowerRankings: computed(() => effectiveAccess.value.hasLeague),
@@ -87,49 +188,42 @@ export function useFeatureAccess() {
     canViewCareerStats: computed(() => effectiveAccess.value.hasLeague),
     canDownloadGraphics: computed(() => effectiveAccess.value.hasLeague),
 
-    // Feature flags - PREMIUM TIER
+    // Feature flags — PREMIUM TIER
     canUseMyTeamTools: computed(() => effectiveAccess.value.hasPremium),
     canViewProjections: computed(() => effectiveAccess.value.hasPremium),
     canUseStartSit: computed(() => effectiveAccess.value.hasPremium),
     canUseWaiverAnalysis: computed(() => effectiveAccess.value.hasPremium),
     canUseTradeAnalyzer: computed(() => effectiveAccess.value.hasPremium),
 
-    // Refresh function
+    // Refresh
     refreshAccess: checkAllAccess
   }
 }
 
-// Helper to calculate league price based on team count
+// ── Helpers ──────────────────────────────────────────────────────────────────
+
 export function calculateLeaguePrice(numTeams: number): number {
   return numTeams > PRICING.leaguePass.threshold
     ? PRICING.leaguePass.large
     : PRICING.leaguePass.small
 }
 
-// Helper to format price in dollars
 export function formatPrice(cents: number): string {
   return `$${(cents / 100).toFixed(cents % 100 === 0 ? 0 : 2)}`
 }
 
-// Helper to apply discount
 export function applyDiscount(
   basePrice: number,
   discount: { discount_type: string; discount_value: number } | null
 ): { finalPrice: number; discountAmount: number } {
-  if (!discount) {
-    return { finalPrice: basePrice, discountAmount: 0 }
-  }
+  if (!discount) return { finalPrice: basePrice, discountAmount: 0 }
 
   let discountAmount = 0
-
   if (discount.discount_type === 'fixed') {
     discountAmount = discount.discount_value
   } else if (discount.discount_type === 'percentage') {
     discountAmount = Math.round(basePrice * (discount.discount_value / 100))
   }
 
-  // Don't allow negative prices
-  const finalPrice = Math.max(0, basePrice - discountAmount)
-
-  return { finalPrice, discountAmount }
+  return { finalPrice: Math.max(0, basePrice - discountAmount), discountAmount }
 }
