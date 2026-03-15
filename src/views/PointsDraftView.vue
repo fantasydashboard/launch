@@ -348,10 +348,11 @@
       <!-- Team Draft Grades Summary -->
       <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
         <div 
-          v-for="team in teamGrades" 
+          v-for="(team, idx) in teamGrades" 
           :key="team.team_key"
           class="card cursor-pointer hover:ring-2 hover:ring-yellow-400 transition-all relative"
-          @click="openTeamModal(team)"
+          :class="{ 'draft-blur-row': !hasLeagueAccess && idx >= 4 }"
+          @click="(!hasLeagueAccess && idx >= 4) ? null : openTeamModal(team)"
         >
           <!-- Rank Badge -->
           <div 
@@ -405,6 +406,23 @@
           </div>
         </div>
       </div>
+          <!-- Team grades gate banner -->
+          <div v-if="!hasLeagueAccess && teamGrades.length > 4" class="early-gate-banner" style="margin: 12px 0 4px;">
+            <div class="early-gate-inner">
+              <div class="early-gate-left">
+                <span class="early-gate-icon">🎯</span>
+                <div>
+                  <div class="early-gate-headline">{{ teamGrades.length - 4 }} more teams locked</div>
+                  <div class="early-gate-sub">See every team's full draft grade and breakdown</div>
+                </div>
+              </div>
+              <button class="gate-cta-btn" @click="goToPricing">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>
+                GET LEAGUE PASS
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+              </button>
+            </div>
+          </div>
 
       <!-- Individual Player Grades -->
       <div class="card mt-6">
@@ -676,7 +694,8 @@
               v-for="(pick, idx) in topReaches" 
               :key="pick.pick"
               class="flex items-center gap-3 p-3 bg-red-500/10 rounded-lg cursor-pointer hover:bg-red-500/20"
-              @click="selectPick(pick)"
+              :class="{ 'draft-blur-row': !hasLeagueAccess && idx >= 3 }"
+              @click="(!hasLeagueAccess && idx >= 3) ? null : selectPick(pick)"
             >
               <div class="text-lg font-bold text-red-400 w-6">{{ idx + 1 }}</div>
               <div class="w-10 h-10 rounded-full bg-dark-border overflow-hidden">
@@ -693,6 +712,23 @@
             </div>
             <div v-if="topReaches.length === 0" class="text-center py-4 text-dark-textMuted">
               No significant busts found
+            </div>
+          </div>
+          <!-- Busts gate banner -->
+          <div v-if="!hasLeagueAccess && topReaches.length > 3" class="early-gate-banner" style="margin: 8px 16px 16px;">
+            <div class="early-gate-inner">
+              <div class="early-gate-left">
+                <span class="early-gate-icon">💀</span>
+                <div>
+                  <div class="early-gate-headline">{{ topReaches.length - 3 }} more busts locked</div>
+                  <div class="early-gate-sub">See every draft bust in your league</div>
+                </div>
+              </div>
+              <button class="gate-cta-btn" @click="goToPricing">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>
+                GET LEAGUE PASS
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+              </button>
             </div>
           </div>
         </div>

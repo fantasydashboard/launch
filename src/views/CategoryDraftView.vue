@@ -990,11 +990,23 @@
                   <p class="card-subtitle mt-1">Best value relative to draft position</p>
                 </div>
               </div>
-              <button @click="downloadStealsImage" :disabled="isDownloadingSteals" class="flex items-center gap-2 text-sm px-3 py-1.5 rounded-lg font-semibold transition-all disabled:opacity-50" :style="stealsToast === 'success' ? 'background: rgba(16,185,129,0.15); color: #10b981; border: 1px solid #10b981;' : 'background: transparent; color: #facc15; border: 1px solid #facc15;'">
+              <button v-if="hasLeagueAccess" @click="downloadStealsImage" :disabled="isDownloadingSteals" class="flex items-center gap-2 text-sm px-3 py-1.5 rounded-lg font-semibold transition-all disabled:opacity-50" :style="stealsToast === 'success' ? 'background: rgba(16,185,129,0.15); color: #10b981; border: 1px solid #10b981;' : 'background: transparent; color: #facc15; border: 1px solid #facc15;'">
                 <svg v-if="isDownloadingSteals" class="w-4 h-4 animate-spin pointer-events-none" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
                 <svg v-else-if="stealsToast === 'success'" class="w-4 h-4 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" /></svg>
                 <svg v-else class="w-4 h-4 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" /></svg>
                 {{ isDownloadingSteals ? 'Generating...' : stealsToast === 'success' ? 'Copied! 📋' : 'Share' }}
+              </button>
+              <button
+                v-else
+                @click="goToPricing"
+                class="flex items-center gap-2 text-sm px-3 py-1.5 rounded-lg font-semibold transition-all"
+                style="background: rgba(30,33,48,0.8); color: #6b7280; border: 1px solid #374151;"
+                title="League Pass required to share"
+              >
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                </svg>
+                Share
               </button>
             </div>
           </div>
@@ -1003,7 +1015,8 @@
               v-for="(pick, idx) in topSteals" 
               :key="pick.pick"
               class="flex items-center gap-3 p-3 bg-green-500/10 rounded-lg cursor-pointer hover:bg-green-500/20 transition-all"
-              @click="selectPick(pick)"
+              :class="{ 'draft-blur-row': !hasLeagueAccess && idx >= 3 }"
+              @click="(!hasLeagueAccess && idx >= 3) ? null : selectPick(pick)"
             >
               <div class="text-lg font-bold text-green-400 w-6">{{ idx + 1 }}</div>
               <div class="w-10 h-10 rounded-full bg-dark-border overflow-hidden flex-shrink-0">
@@ -1052,11 +1065,23 @@
                   <p class="card-subtitle mt-1">Underperformed relative to draft position</p>
                 </div>
               </div>
-              <button @click="downloadBustsImage" :disabled="isDownloadingBusts" class="flex items-center gap-2 text-sm px-3 py-1.5 rounded-lg font-semibold transition-all disabled:opacity-50" :style="bustsToast === 'success' ? 'background: rgba(16,185,129,0.15); color: #10b981; border: 1px solid #10b981;' : 'background: transparent; color: #facc15; border: 1px solid #facc15;'">
+              <button v-if="hasLeagueAccess" @click="downloadBustsImage" :disabled="isDownloadingBusts" class="flex items-center gap-2 text-sm px-3 py-1.5 rounded-lg font-semibold transition-all disabled:opacity-50" :style="bustsToast === 'success' ? 'background: rgba(16,185,129,0.15); color: #10b981; border: 1px solid #10b981;' : 'background: transparent; color: #facc15; border: 1px solid #facc15;'">
                 <svg v-if="isDownloadingBusts" class="w-4 h-4 animate-spin pointer-events-none" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
                 <svg v-else-if="bustsToast === 'success'" class="w-4 h-4 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" /></svg>
                 <svg v-else class="w-4 h-4 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" /></svg>
                 {{ isDownloadingBusts ? 'Generating...' : bustsToast === 'success' ? 'Copied! 📋' : 'Share' }}
+              </button>
+              <button
+                v-else
+                @click="goToPricing"
+                class="flex items-center gap-2 text-sm px-3 py-1.5 rounded-lg font-semibold transition-all"
+                style="background: rgba(30,33,48,0.8); color: #6b7280; border: 1px solid #374151;"
+                title="League Pass required to share"
+              >
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                </svg>
+                Share
               </button>
             </div>
           </div>
@@ -1065,7 +1090,8 @@
               v-for="(pick, idx) in topBusts" 
               :key="pick.pick"
               class="flex items-center gap-3 p-3 bg-red-500/10 rounded-lg cursor-pointer hover:bg-red-500/20 transition-all"
-              @click="selectPick(pick)"
+              :class="{ 'draft-blur-row': !hasLeagueAccess && idx >= 3 }"
+              @click="(!hasLeagueAccess && idx >= 3) ? null : selectPick(pick)"
             >
               <div class="text-lg font-bold text-red-400 w-6">{{ idx + 1 }}</div>
               <div class="w-10 h-10 rounded-full bg-dark-border overflow-hidden flex-shrink-0">
@@ -1173,7 +1199,8 @@
         </div>
       </div>
 
-      <!-- Late Round Gems by Category -->
+      <!-- Late Round Gems by Category — gated -->
+      <LeagueGate wrap :locked="!hasLeagueAccess" label="Late Round Gems by Category">
       <div class="card mt-6">
         <div class="card-header">
           <div class="flex items-center gap-2">
@@ -1208,6 +1235,7 @@
           </div>
         </div>
       </div>
+      </LeagueGate>
     </template>
 
     <!-- Player Detail Modal -->
