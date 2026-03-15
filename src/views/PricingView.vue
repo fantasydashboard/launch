@@ -2,55 +2,56 @@
   <div class="min-h-screen py-12">
     <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
 
-      <!-- League Context Banner (shown when arriving from LeagueGate) -->
-      <div v-if="contextLeagueId" class="mb-8 p-4 rounded-xl border border-yellow-500/30 bg-yellow-500/5 flex items-center gap-4 flex-wrap">
-        <div class="w-10 h-10 rounded-full bg-yellow-500/20 flex items-center justify-center flex-shrink-0">
-          <span class="text-xl">🔒</span>
-        </div>
-        <div class="flex-1">
-          <div class="font-bold text-yellow-400 text-sm">Unlocking League Pass for your league</div>
-          <div class="text-dark-textMuted text-xs mt-0.5">
-            <span class="text-dark-text font-semibold">{{ contextLeagueName || contextLeagueId }}</span>
-            <span v-if="platformLabel"> · {{ platformLabel }}</span>
-            &nbsp;— one purchase unlocks full access for everyone in the league.
+      <!-- ── Hero League Context Banner ─────────────────────────────────── -->
+      <div id="purchase" class="mb-12 rounded-2xl overflow-hidden" style="border: 1px solid rgba(234,179,8,0.3); background: linear-gradient(135deg, #0f1118 0%, #0c0f1c 100%);">
+        <!-- Accent bar -->
+        <div style="height: 4px; background: linear-gradient(90deg, #eab308, #22c55e, #eab308); background-size: 200% 100%;"></div>
+        <div class="p-8 sm:p-12">
+          <div class="flex flex-col sm:flex-row items-start sm:items-center gap-6">
+            <!-- Icon -->
+            <div class="w-16 h-16 rounded-2xl flex items-center justify-center flex-shrink-0" style="background: rgba(234,179,8,0.15); border: 1px solid rgba(234,179,8,0.3);">
+              <span class="text-3xl">🏆</span>
+            </div>
+            <!-- Text -->
+            <div class="flex-1">
+              <div class="flex flex-wrap items-center gap-3 mb-2">
+                <h1 class="text-2xl sm:text-3xl font-black text-white" style="font-family: 'Barlow Condensed', sans-serif; letter-spacing: 0.02em; text-transform: uppercase;">
+                  One Purchase. The Whole League Wins.
+                </h1>
+                <span v-if="contextLeagueName" class="px-3 py-1 rounded-full text-xs font-bold" style="background: rgba(234,179,8,0.2); color: #eab308; border: 1px solid rgba(234,179,8,0.4);">
+                  {{ contextLeagueName }}
+                  <span v-if="platformLabel"> · {{ platformLabel }}</span>
+                </span>
+              </div>
+              <p class="text-base sm:text-lg" style="color: #9ca3af;">
+                When <strong class="text-white">anyone</strong> in your league buys League Pass, every single member gets full access — automatically, no codes, no invites. They just sign up and connect their account.
+              </p>
+              <div class="flex flex-wrap items-center gap-4 mt-4">
+                <div class="flex items-center gap-2 text-sm" style="color: #6b7280;">
+                  <span style="color: #22c55e;">✓</span>
+                  <span>Works for ESPN, Yahoo &amp; Sleeper</span>
+                </div>
+                <div class="flex items-center gap-2 text-sm" style="color: #6b7280;">
+                  <span style="color: #22c55e;">✓</span>
+                  <span>All sports supported</span>
+                </div>
+                <div class="flex items-center gap-2 text-sm" style="color: #6b7280;">
+                  <span style="color: #22c55e;">✓</span>
+                  <span>Instant access, no waiting</span>
+                </div>
+              </div>
+            </div>
+            <!-- Back link -->
+            <button @click="router.back()" class="text-sm flex-shrink-0 transition-colors" style="color: #6b7280;">
+              ← Back to dashboard
+            </button>
           </div>
         </div>
-        <button @click="router.back()" class="text-xs text-dark-textMuted hover:text-dark-text transition-colors">
-          ← Back to dashboard
-        </button>
       </div>
 
-      <!-- Header -->
-      <div class="text-center mb-12">
-        <h1 class="text-4xl sm:text-5xl font-black text-dark-text mb-4">
-          Choose Your Plan
-        </h1>
-        <p class="text-xl text-dark-textMuted max-w-2xl mx-auto">
-          Unlock the full power of Ultimate Fantasy Dashboard for your league
-        </p>
-      </div>
-
-      <!-- Sport Selector -->
-      <div class="flex items-center justify-center gap-2 mb-12">
-        <span class="text-dark-textMuted text-sm">Select your sport:</span>
-        <div class="flex items-center gap-2 bg-dark-card rounded-xl p-1 border border-dark-border">
-          <button
-            v-for="sport in sports"
-            :key="sport.id"
-            @click="selectedSport = sport.id"
-            class="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all"
-            :class="selectedSport === sport.id 
-              ? 'bg-primary text-gray-900' 
-              : 'text-dark-textMuted hover:text-dark-text'"
-          >
-            <span>{{ sport.emoji }}</span>
-            <span class="hidden sm:inline">{{ sport.name }}</span>
-          </button>
-        </div>
-      </div>
-
-      <!-- Pricing Cards -->
+      <!-- ── Pricing Cards ────────────────────────────────────────────────── -->
       <div class="grid lg:grid-cols-3 gap-8 mb-16">
+
         <!-- Free Tier -->
         <div class="bg-dark-card rounded-2xl border border-dark-border p-8">
           <div class="text-center mb-6">
@@ -60,7 +61,7 @@
             <h2 class="text-2xl font-bold text-dark-text mb-2">Free</h2>
             <p class="text-dark-textMuted text-sm">Get started with basic features</p>
           </div>
-          
+
           <div class="text-center mb-6">
             <span class="text-4xl font-black text-dark-text">$0</span>
             <span class="text-dark-textMuted">/forever</span>
@@ -103,36 +104,41 @@
         </div>
 
         <!-- League Pass -->
-        <div class="bg-gradient-to-br from-primary/10 to-cyan-500/10 rounded-2xl border-2 border-primary p-8 relative">
-          <!-- Popular badge -->
+        <div class="rounded-2xl border-2 p-8 relative" style="background: linear-gradient(135deg, rgba(34,197,94,0.08) 0%, rgba(6,182,212,0.05) 100%); border-color: #22c55e;">
+          <!-- Badge -->
           <div class="absolute -top-4 left-1/2 -translate-x-1/2">
-            <span class="px-4 py-1 rounded-full bg-primary text-gray-900 text-sm font-bold">
+            <span class="px-4 py-1 rounded-full text-sm font-bold" style="background: #22c55e; color: #0a0c14;">
               Most Popular
             </span>
           </div>
 
           <div class="text-center mb-6">
-            <div class="inline-flex items-center justify-center w-14 h-14 rounded-full bg-primary/20 mb-4">
+            <div class="inline-flex items-center justify-center w-14 h-14 rounded-full mb-4" style="background: rgba(34,197,94,0.15);">
               <span class="text-2xl">🏆</span>
             </div>
             <h2 class="text-2xl font-bold text-dark-text mb-2">League Pass</h2>
             <p class="text-dark-textMuted text-sm">Full access for your entire league</p>
           </div>
 
-          <!-- Price with discount -->
-          <div class="text-center mb-4">
-            <div class="flex items-center justify-center gap-2 mb-1">
-              <span class="text-2xl text-dark-textMuted line-through">${{ basePrice }}</span>
-              <span class="px-2 py-0.5 rounded bg-green-500/20 text-green-400 text-sm font-bold">$10 OFF</span>
+          <!-- Price -->
+          <div class="text-center mb-2">
+            <div class="flex items-center justify-center gap-3 mb-1">
+              <span class="text-2xl text-dark-textMuted line-through">${{ regularPrice }}</span>
+              <span class="px-2 py-0.5 rounded text-sm font-bold" style="background: rgba(234,179,8,0.2); color: #eab308; border: 1px solid rgba(234,179,8,0.3);">
+                LIMITED TIME
+              </span>
             </div>
             <div>
-              <span class="text-5xl font-black text-primary">${{ discountedPrice }}</span>
+              <span class="text-6xl font-black" style="color: #22c55e;">${{ launchPrice }}</span>
               <span class="text-dark-textMuted">/season</span>
             </div>
           </div>
+          <p class="text-center text-sm mb-6" style="color: #eab308;">
+            ⚡ Launch pricing — normally ${{ regularPrice }}
+          </p>
 
           <!-- Per person calculator -->
-          <div class="bg-dark-bg/50 rounded-xl p-4 mb-6">
+          <div class="rounded-xl p-4 mb-6" style="background: rgba(0,0,0,0.3);">
             <label class="block text-sm text-dark-textMuted mb-2">How many teams in your league?</label>
             <div class="flex items-center gap-3">
               <input
@@ -144,132 +150,137 @@
               />
               <div class="flex-1 text-right">
                 <div class="text-sm text-dark-textMuted">Per person:</div>
-                <div class="text-xl font-bold text-primary">${{ perPersonCost }}</div>
+                <div class="text-xl font-bold" style="color: #22c55e;">${{ perPersonCost }}</div>
               </div>
             </div>
             <p class="text-xs text-dark-textMuted mt-2">
-              {{ teamCount > 12 ? 'Large league (13+ teams): +$10' : 'Standard league (1-12 teams)' }}
+              Less than a coffee for the whole season
             </p>
           </div>
 
           <ul class="space-y-3 mb-8">
             <li class="flex items-start gap-3">
-              <span class="text-primary mt-0.5">✓</span>
+              <span class="mt-0.5" style="color: #22c55e;">✓</span>
               <span class="text-dark-text font-medium">Everything in Free</span>
             </li>
             <li class="flex items-start gap-3">
-              <span class="text-primary mt-0.5">✓</span>
+              <span class="mt-0.5" style="color: #22c55e;">✓</span>
               <span class="text-dark-text">Full power rankings</span>
             </li>
             <li class="flex items-start gap-3">
-              <span class="text-primary mt-0.5">✓</span>
+              <span class="mt-0.5" style="color: #22c55e;">✓</span>
               <span class="text-dark-text">Complete league history</span>
             </li>
             <li class="flex items-start gap-3">
-              <span class="text-primary mt-0.5">✓</span>
+              <span class="mt-0.5" style="color: #22c55e;">✓</span>
               <span class="text-dark-text">Head-to-head records</span>
             </li>
             <li class="flex items-start gap-3">
-              <span class="text-primary mt-0.5">✓</span>
+              <span class="mt-0.5" style="color: #22c55e;">✓</span>
               <span class="text-dark-text">Career stats</span>
             </li>
             <li class="flex items-start gap-3">
-              <span class="text-primary mt-0.5">✓</span>
-              <span class="text-dark-text">Downloadable graphics</span>
+              <span class="mt-0.5" style="color: #22c55e;">✓</span>
+              <span class="text-dark-text">Shareable graphics</span>
             </li>
             <li class="flex items-start gap-3">
-              <span class="text-primary mt-0.5">✓</span>
+              <span class="mt-0.5" style="color: #22c55e;">✓</span>
               <span class="text-dark-text">Matchup deep dive</span>
+            </li>
+            <li class="flex items-start gap-3">
+              <span class="mt-0.5" style="color: #22c55e;">✓</span>
+              <span class="text-dark-text font-medium" style="color: #eab308;">+ Ultimate Tools (free during beta)</span>
             </li>
           </ul>
 
-          <button 
+          <button
             @click="purchaseLeaguePass"
-            class="w-full py-4 rounded-xl bg-primary hover:bg-primary/90 text-gray-900 font-bold text-lg transition-all transform hover:scale-[1.02]"
+            class="w-full py-4 rounded-xl font-black text-lg transition-all transform hover:scale-[1.02]"
+            style="background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%); color: #0a0c14; font-family: 'Barlow Condensed', sans-serif; letter-spacing: 0.05em; text-transform: uppercase; box-shadow: 0 4px 20px rgba(34,197,94,0.35);"
           >
-            Get League Pass - ${{ discountedPrice }}
+            Get League Pass — ${{ launchPrice }}
           </button>
 
-          <!-- One person pays explanation -->
-          <div class="mt-4 p-3 bg-dark-bg/50 rounded-lg">
+          <!-- One person pays -->
+          <div class="mt-4 p-3 rounded-lg" style="background: rgba(34,197,94,0.08); border: 1px solid rgba(34,197,94,0.2);">
             <div class="flex items-center gap-3">
               <div class="text-2xl">👥</div>
               <div class="text-xs text-dark-textMuted">
                 <strong class="text-dark-text">One person pays, everyone benefits.</strong>
-                All league members get full access when they sign up.
+                All league members get full access when they sign up — no codes, no hassle.
               </div>
             </div>
           </div>
         </div>
 
-        <!-- Ultimate Tier -->
-        <div class="bg-gradient-to-br from-yellow-500/5 to-orange-500/5 rounded-2xl border border-yellow-500/30 p-8">
-          <div class="text-center mb-6">
-            <div class="inline-flex items-center justify-center w-14 h-14 rounded-full bg-yellow-500/20 mb-4">
-              <span class="text-2xl">⭐</span>
-            </div>
-            <h2 class="text-2xl font-bold text-dark-text mb-2">Ultimate</h2>
-            <p class="text-dark-textMuted text-sm">AI-powered tools for serious managers</p>
+        <!-- Ultimate — Beta -->
+        <div class="rounded-2xl p-8 relative" style="background: linear-gradient(135deg, rgba(234,179,8,0.05) 0%, rgba(249,115,22,0.03) 100%); border: 1px solid rgba(234,179,8,0.2);">
+          <!-- Beta badge -->
+          <div class="absolute -top-4 left-1/2 -translate-x-1/2">
+            <span class="px-4 py-1 rounded-full text-sm font-bold" style="background: rgba(234,179,8,0.2); color: #eab308; border: 1px solid rgba(234,179,8,0.4);">
+              🧪 In Beta
+            </span>
           </div>
 
           <div class="text-center mb-6">
-            <div class="flex items-center justify-center gap-4">
-              <div class="text-center">
-                <span class="text-4xl font-black text-yellow-500">$4.99</span>
-                <span class="text-dark-textMuted">/mo</span>
-              </div>
-              <span class="text-dark-textMuted">or</span>
-              <div class="text-center">
-                <span class="text-4xl font-black text-yellow-500">$19</span>
-                <span class="text-dark-textMuted">/season</span>
-              </div>
+            <div class="inline-flex items-center justify-center w-14 h-14 rounded-full mb-4" style="background: rgba(234,179,8,0.15);">
+              <span class="text-2xl">⭐</span>
             </div>
-            <p class="text-xs text-dark-textMuted mt-2">Per user • Requires League Pass</p>
+            <h2 class="text-2xl font-bold text-dark-text mb-2">Ultimate Tools</h2>
+            <p class="text-dark-textMuted text-sm">AI-powered tools for serious managers</p>
+          </div>
+
+          <!-- Free during beta -->
+          <div class="text-center mb-6">
+            <div class="text-5xl font-black mb-1" style="color: #eab308;">FREE</div>
+            <div class="text-sm" style="color: #6b7280;">during beta · included with League Pass</div>
+          </div>
+
+          <!-- Beta explanation -->
+          <div class="rounded-xl p-4 mb-6 text-center" style="background: rgba(234,179,8,0.08); border: 1px solid rgba(234,179,8,0.2);">
+            <p class="text-sm" style="color: #9ca3af;">
+              Ultimate Tools is actively being built. During beta, all features are <strong class="text-white">included free</strong> with every League Pass. Pricing will be introduced after beta ends.
+            </p>
           </div>
 
           <ul class="space-y-3 mb-8">
             <li class="flex items-start gap-3">
-              <span class="text-yellow-500 mt-0.5">✓</span>
+              <span class="mt-0.5" style="color: #eab308;">✓</span>
               <span class="text-dark-text font-medium">Everything in League Pass</span>
             </li>
             <li class="flex items-start gap-3">
-              <span class="text-yellow-500 mt-0.5">✓</span>
+              <span class="mt-0.5" style="color: #eab308;">✓</span>
               <span class="text-dark-text">AI Projections</span>
             </li>
             <li class="flex items-start gap-3">
-              <span class="text-yellow-500 mt-0.5">✓</span>
+              <span class="mt-0.5" style="color: #eab308;">✓</span>
               <span class="text-dark-text">Start/Sit Recommendations</span>
             </li>
             <li class="flex items-start gap-3">
-              <span class="text-yellow-500 mt-0.5">✓</span>
+              <span class="mt-0.5" style="color: #eab308;">✓</span>
               <span class="text-dark-text">Waiver Wire Analysis</span>
             </li>
             <li class="flex items-start gap-3">
-              <span class="text-yellow-500 mt-0.5">✓</span>
+              <span class="mt-0.5" style="color: #eab308;">✓</span>
               <span class="text-dark-text">Trade Analyzer</span>
             </li>
           </ul>
 
-          <button 
-            @click="purchaseUltimate"
-            class="w-full py-4 rounded-xl bg-yellow-500 hover:bg-yellow-400 text-gray-900 font-bold text-lg transition-all transform hover:scale-[1.02]"
-          >
-            Go Ultimate
-          </button>
-
-          <p class="text-xs text-dark-textMuted text-center mt-3">
-            Individual subscription • Not shared with league
-          </p>
+          <!-- No button — just a note -->
+          <div class="text-center py-4 rounded-xl" style="background: rgba(234,179,8,0.06); border: 1px solid rgba(234,179,8,0.15);">
+            <div class="text-sm font-bold mb-1" style="color: #eab308;">🎉 You're getting this free</div>
+            <div class="text-xs" style="color: #6b7280;">Pick up League Pass and it's all included.</div>
+          </div>
         </div>
       </div>
 
-      <!-- How League Pass Works -->
+      <!-- ── How League Pass Works ─────────────────────────────────────────── -->
       <div class="mb-16">
         <h2 class="text-2xl font-bold text-dark-text text-center mb-8">How League Pass Works</h2>
-        
+
         <div class="grid md:grid-cols-3 gap-8">
           <div class="text-center">
-            <div class="w-16 h-16 rounded-full bg-primary/20 flex items-center justify-center mx-auto mb-4">
+            <div class="w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4" style="background: rgba(34,197,94,0.15);">
               <span class="text-3xl">1️⃣</span>
             </div>
             <h3 class="font-bold text-dark-text mb-2">One Person Purchases</h3>
@@ -277,40 +288,40 @@
               The commissioner or any league member buys League Pass for the league.
             </p>
           </div>
-          
+
           <div class="text-center">
-            <div class="w-16 h-16 rounded-full bg-primary/20 flex items-center justify-center mx-auto mb-4">
+            <div class="w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4" style="background: rgba(34,197,94,0.15);">
               <span class="text-3xl">2️⃣</span>
             </div>
             <h3 class="font-bold text-dark-text mb-2">League Mates Sign Up</h3>
             <p class="text-dark-textMuted text-sm">
-              Everyone creates a free account and connects their Yahoo or Sleeper league.
+              Everyone creates a free account and connects their ESPN, Yahoo, or Sleeper league.
             </p>
           </div>
-          
+
           <div class="text-center">
-            <div class="w-16 h-16 rounded-full bg-primary/20 flex items-center justify-center mx-auto mb-4">
+            <div class="w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4" style="background: rgba(34,197,94,0.15);">
               <span class="text-3xl">3️⃣</span>
             </div>
             <h3 class="font-bold text-dark-text mb-2">Automatic Access</h3>
             <p class="text-dark-textMuted text-sm">
-              We detect they're in your league and unlock full access automatically!
+              We detect they're in your league and unlock full access automatically. No codes needed.
             </p>
           </div>
         </div>
       </div>
 
-      <!-- Comparison Table -->
+      <!-- ── Feature Comparison ───────────────────────────────────────────── -->
       <div class="mb-16 overflow-x-auto">
         <h2 class="text-2xl font-bold text-dark-text text-center mb-8">Feature Comparison</h2>
-        
+
         <table class="w-full">
           <thead>
             <tr class="border-b border-dark-border">
               <th class="text-left py-4 px-4 text-dark-textMuted font-medium">Feature</th>
               <th class="text-center py-4 px-4 text-dark-text font-bold">Free</th>
-              <th class="text-center py-4 px-4 text-primary font-bold">League Pass</th>
-              <th class="text-center py-4 px-4 text-yellow-500 font-bold">Ultimate</th>
+              <th class="text-center py-4 px-4 font-bold" style="color: #22c55e;">League Pass</th>
+              <th class="text-center py-4 px-4 font-bold" style="color: #eab308;">Ultimate <span class="text-xs font-normal opacity-60">(beta)</span></th>
             </tr>
           </thead>
           <tbody class="divide-y divide-dark-border/50">
@@ -359,38 +370,38 @@
             <tr>
               <td class="py-3 px-4 text-dark-text">AI Projections</td>
               <td class="py-3 px-4 text-center text-dark-textMuted">—</td>
-              <td class="py-3 px-4 text-center text-dark-textMuted">—</td>
+              <td class="py-3 px-4 text-center" style="color: #eab308;">Free (beta)</td>
               <td class="py-3 px-4 text-center text-green-400">✓</td>
             </tr>
             <tr>
               <td class="py-3 px-4 text-dark-text">Start/Sit Advice</td>
               <td class="py-3 px-4 text-center text-dark-textMuted">—</td>
-              <td class="py-3 px-4 text-center text-dark-textMuted">—</td>
+              <td class="py-3 px-4 text-center" style="color: #eab308;">Free (beta)</td>
               <td class="py-3 px-4 text-center text-green-400">✓</td>
             </tr>
             <tr>
               <td class="py-3 px-4 text-dark-text">Waiver Analysis</td>
               <td class="py-3 px-4 text-center text-dark-textMuted">—</td>
-              <td class="py-3 px-4 text-center text-dark-textMuted">—</td>
+              <td class="py-3 px-4 text-center" style="color: #eab308;">Free (beta)</td>
               <td class="py-3 px-4 text-center text-green-400">✓</td>
             </tr>
             <tr>
               <td class="py-3 px-4 text-dark-text">Trade Analyzer</td>
               <td class="py-3 px-4 text-center text-dark-textMuted">—</td>
-              <td class="py-3 px-4 text-center text-dark-textMuted">—</td>
+              <td class="py-3 px-4 text-center" style="color: #eab308;">Free (beta)</td>
               <td class="py-3 px-4 text-center text-green-400">✓</td>
             </tr>
           </tbody>
         </table>
       </div>
 
-      <!-- FAQ Section -->
+      <!-- ── FAQ ──────────────────────────────────────────────────────────── -->
       <div class="mb-16">
         <h2 class="text-2xl font-bold text-dark-text text-center mb-8">Frequently Asked Questions</h2>
-        
+
         <div class="max-w-3xl mx-auto space-y-4">
-          <div 
-            v-for="(faq, index) in faqs" 
+          <div
+            v-for="(faq, index) in faqs"
             :key="index"
             class="bg-dark-card rounded-xl border border-dark-border overflow-hidden"
           >
@@ -399,11 +410,11 @@
               class="w-full flex items-center justify-between p-4 text-left"
             >
               <span class="font-medium text-dark-text">{{ faq.question }}</span>
-              <svg 
-                class="w-5 h-5 text-dark-textMuted transition-transform" 
+              <svg
+                class="w-5 h-5 text-dark-textMuted transition-transform"
                 :class="{ 'rotate-180': openFaq === index }"
-                fill="none" 
-                stroke="currentColor" 
+                fill="none"
+                stroke="currentColor"
                 viewBox="0 0 24 24"
               >
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
@@ -416,8 +427,32 @@
         </div>
       </div>
 
-      <!-- Trust Elements -->
-      <div class="flex flex-wrap items-center justify-center gap-6 py-8 border-t border-dark-border">
+      <!-- ── Trust Elements + Scroll-back CTA ────────────────────────────── -->
+      <div class="rounded-2xl p-8 text-center mb-8" style="background: linear-gradient(135deg, #0f1118 0%, #0c0f1c 100%); border: 1px solid rgba(34,197,94,0.2);">
+        <p class="text-dark-textMuted mb-2 text-sm">Ready to unlock your league?</p>
+        <h3 class="text-2xl font-black text-white mb-6" style="font-family: 'Barlow Condensed', sans-serif; letter-spacing: 0.03em; text-transform: uppercase;">
+          Get League Pass for ${{ launchPrice }} — Limited Time
+        </h3>
+        <button
+          @click="scrollToPurchase"
+          class="inline-flex items-center gap-3 px-8 py-4 rounded-xl font-black text-lg transition-all transform hover:scale-[1.02]"
+          style="background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%); color: #0a0c14; font-family: 'Barlow Condensed', sans-serif; letter-spacing: 0.06em; text-transform: uppercase; box-shadow: 0 4px 24px rgba(34,197,94,0.35);"
+        >
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <path d="M12 19V5M5 12l7-7 7 7"/>
+          </svg>
+          Get League Pass Now
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <path d="M5 12h14M12 5l7 7-7 7"/>
+          </svg>
+        </button>
+        <p class="text-xs mt-4" style="color: #4b5563;">
+          Usually ${{ regularPrice }} · Launch pricing for a limited time
+        </p>
+      </div>
+
+      <!-- Trust badges -->
+      <div class="flex flex-wrap items-center justify-center gap-6 py-6 border-t border-dark-border">
         <div class="flex items-center gap-2 text-dark-textMuted">
           <svg class="w-5 h-5 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
@@ -434,9 +469,10 @@
           <svg class="w-5 h-5 text-yellow-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
           </svg>
-          <span class="text-sm">This season only • {{ currentSport }} {{ currentYear }}</span>
+          <span class="text-sm">This season only · {{ currentYear }}</span>
         </div>
       </div>
+
     </div>
   </div>
 </template>
@@ -450,7 +486,7 @@ const router = useRouter()
 const route = useRoute()
 const leagueStore = useLeagueStore()
 
-// Read league context from URL params (passed by LeagueGate)
+// League context from URL params
 const contextLeagueId = ref('')
 const contextPlatform = ref('')
 
@@ -459,12 +495,12 @@ onMounted(() => {
   contextPlatform.value = (route.query.platform as string) || leagueStore.activePlatform || ''
 })
 
-const contextLeague = computed(() => {
-  if (!contextLeagueId.value) return null
-  return leagueStore.savedLeagues.find(l => l.league_id === contextLeagueId.value) || null
-})
-
-const contextLeagueName = computed(() => contextLeague.value?.name || contextLeagueId.value || '')
+const contextLeague = computed(() =>
+  contextLeagueId.value
+    ? leagueStore.savedLeagues.find(l => l.league_id === contextLeagueId.value) || null
+    : null
+)
+const contextLeagueName = computed(() => contextLeague.value?.league_name || contextLeagueId.value || '')
 const platformLabel = computed(() => {
   const p = contextPlatform.value
   if (p === 'espn') return 'ESPN'
@@ -473,76 +509,59 @@ const platformLabel = computed(() => {
   return p
 })
 
-const sports = [
-  { id: 'football', name: 'Football', emoji: '🏈' },
-  { id: 'baseball', name: 'Baseball', emoji: '⚾' },
-  { id: 'basketball', name: 'Basketball', emoji: '🏀' },
-  { id: 'hockey', name: 'Hockey', emoji: '🏒' }
-]
+// Pricing
+const REGULAR_PRICE = 29
+const LAUNCH_PRICE = 19
 
-const selectedSport = ref('football')
+const regularPrice = computed(() => REGULAR_PRICE)
+const launchPrice = computed(() => LAUNCH_PRICE)
+
 const teamCount = ref(10)
 const openFaq = ref<number | null>(null)
 
-// Pricing calculations
-const SMALL_LEAGUE_PRICE = 39
-const LARGE_LEAGUE_PRICE = 49
-const LAUNCH_DISCOUNT = 10
-
-const basePrice = computed(() => {
-  return teamCount.value > 12 ? LARGE_LEAGUE_PRICE : SMALL_LEAGUE_PRICE
-})
-
-const discountedPrice = computed(() => {
-  return basePrice.value - LAUNCH_DISCOUNT
-})
-
 const perPersonCost = computed(() => {
-  const cost = discountedPrice.value / teamCount.value
-  return cost.toFixed(2)
+  return (launchPrice.value / teamCount.value).toFixed(2)
 })
 
-const currentSport = computed(() => {
-  const sport = sports.find(s => s.id === selectedSport.value)
-  return sport?.name || 'Football'
-})
+const currentYear = computed(() => new Date().getFullYear())
 
-const currentYear = computed(() => {
-  return new Date().getFullYear()
-})
+// Scroll to purchase section
+function scrollToPurchase() {
+  document.getElementById('purchase')?.scrollIntoView({ behavior: 'smooth' })
+}
 
 const faqs = [
   {
     question: "What happens when the season ends?",
-    answer: "Your League Pass subscription is valid for the entire season. When a new season starts, you'll need to purchase again to maintain full access. Your historical data is always preserved."
+    answer: "Your League Pass is valid for the entire season. When a new season starts, you'll need to renew to maintain full access. Your historical data is always preserved."
   },
   {
     question: "Can I use this for multiple leagues?",
-    answer: "Each League Pass covers one league for one sport. If you're in multiple leagues, you'll need separate passes for each. Many commissioners split the cost with their league mates!"
+    answer: "Each League Pass covers one league. If you're in multiple leagues, you'll need separate passes for each. Many commissioners split the cost with their league mates!"
   },
   {
     question: "Do my league mates need to pay?",
-    answer: "No! When one person purchases League Pass, every member of that league gets full access for free. They just need to create an account and connect their league."
+    answer: "No! When one person purchases League Pass, every member of that league gets full access for free. They just need to create a free account and connect their league."
   },
   {
     question: "What if I play on both Sleeper and Yahoo?",
-    answer: "We support both platforms! You can connect as many leagues as you want. Each league requires its own League Pass subscription."
+    answer: "We support ESPN, Yahoo, and Sleeper. You can connect as many leagues as you want — each league just needs its own League Pass."
   },
   {
     question: "Is there a refund policy?",
-    answer: "Due to the digital nature of the product and instant access, we don't offer refunds. However, you can try all the free features before purchasing to make sure it's right for you."
+    answer: "Due to the digital nature of the product and instant access, we don't offer refunds. You can try all free features first to make sure it's right for you."
   },
   {
-    question: "What's the difference between League Pass and Ultimate?",
-    answer: "League Pass unlocks dashboard features for your whole league (history, full rankings, graphics). Ultimate adds personal AI tools (projections, start/sit, waiver analysis) that only you can see - it's an individual subscription."
+    question: "What is Ultimate Tools and is it really free?",
+    answer: "Ultimate Tools includes AI-powered features like projections, start/sit advice, and waiver analysis. During beta it's included free with every League Pass. Pricing will be introduced after beta ends — early customers will get the best rates."
   },
   {
-    question: "Do I need League Pass to get Ultimate?",
-    answer: "Yes, Ultimate is an add-on that requires League Pass. Think of it as: League Pass unlocks the dashboard for everyone, Ultimate gives you personal AI tools on top."
+    question: "How does automatic access work for league mates?",
+    answer: "When your league mates create a free account and connect their fantasy account, our system automatically detects they're in a League Pass league and unlocks full access for them — no codes or invites needed."
   },
   {
-    question: "How does automatic access work for my league mates?",
-    answer: "When your league mates create a free account and connect their Yahoo or Sleeper account, our system automatically detects they're in a League Pass league and unlocks full access for them."
+    question: "Is the $19 price going up?",
+    answer: "Yes — $19 is our launch price for early adopters. The regular price is $29/season. Lock in the launch price now before it increases."
   }
 ]
 
@@ -555,16 +574,9 @@ function purchaseLeaguePass() {
   console.log('Purchase League Pass:', {
     leagueId: contextLeagueId.value,
     platform: contextPlatform.value,
-    sport: selectedSport.value,
     teamCount: teamCount.value,
-    price: discountedPrice.value
+    price: launchPrice.value
   })
   alert(`Stripe checkout coming soon!\n\nThis will unlock League Pass for:\n${contextLeagueName.value || 'your league'}`)
-}
-
-function purchaseUltimate() {
-  // TODO: Implement Stripe checkout
-  console.log('Purchase Ultimate')
-  alert('Stripe checkout coming soon!')
 }
 </script>
