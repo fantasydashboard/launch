@@ -328,6 +328,7 @@
               </div>
               <div class="flex items-center gap-2">
 <button 
+                  v-if="hasLeagueAccess"
                   @click="downloadTeamDraftImage" 
                   :disabled="isDownloadingTeamDraft"
                   class="flex items-center gap-2 text-sm px-3 py-1.5 rounded-lg font-semibold transition-all disabled:opacity-50"
@@ -337,6 +338,18 @@
                   <svg v-else-if="teamDraftToast === 'success'" class="w-4 h-4 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" /></svg>
                   <svg v-else class="w-4 h-4 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" /></svg>
                   {{ isDownloadingTeamDraft ? 'Generating...' : teamDraftToast === 'success' ? 'Copied! 📋' : 'Share' }}
+                </button>
+                <button
+                  v-else
+                  @click="goToPricing"
+                  class="flex items-center gap-2 text-sm px-3 py-1.5 rounded-lg font-semibold transition-all"
+                  style="background: rgba(30,33,48,0.8); color: #6b7280; border: 1px solid #374151;"
+                  title="League Pass required to share"
+                >
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                  </svg>
+                  Share
                 </button>
                 <button @click="showBoardTeamModal = false" class="p-2 rounded-lg hover:bg-dark-border/50 transition-colors">
                   <svg class="w-5 h-5 text-dark-textMuted" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -466,10 +479,11 @@
         <div class="card-body">
           <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
             <div 
-              v-for="cat in categoryLeaders" 
+              v-for="(cat, idx) in categoryLeaders" 
               :key="cat.category"
               class="bg-dark-border/20 rounded-xl p-4 cursor-pointer hover:ring-2 hover:ring-primary transition-all"
-              @click="cat.player && selectPick(cat.player)"
+              :class="{ 'draft-blur-row': !hasLeagueAccess && idx >= 5 }"
+              @click="(!hasLeagueAccess && idx >= 5) ? null : (cat.player && selectPick(cat.player))"
             >
               <div class="text-center mb-3">
                 <span 
@@ -500,6 +514,22 @@
             </div>
           </div>
         </div>
+          <div v-if="!hasLeagueAccess && categoryLeaders.length > 5" class="early-gate-banner" style="margin: 12px 0 4px;">
+            <div class="early-gate-inner">
+              <div class="early-gate-left">
+                <span class="early-gate-icon">🏆</span>
+                <div>
+                  <div class="early-gate-headline">{{ categoryLeaders.length - 5 }} more categories locked</div>
+                  <div class="early-gate-sub">See every category leader from your draft</div>
+                </div>
+              </div>
+              <button class="gate-cta-btn" @click="goToPricing">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>
+                GET LEAGUE PASS
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+              </button>
+            </div>
+          </div>
       </div>
 
       <!-- Category Value by Round -->
@@ -527,6 +557,7 @@
                   v-for="round in cat.rounds"
                   :key="round.round"
                   class="flex-1 h-8 rounded flex items-center justify-center text-xs font-bold cursor-pointer hover:ring-1 hover:ring-primary"
+                  :class="{ 'draft-blur-row': !hasLeagueAccess && round.round > 3 }"
                   :style="getRoundValueStyle(round.avgPercentile)"
                   :title="`R${round.round}: ${round.avgPercentile.toFixed(0)}% avg percentile (${round.count} players)`"
                 >
@@ -638,6 +669,7 @@
                 v-for="(pick, idx) in sortedImpactPicks" 
                 :key="pick.pick"
                 class="border-b border-dark-border/50 hover:bg-dark-border/20 cursor-pointer"
+                :class="{ 'draft-blur-row': !hasLeagueAccess && idx >= 3 }"
                 @click="selectPick(pick)"
               >
                 <td class="p-3 sticky left-0 bg-dark-card z-10">
@@ -811,6 +843,7 @@
               </div>
               <div class="flex items-center gap-2">
 <button 
+                  v-if="hasLeagueAccess"
                   @click="downloadBalanceImage" 
                   :disabled="isDownloadingBalance"
                   class="flex items-center gap-2 text-sm px-3 py-1.5 rounded-lg font-semibold transition-all disabled:opacity-50"
@@ -820,6 +853,18 @@
                   <svg v-else-if="balanceToast === 'success'" class="w-4 h-4 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" /></svg>
                   <svg v-else class="w-4 h-4 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" /></svg>
                   {{ isDownloadingBalance ? 'Generating...' : balanceToast === 'success' ? 'Copied! 📋' : 'Share' }}
+                </button>
+                <button
+                  v-else
+                  @click="goToPricing"
+                  class="flex items-center gap-2 text-sm px-3 py-1.5 rounded-lg font-semibold transition-all"
+                  style="background: rgba(30,33,48,0.8); color: #6b7280; border: 1px solid #374151;"
+                  title="League Pass required to share"
+                >
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                  </svg>
+                  Share
                 </button>
                 <button @click="showBalanceModal = false" class="p-2 rounded-lg hover:bg-dark-border/50 transition-colors">
                   <svg class="w-5 h-5 text-dark-textMuted" fill="none" stroke="currentColor" viewBox="0 0 24 24">
