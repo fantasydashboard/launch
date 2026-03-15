@@ -86,9 +86,11 @@
               </div>
             </div>
             <div class="flex items-center gap-2 flex-shrink-0">
-              <button 
-                @click="downloadRankings" 
-                :disabled="isGeneratingDownload" 
+              <!-- Share: League Pass only -->
+              <button
+                v-if="hasLeagueAccess"
+                @click="downloadRankings"
+                :disabled="isGeneratingDownload"
                 class="flex items-center gap-2 px-4 py-2 rounded-lg font-semibold transition-all disabled:opacity-50"
                 :style="shareToast === 'success' ? 'background: rgba(16,185,129,0.15); color: #10b981; border: 1px solid #10b981;' : 'background: transparent; color: #facc15; border: 1px solid #facc15;'"
               >
@@ -101,6 +103,19 @@
                 </svg>
                 <svg v-else class="w-4 h-4 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" /></svg>
                 {{ isGeneratingDownload ? 'Generating...' : shareToast === 'success' ? 'Copied! 📋' : 'Share' }}
+              </button>
+              <!-- Locked share for free users -->
+              <button
+                v-else
+                @click="goToPricing"
+                class="flex items-center gap-2 px-4 py-2 rounded-lg font-semibold transition-all"
+                style="background: rgba(30,33,48,0.8); color: #6b7280; border: 1px solid #374151;"
+                title="League Pass required to share"
+              >
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                </svg>
+                Share
               </button>
             </div>
           </div>
@@ -510,17 +525,20 @@
       </div>
       </div>
 
-      <!-- Single unlock gate for entire locked section -->
-      <div v-if="!hasLeagueAccess && sortedPowerRankings.length > 3" class="single-gate">
-        <div class="single-gate-inner">
-          <span class="single-gate-lock">🔒</span>
-          <div>
-            <div class="single-gate-headline">Unlock the full Power Rankings</div>
-            <div class="single-gate-sub">See every team's score, the historical trend chart, and rankings insights.</div>
+      <!-- Early upgrade CTA — shown right after top 3, before blurred content -->
+      <div v-if="!hasLeagueAccess && sortedPowerRankings.length > 3" class="early-gate-banner">
+        <div class="early-gate-inner">
+          <div class="early-gate-left">
+            <span class="early-gate-icon">⚡</span>
+            <div>
+              <div class="early-gate-headline">{{ sortedPowerRankings.length - 3 }} more teams are locked</div>
+              <div class="early-gate-sub">Plus trend charts, rankings insights &amp; share graphics</div>
+            </div>
           </div>
-          <button class="single-gate-btn" @click="goToPricing">
-            Unlock League Pass
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+          <button class="gate-cta-btn" @click="goToPricing">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>
+            GET LEAGUE PASS
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
           </button>
         </div>
       </div>
@@ -2757,60 +2775,84 @@ onMounted(async () => {
   pointer-events: none;
   user-select: none;
 }
+/* ── Blurred locked sections ── */
 .locked-section {
-  filter: blur(5px);
+  filter: blur(6px);
   pointer-events: none;
   user-select: none;
-  opacity: 0.45;
+  opacity: 0.4;
+  transition: filter 0.2s, opacity 0.2s;
 }
-.single-gate {
-  margin-top: -48px;
+
+/* ── Early gate banner ── */
+.early-gate-banner {
   position: relative;
   z-index: 10;
-  padding: 0 0 24px;
-  background: linear-gradient(to bottom, transparent 0%, #0a0c14 30%);
+  padding: 4px 0 20px;
 }
-.single-gate-inner {
+.early-gate-inner {
   display: flex;
   align-items: center;
-  gap: 16px;
+  justify-content: space-between;
   flex-wrap: wrap;
-  justify-content: center;
-  background: linear-gradient(135deg, #0d0f1a, #0a0d18);
-  border: 1px solid rgba(234,179,8,0.3);
-  border-radius: 14px;
-  padding: 22px 28px;
-  box-shadow: 0 0 40px rgba(0,0,0,0.6);
-  max-width: 580px;
-  margin: 0 auto;
-  text-align: center;
+  gap: 16px;
+  background: linear-gradient(135deg, #0f1118 0%, #0c0f1c 100%);
+  border: 1px solid rgba(234,179,8,0.35);
+  border-left: 3px solid #eab308;
+  border-radius: 12px;
+  padding: 16px 20px;
+  box-shadow: 0 4px 24px rgba(0,0,0,0.5), inset 0 1px 0 rgba(234,179,8,0.08);
 }
-.single-gate-lock { font-size: 1.5rem; }
-.single-gate-headline {
-  font-size: 1rem;
+.early-gate-left {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+.early-gate-icon {
+  font-size: 1.4rem;
+  filter: drop-shadow(0 0 8px rgba(234,179,8,0.6));
+}
+.early-gate-headline {
+  font-size: 0.95rem;
   font-weight: 800;
   color: #fff;
-  margin-bottom: 3px;
+  margin-bottom: 2px;
   font-family: 'Barlow Condensed', sans-serif;
-  letter-spacing: 0.02em;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
 }
-.single-gate-sub { font-size: 0.77rem; color: #6b7280; }
-.single-gate-btn {
+.early-gate-sub {
+  font-size: 0.75rem;
+  color: #6b7280;
+}
+
+/* ── Shared CTA button ── */
+.gate-cta-btn {
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  padding: 11px 22px;
-  background: #eab308;
+  padding: 10px 20px;
+  background: linear-gradient(135deg, #eab308 0%, #ca8a04 100%);
   color: #0a0c14;
   font-family: 'Barlow Condensed', sans-serif;
-  font-size: 0.95rem;
-  font-weight: 800;
-  letter-spacing: 0.04em;
+  font-size: 0.9rem;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
   border: none;
   border-radius: 8px;
   cursor: pointer;
-  transition: background 0.15s, transform 0.15s;
   white-space: nowrap;
+  transition: all 0.15s;
+  box-shadow: 0 2px 12px rgba(234,179,8,0.3);
+  flex-shrink: 0;
 }
-.single-gate-btn:hover { background: #fbbf24; transform: translateY(-1px); }
+.gate-cta-btn:hover {
+  background: linear-gradient(135deg, #fbbf24 0%, #eab308 100%);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 20px rgba(234,179,8,0.45);
+}
+.gate-cta-btn:active {
+  transform: translateY(0);
+}
 </style>

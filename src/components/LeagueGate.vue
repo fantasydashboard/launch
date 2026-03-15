@@ -10,8 +10,9 @@
           <div class="lgw-sub">Unlock everything for your whole league — one flat fee, one season.</div>
         </div>
         <button class="lgw-btn" @click="goToPricing">
-          Unlock League Pass
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>
+          GET LEAGUE PASS
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
         </button>
       </div>
     </div>
@@ -25,8 +26,9 @@
         <span class="lgi-lock">🔒</span>
         <span class="lgi-text">The rest of your league is hiding behind League Pass.</span>
         <button class="lgi-btn" @click="goToPricing">
-          Unlock League Pass
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>
+          GET LEAGUE PASS
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
         </button>
       </div>
     </div>
@@ -71,9 +73,12 @@ function goToPricing() {
 }
 .lgw-cta {
   display: flex; align-items: center; gap: 16px; flex-wrap: wrap; justify-content: center;
-  background: linear-gradient(135deg, #0d0f1a, #0a0d18);
-  border: 1px solid rgba(234,179,8,0.3); border-radius: 14px; padding: 20px 28px;
-  box-shadow: 0 0 40px rgba(0,0,0,0.6); max-width: 520px; text-align: center;
+  background: linear-gradient(135deg, #0f1118 0%, #0c0f1c 100%);
+  border: 1px solid rgba(234,179,8,0.35);
+  border-left: 3px solid #eab308;
+  border-radius: 14px; padding: 20px 28px;
+  box-shadow: 0 0 40px rgba(0,0,0,0.6), inset 0 1px 0 rgba(234,179,8,0.08);
+  max-width: 520px; text-align: center;
 }
 .lgw-lock { font-size: 1.5rem; }
 .lgw-headline {
@@ -82,13 +87,21 @@ function goToPricing() {
 }
 .lgw-sub { font-size: 0.77rem; color: #6b7280; }
 .lgw-btn {
-  display: inline-flex; align-items: center; gap: 8px; padding: 11px 20px; white-space: nowrap;
-  background: #eab308; color: #0a0c14;
-  font-family: 'Barlow Condensed', sans-serif; font-size: 0.95rem; font-weight: 800;
-  letter-spacing: 0.04em; border: none; border-radius: 8px; cursor: pointer;
-  transition: background 0.15s, transform 0.15s;
+  display: inline-flex; align-items: center; gap: 8px; padding: 11px 22px; white-space: nowrap;
+  background: linear-gradient(135deg, #eab308 0%, #ca8a04 100%);
+  color: #0a0c14;
+  font-family: 'Barlow Condensed', sans-serif; font-size: 0.9rem; font-weight: 900;
+  letter-spacing: 0.08em; text-transform: uppercase;
+  border: none; border-radius: 8px; cursor: pointer;
+  box-shadow: 0 2px 16px rgba(234,179,8,0.35);
+  transition: all 0.15s;
 }
-.lgw-btn:hover { background: #fbbf24; transform: translateY(-1px); }
+.lgw-btn:hover {
+  background: linear-gradient(135deg, #fbbf24 0%, #eab308 100%);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 24px rgba(234,179,8,0.5);
+}
+.lgw-btn:active { transform: translateY(0); }
 
 /* ── Inline bar ── */
 .lgi { position: relative; margin-top: -40px; }
@@ -99,9 +112,17 @@ function goToPricing() {
 .lgi-text { font-size: 0.82rem; color: #6b7280; }
 .lgi-btn {
   display: inline-flex; align-items: center; gap: 6px; padding: 9px 18px;
-  background: #eab308; color: #0a0c14;
-  font-family: 'Barlow Condensed', sans-serif; font-size: 0.9rem; font-weight: 800;
-  border: none; border-radius: 7px; cursor: pointer; transition: background 0.15s;
+  background: linear-gradient(135deg, #eab308 0%, #ca8a04 100%);
+  color: #0a0c14;
+  font-family: 'Barlow Condensed', sans-serif; font-size: 0.85rem; font-weight: 900;
+  letter-spacing: 0.07em; text-transform: uppercase;
+  border: none; border-radius: 7px; cursor: pointer;
+  box-shadow: 0 2px 12px rgba(234,179,8,0.3);
+  transition: all 0.15s;
 }
-.lgi-btn:hover { background: #fbbf24; }
+.lgi-btn:hover {
+  background: linear-gradient(135deg, #fbbf24 0%, #eab308 100%);
+  transform: translateY(-1px);
+  box-shadow: 0 3px 18px rgba(234,179,8,0.45);
+}
 </style>
