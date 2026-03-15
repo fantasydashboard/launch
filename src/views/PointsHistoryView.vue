@@ -152,6 +152,7 @@
               <div class="flex items-center gap-2">
                 <span class="text-xs text-dark-textMuted italic">Downloads in current sort order</span>
                 <button 
+                  v-if="hasLeagueAccess"
                   @click="downloadCareerStats"
                   :disabled="isDownloadingCareerStats"
                   class="px-4 py-2 rounded-lg font-medium flex items-center gap-2 text-sm transition-all disabled:opacity-50"
@@ -166,6 +167,18 @@
                   </svg>
                   {{ isDownloadingCareerStats ? 'Generating...' : shareToast === 'success' ? 'Copied! 📋' : 'Share League History' }}
                 </button>
+              <button
+                v-else
+                @click="goToPricing"
+                class="px-4 py-2 rounded-lg font-medium flex items-center gap-2 text-sm transition-all"
+                style="background: rgba(30,33,48,0.8); color: #6b7280; border: 1px solid #374151;"
+                title="League Pass required to share"
+              >
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                </svg>
+                Share
+              </button>
               </div>
             </div>
           </div>
@@ -196,7 +209,8 @@
               </tr>
             </thead>
             <tbody>
-              <tr v-for="(stat, idx) in gatedCareerStats" :key="stat.team_key" 
+              <tr v-for="(stat, idx) in filteredCareerStats" :key="stat.team_key"
+                :class="{ 'history-blur-row': !hasLeagueAccess && idx >= 3 }" 
                   class="border-b border-dark-border hover:bg-dark-border/30 transition-colors">
                 <td class="py-3 px-4">
                   <div class="flex items-center gap-3">
@@ -231,7 +245,23 @@
               </tr>
             </tbody>
           </table>
-          <LeagueGate :locked="!hasLeagueAccess && filteredCareerStats.length > 3" />
+          <!-- Gate banner -->
+          <div v-if="!hasLeagueAccess && filteredCareerStats.length > 3" class="early-gate-banner" style="margin: 8px 0 4px;">
+            <div class="early-gate-inner">
+              <div class="early-gate-left">
+                <span class="early-gate-icon">📊</span>
+                <div>
+                  <div class="early-gate-headline">More data locked</div>
+                  <div class="early-gate-sub">See every team's career statistics</div>
+                </div>
+              </div>
+              <button class="gate-cta-btn" @click="goToPricing">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>
+                GET LEAGUE PASS
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+              </button>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -275,7 +305,8 @@
               </tr>
             </thead>
             <tbody>
-              <tr v-for="season in gatedSeasonRecords" :key="season.season" 
+              <tr v-for="(season, idx) in seasonRecords" :key="season.season"
+                :class="{ 'history-blur-row': !hasLeagueAccess && idx >= 1 }" 
                   class="border-b border-dark-border hover:bg-dark-border/30 transition-colors">
                 <td class="py-3 px-4 font-bold text-dark-text">{{ season.season }}</td>
                 <td class="text-center py-3 px-4 text-dark-text">{{ season.avg_ppw.toFixed(1) }}</td>
@@ -298,7 +329,23 @@
               </tr>
             </tbody>
           </table>
-        <LeagueGate :locked="!hasLeagueAccess && seasonRecords.length > 3" />
+          <!-- Gate banner -->
+          <div v-if="!hasLeagueAccess && seasonRecords.length > 1" class="early-gate-banner" style="margin: 8px 0 4px;">
+            <div class="early-gate-inner">
+              <div class="early-gate-left">
+                <span class="early-gate-icon">📅</span>
+                <div>
+                  <div class="early-gate-headline">More data locked</div>
+                  <div class="early-gate-sub">See every season's stats and champion</div>
+                </div>
+              </div>
+              <button class="gate-cta-btn" @click="goToPricing">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>
+                GET LEAGUE PASS
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+              </button>
+            </div>
+          </div>
         </div>
       </div>
       </template>
@@ -625,7 +672,8 @@
               <tr>
                 <th class="sticky left-0 bg-dark-elevated z-10 px-3 py-2 text-left border border-dark-border min-w-[120px]">Team</th>
                 <th 
-                  v-for="team in gatedH2HTeams" 
+                  v-for="(team, tidx) in filteredH2HTeams"
+                    :class="{ 'history-blur-row': !hasLeagueAccess && tidx >= 3 }" 
                   :key="`header-${team.team_key}`"
                   class="px-2 py-2 text-center border border-dark-border font-semibold text-dark-textSecondary uppercase tracking-wider"
                   style="min-width: 90px;"
@@ -640,7 +688,8 @@
               </tr>
             </thead>
             <tbody>
-              <tr v-for="rowTeam in gatedH2HTeams" :key="`row-${rowTeam.team_key}`">
+              <tr v-for="(rowTeam, ridx) in filteredH2HTeams" :key="`row-${rowTeam.team_key}`"
+                :class="{ 'history-blur-row': !hasLeagueAccess && ridx >= 3 }">
                 <td class="sticky left-0 bg-dark-elevated z-10 px-3 py-2 font-semibold text-dark-text border border-dark-border whitespace-nowrap">
                   <div class="flex items-center gap-2">
                     <div class="w-6 h-6 rounded-full overflow-hidden bg-dark-border flex-shrink-0">
@@ -650,7 +699,7 @@
                   </div>
                 </td>
                 <td 
-                  v-for="colTeam in gatedH2HTeams" 
+                  v-for="colTeam in filteredH2HTeams" 
                   :key="`cell-${rowTeam.team_key}-${colTeam.team_key}`"
                   class="px-2 py-2 text-center border border-dark-border"
                   :class="getH2HCellClass(rowTeam.team_key, colTeam.team_key)"
@@ -741,7 +790,8 @@
               </h3>
               <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div 
-                  v-for="award in gatedAllTimeHoF" 
+                  v-for="(award, idx) in allTimeHallOfFame"
+                    :class="{ 'history-blur-row': !hasLeagueAccess && idx >= 1 }" 
                   :key="award.title" 
                   class="bg-green-500/10 border border-green-500/30 rounded-xl p-4 cursor-pointer hover:bg-green-500/20 transition-colors"
                   @click="openAwardModal(award.title, 'best')"
@@ -770,7 +820,23 @@
                 </div>
               </div>
             </div>
-            <LeagueGate :locked="!hasLeagueAccess && allTimeHallOfFame.length > 1" />
+          <!-- Gate banner -->
+          <div v-if="!hasLeagueAccess && allTimeHallOfFame.length > 1" class="early-gate-banner" style="margin: 8px 0 4px;">
+            <div class="early-gate-inner">
+              <div class="early-gate-left">
+                <span class="early-gate-icon">🏅</span>
+                <div>
+                  <div class="early-gate-headline">More data locked</div>
+                  <div class="early-gate-sub">See every Hall of Fame achievement</div>
+                </div>
+              </div>
+              <button class="gate-cta-btn" @click="goToPricing">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>
+                GET LEAGUE PASS
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+              </button>
+            </div>
+          </div>
 
             <!-- Hall of Shame -->
             <div class="mb-8">
@@ -780,7 +846,8 @@
               </h3>
               <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div 
-                  v-for="award in gatedAllTimeHoS" 
+                  v-for="(award, idx) in allTimeHallOfShame"
+                    :class="{ 'history-blur-row': !hasLeagueAccess && idx >= 1 }" 
                   :key="award.title" 
                   class="bg-dark-border/30 rounded-xl p-4 cursor-pointer hover:bg-dark-border/50 transition-colors"
                   @click="openAwardModal(award.title, 'worst')"
@@ -808,7 +875,23 @@
                   <div class="text-xs text-red-400 mt-2 opacity-70">Click for bottom 10 →</div>
                 </div>
               </div>
-            <LeagueGate :locked="!hasLeagueAccess && allTimeHallOfShame.length > 1" />
+          <!-- Gate banner -->
+          <div v-if="!hasLeagueAccess && allTimeHallOfShame.length > 1" class="early-gate-banner" style="margin: 8px 0 4px;">
+            <div class="early-gate-inner">
+              <div class="early-gate-left">
+                <span class="early-gate-icon">💩</span>
+                <div>
+                  <div class="early-gate-headline">More data locked</div>
+                  <div class="early-gate-sub">See every Hall of Shame achievement</div>
+                </div>
+              </div>
+              <button class="gate-cta-btn" @click="goToPricing">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>
+                GET LEAGUE PASS
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+              </button>
+            </div>
+          </div>
             </div>
           </div>
 
@@ -822,7 +905,8 @@
               </h3>
               <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div 
-                  v-for="award in gatedSeasonHoF" 
+                  v-for="(award, idx) in seasonHallOfFame"
+                    :class="{ 'history-blur-row': !hasLeagueAccess && idx >= 1 }" 
                   :key="award.title" 
                   class="bg-green-500/10 border border-green-500/30 rounded-xl p-4 cursor-pointer hover:bg-green-500/20 transition-colors"
                   @click="openSeasonAwardModal(award.title, 'best')"
@@ -859,7 +943,8 @@
               </h3>
               <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div 
-                  v-for="award in gatedSeasonHoS" 
+                  v-for="(award, idx) in seasonHallOfShame"
+                    :class="{ 'history-blur-row': !hasLeagueAccess && idx >= 1 }" 
                   :key="award.title" 
                   class="bg-dark-border/30 rounded-xl p-4 cursor-pointer hover:bg-dark-border/50 transition-colors"
                   @click="openSeasonAwardModal(award.title, 'worst')"
@@ -886,7 +971,23 @@
                   <div class="text-xs text-red-400 mt-2 opacity-70">Click for bottom 10 →</div>
                 </div>
               </div>
-            <LeagueGate :locked="!hasLeagueAccess && seasonHallOfShame.length > 1" />
+          <!-- Gate banner -->
+          <div v-if="!hasLeagueAccess && seasonHallOfShame.length > 1" class="early-gate-banner" style="margin: 8px 0 4px;">
+            <div class="early-gate-inner">
+              <div class="early-gate-left">
+                <span class="early-gate-icon">💩</span>
+                <div>
+                  <div class="early-gate-headline">More data locked</div>
+                  <div class="early-gate-sub">See all season hall of shame entries</div>
+                </div>
+              </div>
+              <button class="gate-cta-btn" @click="goToPricing">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>
+                GET LEAGUE PASS
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+              </button>
+            </div>
+          </div>
             </div>
           </div>
 
@@ -894,7 +995,8 @@
           <div v-if="selectedAwardTab === 'Weekly'">
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div 
-                v-for="award in gatedWeeklyAwards" 
+                v-for="(award, idx) in weeklyAwards"
+                    :class="{ 'history-blur-row': !hasLeagueAccess && idx >= 1 }" 
                 :key="award.title" 
                 class="bg-dark-border/30 rounded-xl p-4 cursor-pointer hover:bg-dark-border/50 transition-colors"
                 @click="openWeeklyAwardModal(award.title, award.isShame ? 'worst' : 'best')"
@@ -1073,7 +1175,8 @@
           <div class="card-body p-0">
             <div class="divide-y divide-dark-border">
               <div 
-                v-for="(team, idx) in gatedLegacyScores" 
+                v-for="(team, idx) in filteredLegacyScores"
+                :class="{ 'history-blur-row': !hasLeagueAccess && idx >= 3 }" 
                 :key="team.team_key"
                 class="p-4 hover:bg-dark-border/20 transition-colors cursor-pointer"
                 @click="openLegacyModal(team)"
@@ -1134,7 +1237,23 @@
                   </div>
                 </div>
               </div>
-              <LeagueGate :locked="!hasLeagueAccess && filteredLegacyScores.length > 3" />
+          <!-- Gate banner -->
+          <div v-if="!hasLeagueAccess && filteredLegacyScores.length > 3" class="early-gate-banner" style="margin: 8px 0 4px;">
+            <div class="early-gate-inner">
+              <div class="early-gate-left">
+                <span class="early-gate-icon">👑</span>
+                <div>
+                  <div class="early-gate-headline">More data locked</div>
+                  <div class="early-gate-sub">See every team's legacy score and history</div>
+                </div>
+              </div>
+              <button class="gate-cta-btn" @click="goToPricing">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>
+                GET LEAGUE PASS
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+              </button>
+            </div>
+          </div>
               
               <div v-if="filteredLegacyScores.length === 0" class="p-8 text-center text-dark-textMuted">
                 No legacy data available. Load historical data to see legacy scores.
@@ -1166,7 +1285,7 @@
         </div>
 
         <!-- Legacy Trend Chart -->
-        <div v-if="legacyChartYearsAll.length >= 2" class="card mt-6">
+        <div v-if="legacyChartYearsAll.length >= 2" class="card mt-6" :class="{ 'history-blur-row': !hasLeagueAccess }">
           <div class="card-header">
             <div class="flex items-center justify-between flex-wrap gap-4">
               <div>
@@ -1218,14 +1337,15 @@
                   @scroll="updateScrollState"
                 >
                   <div 
-                    v-for="(team, idx) in gatedLegacyScores" 
+                    v-for="(team, idx) in filteredLegacyScores"
                     :key="'selector-' + team.team_key"
                     class="flex flex-col items-center gap-1.5 px-3 py-2 rounded-lg cursor-pointer transition-all flex-shrink-0 min-w-[80px]"
                     :class="[
                       selectedLegacyTeamKey === team.team_key 
                         ? 'bg-dark-border ring-2 ring-offset-2 ring-offset-dark-card' 
                         : 'bg-dark-bg/50 hover:bg-dark-border/50',
-                      selectedLegacyTeamKey && selectedLegacyTeamKey !== team.team_key ? 'opacity-40' : ''
+                      selectedLegacyTeamKey && selectedLegacyTeamKey !== team.team_key ? 'opacity-40' : '',
+                      !hasLeagueAccess && idx >= 3 ? 'history-blur-row' : ''
                     ]"
                     :style="selectedLegacyTeamKey === team.team_key ? { ringColor: getLegacyTeamColor(idx) } : {}"
                     @click="selectedLegacyTeamKey = selectedLegacyTeamKey === team.team_key ? null : team.team_key"
@@ -1277,6 +1397,7 @@
                   </div>
                   <!-- Share button -->
                   <button 
+                    v-if="hasLeagueAccess"
                     @click.stop="downloadTeamLegacy(selectedLegacyTeamDetails)"
                     :disabled="isDownloadingTeamLegacy"
                     class="px-3 py-1.5 rounded-lg font-medium flex items-center gap-2 text-sm transition-all disabled:opacity-50"
@@ -1291,6 +1412,7 @@
                     </svg>
                     {{ isDownloadingTeamLegacy ? 'Generating...' : shareToast === 'success' ? 'Copied! 📋' : 'Share' }}
                   </button>
+                  <button v-else @click.stop="goToPricing" class="px-3 py-1.5 rounded-lg font-medium flex items-center gap-2 text-sm" style="background: rgba(30,33,48,0.8); color: #6b7280; border: 1px solid #374151;" title="League Pass required"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" /></svg>Share</button>
                   <!-- Close button -->
                   <button 
                     @click="selectedLegacyTeamKey = null"
@@ -1380,6 +1502,7 @@
             </div>
             <div class="flex items-center gap-2">
 <button 
+                v-if="hasLeagueAccess"
                 @click="downloadRecordRankings(recordModalLabel)" 
                 :disabled="isDownloadingRecord"
                 class="flex items-center gap-2 text-sm px-3 py-1.5 rounded-lg font-semibold transition-all disabled:opacity-50"
@@ -1392,6 +1515,18 @@
                 </svg>
                 <svg v-else class="w-4 h-4 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" /></svg>
                 {{ isDownloadingRecord ? 'Generating...' : recordToast === 'success' ? 'Copied! 📋' : 'Share' }}
+              </button>
+              <button
+                v-else
+                @click="goToPricing"
+                class="flex items-center gap-2 text-sm px-3 py-1.5 rounded-lg font-semibold transition-all"
+                style="background: rgba(30,33,48,0.8); color: #6b7280; border: 1px solid #374151;"
+                title="League Pass required to share"
+              >
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                </svg>
+                Share
               </button>
               <button @click="closeRecordModal" class="p-2 rounded-lg hover:bg-dark-border/50 transition-colors">
                 <svg class="w-5 h-5 text-dark-textMuted" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1468,6 +1603,7 @@
             </div>
             <div class="flex items-center gap-2">
 <button 
+                v-if="hasLeagueAccess"
                 @click="downloadAwardRankings(awardModalTitle, awardModalType)" 
                 :disabled="isDownloadingAward"
                 class="flex items-center gap-2 text-sm px-3 py-1.5 rounded-lg font-semibold transition-all disabled:opacity-50"
@@ -1480,6 +1616,18 @@
                 </svg>
                 <svg v-else class="w-4 h-4 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" /></svg>
                 {{ isDownloadingAward ? 'Generating...' : awardToast === 'success' ? 'Copied! 📋' : 'Share' }}
+              </button>
+              <button
+                v-else
+                @click="goToPricing"
+                class="flex items-center gap-2 text-sm px-3 py-1.5 rounded-lg font-semibold transition-all"
+                style="background: rgba(30,33,48,0.8); color: #6b7280; border: 1px solid #374151;"
+                title="League Pass required to share"
+              >
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                </svg>
+                Share
               </button>
               <button @click="closeAwardModal" class="p-2 rounded-lg hover:bg-dark-border/50 transition-colors">
                 <svg class="w-5 h-5 text-dark-textMuted" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1558,6 +1706,7 @@
             </div>
             <div class="flex items-center gap-2">
 <button 
+                v-if="hasLeagueAccess"
                 @click="downloadSeasonAwardRankings(seasonAwardModalTitle, seasonAwardModalType)" 
                 :disabled="isDownloadingSeasonAward"
                 class="flex items-center gap-2 text-sm px-3 py-1.5 rounded-lg font-semibold transition-all disabled:opacity-50"
@@ -1570,6 +1719,18 @@
                 </svg>
                 <svg v-else class="w-4 h-4 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" /></svg>
                 {{ isDownloadingSeasonAward ? 'Generating...' : seasonAwardToast === 'success' ? 'Copied! 📋' : 'Share' }}
+              </button>
+              <button
+                v-else
+                @click="goToPricing"
+                class="flex items-center gap-2 text-sm px-3 py-1.5 rounded-lg font-semibold transition-all"
+                style="background: rgba(30,33,48,0.8); color: #6b7280; border: 1px solid #374151;"
+                title="League Pass required to share"
+              >
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                </svg>
+                Share
               </button>
               <button @click="closeSeasonAwardModal" class="p-2 rounded-lg hover:bg-dark-border/50 transition-colors">
                 <svg class="w-5 h-5 text-dark-textMuted" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1648,6 +1809,7 @@
             </div>
             <div class="flex items-center gap-2">
 <button 
+                v-if="hasLeagueAccess"
                 @click="downloadWeeklyAwardRankings(weeklyAwardModalTitle, weeklyAwardModalType)" 
                 :disabled="isDownloadingWeeklyAward"
                 class="flex items-center gap-2 text-sm px-3 py-1.5 rounded-lg font-semibold transition-all disabled:opacity-50"
@@ -1660,6 +1822,18 @@
                 </svg>
                 <svg v-else class="w-4 h-4 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" /></svg>
                 {{ isDownloadingWeeklyAward ? 'Generating...' : weeklyAwardToast === 'success' ? 'Copied! 📋' : 'Share' }}
+              </button>
+              <button
+                v-else
+                @click="goToPricing"
+                class="flex items-center gap-2 text-sm px-3 py-1.5 rounded-lg font-semibold transition-all"
+                style="background: rgba(30,33,48,0.8); color: #6b7280; border: 1px solid #374151;"
+                title="League Pass required to share"
+              >
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                </svg>
+                Share
               </button>
               <button @click="closeWeeklyAwardModal" class="p-2 rounded-lg hover:bg-dark-border/50 transition-colors">
                 <svg class="w-5 h-5 text-dark-textMuted" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -2028,12 +2202,20 @@ import html2canvas from 'html2canvas'
 import LoadingSpinner from '@/components/LoadingSpinner.vue'
 import LeagueGate from '@/components/LeagueGate.vue'
 import { useFeatureAccess } from '@/composables/useFeatureAccess'
+import { useRouter } from 'vue-router'
 import VueApexCharts from 'vue3-apexcharts'
 
 const apexchart = VueApexCharts
 
 const leagueStore = useLeagueStore()
 const { hasLeagueAccess } = useFeatureAccess()
+const router = useRouter()
+function goToPricing() {
+  const params = new URLSearchParams()
+  if (leagueStore.activeLeagueId) params.set('league', leagueStore.activeLeagueId)
+  if (leagueStore.activePlatform) params.set('platform', leagueStore.activePlatform)
+  router.push(`/pricing?${params.toString()}`)
+}
 
 // Gated computeds
 const gatedSeasonRecords = computed(() => hasLeagueAccess.value ? seasonRecords.value : seasonRecords.value.slice(0, 3))
@@ -7420,5 +7602,41 @@ onMounted(() => {
 
 .legacy-chart-container :deep(.apexcharts-datalabels) {
   transition: all 0.3s ease;
+}
+
+.history-blur-row {
+  filter: blur(5px);
+  pointer-events: none;
+  user-select: none;
+  opacity: 0.4;
+  transition: filter 0.2s;
+}
+.early-gate-banner { position: relative; z-index: 10; }
+.early-gate-inner {
+  display: flex; align-items: center; justify-content: space-between;
+  flex-wrap: wrap; gap: 16px;
+  background: linear-gradient(135deg, #0f1118 0%, #0c0f1c 100%);
+  border: 1px solid rgba(234,179,8,0.35); border-left: 3px solid #eab308;
+  border-radius: 12px; padding: 14px 18px;
+  box-shadow: 0 4px 24px rgba(0,0,0,0.5);
+}
+.early-gate-left { display: flex; align-items: center; gap: 12px; }
+.early-gate-icon { font-size: 1.3rem; filter: drop-shadow(0 0 8px rgba(234,179,8,0.6)); }
+.early-gate-headline {
+  font-size: 0.9rem; font-weight: 800; color: #fff; margin-bottom: 2px;
+  font-family: 'Barlow Condensed', sans-serif; letter-spacing: 0.03em; text-transform: uppercase;
+}
+.early-gate-sub { font-size: 0.74rem; color: #6b7280; }
+.gate-cta-btn {
+  display: inline-flex; align-items: center; gap: 8px; padding: 9px 18px;
+  background: linear-gradient(135deg, #eab308 0%, #ca8a04 100%);
+  color: #0a0c14; font-family: 'Barlow Condensed', sans-serif;
+  font-size: 0.88rem; font-weight: 900; letter-spacing: 0.08em; text-transform: uppercase;
+  border: none; border-radius: 8px; cursor: pointer; white-space: nowrap;
+  transition: all 0.15s; box-shadow: 0 2px 12px rgba(234,179,8,0.3); flex-shrink: 0;
+}
+.gate-cta-btn:hover {
+  background: linear-gradient(135deg, #fbbf24 0%, #eab308 100%);
+  transform: translateY(-1px); box-shadow: 0 4px 20px rgba(234,179,8,0.45);
 }
 </style>
