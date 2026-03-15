@@ -155,7 +155,8 @@
 
       <!-- Selected Matchup Analysis -->
       <template v-if="selectedMatchup">
-        <!-- Win Probability Section -->
+        <!-- Win Probability + analysis — gated -->
+        <LeagueGate wrap :locked="!hasLeagueAccess" label="Matchup Analysis">
         <div class="card">
           <div class="card-header">
             <div class="flex items-center justify-between">
@@ -406,6 +407,7 @@
             <div v-else class="text-center text-dark-textMuted py-4">No previous matchups this season</div>
           </div>
         </div>
+      </LeagueGate>
       </template>
     </template>
 
@@ -426,8 +428,20 @@ import { yahooService } from '@/services/yahoo'
 import { espnService } from '@/services/espn'
 import ApexCharts from 'apexcharts'
 import LoadingSpinner from '@/components/LoadingSpinner.vue'
+import LeagueGate from '@/components/LeagueGate.vue'
+import { useFeatureAccess } from '@/composables/useFeatureAccess'
+import { useRouter } from 'vue-router'
 
 const leagueStore = useLeagueStore()
+const router = useRouter()
+const { hasLeagueAccess } = useFeatureAccess()
+
+function goToPricing() {
+  const params = new URLSearchParams()
+  if (leagueStore.activeLeagueId) params.set('league', leagueStore.activeLeagueId)
+  if (leagueStore.activePlatform) params.set('platform', leagueStore.activePlatform)
+  router.push(`/pricing?${params.toString()}`)
+}
 const authStore = useAuthStore()
 
 // Platform detection
