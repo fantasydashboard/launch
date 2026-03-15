@@ -1153,7 +1153,8 @@
               v-for="(steal, idx) in categorySteals" 
               :key="steal.pick"
               class="bg-dark-border/20 rounded-xl p-4 cursor-pointer hover:ring-2 hover:ring-primary transition-all"
-              @click="selectPick(steal)"
+              :class="{ 'draft-blur-row': !hasLeagueAccess && idx >= 3 }"
+              @click="(!hasLeagueAccess && idx >= 3) ? null : selectPick(steal)"
             >
               <div class="flex items-center gap-3">
                 <div class="text-lg font-bold w-6" :class="idx < 3 ? 'text-green-400' : 'text-dark-textMuted'">
