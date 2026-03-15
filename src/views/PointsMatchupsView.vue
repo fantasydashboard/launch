@@ -179,8 +179,7 @@
 
       <!-- Selected Matchup Analysis -->
       <template v-if="selectedMatchup">
-        <!-- Win Probability + all analysis — gated -->
-        <LeagueGate wrap :locked="!hasLeagueAccess" label="Matchup Analysis">
+        <!-- Win Probability -->
         <div class="card">
           <div class="card-header">
             <div class="flex items-center justify-between">
@@ -278,7 +277,8 @@
               </div>
             </div>
 
-            <!-- Win Probability Trend Chart -->
+            <!-- Win Probability Trend Chart — gated -->
+            <LeagueGate wrap :locked="!hasLeagueAccess" label="Matchup Deep Dive">
             <div class="mt-6">
               <div v-if="probabilityHistory.length > 0" class="h-52">
                 <apexchart 
@@ -315,10 +315,12 @@
                 </div>
               </div>
             </div>
+            </LeagueGate>
           </div>
         </div>
 
-        <!-- Scouting Reports -->
+        <!-- Scouting Reports + Stats + History — gated -->
+        <LeagueGate wrap :locked="!hasLeagueAccess" label="Full Matchup Analysis">
         <div class="card">
           <div class="card-header">
             <div class="flex items-center gap-2">

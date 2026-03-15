@@ -155,8 +155,7 @@
 
       <!-- Selected Matchup Analysis -->
       <template v-if="selectedMatchup">
-        <!-- Win Probability + analysis — gated -->
-        <LeagueGate wrap :locked="!hasLeagueAccess" label="Matchup Analysis">
+        <!-- Win Probability Section -->
         <div class="card">
           <div class="card-header">
             <div class="flex items-center justify-between">
@@ -214,7 +213,8 @@
               <div class="absolute left-0 top-0 h-full flex items-center px-4 z-10"><span class="font-bold text-sm text-white drop-shadow-md">{{ selectedMatchup.team1.name }}</span></div>
               <div class="absolute right-0 top-0 h-full flex items-center px-4 z-10"><span class="font-bold text-sm text-white drop-shadow-md">{{ selectedMatchup.team2.name }}</span></div>
             </div>
-            <!-- Chart -->
+            <!-- Chart + rest of win prob card — gated -->
+            <LeagueGate wrap :locked="!hasLeagueAccess" label="Matchup Deep Dive">
             <div class="bg-dark-border/30 rounded-xl p-4">
               <h4 class="text-sm font-semibold text-dark-textMuted mb-3">{{ chartTitle }}</h4>
               <div v-if="chartLoading" class="h-48 flex items-center justify-center">
@@ -224,10 +224,12 @@
               <p class="text-xs text-dark-textMuted mt-2 text-center">Win probability after each day based on real cumulative stats.</p>
               <p class="text-xs text-dark-textMuted mt-1 text-center italic">10,000 Monte Carlo simulations per day using actual daily stat data.</p>
             </div>
+            </LeagueGate>
           </div>
         </div>
 
-        <!-- Scouting Reports -->
+        <!-- Scouting Reports + Breakdown — gated -->
+        <LeagueGate wrap :locked="!hasLeagueAccess" label="Full Matchup Analysis">
         <div class="card">
           <div class="card-header"><div class="flex items-center gap-2"><span class="text-2xl">🔍</span><h2 class="card-title">Scouting Reports</h2></div></div>
           <div class="card-body">
