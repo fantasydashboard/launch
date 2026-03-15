@@ -281,6 +281,24 @@
               </tbody>
             </table>
           </div>
+
+          <!-- Early upgrade CTA — right after top 3 rows -->
+          <div v-if="!hasLeagueAccess && sortedPowerRankings.length > 3" class="early-gate-banner" style="margin: 12px 0 0;">
+            <div class="early-gate-inner">
+              <div class="early-gate-left">
+                <span class="early-gate-icon">⚡</span>
+                <div>
+                  <div class="early-gate-headline">{{ sortedPowerRankings.length - 3 }} more teams are locked</div>
+                  <div class="early-gate-sub">Plus trend charts, rankings insights &amp; share graphics</div>
+                </div>
+              </div>
+              <button class="gate-cta-btn" @click="goToPricing">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>
+                GET LEAGUE PASS
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+              </button>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -525,23 +543,7 @@
       </div>
       </div>
 
-      <!-- Early upgrade CTA — shown right after top 3, before blurred content -->
-      <div v-if="!hasLeagueAccess && sortedPowerRankings.length > 3" class="early-gate-banner">
-        <div class="early-gate-inner">
-          <div class="early-gate-left">
-            <span class="early-gate-icon">⚡</span>
-            <div>
-              <div class="early-gate-headline">{{ sortedPowerRankings.length - 3 }} more teams are locked</div>
-              <div class="early-gate-sub">Plus trend charts, rankings insights &amp; share graphics</div>
-            </div>
-          </div>
-          <button class="gate-cta-btn" @click="goToPricing">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>
-            GET LEAGUE PASS
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
-          </button>
-        </div>
-      </div>
+
     </template>
 
     <!-- Empty State -->
