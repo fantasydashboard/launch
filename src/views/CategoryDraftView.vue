@@ -216,7 +216,7 @@
           </div>
 
           <!-- Round Rows -->
-          <div v-for="round in gatedRounds" :key="round" class="flex gap-1 mb-1">
+          <div v-for="round in totalRounds" :key="round" class="flex gap-1 mb-1" :class="{ 'draft-blur-row': !hasLeagueAccess && round > 3 }">
             <!-- Round Label -->
             <div class="w-12 flex-shrink-0 bg-dark-card/50 rounded-l-lg flex items-center justify-center">
               <span class="text-xs font-bold text-dark-textMuted">R{{ round }}</span>
@@ -415,7 +415,23 @@
           </div>
         </div>
       </Teleport>
-      <LeagueGate :locked="!hasLeagueAccess && totalRounds > 3" />
+      <!-- Board gate banner -->
+      <div v-if="!hasLeagueAccess && totalRounds > 3" class="early-gate-banner" style="margin-top: 12px;">
+        <div class="early-gate-inner">
+          <div class="early-gate-left">
+            <span class="early-gate-icon">⚡</span>
+            <div>
+              <div class="early-gate-headline">{{ totalRounds - 3 }} more rounds are locked</div>
+              <div class="early-gate-sub">Unlock full draft analysis for your league</div>
+            </div>
+          </div>
+          <button class="gate-cta-btn" @click="goToPricing">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>
+            GET LEAGUE PASS
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+          </button>
+        </div>
+      </div>
     </template>
 
     <!-- ==================== CATEGORY IMPACT TAB ==================== -->
@@ -619,7 +635,7 @@
             </thead>
             <tbody>
               <tr 
-                v-for="pick in gatedImpactPicks" 
+                v-for="(pick, idx) in sortedImpactPicks" 
                 :key="pick.pick"
                 class="border-b border-dark-border/50 hover:bg-dark-border/20 cursor-pointer"
                 @click="selectPick(pick)"
@@ -655,7 +671,23 @@
               </tr>
             </tbody>
           </table>
-          <LeagueGate :locked="!hasLeagueAccess && sortedImpactPicks.length > 3" />
+          <!-- Gate banner -->
+          <div v-if="!hasLeagueAccess && sortedImpactPicks.length > 3" class="early-gate-banner" style="margin: 8px 0 4px;">
+            <div class="early-gate-inner">
+              <div class="early-gate-left">
+                <span class="early-gate-icon">🎯</span>
+                <div>
+                  <div class="early-gate-headline">{{ sortedImpactPicks.length - 3 }} more picks locked</div>
+                  <div class="early-gate-sub">See every high-impact category pick</div>
+                </div>
+              </div>
+              <button class="gate-cta-btn" @click="goToPricing">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>
+                GET LEAGUE PASS
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+              </button>
+            </div>
+          </div>
         </div>
       </div>
     </template>
@@ -686,8 +718,9 @@
       <!-- Team Balance Overview -->
       <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
         <div 
-          v-for="team in gatedTeamBalance" 
+          v-for="(team, idx) in teamBalanceData" 
           :key="team.team_key"
+          :class="{ 'draft-blur-row': !hasLeagueAccess && idx >= 3 }"
           class="card cursor-pointer hover:ring-2 hover:ring-primary transition-all"
           @click="selectedBalanceTeam = team.team_key; showBalanceModal = true"
         >
@@ -738,7 +771,23 @@
             </div>
           </div>
         </div>
-      <LeagueGate :locked="!hasLeagueAccess && teamBalanceData.length > 3" />
+          <!-- Gate banner -->
+          <div v-if="!hasLeagueAccess && teamBalanceData.length > 3" class="early-gate-banner" style="margin: 8px 0 4px;">
+            <div class="early-gate-inner">
+              <div class="early-gate-left">
+                <span class="early-gate-icon">⚖️</span>
+                <div>
+                  <div class="early-gate-headline">{{ teamBalanceData.length - 3 }} more teams locked</div>
+                  <div class="early-gate-sub">See full category balance for every team</div>
+                </div>
+              </div>
+              <button class="gate-cta-btn" @click="goToPricing">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>
+                GET LEAGUE PASS
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+              </button>
+            </div>
+          </div>
       </div>
 
       <!-- Balance Modal -->
@@ -906,7 +955,7 @@
           </div>
           <div class="card-body space-y-2">
             <div 
-              v-for="(pick, idx) in gatedTopSteals" 
+              v-for="(pick, idx) in topSteals" 
               :key="pick.pick"
               class="flex items-center gap-3 p-3 bg-green-500/10 rounded-lg cursor-pointer hover:bg-green-500/20 transition-all"
               @click="selectPick(pick)"
@@ -928,7 +977,23 @@
               No significant steals found
             </div>
           </div>
-          <LeagueGate :locked="!hasLeagueAccess && topSteals.length > 3" />
+          <!-- Gate banner -->
+          <div v-if="!hasLeagueAccess && topSteals.length > 3" class="early-gate-banner" style="margin: 8px 0 4px;">
+            <div class="early-gate-inner">
+              <div class="early-gate-left">
+                <span class="early-gate-icon">🔥</span>
+                <div>
+                  <div class="early-gate-headline">{{ topSteals.length - 3 }} more steals locked</div>
+                  <div class="early-gate-sub">Unlock every draft steal and bust</div>
+                </div>
+              </div>
+              <button class="gate-cta-btn" @click="goToPricing">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>
+                GET LEAGUE PASS
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+              </button>
+            </div>
+          </div>
         </div>
 
         <!-- Biggest Busts -->
@@ -952,7 +1017,7 @@
           </div>
           <div class="card-body space-y-2">
             <div 
-              v-for="(pick, idx) in gatedTopBusts" 
+              v-for="(pick, idx) in topBusts" 
               :key="pick.pick"
               class="flex items-center gap-3 p-3 bg-red-500/10 rounded-lg cursor-pointer hover:bg-red-500/20 transition-all"
               @click="selectPick(pick)"
@@ -974,7 +1039,23 @@
               No significant busts found
             </div>
           </div>
-          <LeagueGate :locked="!hasLeagueAccess && topBusts.length > 3" />
+          <!-- Gate banner -->
+          <div v-if="!hasLeagueAccess && topBusts.length > 3" class="early-gate-banner" style="margin: 8px 0 4px;">
+            <div class="early-gate-inner">
+              <div class="early-gate-left">
+                <span class="early-gate-icon">💣</span>
+                <div>
+                  <div class="early-gate-headline">{{ topBusts.length - 3 }} more busts locked</div>
+                  <div class="early-gate-sub">See the full list of draft busts</div>
+                </div>
+              </div>
+              <button class="gate-cta-btn" @click="goToPricing">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>
+                GET LEAGUE PASS
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+              </button>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -998,7 +1079,7 @@
         <div class="card-body">
           <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             <div 
-              v-for="(steal, idx) in gatedCategorySteals" 
+              v-for="(steal, idx) in categorySteals" 
               :key="steal.pick"
               class="bg-dark-border/20 rounded-xl p-4 cursor-pointer hover:ring-2 hover:ring-primary transition-all"
               @click="selectPick(steal)"
@@ -1027,7 +1108,23 @@
               </div>
             </div>
           </div>
-          <LeagueGate :locked="!hasLeagueAccess && categorySteals.length > 3" />
+          <!-- Gate banner -->
+          <div v-if="!hasLeagueAccess && categorySteals.length > 3" class="early-gate-banner" style="margin: 8px 0 4px;">
+            <div class="early-gate-inner">
+              <div class="early-gate-left">
+                <span class="early-gate-icon">📊</span>
+                <div>
+                  <div class="early-gate-headline">{{ categorySteals.length - 3 }} more category steals locked</div>
+                  <div class="early-gate-sub">Unlock full category-specific steal analysis</div>
+                </div>
+              </div>
+              <button class="gate-cta-btn" @click="goToPricing">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>
+                GET LEAGUE PASS
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+              </button>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -1210,6 +1307,7 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from 'vue'
+import { useRouter } from 'vue-router'
 import { useLeagueStore } from '@/stores/league'
 import { useAuthStore } from '@/stores/auth'
 import { yahooService } from '@/services/yahoo'
@@ -1226,6 +1324,14 @@ import {
 
 const leagueStore = useLeagueStore()
 const { hasLeagueAccess } = useFeatureAccess()
+const router = useRouter()
+
+function goToPricing() {
+  const params = new URLSearchParams()
+  if (leagueStore.activeLeagueId) params.set('league', leagueStore.activeLeagueId)
+  if (leagueStore.activePlatform) params.set('platform', leagueStore.activePlatform)
+  router.push(`/pricing?${params.toString()}`)
+}
 const authStore = useAuthStore()
 
 // Gated list computeds (avoid ternary in v-for which crashes Vue compiler)
@@ -3970,5 +4076,40 @@ img {
 /* Prevent layout shift on image error */
 img[src="https://s.yimg.com/cv/apiv2/default/mlb/mlb_dp_2_72.png"] {
   background-color: rgba(75, 85, 99, 0.4);
+}
+.draft-blur-row {
+  filter: blur(5px);
+  pointer-events: none;
+  user-select: none;
+  opacity: 0.45;
+  transition: filter 0.2s;
+}
+.early-gate-banner { position: relative; z-index: 10; }
+.early-gate-inner {
+  display: flex; align-items: center; justify-content: space-between;
+  flex-wrap: wrap; gap: 16px;
+  background: linear-gradient(135deg, #0f1118 0%, #0c0f1c 100%);
+  border: 1px solid rgba(234,179,8,0.35); border-left: 3px solid #eab308;
+  border-radius: 12px; padding: 14px 18px;
+  box-shadow: 0 4px 24px rgba(0,0,0,0.5);
+}
+.early-gate-left { display: flex; align-items: center; gap: 12px; }
+.early-gate-icon { font-size: 1.3rem; filter: drop-shadow(0 0 8px rgba(234,179,8,0.6)); }
+.early-gate-headline {
+  font-size: 0.9rem; font-weight: 800; color: #fff; margin-bottom: 2px;
+  font-family: 'Barlow Condensed', sans-serif; letter-spacing: 0.03em; text-transform: uppercase;
+}
+.early-gate-sub { font-size: 0.74rem; color: #6b7280; }
+.gate-cta-btn {
+  display: inline-flex; align-items: center; gap: 8px; padding: 9px 18px;
+  background: linear-gradient(135deg, #eab308 0%, #ca8a04 100%);
+  color: #0a0c14; font-family: 'Barlow Condensed', sans-serif;
+  font-size: 0.88rem; font-weight: 900; letter-spacing: 0.08em; text-transform: uppercase;
+  border: none; border-radius: 8px; cursor: pointer; white-space: nowrap;
+  transition: all 0.15s; box-shadow: 0 2px 12px rgba(234,179,8,0.3); flex-shrink: 0;
+}
+.gate-cta-btn:hover {
+  background: linear-gradient(135deg, #fbbf24 0%, #eab308 100%);
+  transform: translateY(-1px); box-shadow: 0 4px 20px rgba(234,179,8,0.45);
 }
 </style>

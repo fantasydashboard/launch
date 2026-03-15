@@ -136,7 +136,7 @@
           </div>
 
           <!-- Round Rows -->
-          <div v-for="round in gatedRounds" :key="round" class="flex gap-1 mb-1">
+          <div v-for="round in totalRounds" :key="round" class="flex gap-1 mb-1" :class="{ 'draft-blur-row': !hasLeagueAccess && round > 3 }">
             <!-- Round Label -->
             <div class="w-12 flex-shrink-0 bg-dark-card/50 rounded-l-lg flex items-center justify-center">
               <span class="text-xs font-bold text-dark-textMuted">R{{ round }}</span>
@@ -194,11 +194,26 @@
             </div>
           </div>
         </div>
-        <LeagueGate :locked="!hasLeagueAccess && totalRounds > 3" />
+        <!-- Gate banner after round 3 -->
+        <div v-if="!hasLeagueAccess && totalRounds > 3" class="early-gate-banner" style="margin-top: 12px;">
+          <div class="early-gate-inner">
+            <div class="early-gate-left">
+              <span class="early-gate-icon">⚡</span>
+              <div>
+                <div class="early-gate-headline">{{ totalRounds - 3 }} more rounds are locked</div>
+                <div class="early-gate-sub">Unlock player grades, steals &amp; busts, and full analysis</div>
+              </div>
+            </div>
+            <button class="gate-cta-btn" @click="goToPricing">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>
+              GET LEAGUE PASS
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+            </button>
+          </div>
+        </div>
       </div>
     </template>
     <template v-else-if="activeTab === 'grades'">
-      <LeagueGate wrap :locked="!hasLeagueAccess" label="Player Grades — Full Draft Analysis">
       <!-- Grading Methodology Explainer -->
       <div class="card mb-4 border border-yellow-500/30">
         <div class="card-body">
@@ -432,10 +447,11 @@
             </thead>
             <tbody>
               <tr 
-                v-for="pick in sortedGradePicks" 
+                v-for="(pick, idx) in sortedGradePicks" 
                 :key="pick.pick + '-' + (pick.activePosition || pick.position)"
                 class="border-b border-dark-border/50 hover:bg-dark-border/20 cursor-pointer"
-                @click="selectPick(pick)"
+                :class="{ 'draft-blur-row': !hasLeagueAccess && idx >= 3 }"
+                @click="hasLeagueAccess || idx < 3 ? selectPick(pick) : null"
               >
                 <td class="p-3">
                   <div class="text-sm font-medium text-dark-text">{{ pick.round }}.{{ pick.pickInRound }}</div>
@@ -529,12 +545,10 @@
           </table>
         </div>
       </div>
-      </LeagueGate>
     </template>
 
     <!-- ==================== DEEP ANALYSIS TAB ==================== -->
     <template v-else-if="activeTab === 'analysis'">
-      <LeagueGate wrap :locked="!hasLeagueAccess" label="Deep Draft Analysis">
       <!-- Explanation Card -->
       <div class="card mb-6">
         <div class="card-body py-4">
@@ -576,7 +590,8 @@
               v-for="(pick, idx) in topSteals" 
               :key="pick.pick"
               class="flex items-center gap-3 p-3 bg-green-500/10 rounded-lg cursor-pointer hover:bg-green-500/20"
-              @click="selectPick(pick)"
+              :class="{ 'draft-blur-row': !hasLeagueAccess && idx >= 3 }"
+              @click="hasLeagueAccess || idx < 3 ? selectPick(pick) : null"
             >
               <div class="text-lg font-bold text-green-400 w-6">{{ idx + 1 }}</div>
               <div class="w-10 h-10 rounded-full bg-dark-border overflow-hidden">
@@ -593,6 +608,23 @@
             </div>
             <div v-if="topSteals.length === 0" class="text-center py-4 text-dark-textMuted">
               No significant steals found
+            </div>
+          </div>
+          <!-- Steals gate banner -->
+          <div v-if="!hasLeagueAccess && topSteals.length > 3" class="early-gate-banner" style="margin: 8px 16px 16px;">
+            <div class="early-gate-inner">
+              <div class="early-gate-left">
+                <span class="early-gate-icon">🔥</span>
+                <div>
+                  <div class="early-gate-headline">{{ topSteals.length - 3 }} more steals locked</div>
+                  <div class="early-gate-sub">See every steal, bust, and deep analysis</div>
+                </div>
+              </div>
+              <button class="gate-cta-btn" @click="goToPricing">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>
+                GET LEAGUE PASS
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+              </button>
             </div>
           </div>
         </div>
@@ -713,14 +745,29 @@
               </div>
             </div>
           </div>
+          <!-- Actual value gate banner -->
+          <div v-if="!hasLeagueAccess && actualValueRankings.length > 3" class="early-gate-banner" style="margin: 8px 16px 16px;">
+            <div class="early-gate-inner">
+              <div class="early-gate-left">
+                <span class="early-gate-icon">🏆</span>
+                <div>
+                  <div class="early-gate-headline">{{ actualValueRankings.length - 3 }} more picks locked</div>
+                  <div class="early-gate-sub">See the full season value ranking for every draft pick</div>
+                </div>
+              </div>
+              <button class="gate-cta-btn" @click="goToPricing">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>
+                GET LEAGUE PASS
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+              </button>
+            </div>
+          </div>
         </div>
       </div>
-      </LeagueGate>
     </template>
 
     <!-- ==================== ACTUAL VALUE TAB ==================== -->
     <template v-else-if="activeTab === 'actual'">
-      <LeagueGate wrap :locked="!hasLeagueAccess" label="Actual Draft Value">
       <div class="card">
         <div class="card-header">
           <h3 class="text-lg font-bold text-dark-text">🏆 Actual Season Value</h3>
@@ -746,7 +793,8 @@
                   v-for="(player, idx) in actualValueRankings" 
                   :key="player.pick"
                   class="border-b border-dark-border/50 hover:bg-dark-border/20 cursor-pointer"
-                  @click="selectPick(player)"
+                  :class="{ 'draft-blur-row': !hasLeagueAccess && idx >= 3 }"
+                  @click="hasLeagueAccess || idx < 3 ? selectPick(player) : null"
                 >
                   <td class="p-3">
                     <div class="flex items-center gap-2">
@@ -796,7 +844,6 @@
           </div>
         </div>
       </div>
-      </LeagueGate>
     </template>
 
     <!-- ==================== TEAM DETAIL MODAL ==================== -->
@@ -994,6 +1041,7 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from 'vue'
+import { useRouter } from 'vue-router'
 import { useLeagueStore } from '@/stores/league'
 import { useAuthStore } from '@/stores/auth'
 import { yahooService } from '@/services/yahoo'
@@ -1011,8 +1059,16 @@ import {
   type Tier 
 } from '@/services/draftGrading'
 
+const router = useRouter()
 const leagueStore = useLeagueStore()
 const { hasLeagueAccess } = useFeatureAccess()
+
+function goToPricing() {
+  const params = new URLSearchParams()
+  if (leagueStore.activeLeagueId) params.set('league', leagueStore.activeLeagueId)
+  if (leagueStore.activePlatform) params.set('platform', leagueStore.activePlatform)
+  router.push(`/pricing?${params.toString()}`)
+}
 
 // Gated computeds
 const gatedRounds = computed(() => hasLeagueAccess.value ? totalRounds.value : Math.min(totalRounds.value, 3))
@@ -2620,5 +2676,75 @@ onMounted(() => {
 
 .card-body {
   @apply p-4;
+}
+.draft-blur-row {
+  filter: blur(5px);
+  pointer-events: none;
+  user-select: none;
+  opacity: 0.45;
+  transition: filter 0.2s;
+}
+
+/* ── Draft gate banner ── */
+.early-gate-banner {
+  position: relative;
+  z-index: 10;
+}
+.early-gate-inner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 16px;
+  background: linear-gradient(135deg, #0f1118 0%, #0c0f1c 100%);
+  border: 1px solid rgba(234,179,8,0.35);
+  border-left: 3px solid #eab308;
+  border-radius: 12px;
+  padding: 14px 18px;
+  box-shadow: 0 4px 24px rgba(0,0,0,0.5);
+}
+.early-gate-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.early-gate-icon {
+  font-size: 1.3rem;
+  filter: drop-shadow(0 0 8px rgba(234,179,8,0.6));
+}
+.early-gate-headline {
+  font-size: 0.9rem;
+  font-weight: 800;
+  color: #fff;
+  margin-bottom: 2px;
+  font-family: 'Barlow Condensed', sans-serif;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+}
+.early-gate-sub { font-size: 0.74rem; color: #6b7280; }
+.gate-cta-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 18px;
+  background: linear-gradient(135deg, #eab308 0%, #ca8a04 100%);
+  color: #0a0c14;
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 0.88rem;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.15s;
+  box-shadow: 0 2px 12px rgba(234,179,8,0.3);
+  flex-shrink: 0;
+}
+.gate-cta-btn:hover {
+  background: linear-gradient(135deg, #fbbf24 0%, #eab308 100%);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 20px rgba(234,179,8,0.45);
 }
 </style>
