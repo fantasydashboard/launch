@@ -1,6 +1,6 @@
 <template>
   <div class="loading-spinner-container" :class="containerClass">
-    <div class="badge-flipper" :style="{ width: computedSize, height: computedSize }">
+    <div class="badge-flipper" :style="{ width: computedSizeOuter, height: computedSize }">
       <div class="badge-inner">
         <img 
           src="/ufd-badge.png" 
@@ -27,29 +27,21 @@ const props = withDefaults(defineProps<{
 })
 
 const computedSize = computed(() => {
-  if (typeof props.size === 'number') {
-    return `${props.size}px`
-  }
-  const sizes = {
-    sm: '32px',
-    md: '48px',
-    lg: '64px',
-    xl: '96px'
-  }
+  if (typeof props.size === 'number') return `${props.size}px`
+  const sizes = { sm: '32px', md: '48px', lg: '64px', xl: '96px' }
   return sizes[props.size] || sizes.md
 })
 
-const containerClass = computed(() => ({
-  'centered': props.centered
-}))
+const computedSizeOuter = computed(() => {
+  if (typeof props.size === 'number') return `${props.size * 1.5}px`
+  const sizes = { sm: '48px', md: '72px', lg: '96px', xl: '144px' }
+  return sizes[props.size] || sizes.md
+})
+
+const containerClass = computed(() => ({ 'centered': props.centered }))
 
 const messageClass = computed(() => {
-  const sizeClasses = {
-    sm: 'text-xs',
-    md: 'text-sm',
-    lg: 'text-base',
-    xl: 'text-lg'
-  }
+  const sizeClasses = { sm: 'text-xs', md: 'text-sm', lg: 'text-base', xl: 'text-lg' }
   return typeof props.size === 'string' ? sizeClasses[props.size] : 'text-sm'
 })
 </script>
@@ -71,6 +63,7 @@ const messageClass = computed(() => {
   display: flex;
   align-items: center;
   justify-content: center;
+  overflow: visible;
 }
 
 .badge-inner {
@@ -79,35 +72,24 @@ const messageClass = computed(() => {
   position: relative;
   transform-style: preserve-3d;
   animation: badge-flip-3d 2s ease-in-out infinite;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: visible;
 }
 
 .badge-image {
   backface-visibility: visible;
   filter: drop-shadow(0 8px 16px rgba(0, 0, 0, 0.4));
+  display: block;
 }
 
-/* 3D horizontal flip with depth */
 @keyframes badge-flip-3d {
-  0% {
-    transform: rotateY(0deg) scale(1);
-    filter: drop-shadow(4px 4px 8px rgba(0, 0, 0, 0.5));
-  }
-  25% {
-    transform: rotateY(90deg) scale(0.9);
-    filter: drop-shadow(0px 4px 4px rgba(0, 0, 0, 0.3));
-  }
-  50% {
-    transform: rotateY(180deg) scale(1);
-    filter: drop-shadow(-4px 4px 8px rgba(0, 0, 0, 0.5));
-  }
-  75% {
-    transform: rotateY(270deg) scale(0.9);
-    filter: drop-shadow(0px 4px 4px rgba(0, 0, 0, 0.3));
-  }
-  100% {
-    transform: rotateY(360deg) scale(1);
-    filter: drop-shadow(4px 4px 8px rgba(0, 0, 0, 0.5));
-  }
+  0%   { transform: rotateY(0deg)   scale(1);   }
+  25%  { transform: rotateY(90deg)  scale(0.9); }
+  50%  { transform: rotateY(180deg) scale(1);   }
+  75%  { transform: rotateY(270deg) scale(0.9); }
+  100% { transform: rotateY(360deg) scale(1);   }
 }
 
 .loading-message {
