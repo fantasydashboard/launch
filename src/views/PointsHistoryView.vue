@@ -3792,7 +3792,7 @@ async function downloadLegacyLeaderboard() {
     // Load main UFD logo
     const loadLogo = async (): Promise<string> => {
       try {
-        const response = await fetch('/UFD_V5.png')
+        const response = await fetch('/UFD_V8.png')
         if (!response.ok) return ''
         const blob = await response.blob()
         return new Promise((resolve) => {
@@ -4036,7 +4036,7 @@ async function downloadTeamLegacy(team: LegacyScore) {
     // Load main UFD logo
     const loadLogo = async (): Promise<string> => {
       try {
-        const response = await fetch('/UFD_V5.png')
+        const response = await fetch('/UFD_V8.png')
         if (!response.ok) return ''
         const blob = await response.blob()
         return new Promise((resolve) => {
@@ -5204,7 +5204,7 @@ async function downloadRecordRankings(recordType: string) {
     // Load UFD logo
     const loadLogo = async (): Promise<string> => {
       try {
-        const response = await fetch('/UFD_V5.png')
+        const response = await fetch('/UFD_V8.png')
         if (!response.ok) return ''
         const blob = await response.blob()
         return new Promise((resolve) => {
@@ -5422,7 +5422,7 @@ async function downloadAwardRankings(awardTitle: string, type: 'best' | 'worst')
     // Load UFD logo
     const loadLogo = async (): Promise<string> => {
       try {
-        const response = await fetch('/UFD_V5.png')
+        const response = await fetch('/UFD_V8.png')
         if (!response.ok) return ''
         const blob = await response.blob()
         return new Promise((resolve) => {
@@ -5648,7 +5648,7 @@ async function downloadSeasonAwardRankings(awardTitle: string, type: 'best' | 'w
     
     const loadLogo = async (): Promise<string> => {
       try {
-        const response = await fetch('/UFD_V5.png')
+        const response = await fetch('/UFD_V8.png')
         if (!response.ok) return ''
         const blob = await response.blob()
         return new Promise((resolve) => {
@@ -5853,7 +5853,7 @@ async function downloadWeeklyAwardRankings(awardTitle: string, type: 'best' | 'w
     
     const loadLogo = async (): Promise<string> => {
       try {
-        const response = await fetch('/UFD_V5.png')
+        const response = await fetch('/UFD_V8.png')
         if (!response.ok) return ''
         const blob = await response.blob()
         return new Promise((resolve) => {
@@ -6047,7 +6047,7 @@ async function downloadCareerStats() {
     // Load UFD logo
     const loadLogo = async (): Promise<string> => {
       try {
-        const response = await fetch('/UFD_V5.png')
+        const response = await fetch('/UFD_V8.png')
         if (!response.ok) return ''
         const blob = await response.blob()
         return new Promise((resolve) => {
@@ -6249,7 +6249,7 @@ async function downloadSeasonHistory() {
     // Load logo
     const loadLogo = async (): Promise<string> => {
       try {
-        const response = await fetch('/UFD_V5.png')
+        const response = await fetch('/UFD_V8.png')
         if (!response.ok) return ''
         const blob = await response.blob()
         return new Promise((resolve) => {
@@ -6347,7 +6347,7 @@ async function downloadHeadToHead() {
     // Load logo
     const loadLogo = async (): Promise<string> => {
       try {
-        const response = await fetch('/UFD_V5.png')
+        const response = await fetch('/UFD_V8.png')
         if (!response.ok) return ''
         const blob = await response.blob()
         return new Promise((resolve) => {
@@ -6568,7 +6568,7 @@ async function downloadComparison() {
     // Load UFD logo
     const loadLogo = async (): Promise<string> => {
       try {
-        const response = await fetch('/UFD_V5.png')
+        const response = await fetch('/UFD_V8.png')
         if (!response.ok) return ''
         const blob = await response.blob()
         return new Promise((resolve) => {

@@ -1787,7 +1787,7 @@ async function downloadTeamImage() {
   try {
     const html2canvas = (await import('html2canvas')).default
     const team = selectedTeamData.value
-    const loadLogo = async (): Promise<string> => { try { const r = await fetch('/UFD_V5.png'); if (!r.ok) return ''; const b = await r.blob(); return new Promise(res => { const rd = new FileReader(); rd.onloadend = () => res(rd.result as string); rd.onerror = () => res(''); rd.readAsDataURL(b) }) } catch { return '' } }
+    const loadLogo = async (): Promise<string> => { try { const r = await fetch('/UFD_V8.png'); if (!r.ok) return ''; const b = await r.blob(); return new Promise(res => { const rd = new FileReader(); rd.onloadend = () => res(rd.result as string); rd.onerror = () => res(''); rd.readAsDataURL(b) }) } catch { return '' } }
     const createPlaceholder = (n: string): string => { const c = document.createElement('canvas'); c.width = 64; c.height = 64; const ctx = c.getContext('2d'); if (ctx) { ctx.fillStyle = '#3a3d52'; ctx.beginPath(); ctx.arc(32, 32, 32, 0, Math.PI * 2); ctx.fill(); ctx.fillStyle = '#fff'; ctx.font = 'bold 28px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(n.charAt(0).toUpperCase(), 32, 34) } return c.toDataURL('image/png') }
     const logoBase64 = await loadLogo()
     let teamLogoBase64 = team.logo_url ? await new Promise<string>(res => { const img = new Image(); img.crossOrigin = 'anonymous'; img.onload = () => { const c = document.createElement('canvas'); c.width = 64; c.height = 64; const ctx = c.getContext('2d'); if (ctx) { ctx.beginPath(); ctx.arc(32, 32, 32, 0, Math.PI * 2); ctx.clip(); ctx.drawImage(img, 0, 0, 64, 64) }; res(c.toDataURL('image/png')) }; img.onerror = () => res(createPlaceholder(team.team_name)); setTimeout(() => res(createPlaceholder(team.team_name)), 3000); img.src = team.logo_url }) : createPlaceholder(team.team_name)
@@ -1824,7 +1824,7 @@ async function downloadStealsImage() {
     
     const loadLogo = async (): Promise<string> => { 
       try { 
-        const r = await fetch('/UFD_V5.png')
+        const r = await fetch('/UFD_V8.png')
         if (!r.ok) return ''
         const b = await r.blob()
         return new Promise(res => { 
@@ -1942,7 +1942,7 @@ async function downloadBustsImage() {
     
     const loadLogo = async (): Promise<string> => { 
       try { 
-        const r = await fetch('/UFD_V5.png')
+        const r = await fetch('/UFD_V8.png')
         if (!r.ok) return ''
         const b = await r.blob()
         return new Promise(res => { 

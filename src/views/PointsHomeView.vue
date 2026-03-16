@@ -1230,7 +1230,7 @@ async function downloadLeaderImage() {
     // Load main UFD logo
     const loadLogo = async (): Promise<string> => {
       try {
-        const response = await fetch('/UFD_V5.png')
+        const response = await fetch('/UFD_V8.png')
         if (!response.ok) return ''
         const blob = await response.blob()
         return new Promise((resolve) => {
@@ -1482,7 +1482,7 @@ async function downloadStandings() {
     // Load main UFD logo - EXACTLY like Power Rankings
     const loadLogo = async (): Promise<string> => {
       try {
-        const response = await fetch('/UFD_V5.png')
+        const response = await fetch('/UFD_V8.png')
         if (!response.ok) return ''
         const blob = await response.blob()
         return new Promise((resolve) => {

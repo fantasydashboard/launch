@@ -3302,7 +3302,7 @@ async function downloadStealsImage() {
     // Load UFD logo
     const loadLogo = async (): Promise<string> => {
       try {
-        const response = await fetch('/UFD_V5.png')
+        const response = await fetch('/UFD_V8.png')
         if (!response.ok) return ''
         const blob = await response.blob()
         return new Promise((resolve) => {
@@ -3483,7 +3483,7 @@ async function downloadBustsImage() {
     
     const loadLogo = async (): Promise<string> => {
       try {
-        const response = await fetch('/UFD_V5.png')
+        const response = await fetch('/UFD_V8.png')
         if (!response.ok) return ''
         const blob = await response.blob()
         return new Promise((resolve) => {
@@ -3665,7 +3665,7 @@ async function downloadTeamDraftImage() {
     
     const loadLogo = async (): Promise<string> => {
       try {
-        const response = await fetch('/UFD_V5.png')
+        const response = await fetch('/UFD_V8.png')
         if (!response.ok) return ''
         const blob = await response.blob()
         return new Promise((resolve) => {
@@ -3886,7 +3886,7 @@ async function downloadBalanceImage() {
     
     const loadLogo = async (): Promise<string> => {
       try {
-        const response = await fetch('/UFD_V5.png')
+        const response = await fetch('/UFD_V8.png')
         if (!response.ok) return ''
         const blob = await response.blob()
         return new Promise((resolve) => {

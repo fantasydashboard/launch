@@ -2446,7 +2446,7 @@ async function generateMatchupAnalysisImage(matchup: any, html2canvas: any) {
   // Helper to load logo
   const loadLogo = async (): Promise<string> => {
     try {
-      const response = await fetch('/UFD_V5.png')
+      const response = await fetch('/UFD_V8.png')
       const blob = await response.blob()
       return new Promise((resolve) => {
         const reader = new FileReader()
@@ -2761,7 +2761,7 @@ async function generateCategoryBreakdownImage(matchup: any, html2canvas: any) {
   // Helper to load logo
   const loadLogo = async (): Promise<string> => {
     try {
-      const response = await fetch('/UFD_V5.png')
+      const response = await fetch('/UFD_V8.png')
       const blob = await response.blob()
       return new Promise((resolve) => {
         const reader = new FileReader()

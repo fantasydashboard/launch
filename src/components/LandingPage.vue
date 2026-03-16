@@ -15,7 +15,7 @@
       <div class="hero-inner">
         <!-- Logo -->
         <div class="hero-logo-wrap">
-          <img src="/UFD_V5.png" alt="Ultimate Fantasy Dashboard" class="hero-logo" />
+          <img src="/UFD_V8.png" alt="Ultimate Fantasy Dashboard" class="hero-logo" />
         </div>
 
         <!-- Headline -->

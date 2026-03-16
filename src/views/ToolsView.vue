@@ -1538,7 +1538,7 @@ async function downloadDraftOrderImage() {
     // Load UFD logo
     const loadLogo = async (): Promise<string> => {
       try {
-        const response = await fetch('/UFD_V5.png')
+        const response = await fetch('/UFD_V8.png')
         if (!response.ok) return ''
         const blob = await response.blob()
         return new Promise((resolve) => {
@@ -2606,7 +2606,7 @@ async function downloadTeamScheduleImage() {
     // Load UFD logo
     const loadLogo = async (): Promise<string> => {
       try {
-        const response = await fetch('/UFD_V5.png')
+        const response = await fetch('/UFD_V8.png')
         if (!response.ok) return ''
         const blob = await response.blob()
         return new Promise((resolve) => {
@@ -2966,7 +2966,7 @@ async function downloadScheduleImage() {
     // Load UFD logo
     const loadLogo = async (): Promise<string> => {
       try {
-        const response = await fetch('/UFD_V5.png')
+        const response = await fetch('/UFD_V8.png')
         if (!response.ok) return ''
         const blob = await response.blob()
         return new Promise((resolve) => {
