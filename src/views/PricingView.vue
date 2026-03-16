@@ -2,6 +2,22 @@
   <div class="min-h-screen py-12">
     <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
 
+      <!-- ── SUCCESS BANNER (shown after Stripe redirect) ─────────────────── -->
+      <div v-if="purchaseSuccess" class="mb-8 rounded-2xl p-6 flex items-start gap-4" style="background: rgba(34,197,94,0.1); border: 1px solid rgba(34,197,94,0.4);">
+        <div class="text-3xl">🎉</div>
+        <div>
+          <h2 class="font-black text-white text-lg mb-1" style="font-family: 'Barlow Condensed', sans-serif; letter-spacing: 0.02em; text-transform: uppercase;">
+            League Pass Activated!
+          </h2>
+          <p class="text-sm" style="color: #9ca3af;">
+            Your purchase was successful. Full access is now unlocked for your entire league — any league mate who signs up and connects their account will get in automatically.
+          </p>
+          <button @click="goToDashboard" class="mt-3 inline-flex items-center gap-2 text-sm font-bold transition-colors" style="color: #22c55e;">
+            ← Back to dashboard
+          </button>
+        </div>
+      </div>
+
       <!-- ── Hero League Context Banner ─────────────────────────────────── -->
       <div id="purchase" class="mb-12 rounded-2xl overflow-hidden" style="border: 1px solid rgba(234,179,8,0.3); background: linear-gradient(135deg, #0f1118 0%, #0c0f1c 100%);">
         <!-- Accent bar -->
@@ -125,7 +141,7 @@
             <div class="flex items-center justify-center gap-3 mb-1">
               <span class="text-2xl text-dark-textMuted line-through">${{ regularPrice }}</span>
               <span class="px-2 py-0.5 rounded text-sm font-bold" style="background: rgba(234,179,8,0.2); color: #eab308; border: 1px solid rgba(234,179,8,0.3);">
-                LIMITED TIME
+                $10 OFF
               </span>
             </div>
             <div>
@@ -193,12 +209,23 @@
             </li>
           </ul>
 
+          <!-- Error message -->
+          <div v-if="checkoutError" class="mb-4 p-3 rounded-lg text-sm" style="background: rgba(239,68,68,0.1); border: 1px solid rgba(239,68,68,0.3); color: #f87171;">
+            {{ checkoutError }}
+          </div>
+
           <button
             @click="purchaseLeaguePass"
-            class="w-full py-4 rounded-xl font-black text-lg transition-all transform hover:scale-[1.02]"
+            :disabled="checkingOut || purchaseSuccess"
+            class="w-full py-4 rounded-xl font-black text-lg transition-all transform hover:scale-[1.02] disabled:opacity-60 disabled:cursor-not-allowed disabled:transform-none flex items-center justify-center gap-3"
             style="background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%); color: #0a0c14; font-family: 'Barlow Condensed', sans-serif; letter-spacing: 0.05em; text-transform: uppercase; box-shadow: 0 4px 20px rgba(34,197,94,0.35);"
           >
-            Get League Pass — ${{ launchPrice }}
+            <svg v-if="checkingOut" class="animate-spin" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+              <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/>
+            </svg>
+            <span v-if="purchaseSuccess">✓ League Unlocked!</span>
+            <span v-else-if="checkingOut">Redirecting to Checkout...</span>
+            <span v-else>Get League Pass — ${{ launchPrice }}</span>
           </button>
 
           <!-- One person pays -->
@@ -325,71 +352,11 @@
             </tr>
           </thead>
           <tbody class="divide-y divide-dark-border/50">
-            <tr>
-              <td class="py-3 px-4 text-dark-text">Homepage Standings</td>
-              <td class="py-3 px-4 text-center text-green-400">✓</td>
-              <td class="py-3 px-4 text-center text-green-400">✓</td>
-              <td class="py-3 px-4 text-center text-green-400">✓</td>
-            </tr>
-            <tr>
-              <td class="py-3 px-4 text-dark-text">Basic Matchups</td>
-              <td class="py-3 px-4 text-center text-green-400">✓</td>
-              <td class="py-3 px-4 text-center text-green-400">✓</td>
-              <td class="py-3 px-4 text-center text-green-400">✓</td>
-            </tr>
-            <tr>
-              <td class="py-3 px-4 text-dark-text">Free Tools</td>
-              <td class="py-3 px-4 text-center text-green-400">✓</td>
-              <td class="py-3 px-4 text-center text-green-400">✓</td>
-              <td class="py-3 px-4 text-center text-green-400">✓</td>
-            </tr>
-            <tr>
-              <td class="py-3 px-4 text-dark-text">Full Power Rankings</td>
-              <td class="py-3 px-4 text-center text-dark-textMuted">—</td>
-              <td class="py-3 px-4 text-center text-green-400">✓</td>
-              <td class="py-3 px-4 text-center text-green-400">✓</td>
-            </tr>
-            <tr>
-              <td class="py-3 px-4 text-dark-text">League History</td>
-              <td class="py-3 px-4 text-center text-dark-textMuted">—</td>
-              <td class="py-3 px-4 text-center text-green-400">✓</td>
-              <td class="py-3 px-4 text-center text-green-400">✓</td>
-            </tr>
-            <tr>
-              <td class="py-3 px-4 text-dark-text">H2H Records</td>
-              <td class="py-3 px-4 text-center text-dark-textMuted">—</td>
-              <td class="py-3 px-4 text-center text-green-400">✓</td>
-              <td class="py-3 px-4 text-center text-green-400">✓</td>
-            </tr>
-            <tr>
-              <td class="py-3 px-4 text-dark-text">Shareable Graphics</td>
-              <td class="py-3 px-4 text-center text-dark-textMuted">—</td>
-              <td class="py-3 px-4 text-center text-green-400">✓</td>
-              <td class="py-3 px-4 text-center text-green-400">✓</td>
-            </tr>
-            <tr>
-              <td class="py-3 px-4 text-dark-text">AI Projections</td>
-              <td class="py-3 px-4 text-center text-dark-textMuted">—</td>
-              <td class="py-3 px-4 text-center" style="color: #eab308;">Free (beta)</td>
-              <td class="py-3 px-4 text-center text-green-400">✓</td>
-            </tr>
-            <tr>
-              <td class="py-3 px-4 text-dark-text">Start/Sit Advice</td>
-              <td class="py-3 px-4 text-center text-dark-textMuted">—</td>
-              <td class="py-3 px-4 text-center" style="color: #eab308;">Free (beta)</td>
-              <td class="py-3 px-4 text-center text-green-400">✓</td>
-            </tr>
-            <tr>
-              <td class="py-3 px-4 text-dark-text">Waiver Analysis</td>
-              <td class="py-3 px-4 text-center text-dark-textMuted">—</td>
-              <td class="py-3 px-4 text-center" style="color: #eab308;">Free (beta)</td>
-              <td class="py-3 px-4 text-center text-green-400">✓</td>
-            </tr>
-            <tr>
-              <td class="py-3 px-4 text-dark-text">Trade Analyzer</td>
-              <td class="py-3 px-4 text-center text-dark-textMuted">—</td>
-              <td class="py-3 px-4 text-center" style="color: #eab308;">Free (beta)</td>
-              <td class="py-3 px-4 text-center text-green-400">✓</td>
+            <tr v-for="row in featureRows" :key="row.label">
+              <td class="py-3 px-4 text-dark-text">{{ row.label }}</td>
+              <td class="py-3 px-4 text-center" :style="row.free === '✓' ? 'color:#4ade80' : 'color:#4b5563'">{{ row.free }}</td>
+              <td class="py-3 px-4 text-center" :style="row.pass === '✓' ? 'color:#4ade80' : row.pass === '—' ? 'color:#4b5563' : 'color:#eab308'">{{ row.pass }}</td>
+              <td class="py-3 px-4 text-center" :style="row.ultimate === '✓' ? 'color:#4ade80' : 'color:#4b5563'">{{ row.ultimate }}</td>
             </tr>
           </tbody>
         </table>
@@ -431,7 +398,7 @@
       <div class="rounded-2xl p-8 text-center mb-8" style="background: linear-gradient(135deg, #0f1118 0%, #0c0f1c 100%); border: 1px solid rgba(34,197,94,0.2);">
         <p class="text-dark-textMuted mb-2 text-sm">Ready to unlock your league?</p>
         <h3 class="text-2xl font-black text-white mb-6" style="font-family: 'Barlow Condensed', sans-serif; letter-spacing: 0.03em; text-transform: uppercase;">
-          Get League Pass for ${{ launchPrice }} — Limited Time
+          Get League Pass for ${{ launchPrice }} — $10 Off Launch Pricing
         </h3>
         <button
           @click="scrollToPurchase"
@@ -447,7 +414,7 @@
           </svg>
         </button>
         <p class="text-xs mt-4" style="color: #4b5563;">
-          Usually ${{ regularPrice }} · Launch pricing for a limited time
+          Usually ${{ regularPrice }} · $10 off for a limited time
         </p>
       </div>
 
@@ -481,18 +448,39 @@
 import { ref, computed, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useLeagueStore } from '@/stores/league'
+import { supabase } from '@/lib/supabase'
 
 const router = useRouter()
 const route = useRoute()
 const leagueStore = useLeagueStore()
 
-// League context from URL params
+// ── League context from URL params ──────────────────────────────────────────
 const contextLeagueId = ref('')
 const contextPlatform = ref('')
+const contextSport = ref('')
+const purchaseSuccess = ref(false)
+const checkingOut = ref(false)
+const checkoutError = ref<string | null>(null)
 
 onMounted(() => {
   contextLeagueId.value = (route.query.league as string) || leagueStore.activeLeagueId || ''
   contextPlatform.value = (route.query.platform as string) || leagueStore.activePlatform || ''
+  // sport: try URL param, then store, then derive from platform context
+  contextSport.value = (route.query.sport as string) || leagueStore.activeSport || ''
+
+  // ── Handle Stripe success redirect ─────────────────────────────────────
+  // Stripe appends ?success=1 after checkout completes
+  if (route.query.success === '1') {
+    purchaseSuccess.value = true
+    // Clean the URL so refreshing doesn't re-show the banner
+    router.replace({
+      path: '/pricing',
+      query: {
+        ...(contextLeagueId.value ? { league: contextLeagueId.value } : {}),
+        ...(contextPlatform.value ? { platform: contextPlatform.value } : {}),
+      }
+    })
+  }
 })
 
 const contextLeague = computed(() =>
@@ -509,7 +497,7 @@ const platformLabel = computed(() => {
   return p
 })
 
-// Pricing
+// ── Pricing ─────────────────────────────────────────────────────────────────
 const REGULAR_PRICE = 29
 const LAUNCH_PRICE = 19
 
@@ -525,19 +513,111 @@ const perPersonCost = computed(() => {
 
 const currentYear = computed(() => new Date().getFullYear())
 
-// Scroll to purchase section
 function scrollToPurchase() {
   document.getElementById('purchase')?.scrollIntoView({ behavior: 'smooth' })
 }
 
+function goToDashboard() {
+  router.push('/')
+}
+
+// ── Stripe Checkout ──────────────────────────────────────────────────────────
+async function purchaseLeaguePass() {
+  checkoutError.value = null
+
+  // Require league context
+  if (!contextLeagueId.value || !contextPlatform.value) {
+    checkoutError.value = 'Please go back to your dashboard and click "Get League Pass" from there so we can identify your league.'
+    return
+  }
+
+  // Require sport — derive from league if needed
+  const sport = contextSport.value
+    || contextLeague.value?.sport
+    || leagueStore.activeSport
+    || ''
+
+  if (!sport) {
+    checkoutError.value = 'Could not determine the sport for your league. Please go back to your dashboard and try again.'
+    return
+  }
+
+  // Require auth
+  const { data: { session } } = await supabase.auth.getSession()
+  if (!session) {
+    checkoutError.value = 'Please sign in before purchasing.'
+    return
+  }
+
+  checkingOut.value = true
+
+  try {
+    const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
+    const res = await fetch(`${supabaseUrl}/functions/v1/create-checkout-session`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${session.access_token}`,
+        'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY,
+      },
+      body: JSON.stringify({
+        league_id: contextLeagueId.value,
+        platform: contextPlatform.value,
+        sport,
+        league_name: contextLeagueName.value,
+      }),
+    })
+
+    const data = await res.json()
+
+    if (!res.ok) {
+      // 409 = already purchased
+      if (res.status === 409) {
+        checkoutError.value = 'Great news — this league already has an active League Pass for this season!'
+      } else {
+        checkoutError.value = data.error || 'Something went wrong. Please try again.'
+      }
+      return
+    }
+
+    // Redirect to Stripe Checkout
+    if (data.url) {
+      window.location.href = data.url
+    } else {
+      checkoutError.value = 'No checkout URL returned. Please try again.'
+    }
+  } catch (err: any) {
+    console.error('Checkout error:', err)
+    checkoutError.value = 'Network error. Please check your connection and try again.'
+  } finally {
+    checkingOut.value = false
+  }
+}
+
+// ── Feature table data ───────────────────────────────────────────────────────
+const featureRows = [
+  { label: 'Homepage Standings', free: '✓', pass: '✓', ultimate: '✓' },
+  { label: 'Basic Matchups', free: '✓', pass: '✓', ultimate: '✓' },
+  { label: 'Free Tools', free: '✓', pass: '✓', ultimate: '✓' },
+  { label: 'Full Power Rankings', free: '—', pass: '✓', ultimate: '✓' },
+  { label: 'League History', free: '—', pass: '✓', ultimate: '✓' },
+  { label: 'H2H Records', free: '—', pass: '✓', ultimate: '✓' },
+  { label: 'Shareable Graphics', free: '—', pass: '✓', ultimate: '✓' },
+  { label: 'AI Projections', free: '—', pass: 'Free (beta)', ultimate: '✓' },
+  { label: 'Start/Sit Advice', free: '—', pass: 'Free (beta)', ultimate: '✓' },
+  { label: 'Waiver Analysis', free: '—', pass: 'Free (beta)', ultimate: '✓' },
+  { label: 'Trade Analyzer', free: '—', pass: 'Free (beta)', ultimate: '✓' },
+]
+
+// ── FAQ ──────────────────────────────────────────────────────────────────────
 const faqs = [
   {
     question: "What happens when the season ends?",
-    answer: "Your League Pass is valid for the entire season. When a new season starts, you'll need to renew to maintain full access. Your historical data is always preserved."
+    answer: "Your League Pass is valid for the entire season — including the offseason. When the next season's games begin, you'll need to renew. Your historical data is always preserved."
   },
   {
     question: "Can I use this for multiple leagues?",
-    answer: "Each League Pass covers one league. If you're in multiple leagues, you'll need separate passes for each. Many commissioners split the cost with their league mates!"
+    answer: "Each League Pass covers one league. If you're in multiple leagues, each needs its own pass. Many commissioners split the cost with their league mates!"
   },
   {
     question: "Do my league mates need to pay?",
@@ -561,22 +641,11 @@ const faqs = [
   },
   {
     question: "Is the $19 price going up?",
-    answer: "Yes — $19 is our launch price for early adopters. The regular price is $29/season. Lock in the launch price now before it increases."
+    answer: "Yes — $19 is our launch price, $10 off the regular $29/season. Lock in the launch price now before it increases."
   }
 ]
 
 function toggleFaq(index: number) {
   openFaq.value = openFaq.value === index ? null : index
-}
-
-function purchaseLeaguePass() {
-  // TODO: Implement Stripe checkout
-  console.log('Purchase League Pass:', {
-    leagueId: contextLeagueId.value,
-    platform: contextPlatform.value,
-    teamCount: teamCount.value,
-    price: launchPrice.value
-  })
-  alert(`Stripe checkout coming soon!\n\nThis will unlock League Pass for:\n${contextLeagueName.value || 'your league'}`)
 }
 </script>

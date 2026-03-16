@@ -1,8 +1,8 @@
 <template>
   <!-- ── WRAP MODE: always renders slot; blurs + overlays when locked ── -->
   <div v-if="wrap" class="lgw">
-    <div :class="locked ? 'lgw-blur' : ''"><slot /></div>
-    <div v-if="locked" class="lgw-overlay">
+    <div :class="effectiveLocked ? 'lgw-blur' : ''"><slot /></div>
+    <div v-if="effectiveLocked && !checking" class="lgw-overlay">
       <div class="lgw-cta">
         <div class="lgw-lock">🔒</div>
         <div class="lgw-text">
@@ -11,7 +11,7 @@
         </div>
         <button class="lgw-btn" @click="goToPricing">
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>
-          GET LEAGUE PASS
+          GET LEAGUE PASS — $19
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
         </button>
       </div>
@@ -19,7 +19,7 @@
   </div>
 
   <!-- ── INLINE MODE: fade + bar shown after a sliced list ── -->
-  <div v-else-if="locked" class="lgi">
+  <div v-else-if="effectiveLocked && !checking" class="lgi">
     <div class="lgi-fade"></div>
     <div class="lgi-bar">
       <div class="lgi-inner">
@@ -27,7 +27,7 @@
         <span class="lgi-text">The rest of your league is hiding behind League Pass.</span>
         <button class="lgi-btn" @click="goToPricing">
           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>
-          GET LEAGUE PASS
+          GET LEAGUE PASS — $19
           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
         </button>
       </div>
@@ -36,23 +36,114 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
+import { ref, computed, watch, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useLeagueStore } from '@/stores/league'
+import { supabase } from '@/lib/supabase'
 
 const props = withDefaults(defineProps<{
   wrap?: boolean
-  locked?: boolean
+  locked?: boolean   // optional override; if false, always unlocked. If omitted, checks Supabase.
   label?: string
-}>(), { wrap: false, locked: true })
+}>(), { wrap: false })
 
 const router = useRouter()
 const leagueStore = useLeagueStore()
 
+// ── Internal state ──────────────────────────────────────────────────────────
+const supabaseLocked = ref(true) // assume locked until we know otherwise
+const checking = ref(false)
+
+// If caller explicitly passes :locked="false", always unlock.
+// If they pass :locked="true" (or omit), we check Supabase.
+const effectiveLocked = computed(() => {
+  if (props.locked === false) return false
+  return supabaseLocked.value
+})
+
+// ── Season key helper ────────────────────────────────────────────────────────
+function getCurrentSeasonKey(sport: string): string {
+  const now = new Date()
+  const year = now.getFullYear()
+  const month = now.getMonth() + 1
+
+  switch (sport) {
+    case 'football':
+      return month >= 9 ? `nfl_${year}` : `nfl_${year - 1}`
+    case 'basketball':
+      return month >= 10
+        ? `nba_${year}-${String(year + 1).slice(2)}`
+        : `nba_${year - 1}-${String(year).slice(2)}`
+    case 'hockey':
+      return month >= 10
+        ? `nhl_${year}-${String(year + 1).slice(2)}`
+        : `nhl_${year - 1}-${String(year).slice(2)}`
+    case 'baseball':
+      return `mlb_${year}`
+    default:
+      return `season_${year}`
+  }
+}
+
+// ── Check Supabase for active league pass ───────────────────────────────────
+// Uses a module-level cache to avoid hitting Supabase on every render.
+const _cache = new Map<string, { locked: boolean; ts: number }>()
+const CACHE_TTL = 5 * 60 * 1000 // 5 minutes
+
+async function checkLeaguePass(leagueId: string, sport: string) {
+  if (!leagueId || !sport) {
+    supabaseLocked.value = true
+    return
+  }
+
+  const seasonKey = getCurrentSeasonKey(sport)
+  const cacheKey = `${leagueId}::${seasonKey}`
+
+  const cached = _cache.get(cacheKey)
+  if (cached && Date.now() - cached.ts < CACHE_TTL) {
+    supabaseLocked.value = cached.locked
+    return
+  }
+
+  checking.value = true
+  try {
+    const { data, error } = await supabase
+      .from('league_passes')
+      .select('id')
+      .eq('league_id', leagueId)
+      .eq('season_key', seasonKey)
+      .eq('active', true)
+      .maybeSingle()
+
+    if (error) throw error
+
+    const locked = !data
+    supabaseLocked.value = locked
+    _cache.set(cacheKey, { locked, ts: Date.now() })
+  } catch (err) {
+    console.warn('LeagueGate: could not check league pass', err)
+    supabaseLocked.value = true // fail closed
+  } finally {
+    checking.value = false
+  }
+}
+
+// ── Watch for league changes ─────────────────────────────────────────────────
+function runCheck() {
+  const leagueId = leagueStore.activeLeagueId
+  const sport = leagueStore.activeSport || ''
+  if (leagueId) checkLeaguePass(leagueId, sport)
+}
+
+onMounted(runCheck)
+watch(() => [leagueStore.activeLeagueId, leagueStore.activeSport], runCheck)
+
+// ── Navigation ───────────────────────────────────────────────────────────────
 const pricingUrl = computed(() => {
   const params = new URLSearchParams()
   if (leagueStore.activeLeagueId) params.set('league', leagueStore.activeLeagueId)
   if (leagueStore.activePlatform) params.set('platform', leagueStore.activePlatform)
+  if (leagueStore.activeSport) params.set('sport', leagueStore.activeSport)
   const qs = params.toString()
   return qs ? `/pricing?${qs}` : '/pricing'
 })
