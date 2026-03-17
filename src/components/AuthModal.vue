@@ -222,7 +222,7 @@ async function handleSubmit() {
     } else {
       const result = await authStore.signUp(email.value, password.value, fullName.value)
       if (result.success) {
-        successMessage.value = 'Check your email for a confirmation link!'
+        successMessage.value = "Check your email for a confirmation link! If you don't see it, check your spam folder."
       } else {
         errorMessage.value = result.error || 'Sign up failed'
       }
