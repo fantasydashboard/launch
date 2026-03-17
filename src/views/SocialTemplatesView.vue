@@ -84,12 +84,12 @@
             <div class="banner-headline">{{ currentHeadline.line1 }}<br/><span class="banner-headline-gold">{{ currentHeadline.line2 }}</span></div>
             <div class="banner-sub">{{ currentHeadline.sub }}</div>
             <div class="banner-platforms">
-              <img src="/espn-logo.svg" alt="ESPN" class="plat-logo" />
-              <img src="/yahoo-fantasy.svg" alt="Yahoo" class="plat-logo" />
-              <img src="/sleeper.svg" alt="Sleeper" class="plat-logo" />
+              <span class="plat-txt espn">ESPN</span>
+              <span class="plat-txt yahoo">YAHOO</span>
+              <span class="plat-txt sleeper">SLEEPER</span>
             </div>
           </div>
-          <div class="banner-url-bar"><span class="banner-url-dot"></span>ultimatefantasydashboard.com</div>
+
         </div>
       </div>
       <button class="dl-btn" @click="download('banner-canvas', 'ufd-facebook-banner')">⬇ Download Banner (PNG)</button>
@@ -339,13 +339,13 @@ async function download(id: string, filename: string) {
 .banner-orb { position: absolute; border-radius: 50%; pointer-events: none; filter: blur(60px); }
 .banner-orb-1 { width: 300px; height: 300px; background: radial-gradient(circle, rgba(234,179,8,0.18) 0%, transparent 70%); top: -80px; left: 160px; }
 .banner-orb-2 { width: 400px; height: 400px; background: radial-gradient(circle, rgba(59,130,246,0.1) 0%, transparent 70%); bottom: -100px; right: 200px; }
-.banner-cards { position: absolute; right: 0; top: 0; bottom: 0; width: 520px; pointer-events: none; }
+.banner-cards { position: absolute; right: 0; top: 0; bottom: 0; width: 520px; pointer-events: none; display: flex; align-items: center; }
 .banner-cards::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 120px; background: linear-gradient(90deg, #05060a, transparent); z-index: 10; }
 .banner-cards::after  { content: ''; position: absolute; right: 0; top: 0; bottom: 0; width: 80px;  background: linear-gradient(270deg, #05060a, transparent); z-index: 10; }
-.bcard { position: absolute; width: 220px; background: linear-gradient(135deg, #12151e, #0a0c14); border: 1px solid #1e2130; border-radius: 12px; overflow: hidden; box-shadow: 0 24px 60px rgba(0,0,0,0.95); font-size: 10px; isolation: isolate; }
-.bcard-1 { left: 10px;  top: 18px; transform: rotate(-6deg) translateY(6px); opacity: 0.85; }
-.bcard-2 { left: 140px; top: 6px;  transform: rotate(-1.5deg); opacity: 0.95; border-color: rgba(234,179,8,0.25); box-shadow: 0 24px 60px rgba(0,0,0,0.95), 0 0 40px rgba(234,179,8,0.08); }
-.bcard-3 { left: 278px; top: 18px; transform: rotate(3.5deg) translateY(2px); opacity: 0.88; }
+.bcard { position: absolute; width: 240px; background: linear-gradient(135deg, #12151e, #0a0c14); border: 1px solid #1e2130; border-radius: 12px; overflow: hidden; box-shadow: 0 24px 60px rgba(0,0,0,0.95); font-size: 10px; isolation: isolate; }
+.bcard-1 { left: 10px;  top: 50%; transform: rotate(-6deg) translateY(-55%); opacity: 0.85; }
+.bcard-2 { left: 140px; top: 50%; transform: rotate(-1.5deg) translateY(-52%); opacity: 0.95; border-color: rgba(234,179,8,0.25); box-shadow: 0 24px 60px rgba(0,0,0,0.95), 0 0 40px rgba(234,179,8,0.08); }
+.bcard-3 { left: 278px; top: 50%; transform: rotate(3.5deg) translateY(-48%); opacity: 0.88; }
 .bcard-header { display: flex; align-items: center; gap: 5px; padding: 8px 10px; border-bottom: 1px solid #1a1d28; background: rgba(0,0,0,0.2); }
 .bcard-icon  { font-size: 10px; }
 .bcard-title { font-size: 9px; font-weight: 700; color: #e5e7eb; flex: 1; }
@@ -355,7 +355,7 @@ async function download(id: string, filename: string) {
 .bcard-rank  { font-size: 9px; font-weight: 700; color: #4b5563; width: 10px; text-align: center; }
 .bcard-avatar { width: 14px; height: 14px; border-radius: 50%; flex-shrink: 0; }
 .bcard-avatar.lg { width: 28px; height: 28px; }
-.bcard-name  { font-size: 9px; color: #d1d5db; flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 90px; }
+.bcard-name  { font-size: 9px; color: #d1d5db; flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 110px; }
 .bcard-pts   { font-size: 9px; font-weight: 700; color: #eab308; }
 .bcard-delta { font-size: 8px; font-weight: 600; width: 16px; text-align: right; }
 .bcard-delta.up { color: #22c55e; }
@@ -387,9 +387,11 @@ async function download(id: string, filename: string) {
 .banner-headline-gold { color: #eab308; }
 .banner-sub { font-size: 12px; color: #6b7280; line-height: 1.4; max-width: 260px; }
 .banner-platforms { display: flex; gap: 12px; align-items: center; }
-.plat-logo { height: 22px; width: auto; object-fit: contain; opacity: 0.85; filter: brightness(1.1); }
-.banner-url-bar { position: absolute; bottom: 0; left: 0; right: 0; height: 22px; background: rgba(234,179,8,0.08); border-top: 1px solid rgba(234,179,8,0.12); display: flex; align-items: center; justify-content: center; gap: 6px; font-size: 9px; color: #4b5563; letter-spacing: 0.1em; text-transform: uppercase; font-weight: 600; z-index: 20; }
-.banner-url-dot { width: 5px; height: 5px; border-radius: 50%; background: #eab308; }
+.plat-txt { font-size: 11px; font-weight: 900; letter-spacing: 0.1em; padding: 4px 10px; border-radius: 5px; }
+.plat-txt.espn    { color: #93c5fd; border: 1px solid rgba(59,130,246,0.4); background: rgba(59,130,246,0.12); }
+.plat-txt.yahoo   { color: #c4b5fd; border: 1px solid rgba(139,92,246,0.4); background: rgba(139,92,246,0.12); }
+.plat-txt.sleeper { color: #86efac; border: 1px solid rgba(34,197,94,0.4);  background: rgba(34,197,94,0.12);  }
+
 
 /* ═══ SQUARE ═══ */
 .square-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 24px; }
