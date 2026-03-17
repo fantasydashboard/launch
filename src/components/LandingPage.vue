@@ -20,8 +20,8 @@
 
         <!-- Headline -->
         <h1 class="hero-headline">
-          Stop arguing.<br />
-          <span class="headline-accent">Post the receipts.</span>
+          Your league deserves<br />better arguments.<br />
+          <span class="headline-accent">We've got the data to start them.</span>
         </h1>
 
         <p class="hero-sub">
