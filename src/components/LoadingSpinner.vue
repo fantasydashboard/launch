@@ -6,7 +6,7 @@
           src="/ufd-badge.png" 
           alt="Loading..." 
           class="badge-image"
-          :style="{ width: computedSize, height: computedSize }"
+          :style="{ width: computedSize, height: 'auto' }"
         />
       </div>
     </div>
