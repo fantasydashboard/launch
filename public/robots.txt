@@ -1,0 +1,5 @@
+User-agent: *
+Allow: /
+Disallow: /socialtemplates
+
+Sitemap: https://www.ultimatefantasydashboard.com/sitemap.xml

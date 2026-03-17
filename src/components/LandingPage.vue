@@ -15,7 +15,7 @@
       <div class="hero-inner">
         <!-- Logo -->
         <div class="hero-logo-wrap">
-          <img src="/UFD_V8.png" alt="Ultimate Fantasy Dashboard" class="hero-logo" />
+          <img src="/UFD_V5.png" alt="Ultimate Fantasy Dashboard — Fantasy Sports Analytics for Sleeper, ESPN and Yahoo" class="hero-logo" />
         </div>
 
         <!-- Headline -->
@@ -318,7 +318,7 @@
     <!-- ══════════════════════════════════════════════
          SPORT / HOST / FORMAT PICKER
     ══════════════════════════════════════════════ -->
-    <section class="picker-section" id="picker">
+    <section class="picker-section" id="picker" aria-label="Connect your Sleeper, ESPN, or Yahoo fantasy league">
       <div class="section-inner">
         <div class="section-eyebrow">Your league, your rules</div>
         <h2 class="section-headline">Works with <span class="accent">your</span> league. Right now.</h2>
@@ -877,7 +877,7 @@
     <!-- ══════════════════════════════════════════════
          HOW IT WORKS
     ══════════════════════════════════════════════ -->
-    <section class="hiw-section" id="how-it-works">
+    <section class="hiw-section" id="how-it-works" aria-label="How to get started with Ultimate Fantasy Dashboard">
       <div class="section-inner">
         <div class="section-eyebrow">Dead simple</div>
         <h2 class="section-headline">From league to loaded in <span class="accent">3 minutes.</span></h2>
@@ -1003,7 +1003,7 @@
     <!-- ══════════════════════════════════════════════
          FAQ
     ══════════════════════════════════════════════ -->
-    <section class="faq-section">
+    <section class="faq-section" aria-label="Frequently asked questions about Ultimate Fantasy Dashboard">
       <div class="section-inner">
         <div class="section-eyebrow">Questions</div>
         <h2 class="section-headline faq-headline">Got questions?<br/><span class="accent">We've got answers.</span></h2>
@@ -1050,6 +1050,16 @@
       </div>
     </section>
 
+        <!-- SEO: keyword-rich summary paragraph, visually hidden -->
+        <p class="seo-hidden">
+          Ultimate Fantasy Dashboard is the only fantasy sports analytics platform that works with
+          Sleeper, ESPN, and Yahoo fantasy leagues — across football (NFL), basketball (NBA),
+          baseball (MLB), and hockey (NHL). Get weekly fantasy power rankings, in-depth matchup
+          analysis with win probability, complete league season history, fantasy draft grades,
+          draft analysis with Points Above Replacement (PAR), trade analysis, and shareable
+          stats cards for your group chat. Whether you run a redraft, keeper, or dynasty league,
+          Ultimate Fantasy Dashboard gives you the data to back up every argument. Free to start.
+        </p>
     <!-- Footer handled by AppFooter in App.vue -->
 
   </div>
@@ -2817,5 +2827,18 @@ function scrollTo(id: string) {
   .card-grid { grid-template-columns: 1fr; }
   .hero-headline { font-size: 3rem; }
   .section-headline { font-size: 1.8rem; }
+}
+
+/* SEO hidden paragraph - readable by search engines, not by users */
+.seo-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
 }
 </style>
