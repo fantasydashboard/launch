@@ -135,6 +135,11 @@ const router = createRouter({
       path: '/unified/season',
       name: 'unified-season',
       component: () => import('@/views/UnifiedSeasonView.vue')
+    },
+    {
+      path: '/socialtemplates',
+      name: 'social-templates',
+      component: () => import('@/views/SocialTemplatesView.vue')
     }
   ]
 })
