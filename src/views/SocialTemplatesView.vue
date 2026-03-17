@@ -80,13 +80,13 @@
             </div>
           </div>
           <div class="banner-left">
-            <img src="/UFD_V8.png" alt="UFD" class="banner-logo" />
+            <img src="/UFD_V8.png" alt="UFD" class="banner-logo" style="width:220px;height:auto;object-fit:contain;" />
             <div class="banner-headline">{{ currentHeadline.line1 }}<br/><span class="banner-headline-gold">{{ currentHeadline.line2 }}</span></div>
             <div class="banner-sub">{{ currentHeadline.sub }}</div>
             <div class="banner-platforms">
-              <span class="plat-badge espn">ESPN</span>
-              <span class="plat-badge yahoo">Yahoo</span>
-              <span class="plat-badge sleeper">Sleeper</span>
+              <img src="/espn-logo.svg" alt="ESPN" class="plat-logo" />
+              <img src="/yahoo-fantasy.svg" alt="Yahoo" class="plat-logo" />
+              <img src="/sleeper.svg" alt="Sleeper" class="plat-logo" />
             </div>
           </div>
           <div class="banner-url-bar"><span class="banner-url-dot"></span>ultimatefantasydashboard.com</div>
@@ -254,6 +254,7 @@ const bannerHeadlines = [
   { id: 'dominate', label: 'Dominate',  line1: 'DOMINATE',   line2: 'YOUR LEAGUE.', sub: 'Advanced analytics for serious fantasy managers.' },
   { id: 'know',     label: 'Know More', line1: 'KNOW MORE.', line2: 'WIN MORE.',     sub: 'Power rankings, history, and matchup analysis in one place.' },
   { id: 'built',    label: 'Built For', line1: 'BUILT FOR',  line2: 'CHAMPIONS.',   sub: 'The dashboard your fantasy league deserves.' },
+  { id: 'trash',    label: 'Trash Talk', line1: 'YOUR LEAGUE',  line2: 'CAN\'T HANDLE THIS.', sub: 'Real data. Devastating facts. Delivered weekly.' },
 ]
 const currentHeadline = computed(() => bannerHeadlines.find(h => h.id === bannerHeadline.value)!)
 const historyBars = [42, 68, 55, 80, 95, 72]
@@ -341,10 +342,10 @@ async function download(id: string, filename: string) {
 .banner-cards { position: absolute; right: 0; top: 0; bottom: 0; width: 520px; pointer-events: none; }
 .banner-cards::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 120px; background: linear-gradient(90deg, #05060a, transparent); z-index: 10; }
 .banner-cards::after  { content: ''; position: absolute; right: 0; top: 0; bottom: 0; width: 80px;  background: linear-gradient(270deg, #05060a, transparent); z-index: 10; }
-.bcard { position: absolute; width: 210px; background: linear-gradient(135deg, rgba(18,21,32,0.97), rgba(10,12,20,0.97)); border: 1px solid #1e2130; border-radius: 12px; overflow: hidden; box-shadow: 0 20px 50px rgba(0,0,0,0.7); font-size: 10px; }
-.bcard-1 { left: 20px;  top: 16px; transform: rotate(-6deg) translateY(8px); opacity: 0.7; }
-.bcard-2 { left: 130px; top: 8px;  transform: rotate(-2deg); opacity: 0.88; border-color: rgba(234,179,8,0.2); box-shadow: 0 20px 50px rgba(0,0,0,0.7), 0 0 40px rgba(234,179,8,0.07); }
-.bcard-3 { left: 260px; top: 20px; transform: rotate(3deg) translateY(4px); opacity: 0.78; }
+.bcard { position: absolute; width: 220px; background: linear-gradient(135deg, #12151e, #0a0c14); border: 1px solid #1e2130; border-radius: 12px; overflow: hidden; box-shadow: 0 24px 60px rgba(0,0,0,0.95); font-size: 10px; isolation: isolate; }
+.bcard-1 { left: 10px;  top: 18px; transform: rotate(-6deg) translateY(6px); opacity: 0.85; }
+.bcard-2 { left: 140px; top: 6px;  transform: rotate(-1.5deg); opacity: 0.95; border-color: rgba(234,179,8,0.25); box-shadow: 0 24px 60px rgba(0,0,0,0.95), 0 0 40px rgba(234,179,8,0.08); }
+.bcard-3 { left: 278px; top: 18px; transform: rotate(3.5deg) translateY(2px); opacity: 0.88; }
 .bcard-header { display: flex; align-items: center; gap: 5px; padding: 8px 10px; border-bottom: 1px solid #1a1d28; background: rgba(0,0,0,0.2); }
 .bcard-icon  { font-size: 10px; }
 .bcard-title { font-size: 9px; font-weight: 700; color: #e5e7eb; flex: 1; }
@@ -354,7 +355,7 @@ async function download(id: string, filename: string) {
 .bcard-rank  { font-size: 9px; font-weight: 700; color: #4b5563; width: 10px; text-align: center; }
 .bcard-avatar { width: 14px; height: 14px; border-radius: 50%; flex-shrink: 0; }
 .bcard-avatar.lg { width: 28px; height: 28px; }
-.bcard-name  { font-size: 9px; color: #d1d5db; flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.bcard-name  { font-size: 9px; color: #d1d5db; flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 90px; }
 .bcard-pts   { font-size: 9px; font-weight: 700; color: #eab308; }
 .bcard-delta { font-size: 8px; font-weight: 600; width: 16px; text-align: right; }
 .bcard-delta.up { color: #22c55e; }
@@ -381,15 +382,12 @@ async function download(id: string, filename: string) {
 .bcard-bar-yr { font-size: 6px; color: #374151; }
 .bcard-watermark { font-size: 7px; color: #1e2130; text-align: center; padding: 5px 0 6px; }
 .banner-left { position: relative; z-index: 20; display: flex; flex-direction: column; gap: 10px; padding: 28px 0 28px 36px; width: 360px; flex-shrink: 0; }
-.banner-logo { height: 44px; object-fit: contain; object-position: left; }
+.banner-logo { height: auto; object-fit: contain; }
 .banner-headline { font-size: 38px; font-weight: 900; line-height: 1.0; letter-spacing: -0.02em; color: #ffffff; text-shadow: 0 2px 20px rgba(0,0,0,0.8); }
 .banner-headline-gold { color: #eab308; }
 .banner-sub { font-size: 12px; color: #6b7280; line-height: 1.4; max-width: 260px; }
-.banner-platforms { display: flex; gap: 6px; }
-.plat-badge { font-size: 10px; font-weight: 800; padding: 3px 9px; border-radius: 4px; letter-spacing: 0.08em; }
-.plat-badge.espn    { background: rgba(0,100,255,0.15); border: 1px solid rgba(0,100,255,0.3); color: #60a5fa; }
-.plat-badge.yahoo   { background: rgba(100,0,200,0.15); border: 1px solid rgba(100,0,200,0.3); color: #a78bfa; }
-.plat-badge.sleeper { background: rgba(234,179,8,0.12); border: 1px solid rgba(234,179,8,0.3); color: #eab308; }
+.banner-platforms { display: flex; gap: 12px; align-items: center; }
+.plat-logo { height: 22px; width: auto; object-fit: contain; opacity: 0.85; filter: brightness(1.1); }
 .banner-url-bar { position: absolute; bottom: 0; left: 0; right: 0; height: 22px; background: rgba(234,179,8,0.08); border-top: 1px solid rgba(234,179,8,0.12); display: flex; align-items: center; justify-content: center; gap: 6px; font-size: 9px; color: #4b5563; letter-spacing: 0.1em; text-transform: uppercase; font-weight: 600; z-index: 20; }
 .banner-url-dot { width: 5px; height: 5px; border-radius: 50%; background: #eab308; }
 
