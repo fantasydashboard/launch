@@ -20,8 +20,8 @@
 
         <!-- Headline -->
         <h1 class="hero-headline">
-          Your league deserves<br />better arguments.<br />
-          <span class="headline-accent">We've got the data to start them.</span>
+          Your League Deserves<br />Better Trash Talk.<br />
+          <span class="headline-accent">We've got the Dashboards to Start It.</span>
         </h1>
 
         <p class="hero-sub">
