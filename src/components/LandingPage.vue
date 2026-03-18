@@ -15,13 +15,13 @@
       <div class="hero-inner">
         <!-- Logo -->
         <div class="hero-logo-wrap">
-          <img src="/UFD_V8.png" alt="Ultimate Fantasy Dashboard — Fantasy Sports Analytics for Sleeper, ESPN and Yahoo" class="hero-logo" />
+          <img src="/UFD_V5.png" alt="Ultimate Fantasy Dashboard — Fantasy Sports Analytics for Sleeper, ESPN and Yahoo" class="hero-logo" />
         </div>
 
         <!-- Headline -->
         <h1 class="hero-headline">
-          Your League Deserves<br />Better Trash Talk.<br />
-          <span class="headline-accent">We've got the Dashboards to Start It.</span>
+          Stop arguing.<br />
+          <span class="headline-accent">Post the receipts.</span>
         </h1>
 
         <p class="hero-sub">
@@ -996,6 +996,42 @@
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
           </button>
           <a href="/pricing" class="cta-ghost">See pricing details →</a>
+        </div>
+      </div>
+    </section>
+
+    <!-- ══════════════════════════════════════════════
+         RESOURCES SECTION
+    ══════════════════════════════════════════════ -->
+    <section class="resources-section">
+      <div class="section-inner">
+        <div class="section-eyebrow">Commissioner Guides</div>
+        <h2 class="section-headline">Learn how to run a <span class="accent">league people actually love.</span></h2>
+        <p class="section-sub" style="text-align:center;max-width:560px;margin:0 auto 40px">In-depth guides on using power rankings, league history, draft analysis, and matchup data to drive trash talk and engagement all season.</p>
+        <div class="resources-grid">
+          <a href="/resources/power-rankings" class="resource-tile">
+            <span class="resource-tile-icon">📊</span>
+            <span class="resource-tile-title">Power Rankings</span>
+            <span class="resource-tile-sub">Why they drive engagement →</span>
+          </a>
+          <a href="/resources/league-history" class="resource-tile">
+            <span class="resource-tile-icon">🏆</span>
+            <span class="resource-tile-title">League History</span>
+            <span class="resource-tile-sub">Unlocking years of receipts →</span>
+          </a>
+          <a href="/resources/draft-analysis" class="resource-tile">
+            <span class="resource-tile-icon">📋</span>
+            <span class="resource-tile-title">Draft Analysis</span>
+            <span class="resource-tile-sub">Grades that settle arguments →</span>
+          </a>
+          <a href="/resources/matchup-analysis" class="resource-tile">
+            <span class="resource-tile-icon">⚔️</span>
+            <span class="resource-tile-title">Matchup Analysis</span>
+            <span class="resource-tile-sub">Monte Carlo win probability →</span>
+          </a>
+        </div>
+        <div style="text-align:center;margin-top:24px">
+          <a href="/resources" class="cta-ghost">View all commissioner resources →</a>
         </div>
       </div>
     </section>
@@ -2827,18 +2863,5 @@ function scrollTo(id: string) {
   .card-grid { grid-template-columns: 1fr; }
   .hero-headline { font-size: 3rem; }
   .section-headline { font-size: 1.8rem; }
-}
-
-/* SEO hidden paragraph - readable by search engines, not by users */
-.seo-hidden {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  padding: 0;
-  margin: -1px;
-  overflow: hidden;
-  clip: rect(0, 0, 0, 0);
-  white-space: nowrap;
-  border: 0;
 }
 </style>
