@@ -826,27 +826,54 @@
               </template>
 
               <!-- ═══ TRADE ANALYSIS ════════════════════════════════════════ -->
-              <template v-else-if="card.type === 'draft'">
+              <template v-else-if="card.type === 'draft-grades'">
                 <div class="sc-card sc-draft-card">
                   <div class="sc-brand-row">
                     <span class="sc-brand-logo">UFD</span>
                     <span class="sc-brand-sport">{{ card.sportLabel }}</span>
+                    <span class="sc-brand-week">DRAFT</span>
                   </div>
                   <div class="sc-pr-title">📋 DRAFT GRADES · {{ card.teamName }}</div>
-                  <div class="sc-draft-header sc-table-head">
-                    <span>RD</span><span>PLAYER</span><span>POS</span><span>PAR</span><span>GRD</span>
+                  <div class="sc-draft-thead">
+                    <span>PICK</span><span>PLAYER</span><span>POS</span><span>PAR</span><span>GRD</span>
                   </div>
-                  <div v-for="p in card.picks" :key="p.name" class="sc-draft-row" :class="p.grade==='A+'?'sc-pr-leader':''">
-                    <span class="sc-draft-rd">{{ p.round }}.{{ p.pick }}</span>
+                  <div v-for="p in card.picks" :key="p.name" class="sc-draft-row" :class="p.grade==='A+'?'sc-pr-leader':p.grade==='D'||p.grade==='F'?'sc-draft-bust':''">
+                    <span class="sc-draft-pick">{{ p.round }}.{{ String(p.pick).padStart(2,'0') }}</span>
                     <span class="sc-draft-name">{{ p.name }}</span>
-                    <span class="sc-draft-pos">{{ p.pos }}</span>
-                    <span class="sc-draft-par" :class="p.par>0?'sc-par-up':'sc-par-dn'">{{ p.par > 0 ? '+' : '' }}{{ p.par }}</span>
-                    <span class="sc-draft-grade" :class="p.grade==='A+'?'sc-grade-gold':''">{{ p.grade }}</span>
+                    <span class="sc-pos-badge" :class="'pos-'+p.pos.toLowerCase()">{{ p.pos }}</span>
+                    <span class="sc-par-val" :class="p.par>0?'sc-par-up':'sc-par-dn'">{{ p.par > 0 ? '+' : '' }}{{ p.par }}</span>
+                    <span class="sc-grade-badge" :class="'grade-'+p.grade.replace('+','plus').replace('-','minus')">{{ p.grade }}</span>
                   </div>
-                  <div class="sc-draft-footer">
-                    <span class="sc-draft-overall">Overall: <strong style="color:#eab308">{{ card.teamGrade }}</strong></span>
-                    <span class="sc-watermark">ultimatefantasydashboard.com</span>
+                  <div class="sc-draft-foot">
+                    <span class="sc-draft-overall-lbl">Overall Grade</span>
+                    <span class="sc-draft-overall-val">{{ card.teamGrade }}</span>
+                    <span class="sc-watermark" style="margin-left:auto">ultimatefantasydashboard.com</span>
                   </div>
+                </div>
+              </template>
+
+              <template v-else-if="card.type === 'draft-board'">
+                <div class="sc-card sc-draftboard-card">
+                  <div class="sc-brand-row">
+                    <span class="sc-brand-logo">UFD</span>
+                    <span class="sc-brand-sport">{{ card.sportLabel }}</span>
+                    <span class="sc-brand-week">DRAFT</span>
+                  </div>
+                  <div class="sc-pr-title" style="display:flex;align-items:center;justify-content:space-between;padding-right:16px">
+                    <span>📋 DRAFT BOARD</span>
+                    <span class="sc-dboard-overall">{{ card.teamName }} &nbsp;<span style="color:#eab308;font-size:1rem">{{ card.teamGrade }}</span></span>
+                  </div>
+                  <div class="sc-dboard-thead">
+                    <span>PICK</span><span>PLAYER</span><span>POS</span><span>GRADE</span><span>▲▼</span>
+                  </div>
+                  <div v-for="r in card.rounds" :key="r.pick" class="sc-dboard-row" :class="r.grade==='A+'?'sc-pr-leader':r.grade==='D'||r.grade==='F'?'sc-draft-bust':''">
+                    <span class="sc-dboard-pick">{{ r.pick }}</span>
+                    <span class="sc-dboard-name">{{ r.name }}</span>
+                    <span class="sc-pos-badge" :class="'pos-'+r.pos.toLowerCase()">{{ r.pos }}</span>
+                    <span class="sc-grade-badge" :class="'grade-'+r.grade.replace('+','plus').replace('-','minus')">{{ r.grade }}</span>
+                    <span class="sc-dboard-trend" :class="r.trend==='up'?'chg-up':r.trend==='dn'?'chg-dn':'chg-flat'">{{ r.trend==='up'?'▲':r.trend==='dn'?'▼':'—' }}</span>
+                  </div>
+                  <div class="sc-watermark" style="padding:6px 16px">ultimatefantasydashboard.com</div>
                 </div>
               </template>
 
@@ -1379,14 +1406,29 @@ const galleryCards = [
   },
   // ── Trade Analysis ────────────────────────────────────────────────────────
   {
-    id: 9, type: 'draft', size: 'card-normal',
+    id: 9, type: 'draft-grades', size: 'card-normal',
     sportLabel: '🏈 NFL Fantasy · PPR',
-    week: 14,
     picks: [
-      { round: 1, pick: 3, name: 'Justin Jefferson', pos: 'WR', par: 42.1, grade: 'A+' },
-      { round: 2, pick: 14, name: 'Davante Adams', pos: 'WR', par: 18.7, grade: 'A' },
-      { round: 3, pick: 27, name: 'Tony Pollard', pos: 'RB', par: -4.2, grade: 'C' },
-      { round: 4, pick: 38, name: 'Travis Kelce', pos: 'TE', par: 31.4, grade: 'A+' },
+      { round: 1, pick: 3,  name: 'Justin Jefferson',    pos: 'WR', par: 42.1, grade: 'A+' },
+      { round: 2, pick: 14, name: 'Davante Adams',        pos: 'WR', par: 18.7, grade: 'A'  },
+      { round: 3, pick: 27, name: 'Tony Pollard',         pos: 'RB', par: -4.2, grade: 'C'  },
+      { round: 4, pick: 38, name: 'Travis Kelce',         pos: 'TE', par: 31.4, grade: 'A+' },
+      { round: 5, pick: 51, name: 'Stefon Diggs',         pos: 'WR', par: -11.8, grade: 'D' },
+    ],
+    teamGrade: 'A',
+    teamName: 'Mahomes Magic',
+  },
+  {
+    id: 10, type: 'draft-board', size: 'card-tall',
+    sportLabel: '🏈 NFL Fantasy · PPR',
+    rounds: [
+      { pick: '1.03', name: 'Justin Jefferson',    pos: 'WR', grade: 'A+', trend: 'up'   },
+      { pick: '2.02', name: 'Davante Adams',        pos: 'WR', grade: 'A',  trend: 'up'   },
+      { pick: '3.03', name: 'Tony Pollard',         pos: 'RB', grade: 'C',  trend: 'dn'   },
+      { pick: '4.02', name: 'Travis Kelce',         pos: 'TE', grade: 'A+', trend: 'up'   },
+      { pick: '5.03', name: 'Stefon Diggs',         pos: 'WR', grade: 'D',  trend: 'dn'   },
+      { pick: '6.02', name: 'Rhamondre Stevenson',  pos: 'RB', grade: 'B',  trend: 'flat' },
+      { pick: '7.03', name: 'DeVonta Smith',        pos: 'WR', grade: 'B+', trend: 'up'   },
     ],
     teamGrade: 'A',
     teamName: 'Mahomes Magic',
@@ -1400,7 +1442,7 @@ const filteredCards = computed(() =>
         (activeGalleryFilter.value === 'power-rankings' && c.type === 'pr-chart') ||
         (activeGalleryFilter.value === 'matchup'  && (c.type === 'win-prob' || c.type === 'win-prob-chart')) ||
         (activeGalleryFilter.value === 'history'  && (c.type === 'history-standings' || c.type === 'h2h-matrix' || c.type === 'legacy')) ||
-        (activeGalleryFilter.value === 'draft' && c.type === 'draft')
+        (activeGalleryFilter.value === 'draft' && (c.type === 'draft-grades' || c.type === 'draft-board'))
       )
 )
 
@@ -1503,7 +1545,8 @@ function cardLink(card: any): string | null {
     'history-standings': '/resources/league-history',
     'h2h-matrix':     '/resources/league-history',
     'legacy':         '/resources/league-history',
-    'draft':          '/resources/draft-analysis',
+    'draft-grades':   '/resources/draft-analysis',
+    'draft-board':    '/resources/draft-analysis',
   }
   return map[card.type] || null
 }

@@ -38,6 +38,11 @@
       </div>
     </template>
 
+    <!-- Clean layout for public resource pages -->
+    <template v-else-if="$route.path.startsWith('/resources')">
+      <router-view />
+    </template>
+
     <!-- Show Full App for authenticated users -->
     <template v-else>
       <!-- Combined Header Container -->
