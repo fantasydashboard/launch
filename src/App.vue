@@ -2,14 +2,14 @@
   <div class="min-h-screen transition-colors overflow-x-hidden" style="background: radial-gradient(circle at top, #1c2030, #05060a 55%);">
 
     <!-- Show Landing Page for non-authenticated users -->
-    <template v-if="!authStore.isAuthenticated">
+    <template v-if="!authStore.isAuthenticated && !$route.path.startsWith('/resources')">
       <!-- Simple Header for Landing Page -->
       <header class="fixed top-0 left-0 right-0 z-50 border-b border-dark-border/50" style="background: rgba(10, 12, 20, 0.95); backdrop-filter: blur(10px);">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div class="flex items-center justify-between h-16">
             <!-- Logo -->
             <div class="flex items-center gap-2 sm:gap-3">
-              <img src="/UFD_V8.png" alt="Ultimate Fantasy Dashboard" class="h-10 sm:h-12 object-contain" />
+              <img src="/UFD_V5.png" alt="Ultimate Fantasy Dashboard" class="h-10 sm:h-12 object-contain" />
             </div>
 
             <!-- Auth Buttons -->
@@ -271,7 +271,7 @@
               }"
             ></div>
             <img 
-              src="/UFD_V8.png" 
+              src="/UFD_V5.png" 
               alt="Ultimate Fantasy Dashboard" 
               class="relative z-10 object-contain transition-all duration-300 ease-out"
               :style="{ height: isScrolled ? '44px' : '82px' }"
@@ -294,7 +294,7 @@
                   class="absolute -left-4 top-1/2 -translate-y-1/2"
                   style="background: linear-gradient(to right, #0a0c14 0%, #0a0c14 60%, transparent 100%); width: 160px; height: 56px;"
                 ></div>
-                <img src="/UFD_V8.png" alt="UFD" class="h-10 object-contain relative z-10" />
+                <img src="/UFD_V5.png" alt="UFD" class="h-10 object-contain relative z-10" />
               </div>
               <div class="flex items-center gap-2">
                 <button 
@@ -643,7 +643,7 @@
         >
           <!-- Header -->
           <div class="flex items-center justify-between p-4 border-b border-dark-border">
-            <img src="/UFD_V8.png" alt="UFD" class="h-10 object-contain" />
+            <img src="/UFD_V5.png" alt="UFD" class="h-10 object-contain" />
             <button 
               @click="showMobileMenu = false"
               class="p-2 rounded-lg hover:bg-dark-border/50 transition-colors"

@@ -476,7 +476,7 @@
         <!-- Card grid -->
         <div class="card-grid">
           <template v-for="card in filteredCards" :key="card.id">
-            <div class="share-card" :class="card.size">
+            <div class="share-card" :class="card.size" :style="cardLink(card) ? 'cursor:pointer' : ''" @click="cardLink(card) && $router.push(cardLink(card))">
 
               <!-- ═══ POWER RANKINGS TABLE ════════════════════════════════ -->
               <template v-if="card.type === 'power-rankings'">
@@ -826,6 +826,30 @@
               </template>
 
               <!-- ═══ TRADE ANALYSIS ════════════════════════════════════════ -->
+              <template v-else-if="card.type === 'draft'">
+                <div class="sc-card sc-draft-card">
+                  <div class="sc-brand-row">
+                    <span class="sc-brand-logo">UFD</span>
+                    <span class="sc-brand-sport">{{ card.sportLabel }}</span>
+                  </div>
+                  <div class="sc-pr-title">📋 DRAFT GRADES · {{ card.teamName }}</div>
+                  <div class="sc-draft-header sc-table-head">
+                    <span>RD</span><span>PLAYER</span><span>POS</span><span>PAR</span><span>GRD</span>
+                  </div>
+                  <div v-for="p in card.picks" :key="p.name" class="sc-draft-row" :class="p.grade==='A+'?'sc-pr-leader':''">
+                    <span class="sc-draft-rd">{{ p.round }}.{{ p.pick }}</span>
+                    <span class="sc-draft-name">{{ p.name }}</span>
+                    <span class="sc-draft-pos">{{ p.pos }}</span>
+                    <span class="sc-draft-par" :class="p.par>0?'sc-par-up':'sc-par-dn'">{{ p.par > 0 ? '+' : '' }}{{ p.par }}</span>
+                    <span class="sc-draft-grade" :class="p.grade==='A+'?'sc-grade-gold':''">{{ p.grade }}</span>
+                  </div>
+                  <div class="sc-draft-footer">
+                    <span class="sc-draft-overall">Overall: <strong style="color:#eab308">{{ card.teamGrade }}</strong></span>
+                    <span class="sc-watermark">ultimatefantasydashboard.com</span>
+                  </div>
+                </div>
+              </template>
+
               <template v-else-if="card.type === 'trade'">
                 <div class="sc-card sc-trade-card">
                   <div class="sc-brand-row">
@@ -1250,7 +1274,7 @@ const galleryFilters = [
   { id: 'matchup',        label: '⚔️ Matchups' },
   { id: 'standings',      label: '🏆 Standings' },
   { id: 'history',        label: '📜 History' },
-  { id: 'trade',          label: '🤝 Trade Analysis' },
+  { id: 'draft',          label: '📋 Draft Analysis' },
 ]
 const activeGalleryFilter = ref('all')
 
@@ -1355,13 +1379,17 @@ const galleryCards = [
   },
   // ── Trade Analysis ────────────────────────────────────────────────────────
   {
-    id: 9, type: 'trade', size: 'card-normal',
+    id: 9, type: 'draft', size: 'card-normal',
     sportLabel: '🏈 NFL Fantasy · PPR',
-    team1: 'Mahomes Magic', team2: 'Waiver Wire Kid',
-    gives1: [{ name: 'Justin Jefferson',    pos: 'WR', val:  8.2 }],
-    gives2: [{ name: 'Amon-Ra St. Brown',   pos: 'WR', val:  6.4 },
-             { name: 'Rhamondre Stevenson', pos: 'RB', val:  4.1 }],
-    verdict: 'Win',
+    week: 14,
+    picks: [
+      { round: 1, pick: 3, name: 'Justin Jefferson', pos: 'WR', par: 42.1, grade: 'A+' },
+      { round: 2, pick: 14, name: 'Davante Adams', pos: 'WR', par: 18.7, grade: 'A' },
+      { round: 3, pick: 27, name: 'Tony Pollard', pos: 'RB', par: -4.2, grade: 'C' },
+      { round: 4, pick: 38, name: 'Travis Kelce', pos: 'TE', par: 31.4, grade: 'A+' },
+    ],
+    teamGrade: 'A',
+    teamName: 'Mahomes Magic',
   },
 ]
 
@@ -1371,7 +1399,8 @@ const filteredCards = computed(() =>
     : galleryCards.filter(c => c.type === activeGalleryFilter.value ||
         (activeGalleryFilter.value === 'power-rankings' && c.type === 'pr-chart') ||
         (activeGalleryFilter.value === 'matchup'  && (c.type === 'win-prob' || c.type === 'win-prob-chart')) ||
-        (activeGalleryFilter.value === 'history'  && (c.type === 'history-standings' || c.type === 'h2h-matrix' || c.type === 'legacy'))
+        (activeGalleryFilter.value === 'history'  && (c.type === 'history-standings' || c.type === 'h2h-matrix' || c.type === 'legacy')) ||
+        (activeGalleryFilter.value === 'draft' && c.type === 'draft')
       )
 )
 
@@ -1464,6 +1493,21 @@ function wpcAreaPath(probs: number[], x0: number, xStep: number, yBase: number, 
 }
 
 // ── Utils ────────────────────────────────────────────────────────────────────
+function cardLink(card: any): string | null {
+  const map: Record<string, string> = {
+    'power-rankings': '/resources/power-rankings',
+    'pr-chart':       '/resources/power-rankings',
+    'win-prob':       '/resources/matchup-analysis',
+    'win-prob-chart': '/resources/matchup-analysis',
+    'standings':      '/resources/league-history',
+    'history-standings': '/resources/league-history',
+    'h2h-matrix':     '/resources/league-history',
+    'legacy':         '/resources/league-history',
+    'draft':          '/resources/draft-analysis',
+  }
+  return map[card.type] || null
+}
+
 function scrollTo(id: string) {
   document.getElementById(id)?.scrollIntoView({ behavior: 'smooth' })
 }
