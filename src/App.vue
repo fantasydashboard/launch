@@ -1264,6 +1264,15 @@ function handleClickOutside(event: MouseEvent) {
   }
 }
 
+
+// Watch for ?signup=true query param from resource pages
+watch(() => route.query.signup, (val) => {
+  if (val === 'true') {
+    showAuthModal.value = true
+    authMode.value = 'signup'
+  }
+}, { immediate: true })
+
 onMounted(async () => {
   darkModeStore.init()
   // Open signup modal if ?signup=true in URL
