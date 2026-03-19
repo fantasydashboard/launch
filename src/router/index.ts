@@ -136,6 +136,7 @@ const router = createRouter({
       name: 'unified-season',
       component: () => import('@/views/UnifiedSeasonView.vue'),
     },
+    { path: '/signup', name: 'signup-page', component: () => import('@/views/SignupPage.vue') },
     { path: '/powerrankings', name: 'page-pr', component: () => import('@/views/PowerRankingsPage.vue') },
     { path: '/matchups-info', name: 'page-matchups', component: () => import('@/views/MatchupsPage.vue') },
     { path: '/draft-info', name: 'page-draft', component: () => import('@/views/DraftPage.vue') },

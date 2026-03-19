@@ -1,9 +1,9 @@
 <template>
 <div class="pg">
   <nav class="pg-nav">
-    <a href="/?signup=true"><img src="/UFD_V8.png" class="pg-logo" alt="UFD" /></a>
+    <a href="/"><img src="/UFD_V8.png" class="pg-logo" alt="UFD" /></a>
     <div class="pg-nav-links"><a href="/powerrankings">Power Rankings</a><a href="/matchups-info">Matchups</a><a href="/draft-info">Draft Analysis</a><a href="/history-info">League History</a></div>
-    <a href="/?signup=true" class="pg-cta" @click.prevent="$router.push('/')">Get Started Free →</a>
+    <a href="/signup" class="pg-cta">Get Started Free →</a>
   </nav>
   <div class="pg-hero">
     <div class="pg-eyebrow">Fantasy Draft Analysis</div>
@@ -44,11 +44,30 @@
       <div class="pg-callout-title">Draft analysis for Sleeper, ESPN & Yahoo — points and category leagues</div>
       <p class="pg-callout-body">UFD automatically grades drafts for all three platforms across football, basketball, baseball, and hockey — in both points and category formats. Grades update weekly so the best steals and worst busts get properly recognized over time.</p>
       <div class="pg-tags"><span class="pg-tag t-sleeper">Sleeper</span><span class="pg-tag t-espn">ESPN</span><span class="pg-tag t-yahoo">Yahoo</span><span class="pg-tag t-fb">Football</span><span class="pg-tag t-bb">Basketball</span><span class="pg-tag t-base">Baseball</span><span class="pg-tag t-hk">Hockey</span></div>
-      <a href="/?signup=true" class="pg-btn" @click.prevent="$router.push('/')">Grade My League's Draft →</a>
+      <a href="/signup" class="pg-btn">Grade My League's Draft →</a>
     </div>
     <div class="pg-related"><div class="pg-related-title">Explore more</div><div class="pg-related-grid"><a href="/powerrankings" class="pg-related-link"><div class="pg-related-icon">📊</div><div class="pg-related-name">Power Rankings</div><div class="pg-related-sub">Weekly engagement driver</div></a><a href="/matchups-info" class="pg-related-link"><div class="pg-related-icon">⚔️</div><div class="pg-related-name">Matchup Analysis</div><div class="pg-related-sub">Win probability & Monte Carlo</div></a><a href="/history-info" class="pg-related-link"><div class="pg-related-icon">🏆</div><div class="pg-related-name">League History</div><div class="pg-related-sub">Years of receipts</div></a></div></div>
   </div>
-  <div class="pg-footer-cta"><div class="pg-eyebrow">Try it free</div><h2 class="pg-footer-title">Grade the draft. Settle the argument.</h2><p class="pg-footer-sub">Connect your league and get automatic PAR scores and draft grades updated all season long.</p><a href="/?signup=true" class="pg-btn" @click.prevent="$router.push('/')">Connect Your League Free →</a><p class="pg-footer-trust">No credit card · Sleeper, Yahoo & ESPN · Football, Basketball, Baseball & Hockey</p></div>
+  <div class="pg-footer-cta"><div class="pg-eyebrow">Try it free</div><h2 class="pg-footer-title">Grade the draft. Settle the argument.</h2><p class="pg-footer-sub">Connect your league and get automatic PAR scores and draft grades updated all season long.</p><a href="/signup" class="pg-btn">Connect Your League Free →</a><p class="pg-footer-trust">No credit card · Sleeper, Yahoo & ESPN · Football, Basketball, Baseball & Hockey</p></div>
+
+  <!-- Auth Modal -->
+  <div v-if="showModal" class="modal-overlay" @click.self="showModal=false">
+    <div class="modal-box">
+      <button class="modal-close" @click="showModal=false">✕</button>
+      <img src="/ufd-badge.png" alt="UFD" class="modal-shield" />
+      <h2 class="modal-title">Create Account</h2>
+      <p class="modal-sub">Start dominating your fantasy leagues</p>
+      <a href="https://accounts.google.com" class="modal-google">
+        <svg width="18" height="18" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
+        Continue with Google
+      </a>
+      <div class="modal-divider"><span>or continue with email</span></div>
+      <input v-model="email" class="modal-input" type="email" placeholder="you@example.com" />
+      <input v-model="password" class="modal-input" type="password" placeholder="Password" />
+      <a :href="signupUrl" class="modal-submit">Create Account →</a>
+      <p class="modal-login">Already have an account? <a href="/?login=true" class="modal-login-link">Sign in</a></p>
+    </div>
+  </div>
 </div>
 </template>
 <script setup lang="ts">import { useRouter } from 'vue-router';const router = useRouter()</script>
@@ -128,4 +147,22 @@
 .pg-footer-sub{font-size:16px;color:#6b7280;margin:0 auto 28px;max-width:480px}
 .pg-footer-trust{font-size:12px;color:#374151;margin-top:14px}
 @media(max-width:640px){.pg-nav{padding:12px 20px}.pg-nav-links{display:none}.pg-hero,.pg-body{padding-left:20px;padding-right:20px}.pg-related-grid{grid-template-columns:1fr}}
+
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.7);display:flex;align-items:center;justify-content:center;z-index:1000;backdrop-filter:blur(4px)}
+.modal-box{background:#0f1220;border:1px solid #1e2130;border-radius:20px;padding:40px 36px;width:100%;max-width:420px;position:relative;text-align:center}
+.modal-close{position:absolute;top:16px;right:16px;background:none;border:none;color:#6b7280;font-size:18px;cursor:pointer;padding:4px 8px}
+.modal-close:hover{color:#f7f7ff}
+.modal-shield{width:48px;height:auto;margin:0 auto 12px}
+.modal-title{font-size:22px;font-weight:900;color:#fff;margin:0 0 6px}
+.modal-sub{font-size:14px;color:#6b7280;margin:0 0 24px}
+.modal-google{display:flex;align-items:center;justify-content:center;gap:10px;padding:12px;background:#fff;color:#1a1a1a;font-size:14px;font-weight:600;border-radius:10px;text-decoration:none;margin-bottom:16px;transition:opacity .2s}
+.modal-google:hover{opacity:0.9}
+.modal-divider{display:flex;align-items:center;gap:12px;margin-bottom:16px;color:#374151;font-size:12px}
+.modal-divider::before,.modal-divider::after{content:'';flex:1;border-top:1px solid #1e2130}
+.modal-input{width:100%;background:#05060a;border:1px solid #262a3a;border-radius:8px;padding:12px 14px;color:#f7f7ff;font-size:14px;margin-bottom:12px;outline:none;text-align:left;display:block}
+.modal-input:focus{border-color:#eab308}
+.modal-submit{display:block;padding:14px;background:#eab308;color:#0a0c14;font-size:15px;font-weight:800;border-radius:10px;text-decoration:none;margin-bottom:16px;text-align:center;transition:background .2s}
+.modal-submit:hover{background:#fbbf24}
+.modal-login{font-size:13px;color:#6b7280;margin:0}
+.modal-login-link{color:#eab308;text-decoration:none}
 </style>
