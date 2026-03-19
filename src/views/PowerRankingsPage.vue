@@ -4,9 +4,9 @@
     <a href="/"><img src="/UFD_V8.png" class="pg-logo" alt="UFD" /></a>
     <div class="pg-nav-links">
       <a href="/powerrankings">Power Rankings</a>
-      <a href="/matchups">Matchups</a>
-      <a href="/draft">Draft Analysis</a>
-      <a href="/history">League History</a>
+      <a href="/matchups-info">Matchups</a>
+      <a href="/draft-info">Draft Analysis</a>
+      <a href="/history-info">League History</a>
     </div>
     <a href="/" class="pg-cta" @click.prevent="$router.push('/')">Get Started Free →</a>
   </nav>
@@ -69,9 +69,9 @@
     <div class="pg-related">
       <div class="pg-related-title">Explore more</div>
       <div class="pg-related-grid">
-        <a href="/matchups" class="pg-related-link"><div class="pg-related-icon">⚔️</div><div class="pg-related-name">Matchup Analysis</div><div class="pg-related-sub">Win probability & Monte Carlo</div></a>
-        <a href="/draft" class="pg-related-link"><div class="pg-related-icon">📋</div><div class="pg-related-name">Draft Analysis</div><div class="pg-related-sub">Grades that settle arguments</div></a>
-        <a href="/history" class="pg-related-link"><div class="pg-related-icon">🏆</div><div class="pg-related-name">League History</div><div class="pg-related-sub">Years of receipts</div></a>
+        <a href="/matchups-info" class="pg-related-link"><div class="pg-related-icon">⚔️</div><div class="pg-related-name">Matchup Analysis</div><div class="pg-related-sub">Win probability & Monte Carlo</div></a>
+        <a href="/draft-info" class="pg-related-link"><div class="pg-related-icon">📋</div><div class="pg-related-name">Draft Analysis</div><div class="pg-related-sub">Grades that settle arguments</div></a>
+        <a href="/history-info" class="pg-related-link"><div class="pg-related-icon">🏆</div><div class="pg-related-name">League History</div><div class="pg-related-sub">Years of receipts</div></a>
       </div>
     </div>
   </div>

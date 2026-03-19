@@ -137,9 +137,9 @@ const router = createRouter({
       component: () => import('@/views/UnifiedSeasonView.vue'),
     },
     { path: '/powerrankings', name: 'page-pr', component: () => import('@/views/PowerRankingsPage.vue') },
-    { path: '/matchups', name: 'page-matchups', component: () => import('@/views/MatchupsPage.vue') },
-    { path: '/draft', name: 'page-draft', component: () => import('@/views/DraftPage.vue') },
-    { path: '/history', name: 'page-history', component: () => import('@/views/HistoryPage.vue') },
+    { path: '/matchups-info', name: 'page-matchups', component: () => import('@/views/MatchupsPage.vue') },
+    { path: '/draft-info', name: 'page-draft', component: () => import('@/views/DraftPage.vue') },
+    { path: '/history-info', name: 'page-history', component: () => import('@/views/HistoryPage.vue') },
   ]
 })
 

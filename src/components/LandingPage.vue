@@ -1539,14 +1539,14 @@ function cardLink(card: any): string | null {
   const map: Record<string, string> = {
     'power-rankings': '/powerrankings',
     'pr-chart':       '/powerrankings',
-    'win-prob':       '/matchups',
-    'win-prob-chart': '/matchups',
-    'standings':      '/history',
-    'history-standings': '/history',
-    'h2h-matrix':     '/history',
-    'legacy':         '/history',
-    'draft-grades':   '/draft',
-    'draft-board':    '/draft',
+    'win-prob':       '/matchups-info',
+    'win-prob-chart': '/matchups-info',
+    'standings':      '/history-info',
+    'history-standings': '/history-info',
+    'h2h-matrix':     '/history-info',
+    'legacy':         '/history-info',
+    'draft-grades':   '/draft-info',
+    'draft-board':    '/draft-info',
   }
   return map[card.type] || null
 }

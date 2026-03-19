@@ -4,9 +4,9 @@
     <a href="/"><img src="/UFD_V8.png" class="pg-logo" alt="UFD" /></a>
     <div class="pg-nav-links">
       <a href="/powerrankings">Power Rankings</a>
-      <a href="/matchups">Matchups</a>
-      <a href="/draft">Draft Analysis</a>
-      <a href="/history">League History</a>
+      <a href="/matchups-info">Matchups</a>
+      <a href="/draft-info">Draft Analysis</a>
+      <a href="/history-info">League History</a>
     </div>
     <a href="/" class="pg-cta" @click.prevent="$router.push('/')">Get Started Free →</a>
   </nav>
@@ -50,7 +50,7 @@
       <div class="pg-tags"><span class="pg-tag t-sleeper">Sleeper</span><span class="pg-tag t-espn">ESPN</span><span class="pg-tag t-yahoo">Yahoo</span><span class="pg-tag t-fb">Football</span><span class="pg-tag t-bb">Basketball</span><span class="pg-tag t-base">Baseball</span><span class="pg-tag t-hk">Hockey</span></div>
       <a href="/" class="pg-btn" @click.prevent="$router.push('/')">Check My Live Win Probability →</a>
     </div>
-    <div class="pg-related"><div class="pg-related-title">Explore more</div><div class="pg-related-grid"><a href="/powerrankings" class="pg-related-link"><div class="pg-related-icon">📊</div><div class="pg-related-name">Power Rankings</div><div class="pg-related-sub">Weekly engagement driver</div></a><a href="/draft" class="pg-related-link"><div class="pg-related-icon">📋</div><div class="pg-related-name">Draft Analysis</div><div class="pg-related-sub">Grades all season long</div></a><a href="/history" class="pg-related-link"><div class="pg-related-icon">🏆</div><div class="pg-related-name">League History</div><div class="pg-related-sub">Years of receipts</div></a></div></div>
+    <div class="pg-related"><div class="pg-related-title">Explore more</div><div class="pg-related-grid"><a href="/powerrankings" class="pg-related-link"><div class="pg-related-icon">📊</div><div class="pg-related-name">Power Rankings</div><div class="pg-related-sub">Weekly engagement driver</div></a><a href="/draft-info" class="pg-related-link"><div class="pg-related-icon">📋</div><div class="pg-related-name">Draft Analysis</div><div class="pg-related-sub">Grades all season long</div></a><a href="/history-info" class="pg-related-link"><div class="pg-related-icon">🏆</div><div class="pg-related-name">League History</div><div class="pg-related-sub">Years of receipts</div></a></div></div>
   </div>
   <div class="pg-footer-cta"><div class="pg-eyebrow">Try it free</div><h2 class="pg-footer-title">Your matchup's win probability is waiting to cause chaos.</h2><p class="pg-footer-sub">Connect your Sleeper, ESPN, or Yahoo league and get live Monte Carlo win probability for every matchup.</p><a href="/" class="pg-btn" @click.prevent="$router.push('/')">Connect Your League Free →</a><p class="pg-footer-trust">No credit card · Sleeper, Yahoo & ESPN · Football, Basketball, Baseball & Hockey</p></div>
 </div>
