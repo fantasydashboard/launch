@@ -1537,16 +1537,16 @@ function wpcAreaPath(probs: number[], x0: number, xStep: number, yBase: number, 
 // ── Utils ────────────────────────────────────────────────────────────────────
 function cardLink(card: any): string | null {
   const map: Record<string, string> = {
-    'power-rankings': '/resources/power-rankings',
-    'pr-chart':       '/resources/power-rankings',
-    'win-prob':       '/resources/matchup-analysis',
-    'win-prob-chart': '/resources/matchup-analysis',
-    'standings':      '/resources/league-history',
-    'history-standings': '/resources/league-history',
-    'h2h-matrix':     '/resources/league-history',
-    'legacy':         '/resources/league-history',
-    'draft-grades':   '/resources/draft-analysis',
-    'draft-board':    '/resources/draft-analysis',
+    'power-rankings': '/powerrankings',
+    'pr-chart':       '/powerrankings',
+    'win-prob':       '/matchups',
+    'win-prob-chart': '/matchups',
+    'standings':      '/history',
+    'history-standings': '/history',
+    'h2h-matrix':     '/history',
+    'legacy':         '/history',
+    'draft-grades':   '/draft',
+    'draft-board':    '/draft',
   }
   return map[card.type] || null
 }
