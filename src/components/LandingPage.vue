@@ -476,7 +476,7 @@
         <!-- Card grid -->
         <div class="card-grid">
           <template v-for="card in filteredCards" :key="card.id">
-            <div class="share-card" :class="card.size" :style="cardLink(card) ? 'cursor:pointer' : ''" @click="cardLink(card) && $router.push(cardLink(card))">
+            <div class="share-card" :class="card.size" :style="cardLink(card) ? 'cursor:pointer' : ''" @click="navigateCard(card)">
 
               <!-- ═══ POWER RANKINGS TABLE ════════════════════════════════ -->
               <template v-if="card.type === 'power-rankings'">
@@ -825,33 +825,6 @@
                 </div>
               </template>
 
-              <!-- ═══ TRADE ANALYSIS ════════════════════════════════════════ -->
-              <template v-else-if="card.type === 'draft-grades'">
-                <div class="sc-card sc-dg-card">
-                  <div class="sc-brand-row">
-                    <span class="sc-brand-logo">UFD</span>
-                    <span class="sc-brand-sport">{{ card.sportLabel }}</span>
-                    <span class="sc-brand-week">DRAFT</span>
-                  </div>
-                  <div class="sc-pr-title">📋 DRAFT GRADES · {{ card.teamName }}</div>
-                  <div class="sc-dg-head">
-                    <span>PICK</span><span>PLAYER</span><span>POS</span><span>PAR</span><span>GRD</span>
-                  </div>
-                  <div v-for="p in card.picks" :key="p.name" class="sc-dg-row" :class="p.grade==='A+'?'sc-pr-leader':p.grade==='D'?'sc-dg-bust':''">
-                    <span class="sc-dg-pick">{{ p.round }}.{{ String(p.pick).padStart(2,'0') }}</span>
-                    <span class="sc-dg-name">{{ p.name }}</span>
-                    <span class="sc-dg-pos" :class="'dpos-'+p.pos.toLowerCase()">{{ p.pos }}</span>
-                    <span class="sc-dg-par" :class="p.par>0?'sc-dg-up':'sc-dg-dn'">{{ p.par > 0 ? '+' : '' }}{{ p.par }}</span>
-                    <span class="sc-dg-grade" :class="p.grade==='A+'?'sc-dg-gold':p.grade==='D'?'sc-dg-red':''">{{ p.grade }}</span>
-                  </div>
-                  <div class="sc-dg-foot">
-                    <span class="sc-dg-lbl">Overall</span>
-                    <span class="sc-dg-val">{{ card.teamGrade }}</span>
-                    <span class="sc-watermark" style="margin-left:auto;padding:0">ultimatefantasydashboard.com</span>
-                  </div>
-                </div>
-              </template>
-
               <template v-else-if="card.type === 'draft-board'">
                 <div class="sc-card sc-draftboard-card">
                   <div class="sc-brand-row">
@@ -1162,6 +1135,9 @@
 
 <script setup lang="ts">
 import { ref, computed } from 'vue'
+import { useRouter } from 'vue-router'
+
+const router = useRouter()
 
 defineEmits<{ (e: 'open-signup'): void }>()
 
@@ -1412,20 +1388,7 @@ const galleryCards = [
       { name: 'Toilet Bowl FC', score:  612, seasons: 4, champs: 0, playoffs: 0, color: '#6b7280', myTeam: false },
     ],
   },
-  // ── Trade Analysis ────────────────────────────────────────────────────────
-  {
-    id: 9, type: 'draft-grades', size: 'card-normal',
-    sportLabel: '🏈 NFL Fantasy · PPR',
-    picks: [
-      { round: 1, pick: 3,  name: 'Justin Jefferson',    pos: 'WR', par: 42.1, grade: 'A+' },
-      { round: 2, pick: 14, name: 'Davante Adams',        pos: 'WR', par: 18.7, grade: 'A'  },
-      { round: 3, pick: 27, name: 'Tony Pollard',         pos: 'RB', par: -4.2, grade: 'C'  },
-      { round: 4, pick: 38, name: 'Travis Kelce',         pos: 'TE', par: 31.4, grade: 'A+' },
-      { round: 5, pick: 51, name: 'Stefon Diggs',         pos: 'WR', par: -11.8, grade: 'D' },
-    ],
-    teamGrade: 'A',
-    teamName: 'Mahomes Magic',
-  },
+  // ── Draft Board ───────────────────────────────────────────────────────────
   {
     id: 10, type: 'draft-board', size: 'card-tall',
     sportLabel: '🏈 NFL Fantasy · PPR',
@@ -1450,7 +1413,7 @@ const filteredCards = computed(() =>
         (activeGalleryFilter.value === 'power-rankings' && c.type === 'pr-chart') ||
         (activeGalleryFilter.value === 'matchup'  && (c.type === 'win-prob' || c.type === 'win-prob-chart')) ||
         (activeGalleryFilter.value === 'history'  && (c.type === 'history-standings' || c.type === 'h2h-matrix' || c.type === 'legacy')) ||
-        (activeGalleryFilter.value === 'draft' && (c.type === 'draft-grades' || c.type === 'draft-board'))
+        (activeGalleryFilter.value === 'draft' && c.type === 'draft-board')
       )
 )
 
@@ -1553,10 +1516,17 @@ function cardLink(card: any): string | null {
     'history-standings': '/history-info',
     'h2h-matrix':     '/history-info',
     'legacy':         '/history-info',
-    'draft-grades':   '/draft-info',
     'draft-board':    '/draft-info',
   }
   return map[card.type] || null
+}
+
+function navigateCard(card: any) {
+  const link = cardLink(card)
+  if (!link) return
+  router.push(link).then(() => {
+    window.scrollTo({ top: 0, behavior: 'instant' })
+  })
 }
 
 function scrollTo(id: string) {
