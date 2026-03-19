@@ -1266,6 +1266,12 @@ function handleClickOutside(event: MouseEvent) {
 
 onMounted(async () => {
   darkModeStore.init()
+  // Open signup modal if ?signup=true in URL
+  if (route.query.signup === 'true') {
+    showAuthModal.value = true
+    authMode.value = 'signup'
+  }
+
   await authStore.initialize()
   
   document.addEventListener('click', handleClickOutside)

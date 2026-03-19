@@ -827,27 +827,27 @@
 
               <!-- ═══ TRADE ANALYSIS ════════════════════════════════════════ -->
               <template v-else-if="card.type === 'draft-grades'">
-                <div class="sc-card sc-draft-card">
+                <div class="sc-card sc-dg-card">
                   <div class="sc-brand-row">
                     <span class="sc-brand-logo">UFD</span>
                     <span class="sc-brand-sport">{{ card.sportLabel }}</span>
                     <span class="sc-brand-week">DRAFT</span>
                   </div>
                   <div class="sc-pr-title">📋 DRAFT GRADES · {{ card.teamName }}</div>
-                  <div class="sc-draft-thead">
+                  <div class="sc-dg-head">
                     <span>PICK</span><span>PLAYER</span><span>POS</span><span>PAR</span><span>GRD</span>
                   </div>
-                  <div v-for="p in card.picks" :key="p.name" class="sc-draft-row" :class="p.grade==='A+'?'sc-pr-leader':p.grade==='D'||p.grade==='F'?'sc-draft-bust':''">
-                    <span class="sc-draft-pick">{{ p.round }}.{{ String(p.pick).padStart(2,'0') }}</span>
-                    <span class="sc-draft-name">{{ p.name }}</span>
-                    <span class="sc-pos-badge" :class="'pos-'+p.pos.toLowerCase()">{{ p.pos }}</span>
-                    <span class="sc-par-val" :class="p.par>0?'sc-par-up':'sc-par-dn'">{{ p.par > 0 ? '+' : '' }}{{ p.par }}</span>
-                    <span class="sc-grade-badge" :class="'grade-'+p.grade.replace('+','plus').replace('-','minus')">{{ p.grade }}</span>
+                  <div v-for="p in card.picks" :key="p.name" class="sc-dg-row" :class="p.grade==='A+'?'sc-pr-leader':p.grade==='D'?'sc-dg-bust':''">
+                    <span class="sc-dg-pick">{{ p.round }}.{{ String(p.pick).padStart(2,'0') }}</span>
+                    <span class="sc-dg-name">{{ p.name }}</span>
+                    <span class="sc-dg-pos" :class="'dpos-'+p.pos.toLowerCase()">{{ p.pos }}</span>
+                    <span class="sc-dg-par" :class="p.par>0?'sc-dg-up':'sc-dg-dn'">{{ p.par > 0 ? '+' : '' }}{{ p.par }}</span>
+                    <span class="sc-dg-grade" :class="p.grade==='A+'?'sc-dg-gold':p.grade==='D'?'sc-dg-red':''">{{ p.grade }}</span>
                   </div>
-                  <div class="sc-draft-foot">
-                    <span class="sc-draft-overall-lbl">Overall Grade</span>
-                    <span class="sc-draft-overall-val">{{ card.teamGrade }}</span>
-                    <span class="sc-watermark" style="margin-left:auto">ultimatefantasydashboard.com</span>
+                  <div class="sc-dg-foot">
+                    <span class="sc-dg-lbl">Overall</span>
+                    <span class="sc-dg-val">{{ card.teamGrade }}</span>
+                    <span class="sc-watermark" style="margin-left:auto;padding:0">ultimatefantasydashboard.com</span>
                   </div>
                 </div>
               </template>

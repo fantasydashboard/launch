@@ -1,9 +1,9 @@
 <template>
 <div class="pg">
   <nav class="pg-nav">
-    <a href="/"><img src="/UFD_V8.png" class="pg-logo" alt="UFD" /></a>
+    <a href="/?signup=true"><img src="/UFD_V8.png" class="pg-logo" alt="UFD" /></a>
     <div class="pg-nav-links"><a href="/powerrankings">Power Rankings</a><a href="/matchups-info">Matchups</a><a href="/draft-info">Draft Analysis</a><a href="/history-info">League History</a></div>
-    <a href="/" class="pg-cta" @click.prevent="$router.push('/')">Get Started Free →</a>
+    <a href="/?signup=true" class="pg-cta" @click.prevent="$router.push('/')">Get Started Free →</a>
   </nav>
   <div class="pg-hero">
     <div class="pg-eyebrow">Fantasy Draft Analysis</div>
@@ -44,11 +44,11 @@
       <div class="pg-callout-title">Draft analysis for Sleeper, ESPN & Yahoo — points and category leagues</div>
       <p class="pg-callout-body">UFD automatically grades drafts for all three platforms across football, basketball, baseball, and hockey — in both points and category formats. Grades update weekly so the best steals and worst busts get properly recognized over time.</p>
       <div class="pg-tags"><span class="pg-tag t-sleeper">Sleeper</span><span class="pg-tag t-espn">ESPN</span><span class="pg-tag t-yahoo">Yahoo</span><span class="pg-tag t-fb">Football</span><span class="pg-tag t-bb">Basketball</span><span class="pg-tag t-base">Baseball</span><span class="pg-tag t-hk">Hockey</span></div>
-      <a href="/" class="pg-btn" @click.prevent="$router.push('/')">Grade My League's Draft →</a>
+      <a href="/?signup=true" class="pg-btn" @click.prevent="$router.push('/')">Grade My League's Draft →</a>
     </div>
     <div class="pg-related"><div class="pg-related-title">Explore more</div><div class="pg-related-grid"><a href="/powerrankings" class="pg-related-link"><div class="pg-related-icon">📊</div><div class="pg-related-name">Power Rankings</div><div class="pg-related-sub">Weekly engagement driver</div></a><a href="/matchups-info" class="pg-related-link"><div class="pg-related-icon">⚔️</div><div class="pg-related-name">Matchup Analysis</div><div class="pg-related-sub">Win probability & Monte Carlo</div></a><a href="/history-info" class="pg-related-link"><div class="pg-related-icon">🏆</div><div class="pg-related-name">League History</div><div class="pg-related-sub">Years of receipts</div></a></div></div>
   </div>
-  <div class="pg-footer-cta"><div class="pg-eyebrow">Try it free</div><h2 class="pg-footer-title">Grade the draft. Settle the argument.</h2><p class="pg-footer-sub">Connect your league and get automatic PAR scores and draft grades updated all season long.</p><a href="/" class="pg-btn" @click.prevent="$router.push('/')">Connect Your League Free →</a><p class="pg-footer-trust">No credit card · Sleeper, Yahoo & ESPN · Football, Basketball, Baseball & Hockey</p></div>
+  <div class="pg-footer-cta"><div class="pg-eyebrow">Try it free</div><h2 class="pg-footer-title">Grade the draft. Settle the argument.</h2><p class="pg-footer-sub">Connect your league and get automatic PAR scores and draft grades updated all season long.</p><a href="/?signup=true" class="pg-btn" @click.prevent="$router.push('/')">Connect Your League Free →</a><p class="pg-footer-trust">No credit card · Sleeper, Yahoo & ESPN · Football, Basketball, Baseball & Hockey</p></div>
 </div>
 </template>
 <script setup lang="ts">import { useRouter } from 'vue-router';const router = useRouter()</script>

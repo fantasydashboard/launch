@@ -1,14 +1,14 @@
 <template>
 <div class="pg">
   <nav class="pg-nav">
-    <a href="/"><img src="/UFD_V8.png" class="pg-logo" alt="UFD" /></a>
+    <a href="/?signup=true"><img src="/UFD_V8.png" class="pg-logo" alt="UFD" /></a>
     <div class="pg-nav-links">
       <a href="/powerrankings">Power Rankings</a>
       <a href="/matchups-info">Matchups</a>
       <a href="/draft-info">Draft Analysis</a>
       <a href="/history-info">League History</a>
     </div>
-    <a href="/" class="pg-cta" @click.prevent="$router.push('/')">Get Started Free →</a>
+    <a href="/?signup=true" class="pg-cta" @click.prevent="$router.push('/')">Get Started Free →</a>
   </nav>
 
   <div class="pg-hero">
@@ -58,7 +58,7 @@
         <span class="pg-tag t-sleeper">Sleeper</span><span class="pg-tag t-espn">ESPN</span><span class="pg-tag t-yahoo">Yahoo</span>
         <span class="pg-tag t-fb">Football</span><span class="pg-tag t-bb">Basketball</span><span class="pg-tag t-base">Baseball</span><span class="pg-tag t-hk">Hockey</span>
       </div>
-      <a href="/" class="pg-btn" @click.prevent="$router.push('/')">Generate My League's Power Rankings →</a>
+      <a href="/?signup=true" class="pg-btn" @click.prevent="$router.push('/')">Generate My League's Power Rankings →</a>
     </div>
 
     <div class="pg-section">
@@ -80,7 +80,7 @@
     <div class="pg-eyebrow">Try it free</div>
     <h2 class="pg-footer-title">Your league's power rankings are one click away.</h2>
     <p class="pg-footer-sub">Connect your Sleeper, ESPN, or Yahoo league and generate a shareable power rankings card in minutes.</p>
-    <a href="/" class="pg-btn" @click.prevent="$router.push('/')">Connect Your League Free →</a>
+    <a href="/?signup=true" class="pg-btn" @click.prevent="$router.push('/')">Connect Your League Free →</a>
     <p class="pg-footer-trust">No credit card · Sleeper, Yahoo & ESPN · Football, Basketball, Baseball & Hockey</p>
   </div>
 </div>
