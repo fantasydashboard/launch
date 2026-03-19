@@ -859,21 +859,29 @@
                     <span class="sc-brand-sport">{{ card.sportLabel }}</span>
                     <span class="sc-brand-week">DRAFT</span>
                   </div>
-                  <div class="sc-pr-title" style="display:flex;align-items:center;justify-content:space-between;padding-right:16px">
-                    <span>📋 DRAFT BOARD</span>
-                    <span class="sc-dboard-overall">{{ card.teamName }} &nbsp;<span style="color:#eab308;font-size:1rem">{{ card.teamGrade }}</span></span>
+                  <div class="sc-dboard-header">
+                    <span class="sc-dboard-title">📋 DRAFT BOARD</span>
+                    <span class="sc-dboard-team-badge">
+                      <span class="sc-dboard-team-name">{{ card.teamName }}</span>
+                      <span class="sc-dboard-overall-grade">{{ card.teamGrade }}</span>
+                    </span>
                   </div>
-                  <div class="sc-dboard-thead">
-                    <span>PICK</span><span>PLAYER</span><span>POS</span><span>GRADE</span><span>▲▼</span>
+                  <div class="sc-dboard-picks">
+                    <div v-for="r in card.rounds" :key="r.pick" class="sc-pick-card" :class="'sc-pick-pos-'+r.pos.toLowerCase()">
+                      <div class="sc-pick-badge">{{ r.pick }}</div>
+                      <div class="sc-pick-info">
+                        <div class="sc-pick-name">{{ r.name }}</div>
+                        <div class="sc-pick-meta">
+                          <span class="sc-pick-pos-tag" :class="'pos-'+r.pos.toLowerCase()">{{ r.pos }}</span>
+                          <span class="sc-pick-grade-tag" :class="'pgrade-'+r.grade.replace('+','plus').replace('-','minus')">{{ r.grade }}</span>
+                        </div>
+                      </div>
+                      <div class="sc-pick-trend" :class="r.trend==='up'?'chg-up':r.trend==='dn'?'chg-dn':'chg-flat'">
+                        {{ r.trend==='up'?'▲':r.trend==='dn'?'▼':'—' }}
+                      </div>
+                    </div>
                   </div>
-                  <div v-for="r in card.rounds" :key="r.pick" class="sc-dboard-row" :class="r.grade==='A+'?'sc-pr-leader':r.grade==='D'||r.grade==='F'?'sc-draft-bust':''">
-                    <span class="sc-dboard-pick">{{ r.pick }}</span>
-                    <span class="sc-dboard-name">{{ r.name }}</span>
-                    <span class="sc-pos-badge" :class="'pos-'+r.pos.toLowerCase()">{{ r.pos }}</span>
-                    <span class="sc-grade-badge" :class="'grade-'+r.grade.replace('+','plus').replace('-','minus')">{{ r.grade }}</span>
-                    <span class="sc-dboard-trend" :class="r.trend==='up'?'chg-up':r.trend==='dn'?'chg-dn':'chg-flat'">{{ r.trend==='up'?'▲':r.trend==='dn'?'▼':'—' }}</span>
-                  </div>
-                  <div class="sc-watermark" style="padding:6px 16px">ultimatefantasydashboard.com</div>
+                  <div class="sc-watermark" style="padding:4px 14px 8px">ultimatefantasydashboard.com</div>
                 </div>
               </template>
 
@@ -2441,6 +2449,64 @@ function scrollTo(id: string) {
 .std-streak-val { font-size: 0.65rem; font-weight: 700; text-align: right; }
 .str-w { color: #10b981; }
 .str-l { color: #ef4444; }
+
+/* ─ Draft Board pick-card layout */
+.sc-draftboard-card {
+  background: linear-gradient(145deg, #090c16 0%, #0d1122 100%);
+  border: 1px solid rgba(234,179,8,0.15);
+}
+.sc-dboard-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 6px 14px 8px;
+}
+.sc-dboard-title {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 0.9rem; font-weight: 900; letter-spacing: 0.04em;
+  color: #fff; text-transform: uppercase;
+}
+.sc-dboard-team-badge { display: flex; align-items: center; gap: 5px; }
+.sc-dboard-team-name  { font-size: 0.62rem; color: #9ca3af; font-weight: 600; }
+.sc-dboard-overall-grade {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 1.1rem; font-weight: 900; color: #eab308;
+}
+.sc-dboard-picks { display: flex; flex-direction: column; gap: 4px; padding: 0 10px 6px; }
+.sc-pick-card {
+  display: flex; align-items: center; gap: 8px;
+  background: #11141f; border-radius: 8px;
+  padding: 7px 8px 7px 0; border-left: 3px solid #374151;
+}
+.sc-pick-pos-wr { border-left-color: #3b82f6; }
+.sc-pick-pos-rb { border-left-color: #22c55e; }
+.sc-pick-pos-qb { border-left-color: #ef4444; }
+.sc-pick-pos-te { border-left-color: #eab308; }
+.sc-pick-badge {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 0.62rem; font-weight: 700; color: #6b7280;
+  min-width: 38px; text-align: center; flex-shrink: 0;
+}
+.sc-pick-info { flex: 1; min-width: 0; }
+.sc-pick-name {
+  font-size: 0.72rem; font-weight: 600; color: #e5e7eb;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-bottom: 3px;
+}
+.sc-pick-meta { display: flex; align-items: center; gap: 4px; }
+.sc-pick-pos-tag {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 0.58rem; font-weight: 700; padding: 1px 5px; border-radius: 3px;
+}
+.sc-pick-grade-tag {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 0.65rem; font-weight: 900; padding: 1px 5px; border-radius: 3px;
+}
+.pgrade-Aplus  { background: rgba(234,179,8,0.15);    color: #eab308; }
+.pgrade-A      { background: rgba(34,197,94,0.12);    color: #22c55e; }
+.pgrade-Bplus  { background: rgba(16,185,129,0.1);    color: #10b981; }
+.pgrade-B      { background: rgba(6,182,212,0.1);     color: #06b6d4; }
+.pgrade-C      { background: rgba(107,114,128,0.15);  color: #9ca3af; }
+.pgrade-D      { background: rgba(239,68,68,0.12);    color: #ef4444; }
+.pgrade-F      { background: rgba(239,68,68,0.2);     color: #ef4444; }
+.sc-pick-trend { font-size: 0.65rem; font-weight: 700; flex-shrink: 0; padding-right: 6px; }
 
 /* ─ Trade Analyzer card */
 .sc-trade-card {
