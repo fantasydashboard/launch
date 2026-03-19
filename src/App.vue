@@ -2,7 +2,7 @@
   <div class="min-h-screen transition-colors overflow-x-hidden" style="background: radial-gradient(circle at top, #1c2030, #05060a 55%);">
 
     <!-- Show Landing Page for non-authenticated users -->
-    <template v-if="!authStore.isAuthenticated && !$route.path.startsWith('/resources') || $route.path.startsWith('/signup') && !$route.path.startsWith('/powerrankings') && !$route.path.startsWith('/matchups-info') && !$route.path.startsWith('/draft-info') && !$route.path.startsWith('/history-info') && !$route.path.startsWith('/signup')">
+    <template v-if="!authStore.isAuthenticated && !$route.path.startsWith('/resources') && !$route.path.startsWith('/powerrankings') && !$route.path.startsWith('/matchups-info') && !$route.path.startsWith('/draft-info') && !$route.path.startsWith('/history-info') && !$route.path.startsWith('/signup')">
       <!-- Simple Header for Landing Page -->
       <header class="fixed top-0 left-0 right-0 z-50 border-b border-dark-border/50" style="background: rgba(10, 12, 20, 0.95); backdrop-filter: blur(10px);">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -39,7 +39,7 @@
     </template>
 
     <!-- Clean layout for public resource pages -->
-    <template v-else-if="$route.path.startsWith('/resources') || $route.path.startsWith('/signup') || $route.path.startsWith('/powerrankings') || $route.path.startsWith('/matchups') || $route.path.startsWith('/draft') || $route.path.startsWith('/history')">
+    <template v-else-if="$route.path.startsWith('/resources') || $route.path.startsWith('/powerrankings') || $route.path.startsWith('/matchups-info') || $route.path.startsWith('/draft-info') || $route.path.startsWith('/history-info') || $route.path.startsWith('/signup') || $route.path.startsWith('/powerrankings') || $route.path.startsWith('/matchups') || $route.path.startsWith('/draft') || $route.path.startsWith('/history')">
       <router-view />
     </template>
 
