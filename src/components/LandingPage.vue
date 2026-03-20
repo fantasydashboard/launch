@@ -476,7 +476,7 @@
         <!-- Card grid -->
         <div class="card-grid">
           <template v-for="card in filteredCards" :key="card.id">
-            <div class="share-card" :class="card.size" :style="cardLink(card) ? 'cursor:pointer' : ''" @click="navigateCard(card)">
+            <div class="share-card" :class="card.size" :style="cardLink(card) ? 'cursor:pointer' : ''" @click="cardLink(card) && $router.push(cardLink(card))">
 
               <!-- ═══ POWER RANKINGS TABLE ════════════════════════════════ -->
               <template v-if="card.type === 'power-rankings'">
@@ -825,6 +825,33 @@
                 </div>
               </template>
 
+              <!-- ═══ TRADE ANALYSIS ════════════════════════════════════════ -->
+              <template v-else-if="card.type === 'draft-grades'">
+                <div class="sc-card sc-dg-card">
+                  <div class="sc-brand-row">
+                    <span class="sc-brand-logo">UFD</span>
+                    <span class="sc-brand-sport">{{ card.sportLabel }}</span>
+                    <span class="sc-brand-week">DRAFT</span>
+                  </div>
+                  <div class="sc-pr-title">📋 DRAFT GRADES · {{ card.teamName }}</div>
+                  <div class="sc-dg-head">
+                    <span>PICK</span><span>PLAYER</span><span>POS</span><span>PAR</span><span>GRD</span>
+                  </div>
+                  <div v-for="p in card.picks" :key="p.name" class="sc-dg-row" :class="p.grade==='A+'?'sc-pr-leader':p.grade==='D'?'sc-dg-bust':''">
+                    <span class="sc-dg-pick">{{ p.round }}.{{ String(p.pick).padStart(2,'0') }}</span>
+                    <span class="sc-dg-name">{{ p.name }}</span>
+                    <span class="sc-dg-pos" :class="'dpos-'+p.pos.toLowerCase()">{{ p.pos }}</span>
+                    <span class="sc-dg-par" :class="p.par>0?'sc-dg-up':'sc-dg-dn'">{{ p.par > 0 ? '+' : '' }}{{ p.par }}</span>
+                    <span class="sc-dg-grade" :class="p.grade==='A+'?'sc-dg-gold':p.grade==='D'?'sc-dg-red':''">{{ p.grade }}</span>
+                  </div>
+                  <div class="sc-dg-foot">
+                    <span class="sc-dg-lbl">Overall</span>
+                    <span class="sc-dg-val">{{ card.teamGrade }}</span>
+                    <span class="sc-watermark" style="margin-left:auto;padding:0">ultimatefantasydashboard.com</span>
+                  </div>
+                </div>
+              </template>
+
               <template v-else-if="card.type === 'draft-board'">
                 <div class="sc-card sc-draftboard-card">
                   <div class="sc-brand-row">
@@ -832,29 +859,21 @@
                     <span class="sc-brand-sport">{{ card.sportLabel }}</span>
                     <span class="sc-brand-week">DRAFT</span>
                   </div>
-                  <div class="sc-dboard-header">
-                    <span class="sc-dboard-title">📋 DRAFT BOARD</span>
-                    <span class="sc-dboard-team-badge">
-                      <span class="sc-dboard-team-name">{{ card.teamName }}</span>
-                      <span class="sc-dboard-overall-grade">{{ card.teamGrade }}</span>
-                    </span>
+                  <div class="sc-pr-title" style="display:flex;align-items:center;justify-content:space-between;padding-right:16px">
+                    <span>📋 DRAFT BOARD</span>
+                    <span class="sc-dboard-overall">{{ card.teamName }} &nbsp;<span style="color:#eab308;font-size:1rem">{{ card.teamGrade }}</span></span>
                   </div>
-                  <div class="sc-dboard-picks">
-                    <div v-for="r in card.rounds" :key="r.pick" class="sc-pick-card" :class="'sc-pick-pos-'+r.pos.toLowerCase()">
-                      <div class="sc-pick-badge">{{ r.pick }}</div>
-                      <div class="sc-pick-info">
-                        <div class="sc-pick-name">{{ r.name }}</div>
-                        <div class="sc-pick-meta">
-                          <span class="sc-pick-pos-tag" :class="'pos-'+r.pos.toLowerCase()">{{ r.pos }}</span>
-                          <span class="sc-pick-grade-tag" :class="'pgrade-'+r.grade.replace('+','plus').replace('-','minus')">{{ r.grade }}</span>
-                        </div>
-                      </div>
-                      <div class="sc-pick-trend" :class="r.trend==='up'?'chg-up':r.trend==='dn'?'chg-dn':'chg-flat'">
-                        {{ r.trend==='up'?'▲':r.trend==='dn'?'▼':'—' }}
-                      </div>
-                    </div>
+                  <div class="sc-dboard-thead">
+                    <span>PICK</span><span>PLAYER</span><span>POS</span><span>GRADE</span><span>▲▼</span>
                   </div>
-                  <div class="sc-watermark" style="padding:4px 14px 8px">ultimatefantasydashboard.com</div>
+                  <div v-for="r in card.rounds" :key="r.pick" class="sc-dboard-row" :class="r.grade==='A+'?'sc-pr-leader':r.grade==='D'||r.grade==='F'?'sc-draft-bust':''">
+                    <span class="sc-dboard-pick">{{ r.pick }}</span>
+                    <span class="sc-dboard-name">{{ r.name }}</span>
+                    <span class="sc-pos-badge" :class="'pos-'+r.pos.toLowerCase()">{{ r.pos }}</span>
+                    <span class="sc-grade-badge" :class="'grade-'+r.grade.replace('+','plus').replace('-','minus')">{{ r.grade }}</span>
+                    <span class="sc-dboard-trend" :class="r.trend==='up'?'chg-up':r.trend==='dn'?'chg-dn':'chg-flat'">{{ r.trend==='up'?'▲':r.trend==='dn'?'▼':'—' }}</span>
+                  </div>
+                  <div class="sc-watermark" style="padding:6px 16px">ultimatefantasydashboard.com</div>
                 </div>
               </template>
 
@@ -1118,16 +1137,7 @@
       </div>
     </section>
 
-        <!-- SEO: keyword-rich summary paragraph, visually hidden -->
-        <p class="seo-hidden">
-          Ultimate Fantasy Dashboard is the only fantasy sports analytics platform that works with
-          Sleeper, ESPN, and Yahoo fantasy leagues — across football (NFL), basketball (NBA),
-          baseball (MLB), and hockey (NHL). Get weekly fantasy power rankings, in-depth matchup
-          analysis with win probability, complete league season history, fantasy draft grades,
-          draft analysis with Points Above Replacement (PAR), trade analysis, and shareable
-          stats cards for your group chat. Whether you run a redraft, keeper, or dynasty league,
-          Ultimate Fantasy Dashboard gives you the data to back up every argument. Free to start.
-        </p>
+
     <!-- Footer handled by AppFooter in App.vue -->
 
   </div>
@@ -1135,9 +1145,6 @@
 
 <script setup lang="ts">
 import { ref, computed } from 'vue'
-import { useRouter } from 'vue-router'
-
-const router = useRouter()
 
 defineEmits<{ (e: 'open-signup'): void }>()
 
@@ -1388,7 +1395,20 @@ const galleryCards = [
       { name: 'Toilet Bowl FC', score:  612, seasons: 4, champs: 0, playoffs: 0, color: '#6b7280', myTeam: false },
     ],
   },
-  // ── Draft Board ───────────────────────────────────────────────────────────
+  // ── Trade Analysis ────────────────────────────────────────────────────────
+  {
+    id: 9, type: 'draft-grades', size: 'card-normal',
+    sportLabel: '🏈 NFL Fantasy · PPR',
+    picks: [
+      { round: 1, pick: 3,  name: 'Justin Jefferson',    pos: 'WR', par: 42.1, grade: 'A+' },
+      { round: 2, pick: 14, name: 'Davante Adams',        pos: 'WR', par: 18.7, grade: 'A'  },
+      { round: 3, pick: 27, name: 'Tony Pollard',         pos: 'RB', par: -4.2, grade: 'C'  },
+      { round: 4, pick: 38, name: 'Travis Kelce',         pos: 'TE', par: 31.4, grade: 'A+' },
+      { round: 5, pick: 51, name: 'Stefon Diggs',         pos: 'WR', par: -11.8, grade: 'D' },
+    ],
+    teamGrade: 'A',
+    teamName: 'Mahomes Magic',
+  },
   {
     id: 10, type: 'draft-board', size: 'card-tall',
     sportLabel: '🏈 NFL Fantasy · PPR',
@@ -1413,7 +1433,7 @@ const filteredCards = computed(() =>
         (activeGalleryFilter.value === 'power-rankings' && c.type === 'pr-chart') ||
         (activeGalleryFilter.value === 'matchup'  && (c.type === 'win-prob' || c.type === 'win-prob-chart')) ||
         (activeGalleryFilter.value === 'history'  && (c.type === 'history-standings' || c.type === 'h2h-matrix' || c.type === 'legacy')) ||
-        (activeGalleryFilter.value === 'draft' && c.type === 'draft-board')
+        (activeGalleryFilter.value === 'draft' && (c.type === 'draft-grades' || c.type === 'draft-board'))
       )
 )
 
@@ -1516,17 +1536,10 @@ function cardLink(card: any): string | null {
     'history-standings': '/history-info',
     'h2h-matrix':     '/history-info',
     'legacy':         '/history-info',
+    'draft-grades':   '/draft-info',
     'draft-board':    '/draft-info',
   }
   return map[card.type] || null
-}
-
-function navigateCard(card: any) {
-  const link = cardLink(card)
-  if (!link) return
-  router.push(link).then(() => {
-    window.scrollTo({ top: 0, behavior: 'instant' })
-  })
 }
 
 function scrollTo(id: string) {
@@ -2419,64 +2432,6 @@ function scrollTo(id: string) {
 .std-streak-val { font-size: 0.65rem; font-weight: 700; text-align: right; }
 .str-w { color: #10b981; }
 .str-l { color: #ef4444; }
-
-/* ─ Draft Board pick-card layout */
-.sc-draftboard-card {
-  background: linear-gradient(145deg, #090c16 0%, #0d1122 100%);
-  border: 1px solid rgba(234,179,8,0.15);
-}
-.sc-dboard-header {
-  display: flex; align-items: center; justify-content: space-between;
-  padding: 6px 14px 8px;
-}
-.sc-dboard-title {
-  font-family: 'Barlow Condensed', sans-serif;
-  font-size: 0.9rem; font-weight: 900; letter-spacing: 0.04em;
-  color: #fff; text-transform: uppercase;
-}
-.sc-dboard-team-badge { display: flex; align-items: center; gap: 5px; }
-.sc-dboard-team-name  { font-size: 0.62rem; color: #9ca3af; font-weight: 600; }
-.sc-dboard-overall-grade {
-  font-family: 'Barlow Condensed', sans-serif;
-  font-size: 1.1rem; font-weight: 900; color: #eab308;
-}
-.sc-dboard-picks { display: flex; flex-direction: column; gap: 4px; padding: 0 10px 6px; }
-.sc-pick-card {
-  display: flex; align-items: center; gap: 8px;
-  background: #11141f; border-radius: 8px;
-  padding: 7px 8px 7px 0; border-left: 3px solid #374151;
-}
-.sc-pick-pos-wr { border-left-color: #3b82f6; }
-.sc-pick-pos-rb { border-left-color: #22c55e; }
-.sc-pick-pos-qb { border-left-color: #ef4444; }
-.sc-pick-pos-te { border-left-color: #eab308; }
-.sc-pick-badge {
-  font-family: 'Barlow Condensed', sans-serif;
-  font-size: 0.62rem; font-weight: 700; color: #6b7280;
-  min-width: 38px; text-align: center; flex-shrink: 0;
-}
-.sc-pick-info { flex: 1; min-width: 0; }
-.sc-pick-name {
-  font-size: 0.72rem; font-weight: 600; color: #e5e7eb;
-  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-bottom: 3px;
-}
-.sc-pick-meta { display: flex; align-items: center; gap: 4px; }
-.sc-pick-pos-tag {
-  font-family: 'Barlow Condensed', sans-serif;
-  font-size: 0.58rem; font-weight: 700; padding: 1px 5px; border-radius: 3px;
-}
-.sc-pick-grade-tag {
-  font-family: 'Barlow Condensed', sans-serif;
-  font-size: 0.65rem; font-weight: 900; padding: 1px 5px; border-radius: 3px;
-}
-.pgrade-Aplus  { background: rgba(234,179,8,0.15);    color: #eab308; }
-.pgrade-A      { background: rgba(34,197,94,0.12);    color: #22c55e; }
-.pgrade-Bplus  { background: rgba(16,185,129,0.1);    color: #10b981; }
-.pgrade-B      { background: rgba(6,182,212,0.1);     color: #06b6d4; }
-.pgrade-C      { background: rgba(107,114,128,0.15);  color: #9ca3af; }
-.pgrade-D      { background: rgba(239,68,68,0.12);    color: #ef4444; }
-.pgrade-F      { background: rgba(239,68,68,0.2);     color: #ef4444; }
-.sc-pick-trend { font-size: 0.65rem; font-weight: 700; flex-shrink: 0; padding-right: 6px; }
 
 /* ─ Trade Analyzer card */
 .sc-trade-card {
