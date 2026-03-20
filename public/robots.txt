@@ -1,5 +1,31 @@
 User-agent: *
 Allow: /
-Disallow: /socialtemplates
 
-Sitemap: https://www.ultimatefantasydashboard.com/sitemap.xml
+# Public pages — always crawlable
+Allow: /football
+Allow: /baseball
+Allow: /basketball
+Allow: /hockey
+Allow: /powerrankings
+Allow: /matchups-info
+Allow: /draft-info
+Allow: /history-info
+Allow: /resources/
+Allow: /signup
+
+# Keep authenticated app routes out of search results
+Disallow: /power-rankings
+Disallow: /matchups
+Disallow: /history
+Disallow: /draft
+Disallow: /ultimate-tools
+Disallow: /settings
+Disallow: /pricing
+Disallow: /upgrade/
+Disallow: /auth/
+Disallow: /unified/
+Disallow: /performance-comparison
+Disallow: /free-tools
+Disallow: /tools
+
+Sitemap: https://ultimatefantasydashboard.com/sitemap.xml

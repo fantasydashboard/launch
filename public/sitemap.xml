@@ -1,39 +1,106 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+
+  <!-- Homepage -->
   <url>
-    <loc>https://www.ultimatefantasydashboard.com/</loc>
-    <lastmod>2026-03-17</lastmod>
+    <loc>https://ultimatefantasydashboard.com/</loc>
     <changefreq>weekly</changefreq>
     <priority>1.0</priority>
   </url>
+
+  <!-- Sport landing pages -->
   <url>
-    <loc>https://www.ultimatefantasydashboard.com/football</loc>
-    <lastmod>2026-03-17</lastmod>
+    <loc>https://ultimatefantasydashboard.com/football</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://ultimatefantasydashboard.com/baseball</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://ultimatefantasydashboard.com/basketball</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://ultimatefantasydashboard.com/hockey</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+
+  <!-- Feature info pages (tool landing pages) -->
+  <url>
+    <loc>https://ultimatefantasydashboard.com/powerrankings</loc>
     <changefreq>weekly</changefreq>
     <priority>0.9</priority>
   </url>
   <url>
-    <loc>https://www.ultimatefantasydashboard.com/basketball</loc>
-    <lastmod>2026-03-17</lastmod>
+    <loc>https://ultimatefantasydashboard.com/matchups-info</loc>
     <changefreq>weekly</changefreq>
     <priority>0.9</priority>
   </url>
   <url>
-    <loc>https://www.ultimatefantasydashboard.com/baseball</loc>
-    <lastmod>2026-03-17</lastmod>
-    <changefreq>weekly</changefreq>
+    <loc>https://ultimatefantasydashboard.com/draft-info</loc>
+    <changefreq>monthly</changefreq>
     <priority>0.9</priority>
   </url>
   <url>
-    <loc>https://www.ultimatefantasydashboard.com/hockey</loc>
-    <lastmod>2026-03-17</lastmod>
-    <changefreq>weekly</changefreq>
+    <loc>https://ultimatefantasydashboard.com/history-info</loc>
+    <changefreq>monthly</changefreq>
     <priority>0.9</priority>
   </url>
+
+  <!-- Resource articles -->
   <url>
-    <loc>https://www.ultimatefantasydashboard.com/pricing</loc>
-    <lastmod>2026-03-17</lastmod>
+    <loc>https://ultimatefantasydashboard.com/resources/power-rankings</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://ultimatefantasydashboard.com/resources/league-history</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://ultimatefantasydashboard.com/resources/matchup-analysis</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://ultimatefantasydashboard.com/resources/draft-analysis</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+
+  <!-- How-to guides -->
+  <url>
+    <loc>https://ultimatefantasydashboard.com/resources/power-rankings/how-to</loc>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
+  <url>
+    <loc>https://ultimatefantasydashboard.com/resources/league-history/how-to</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://ultimatefantasydashboard.com/resources/matchup-analysis/how-to</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://ultimatefantasydashboard.com/resources/draft-analysis/how-to</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+
+  <!-- Sign up -->
+  <url>
+    <loc>https://ultimatefantasydashboard.com/signup</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
+  </url>
+
 </urlset>

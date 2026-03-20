@@ -108,8 +108,32 @@
 </template>
 <script setup lang="ts">
 import { useRouter } from 'vue-router'
+import { useSEO } from '@/composables/useSEO'
+
 const router = useRouter()
 function goSignup() { router.push('/') }
+
+useSEO({
+  title: "How to View & Share Your Fantasy League's Full History | UFD",
+  description: 'Step-by-step guide to accessing all-time head-to-head records, championship history, legacy scores, and all-time awards for your fantasy league on Sleeper, ESPN, or Yahoo.',
+  keywords: 'how to view fantasy league history, fantasy all-time records how to, fantasy head to head history guide, fantasy league stats how to access, sleeper league history step by step, ESPN fantasy history tutorial, yahoo fantasy all-time standings guide, fantasy legacy score how to',
+  canonical: 'https://ultimatefantasydashboard.com/resources/league-history/how-to',
+  ogTitle: "How to Access Your Fantasy League's Full History — All-Time Records & Legacy Scores",
+  ogDescription: 'Step-by-step guide to unlocking years of league history — head-to-head records, championship droughts, legacy scores — from Sleeper, ESPN, or Yahoo.',
+  jsonLd: {
+    '@context': 'https://schema.org',
+    '@type': 'HowTo',
+    name: "How to Access and Share Your Fantasy League's Full History",
+    description: 'Instructions for pulling up multi-season fantasy league history — head-to-head records, championship history, legacy scores, and all-time awards — from Sleeper, ESPN, or Yahoo.',
+    url: 'https://ultimatefantasydashboard.com/resources/league-history/how-to',
+    publisher: {
+      '@type': 'Organization',
+      name: 'Ultimate Fantasy Dashboard',
+      url: 'https://ultimatefantasydashboard.com',
+    },
+    mainEntityOfPage: 'https://ultimatefantasydashboard.com/resources/league-history/how-to',
+  },
+})
 </script>
 
 <style scoped>

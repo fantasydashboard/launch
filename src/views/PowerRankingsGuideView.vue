@@ -107,8 +107,32 @@
 </template>
 <script setup lang="ts">
 import { useRouter } from 'vue-router'
+import { useSEO } from '@/composables/useSEO'
+
 const router = useRouter()
 function goSignup() { router.push('/') }
+
+useSEO({
+  title: 'How to Get Automated Fantasy Power Rankings (Sleeper, ESPN & Yahoo) | UFD',
+  description: 'Step-by-step guide to setting up automated weekly power rankings for your fantasy football, basketball, baseball, or hockey league on Sleeper, ESPN, or Yahoo in under 5 minutes.',
+  keywords: 'how to set up fantasy power rankings, automated fantasy power rankings tutorial, fantasy power rankings setup guide, sleeper power rankings how to, ESPN fantasy power rankings setup, yahoo fantasy power rankings tool tutorial, fantasy football power rankings step by step',
+  canonical: 'https://ultimatefantasydashboard.com/resources/power-rankings/how-to',
+  ogTitle: 'How to Set Up Automated Power Rankings for Your Fantasy League',
+  ogDescription: 'Connect Sleeper, ESPN, or Yahoo in minutes and generate shareable weekly power rankings for any sport. Step-by-step guide for commissioners.',
+  jsonLd: {
+    '@context': 'https://schema.org',
+    '@type': 'HowTo',
+    name: 'How to Get Automated Power Rankings for Your Fantasy League',
+    description: 'Step-by-step instructions for connecting a Sleeper, ESPN, or Yahoo fantasy league to Ultimate Fantasy Dashboard and generating shareable weekly power rankings.',
+    url: 'https://ultimatefantasydashboard.com/resources/power-rankings/how-to',
+    publisher: {
+      '@type': 'Organization',
+      name: 'Ultimate Fantasy Dashboard',
+      url: 'https://ultimatefantasydashboard.com',
+    },
+    mainEntityOfPage: 'https://ultimatefantasydashboard.com/resources/power-rankings/how-to',
+  },
+})
 </script>
 
 <style scoped>

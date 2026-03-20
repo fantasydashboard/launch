@@ -120,8 +120,32 @@
 </template>
 <script setup lang="ts">
 import { useRouter } from 'vue-router'
+import { useSEO } from '@/composables/useSEO'
+
 const router = useRouter()
 function goSignup() { router.push('/') }
+
+useSEO({
+  title: 'How to Use Fantasy Matchup Win Probability & Live Tracking | UFD',
+  description: 'Step-by-step guide to accessing live win probability, Monte Carlo projections, and shareable matchup cards for your fantasy football, basketball, baseball, or hockey league.',
+  keywords: 'how to use fantasy win probability, fantasy matchup analysis step by step, live fantasy matchup tracker how to, monte carlo fantasy projections guide, fantasy win probability setup tutorial, sleeper live matchup tracking, ESPN fantasy live win probability, yahoo fantasy matchup predictor how to',
+  canonical: 'https://ultimatefantasydashboard.com/resources/matchup-analysis/how-to',
+  ogTitle: 'How to Use Fantasy Matchup Win Probability for Your League',
+  ogDescription: 'Access live win probability and Monte Carlo simulations for every matchup in your Sleeper, ESPN, or Yahoo league. Step-by-step guide for points and category leagues.',
+  jsonLd: {
+    '@context': 'https://schema.org',
+    '@type': 'HowTo',
+    name: 'How to Use Matchup Analysis and Win Probability in Your Fantasy League',
+    description: 'Step-by-step instructions for accessing live win probability, running Monte Carlo projections, and sharing matchup analysis cards from Ultimate Fantasy Dashboard.',
+    url: 'https://ultimatefantasydashboard.com/resources/matchup-analysis/how-to',
+    publisher: {
+      '@type': 'Organization',
+      name: 'Ultimate Fantasy Dashboard',
+      url: 'https://ultimatefantasydashboard.com',
+    },
+    mainEntityOfPage: 'https://ultimatefantasydashboard.com/resources/matchup-analysis/how-to',
+  },
+})
 </script>
 
 <style scoped>

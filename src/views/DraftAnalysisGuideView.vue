@@ -94,8 +94,32 @@
 </template>
 <script setup lang="ts">
 import { useRouter } from 'vue-router'
+import { useSEO } from '@/composables/useSEO'
+
 const router = useRouter()
 function goSignup() { router.push('/') }
+
+useSEO({
+  title: 'How to Grade Your Fantasy Draft & Track PAR Scores All Season | UFD',
+  description: 'Step-by-step guide to viewing fantasy draft grades, Points Above Replacement scores, and category balance reports for your league on Sleeper, ESPN, or Yahoo. Updated weekly all season.',
+  keywords: 'how to grade a fantasy draft, fantasy draft grades step by step, points above replacement fantasy how to, fantasy draft analysis tutorial, sleeper draft grades how to, ESPN fantasy draft analysis guide, yahoo fantasy draft grades setup, fantasy draft PAR scores guide, fantasy category balance report how to',
+  canonical: 'https://ultimatefantasydashboard.com/resources/draft-analysis/how-to',
+  ogTitle: 'How to Grade Your Fantasy Draft and Track Pick Performance All Season',
+  ogDescription: 'Get automatic draft grades, PAR scores, and category balance reports for your Sleeper, ESPN, or Yahoo league. Step-by-step setup guide.',
+  jsonLd: {
+    '@context': 'https://schema.org',
+    '@type': 'HowTo',
+    name: 'How to Grade Your Fantasy Draft and Track Pick Performance All Season',
+    description: 'Step-by-step instructions for accessing draft grades, Points Above Replacement scores, and category balance reports in Ultimate Fantasy Dashboard.',
+    url: 'https://ultimatefantasydashboard.com/resources/draft-analysis/how-to',
+    publisher: {
+      '@type': 'Organization',
+      name: 'Ultimate Fantasy Dashboard',
+      url: 'https://ultimatefantasydashboard.com',
+    },
+    mainEntityOfPage: 'https://ultimatefantasydashboard.com/resources/draft-analysis/how-to',
+  },
+})
 </script>
 
 <style scoped>
