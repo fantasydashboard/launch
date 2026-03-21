@@ -77,7 +77,7 @@
             </div>
             <div><span class="text-6xl font-black" style="color: #22c55e;">${{ launchPrice }}</span><span class="text-dark-textMuted">/season</span></div>
           </div>
-          <p class="text-center text-sm mb-6" style="color: #eab308;">⚡ Launch pricing — normally ${{ regularPrice }}</p>
+          <p class="text-center text-sm mb-6" style="color: #eab308;">🔥 Limited time — normally ${{ regularPrice }}</p>
           <div class="rounded-xl p-4 mb-6" style="background: rgba(0,0,0,0.3);">
             <label class="block text-sm text-dark-textMuted mb-2">How many teams in your league?</label>
             <div class="flex items-center gap-3">
@@ -187,7 +187,7 @@
 
       <div class="rounded-2xl p-8 text-center mb-8" style="background: linear-gradient(135deg, #0f1118 0%, #0c0f1c 100%); border: 1px solid rgba(34,197,94,0.2);">
         <p class="text-dark-textMuted mb-2 text-sm">Ready to unlock your league?</p>
-        <h3 class="text-2xl font-black text-white mb-6" style="font-family: 'Barlow Condensed', sans-serif; letter-spacing: 0.03em; text-transform: uppercase;">Get League Pass for ${{ launchPrice }} — $10 Off Launch Pricing</h3>
+        <h3 class="text-2xl font-black text-white mb-6" style="font-family: 'Barlow Condensed', sans-serif; letter-spacing: 0.03em; text-transform: uppercase;">Get League Pass for ${{ launchPrice }} — Limited Time Offer</h3>
         <button @click="scrollToPurchase" class="inline-flex items-center gap-3 px-8 py-4 rounded-xl font-black text-lg transition-all transform hover:scale-[1.02]" style="background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%); color: #0a0c14; font-family: 'Barlow Condensed', sans-serif; letter-spacing: 0.06em; text-transform: uppercase; box-shadow: 0 4px 24px rgba(34,197,94,0.35);">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 19V5M5 12l7-7 7 7"/></svg>
           Get League Pass Now
@@ -253,7 +253,7 @@ const platformLabel = computed(() => {
 })
 
 const REGULAR_PRICE = 29
-const LAUNCH_PRICE = 19
+const LAUNCH_PRICE = 5
 const regularPrice = computed(() => REGULAR_PRICE)
 const launchPrice = computed(() => LAUNCH_PRICE)
 const teamCount = ref(10)
