@@ -1,483 +1,730 @@
 <template>
-  <div class="social-root">
-    <div class="page-header">
-      <img src="/UFD_V8.png" alt="UFD" class="header-logo" />
+  <div class="studio-root">
+
+    <!-- Page Header -->
+    <div class="studio-header">
+      <img src="/UFD_V8.png" alt="UFD" class="studio-logo" />
       <div>
         <h1>Social Media Studio</h1>
-        <p>Create, preview, and download branded content for UFD marketing</p>
+        <p>Screenshot any image below — Facebook banner at top, 10 post graphics below</p>
       </div>
     </div>
-    <div class="tab-bar">
-      <button v-for="tab in tabs" :key="tab.id" :class="['tab-btn', { active: activeTab === tab.id }]" @click="activeTab = tab.id">
-        <span class="tab-icon">{{ tab.icon }}</span>{{ tab.label }}
-      </button>
-    </div>
 
-    <!-- BANNER TAB -->
-    <div v-if="activeTab === 'banner'" class="tab-content">
-      <div class="section-header">
-        <h2>Facebook Page Banner</h2>
-        <p>851 × 315px — fanned dashboard cards with bold headline</p>
-      </div>
-      <div class="controls-row">
-        <label>Headline:</label>
-        <div class="style-pills">
-          <button v-for="s in bannerHeadlines" :key="s.id" :class="['pill', { active: bannerHeadline === s.id }]" @click="bannerHeadline = s.id">{{ s.label }}</button>
-        </div>
-      </div>
-      <div class="preview-wrap banner-wrap">
-        <div id="banner-canvas" class="banner-canvas">
-          <div class="banner-grid"></div>
-          <div class="banner-orb banner-orb-1"></div>
-          <div class="banner-orb banner-orb-2"></div>
-          <div class="banner-cards">
-            <div class="bcard bcard-1">
-              <div class="bcard-header"><span class="bcard-icon">📊</span><span class="bcard-title">Power Rankings</span><span class="bcard-wk">WK 14</span></div>
-              <div class="bcard-row bcard-row-gold"><span class="bcard-rank">1</span><div class="bcard-avatar" style="background:#eab308"></div><span class="bcard-name">Fantasy Felons</span><span class="bcard-pts">98.2</span><span class="bcard-delta up">▲2</span></div>
-              <div class="bcard-row"><span class="bcard-rank">2</span><div class="bcard-avatar" style="background:#3b82f6"></div><span class="bcard-name">Gridiron Kings</span><span class="bcard-pts">91.7</span><span class="bcard-delta up">▲1</span></div>
-              <div class="bcard-row"><span class="bcard-rank">3</span><div class="bcard-avatar" style="background:#8b5cf6"></div><span class="bcard-name">Blitz Brigade</span><span class="bcard-pts">88.4</span><span class="bcard-delta dn">▼1</span></div>
-              <div class="bcard-row"><span class="bcard-rank">4</span><div class="bcard-avatar" style="background:#ef4444"></div><span class="bcard-name">End Zone Elites</span><span class="bcard-pts">84.1</span><span class="bcard-delta dn">▼2</span></div>
-              <div class="bcard-watermark">ultimatefantasydashboard.com</div>
-            </div>
-            <div class="bcard bcard-2">
-              <div class="bcard-header"><span class="bcard-icon">⚔️</span><span class="bcard-title">Matchup Analysis</span><span class="bcard-wk">WK 14</span></div>
-              <div class="bcard-matchup">
-                <div class="bcard-team-col">
-                  <div class="bcard-avatar lg" style="background:linear-gradient(135deg,#eab308,#ca8a04)"></div>
-                  <div class="bcard-team-name">Fantasy Felons</div>
-                  <div class="bcard-score gold">142.6</div>
-                  <div class="bcard-winp">Win Prob</div>
-                  <div class="bcard-bar-wrap"><div class="bcard-bar" style="width:72%;background:#eab308"></div></div>
-                  <div class="bcard-pct gold">72%</div>
-                </div>
-                <div class="bcard-vs">VS</div>
-                <div class="bcard-team-col">
-                  <div class="bcard-avatar lg" style="background:linear-gradient(135deg,#3b82f6,#1d4ed8)"></div>
-                  <div class="bcard-team-name">Gridiron Kings</div>
-                  <div class="bcard-score">119.3</div>
-                  <div class="bcard-winp">Win Prob</div>
-                  <div class="bcard-bar-wrap"><div class="bcard-bar" style="width:28%;background:#3b82f6"></div></div>
-                  <div class="bcard-pct">28%</div>
-                </div>
-              </div>
-              <div class="bcard-watermark">ultimatefantasydashboard.com</div>
-            </div>
-            <div class="bcard bcard-3">
-              <div class="bcard-header"><span class="bcard-icon">🏆</span><span class="bcard-title">Season History</span><span class="bcard-wk">ALL TIME</span></div>
-              <div class="bcard-history">
-                <div class="bcard-stat-row"><span class="bcard-stat-label">Championships</span><span class="bcard-stat-val gold">3</span></div>
-                <div class="bcard-stat-row"><span class="bcard-stat-label">Win Rate</span><span class="bcard-stat-val">61.4%</span></div>
-                <div class="bcard-stat-row"><span class="bcard-stat-label">Avg Points/Wk</span><span class="bcard-stat-val">138.2</span></div>
-                <div class="bcard-stat-row"><span class="bcard-stat-label">Seasons Tracked</span><span class="bcard-stat-val">6</span></div>
-                <div class="bcard-bar-chart">
-                  <div v-for="(h, i) in historyBars" :key="i" class="bcard-bar-col">
-                    <div class="bcard-bar-fill" :style="{ height: h + '%', background: i === 4 ? '#eab308' : '#1e2a3a' }"></div>
-                    <div class="bcard-bar-yr">{{ 2019 + i }}</div>
-                  </div>
-                </div>
-              </div>
-              <div class="bcard-watermark">ultimatefantasydashboard.com</div>
-            </div>
+    <!-- ══════════════════════════════════════════════
+         FACEBOOK BANNER  851 × 315
+    ══════════════════════════════════════════════ -->
+    <div class="section-label">📘 Facebook Page Banner &nbsp;·&nbsp; 851 × 315px &nbsp;·&nbsp; Screenshot the white box</div>
+    <div class="banner-stage">
+      <div class="fb-banner">
+        <!-- Background layers -->
+        <div class="fb-grid"></div>
+        <div class="fb-glow-1"></div>
+        <div class="fb-glow-2"></div>
+        <div class="fb-grain"></div>
+        <!-- Gold top line -->
+        <div class="fb-topline"></div>
+
+        <!-- Left: logo + headline + platforms -->
+        <div class="fb-left">
+          <img src="/UFD_V8.png" alt="UFD" class="fb-logo" />
+          <div class="fb-headline">
+            Keep your league<br />talking.
+            <span class="fb-gold"> All season.</span>
           </div>
-          <div class="banner-left">
-            <img src="/UFD_V8.png" alt="UFD" class="banner-logo" style="width:220px;height:auto;object-fit:contain;" />
-            <div class="banner-headline">{{ currentHeadline.line1 }}<br/><span class="banner-headline-gold">{{ currentHeadline.line2 }}</span></div>
-            <div class="banner-sub">{{ currentHeadline.sub }}</div>
-            <div class="banner-platforms">
-              <span class="plat-txt espn">ESPN</span>
-              <span class="plat-txt yahoo">YAHOO</span>
-              <span class="plat-txt sleeper">SLEEPER</span>
-            </div>
+          <div class="fb-sub">Power rankings · Win probability · Draft grades · League history</div>
+          <div class="fb-platforms">
+            <span class="fb-plat sleeper">Sleeper</span>
+            <span class="fb-plat espn">ESPN</span>
+            <span class="fb-plat yahoo">Yahoo</span>
+          </div>
+        </div>
+
+        <!-- Right: fanned cards -->
+        <div class="fb-cards-area">
+          <!-- Card 1: Power Rankings -->
+          <div class="fb-card fb-card-1">
+            <div class="fbc-head"><span class="fbc-badge">UFD</span><span class="fbc-title">⚡ Power Rankings</span><span class="fbc-wk">WK 11</span></div>
+            <div class="fbc-row fbc-gold"><span class="fbc-rk gold">1</span><div class="fbc-dot" style="background:#eab308"></div><span class="fbc-name gold">Mahomes Magic</span><span class="fbc-pts gold">142.6</span><span class="fbc-chg up">▲2</span></div>
+            <div class="fbc-row"><span class="fbc-rk">2</span><div class="fbc-dot" style="background:#10b981"></div><span class="fbc-name">Trash Can Wins</span><span class="fbc-pts">128.4</span><span class="fbc-chg up">▲1</span></div>
+            <div class="fbc-row"><span class="fbc-rk">3</span><div class="fbc-dot" style="background:#6366f1"></div><span class="fbc-name">The Algorithm</span><span class="fbc-pts">119.3</span><span class="fbc-chg dn">▼1</span></div>
+            <div class="fbc-row"><span class="fbc-rk">4</span><div class="fbc-dot" style="background:#ef4444"></div><span class="fbc-name">Waiver Wire Kid</span><span class="fbc-pts">112.1</span><span class="fbc-chg dn">▼2</span></div>
+            <div class="fbc-wm">ultimatefantasydashboard.com</div>
           </div>
 
-        </div>
-      </div>
-      <button class="dl-btn" @click="download('banner-canvas', 'ufd-facebook-banner')">⬇ Download Banner (PNG)</button>
-    </div>
+          <!-- Card 2: Win Probability (front/center) -->
+          <div class="fb-card fb-card-2">
+            <div class="fbc-head"><span class="fbc-badge">UFD</span><span class="fbc-title">⚔️ Matchup Analysis</span><span class="fbc-wk" style="color:#22c55e;background:rgba(34,197,94,0.1)">● LIVE</span></div>
+            <div class="fbc-matchup">
+              <div class="fbc-team">
+                <div class="fbc-avatar" style="background:linear-gradient(135deg,#eab308,#ca8a04)"></div>
+                <div class="fbc-tname">Mahomes Magic</div>
+                <div class="fbc-score gold">142.6</div>
+              </div>
+              <div class="fbc-vs">VS</div>
+              <div class="fbc-team">
+                <div class="fbc-avatar" style="background:linear-gradient(135deg,#3b82f6,#1d4ed8)"></div>
+                <div class="fbc-tname">Trash Can Wins</div>
+                <div class="fbc-score">119.3</div>
+              </div>
+            </div>
+            <div class="fbc-prob-wrap">
+              <div class="fbc-prob-labels"><span class="gold">72% win prob</span><span>28%</span></div>
+              <div class="fbc-prob-bar"><div class="fbc-prob-fill" style="width:72%"></div></div>
+              <div class="fbc-prob-sub">Monte Carlo · 10,000 simulations</div>
+            </div>
+            <div class="fbc-wm">ultimatefantasydashboard.com</div>
+          </div>
 
-    <!-- SQUARE TAB -->
-    <div v-if="activeTab === 'square'" class="tab-content">
-      <div class="section-header"><h2>Square Social Posts</h2><p>1080 × 1080px templates</p></div>
-      <div class="square-grid">
-        <div class="sq-card">
-          <div class="sq-label">Template A · Hero</div>
-          <div class="sq-preview-wrap">
-            <div id="sq-a" class="sq-canvas sq-hero">
-              <div class="sq-noise"></div>
-              <img src="/ufd-badge.png" alt="" class="sq-shield" />
-              <div class="sq-hero-text">
-                <div class="sq-eyebrow">FANTASY INTELLIGENCE</div>
-                <div class="sq-headline">Know Your<br/><span class="gold">League</span><br/>Better.</div>
-                <div class="sq-sub">Power rankings · Matchup analysis · Full history</div>
-              </div>
-              <div class="sq-url">ultimatefantasydashboard.com</div>
+          <!-- Card 3: Legacy Standings -->
+          <div class="fb-card fb-card-3">
+            <div class="fbc-head"><span class="fbc-badge">UFD</span><span class="fbc-title">🏆 Legacy Standings</span><span class="fbc-wk">ALL TIME</span></div>
+            <div class="fbc-leg-row" style="background:rgba(234,179,8,0.05)">
+              <span class="fbc-leg-pos gold">1</span>
+              <div class="fbc-dot" style="background:linear-gradient(135deg,#eab308,#ca8a04)"></div>
+              <span class="fbc-leg-name gold">Mahomes Magic</span>
+              <span class="fbc-leg-score gold">1,847</span>
             </div>
-          </div>
-          <button class="dl-btn sm" @click="download('sq-a', 'ufd-post-hero')">⬇ Download</button>
-        </div>
-        <div class="sq-card">
-          <div class="sq-label">Template B · Features</div>
-          <div class="sq-preview-wrap">
-            <div id="sq-b" class="sq-canvas sq-features">
-              <div class="sq-noise"></div>
-              <div class="sq-feat-header"><img src="/UFD_V8.png" alt="UFD" class="sq-logo-sm" /></div>
-              <div class="sq-feat-title">Everything your league<br/>is missing.</div>
-              <div class="sq-feat-list">
-                <div class="sq-feat-item" v-for="f in squareFeatures" :key="f.label">
-                  <span class="sq-feat-icon">{{ f.icon }}</span>
-                  <div><div class="sq-feat-name">{{ f.label }}</div><div class="sq-feat-desc">{{ f.desc }}</div></div>
-                </div>
-              </div>
-              <div class="sq-url">ultimatefantasydashboard.com</div>
+            <div class="fbc-leg-row">
+              <span class="fbc-leg-pos">2</span>
+              <div class="fbc-dot" style="background:#10b981"></div>
+              <span class="fbc-leg-name">Trash Can Wins</span>
+              <span class="fbc-leg-score">1,623</span>
             </div>
-          </div>
-          <button class="dl-btn sm" @click="download('sq-b', 'ufd-post-features')">⬇ Download</button>
-        </div>
-        <div class="sq-card">
-          <div class="sq-label">Template C · Multi-Platform</div>
-          <div class="sq-preview-wrap">
-            <div id="sq-c" class="sq-canvas sq-platforms">
-              <div class="sq-noise"></div>
-              <img src="/ufd-badge.png" alt="" class="sq-badge-bg" />
-              <div class="sq-plat-content">
-                <div class="sq-plat-eyebrow">WORKS WITH</div>
-                <div class="sq-plat-logos">
-                  <div class="plat-chip espn">ESPN</div><div class="plat-chip yahoo">Yahoo</div><div class="plat-chip sleeper">Sleeper</div>
-                </div>
-                <div class="sq-plat-headline">One dashboard.<br/><span class="gold">Every platform.</span></div>
-                <div class="sq-plat-sub">Football · Baseball · Basketball · Hockey</div>
-                <div class="sq-url mt">ultimatefantasydashboard.com</div>
-              </div>
+            <div class="fbc-leg-row">
+              <span class="fbc-leg-pos">3</span>
+              <div class="fbc-dot" style="background:#6366f1"></div>
+              <span class="fbc-leg-name">The Algorithm</span>
+              <span class="fbc-leg-score">1,401</span>
             </div>
-          </div>
-          <button class="dl-btn sm" @click="download('sq-c', 'ufd-post-platforms')">⬇ Download</button>
-        </div>
-        <div class="sq-card">
-          <div class="sq-label">Template D · CTA</div>
-          <div class="sq-preview-wrap">
-            <div id="sq-d" class="sq-canvas sq-cta">
-              <div class="sq-noise"></div>
-              <div class="sq-cta-inner">
-                <img src="/ufd-badge.png" alt="" class="sq-cta-shield" />
-                <div class="sq-cta-headline">Stop losing<br/>on bad data.</div>
-                <div class="sq-cta-body">The advanced fantasy dashboard your league has been waiting for. Free to start.</div>
-                <div class="sq-cta-btn">Get Started Free →</div>
-                <div class="sq-url">ultimatefantasydashboard.com</div>
-              </div>
+            <div class="fbc-leg-row">
+              <span class="fbc-leg-pos">4</span>
+              <div class="fbc-dot" style="background:#f97316"></div>
+              <span class="fbc-leg-name">Waiver Wire Kid</span>
+              <span class="fbc-leg-score">1,198</span>
             </div>
+            <div class="fbc-wm">ultimatefantasydashboard.com</div>
           </div>
-          <button class="dl-btn sm" @click="download('sq-d', 'ufd-post-cta')">⬇ Download</button>
         </div>
       </div>
     </div>
 
-    <!-- MOCKUP TAB -->
-    <div v-if="activeTab === 'mockup'" class="tab-content">
-      <div class="section-header"><h2>Screenshot → Social Post</h2><p>Upload 1–3 screenshots from the dashboard</p></div>
-      <div class="upload-zone" :class="{ 'drag-over': dragging }" @dragover.prevent="dragging = true" @dragleave="dragging = false" @drop.prevent="handleDrop" @click="$refs.fileInput.click()">
-        <input ref="fileInput" type="file" accept="image/*" multiple class="hidden-input" @change="handleFileInput" />
-        <div class="upload-icon">📸</div>
-        <div class="upload-text">Drop screenshots here or click to browse</div>
-        <div class="upload-sub">Up to 3 images · PNG, JPG</div>
-      </div>
-      <div v-if="mockupImages.length" class="mockup-thumbs">
-        <div v-for="(img, i) in mockupImages" :key="i" class="thumb-wrap">
-          <img :src="img" class="thumb" /><button class="thumb-remove" @click="mockupImages.splice(i, 1)">✕</button>
-        </div>
-      </div>
-      <div v-if="mockupImages.length" class="controls-row">
-        <label>Caption:</label>
-        <input v-model="mockupCaption" class="text-input" placeholder="Your league dashboard, finally sorted." maxlength="120" />
-      </div>
-      <div v-if="mockupImages.length" class="preview-wrap">
-        <div id="mockup-canvas" class="mockup-canvas">
-          <div class="sq-noise"></div>
-          <div class="mockup-header"><img src="/UFD_V8.png" alt="UFD" class="mockup-logo" /></div>
-          <div class="mockup-screens" :class="`screens-${mockupImages.length}`">
-            <div v-for="(img, i) in mockupImages.slice(0,3)" :key="i" class="screen-frame"><img :src="img" class="screen-img" /></div>
-          </div>
-          <div class="mockup-caption">{{ mockupCaption || 'Your league dashboard, finally sorted.' }}</div>
-          <div style="font-size:12px;color:#4b5563;text-align:center;letter-spacing:0.06em">ultimatefantasydashboard.com</div>
-        </div>
-      </div>
-      <button v-if="mockupImages.length" class="dl-btn" @click="download('mockup-canvas', 'ufd-screenshot-post')">⬇ Download Post (PNG)</button>
-    </div>
+    <!-- ══════════════════════════════════════════════
+         10 SQUARE POST IMAGES  (screenshot these)
+    ══════════════════════════════════════════════ -->
+    <div class="section-label">📸 Social Post Graphics &nbsp;·&nbsp; Screenshot each card</div>
+    <div class="posts-grid">
 
-    <!-- TESTIMONIAL TAB -->
-    <div v-if="activeTab === 'testimonial'" class="tab-content">
-      <div class="section-header"><h2>Testimonial Post</h2><p>Type in a quote and generate a branded social card</p></div>
-      <div class="testimonial-form">
-        <div class="form-group">
-          <label>Quote</label>
-          <textarea v-model="testQuote" class="text-area" rows="3" placeholder="these power rankings are going to CAUSE PROBLEMS in the group chat and i am here for it" maxlength="200"></textarea>
-        </div>
-        <div class="form-row">
-          <div class="form-group"><label>Name</label><input v-model="testName" class="text-input" placeholder="Commissioner Mike" maxlength="40" /></div>
-          <div class="form-group"><label>Context</label><input v-model="testContext" class="text-input" placeholder="12-team PPR · Yahoo" maxlength="50" /></div>
-          <div class="form-group"><label>Reaction</label><input v-model="testReaction" class="text-input emoji-input" placeholder="💀" maxlength="4" /></div>
-        </div>
-        <div class="form-group">
-          <label>Style</label>
-          <div class="style-pills">
-            <button v-for="s in testStyles" :key="s.id" :class="['pill', { active: testStyle === s.id }]" @click="testStyle = s.id">{{ s.label }}</button>
+      <!-- POST 1: Main brand / trash talk -->
+      <div class="post-wrap">
+        <div class="post-label">1 · Main Brand</div>
+        <div class="sq">
+          <div class="sq-bg sq-bg-1"></div>
+          <div class="sq-grain"></div>
+          <div class="sq-topline"></div>
+          <div class="sq-inner" style="justify-content:center;align-items:center;text-align:center">
+            <img src="/UFD_V8.png" alt="UFD" class="sq-logo" />
+            <div class="sq-eyebrow">Fantasy Analytics</div>
+            <div class="sq-headline" style="font-size:72px">Keep your<br/>league <span class="gold">talking.</span><br/>All season.</div>
+            <div class="sq-sub">Power rankings · Win probability · Draft grades · League history</div>
+            <div class="sq-platforms-row">
+              <span class="sq-plat sleeper">Sleeper</span>
+              <span class="sq-plat espn">ESPN</span>
+              <span class="sq-plat yahoo">Yahoo</span>
+            </div>
           </div>
+          <div class="sq-url">ultimatefantasydashboard.com</div>
         </div>
       </div>
-      <div class="preview-wrap">
-        <div id="test-canvas" class="sq-canvas test-canvas" :class="`test-${testStyle}`">
-          <div class="sq-noise"></div>
-          <div class="test-top"><img src="/ufd-badge.png" alt="" class="test-shield" /><div class="test-reaction">{{ testReaction || '💀' }}</div></div>
-          <div class="test-quote">"{{ testQuote || 'these power rankings are going to CAUSE PROBLEMS in the group chat and i am here for it' }}"</div>
-          <div class="test-attribution"><div class="test-name">{{ testName || 'Commissioner Mike' }}</div><div class="test-context">{{ testContext || '12-team PPR · Yahoo' }}</div></div>
-          <div class="test-logo-row"><img src="/UFD_V8.png" alt="UFD" class="test-logo" /></div>
+
+      <!-- POST 2: Power Rankings -->
+      <div class="post-wrap">
+        <div class="post-label">2 · Power Rankings</div>
+        <div class="sq">
+          <div class="sq-bg sq-bg-2"></div>
+          <div class="sq-grain"></div>
+          <div class="sq-topline"></div>
+          <div class="sq-inner">
+            <div class="sq-eyebrow">⚡ Weekly Power Rankings</div>
+            <div class="sq-headline" style="font-size:64px">Standings<br/>lie.<br/><span class="gold">Power<br/>rankings<br/>don't.</span></div>
+            <div class="sq-sub" style="margin-top:16px">Know who's actually playing well — not just who got lucky with their schedule.</div>
+            <div class="sq-cta-pill">Free for Sleeper, ESPN & Yahoo →</div>
+          </div>
+          <div class="sq-url">ultimatefantasydashboard.com</div>
         </div>
       </div>
-      <button class="dl-btn" @click="download('test-canvas', 'ufd-testimonial')">⬇ Download Testimonial (PNG)</button>
-    </div>
+
+      <!-- POST 3: Win Probability -->
+      <div class="post-wrap">
+        <div class="post-label">3 · Win Probability</div>
+        <div class="sq">
+          <div class="sq-bg sq-bg-3"></div>
+          <div class="sq-grain"></div>
+          <div class="sq-topline" style="background:linear-gradient(90deg,transparent,#06b6d4,transparent)"></div>
+          <div class="sq-inner" style="justify-content:center;align-items:center;text-align:center">
+            <div class="sq-eyebrow" style="color:#06b6d4">⚔️ Live Matchup Analysis</div>
+            <div class="sq-headline" style="font-size:58px">You're not<br/>winning<br/>until it says<br/><span style="color:#06b6d4">100%.</span></div>
+            <div class="sq-winprob-card">
+              <div class="sq-wp-teams">
+                <div class="sq-wp-team"><div class="sq-wp-dot" style="background:#eab308"></div><span class="gold">Mahomes Magic</span><span class="sq-wp-score gold">72%</span></div>
+                <span class="sq-wp-vs">VS</span>
+                <div class="sq-wp-team right"><div class="sq-wp-dot" style="background:#3b82f6"></div><span>Trash Can Wins</span><span class="sq-wp-score">28%</span></div>
+              </div>
+              <div class="sq-wp-bar-track"><div class="sq-wp-bar-fill" style="width:72%"></div></div>
+              <div class="sq-wp-sub">Monte Carlo · 10,000 simulations · Live</div>
+            </div>
+            <div class="sq-sub" style="color:#4b5563;margin-top:12px">Post this at halftime. Watch the group chat explode.</div>
+          </div>
+          <div class="sq-url">ultimatefantasydashboard.com</div>
+        </div>
+      </div>
+
+      <!-- POST 4: H2H Receipts -->
+      <div class="post-wrap">
+        <div class="post-label">4 · H2H Receipts</div>
+        <div class="sq">
+          <div class="sq-bg sq-bg-1"></div>
+          <div class="sq-grain"></div>
+          <div class="sq-topline"></div>
+          <div class="sq-inner" style="justify-content:center;align-items:center;text-align:center">
+            <div class="sq-eyebrow">📋 All-Time Records</div>
+            <div class="sq-headline" style="font-size:58px">Your group<br/>chat has<br/><span class="gold">receipts.</span><br/>It just doesn't<br/>know it yet.</div>
+            <div class="sq-sub" style="margin-top:16px">Head-to-head records going back to year one. Championships. Droughts. All of it.</div>
+          </div>
+          <div class="sq-url">ultimatefantasydashboard.com</div>
+        </div>
+      </div>
+
+      <!-- POST 5: Draft Grades -->
+      <div class="post-wrap">
+        <div class="post-label">5 · Draft Grades</div>
+        <div class="sq">
+          <div class="sq-bg sq-bg-draft"></div>
+          <div class="sq-grain"></div>
+          <div class="sq-topline" style="background:linear-gradient(90deg,transparent,#8b5cf6,transparent)"></div>
+          <div class="sq-inner">
+            <div class="sq-eyebrow" style="color:#a78bfa">📋 Draft Analysis</div>
+            <div class="sq-headline" style="font-size:62px">Everyone<br/>thinks they<br/>drafted well.<br/><span style="color:#a78bfa">Grades<br/>disagree.</span></div>
+            <div class="sq-draft-preview">
+              <div class="sq-dp-row gold-row"><span class="sq-dp-pick">1.03</span><span class="sq-dp-name">Justin Jefferson</span><span class="sq-dp-pos wr">WR</span><span class="sq-dp-grade gold">A+</span></div>
+              <div class="sq-dp-row"><span class="sq-dp-pick">2.14</span><span class="sq-dp-name">Davante Adams</span><span class="sq-dp-pos wr">WR</span><span class="sq-dp-grade grn">A</span></div>
+              <div class="sq-dp-row bust-row"><span class="sq-dp-pick">5.51</span><span class="sq-dp-name">Stefon Diggs</span><span class="sq-dp-pos wr">WR</span><span class="sq-dp-grade red">D</span></div>
+            </div>
+          </div>
+          <div class="sq-url">ultimatefantasydashboard.com</div>
+        </div>
+      </div>
+
+      <!-- POST 6: Commissioner -->
+      <div class="post-wrap">
+        <div class="post-label">6 · Commissioner</div>
+        <div class="sq">
+          <div class="sq-bg sq-bg-2"></div>
+          <div class="sq-grain"></div>
+          <div class="sq-topline"></div>
+          <div class="sq-inner" style="justify-content:center;align-items:center;text-align:center">
+            <div class="sq-eyebrow">🏆 For Commissioners</div>
+            <div class="sq-headline" style="font-size:58px">Your league<br/>goes quiet<br/>after week 8.<br/><span class="gold">Not anymore.</span></div>
+            <div class="sq-feature-list">
+              <div class="sq-feat">⚡ Weekly power rankings</div>
+              <div class="sq-feat">⚔️ Live win probability</div>
+              <div class="sq-feat">📋 Draft grades all season</div>
+              <div class="sq-feat">🏆 All-time league history</div>
+            </div>
+            <div class="sq-cta-pill">Free to try →</div>
+          </div>
+          <div class="sq-url">ultimatefantasydashboard.com</div>
+        </div>
+      </div>
+
+      <!-- POST 7: Multi-sport -->
+      <div class="post-wrap">
+        <div class="post-label">7 · Multi-Sport</div>
+        <div class="sq">
+          <div class="sq-bg sq-bg-3"></div>
+          <div class="sq-grain"></div>
+          <div class="sq-topline" style="background:linear-gradient(90deg,transparent,#22c55e,transparent)"></div>
+          <div class="sq-inner" style="justify-content:center;align-items:center;text-align:center">
+            <img src="/UFD_V8.png" alt="UFD" class="sq-logo" style="margin-bottom:16px" />
+            <div class="sq-eyebrow" style="color:#22c55e">One Dashboard. Every Sport.</div>
+            <div class="sq-sports-grid">
+              <div class="sq-sport-chip">🏈 Football</div>
+              <div class="sq-sport-chip">🏀 Basketball</div>
+              <div class="sq-sport-chip">⚾ Baseball</div>
+              <div class="sq-sport-chip">🏒 Hockey</div>
+            </div>
+            <div class="sq-headline" style="font-size:52px;margin-top:16px">Your whole<br/>fantasy life.<br/><span class="gold">One place.</span></div>
+            <div class="sq-platforms-row" style="margin-top:16px">
+              <span class="sq-plat sleeper">Sleeper</span>
+              <span class="sq-plat espn">ESPN</span>
+              <span class="sq-plat yahoo">Yahoo</span>
+            </div>
+          </div>
+          <div class="sq-url">ultimatefantasydashboard.com</div>
+        </div>
+      </div>
+
+      <!-- POST 8: Legacy / History -->
+      <div class="post-wrap">
+        <div class="post-label">8 · League History</div>
+        <div class="sq">
+          <div class="sq-bg sq-bg-1"></div>
+          <div class="sq-grain"></div>
+          <div class="sq-topline"></div>
+          <div class="sq-inner" style="justify-content:center;align-items:center;text-align:center">
+            <div class="sq-eyebrow">🏆 Legacy Standings</div>
+            <div class="sq-headline" style="font-size:56px">6 years.<br/>1 champion.<br/><span class="gold">0 excuses.</span></div>
+            <div class="sq-legacy-preview">
+              <div class="sq-leg-row"><span class="sq-leg-num gold">1</span><div class="sq-leg-dot" style="background:#eab308"></div><span class="sq-leg-name">Mahomes Magic</span><span class="sq-leg-score gold">1,847</span></div>
+              <div class="sq-leg-row"><span class="sq-leg-num">2</span><div class="sq-leg-dot" style="background:#10b981"></div><span class="sq-leg-name">Trash Can Wins</span><span class="sq-leg-score">1,623</span></div>
+              <div class="sq-leg-row"><span class="sq-leg-num">3</span><div class="sq-leg-dot" style="background:#6366f1"></div><span class="sq-leg-name">The Algorithm</span><span class="sq-leg-score">1,401</span></div>
+            </div>
+            <div class="sq-sub" style="margin-top:16px">Pull up your league's all-time history. One click.</div>
+          </div>
+          <div class="sq-url">ultimatefantasydashboard.com</div>
+        </div>
+      </div>
+
+      <!-- POST 9: Trash talk -->
+      <div class="post-wrap">
+        <div class="post-label">9 · Trash Talk</div>
+        <div class="sq">
+          <div class="sq-bg sq-bg-fire"></div>
+          <div class="sq-grain"></div>
+          <div class="sq-topline" style="background:linear-gradient(90deg,transparent,#ef4444,transparent)"></div>
+          <div class="sq-inner" style="justify-content:center;align-items:center;text-align:center">
+            <div class="sq-headline" style="font-size:68px;line-height:0.95">Stop<br/>arguing.<br/><span style="color:#ef4444">Post the<br/>receipts.</span></div>
+            <div class="sq-sub" style="margin-top:24px;font-size:18px">All-time H2H records. Championship history. Draft grades that don't lie.</div>
+            <div class="sq-cta-pill" style="background:rgba(239,68,68,0.15);border-color:rgba(239,68,68,0.4);color:#ef4444;margin-top:24px">Get the data →</div>
+          </div>
+          <div class="sq-url">ultimatefantasydashboard.com</div>
+        </div>
+      </div>
+
+      <!-- POST 10: Free CTA -->
+      <div class="post-wrap">
+        <div class="post-label">10 · Free CTA</div>
+        <div class="sq">
+          <div class="sq-bg sq-bg-2"></div>
+          <div class="sq-grain"></div>
+          <div class="sq-topline"></div>
+          <div class="sq-inner" style="justify-content:center;align-items:center;text-align:center">
+            <img src="/UFD_V8.png" alt="UFD" class="sq-logo" />
+            <div class="sq-headline" style="font-size:58px">Your league<br/>deserves<br/><span class="gold">better<br/>content.</span></div>
+            <div class="sq-sub" style="margin-top:16px">Connect your Sleeper, ESPN, or Yahoo league in 2 minutes. No credit card. Free to start.</div>
+            <div class="sq-cta-pill" style="font-size:18px;padding:14px 32px;margin-top:20px">Connect Your League Free →</div>
+          </div>
+          <div class="sq-url">ultimatefantasydashboard.com</div>
+        </div>
+      </div>
+
+    </div><!-- /posts-grid -->
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue'
-import html2canvas from 'html2canvas'
-
-const activeTab = ref('banner')
-const tabs = [
-  { id: 'banner',      icon: '🖼',  label: 'FB Banner' },
-  { id: 'square',      icon: '⬛', label: 'Square Posts' },
-  { id: 'mockup',      icon: '📸', label: 'Screenshot Mockup' },
-  { id: 'testimonial', icon: '💬', label: 'Testimonial' },
-]
-
-const bannerHeadline = ref('dominate')
-const bannerHeadlines = [
-  { id: 'dominate', label: 'Dominate',  line1: 'DOMINATE',   line2: 'YOUR LEAGUE.', sub: 'Advanced analytics for serious fantasy managers.' },
-  { id: 'know',     label: 'Know More', line1: 'KNOW MORE.', line2: 'WIN MORE.',     sub: 'Power rankings, history, and matchup analysis in one place.' },
-  { id: 'built',    label: 'Built For', line1: 'BUILT FOR',  line2: 'CHAMPIONS.',   sub: 'The dashboard your fantasy league deserves.' },
-  { id: 'trash',    label: 'Trash Talk', line1: 'YOUR LEAGUE',  line2: 'CAN\'T HANDLE THIS.', sub: 'Real data. Devastating facts. Delivered weekly.' },
-]
-const currentHeadline = computed(() => bannerHeadlines.find(h => h.id === bannerHeadline.value)!)
-const historyBars = [42, 68, 55, 80, 95, 72]
-
-const squareFeatures = [
-  { icon: '📊', label: 'Power Rankings', desc: 'Real-time weekly rankings' },
-  { icon: '🏆', label: 'Season History',  desc: 'Years of data at a glance' },
-  { icon: '🎯', label: 'Start/Sit Help',  desc: 'AI-powered lineup advice' },
-  { icon: '📈', label: 'Draft Analysis',  desc: 'Grade every pick' },
-]
-
-const mockupImages = ref<string[]>([])
-const mockupCaption = ref('')
-const dragging = ref(false)
-const fileInput = ref<HTMLInputElement>()
-
-function handleDrop(e: DragEvent) {
-  dragging.value = false
-  loadFiles(Array.from(e.dataTransfer?.files || []).slice(0, 3))
-}
-function handleFileInput(e: Event) {
-  loadFiles(Array.from((e.target as HTMLInputElement).files || []).slice(0, 3))
-}
-function loadFiles(files: File[]) {
-  files.forEach(file => {
-    if (mockupImages.value.length >= 3) return
-    const reader = new FileReader()
-    reader.onload = (ev) => { mockupImages.value.push(ev.target?.result as string) }
-    reader.readAsDataURL(file)
-  })
-}
-
-const testQuote    = ref('')
-const testName     = ref('')
-const testContext  = ref('')
-const testReaction = ref('')
-const testStyle    = ref('dark')
-const testStyles   = [{ id: 'dark', label: 'Dark' }, { id: 'gold', label: 'Gold' }, { id: 'fire', label: 'Fire' }]
-
-async function download(id: string, filename: string) {
-  const el = document.getElementById(id)
-  if (!el) return
-  const canvas = await html2canvas(el, { scale: 2, useCORS: true, allowTaint: true, backgroundColor: '#05060a' })
-  const link = document.createElement('a')
-  link.download = `${filename}.png`
-  link.href = canvas.toDataURL('image/png')
-  link.click()
-}
+// No download logic needed — screenshot directly from browser
 </script>
 
 <style scoped>
-.social-root { min-height: 100vh; background: #05060a; color: #f7f7ff; font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; padding: 0 0 80px; }
-.page-header { display: flex; align-items: center; gap: 20px; padding: 32px 40px 24px; border-bottom: 1px solid #1e2130; background: linear-gradient(180deg, #0a0c14, #05060a); }
-.header-logo { height: 48px; object-fit: contain; }
-.page-header h1 { font-size: 26px; font-weight: 900; margin: 0 0 4px; letter-spacing: -0.02em; }
-.page-header p { font-size: 13px; color: #6b7280; margin: 0; }
-.tab-bar { display: flex; gap: 4px; padding: 20px 40px 0; border-bottom: 1px solid #1e2130; }
-.tab-btn { display: flex; align-items: center; gap: 8px; padding: 10px 20px; border: none; background: transparent; color: #6b7280; font-size: 14px; font-weight: 600; cursor: pointer; border-bottom: 2px solid transparent; transition: all 0.2s; margin-bottom: -1px; }
-.tab-btn:hover { color: #d1d5db; }
-.tab-btn.active { color: #eab308; border-bottom-color: #eab308; }
-.tab-icon { font-size: 16px; }
-.tab-content { padding: 32px 40px; }
-.section-header { margin-bottom: 24px; }
-.section-header h2 { font-size: 22px; font-weight: 800; margin: 0 0 6px; }
-.section-header p { font-size: 13px; color: #6b7280; margin: 0; }
-.controls-row { display: flex; align-items: center; gap: 16px; margin-bottom: 20px; flex-wrap: wrap; }
-.controls-row label { font-size: 13px; font-weight: 700; color: #9ca3af; text-transform: uppercase; letter-spacing: 0.08em; }
-.style-pills { display: flex; gap: 8px; flex-wrap: wrap; }
-.pill { padding: 6px 16px; border-radius: 20px; border: 1px solid #262a3a; background: #0f1220; color: #9ca3af; font-size: 13px; font-weight: 600; cursor: pointer; transition: all 0.2s; }
-.pill.active { background: rgba(234,179,8,0.15); border-color: #eab308; color: #eab308; }
-.dl-btn { margin-top: 20px; display: inline-flex; align-items: center; gap: 8px; padding: 14px 28px; background: #eab308; color: #0a0c14; font-size: 14px; font-weight: 800; border: none; border-radius: 10px; cursor: pointer; transition: all 0.2s; }
-.dl-btn:hover { background: #fbbf24; transform: translateY(-1px); }
-.dl-btn.sm { padding: 10px 18px; font-size: 13px; margin-top: 12px; }
-.preview-wrap { background: #0a0c14; border: 1px solid #1e2130; border-radius: 16px; padding: 32px; display: flex; justify-content: center; align-items: center; overflow: hidden; }
-.banner-wrap { padding: 24px; background: #030407; }
+* { box-sizing: border-box; margin: 0; padding: 0; }
 
-/* ═══ BANNER ═══ */
-.banner-canvas { width: 851px; height: 315px; background: #05060a; position: relative; overflow: hidden; display: flex; align-items: center; border-radius: 4px; transform-origin: top left; }
-@media (max-width: 1100px) { .banner-canvas { transform: scale(0.75); margin: -40px auto; } }
-@media (max-width: 800px)  { .banner-canvas { transform: scale(0.5);  margin: -80px auto; } }
-.banner-grid { position: absolute; inset: 0; pointer-events: none; background-image: linear-gradient(rgba(234,179,8,0.04) 1px, transparent 1px), linear-gradient(90deg, rgba(234,179,8,0.04) 1px, transparent 1px); background-size: 40px 40px; }
-.banner-orb { position: absolute; border-radius: 50%; pointer-events: none; filter: blur(60px); }
-.banner-orb-1 { width: 300px; height: 300px; background: radial-gradient(circle, rgba(234,179,8,0.18) 0%, transparent 70%); top: -80px; left: 160px; }
-.banner-orb-2 { width: 400px; height: 400px; background: radial-gradient(circle, rgba(59,130,246,0.1) 0%, transparent 70%); bottom: -100px; right: 200px; }
-.banner-cards { position: absolute; right: 0; top: 0; bottom: 0; width: 520px; pointer-events: none; display: flex; align-items: center; }
-.banner-cards::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 120px; background: linear-gradient(90deg, #05060a, transparent); z-index: 10; }
-.banner-cards::after  { content: ''; position: absolute; right: 0; top: 0; bottom: 0; width: 80px;  background: linear-gradient(270deg, #05060a, transparent); z-index: 10; }
-.bcard { position: absolute; width: 240px; background: linear-gradient(135deg, #12151e, #0a0c14); border: 1px solid #1e2130; border-radius: 12px; overflow: hidden; box-shadow: 0 24px 60px rgba(0,0,0,0.95); font-size: 10px; isolation: isolate; }
-.bcard-1 { left: 10px;  top: 50%; transform: rotate(-6deg) translateY(-55%); opacity: 0.85; }
-.bcard-2 { left: 140px; top: 50%; transform: rotate(-1.5deg) translateY(-52%); opacity: 0.95; border-color: rgba(234,179,8,0.25); box-shadow: 0 24px 60px rgba(0,0,0,0.95), 0 0 40px rgba(234,179,8,0.08); }
-.bcard-3 { left: 278px; top: 50%; transform: rotate(3.5deg) translateY(-48%); opacity: 0.88; }
-.bcard-header { display: flex; align-items: center; gap: 5px; padding: 8px 10px; border-bottom: 1px solid #1a1d28; background: rgba(0,0,0,0.2); }
-.bcard-icon  { font-size: 10px; }
-.bcard-title { font-size: 9px; font-weight: 700; color: #e5e7eb; flex: 1; }
-.bcard-wk    { font-size: 8px; color: #4b5563; background: #1a1d28; padding: 1px 5px; border-radius: 3px; }
-.bcard-row { display: flex; align-items: center; gap: 5px; padding: 5px 10px; border-bottom: 1px solid rgba(26,29,40,0.8); }
-.bcard-row-gold { background: rgba(234,179,8,0.06); }
-.bcard-rank  { font-size: 9px; font-weight: 700; color: #4b5563; width: 10px; text-align: center; }
-.bcard-avatar { width: 14px; height: 14px; border-radius: 50%; flex-shrink: 0; }
-.bcard-avatar.lg { width: 28px; height: 28px; }
-.bcard-name  { font-size: 9px; color: #d1d5db; flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 110px; }
-.bcard-pts   { font-size: 9px; font-weight: 700; color: #eab308; }
-.bcard-delta { font-size: 8px; font-weight: 600; width: 16px; text-align: right; }
-.bcard-delta.up { color: #22c55e; }
-.bcard-delta.dn { color: #ef4444; }
-.bcard-matchup { display: flex; align-items: center; padding: 10px; }
-.bcard-team-col { display: flex; flex-direction: column; align-items: center; gap: 3px; flex: 1; }
-.bcard-team-name { font-size: 8px; color: #9ca3af; text-align: center; line-height: 1.2; }
-.bcard-score { font-size: 15px; font-weight: 900; color: #e5e7eb; }
-.bcard-score.gold { color: #eab308; }
-.bcard-winp  { font-size: 7px; color: #4b5563; text-transform: uppercase; letter-spacing: 0.08em; margin-top: 2px; }
-.bcard-bar-wrap { width: 56px; height: 3px; background: #1e2130; border-radius: 2px; overflow: hidden; }
-.bcard-bar   { height: 100%; border-radius: 2px; }
-.bcard-pct   { font-size: 9px; font-weight: 700; color: #9ca3af; }
-.bcard-pct.gold { color: #eab308; }
-.bcard-vs    { font-size: 9px; font-weight: 900; color: #374151; width: 20px; text-align: center; flex-shrink: 0; }
-.bcard-history { padding: 8px 10px; display: flex; flex-direction: column; gap: 4px; }
-.bcard-stat-row { display: flex; justify-content: space-between; align-items: center; }
-.bcard-stat-label { font-size: 8px; color: #6b7280; }
-.bcard-stat-val   { font-size: 9px; font-weight: 700; color: #d1d5db; }
-.bcard-stat-val.gold { color: #eab308; }
-.bcard-bar-chart { display: flex; gap: 3px; align-items: flex-end; height: 28px; margin-top: 6px; }
-.bcard-bar-col { display: flex; flex-direction: column; align-items: center; gap: 2px; flex: 1; }
-.bcard-bar-fill { width: 100%; border-radius: 2px 2px 0 0; min-height: 4px; }
-.bcard-bar-yr { font-size: 6px; color: #374151; }
-.bcard-watermark { font-size: 7px; color: #1e2130; text-align: center; padding: 5px 0 6px; }
-.banner-left { position: relative; z-index: 20; display: flex; flex-direction: column; gap: 10px; padding: 28px 0 28px 36px; width: 360px; flex-shrink: 0; }
-.banner-logo { height: auto; object-fit: contain; }
-.banner-headline { font-size: 38px; font-weight: 900; line-height: 1.0; letter-spacing: -0.02em; color: #ffffff; text-shadow: 0 2px 20px rgba(0,0,0,0.8); }
-.banner-headline-gold { color: #eab308; }
-.banner-sub { font-size: 12px; color: #6b7280; line-height: 1.4; max-width: 260px; }
-.banner-platforms { display: flex; gap: 12px; align-items: center; }
-.plat-txt { font-size: 11px; font-weight: 900; letter-spacing: 0.1em; padding: 4px 10px; border-radius: 5px; }
-.plat-txt.espn    { color: #93c5fd; border: 1px solid rgba(59,130,246,0.4); background: rgba(59,130,246,0.12); }
-.plat-txt.yahoo   { color: #c4b5fd; border: 1px solid rgba(139,92,246,0.4); background: rgba(139,92,246,0.12); }
-.plat-txt.sleeper { color: #86efac; border: 1px solid rgba(34,197,94,0.4);  background: rgba(34,197,94,0.12);  }
+.studio-root {
+  min-height: 100vh;
+  background: #030407;
+  color: #f7f7ff;
+  font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+  padding-bottom: 80px;
+}
 
+/* ── Page header ── */
+.studio-header {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  padding: 28px 40px;
+  border-bottom: 1px solid #1e2130;
+  background: linear-gradient(180deg, #0a0c14, #05060a);
+}
+.studio-logo { height: 44px; object-fit: contain; }
+.studio-header h1 { font-size: 24px; font-weight: 900; margin-bottom: 4px; letter-spacing: -0.02em; }
+.studio-header p  { font-size: 13px; color: #6b7280; }
 
-/* ═══ SQUARE ═══ */
-.square-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 24px; }
-.sq-card { background: #0a0c14; border: 1px solid #1e2130; border-radius: 16px; padding: 20px; }
-.sq-label { font-size: 12px; font-weight: 700; color: #4b5563; text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 14px; }
-.sq-preview-wrap { width: 100%; aspect-ratio: 1; overflow: hidden; border-radius: 8px; display: flex; align-items: center; justify-content: center; background: #05060a; }
-.sq-canvas { width: 540px; height: 540px; position: relative; overflow: hidden; flex-shrink: 0; transform: scale(0.555); transform-origin: top left; margin-bottom: -242px; }
-.sq-noise { position: absolute; inset: 0; pointer-events: none; z-index: 0; background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E"); opacity: 0.5; }
-.sq-url { font-size: 13px; color: #374151; letter-spacing: 0.06em; position: absolute; bottom: 22px; left: 0; right: 0; text-align: center; z-index: 2; }
-.sq-url.mt { position: static; margin-top: 16px; text-align: center; }
+.section-label {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: #4b5563;
+  padding: 32px 40px 14px;
+}
+
+/* ══════════════════════════════════
+   FACEBOOK BANNER
+══════════════════════════════════ */
+.banner-stage {
+  padding: 0 40px 40px;
+  display: flex;
+  justify-content: center;
+}
+
+.fb-banner {
+  width: 851px;
+  height: 315px;
+  background: #05060a;
+  position: relative;
+  overflow: hidden;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  box-shadow: 0 0 0 1px #1e2130, 0 32px 80px rgba(0,0,0,0.8);
+}
+
+.fb-grid {
+  position: absolute; inset: 0;
+  background-image:
+    linear-gradient(rgba(234,179,8,0.035) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(234,179,8,0.035) 1px, transparent 1px);
+  background-size: 40px 40px;
+}
+.fb-glow-1 {
+  position: absolute;
+  width: 400px; height: 400px;
+  background: radial-gradient(circle, rgba(234,179,8,0.14) 0%, transparent 65%);
+  top: -120px; left: 120px;
+  pointer-events: none;
+}
+.fb-glow-2 {
+  position: absolute;
+  width: 500px; height: 500px;
+  background: radial-gradient(circle, rgba(59,130,246,0.07) 0%, transparent 65%);
+  bottom: -200px; right: 100px;
+  pointer-events: none;
+}
+.fb-grain {
+  position: absolute; inset: 0;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.4'/%3E%3C/svg%3E");
+  background-size: 180px 180px;
+  opacity: 0.25;
+  pointer-events: none;
+}
+.fb-topline {
+  position: absolute; top: 0; left: 0; right: 0; height: 3px;
+  background: linear-gradient(90deg, transparent 0%, #eab308 25%, #fbbf24 50%, #eab308 75%, transparent 100%);
+}
+
+.fb-left {
+  position: relative; z-index: 20;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 24px 0 24px 32px;
+  width: 350px;
+  flex-shrink: 0;
+}
+.fb-logo { height: auto; width: 200px; object-fit: contain; margin-bottom: 2px; }
+.fb-headline {
+  font-size: 34px;
+  font-weight: 900;
+  line-height: 1.05;
+  letter-spacing: -0.02em;
+  color: #fff;
+}
+.fb-gold { color: #eab308; }
+.fb-sub { font-size: 11px; color: #6b7280; line-height: 1.4; }
+.fb-platforms { display: flex; gap: 8px; align-items: center; margin-top: 4px; }
+.fb-plat {
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  padding: 3px 8px;
+  border-radius: 4px;
+}
+.fb-plat.sleeper { background: rgba(34,197,94,0.12); border: 1px solid rgba(34,197,94,0.3); color: #4ade80; }
+.fb-plat.espn    { background: rgba(59,130,246,0.12); border: 1px solid rgba(59,130,246,0.3); color: #60a5fa; }
+.fb-plat.yahoo   { background: rgba(139,92,246,0.12); border: 1px solid rgba(139,92,246,0.3); color: #a78bfa; }
+
+/* Fanned cards */
+.fb-cards-area {
+  position: absolute;
+  right: -10px; top: 0; bottom: 0;
+  width: 530px;
+}
+.fb-cards-area::before {
+  content: '';
+  position: absolute; left: 0; top: 0; bottom: 0; width: 100px;
+  background: linear-gradient(90deg, #05060a, transparent);
+  z-index: 15;
+}
+.fb-cards-area::after {
+  content: '';
+  position: absolute; right: 0; top: 0; bottom: 0; width: 60px;
+  background: linear-gradient(270deg, #05060a, transparent);
+  z-index: 15;
+}
+
+.fb-card {
+  position: absolute;
+  width: 210px;
+  background: linear-gradient(145deg, #111420, #090c16);
+  border: 1px solid #1e2130;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.9);
+  font-size: 9px;
+}
+.fb-card-1 { left: 20px;  top: 50%; transform: rotate(-7deg) translateY(-52%); opacity: 0.82; }
+.fb-card-2 {
+  left: 148px; top: 50%; transform: rotate(-1deg) translateY(-50%);
+  border-color: rgba(234,179,8,0.25);
+  box-shadow: 0 20px 60px rgba(0,0,0,0.9), 0 0 40px rgba(234,179,8,0.07);
+  z-index: 2;
+}
+.fb-card-3 { left: 293px; top: 50%; transform: rotate(4.5deg) translateY(-46%); opacity: 0.84; }
+
+.fbc-head { display: flex; align-items: center; gap: 5px; padding: 8px 10px; border-bottom: 1px solid #1a1d28; background: rgba(0,0,0,0.2); }
+.fbc-badge { font-size: 7px; font-weight: 900; background: rgba(234,179,8,0.15); color: #eab308; border: 1px solid rgba(234,179,8,0.3); padding: 1px 5px; border-radius: 3px; }
+.fbc-title { font-size: 8px; font-weight: 700; color: #d1d5db; flex: 1; }
+.fbc-wk    { font-size: 7px; color: #374151; background: #1a1d28; padding: 1px 5px; border-radius: 3px; }
+
+.fbc-row { display: flex; align-items: center; gap: 5px; padding: 5px 10px; border-bottom: 1px solid rgba(26,29,40,0.6); }
+.fbc-gold { background: rgba(234,179,8,0.05); }
+.fbc-rk   { font-size: 8px; font-weight: 700; color: #4b5563; width: 8px; text-align: center; }
+.fbc-rk.gold { color: #eab308; }
+.fbc-dot  { width: 12px; height: 12px; border-radius: 50%; flex-shrink: 0; }
+.fbc-name { font-size: 8px; color: #d1d5db; flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.fbc-name.gold { color: #eab308; font-weight: 700; }
+.fbc-pts  { font-size: 8px; font-weight: 700; color: #9ca3af; }
+.fbc-pts.gold { color: #eab308; }
+.fbc-chg  { font-size: 7px; font-weight: 700; }
+.fbc-chg.up { color: #22c55e; }
+.fbc-chg.dn { color: #ef4444; }
+
+.fbc-matchup { display: flex; align-items: center; padding: 10px 8px 6px; }
+.fbc-team    { display: flex; flex-direction: column; align-items: center; gap: 3px; flex: 1; }
+.fbc-avatar  { width: 24px; height: 24px; border-radius: 50%; }
+.fbc-tname   { font-size: 7px; color: #9ca3af; text-align: center; line-height: 1.2; }
+.fbc-score   { font-size: 13px; font-weight: 900; color: #e5e7eb; }
+.fbc-score.gold { color: #eab308; }
+.fbc-vs      { font-size: 8px; font-weight: 900; color: #374151; width: 16px; text-align: center; }
+
+.fbc-prob-wrap { padding: 0 10px 6px; }
+.fbc-prob-labels { display: flex; justify-content: space-between; font-size: 8px; font-weight: 700; color: #6b7280; margin-bottom: 4px; }
+.fbc-prob-bar { height: 4px; background: #1e2130; border-radius: 2px; overflow: hidden; margin-bottom: 4px; }
+.fbc-prob-fill { height: 100%; background: linear-gradient(90deg, #eab308, #ca8a04); border-radius: 2px; }
+.fbc-prob-sub { font-size: 7px; color: #374151; text-align: center; }
+
+.fbc-leg-row { display: flex; align-items: center; gap: 5px; padding: 5px 10px; border-bottom: 1px solid rgba(26,29,40,0.6); }
+.fbc-leg-pos  { font-size: 8px; font-weight: 700; color: #4b5563; width: 8px; text-align: center; }
+.fbc-leg-pos.gold { color: #eab308; }
+.fbc-leg-name { font-size: 8px; color: #d1d5db; flex: 1; }
+.fbc-leg-name.gold { color: #eab308; font-weight: 700; }
+.fbc-leg-score { font-size: 8px; font-weight: 700; color: #9ca3af; }
+.fbc-leg-score.gold { color: #eab308; }
+
+.fbc-wm { font-size: 6px; color: #1e2130; text-align: center; padding: 4px 0 5px; }
+
+/* ══════════════════════════════════
+   SQUARE POSTS GRID
+══════════════════════════════════ */
+.posts-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(380px, 1fr));
+  gap: 32px;
+  padding: 0 40px;
+}
+
+.post-wrap {}
+.post-label {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: #4b5563;
+  margin-bottom: 12px;
+}
+
+/* The actual square — 1080×1080 scaled down to fit */
+.sq {
+  width: 540px;
+  height: 540px;
+  position: relative;
+  overflow: hidden;
+  border-radius: 4px;
+  box-shadow: 0 0 0 1px #1e2130, 0 20px 60px rgba(0,0,0,0.7);
+}
+
+/* Backgrounds */
+.sq-bg { position: absolute; inset: 0; }
+.sq-bg-1 { background: radial-gradient(ellipse 120% 100% at 50% 0%, rgba(234,179,8,0.10) 0%, transparent 60%), linear-gradient(145deg, #05060a 0%, #090c14 100%); }
+.sq-bg-2 { background: radial-gradient(ellipse 100% 80% at 30% 20%, rgba(234,179,8,0.08) 0%, transparent 55%), linear-gradient(145deg, #07060a 0%, #0c0a14 100%); }
+.sq-bg-3 { background: radial-gradient(ellipse 120% 100% at 70% 80%, rgba(6,182,212,0.08) 0%, transparent 60%), linear-gradient(145deg, #040810 0%, #080c18 100%); }
+.sq-bg-draft { background: radial-gradient(ellipse 100% 80% at 50% 30%, rgba(139,92,246,0.09) 0%, transparent 60%), linear-gradient(145deg, #07050f 0%, #0a0814 100%); }
+.sq-bg-fire  { background: radial-gradient(ellipse 100% 80% at 50% 60%, rgba(239,68,68,0.09) 0%, transparent 60%), linear-gradient(145deg, #090404 0%, #0f0506 100%); }
+
+.sq-grain {
+  position: absolute; inset: 0; pointer-events: none; z-index: 1;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.4'/%3E%3C/svg%3E");
+  background-size: 180px 180px;
+  opacity: 0.3;
+}
+.sq-topline {
+  position: absolute; top: 0; left: 0; right: 0; height: 3px; z-index: 5;
+  background: linear-gradient(90deg, transparent 0%, #eab308 25%, #fbbf24 50%, #eab308 75%, transparent 100%);
+}
+
+.sq-inner {
+  position: relative; z-index: 2;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  padding: 40px 44px 60px;
+}
+
+.sq-logo { height: auto; width: 180px; object-fit: contain; margin-bottom: 8px; }
+
+.sq-eyebrow {
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: #eab308;
+  margin-bottom: 12px;
+}
+
+.sq-headline {
+  font-weight: 900;
+  line-height: 1.0;
+  letter-spacing: -0.02em;
+  color: #fff;
+  margin-bottom: 4px;
+}
+
+.sq-sub {
+  font-size: 16px;
+  color: #6b7280;
+  line-height: 1.5;
+  margin-top: 8px;
+}
+
 .gold { color: #eab308; }
-.sq-hero { background: linear-gradient(145deg, #05060a 0%, #0f1220 60%, #080b14 100%); display: flex; flex-direction: column; align-items: center; justify-content: center; }
-.sq-shield { position: absolute; right: -30px; top: -30px; width: 280px; height: auto; opacity: 0.12; z-index: 0; transform: rotate(15deg); }
-.sq-hero-text { position: relative; z-index: 1; text-align: center; padding: 0 40px; }
-.sq-eyebrow { font-size: 11px; font-weight: 800; letter-spacing: 0.2em; color: #eab308; margin-bottom: 16px; }
-.sq-headline { font-size: 72px; font-weight: 900; line-height: 1; letter-spacing: -0.03em; color: #fff; margin-bottom: 20px; }
-.sq-sub { font-size: 16px; color: #6b7280; }
-.sq-features { background: linear-gradient(160deg, #05060a 0%, #0d0f1a 100%); padding: 40px; display: flex; flex-direction: column; }
-.sq-feat-header { margin-bottom: 28px; }
-.sq-logo-sm { height: 36px; object-fit: contain; }
-.sq-feat-title { font-size: 32px; font-weight: 900; line-height: 1.15; color: #fff; margin-bottom: 28px; letter-spacing: -0.02em; }
-.sq-feat-list { display: flex; flex-direction: column; gap: 18px; flex: 1; }
-.sq-feat-item { display: flex; align-items: flex-start; gap: 16px; }
-.sq-feat-icon { font-size: 22px; flex-shrink: 0; margin-top: 2px; }
-.sq-feat-name { font-size: 16px; font-weight: 700; color: #f3f4f6; margin-bottom: 2px; }
-.sq-feat-desc { font-size: 13px; color: #6b7280; }
-.sq-platforms { background: linear-gradient(145deg, #03060e 0%, #050a18 100%); display: flex; align-items: center; justify-content: center; }
-.sq-badge-bg { position: absolute; left: 50%; top: 50%; transform: translate(-50%,-50%); width: 400px; height: auto; opacity: 0.06; z-index: 0; }
-.sq-plat-content { position: relative; z-index: 1; text-align: center; padding: 0 40px; }
-.sq-plat-eyebrow { font-size: 11px; font-weight: 800; letter-spacing: 0.2em; color: #4b5563; margin-bottom: 20px; }
-.sq-plat-logos { display: flex; gap: 12px; justify-content: center; margin-bottom: 28px; }
-.plat-chip { padding: 8px 20px; border-radius: 8px; font-size: 15px; font-weight: 800; letter-spacing: 0.05em; }
-.plat-chip.espn    { background: rgba(0,100,255,0.15); border: 1px solid rgba(0,100,255,0.3);   color: #60a5fa; }
-.plat-chip.yahoo   { background: rgba(100,0,200,0.15); border: 1px solid rgba(100,0,200,0.3);   color: #a78bfa; }
-.plat-chip.sleeper { background: rgba(234,179,8,0.12); border: 1px solid rgba(234,179,8,0.3);   color: #eab308; }
-.sq-plat-headline { font-size: 48px; font-weight: 900; line-height: 1.1; letter-spacing: -0.03em; color: #fff; margin-bottom: 14px; }
-.sq-plat-sub { font-size: 15px; color: #6b7280; }
-.sq-cta { background: linear-gradient(160deg, #0a0800 0%, #0f0c00 50%, #050400 100%); }
-.sq-cta-inner { position: relative; z-index: 1; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 40px; }
-.sq-cta-shield { width: 80px; height: auto; margin-bottom: 24px; }
-.sq-cta-headline { font-size: 56px; font-weight: 900; letter-spacing: -0.03em; text-align: center; line-height: 1; color: #fff; margin-bottom: 18px; }
-.sq-cta-body { font-size: 16px; color: #9ca3af; text-align: center; line-height: 1.5; margin-bottom: 28px; }
-.sq-cta-btn { padding: 16px 36px; background: #eab308; color: #0a0c14; font-size: 17px; font-weight: 800; border-radius: 10px; margin-bottom: 28px; }
 
-/* ═══ MOCKUP ═══ */
-.upload-zone { border: 2px dashed #262a3a; border-radius: 16px; padding: 48px; text-align: center; cursor: pointer; transition: all 0.2s; margin-bottom: 20px; }
-.upload-zone:hover, .upload-zone.drag-over { border-color: #eab308; background: rgba(234,179,8,0.04); }
-.upload-icon { font-size: 40px; margin-bottom: 12px; }
-.upload-text { font-size: 16px; font-weight: 600; color: #d1d5db; margin-bottom: 6px; }
-.upload-sub  { font-size: 13px; color: #4b5563; }
-.hidden-input { display: none; }
-.mockup-thumbs { display: flex; gap: 12px; margin-bottom: 20px; }
-.thumb-wrap { position: relative; }
-.thumb { width: 100px; height: 70px; object-fit: cover; border-radius: 8px; border: 1px solid #262a3a; }
-.thumb-remove { position: absolute; top: -6px; right: -6px; background: #ef4444; color: #fff; border: none; border-radius: 50%; width: 20px; height: 20px; font-size: 10px; cursor: pointer; display: flex; align-items: center; justify-content: center; }
-.text-input { flex: 1; min-width: 200px; background: #0f1220; border: 1px solid #262a3a; border-radius: 8px; padding: 10px 14px; color: #f7f7ff; font-size: 14px; outline: none; transition: border-color 0.2s; }
-.text-input:focus { border-color: #eab308; }
-.emoji-input { max-width: 80px; text-align: center; }
-.mockup-canvas { width: 600px; height: 600px; background: linear-gradient(145deg, #05060a 0%, #0d0f1a 100%); position: relative; overflow: hidden; display: flex; flex-direction: column; padding: 28px; gap: 16px; }
-.mockup-header { display: flex; justify-content: center; }
-.mockup-logo { height: 32px; object-fit: contain; }
-.mockup-screens { display: flex; gap: 8px; flex: 1; min-height: 0; }
-.mockup-screens .screen-frame { flex: 1; border-radius: 8px; overflow: hidden; border: 1px solid #1e2130; }
-.mockup-screens .screen-img { width: 100%; height: 100%; object-fit: cover; }
-.mockup-caption { font-size: 15px; font-weight: 600; color: #d1d5db; text-align: center; line-height: 1.4; }
+.sq-cta-pill {
+  display: inline-block;
+  margin-top: 20px;
+  padding: 12px 24px;
+  background: rgba(234,179,8,0.12);
+  border: 1px solid rgba(234,179,8,0.35);
+  border-radius: 30px;
+  color: #eab308;
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
 
-/* ═══ TESTIMONIAL ═══ */
-.testimonial-form { background: #0a0c14; border: 1px solid #1e2130; border-radius: 16px; padding: 28px; margin-bottom: 28px; display: flex; flex-direction: column; gap: 20px; }
-.form-group { display: flex; flex-direction: column; gap: 8px; flex: 1; }
-.form-group label { font-size: 12px; font-weight: 700; color: #6b7280; text-transform: uppercase; letter-spacing: 0.1em; }
-.form-row { display: flex; gap: 16px; flex-wrap: wrap; }
-.text-area { background: #0f1220; border: 1px solid #262a3a; border-radius: 8px; padding: 12px 14px; color: #f7f7ff; font-size: 14px; line-height: 1.5; outline: none; resize: vertical; font-family: inherit; transition: border-color 0.2s; }
-.text-area:focus { border-color: #eab308; }
-.test-canvas { width: 540px; height: 540px; display: flex; flex-direction: column; padding: 48px; transform: none; margin-bottom: 0; }
-.test-dark { background: linear-gradient(145deg, #05060a 0%, #0d0f1a 100%); }
-.test-gold { background: linear-gradient(145deg, #0a0800 0%, #130f00 100%); }
-.test-fire { background: linear-gradient(145deg, #0d0200 0%, #150500 100%); }
-.test-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 32px; }
-.test-shield { width: 48px; height: auto; }
-.test-reaction { font-size: 40px; }
-.test-quote { font-size: 26px; font-weight: 700; line-height: 1.4; color: #f9fafb; flex: 1; margin-bottom: 32px; font-style: italic; letter-spacing: -0.01em; }
-.test-gold .test-quote { color: #fef3c7; }
-.test-fire .test-quote { color: #fff7ed; }
-.test-attribution { margin-bottom: 28px; }
-.test-name { font-size: 17px; font-weight: 800; color: #eab308; margin-bottom: 4px; }
-.test-context { font-size: 13px; color: #6b7280; }
-.test-logo-row { display: flex; justify-content: flex-end; margin-top: auto; }
-.test-logo { height: 28px; object-fit: contain; }
+.sq-platforms-row { display: flex; gap: 10px; align-items: center; margin-top: 12px; }
+.sq-plat {
+  font-size: 12px; font-weight: 800;
+  letter-spacing: 0.08em;
+  padding: 4px 12px; border-radius: 5px;
+}
+.sq-plat.sleeper { background: rgba(34,197,94,0.12); border: 1px solid rgba(34,197,94,0.3); color: #4ade80; }
+.sq-plat.espn    { background: rgba(59,130,246,0.12); border: 1px solid rgba(59,130,246,0.3); color: #60a5fa; }
+.sq-plat.yahoo   { background: rgba(139,92,246,0.12); border: 1px solid rgba(139,92,246,0.3); color: #a78bfa; }
+
+.sq-url {
+  position: absolute;
+  bottom: 20px; left: 0; right: 0;
+  text-align: center;
+  font-size: 12px;
+  color: #1e2130;
+  letter-spacing: 0.06em;
+  z-index: 3;
+}
+
+/* Win Probability card inside post 3 */
+.sq-winprob-card {
+  background: rgba(255,255,255,0.03);
+  border: 1px solid rgba(6,182,212,0.2);
+  border-radius: 12px;
+  padding: 14px 16px 10px;
+  margin-top: 16px;
+  width: 100%;
+}
+.sq-wp-teams { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+.sq-wp-team  { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; font-size: 12px; color: #9ca3af; }
+.sq-wp-team.right { align-items: flex-end; }
+.sq-wp-dot   { width: 10px; height: 10px; border-radius: 50%; margin-bottom: 2px; }
+.sq-wp-score { font-size: 20px; font-weight: 900; color: #e5e7eb; }
+.sq-wp-score.gold { color: #eab308; }
+.sq-wp-vs    { font-size: 13px; font-weight: 900; color: #374151; }
+.sq-wp-bar-track { height: 5px; background: #1e2130; border-radius: 3px; overflow: hidden; margin-bottom: 6px; }
+.sq-wp-bar-fill  { height: 100%; background: linear-gradient(90deg, #eab308, #ca8a04); border-radius: 3px; }
+.sq-wp-sub { font-size: 10px; color: #374151; text-align: center; }
+
+/* Draft preview inside post 5 */
+.sq-draft-preview {
+  margin-top: 16px;
+  background: rgba(255,255,255,0.03);
+  border: 1px solid rgba(139,92,246,0.15);
+  border-radius: 10px;
+  overflow: hidden;
+}
+.sq-dp-row { display: flex; align-items: center; gap: 10px; padding: 9px 14px; border-bottom: 1px solid rgba(26,29,40,0.8); }
+.sq-dp-row:last-child { border-bottom: none; }
+.gold-row { background: rgba(234,179,8,0.05); }
+.bust-row { background: rgba(239,68,68,0.04); }
+.sq-dp-pick { font-size: 11px; font-weight: 700; color: #4b5563; width: 36px; }
+.sq-dp-name { font-size: 13px; font-weight: 600; color: #e5e7eb; flex: 1; }
+.sq-dp-pos  { font-size: 10px; font-weight: 800; padding: 2px 6px; border-radius: 3px; }
+.sq-dp-pos.wr { background: rgba(59,130,246,0.15); color: #60a5fa; }
+.sq-dp-grade { font-size: 13px; font-weight: 900; width: 28px; text-align: right; }
+.sq-dp-grade.gold { color: #eab308; }
+.sq-dp-grade.grn  { color: #22c55e; }
+.sq-dp-grade.red  { color: #ef4444; }
+
+/* Feature list inside post 6 */
+.sq-feature-list {
+  display: flex; flex-direction: column; gap: 10px;
+  margin-top: 16px; margin-bottom: 16px;
+}
+.sq-feat {
+  font-size: 15px; font-weight: 600; color: #d1d5db;
+  padding: 8px 14px;
+  background: rgba(255,255,255,0.03);
+  border: 1px solid #1e2130;
+  border-radius: 8px;
+}
+
+/* Sports grid inside post 7 */
+.sq-sports-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-top: 12px;
+}
+.sq-sport-chip {
+  padding: 10px 14px;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid #1e2130;
+  border-radius: 8px;
+  font-size: 14px; font-weight: 600; color: #d1d5db;
+  text-align: center;
+}
+
+/* Legacy preview inside post 8 */
+.sq-legacy-preview {
+  margin-top: 16px;
+  background: rgba(255,255,255,0.03);
+  border: 1px solid rgba(234,179,8,0.1);
+  border-radius: 10px;
+  overflow: hidden;
+}
+.sq-leg-row { display: flex; align-items: center; gap: 10px; padding: 9px 14px; border-bottom: 1px solid rgba(26,29,40,0.8); }
+.sq-leg-row:last-child { border-bottom: none; }
+.sq-leg-num  { font-size: 12px; font-weight: 700; color: #4b5563; width: 14px; }
+.sq-leg-num.gold { color: #eab308; }
+.sq-leg-dot  { width: 12px; height: 12px; border-radius: 50%; flex-shrink: 0; }
+.sq-leg-name { font-size: 13px; color: #d1d5db; flex: 1; }
+.sq-leg-score{ font-size: 13px; font-weight: 700; color: #9ca3af; }
+.sq-leg-score.gold { color: #eab308; }
 </style>
