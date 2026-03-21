@@ -4,6 +4,10 @@ import { useAuthStore } from '@/stores/auth'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
+  scrollBehavior(_to, _from, savedPosition) {
+    if (savedPosition) return savedPosition
+    return { top: 0, behavior: 'instant' }
+  },
   routes: [
     {
       path: '/',
@@ -141,6 +145,7 @@ const router = createRouter({
     { path: '/matchups-info', name: 'page-matchups', component: () => import('@/views/MatchupsPage.vue') },
     { path: '/draft-info', name: 'page-draft', component: () => import('@/views/DraftPage.vue') },
     { path: '/history-info', name: 'page-history', component: () => import('@/views/HistoryPage.vue') },
+    { path: '/socialtemplates', name: 'social-templates', component: () => import('@/views/SocialTemplatesView.vue') },
   ]
 })
 
