@@ -20,14 +20,14 @@
 
         <!-- Headline -->
         <h1 class="hero-headline">
-          Stop arguing.<br />
-          <span class="headline-accent">Post the receipts.</span>
+          Keep your league talking.<br />
+          <span class="headline-accent">All season.</span>
         </h1>
 
         <p class="hero-sub">
-          Turn your Sleeper, Yahoo, or ESPN league into a war room.
-          Power rankings, share cards, and weekly recaps that fuel
-          <em>every group chat, every week.</em>
+          Power rankings, win probability, draft grades, and league history
+          for your Sleeper, ESPN, or Yahoo league —
+          <em>shareable to your group chat in one click.</em>
         </p>
 
         <!-- CTA row -->
