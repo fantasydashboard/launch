@@ -728,3 +728,4 @@
 .sq-leg-score{ font-size: 13px; font-weight: 700; color: #9ca3af; }
 .sq-leg-score.gold { color: #eab308; }
 </style>
+// Fri Mar 20 23:06:13 EDT 2026
