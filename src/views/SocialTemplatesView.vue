@@ -561,8 +561,8 @@ const FanCards = defineComponent({
             { rk: '3', name: 'Ankle Takers', pts: '6.8', chg: '▼1', up: false, dot: '#8b5cf6' },
           ]},
           { title: '⚔️ Matchup', wk: 'LIVE', accent: '#f97316', matchup: true,
-            t1: { name: 'Hoop Dreams', score: '6W-3L', dot: '#f97316', pct: 64 },
-            t2: { name: 'Buckets FC', score: '5W-4L', dot: '#3b82f6', pct: 36 }
+            t1: { name: 'Hoop Dreams FC', score: '6W-3L', dot: '#f97316', pct: 64 },
+            t2: { name: 'Buckets Brigade', score: '5W-4L', dot: '#06b6d4', pct: 36 }
           },
           { title: '📋 Draft Grades', wk: 'DRAFT', accent: '#f97316', draftRows: [
             { pick: '1.02', name: 'Nikola Jokic', pos: 'C', par: '+44.1', grade: 'A+', gold: true },
