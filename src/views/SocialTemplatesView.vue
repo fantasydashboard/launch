@@ -26,27 +26,27 @@
           <div class="fb-headline">Keep your league<br/>talking. <span class="fb-gold">All season.</span></div>
           <div class="fb-sub">Power rankings · Win probability · Draft grades · League history</div>
           <div class="fb-platforms">
-            <div class="fb-plat-chip"><img src="/sleeper.svg" alt="Sleeper" class="fb-plat-img" /></div>
-            <div class="fb-plat-chip"><img src="/espn-logo.svg" alt="ESPN" class="fb-plat-img" /></div>
-            <div class="fb-plat-chip"><img src="/yahoo-fantasy.svg" alt="Yahoo" class="fb-plat-img" /></div>
+            <img src="/sleeper.svg" alt="Sleeper" class="fb-plat-img" />
+            <img src="/espn-logo.svg" alt="ESPN" class="fb-plat-img" />
+            <img src="/yahoo-fantasy.svg" alt="Yahoo" class="fb-plat-img" />
           </div>
         </div>
 
         <div class="fb-cards-area">
           <div class="fb-card fb-card-1">
             <div class="fbc-head"><span class="fbc-badge">UFD</span><span class="fbc-title">⚡ Power Rankings</span><span class="fbc-wk">WK 11</span></div>
-            <div class="fbc-row fbc-gold"><span class="fbc-rk gold">1</span><div class="fbc-dot" style="background:#eab308"></div><span class="fbc-name">Mahomes Magic</span><span class="fbc-pts gold">142.6</span><span class="fbc-chg up">▲2</span></div>
-            <div class="fbc-row"><span class="fbc-rk">2</span><div class="fbc-dot" style="background:#10b981"></div><span class="fbc-name">Trash Can Wins</span><span class="fbc-pts">128.4</span><span class="fbc-chg up">▲1</span></div>
-            <div class="fbc-row"><span class="fbc-rk">3</span><div class="fbc-dot" style="background:#6366f1"></div><span class="fbc-name">The Algorithm</span><span class="fbc-pts">119.3</span><span class="fbc-chg dn">▼1</span></div>
-            <div class="fbc-row"><span class="fbc-rk">4</span><div class="fbc-dot" style="background:#ef4444"></div><span class="fbc-name">Waiver Wire Kid</span><span class="fbc-pts">112.1</span><span class="fbc-chg dn">▼2</span></div>
+            <div class="fbc-row fbc-gold"><span class="fbc-rk gold">1</span><span class="fbc-icon" v-html="teamIcons['Mahomes Magic']"></span><span class="fbc-name">Mahomes Magic</span><span class="fbc-pts gold">142.6</span><span class="fbc-chg up">▲2</span></div>
+            <div class="fbc-row"><span class="fbc-rk">2</span><span class="fbc-icon" v-html="teamIcons['Trash Can Wins']"></span><span class="fbc-name">Trash Can Wins</span><span class="fbc-pts">128.4</span><span class="fbc-chg up">▲1</span></div>
+            <div class="fbc-row"><span class="fbc-rk">3</span><span class="fbc-icon" v-html="teamIcons['The Algorithm']"></span><span class="fbc-name">The Algorithm</span><span class="fbc-pts">119.3</span><span class="fbc-chg dn">▼1</span></div>
+            <div class="fbc-row"><span class="fbc-rk">4</span><span class="fbc-icon" v-html="teamIcons['Waiver Wire Kid']"></span><span class="fbc-name">Waiver Wire Kid</span><span class="fbc-pts">112.1</span><span class="fbc-chg dn">▼2</span></div>
             <div class="fbc-wm">ultimatefantasydashboard.com</div>
           </div>
           <div class="fb-card fb-card-2">
             <div class="fbc-head"><span class="fbc-badge">UFD</span><span class="fbc-title">⚔️ Matchup Analysis</span><span class="fbc-wk live">● LIVE</span></div>
             <div class="fbc-matchup">
-              <div class="fbc-team"><div class="fbc-avatar" style="background:linear-gradient(135deg,#eab308,#ca8a04)"></div><div class="fbc-tname">Mahomes Magic</div><div class="fbc-score gold">142.6</div></div>
+              <div class="fbc-team"><span class="fbc-avatar-icon" v-html="teamIcons['Mahomes Magic']"></span><div class="fbc-tname">Mahomes Magic</div><div class="fbc-score gold">142.6</div></div>
               <div class="fbc-vs">VS</div>
-              <div class="fbc-team"><div class="fbc-avatar" style="background:linear-gradient(135deg,#3b82f6,#1d4ed8)"></div><div class="fbc-tname">Trash Can Wins</div><div class="fbc-score">119.3</div></div>
+              <div class="fbc-team"><span class="fbc-avatar-icon" v-html="teamIcons['Trash Can Wins']"></span><div class="fbc-tname">Trash Can Wins</div><div class="fbc-score">119.3</div></div>
             </div>
             <div class="fbc-prob-wrap">
               <div class="fbc-prob-labels"><span class="gold">72% win prob</span><span>28%</span></div>
@@ -57,10 +57,10 @@
           </div>
           <div class="fb-card fb-card-3">
             <div class="fbc-head"><span class="fbc-badge">UFD</span><span class="fbc-title">🏆 Legacy Standings</span><span class="fbc-wk">ALL TIME</span></div>
-            <div class="fbc-row fbc-gold"><span class="fbc-rk gold">1</span><div class="fbc-dot" style="background:#eab308"></div><span class="fbc-name">Mahomes Magic</span><span class="fbc-pts gold">1,847</span></div>
-            <div class="fbc-row"><span class="fbc-rk">2</span><div class="fbc-dot" style="background:#10b981"></div><span class="fbc-name">Trash Can Wins</span><span class="fbc-pts">1,623</span></div>
-            <div class="fbc-row"><span class="fbc-rk">3</span><div class="fbc-dot" style="background:#6366f1"></div><span class="fbc-name">The Algorithm</span><span class="fbc-pts">1,401</span></div>
-            <div class="fbc-row"><span class="fbc-rk">4</span><div class="fbc-dot" style="background:#f97316"></div><span class="fbc-name">Waiver Wire Kid</span><span class="fbc-pts">1,198</span></div>
+            <div class="fbc-row fbc-gold"><span class="fbc-rk gold">1</span><span class="fbc-icon" v-html="teamIcons['Mahomes Magic']"></span><span class="fbc-name">Mahomes Magic</span><span class="fbc-pts gold">1,847</span></div>
+            <div class="fbc-row"><span class="fbc-rk">2</span><span class="fbc-icon" v-html="teamIcons['Trash Can Wins']"></span><span class="fbc-name">Trash Can Wins</span><span class="fbc-pts">1,623</span></div>
+            <div class="fbc-row"><span class="fbc-rk">3</span><span class="fbc-icon" v-html="teamIcons['The Algorithm']"></span><span class="fbc-name">The Algorithm</span><span class="fbc-pts">1,401</span></div>
+            <div class="fbc-row"><span class="fbc-rk">4</span><span class="fbc-icon" v-html="teamIcons['Waiver Wire Kid']"></span><span class="fbc-name">Waiver Wire Kid</span><span class="fbc-pts">1,198</span></div>
             <div class="fbc-wm">ultimatefantasydashboard.com</div>
           </div>
         </div>
@@ -434,6 +434,55 @@
 <script setup lang="ts">
 import { defineComponent, h } from 'vue'
 
+
+// ── Team SVG icon lookup ──────────────────────────────────────────────────
+const teamIcons: Record<string, string> = {
+  // NFL teams
+  'Mahomes Magic':      `<svg viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><polygon points="10,2 13,8 19,8 14,12 16,18 10,14 4,18 6,12 1,8 7,8" fill="#eab308"/></svg>`,
+  'Trash Can Wins':     `<svg viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><rect x="5" y="7" width="10" height="11" rx="2" fill="#10b981"/><rect x="4" y="5" width="12" height="2" rx="1" fill="#10b981"/><rect x="8" y="3" width="4" height="2" rx="1" fill="#10b981"/><line x1="8" y1="9" x2="8" y2="16" stroke="#064e3b" stroke-width="1.5"/><line x1="12" y1="9" x2="12" y2="16" stroke="#064e3b" stroke-width="1.5"/></svg>`,
+  'The Algorithm':      `<svg viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><circle cx="10" cy="10" r="8" fill="none" stroke="#6366f1" stroke-width="2"/><text x="10" y="14" text-anchor="middle" font-size="8" font-weight="900" fill="#6366f1" font-family="monospace">AI</text></svg>`,
+  'Waiver Wire Kid':    `<svg viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path d="M10 3 L17 10 L13 10 L13 17 L7 17 L7 10 L3 10 Z" fill="#ef4444"/></svg>`,
+  'Bench Boss':         `<svg viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><rect x="3" y="12" width="14" height="3" rx="1.5" fill="#06b6d4"/><rect x="6" y="8" width="8" height="4" rx="1" fill="#06b6d4" opacity="0.7"/><circle cx="7" cy="7" r="2" fill="#06b6d4" opacity="0.5"/><circle cx="13" cy="7" r="2" fill="#06b6d4" opacity="0.5"/></svg>`,
+  'Toilet Bowl FC':     `<svg viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><ellipse cx="10" cy="13" rx="6" ry="4" fill="#4b5563"/><rect x="7" y="5" width="6" height="8" rx="3" fill="#4b5563" opacity="0.8"/><path d="M7 8 Q4 8 4 11" stroke="#6b7280" stroke-width="1.5" fill="none"/></svg>`,
+  // NBA teams
+  'Hoop Dreams FC':     `<svg viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><circle cx="10" cy="10" r="7" fill="none" stroke="#f97316" stroke-width="2"/><path d="M3 10 Q10 6 17 10" stroke="#f97316" stroke-width="1.5" fill="none"/><path d="M3 10 Q10 14 17 10" stroke="#f97316" stroke-width="1.5" fill="none"/><line x1="10" y1="3" x2="10" y2="17" stroke="#f97316" stroke-width="1.5"/></svg>`,
+  'Buckets Brigade':    `<svg viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path d="M10 3 L14 8 L12 8 L12 13 L8 13 L8 8 L6 8 Z" fill="#06b6d4"/><rect x="7" y="13" width="6" height="2" rx="1" fill="#06b6d4"/><rect x="8" y="15" width="4" height="2" rx="1" fill="#06b6d4" opacity="0.7"/></svg>`,
+  'Ankle Takers':       `<svg viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path d="M6 16 Q6 10 10 8 Q14 6 15 10 Q16 14 12 15 L10 17 Z" fill="#8b5cf6"/><circle cx="10" cy="7" r="2.5" fill="#8b5cf6" opacity="0.7"/></svg>`,
+  // Baseball teams
+  'Diamond Kings':      `<svg viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><polygon points="10,3 17,10 10,17 3,10" fill="none" stroke="#eab308" stroke-width="2"/><polygon points="10,6 14,10 10,14 6,10" fill="#eab308" opacity="0.4"/></svg>`,
+  'Roto Renegades':     `<svg viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path d="M10 3 A7 7 0 0 1 17 10" stroke="#3b82f6" stroke-width="2.5" fill="none" stroke-linecap="round"/><path d="M10 17 A7 7 0 0 1 3 10" stroke="#3b82f6" stroke-width="2.5" fill="none" stroke-linecap="round"/><circle cx="10" cy="10" r="2" fill="#3b82f6"/></svg>`,
+  'The Sluggers':       `<svg viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><rect x="4" y="9" width="13" height="3" rx="1.5" transform="rotate(-30,10,10)" fill="#10b981"/><circle cx="5" cy="14" r="2" fill="#10b981" opacity="0.6"/></svg>`,
+  'Bases Loaded FC':    `<svg viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><rect x="8" y="3" width="4" height="4" rx="1" fill="#eab308" transform="rotate(45,10,5)"/><rect x="3" y="9" width="4" height="4" rx="1" fill="#eab308" opacity="0.7" transform="rotate(45,5,11)"/><rect x="13" y="9" width="4" height="4" rx="1" fill="#eab308" opacity="0.7" transform="rotate(45,15,11)"/></svg>`,
+  // Hockey teams
+  'Ice Cold Killers':   `<svg viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><line x1="10" y1="2" x2="10" y2="18" stroke="#eab308" stroke-width="2"/><line x1="2" y1="10" x2="18" y2="10" stroke="#eab308" stroke-width="2"/><line x1="4" y1="4" x2="16" y2="16" stroke="#eab308" stroke-width="1.5" opacity="0.6"/><line x1="16" y1="4" x2="4" y2="16" stroke="#eab308" stroke-width="1.5" opacity="0.6"/><circle cx="10" cy="10" r="2.5" fill="#eab308"/></svg>`,
+  'Puck Renegades':     `<svg viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><ellipse cx="10" cy="14" rx="6" ry="2.5" fill="#a78bfa"/><path d="M5 14 L8 6 L12 6 L15 14" stroke="#a78bfa" stroke-width="2" fill="none"/><line x1="7" y1="10" x2="13" y2="10" stroke="#a78bfa" stroke-width="1.5"/></svg>`,
+  'Hat Trick Heroes':   `<svg viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path d="M4 15 Q5 8 10 7 Q15 8 16 15 Z" fill="#06b6d4"/><rect x="3" y="14" width="14" height="2" rx="1" fill="#06b6d4"/><rect x="8" y="5" width="4" height="4" rx="2" fill="#06b6d4" opacity="0.7"/></svg>`,
+  // General fallback names
+  'Fantasy Felons':     `<svg viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path d="M10 3 L13 7 L18 8 L14 12 L15 17 L10 14 L5 17 L6 12 L2 8 L7 7 Z" fill="#eab308"/></svg>`,
+  'Gridiron Kings':     `<svg viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path d="M10 2 L12 7 L17 7 L13 11 L15 16 L10 13 L5 16 L7 11 L3 7 L8 7 Z" fill="none" stroke="#3b82f6" stroke-width="1.5"/><circle cx="10" cy="10" r="3" fill="#3b82f6" opacity="0.5"/></svg>`,
+  'The Dynasty':        `<svg viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><polygon points="10,2 13,8 19,8 14,12 16,18 10,14 4,18 6,12 1,8 7,8" fill="#eab308"/></svg>`,
+  'Purple People':      `<svg viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><circle cx="10" cy="8" r="4" fill="#a78bfa"/><path d="M4 18 Q4 13 10 13 Q16 13 16 18" fill="#a78bfa" opacity="0.7"/></svg>`,
+  'Green Machine':      `<svg viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path d="M10 3 L17 7 L17 13 L10 17 L3 13 L3 7 Z" fill="#10b981"/><text x="10" y="13" text-anchor="middle" font-size="7" font-weight="900" fill="#022c22" font-family="sans-serif">GR</text></svg>`,
+  // Nikola Jokic / Luka / Kawhi placeholders  
+  'Nikola Jokic':       `<svg viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><circle cx="10" cy="8" r="4" fill="#f97316"/><rect x="5" y="13" width="10" height="5" rx="2" fill="#f97316" opacity="0.8"/></svg>`,
+  'Luka Doncic':        `<svg viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path d="M5 17 L5 8 L10 3 L15 8 L15 17 Z" fill="#3b82f6"/><rect x="8" y="12" width="4" height="5" fill="#1e3a5f"/></svg>`,
+  'Kawhi Leonard':      `<svg viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><polygon points="10,3 14,7 18,7 15,11 16,16 10,13 4,16 5,11 2,7 6,7" fill="none" stroke="#06b6d4" stroke-width="1.5"/></svg>`,
+  'Ronald Acuña Jr':    `<svg viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><polygon points="10,2 13,8 19,8 14,12 16,18 10,14 4,18 6,12 1,8 7,8" fill="#ef4444"/></svg>`,
+  'Mookie Betts':       `<svg viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><circle cx="10" cy="10" r="7" fill="#3b82f6"/><text x="10" y="14" text-anchor="middle" font-size="7" font-weight="900" fill="white" font-family="sans-serif">MB</text></svg>`,
+  'Jose Abreu':         `<svg viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path d="M10 3 L17 10 L10 17 L3 10 Z" fill="#6b7280"/></svg>`,
+  'CeeDee Lamb':        `<svg viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path d="M10 2 L14 7 L18 7 L14 11 L16 17 L10 14 L4 17 L6 11 L2 7 L6 7 Z" fill="#3b82f6"/></svg>`,
+  'Derrick Henry':      `<svg viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><ellipse cx="10" cy="10" rx="6" ry="8" fill="#10b981"/><text x="10" y="13" text-anchor="middle" font-size="6" font-weight="900" fill="white" font-family="sans-serif">RB</text></svg>`,
+  'Saquon Barkley':     `<svg viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path d="M10 3 L17 10 L10 17 L3 10 Z" fill="#ef4444"/><line x1="10" y1="3" x2="10" y2="17" stroke="rgba(255,255,255,0.3)" stroke-width="1"/></svg>`,
+  'Tyreek Hill':        `<svg viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><polygon points="10,2 18,10 14,10 14,18 6,18 6,10 2,10" fill="#eab308"/></svg>`,
+  'Travis Kelce':       `<svg viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path d="M5 17 L5 8 Q5 3 10 3 Q15 3 15 8 L15 17" stroke="#eab308" stroke-width="2" fill="none"/><circle cx="10" cy="10" r="2.5" fill="#eab308"/></svg>`,
+  'Tony Pollard':       `<svg viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><circle cx="10" cy="10" r="7" fill="none" stroke="#9ca3af" stroke-width="2"/><circle cx="10" cy="10" r="3" fill="#9ca3af" opacity="0.5"/></svg>`,
+  'Justin Jefferson':   `<svg viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><polygon points="10,2 13,8 19,8 14,12 16,18 10,14 4,18 6,12 1,8 7,8" fill="#eab308"/></svg>`,
+  'Davante Adams':      `<svg viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path d="M4 16 L10 4 L16 16 Z" fill="#22c55e"/><line x1="7" y1="12" x2="13" y2="12" stroke="#022c22" stroke-width="1.5"/></svg>`,
+  'Stefon Diggs':       `<svg viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path d="M10 4 L14 10 L10 16 L6 10 Z" fill="#ef4444"/><line x1="6" y1="10" x2="14" y2="10" stroke="rgba(255,255,255,0.2)" stroke-width="1"/></svg>`,
+  'Rhamondre Stevenson':`<svg viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><circle cx="10" cy="10" r="7" fill="#10b981" opacity="0.8"/><text x="10" y="14" text-anchor="middle" font-size="7" font-weight="900" fill="white" font-family="sans-serif">RS</text></svg>`,
+  'DeVonta Smith':      `<svg viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path d="M5 5 L10 2 L15 5 L17 11 L10 18 L3 11 Z" fill="#06b6d4"/></svg>`,
+}
+
 // ── Reusable fan-of-3-cards component ──────────────────────────────────────
 const FanCards = defineComponent({
   props: { variant: { type: String, default: 'default' } },
@@ -598,9 +647,9 @@ const FanCards = defineComponent({
 
       const cardSet = (cards as any)[v] || cards.default
 
-      const renderRow = (r: any) => h('div', { class: `fc-row${r.up !== undefined && !r.up && r.chg ? '' : r.rk === '1' ? ' fc-gold-row' : ''}` }, [
+      const renderRow = (r: any) => h('div', { class: `fc-row${r.rk === '1' ? ' fc-gold-row' : ''}` }, [
         h('span', { class: `fc-rk${r.rk === '1' ? ' gold' : ''}` }, r.rk),
-        h('div', { class: 'fc-dot', style: `background:${r.dot}` }),
+        h('span', { class: 'fc-team-icon', innerHTML: (teamIcons as any)[r.name] || `<svg viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><circle cx="10" cy="10" r="7" fill="${r.dot}"/></svg>` }),
         h('span', { class: 'fc-name' }, r.name),
         h('span', { class: `fc-pts${r.rk === '1' ? ' gold' : ''}` }, r.pts),
         r.chg ? h('span', { class: `fc-chg ${r.up ? 'up' : 'dn'}` }, r.chg) : null,
@@ -617,13 +666,13 @@ const FanCards = defineComponent({
       const renderMatchupCard = (card: any) => [
         h('div', { class: 'fc-mu-teams' }, [
           h('div', { class: 'fc-mu-team' }, [
-            h('div', { class: 'fc-mu-dot', style: `background:${card.t1.dot}` }),
+            h('span', { class: 'fc-mu-icon', innerHTML: (teamIcons as any)[card.t1.name] || `<svg viewBox="0 0 20 20"><circle cx="10" cy="10" r="7" fill="${card.t1.dot}"/></svg>` }),
             h('div', { class: 'fc-mu-name' }, card.t1.name),
             h('div', { class: 'fc-mu-score gold' }, card.t1.score),
           ]),
           h('div', { class: 'fc-vs' }, 'VS'),
           h('div', { class: 'fc-mu-team' }, [
-            h('div', { class: 'fc-mu-dot', style: `background:${card.t2.dot}` }),
+            h('span', { class: 'fc-mu-icon', innerHTML: (teamIcons as any)[card.t2.name] || `<svg viewBox="0 0 20 20"><circle cx="10" cy="10" r="7" fill="${card.t2.dot}"/></svg>` }),
             h('div', { class: 'fc-mu-name' }, card.t2.name),
             h('div', { class: 'fc-mu-score' }, card.t2.score),
           ]),
@@ -699,8 +748,8 @@ const FanCards = defineComponent({
 .fb-gold { color: #eab308; }
 .fb-sub { font-size: 10px; color: #6b7280; line-height: 1.4; }
 .fb-platforms { display: flex; gap: 8px; align-items: center; margin-top: 4px; }
-.fb-plat-chip { background: rgba(255,255,255,0.05); border: 1px solid #1e2130; border-radius: 6px; padding: 5px 10px; display: flex; align-items: center; }
-.fb-plat-img { height: 18px; width: auto; object-fit: contain; }
+
+.fb-plat-img { height: 22px; width: auto; object-fit: contain; filter: brightness(1.1); }
 .fb-cards-area { position: absolute; right: -8px; top: 0; bottom: 0; width: 560px; }
 .fb-cards-area::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 110px; background: linear-gradient(90deg, #05060a, transparent); z-index: 15; }
 .fb-cards-area::after  { content: ''; position: absolute; right: 0; top: 0; bottom: 0; width: 60px; background: linear-gradient(270deg, #05060a, transparent); z-index: 15; }
@@ -717,6 +766,10 @@ const FanCards = defineComponent({
 .fbc-gold { background: rgba(234,179,8,0.05); }
 .fbc-rk   { font-size: 8px; font-weight: 700; color: #4b5563; width: 8px; }
 .fbc-rk.gold { color: #eab308; }
+.fbc-icon { width: 16px; height: 16px; flex-shrink: 0; display: inline-flex; align-items: center; }
+.fbc-icon :deep(svg) { width: 16px; height: 16px; }
+.fbc-avatar-icon { width: 24px; height: 24px; flex-shrink: 0; display: inline-flex; align-items: center; }
+.fbc-avatar-icon :deep(svg) { width: 24px; height: 24px; }
 .fbc-dot  { width: 12px; height: 12px; border-radius: 50%; flex-shrink: 0; }
 .fbc-name { font-size: 8px; color: #d1d5db; flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .fbc-pts  { font-size: 8px; font-weight: 700; color: #9ca3af; }
@@ -838,6 +891,10 @@ const FanCards = defineComponent({
 :deep(.fc-gold-row) { background: rgba(234,179,8,0.04); }
 :deep(.fc-rk)  { font-size: 7.5px; font-weight: 700; color: #4b5563; width: 8px; }
 :deep(.fc-rk.gold) { color: #eab308; }
+:deep(.fc-team-icon) { width: 16px; height: 16px; flex-shrink: 0; display: inline-flex; align-items: center; justify-content: center; }
+:deep(.fc-team-icon svg) { width: 16px; height: 16px; }
+:deep(.fc-mu-icon) { width: 26px; height: 26px; flex-shrink: 0; display: inline-flex; align-items: center; justify-content: center; }
+:deep(.fc-mu-icon svg) { width: 26px; height: 26px; }
 :deep(.fc-dot) { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
 :deep(.fc-name){ font-size: 7.5px; color: #d1d5db; flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 :deep(.fc-pts) { font-size: 7.5px; font-weight: 700; color: #9ca3af; }
