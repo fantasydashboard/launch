@@ -280,11 +280,7 @@ async function purchaseLeaguePass() {
     checkoutError.value = 'Please go back to your dashboard and click "Get League Pass" from there so we can identify your league.'
     return
   }
-  const sport = contextSport.value || contextLeague.value?.sport || leagueStore.activeSport || ''
-  if (!sport) {
-    checkoutError.value = 'Could not determine the sport for your league. Please go back to your dashboard and try again.'
-    return
-  }
+  const sport = contextSport.value || contextLeague.value?.sport || leagueStore.activeSport || 'unknown'
   const { data: { session } } = await supabase.auth.getSession()
   if (!session) { checkoutError.value = 'Please sign in before purchasing.'; return }
   checkingOut.value = true
