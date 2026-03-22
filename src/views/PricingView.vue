@@ -112,13 +112,13 @@
           <div v-if="checkoutError" class="mb-4 p-3 rounded-lg text-sm" style="background: rgba(239,68,68,0.1); border: 1px solid rgba(239,68,68,0.3); color: #f87171;">{{ checkoutError }}</div>
           <button
             @click="purchaseLeaguePass"
-            :disabled="checkingOut || purchaseSuccess"
+            :disabled="checkingOut"
             class="w-full py-4 rounded-xl font-black text-lg transition-all transform hover:scale-[1.02] disabled:opacity-60 disabled:cursor-not-allowed disabled:transform-none flex items-center justify-center gap-3"
             style="background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%); color: #0a0c14; font-family: 'Barlow Condensed', sans-serif; letter-spacing: 0.05em; text-transform: uppercase; box-shadow: 0 4px 20px rgba(34,197,94,0.35);"
           >
             <svg v-if="checkingOut" class="animate-spin" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg>
-            <span v-if="purchaseSuccess">✓ League Unlocked!</span>
-            <span v-else-if="checkingOut">Redirecting to Checkout...</span>
+            
+            <span v-if="checkingOut">Redirecting to Checkout...</span>
             <span v-else>Get League Pass — ${{ launchPrice }}</span>
           </button>
           <div class="mt-4 p-3 rounded-lg" style="background: rgba(34,197,94,0.08); border: 1px solid rgba(34,197,94,0.2);">
