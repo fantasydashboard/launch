@@ -38,8 +38,8 @@
       </div>
     </template>
 
-    <!-- Clean layout for public resource pages -->
-    <template v-else-if="$route.path.startsWith('/resources') || $route.path.startsWith('/powerrankings') || $route.path.startsWith('/matchups-info') || $route.path.startsWith('/draft-info') || $route.path.startsWith('/history-info') || $route.path.startsWith('/signup') || $route.path.startsWith('/powerrankings') || $route.path.startsWith('/matchups') || $route.path.startsWith('/draft') || $route.path.startsWith('/history') || $route.path.startsWith('/auth/')">
+    <!-- Clean layout for public resource pages (unauthenticated only) -->
+    <template v-else-if="!authStore.isAuthenticated && ($route.path.startsWith('/resources') || $route.path.startsWith('/powerrankings') || $route.path.startsWith('/matchups-info') || $route.path.startsWith('/draft-info') || $route.path.startsWith('/history-info') || $route.path.startsWith('/signup') || $route.path.startsWith('/auth/') || $route.path.startsWith('/socialtemplates'))">
       <router-view />
     </template>
 
