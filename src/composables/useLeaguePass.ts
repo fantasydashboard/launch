@@ -1,40 +1,11 @@
 // src/composables/useLeaguePass.ts
-//
-// Checks whether the currently active league has a valid League Pass for
-// the current season. Used by LeagueGate.vue and anywhere else that needs
-// to know if premium features should be unlocked.
-
 import { ref, computed, watch } from 'vue'
 import { supabase } from '@/lib/supabase'
 import { useLeagueStore } from '@/stores/league'
 
-// ── Season key logic (mirrors the edge function) ────────────────────────────
-export function getCurrentSeasonKey(sport: string): string {
-  const now = new Date()
-  const year = now.getFullYear()
-  const month = now.getMonth() + 1 // 1-based
-
-  switch (sport) {
-    case 'football':
-      return month >= 9 ? `nfl_${year}` : `nfl_${year - 1}`
-    case 'basketball':
-      return month >= 10
-        ? `nba_${year}-${String(year + 1).slice(2)}`
-        : `nba_${year - 1}-${String(year).slice(2)}`
-    case 'hockey':
-      return month >= 10
-        ? `nhl_${year}-${String(year + 1).slice(2)}`
-        : `nhl_${year - 1}-${String(year).slice(2)}`
-    case 'baseball':
-      return `mlb_${year}`
-    default:
-      return `season_${year}`
-  }
-}
-
-// ── In-memory cache so we don't hammer Supabase on every component mount ────
-const cache = new Map<string, { hasPass: boolean; ts: number }>()
-const CACHE_TTL_MS = 5 * 60 * 1000 // 5 minutes
+// ── In-memory cache ──────────────────────────────────────────────────────────
+const cache = new Map<string, { hasPass: boolean; daysRemaining: number | null; expiresAt: string | null; ts: number }>()
+const CACHE_TTL_MS = 5 * 60 * 1000
 
 export function useLeaguePass() {
   const leagueStore = useLeagueStore()
@@ -42,24 +13,32 @@ export function useLeaguePass() {
   const hasPass = ref(false)
   const loading = ref(true)
   const error = ref<string | null>(null)
+  const daysRemaining = ref<number | null>(null)
+  const expiresAt = ref<string | null>(null)
 
-  // The active league's lock status — true means the gate should show
   const isLocked = computed(() => !hasPass.value)
 
+  // Human-readable expiry string e.g. "287 days remaining"
+  const expiryLabel = computed(() => {
+    if (!hasPass.value || daysRemaining.value === null) return null
+    if (daysRemaining.value <= 0) return 'Expires today'
+    if (daysRemaining.value === 1) return '1 day remaining'
+    return `${daysRemaining.value} days remaining`
+  })
+
   async function checkPass(leagueId: string, platform: string, sport: string) {
-    if (!leagueId || !sport) {
+    if (!leagueId) {
       loading.value = false
       hasPass.value = false
       return
     }
 
-    const seasonKey = getCurrentSeasonKey(sport)
-    const cacheKey = `${leagueId}::${seasonKey}`
-
-    // Cache hit?
+    const cacheKey = `${leagueId}::pass`
     const cached = cache.get(cacheKey)
     if (cached && Date.now() - cached.ts < CACHE_TTL_MS) {
       hasPass.value = cached.hasPass
+      daysRemaining.value = cached.daysRemaining
+      expiresAt.value = cached.expiresAt
       loading.value = false
       return
     }
@@ -68,18 +47,36 @@ export function useLeaguePass() {
     error.value = null
 
     try {
+      const now = new Date().toISOString()
       const { data, error: dbError } = await supabase
         .from('league_passes')
-        .select('id')
+        .select('id, expires_at')
         .eq('league_id', leagueId)
-        .eq('season_key', seasonKey)
         .eq('active', true)
+        .gt('expires_at', now)
+        .order('expires_at', { ascending: false })
+        .limit(1)
         .maybeSingle()
 
       if (dbError) throw dbError
 
-      hasPass.value = !!data
-      cache.set(cacheKey, { hasPass: hasPass.value, ts: Date.now() })
+      if (data) {
+        hasPass.value = true
+        expiresAt.value = data.expires_at
+        const msLeft = new Date(data.expires_at).getTime() - Date.now()
+        daysRemaining.value = Math.max(0, Math.ceil(msLeft / (1000 * 60 * 60 * 24)))
+      } else {
+        hasPass.value = false
+        daysRemaining.value = null
+        expiresAt.value = null
+      }
+
+      cache.set(cacheKey, {
+        hasPass: hasPass.value,
+        daysRemaining: daysRemaining.value,
+        expiresAt: expiresAt.value,
+        ts: Date.now()
+      })
     } catch (err: any) {
       console.error('useLeaguePass: Supabase error', err)
       error.value = err.message
@@ -89,7 +86,6 @@ export function useLeaguePass() {
     }
   }
 
-  // Re-check whenever the active league changes
   watch(
     () => [leagueStore.activeLeagueId, leagueStore.activePlatform, leagueStore.activeSport],
     ([id, platform, sport]) => {
@@ -98,13 +94,9 @@ export function useLeaguePass() {
     { immediate: true }
   )
 
-  // Call this after a successful purchase to bust the cache and re-check
   function invalidateCache(leagueId?: string) {
     if (leagueId) {
-      // Remove all season keys for this league
-      for (const key of cache.keys()) {
-        if (key.startsWith(leagueId)) cache.delete(key)
-      }
+      cache.delete(`${leagueId}::pass`)
     } else {
       cache.clear()
     }
@@ -119,5 +111,5 @@ export function useLeaguePass() {
     )
   }
 
-  return { hasPass, isLocked, loading, error, checkPass, refresh, invalidateCache, getCurrentSeasonKey }
+  return { hasPass, isLocked, loading, error, daysRemaining, expiresAt, expiryLabel, checkPass, refresh, invalidateCache }
 }

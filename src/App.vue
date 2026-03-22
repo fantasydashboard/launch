@@ -46,6 +46,7 @@
     <!-- Show Full App for authenticated users -->
     <template v-else>
       <!-- Combined Header Container -->
+        <LeaguePassBanner />
       <div class="relative z-40">
         <!-- Top Header Bar (Dark) - Short, scrolls away naturally -->
         <header 
@@ -896,6 +897,7 @@ import { usePlatformsStore } from '@/stores/platforms'
 import { espnService } from '@/services/espn'
 import AuthModal from '@/components/AuthModal.vue'
 import LandingPage from '@/components/LandingPage.vue'
+import LeaguePassBanner from '@/components/LeaguePassBanner.vue'
 import AddLeagueModal from '@/components/AddLeagueModal.vue'
 import AppFooter from '@/components/AppFooter.vue'
 import DevModePanel from '@/components/DevModePanel.vue'

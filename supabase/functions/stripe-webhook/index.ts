@@ -8,6 +8,7 @@ const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
 serve(async (req) => {
   const signature = req.headers.get('stripe-signature')
   if (!signature) return new Response('Missing stripe-signature header', { status: 400 })
+
   const body = await req.text()
   let event: any
   try {
@@ -16,34 +17,55 @@ serve(async (req) => {
     console.error('Webhook signature verification failed:', err)
     return new Response('Invalid signature', { status: 400 })
   }
+
   if (event.type !== 'checkout.session.completed') {
     return new Response(JSON.stringify({ received: true }), { status: 200 })
   }
+
   const session = event.data.object
   const meta = session.metadata || {}
-  const { league_id, platform, sport, season_key, purchased_by_user_id } = meta
-  if (!league_id || !platform || !sport || !season_key) {
+  const { league_id, platform, sport, league_name, purchased_by_user_id, expires_at } = meta
+
+  if (!league_id || !platform) {
     console.error('Missing metadata fields in session:', session.id)
     return new Response('Missing metadata', { status: 400 })
   }
+
   const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
-  const { data: existing } = await supabase.from('league_passes').select('id').eq('stripe_session_id', session.id).maybeSingle()
+
+  // Idempotency check
+  const { data: existing } = await supabase
+    .from('league_passes')
+    .select('id')
+    .eq('stripe_session_id', session.id)
+    .maybeSingle()
+
   if (existing) {
     console.log('Already processed session:', session.id)
     return new Response(JSON.stringify({ received: true }), { status: 200 })
   }
+
+  // Use expires_at from metadata, fallback to 365 days from now
+  const expiresAt = expires_at || new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString()
+
   const { error } = await supabase.from('league_passes').insert({
-    league_id, platform, sport, season_key,
+    league_id,
+    platform,
+    sport: sport || '',
+    season_key: `365day_${new Date().getFullYear()}`, // kept for schema compatibility
     purchased_by_user_id: purchased_by_user_id || null,
     stripe_session_id: session.id,
     stripe_payment_intent: session.payment_intent || null,
     active: true,
+    expires_at: expiresAt,
   })
+
   if (error) {
     console.error('Supabase insert error:', error)
     return new Response('Database error', { status: 500 })
   }
-  console.log(`League Pass activated: ${league_id} (${platform}/${sport}) season: ${season_key}`)
+
+  console.log(`League Pass activated: ${league_id} (${platform}/${sport}) expires: ${expiresAt}`)
   return new Response(JSON.stringify({ received: true }), { status: 200 })
 })
 
