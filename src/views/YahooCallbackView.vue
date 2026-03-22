@@ -61,8 +61,26 @@ async function storeYahooTokens() {
       return
     }
 
-    // Wait for auth to initialize
+    // Wait for auth — after a full-page OAuth redirect, the session restores
+    // asynchronously. Poll for up to 8 seconds before giving up.
     await authStore.initialize()
+    
+    if (!authStore.isAuthenticated || !authStore.user?.id) {
+      // Session didn't restore immediately — wait for onAuthStateChange
+      console.log('Session not ready yet, waiting for auth state change...')
+      await new Promise<void>((resolve, reject) => {
+        const timeout = setTimeout(() => reject(new Error('auth_timeout')), 8000)
+        const { data: { subscription } } = supabase!.auth.onAuthStateChange((event, session) => {
+          if (session?.user) {
+            clearTimeout(timeout)
+            subscription.unsubscribe()
+            resolve()
+          }
+        })
+      }).catch(() => {
+        console.log('Auth timeout — user not signed in')
+      })
+    }
     
     console.log('Auth state:', { 
       isAuthenticated: authStore.isAuthenticated, 
@@ -70,10 +88,11 @@ async function storeYahooTokens() {
     })
 
     if (!authStore.isAuthenticated || !authStore.user?.id) {
-      error.value = 'You must be logged in to connect Yahoo. Please sign in first.'
-      debugInfo.value = 'Auth state: not authenticated'
+      error.value = 'You must be logged in to connect Yahoo. Please sign in first, then try connecting Yahoo again.'
+      debugInfo.value = 'Session did not restore after OAuth redirect. Try signing in again.'
       return
     }
+
 
     if (!supabase) {
       error.value = 'Database not configured'

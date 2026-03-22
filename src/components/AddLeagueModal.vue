@@ -515,6 +515,62 @@
                   </button>
                 </div>
               </div>
+
+              <!-- MLB Leagues -->
+              <div v-if="sleeperMlbLeagues.length > 0" :class="(sleeperNflLeagues.length > 0 || sleeperNbaLeagues.length > 0) ? 'border-t border-dark-border/50 pt-3' : ''">
+                <div class="flex items-center gap-2 mb-2">
+                  <span class="text-lg">⚾</span>
+                  <span class="text-sm font-medium text-dark-text">MLB</span>
+                  <span class="text-blue-400 ml-auto">{{ sleeperMlbLeagues.length }}</span>
+                </div>
+                <div class="space-y-2">
+                  <button
+                    v-for="league in sleeperMlbLeagues"
+                    :key="league.league_id"
+                    @click="selectSleeperLeague(league)"
+                    class="w-full flex items-center gap-3 p-3 rounded-xl bg-dark-bg/50 border border-dark-border/50 hover:border-primary/50 hover:bg-dark-border/30 transition-all text-left"
+                  >
+                    <div class="w-10 h-10 rounded-full bg-blue-500/20 flex items-center justify-center flex-shrink-0">
+                      <span class="text-sm font-bold text-blue-400">{{ league.name.substring(0, 2).toUpperCase() }}</span>
+                    </div>
+                    <div class="flex-1 min-w-0">
+                      <div class="font-semibold text-dark-text truncate">{{ league.name }}</div>
+                      <div class="text-xs text-dark-textMuted">{{ league.total_rosters }} teams</div>
+                    </div>
+                    <svg class="w-5 h-5 text-dark-textMuted" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+                    </svg>
+                  </button>
+                </div>
+              </div>
+
+              <!-- NHL Leagues -->
+              <div v-if="sleeperNhlLeagues.length > 0" :class="(sleeperNflLeagues.length > 0 || sleeperNbaLeagues.length > 0 || sleeperMlbLeagues.length > 0) ? 'border-t border-dark-border/50 pt-3' : ''">
+                <div class="flex items-center gap-2 mb-2">
+                  <span class="text-lg">🏒</span>
+                  <span class="text-sm font-medium text-dark-text">NHL</span>
+                  <span class="text-purple-400 ml-auto">{{ sleeperNhlLeagues.length }}</span>
+                </div>
+                <div class="space-y-2">
+                  <button
+                    v-for="league in sleeperNhlLeagues"
+                    :key="league.league_id"
+                    @click="selectSleeperLeague(league)"
+                    class="w-full flex items-center gap-3 p-3 rounded-xl bg-dark-bg/50 border border-dark-border/50 hover:border-primary/50 hover:bg-dark-border/30 transition-all text-left"
+                  >
+                    <div class="w-10 h-10 rounded-full bg-purple-500/20 flex items-center justify-center flex-shrink-0">
+                      <span class="text-sm font-bold text-purple-400">{{ league.name.substring(0, 2).toUpperCase() }}</span>
+                    </div>
+                    <div class="flex-1 min-w-0">
+                      <div class="font-semibold text-dark-text truncate">{{ league.name }}</div>
+                      <div class="text-xs text-dark-textMuted">{{ league.total_rosters }} teams</div>
+                    </div>
+                    <svg class="w-5 h-5 text-dark-textMuted" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+                    </svg>
+                  </button>
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -730,6 +786,8 @@ const totalYahooLeagues = computed(() =>
 // Sleeper leagues by sport
 const sleeperNflLeagues = computed(() => availableLeagues.value.filter(l => l.sport === 'nfl'))
 const sleeperNbaLeagues = computed(() => availableLeagues.value.filter(l => l.sport === 'nba'))
+const sleeperMlbLeagues = computed(() => availableLeagues.value.filter(l => l.sport === 'mlb'))
+const sleeperNhlLeagues = computed(() => availableLeagues.value.filter(l => l.sport === 'nhl'))
 
 // Reset when modal opens
 watch(() => props.isOpen, async (isOpen) => {
@@ -814,43 +872,49 @@ async function searchSleeperLeagues() {
     const currentYear = now.getFullYear()
     const currentMonth = now.getMonth() // 0-indexed
     
-    // NFL season starts in September
-    const nflSeasonYear = currentMonth < 8 ? currentYear - 1 : currentYear
-    // NBA season starts in October
-    const nbaSeasonYear = currentMonth < 9 ? currentYear - 1 : currentYear
+    // Season year logic per sport
+    const nflSeasonYear  = currentMonth < 8 ? currentYear - 1 : currentYear   // starts Sept
+    const nbaSeasonYear  = currentMonth < 9 ? currentYear - 1 : currentYear   // starts Oct
+    const mlbSeasonYear  = currentYear                                          // starts March/April
+    const nhlSeasonYear  = currentMonth < 9 ? currentYear - 1 : currentYear   // starts Oct
     
-    console.log('Fetching Sleeper leagues - NFL:', nflSeasonYear, 'NBA:', nbaSeasonYear, 'user_id:', user.user_id)
+    console.log('Fetching Sleeper leagues - NFL:', nflSeasonYear, 'NBA:', nbaSeasonYear, 'MLB:', mlbSeasonYear, 'NHL:', nhlSeasonYear, 'user_id:', user.user_id)
     
-    // Fetch both NFL and NBA leagues in parallel
-    const [nflResponse, nbaResponse] = await Promise.allSettled([
+    // Fetch all 4 sports in parallel
+    const [nflResponse, nbaResponse, mlbResponse, nhlResponse] = await Promise.allSettled([
       fetch(`https://api.sleeper.app/v1/user/${user.user_id}/leagues/nfl/${nflSeasonYear}`),
-      fetch(`https://api.sleeper.app/v1/user/${user.user_id}/leagues/nba/${nbaSeasonYear}`)
+      fetch(`https://api.sleeper.app/v1/user/${user.user_id}/leagues/nba/${nbaSeasonYear}`),
+      fetch(`https://api.sleeper.app/v1/user/${user.user_id}/leagues/mlb/${mlbSeasonYear}`),
+      fetch(`https://api.sleeper.app/v1/user/${user.user_id}/leagues/nhl/${nhlSeasonYear}`)
     ])
     
     const allLeagues: any[] = []
     
-    // Process NFL leagues
-    if (nflResponse.status === 'fulfilled' && nflResponse.value.ok) {
-      const nflLeagues = await nflResponse.value.json()
-      console.log('NFL leagues:', nflLeagues?.length || 0)
-      if (nflLeagues?.length > 0) {
-        allLeagues.push(...nflLeagues.map((l: any) => ({ ...l, sport: 'nfl' })))
+    const processSport = async (response: PromiseSettledResult<Response>, sportTag: string) => {
+      if (response.status === 'fulfilled' && response.value.ok) {
+        try {
+          const leagues = await response.value.json()
+          console.log(`${sportTag} leagues:`, leagues?.length || 0)
+          if (Array.isArray(leagues) && leagues.length > 0) {
+            allLeagues.push(...leagues.map((l: any) => ({ ...l, sport: sportTag })))
+          }
+        } catch (e) {
+          console.log(`${sportTag} leagues: parse error (none)`)
+        }
       }
     }
     
-    // Process NBA leagues
-    if (nbaResponse.status === 'fulfilled' && nbaResponse.value.ok) {
-      const nbaLeagues = await nbaResponse.value.json()
-      console.log('NBA leagues:', nbaLeagues?.length || 0)
-      if (nbaLeagues?.length > 0) {
-        allLeagues.push(...nbaLeagues.map((l: any) => ({ ...l, sport: 'nba' })))
-      }
-    }
+    await Promise.all([
+      processSport(nflResponse, 'nfl'),
+      processSport(nbaResponse, 'nba'),
+      processSport(mlbResponse, 'mlb'),
+      processSport(nhlResponse, 'nhl'),
+    ])
     
     availableLeagues.value = allLeagues
     
     if (availableLeagues.value.length === 0) {
-      errorMessage.value = `No leagues found for this user in the current NFL or NBA seasons`
+      errorMessage.value = `No active leagues found for "${username.value}". Make sure the username is correct and you have leagues in the current season.`
       return
     }
     
