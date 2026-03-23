@@ -55,12 +55,21 @@
     </div>
 
     <template v-else-if="powerRankings.length > 0">
-      <!-- Offseason Notice Banner - Only show when season is complete -->
-      <div v-if="isSeasonComplete" class="bg-slate-500/10 border border-slate-500/30 rounded-xl p-4 flex items-start gap-3">
+      <!-- Offseason banner: only when truly no data AND no draft yet -->
+      <div v-if="isSeasonComplete && !leagueStore.isPreSeasonDrafted" class="bg-slate-500/10 border border-slate-500/30 rounded-xl p-4 flex items-start gap-3">
         <div class="text-slate-400 text-xl flex-shrink-0">📅</div>
         <div>
           <p class="text-slate-200 font-semibold">It's the offseason</p>
-          <p class="text-slate-400 text-sm mt-1">You're viewing last season's data ({{ currentSeason }}). The {{ Number(currentSeason) + 1 }} season will appear automatically once Week 1 begins.</p>
+          <p class="text-slate-400 text-sm mt-1">You're viewing last season's data ({{ currentSeason }}). The {{ Number(currentSeason) + 1 }} season will appear automatically once the draft is complete.</p>
+        </div>
+      </div>
+
+      <!-- Pre-season drafted banner: draft done, Week 1 hasn't started -->
+      <div v-if="leagueStore.isPreSeasonDrafted" class="bg-emerald-500/10 border border-emerald-500/30 rounded-xl p-4 flex items-start gap-3">
+        <div class="text-emerald-400 text-xl flex-shrink-0">⚾</div>
+        <div>
+          <p class="text-emerald-300 font-semibold">Draft complete — season starting soon!</p>
+          <p class="text-slate-400 text-sm mt-1">Records are 0-0. Rankings are based on your drafted roster until Week 1 begins.</p>
         </div>
       </div>
 
@@ -2984,7 +2993,7 @@ watch(() => leagueStore.yahooTeams, () => {
     const hasData = leagueStore.yahooTeams.some(t => 
       (t.wins || 0) > 0 || (t.losses || 0) > 0 || (t.points_for || 0) > 0
     )
-    if (!hasData) {
+    if (!hasData && !leagueStore.isPreSeasonDrafted) {
       console.log('[PointsPowerRankings] Teams have no data, waiting for possible fallback...')
       return
     }
@@ -3022,7 +3031,7 @@ onMounted(() => {
     const hasData = leagueStore.yahooTeams.some(t => 
       (t.wins || 0) > 0 || (t.losses || 0) > 0 || (t.points_for || 0) > 0
     )
-    if (!hasData) {
+    if (!hasData && !leagueStore.isPreSeasonDrafted) {
       console.log('[PointsPowerRankings] onMounted: Teams have no data, waiting for fallback...')
       return
     }

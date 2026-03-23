@@ -65,6 +65,10 @@ export const useLeagueStore = defineStore('league', () => {
   const isLoading = ref(false)
   const error = ref<string | null>(null)
   const isDemoMode = ref(false)
+
+  // Pre-season drafted state — true when draft is complete but Week 1 hasn't started yet.
+  // In this state we stay on the current season (0-0 records) rather than falling back to last season.
+  const isPreSeasonDrafted = ref(false)
   
   // Yahoo-specific state
   const yahooLeague = ref<any>(null)
@@ -1019,6 +1023,7 @@ export const useLeagueStore = defineStore('league', () => {
   async function loadYahooLeagueData(leagueKey: string) {
     isLoading.value = true
     error.value = null
+    isPreSeasonDrafted.value = false
     
     try {
       // Import Yahoo service dynamically to avoid circular dependencies
@@ -1048,9 +1053,20 @@ export const useLeagueStore = defineStore('league', () => {
       
       // Check if this league has actual data (not a renewed but unplayed league)
       const hasData = teams.some(t => (t.wins || 0) > 0 || (t.losses || 0) > 0 || (t.points_for || 0) > 0)
+
+      // Check if the draft has already happened for the current season.
+      // Yahoo sets draft_status = 'postdraft' once picks are locked in.
+      const draftStatus = leagueDetails?.[0]?.draft_status
+      const yahooIsDrafted = draftStatus === 'postdraft'
+
+      if (!hasData && yahooIsDrafted) {
+        console.log('[Yahoo] Draft complete but season not started — pre-season mode (0-0 records)')
+        isPreSeasonDrafted.value = true
+        // Fall through: keep current-season teams/rosters, skip previous-season fallback
+      }
       
-      // If no data, check for a previous season to load instead
-      if (!hasData) {
+      // If no data AND draft hasn't happened yet, check for a previous season to load instead
+      if (!hasData && !yahooIsDrafted) {
         console.log('League has no data, checking for previous season...')
         
         // Check if there's a "renew" field in the league details pointing to previous season
@@ -1338,6 +1354,7 @@ export const useLeagueStore = defineStore('league', () => {
   async function loadEspnLeagueData(leagueKey: string) {
     isLoading.value = true
     error.value = null
+    isPreSeasonDrafted.value = false
     
     try {
       // Import ESPN service dynamically
@@ -1629,6 +1646,23 @@ export const useLeagueStore = defineStore('league', () => {
       )
       
       if (!espnHasData && season > 2020) {
+        // Before falling back to last season, check if the draft has already happened.
+        // If picks exist for the current season, we're in pre-season mode — stay on current season.
+        let espnIsDrafted = false
+        try {
+          const draftPicks = await espnService.getDraft(sport, espnLeagueId, season)
+          espnIsDrafted = draftPicks.length > 0
+          if (espnIsDrafted) {
+            console.log(`[ESPN] Draft complete (${draftPicks.length} picks) but season not started — pre-season mode`)
+            isPreSeasonDrafted.value = true
+          }
+        } catch (draftErr) {
+          console.warn('[ESPN] Could not check draft status:', draftErr)
+        }
+
+        if (espnIsDrafted) {
+          // Draft done, season hasn't started — keep current-season data (all 0-0), skip fallback
+        } else {
         console.log('[ESPN] Current season has no data, trying previous season...')
         const prevSeason = season - 1
         try {
@@ -1819,6 +1853,7 @@ export const useLeagueStore = defineStore('league', () => {
         } catch (prevError) {
           console.warn('[ESPN] Failed to load previous season:', prevError)
         }
+        } // end: else (espnIsDrafted)
       }
       
       // Build matchups using local mappedTeams (before triggering reactive watchers)
@@ -2073,6 +2108,7 @@ export const useLeagueStore = defineStore('league', () => {
     isLoading,
     error,
     isDemoMode,
+    isPreSeasonDrafted,
     historicalSeasons,
     historicalRosters,
     historicalUsers,
