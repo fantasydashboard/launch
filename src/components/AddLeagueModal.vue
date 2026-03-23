@@ -395,6 +395,7 @@
                 <button @click="checkEspnExtension" class="w-full mt-2 text-xs text-[#4d6bff] hover:text-[#6b85ff] transition-colors py-1">
                   Already installed? Click to detect
                 </button>
+
               </div>
               <button @click="espnShowManualFields = !espnShowManualFields" class="w-full text-xs text-dark-textMuted hover:text-dark-text transition-colors py-1">
                 {{ espnShowManualFields ? '▲ Hide manual entry' : '▼ Enter League ID manually instead' }}
@@ -519,6 +520,30 @@
               <!-- Manual fallback toggle -->
               <button @click="espnShowManualFields = !espnShowManualFields" class="w-full text-xs text-dark-textMuted hover:text-dark-text transition-colors py-1">
                 {{ espnShowManualFields ? '▲ Hide manual entry' : '▼ Not seeing your league? Enter League ID manually' }}
+              </button>
+            </div>
+
+            <!-- STATE: Extension needs update (old background.js, no getEspnLeagues handler) -->
+            <div v-else-if="espnLeaguesError === 'needs_update'" class="space-y-3">
+              <div class="bg-amber-500/10 border border-amber-500/30 rounded-xl p-4">
+                <div class="flex items-start gap-3">
+                  <svg class="w-5 h-5 text-amber-400 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                  </svg>
+                  <div>
+                    <p class="text-sm text-amber-200 font-medium mb-1">Extension needs to be updated</p>
+                    <p class="text-xs text-amber-200/70 leading-relaxed">
+                      Your extension was detected but needs the latest version to auto-load leagues.
+                      Make sure you loaded the updated <strong class="text-amber-200">background.js</strong> file into your unpacked extension, then click Refresh.
+                    </p>
+                    <button @click="loadEspnLeaguesFromExtension" class="inline-flex items-center gap-1 mt-3 text-xs px-3 py-1.5 rounded-lg bg-amber-500/20 text-amber-300 hover:bg-amber-500/30 transition-colors">
+                      Try again after updating
+                    </button>
+                  </div>
+                </div>
+              </div>
+              <button @click="espnShowManualFields = !espnShowManualFields" class="w-full text-xs text-dark-textMuted hover:text-dark-text transition-colors py-1">
+                {{ espnShowManualFields ? '▲ Hide manual entry' : '▼ Enter League ID manually instead' }}
               </button>
             </div>
 
@@ -1272,30 +1297,40 @@ async function loadEspnLeaguesFromExtension() {
   espnExtensionLeagues.value = []
 
   try {
+    console.log('[ESPN Modal] Calling getEspnLeaguesFromExtension...')
     const result = await getEspnLeaguesFromExtension()
+    console.log('[ESPN Modal] getEspnLeaguesFromExtension result:', JSON.stringify(result))
 
     if (result.error === 'not_logged_in') {
+      console.log('[ESPN Modal] Not logged in to ESPN')
       espnLeaguesError.value = 'not_logged_in'
       return
     }
 
+    // Don't flip espnExtensionInstalled to false here — extension IS installed,
+    // it just may not have the getEspnLeagues handler yet (old background.js).
+    // Show a helpful error instead of reverting to install screen.
     if (result.error === 'extension_not_installed') {
-      espnExtensionInstalled.value = false
+      console.warn('[ESPN Modal] getEspnLeagues returned extension_not_installed — old background.js?')
+      espnLeaguesError.value = 'needs_update'
       return
     }
 
     if (result.error) {
+      console.warn('[ESPN Modal] League fetch error:', result.error)
       espnLeaguesError.value = result.error
       return
     }
 
     espnExtensionLeagues.value = result.leagues || []
+    console.log('[ESPN Modal] Leagues loaded:', result.leagues?.length)
 
     // Store credentials for later use when a league is selected
     if (result.espn_s2 && result.swid) {
       espnExtensionCredentials.value = { espn_s2: result.espn_s2, swid: result.swid }
     }
   } catch (err: any) {
+    console.error('[ESPN Modal] loadEspnLeaguesFromExtension threw:', err.message)
     espnLeaguesError.value = err.message || 'Failed to load leagues.'
   } finally {
     espnLoadingLeagues.value = false

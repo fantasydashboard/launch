@@ -1620,7 +1620,7 @@ function getPositionClass(position: string) {
     'LW': 'bg-blue-500/20 text-blue-400',
     'RW': 'bg-green-500/20 text-green-400',
     'D': 'bg-orange-500/20 text-orange-400',
-    'G': 'bg-purple-500/20 text-purple-400',
+    'GTN': 'bg-purple-500/20 text-purple-400',
   }
   return classes[position] || 'bg-gray-500/20 text-gray-400'
 }

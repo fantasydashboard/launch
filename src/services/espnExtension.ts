@@ -34,6 +34,44 @@ export interface EspnLeaguesResult {
 }
 
 /**
+ * Diagnostic — call this from browser console: 
+ *   import('/src/services/espnExtension.ts').then(m => m.diagnoseExtension())
+ * Or it runs automatically in dev mode when detection fails.
+ */
+export async function diagnoseExtension(): Promise<void> {
+  console.group('[ESPN Extension Diagnostic]')
+  console.log('window.chrome exists:', !!window.chrome)
+  console.log('window.chrome.runtime exists:', !!window.chrome?.runtime)
+  console.log('sendMessage is function:', typeof window.chrome?.runtime?.sendMessage === 'function')
+  console.log('Extension ID:', EXTENSION_ID)
+  console.log('Current URL:', window.location.href)
+  console.log('User agent:', navigator.userAgent)
+
+  if (!window.chrome?.runtime?.sendMessage) {
+    console.error('FAIL: chrome.runtime.sendMessage not available — not a Chromium browser or running in iframe')
+    console.groupEnd()
+    return
+  }
+
+  console.log('Attempting sendMessage ping...')
+  try {
+    const result = await new Promise((resolve) => {
+      chrome.runtime.sendMessage(EXTENSION_ID, { action: 'ping' }, (response) => {
+        const err = chrome.runtime.lastError?.message
+        console.log('Raw response:', response)
+        console.log('lastError:', err || 'none')
+        resolve({ response, err })
+      })
+    })
+    console.log('Ping result:', result)
+  } catch (e: any) {
+    console.error('sendMessage threw:', e.message)
+  }
+
+  console.groupEnd()
+}
+
+/**
  * Check if the Chrome extension is installed and responsive.
  * Retries up to 3 times with delay — MV3 service workers can take a moment to wake.
  */

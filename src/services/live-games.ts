@@ -512,8 +512,8 @@ class LiveGamesService {
       // NBA alternates (Yahoo vs ESPN vs DB)
       'GS': 'GSW', 'NY': 'NYK', 'NO': 'NOP', 'SA': 'SAS', 'UTAH': 'UTA',
       'GS WARRIORS': 'GSW', 'NETS': 'BKN', 'KNICKS': 'NYK',
-      'PHO': 'PHX', 'PHX': 'PHO',   // Phoenix - Yahoo uses PHX, ESPN uses PHO
-      'UTA': 'UTAH', 'UTAH': 'UTA', // Utah
+      'PHO': 'PHX',   // Phoenix - Yahoo uses PHX, ESPN uses PHO
+      'UTA': 'UTAH', // Utah
       'NOP': 'NO',                   // New Orleans
       // NBA reverse
       'GSW': 'GS', 'NYK': 'NY', 'SAS': 'SA',
