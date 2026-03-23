@@ -402,144 +402,58 @@
               </button>
             </div>
 
-            <!-- STATE: Extension installed, loading leagues -->
+            <!-- STATE: Loading cookies from extension -->
             <div v-else-if="espnLoadingLeagues" class="flex flex-col items-center justify-center gap-3 py-10 text-dark-textMuted">
               <svg class="animate-spin h-6 w-6 text-[#4d6bff]" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                 <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                 <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
               </svg>
-              <div class="text-center">
-                <p class="text-sm text-dark-text">Loading your ESPN leagues...</p>
-                <p class="text-xs text-dark-textMuted mt-1">Checking all sports</p>
-              </div>
+              <p class="text-sm">Reading ESPN cookies...</p>
             </div>
 
-            <!-- STATE: Leagues loaded, show picker -->
-            <div v-else-if="espnExtensionLeagues.length > 0" class="space-y-3">
-              <div class="flex items-center justify-between mb-1">
-                <p class="text-xs text-dark-textMuted">{{ espnExtensionLeagues.length }} league{{ espnExtensionLeagues.length !== 1 ? 's' : '' }} found — select one to connect</p>
-                <button @click="loadEspnLeaguesFromExtension" class="text-xs text-[#4d6bff] hover:text-[#6b85ff] transition-colors">Refresh</button>
+            <!-- STATE: Cookies grabbed — just need league ID now -->
+            <div v-else-if="espnLeaguesError === 'enter_league_id'" class="space-y-4">
+              <div class="bg-green-500/10 border border-green-500/30 rounded-xl p-3 flex items-center gap-3">
+                <svg class="w-4 h-4 text-green-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                </svg>
+                <p class="text-xs text-green-300">ESPN cookies imported ✓ — just enter your League ID below</p>
               </div>
 
-              <div class="space-y-3 max-h-80 overflow-y-auto">
-                <!-- Football -->
-                <div v-if="espnFootballLeagues.length > 0">
-                  <div class="text-xs text-dark-textMuted uppercase tracking-wider px-2 py-1 flex items-center gap-2 sticky top-0 bg-dark-card">
-                    <span class="text-base">🏈</span><span>Football</span>
-                    <span class="text-green-400 ml-auto">{{ espnFootballLeagues.length }}</span>
-                  </div>
-                  <button
-                    v-for="league in espnFootballLeagues" :key="league.id"
-                    @click="selectEspnLeagueFromExtension(league)"
-                    :disabled="loading"
-                    class="w-full flex items-center gap-3 p-3 rounded-xl bg-dark-bg/50 border border-dark-border/50 hover:border-[#0719b2]/50 hover:bg-dark-border/30 transition-all text-left disabled:opacity-50"
-                  >
-                    <div class="w-10 h-10 rounded-full bg-green-500/20 flex items-center justify-center flex-shrink-0">
-                      <span class="text-sm font-bold text-green-400">{{ league.name.substring(0,2).toUpperCase() }}</span>
-                    </div>
-                    <div class="flex-1 min-w-0">
-                      <div class="font-semibold text-dark-text truncate">{{ league.name }}</div>
-                      <div class="text-xs text-dark-textMuted">{{ formatScoringType(league) }} • {{ league.size }} teams • {{ league.season }}</div>
-                    </div>
-                    <svg class="w-5 h-5 text-dark-textMuted flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" /></svg>
-                  </button>
-                </div>
-
-                <!-- Baseball -->
-                <div v-if="espnBaseballLeagues.length > 0" :class="espnFootballLeagues.length > 0 ? 'border-t border-dark-border/50 pt-3' : ''">
-                  <div class="text-xs text-dark-textMuted uppercase tracking-wider px-2 py-1 flex items-center gap-2 sticky top-0 bg-dark-card">
-                    <span class="text-base">⚾</span><span>Baseball</span>
-                    <span class="text-blue-400 ml-auto">{{ espnBaseballLeagues.length }}</span>
-                  </div>
-                  <button
-                    v-for="league in espnBaseballLeagues" :key="league.id"
-                    @click="selectEspnLeagueFromExtension(league)"
-                    :disabled="loading"
-                    class="w-full flex items-center gap-3 p-3 rounded-xl bg-dark-bg/50 border border-dark-border/50 hover:border-[#0719b2]/50 hover:bg-dark-border/30 transition-all text-left disabled:opacity-50"
-                  >
-                    <div class="w-10 h-10 rounded-full bg-blue-500/20 flex items-center justify-center flex-shrink-0">
-                      <span class="text-sm font-bold text-blue-400">{{ league.name.substring(0,2).toUpperCase() }}</span>
-                    </div>
-                    <div class="flex-1 min-w-0">
-                      <div class="font-semibold text-dark-text truncate">{{ league.name }}</div>
-                      <div class="text-xs text-dark-textMuted">{{ formatScoringType(league) }} • {{ league.size }} teams • {{ league.season }}</div>
-                    </div>
-                    <svg class="w-5 h-5 text-dark-textMuted flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" /></svg>
-                  </button>
-                </div>
-
-                <!-- Basketball -->
-                <div v-if="espnBasketballLeagues.length > 0" :class="(espnFootballLeagues.length > 0 || espnBaseballLeagues.length > 0) ? 'border-t border-dark-border/50 pt-3' : ''">
-                  <div class="text-xs text-dark-textMuted uppercase tracking-wider px-2 py-1 flex items-center gap-2 sticky top-0 bg-dark-card">
-                    <span class="text-base">🏀</span><span>Basketball</span>
-                    <span class="text-orange-400 ml-auto">{{ espnBasketballLeagues.length }}</span>
-                  </div>
-                  <button
-                    v-for="league in espnBasketballLeagues" :key="league.id"
-                    @click="selectEspnLeagueFromExtension(league)"
-                    :disabled="loading"
-                    class="w-full flex items-center gap-3 p-3 rounded-xl bg-dark-bg/50 border border-dark-border/50 hover:border-[#0719b2]/50 hover:bg-dark-border/30 transition-all text-left disabled:opacity-50"
-                  >
-                    <div class="w-10 h-10 rounded-full bg-orange-500/20 flex items-center justify-center flex-shrink-0">
-                      <span class="text-sm font-bold text-orange-400">{{ league.name.substring(0,2).toUpperCase() }}</span>
-                    </div>
-                    <div class="flex-1 min-w-0">
-                      <div class="font-semibold text-dark-text truncate">{{ league.name }}</div>
-                      <div class="text-xs text-dark-textMuted">{{ formatScoringType(league) }} • {{ league.size }} teams • {{ league.season }}</div>
-                    </div>
-                    <svg class="w-5 h-5 text-dark-textMuted flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" /></svg>
-                  </button>
-                </div>
-
-                <!-- Hockey -->
-                <div v-if="espnHockeyLeagues.length > 0" :class="(espnFootballLeagues.length > 0 || espnBaseballLeagues.length > 0 || espnBasketballLeagues.length > 0) ? 'border-t border-dark-border/50 pt-3' : ''">
-                  <div class="text-xs text-dark-textMuted uppercase tracking-wider px-2 py-1 flex items-center gap-2 sticky top-0 bg-dark-card">
-                    <span class="text-base">🏒</span><span>Hockey</span>
-                    <span class="text-blue-500 ml-auto">{{ espnHockeyLeagues.length }}</span>
-                  </div>
-                  <button
-                    v-for="league in espnHockeyLeagues" :key="league.id"
-                    @click="selectEspnLeagueFromExtension(league)"
-                    :disabled="loading"
-                    class="w-full flex items-center gap-3 p-3 rounded-xl bg-dark-bg/50 border border-dark-border/50 hover:border-[#0719b2]/50 hover:bg-dark-border/30 transition-all text-left disabled:opacity-50"
-                  >
-                    <div class="w-10 h-10 rounded-full bg-blue-600/20 flex items-center justify-center flex-shrink-0">
-                      <span class="text-sm font-bold text-blue-500">{{ league.name.substring(0,2).toUpperCase() }}</span>
-                    </div>
-                    <div class="flex-1 min-w-0">
-                      <div class="font-semibold text-dark-text truncate">{{ league.name }}</div>
-                      <div class="text-xs text-dark-textMuted">{{ formatScoringType(league) }} • {{ league.size }} teams • {{ league.season }}</div>
-                    </div>
-                    <svg class="w-5 h-5 text-dark-textMuted flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" /></svg>
-                  </button>
-                </div>
-              </div>
-
-              <div v-if="errorMessage" class="text-red-400 text-sm mt-2">{{ errorMessage }}</div>
-
-              <!-- Manual fallback toggle -->
-              <button @click="espnShowManualFields = !espnShowManualFields" class="w-full text-xs text-dark-textMuted hover:text-dark-text transition-colors py-1">
-                {{ espnShowManualFields ? '▲ Hide manual entry' : '▼ Not seeing your league? Enter League ID manually' }}
-              </button>
-            </div>
-
-            <!-- STATE: No leagues found -->
-            <div v-else-if="espnLeaguesError === 'no_leagues'" class="space-y-3">
-              <div class="bg-dark-bg/60 border border-dark-border rounded-xl p-4 text-center">
-                <p class="text-sm text-dark-text font-medium mb-1">No ESPN leagues found</p>
-                <p class="text-xs text-dark-textMuted leading-relaxed mb-3">
-                  No active leagues were found for your ESPN account this season.
+              <div>
+                <label class="block text-sm font-medium text-dark-textMuted mb-2">League ID</label>
+                <input
+                  v-model="espnLeagueId"
+                  type="text"
+                  placeholder="e.g., 12345678"
+                  class="w-full px-4 py-3 rounded-xl bg-dark-bg border border-dark-border focus:border-[#0719b2] focus:ring-1 focus:ring-[#0719b2] transition-colors text-dark-text"
+                  @keyup.enter="validateEspnLeague"
+                />
+                <p class="text-xs text-dark-textMuted mt-2">
+                  Find this in your ESPN league URL: fantasy.espn.com/.../<span class="text-[#4d6bff]">leagueId</span>=12345678
                 </p>
-                <button @click="loadEspnLeaguesFromExtension" class="text-xs text-[#4d6bff] hover:text-[#6b85ff] transition-colors">
-                  Try again
-                </button>
               </div>
-              <button @click="espnShowManualFields = !espnShowManualFields" class="w-full text-xs text-dark-textMuted hover:text-dark-text transition-colors py-1">
-                {{ espnShowManualFields ? '▲ Hide manual entry' : '▼ Enter League ID manually instead' }}
+
+              <div v-if="espnDiscoveryStatus" class="text-dark-textMuted text-sm flex items-center gap-2">
+                <svg class="animate-spin h-4 w-4 text-[#0719b2]" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                  <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                  <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                {{ espnDiscoveryStatus }}
+              </div>
+              <div v-if="errorMessage" class="text-red-400 text-sm">{{ errorMessage }}</div>
+
+              <button
+                @click="validateEspnLeagueWithExtensionCreds"
+                :disabled="!espnLeagueId.trim() || loading"
+                class="w-full px-4 py-3 rounded-xl bg-[#0719b2] text-white font-semibold hover:bg-[#0719b2]/80 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              >
+                <span v-if="loading">Finding League...</span>
+                <span v-else>Connect League</span>
               </button>
             </div>
 
-            <!-- STATE: Extension installed but not logged in to ESPN -->
+            <!-- STATE: Not signed in to ESPN -->
             <div v-else-if="espnLeaguesError === 'not_logged_in'" class="space-y-3">
               <div class="bg-amber-500/10 border border-amber-500/30 rounded-xl p-4">
                 <div class="flex items-start gap-3">
@@ -548,16 +462,10 @@
                   </svg>
                   <div>
                     <p class="text-sm text-amber-200 font-medium mb-1">Not signed in to ESPN</p>
-                    <p class="text-xs text-amber-200/70 leading-relaxed">
-                      Sign in to your ESPN account in Chrome, then come back and click Refresh.
-                    </p>
+                    <p class="text-xs text-amber-200/70 leading-relaxed">Sign in to ESPN in this Chrome browser, then click Refresh.</p>
                     <div class="flex items-center gap-3 mt-3">
-                      <a href="https://www.espn.com/fantasy/" target="_blank" class="text-xs px-3 py-1.5 rounded-lg bg-[#0719b2] text-white hover:bg-[#0719b2]/80 transition-colors">
-                        Sign in to ESPN
-                      </a>
-                      <button @click="loadEspnLeaguesFromExtension" class="text-xs text-[#4d6bff] hover:text-[#6b85ff] transition-colors">
-                        Refresh after signing in
-                      </button>
+                      <a href="https://www.espn.com/fantasy/" target="_blank" class="text-xs px-3 py-1.5 rounded-lg bg-[#0719b2] text-white hover:bg-[#0719b2]/80 transition-colors">Sign in to ESPN</a>
+                      <button @click="loadEspnLeaguesFromExtension" class="text-xs text-[#4d6bff] hover:text-[#6b85ff] transition-colors">Refresh</button>
                     </div>
                   </div>
                 </div>
@@ -1289,10 +1197,13 @@ async function loadEspnLeaguesFromExtension() {
   espnExtensionLeagues.value = []
 
   try {
-    // Step 1: Get cookies from the extension
+    // Get cookies from the extension — this is all we need
+    // We can't auto-fetch all leagues via the proxy (ESPN mUserLeagues requires
+    // browser-session auth that doesn't transfer through server-side proxy calls).
+    // Instead, we grab the cookies here, store them, and pre-fill the credential
+    // step so the user only needs to enter their League ID.
     console.log('[ESPN Modal] Getting cookies from extension...')
     const cookieResult = await getEspnCookiesFromExtension()
-    console.log('[ESPN Modal] Cookie result:', cookieResult.espn_s2 ? 'got espn_s2' : 'no espn_s2', cookieResult.swid ? 'got swid' : 'no swid', cookieResult.error || '')
 
     if (cookieResult.error === 'extension_not_installed') {
       espnExtensionInstalled.value = false
@@ -1304,33 +1215,20 @@ async function loadEspnLeaguesFromExtension() {
       return
     }
 
-    // Store credentials for later use when a league is selected
+    // Store credentials — used automatically when user enters league ID
     espnExtensionCredentials.value = {
       espn_s2: cookieResult.espn_s2,
       swid: cookieResult.swid
     }
 
-    // Step 2: Use the dashboard's own ESPN proxy to fetch leagues
-    // (extension can't make authenticated ESPN API calls due to Chrome CORS policy)
-    console.log('[ESPN Modal] Fetching leagues via ESPN proxy...')
-
-    if (authStore.user?.id) {
-      await espnService.initialize(authStore.user.id)
-    }
-    espnService.setCredentials(cookieResult.espn_s2, cookieResult.swid)
-
-    const leagues = await espnService.getUserLeagues()
-    console.log('[ESPN Modal] Leagues loaded:', leagues.length)
-
-    espnExtensionLeagues.value = leagues
-
-    if (leagues.length === 0) {
-      espnLeaguesError.value = 'no_leagues'
-    }
+    // Pre-fill the cookie fields and show the league ID step
+    espnS2Cookie.value = cookieResult.espn_s2
+    espnSwidCookie.value = cookieResult.swid
+    espnLeaguesError.value = 'enter_league_id'
 
   } catch (err: any) {
-    console.error('[ESPN Modal] loadEspnLeaguesFromExtension threw:', err.message)
-    espnLeaguesError.value = err.message || 'Failed to load leagues.'
+    console.error('[ESPN Modal] cookie fetch threw:', err.message)
+    espnLeaguesError.value = err.message || 'Failed to read ESPN cookies.'
   } finally {
     espnLoadingLeagues.value = false
   }
@@ -1385,6 +1283,32 @@ async function selectEspnLeagueFromExtension(league: EspnLeague) {
   } finally {
     loading.value = false
   }
+}
+
+// Validate ESPN league using cookies already grabbed from extension
+async function validateEspnLeagueWithExtensionCreds() {
+  if (!espnExtensionCredentials.value || !espnLeagueId.value.trim()) return
+
+  // Pre-fill cookie fields so validateEspnLeague uses them
+  espnS2Cookie.value = espnExtensionCredentials.value.espn_s2
+  espnSwidCookie.value = espnExtensionCredentials.value.swid
+
+  // Store credentials in platforms store
+  if (authStore.user?.id) {
+    await espnService.initialize(authStore.user.id)
+  }
+  espnService.setCredentials(espnExtensionCredentials.value.espn_s2, espnExtensionCredentials.value.swid)
+  
+  // Save to platforms store so the existing validate flow picks them up
+  await platformsStore.storeEspnCredentials({
+    espn_s2: espnExtensionCredentials.value.espn_s2,
+    swid: espnExtensionCredentials.value.swid,
+    leagueId: espnLeagueId.value,
+    sport: espnSport.value,
+    season: espnSeason.value
+  })
+
+  await validateEspnLeague()
 }
 
 async function importFromExtension() {
