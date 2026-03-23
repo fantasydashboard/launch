@@ -23,10 +23,9 @@
 
         <div class="fb-left">
           <img src="/UFD_V8.png" alt="UFD" class="fb-logo" />
-          <div class="fb-headline">Keep your league<br/>talking. <span class="fb-gold">All season.</span></div>
+          <div class="fb-headline">Level up your<br/>fantasy baseball<br/><span class="fb-gold">all season.</span></div>
           <div class="fb-sub">Power rankings · Win probability · Draft grades · League history</div>
           <div class="fb-platforms">
-            <img src="/sleeper.svg" alt="Sleeper" class="fb-plat-img" />
             <img src="/espn-logo.svg" alt="ESPN" class="fb-plat-img" />
             <img src="/yahoo-fantasy.svg" alt="Yahoo" class="fb-plat-img" />
           </div>
@@ -34,33 +33,33 @@
 
         <div class="fb-cards-area">
           <div class="fb-card fb-card-1">
-            <div class="fbc-head"><span class="fbc-badge">UFD</span><span class="fbc-title">⚡ Power Rankings</span><span class="fbc-wk">WK 11</span></div>
-            <div class="fbc-row fbc-gold"><span class="fbc-rk gold">1</span><span class="fbc-icon" v-html="teamIcons['Mahomes Magic']"></span><span class="fbc-name">Mahomes Magic</span><span class="fbc-pts gold">142.6</span><span class="fbc-chg up">▲2</span></div>
-            <div class="fbc-row"><span class="fbc-rk">2</span><span class="fbc-icon" v-html="teamIcons['Trash Can Wins']"></span><span class="fbc-name">Trash Can Wins</span><span class="fbc-pts">128.4</span><span class="fbc-chg up">▲1</span></div>
-            <div class="fbc-row"><span class="fbc-rk">3</span><span class="fbc-icon" v-html="teamIcons['The Algorithm']"></span><span class="fbc-name">The Algorithm</span><span class="fbc-pts">119.3</span><span class="fbc-chg dn">▼1</span></div>
-            <div class="fbc-row"><span class="fbc-rk">4</span><span class="fbc-icon" v-html="teamIcons['Waiver Wire Kid']"></span><span class="fbc-name">Waiver Wire Kid</span><span class="fbc-pts">112.1</span><span class="fbc-chg dn">▼2</span></div>
+            <div class="fbc-head"><span class="fbc-badge">UFD</span><span class="fbc-title">⚡ Power Rankings</span><span class="fbc-wk">WK 14</span></div>
+            <div class="fbc-row fbc-gold"><span class="fbc-rk gold">1</span><span class="fbc-icon" v-html="teamIcons['Diamond Kings']"></span><span class="fbc-name">Diamond Kings</span><span class="fbc-pts gold">124.8</span><span class="fbc-chg up">▲2</span></div>
+            <div class="fbc-row"><span class="fbc-rk">2</span><span class="fbc-icon" v-html="teamIcons['Sign Stealers']"></span><span class="fbc-name">Sign Stealers</span><span class="fbc-pts">116.2</span><span class="fbc-chg up">▲1</span></div>
+            <div class="fbc-row"><span class="fbc-rk">3</span><span class="fbc-icon" v-html="teamIcons['Roto Renegades']"></span><span class="fbc-name">Roto Renegades</span><span class="fbc-pts">108.4</span><span class="fbc-chg dn">▼1</span></div>
+            <div class="fbc-row"><span class="fbc-rk">4</span><span class="fbc-icon" v-html="teamIcons['The Sluggers']"></span><span class="fbc-name">The Sluggers</span><span class="fbc-pts">101.9</span><span class="fbc-chg dn">▼2</span></div>
             <div class="fbc-wm">ultimatefantasydashboard.com</div>
           </div>
           <div class="fb-card fb-card-2">
             <div class="fbc-head"><span class="fbc-badge">UFD</span><span class="fbc-title">⚔️ Matchup Analysis</span><span class="fbc-wk live">● LIVE</span></div>
             <div class="fbc-matchup">
-              <div class="fbc-team"><span class="fbc-avatar-icon" v-html="teamIcons['Mahomes Magic']"></span><div class="fbc-tname">Mahomes Magic</div><div class="fbc-score gold">142.6</div></div>
+              <div class="fbc-team"><span class="fbc-avatar-icon" v-html="teamIcons['Diamond Kings']"></span><div class="fbc-tname">Diamond Kings</div><div class="fbc-score gold">124.8</div></div>
               <div class="fbc-vs">VS</div>
-              <div class="fbc-team"><span class="fbc-avatar-icon" v-html="teamIcons['Trash Can Wins']"></span><div class="fbc-tname">Trash Can Wins</div><div class="fbc-score">119.3</div></div>
+              <div class="fbc-team"><span class="fbc-avatar-icon" v-html="teamIcons['Sign Stealers']"></span><div class="fbc-tname">Sign Stealers</div><div class="fbc-score">104.1</div></div>
             </div>
             <div class="fbc-prob-wrap">
-              <div class="fbc-prob-labels"><span class="gold">72% win prob</span><span>28%</span></div>
-              <div class="fbc-prob-bar"><div class="fbc-prob-fill" style="width:72%"></div></div>
+              <div class="fbc-prob-labels"><span class="gold">74% win prob</span><span>26%</span></div>
+              <div class="fbc-prob-bar"><div class="fbc-prob-fill" style="width:74%"></div></div>
               <div class="fbc-prob-sub">Monte Carlo · 10,000 simulations</div>
             </div>
             <div class="fbc-wm">ultimatefantasydashboard.com</div>
           </div>
           <div class="fb-card fb-card-3">
             <div class="fbc-head"><span class="fbc-badge">UFD</span><span class="fbc-title">🏆 Legacy Standings</span><span class="fbc-wk">ALL TIME</span></div>
-            <div class="fbc-row fbc-gold"><span class="fbc-rk gold">1</span><span class="fbc-icon" v-html="teamIcons['Mahomes Magic']"></span><span class="fbc-name">Mahomes Magic</span><span class="fbc-pts gold">1,847</span></div>
-            <div class="fbc-row"><span class="fbc-rk">2</span><span class="fbc-icon" v-html="teamIcons['Trash Can Wins']"></span><span class="fbc-name">Trash Can Wins</span><span class="fbc-pts">1,623</span></div>
-            <div class="fbc-row"><span class="fbc-rk">3</span><span class="fbc-icon" v-html="teamIcons['The Algorithm']"></span><span class="fbc-name">The Algorithm</span><span class="fbc-pts">1,401</span></div>
-            <div class="fbc-row"><span class="fbc-rk">4</span><span class="fbc-icon" v-html="teamIcons['Waiver Wire Kid']"></span><span class="fbc-name">Waiver Wire Kid</span><span class="fbc-pts">1,198</span></div>
+            <div class="fbc-row fbc-gold"><span class="fbc-rk gold">1</span><span class="fbc-icon" v-html="teamIcons['Diamond Kings']"></span><span class="fbc-name">Diamond Kings</span><span class="fbc-pts gold">1,912</span></div>
+            <div class="fbc-row"><span class="fbc-rk">2</span><span class="fbc-icon" v-html="teamIcons['Sign Stealers']"></span><span class="fbc-name">Sign Stealers</span><span class="fbc-pts">1,748</span></div>
+            <div class="fbc-row"><span class="fbc-rk">3</span><span class="fbc-icon" v-html="teamIcons['Roto Renegades']"></span><span class="fbc-name">Roto Renegades</span><span class="fbc-pts">1,531</span></div>
+            <div class="fbc-row"><span class="fbc-rk">4</span><span class="fbc-icon" v-html="teamIcons['The Sluggers']"></span><span class="fbc-name">The Sluggers</span><span class="fbc-pts">1,304</span></div>
             <div class="fbc-wm">ultimatefantasydashboard.com</div>
           </div>
         </div>
@@ -80,7 +79,7 @@
           <div class="sq-grain"></div><div class="sq-topline"></div>
           <div class="sq-ufd-top"><img src="/UFD_V8.png" class="sq-ufd-logo" alt="UFD" /></div>
           <div class="sq-inner center">
-            <div class="sq-eyebrow">Fantasy Analytics</div>
+            <div class="sq-eyebrow">Fantasy Baseball Analytics</div>
             <div class="sq-hl" style="font-size:64px">Keep your<br/>league <span class="gold">talking.</span><br/>All season.</div>
             <div class="sq-body">Power rankings · Win probability<br/>Draft grades · League history</div>
             <div class="fan-wrap" style="margin-top:20px">
@@ -131,7 +130,7 @@
               <span class="ph-price">$5</span>
               <span class="ph-season">/ season</span>
             </div>
-            <div class="sq-body" style="margin-top:10px;font-size:14px">Sleeper · ESPN · Yahoo<br/>Football · Basketball · Baseball · Hockey</div>
+            <div class="sq-body" style="margin-top:10px;font-size:14px">ESPN · Yahoo<br/>Points · Roto · H2H Category</div>
             <div class="fan-wrap" style="margin-top:16px">
               <FanCards variant="compact" />
             </div>
@@ -194,17 +193,18 @@
         </div>
       </div>
 
-      <!-- 7 · SLEEPER FOOTBALL -->
+      <!-- 7 · ESPN · BASEBALL — POWER RANKINGS -->
       <div class="post-wrap">
-        <div class="post-label">7 · Sleeper · Football</div>
-        <div class="sq sq-dark">
-          <div class="sq-grain"></div><div class="sq-topline"></div>
+        <div class="post-label">7 · ESPN · Baseball — Power Rankings</div>
+        <div class="sq sq-red">
+          <div class="sq-grain"></div>
+          <div class="sq-topline" style="background:linear-gradient(90deg,transparent,#ef4444,transparent)"></div>
           <div class="sq-ufd-top"><img src="/UFD_V8.png" class="sq-ufd-logo" alt="UFD" /></div>
           <div class="sq-inner center">
             <div class="sq-plat-sport-header">
-              <img src="/sleeper.svg" class="sq-plat-logo" alt="Sleeper" /><span class="sq-sport-tag football">🏈 NFL Fantasy</span>
+              <img src="/espn-logo.svg" class="sq-plat-logo" alt="ESPN" /><span class="sq-sport-tag baseball">⚾ Fantasy Baseball</span>
             </div>
-            <div class="sq-hl" style="font-size:50px;margin-top:10px">Your Sleeper<br/>league just got<br/>a <span class="gold">serious</span><br/>upgrade.</div>
+            <div class="sq-hl" style="font-size:50px;margin-top:10px">Your ESPN<br/>baseball league<br/>has more data<br/>than you<br/><span style="color:#f87171">ever knew.</span></div>
             <div class="fan-wrap" style="margin-top:16px">
               <FanCards variant="pr" />
             </div>
@@ -213,56 +213,59 @@
         </div>
       </div>
 
-      <!-- 8 · SLEEPER BASKETBALL -->
+      <!-- 8 · ESPN + YAHOO · POINTS & CATEGORY -->
       <div class="post-wrap">
-        <div class="post-label">8 · Sleeper · Basketball</div>
-        <div class="sq sq-orange">
-          <div class="sq-grain"></div>
-          <div class="sq-topline" style="background:linear-gradient(90deg,transparent,#f97316,transparent)"></div>
-          <div class="sq-ufd-top"><img src="/UFD_V8.png" class="sq-ufd-logo" alt="UFD" /></div>
-          <div class="sq-inner center">
-            <div class="sq-plat-sport-header">
-              <img src="/sleeper.svg" class="sq-plat-logo" alt="Sleeper" /><span class="sq-sport-tag basketball">🏀 NBA Fantasy</span>
-            </div>
-            <div class="sq-hl" style="font-size:50px;margin-top:10px">Category<br/>leagues.<br/>Power rankings.<br/><span style="color:#f97316">Finally.</span></div>
-            <div class="fan-wrap" style="margin-top:16px">
-              <FanCards variant="bball" />
-            </div>
-          </div>
-          <div class="sq-url">ultimatefantasydashboard.com</div>
-        </div>
-      </div>
-
-      <!-- 9 · ESPN FOOTBALL -->
-      <div class="post-wrap">
-        <div class="post-label">9 · ESPN · Football</div>
-        <div class="sq sq-red">
-          <div class="sq-grain"></div>
-          <div class="sq-topline" style="background:linear-gradient(90deg,transparent,#ef4444,transparent)"></div>
-          <div class="sq-ufd-top"><img src="/UFD_V8.png" class="sq-ufd-logo" alt="UFD" /></div>
-          <div class="sq-inner center">
-            <div class="sq-plat-sport-header">
-              <img src="/espn-logo.svg" class="sq-plat-logo" alt="ESPN" /><span class="sq-sport-tag football">🏈 NFL Fantasy</span>
-            </div>
-            <div class="sq-hl" style="font-size:50px;margin-top:10px">Your ESPN<br/>league has<br/>more data<br/>than you<br/><span style="color:#f87171">ever knew.</span></div>
-            <div class="fan-wrap" style="margin-top:16px">
-              <FanCards variant="draft" />
-            </div>
-          </div>
-          <div class="sq-url">ultimatefantasydashboard.com</div>
-        </div>
-      </div>
-
-      <!-- 10 · ESPN BASEBALL -->
-      <div class="post-wrap">
-        <div class="post-label">10 · ESPN · Baseball</div>
+        <div class="post-label">8 · ESPN + Yahoo · Points &amp; Category</div>
         <div class="sq sq-blue">
           <div class="sq-grain"></div>
           <div class="sq-topline" style="background:linear-gradient(90deg,transparent,#3b82f6,transparent)"></div>
           <div class="sq-ufd-top"><img src="/UFD_V8.png" class="sq-ufd-logo" alt="UFD" /></div>
           <div class="sq-inner center">
             <div class="sq-plat-sport-header">
-              <img src="/espn-logo.svg" class="sq-plat-logo" alt="ESPN" /><span class="sq-sport-tag baseball">⚾ MLB Fantasy</span>
+              <img src="/espn-logo.svg" class="sq-plat-logo" alt="ESPN" />
+              <img src="/yahoo-fantasy.svg" class="sq-plat-logo" alt="Yahoo" style="margin-left:4px" />
+              <span class="sq-sport-tag baseball" style="margin-left:6px">⚾ Fantasy Baseball</span>
+            </div>
+            <div class="sq-hl" style="font-size:42px;margin-top:10px">ESPN. Yahoo.<br/>Points leagues.<br/>Roto leagues.<br/>Category leagues.<br/><span style="color:#60a5fa">All of it.</span></div>
+            <div class="fan-wrap" style="margin-top:14px">
+              <FanCards variant="bball" />
+            </div>
+            <div class="sq-body" style="font-size:12px;margin-top:8px;color:#374151">Works for both platforms · All league types</div>
+          </div>
+          <div class="sq-url">ultimatefantasydashboard.com</div>
+        </div>
+      </div>
+
+      <!-- 9 · YAHOO · BASEBALL — HISTORY -->
+      <div class="post-wrap">
+        <div class="post-label">9 · Yahoo · Baseball — History</div>
+        <div class="sq sq-purple">
+          <div class="sq-grain"></div>
+          <div class="sq-topline" style="background:linear-gradient(90deg,transparent,#a78bfa,transparent)"></div>
+          <div class="sq-ufd-top"><img src="/UFD_V8.png" class="sq-ufd-logo" alt="UFD" /></div>
+          <div class="sq-inner center">
+            <div class="sq-plat-sport-header">
+              <img src="/yahoo-fantasy.svg" class="sq-plat-logo" alt="Yahoo" /><span class="sq-sport-tag baseball">⚾ Fantasy Baseball</span>
+            </div>
+            <div class="sq-hl" style="font-size:50px;margin-top:10px">8 seasons of<br/>your Yahoo<br/>baseball league.<br/><span style="color:#a78bfa">One screen.</span></div>
+            <div class="fan-wrap" style="margin-top:16px">
+              <FanCards variant="history" />
+            </div>
+          </div>
+          <div class="sq-url">ultimatefantasydashboard.com</div>
+        </div>
+      </div>
+
+      <!-- 10 · ESPN · BASEBALL — ANALYTICS -->
+      <div class="post-wrap">
+        <div class="post-label">10 · ESPN · Baseball — Analytics</div>
+        <div class="sq sq-blue">
+          <div class="sq-grain"></div>
+          <div class="sq-topline" style="background:linear-gradient(90deg,transparent,#3b82f6,transparent)"></div>
+          <div class="sq-ufd-top"><img src="/UFD_V8.png" class="sq-ufd-logo" alt="UFD" /></div>
+          <div class="sq-inner center">
+            <div class="sq-plat-sport-header">
+              <img src="/espn-logo.svg" class="sq-plat-logo" alt="ESPN" /><span class="sq-sport-tag baseball">⚾ Fantasy Baseball</span>
             </div>
             <div class="sq-hl" style="font-size:50px;margin-top:10px">Fantasy<br/>baseball<br/>analytics<br/>that actually<br/><span style="color:#60a5fa">slap.</span></div>
             <div class="fan-wrap" style="margin-top:16px">
@@ -273,58 +276,41 @@
         </div>
       </div>
 
-      <!-- 11 · ESPN BASKETBALL -->
+      <!-- 11 · DRAFT DAY BASEBALL -->
       <div class="post-wrap">
-        <div class="post-label">11 · ESPN · Basketball</div>
-        <div class="sq sq-orange">
+        <div class="post-label">11 · Draft Day Baseball</div>
+        <div class="sq sq-purple">
           <div class="sq-grain"></div>
-          <div class="sq-topline" style="background:linear-gradient(90deg,transparent,#f97316,transparent)"></div>
+          <div class="sq-topline" style="background:linear-gradient(90deg,transparent,#8b5cf6,transparent)"></div>
           <div class="sq-ufd-top"><img src="/UFD_V8.png" class="sq-ufd-logo" alt="UFD" /></div>
           <div class="sq-inner center">
             <div class="sq-plat-sport-header">
-              <img src="/espn-logo.svg" class="sq-plat-logo" alt="ESPN" /><span class="sq-sport-tag basketball">🏀 NBA Fantasy</span>
+              <img src="/espn-logo.svg" class="sq-plat-logo" alt="ESPN" />
+              <img src="/yahoo-fantasy.svg" class="sq-plat-logo" alt="Yahoo" style="margin-left:4px" />
+              <span class="sq-sport-tag baseball" style="margin-left:6px">⚾ Fantasy Baseball</span>
             </div>
-            <div class="sq-hl" style="font-size:50px;margin-top:10px">Win more<br/>categories.<br/>Lose fewer<br/><span style="color:#f97316">arguments.</span></div>
+            <div class="sq-hl" style="font-size:50px;margin-top:10px">Draft day<br/>is where<br/>seasons are<br/>won. Or<br/><span style="color:#a78bfa">wasted.</span></div>
             <div class="fan-wrap" style="margin-top:16px">
-              <FanCards variant="bball" />
+              <FanCards variant="draft" />
             </div>
           </div>
           <div class="sq-url">ultimatefantasydashboard.com</div>
         </div>
       </div>
 
-      <!-- 12 · YAHOO FOOTBALL -->
+      <!-- 12 · ROTO POWER RANKINGS -->
       <div class="post-wrap">
-        <div class="post-label">12 · Yahoo · Football</div>
-        <div class="sq sq-purple">
-          <div class="sq-grain"></div>
-          <div class="sq-topline" style="background:linear-gradient(90deg,transparent,#a78bfa,transparent)"></div>
+        <div class="post-label">12 · Roto Power Rankings</div>
+        <div class="sq sq-dark">
+          <div class="sq-grain"></div><div class="sq-topline"></div>
           <div class="sq-ufd-top"><img src="/UFD_V8.png" class="sq-ufd-logo" alt="UFD" /></div>
           <div class="sq-inner center">
             <div class="sq-plat-sport-header">
-              <img src="/yahoo-fantasy.svg" class="sq-plat-logo" alt="Yahoo" /><span class="sq-sport-tag football">🏈 NFL Fantasy</span>
+              <img src="/espn-logo.svg" class="sq-plat-logo" alt="ESPN" />
+              <img src="/yahoo-fantasy.svg" class="sq-plat-logo" alt="Yahoo" style="margin-left:4px" />
+              <span class="sq-sport-tag baseball" style="margin-left:6px">⚾ Fantasy Baseball</span>
             </div>
-            <div class="sq-hl" style="font-size:50px;margin-top:10px">6 years of<br/>your Yahoo<br/>league.<br/><span style="color:#a78bfa">One screen.</span></div>
-            <div class="fan-wrap" style="margin-top:16px">
-              <FanCards variant="history" />
-            </div>
-          </div>
-          <div class="sq-url">ultimatefantasydashboard.com</div>
-        </div>
-      </div>
-
-      <!-- 13 · YAHOO BASEBALL -->
-      <div class="post-wrap">
-        <div class="post-label">13 · Yahoo · Baseball</div>
-        <div class="sq sq-purple">
-          <div class="sq-grain"></div>
-          <div class="sq-topline" style="background:linear-gradient(90deg,transparent,#a78bfa,transparent)"></div>
-          <div class="sq-ufd-top"><img src="/UFD_V8.png" class="sq-ufd-logo" alt="UFD" /></div>
-          <div class="sq-inner center">
-            <div class="sq-plat-sport-header">
-              <img src="/yahoo-fantasy.svg" class="sq-plat-logo" alt="Yahoo" /><span class="sq-sport-tag baseball">⚾ MLB Fantasy</span>
-            </div>
-            <div class="sq-hl" style="font-size:50px;margin-top:10px">Roto leagues<br/>deserve real<br/><span style="color:#a78bfa">power<br/>rankings.</span></div>
+            <div class="sq-hl" style="font-size:50px;margin-top:10px">Roto leagues<br/>deserve real<br/><span class="gold">power<br/>rankings.</span></div>
             <div class="fan-wrap" style="margin-top:16px">
               <FanCards variant="baseball" />
             </div>
@@ -333,20 +319,42 @@
         </div>
       </div>
 
-      <!-- 14 · YAHOO HOCKEY -->
+      <!-- 13 · YAHOO · BASEBALL — ROTO -->
       <div class="post-wrap">
-        <div class="post-label">14 · Yahoo · Hockey</div>
+        <div class="post-label">13 · Yahoo · Baseball — Roto</div>
         <div class="sq sq-purple">
           <div class="sq-grain"></div>
           <div class="sq-topline" style="background:linear-gradient(90deg,transparent,#a78bfa,transparent)"></div>
           <div class="sq-ufd-top"><img src="/UFD_V8.png" class="sq-ufd-logo" alt="UFD" /></div>
           <div class="sq-inner center">
             <div class="sq-plat-sport-header">
-              <img src="/yahoo-fantasy.svg" class="sq-plat-logo" alt="Yahoo" /><span class="sq-sport-tag hockey">🏒 NHL Fantasy</span>
+              <img src="/yahoo-fantasy.svg" class="sq-plat-logo" alt="Yahoo" /><span class="sq-sport-tag baseball">⚾ Fantasy Baseball</span>
             </div>
-            <div class="sq-hl" style="font-size:50px;margin-top:10px">Fantasy hockey<br/>power rankings<br/><span style="color:#a78bfa">finally exist.</span></div>
+            <div class="sq-hl" style="font-size:50px;margin-top:10px">Track every<br/>category.<br/>Climb every<br/><span style="color:#a78bfa">roto column.</span></div>
             <div class="fan-wrap" style="margin-top:16px">
-              <FanCards variant="hockey" />
+              <FanCards variant="baseball" />
+            </div>
+          </div>
+          <div class="sq-url">ultimatefantasydashboard.com</div>
+        </div>
+      </div>
+
+      <!-- 14 · CATEGORY LEAGUE EDGE -->
+      <div class="post-wrap">
+        <div class="post-label">14 · Category League Edge</div>
+        <div class="sq sq-orange">
+          <div class="sq-grain"></div>
+          <div class="sq-topline" style="background:linear-gradient(90deg,transparent,#f97316,transparent)"></div>
+          <div class="sq-ufd-top"><img src="/UFD_V8.png" class="sq-ufd-logo" alt="UFD" /></div>
+          <div class="sq-inner center">
+            <div class="sq-plat-sport-header">
+              <img src="/espn-logo.svg" class="sq-plat-logo" alt="ESPN" />
+              <img src="/yahoo-fantasy.svg" class="sq-plat-logo" alt="Yahoo" style="margin-left:4px" />
+              <span class="sq-sport-tag baseball" style="margin-left:6px">⚾ Fantasy Baseball</span>
+            </div>
+            <div class="sq-hl" style="font-size:50px;margin-top:10px">Win more<br/>categories.<br/>Stop leaving<br/><span style="color:#f97316">stats on<br/>the bench.</span></div>
+            <div class="fan-wrap" style="margin-top:16px">
+              <FanCards variant="bball" />
             </div>
           </div>
           <div class="sq-url">ultimatefantasydashboard.com</div>
@@ -378,7 +386,7 @@
           <div class="sq-ufd-top"><img src="/UFD_V8.png" class="sq-ufd-logo" alt="UFD" /></div>
           <div class="sq-inner center">
             <div class="sq-eyebrow">For Commissioners</div>
-            <div class="sq-hl" style="font-size:52px">Your league<br/>goes quiet<br/>after week 8.<br/><span class="gold">Fix that.</span></div>
+            <div class="sq-hl" style="font-size:52px">Your league<br/>dies after<br/>the All-Star<br/>break.<br/><span class="gold">Fix that.</span></div>
             <div class="fan-wrap" style="margin-top:16px">
               <FanCards variant="compact" />
             </div>
@@ -417,7 +425,6 @@
               <FanCards variant="compact" />
             </div>
             <div class="sq-plats" style="margin-top:16px">
-              <img src="/sleeper.svg" class="sq-plat-inline" alt="Sleeper" />
               <img src="/espn-logo.svg" class="sq-plat-inline" alt="ESPN" />
               <img src="/yahoo-fantasy.svg" class="sq-plat-inline" alt="Yahoo" />
             </div>
@@ -437,25 +444,19 @@ import { defineComponent, h } from 'vue'
 
 // ── Team SVG icon lookup ──────────────────────────────────────────────────
 const teamIcons: Record<string, string> = {
-  'Mahomes Magic': `<svg viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg"><defs><linearGradient id="mm-bg" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#1a1200"/><stop offset="100%" stop-color="#0a0800"/></linearGradient><linearGradient id="mm-gold" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#fde68a"/><stop offset="100%" stop-color="#d97706"/></linearGradient></defs><path d="M16 2 L28 6 L28 18 Q28 26 16 30 Q4 26 4 18 L4 6 Z" fill="url(#mm-bg)" stroke="#eab308" stroke-width="1.2"/><path d="M9 20 L9 14 L12 17 L16 12 L20 17 L23 14 L23 20 Z" fill="url(#mm-gold)"/><rect x="9" y="20" width="14" height="2.5" rx="1" fill="url(#mm-gold)"/><circle cx="16" cy="12" r="1.2" fill="#fff" opacity="0.9"/><circle cx="9" cy="14" r="0.8" fill="#fff" opacity="0.7"/><circle cx="23" cy="14" r="0.8" fill="#fff" opacity="0.7"/></svg>`,
-  'Trash Can Wins': `<svg viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg"><defs><linearGradient id="tc-bg" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#022c22"/><stop offset="100%" stop-color="#011a14"/></linearGradient><linearGradient id="tc-gr" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#34d399"/><stop offset="100%" stop-color="#059669"/></linearGradient></defs><path d="M16 2 L28 6 L28 18 Q28 26 16 30 Q4 26 4 18 L4 6 Z" fill="url(#tc-bg)" stroke="#10b981" stroke-width="1.2"/><rect x="10" y="9" width="12" height="2" rx="1" fill="url(#tc-gr)"/><rect x="13" y="7" width="6" height="2.5" rx="1" fill="url(#tc-gr)"/><path d="M11 11 L12 23 L20 23 L21 11 Z" fill="url(#tc-gr)" opacity="0.9"/><line x1="14" y1="13" x2="14" y2="21" stroke="#022c22" stroke-width="1.2"/><line x1="18" y1="13" x2="18" y2="21" stroke="#022c22" stroke-width="1.2"/></svg>`,
+  // ── Baseball teams ──
+  'Diamond Kings': `<svg viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg"><defs><linearGradient id="dk-bg" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#1a1200"/><stop offset="100%" stop-color="#0a0800"/></linearGradient></defs><path d="M16 2 L28 6 L28 18 Q28 26 16 30 Q4 26 4 18 L4 6 Z" fill="url(#dk-bg)" stroke="#eab308" stroke-width="1.2"/><polygon points="16,8 22,14 16,20 10,14" fill="none" stroke="#eab308" stroke-width="1.5"/><rect x="14.5" y="6.5" width="3" height="3" rx="0.5" fill="#eab308" transform="rotate(45 16 8)"/><rect x="20.5" y="12.5" width="2.5" height="2.5" rx="0.5" fill="#eab308" opacity="0.8" transform="rotate(45 22 14)"/><rect x="14.5" y="18.5" width="2.5" height="2.5" rx="0.5" fill="#eab308" opacity="0.8" transform="rotate(45 16 20)"/><rect x="8.5" y="12.5" width="2.5" height="2.5" rx="0.5" fill="#eab308" opacity="0.8" transform="rotate(45 10 14)"/><circle cx="16" cy="14" r="1.5" fill="#eab308" opacity="0.6"/></svg>`,
+  'Sign Stealers': `<svg viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg"><defs><linearGradient id="sig-bg" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#022c22"/><stop offset="100%" stop-color="#011a14"/></linearGradient><linearGradient id="sig-gr" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#34d399"/><stop offset="100%" stop-color="#059669"/></linearGradient></defs><path d="M16 2 L28 6 L28 18 Q28 26 16 30 Q4 26 4 18 L4 6 Z" fill="url(#sig-bg)" stroke="#10b981" stroke-width="1.2"/><rect x="10" y="9" width="12" height="2" rx="1" fill="url(#sig-gr)"/><rect x="13" y="7" width="6" height="2.5" rx="1" fill="url(#sig-gr)"/><path d="M11 11 L12 23 L20 23 L21 11 Z" fill="url(#sig-gr)" opacity="0.9"/><line x1="14" y1="13" x2="14" y2="21" stroke="#022c22" stroke-width="1.2"/><line x1="18" y1="13" x2="18" y2="21" stroke="#022c22" stroke-width="1.2"/></svg>`,
+  'Roto Renegades': `<svg viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg"><defs><linearGradient id="rr-bg" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#0c1a3d"/><stop offset="100%" stop-color="#060e22"/></linearGradient></defs><path d="M16 2 L28 6 L28 18 Q28 26 16 30 Q4 26 4 18 L4 6 Z" fill="url(#rr-bg)" stroke="#3b82f6" stroke-width="1.2"/><path d="M16 8 A8 8 0 0 1 22 20" stroke="#3b82f6" stroke-width="2" fill="none" stroke-linecap="round"/><path d="M16 24 A8 8 0 0 1 10 12" stroke="#3b82f6" stroke-width="2" fill="none" stroke-linecap="round"/><polygon points="22,20 19,22 24,23" fill="#3b82f6"/><polygon points="10,12 13,10 8,9" fill="#3b82f6"/><circle cx="16" cy="16" r="2.5" fill="#3b82f6" opacity="0.5"/></svg>`,
+  'The Sluggers': `<svg viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg"><defs><linearGradient id="sl-bg" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#2d0a0a"/><stop offset="100%" stop-color="#1a0505"/></linearGradient></defs><path d="M16 2 L28 6 L28 18 Q28 26 16 30 Q4 26 4 18 L4 6 Z" fill="url(#sl-bg)" stroke="#ef4444" stroke-width="1.2"/><rect x="14" y="6" width="4" height="16" rx="2" fill="#ef4444" transform="rotate(-35 16 16)"/><circle cx="9" cy="22" r="3" fill="#ef4444" opacity="0.7"/><circle cx="10" cy="22" r="1.2" fill="#fff" opacity="0.3"/></svg>`,
+  'Bases Loaded FC': `<svg viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg"><defs><linearGradient id="bl-bg" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#1a1200"/><stop offset="100%" stop-color="#0a0800"/></linearGradient></defs><path d="M16 2 L28 6 L28 18 Q28 26 16 30 Q4 26 4 18 L4 6 Z" fill="url(#bl-bg)" stroke="#eab308" stroke-width="1.2"/><rect x="13.5" y="7" width="5" height="5" rx="0.8" fill="#eab308" transform="rotate(45 16 9.5)"/><rect x="8" y="13" width="4.5" height="4.5" rx="0.8" fill="#eab308" opacity="0.7" transform="rotate(45 10 15)"/><rect x="19.5" y="13" width="4.5" height="4.5" rx="0.8" fill="#eab308" opacity="0.7" transform="rotate(45 22 15)"/><circle cx="16" cy="18" r="2" fill="#eab308" opacity="0.5"/></svg>`,
+  'Ace Gang': `<svg viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg"><defs><linearGradient id="ag-bg" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#1a0d3d"/><stop offset="100%" stop-color="#0e0722"/></linearGradient></defs><path d="M16 2 L28 6 L28 18 Q28 26 16 30 Q4 26 4 18 L4 6 Z" fill="url(#ag-bg)" stroke="#8b5cf6" stroke-width="1.2"/><text x="16" y="21" text-anchor="middle" font-size="13" font-weight="900" fill="#a78bfa" font-family="Impact,Arial,sans-serif">K</text><circle cx="16" cy="23" r="1" fill="#8b5cf6" opacity="0.5"/></svg>`,
+  'Launch Angle FC': `<svg viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg"><defs><linearGradient id="la-bg" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#1a0d00"/><stop offset="100%" stop-color="#0e0700"/></linearGradient></defs><path d="M16 2 L28 6 L28 18 Q28 26 16 30 Q4 26 4 18 L4 6 Z" fill="url(#la-bg)" stroke="#f97316" stroke-width="1.2"/><line x1="9" y1="22" x2="22" y2="10" stroke="#f97316" stroke-width="2.5" stroke-linecap="round"/><circle cx="22" cy="10" r="3" fill="#f97316" opacity="0.9"/><path d="M9 22 L9 16" stroke="#f97316" stroke-width="1" opacity="0.5"/><path d="M9 22 L15 22" stroke="#f97316" stroke-width="1" opacity="0.5"/></svg>`,
+  'No-Hitter Club': `<svg viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg"><defs><linearGradient id="nh-bg" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#071a2f"/><stop offset="100%" stop-color="#030f1c"/></linearGradient></defs><path d="M16 2 L28 6 L28 18 Q28 26 16 30 Q4 26 4 18 L4 6 Z" fill="url(#nh-bg)" stroke="#06b6d4" stroke-width="1.2"/><circle cx="16" cy="16" r="6.5" fill="none" stroke="#06b6d4" stroke-width="1.5"/><line x1="16" y1="9.5" x2="16" y2="22.5" stroke="#06b6d4" stroke-width="1" opacity="0.5"/><path d="M10 14 Q13 12 16 11" stroke="#06b6d4" stroke-width="1" fill="none" opacity="0.6"/><path d="M22 18 Q19 20 16 21" stroke="#06b6d4" stroke-width="1" fill="none" opacity="0.6"/><circle cx="16" cy="16" r="1.8" fill="#06b6d4" opacity="0.7"/></svg>`,
   'The Algorithm': `<svg viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg"><defs><linearGradient id="ai-bg" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#1e1b4b"/><stop offset="100%" stop-color="#0f0e2e"/></linearGradient></defs><path d="M16 2 L28 6 L28 18 Q28 26 16 30 Q4 26 4 18 L4 6 Z" fill="url(#ai-bg)" stroke="#6366f1" stroke-width="1.2"/><rect x="11" y="11" width="10" height="10" rx="1.5" fill="none" stroke="#6366f1" stroke-width="1.5"/><rect x="13" y="13" width="6" height="6" rx="1" fill="#6366f1" opacity="0.3"/><line x1="8" y1="13" x2="11" y2="13" stroke="#818cf8" stroke-width="1.2"/><line x1="8" y1="16" x2="11" y2="16" stroke="#818cf8" stroke-width="1.2"/><line x1="8" y1="19" x2="11" y2="19" stroke="#818cf8" stroke-width="1.2"/><line x1="21" y1="13" x2="24" y2="13" stroke="#818cf8" stroke-width="1.2"/><line x1="21" y1="16" x2="24" y2="16" stroke="#818cf8" stroke-width="1.2"/><line x1="21" y1="19" x2="24" y2="19" stroke="#818cf8" stroke-width="1.2"/><circle cx="16" cy="16" r="1.5" fill="#818cf8"/></svg>`,
   'Waiver Wire Kid': `<svg viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg"><defs><linearGradient id="ww-bg" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#2d0a0a"/><stop offset="100%" stop-color="#1a0505"/></linearGradient><linearGradient id="ww-bolt" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#fca5a5"/><stop offset="100%" stop-color="#dc2626"/></linearGradient></defs><path d="M16 2 L28 6 L28 18 Q28 26 16 30 Q4 26 4 18 L4 6 Z" fill="url(#ww-bg)" stroke="#ef4444" stroke-width="1.2"/><path d="M19 8 L13 17 L17 17 L13 26 L21 15 L17 15 Z" fill="url(#ww-bolt)"/></svg>`,
-  'Bench Boss': `<svg viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg"><defs><linearGradient id="bb-bg" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#0c1a1f"/><stop offset="100%" stop-color="#060f12"/></linearGradient></defs><path d="M16 2 L28 6 L28 18 Q28 26 16 30 Q4 26 4 18 L4 6 Z" fill="url(#bb-bg)" stroke="#06b6d4" stroke-width="1.2"/><rect x="10" y="10" width="12" height="14" rx="1.5" fill="none" stroke="#06b6d4" stroke-width="1.3"/><rect x="13" y="8" width="6" height="3" rx="1.5" fill="#06b6d4" opacity="0.8"/><line x1="12" y1="15" x2="20" y2="15" stroke="#06b6d4" stroke-width="1" opacity="0.7"/><line x1="12" y1="18" x2="20" y2="18" stroke="#06b6d4" stroke-width="1" opacity="0.7"/><line x1="12" y1="21" x2="16" y2="21" stroke="#06b6d4" stroke-width="1" opacity="0.7"/><path d="M17 20 L19 22 L22 18" stroke="#06b6d4" stroke-width="1.3" fill="none" stroke-linecap="round"/></svg>`,
-  'Toilet Bowl FC': `<svg viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg"><defs><linearGradient id="tb-bg" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#1f2937"/><stop offset="100%" stop-color="#111827"/></linearGradient></defs><path d="M16 2 L28 6 L28 18 Q28 26 16 30 Q4 26 4 18 L4 6 Z" fill="url(#tb-bg)" stroke="#4b5563" stroke-width="1.2"/><ellipse cx="16" cy="14" rx="6" ry="6" fill="#4b5563" opacity="0.8"/><rect x="12" y="18" width="8" height="4" rx="1" fill="#4b5563" opacity="0.7"/><ellipse cx="13.5" cy="13" rx="1.8" ry="2" fill="#111827"/><ellipse cx="18.5" cy="13" rx="1.8" ry="2" fill="#111827"/><path d="M15.5 16 L16 17.5 L16.5 16" fill="#111827" opacity="0.6"/><line x1="13" y1="20" x2="13" y2="22" stroke="#111827" stroke-width="1"/><line x1="15.5" y1="20" x2="15.5" y2="22" stroke="#111827" stroke-width="1"/><line x1="18" y1="20" x2="18" y2="22" stroke="#111827" stroke-width="1"/></svg>`,
-  'Hoop Dreams FC': `<svg viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg"><defs><linearGradient id="hd-bg" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#431407"/><stop offset="100%" stop-color="#270a04"/></linearGradient><linearGradient id="hd-ball" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#fb923c"/><stop offset="100%" stop-color="#c2410c"/></linearGradient></defs><path d="M16 2 L28 6 L28 18 Q28 26 16 30 Q4 26 4 18 L4 6 Z" fill="url(#hd-bg)" stroke="#f97316" stroke-width="1.2"/><circle cx="16" cy="16" r="7.5" fill="url(#hd-ball)"/><path d="M8.5 16 Q12 12 16 16 Q20 20 23.5 16" stroke="#7c2d12" stroke-width="1.2" fill="none"/><path d="M8.5 16 Q12 20 16 16 Q20 12 23.5 16" stroke="#7c2d12" stroke-width="1.2" fill="none"/><line x1="16" y1="8.5" x2="16" y2="23.5" stroke="#7c2d12" stroke-width="1.2"/></svg>`,
-  'Buckets Brigade': `<svg viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg"><defs><linearGradient id="bk-bg" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#0a1a1f"/><stop offset="100%" stop-color="#050f12"/></linearGradient></defs><path d="M16 2 L28 6 L28 18 Q28 26 16 30 Q4 26 4 18 L4 6 Z" fill="url(#bk-bg)" stroke="#06b6d4" stroke-width="1.2"/><ellipse cx="16" cy="13" rx="6.5" ry="1.8" fill="none" stroke="#06b6d4" stroke-width="1.8"/><path d="M9.5 13 L11 22 L21 22 L22.5 13" fill="none" stroke="#06b6d4" stroke-width="1" opacity="0.7"/><line x1="13" y1="13" x2="13.5" y2="22" stroke="#06b6d4" stroke-width="0.8" opacity="0.5"/><line x1="16" y1="14.5" x2="16" y2="22" stroke="#06b6d4" stroke-width="0.8" opacity="0.5"/><line x1="19" y1="13" x2="18.5" y2="22" stroke="#06b6d4" stroke-width="0.8" opacity="0.5"/><path d="M10.5 16.5 Q16 15 21.5 16.5" fill="none" stroke="#06b6d4" stroke-width="0.8" opacity="0.5"/><path d="M11 19.5 Q16 18 21 19.5" fill="none" stroke="#06b6d4" stroke-width="0.8" opacity="0.5"/></svg>`,
-  'Diamond Kings': `<svg viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg"><defs><linearGradient id="dk-bg" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#1a1200"/><stop offset="100%" stop-color="#0a0800"/></linearGradient></defs><path d="M16 2 L28 6 L28 18 Q28 26 16 30 Q4 26 4 18 L4 6 Z" fill="url(#dk-bg)" stroke="#eab308" stroke-width="1.2"/><polygon points="16,8 22,14 16,20 10,14" fill="none" stroke="#eab308" stroke-width="1.5"/><rect x="14.5" y="6.5" width="3" height="3" rx="0.5" fill="#eab308" transform="rotate(45 16 8)"/><rect x="20.5" y="12.5" width="2.5" height="2.5" rx="0.5" fill="#eab308" opacity="0.8" transform="rotate(45 22 14)"/><rect x="14.5" y="18.5" width="2.5" height="2.5" rx="0.5" fill="#eab308" opacity="0.8" transform="rotate(45 16 20)"/><rect x="8.5" y="12.5" width="2.5" height="2.5" rx="0.5" fill="#eab308" opacity="0.8" transform="rotate(45 10 14)"/><circle cx="16" cy="14" r="1.5" fill="#eab308" opacity="0.6"/></svg>`,
-  'Roto Renegades': `<svg viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg"><defs><linearGradient id="rr-bg" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#0c1a3d"/><stop offset="100%" stop-color="#060e22"/></linearGradient></defs><path d="M16 2 L28 6 L28 18 Q28 26 16 30 Q4 26 4 18 L4 6 Z" fill="url(#rr-bg)" stroke="#3b82f6" stroke-width="1.2"/><path d="M16 8 A8 8 0 0 1 22 20" stroke="#3b82f6" stroke-width="2" fill="none" stroke-linecap="round"/><path d="M16 24 A8 8 0 0 1 10 12" stroke="#3b82f6" stroke-width="2" fill="none" stroke-linecap="round"/><polygon points="22,20 19,22 24,23" fill="#3b82f6"/><polygon points="10,12 13,10 8,9" fill="#3b82f6"/><circle cx="16" cy="16" r="2.5" fill="#3b82f6" opacity="0.5"/></svg>`,
-  'Ice Cold Killers': `<svg viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg"><defs><linearGradient id="ick-bg" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#071a2f"/><stop offset="100%" stop-color="#030f1c"/></linearGradient><linearGradient id="ick-s" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#bae6fd"/><stop offset="100%" stop-color="#0284c7"/></linearGradient></defs><path d="M16 2 L28 6 L28 18 Q28 26 16 30 Q4 26 4 18 L4 6 Z" fill="url(#ick-bg)" stroke="#eab308" stroke-width="1.2"/><line x1="16" y1="7" x2="16" y2="25" stroke="url(#ick-s)" stroke-width="2"/><line x1="7" y1="16" x2="25" y2="16" stroke="url(#ick-s)" stroke-width="2"/><line x1="9.5" y1="9.5" x2="22.5" y2="22.5" stroke="url(#ick-s)" stroke-width="1.5"/><line x1="22.5" y1="9.5" x2="9.5" y2="22.5" stroke="url(#ick-s)" stroke-width="1.5"/><line x1="16" y1="7" x2="13" y2="10" stroke="url(#ick-s)" stroke-width="1.2"/><line x1="16" y1="7" x2="19" y2="10" stroke="url(#ick-s)" stroke-width="1.2"/><line x1="16" y1="25" x2="13" y2="22" stroke="url(#ick-s)" stroke-width="1.2"/><line x1="16" y1="25" x2="19" y2="22" stroke="url(#ick-s)" stroke-width="1.2"/><circle cx="16" cy="16" r="2.5" fill="url(#ick-s)"/></svg>`,
-  'Puck Renegades': `<svg viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg"><defs><linearGradient id="pr2-bg" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#1a0d3d"/><stop offset="100%" stop-color="#0e0722"/></linearGradient></defs><path d="M16 2 L28 6 L28 18 Q28 26 16 30 Q4 26 4 18 L4 6 Z" fill="url(#pr2-bg)" stroke="#a78bfa" stroke-width="1.2"/><path d="M10 8 L10 20 Q10 23 14 23 L21 23" stroke="#a78bfa" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/><ellipse cx="19" cy="22" rx="4" ry="1.8" fill="#7c3aed" opacity="0.8"/><ellipse cx="19" cy="21.2" rx="4" ry="1.8" fill="#a78bfa"/></svg>`,
-  'Hat Trick Heroes': `<svg viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg"><defs><linearGradient id="hth-bg" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#071a1f"/><stop offset="100%" stop-color="#030f12"/></linearGradient></defs><path d="M16 2 L28 6 L28 18 Q28 26 16 30 Q4 26 4 18 L4 6 Z" fill="url(#hth-bg)" stroke="#06b6d4" stroke-width="1.2"/><polygon points="9,14 10,11 11,14 14,14 11.5,16 12.5,19 10,17 7.5,19 8.5,16 6,14" fill="#06b6d4"/><polygon points="16,13 16.8,10.5 17.6,13 20.2,13 18,14.5 18.8,17 16,15.5 13.2,17 14,14.5 11.8,13" fill="#22d3ee"/><polygon points="23,14 24,11 25,14 28,14 25.5,16 26.5,19 24,17 21.5,19 22.5,16 20,14" fill="#06b6d4"/></svg>`,
-  'The Dynasty': `<svg viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg"><defs><linearGradient id="dyn-bg" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#1a1200"/><stop offset="100%" stop-color="#0d0a00"/></linearGradient><linearGradient id="dyn-g" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#fde68a"/><stop offset="100%" stop-color="#b45309"/></linearGradient></defs><path d="M16 2 L28 6 L28 18 Q28 26 16 30 Q4 26 4 18 L4 6 Z" fill="url(#dyn-bg)" stroke="url(#dyn-g)" stroke-width="1.5"/><ellipse cx="9" cy="12" rx="1.5" ry="2.5" fill="#d97706" opacity="0.6" transform="rotate(-20 9 12)"/><ellipse cx="9.5" cy="16" rx="1.5" ry="2.5" fill="#d97706" opacity="0.6" transform="rotate(-10 9.5 16)"/><ellipse cx="10.5" cy="20" rx="1.5" ry="2" fill="#d97706" opacity="0.5" transform="rotate(10 10.5 20)"/><ellipse cx="23" cy="12" rx="1.5" ry="2.5" fill="#d97706" opacity="0.6" transform="rotate(20 23 12)"/><ellipse cx="22.5" cy="16" rx="1.5" ry="2.5" fill="#d97706" opacity="0.6" transform="rotate(10 22.5 16)"/><ellipse cx="21.5" cy="20" rx="1.5" ry="2" fill="#d97706" opacity="0.5" transform="rotate(-10 21.5 20)"/><text x="16" y="20" text-anchor="middle" font-size="9" font-weight="900" fill="url(#dyn-g)" font-family="Georgia,serif">I</text></svg>`,
-  'Purple People': `<svg viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg"><defs><linearGradient id="pp-bg" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#1a0d3d"/><stop offset="100%" stop-color="#0e0722"/></linearGradient></defs><path d="M16 2 L28 6 L28 18 Q28 26 16 30 Q4 26 4 18 L4 6 Z" fill="url(#pp-bg)" stroke="#a78bfa" stroke-width="1.2"/><circle cx="16" cy="12" r="4" fill="#a78bfa" opacity="0.8"/><path d="M8 24 Q8 17 16 17 Q24 17 24 24" fill="#a78bfa" opacity="0.7"/></svg>`,
   'Green Machine': `<svg viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg"><defs><linearGradient id="gm-bg" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#022c22"/><stop offset="100%" stop-color="#011a14"/></linearGradient></defs><path d="M16 2 L28 6 L28 18 Q28 26 16 30 Q4 26 4 18 L4 6 Z" fill="url(#gm-bg)" stroke="#10b981" stroke-width="1.2"/><path d="M16 8 L24 13 L24 21 L16 26 L8 21 L8 13 Z" fill="none" stroke="#10b981" stroke-width="1.5"/><text x="16" y="20" text-anchor="middle" font-size="8" font-weight="900" fill="#10b981" font-family="Impact,sans-serif">GM</text></svg>`,
-  'The Sluggers': `<svg viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg"><defs><linearGradient id="sl-bg" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#022c22"/><stop offset="100%" stop-color="#011a14"/></linearGradient></defs><path d="M16 2 L28 6 L28 18 Q28 26 16 30 Q4 26 4 18 L4 6 Z" fill="url(#sl-bg)" stroke="#10b981" stroke-width="1.2"/><rect x="14" y="6" width="4" height="16" rx="2" fill="#10b981" transform="rotate(-35 16 16)"/><circle cx="9" cy="22" r="3" fill="#10b981" opacity="0.7"/></svg>`,
-  'Bases Loaded FC': `<svg viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg"><defs><linearGradient id="bl-bg" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#1a1200"/><stop offset="100%" stop-color="#0a0800"/></linearGradient></defs><path d="M16 2 L28 6 L28 18 Q28 26 16 30 Q4 26 4 18 L4 6 Z" fill="url(#bl-bg)" stroke="#eab308" stroke-width="1.2"/><rect x="13.5" y="7" width="5" height="5" rx="0.8" fill="#eab308" transform="rotate(45 16 9.5)"/><rect x="8" y="13" width="4.5" height="4.5" rx="0.8" fill="#eab308" opacity="0.7" transform="rotate(45 10 15)"/><rect x="19.5" y="13" width="4.5" height="4.5" rx="0.8" fill="#eab308" opacity="0.7" transform="rotate(45 22 15)"/><circle cx="16" cy="18" r="2" fill="#eab308" opacity="0.5"/></svg>`,
-  'Ankle Takers': `<svg viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg"><defs><linearGradient id="at-bg" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#1a0d3d"/><stop offset="100%" stop-color="#0e0722"/></linearGradient></defs><path d="M16 2 L28 6 L28 18 Q28 26 16 30 Q4 26 4 18 L4 6 Z" fill="url(#at-bg)" stroke="#8b5cf6" stroke-width="1.2"/><path d="M10 22 Q10 14 16 12 Q22 10 23 15 Q24 20 19 21 L16 24 Z" fill="#8b5cf6" opacity="0.8"/><circle cx="16" cy="11" r="3" fill="#8b5cf6" opacity="0.6"/></svg>`,
+  'The Dynasty': `<svg viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg"><defs><linearGradient id="dyn-bg" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#1a1200"/><stop offset="100%" stop-color="#0d0a00"/></linearGradient><linearGradient id="dyn-g" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#fde68a"/><stop offset="100%" stop-color="#b45309"/></linearGradient></defs><path d="M16 2 L28 6 L28 18 Q28 26 16 30 Q4 26 4 18 L4 6 Z" fill="url(#dyn-bg)" stroke="url(#dyn-g)" stroke-width="1.5"/><ellipse cx="9" cy="12" rx="1.5" ry="2.5" fill="#d97706" opacity="0.6" transform="rotate(-20 9 12)"/><ellipse cx="9.5" cy="16" rx="1.5" ry="2.5" fill="#d97706" opacity="0.6" transform="rotate(-10 9.5 16)"/><ellipse cx="10.5" cy="20" rx="1.5" ry="2" fill="#d97706" opacity="0.5" transform="rotate(10 10.5 20)"/><ellipse cx="23" cy="12" rx="1.5" ry="2.5" fill="#d97706" opacity="0.6" transform="rotate(20 23 12)"/><ellipse cx="22.5" cy="16" rx="1.5" ry="2.5" fill="#d97706" opacity="0.6" transform="rotate(10 22.5 16)"/><ellipse cx="21.5" cy="20" rx="1.5" ry="2" fill="#d97706" opacity="0.5" transform="rotate(-10 21.5 20)"/><text x="16" y="20" text-anchor="middle" font-size="9" font-weight="900" fill="url(#dyn-g)" font-family="Georgia,serif">I</text></svg>`,
 }
 
 
@@ -469,74 +470,74 @@ const FanCards = defineComponent({
       // Card data per variant
       const cards = {
         default: [
-          { title: '⚡ Power Rankings', wk: 'WK 11', accent: '#eab308', rows: [
-            { rk: '1', name: 'Mahomes Magic', pts: '142.6', chg: '▲2', up: true, dot: '#eab308' },
-            { rk: '2', name: 'Trash Can Wins', pts: '128.4', chg: '▲1', up: true, dot: '#10b981' },
-            { rk: '3', name: 'The Algorithm', pts: '119.3', chg: '▼1', up: false, dot: '#6366f1' },
+          { title: '⚡ Power Rankings', wk: 'WK 14', accent: '#eab308', rows: [
+            { rk: '1', name: 'Diamond Kings', pts: '124.8', chg: '▲2', up: true, dot: '#eab308' },
+            { rk: '2', name: 'Sign Stealers', pts: '116.2', chg: '▲1', up: true, dot: '#10b981' },
+            { rk: '3', name: 'Roto Renegades', pts: '108.4', chg: '▼1', up: false, dot: '#3b82f6' },
           ]},
           { title: '⚔️ Matchup', wk: 'LIVE', accent: '#06b6d4', matchup: true,
-            t1: { name: 'Mahomes Magic', score: '142.6', dot: '#eab308', pct: 72 },
-            t2: { name: 'Trash Can Wins', score: '119.3', dot: '#3b82f6', pct: 28 }
+            t1: { name: 'Diamond Kings', score: '124.8', dot: '#eab308', pct: 74 },
+            t2: { name: 'Sign Stealers', score: '104.1', dot: '#10b981', pct: 26 }
           },
           { title: '🏆 Legacy', wk: 'ALL TIME', accent: '#eab308', rows: [
-            { rk: '1', name: 'Mahomes Magic', pts: '1,847', dot: '#eab308', up: true },
-            { rk: '2', name: 'Trash Can Wins', pts: '1,623', dot: '#10b981', up: true },
-            { rk: '3', name: 'The Algorithm', pts: '1,401', dot: '#6366f1', up: false },
+            { rk: '1', name: 'Diamond Kings', pts: '1,912', dot: '#eab308', up: true },
+            { rk: '2', name: 'Sign Stealers', pts: '1,748', dot: '#10b981', up: true },
+            { rk: '3', name: 'Roto Renegades', pts: '1,531', dot: '#3b82f6', up: false },
           ]},
         ],
         pr: [
-          { title: '⚡ Power Rankings', wk: 'WK 11', accent: '#eab308', rows: [
-            { rk: '1', name: 'Mahomes Magic', pts: '142.6', chg: '▲2', up: true, dot: '#eab308' },
-            { rk: '2', name: 'Trash Can Wins', pts: '128.4', chg: '▲1', up: true, dot: '#10b981' },
-            { rk: '3', name: 'The Algorithm', pts: '119.3', chg: '▼1', up: false, dot: '#6366f1' },
+          { title: '⚡ Power Rankings', wk: 'WK 14', accent: '#eab308', rows: [
+            { rk: '1', name: 'Diamond Kings', pts: '124.8', chg: '▲2', up: true, dot: '#eab308' },
+            { rk: '2', name: 'Sign Stealers', pts: '116.2', chg: '▲1', up: true, dot: '#10b981' },
+            { rk: '3', name: 'Roto Renegades', pts: '108.4', chg: '▼1', up: false, dot: '#3b82f6' },
           ]},
-          { title: '⚡ Power Rankings', wk: 'WK 10', accent: '#eab308', rows: [
-            { rk: '1', name: 'Trash Can Wins', pts: '138.2', chg: '▲3', up: true, dot: '#10b981' },
-            { rk: '2', name: 'Mahomes Magic', pts: '131.4', chg: '▼1', up: false, dot: '#eab308' },
-            { rk: '3', name: 'Waiver Wire Kid', pts: '124.1', chg: '▲2', up: true, dot: '#ef4444' },
+          { title: '⚡ Power Rankings', wk: 'WK 13', accent: '#eab308', rows: [
+            { rk: '1', name: 'Sign Stealers', pts: '120.7', chg: '▲3', up: true, dot: '#10b981' },
+            { rk: '2', name: 'Diamond Kings', pts: '114.3', chg: '▼1', up: false, dot: '#eab308' },
+            { rk: '3', name: 'The Sluggers', pts: '109.8', chg: '▲2', up: true, dot: '#ef4444' },
           ]},
-          { title: '⚡ Power Rankings', wk: 'WK 9', accent: '#eab308', rows: [
-            { rk: '1', name: 'Waiver Wire Kid', pts: '148.7', chg: '▲4', up: true, dot: '#ef4444' },
-            { rk: '2', name: 'The Algorithm', pts: '136.2', chg: '▲1', up: true, dot: '#6366f1' },
-            { rk: '3', name: 'Mahomes Magic', pts: '128.9', chg: '▼2', up: false, dot: '#eab308' },
+          { title: '⚡ Power Rankings', wk: 'WK 12', accent: '#eab308', rows: [
+            { rk: '1', name: 'The Sluggers', pts: '131.2', chg: '▲4', up: true, dot: '#ef4444' },
+            { rk: '2', name: 'Roto Renegades', pts: '118.6', chg: '▲1', up: true, dot: '#3b82f6' },
+            { rk: '3', name: 'Diamond Kings', pts: '111.4', chg: '▼2', up: false, dot: '#eab308' },
           ]},
         ],
         wp: [
           { title: '⚔️ Matchup', wk: 'LIVE', accent: '#06b6d4', matchup: true,
-            t1: { name: 'Mahomes Magic', score: '142.6', dot: '#eab308', pct: 72 },
-            t2: { name: 'Trash Can Wins', score: '119.3', dot: '#3b82f6', pct: 28 }
+            t1: { name: 'Diamond Kings', score: '124.8', dot: '#eab308', pct: 74 },
+            t2: { name: 'Sign Stealers', score: '104.1', dot: '#10b981', pct: 26 }
           },
           { title: '⚔️ Matchup', wk: 'LIVE', accent: '#06b6d4', matchup: true,
-            t1: { name: 'The Algorithm', score: '88.4', dot: '#6366f1', pct: 61 },
-            t2: { name: 'Waiver Wire Kid', score: '71.2', dot: '#ef4444', pct: 39 }
+            t1: { name: 'Roto Renegades', score: '96.8', dot: '#3b82f6', pct: 58 },
+            t2: { name: 'The Sluggers', score: '88.4', dot: '#ef4444', pct: 42 }
           },
           { title: '⚔️ Matchup', wk: 'LIVE', accent: '#06b6d4', matchup: true,
-            t1: { name: 'Bench Boss', score: '64.1', dot: '#06b6d4', pct: 44 },
-            t2: { name: 'Toilet Bowl FC', score: '58.9', dot: '#4b5563', pct: 56 }
+            t1: { name: 'Ace Gang', score: '79.2', dot: '#8b5cf6', pct: 43 },
+            t2: { name: 'Bases Loaded FC', score: '84.6', dot: '#f97316', pct: 57 }
           },
         ],
         draft: [
           { title: '📋 Draft Grades', wk: 'DRAFT', accent: '#8b5cf6', draftRows: [
-            { pick: '1.03', name: 'Justin Jefferson', pos: 'WR', par: '+42.1', grade: 'A+', gold: true },
-            { pick: '2.14', name: 'Davante Adams', pos: 'WR', par: '+18.7', grade: 'A', green: true },
-            { pick: '5.51', name: 'Stefon Diggs', pos: 'WR', par: '-11.8', grade: 'D', bust: true },
+            { pick: '1.02', name: 'Shohei Ohtani', pos: 'SP', par: '+58.4', grade: 'A+', gold: true },
+            { pick: '2.11', name: 'Juan Soto', pos: 'OF', par: '+24.6', grade: 'A', green: true },
+            { pick: '5.03', name: 'Jose Abreu', pos: '1B', par: '-14.2', grade: 'D', bust: true },
           ]},
           { title: '📋 Draft Grades', wk: 'DRAFT', accent: '#8b5cf6', draftRows: [
-            { pick: '1.01', name: 'CeeDee Lamb', pos: 'WR', par: '+38.2', grade: 'A+', gold: true },
-            { pick: '2.08', name: 'Derrick Henry', pos: 'RB', par: '+22.1', grade: 'A', green: true },
-            { pick: '3.04', name: 'Saquon Barkley', pos: 'RB', par: '-31.4', grade: 'D', bust: true },
+            { pick: '1.04', name: 'Mookie Betts', pos: 'OF', par: '+41.7', grade: 'A+', gold: true },
+            { pick: '2.06', name: 'José Ramírez', pos: '3B', par: '+19.8', grade: 'A', green: true },
+            { pick: '3.08', name: 'Spencer Strider', pos: 'SP', par: '-28.1', grade: 'D', bust: true },
           ]},
           { title: '📋 Draft Grades', wk: 'DRAFT', accent: '#8b5cf6', draftRows: [
-            { pick: '1.05', name: 'Tyreek Hill', pos: 'WR', par: '+28.6', grade: 'A+', gold: true },
-            { pick: '4.02', name: 'Travis Kelce', pos: 'TE', par: '+31.4', grade: 'A+', gold: true },
-            { pick: '3.11', name: 'Tony Pollard', pos: 'RB', par: '-4.2', grade: 'C', neutral: true },
+            { pick: '1.07', name: 'Ronald Acuña Jr', pos: 'OF', par: '+51.2', grade: 'A+', gold: true },
+            { pick: '3.01', name: 'Bobby Witt Jr', pos: 'SS', par: '+32.4', grade: 'A+', gold: true },
+            { pick: '4.09', name: 'Gerrit Cole', pos: 'SP', par: '-6.1', grade: 'C', neutral: true },
           ]},
         ],
         history: [
           { title: '🏆 Legacy Standings', wk: 'ALL TIME', accent: '#eab308', rows: [
-            { rk: '1', name: 'Mahomes Magic', pts: '1,847', dot: '#eab308', up: true },
-            { rk: '2', name: 'Trash Can Wins', pts: '1,623', dot: '#10b981', up: false },
-            { rk: '3', name: 'The Algorithm', pts: '1,401', dot: '#6366f1', up: false },
+            { rk: '1', name: 'Diamond Kings', pts: '1,912', dot: '#eab308', up: true },
+            { rk: '2', name: 'Sign Stealers', pts: '1,748', dot: '#10b981', up: false },
+            { rk: '3', name: 'Roto Renegades', pts: '1,531', dot: '#3b82f6', up: false },
           ]},
           { title: '⚔️ H2H All-Time', wk: 'ALL TIME', accent: '#eab308', h2h: true },
           { title: '🏅 Season Awards', wk: 'HISTORY', accent: '#eab308', awards: true },
@@ -544,41 +545,41 @@ const FanCards = defineComponent({
         h2h: [
           { title: '⚔️ H2H Records', wk: 'ALL TIME', accent: '#ef4444', h2h: true },
           { title: '🏆 Championships', wk: 'ALL TIME', accent: '#eab308', rows: [
-            { rk: '🏆', name: 'Mahomes Magic', pts: '3 titles', dot: '#eab308', up: true },
-            { rk: '🥈', name: 'Trash Can Wins', pts: '1 title', dot: '#10b981', up: false },
-            { rk: '0', name: 'Toilet Bowl FC', pts: '0 titles', dot: '#4b5563', up: false },
+            { rk: '🏆', name: 'Diamond Kings', pts: '3 titles', dot: '#eab308', up: true },
+            { rk: '🥈', name: 'Sign Stealers', pts: '1 title', dot: '#10b981', up: false },
+            { rk: '0', name: 'Roto Renegades', pts: '0 titles', dot: '#3b82f6', up: false },
           ]},
-          { title: '📊 Season Finishes', wk: 'HISTORY', accent: '#6366f1', rows: [
-            { rk: '1', name: 'Mahomes Magic', pts: 'Avg 1.3', dot: '#eab308', up: true },
-            { rk: '2', name: 'Trash Can Wins', pts: 'Avg 2.0', dot: '#10b981', up: false },
-            { rk: '3', name: 'The Algorithm', pts: 'Avg 3.0', dot: '#6366f1', up: false },
+          { title: '📊 Finish History', wk: 'HISTORY', accent: '#6366f1', rows: [
+            { rk: '1', name: 'Diamond Kings', pts: 'Avg 1.4', dot: '#eab308', up: true },
+            { rk: '2', name: 'Sign Stealers', pts: 'Avg 2.1', dot: '#10b981', up: false },
+            { rk: '3', name: 'Roto Renegades', pts: 'Avg 3.2', dot: '#3b82f6', up: false },
           ]},
         ],
         bball: [
-          { title: '⚡ Power Rankings', wk: 'WK 8', accent: '#f97316', rows: [
-            { rk: '1', name: 'Hoop Dreams FC', pts: '8.2', chg: '▲1', up: true, dot: '#f97316' },
-            { rk: '2', name: 'Buckets Brigade', pts: '7.4', chg: '—', up: false, dot: '#06b6d4' },
-            { rk: '3', name: 'Ankle Takers', pts: '6.8', chg: '▼1', up: false, dot: '#8b5cf6' },
+          { title: '⚡ Category Rankings', wk: 'WK 14', accent: '#3b82f6', rows: [
+            { rk: '1', name: 'Diamond Kings', pts: '8W-2L', chg: '▲1', up: true, dot: '#eab308' },
+            { rk: '2', name: 'Roto Renegades', pts: '7W-3L', chg: '—', up: false, dot: '#3b82f6' },
+            { rk: '3', name: 'The Sluggers', pts: '6W-4L', chg: '▼1', up: false, dot: '#ef4444' },
           ]},
-          { title: '⚔️ Matchup', wk: 'LIVE', accent: '#f97316', matchup: true,
-            t1: { name: 'Hoop Dreams FC', score: '6W-3L', dot: '#f97316', pct: 64 },
-            t2: { name: 'Buckets Brigade', score: '5W-4L', dot: '#06b6d4', pct: 36 }
+          { title: '⚔️ Matchup', wk: 'WK 14', accent: '#3b82f6', matchup: true,
+            t1: { name: 'Diamond Kings', score: '8W-2L', dot: '#eab308', pct: 67 },
+            t2: { name: 'Roto Renegades', score: '6W-4L', dot: '#3b82f6', pct: 33 }
           },
-          { title: '📋 Draft Grades', wk: 'DRAFT', accent: '#f97316', draftRows: [
-            { pick: '1.02', name: 'Nikola Jokic', pos: 'C', par: '+44.1', grade: 'A+', gold: true },
-            { pick: '2.11', name: 'Luka Doncic', pos: 'PG', par: '+18.3', grade: 'A', green: true },
-            { pick: '3.04', name: 'Kawhi Leonard', pos: 'SF', par: '-12.8', grade: 'D', bust: true },
+          { title: '📋 Draft Grades', wk: 'DRAFT', accent: '#3b82f6', draftRows: [
+            { pick: '1.03', name: 'Yordan Alvarez', pos: 'OF', par: '+47.2', grade: 'A+', gold: true },
+            { pick: '2.08', name: 'Trea Turner', pos: 'SS', par: '+21.3', grade: 'A', green: true },
+            { pick: '4.01', name: 'Clayton Kershaw', pos: 'SP', par: '-19.4', grade: 'D', bust: true },
           ]},
         ],
         baseball: [
           { title: '⚡ Power Rankings', wk: 'WK 14', accent: '#3b82f6', rows: [
-            { rk: '1', name: 'Diamond Kings', pts: '8.1', chg: '▲2', up: true, dot: '#eab308' },
-            { rk: '2', name: 'Roto Renegades', pts: '7.1', chg: '▼1', up: false, dot: '#3b82f6' },
-            { rk: '3', name: 'The Sluggers', pts: '6.4', chg: '▲1', up: true, dot: '#10b981' },
+            { rk: '1', name: 'Diamond Kings', pts: '124.8', chg: '▲2', up: true, dot: '#eab308' },
+            { rk: '2', name: 'Roto Renegades', pts: '113.1', chg: '▼1', up: false, dot: '#3b82f6' },
+            { rk: '3', name: 'The Sluggers', pts: '104.7', chg: '▲1', up: true, dot: '#ef4444' },
           ]},
           { title: '⚔️ Matchup', wk: 'WK 14', accent: '#3b82f6', matchup: true,
-            t1: { name: 'Diamond Kings', score: '7W-2L', dot: '#eab308', pct: 69 },
-            t2: { name: 'Roto Renegades', score: '5W-4L', dot: '#3b82f6', pct: 31 }
+            t1: { name: 'Diamond Kings', score: '124.8', dot: '#eab308', pct: 69 },
+            t2: { name: 'Roto Renegades', score: '108.3', dot: '#3b82f6', pct: 31 }
           },
           { title: '📋 Draft Grades', wk: 'DRAFT', accent: '#3b82f6', draftRows: [
             { pick: '1.01', name: 'Ronald Acuña Jr', pos: 'OF', par: '+51.2', grade: 'A+', gold: true },
@@ -587,36 +588,29 @@ const FanCards = defineComponent({
           ]},
         ],
         hockey: [
-          { title: '⚡ Power Rankings', wk: 'WK 12', accent: '#a78bfa', rows: [
-            { rk: '1', name: 'Ice Cold Killers', pts: '7.6', chg: '▲1', up: true, dot: '#eab308' },
-            { rk: '2', name: 'Puck Renegades', pts: '6.8', chg: '—', up: false, dot: '#a78bfa' },
-            { rk: '3', name: 'Hat Trick Heroes', pts: '6.1', chg: '▼1', up: false, dot: '#06b6d4' },
+          { title: '🏆 Legacy Standings', wk: 'ALL TIME', accent: '#eab308', rows: [
+            { rk: '1', name: 'Diamond Kings', pts: '1,912', dot: '#eab308', up: true },
+            { rk: '2', name: 'Sign Stealers', pts: '1,748', dot: '#10b981', up: false },
+            { rk: '3', name: 'The Sluggers', pts: '1,489', dot: '#ef4444', up: false },
           ]},
-          { title: '⚔️ Matchup', wk: 'LIVE', accent: '#a78bfa', matchup: true,
-            t1: { name: 'Ice Cold Killers', score: '5W-2L', dot: '#eab308', pct: 67 },
-            t2: { name: 'Puck Renegades', score: '4W-3L', dot: '#a78bfa', pct: 33 }
-          },
-          { title: '🏆 Legacy', wk: 'ALL TIME', accent: '#a78bfa', rows: [
-            { rk: '1', name: 'Ice Cold Killers', pts: '1,642', dot: '#eab308', up: true },
-            { rk: '2', name: 'Puck Renegades', pts: '1,489', dot: '#a78bfa', up: false },
-            { rk: '3', name: 'Hat Trick Heroes', pts: '1,271', dot: '#06b6d4', up: false },
-          ]},
+          { title: '⚔️ H2H All-Time', wk: 'ALL TIME', accent: '#eab308', h2h: true },
+          { title: '🏅 Season Awards', wk: 'HISTORY', accent: '#eab308', awards: true },
         ],
         compact: [
-          { title: '⚡ Power Rankings', wk: 'WK 11', accent: '#eab308', rows: [
-            { rk: '1', name: 'Mahomes Magic', pts: '142.6', chg: '▲2', up: true, dot: '#eab308' },
-            { rk: '2', name: 'Trash Can Wins', pts: '128.4', chg: '▲1', up: true, dot: '#10b981' },
-            { rk: '3', name: 'The Algorithm', pts: '119.3', chg: '▼1', up: false, dot: '#6366f1' },
+          { title: '⚡ Power Rankings', wk: 'WK 14', accent: '#eab308', rows: [
+            { rk: '1', name: 'Diamond Kings', pts: '124.8', chg: '▲2', up: true, dot: '#eab308' },
+            { rk: '2', name: 'Sign Stealers', pts: '116.2', chg: '▲1', up: true, dot: '#10b981' },
+            { rk: '3', name: 'Roto Renegades', pts: '108.4', chg: '▼1', up: false, dot: '#3b82f6' },
           ]},
           { title: '📋 Draft Grades', wk: 'DRAFT', accent: '#8b5cf6', draftRows: [
-            { pick: '1.03', name: 'Justin Jefferson', pos: 'WR', par: '+42.1', grade: 'A+', gold: true },
-            { pick: '2.14', name: 'Davante Adams', pos: 'WR', par: '+18.7', grade: 'A', green: true },
-            { pick: '5.51', name: 'Stefon Diggs', pos: 'WR', par: '-11.8', grade: 'D', bust: true },
+            { pick: '1.02', name: 'Shohei Ohtani', pos: 'SP', par: '+58.4', grade: 'A+', gold: true },
+            { pick: '2.11', name: 'Juan Soto', pos: 'OF', par: '+24.6', grade: 'A', green: true },
+            { pick: '5.03', name: 'Jose Abreu', pos: '1B', par: '-14.2', grade: 'D', bust: true },
           ]},
           { title: '🏆 Legacy', wk: 'ALL TIME', accent: '#eab308', rows: [
-            { rk: '1', name: 'Mahomes Magic', pts: '1,847', dot: '#eab308', up: true },
-            { rk: '2', name: 'Trash Can Wins', pts: '1,623', dot: '#10b981', up: false },
-            { rk: '3', name: 'The Algorithm', pts: '1,401', dot: '#6366f1', up: false },
+            { rk: '1', name: 'Diamond Kings', pts: '1,912', dot: '#eab308', up: true },
+            { rk: '2', name: 'Sign Stealers', pts: '1,748', dot: '#10b981', up: false },
+            { rk: '3', name: 'Roto Renegades', pts: '1,531', dot: '#3b82f6', up: false },
           ]},
         ],
       }
@@ -660,16 +654,16 @@ const FanCards = defineComponent({
       ]
 
       const renderH2HCard = () => h('div', { class: 'fc-h2h' }, [
-        h('div', { class: 'fc-h2h-row' }, [ h('div', { class: 'fc-h2h-lbl' }, ''), h('span', { class: 'fc-h2h-hd' }, 'MM'), h('span', { class: 'fc-h2h-hd' }, 'TC'), h('span', { class: 'fc-h2h-hd' }, 'TA') ]),
-        h('div', { class: 'fc-h2h-row' }, [ h('div', { class: 'fc-h2h-lbl' }, 'Mahomes Magic'), h('span', { class: 'fc-h2h-cell self' }, '—'), h('span', { class: 'fc-h2h-cell win' }, '8-4'), h('span', { class: 'fc-h2h-cell win' }, '11-3') ]),
-        h('div', { class: 'fc-h2h-row' }, [ h('div', { class: 'fc-h2h-lbl' }, 'Trash Can Wins'), h('span', { class: 'fc-h2h-cell loss' }, '4-8'), h('span', { class: 'fc-h2h-cell self' }, '—'), h('span', { class: 'fc-h2h-cell win' }, '7-5') ]),
-        h('div', { class: 'fc-h2h-row' }, [ h('div', { class: 'fc-h2h-lbl' }, 'The Algorithm'), h('span', { class: 'fc-h2h-cell loss' }, '3-11'), h('span', { class: 'fc-h2h-cell loss' }, '5-7'), h('span', { class: 'fc-h2h-cell self' }, '—') ]),
+        h('div', { class: 'fc-h2h-row' }, [ h('div', { class: 'fc-h2h-lbl' }, ''), h('span', { class: 'fc-h2h-hd' }, 'DK'), h('span', { class: 'fc-h2h-hd' }, 'SS'), h('span', { class: 'fc-h2h-hd' }, 'RR') ]),
+        h('div', { class: 'fc-h2h-row' }, [ h('div', { class: 'fc-h2h-lbl' }, 'Diamond Kings'), h('span', { class: 'fc-h2h-cell self' }, '—'), h('span', { class: 'fc-h2h-cell win' }, '9-3'), h('span', { class: 'fc-h2h-cell win' }, '11-1') ]),
+        h('div', { class: 'fc-h2h-row' }, [ h('div', { class: 'fc-h2h-lbl' }, 'Sign Stealers'), h('span', { class: 'fc-h2h-cell loss' }, '3-9'), h('span', { class: 'fc-h2h-cell self' }, '—'), h('span', { class: 'fc-h2h-cell win' }, '7-5') ]),
+        h('div', { class: 'fc-h2h-row' }, [ h('div', { class: 'fc-h2h-lbl' }, 'Roto Renegades'), h('span', { class: 'fc-h2h-cell loss' }, '1-11'), h('span', { class: 'fc-h2h-cell loss' }, '5-7'), h('span', { class: 'fc-h2h-cell self' }, '—') ]),
       ])
 
       const renderAwardsCard = () => h('div', { class: 'fc-awards' }, [
-        h('div', { class: 'fc-award-row' }, [ h('span', { class: 'fc-award-icon' }, '🏆'), h('span', { class: 'fc-award-label' }, 'Most Points Ever'), h('span', { class: 'fc-award-val gold' }, '187.4') ]),
-        h('div', { class: 'fc-award-row' }, [ h('span', { class: 'fc-award-icon' }, '💀'), h('span', { class: 'fc-award-label' }, 'Worst Blowout'), h('span', { class: 'fc-award-val red' }, '-74.1') ]),
-        h('div', { class: 'fc-award-row' }, [ h('span', { class: 'fc-award-icon' }, '😤'), h('span', { class: 'fc-award-label' }, 'Longest Drought'), h('span', { class: 'fc-award-val' }, '4 seasons') ]),
+        h('div', { class: 'fc-award-row' }, [ h('span', { class: 'fc-award-icon' }, '🏆'), h('span', { class: 'fc-award-label' }, 'Highest Single Week'), h('span', { class: 'fc-award-val gold' }, '152.4 pts') ]),
+        h('div', { class: 'fc-award-row' }, [ h('span', { class: 'fc-award-icon' }, '💀'), h('span', { class: 'fc-award-label' }, 'Worst Blown Lead'), h('span', { class: 'fc-award-val red' }, '7 cats → 2') ]),
+        h('div', { class: 'fc-award-row' }, [ h('span', { class: 'fc-award-icon' }, '😤'), h('span', { class: 'fc-award-label' }, 'Longest Dry Spell'), h('span', { class: 'fc-award-val' }, '4 seasons') ]),
       ])
 
       const renderCard = (card: any, idx: number) => {
