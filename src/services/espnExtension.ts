@@ -17,6 +17,22 @@ export interface EspnCookieResult {
   error?: string
 }
 
+export interface EspnLeague {
+  id: string
+  name: string
+  size: number
+  sport: 'football' | 'baseball' | 'basketball' | 'hockey'
+  season: number
+  scoringType: string
+}
+
+export interface EspnLeaguesResult {
+  leagues: EspnLeague[]
+  espn_s2?: string | null
+  swid?: string | null
+  error?: string
+}
+
 /**
  * Check if the Chrome extension is installed and responsive
  */
@@ -108,8 +124,42 @@ export function getExtensionId(): string {
   return EXTENSION_ID
 }
 
+/**
+ * Request all ESPN leagues for the logged-in user from the Chrome extension
+ */
+export async function getEspnLeaguesFromExtension(): Promise<EspnLeaguesResult> {
+  if (!window.chrome?.runtime?.sendMessage) {
+    return { leagues: [], error: 'extension_not_installed' }
+  }
+
+  try {
+    const response = await sendExtensionMessage({ action: 'getEspnLeagues' }, 10000)
+
+    if (!response) {
+      return { leagues: [], error: 'extension_not_installed' }
+    }
+
+    if (response.error === 'not_logged_in') {
+      return { leagues: [], error: 'not_logged_in' }
+    }
+
+    if (response.error) {
+      return { leagues: [], error: response.error }
+    }
+
+    return {
+      leagues: response.leagues || [],
+      espn_s2: response.espn_s2 || null,
+      swid: response.swid || null,
+    }
+  } catch (err: any) {
+    console.log('[ESPN Extension] getEspnLeagues failed:', err.message)
+    return { leagues: [], error: 'extension_not_installed' }
+  }
+}
+
 // Internal helper to send a message to the extension with timeout
-function sendExtensionMessage(message: any, timeoutMs = 3000): Promise<any> {
+function sendExtensionMessage(message: any, timeoutMs = 5000): Promise<any> {
   return new Promise((resolve, reject) => {
     const timer = setTimeout(() => {
       reject(new Error('Extension response timed out'))
