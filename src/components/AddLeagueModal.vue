@@ -549,36 +549,52 @@
 
             <!-- ── NOT CHROME: Show requirement ── -->
             <div v-if="!espnIsChrome" class="space-y-3">
-              <div class="bg-amber-500/10 border border-amber-500/30 rounded-xl p-4">
-                <div class="flex items-start gap-3">
-                  <svg class="w-5 h-5 text-amber-400 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                  </svg>
-                  <div>
-                    <p class="text-sm text-amber-200 font-medium mb-1">Chrome required for ESPN</p>
-                    <p class="text-xs text-amber-200/70 leading-relaxed">
-                      ESPN leagues require our Chrome extension to securely import your login cookies. Please open this page in Chrome to connect your ESPN league.
-                    </p>
-                    <a
-                      href="https://www.google.com/chrome/"
-                      target="_blank"
-                      class="inline-flex items-center gap-1 mt-2 text-xs text-amber-300 hover:text-amber-200 underline"
-                    >
-                      Download Chrome
-                      <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+              <div v-if="!espnLoginSuccess" class="space-y-3">
+                <div class="bg-dark-bg/60 border border-dark-border rounded-xl p-4">
+                  <div class="flex items-center gap-3 mb-3">
+                    <div class="w-10 h-10 rounded-xl bg-red-500/20 flex items-center justify-center flex-shrink-0">
+                      <img src="/espn-logo.svg" class="w-6 h-6" alt="ESPN" />
+                    </div>
+                    <div>
+                      <p class="text-sm text-dark-text font-semibold">Sign in with ESPN</p>
+                      <p class="text-xs text-dark-textMuted">Use your ESPN account credentials</p>
+                    </div>
+                  </div>
+                  <div class="space-y-3">
+                    <div>
+                      <label class="block text-xs font-medium text-dark-textMuted mb-1">ESPN Email</label>
+                      <input v-model="espnLoginEmail" type="email" placeholder="your@email.com" autocomplete="email"
+                        class="w-full px-3 py-2.5 rounded-lg bg-dark-bg border border-dark-border focus:border-[#0719b2] focus:ring-1 focus:ring-[#0719b2] transition-colors text-dark-text text-sm"
+                        @keyup.enter="espnLoginPassword && loginToEspn()" />
+                    </div>
+                    <div>
+                      <label class="block text-xs font-medium text-dark-textMuted mb-1">Password</label>
+                      <input v-model="espnLoginPassword" type="password" placeholder="Your ESPN password" autocomplete="current-password"
+                        class="w-full px-3 py-2.5 rounded-lg bg-dark-bg border border-dark-border focus:border-[#0719b2] focus:ring-1 focus:ring-[#0719b2] transition-colors text-dark-text text-sm"
+                        @keyup.enter="espnLoginEmail && loginToEspn()" />
+                    </div>
+                    <div v-if="espnLoginError" class="text-red-400 text-xs py-1">{{ espnLoginError }}</div>
+                    <button @click="loginToEspn" :disabled="!espnLoginEmail.trim() || !espnLoginPassword.trim() || espnLoginLoading"
+                      class="w-full px-4 py-2.5 rounded-xl bg-[#0719b2] text-white text-sm font-semibold hover:bg-[#0719b2]/80 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2">
+                      <svg v-if="espnLoginLoading" class="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                       </svg>
-                    </a>
+                      <span>{{ espnLoginLoading ? 'Signing in...' : 'Sign In to ESPN' }}</span>
+                    </button>
                   </div>
                 </div>
+                <p class="text-center text-xs text-dark-textMuted">Credentials go directly to ESPN and are never stored by UFD.</p>
               </div>
-
-              <!-- Manual fallback toggle for non-Chrome -->
-              <button
-                @click="espnShowManualFields = !espnShowManualFields"
-                class="w-full text-xs text-dark-textMuted hover:text-dark-text transition-colors py-1"
-              >
-                {{ espnShowManualFields ? '▲ Hide manual entry' : '▼ Or enter cookies manually' }}
+              <div v-if="espnLoginSuccess" class="bg-green-500/10 border border-green-500/30 rounded-xl p-3 flex items-center gap-3">
+                <svg class="w-4 h-4 text-green-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <p class="text-xs text-green-300">Signed in to ESPN ✓</p>
+              </div>
+              <button @click="espnShowManualFields = !espnShowManualFields"
+                class="w-full text-xs text-dark-textMuted hover:text-dark-text transition-colors py-1">
+                {{ espnShowManualFields ? '▲ Hide manual cookie entry' : '▼ Or enter cookies manually' }}
               </button>
             </div>
 
@@ -973,6 +989,14 @@ const espnLoadingLeagues = ref(false)
 const espnLeaguesError = ref('')
 const espnExtensionCredentials = ref<{ espn_s2: string; swid: string } | null>(null)
 
+// ESPN email/password login (mobile / no-extension flow)
+const espnLoginEmail = ref('')
+const espnLoginPassword = ref('')
+const espnLoginLoading = ref(false)
+const espnLoginError = ref('')
+const espnLoginSuccess = ref(false)
+const espnShowPasswordLogin = ref(false)
+
 // Available sports for ESPN
 const availableSports = [
   { id: 'football' as Sport, label: 'NFL', icon: '🏈' },
@@ -1112,6 +1136,10 @@ watch(() => props.isOpen, async (isOpen) => {
     
     // Reset ESPN state
     espnLeagueId.value = ''
+  espnLoginEmail.value = ''
+  espnLoginPassword.value = ''
+  espnLoginError.value = ''
+  espnLoginSuccess.value = false
     espnSport.value = 'football'
     espnSeason.value = currentSeasonYear.value
     espnNeedsCredentials.value = false
@@ -1696,4 +1724,54 @@ async function connectEspnPrivate() {
     espnDiscoveryStatus.value = ''
   }
 }
+
+// ── ESPN Email/Password Login ─────────────────────────────────────────────
+async function loginToEspn() {
+  if (!espnLoginEmail.value.trim() || !espnLoginPassword.value.trim()) return
+  espnLoginLoading.value = true
+  espnLoginError.value = ''
+  espnLoginSuccess.value = false
+  try {
+    const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || ''
+    let accessToken = ''
+    try {
+      const keys = Object.keys(localStorage)
+      const authKey = keys.find(k => k.startsWith('sb-') && k.endsWith('-auth-token'))
+      if (authKey) {
+        const parsed = JSON.parse(localStorage.getItem(authKey) || '{}')
+        accessToken = parsed?.access_token || ''
+      }
+    } catch {}
+    const resp = await fetch(`${supabaseUrl}/functions/v1/espn-login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${accessToken}` },
+      body: JSON.stringify({ email: espnLoginEmail.value.trim(), password: espnLoginPassword.value }),
+    })
+    const data = await resp.json()
+    if (!resp.ok || data.error) {
+      if (data.error === 'invalid_credentials') espnLoginError.value = 'Incorrect email or password.'
+      else if (data.error === 'rate_limited') espnLoginError.value = 'Too many attempts. Please wait a few minutes.'
+      else espnLoginError.value = data.message || 'Login failed. Please try again.'
+      return
+    }
+    if (!data.espn_s2 || !data.swid) {
+      espnLoginError.value = 'Login succeeded but credentials could not be read. Try entering cookies manually.'
+      return
+    }
+    espnExtensionCredentials.value = { espn_s2: data.espn_s2, swid: data.swid }
+    espnS2Cookie.value = data.espn_s2
+    espnSwidCookie.value = data.swid
+    const { espnService } = await import('@/services/espn')
+    espnService.setCredentials(data.espn_s2, data.swid)
+    espnLoginSuccess.value = true
+    console.log('[ESPN Login] Credentials obtained via email/password flow')
+  } catch (err: any) {
+    console.error('[ESPN Login] Error:', err)
+    espnLoginError.value = 'Could not reach ESPN. Please try again.'
+  } finally {
+    espnLoginLoading.value = false
+    espnLoginPassword.value = ''
+  }
+}
+
 </script>
