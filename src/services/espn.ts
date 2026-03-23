@@ -373,6 +373,117 @@ export class EspnFantasyService {
   }
 
   // ============================================================
+  // User Leagues — fetches all leagues for authenticated user
+  // ============================================================
+
+  /**
+   * Get all leagues for the currently authenticated user across all sports.
+   * Uses the existing Supabase proxy so espn_s2/SWID are sent server-side.
+   * Call setCredentials() before calling this.
+   */
+  async getUserLeagues(): Promise<Array<{
+    id: string
+    name: string
+    size: number
+    sport: import('@/types/supabase').Sport
+    season: number
+    scoringType: string
+  }>> {
+    if (!this.credentials?.espn_s2 || !this.credentials?.swid) {
+      throw new Error('ESPN credentials required to fetch user leagues')
+    }
+
+    const SPORT_CONFIGS: Array<{ gameId: string; sport: import('@/types/supabase').Sport }> = [
+      { gameId: 'ffl', sport: 'football'   },
+      { gameId: 'flb', sport: 'baseball'   },
+      { gameId: 'fba', sport: 'basketball' },
+      { gameId: 'fhl', sport: 'hockey'     },
+    ]
+
+    const getSeasonYear = (sport: string) => {
+      const now = new Date()
+      const y = now.getFullYear()
+      const m = now.getMonth()
+      const starts: Record<string, number> = {
+        football: 8, baseball: 2, basketball: 9, hockey: 9
+      }
+      return m < (starts[sport] ?? 8) ? y - 1 : y
+    }
+
+    // Get access token for proxy auth
+    let accessToken: string | null = null
+    try {
+      const keys = Object.keys(localStorage)
+      const authKey = keys.find(k => k.startsWith('sb-') && k.endsWith('-auth-token'))
+      if (authKey) {
+        const parsed = JSON.parse(localStorage.getItem(authKey) || '{}')
+        accessToken = parsed?.access_token || null
+      }
+    } catch {}
+
+    const proxyUrl = `${this.supabaseUrl}/functions/v1/espn-api`
+    const allLeagues: Array<any> = []
+
+    const results = await Promise.allSettled(
+      SPORT_CONFIGS.map(async ({ gameId, sport }) => {
+        const season = getSeasonYear(sport)
+        const endpoint = `/apis/v3/games/${gameId}/seasons/${season}?view=mUserLeagues`
+
+        console.log(`[ESPN getUserLeagues] Fetching ${sport} ${season} via proxy...`)
+
+        const resp = await fetch(proxyUrl, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${accessToken}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            endpoint,
+            espn_s2: this.credentials!.espn_s2,
+            swid: this.credentials!.swid,
+            fantasySource: 'kona',
+          })
+        })
+
+        if (!resp.ok) {
+          console.warn(`[ESPN getUserLeagues] ${sport} proxy error:`, resp.status)
+          return []
+        }
+
+        const data = await resp.json()
+        console.log(`[ESPN getUserLeagues] ${sport} response keys:`, Object.keys(data))
+
+        // ESPN returns user leagues under 'preferences' when authenticated
+        const prefs: any[] = data?.preferences || []
+        console.log(`[ESPN getUserLeagues] ${sport}: ${prefs.length} preferences`)
+
+        return prefs
+          .filter((p: any) => p?.id && p?.metaData?.entry)
+          .map((p: any) => {
+            const entry = p.metaData.entry
+            return {
+              id: String(p.id),
+              name: entry.name || entry.abbrev || `League ${p.id}`,
+              size: entry.size || entry.teams || 0,
+              sport,
+              season,
+              scoringType: entry.scoringSettings?.scoringType
+                || entry.settings?.scoringSettings?.scoringType
+                || 'H2H_POINTS',
+            }
+          })
+      })
+    )
+
+    for (const r of results) {
+      if (r.status === 'fulfilled') allLeagues.push(...r.value)
+    }
+
+    console.log(`[ESPN getUserLeagues] Total:`, allLeagues.length)
+    return allLeagues
+  }
+
+  // ============================================================
   // Core API Request Method
   // ============================================================
 
