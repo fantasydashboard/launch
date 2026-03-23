@@ -1238,6 +1238,8 @@ async function initEspnFlow() {
 
   espnExtensionChecking.value = true
   try {
+    // Small delay so Chrome MV3 service worker has time to wake before first ping
+    await new Promise(resolve => setTimeout(resolve, 300))
     espnExtensionInstalled.value = await isExtensionInstalled()
   } finally {
     espnExtensionChecking.value = false

@@ -34,20 +34,41 @@ export interface EspnLeaguesResult {
 }
 
 /**
- * Check if the Chrome extension is installed and responsive
+ * Check if the Chrome extension is installed and responsive.
+ * Retries up to 3 times with delay — MV3 service workers can take a moment to wake.
  */
 export async function isExtensionInstalled(): Promise<boolean> {
-  // Must be in a Chrome-based browser with extension messaging support
   if (!window.chrome?.runtime?.sendMessage) {
     return false
   }
 
-  try {
-    const response = await sendExtensionMessage({ action: 'ping' })
-    return response?.status === 'ok'
-  } catch {
-    return false
+  const MAX_ATTEMPTS = 3
+  const RETRY_DELAY_MS = 800
+
+  for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+    try {
+      console.log(`[ESPN Extension] Ping attempt ${attempt}/${MAX_ATTEMPTS}...`)
+      const response = await sendExtensionMessage({ action: 'ping' }, 4000)
+      if (response?.status === 'ok') {
+        console.log('[ESPN Extension] Extension detected on attempt', attempt)
+        return true
+      }
+    } catch (err: any) {
+      console.log(`[ESPN Extension] Ping attempt ${attempt} failed:`, err.message)
+    }
+
+    // Wait before retrying (except on last attempt)
+    if (attempt < MAX_ATTEMPTS) {
+      await delay(RETRY_DELAY_MS)
+    }
   }
+
+  console.log('[ESPN Extension] Not detected after all attempts')
+  return false
+}
+
+function delay(ms: number): Promise<void> {
+  return new Promise(resolve => setTimeout(resolve, ms))
 }
 
 /**
@@ -168,11 +189,12 @@ function sendExtensionMessage(message: any, timeoutMs = 5000): Promise<any> {
     try {
       chrome.runtime.sendMessage(EXTENSION_ID, message, (response: any) => {
         clearTimeout(timer)
-        const lastError = chrome.runtime.lastError
+        // MUST read lastError immediately — Chrome clears it after the callback returns
+        const lastError = chrome.runtime.lastError?.message
         if (lastError) {
-          reject(new Error(lastError.message || 'Extension communication error'))
-        } else if (response === undefined) {
-          // Chrome may return undefined without setting lastError when extension doesn't exist
+          // "Could not establish connection" = extension not installed or inactive
+          reject(new Error(lastError))
+        } else if (response === undefined || response === null) {
           reject(new Error('No response from extension'))
         } else {
           resolve(response)
