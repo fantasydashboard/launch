@@ -66,8 +66,7 @@ export const useLeagueStore = defineStore('league', () => {
   const error = ref<string | null>(null)
   const isDemoMode = ref(false)
 
-  // Pre-season drafted state — true when draft is complete but Week 1 hasn't started yet.
-  // In this state we stay on the current season (0-0 records) rather than falling back to last season.
+  // Pre-season drafted state — true when draft is complete but Week 1 hasn't started.
   const isPreSeasonDrafted = ref(false)
   
   // Yahoo-specific state
@@ -1054,15 +1053,13 @@ export const useLeagueStore = defineStore('league', () => {
       // Check if this league has actual data (not a renewed but unplayed league)
       const hasData = teams.some(t => (t.wins || 0) > 0 || (t.losses || 0) > 0 || (t.points_for || 0) > 0)
 
-      // Check if the draft has already happened for the current season.
-      // Yahoo sets draft_status = 'postdraft' once picks are locked in.
+      // Check if the draft has already happened for the current season
       const draftStatus = leagueDetails?.[0]?.draft_status
       const yahooIsDrafted = draftStatus === 'postdraft'
 
       if (!hasData && yahooIsDrafted) {
         console.log('[Yahoo] Draft complete but season not started — pre-season mode (0-0 records)')
         isPreSeasonDrafted.value = true
-        // Fall through: keep current-season teams/rosters, skip previous-season fallback
       }
       
       // If no data AND draft hasn't happened yet, check for a previous season to load instead
@@ -1343,8 +1340,31 @@ export const useLeagueStore = defineStore('league', () => {
       })
       
     } catch (e) {
+      const msg = e instanceof Error ? e.message : 'Failed to load Yahoo league'
       console.error('Failed to load Yahoo league data:', e)
-      error.value = e instanceof Error ? e.message : 'Failed to load Yahoo league'
+
+      // If it's a token error, attempt a refresh then retry once
+      if (msg.toLowerCase().includes('invalid token') || msg.toLowerCase().includes('unauthorized') || msg.toLowerCase().includes('401')) {
+        console.log('[Yahoo] Token error detected — attempting refresh...')
+        try {
+          const { usePlatformsStore } = await import('@/stores/platforms')
+          const platformsStore = usePlatformsStore()
+          const newToken = await platformsStore.getYahooAccessToken()
+          if (newToken) {
+            console.log('[Yahoo] Token refreshed — retrying league load...')
+            // Clear error and retry
+            error.value = null
+            await loadYahooLeagueData(leagueKey)
+            return
+          }
+        } catch (refreshErr) {
+          console.warn('[Yahoo] Token refresh failed:', refreshErr)
+        }
+        // Refresh failed — tell user to reconnect
+        error.value = 'Invalid token'
+      } else {
+        error.value = msg
+      }
     } finally {
       isLoading.value = false
     }
@@ -1647,7 +1667,6 @@ export const useLeagueStore = defineStore('league', () => {
       
       if (!espnHasData && season > 2020) {
         // Before falling back to last season, check if the draft has already happened.
-        // If picks exist for the current season, we're in pre-season mode — stay on current season.
         let espnIsDrafted = false
         try {
           const draftPicks = await espnService.getDraft(sport, espnLeagueId, season)

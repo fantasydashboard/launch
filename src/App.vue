@@ -738,7 +738,24 @@
       <!-- Main Content -->
       <main class="max-w-[1800px] mx-auto px-4 sm:px-6 lg:px-8 xl:px-12 py-8">
         <div v-if="leagueStore.error" class="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl p-4 mb-6 shadow-lg">
-          <p class="text-red-800 dark:text-red-200 font-medium">{{ leagueStore.error }}</p>
+          <template v-if="leagueStore.error.toLowerCase().includes('invalid token') || leagueStore.error.toLowerCase().includes('token') || leagueStore.error.toLowerCase().includes('unauthorized') || leagueStore.error.toLowerCase().includes('not authenticated')">
+            <div class="flex items-start gap-3">
+              <span class="text-xl flex-shrink-0">🔑</span>
+              <div>
+                <p class="text-red-800 dark:text-red-200 font-semibold text-sm">Your Yahoo session has expired</p>
+                <p class="text-red-700 dark:text-red-300 text-xs mt-1">Please reconnect your Yahoo account to reload your leagues.</p>
+                <button
+                  @click="$router.push('/settings'); leagueStore.error = null"
+                  class="mt-2 px-3 py-1.5 text-xs font-semibold bg-red-600 hover:bg-red-500 text-white rounded-lg transition-colors"
+                >
+                  Go to Settings → Reconnect Yahoo
+                </button>
+              </div>
+            </div>
+          </template>
+          <template v-else>
+            <p class="text-red-800 dark:text-red-200 font-medium">{{ leagueStore.error }}</p>
+          </template>
         </div>
 
         <!-- Loading State -->
