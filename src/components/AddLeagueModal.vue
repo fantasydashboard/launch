@@ -334,8 +334,38 @@
               <span class="text-sm text-dark-textMuted">Connect ESPN League</span>
             </div>
 
+            <!-- STATE: Mobile — ESPN setup requires desktop -->
+            <div v-if="isMobile" class="space-y-4">
+              <div class="bg-slate-500/10 border border-slate-500/30 rounded-xl p-4 flex items-start gap-3">
+                <div class="text-2xl flex-shrink-0">🖥️</div>
+                <div>
+                  <p class="text-dark-text font-semibold text-sm mb-1">Desktop required for ESPN setup</p>
+                  <p class="text-dark-textMuted text-xs leading-relaxed">
+                    ESPN leagues need to be connected once on desktop using our Chrome extension. After that, your league works on mobile automatically — no re-setup needed.
+                  </p>
+                  <a
+                    href="https://ultimatefantasydashboard.com/resources/espn-mobile"
+                    target="_blank"
+                    class="inline-flex items-center gap-1 mt-3 text-xs text-primary hover:underline font-medium"
+                  >
+                    Why does ESPN require desktop?
+                    <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                    </svg>
+                  </a>
+                </div>
+              </div>
+              <div class="bg-emerald-500/10 border border-emerald-500/30 rounded-xl p-3 flex items-start gap-3">
+                <div class="text-emerald-400 text-lg flex-shrink-0">✓</div>
+                <div>
+                  <p class="text-emerald-300 text-xs font-medium">Already set up on desktop?</p>
+                  <p class="text-dark-textMuted text-xs mt-0.5">Just sign in to your UFD account on mobile and your ESPN leagues will appear automatically.</p>
+                </div>
+              </div>
+            </div>
+
             <!-- STATE: Not Chrome -->
-            <div v-if="!espnIsChrome" class="space-y-3">
+            <div v-else-if="!espnIsChrome" class="space-y-3">
               <div class="bg-amber-500/10 border border-amber-500/30 rounded-xl p-4">
                 <div class="flex items-start gap-3">
                   <svg class="w-5 h-5 text-amber-400 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -547,8 +577,38 @@
               </div>
             </div>
 
+            <!-- STATE: Mobile — ESPN setup requires desktop (step 1b) -->
+            <div v-if="isMobile" class="space-y-4">
+              <div class="bg-slate-500/10 border border-slate-500/30 rounded-xl p-4 flex items-start gap-3">
+                <div class="text-2xl flex-shrink-0">🖥️</div>
+                <div>
+                  <p class="text-dark-text font-semibold text-sm mb-1">Desktop required for ESPN setup</p>
+                  <p class="text-dark-textMuted text-xs leading-relaxed">
+                    ESPN leagues need to be connected once on desktop using our Chrome extension. After that, your league works on mobile automatically — no re-setup needed.
+                  </p>
+                  <a
+                    href="https://ultimatefantasydashboard.com/resources/espn-mobile"
+                    target="_blank"
+                    class="inline-flex items-center gap-1 mt-3 text-xs text-primary hover:underline font-medium"
+                  >
+                    Why does ESPN require desktop?
+                    <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                    </svg>
+                  </a>
+                </div>
+              </div>
+              <div class="bg-emerald-500/10 border border-emerald-500/30 rounded-xl p-3 flex items-start gap-3">
+                <div class="text-emerald-400 text-lg flex-shrink-0">✓</div>
+                <div>
+                  <p class="text-emerald-300 text-xs font-medium">Already set up on desktop?</p>
+                  <p class="text-dark-textMuted text-xs mt-0.5">Just sign in to your UFD account on mobile and your ESPN leagues will appear automatically.</p>
+                </div>
+              </div>
+            </div>
+
             <!-- ── NOT CHROME: Show requirement ── -->
-            <div v-if="!espnIsChrome" class="space-y-3">
+            <div v-else-if="!espnIsChrome" class="space-y-3">
               <div v-if="!espnLoginSuccess" class="space-y-3">
                 <div class="bg-dark-bg/60 border border-dark-border rounded-xl p-4">
                   <div class="flex items-center gap-3 mb-3">
