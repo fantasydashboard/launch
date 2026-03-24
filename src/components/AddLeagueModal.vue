@@ -323,7 +323,51 @@
           </div>
           
           <!-- Step 1: ESPN - Auto-fetch leagues via extension, or manual fallback -->
-          <div v-if="step === 1 && selectedPlatform === 'espn' && !espnNeedsCredentials">
+          <!-- Step 1: ESPN on Mobile — desktop required -->
+          <div v-if="step === 1 && selectedPlatform === 'espn' && isMobile">
+            <div class="flex items-center gap-2 mb-4">
+              <button @click="step = 0" class="p-1 hover:bg-dark-border/50 rounded-lg transition-colors">
+                <svg class="w-5 h-5 text-dark-textMuted" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+                </svg>
+              </button>
+              <img src="/espn-logo.svg" class="w-8 h-8 rounded-lg" alt="ESPN" />
+              <span class="text-sm text-dark-textMuted">Connect ESPN League</span>
+            </div>
+            <div class="space-y-4">
+              <div class="bg-slate-500/10 border border-slate-500/30 rounded-xl p-4 flex items-start gap-3">
+                <div class="text-2xl flex-shrink-0">🖥️</div>
+                <div>
+                  <p class="text-dark-text font-semibold text-sm mb-1">ESPN leagues require desktop setup</p>
+                  <p class="text-dark-textMuted text-xs leading-relaxed mt-1">
+                    ESPN requires a browser extension to sync your league. You'll need to connect it once using Chrome on a desktop or laptop.
+                  </p>
+                  <p class="text-dark-textMuted text-xs leading-relaxed mt-2">
+                    Once connected on desktop, your ESPN leagues will appear here on mobile automatically — no extra steps needed.
+                  </p>
+                  <a
+                    href="https://ultimatefantasydashboard.com/resources/espn-mobile"
+                    target="_blank"
+                    class="inline-flex items-center gap-1 mt-3 text-xs text-primary hover:underline font-medium"
+                  >
+                    Why is desktop required?
+                    <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                    </svg>
+                  </a>
+                </div>
+              </div>
+              <div class="bg-emerald-500/10 border border-emerald-500/30 rounded-xl p-3 flex items-start gap-3">
+                <div class="text-emerald-400 text-lg flex-shrink-0">✓</div>
+                <div>
+                  <p class="text-emerald-300 text-xs font-medium">Already set up on desktop?</p>
+                  <p class="text-dark-textMuted text-xs mt-0.5">Sign in to your UFD account on mobile — your ESPN leagues will load automatically.</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div v-else-if="step === 1 && selectedPlatform === 'espn' && !espnNeedsCredentials && !isMobile">
             <div class="flex items-center gap-2 mb-4">
               <button @click="step = 0" class="p-1 hover:bg-dark-border/50 rounded-lg transition-colors">
                 <svg class="w-5 h-5 text-dark-textMuted" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -538,7 +582,7 @@
           </div>
           
           <!-- Step 1b: ESPN - Private League, need credentials -->
-          <div v-if="step === 1 && selectedPlatform === 'espn' && espnNeedsCredentials">
+          <div v-else-if="step === 1 && selectedPlatform === 'espn' && espnNeedsCredentials && !isMobile">
             <div class="flex items-center gap-2 mb-4">
               <button @click="espnNeedsCredentials = false; errorMessage = ''; espnShowManualFields = false" class="p-1 hover:bg-dark-border/50 rounded-lg transition-colors">
                 <svg class="w-5 h-5 text-dark-textMuted" fill="none" stroke="currentColor" viewBox="0 0 24 24">
