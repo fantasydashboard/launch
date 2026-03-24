@@ -28,21 +28,12 @@
       </div>
     </div>
 
-    <!-- Offseason banner: only when truly no data AND no draft yet -->
-    <div v-if="isSeasonComplete && !leagueStore.isPreSeasonDrafted" class="bg-slate-500/10 border border-slate-500/30 rounded-xl p-4 flex items-start gap-3">
+    <!-- Offseason Notice Banner - Only show when season is complete -->
+    <div v-if="isSeasonComplete" class="bg-slate-500/10 border border-slate-500/30 rounded-xl p-4 flex items-start gap-3">
       <div class="text-slate-400 text-xl flex-shrink-0">📅</div>
       <div>
         <p class="text-slate-200 font-semibold">It's the offseason</p>
-        <p class="text-slate-400 text-sm mt-1">You're viewing last season's data ({{ currentSeason }}). The {{ Number(currentSeason) + 1 }} season will appear automatically once the draft is complete.</p>
-      </div>
-    </div>
-
-    <!-- Pre-season drafted banner: draft done, Week 1 hasn't started -->
-    <div v-if="leagueStore.isPreSeasonDrafted" class="bg-emerald-500/10 border border-emerald-500/30 rounded-xl p-4 flex items-start gap-3">
-      <div class="text-emerald-400 text-xl flex-shrink-0">⚾</div>
-      <div>
-        <p class="text-emerald-300 font-semibold">Draft complete — season starting soon!</p>
-        <p class="text-slate-400 text-sm mt-1">Records are 0-0. Rankings are based on your drafted roster until Week 1 begins.</p>
+        <p class="text-slate-400 text-sm mt-1">You're viewing last season's data ({{ currentSeason }}). The {{ Number(currentSeason) + 1 }} season will appear automatically once Week 1 begins.</p>
       </div>
     </div>
 
@@ -130,78 +121,54 @@
           </div>
         </div>
         <div class="card-body">
+          <!-- Mobile col-page nav -->
+          <div class="sm:hidden flex items-center justify-center gap-3 py-2 border-b border-dark-border/30">
+            <button @click="catPrTablePage = Math.max(0, catPrTablePage - 1)" :disabled="catPrTablePage === 0"
+              class="w-7 h-7 rounded-full flex items-center justify-center transition-all"
+              :class="catPrTablePage === 0 ? 'text-dark-border cursor-default' : 'text-yellow-400 hover:bg-yellow-400/10'">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
+            </button>
+            <div class="flex gap-1.5">
+              <div v-for="(_, i) in 3" :key="i" class="w-2 h-2 rounded-full transition-colors"
+                :class="i === catPrTablePage ? 'bg-yellow-400' : 'bg-dark-border/60'" />
+            </div>
+            <button @click="catPrTablePage = Math.min(2, catPrTablePage + 1)" :disabled="catPrTablePage >= 2"
+              class="w-7 h-7 rounded-full flex items-center justify-center transition-all"
+              :class="catPrTablePage >= 2 ? 'text-dark-border cursor-default' : 'text-yellow-400 hover:bg-yellow-400/10'">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+            </button>
+          </div>
           <div class="overflow-x-auto">
             <table class="w-full">
               <thead>
                 <tr class="text-left text-xs text-dark-textMuted uppercase border-b border-dark-border">
-                  <th class="py-3 px-4">Rank</th>
-                  <th class="py-3 px-4 w-6">+/-</th>
-                  <th class="py-3 px-4">Team</th>
-                  <th 
-                    class="py-3 px-4 text-center cursor-pointer hover:text-red-400 transition-colors"
-                    @click="sortPowerRankings('powerScore')"
-                  >
-                    <div class="flex items-center justify-center gap-1">
-                      Power Score
-                      <span v-if="sortColumn === 'powerScore'" class="text-red-400">
-                        {{ sortDirection === 'desc' ? '↓' : '↑' }}
-                      </span>
-                    </div>
+                  <th class="py-3 px-2 sm:px-4">Rank</th>
+                  <th class="py-3 px-2 sm:px-4 w-6" :class="catPrTablePage > 0 ? 'hidden sm:table-cell' : ''">+/-</th>
+                  <th class="py-3 px-2 sm:px-4" :class="catPrTablePage > 0 ? 'hidden sm:table-cell' : ''">Team</th>
+                  <th class="py-3 px-1 sm:hidden" v-if="catPrTablePage > 0"></th><!-- logo-only -->
+                  <!-- Score: pages 0+1 -->
+                  <th class="py-3 px-2 sm:px-4 text-center cursor-pointer hover:text-red-400" :class="catPrTablePage === 2 ? 'hidden sm:table-cell' : ''" @click="sortPowerRankings('powerScore')">
+                    Score <span v-if="sortColumn === 'powerScore'" class="text-red-400">{{ sortDirection === 'desc' ? '↓' : '↑' }}</span>
                   </th>
-                  <th 
-                    class="py-3 px-4 text-center cursor-pointer hover:text-red-400 transition-colors"
-                    @click="sortPowerRankings('catWins')"
-                  >
-                    <div class="flex items-center justify-center gap-1">
-                      Cat W-L-T
-                      <span v-if="sortColumn === 'catWins'" class="text-red-400">
-                        {{ sortDirection === 'desc' ? '↓' : '↑' }}
-                      </span>
-                    </div>
+                  <!-- Cat W-L-T: page 1 -->
+                  <th class="py-3 px-2 sm:px-4 text-center cursor-pointer hover:text-red-400" :class="catPrTablePage === 1 ? '' : 'hidden sm:table-cell'" @click="sortPowerRankings('catWins')">
+                    W-L-T <span v-if="sortColumn === 'catWins'" class="text-red-400">{{ sortDirection === 'desc' ? '↓' : '↑' }}</span>
                   </th>
-                  <th 
-                    class="py-3 px-4 text-center cursor-pointer hover:text-red-400 transition-colors"
-                    @click="sortPowerRankings('catWinPct')"
-                  >
-                    <div class="flex items-center justify-center gap-1">
-                      Cat Win %
-                      <span v-if="sortColumn === 'catWinPct'" class="text-red-400">
-                        {{ sortDirection === 'desc' ? '↓' : '↑' }}
-                      </span>
-                    </div>
+                  <!-- Cat Win %: page 1 -->
+                  <th class="py-3 px-2 sm:px-4 text-center cursor-pointer hover:text-red-400" :class="catPrTablePage === 1 ? '' : 'hidden sm:table-cell'" @click="sortPowerRankings('catWinPct')">
+                    Win% <span v-if="sortColumn === 'catWinPct'" class="text-red-400">{{ sortDirection === 'desc' ? '↓' : '↑' }}</span>
                   </th>
-                  <th 
-                    class="py-3 px-4 text-center hidden md:table-cell cursor-pointer hover:text-red-400 transition-colors"
-                    @click="sortPowerRankings('dominant')"
-                  >
-                    <div class="flex items-center justify-center gap-1">
-                      Dominant
-                      <span v-if="sortColumn === 'dominant'" class="text-red-400">
-                        {{ sortDirection === 'desc' ? '↓' : '↑' }}
-                      </span>
-                    </div>
+                  <!-- Dominant: page 2 -->
+                  <th class="py-3 px-2 sm:px-4 text-center cursor-pointer hover:text-red-400" :class="catPrTablePage === 2 ? '' : 'hidden sm:table-cell'" @click="sortPowerRankings('dominant')">
+                    Dom <span v-if="sortColumn === 'dominant'" class="text-red-400">{{ sortDirection === 'desc' ? '↓' : '↑' }}</span>
                   </th>
-                  <th 
-                    class="py-3 px-4 text-center hidden md:table-cell cursor-pointer hover:text-red-400 transition-colors"
-                    @click="sortPowerRankings('weak')"
-                  >
-                    <div class="flex items-center justify-center gap-1">
-                      Weak
-                      <span v-if="sortColumn === 'weak'" class="text-red-400">
-                        {{ sortDirection === 'desc' ? '↓' : '↑' }}
-                      </span>
-                    </div>
+                  <!-- Weak: page 2 -->
+                  <th class="py-3 px-2 sm:px-4 text-center cursor-pointer hover:text-red-400" :class="catPrTablePage === 2 ? '' : 'hidden sm:table-cell'" @click="sortPowerRankings('weak')">
+                    Weak <span v-if="sortColumn === 'weak'" class="text-red-400">{{ sortDirection === 'desc' ? '↓' : '↑' }}</span>
                   </th>
-                  <th 
-                    class="py-3 px-4 text-center hidden lg:table-cell cursor-pointer hover:text-red-400 transition-colors"
-                    @click="sortPowerRankings('avgCats')"
-                  >
-                    <div class="flex items-center justify-center gap-1">
-                      Avg/Week
-                      <span v-if="sortColumn === 'avgCats'" class="text-red-400">
-                        {{ sortDirection === 'desc' ? '↓' : '↑' }}
-                      </span>
-                    </div>
+                  <!-- Avg/Week: page 2 -->
+                  <th class="py-3 px-2 sm:px-4 text-center cursor-pointer hover:text-red-400" :class="catPrTablePage === 2 ? '' : 'hidden sm:table-cell'" @click="sortPowerRankings('avgCats')">
+                    Avg/Wk <span v-if="sortColumn === 'avgCats'" class="text-red-400">{{ sortDirection === 'desc' ? '↓' : '↑' }}</span>
                   </th>
                 </tr>
               </thead>
@@ -217,74 +184,69 @@
                     'blur-row': !hasLeagueAccess && team.rank > 3
                   }"
                 >
-                  <td class="py-3 px-4">
-                    <span 
-                      class="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold"
-                      :class="getRankClass(team.rank)"
-                    >
-                      {{ team.rank }}
-                    </span>
+                  <td class="py-3 px-2 sm:px-4">
+                    <span class="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold" :class="getRankClass(team.rank)">{{ team.rank }}</span>
                   </td>
-                  <td class="py-3 px-4">
+                  <td class="py-3 px-2 sm:px-4" :class="catPrTablePage > 0 ? 'hidden sm:table-cell' : ''">
                     <div v-if="team.change !== 0" class="flex items-center gap-1">
                       <span v-if="team.change > 0" class="text-green-400 text-sm font-bold">▲{{ team.change }}</span>
                       <span v-else class="text-red-400 text-sm font-bold">▼{{ Math.abs(team.change) }}</span>
                     </div>
                     <span v-else class="text-dark-textMuted text-sm">—</span>
                   </td>
-                  <td class="py-3 px-4">
-                    <div class="flex items-center gap-3">
-                      <div class="relative">
-                        <img 
-                          :src="team.logo_url || defaultAvatar" 
-                          :alt="team.name"
+                  <!-- Full team cell: page 0 -->
+                  <td class="py-3 px-2 sm:px-4" :class="catPrTablePage > 0 ? 'hidden sm:table-cell' : ''">
+                    <div class="flex items-center gap-2">
+                      <div class="relative flex-shrink-0">
+                        <img :src="team.logo_url || defaultAvatar" :alt="team.name"
                           class="w-8 h-8 rounded-full object-cover ring-2"
-                          :class="team.is_my_team ? 'ring-yellow-500' : 'ring-cyan-500/50'"
-                          @error="handleImageError"
-                        />
+                          :class="team.is_my_team ? 'ring-yellow-500' : 'ring-cyan-500/50'" @error="handleImageError" />
                         <div v-if="team.is_my_team" class="absolute -top-1 -right-1 w-4 h-4 bg-yellow-500 rounded-full flex items-center justify-center">
                           <span class="text-[8px] text-gray-900 font-bold">★</span>
                         </div>
                       </div>
-                      <span class="font-semibold text-dark-text">{{ team.name }}</span>
+                      <span class="font-semibold text-dark-text truncate text-sm sm:text-base max-w-[90px] sm:max-w-none">{{ team.name }}</span>
                     </div>
                   </td>
-                  <td class="py-3 px-4 text-center">
-                    <div class="flex items-center justify-center gap-2">
-                      <div class="w-16 h-2 bg-dark-border rounded-full overflow-hidden">
-                        <div 
-                          class="h-full rounded-full"
-                          :class="getPowerScoreBarClass(team.powerScore)"
-                          :style="{ width: `${team.powerScore}%` }"
-                        ></div>
+                  <!-- Logo-only: pages 1+ on mobile -->
+                  <td class="py-3 px-1 sm:hidden" v-if="catPrTablePage > 0">
+                    <div class="relative inline-flex">
+                      <img :src="team.logo_url || defaultAvatar" :alt="team.name"
+                        class="w-7 h-7 rounded-full object-cover ring-2"
+                        :class="team.is_my_team ? 'ring-yellow-500' : 'ring-cyan-500/50'" @error="handleImageError" />
+                      <div v-if="team.is_my_team" class="absolute -top-1 -right-1 w-3 h-3 bg-yellow-500 rounded-full flex items-center justify-center">
+                        <span class="text-[6px] text-gray-900 font-bold">★</span>
                       </div>
-                      <span class="font-bold" :class="getPowerScoreTextClass(team.powerScore)">{{ team.powerScore.toFixed(1) }}</span>
                     </div>
                   </td>
-                  <td class="py-3 px-4 text-center">
-                    <span class="font-medium text-dark-text">
-                      {{ team.totalCatWins }}-{{ team.totalCatLosses }}-{{ team.totalCatTies }}
-                    </span>
+                  <!-- Score: pages 0+1 -->
+                  <td class="py-3 px-2 sm:px-4 text-center" :class="catPrTablePage === 2 ? 'hidden sm:table-cell' : ''">
+                    <div class="flex items-center justify-center gap-1.5">
+                      <div class="w-10 sm:w-16 h-2 bg-dark-border rounded-full overflow-hidden hidden sm:block">
+                        <div class="h-full rounded-full" :class="getPowerScoreBarClass(team.powerScore)" :style="{ width: `${team.powerScore}%` }"></div>
+                      </div>
+                      <span class="font-bold text-sm" :class="getPowerScoreTextClass(team.powerScore)">{{ team.powerScore.toFixed(1) }}</span>
+                    </div>
                   </td>
-                  <td class="py-3 px-4 text-center">
-                    <span class="font-bold" :class="getCatWinPctClass(team.catWinPct)">
-                      {{ (team.catWinPct * 100).toFixed(1) }}%
-                    </span>
+                  <!-- W-L-T: page 1 -->
+                  <td class="py-3 px-2 sm:px-4 text-center" :class="catPrTablePage === 1 ? '' : 'hidden sm:table-cell'">
+                    <span class="font-medium text-dark-text text-sm whitespace-nowrap">{{ team.totalCatWins }}-{{ team.totalCatLosses }}-{{ team.totalCatTies }}</span>
                   </td>
-                  <td class="py-3 px-4 text-center hidden md:table-cell">
-                    <span class="px-2 py-1 rounded text-xs font-bold bg-green-500/20 text-green-400">
-                      {{ team.dominantCategories }}
-                    </span>
+                  <!-- Win%: page 1 -->
+                  <td class="py-3 px-2 sm:px-4 text-center" :class="catPrTablePage === 1 ? '' : 'hidden sm:table-cell'">
+                    <span class="font-bold text-sm" :class="getCatWinPctClass(team.catWinPct)">{{ (team.catWinPct * 100).toFixed(1) }}%</span>
                   </td>
-                  <td class="py-3 px-4 text-center hidden md:table-cell">
-                    <span class="px-2 py-1 rounded text-xs font-bold bg-red-500/20 text-red-400">
-                      {{ team.weakCategories }}
-                    </span>
+                  <!-- Dominant: page 2 -->
+                  <td class="py-3 px-2 sm:px-4 text-center" :class="catPrTablePage === 2 ? '' : 'hidden sm:table-cell'">
+                    <span class="px-2 py-1 rounded text-xs font-bold bg-green-500/20 text-green-400">{{ team.dominantCategories }}</span>
                   </td>
-                  <td class="py-3 px-4 text-center hidden lg:table-cell">
-                    <span class="font-medium" :class="getAvgCatsClass(team.avgCatsWonPerWeek)">
-                      {{ team.avgCatsWonPerWeek.toFixed(1) }}
-                    </span>
+                  <!-- Weak: page 2 -->
+                  <td class="py-3 px-2 sm:px-4 text-center" :class="catPrTablePage === 2 ? '' : 'hidden sm:table-cell'">
+                    <span class="px-2 py-1 rounded text-xs font-bold bg-red-500/20 text-red-400">{{ team.weakCategories }}</span>
+                  </td>
+                  <!-- Avg/Wk: page 2 -->
+                  <td class="py-3 px-2 sm:px-4 text-center" :class="catPrTablePage === 2 ? '' : 'hidden sm:table-cell'">
+                    <span class="font-medium text-sm" :class="getAvgCatsClass(team.avgCatsWonPerWeek)">{{ team.avgCatsWonPerWeek.toFixed(1) }}</span>
                   </td>
                 </tr>
               </tbody>
@@ -321,43 +283,69 @@
           </div>
         </div>
         <div class="card-body">
-          <div v-if="chartSeries.length > 0" class="relative">
-            <apexchart ref="apexChartRef" type="line" :height="chartHeight" :options="chartOptions" :series="chartSeries" />
-            
-            <!-- Team avatar overlays at end of lines - positioned after chart renders -->
-            <div 
-              v-for="(team, idx) in powerRankings" 
-              :key="'avatar-' + team.team_key"
-              class="absolute cursor-pointer transition-opacity duration-200"
-              :class="{ 'opacity-30': chartHoveredTeamKey && chartHoveredTeamKey !== team.team_key }"
-              :style="getChartAvatarStyle(team)"
-              @mouseenter="chartHoveredTeamKey = team.team_key"
-              @mouseleave="chartHoveredTeamKey = null"
-            >
-              <div class="relative">
-                <img 
-                  :src="team.logo_url || defaultAvatar" 
-                  :alt="team.name"
-                  class="w-6 h-6 rounded-full ring-2 object-cover"
-                  :class="team.is_my_team ? 'ring-yellow-500' : 'ring-dark-border'"
-                  @error="handleImageError"
-                />
-                <div v-if="team.is_my_team" class="absolute -top-0.5 -right-0.5 w-3 h-3 bg-yellow-500 rounded-full flex items-center justify-center">
-                  <span class="text-[6px] text-gray-900 font-bold">★</span>
+          <div v-if="chartSeries.length > 0">
+            <!-- Desktop: full chart -->
+            <div class="hidden sm:block relative">
+              <apexchart ref="apexChartRef" type="line" :height="chartHeight" :options="chartOptions" :series="chartSeries" />
+              <div v-for="(team, idx) in powerRankings" :key="'avatar-' + team.team_key"
+                class="absolute cursor-pointer transition-opacity duration-200"
+                :class="{ 'opacity-30': chartHoveredTeamKey && chartHoveredTeamKey !== team.team_key }"
+                :style="getChartAvatarStyle(team)"
+                @mouseenter="chartHoveredTeamKey = team.team_key" @mouseleave="chartHoveredTeamKey = null">
+                <div class="relative">
+                  <img :src="team.logo_url || defaultAvatar" :alt="team.name"
+                    class="w-6 h-6 rounded-full ring-2 object-cover"
+                    :class="team.is_my_team ? 'ring-yellow-500' : 'ring-dark-border'" @error="handleImageError" />
+                  <div v-if="team.is_my_team" class="absolute -top-0.5 -right-0.5 w-3 h-3 bg-yellow-500 rounded-full flex items-center justify-center">
+                    <span class="text-[6px] text-gray-900 font-bold">★</span>
+                  </div>
                 </div>
               </div>
             </div>
+            <!-- Mobile: windowed -->
+            <div class="sm:hidden">
+              <div class="relative">
+                <apexchart type="line" height="300" :options="catPrMobileChartOptions" :series="catPrMobileChartSeries" />
+                <div class="absolute right-0 top-0 bottom-0 flex flex-col justify-between items-end pointer-events-none"
+                  style="padding-top: 10px; padding-bottom: 33px; padding-right: 2px;">
+                  <div v-for="team in catPrMobileTeamOrder" :key="'cpr-mob-' + team.team_key">
+                    <img :src="team.logo_url || defaultAvatar" :alt="team.name"
+                      class="w-4 h-4 rounded-full object-cover"
+                      :style="{ boxShadow: `0 0 0 2px ${team.is_my_team ? '#F5C451' : '#06b6d4'}` }"
+                      @error="handleImageError" />
+                  </div>
+                </div>
+              </div>
+              <div class="flex items-center justify-center gap-3 mt-3">
+                <button @click="catPrChartOffset = Math.min(catPrChartOffset + 6, Math.max(0, (chartOptions?.xaxis?.categories?.length || 0) - 6))"
+                  :disabled="catPrChartOffset >= Math.max(0, (chartOptions?.xaxis?.categories?.length || 0) - 6)"
+                  class="w-7 h-7 rounded-full flex items-center justify-center transition-all"
+                  :class="catPrChartOffset >= Math.max(0, (chartOptions?.xaxis?.categories?.length || 0) - 6) ? 'text-dark-border cursor-default' : 'text-yellow-400 hover:bg-yellow-400/10'">
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
+                </button>
+                <div class="flex gap-1.5">
+                  <div v-for="(_, i) in catPrChartTotalPages" :key="i" class="w-2 h-2 rounded-full transition-colors"
+                    :class="i === catPrChartCurrentPage ? 'bg-yellow-400' : 'bg-dark-border/60'" />
+                </div>
+                <button @click="catPrChartOffset = Math.max(0, catPrChartOffset - 6)"
+                  :disabled="catPrChartOffset === 0"
+                  class="w-7 h-7 rounded-full flex items-center justify-center transition-all"
+                  :class="catPrChartOffset === 0 ? 'text-dark-border cursor-default' : 'text-yellow-400 hover:bg-yellow-400/10'">
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+                </button>
+              </div>
+              <p class="text-center text-xs text-dark-textMuted mt-1">{{ catPrMobileChartLabel }}</p>
+            </div>
           </div>
-          <div v-else class="text-center py-12 text-dark-textMuted">
-            Not enough data for chart
-          </div>
+          <div v-else class="text-center py-12 text-dark-textMuted">Not enough data for chart</div>
         </div>
       </div>
       </div>
 
       <!-- Rankings Insights — blurred when locked -->
       <div :class="!hasLeagueAccess ? 'locked-section' : ''">
-      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      <!-- Desktop movers grid -->
+      <div class="hidden md:grid grid-cols-2 lg:grid-cols-4 gap-4">
         <!-- Biggest Climber -->
         <div 
           :class="[
@@ -550,6 +538,88 @@
           </div>
         </div>
       </div>
+      </div>
+
+      <!-- Mobile movers carousel -->
+      <div class="md:hidden card p-0 overflow-hidden">
+        <div class="p-4">
+          <template v-if="catPrMoverIndex === 0">
+            <div class="text-sm text-dark-textMuted uppercase tracking-wide mb-3">📈 Biggest Climber</div>
+            <div v-if="biggestClimber" class="flex items-center gap-3 mb-3">
+              <img :src="biggestClimber.logo_url || defaultAvatar" class="w-14 h-14 rounded-full ring-2 object-cover" :class="biggestClimber.is_my_team ? 'ring-yellow-500' : 'ring-cyan-500'" @error="handleImageError" />
+              <div class="flex-1 min-w-0">
+                <div class="font-bold truncate" :class="biggestClimber.is_my_team ? 'text-yellow-400' : 'text-dark-text'">{{ biggestClimber.name }}</div>
+                <div class="text-xs text-dark-textMuted">#{{ biggestClimber.firstRank }} → #{{ biggestClimber.lastRank }}</div>
+              </div>
+            </div>
+            <div v-if="biggestClimber" class="text-center p-3 bg-green-500/10 rounded-xl">
+              <div class="text-3xl font-bold text-green-400">↑{{ biggestClimber.climb }}</div>
+              <div class="text-xs text-dark-textMuted mt-1">positions up</div>
+            </div>
+            <div v-else class="text-dark-textMuted text-sm text-center py-4">Need more weeks of data</div>
+          </template>
+          <template v-else-if="catPrMoverIndex === 1">
+            <div class="text-sm text-dark-textMuted uppercase tracking-wide mb-3">📉 Biggest Faller</div>
+            <div v-if="biggestFaller" class="flex items-center gap-3 mb-3">
+              <img :src="biggestFaller.logo_url || defaultAvatar" class="w-14 h-14 rounded-full ring-2 object-cover" :class="biggestFaller.is_my_team ? 'ring-yellow-500' : 'ring-cyan-500'" @error="handleImageError" />
+              <div class="flex-1 min-w-0">
+                <div class="font-bold truncate" :class="biggestFaller.is_my_team ? 'text-yellow-400' : 'text-dark-text'">{{ biggestFaller.name }}</div>
+                <div class="text-xs text-dark-textMuted">#{{ biggestFaller.firstRank }} → #{{ biggestFaller.lastRank }}</div>
+              </div>
+            </div>
+            <div v-if="biggestFaller" class="text-center p-3 bg-red-500/10 rounded-xl">
+              <div class="text-3xl font-bold text-red-400">↓{{ biggestFaller.fall }}</div>
+              <div class="text-xs text-dark-textMuted mt-1">positions down</div>
+            </div>
+            <div v-else class="text-dark-textMuted text-sm text-center py-4">Need more weeks of data</div>
+          </template>
+          <template v-else-if="catPrMoverIndex === 2">
+            <div class="text-sm text-dark-textMuted uppercase tracking-wide mb-3">🎯 Most Consistent</div>
+            <div v-if="mostConsistent" class="flex items-center gap-3 mb-3">
+              <img :src="mostConsistent.logo_url || defaultAvatar" class="w-14 h-14 rounded-full ring-2 object-cover" :class="mostConsistent.is_my_team ? 'ring-yellow-500' : 'ring-cyan-500'" @error="handleImageError" />
+              <div class="flex-1 min-w-0">
+                <div class="font-bold truncate" :class="mostConsistent.is_my_team ? 'text-yellow-400' : 'text-dark-text'">{{ mostConsistent.name }}</div>
+                <div class="text-xs text-dark-textMuted">Avg Rank #{{ mostConsistent.avgRank }}</div>
+              </div>
+            </div>
+            <div v-if="mostConsistent" class="text-center p-3 bg-cyan-500/10 rounded-xl">
+              <div class="text-3xl font-bold text-cyan-400">{{ mostConsistent.variance.toFixed(1) }}</div>
+              <div class="text-xs text-dark-textMuted mt-1">rank variance</div>
+            </div>
+            <div v-else class="text-dark-textMuted text-sm text-center py-4">Need more weeks of data</div>
+          </template>
+          <template v-else>
+            <div class="text-sm text-dark-textMuted uppercase tracking-wide mb-3">🎢 Most Volatile</div>
+            <div v-if="mostVolatile" class="flex items-center gap-3 mb-3">
+              <img :src="mostVolatile.logo_url || defaultAvatar" class="w-14 h-14 rounded-full ring-2 object-cover" :class="mostVolatile.is_my_team ? 'ring-yellow-500' : 'ring-cyan-500'" @error="handleImageError" />
+              <div class="flex-1 min-w-0">
+                <div class="font-bold truncate" :class="mostVolatile.is_my_team ? 'text-yellow-400' : 'text-dark-text'">{{ mostVolatile.name }}</div>
+                <div class="text-xs text-dark-textMuted">Swings #{{ mostVolatile.minRank }}-{{ mostVolatile.maxRank }}</div>
+              </div>
+            </div>
+            <div v-if="mostVolatile" class="text-center p-3 bg-orange-500/10 rounded-xl">
+              <div class="text-3xl font-bold text-orange-400">{{ mostVolatile.variance.toFixed(1) }}</div>
+              <div class="text-xs text-dark-textMuted mt-1">rank variance</div>
+            </div>
+            <div v-else class="text-dark-textMuted text-sm text-center py-4">Need more weeks of data</div>
+          </template>
+        </div>
+        <div class="flex items-center justify-center gap-3 pb-3">
+          <button @click="catPrMoverIndex = Math.max(0, catPrMoverIndex - 1)" :disabled="catPrMoverIndex === 0"
+            class="w-7 h-7 rounded-full flex items-center justify-center transition-all"
+            :class="catPrMoverIndex === 0 ? 'text-dark-border cursor-default' : 'text-yellow-400 hover:bg-yellow-400/10'">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
+          </button>
+          <div class="flex gap-1.5">
+            <div v-for="(_, i) in 4" :key="i" class="w-2 h-2 rounded-full transition-colors"
+              :class="i === catPrMoverIndex ? 'bg-yellow-400' : 'bg-dark-border/60'" />
+          </div>
+          <button @click="catPrMoverIndex = Math.min(3, catPrMoverIndex + 1)" :disabled="catPrMoverIndex >= 3"
+            class="w-7 h-7 rounded-full flex items-center justify-center transition-all"
+            :class="catPrMoverIndex >= 3 ? 'text-dark-border cursor-default' : 'text-yellow-400 hover:bg-yellow-400/10'">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+          </button>
+        </div>
       </div>
 
       <!-- Bottom CTA for category leagues (no extra sections below) -->
@@ -839,6 +909,66 @@ const chartHeight = 400
 const apexChartRef = ref<any>(null)
 const avatarPositions = ref<Map<string, { top: number, right: number }>>(new Map())
 const chartHoveredTeamKey = ref<string | null>(null)
+
+// ── Mobile carousel/pagination refs ───────────────────────────────────────
+const catPrTablePage = ref(0)    // 0=Score, 1=W-L-T+Win%, 2=Dom+Weak+Avg
+const catPrMoverIndex = ref(0)   // 0-3
+const catPrChartOffset = ref(0)  // 0=latest weeks
+
+const CAT_PR_WEEKS = 6
+
+const catPrChartTotalPages = computed(() => {
+  const total = chartOptions.value?.xaxis?.categories?.length || 0
+  if (total <= CAT_PR_WEEKS) return 1
+  return Math.ceil(Math.max(0, total - CAT_PR_WEEKS) / CAT_PR_WEEKS) + 1
+})
+const catPrChartCurrentPage = computed(() => {
+  const total = chartOptions.value?.xaxis?.categories?.length || 0
+  const maxOffset = Math.max(0, total - CAT_PR_WEEKS)
+  const maxStep = Math.ceil(maxOffset / CAT_PR_WEEKS)
+  return maxStep - Math.round(catPrChartOffset.value / CAT_PR_WEEKS)
+})
+const catPrMobileChartLabel = computed(() => {
+  const cats = chartOptions.value?.xaxis?.categories || []
+  const total = cats.length
+  if (!total) return ''
+  const endIdx = total - catPrChartOffset.value
+  const startIdx = Math.max(0, endIdx - CAT_PR_WEEKS)
+  return `${cats[startIdx] || ''} – ${cats[endIdx - 1] || ''}`
+})
+const catPrMobileChartSeries = computed(() => {
+  if (!chartSeries.value.length || !chartOptions.value) return []
+  const total = chartOptions.value?.xaxis?.categories?.length || 0
+  const endIdx = total - catPrChartOffset.value
+  const startIdx = Math.max(0, endIdx - CAT_PR_WEEKS)
+  return chartSeries.value.map((s: any) => ({ ...s, data: (s.data || []).slice(startIdx, endIdx) }))
+})
+const catPrMobileChartOptions = computed(() => {
+  if (!chartOptions.value) return null
+  const cats = chartOptions.value?.xaxis?.categories || []
+  const total = cats.length
+  const endIdx = total - catPrChartOffset.value
+  const startIdx = Math.max(0, endIdx - CAT_PR_WEEKS)
+  return {
+    ...chartOptions.value,
+    chart: { ...chartOptions.value.chart, toolbar: { show: false }, animations: { enabled: false } },
+    xaxis: { ...chartOptions.value.xaxis, categories: cats.slice(startIdx, endIdx) },
+    legend: { show: false },
+    yaxis: { ...chartOptions.value.yaxis, reversed: true, min: 1, max: powerRankings.value.length || 10 }
+  }
+})
+const catPrMobileTeamOrder = computed(() => {
+  if (!chartSeries.value.length || !powerRankings.value.length) return powerRankings.value
+  const total = chartOptions.value?.xaxis?.categories?.length || 0
+  const endIdx = total - catPrChartOffset.value
+  const lastIdx = Math.max(0, endIdx - 1)
+  const rankAtEnd = chartSeries.value.map((s: any) => ({ name: s.name, rank: s.data?.[lastIdx] ?? 999 }))
+  return [...powerRankings.value].sort((a: any, b: any) => {
+    const ra = rankAtEnd.find((r: any) => r.name === a.name)?.rank ?? 999
+    const rb = rankAtEnd.find((r: any) => r.name === b.name)?.rank ?? 999
+    return ra - rb
+  })
+})
 
 // Team colors
 const teamColors = ['#F59E0B', '#10B981', '#3B82F6', '#EF4444', '#8B5CF6', '#EC4899', '#06B6D4', '#F97316', '#84CC16', '#6366F1', '#14B8A6', '#F43F5E']
@@ -2754,7 +2884,7 @@ watch(() => leagueStore.yahooTeams, async () => {
     const hasData = leagueStore.yahooTeams.some(t => 
       (t.wins || 0) > 0 || (t.losses || 0) > 0 || (t.points_for || 0) > 0
     )
-    if (!hasData && !leagueStore.isPreSeasonDrafted) {
+    if (!hasData) {
       console.log('[CategoryPowerRankings] Teams have no data, waiting for possible fallback...')
       return
     }
