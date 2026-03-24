@@ -1054,7 +1054,8 @@ export const useLeagueStore = defineStore('league', () => {
       const hasData = teams.some(t => (t.wins || 0) > 0 || (t.losses || 0) > 0 || (t.points_for || 0) > 0)
 
       // Check if the draft has already happened for the current season
-      const draftStatus = leagueDetails?.[0]?.draft_status
+      // metadata.draft_status is 'postdraft' once picks are locked in
+      const draftStatus = metadata.draft_status || leagueDetails?.[0]?.draft_status
       const yahooIsDrafted = draftStatus === 'postdraft'
 
       if (!hasData && yahooIsDrafted) {

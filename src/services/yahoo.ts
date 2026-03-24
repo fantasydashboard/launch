@@ -324,19 +324,18 @@ export class YahooFantasyService {
   /**
    * Get current week and league metadata
    */
-  async getLeagueMetadata(leagueKey: string): Promise<{ currentWeek: number; startWeek: number; endWeek: number; isFinished: boolean; scoring_type?: string; renew?: string; season?: string }> {
+  async getLeagueMetadata(leagueKey: string): Promise<{ currentWeek: number; startWeek: number; endWeek: number; isFinished: boolean; scoring_type?: string; renew?: string; season?: string; draft_status?: string }> {
     // Check cache first
-    const cached = cache.get<{ currentWeek: number; startWeek: number; endWeek: number; isFinished: boolean; scoring_type?: string; renew?: string; season?: string }>(
+    const cached = cache.get<{ currentWeek: number; startWeek: number; endWeek: number; isFinished: boolean; scoring_type?: string; renew?: string; season?: string; draft_status?: string }>(
       CACHE_KEYS.YAHOO_METADATA, leagueKey
     )
     
-    // If cached data exists but is missing scoring_type, we need to refetch
-    // This handles migration from old cache format to new format
-    if (cached && cached.scoring_type && cached.season) {
-      console.log(`[Cache HIT] League metadata for ${leagueKey} scoring_type=${cached.scoring_type}`)
+    // If cached data exists but is missing scoring_type or draft_status, we need to refetch
+    if (cached && cached.scoring_type && cached.season && cached.draft_status !== undefined) {
+      console.log(`[Cache HIT] League metadata for ${leagueKey} scoring_type=${cached.scoring_type} draft_status=${cached.draft_status}`)
       return cached
     } else if (cached) {
-      console.log(`[Cache STALE] League metadata for ${leagueKey} missing scoring_type, refetching...`)
+      console.log(`[Cache STALE] League metadata for ${leagueKey} missing fields, refetching...`)
     }
     
     const data = await this.apiRequest(
@@ -352,7 +351,8 @@ export class YahooFantasyService {
       isFinished: league?.is_finished === '1' || league?.is_finished === 1,
       scoring_type: league?.scoring_type,
       renew: league?.renew,
-      season: league?.season
+      season: league?.season,
+      draft_status: league?.draft_status  // 'predraft' | 'drafting' | 'postdraft'
     }
     
     console.log(`[Cache MISS] League metadata for ${leagueKey}: scoring_type=${result.scoring_type}`)
