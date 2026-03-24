@@ -179,30 +179,32 @@
       </div>
 
       <!-- Mobile: column-page nav bar -->
-      <div class="sm:hidden flex items-center justify-between px-4 py-2 border-b border-dark-border bg-dark-border/20">
-        <button
-          @click="standingsColumnPage = Math.max(0, standingsColumnPage - 1)"
-          :disabled="standingsColumnPage === 0"
-          class="flex items-center gap-1 text-xs text-dark-textMuted disabled:opacity-30 transition-opacity"
-        >
-          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
-          </svg>
-          {{ standingsColumnPage === 0 ? '' : 'Back' }}
-        </button>
-        <span class="text-xs text-dark-textMuted">
-          {{ standingsColumnPage === 0 ? 'Record' : 'More Stats' }}
-        </span>
-        <button
-          @click="standingsColumnPage = Math.min(1, standingsColumnPage + 1)"
-          :disabled="standingsColumnPage >= 1"
-          class="flex items-center gap-1 text-xs text-dark-textMuted disabled:opacity-30 transition-opacity"
-        >
-          More Stats
-          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
-          </svg>
-        </button>
+      <div class="sm:hidden border-b border-dark-border bg-dark-border/20 pb-2 pt-1">
+        <div class="flex items-center justify-center gap-3">
+          <button @click="standingsColumnPage = Math.max(0, standingsColumnPage - 1)" :disabled="standingsColumnPage === 0"
+            class="w-7 h-7 rounded-full flex items-center justify-center transition-all"
+            :class="standingsColumnPage === 0 ? 'text-dark-border cursor-default' : 'text-yellow-400 hover:bg-yellow-400/10'"
+          >
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
+            </svg>
+          </button>
+          <div class="flex gap-1.5">
+            <div v-for="(_, i) in 2" :key="i"
+              class="w-2 h-2 rounded-full transition-colors"
+              :class="i === standingsColumnPage ? 'bg-yellow-400' : 'bg-dark-border/60'"
+            />
+          </div>
+          <button @click="standingsColumnPage = Math.min(1, standingsColumnPage + 1)" :disabled="standingsColumnPage >= 1"
+            class="w-7 h-7 rounded-full flex items-center justify-center transition-all"
+            :class="standingsColumnPage >= 1 ? 'text-dark-border cursor-default' : 'text-yellow-400 hover:bg-yellow-400/10'"
+          >
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+            </svg>
+          </button>
+        </div>
+        <p class="text-center text-xs text-dark-textMuted mt-1">{{ standingsColumnPage === 0 ? 'Record' : 'More Stats →' }}</p>
       </div>
 
       <div class="card-body overflow-x-auto scrollbar-thin sm:overflow-x-auto" ref="standingsTableRef" @scroll="checkScrollHint">
@@ -212,12 +214,10 @@
               <th class="py-3 px-3 w-12 cursor-pointer hover:text-yellow-400" @click="setSortColumn('rank')">
                 # <span v-if="sortColumn === 'rank'" class="text-yellow-400">{{ sortDirection === 'asc' ? '↑' : '↓' }}</span>
               </th>
-              <!-- Desktop: always show team name. Mobile page 0: show name. Mobile page 1: logo only -->
-              <th class="py-3 px-3" :class="standingsColumnPage === 1 ? 'sm:table-cell hidden' : ''">
-                <span class="sm:inline" :class="standingsColumnPage === 1 ? 'hidden' : ''">Team</span>
+              <th class="py-3 px-3">
+                <span :class="standingsColumnPage === 1 ? 'hidden sm:inline' : ''">Team</span>
               </th>
-              <!-- Logo-only column shown on mobile page 1 -->
-              <th class="py-3 px-2 sm:hidden" v-if="standingsColumnPage === 1"></th>
+
 
               <!-- W-L-T: always visible, nowrap -->
               <th class="py-3 px-3 text-center cursor-pointer hover:text-yellow-400 whitespace-nowrap" @click="setSortColumn('record')" title="Total Category W-L-T">
@@ -284,7 +284,8 @@
               </td>
 
               <!-- Desktop team cell: always full. Mobile page 0: full. Mobile page 1: logo only -->
-              <td class="py-3 px-3" :class="standingsColumnPage === 1 ? 'hidden sm:table-cell' : ''">
+              <!-- Team cell: logo always visible; name hidden on mobile page 1 to save space -->
+              <td class="py-3 px-3">
                 <div class="flex items-center gap-2">
                   <div class="relative flex-shrink-0">
                     <img 
@@ -298,27 +299,11 @@
                       <span class="text-[8px] text-gray-900 font-bold">★</span>
                     </div>
                   </div>
-                  <div class="flex items-center gap-2 min-w-0">
+                  <div class="flex items-center gap-2 min-w-0" :class="standingsColumnPage === 1 ? 'hidden sm:flex' : ''">
                     <span class="font-semibold text-dark-text truncate">{{ team.name }}</span>
                     <span v-if="team.playoffFinish === 1" class="text-yellow-400 text-base flex-shrink-0" title="League Champion">🏆</span>
                     <span v-else-if="team.playoffFinish === 2" class="text-gray-300 text-sm flex-shrink-0" title="Runner-up">🥈</span>
                     <span v-else-if="team.playoffFinish === 3" class="text-amber-600 text-sm flex-shrink-0" title="Third Place">🥉</span>
-                  </div>
-                </div>
-              </td>
-
-              <!-- Logo-only cell on mobile page 1 -->
-              <td class="py-3 px-2 sm:hidden" v-if="standingsColumnPage === 1">
-                <div class="relative inline-flex">
-                  <img 
-                    :src="getLogoUrl(team.logo_url)" 
-                    :alt="team.name"
-                    class="w-7 h-7 rounded-full object-cover ring-2"
-                    :class="team.is_my_team ? 'ring-yellow-500' : 'ring-dark-border'"
-                    @error="handleImageError"
-                  />
-                  <div v-if="team.is_my_team" class="absolute -top-1 -right-1 w-3 h-3 bg-yellow-500 rounded-full flex items-center justify-center">
-                    <span class="text-[6px] text-gray-900 font-bold">★</span>
                   </div>
                 </div>
               </td>
@@ -379,32 +364,7 @@
             <span class="text-2xl">📈</span>
             <h2 class="card-title">Standings Over Time</h2>
           </div>
-          <!-- Mobile week nav arrows -->
-          <div class="sm:hidden flex items-center gap-2" v-if="chartSeries.length > 0">
-            <button
-              @click="chartWeekOffset = Math.min(chartWeekOffset + 6, Math.max(0, (chartOptions?.xaxis?.categories?.length || 0) - 6))"
-              :disabled="chartWeekOffset >= Math.max(0, (chartOptions?.xaxis?.categories?.length || 0) - 6)"
-              class="w-8 h-8 rounded-full flex items-center justify-center bg-dark-border/40 disabled:opacity-20 transition-opacity"
-              title="Earlier weeks"
-            >
-              <svg class="w-4 h-4 text-dark-text" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
-              </svg>
-            </button>
-            <span class="text-xs text-dark-textMuted whitespace-nowrap">
-              {{ mobileChartLabel }}
-            </span>
-            <button
-              @click="chartWeekOffset = Math.max(0, chartWeekOffset - 6)"
-              :disabled="chartWeekOffset === 0"
-              class="w-8 h-8 rounded-full flex items-center justify-center bg-dark-border/40 disabled:opacity-20 transition-opacity"
-              title="Later weeks"
-            >
-              <svg class="w-4 h-4 text-dark-text" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
-              </svg>
-            </button>
-          </div>
+
         </div>
         <p class="text-sm text-dark-textMuted mt-1">Track how team rankings have changed throughout the season</p>
       </div>
@@ -450,29 +410,59 @@
 
           <!-- Mobile: windowed chart showing ~6 weeks at a time -->
           <div class="sm:hidden">
-            <apexchart 
-              type="line" 
-              height="320" 
-              :options="mobileChartOptions" 
-              :series="mobileChartSeries"
-            />
-            <!-- Team avatar overlays sorted by final rank in visible window -->
-            <div class="flex flex-wrap gap-2 mt-3 px-1">
-              <div
-                v-for="team in mobileChartTeamOrder"
+            <div class="relative">
+              <apexchart 
+                type="line" 
+                height="320" 
+                :options="mobileChartOptions" 
+                :series="mobileChartSeries"
+              />
+              <!-- Team avatars at right edge, vertically positioned by rank in last visible week -->
+              <div 
+                v-for="(team, idx) in mobileChartTeamOrder"
                 :key="'mob-avatar-' + team.team_key"
-                class="flex items-center gap-1.5"
+                class="absolute pointer-events-none"
+                :style="getMobileChartAvatarStyle(team, idx)"
               >
                 <img 
                   :src="getLogoUrl(team.logo_url)" 
                   :alt="team.name"
                   class="w-5 h-5 rounded-full object-cover"
-                  :style="{ boxShadow: `0 0 0 2px ${getStandingsTeamColor(team)}` }"
+                  :style="{ boxShadow: `0 0 0 2px ${team.is_my_team ? '#F5C451' : getStandingsTeamColor(team)}` }"
                   @error="handleImageError"
                 />
-                <span class="text-[10px] text-dark-textMuted truncate max-w-[60px]">{{ team.name.split(' ')[0] }}</span>
               </div>
             </div>
+            <!-- Unified nav: arrows + yellow dots -->
+            <div class="flex items-center justify-center gap-3 mt-3">
+              <button
+                @click="chartWeekOffset = Math.min(chartWeekOffset + 6, Math.max(0, (chartOptions?.xaxis?.categories?.length || 0) - 6))"
+                :disabled="chartWeekOffset >= Math.max(0, (chartOptions?.xaxis?.categories?.length || 0) - 6)"
+                class="w-7 h-7 rounded-full flex items-center justify-center transition-all"
+                :class="chartWeekOffset >= Math.max(0, (chartOptions?.xaxis?.categories?.length || 0) - 6) ? 'text-dark-border cursor-default' : 'text-yellow-400 hover:bg-yellow-400/10'"
+              >
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
+                </svg>
+              </button>
+              <div class="flex gap-1.5">
+                <div v-for="(_, i) in mobileChartTotalPages" :key="i"
+                  class="w-2 h-2 rounded-full transition-colors"
+                  :class="i === mobileChartCurrentPage ? 'bg-yellow-400' : 'bg-dark-border/60'"
+                />
+              </div>
+              <button
+                @click="chartWeekOffset = Math.max(0, chartWeekOffset - 6)"
+                :disabled="chartWeekOffset === 0"
+                class="w-7 h-7 rounded-full flex items-center justify-center transition-all"
+                :class="chartWeekOffset === 0 ? 'text-dark-border cursor-default' : 'text-yellow-400 hover:bg-yellow-400/10'"
+              >
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+                </svg>
+              </button>
+            </div>
+            <p class="text-center text-xs text-dark-textMuted mt-1">{{ mobileChartLabel }}</p>
           </div>
         </div>
         <div v-else class="text-center py-12 text-dark-textMuted">
@@ -564,15 +554,32 @@
             </button>
           </div>
 
-          <!-- Dot indicators -->
-          <div class="flex justify-center gap-1.5 mt-3">
-            <button
-              v-for="(_, i) in quickStats"
-              :key="i"
-              @click="quickStatIndex = i"
-              class="w-1.5 h-1.5 rounded-full transition-colors"
-              :class="i === quickStatIndex ? 'bg-primary' : 'bg-dark-border'"
-            />
+<div class="flex items-center justify-center gap-3 mt-3">
+            <!-- Left arrow -->
+            <button @click="quickStatIndex = Math.max(0, quickStatIndex - 1)" :disabled="quickStatIndex === 0"
+              class="w-7 h-7 rounded-full flex items-center justify-center transition-all"
+              :class="quickStatIndex === 0 ? 'text-dark-border cursor-default' : 'text-yellow-400 hover:bg-yellow-400/10'"
+            >
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
+              </svg>
+            </button>
+            <!-- Dots -->
+            <div class="flex gap-1.5">
+              <button v-for="(_, i) in quickStats" :key="i" @click="quickStatIndex = i"
+                class="w-2 h-2 rounded-full transition-colors"
+                :class="i === quickStatIndex ? 'bg-yellow-400' : 'bg-dark-border/60'"
+              />
+            </div>
+            <!-- Right arrow -->
+            <button @click="quickStatIndex = Math.min(quickStats.length - 1, quickStatIndex + 1)" :disabled="quickStatIndex >= quickStats.length - 1"
+              class="w-7 h-7 rounded-full flex items-center justify-center transition-all"
+              :class="quickStatIndex >= quickStats.length - 1 ? 'text-dark-border cursor-default' : 'text-yellow-400 hover:bg-yellow-400/10'"
+            >
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+              </svg>
+            </button>
           </div>
         </div>
       </div>
@@ -2608,6 +2615,32 @@ const mobileChartTeamOrder = computed(() => {
     return ra - rb
   })
 })
+
+// Pagination helpers for chart dots
+const mobileChartTotalPages = computed(() => {
+  const total = chartOptions.value?.xaxis?.categories?.length || 0
+  return Math.max(1, Math.ceil(total / MOBILE_WEEKS_VISIBLE))
+})
+const mobileChartCurrentPage = computed(() => {
+  const total = chartOptions.value?.xaxis?.categories?.length || 0
+  const maxOffset = Math.max(0, total - MOBILE_WEEKS_VISIBLE)
+  // page 0 = latest weeks, increasing = older; invert for dot display
+  const page = Math.round(chartWeekOffset.value / MOBILE_WEEKS_VISIBLE)
+  return mobileChartTotalPages.value - 1 - page
+})
+
+// Position avatar at right edge of mobile chart at the rank y-position for last visible week
+function getMobileChartAvatarStyle(team: any, rankIdx: number): string {
+  const numTeams = sortedTeams.value.length || 10
+  // Chart height 320, approximate plot area: top ~20px, bottom ~30px (x-axis labels)
+  const plotTop = 20
+  const plotBottom = 30
+  const plotHeight = 320 - plotTop - plotBottom
+  const rank = rankIdx + 1  // rankIdx 0 = rank 1 (best)
+  // y = plotTop + ((rank - 1) / (numTeams - 1)) * plotHeight
+  const y = plotTop + ((rank - 1) / Math.max(numTeams - 1, 1)) * plotHeight - 10
+  return `top: ${y}px; right: 2px;`
+}
 
 // Quick Stats - without luckiest/unluckiest
 const quickStats = computed(() => {
