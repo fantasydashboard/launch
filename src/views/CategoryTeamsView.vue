@@ -1,21 +1,11 @@
 <template>
   <div class="space-y-6">
     <!-- Offseason Notice Banner - Only show when season is complete -->
-    <!-- Offseason banner: only when no data AND no draft yet -->
-    <div v-if="isSeasonComplete && !leagueStore.isPreSeasonDrafted" class="bg-slate-500/10 border border-slate-500/30 rounded-xl p-4 flex items-start gap-3">
+    <div v-if="isSeasonComplete" class="bg-slate-500/10 border border-slate-500/30 rounded-xl p-4 flex items-start gap-3">
       <div class="text-slate-400 text-xl flex-shrink-0">📅</div>
       <div>
         <p class="text-slate-200 font-semibold">It's the offseason</p>
-        <p class="text-slate-400 text-sm mt-1">You're viewing last season's data ({{ currentSeason }}). The {{ Number(currentSeason) + 1 }} season will appear automatically once the draft is complete.</p>
-      </div>
-    </div>
-
-    <!-- Pre-season drafted banner: draft done, Week 1 hasn't started -->
-    <div v-if="leagueStore.isPreSeasonDrafted" class="bg-emerald-500/10 border border-emerald-500/30 rounded-xl p-4 flex items-start gap-3">
-      <div class="text-emerald-400 text-xl flex-shrink-0">⚾</div>
-      <div>
-        <p class="text-emerald-300 font-semibold">Draft complete — season starting soon!</p>
-        <p class="text-slate-400 text-sm mt-1">Records are 0-0. Rankings and projections are based on your drafted roster until Week 1 begins.</p>
+        <p class="text-slate-400 text-sm mt-1">You're viewing last season's data ({{ currentSeason }}). The {{ Number(currentSeason) + 1 }} season will appear automatically once Week 1 begins.</p>
       </div>
     </div>
 
@@ -636,6 +626,10 @@ async function loadTeamData() {
       loadingMessage.value = 'No league selected'
       return
     }
+
+    // If draft is done but season hasn't started, there are no real stats yet.
+    // Yahoo returns projected/pre-season values by default which are misleading.
+    const preSeasonMode = leagueStore.isPreSeasonDrafted
     
     // Load league settings
     loadingProgress.value = { currentStep: 'Loading scoring categories...', week: 1, maxWeek: 4 }
@@ -674,7 +668,7 @@ async function loadTeamData() {
         let topValue = 0
         
         for (const player of teamPlayers) {
-          const value = parseFloat(player.stats?.[statId] || 0)
+          const value = preSeasonMode ? 0 : parseFloat(player.stats?.[statId] || 0)
           if (!isNaN(value)) {
             total += value
             if (value > topValue) {
