@@ -170,32 +170,67 @@
       <!-- Mobile scroll hint for category leagues - only when content overflows -->
       <div 
         v-if="!isPointsLeague && showScrollHint" 
-        class="px-4 py-2 bg-dark-border/30 border-b border-dark-border flex items-center justify-center gap-2 text-xs text-dark-textMuted"
+        class="px-4 py-2 bg-dark-border/30 border-b border-dark-border sm:flex hidden items-center justify-center gap-2 text-xs text-dark-textMuted"
       >
         <svg class="w-4 h-4 animate-pulse" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
         </svg>
         <span>Swipe to see all categories</span>
       </div>
-      
-      <div class="card-body overflow-x-auto scrollbar-thin" ref="standingsTableRef" @scroll="checkScrollHint">
+
+      <!-- Mobile: column-page nav bar -->
+      <div class="sm:hidden flex items-center justify-between px-4 py-2 border-b border-dark-border bg-dark-border/20">
+        <button
+          @click="standingsColumnPage = Math.max(0, standingsColumnPage - 1)"
+          :disabled="standingsColumnPage === 0"
+          class="flex items-center gap-1 text-xs text-dark-textMuted disabled:opacity-30 transition-opacity"
+        >
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+          </svg>
+          {{ standingsColumnPage === 0 ? '' : 'Back' }}
+        </button>
+        <span class="text-xs text-dark-textMuted">
+          {{ standingsColumnPage === 0 ? 'Record' : 'More Stats' }}
+        </span>
+        <button
+          @click="standingsColumnPage = Math.min(1, standingsColumnPage + 1)"
+          :disabled="standingsColumnPage >= 1"
+          class="flex items-center gap-1 text-xs text-dark-textMuted disabled:opacity-30 transition-opacity"
+        >
+          More Stats
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+          </svg>
+        </button>
+      </div>
+
+      <div class="card-body overflow-x-auto scrollbar-thin sm:overflow-x-auto" ref="standingsTableRef" @scroll="checkScrollHint">
         <table class="w-full">
           <thead>
             <tr class="text-left text-xs text-dark-textMuted uppercase border-b border-dark-border">
               <th class="py-3 px-3 w-12 cursor-pointer hover:text-yellow-400" @click="setSortColumn('rank')">
                 # <span v-if="sortColumn === 'rank'" class="text-yellow-400">{{ sortDirection === 'asc' ? '↑' : '↓' }}</span>
               </th>
-              <th class="py-3 px-3 min-w-[150px]">Team</th>
-              <th class="py-3 px-3 text-center cursor-pointer hover:text-yellow-400" @click="setSortColumn('record')" title="Total Category W-L-T">
+              <!-- Desktop: always show team name. Mobile page 0: show name. Mobile page 1: logo only -->
+              <th class="py-3 px-3" :class="standingsColumnPage === 1 ? 'sm:table-cell hidden' : ''">
+                <span class="sm:inline" :class="standingsColumnPage === 1 ? 'hidden' : ''">Team</span>
+              </th>
+              <!-- Logo-only column shown on mobile page 1 -->
+              <th class="py-3 px-2 sm:hidden" v-if="standingsColumnPage === 1"></th>
+
+              <!-- W-L-T: always visible, nowrap -->
+              <th class="py-3 px-3 text-center cursor-pointer hover:text-yellow-400 whitespace-nowrap" @click="setSortColumn('record')" title="Total Category W-L-T">
                 W-L-T <span v-if="sortColumn === 'record'" class="text-yellow-400">{{ sortDirection === 'asc' ? '↑' : '↓' }}</span>
               </th>
               
-              <!-- Category columns (for Yahoo H2H/Roto Category leagues with per-category data) -->
+              <!-- Extra columns: always on desktop, only on page 1 on mobile -->
               <template v-if="hasRealPerCategoryData">
                 <th 
                   v-for="(cat, idx) in displayCategories" 
                   :key="cat.stat_id"
                   class="py-3 px-2 text-center cursor-pointer hover:text-yellow-400 whitespace-nowrap"
+                  :class="standingsColumnPage === 0 ? 'hidden sm:table-cell' : ''"
                   :title="cat.name + ' — Total times won this category across all matchup weeks'"
                   @click="setSortColumn('cat_' + cat.stat_id)"
                 >
@@ -207,28 +242,26 @@
                 </th>
               </template>
               
-              <!-- ESPN Category league - show total Cat Wins column -->
               <template v-else-if="showTotalCategoryWins">
-                <th class="py-3 px-3 text-center cursor-pointer hover:text-yellow-400" @click="setSortColumn('catWins')">
+                <th class="py-3 px-3 text-center cursor-pointer hover:text-yellow-400" :class="standingsColumnPage === 0 ? 'hidden sm:table-cell' : ''" @click="setSortColumn('catWins')">
                   Cat W <span v-if="sortColumn === 'catWins'" class="text-yellow-400">{{ sortDirection === 'asc' ? '↑' : '↓' }}</span>
                 </th>
-                <th class="py-3 px-3 text-center cursor-pointer hover:text-yellow-400" @click="setSortColumn('catLosses')">
+                <th class="py-3 px-3 text-center cursor-pointer hover:text-yellow-400" :class="standingsColumnPage === 0 ? 'hidden sm:table-cell' : ''" @click="setSortColumn('catLosses')">
                   Cat L <span v-if="sortColumn === 'catLosses'" class="text-yellow-400">{{ sortDirection === 'asc' ? '↑' : '↓' }}</span>
                 </th>
-                <th class="py-3 px-3 text-center cursor-pointer hover:text-yellow-400" @click="setSortColumn('allPlay')">
+                <th class="py-3 px-3 text-center cursor-pointer hover:text-yellow-400" :class="standingsColumnPage === 0 ? 'hidden sm:table-cell' : ''" @click="setSortColumn('allPlay')">
                   All-Play <span v-if="sortColumn === 'allPlay'" class="text-yellow-400">{{ sortDirection === 'asc' ? '↑' : '↓' }}</span>
                 </th>
               </template>
               
-              <!-- Points columns (for Points leagues) -->
               <template v-else>
-                <th class="py-3 px-3 text-center cursor-pointer hover:text-yellow-400" @click="setSortColumn('allPlay')">
+                <th class="py-3 px-3 text-center cursor-pointer hover:text-yellow-400" :class="standingsColumnPage === 0 ? 'hidden sm:table-cell' : ''" @click="setSortColumn('allPlay')">
                   All-Play <span v-if="sortColumn === 'allPlay'" class="text-yellow-400">{{ sortDirection === 'asc' ? '↑' : '↓' }}</span>
                 </th>
-                <th class="py-3 px-3 text-right cursor-pointer hover:text-yellow-400" @click="setSortColumn('pf')">
+                <th class="py-3 px-3 text-right cursor-pointer hover:text-yellow-400" :class="standingsColumnPage === 0 ? 'hidden sm:table-cell' : ''" @click="setSortColumn('pf')">
                   PF <span v-if="sortColumn === 'pf'" class="text-yellow-400">{{ sortDirection === 'asc' ? '↑' : '↓' }}</span>
                 </th>
-                <th class="py-3 px-3 text-right cursor-pointer hover:text-yellow-400" @click="setSortColumn('pa')">
+                <th class="py-3 px-3 text-right cursor-pointer hover:text-yellow-400" :class="standingsColumnPage === 0 ? 'hidden sm:table-cell' : ''" @click="setSortColumn('pa')">
                   PA <span v-if="sortColumn === 'pa'" class="text-yellow-400">{{ sortDirection === 'asc' ? '↑' : '↓' }}</span>
                 </th>
               </template>
@@ -244,14 +277,14 @@
             >
               <td class="py-3 px-3">
                 <div class="flex items-center justify-center">
-                  <span 
-                    class="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold bg-dark-border text-dark-textMuted"
-                  >
+                  <span class="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold bg-dark-border text-dark-textMuted">
                     {{ team.regularSeasonRank }}
                   </span>
                 </div>
               </td>
-              <td class="py-3 px-3">
+
+              <!-- Desktop team cell: always full. Mobile page 0: full. Mobile page 1: logo only -->
+              <td class="py-3 px-3" :class="standingsColumnPage === 1 ? 'hidden sm:table-cell' : ''">
                 <div class="flex items-center gap-2">
                   <div class="relative flex-shrink-0">
                     <img 
@@ -267,64 +300,69 @@
                   </div>
                   <div class="flex items-center gap-2 min-w-0">
                     <span class="font-semibold text-dark-text truncate">{{ team.name }}</span>
-                    <!-- Playoff finish trophy icons next to team name -->
                     <span v-if="team.playoffFinish === 1" class="text-yellow-400 text-base flex-shrink-0" title="League Champion">🏆</span>
                     <span v-else-if="team.playoffFinish === 2" class="text-gray-300 text-sm flex-shrink-0" title="Runner-up">🥈</span>
                     <span v-else-if="team.playoffFinish === 3" class="text-amber-600 text-sm flex-shrink-0" title="Third Place">🥉</span>
                   </div>
                 </div>
               </td>
+
+              <!-- Logo-only cell on mobile page 1 -->
+              <td class="py-3 px-2 sm:hidden" v-if="standingsColumnPage === 1">
+                <div class="relative inline-flex">
+                  <img 
+                    :src="getLogoUrl(team.logo_url)" 
+                    :alt="team.name"
+                    class="w-7 h-7 rounded-full object-cover ring-2"
+                    :class="team.is_my_team ? 'ring-yellow-500' : 'ring-dark-border'"
+                    @error="handleImageError"
+                  />
+                  <div v-if="team.is_my_team" class="absolute -top-1 -right-1 w-3 h-3 bg-yellow-500 rounded-full flex items-center justify-center">
+                    <span class="text-[6px] text-gray-900 font-bold">★</span>
+                  </div>
+                </div>
+              </td>
+
               <td class="py-3 px-3 text-center">
-                <span class="font-bold" :class="getRecordClass(team)">
+                <span class="font-bold whitespace-nowrap" :class="getRecordClass(team)">
                   {{ team.wins }}-{{ team.losses }}{{ team.ties > 0 ? `-${team.ties}` : '' }}
                 </span>
               </td>
               
-              <!-- Category wins per stat (for Yahoo H2H/Roto Category leagues with per-category data) -->
               <template v-if="hasRealPerCategoryData">
                 <td 
                   v-for="cat in displayCategories" 
                   :key="cat.stat_id"
                   class="py-3 px-2 text-center"
+                  :class="standingsColumnPage === 0 ? 'hidden sm:table-cell' : ''"
                 >
-                  <span 
-                    class="text-sm font-medium"
-                    :class="getCategoryWinClass(team.categoryWins?.[cat.stat_id] || 0, cat.stat_id)"
-                  >
+                  <span class="text-sm font-medium" :class="getCategoryWinClass(team.categoryWins?.[cat.stat_id] || 0, cat.stat_id)">
                     {{ team.categoryWins?.[cat.stat_id] || 0 }}
                   </span>
                 </td>
               </template>
               
-              <!-- ESPN Category league - show total Cat Wins/Losses -->
               <template v-else-if="showTotalCategoryWins">
-                <td class="py-3 px-3 text-center">
+                <td class="py-3 px-3 text-center" :class="standingsColumnPage === 0 ? 'hidden sm:table-cell' : ''">
                   <span class="text-sm font-bold text-green-400">{{ team.totalCategoryWins || 0 }}</span>
                 </td>
-                <td class="py-3 px-3 text-center">
+                <td class="py-3 px-3 text-center" :class="standingsColumnPage === 0 ? 'hidden sm:table-cell' : ''">
                   <span class="text-sm font-bold text-red-400">{{ team.totalCategoryLosses || 0 }}</span>
                 </td>
-                <td class="py-3 px-3 text-center">
+                <td class="py-3 px-3 text-center" :class="standingsColumnPage === 0 ? 'hidden sm:table-cell' : ''">
                   <span class="text-sm">{{ team.all_play_wins || 0 }}-{{ team.all_play_losses || 0 }}</span>
                 </td>
               </template>
               
-              <!-- Points league columns -->
               <template v-else>
-                <td class="py-3 px-3 text-center">
-                  <span :class="getAllPlayClass(team)">
-                    {{ team.all_play_wins }}-{{ team.all_play_losses }}
-                  </span>
+                <td class="py-3 px-3 text-center" :class="standingsColumnPage === 0 ? 'hidden sm:table-cell' : ''">
+                  <span :class="getAllPlayClass(team)">{{ team.all_play_wins }}-{{ team.all_play_losses }}</span>
                 </td>
-                <td class="py-3 px-3 text-right">
-                  <span class="font-medium" :class="getPointsForClass(team)">
-                    {{ team.points_for?.toFixed(1) || '0.0' }}
-                  </span>
+                <td class="py-3 px-3 text-right" :class="standingsColumnPage === 0 ? 'hidden sm:table-cell' : ''">
+                  <span class="font-medium" :class="getPointsForClass(team)">{{ team.points_for?.toFixed(1) || '0.0' }}</span>
                 </td>
-                <td class="py-3 px-3 text-right">
-                  <span :class="getPointsAgainstClass(team)">
-                    {{ team.points_against?.toFixed(1) || '0.0' }}
-                  </span>
+                <td class="py-3 px-3 text-right" :class="standingsColumnPage === 0 ? 'hidden sm:table-cell' : ''">
+                  <span :class="getPointsAgainstClass(team)">{{ team.points_against?.toFixed(1) || '0.0' }}</span>
                 </td>
               </template>
             </tr>
@@ -336,9 +374,37 @@
     <!-- Standings Over Time Chart -->
     <div class="card">
       <div class="card-header">
-        <div class="flex items-center gap-2">
-          <span class="text-2xl">📈</span>
-          <h2 class="card-title">Standings Over Time</h2>
+        <div class="flex items-center justify-between">
+          <div class="flex items-center gap-2">
+            <span class="text-2xl">📈</span>
+            <h2 class="card-title">Standings Over Time</h2>
+          </div>
+          <!-- Mobile week nav arrows -->
+          <div class="sm:hidden flex items-center gap-2" v-if="chartSeries.length > 0">
+            <button
+              @click="chartWeekOffset = Math.min(chartWeekOffset + 6, Math.max(0, (chartOptions?.xaxis?.categories?.length || 0) - 6))"
+              :disabled="chartWeekOffset >= Math.max(0, (chartOptions?.xaxis?.categories?.length || 0) - 6)"
+              class="w-8 h-8 rounded-full flex items-center justify-center bg-dark-border/40 disabled:opacity-20 transition-opacity"
+              title="Earlier weeks"
+            >
+              <svg class="w-4 h-4 text-dark-text" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+              </svg>
+            </button>
+            <span class="text-xs text-dark-textMuted whitespace-nowrap">
+              {{ mobileChartLabel }}
+            </span>
+            <button
+              @click="chartWeekOffset = Math.max(0, chartWeekOffset - 6)"
+              :disabled="chartWeekOffset === 0"
+              class="w-8 h-8 rounded-full flex items-center justify-center bg-dark-border/40 disabled:opacity-20 transition-opacity"
+              title="Later weeks"
+            >
+              <svg class="w-4 h-4 text-dark-text" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+              </svg>
+            </button>
+          </div>
         </div>
         <p class="text-sm text-dark-textMuted mt-1">Track how team rankings have changed throughout the season</p>
       </div>
@@ -347,37 +413,64 @@
           <LoadingSpinner size="sm" :message="`Loading chart data (${chartLoadProgress})...`" />
         </div>
         <div v-else-if="chartSeries.length > 0" class="relative" ref="standingsChartRef">
-          <apexchart 
-            ref="apexChartRef"
-            type="line" 
-            height="400" 
-            :options="chartOptions" 
-            :series="chartSeries"
-            @updated="onChartUpdated"
-          />
-          
-          <!-- Team avatar overlays at end of lines - positioned after chart renders -->
-          <div 
-            v-for="(team, idx) in sortedTeams" 
-            :key="'avatar-' + team.team_key"
-            class="absolute cursor-pointer transition-opacity duration-200"
-            :class="{ 'opacity-30': standingsHoveredTeamKey && standingsHoveredTeamKey !== team.team_key }"
-            :style="getChartAvatarStyle(team)"
-            @mouseenter="standingsHoveredTeamKey = team.team_key"
-            @mouseleave="standingsHoveredTeamKey = null"
-          >
-            <div class="relative">
-              <img 
-                :src="getLogoUrl(team.logo_url)" 
-                :alt="team.name"
-                class="w-6 h-6 rounded-full object-cover"
-                :style="{ 
-                  boxShadow: `0 0 0 2px ${team.is_my_team ? '#F5C451' : getStandingsTeamColor(team)}`
-                }"
-                @error="handleImageError"
-              />
-              <div v-if="team.is_my_team" class="absolute -top-0.5 -right-0.5 w-3 h-3 bg-yellow-500 rounded-full flex items-center justify-center">
-                <span class="text-[6px] text-gray-900 font-bold">★</span>
+          <!-- Desktop: full chart -->
+          <div class="hidden sm:block">
+            <apexchart 
+              ref="apexChartRef"
+              type="line" 
+              height="400" 
+              :options="chartOptions" 
+              :series="chartSeries"
+              @updated="onChartUpdated"
+            />
+            <!-- Team avatar overlays at end of lines -->
+            <div 
+              v-for="(team, idx) in sortedTeams" 
+              :key="'avatar-' + team.team_key"
+              class="absolute cursor-pointer transition-opacity duration-200"
+              :class="{ 'opacity-30': standingsHoveredTeamKey && standingsHoveredTeamKey !== team.team_key }"
+              :style="getChartAvatarStyle(team)"
+              @mouseenter="standingsHoveredTeamKey = team.team_key"
+              @mouseleave="standingsHoveredTeamKey = null"
+            >
+              <div class="relative">
+                <img 
+                  :src="getLogoUrl(team.logo_url)" 
+                  :alt="team.name"
+                  class="w-6 h-6 rounded-full object-cover"
+                  :style="{ boxShadow: `0 0 0 2px ${team.is_my_team ? '#F5C451' : getStandingsTeamColor(team)}` }"
+                  @error="handleImageError"
+                />
+                <div v-if="team.is_my_team" class="absolute -top-0.5 -right-0.5 w-3 h-3 bg-yellow-500 rounded-full flex items-center justify-center">
+                  <span class="text-[6px] text-gray-900 font-bold">★</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Mobile: windowed chart showing ~6 weeks at a time -->
+          <div class="sm:hidden">
+            <apexchart 
+              type="line" 
+              height="320" 
+              :options="mobileChartOptions" 
+              :series="mobileChartSeries"
+            />
+            <!-- Team avatar overlays sorted by final rank in visible window -->
+            <div class="flex flex-wrap gap-2 mt-3 px-1">
+              <div
+                v-for="team in mobileChartTeamOrder"
+                :key="'mob-avatar-' + team.team_key"
+                class="flex items-center gap-1.5"
+              >
+                <img 
+                  :src="getLogoUrl(team.logo_url)" 
+                  :alt="team.name"
+                  class="w-5 h-5 rounded-full object-cover"
+                  :style="{ boxShadow: `0 0 0 2px ${getStandingsTeamColor(team)}` }"
+                  @error="handleImageError"
+                />
+                <span class="text-[10px] text-dark-textMuted truncate max-w-[60px]">{{ team.name.split(' ')[0] }}</span>
               </div>
             </div>
           </div>
@@ -398,7 +491,8 @@
         </div>
       </div>
       <div class="card-body">
-        <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <!-- Desktop: grid layout (unchanged) -->
+        <div class="hidden sm:grid grid-cols-2 lg:grid-cols-4 gap-4">
           <div 
             v-for="stat in quickStats" 
             :key="stat.label" 
@@ -420,6 +514,65 @@
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
               </svg>
             </div>
+          </div>
+        </div>
+
+        <!-- Mobile: single card with arrow nav -->
+        <div class="sm:hidden">
+          <div class="flex items-center gap-3">
+            <!-- Left arrow -->
+            <button
+              @click="quickStatIndex = Math.max(0, quickStatIndex - 1)"
+              :disabled="quickStatIndex === 0"
+              class="w-8 h-8 rounded-full flex items-center justify-center bg-dark-border/40 disabled:opacity-20 flex-shrink-0 transition-opacity"
+            >
+              <svg class="w-4 h-4 text-dark-text" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+              </svg>
+            </button>
+
+            <!-- Active card -->
+            <div
+              v-if="quickStats[quickStatIndex]"
+              @click="openQuickStatModal(quickStats[quickStatIndex].type)"
+              class="flex-1 flex items-center gap-4 p-4 rounded-xl bg-dark-border/20 cursor-pointer active:bg-dark-border/40 transition-colors"
+            >
+              <div class="w-14 h-14 rounded-full overflow-hidden bg-dark-border flex-shrink-0 ring-2 ring-dark-border">
+                <img v-if="quickStats[quickStatIndex].team" :src="getLogoUrl(quickStats[quickStatIndex].team.logo_url)" class="w-full h-full object-cover" @error="handleImageError" />
+              </div>
+              <div class="flex-1 min-w-0">
+                <div class="text-[11px] text-dark-textMuted uppercase tracking-wide mb-0.5">
+                  {{ quickStats[quickStatIndex].icon }} {{ quickStats[quickStatIndex].label }}
+                </div>
+                <div class="font-bold text-dark-text text-base truncate">{{ quickStats[quickStatIndex].team?.name || 'N/A' }}</div>
+                <div class="text-sm font-bold mt-0.5" :class="quickStats[quickStatIndex].valueClass">{{ quickStats[quickStatIndex].value }}</div>
+              </div>
+              <svg class="w-5 h-5 text-dark-textMuted flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+              </svg>
+            </div>
+
+            <!-- Right arrow -->
+            <button
+              @click="quickStatIndex = Math.min(quickStats.length - 1, quickStatIndex + 1)"
+              :disabled="quickStatIndex >= quickStats.length - 1"
+              class="w-8 h-8 rounded-full flex items-center justify-center bg-dark-border/40 disabled:opacity-20 flex-shrink-0 transition-opacity"
+            >
+              <svg class="w-4 h-4 text-dark-text" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+              </svg>
+            </button>
+          </div>
+
+          <!-- Dot indicators -->
+          <div class="flex justify-center gap-1.5 mt-3">
+            <button
+              v-for="(_, i) in quickStats"
+              :key="i"
+              @click="quickStatIndex = i"
+              class="w-1.5 h-1.5 rounded-full transition-colors"
+              :class="i === quickStatIndex ? 'bg-primary' : 'bg-dark-border'"
+            />
           </div>
         </div>
       </div>
@@ -1011,6 +1164,11 @@ const avatarPositions = ref<Map<string, { top: number, right: number }>>(new Map
 const chartSeries = ref<any[]>([])
 const chartOptions = ref<any>(null)
 const standingsHoveredTeamKey = ref<string | null>(null)
+
+// ── Mobile carousel state ─────────────────────────────────────────────────
+const standingsColumnPage = ref(0)  // 0 = record col, 1 = extra cols (team name hidden)
+const quickStatIndex = ref(0)       // active quick stat card on mobile
+const chartWeekOffset = ref(0)      // 0 = latest weeks visible, higher = further back
 
 // Data
 const transactionCounts = ref<Map<string, number>>(new Map())
@@ -2389,6 +2547,66 @@ const last3WeeksPoints = computed(() => {
   
   console.log('[last3WeeksPoints] No data available at all')
   return result
+})
+
+// ── Mobile chart windowing ────────────────────────────────────────────────
+const MOBILE_WEEKS_VISIBLE = 6
+
+const mobileChartLabel = computed(() => {
+  const allWeeks = chartOptions.value?.xaxis?.categories || []
+  const total = allWeeks.length
+  if (total === 0) return ''
+  const endIdx = total - chartWeekOffset.value
+  const startIdx = Math.max(0, endIdx - MOBILE_WEEKS_VISIBLE)
+  const start = allWeeks[startIdx] || ''
+  const end = allWeeks[endIdx - 1] || ''
+  return `${start} – ${end}`
+})
+
+const mobileChartSeries = computed(() => {
+  if (!chartSeries.value.length || !chartOptions.value) return []
+  const allWeeks = chartOptions.value?.xaxis?.categories || []
+  const total = allWeeks.length
+  const endIdx = total - chartWeekOffset.value
+  const startIdx = Math.max(0, endIdx - MOBILE_WEEKS_VISIBLE)
+  return chartSeries.value.map(s => ({
+    ...s,
+    data: (s.data || []).slice(startIdx, endIdx)
+  }))
+})
+
+const mobileChartOptions = computed(() => {
+  if (!chartOptions.value) return null
+  const allWeeks = chartOptions.value?.xaxis?.categories || []
+  const total = allWeeks.length
+  const endIdx = total - chartWeekOffset.value
+  const startIdx = Math.max(0, endIdx - MOBILE_WEEKS_VISIBLE)
+  const visibleWeeks = allWeeks.slice(startIdx, endIdx)
+  return {
+    ...chartOptions.value,
+    chart: { ...chartOptions.value.chart, toolbar: { show: false }, animations: { enabled: false } },
+    xaxis: { ...chartOptions.value.xaxis, categories: visibleWeeks },
+    legend: { show: false },
+    yaxis: { ...chartOptions.value.yaxis, reversed: true, min: 1, max: sortedTeams.value.length }
+  }
+})
+
+// Teams ordered by their rank at the END of the visible mobile window
+const mobileChartTeamOrder = computed(() => {
+  if (!chartSeries.value.length || !sortedTeams.value.length) return sortedTeams.value
+  const allWeeks = chartOptions.value?.xaxis?.categories || []
+  const total = allWeeks.length
+  const endIdx = total - chartWeekOffset.value
+  const lastVisibleIdx = Math.max(0, endIdx - 1)
+  const rankAtEnd = chartSeries.value.map(s => ({
+    name: s.name,
+    rank: s.data?.[lastVisibleIdx] ?? 999
+  }))
+  return [...sortedTeams.value].sort((a, b) => {
+    const ra = rankAtEnd.find(r => r.name === a.name)?.rank ?? 999
+    const rb = rankAtEnd.find(r => r.name === b.name)?.rank ?? 999
+    return ra - rb
+  })
 })
 
 // Quick Stats - without luckiest/unluckiest
