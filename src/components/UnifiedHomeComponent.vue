@@ -416,20 +416,29 @@
                 :options="mobileChartOptions" 
                 :series="mobileChartSeries"
               />
-              <!-- Team avatars at right edge, vertically positioned by rank in last visible week -->
-              <div 
-                v-for="(team, idx) in mobileChartTeamOrder"
-                :key="'mob-avatar-' + team.team_key"
-                class="absolute pointer-events-none"
-                :style="getMobileChartAvatarStyle(team, idx)"
+              <!--
+                Avatar column: use justify-between so items sit at fractions 0, 1/(n-1), 2/(n-1)...1
+                which exactly matches ApexCharts' y-axis data point spacing.
+                Padding top/bottom matches ApexCharts' internal plot area offsets (top≈12, bottom≈32).
+                Avatar size 16px (w-4 h-4) so they don't crowd each other.
+              -->
+              <div
+                class="absolute right-0 top-0 bottom-0 flex flex-col justify-between items-end pointer-events-none"
+                style="padding-top: 12px; padding-bottom: 32px; padding-right: 2px;"
               >
-                <img 
-                  :src="getLogoUrl(team.logo_url)" 
-                  :alt="team.name"
-                  class="w-5 h-5 rounded-full object-cover"
-                  :style="{ boxShadow: `0 0 0 2px ${team.is_my_team ? '#F5C451' : getStandingsTeamColor(team)}` }"
-                  @error="handleImageError"
-                />
+                <div
+                  v-for="team in mobileChartTeamOrder"
+                  :key="'mob-avatar-' + team.team_key"
+                  class="flex items-center justify-end"
+                >
+                  <img 
+                    :src="getLogoUrl(team.logo_url)" 
+                    :alt="team.name"
+                    class="w-4 h-4 rounded-full object-cover flex-shrink-0"
+                    :style="{ boxShadow: `0 0 0 2px ${team.is_my_team ? '#F5C451' : getStandingsTeamColor(team)}` }"
+                    @error="handleImageError"
+                  />
+                </div>
               </div>
             </div>
             <!-- Unified nav: arrows + yellow dots -->
@@ -2618,33 +2627,6 @@ const mobileChartCurrentPage = computed(() => {
   const currentStep = Math.round(chartWeekOffset.value / MOBILE_WEEKS_VISIBLE)
   return maxStep - currentStep  // invert so latest = last dot
 })
-
-// Position avatar so its CENTER sits exactly on the last visible data point.
-// Mobile chart height = 320px. ApexCharts internal layout (no legend/toolbar):
-//   plotTop  ≈ 10px  (small top padding)
-//   plotBottom ≈ 33px (x-axis label area)
-//   left margin for y-axis labels ≈ 30px (not relevant for right-side positioning)
-// Y-axis reversed: rank 1 = top of plot, rank N = bottom.
-// Right side: last data point sits at the plot right edge - a small internal padding (~6px).
-// Avatar size 20px → subtract 10 from both axes to center.
-function getMobileChartAvatarStyle(team: any, rankIdx: number): string {
-  const numTeams = sortedTeams.value.length || 10
-  const chartHeight = 320
-  const plotTop = 10
-  const plotBottom = 33
-  const plotHeight = chartHeight - plotTop - plotBottom
-  const rank = rankIdx + 1  // rankIdx 0 = rank 1 (best/top)
-  const dataPtY = plotTop + ((rank - 1) / Math.max(numTeams - 1, 1)) * plotHeight
-  const avatarSize = 20
-  const y = dataPtY - avatarSize / 2
-  // ApexCharts puts the last data point at ~rightPadding from the chart right edge.
-  // rightPadding ≈ 6px. We want the avatar center at the point, so shift left by half avatar.
-  const rightPad = 6
-  const right = rightPad - avatarSize / 2  // will be negative = avatar extends right of point
-  // Clamp to at least 0 so it stays visible
-  const finalRight = Math.max(0, right)
-  return `top: ${y}px; right: ${finalRight}px; width: ${avatarSize}px; height: ${avatarSize}px;`
-}
 
 // Quick Stats - without luckiest/unluckiest
 const quickStats = computed(() => {
