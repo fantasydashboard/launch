@@ -63,27 +63,50 @@ export function useFeatureAccess() {
       hasRealPremiumAccess.value = isAdmin.value || ['premium', 'pro'].includes(tier)
 
       // ── 2. League Pass check ──
-      // Any user loading a league that has an active subscription gets access.
+      // Stripe webhook writes to `league_passes` (active + expires_at).
+      // Legacy code may also write to `league_subscriptions`.
+      // Check both tables so either path grants access.
       const leagueId = leagueStore.activeLeagueId
       const platform = leagueStore.activePlatform
 
       if (leagueId && platform) {
-        const { data, error } = await supabase
-          .from('league_subscriptions')
-          .select('*')
+        const now = new Date().toISOString()
+
+        // Primary: league_passes (what stripe-webhook actually creates)
+        const { data: passData, error: passError } = await supabase
+          .from('league_passes')
+          .select('id, expires_at')
           .eq('league_id', leagueId)
-          .eq('platform', platform)
-          .eq('status', 'active')
+          .eq('active', true)
+          .gt('expires_at', now)
+          .limit(1)
           .maybeSingle()
 
-        if (error) {
-          console.error('[FeatureAccess] League subscription check failed:', error)
-          hasRealLeagueAccess.value = isAdmin.value
-          leagueSubscription.value = null
+        if (passData) {
+          console.log('[FeatureAccess] League pass found in league_passes ✓')
+          hasRealLeagueAccess.value = true
+          leagueSubscription.value = passData
         } else {
-          leagueSubscription.value = data
-          hasRealLeagueAccess.value = isAdmin.value || !!data
+          // Fallback: league_subscriptions (legacy path)
+          const { data: subData, error: subError } = await supabase
+            .from('league_subscriptions')
+            .select('*')
+            .eq('league_id', leagueId)
+            .eq('platform', platform)
+            .eq('status', 'active')
+            .maybeSingle()
+
+          if (subError) {
+            console.error('[FeatureAccess] league_subscriptions check failed:', subError)
+          }
+
+          leagueSubscription.value = subData || null
+          hasRealLeagueAccess.value = isAdmin.value || !!subData
+          if (subData) console.log('[FeatureAccess] League pass found in league_subscriptions ✓')
         }
+
+        if (passError) console.warn('[FeatureAccess] league_passes query error:', passError)
+        if (!passData) hasRealLeagueAccess.value = isAdmin.value || hasRealLeagueAccess.value
       } else {
         // No active league selected — no league access
         hasRealLeagueAccess.value = isAdmin.value
