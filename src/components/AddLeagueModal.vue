@@ -993,7 +993,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch, computed } from 'vue'
+import { ref, watch, computed, onMounted } from 'vue'
 import { useLeagueStore } from '@/stores/league'
 import { usePlatformsStore } from '@/stores/platforms'
 import { useSportStore } from '@/stores/sport'
@@ -1052,6 +1052,13 @@ const authStore = useAuthStore()
 // General state
 const step = ref(0)
 const selectedPlatform = ref<'sleeper' | 'yahoo' | 'espn' | null>(null)
+
+// Detect mobile — ESPN new league setup requires desktop Chrome
+const isMobile = ref(false)
+onMounted(() => {
+  isMobile.value = /Android|iPhone|iPad|iPod|Opera Mini|IEMobile|WPDesktop/i.test(navigator.userAgent)
+    || window.innerWidth <= 768
+})
 const loading = ref(false)
 const errorMessage = ref('')
 
