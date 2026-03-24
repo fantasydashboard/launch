@@ -218,8 +218,8 @@
               </th>
 
 
-              <!-- W-L-T: always visible, nowrap -->
-              <th class="py-3 px-3 text-center cursor-pointer hover:text-yellow-400 whitespace-nowrap" @click="setSortColumn('record')" title="Total Category W-L-T">
+              <!-- W-L-T: only on page 0 (mobile), always on desktop -->
+              <th class="py-3 px-3 text-center cursor-pointer hover:text-yellow-400 whitespace-nowrap" :class="standingsColumnPage > 0 ? 'hidden sm:table-cell' : ''" @click="setSortColumn('record')" title="Total Category W-L-T">
                 W-L-T <span v-if="sortColumn === 'record'" class="text-yellow-400">{{ sortDirection === 'asc' ? '↑' : '↓' }}</span>
               </th>
               
@@ -307,7 +307,7 @@
                 </div>
               </td>
 
-              <td class="py-3 px-3 text-center">
+              <td class="py-3 px-3 text-center" :class="standingsColumnPage > 0 ? 'hidden sm:table-cell' : ''">
                 <span class="font-bold whitespace-nowrap" :class="getRecordClass(team)">
                   {{ team.wins }}-{{ team.losses }}{{ team.ties > 0 ? `-${team.ties}` : '' }}
                 </span>
@@ -506,25 +506,14 @@
           </div>
         </div>
 
-        <!-- Mobile: single card with arrow nav -->
+        <!-- Mobile: single card with yellow nav only -->
         <div class="sm:hidden">
-          <div class="flex items-center gap-3">
-            <!-- Left arrow -->
-            <button
-              @click="quickStatIndex = Math.max(0, quickStatIndex - 1)"
-              :disabled="quickStatIndex === 0"
-              class="w-8 h-8 rounded-full flex items-center justify-center bg-dark-border/40 disabled:opacity-20 flex-shrink-0 transition-opacity"
-            >
-              <svg class="w-4 h-4 text-dark-text" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
-              </svg>
-            </button>
-
+          <div class="px-2">
             <!-- Active card -->
             <div
               v-if="quickStats[quickStatIndex]"
               @click="openQuickStatModal(quickStats[quickStatIndex].type)"
-              class="flex-1 flex items-center gap-4 p-4 rounded-xl bg-dark-border/20 cursor-pointer active:bg-dark-border/40 transition-colors"
+              class="flex items-center gap-4 p-4 rounded-xl bg-dark-border/20 cursor-pointer active:bg-dark-border/40 transition-colors"
             >
               <div class="w-14 h-14 rounded-full overflow-hidden bg-dark-border flex-shrink-0 ring-2 ring-dark-border">
                 <img v-if="quickStats[quickStatIndex].team" :src="getLogoUrl(quickStats[quickStatIndex].team.logo_url)" class="w-full h-full object-cover" @error="handleImageError" />
@@ -537,17 +526,6 @@
                 <div class="text-sm font-bold mt-0.5" :class="quickStats[quickStatIndex].valueClass">{{ quickStats[quickStatIndex].value }}</div>
               </div>
             </div>
-
-            <!-- Right arrow -->
-            <button
-              @click="quickStatIndex = Math.min(quickStats.length - 1, quickStatIndex + 1)"
-              :disabled="quickStatIndex >= quickStats.length - 1"
-              class="w-8 h-8 rounded-full flex items-center justify-center bg-dark-border/40 disabled:opacity-20 flex-shrink-0 transition-opacity"
-            >
-              <svg class="w-4 h-4 text-dark-text" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
-              </svg>
-            </button>
           </div>
 
 <div class="flex items-center justify-center gap-3 mt-3">
@@ -2627,41 +2605,45 @@ const mobileChartTeamOrder = computed(() => {
 const mobileChartTotalPages = computed(() => {
   const total = chartOptions.value?.xaxis?.categories?.length || 0
   if (total <= MOBILE_WEEKS_VISIBLE) return 1
-  // Number of distinct offset steps: 0 (latest), 6, 12, ... up to maxOffset
   const maxOffset = Math.max(0, total - MOBILE_WEEKS_VISIBLE)
-  return Math.floor(maxOffset / MOBILE_WEEKS_VISIBLE) + 2 // +1 for page at maxOffset, +1 for page 0
+  // Each step is MOBILE_WEEKS_VISIBLE wide; we always snap to multiples.
+  // Total distinct pages = number of steps + 1 (for page at offset 0)
+  return Math.ceil(maxOffset / MOBILE_WEEKS_VISIBLE) + 1
 })
 const mobileChartCurrentPage = computed(() => {
-  // 0 = leftmost (oldest), last = rightmost (latest/current)
-  // chartWeekOffset 0 = latest, max = oldest
+  // Dot 0 = oldest (max offset), last dot = latest (offset 0)
   const total = chartOptions.value?.xaxis?.categories?.length || 0
   const maxOffset = Math.max(0, total - MOBILE_WEEKS_VISIBLE)
-  const offsetStep = Math.round(chartWeekOffset.value / MOBILE_WEEKS_VISIBLE)
-  const maxStep = Math.floor(maxOffset / MOBILE_WEEKS_VISIBLE)
-  // Invert: latest = last dot, oldest = first dot
-  return maxStep - offsetStep
+  const maxStep = Math.ceil(maxOffset / MOBILE_WEEKS_VISIBLE)
+  const currentStep = Math.round(chartWeekOffset.value / MOBILE_WEEKS_VISIBLE)
+  return maxStep - currentStep  // invert so latest = last dot
 })
 
-// Position avatar centered ON the last visible data point
-// ApexCharts mobile chart height = 320px.
-// Plot area: top padding ~15px (no title/legend), bottom ~38px (x-axis labels + padding).
-// Y-axis is reversed: rank 1 at top, numTeams at bottom.
+// Position avatar so its CENTER sits exactly on the last visible data point.
+// Mobile chart height = 320px. ApexCharts internal layout (no legend/toolbar):
+//   plotTop  ≈ 10px  (small top padding)
+//   plotBottom ≈ 33px (x-axis label area)
+//   left margin for y-axis labels ≈ 30px (not relevant for right-side positioning)
+// Y-axis reversed: rank 1 = top of plot, rank N = bottom.
+// Right side: last data point sits at the plot right edge - a small internal padding (~6px).
+// Avatar size 20px → subtract 10 from both axes to center.
 function getMobileChartAvatarStyle(team: any, rankIdx: number): string {
   const numTeams = sortedTeams.value.length || 10
   const chartHeight = 320
-  const plotTop = 15      // space above plot area
-  const plotBottom = 38   // space below plot area (x-axis)
+  const plotTop = 10
+  const plotBottom = 33
   const plotHeight = chartHeight - plotTop - plotBottom
-  const rank = rankIdx + 1  // rankIdx 0 = rank 1 (top)
-  // Center of avatar should be at the data point y
+  const rank = rankIdx + 1  // rankIdx 0 = rank 1 (best/top)
   const dataPtY = plotTop + ((rank - 1) / Math.max(numTeams - 1, 1)) * plotHeight
   const avatarSize = 20
-  const y = dataPtY - avatarSize / 2  // offset so center is on the point
-  // Right: ApexCharts leaves ~8px padding on right side. Avatar is 20px wide, half = 10.
-  // We want center of avatar at the rightmost data point (not at chart edge).
-  // Rightmost point is inside the plot area, roughly 8px from right edge.
-  const right = 2
-  return `top: ${y}px; right: ${right}px; width: ${avatarSize}px; height: ${avatarSize}px;`
+  const y = dataPtY - avatarSize / 2
+  // ApexCharts puts the last data point at ~rightPadding from the chart right edge.
+  // rightPadding ≈ 6px. We want the avatar center at the point, so shift left by half avatar.
+  const rightPad = 6
+  const right = rightPad - avatarSize / 2  // will be negative = avatar extends right of point
+  // Clamp to at least 0 so it stays visible
+  const finalRight = Math.max(0, right)
+  return `top: ${y}px; right: ${finalRight}px; width: ${avatarSize}px; height: ${avatarSize}px;`
 }
 
 // Quick Stats - without luckiest/unluckiest
