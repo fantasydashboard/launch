@@ -405,8 +405,6 @@
                           </div>
                         </button>
                         <button
-                          @click="showAddLeagueModal = true; showLeagueDropdown = false"
-                          class="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-yellow-500/10 active:bg-yellow-500/20 transition-colors"
                         >
                           <div class="w-8 h-8 rounded-lg bg-yellow-500/20 flex items-center justify-center">
                             <svg class="w-4 h-4 text-yellow-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1293,6 +1291,7 @@ onMounted(async () => {
   if (authStore.isAuthenticated && authStore.user?.id) {
     await leagueStore.loadSavedLeagues(authStore.user.id)
     leagueStore.refreshYahooLeagues(authStore.user.id)
+    platformsStore.fetchConnectedPlatforms() // load ESPN creds from Supabase for cross-device access
     
     // Sync sport store with league store's persisted sport
     if (leagueStore.activeSport) {
@@ -1314,6 +1313,7 @@ watch(() => authStore.isAuthenticated, async (isAuth) => {
     showAuthModal.value = false
 
     await leagueStore.loadSavedLeagues(authStore.user.id)
+    platformsStore.fetchConnectedPlatforms() // load ESPN creds from Supabase for cross-device access
     
     // Sync sport store with league store's persisted sport
     if (leagueStore.activeSport) {

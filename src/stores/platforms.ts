@@ -350,10 +350,10 @@ export const usePlatformsStore = defineStore('platforms', () => {
     try {
       const { espn_s2, swid, leagueId, sport, season } = data
       
-      // Store credentials in localStorage
+      // Store credentials in localStorage (for this device)
       const credentials = { espn_s2, swid, stored_at: Date.now() }
       localStorage.setItem('espn_credentials', JSON.stringify(credentials))
-      console.log('[ESPN] Credentials stored')
+      console.log('[ESPN] Credentials stored in localStorage')
 
       // Apply credentials to service
       espnService.setCredentials(espn_s2, swid)
@@ -362,6 +362,29 @@ export const usePlatformsStore = defineStore('platforms', () => {
       const validation = await espnService.validateLeague(sport, leagueId, season)
       if (!validation.valid) {
         return { success: false, error: validation.error || 'Invalid credentials' }
+      }
+
+      // Sync credentials to Supabase so other devices (e.g. mobile) can use them
+      const authStore = useAuthStore()
+      if (supabase && authStore.user) {
+        try {
+          await supabase
+            .from('connected_platforms')
+            .upsert({
+              user_id: authStore.user.id,
+              platform: 'espn' as Platform,
+              platform_user_id: null,
+              platform_username: null,
+              access_token: espn_s2,   // espn_s2 stored as access_token
+              refresh_token: swid,      // swid stored as refresh_token
+              token_expires_at: null,
+            }, { onConflict: 'user_id,platform' })
+            .select()
+          console.log('[ESPN] Credentials synced to Supabase for cross-device access')
+        } catch (syncErr) {
+          // Non-fatal — credentials still work on this device via localStorage
+          console.warn('[ESPN] Could not sync credentials to Supabase:', syncErr)
+        }
       }
 
       return { success: true }
@@ -376,21 +399,34 @@ export const usePlatformsStore = defineStore('platforms', () => {
    */
   function getEspnCredentials(): { espn_s2: string; swid: string } | null {
     try {
+      // Check localStorage first (fastest, works offline)
       const stored = localStorage.getItem('espn_credentials')
-      if (!stored) return null
-      
-      const credentials = JSON.parse(stored)
-      // Credentials are generally valid for a long time but let's warn if old
-      const age = Date.now() - (credentials.stored_at || 0)
-      const oneMonth = 30 * 24 * 60 * 60 * 1000
-      if (age > oneMonth) {
-        console.warn('[ESPN] Stored credentials are over a month old, may need refresh')
+      if (stored) {
+        const credentials = JSON.parse(stored)
+        const age = Date.now() - (credentials.stored_at || 0)
+        const oneMonth = 30 * 24 * 60 * 60 * 1000
+        if (age > oneMonth) {
+          console.warn('[ESPN] Stored credentials are over a month old, may need refresh')
+        }
+        return { espn_s2: credentials.espn_s2, swid: credentials.swid }
       }
-      
-      return {
-        espn_s2: credentials.espn_s2,
-        swid: credentials.swid
+
+      // Fall back to connectedPlatforms (loaded from Supabase on app init)
+      // This is how mobile devices get credentials set up on desktop
+      const espnPlatform = connectedPlatforms.value.find(p => p.platform === 'espn')
+      if (espnPlatform?.access_token && espnPlatform?.refresh_token) {
+        console.log('[ESPN] Credentials loaded from Supabase (cross-device)')
+        // Cache in localStorage for future use
+        const credentials = {
+          espn_s2: espnPlatform.access_token,
+          swid: espnPlatform.refresh_token,
+          stored_at: Date.now()
+        }
+        localStorage.setItem('espn_credentials', JSON.stringify(credentials))
+        return { espn_s2: espnPlatform.access_token, swid: espnPlatform.refresh_token }
       }
+
+      return null
     } catch (err) {
       console.error('Failed to get ESPN credentials:', err)
       return null
