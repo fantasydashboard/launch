@@ -55,21 +55,12 @@
     </div>
 
     <template v-else-if="powerRankings.length > 0">
-      <!-- Offseason banner: only when truly no data AND no draft yet -->
-      <div v-if="isSeasonComplete && !leagueStore.isPreSeasonDrafted" class="bg-slate-500/10 border border-slate-500/30 rounded-xl p-4 flex items-start gap-3">
+      <!-- Offseason Notice Banner - Only show when season is complete -->
+      <div v-if="isSeasonComplete" class="bg-slate-500/10 border border-slate-500/30 rounded-xl p-4 flex items-start gap-3">
         <div class="text-slate-400 text-xl flex-shrink-0">📅</div>
         <div>
           <p class="text-slate-200 font-semibold">It's the offseason</p>
-          <p class="text-slate-400 text-sm mt-1">You're viewing last season's data ({{ currentSeason }}). The {{ Number(currentSeason) + 1 }} season will appear automatically once the draft is complete.</p>
-        </div>
-      </div>
-
-      <!-- Pre-season drafted banner: draft done, Week 1 hasn't started -->
-      <div v-if="leagueStore.isPreSeasonDrafted" class="bg-emerald-500/10 border border-emerald-500/30 rounded-xl p-4 flex items-start gap-3">
-        <div class="text-emerald-400 text-xl flex-shrink-0">⚾</div>
-        <div>
-          <p class="text-emerald-300 font-semibold">Draft complete — season starting soon!</p>
-          <p class="text-slate-400 text-sm mt-1">Records are 0-0. Rankings are based on your drafted roster until Week 1 begins.</p>
+          <p class="text-slate-400 text-sm mt-1">You're viewing last season's data ({{ currentSeason }}). The {{ Number(currentSeason) + 1 }} season will appear automatically once Week 1 begins.</p>
         </div>
       </div>
 
@@ -137,18 +128,52 @@
         </div>
         <div class="card-body">
           <!-- Power Rankings Table -->
+          <div class="sm:hidden flex items-center justify-center gap-3 py-2 border-b border-dark-border/30">
+          <button @click="prTablePage = Math.max(0, prTablePage - 1)" :disabled="prTablePage === 0"
+            class="w-7 h-7 rounded-full flex items-center justify-center transition-all"
+            :class="prTablePage === 0 ? 'text-dark-border cursor-default' : 'text-yellow-400 hover:bg-yellow-400/10'"
+          >
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
+            </svg>
+          </button>
+          <div class="flex gap-1.5">
+            <div v-for="(_, i) in 3" :key="i"
+              class="w-2 h-2 rounded-full transition-colors"
+              :class="i === prTablePage ? 'bg-yellow-400' : 'bg-dark-border/60'"
+            />
+          </div>
+          <button @click="prTablePage = Math.min(2, prTablePage + 1)" :disabled="prTablePage >= 2"
+            class="w-7 h-7 rounded-full flex items-center justify-center transition-all"
+            :class="prTablePage >= 2 ? 'text-dark-border cursor-default' : 'text-yellow-400 hover:bg-yellow-400/10'"
+          >
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+            </svg>
+          </button>
+        </div>
           <div ref="rankingsTableRef" class="overflow-x-auto">
             <table class="w-full">
               <thead>
                 <tr class="text-left text-xs text-dark-textMuted uppercase border-b border-dark-border">
-                  <th class="py-3 px-4">Rank</th>
-                  <th class="py-3 px-4 w-6">+/-</th>
-                  <th class="py-3 px-4">Team</th>
-                  <th class="py-3 px-4 text-center">Power Score</th>
-                  <th class="py-3 px-4 text-center hidden sm:table-cell">Record</th>
-                  <th class="py-3 px-4 text-center hidden sm:table-cell">All-Play</th>
-                  <th class="py-3 px-4 text-right hidden md:table-cell">PPW</th>
-                  <th class="py-3 px-4 text-right hidden lg:table-cell">Last 3</th>
+                  <!-- Rank: always visible -->
+                  <th class="py-3 px-2 sm:px-4">Rank</th>
+                  <!-- +/-: page 0 only on mobile -->
+                  <th class="py-3 px-2 sm:px-4 w-6" :class="prTablePage > 0 ? 'hidden sm:table-cell' : ''">+/-</th>
+                  <!-- Team: page 0 on mobile (name truncated), pages 1+ show logo only -->
+                  <th class="py-3 px-2 sm:px-4" :class="prTablePage > 0 ? 'hidden sm:table-cell' : ''">Team</th>
+                  <!-- Logo-only header for pages 1+ -->
+                  <th class="py-3 px-2 sm:hidden" v-if="prTablePage > 0"></th>
+                  <!-- Power Score: pages 0+1 on mobile, always desktop -->
+                  <th class="py-3 px-2 sm:px-4 text-center" :class="prTablePage === 2 ? 'hidden sm:table-cell' : ''">Score</th>
+                  <!-- Record: page 1 mobile -->
+                  <th class="py-3 px-2 sm:px-4 text-center" :class="prTablePage === 1 ? '' : 'hidden sm:table-cell'">Rec</th>
+                  <!-- All-Play: page 1 mobile -->
+                  <th class="py-3 px-2 sm:px-4 text-center" :class="prTablePage === 1 ? '' : 'hidden sm:table-cell'">All-Play</th>
+                  <!-- PPW: page 2 mobile, hidden md on desktop (already was) -->
+                  <th class="py-3 px-2 sm:px-4 text-right" :class="prTablePage === 2 ? '' : 'hidden sm:table-cell'">PPW</th>
+                  <!-- Last 3: page 2 mobile -->
+                  <th class="py-3 px-2 sm:px-4 text-right" :class="prTablePage === 2 ? '' : 'hidden sm:table-cell'">Last 3</th>
                 </tr>
               </thead>
               <tbody>
@@ -163,23 +188,22 @@
                     'blur-row': !hasLeagueAccess && idx >= 3
                   }"
                 >
-                  <td class="py-3 px-4">
-                    <span 
-                      class="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold bg-dark-border text-dark-text"
-                    >
+                  <td class="py-3 px-2 sm:px-4">
+                    <span class="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold bg-dark-border text-dark-text">
                       {{ idx + 1 }}
                     </span>
                   </td>
-                  <td class="py-3 px-4">
+                  <td class="py-3 px-2 sm:px-4" :class="prTablePage > 0 ? 'hidden sm:table-cell' : ''">
                     <div v-if="team.change !== 0" class="flex items-center gap-1">
                       <span v-if="team.change > 0" class="text-green-400 text-sm font-bold">▲{{ team.change }}</span>
                       <span v-else class="text-red-400 text-sm font-bold">▼{{ Math.abs(team.change) }}</span>
                     </div>
                     <span v-else class="text-dark-textMuted text-sm">—</span>
                   </td>
-                  <td class="py-3 px-4">
-                    <div class="flex items-center gap-3">
-                      <div class="relative">
+                  <!-- Team cell: full on page 0 (truncated name), logo-only on pages 1+ -->
+                  <td class="py-3 px-2 sm:px-4" :class="prTablePage > 0 ? 'hidden sm:table-cell' : ''">
+                    <div class="flex items-center gap-2">
+                      <div class="relative flex-shrink-0">
                         <img 
                           :src="team.logo_url || defaultAvatar" 
                           :alt="team.name"
@@ -191,39 +215,49 @@
                           <span class="text-[8px] text-gray-900 font-bold">★</span>
                         </div>
                       </div>
-                      <div class="flex items-center gap-2">
-                        <span class="font-semibold text-dark-text">{{ team.name }}</span>
-                        <svg class="w-4 h-4 text-primary/50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
-                        </svg>
+                      <div class="flex items-center gap-1 min-w-0">
+                        <span class="font-semibold text-dark-text truncate sm:max-w-none max-w-[90px] text-sm sm:text-base">{{ team.name }}</span>
                       </div>
                     </div>
                   </td>
-                  <td class="py-3 px-4 text-center">
-                    <div class="flex items-center justify-center gap-2">
-                      <div class="w-16 h-2 bg-dark-border rounded-full overflow-hidden">
-                        <div 
-                          class="h-full rounded-full transition-all duration-500"
+                  <!-- Logo-only for pages 1+ on mobile -->
+                  <td class="py-3 px-2 sm:hidden" v-if="prTablePage > 0">
+                    <div class="relative inline-flex">
+                      <img :src="team.logo_url || defaultAvatar" :alt="team.name"
+                        class="w-7 h-7 rounded-full object-cover ring-2"
+                        :class="team.is_my_team ? 'ring-yellow-500' : 'ring-dark-border'"
+                        @error="handleImageError" />
+                      <div v-if="team.is_my_team" class="absolute -top-1 -right-1 w-3 h-3 bg-yellow-500 rounded-full flex items-center justify-center">
+                        <span class="text-[6px] text-gray-900 font-bold">★</span>
+                      </div>
+                    </div>
+                  </td>
+                  <!-- Power Score: pages 0+1 -->
+                  <td class="py-3 px-2 sm:px-4 text-center" :class="prTablePage === 2 ? 'hidden sm:table-cell' : ''">
+                    <div class="flex items-center justify-center gap-1.5">
+                      <div class="w-10 sm:w-16 h-2 bg-dark-border rounded-full overflow-hidden hidden sm:block">
+                        <div class="h-full rounded-full transition-all duration-500"
                           :class="getPowerScoreBarClass(team.powerScore)"
-                          :style="{ width: `${team.powerScore}%` }"
-                        ></div>
+                          :style="{ width: `${team.powerScore}%` }"></div>
                       </div>
-                      <span class="font-bold" :class="getPowerScoreTextClass(team.powerScore)">{{ team.powerScore.toFixed(1) }}</span>
+                      <span class="font-bold text-sm" :class="getPowerScoreTextClass(team.powerScore)">{{ team.powerScore.toFixed(1) }}</span>
                     </div>
                   </td>
-                  <td class="py-3 px-4 text-center hidden sm:table-cell">
-                    <span class="font-medium" :class="getRecordColumnClass(team)">{{ team.wins }}-{{ team.losses }}</span>
+                  <!-- Record: page 1 mobile -->
+                  <td class="py-3 px-2 sm:px-4 text-center" :class="prTablePage === 1 ? '' : 'hidden sm:table-cell'">
+                    <span class="font-medium text-sm" :class="getRecordColumnClass(team)">{{ team.wins }}-{{ team.losses }}</span>
                   </td>
-                  <td class="py-3 px-4 text-center hidden sm:table-cell">
-                    <span :class="getAllPlayColumnClass(team)">{{ team.allPlayWins }}-{{ team.allPlayLosses }}</span>
+                  <!-- All-Play: page 1 mobile -->
+                  <td class="py-3 px-2 sm:px-4 text-center" :class="prTablePage === 1 ? '' : 'hidden sm:table-cell'">
+                    <span class="text-sm" :class="getAllPlayColumnClass(team)">{{ team.allPlayWins }}-{{ team.allPlayLosses }}</span>
                   </td>
-                  <td class="py-3 px-4 text-right hidden md:table-cell">
-                    <span class="font-medium" :class="getAvgScoreColumnClass(team)">{{ team.avgScore.toFixed(1) }}</span>
+                  <!-- PPW: page 2 mobile -->
+                  <td class="py-3 px-2 sm:px-4 text-right" :class="prTablePage === 2 ? '' : 'hidden sm:table-cell'">
+                    <span class="font-medium text-sm" :class="getAvgScoreColumnClass(team)">{{ team.avgScore.toFixed(1) }}</span>
                   </td>
-                  <td class="py-3 px-4 text-right hidden lg:table-cell">
-                    <span :class="getRecentAvgColumnClass(team)">
-                      {{ team.recentAvg.toFixed(1) }}
-                    </span>
+                  <!-- Last 3: page 2 mobile -->
+                  <td class="py-3 px-2 sm:px-4 text-right" :class="prTablePage === 2 ? '' : 'hidden sm:table-cell'">
+                    <span class="text-sm" :class="getRecentAvgColumnClass(team)">{{ team.recentAvg.toFixed(1) }}</span>
                   </td>
                 </tr>
               </tbody>
@@ -261,41 +295,79 @@
           <p class="text-sm text-dark-textMuted mt-1">Track power ranking changes throughout the season</p>
         </div>
         <div class="card-body">
-          <div 
-            v-if="chartSeries.length > 0" 
-            class="relative power-chart-container"
-          >
-            <apexchart 
-              ref="powerChartRef"
-              type="line" 
-              height="400" 
-              :options="chartOptions" 
-              :series="chartSeries"
-            />
-            <!-- Team avatars at end of lines -->
-            <div 
-              v-for="(team, idx) in powerRankings" 
-              :key="'avatar-' + team.team_key"
-              class="absolute cursor-pointer transition-opacity duration-200" 
-              :class="{ 'opacity-30': hoveredTeamKey && hoveredTeamKey !== team.team_key }"
-              :style="getAvatarPosition(team)"
-              @mouseenter="hoveredTeamKey = team.team_key"
-              @mouseleave="hoveredTeamKey = null"
-            >
-              <div class="relative">
-                <img 
-                  :src="team.logo_url || defaultAvatar" 
-                  :alt="team.name"
-                  class="w-6 h-6 rounded-full object-cover"
-                  :style="{ 
-                    boxShadow: `0 0 0 2px ${team.is_my_team ? '#F5C451' : getTeamColor(idx)}`
-                  }"
-                  @error="handleImageError" 
-                />
-                <div v-if="team.is_my_team" class="absolute -top-0.5 -right-0.5 w-3 h-3 bg-yellow-500 rounded-full flex items-center justify-center">
-                  <span class="text-[6px] text-gray-900 font-bold">★</span>
+          <div v-if="chartSeries.length > 0">
+            <!-- Desktop: full chart with avatars -->
+            <div class="hidden sm:block relative power-chart-container">
+              <apexchart 
+                ref="powerChartRef"
+                type="line" 
+                height="400" 
+                :options="chartOptions" 
+                :series="chartSeries"
+              />
+              <div 
+                v-for="(team, idx) in powerRankings" 
+                :key="'avatar-' + team.team_key"
+                class="absolute cursor-pointer transition-opacity duration-200" 
+                :class="{ 'opacity-30': hoveredTeamKey && hoveredTeamKey !== team.team_key }"
+                :style="getAvatarPosition(team)"
+                @mouseenter="hoveredTeamKey = team.team_key"
+                @mouseleave="hoveredTeamKey = null"
+              >
+                <div class="relative">
+                  <img :src="team.logo_url || defaultAvatar" :alt="team.name"
+                    class="w-6 h-6 rounded-full object-cover"
+                    :style="{ boxShadow: `0 0 0 2px ${team.is_my_team ? '#F5C451' : getTeamColor(idx)}` }"
+                    @error="handleImageError" />
+                  <div v-if="team.is_my_team" class="absolute -top-0.5 -right-0.5 w-3 h-3 bg-yellow-500 rounded-full flex items-center justify-center">
+                    <span class="text-[6px] text-gray-900 font-bold">★</span>
+                  </div>
                 </div>
               </div>
+            </div>
+
+            <!-- Mobile: windowed 6-week chart -->
+            <div class="sm:hidden">
+              <div class="relative">
+                <apexchart type="line" height="300" :options="prMobileChartOptions" :series="prMobileChartSeries" />
+                <!-- Avatars at right edge using justify-between -->
+                <div class="absolute right-0 top-0 bottom-0 flex flex-col justify-between items-end pointer-events-none"
+                  style="padding-top: 10px; padding-bottom: 33px; padding-right: 2px;">
+                  <div v-for="team in prMobileTeamOrder" :key="'pr-mob-' + team.team_key">
+                    <img :src="team.logo_url || defaultAvatar" :alt="team.name"
+                      class="w-4 h-4 rounded-full object-cover flex-shrink-0"
+                      :style="{ boxShadow: `0 0 0 2px ${team.is_my_team ? '#F5C451' : getTeamColor(powerRankings.indexOf(team))}` }"
+                      @error="handleImageError" />
+                  </div>
+                </div>
+              </div>
+              <!-- Nav -->
+              <div class="flex items-center justify-center gap-3 mt-3">
+                <button @click="prChartOffset = Math.min(prChartOffset + 6, Math.max(0, (chartOptions?.xaxis?.categories?.length || 0) - 6))"
+                  :disabled="prChartOffset >= Math.max(0, (chartOptions?.xaxis?.categories?.length || 0) - 6)"
+                  class="w-7 h-7 rounded-full flex items-center justify-center transition-all"
+                  :class="prChartOffset >= Math.max(0, (chartOptions?.xaxis?.categories?.length || 0) - 6) ? 'text-dark-border cursor-default' : 'text-yellow-400 hover:bg-yellow-400/10'"
+                >
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
+                  </svg>
+                </button>
+                <div class="flex gap-1.5">
+                  <div v-for="(_, i) in prChartTotalPages" :key="i"
+                    class="w-2 h-2 rounded-full transition-colors"
+                    :class="i === prChartCurrentPage ? 'bg-yellow-400' : 'bg-dark-border/60'" />
+                </div>
+                <button @click="prChartOffset = Math.max(0, prChartOffset - 6)"
+                  :disabled="prChartOffset === 0"
+                  class="w-7 h-7 rounded-full flex items-center justify-center transition-all"
+                  :class="prChartOffset === 0 ? 'text-dark-border cursor-default' : 'text-yellow-400 hover:bg-yellow-400/10'"
+                >
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+                  </svg>
+                </button>
+              </div>
+              <p class="text-center text-xs text-dark-textMuted mt-1">{{ prMobileChartLabel }}</p>
             </div>
           </div>
           <div v-else class="text-center py-12 text-dark-textMuted">
@@ -308,22 +380,15 @@
 
       <!-- Movers & Shakers — blurred when locked -->
       <div :class="!hasLeagueAccess ? 'locked-section' : ''">
-      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      <!-- Desktop: grid of 4 cards -->
+      <div class="hidden md:grid grid-cols-2 lg:grid-cols-4 gap-4">
         <!-- Biggest Climber -->
-        <div 
-          class="card bg-gradient-to-br from-green-500/10 to-transparent border-green-500/20 cursor-pointer transition-all hover:border-green-500/40"
-          @mouseenter="biggestClimber && (hoveredTeamKey = biggestClimber.team_key)"
-          @mouseleave="hoveredTeamKey = null"
-        >
+        <div class="card bg-gradient-to-br from-green-500/10 to-transparent border-green-500/20 cursor-pointer transition-all hover:border-green-500/40"
+          @mouseenter="biggestClimber && (hoveredTeamKey = biggestClimber.team_key)" @mouseleave="hoveredTeamKey = null">
           <div class="card-body">
             <div class="text-xs uppercase tracking-wider text-green-400 font-bold mb-3">🚀 Biggest Climber</div>
             <div v-if="biggestClimber" class="flex items-center gap-3">
-              <img 
-                :src="biggestClimber.logo_url || defaultAvatar" 
-                :alt="biggestClimber.name"
-                class="w-12 h-12 rounded-full border-2 border-green-500/50 object-cover"
-                @error="handleImageError"
-              />
+              <img :src="biggestClimber.logo_url || defaultAvatar" :alt="biggestClimber.name" class="w-12 h-12 rounded-full border-2 border-green-500/50 object-cover" @error="handleImageError" />
               <div class="flex-1 min-w-0">
                 <div class="font-bold text-dark-text truncate">{{ biggestClimber.name }}</div>
                 <div class="text-sm text-dark-textMuted">#{{ biggestClimber.firstRank }} → #{{ biggestClimber.lastRank }}</div>
@@ -333,22 +398,13 @@
             <div v-else class="text-dark-textMuted text-sm">Not enough data</div>
           </div>
         </div>
-
         <!-- Biggest Faller -->
-        <div 
-          class="card bg-gradient-to-br from-red-500/10 to-transparent border-red-500/20 cursor-pointer transition-all hover:border-red-500/40"
-          @mouseenter="biggestFaller && (hoveredTeamKey = biggestFaller.team_key)"
-          @mouseleave="hoveredTeamKey = null"
-        >
+        <div class="card bg-gradient-to-br from-red-500/10 to-transparent border-red-500/20 cursor-pointer transition-all hover:border-red-500/40"
+          @mouseenter="biggestFaller && (hoveredTeamKey = biggestFaller.team_key)" @mouseleave="hoveredTeamKey = null">
           <div class="card-body">
             <div class="text-xs uppercase tracking-wider text-red-400 font-bold mb-3">📉 Biggest Faller</div>
             <div v-if="biggestFaller" class="flex items-center gap-3">
-              <img 
-                :src="biggestFaller.logo_url || defaultAvatar" 
-                :alt="biggestFaller.name"
-                class="w-12 h-12 rounded-full border-2 border-red-500/50 object-cover"
-                @error="handleImageError"
-              />
+              <img :src="biggestFaller.logo_url || defaultAvatar" :alt="biggestFaller.name" class="w-12 h-12 rounded-full border-2 border-red-500/50 object-cover" @error="handleImageError" />
               <div class="flex-1 min-w-0">
                 <div class="font-bold text-dark-text truncate">{{ biggestFaller.name }}</div>
                 <div class="text-sm text-dark-textMuted">#{{ biggestFaller.firstRank }} → #{{ biggestFaller.lastRank }}</div>
@@ -358,22 +414,13 @@
             <div v-else class="text-dark-textMuted text-sm">Not enough data</div>
           </div>
         </div>
-
         <!-- Most Consistent -->
-        <div 
-          class="card bg-gradient-to-br from-blue-500/10 to-transparent border-blue-500/20 cursor-pointer transition-all hover:border-blue-500/40"
-          @mouseenter="mostConsistent && (hoveredTeamKey = mostConsistent.team_key)"
-          @mouseleave="hoveredTeamKey = null"
-        >
+        <div class="card bg-gradient-to-br from-blue-500/10 to-transparent border-blue-500/20 cursor-pointer transition-all hover:border-blue-500/40"
+          @mouseenter="mostConsistent && (hoveredTeamKey = mostConsistent.team_key)" @mouseleave="hoveredTeamKey = null">
           <div class="card-body">
             <div class="text-xs uppercase tracking-wider text-blue-400 font-bold mb-3">🎯 Most Consistent</div>
             <div v-if="mostConsistent" class="flex items-center gap-3">
-              <img 
-                :src="mostConsistent.logo_url || defaultAvatar" 
-                :alt="mostConsistent.name"
-                class="w-12 h-12 rounded-full border-2 border-blue-500/50 object-cover"
-                @error="handleImageError"
-              />
+              <img :src="mostConsistent.logo_url || defaultAvatar" :alt="mostConsistent.name" class="w-12 h-12 rounded-full border-2 border-blue-500/50 object-cover" @error="handleImageError" />
               <div class="flex-1 min-w-0">
                 <div class="font-bold text-dark-text truncate">{{ mostConsistent.name }}</div>
                 <div class="text-sm text-dark-textMuted">Avg Rank: #{{ mostConsistent.avgRank }}</div>
@@ -383,22 +430,13 @@
             <div v-else class="text-dark-textMuted text-sm">Not enough data</div>
           </div>
         </div>
-
         <!-- Most Volatile -->
-        <div 
-          class="card bg-gradient-to-br from-purple-500/10 to-transparent border-purple-500/20 cursor-pointer transition-all hover:border-purple-500/40"
-          @mouseenter="mostVolatile && (hoveredTeamKey = mostVolatile.team_key)"
-          @mouseleave="hoveredTeamKey = null"
-        >
+        <div class="card bg-gradient-to-br from-purple-500/10 to-transparent border-purple-500/20 cursor-pointer transition-all hover:border-purple-500/40"
+          @mouseenter="mostVolatile && (hoveredTeamKey = mostVolatile.team_key)" @mouseleave="hoveredTeamKey = null">
           <div class="card-body">
             <div class="text-xs uppercase tracking-wider text-purple-400 font-bold mb-3">🎢 Most Volatile</div>
             <div v-if="mostVolatile" class="flex items-center gap-3">
-              <img 
-                :src="mostVolatile.logo_url || defaultAvatar" 
-                :alt="mostVolatile.name"
-                class="w-12 h-12 rounded-full border-2 border-purple-500/50 object-cover"
-                @error="handleImageError"
-              />
+              <img :src="mostVolatile.logo_url || defaultAvatar" :alt="mostVolatile.name" class="w-12 h-12 rounded-full border-2 border-purple-500/50 object-cover" @error="handleImageError" />
               <div class="flex-1 min-w-0">
                 <div class="font-bold text-dark-text truncate">{{ mostVolatile.name }}</div>
                 <div class="text-sm text-dark-textMuted">#{{ mostVolatile.minRank }} ↔ #{{ mostVolatile.maxRank }}</div>
@@ -407,6 +445,77 @@
             </div>
             <div v-else class="text-dark-textMuted text-sm">Not enough data</div>
           </div>
+        </div>
+      </div>
+
+      <!-- Mobile: single card carousel -->
+      <div class="md:hidden card p-0 overflow-hidden">
+        <div class="p-4">
+          <template v-if="prMoverIndex === 0">
+            <div class="text-xs uppercase tracking-wider text-green-400 font-bold mb-3">🚀 Biggest Climber</div>
+            <div v-if="biggestClimber" class="flex items-center gap-3">
+              <img :src="biggestClimber.logo_url || defaultAvatar" class="w-14 h-14 rounded-full border-2 border-green-500/50 object-cover" @error="handleImageError" />
+              <div class="flex-1 min-w-0">
+                <div class="font-bold text-dark-text truncate text-base">{{ biggestClimber.name }}</div>
+                <div class="text-sm text-dark-textMuted">#{{ biggestClimber.firstRank }} → #{{ biggestClimber.lastRank }}</div>
+              </div>
+              <div class="text-3xl font-black text-green-400">+{{ biggestClimber.climb }}</div>
+            </div>
+            <div v-else class="text-dark-textMuted text-sm">Not enough data</div>
+          </template>
+          <template v-else-if="prMoverIndex === 1">
+            <div class="text-xs uppercase tracking-wider text-red-400 font-bold mb-3">📉 Biggest Faller</div>
+            <div v-if="biggestFaller" class="flex items-center gap-3">
+              <img :src="biggestFaller.logo_url || defaultAvatar" class="w-14 h-14 rounded-full border-2 border-red-500/50 object-cover" @error="handleImageError" />
+              <div class="flex-1 min-w-0">
+                <div class="font-bold text-dark-text truncate text-base">{{ biggestFaller.name }}</div>
+                <div class="text-sm text-dark-textMuted">#{{ biggestFaller.firstRank }} → #{{ biggestFaller.lastRank }}</div>
+              </div>
+              <div class="text-3xl font-black text-red-400">-{{ biggestFaller.fall }}</div>
+            </div>
+            <div v-else class="text-dark-textMuted text-sm">Not enough data</div>
+          </template>
+          <template v-else-if="prMoverIndex === 2">
+            <div class="text-xs uppercase tracking-wider text-blue-400 font-bold mb-3">🎯 Most Consistent</div>
+            <div v-if="mostConsistent" class="flex items-center gap-3">
+              <img :src="mostConsistent.logo_url || defaultAvatar" class="w-14 h-14 rounded-full border-2 border-blue-500/50 object-cover" @error="handleImageError" />
+              <div class="flex-1 min-w-0">
+                <div class="font-bold text-dark-text truncate text-base">{{ mostConsistent.name }}</div>
+                <div class="text-sm text-dark-textMuted">Avg Rank: #{{ mostConsistent.avgRank }}</div>
+              </div>
+              <div class="text-2xl font-black text-blue-400">±{{ mostConsistent.variance.toFixed(1) }}</div>
+            </div>
+            <div v-else class="text-dark-textMuted text-sm">Not enough data</div>
+          </template>
+          <template v-else>
+            <div class="text-xs uppercase tracking-wider text-purple-400 font-bold mb-3">🎢 Most Volatile</div>
+            <div v-if="mostVolatile" class="flex items-center gap-3">
+              <img :src="mostVolatile.logo_url || defaultAvatar" class="w-14 h-14 rounded-full border-2 border-purple-500/50 object-cover" @error="handleImageError" />
+              <div class="flex-1 min-w-0">
+                <div class="font-bold text-dark-text truncate text-base">{{ mostVolatile.name }}</div>
+                <div class="text-sm text-dark-textMuted">#{{ mostVolatile.minRank }} ↔ #{{ mostVolatile.maxRank }}</div>
+              </div>
+              <div class="text-2xl font-black text-purple-400">±{{ mostVolatile.variance.toFixed(1) }}</div>
+            </div>
+            <div v-else class="text-dark-textMuted text-sm">Not enough data</div>
+          </template>
+        </div>
+        <!-- Nav -->
+        <div class="flex items-center justify-center gap-3 pb-3">
+          <button @click="prMoverIndex = Math.max(0, prMoverIndex - 1)" :disabled="prMoverIndex === 0"
+            class="w-7 h-7 rounded-full flex items-center justify-center transition-all"
+            :class="prMoverIndex === 0 ? 'text-dark-border cursor-default' : 'text-yellow-400 hover:bg-yellow-400/10'">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
+          </button>
+          <div class="flex gap-1.5">
+            <div v-for="(_, i) in 4" :key="i" class="w-2 h-2 rounded-full transition-colors"
+              :class="i === prMoverIndex ? 'bg-yellow-400' : 'bg-dark-border/60'" />
+          </div>
+          <button @click="prMoverIndex = Math.min(3, prMoverIndex + 1)" :disabled="prMoverIndex >= 3"
+            class="w-7 h-7 rounded-full flex items-center justify-center transition-all"
+            :class="prMoverIndex >= 3 ? 'text-dark-border cursor-default' : 'text-yellow-400 hover:bg-yellow-400/10'">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+          </button>
         </div>
       </div>
       </div>
@@ -615,20 +724,47 @@
           <p class="text-sm text-dark-textMuted mt-1">Rankings by points per position (1 = best)</p>
         </div>
         <div class="card-body">
-          <div v-if="positionStrengthData.length > 0" class="overflow-x-auto">
+          <div v-if="positionStrengthData.length > 0">
+            <!-- Mobile nav -->
+            <div class="sm:hidden flex items-center justify-center gap-3 py-2 border-b border-dark-border/30">
+              <button @click="prPosPage = Math.max(0, prPosPage - 1)" :disabled="prPosPage === 0"
+                class="w-7 h-7 rounded-full flex items-center justify-center transition-all"
+                :class="prPosPage === 0 ? 'text-dark-border cursor-default' : 'text-yellow-400 hover:bg-yellow-400/10'"
+              >
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
+                </svg>
+              </button>
+              <div class="flex gap-1.5">
+                <div v-for="(_, i) in prPosTotalPages" :key="i"
+                  class="w-2 h-2 rounded-full transition-colors"
+                  :class="i === prPosPage ? 'bg-yellow-400' : 'bg-dark-border/60'"
+                />
+              </div>
+              <button @click="prPosPage = Math.min(prPosTotalPages - 1, prPosPage + 1)" :disabled="prPosPage >= prPosTotalPages - 1"
+                class="w-7 h-7 rounded-full flex items-center justify-center transition-all"
+                :class="prPosPage >= prPosTotalPages - 1 ? 'text-dark-border cursor-default' : 'text-yellow-400 hover:bg-yellow-400/10'"
+              >
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+                </svg>
+              </button>
+            </div>
+            <div class="overflow-x-auto">
             <table class="w-full">
               <thead>
                 <tr class="text-left text-xs text-dark-textMuted uppercase border-b border-dark-border">
                   <th class="py-3 px-4">Team</th>
                   <th 
-                    v-for="pos in baseballPositions.slice(0, 8)" 
+                    v-for="(pos, posIdx) in baseballPositions.slice(0, 8)" 
                     :key="pos.id"
-                    class="py-3 px-4 text-center cursor-pointer hover:text-yellow-400 w-16"
+                    class="py-3 px-2 sm:px-4 text-center cursor-pointer hover:text-yellow-400 w-14"
+                    :class="Math.floor(posIdx / 4) !== prPosPage ? 'hidden sm:table-cell' : ''"
                     @click="sortPositionBy(pos.id)"
                   >
                     {{ pos.abbrev }} <span v-if="positionSortColumn === pos.id" class="text-yellow-400">{{ positionSortDirection === 'asc' ? '↑' : '↓' }}</span>
                   </th>
-                  <th class="py-3 px-4 text-center cursor-pointer hover:text-yellow-400 w-24" @click="sortPositionBy('total')">
+                  <th class="py-3 px-2 sm:px-4 text-center cursor-pointer hover:text-yellow-400 w-16" @click="sortPositionBy('total')">
                     Total <span v-if="positionSortColumn === 'total'" class="text-yellow-400">{{ positionSortDirection === 'asc' ? '↑' : '↓' }}</span>
                   </th>
                 </tr>
@@ -644,31 +780,32 @@
                       : 'hover:bg-dark-border/20'
                   ]"
                 >
-                  <td class="py-3 px-4">
-                    <div class="flex items-center gap-3">
-                      <div class="relative">
+                  <td class="py-3 px-2 sm:px-4" style="max-width: 0; width: 35%;">
+                    <div class="flex items-center gap-2">
+                      <div class="relative flex-shrink-0">
                         <img 
                           :src="team.logo_url" 
                           :alt="team.name"
                           loading="lazy"
                           decoding="async"
                           :class="[
-                            'w-10 h-10 rounded-full ring-2 object-cover',
+                            'w-7 h-7 sm:w-10 sm:h-10 rounded-full ring-2 object-cover',
                             team.is_my_team ? 'ring-yellow-500' : 'ring-dark-border'
                           ]"
                           @error="handleImageError"
                         />
-                        <div v-if="team.is_my_team" class="absolute -top-1 -right-1 w-4 h-4 bg-yellow-500 rounded-full flex items-center justify-center shadow-lg">
-                          <span class="text-[10px] text-gray-900 font-bold">★</span>
+                        <div v-if="team.is_my_team" class="absolute -top-1 -right-1 w-3 h-3 bg-yellow-500 rounded-full flex items-center justify-center">
+                          <span class="text-[8px] text-gray-900 font-bold">★</span>
                         </div>
                       </div>
                       <span :class="[
-                        'font-semibold',
+                        'font-semibold truncate text-sm',
                         team.is_my_team ? 'text-yellow-400' : 'text-dark-text'
                       ]">{{ team.name }}</span>
                     </div>
                   </td>
-                  <td v-for="pos in baseballPositions.slice(0, 8)" :key="pos.id" class="py-3 px-4 text-center">
+                  <td v-for="(pos, posIdx) in baseballPositions.slice(0, 8)" :key="pos.id" class="py-3 px-2 sm:px-4 text-center"
+                    :class="Math.floor(posIdx / 4) !== prPosPage ? 'hidden sm:table-cell' : ''">
                     <span 
                       :class="getRankClass(team.rankings?.[pos.id] || 99, positionStrengthData.length)" 
                       class="inline-flex items-center justify-center w-8 h-8 rounded-full font-bold text-sm"
@@ -687,7 +824,8 @@
                 </tr>
               </tbody>
             </table>
-          </div>
+            </div><!-- end overflow-x-auto -->
+          </div><!-- end positionStrengthData check -->
           <div v-else class="text-center py-8">
             <div v-if="isLoadingPlayers">
               <LoadingSpinner size="md" />
@@ -1190,6 +1328,72 @@ const selectedProjectedTeam = ref<any>(null)
 // Hovered team for chart highlighting
 const hoveredTeamKey = ref<string | null>(null)
 const powerChartRef = ref<any>(null)
+
+// ── Mobile carousel/pagination refs ───────────────────────────────────────
+const prTablePage = ref(0)    // 0=Score, 1=Record+AllPlay, 2=PPW+Last3
+const prMoverIndex = ref(0)   // 0-3: Climber, Faller, Consistent, Volatile
+const prChartOffset = ref(0)  // 0=latest weeks, higher=older
+const prPosPage = ref(0)      // 0=first 4 positions, 1=next 4
+
+const PR_WEEKS = 6  // weeks visible in mobile chart window
+
+const prChartTotalPages = computed(() => {
+  const total = chartOptions.value?.xaxis?.categories?.length || 0
+  if (total <= PR_WEEKS) return 1
+  const maxOffset = Math.max(0, total - PR_WEEKS)
+  return Math.ceil(maxOffset / PR_WEEKS) + 1
+})
+const prChartCurrentPage = computed(() => {
+  const total = chartOptions.value?.xaxis?.categories?.length || 0
+  const maxOffset = Math.max(0, total - PR_WEEKS)
+  const maxStep = Math.ceil(maxOffset / PR_WEEKS)
+  return maxStep - Math.round(prChartOffset.value / PR_WEEKS)
+})
+const prMobileChartLabel = computed(() => {
+  const cats = chartOptions.value?.xaxis?.categories || []
+  const total = cats.length
+  if (total === 0) return ''
+  const endIdx = total - prChartOffset.value
+  const startIdx = Math.max(0, endIdx - PR_WEEKS)
+  return `${cats[startIdx] || ''} – ${cats[endIdx - 1] || ''}`
+})
+const prMobileChartSeries = computed(() => {
+  if (!chartSeries.value.length || !chartOptions.value) return []
+  const total = chartOptions.value?.xaxis?.categories?.length || 0
+  const endIdx = total - prChartOffset.value
+  const startIdx = Math.max(0, endIdx - PR_WEEKS)
+  return chartSeries.value.map((s: any) => ({ ...s, data: (s.data || []).slice(startIdx, endIdx) }))
+})
+const prMobileChartOptions = computed(() => {
+  if (!chartOptions.value) return null
+  const cats = chartOptions.value?.xaxis?.categories || []
+  const total = cats.length
+  const endIdx = total - prChartOffset.value
+  const startIdx = Math.max(0, endIdx - PR_WEEKS)
+  return {
+    ...chartOptions.value,
+    chart: { ...chartOptions.value.chart, toolbar: { show: false }, animations: { enabled: false } },
+    xaxis: { ...chartOptions.value.xaxis, categories: cats.slice(startIdx, endIdx) },
+    legend: { show: false },
+    yaxis: { ...chartOptions.value.yaxis, reversed: true, min: 1, max: powerRankings.value.length || 10 }
+  }
+})
+const prMobileTeamOrder = computed(() => {
+  if (!chartSeries.value.length || !powerRankings.value.length) return powerRankings.value
+  const total = chartOptions.value?.xaxis?.categories?.length || 0
+  const endIdx = total - prChartOffset.value
+  const lastIdx = Math.max(0, endIdx - 1)
+  const rankAtEnd = chartSeries.value.map((s: any) => ({ name: s.name, rank: s.data?.[lastIdx] ?? 999 }))
+  return [...powerRankings.value].sort((a, b) => {
+    const ra = rankAtEnd.find((r: any) => r.name === a.name)?.rank ?? 999
+    const rb = rankAtEnd.find((r: any) => r.name === b.name)?.rank ?? 999
+    return ra - rb
+  })
+})
+const prPosTotalPages = computed(() => {
+  const numPos = baseballPositions.value?.length || 8
+  return Math.ceil(Math.min(numPos, 8) / 4)
+})
 
 // Computed: get the series index of the hovered team
 const hoveredSeriesIndex = computed(() => {
@@ -2993,7 +3197,7 @@ watch(() => leagueStore.yahooTeams, () => {
     const hasData = leagueStore.yahooTeams.some(t => 
       (t.wins || 0) > 0 || (t.losses || 0) > 0 || (t.points_for || 0) > 0
     )
-    if (!hasData && !leagueStore.isPreSeasonDrafted) {
+    if (!hasData) {
       console.log('[PointsPowerRankings] Teams have no data, waiting for possible fallback...')
       return
     }
@@ -3031,7 +3235,7 @@ onMounted(() => {
     const hasData = leagueStore.yahooTeams.some(t => 
       (t.wins || 0) > 0 || (t.losses || 0) > 0 || (t.points_for || 0) > 0
     )
-    if (!hasData && !leagueStore.isPreSeasonDrafted) {
+    if (!hasData) {
       console.log('[PointsPowerRankings] onMounted: Teams have no data, waiting for fallback...')
       return
     }
