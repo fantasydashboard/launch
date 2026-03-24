@@ -1551,69 +1551,67 @@ async function loadAllYahooLeagues() {
   loadingYahooLeagues.value = true
   
   try {
-    // Primary: load from Supabase (fast, reliable, same source as Settings page)
-    const { supabase } = await import('@/lib/supabase')
-    if (supabase) {
-      const { data, error } = await supabase
-        .from('leagues')
-        .select('*')
-        .eq('user_id', authStore.user.id)
-        .eq('platform', 'yahoo')
-        .order('season', { ascending: false })
+    // Try Yahoo API for all sports. Even if some fail, use Supabase as fill-in for those.
+    const sports: Sport[] = ['football', 'baseball', 'basketball', 'hockey']
+    const failedSports: Sport[] = []
 
-      if (!error && data && data.length > 0) {
-        console.log(`[Yahoo Modal] Loaded ${data.length} leagues from Supabase`)
-        // Map Supabase rows back to the YahooLeague shape the modal expects
-        const sports: Sport[] = ['football', 'baseball', 'basketball', 'hockey']
-        const bySport: Record<string, any[]> = { football: [], baseball: [], basketball: [], hockey: [] }
-        for (const row of data) {
-          const sport = row.sport as Sport
-          if (sports.includes(sport)) {
-            bySport[sport].push({
-              league_key: row.platform_league_id,
-              league_id: row.platform_league_id?.split('.l.')[1] || row.platform_league_id,
-              name: row.league_name,
-              season: row.season,
-              num_teams: row.league_size || 0,
-              scoring_type: row.scoring_type,
-              league_type: row.settings?.league_type || '',
-              current_week: row.settings?.current_week || 1,
-              start_week: row.settings?.start_week || 1,
-              end_week: row.settings?.end_week || 25,
-              is_finished: !row.is_active
-            })
+    const initialized = await yahooService.initialize(authStore.user.id)
+    if (initialized) {
+      const results = await Promise.allSettled(
+        sports.map(sport => yahooService.getLeagues(sport))
+      )
+      sports.forEach((sport, index) => {
+        const result = results[index]
+        if (result.status === 'fulfilled' && result.value.length > 0) {
+          yahooLeaguesBySport.value[sport] = result.value
+          console.log(`[Yahoo Modal] ${result.value.length} ${sport} leagues from Yahoo API`)
+        } else {
+          if (result.status === 'rejected') console.error(`Yahoo API failed for ${sport}:`, result.reason)
+          yahooLeaguesBySport.value[sport] = []
+          failedSports.push(sport)
+        }
+      })
+    } else {
+      // Can't reach Yahoo at all — fall back all sports from Supabase
+      sports.forEach(s => failedSports.push(s))
+    }
+
+    // For any sports that didn't load from Yahoo, check Supabase
+    if (failedSports.length > 0) {
+      console.log(`[Yahoo Modal] Filling ${failedSports.join(', ')} from Supabase...`)
+      const { supabase } = await import('@/lib/supabase')
+      if (supabase) {
+        const { data, error } = await supabase
+          .from('leagues')
+          .select('*')
+          .eq('user_id', authStore.user.id)
+          .eq('platform', 'yahoo')
+          .in('sport', failedSports)
+          .order('season', { ascending: false })
+
+        if (!error && data && data.length > 0) {
+          console.log(`[Yahoo Modal] ${data.length} leagues from Supabase for failed sports`)
+          for (const row of data) {
+            const sport = row.sport as Sport
+            if (failedSports.includes(sport)) {
+              yahooLeaguesBySport.value[sport].push({
+                league_key: row.platform_league_id,
+                league_id: row.platform_league_id?.split('.l.')[1] || row.platform_league_id,
+                name: row.league_name,
+                season: row.season,
+                num_teams: row.league_size || 0,
+                scoring_type: row.scoring_type,
+                league_type: row.settings?.league_type || '',
+                current_week: row.settings?.current_week || 1,
+                start_week: row.settings?.start_week || 1,
+                end_week: row.settings?.end_week || 25,
+                is_finished: !row.is_active
+              })
+            }
           }
         }
-        sports.forEach(sport => {
-          yahooLeaguesBySport.value[sport] = bySport[sport]
-        })
-        return // success — no need to hit Yahoo API
       }
     }
-
-    // Fallback: hit Yahoo API directly (used on first sync or if Supabase has no leagues)
-    console.log('[Yahoo Modal] No Supabase leagues found, fetching from Yahoo API...')
-    const initialized = await yahooService.initialize(authStore.user.id)
-    if (!initialized) {
-      console.error('Failed to initialize Yahoo service')
-      return
-    }
-    
-    const sports: Sport[] = ['football', 'baseball', 'basketball', 'hockey']
-    const results = await Promise.allSettled(
-      sports.map(sport => yahooService.getLeagues(sport))
-    )
-    
-    sports.forEach((sport, index) => {
-      const result = results[index]
-      if (result.status === 'fulfilled') {
-        yahooLeaguesBySport.value[sport] = result.value
-        console.log(`Loaded ${result.value.length} ${sport} leagues from Yahoo API`)
-      } else {
-        console.error(`Failed to load ${sport} leagues:`, result.reason)
-        yahooLeaguesBySport.value[sport] = []
-      }
-    })
   } catch (err) {
     console.error('Error loading Yahoo leagues:', err)
   } finally {
