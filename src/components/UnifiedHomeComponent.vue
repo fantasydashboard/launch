@@ -229,7 +229,7 @@
                   v-for="(cat, idx) in displayCategories" 
                   :key="cat.stat_id"
                   class="py-3 px-2 text-center cursor-pointer hover:text-yellow-400 whitespace-nowrap"
-                  :class="standingsColumnPage === 0 || Math.floor(idx / 5) + 1 !== standingsColumnPage ? 'hidden sm:table-cell' : ''"
+                  :class="standingsColumnPage === 0 || Math.floor(idx / 4) + 1 !== standingsColumnPage ? 'hidden sm:table-cell' : ''"
                   :title="cat.name + ' — Total times won this category across all matchup weeks'"
                   @click="setSortColumn('cat_' + cat.stat_id)"
                 >
@@ -283,8 +283,8 @@
               </td>
 
               <!-- Desktop team cell: always full. Mobile page 0: full. Mobile page 1: logo only -->
-              <!-- Team cell: logo always visible; name hidden on mobile page 1 to save space -->
-              <td class="py-3 px-3">
+              <!-- Team cell: logo always visible; name hidden on mobile pages 1+ -->
+              <td class="py-3 px-1 sm:px-3" style="max-width: 0; width: 50%;">
                 <div class="flex items-center gap-2">
                   <div class="relative flex-shrink-0">
                     <img 
@@ -298,8 +298,8 @@
                       <span class="text-[8px] text-gray-900 font-bold">★</span>
                     </div>
                   </div>
-                  <div class="flex items-center gap-2 min-w-0" :class="standingsColumnPage === 1 ? 'hidden sm:flex' : ''">
-                    <span class="font-semibold text-dark-text truncate">{{ team.name }}</span>
+                  <div class="flex items-center gap-2 min-w-0" :class="standingsColumnPage >= 1 ? 'hidden sm:flex' : ''">
+                    <span class="font-semibold text-dark-text truncate sm:max-w-none" :class="standingsColumnPage === 0 ? 'max-w-[120px]' : ''" style="">{{ team.name }}</span>
                     <span v-if="team.playoffFinish === 1" class="text-yellow-400 text-base flex-shrink-0" title="League Champion">🏆</span>
                     <span v-else-if="team.playoffFinish === 2" class="text-gray-300 text-sm flex-shrink-0" title="Runner-up">🥈</span>
                     <span v-else-if="team.playoffFinish === 3" class="text-amber-600 text-sm flex-shrink-0" title="Third Place">🥉</span>
@@ -315,10 +315,10 @@
               
               <template v-if="hasRealPerCategoryData">
                 <td 
-                  v-for="cat in displayCategories" 
+                  v-for="(cat, catIdx) in displayCategories" 
                   :key="cat.stat_id"
                   class="py-3 px-2 text-center"
-                  :class="standingsColumnPage === 0 || Math.floor(idx / 5) + 1 !== standingsColumnPage ? 'hidden sm:table-cell' : ''"
+                  :class="standingsColumnPage === 0 || Math.floor(catIdx / 4) + 1 !== standingsColumnPage ? 'hidden sm:table-cell' : ''"
                 >
                   <span class="text-sm font-medium" :class="getCategoryWinClass(team.categoryWins?.[cat.stat_id] || 0, cat.stat_id)">
                     {{ team.categoryWins?.[cat.stat_id] || 0 }}
@@ -1162,10 +1162,12 @@ const chartWeekOffset = ref(0)      // 0 = latest weeks visible, higher = furthe
 
 // How many column pages the standings table has on mobile.
 // Page 0 = W-L-T only. Pages 1..N = non-overlapping batches of 5 extra columns.
+const MOBILE_COLS_PER_PAGE = 4  // number of category columns per slide on mobile
+
 const standingsTotalPages = computed(() => {
   if (hasRealPerCategoryData.value) {
     const cats = displayCategories.value.length
-    return 1 + Math.max(1, Math.ceil(cats / 5)) // page 0 + batches of 5
+    return 1 + Math.max(1, Math.ceil(cats / MOBILE_COLS_PER_PAGE))
   }
   if (showTotalCategoryWins.value) return 2  // page 0 + Cat W/L/All-Play
   return 2  // page 0 (W-L-T) + page 1 (All-Play, PF, PA)
