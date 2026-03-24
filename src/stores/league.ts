@@ -65,9 +65,6 @@ export const useLeagueStore = defineStore('league', () => {
   const isLoading = ref(false)
   const error = ref<string | null>(null)
   const isDemoMode = ref(false)
-
-  // Pre-season drafted state — true when draft is complete but Week 1 hasn't started.
-  const isPreSeasonDrafted = ref(false)
   
   // Yahoo-specific state
   const yahooLeague = ref<any>(null)
@@ -1022,7 +1019,6 @@ export const useLeagueStore = defineStore('league', () => {
   async function loadYahooLeagueData(leagueKey: string) {
     isLoading.value = true
     error.value = null
-    isPreSeasonDrafted.value = false
     
     try {
       // Import Yahoo service dynamically to avoid circular dependencies
@@ -1052,19 +1048,9 @@ export const useLeagueStore = defineStore('league', () => {
       
       // Check if this league has actual data (not a renewed but unplayed league)
       const hasData = teams.some(t => (t.wins || 0) > 0 || (t.losses || 0) > 0 || (t.points_for || 0) > 0)
-
-      // Check if the draft has already happened for the current season
-      // metadata.draft_status is 'postdraft' once picks are locked in
-      const draftStatus = metadata.draft_status || leagueDetails?.[0]?.draft_status
-      const yahooIsDrafted = draftStatus === 'postdraft'
-
-      if (!hasData && yahooIsDrafted) {
-        console.log('[Yahoo] Draft complete but season not started — pre-season mode (0-0 records)')
-        isPreSeasonDrafted.value = true
-      }
       
-      // If no data AND draft hasn't happened yet, check for a previous season to load instead
-      if (!hasData && !yahooIsDrafted) {
+      // If no data, check for a previous season to load instead
+      if (!hasData) {
         console.log('League has no data, checking for previous season...')
         
         // Check if there's a "renew" field in the league details pointing to previous season
@@ -1341,31 +1327,8 @@ export const useLeagueStore = defineStore('league', () => {
       })
       
     } catch (e) {
-      const msg = e instanceof Error ? e.message : 'Failed to load Yahoo league'
       console.error('Failed to load Yahoo league data:', e)
-
-      // If it's a token error, attempt a refresh then retry once
-      if (msg.toLowerCase().includes('invalid token') || msg.toLowerCase().includes('unauthorized') || msg.toLowerCase().includes('401')) {
-        console.log('[Yahoo] Token error detected — attempting refresh...')
-        try {
-          const { usePlatformsStore } = await import('@/stores/platforms')
-          const platformsStore = usePlatformsStore()
-          const newToken = await platformsStore.getYahooAccessToken()
-          if (newToken) {
-            console.log('[Yahoo] Token refreshed — retrying league load...')
-            // Clear error and retry
-            error.value = null
-            await loadYahooLeagueData(leagueKey)
-            return
-          }
-        } catch (refreshErr) {
-          console.warn('[Yahoo] Token refresh failed:', refreshErr)
-        }
-        // Refresh failed — tell user to reconnect
-        error.value = 'Invalid token'
-      } else {
-        error.value = msg
-      }
+      error.value = e instanceof Error ? e.message : 'Failed to load Yahoo league'
     } finally {
       isLoading.value = false
     }
@@ -1375,7 +1338,6 @@ export const useLeagueStore = defineStore('league', () => {
   async function loadEspnLeagueData(leagueKey: string) {
     isLoading.value = true
     error.value = null
-    isPreSeasonDrafted.value = false
     
     try {
       // Import ESPN service dynamically
@@ -1667,22 +1629,6 @@ export const useLeagueStore = defineStore('league', () => {
       )
       
       if (!espnHasData && season > 2020) {
-        // Before falling back to last season, check if the draft has already happened.
-        let espnIsDrafted = false
-        try {
-          const draftPicks = await espnService.getDraft(sport, espnLeagueId, season)
-          espnIsDrafted = draftPicks.length > 0
-          if (espnIsDrafted) {
-            console.log(`[ESPN] Draft complete (${draftPicks.length} picks) but season not started — pre-season mode`)
-            isPreSeasonDrafted.value = true
-          }
-        } catch (draftErr) {
-          console.warn('[ESPN] Could not check draft status:', draftErr)
-        }
-
-        if (espnIsDrafted) {
-          // Draft done, season hasn't started — keep current-season data (all 0-0), skip fallback
-        } else {
         console.log('[ESPN] Current season has no data, trying previous season...')
         const prevSeason = season - 1
         try {
@@ -1873,7 +1819,6 @@ export const useLeagueStore = defineStore('league', () => {
         } catch (prevError) {
           console.warn('[ESPN] Failed to load previous season:', prevError)
         }
-        } // end: else (espnIsDrafted)
       }
       
       // Build matchups using local mappedTeams (before triggering reactive watchers)
@@ -2001,7 +1946,7 @@ export const useLeagueStore = defineStore('league', () => {
       
       // Always check both baseball and football
       // We fetch leagues from Yahoo for these sports regardless of what's saved
-      const sportsToCheck: Array<'football' | 'baseball' | 'basketball' | 'hockey'> = ['baseball', 'football']
+      const sportsToCheck: Array<'football' | 'baseball' | 'basketball' | 'hockey'> = ['baseball', 'football', 'basketball', 'hockey']
       
       console.log('Will check sports:', sportsToCheck)
       
@@ -2089,6 +2034,20 @@ export const useLeagueStore = defineStore('league', () => {
         }
       }
       
+      // Save any newly discovered leagues not yet in savedLeagues (e.g. basketball/hockey on first mobile load)
+      const savedNames = new Set(savedLeagues.value.filter(l => l.platform === 'yahoo').map(l => l.league_name))
+      for (const result of results) {
+        if (result.status !== 'fulfilled') continue
+        const { sport, leagues: sportLeagues } = (result as any).value
+        for (const league of sportLeagues) {
+          if (!savedNames.has(league.name) && userId) {
+            console.log(`[Yahoo Refresh] New league found: "${league.name}" (${sport}) — saving to Supabase`)
+            await saveYahooLeague(league, userId, sport)
+            savedNames.add(league.name)
+          }
+        }
+      }
+
       if (updatedCount > 0) {
         console.log(`✅ Updated ${updatedCount} Yahoo league(s) to latest season`)
         saveToLocalStorage()
@@ -2128,7 +2087,6 @@ export const useLeagueStore = defineStore('league', () => {
     isLoading,
     error,
     isDemoMode,
-    isPreSeasonDrafted,
     historicalSeasons,
     historicalRosters,
     historicalUsers,
