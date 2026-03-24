@@ -190,21 +190,20 @@
             </svg>
           </button>
           <div class="flex gap-1.5">
-            <div v-for="(_, i) in 2" :key="i"
+            <div v-for="(_, i) in standingsTotalPages" :key="i"
               class="w-2 h-2 rounded-full transition-colors"
               :class="i === standingsColumnPage ? 'bg-yellow-400' : 'bg-dark-border/60'"
             />
           </div>
-          <button @click="standingsColumnPage = Math.min(1, standingsColumnPage + 1)" :disabled="standingsColumnPage >= 1"
+          <button @click="standingsColumnPage = Math.min(standingsTotalPages - 1, standingsColumnPage + 1)" :disabled="standingsColumnPage >= standingsTotalPages - 1"
             class="w-7 h-7 rounded-full flex items-center justify-center transition-all"
-            :class="standingsColumnPage >= 1 ? 'text-dark-border cursor-default' : 'text-yellow-400 hover:bg-yellow-400/10'"
+            :class="standingsColumnPage >= standingsTotalPages - 1 ? 'text-dark-border cursor-default' : 'text-yellow-400 hover:bg-yellow-400/10'"
           >
             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
             </svg>
           </button>
         </div>
-        <p class="text-center text-xs text-dark-textMuted mt-1">{{ standingsColumnPage === 0 ? 'Record' : 'More Stats →' }}</p>
       </div>
 
       <div class="card-body overflow-x-auto scrollbar-thin sm:overflow-x-auto" ref="standingsTableRef" @scroll="checkScrollHint">
@@ -230,7 +229,7 @@
                   v-for="(cat, idx) in displayCategories" 
                   :key="cat.stat_id"
                   class="py-3 px-2 text-center cursor-pointer hover:text-yellow-400 whitespace-nowrap"
-                  :class="standingsColumnPage === 0 ? 'hidden sm:table-cell' : ''"
+                  :class="standingsColumnPage === 0 || Math.floor(idx / 5) + 1 !== standingsColumnPage ? 'hidden sm:table-cell' : ''"
                   :title="cat.name + ' — Total times won this category across all matchup weeks'"
                   @click="setSortColumn('cat_' + cat.stat_id)"
                 >
@@ -319,7 +318,7 @@
                   v-for="cat in displayCategories" 
                   :key="cat.stat_id"
                   class="py-3 px-2 text-center"
-                  :class="standingsColumnPage === 0 ? 'hidden sm:table-cell' : ''"
+                  :class="standingsColumnPage === 0 || Math.floor(idx / 5) + 1 !== standingsColumnPage ? 'hidden sm:table-cell' : ''"
                 >
                   <span class="text-sm font-medium" :class="getCategoryWinClass(team.categoryWins?.[cat.stat_id] || 0, cat.stat_id)">
                     {{ team.categoryWins?.[cat.stat_id] || 0 }}
@@ -537,9 +536,6 @@
                 <div class="font-bold text-dark-text text-base truncate">{{ quickStats[quickStatIndex].team?.name || 'N/A' }}</div>
                 <div class="text-sm font-bold mt-0.5" :class="quickStats[quickStatIndex].valueClass">{{ quickStats[quickStatIndex].value }}</div>
               </div>
-              <svg class="w-5 h-5 text-dark-textMuted flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
-              </svg>
             </div>
 
             <!-- Right arrow -->
@@ -1176,6 +1172,17 @@ const standingsHoveredTeamKey = ref<string | null>(null)
 const standingsColumnPage = ref(0)  // 0 = record col, 1 = extra cols (team name hidden)
 const quickStatIndex = ref(0)       // active quick stat card on mobile
 const chartWeekOffset = ref(0)      // 0 = latest weeks visible, higher = further back
+
+// How many column pages the standings table has on mobile.
+// Page 0 = W-L-T only. Pages 1..N = non-overlapping batches of 5 extra columns.
+const standingsTotalPages = computed(() => {
+  if (hasRealPerCategoryData.value) {
+    const cats = displayCategories.value.length
+    return 1 + Math.max(1, Math.ceil(cats / 5)) // page 0 + batches of 5
+  }
+  if (showTotalCategoryWins.value) return 2  // page 0 + Cat W/L/All-Play
+  return 2  // page 0 (W-L-T) + page 1 (All-Play, PF, PA)
+})
 
 // Data
 const transactionCounts = ref<Map<string, number>>(new Map())
@@ -2619,27 +2626,42 @@ const mobileChartTeamOrder = computed(() => {
 // Pagination helpers for chart dots
 const mobileChartTotalPages = computed(() => {
   const total = chartOptions.value?.xaxis?.categories?.length || 0
-  return Math.max(1, Math.ceil(total / MOBILE_WEEKS_VISIBLE))
+  if (total <= MOBILE_WEEKS_VISIBLE) return 1
+  // Number of distinct offset steps: 0 (latest), 6, 12, ... up to maxOffset
+  const maxOffset = Math.max(0, total - MOBILE_WEEKS_VISIBLE)
+  return Math.floor(maxOffset / MOBILE_WEEKS_VISIBLE) + 2 // +1 for page at maxOffset, +1 for page 0
 })
 const mobileChartCurrentPage = computed(() => {
+  // 0 = leftmost (oldest), last = rightmost (latest/current)
+  // chartWeekOffset 0 = latest, max = oldest
   const total = chartOptions.value?.xaxis?.categories?.length || 0
   const maxOffset = Math.max(0, total - MOBILE_WEEKS_VISIBLE)
-  // page 0 = latest weeks, increasing = older; invert for dot display
-  const page = Math.round(chartWeekOffset.value / MOBILE_WEEKS_VISIBLE)
-  return mobileChartTotalPages.value - 1 - page
+  const offsetStep = Math.round(chartWeekOffset.value / MOBILE_WEEKS_VISIBLE)
+  const maxStep = Math.floor(maxOffset / MOBILE_WEEKS_VISIBLE)
+  // Invert: latest = last dot, oldest = first dot
+  return maxStep - offsetStep
 })
 
-// Position avatar at right edge of mobile chart at the rank y-position for last visible week
+// Position avatar centered ON the last visible data point
+// ApexCharts mobile chart height = 320px.
+// Plot area: top padding ~15px (no title/legend), bottom ~38px (x-axis labels + padding).
+// Y-axis is reversed: rank 1 at top, numTeams at bottom.
 function getMobileChartAvatarStyle(team: any, rankIdx: number): string {
   const numTeams = sortedTeams.value.length || 10
-  // Chart height 320, approximate plot area: top ~20px, bottom ~30px (x-axis labels)
-  const plotTop = 20
-  const plotBottom = 30
-  const plotHeight = 320 - plotTop - plotBottom
-  const rank = rankIdx + 1  // rankIdx 0 = rank 1 (best)
-  // y = plotTop + ((rank - 1) / (numTeams - 1)) * plotHeight
-  const y = plotTop + ((rank - 1) / Math.max(numTeams - 1, 1)) * plotHeight - 10
-  return `top: ${y}px; right: 2px;`
+  const chartHeight = 320
+  const plotTop = 15      // space above plot area
+  const plotBottom = 38   // space below plot area (x-axis)
+  const plotHeight = chartHeight - plotTop - plotBottom
+  const rank = rankIdx + 1  // rankIdx 0 = rank 1 (top)
+  // Center of avatar should be at the data point y
+  const dataPtY = plotTop + ((rank - 1) / Math.max(numTeams - 1, 1)) * plotHeight
+  const avatarSize = 20
+  const y = dataPtY - avatarSize / 2  // offset so center is on the point
+  // Right: ApexCharts leaves ~8px padding on right side. Avatar is 20px wide, half = 10.
+  // We want center of avatar at the rightmost data point (not at chart edge).
+  // Rightmost point is inside the plot area, roughly 8px from right edge.
+  const right = 2
+  return `top: ${y}px; right: ${right}px; width: ${avatarSize}px; height: ${avatarSize}px;`
 }
 
 // Quick Stats - without luckiest/unluckiest
