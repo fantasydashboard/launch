@@ -9,8 +9,12 @@
           <span class="lp-league">{{ leagueName }}</span>
           <span v-if="sport" class="lp-sep">·</span>
           <span v-if="sport" class="lp-sport">{{ sportLabel }}</span>
-          <span class="lp-sep">·</span>
-          <span class="lp-days" :class="urgencyClass">{{ expiryLabel }}</span>
+          <!-- Days remaining: hidden on mobile to keep single line, visible on sm+ -->
+          <span class="lp-sep hidden sm:inline">·</span>
+          <span class="lp-days hidden sm:inline" :class="urgencyClass">{{ expiryLabel }}</span>
+          <!-- On mobile: show condensed days only -->
+          <span class="lp-sep sm:hidden">·</span>
+          <span class="lp-days sm:hidden" :class="urgencyClass">{{ daysShort }}</span>
         </span>
       </div>
       <button class="lp-close" @click="dismissed = true" aria-label="Dismiss">✕</button>
@@ -46,6 +50,14 @@ const sportLabel = computed(() => {
   return s
 })
 
+// Short form for mobile: "365d" instead of "365 days remaining"
+const daysShort = computed(() => {
+  const d = daysRemaining.value
+  if (d === null) return ''
+  if (d <= 0) return 'Expires today'
+  return `${d}d`
+})
+
 // Turn yellow when < 30 days, red when < 7
 const urgencyClass = computed(() => {
   const d = daysRemaining.value
@@ -67,22 +79,35 @@ const urgencyClass = computed(() => {
   font-size: 0.8rem;
   color: #9ca3af;
   min-height: 32px;
+  /* Never allow two lines */
+  white-space: nowrap;
+  overflow: hidden;
 }
 .lp-inner {
   display: flex;
   align-items: center;
   gap: 6px;
-  flex-wrap: wrap;
+  min-width: 0;
+  overflow: hidden;
 }
-.lp-icon { font-size: 0.9rem; }
-.lp-text { display: flex; align-items: center; gap: 5px; flex-wrap: wrap; }
-.lp-text strong { color: #22c55e; font-weight: 700; font-size: 0.8rem; }
-.lp-sep { color: #374151; }
-.lp-league { color: #d1d5db; }
-.lp-sport { color: #9ca3af; }
-.lp-days--ok { color: #22c55e; font-weight: 600; }
-.lp-days--warning { color: #eab308; font-weight: 600; }
-.lp-days--urgent { color: #ef4444; font-weight: 700; }
+.lp-icon { font-size: 0.9rem; flex-shrink: 0; }
+.lp-text {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  min-width: 0;
+  overflow: hidden;
+  /* No wrapping — single line always */
+  flex-wrap: nowrap;
+  white-space: nowrap;
+}
+.lp-text strong { color: #22c55e; font-weight: 700; font-size: 0.8rem; flex-shrink: 0; }
+.lp-sep { color: #374151; flex-shrink: 0; }
+.lp-league { color: #d1d5db; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.lp-sport { color: #9ca3af; flex-shrink: 0; }
+.lp-days--ok { color: #22c55e; font-weight: 600; flex-shrink: 0; }
+.lp-days--warning { color: #eab308; font-weight: 600; flex-shrink: 0; }
+.lp-days--urgent { color: #ef4444; font-weight: 700; flex-shrink: 0; }
 .lp-close {
   background: none;
   border: none;
