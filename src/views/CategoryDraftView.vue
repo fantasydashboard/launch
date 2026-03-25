@@ -665,19 +665,20 @@
       <!-- Player Category Impact Table -->
       <div class="card mt-6">
         <div class="card-header">
-          <div class="flex items-center justify-between">
+          <!-- Mobile: title + dropdowns stacked; Desktop: side-by-side -->
+          <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
             <div class="flex items-center gap-2">
               <span class="text-2xl">📊</span>
               <h2 class="card-title">Player Category Breakdown</h2>
             </div>
-            <div class="flex items-center gap-3">
-              <select v-model="selectedTeamFilter" class="select text-sm">
+            <div class="flex items-center gap-2 flex-wrap sm:flex-nowrap">
+              <select v-model="selectedTeamFilter" class="select text-sm flex-1 sm:flex-none min-w-0">
                 <option value="">All Teams</option>
                 <option v-for="team in draftBoard" :key="team.team_key" :value="team.team_key">
                   {{ team.team_name }}
                 </option>
               </select>
-              <select v-model="impactSort" class="select text-sm">
+              <select v-model="impactSort" class="select text-sm flex-1 sm:flex-none min-w-0">
                 <option value="pick">By Pick</option>
                 <option value="score">By Total Impact</option>
                 <option v-for="cat in leagueCategories" :key="cat" :value="cat">By {{ cat }}</option>
@@ -708,7 +709,7 @@
                 >
                   {{ cat }}
                 </th>
-                <th class="text-center p-2 sm:p-3 font-semibold text-dark-textMuted">Total</th>
+                <th class="text-center p-2 sm:p-3 font-semibold text-dark-textMuted" :class="catBreakdownPage === 0 ? 'hidden sm:table-cell' : ''">Total</th>
               </tr>
             </thead>
             <tbody>
@@ -740,7 +741,7 @@
                 >
                   {{ formatStatValue(pick.stats?.[getStatIdForCategory(cat)] || 0, cat) }}
                 </td>
-                <td class="p-3 text-center">
+                <td class="p-2 sm:p-3 text-center" :class="catBreakdownPage === 0 ? 'hidden sm:table-cell' : ''">
                   <span class="font-bold" :style="getCategoryScoreStyle(pick.categoryScore)">
                     {{ pick.categoryScore?.toFixed(0) || '0' }}
                   </span>
