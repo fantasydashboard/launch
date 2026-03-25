@@ -9,21 +9,11 @@
     </div>
 
     <!-- Offseason Notice Banner - Only show when season is complete -->
-    <!-- Offseason banner: only when no data AND no draft yet -->
-    <div v-if="isSeasonComplete && !leagueStore.isPreSeasonDrafted" class="bg-slate-500/10 border border-slate-500/30 rounded-xl p-4 flex items-start gap-3">
+    <div v-if="isSeasonComplete" class="bg-slate-500/10 border border-slate-500/30 rounded-xl p-4 flex items-start gap-3">
       <div class="text-slate-400 text-xl flex-shrink-0">📅</div>
       <div>
         <p class="text-slate-200 font-semibold">It's the offseason</p>
-        <p class="text-slate-400 text-sm mt-1">You're viewing last season's data ({{ currentSeason }}). The {{ Number(currentSeason) + 1 }} season will appear automatically once the draft is complete.</p>
-      </div>
-    </div>
-
-    <!-- Pre-season drafted banner: draft done, Week 1 hasn't started -->
-    <div v-if="leagueStore.isPreSeasonDrafted" class="bg-emerald-500/10 border border-emerald-500/30 rounded-xl p-4 flex items-start gap-3">
-      <div class="text-emerald-400 text-xl flex-shrink-0">⚾</div>
-      <div>
-        <p class="text-emerald-300 font-semibold">Draft complete — season starting soon!</p>
-        <p class="text-slate-400 text-sm mt-1">Records are 0-0. Rankings and projections are based on your drafted roster until Week 1 begins.</p>
+        <p class="text-slate-400 text-sm mt-1">You're viewing last season's data ({{ currentSeason }}). The {{ Number(currentSeason) + 1 }} season will appear automatically once Week 1 begins.</p>
       </div>
     </div>
 
@@ -109,16 +99,13 @@
           <p class="card-subtitle mt-2">All-time league leaders • Click for details</p>
         </div>
         <div class="card-body">
-          <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-            <div v-for="record in careerRecords" :key="record.label" 
-                 class="relative overflow-hidden cursor-pointer"
-                 @click="openRecordModal(record.label)">
+          <!-- Desktop grid -->
+          <div class="hidden md:grid grid-cols-2 lg:grid-cols-4 gap-6">
+            <div v-for="record in careerRecords" :key="record.label" class="relative overflow-hidden cursor-pointer" @click="openRecordModal(record.label)">
               <div class="p-6 bg-gradient-to-br from-yellow-500/10 to-yellow-600/5 rounded-xl border-2 border-yellow-500/20 hover:border-yellow-500/40 transition-all">
                 <div class="flex items-start justify-between mb-4">
                   <div class="text-4xl">{{ record.icon }}</div>
-                  <div class="text-right">
-                    <div class="text-4xl font-black text-yellow-400 mb-1">{{ record.value }}</div>
-                  </div>
+                  <div class="text-right"><div class="text-4xl font-black text-yellow-400 mb-1">{{ record.value }}</div></div>
                 </div>
                 <div class="space-y-1">
                   <div class="text-xs text-dark-textMuted uppercase tracking-wider font-bold">{{ record.label }}</div>
@@ -129,19 +116,37 @@
               </div>
             </div>
           </div>
+          <!-- Mobile carousel -->
+          <div class="md:hidden">
+            <div class="flex items-center justify-center gap-3 py-2">
+              <button @click="catCarRecordIdx = Math.max(0, catCarRecordIdx - 1)" :disabled="catCarRecordIdx === 0" class="w-7 h-7 flex-shrink-0 rounded-full flex items-center justify-center transition-all" :class="catCarRecordIdx === 0 ? 'text-dark-border cursor-default' : 'text-yellow-400 hover:bg-yellow-400/10'"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg></button>
+              <div class="flex gap-1.5"><div v-for="(_, i) in careerRecords.length" :key="i" class="w-2 h-2 rounded-full transition-colors" :class="i === catCarRecordIdx ? 'bg-yellow-400' : 'bg-dark-border/60'" /></div>
+              <button @click="catCarRecordIdx = Math.min((careerRecords.length || 1) - 1, catCarRecordIdx + 1)" :disabled="catCarRecordIdx >= (careerRecords.length || 1) - 1" class="w-7 h-7 flex-shrink-0 rounded-full flex items-center justify-center transition-all" :class="catCarRecordIdx >= (careerRecords.length || 1) - 1 ? 'text-dark-border cursor-default' : 'text-yellow-400 hover:bg-yellow-400/10'"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg></button>
+            </div>
+            <div v-if="careerRecords[catCarRecordIdx]" class="p-6 bg-gradient-to-br from-yellow-500/10 to-yellow-600/5 rounded-xl border-2 border-yellow-500/20 cursor-pointer mt-2" @click="openRecordModal(careerRecords[catCarRecordIdx].label)">
+              <div class="flex items-start justify-between mb-4">
+                <div class="text-4xl">{{ careerRecords[catCarRecordIdx].icon }}</div>
+                <div class="text-4xl font-black text-yellow-400">{{ careerRecords[catCarRecordIdx].value }}</div>
+              </div>
+              <div class="text-xs text-dark-textMuted uppercase tracking-wider font-bold mb-1">{{ careerRecords[catCarRecordIdx].label }}</div>
+              <div class="font-bold text-xl text-dark-text">{{ careerRecords[catCarRecordIdx].team }}</div>
+              <div class="text-sm text-dark-textMuted mt-1">{{ careerRecords[catCarRecordIdx].detail }}</div>
+              <div class="text-xs text-yellow-400 mt-3 opacity-70">Click for details →</div>
+            </div>
+          </div>
         </div>
       </div>
 
       <!-- Career Statistics Table -->
       <div class="card">
         <div class="card-header">
-          <div class="flex items-center justify-between flex-wrap gap-4">
+          <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
             <div class="flex items-center gap-2">
               <span class="text-2xl">📊</span>
               <h2 class="card-title">Career Statistics</h2>
             </div>
-            <div class="flex items-center gap-4">
-              <div class="text-sm text-dark-textMuted">
+            <div class="flex flex-col sm:flex-row sm:items-center gap-3">
+              <div class="text-xs sm:text-sm text-dark-textMuted">
                 All-time regular season records
               </div>
               <!-- Toggle for current members only -->
@@ -188,92 +193,56 @@
             </div>
           </div>
         </div>
-        <div class="card-body overflow-x-auto">
+        <div class="card-body">
+          <div class="sm:hidden flex items-center justify-center gap-3 py-2 border-b border-dark-border/30">
+          <button @click="catCarStatPage = Math.max(0, catCarStatPage - 1)" :disabled="catCarStatPage === 0" class="w-7 h-7 flex-shrink-0 rounded-full flex items-center justify-center transition-all" :class="catCarStatPage === 0 ? 'text-dark-border cursor-default' : 'text-yellow-400 hover:bg-yellow-400/10'"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg></button>
+          <div class="flex gap-1.5"><div v-for="(_, i) in 3" :key="i" class="w-2 h-2 rounded-full transition-colors" :class="i === catCarStatPage ? 'bg-yellow-400' : 'bg-dark-border/60'" /></div>
+          <button @click="catCarStatPage = Math.min(2, catCarStatPage + 1)" :disabled="catCarStatPage >= 2" class="w-7 h-7 flex-shrink-0 rounded-full flex items-center justify-center transition-all" :class="catCarStatPage >= 2 ? 'text-dark-border cursor-default' : 'text-yellow-400 hover:bg-yellow-400/10'"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg></button>
+        </div>
+          <div class="overflow-x-auto">
           <table ref="careerTableRef" class="w-full text-sm">
             <thead>
               <tr class="border-b border-dark-border">
-                <th class="text-left py-3 px-4 font-semibold text-dark-textSecondary uppercase tracking-wider">Team</th>
-                <th class="text-center py-3 px-4 font-semibold text-dark-textSecondary uppercase tracking-wider cursor-pointer hover:text-yellow-400 transition-colors" @click="sortBy('seasons')">
-                  Seasons <span v-if="sortColumn === 'seasons'" class="text-yellow-400">{{ sortDirection === 'asc' ? '↑' : '↓' }}</span>
-                </th>
-                <th class="text-center py-3 px-4 font-semibold text-dark-textSecondary uppercase tracking-wider cursor-pointer hover:text-yellow-400 transition-colors" @click="sortBy('championships')">
-                  🏆 <span v-if="sortColumn === 'championships'" class="text-yellow-400">{{ sortDirection === 'asc' ? '↑' : '↓' }}</span>
-                </th>
-                <th class="text-center py-3 px-4 font-semibold text-dark-textSecondary uppercase tracking-wider cursor-pointer hover:text-yellow-400 transition-colors" @click="sortBy('matchup_wins')">
-                  Record <span v-if="sortColumn === 'matchup_wins'" class="text-yellow-400">{{ sortDirection === 'asc' ? '↑' : '↓' }}</span>
-                </th>
-                <th class="text-center py-3 px-4 font-semibold text-dark-textSecondary uppercase tracking-wider cursor-pointer hover:text-yellow-400 transition-colors" @click="sortBy('matchup_win_pct')">
-                  Win % <span v-if="sortColumn === 'matchup_win_pct'" class="text-yellow-400">{{ sortDirection === 'asc' ? '↑' : '↓' }}</span>
-                </th>
-                <th class="text-center py-3 px-4 font-semibold text-dark-textSecondary uppercase tracking-wider cursor-pointer hover:text-yellow-400 transition-colors" @click="sortBy('hitting_cat_wins')">
-                  Hitting Cat W <span v-if="sortColumn === 'hitting_cat_wins'" class="text-yellow-400">{{ sortDirection === 'asc' ? '↑' : '↓' }}</span>
-                </th>
-                <th class="text-center py-3 px-4 font-semibold text-dark-textSecondary uppercase tracking-wider cursor-pointer hover:text-yellow-400 transition-colors" @click="sortBy('pitching_cat_wins')">
-                  Pitching Cat W <span v-if="sortColumn === 'pitching_cat_wins'" class="text-yellow-400">{{ sortDirection === 'asc' ? '↑' : '↓' }}</span>
-                </th>
-                <th class="text-center py-3 px-4 font-semibold text-dark-textSecondary uppercase tracking-wider cursor-pointer hover:text-yellow-400 transition-colors" @click="sortBy('cat_diff')">
-                  Cat +/- <span v-if="sortColumn === 'cat_diff'" class="text-yellow-400">{{ sortDirection === 'asc' ? '↑' : '↓' }}</span>
-                </th>
-                <th class="text-center py-3 px-4 font-semibold text-dark-textSecondary uppercase tracking-wider">Best Cat</th>
-                <th class="text-center py-3 px-4 font-semibold text-dark-textSecondary uppercase tracking-wider">Worst Cat</th>
+                <th class="text-left py-3 px-3 font-semibold text-dark-textSecondary uppercase tracking-wider">Team</th>
+                <th class="text-center py-3 px-3 font-semibold text-dark-textSecondary uppercase tracking-wider cursor-pointer hover:text-yellow-400" :class="catCarStatPage > 0 ? 'hidden sm:table-cell' : ''" @click="sortBy('seasons')">Seasons</th>
+                <th class="text-center py-3 px-3 font-semibold text-dark-textSecondary uppercase tracking-wider cursor-pointer hover:text-yellow-400" :class="catCarStatPage > 0 ? 'hidden sm:table-cell' : ''" @click="sortBy('championships')">🏆</th>
+                <th class="text-center py-3 px-3 font-semibold text-dark-textSecondary uppercase tracking-wider cursor-pointer hover:text-yellow-400" :class="catCarStatPage > 0 ? 'hidden sm:table-cell' : ''" @click="sortBy('matchup_wins')">Record</th>
+                <th class="text-center py-3 px-3 font-semibold text-dark-textSecondary uppercase tracking-wider cursor-pointer hover:text-yellow-400" :class="catCarStatPage === 1 ? '' : 'hidden sm:table-cell'" @click="sortBy('matchup_win_pct')">Win%</th>
+                <th class="text-center py-3 px-3 font-semibold text-dark-textSecondary uppercase tracking-wider cursor-pointer hover:text-yellow-400" :class="catCarStatPage === 1 ? '' : 'hidden sm:table-cell'" @click="sortBy('hitting_cat_wins')">Hit W</th>
+                <th class="text-center py-3 px-3 font-semibold text-dark-textSecondary uppercase tracking-wider cursor-pointer hover:text-yellow-400" :class="catCarStatPage === 1 ? '' : 'hidden sm:table-cell'" @click="sortBy('pitching_cat_wins')">Pitch W</th>
+                <th class="text-center py-3 px-3 font-semibold text-dark-textSecondary uppercase tracking-wider cursor-pointer hover:text-yellow-400" :class="catCarStatPage === 1 ? '' : 'hidden sm:table-cell'" @click="sortBy('cat_diff')">Cat+/-</th>
+                <th class="text-center py-3 px-3 font-semibold text-dark-textSecondary uppercase tracking-wider" :class="catCarStatPage === 2 ? '' : 'hidden sm:table-cell'">Best Cat</th>
+                <th class="text-center py-3 px-3 font-semibold text-dark-textSecondary uppercase tracking-wider" :class="catCarStatPage === 2 ? '' : 'hidden sm:table-cell'">Worst Cat</th>
               </tr>
             </thead>
             <tbody>
               <tr v-for="(stat, idx) in filteredCareerStats" :key="`career-row-${stat.team_key}`"
                 :class="{ 'history-blur-row': !hasLeagueAccess && idx >= 3 }" 
                   class="border-b border-dark-border hover:bg-dark-border/30 transition-colors">
-                <td class="py-3 px-4">
-                  <div class="flex items-center gap-3">
-                    <div class="w-10 h-10 rounded-full overflow-hidden bg-dark-border flex-shrink-0">
-                      <img
-                        :src="getTeamLogoUrl(stat.team_key, stat.logo_url)"
-                        :alt="stat.team_name"
-                        class="w-full h-full object-cover"
-                        @error="handleImageError"
-                      />
+                <td class="py-3 px-3">
+                  <div class="flex items-center gap-2">
+                    <div class="w-8 h-8 rounded-full overflow-hidden bg-dark-border flex-shrink-0">
+                      <img :src="getTeamLogoUrl(stat.team_key, stat.logo_url)" :alt="stat.team_name" class="w-full h-full object-cover" @error="handleImageError" />
                     </div>
-                    <div class="font-semibold text-dark-text">{{ stat.team_name }}</div>
+                    <div class="font-semibold text-dark-text text-sm truncate max-w-[90px] sm:max-w-none" :class="catCarStatPage > 0 ? 'hidden sm:block' : ''">{{ stat.team_name }}</div>
                   </div>
                 </td>
-                <td class="text-center py-3 px-4 text-dark-text">{{ stat.seasons }}</td>
-                <td class="text-center py-3 px-4">
-                  <span v-if="stat.championships > 0" class="text-yellow-400 font-bold">
-                    🏆 {{ stat.championships }}
-                  </span>
+                <td class="text-center py-3 px-3 text-dark-text text-sm" :class="catCarStatPage > 0 ? 'hidden sm:table-cell' : ''">{{ stat.seasons }}</td>
+                <td class="text-center py-3 px-3" :class="catCarStatPage > 0 ? 'hidden sm:table-cell' : ''">
+                  <span v-if="stat.championships > 0" class="text-yellow-400 font-bold text-sm">🏆 {{ stat.championships }}</span>
                   <span v-else class="text-dark-textMuted">—</span>
                 </td>
-                <td class="text-center py-3 px-4 font-semibold" :class="getRecordClass(stat, 'matchup_wins')">
-                  {{ stat.matchup_wins }}-{{ stat.matchup_losses }}-{{ stat.matchup_ties }}
-                </td>
-                <td class="text-center py-3 px-4">
-                  <span :class="getRecordClass(stat, 'matchup_win_pct')">
-                    {{ (stat.matchup_win_pct * 100).toFixed(1) }}%
-                  </span>
-                </td>
-                <td class="text-center py-3 px-4" :class="getRecordClass(stat, 'hitting_cat_wins')">
-                  {{ stat.hitting_cat_wins }}
-                </td>
-                <td class="text-center py-3 px-4" :class="getRecordClass(stat, 'pitching_cat_wins')">
-                  {{ stat.pitching_cat_wins }}
-                </td>
-                <td class="text-center py-3 px-4">
-                  <span :class="stat.cat_diff >= 0 ? 'text-green-400' : 'text-red-400'" class="font-semibold">
-                    {{ stat.cat_diff >= 0 ? '+' : '' }}{{ stat.cat_diff }}
-                  </span>
-                </td>
-                <td class="text-center py-3 px-4">
-                  <span class="px-2 py-1 rounded text-xs font-bold bg-green-500/20 text-green-400">
-                    {{ stat.best_category || '—' }}
-                  </span>
-                </td>
-                <td class="text-center py-3 px-4">
-                  <span class="px-2 py-1 rounded text-xs font-bold bg-red-500/20 text-red-400">
-                    {{ stat.worst_category || '—' }}
-                  </span>
-                </td>
+                <td class="text-center py-3 px-3 font-semibold text-sm" :class="[getRecordClass(stat, 'matchup_wins'), catCarStatPage > 0 ? 'hidden sm:table-cell' : '']">{{ stat.matchup_wins }}-{{ stat.matchup_losses }}-{{ stat.matchup_ties }}</td>
+                <td class="text-center py-3 px-3 text-sm" :class="catCarStatPage === 1 ? '' : 'hidden sm:table-cell'"><span :class="getRecordClass(stat, 'matchup_win_pct')">{{ (stat.matchup_win_pct * 100).toFixed(1) }}%</span></td>
+                <td class="text-center py-3 px-3 text-sm" :class="[getRecordClass(stat, 'hitting_cat_wins'), catCarStatPage === 1 ? '' : 'hidden sm:table-cell']">{{ stat.hitting_cat_wins }}</td>
+                <td class="text-center py-3 px-3 text-sm" :class="[getRecordClass(stat, 'pitching_cat_wins'), catCarStatPage === 1 ? '' : 'hidden sm:table-cell']">{{ stat.pitching_cat_wins }}</td>
+                <td class="text-center py-3 px-3 text-sm" :class="catCarStatPage === 1 ? '' : 'hidden sm:table-cell'"><span :class="stat.cat_diff >= 0 ? 'text-green-400' : 'text-red-400'" class="font-semibold">{{ stat.cat_diff >= 0 ? '+' : '' }}{{ stat.cat_diff }}</span></td>
+                <td class="text-center py-3 px-3" :class="catCarStatPage === 2 ? '' : 'hidden sm:table-cell'"><span class="px-2 py-1 rounded text-xs font-bold bg-green-500/20 text-green-400">{{ stat.best_category || '—' }}</span></td>
+                <td class="text-center py-3 px-3" :class="catCarStatPage === 2 ? '' : 'hidden sm:table-cell'"><span class="px-2 py-1 rounded text-xs font-bold bg-red-500/20 text-red-400">{{ stat.worst_category || '—' }}</span></td>
               </tr>
               </tbody>
             </table>
+          </div><!-- end overflow-x-auto -->
           <!-- Gate banner -->
           <div v-if="!hasLeagueAccess && filteredCareerStats.length > 3" class="early-gate-banner" style="margin: 8px 0 4px;">
             <div class="early-gate-inner">
@@ -319,76 +288,69 @@
           </div>
           <p class="card-subtitle mt-2">Historical performance by year</p>
         </div>
-        <div class="card-body overflow-x-auto">
+        <div class="card-body">
+          <div class="sm:hidden flex items-center justify-center gap-3 py-2 border-b border-dark-border/30">
+          <button @click="catSbsPage = Math.max(0, catSbsPage - 1)" :disabled="catSbsPage === 0" class="w-7 h-7 flex-shrink-0 rounded-full flex items-center justify-center transition-all" :class="catSbsPage === 0 ? 'text-dark-border cursor-default' : 'text-yellow-400 hover:bg-yellow-400/10'"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg></button>
+          <div class="flex gap-1.5"><div v-for="(_, i) in 2" :key="i" class="w-2 h-2 rounded-full transition-colors" :class="i === catSbsPage ? 'bg-yellow-400' : 'bg-dark-border/60'" /></div>
+          <button @click="catSbsPage = Math.min(1, catSbsPage + 1)" :disabled="catSbsPage >= 1" class="w-7 h-7 flex-shrink-0 rounded-full flex items-center justify-center transition-all" :class="catSbsPage >= 1 ? 'text-dark-border cursor-default' : 'text-yellow-400 hover:bg-yellow-400/10'"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg></button>
+        </div>
+          <div class="overflow-x-auto">
           <table ref="seasonTableRef" class="w-full text-sm">
             <thead>
               <tr class="border-b border-dark-border">
-                <th class="text-left py-3 px-4 font-semibold text-dark-textSecondary uppercase tracking-wider">Season</th>
-                <th class="text-center py-3 px-4 font-semibold text-dark-textSecondary uppercase tracking-wider">Most Categories</th>
-                <th class="text-center py-3 px-4 font-semibold text-dark-textSecondary uppercase tracking-wider">Fewest Categories</th>
-                <th class="text-center py-3 px-4 font-semibold text-dark-textSecondary uppercase tracking-wider">Transactions</th>
-                <th class="text-center py-3 px-4 font-semibold text-dark-textSecondary uppercase tracking-wider">Trades</th>
-                <th class="text-center py-3 px-4 font-semibold text-dark-textSecondary uppercase tracking-wider">Champion</th>
+                <th class="text-left py-3 px-3 font-semibold text-dark-textSecondary uppercase tracking-wider">Season</th>
+                <th class="text-center py-3 px-3 font-semibold text-dark-textSecondary uppercase tracking-wider" :class="catSbsPage > 0 ? 'hidden sm:table-cell' : ''">Most Cats</th>
+                <th class="text-center py-3 px-3 font-semibold text-dark-textSecondary uppercase tracking-wider" :class="catSbsPage > 0 ? 'hidden sm:table-cell' : ''">Fewest Cats</th>
+                <th class="text-center py-3 px-3 font-semibold text-dark-textSecondary uppercase tracking-wider" :class="catSbsPage === 1 ? '' : 'hidden sm:table-cell'">Trans</th>
+                <th class="text-center py-3 px-3 font-semibold text-dark-textSecondary uppercase tracking-wider" :class="catSbsPage === 1 ? '' : 'hidden sm:table-cell'">Trades</th>
+                <th class="text-center py-3 px-3 font-semibold text-dark-textSecondary uppercase tracking-wider" :class="catSbsPage === 1 ? '' : 'hidden sm:table-cell'">Champion</th>
               </tr>
             </thead>
             <tbody>
               <tr v-for="(season, idx) in seasonRecords" :key="season.year"
                 :class="{ 'history-blur-row': !hasLeagueAccess && idx >= 1 }" 
                   class="border-b border-dark-border hover:bg-dark-border/30 transition-colors">
-                <td class="py-3 px-4 font-bold text-dark-text text-lg">{{ season.year }}</td>
-                <td class="text-center py-3 px-4">
+                <td class="py-3 px-3 font-bold text-dark-text text-sm">{{ season.year }}</td>
+                <td class="text-center py-3 px-3" :class="catSbsPage > 0 ? 'hidden sm:table-cell' : ''">
                   <template v-if="season.mostCatWins && season.mostCatWins.value > 0">
-                    <div class="flex items-center justify-center gap-2">
-                      <div class="w-6 h-6 rounded-full overflow-hidden bg-dark-border flex-shrink-0">
-                        <img :src="getSeasonRecordLogo(season.mostCatWins)" class="w-full h-full object-cover" @error="handleImageError" />
-                      </div>
-                      <span class="font-semibold text-green-400">{{ season.mostCatWins.name }}</span>
+                    <div class="flex items-center justify-center gap-1">
+                      <div class="w-5 h-5 rounded-full overflow-hidden bg-dark-border flex-shrink-0"><img :src="getSeasonRecordLogo(season.mostCatWins)" class="w-full h-full object-cover" @error="handleImageError" /></div>
+                      <span class="font-semibold text-green-400 text-xs truncate max-w-[60px]">{{ season.mostCatWins.name }}</span>
                     </div>
-                    <div class="text-xs text-dark-textMuted">{{ season.mostCatWins.value }} cat wins</div>
+                    <div class="text-xs text-dark-textMuted">{{ season.mostCatWins.value }}W</div>
                   </template>
-                  <template v-else>
-                    <span class="text-dark-textMuted">—</span>
-                  </template>
+                  <template v-else><span class="text-dark-textMuted">—</span></template>
                 </td>
-                <td class="text-center py-3 px-4">
+                <td class="text-center py-3 px-3" :class="catSbsPage > 0 ? 'hidden sm:table-cell' : ''">
                   <template v-if="season.fewestCatWins && season.fewestCatWins.name !== 'Unknown' && season.fewestCatWins.value >= 0 && season.mostCatWins?.value > 0">
-                    <div class="flex items-center justify-center gap-2">
-                      <div class="w-6 h-6 rounded-full overflow-hidden bg-dark-border flex-shrink-0">
-                        <img :src="getSeasonRecordLogo(season.fewestCatWins)" class="w-full h-full object-cover" @error="handleImageError" />
-                      </div>
-                      <span class="font-semibold text-red-400">{{ season.fewestCatWins.name }}</span>
+                    <div class="flex items-center justify-center gap-1">
+                      <div class="w-5 h-5 rounded-full overflow-hidden bg-dark-border flex-shrink-0"><img :src="getSeasonRecordLogo(season.fewestCatWins)" class="w-full h-full object-cover" @error="handleImageError" /></div>
+                      <span class="font-semibold text-red-400 text-xs truncate max-w-[60px]">{{ season.fewestCatWins.name }}</span>
                     </div>
-                    <div class="text-xs text-dark-textMuted">{{ season.fewestCatWins.value }} cat wins</div>
+                    <div class="text-xs text-dark-textMuted">{{ season.fewestCatWins.value }}W</div>
                   </template>
-                  <template v-else>
-                    <span class="text-dark-textMuted">—</span>
-                  </template>
+                  <template v-else><span class="text-dark-textMuted">—</span></template>
                 </td>
-                <td class="text-center py-3 px-4">
-                  <div class="text-cyan-400 font-semibold text-lg">{{ season.transactionCount }}</div>
-                  <div class="text-xs text-dark-textMuted">moves</div>
+                <td class="text-center py-3 px-3" :class="catSbsPage === 1 ? '' : 'hidden sm:table-cell'">
+                  <div class="text-cyan-400 font-semibold text-sm">{{ season.transactionCount }}</div>
                 </td>
-                <td class="text-center py-3 px-4">
-                  <div class="text-blue-400 font-semibold text-lg">{{ season.tradeCount }}</div>
-                  <div class="text-xs text-dark-textMuted">trades</div>
+                <td class="text-center py-3 px-3" :class="catSbsPage === 1 ? '' : 'hidden sm:table-cell'">
+                  <div class="text-blue-400 font-semibold text-sm">{{ season.tradeCount }}</div>
                 </td>
-                <td class="text-center py-3 px-4">
-                  <div class="flex items-center justify-center gap-2">
-                    <span class="text-lg">🏆</span>
+                <td class="text-center py-3 px-3" :class="catSbsPage === 1 ? '' : 'hidden sm:table-cell'">
+                  <div class="flex items-center justify-center gap-1">
+                    <span class="text-base">🏆</span>
                     <template v-if="season.champion">
-                      <div class="w-6 h-6 rounded-full overflow-hidden bg-dark-border flex-shrink-0">
-                        <img :src="getSeasonRecordLogo(season.champion)" class="w-full h-full object-cover" @error="handleImageError" />
-                      </div>
-                      <span class="font-semibold text-yellow-400">{{ season.champion.name }}</span>
+                      <div class="w-5 h-5 rounded-full overflow-hidden bg-dark-border flex-shrink-0"><img :src="getSeasonRecordLogo(season.champion)" class="w-full h-full object-cover" @error="handleImageError" /></div>
+                      <span class="font-semibold text-yellow-400 text-xs truncate max-w-[60px]">{{ season.champion.name }}</span>
                     </template>
-                    <template v-else>
-                      <span class="font-semibold text-dark-textMuted">TBD</span>
-                    </template>
+                    <template v-else><span class="font-semibold text-dark-textMuted text-xs">TBD</span></template>
                   </div>
                 </td>
               </tr>
             </tbody>
           </table>
+          </div><!-- end overflow-x-auto -->
           <!-- Gate banner -->
           <div v-if="!hasLeagueAccess && seasonRecords.length > 1" class="early-gate-banner" style="margin: 8px 0 4px;">
             <div class="early-gate-inner">
@@ -2124,6 +2086,11 @@ const awardModalRankings = computed(() => getCategoryRankings(awardModalCategory
 const showCurrentMembersOnly = ref(false)
 const showCurrentMembersOnlyH2H = ref(false)
 const showCurrentMembersOnlyLegacy = ref(false)
+
+// ── Category History mobile carousel refs ───────────────────────────────
+const catCarRecordIdx = ref(0)   // Career Records carousel
+const catCarStatPage = ref(0)    // Career Stats column page (0=basic, 1=ratios, 2=cats)
+const catSbsPage = ref(0)        // Season-by-Season column page
 const sortColumn = ref('matchup_wins')
 const sortDirection = ref<'asc' | 'desc'>('desc')
 
