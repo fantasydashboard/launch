@@ -1,21 +1,11 @@
 <template>
   <div class="space-y-6">
     <!-- Offseason Notice Banner - Only show when season is complete -->
-    <!-- Offseason banner: only when no data AND no draft yet -->
-    <div v-if="isSeasonComplete && !leagueStore.isPreSeasonDrafted" class="bg-slate-500/10 border border-slate-500/30 rounded-xl p-4 flex items-start gap-3">
+    <div v-if="isSeasonComplete" class="bg-slate-500/10 border border-slate-500/30 rounded-xl p-4 flex items-start gap-3">
       <div class="text-slate-400 text-xl flex-shrink-0">📅</div>
       <div>
         <p class="text-slate-200 font-semibold">It's the offseason</p>
-        <p class="text-slate-400 text-sm mt-1">You're viewing last season's data ({{ currentSeason }}). The {{ Number(currentSeason) + 1 }} season will appear automatically once the draft is complete.</p>
-      </div>
-    </div>
-
-    <!-- Pre-season drafted banner: draft done, Week 1 hasn't started -->
-    <div v-if="leagueStore.isPreSeasonDrafted" class="bg-emerald-500/10 border border-emerald-500/30 rounded-xl p-4 flex items-start gap-3">
-      <div class="text-emerald-400 text-xl flex-shrink-0">⚾</div>
-      <div>
-        <p class="text-emerald-300 font-semibold">Draft complete — season starting soon!</p>
-        <p class="text-slate-400 text-sm mt-1">Records are 0-0. Rankings and projections are based on your drafted roster until Week 1 begins.</p>
+        <p class="text-slate-400 text-sm mt-1">You're viewing last season's data ({{ currentSeason }}). The {{ Number(currentSeason) + 1 }} season will appear automatically once Week 1 begins.</p>
       </div>
     </div>
 
@@ -117,7 +107,20 @@
       </div>
 
       <!-- Draft Board Grid -->
-      <div class="overflow-x-auto">
+      <!-- Mobile nav -->
+      <div class="sm:hidden flex items-center justify-center gap-3 py-2 border-b border-dark-border/30 mb-2">
+        <button @click="draftBoardPage = Math.max(0, draftBoardPage - 1)" :disabled="draftBoardPage === 0" class="w-7 h-7 rounded-full flex items-center justify-center transition-all" :class="draftBoardPage === 0 ? 'text-dark-border cursor-default' : 'text-yellow-400 hover:bg-yellow-400/10'">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
+        </button>
+        <div class="flex gap-1.5">
+          <div v-for="(_, i) in draftBoardTotalPages" :key="i" class="w-2 h-2 rounded-full transition-colors" :class="i === draftBoardPage ? 'bg-yellow-400' : 'bg-dark-border/60'" />
+        </div>
+        <button @click="draftBoardPage = Math.min(draftBoardTotalPages - 1, draftBoardPage + 1)" :disabled="draftBoardPage >= draftBoardTotalPages - 1" class="w-7 h-7 rounded-full flex items-center justify-center transition-all" :class="draftBoardPage >= draftBoardTotalPages - 1 ? 'text-dark-border cursor-default' : 'text-yellow-400 hover:bg-yellow-400/10'">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+        </button>
+      </div>
+      <!-- Desktop: full scroll -->
+      <div class="hidden sm:block overflow-x-auto">
         <div class="inline-block min-w-full">
           <!-- Column Headers (Teams) - Clickable -->
           <div class="flex gap-1 mb-1">
@@ -204,8 +207,35 @@
             </div>
           </div>
         </div>
-        <!-- Gate banner after round 3 -->
-        <div v-if="!hasLeagueAccess && totalRounds > 3" class="early-gate-banner" style="margin-top: 12px;">
+      </div><!-- end desktop overflow-x-auto -->
+      <!-- Mobile board: 3 teams per page -->
+      <div class="sm:hidden">
+        <div class="flex gap-1 mb-1">
+          <div class="w-10 flex-shrink-0"></div>
+          <div v-for="team in mobileBoardTeams" :key="team.team_key" class="flex-1 bg-dark-card rounded-t-lg p-1.5 text-center cursor-pointer hover:ring-2 hover:ring-yellow-400" @click="openTeamModal(team)">
+            <div class="w-7 h-7 rounded-full bg-dark-border mx-auto mb-1 overflow-hidden">
+              <img v-if="team.logo_url" :src="team.logo_url" class="w-full h-full object-cover" @error="handleImageError" />
+            </div>
+            <div class="text-[10px] font-semibold text-dark-text truncate">{{ team.team_name }}</div>
+            <div class="mt-0.5"><span class="text-[10px] font-bold px-1 py-0.5 rounded" :class="getGradeClass(getTeamGrade(team.team_key))">{{ getTeamGrade(team.team_key) }}</span></div>
+          </div>
+        </div>
+        <div v-for="round in totalRounds" :key="round" class="flex gap-1 mb-1" :class="{ 'draft-blur-row': !hasLeagueAccess && round > 3 }">
+          <div class="w-10 flex-shrink-0 bg-dark-card/50 rounded-l-lg flex items-center justify-center"><span class="text-[10px] font-bold text-dark-textMuted">R{{ round }}</span></div>
+          <div v-for="team in mobileBoardTeams" :key="`m-${round}-${team.team_key}`" class="flex-1">
+            <div v-if="getPickForRound(team.team_key, round)" @click="selectPick(getPickForRound(team.team_key, round))" class="bg-dark-card rounded-lg p-1.5 cursor-pointer hover:ring-1 hover:ring-yellow-400 h-full" :class="[getPickClass(getPickForRound(team.team_key, round)), positionFilter !== 'All' && !pickMatchesPositionFilter(getPickForRound(team.team_key, round)) ? 'opacity-30' : '']">
+              <div class="text-[10px] font-medium text-dark-text truncate">{{ getPickForRound(team.team_key, round)?.player_name || '?' }}</div>
+              <div class="flex items-center justify-between mt-0.5">
+                <span class="text-[9px] px-1 py-0.5 rounded font-bold" :class="getPositionClass(getPickForRound(team.team_key, round)?.position)">{{ getPickForRound(team.team_key, round)?.position }}</span>
+                <span class="text-[9px]" :class="(getPickForRound(team.team_key, round)?.score || 0) >= 0 ? 'text-green-400' : 'text-red-400'">{{ (getPickForRound(team.team_key, round)?.score || 0) >= 0 ? '+' : '' }}{{ getPickForRound(team.team_key, round)?.score?.toFixed(0) }}</span>
+              </div>
+            </div>
+            <div v-else class="bg-dark-border/20 rounded-lg p-1.5 h-full flex items-center justify-center"><span class="text-[10px] text-dark-textMuted">-</span></div>
+          </div>
+        </div>
+      </div>
+      <!-- Gate banner after round 3 -->
+      <div v-if="!hasLeagueAccess && totalRounds > 3" class="early-gate-banner" style="margin-top: 12px;">
           <div class="early-gate-inner">
             <div class="early-gate-left">
               <span class="early-gate-icon">⚡</span>
@@ -221,7 +251,6 @@
             </button>
           </div>
         </div>
-      </div>
     </template>
     <template v-else-if="activeTab === 'grades'">
       <!-- Grading Methodology Explainer -->
@@ -460,17 +489,23 @@
             </div>
           </div>
         </div>
+        <!-- Mobile col nav -->
+        <div class="sm:hidden flex items-center justify-center gap-3 py-2 border-b border-dark-border/30">
+          <button @click="gradesTablePage = Math.max(0, gradesTablePage - 1)" :disabled="gradesTablePage === 0" class="w-7 h-7 rounded-full flex items-center justify-center transition-all" :class="gradesTablePage === 0 ? 'text-dark-border cursor-default' : 'text-yellow-400 hover:bg-yellow-400/10'"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg></button>
+          <div class="flex gap-1.5"><div v-for="(_, i) in 2" :key="i" class="w-2 h-2 rounded-full transition-colors" :class="i === gradesTablePage ? 'bg-yellow-400' : 'bg-dark-border/60'" /></div>
+          <button @click="gradesTablePage = Math.min(1, gradesTablePage + 1)" :disabled="gradesTablePage >= 1" class="w-7 h-7 rounded-full flex items-center justify-center transition-all" :class="gradesTablePage >= 1 ? 'text-dark-border cursor-default' : 'text-yellow-400 hover:bg-yellow-400/10'"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg></button>
+        </div>
         <div class="overflow-x-auto">
           <table class="w-full">
             <thead>
               <tr class="border-b border-dark-border">
-                <th class="text-left p-3 text-sm font-semibold text-dark-textMuted">Pick</th>
-                <th class="text-left p-3 text-sm font-semibold text-dark-textMuted">Player</th>
-                <th class="text-left p-3 text-sm font-semibold text-dark-textMuted">Team</th>
-                <th class="text-center p-3 text-sm font-semibold text-dark-textMuted">Position</th>
-                <th class="text-center p-3 text-sm font-semibold text-dark-textMuted">Tier</th>
-                <th class="text-center p-3 text-sm font-semibold text-dark-textMuted">Verdict</th>
-                <th class="text-center p-3 text-sm font-semibold text-dark-textMuted">Grade</th>
+                <th class="text-left p-2 sm:p-3 text-xs sm:text-sm font-semibold text-dark-textMuted">Pick</th>
+                <th class="text-left p-2 sm:p-3 text-xs sm:text-sm font-semibold text-dark-textMuted">Player</th>
+                <th class="text-left p-2 sm:p-3 text-xs sm:text-sm font-semibold text-dark-textMuted" :class="gradesTablePage > 0 ? 'hidden sm:table-cell' : ''">Team</th>
+                <th class="text-center p-2 sm:p-3 text-xs sm:text-sm font-semibold text-dark-textMuted" :class="gradesTablePage === 1 ? '' : 'hidden sm:table-cell'">Pos</th>
+                <th class="text-center p-2 sm:p-3 text-xs sm:text-sm font-semibold text-dark-textMuted" :class="gradesTablePage === 1 ? '' : 'hidden sm:table-cell'">Tier</th>
+                <th class="text-center p-2 sm:p-3 text-xs sm:text-sm font-semibold text-dark-textMuted" :class="gradesTablePage === 1 ? '' : 'hidden sm:table-cell'">Verdict</th>
+                <th class="text-center p-2 sm:p-3 text-xs sm:text-sm font-semibold text-dark-textMuted" :class="gradesTablePage === 1 ? '' : 'hidden sm:table-cell'">Grade</th>
               </tr>
             </thead>
             <tbody>
@@ -485,19 +520,19 @@
                   <div class="text-sm font-medium text-dark-text">{{ pick.round }}.{{ pick.pickInRound }}</div>
                   <div class="text-xs text-dark-textMuted">#{{ pick.pick }}</div>
                 </td>
-                <td class="p-3">
+                <td class="p-2 sm:p-3">
                   <div class="flex items-center gap-2">
-                    <div class="w-8 h-8 rounded-full bg-dark-border overflow-hidden">
+                    <div class="w-8 h-8 rounded-full bg-dark-border overflow-hidden flex-shrink-0">
                       <img v-if="pick.headshot" :src="pick.headshot" class="w-full h-full object-cover" @error="handleImageError" />
                     </div>
-                    <div>
-                      <div class="font-medium text-dark-text">{{ pick.player_name }}</div>
+                    <div :class="gradesTablePage > 0 ? 'hidden sm:block' : ''">
+                      <div class="font-medium text-dark-text text-sm">{{ pick.player_name }}</div>
                       <div class="text-xs text-dark-textMuted">{{ pick.totalPoints?.toFixed(1) || 0 }} pts</div>
                     </div>
                   </div>
                 </td>
-                <td class="p-3 text-sm text-dark-textMuted">{{ pick.team_name }}</td>
-                <td class="p-3 text-center">
+                <td class="p-2 sm:p-3 text-sm text-dark-textMuted" :class="gradesTablePage > 0 ? 'hidden sm:table-cell' : ''">{{ pick.team_name }}</td>
+                <td class="p-2 sm:p-3 text-center" :class="gradesTablePage === 1 ? '' : 'hidden sm:table-cell'">
                   <div class="flex items-center justify-center gap-1">
                     <!-- Position switcher arrows for multi-position players -->
                     <button 
@@ -546,27 +581,14 @@
                     </span>
                   </div>
                 </td>
-                <td class="p-3 text-center">
-                  <span class="text-xs text-dark-textMuted whitespace-nowrap">
-                    {{ pick.tierMovement || '' }}
-                  </span>
+                <td class="p-2 sm:p-3 text-center" :class="gradesTablePage === 1 ? '' : 'hidden sm:table-cell'">
+                  <span class="text-xs text-dark-textMuted whitespace-nowrap">{{ pick.tierMovement || '' }}</span>
                 </td>
-                <td class="p-3 text-center">
-                  <span 
-                    v-if="pick.verdict"
-                    class="text-xs px-2 py-1 rounded font-semibold whitespace-nowrap"
-                    :class="getVerdictClass(pick.verdict)"
-                  >
-                    {{ getVerdictLabel(pick.verdict) }}
-                  </span>
+                <td class="p-2 sm:p-3 text-center" :class="gradesTablePage === 1 ? '' : 'hidden sm:table-cell'">
+                  <span v-if="pick.verdict" class="text-xs px-2 py-1 rounded font-semibold whitespace-nowrap" :class="getVerdictClass(pick.verdict)">{{ getVerdictLabel(pick.verdict) }}</span>
                 </td>
-                <td class="p-3 text-center">
-                  <span 
-                    class="text-lg font-black"
-                    :class="getGradeClass(pick.grade)"
-                  >
-                    {{ pick.grade }}
-                  </span>
+                <td class="p-2 sm:p-3 text-center" :class="gradesTablePage === 1 ? '' : 'hidden sm:table-cell'">
+                  <span class="text-lg font-black" :class="getGradeClass(pick.grade)">{{ pick.grade }}</span>
                 </td>
               </tr>
             </tbody>
@@ -867,16 +889,22 @@
           </p>
         </div>
         <div class="card-body">
+          <!-- Mobile col nav -->
+          <div class="sm:hidden flex items-center justify-center gap-3 py-2 border-b border-dark-border/30">
+            <button @click="actualTablePage = Math.max(0, actualTablePage - 1)" :disabled="actualTablePage === 0" class="w-7 h-7 rounded-full flex items-center justify-center transition-all" :class="actualTablePage === 0 ? 'text-dark-border cursor-default' : 'text-yellow-400 hover:bg-yellow-400/10'"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg></button>
+            <div class="flex gap-1.5"><div v-for="(_, i) in 2" :key="i" class="w-2 h-2 rounded-full transition-colors" :class="i === actualTablePage ? 'bg-yellow-400' : 'bg-dark-border/60'" /></div>
+            <button @click="actualTablePage = Math.min(1, actualTablePage + 1)" :disabled="actualTablePage >= 1" class="w-7 h-7 rounded-full flex items-center justify-center transition-all" :class="actualTablePage >= 1 ? 'text-dark-border cursor-default' : 'text-yellow-400 hover:bg-yellow-400/10'"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg></button>
+          </div>
           <div class="overflow-x-auto">
             <table class="w-full">
               <thead>
                 <tr class="border-b border-dark-border">
-                  <th class="text-left p-3 text-sm font-semibold text-dark-textMuted">Rank</th>
-                  <th class="text-left p-3 text-sm font-semibold text-dark-textMuted">Player</th>
-                  <th class="text-left p-3 text-sm font-semibold text-dark-textMuted">Team</th>
-                  <th class="text-center p-3 text-sm font-semibold text-dark-textMuted">Drafted</th>
-                  <th class="text-center p-3 text-sm font-semibold text-dark-textMuted">Points</th>
-                  <th class="text-center p-3 text-sm font-semibold text-dark-textMuted">Value</th>
+                  <th class="text-left p-2 sm:p-3 text-xs sm:text-sm font-semibold text-dark-textMuted">Rank</th>
+                  <th class="text-left p-2 sm:p-3 text-xs sm:text-sm font-semibold text-dark-textMuted">Player</th>
+                  <th class="text-left p-2 sm:p-3 text-xs sm:text-sm font-semibold text-dark-textMuted" :class="actualTablePage > 0 ? 'hidden sm:table-cell' : ''">Team</th>
+                  <th class="text-center p-2 sm:p-3 text-xs sm:text-sm font-semibold text-dark-textMuted" :class="actualTablePage === 1 ? '' : 'hidden sm:table-cell'">Drafted</th>
+                  <th class="text-center p-2 sm:p-3 text-xs sm:text-sm font-semibold text-dark-textMuted" :class="actualTablePage === 1 ? '' : 'hidden sm:table-cell'">Points</th>
+                  <th class="text-center p-2 sm:p-3 text-xs sm:text-sm font-semibold text-dark-textMuted" :class="actualTablePage === 1 ? '' : 'hidden sm:table-cell'">Value</th>
                 </tr>
               </thead>
               <tbody>
@@ -897,37 +925,27 @@
                       <span v-else-if="idx === 2" class="text-xl">🥉</span>
                     </div>
                   </td>
-                  <td class="p-3">
+                  <td class="p-2 sm:p-3">
                     <div class="flex items-center gap-2">
-                      <div class="w-8 h-8 rounded-full bg-dark-border overflow-hidden">
+                      <div class="w-8 h-8 rounded-full bg-dark-border overflow-hidden flex-shrink-0">
                         <img v-if="player.headshot" :src="player.headshot" class="w-full h-full object-cover" @error="handleImageError" />
                       </div>
-                      <div>
-                        <div class="font-medium text-dark-text">{{ player.player_name }}</div>
-                        <span 
-                          class="text-xs px-1.5 py-0.5 rounded font-bold"
-                          :class="getPositionClass(player.position)"
-                        >
-                          {{ player.position }}
-                        </span>
+                      <div :class="actualTablePage > 0 ? 'hidden sm:block' : ''">
+                        <div class="font-medium text-dark-text text-sm">{{ player.player_name }}</div>
+                        <span class="text-xs px-1.5 py-0.5 rounded font-bold" :class="getPositionClass(player.position)">{{ player.position }}</span>
                       </div>
                     </div>
                   </td>
-                  <td class="p-3 text-sm text-dark-textMuted">{{ player.team_name }}</td>
-                  <td class="p-3 text-center">
+                  <td class="p-2 sm:p-3 text-sm text-dark-textMuted" :class="actualTablePage > 0 ? 'hidden sm:table-cell' : ''">{{ player.team_name }}</td>
+                  <td class="p-2 sm:p-3 text-center" :class="actualTablePage === 1 ? '' : 'hidden sm:table-cell'">
                     <div class="text-sm font-medium text-dark-text">R{{ player.round }}</div>
                     <div class="text-xs text-dark-textMuted">#{{ player.pick }}</div>
                   </td>
-                  <td class="p-3 text-center">
+                  <td class="p-2 sm:p-3 text-center" :class="actualTablePage === 1 ? '' : 'hidden sm:table-cell'">
                     <div class="font-bold text-primary">{{ player.totalPoints?.toFixed(1) || '0.0' }}</div>
                   </td>
-                  <td class="p-3 text-center">
-                    <span 
-                      class="font-bold"
-                      :class="player.valueScore >= 0 ? 'text-green-400' : 'text-red-400'"
-                    >
-                      {{ player.valueScore >= 0 ? '+' : '' }}{{ player.valueScore?.toFixed(1) || '0.0' }}
-                    </span>
+                  <td class="p-2 sm:p-3 text-center" :class="actualTablePage === 1 ? '' : 'hidden sm:table-cell'">
+                    <span class="font-bold" :class="player.valueScore >= 0 ? 'text-green-400' : 'text-red-400'">{{ player.valueScore >= 0 ? '+' : '' }}{{ player.valueScore?.toFixed(1) || '0.0' }}</span>
                   </td>
                 </tr>
               </tbody>
@@ -1259,6 +1277,15 @@ const tabOptions = [
 ]
 
 // State
+
+// ── Mobile draft pagination refs ──────────────────────────────────────────
+const draftBoardPage = ref(0)
+const gradesTablePage = ref(0)
+const actualTablePage = ref(0)
+const MOBILE_TEAMS_PER_PAGE = 3
+const draftBoardTotalPages = computed(() => Math.max(1, Math.ceil((draftBoard.value?.length || 0) / MOBILE_TEAMS_PER_PAGE)))
+const mobileBoardTeams = computed(() => { const s = draftBoardPage.value * MOBILE_TEAMS_PER_PAGE; return (draftBoard.value || []).slice(s, s + MOBILE_TEAMS_PER_PAGE) })
+
 const activeTab = ref('board')
 const selectedSeason = ref('2025')
 const positionFilter = ref('All')
