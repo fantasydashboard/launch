@@ -1,21 +1,11 @@
 <template>
   <div class="space-y-6">
     <!-- Offseason Notice Banner - Only show when season is complete -->
-    <!-- Offseason banner: only when no data AND no draft yet -->
-    <div v-if="isSeasonComplete && !leagueStore.isPreSeasonDrafted" class="bg-slate-500/10 border border-slate-500/30 rounded-xl p-4 flex items-start gap-3">
+    <div v-if="isSeasonComplete" class="bg-slate-500/10 border border-slate-500/30 rounded-xl p-4 flex items-start gap-3">
       <div class="text-slate-400 text-xl flex-shrink-0">📅</div>
       <div>
         <p class="text-slate-200 font-semibold">It's the offseason</p>
-        <p class="text-slate-400 text-sm mt-1">You're viewing last season's data ({{ currentSeason }}). The {{ Number(currentSeason) + 1 }} season will appear automatically once the draft is complete.</p>
-      </div>
-    </div>
-
-    <!-- Pre-season drafted banner: draft done, Week 1 hasn't started -->
-    <div v-if="leagueStore.isPreSeasonDrafted" class="bg-emerald-500/10 border border-emerald-500/30 rounded-xl p-4 flex items-start gap-3">
-      <div class="text-emerald-400 text-xl flex-shrink-0">⚾</div>
-      <div>
-        <p class="text-emerald-300 font-semibold">Draft complete — season starting soon!</p>
-        <p class="text-slate-400 text-sm mt-1">Records are 0-0. Rankings and projections are based on your drafted roster until Week 1 begins.</p>
+        <p class="text-slate-400 text-sm mt-1">You're viewing last season's data ({{ currentSeason }}). The {{ Number(currentSeason) + 1 }} season will appear automatically once Week 1 begins.</p>
       </div>
     </div>
 
@@ -109,16 +99,13 @@
           <p class="card-subtitle mt-2">All-time league leaders • Click for details</p>
         </div>
         <div class="card-body">
-          <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-            <div v-for="record in careerRecords" :key="record.label" 
-                 class="relative overflow-hidden cursor-pointer"
-                 @click="openRecordModal(record.label)">
+          <!-- Desktop grid -->
+          <div class="hidden md:grid grid-cols-2 lg:grid-cols-4 gap-6">
+            <div v-for="record in careerRecords" :key="record.label" class="relative overflow-hidden cursor-pointer" @click="openRecordModal(record.label)">
               <div class="p-6 bg-gradient-to-br from-yellow-500/10 to-yellow-500/5 rounded-xl border-2 border-yellow-500/20 hover:border-yellow-500/40 transition-all">
                 <div class="flex items-start justify-between mb-4">
-                  <div class="text-4xl">{{ record.icon }}</div>
-                  <div class="text-right">
-                    <div class="text-4xl font-black text-yellow-400 mb-1">{{ record.value }}</div>
-                  </div>
+                  <div class="text-4xl">{{ careerRecords[carRecordIdx]?.icon }}</div>
+                  <div class="text-right"><div class="text-4xl font-black text-yellow-400 mb-1">{{ record.value }}</div></div>
                 </div>
                 <div class="space-y-1">
                   <div class="text-xs text-dark-textMuted uppercase tracking-wider font-bold">{{ record.label }}</div>
@@ -129,19 +116,37 @@
               </div>
             </div>
           </div>
+          <!-- Mobile carousel -->
+          <div class="md:hidden">
+            <div class="sm:hidden flex items-center justify-center gap-3 py-2">
+          <button @click="carRecordIdx = Math.max(0, carRecordIdx - 1)" :disabled="carRecordIdx === 0" class="w-7 h-7 flex-shrink-0 rounded-full flex items-center justify-center transition-all" :class="carRecordIdx === 0 ? 'text-dark-border cursor-default' : 'text-yellow-400 hover:bg-yellow-400/10'"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg></button>
+          <div class="flex gap-1.5"><div v-for="(_, i) in careerRecords.length" :key="i" class="w-2 h-2 rounded-full transition-colors" :class="i === carRecordIdx ? 'bg-yellow-400' : 'bg-dark-border/60'" /></div>
+          <button @click="carRecordIdx = Math.min((careerRecords.length || 1) - 1, carRecordIdx + 1)" :disabled="carRecordIdx >= (careerRecords.length || 1) - 1" class="w-7 h-7 flex-shrink-0 rounded-full flex items-center justify-center transition-all" :class="carRecordIdx >= (careerRecords.length || 1) - 1 ? 'text-dark-border cursor-default' : 'text-yellow-400 hover:bg-yellow-400/10'"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg></button>
+        </div>
+            <div v-if="careerRecords[carRecordIdx]" class="p-6 bg-gradient-to-br from-yellow-500/10 to-yellow-500/5 rounded-xl border-2 border-yellow-500/20 cursor-pointer mt-2" @click="openRecordModal(careerRecords[carRecordIdx].label)">
+              <div class="flex items-start justify-between mb-4">
+                <div class="text-4xl">{{ careerRecords[carRecordIdx].icon }}</div>
+                <div class="text-4xl font-black text-yellow-400">{{ careerRecords[carRecordIdx].value }}</div>
+              </div>
+              <div class="text-xs text-dark-textMuted uppercase tracking-wider font-bold mb-1">{{ careerRecords[carRecordIdx].label }}</div>
+              <div class="font-bold text-xl text-dark-text">{{ careerRecords[carRecordIdx].team }}</div>
+              <div class="text-sm text-dark-textMuted mt-1">{{ careerRecords[carRecordIdx].detail }}</div>
+              <div class="text-xs text-yellow-400 mt-3 opacity-70">Click for details →</div>
+            </div>
+          </div>
         </div>
       </div>
 
       <!-- Career Statistics Table -->
       <div class="card">
         <div class="card-header">
-          <div class="flex items-center justify-between flex-wrap gap-4">
+          <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
             <div class="flex items-center gap-2">
               <span class="text-2xl">📊</span>
               <h2 class="card-title">Career Statistics</h2>
             </div>
-            <div class="flex items-center gap-4">
-              <div class="text-sm text-dark-textMuted">
+            <div class="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4">
+              <div class="text-xs sm:text-sm text-dark-textMuted">
                 All-time regular season records (playoffs excluded)
               </div>
               <!-- Toggle for current members only -->
@@ -193,68 +198,50 @@
             </div>
           </div>
         </div>
-        <div class="card-body overflow-x-auto">
+        <div class="card-body">
+          <div class="sm:hidden flex items-center justify-center gap-3 py-2">
+          <button @click="carStatPage = Math.max(0, carStatPage - 1)" :disabled="carStatPage === 0" class="w-7 h-7 flex-shrink-0 rounded-full flex items-center justify-center transition-all" :class="carStatPage === 0 ? 'text-dark-border cursor-default' : 'text-yellow-400 hover:bg-yellow-400/10'"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg></button>
+          <div class="flex gap-1.5"><div v-for="(_, i) in 2" :key="i" class="w-2 h-2 rounded-full transition-colors" :class="i === carStatPage ? 'bg-yellow-400' : 'bg-dark-border/60'" /></div>
+          <button @click="carStatPage = Math.min(1, carStatPage + 1)" :disabled="carStatPage >= 1" class="w-7 h-7 flex-shrink-0 rounded-full flex items-center justify-center transition-all" :class="carStatPage >= 1 ? 'text-dark-border cursor-default' : 'text-yellow-400 hover:bg-yellow-400/10'"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg></button>
+        </div>
+          <div class="overflow-x-auto">
           <table ref="careerTableRef" class="w-full text-sm">
             <thead>
               <tr class="text-left text-xs text-dark-textMuted uppercase border-b border-dark-border">
-                <th class="py-3 px-4 font-semibold">Team</th>
-                <th class="py-3 px-4 text-center cursor-pointer hover:text-yellow-400" @click="sortBy('seasons')">
-                  Seasons <span v-if="sortColumn === 'seasons'" class="text-yellow-400">{{ sortDirection === 'asc' ? '↑' : '↓' }}</span>
-                </th>
-                <th class="py-3 px-4 text-center cursor-pointer hover:text-yellow-400" @click="sortBy('championships')">
-                  Championships <span v-if="sortColumn === 'championships'" class="text-yellow-400">{{ sortDirection === 'asc' ? '↑' : '↓' }}</span>
-                </th>
-                <th class="py-3 px-4 text-center cursor-pointer hover:text-yellow-400" @click="sortBy('wins')">
-                  Record <span v-if="sortColumn === 'wins'" class="text-yellow-400">{{ sortDirection === 'asc' ? '↑' : '↓' }}</span>
-                </th>
-                <th class="py-3 px-4 text-center cursor-pointer hover:text-yellow-400" @click="sortBy('win_pct')">
-                  Win % <span v-if="sortColumn === 'win_pct'" class="text-yellow-400">{{ sortDirection === 'asc' ? '↑' : '↓' }}</span>
-                </th>
-                <th class="py-3 px-4 text-center cursor-pointer hover:text-yellow-400" @click="sortBy('avg_ppw')">
-                  Avg PPW <span v-if="sortColumn === 'avg_ppw'" class="text-yellow-400">{{ sortDirection === 'asc' ? '↑' : '↓' }}</span>
-                </th>
-                <th class="py-3 px-4 text-center cursor-pointer hover:text-yellow-400" @click="sortBy('total_pf')">
-                  Total PF <span v-if="sortColumn === 'total_pf'" class="text-yellow-400">{{ sortDirection === 'asc' ? '↑' : '↓' }}</span>
-                </th>
+                <th class="py-3 px-3 font-semibold">Team</th>
+                <th class="py-3 px-3 text-center cursor-pointer hover:text-yellow-400" :class="carStatPage > 0 ? 'hidden sm:table-cell' : ''" @click="sortBy('seasons')">Seasons</th>
+                <th class="py-3 px-3 text-center cursor-pointer hover:text-yellow-400" :class="carStatPage > 0 ? 'hidden sm:table-cell' : ''" @click="sortBy('championships')">Champ</th>
+                <th class="py-3 px-3 text-center cursor-pointer hover:text-yellow-400" :class="carStatPage > 0 ? 'hidden sm:table-cell' : ''" @click="sortBy('wins')">Record</th>
+                <th class="py-3 px-3 text-center cursor-pointer hover:text-yellow-400" :class="carStatPage === 1 ? '' : 'hidden sm:table-cell'" @click="sortBy('win_pct')">Win%</th>
+                <th class="py-3 px-3 text-center cursor-pointer hover:text-yellow-400" :class="carStatPage === 1 ? '' : 'hidden sm:table-cell'" @click="sortBy('avg_ppw')">Avg PPW</th>
+                <th class="py-3 px-3 text-center cursor-pointer hover:text-yellow-400" :class="carStatPage === 1 ? '' : 'hidden sm:table-cell'" @click="sortBy('total_pf')">Total PF</th>
               </tr>
             </thead>
             <tbody>
               <tr v-for="(stat, idx) in filteredCareerStats" :key="stat.team_key"
                 :class="{ 'history-blur-row': !hasLeagueAccess && idx >= 3 }" 
                   class="border-b border-dark-border hover:bg-dark-border/30 transition-colors">
-                <td class="py-3 px-4">
-                  <div class="flex items-center gap-3">
-                    <div class="w-10 h-10 rounded-full overflow-hidden bg-dark-border flex-shrink-0">
-                      <img
-                        :src="stat.logo_url || defaultAvatar"
-                        :alt="stat.team_name"
-                        class="w-full h-full object-cover"
-                        @error="handleImageError"
-                      />
+                <td class="py-3 px-3">
+                  <div class="flex items-center gap-2">
+                    <div class="w-8 h-8 rounded-full overflow-hidden bg-dark-border flex-shrink-0">
+                      <img :src="stat.logo_url || defaultAvatar" :alt="stat.team_name" class="w-full h-full object-cover" @error="handleImageError" />
                     </div>
-                    <div class="font-semibold text-dark-text">{{ stat.team_name }}</div>
+                    <div class="font-semibold text-dark-text text-sm truncate max-w-[90px] sm:max-w-none" :class="carStatPage > 0 ? 'hidden sm:block' : ''">{{ stat.team_name }}</div>
                   </div>
                 </td>
-                <td class="text-center py-3 px-4 text-dark-text">{{ stat.seasons }}</td>
-                <td class="text-center py-3 px-4">
-                  <span v-if="stat.championships > 0" class="text-yellow-400 font-bold">
-                    🏆 {{ stat.championships }}
-                  </span>
+                <td class="text-center py-3 px-3 text-dark-text text-sm" :class="carStatPage > 0 ? 'hidden sm:table-cell' : ''">{{ stat.seasons }}</td>
+                <td class="text-center py-3 px-3" :class="carStatPage > 0 ? 'hidden sm:table-cell' : ''">
+                  <span v-if="stat.championships > 0" class="text-yellow-400 font-bold text-sm">🏆 {{ stat.championships }}</span>
                   <span v-else class="text-dark-textMuted">—</span>
                 </td>
-                <td class="text-center py-3 px-4 font-semibold" :class="getRecordClass(stat, 'wins')">
-                  {{ stat.wins }}-{{ stat.losses }}
-                </td>
-                <td class="text-center py-3 px-4">
-                  <span :class="getRecordClass(stat, 'win_pct')">
-                    {{ (stat.win_pct * 100).toFixed(1) }}%
-                  </span>
-                </td>
-                <td class="text-center py-3 px-4" :class="getRecordClass(stat, 'avg_ppw')">{{ stat.avg_ppw.toFixed(1) }}</td>
-                <td class="text-center py-3 px-4" :class="getRecordClass(stat, 'total_pf')">{{ stat.total_pf.toFixed(0) }}</td>
+                <td class="text-center py-3 px-3 font-semibold text-sm" :class="[getRecordClass(stat, 'wins'), carStatPage > 0 ? 'hidden sm:table-cell' : '']">{{ stat.wins }}-{{ stat.losses }}</td>
+                <td class="text-center py-3 px-3 text-sm" :class="carStatPage === 1 ? '' : 'hidden sm:table-cell'"><span :class="getRecordClass(stat, 'win_pct')">{{ (stat.win_pct * 100).toFixed(1) }}%</span></td>
+                <td class="text-center py-3 px-3 text-sm" :class="[getRecordClass(stat, 'avg_ppw'), carStatPage === 1 ? '' : 'hidden sm:table-cell']">{{ stat.avg_ppw.toFixed(1) }}</td>
+                <td class="text-center py-3 px-3 text-sm" :class="[getRecordClass(stat, 'total_pf'), carStatPage === 1 ? '' : 'hidden sm:table-cell']">{{ stat.total_pf.toFixed(0) }}</td>
               </tr>
             </tbody>
           </table>
+          </div><!-- end overflow-x-auto -->
           <!-- Gate banner -->
           <div v-if="!hasLeagueAccess && filteredCareerStats.length > 3" class="early-gate-banner" style="margin: 8px 0 4px;">
             <div class="early-gate-inner">
@@ -301,44 +288,51 @@
           </div>
           <p class="card-subtitle mt-2">Historical performance by year</p>
         </div>
-        <div class="card-body overflow-x-auto">
+        <div class="card-body">
+          <div class="sm:hidden flex items-center justify-center gap-3 py-2">
+          <button @click="sbsPage = Math.max(0, sbsPage - 1)" :disabled="sbsPage === 0" class="w-7 h-7 flex-shrink-0 rounded-full flex items-center justify-center transition-all" :class="sbsPage === 0 ? 'text-dark-border cursor-default' : 'text-yellow-400 hover:bg-yellow-400/10'"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg></button>
+          <div class="flex gap-1.5"><div v-for="(_, i) in 2" :key="i" class="w-2 h-2 rounded-full transition-colors" :class="i === sbsPage ? 'bg-yellow-400' : 'bg-dark-border/60'" /></div>
+          <button @click="sbsPage = Math.min(1, sbsPage + 1)" :disabled="sbsPage >= 1" class="w-7 h-7 flex-shrink-0 rounded-full flex items-center justify-center transition-all" :class="sbsPage >= 1 ? 'text-dark-border cursor-default' : 'text-yellow-400 hover:bg-yellow-400/10'"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg></button>
+        </div>
+          <div class="overflow-x-auto">
           <table ref="seasonTableRef" class="w-full text-sm">
             <thead>
               <tr class="border-b border-dark-border">
-                <th class="text-left py-3 px-4 font-semibold text-dark-textSecondary uppercase tracking-wider">Season</th>
-                <th class="text-center py-3 px-4 font-semibold text-dark-textSecondary uppercase tracking-wider">Avg PPW</th>
-                <th class="text-center py-3 px-4 font-semibold text-dark-textSecondary uppercase tracking-wider">High Score</th>
-                <th class="text-center py-3 px-4 font-semibold text-dark-textSecondary uppercase tracking-wider">Low Score</th>
-                <th class="text-center py-3 px-4 font-semibold text-dark-textSecondary uppercase tracking-wider">Transactions</th>
-                <th class="text-center py-3 px-4 font-semibold text-dark-textSecondary uppercase tracking-wider">Trades</th>
-                <th class="text-center py-3 px-4 font-semibold text-dark-textSecondary uppercase tracking-wider">Champion</th>
+                <th class="text-left py-3 px-3 font-semibold text-dark-textSecondary uppercase tracking-wider">Season</th>
+                <th class="text-center py-3 px-3 font-semibold text-dark-textSecondary uppercase tracking-wider" :class="sbsPage > 0 ? 'hidden sm:table-cell' : ''">Avg PPW</th>
+                <th class="text-center py-3 px-3 font-semibold text-dark-textSecondary uppercase tracking-wider" :class="sbsPage > 0 ? 'hidden sm:table-cell' : ''">High Score</th>
+                <th class="text-center py-3 px-3 font-semibold text-dark-textSecondary uppercase tracking-wider" :class="sbsPage > 0 ? 'hidden sm:table-cell' : ''">Low Score</th>
+                <th class="text-center py-3 px-3 font-semibold text-dark-textSecondary uppercase tracking-wider" :class="sbsPage === 1 ? '' : 'hidden sm:table-cell'">Trans</th>
+                <th class="text-center py-3 px-3 font-semibold text-dark-textSecondary uppercase tracking-wider" :class="sbsPage === 1 ? '' : 'hidden sm:table-cell'">Trades</th>
+                <th class="text-center py-3 px-3 font-semibold text-dark-textSecondary uppercase tracking-wider" :class="sbsPage === 1 ? '' : 'hidden sm:table-cell'">Champion</th>
               </tr>
             </thead>
             <tbody>
               <tr v-for="(season, idx) in seasonRecords" :key="season.season"
                 :class="{ 'history-blur-row': !hasLeagueAccess && idx >= 1 }" 
                   class="border-b border-dark-border hover:bg-dark-border/30 transition-colors">
-                <td class="py-3 px-4 font-bold text-dark-text">{{ season.season }}</td>
-                <td class="text-center py-3 px-4 text-dark-text">{{ season.avg_ppw.toFixed(1) }}</td>
-                <td class="text-center py-3 px-4">
-                  <div class="text-green-400 font-semibold">{{ season.high_score.toFixed(1) }}</div>
+                <td class="py-3 px-3 font-bold text-dark-text text-sm">{{ season.season }}</td>
+                <td class="text-center py-3 px-3 text-dark-text text-sm" :class="sbsPage > 0 ? 'hidden sm:table-cell' : ''">{{ season.avg_ppw.toFixed(1) }}</td>
+                <td class="text-center py-3 px-3" :class="sbsPage > 0 ? 'hidden sm:table-cell' : ''">
+                  <div class="text-green-400 font-semibold text-sm">{{ season.high_score.toFixed(1) }}</div>
                   <div class="text-xs text-dark-textMuted">{{ season.high_scorer }}</div>
                 </td>
-                <td class="text-center py-3 px-4">
-                  <div class="text-red-400 font-semibold">{{ season.low_score.toFixed(1) }}</div>
+                <td class="text-center py-3 px-3" :class="sbsPage > 0 ? 'hidden sm:table-cell' : ''">
+                  <div class="text-red-400 font-semibold text-sm">{{ season.low_score.toFixed(1) }}</div>
                   <div class="text-xs text-dark-textMuted">{{ season.low_scorer }}</div>
                 </td>
-                <td class="text-center py-3 px-4 text-cyan-400 font-semibold">{{ season.transaction_count }}</td>
-                <td class="text-center py-3 px-4 text-dark-text font-semibold">{{ season.trade_count }}</td>
-                <td class="text-center py-3 px-4">
-                  <div class="flex items-center justify-center gap-2">
-                    <span class="text-lg">🏆</span>
-                    <span class="font-semibold text-dark-text">{{ season.champion || 'TBD' }}</span>
+                <td class="text-center py-3 px-3 text-cyan-400 font-semibold text-sm" :class="sbsPage === 1 ? '' : 'hidden sm:table-cell'">{{ season.transaction_count }}</td>
+                <td class="text-center py-3 px-3 text-dark-text font-semibold text-sm" :class="sbsPage === 1 ? '' : 'hidden sm:table-cell'">{{ season.trade_count }}</td>
+                <td class="text-center py-3 px-3" :class="sbsPage === 1 ? '' : 'hidden sm:table-cell'">
+                  <div class="flex items-center justify-center gap-1">
+                    <span class="text-base">🏆</span>
+                    <span class="font-semibold text-dark-text text-sm">{{ season.champion || 'TBD' }}</span>
                   </div>
                 </td>
               </tr>
             </tbody>
           </table>
+          </div><!-- end overflow-x-auto -->
           <!-- Gate banner -->
           <div v-if="!hasLeagueAccess && seasonRecords.length > 1" class="early-gate-banner" style="margin: 8px 0 4px;">
             <div class="early-gate-inner">
@@ -428,16 +422,16 @@
             <p class="card-subtitle mt-2">All-time comparison</p>
           </div>
           <div class="card-body">
-            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div class="grid grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-6">
               <!-- Team 1 Stats -->
-              <div class="text-center p-6 bg-gradient-to-br from-cyan-500/10 to-cyan-600/5 rounded-xl border-2 border-cyan-500/30">
+              <div class="text-center p-3 sm:p-6 bg-gradient-to-br from-cyan-500/10 to-cyan-600/5 rounded-xl border-2 border-cyan-500/30">
                 <img 
                   :src="compareTeam1Data?.logo_url || defaultAvatar" 
                   :alt="compareTeam1Data?.team_name" 
-                  class="w-20 h-20 rounded-full mx-auto mb-4 border-4 border-cyan-500 object-cover" 
+                  class="w-12 h-12 sm:w-20 sm:h-20 rounded-full mx-auto mb-2 sm:mb-4 border-4 border-cyan-500 object-cover" 
                   @error="handleImageError" 
                 />
-                <div class="font-bold text-xl text-dark-text mb-3">{{ compareTeam1Data?.team_name }}</div>
+                <div class="font-bold text-sm sm:text-xl text-dark-text mb-2 truncate">{{ compareTeam1Data?.team_name }}</div>
                 
                 <div class="space-y-2 text-left text-sm">
                   <div class="flex justify-between">
@@ -506,14 +500,14 @@
               </div>
 
               <!-- Team 2 Stats -->
-              <div class="text-center p-6 bg-gradient-to-br from-orange-500/10 to-orange-600/5 rounded-xl border-2 border-orange-500/30">
+              <div class="text-center p-3 sm:p-6 bg-gradient-to-br from-orange-500/10 to-orange-600/5 rounded-xl border-2 border-orange-500/30">
                 <img 
                   :src="compareTeam2Data?.logo_url || defaultAvatar" 
                   :alt="compareTeam2Data?.team_name" 
-                  class="w-20 h-20 rounded-full mx-auto mb-4 border-4 border-orange-500 object-cover" 
+                  class="w-12 h-12 sm:w-20 sm:h-20 rounded-full mx-auto mb-2 sm:mb-4 border-4 border-orange-500 object-cover" 
                   @error="handleImageError" 
                 />
-                <div class="font-bold text-xl text-dark-text mb-3">{{ compareTeam2Data?.team_name }}</div>
+                <div class="font-bold text-sm sm:text-xl text-dark-text mb-2 truncate">{{ compareTeam2Data?.team_name }}</div>
                 
                 <div class="space-y-2 text-left text-sm">
                   <div class="flex justify-between">
@@ -548,31 +542,39 @@
 
         <!-- Rivalry Highlights — gated -->
         <LeagueGate wrap :locked="!hasLeagueAccess" label="Rivalry Deep Stats">
-        <div v-if="compareRivalryHighlights" class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-          <div class="card">
-            <div class="card-body p-4">
-              <div class="text-xs text-dark-textMuted mb-2">💥 Biggest Blowout</div>
-              <div class="font-bold text-dark-text mb-1">{{ compareRivalryHighlights.biggestBlowout.winner }}</div>
-              <div class="text-lg text-primary font-bold">{{ compareRivalryHighlights.biggestBlowout.margin.toFixed(1) }} points</div>
-              <div class="text-xs text-dark-textMuted mt-1">{{ compareRivalryHighlights.biggestBlowout.season }} Week {{ compareRivalryHighlights.biggestBlowout.week }}</div>
-            </div>
+        <div v-if="compareRivalryHighlights" class="mb-6">
+          <!-- Desktop: 3 cards -->
+          <div class="hidden md:grid grid-cols-3 gap-4">
+            <div class="card"><div class="card-body p-4"><div class="text-xs text-dark-textMuted mb-2">💥 Biggest Blowout</div><div class="font-bold text-dark-text mb-1">{{ compareRivalryHighlights.biggestBlowout.winner }}</div><div class="text-lg text-primary font-bold">{{ compareRivalryHighlights.biggestBlowout.margin.toFixed(1) }} points</div><div class="text-xs text-dark-textMuted mt-1">{{ compareRivalryHighlights.biggestBlowout.season }} Week {{ compareRivalryHighlights.biggestBlowout.week }}</div></div></div>
+            <div class="card"><div class="card-body p-4"><div class="text-xs text-dark-textMuted mb-2">🎯 Closest Game</div><div class="font-bold text-dark-text mb-1">{{ compareRivalryHighlights.closestGame.winner }}</div><div class="text-lg text-primary font-bold">{{ compareRivalryHighlights.closestGame.margin.toFixed(1) }} points</div><div class="text-xs text-dark-textMuted mt-1">{{ compareRivalryHighlights.closestGame.season }} Week {{ compareRivalryHighlights.closestGame.week }}</div></div></div>
+            <div class="card"><div class="card-body p-4"><div class="text-xs text-dark-textMuted mb-2">🔥 Highest Scoring</div><div class="font-bold text-dark-text mb-1">{{ compareRivalryHighlights.highestScoring.totalPoints.toFixed(1) }} total</div><div class="text-lg text-primary font-bold">{{ compareRivalryHighlights.highestScoring.score }}</div><div class="text-xs text-dark-textMuted mt-1">{{ compareRivalryHighlights.highestScoring.season }} Week {{ compareRivalryHighlights.highestScoring.week }}</div></div></div>
           </div>
-          
-          <div class="card">
-            <div class="card-body p-4">
-              <div class="text-xs text-dark-textMuted mb-2">🎯 Closest Game</div>
-              <div class="font-bold text-dark-text mb-1">{{ compareRivalryHighlights.closestGame.winner }}</div>
-              <div class="text-lg text-primary font-bold">{{ compareRivalryHighlights.closestGame.margin.toFixed(1) }} points</div>
-              <div class="text-xs text-dark-textMuted mt-1">{{ compareRivalryHighlights.closestGame.season }} Week {{ compareRivalryHighlights.closestGame.week }}</div>
+          <!-- Mobile: carousel -->
+          <div class="md:hidden card p-0 overflow-hidden">
+            <div class="p-4">
+              <template v-if="rivalryHighIdx === 0">
+                <div class="text-xs text-dark-textMuted mb-2">💥 Biggest Blowout</div>
+                <div class="font-bold text-dark-text mb-1">{{ compareRivalryHighlights.biggestBlowout.winner }}</div>
+                <div class="text-2xl text-primary font-bold">{{ compareRivalryHighlights.biggestBlowout.margin.toFixed(1) }} points</div>
+                <div class="text-xs text-dark-textMuted mt-1">{{ compareRivalryHighlights.biggestBlowout.season }} Week {{ compareRivalryHighlights.biggestBlowout.week }}</div>
+              </template>
+              <template v-else-if="rivalryHighIdx === 1">
+                <div class="text-xs text-dark-textMuted mb-2">🎯 Closest Game</div>
+                <div class="font-bold text-dark-text mb-1">{{ compareRivalryHighlights.closestGame.winner }}</div>
+                <div class="text-2xl text-primary font-bold">{{ compareRivalryHighlights.closestGame.margin.toFixed(1) }} points</div>
+                <div class="text-xs text-dark-textMuted mt-1">{{ compareRivalryHighlights.closestGame.season }} Week {{ compareRivalryHighlights.closestGame.week }}</div>
+              </template>
+              <template v-else>
+                <div class="text-xs text-dark-textMuted mb-2">🔥 Highest Scoring</div>
+                <div class="font-bold text-dark-text mb-1">{{ compareRivalryHighlights.highestScoring.totalPoints.toFixed(1) }} total</div>
+                <div class="text-2xl text-primary font-bold">{{ compareRivalryHighlights.highestScoring.score }}</div>
+                <div class="text-xs text-dark-textMuted mt-1">{{ compareRivalryHighlights.highestScoring.season }} Week {{ compareRivalryHighlights.highestScoring.week }}</div>
+              </template>
             </div>
-          </div>
-          
-          <div class="card">
-            <div class="card-body p-4">
-              <div class="text-xs text-dark-textMuted mb-2">🔥 Highest Scoring</div>
-              <div class="font-bold text-dark-text mb-1">{{ compareRivalryHighlights.highestScoring.totalPoints.toFixed(1) }} total</div>
-              <div class="text-lg text-primary font-bold">{{ compareRivalryHighlights.highestScoring.score }}</div>
-              <div class="text-xs text-dark-textMuted mt-1">{{ compareRivalryHighlights.highestScoring.season }} Week {{ compareRivalryHighlights.highestScoring.week }}</div>
+            <div class="flex items-center justify-center gap-3 pb-3">
+              <button @click="rivalryHighIdx = Math.max(0, rivalryHighIdx - 1)" :disabled="rivalryHighIdx === 0" class="w-7 h-7 flex-shrink-0 rounded-full flex items-center justify-center transition-all" :class="rivalryHighIdx === 0 ? 'text-dark-border cursor-default' : 'text-yellow-400 hover:bg-yellow-400/10'"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg></button>
+              <div class="flex gap-1.5"><div v-for="(_, i) in 3" :key="i" class="w-2 h-2 rounded-full transition-colors" :class="i === rivalryHighIdx ? 'bg-yellow-400' : 'bg-dark-border/60'" /></div>
+              <button @click="rivalryHighIdx = Math.min(2, rivalryHighIdx + 1)" :disabled="rivalryHighIdx >= 2" class="w-7 h-7 flex-shrink-0 rounded-full flex items-center justify-center transition-all" :class="rivalryHighIdx >= 2 ? 'text-dark-border cursor-default' : 'text-yellow-400 hover:bg-yellow-400/10'"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg></button>
             </div>
           </div>
         </div>
@@ -676,23 +678,30 @@
           </div>
           <p class="card-subtitle mt-2">All-time records between teams (read horizontally: each row shows that team's record against opponents)</p>
         </div>
-        <div class="card-body overflow-x-auto scrollbar-thin">
+        <div class="card-body">
+          <!-- Mobile: 2 opponent columns at a time, logo-only row header -->
+          <div class="sm:hidden flex items-center justify-center gap-3 py-2 border-b border-dark-border/30">
+          <button @click="h2hPage = Math.max(0, h2hPage - 1)" :disabled="h2hPage === 0" class="w-7 h-7 flex-shrink-0 rounded-full flex items-center justify-center transition-all" :class="h2hPage === 0 ? 'text-dark-border cursor-default' : 'text-yellow-400 hover:bg-yellow-400/10'"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg></button>
+          <div class="flex gap-1.5"><div v-for="(_, i) in h2hTotalPages" :key="i" class="w-2 h-2 rounded-full transition-colors" :class="i === h2hPage ? 'bg-yellow-400' : 'bg-dark-border/60'" /></div>
+          <button @click="h2hPage = Math.min(h2hTotalPages - 1, h2hPage + 1)" :disabled="h2hPage >= h2hTotalPages - 1" class="w-7 h-7 flex-shrink-0 rounded-full flex items-center justify-center transition-all" :class="h2hPage >= h2hTotalPages - 1 ? 'text-dark-border cursor-default' : 'text-yellow-400 hover:bg-yellow-400/10'"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg></button>
+        </div>
+          <div class="overflow-x-auto scrollbar-thin">
           <table ref="h2hTableRef" class="w-full text-xs border-collapse">
             <thead>
               <tr>
                 <th class="sticky left-0 bg-dark-elevated z-10 px-3 py-2 text-left border border-dark-border min-w-[120px]">Team</th>
                 <th 
                   v-for="(team, tidx) in filteredH2HTeams"
-                    :class="{ 'history-blur-row': !hasLeagueAccess && tidx >= 3 }" 
                   :key="`header-${team.team_key}`"
-                  class="px-2 py-2 text-center border border-dark-border font-semibold text-dark-textSecondary uppercase tracking-wider"
-                  style="min-width: 90px;"
+                  :class="[{ 'history-blur-row': !hasLeagueAccess && tidx >= 3 }, Math.floor(tidx / 2) !== h2hPage ? 'hidden sm:table-cell' : '']"
+                  class="px-1 sm:px-2 py-2 text-center border border-dark-border font-semibold text-dark-textSecondary uppercase tracking-wider"
+                  style="min-width: 60px; max-width: 70px;"
                 >
                   <div class="flex flex-col items-center gap-1">
                     <div class="w-6 h-6 rounded-full overflow-hidden bg-dark-border">
                       <img :src="team.logo_url || defaultAvatar" class="w-full h-full object-cover" @error="handleImageError" />
                     </div>
-                    <div class="truncate text-[10px]" :title="team.team_name">{{ team.team_name.substring(0, 8) }}</div>
+                    <div class="truncate text-[9px] hidden sm:block" :title="team.team_name">{{ team.team_name.substring(0, 8) }}</div>
                   </div>
                 </th>
               </tr>
@@ -700,19 +709,19 @@
             <tbody>
               <tr v-for="(rowTeam, ridx) in filteredH2HTeams" :key="`row-${rowTeam.team_key}`"
                 :class="{ 'history-blur-row': !hasLeagueAccess && ridx >= 3 }">
-                <td class="sticky left-0 bg-dark-elevated z-10 px-3 py-2 font-semibold text-dark-text border border-dark-border whitespace-nowrap">
-                  <div class="flex items-center gap-2">
+                <td class="sticky left-0 bg-dark-elevated z-10 px-2 py-2 font-semibold text-dark-text border border-dark-border whitespace-nowrap" style="min-width:80px; max-width:130px;">
+                  <div class="flex items-center gap-1.5">
                     <div class="w-6 h-6 rounded-full overflow-hidden bg-dark-border flex-shrink-0">
                       <img :src="rowTeam.logo_url || defaultAvatar" class="w-full h-full object-cover" @error="handleImageError" />
                     </div>
-                    <span class="truncate">{{ rowTeam.team_name }}</span>
+                    <span class="truncate hidden sm:inline text-xs">{{ rowTeam.team_name }}</span>
                   </div>
                 </td>
                 <td 
-                  v-for="colTeam in filteredH2HTeams" 
+                  v-for="(colTeam, cidx) in filteredH2HTeams" 
                   :key="`cell-${rowTeam.team_key}-${colTeam.team_key}`"
-                  class="px-2 py-2 text-center border border-dark-border"
-                  :class="getH2HCellClass(rowTeam.team_key, colTeam.team_key)"
+                  class="px-1 sm:px-2 py-2 text-center border border-dark-border"
+                  :class="[getH2HCellClass(rowTeam.team_key, colTeam.team_key), Math.floor(cidx / 2) !== h2hPage ? 'hidden sm:table-cell' : '']"
                 >
                   <span v-if="rowTeam.team_key === colTeam.team_key" class="text-dark-textMuted">—</span>
                   <span v-else class="font-semibold">
@@ -722,6 +731,7 @@
               </tr>
             </tbody>
           </table>
+          </div><!-- end overflow-x-auto -->
         </div>
       </div>
       </template>
@@ -798,10 +808,10 @@
                 <span>🏅</span>
                 <span>Hall of Fame</span>
               </h3>
-              <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div class="hidden md:grid grid-cols-2 gap-4">
                 <div 
                   v-for="(award, idx) in allTimeHallOfFame"
-                    :class="{ 'history-blur-row': !hasLeagueAccess && idx >= 1 }" 
+                  :class="{ 'history-blur-row': !hasLeagueAccess && idx >= 1 }" 
                   :key="award.title" 
                   class="bg-green-500/10 border border-green-500/30 rounded-xl p-4 cursor-pointer hover:bg-green-500/20 transition-colors"
                   @click="openAwardModal(award.title, 'best')"
@@ -809,12 +819,7 @@
                   <div class="text-sm text-dark-textMuted uppercase tracking-wide mb-2">{{ award.title }}</div>
                   <div v-if="award.winner" class="flex items-center gap-3 mb-2">
                     <div class="w-12 h-12 rounded-full overflow-hidden bg-dark-border flex-shrink-0">
-                      <img
-                        :src="award.winner.logo_url || defaultAvatar"
-                        :alt="award.winner.team_name"
-                        class="w-full h-full object-cover"
-                        @error="handleImageError"
-                      />
+                      <img :src="award.winner.logo_url || defaultAvatar" :alt="award.winner.team_name" class="w-full h-full object-cover" @error="handleImageError" />
                     </div>
                     <div class="flex-1">
                       <div class="font-bold text-dark-text">{{ award.winner.team_name }}</div>
@@ -827,6 +832,28 @@
                   <div v-if="award.winner" class="text-xs text-dark-textSecondary">{{ award.winner.details }}</div>
                   <div v-else class="text-sm text-dark-textMuted italic">No data available</div>
                   <div class="text-xs text-green-400 mt-2 opacity-70">Click for top 10 →</div>
+                </div>
+              </div>
+              <div class="md:hidden card p-0 overflow-hidden mt-2">
+                <div class="p-4" v-if="allTimeHallOfFame[hofIdx]" @click="openAwardModal(allTimeHallOfFame[hofIdx].title, 'best')">
+                  <div class="text-sm text-dark-textMuted uppercase tracking-wide mb-2">{{ allTimeHallOfFame[hofIdx].title }}</div>
+                  <div v-if="allTimeHallOfFame[hofIdx].winner" class="flex items-center gap-3 mb-2">
+                    <div class="w-14 h-14 rounded-full overflow-hidden bg-dark-border flex-shrink-0">
+                      <img :src="allTimeHallOfFame[hofIdx].winner.logo_url || defaultAvatar" class="w-full h-full object-cover" @error="handleImageError" />
+                    </div>
+                    <div class="flex-1">
+                      <div class="font-bold text-dark-text">{{ allTimeHallOfFame[hofIdx].winner.team_name }}</div>
+                      <div class="text-xs text-dark-textMuted">{{ allTimeHallOfFame[hofIdx].winner.season || 'All-Time' }}</div>
+                    </div>
+                    <div class="text-right"><div class="text-2xl font-bold text-green-400">{{ allTimeHallOfFame[hofIdx].winner.value }}</div></div>
+                  </div>
+                  <div v-if="allTimeHallOfFame[hofIdx].winner" class="text-xs text-dark-textSecondary">{{ allTimeHallOfFame[hofIdx].winner.details }}</div>
+                  <div class="text-xs text-green-400 mt-2 opacity-70">Tap for top 10 →</div>
+                </div>
+                <div class="flex items-center justify-center gap-3 pb-3">
+                  <button @click="hofIdx = Math.max(0, hofIdx - 1)" :disabled="hofIdx === 0" class="w-7 h-7 flex-shrink-0 rounded-full flex items-center justify-center" :class="hofIdx === 0 ? 'text-dark-border' : 'text-yellow-400 hover:bg-yellow-400/10'"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg></button>
+                  <div class="flex gap-1.5"><div v-for="(_, i) in allTimeHallOfFame.length" :key="i" class="w-2 h-2 rounded-full" :class="i === hofIdx ? 'bg-yellow-400' : 'bg-dark-border/60'" /></div>
+                  <button @click="hofIdx = Math.min(allTimeHallOfFame.length - 1, hofIdx + 1)" :disabled="hofIdx >= allTimeHallOfFame.length - 1" class="w-7 h-7 flex-shrink-0 rounded-full flex items-center justify-center" :class="hofIdx >= allTimeHallOfFame.length - 1 ? 'text-dark-border' : 'text-yellow-400 hover:bg-yellow-400/10'"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg></button>
                 </div>
               </div>
             </div>
@@ -854,10 +881,10 @@
                 <span>💩</span>
                 <span>Hall of Shame</span>
               </h3>
-              <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div class="hidden md:grid grid-cols-2 gap-4">
                 <div 
                   v-for="(award, idx) in allTimeHallOfShame"
-                    :class="{ 'history-blur-row': !hasLeagueAccess && idx >= 1 }" 
+                  :class="{ 'history-blur-row': !hasLeagueAccess && idx >= 1 }" 
                   :key="award.title" 
                   class="bg-dark-border/30 rounded-xl p-4 cursor-pointer hover:bg-dark-border/50 transition-colors"
                   @click="openAwardModal(award.title, 'worst')"
@@ -865,12 +892,7 @@
                   <div class="text-sm text-dark-textMuted uppercase tracking-wide mb-2">{{ award.title }}</div>
                   <div v-if="award.winner" class="flex items-center gap-3 mb-2">
                     <div class="w-12 h-12 rounded-full overflow-hidden bg-dark-border flex-shrink-0">
-                      <img
-                        :src="award.winner.logo_url || defaultAvatar"
-                        :alt="award.winner.team_name"
-                        class="w-full h-full object-cover"
-                        @error="handleImageError"
-                      />
+                      <img :src="award.winner.logo_url || defaultAvatar" :alt="award.winner.team_name" class="w-full h-full object-cover" @error="handleImageError" />
                     </div>
                     <div class="flex-1">
                       <div class="font-bold text-dark-text">{{ award.winner.team_name }}</div>
@@ -883,6 +905,28 @@
                   <div v-if="award.winner" class="text-xs text-dark-textSecondary">{{ award.winner.details }}</div>
                   <div v-else class="text-sm text-dark-textMuted italic">No data available</div>
                   <div class="text-xs text-red-400 mt-2 opacity-70">Click for bottom 10 →</div>
+                </div>
+              </div>
+              <div class="md:hidden card p-0 overflow-hidden mt-2">
+                <div class="p-4" v-if="allTimeHallOfShame[hosIdx]" @click="openAwardModal(allTimeHallOfShame[hosIdx].title, 'worst')">
+                  <div class="text-sm text-dark-textMuted uppercase tracking-wide mb-2">{{ allTimeHallOfShame[hosIdx].title }}</div>
+                  <div v-if="allTimeHallOfShame[hosIdx].winner" class="flex items-center gap-3 mb-2">
+                    <div class="w-14 h-14 rounded-full overflow-hidden bg-dark-border flex-shrink-0">
+                      <img :src="allTimeHallOfShame[hosIdx].winner.logo_url || defaultAvatar" class="w-full h-full object-cover" @error="handleImageError" />
+                    </div>
+                    <div class="flex-1">
+                      <div class="font-bold text-dark-text">{{ allTimeHallOfShame[hosIdx].winner.team_name }}</div>
+                      <div class="text-xs text-dark-textMuted">{{ allTimeHallOfShame[hosIdx].winner.season || 'All-Time' }}</div>
+                    </div>
+                    <div class="text-right"><div class="text-2xl font-bold text-red-400">{{ allTimeHallOfShame[hosIdx].winner.value }}</div></div>
+                  </div>
+                  <div v-if="allTimeHallOfShame[hosIdx].winner" class="text-xs text-dark-textSecondary">{{ allTimeHallOfShame[hosIdx].winner.details }}</div>
+                  <div class="text-xs text-red-400 mt-2 opacity-70">Tap for bottom 10 →</div>
+                </div>
+                <div class="flex items-center justify-center gap-3 pb-3">
+                  <button @click="hosIdx = Math.max(0, hosIdx - 1)" :disabled="hosIdx === 0" class="w-7 h-7 flex-shrink-0 rounded-full flex items-center justify-center" :class="hosIdx === 0 ? 'text-dark-border' : 'text-yellow-400 hover:bg-yellow-400/10'"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg></button>
+                  <div class="flex gap-1.5"><div v-for="(_, i) in allTimeHallOfShame.length" :key="i" class="w-2 h-2 rounded-full" :class="i === hosIdx ? 'bg-yellow-400' : 'bg-dark-border/60'" /></div>
+                  <button @click="hosIdx = Math.min(allTimeHallOfShame.length - 1, hosIdx + 1)" :disabled="hosIdx >= allTimeHallOfShame.length - 1" class="w-7 h-7 flex-shrink-0 rounded-full flex items-center justify-center" :class="hosIdx >= allTimeHallOfShame.length - 1 ? 'text-dark-border' : 'text-yellow-400 hover:bg-yellow-400/10'"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg></button>
                 </div>
               </div>
           <!-- Gate banner -->
@@ -1312,12 +1356,19 @@
               v-if="legacyChartSeries.length > 0 && legacyChartYearsAll.length >= 2" 
               class="legacy-chart-container"
             >
-              <apexchart 
-                type="line" 
-                height="320" 
-                :options="legacyChartOptions" 
-                :series="legacyChartSeries"
-              />
+              <!-- Desktop chart -->
+              <div class="hidden sm:block">
+                <apexchart type="line" height="320" :options="legacyChartOptions" :series="legacyChartSeries" />
+              </div>
+              <!-- Mobile windowed chart -->
+              <div class="sm:hidden">
+                <apexchart type="line" height="260" :options="legacyMobileChartOptions" :series="legacyMobileChartSeries" />
+                <div class="flex items-center justify-center gap-3 mt-2">
+                  <button @click="legacyChartOffset = Math.min(legacyChartOffset + 4, Math.max(0, legacyChartYearsAll.length - 4))" :disabled="legacyChartOffset >= legacyChartYearsAll.length - 4" class="w-7 h-7 flex-shrink-0 rounded-full flex items-center justify-center" :class="legacyChartOffset >= legacyChartYearsAll.length - 4 ? 'text-dark-border' : 'text-yellow-400 hover:bg-yellow-400/10'"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg></button>
+                  <div class="flex gap-1.5"><div v-for="(_, i) in legacyChartTotalPages" :key="i" class="w-2 h-2 rounded-full" :class="i === legacyChartCurrentPage ? 'bg-yellow-400' : 'bg-dark-border/60'" /></div>
+                  <button @click="legacyChartOffset = Math.max(0, legacyChartOffset - 4)" :disabled="legacyChartOffset === 0" class="w-7 h-7 flex-shrink-0 rounded-full flex items-center justify-center" :class="legacyChartOffset === 0 ? 'text-dark-border' : 'text-yellow-400 hover:bg-yellow-400/10'"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg></button>
+                </div>
+              </div>
               
               <!-- Click hint -->
               <div v-if="!selectedLegacyTeamKey" class="flex items-center justify-center gap-2 mt-2 mb-4">
@@ -3419,6 +3470,50 @@ function getLegacyBarWidth(score: number): string {
 const selectedLegacyTeamKey = ref<string | null>(null)
 
 // Scroll state for team selector
+
+// ── History page mobile refs ──────────────────────────────────────────────
+const carRecordIdx = ref(0)    // Career Records card carousel
+const carStatPage = ref(0)     // Career Stats table column page
+const sbsPage = ref(0)         // Season-by-Season table column page
+const h2hPage = ref(0)         // H2H matrix column page
+const rivalryHighIdx = ref(0)  // Rivalry highlights carousel
+const hofIdx = ref(0)          // Awards HoF carousel
+const hosIdx = ref(0)          // Awards HoS carousel
+const legacyChartOffset = ref(0) // Legacy chart year window offset (0=latest)
+const LEGACY_WIN = 4
+
+const h2hTotalPages = computed(() => Math.max(1, Math.ceil((filteredH2HTeams.value?.length || 0) / 2)))
+
+const legacyChartTotalPages = computed(() => {
+  const total = legacyChartYearsAll.value.length
+  return total <= LEGACY_WIN ? 1 : Math.ceil(Math.max(0, total - LEGACY_WIN) / LEGACY_WIN) + 1
+})
+const legacyChartCurrentPage = computed(() => {
+  const total = legacyChartYearsAll.value.length
+  const maxOffset = Math.max(0, total - LEGACY_WIN)
+  const maxStep = Math.ceil(maxOffset / LEGACY_WIN)
+  return maxStep - Math.round(legacyChartOffset.value / LEGACY_WIN)
+})
+const legacyMobileChartSeries = computed(() => {
+  if (!legacyChartSeries.value.length || !legacyChartYearsAll.value.length) return []
+  const total = legacyChartYearsAll.value.length
+  const end = total - legacyChartOffset.value
+  const start = Math.max(0, end - LEGACY_WIN)
+  return legacyChartSeries.value.map((s: any) => ({ ...s, data: (s.data || []).slice(start, end) }))
+})
+const legacyMobileChartOptions = computed(() => {
+  if (!legacyChartOptions.value || !legacyChartYearsAll.value.length) return null
+  const total = legacyChartYearsAll.value.length
+  const end = total - legacyChartOffset.value
+  const start = Math.max(0, end - LEGACY_WIN)
+  return {
+    ...legacyChartOptions.value,
+    chart: { ...legacyChartOptions.value.chart, toolbar: { show: false }, animations: { enabled: false } },
+    xaxis: { ...legacyChartOptions.value.xaxis, categories: legacyChartYearsAll.value.slice(start, end) },
+    legend: { show: false }
+  }
+})
+
 const teamSelectorRef = ref<HTMLElement | null>(null)
 const canScrollLeft = ref(false)
 const canScrollRight = ref(false)
