@@ -441,7 +441,8 @@
             <p class="card-subtitle mt-2">All-time comparison</p>
           </div>
           <div class="card-body">
-            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <!-- Desktop: 3-col (team | VS | team) -->
+            <div class="hidden lg:grid grid-cols-3 gap-6">
               <!-- Team 1 Stats -->
               <div class="text-center p-6 bg-gradient-to-br from-cyan-500/10 to-cyan-600/5 rounded-xl border-2 border-cyan-500/30">
                 <img 
@@ -562,12 +563,58 @@
                 </div>
               </div>
             </div>
+            <!-- Mobile: 2 team cards side-by-side, VS record below -->
+            <div class="lg:hidden space-y-3">
+              <div class="grid grid-cols-2 gap-3">
+                <div class="text-center p-3 bg-gradient-to-br from-cyan-500/10 to-cyan-600/5 rounded-xl border-2 border-cyan-500/30">
+                  <img :src="compareTeam1Data?.logo_url || defaultAvatar" :key="`m1-${compareTeam1Key}`" :alt="compareTeam1Data?.team_name" class="w-14 h-14 rounded-full mx-auto mb-2 border-4 border-cyan-500 object-cover" loading="lazy" @error="handleImageError" />
+                  <div class="font-bold text-sm text-dark-text mb-2 truncate">{{ compareTeam1Data?.team_name }}</div>
+                  <div class="space-y-1 text-left text-xs">
+                    <div class="flex justify-between"><span class="text-dark-textMuted">🏆 Champ:</span><span class="font-bold text-dark-text">{{ compareData.team1.championships }}</span></div>
+                    <div class="flex justify-between"><span class="text-dark-textMuted">📅 Seasons:</span><span class="font-bold text-dark-text">{{ compareData.team1.seasons }}</span></div>
+                    <div class="flex justify-between"><span class="text-dark-textMuted">Record:</span><span class="font-bold text-dark-text">{{ compareData.team1.matchupWins }}-{{ compareData.team1.matchupLosses }}</span></div>
+                    <div class="flex justify-between"><span class="text-dark-textMuted">Win%:</span><span class="font-bold text-dark-text">{{ (compareData.team1.winPct * 100).toFixed(1) }}%</span></div>
+                    <div class="flex justify-between"><span class="text-dark-textMuted">Avg Cat W:</span><span class="font-bold text-dark-text">{{ compareData.team1.avgCatWins.toFixed(1) }}</span></div>
+                    <div class="flex justify-between"><span class="text-dark-textMuted">Cat Diff:</span><span class="font-bold" :class="compareData.team1.catDiff >= 0 ? 'text-green-400' : 'text-red-400'">{{ compareData.team1.catDiff >= 0 ? '+' : '' }}{{ compareData.team1.catDiff }}</span></div>
+                  </div>
+                </div>
+                <div class="text-center p-3 bg-gradient-to-br from-orange-500/10 to-orange-600/5 rounded-xl border-2 border-orange-500/30">
+                  <img :src="compareTeam2Data?.logo_url || defaultAvatar" :key="`m2-${compareTeam2Key}`" :alt="compareTeam2Data?.team_name" class="w-14 h-14 rounded-full mx-auto mb-2 border-4 border-orange-500 object-cover" loading="lazy" @error="handleImageError" />
+                  <div class="font-bold text-sm text-dark-text mb-2 truncate">{{ compareTeam2Data?.team_name }}</div>
+                  <div class="space-y-1 text-left text-xs">
+                    <div class="flex justify-between"><span class="text-dark-textMuted">🏆 Champ:</span><span class="font-bold text-dark-text">{{ compareData.team2.championships }}</span></div>
+                    <div class="flex justify-between"><span class="text-dark-textMuted">📅 Seasons:</span><span class="font-bold text-dark-text">{{ compareData.team2.seasons }}</span></div>
+                    <div class="flex justify-between"><span class="text-dark-textMuted">Record:</span><span class="font-bold text-dark-text">{{ compareData.team2.matchupWins }}-{{ compareData.team2.matchupLosses }}</span></div>
+                    <div class="flex justify-between"><span class="text-dark-textMuted">Win%:</span><span class="font-bold text-dark-text">{{ (compareData.team2.winPct * 100).toFixed(1) }}%</span></div>
+                    <div class="flex justify-between"><span class="text-dark-textMuted">Avg Cat W:</span><span class="font-bold text-dark-text">{{ compareData.team2.avgCatWins.toFixed(1) }}</span></div>
+                    <div class="flex justify-between"><span class="text-dark-textMuted">Cat Diff:</span><span class="font-bold" :class="compareData.team2.catDiff >= 0 ? 'text-green-400' : 'text-red-400'">{{ compareData.team2.catDiff >= 0 ? '+' : '' }}{{ compareData.team2.catDiff }}</span></div>
+                  </div>
+                </div>
+              </div>
+              <!-- VS Record (full width below) -->
+              <div class="flex flex-col items-center p-4 bg-dark-card/50 rounded-xl border border-dark-border/30">
+                <div class="text-4xl font-black text-dark-textMuted mb-3">VS</div>
+                <div class="text-sm text-dark-textMuted mb-2">Head-to-Head Record</div>
+                <div class="flex items-center justify-center gap-4 mb-3">
+                  <div class="text-3xl font-bold" :class="compareData.h2h.team1Wins > compareData.h2h.team2Wins ? 'text-green-400' : 'text-dark-textMuted'">{{ compareData.h2h.team1Wins }}</div>
+                  <div class="text-2xl text-dark-textMuted">-</div>
+                  <div class="text-3xl font-bold" :class="compareData.h2h.team2Wins > compareData.h2h.team1Wins ? 'text-green-400' : 'text-dark-textMuted'">{{ compareData.h2h.team2Wins }}</div>
+                </div>
+                <div v-if="compareData.h2h.ties > 0" class="text-xs text-dark-textMuted mb-2">{{ compareData.h2h.ties }} tie(s)</div>
+                <div class="w-full grid grid-cols-2 gap-2 text-sm">
+                  <div class="flex justify-between p-2 bg-dark-border/20 rounded"><span class="text-dark-textMuted">Meetings:</span><span class="font-semibold text-dark-text">{{ compareData.h2h.totalGames }}</span></div>
+                  <div v-if="compareData.h2h.totalGames > 0" class="flex justify-between p-2 bg-dark-border/20 rounded"><span class="text-dark-textMuted">Cat Diff:</span><span class="font-semibold" :class="compareData.h2h.catDiff > 0 ? 'text-cyan-400' : compareData.h2h.catDiff < 0 ? 'text-orange-400' : 'text-dark-text'">{{ compareData.h2h.catDiff > 0 ? '+' : '' }}{{ compareData.h2h.catDiff }}</span></div>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
 
         <!-- Rivalry Highlights — gated -->
         <LeagueGate wrap :locked="!hasLeagueAccess" label="Rivalry Deep Stats">
-        <div v-if="compareRivalryHighlights" class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+        <div v-if="compareRivalryHighlights" class="mb-6">
+          <!-- Desktop: 3 cards -->
+          <div class="hidden md:grid grid-cols-3 gap-4">
           <div class="card">
             <div class="card-body p-4">
               <div class="text-xs text-dark-textMuted mb-2">💥 Biggest Blowout</div>
@@ -592,6 +639,35 @@
               <div class="font-bold text-dark-text mb-1">{{ compareRivalryHighlights.highestCats.totalCats }} total cats</div>
               <div class="text-lg text-primary font-bold">{{ compareRivalryHighlights.highestCats.score }}</div>
               <div class="text-xs text-dark-textMuted mt-1">{{ compareRivalryHighlights.highestCats.season }} Week {{ compareRivalryHighlights.highestCats.week }}</div>
+            </div>
+          </div>
+          </div>
+          <!-- Mobile: carousel -->
+          <div class="md:hidden card p-0 overflow-hidden">
+            <div class="p-4 text-center">
+              <template v-if="catRivalryHighIdx === 0">
+                <div class="text-xs text-dark-textMuted mb-3">💥 Biggest Blowout</div>
+                <div class="font-bold text-lg text-dark-text mb-1">{{ compareRivalryHighlights.biggestBlowout.winner }}</div>
+                <div class="text-3xl text-primary font-bold mb-1">{{ compareRivalryHighlights.biggestBlowout.margin }} cat margin</div>
+                <div class="text-xs text-dark-textMuted">{{ compareRivalryHighlights.biggestBlowout.season }} Week {{ compareRivalryHighlights.biggestBlowout.week }}</div>
+              </template>
+              <template v-else-if="catRivalryHighIdx === 1">
+                <div class="text-xs text-dark-textMuted mb-3">🎯 Closest Game</div>
+                <div class="font-bold text-lg text-dark-text mb-1">{{ compareRivalryHighlights.closestGame.winner }}</div>
+                <div class="text-3xl text-primary font-bold mb-1">{{ compareRivalryHighlights.closestGame.margin }} cat margin</div>
+                <div class="text-xs text-dark-textMuted">{{ compareRivalryHighlights.closestGame.season }} Week {{ compareRivalryHighlights.closestGame.week }}</div>
+              </template>
+              <template v-else>
+                <div class="text-xs text-dark-textMuted mb-3">🔥 Most Categories Won</div>
+                <div class="font-bold text-lg text-dark-text mb-1">{{ compareRivalryHighlights.highestCats.totalCats }} total cats</div>
+                <div class="text-3xl text-primary font-bold mb-1">{{ compareRivalryHighlights.highestCats.score }}</div>
+                <div class="text-xs text-dark-textMuted">{{ compareRivalryHighlights.highestCats.season }} Week {{ compareRivalryHighlights.highestCats.week }}</div>
+              </template>
+            </div>
+            <div class="flex items-center justify-center gap-3 pb-3">
+              <button @click="catRivalryHighIdx = Math.max(0, catRivalryHighIdx - 1)" :disabled="catRivalryHighIdx === 0" class="w-7 h-7 flex-shrink-0 rounded-full flex items-center justify-center transition-all" :class="catRivalryHighIdx === 0 ? 'text-dark-border cursor-default' : 'text-yellow-400 hover:bg-yellow-400/10'"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg></button>
+              <div class="flex gap-1.5"><div v-for="(_, i) in 3" :key="i" class="w-2 h-2 rounded-full transition-colors" :class="i === catRivalryHighIdx ? 'bg-yellow-400' : 'bg-dark-border/60'" /></div>
+              <button @click="catRivalryHighIdx = Math.min(2, catRivalryHighIdx + 1)" :disabled="catRivalryHighIdx >= 2" class="w-7 h-7 flex-shrink-0 rounded-full flex items-center justify-center transition-all" :class="catRivalryHighIdx >= 2 ? 'text-dark-border cursor-default' : 'text-yellow-400 hover:bg-yellow-400/10'"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg></button>
             </div>
           </div>
         </div>
@@ -691,23 +767,29 @@
           </div>
           <p class="card-subtitle mt-2">All-time records between teams (read horizontally: each row shows that team's record vs opponents)</p>
         </div>
-        <div class="card-body overflow-x-auto scrollbar-thin">
+        <div class="card-body">
+          <!-- Mobile: yellow dots+arrows pagination, 4 cols per page -->
+          <div class="sm:hidden flex items-center justify-center gap-3 py-2 border-b border-dark-border/30">
+            <button @click="catH2hPage = Math.max(0, catH2hPage - 1)" :disabled="catH2hPage === 0" class="w-7 h-7 flex-shrink-0 rounded-full flex items-center justify-center transition-all" :class="catH2hPage === 0 ? 'text-dark-border cursor-default' : 'text-yellow-400 hover:bg-yellow-400/10'"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg></button>
+            <div class="flex gap-1.5"><div v-for="(_, i) in catH2hTotalPages" :key="i" class="w-2 h-2 rounded-full transition-colors" :class="i === catH2hPage ? 'bg-yellow-400' : 'bg-dark-border/60'" /></div>
+            <button @click="catH2hPage = Math.min(catH2hTotalPages - 1, catH2hPage + 1)" :disabled="catH2hPage >= catH2hTotalPages - 1" class="w-7 h-7 flex-shrink-0 rounded-full flex items-center justify-center transition-all" :class="catH2hPage >= catH2hTotalPages - 1 ? 'text-dark-border cursor-default' : 'text-yellow-400 hover:bg-yellow-400/10'"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg></button>
+          </div>
+          <div class="overflow-x-auto scrollbar-thin">
           <table ref="h2hTableRef" class="w-full text-xs border-collapse">
             <thead>
               <tr>
-                <th class="sticky left-0 bg-dark-elevated z-10 px-3 py-2 text-left border border-dark-border min-w-[120px]">Team</th>
+                <th class="sticky left-0 bg-dark-elevated z-10 px-2 py-2 text-left border border-dark-border text-sm font-semibold text-dark-text" style="min-width:80px; max-width:130px;">Team</th>
                 <th 
                   v-for="(team, tidx) in filteredH2HTeams"
-                    :class="{ 'history-blur-row': !hasLeagueAccess && tidx >= 3 }" 
                   :key="`header-${team.team_key}`"
-                  class="px-2 py-2 text-center border border-dark-border font-semibold text-dark-textSecondary uppercase tracking-wider"
-                  style="min-width: 90px;"
+                  :class="[{ 'history-blur-row': !hasLeagueAccess && tidx >= 3 }, Math.floor(tidx / 4) !== catH2hPage ? 'hidden sm:table-cell' : '']"
+                  class="py-2 text-center border border-dark-border font-semibold text-dark-textSecondary uppercase tracking-wider"
+                  style="min-width:36px; max-width:42px; padding: 4px 2px;"
                 >
-                  <div class="flex flex-col items-center gap-1">
+                  <div class="flex flex-col items-center gap-0.5">
                     <div class="w-6 h-6 rounded-full overflow-hidden bg-dark-border">
                       <img :src="getTeamLogoUrl(team.team_key, team.logo_url)" class="w-full h-full object-cover" @error="handleImageError" />
                     </div>
-                    <div class="truncate text-[10px]" :title="team.team_name">{{ team.team_name.substring(0, 8) }}</div>
                   </div>
                 </th>
               </tr>
@@ -715,31 +797,33 @@
             <tbody>
               <tr v-for="(rowTeam, ridx) in filteredH2HTeams" :key="`row-${rowTeam.team_key}`"
                 :class="{ 'history-blur-row': !hasLeagueAccess && ridx >= 3 }">
-                <td class="sticky left-0 bg-dark-elevated z-10 px-3 py-2 font-semibold text-dark-text border border-dark-border whitespace-nowrap">
-                  <div class="flex items-center gap-2">
+                <td class="sticky left-0 bg-dark-elevated z-10 px-2 py-2 font-semibold text-dark-text border border-dark-border whitespace-nowrap" style="min-width:80px; max-width:130px;">
+                  <div class="flex items-center gap-1.5">
                     <div class="w-6 h-6 rounded-full overflow-hidden bg-dark-border flex-shrink-0">
                       <img :src="getTeamLogoUrl(rowTeam.team_key, rowTeam.logo_url)" class="w-full h-full object-cover" @error="handleImageError" />
                     </div>
-                    <span class="truncate">{{ rowTeam.team_name }}</span>
+                    <span class="text-xs truncate max-w-[70px]">{{ rowTeam.team_name.length > 10 ? rowTeam.team_name.substring(0, 10) + '…' : rowTeam.team_name }}</span>
                   </div>
                 </td>
                 <td 
-                  v-for="colTeam in filteredH2HTeams" 
+                  v-for="(colTeam, cidx) in filteredH2HTeams" 
                   :key="`cell-${rowTeam.team_key}-${colTeam.team_key}`"
-                  class="px-2 py-2 text-center border border-dark-border"
-                  :class="getH2HCellClass(rowTeam.team_key, colTeam.team_key)"
+                  class="py-2 text-center border border-dark-border text-xs"
+                  style="padding: 4px 2px; min-width:36px; max-width:42px;"
+                  :class="[getH2HCellClass(rowTeam.team_key, colTeam.team_key), Math.floor(cidx / 4) !== catH2hPage ? 'hidden sm:table-cell' : '']"
                 >
                   <template v-if="rowTeam.team_key === colTeam.team_key">
                     <span class="text-dark-textMuted">—</span>
                   </template>
                   <template v-else>
                     <div class="font-bold">{{ getH2HRecord(rowTeam.team_key, colTeam.team_key) }}</div>
-                    <div class="text-[9px] opacity-75">{{ getH2HCatDiff(rowTeam.team_key, colTeam.team_key) }}</div>
+                    <div class="text-[9px] opacity-75">{{ getH2HCatDiff(rowTeam.team_key, rowTeam.team_key === colTeam.team_key ? null : colTeam.team_key) }}</div>
                   </template>
                 </td>
               </tr>
             </tbody>
           </table>
+          </div><!-- end overflow-x-auto -->
           <!-- Gate banner -->
           <div v-if="!hasLeagueAccess && filteredH2HTeams.length > 3" class="early-gate-banner" style="margin: 8px 0 4px;">
             <div class="early-gate-inner">
@@ -2088,6 +2172,10 @@ const showCurrentMembersOnlyH2H = ref(false)
 const showCurrentMembersOnlyLegacy = ref(false)
 
 // ── Category History mobile carousel refs ───────────────────────────────
+
+const catH2hPage = ref(0)
+const catH2hTotalPages = computed(() => Math.max(1, Math.ceil((filteredH2HTeams.value?.length || 0) / 4)))
+const catRivalryHighIdx = ref(0)
 const catCarRecordIdx = ref(0)   // Career Records carousel
 const catCarStatPage = ref(0)    // Career Stats column page (0=basic, 1=ratios, 2=cats)
 const catSbsPage = ref(0)        // Season-by-Season column page
