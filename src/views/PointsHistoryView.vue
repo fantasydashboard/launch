@@ -422,7 +422,8 @@
             <p class="card-subtitle mt-2">All-time comparison</p>
           </div>
           <div class="card-body">
-            <div class="flex flex-col sm:flex-row lg:grid lg:grid-cols-3 gap-3 sm:gap-6">
+            <!-- Desktop: 3-col (team | VS | team) -->
+            <div class="hidden lg:grid grid-cols-3 gap-6">
               <!-- Team 1 Stats -->
               <div class="text-center p-3 sm:p-6 bg-gradient-to-br from-cyan-500/10 to-cyan-600/5 rounded-xl border-2 border-cyan-500/30">
                 <img 
@@ -534,6 +535,52 @@
                     <span class="text-dark-textMuted">Total Points:</span>
                     <span class="font-bold text-dark-text">{{ compareData.team2.totalPoints.toLocaleString() }}</span>
                   </div>
+                </div>
+              </div>
+            </div>
+            <!-- Mobile: 2 team cards side-by-side, VS record below -->
+            <div class="lg:hidden space-y-3">
+              <div class="grid grid-cols-2 gap-3">
+                <!-- Team 1 -->
+                <div class="text-center p-3 bg-gradient-to-br from-cyan-500/10 to-cyan-600/5 rounded-xl border-2 border-cyan-500/30">
+                  <img :src="compareTeam1Data?.logo_url || defaultAvatar" :alt="compareTeam1Data?.team_name" class="w-14 h-14 rounded-full mx-auto mb-2 border-4 border-cyan-500 object-cover" @error="handleImageError" />
+                  <div class="font-bold text-sm text-dark-text mb-2 truncate">{{ compareTeam1Data?.team_name }}</div>
+                  <div class="space-y-1 text-left text-xs">
+                    <div class="flex justify-between"><span class="text-dark-textMuted">🏆 Champ:</span><span class="font-bold text-dark-text">{{ compareData.team1.championships }}</span></div>
+                    <div class="flex justify-between"><span class="text-dark-textMuted">📈 Playoffs:</span><span class="font-bold text-dark-text">{{ compareData.team1.playoffAppearances }}</span></div>
+                    <div class="flex justify-between"><span class="text-dark-textMuted">Record:</span><span class="font-bold text-dark-text">{{ compareData.team1.wins }}-{{ compareData.team1.losses }}</span></div>
+                    <div class="flex justify-between"><span class="text-dark-textMuted">Win%:</span><span class="font-bold text-dark-text">{{ compareData.team1.winPct.toFixed(1) }}%</span></div>
+                    <div class="flex justify-between"><span class="text-dark-textMuted">PPW:</span><span class="font-bold text-dark-text">{{ compareData.team1.avgPPW.toFixed(1) }}</span></div>
+                    <div class="flex justify-between"><span class="text-dark-textMuted">Pts:</span><span class="font-bold text-dark-text">{{ compareData.team1.totalPoints.toLocaleString() }}</span></div>
+                  </div>
+                </div>
+                <!-- Team 2 -->
+                <div class="text-center p-3 bg-gradient-to-br from-orange-500/10 to-orange-600/5 rounded-xl border-2 border-orange-500/30">
+                  <img :src="compareTeam2Data?.logo_url || defaultAvatar" :alt="compareTeam2Data?.team_name" class="w-14 h-14 rounded-full mx-auto mb-2 border-4 border-orange-500 object-cover" @error="handleImageError" />
+                  <div class="font-bold text-sm text-dark-text mb-2 truncate">{{ compareTeam2Data?.team_name }}</div>
+                  <div class="space-y-1 text-left text-xs">
+                    <div class="flex justify-between"><span class="text-dark-textMuted">🏆 Champ:</span><span class="font-bold text-dark-text">{{ compareData.team2.championships }}</span></div>
+                    <div class="flex justify-between"><span class="text-dark-textMuted">📈 Playoffs:</span><span class="font-bold text-dark-text">{{ compareData.team2.playoffAppearances }}</span></div>
+                    <div class="flex justify-between"><span class="text-dark-textMuted">Record:</span><span class="font-bold text-dark-text">{{ compareData.team2.wins }}-{{ compareData.team2.losses }}</span></div>
+                    <div class="flex justify-between"><span class="text-dark-textMuted">Win%:</span><span class="font-bold text-dark-text">{{ compareData.team2.winPct.toFixed(1) }}%</span></div>
+                    <div class="flex justify-between"><span class="text-dark-textMuted">PPW:</span><span class="font-bold text-dark-text">{{ compareData.team2.avgPPW.toFixed(1) }}</span></div>
+                    <div class="flex justify-between"><span class="text-dark-textMuted">Pts:</span><span class="font-bold text-dark-text">{{ compareData.team2.totalPoints.toLocaleString() }}</span></div>
+                  </div>
+                </div>
+              </div>
+              <!-- VS Record (full width below) -->
+              <div class="flex flex-col items-center p-4 bg-dark-card/50 rounded-xl border border-dark-border/30">
+                <div class="text-4xl font-black text-dark-textMuted mb-3">VS</div>
+                <div class="text-sm text-dark-textMuted mb-2">Head-to-Head Record</div>
+                <div class="flex items-center justify-center gap-4 mb-3">
+                  <div class="text-3xl font-bold" :class="compareData.h2h.team1Wins > compareData.h2h.team2Wins ? 'text-green-400' : 'text-dark-textMuted'">{{ compareData.h2h.team1Wins }}</div>
+                  <div class="text-2xl text-dark-textMuted">-</div>
+                  <div class="text-3xl font-bold" :class="compareData.h2h.team2Wins > compareData.h2h.team1Wins ? 'text-green-400' : 'text-dark-textMuted'">{{ compareData.h2h.team2Wins }}</div>
+                </div>
+                <div v-if="compareData.h2h.ties > 0" class="text-xs text-dark-textMuted mb-2">{{ compareData.h2h.ties }} tie(s)</div>
+                <div class="w-full grid grid-cols-2 gap-2 text-sm">
+                  <div class="flex justify-between p-2 bg-dark-border/20 rounded"><span class="text-dark-textMuted">Meetings:</span><span class="font-semibold text-dark-text">{{ compareData.h2h.totalGames }}</span></div>
+                  <div v-if="compareData.h2h.totalGames > 0" class="flex justify-between p-2 bg-dark-border/20 rounded"><span class="text-dark-textMuted">Avg Margin:</span><span class="font-semibold text-dark-text">{{ compareData.h2h.avgMargin.toFixed(1) }}</span></div>
                 </div>
               </div>
             </div>
@@ -693,7 +740,7 @@
                 <th 
                   v-for="(team, tidx) in filteredH2HTeams"
                   :key="`header-${team.team_key}`"
-                  :class="[{ 'history-blur-row': !hasLeagueAccess && tidx >= 3 }, (h2hPage === 0 ? tidx >= 2 : Math.floor((tidx - 2) / 3) + 1 !== h2hPage) ? 'hidden sm:table-cell' : '']"
+                  :class="[{ 'history-blur-row': !hasLeagueAccess && tidx >= 3 }, (h2hPage === 0 ? tidx >= 2 : Math.floor((tidx - 2) / 4) + 1 !== h2hPage) ? 'hidden sm:table-cell' : '']"
                   class="px-1 sm:px-2 py-2 text-center border border-dark-border font-semibold text-dark-textSecondary uppercase tracking-wider"
                   style="min-width: 60px; max-width: 70px;"
                 >
@@ -721,7 +768,7 @@
                   v-for="(colTeam, cidx) in filteredH2HTeams" 
                   :key="`cell-${rowTeam.team_key}-${colTeam.team_key}`"
                   class="px-1 sm:px-2 py-2 text-center border border-dark-border"
-                  :class="[getH2HCellClass(rowTeam.team_key, colTeam.team_key), (h2hPage === 0 ? cidx >= 2 : Math.floor((cidx - 2) / 3) + 1 !== h2hPage) ? 'hidden sm:table-cell' : '']"
+                  :class="[getH2HCellClass(rowTeam.team_key, colTeam.team_key), (h2hPage === 0 ? cidx >= 2 : Math.floor((cidx - 2) / 4) + 1 !== h2hPage) ? 'hidden sm:table-cell' : '']"
                 >
                   <span v-if="rowTeam.team_key === colTeam.team_key" class="text-dark-textMuted">—</span>
                   <span v-else class="font-semibold">
@@ -3430,7 +3477,7 @@ const LEGACY_WIN = 4
 const h2hTotalPages = computed(() => {
   const total = filteredH2HTeams.value?.length || 0
   if (total <= 2) return 1
-  return 1 + Math.ceil((total - 2) / 3)  // page 0: 2 cols with name; pages 1+: 3 cols logo-only
+  return 1 + Math.ceil((total - 2) / 4)  // page 0: 2 cols with name; pages 1+: 4 cols logo-only
 })
 
 const legacyChartTotalPages = computed(() => {
@@ -3468,7 +3515,7 @@ const sHofIdx = ref(0)     // Season HoF carousel
 const sHosIdx = ref(0)     // Season HoS carousel
 const weeklyIdx = ref(0)   // Weekly awards carousel
 const legacyTeamPage = ref(0)
-const LEGACY_TEAMS_PER_PAGE = 4
+const LEGACY_TEAMS_PER_PAGE = 3
 const legacyTeamTotalPages = computed(() => Math.max(1, Math.ceil((filteredLegacyScores.value?.length || 0) / LEGACY_TEAMS_PER_PAGE)))
 const legacyMobilePagedTeams = computed(() => {
   const start = legacyTeamPage.value * LEGACY_TEAMS_PER_PAGE
