@@ -49,9 +49,20 @@ export function useFeatureAccess() {
   // ── Core access check ──────────────────────────────────────────────────────
   // Called on mount and whenever the active league changes.
   // 1. Checks profiles for admin / premium tier (per-user).
-  // 2. Checks league_subscriptions for an active League Pass (per-league).
+  // 2. Checks league_passes + league_subscriptions for an active League Pass (per-league).
+  //
+  // IMPORTANT: We reset hasRealLeagueAccess to false at the start (fail-closed).
+  // If any error occurs, access is denied for the new league rather than
+  // accidentally inheriting access from a previously-checked league.
   async function checkAllAccess() {
     if (!supabase) return
+
+    // ── RESET immediately (fail-closed) ──
+    // Must happen synchronously before any awaits so that if this function
+    // is called when switching leagues, the old league's access is revoked
+    // right away — even while the new league's DB query is in-flight.
+    hasRealLeagueAccess.value = false
+    leagueSubscription.value = null
 
     isCheckingAccess.value = true
     accessError.value = null
@@ -61,6 +72,11 @@ export function useFeatureAccess() {
       const tier = authStore.profile?.subscription_tier || 'free'
       isAdmin.value = tier === 'admin'
       hasRealPremiumAccess.value = isAdmin.value || ['premium', 'pro'].includes(tier)
+
+      // Restore admin league access after the reset above
+      if (isAdmin.value) {
+        hasRealLeagueAccess.value = true
+      }
 
       // ── 2. League Pass check ──
       // Stripe webhook writes to `league_passes` (active + expires_at).
@@ -82,6 +98,8 @@ export function useFeatureAccess() {
           .limit(1)
           .maybeSingle()
 
+        if (passError) console.warn('[FeatureAccess] league_passes query error:', passError)
+
         if (passData) {
           console.log('[FeatureAccess] League pass found in league_passes ✓')
           hasRealLeagueAccess.value = true
@@ -101,20 +119,21 @@ export function useFeatureAccess() {
           }
 
           leagueSubscription.value = subData || null
+          // Only grant access if admin OR an active subscription was found
           hasRealLeagueAccess.value = isAdmin.value || !!subData
           if (subData) console.log('[FeatureAccess] League pass found in league_subscriptions ✓')
         }
-
-        if (passError) console.warn('[FeatureAccess] league_passes query error:', passError)
-        if (!passData) hasRealLeagueAccess.value = isAdmin.value || hasRealLeagueAccess.value
       } else {
-        // No active league selected — no league access
+        // No active league selected — only admins retain league access
         hasRealLeagueAccess.value = isAdmin.value
         leagueSubscription.value = null
       }
     } catch (err: any) {
+      // Fail-closed: on any error, revoke access for safety
       console.error('[FeatureAccess] checkAllAccess error:', err)
       accessError.value = err?.message || 'Access check failed'
+      hasRealLeagueAccess.value = isAdmin.value  // admins always keep access
+      leagueSubscription.value = null
     } finally {
       isCheckingAccess.value = false
     }
