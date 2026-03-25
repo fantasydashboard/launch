@@ -736,19 +736,19 @@
           <table ref="h2hTableRef" class="w-full text-xs border-collapse">
             <thead>
               <tr>
-                <th class="sticky left-0 bg-dark-elevated z-10 px-3 py-2 text-left border border-dark-border min-w-[120px]">Team</th>
+                <th class="sticky left-0 bg-dark-elevated z-10 px-2 py-2 text-left border border-dark-border text-sm font-semibold text-dark-text" style="min-width:80px; max-width:130px;">Team</th>
                 <th 
                   v-for="(team, tidx) in filteredH2HTeams"
                   :key="`header-${team.team_key}`"
-                  :class="[{ 'history-blur-row': !hasLeagueAccess && tidx >= 3 }, (h2hPage === 0 ? tidx >= 2 : Math.floor((tidx - 2) / 4) + 1 !== h2hPage) ? 'hidden sm:table-cell' : '']"
+                  :class="[{ 'history-blur-row': !hasLeagueAccess && tidx >= 3 }, Math.floor(tidx / 4) !== h2hPage ? 'hidden sm:table-cell' : '']"
                   class="py-2 text-center border border-dark-border font-semibold text-dark-textSecondary uppercase tracking-wider"
-                  :style="h2hPage === 0 ? 'min-width:56px; max-width:68px; padding: 4px 4px;' : 'min-width:36px; max-width:40px; padding: 4px 2px;'"
+                  style="min-width:36px; max-width:42px; padding: 4px 2px;"
                 >
                   <div class="flex flex-col items-center gap-0.5">
-                    <div class="rounded-full overflow-hidden bg-dark-border" :class="h2hPage === 0 ? 'w-6 h-6' : 'w-6 h-6'">
+                    <div class="w-6 h-6 rounded-full overflow-hidden bg-dark-border">
                       <img :src="team.logo_url || defaultAvatar" class="w-full h-full object-cover" @error="handleImageError" />
                     </div>
-                    <div v-if="h2hPage === 0" class="truncate text-[9px] hidden sm:block" :title="team.team_name">{{ team.team_name.substring(0, 8) }}</div>
+
                   </div>
                 </th>
               </tr>
@@ -756,20 +756,20 @@
             <tbody>
               <tr v-for="(rowTeam, ridx) in filteredH2HTeams" :key="`row-${rowTeam.team_key}`"
                 :class="{ 'history-blur-row': !hasLeagueAccess && ridx >= 3 }">
-                <td class="sticky left-0 bg-dark-elevated z-10 px-2 py-2 font-semibold text-dark-text border border-dark-border whitespace-nowrap" :style="h2hPage === 0 ? 'min-width:80px; max-width:130px;' : 'min-width:40px; max-width:44px;'">
+                <td class="sticky left-0 bg-dark-elevated z-10 px-2 py-2 font-semibold text-dark-text border border-dark-border whitespace-nowrap" style="min-width:80px; max-width:130px;">
                   <div class="flex items-center gap-1.5">
                     <div class="w-6 h-6 rounded-full overflow-hidden bg-dark-border flex-shrink-0">
                       <img :src="rowTeam.logo_url || defaultAvatar" class="w-full h-full object-cover" @error="handleImageError" />
                     </div>
-                    <span class="text-xs truncate max-w-[70px]" :class="h2hPage === 0 ? '' : 'hidden sm:inline'">{{ rowTeam.team_name.substring(0, 12) }}{{ rowTeam.team_name.length > 12 ? '…' : '' }}</span>
+                    <span class="text-xs truncate max-w-[70px]">{{ rowTeam.team_name.length > 10 ? rowTeam.team_name.substring(0, 10) + '…' : rowTeam.team_name }}</span>
                   </div>
                 </td>
                 <td 
                   v-for="(colTeam, cidx) in filteredH2HTeams" 
                   :key="`cell-${rowTeam.team_key}-${colTeam.team_key}`"
                   class="py-2 text-center border border-dark-border text-xs sm:text-sm"
-                  :style="h2hPage === 0 ? 'padding: 6px 4px;' : 'padding: 6px 2px; min-width:36px; max-width:40px;'"
-                  :class="[getH2HCellClass(rowTeam.team_key, colTeam.team_key), (h2hPage === 0 ? cidx >= 2 : Math.floor((cidx - 2) / 4) + 1 !== h2hPage) ? 'hidden sm:table-cell' : '']"
+                  style="padding: 6px 2px; min-width:36px; max-width:42px;"
+                  :class="[getH2HCellClass(rowTeam.team_key, colTeam.team_key), Math.floor(cidx / 4) !== h2hPage ? 'hidden sm:table-cell' : '']"
                 >
                   <span v-if="rowTeam.team_key === colTeam.team_key" class="text-dark-textMuted">—</span>
                   <span v-else class="font-semibold">
@@ -3475,11 +3475,7 @@ const hosIdx = ref(0)          // Awards HoS carousel
 const legacyChartOffset = ref(0) // Legacy chart year window offset (0=latest)
 const LEGACY_WIN = 4
 
-const h2hTotalPages = computed(() => {
-  const total = filteredH2HTeams.value?.length || 0
-  if (total <= 2) return 1
-  return 1 + Math.ceil((total - 2) / 4)  // page 0: 2 cols with name; pages 1+: 4 cols logo-only
-})
+const h2hTotalPages = computed(() => Math.max(1, Math.ceil((filteredH2HTeams.value?.length || 0) / 4)))
 
 const legacyChartTotalPages = computed(() => {
   const total = legacyChartYearsAll.value.length
