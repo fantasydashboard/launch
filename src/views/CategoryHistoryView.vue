@@ -1752,6 +1752,82 @@
             </div>
           </div>
         </div>
+
+        <!-- Legacy Score Trends Chart -->
+        <div v-if="legacyChartYearsAll.length >= 2" class="card mt-6" :class="{ 'history-blur-row': !hasLeagueAccess }">
+          <div class="card-header">
+            <div class="flex items-center justify-between flex-wrap gap-4">
+              <div>
+                <div class="flex items-center gap-2">
+                  <span class="text-2xl">📈</span>
+                  <h2 class="card-title">Legacy Score Trends</h2>
+                </div>
+                <p class="text-sm text-dark-textMuted mt-1">Track cumulative legacy scores throughout the years</p>
+              </div>
+            </div>
+          </div>
+          <div class="card-body">
+            <div v-if="legacyChartSeries.length > 0 && legacyChartYearsAll.length >= 2" class="legacy-chart-container">
+              <!-- Desktop chart -->
+              <div class="hidden sm:block">
+                <apexchart type="line" height="320" :options="legacyChartOptions" :series="legacyChartSeries" />
+              </div>
+              <!-- Mobile windowed chart -->
+              <div class="sm:hidden">
+                <apexchart type="line" height="260" :options="legacyMobileChartOptions" :series="legacyMobileChartSeries" />
+                <div class="flex items-center justify-center gap-3 mt-2">
+                  <button @click="legacyChartOffset = Math.min(legacyChartOffset + 4, Math.max(0, legacyChartYearsAll.length - 4))" :disabled="legacyChartOffset >= legacyChartYearsAll.length - 4" class="w-7 h-7 flex-shrink-0 rounded-full flex items-center justify-center" :class="legacyChartOffset >= legacyChartYearsAll.length - 4 ? 'text-dark-border' : 'text-yellow-400 hover:bg-yellow-400/10'"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg></button>
+                  <div class="flex gap-1.5"><div v-for="(_, i) in legacyChartTotalPages" :key="i" class="w-2 h-2 rounded-full" :class="i === legacyChartCurrentPage ? 'bg-yellow-400' : 'bg-dark-border/60'" /></div>
+                  <button @click="legacyChartOffset = Math.max(0, legacyChartOffset - 4)" :disabled="legacyChartOffset === 0" class="w-7 h-7 flex-shrink-0 rounded-full flex items-center justify-center" :class="legacyChartOffset === 0 ? 'text-dark-border' : 'text-yellow-400 hover:bg-yellow-400/10'"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg></button>
+                </div>
+              </div>
+
+              <!-- Click hint -->
+              <div v-if="!selectedLegacyTeamKey" class="flex items-center justify-center gap-2 mt-2 mb-4">
+                <div class="w-5 h-5 rounded-full bg-yellow-500/20 flex items-center justify-center flex-shrink-0"><span class="text-xs">💡</span></div>
+                <span class="text-sm text-dark-textMuted">Click on a team below to see their trend highlighted</span>
+              </div>
+
+              <!-- Team Selector -->
+              <div class="mt-4 pt-4 border-t border-dark-border">
+                <!-- Mobile: yellow arrows + dots nav -->
+                <div class="sm:hidden flex items-center justify-center gap-3 pb-2">
+                  <button @click="legacyTeamPage = Math.max(0, legacyTeamPage - 1)" :disabled="legacyTeamPage === 0" class="w-7 h-7 flex-shrink-0 rounded-full flex items-center justify-center" :class="legacyTeamPage === 0 ? 'text-dark-border' : 'text-yellow-400 hover:bg-yellow-400/10'"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg></button>
+                  <div class="flex gap-1.5"><div v-for="(_, i) in legacyTeamTotalPages" :key="i" class="w-2 h-2 rounded-full" :class="i === legacyTeamPage ? 'bg-yellow-400' : 'bg-dark-border/60'" /></div>
+                  <button @click="legacyTeamPage = Math.min(legacyTeamTotalPages - 1, legacyTeamPage + 1)" :disabled="legacyTeamPage >= legacyTeamTotalPages - 1" class="w-7 h-7 flex-shrink-0 rounded-full flex items-center justify-center" :class="legacyTeamPage >= legacyTeamTotalPages - 1 ? 'text-dark-border' : 'text-yellow-400 hover:bg-yellow-400/10'"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg></button>
+                </div>
+                <!-- Mobile: paged team grid -->
+                <div class="sm:hidden flex justify-center gap-2 flex-wrap">
+                  <div v-for="(team, idx) in legacyMobilePagedTeams" :key="'mob-sel-' + team.team_key"
+                    class="flex flex-col items-center gap-1.5 px-2 py-2 rounded-lg cursor-pointer transition-all flex-shrink-0 min-w-[70px]"
+                    :class="[selectedLegacyTeamKey === team.team_key ? 'bg-dark-border ring-2 ring-offset-2 ring-offset-dark-card' : 'bg-dark-bg/50 hover:bg-dark-border/50', selectedLegacyTeamKey && selectedLegacyTeamKey !== team.team_key ? 'opacity-40' : '', !hasLeagueAccess && filteredLegacyScores.indexOf(team) >= 3 ? 'history-blur-row' : '']"
+                    @click="selectedLegacyTeamKey = selectedLegacyTeamKey === team.team_key ? null : team.team_key"
+                  >
+                    <div class="text-xs font-bold text-dark-textMuted">#{{ filteredLegacyScores.indexOf(team) + 1 }}</div>
+                    <img :src="team.logo_url || defaultAvatar" :alt="team.team_name" class="w-8 h-8 rounded-full object-cover" :style="{ boxShadow: `0 0 0 3px ${getLegacyTeamColor(filteredLegacyScores.indexOf(team))}` }" @error="handleImageError" />
+                    <span class="text-xs font-medium text-dark-text truncate max-w-[60px] text-center">{{ team.team_name }}</span>
+                  </div>
+                </div>
+                <!-- Desktop: scroll arrows -->
+                <div class="hidden sm:block relative">
+                  <button v-if="canScrollLeft" @click="scrollTeamSelector('left')" class="absolute left-0 top-1/2 -translate-y-1/2 z-10 w-8 h-8 bg-dark-card border border-dark-border rounded-full flex items-center justify-center text-dark-textMuted hover:text-dark-text hover:bg-dark-border transition-colors shadow-lg"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" /></svg></button>
+                  <div ref="teamSelectorRef" class="flex gap-2 overflow-x-auto scrollbar-hide px-2" @scroll="updateScrollState">
+                    <div v-for="(team, idx) in filteredLegacyScores" :key="'selector-' + team.team_key"
+                      class="flex flex-col items-center gap-1.5 px-3 py-2 rounded-lg cursor-pointer transition-all flex-shrink-0 min-w-[80px]"
+                      :class="[selectedLegacyTeamKey === team.team_key ? 'bg-dark-border ring-2 ring-offset-2 ring-offset-dark-card' : 'bg-dark-bg/50 hover:bg-dark-border/50', selectedLegacyTeamKey && selectedLegacyTeamKey !== team.team_key ? 'opacity-40' : '', !hasLeagueAccess && idx >= 3 ? 'history-blur-row' : '']"
+                      @click="selectedLegacyTeamKey = selectedLegacyTeamKey === team.team_key ? null : team.team_key"
+                    >
+                      <div class="text-xs font-bold text-dark-textMuted">#{{ idx + 1 }}</div>
+                      <div class="relative"><img :src="team.logo_url || defaultAvatar" :alt="team.team_name" class="w-8 h-8 rounded-full object-cover" :style="{ boxShadow: `0 0 0 3px ${getLegacyTeamColor(idx)}` }" @error="handleImageError" /></div>
+                      <span class="text-xs font-medium text-dark-text truncate max-w-[70px] text-center">{{ team.team_name }}</span>
+                    </div>
+                  </div>
+                  <button v-if="canScrollRight" @click="scrollTeamSelector('right')" class="absolute right-0 top-1/2 -translate-y-1/2 z-10 w-8 h-8 bg-dark-card border border-dark-border rounded-full flex items-center justify-center text-dark-textMuted hover:text-dark-text hover:bg-dark-border transition-colors shadow-lg"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" /></svg></button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
       </template>
 
     </template>
@@ -3709,6 +3785,198 @@ const filteredLegacyScores = computed(() => {
 const gatedLegacyScores = computed(() =>
   hasLeagueAccess.value ? filteredLegacyScores.value : filteredLegacyScores.value.slice(0, 3)
 )
+
+// ── Legacy Chart: cumulative year-by-year scores ─────────────────────────
+const legacyChartYearsAll = computed(() =>
+  Object.keys(historicalData.value).sort((a, b) => parseInt(a) - parseInt(b))
+)
+
+// Build cumulative score map keyed by team_key → array of cumulative scores per year
+const legacyScoresByYear = computed(() => {
+  const seasons = legacyChartYearsAll.value
+  if (seasons.length === 0) return new Map<string, number[]>()
+  const scores = new Map<string, number[]>()
+  const cumulative: Record<string, number> = {}
+  const teamStreaks: Record<string, { playoffStreak: number; winningStreak: number }> = {}
+  const includePenalties = includeLegacyPenalties.value
+
+  for (const season of seasons) {
+    const seasonData = historicalData.value[season]
+    if (!seasonData) continue
+    const standings = seasonData.standings || []
+    const matchups = allMatchups.value[season] || {}
+    const isFinished = seasonData.isFinished !== false
+
+    if (standings.length === 0) continue
+    const numTeams = standings.length
+    const playoffTeamCount = Math.min(Math.floor(numTeams / 2), 6)
+    const sortedByWins = [...standings].sort((a: any, b: any) =>
+      (b.wins || 0) !== (a.wins || 0) ? (b.wins || 0) - (a.wins || 0) : (b.points_for || 0) - (a.points_for || 0)
+    )
+    const categoryLeader = sortedByWins[0]?.team_key || ''
+
+    // Count total cat wins per team this season
+    const teamCatWins: Record<string, number> = {}
+    for (const weekMatchups of Object.values(matchups)) {
+      for (const matchup of weekMatchups as any[]) {
+        const statWinners = matchup.stat_winners || []
+        for (const w of statWinners) {
+          if (w.winner_team_key && !w.is_tied) {
+            teamCatWins[w.winner_team_key] = (teamCatWins[w.winner_team_key] || 0) + 1
+          }
+        }
+      }
+    }
+    const allCatWins = Object.values(teamCatWins)
+    const avgCatWins = allCatWins.length > 0 ? allCatWins.reduce((a, b) => a + b, 0) / allCatWins.length : 0
+
+    for (const team of standings) {
+      const teamKey = team.team_key
+      if (!cumulative[teamKey]) cumulative[teamKey] = 0
+      if (!teamStreaks[teamKey]) teamStreaks[teamKey] = { playoffStreak: 0, winningStreak: 0 }
+      if (!scores.has(teamKey)) scores.set(teamKey, [])
+
+      const wins = team.wins || 0
+      const losses = team.losses || 0
+      const rank = team.rank || 999
+      const madePlayoffs = isFinished && (team.playoff_seed > 0 ? team.playoff_seed <= playoffTeamCount : rank <= playoffTeamCount)
+      const isChampion = team.is_champion || false
+      const streak = teamStreaks[teamKey]
+      const catWins = teamCatWins[teamKey] || 0
+
+      let pts = 0
+      if (isFinished) {
+        if (isChampion) pts += LEGACY_POINTS.CHAMPIONSHIP
+        if (rank === 2 && !isChampion) pts += LEGACY_POINTS.RUNNER_UP
+        if (rank === 3) pts += LEGACY_POINTS.THIRD_PLACE
+        if (madePlayoffs) pts += LEGACY_POINTS.PLAYOFF_APPEARANCE
+        if (teamKey === categoryLeader) pts += LEGACY_POINTS.CATEGORY_LEADER
+        if (wins > losses) pts += LEGACY_POINTS.WINNING_SEASON
+        if (rank <= 3) pts += LEGACY_POINTS.TOP_3_FINISH
+        if (madePlayoffs) {
+          streak.playoffStreak++
+          if (streak.playoffStreak === 3) pts += LEGACY_POINTS.PLAYOFF_STREAK_3
+          if (streak.playoffStreak === 5) pts += LEGACY_POINTS.PLAYOFF_STREAK_5 - LEGACY_POINTS.PLAYOFF_STREAK_3
+        } else { streak.playoffStreak = 0 }
+        if (wins > losses) { streak.winningStreak++; if (streak.winningStreak === 3) pts += LEGACY_POINTS.WINNING_STREAK_3 } else { streak.winningStreak = 0 }
+        if (includePenalties && rank === numTeams) pts += LEGACY_POINTS.LAST_PLACE
+        if (includePenalties && wins < losses) pts += LEGACY_POINTS.LOSING_SEASON
+      }
+      pts += LEGACY_POINTS.WIN * wins
+      pts += LEGACY_POINTS.SEASON_PLAYED
+      if (catWins > avgCatWins) pts += LEGACY_POINTS.ABOVE_AVG_CAT_WIN_RATE
+
+      cumulative[teamKey] += pts
+      scores.get(teamKey)!.push(cumulative[teamKey])
+    }
+  }
+  return scores
+})
+
+const selectedLegacyTeamKey = ref<string | null>(null)
+const selectedLegacyTeamDetails = computed(() =>
+  selectedLegacyTeamKey.value ? (filteredLegacyScores.value.find(t => t.team_key === selectedLegacyTeamKey.value) || null) : null
+)
+
+// Mobile chart windowing
+const legacyChartOffset = ref(0)
+const LEGACY_WIN = 4
+const legacyChartTotalPages = computed(() => {
+  const total = legacyChartYearsAll.value.length
+  return total <= LEGACY_WIN ? 1 : Math.ceil(Math.max(0, total - LEGACY_WIN) / LEGACY_WIN) + 1
+})
+const legacyChartCurrentPage = computed(() => {
+  const total = legacyChartYearsAll.value.length
+  const maxOffset = Math.max(0, total - LEGACY_WIN)
+  const maxStep = Math.ceil(maxOffset / LEGACY_WIN)
+  return maxStep - Math.round(legacyChartOffset.value / LEGACY_WIN)
+})
+
+// Team selector
+const legacyTeamPage = ref(0)
+const LEGACY_TEAMS_PER_PAGE = 3
+const legacyTeamTotalPages = computed(() => Math.max(1, Math.ceil((filteredLegacyScores.value?.length || 0) / LEGACY_TEAMS_PER_PAGE)))
+const legacyMobilePagedTeams = computed(() => {
+  const start = legacyTeamPage.value * LEGACY_TEAMS_PER_PAGE
+  return (filteredLegacyScores.value || []).slice(start, start + LEGACY_TEAMS_PER_PAGE)
+})
+const teamSelectorRef = ref<HTMLElement | null>(null)
+const canScrollLeft = ref(false)
+const canScrollRight = ref(false)
+
+function getLegacyTeamColor(idx: number): string {
+  const colors = ['#3b82f6','#ef4444','#10b981','#f59e0b','#8b5cf6','#ec4899','#06b6d4','#84cc16','#f97316','#6366f1','#14b8a6','#f43f5e']
+  return colors[idx % colors.length]
+}
+function updateScrollState() {
+  if (!teamSelectorRef.value) return
+  const el = teamSelectorRef.value
+  canScrollLeft.value = el.scrollLeft > 10
+  canScrollRight.value = el.scrollLeft < (el.scrollWidth - el.clientWidth - 10)
+}
+function scrollTeamSelector(direction: 'left' | 'right') {
+  if (!teamSelectorRef.value) return
+  teamSelectorRef.value.scrollBy({ left: direction === 'left' ? -200 : 200, behavior: 'smooth' })
+  setTimeout(updateScrollState, 300)
+}
+watch(filteredLegacyScores, () => setTimeout(updateScrollState, 100))
+
+const legacyChartOptions = computed(() => {
+  const teams = filteredLegacyScores.value
+  const years = legacyChartYearsAll.value
+  if (teams.length === 0 || years.length < 2) return null
+  const selectedIdx = selectedLegacyTeamKey.value ? teams.findIndex(t => t.team_key === selectedLegacyTeamKey.value) : -1
+  const colors = teams.map((_, idx) => {
+    const base = getLegacyTeamColor(idx)
+    if (selectedIdx !== -1 && idx !== selectedIdx) {
+      const r = parseInt(base.slice(1,3),16), g = parseInt(base.slice(3,5),16), b = parseInt(base.slice(5,7),16)
+      return `rgba(${r},${g},${b},0.15)`
+    }
+    return base
+  })
+  return {
+    chart: { type: 'line', background: 'transparent', toolbar: { show: false }, zoom: { enabled: false }, animations: { enabled: true, speed: 300 } },
+    theme: { mode: 'dark' },
+    colors,
+    stroke: { width: teams.map((_, i) => selectedIdx === -1 ? 2.5 : i === selectedIdx ? 4 : 1.5), curve: 'smooth' },
+    markers: { size: teams.map((_, i) => selectedIdx === -1 ? 4 : i === selectedIdx ? 6 : 0), strokeWidth: 0, hover: { size: 0 } },
+    dataLabels: { enabled: false },
+    xaxis: { categories: years, labels: { style: { colors: '#9ca3af', fontSize: '12px' } } },
+    yaxis: { min: 0, labels: { style: { colors: '#9ca3af' }, formatter: (v: number) => v.toLocaleString() } },
+    legend: { show: false },
+    tooltip: { enabled: false },
+    grid: { borderColor: '#374151', strokeDashArray: 4, padding: { left: 10, right: 10, top: 10, bottom: 0 } },
+    states: { hover: { filter: { type: 'none' } }, active: { filter: { type: 'none' } } }
+  }
+})
+
+const legacyChartSeries = computed(() => {
+  const teams = filteredLegacyScores.value
+  const years = legacyChartYearsAll.value
+  if (teams.length === 0 || years.length < 2) return []
+  return teams.map(team => ({ name: team.team_name, data: legacyScoresByYear.value.get(team.team_key) || [] }))
+})
+
+const legacyMobileChartSeries = computed(() => {
+  if (!legacyChartSeries.value.length) return []
+  const total = legacyChartYearsAll.value.length
+  const end = total - legacyChartOffset.value
+  const start = Math.max(0, end - LEGACY_WIN)
+  return legacyChartSeries.value.map((s: any) => ({ ...s, data: (s.data || []).slice(start, end) }))
+})
+
+const legacyMobileChartOptions = computed(() => {
+  if (!legacyChartOptions.value) return null
+  const total = legacyChartYearsAll.value.length
+  const end = total - legacyChartOffset.value
+  const start = Math.max(0, end - LEGACY_WIN)
+  return {
+    ...legacyChartOptions.value,
+    chart: { ...legacyChartOptions.value.chart, toolbar: { show: false }, animations: { enabled: false } },
+    xaxis: { ...legacyChartOptions.value.xaxis, categories: legacyChartYearsAll.value.slice(start, end) },
+    legend: { show: false }
+  }
+})
 
 // Legacy helper functions
 function getLegacyScoreColor(score: number): string {
