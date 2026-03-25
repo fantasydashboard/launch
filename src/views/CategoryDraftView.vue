@@ -703,7 +703,7 @@
                   v-for="(cat, catIdx) in leagueCategories" 
                   :key="cat"
                   class="text-center p-2 sm:p-3 font-semibold text-dark-textMuted min-w-[50px]"
-                  :class="catBreakdownPage === 0 && catIdx >= 4 ? 'hidden sm:table-cell' : (catBreakdownPage > 0 && Math.floor(catIdx / 4) + 1 !== catBreakdownPage ? 'hidden sm:table-cell' : '')"
+                  :class="catBreakdownPage === 0 || (catBreakdownPage > 0 && Math.floor(catIdx / 4) + 1 !== catBreakdownPage) ? 'hidden sm:table-cell' : ''"
                   :style="getCategoryColorStyle(cat)"
                 >
                   {{ cat }}
@@ -736,7 +736,7 @@
                   v-for="(cat, catIdx) in leagueCategories" 
                   :key="cat"
                   class="p-2 sm:p-3 text-center"
-                  :class="[getStatCellClass(pick.stats?.[getStatIdForCategory(cat)], cat), catBreakdownPage === 0 && catIdx >= 4 ? 'hidden sm:table-cell' : (catBreakdownPage > 0 && Math.floor(catIdx / 4) + 1 !== catBreakdownPage ? 'hidden sm:table-cell' : '')]"
+                  :class="[getStatCellClass(pick.stats?.[getStatIdForCategory(cat)], cat), catBreakdownPage === 0 || (catBreakdownPage > 0 && Math.floor(catIdx / 4) + 1 !== catBreakdownPage) ? 'hidden sm:table-cell' : '']"
                 >
                   {{ formatStatValue(pick.stats?.[getStatIdForCategory(cat)] || 0, cat) }}
                 </td>
