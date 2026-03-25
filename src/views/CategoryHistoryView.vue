@@ -3804,7 +3804,7 @@ const legacyScoresByYear = computed(() => {
     const seasonData = historicalData.value[season]
     if (!seasonData) continue
     const standings = seasonData.standings || []
-    const matchups = allMatchups.value[season] || {}
+    const matchupsList = seasonData.matchups || []  // flat array, same as legacyScores uses
     const isFinished = seasonData.isFinished !== false
 
     if (standings.length === 0) continue
@@ -3815,15 +3815,13 @@ const legacyScoresByYear = computed(() => {
     )
     const categoryLeader = sortedByWins[0]?.team_key || ''
 
-    // Count total cat wins per team this season
+    // Count total cat wins per team this season (using flat matchups array)
     const teamCatWins: Record<string, number> = {}
-    for (const weekMatchups of Object.values(matchups)) {
-      for (const matchup of weekMatchups as any[]) {
-        const statWinners = matchup.stat_winners || []
-        for (const w of statWinners) {
-          if (w.winner_team_key && !w.is_tied) {
-            teamCatWins[w.winner_team_key] = (teamCatWins[w.winner_team_key] || 0) + 1
-          }
+    for (const matchup of matchupsList) {
+      const statWinners = matchup.stat_winners || []
+      for (const w of statWinners) {
+        if (w.winner_team_key && !w.is_tied) {
+          teamCatWins[w.winner_team_key] = (teamCatWins[w.winner_team_key] || 0) + 1
         }
       }
     }
