@@ -21,21 +21,11 @@
     </div>
 
     <!-- Offseason Notice Banner - Only show when season is complete -->
-    <!-- Offseason banner: only when no data AND no draft yet -->
-    <div v-if="isSeasonComplete && !leagueStore.isPreSeasonDrafted" class="bg-slate-500/10 border border-slate-500/30 rounded-xl p-4 flex items-start gap-3">
+    <div v-if="isSeasonComplete" class="bg-slate-500/10 border border-slate-500/30 rounded-xl p-4 flex items-start gap-3">
       <div class="text-slate-400 text-xl flex-shrink-0">📅</div>
       <div>
         <p class="text-slate-200 font-semibold">It's the offseason</p>
-        <p class="text-slate-400 text-sm mt-1">You're viewing last season's data ({{ currentSeason }}). The {{ Number(currentSeason) + 1 }} season will appear automatically once the draft is complete.</p>
-      </div>
-    </div>
-
-    <!-- Pre-season drafted banner: draft done, Week 1 hasn't started -->
-    <div v-if="leagueStore.isPreSeasonDrafted" class="bg-emerald-500/10 border border-emerald-500/30 rounded-xl p-4 flex items-start gap-3">
-      <div class="text-emerald-400 text-xl flex-shrink-0">⚾</div>
-      <div>
-        <p class="text-emerald-300 font-semibold">Draft complete — season starting soon!</p>
-        <p class="text-slate-400 text-sm mt-1">Records are 0-0. Rankings and projections are based on your drafted roster until Week 1 begins.</p>
+        <p class="text-slate-400 text-sm mt-1">You're viewing last season's data ({{ currentSeason }}). The {{ Number(currentSeason) + 1 }} season will appear automatically once Week 1 begins.</p>
       </div>
     </div>
 
@@ -166,7 +156,7 @@
       <!-- Selected Matchup Analysis -->
       <template v-if="selectedMatchup">
         <!-- Win Probability Section -->
-        <div class="card">
+        <div class="card" ref="winProbSectionRef">
           <div class="card-header">
             <div class="flex items-center justify-between">
               <div class="flex items-center gap-2">
@@ -202,31 +192,31 @@
           </div>
           <div class="card-body">
             <!-- Big Team Cards -->
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-              <!-- Team 1 -->
-              <div class="text-center p-6 rounded-xl border-2 bg-gradient-to-br from-cyan-500/10 to-cyan-600/5 border-cyan-500/30">
+            <div class="grid grid-cols-2 gap-3 mb-6">
+              <!-- Team 1 compact on mobile -->
+              <div class="text-center p-3 sm:p-6 rounded-xl border-2 bg-gradient-to-br from-cyan-500/10 to-cyan-600/5 border-cyan-500/30">
                 <div class="relative inline-block">
-                  <img :src="selectedMatchup.team1.logo_url || defaultAvatar" class="w-20 h-20 rounded-full mx-auto mb-3 border-4 border-cyan-500" @error="handleImageError"/>
-                  <div v-if="selectedMatchup.team1.is_my_team" class="absolute -top-1 -right-1 w-6 h-6 bg-yellow-400 rounded-full flex items-center justify-center shadow-lg"><span class="text-sm text-gray-900">★</span></div>
+                  <img :src="selectedMatchup.team1.logo_url || defaultAvatar" class="w-12 h-12 sm:w-20 sm:h-20 rounded-full mx-auto mb-2 border-4 border-cyan-500" @error="handleImageError"/>
+                  <div v-if="selectedMatchup.team1.is_my_team" class="absolute -top-1 -right-1 w-4 h-4 sm:w-6 sm:h-6 bg-yellow-400 rounded-full flex items-center justify-center"><span class="text-[10px] sm:text-sm text-gray-900">★</span></div>
                 </div>
-                <div class="font-bold text-xl mb-2 text-cyan-400">{{ selectedMatchup.team1.name }}</div>
-                <div class="text-5xl font-black mb-3 text-cyan-400">{{ selectedMatchup.team1WinProb.toFixed(0) }}%</div>
-                <div class="space-y-1 text-sm">
-                  <div class="text-white">Current: {{ selectedMatchup.team1CatWins }}-{{ selectedMatchup.team2CatWins }}-{{ selectedMatchup.ties }}</div>
-                  <div class="text-cyan-400">Projected: {{ selectedMatchup.projectedTeam1Wins }}-{{ selectedMatchup.projectedTeam2Wins }}-{{ selectedMatchup.projectedTies }}</div>
+                <div class="font-bold text-sm sm:text-xl mb-1 text-cyan-400 truncate">{{ selectedMatchup.team1.name }}</div>
+                <div class="text-3xl sm:text-5xl font-black mb-1 text-cyan-400">{{ selectedMatchup.team1WinProb.toFixed(0) }}%</div>
+                <div class="text-xs sm:text-sm space-y-0.5">
+                  <div class="text-white">{{ selectedMatchup.team1CatWins }}-{{ selectedMatchup.team2CatWins }}-{{ selectedMatchup.ties }}</div>
+                  <div class="text-cyan-400 text-[10px] sm:text-sm">Proj: {{ selectedMatchup.projectedTeam1Wins }}-{{ selectedMatchup.projectedTeam2Wins }}</div>
                 </div>
               </div>
               <!-- Team 2 -->
-              <div class="text-center p-6 rounded-xl border-2 bg-gradient-to-br from-orange-500/10 to-orange-600/5 border-orange-500/30">
+              <div class="text-center p-3 sm:p-6 rounded-xl border-2 bg-gradient-to-br from-orange-500/10 to-orange-600/5 border-orange-500/30">
                 <div class="relative inline-block">
-                  <img :src="selectedMatchup.team2.logo_url || defaultAvatar" class="w-20 h-20 rounded-full mx-auto mb-3 border-4 border-orange-500" @error="handleImageError"/>
-                  <div v-if="selectedMatchup.team2.is_my_team" class="absolute -top-1 -right-1 w-6 h-6 bg-yellow-400 rounded-full flex items-center justify-center shadow-lg"><span class="text-sm text-gray-900">★</span></div>
+                  <img :src="selectedMatchup.team2.logo_url || defaultAvatar" class="w-12 h-12 sm:w-20 sm:h-20 rounded-full mx-auto mb-2 border-4 border-orange-500" @error="handleImageError"/>
+                  <div v-if="selectedMatchup.team2.is_my_team" class="absolute -top-1 -right-1 w-4 h-4 sm:w-6 sm:h-6 bg-yellow-400 rounded-full flex items-center justify-center"><span class="text-[10px] sm:text-sm text-gray-900">★</span></div>
                 </div>
-                <div class="font-bold text-xl mb-2 text-orange-400">{{ selectedMatchup.team2.name }}</div>
-                <div class="text-5xl font-black mb-3 text-orange-400">{{ selectedMatchup.team2WinProb.toFixed(0) }}%</div>
-                <div class="space-y-1 text-sm">
-                  <div class="text-white">Current: {{ selectedMatchup.team2CatWins }}-{{ selectedMatchup.team1CatWins }}-{{ selectedMatchup.ties }}</div>
-                  <div class="text-orange-400">Projected: {{ selectedMatchup.projectedTeam2Wins }}-{{ selectedMatchup.projectedTeam1Wins }}-{{ selectedMatchup.projectedTies }}</div>
+                <div class="font-bold text-sm sm:text-xl mb-1 text-orange-400 truncate">{{ selectedMatchup.team2.name }}</div>
+                <div class="text-3xl sm:text-5xl font-black mb-1 text-orange-400">{{ selectedMatchup.team2WinProb.toFixed(0) }}%</div>
+                <div class="text-xs sm:text-sm space-y-0.5">
+                  <div class="text-white">{{ selectedMatchup.team2CatWins }}-{{ selectedMatchup.team1CatWins }}-{{ selectedMatchup.ties }}</div>
+                  <div class="text-orange-400 text-[10px] sm:text-sm">Proj: {{ selectedMatchup.projectedTeam2Wins }}-{{ selectedMatchup.projectedTeam1Wins }}</div>
                 </div>
               </div>
             </div>
@@ -372,21 +362,33 @@
             <div class="overflow-x-auto">
               <table class="w-full text-sm">
                 <thead><tr class="border-b border-dark-border bg-dark-border/30">
-                  <th class="text-left p-3 text-dark-textMuted font-semibold">Statistic</th>
-                  <th class="text-center p-3 font-semibold text-cyan-400">{{ selectedMatchup.team1.name }}</th>
-                  <th class="text-center p-3 text-dark-textMuted font-semibold">Advantage</th>
-                  <th class="text-center p-3 font-semibold text-orange-400">{{ selectedMatchup.team2.name }}</th>
+                  <th class="text-left p-2 sm:p-3 text-dark-textMuted font-semibold text-xs sm:text-sm">Stat</th>
+                  <th class="text-center p-2 sm:p-3 font-semibold text-cyan-400 text-xs sm:text-sm">
+                    <span class="sm:hidden">{{ selectedMatchup.team1.name.split(' ')[0] }}</span>
+                    <span class="hidden sm:inline">{{ selectedMatchup.team1.name }}</span>
+                  </th>
+                  <th class="text-center p-1 sm:p-3 text-dark-textMuted font-semibold text-xs w-8 sm:w-auto">
+                    <span class="sm:hidden">Adv</span><span class="hidden sm:inline">Advantage</span>
+                  </th>
+                  <th class="text-center p-2 sm:p-3 font-semibold text-orange-400 text-xs sm:text-sm">
+                    <span class="sm:hidden">{{ selectedMatchup.team2.name.split(' ')[0] }}</span>
+                    <span class="hidden sm:inline">{{ selectedMatchup.team2.name }}</span>
+                  </th>
                 </tr></thead>
                 <tbody>
                   <tr v-for="stat in comparisonStats" :key="stat.label" class="border-b border-dark-border/50 hover:bg-dark-border/10">
-                    <td class="p-3 text-dark-text font-medium">{{ stat.label }}</td>
-                    <td class="text-center p-3"><span :class="stat.team1Better ? 'text-cyan-400 font-bold' : 'text-dark-textMuted'">{{ stat.team1Value }}</span></td>
-                    <td class="text-center p-3">
-                      <span v-if="stat.team1Better" class="text-cyan-400 font-semibold">◀ {{ selectedMatchup.team1.name }}</span>
-                      <span v-else-if="stat.team2Better" class="text-orange-400 font-semibold">{{ selectedMatchup.team2.name }} ▶</span>
-                      <span v-else class="text-dark-textMuted">Even</span>
+                    <td class="p-2 sm:p-3 text-dark-text font-medium text-xs sm:text-sm">{{ stat.label }}</td>
+                    <td class="text-center p-2 sm:p-3"><span class="text-xs sm:text-sm" :class="stat.team1Better ? 'text-cyan-400 font-bold' : 'text-dark-textMuted'">{{ stat.team1Value }}</span></td>
+                    <td class="text-center p-1 sm:p-3 w-8 sm:w-auto">
+                      <span v-if="stat.team1Better" class="text-cyan-400 font-bold">
+                        <span class="sm:hidden">◀</span><span class="hidden sm:inline">◀ {{ selectedMatchup.team1.name }}</span>
+                      </span>
+                      <span v-else-if="stat.team2Better" class="text-orange-400 font-bold">
+                        <span class="sm:hidden">▶</span><span class="hidden sm:inline">{{ selectedMatchup.team2.name }} ▶</span>
+                      </span>
+                      <span v-else class="text-dark-textMuted text-xs">=</span>
                     </td>
-                    <td class="text-center p-3"><span :class="stat.team2Better ? 'text-orange-400 font-bold' : 'text-dark-textMuted'">{{ stat.team2Value }}</span></td>
+                    <td class="text-center p-2 sm:p-3"><span class="text-xs sm:text-sm" :class="stat.team2Better ? 'text-orange-400 font-bold' : 'text-dark-textMuted'">{{ stat.team2Value }}</span></td>
                   </tr>
                 </tbody>
               </table>
@@ -423,9 +425,16 @@
                   <div class="text-xs text-dark-textMuted"><span class="font-semibold">Week {{ game.week }}</span></div>
                   <div class="text-xs text-dark-textMuted">{{ game.team1Score }}-{{ game.team2Score }}</div>
                 </div>
-                <div class="grid grid-cols-2 gap-2">
-                  <div class="text-sm" :class="game.team1Won ? 'text-green-400 font-bold' : 'text-dark-textMuted'">{{ selectedMatchup.team1.name }}: {{ game.team1Score }} cats</div>
-                  <div class="text-sm text-right" :class="game.team2Won ? 'text-green-400 font-bold' : 'text-dark-textMuted'">{{ selectedMatchup.team2.name }}: {{ game.team2Score }} cats</div>
+                <div class="flex items-center justify-between gap-2">
+                  <div class="text-sm flex items-center gap-2" :class="game.team1Won ? 'text-green-400 font-bold' : 'text-dark-textMuted'">
+                    <span class="truncate max-w-[90px] sm:max-w-none">{{ selectedMatchup.team1.name }}</span>
+                    <span class="font-bold flex-shrink-0">{{ game.team1Score }} cats</span>
+                  </div>
+                  <span class="text-dark-textMuted text-xs flex-shrink-0">vs</span>
+                  <div class="text-sm flex items-center gap-2" :class="game.team2Won ? 'text-green-400 font-bold' : 'text-dark-textMuted'">
+                    <span class="font-bold flex-shrink-0">{{ game.team2Score }} cats</span>
+                    <span class="truncate max-w-[90px] sm:max-w-none">{{ selectedMatchup.team2.name }}</span>
+                  </div>
                 </div>
               </div>
             </div>
@@ -1952,7 +1961,13 @@ async function loadMatchups() {
   finally { isLoading.value = false }
 }
 
-function selectMatchup(m: any) { selectedMatchup.value = m; nextTick(() => buildWinProbChart()) }
+function selectMatchup(m: any) {
+  selectedMatchup.value = m
+  nextTick(() => buildWinProbChart())
+  if (window.innerWidth < 640 && winProbSectionRef.value) {
+    setTimeout(() => winProbSectionRef.value?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 50)
+  }
+}
 
 // Compute the 7 dates (Mon-Sun) for a given matchup week number
 function getWeekDates(weekNum: number, currentWeekNum: number): string[] {
@@ -1989,6 +2004,7 @@ function getDailyWeights(sport: string): number[] {
 
 const chartLoading = ref(false)
 const chartTitle = ref('Win Probability Trend')
+const winProbSectionRef = ref<HTMLElement | null>(null)
 
 async function buildWinProbChart() {
   if (!winProbChartEl.value || !selectedMatchup.value) return
