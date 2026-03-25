@@ -741,14 +741,14 @@
                   v-for="(team, tidx) in filteredH2HTeams"
                   :key="`header-${team.team_key}`"
                   :class="[{ 'history-blur-row': !hasLeagueAccess && tidx >= 3 }, (h2hPage === 0 ? tidx >= 2 : Math.floor((tidx - 2) / 4) + 1 !== h2hPage) ? 'hidden sm:table-cell' : '']"
-                  class="px-1 sm:px-2 py-2 text-center border border-dark-border font-semibold text-dark-textSecondary uppercase tracking-wider"
-                  style="min-width: 60px; max-width: 70px;"
+                  class="py-2 text-center border border-dark-border font-semibold text-dark-textSecondary uppercase tracking-wider"
+                  :style="h2hPage === 0 ? 'min-width:56px; max-width:68px; padding: 4px 4px;' : 'min-width:36px; max-width:40px; padding: 4px 2px;'"
                 >
-                  <div class="flex flex-col items-center gap-1">
-                    <div class="w-6 h-6 rounded-full overflow-hidden bg-dark-border">
+                  <div class="flex flex-col items-center gap-0.5">
+                    <div class="rounded-full overflow-hidden bg-dark-border" :class="h2hPage === 0 ? 'w-6 h-6' : 'w-6 h-6'">
                       <img :src="team.logo_url || defaultAvatar" class="w-full h-full object-cover" @error="handleImageError" />
                     </div>
-                    <div class="truncate text-[9px] hidden sm:block" :title="team.team_name">{{ team.team_name.substring(0, 8) }}</div>
+                    <div v-if="h2hPage === 0" class="truncate text-[9px] hidden sm:block" :title="team.team_name">{{ team.team_name.substring(0, 8) }}</div>
                   </div>
                 </th>
               </tr>
@@ -767,7 +767,8 @@
                 <td 
                   v-for="(colTeam, cidx) in filteredH2HTeams" 
                   :key="`cell-${rowTeam.team_key}-${colTeam.team_key}`"
-                  class="px-1 sm:px-2 py-2 text-center border border-dark-border"
+                  class="py-2 text-center border border-dark-border text-xs sm:text-sm"
+                  :style="h2hPage === 0 ? 'padding: 6px 4px;' : 'padding: 6px 2px; min-width:36px; max-width:40px;'"
                   :class="[getH2HCellClass(rowTeam.team_key, colTeam.team_key), (h2hPage === 0 ? cidx >= 2 : Math.floor((cidx - 2) / 4) + 1 !== h2hPage) ? 'hidden sm:table-cell' : '']"
                 >
                   <span v-if="rowTeam.team_key === colTeam.team_key" class="text-dark-textMuted">—</span>
