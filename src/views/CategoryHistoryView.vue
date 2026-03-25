@@ -199,14 +199,14 @@
           <div class="flex gap-1.5"><div v-for="(_, i) in 3" :key="i" class="w-2 h-2 rounded-full transition-colors" :class="i === catCarStatPage ? 'bg-yellow-400' : 'bg-dark-border/60'" /></div>
           <button @click="catCarStatPage = Math.min(2, catCarStatPage + 1)" :disabled="catCarStatPage >= 2" class="w-7 h-7 flex-shrink-0 rounded-full flex items-center justify-center transition-all" :class="catCarStatPage >= 2 ? 'text-dark-border cursor-default' : 'text-yellow-400 hover:bg-yellow-400/10'"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg></button>
         </div>
-          <div class="overflow-x-auto">
+          <div class="overflow-x-hidden sm:overflow-x-auto">
           <table ref="careerTableRef" class="w-full text-sm">
             <thead>
               <tr class="border-b border-dark-border">
                 <th class="text-left py-3 px-3 font-semibold text-dark-textSecondary uppercase tracking-wider">Team</th>
                 <th class="text-center py-3 px-3 font-semibold text-dark-textSecondary uppercase tracking-wider cursor-pointer hover:text-yellow-400" :class="catCarStatPage > 0 ? 'hidden sm:table-cell' : ''" @click="sortBy('seasons')">Seasons</th>
                 <th class="text-center py-3 px-3 font-semibold text-dark-textSecondary uppercase tracking-wider cursor-pointer hover:text-yellow-400" :class="catCarStatPage > 0 ? 'hidden sm:table-cell' : ''" @click="sortBy('championships')">🏆</th>
-                <th class="text-center py-3 px-3 font-semibold text-dark-textSecondary uppercase tracking-wider cursor-pointer hover:text-yellow-400" :class="catCarStatPage > 0 ? 'hidden sm:table-cell' : ''" @click="sortBy('matchup_wins')">Record</th>
+                <th class="text-center py-3 px-3 font-semibold text-dark-textSecondary uppercase tracking-wider cursor-pointer hover:text-yellow-400" :class="catCarStatPage === 1 ? '' : 'hidden sm:table-cell'" @click="sortBy('matchup_wins')">Record</th>
                 <th class="text-center py-3 px-3 font-semibold text-dark-textSecondary uppercase tracking-wider cursor-pointer hover:text-yellow-400" :class="catCarStatPage === 1 ? '' : 'hidden sm:table-cell'" @click="sortBy('matchup_win_pct')">Win%</th>
                 <th class="text-center py-3 px-3 font-semibold text-dark-textSecondary uppercase tracking-wider cursor-pointer hover:text-yellow-400" :class="catCarStatPage === 1 ? '' : 'hidden sm:table-cell'" @click="sortBy('hitting_cat_wins')">Hit W</th>
                 <th class="text-center py-3 px-3 font-semibold text-dark-textSecondary uppercase tracking-wider cursor-pointer hover:text-yellow-400" :class="catCarStatPage === 1 ? '' : 'hidden sm:table-cell'" @click="sortBy('pitching_cat_wins')">Pitch W</th>
@@ -232,7 +232,7 @@
                   <span v-if="stat.championships > 0" class="text-yellow-400 font-bold text-sm">🏆 {{ stat.championships }}</span>
                   <span v-else class="text-dark-textMuted">—</span>
                 </td>
-                <td class="text-center py-3 px-3 font-semibold text-sm" :class="[getRecordClass(stat, 'matchup_wins'), catCarStatPage > 0 ? 'hidden sm:table-cell' : '']">{{ stat.matchup_wins }}-{{ stat.matchup_losses }}-{{ stat.matchup_ties }}</td>
+                <td class="text-center py-3 px-3 font-semibold text-sm" :class="[getRecordClass(stat, 'matchup_wins'), catCarStatPage === 1 ? '' : 'hidden sm:table-cell']">{{ stat.matchup_wins }}-{{ stat.matchup_losses }}-{{ stat.matchup_ties }}</td>
                 <td class="text-center py-3 px-3 text-sm" :class="catCarStatPage === 1 ? '' : 'hidden sm:table-cell'"><span :class="getRecordClass(stat, 'matchup_win_pct')">{{ (stat.matchup_win_pct * 100).toFixed(1) }}%</span></td>
                 <td class="text-center py-3 px-3 text-sm" :class="[getRecordClass(stat, 'hitting_cat_wins'), catCarStatPage === 1 ? '' : 'hidden sm:table-cell']">{{ stat.hitting_cat_wins }}</td>
                 <td class="text-center py-3 px-3 text-sm" :class="[getRecordClass(stat, 'pitching_cat_wins'), catCarStatPage === 1 ? '' : 'hidden sm:table-cell']">{{ stat.pitching_cat_wins }}</td>
@@ -291,10 +291,10 @@
         <div class="card-body">
           <div class="sm:hidden flex items-center justify-center gap-3 py-2 border-b border-dark-border/30">
           <button @click="catSbsPage = Math.max(0, catSbsPage - 1)" :disabled="catSbsPage === 0" class="w-7 h-7 flex-shrink-0 rounded-full flex items-center justify-center transition-all" :class="catSbsPage === 0 ? 'text-dark-border cursor-default' : 'text-yellow-400 hover:bg-yellow-400/10'"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg></button>
-          <div class="flex gap-1.5"><div v-for="(_, i) in 2" :key="i" class="w-2 h-2 rounded-full transition-colors" :class="i === catSbsPage ? 'bg-yellow-400' : 'bg-dark-border/60'" /></div>
-          <button @click="catSbsPage = Math.min(1, catSbsPage + 1)" :disabled="catSbsPage >= 1" class="w-7 h-7 flex-shrink-0 rounded-full flex items-center justify-center transition-all" :class="catSbsPage >= 1 ? 'text-dark-border cursor-default' : 'text-yellow-400 hover:bg-yellow-400/10'"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg></button>
+          <div class="flex gap-1.5"><div v-for="(_, i) in 3" :key="i" class="w-2 h-2 rounded-full transition-colors" :class="i === catSbsPage ? 'bg-yellow-400' : 'bg-dark-border/60'" /></div>
+          <button @click="catSbsPage = Math.min(2, catSbsPage + 1)" :disabled="catSbsPage >= 2" class="w-7 h-7 flex-shrink-0 rounded-full flex items-center justify-center transition-all" :class="catSbsPage >= 1 ? 'text-dark-border cursor-default' : 'text-yellow-400 hover:bg-yellow-400/10'"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg></button>
         </div>
-          <div class="overflow-x-auto">
+          <div class="overflow-x-hidden sm:overflow-x-auto">
           <table ref="seasonTableRef" class="w-full text-sm">
             <thead>
               <tr class="border-b border-dark-border">
@@ -303,7 +303,7 @@
                 <th class="text-center py-3 px-3 font-semibold text-dark-textSecondary uppercase tracking-wider" :class="catSbsPage > 0 ? 'hidden sm:table-cell' : ''">Fewest Cats</th>
                 <th class="text-center py-3 px-3 font-semibold text-dark-textSecondary uppercase tracking-wider" :class="catSbsPage === 1 ? '' : 'hidden sm:table-cell'">Trans</th>
                 <th class="text-center py-3 px-3 font-semibold text-dark-textSecondary uppercase tracking-wider" :class="catSbsPage === 1 ? '' : 'hidden sm:table-cell'">Trades</th>
-                <th class="text-center py-3 px-3 font-semibold text-dark-textSecondary uppercase tracking-wider" :class="catSbsPage === 1 ? '' : 'hidden sm:table-cell'">Champion</th>
+                <th class="text-center py-3 px-3 font-semibold text-dark-textSecondary uppercase tracking-wider" :class="catSbsPage === 2 ? '' : 'hidden sm:table-cell'">Champion</th>
               </tr>
             </thead>
             <tbody>
@@ -337,7 +337,7 @@
                 <td class="text-center py-3 px-3" :class="catSbsPage === 1 ? '' : 'hidden sm:table-cell'">
                   <div class="text-blue-400 font-semibold text-sm">{{ season.tradeCount }}</div>
                 </td>
-                <td class="text-center py-3 px-3" :class="catSbsPage === 1 ? '' : 'hidden sm:table-cell'">
+                <td class="text-center py-3 px-3" :class="catSbsPage === 2 ? '' : 'hidden sm:table-cell'">
                   <div class="flex items-center justify-center gap-1">
                     <span class="text-base">🏆</span>
                     <template v-if="season.champion">
