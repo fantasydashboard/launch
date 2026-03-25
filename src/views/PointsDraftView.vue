@@ -212,7 +212,7 @@
       <div class="sm:hidden">
         <div class="flex gap-1 mb-1">
           <div class="w-10 flex-shrink-0"></div>
-          <div v-for="team in mobileBoardTeams" :key="team.team_key" class="flex-1 bg-dark-card rounded-t-lg p-1.5 text-center cursor-pointer hover:ring-2 hover:ring-yellow-400" @click="openTeamModal(team)">
+          <div v-for="team in mobileBoardTeams" :key="team.team_key" class="w-0 flex-1 min-w-0 bg-dark-card rounded-t-lg p-1.5 text-center cursor-pointer hover:ring-2 hover:ring-yellow-400" @click="openTeamModal(team)">
             <div class="w-7 h-7 rounded-full bg-dark-border mx-auto mb-1 overflow-hidden">
               <img v-if="team.logo_url" :src="team.logo_url" class="w-full h-full object-cover" @error="handleImageError" />
             </div>
@@ -222,7 +222,7 @@
         </div>
         <div v-for="round in totalRounds" :key="round" class="flex gap-1 mb-1" :class="{ 'draft-blur-row': !hasLeagueAccess && round > 3 }">
           <div class="w-10 flex-shrink-0 bg-dark-card/50 rounded-l-lg flex items-center justify-center"><span class="text-[10px] font-bold text-dark-textMuted">R{{ round }}</span></div>
-          <div v-for="team in mobileBoardTeams" :key="`m-${round}-${team.team_key}`" class="flex-1">
+          <div v-for="team in mobileBoardTeams" :key="`m-${round}-${team.team_key}`" class="w-0 flex-1 min-w-0">
             <div v-if="getPickForRound(team.team_key, round)" @click="selectPick(getPickForRound(team.team_key, round))" class="bg-dark-card rounded-lg p-1.5 cursor-pointer hover:ring-1 hover:ring-yellow-400 h-full" :class="[getPickClass(getPickForRound(team.team_key, round)), positionFilter !== 'All' && !pickMatchesPositionFilter(getPickForRound(team.team_key, round)) ? 'opacity-30' : '']">
               <div class="text-[10px] font-medium text-dark-text truncate">{{ getPickForRound(team.team_key, round)?.player_name || '?' }}</div>
               <div class="flex items-center justify-between mt-0.5">

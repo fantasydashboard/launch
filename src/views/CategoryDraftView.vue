@@ -445,7 +445,7 @@
       <div class="sm:hidden">
         <div class="flex gap-1 mb-1">
           <div class="w-10 flex-shrink-0"></div>
-          <div v-for="team in catMobileBoardTeams" :key="team.team_key" class="flex-1 bg-dark-card rounded-t-lg p-1.5 text-center cursor-pointer hover:ring-2 hover:ring-yellow-400" @click="selectedBoardTeam = team.team_key; showBoardTeamModal = true">
+          <div v-for="team in catMobileBoardTeams" :key="team.team_key" class="w-0 flex-1 min-w-0 bg-dark-card rounded-t-lg p-1.5 text-center cursor-pointer hover:ring-2 hover:ring-yellow-400" @click="selectedBoardTeam = team.team_key; showBoardTeamModal = true">
             <div class="w-7 h-7 rounded-full bg-dark-border mx-auto mb-1 overflow-hidden">
               <img :src="getImageSrc(team.logo_url)" class="w-full h-full object-cover" @error="handleImageError" />
             </div>
@@ -455,7 +455,7 @@
         </div>
         <div v-for="round in totalRounds" :key="round" class="flex gap-1 mb-1" :class="{ 'draft-blur-row': !hasLeagueAccess && round > 3 }">
           <div class="w-10 flex-shrink-0 bg-dark-card/50 rounded-l-lg flex items-center justify-center"><span class="text-[10px] font-bold text-dark-textMuted">R{{ round }}</span></div>
-          <div v-for="team in catMobileBoardTeams" :key="`cm-${round}-${team.team_key}`" class="flex-1">
+          <div v-for="team in catMobileBoardTeams" :key="`cm-${round}-${team.team_key}`" class="w-0 flex-1 min-w-0">
             <div v-if="getPickForRound(team.team_key, round)" @click="selectPick(getPickForRound(team.team_key, round))" class="bg-dark-card rounded-lg p-1.5 cursor-pointer hover:ring-1 hover:ring-yellow-400 h-full" :class="[getPickClassWithHighlight(getPickForRound(team.team_key, round)), positionFilter !== 'All' && !pickMatchesPositionFilter(getPickForRound(team.team_key, round)) ? 'opacity-30' : '']">
               <div class="text-[10px] font-medium text-dark-text truncate">{{ getPickForRound(team.team_key, round)?.player_name || '?' }}</div>
               <div class="flex items-center justify-between mt-0.5">
@@ -687,9 +687,10 @@
         </div>
         <!-- Mobile col nav -->
         <div class="sm:hidden flex items-center justify-center gap-3 py-2 border-b border-dark-border/30">
-          <button @click="catBreakdownPage = Math.max(0, catBreakdownPage - 1)" :disabled="catBreakdownPage === 0" class="w-7 h-7 rounded-full flex items-center justify-center transition-all" :class="catBreakdownPage === 0 ? 'text-dark-border cursor-default' : 'text-yellow-400 hover:bg-yellow-400/10'"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg></button>
-          <div class="flex gap-1.5"><div v-for="(_, i) in catBreakdownTotalPages" :key="i" class="w-2 h-2 rounded-full transition-colors" :class="i === catBreakdownPage ? 'bg-yellow-400' : 'bg-dark-border/60'" /></div>
-          <button @click="catBreakdownPage = Math.min(catBreakdownTotalPages - 1, catBreakdownPage + 1)" :disabled="catBreakdownPage >= catBreakdownTotalPages - 1" class="w-7 h-7 rounded-full flex items-center justify-center transition-all" :class="catBreakdownPage >= catBreakdownTotalPages - 1 ? 'text-dark-border cursor-default' : 'text-yellow-400 hover:bg-yellow-400/10'"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg></button>
+          <button @click="catBreakdownPage = Math.max(0, catBreakdownPage - 1)" :disabled="catBreakdownPage === 0" class="w-7 h-7 flex-shrink-0 rounded-full flex items-center justify-center transition-all" :class="catBreakdownPage === 0 ? 'text-dark-border cursor-default' : 'text-yellow-400 hover:bg-yellow-400/10'"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg></button>
+          <div v-if="catBreakdownTotalPages <= 4" class="flex gap-1.5"><div v-for="(_, i) in catBreakdownTotalPages" :key="i" class="w-2 h-2 rounded-full transition-colors" :class="i === catBreakdownPage ? 'bg-yellow-400' : 'bg-dark-border/60'" /></div>
+          <span v-else class="text-xs font-semibold text-yellow-400 min-w-[48px] text-center">{{ catBreakdownPage + 1 }} / {{ catBreakdownTotalPages }}</span>
+          <button @click="catBreakdownPage = Math.min(catBreakdownTotalPages - 1, catBreakdownPage + 1)" :disabled="catBreakdownPage >= catBreakdownTotalPages - 1" class="w-7 h-7 flex-shrink-0 rounded-full flex items-center justify-center transition-all" :class="catBreakdownPage >= catBreakdownTotalPages - 1 ? 'text-dark-border cursor-default' : 'text-yellow-400 hover:bg-yellow-400/10'"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg></button>
         </div>
         <div class="card-body p-0 sm:overflow-x-auto">
           <table class="w-full text-sm">
