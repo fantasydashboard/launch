@@ -291,8 +291,8 @@
         <div class="card-body">
           <div class="sm:hidden flex items-center justify-center gap-3 py-2">
           <button @click="sbsPage = Math.max(0, sbsPage - 1)" :disabled="sbsPage === 0" class="w-7 h-7 flex-shrink-0 rounded-full flex items-center justify-center transition-all" :class="sbsPage === 0 ? 'text-dark-border cursor-default' : 'text-yellow-400 hover:bg-yellow-400/10'"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg></button>
-          <div class="flex gap-1.5"><div v-for="(_, i) in 2" :key="i" class="w-2 h-2 rounded-full transition-colors" :class="i === sbsPage ? 'bg-yellow-400' : 'bg-dark-border/60'" /></div>
-          <button @click="sbsPage = Math.min(1, sbsPage + 1)" :disabled="sbsPage >= 1" class="w-7 h-7 flex-shrink-0 rounded-full flex items-center justify-center transition-all" :class="sbsPage >= 1 ? 'text-dark-border cursor-default' : 'text-yellow-400 hover:bg-yellow-400/10'"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg></button>
+          <div class="flex gap-1.5"><div v-for="(_, i) in 3" :key="i" class="w-2 h-2 rounded-full transition-colors" :class="i === sbsPage ? 'bg-yellow-400' : 'bg-dark-border/60'" /></div>
+          <button @click="sbsPage = Math.min(2, sbsPage + 1)" :disabled="sbsPage >= 2" class="w-7 h-7 flex-shrink-0 rounded-full flex items-center justify-center transition-all" :class="sbsPage >= 1 ? 'text-dark-border cursor-default' : 'text-yellow-400 hover:bg-yellow-400/10'"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg></button>
         </div>
           <div class="overflow-x-auto">
           <table ref="seasonTableRef" class="w-full text-sm">
@@ -304,7 +304,7 @@
                 <th class="text-center py-3 px-3 font-semibold text-dark-textSecondary uppercase tracking-wider" :class="sbsPage > 0 ? 'hidden sm:table-cell' : ''">Low Score</th>
                 <th class="text-center py-3 px-3 font-semibold text-dark-textSecondary uppercase tracking-wider" :class="sbsPage === 1 ? '' : 'hidden sm:table-cell'">Trans</th>
                 <th class="text-center py-3 px-3 font-semibold text-dark-textSecondary uppercase tracking-wider" :class="sbsPage === 1 ? '' : 'hidden sm:table-cell'">Trades</th>
-                <th class="text-center py-3 px-3 font-semibold text-dark-textSecondary uppercase tracking-wider" :class="sbsPage === 1 ? '' : 'hidden sm:table-cell'">Champion</th>
+                <th class="text-center py-3 px-3 font-semibold text-dark-textSecondary uppercase tracking-wider" :class="sbsPage === 2 ? '' : 'hidden sm:table-cell'">Champion</th>
               </tr>
             </thead>
             <tbody>
@@ -323,7 +323,7 @@
                 </td>
                 <td class="text-center py-3 px-3 text-cyan-400 font-semibold text-sm" :class="sbsPage === 1 ? '' : 'hidden sm:table-cell'">{{ season.transaction_count }}</td>
                 <td class="text-center py-3 px-3 text-dark-text font-semibold text-sm" :class="sbsPage === 1 ? '' : 'hidden sm:table-cell'">{{ season.trade_count }}</td>
-                <td class="text-center py-3 px-3" :class="sbsPage === 1 ? '' : 'hidden sm:table-cell'">
+                <td class="text-center py-3 px-3" :class="sbsPage === 2 ? '' : 'hidden sm:table-cell'">
                   <div class="flex items-center justify-center gap-1">
                     <span class="text-base">🏆</span>
                     <span class="font-semibold text-dark-text text-sm">{{ season.champion || 'TBD' }}</span>
@@ -422,7 +422,7 @@
             <p class="card-subtitle mt-2">All-time comparison</p>
           </div>
           <div class="card-body">
-            <div class="grid grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-6">
+            <div class="flex flex-col sm:flex-row lg:grid lg:grid-cols-3 gap-3 sm:gap-6">
               <!-- Team 1 Stats -->
               <div class="text-center p-3 sm:p-6 bg-gradient-to-br from-cyan-500/10 to-cyan-600/5 rounded-xl border-2 border-cyan-500/30">
                 <img 
@@ -551,24 +551,24 @@
           </div>
           <!-- Mobile: carousel -->
           <div class="md:hidden card p-0 overflow-hidden">
-            <div class="p-4">
+            <div class="p-4 text-center">
               <template v-if="rivalryHighIdx === 0">
-                <div class="text-xs text-dark-textMuted mb-2">💥 Biggest Blowout</div>
-                <div class="font-bold text-dark-text mb-1">{{ compareRivalryHighlights.biggestBlowout.winner }}</div>
-                <div class="text-2xl text-primary font-bold">{{ compareRivalryHighlights.biggestBlowout.margin.toFixed(1) }} points</div>
-                <div class="text-xs text-dark-textMuted mt-1">{{ compareRivalryHighlights.biggestBlowout.season }} Week {{ compareRivalryHighlights.biggestBlowout.week }}</div>
+                <div class="text-xs text-dark-textMuted mb-3">💥 Biggest Blowout</div>
+                <div class="font-bold text-lg text-dark-text mb-1">{{ compareRivalryHighlights.biggestBlowout.winner }}</div>
+                <div class="text-3xl text-primary font-bold mb-1">{{ compareRivalryHighlights.biggestBlowout.margin.toFixed(1) }} points</div>
+                <div class="text-xs text-dark-textMuted">{{ compareRivalryHighlights.biggestBlowout.season }} Week {{ compareRivalryHighlights.biggestBlowout.week }}</div>
               </template>
               <template v-else-if="rivalryHighIdx === 1">
-                <div class="text-xs text-dark-textMuted mb-2">🎯 Closest Game</div>
-                <div class="font-bold text-dark-text mb-1">{{ compareRivalryHighlights.closestGame.winner }}</div>
-                <div class="text-2xl text-primary font-bold">{{ compareRivalryHighlights.closestGame.margin.toFixed(1) }} points</div>
-                <div class="text-xs text-dark-textMuted mt-1">{{ compareRivalryHighlights.closestGame.season }} Week {{ compareRivalryHighlights.closestGame.week }}</div>
+                <div class="text-xs text-dark-textMuted mb-3">🎯 Closest Game</div>
+                <div class="font-bold text-lg text-dark-text mb-1">{{ compareRivalryHighlights.closestGame.winner }}</div>
+                <div class="text-3xl text-primary font-bold mb-1">{{ compareRivalryHighlights.closestGame.margin.toFixed(1) }} points</div>
+                <div class="text-xs text-dark-textMuted">{{ compareRivalryHighlights.closestGame.season }} Week {{ compareRivalryHighlights.closestGame.week }}</div>
               </template>
               <template v-else>
-                <div class="text-xs text-dark-textMuted mb-2">🔥 Highest Scoring</div>
-                <div class="font-bold text-dark-text mb-1">{{ compareRivalryHighlights.highestScoring.totalPoints.toFixed(1) }} total</div>
-                <div class="text-2xl text-primary font-bold">{{ compareRivalryHighlights.highestScoring.score }}</div>
-                <div class="text-xs text-dark-textMuted mt-1">{{ compareRivalryHighlights.highestScoring.season }} Week {{ compareRivalryHighlights.highestScoring.week }}</div>
+                <div class="text-xs text-dark-textMuted mb-3">🔥 Highest Scoring</div>
+                <div class="font-bold text-lg text-dark-text mb-1">{{ compareRivalryHighlights.highestScoring.totalPoints.toFixed(1) }} total</div>
+                <div class="text-3xl text-primary font-bold mb-1">{{ compareRivalryHighlights.highestScoring.score }}</div>
+                <div class="text-xs text-dark-textMuted">{{ compareRivalryHighlights.highestScoring.season }} Week {{ compareRivalryHighlights.highestScoring.week }}</div>
               </template>
             </div>
             <div class="flex items-center justify-center gap-3 pb-3">
@@ -693,7 +693,7 @@
                 <th 
                   v-for="(team, tidx) in filteredH2HTeams"
                   :key="`header-${team.team_key}`"
-                  :class="[{ 'history-blur-row': !hasLeagueAccess && tidx >= 3 }, Math.floor(tidx / 2) !== h2hPage ? 'hidden sm:table-cell' : '']"
+                  :class="[{ 'history-blur-row': !hasLeagueAccess && tidx >= 3 }, (h2hPage === 0 ? tidx >= 2 : Math.floor((tidx - 2) / 3) + 1 !== h2hPage) ? 'hidden sm:table-cell' : '']"
                   class="px-1 sm:px-2 py-2 text-center border border-dark-border font-semibold text-dark-textSecondary uppercase tracking-wider"
                   style="min-width: 60px; max-width: 70px;"
                 >
@@ -709,19 +709,19 @@
             <tbody>
               <tr v-for="(rowTeam, ridx) in filteredH2HTeams" :key="`row-${rowTeam.team_key}`"
                 :class="{ 'history-blur-row': !hasLeagueAccess && ridx >= 3 }">
-                <td class="sticky left-0 bg-dark-elevated z-10 px-2 py-2 font-semibold text-dark-text border border-dark-border whitespace-nowrap" style="min-width:80px; max-width:130px;">
+                <td class="sticky left-0 bg-dark-elevated z-10 px-2 py-2 font-semibold text-dark-text border border-dark-border whitespace-nowrap" :style="h2hPage === 0 ? 'min-width:80px; max-width:130px;' : 'min-width:40px; max-width:44px;'">
                   <div class="flex items-center gap-1.5">
                     <div class="w-6 h-6 rounded-full overflow-hidden bg-dark-border flex-shrink-0">
                       <img :src="rowTeam.logo_url || defaultAvatar" class="w-full h-full object-cover" @error="handleImageError" />
                     </div>
-                    <span class="truncate hidden sm:inline text-xs">{{ rowTeam.team_name }}</span>
+                    <span class="text-xs truncate max-w-[70px]" :class="h2hPage === 0 ? '' : 'hidden sm:inline'">{{ rowTeam.team_name.substring(0, 12) }}{{ rowTeam.team_name.length > 12 ? '…' : '' }}</span>
                   </div>
                 </td>
                 <td 
                   v-for="(colTeam, cidx) in filteredH2HTeams" 
                   :key="`cell-${rowTeam.team_key}-${colTeam.team_key}`"
                   class="px-1 sm:px-2 py-2 text-center border border-dark-border"
-                  :class="[getH2HCellClass(rowTeam.team_key, colTeam.team_key), Math.floor(cidx / 2) !== h2hPage ? 'hidden sm:table-cell' : '']"
+                  :class="[getH2HCellClass(rowTeam.team_key, colTeam.team_key), (h2hPage === 0 ? cidx >= 2 : Math.floor((cidx - 2) / 3) + 1 !== h2hPage) ? 'hidden sm:table-cell' : '']"
                 >
                   <span v-if="rowTeam.team_key === colTeam.team_key" class="text-dark-textMuted">—</span>
                   <span v-else class="font-semibold">
@@ -809,25 +809,12 @@
                 <span>Hall of Fame</span>
               </h3>
               <div class="hidden md:grid grid-cols-2 gap-4">
-                <div 
-                  v-for="(award, idx) in allTimeHallOfFame"
-                  :class="{ 'history-blur-row': !hasLeagueAccess && idx >= 1 }" 
-                  :key="award.title" 
-                  class="bg-green-500/10 border border-green-500/30 rounded-xl p-4 cursor-pointer hover:bg-green-500/20 transition-colors"
-                  @click="openAwardModal(award.title, 'best')"
-                >
+                <div v-for="(award, idx) in allTimeHallOfFame" :class="{ 'history-blur-row': !hasLeagueAccess && idx >= 1 }" :key="award.title" class="bg-green-500/10 border border-green-500/30 rounded-xl p-4 cursor-pointer hover:bg-green-500/20 transition-colors" @click="openAwardModal(award.title, 'best')">
                   <div class="text-sm text-dark-textMuted uppercase tracking-wide mb-2">{{ award.title }}</div>
                   <div v-if="award.winner" class="flex items-center gap-3 mb-2">
-                    <div class="w-12 h-12 rounded-full overflow-hidden bg-dark-border flex-shrink-0">
-                      <img :src="award.winner.logo_url || defaultAvatar" :alt="award.winner.team_name" class="w-full h-full object-cover" @error="handleImageError" />
-                    </div>
-                    <div class="flex-1">
-                      <div class="font-bold text-dark-text">{{ award.winner.team_name }}</div>
-                      <div class="text-xs text-dark-textMuted">{{ award.winner.season || 'All-Time' }}</div>
-                    </div>
-                    <div class="text-right">
-                      <div class="text-2xl font-bold text-green-400">{{ award.winner.value }}</div>
-                    </div>
+                    <div class="w-12 h-12 rounded-full overflow-hidden bg-dark-border flex-shrink-0"><img :src="award.winner.logo_url || defaultAvatar" :alt="award.winner.team_name" class="w-full h-full object-cover" @error="handleImageError" /></div>
+                    <div class="flex-1"><div class="font-bold text-dark-text">{{ award.winner.team_name }}</div><div class="text-xs text-dark-textMuted">{{ award.winner.season || 'All-Time' }}</div></div>
+                    <div class="text-right"><div class="text-2xl font-bold text-green-400">{{ award.winner.value }}</div></div>
                   </div>
                   <div v-if="award.winner" class="text-xs text-dark-textSecondary">{{ award.winner.details }}</div>
                   <div v-else class="text-sm text-dark-textMuted italic">No data available</div>
@@ -838,13 +825,8 @@
                 <div class="p-4" v-if="allTimeHallOfFame[hofIdx]" @click="openAwardModal(allTimeHallOfFame[hofIdx].title, 'best')">
                   <div class="text-sm text-dark-textMuted uppercase tracking-wide mb-2">{{ allTimeHallOfFame[hofIdx].title }}</div>
                   <div v-if="allTimeHallOfFame[hofIdx].winner" class="flex items-center gap-3 mb-2">
-                    <div class="w-14 h-14 rounded-full overflow-hidden bg-dark-border flex-shrink-0">
-                      <img :src="allTimeHallOfFame[hofIdx].winner.logo_url || defaultAvatar" class="w-full h-full object-cover" @error="handleImageError" />
-                    </div>
-                    <div class="flex-1">
-                      <div class="font-bold text-dark-text">{{ allTimeHallOfFame[hofIdx].winner.team_name }}</div>
-                      <div class="text-xs text-dark-textMuted">{{ allTimeHallOfFame[hofIdx].winner.season || 'All-Time' }}</div>
-                    </div>
+                    <div class="w-14 h-14 rounded-full overflow-hidden bg-dark-border flex-shrink-0"><img :src="allTimeHallOfFame[hofIdx].winner.logo_url || defaultAvatar" class="w-full h-full object-cover" @error="handleImageError" /></div>
+                    <div class="flex-1"><div class="font-bold text-dark-text">{{ allTimeHallOfFame[hofIdx].winner.team_name }}</div><div class="text-xs text-dark-textMuted">{{ allTimeHallOfFame[hofIdx].winner.season || 'All-Time' }}</div></div>
                     <div class="text-right"><div class="text-2xl font-bold text-green-400">{{ allTimeHallOfFame[hofIdx].winner.value }}</div></div>
                   </div>
                   <div v-if="allTimeHallOfFame[hofIdx].winner" class="text-xs text-dark-textSecondary">{{ allTimeHallOfFame[hofIdx].winner.details }}</div>
@@ -882,25 +864,12 @@
                 <span>Hall of Shame</span>
               </h3>
               <div class="hidden md:grid grid-cols-2 gap-4">
-                <div 
-                  v-for="(award, idx) in allTimeHallOfShame"
-                  :class="{ 'history-blur-row': !hasLeagueAccess && idx >= 1 }" 
-                  :key="award.title" 
-                  class="bg-dark-border/30 rounded-xl p-4 cursor-pointer hover:bg-dark-border/50 transition-colors"
-                  @click="openAwardModal(award.title, 'worst')"
-                >
+                <div v-for="(award, idx) in allTimeHallOfShame" :class="{ 'history-blur-row': !hasLeagueAccess && idx >= 1 }" :key="award.title" class="bg-dark-border/30 rounded-xl p-4 cursor-pointer hover:bg-dark-border/50 transition-colors" @click="openAwardModal(award.title, 'worst')">
                   <div class="text-sm text-dark-textMuted uppercase tracking-wide mb-2">{{ award.title }}</div>
                   <div v-if="award.winner" class="flex items-center gap-3 mb-2">
-                    <div class="w-12 h-12 rounded-full overflow-hidden bg-dark-border flex-shrink-0">
-                      <img :src="award.winner.logo_url || defaultAvatar" :alt="award.winner.team_name" class="w-full h-full object-cover" @error="handleImageError" />
-                    </div>
-                    <div class="flex-1">
-                      <div class="font-bold text-dark-text">{{ award.winner.team_name }}</div>
-                      <div class="text-xs text-dark-textMuted">{{ award.winner.season || 'All-Time' }}</div>
-                    </div>
-                    <div class="text-right">
-                      <div class="text-2xl font-bold text-red-400">{{ award.winner.value }}</div>
-                    </div>
+                    <div class="w-12 h-12 rounded-full overflow-hidden bg-dark-border flex-shrink-0"><img :src="award.winner.logo_url || defaultAvatar" :alt="award.winner.team_name" class="w-full h-full object-cover" @error="handleImageError" /></div>
+                    <div class="flex-1"><div class="font-bold text-dark-text">{{ award.winner.team_name }}</div><div class="text-xs text-dark-textMuted">{{ award.winner.season || 'All-Time' }}</div></div>
+                    <div class="text-right"><div class="text-2xl font-bold text-red-400">{{ award.winner.value }}</div></div>
                   </div>
                   <div v-if="award.winner" class="text-xs text-dark-textSecondary">{{ award.winner.details }}</div>
                   <div v-else class="text-sm text-dark-textMuted italic">No data available</div>
@@ -911,13 +880,8 @@
                 <div class="p-4" v-if="allTimeHallOfShame[hosIdx]" @click="openAwardModal(allTimeHallOfShame[hosIdx].title, 'worst')">
                   <div class="text-sm text-dark-textMuted uppercase tracking-wide mb-2">{{ allTimeHallOfShame[hosIdx].title }}</div>
                   <div v-if="allTimeHallOfShame[hosIdx].winner" class="flex items-center gap-3 mb-2">
-                    <div class="w-14 h-14 rounded-full overflow-hidden bg-dark-border flex-shrink-0">
-                      <img :src="allTimeHallOfShame[hosIdx].winner.logo_url || defaultAvatar" class="w-full h-full object-cover" @error="handleImageError" />
-                    </div>
-                    <div class="flex-1">
-                      <div class="font-bold text-dark-text">{{ allTimeHallOfShame[hosIdx].winner.team_name }}</div>
-                      <div class="text-xs text-dark-textMuted">{{ allTimeHallOfShame[hosIdx].winner.season || 'All-Time' }}</div>
-                    </div>
+                    <div class="w-14 h-14 rounded-full overflow-hidden bg-dark-border flex-shrink-0"><img :src="allTimeHallOfShame[hosIdx].winner.logo_url || defaultAvatar" class="w-full h-full object-cover" @error="handleImageError" /></div>
+                    <div class="flex-1"><div class="font-bold text-dark-text">{{ allTimeHallOfShame[hosIdx].winner.team_name }}</div><div class="text-xs text-dark-textMuted">{{ allTimeHallOfShame[hosIdx].winner.season || 'All-Time' }}</div></div>
                     <div class="text-right"><div class="text-2xl font-bold text-red-400">{{ allTimeHallOfShame[hosIdx].winner.value }}</div></div>
                   </div>
                   <div v-if="allTimeHallOfShame[hosIdx].winner" class="text-xs text-dark-textSecondary">{{ allTimeHallOfShame[hosIdx].winner.details }}</div>
@@ -957,34 +921,34 @@
                 <span>🏅</span>
                 <span>{{ selectedAwardSeason }} Hall of Fame</span>
               </h3>
-              <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div 
-                  v-for="(award, idx) in seasonHallOfFame"
-                    :class="{ 'history-blur-row': !hasLeagueAccess && idx >= 1 }" 
-                  :key="award.title" 
-                  class="bg-green-500/10 border border-green-500/30 rounded-xl p-4 cursor-pointer hover:bg-green-500/20 transition-colors"
-                  @click="openSeasonAwardModal(award.title, 'best')"
-                >
+              <div class="hidden md:grid grid-cols-2 gap-4">
+                <div v-for="(award, idx) in seasonHallOfFame" :class="{ 'history-blur-row': !hasLeagueAccess && idx >= 1 }" :key="award.title" class="bg-green-500/10 border border-green-500/30 rounded-xl p-4 cursor-pointer hover:bg-green-500/20 transition-colors" @click="openSeasonAwardModal(award.title, 'best')">
                   <div class="text-sm text-dark-textMuted uppercase tracking-wide mb-2">{{ award.title }}</div>
                   <div v-if="award.winner" class="flex items-center gap-3 mb-2">
-                    <div class="w-12 h-12 rounded-full overflow-hidden bg-dark-border flex-shrink-0">
-                      <img
-                        :src="award.winner.logo_url || defaultAvatar"
-                        :alt="award.winner.team_name"
-                        class="w-full h-full object-cover"
-                        @error="handleImageError"
-                      />
-                    </div>
-                    <div class="flex-1">
-                      <div class="font-bold text-dark-text">{{ award.winner.team_name }}</div>
-                    </div>
-                    <div class="text-right">
-                      <div class="text-2xl font-bold text-green-400">{{ award.winner.value }}</div>
-                    </div>
+                    <div class="w-12 h-12 rounded-full overflow-hidden bg-dark-border flex-shrink-0"><img :src="award.winner.logo_url || defaultAvatar" :alt="award.winner.team_name" class="w-full h-full object-cover" @error="handleImageError" /></div>
+                    <div class="flex-1"><div class="font-bold text-dark-text">{{ award.winner.team_name }}</div></div>
+                    <div class="text-right"><div class="text-2xl font-bold text-green-400">{{ award.winner.value }}</div></div>
                   </div>
                   <div v-if="award.winner" class="text-xs text-dark-textSecondary">{{ award.winner.details }}</div>
                   <div v-else class="text-sm text-dark-textMuted italic">No data available</div>
                   <div class="text-xs text-green-400 mt-2 opacity-70">Click for top 10 →</div>
+                </div>
+              </div>
+              <div class="md:hidden card p-0 overflow-hidden mt-2">
+                <div class="p-4" v-if="seasonHallOfFame[sHofIdx]" @click="openSeasonAwardModal(seasonHallOfFame[sHofIdx].title, 'best')">
+                  <div class="text-sm text-dark-textMuted uppercase tracking-wide mb-2">{{ seasonHallOfFame[sHofIdx].title }}</div>
+                  <div v-if="seasonHallOfFame[sHofIdx].winner" class="flex items-center gap-3 mb-2">
+                    <div class="w-14 h-14 rounded-full overflow-hidden bg-dark-border flex-shrink-0"><img :src="seasonHallOfFame[sHofIdx].winner.logo_url || defaultAvatar" class="w-full h-full object-cover" @error="handleImageError" /></div>
+                    <div class="flex-1"><div class="font-bold text-dark-text">{{ seasonHallOfFame[sHofIdx].winner.team_name }}</div><div class="text-xs text-dark-textMuted">{{ seasonHallOfFame[sHofIdx].winner.season || 'All-Time' }}</div></div>
+                    <div class="text-right"><div class="text-2xl font-bold text-green-400">{{ seasonHallOfFame[sHofIdx].winner.value }}</div></div>
+                  </div>
+                  <div v-if="seasonHallOfFame[sHofIdx].winner" class="text-xs text-dark-textSecondary">{{ seasonHallOfFame[sHofIdx].winner.details }}</div>
+                  <div class="text-xs text-green-400 mt-2 opacity-70">Tap for top 10 →</div>
+                </div>
+                <div class="flex items-center justify-center gap-3 pb-3">
+                  <button @click="sHofIdx = Math.max(0, sHofIdx - 1)" :disabled="sHofIdx === 0" class="w-7 h-7 flex-shrink-0 rounded-full flex items-center justify-center" :class="sHofIdx === 0 ? 'text-dark-border' : 'text-yellow-400 hover:bg-yellow-400/10'"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg></button>
+                  <div class="flex gap-1.5"><div v-for="(_, i) in seasonHallOfFame.length" :key="i" class="w-2 h-2 rounded-full" :class="i === sHofIdx ? 'bg-yellow-400' : 'bg-dark-border/60'" /></div>
+                  <button @click="sHofIdx = Math.min(seasonHallOfFame.length - 1, sHofIdx + 1)" :disabled="sHofIdx >= seasonHallOfFame.length - 1" class="w-7 h-7 flex-shrink-0 rounded-full flex items-center justify-center" :class="sHofIdx >= seasonHallOfFame.length - 1 ? 'text-dark-border' : 'text-yellow-400 hover:bg-yellow-400/10'"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg></button>
                 </div>
               </div>
             </div>
@@ -995,34 +959,34 @@
                 <span>💩</span>
                 <span>{{ selectedAwardSeason }} Hall of Shame</span>
               </h3>
-              <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div 
-                  v-for="(award, idx) in seasonHallOfShame"
-                    :class="{ 'history-blur-row': !hasLeagueAccess && idx >= 1 }" 
-                  :key="award.title" 
-                  class="bg-dark-border/30 rounded-xl p-4 cursor-pointer hover:bg-dark-border/50 transition-colors"
-                  @click="openSeasonAwardModal(award.title, 'worst')"
-                >
+              <div class="hidden md:grid grid-cols-2 gap-4">
+                <div v-for="(award, idx) in seasonHallOfShame" :class="{ 'history-blur-row': !hasLeagueAccess && idx >= 1 }" :key="award.title" class="bg-dark-border/30 rounded-xl p-4 cursor-pointer hover:bg-dark-border/50 transition-colors" @click="openSeasonAwardModal(award.title, 'worst')">
                   <div class="text-sm text-dark-textMuted uppercase tracking-wide mb-2">{{ award.title }}</div>
                   <div v-if="award.winner" class="flex items-center gap-3 mb-2">
-                    <div class="w-12 h-12 rounded-full overflow-hidden bg-dark-border flex-shrink-0">
-                      <img
-                        :src="award.winner.logo_url || defaultAvatar"
-                        :alt="award.winner.team_name"
-                        class="w-full h-full object-cover"
-                        @error="handleImageError"
-                      />
-                    </div>
-                    <div class="flex-1">
-                      <div class="font-bold text-dark-text">{{ award.winner.team_name }}</div>
-                    </div>
-                    <div class="text-right">
-                      <div class="text-2xl font-bold text-red-400">{{ award.winner.value }}</div>
-                    </div>
+                    <div class="w-12 h-12 rounded-full overflow-hidden bg-dark-border flex-shrink-0"><img :src="award.winner.logo_url || defaultAvatar" :alt="award.winner.team_name" class="w-full h-full object-cover" @error="handleImageError" /></div>
+                    <div class="flex-1"><div class="font-bold text-dark-text">{{ award.winner.team_name }}</div></div>
+                    <div class="text-right"><div class="text-2xl font-bold text-red-400">{{ award.winner.value }}</div></div>
                   </div>
                   <div v-if="award.winner" class="text-xs text-dark-textSecondary">{{ award.winner.details }}</div>
                   <div v-else class="text-sm text-dark-textMuted italic">No data available</div>
                   <div class="text-xs text-red-400 mt-2 opacity-70">Click for bottom 10 →</div>
+                </div>
+              </div>
+              <div class="md:hidden card p-0 overflow-hidden mt-2">
+                <div class="p-4" v-if="seasonHallOfShame[sHosIdx]" @click="openSeasonAwardModal(seasonHallOfShame[sHosIdx].title, 'worst')">
+                  <div class="text-sm text-dark-textMuted uppercase tracking-wide mb-2">{{ seasonHallOfShame[sHosIdx].title }}</div>
+                  <div v-if="seasonHallOfShame[sHosIdx].winner" class="flex items-center gap-3 mb-2">
+                    <div class="w-14 h-14 rounded-full overflow-hidden bg-dark-border flex-shrink-0"><img :src="seasonHallOfShame[sHosIdx].winner.logo_url || defaultAvatar" class="w-full h-full object-cover" @error="handleImageError" /></div>
+                    <div class="flex-1"><div class="font-bold text-dark-text">{{ seasonHallOfShame[sHosIdx].winner.team_name }}</div><div class="text-xs text-dark-textMuted">{{ seasonHallOfShame[sHosIdx].winner.season || 'All-Time' }}</div></div>
+                    <div class="text-right"><div class="text-2xl font-bold text-red-400">{{ seasonHallOfShame[sHosIdx].winner.value }}</div></div>
+                  </div>
+                  <div v-if="seasonHallOfShame[sHosIdx].winner" class="text-xs text-dark-textSecondary">{{ seasonHallOfShame[sHosIdx].winner.details }}</div>
+                  <div class="text-xs text-red-400 mt-2 opacity-70">Tap for bottom 10 →</div>
+                </div>
+                <div class="flex items-center justify-center gap-3 pb-3">
+                  <button @click="sHosIdx = Math.max(0, sHosIdx - 1)" :disabled="sHosIdx === 0" class="w-7 h-7 flex-shrink-0 rounded-full flex items-center justify-center" :class="sHosIdx === 0 ? 'text-dark-border' : 'text-yellow-400 hover:bg-yellow-400/10'"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg></button>
+                  <div class="flex gap-1.5"><div v-for="(_, i) in seasonHallOfShame.length" :key="i" class="w-2 h-2 rounded-full" :class="i === sHosIdx ? 'bg-yellow-400' : 'bg-dark-border/60'" /></div>
+                  <button @click="sHosIdx = Math.min(seasonHallOfShame.length - 1, sHosIdx + 1)" :disabled="sHosIdx >= seasonHallOfShame.length - 1" class="w-7 h-7 flex-shrink-0 rounded-full flex items-center justify-center" :class="sHosIdx >= seasonHallOfShame.length - 1 ? 'text-dark-border' : 'text-yellow-400 hover:bg-yellow-400/10'"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg></button>
                 </div>
               </div>
           <!-- Gate banner -->
@@ -1047,34 +1011,34 @@
 
           <!-- Weekly Awards -->
           <div v-if="selectedAwardTab === 'Weekly'">
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div 
-                v-for="(award, idx) in weeklyAwards"
-                    :class="{ 'history-blur-row': !hasLeagueAccess && idx >= 1 }" 
-                :key="award.title" 
-                class="bg-dark-border/30 rounded-xl p-4 cursor-pointer hover:bg-dark-border/50 transition-colors"
-                @click="openWeeklyAwardModal(award.title, award.isShame ? 'worst' : 'best')"
-              >
+            <div class="hidden md:grid grid-cols-2 gap-4">
+              <div v-for="(award, idx) in weeklyAwards" :class="{ 'history-blur-row': !hasLeagueAccess && idx >= 1 }" :key="award.title" class="bg-dark-border/30 rounded-xl p-4 cursor-pointer hover:bg-dark-border/50 transition-colors" @click="openWeeklyAwardModal(award.title, award.isShame ? 'worst' : 'best')">
                 <div class="text-sm text-dark-textMuted uppercase tracking-wide mb-2">{{ award.title }}</div>
                 <div v-if="award.winner" class="flex items-center gap-3 mb-2">
-                  <div class="w-12 h-12 rounded-full overflow-hidden bg-dark-border flex-shrink-0">
-                    <img
-                      :src="award.winner.logo_url || defaultAvatar"
-                      :alt="award.winner.team_name"
-                      class="w-full h-full object-cover"
-                      @error="handleImageError"
-                    />
-                  </div>
-                  <div class="flex-1">
-                    <div class="font-bold text-dark-text">{{ award.winner.team_name }}</div>
-                  </div>
-                  <div class="text-right">
-                    <div class="text-2xl font-bold" :class="award.isShame ? 'text-red-400' : 'text-green-400'">{{ award.winner.value }}</div>
-                  </div>
+                  <div class="w-12 h-12 rounded-full overflow-hidden bg-dark-border flex-shrink-0"><img :src="award.winner.logo_url || defaultAvatar" :alt="award.winner.team_name" class="w-full h-full object-cover" @error="handleImageError" /></div>
+                  <div class="flex-1"><div class="font-bold text-dark-text">{{ award.winner.team_name }}</div></div>
+                  <div class="text-right"><div class="text-2xl font-bold" :class="award.isShame ? 'text-red-400' : 'text-green-400'">{{ award.winner.value }}</div></div>
                 </div>
                 <div v-if="award.winner" class="text-xs text-dark-textSecondary">{{ award.winner.details }}</div>
                 <div v-else class="text-sm text-dark-textMuted italic">No data available</div>
                 <div class="text-xs text-yellow-400 mt-2 opacity-70">Click for details →</div>
+              </div>
+            </div>
+            <div class="md:hidden card p-0 overflow-hidden">
+              <div class="p-4" v-if="weeklyAwards[weeklyIdx]" @click="openWeeklyAwardModal(weeklyAwards[weeklyIdx].title, weeklyAwards[weeklyIdx].isShame ? 'worst' : 'best')">
+                <div class="text-sm text-dark-textMuted uppercase tracking-wide mb-2">{{ weeklyAwards[weeklyIdx].title }}</div>
+                <div v-if="weeklyAwards[weeklyIdx].winner" class="flex items-center gap-3 mb-2">
+                  <div class="w-14 h-14 rounded-full overflow-hidden bg-dark-border flex-shrink-0"><img :src="weeklyAwards[weeklyIdx].winner.logo_url || defaultAvatar" class="w-full h-full object-cover" @error="handleImageError" /></div>
+                  <div class="flex-1"><div class="font-bold text-dark-text">{{ weeklyAwards[weeklyIdx].winner.team_name }}</div></div>
+                  <div class="text-right"><div class="text-2xl font-bold" :class="weeklyAwards[weeklyIdx].isShame ? 'text-red-400' : 'text-green-400'">{{ weeklyAwards[weeklyIdx].winner.value }}</div></div>
+                </div>
+                <div v-if="weeklyAwards[weeklyIdx].winner" class="text-xs text-dark-textSecondary">{{ weeklyAwards[weeklyIdx].winner.details }}</div>
+                <div class="text-xs text-yellow-400 mt-2 opacity-70">Tap for details →</div>
+              </div>
+              <div class="flex items-center justify-center gap-3 pb-3">
+                <button @click="weeklyIdx = Math.max(0, weeklyIdx - 1)" :disabled="weeklyIdx === 0" class="w-7 h-7 flex-shrink-0 rounded-full flex items-center justify-center" :class="weeklyIdx === 0 ? 'text-dark-border' : 'text-yellow-400 hover:bg-yellow-400/10'"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg></button>
+                <div class="flex gap-1.5"><div v-for="(_, i) in weeklyAwards.length" :key="i" class="w-2 h-2 rounded-full" :class="i === weeklyIdx ? 'bg-yellow-400' : 'bg-dark-border/60'" /></div>
+                <button @click="weeklyIdx = Math.min(weeklyAwards.length - 1, weeklyIdx + 1)" :disabled="weeklyIdx >= weeklyAwards.length - 1" class="w-7 h-7 flex-shrink-0 rounded-full flex items-center justify-center" :class="weeklyIdx >= weeklyAwards.length - 1 ? 'text-dark-border' : 'text-yellow-400 hover:bg-yellow-400/10'"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg></button>
               </div>
             </div>
           </div>
@@ -1378,66 +1342,47 @@
                 <span class="text-sm text-dark-textMuted">Click on a team below to see detailed season breakdown</span>
               </div>
               
-              <!-- Team Selector Row with Scroll -->
-              <div class="mt-4 pt-4 border-t border-dark-border relative">
-                <!-- Left Arrow -->
-                <button 
-                  v-if="canScrollLeft"
-                  @click="scrollTeamSelector('left')"
-                  class="absolute left-0 top-1/2 -translate-y-1/2 z-10 w-8 h-8 bg-dark-card border border-dark-border rounded-full flex items-center justify-center text-dark-textMuted hover:text-dark-text hover:bg-dark-border transition-colors shadow-lg"
-                >
-                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
-                  </svg>
-                </button>
-                
-                <!-- Scrollable Container -->
-                <div 
-                  ref="teamSelectorRef"
-                  class="flex gap-2 overflow-x-auto scrollbar-hide px-2"
-                  @scroll="updateScrollState"
-                >
-                  <div 
-                    v-for="(team, idx) in filteredLegacyScores"
-                    :key="'selector-' + team.team_key"
-                    class="flex flex-col items-center gap-1.5 px-3 py-2 rounded-lg cursor-pointer transition-all flex-shrink-0 min-w-[80px]"
-                    :class="[
-                      selectedLegacyTeamKey === team.team_key 
-                        ? 'bg-dark-border ring-2 ring-offset-2 ring-offset-dark-card' 
-                        : 'bg-dark-bg/50 hover:bg-dark-border/50',
-                      selectedLegacyTeamKey && selectedLegacyTeamKey !== team.team_key ? 'opacity-40' : '',
-                      !hasLeagueAccess && idx >= 3 ? 'history-blur-row' : ''
-                    ]"
-                    :style="selectedLegacyTeamKey === team.team_key ? { ringColor: getLegacyTeamColor(idx) } : {}"
+              <!-- Team Selector: mobile=yellow nav+pages; desktop=scroll arrows -->
+              <div class="mt-4 pt-4 border-t border-dark-border">
+                <!-- Mobile: yellow arrows + dots nav -->
+                <div class="sm:hidden flex items-center justify-center gap-3 pb-2">
+                  <button @click="legacyTeamPage = Math.max(0, legacyTeamPage - 1)" :disabled="legacyTeamPage === 0" class="w-7 h-7 flex-shrink-0 rounded-full flex items-center justify-center" :class="legacyTeamPage === 0 ? 'text-dark-border' : 'text-yellow-400 hover:bg-yellow-400/10'"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg></button>
+                  <div class="flex gap-1.5"><div v-for="(_, i) in legacyTeamTotalPages" :key="i" class="w-2 h-2 rounded-full" :class="i === legacyTeamPage ? 'bg-yellow-400' : 'bg-dark-border/60'" /></div>
+                  <button @click="legacyTeamPage = Math.min(legacyTeamTotalPages - 1, legacyTeamPage + 1)" :disabled="legacyTeamPage >= legacyTeamTotalPages - 1" class="w-7 h-7 flex-shrink-0 rounded-full flex items-center justify-center" :class="legacyTeamPage >= legacyTeamTotalPages - 1 ? 'text-dark-border' : 'text-yellow-400 hover:bg-yellow-400/10'"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg></button>
+                </div>
+                <!-- Mobile: paged team grid -->
+                <div class="sm:hidden flex justify-center gap-2 flex-wrap">
+                  <div v-for="(team, idx) in legacyMobilePagedTeams" :key="'mob-sel-' + team.team_key"
+                    class="flex flex-col items-center gap-1.5 px-2 py-2 rounded-lg cursor-pointer transition-all flex-shrink-0 min-w-[70px]"
+                    :class="[selectedLegacyTeamKey === team.team_key ? 'bg-dark-border ring-2 ring-offset-2 ring-offset-dark-card' : 'bg-dark-bg/50 hover:bg-dark-border/50', selectedLegacyTeamKey && selectedLegacyTeamKey !== team.team_key ? 'opacity-40' : '', !hasLeagueAccess && filteredLegacyScores.indexOf(team) >= 3 ? 'history-blur-row' : '']"
                     @click="selectedLegacyTeamKey = selectedLegacyTeamKey === team.team_key ? null : team.team_key"
                   >
-                    <!-- Rank Badge -->
-                    <div class="text-xs font-bold text-dark-textMuted">#{{ idx + 1 }}</div>
-                    <!-- Color + Avatar -->
-                    <div class="relative">
-                      <img 
-                        :src="team.logo_url || defaultAvatar" 
-                        :alt="team.team_name"
-                        class="w-8 h-8 rounded-full object-cover"
-                        :style="{ boxShadow: `0 0 0 3px ${getLegacyTeamColor(idx)}` }"
-                        @error="handleImageError"
-                      />
-                    </div>
-                    <!-- Team Name -->
-                    <span class="text-xs font-medium text-dark-text truncate max-w-[70px] text-center">{{ team.team_name }}</span>
+                    <div class="text-xs font-bold text-dark-textMuted">#{{ filteredLegacyScores.indexOf(team) + 1 }}</div>
+                    <img :src="team.logo_url || defaultAvatar" :alt="team.team_name" class="w-8 h-8 rounded-full object-cover" :style="{ boxShadow: `0 0 0 3px ${getLegacyTeamColor(filteredLegacyScores.indexOf(team))}` }" @error="handleImageError" />
+                    <span class="text-xs font-medium text-dark-text truncate max-w-[60px] text-center">{{ team.team_name }}</span>
                   </div>
                 </div>
-                
-                <!-- Right Arrow -->
-                <button 
-                  v-if="canScrollRight"
-                  @click="scrollTeamSelector('right')"
-                  class="absolute right-0 top-1/2 -translate-y-1/2 z-10 w-8 h-8 bg-dark-card border border-dark-border rounded-full flex items-center justify-center text-dark-textMuted hover:text-dark-text hover:bg-dark-border transition-colors shadow-lg"
-                >
-                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
-                  </svg>
-                </button>
+                <!-- Desktop: original scroll arrows + container -->
+                <div class="hidden sm:block relative">
+                  <button v-if="canScrollLeft" @click="scrollTeamSelector('left')" class="absolute left-0 top-1/2 -translate-y-1/2 z-10 w-8 h-8 bg-dark-card border border-dark-border rounded-full flex items-center justify-center text-dark-textMuted hover:text-dark-text hover:bg-dark-border transition-colors shadow-lg">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" /></svg>
+                  </button>
+                  <div ref="teamSelectorRef" class="flex gap-2 overflow-x-auto scrollbar-hide px-2" @scroll="updateScrollState">
+                    <div v-for="(team, idx) in filteredLegacyScores" :key="'selector-' + team.team_key"
+                      class="flex flex-col items-center gap-1.5 px-3 py-2 rounded-lg cursor-pointer transition-all flex-shrink-0 min-w-[80px]"
+                      :class="[selectedLegacyTeamKey === team.team_key ? 'bg-dark-border ring-2 ring-offset-2 ring-offset-dark-card' : 'bg-dark-bg/50 hover:bg-dark-border/50', selectedLegacyTeamKey && selectedLegacyTeamKey !== team.team_key ? 'opacity-40' : '', !hasLeagueAccess && idx >= 3 ? 'history-blur-row' : '']"
+                      :style="selectedLegacyTeamKey === team.team_key ? { ringColor: getLegacyTeamColor(idx) } : {}"
+                      @click="selectedLegacyTeamKey = selectedLegacyTeamKey === team.team_key ? null : team.team_key"
+                    >
+                      <div class="text-xs font-bold text-dark-textMuted">#{{ idx + 1 }}</div>
+                      <div class="relative"><img :src="team.logo_url || defaultAvatar" :alt="team.team_name" class="w-8 h-8 rounded-full object-cover" :style="{ boxShadow: `0 0 0 3px ${getLegacyTeamColor(idx)}` }" @error="handleImageError" /></div>
+                      <span class="text-xs font-medium text-dark-text truncate max-w-[70px] text-center">{{ team.team_name }}</span>
+                    </div>
+                  </div>
+                  <button v-if="canScrollRight" @click="scrollTeamSelector('right')" class="absolute right-0 top-1/2 -translate-y-1/2 z-10 w-8 h-8 bg-dark-card border border-dark-border rounded-full flex items-center justify-center text-dark-textMuted hover:text-dark-text hover:bg-dark-border transition-colors shadow-lg">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" /></svg>
+                  </button>
+                </div>
               </div>
               
               <!-- Selected Team Details -->
@@ -3482,7 +3427,11 @@ const hosIdx = ref(0)          // Awards HoS carousel
 const legacyChartOffset = ref(0) // Legacy chart year window offset (0=latest)
 const LEGACY_WIN = 4
 
-const h2hTotalPages = computed(() => Math.max(1, Math.ceil((filteredH2HTeams.value?.length || 0) / 2)))
+const h2hTotalPages = computed(() => {
+  const total = filteredH2HTeams.value?.length || 0
+  if (total <= 2) return 1
+  return 1 + Math.ceil((total - 2) / 3)  // page 0: 2 cols with name; pages 1+: 3 cols logo-only
+})
 
 const legacyChartTotalPages = computed(() => {
   const total = legacyChartYearsAll.value.length
@@ -3512,6 +3461,18 @@ const legacyMobileChartOptions = computed(() => {
     xaxis: { ...legacyChartOptions.value.xaxis, categories: legacyChartYearsAll.value.slice(start, end) },
     legend: { show: false }
   }
+})
+
+
+const sHofIdx = ref(0)     // Season HoF carousel
+const sHosIdx = ref(0)     // Season HoS carousel
+const weeklyIdx = ref(0)   // Weekly awards carousel
+const legacyTeamPage = ref(0)
+const LEGACY_TEAMS_PER_PAGE = 4
+const legacyTeamTotalPages = computed(() => Math.max(1, Math.ceil((filteredLegacyScores.value?.length || 0) / LEGACY_TEAMS_PER_PAGE)))
+const legacyMobilePagedTeams = computed(() => {
+  const start = legacyTeamPage.value * LEGACY_TEAMS_PER_PAGE
+  return (filteredLegacyScores.value || []).slice(start, start + LEGACY_TEAMS_PER_PAGE)
 })
 
 const teamSelectorRef = ref<HTMLElement | null>(null)
