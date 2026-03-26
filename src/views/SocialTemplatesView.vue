@@ -434,6 +434,159 @@
         </div>
       </div>
 
+
+      <!-- ════════════════════════════════════
+           SHOWCASE CARDS — Cards-only + logo
+      ════════════════════════════════════ -->
+
+      <!-- 19 · Power Rankings Showcase — with text -->
+      <div class="post-wrap">
+        <div class="post-label">19 · Power Rankings — Card Showcase (with text)</div>
+        <div class="sq sq-showcase sq-sc-gold">
+          <div class="sq-grain"></div>
+          <div class="sq-topline"></div>
+          <div class="sc-logo-row">
+            <img src="/UFD_V8.png" class="sc-logo" alt="UFD" />
+          </div>
+          <div class="sc-fan-hero">
+            <div class="sc-fan-scale">
+              <FanCards variant="pr" />
+            </div>
+          </div>
+          <div class="sc-feature-word sc-word-gold">POWER RANKINGS</div>
+          <div class="sq-url">ultimatefantasydashboard.com</div>
+        </div>
+      </div>
+
+      <!-- 20 · Power Rankings Showcase — clean (no text) -->
+      <div class="post-wrap">
+        <div class="post-label">20 · Power Rankings — Card Showcase (clean)</div>
+        <div class="sq sq-showcase sq-sc-gold">
+          <div class="sq-grain"></div>
+          <div class="sq-topline"></div>
+          <div class="sc-logo-row sc-logo-center">
+            <img src="/UFD_V8.png" class="sc-logo sc-logo-lg" alt="UFD" />
+          </div>
+          <div class="sc-fan-hero sc-fan-full">
+            <div class="sc-fan-scale sc-fan-scale-lg">
+              <FanCards variant="pr" />
+            </div>
+          </div>
+          <div class="sq-url">ultimatefantasydashboard.com</div>
+        </div>
+      </div>
+
+      <!-- 21 · Matchup Showcase — with text -->
+      <div class="post-wrap">
+        <div class="post-label">21 · Matchup Analysis — Card Showcase (with text)</div>
+        <div class="sq sq-showcase sq-sc-cyan">
+          <div class="sq-grain"></div>
+          <div class="sq-topline" style="background:linear-gradient(90deg,transparent,#06b6d4,transparent)"></div>
+          <div class="sc-logo-row">
+            <img src="/UFD_V8.png" class="sc-logo" alt="UFD" />
+          </div>
+          <div class="sc-fan-hero">
+            <div class="sc-fan-scale">
+              <FanCards variant="wp" />
+            </div>
+          </div>
+          <div class="sc-feature-word sc-word-cyan">MATCHUP ANALYSIS</div>
+          <div class="sq-url">ultimatefantasydashboard.com</div>
+        </div>
+      </div>
+
+      <!-- 22 · Matchup Showcase — clean -->
+      <div class="post-wrap">
+        <div class="post-label">22 · Matchup Analysis — Card Showcase (clean)</div>
+        <div class="sq sq-showcase sq-sc-cyan">
+          <div class="sq-grain"></div>
+          <div class="sq-topline" style="background:linear-gradient(90deg,transparent,#06b6d4,transparent)"></div>
+          <div class="sc-logo-row sc-logo-center">
+            <img src="/UFD_V8.png" class="sc-logo sc-logo-lg" alt="UFD" />
+          </div>
+          <div class="sc-fan-hero sc-fan-full">
+            <div class="sc-fan-scale sc-fan-scale-lg">
+              <FanCards variant="wp" />
+            </div>
+          </div>
+          <div class="sq-url">ultimatefantasydashboard.com</div>
+        </div>
+      </div>
+
+      <!-- 23 · Draft Grades Showcase — with text -->
+      <div class="post-wrap">
+        <div class="post-label">23 · Draft Grades — Card Showcase (with text)</div>
+        <div class="sq sq-showcase sq-sc-purple">
+          <div class="sq-grain"></div>
+          <div class="sq-topline" style="background:linear-gradient(90deg,transparent,#8b5cf6,transparent)"></div>
+          <div class="sc-logo-row">
+            <img src="/UFD_V8.png" class="sc-logo" alt="UFD" />
+          </div>
+          <div class="sc-fan-hero">
+            <div class="sc-fan-scale">
+              <FanCards variant="draft" />
+            </div>
+          </div>
+          <div class="sc-feature-word sc-word-purple">DRAFT GRADES</div>
+          <div class="sq-url">ultimatefantasydashboard.com</div>
+        </div>
+      </div>
+
+      <!-- 24 · Draft Grades Showcase — clean -->
+      <div class="post-wrap">
+        <div class="post-label">24 · Draft Grades — Card Showcase (clean)</div>
+        <div class="sq sq-showcase sq-sc-purple">
+          <div class="sq-grain"></div>
+          <div class="sq-topline" style="background:linear-gradient(90deg,transparent,#8b5cf6,transparent)"></div>
+          <div class="sc-logo-row sc-logo-center">
+            <img src="/UFD_V8.png" class="sc-logo sc-logo-lg" alt="UFD" />
+          </div>
+          <div class="sc-fan-hero sc-fan-full">
+            <div class="sc-fan-scale sc-fan-scale-lg">
+              <FanCards variant="draft" />
+            </div>
+          </div>
+          <div class="sq-url">ultimatefantasydashboard.com</div>
+        </div>
+      </div>
+
+      <!-- 25 · League History Showcase — with text -->
+      <div class="post-wrap">
+        <div class="post-label">25 · League History — Card Showcase (with text)</div>
+        <div class="sq sq-showcase sq-sc-amber">
+          <div class="sq-grain"></div>
+          <div class="sq-topline" style="background:linear-gradient(90deg,transparent,#f59e0b,transparent)"></div>
+          <div class="sc-logo-row">
+            <img src="/UFD_V8.png" class="sc-logo" alt="UFD" />
+          </div>
+          <div class="sc-fan-hero">
+            <div class="sc-fan-scale">
+              <FanCards variant="history" />
+            </div>
+          </div>
+          <div class="sc-feature-word sc-word-amber">LEAGUE HISTORY</div>
+          <div class="sq-url">ultimatefantasydashboard.com</div>
+        </div>
+      </div>
+
+      <!-- 26 · League History Showcase — clean -->
+      <div class="post-wrap">
+        <div class="post-label">26 · League History — Card Showcase (clean)</div>
+        <div class="sq sq-showcase sq-sc-amber">
+          <div class="sq-grain"></div>
+          <div class="sq-topline" style="background:linear-gradient(90deg,transparent,#f59e0b,transparent)"></div>
+          <div class="sc-logo-row sc-logo-center">
+            <img src="/UFD_V8.png" class="sc-logo sc-logo-lg" alt="UFD" />
+          </div>
+          <div class="sc-fan-hero sc-fan-full">
+            <div class="sc-fan-scale sc-fan-scale-lg">
+              <FanCards variant="history" />
+            </div>
+          </div>
+          <div class="sq-url">ultimatefantasydashboard.com</div>
+        </div>
+      </div>
+
     </div>
 
     <!-- ════════════════════════════════════
@@ -1828,4 +1981,77 @@ const FanCards = defineComponent({
 .pr-name-input { flex: 1; min-width: 120px; }
 .pr-score-input { width: 72px; }
 .pr-chg-val { font-size: 13px; font-weight: 800; width: 28px; text-align: center; flex-shrink: 0; }
+
+/* ── SHOWCASE CARDS (19-26) ─────────────────────────────────────────────── */
+.sq-showcase {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0;
+}
+
+/* Background variants */
+.sq-sc-gold   { background: radial-gradient(ellipse 130% 100% at 50% 110%, rgba(234,179,8,0.18) 0%, transparent 55%), linear-gradient(160deg, #07080e, #0c0e18); }
+.sq-sc-cyan   { background: radial-gradient(ellipse 130% 100% at 50% 110%, rgba(6,182,212,0.16) 0%, transparent 55%), linear-gradient(160deg, #04080f, #080c18); }
+.sq-sc-purple { background: radial-gradient(ellipse 130% 100% at 50% 110%, rgba(139,92,246,0.16) 0%, transparent 55%), linear-gradient(160deg, #060510, #0a0815); }
+.sq-sc-amber  { background: radial-gradient(ellipse 130% 100% at 50% 110%, rgba(245,158,11,0.15) 0%, transparent 55%), linear-gradient(160deg, #080700, #0d0c00); }
+
+/* Logo row */
+.sc-logo-row {
+  position: relative;
+  z-index: 3;
+  display: flex;
+  justify-content: flex-start;
+  align-items: center;
+  width: 100%;
+  padding: 22px 28px 0;
+}
+.sc-logo-row.sc-logo-center {
+  justify-content: center;
+  padding-top: 30px;
+}
+.sc-logo { height: 38px; width: auto; object-fit: contain; }
+.sc-logo-lg { height: 50px; }
+
+/* Fan hero area */
+.sc-fan-hero {
+  position: relative;
+  z-index: 2;
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px 0 8px;
+}
+.sc-fan-hero.sc-fan-full {
+  flex: 1;
+  padding: 24px 0 16px;
+}
+
+/* Scale wrapper — makes the fan bigger */
+.sc-fan-scale {
+  transform: scale(1.45);
+  transform-origin: center center;
+}
+.sc-fan-scale-lg {
+  transform: scale(1.7);
+}
+
+/* Feature word */
+.sc-feature-word {
+  position: relative;
+  z-index: 3;
+  font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+  font-size: 28px;
+  font-weight: 900;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  padding: 10px 28px 24px;
+  align-self: flex-start;
+}
+.sc-word-gold   { color: #eab308; }
+.sc-word-cyan   { color: #06b6d4; }
+.sc-word-purple { color: #a78bfa; }
+.sc-word-amber  { color: #f59e0b; }
 </style>
