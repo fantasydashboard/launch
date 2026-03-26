@@ -620,10 +620,9 @@
 
           <!-- ── DATA POINTS & VALUE BADGES ── -->
           <!-- Team 2 dots + labels — badge always BELOW dot -->
-          <g v-for="(pt,i) in wpTeam2Points" :key="'t2d'+i" v-if="i<=wpCurrentDay">
-            <!-- glow ring -->
+          <!-- NOTE: using pre-sliced wpTeam2Visible — v-if on same element as v-for breaks in Vue 3 -->
+          <g v-for="(pt,i) in wpTeam2Visible" :key="'t2d'+i">
             <circle :cx="pt.x" :cy="pt.y" r="7" fill="rgba(249,115,22,0.15)"/>
-            <!-- dot -->
             <circle :cx="pt.x" :cy="pt.y" r="4.5" fill="#f97316"/>
             <circle :cx="pt.x" :cy="pt.y" r="2" fill="#0d1117"/>
             <!-- filled orange badge BELOW -->
@@ -633,10 +632,8 @@
           </g>
 
           <!-- Team 1 dots + labels — badge always ABOVE dot -->
-          <g v-for="(pt,i) in wpTeam1Points" :key="'t1d'+i" v-if="i<=wpCurrentDay">
-            <!-- glow ring -->
+          <g v-for="(pt,i) in wpTeam1Visible" :key="'t1d'+i">
             <circle :cx="pt.x" :cy="pt.y" r="7" fill="rgba(6,182,212,0.15)"/>
-            <!-- dot -->
             <circle :cx="pt.x" :cy="pt.y" r="5" fill="#06b6d4"/>
             <circle :cx="pt.x" :cy="pt.y" r="2" fill="#0d1117"/>
             <!-- filled cyan badge ABOVE -->
@@ -797,6 +794,10 @@ const wpTeam2Points = computed(() => {
     return { x, y, prob: p2, labelY: labelBelow ? y + 17 : y - 7 }
   })
 })
+
+// Pre-sliced to wpCurrentDay so v-for never needs v-if (Vue 3: v-if > v-for priority breaks it)
+const wpTeam1Visible = computed(() => wpTeam1Points.value.slice(0, wpCurrentDay.value + 1))
+const wpTeam2Visible = computed(() => wpTeam2Points.value.slice(0, wpCurrentDay.value + 1))
 
 // Line paths (only through wpCurrentDay)
 const wpLine1Path = computed(() => {
