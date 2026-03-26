@@ -27,6 +27,15 @@
       <div class="ad-icon">🔒</div>
       <h2>Admin Access Required</h2>
       <p>This page is only accessible to administrators.</p>
+      <p style="font-size:12px;color:#374151;margin-top:8px">
+        isAdmin: {{ isAdmin }} · tier: {{ authStore.profile?.subscription_tier || 'not loaded' }}
+      </p>
+    </div>
+
+    <!-- Show spinner while auth is still hydrating -->
+    <div v-else-if="isLoading && kpis.totalUsers === 0" class="admin-loading">
+      <div class="spinner"></div>
+      <span>Loading admin data…</span>
     </div>
 
     <template v-else>
@@ -480,9 +489,18 @@ function fmt(n: number) {
 }
 
 // ── Init ──────────────────────────────────────────────────────────────────────
+// Watch for isAdmin to become true (profile loads async after mount)
+watch(() => isAdmin.value, (val) => {
+  if (val && kpis.value.totalUsers === 0) {
+    loadStats()
+  }
+}, { immediate: true })
+
 onMounted(async () => {
-  await authStore.initialize?.()
-  await loadStats()
+  // Give the auth store a moment to hydrate the profile
+  if (authStore.initialize) await authStore.initialize()
+  // If already admin by now, load immediately
+  if (isAdmin.value) await loadStats()
 })
 </script>
 
