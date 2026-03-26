@@ -1,17 +1,24 @@
 // api/admin/data.js
-// CommonJS format to match Vercel serverless functions
+// ES module format — required because package.json has "type": "module"
 
-const { createClient } = require('@supabase/supabase-js')
+import { createClient } from '@supabase/supabase-js'
 
 const SUPABASE_URL = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL
 const SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY
 
-module.exports = async function handler(req, res) {
+export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*')
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS')
   res.setHeader('Access-Control-Allow-Headers', 'Authorization, Content-Type')
   if (req.method === 'OPTIONS') return res.status(200).end()
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' })
+
+  // Debug: confirm env vars are present
+  if (!SUPABASE_URL || !SERVICE_ROLE_KEY) {
+    return res.status(500).json({
+      error: `Missing env vars. SUPABASE_URL: ${!!SUPABASE_URL}, SERVICE_ROLE_KEY: ${!!SERVICE_ROLE_KEY}`
+    })
+  }
 
   const authHeader = req.headers.authorization
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
@@ -19,19 +26,12 @@ module.exports = async function handler(req, res) {
   }
   const userJwt = authHeader.replace('Bearer ', '')
 
-  if (!SUPABASE_URL || !SERVICE_ROLE_KEY) {
-    return res.status(500).json({
-      error: 'Admin endpoint not configured. Add SUPABASE_SERVICE_ROLE_KEY to Vercel environment variables.'
-    })
-  }
-
   const admin = createClient(SUPABASE_URL, SERVICE_ROLE_KEY, {
     auth: { autoRefreshToken: false, persistSession: false }
   })
 
-  // Verify the JWT belongs to an admin
   const { data: { user }, error: jwtErr } = await admin.auth.getUser(userJwt)
-  if (jwtErr || !user) return res.status(401).json({ error: 'Invalid token' })
+  if (jwtErr || !user) return res.status(401).json({ error: 'Invalid token: ' + jwtErr?.message })
 
   const { data: callerProfile } = await admin
     .from('profiles')
@@ -40,7 +40,7 @@ module.exports = async function handler(req, res) {
     .single()
 
   if (callerProfile?.subscription_tier !== 'admin') {
-    return res.status(403).json({ error: 'Admin access required' })
+    return res.status(403).json({ error: `Admin access required. Your tier: ${callerProfile?.subscription_tier}` })
   }
 
   const { action, from_date, expiring_days = 30 } = req.body || {}
@@ -49,15 +49,18 @@ module.exports = async function handler(req, res) {
     if (action === 'stats') {
       const dateFilter = from_date || '2000-01-01'
 
-      const { data: allProfiles } = await admin
+      const { data: allProfiles, error: pErr } = await admin
         .from('profiles')
         .select('id, email, created_at, subscription_tier')
         .order('created_at', { ascending: false })
 
-      const { data: allPasses } = await admin
+      const { data: allPasses, error: lpErr } = await admin
         .from('league_passes')
         .select('id, user_id, league_id, active, expires_at, created_at')
         .order('created_at', { ascending: false })
+
+      if (pErr) return res.status(500).json({ error: 'profiles query failed: ' + pErr.message })
+      if (lpErr) return res.status(500).json({ error: 'league_passes query failed: ' + lpErr.message })
 
       const now = new Date()
       const expiringCutoff = new Date(now.getTime() + Number(expiring_days) * 86400000)
@@ -76,9 +79,6 @@ module.exports = async function handler(req, res) {
       activePasses.forEach(p => { passCountByUser[p.user_id] = (passCountByUser[p.user_id] || 0) + 1 })
       const multiPassUsers = Object.values(passCountByUser).filter(c => c >= 2).length
 
-      const signupsByDay = groupByDay(filteredProfiles.map(p => p.created_at))
-      const passesByDay = groupByDay(filteredPasses.map(p => p.created_at))
-
       return res.status(200).json({
         kpis: {
           totalUsers: profiles.length,
@@ -92,7 +92,10 @@ module.exports = async function handler(req, res) {
           expiringUsers: expiringUserIds.size,
           multiPassUsers,
         },
-        charts: { signupsByDay, passesByDay }
+        charts: {
+          signupsByDay: groupByDay(filteredProfiles.map(p => p.created_at)),
+          passesByDay: groupByDay(filteredPasses.map(p => p.created_at)),
+        }
       })
     }
 
@@ -166,14 +169,14 @@ module.exports = async function handler(req, res) {
         return res.status(200).json({ rows })
       }
 
-      return res.status(400).json({ error: 'Unknown segment' })
+      return res.status(400).json({ error: 'Unknown segment: ' + segment })
     }
 
-    return res.status(400).json({ error: 'Unknown action' })
+    return res.status(400).json({ error: 'Unknown action: ' + action })
 
   } catch (err) {
-    console.error('[admin/data]', err)
-    return res.status(500).json({ error: err.message || 'Server error' })
+    console.error('[admin/data] caught error:', err)
+    return res.status(500).json({ error: err.message || 'Unknown server error' })
   }
 }
 
