@@ -435,11 +435,295 @@
       </div>
 
     </div>
+
+    <!-- ════════════════════════════════════
+         INTERACTIVE TEMPLATES
+    ════════════════════════════════════ -->
+    <div class="section-label">🎯 Interactive Templates — Customize then screenshot the card</div>
+
+    <!-- 19 · DAILY WIN PROBABILITY TRACKER -->
+    <div class="post-wrap" style="max-width:600px;margin:0 40px;">
+      <div class="post-label">19 · Daily Win Probability — Matchup Tracker</div>
+
+      <!-- ── Controls panel (not screenshotted) ── -->
+      <div class="wp-controls">
+        <div class="wp-ctrl-row">
+          <div class="wp-ctrl-group">
+            <label>Your Team</label>
+            <input v-model="wpTeam1" class="wp-input" placeholder="Your Team" />
+          </div>
+          <div class="wp-ctrl-group">
+            <label>Opponent</label>
+            <input v-model="wpTeam2" class="wp-input" placeholder="Opponent" />
+          </div>
+          <div class="wp-ctrl-group wp-ctrl-sm">
+            <label>Week</label>
+            <input v-model="wpWeek" class="wp-input" placeholder="14" style="width:60px" />
+          </div>
+          <div class="wp-ctrl-group wp-ctrl-sm">
+            <label>Start % (your team)</label>
+            <input v-model.number="wpStartProb" type="range" min="20" max="80" class="wp-slider" />
+            <span class="wp-slider-val">{{ wpStartProb }}%</span>
+          </div>
+        </div>
+        <div class="wp-ctrl-row">
+          <div class="wp-ctrl-group">
+            <label>Player Name</label>
+            <input v-model="wpPlayerName" class="wp-input" placeholder="Logan Webb" />
+          </div>
+          <div class="wp-ctrl-group wp-ctrl-sm">
+            <label>Position</label>
+            <input v-model="wpPlayerPos" class="wp-input" placeholder="SP" style="width:60px" />
+          </div>
+          <div class="wp-ctrl-group">
+            <label>Day of Impact</label>
+            <div class="wp-day-pills">
+              <button v-for="(d, i) in ['Mon','Tue','Wed','Thu','Fri','Sat','Sun']" :key="i"
+                @click="wpEventDay = i"
+                :class="wpEventDay === i ? 'wp-pill-active' : 'wp-pill'">{{ d }}</button>
+            </div>
+          </div>
+          <div class="wp-ctrl-group">
+            <label>Effect on Win %</label>
+            <div class="wp-dir-btns">
+              <button @click="wpDirection = 'up'" :class="wpDirection === 'up' ? 'wp-dir-up-active' : 'wp-dir-btn'">↑ Goes Up</button>
+              <button @click="wpDirection = 'down'" :class="wpDirection === 'down' ? 'wp-dir-dn-active' : 'wp-dir-btn'">↓ Goes Down</button>
+            </div>
+          </div>
+          <div class="wp-ctrl-group">
+            <label>Impact Size</label>
+            <div class="wp-dir-btns">
+              <button @click="wpImpact = 'sm'" :class="wpImpact === 'sm' ? 'wp-pill-active' : 'wp-pill'">Small</button>
+              <button @click="wpImpact = 'md'" :class="wpImpact === 'md' ? 'wp-pill-active' : 'wp-pill'">Medium</button>
+              <button @click="wpImpact = 'lg'" :class="wpImpact === 'lg' ? 'wp-pill-active' : 'wp-pill'">Large</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── Screenshottable card ── -->
+      <div class="sq sq-dark wp-card">
+        <div class="sq-grain"></div>
+        <!-- cyan topline for win prob theme -->
+        <div class="sq-topline" style="background:linear-gradient(90deg,transparent,#06b6d4,transparent)"></div>
+        <div class="sq-ufd-top"><img src="/UFD_V8.png" class="sq-ufd-logo" alt="UFD" /></div>
+
+        <div class="wp-card-inner">
+          <!-- header row -->
+          <div class="wp-card-header">
+            <div class="wp-card-eyebrow">⚔️ WIN PROBABILITY TRACKER</div>
+            <div class="wp-card-week">WK {{ wpWeek }}</div>
+          </div>
+
+          <!-- teams row -->
+          <div class="wp-teams-row">
+            <div class="wp-team wp-team-1">
+              <div class="wp-team-name">{{ wpTeam1 }}</div>
+              <div class="wp-team-prob" :style="{ color: '#06b6d4' }">{{ wpCurrentProb }}%</div>
+            </div>
+            <div class="wp-vs-badge">VS</div>
+            <div class="wp-team wp-team-2">
+              <div class="wp-team-name">{{ wpTeam2 }}</div>
+              <div class="wp-team-prob" style="color:#6b7280">{{ 100 - wpCurrentProb }}%</div>
+            </div>
+          </div>
+
+          <!-- probability bar -->
+          <div class="wp-prob-bar-wrap">
+            <div class="wp-prob-bar">
+              <div class="wp-prob-fill" :style="{ width: wpCurrentProb + '%' }"></div>
+            </div>
+            <div class="wp-prob-labels">
+              <span style="color:#06b6d4">{{ wpTeam1 }}</span>
+              <span style="color:#374151">{{ wpTeam2 }}</span>
+            </div>
+          </div>
+
+          <!-- SVG line chart -->
+          <div class="wp-chart-wrap">
+            <svg :viewBox="`0 0 ${420 + 40} ${130 + 30}`" class="wp-chart-svg" preserveAspectRatio="none">
+              <!-- grid lines at 25/50/75% -->
+              <line v-for="p in [25,50,75]" :key="p"
+                x1="20" :x2="440" :y1="30 + 130 - (p/100)*130" :y2="30 + 130 - (p/100)*130"
+                stroke="rgba(255,255,255,0.05)" stroke-width="1" />
+              <!-- y-axis labels -->
+              <text v-for="p in [25,50,75]" :key="'l'+p"
+                x="16" :y="30 + 130 - (p/100)*130 + 4"
+                font-size="9" fill="rgba(255,255,255,0.25)" text-anchor="end">{{ p }}</text>
+
+              <!-- area fill (shifted right 20px for y-axis margin) -->
+              <g transform="translate(20, 30)">
+                <defs>
+                  <linearGradient id="wp-area-grad" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stop-color="#06b6d4" stop-opacity="0.25" />
+                    <stop offset="100%" stop-color="#06b6d4" stop-opacity="0.02" />
+                  </linearGradient>
+                </defs>
+                <path :d="wpAreaPath" fill="url(#wp-area-grad)" />
+                <path :d="wpLinePath" fill="none" stroke="#06b6d4" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" />
+
+                <!-- day x-axis labels -->
+                <text v-for="(d, i) in ['Mon','Tue','Wed','Thu','Fri','Sat','Sun']" :key="d"
+                  :x="(i/6)*420" :y="130 + 18"
+                  font-size="10" fill="rgba(255,255,255,0.3)" text-anchor="middle"
+                  :style="i === wpEventDay ? 'fill: #06b6d4; font-weight: 700;' : ''">{{ d }}</text>
+
+                <!-- event day marker -->
+                <!-- vertical dashed line at event -->
+                <line :x1="wpEventDot.x" :x2="wpEventDot.x"
+                  y1="0" :y2="130"
+                  stroke="rgba(6,182,212,0.3)" stroke-width="1" stroke-dasharray="3,3" />
+
+                <!-- dot at event -->
+                <circle :cx="wpEventDot.x" :cy="wpEventDot.y" r="5"
+                  fill="#06b6d4" />
+                <circle :cx="wpEventDot.x" :cy="wpEventDot.y" r="9"
+                  fill="none" stroke="#06b6d4" stroke-width="1.5" opacity="0.5" />
+
+                <!-- callout bubble — above if going up, below if going down -->
+                <g :transform="`translate(${Math.min(Math.max(wpEventDot.x, 60), 360)}, ${wpCalloutAbove ? wpEventDot.y - 14 : wpEventDot.y + 14})`">
+                  <!-- bubble background -->
+                  <rect x="-62" :y="wpCalloutAbove ? -30 : 2" width="124" height="26" rx="5"
+                    fill="#0c1220" stroke="#06b6d4" stroke-width="1" />
+                  <!-- player name -->
+                  <text x="0" :y="wpCalloutAbove ? -12 : 18" font-size="10" font-weight="700"
+                    fill="#e5e7eb" text-anchor="middle" font-family="Helvetica Neue, Helvetica, Arial, sans-serif">
+                    {{ wpPlayerName }} ({{ wpPlayerPos }})
+                  </text>
+                  <!-- direction indicator -->
+                  <text x="0" :y="wpCalloutAbove ? -1 : 28" font-size="9"
+                    :fill="wpDirection === 'up' ? '#22c55e' : '#ef4444'" text-anchor="middle">
+                    {{ wpDirection === 'up' ? '▲ +' : '▼ ' }}impact on win%
+                  </text>
+                </g>
+
+                <!-- dots at every data point -->
+                <circle v-for="(p, i) in wpPoints" :key="'dot'+i"
+                  :cx="(i/6)*420" :cy="130 - (p/100)*130" r="2.5"
+                  :fill="i === wpEventDay ? '#06b6d4' : 'rgba(255,255,255,0.3)'" />
+              </g>
+            </svg>
+          </div>
+
+          <!-- bottom label -->
+          <div class="wp-footer-label">
+            <span style="color:#374151;font-size:10px">Daily win probability · Monte Carlo simulation</span>
+            <span class="wp-live-badge">● LIVE</span>
+          </div>
+        </div>
+
+        <div class="sq-url">ultimatefantasydashboard.com</div>
+      </div>
+    </div>
+
   </div>
 </template>
 
 <script setup lang="ts">
-import { defineComponent, h } from 'vue'
+import { ref, computed, defineComponent, h } from 'vue'
+
+// ── Interactive Win Probability Template state ─────────────────────────────
+const wpTeam1 = ref('Diamond Kings')
+const wpTeam2 = ref('Sign Stealers')
+const wpWeek = ref('14')
+const wpPlayerName = ref('Logan Webb')
+const wpPlayerPos = ref('SP')
+const wpEventDay = ref(1)   // 0=Mon … 6=Sun
+const wpDirection = ref<'down' | 'up'>('down')
+const wpImpact = ref<'sm' | 'md' | 'lg'>('md')
+const wpStartProb = ref(62)  // team1 starting win prob %
+
+const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
+
+// Generate 7 probability points for team1, shaped around the event
+const wpPoints = computed(() => {
+  const start = wpStartProb.value
+  const dir = wpDirection.value === 'up' ? 1 : -1
+  const shift = wpImpact.value === 'lg' ? 18 : wpImpact.value === 'md' ? 11 : 6
+  const pts: number[] = []
+  // Natural drift before event (small ±3-5 oscillation seeded by team names)
+  const seed = (wpTeam1.value.charCodeAt(0) + wpTeam2.value.charCodeAt(0)) % 7
+  for (let d = 0; d < 7; d++) {
+    if (d < wpEventDay.value) {
+      // Pre-event: gentle drift toward midpoint
+      const noise = ((seed * (d + 1) * 7) % 11) - 5
+      pts.push(Math.min(88, Math.max(12, start + noise)))
+    } else if (d === wpEventDay.value) {
+      // Event day: the shift
+      const pre = pts[d - 1] ?? start
+      pts.push(Math.min(92, Math.max(8, pre + dir * shift)))
+    } else {
+      // Post-event: settle with slight recovery
+      const prev = pts[d - 1]
+      const recovery = dir * -1 * 1.5  // slight counter-drift
+      const noise = ((seed * (d + 3) * 3) % 7) - 3
+      pts.push(Math.min(93, Math.max(7, prev + recovery + noise)))
+    }
+  }
+  return pts
+})
+
+const wpCurrentProb = computed(() => {
+  const pts = wpPoints.value
+  return Math.round(pts[pts.length - 1])
+})
+
+// Convert points to SVG polyline — chart area: x 0-420, y 0-130 (100%=top)
+const CHART_W = 420
+const CHART_H = 130
+const wpSvgPoints = computed(() => {
+  return wpPoints.value.map((p, i) => {
+    const x = (i / 6) * CHART_W
+    const y = CHART_H - (p / 100) * CHART_H
+    return `${x.toFixed(1)},${y.toFixed(1)}`
+  }).join(' ')
+})
+
+// Smooth bezier path for the area fill
+const wpAreaPath = computed(() => {
+  const pts = wpPoints.value.map((p, i) => ({
+    x: (i / 6) * CHART_W,
+    y: CHART_H - (p / 100) * CHART_H
+  }))
+  if (pts.length === 0) return ''
+  let d = `M ${pts[0].x} ${pts[0].y}`
+  for (let i = 1; i < pts.length; i++) {
+    const prev = pts[i - 1], curr = pts[i]
+    const cpx = (prev.x + curr.x) / 2
+    d += ` C ${cpx} ${prev.y}, ${cpx} ${curr.y}, ${curr.x} ${curr.y}`
+  }
+  // close area to bottom
+  d += ` L ${pts[pts.length-1].x} ${CHART_H} L ${pts[0].x} ${CHART_H} Z`
+  return d
+})
+
+// Smooth line only (no fill)
+const wpLinePath = computed(() => {
+  const pts = wpPoints.value.map((p, i) => ({
+    x: (i / 6) * CHART_W,
+    y: CHART_H - (p / 100) * CHART_H
+  }))
+  if (pts.length === 0) return ''
+  let d = `M ${pts[0].x} ${pts[0].y}`
+  for (let i = 1; i < pts.length; i++) {
+    const prev = pts[i - 1], curr = pts[i]
+    const cpx = (prev.x + curr.x) / 2
+    d += ` C ${cpx} ${prev.y}, ${cpx} ${curr.y}, ${curr.x} ${curr.y}`
+  }
+  return d
+})
+
+// Event dot coords
+const wpEventDot = computed(() => {
+  const p = wpPoints.value[wpEventDay.value]
+  return {
+    x: (wpEventDay.value / 6) * CHART_W,
+    y: CHART_H - (p / 100) * CHART_H
+  }
+})
+
+// Callout positioning: above or below the dot depending on direction
+const wpCalloutAbove = computed(() => wpDirection.value === 'up')
 
 
 // ── Team SVG icon lookup ──────────────────────────────────────────────────
@@ -926,4 +1210,78 @@ const FanCards = defineComponent({
 :deep(.fc-award-val)   { font-size: 7.5px; font-weight: 700; color: #d1d5db; }
 :deep(.fc-award-val.gold) { color: #eab308; }
 :deep(.fc-award-val.red)  { color: #ef4444; }
+
+/* ── INTERACTIVE WIN PROBABILITY TEMPLATE ───────────────────────────────── */
+.wp-controls {
+  background: #0c0e17;
+  border: 1px solid #1e2130;
+  border-radius: 12px;
+  padding: 20px 20px 16px;
+  margin-bottom: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.wp-ctrl-row { display: flex; flex-wrap: wrap; gap: 16px; align-items: flex-end; }
+.wp-ctrl-group { display: flex; flex-direction: column; gap: 5px; }
+.wp-ctrl-sm { min-width: 80px; }
+.wp-ctrl-group label { font-size: 10px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: #4b5563; }
+.wp-input {
+  background: #0a0c14; border: 1px solid #262a3a; border-radius: 7px;
+  color: #e5e7eb; font-size: 13px; padding: 7px 10px; outline: none;
+  min-width: 130px; transition: border-color 0.15s;
+}
+.wp-input:focus { border-color: #06b6d4; }
+.wp-slider { accent-color: #06b6d4; width: 110px; cursor: pointer; }
+.wp-slider-val { font-size: 12px; font-weight: 700; color: #06b6d4; margin-left: 4px; }
+.wp-day-pills, .wp-dir-btns { display: flex; gap: 5px; flex-wrap: wrap; }
+.wp-pill {
+  padding: 5px 10px; border-radius: 6px; border: 1px solid #262a3a;
+  background: #0a0c14; color: #6b7280; font-size: 11px; font-weight: 600; cursor: pointer;
+  transition: all 0.12s;
+}
+.wp-pill:hover { border-color: #06b6d4; color: #06b6d4; }
+.wp-pill-active {
+  padding: 5px 10px; border-radius: 6px; border: 1px solid #06b6d4;
+  background: rgba(6,182,212,0.12); color: #06b6d4; font-size: 11px; font-weight: 700; cursor: pointer;
+}
+.wp-dir-btn {
+  padding: 5px 12px; border-radius: 6px; border: 1px solid #262a3a;
+  background: #0a0c14; color: #6b7280; font-size: 11px; font-weight: 600; cursor: pointer;
+  transition: all 0.12s;
+}
+.wp-dir-up-active {
+  padding: 5px 12px; border-radius: 6px; border: 1px solid #22c55e;
+  background: rgba(34,197,94,0.12); color: #22c55e; font-size: 11px; font-weight: 700; cursor: pointer;
+}
+.wp-dir-dn-active {
+  padding: 5px 12px; border-radius: 6px; border: 1px solid #ef4444;
+  background: rgba(239,68,68,0.12); color: #ef4444; font-size: 11px; font-weight: 700; cursor: pointer;
+}
+
+/* Card overrides for WP template */
+.wp-card { display: flex; flex-direction: column; padding-bottom: 40px; }
+.wp-card-inner { display: flex; flex-direction: column; gap: 18px; padding: 8px 28px 0; flex: 1; }
+.wp-card-header { display: flex; align-items: center; justify-content: space-between; }
+.wp-card-eyebrow { font-size: 11px; font-weight: 800; letter-spacing: 0.18em; text-transform: uppercase; color: #06b6d4; }
+.wp-card-week { font-size: 11px; font-weight: 700; letter-spacing: 0.12em; color: #4b5563; background: #0f1218; border: 1px solid #1e2130; border-radius: 4px; padding: 3px 8px; }
+
+.wp-teams-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.wp-team { display: flex; flex-direction: column; gap: 3px; flex: 1; }
+.wp-team-1 { align-items: flex-start; }
+.wp-team-2 { align-items: flex-end; }
+.wp-team-name { font-size: 14px; font-weight: 800; color: #e5e7eb; letter-spacing: -0.01em; }
+.wp-team-prob { font-size: 28px; font-weight: 900; letter-spacing: -0.03em; line-height: 1; font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; }
+.wp-vs-badge { font-size: 10px; font-weight: 900; letter-spacing: 0.15em; color: #374151; flex-shrink: 0; }
+
+.wp-prob-bar-wrap { display: flex; flex-direction: column; gap: 5px; }
+.wp-prob-bar { height: 6px; background: #1e2130; border-radius: 3px; overflow: hidden; }
+.wp-prob-fill { height: 100%; background: linear-gradient(90deg, #06b6d4, #0891b2); border-radius: 3px; transition: width 0.4s ease; }
+.wp-prob-labels { display: flex; justify-content: space-between; font-size: 10px; font-weight: 600; }
+
+.wp-chart-wrap { flex: 1; min-height: 170px; }
+.wp-chart-svg { width: 100%; height: 170px; display: block; }
+
+.wp-footer-label { display: flex; align-items: center; justify-content: space-between; padding-top: 4px; }
+.wp-live-badge { font-size: 10px; font-weight: 700; color: #06b6d4; letter-spacing: 0.08em; }
 </style>
