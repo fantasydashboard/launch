@@ -146,7 +146,7 @@ const router = createRouter({
     { path: '/draft-info', name: 'page-draft', component: () => import('@/views/DraftPage.vue') },
     { path: '/history-info', name: 'page-history', component: () => import('@/views/HistoryPage.vue') },
     { path: '/socialtemplates', name: 'social-templates', component: () => import('@/views/SocialTemplatesView.vue') },
-  { path: '/admin', name: 'admin', component: () => import('@/views/AdminView.vue'), meta: { requiresAuth: true } },
+  { path: '/admin', name: 'admin', component: () => import('@/views/AdminView.vue') },
 ]
 })
 
