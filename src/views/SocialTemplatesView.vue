@@ -503,6 +503,16 @@
               </div>
             </div>
           </div>
+          <div class="wp-ctrl-group">
+            <label>Pre-event Shape</label>
+            <div class="wp-pills">
+              <button @click="wpShape='steady'"  :class="wpShape==='steady'?'wp-pill-on':'wp-pill-off'">〰 Steady</button>
+              <button @click="wpShape='rising'"  :class="wpShape==='rising'?'wp-pill-on':'wp-pill-off'">↗ Rising</button>
+              <button @click="wpShape='falling'" :class="wpShape==='falling'?'wp-pill-on':'wp-pill-off'">↘ Falling</button>
+              <button @click="wpShape='volatile'" :class="wpShape==='volatile'?'wp-pill-on':'wp-pill-off'">〜 Volatile</button>
+              <button @click="wpShape='surge'"   :class="wpShape==='surge'?'wp-pill-on':'wp-pill-off'">⚡ Late Surge</button>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -728,6 +738,7 @@ const wpCurrentDay = ref(3)  // 0=Mon…6=Sun, default=Thu
 const wpDirection = ref<'down' | 'up'>('down')
 const wpImpact = ref<'md' | 'sm' | 'lg'>('md')
 const wpStartProb = ref(60)
+const wpShape = ref<'steady' | 'rising' | 'falling' | 'volatile' | 'surge'>('steady')
 
 const wpCurrentDayLabel = computed(() =>
   ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'][wpCurrentDay.value]
@@ -737,23 +748,40 @@ const wpPlayerInitials = computed(() => {
   return wpPlayerName.value.split(' ').map((w: string) => w[0]).join('').slice(0, 3).toUpperCase()
 })
 
+// Pre-event shape offsets — 7 values, one per day of week.
+// These are deltas from wpStartProb applied BEFORE the event-day shift.
+// The event day and beyond are handled separately.
+const WP_SHAPES: Record<string, number[]> = {
+  //          Mon   Tue   Wed   Thu   Fri   Sat   Sun
+  steady:  [  0,   +2,   -1,   +3,   -2,   +4,   +1  ],  // gentle oscillation
+  rising:  [ -6,   -3,    0,   +4,   +7,  +10,  +12  ],  // climbing into event
+  falling: [ +8,   +5,   +2,   -1,   -4,   -7,  -10  ],  // sliding into event
+  volatile:[ +8,   -5,  +10,   -7,   +6,   -4,   +3  ],  // wild swings
+  surge:   [  0,    0,   +1,   +8,  +10,  +12,  +11  ],  // flat then late surge
+}
+
 // Generate raw probabilities for team1 for all 7 days
 const wpRawProbs1 = computed((): number[] => {
   const start = wpStartProb.value
   const shift = wpImpact.value === 'lg' ? 20 : wpImpact.value === 'md' ? 13 : 7
   const dir = wpDirection.value === 'up' ? 1 : -1
-  const seed = (wpTeam1.value.charCodeAt(0) + wpWeek.value.charCodeAt(0)) % 5
+  const shapeOffsets = WP_SHAPES[wpShape.value] ?? WP_SHAPES.steady
   const pts: number[] = []
+
   for (let d = 0; d < 7; d++) {
-    const noise = ((seed * (d + 1) * 3) % 9) - 4
     if (d < wpCurrentDay.value) {
-      pts.push(Math.min(87, Math.max(13, start + noise)))
+      // Pre-event: apply shape offset from start
+      pts.push(Math.min(87, Math.max(13, start + shapeOffsets[d])))
     } else if (d === wpCurrentDay.value) {
+      // Event day: jump from previous point by impact amount
       const base = pts[d - 1] ?? start
       pts.push(Math.min(93, Math.max(7, base + dir * shift)))
     } else {
+      // Post-event: gradual drift back toward 50% with shape texture
       const prev = pts[d - 1]
-      pts.push(Math.min(93, Math.max(7, prev + dir * -1 * 1.5 + noise)))
+      const recovery = (50 - prev) * 0.15  // gentle pull toward 50
+      const texture = shapeOffsets[d] * 0.3  // light shape texture post-event
+      pts.push(Math.min(93, Math.max(7, prev + recovery + texture)))
     }
   }
   return pts
