@@ -1986,18 +1986,19 @@ const FanCards = defineComponent({
 .sq-showcase {
   display: flex;
   flex-direction: column;
-  align-items: center;
-  justify-content: center;
+  align-items: flex-start;
+  justify-content: flex-start;
   gap: 0;
+  overflow: hidden;
 }
 
-/* Background variants */
-.sq-sc-gold   { background: radial-gradient(ellipse 130% 100% at 50% 110%, rgba(234,179,8,0.18) 0%, transparent 55%), linear-gradient(160deg, #07080e, #0c0e18); }
-.sq-sc-cyan   { background: radial-gradient(ellipse 130% 100% at 50% 110%, rgba(6,182,212,0.16) 0%, transparent 55%), linear-gradient(160deg, #04080f, #080c18); }
-.sq-sc-purple { background: radial-gradient(ellipse 130% 100% at 50% 110%, rgba(139,92,246,0.16) 0%, transparent 55%), linear-gradient(160deg, #060510, #0a0815); }
-.sq-sc-amber  { background: radial-gradient(ellipse 130% 100% at 50% 110%, rgba(245,158,11,0.15) 0%, transparent 55%), linear-gradient(160deg, #080700, #0d0c00); }
+/* Background variants — glow from bottom left for the text versions */
+.sq-sc-gold   { background: radial-gradient(ellipse 140% 90% at 0% 110%, rgba(234,179,8,0.22) 0%, transparent 50%), linear-gradient(160deg, #07080e, #0c0e18); }
+.sq-sc-cyan   { background: radial-gradient(ellipse 140% 90% at 0% 110%, rgba(6,182,212,0.20) 0%, transparent 50%), linear-gradient(160deg, #04080f, #080c18); }
+.sq-sc-purple { background: radial-gradient(ellipse 140% 90% at 0% 110%, rgba(139,92,246,0.20) 0%, transparent 50%), linear-gradient(160deg, #060510, #0a0815); }
+.sq-sc-amber  { background: radial-gradient(ellipse 140% 90% at 0% 110%, rgba(245,158,11,0.20) 0%, transparent 50%), linear-gradient(160deg, #080700, #0d0c00); }
 
-/* Logo row */
+/* Logo — top-left, small and clean */
 .sc-logo-row {
   position: relative;
   z-index: 3;
@@ -2005,50 +2006,76 @@ const FanCards = defineComponent({
   justify-content: flex-start;
   align-items: center;
   width: 100%;
-  padding: 22px 28px 0;
+  padding: 22px 24px 0;
+  flex-shrink: 0;
 }
 .sc-logo-row.sc-logo-center {
   justify-content: center;
   padding-top: 30px;
 }
-.sc-logo { height: 38px; width: auto; object-fit: contain; }
+.sc-logo { height: 36px; width: auto; object-fit: contain; }
 .sc-logo-lg { height: 50px; }
 
-/* Fan hero area */
+/* Fan hero — positioned upper-right for text versions so text fills lower-left */
 .sc-fan-hero {
-  position: relative;
+  position: absolute;
+  top: 48px;
+  right: -30px;
   z-index: 2;
-  flex: 1;
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 16px 0 8px;
+  padding: 0;
 }
 .sc-fan-hero.sc-fan-full {
+  position: relative;
+  top: auto;
+  right: auto;
   flex: 1;
-  padding: 24px 0 16px;
+  width: 100%;
+  padding: 20px 0 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
-/* Scale wrapper — makes the fan bigger */
+/* Scale wrapper */
 .sc-fan-scale {
-  transform: scale(1.45);
-  transform-origin: center center;
+  transform: scale(1.35);
+  transform-origin: top right;
 }
 .sc-fan-scale-lg {
-  transform: scale(1.7);
+  transform: scale(1.72);
+  transform-origin: center center;
 }
 
-/* Feature word */
+/* Feature word — big, bold, anchored bottom-left, fills the space */
 .sc-feature-word {
-  position: relative;
-  z-index: 3;
+  position: absolute;
+  bottom: 32px;
+  left: 0;
+  right: 0;
+  z-index: 4;
   font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
-  font-size: 28px;
+  font-size: 52px;
   font-weight: 900;
-  letter-spacing: 0.12em;
+  letter-spacing: 0.06em;
+  line-height: 1;
   text-transform: uppercase;
-  padding: 10px 28px 24px;
-  align-self: flex-start;
+  padding: 0 24px 0;
+  /* Subtle text shadow to lift it off the cards */
+  text-shadow: 0 2px 40px rgba(0,0,0,0.8), 0 0 80px rgba(0,0,0,0.5);
+}
+/* Thin accent line above the word */
+.sc-feature-word::before {
+  content: '';
+  display: block;
+  width: 48px;
+  height: 3px;
+  border-radius: 2px;
+  margin-bottom: 10px;
+  background: currentColor;
+  opacity: 0.6;
 }
 .sc-word-gold   { color: #eab308; }
 .sc-word-cyan   { color: #06b6d4; }
