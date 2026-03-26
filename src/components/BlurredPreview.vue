@@ -20,12 +20,12 @@
         <div class="text-center p-6 max-w-sm">
           <!-- Icon -->
           <div class="text-5xl mb-4">
-            {{ isLeagueFeature ? '🔒' : '⭐' }}
+            🔒
           </div>
 
           <!-- Title -->
           <h3 class="text-xl font-bold text-dark-text mb-2">
-            {{ title || (isLeagueFeature ? 'League Pass Required' : 'Premium Feature') }}
+            {{ title || 'League Pass Required' }}
           </h3>
 
           <!-- Description -->
@@ -33,15 +33,7 @@
             {{ description || defaultDescription }}
           </p>
 
-          <!-- Price info -->
-          <div v-if="showPrice" class="text-xs text-dark-textMuted mb-4">
-            <span v-if="isLeagueFeature">
-              Starting at <span class="text-primary font-bold">$39/season</span> for your whole league
-            </span>
-            <span v-else>
-              Just <span class="text-yellow-500 font-bold">$4.99/mo</span> or <span class="text-yellow-500 font-bold">$19/season</span>
-            </span>
-          </div>
+
 
           <!-- CTA Button -->
           <button
@@ -49,7 +41,7 @@
             class="px-6 py-3 rounded-lg font-bold transition-all transform hover:scale-105"
             :class="isLeagueFeature ? 'bg-primary hover:bg-primary/90 text-white' : 'bg-yellow-500 hover:bg-yellow-400 text-black'"
           >
-            {{ buttonText || (isLeagueFeature ? 'Unlock League' : 'Go Premium') }}
+            {{ buttonText || 'Get League Pass' }}
           </button>
 
           <!-- Secondary link -->
@@ -104,7 +96,7 @@ const isLocked = computed(() => {
   if (props.featureType === 'league') {
     return !hasLeagueAccess.value
   } else {
-    return !hasPremiumAccess.value
+    return !hasLeagueAccess.value
   }
 })
 
@@ -124,7 +116,7 @@ function handleUpgradeClick() {
   if (isLeagueFeature.value) {
     router.push('/upgrade/league')
   } else {
-    router.push('/upgrade/premium')
+    router.push('/pricing')
   }
 }
 </script>

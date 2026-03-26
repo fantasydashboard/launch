@@ -86,13 +86,11 @@ const title = computed(() => {
 
 const description = computed(() => {
   if (props.customDescription) return props.customDescription
-  return props.isUltimateTier 
-    ? 'Unlock AI-powered tools to optimize your lineup decisions.'
-    : 'Unlock full access to this feature for your entire league.'
+  return 'Unlock full access to this feature for your entire league.'
 })
 
 const buttonText = computed(() => {
-  return props.isUltimateTier ? 'Go Ultimate - $4.99/mo' : 'Get League Pass'
+  return 'Get League Pass'
 })
 
 function handleUpgrade() {

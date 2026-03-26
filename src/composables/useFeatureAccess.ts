@@ -172,7 +172,9 @@ export function useFeatureAccess() {
     return {
       tier,
       hasLeague: hasRealLeagueAccess.value || hasRealPremiumAccess.value || isAdmin.value,
-      hasPremium: hasRealPremiumAccess.value || isAdmin.value
+      // BETA: League Pass includes Ultimate features. When Ultimate goes paid, revert to:
+      // hasPremium: hasRealPremiumAccess.value || isAdmin.value
+      hasPremium: hasRealLeagueAccess.value || hasRealPremiumAccess.value || isAdmin.value
     }
   })
 

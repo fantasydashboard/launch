@@ -379,7 +379,7 @@
                   <div class="text-4xl mb-3">🔒</div>
                   <h3 class="text-lg font-bold text-dark-text mb-2">{{ hiddenPlayersCount }} More Players</h3>
                   <p class="text-sm text-dark-textMuted mb-4">Unlock full category rankings</p>
-                  <button @click="$router.push('/pricing')" class="px-6 py-2.5 bg-gradient-to-r from-yellow-500 to-orange-500 text-gray-900 font-bold rounded-lg transition-all transform hover:scale-105">Go Ultimate - $4.99/mo</button>
+                  <button @click="$router.push('/pricing')" class="px-6 py-2.5 bg-gradient-to-r from-yellow-500 to-orange-500 text-gray-900 font-bold rounded-lg transition-all transform hover:scale-105">Get League Pass</button>
                 </div>
               </div>
             </div>
@@ -593,7 +593,7 @@
                   <div class="text-4xl mb-3">🔒</div>
                   <h3 class="text-lg font-bold text-dark-text mb-2">{{ hiddenTeamsCount }} More Teams</h3>
                   <p class="text-sm text-dark-textMuted mb-4">Unlock full team analysis</p>
-                  <button @click="$router.push('/pricing')" class="px-6 py-2.5 bg-gradient-to-r from-yellow-500 to-orange-500 text-gray-900 font-bold rounded-lg transition-all transform hover:scale-105">Go Ultimate - $4.99/mo</button>
+                  <button @click="$router.push('/pricing')" class="px-6 py-2.5 bg-gradient-to-r from-yellow-500 to-orange-500 text-gray-900 font-bold rounded-lg transition-all transform hover:scale-105">Get League Pass</button>
                 </div>
               </div>
             </div>
@@ -664,7 +664,7 @@
                     <div class="text-4xl mb-3">🔒</div>
                     <h3 class="text-lg font-bold text-dark-text mb-2">{{ hiddenTeamsCount }} More Teams</h3>
                     <p class="text-sm text-dark-textMuted mb-4">Unlock full team analysis</p>
-                    <button @click="$router.push('/pricing')" class="px-6 py-2.5 bg-gradient-to-r from-yellow-500 to-orange-500 text-gray-900 font-bold rounded-lg transition-all transform hover:scale-105">Go Ultimate - $4.99/mo</button>
+                    <button @click="$router.push('/pricing')" class="px-6 py-2.5 bg-gradient-to-r from-yellow-500 to-orange-500 text-gray-900 font-bold rounded-lg transition-all transform hover:scale-105">Get League Pass</button>
                   </div>
                 </div>
               </div>
