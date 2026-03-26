@@ -256,6 +256,22 @@
           </div>
         </div>
         <div class="card-body p-0">
+          <!-- Mobile pagination nav: ROS Players table -->
+          <div class="sm:hidden flex items-center justify-center gap-3 py-2 border-b border-dark-border/30">
+            <button @click="rosTablePage = Math.max(0, rosTablePage - 1)" :disabled="rosTablePage === 0"
+              class="w-7 h-7 rounded-full flex items-center justify-center transition-all"
+              :class="rosTablePage === 0 ? 'text-dark-border cursor-default' : 'text-yellow-400 hover:bg-yellow-400/10'">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
+            </button>
+            <div class="flex gap-1.5">
+              <div v-for="(_, i) in 3" :key="i" class="w-2 h-2 rounded-full transition-colors" :class="i === rosTablePage ? 'bg-yellow-400' : 'bg-dark-border/60'" />
+            </div>
+            <button @click="rosTablePage = Math.min(2, rosTablePage + 1)" :disabled="rosTablePage >= 2"
+              class="w-7 h-7 rounded-full flex items-center justify-center transition-all"
+              :class="rosTablePage >= 2 ? 'text-dark-border cursor-default' : 'text-yellow-400 hover:bg-yellow-400/10'">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+            </button>
+          </div>
           <div class="overflow-x-auto max-h-[70vh] overflow-y-auto">
             <table class="w-full">
               <thead class="bg-dark-border/30 sticky top-0 z-10">
@@ -263,21 +279,24 @@
                   <th class="px-3 py-3 text-left text-xs font-semibold uppercase w-12 cursor-pointer hover:text-yellow-400" @click="setRosSort('rosRank')">
                     Rank <span v-if="rosSortColumn === 'rosRank'" class="text-yellow-400">{{ rosSortDirection === 'asc' ? '↑' : '↓' }}</span>
                   </th>
-                  <th class="px-3 py-3 text-left text-xs font-semibold text-dark-textMuted uppercase">Player</th>
-                  <th class="px-2 py-3 text-center text-xs font-semibold text-dark-textMuted uppercase w-12">Pos</th>
-                  <th class="px-2 py-3 text-center text-xs font-semibold uppercase w-14 cursor-pointer hover:text-yellow-400" @click="setRosSort('positionRank')">
+                  <!-- Page 0: full Player col; pages 1+: hidden on mobile -->
+                  <th class="px-3 py-3 text-left text-xs font-semibold text-dark-textMuted uppercase" :class="rosTablePage > 0 ? 'hidden sm:table-cell' : ''">Player</th>
+                  <!-- Logo-only header for pages 1+ -->
+                  <th class="py-3 px-2 sm:hidden" v-if="rosTablePage > 0"></th>
+                  <th class="px-2 py-3 text-center text-xs font-semibold text-dark-textMuted uppercase w-12" :class="rosTablePage > 0 ? 'hidden sm:table-cell' : ''">Pos</th>
+                  <th class="px-2 py-3 text-center text-xs font-semibold uppercase w-14 cursor-pointer hover:text-yellow-400" @click="setRosSort('positionRank')" :class="rosTablePage === 1 ? '' : 'hidden sm:table-cell'">
                     Pos Rk <span v-if="rosSortColumn === 'positionRank'" class="text-yellow-400">{{ rosSortDirection === 'asc' ? '↑' : '↓' }}</span>
                   </th>
-                  <th class="px-2 py-3 text-center text-xs font-semibold uppercase w-16 cursor-pointer hover:text-yellow-400" @click="setRosSort('compositeScore')">
+                  <th class="px-2 py-3 text-center text-xs font-semibold uppercase w-16 cursor-pointer hover:text-yellow-400" @click="setRosSort('compositeScore')" :class="rosTablePage === 0 || rosTablePage === 1 ? '' : 'hidden sm:table-cell'">
                     Score <span v-if="rosSortColumn === 'compositeScore'" class="text-yellow-400">{{ rosSortDirection === 'asc' ? '↑' : '↓' }}</span>
                   </th>
-                  <th class="px-2 py-3 text-center text-xs font-semibold uppercase w-14 cursor-pointer hover:text-yellow-400" @click="setRosSort('total_points')">
+                  <th class="px-2 py-3 text-center text-xs font-semibold uppercase w-14 cursor-pointer hover:text-yellow-400" @click="setRosSort('total_points')" :class="rosTablePage === 1 ? '' : 'hidden sm:table-cell'">
                     Pts <span v-if="rosSortColumn === 'total_points'" class="text-yellow-400">{{ rosSortDirection === 'asc' ? '↑' : '↓' }}</span>
                   </th>
-                  <th class="px-2 py-3 text-center text-xs font-semibold uppercase w-14 cursor-pointer hover:text-yellow-400" @click="setRosSort('ppg')">
+                  <th class="px-2 py-3 text-center text-xs font-semibold uppercase w-14 cursor-pointer hover:text-yellow-400" @click="setRosSort('ppg')" :class="rosTablePage === 1 ? '' : 'hidden sm:table-cell'">
                     PPG <span v-if="rosSortColumn === 'ppg'" class="text-yellow-400">{{ rosSortDirection === 'asc' ? '↑' : '↓' }}</span>
                   </th>
-                  <th class="px-2 py-3 text-center text-xs font-semibold uppercase w-14 cursor-pointer hover:text-yellow-400" @click="setRosSort('vor')">
+                  <th class="px-2 py-3 text-center text-xs font-semibold uppercase w-14 cursor-pointer hover:text-yellow-400" @click="setRosSort('vor')" :class="rosTablePage === 2 ? '' : 'hidden sm:table-cell'">
                     VOR <span v-if="rosSortColumn === 'vor'" class="text-yellow-400">{{ rosSortDirection === 'asc' ? '↑' : '↓' }}</span>
                   </th>
                 </tr>
@@ -297,7 +316,8 @@
                   <!-- Player Row -->
                   <tr :class="getRowClass(player)" class="hover:bg-dark-border/20 transition-colors">
                     <td class="px-3 py-3"><span class="font-bold text-lg text-dark-text">{{ player.rosRank }}</span></td>
-                    <td class="px-3 py-3">
+                    <!-- Full player cell: page 0 on mobile, always on desktop -->
+                    <td class="px-3 py-3" :class="rosTablePage > 0 ? 'hidden sm:table-cell' : ''">
                       <div class="flex items-center gap-3">
                         <div class="relative">
                           <div class="w-10 h-10 rounded-full bg-dark-border overflow-hidden ring-2" :class="getAvatarRingClass(player)">
@@ -320,16 +340,32 @@
                         </div>
                       </div>
                     </td>
-                    <td class="px-2 py-3 text-center"><span class="px-2 py-1 rounded text-xs font-bold" :class="getPositionClass(player.position)">{{ player.position?.split(',')[0] }}</span></td>
-                    <td class="px-2 py-3 text-center text-dark-text font-medium">{{ player.positionRank }}</td>
-                    <td class="px-2 py-3 text-center">
+                    <!-- Logo-only cell: pages 1+ on mobile -->
+                    <td class="py-3 px-2 sm:hidden" v-if="rosTablePage > 0">
+                      <div class="relative inline-flex">
+                        <img :src="player.headshot || defaultHeadshot" :alt="player.full_name"
+                          class="w-8 h-8 rounded-full object-cover ring-2" :class="getAvatarRingClass(player)"
+                          @error="handleImageError" />
+                        <div v-if="isMyPlayer(player)" class="absolute -top-1 -right-1 w-4 h-4 bg-yellow-400 rounded-full flex items-center justify-center"><span class="text-[8px] text-gray-900 font-bold">★</span></div>
+                        <div v-else-if="isFreeAgent(player)" class="absolute -top-1 -right-1 w-4 h-4 bg-cyan-400 rounded-full flex items-center justify-center"><span class="text-[8px] text-gray-900 font-bold">+</span></div>
+                      </div>
+                    </td>
+                    <!-- Pos: page 0 only on mobile -->
+                    <td class="px-2 py-3 text-center" :class="rosTablePage > 0 ? 'hidden sm:table-cell' : ''"><span class="px-2 py-1 rounded text-xs font-bold" :class="getPositionClass(player.position)">{{ player.position?.split(',')[0] }}</span></td>
+                    <!-- Pos Rk: page 1 on mobile -->
+                    <td class="px-2 py-3 text-center text-dark-text font-medium" :class="rosTablePage === 1 ? '' : 'hidden sm:table-cell'">{{ player.positionRank }}</td>
+                    <!-- Score: pages 0+1 on mobile -->
+                    <td class="px-2 py-3 text-center" :class="rosTablePage === 0 || rosTablePage === 1 ? '' : 'hidden sm:table-cell'">
                       <div class="flex items-center justify-center gap-1">
                         <span class="font-bold text-primary">{{ player.compositeScore?.toFixed(1) || '0' }}</span>
                       </div>
                     </td>
-                    <td class="px-2 py-3 text-center font-bold text-dark-text">{{ player.total_points?.toFixed(1) || '0' }}</td>
-                    <td class="px-2 py-3 text-center font-bold text-dark-text">{{ player.ppg?.toFixed(2) || '0' }}</td>
-                    <td class="px-2 py-3 text-center font-bold" :class="player.vor > 0 ? 'text-green-400' : player.vor < -3 ? 'text-red-400' : 'text-dark-textMuted'">{{ player.vor >= 0 ? '+' : '' }}{{ player.vor?.toFixed(1) || '0' }}</td>
+                    <!-- Pts: page 1 on mobile -->
+                    <td class="px-2 py-3 text-center font-bold text-dark-text" :class="rosTablePage === 1 ? '' : 'hidden sm:table-cell'">{{ player.total_points?.toFixed(1) || '0' }}</td>
+                    <!-- PPG: page 1 on mobile -->
+                    <td class="px-2 py-3 text-center font-bold text-dark-text" :class="rosTablePage === 1 ? '' : 'hidden sm:table-cell'">{{ player.ppg?.toFixed(2) || '0' }}</td>
+                    <!-- VOR: page 2 on mobile -->
+                    <td class="px-2 py-3 text-center font-bold" :class="[player.vor > 0 ? 'text-green-400' : player.vor < -3 ? 'text-red-400' : 'text-dark-textMuted', rosTablePage === 2 ? '' : 'hidden sm:table-cell']">{{ player.vor >= 0 ? '+' : '' }}{{ player.vor?.toFixed(1) || '0' }}</td>
                   </tr>
                 </template>
                 <tr v-if="gatedFilteredPlayers.length === 0"><td colspan="8" class="px-4 py-8 text-center text-dark-textMuted">No players match filters</td></tr>
@@ -382,6 +418,22 @@
           </div>
         </div>
         <div class="card-body p-0">
+          <!-- Mobile pagination nav: Teams table -->
+          <div class="sm:hidden flex items-center justify-center gap-3 py-2 border-b border-dark-border/30">
+            <button @click="teamsTablePage = Math.max(0, teamsTablePage - 1)" :disabled="teamsTablePage === 0"
+              class="w-7 h-7 rounded-full flex items-center justify-center transition-all"
+              :class="teamsTablePage === 0 ? 'text-dark-border cursor-default' : 'text-yellow-400 hover:bg-yellow-400/10'">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
+            </button>
+            <div class="flex gap-1.5">
+              <div v-for="(_, i) in 2" :key="i" class="w-2 h-2 rounded-full transition-colors" :class="i === teamsTablePage ? 'bg-yellow-400' : 'bg-dark-border/60'" />
+            </div>
+            <button @click="teamsTablePage = Math.min(1, teamsTablePage + 1)" :disabled="teamsTablePage >= 1"
+              class="w-7 h-7 rounded-full flex items-center justify-center transition-all"
+              :class="teamsTablePage >= 1 ? 'text-dark-border cursor-default' : 'text-yellow-400 hover:bg-yellow-400/10'">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+            </button>
+          </div>
           <div class="overflow-x-auto">
             <table class="w-full">
               <thead class="bg-dark-border/30">
@@ -389,21 +441,24 @@
                   <th class="px-3 py-3 text-left text-xs font-semibold text-dark-textMuted uppercase w-10 cursor-pointer hover:text-yellow-400" @click="setTeamsSort('rank')">
                     # <span v-if="teamsSortColumn === 'rank'" class="text-yellow-400">{{ teamsSortDirection === 'asc' ? '↑' : '↓' }}</span>
                   </th>
-                  <th class="px-3 py-3 text-left text-xs font-semibold text-dark-textMuted uppercase">Team</th>
-                  <th class="px-3 py-3 text-center text-xs font-semibold text-dark-textMuted uppercase w-16 cursor-pointer hover:text-yellow-400" @click="setTeamsSort('overallGrade')">
+                  <!-- Page 0: full Team col; page 1: logo only -->
+                  <th class="px-3 py-3 text-left text-xs font-semibold text-dark-textMuted uppercase" :class="teamsTablePage === 1 ? 'hidden sm:table-cell' : ''">Team</th>
+                  <th class="py-3 px-2 sm:hidden" v-if="teamsTablePage === 1"></th>
+                  <th class="px-3 py-3 text-center text-xs font-semibold text-dark-textMuted uppercase w-16 cursor-pointer hover:text-yellow-400" @click="setTeamsSort('overallGrade')" :class="teamsTablePage === 1 ? 'hidden sm:table-cell' : ''">
                     Grade <span v-if="teamsSortColumn === 'overallGrade'" class="text-yellow-400">{{ teamsSortDirection === 'asc' ? '↑' : '↓' }}</span>
                   </th>
-                  <th class="px-3 py-3 text-center text-xs font-semibold text-dark-textMuted uppercase w-24 cursor-pointer hover:text-yellow-400" @click="setTeamsSort('statusScore')">
+                  <th class="px-3 py-3 text-center text-xs font-semibold text-dark-textMuted uppercase w-24 cursor-pointer hover:text-yellow-400" @click="setTeamsSort('statusScore')" :class="teamsTablePage === 1 ? 'hidden sm:table-cell' : ''">
                     Status <span v-if="teamsSortColumn === 'statusScore'" class="text-yellow-400">{{ teamsSortDirection === 'asc' ? '↑' : '↓' }}</span>
                   </th>
-                  <th v-for="pos in uniquePositions" :key="pos" class="px-3 py-3 text-center text-xs font-semibold uppercase w-12" :class="getPositionTextClass(pos)">{{ pos }}</th>
+                  <th v-for="pos in uniquePositions" :key="pos" class="px-3 py-3 text-center text-xs font-semibold uppercase w-12" :class="[getPositionTextClass(pos), teamsTablePage === 1 ? '' : 'hidden sm:table-cell']">{{ pos }}</th>
                 </tr>
               </thead>
               <tbody class="divide-y divide-dark-border/30">
                 <template v-for="(team, index) in gatedRankedTeams" :key="team.teamKey">
                   <tr :class="[team.isMyTeam ? 'bg-yellow-500/10' : 'hover:bg-dark-border/20', expandedTeamId === team.teamKey ? 'bg-dark-border/30' : '']" class="transition-colors cursor-pointer" @click="expandedTeamId = expandedTeamId === team.teamKey ? null : team.teamKey">
                     <td class="px-3 py-3"><span class="font-bold" :class="index < 3 ? 'text-yellow-400' : 'text-dark-textMuted'">{{ index + 1 }}</span></td>
-                    <td class="px-3 py-3">
+                    <!-- Full team cell: page 0 on mobile -->
+                    <td class="px-3 py-3" :class="teamsTablePage === 1 ? 'hidden sm:table-cell' : ''">
                       <div class="flex items-center gap-3">
                         <div class="w-9 h-9 rounded-full overflow-hidden bg-dark-border ring-2 flex-shrink-0" :class="team.isMyTeam ? 'ring-yellow-400' : 'ring-dark-border'">
                           <img :src="team.logoUrl || defaultTeamAvatar" :alt="team.teamName" class="w-full h-full object-cover" @error="handleImageError" />
@@ -414,9 +469,23 @@
                         </div>
                       </div>
                     </td>
-                    <td class="px-3 py-3 text-center"><span class="text-xl font-black" :class="getTeamGradeClass(team.overallGrade)">{{ team.overallGrade }}</span></td>
-                    <td class="px-3 py-3 text-center"><span class="px-2 py-1 rounded-full text-[10px] font-bold whitespace-nowrap" :class="getTeamStatusClass(team.statusScore)">{{ getTeamStatusLabel(team.statusScore) }}</span></td>
-                    <td v-for="pos in uniquePositions" :key="pos" class="px-3 py-3 text-center"><span class="font-bold text-sm" :class="getPositionGradeClass(team.positionGrades[pos] || 'N/A')">{{ team.positionGrades[pos] || 'N/A' }}</span></td>
+                    <!-- Logo-only cell: page 1 on mobile -->
+                    <td class="py-3 px-2 sm:hidden" v-if="teamsTablePage === 1">
+                      <div class="relative inline-flex">
+                        <img :src="team.logoUrl || defaultTeamAvatar" :alt="team.teamName"
+                          class="w-8 h-8 rounded-full object-cover ring-2" :class="team.isMyTeam ? 'ring-yellow-400' : 'ring-dark-border'"
+                          @error="handleImageError" />
+                        <div v-if="team.isMyTeam" class="absolute -top-1 -right-1 w-4 h-4 bg-yellow-500 rounded-full flex items-center justify-center">
+                          <span class="text-[7px] text-gray-900 font-bold">★</span>
+                        </div>
+                      </div>
+                    </td>
+                    <!-- Grade: page 0 on mobile -->
+                    <td class="px-3 py-3 text-center" :class="teamsTablePage === 1 ? 'hidden sm:table-cell' : ''"><span class="text-xl font-black" :class="getTeamGradeClass(team.overallGrade)">{{ team.overallGrade }}</span></td>
+                    <!-- Status: page 0 on mobile -->
+                    <td class="px-3 py-3 text-center" :class="teamsTablePage === 1 ? 'hidden sm:table-cell' : ''"><span class="px-2 py-1 rounded-full text-[10px] font-bold whitespace-nowrap" :class="getTeamStatusClass(team.statusScore)">{{ getTeamStatusLabel(team.statusScore) }}</span></td>
+                    <!-- Position grades: page 1 on mobile -->
+                    <td v-for="pos in uniquePositions" :key="pos" class="px-3 py-3 text-center" :class="teamsTablePage === 1 ? '' : 'hidden sm:table-cell'"><span class="font-bold text-sm" :class="getPositionGradeClass(team.positionGrades[pos] || 'N/A')">{{ team.positionGrades[pos] || 'N/A' }}</span></td>
                   </tr>
                   <tr v-if="expandedTeamId === team.teamKey">
                     <td :colspan="5 + uniquePositions.length" class="p-0">
@@ -833,18 +902,39 @@
                 :class="selectedStartSitPosition === pos.id ? 'bg-yellow-400 text-gray-900' : 'bg-dark-border/30 text-dark-textSecondary hover:text-dark-text'"
                 class="px-3 py-1.5 rounded-lg text-xs font-semibold transition-all">{{ pos.label }}</button>
             </div>
+            <!-- Mobile pagination nav: Start/Sit table -->
+            <div class="sm:hidden flex items-center justify-center gap-3 py-2 border-b border-dark-border/30">
+              <button @click="ssTablePage = Math.max(0, ssTablePage - 1)" :disabled="ssTablePage === 0"
+                class="w-7 h-7 rounded-full flex items-center justify-center transition-all"
+                :class="ssTablePage === 0 ? 'text-dark-border cursor-default' : 'text-yellow-400 hover:bg-yellow-400/10'">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
+              </button>
+              <div class="flex gap-1.5">
+                <div v-for="(_, i) in 2" :key="i" class="w-2 h-2 rounded-full transition-colors" :class="i === ssTablePage ? 'bg-yellow-400' : 'bg-dark-border/60'" />
+              </div>
+              <button @click="ssTablePage = Math.min(1, ssTablePage + 1)" :disabled="ssTablePage >= 1"
+                class="w-7 h-7 rounded-full flex items-center justify-center transition-all"
+                :class="ssTablePage >= 1 ? 'text-dark-border cursor-default' : 'text-yellow-400 hover:bg-yellow-400/10'">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+              </button>
+            </div>
             <div class="overflow-x-auto max-h-[500px] overflow-y-auto">
               <table class="w-full">
                 <thead class="bg-dark-border/30 sticky top-0 z-10">
                   <tr>
                     <th class="px-3 py-2.5 text-left text-xs font-semibold text-dark-textMuted uppercase w-12">Rank</th>
-                    <th class="px-3 py-2.5 text-left text-xs font-semibold text-dark-textMuted uppercase">Player</th>
-                    <th class="px-2 py-2.5 text-center text-xs font-semibold text-dark-textMuted uppercase w-24">{{ scoringMode === 'daily' ? 'Matchup' : 'Games' }}</th>
-                    <th class="px-2 py-2.5 text-center text-xs font-semibold text-dark-textMuted uppercase w-20">Difficulty</th>
-                    <th class="px-2 py-2.5 text-center text-xs font-semibold text-dark-textMuted uppercase w-16">PPG</th>
+                    <!-- Page 0: full Player col; page 1: logo only -->
+                    <th class="px-3 py-2.5 text-left text-xs font-semibold text-dark-textMuted uppercase" :class="ssTablePage === 1 ? 'hidden sm:table-cell' : ''">Player</th>
+                    <th class="py-2.5 px-2 sm:hidden" v-if="ssTablePage === 1"></th>
+                    <!-- Matchup + Difficulty + PPG + Tier: page 1 on mobile -->
+                    <th class="px-2 py-2.5 text-center text-xs font-semibold text-dark-textMuted uppercase w-24" :class="ssTablePage === 1 ? '' : 'hidden sm:table-cell'">{{ scoringMode === 'daily' ? 'Matchup' : 'Games' }}</th>
+                    <th class="px-2 py-2.5 text-center text-xs font-semibold text-dark-textMuted uppercase w-20" :class="ssTablePage === 1 ? '' : 'hidden sm:table-cell'">Difficulty</th>
+                    <th class="px-2 py-2.5 text-center text-xs font-semibold text-dark-textMuted uppercase w-16" :class="ssTablePage === 1 ? '' : 'hidden sm:table-cell'">PPG</th>
+                    <!-- Score: both pages on mobile -->
                     <th class="px-2 py-2.5 text-center text-xs font-semibold text-dark-textMuted uppercase w-16"><span class="text-yellow-400">Score</span></th>
-                    <th class="px-2 py-2.5 text-center text-xs font-semibold text-dark-textMuted uppercase w-14">Tier</th>
-                    <th class="px-2 py-2.5 text-center text-xs font-semibold text-dark-textMuted uppercase w-24">Verdict</th>
+                    <th class="px-2 py-2.5 text-center text-xs font-semibold text-dark-textMuted uppercase w-14" :class="ssTablePage === 1 ? '' : 'hidden sm:table-cell'">Tier</th>
+                    <!-- Verdict: page 0 on mobile -->
+                    <th class="px-2 py-2.5 text-center text-xs font-semibold text-dark-textMuted uppercase w-24" :class="ssTablePage === 0 ? '' : 'hidden sm:table-cell'">Verdict</th>
                   </tr>
                 </thead>
                 <tbody class="divide-y divide-dark-border/30">
@@ -860,7 +950,8 @@
                     </tr>
                     <tr :class="[getStartSitRowClass(player)]" class="hover:bg-dark-border/20 transition-colors">
                       <td class="px-3 py-2"><span class="font-bold text-dark-text">{{ index + 1 }}</span></td>
-                      <td class="px-3 py-2">
+                      <!-- Full player cell: page 0 -->
+                      <td class="px-3 py-2" :class="ssTablePage === 1 ? 'hidden sm:table-cell' : ''">
                         <div class="flex items-center gap-2">
                           <div class="relative">
                             <div class="w-9 h-9 rounded-full bg-dark-border overflow-hidden ring-2" :class="getStartSitAvatarRingClass(player)">
@@ -881,20 +972,35 @@
                           </div>
                         </div>
                       </td>
-                      <td class="px-2 py-2 text-center">
+                      <!-- Logo-only cell: page 1 -->
+                      <td class="py-2 px-2 sm:hidden" v-if="ssTablePage === 1">
+                        <div class="relative inline-flex">
+                          <img :src="player.headshot || defaultHeadshot" :alt="player.full_name"
+                            class="w-8 h-8 rounded-full object-cover ring-2" :class="getStartSitAvatarRingClass(player)"
+                            @error="handleImageError" />
+                          <div v-if="isMyPlayer(player)" class="absolute -top-1 -right-1 w-4 h-4 bg-yellow-400 rounded-full flex items-center justify-center"><span class="text-[8px] text-gray-900 font-bold">★</span></div>
+                        </div>
+                      </td>
+                      <!-- Matchup: page 1 on mobile -->
+                      <td class="px-2 py-2 text-center" :class="ssTablePage === 1 ? '' : 'hidden sm:table-cell'">
                         <span v-if="scoringMode === 'daily'" class="text-xs font-medium" :class="player.opponent ? 'text-dark-text' : 'text-dark-textMuted italic'">
                           {{ player.opponent || 'No Game' }}
                         </span>
                         <span v-else class="text-xs text-dark-text">{{ player.gamesThisWeek || 0 }} games</span>
                       </td>
-                      <td class="px-2 py-2 text-center">
+                      <!-- Difficulty: page 1 on mobile -->
+                      <td class="px-2 py-2 text-center" :class="ssTablePage === 1 ? '' : 'hidden sm:table-cell'">
                         <span v-if="player.opponent" class="px-2 py-0.5 rounded text-xs font-bold" :class="getMatchupClass(player.matchupDifficulty)">{{ getMatchupLabel(player.matchupDifficulty) }}</span>
                         <span v-else class="text-xs text-dark-textMuted">—</span>
                       </td>
-                      <td class="px-2 py-2 text-center"><span class="text-sm text-dark-textMuted">{{ player.ppg?.toFixed(1) || '0.0' }}</span></td>
+                      <!-- PPG: page 1 on mobile -->
+                      <td class="px-2 py-2 text-center" :class="ssTablePage === 1 ? '' : 'hidden sm:table-cell'"><span class="text-sm text-dark-textMuted">{{ player.ppg?.toFixed(1) || '0.0' }}</span></td>
+                      <!-- Score: always visible -->
                       <td class="px-2 py-2 text-center"><span class="font-bold text-sm text-primary">{{ player.compositeScore?.toFixed(1) || '—' }}</span></td>
-                      <td class="px-2 py-2 text-center"><span class="text-xs font-bold" :class="getTierColorClass(player.tier)">{{ player.tier || '—' }}</span></td>
-                      <td class="px-2 py-2 text-center"><span class="px-2 py-1 rounded text-xs font-bold" :class="getVerdictClass(player.verdict)">{{ player.verdict }}</span></td>
+                      <!-- Tier: page 1 on mobile -->
+                      <td class="px-2 py-2 text-center" :class="ssTablePage === 1 ? '' : 'hidden sm:table-cell'"><span class="text-xs font-bold" :class="getTierColorClass(player.tier)">{{ player.tier || '—' }}</span></td>
+                      <!-- Verdict: page 0 on mobile -->
+                      <td class="px-2 py-2 text-center" :class="ssTablePage === 0 ? '' : 'hidden sm:table-cell'"><span class="px-2 py-1 rounded text-xs font-bold" :class="getVerdictClass(player.verdict)">{{ player.verdict }}</span></td>
                     </tr>
                   </template>
                   <tr v-if="gatedGetStartSitPlayers(selectedStartSitPosition || startSitPositions[0]?.id).length === 0">
@@ -1738,6 +1844,10 @@ const tabs = [
   { id: 'trade', name: 'Trade Analyzer', icon: '🔄' }
 ]
 const activeTab = ref('ros')
+// Mobile table pagination (0-indexed pages)
+const rosTablePage = ref(0)   // 0=Rank+Player+Pos+Score, 1=Logo+PosRk+Pts+PPG, 2=Logo+VOR
+const teamsTablePage = ref(0) // 0=#+Team+Grade+Status, 1=Logo+positions
+const ssTablePage = ref(0)    // 0=Rank+Player+Score+Verdict, 1=Logo+Matchup+Diff+PPG+Tier
 const isLoading = ref(true)
 const loadingMessage = ref('Loading...')
 const loadingProgress = ref({

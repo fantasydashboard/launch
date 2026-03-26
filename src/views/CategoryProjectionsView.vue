@@ -231,26 +231,46 @@
           <p class="card-subtitle">{{ isOverallView ? 'Ranked by composite value across all categories · Click column headers to sort' : 'Click on a player to see detailed stats and performance chart' }}</p>
         </div>
         <div class="card-body p-0">
+          <!-- Mobile pagination nav: Category player table -->
+          <div class="sm:hidden flex items-center justify-center gap-3 py-2 border-b border-dark-border/30">
+            <button @click="catTablePage = Math.max(0, catTablePage - 1)" :disabled="catTablePage === 0"
+              class="w-7 h-7 rounded-full flex items-center justify-center transition-all"
+              :class="catTablePage === 0 ? 'text-dark-border cursor-default' : 'text-yellow-400 hover:bg-yellow-400/10'">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
+            </button>
+            <div class="flex gap-1.5">
+              <div v-for="(_, i) in 2" :key="i" class="w-2 h-2 rounded-full transition-colors" :class="i === catTablePage ? 'bg-yellow-400' : 'bg-dark-border/60'" />
+            </div>
+            <button @click="catTablePage = Math.min(1, catTablePage + 1)" :disabled="catTablePage >= 1"
+              class="w-7 h-7 rounded-full flex items-center justify-center transition-all"
+              :class="catTablePage >= 1 ? 'text-dark-border cursor-default' : 'text-yellow-400 hover:bg-yellow-400/10'">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+            </button>
+          </div>
           <div class="overflow-x-auto max-h-[70vh] overflow-y-auto">
-            <table class="w-full" :class="isOverallView ? 'min-w-[1000px]' : ''">
+            <table class="w-full" :class="isOverallView ? 'min-w-[1000px] sm:min-w-[1000px]' : ''">
               <thead class="bg-[#1e2028] sticky top-0 z-30">
                 <tr>
                   <th class="px-3 py-3 text-left text-xs font-semibold text-dark-textMuted uppercase w-14 cursor-pointer hover:text-yellow-400" @click="toggleSort('rank')">
                     <div class="flex items-center gap-1"># <span v-if="sortColumn === 'rank'" class="text-yellow-400">{{ sortDirection === 'asc' ? '↑' : '↓' }}</span></div>
                   </th>
-                  <th class="px-3 py-3 text-left text-xs font-semibold text-dark-textMuted uppercase cursor-pointer hover:text-yellow-400 sticky left-0 bg-[#1e2028] z-40" @click="toggleSort('name')">
+                  <!-- Page 0: full Player col; page 1: logo only -->
+                  <th class="px-3 py-3 text-left text-xs font-semibold text-dark-textMuted uppercase cursor-pointer hover:text-yellow-400" :class="[catTablePage === 1 ? 'hidden sm:table-cell' : '', 'sm:sticky sm:left-0 sm:bg-[#1e2028] sm:z-40']" @click="toggleSort('name')">
                     <div class="flex items-center gap-1">Player <span v-if="sortColumn === 'name'" class="text-yellow-400">{{ sortDirection === 'asc' ? '↑' : '↓' }}</span></div>
                   </th>
-                  <th class="px-2 py-3 text-center text-xs font-semibold text-dark-textMuted uppercase w-14 cursor-pointer hover:text-yellow-400" @click="toggleSort('position')">
+                  <th class="py-3 px-2 sm:hidden" v-if="catTablePage === 1"></th>
+                  <!-- Pos: page 0 on mobile -->
+                  <th class="px-2 py-3 text-center text-xs font-semibold text-dark-textMuted uppercase w-14 cursor-pointer hover:text-yellow-400" :class="catTablePage === 1 ? 'hidden sm:table-cell' : ''" @click="toggleSort('position')">
                     <div class="flex items-center justify-center gap-1">Pos <span v-if="sortColumn === 'position'" class="text-yellow-400">{{ sortDirection === 'asc' ? '↑' : '↓' }}</span></div>
                   </th>
                   
-                  <!-- OVERALL VIEW: Show all category columns -->
+                  <!-- OVERALL VIEW: Show all category columns (desktop only on mobile p0; page 1 shows them) -->
                   <template v-if="isOverallView">
                     <th 
                       v-for="cat in displayCategories" 
                       :key="cat.stat_id" 
                       class="px-2 py-3 text-center text-xs font-semibold text-dark-textMuted uppercase cursor-pointer hover:text-yellow-400 min-w-[60px]"
+                      :class="catTablePage === 1 ? '' : 'hidden sm:table-cell'"
                       @click="toggleSort(cat.stat_id)"
                     >
                       <div class="flex items-center justify-center gap-0.5">
@@ -260,19 +280,20 @@
                     </th>
                   </template>
                   
-                  <!-- CATEGORY VIEW: Show ROS Proj / Current / Per Game -->
+                  <!-- CATEGORY VIEW: Show ROS Proj / Current / Per Game — page 1 on mobile -->
                   <template v-else>
-                    <th class="px-2 py-3 text-center text-xs font-semibold uppercase w-20 cursor-pointer hover:text-yellow-400" @click="toggleSort('projected')" :title="columnTooltips.rosProj">
+                    <th class="px-2 py-3 text-center text-xs font-semibold uppercase w-20 cursor-pointer hover:text-yellow-400" :class="catTablePage === 1 ? '' : 'hidden sm:table-cell'" @click="toggleSort('projected')" :title="columnTooltips.rosProj">
                       <div class="flex items-center justify-center gap-1"><span class="text-yellow-400">ROS Proj</span> <span v-if="sortColumn === 'projected'" class="text-yellow-400">{{ sortDirection === 'asc' ? '↑' : '↓' }}</span></div>
                     </th>
-                    <th class="px-2 py-3 text-center text-xs font-semibold text-dark-textMuted uppercase w-16 cursor-pointer hover:text-yellow-400" @click="toggleSort('current')" :title="columnTooltips.current">
+                    <th class="px-2 py-3 text-center text-xs font-semibold text-dark-textMuted uppercase w-16 cursor-pointer hover:text-yellow-400" :class="catTablePage === 1 ? '' : 'hidden sm:table-cell'" @click="toggleSort('current')" :title="columnTooltips.current">
                       <div class="flex items-center justify-center gap-1">Current <span v-if="sortColumn === 'current'" class="text-yellow-400">{{ sortDirection === 'asc' ? '↑' : '↓' }}</span></div>
                     </th>
-                    <th class="px-2 py-3 text-center text-xs font-semibold text-dark-textMuted uppercase w-16 cursor-pointer hover:text-yellow-400" @click="toggleSort('perGame')" :title="columnTooltips.perGame">
+                    <th class="px-2 py-3 text-center text-xs font-semibold text-dark-textMuted uppercase w-16 cursor-pointer hover:text-yellow-400" :class="catTablePage === 1 ? '' : 'hidden sm:table-cell'" @click="toggleSort('perGame')" :title="columnTooltips.perGame">
                       <div class="flex items-center justify-center gap-1">Per Game <span v-if="sortColumn === 'perGame'" class="text-yellow-400">{{ sortDirection === 'asc' ? '↑' : '↓' }}</span></div>
                     </th>
                   </template>
                   
+                  <!-- Value: always visible -->
                   <th class="px-2 py-3 text-center text-xs font-semibold text-dark-textMuted uppercase w-24 cursor-pointer hover:text-yellow-400" @click="toggleSort('value')" :title="columnTooltips.value">
                     <div class="flex items-center justify-center gap-1"><span :class="isOverallView ? 'text-yellow-400' : ''">Value</span> <span class="text-dark-textMuted/50 text-[10px]">ⓘ</span> <span v-if="sortColumn === 'value'" class="text-yellow-400">{{ sortDirection === 'asc' ? '↑' : '↓' }}</span></div>
                   </th>
@@ -295,7 +316,8 @@
                     <td class="px-3 py-3">
                       <span class="w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold bg-dark-border text-dark-textMuted">{{ player.categoryRank }}</span>
                     </td>
-                    <td class="px-3 py-3 sticky left-0 z-10" :class="isMyPlayer(player) ? 'bg-[#2a2517] border-l-4 border-l-yellow-400' : isFreeAgent(player) ? 'bg-[#152029] border-l-4 border-l-cyan-400' : expandedPlayerKey === player.player_key ? 'bg-[#252830]' : 'bg-dark-card'">
+                    <!-- Full player cell: page 0 on mobile -->
+                    <td class="px-3 py-3 z-10" :class="[catTablePage === 1 ? 'hidden sm:table-cell' : '', 'sm:sticky sm:left-0 sm:z-10', isMyPlayer(player) ? 'bg-[#2a2517] border-l-4 border-l-yellow-400' : isFreeAgent(player) ? 'bg-[#152029] border-l-4 border-l-cyan-400' : expandedPlayerKey === player.player_key ? 'bg-[#252830]' : 'bg-dark-card']">
                       <div class="flex items-center gap-3">
                         <div class="relative">
                           <div class="w-10 h-10 rounded-full bg-dark-border overflow-hidden ring-2" :class="getAvatarRingClass(player)">
@@ -330,26 +352,38 @@
                         </div>
                       </div>
                     </td>
-                    <td class="px-2 py-3 text-center">
+                    <!-- Logo-only cell: page 1 on mobile -->
+                    <td class="py-3 px-2 sm:hidden" v-if="catTablePage === 1">
+                      <div class="relative inline-flex">
+                        <img :src="player.headshot || defaultHeadshot" :alt="player.full_name"
+                          class="w-8 h-8 rounded-full object-cover ring-2" :class="getAvatarRingClass(player)"
+                          @error="handleImageError" />
+                        <div v-if="isMyPlayer(player)" class="absolute -top-1 -right-1 w-4 h-4 bg-yellow-400 rounded-full flex items-center justify-center shadow-sm"><span class="text-[8px] text-gray-900 font-bold">★</span></div>
+                        <div v-else-if="isFreeAgent(player)" class="absolute -top-1 -right-1 w-4 h-4 bg-cyan-400 rounded-full flex items-center justify-center shadow-sm"><span class="text-[8px] text-gray-900 font-bold">+</span></div>
+                      </div>
+                    </td>
+                    <!-- Pos: page 0 on mobile -->
+                    <td class="px-2 py-3 text-center" :class="catTablePage === 1 ? 'hidden sm:table-cell' : ''">
                       <span class="px-2 py-1 rounded text-xs font-bold" :class="getPositionClass(player.position)">{{ player.position?.split(',')[0] }}</span>
                     </td>
                     
-                    <!-- OVERALL VIEW: All category stat values -->
+                    <!-- OVERALL VIEW: All category stat values — page 1 on mobile -->
                     <template v-if="isOverallView">
-                      <td v-for="cat in displayCategories" :key="cat.stat_id" class="px-2 py-3 text-center">
+                      <td v-for="cat in displayCategories" :key="cat.stat_id" class="px-2 py-3 text-center" :class="catTablePage === 1 ? '' : 'hidden sm:table-cell'">
                         <span class="text-sm font-medium text-dark-text">{{ formatCategoryStat(player, cat.stat_id) }}</span>
                       </td>
                     </template>
                     
-                    <!-- CATEGORY VIEW: ROS Proj / Current / Per Game -->
+                    <!-- CATEGORY VIEW: ROS Proj / Current / Per Game — page 1 on mobile -->
                     <template v-else>
-                      <td class="px-2 py-3 text-center">
+                      <td class="px-2 py-3 text-center" :class="catTablePage === 1 ? '' : 'hidden sm:table-cell'">
                         <span class="text-lg font-bold text-yellow-400">{{ formatStatValue(player.projectedValue) }}</span>
                       </td>
-                      <td class="px-2 py-3 text-center text-dark-text font-medium">{{ formatStatValue(player.currentValue) }}</td>
-                      <td class="px-2 py-3 text-center text-dark-textMuted">{{ formatStatValue(player.perGameValue, 3) }}</td>
+                      <td class="px-2 py-3 text-center text-dark-text font-medium" :class="catTablePage === 1 ? '' : 'hidden sm:table-cell'">{{ formatStatValue(player.currentValue) }}</td>
+                      <td class="px-2 py-3 text-center text-dark-textMuted" :class="catTablePage === 1 ? '' : 'hidden sm:table-cell'">{{ formatStatValue(player.perGameValue, 3) }}</td>
                     </template>
                     
+                    <!-- Value: always visible -->
                     <td class="px-2 py-3 text-center">
                       <div class="flex flex-col items-center gap-1">
                         <span class="text-lg font-black" :class="getValueClass(player.overallValue)">{{ player.overallValue?.toFixed(1) || '-' }}</span>
@@ -3349,6 +3383,8 @@ const rankingWeights = computed(() => {
 
 // Tab state
 const activeTab = ref<'ros' | 'teams' | 'startsit' | 'trade'>('ros')
+// Mobile table pagination: 0=Rank+Player+Pos+Value, 1=Logo+stats+Value
+const catTablePage = ref(0)
 const teamsViewMode = ref<'grid' | 'table'>('grid')
 const expandedTeamKey = ref<string | null>(null)
 
