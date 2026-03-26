@@ -2016,66 +2016,64 @@ const FanCards = defineComponent({
 .sc-logo { height: 36px; width: auto; object-fit: contain; }
 .sc-logo-lg { height: 50px; }
 
-/* Fan hero — positioned upper-right for text versions so text fills lower-left */
+/* Fan hero — centered, cards are the star */
 .sc-fan-hero {
-  position: absolute;
-  top: 48px;
-  right: -30px;
-  z-index: 2;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 0;
-}
-.sc-fan-hero.sc-fan-full {
   position: relative;
-  top: auto;
-  right: auto;
+  z-index: 3;
   flex: 1;
   width: 100%;
-  padding: 20px 0 16px;
   display: flex;
   align-items: center;
   justify-content: center;
+  /* Push up slightly to make room for text below */
+  margin-top: -8px;
+}
+.sc-fan-hero.sc-fan-full {
+  flex: 1;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: 0;
 }
 
-/* Scale wrapper */
+/* Scale wrapper — cards big and centered */
 .sc-fan-scale {
-  transform: scale(1.35);
-  transform-origin: top right;
+  transform: scale(1.75);
+  transform-origin: center center;
 }
 .sc-fan-scale-lg {
-  transform: scale(1.72);
+  transform: scale(1.9);
   transform-origin: center center;
 }
 
-/* Feature word — big, bold, anchored bottom-left, fills the space */
+/* Feature word — bottom strip, full-width, tight and clean */
 .sc-feature-word {
-  position: absolute;
-  bottom: 32px;
-  left: 0;
-  right: 0;
+  position: relative;
   z-index: 4;
+  width: 100%;
   font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
-  font-size: 52px;
+  font-size: 40px;
   font-weight: 900;
-  letter-spacing: 0.06em;
+  letter-spacing: 0.1em;
   line-height: 1;
   text-transform: uppercase;
-  padding: 0 24px 0;
-  /* Subtle text shadow to lift it off the cards */
-  text-shadow: 0 2px 40px rgba(0,0,0,0.8), 0 0 80px rgba(0,0,0,0.5);
+  padding: 18px 28px 28px;
+  flex-shrink: 0;
+  /* Semi-transparent dark bg behind text so it never fights the cards */
+  background: linear-gradient(to top, rgba(0,0,0,0.7) 0%, transparent 100%);
+  text-shadow: 0 2px 20px rgba(0,0,0,0.9);
 }
-/* Thin accent line above the word */
+/* Thin accent bar left of word */
 .sc-feature-word::before {
   content: '';
   display: block;
-  width: 48px;
+  width: 40px;
   height: 3px;
   border-radius: 2px;
   margin-bottom: 10px;
   background: currentColor;
-  opacity: 0.6;
+  opacity: 0.7;
 }
 .sc-word-gold   { color: #eab308; }
 .sc-word-cyan   { color: #06b6d4; }
