@@ -37,6 +37,9 @@
 
     <!-- Simulated Data Banner for non-Ultimate users -->
 
+    <!-- Beta notice: Ultimate Tools are free during beta -->
+    <SimulatedDataBanner class="mb-6" />
+
     <!-- Tab Navigation -->
     <div class="flex gap-2">
       <button v-for="tab in tabs" :key="tab.id" @click="activeTab = tab.id"

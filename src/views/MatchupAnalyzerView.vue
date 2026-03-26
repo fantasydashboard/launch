@@ -23,6 +23,9 @@
       </div>
     </div>
 
+    <!-- Beta notice: Ultimate Tools are free during beta -->
+    <SimulatedDataBanner class="mb-2" />
+
     <!-- Loading State -->
     <div v-if="isLoading" class="flex items-center justify-center py-20">
       <LoadingSpinner size="xl" />
@@ -376,6 +379,7 @@ import { useLeagueStore } from '@/stores/league'
 import { sleeperService } from '@/services/sleeper'
 import type { SleeperRoster, SleeperMatchup } from '@/types/sleeper'
 import LoadingSpinner from '@/components/LoadingSpinner.vue'
+import SimulatedDataBanner from '@/components/SimulatedDataBanner.vue'
 
 const leagueStore = useLeagueStore()
 

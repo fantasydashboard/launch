@@ -6,6 +6,9 @@
       <p class="text-base text-dark-textMuted">Generate draft orders and custom schedules for your league</p>
     </div>
 
+    <!-- Beta notice: Ultimate Tools are free during beta -->
+    <SimulatedDataBanner class="mb-2" />
+
     <!-- Tool Selector Tabs -->
     <div class="flex gap-2 flex-wrap">
       <button @click="activeTool = 'draft'" :class="activeTool === 'draft' ? 'bg-yellow-400 text-gray-900' : 'bg-dark-card text-dark-textSecondary hover:bg-dark-border/50'" class="px-6 py-3 rounded-xl font-semibold transition-all flex items-center gap-2">
@@ -1173,6 +1176,7 @@
 <script setup lang="ts">
 import { ref, computed, watch, onMounted } from 'vue'
 import ScheduleAnalysis from '@/components/ScheduleAnalysis.vue'
+import SimulatedDataBanner from '@/components/SimulatedDataBanner.vue'
 import { useLeagueStore } from '@/stores/league'
 import { useAuthStore } from '@/stores/auth'
 
