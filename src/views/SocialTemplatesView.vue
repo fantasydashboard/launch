@@ -713,6 +713,205 @@
       </div>
     </div>
 
+    <!-- 20 · INTERACTIVE POWER RANKINGS -->
+    <div class="post-wrap pr-post-wrap">
+      <div class="post-label">20 · Power Rankings — Interactive</div>
+
+      <!-- ── Controls ── -->
+      <div class="wp-controls">
+        <div class="wp-ctrl-row">
+          <div class="wp-ctrl-group">
+            <label>Sport · League Type</label>
+            <input v-model="prSportLabel" class="wp-input" placeholder="Baseball · H2H Points" />
+          </div>
+          <div class="wp-ctrl-group wp-ctrl-sm">
+            <label>Week</label>
+            <input v-model="prWeek" class="wp-input" style="width:64px" placeholder="14" />
+          </div>
+          <div class="wp-ctrl-group">
+            <label>Number of Teams</label>
+            <div class="wp-pills">
+              <button v-for="n in [4,6,8,10]" :key="n" @click="prTeamCount=n"
+                :class="prTeamCount===n?'wp-pill-on':'wp-pill-off'">{{n}}</button>
+            </div>
+          </div>
+          <div class="wp-ctrl-group">
+            <label>Accent Color</label>
+            <div class="wp-pills">
+              <button @click="prAccent='gold'"   :class="prAccent==='gold'?'wp-pill-on':'wp-pill-off'" style="color:#eab308">⚡ Gold</button>
+              <button @click="prAccent='cyan'"   :class="prAccent==='cyan'?'wp-pill-on':'wp-pill-off'" style="color:#06b6d4">● Cyan</button>
+              <button @click="prAccent='green'"  :class="prAccent==='green'?'wp-pill-on':'wp-pill-off'" style="color:#22c55e">● Green</button>
+              <button @click="prAccent='purple'" :class="prAccent==='purple'?'wp-pill-on':'wp-pill-off'" style="color:#a78bfa">● Purple</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Team rows -->
+        <div class="pr-team-grid">
+          <div class="pr-team-header">
+            <span class="pr-th">#</span>
+            <span class="pr-th" style="flex:1">Team Name</span>
+            <span class="pr-th" style="width:80px">Score</span>
+            <span class="pr-th" style="width:70px">+/− Rank</span>
+            <span class="pr-th" style="width:90px">Record</span>
+          </div>
+          <div v-for="(team, i) in prTeams.slice(0, prTeamCount)" :key="i" class="pr-team-row">
+            <span class="pr-team-num">{{ i + 1 }}</span>
+            <input v-model="team.name" class="wp-input pr-name-input" :placeholder="'Team ' + (i+1)" />
+            <input v-model.number="team.score" type="number" step="0.1" class="wp-input pr-score-input" placeholder="124.8" />
+            <div class="wp-pills" style="gap:3px">
+              <button @click="team.change = Math.max(-9, team.change - 1)" class="wp-pill-off" style="padding:3px 7px;font-size:13px">−</button>
+              <span class="pr-chg-val" :style="{color: team.change > 0 ? '#22c55e' : team.change < 0 ? '#ef4444' : '#6b7280'}">
+                {{ team.change > 0 ? '▲' + team.change : team.change < 0 ? '▼' + Math.abs(team.change) : '—' }}
+              </span>
+              <button @click="team.change = Math.min(9, team.change + 1)" class="wp-pill-off" style="padding:3px 7px;font-size:13px">+</button>
+            </div>
+            <input v-model="team.record" class="wp-input" style="width:80px" placeholder="8-3" />
+          </div>
+        </div>
+      </div>
+
+      <!-- ── Screenshottable card ── -->
+      <div class="sq sq-wp-bg">
+        <div class="sq-grain"></div>
+        <svg viewBox="0 0 540 540" xmlns="http://www.w3.org/2000/svg"
+          style="position:absolute;inset:0;width:100%;height:100%;z-index:2">
+
+          <defs>
+            <linearGradient id="pr-bar-grad" x1="0" y1="0" x2="1" y2="0">
+              <stop offset="0%" :stop-color="prAccentColor" stop-opacity="0.9"/>
+              <stop offset="100%" :stop-color="prAccentColor" stop-opacity="0.35"/>
+            </linearGradient>
+            <linearGradient id="pr-top-grad" x1="0" y1="0" x2="1" y2="0">
+              <stop offset="0%" stop-color="transparent"/>
+              <stop offset="50%" :stop-color="prAccentColor"/>
+              <stop offset="100%" stop-color="transparent"/>
+            </linearGradient>
+          </defs>
+
+          <!-- Top accent line -->
+          <rect x="0" y="0" width="540" height="3" fill="url(#pr-top-grad)"/>
+
+          <!-- ═══ HEADER BAR ═══ -->
+          <rect x="0" y="3" width="540" height="50" fill="#0d1019"/>
+          <line x1="0" y1="53" x2="540" y2="53" stroke="#1e2130" stroke-width="1"/>
+
+          <!-- UFD badge -->
+          <rect x="16" y="14" width="46" height="26" rx="5" fill="#09090f" :stroke="prAccentColor" stroke-width="1.5"/>
+          <text x="39" y="32" text-anchor="middle" font-size="12" font-weight="900"
+            :fill="prAccentColor" font-family="Helvetica Neue,Helvetica,Arial,sans-serif">UFD</text>
+
+          <!-- Sport emoji + label -->
+          <text x="72" y="32" font-size="18">{{ prSportEmoji }}</text>
+          <text x="96" y="32" font-size="13" font-weight="600" fill="#e5e7eb"
+            font-family="Helvetica Neue,Helvetica,Arial,sans-serif">{{ prSportLabel }}</text>
+
+          <!-- WK -->
+          <text x="524" y="32" text-anchor="end" font-size="13" font-weight="700" fill="#6b7280"
+            font-family="Helvetica Neue,Helvetica,Arial,sans-serif">WK {{ prWeek }}</text>
+
+          <!-- ═══ TITLE BAR ═══ -->
+          <rect x="0" y="53" width="540" height="48" fill="#0a0c14"/>
+          <line x1="0" y1="101" x2="540" y2="101" stroke="#1e2130" stroke-width="1"/>
+
+          <!-- Lightning icon bg -->
+          <rect x="18" y="64" width="26" height="26" rx="4" :fill="prIconBg"/>
+          <text x="31" y="82" text-anchor="middle" font-size="15">⚡</text>
+
+          <!-- Title -->
+          <text x="52" y="83" font-size="17" font-weight="900" letter-spacing="0.04em"
+            fill="#ffffff" font-family="Helvetica Neue,Helvetica,Arial,sans-serif">POWER RANKINGS</text>
+
+          <!-- Column headers -->
+          <rect x="0" y="101" width="540" height="28" fill="rgba(255,255,255,0.025)"/>
+          <line x1="0" y1="129" x2="540" y2="129" stroke="#1e2130" stroke-width="1"/>
+          <text x="20"  y="119" font-size="9.5" font-weight="700" fill="#4b5563" letter-spacing="0.1em"
+            font-family="Helvetica Neue,Helvetica,Arial,sans-serif">RANK</text>
+          <text x="64"  y="119" font-size="9.5" font-weight="700" fill="#4b5563" letter-spacing="0.1em"
+            font-family="Helvetica Neue,Helvetica,Arial,sans-serif">TEAM</text>
+          <text x="320" y="119" font-size="9.5" font-weight="700" fill="#4b5563" letter-spacing="0.1em"
+            font-family="Helvetica Neue,Helvetica,Arial,sans-serif">SCORE</text>
+          <text x="416" y="119" font-size="9.5" font-weight="700" fill="#4b5563" letter-spacing="0.1em"
+            font-family="Helvetica Neue,Helvetica,Arial,sans-serif">RECORD</text>
+          <text x="490" y="119" font-size="9.5" font-weight="700" fill="#4b5563" letter-spacing="0.1em"
+            font-family="Helvetica Neue,Helvetica,Arial,sans-serif">+/−</text>
+
+          <!-- ═══ TEAM ROWS ═══ -->
+          <g v-for="(team, i) in prTeams.slice(0, prTeamCount)" :key="'row'+i">
+            <!-- Row bg — alt shading + highlight for #1 -->
+            <rect x="0" :y="129 + i * prRowH" width="540" :height="prRowH"
+              :fill="i===0 ? prRowHighlight : i%2===0 ? 'rgba(255,255,255,0.012)' : 'transparent'"/>
+            <line x1="0" :y1="129 + (i+1)*prRowH" x2="540" :y2="129 + (i+1)*prRowH"
+              stroke="#1e2130" stroke-width="0.5" opacity="0.6"/>
+
+            <!-- Rank pill -->
+            <rect x="12" :y="129 + i*prRowH + prRowH/2 - 13" width="32" height="26" rx="13"
+              :fill="i===0 ? prAccentColor : i===1 ? 'rgba(255,255,255,0.06)' : i===2 ? 'rgba(255,255,255,0.04)' : 'transparent'"
+              :stroke="i===0 ? 'none' : '#262a3a'" stroke-width="1"/>
+            <text x="28" :y="129 + i*prRowH + prRowH/2 + 5" text-anchor="middle"
+              font-size="13" font-weight="900"
+              :fill="i===0 ? '#0a0c14' : i < 3 ? '#e5e7eb' : '#6b7280'"
+              font-family="Helvetica Neue,Helvetica,Arial,sans-serif">{{ i + 1 }}</text>
+
+            <!-- Color dot (unique per team) -->
+            <circle cx="56" :cy="129 + i*prRowH + prRowH/2" r="5" :fill="prTeamColor(i)"/>
+
+            <!-- Team name -->
+            <text x="68" :y="129 + i*prRowH + prRowH/2 - 4" font-size="13" font-weight="700"
+              :fill="i===0 ? '#ffffff' : '#d1d5db'"
+              font-family="Helvetica Neue,Helvetica,Arial,sans-serif">{{ team.name || 'Team ' + (i+1) }}</text>
+
+            <!-- Record -->
+            <text x="68" :y="129 + i*prRowH + prRowH/2 + 11" font-size="10" fill="#4b5563"
+              font-family="Helvetica Neue,Helvetica,Arial,sans-serif">{{ team.record || '' }}</text>
+
+            <!-- Score bar -->
+            <rect x="270" :y="129 + i*prRowH + prRowH/2 - 4" width="120" height="8" rx="4"
+              fill="rgba(255,255,255,0.05)"/>
+            <rect x="270" :y="129 + i*prRowH + prRowH/2 - 4"
+              :width="prScoreBarWidth(team.score, i)" height="8" rx="4"
+              fill="url(#pr-bar-grad)" opacity="0.85"/>
+
+            <!-- Score number -->
+            <text x="400" :y="129 + i*prRowH + prRowH/2 + 5" text-anchor="end"
+              font-size="14" font-weight="800"
+              :fill="i===0 ? prAccentColor : '#e5e7eb'"
+              font-family="Helvetica Neue,Helvetica,Arial,sans-serif">{{ (team.score||0).toFixed(1) }}</text>
+
+            <!-- Record column -->
+            <text x="465" :y="129 + i*prRowH + prRowH/2 + 5" text-anchor="middle"
+              font-size="12" font-weight="600" fill="#6b7280"
+              font-family="Helvetica Neue,Helvetica,Arial,sans-serif">{{ team.record || '—' }}</text>
+
+            <!-- Change badge -->
+            <g v-if="team.change !== 0">
+              <rect x="488" :y="129 + i*prRowH + prRowH/2 - 10" width="40" height="20" rx="4"
+                :fill="team.change > 0 ? 'rgba(34,197,94,0.12)' : 'rgba(239,68,68,0.12)'"
+                :stroke="team.change > 0 ? 'rgba(34,197,94,0.3)' : 'rgba(239,68,68,0.3)'" stroke-width="1"/>
+              <text x="508" :y="129 + i*prRowH + prRowH/2 + 5" text-anchor="middle"
+                font-size="11" font-weight="800"
+                :fill="team.change > 0 ? '#22c55e' : '#ef4444'"
+                font-family="Helvetica Neue,Helvetica,Arial,sans-serif">
+                {{ team.change > 0 ? '▲' + team.change : '▼' + Math.abs(team.change) }}
+              </text>
+            </g>
+            <text v-if="team.change === 0" x="508" :y="129 + i*prRowH + prRowH/2 + 5"
+              text-anchor="middle" font-size="12" fill="#374151"
+              font-family="Helvetica Neue,Helvetica,Arial,sans-serif">—</text>
+          </g>
+
+          <!-- Bottom rule before watermark -->
+          <line x1="0" :y1="129 + prTeamCount*prRowH + 1" x2="540" :y2="129 + prTeamCount*prRowH + 1"
+            stroke="#1e2130" stroke-width="1"/>
+
+          <!-- Powered by tag -->
+          <text x="270" y="528" text-anchor="middle" font-size="10" fill="#1e2130" letter-spacing="0.08em"
+            font-family="Helvetica Neue,Helvetica,Arial,sans-serif">ultimatefantasydashboard.com</text>
+
+        </svg>
+      </div>
+    </div>
+
   </div>
 </template>
 
@@ -826,6 +1025,71 @@ const wpTeam2Points = computed(() => {
 // Pre-sliced to wpCurrentDay so v-for never needs v-if (Vue 3: v-if > v-for priority breaks it)
 const wpTeam1Visible = computed(() => wpTeam1Points.value.slice(0, wpCurrentDay.value + 1))
 const wpTeam2Visible = computed(() => wpTeam2Points.value.slice(0, wpCurrentDay.value + 1))
+
+// ── Interactive Power Rankings Template state ──────────────────────────────
+const prSportLabel = ref('Baseball · H2H Points')
+const prWeek = ref('14')
+const prTeamCount = ref(8)
+const prAccent = ref<'gold'|'cyan'|'green'|'purple'>('gold')
+
+// Default team data - 10 slots
+const prTeams = ref([
+  { name: 'Diamond Kings',    score: 124.8, change:  2, record: '9-2' },
+  { name: 'Sign Stealers',    score: 118.4, change:  1, record: '8-3' },
+  { name: 'Roto Renegades',   score: 112.1, change: -1, record: '7-4' },
+  { name: 'The Sluggers',     score: 108.6, change:  3, record: '7-4' },
+  { name: 'Ace Gang',         score: 104.2, change: -2, record: '6-5' },
+  { name: 'Bases Loaded FC',  score:  99.7, change:  0, record: '5-6' },
+  { name: 'No-Hitter Club',   score:  94.3, change:  1, record: '4-7' },
+  { name: 'Launch Angle FC',  score:  89.8, change: -2, record: '4-7' },
+  { name: 'Waiver Wire Kid',  score:  84.1, change:  0, record: '3-8' },
+  { name: 'The Algorithm',    score:  76.5, change: -2, record: '2-9' },
+])
+
+// Accent color map
+const prAccentColor = computed(() => ({
+  gold:   '#eab308',
+  cyan:   '#06b6d4',
+  green:  '#22c55e',
+  purple: '#a78bfa',
+}[prAccent.value]))
+
+const prIconBg = computed(() => ({
+  gold:   'rgba(234,179,8,0.15)',
+  cyan:   'rgba(6,182,212,0.15)',
+  green:  'rgba(34,197,94,0.15)',
+  purple: 'rgba(167,139,250,0.15)',
+}[prAccent.value]))
+
+const prRowHighlight = computed(() => ({
+  gold:   'rgba(234,179,8,0.06)',
+  cyan:   'rgba(6,182,212,0.06)',
+  green:  'rgba(34,197,94,0.06)',
+  purple: 'rgba(167,139,250,0.06)',
+}[prAccent.value]))
+
+// Sport emoji from label
+const prSportEmoji = computed(() => {
+  const l = prSportLabel.value.toLowerCase()
+  if (l.includes('baseball') || l.includes('mlb')) return '⚾'
+  if (l.includes('football') || l.includes('nfl')) return '🏈'
+  if (l.includes('basketball') || l.includes('nba')) return '🏀'
+  if (l.includes('hockey') || l.includes('nhl'))   return '🏒'
+  return '🏆'
+})
+
+// Unique color per team slot (cycles through a palette)
+const PR_COLORS = ['#eab308','#22c55e','#3b82f6','#ef4444','#8b5cf6','#f97316','#06b6d4','#ec4899','#10b981','#6366f1']
+function prTeamColor(i: number): string { return PR_COLORS[i % PR_COLORS.length] }
+
+// Row height — shrinks to fit all teams in remaining space (540 - 129 top - 20 bottom = 391px)
+const prRowH = computed(() => Math.floor(391 / prTeamCount.value))
+
+// Score bar width — proportional to top score, max 120px
+const prMaxScore = computed(() => Math.max(...prTeams.value.slice(0, prTeamCount.value).map(t => t.score || 0), 1))
+function prScoreBarWidth(score: number, rank: number): number {
+  return Math.round(((score || 0) / prMaxScore.value) * 120)
+}
 
 // Line paths (only through wpCurrentDay)
 const wpLine1Path = computed(() => {
@@ -1378,4 +1642,18 @@ const FanCards = defineComponent({
   padding: 4px 9px; border-radius: 5px; border: 1px solid #ef4444;
   background: rgba(239,68,68,0.12); color: #ef4444; font-size: 11px; font-weight: 700; cursor: pointer;
 }
+
+/* ── INTERACTIVE POWER RANKINGS TEMPLATE ────────────────────────────────── */
+.pr-post-wrap { max-width: 680px; margin: 0 40px; }
+.pr-team-grid { display: flex; flex-direction: column; gap: 4px; margin-top: 6px; }
+.pr-team-header { display: flex; align-items: center; gap: 8px; padding: 0 4px 4px;
+  border-bottom: 1px solid #1e2130; }
+.pr-th { font-size: 10px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase;
+  color: #374151; }
+.pr-team-row { display: flex; align-items: center; gap: 8px; }
+.pr-team-num { font-size: 13px; font-weight: 900; color: #4b5563; width: 18px; text-align: center;
+  flex-shrink: 0; }
+.pr-name-input { flex: 1; min-width: 120px; }
+.pr-score-input { width: 72px; }
+.pr-chg-val { font-size: 13px; font-weight: 800; width: 28px; text-align: center; flex-shrink: 0; }
 </style>
