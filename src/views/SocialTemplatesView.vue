@@ -829,11 +829,11 @@
             font-family="Helvetica Neue,Helvetica,Arial,sans-serif">RANK</text>
           <text x="64"  y="119" font-size="9.5" font-weight="700" fill="#4b5563" letter-spacing="0.1em"
             font-family="Helvetica Neue,Helvetica,Arial,sans-serif">TEAM</text>
-          <text x="320" y="119" font-size="9.5" font-weight="700" fill="#4b5563" letter-spacing="0.1em"
+          <text x="270" y="119" font-size="9.5" font-weight="700" fill="#4b5563" letter-spacing="0.1em"
             font-family="Helvetica Neue,Helvetica,Arial,sans-serif">SCORE</text>
-          <text x="416" y="119" font-size="9.5" font-weight="700" fill="#4b5563" letter-spacing="0.1em"
+          <text x="432" y="119" font-size="9.5" font-weight="700" fill="#4b5563" letter-spacing="0.1em"
             font-family="Helvetica Neue,Helvetica,Arial,sans-serif">RECORD</text>
-          <text x="490" y="119" font-size="9.5" font-weight="700" fill="#4b5563" letter-spacing="0.1em"
+          <text x="500" y="119" font-size="9.5" font-weight="700" fill="#4b5563" letter-spacing="0.1em"
             font-family="Helvetica Neue,Helvetica,Arial,sans-serif">+/−</text>
 
           <!-- ═══ TEAM ROWS ═══ -->
@@ -865,37 +865,37 @@
             <text x="68" :y="129 + i*prRowH + prRowH/2 + 11" font-size="10" fill="#4b5563"
               font-family="Helvetica Neue,Helvetica,Arial,sans-serif">{{ team.record || '' }}</text>
 
-            <!-- Score bar -->
-            <rect x="270" :y="129 + i*prRowH + prRowH/2 - 4" width="120" height="8" rx="4"
+            <!-- Score bar track (x=248..330, 82px) + filled bar — fully separated from score number -->
+            <rect x="248" :y="129 + i*prRowH + prRowH/2 - 4" width="82" height="8" rx="4"
               fill="rgba(255,255,255,0.05)"/>
-            <rect x="270" :y="129 + i*prRowH + prRowH/2 - 4"
-              :width="prScoreBarWidth(team.score, i)" height="8" rx="4"
+            <rect x="248" :y="129 + i*prRowH + prRowH/2 - 4"
+              :width="prScoreBarWidth(team.score)" height="8" rx="4"
               fill="url(#pr-bar-grad)" opacity="0.85"/>
 
-            <!-- Score number -->
-            <text x="400" :y="129 + i*prRowH + prRowH/2 + 5" text-anchor="end"
-              font-size="14" font-weight="800"
+            <!-- Score number — starts at x=338, guaranteed 8px gap after bar max end (330) -->
+            <text x="338" :y="129 + i*prRowH + prRowH/2 + 5" text-anchor="start"
+              font-size="13" font-weight="800"
               :fill="i===0 ? prAccentColor : '#e5e7eb'"
               font-family="Helvetica Neue,Helvetica,Arial,sans-serif">{{ (team.score||0).toFixed(1) }}</text>
 
             <!-- Record column -->
-            <text x="465" :y="129 + i*prRowH + prRowH/2 + 5" text-anchor="middle"
-              font-size="12" font-weight="600" fill="#6b7280"
+            <text x="432" :y="129 + i*prRowH + prRowH/2 + 5" text-anchor="middle"
+              font-size="11" font-weight="600" fill="#6b7280"
               font-family="Helvetica Neue,Helvetica,Arial,sans-serif">{{ team.record || '—' }}</text>
 
             <!-- Change badge -->
             <g v-if="team.change !== 0">
-              <rect x="488" :y="129 + i*prRowH + prRowH/2 - 10" width="40" height="20" rx="4"
+              <rect x="476" :y="129 + i*prRowH + prRowH/2 - 10" width="44" height="20" rx="4"
                 :fill="team.change > 0 ? 'rgba(34,197,94,0.12)' : 'rgba(239,68,68,0.12)'"
                 :stroke="team.change > 0 ? 'rgba(34,197,94,0.3)' : 'rgba(239,68,68,0.3)'" stroke-width="1"/>
-              <text x="508" :y="129 + i*prRowH + prRowH/2 + 5" text-anchor="middle"
+              <text x="498" :y="129 + i*prRowH + prRowH/2 + 5" text-anchor="middle"
                 font-size="11" font-weight="800"
                 :fill="team.change > 0 ? '#22c55e' : '#ef4444'"
                 font-family="Helvetica Neue,Helvetica,Arial,sans-serif">
                 {{ team.change > 0 ? '▲' + team.change : '▼' + Math.abs(team.change) }}
               </text>
             </g>
-            <text v-if="team.change === 0" x="508" :y="129 + i*prRowH + prRowH/2 + 5"
+            <text v-if="team.change === 0" x="498" :y="129 + i*prRowH + prRowH/2 + 5"
               text-anchor="middle" font-size="12" fill="#374151"
               font-family="Helvetica Neue,Helvetica,Arial,sans-serif">—</text>
           </g>
@@ -906,6 +906,104 @@
 
           <!-- Powered by tag -->
           <text x="270" y="528" text-anchor="middle" font-size="10" fill="#1e2130" letter-spacing="0.08em"
+            font-family="Helvetica Neue,Helvetica,Arial,sans-serif">ultimatefantasydashboard.com</text>
+
+        </svg>
+      </div>
+    </div>
+
+    <!-- 20b · POWER RANKINGS TREND CHART (same inputs as #20) -->
+    <div class="post-wrap pr-post-wrap" style="margin-top:32px">
+      <div class="post-label">20b · Ranking Trends — same inputs above · screenshot this card separately</div>
+      <div class="sq sq-wp-bg">
+        <div class="sq-grain"></div>
+        <svg viewBox="0 0 540 540" xmlns="http://www.w3.org/2000/svg"
+          style="position:absolute;inset:0;width:100%;height:100%;z-index:2">
+
+          <defs>
+            <linearGradient id="tr-top-grad" x1="0" y1="0" x2="1" y2="0">
+              <stop offset="0%" stop-color="transparent"/>
+              <stop offset="50%" :stop-color="prAccentColor"/>
+              <stop offset="100%" stop-color="transparent"/>
+            </linearGradient>
+          </defs>
+
+          <!-- Top accent line -->
+          <rect x="0" y="0" width="540" height="3" fill="url(#tr-top-grad)"/>
+
+          <!-- ═══ HEADER BAR ═══ -->
+          <rect x="0" y="3" width="540" height="50" fill="#0d1019"/>
+          <line x1="0" y1="53" x2="540" y2="53" stroke="#1e2130" stroke-width="1"/>
+          <rect x="16" y="14" width="46" height="26" rx="5" fill="#09090f" :stroke="prAccentColor" stroke-width="1.5"/>
+          <text x="39" y="32" text-anchor="middle" font-size="12" font-weight="900"
+            :fill="prAccentColor" font-family="Helvetica Neue,Helvetica,Arial,sans-serif">UFD</text>
+          <text x="72" y="32" font-size="18">{{ prSportEmoji }}</text>
+          <text x="96" y="32" font-size="13" font-weight="600" fill="#e5e7eb"
+            font-family="Helvetica Neue,Helvetica,Arial,sans-serif">{{ prSportLabel }}</text>
+          <text x="524" y="32" text-anchor="end" font-size="13" font-weight="700" fill="#6b7280"
+            font-family="Helvetica Neue,Helvetica,Arial,sans-serif">WK 1–{{ prWeek }}</text>
+
+          <!-- ═══ TITLE BAR ═══ -->
+          <rect x="0" y="53" width="540" height="48" fill="#0a0c14"/>
+          <line x1="0" y1="101" x2="540" y2="101" stroke="#1e2130" stroke-width="1"/>
+          <rect x="18" y="64" width="26" height="26" rx="4" :fill="prIconBg"/>
+          <text x="31" y="82" text-anchor="middle" font-size="15">⚡</text>
+          <text x="52" y="83" font-size="17" font-weight="900" letter-spacing="0.04em"
+            fill="#ffffff" font-family="Helvetica Neue,Helvetica,Arial,sans-serif">RANKING TRENDS</text>
+
+          <!-- ═══ CHART AREA ═══ -->
+          <!-- Rank grid lines + y-axis labels -->
+          <g v-for="(_,ri) in prTrendTeams" :key="'rl'+ri">
+            <line x1="38" :x2="440" :y1="prTrendY(ri+1)" :y2="prTrendY(ri+1)"
+              stroke="rgba(255,255,255,0.055)" stroke-width="1" stroke-dasharray="4,5"/>
+            <text x="32" :y="prTrendY(ri+1)+4" text-anchor="end"
+              font-size="11" fill="rgba(255,255,255,0.3)"
+              font-family="Helvetica Neue,Helvetica,Arial,sans-serif">{{ ri+1 }}</text>
+          </g>
+
+          <!-- X-axis week labels -->
+          <g v-for="(_,wi) in prTrendWeekLabels" :key="'wl'+wi">
+            <text :x="prTrendX(prTrendWeekLabels[wi]-1)" y="497"
+              text-anchor="middle" font-size="10" fill="rgba(255,255,255,0.25)"
+              font-family="Helvetica Neue,Helvetica,Arial,sans-serif">{{ prTrendWeekLabels[wi] }}</text>
+          </g>
+          <text x="240" y="512" text-anchor="middle" font-size="10" fill="rgba(255,255,255,0.2)"
+            letter-spacing="0.1em" font-family="Helvetica Neue,Helvetica,Arial,sans-serif">WEEK</text>
+
+          <!-- Current week vertical marker -->
+          <line :x1="prTrendX(prTrendNWeeks-1)" :x2="prTrendX(prTrendNWeeks-1)"
+            y1="108" y2="482"
+            stroke="rgba(255,255,255,0.08)" stroke-width="1" stroke-dasharray="3,4"/>
+
+          <!-- Team trend lines -->
+          <g v-for="(paths, ti) in prTrendPaths" :key="'tl'+ti">
+            <!-- Glow duplicate (thicker, lower opacity) -->
+            <path :d="paths.d" fill="none" :stroke="paths.color"
+              stroke-width="4" opacity="0.15" stroke-linecap="round" stroke-linejoin="round"/>
+            <!-- Main line -->
+            <path :d="paths.d" fill="none" :stroke="paths.color"
+              stroke-width="2" opacity="0.9" stroke-linecap="round" stroke-linejoin="round"/>
+            <!-- End dot -->
+            <circle :cx="paths.endX" :cy="paths.endY" r="5" :fill="paths.color"/>
+            <circle :cx="paths.endX" :cy="paths.endY" r="3" fill="#0d1019"/>
+            <circle :cx="paths.endX" :cy="paths.endY" r="1.5" :fill="paths.color"/>
+            <!-- Team name label -->
+            <text :x="paths.endX + 10" :y="paths.endY + 4"
+              font-size="11" font-weight="600" :fill="paths.color"
+              font-family="Helvetica Neue,Helvetica,Arial,sans-serif">{{ paths.name }}</text>
+          </g>
+
+          <!-- ═══ LEGEND ═══ -->
+          <rect x="0" y="517" width="540" height="23" fill="rgba(0,0,0,0.3)"/>
+          <line x1="0" y1="517" x2="540" y2="517" stroke="#1e2130" stroke-width="1"/>
+          <g v-for="(paths, ti) in prTrendPaths.slice(0,4)" :key="'lg'+ti">
+            <circle :cx="22 + ti*130" cy="529" r="4" :fill="paths.color"/>
+            <text :x="30 + ti*130" y="533" font-size="10" font-weight="600" fill="#9ca3af"
+              font-family="Helvetica Neue,Helvetica,Arial,sans-serif">{{ paths.name }}</text>
+          </g>
+
+          <!-- Watermark -->
+          <text x="270" y="538" text-anchor="middle" font-size="9" fill="#1a1f2e"
             font-family="Helvetica Neue,Helvetica,Arial,sans-serif">ultimatefantasydashboard.com</text>
 
         </svg>
@@ -1085,11 +1183,85 @@ function prTeamColor(i: number): string { return PR_COLORS[i % PR_COLORS.length]
 // Row height — shrinks to fit all teams in remaining space (540 - 129 top - 20 bottom = 391px)
 const prRowH = computed(() => Math.floor(391 / prTeamCount.value))
 
-// Score bar width — proportional to top score, max 120px
+// Score bar width — proportional to top score, max 82px (matches bar track width)
 const prMaxScore = computed(() => Math.max(...prTeams.value.slice(0, prTeamCount.value).map(t => t.score || 0), 1))
-function prScoreBarWidth(score: number, rank: number): number {
-  return Math.round(((score || 0) / prMaxScore.value) * 120)
+function prScoreBarWidth(score: number): number {
+  return Math.round(((score || 0) / prMaxScore.value) * 82)
 }
+
+// ── Ranking Trends chart ──────────────────────────────────────────────────
+// Chart constants (within 540×540 SVG)
+const TR_CL = 38   // chart left x (after rank labels)
+const TR_CR = 440  // chart right x (before team name labels)
+const TR_CT = 112  // chart top y  (rank 1)
+const TR_CB = 482  // chart bottom y (rank N)
+
+// Number of weeks to display (capped 2-16)
+const prTrendNWeeks = computed(() => Math.max(2, Math.min(16, parseInt(prWeek.value) || 11)))
+
+// Teams shown on trend — cap at 6 for readability
+const prTrendTeams = computed(() => prTeams.value.slice(0, Math.min(prTeamCount.value, 6)))
+
+// X coordinate for a 0-indexed week
+function prTrendX(weekIdx: number): number {
+  const n = prTrendNWeeks.value
+  return TR_CL + (n > 1 ? weekIdx / (n - 1) : 0) * (TR_CR - TR_CL)
+}
+
+// Y coordinate for a rank value (1 = top, N = bottom)
+function prTrendY(rank: number): number {
+  const n = prTrendTeams.value.length
+  if (n <= 1) return (TR_CT + TR_CB) / 2
+  return TR_CT + ((rank - 1) / (n - 1)) * (TR_CB - TR_CT)
+}
+
+// Week labels for x-axis — show every 1 or 2 weeks depending on count
+const prTrendWeekLabels = computed((): number[] => {
+  const n = prTrendNWeeks.value
+  const step = n > 10 ? 2 : 1
+  const labels: number[] = []
+  for (let w = 1; w <= n; w += step) labels.push(w)
+  if (labels[labels.length - 1] !== n) labels.push(n)
+  return labels
+})
+
+// Generate smooth rank trajectories for each team ending at their current rank
+// Returns array of {d: svgPath, color, name, endX, endY}
+const prTrendPaths = computed(() => {
+  const nWeeks = prTrendNWeeks.value
+  const teams = prTrendTeams.value
+  const nTeams = teams.length
+
+  return teams.map((team, i) => {
+    const targetRank = i + 1  // their current rank position
+    const color = PR_COLORS[i % PR_COLORS.length]
+
+    // Generate rank values for each week
+    const ranks: number[] = []
+    for (let w = 0; w < nWeeks; w++) {
+      const progress = nWeeks > 1 ? w / (nWeeks - 1) : 1
+      // Sinusoidal noise unique per team, decaying toward target as weeks progress
+      const phase  = i * 2.1 + 0.8
+      const freq   = 0.55 + (i % 4) * 0.22
+      const amp    = (1.8 - i * 0.12) * (1 - progress * 0.65)
+      const noise  = amp * Math.sin(phase + freq * w)
+      ranks.push(Math.max(0.6, Math.min(nTeams + 0.4, targetRank + noise)))
+    }
+
+    // Build smooth bezier path
+    const pts = ranks.map((r, w) => ({ x: prTrendX(w), y: prTrendY(r) }))
+    let d = `M ${pts[0].x.toFixed(1)},${pts[0].y.toFixed(1)}`
+    for (let k = 1; k < pts.length; k++) {
+      const cpx = ((pts[k-1].x + pts[k].x) / 2).toFixed(1)
+      d += ` C ${cpx},${pts[k-1].y.toFixed(1)} ${cpx},${pts[k].y.toFixed(1)} ${pts[k].x.toFixed(1)},${pts[k].y.toFixed(1)}`
+    }
+
+    // Truncate team name for label (max 9 chars)
+    const name = team.name ? (team.name.length > 9 ? team.name.slice(0, 8) + '…' : team.name) : `Team ${i+1}`
+
+    return { d, color, name, endX: TR_CR, endY: prTrendY(targetRank) }
+  })
+})
 
 // Line paths (only through wpCurrentDay)
 const wpLine1Path = computed(() => {
