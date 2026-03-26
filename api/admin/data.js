@@ -81,7 +81,7 @@ export default async function handler(req, res) {
       const expiringUserIds = new Set(expiringPasses.map(p => p.user_id))
 
       // Users with 2+ active passes
-      const passCountByUser: Record<string, number> = {}
+      const passCountByUser = {}
       activePasses.forEach(p => { passCountByUser[p.user_id] = (passCountByUser[p.user_id] || 0) + 1 })
       const multiPassUsers = Object.values(passCountByUser).filter(c => c >= 2).length
 
@@ -196,8 +196,8 @@ export default async function handler(req, res) {
 }
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
-function groupByDay(dates: string[]): { date: string; count: number }[] {
-  const map: Record<string, number> = {}
+function groupByDay(dates) {
+  const map = {}
   dates.forEach(d => {
     const day = d?.slice(0, 10)
     if (day) map[day] = (map[day] || 0) + 1
