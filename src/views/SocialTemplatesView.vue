@@ -474,6 +474,10 @@
             <label>Pos</label>
             <input v-model="wpPlayerPos" class="wp-input" style="width:60px" placeholder="SP" />
           </div>
+          <div class="wp-ctrl-group" style="flex:1;min-width:200px">
+            <label>Player Headshot URL (optional)</label>
+            <input v-model="wpHeadshotUrl" class="wp-input" style="width:100%" placeholder="https://a.espncdn.com/i/headshots/mlb/players/full/39832.png" />
+          </div>
           <div class="wp-ctrl-group">
             <label>Show through day</label>
             <div class="wp-pills">
@@ -595,6 +599,10 @@
               <stop offset="0%" stop-color="#f97316" stop-opacity="0.18"/>
               <stop offset="100%" stop-color="#f97316" stop-opacity="0.03"/>
             </linearGradient>
+            <!-- Circular clip for player headshot -->
+            <clipPath id="player-avatar-clip">
+              <circle cx="418" cy="399" r="17"/>
+            </clipPath>
           </defs>
 
           <!-- Team 2 area (orange, behind cyan) -->
@@ -602,37 +610,39 @@
           <!-- Team 1 area (cyan) -->
           <path :d="wpArea1Path" fill="url(#area1-grad)" clip-path="url(#chart-clip)"/>
 
-          <!-- ── TEAM 2 LINE (orange dashed) ── -->
+          <!-- ── TEAM 2 LINE (orange solid) ── -->
           <path :d="wpLine2Path" fill="none" stroke="#f97316" stroke-width="2.2"
-            stroke-dasharray="7,4" stroke-linecap="round" clip-path="url(#chart-clip)"/>
+            stroke-linecap="round" stroke-linejoin="round" clip-path="url(#chart-clip)"/>
 
           <!-- ── TEAM 1 LINE (cyan solid) ── -->
           <path :d="wpLine1Path" fill="none" stroke="#06b6d4" stroke-width="2.6"
             stroke-linecap="round" clip-path="url(#chart-clip)"/>
 
           <!-- ── DATA POINTS & VALUE BADGES ── -->
-          <!-- Team 2 dots + labels -->
+          <!-- Team 2 dots + labels — badge always BELOW dot -->
           <g v-for="(pt,i) in wpTeam2Points" :key="'t2d'+i" v-if="i<=wpCurrentDay">
+            <!-- glow ring -->
+            <circle :cx="pt.x" :cy="pt.y" r="7" fill="rgba(249,115,22,0.15)"/>
+            <!-- dot -->
             <circle :cx="pt.x" :cy="pt.y" r="4.5" fill="#f97316"/>
-            <circle :cx="pt.x" :cy="pt.y" r="3" fill="#0d1117"/>
-            <circle :cx="pt.x" :cy="pt.y" r="1.5" fill="#f97316"/>
-            <!-- value badge -->
-            <rect :x="pt.x - 20" :y="pt.labelY - 13" width="40" height="18" rx="4"
-              fill="#0f1520" stroke="rgba(249,115,22,0.4)" stroke-width="1"/>
-            <text :x="pt.x" :y="pt.labelY" text-anchor="middle" font-size="11" font-weight="700"
-              fill="#fb923c" font-family="Helvetica Neue,Helvetica,Arial,sans-serif">{{ pt.prob.toFixed(1) }}</text>
+            <circle :cx="pt.x" :cy="pt.y" r="2" fill="#0d1117"/>
+            <!-- filled orange badge BELOW -->
+            <rect :x="pt.x - 21" :y="pt.y + 9" width="42" height="19" rx="4" fill="#f97316"/>
+            <text :x="pt.x" :y="pt.y + 23" text-anchor="middle" font-size="11.5" font-weight="800"
+              fill="#0a0c14" font-family="Helvetica Neue,Helvetica,Arial,sans-serif">{{ pt.prob.toFixed(1) }}</text>
           </g>
 
-          <!-- Team 1 dots + labels -->
+          <!-- Team 1 dots + labels — badge always ABOVE dot -->
           <g v-for="(pt,i) in wpTeam1Points" :key="'t1d'+i" v-if="i<=wpCurrentDay">
+            <!-- glow ring -->
+            <circle :cx="pt.x" :cy="pt.y" r="7" fill="rgba(6,182,212,0.15)"/>
+            <!-- dot -->
             <circle :cx="pt.x" :cy="pt.y" r="5" fill="#06b6d4"/>
-            <circle :cx="pt.x" :cy="pt.y" r="3" fill="#0d1117"/>
-            <circle :cx="pt.x" :cy="pt.y" r="1.5" fill="#06b6d4"/>
-            <!-- value badge — alternate above/below to avoid overlap -->
-            <rect :x="pt.x - 20" :y="pt.labelY - 13" width="40" height="18" rx="4"
-              fill="#0f1a20" stroke="rgba(6,182,212,0.4)" stroke-width="1"/>
-            <text :x="pt.x" :y="pt.labelY" text-anchor="middle" font-size="11" font-weight="700"
-              fill="#22d3ee" font-family="Helvetica Neue,Helvetica,Arial,sans-serif">{{ pt.prob.toFixed(1) }}</text>
+            <circle :cx="pt.x" :cy="pt.y" r="2" fill="#0d1117"/>
+            <!-- filled cyan badge ABOVE -->
+            <rect :x="pt.x - 21" :y="pt.y - 28" width="42" height="19" rx="4" fill="#06b6d4"/>
+            <text :x="pt.x" :y="pt.y - 14" text-anchor="middle" font-size="11.5" font-weight="800"
+              fill="#0a0c14" font-family="Helvetica Neue,Helvetica,Arial,sans-serif">{{ pt.prob.toFixed(1) }}</text>
           </g>
 
           <!-- ═══ PLAYER CALLOUT (corner badge) ═══ -->
@@ -645,9 +655,15 @@
           <rect x="390" y="370" width="136" height="58" rx="8"
             fill="#0c1220" stroke="rgba(6,182,212,0.4)" stroke-width="1.2"/>
 
-          <!-- Player avatar circle -->
+          <!-- Player avatar circle — headshot if URL provided, else initials -->
           <circle cx="418" cy="399" r="17" fill="#0a1520" stroke="#06b6d4" stroke-width="1.5"/>
-          <text x="418" y="404" text-anchor="middle" font-size="11" font-weight="900"
+          <!-- Headshot image (clipped to circle) -->
+          <image v-if="wpHeadshotUrl" :href="wpHeadshotUrl"
+            x="401" y="382" width="34" height="34"
+            clip-path="url(#player-avatar-clip)"
+            preserveAspectRatio="xMidYMid slice"/>
+          <!-- Fallback initials when no headshot -->
+          <text v-if="!wpHeadshotUrl" x="418" y="404" text-anchor="middle" font-size="11" font-weight="900"
             fill="#06b6d4" font-family="Helvetica Neue,Helvetica,Arial,sans-serif">{{ wpPlayerInitials }}</text>
 
           <!-- Down/Up arrow badge -->
@@ -710,6 +726,7 @@ const wpWeek = ref('11')
 const wpSportLabel = ref('NFL Fantasy · PPR')
 const wpPlayerName = ref('Logan Webb')
 const wpPlayerPos = ref('SP')
+const wpHeadshotUrl = ref('https://a.espncdn.com/i/headshots/mlb/players/full/39832.png')
 const wpCurrentDay = ref(3)  // 0=Mon…6=Sun, default=Thu
 const wpDirection = ref<'down' | 'up'>('down')
 const wpImpact = ref<'md' | 'sm' | 'lg'>('md')
