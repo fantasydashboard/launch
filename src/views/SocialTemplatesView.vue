@@ -1595,6 +1595,20 @@ async function loadWpiData() {
       )
     )
 
+    // DEBUG: log first summary structure so we can see what ESPN returns
+    const firstValid = summaries.find((s: any) => s?.boxscore?.players)
+    if (firstValid?.boxscore?.players?.[0]?.statistics?.[0]) {
+      const dbgGroup = firstValid.boxscore.players[0].statistics[0]
+      console.log('[WPI DEBUG] First stat group name:', dbgGroup.name, dbgGroup.displayName)
+      console.log('[WPI DEBUG] First stat group keys:', dbgGroup.keys)
+      console.log('[WPI DEBUG] First athlete stats:', firstValid.boxscore.players[0].statistics[0].athletes?.[0]?.stats)
+      console.log('[WPI DEBUG] All group names:', firstValid.boxscore.players.flatMap((td: any) =>
+        (td.statistics||[]).map((sg: any) => sg.name || sg.displayName || sg.type || 'NO_NAME')
+      ))
+    } else {
+      console.log('[WPI DEBUG] No valid summary found. summaries:', summaries.map((s: any) => s ? Object.keys(s) : 'null'))
+    }
+
     for (const summary of summaries) {
       if (!summary?.boxscore?.players) continue
       for (const teamData of summary.boxscore.players) {
