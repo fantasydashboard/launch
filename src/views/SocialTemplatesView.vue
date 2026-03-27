@@ -1573,125 +1573,101 @@ async function loadWpiData() {
 
   try {
     const dateStr = wpiDate.value.replace(/-/g,'')
+
+    // Try regular season first, fall back to include all game types
     const sbRes = await fetch(
-      `https://site.api.espn.com/apis/site/v2/sports/baseball/mlb/scoreboard?dates=${dateStr}`
+      `https://site.api.espn.com/apis/site/v2/sports/baseball/mlb/scoreboard?dates=${dateStr}&limit=30`
     )
     if (!sbRes.ok) throw new Error(`Scoreboard fetch failed: ${sbRes.status}`)
     const sbData = await sbRes.json()
-    const events = sbData.events || []
+    const events = (sbData.events || [])
+
     if (!events.length) {
-      wpiError.value = `No MLB games on ${wpiDateDisplay.value} — try a different date.`
+      wpiError.value = `No MLB games on ${wpiDateDisplay.value}. Try a different date — the 2026 season starts March 27.`
       wpiStatus.value = ''; return
     }
+
     wpiStatus.value = `Found ${events.length} games, loading box scores…`
 
     const batterMap  = new Map<string, WpiPlayer>()
     const pitcherMap = new Map<string, WpiPlayer>()
 
+    // Load summaries in parallel
     const summaries = await Promise.all(
       events.map((e: any) =>
         fetch(`https://site.api.espn.com/apis/site/v2/sports/baseball/mlb/summary?event=${e.id}`)
-          .then(r => r.ok ? r.json() : null).catch(() => null)
+          .then(r => r.ok ? r.json() : null)
+          .catch(() => null)
       )
     )
 
-    // DEBUG: log first summary structure so we can see what ESPN returns
-    const firstValid = summaries.find((s: any) => s?.boxscore?.players)
-    if (firstValid?.boxscore?.players?.[0]?.statistics?.[0]) {
-      const dbgGroup = firstValid.boxscore.players[0].statistics[0]
-      console.log('[WPI DEBUG] First stat group name:', dbgGroup.name, dbgGroup.displayName)
-      console.log('[WPI DEBUG] First stat group keys:', dbgGroup.keys)
-      console.log('[WPI DEBUG] First athlete stats:', firstValid.boxscore.players[0].statistics[0].athletes?.[0]?.stats)
-      console.log('[WPI DEBUG] All group names:', firstValid.boxscore.players.flatMap((td: any) =>
-        (td.statistics||[]).map((sg: any) => sg.name || sg.displayName || sg.type || 'NO_NAME')
-      ))
-    } else {
-      console.log('[WPI DEBUG] No valid summary found. summaries:', summaries.map((s: any) => s ? Object.keys(s) : 'null'))
-    }
-
+    let debugLogged = false
     for (const summary of summaries) {
-      if (!summary?.boxscore?.players) continue
-      for (const teamData of summary.boxscore.players) {
-        for (const statGroup of (teamData.statistics || [])) {
-          const keys: string[] = statGroup.keys || []
-          const keySet = new Set(keys.map((k: string) => k.toUpperCase()))
+      if (!summary) continue
 
-          // Determine group type by which stat columns are present
-          const hasBattingKeys = keySet.has('AB') || keySet.has('RBI') || keySet.has('AVG')
-          const hasPitchingKeys = keySet.has('IP') || keySet.has('ER') || keySet.has('SV') ||
-                                   keySet.has('ERA') || keySet.has('SO') || keySet.has('PC-ST')
+      // Log first valid summary structure for debugging
+      if (!debugLogged) {
+        debugLogged = true
+        const bx = summary.boxscore
+        console.log('[WPI] Summary top keys:', Object.keys(summary))
+        console.log('[WPI] boxscore keys:', bx ? Object.keys(bx) : 'NO BOXSCORE')
+        if (bx?.players) {
+          console.log('[WPI] players[0] keys:', Object.keys(bx.players[0] || {}))
+          const stat0 = bx.players[0]?.statistics?.[0]
+          console.log('[WPI] stat group 0:', stat0 ? { name: stat0.name, keys: stat0.keys, athleteCount: stat0.athletes?.length } : 'NO STATS')
+          // Also log all stat group names
+          const allGroups = bx.players.flatMap((p: any) =>
+            (p.statistics || []).map((s: any) => ({ name: s.name, keys: s.keys?.slice(0,5) }))
+          )
+          console.log('[WPI] All stat groups:', JSON.stringify(allGroups))
+        }
+        // Also try athletes field directly
+        if (bx?.athletes) {
+          console.log('[WPI] Direct athletes found:', bx.athletes.length)
+          console.log('[WPI] Athlete[0] keys:', Object.keys(bx.athletes[0] || {}))
+        }
+      }
 
-          if (!hasBattingKeys && !hasPitchingKeys) continue
-          const isPitcherGroup = hasPitchingKeys && !hasBattingKeys
+      // ── Try primary path: boxscore.players[].statistics[] ──
+      if (summary.boxscore?.players) {
+        for (const teamData of summary.boxscore.players) {
+          for (const statGroup of (teamData.statistics || [])) {
+            const keys: string[] = statGroup.keys || []
+            const keyUpper = keys.map((k: string) => k.toUpperCase())
+            const keySet = new Set(keyUpper)
 
-          for (const athlete of (statGroup.athletes || [])) {
-            const pid = athlete.athlete?.id
-            if (!pid) continue
+            // Detect type by keys present — be very permissive
+            const hasBat = keySet.has('AB') || keySet.has('H') || keySet.has('HR') || keySet.has('RBI')
+            const hasPit = keySet.has('IP') || keySet.has('ER') || keySet.has('SV') || keySet.has('SO') || keySet.has('BB')
 
-            // Parse stats array into named object
-            const statsArr = athlete.stats || []
-            const s: any = {}
-            keys.forEach((k: string, i: number) => {
-              const v = parseFloat(statsArr[i])
-              if (!isNaN(v)) s[k.toUpperCase()] = v
-            })
-
-            // Normalize to friendly names
-            const n: any = {
-              atBats:   s.AB  || 0,
-              hits:     s.H   || 0,
-              doubles:  s['2B'] || 0,
-              triples:  s['3B'] || 0,
-              homeRuns: s.HR  || 0,
-              runs:     s.R   || 0,
-              rbi:      s.RBI || 0,
-              stolenBases:    s.SB  || 0,
-              baseOnBalls:    s.BB  || 0,
-              hitByPitch:     s.HBP || 0,
-              inningsPitched: s.IP  || 0,
-              strikeOuts:     s.SO  || s.K  || 0,
-              earnedRuns:     s.ER  || 0,
-              wins:   s.W  || 0,
-              saves:  s.SV || 0,
-              holds:  s.HLD || s.BS || 0,
+            // If neither, try treating based on position of athletes
+            if (!hasBat && !hasPit) {
+              console.log('[WPI] Unclassified group keys:', keys)
+              continue
             }
+            const isPitcherGroup = hasPit && !hasBat
 
-            const ip = n.inningsPitched
-
-            // Quality filters
-            if (!isPitcherGroup && n.atBats < 1) continue
-            if (isPitcherGroup && ip < 0.1 && !n.saves) continue
-
-            const name     = athlete.athlete?.displayName || 'Unknown'
-            const teamAbbr = athlete.athlete?.team?.abbreviation ||
-                             teamData.team?.abbreviation || ''
-            const headshot = athlete.athlete?.headshot?.href ||
-              `https://a.espncdn.com/i/headshots/mlb/players/full/${pid}.png`
-
-            // Fantasy points (standard ESPN H2H scoring)
-            const pts = calcFantasyPts(n, isPitcherGroup)
-
-            // WP impact based on points above position average
-            const avgPts = isPitcherGroup ? (ip >= 5 ? 18 : ip >= 2 ? 10 : 6) : 8
-            const wpImpact = calcWpImpact(pts, avgPts)
-            if (wpImpact <= 0) continue
-
-            const pos = isPitcherGroup
-              ? (n.saves > 0 ? 'RP' : ip >= 3 ? 'SP' : 'RP')
-              : (athlete.athlete?.position?.abbreviation || 'OF')
-
-            const player: WpiPlayer = {
-              id: pid, name, team: teamAbbr, position: pos, headshot,
-              pts, wpImpact,
-              statLine: buildStatLine(n, isPitcherGroup)
+            for (const athlete of (statGroup.athletes || [])) {
+              parseAthleteRow(athlete, keys, isPitcherGroup, teamData.team?.abbreviation || '',
+                              batterMap, pitcherMap)
             }
+          }
+        }
+      }
 
-            if (isPitcherGroup) {
-              if (!pitcherMap.has(pid) || pitcherMap.get(pid)!.wpImpact < wpImpact)
-                pitcherMap.set(pid, player)
-            } else {
-              if (!batterMap.has(pid) || batterMap.get(pid)!.wpImpact < wpImpact)
-                batterMap.set(pid, player)
+      // ── Fallback: try boxscore.teams[].statistics ──
+      if (summary.boxscore?.teams) {
+        for (const team of summary.boxscore.teams) {
+          for (const statGroup of (team.statistics || [])) {
+            const keys: string[] = statGroup.keys || []
+            const keySet = new Set(keys.map((k: string) => k.toUpperCase()))
+            const hasBat = keySet.has('AB') || keySet.has('H') || keySet.has('HR')
+            const hasPit = keySet.has('IP') || keySet.has('ER') || keySet.has('SV')
+            if (!hasBat && !hasPit) continue
+            const isPitcherGroup = hasPit && !hasBat
+            for (const athlete of (statGroup.athletes || [])) {
+              parseAthleteRow(athlete, keys, isPitcherGroup, team.team?.abbreviation || '',
+                              batterMap, pitcherMap)
             }
           }
         }
@@ -1703,16 +1679,82 @@ async function loadWpiData() {
     wpiTopBatters.value  = batters.slice(0,5)
     wpiTopPitchers.value = pitchers.slice(0,5)
 
-    if (!batters.length && !pitchers.length) {
-      wpiError.value = 'No stats found — game data may not be finalized yet. Try an earlier date.'
+    const total = batters.length + pitchers.length
+    if (!total) {
+      wpiError.value = `No stats found in ${events.length} games. Check console for [WPI] debug info.`
     } else {
       wpiStatus.value = `✓ ${batters.length} batters · ${pitchers.length} pitchers from ${events.length} games`
     }
   } catch (e: any) {
     wpiError.value = e?.message || 'Failed to load data'
     wpiStatus.value = ''
+    console.error('[WPI] Error:', e)
   } finally {
     wpiLoading.value = false
+  }
+}
+
+function parseAthleteRow(
+  athlete: any,
+  keys: string[],
+  isPitcherGroup: boolean,
+  teamFallback: string,
+  batterMap: Map<string, WpiPlayer>,
+  pitcherMap: Map<string, WpiPlayer>
+) {
+  const pid = athlete.athlete?.id
+  if (!pid) return
+
+  const statsArr = athlete.stats || []
+  const s: any = {}
+  keys.forEach((k: string, i: number) => {
+    // Stats can be strings like "1/3", handle IP like "6.0"
+    const raw = statsArr[i]
+    const v = parseFloat(raw)
+    if (!isNaN(v)) s[k.toUpperCase()] = v
+  })
+
+  const n: any = {
+    atBats:   s.AB || 0,   hits: s.H  || 0,
+    doubles:  s['2B'] || 0, triples: s['3B'] || 0,
+    homeRuns: s.HR || 0,    runs: s.R  || 0,
+    rbi: s.RBI || 0,        stolenBases: s.SB  || 0,
+    baseOnBalls: s.BB || 0, hitByPitch: s.HBP || 0,
+    inningsPitched: s.IP || 0,
+    strikeOuts: s.SO || s.K || 0,
+    earnedRuns: s.ER || 0,
+    wins: s.W || 0, saves: s.SV || 0, holds: s.HLD || 0,
+  }
+
+  const ip = n.inningsPitched
+  if (!isPitcherGroup && n.atBats < 1) return
+  if (isPitcherGroup && ip < 0.1 && !n.saves) return
+
+  const name     = athlete.athlete?.displayName || 'Unknown'
+  const teamAbbr = athlete.athlete?.team?.abbreviation || teamFallback
+  const headshot = athlete.athlete?.headshot?.href ||
+    `https://a.espncdn.com/i/headshots/mlb/players/full/${pid}.png`
+
+  const pts      = calcFantasyPts(n, isPitcherGroup)
+  const avgPts   = isPitcherGroup ? (ip >= 5 ? 18 : ip >= 2 ? 10 : 6) : 8
+  const wpImpact = calcWpImpact(pts, avgPts)
+  if (wpImpact <= 0) return
+
+  const pos = isPitcherGroup
+    ? (n.saves > 0 ? 'RP' : ip >= 3 ? 'SP' : 'RP')
+    : (athlete.athlete?.position?.abbreviation || 'OF')
+
+  const player: WpiPlayer = {
+    id: pid, name, team: teamAbbr, position: pos, headshot,
+    pts, wpImpact, statLine: buildStatLine(n, isPitcherGroup)
+  }
+
+  if (isPitcherGroup) {
+    if (!pitcherMap.has(pid) || pitcherMap.get(pid)!.wpImpact < wpImpact)
+      pitcherMap.set(pid, player)
+  } else {
+    if (!batterMap.has(pid) || batterMap.get(pid)!.wpImpact < wpImpact)
+      batterMap.set(pid, player)
   }
 }
 
