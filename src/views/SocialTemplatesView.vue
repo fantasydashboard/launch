@@ -1639,6 +1639,65 @@ async function loadWpiData() {
       }
     }
 
+    // Second pass: pick up W/SV/HLD from any stat group that has them
+    // (ESPN puts these in separate groups with keys like 'wins','saves','holds')
+    for (const summary of summaries) {
+      if (!summary?.boxscore?.players) continue
+      for (const teamData of summary.boxscore.players) {
+        for (const statGroup of (teamData.statistics || [])) {
+          const keys: string[] = statGroup.keys || []
+          const keySet = new Set(keys)
+          if (!keySet.has('wins') && !keySet.has('saves') && !keySet.has('holds')) continue
+          for (const athlete of (statGroup.athletes || [])) {
+            const pid = athlete.athlete?.id || athlete.id
+            if (!pid || !pitcherMap.has(pid)) continue
+            const statsArr = athlete.stats || []
+            const s: any = {}
+            keys.forEach((k: string, i: number) => {
+              const v = parseFloat(String(statsArr[i]))
+              if (!isNaN(v)) s[k] = v
+            })
+            const wins  = s['wins']  || 0
+            const saves = s['saves'] || 0
+            const holds = s['holds'] || 0
+            if (!wins && !saves && !holds) continue
+            // Update existing pitcher entry with bonus points
+            const existing = pitcherMap.get(pid)!
+            const bonusPts = wins * 5 + saves * 5 + holds * 3
+            if (bonusPts > 0) {
+              const newPts = existing.pts + bonusPts
+              const avgPts = existing.position === 'SP' ? 14 : 7
+              existing.pts = newPts
+              existing.wpImpact = calcWpImpact(newPts, avgPts)
+              // Update stat line to include W/SV
+              if (wins && !existing.statLine.includes('W')) existing.statLine += ` · W`
+              if (saves && !existing.statLine.includes('SV')) existing.statLine += ` · ${saves} SV`
+              pitcherMap.set(pid, existing)
+            }
+          }
+        }
+      }
+    }
+
+    // Also try to infer QS (Quality Start: 6+ IP, 3 or fewer ER = 3 pts)
+    for (const [pid, p] of pitcherMap) {
+      const ipMatch = p.statLine.match(/^([\d.]+) IP/)
+      const erMatch = p.statLine.match(/(\d+) ER/)
+      if (ipMatch && erMatch) {
+        const ip = parseFloat(ipMatch[1])
+        const er = parseInt(erMatch[1])
+        if (ip >= 6 && er <= 3) {
+          p.pts += 3
+          const avgPts = 14
+          p.wpImpact = calcWpImpact(p.pts, avgPts)
+          p.statLine = p.statLine.replace(' pts', ' pts') // pts already in line, update below
+          // Update pts in statLine
+          p.statLine = p.statLine.replace(/[-\d.]+ pts$/, `${p.pts.toFixed(1)} pts`)
+          pitcherMap.set(pid, p)
+        }
+      }
+    }
+
     const batters  = [...batterMap.values()].sort((a,b) => b.wpImpact - a.wpImpact)
     const pitchers = [...pitcherMap.values()].sort((a,b) => b.wpImpact - a.wpImpact)
     wpiTopBatters.value  = batters.slice(0,5)
@@ -1747,9 +1806,13 @@ function parseAthleteRow(
   const pts = calcFantasyPts(n, isPitcherGroup)
   // For batters, skip zero-point games; pitchers kept regardless (sorted later)
   if (!isPitcherGroup && pts <= 0) return
-  // WP impact: points above position average × 0.75%, min 0.1 so everyone shows
+  // Filter out negative performance — no one should appear for hurting their team
+  if (pts <= 0) return
+
+  // WP impact: points above position average × 0.75%
   const avgPts = isPitcherGroup ? (ip >= 5 ? 14 : ip >= 2 ? 7 : 4) : 7
-  const wpImpact = Math.max(0.1, calcWpImpact(pts, avgPts))
+  const wpImpact = calcWpImpact(pts, avgPts)
+  if (wpImpact <= 0) return
 
   const posFromAthlete = athlete.athlete?.position?.abbreviation ||
                          athlete.position?.abbreviation || (isPitcherGroup ? 'P' : 'OF')
