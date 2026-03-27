@@ -1269,7 +1269,7 @@
             <!-- Name + Team · Pos on same line -->
             <text x="91" :y="94+i*101+50" font-size="18" font-weight="800" fill="#ffffff"
               font-family="Helvetica Neue,Helvetica,Arial,sans-serif">{{ p.name }}</text>
-            <text :x="91 + Math.min(p.name.length * 10.5, 240)" :y="94+i*101+50"
+            <text :x="108 + Math.min(p.name.length * 10.5, 220)" :y="94+i*101+50"
               font-size="12" font-weight="600" fill="#6b7280"
               font-family="Helvetica Neue,Helvetica,Arial,sans-serif">  {{ p.team }} · {{ p.position }}</text>
 
@@ -1370,7 +1370,7 @@
             <!-- Name + Team · Pos on same line -->
             <text x="91" :y="94+i*101+50" font-size="18" font-weight="800" fill="#ffffff"
               font-family="Helvetica Neue,Helvetica,Arial,sans-serif">{{ p.name }}</text>
-            <text :x="91 + Math.min(p.name.length * 10.5, 240)" :y="94+i*101+50"
+            <text :x="108 + Math.min(p.name.length * 10.5, 220)" :y="94+i*101+50"
               font-size="12" font-weight="600" fill="#6b7280"
               font-family="Helvetica Neue,Helvetica,Arial,sans-serif">  {{ p.team }} · {{ p.position }}</text>
 
@@ -1677,13 +1677,14 @@ function parseAthleteRow(
   const s: any = {}
   keys.forEach((k: string, i: number) => {
     const raw = statsArr[i]
+    if (raw === '--' || raw === null || raw === undefined) return
     // Handle "H-AB" style combined stats (e.g. "2-4")
     if (typeof raw === 'string' && raw.includes('-') && k === 'hits-atBats') {
       const [h, ab] = raw.split('-').map(Number)
       if (!isNaN(h)) s['hits'] = h
       if (!isNaN(ab)) s['atBats'] = ab
     } else {
-      const v = parseFloat(raw)
+      const v = parseFloat(String(raw))
       if (!isNaN(v)) s[k] = v
     }
   })
@@ -1711,9 +1712,7 @@ function parseAthleteRow(
 
   const ip = n.inningsPitched
   if (!isPitcherGroup && n.atBats < 1) return
-  // Keep all pitchers who appeared (even 0 IP closers with saves)
-  // Just filter out truly empty rows (no IP, no saves, no K)
-  if (isPitcherGroup && ip <= 0 && !n.saves && n.strikeOuts <= 0) return
+  // For pitchers: keep anyone in the pitching stats group (IP may be 0 for openers/closers)
 
   const name     = athlete.athlete?.displayName || 'Unknown'
   const teamAbbr = athlete.athlete?.team?.abbreviation || teamFallback
