@@ -1444,7 +1444,8 @@ const wpiStatus = ref('')
 const wpiDateDisplay = computed(() => {
   const d = wpiDate.value
   if (d.length === 8) {
-    const dt = new Date(`${d.slice(0,4)}-${d.slice(4,6)}-${d.slice(6,8)}`)
+    // Use T12:00:00 to avoid UTC-to-local timezone shifting the date back one day
+    const dt = new Date(`${d.slice(0,4)}-${d.slice(4,6)}-${d.slice(6,8)}T12:00:00`)
     return dt.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })
   }
   return d
@@ -1693,9 +1694,9 @@ function parseAthleteRow(
   const ip = n.inningsPitched
   if (!isPitcherGroup && n.atBats < 1) return
   if (isPitcherGroup && ip < 0.1 && !n.saves) return
-  // Skip anyone with 0 pts entirely
-  const ptsCheck = calcFantasyPts(n, isPitcherGroup)
-  if (ptsCheck <= 0) return
+  // For pitchers, keep anyone who actually pitched (ip > 0) even if pts are low
+  // For batters, keep anyone with positive pts
+  if (!isPitcherGroup && pts <= 0) return
 
   const name     = athlete.athlete?.displayName || 'Unknown'
   const teamAbbr = athlete.athlete?.team?.abbreviation || teamFallback
@@ -1703,9 +1704,9 @@ function parseAthleteRow(
     `https://a.espncdn.com/i/headshots/mlb/players/full/${pid}.png`
 
   const pts      = calcFantasyPts(n, isPitcherGroup)
-  // Compare to 0 baseline (not positional average) so any positive day shows.
-  // Top performers rise naturally through sorting.
-  const wpImpact = Math.max(0.1, calcWpImpact(pts, 0))
+  // WP impact: points above position average × 0.75%, min 0.1 so everyone shows
+  const avgPts = isPitcherGroup ? (ip >= 5 ? 14 : ip >= 2 ? 7 : 4) : 7
+  const wpImpact = Math.max(0.1, calcWpImpact(pts, avgPts))
 
   const pos = isPitcherGroup
     ? (n.saves > 0 ? 'RP' : ip >= 3 ? 'SP' : 'RP')
