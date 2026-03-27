@@ -1776,7 +1776,7 @@ async function loadSleeperWpi() {
   for (const matchup of matchups) {
     const pts = matchup.players_points || {}
     for (const [pid, ptsVal] of Object.entries(pts)) {
-      if (seen.has(pid) || ptsVal <= 0) continue
+      if (seen.has(pid)) continue
       seen.add(pid)
       const p = playerMap[pid]
       if (!p) continue
@@ -1820,31 +1820,42 @@ async function loadEspnWpi() {
   wpiStatus.value = 'Loading ESPN matchup data…'
   const matchups = await espnService.getMatchups('baseball', wpiLeagueId.value, wpiSeason.value, wpiWeekNum.value)
 
+  wpiStatus.value = `Got ${matchups.length} matchups, extracting player data…`
   const allPlayers: WpiPlayer[] = []
   const seen = new Set<number>()
 
   for (const matchup of matchups) {
-    const rosters = [
-      ...(matchup.homeRoster || []),
-      ...(matchup.awayRoster || [])
-    ]
-    for (const player of rosters) {
-      if (seen.has(player.playerId) || (player.actualPoints || 0) <= 0) continue
-      seen.add(player.playerId)
+    // ESPN matchup uses homeRosterEntries/awayRosterEntries (raw) or homeTeam.roster (parsed)
+    const homeEntries = matchup.homeRosterEntries || matchup.homeTeam?.roster || []
+    const awayEntries = matchup.awayRosterEntries || matchup.awayTeam?.roster || []
 
-      const pos = player.position || 'UTIL'
-      const rawStats = player.stats || {}
+    for (const entry of [...homeEntries, ...awayEntries]) {
+      // Handle both raw entries (from rosterEntries) and parsed EspnPlayer objects
+      const playerId = entry.playerId || entry.id
+      const playerData = entry.playerPoolEntry?.player || entry
+      const statsArray = playerData.stats || []
+
+      // Get actual (not projected) stats for the scoring period
+      const actualStats = statsArray.find((s: any) => s.statSourceId === 0 && s.appliedTotal > 0) ||
+                          statsArray.find((s: any) => s.statSourceId === 0) || {}
+      const pts = entry.actualPoints ?? actualStats.appliedTotal ?? 0
+      const rawStats = actualStats.stats || entry.stats || {}
+
+      if (!playerId || seen.has(playerId)) continue
+      seen.add(playerId)
+
+      const pos = entry.position || ESPN_LINEUP_SLOTS[entry.lineupSlotId] ||
+                  (playerData.defaultPositionId === 1 ? 'SP' :
+                   playerData.defaultPositionId === 7 ? 'RP' : 'UTIL')
+      const name = entry.fullName || playerData.fullName || 'Unknown'
+      const team = entry.proTeam || 'FA'
       const avgPts = isPitcher(pos) ? 12 : 8
-      const wpImpact = calcWpImpact(player.actualPoints || 0, avgPts)
-      const headshot = `https://a.espncdn.com/i/headshots/mlb/players/full/${player.playerId}.png`
+      const wpImpact = calcWpImpact(pts, avgPts)
+      const headshot = `https://a.espncdn.com/i/headshots/mlb/players/full/${playerId}.png`
 
       const p: WpiPlayer = {
-        id: String(player.playerId),
-        name: player.fullName || 'Unknown',
-        team: player.proTeam || 'FA',
-        position: pos, headshot,
-        pts: player.actualPoints || 0,
-        wpImpact,
+        id: String(playerId), name, team, position: pos, headshot,
+        pts, wpImpact,
         statLine: '',
         catStats: isPitcher(pos) ? getPitcherCatStats(rawStats) : getBatterCatStats(rawStats),
         catScore: isPitcher(pos) ? pitcherCatScore(rawStats) : batterCatScore(rawStats),
@@ -1855,13 +1866,12 @@ async function loadEspnWpi() {
         const ip = rawStats['17'] || 0
         const k = rawStats['20'] || 0
         const era = rawStats['18']
-        p.statLine = `${ip.toFixed(1)} IP · ${k} K${era !== undefined ? ` · ${era.toFixed(2)} ERA` : ''}`
+        p.statLine = `${Number(ip).toFixed(1)} IP · ${k} K${era !== undefined ? ` · ${Number(era).toFixed(2)} ERA` : ''}`
       } else {
         const h = rawStats['1'] || 0; const ab = rawStats['0'] || 0
         const hr = rawStats['3'] || 0; const rbi = rawStats['4'] || 0; const r = rawStats['2'] || 0
         p.statLine = `${h}/${ab} · ${hr} HR · ${rbi} RBI · ${r} R`
       }
-
       allPlayers.push(p)
     }
   }
@@ -1869,11 +1879,18 @@ async function loadEspnWpi() {
   buildTopLists(allPlayers)
 }
 
+// ESPN lineup slot ID → position name
+const ESPN_LINEUP_SLOTS: Record<number, string> = {
+  0: 'SP', 1: 'C', 2: '1B', 3: '2B', 4: '3B', 5: 'SS', 6: '2B/SS', 7: '1B/3B',
+  8: 'LF', 9: 'CF', 10: 'RF', 11: 'DH', 12: 'UTIL', 13: 'RP', 14: 'P',
+  15: 'BE', 16: 'IL', 17: 'IL+', 19: 'OF'
+}
+
 function buildTopLists(allPlayers: WpiPlayer[]) {
   const batters = allPlayers.filter(p => !isPitcher(p.position))
   const pitchers = allPlayers.filter(p => isPitcher(p.position))
 
-  // Points leagues: rank by raw fantasy points
+  // Points leagues: rank by raw fantasy points (include all, show top 5)
   wpiTopBattersPoints.value = [...batters]
     .sort((a, b) => b.pts - a.pts).slice(0, 5)
   wpiTopPitchersPoints.value = [...pitchers]
@@ -1885,7 +1902,11 @@ function buildTopLists(allPlayers: WpiPlayer[]) {
   wpiTopPitchersCat.value = [...pitchers]
     .sort((a, b) => b.catScore - a.catScore).slice(0, 5)
 
-  wpiStatus.value = `✓ Found ${batters.length} batters + ${pitchers.length} pitchers`
+  if (allPlayers.length === 0) {
+    wpiStatus.value = '⚠️ No players found — check league ID, week number, and season. Baseball may not have started yet.'
+  } else {
+    wpiStatus.value = `✓ Found ${batters.length} batters + ${pitchers.length} pitchers from ${allPlayers.length} total`
+  }
 }
 
 // ── Interactive Win Probability Template state ─────────────────────────────

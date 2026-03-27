@@ -51,12 +51,12 @@ export default async function handler(req, res) {
 
       const { data: allProfiles, error: pErr } = await admin
         .from('profiles')
-        .select('id, email, created_at, subscription_tier')
+        .select('id, email, created_at, subscription_tier, stripe_customer_id')
         .order('created_at', { ascending: false })
 
       const { data: allPasses, error: lpErr } = await admin
         .from('league_passes')
-        .select('id, user_id, league_id, active, expires_at, created_at')
+        .select('id, league_id, active, expires_at, created_at')
         .order('created_at', { ascending: false })
 
       if (pErr) return res.status(500).json({ error: 'profiles query failed: ' + pErr.message })
@@ -71,13 +71,12 @@ export default async function handler(req, res) {
       const filteredPasses = passes.filter(p => new Date(p.created_at) >= new Date(dateFilter))
 
       const activePasses = passes.filter(p => p.active && new Date(p.expires_at) > now)
-      const activePassUserIds = new Set(activePasses.map(p => p.user_id))
+      const activeLeagueIds = new Set(activePasses.map(p => p.league_id))
       const expiringPasses = activePasses.filter(p => new Date(p.expires_at) <= expiringCutoff)
-      const expiringUserIds = new Set(expiringPasses.map(p => p.user_id))
+      const expiringLeagueIds = new Set(expiringPasses.map(p => p.league_id))
 
-      const passCountByUser = {}
-      activePasses.forEach(p => { passCountByUser[p.user_id] = (passCountByUser[p.user_id] || 0) + 1 })
-      const multiPassUsers = Object.values(passCountByUser).filter(c => c >= 2).length
+      // league_passes has no user_id — count unique leagues instead
+      const multiPassUsers = activePasses.length > activeLeagueIds.size ? activePasses.length - activeLeagueIds.size : 0
 
       return res.status(200).json({
         kpis: {
@@ -86,10 +85,10 @@ export default async function handler(req, res) {
           totalPasses: passes.length,
           newPasses: filteredPasses.length,
           activePasses: activePasses.length,
-          activePassUsers: activePassUserIds.size,
-          noPassUsers: profiles.filter(p => !activePassUserIds.has(p.id)).length,
+          activePassUsers: activeLeagueIds.size,
+          noPassUsers: profiles.filter(p => !p.stripe_customer_id).length,
           expiringPasses: expiringPasses.length,
-          expiringUsers: expiringUserIds.size,
+          expiringUsers: expiringLeagueIds.size,
           multiPassUsers,
         },
         charts: {
@@ -104,38 +103,34 @@ export default async function handler(req, res) {
 
       const { data: profiles } = await admin
         .from('profiles')
-        .select('id, email, full_name, created_at, subscription_tier')
+        .select('id, email, full_name, created_at, subscription_tier, stripe_customer_id')
         .order('created_at', { ascending: false })
 
       const { data: passes } = await admin
         .from('league_passes')
-        .select('id, user_id, league_id, active, expires_at, created_at')
+        .select('id, league_id, active, expires_at, created_at')
 
       const now = new Date()
       const expDays = parseInt(expiring_days) || 30
       const expiringCutoff = new Date(now.getTime() + expDays * 86400000)
       const activePasses = (passes || []).filter(p => p.active && new Date(p.expires_at) > now)
-      const activePassUserIds = new Set(activePasses.map(p => p.user_id))
+      const activeLeagueIds = new Set(activePasses.map(p => p.league_id))
 
       if (segment === 'active') {
         const rows = (profiles || [])
-          .filter(p => activePassUserIds.has(p.id))
+          .filter(p => !!p.stripe_customer_id)
           .map(p => ({
             email: p.email,
             name: p.full_name || '',
             joined: p.created_at ? p.created_at.slice(0, 10) : '',
-            passes: activePasses.filter(lp => lp.user_id === p.id).length,
-            expires: activePasses
-              .filter(lp => lp.user_id === p.id)
-              .sort((a, b) => new Date(b.expires_at) - new Date(a.expires_at))[0]
-              ?.expires_at?.slice(0, 10) || ''
+            tier: p.subscription_tier
           }))
         return res.status(200).json({ rows })
       }
 
       if (segment === 'nopass') {
         const rows = (profiles || [])
-          .filter(p => !activePassUserIds.has(p.id))
+          .filter(p => !p.stripe_customer_id)
           .map(p => ({
             email: p.email,
             name: p.full_name || '',
@@ -147,7 +142,7 @@ export default async function handler(req, res) {
 
       if (segment === 'expiring') {
         const expiringPasses = activePasses.filter(p => new Date(p.expires_at) <= expiringCutoff)
-        const expiringUserIds = new Set(expiringPasses.map(p => p.user_id))
+        const expiringLeagueIds = new Set(expiringPasses.map(p => p.league_id))
         const rows = (profiles || [])
           .filter(p => expiringUserIds.has(p.id))
           .map(p => {
@@ -165,7 +160,6 @@ export default async function handler(req, res) {
               leagueId: soonest?.league_id || ''
             }
           })
-          .sort((a, b) => a.daysLeft - b.daysLeft)
         return res.status(200).json({ rows })
       }
 
