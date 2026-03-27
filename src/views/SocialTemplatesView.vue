@@ -1694,16 +1694,15 @@ function parseAthleteRow(
   const ip = n.inningsPitched
   if (!isPitcherGroup && n.atBats < 1) return
   if (isPitcherGroup && ip < 0.1 && !n.saves) return
-  // For pitchers, keep anyone who actually pitched (ip > 0) even if pts are low
-  // For batters, keep anyone with positive pts
-  if (!isPitcherGroup && pts <= 0) return
 
   const name     = athlete.athlete?.displayName || 'Unknown'
   const teamAbbr = athlete.athlete?.team?.abbreviation || teamFallback
   const headshot = athlete.athlete?.headshot?.href ||
     `https://a.espncdn.com/i/headshots/mlb/players/full/${pid}.png`
 
-  const pts      = calcFantasyPts(n, isPitcherGroup)
+  const pts = calcFantasyPts(n, isPitcherGroup)
+  // For batters, skip zero-point games; pitchers kept regardless (sorted later)
+  if (!isPitcherGroup && pts <= 0) return
   // WP impact: points above position average × 0.75%, min 0.1 so everyone shows
   const avgPts = isPitcherGroup ? (ip >= 5 ? 14 : ip >= 2 ? 7 : 4) : 7
   const wpImpact = Math.max(0.1, calcWpImpact(pts, avgPts))
