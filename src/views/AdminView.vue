@@ -6,13 +6,13 @@
       <div class="admin-header-left">
         <div class="admin-badge">⚙️ ADMIN</div>
         <div>
-          <h1 class="admin-title">Command Center</h1>
-          <p class="admin-sub">ultimatefantasydashboard.com · internal analytics</p>
+          <h1 class="admin-title">Admin</h1>
+          <p class="admin-sub">ultimatefantasydashboard.com · internal tools</p>
         </div>
       </div>
       <div class="admin-header-right">
-        <!-- Time Range Filter -->
-        <div class="time-filter">
+        <!-- Time Range Filter — only on Metrics tab -->
+        <div v-if="adminTab === 'metrics'" class="time-filter">
           <button v-for="tf in TIME_FILTERS" :key="tf.key"
             @click="setTimeFilter(tf.key)"
             :class="['tf-btn', activeFilter === tf.key ? 'tf-btn-active' : '']">
@@ -20,6 +20,19 @@
           </button>
         </div>
       </div>
+    </div>
+
+    <!-- ── Top Nav Tabs ── -->
+    <div class="admin-tabs">
+      <button @click="adminTab='metrics'" :class="['admin-tab', adminTab==='metrics'?'admin-tab-active':'']">
+        <span class="admin-tab-icon">📊</span> Metrics
+      </button>
+      <button @click="adminTab='email'" :class="['admin-tab', adminTab==='email'?'admin-tab-active':'']">
+        <span class="admin-tab-icon">✉️</span> Email
+      </button>
+      <button @click="adminTab='social'" :class="['admin-tab', adminTab==='social'?'admin-tab-active':'']">
+        <span class="admin-tab-icon">📸</span> Social
+      </button>
     </div>
 
     <!-- ── Access Denied ── -->
@@ -52,9 +65,8 @@
         <button @click="apiError = null" class="error-close">×</button>
       </div>
 
-      <!-- ══════════════════════════════════════
-           KPI CARDS
-      ══════════════════════════════════════ -->
+      <!-- ══ METRICS TAB ══ -->
+      <template v-if="adminTab === 'metrics'">
       <section class="section">
         <div class="section-label">📊 Key Metrics
           <span class="filter-badge">{{ activeFilterLabel }}</span>
@@ -130,9 +142,12 @@
         </div>
       </section>
 
-      <!-- ══════════════════════════════════════
-           EMAIL SEGMENTS
-      ══════════════════════════════════════ -->
+      </template><!-- end metrics tab -->
+
+      <!-- ══ EMAIL TAB ══ -->
+      <template v-if="adminTab === 'email'">
+
+      <!-- EMAIL SEGMENTS -->
       <section class="section">
         <div class="section-label">✉️ Email Segments</div>
 
@@ -355,6 +370,22 @@
         </div>
       </section>
 
+      </template><!-- end email tab -->
+
+      <!-- ══════════════════════════════════════ SOCIAL TAB ══ -->
+      <template v-if="adminTab === 'social'">
+      <section class="section">
+        <div class="section-label">📸 Social Templates</div>
+        <div class="social-iframe-wrap">
+          <iframe
+            src="/socialtemplates"
+            class="social-iframe"
+            title="Social Templates"
+          ></iframe>
+        </div>
+      </section>
+      </template><!-- end social tab -->
+
     </template>
   </div>
 </template>
@@ -381,6 +412,7 @@ const TIME_FILTERS = [
   { key: '1yr',    label: '1 Year',    days: 365 },
   { key: 'all',    label: 'All Time',  days: null },
 ]
+const adminTab = ref('metrics')
 const activeFilter = ref('30d')
 const activeFilterLabel = computed(() => TIME_FILTERS.find(f => f.key === activeFilter.value)?.label || '')
 
@@ -1144,4 +1176,28 @@ onMounted(async () => {
   border: 1px solid #1e2130; border-radius: 12px; overflow: hidden; background: #05060a;
 }
 .email-iframe { width: 100%; height: 900px; border: none; display: block; background: #fff; }
+
+/* ── ADMIN TABS ── */
+.admin-tabs {
+  display: flex; gap: 0; border-bottom: 1px solid #1e2130;
+  background: #0a0c14; padding: 0 32px;
+  position: sticky; top: 73px; z-index: 18;
+  backdrop-filter: blur(12px);
+}
+.admin-tab {
+  display: flex; align-items: center; gap: 7px;
+  padding: 14px 20px; font-size: 13px; font-weight: 600;
+  color: #6b7280; border: none; background: none; cursor: pointer;
+  border-bottom: 2px solid transparent; margin-bottom: -1px;
+  transition: all 0.15s; white-space: nowrap;
+  font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+}
+.admin-tab:hover { color: #9ca3af; }
+.admin-tab-active { color: #e5e7eb; border-bottom-color: #eab308; }
+.admin-tab-icon { font-size: 15px; }
+.social-iframe-wrap {
+  border: 1px solid #1e2130; border-radius: 12px; overflow: hidden;
+  height: calc(100vh - 220px); min-height: 700px;
+}
+.social-iframe { width: 100%; height: 100%; border: none; display: block; }
 </style>

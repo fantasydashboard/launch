@@ -9,6 +9,24 @@
       </div>
     </div>
 
+    <!-- ── Type Tabs ── -->
+    <div class="type-tabs">
+      <button @click="activeType='square'" :class="['type-tab', activeType==='square'?'type-tab-active':'']">
+        <span>▪</span> Square Posts
+      </button>
+      <button @click="activeType='fb'" :class="['type-tab', activeType==='fb'?'type-tab-active':'']">
+        <span>📘</span> FB Cover
+      </button>
+      <button @click="activeType='interactive'" :class="['type-tab', activeType==='interactive'?'type-tab-active':'']">
+        <span>🎯</span> Interactive
+      </button>
+      <button @click="activeType='stories'" :class="['type-tab', activeType==='stories'?'type-tab-active':'']" style="opacity:0.4;cursor:default">
+        <span>📱</span> Stories <span style="font-size:9px;background:rgba(234,179,8,0.15);border:1px solid rgba(234,179,8,0.3);color:#eab308;padding:1px 5px;border-radius:3px;margin-left:4px">Soon</span>
+      </button>
+    </div>
+
+    <!-- FB COVER TAB -->
+    <template v-if="activeType === 'fb'">
     <!-- ════════════════════════════════════
          FACEBOOK BANNER  851 × 315
     ════════════════════════════════════ -->
@@ -66,9 +84,10 @@
       </div>
     </div>
 
-    <!-- ════════════════════════════════════
-         18 SQUARE POSTS — 2 per row
-    ════════════════════════════════════ -->
+    </template><!-- end fb tab -->
+
+    <!-- SQUARE TAB -->
+    <template v-if="activeType === 'square'">
     <div class="section-label">📸 Social Post Graphics — Screenshot each individually</div>
     <div class="posts-grid">
 
@@ -587,11 +606,11 @@
         </div>
       </div>
 
-    </div>
+    </div><!-- end posts-grid -->
+    </template><!-- end square tab -->
 
-    <!-- ════════════════════════════════════
-         INTERACTIVE TEMPLATES
-    ════════════════════════════════════ -->
+    <!-- INTERACTIVE TAB -->
+    <template v-if="activeType === 'interactive'">
     <div class="section-label">🎯 Interactive Templates — Customize then screenshot the card</div>
 
     <!-- 19 · DAILY WIN PROBABILITY TRACKER -->
@@ -1163,11 +1182,16 @@
       </div>
     </div>
 
+  </template><!-- end interactive tab -->
+
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, computed, defineComponent, h } from 'vue'
+
+// ── Social template type tabs ──────────────────────────────────────────────
+const activeType = ref('square')
 
 // ── Interactive Win Probability Template state ─────────────────────────────
 // Chart layout constants (within 540x540 SVG card)
@@ -2079,4 +2103,21 @@ const FanCards = defineComponent({
 .sc-word-cyan   { color: #06b6d4; }
 .sc-word-purple { color: #a78bfa; }
 .sc-word-amber  { color: #f59e0b; }
+
+/* ── TYPE TABS ── */
+.type-tabs {
+  display: flex; gap: 0; border-bottom: 1px solid #1e2130;
+  background: #030407; padding: 0 40px;
+  position: sticky; top: 0; z-index: 20;
+}
+.type-tab {
+  display: flex; align-items: center; gap: 7px;
+  padding: 14px 20px; font-size: 13px; font-weight: 600;
+  color: #6b7280; border: none; background: none; cursor: pointer;
+  border-bottom: 2px solid transparent; margin-bottom: -1px;
+  transition: all 0.15s; white-space: nowrap;
+  font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+}
+.type-tab:hover { color: #9ca3af; }
+.type-tab-active { color: #e5e7eb; border-bottom-color: #eab308; }
 </style>
