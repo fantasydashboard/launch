@@ -378,7 +378,7 @@
         <div class="section-label">📸 Social Templates</div>
         <div class="social-iframe-wrap">
           <iframe
-            src="/socialtemplates"
+            src="/socialtemplates?embed=true"
             class="social-iframe"
             title="Social Templates"
           ></iframe>
