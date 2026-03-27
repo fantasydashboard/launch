@@ -1573,97 +1573,50 @@ async function loadWpiData() {
 
   try {
     const dateStr = wpiDate.value.replace(/-/g,'')
-
-    // Try regular season first, fall back to include all game types
     const sbRes = await fetch(
       `https://site.api.espn.com/apis/site/v2/sports/baseball/mlb/scoreboard?dates=${dateStr}&limit=30`
     )
-    if (!sbRes.ok) throw new Error(`Scoreboard fetch failed: ${sbRes.status}`)
+    if (!sbRes.ok) throw new Error(`Scoreboard failed: ${sbRes.status}`)
     const sbData = await sbRes.json()
-    const events = (sbData.events || [])
-
+    const events = sbData.events || []
     if (!events.length) {
-      wpiError.value = `No MLB games on ${wpiDateDisplay.value}. Try a different date — the 2026 season starts March 27.`
+      wpiError.value = `No MLB games on ${wpiDateDisplay.value}. Try 20250901 for a 2025 regular season date.`
       wpiStatus.value = ''; return
     }
-
     wpiStatus.value = `Found ${events.length} games, loading box scores…`
 
     const batterMap  = new Map<string, WpiPlayer>()
     const pitcherMap = new Map<string, WpiPlayer>()
 
-    // Load summaries in parallel
     const summaries = await Promise.all(
       events.map((e: any) =>
         fetch(`https://site.api.espn.com/apis/site/v2/sports/baseball/mlb/summary?event=${e.id}`)
-          .then(r => r.ok ? r.json() : null)
-          .catch(() => null)
+          .then(r => r.ok ? r.json() : null).catch(() => null)
       )
     )
 
-    let debugInfo = ''
-    let debugLogged = false
     for (const summary of summaries) {
-      if (!summary) continue
+      if (!summary?.boxscore?.players) continue
 
-      // Show debug info in status so we can see it on screen
-      if (!debugLogged) {
-        debugLogged = true
-        const bx = summary.boxscore
-        const topKeys = Object.keys(summary).join(', ')
-        const bxKeys = bx ? Object.keys(bx).join(', ') : 'NO BOXSCORE'
-        let groupInfo = 'no players'
-        if (bx?.players?.length) {
-          const groups = bx.players.flatMap((p: any) =>
-            (p.statistics || []).map((s: any) => s.keys?.slice(0,4).join('|') || s.name || '?')
-          )
-          groupInfo = groups.slice(0,6).join(' / ')
-        }
-        debugInfo = `API: [${topKeys}] bx:[${bxKeys}] groups:[${groupInfo}]`
-        wpiStatus.value = debugInfo
-      }
+      for (const teamData of summary.boxscore.players) {
+        const teamAbbr = teamData.team?.abbreviation || ''
 
-      // ── Try primary path: boxscore.players[].statistics[] ──
-      if (summary.boxscore?.players) {
-        for (const teamData of summary.boxscore.players) {
-          for (const statGroup of (teamData.statistics || [])) {
-            const keys: string[] = statGroup.keys || []
-            const keyUpper = keys.map((k: string) => k.toUpperCase())
-            const keySet = new Set(keyUpper)
+        for (const statGroup of (teamData.statistics || [])) {
+          const keys: string[] = statGroup.keys || []
+          const keySet = new Set(keys)
 
-            // Detect type by keys present — be very permissive
-            const hasBat = keySet.has('AB') || keySet.has('H') || keySet.has('HR') || keySet.has('RBI')
-            const hasPit = keySet.has('IP') || keySet.has('ER') || keySet.has('SV') || keySet.has('SO') || keySet.has('BB')
+          // ESPN uses camelCase keys: atBats, hits, homeRuns, rbi, runs, stolenBases (batting)
+          // and fullInnings.partInnings, earnedRuns, strikeOuts, wins, saves (pitching)
+          const hasBat = keySet.has('atBats') || keySet.has('homeRuns') ||
+                         keySet.has('hits-atBats') || keySet.has('rbi')
+          const hasPit = keySet.has('fullInnings.partInnings') || keySet.has('earnedRuns') ||
+                         keySet.has('strikeOuts') || keySet.has('saves')
 
-            // If neither, try treating based on position of athletes
-            if (!hasBat && !hasPit) {
-              console.log('[WPI] Unclassified group keys:', keys)
-              continue
-            }
-            const isPitcherGroup = hasPit && !hasBat
+          if (!hasBat && !hasPit) continue
+          const isPitcherGroup = hasPit && !hasBat
 
-            for (const athlete of (statGroup.athletes || [])) {
-              parseAthleteRow(athlete, keys, isPitcherGroup, teamData.team?.abbreviation || '',
-                              batterMap, pitcherMap)
-            }
-          }
-        }
-      }
-
-      // ── Fallback: try boxscore.teams[].statistics ──
-      if (summary.boxscore?.teams) {
-        for (const team of summary.boxscore.teams) {
-          for (const statGroup of (team.statistics || [])) {
-            const keys: string[] = statGroup.keys || []
-            const keySet = new Set(keys.map((k: string) => k.toUpperCase()))
-            const hasBat = keySet.has('AB') || keySet.has('H') || keySet.has('HR')
-            const hasPit = keySet.has('IP') || keySet.has('ER') || keySet.has('SV')
-            if (!hasBat && !hasPit) continue
-            const isPitcherGroup = hasPit && !hasBat
-            for (const athlete of (statGroup.athletes || [])) {
-              parseAthleteRow(athlete, keys, isPitcherGroup, team.team?.abbreviation || '',
-                              batterMap, pitcherMap)
-            }
+          for (const athlete of (statGroup.athletes || [])) {
+            parseAthleteRow(athlete, keys, isPitcherGroup, teamAbbr, batterMap, pitcherMap)
           }
         }
       }
@@ -1676,18 +1629,18 @@ async function loadWpiData() {
 
     const total = batters.length + pitchers.length
     if (!total) {
-      wpiError.value = `No stats found in ${events.length} games. Check console for [WPI] debug info.`
+      wpiError.value = `No stats found — Spring Training games may lack box scores. Try 20250901.`
     } else {
       wpiStatus.value = `✓ ${batters.length} batters · ${pitchers.length} pitchers from ${events.length} games`
     }
   } catch (e: any) {
     wpiError.value = e?.message || 'Failed to load data'
     wpiStatus.value = ''
-    console.error('[WPI] Error:', e)
   } finally {
     wpiLoading.value = false
   }
 }
+
 
 function parseAthleteRow(
   athlete: any,
@@ -1701,24 +1654,40 @@ function parseAthleteRow(
   if (!pid) return
 
   const statsArr = athlete.stats || []
+  // Build stat object using ESPN's actual camelCase key names
   const s: any = {}
   keys.forEach((k: string, i: number) => {
-    // Stats can be strings like "1/3", handle IP like "6.0"
     const raw = statsArr[i]
-    const v = parseFloat(raw)
-    if (!isNaN(v)) s[k.toUpperCase()] = v
+    // Handle "H-AB" style combined stats (e.g. "2-4")
+    if (typeof raw === 'string' && raw.includes('-') && k === 'hits-atBats') {
+      const [h, ab] = raw.split('-').map(Number)
+      if (!isNaN(h)) s['hits'] = h
+      if (!isNaN(ab)) s['atBats'] = ab
+    } else {
+      const v = parseFloat(raw)
+      if (!isNaN(v)) s[k] = v
+    }
   })
 
+  // ESPN's actual camelCase stat key names
   const n: any = {
-    atBats:   s.AB || 0,   hits: s.H  || 0,
-    doubles:  s['2B'] || 0, triples: s['3B'] || 0,
-    homeRuns: s.HR || 0,    runs: s.R  || 0,
-    rbi: s.RBI || 0,        stolenBases: s.SB  || 0,
-    baseOnBalls: s.BB || 0, hitByPitch: s.HBP || 0,
-    inningsPitched: s.IP || 0,
-    strikeOuts: s.SO || s.K || 0,
-    earnedRuns: s.ER || 0,
-    wins: s.W || 0, saves: s.SV || 0, holds: s.HLD || 0,
+    atBats:         s['atBats']   || 0,
+    hits:           s['hits']     || 0,
+    doubles:        s['doubles']  || 0,
+    triples:        s['triples']  || 0,
+    homeRuns:       s['homeRuns'] || 0,
+    runs:           s['runs']     || 0,
+    rbi:            s['RBI'] || s['rbi'] || 0,
+    stolenBases:    s['stolenBases']    || 0,
+    baseOnBalls:    s['walks'] || s['baseOnBalls'] || 0,
+    hitByPitch:     s['hitByPitch']     || 0,
+    // Pitching — ESPN stores IP as "fullInnings.partInnings" e.g. 6.2
+    inningsPitched: s['fullInnings.partInnings'] || s['inningsPitched'] || 0,
+    strikeOuts:     s['strikeouts'] || s['strikeOuts'] || 0,
+    earnedRuns:     s['earnedRuns'] || 0,
+    wins:           s['wins']  || 0,
+    saves:          s['saves'] || 0,
+    holds:          s['holds'] || 0,
   }
 
   const ip = n.inningsPitched
