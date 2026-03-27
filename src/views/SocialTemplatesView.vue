@@ -1693,6 +1693,9 @@ function parseAthleteRow(
   const ip = n.inningsPitched
   if (!isPitcherGroup && n.atBats < 1) return
   if (isPitcherGroup && ip < 0.1 && !n.saves) return
+  // Skip anyone with 0 pts entirely
+  const ptsCheck = calcFantasyPts(n, isPitcherGroup)
+  if (ptsCheck <= 0) return
 
   const name     = athlete.athlete?.displayName || 'Unknown'
   const teamAbbr = athlete.athlete?.team?.abbreviation || teamFallback
@@ -1700,9 +1703,9 @@ function parseAthleteRow(
     `https://a.espncdn.com/i/headshots/mlb/players/full/${pid}.png`
 
   const pts      = calcFantasyPts(n, isPitcherGroup)
-  const avgPts   = isPitcherGroup ? (ip >= 5 ? 18 : ip >= 2 ? 10 : 6) : 8
-  const wpImpact = calcWpImpact(pts, avgPts)
-  if (wpImpact <= 0) return
+  // Compare to 0 baseline (not positional average) so any positive day shows.
+  // Top performers rise naturally through sorting.
+  const wpImpact = Math.max(0.1, calcWpImpact(pts, 0))
 
   const pos = isPitcherGroup
     ? (n.saves > 0 ? 'RP' : ip >= 3 ? 'SP' : 'RP')
@@ -2319,7 +2322,7 @@ const FanCards = defineComponent({
 .post-label { font-size: 11px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: #4b5563; margin-bottom: 12px; }
 
 /* Square */
-.sq { width: 540px; height: 540px; position: relative; overflow: hidden; border-radius: 4px; box-shadow: 0 0 0 1px #1e2130, 0 20px 60px rgba(0,0,0,0.7); flex-shrink: 0; display: flex; flex-direction: column; }
+.sq { width: 100%; max-width: 540px; aspect-ratio: 1/1; position: relative; overflow: hidden; border-radius: 4px; box-shadow: 0 0 0 1px #1e2130, 0 20px 60px rgba(0,0,0,0.7); flex-shrink: 0; display: flex; flex-direction: column; }
 .sq-dark   { background: radial-gradient(ellipse 120% 100% at 50% 0%, rgba(234,179,8,0.09) 0%, transparent 60%), linear-gradient(145deg,#05060a,#090c14); }
 .sq-green  { background: radial-gradient(ellipse 120% 100% at 50% 20%, rgba(34,197,94,0.09) 0%, transparent 60%), linear-gradient(145deg,#040a06,#060e08); }
 .sq-cyan   { background: radial-gradient(ellipse 120% 100% at 70% 80%, rgba(6,182,212,0.08) 0%, transparent 60%), linear-gradient(145deg,#040810,#080c18); }
