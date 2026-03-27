@@ -1608,10 +1608,11 @@ async function loadWpiData() {
 
           // ESPN uses camelCase keys: atBats, hits, homeRuns, rbi, runs, stolenBases (batting)
           // and fullInnings.partInnings, earnedRuns, strikeOuts, wins, saves (pitching)
-          const hasBat = keySet.has('atBats') || keySet.has('homeRuns') ||
-                         keySet.has('hits-atBats') || keySet.has('rbi')
+          // Keys confirmed from ESPN API: batting uses atBats/homeRuns/rbi
+          // Pitching uses fullInnings.partInnings/earnedRuns/walks/strikeouts (all lowercase)
+          const hasBat = keySet.has('atBats') || keySet.has('homeRuns') || keySet.has('rbi')
           const hasPit = keySet.has('fullInnings.partInnings') || keySet.has('earnedRuns') ||
-                         keySet.has('strikeOuts') || keySet.has('saves')
+                         keySet.has('strikeouts') || keySet.has('saves') || keySet.has('walks')
 
           if (!hasBat && !hasPit) continue
           const isPitcherGroup = hasPit && !hasBat
@@ -1697,11 +1698,11 @@ function parseAthleteRow(
     runs:           s['runs']     || 0,
     rbi:            s['RBI'] || s['rbi'] || 0,
     stolenBases:    s['stolenBases']    || 0,
-    baseOnBalls:    s['walks'] || s['baseOnBalls'] || 0,
+    baseOnBalls:    s['walks'] || s['baseOnBalls'] || s['BB'] || 0,
     hitByPitch:     s['hitByPitch']     || 0,
     // Pitching — ESPN stores IP as "fullInnings.partInnings" e.g. 6.2
     inningsPitched: s['fullInnings.partInnings'] || s['inningsPitched'] || 0,
-    strikeOuts:     s['strikeouts'] || s['strikeOuts'] || 0,
+    strikeOuts:     s['strikeouts'] || s['strikeOuts'] || s['SO'] || 0,
     earnedRuns:     s['earnedRuns'] || 0,
     wins:           s['wins']  || 0,
     saves:          s['saves'] || 0,
@@ -1710,7 +1711,9 @@ function parseAthleteRow(
 
   const ip = n.inningsPitched
   if (!isPitcherGroup && n.atBats < 1) return
-  if (isPitcherGroup && ip < 0.1 && !n.saves) return
+  // Keep all pitchers who appeared (even 0 IP closers with saves)
+  // Just filter out truly empty rows (no IP, no saves, no K)
+  if (isPitcherGroup && ip <= 0 && !n.saves && n.strikeOuts <= 0) return
 
   const name     = athlete.athlete?.displayName || 'Unknown'
   const teamAbbr = athlete.athlete?.team?.abbreviation || teamFallback
@@ -2501,7 +2504,7 @@ const FanCards = defineComponent({
 :deep(.fc-award-val.red)  { color: #ef4444; }
 
 /* ── INTERACTIVE WIN PROBABILITY TEMPLATE ───────────────────────────────── */
-.wp-post-wrap { max-width: 680px; margin: 0 40px; }
+.wp-post-wrap { max-width: 600px; margin: 0 auto; }
 .sq-wp-bg {
   width: 100%;
   aspect-ratio: 9/10 !important;
