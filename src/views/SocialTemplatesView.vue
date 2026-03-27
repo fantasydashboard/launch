@@ -1631,6 +1631,23 @@ async function loadWpiData() {
     const total = batters.length + pitchers.length
     if (!total) {
       wpiError.value = `No stats found — Spring Training games may lack box scores. Try 20250901.`
+    } else if (!pitchers.length) {
+      // Debug: show what keys we saw in pitching groups
+      const pitchGroupInfo: string[] = []
+      for (const summary of summaries) {
+        if (!summary?.boxscore?.players) continue
+        for (const teamData of summary.boxscore.players) {
+          for (const sg of (teamData.statistics || [])) {
+            const keys: string[] = sg.keys || []
+            const keySet = new Set(keys)
+            const hasPit = keySet.has('fullInnings.partInnings') || keySet.has('earnedRuns') ||
+                           keySet.has('strikeOuts') || keySet.has('saves')
+            if (hasPit) pitchGroupInfo.push(keys.slice(0,6).join('|'))
+          }
+        }
+        if (pitchGroupInfo.length >= 3) break
+      }
+      wpiStatus.value = `✓ ${batters.length} batters · 0 pitchers. Pitch group keys: [${pitchGroupInfo.slice(0,3).join(' / ')}]`
     } else {
       wpiStatus.value = `✓ ${batters.length} batters · ${pitchers.length} pitchers from ${events.length} games`
     }
@@ -2322,7 +2339,7 @@ const FanCards = defineComponent({
 .post-label { font-size: 11px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: #4b5563; margin-bottom: 12px; }
 
 /* Square */
-.sq { width: 100%; max-width: 540px; aspect-ratio: 1/1; position: relative; overflow: hidden; border-radius: 4px; box-shadow: 0 0 0 1px #1e2130, 0 20px 60px rgba(0,0,0,0.7); flex-shrink: 0; display: flex; flex-direction: column; }
+.sq { width: 100%; aspect-ratio: 1/1; position: relative; overflow: hidden; border-radius: 4px; box-shadow: 0 0 0 1px #1e2130, 0 20px 60px rgba(0,0,0,0.7); flex-shrink: 0; display: flex; flex-direction: column; }
 .sq-dark   { background: radial-gradient(ellipse 120% 100% at 50% 0%, rgba(234,179,8,0.09) 0%, transparent 60%), linear-gradient(145deg,#05060a,#090c14); }
 .sq-green  { background: radial-gradient(ellipse 120% 100% at 50% 20%, rgba(34,197,94,0.09) 0%, transparent 60%), linear-gradient(145deg,#040a06,#060e08); }
 .sq-cyan   { background: radial-gradient(ellipse 120% 100% at 70% 80%, rgba(6,182,212,0.08) 0%, transparent 60%), linear-gradient(145deg,#040810,#080c18); }
@@ -2486,6 +2503,8 @@ const FanCards = defineComponent({
 /* ── INTERACTIVE WIN PROBABILITY TEMPLATE ───────────────────────────────── */
 .wp-post-wrap { max-width: 680px; margin: 0 40px; }
 .sq-wp-bg {
+  width: 100%;
+  aspect-ratio: 9/10 !important;
   background: #0a0c14;
   border-radius: 6px;
 }
