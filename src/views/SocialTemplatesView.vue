@@ -1233,13 +1233,13 @@
 
           <!-- ── HEADER ── -->
           <!-- Logo top-right, large -->
-          <image href="/UFD_V8.png" x="388" y="8" width="144" height="76"
+          <image href="/UFD_V8.png" x="370" y="8" width="128" height="68"
             preserveAspectRatio="xMidYMid meet"/>
           <!-- Headline left -->
-          <text x="20" y="52" font-size="38" font-weight="900" letter-spacing="-0.01em"
+          <text x="20" y="52" font-size="34" font-weight="900" letter-spacing="-0.01em"
             fill="#ffffff" font-family="Helvetica Neue,Helvetica,Arial,sans-serif">Best Batters</text>
           <!-- Date · Week — bigger, accent color -->
-          <text x="20" y="80" font-size="16" font-weight="700" letter-spacing="0.06em"
+          <text x="20" y="80" font-size="15" font-weight="700" letter-spacing="0.06em"
             fill="#eab308" font-family="Helvetica Neue,Helvetica,Arial,sans-serif">
             {{ wpiDateDisplay }} · WK {{ wpiWeekLabel }}
           </text>
@@ -1254,44 +1254,44 @@
               stroke="#1e2130" stroke-width="1"/>
 
             <!-- Headshot — flush left edge, radius 42 -->
-            <circle cx="42" :cy="94+i*101+50" r="44"
+            <circle cx="58" :cy="94+i*101+50" r="36"
               fill="rgba(0,0,0,0.4)"
               :stroke="i===0?'rgba(234,179,8,0.5)':'rgba(255,255,255,0.06)'" stroke-width="2"/>
-            <image :href="p.headshot" x="0" :y="94+i*101+6"
-              width="84" height="88" preserveAspectRatio="xMidYMid slice"
-              style="clip-path:circle(42px at 42px 44px)"/>
+            <image :href="p.headshot" x="22" :y="94+i*101+14"
+              width="72" height="72" preserveAspectRatio="xMidYMid slice"
+              style="clip-path:circle(36px at 36px 36px)"/>
 
             <!-- Rank -->
-            <text x="91" :y="94+i*101+28" font-size="12" font-weight="900"
+            <text x="106" :y="94+i*101+28" font-size="12" font-weight="900"
               :fill="i===0?'#eab308':'#4b5563'"
               font-family="Helvetica Neue,Helvetica,Arial,sans-serif">#{{ i+1 }}</text>
 
             <!-- Name + Team · Pos on same line -->
-            <text x="91" :y="94+i*101+50" font-size="18" font-weight="800" fill="#ffffff"
+            <text x="106" :y="94+i*101+50" font-size="17" font-weight="800" fill="#ffffff"
               font-family="Helvetica Neue,Helvetica,Arial,sans-serif">{{ p.name }}</text>
-            <text :x="96 + Math.min(p.name.length * 10, 210)" :y="94+i*101+50"
+            <text :x="106 + Math.min(p.name.length * 10, 200)" :y="94+i*101+50"
               font-size="12" font-weight="600" fill="#6b7280"
               font-family="Helvetica Neue,Helvetica,Arial,sans-serif">  {{ p.team }} · {{ p.position }}</text>
 
             <!-- Stat line — white, bigger -->
-            <text x="91" :y="94+i*101+73" font-size="14" font-weight="600" fill="#e5e7eb"
+            <text x="106" :y="94+i*101+73" font-size="14" font-weight="600" fill="#e5e7eb"
               font-family="Helvetica Neue,Helvetica,Arial,sans-serif">{{ p.statLine }}</text>
 
             <!-- WP % — hero number right side -->
-            <text x="534" :y="94+i*101+48" text-anchor="end"
+            <text x="520" :y="94+i*101+48" text-anchor="end"
               :font-size="i===0?'36':'30'" font-weight="900"
               :fill="i===0?'#eab308':'#6b7280'"
               font-family="Helvetica Neue,Helvetica,Arial,sans-serif">+{{ p.wpImpact.toFixed(1) }}%</text>
             <!-- "win probability change" label -->
-            <text x="534" :y="94+i*101+68" text-anchor="end" font-size="11"
+            <text x="520" :y="94+i*101+68" text-anchor="end" font-size="11"
               :fill="i===0?'#ffffff':'#4b5563'"
               font-family="Helvetica Neue,Helvetica,Arial,sans-serif">win prob change</text>
 
             <!-- Thin bar -->
-            <rect x="91" :y="94+i*101+84" width="230" height="3" rx="1"
+            <rect x="106" :y="94+i*101+84" width="200" height="3" rx="1"
               fill="rgba(255,255,255,0.05)"/>
-            <rect x="91" :y="94+i*101+84"
-              :width="wpiTopBatters.length && wpiTopBatters[0].wpImpact>0 ? Math.min(230,(p.wpImpact/wpiTopBatters[0].wpImpact)*230) : 0"
+            <rect x="106" :y="94+i*101+84"
+              :width="wpiTopBatters.length && wpiTopBatters[0].wpImpact>0 ? Math.min(200,(p.wpImpact/wpiTopBatters[0].wpImpact)*200) : 0"
               height="3" rx="1"
               :fill="i===0?'#eab308':'rgba(107,114,128,0.5)'"/>
           </g>
@@ -1303,7 +1303,7 @@
 
           <!-- Watermark -->
           <line x1="0" y1="593" x2="540" y2="593" stroke="#1e2130" stroke-width="1"/>
-          <text x="270" y="599" text-anchor="middle" font-size="9" fill="#1a1f2e"
+          <text x="270" y="596" text-anchor="middle" font-size="9" fill="#1a1f2e"
             font-family="Helvetica Neue,Helvetica,Arial,sans-serif">ultimatefantasydashboard.com</text>
         </svg>
       </div>
@@ -1334,13 +1334,13 @@
 
           <!-- ── HEADER ── -->
           <!-- Logo top-right, large -->
-          <image href="/UFD_V8.png" x="388" y="8" width="144" height="76"
+          <image href="/UFD_V8.png" x="370" y="8" width="128" height="68"
             preserveAspectRatio="xMidYMid meet"/>
           <!-- Headline left -->
-          <text x="20" y="52" font-size="38" font-weight="900" letter-spacing="-0.01em"
+          <text x="20" y="52" font-size="34" font-weight="900" letter-spacing="-0.01em"
             fill="#ffffff" font-family="Helvetica Neue,Helvetica,Arial,sans-serif">Best Pitchers</text>
           <!-- Date · Week — bigger, accent color -->
-          <text x="20" y="80" font-size="16" font-weight="700" letter-spacing="0.06em"
+          <text x="20" y="80" font-size="15" font-weight="700" letter-spacing="0.06em"
             fill="#06b6d4" font-family="Helvetica Neue,Helvetica,Arial,sans-serif">
             {{ wpiDateDisplay }} · WK {{ wpiWeekLabel }}
           </text>
@@ -1355,44 +1355,44 @@
               stroke="#1e2130" stroke-width="1"/>
 
             <!-- Headshot — flush left edge, radius 42 -->
-            <circle cx="42" :cy="94+i*101+50" r="44"
+            <circle cx="58" :cy="94+i*101+50" r="36"
               fill="rgba(0,0,0,0.4)"
               :stroke="i===0?'rgba(6,182,212,0.5)':'rgba(255,255,255,0.06)'" stroke-width="2"/>
-            <image :href="p.headshot" x="0" :y="94+i*101+6"
-              width="84" height="88" preserveAspectRatio="xMidYMid slice"
-              style="clip-path:circle(42px at 42px 44px)"/>
+            <image :href="p.headshot" x="22" :y="94+i*101+14"
+              width="72" height="72" preserveAspectRatio="xMidYMid slice"
+              style="clip-path:circle(36px at 36px 36px)"/>
 
             <!-- Rank -->
-            <text x="91" :y="94+i*101+28" font-size="12" font-weight="900"
+            <text x="106" :y="94+i*101+28" font-size="12" font-weight="900"
               :fill="i===0?'#06b6d4':'#4b5563'"
               font-family="Helvetica Neue,Helvetica,Arial,sans-serif">#{{ i+1 }}</text>
 
             <!-- Name + Team · Pos on same line -->
-            <text x="91" :y="94+i*101+50" font-size="18" font-weight="800" fill="#ffffff"
+            <text x="106" :y="94+i*101+50" font-size="17" font-weight="800" fill="#ffffff"
               font-family="Helvetica Neue,Helvetica,Arial,sans-serif">{{ p.name }}</text>
-            <text :x="96 + Math.min(p.name.length * 10, 210)" :y="94+i*101+50"
+            <text :x="106 + Math.min(p.name.length * 10, 200)" :y="94+i*101+50"
               font-size="12" font-weight="600" fill="#6b7280"
               font-family="Helvetica Neue,Helvetica,Arial,sans-serif">  {{ p.team }} · {{ p.position }}</text>
 
             <!-- Stat line — white, bigger -->
-            <text x="91" :y="94+i*101+73" font-size="14" font-weight="600" fill="#e5e7eb"
+            <text x="106" :y="94+i*101+73" font-size="14" font-weight="600" fill="#e5e7eb"
               font-family="Helvetica Neue,Helvetica,Arial,sans-serif">{{ p.statLine }}</text>
 
             <!-- WP % — hero number right side -->
-            <text x="534" :y="94+i*101+48" text-anchor="end"
+            <text x="520" :y="94+i*101+48" text-anchor="end"
               :font-size="i===0?'36':'30'" font-weight="900"
               :fill="i===0?'#06b6d4':'#6b7280'"
               font-family="Helvetica Neue,Helvetica,Arial,sans-serif">+{{ p.wpImpact.toFixed(1) }}%</text>
             <!-- "win probability change" label -->
-            <text x="534" :y="94+i*101+68" text-anchor="end" font-size="11"
+            <text x="520" :y="94+i*101+68" text-anchor="end" font-size="11"
               :fill="i===0?'#ffffff':'#4b5563'"
               font-family="Helvetica Neue,Helvetica,Arial,sans-serif">win prob change</text>
 
             <!-- Thin bar -->
-            <rect x="91" :y="94+i*101+84" width="230" height="3" rx="1"
+            <rect x="106" :y="94+i*101+84" width="200" height="3" rx="1"
               fill="rgba(255,255,255,0.05)"/>
-            <rect x="91" :y="94+i*101+84"
-              :width="wpiTopPitchers.length && wpiTopPitchers[0].wpImpact>0 ? Math.min(230,(p.wpImpact/wpiTopPitchers[0].wpImpact)*230) : 0"
+            <rect x="106" :y="94+i*101+84"
+              :width="wpiTopPitchers.length && wpiTopPitchers[0].wpImpact>0 ? Math.min(200,(p.wpImpact/wpiTopPitchers[0].wpImpact)*200) : 0"
               height="3" rx="1"
               :fill="i===0?'#06b6d4':'rgba(107,114,128,0.5)'"/>
           </g>
@@ -1404,7 +1404,7 @@
 
           <!-- Watermark -->
           <line x1="0" y1="593" x2="540" y2="593" stroke="#1e2130" stroke-width="1"/>
-          <text x="270" y="599" text-anchor="middle" font-size="9" fill="#1a1f2e"
+          <text x="270" y="596" text-anchor="middle" font-size="9" fill="#1a1f2e"
             font-family="Helvetica Neue,Helvetica,Arial,sans-serif">ultimatefantasydashboard.com</text>
         </svg>
       </div>
