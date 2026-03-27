@@ -1601,31 +1601,26 @@ async function loadWpiData() {
       )
     )
 
+    let debugInfo = ''
     let debugLogged = false
     for (const summary of summaries) {
       if (!summary) continue
 
-      // Log first valid summary structure for debugging
+      // Show debug info in status so we can see it on screen
       if (!debugLogged) {
         debugLogged = true
         const bx = summary.boxscore
-        console.log('[WPI] Summary top keys:', Object.keys(summary))
-        console.log('[WPI] boxscore keys:', bx ? Object.keys(bx) : 'NO BOXSCORE')
-        if (bx?.players) {
-          console.log('[WPI] players[0] keys:', Object.keys(bx.players[0] || {}))
-          const stat0 = bx.players[0]?.statistics?.[0]
-          console.log('[WPI] stat group 0:', stat0 ? { name: stat0.name, keys: stat0.keys, athleteCount: stat0.athletes?.length } : 'NO STATS')
-          // Also log all stat group names
-          const allGroups = bx.players.flatMap((p: any) =>
-            (p.statistics || []).map((s: any) => ({ name: s.name, keys: s.keys?.slice(0,5) }))
+        const topKeys = Object.keys(summary).join(', ')
+        const bxKeys = bx ? Object.keys(bx).join(', ') : 'NO BOXSCORE'
+        let groupInfo = 'no players'
+        if (bx?.players?.length) {
+          const groups = bx.players.flatMap((p: any) =>
+            (p.statistics || []).map((s: any) => s.keys?.slice(0,4).join('|') || s.name || '?')
           )
-          console.log('[WPI] All stat groups:', JSON.stringify(allGroups))
+          groupInfo = groups.slice(0,6).join(' / ')
         }
-        // Also try athletes field directly
-        if (bx?.athletes) {
-          console.log('[WPI] Direct athletes found:', bx.athletes.length)
-          console.log('[WPI] Athlete[0] keys:', Object.keys(bx.athletes[0] || {}))
-        }
+        debugInfo = `API: [${topKeys}] bx:[${bxKeys}] groups:[${groupInfo}]`
+        wpiStatus.value = debugInfo
       }
 
       // ── Try primary path: boxscore.players[].statistics[] ──
