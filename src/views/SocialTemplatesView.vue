@@ -1633,22 +1633,32 @@ async function loadWpiData() {
     if (!total) {
       wpiError.value = `No stats found — Spring Training games may lack box scores. Try 20250901.`
     } else if (!pitchers.length) {
-      // Debug: show what keys we saw in pitching groups
-      const pitchGroupInfo: string[] = []
+      // Show athlete-level debug to find why pitchers aren't parsing
+      let pitchDbg = ''
       for (const summary of summaries) {
-        if (!summary?.boxscore?.players) continue
+        if (!summary?.boxscore?.players || pitchDbg) break
         for (const teamData of summary.boxscore.players) {
           for (const sg of (teamData.statistics || [])) {
             const keys: string[] = sg.keys || []
             const keySet = new Set(keys)
-            const hasPit = keySet.has('fullInnings.partInnings') || keySet.has('earnedRuns') ||
-                           keySet.has('strikeOuts') || keySet.has('saves')
-            if (hasPit) pitchGroupInfo.push(keys.slice(0,6).join('|'))
+            const hasPit = keySet.has('fullInnings.partInnings') || keySet.has('earnedRuns') || keySet.has('strikeouts')
+            if (!hasPit) continue
+            const athletes = sg.athletes || []
+            if (athletes.length > 0) {
+              const a = athletes[0]
+              const id  = a?.athlete?.id  || a?.id  || 'NO_ID'
+              const nm  = a?.athlete?.displayName || a?.displayName || 'NO_NM'
+              const s0  = (a?.stats || [])[0]
+              const s1  = (a?.stats || [])[1]
+              pitchDbg = `n=${athletes.length} id=${id} nm=${nm} stats=[${s0},${s1}]`
+            } else {
+              pitchDbg = 'group_empty'
+            }
+            if (pitchDbg) break
           }
         }
-        if (pitchGroupInfo.length >= 3) break
       }
-      wpiStatus.value = `✓ ${batters.length} batters · 0 pitchers. Pitch group keys: [${pitchGroupInfo.slice(0,3).join(' / ')}]`
+      wpiStatus.value = `✓ ${batters.length} batters · 0 pitchers. [${pitchDbg || 'no_pitch_group'}]`
     } else {
       wpiStatus.value = `✓ ${batters.length} batters · ${pitchers.length} pitchers from ${events.length} games`
     }
