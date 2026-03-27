@@ -333,12 +333,7 @@
               <span v-else>✓ Sent {{ sendResult.sent }} emails<span v-if="sendResult.failed"> · {{ sendResult.failed }} failed</span></span>
             </div>
 
-            <!-- Resend setup notice -->
-            <div class="resend-notice">
-              <span class="resend-notice-label">ℹ️ Requires</span>
-              <code>RESEND_API_KEY</code> in Vercel env vars.
-              <a href="https://resend.com" target="_blank" rel="noopener">Get a free key at resend.com →</a>
-            </div>
+
           </div>
         </div>
 
@@ -562,6 +557,24 @@ function downloadCsv() {
   const a = document.createElement('a')
   a.href = url
   a.download = `ufd-${activeSeg.value}-${new Date().toISOString().slice(0,10)}.csv`
+  a.click()
+  URL.revokeObjectURL(url)
+}
+
+// ── Download CSV for campaign segment ────────────────────────────────────────
+function downloadCampaignCsv() {
+  const rows = campaignRecipients.value
+  if (!rows.length) return
+  const headers = Object.keys(rows[0])
+  const csv = [
+    headers.join(','),
+    ...rows.map((r: any) => headers.map((h: string) => JSON.stringify(r[h] ?? '')).join(','))
+  ].join('\n')
+  const blob = new Blob([csv], { type: 'text/csv' })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = `ufd-campaign-${activeCampaign.value}-${new Date().toISOString().slice(0,10)}.csv`
   a.click()
   URL.revokeObjectURL(url)
 }
