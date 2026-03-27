@@ -1537,15 +1537,22 @@ async function loadWpiData() {
       if (!summary?.boxscore?.players) continue
       for (const teamData of summary.boxscore.players) {
         for (const statGroup of (teamData.statistics || [])) {
-          // ESPN box score has separate groups: "batting" and "pitching"
-          // Use the group name to determine role — not the player's position.
-          // This correctly handles two-way players like Ohtani.
-          const groupName = (statGroup.name || statGroup.displayName || '').toLowerCase()
-          const isPitcher = groupName.includes('pitch')
-          const isBatting = groupName.includes('bat') || groupName.includes('hitting')
-          if (!isPitcher && !isBatting) continue  // skip fielding/other groups
-
+          // Detect batting vs pitching by group name OR by the keys present
+          const groupName = (statGroup.name || statGroup.displayName || statGroup.type || '').toLowerCase()
           const keys = statGroup.keys || []
+          const keyStr = keys.join(',').toLowerCase()
+
+          // Pitching: group name has "pitch" OR keys include IP/ER/SV
+          const isPitcher = groupName.includes('pitch') ||
+                            keyStr.includes('ip') || keyStr.includes('sv') ||
+                            keyStr.includes('era') || keyStr.includes('er,')
+          // Batting: group name has "bat"/"hit" OR keys include AB/HR/RBI
+          const isBatting = groupName.includes('bat') || groupName.includes('hit') ||
+                            groupName.includes('offense') ||
+                            keyStr.includes('ab') || keyStr.includes('hr') || keyStr.includes('rbi')
+
+          // If we can't classify, skip
+          if (!isPitcher && !isBatting) continue
 
           for (const athlete of (statGroup.athletes || [])) {
             const pid = athlete.athlete?.id
