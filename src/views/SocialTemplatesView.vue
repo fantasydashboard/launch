@@ -1269,7 +1269,7 @@
             <!-- Name + Team · Pos on same line -->
             <text x="91" :y="94+i*101+50" font-size="18" font-weight="800" fill="#ffffff"
               font-family="Helvetica Neue,Helvetica,Arial,sans-serif">{{ p.name }}</text>
-            <text :x="108 + Math.min(p.name.length * 10.5, 220)" :y="94+i*101+50"
+            <text :x="96 + Math.min(p.name.length * 10, 210)" :y="94+i*101+50"
               font-size="12" font-weight="600" fill="#6b7280"
               font-family="Helvetica Neue,Helvetica,Arial,sans-serif">  {{ p.team }} · {{ p.position }}</text>
 
@@ -1370,7 +1370,7 @@
             <!-- Name + Team · Pos on same line -->
             <text x="91" :y="94+i*101+50" font-size="18" font-weight="800" fill="#ffffff"
               font-family="Helvetica Neue,Helvetica,Arial,sans-serif">{{ p.name }}</text>
-            <text :x="108 + Math.min(p.name.length * 10.5, 220)" :y="94+i*101+50"
+            <text :x="96 + Math.min(p.name.length * 10, 210)" :y="94+i*101+50"
               font-size="12" font-weight="600" fill="#6b7280"
               font-family="Helvetica Neue,Helvetica,Arial,sans-serif">  {{ p.team }} · {{ p.position }}</text>
 
@@ -1596,6 +1596,10 @@ async function loadWpiData() {
       )
     )
 
+    // Track seen players to avoid double-counting across stat groups
+    const seenBat = new Set<string>()
+    const seenPit = new Set<string>()
+
     for (const summary of summaries) {
       if (!summary?.boxscore?.players) continue
 
@@ -1606,19 +1610,30 @@ async function loadWpiData() {
           const keys: string[] = statGroup.keys || []
           const keySet = new Set(keys)
 
-          // ESPN uses camelCase keys: atBats, hits, homeRuns, rbi, runs, stolenBases (batting)
-          // and fullInnings.partInnings, earnedRuns, strikeOuts, wins, saves (pitching)
-          // Keys confirmed from ESPN API: batting uses atBats/homeRuns/rbi
-          // Pitching uses fullInnings.partInnings/earnedRuns/walks/strikeouts (all lowercase)
-          const hasBat = keySet.has('atBats') || keySet.has('homeRuns') || keySet.has('rbi')
-          const hasPit = keySet.has('fullInnings.partInnings') || keySet.has('earnedRuns') ||
-                         keySet.has('strikeouts') || keySet.has('saves') || keySet.has('walks')
-
-          if (!hasBat && !hasPit) continue
-          const isPitcherGroup = hasPit && !hasBat
+          // ESPN MLB uses ONE stat group per team containing ALL players.
+          // Keys: fullInnings.partInnings|hits|runs|earnedRuns|walks|strikeouts (for everyone)
+          // Plus batting groups: atBats|homeRuns|rbi|stolenBases|doubles|triples|etc
+          // We CANNOT use key presence to detect pitchers — use player POSITION instead.
+          if (!keySet.has('fullInnings.partInnings') && !keySet.has('atBats') &&
+              !keySet.has('hits') && !keySet.has('homeRuns')) continue
 
           for (const athlete of (statGroup.athletes || [])) {
-            parseAthleteRow(athlete, keys, isPitcherGroup, teamAbbr, batterMap, pitcherMap)
+            const pid = athlete.athlete?.id || athlete.id
+            if (!pid) continue
+            // Use player's actual position to classify
+            const posAbbr = (athlete.athlete?.position?.abbreviation ||
+                             athlete.position?.abbreviation || '').toUpperCase()
+            const PITCHER_POS_SET = new Set(['SP','RP','P','LHP','RHP'])
+            const isPit = PITCHER_POS_SET.has(posAbbr)
+
+            // Skip if already processed this player in this role
+            if (isPit && seenPit.has(pid)) continue
+            if (!isPit && seenBat.has(pid)) continue
+
+            parseAthleteRow(athlete, keys, isPit, teamAbbr, batterMap, pitcherMap)
+
+            if (isPit) seenPit.add(pid)
+            else seenBat.add(pid)
           }
         }
       }
@@ -1736,9 +1751,11 @@ function parseAthleteRow(
   const avgPts = isPitcherGroup ? (ip >= 5 ? 14 : ip >= 2 ? 7 : 4) : 7
   const wpImpact = Math.max(0.1, calcWpImpact(pts, avgPts))
 
+  const posFromAthlete = athlete.athlete?.position?.abbreviation ||
+                         athlete.position?.abbreviation || (isPitcherGroup ? 'P' : 'OF')
   const pos = isPitcherGroup
     ? (n.saves > 0 ? 'RP' : ip >= 3 ? 'SP' : 'RP')
-    : (athlete.athlete?.position?.abbreviation || 'OF')
+    : posFromAthlete
 
   const player: WpiPlayer = {
     id: pid, name, team: teamAbbr, position: pos, headshot,
