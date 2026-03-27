@@ -267,9 +267,8 @@
           </button>
         </div>
 
-        <div class="campaign-layout">
-
-          <!-- Left: controls -->
+        <!-- Controls -->
+        <div class="campaign-controls-wrap">
           <div class="campaign-controls">
             <div class="ctrl-group">
               <label class="ctrl-label">Subject Line</label>
@@ -313,6 +312,7 @@
                 <span v-if="htmlCopied">✓ HTML Copied!</span>
                 <span v-else>📋 Copy HTML</span>
               </button>
+              <button @click="downloadCampaignCsv" class="btn-action btn-csv" style="flex:1">⬇️ Download CSV</button>
               <button @click="sendCampaign(true)" class="btn-action btn-preview" style="flex:1">
                 🔍 Preview Send
               </button>
@@ -340,24 +340,23 @@
               <a href="https://resend.com" target="_blank" rel="noopener">Get a free key at resend.com →</a>
             </div>
           </div>
+        </div>
 
-          <!-- Right: live email preview -->
-          <div class="campaign-preview-wrap">
-            <div class="preview-label">
-              Live Preview
-              <span class="preview-badge">{{ campaignRecipients.length || '—' }} recipients</span>
-            </div>
-            <div class="email-preview-frame">
-              <iframe
-                ref="previewFrame"
-                :srcdoc="renderedEmailHtml"
-                sandbox="allow-same-origin"
-                class="email-iframe"
-                title="Email preview"
-              ></iframe>
-            </div>
+        <!-- Full-width email preview below -->
+        <div class="campaign-preview-wrap">
+          <div class="preview-label">
+            Live Preview
+            <span class="preview-badge">{{ campaignRecipients.length || '—' }} recipients</span>
           </div>
-
+          <div class="email-preview-frame">
+            <iframe
+              ref="previewFrame"
+              :srcdoc="renderedEmailHtml"
+              sandbox="allow-same-origin"
+              class="email-iframe"
+              title="Email preview"
+            ></iframe>
+          </div>
         </div>
       </section>
 
@@ -607,11 +606,11 @@ const passChartOpts = computed(() => ({
 
 // ── Email Campaign ────────────────────────────────────────────────────────────
 const activeCampaign = ref('nopass')
-const emailSubject = ref('Your league deserves better analytics')
-const emailPreview = ref('Power rankings, win probability, draft grades — unlock everything for your league.')
-const emailHeadline = ref('Your league deserves better analytics.')
-const emailBody = ref("You connected your league — now unlock everything. Power rankings, win probability, draft grades, full league history, and downloadable graphics, all in one place.")
-const emailCta = ref('GET LEAGUE PASS →')
+const emailSubject = ref("You're one step away from unlocking your league")
+const emailPreview = ref('Power rankings, win probability, draft grades, league history — all waiting for you.')
+const emailHeadline = ref("One step to keep your league talking all season.")
+const emailBody = ref("You've already connected your league — the hard part is done. One League Pass unlocks power rankings, live win probability, draft grades, full league history, and shareable graphics for your entire league. Everything you need to keep the conversation going from draft day to the championship.")
+const emailCta = ref('UNLOCK YOUR LEAGUE →')
 const emailCtaUrl = ref('https://ultimatefantasydashboard.com/pricing')
 const campaignRecipients = ref<any[]>([])
 const sending = ref(false)
@@ -651,83 +650,6 @@ const renderedEmailHtml = computed(() => {
 function buildEmailHtml({ subject, previewText, headline, body, cta, ctaUrl }: {
   subject: string, previewText: string, headline: string, body: string, cta: string, ctaUrl: string
 }) {
-  // Mini card HTML helpers — pure table markup, renders in all email clients
-  const prCard = `
-  <table cellpadding="0" cellspacing="0" border="0" width="100%" style="background:linear-gradient(145deg,#0f1220,#090c18);border:1px solid rgba(255,255,255,0.06);border-top:2px solid #eab308;border-radius:10px;overflow:hidden;margin-bottom:0;">
-    <tr><td style="padding:8px 10px 6px;">
-      <table width="100%" cellpadding="0" cellspacing="0" border="0"><tr>
-        <td style="background-color:#1a1200;border:1px solid rgba(234,179,8,0.3);border-radius:4px;padding:2px 6px;width:28px;text-align:center;"><span style="font-size:9px;font-weight:900;color:#eab308;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;">UFD</span></td>
-        <td style="padding-left:6px;"><span style="font-size:9px;font-weight:700;color:#e5e7eb;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;">⚡ Power Rankings</span></td>
-        <td align="right"><span style="font-size:8px;color:#4b5563;background:#0a0c14;border:1px solid #1e2130;border-radius:3px;padding:1px 5px;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;">WK 14</span></td>
-      </tr></table>
-    </td></tr>
-    <tr><td style="padding:0 10px 2px;">
-      <table width="100%" cellpadding="0" cellspacing="0" border="0">
-        <tr style="border-bottom:1px solid #1e2130;"><td style="padding:4px 0;"><table cellpadding="0" cellspacing="0" border="0"><tr><td style="width:18px;font-size:9px;font-weight:900;color:#eab308;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;">1</td><td style="width:14px;height:14px;border-radius:50%;background:#1a1200;border:1px solid #eab308;text-align:center;font-size:7px;">◆</td><td style="padding-left:5px;font-size:9px;font-weight:700;color:#fff;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;">Diamond Kings</td></tr></table></td><td align="right"><span style="font-size:9px;font-weight:800;color:#eab308;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;">124.8</span>&nbsp;<span style="font-size:8px;color:#22c55e;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;">▲2</span></td></tr>
-        <tr style="border-bottom:1px solid #1e2130;"><td style="padding:4px 0;"><table cellpadding="0" cellspacing="0" border="0"><tr><td style="width:18px;font-size:9px;font-weight:700;color:#9ca3af;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;">2</td><td style="width:14px;height:14px;border-radius:50%;background:#022c22;border:1px solid #10b981;text-align:center;font-size:7px;color:#10b981;">▲</td><td style="padding-left:5px;font-size:9px;font-weight:600;color:#d1d5db;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;">Sign Stealers</td></tr></table></td><td align="right"><span style="font-size:9px;color:#d1d5db;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;">116.2</span>&nbsp;<span style="font-size:8px;color:#22c55e;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;">▲1</span></td></tr>
-        <tr><td style="padding:4px 0;"><table cellpadding="0" cellspacing="0" border="0"><tr><td style="width:18px;font-size:9px;font-weight:700;color:#9ca3af;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;">3</td><td style="width:14px;height:14px;border-radius:50%;background:#0c1a3d;border:1px solid #3b82f6;text-align:center;font-size:7px;color:#3b82f6;">↻</td><td style="padding-left:5px;font-size:9px;font-weight:600;color:#d1d5db;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;">Roto Renegades</td></tr></table></td><td align="right"><span style="font-size:9px;color:#d1d5db;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;">108.4</span>&nbsp;<span style="font-size:8px;color:#ef4444;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;">▼1</span></td></tr>
-      </table>
-    </td></tr>
-    <tr><td style="padding:4px 10px 6px;border-top:1px solid #1e2130;"><span style="font-size:7px;color:#374151;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;">ultimatefantasydashboard.com</span></td></tr>
-  </table>`
-
-  const matchupCard = `
-  <table cellpadding="0" cellspacing="0" border="0" width="100%" style="background:linear-gradient(145deg,#0f1220,#090c18);border:1px solid rgba(255,255,255,0.06);border-top:2px solid #06b6d4;border-radius:10px;overflow:hidden;">
-    <tr><td style="padding:8px 10px 6px;">
-      <table width="100%" cellpadding="0" cellspacing="0" border="0"><tr>
-        <td style="background-color:#1a1200;border:1px solid rgba(234,179,8,0.3);border-radius:4px;padding:2px 6px;width:28px;text-align:center;"><span style="font-size:9px;font-weight:900;color:#eab308;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;">UFD</span></td>
-        <td style="padding-left:6px;"><span style="font-size:9px;font-weight:700;color:#e5e7eb;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;">⚔️ Matchup</span></td>
-        <td align="right"><span style="font-size:8px;color:#06b6d4;background:rgba(6,182,212,0.1);border:1px solid rgba(6,182,212,0.3);border-radius:3px;padding:1px 5px;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;">● LIVE</span></td>
-      </tr></table>
-    </td></tr>
-    <tr><td style="padding:6px 10px;">
-      <table width="100%" cellpadding="0" cellspacing="0" border="0"><tr>
-        <td width="40%" style="text-align:center;">
-          <div style="width:28px;height:28px;border-radius:50%;background:#1a1200;border:2px solid #eab308;margin:0 auto 4px;text-align:center;line-height:28px;font-size:11px;">◆</div>
-          <p style="margin:0;font-size:8px;font-weight:700;color:#e5e7eb;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;">Diamond Kings</p>
-          <p style="margin:2px 0 0;font-size:13px;font-weight:900;color:#eab308;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;">124.8</p>
-        </td>
-        <td width="20%" style="text-align:center;font-size:9px;font-weight:900;color:#374151;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;">VS</td>
-        <td width="40%" style="text-align:center;">
-          <div style="width:28px;height:28px;border-radius:50%;background:#022c22;border:2px solid #10b981;margin:0 auto 4px;text-align:center;line-height:28px;font-size:11px;color:#10b981;">▲</div>
-          <p style="margin:0;font-size:8px;font-weight:700;color:#e5e7eb;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;">Sign Stealers</p>
-          <p style="margin:2px 0 0;font-size:13px;font-weight:900;color:#d1d5db;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;">104.1</p>
-        </td>
-      </tr></table>
-    </td></tr>
-    <tr><td style="padding:4px 10px 8px;">
-      <table width="100%" cellpadding="0" cellspacing="0" border="0"><tr>
-        <td style="font-size:8px;color:#eab308;font-weight:700;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;">74% win prob</td>
-        <td align="right" style="font-size:8px;color:#4b5563;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;">26%</td>
-      </tr></table>
-      <table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-top:3px;"><tr>
-        <td style="background:#1e2130;border-radius:3px;height:5px;padding:0;">
-          <table cellpadding="0" cellspacing="0" border="0" width="74%"><tr><td style="background:linear-gradient(90deg,#06b6d4,#0891b2);border-radius:3px;height:5px;">&nbsp;</td></tr></table>
-        </td>
-      </tr></table>
-    </td></tr>
-    <tr><td style="padding:4px 10px 6px;border-top:1px solid #1e2130;"><span style="font-size:7px;color:#374151;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;">ultimatefantasydashboard.com</span></td></tr>
-  </table>`
-
-  const draftCard = `
-  <table cellpadding="0" cellspacing="0" border="0" width="100%" style="background:linear-gradient(145deg,#0f1220,#090c18);border:1px solid rgba(255,255,255,0.06);border-top:2px solid #8b5cf6;border-radius:10px;overflow:hidden;">
-    <tr><td style="padding:8px 10px 6px;">
-      <table width="100%" cellpadding="0" cellspacing="0" border="0"><tr>
-        <td style="background-color:#1a1200;border:1px solid rgba(234,179,8,0.3);border-radius:4px;padding:2px 6px;width:28px;text-align:center;"><span style="font-size:9px;font-weight:900;color:#eab308;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;">UFD</span></td>
-        <td style="padding-left:6px;"><span style="font-size:9px;font-weight:700;color:#e5e7eb;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;">📋 Draft Grades</span></td>
-        <td align="right"><span style="font-size:8px;color:#4b5563;background:#0a0c14;border:1px solid #1e2130;border-radius:3px;padding:1px 5px;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;">DRAFT</span></td>
-      </tr></table>
-    </td></tr>
-    <tr><td style="padding:0 10px 2px;">
-      <table width="100%" cellpadding="0" cellspacing="0" border="0">
-        <tr style="border-bottom:1px solid #1e2130;"><td style="padding:4px 0;font-size:8px;color:#4b5563;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;">1.02</td><td style="padding:4px 4px;font-size:9px;font-weight:700;color:#fff;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;">Shohei Ohtani</td><td style="text-align:center;width:20px;"><span style="font-size:8px;font-weight:900;color:#10b981;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;">SP</span></td><td align="right" style="font-size:8px;font-weight:700;color:#22c55e;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;">+58.4</td><td align="right" style="padding-left:4px;"><span style="font-size:9px;font-weight:900;color:#eab308;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;">A+</span></td></tr>
-        <tr style="border-bottom:1px solid #1e2130;"><td style="padding:4px 0;font-size:8px;color:#4b5563;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;">2.11</td><td style="padding:4px 4px;font-size:9px;font-weight:700;color:#d1d5db;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;">Juan Soto</td><td style="text-align:center;width:20px;"><span style="font-size:8px;font-weight:900;color:#3b82f6;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;">OF</span></td><td align="right" style="font-size:8px;font-weight:700;color:#22c55e;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;">+24.6</td><td align="right" style="padding-left:4px;"><span style="font-size:9px;font-weight:900;color:#22c55e;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;">A</span></td></tr>
-        <tr><td style="padding:4px 0;font-size:8px;color:#4b5563;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;">5.03</td><td style="padding:4px 4px;font-size:9px;font-weight:700;color:#d1d5db;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;">Jose Abreu</td><td style="text-align:center;width:20px;"><span style="font-size:8px;font-weight:900;color:#22c55e;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;">1B</span></td><td align="right" style="font-size:8px;font-weight:700;color:#ef4444;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;">-14.2</td><td align="right" style="padding-left:4px;"><span style="font-size:9px;font-weight:900;color:#ef4444;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;">D</span></td></tr>
-      </table>
-    </td></tr>
-    <tr><td style="padding:4px 10px 6px;border-top:1px solid #1e2130;"><span style="font-size:7px;color:#374151;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;">ultimatefantasydashboard.com</span></td></tr>
-  </table>`
-
   return `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -741,23 +663,18 @@ function buildEmailHtml({ subject, previewText, headline, body, cta, ctaUrl }: {
 <tr><td align="center" style="padding:24px 16px;">
 <table width="600" cellpadding="0" cellspacing="0" border="0" style="max-width:600px;width:100%;">
 
-  <!-- Header with real logo -->
+  <!-- Header -->
   <tr><td style="background-color:#0a0c14;border-radius:16px 16px 0 0;border:1px solid #1e2130;border-bottom:none;padding:20px 28px;">
     <table width="100%" cellpadding="0" cellspacing="0" border="0"><tr>
-      <td>
-        <img src="https://ultimatefantasydashboard.com/UFD_V8.png" alt="Ultimate Fantasy Dashboard"
-          width="160" height="auto"
-          style="display:block;height:auto;max-height:52px;width:auto;max-width:160px;"
-        />
-      </td>
+      <td><img src="https://ultimatefantasydashboard.com/UFD_V8.png" alt="Ultimate Fantasy Dashboard" width="160" height="auto" style="display:block;height:auto;max-height:52px;width:auto;max-width:160px;" /></td>
       <td align="right"><span style="font-size:11px;color:#374151;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;">ultimatefantasydashboard.com</span></td>
     </tr></table>
   </td></tr>
   <tr><td style="background:linear-gradient(90deg,#05060a,#eab308,#05060a);height:2px;font-size:0;line-height:0;">&nbsp;</td></tr>
 
   <!-- Hero -->
-  <tr><td style="background-color:#0a0c14;border-left:1px solid #1e2130;border-right:1px solid #1e2130;padding:40px 36px 36px;">
-    <p style="margin:0 0 10px;font-size:12px;font-weight:700;letter-spacing:0.18em;text-transform:uppercase;color:#eab308;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;">For Your League</p>
+  <tr><td style="background-color:#0a0c14;border-left:1px solid #1e2130;border-right:1px solid #1e2130;padding:44px 36px 36px;">
+    <p style="margin:0 0 10px;font-size:12px;font-weight:700;letter-spacing:0.18em;text-transform:uppercase;color:#eab308;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;">Almost There</p>
     <h1 style="margin:0 0 18px;font-size:34px;font-weight:900;line-height:1.1;letter-spacing:-0.02em;color:#ffffff;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;">${headline}</h1>
     <p style="margin:0 0 28px;font-size:16px;line-height:1.6;color:#9ca3af;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;">${body}</p>
     <table cellpadding="0" cellspacing="0" border="0"><tr>
@@ -770,17 +687,52 @@ function buildEmailHtml({ subject, previewText, headline, body, cta, ctaUrl }: {
 
   <tr><td style="border-left:1px solid #1e2130;border-right:1px solid #1e2130;"><table width="100%" cellpadding="0" cellspacing="0" border="0"><tr><td style="background-color:#1e2130;height:1px;"></td></tr></table></td></tr>
 
-  <!-- Mini Cards Section -->
-  <tr><td style="background-color:#0d0f18;border-left:1px solid #1e2130;border-right:1px solid #1e2130;padding:32px 28px 28px;">
-    <p style="margin:0 0 20px;font-size:12px;font-weight:700;letter-spacing:0.15em;text-transform:uppercase;color:#4b5563;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;">What you unlock</p>
-    <table width="100%" cellpadding="0" cellspacing="0" border="0"><tr>
-      <td width="31%" style="vertical-align:top;">${prCard}</td>
-      <td width="3%"></td>
-      <td width="31%" style="vertical-align:top;">${matchupCard}</td>
-      <td width="3%"></td>
-      <td width="31%" style="vertical-align:top;">${draftCard}</td>
+  <!-- What unlocks -->
+  <tr><td style="background-color:#0d0f18;border-left:1px solid #1e2130;border-right:1px solid #1e2130;padding:36px 36px 32px;">
+    <p style="margin:0 0 6px;font-size:12px;font-weight:700;letter-spacing:0.15em;text-transform:uppercase;color:#4b5563;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;">What you unlock</p>
+    <p style="margin:0 0 24px;font-size:13px;color:#6b7280;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;">Everything your league needs to stay engaged from week 1 through the championship.</p>
+
+    <table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-bottom:12px;"><tr>
+      <td width="48%" style="background-color:#11131a;border:1px solid #1e2130;border-left:3px solid #eab308;border-radius:10px;padding:16px 18px;vertical-align:top;">
+        <p style="margin:0 0 5px;font-size:18px;line-height:1;">⚡</p>
+        <p style="margin:0 0 5px;font-size:13px;font-weight:800;color:#ffffff;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;">Power Rankings</p>
+        <p style="margin:0;font-size:12px;line-height:1.5;color:#6b7280;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;">Weekly scores that actually reflect who's playing well — not just who has the best record.</p>
+      </td>
+      <td width="4%"></td>
+      <td width="48%" style="background-color:#11131a;border:1px solid #1e2130;border-left:3px solid #06b6d4;border-radius:10px;padding:16px 18px;vertical-align:top;">
+        <p style="margin:0 0 5px;font-size:18px;line-height:1;">⚔️</p>
+        <p style="margin:0 0 5px;font-size:13px;font-weight:800;color:#ffffff;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;">Win Probability</p>
+        <p style="margin:0;font-size:12px;line-height:1.5;color:#6b7280;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;">Live daily charts that show exactly how each matchup is trending. Post it and watch the chaos.</p>
+      </td>
     </tr></table>
-    <p style="margin:16px 0 0;font-size:11px;color:#374151;text-align:center;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;">Plus league history · share graphics · works with ESPN, Yahoo &amp; Sleeper</p>
+
+    <table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-bottom:12px;"><tr>
+      <td width="48%" style="background-color:#11131a;border:1px solid #1e2130;border-left:3px solid #8b5cf6;border-radius:10px;padding:16px 18px;vertical-align:top;">
+        <p style="margin:0 0 5px;font-size:18px;line-height:1;">📋</p>
+        <p style="margin:0 0 5px;font-size:13px;font-weight:800;color:#ffffff;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;">Draft Grades</p>
+        <p style="margin:0;font-size:12px;line-height:1.5;color:#6b7280;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;">Letter grades for every pick, tracked all season. See who won the draft before the standings tell you.</p>
+      </td>
+      <td width="4%"></td>
+      <td width="48%" style="background-color:#11131a;border:1px solid #1e2130;border-left:3px solid #22c55e;border-radius:10px;padding:16px 18px;vertical-align:top;">
+        <p style="margin:0 0 5px;font-size:18px;line-height:1;">🏆</p>
+        <p style="margin:0 0 5px;font-size:13px;font-weight:800;color:#ffffff;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;">League History</p>
+        <p style="margin:0;font-size:12px;line-height:1.5;color:#6b7280;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;">Every season, every matchup, every champion. Your league's full story in one place.</p>
+      </td>
+    </tr></table>
+
+    <table width="100%" cellpadding="0" cellspacing="0" border="0"><tr>
+      <td width="48%" style="background-color:#11131a;border:1px solid #1e2130;border-left:3px solid #f97316;border-radius:10px;padding:16px 18px;vertical-align:top;">
+        <p style="margin:0 0 5px;font-size:18px;line-height:1;">📸</p>
+        <p style="margin:0 0 5px;font-size:13px;font-weight:800;color:#ffffff;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;">Share Graphics</p>
+        <p style="margin:0;font-size:12px;line-height:1.5;color:#6b7280;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;">Download and post power rankings, matchup results, and more to your group chat.</p>
+      </td>
+      <td width="4%"></td>
+      <td width="48%" style="background-color:#11131a;border:1px solid #1e2130;border-left:3px solid #ec4899;border-radius:10px;padding:16px 18px;vertical-align:top;">
+        <p style="margin:0 0 5px;font-size:18px;line-height:1;">🌐</p>
+        <p style="margin:0 0 5px;font-size:13px;font-weight:800;color:#ffffff;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;">All Platforms</p>
+        <p style="margin:0;font-size:12px;line-height:1.5;color:#6b7280;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;">Works with ESPN, Yahoo, and Sleeper. Points leagues, roto, and category leagues.</p>
+      </td>
+    </tr></table>
   </td></tr>
 
   <tr><td style="border-left:1px solid #1e2130;border-right:1px solid #1e2130;"><table width="100%" cellpadding="0" cellspacing="0" border="0"><tr><td style="background-color:#1e2130;height:1px;"></td></tr></table></td></tr>
@@ -790,7 +742,7 @@ function buildEmailHtml({ subject, previewText, headline, body, cta, ctaUrl }: {
     <table width="100%" cellpadding="0" cellspacing="0" border="0"><tr>
       <td style="background-color:#0d1018;border:1px solid #1e2130;border-radius:12px;padding:20px 24px;">
         <p style="margin:0 0 4px;font-size:10px;font-weight:700;letter-spacing:0.12em;color:#4b5563;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;">ROB · REDRAFT · YAHOO</p>
-        <p style="margin:0 0 12px;font-size:15px;line-height:1.6;color:#d1d5db;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;">i have been commish for 7 years and this is the first tool that actually makes running the league fun 🙌</p>
+        <p style="margin:0 0 14px;font-size:15px;line-height:1.6;color:#d1d5db;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;">i have been commish for 7 years and this is the first tool that actually makes running the league fun 🙌</p>
         <table cellpadding="0" cellspacing="0" border="0"><tr>
           <td style="background:rgba(234,179,8,0.08);border:1px solid rgba(234,179,8,0.2);border-radius:4px;padding:3px 10px;">
             <span style="font-size:11px;font-weight:700;color:#eab308;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;">Verified User</span>
@@ -802,8 +754,8 @@ function buildEmailHtml({ subject, previewText, headline, body, cta, ctaUrl }: {
 
   <!-- CTA repeat -->
   <tr><td style="background-color:#0f1118;border-left:1px solid #1e2130;border-right:1px solid #1e2130;padding:32px 36px;text-align:center;">
-    <h2 style="margin:0 0 8px;font-size:24px;font-weight:900;color:#ffffff;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;">Ready to level up your league?</h2>
-    <p style="margin:0 0 24px;font-size:14px;color:#6b7280;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;">One pass unlocks everything for your entire league, all season.</p>
+    <h2 style="margin:0 0 8px;font-size:24px;font-weight:900;color:#ffffff;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;">Your league is one step away.</h2>
+    <p style="margin:0 0 24px;font-size:14px;color:#6b7280;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;">One pass unlocks everything for your entire league, all season long.</p>
     <table cellpadding="0" cellspacing="0" border="0" align="center"><tr>
       <td style="background-color:#eab308;border-radius:10px;">
         <a href="${ctaUrl}" style="display:inline-block;padding:14px 40px;font-size:15px;font-weight:800;letter-spacing:0.04em;text-decoration:none;color:#0a0c14;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;">${cta}</a>
@@ -1122,4 +1074,61 @@ onMounted(async () => {
   border-radius: 50%; animation: spin 0.7s linear infinite;
 }
 .spinner.sm { width: 16px; height: 16px; }
+
+/* ── EMAIL CAMPAIGN ── */
+.campaign-controls-wrap { margin-bottom: 24px; }
+.campaign-controls { display: flex; flex-direction: column; gap: 14px; }
+.ctrl-group { display: flex; flex-direction: column; gap: 5px; }
+.ctrl-label { font-size: 10px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: #4b5563; }
+.ctrl-input, .ctrl-textarea {
+  background: #0a0c14; border: 1px solid #262a3a; border-radius: 8px;
+  color: #e5e7eb; font-size: 13px; padding: 8px 12px; outline: none;
+  font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+  transition: border-color 0.15s; width: 100%; box-sizing: border-box;
+}
+.ctrl-input:focus, .ctrl-textarea:focus { border-color: #eab308; }
+.ctrl-textarea { resize: vertical; line-height: 1.5; }
+.campaign-recipients-info {
+  display: flex; align-items: center; gap: 8px;
+  font-size: 12px; color: #6b7280; padding: 8px 12px;
+  background: #0a0c14; border: 1px solid #1e2130; border-radius: 8px;
+}
+.campaign-recipients-info.warn { border-color: rgba(234,179,8,0.2); color: #eab308; }
+.recip-dot { width: 8px; height: 8px; border-radius: 50%; background: #22c55e; flex-shrink: 0; }
+.btn-reload {
+  margin-left: auto; padding: 3px 10px; border-radius: 5px;
+  border: 1px solid #262a3a; background: #11131a; color: #9ca3af;
+  font-size: 11px; cursor: pointer; transition: all 0.12s;
+}
+.btn-reload:hover { border-color: #374151; color: #e5e7eb; }
+.campaign-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+.btn-preview { background: rgba(234,179,8,0.1); border: 1px solid rgba(234,179,8,0.3); color: #eab308; }
+.btn-preview:hover { background: rgba(234,179,8,0.18); }
+.btn-send { background: rgba(34,197,94,0.1); border: 1px solid rgba(34,197,94,0.3); color: #22c55e; }
+.btn-send:hover:not(:disabled) { background: rgba(34,197,94,0.18); }
+.btn-send:disabled { opacity: 0.4; cursor: not-allowed; }
+.send-result { padding: 10px 14px; border-radius: 8px; font-size: 12px; font-weight: 600; }
+.send-success { background: rgba(34,197,94,0.1); border: 1px solid rgba(34,197,94,0.25); color: #4ade80; }
+.send-error   { background: rgba(239,68,68,0.1); border: 1px solid rgba(239,68,68,0.25); color: #fca5a5; }
+.resend-notice {
+  font-size: 11px; color: #374151; padding: 8px 0;
+  display: flex; align-items: center; gap: 5px; flex-wrap: wrap;
+}
+.resend-notice code { background: #11131a; border: 1px solid #1e2130; padding: 1px 6px; border-radius: 4px; color: #9ca3af; font-size: 11px; }
+.resend-notice a { color: #4b5563; text-decoration: none; }
+.resend-notice a:hover { color: #9ca3af; }
+.resend-notice-label { color: #4b5563; }
+.campaign-preview-wrap { display: flex; flex-direction: column; gap: 10px; }
+.preview-label {
+  font-size: 11px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase;
+  color: #4b5563; display: flex; align-items: center; gap: 10px;
+}
+.preview-badge {
+  font-size: 10px; padding: 2px 8px; border-radius: 4px; letter-spacing: 0.04em;
+  background: rgba(234,179,8,0.1); border: 1px solid rgba(234,179,8,0.2); color: #eab308;
+}
+.email-preview-frame {
+  border: 1px solid #1e2130; border-radius: 12px; overflow: hidden; background: #05060a;
+}
+.email-iframe { width: 100%; height: 900px; border: none; display: block; background: #fff; }
 </style>
