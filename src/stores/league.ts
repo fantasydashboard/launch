@@ -1046,9 +1046,17 @@ export const useLeagueStore = defineStore('league', () => {
       // Fetch teams with standings info
       let teams = await yahooService.getTeams(leagueKey)
       
-      // Check if this league has actual data (not a renewed but unplayed league)
-      const hasData = teams.some(t => (t.wins || 0) > 0 || (t.losses || 0) > 0 || (t.points_for || 0) > 0)
-      
+      // Check if this league has actual data (not a renewed but unplayed league).
+      // A league that has completed its draft (draft_status === 'postdraft') is considered
+      // active even if no games have been played yet — do NOT fall back to the previous
+      // season or we'll show stale standings + the offseason banner.
+      const hasDrafted = metadata.draft_status === 'postdraft' || metadata.draft_status === 'drafting'
+      const hasData = hasDrafted || teams.some(t => (t.wins || 0) > 0 || (t.losses || 0) > 0 || (t.points_for || 0) > 0)
+
+      if (hasDrafted) {
+        console.log(`[Yahoo] draft_status="${metadata.draft_status}" — active season, skipping previous-season fallback`)
+      }
+
       // If no data, check for a previous season to load instead
       if (!hasData) {
         console.log('League has no data, checking for previous season...')
