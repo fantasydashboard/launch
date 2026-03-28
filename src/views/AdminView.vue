@@ -374,16 +374,7 @@
 
       <!-- ══════════════════════════════════════ SOCIAL TAB ══ -->
       <template v-if="adminTab === 'social'">
-      <section class="section">
-        <div class="section-label">📸 Social Templates</div>
-        <div class="social-iframe-wrap">
-          <iframe
-            src="/socialtemplates?embed=true"
-            class="social-iframe"
-            title="Social Templates"
-          ></iframe>
-        </div>
-      </section>
+        <SocialTemplatesView :embed-mode="true" />
       </template><!-- end social tab -->
 
     </template>
@@ -396,6 +387,7 @@ import { useAuthStore } from '@/stores/auth'
 import { useFeatureAccess } from '@/composables/useFeatureAccess'
 import { supabase } from '@/lib/supabase'
 import VueApexCharts from 'vue3-apexcharts'
+import SocialTemplatesView from '@/views/SocialTemplatesView.vue'
 
 const apexchart = VueApexCharts
 
@@ -1195,9 +1187,5 @@ onMounted(async () => {
 .admin-tab:hover { color: #9ca3af; }
 .admin-tab-active { color: #e5e7eb; border-bottom-color: #eab308; }
 .admin-tab-icon { font-size: 15px; }
-.social-iframe-wrap {
-  border: 1px solid #1e2130; border-radius: 12px; overflow: hidden;
-  height: calc(100vh - 220px); min-height: 700px;
-}
-.social-iframe { width: 100%; height: 100%; border: none; display: block; }
+/* social iframe styles removed — now using inline component */
 </style>

@@ -1356,7 +1356,10 @@ import { useRoute } from 'vue-router'
 
 // ── Embed detection (hide shell when loaded in admin iframe) ──────────────
 const route = useRoute()
-const isEmbed = computed(() => route.query.embed === 'true')
+// Support both prop-based embed (when used as a component inside AdminView)
+// and query-param embed (when loaded via iframe URL)
+const props = defineProps<{ embedMode?: boolean }>()
+const isEmbed = computed(() => props.embedMode === true || route.query.embed === 'true')
 
 // ── Social template type tabs ──────────────────────────────────────────────
 const activeType = ref('square')
