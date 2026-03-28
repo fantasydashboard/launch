@@ -1208,102 +1208,135 @@
       <div v-if="wpiStatus" class="wpi-status">{{ wpiStatus }}</div>
     </div>
 
-    <!-- ── GRAPHIC 27: Best Starts (combined batters + pitchers) ── -->
-    <div class="post-wrap wp-post-wrap" style="grid-column:1/-1">
-      <div class="post-label">27 · Best Starts — top performers by win probability impact</div>
-      <div class="sq sq-wp-bg" style="max-width:540px">
+    <!-- ── GRAPHIC 27: Best Starts — Pitchers ── -->
+    <div class="post-wrap wp-post-wrap">
+      <div class="post-label">27 · Best Starts — Pitchers</div>
+      <div class="sq sq-wp-bg">
         <div class="sq-grain"></div>
         <svg viewBox="0 0 540 600" xmlns="http://www.w3.org/2000/svg"
           style="position:absolute;inset:0;width:100%;height:100%;z-index:2">
           <defs>
-            <linearGradient id="wpi-gold3" x1="0" y1="0" x2="1" y2="0">
-              <stop offset="0%" stop-color="#eab308" stop-opacity="0.95"/>
-              <stop offset="100%" stop-color="#eab308" stop-opacity="0.2"/>
+            <linearGradient id="wpi-cyan3" x1="0" y1="0" x2="1" y2="0">
+              <stop offset="0%" stop-color="#06b6d4" stop-opacity="0.95"/>
+              <stop offset="100%" stop-color="#06b6d4" stop-opacity="0.2"/>
             </linearGradient>
-            <radialGradient id="wpi-gold3-glow" cx="15%" cy="50%" r="60%">
-              <stop offset="0%" stop-color="#eab308" stop-opacity="0.08"/>
-              <stop offset="100%" stop-color="#eab308" stop-opacity="0"/>
+            <radialGradient id="wpi-cyan3-glow" cx="15%" cy="50%" r="60%">
+              <stop offset="0%" stop-color="#06b6d4" stop-opacity="0.08"/>
+              <stop offset="100%" stop-color="#06b6d4" stop-opacity="0"/>
             </radialGradient>
           </defs>
-          <!-- bg -->
           <rect x="0" y="0" width="540" height="600" fill="#07080e"/>
-          <rect x="0" y="0" width="540" height="600" fill="url(#wpi-gold3-glow)"/>
-          <!-- Top accent bar -->
-          <rect x="0" y="0" width="540" height="5" fill="url(#wpi-gold3)"/>
-
-          <!-- ── HEADER ── -->
-          <image href="/UFD_V8.png" x="370" y="8" width="128" height="68"
-            preserveAspectRatio="xMidYMid meet"/>
-          <text x="20" y="52" font-size="34" font-weight="900" letter-spacing="-0.01em"
+          <rect x="0" y="0" width="540" height="600" fill="url(#wpi-cyan3-glow)"/>
+          <rect x="0" y="0" width="540" height="5" fill="url(#wpi-cyan3)"/>
+          <image href="/UFD_V8.png" x="370" y="8" width="128" height="68" preserveAspectRatio="xMidYMid meet"/>
+          <text x="20" y="46" font-size="30" font-weight="900" letter-spacing="-0.01em"
             fill="#ffffff" font-family="Helvetica Neue,Helvetica,Arial,sans-serif">Best Starts</text>
-          <text x="20" y="80" font-size="15" font-weight="700" letter-spacing="0.06em"
-            fill="#eab308" font-family="Helvetica Neue,Helvetica,Arial,sans-serif">
+          <text x="20" y="70" font-size="18" font-weight="800" letter-spacing="0.04em"
+            fill="#06b6d4" font-family="Helvetica Neue,Helvetica,Arial,sans-serif">PITCHERS</text>
+          <text x="20" y="88" font-size="13" font-weight="700" letter-spacing="0.06em"
+            fill="#4b5563" font-family="Helvetica Neue,Helvetica,Arial,sans-serif">
             {{ wpiDateDisplay }} · WK {{ wpiWeekLabel }}
           </text>
           <line x1="0" y1="94" x2="540" y2="94" stroke="#1e2130" stroke-width="1"/>
-
-          <!-- ── PLAYER ROWS ── -->
-          <g v-for="(p, i) in wpiTopPlayers" :key="'bp'+i">
-            <!-- Row bg — gold tint for batters, cyan tint for pitchers -->
+          <g v-for="(p, i) in wpiTopPitchers" :key="'p2'+i">
             <rect x="0" :y="94+i*101" width="540" :height="100"
-              :fill="i===0
-                ? (isPitcher(p) ? 'rgba(6,182,212,0.09)' : 'rgba(234,179,8,0.09)')
-                : 'rgba(255,255,255,0.012)'"/>
-            <line x1="0" :y1="94+(i+1)*101" x2="540" :y2="94+(i+1)*101"
-              stroke="#1e2130" stroke-width="1"/>
-
-            <!-- Headshot -->
-            <circle :cx="58" :cy="94+i*101+50" r="36"
-              fill="rgba(0,0,0,0.4)"
-              :stroke="i===0
-                ? (isPitcher(p) ? 'rgba(6,182,212,0.5)' : 'rgba(234,179,8,0.5)')
-                : 'rgba(255,255,255,0.06)'"
-              stroke-width="2"/>
-            <image :href="p.headshot" x="22" :y="94+i*101+14"
-              width="72" height="72" preserveAspectRatio="xMidYMid slice"
-              style="clip-path:circle(36px at 36px 36px)"/>
-
-            <!-- Rank -->
+              :fill="i===0?'rgba(6,182,212,0.09)':'rgba(255,255,255,0.012)'"/>
+            <line x1="0" :y1="94+(i+1)*101" x2="540" :y2="94+(i+1)*101" stroke="#1e2130" stroke-width="1"/>
+            <circle cx="58" :cy="94+i*101+50" r="36" fill="rgba(0,0,0,0.4)"
+              :stroke="i===0?'rgba(6,182,212,0.5)':'rgba(255,255,255,0.06)'" stroke-width="2"/>
+            <image :href="p.headshot" x="22" :y="94+i*101+14" width="72" height="72"
+              preserveAspectRatio="xMidYMid slice" style="clip-path:circle(36px at 36px 36px)"/>
             <text x="106" :y="94+i*101+28" font-size="12" font-weight="900"
-              :fill="i===0 ? (isPitcher(p) ? '#06b6d4' : '#eab308') : '#4b5563'"
+              :fill="i===0?'#06b6d4':'#4b5563'"
               font-family="Helvetica Neue,Helvetica,Arial,sans-serif">#{{ i+1 }}</text>
-
-            <!-- Name + Team · Pos -->
             <text x="106" :y="94+i*101+50" font-size="17" font-weight="800" fill="#ffffff"
               font-family="Helvetica Neue,Helvetica,Arial,sans-serif">{{ p.name }}</text>
             <text :x="106 + Math.min(p.name.length * 10, 200)" :y="94+i*101+50"
               font-size="12" font-weight="600" fill="#6b7280"
               font-family="Helvetica Neue,Helvetica,Arial,sans-serif">  {{ p.team }} · {{ p.position }}</text>
-
-            <!-- Stat line -->
             <text x="106" :y="94+i*101+73" font-size="14" font-weight="600" fill="#e5e7eb"
               font-family="Helvetica Neue,Helvetica,Arial,sans-serif">{{ p.statLine }}</text>
-
-            <!-- WP % hero number -->
-            <text x="520" :y="94+i*101+48" text-anchor="end"
-              :font-size="i===0?'36':'30'" font-weight="900"
-              :fill="i===0 ? (isPitcher(p) ? '#06b6d4' : '#eab308') : '#6b7280'"
+            <text x="520" :y="94+i*101+48" text-anchor="end" :font-size="i===0?'36':'30'" font-weight="900"
+              :fill="i===0?'#06b6d4':'#6b7280'"
               font-family="Helvetica Neue,Helvetica,Arial,sans-serif">+{{ p.wpImpact.toFixed(1) }}%</text>
             <text x="520" :y="94+i*101+68" text-anchor="end" font-size="11"
               :fill="i===0?'#ffffff':'#4b5563'"
               font-family="Helvetica Neue,Helvetica,Arial,sans-serif">win prob change</text>
-
-            <!-- Thin bar -->
-            <rect x="106" :y="94+i*101+84" width="200" height="3" rx="1"
-              fill="rgba(255,255,255,0.05)"/>
+            <rect x="106" :y="94+i*101+84" width="200" height="3" rx="1" fill="rgba(255,255,255,0.05)"/>
             <rect x="106" :y="94+i*101+84"
-              :width="wpiTopPlayers.length && wpiTopPlayers[0].wpImpact>0
-                ? Math.min(200,(p.wpImpact/wpiTopPlayers[0].wpImpact)*200) : 0"
-              height="3" rx="1"
-              :fill="i===0 ? (isPitcher(p) ? '#06b6d4' : '#eab308') : 'rgba(107,114,128,0.5)'"/>
+              :width="wpiTopPitchers.length&&wpiTopPitchers[0].wpImpact>0?Math.min(200,(p.wpImpact/wpiTopPitchers[0].wpImpact)*200):0"
+              height="3" rx="1" :fill="i===0?'#06b6d4':'rgba(107,114,128,0.5)'"/>
           </g>
+          <text v-if="!wpiTopPitchers.length" x="270" y="340" text-anchor="middle"
+            font-size="15" fill="#374151" font-family="Helvetica Neue,Helvetica,Arial,sans-serif">Load yesterday's data above</text>
+          <line x1="0" y1="593" x2="540" y2="593" stroke="#1e2130" stroke-width="1"/>
+          <text x="270" y="596" text-anchor="middle" font-size="9" fill="#1a1f2e"
+            font-family="Helvetica Neue,Helvetica,Arial,sans-serif">ultimatefantasydashboard.com</text>
+        </svg>
+      </div>
+    </div>
 
-          <!-- Empty state -->
-          <text v-if="!wpiTopPlayers.length" x="270" y="340" text-anchor="middle"
-            font-size="15" fill="#374151"
-            font-family="Helvetica Neue,Helvetica,Arial,sans-serif">Load yesterday's data above</text>
-
-          <!-- Watermark -->
+    <!-- ── GRAPHIC 28: Best Starts — Batters ── -->
+    <div class="post-wrap wp-post-wrap">
+      <div class="post-label">28 · Best Starts — Batters</div>
+      <div class="sq sq-wp-bg">
+        <div class="sq-grain"></div>
+        <svg viewBox="0 0 540 600" xmlns="http://www.w3.org/2000/svg"
+          style="position:absolute;inset:0;width:100%;height:100%;z-index:2">
+          <defs>
+            <linearGradient id="wpi-gold4" x1="0" y1="0" x2="1" y2="0">
+              <stop offset="0%" stop-color="#eab308" stop-opacity="0.95"/>
+              <stop offset="100%" stop-color="#eab308" stop-opacity="0.2"/>
+            </linearGradient>
+            <radialGradient id="wpi-gold4-glow" cx="15%" cy="50%" r="60%">
+              <stop offset="0%" stop-color="#eab308" stop-opacity="0.08"/>
+              <stop offset="100%" stop-color="#eab308" stop-opacity="0"/>
+            </radialGradient>
+          </defs>
+          <rect x="0" y="0" width="540" height="600" fill="#07080e"/>
+          <rect x="0" y="0" width="540" height="600" fill="url(#wpi-gold4-glow)"/>
+          <rect x="0" y="0" width="540" height="5" fill="url(#wpi-gold4)"/>
+          <image href="/UFD_V8.png" x="370" y="8" width="128" height="68" preserveAspectRatio="xMidYMid meet"/>
+          <text x="20" y="46" font-size="30" font-weight="900" letter-spacing="-0.01em"
+            fill="#ffffff" font-family="Helvetica Neue,Helvetica,Arial,sans-serif">Best Starts</text>
+          <text x="20" y="70" font-size="18" font-weight="800" letter-spacing="0.04em"
+            fill="#eab308" font-family="Helvetica Neue,Helvetica,Arial,sans-serif">BATTERS</text>
+          <text x="20" y="88" font-size="13" font-weight="700" letter-spacing="0.06em"
+            fill="#4b5563" font-family="Helvetica Neue,Helvetica,Arial,sans-serif">
+            {{ wpiDateDisplay }} · WK {{ wpiWeekLabel }}
+          </text>
+          <line x1="0" y1="94" x2="540" y2="94" stroke="#1e2130" stroke-width="1"/>
+          <g v-for="(p, i) in wpiTopBatters" :key="'b2'+i">
+            <rect x="0" :y="94+i*101" width="540" :height="100"
+              :fill="i===0?'rgba(234,179,8,0.09)':'rgba(255,255,255,0.012)'"/>
+            <line x1="0" :y1="94+(i+1)*101" x2="540" :y2="94+(i+1)*101" stroke="#1e2130" stroke-width="1"/>
+            <circle cx="58" :cy="94+i*101+50" r="36" fill="rgba(0,0,0,0.4)"
+              :stroke="i===0?'rgba(234,179,8,0.5)':'rgba(255,255,255,0.06)'" stroke-width="2"/>
+            <image :href="p.headshot" x="22" :y="94+i*101+14" width="72" height="72"
+              preserveAspectRatio="xMidYMid slice" style="clip-path:circle(36px at 36px 36px)"/>
+            <text x="106" :y="94+i*101+28" font-size="12" font-weight="900"
+              :fill="i===0?'#eab308':'#4b5563'"
+              font-family="Helvetica Neue,Helvetica,Arial,sans-serif">#{{ i+1 }}</text>
+            <text x="106" :y="94+i*101+50" font-size="17" font-weight="800" fill="#ffffff"
+              font-family="Helvetica Neue,Helvetica,Arial,sans-serif">{{ p.name }}</text>
+            <text :x="106 + Math.min(p.name.length * 10, 200)" :y="94+i*101+50"
+              font-size="12" font-weight="600" fill="#6b7280"
+              font-family="Helvetica Neue,Helvetica,Arial,sans-serif">  {{ p.team }} · {{ p.position }}</text>
+            <text x="106" :y="94+i*101+73" font-size="14" font-weight="600" fill="#e5e7eb"
+              font-family="Helvetica Neue,Helvetica,Arial,sans-serif">{{ p.statLine }}</text>
+            <text x="520" :y="94+i*101+48" text-anchor="end" :font-size="i===0?'36':'30'" font-weight="900"
+              :fill="i===0?'#eab308':'#6b7280'"
+              font-family="Helvetica Neue,Helvetica,Arial,sans-serif">+{{ p.wpImpact.toFixed(1) }}%</text>
+            <text x="520" :y="94+i*101+68" text-anchor="end" font-size="11"
+              :fill="i===0?'#ffffff':'#4b5563'"
+              font-family="Helvetica Neue,Helvetica,Arial,sans-serif">win prob change</text>
+            <rect x="106" :y="94+i*101+84" width="200" height="3" rx="1" fill="rgba(255,255,255,0.05)"/>
+            <rect x="106" :y="94+i*101+84"
+              :width="wpiTopBatters.length&&wpiTopBatters[0].wpImpact>0?Math.min(200,(p.wpImpact/wpiTopBatters[0].wpImpact)*200):0"
+              height="3" rx="1" :fill="i===0?'#eab308':'rgba(107,114,128,0.5)'"/>
+          </g>
+          <text v-if="!wpiTopBatters.length" x="270" y="340" text-anchor="middle"
+            font-size="15" fill="#374151" font-family="Helvetica Neue,Helvetica,Arial,sans-serif">Load yesterday's data above</text>
           <line x1="0" y1="593" x2="540" y2="593" stroke="#1e2130" stroke-width="1"/>
           <text x="270" y="596" text-anchor="middle" font-size="9" fill="#1a1f2e"
             font-family="Helvetica Neue,Helvetica,Arial,sans-serif">ultimatefantasydashboard.com</text>
@@ -1382,8 +1415,9 @@ function calcFantasyPts(stats: any, isPitcher: boolean): number {
     const sv = stats.saves || 0
     const hld = stats.holds || 0
     const qs = (ip >= 6 && er <= 3) ? 1 : 0
-    // Standard ESPN H2H Points: IP×1 + K×1 + W×5 + SV×5 + HLD×3 + QS×3 - ER×1 - BB×0.5
-    return ip * 1 + k * 1 + w * 5 + sv * 5 + hld * 3 + qs * 3 - er * 1 - bb * 0.5
+    // ESPN standard pitching: IP×2 + K×1 + W×5 + SV×5 + HLD×3 + QS×3 - ER×2 - BB×0.5
+    // (verified: Gausman 6 IP + 11K + QS - 1ER ≈ 12+11+3-2 = 24; close to ESPN's 26)
+    return ip * 2 + k * 1 + w * 5 + sv * 5 + hld * 3 + qs * 3 - er * 2 - bb * 0.5
   } else {
     const h = stats.hits || 0
     const ab = stats.atBats || 0
@@ -1395,7 +1429,7 @@ function calcFantasyPts(stats: any, isPitcher: boolean): number {
     const cs = stats.caughtStealing || 0
     const hbp = stats.hitByPitch || 0
     const singles = h - (stats.doubles||0) - (stats.triples||0) - hr
-    // Standard ESPN H2H Points: 1B×1 + 2B×2 + 3B×3 + HR×4 + R×1 + RBI×1 + BB×1 + SB×2 + HBP×1 - CS×1
+    // ESPN standard batting: 1B×1 + 2B×2 + 3B×3 + HR×4 + R×1 + RBI×1 + BB×1 + SB×2 + HBP×1 - CS×1
     return singles * 1 + (stats.doubles||0) * 2 + (stats.triples||0) * 3 + hr * 4 +
            r * 1 + rbi * 1 + bb * 1 + sb * 2 + hbp * 1 - cs * 1
   }
@@ -1513,12 +1547,14 @@ async function loadWpiData() {
           const keys: string[] = statGroup.keys || []
           const keySet = new Set(keys)
 
-          // ESPN MLB uses ONE stat group per team containing ALL players.
-          // Keys: fullInnings.partInnings|hits|runs|earnedRuns|walks|strikeouts (for everyone)
-          // Plus batting groups: atBats|homeRuns|rbi|stolenBases|doubles|triples|etc
-          // We CANNOT use key presence to detect pitchers — use player POSITION instead.
-          if (!keySet.has('fullInnings.partInnings') && !keySet.has('atBats') &&
-              !keySet.has('hits') && !keySet.has('homeRuns')) continue
+          // Accept any stat group that contains batting OR pitching keys.
+          // ESPN sometimes puts pitchers in a separate group with keys like
+          // inningsPitched/strikeouts/earnedRuns that don't overlap with batting keys.
+          // We use player POSITION to classify, not the group's key set.
+          const hasBattingKeys = keySet.has('atBats') || keySet.has('hits') || keySet.has('homeRuns')
+          const hasPitchingKeys = keySet.has('fullInnings.partInnings') || keySet.has('inningsPitched') ||
+            keySet.has('strikeouts') || keySet.has('earnedRuns') || keySet.has('outs')
+          if (!hasBattingKeys && !hasPitchingKeys) continue
 
           for (const athlete of (statGroup.athletes || [])) {
             const pid = athlete.athlete?.id || athlete.id
@@ -1605,9 +1641,9 @@ async function loadWpiData() {
     const pitchers = [...pitcherMap.values()].sort((a,b) => b.wpImpact - a.wpImpact)
     wpiTopBatters.value  = batters.slice(0,5)
     wpiTopPitchers.value = pitchers.slice(0,5)
-    // Combined: merge all players, sort by wpImpact, take top 5
+    // Combined: merge all players, sort by raw fantasy pts (most accurate ranking)
     wpiTopPlayers.value = [...batterMap.values(), ...pitcherMap.values()]
-      .sort((a,b) => b.wpImpact - a.wpImpact)
+      .sort((a,b) => b.pts - a.pts)
       .slice(0,5)
 
     const total = batters.length + pitchers.length
@@ -1706,8 +1742,10 @@ function parseAthleteRow(
   }
 
   const ip = n.inningsPitched
-  if (!isPitcherGroup && n.atBats < 1) return
-  // For pitchers: keep anyone in the pitching stats group (IP may be 0 for openers/closers)
+  // Use position-based classification (not the stat group) to decide what to keep
+  if (!isPitcherGroup && n.atBats < 1) return  // batters must have at least 1 AB
+  // Pitchers: keep if they have IP or Ks (IP can be 0 for openers/closers with only Ks)
+  if (isPitcherGroup && ip === 0 && n.strikeOuts === 0) return
 
   const name     = athlete.athlete?.displayName || 'Unknown'
   const teamAbbr = athlete.athlete?.team?.abbreviation || teamFallback
