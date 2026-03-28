@@ -1473,8 +1473,14 @@ const teamsWithStats = computed(() => {
     const totalCatWins = teamTotalCategoryWins.value.get(team.team_key) || 0
     const totalCatLosses = teamTotalCategoryLosses.value.get(team.team_key) || 0
     
-    if (!isPointsLeague.value && leagueStore.activePlatform === 'espn' && teamWins === 0 && teamLosses === 0) {
-      // Use category totals as record for display
+    // Only substitute category totals as the record when at least 1 week is complete.
+    // During week 1 in progress, totalCatWins/totalLosses come from partial live data
+    // and must not be shown as a final W-L record.
+    const yahooLeagueDataForCheck = Array.isArray(leagueStore.yahooLeague) ? leagueStore.yahooLeague[0] : leagueStore.yahooLeague
+    const currWeekForCheck = parseInt(yahooLeagueDataForCheck?.current_week) || 1
+    const hasCompletedWeeksForRecord = isSeasonComplete.value || currWeekForCheck > 1
+    if (!isPointsLeague.value && leagueStore.activePlatform === 'espn' && teamWins === 0 && teamLosses === 0 && hasCompletedWeeksForRecord) {
+      // Use category totals as record for display (only after week 1 is fully complete)
       teamWins = totalCatWins
       teamLosses = totalCatLosses
       console.log('[teamsWithStats] ESPN category - using category totals as record for', team.name, ':', teamWins, '-', teamLosses)
@@ -4462,7 +4468,9 @@ async function loadAllMatchups() {
       // Use static espnService import (like Power Rankings does)
       const league = await espnService.getLeague(sport, espnLeagueId, season)
       
-      const currentWeek = league?.status?.currentMatchupPeriod || 15
+      // Default to 1 (not 15) — a null currentMatchupPeriod on a new season must not
+      // trigger 14 weeks of data fetching.
+      const currentWeek = league?.status?.currentMatchupPeriod || 1
       // Floor is 0, not 1: when currentWeek=1 there are no completed weeks yet.
       // Math.max(1,...) would force-load week 1 partial data before the week is done.
       const espnCompletedWeeks = Math.max(0, currentWeek - 1)
@@ -5300,7 +5308,9 @@ async function loadEspnData() {
     loadingStatus.value = 'Calculating standings from matchups...'
     try {
       const league = await espnService.getLeague(sport, espnLeagueId, season)
-      const currentWeek = league?.status?.currentMatchupPeriod || 15
+      // Default to 1 (not 15) — a null currentMatchupPeriod on a new season must not
+      // trigger 14 weeks of historical data fetching.
+      const currentWeek = league?.status?.currentMatchupPeriod || 1
       // Floor is 0, not 1 — when currentWeek=1 no weeks are complete yet
       const completedWeeks = Math.max(0, currentWeek - 1)
       
@@ -5560,7 +5570,9 @@ async function loadEspnData() {
     try {
       // Get league settings for current week and season weeks
       const league = await espnService.getLeague(sport, espnLeagueId, season)
-      const currentWeek = league?.status?.currentMatchupPeriod || 15
+      // Default to 1 (not 15) so a null/undefined currentMatchupPeriod on a new season
+      // doesn't cause us to try fetching 14 weeks of data that don't exist.
+      const currentWeek = league?.status?.currentMatchupPeriod || 1
       const regularSeasonWeeks = league?.settings?.regularSeasonMatchupPeriodCount || 25
       
       console.log('[ESPN] League currentWeek:', currentWeek, 'regularSeasonWeeks:', regularSeasonWeeks)
