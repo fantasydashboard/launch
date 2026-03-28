@@ -4455,7 +4455,9 @@ async function loadAllMatchups() {
       const league = await espnService.getLeague(sport, espnLeagueId, season)
       
       const currentWeek = league?.status?.currentMatchupPeriod || 15
-      const espnCompletedWeeks = Math.max(1, currentWeek - 1)
+      // Floor is 0, not 1: when currentWeek=1 there are no completed weeks yet.
+      // Math.max(1,...) would force-load week 1 partial data before the week is done.
+      const espnCompletedWeeks = Math.max(0, currentWeek - 1)
       
       // ESPN basketball matchup periods don't always match actual matchup weeks
       // For H2H Each Category: team.wins/losses are CATEGORY totals, not matchup weeks
@@ -4485,6 +4487,7 @@ async function loadAllMatchups() {
       })
       
       // Fetch each week's matchups (like Power Rankings does)
+      // completedWeeks may be 0 if week 1 is still in progress — loop won't run
       let weeksWithMatchupWinners = 0
       for (let week = 1; week <= completedWeeks; week++) {
         try {
@@ -4695,7 +4698,10 @@ async function loadAllMatchups() {
   const maxWeek = totalWeeks.value || 25
   const startWeek = parseInt(yahooLeagueArr?.start_week) || 1
   const currWeek = parseInt(yahooLeagueArr?.current_week) || currentWeek.value || maxWeek
-  const endWeek = isSeasonComplete.value ? maxWeek : Math.min(currWeek, maxWeek)
+  // Use currWeek - 1 so the in-progress week is never counted.
+  // Yahoo returns live/partial stat_winners for the current week which would
+  // show premature category wins before the week is officially complete.
+  const endWeek = isSeasonComplete.value ? maxWeek : Math.min(Math.max(0, currWeek - 1), maxWeek)
   
   console.log(`[Yahoo] Loading matchups for weeks ${startWeek}-${endWeek}, isSeasonComplete: ${isSeasonComplete.value}, isPointsLeague: ${isPointsLeague.value}`)
   
