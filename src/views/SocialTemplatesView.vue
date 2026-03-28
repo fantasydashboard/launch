@@ -1637,8 +1637,8 @@ async function loadWpiData() {
       }
     }
 
-    const batters  = [...batterMap.values()].sort((a,b) => b.wpImpact - a.wpImpact)
-    const pitchers = [...pitcherMap.values()].sort((a,b) => b.wpImpact - a.wpImpact)
+    const batters  = [...batterMap.values()].sort((a,b) => b.pts - a.pts)
+    const pitchers = [...pitcherMap.values()].sort((a,b) => b.pts - a.pts)
     wpiTopBatters.value  = batters.slice(0,5)
     wpiTopPitchers.value = pitchers.slice(0,5)
     // Combined: merge all players, sort by raw fantasy pts (most accurate ranking)
@@ -1753,15 +1753,15 @@ function parseAthleteRow(
     `https://a.espncdn.com/i/headshots/mlb/players/full/${pid}.png`
 
   const pts = calcFantasyPts(n, isPitcherGroup)
-  // For batters, skip zero-point games; pitchers kept regardless (sorted later)
-  if (!isPitcherGroup && pts <= 0) return
-  // Filter out negative performance — no one should appear for hurting their team
+  // Skip zero or negative point games entirely
   if (pts <= 0) return
 
   // WP impact: points above position average × 0.75%
-  const avgPts = isPitcherGroup ? (ip >= 5 ? 14 : ip >= 2 ? 7 : 4) : 7
-  const wpImpact = calcWpImpact(pts, avgPts)
-  if (wpImpact <= 0) return
+  // Batter avgPts = 4 (a single, a run, and an RBI is a solid day).
+  // We intentionally do NOT filter by wpImpact here — we sort by pts and take
+  // the top 5, so even players with modest wpImpact still show up on the graphic.
+  const avgPts = isPitcherGroup ? (ip >= 5 ? 14 : ip >= 2 ? 7 : 4) : 4
+  const wpImpact = Math.max(0, calcWpImpact(pts, avgPts))
 
   const posFromAthlete = athlete.athlete?.position?.abbreviation ||
                          athlete.position?.abbreviation || (isPitcherGroup ? 'P' : 'OF')
