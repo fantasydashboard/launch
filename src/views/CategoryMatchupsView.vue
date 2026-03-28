@@ -2609,7 +2609,8 @@ async function generateMatchupAnalysisImage(matchup: any, html2canvas: any) {
   // ── Chart SVG — styled to match the landing page card ──────────────────────
   const chartWidth = 640
   const chartHeight = 260
-  const padding = { top: 40, right: 24, bottom: 50, left: 52 }
+  // right padding 60 so the last data label pill doesn't clip off the edge
+  const padding = { top: 40, right: 60, bottom: 50, left: 52 }
   const plotWidth = chartWidth - padding.left - padding.right
   const plotHeight = chartHeight - padding.top - padding.bottom
 
@@ -2659,17 +2660,22 @@ async function generateMatchupAnalysisImage(matchup: any, html2canvas: any) {
       font-weight="700" fill="#9ca3af" font-family="Helvetica Neue,Arial,sans-serif">${label}</text>`
   }).join('')
 
-  // Data point labels — pill background + value, stagger above/below to avoid overlap
+  // Data point labels — pill label goes ABOVE the dot for the favored team that day,
+  // BELOW the dot for the underdog. This prevents overlap and visually communicates
+  // who's winning on each day regardless of which team that is.
   let dataLabels = ''
   team1ChartData.forEach((val, i) => {
     const x = t1xs[i]; const y = t1ys[i]
     const label = val.toFixed(1)
     const lw = label.length * 7 + 10
-    // Team 1 labels above the point
+    // Favored team (>50%) goes above, underdog goes below
+    const t1Favored = val >= (team2ChartData[i] ?? 50)
+    const labelY = t1Favored ? y - 26 : y + 9
+    const textY  = t1Favored ? y - 13 : y + 22
     dataLabels += `
-      <rect x="${x - lw/2}" y="${y - 26}" width="${lw}" height="18" rx="4"
+      <rect x="${x - lw/2}" y="${labelY}" width="${lw}" height="18" rx="4"
         fill="${team1Color}" opacity="0.92"/>
-      <text x="${x}" y="${y - 13}" text-anchor="middle" font-size="11" font-weight="800"
+      <text x="${x}" y="${textY}" text-anchor="middle" font-size="11" font-weight="800"
         fill="#0a0c14" font-family="Helvetica Neue,Arial,sans-serif">${label}</text>
       <circle cx="${x}" cy="${y}" r="5" fill="${team1Color}" stroke="#0a0c14" stroke-width="1.5"/>
     `
@@ -2678,11 +2684,14 @@ async function generateMatchupAnalysisImage(matchup: any, html2canvas: any) {
     const x = t2xs[i]; const y = t2ys[i]
     const label = val.toFixed(1)
     const lw = label.length * 7 + 10
-    // Team 2 labels below the point
+    // Mirror of team1: if team2 is favored (>50%) it goes above, otherwise below
+    const t2Favored = val > (team1ChartData[i] ?? 50)
+    const labelY = t2Favored ? y - 26 : y + 9
+    const textY  = t2Favored ? y - 13 : y + 22
     dataLabels += `
-      <rect x="${x - lw/2}" y="${y + 9}" width="${lw}" height="18" rx="4"
+      <rect x="${x - lw/2}" y="${labelY}" width="${lw}" height="18" rx="4"
         fill="${team2Color}" opacity="0.92"/>
-      <text x="${x}" y="${y + 22}" text-anchor="middle" font-size="11" font-weight="800"
+      <text x="${x}" y="${textY}" text-anchor="middle" font-size="11" font-weight="800"
         fill="#0a0c14" font-family="Helvetica Neue,Arial,sans-serif">${label}</text>
       <circle cx="${x}" cy="${y}" r="5" fill="${team2Color}" stroke="#0a0c14" stroke-width="1.5"/>
     `
