@@ -1631,11 +1631,19 @@ export const useLeagueStore = defineStore('league', () => {
         rank: t.rank
       })))
       
-      // Check if this league has actual data (all zeros means season hasn't started)
-      const espnHasData = mappedTeams.some(t => 
+      // Check if this league has actual data (all zeros means season hasn't started).
+      // IMPORTANT: If ESPN marks the current season as active (isActive: true), treat it as
+      // the live season even with zero stats — the draft is done and games are pending.
+      // Don't fall back to the previous season or we'll show stale data + offseason banner.
+      const espnSeasonIsActive = league.status?.isActive === true
+      const espnHasData = espnSeasonIsActive || mappedTeams.some(t => 
         (t.wins || 0) > 0 || (t.losses || 0) > 0 || (t.points_for || 0) > 0 || (t.category_wins || 0) > 0
       )
       
+      if (espnSeasonIsActive) {
+        console.log('[ESPN] Season is active (isActive=true) — treating as live season, skipping previous-season fallback')
+      }
+
       if (!espnHasData && season > 2020) {
         console.log('[ESPN] Current season has no data, trying previous season...')
         const prevSeason = season - 1
