@@ -1547,7 +1547,11 @@ function calculateTeamDailyStats(teamKey: string): { avgDaily: number; stdDev: n
     const teamData = leagueStore.yahooTeams.find(t => t.team_key === teamKey)
     const games = (teamData?.wins || 0) + (teamData?.losses || 0)
     const avgWeekly = games > 0 ? (teamData?.points_for || 0) / games : 100
-    return { avgDaily: avgWeekly / 7, stdDev: avgWeekly / 7 * 0.2 }
+    // Use 25% weekly stdDev (realistic for fantasy sports) so the Monte Carlo
+    // doesn't collapse to 100/0 when teams have similar current scores.
+    // 0.2 * avgWeekly / 7 was way too tight (~2pts/day); 0.25 * avgWeekly gives
+    // ~3.5pts/day stdDev which properly reflects daily scoring uncertainty.
+    return { avgDaily: avgWeekly / 7, stdDev: avgWeekly * 0.25 / 7 }
   }
   
   // Calculate average weekly score
@@ -1557,10 +1561,12 @@ function calculateTeamDailyStats(teamKey: string): { avgDaily: number; stdDev: n
   const variance = weeklyScores.reduce((sum, score) => sum + Math.pow(score - avgWeekly, 2), 0) / weeklyScores.length
   const stdDevWeekly = Math.sqrt(variance)
   
-  // Convert to daily (assume 7 days per week)
+  // Convert to daily.
+  // stdDev: use weekly stdDev * sqrt(1/7) (not /7) so that with e.g. 1 day
+  // remaining the simulation has realistic variance instead of collapsing to 100/0.
   return {
     avgDaily: avgWeekly / 7,
-    stdDev: stdDevWeekly / 7
+    stdDev: stdDevWeekly * Math.sqrt(1 / 7)
   }
 }
 
