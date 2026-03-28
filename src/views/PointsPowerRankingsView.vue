@@ -844,10 +844,68 @@
       </LeagueGate>
     </template>
 
+    <!-- Week 1 Pending State -->
+    <div v-else-if="isPendingWeek1" class="pr-pending-wrap">
+      <div class="card pr-ghost-card" aria-hidden="true">
+        <div class="card-body">
+          <table class="w-full">
+            <thead>
+              <tr class="text-left text-xs text-dark-textMuted uppercase border-b border-dark-border">
+                <th class="py-3 px-4">Rank</th>
+                <th class="py-3 px-4">+/-</th>
+                <th class="py-3 px-4">Team</th>
+                <th class="py-3 px-4 text-center">Score</th>
+                <th class="py-3 px-4 text-center">Rec</th>
+                <th class="py-3 px-4 text-center hidden sm:table-cell">All-Play</th>
+                <th class="py-3 px-4 text-right hidden sm:table-cell">PPW</th>
+                <th class="py-3 px-4 text-right hidden sm:table-cell">Last 3</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="i in 10" :key="i" class="border-b border-dark-border/50">
+                <td class="py-3 px-4">
+                  <span class="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold bg-dark-border text-dark-text">{{ i }}</span>
+                </td>
+                <td class="py-3 px-4"><span class="text-dark-textMuted text-sm">—</span></td>
+                <td class="py-3 px-4">
+                  <div class="flex items-center gap-3">
+                    <div class="w-8 h-8 rounded-full bg-dark-border flex-shrink-0"></div>
+                    <div class="h-3 bg-dark-border rounded-full" :style="{ width: (60 + (i * 13) % 40) + 'px' }"></div>
+                  </div>
+                </td>
+                <td class="py-3 px-4">
+                  <div class="flex items-center gap-2 justify-center">
+                    <div class="h-2 rounded-full bg-dark-border" :style="{ width: (30 + (i * 7) % 30) + 'px' }"></div>
+                    <div class="w-8 h-3 bg-dark-border rounded-full"></div>
+                  </div>
+                </td>
+                <td class="py-3 px-4 text-center"><div class="w-10 h-3 bg-dark-border rounded-full mx-auto"></div></td>
+                <td class="py-3 px-4 text-center hidden sm:table-cell"><div class="w-10 h-3 bg-dark-border rounded-full mx-auto"></div></td>
+                <td class="py-3 px-4 text-right hidden sm:table-cell"><div class="w-8 h-3 bg-dark-border rounded-full ml-auto"></div></td>
+                <td class="py-3 px-4 text-right hidden sm:table-cell"><div class="w-8 h-3 bg-dark-border rounded-full ml-auto"></div></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+      <div class="pr-pending-overlay">
+        <div class="pr-pending-card">
+          <div class="pr-pending-icon">⚡</div>
+          <h3 class="pr-pending-title">Power Rankings are almost here</h3>
+          <p class="pr-pending-body">Rankings populate once Week 1 is in the books. Check back after your first week of matchups wraps up.</p>
+          <div class="pr-pending-badge">
+            <span class="pr-pending-dot"></span>
+            Week 1 in progress
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Fallback empty state -->
     <div v-else class="text-center py-20">
       <div class="text-6xl mb-4">⚡</div>
       <h2 class="text-2xl font-bold text-dark-text mb-2">Select a Week</h2>
-      <p class="text-dark-textMuted">Choose a week to view power rankings</p>
+      <p class="text-dark-textMuted">Choose a week above to view power rankings</p>
     </div>
 
     <!-- Power Ranking Settings Modal -->
@@ -1596,6 +1654,14 @@ const availableWeeks = computed(() => {
     weeks.push(i)
   }
   return weeks
+})
+
+// True when the new season is active (drafted) but Week 1 hasn't finished yet.
+// availableWeeks will be empty in this window.
+const isPendingWeek1 = computed(() => {
+  if (isLoading.value) return false
+  if (isSeasonComplete.value) return false
+  return availableWeeks.value.length === 0
 })
 
 const historicalWeeks = computed(() => {
@@ -3354,5 +3420,38 @@ onMounted(() => {
 }
 .gate-cta-btn:active {
   transform: translateY(0);
+}
+
+/* ── Week 1 Pending State ── */
+.pr-pending-wrap { position: relative; }
+.pr-ghost-card { filter: blur(3px); opacity: 0.35; pointer-events: none; user-select: none; }
+.pr-pending-overlay {
+  position: absolute; inset: 0;
+  display: flex; align-items: center; justify-content: center; padding: 24px;
+}
+.pr-pending-card {
+  background: linear-gradient(135deg, #0f1118, #0c0f1c);
+  border: 1px solid rgba(234,179,8,0.3);
+  border-left: 3px solid #eab308;
+  border-radius: 16px; padding: 28px 36px;
+  max-width: 440px; width: 100%; text-align: center;
+  box-shadow: 0 0 60px rgba(0,0,0,0.7), inset 0 1px 0 rgba(234,179,8,0.07);
+}
+.pr-pending-icon { font-size: 2.5rem; margin-bottom: 12px; }
+.pr-pending-title { font-size: 1.2rem; font-weight: 900; color: #fff; margin-bottom: 10px; letter-spacing: -0.01em; }
+.pr-pending-body { font-size: 0.875rem; color: #6b7280; line-height: 1.6; margin-bottom: 18px; }
+.pr-pending-badge {
+  display: inline-flex; align-items: center; gap: 7px;
+  font-size: 0.75rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase;
+  color: #eab308; background: rgba(234,179,8,0.1); border: 1px solid rgba(234,179,8,0.25);
+  padding: 5px 14px; border-radius: 20px;
+}
+.pr-pending-dot {
+  width: 7px; height: 7px; border-radius: 50%; background: #eab308;
+  animation: pr-pulse 1.6s ease-in-out infinite;
+}
+@keyframes pr-pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.4; transform: scale(0.65); }
 }
 </style>
