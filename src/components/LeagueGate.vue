@@ -11,7 +11,7 @@
         </div>
         <button class="lgw-btn" @click="goToPricing">
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>
-          GET LEAGUE PASS — $19
+          GET LEAGUE PASS — $5
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
         </button>
       </div>
@@ -27,7 +27,7 @@
         <span class="lgi-text">The rest of your league is hiding behind League Pass.</span>
         <button class="lgi-btn" @click="goToPricing">
           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>
-          GET LEAGUE PASS — $19
+          GET LEAGUE PASS — $5
           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
         </button>
       </div>
@@ -43,7 +43,17 @@ import { supabase } from '@/lib/supabase'
 
 const props = withDefaults(defineProps<{
   wrap?: boolean
-  locked?: boolean   // optional override; if false, always unlocked. If omitted, checks Supabase.
+  /**
+   * Optional locked override from the parent:
+   *   - Pass :locked="false"  → always unlocked (parent already checked access)
+   *   - Pass :locked="true"   → always locked   (no need for a second DB query)
+   *   - Omit entirely         → this component checks Supabase itself
+   *
+   * Most views use useFeatureAccess and pass :locked="!hasLeagueAccess", which
+   * means this component's internal Supabase check only fires when the parent
+   * hasn't already resolved the state — preventing redundant queries.
+   */
+  locked?: boolean
   label?: string
 }>(), { wrap: false })
 
@@ -51,54 +61,36 @@ const router = useRouter()
 const leagueStore = useLeagueStore()
 
 // ── Internal state ──────────────────────────────────────────────────────────
-const supabaseLocked = ref(true) // assume locked until we know otherwise
+// Only used when props.locked is undefined (parent didn't pass an override).
+const supabaseLocked = ref(true) // assume locked until proven otherwise (fail-closed)
 const checking = ref(false)
 
-// If caller explicitly passes :locked="false", always unlock.
-// If they pass :locked="true" (or omit), we check Supabase.
+/**
+ * Effective lock state:
+ *   1. If parent explicitly passes :locked="false" → never locked
+ *   2. If parent explicitly passes :locked="true"  → always locked (skip DB check)
+ *   3. If parent omits the prop                    → use our internal Supabase result
+ */
 const effectiveLocked = computed(() => {
-  if (props.locked === false) return false
-  return supabaseLocked.value
+  if (props.locked === false) return false   // parent says unlocked
+  if (props.locked === true)  return true    // parent says locked, trust it
+  return supabaseLocked.value                // parent didn't say — use our DB check
 })
-
-// ── Season key helper ────────────────────────────────────────────────────────
-function getCurrentSeasonKey(sport: string): string {
-  const now = new Date()
-  const year = now.getFullYear()
-  const month = now.getMonth() + 1
-
-  switch (sport) {
-    case 'football':
-      return month >= 9 ? `nfl_${year}` : `nfl_${year - 1}`
-    case 'basketball':
-      return month >= 10
-        ? `nba_${year}-${String(year + 1).slice(2)}`
-        : `nba_${year - 1}-${String(year).slice(2)}`
-    case 'hockey':
-      return month >= 10
-        ? `nhl_${year}-${String(year + 1).slice(2)}`
-        : `nhl_${year - 1}-${String(year).slice(2)}`
-    case 'baseball':
-      return `mlb_${year}`
-    default:
-      return `season_${year}`
-  }
-}
 
 // ── Check Supabase for active league pass ───────────────────────────────────
 // Uses a module-level cache to avoid hitting Supabase on every render.
+// Cache key uses league_id + platform (NOT season_key — the Stripe webhook
+// never writes season_key; it only writes active + expires_at).
 const _cache = new Map<string, { locked: boolean; ts: number }>()
 const CACHE_TTL = 5 * 60 * 1000 // 5 minutes
 
-async function checkLeaguePass(leagueId: string, sport: string) {
-  if (!leagueId || !sport) {
+async function checkLeaguePass(leagueId: string, platform: string) {
+  if (!leagueId || !platform) {
     supabaseLocked.value = true
     return
   }
 
-  const seasonKey = getCurrentSeasonKey(sport)
-  const cacheKey = `${leagueId}::${seasonKey}`
-
+  const cacheKey = `${leagueId}::${platform}`
   const cached = _cache.get(cacheKey)
   if (cached && Date.now() - cached.ts < CACHE_TTL) {
     supabaseLocked.value = cached.locked
@@ -107,12 +99,21 @@ async function checkLeaguePass(leagueId: string, sport: string) {
 
   checking.value = true
   try {
+    const now = new Date().toISOString()
+
+    // IMPORTANT: filter by platform AND expires_at — NOT season_key.
+    // The Stripe webhook (stripe-webhook edge function) writes:
+    //   league_id, platform, active=true, expires_at
+    // It does NOT write season_key, so filtering on that column always returns
+    // null and makes this gate permanently locked even for paying leagues.
     const { data, error } = await supabase
       .from('league_passes')
       .select('id')
       .eq('league_id', leagueId)
-      .eq('season_key', seasonKey)
+      .eq('platform', platform)
       .eq('active', true)
+      .gt('expires_at', now)
+      .limit(1)
       .maybeSingle()
 
     if (error) throw error
@@ -121,22 +122,26 @@ async function checkLeaguePass(leagueId: string, sport: string) {
     supabaseLocked.value = locked
     _cache.set(cacheKey, { locked, ts: Date.now() })
   } catch (err) {
-    console.warn('LeagueGate: could not check league pass', err)
-    supabaseLocked.value = true // fail closed
+    console.warn('[LeagueGate] Could not check league pass — defaulting to locked', err)
+    supabaseLocked.value = true // fail-closed
   } finally {
     checking.value = false
   }
 }
 
-// ── Watch for league changes ─────────────────────────────────────────────────
+// ── Watch for league/platform changes ───────────────────────────────────────
+// Only run the internal DB check when the parent hasn't provided a locked prop.
+// If the parent is already passing :locked from useFeatureAccess, skip the
+// redundant query entirely.
 function runCheck() {
+  if (props.locked !== undefined) return // parent owns the state, don't double-query
   const leagueId = leagueStore.activeLeagueId
-  const sport = leagueStore.activeSport || ''
-  if (leagueId) checkLeaguePass(leagueId, sport)
+  const platform = leagueStore.activePlatform || ''
+  if (leagueId) checkLeaguePass(leagueId, platform)
 }
 
 onMounted(runCheck)
-watch(() => [leagueStore.activeLeagueId, leagueStore.activeSport], runCheck)
+watch(() => [leagueStore.activeLeagueId, leagueStore.activePlatform], runCheck)
 
 // ── Navigation ───────────────────────────────────────────────────────────────
 const pricingUrl = computed(() => {
@@ -151,6 +156,18 @@ const pricingUrl = computed(() => {
 function goToPricing() {
   router.push(pricingUrl.value)
 }
+
+// ── Cache invalidation (call after successful purchase) ──────────────────────
+function invalidateCache(leagueId?: string) {
+  if (leagueId) {
+    const platform = leagueStore.activePlatform || ''
+    _cache.delete(`${leagueId}::${platform}`)
+  } else {
+    _cache.clear()
+  }
+}
+
+defineExpose({ invalidateCache })
 </script>
 
 <style scoped>
