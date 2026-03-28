@@ -1561,12 +1561,16 @@ function calculateTeamDailyStats(teamKey: string): { avgDaily: number; stdDev: n
   const variance = weeklyScores.reduce((sum, score) => sum + Math.pow(score - avgWeekly, 2), 0) / weeklyScores.length
   const stdDevWeekly = Math.sqrt(variance)
   
-  // Convert to daily.
-  // stdDev: use weekly stdDev * sqrt(1/7) (not /7) so that with e.g. 1 day
-  // remaining the simulation has realistic variance instead of collapsing to 100/0.
+  // Minimum stdDev: if we have only 1 week of data (e.g. current week 1 score),
+  // stdDevWeekly = 0 which causes every simulation to pick the same winner → 100/0.
+  // Use at least 20% of the average as a floor (typical fantasy scoring CoV).
+  const stdDevWeeklyFloored = Math.max(stdDevWeekly, avgWeekly * 0.20)
+  
+  // Convert to daily using sqrt scaling (not /7) so variance correctly
+  // represents single-day uncertainty.
   return {
     avgDaily: avgWeekly / 7,
-    stdDev: stdDevWeekly * Math.sqrt(1 / 7)
+    stdDev: stdDevWeeklyFloored * Math.sqrt(1 / 7)
   }
 }
 
