@@ -2606,65 +2606,120 @@ async function generateMatchupAnalysisImage(matchup: any, html2canvas: any) {
     ? [...cachedChartLabels.value]
     : ['Now']
   
+  // ── Chart SVG — styled to match the landing page card ──────────────────────
   const chartWidth = 640
-  const chartHeight = 140
-  const padding = { top: 30, right: 20, bottom: 30, left: 45 }
+  const chartHeight = 260
+  const padding = { top: 40, right: 24, bottom: 50, left: 52 }
   const plotWidth = chartWidth - padding.left - padding.right
   const plotHeight = chartHeight - padding.top - padding.bottom
-  
+
   const numPoints = team1ChartData.length
   const getX = (i: number) => padding.left + (numPoints > 1 ? (i / (numPoints - 1)) * plotWidth : plotWidth / 2)
   const getY = (val: number) => padding.top + plotHeight - (val / 100) * plotHeight
-  
-  // Build path for team 1
-  let team1Path = ''
-  let team1Points = ''
+  const bottomY = padding.top + plotHeight
+
+  // Build SVG paths + shaded fill areas
+  let t1Path = '', t2Path = ''
+  const t1xs: number[] = [], t1ys: number[] = []
+  const t2xs: number[] = [], t2ys: number[] = []
+
   team1ChartData.forEach((val, i) => {
-    const x = getX(i)
-    const y = getY(val)
-    if (team1Path === '') {
-      team1Path = `M ${x} ${y}`
-    } else {
-      team1Path += ` L ${x} ${y}`
-    }
-    team1Points += `<circle cx="${x}" cy="${y}" r="6" fill="${team1Color}"/>`
+    const x = getX(i); const y = getY(val)
+    t1xs.push(x); t1ys.push(y)
+    t1Path += (i === 0 ? `M ${x} ${y}` : ` L ${x} ${y}`)
   })
-  
-  // Build path for team 2
-  let team2Path = ''
-  let team2Points = ''
   team2ChartData.forEach((val, i) => {
-    const x = getX(i)
-    const y = getY(val)
-    if (team2Path === '') {
-      team2Path = `M ${x} ${y}`
-    } else {
-      team2Path += ` L ${x} ${y}`
-    }
-    team2Points += `<circle cx="${x}" cy="${y}" r="6" fill="${team2Color}"/>`
+    const x = getX(i); const y = getY(val)
+    t2xs.push(x); t2ys.push(y)
+    t2Path += (i === 0 ? `M ${x} ${y}` : ` L ${x} ${y}`)
   })
-  
-  const xLabels = chartLabels.map((label, i) => {
-    const x = getX(i)
-    return `<text x="${x}" y="${chartHeight - 6}" text-anchor="middle" font-size="11" font-weight="600" fill="#9CA3AF">${label}</text>`
-  }).join('')
-  
-  const yLabels = [0, 25, 50, 75, 100].map(val => {
+
+  // Shaded fill: close path along bottom edge
+  const t1FillPath = t1Path + ` L ${t1xs[t1xs.length-1]} ${bottomY} L ${t1xs[0]} ${bottomY} Z`
+  const t2FillPath = t2Path + ` L ${t2xs[t2xs.length-1]} ${bottomY} L ${t2xs[0]} ${bottomY} Z`
+
+  // Grid lines at 0%, 25%, 50%, 75%, 100%
+  const gridLines = [0, 25, 50, 75, 100].map(val => {
     const y = getY(val)
+    const isMid = val === 50
     return `
-      <text x="${padding.left - 8}" y="${y + 4}" text-anchor="end" font-size="10" fill="#6B7280">${val}%</text>
-      <line x1="${padding.left}" y1="${y}" x2="${chartWidth - padding.right}" y2="${y}" stroke="#374151" stroke-dasharray="3" />
+      <line x1="${padding.left}" y1="${y}" x2="${chartWidth - padding.right}" y2="${y}"
+        stroke="${isMid ? '#4b5563' : '#262a3a'}" stroke-width="${isMid ? 1.5 : 1}"
+        stroke-dasharray="${isMid ? '4 3' : '2 4'}"/>
+      <text x="${padding.left - 8}" y="${y + 4}" text-anchor="end" font-size="11"
+        font-weight="${isMid ? '700' : '500'}" fill="${isMid ? '#9ca3af' : '#4b5563'}"
+        font-family="Helvetica Neue,Arial,sans-serif">${val}%</text>
     `
   }).join('')
-  
+
+  // X-axis labels
+  const xLabels = chartLabels.map((label, i) => {
+    const x = getX(i)
+    return `<text x="${x}" y="${chartHeight - 10}" text-anchor="middle" font-size="12"
+      font-weight="700" fill="#9ca3af" font-family="Helvetica Neue,Arial,sans-serif">${label}</text>`
+  }).join('')
+
+  // Data point labels — pill background + value, stagger above/below to avoid overlap
+  let dataLabels = ''
+  team1ChartData.forEach((val, i) => {
+    const x = t1xs[i]; const y = t1ys[i]
+    const label = val.toFixed(1)
+    const lw = label.length * 7 + 10
+    // Team 1 labels above the point
+    dataLabels += `
+      <rect x="${x - lw/2}" y="${y - 26}" width="${lw}" height="18" rx="4"
+        fill="${team1Color}" opacity="0.92"/>
+      <text x="${x}" y="${y - 13}" text-anchor="middle" font-size="11" font-weight="800"
+        fill="#0a0c14" font-family="Helvetica Neue,Arial,sans-serif">${label}</text>
+      <circle cx="${x}" cy="${y}" r="5" fill="${team1Color}" stroke="#0a0c14" stroke-width="1.5"/>
+    `
+  })
+  team2ChartData.forEach((val, i) => {
+    const x = t2xs[i]; const y = t2ys[i]
+    const label = val.toFixed(1)
+    const lw = label.length * 7 + 10
+    // Team 2 labels below the point
+    dataLabels += `
+      <rect x="${x - lw/2}" y="${y + 9}" width="${lw}" height="18" rx="4"
+        fill="${team2Color}" opacity="0.92"/>
+      <text x="${x}" y="${y + 22}" text-anchor="middle" font-size="11" font-weight="800"
+        fill="#0a0c14" font-family="Helvetica Neue,Arial,sans-serif">${label}</text>
+      <circle cx="${x}" cy="${y}" r="5" fill="${team2Color}" stroke="#0a0c14" stroke-width="1.5"/>
+    `
+  })
+
+  // Legend at bottom
+  const legendY = chartHeight - 28
+  const legendCenterX = chartWidth / 2
+  const legend = `
+    <circle cx="${legendCenterX - 90}" cy="${legendY}" r="5" fill="${team1Color}"/>
+    <text x="${legendCenterX - 80}" y="${legendY + 4}" font-size="11" font-weight="700"
+      fill="${team1Color}" font-family="Helvetica Neue,Arial,sans-serif">${matchup.team1.name}</text>
+    <circle cx="${legendCenterX + 30}" cy="${legendY}" r="5" fill="${team2Color}"/>
+    <text x="${legendCenterX + 40}" y="${legendY + 4}" font-size="11" font-weight="700"
+      fill="${team2Color}" font-family="Helvetica Neue,Arial,sans-serif">${matchup.team2.name}</text>
+  `
+
   const chartSvg = `
     <svg width="${chartWidth}" height="${chartHeight}" xmlns="http://www.w3.org/2000/svg">
-      ${yLabels}
-      <path d="${team1Path}" fill="none" stroke="${team1Color}" stroke-width="3" />
-      <path d="${team2Path}" fill="none" stroke="${team2Color}" stroke-width="3" />
-      ${team1Points}
-      ${team2Points}
+      <defs>
+        <linearGradient id="g1" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stop-color="${team1Color}" stop-opacity="0.35"/>
+          <stop offset="100%" stop-color="${team1Color}" stop-opacity="0.03"/>
+        </linearGradient>
+        <linearGradient id="g2" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stop-color="${team2Color}" stop-opacity="0.35"/>
+          <stop offset="100%" stop-color="${team2Color}" stop-opacity="0.03"/>
+        </linearGradient>
+      </defs>
+      ${gridLines}
+      <path d="${t1FillPath}" fill="url(#g1)"/>
+      <path d="${t2FillPath}" fill="url(#g2)"/>
+      <path d="${t1Path}" fill="none" stroke="${team1Color}" stroke-width="2.5" stroke-linejoin="round"/>
+      <path d="${t2Path}" fill="none" stroke="${team2Color}" stroke-width="2.5" stroke-linejoin="round"/>
       ${xLabels}
+      ${dataLabels}
+      ${legend}
     </svg>
   `
   
@@ -2723,8 +2778,14 @@ async function generateMatchupAnalysisImage(matchup: any, html2canvas: any) {
             </div>
           </div>
           
-          <!-- Win Probability Chart -->
-          <div style="background: rgba(13, 15, 24, 0.5); border-radius: 8px; padding: 8px;">
+          <!-- Win Probability Trend Chart -->
+          <div style="background: rgba(10, 12, 20, 0.6); border-radius: 10px; padding: 12px 8px 4px; margin-top: 4px;">
+            <div style="font-size: 12px; font-weight: 800; color: #6b7280; text-transform: uppercase; letter-spacing: 2px; margin-bottom: 4px; padding-left: 8px;">
+              📈 WIN PROBABILITY TREND
+            </div>
+            <div style="font-size: 10px; color: #4b5563; padding-left: 8px; margin-bottom: 8px;">
+              Win probability after each day based on real cumulative stats. 10,000 Monte Carlo simulations per day.
+            </div>
             ${chartSvg}
           </div>
         </div>
