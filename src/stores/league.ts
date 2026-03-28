@@ -1633,23 +1633,35 @@ export const useLeagueStore = defineStore('league', () => {
       
       // Check if this league has actual data (all zeros means season hasn't started).
       //
-      // isActive can be unreliable for early-season ESPN leagues (it may be false even
-      // after the draft and first scoring period). Use latestScoringPeriod and
-      // currentMatchupPeriod as more reliable signals that the current season is live.
+      // STRATEGY: Compare the season year we're loading to the current calendar year.
+      // If they match (or the season is newer), this IS the live season — the draft has
+      // happened and games are either pending or in progress. Never fall back to last year
+      // just because teams show zero wins/losses at the very start of the season.
       //
-      // latestScoringPeriod >= 1 means ESPN has started scoring this season.
-      // currentMatchupPeriod >= 1 means at least one matchup week has begun.
-      // Either signal means we're in the live season — don't fall back to last year.
+      // For football: currentYear is the fall semester year (2025 season = loaded as 2025).
+      // For baseball:  currentYear === season year (2026 season = 2026).
+      // We also check ESPN's status fields as secondary signals.
+      const now = new Date()
+      const currentCalendarYear = now.getFullYear()
+      // For sports where the season spans two calendar years (football, basketball, hockey),
+      // the ESPN season ID is the year the season *started*. In Sept 2025 the NFL season is
+      // 2025, in Feb 2026 we'd still be in the 2025 NFL season. So season >= currentYear-1
+      // is a safe "this is a current or recent season" guard.
+      const isCurrentOrRecentSeason = season >= currentCalendarYear - 1
+      
       const latestPeriod = league.status?.latestScoringPeriod || 0
       const currentPeriod = league.status?.currentMatchupPeriod || league.currentMatchupPeriod || 0
       const scoringPeriod = (league as any).scoringPeriodId || 0
-      const espnSeasonIsLive = latestPeriod >= 1 || currentPeriod >= 1 || scoringPeriod >= 1
+      const espnApiSaysLive = latestPeriod >= 1 || currentPeriod >= 1 || scoringPeriod >= 1
+
+      // Treat as live if the season year matches (primary) OR ESPN signals activity (secondary)
+      const espnSeasonIsLive = isCurrentOrRecentSeason || espnApiSaysLive
       const espnHasData = espnSeasonIsLive || mappedTeams.some(t => 
         (t.wins || 0) > 0 || (t.losses || 0) > 0 || (t.points_for || 0) > 0 || (t.category_wins || 0) > 0
       )
       
       if (espnSeasonIsLive) {
-        console.log('[ESPN] Season is live (latestScoringPeriod:', latestPeriod, 'currentMatchupPeriod:', currentPeriod, ') — skipping previous-season fallback')
+        console.log('[ESPN] Season', season, 'is current/live (currentYear:', currentCalendarYear, ', latestPeriod:', latestPeriod, ') — skipping previous-season fallback')
       }
 
       if (!espnHasData && season > 2020) {
