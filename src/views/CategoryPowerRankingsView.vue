@@ -63,7 +63,7 @@
       </div>
     </div>
 
-    <template v-else-if="powerRankings.length > 0">
+    <template v-else-if="powerRankings.length > 0 && !isPendingWeek1">
       <!-- Power Rankings Table -->
       <div class="card">
         <div class="card-header">
@@ -2936,7 +2936,7 @@ watch(() => leagueStore.currentLeague?.league_id, async (newKey, oldKey) => {
     
     if (defaultWeek >= 1) {
       selectedWeek.value = defaultWeek.toString()
-      loadPowerRankings()
+      if (!isPendingWeek1.value) loadPowerRankings()
     }
   }
 })
@@ -2967,7 +2967,7 @@ watch(() => leagueStore.yahooTeams, async () => {
     
     if (defaultWeek >= 1) {
       selectedWeek.value = defaultWeek.toString()
-      loadPowerRankings()
+      if (!isPendingWeek1.value) loadPowerRankings()
     }
   }
 }, { immediate: true })

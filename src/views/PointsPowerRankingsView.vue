@@ -54,7 +54,7 @@
       </div>
     </div>
 
-    <template v-else-if="powerRankings.length > 0">
+    <template v-else-if="powerRankings.length > 0 && !isPendingWeek1">
       <!-- Offseason Notice Banner - Only show when season is complete -->
       <div v-if="isSeasonComplete" class="bg-slate-500/10 border border-slate-500/30 rounded-xl p-4 flex items-start gap-3">
         <div class="text-slate-400 text-xl flex-shrink-0">📅</div>
@@ -3272,7 +3272,7 @@ watch(() => leagueStore.yahooTeams, () => {
       const completedWeek = isSeasonComplete.value ? currentWeek.value : Math.max(1, currentWeek.value - 1)
       if (completedWeek >= 1) {
         selectedWeek.value = completedWeek.toString()
-        loadPowerRankings()
+        if (!isPendingWeek1.value) loadPowerRankings()
       }
     }
   }
@@ -3290,7 +3290,7 @@ watch(() => leagueStore.currentLeague?.league_id, (newKey, oldKey) => {
     console.log(`[PointsPowerRankings] After league change: isComplete=${isSeasonComplete.value}, currentWeek=${currentWeek.value}, completedWeek=${completedWeek}`)
     if (completedWeek >= 1) {
       selectedWeek.value = completedWeek.toString()
-      loadPowerRankings()
+      if (!isPendingWeek1.value) loadPowerRankings()
     }
   }
 })
@@ -3309,7 +3309,7 @@ onMounted(() => {
     // Default to last completed week (currentWeek is the in-progress week)
     const completedWeek = isSeasonComplete.value ? currentWeek.value : Math.max(1, currentWeek.value - 1)
     selectedWeek.value = completedWeek.toString()
-    loadPowerRankings()
+    if (!isPendingWeek1.value) loadPowerRankings()
   }
   
   // Also auto-load player data for position strength
