@@ -1208,81 +1208,82 @@
       <div v-if="wpiStatus" class="wpi-status">{{ wpiStatus }}</div>
     </div>
 
-    <!-- ── GRAPHIC 27: Batters ── -->
-    <div class="post-wrap wp-post-wrap">
-      <div class="post-label">27 · Best Batters</div>
-      <div class="sq sq-wp-bg">
+    <!-- ── GRAPHIC 27: Best Starts (combined batters + pitchers) ── -->
+    <div class="post-wrap wp-post-wrap" style="grid-column:1/-1">
+      <div class="post-label">27 · Best Starts — top performers by win probability impact</div>
+      <div class="sq sq-wp-bg" style="max-width:540px">
         <div class="sq-grain"></div>
         <svg viewBox="0 0 540 600" xmlns="http://www.w3.org/2000/svg"
           style="position:absolute;inset:0;width:100%;height:100%;z-index:2">
           <defs>
-            <linearGradient id="wpi-gold2" x1="0" y1="0" x2="1" y2="0">
+            <linearGradient id="wpi-gold3" x1="0" y1="0" x2="1" y2="0">
               <stop offset="0%" stop-color="#eab308" stop-opacity="0.95"/>
               <stop offset="100%" stop-color="#eab308" stop-opacity="0.2"/>
             </linearGradient>
-            <radialGradient id="wpi-gold2-glow" cx="15%" cy="50%" r="60%">
+            <radialGradient id="wpi-gold3-glow" cx="15%" cy="50%" r="60%">
               <stop offset="0%" stop-color="#eab308" stop-opacity="0.08"/>
               <stop offset="100%" stop-color="#eab308" stop-opacity="0"/>
             </radialGradient>
           </defs>
           <!-- bg -->
           <rect x="0" y="0" width="540" height="600" fill="#07080e"/>
-          <rect x="0" y="0" width="540" height="600" fill="url(#wpi-gold2-glow)"/>
+          <rect x="0" y="0" width="540" height="600" fill="url(#wpi-gold3-glow)"/>
           <!-- Top accent bar -->
-          <rect x="0" y="0" width="540" height="5" fill="url(#wpi-gold2)"/>
+          <rect x="0" y="0" width="540" height="5" fill="url(#wpi-gold3)"/>
 
           <!-- ── HEADER ── -->
-          <!-- Logo top-right, large -->
           <image href="/UFD_V8.png" x="370" y="8" width="128" height="68"
             preserveAspectRatio="xMidYMid meet"/>
-          <!-- Headline left -->
           <text x="20" y="52" font-size="34" font-weight="900" letter-spacing="-0.01em"
-            fill="#ffffff" font-family="Helvetica Neue,Helvetica,Arial,sans-serif">Best Batters</text>
-          <!-- Date · Week — bigger, accent color -->
+            fill="#ffffff" font-family="Helvetica Neue,Helvetica,Arial,sans-serif">Best Starts</text>
           <text x="20" y="80" font-size="15" font-weight="700" letter-spacing="0.06em"
             fill="#eab308" font-family="Helvetica Neue,Helvetica,Arial,sans-serif">
             {{ wpiDateDisplay }} · WK {{ wpiWeekLabel }}
           </text>
           <line x1="0" y1="94" x2="540" y2="94" stroke="#1e2130" stroke-width="1"/>
 
-          <!-- ── PLAYER ROWS (5 × 100px each, start y=94) ── -->
-          <g v-for="(p, i) in wpiTopBatters" :key="'b'+i">
-            <!-- Row bg -->
+          <!-- ── PLAYER ROWS ── -->
+          <g v-for="(p, i) in wpiTopPlayers" :key="'bp'+i">
+            <!-- Row bg — gold tint for batters, cyan tint for pitchers -->
             <rect x="0" :y="94+i*101" width="540" :height="100"
-              :fill="i===0?'rgba(234,179,8,0.09)':'rgba(255,255,255,0.012)'"/>
+              :fill="i===0
+                ? (isPitcher(p) ? 'rgba(6,182,212,0.09)' : 'rgba(234,179,8,0.09)')
+                : 'rgba(255,255,255,0.012)'"/>
             <line x1="0" :y1="94+(i+1)*101" x2="540" :y2="94+(i+1)*101"
               stroke="#1e2130" stroke-width="1"/>
 
-            <!-- Headshot — flush left edge, radius 42 -->
-            <circle cx="58" :cy="94+i*101+50" r="36"
+            <!-- Headshot -->
+            <circle :cx="58" :cy="94+i*101+50" r="36"
               fill="rgba(0,0,0,0.4)"
-              :stroke="i===0?'rgba(234,179,8,0.5)':'rgba(255,255,255,0.06)'" stroke-width="2"/>
+              :stroke="i===0
+                ? (isPitcher(p) ? 'rgba(6,182,212,0.5)' : 'rgba(234,179,8,0.5)')
+                : 'rgba(255,255,255,0.06)'"
+              stroke-width="2"/>
             <image :href="p.headshot" x="22" :y="94+i*101+14"
               width="72" height="72" preserveAspectRatio="xMidYMid slice"
               style="clip-path:circle(36px at 36px 36px)"/>
 
             <!-- Rank -->
             <text x="106" :y="94+i*101+28" font-size="12" font-weight="900"
-              :fill="i===0?'#eab308':'#4b5563'"
+              :fill="i===0 ? (isPitcher(p) ? '#06b6d4' : '#eab308') : '#4b5563'"
               font-family="Helvetica Neue,Helvetica,Arial,sans-serif">#{{ i+1 }}</text>
 
-            <!-- Name + Team · Pos on same line -->
+            <!-- Name + Team · Pos -->
             <text x="106" :y="94+i*101+50" font-size="17" font-weight="800" fill="#ffffff"
               font-family="Helvetica Neue,Helvetica,Arial,sans-serif">{{ p.name }}</text>
             <text :x="106 + Math.min(p.name.length * 10, 200)" :y="94+i*101+50"
               font-size="12" font-weight="600" fill="#6b7280"
               font-family="Helvetica Neue,Helvetica,Arial,sans-serif">  {{ p.team }} · {{ p.position }}</text>
 
-            <!-- Stat line — white, bigger -->
+            <!-- Stat line -->
             <text x="106" :y="94+i*101+73" font-size="14" font-weight="600" fill="#e5e7eb"
               font-family="Helvetica Neue,Helvetica,Arial,sans-serif">{{ p.statLine }}</text>
 
-            <!-- WP % — hero number right side -->
+            <!-- WP % hero number -->
             <text x="520" :y="94+i*101+48" text-anchor="end"
               :font-size="i===0?'36':'30'" font-weight="900"
-              :fill="i===0?'#eab308':'#6b7280'"
+              :fill="i===0 ? (isPitcher(p) ? '#06b6d4' : '#eab308') : '#6b7280'"
               font-family="Helvetica Neue,Helvetica,Arial,sans-serif">+{{ p.wpImpact.toFixed(1) }}%</text>
-            <!-- "win probability change" label -->
             <text x="520" :y="94+i*101+68" text-anchor="end" font-size="11"
               :fill="i===0?'#ffffff':'#4b5563'"
               font-family="Helvetica Neue,Helvetica,Arial,sans-serif">win prob change</text>
@@ -1291,114 +1292,14 @@
             <rect x="106" :y="94+i*101+84" width="200" height="3" rx="1"
               fill="rgba(255,255,255,0.05)"/>
             <rect x="106" :y="94+i*101+84"
-              :width="wpiTopBatters.length && wpiTopBatters[0].wpImpact>0 ? Math.min(200,(p.wpImpact/wpiTopBatters[0].wpImpact)*200) : 0"
+              :width="wpiTopPlayers.length && wpiTopPlayers[0].wpImpact>0
+                ? Math.min(200,(p.wpImpact/wpiTopPlayers[0].wpImpact)*200) : 0"
               height="3" rx="1"
-              :fill="i===0?'#eab308':'rgba(107,114,128,0.5)'"/>
+              :fill="i===0 ? (isPitcher(p) ? '#06b6d4' : '#eab308') : 'rgba(107,114,128,0.5)'"/>
           </g>
 
           <!-- Empty state -->
-          <text v-if="!wpiTopBatters.length" x="270" y="340" text-anchor="middle"
-            font-size="15" fill="#374151"
-            font-family="Helvetica Neue,Helvetica,Arial,sans-serif">Load yesterday's data above</text>
-
-          <!-- Watermark -->
-          <line x1="0" y1="593" x2="540" y2="593" stroke="#1e2130" stroke-width="1"/>
-          <text x="270" y="596" text-anchor="middle" font-size="9" fill="#1a1f2e"
-            font-family="Helvetica Neue,Helvetica,Arial,sans-serif">ultimatefantasydashboard.com</text>
-        </svg>
-      </div>
-    </div>
-
-    <!-- ── GRAPHIC 28: Pitchers ── -->
-    <div class="post-wrap wp-post-wrap">
-      <div class="post-label">28 · Best Pitchers</div>
-      <div class="sq sq-wp-bg">
-        <div class="sq-grain"></div>
-        <svg viewBox="0 0 540 600" xmlns="http://www.w3.org/2000/svg"
-          style="position:absolute;inset:0;width:100%;height:100%;z-index:2">
-          <defs>
-            <linearGradient id="wpi-cyan2" x1="0" y1="0" x2="1" y2="0">
-              <stop offset="0%" stop-color="#06b6d4" stop-opacity="0.95"/>
-              <stop offset="100%" stop-color="#06b6d4" stop-opacity="0.2"/>
-            </linearGradient>
-            <radialGradient id="wpi-cyan2-glow" cx="15%" cy="50%" r="60%">
-              <stop offset="0%" stop-color="#06b6d4" stop-opacity="0.08"/>
-              <stop offset="100%" stop-color="#06b6d4" stop-opacity="0"/>
-            </radialGradient>
-          </defs>
-          <!-- bg -->
-          <rect x="0" y="0" width="540" height="600" fill="#07080e"/>
-          <rect x="0" y="0" width="540" height="600" fill="url(#wpi-cyan2-glow)"/>
-          <!-- Top accent bar -->
-          <rect x="0" y="0" width="540" height="5" fill="url(#wpi-cyan2)"/>
-
-          <!-- ── HEADER ── -->
-          <!-- Logo top-right, large -->
-          <image href="/UFD_V8.png" x="370" y="8" width="128" height="68"
-            preserveAspectRatio="xMidYMid meet"/>
-          <!-- Headline left -->
-          <text x="20" y="52" font-size="34" font-weight="900" letter-spacing="-0.01em"
-            fill="#ffffff" font-family="Helvetica Neue,Helvetica,Arial,sans-serif">Best Pitchers</text>
-          <!-- Date · Week — bigger, accent color -->
-          <text x="20" y="80" font-size="15" font-weight="700" letter-spacing="0.06em"
-            fill="#06b6d4" font-family="Helvetica Neue,Helvetica,Arial,sans-serif">
-            {{ wpiDateDisplay }} · WK {{ wpiWeekLabel }}
-          </text>
-          <line x1="0" y1="94" x2="540" y2="94" stroke="#1e2130" stroke-width="1"/>
-
-          <!-- ── PLAYER ROWS (5 × 100px each, start y=94) ── -->
-          <g v-for="(p, i) in wpiTopPitchers" :key="'pt'+i">
-            <!-- Row bg -->
-            <rect x="0" :y="94+i*101" width="540" :height="100"
-              :fill="i===0?'rgba(6,182,212,0.09)':'rgba(255,255,255,0.012)'"/>
-            <line x1="0" :y1="94+(i+1)*101" x2="540" :y2="94+(i+1)*101"
-              stroke="#1e2130" stroke-width="1"/>
-
-            <!-- Headshot — flush left edge, radius 42 -->
-            <circle cx="58" :cy="94+i*101+50" r="36"
-              fill="rgba(0,0,0,0.4)"
-              :stroke="i===0?'rgba(6,182,212,0.5)':'rgba(255,255,255,0.06)'" stroke-width="2"/>
-            <image :href="p.headshot" x="22" :y="94+i*101+14"
-              width="72" height="72" preserveAspectRatio="xMidYMid slice"
-              style="clip-path:circle(36px at 36px 36px)"/>
-
-            <!-- Rank -->
-            <text x="106" :y="94+i*101+28" font-size="12" font-weight="900"
-              :fill="i===0?'#06b6d4':'#4b5563'"
-              font-family="Helvetica Neue,Helvetica,Arial,sans-serif">#{{ i+1 }}</text>
-
-            <!-- Name + Team · Pos on same line -->
-            <text x="106" :y="94+i*101+50" font-size="17" font-weight="800" fill="#ffffff"
-              font-family="Helvetica Neue,Helvetica,Arial,sans-serif">{{ p.name }}</text>
-            <text :x="106 + Math.min(p.name.length * 10, 200)" :y="94+i*101+50"
-              font-size="12" font-weight="600" fill="#6b7280"
-              font-family="Helvetica Neue,Helvetica,Arial,sans-serif">  {{ p.team }} · {{ p.position }}</text>
-
-            <!-- Stat line — white, bigger -->
-            <text x="106" :y="94+i*101+73" font-size="14" font-weight="600" fill="#e5e7eb"
-              font-family="Helvetica Neue,Helvetica,Arial,sans-serif">{{ p.statLine }}</text>
-
-            <!-- WP % — hero number right side -->
-            <text x="520" :y="94+i*101+48" text-anchor="end"
-              :font-size="i===0?'36':'30'" font-weight="900"
-              :fill="i===0?'#06b6d4':'#6b7280'"
-              font-family="Helvetica Neue,Helvetica,Arial,sans-serif">+{{ p.wpImpact.toFixed(1) }}%</text>
-            <!-- "win probability change" label -->
-            <text x="520" :y="94+i*101+68" text-anchor="end" font-size="11"
-              :fill="i===0?'#ffffff':'#4b5563'"
-              font-family="Helvetica Neue,Helvetica,Arial,sans-serif">win prob change</text>
-
-            <!-- Thin bar -->
-            <rect x="106" :y="94+i*101+84" width="200" height="3" rx="1"
-              fill="rgba(255,255,255,0.05)"/>
-            <rect x="106" :y="94+i*101+84"
-              :width="wpiTopPitchers.length && wpiTopPitchers[0].wpImpact>0 ? Math.min(200,(p.wpImpact/wpiTopPitchers[0].wpImpact)*200) : 0"
-              height="3" rx="1"
-              :fill="i===0?'#06b6d4':'rgba(107,114,128,0.5)'"/>
-          </g>
-
-          <!-- Empty state -->
-          <text v-if="!wpiTopPitchers.length" x="270" y="340" text-anchor="middle"
+          <text v-if="!wpiTopPlayers.length" x="270" y="340" text-anchor="middle"
             font-size="15" fill="#374151"
             font-family="Helvetica Neue,Helvetica,Arial,sans-serif">Load yesterday's data above</text>
 
@@ -1465,6 +1366,7 @@ interface WpiPlayer {
 
 const wpiTopBatters = ref<WpiPlayer[]>([])
 const wpiTopPitchers = ref<WpiPlayer[]>([])
+const wpiTopPlayers = ref<WpiPlayer[]>([])  // combined, sorted by wpImpact
 
 const PITCHER_POS = new Set(['SP','RP','P','LHP','RHP'])
 function isPitcherPos(pos: string) { return PITCHER_POS.has(pos?.toUpperCase()) }
@@ -1571,6 +1473,7 @@ async function loadWpiData() {
   wpiStatus.value = 'Fetching MLB scoreboard…'
   wpiTopBatters.value = []
   wpiTopPitchers.value = []
+  wpiTopPlayers.value = []
 
   try {
     const dateStr = wpiDate.value.replace(/-/g,'')
@@ -1702,6 +1605,10 @@ async function loadWpiData() {
     const pitchers = [...pitcherMap.values()].sort((a,b) => b.wpImpact - a.wpImpact)
     wpiTopBatters.value  = batters.slice(0,5)
     wpiTopPitchers.value = pitchers.slice(0,5)
+    // Combined: merge all players, sort by wpImpact, take top 5
+    wpiTopPlayers.value = [...batterMap.values(), ...pitcherMap.values()]
+      .sort((a,b) => b.wpImpact - a.wpImpact)
+      .slice(0,5)
 
     const total = batters.length + pitchers.length
     if (!total) {
@@ -1744,6 +1651,10 @@ async function loadWpiData() {
   }
 }
 
+
+function isPitcher(p: WpiPlayer): boolean {
+  return ['SP','RP','P','LHP','RHP'].includes(p.position.toUpperCase())
+}
 
 function parseAthleteRow(
   athlete: any,
