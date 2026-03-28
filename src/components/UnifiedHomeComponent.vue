@@ -3051,9 +3051,17 @@ function formatLeaderValue(value: number) {
 function distributeCategoryWins() {
   const catWins = new Map<string, Record<string, number>>()
   
+  // If week 1 is still in progress, no weeks are complete — show all zeros.
+  // Avoids showing estimated/distributed wins before a single week is final.
+  const yahooLeagueArr = Array.isArray(leagueStore.yahooLeague) ? leagueStore.yahooLeague[0] : leagueStore.yahooLeague
+  const currWeek = parseInt(yahooLeagueArr?.current_week) || currentWeek.value || 1
+  const seasonDone = isSeasonComplete.value
+  const hasCompletedWeeks = seasonDone || currWeek > 1
+  
   for (const team of leagueStore.yahooTeams) {
     const wins: Record<string, number> = {}
-    const totalWins = team.wins || 0
+    // Use 0 wins if no weeks are complete yet (week 1 still in progress)
+    const totalWins = hasCompletedWeeks ? (team.wins || 0) : 0
     const numCats = displayCategories.value.length || 1
     
     // Distribute wins across categories with some variance
@@ -3062,8 +3070,8 @@ function distributeCategoryWins() {
     
     for (let i = 0; i < displayCategories.value.length; i++) {
       const cat = displayCategories.value[i]
-      // Add variance based on team position in standings
-      const variance = Math.floor(Math.random() * 3) - 1
+      // Add variance based on team position in standings (only when we have real data)
+      const variance = hasCompletedWeeks ? Math.floor(Math.random() * 3) - 1 : 0
       let catWinsForTeam = basePerCat + variance
       
       // Distribute remaining wins to first few categories
@@ -4681,7 +4689,8 @@ async function loadAllMatchups() {
     const startWeek = yahooLeagueData?.start_week || 1
     const currWeek = yahooLeagueData?.current_week || currentWeek.value || 1
     
-    const chartEndWeek = isSeasonComplete.value ? endWeek : Math.min(currWeek, endWeek)
+    // Use currWeek-1 so in-progress week is excluded from chart too
+    const chartEndWeek = isSeasonComplete.value ? endWeek : Math.min(Math.max(0, currWeek - 1), endWeek)
     
     buildStandingsFromRealMatchups(startWeek, chartEndWeek)
     buildChart()
@@ -5292,7 +5301,8 @@ async function loadEspnData() {
     try {
       const league = await espnService.getLeague(sport, espnLeagueId, season)
       const currentWeek = league?.status?.currentMatchupPeriod || 15
-      const completedWeeks = Math.max(1, currentWeek - 1)
+      // Floor is 0, not 1 — when currentWeek=1 no weeks are complete yet
+      const completedWeeks = Math.max(0, currentWeek - 1)
       
       console.log('[ESPN HOME] Calculating standings for', completedWeeks, 'completed weeks')
       
