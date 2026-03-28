@@ -502,6 +502,10 @@ const teamSeasonStats = ref<Map<string, any>>(new Map())
 const gameWeeks = ref<{ week: number, start: string, end: string }[]>([])
 const winProbChartEl = ref<HTMLElement | null>(null)
 let winProbChart: ApexCharts | null = null
+// Cache the actual computed chart data so download uses the same numbers shown on screen
+const cachedChartD1 = ref<number[]>([])
+const cachedChartD2 = ref<number[]>([])
+const cachedChartLabels = ref<string[]>([])
 
 const BATTING_STAT_IDS = ['60', '7', '12', '16', '3', '55', '56']
 const PITCHING_STAT_IDS = ['28', '32', '42', '26', '27', '48']
@@ -2320,6 +2324,10 @@ function buildSimpleWinProbChart(matchup: any, daysToShow: number, allDayLabels:
 function renderWinProbChart(matchup: any, d1: number[], d2: number[], dayLabels: string[], title?: string) {
   if (!winProbChartEl.value) return
   if (winProbChart) { winProbChart.destroy(); winProbChart = null }
+  // Cache for download/share — so the graphic exactly matches what's on screen
+  cachedChartD1.value = [...d1]
+  cachedChartD2.value = [...d2]
+  cachedChartLabels.value = [...dayLabels]
   chartTitle.value = title || 'Win Probability Trend'
   
   const c1 = '#06b6d4' // cyan
@@ -2584,30 +2592,17 @@ async function generateMatchupAnalysisImage(matchup: any, html2canvas: any) {
   }
   
   // Build win probability trend chart SVG
-  const winProb1 = matchup.team1WinProb || 50
-  const winProb2 = matchup.team2WinProb || 50
-  
-  // Determine what day of the week it is
-  const now = new Date()
-  const dayOfWeek = now.getDay()
-  const hourOfDay = now.getHours()
-  const dayMap: Record<number, number> = { 1: 0, 2: 1, 3: 2, 4: 3, 5: 4, 6: 5, 0: 6 }
-  const todayIndex = dayMap[dayOfWeek]
-  const lastCompletedDayIndex = hourOfDay >= 3 ? todayIndex - 1 : todayIndex - 2
-  const completedDays = isCurrentWeek.value ? Math.max(1, lastCompletedDayIndex + 1) : 7
-  
-  const allDays = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
-  const chartLabels = allDays.slice(0, completedDays)
-  
-  // Generate progression data based on completed days
-  const baseProb1 = 50
-  const team1ChartData: number[] = []
-  for (let i = 0; i < completedDays; i++) {
-    const progress = completedDays > 1 ? i / (completedDays - 1) : 1
-    const val = baseProb1 + (winProb1 - baseProb1) * progress
-    team1ChartData.push(Math.round(val * 100) / 100)
-  }
-  const team2ChartData = team1ChartData.map(v => Math.round((100 - v) * 100) / 100)
+  // Use the SAME data that's displayed on screen (cached when chart was rendered)
+  // Fall back to final win prob only if no chart has been rendered yet
+  const team1ChartData: number[] = cachedChartD1.value.length > 0
+    ? [...cachedChartD1.value]
+    : [matchup.team1WinProb || 50]
+  const team2ChartData: number[] = cachedChartD2.value.length > 0
+    ? [...cachedChartD2.value]
+    : [matchup.team2WinProb || 50]
+  const chartLabels: string[] = cachedChartLabels.value.length > 0
+    ? [...cachedChartLabels.value]
+    : ['Now']
   
   const chartWidth = 640
   const chartHeight = 140
