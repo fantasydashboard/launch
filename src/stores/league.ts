@@ -1632,16 +1632,24 @@ export const useLeagueStore = defineStore('league', () => {
       })))
       
       // Check if this league has actual data (all zeros means season hasn't started).
-      // IMPORTANT: If ESPN marks the current season as active (isActive: true), treat it as
-      // the live season even with zero stats — the draft is done and games are pending.
-      // Don't fall back to the previous season or we'll show stale data + offseason banner.
-      const espnSeasonIsActive = league.status?.isActive === true
-      const espnHasData = espnSeasonIsActive || mappedTeams.some(t => 
+      //
+      // isActive can be unreliable for early-season ESPN leagues (it may be false even
+      // after the draft and first scoring period). Use latestScoringPeriod and
+      // currentMatchupPeriod as more reliable signals that the current season is live.
+      //
+      // latestScoringPeriod >= 1 means ESPN has started scoring this season.
+      // currentMatchupPeriod >= 1 means at least one matchup week has begun.
+      // Either signal means we're in the live season — don't fall back to last year.
+      const latestPeriod = league.status?.latestScoringPeriod || 0
+      const currentPeriod = league.status?.currentMatchupPeriod || league.currentMatchupPeriod || 0
+      const scoringPeriod = (league as any).scoringPeriodId || 0
+      const espnSeasonIsLive = latestPeriod >= 1 || currentPeriod >= 1 || scoringPeriod >= 1
+      const espnHasData = espnSeasonIsLive || mappedTeams.some(t => 
         (t.wins || 0) > 0 || (t.losses || 0) > 0 || (t.points_for || 0) > 0 || (t.category_wins || 0) > 0
       )
       
-      if (espnSeasonIsActive) {
-        console.log('[ESPN] Season is active (isActive=true) — treating as live season, skipping previous-season fallback')
+      if (espnSeasonIsLive) {
+        console.log('[ESPN] Season is live (latestScoringPeriod:', latestPeriod, 'currentMatchupPeriod:', currentPeriod, ') — skipping previous-season fallback')
       }
 
       if (!espnHasData && season > 2020) {
