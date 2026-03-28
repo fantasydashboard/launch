@@ -2594,6 +2594,8 @@ async function generateMatchupAnalysisImage(matchup: any, html2canvas: any) {
   // Build win probability trend chart SVG
   // Use the SAME data that's displayed on screen (cached when chart was rendered)
   // Fall back to final win prob only if no chart has been rendered yet
+  const winProb1 = matchup.team1WinProb || 50
+  const winProb2 = matchup.team2WinProb || 50
   const team1ChartData: number[] = cachedChartD1.value.length > 0
     ? [...cachedChartD1.value]
     : [matchup.team1WinProb || 50]
