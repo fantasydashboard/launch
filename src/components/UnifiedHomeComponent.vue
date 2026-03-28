@@ -1749,6 +1749,14 @@ const leaders = computed(() => {
     return { bestRecord: defaultTeam, mostPoints: defaultTeam, mostCatWins: defaultTeam, bestAllPlay: defaultTeam, bestCatWinPct: defaultTeam, mostDominant: defaultTeam }
   }
   
+  // If no weeks are complete yet, return empty leaders so cards don't show
+  // stale/last-season data or fake simulated numbers
+  const yahooLeagueDataL = Array.isArray(leagueStore.yahooLeague) ? leagueStore.yahooLeague[0] : leagueStore.yahooLeague
+  const currWeekL = parseInt(yahooLeagueDataL?.current_week) || 1
+  if (!isSeasonComplete.value && currWeekL <= 1) {
+    return { bestRecord: defaultTeam, mostPoints: defaultTeam, mostCatWins: defaultTeam, bestAllPlay: defaultTeam, bestCatWinPct: defaultTeam, mostDominant: defaultTeam }
+  }
+  
   const sortedByRecord = [...teams].sort((a, b) => {
     const aWinPct = (a.wins || 0) / Math.max(1, (a.wins || 0) + (a.losses || 0))
     const bWinPct = (b.wins || 0) / Math.max(1, (b.wins || 0) + (b.losses || 0))
@@ -5857,10 +5865,25 @@ async function loadEspnData() {
     console.log('[ESPN] Matchups from store:', displayMatchups.value.length)
     
     // Fetch real category stats breakdown for ESPN category leagues
+    // ONLY when at least one week is complete — skip entirely during week 1 in progress
+    // to avoid the ROTO fallback returning simulated/stale per-category wins.
     if (!isPointsLeague.value) {
       loadingStatus.value = 'Analyzing category statistics...'
       console.log('[ESPN] Category league detected - fetching real category stats')
-      try {
+      
+      // Determine completed weeks before calling getCategoryStatsBreakdown
+      // If 0 completed weeks, the function's ROTO fallback would produce fake 1s in columns
+      const leagueForCatCheck = await espnService.getLeague(sport, espnLeagueId, season)
+      const currPeriodForCat = leagueForCatCheck?.status?.currentMatchupPeriod || 1
+      const completedWeeksForCat = Math.max(0, currPeriodForCat - 1)
+      
+      if (completedWeeksForCat === 0) {
+        console.log('[ESPN] Week 1 in progress — skipping getCategoryStatsBreakdown to avoid fake ROTO wins')
+        // Reset category wins to zeros so nothing bleeds through
+        teamCategoryWins.value = new Map()
+        teamTotalCategoryWins.value = new Map()
+        teamTotalCategoryLosses.value = new Map()
+      } else try {
         const categoryBreakdown = await espnService.getCategoryStatsBreakdown(sport, espnLeagueId, season)
         
         console.log('[ESPN] Got category breakdown:', {
