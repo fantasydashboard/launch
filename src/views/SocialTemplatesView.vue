@@ -1416,6 +1416,8 @@
     <div class="post-wrap">
       <div class="post-label">29 · Live Win Probability — Active ESPN League</div>
       <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;flex-wrap:wrap;">
+        <input v-model="wplLeagueId" placeholder="ESPN League ID (e.g. 6416)"
+          style="background:#1e2130;color:#e5e7eb;border:1px solid #374151;border-radius:8px;padding:6px 10px;font-size:13px;width:200px;">
         <button @click="loadWpLiveMatchups" :disabled="wpLiveLoading" class="wpi-load-btn">
           {{ wpLiveLoading ? 'Loading...' : '🔄 Load Matchups' }}
         </button>
@@ -1431,7 +1433,7 @@
         <div style="height:5px;background:linear-gradient(90deg,#eab308,#ca8a04);"></div>
         <div style="display:flex;align-items:center;justify-content:space-between;padding:14px 18px 0;">
           <div style="display:flex;align-items:center;gap:8px;">
-            <div style="background:#1e2130;border-radius:8px;padding:4px 10px;font-size:12px;font-weight:800;color:#eab308;">UFD</div>
+            <img src="/UFD_V8.png" style="height:36px;width:auto;object-fit:contain;" @error="($event.target as HTMLImageElement).style.display='none'">
             <span style="font-size:12px;color:#6b7280;">⚾ Fantasy Baseball</span>
           </div>
           <span style="font-size:11px;font-weight:700;color:#4b5563;text-transform:uppercase;letter-spacing:0.1em;">{{ wpLiveWeek }}</span>
@@ -1459,12 +1461,8 @@
             <div style="font-size:11px;color:#6b7280;margin-top:4px;">{{ wpLiveMatchup.awayScore.toFixed(1) }} pts</div>
           </div>
         </div>
-        <div style="margin:0 16px 14px;height:28px;border-radius:14px;overflow:hidden;background:#1e2130;position:relative;">
-          <div :style="{position:'absolute',left:0,top:0,height:'100%',width:wplProb1+'%',background:'linear-gradient(90deg,#06b6d4,#0891b2)',borderRadius:'14px 0 0 14px'}"></div>
-          <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:space-between;padding:0 12px;">
-            <span style="font-size:11px;font-weight:800;color:#fff;">{{ WPL_ANON[wpLiveSelectedIdx%WPL_ANON.length][0].split(' ')[0] }}</span>
-            <span style="font-size:11px;font-weight:800;color:#fff;">{{ WPL_ANON[wpLiveSelectedIdx%WPL_ANON.length][1].split(' ')[0] }}</span>
-          </div>
+        <div style="margin:0 16px 14px;height:10px;border-radius:8px;overflow:hidden;background:linear-gradient(90deg,#f97316,#ea580c);position:relative;">
+          <div :style="{position:'absolute',left:0,top:0,height:'100%',width:wplProb1+'%',background:'linear-gradient(90deg,#06b6d4,#0891b2)'}"></div>
         </div>
         <div style="margin:0 16px 14px;background:rgba(255,255,255,0.03);border-radius:12px;padding:12px 8px 8px;border:1px solid rgba(255,255,255,0.07);">
           <div style="font-size:10px;font-weight:700;letter-spacing:0.15em;text-transform:uppercase;color:#4b5563;margin-bottom:8px;padding-left:4px;">📈 WIN PROBABILITY TREND</div>
@@ -1498,10 +1496,7 @@
             <template v-for="(label, i) in wplLabels" :key="'xl'+i">
               <text :x="wplSvgX(i)" y="214" text-anchor="middle" font-size="11" font-weight="700" fill="#6b7280" font-family="Helvetica Neue,Arial,sans-serif">{{ label }}</text>
             </template>
-            <circle cx="190" cy="206" r="4" fill="#06b6d4"/>
-            <text x="198" y="210" font-size="10" font-weight="700" fill="#06b6d4" font-family="Helvetica Neue,Arial,sans-serif">{{ WPL_ANON[wpLiveSelectedIdx%WPL_ANON.length][0] }}</text>
-            <circle cx="310" cy="206" r="4" fill="#f97316"/>
-            <text x="318" y="210" font-size="10" font-weight="700" fill="#f97316" font-family="Helvetica Neue,Arial,sans-serif">{{ WPL_ANON[wpLiveSelectedIdx%WPL_ANON.length][1] }}</text>
+
           </svg>
           <div v-else style="height:60px;display:flex;align-items:center;justify-content:center;color:#4b5563;font-size:12px;">
             {{ wpLiveLoading ? 'Computing...' : 'Load matchups above to see chart' }}
@@ -2472,6 +2467,7 @@ const WPL_ANON = [
   ['Probability Zero','Dark Horse'],['Expected Value','Coin Flip'],
   ['Regression FC','Hot Hand'],['The Simulation','The Upset'],
 ]
+const wplLeagueId = ref('6416') // default to No League for Ordinary Gentlemen
 const wpLiveLoading = ref(false)
 const wpLiveError = ref('')
 const wpLiveMatchups = ref<any[]>([])
@@ -2493,21 +2489,36 @@ async function loadWpLiveMatchups() {
   wpLiveLoading.value=true; wpLiveError.value=''
   wpLiveMatchups.value=[]; wplD1.value=[]; wplD2.value=[]; wplLabels.value=[]
   try {
-    const leagueId=leagueStore.activeLeagueId
-    if(!leagueId) throw new Error('No active league — load one first')
-    const parts=leagueId.split('_')
-    if(parts[0]!=='espn') throw new Error('Requires an ESPN league')
     const {espnService}=await import('@/services/espn')
-    const league=await espnService.getLeague(parts[1] as any,parts[2],parseInt(parts[3]))
+    // Use manual league ID if entered, else fall back to active league
+    let espnId=wplLeagueId.value.trim()
+    let sport:any='baseball'
+    let season=new Date().getFullYear()
+    if(!espnId) {
+      const leagueId=leagueStore.activeLeagueId||''
+      const parts=leagueId.split('_')
+      if(parts[0]!=='espn') throw new Error('Enter an ESPN League ID above or load an ESPN league first')
+      espnId=parts[2]; sport=parts[1]; season=parseInt(parts[3])
+    }
+    // Get credentials from store if available
+    const creds=leagueStore.espnCredentials
+    if(creds?.espn_s2) espnService.setCredentials(creds.espn_s2, creds.swid||''  )
+    const league=await espnService.getLeague(sport,espnId,season)
     const week=league?.status?.currentMatchupPeriod||1
     wpLiveWeek.value=`Week ${week}`
-    const ms=await espnService.getMatchups(parts[1] as any,parts[2],parseInt(parts[3]),week)
-    wpLiveMatchups.value=ms.filter((m:any)=>m.awayTeamId).map((m:any)=>({
-      homeScore:m.homeScore||0,awayScore:m.awayScore||0,
-      homeLogo:leagueStore.yahooTeams.find((t:any)=>t.team_id===m.homeTeamId?.toString())?.logo_url||''
-      ,awayLogo:leagueStore.yahooTeams.find((t:any)=>t.team_id===m.awayTeamId?.toString())?.logo_url||''
-    }))
+    const ms=await espnService.getMatchups(sport,espnId,season,week)
+    wpLiveMatchups.value=ms.filter((m:any)=>m.awayTeamId).map((m:any)=>{
+      // Try to get logos from store first, fall back to ESPN API data
+      const homeT=leagueStore.yahooTeams.find((t:any)=>t.team_id===m.homeTeamId?.toString())
+      const awayT=leagueStore.yahooTeams.find((t:any)=>t.team_id===m.awayTeamId?.toString())
+      return {
+        homeScore:m.homeScore||0, awayScore:m.awayScore||0,
+        homeLogo:homeT?.logo_url||m.homeTeam?.logo||m.homeTeam?.logoUrl||'',
+        awayLogo:awayT?.logo_url||m.awayTeam?.logo||m.awayTeam?.logoUrl||''
+      }
+    })
     if(wpLiveMatchups.value.length) await computeWplChart()
+    else throw new Error('No matchups found — check league ID and make sure the season has started')
   } catch(e:any){ wpLiveError.value=e?.message||'Failed' } finally { wpLiveLoading.value=false }
 }
 async function computeWplChart() {
