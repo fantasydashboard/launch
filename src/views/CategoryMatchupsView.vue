@@ -461,6 +461,7 @@ import { useAuthStore } from '@/stores/auth'
 import { yahooService } from '@/services/yahoo'
 import { espnService } from '@/services/espn'
 import ApexCharts from 'apexcharts'
+import { matchupChartCache } from '@/stores/matchupChartCache'
 import LoadingSpinner from '@/components/LoadingSpinner.vue'
 import LeagueGate from '@/components/LeagueGate.vue'
 import { useFeatureAccess } from '@/composables/useFeatureAccess'
@@ -1966,6 +1967,16 @@ async function loadMatchups() {
     }
     
     matchups.value = processed
+  // Populate week matchup list for social templates
+  matchupChartCache.setWeekMatchups(processed.map((m: any) => ({
+    matchupId: m.matchup_id,
+    team1Name: m.team1?.name || '',
+    team2Name: m.team2?.name || '',
+    team1Logo: typeof m.team1?.logo_url === 'string' ? m.team1.logo_url : '',
+    team2Logo: typeof m.team2?.logo_url === 'string' ? m.team2.logo_url : '',
+    team1WinProb: m.team1WinProb || 50,
+    team2WinProb: m.team2WinProb || 50,
+  })))
     const my = processed.find(m => m.team1.is_my_team || m.team2.is_my_team)
     if (my) selectMatchup(my); else if (processed.length) selectMatchup(processed[0])
   } catch (e) { console.error('Error loading matchups:', e) }
@@ -2335,6 +2346,17 @@ function renderWinProbChart(matchup: any, d1: number[], d2: number[], dayLabels:
   cachedChartD1.value = [...d1]
   cachedChartD2.value = [...d2]
   cachedChartLabels.value = [...dayLabels]
+  // Write to shared cache so social templates can read it
+  const logo1 = matchup.team1?.logo_url || ''
+  const logo2 = matchup.team2?.logo_url || ''
+  matchupChartCache.set(
+    matchup.matchup_id,
+    d1, d2, dayLabels,
+    matchup.team1WinProb || 50,
+    matchup.team2WinProb || 50,
+    typeof logo1 === 'string' ? logo1 : '',
+    typeof logo2 === 'string' ? logo2 : ''
+  )
   chartTitle.value = title || 'Win Probability Trend'
   
   const c1 = '#06b6d4' // cyan
