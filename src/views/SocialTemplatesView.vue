@@ -667,11 +667,11 @@
 
         <!-- TEXT BLOCK — top area, above phone, clear of IG profile overlay (top 220px safe) -->
         <div style="position:absolute;top:240px;left:80px;right:80px;">
-          <div style="display:flex;align-items:center;gap:16px;margin-bottom:40px;">
-            <img src="/UFD_V8.png" style="height:56px;width:auto;">
+          <div style="display:flex;align-items:center;gap:20px;margin-bottom:44px;">
+            <img src="/UFD_V8.png" style="height:100px;width:auto;">
             <div>
-              <div style="font-size:18px;font-weight:800;color:#eab308;letter-spacing:0.12em;text-transform:uppercase;">Ultimate Fantasy</div>
-              <div style="font-size:18px;font-weight:800;color:#fff;letter-spacing:0.12em;text-transform:uppercase;">Dashboard</div>
+              <div style="font-size:28px;font-weight:800;color:#eab308;letter-spacing:0.12em;text-transform:uppercase;">Ultimate Fantasy</div>
+              <div style="font-size:28px;font-weight:800;color:#fff;letter-spacing:0.12em;text-transform:uppercase;">Dashboard</div>
             </div>
           </div>
           <div style="font-size:80px;font-weight:900;color:#ffffff;line-height:1.0;letter-spacing:-0.025em;margin-bottom:24px;">{{ ad30headline || 'Know your league like never before.' }}</div>
@@ -684,35 +684,36 @@
         </div>
 
         <!-- PHONE — lower half, centred, tilted left -->
-        <div style="position:absolute;bottom:260px;left:50%;transform:translateX(-50%);width:800px;height:900px;display:flex;align-items:center;justify-content:center;">
-          <!-- Pop card LEFT -->
-          <div style="position:absolute;left:0;top:80px;width:300px;z-index:20;filter:drop-shadow(0 20px 50px rgba(0,0,0,0.7));">
+        <div style="position:absolute;bottom:220px;left:50%;transform:translateX(-50%);width:920px;height:960px;display:flex;align-items:center;justify-content:center;">
+          <!-- Pop card FAR LEFT — top -->
+          <div style="position:absolute;left:-20px;top:30px;width:270px;z-index:20;filter:drop-shadow(0 20px 50px rgba(0,0,0,0.7));">
             <div v-html="renderAdCard(ad30card1)" style="border-radius:16px;overflow:hidden;border:1px solid rgba(255,255,255,0.1);box-shadow:0 24px 80px rgba(0,0,0,0.6);"></div>
           </div>
-          <!-- Pop card RIGHT -->
-          <div style="position:absolute;right:0;bottom:60px;width:300px;z-index:20;filter:drop-shadow(0 20px 50px rgba(0,0,0,0.7));">
+          <!-- Pop card LEFT — bottom (2nd left card like Monarch) -->
+          <div style="position:absolute;left:-20px;bottom:60px;width:270px;z-index:20;filter:drop-shadow(0 20px 50px rgba(0,0,0,0.7));">
+            <div v-html="renderAdCard(ad30card3==='history'?'draft':'history')" style="border-radius:16px;overflow:hidden;border:1px solid rgba(255,255,255,0.1);box-shadow:0 24px 80px rgba(0,0,0,0.6);"></div>
+          </div>
+          <!-- Pop card RIGHT — mid -->
+          <div style="position:absolute;right:-20px;bottom:120px;width:270px;z-index:20;filter:drop-shadow(0 20px 50px rgba(0,0,0,0.7));">
             <div v-html="renderAdCard(ad30card3)" style="border-radius:16px;overflow:hidden;border:1px solid rgba(255,255,255,0.1);box-shadow:0 24px 80px rgba(0,0,0,0.6);"></div>
           </div>
           <!-- Phone body -->
           <div style="position:relative;z-index:10;transform:perspective(1600px) rotateY(8deg) rotateX(-2deg) rotate(-3deg);filter:drop-shadow(0 80px 160px rgba(0,0,0,0.9));">
-            <div style="width:320px;height:680px;background:#0a0d14;border-radius:46px;border:2.5px solid rgba(255,255,255,0.14);overflow:hidden;position:relative;">
-              <!-- Notch -->
-              <div style="position:absolute;top:0;left:50%;transform:translateX(-50%);width:110px;height:28px;background:#080a10;border-radius:0 0 18px 18px;z-index:10;"></div>
+            <div style="width:340px;height:740px;background:#0a0d14;border-radius:48px;border:2.5px solid rgba(255,255,255,0.14);overflow:hidden;position:relative;">
+              <div style="position:absolute;top:0;left:50%;transform:translateX(-50%);width:116px;height:28px;background:#080a10;border-radius:0 0 18px 18px;z-index:10;"></div>
               <div style="position:absolute;top:10px;left:20px;right:20px;display:flex;justify-content:space-between;z-index:11;">
                 <span style="font-size:11px;color:#6b7280;font-weight:600;">9:41</span>
                 <div style="width:14px;height:7px;border:1px solid #6b7280;border-radius:2px;margin-top:2px;position:relative;"><div style="position:absolute;inset:1px;right:2px;background:#6b7280;border-radius:1px;"></div></div>
               </div>
-              <!-- Screen -->
-              <div style="position:absolute;top:36px;left:0;right:0;bottom:0;background:#0d1117;padding:8px 10px;display:flex;flex-direction:column;gap:7px;overflow:hidden;">
-                <div style="display:flex;align-items:center;justify-content:space-between;padding-bottom:6px;border-bottom:1px solid rgba(255,255,255,0.06);">
-                  <img src="/UFD_V8.png" style="height:15px;width:auto;">
+              <div style="position:absolute;top:36px;left:0;right:0;bottom:0;background:#0d1117;padding:9px 11px;display:flex;flex-direction:column;gap:8px;overflow:hidden;">
+                <div style="display:flex;align-items:center;justify-content:space-between;padding-bottom:6px;border-bottom:1px solid rgba(255,255,255,0.06);flex-shrink:0;">
+                  <img src="/UFD_V8.png" style="height:16px;width:auto;">
                   <span style="font-size:8px;color:#eab308;font-weight:700;letter-spacing:0.04em;">FANTASY BASEBALL</span>
                 </div>
-                <!-- Main selected card -->
-                <div v-html="renderAdCard(ad30card2)" style="border-radius:9px;overflow:hidden;"></div>
-                <!-- Always-present filler cards -->
-                <div v-html="renderAdCard(ad30card2==='powerrankings'?'winprob':'powerrankings')" style="border-radius:9px;overflow:hidden;opacity:0.8;"></div>
-                <div v-html="renderAdCard('season')" style="border-radius:9px;overflow:hidden;opacity:0.6;"></div>
+                <div v-html="renderAdCard(ad30card2)" style="border-radius:9px;overflow:hidden;flex-shrink:0;"></div>
+                <div v-html="renderAdCard(ad30card2==='powerrankings'?'winprob':'powerrankings')" style="border-radius:9px;overflow:hidden;flex-shrink:0;"></div>
+                <div v-html="renderAdCard(ad30card2==='matchup'?'season':'matchup')" style="border-radius:9px;overflow:hidden;flex-shrink:0;"></div>
+                <div v-html="renderAdCard('history')" style="border-radius:9px;overflow:hidden;flex-shrink:0;opacity:0.7;"></div>
               </div>
               <div style="position:absolute;bottom:5px;left:50%;transform:translateX(-50%);width:80px;height:3.5px;background:rgba(255,255,255,0.18);border-radius:2px;"></div>
             </div>
@@ -784,8 +785,8 @@
               </div>
               <div v-html="renderAdCard(ad31card1)" style="border-radius:10px;overflow:hidden;"></div>
               <div v-html="renderAdCard(ad31card2)" style="border-radius:10px;overflow:hidden;"></div>
-              <!-- filler -->
-              <div v-html="renderAdCard(ad31card1==='season'||ad31card2==='season'?'draft':'season')" style="border-radius:10px;overflow:hidden;opacity:0.5;"></div>
+              <div v-html="renderAdCard(ad31card1==='season'||ad31card2==='season'?'draft':'season')" style="border-radius:10px;overflow:hidden;opacity:0.65;"></div>
+              <div v-html="renderAdCard(ad31card1==='prtrendchart'||ad31card2==='prtrendchart'?'matchupgraph':'prtrendchart')" style="border-radius:10px;overflow:hidden;opacity:0.45;"></div>
             </div>
             <div style="position:absolute;bottom:6px;left:50%;transform:translateX(-50%);width:90px;height:4px;background:rgba(255,255,255,0.2);border-radius:2px;"></div>
           </div>
@@ -793,7 +794,7 @@
 
         <!-- LEFT text -->
         <div style="position:absolute;left:64px;top:80px;width:520px;bottom:200px;display:flex;flex-direction:column;justify-content:center;">
-          <div style="margin-bottom:32px;"><img src="/UFD_V8.png" style="height:52px;width:auto;"></div>
+          <div style="margin-bottom:32px;"><img src="/UFD_V8.png" style="height:90px;width:auto;"></div>
           <div style="font-size:88px;font-weight:900;color:#ffffff;line-height:0.92;letter-spacing:-0.04em;margin-bottom:4px;">{{ ad31headline || 'See your whole league' }}</div>
           <div style="font-size:88px;font-weight:900;color:#eab308;line-height:0.92;letter-spacing:-0.04em;margin-bottom:36px;">{{ ad31accent || 'in one place.' }}</div>
           <div style="font-size:24px;color:#9ca3af;line-height:1.5;margin-bottom:44px;max-width:420px;">{{ ad31body || 'and know exactly where you stand.' }}</div>
@@ -822,19 +823,19 @@
 
         <!-- TEXT — top section (below 220px IG profile safe zone) -->
         <div style="position:absolute;top:240px;left:80px;right:80px;">
-          <div style="margin-bottom:40px;"><img src="/UFD_V8.png" style="height:56px;width:auto;"></div>
+          <div style="margin-bottom:40px;"><img src="/UFD_V8.png" style="height:110px;width:auto;"></div>
           <div style="font-size:120px;font-weight:900;color:#ffffff;line-height:0.9;letter-spacing:-0.04em;margin-bottom:8px;">{{ ad31headline || 'See your whole league' }}</div>
           <div style="font-size:120px;font-weight:900;color:#eab308;line-height:0.9;letter-spacing:-0.04em;margin-bottom:48px;">{{ ad31accent || 'in one place.' }}</div>
-          <div style="font-size:36px;color:#9ca3af;line-height:1.5;margin-bottom:60px;">{{ ad31body || 'and know exactly where you stand.' }}</div>
+          <div style="font-size:34px;color:#9ca3af;line-height:1.5;margin-bottom:50px;">{{ ad31body || 'and know exactly where you stand.' }}</div>
           <div style="display:inline-flex;">
-            <div style="background:linear-gradient(135deg,#eab308,#ca8a04);color:#0a0c14;font-size:40px;font-weight:900;padding:32px 72px;border-radius:20px;letter-spacing:0.01em;">
+            <div style="background:linear-gradient(135deg,#eab308,#ca8a04);color:#0a0c14;font-size:38px;font-weight:900;padding:28px 64px;border-radius:20px;letter-spacing:0.01em;">
               {{ ad31btn || 'Get League Pass →' }}
             </div>
           </div>
         </div>
 
-        <!-- PHONE — bottom half, centred, tilted right -->
-        <div style="position:absolute;bottom:220px;left:50%;transform:translateX(-50%);width:900px;height:800px;display:flex;align-items:center;justify-content:center;">
+        <!-- PHONE — bottom third, below button, centred, tilted right -->
+        <div style="position:absolute;bottom:180px;left:50%;transform:translateX(-50%);width:900px;height:760px;display:flex;align-items:center;justify-content:center;">
           <div style="position:absolute;width:360px;height:740px;border-radius:48px;background:radial-gradient(ellipse,rgba(234,179,8,0.1) 0%,transparent 70%);transform:perspective(1600px) rotateY(-10deg) rotateX(2deg) rotate(3deg);pointer-events:none;"></div>
           <div style="width:360px;height:740px;background:#0a0d14;border-radius:48px;border:2.5px solid rgba(255,255,255,0.12);overflow:hidden;position:relative;transform:perspective(1600px) rotateY(-10deg) rotateX(2deg) rotate(3deg);filter:drop-shadow(0 80px 180px rgba(0,0,0,0.95));">
             <div style="position:absolute;top:0;left:50%;transform:translateX(-50%);width:126px;height:30px;background:#080a10;border-radius:0 0 20px 20px;z-index:10;"></div>
@@ -849,7 +850,8 @@
               </div>
               <div v-html="renderAdCard(ad31card1)" style="border-radius:10px;overflow:hidden;"></div>
               <div v-html="renderAdCard(ad31card2)" style="border-radius:10px;overflow:hidden;"></div>
-              <div v-html="renderAdCard(ad31card1==='season'||ad31card2==='season'?'draft':'season')" style="border-radius:10px;overflow:hidden;opacity:0.55;"></div>
+              <div v-html="renderAdCard(ad31card1==='season'||ad31card2==='season'?'draft':'season')" style="border-radius:10px;overflow:hidden;opacity:0.65;"></div>
+              <div v-html="renderAdCard(ad31card1==='prtrendchart'||ad31card2==='prtrendchart'?'matchupgraph':'prtrendchart')" style="border-radius:10px;overflow:hidden;opacity:0.45;"></div>
             </div>
             <div style="position:absolute;bottom:6px;left:50%;transform:translateX(-50%);width:96px;height:4px;background:rgba(255,255,255,0.2);border-radius:2px;"></div>
           </div>
