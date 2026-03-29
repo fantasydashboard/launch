@@ -1413,34 +1413,38 @@
 
 
     <!-- 29 · WIN PROBABILITY CARD — Manual Input -->
-    <div class="post-wrap">
+    <div class="post-wrap" style="padding-bottom:60px;">
       <div class="post-label">29 · Win Probability Card — Manual</div>
 
       <!-- ── Controls ── -->
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-bottom:20px;">
 
-        <!-- Team 1 picker -->
+        <!-- Team 1 -->
         <div>
-          <div style="font-size:11px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:0.1em;margin-bottom:6px;">Team 1 (Cyan)</div>
-          <select v-model="wplTeam1Idx" style="width:100%;background:#1e2130;color:#e5e7eb;border:1px solid #374151;border-radius:8px;padding:7px 10px;font-size:13px;margin-bottom:6px;">
-            <option v-for="(t,i) in wplPresetTeams" :key="i" :value="i">{{ t.name }}</option>
-          </select>
-          <input v-model="wplPresetTeams[wplTeam1Idx].name" placeholder="Team name"
-            style="width:100%;background:#1e2130;color:#e5e7eb;border:1px solid #374151;border-radius:8px;padding:7px 10px;font-size:13px;margin-bottom:4px;box-sizing:border-box;">
-          <input v-model="wplPresetTeams[wplTeam1Idx].logo" placeholder="Logo URL"
+          <div style="font-size:11px;font-weight:700;color:#06b6d4;text-transform:uppercase;letter-spacing:0.1em;margin-bottom:6px;">Team 1 (Cyan)</div>
+          <input v-model="wplPresetTeams[0].name" placeholder="Team name"
+            style="width:100%;background:#1e2130;color:#e5e7eb;border:1px solid #374151;border-radius:8px;padding:7px 10px;font-size:13px;margin-bottom:6px;box-sizing:border-box;">
+          <input v-model="wplPresetTeams[0].logo" placeholder="Paste ESPN logo URL here"
             style="width:100%;background:#1e2130;color:#e5e7eb;border:1px solid #374151;border-radius:8px;padding:7px 10px;font-size:12px;box-sizing:border-box;">
+          <div v-if="wplPresetTeams[0].logo" style="margin-top:6px;display:flex;align-items:center;gap:8px;">
+            <img :src="wplPresetTeams[0].logo" style="width:36px;height:36px;border-radius:50%;border:2px solid #06b6d4;object-fit:cover;"
+              @error="($event.target as HTMLImageElement).style.display='none'">
+            <span style="font-size:11px;color:#4b5563;">Logo preview</span>
+          </div>
         </div>
 
-        <!-- Team 2 picker -->
+        <!-- Team 2 -->
         <div>
-          <div style="font-size:11px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:0.1em;margin-bottom:6px;">Team 2 (Orange)</div>
-          <select v-model="wplTeam2Idx" style="width:100%;background:#1e2130;color:#e5e7eb;border:1px solid #374151;border-radius:8px;padding:7px 10px;font-size:13px;margin-bottom:6px;">
-            <option v-for="(t,i) in wplPresetTeams" :key="i" :value="i">{{ t.name }}</option>
-          </select>
-          <input v-model="wplPresetTeams[wplTeam2Idx].name" placeholder="Team name"
-            style="width:100%;background:#1e2130;color:#e5e7eb;border:1px solid #374151;border-radius:8px;padding:7px 10px;font-size:13px;margin-bottom:4px;box-sizing:border-box;">
-          <input v-model="wplPresetTeams[wplTeam2Idx].logo" placeholder="Logo URL"
+          <div style="font-size:11px;font-weight:700;color:#f97316;text-transform:uppercase;letter-spacing:0.1em;margin-bottom:6px;">Team 2 (Orange)</div>
+          <input v-model="wplPresetTeams[1].name" placeholder="Team name"
+            style="width:100%;background:#1e2130;color:#e5e7eb;border:1px solid #374151;border-radius:8px;padding:7px 10px;font-size:13px;margin-bottom:6px;box-sizing:border-box;">
+          <input v-model="wplPresetTeams[1].logo" placeholder="Paste ESPN logo URL here"
             style="width:100%;background:#1e2130;color:#e5e7eb;border:1px solid #374151;border-radius:8px;padding:7px 10px;font-size:12px;box-sizing:border-box;">
+          <div v-if="wplPresetTeams[1].logo" style="margin-top:6px;display:flex;align-items:center;gap:8px;">
+            <img :src="wplPresetTeams[1].logo" style="width:36px;height:36px;border-radius:50%;border:2px solid #f97316;object-fit:cover;"
+              @error="($event.target as HTMLImageElement).style.display='none'">
+            <span style="font-size:11px;color:#4b5563;">Logo preview</span>
+          </div>
         </div>
       </div>
 
@@ -1487,18 +1491,18 @@
         <!-- Team cards -->
         <div style="display:flex;gap:10px;padding:0 16px 14px;">
           <div style="flex:1;background:rgba(6,182,212,0.06);border:1px solid rgba(6,182,212,0.25);border-radius:12px;padding:14px;text-align:center;">
-            <img v-if="wplPresetTeams[wplTeam1Idx].logo" :src="wplPresetTeams[wplTeam1Idx].logo"
+            <img v-if="wplPresetTeams[0].logo" :src="wplPresetTeams[0].logo"
               style="width:52px;height:52px;border-radius:50%;border:2px solid #06b6d4;object-fit:cover;margin:0 auto 8px;display:block;"
               @error="($event.target as HTMLImageElement).style.display='none'">
-            <div style="font-size:12px;font-weight:700;color:#06b6d4;margin-bottom:4px;">{{ wplPresetTeams[wplTeam1Idx].name }}</div>
+            <div style="font-size:12px;font-weight:700;color:#06b6d4;margin-bottom:4px;">{{ wplPresetTeams[0].name }}</div>
             <div style="font-size:32px;font-weight:900;color:#06b6d4;line-height:1;">{{ wplProb1.toFixed(1) }}%</div>
           </div>
           <div style="display:flex;align-items:center;font-size:16px;font-weight:900;color:#374151;flex-shrink:0;">VS</div>
           <div style="flex:1;background:rgba(249,115,22,0.06);border:1px solid rgba(249,115,22,0.25);border-radius:12px;padding:14px;text-align:center;">
-            <img v-if="wplPresetTeams[wplTeam2Idx].logo" :src="wplPresetTeams[wplTeam2Idx].logo"
+            <img v-if="wplPresetTeams[1].logo" :src="wplPresetTeams[1].logo"
               style="width:52px;height:52px;border-radius:50%;border:2px solid #f97316;object-fit:cover;margin:0 auto 8px;display:block;"
               @error="($event.target as HTMLImageElement).style.display='none'">
-            <div style="font-size:12px;font-weight:700;color:#f97316;margin-bottom:4px;">{{ wplPresetTeams[wplTeam2Idx].name }}</div>
+            <div style="font-size:12px;font-weight:700;color:#f97316;margin-bottom:4px;">{{ wplPresetTeams[1].name }}</div>
             <div style="font-size:32px;font-weight:900;color:#f97316;line-height:1;">{{ wplProb2.toFixed(1) }}%</div>
           </div>
         </div>
@@ -2504,17 +2508,11 @@ const FanCards = defineComponent({
 })
 // ══ GRAPHIC 29 — Manual Win Probability Social Card ═══════════════════════
 
-// 4 preset teams — name + logo URL (editable by user in the UI)
+// Two teams — type name and paste logo URL
 const wplPresetTeams = ref([
-  { name: 'Swamp Pirates', logo: 'https://g.espncdn.com/lm-static/ffl/images/default_logos/default_black.png' },
-  { name: 'Shohei me the money', logo: 'https://g.espncdn.com/lm-static/ffl/images/default_logos/default_black.png' },
-  { name: 'NC PALE HOSE', logo: 'https://g.espncdn.com/lm-static/ffl/images/default_logos/default_black.png' },
-  { name: 'Dem Bums', logo: 'https://g.espncdn.com/lm-static/ffl/images/default_logos/default_black.png' },
+  { name: '', logo: '' },
+  { name: '', logo: '' },
 ])
-
-// Which preset is selected for each team slot
-const wplTeam1Idx = ref(0)
-const wplTeam2Idx = ref(1)
 
 // Manual day inputs — enter win probability for team 1 each day (team 2 = 100 - team1)
 // 0 or empty = skip that day
