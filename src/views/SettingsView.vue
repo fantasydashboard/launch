@@ -8,6 +8,23 @@
       </p>
     </div>
 
+    <!-- ── Add League Banner ─────────────────────────────────────────────── -->
+    <div class="add-league-banner">
+      <div class="alb-icon">☝️</div>
+      <div class="alb-body">
+        <div class="alb-title">Want to add a new league?</div>
+        <div class="alb-text">
+          Use the <strong>league dropdown in the top-right corner</strong> of the header — look for your league name next to the sport icon. Tap it and select <strong>"Add League"</strong> to connect a new ESPN, Yahoo, or Sleeper league.
+        </div>
+      </div>
+      <div class="alb-arrow">
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M5 12h14M12 5l7 7-7 7"/>
+        </svg>
+        <div class="alb-arrow-label">Top right ↗</div>
+      </div>
+    </div>
+
     <!-- Connected Platforms Section -->
     <div class="card">
       <div class="card-header">
@@ -333,3 +350,60 @@ watch(() => authStore.isAuthenticated, async (isAuth) => {
   }
 })
 </script>
+
+<style scoped>
+/* ── Add League Banner ── */
+.add-league-banner {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 18px 22px;
+  background: linear-gradient(135deg, rgba(234,179,8,0.12) 0%, rgba(234,179,8,0.05) 100%);
+  border: 1.5px solid rgba(234,179,8,0.45);
+  border-left: 4px solid #eab308;
+  border-radius: 14px;
+  box-shadow: 0 0 24px rgba(234,179,8,0.08);
+}
+.alb-icon {
+  font-size: 2rem;
+  flex-shrink: 0;
+  line-height: 1;
+}
+.alb-body {
+  flex: 1;
+  min-width: 0;
+}
+.alb-title {
+  font-size: 1rem;
+  font-weight: 800;
+  color: #eab308;
+  margin-bottom: 4px;
+  letter-spacing: 0.01em;
+}
+.alb-text {
+  font-size: 0.875rem;
+  color: #9ca3af;
+  line-height: 1.55;
+}
+.alb-text strong {
+  color: #e5e7eb;
+  font-weight: 700;
+}
+.alb-arrow {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  color: #eab308;
+  flex-shrink: 0;
+  opacity: 0.85;
+}
+.alb-arrow-label {
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #eab308;
+  white-space: nowrap;
+}
+</style>
