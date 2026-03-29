@@ -1967,19 +1967,75 @@ async function loadMatchups() {
     }
     
     matchups.value = processed
-  // Populate week matchup list for social templates
-  matchupChartCache.setWeekMatchups(processed.map((m: any) => ({
-    matchupId: m.matchup_id,
-    team1Name: m.team1?.name || '',
-    team2Name: m.team2?.name || '',
-    team1Logo: typeof m.team1?.logo_url === 'string' ? m.team1.logo_url : '',
-    team2Logo: typeof m.team2?.logo_url === 'string' ? m.team2.logo_url : '',
-    team1WinProb: m.team1WinProb || 50,
-    team2WinProb: m.team2WinProb || 50,
-  })))
-  // Pre-compute and cache chart data for ALL matchups so social graphic has real data
-  // without requiring the user to click each one
-  cacheAllMatchupCharts(processed)
+  // Compute real chart data for every matchup and store directly on week list
+  // so the social graphic can read it without any secondary lookup
+  const allDaysForCache = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
+  const nowForCache = new Date()
+  const hourForCache = nowForCache.getHours()
+  const jsDayForCache = nowForCache.getDay()
+  const dayMapForCache: Record<number, number> = { 1:0, 2:1, 3:2, 4:3, 5:4, 6:5, 0:6 }
+  const todayIdxForCache = dayMapForCache[jsDayForCache]
+  const lastCompletedForCache = hourForCache >= 3 ? todayIdxForCache - 1 : todayIdxForCache - 2
+  const daysToShowForCache = !isCurrentWeek.value ? 7 : Math.max(0, lastCompletedForCache + 1)
+  const sportForCache = currentSport.value
+  const dailyWtsForCache = getDailyWeights(sportForCache)
+  let cumWtForCache = 0
+  const cumWtsForCache: number[] = []
+  for (let i = 0; i < 7; i++) { cumWtForCache += dailyWtsForCache[i]; cumWtsForCache.push(cumWtForCache) }
+
+  const weekMatchupsForCache = processed.map((m: any) => {
+    const t1Stats = m.team1Stats || {}
+    const t2Stats = m.team2Stats || {}
+    const catIds = Object.keys(t1Stats)
+    const d1: number[] = [], d2: number[] = [], labs: string[] = []
+
+    for (let day = 0; day < daysToShowForCache; day++) {
+      const t1c: Record<string,number> = {}, t2c: Record<string,number> = {}
+      if (!isCurrentWeek.value) {
+        for (const id of catIds) { t1c[id] = (parseFloat(t1Stats[id])||0)*cumWtsForCache[day]; t2c[id] = (parseFloat(t2Stats[id])||0)*cumWtsForCache[day] }
+      } else {
+        const refDay = Math.max(0, lastCompletedForCache)
+        const frac = day <= refDay ? cumWtsForCache[day] / Math.max(0.01, cumWtsForCache[refDay]) : 1
+        for (const id of catIds) { t1c[id] = (parseFloat(t1Stats[id])||0)*frac; t2c[id] = (parseFloat(t2Stats[id])||0)*frac }
+      }
+      const dLeft = 6 - day
+      let p1: number, p2: number
+      if (dLeft <= 0) {
+        p1 = clampWinProb(m.team1WinProb||50, !isCurrentWeek.value)
+        p2 = clampWinProb(m.team2WinProb||50, !isCurrentWeek.value)
+      } else {
+        const remFrac = 1 - cumWtsForCache[day]
+        const refWt = !isCurrentWeek.value ? 1.0 : cumWtsForCache[Math.max(0, Math.min(lastCompletedForCache, day))]
+        const t1e: Record<string,number> = {}, t2e: Record<string,number> = {}
+        for (const id of catIds) {
+          const f1 = !isCurrentWeek.value ? (parseFloat(t1Stats[id])||0) : (parseFloat(t1Stats[id])||0)/Math.max(0.01,refWt)
+          const f2 = !isCurrentWeek.value ? (parseFloat(t2Stats[id])||0) : (parseFloat(t2Stats[id])||0)/Math.max(0.01,refWt)
+          t1e[id]=f1*remFrac; t2e[id]=f2*remFrac
+        }
+        const mc = catIds.length > 0 ? runCategoryMonteCarloWithCumulative(t1c,t2c,t1e,t2e,catIds,dLeft) : {team1:50,team2:50}
+        p1 = clampWinProb(mc.team1, false); p2 = clampWinProb(mc.team2, false)
+      }
+      d1.push(Math.round(p1*10)/10); d2.push(Math.round(p2*10)/10); labs.push(allDaysForCache[day])
+    }
+    // Add today's live point
+    if (isCurrentWeek.value && todayIdxForCache < 7 && todayIdxForCache > lastCompletedForCache) {
+      d1.push(Math.round(clampWinProb(m.team1WinProb||50,false)*10)/10)
+      d2.push(Math.round(clampWinProb(m.team2WinProb||50,false)*10)/10)
+      labs.push(allDaysForCache[todayIdxForCache])
+    }
+    return {
+      matchupId: m.matchup_id,
+      team1Name: m.team1?.name || '',
+      team2Name: m.team2?.name || '',
+      team1Logo: typeof m.team1?.logo_url === 'string' ? m.team1.logo_url : '',
+      team2Logo: typeof m.team2?.logo_url === 'string' ? m.team2.logo_url : '',
+      team1WinProb: m.team1WinProb || 50,
+      team2WinProb: m.team2WinProb || 50,
+      d1, d2, labels: labs
+    }
+  })
+  matchupChartCache.setWeekMatchups(weekMatchupsForCache)
+  console.log('[CategoryMatchups] Stored chart data for', weekMatchupsForCache.length, 'matchups in cache')
     const my = processed.find(m => m.team1.is_my_team || m.team2.is_my_team)
     if (my) selectMatchup(my); else if (processed.length) selectMatchup(processed[0])
   } catch (e) { console.error('Error loading matchups:', e) }

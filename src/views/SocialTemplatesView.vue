@@ -1416,15 +1416,14 @@
     <div class="post-wrap">
       <div class="post-label">29 · Live Win Probability — Active ESPN League</div>
       <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;flex-wrap:wrap;">
-        <input v-model="wplLeagueId" placeholder="ESPN League ID (e.g. 6416)"
-          style="background:#1e2130;color:#e5e7eb;border:1px solid #374151;border-radius:8px;padding:6px 10px;font-size:13px;width:200px;">
+
         <button @click="loadWpLiveMatchups" :disabled="wpLiveLoading" class="wpi-load-btn">
           {{ wpLiveLoading ? 'Loading...' : '🔄 Load Matchups' }}
         </button>
         <select v-if="wpLiveMatchups.length" v-model="wpLiveSelectedIdx" @change="onWpLiveMatchupChange"
           style="background:#1e2130;color:#e5e7eb;border:1px solid #374151;border-radius:8px;padding:6px 10px;font-size:13px;">
           <option v-for="(m, i) in wpLiveMatchups" :key="i" :value="i">
-            Matchup {{ i + 1 }} — {{ WPL_ANON[i % WPL_ANON.length][0] }} vs {{ WPL_ANON[i % WPL_ANON.length][1] }}
+            Matchup {{ i + 1 }} · {{ WPL_ANON[i % WPL_ANON.length][0] }} ({{ m.team1WinProb?.toFixed(0) }}%) vs {{ WPL_ANON[i % WPL_ANON.length][1] }} ({{ m.team2WinProb?.toFixed(0) }}%)
           </option>
         </select>
         <span v-if="wpLiveError" style="color:#ef4444;font-size:12px;">{{ wpLiveError }}</span>
@@ -1449,7 +1448,7 @@
               @error="($event.target as HTMLImageElement).style.display='none'">
             <div style="font-size:12px;font-weight:700;color:#06b6d4;margin-bottom:4px;">{{ WPL_ANON[wpLiveSelectedIdx % WPL_ANON.length][0] }}</div>
             <div style="font-size:32px;font-weight:900;color:#06b6d4;line-height:1;">{{ wplProb1.toFixed(1) }}%</div>
-            <div style="font-size:11px;color:#6b7280;margin-top:4px;">{{ wpLiveMatchup.isCategoryLeague ? wpLiveMatchup.catW1+'-'+wpLiveMatchup.catW2 : wpLiveMatchup.pts1.toFixed(1)+' pts' }}</div>
+            <div style="font-size:11px;color:#6b7280;margin-top:4px;">based on current stats</div>
           </div>
           <div style="display:flex;align-items:center;font-size:16px;font-weight:900;color:#374151;flex-shrink:0;">VS</div>
           <div style="flex:1;background:rgba(249,115,22,0.06);border:1px solid rgba(249,115,22,0.25);border-radius:12px;padding:14px;text-align:center;">
@@ -1458,7 +1457,7 @@
               @error="($event.target as HTMLImageElement).style.display='none'">
             <div style="font-size:12px;font-weight:700;color:#f97316;margin-bottom:4px;">{{ WPL_ANON[wpLiveSelectedIdx % WPL_ANON.length][1] }}</div>
             <div style="font-size:32px;font-weight:900;color:#f97316;line-height:1;">{{ wplProb2.toFixed(1) }}%</div>
-            <div style="font-size:11px;color:#6b7280;margin-top:4px;">{{ wpLiveMatchup.isCategoryLeague ? wpLiveMatchup.catW2+'-'+wpLiveMatchup.catW1 : wpLiveMatchup.pts2.toFixed(1)+' pts' }}</div>
+            <div style="font-size:11px;color:#6b7280;margin-top:4px;">based on current stats</div>
           </div>
         </div>
         <div style="margin:0 16px 14px;height:10px;border-radius:8px;overflow:hidden;background:linear-gradient(90deg,#f97316,#ea580c);position:relative;">
@@ -1521,6 +1520,7 @@
 import { ref, computed, defineComponent, h, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 import { useLeagueStore } from '@/stores/league'
+import { matchupChartCache } from '@/stores/matchupChartCache'
 
 // ── Embed detection (hide shell when loaded in admin iframe) ──────────────
 const route = useRoute()
@@ -2477,7 +2477,7 @@ const wpLiveMatchup = computed(() => wpLiveMatchups.value[wpLiveSelectedIdx.valu
 const wplD1 = ref<number[]>([])
 const wplD2 = ref<number[]>([])
 const wplLabels = ref<string[]>([])
-const wplProb1 = computed(() => { const last = wplD1.value[wplD1.value.length-1]; return last!=null?last:50 })
+const wplProb1 = computed(() => wplD1.value.length ? wplD1.value[wplD1.value.length-1] : (wpLiveMatchup.value?.team1WinProb ?? 50))
 const wplProb2 = computed(() => 100 - wplProb1.value)
 function wplSvgX(i: number): number { const n=wplLabels.value.length; return 48+(n>1?(i/(n-1))*440:220) }
 function wplSvgY(v: number): number { return 36+140-(v/100)*140 }
@@ -2494,156 +2494,44 @@ async function loadWpLiveMatchups() {
   wplLabels.value = []
 
   try {
-    // Read directly from the store — same data the real matchups page uses
-    const storeMatchups = leagueStore.yahooMatchups
-    if (!storeMatchups.length) {
-      throw new Error('No league loaded. Go to the Matchups page first, then come back here.')
+    const cached = matchupChartCache.getWeekMatchups()
+    if (!cached.length) {
+      throw new Error('Go to the Matchups page first, then come back here.')
     }
-
-    const week = leagueStore.currentLeague?.settings?.leg || leagueStore.currentWeek || 1
+    const week = leagueStore.currentWeek || leagueStore.currentLeague?.settings?.leg || 1
     wpLiveWeek.value = `Week ${week}`
-
-    wpLiveMatchups.value = storeMatchups
-      .filter((m: any) => m.team1 && m.team2)
-      .map((m: any) => {
-        const isCat = !!m.is_category_league
-        const catW1 = m.home_category_wins ?? m.team1?.category_wins ?? 0
-        const catW2 = m.away_category_wins ?? m.team2?.category_wins ?? 0
-        const catL1 = m.home_category_losses ?? m.team1?.category_losses ?? 0
-        const catL2 = m.away_category_losses ?? m.team2?.category_losses ?? 0
-        const pts1 = m.team1?.points ?? 0
-        const pts2 = m.team2?.points ?? 0
-
-        return {
-          isCategoryLeague: isCat,
-          // Category metrics
-          catW1, catW2, catL1, catL2,
-          catTotal: catW1 + catW2 + catL1 + catL2,
-          // Points metrics
-          pts1, pts2,
-          homeProjected: m.team1?.projected_points || 0,
-          awayProjected: m.team2?.projected_points || 0,
-          // Logos — try multiple fields
-          homeLogo: typeof m.team1?.logo_url === 'string' ? m.team1.logo_url : '',
-          awayLogo: typeof m.team2?.logo_url === 'string' ? m.team2.logo_url : '',
-          // Score display (category: show cat wins; points: show pts)
-          homeScore: isCat ? catW1 : pts1,
-          awayScore: isCat ? catW2 : pts2,
-        }
-      })
-
-    if (!wpLiveMatchups.value.length) {
-      throw new Error('No matchups found. Make sure your league is loaded.')
-    }
-
-    await computeWplChart()
+    // Store full items including pre-computed d1/d2/labels
+    wpLiveMatchups.value = cached.map((m: any) => ({ ...m }))
+    // Load chart for first matchup
+    loadChartFromMatchup(wpLiveMatchups.value[0])
   } catch (e: any) {
     wpLiveError.value = e?.message || 'Failed to load'
   } finally {
     wpLiveLoading.value = false
   }
 }
-async function computeWplChart() {
-  const m = wpLiveMatchup.value
+
+function loadChartFromMatchup(m: any) {
   if (!m) return
-
-  const jsDay = new Date().getDay()
-  const todayIdx = jsDay === 0 ? 6 : jsDay - 1
-  const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
-
-  let currentProb1: number
-
-  if (m.isCategoryLeague) {
-    const w1 = m.catW1 || 0
-    const w2 = m.catW2 || 0
-    const total = w1 + w2
-    if (total === 0) {
-      currentProb1 = 50
-    } else {
-      // Monte Carlo: simulate remaining categories as coin flips weighted by current win rate
-      const winRate1 = w1 / total
-      // Estimate remaining categories based on day of week
-      // Baseball has ~20 categories scored per week in H2H
-      const totalCatsPerWeek = 20
-      const catsPerDay = totalCatsPerWeek / 7
-      const catsRemaining = Math.max(0, Math.round(catsPerDay * (6 - todayIdx)))
-      let wins1 = 0
-      const SIMS = 5000
-      for (let i = 0; i < SIMS; i++) {
-        let sim1 = w1, sim2 = w2
-        // Each remaining category: slight regression to 50/50 vs current win rate
-        const effectiveRate = 0.5 + (winRate1 - 0.5) * 0.7
-        for (let c = 0; c < catsRemaining; c++) {
-          if (Math.random() < effectiveRate) sim1++
-          else sim2++
-        }
-        if (sim1 > sim2) wins1++
-        else if (sim1 === sim2 && Math.random() < 0.5) wins1++
-      }
-      currentProb1 = Math.min(99.9, Math.max(0.1, (wins1 / SIMS) * 100))
-    }
+  if (m.d1?.length) {
+    wplD1.value = [...m.d1]
+    wplD2.value = [...m.d2]
+    wplLabels.value = [...m.labels]
+    wpLiveError.value = ''
   } else {
-    // Points league
-    const s1 = m.pts1 || 0
-    const s2 = m.pts2 || 0
-    const projAvg = Math.max(m.homeProjected || 0, m.awayProjected || 0, s1, s2, 80)
-    const daysLeft = Math.max(0, 6 - todayIdx)
-    if (s1 === 0 && s2 === 0) {
-      currentProb1 = 50
-    } else {
-      function gr(mean: number, std: number): number {
-        const u1 = Math.random(), u2 = Math.random()
-        return mean + std * Math.sqrt(-2 * Math.log(u1)) * Math.cos(2 * Math.PI * u2)
-      }
-      const remAvg = (projAvg / 7) * daysLeft
-      const remStd = projAvg * 0.20 * Math.sqrt(1 / 7) * Math.sqrt(Math.max(daysLeft, 1))
-      let w1 = 0
-      const SIMS = 3000
-      for (let i = 0; i < SIMS; i++) {
-        const f1 = s1 + Math.max(0, gr(remAvg, remStd))
-        const f2 = s2 + Math.max(0, gr(remAvg, remStd))
-        if (f1 > f2) w1++
-      }
-      currentProb1 = Math.min(99.9, Math.max(0.1, (w1 / SIMS) * 100))
-    }
+    wplD1.value = [m.team1WinProb ?? 50]
+    wplD2.value = [m.team2WinProb ?? 50]
+    wplLabels.value = ['Now']
+    wpLiveError.value = 'Visit the Matchups page first to load real chart data.'
   }
-
-  // Show a clean 3-point trend arc representing the week's trajectory
-  const daysToShow = todayIdx + 1
-  const d1: number[] = [], d2: number[] = [], labs: string[] = []
-
-  if (daysToShow <= 2) {
-    d1.push(Math.round(currentProb1 * 10) / 10)
-    d2.push(Math.round((100 - currentProb1) * 10) / 10)
-    labs.push(days[todayIdx])
-  } else {
-    // 3 points: start of week (near 50), mid-week, today
-    const startProb = 50 + (currentProb1 - 50) * 0.1
-    const midProb = 50 + (currentProb1 - 50) * 0.55
-    const midDay = Math.floor(todayIdx / 2)
-    const points = [
-      { day: 0, prob: startProb },
-      { day: midDay, prob: midProb },
-      { day: todayIdx, prob: currentProb1 },
-    ]
-    const seen = new Set<number>()
-    for (const p of points) {
-      if (!seen.has(p.day)) {
-        seen.add(p.day)
-        const v = Math.round(Math.min(99.9, Math.max(0.1, p.prob)) * 10) / 10
-        d1.push(v)
-        d2.push(Math.round((100 - v) * 10) / 10)
-        labs.push(days[p.day])
-      }
-    }
-  }
-
-  wplD1.value = d1
-  wplD2.value = d2
-  wplLabels.value = labs
 }
 
-async function onWpLiveMatchupChange() { wplD1.value=[]; wplD2.value=[]; wplLabels.value=[]; await computeWplChart() }
+
+
+
+
+
+function onWpLiveMatchupChange() { const m = wpLiveMatchup.value; loadChartFromMatchup(m) }
 onMounted(()=>{ if(leagueStore.activeLeagueId?.startsWith('espn')) loadWpLiveMatchups() })
 
 </script>
