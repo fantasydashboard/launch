@@ -2494,36 +2494,191 @@ async function loadWpLiveMatchups() {
   wplLabels.value = []
 
   try {
-    const cached = matchupChartCache.getWeekMatchups()
-    if (!cached.length) {
-      throw new Error('Go to the Matchups page first, then come back here.')
+    // ── Get active ESPN league from store ────────────────────────────────────
+    const activeId = leagueStore.activeLeagueId || ''
+    const parts = activeId.split('_')
+    if (parts[0] !== 'espn') {
+      throw new Error('Please load an ESPN league using the header dropdown first.')
     }
-    const week = leagueStore.currentWeek || leagueStore.currentLeague?.settings?.leg || 1
-    wpLiveWeek.value = `Week ${week}`
-    // Store full items including pre-computed d1/d2/labels
-    wpLiveMatchups.value = cached.map((m: any) => ({ ...m }))
-    // Load chart for first matchup
-    loadChartFromMatchup(wpLiveMatchups.value[0])
-  } catch (e: any) {
-    wpLiveError.value = e?.message || 'Failed to load'
+    const sport = parts[1] as any
+    const espnLeagueId = parts[2]
+    const season = parseInt(parts[3])
+
+    const { espnService } = await import('@/services/espn')
+
+    // ── Fetch league + current week ──────────────────────────────────────────
+    const league = await espnService.getLeague(sport, espnLeagueId, season)
+    const currentWeek = league?.status?.currentMatchupPeriod || 1
+    wpLiveWeek.value = `Week ${currentWeek}`
+
+    // ── Fetch matchups with full stat data ───────────────────────────────────
+    const espnMatchups = await espnService.getMatchups(sport, espnLeagueId, season, currentWeek, true)
+
+    // ── Daily time math ──────────────────────────────────────────────────────
+    const now = new Date()
+    const hourOfDay = now.getHours()
+    const jsDay = now.getDay()
+    const dayMap: Record<number,number> = { 1:0,2:1,3:2,4:3,5:4,6:5,0:6 }
+    const todayIndex = dayMap[jsDay]
+    const lastCompletedDay = hourOfDay >= 3 ? todayIndex - 1 : todayIndex - 2
+    const daysToShow = Math.max(0, lastCompletedDay + 1)
+    const allDays = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun']
+
+    // ── Daily weights for baseball ───────────────────────────────────────────
+    const dailyWeights = [0.14,0.15,0.15,0.14,0.14,0.14,0.14]
+    let cumWt = 0
+    const cumWeights: number[] = []
+    for (let i = 0; i < 7; i++) { cumWt += dailyWeights[i]; cumWeights.push(cumWt) }
+
+    // ── ESPN inverse stats (lower = better) ──────────────────────────────────
+    const ESPN_INV = ['7','12','14','18','19','21','22','24','33','45']
+
+    function randomNormal(mean: number, std: number): number {
+      const u1 = Math.random(), u2 = Math.random()
+      return mean + std * Math.sqrt(-2 * Math.log(u1)) * Math.cos(2 * Math.PI * u2)
+    }
+
+    function espnMonteCarlo(
+      t1cur: Record<string,number>, t2cur: Record<string,number>,
+      t1rem: Record<string,number>, t2rem: Record<string,number>,
+      catIds: string[], daysLeft: number
+    ): number {
+      const SIMS = 3000
+      const vol: Record<string,number> = { '2':8,'3':3,'4':8,'5':2,'8':0.02,'9':0.02,'10':0.03,'17':0.5,'20':0.5,'34':15,'18':0.5,'19':0.15,'32':0.5,'47':0.5,'48':0.15 }
+      const scale = Math.sqrt(daysLeft / 7)
+      let wins1 = 0, wins2 = 0, ties = 0
+      for (let s = 0; s < SIMS; s++) {
+        let w1 = 0, w2 = 0
+        for (const id of catIds) {
+          const c1 = t1cur[id]||0, c2 = t2cur[id]||0
+          const e1 = t1rem[id]||0, e2 = t2rem[id]||0
+          const dv = vol[id]||5
+          const sd1 = e1*0.3*scale + dv*scale, sd2 = e2*0.3*scale + dv*scale
+          const f1 = c1 + Math.max(0, e1 + randomNormal(0, sd1))
+          const f2 = c2 + Math.max(0, e2 + randomNormal(0, sd2))
+          const inv = ESPN_INV.includes(id)
+          if (inv ? f1<f2 : f1>f2) w1++
+          else if (inv ? f2<f1 : f2>f1) w2++
+        }
+        if (w1>w2) wins1++; else if (w2>w1) wins2++; else ties++
+      }
+      return Math.min(99.9, Math.max(0.1, ((wins1+ties/2)/SIMS)*100))
+    }
+
+    // ── Process each matchup ─────────────────────────────────────────────────
+    const processed: any[] = []
+
+    for (const m of espnMatchups) {
+      if (!m.awayTeamId) continue
+
+      const homeTeam = leagueStore.yahooTeams.find((t:any) => t.team_id === String(m.homeTeamId))
+      const awayTeam = leagueStore.yahooTeams.find((t:any) => t.team_id === String(m.awayTeamId))
+
+      // Get category stats from the matchup
+      // ESPN returns homeScoreByStat / awayScoreByStat with current cumulative values
+      const homeStats: Record<string,number> = {}
+      const awayStats: Record<string,number> = {}
+
+      const hStat = m.homeScoreByStat || m.homeValuesByStat || {}
+      const aStat = m.awayScoreByStat || m.awayValuesByStat || {}
+      const allStatIds = new Set([...Object.keys(hStat), ...Object.keys(aStat)])
+      for (const id of allStatIds) {
+        const hv = hStat[id]
+        const av = aStat[id]
+        if (hv != null && hv !== '--') homeStats[String(id)] = parseFloat(String(hv)) || 0
+        if (av != null && av !== '--') awayStats[String(id)] = parseFloat(String(av)) || 0
+      }
+      const catIds = Object.keys(homeStats).filter(id => homeStats[id] !== undefined || awayStats[id] !== undefined)
+
+      // Compute current overall win prob (today's snapshot)
+      const homeCatW = m.homeCategoryWins || 0
+      const awayCatW = m.awayCategoryWins || 0
+      const totalCats = homeCatW + awayCatW
+      const daysLeftNow = Math.max(0, 6 - todayIndex)
+
+      // Build chart — one probability per completed day + today
+      const d1: number[] = [], d2: number[] = [], labs: string[] = []
+      const refDay = Math.max(0, lastCompletedDay)
+
+      for (let day = 0; day < daysToShow; day++) {
+        const dayFrac = day <= refDay
+          ? cumWeights[day] / Math.max(0.001, cumWeights[refDay])
+          : 1
+        const t1c: Record<string,number> = {}, t2c: Record<string,number> = {}
+        for (const id of catIds) {
+          t1c[id] = (homeStats[id]||0) * dayFrac
+          t2c[id] = (awayStats[id]||0) * dayFrac
+        }
+        const dLeft = 6 - day
+        let p1: number
+        if (catIds.length === 0 || (totalCats === 0 && dLeft > 0)) {
+          p1 = 50
+        } else if (dLeft <= 0) {
+          p1 = homeCatW > awayCatW ? 99.9 : homeCatW < awayCatW ? 0.1 : 50
+        } else {
+          const remFrac = 1 - cumWeights[day]
+          const refWt = cumWeights[Math.max(0, Math.min(refDay, day))]
+          const t1e: Record<string,number> = {}, t2e: Record<string,number> = {}
+          for (const id of catIds) {
+            const f1 = (homeStats[id]||0) / Math.max(0.001, refWt)
+            const f2 = (awayStats[id]||0) / Math.max(0.001, refWt)
+            t1e[id] = f1 * remFrac; t2e[id] = f2 * remFrac
+          }
+          p1 = espnMonteCarlo(t1c, t2c, t1e, t2e, catIds, dLeft)
+        }
+        d1.push(Math.round(p1*10)/10)
+        d2.push(Math.round((100-p1)*10)/10)
+        labs.push(allDays[day])
+      }
+
+      // Append today's live point
+      if (todayIndex < 7 && todayIndex > lastCompletedDay) {
+        const p1live = catIds.length === 0 ? 50
+          : espnMonteCarlo(homeStats, awayStats,
+              Object.fromEntries(catIds.map(id => [id, (homeStats[id]||0)*daysLeftNow/7])),
+              Object.fromEntries(catIds.map(id => [id, (awayStats[id]||0)*daysLeftNow/7])),
+              catIds, daysLeftNow)
+        d1.push(Math.round(Math.min(99.9,Math.max(0.1,p1live))*10)/10)
+        d2.push(Math.round((100-d1[d1.length-1])*10)/10)
+        labs.push(allDays[todayIndex])
+      }
+
+      processed.push({
+        matchupId: m.id || processed.length,
+        team1WinProb: d1.length ? d1[d1.length-1] : 50,
+        team2WinProb: d2.length ? d2[d2.length-1] : 50,
+        homeLogo: homeTeam?.logo_url || (typeof m.homeTeam?.logo==='string' ? m.homeTeam.logo : ''),
+        awayLogo: awayTeam?.logo_url || (typeof m.awayTeam?.logo==='string' ? m.awayTeam.logo : ''),
+        d1, d2, labels: labs,
+        homeScore: homeCatW,
+        awayScore: awayCatW,
+        isCategoryLeague: true
+      })
+    }
+
+    if (!processed.length) throw new Error('No matchups found. Make sure your ESPN league is loaded.')
+    wpLiveMatchups.value = processed
+
+    // Load first matchup chart
+    const first = processed[0]
+    wplD1.value = [...first.d1]
+    wplD2.value = [...first.d2]
+    wplLabels.value = [...first.labels]
+
+  } catch(e: any) {
+    wpLiveError.value = e?.message || 'Failed to load matchups'
   } finally {
     wpLiveLoading.value = false
   }
 }
 
-function loadChartFromMatchup(m: any) {
+function onWpLiveMatchupChange() {
+  const m = wpLiveMatchup.value
   if (!m) return
-  if (m.d1?.length) {
-    wplD1.value = [...m.d1]
-    wplD2.value = [...m.d2]
-    wplLabels.value = [...m.labels]
-    wpLiveError.value = ''
-  } else {
-    wplD1.value = [m.team1WinProb ?? 50]
-    wplD2.value = [m.team2WinProb ?? 50]
-    wplLabels.value = ['Now']
-    wpLiveError.value = 'Visit the Matchups page first to load real chart data.'
-  }
+  wplD1.value = m.d1?.length ? [...m.d1] : [m.team1WinProb ?? 50]
+  wplD2.value = m.d2?.length ? [...m.d2] : [m.team2WinProb ?? 50]
+  wplLabels.value = m.labels?.length ? [...m.labels] : ['Now']
+  wpLiveError.value = ''
 }
 
 
@@ -2531,7 +2686,9 @@ function loadChartFromMatchup(m: any) {
 
 
 
-function onWpLiveMatchupChange() { const m = wpLiveMatchup.value; loadChartFromMatchup(m) }
+
+
+
 onMounted(()=>{ if(leagueStore.activeLeagueId?.startsWith('espn')) loadWpLiveMatchups() })
 
 </script>
