@@ -20,8 +20,8 @@
       <button @click="activeType='interactive'" :class="['type-tab', activeType==='interactive'?'type-tab-active':'']">
         <span>🎯</span> Interactive
       </button>
-      <button @click="activeType='stories'" :class="['type-tab', activeType==='stories'?'type-tab-active':'']" style="opacity:0.4;cursor:default">
-        <span>📱</span> Stories <span style="font-size:9px;background:rgba(234,179,8,0.15);border:1px solid rgba(234,179,8,0.3);color:#eab308;padding:1px 5px;border-radius:3px;margin-left:4px">Soon</span>
+      <button @click="activeType='stories'" :class="['type-tab', activeType==='stories'?'type-tab-active':'']">
+        <span>📱</span> Stories
       </button>
     </div>
 
@@ -1478,6 +1478,280 @@
 
   </template><!-- end interactive tab -->
 
+  <!-- ══════════════════════════════════════════════════════════
+       STORIES TAB  — 9:16 vertical format (540 × 960)
+       Safe zones: top 120px (profile info), bottom 200px (CTA/buttons)
+  ══════════════════════════════════════════════════════════ -->
+  <template v-if="activeType === 'stories'">
+    <div class="section-label">📱 Stories — 9:16 format (540×960) · Screenshot each card</div>
+    <div style="display:flex;flex-direction:column;gap:48px;padding:24px 0;">
+
+      <!-- ── SHARED CONTROLS (date + week, shared with interactive tab) ── -->
+      <div style="background:#111827;border:1px solid #1f2937;border-radius:12px;padding:20px 24px;max-width:600px;">
+        <div style="font-size:13px;font-weight:700;color:#9ca3af;margin-bottom:14px;text-transform:uppercase;letter-spacing:0.08em;">📅 Data Controls — shared with Interactive tab</div>
+        <div style="display:flex;gap:16px;align-items:flex-end;flex-wrap:wrap;">
+          <div>
+            <div style="font-size:11px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:0.1em;margin-bottom:6px;">Date (YYYYMMDD)</div>
+            <input v-model="wpiDate" class="wp-input" placeholder="20260329" style="width:130px;">
+          </div>
+          <div>
+            <div style="font-size:11px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:0.1em;margin-bottom:6px;">Week</div>
+            <input v-model="wpiWeekLabel" class="wp-input" style="width:60px;" placeholder="1">
+          </div>
+          <button @click="loadWpiData" :disabled="wpiLoading" class="wpi-load-btn">
+            <span v-if="wpiLoading">⏳ Loading…</span>
+            <span v-else>⚡ Load Data</span>
+          </button>
+        </div>
+        <div v-if="wpiError" style="color:#ef4444;font-size:12px;margin-top:8px;">⚠️ {{ wpiError }}</div>
+        <div v-if="wpiStatus" style="color:#22c55e;font-size:12px;margin-top:8px;">{{ wpiStatus }}</div>
+      </div>
+
+      <!-- ══ STORY 1: BEST BATTERS ══ -->
+      <div>
+        <div class="post-label">📱 Story · Best Batters</div>
+        <div style="width:540px;height:960px;background:#0a0c14;border-radius:16px;overflow:hidden;position:relative;font-family:Helvetica Neue,Helvetica,Arial,sans-serif;">
+
+          <!-- BG gradient -->
+          <div style="position:absolute;inset:0;background:radial-gradient(ellipse at 50% 0%,rgba(6,182,212,0.18) 0%,transparent 65%);pointer-events:none;"></div>
+          <div style="position:absolute;inset:0;background:radial-gradient(ellipse at 50% 100%,rgba(6,182,212,0.08) 0%,transparent 60%);pointer-events:none;"></div>
+
+          <!-- TOP SAFE ZONE — leave ~120px clear for Instagram profile overlay -->
+          <div style="position:absolute;top:0;left:0;right:0;height:120px;display:flex;align-items:flex-end;padding:0 24px 10px;">
+            <div style="width:100%;height:1px;background:linear-gradient(90deg,transparent,rgba(6,182,212,0.4),transparent);"></div>
+          </div>
+
+          <!-- Main content — starts at 130px -->
+          <div style="position:absolute;top:130px;left:0;right:0;padding:0 28px;">
+            <!-- UFD logo + branding -->
+            <div style="display:flex;align-items:center;gap:10px;margin-bottom:4px;">
+              <img src="/UFD_V8.png" style="height:32px;width:auto;">
+              <span style="font-size:12px;color:#4b5563;font-weight:600;letter-spacing:0.05em;">ULTIMATE FANTASY DASHBOARD</span>
+            </div>
+
+            <!-- Title block -->
+            <div style="margin-bottom:28px;">
+              <div style="font-size:13px;font-weight:700;color:#06b6d4;letter-spacing:0.15em;text-transform:uppercase;margin-bottom:4px;">⚾ Week {{ wpiWeekLabel }} · {{ wpiDateDisplay }}</div>
+              <div style="font-size:40px;font-weight:900;color:#fff;line-height:1;letter-spacing:-0.02em;">BEST</div>
+              <div style="font-size:40px;font-weight:900;line-height:1;letter-spacing:-0.02em;background:linear-gradient(90deg,#06b6d4,#3b82f6);-webkit-background-clip:text;-webkit-text-fill-color:transparent;">BATTERS</div>
+              <div style="font-size:12px;color:#4b5563;margin-top:6px;">Fantasy win probability impact</div>
+            </div>
+
+            <!-- Player rows -->
+            <div v-if="wpiTopBatters.length">
+              <div v-for="(p, i) in wpiTopBatters.slice(0,5)" :key="'sb'+i"
+                :style="{background:i===0?'rgba(6,182,212,0.08)':'rgba(255,255,255,0.025)',border:i===0?'1px solid rgba(6,182,212,0.2)':'1px solid rgba(255,255,255,0.04)',borderRadius:'14px',marginBottom:'12px',padding:'14px 16px',display:'flex',alignItems:'center',gap:'14px'}">
+                <!-- Rank -->
+                <div :style="{width:'28px',height:'28px',borderRadius:'50%',background:i===0?'#06b6d4':'rgba(255,255,255,0.06)',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}">
+                  <span :style="{fontSize:'13px',fontWeight:'900',color:i===0?'#0a0c14':'#6b7280'}">{{i+1}}</span>
+                </div>
+                <!-- Headshot -->
+                <img v-if="p.headshot" :src="p.headshot"
+                  style="width:54px;height:54px;border-radius:50%;object-fit:cover;border:2px solid rgba(6,182,212,0.3);flex-shrink:0;"
+                  @error="($event.target as HTMLImageElement).style.display='none'">
+                <div v-else style="width:54px;height:54px;border-radius:50%;background:rgba(6,182,212,0.15);border:2px solid rgba(6,182,212,0.2);flex-shrink:0;"></div>
+                <!-- Info -->
+                <div style="flex:1;min-width:0;">
+                  <div :style="{fontSize:'16px',fontWeight:'800',color:i===0?'#fff':'#e5e7eb',whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}">{{ p.name }}</div>
+                  <div style="font-size:12px;color:#6b7280;margin-top:2px;">{{ p.team }} · {{ p.position }}</div>
+                  <div style="font-size:11px;color:#4b5563;margin-top:2px;">{{ p.statLine }}</div>
+                </div>
+                <!-- WP Impact -->
+                <div style="text-align:right;flex-shrink:0;">
+                  <div :style="{fontSize:'22px',fontWeight:'900',color:i===0?'#06b6d4':'#22c55e',lineHeight:'1'}">+{{ p.wpImpact.toFixed(1) }}%</div>
+                  <div style="font-size:10px;color:#4b5563;margin-top:2px;">WP impact</div>
+                </div>
+              </div>
+            </div>
+            <div v-else style="text-align:center;padding:60px 0;color:#374151;font-size:14px;">
+              Load data above to populate
+            </div>
+          </div>
+
+          <!-- BOTTOM SAFE ZONE — leave ~200px for IG buttons/CTA overlay -->
+          <div style="position:absolute;bottom:0;left:0;right:0;height:200px;">
+            <div style="position:absolute;top:0;left:24px;right:24px;height:1px;background:linear-gradient(90deg,transparent,rgba(6,182,212,0.3),transparent);"></div>
+            <div style="position:absolute;bottom:220px;left:0;right:0;text-align:center;">
+              <div style="font-size:11px;color:#1f2937;letter-spacing:0.08em;">ultimatefantasydashboard.com</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ══ STORY 2: BEST PITCHERS ══ -->
+      <div>
+        <div class="post-label">📱 Story · Best Pitchers</div>
+        <div style="width:540px;height:960px;background:#0a0c14;border-radius:16px;overflow:hidden;position:relative;font-family:Helvetica Neue,Helvetica,Arial,sans-serif;">
+
+          <div style="position:absolute;inset:0;background:radial-gradient(ellipse at 50% 0%,rgba(249,115,22,0.15) 0%,transparent 60%);pointer-events:none;"></div>
+          <div style="position:absolute;inset:0;background:radial-gradient(ellipse at 50% 100%,rgba(249,115,22,0.07) 0%,transparent 60%);pointer-events:none;"></div>
+
+          <div style="position:absolute;top:0;left:0;right:0;height:120px;display:flex;align-items:flex-end;padding:0 24px 10px;">
+            <div style="width:100%;height:1px;background:linear-gradient(90deg,transparent,rgba(249,115,22,0.4),transparent);"></div>
+          </div>
+
+          <div style="position:absolute;top:130px;left:0;right:0;padding:0 28px;">
+            <div style="display:flex;align-items:center;gap:10px;margin-bottom:4px;">
+              <img src="/UFD_V8.png" style="height:32px;width:auto;">
+              <span style="font-size:12px;color:#4b5563;font-weight:600;letter-spacing:0.05em;">ULTIMATE FANTASY DASHBOARD</span>
+            </div>
+
+            <div style="margin-bottom:28px;">
+              <div style="font-size:13px;font-weight:700;color:#f97316;letter-spacing:0.15em;text-transform:uppercase;margin-bottom:4px;">⚾ Week {{ wpiWeekLabel }} · {{ wpiDateDisplay }}</div>
+              <div style="font-size:40px;font-weight:900;color:#fff;line-height:1;letter-spacing:-0.02em;">BEST</div>
+              <div style="font-size:40px;font-weight:900;line-height:1;letter-spacing:-0.02em;background:linear-gradient(90deg,#f97316,#ef4444);-webkit-background-clip:text;-webkit-text-fill-color:transparent;">PITCHERS</div>
+              <div style="font-size:12px;color:#4b5563;margin-top:6px;">Fantasy win probability impact</div>
+            </div>
+
+            <div v-if="wpiTopPitchers.length">
+              <div v-for="(p, i) in wpiTopPitchers.slice(0,5)" :key="'sp'+i"
+                :style="{background:i===0?'rgba(249,115,22,0.08)':'rgba(255,255,255,0.025)',border:i===0?'1px solid rgba(249,115,22,0.2)':'1px solid rgba(255,255,255,0.04)',borderRadius:'14px',marginBottom:'12px',padding:'14px 16px',display:'flex',alignItems:'center',gap:'14px'}">
+                <div :style="{width:'28px',height:'28px',borderRadius:'50%',background:i===0?'#f97316':'rgba(255,255,255,0.06)',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}">
+                  <span :style="{fontSize:'13px',fontWeight:'900',color:i===0?'#0a0c14':'#6b7280'}">{{i+1}}</span>
+                </div>
+                <img v-if="p.headshot" :src="p.headshot"
+                  style="width:54px;height:54px;border-radius:50%;object-fit:cover;border:2px solid rgba(249,115,22,0.3);flex-shrink:0;"
+                  @error="($event.target as HTMLImageElement).style.display='none'">
+                <div v-else style="width:54px;height:54px;border-radius:50%;background:rgba(249,115,22,0.12);border:2px solid rgba(249,115,22,0.2);flex-shrink:0;"></div>
+                <div style="flex:1;min-width:0;">
+                  <div :style="{fontSize:'16px',fontWeight:'800',color:i===0?'#fff':'#e5e7eb',whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}">{{ p.name }}</div>
+                  <div style="font-size:12px;color:#6b7280;margin-top:2px;">{{ p.team }} · {{ p.position }}</div>
+                  <div style="font-size:11px;color:#4b5563;margin-top:2px;">{{ p.statLine }}</div>
+                </div>
+                <div style="text-align:right;flex-shrink:0;">
+                  <div :style="{fontSize:'22px',fontWeight:'900',color:i===0?'#f97316':'#22c55e',lineHeight:'1'}">+{{ p.wpImpact.toFixed(1) }}%</div>
+                  <div style="font-size:10px;color:#4b5563;margin-top:2px;">WP impact</div>
+                </div>
+              </div>
+            </div>
+            <div v-else style="text-align:center;padding:60px 0;color:#374151;font-size:14px;">
+              Load data above to populate
+            </div>
+          </div>
+
+          <div style="position:absolute;bottom:0;left:0;right:0;height:200px;">
+            <div style="position:absolute;top:0;left:24px;right:24px;height:1px;background:linear-gradient(90deg,transparent,rgba(249,115,22,0.3),transparent);"></div>
+            <div style="position:absolute;bottom:220px;left:0;right:0;text-align:center;">
+              <div style="font-size:11px;color:#1f2937;letter-spacing:0.08em;">ultimatefantasydashboard.com</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ══ STORY 3: WIN PROBABILITY MATCHUP ══ -->
+      <div>
+        <div class="post-label">📱 Story · Win Probability — uses Graphic 29 inputs above</div>
+        <div style="font-size:11px;color:#6b7280;margin-bottom:12px;">Enter teams in the Interactive tab → Graphic 29 → the story card below updates automatically</div>
+        <div style="width:540px;height:960px;background:#0a0c14;border-radius:16px;overflow:hidden;position:relative;font-family:Helvetica Neue,Helvetica,Arial,sans-serif;">
+
+          <!-- BG gradient split: cyan left, orange right -->
+          <div style="position:absolute;inset:0;background:linear-gradient(135deg,rgba(6,182,212,0.12) 0%,transparent 50%,rgba(249,115,22,0.12) 100%);pointer-events:none;"></div>
+
+          <!-- Top safe zone -->
+          <div style="position:absolute;top:0;left:0;right:0;height:120px;display:flex;align-items:flex-end;padding:0 24px 10px;">
+            <div style="width:100%;height:1px;background:linear-gradient(90deg,rgba(6,182,212,0.4),transparent,rgba(249,115,22,0.4));"></div>
+          </div>
+
+          <!-- Content -->
+          <div style="position:absolute;top:130px;left:0;right:0;padding:0 28px;">
+            <!-- Header -->
+            <div style="display:flex;align-items:center;gap:10px;margin-bottom:20px;">
+              <img src="/UFD_V8.png" style="height:32px;width:auto;">
+              <span style="font-size:12px;color:#4b5563;font-weight:600;letter-spacing:0.05em;">ULTIMATE FANTASY DASHBOARD</span>
+              <span style="margin-left:auto;font-size:11px;font-weight:700;color:#4b5563;text-transform:uppercase;letter-spacing:0.1em;">{{ wplWeekLabel }}</span>
+            </div>
+
+            <!-- Title -->
+            <div style="text-align:center;margin-bottom:32px;">
+              <div style="font-size:36px;font-weight:900;color:#fff;letter-spacing:0.02em;">WIN PROBABILITY</div>
+              <div style="font-size:12px;color:#4b5563;margin-top:4px;">Live probability based on current stats</div>
+            </div>
+
+            <!-- Team cards -->
+            <div style="display:flex;gap:12px;margin-bottom:20px;">
+              <!-- Team 1 -->
+              <div style="flex:1;background:rgba(6,182,212,0.07);border:1px solid rgba(6,182,212,0.25);border-radius:16px;padding:20px 14px;text-align:center;">
+                <img v-if="wplPresetTeams[0].logo" :src="wplPresetTeams[0].logo"
+                  style="width:64px;height:64px;border-radius:50%;border:2px solid #06b6d4;object-fit:cover;margin:0 auto 10px;display:block;"
+                  @error="($event.target as HTMLImageElement).style.display='none'">
+                <div v-else style="width:64px;height:64px;border-radius:50%;background:rgba(6,182,212,0.15);border:2px solid #06b6d4;margin:0 auto 10px;"></div>
+                <div style="font-size:13px;font-weight:700;color:#06b6d4;margin-bottom:8px;word-break:break-word;">{{ wplPresetTeams[0].name || 'Team 1' }}</div>
+                <div style="font-size:42px;font-weight:900;color:#06b6d4;line-height:1;">{{ wplProb1.toFixed(1) }}%</div>
+              </div>
+              <!-- VS -->
+              <div style="display:flex;align-items:center;flex-shrink:0;">
+                <span style="font-size:18px;font-weight:900;color:#374151;">VS</span>
+              </div>
+              <!-- Team 2 -->
+              <div style="flex:1;background:rgba(249,115,22,0.07);border:1px solid rgba(249,115,22,0.25);border-radius:16px;padding:20px 14px;text-align:center;">
+                <img v-if="wplPresetTeams[1].logo" :src="wplPresetTeams[1].logo"
+                  style="width:64px;height:64px;border-radius:50%;border:2px solid #f97316;object-fit:cover;margin:0 auto 10px;display:block;"
+                  @error="($event.target as HTMLImageElement).style.display='none'">
+                <div v-else style="width:64px;height:64px;border-radius:50%;background:rgba(249,115,22,0.12);border:2px solid #f97316;margin:0 auto 10px;"></div>
+                <div style="font-size:13px;font-weight:700;color:#f97316;margin-bottom:8px;word-break:break-word;">{{ wplPresetTeams[1].name || 'Team 2' }}</div>
+                <div style="font-size:42px;font-weight:900;color:#f97316;line-height:1;">{{ wplProb2.toFixed(1) }}%</div>
+              </div>
+            </div>
+
+            <!-- Progress bar -->
+            <div style="height:12px;border-radius:8px;overflow:hidden;background:linear-gradient(90deg,#f97316,#ea580c);margin-bottom:28px;position:relative;">
+              <div :style="{position:'absolute',left:0,top:0,height:'100%',width:wplProb1+'%',background:'linear-gradient(90deg,#06b6d4,#0891b2)',borderRadius:'8px'}"></div>
+            </div>
+
+            <!-- Chart -->
+            <div style="background:rgba(255,255,255,0.03);border-radius:14px;padding:16px 10px 10px;border:1px solid rgba(255,255,255,0.06);">
+              <div style="font-size:10px;font-weight:700;letter-spacing:0.15em;text-transform:uppercase;color:#4b5563;margin-bottom:10px;padding-left:4px;">📈 WIN PROBABILITY TREND</div>
+              <svg v-if="wplD1.length" viewBox="0 0 508 170" style="display:block;width:100%;height:auto;">
+                <defs>
+                  <linearGradient id="slg1" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stop-color="#06b6d4" stop-opacity="0.3"/><stop offset="100%" stop-color="#06b6d4" stop-opacity="0.02"/>
+                  </linearGradient>
+                  <linearGradient id="slg2" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stop-color="#f97316" stop-opacity="0.3"/><stop offset="100%" stop-color="#f97316" stop-opacity="0.02"/>
+                  </linearGradient>
+                </defs>
+                <template v-for="pct in [0,25,50,75,100]" :key="pct">
+                  <line x1="42" :y1="storyWplY(pct)" x2="500" :y2="storyWplY(pct)"
+                    :stroke="pct===50?'#374151':'#1e2130'" :stroke-width="pct===50?1.5:1" stroke-dasharray="3 4"/>
+                  <text x="36" :y="storyWplY(pct)+4" text-anchor="end" font-size="9" :fill="pct===50?'#6b7280':'#374151'"
+                    font-family="Helvetica Neue,Arial,sans-serif">{{ pct }}%</text>
+                </template>
+                <path :d="storyFill1" fill="url(#slg1)"/>
+                <path :d="storyFill2" fill="url(#slg2)"/>
+                <path :d="storyLine1" fill="none" stroke="#06b6d4" stroke-width="2.5" stroke-linejoin="round"/>
+                <path :d="storyLine2" fill="none" stroke="#f97316" stroke-width="2.5" stroke-linejoin="round"/>
+                <template v-for="(v,i) in wplD1" :key="'sv1'+i">
+                  <rect :x="storyWplX(i)-14" :y="v>=wplD2[i]?storyWplY(v)-20:storyWplY(v)+5" width="28" height="14" rx="4" fill="#06b6d4" opacity="0.9"/>
+                  <text :x="storyWplX(i)" :y="v>=wplD2[i]?storyWplY(v)-9:storyWplY(v)+15" text-anchor="middle" font-size="9" font-weight="800" fill="#0a0c14" font-family="Helvetica Neue,Arial,sans-serif">{{ v }}</text>
+                  <circle :cx="storyWplX(i)" :cy="storyWplY(v)" r="4" fill="#06b6d4" stroke="#0f1117" stroke-width="1.5"/>
+                </template>
+                <template v-for="(v,i) in wplD2" :key="'sv2'+i">
+                  <rect :x="storyWplX(i)-14" :y="v>wplD1[i]?storyWplY(v)-20:storyWplY(v)+5" width="28" height="14" rx="4" fill="#f97316" opacity="0.9"/>
+                  <text :x="storyWplX(i)" :y="v>wplD1[i]?storyWplY(v)-9:storyWplY(v)+15" text-anchor="middle" font-size="9" font-weight="800" fill="#0a0c14" font-family="Helvetica Neue,Arial,sans-serif">{{ v }}</text>
+                  <circle :cx="storyWplX(i)" :cy="storyWplY(v)" r="4" fill="#f97316" stroke="#0f1117" stroke-width="1.5"/>
+                </template>
+                <template v-for="(label,i) in wplLabels" :key="'sxl'+i">
+                  <text :x="storyWplX(i)" y="165" text-anchor="middle" font-size="10" font-weight="700" fill="#6b7280" font-family="Helvetica Neue,Arial,sans-serif">{{ label }}</text>
+                </template>
+              </svg>
+              <div v-else style="height:60px;display:flex;align-items:center;justify-content:center;color:#374151;font-size:12px;">Enter data in Interactive → Graphic 29</div>
+            </div>
+          </div>
+
+          <!-- Bottom safe zone -->
+          <div style="position:absolute;bottom:0;left:0;right:0;height:200px;">
+            <div style="position:absolute;top:0;left:24px;right:24px;height:1px;background:linear-gradient(90deg,rgba(6,182,212,0.3),transparent,rgba(249,115,22,0.3));"></div>
+            <div style="position:absolute;bottom:220px;left:0;right:0;text-align:center;">
+              <div style="font-size:11px;color:#1f2937;letter-spacing:0.08em;">ultimatefantasydashboard.com</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </template><!-- end stories tab -->
+
+
   </div>
 </template>
 
@@ -2255,6 +2529,27 @@ const wpArea2Path = computed(() => {
   return `${line} L ${pts[pts.length-1].x},${WP_CB} L ${pts[0].x},${WP_CB} Z`
 })
 
+
+// ── Story chart helpers (540px wide chart in a 9:16 card) ──────────────────
+function storyWplX(i: number): number {
+  const n = wplLabels.value.length
+  return 42 + (n > 1 ? (i / (n - 1)) * 458 : 229)
+}
+function storyWplY(v: number): number { return 16 + 130 - (v / 100) * 130 }
+const storyLine1 = computed(() =>
+  wplD1.value.map((v, i) => `${i === 0 ? 'M' : 'L'}${storyWplX(i)} ${storyWplY(v)}`).join(' '))
+const storyLine2 = computed(() =>
+  wplD2.value.map((v, i) => `${i === 0 ? 'M' : 'L'}${storyWplX(i)} ${storyWplY(v)}`).join(' '))
+const storyFill1 = computed(() => {
+  if (!wplD1.value.length) return ''
+  const n = wplD1.value.length
+  return storyLine1.value + ` L${storyWplX(n-1)} 146 L42 146 Z`
+})
+const storyFill2 = computed(() => {
+  if (!wplD2.value.length) return ''
+  const n = wplD2.value.length
+  return storyLine2.value + ` L${storyWplX(n-1)} 146 L42 146 Z`
+})
 
 // ── Team SVG icon lookup ──────────────────────────────────────────────────
 const teamIcons: Record<string, string> = {
