@@ -2123,13 +2123,6 @@ function cacheAllMatchupCharts(allMatchups: any[]) {
       todayLabels.push(allDays[todayIndex])
     }
 
-    const logo1 = typeof matchup.team1?.logo_url === 'string' ? matchup.team1.logo_url : ''
-    const logo2 = typeof matchup.team2?.logo_url === 'string' ? matchup.team2.logo_url : ''
-    matchupChartCache.set(
-      matchup.matchup_id, d1, d2, todayLabels,
-      matchup.team1WinProb || 50, matchup.team2WinProb || 50,
-      logo1, logo2
-    )
   }
   console.log('[CategoryMatchups] Pre-cached charts for', allMatchups.length, 'matchups')
 }
@@ -2498,16 +2491,6 @@ function renderWinProbChart(matchup: any, d1: number[], d2: number[], dayLabels:
   cachedChartD2.value = [...d2]
   cachedChartLabels.value = [...dayLabels]
   // Write to shared cache so social templates can read it
-  const logo1 = matchup.team1?.logo_url || ''
-  const logo2 = matchup.team2?.logo_url || ''
-  matchupChartCache.set(
-    matchup.matchup_id,
-    d1, d2, dayLabels,
-    matchup.team1WinProb || 50,
-    matchup.team2WinProb || 50,
-    typeof logo1 === 'string' ? logo1 : '',
-    typeof logo2 === 'string' ? logo2 : ''
-  )
   chartTitle.value = title || 'Win Probability Trend'
   
   const c1 = '#06b6d4' // cyan
