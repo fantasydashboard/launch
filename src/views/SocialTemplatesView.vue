@@ -606,6 +606,222 @@
         </div>
       </div>
 
+
+    <!-- ═══════════════════════════════════════════════════
+         PHONE MOCKUP AD TEMPLATES — 30 & 31
+    ═══════════════════════════════════════════════════ -->
+    <div class="section-label" style="grid-column:1/-1;margin-top:32px;">📱 Phone Mockup Ad Templates</div>
+
+    <!-- ══ TEMPLATE 30: Split layout — text left, phone right ══ -->
+    <div class="post-wrap" style="grid-column:1/-1;max-width:900px;">
+      <div class="post-label">30 · Phone Ad — Split (cards + headline)</div>
+
+      <!-- Controls -->
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;margin-bottom:16px;">
+        <div>
+          <div style="font-size:11px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:0.1em;margin-bottom:5px;">Headline</div>
+          <input v-model="ad30headline" placeholder="Know your league like never before." style="width:100%;background:#1e2130;color:#e5e7eb;border:1px solid #374151;border-radius:8px;padding:7px 10px;font-size:13px;box-sizing:border-box;">
+        </div>
+        <div>
+          <div style="font-size:11px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:0.1em;margin-bottom:5px;">Subheadline</div>
+          <input v-model="ad30sub" placeholder="Power rankings. Win probability. League history." style="width:100%;background:#1e2130;color:#e5e7eb;border:1px solid #374151;border-radius:8px;padding:7px 10px;font-size:13px;box-sizing:border-box;">
+        </div>
+        <div>
+          <div style="font-size:11px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:0.1em;margin-bottom:5px;">Button Text</div>
+          <input v-model="ad30btn" placeholder="Get League Pass →" style="width:100%;background:#1e2130;color:#e5e7eb;border:1px solid #374151;border-radius:8px;padding:7px 10px;font-size:13px;box-sizing:border-box;">
+        </div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;margin-bottom:20px;">
+        <div>
+          <div style="font-size:11px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:0.1em;margin-bottom:5px;">Card 1</div>
+          <select v-model="ad30card1" style="width:100%;background:#1e2130;color:#e5e7eb;border:1px solid #374151;border-radius:8px;padding:7px 10px;font-size:13px;">
+            <option v-for="c in adCardOptions" :key="c.id" :value="c.id">{{ c.label }}</option>
+          </select>
+        </div>
+        <div>
+          <div style="font-size:11px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:0.1em;margin-bottom:5px;">Card 2</div>
+          <select v-model="ad30card2" style="width:100%;background:#1e2130;color:#e5e7eb;border:1px solid #374151;border-radius:8px;padding:7px 10px;font-size:13px;">
+            <option v-for="c in adCardOptions" :key="c.id" :value="c.id">{{ c.label }}</option>
+          </select>
+        </div>
+        <div>
+          <div style="font-size:11px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:0.1em;margin-bottom:5px;">Card 3</div>
+          <select v-model="ad30card3" style="width:100%;background:#1e2130;color:#e5e7eb;border:1px solid #374151;border-radius:8px;padding:7px 10px;font-size:13px;">
+            <option v-for="c in adCardOptions" :key="c.id" :value="c.id">{{ c.label }}</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- The card -->
+      <div style="width:1080px;height:1080px;background:#080a10;border-radius:16px;overflow:hidden;position:relative;font-family:Helvetica Neue,Helvetica,Arial,sans-serif;transform-origin:top left;transform:scale(0.5);margin-bottom:-540px;">
+
+        <!-- BG -->
+        <div style="position:absolute;inset:0;background:radial-gradient(ellipse at 15% 50%,rgba(234,179,8,0.12) 0%,transparent 55%);"></div>
+        <div style="position:absolute;inset:0;background:radial-gradient(ellipse at 85% 80%,rgba(6,182,212,0.08) 0%,transparent 50%);"></div>
+        <!-- Gold left stripe -->
+        <div style="position:absolute;left:0;top:0;bottom:0;width:5px;background:linear-gradient(180deg,#eab308,#ca8a04,transparent);"></div>
+
+        <!-- LEFT SIDE: Text (leaves bottom 180px clear for IG button) -->
+        <div style="position:absolute;left:60px;top:80px;width:430px;bottom:200px;display:flex;flex-direction:column;justify-content:center;">
+          <!-- UFD logo -->
+          <div style="display:flex;align-items:center;gap:12px;margin-bottom:40px;">
+            <img src="/UFD_V8.png" style="height:48px;width:auto;">
+            <div>
+              <div style="font-size:13px;font-weight:800;color:#eab308;letter-spacing:0.12em;text-transform:uppercase;">Ultimate Fantasy</div>
+              <div style="font-size:13px;font-weight:800;color:#ffffff;letter-spacing:0.12em;text-transform:uppercase;">Dashboard</div>
+            </div>
+          </div>
+
+          <!-- Headline -->
+          <div style="font-size:52px;font-weight:900;color:#ffffff;line-height:1.05;letter-spacing:-0.02em;margin-bottom:20px;">{{ ad30headline || 'Know your league like never before.' }}</div>
+
+          <!-- Sub -->
+          <div style="font-size:20px;color:#9ca3af;line-height:1.5;margin-bottom:44px;font-weight:400;">{{ ad30sub || 'Power rankings. Win probability. League history.' }}</div>
+
+          <!-- Button -->
+          <div style="display:inline-flex;align-items:center;">
+            <div style="background:linear-gradient(135deg,#eab308,#ca8a04);color:#0a0c14;font-size:22px;font-weight:900;padding:18px 36px;border-radius:12px;letter-spacing:0.02em;display:inline-block;">
+              {{ ad30btn || 'Get League Pass →' }}
+            </div>
+          </div>
+
+          <!-- URL -->
+          <div style="font-size:14px;color:#374151;margin-top:28px;letter-spacing:0.04em;">ultimatefantasydashboard.com</div>
+        </div>
+
+        <!-- RIGHT SIDE: Phone mockup -->
+        <div style="position:absolute;right:0;top:0;bottom:0;width:580px;display:flex;align-items:center;justify-content:center;">
+          <!-- Phone outer -->
+          <div style="width:320px;height:640px;background:#0d0f18;border-radius:44px;border:2px solid rgba(255,255,255,0.12);position:relative;box-shadow:0 40px 120px rgba(0,0,0,0.8),0 0 0 1px rgba(255,255,255,0.04);overflow:hidden;transform:perspective(1200px) rotateY(-8deg) rotateX(2deg);">
+            <!-- Notch -->
+            <div style="position:absolute;top:0;left:50%;transform:translateX(-50%);width:110px;height:28px;background:#080a10;border-radius:0 0 18px 18px;z-index:10;"></div>
+            <!-- Status bar -->
+            <div style="position:absolute;top:10px;left:20px;right:20px;display:flex;justify-content:space-between;align-items:center;z-index:11;">
+              <span style="font-size:11px;color:#6b7280;font-weight:600;">9:41</span>
+              <div style="display:flex;gap:4px;align-items:center;">
+                <div style="width:14px;height:8px;border:1px solid #6b7280;border-radius:2px;position:relative;"><div style="position:absolute;inset:1px;right:3px;background:#6b7280;border-radius:1px;"></div></div>
+              </div>
+            </div>
+            <!-- Screen content -->
+            <div style="position:absolute;top:38px;left:0;right:0;bottom:0;overflow:hidden;padding:8px 10px;display:flex;flex-direction:column;gap:7px;background:#0d1117;">
+              <!-- App header bar -->
+              <div style="display:flex;align-items:center;justify-content:space-between;padding:2px 2px 6px;border-bottom:1px solid rgba(255,255,255,0.06);">
+                <img src="/UFD_V8.png" style="height:18px;width:auto;">
+                <span style="font-size:8px;color:#eab308;font-weight:700;letter-spacing:0.05em;">FANTASY BASEBALL</span>
+              </div>
+              <!-- Cards -->
+              <component :is="'div'" v-for="(cardId, ci) in [ad30card1, ad30card2, ad30card3]" :key="ci">
+                <div v-html="renderAdCard(cardId)" style="border-radius:10px;overflow:hidden;"></div>
+              </component>
+            </div>
+            <!-- Home indicator -->
+            <div style="position:absolute;bottom:6px;left:50%;transform:translateX(-50%);width:80px;height:4px;background:rgba(255,255,255,0.2);border-radius:2px;"></div>
+          </div>
+          <!-- Phone glow -->
+          <div style="position:absolute;width:320px;height:640px;border-radius:44px;box-shadow:0 0 80px rgba(234,179,8,0.15);pointer-events:none;transform:perspective(1200px) rotateY(-8deg) rotateX(2deg);"></div>
+        </div>
+
+        <!-- Bottom safe zone indicator (not visible, just clears space) -->
+        <div style="position:absolute;bottom:0;left:0;right:0;height:180px;"></div>
+      </div>
+    </div>
+
+    <!-- ══ TEMPLATE 31: Full bleed — phone background, text overlay ══ -->
+    <div class="post-wrap" style="grid-column:1/-1;max-width:900px;margin-top:560px;">
+      <div class="post-label">31 · Phone Ad — Full Bleed (hero text overlay)</div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:12px;">
+        <div>
+          <div style="font-size:11px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:0.1em;margin-bottom:5px;">Large Headline</div>
+          <input v-model="ad31headline" placeholder="See your whole league" style="width:100%;background:#1e2130;color:#e5e7eb;border:1px solid #374151;border-radius:8px;padding:7px 10px;font-size:13px;box-sizing:border-box;">
+        </div>
+        <div>
+          <div style="font-size:11px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:0.1em;margin-bottom:5px;">Accent Word (gold)</div>
+          <input v-model="ad31accent" placeholder="in one place." style="width:100%;background:#1e2130;color:#e5e7eb;border:1px solid #374151;border-radius:8px;padding:7px 10px;font-size:13px;box-sizing:border-box;">
+        </div>
+        <div>
+          <div style="font-size:11px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:0.1em;margin-bottom:5px;">Body Text</div>
+          <input v-model="ad31body" placeholder="and know exactly where you stand." style="width:100%;background:#1e2130;color:#e5e7eb;border:1px solid #374151;border-radius:8px;padding:7px 10px;font-size:13px;box-sizing:border-box;">
+        </div>
+        <div>
+          <div style="font-size:11px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:0.1em;margin-bottom:5px;">Button Text</div>
+          <input v-model="ad31btn" placeholder="Get League Pass →" style="width:100%;background:#1e2130;color:#e5e7eb;border:1px solid #374151;border-radius:8px;padding:7px 10px;font-size:13px;box-sizing:border-box;">
+        </div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px;">
+        <div>
+          <div style="font-size:11px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:0.1em;margin-bottom:5px;">Phone Card (Top)</div>
+          <select v-model="ad31card1" style="width:100%;background:#1e2130;color:#e5e7eb;border:1px solid #374151;border-radius:8px;padding:7px 10px;font-size:13px;">
+            <option v-for="c in adCardOptions" :key="c.id" :value="c.id">{{ c.label }}</option>
+          </select>
+        </div>
+        <div>
+          <div style="font-size:11px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:0.1em;margin-bottom:5px;">Phone Card (Bottom)</div>
+          <select v-model="ad31card2" style="width:100%;background:#1e2130;color:#e5e7eb;border:1px solid #374151;border-radius:8px;padding:7px 10px;font-size:13px;">
+            <option v-for="c in adCardOptions" :key="c.id" :value="c.id">{{ c.label }}</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- The card -->
+      <div style="width:1080px;height:1080px;background:#080a10;border-radius:16px;overflow:hidden;position:relative;font-family:Helvetica Neue,Helvetica,Arial,sans-serif;transform-origin:top left;transform:scale(0.5);margin-bottom:-540px;">
+
+        <!-- BG -->
+        <div style="position:absolute;inset:0;background:linear-gradient(135deg,#080a10 0%,#0d1117 100%);"></div>
+        <div style="position:absolute;inset:0;background:radial-gradient(ellipse at 75% 50%,rgba(234,179,8,0.1) 0%,transparent 60%);"></div>
+
+        <!-- Phone — takes up right ~55% and full height, slightly angled -->
+        <div style="position:absolute;right:-40px;top:-20px;bottom:-20px;width:640px;display:flex;align-items:center;justify-content:center;">
+          <div style="width:340px;height:720px;background:#0d0f18;border-radius:46px;border:2px solid rgba(255,255,255,0.1);position:relative;box-shadow:0 60px 160px rgba(0,0,0,0.9),inset 0 0 0 1px rgba(255,255,255,0.04);overflow:hidden;transform:perspective(1400px) rotateY(-12deg) rotateX(3deg);">
+            <div style="position:absolute;top:0;left:50%;transform:translateX(-50%);width:120px;height:30px;background:#080a10;border-radius:0 0 20px 20px;z-index:10;"></div>
+            <div style="position:absolute;top:10px;left:20px;right:20px;display:flex;justify-content:space-between;z-index:11;">
+              <span style="font-size:11px;color:#6b7280;font-weight:600;">9:41</span>
+              <div style="width:14px;height:8px;border:1px solid #6b7280;border-radius:2px;position:relative;margin-top:2px;"><div style="position:absolute;inset:1px;right:3px;background:#6b7280;border-radius:1px;"></div></div>
+            </div>
+            <div style="position:absolute;top:40px;left:0;right:0;bottom:0;padding:10px 12px;display:flex;flex-direction:column;gap:10px;background:#0d1117;overflow:hidden;">
+              <div style="display:flex;align-items:center;justify-content:space-between;padding:2px 2px 8px;border-bottom:1px solid rgba(255,255,255,0.06);">
+                <img src="/UFD_V8.png" style="height:20px;width:auto;">
+                <span style="font-size:9px;color:#eab308;font-weight:700;letter-spacing:0.05em;">UFD</span>
+              </div>
+              <div v-html="renderAdCard(ad31card1)" style="border-radius:10px;overflow:hidden;flex:1;"></div>
+              <div v-html="renderAdCard(ad31card2)" style="border-radius:10px;overflow:hidden;flex:1;"></div>
+            </div>
+            <div style="position:absolute;bottom:6px;left:50%;transform:translateX(-50%);width:90px;height:4px;background:rgba(255,255,255,0.2);border-radius:2px;"></div>
+          </div>
+          <!-- Glow behind phone -->
+          <div style="position:absolute;width:340px;height:720px;border-radius:46px;background:radial-gradient(ellipse,rgba(234,179,8,0.12) 0%,transparent 70%);transform:perspective(1400px) rotateY(-12deg) rotateX(3deg);pointer-events:none;"></div>
+        </div>
+
+        <!-- LEFT SIDE: text — leaves bottom 180px for IG -->
+        <div style="position:absolute;left:60px;top:100px;width:520px;bottom:200px;display:flex;flex-direction:column;justify-content:center;">
+          <div style="margin-bottom:32px;">
+            <img src="/UFD_V8.png" style="height:52px;width:auto;">
+          </div>
+
+          <!-- Big headline + accent word -->
+          <div style="margin-bottom:24px;">
+            <div style="font-size:72px;font-weight:900;color:#ffffff;line-height:1;letter-spacing:-0.03em;">{{ ad31headline || 'See your whole league' }}</div>
+            <div style="font-size:72px;font-weight:900;color:#eab308;line-height:1;letter-spacing:-0.03em;">{{ ad31accent || 'in one place.' }}</div>
+          </div>
+
+          <!-- Body -->
+          <div style="font-size:22px;color:#9ca3af;line-height:1.5;margin-bottom:44px;max-width:420px;">{{ ad31body || 'and know exactly where you stand.' }}</div>
+
+          <!-- Button -->
+          <div>
+            <div style="display:inline-flex;align-items:center;background:linear-gradient(135deg,#eab308,#ca8a04);color:#0a0c14;font-size:24px;font-weight:900;padding:20px 40px;border-radius:14px;letter-spacing:0.02em;">
+              {{ ad31btn || 'Get League Pass →' }}
+            </div>
+          </div>
+
+          <div style="font-size:14px;color:#374151;margin-top:32px;letter-spacing:0.04em;">ultimatefantasydashboard.com</div>
+        </div>
+
+        <!-- Bottom safe zone -->
+        <div style="position:absolute;bottom:0;left:0;right:0;height:180px;background:linear-gradient(transparent,rgba(8,10,16,0.7));"></div>
+      </div>
+    </div>
+    <div style="height:560px;grid-column:1/-1;"></div>
     </div><!-- end posts-grid -->
     </template><!-- end square tab -->
 
@@ -2525,7 +2741,155 @@ const wpArea2Path = computed(() => {
 })
 
 
-// ── Story chart helpers (540px wide chart in a 9:16 card) ──────────────────
+// ── Ad template state (30 & 31) ────────────────────────────────────────────
+const ad30headline = ref('')
+const ad30sub      = ref('')
+const ad30btn      = ref('')
+const ad30card1    = ref('powerrankings')
+const ad30card2    = ref('winprob')
+const ad30card3    = ref('matchup')
+
+const ad31headline = ref('')
+const ad31accent   = ref('')
+const ad31body     = ref('')
+const ad31btn      = ref('')
+const ad31card1    = ref('matchup')
+const ad31card2    = ref('history')
+
+const adCardOptions = [
+  { id: 'powerrankings', label: '⚡ Power Rankings' },
+  { id: 'winprob',       label: '🎲 Win Probability' },
+  { id: 'matchup',       label: '⚔️ Matchup Deep Dive' },
+  { id: 'draft',         label: '📋 Draft Analysis' },
+  { id: 'history',       label: '🏆 League History' },
+  { id: 'season',        label: '📊 Season Overview' },
+]
+
+function renderAdCard(id: string): string {
+  const cards: Record<string, string> = {
+    powerrankings: `
+      <div style="background:#131720;border:1px solid rgba(234,179,8,0.2);border-radius:10px;padding:10px 12px;">
+        <div style="display:flex;align-items:center;gap:6px;margin-bottom:8px;">
+          <span style="font-size:10px;">⚡</span>
+          <span style="font-size:10px;font-weight:800;color:#fff;letter-spacing:0.05em;text-transform:uppercase;">Power Rankings</span>
+        </div>
+        ${[
+          ['#eab308','The Aman-Ra Stars','12-5','75.2'],
+          ['rgba(255,255,255,0.08)','Mighty Mallards','11-6','72.7'],
+          ['rgba(255,255,255,0.06)','Scuttlebucs','11-6','66.9'],
+          ['rgba(255,255,255,0.04)','Gridiron Man','12-5','62.5'],
+        ].map(([bg,name,rec,score],i) => `
+          <div style="display:flex;align-items:center;gap:6px;padding:5px 6px;background:${i===0?'rgba(234,179,8,0.08)':'transparent'};border-radius:6px;margin-bottom:2px;">
+            <div style="width:18px;height:18px;border-radius:50%;background:${bg};display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+              <span style="font-size:9px;font-weight:900;color:${i===0?'#0a0c14':'#9ca3af'}">${i+1}</span>
+            </div>
+            <span style="font-size:10px;font-weight:700;color:${i===0?'#fff':'#d1d5db'};flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${name}</span>
+            <span style="font-size:9px;color:#6b7280;">${rec}</span>
+            <span style="font-size:10px;font-weight:800;color:${i===0?'#eab308':'#9ca3af'};">${score}</span>
+          </div>
+        `).join('')}
+      </div>`,
+
+    winprob: `
+      <div style="background:#131720;border:1px solid rgba(6,182,212,0.2);border-radius:10px;padding:10px 12px;">
+        <div style="font-size:10px;font-weight:800;color:#fff;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:8px;">🎲 Win Probability</div>
+        <div style="display:flex;gap:6px;margin-bottom:8px;">
+          <div style="flex:1;background:rgba(6,182,212,0.08);border:1px solid rgba(6,182,212,0.2);border-radius:8px;padding:7px;text-align:center;">
+            <div style="font-size:9px;color:#06b6d4;font-weight:700;margin-bottom:2px;">Swamp Pirates</div>
+            <div style="font-size:18px;font-weight:900;color:#06b6d4;">64%</div>
+          </div>
+          <div style="display:flex;align-items:center;font-size:9px;color:#374151;font-weight:700;">VS</div>
+          <div style="flex:1;background:rgba(249,115,22,0.08);border:1px solid rgba(249,115,22,0.2);border-radius:8px;padding:7px;text-align:center;">
+            <div style="font-size:9px;color:#f97316;font-weight:700;margin-bottom:2px;">NC Pale Hose</div>
+            <div style="font-size:18px;font-weight:900;color:#f97316;">36%</div>
+          </div>
+        </div>
+        <div style="height:6px;border-radius:4px;background:rgba(249,115,22,0.3);position:relative;overflow:hidden;">
+          <div style="position:absolute;left:0;top:0;height:100%;width:64%;background:linear-gradient(90deg,#06b6d4,#0891b2);border-radius:4px;"></div>
+        </div>
+      </div>`,
+
+    matchup: `
+      <div style="background:#131720;border:1px solid rgba(255,255,255,0.08);border-radius:10px;padding:10px 12px;">
+        <div style="font-size:10px;font-weight:800;color:#fff;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:8px;">⚔️ Matchup Deep Dive</div>
+        <div style="display:flex;align-items:center;gap:4px;margin-bottom:6px;">
+          <div style="width:28px;height:28px;border-radius:50%;background:rgba(6,182,212,0.2);border:1.5px solid #06b6d4;flex-shrink:0;"></div>
+          <div style="flex:1;">
+            <div style="font-size:10px;font-weight:700;color:#06b6d4;">Swamp Pirates</div>
+            <div style="font-size:9px;color:#6b7280;">11-8-1 · Proj: 11-9</div>
+          </div>
+          <div style="font-size:14px;font-weight:900;color:#06b6d4;">64%</div>
+        </div>
+        <div style="display:flex;align-items:center;gap:4px;">
+          <div style="width:28px;height:28px;border-radius:50%;background:rgba(249,115,22,0.2);border:1.5px solid #f97316;flex-shrink:0;"></div>
+          <div style="flex:1;">
+            <div style="font-size:10px;font-weight:700;color:#f97316;">NC Pale Hose</div>
+            <div style="font-size:9px;color:#6b7280;">7-11-2 · Proj: 8-12</div>
+          </div>
+          <div style="font-size:14px;font-weight:900;color:#f97316;">36%</div>
+        </div>
+      </div>`,
+
+    draft: `
+      <div style="background:#131720;border:1px solid rgba(139,92,246,0.2);border-radius:10px;padding:10px 12px;">
+        <div style="font-size:10px;font-weight:800;color:#fff;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:8px;">📋 Draft Analysis</div>
+        ${[
+          ['R1','Freddie Freeman','1B · LAD','A+'],
+          ['R2','Shohei Ohtani','SP/DH · LAD','A'],
+          ['R3','Mookie Betts','OF · LAD','B+'],
+          ['R4','Paul Skenes','SP · PIT','A-'],
+        ].map(([rnd,name,pos,grade]) => `
+          <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px;">
+            <span style="font-size:9px;font-weight:700;color:#6b7280;width:20px;">${rnd}</span>
+            <span style="font-size:10px;font-weight:600;color:#e5e7eb;flex:1;">${name}</span>
+            <span style="font-size:9px;color:#6b7280;">${pos}</span>
+            <span style="font-size:10px;font-weight:800;color:#a78bfa;">${grade}</span>
+          </div>
+        `).join('')}
+      </div>`,
+
+    history: `
+      <div style="background:#131720;border:1px solid rgba(234,179,8,0.2);border-radius:10px;padding:10px 12px;">
+        <div style="font-size:10px;font-weight:800;color:#fff;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:8px;">🏆 League History</div>
+        <div style="display:flex;gap:6px;margin-bottom:8px;">
+          <div style="flex:1;background:rgba(234,179,8,0.08);border-radius:8px;padding:6px;text-align:center;">
+            <div style="font-size:16px;font-weight:900;color:#eab308;">🥇</div>
+            <div style="font-size:9px;font-weight:700;color:#eab308;margin-top:2px;">Champion</div>
+            <div style="font-size:9px;color:#9ca3af;margin-top:1px;">Swamp Pirates</div>
+            <div style="font-size:8px;color:#6b7280;">2024</div>
+          </div>
+          <div style="flex:1;background:rgba(255,255,255,0.04);border-radius:8px;padding:6px;text-align:center;">
+            <div style="font-size:16px;font-weight:900;color:#9ca3af;">🥈</div>
+            <div style="font-size:9px;font-weight:700;color:#9ca3af;margin-top:2px;">Runner Up</div>
+            <div style="font-size:9px;color:#9ca3af;margin-top:1px;">NC Pale Hose</div>
+            <div style="font-size:8px;color:#6b7280;">2024</div>
+          </div>
+        </div>
+        <div style="font-size:9px;color:#4b5563;text-align:center;">League of Record · 8 seasons</div>
+      </div>`,
+
+    season: `
+      <div style="background:#131720;border:1px solid rgba(34,197,94,0.2);border-radius:10px;padding:10px 12px;">
+        <div style="font-size:10px;font-weight:800;color:#fff;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:8px;">📊 Season Overview</div>
+        ${[
+          ['#1 All-Play','Swamp Pirates','78.3%','#22c55e'],
+          ['Most Points','Ctrl Alt DeLauter','1,847 pts','#06b6d4'],
+          ['Best Record','The Projection','11-1','#eab308'],
+        ].map(([label,team,val,color]) => `
+          <div style="display:flex;align-items:center;justify-content:space-between;padding:4px 0;border-bottom:1px solid rgba(255,255,255,0.04);">
+            <div>
+              <div style="font-size:8px;color:#4b5563;text-transform:uppercase;letter-spacing:0.08em;">${label}</div>
+              <div style="font-size:10px;font-weight:700;color:#d1d5db;">${team}</div>
+            </div>
+            <div style="font-size:12px;font-weight:800;color:${color};">${val}</div>
+          </div>
+        `).join('')}
+      </div>`,
+  }
+  return cards[id] || cards['powerrankings']
+}
+
+// ── Story chart helpers ──────────────────────────────────────────────────── (540px wide chart in a 9:16 card) ──────────────────
 function storyWplX(i: number): number {
   const n = wplLabels.value.length
   return 42 + (n > 1 ? (i / (n - 1)) * 458 : 229)
