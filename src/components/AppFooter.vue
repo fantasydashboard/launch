@@ -402,17 +402,26 @@ async function submitFeatureRequest() {
   isSubmitting.value = true
   
   try {
+    const payload = {
+      user_id: authStore.user?.id || null,
+      name: featureForm.value.name,
+      email: featureForm.value.email,
+      title: featureForm.value.title,
+      description: featureForm.value.description
+    }
+
     const { error } = await supabase
       .from('feature_requests')
-      .insert({
-        user_id: authStore.user?.id || null,
-        name: featureForm.value.name,
-        email: featureForm.value.email,
-        title: featureForm.value.title,
-        description: featureForm.value.description
-      })
+      .insert(payload)
     
     if (error) throw error
+
+    // Send email notification (fire-and-forget — don't block on failure)
+    fetch('/api/notify-submission', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ type: 'feature_request', data: payload })
+    }).catch(e => console.warn('[AppFooter] notify-submission failed:', e))
     
     closeModals()
     showToast('Feature request submitted! Thank you!')
@@ -430,19 +439,28 @@ async function submitBugReport() {
   isSubmitting.value = true
   
   try {
+    const payload = {
+      user_id: authStore.user?.id || null,
+      name: bugForm.value.name,
+      email: bugForm.value.email,
+      device: bugForm.value.device,
+      page: bugForm.value.page,
+      title: bugForm.value.title,
+      description: bugForm.value.description
+    }
+
     const { error } = await supabase
       .from('bug_reports')
-      .insert({
-        user_id: authStore.user?.id || null,
-        name: bugForm.value.name,
-        email: bugForm.value.email,
-        device: bugForm.value.device,
-        page: bugForm.value.page,
-        title: bugForm.value.title,
-        description: bugForm.value.description
-      })
+      .insert(payload)
     
     if (error) throw error
+
+    // Send email notification (fire-and-forget — don't block on failure)
+    fetch('/api/notify-submission', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ type: 'bug_report', data: payload })
+    }).catch(e => console.warn('[AppFooter] notify-submission failed:', e))
     
     closeModals()
     showToast('Bug report submitted! Thank you!')
