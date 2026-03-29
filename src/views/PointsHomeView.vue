@@ -1513,72 +1513,48 @@ async function downloadStandings() {
     const container = document.createElement('div')
     container.style.cssText = 'position: absolute; left: -9999px; top: 0; width: 700px; font-family: system-ui, -apple-system, sans-serif;'
     
-    // Generate table rows — landing page card style
+    // Generate table rows with inline colored circles (no images!)
     const generateStandingsRow = (team: any, rank: number) => {
       const recordText = `${team.wins}-${team.losses}${team.ties > 0 ? `-${team.ties}` : ''}`
-      const pf = (team.points_for || 0).toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })
+      const winPct = ((team.wins || 0) / Math.max(1, (team.wins || 0) + (team.losses || 0) + (team.ties || 0)) * 100).toFixed(0)
       
-      // Streak from weeklyMatchupResults or recentResults
-      const recentResults: string[] = team.recentResults || []
-      let streakCount = 0
-      let streakType = ''
-      if (recentResults.length > 0) {
-        const last = recentResults[recentResults.length - 1]
-        streakType = last
-        for (let i = recentResults.length - 1; i >= 0; i--) {
-          if (recentResults[i] === last) streakCount++
-          else break
-        }
-      }
-      const streakText = streakCount > 0 ? `${streakType}${streakCount}` : '—'
-      const streakColor = streakType === 'W' ? '#22c55e' : streakType === 'L' ? '#ef4444' : '#6b7280'
-
-      // Team avatar initials — use first 2 initials of team name words
-      const words = team.name.trim().split(/\s+/)
-      const initials = words.length >= 2
-        ? (words[0][0] + words[1][0]).toUpperCase()
-        : team.name.slice(0, 2).toUpperCase()
-      const avatarColors = ['#0D8ABC','#3498DB','#9B59B6','#E91E63','#F39C12','#1ABC9C','#E74C3C','#00BCD4','#8E44AD','#F97316','#06B6D4','#84CC16']
-      const ci = team.name.split('').reduce((a: number, c: string) => a + c.charCodeAt(0), 0) % avatarColors.length
-      const avatarBg = avatarColors[ci]
-
-      // Row highlight for my team
-      const rowBg = team.is_my_team
-        ? 'rgba(234,179,8,0.08)'
-        : rank % 2 === 0 ? 'rgba(255,255,255,0.025)' : 'transparent'
-      const myTeamDot = team.is_my_team
-        ? `<span style="width:7px;height:7px;border-radius:50%;background:#eab308;display:inline-block;margin-left:5px;vertical-align:middle;flex-shrink:0;"></span>`
-        : ''
-      const nameColor = team.is_my_team ? '#eab308' : rank === 1 ? '#ffffff' : '#e5e7eb'
-      const nameFw = rank === 1 ? '800' : '600'
-
+      // Rank badge color
+      let rankBg = 'rgba(58, 61, 82, 0.6)'
+      let rankColor = '#9ca3af'
+      if (rank === 1) { rankBg = 'rgba(234, 179, 8, 0.3)'; rankColor = '#fbbf24' }
+      else if (rank === 2) { rankBg = 'rgba(156, 163, 175, 0.3)'; rankColor = '#d1d5db' }
+      else if (rank === 3) { rankBg = 'rgba(249, 115, 22, 0.3)'; rankColor = '#fb923c' }
+      
+      // Team avatar as colored div with initial
+      const colors = ['#0D8ABC', '#3498DB', '#9B59B6', '#E91E63', '#F39C12', '#1ABC9C', '#2ECC71', '#E74C3C', '#00BCD4', '#8E44AD']
+      const colorIndex = team.name.split('').reduce((acc: number, char: string) => acc + char.charCodeAt(0), 0) % colors.length
+      const bgColor = colors[colorIndex]
+      const initial = team.name.charAt(0).toUpperCase()
+      
       return `
-      <div style="display:flex;align-items:center;padding:0 16px;height:52px;background:${rowBg};border-bottom:1px solid rgba(255,255,255,0.04);">
+      <div style="display: flex; height: 56px; padding: 0 12px; background: rgba(38, 42, 58, 0.4); border-radius: 8px; margin-bottom: 4px; border: 1px solid rgba(58, 61, 82, 0.4);">
         <!-- Rank -->
-        <div style="width:28px;flex-shrink:0;font-size:14px;font-weight:700;color:${rank<=3?'#9ca3af':'#4b5563'};">${rank}</div>
-        <!-- Dot indicator (my team) + Avatar -->
-        <div style="width:46px;display:flex;align-items:center;gap:5px;flex-shrink:0;">
-          <div style="width:7px;height:7px;border-radius:50%;background:${team.is_my_team?'#eab308':'transparent'};flex-shrink:0;"></div>
-          <div style="width:32px;height:32px;border-radius:8px;background:${avatarBg};display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;color:#fff;letter-spacing:0.02em;flex-shrink:0;">${initials}</div>
+        <div style="width: 36px; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+          <span style="width: 28px; height: 28px; border-radius: 50%; background: ${rankBg}; display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: 700; color: ${rankColor};">${rank}</span>
+        </div>
+        <!-- Team Logo as colored div -->
+        <div style="width: 48px; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+          <div style="width: 36px; height: 36px; border-radius: 50%; background: ${bgColor}; border: 2px solid #3a3d52; display: flex; align-items: center; justify-content: center; font-size: 16px; font-weight: bold; color: white;">${initial}</div>
         </div>
         <!-- Team Name -->
-        <div style="flex:1;min-width:0;padding-left:10px;">
-          <span style="font-size:14px;font-weight:${nameFw};color:${nameColor};white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:block;">${team.name}</span>
+        <div style="flex: 1; min-width: 0; display: flex; align-items: center; padding-left: 8px;">
+          <span style="font-size: 14px; font-weight: 600; color: #f7f7ff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${team.name}</span>
         </div>
-        <!-- W-L -->
-        <div style="width:64px;text-align:center;flex-shrink:0;">
-          <span style="font-size:13px;font-weight:700;color:${rank<=4?'#22c55e':rank<=7?'#e5e7eb':'#9ca3af'};">${recordText}</span>
+        <!-- Record -->
+        <div style="width: 70px; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+          <span style="font-size: 14px; font-weight: 700; color: ${rank <= 3 ? '#10b981' : '#f7f7ff'};">${recordText}</span>
         </div>
-        <!-- PF -->
-        <div style="width:72px;text-align:right;flex-shrink:0;padding-right:4px;">
-          <span style="font-size:13px;color:#9ca3af;">${pf}</span>
+        <!-- Win % -->
+        <div style="width: 50px; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+          <span style="font-size: 13px; color: #9ca3af;">${winPct}%</span>
         </div>
-        <!-- Streak -->
-        <div style="width:48px;text-align:right;flex-shrink:0;">
-          <span style="font-size:13px;font-weight:800;color:${streakColor};">${streakText}</span>
-        </div>
-      </div>`
-    }
+      </div>
+    `}
     
     // Split teams into two columns
     const teams = sortedTeams.value
@@ -1586,52 +1562,72 @@ async function downloadStandings() {
     const firstHalf = teams.slice(0, midpoint)
     const secondHalf = teams.slice(midpoint)
     
-    // Build single-column team list
-    const allTeams = sortedTeams.value
-
     container.innerHTML = `
-      <div style="background:#0f1117;border-radius:20px;overflow:hidden;box-shadow:0 20px 60px rgba(0,0,0,0.6);width:700px;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;">
-        <!-- Gold top bar -->
-        <div style="height:5px;background:linear-gradient(90deg,#eab308,#ca8a04);"></div>
+      <div style="background: linear-gradient(160deg, #0f1219 0%, #0a0c14 50%, #0d1117 100%); border-radius: 16px; padding: 8px 24px 12px 24px; box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5); position: relative; overflow: hidden;">
+        <!-- Decorative blue glow at top -->
+        <div style="position: absolute; top: -100px; left: 50%; transform: translateX(-50%); width: 400px; height: 200px; background: radial-gradient(ellipse, rgba(59, 159, 232, 0.3) 0%, transparent 70%); pointer-events: none;"></div>
+        
+        <!-- Ghosted baseball diamond field SVG background - bottom right -->
+        <div style="position: absolute; bottom: -100px; right: -100px; width: 500px; height: 500px; opacity: 0.07; pointer-events: none;">
+          <svg viewBox="0 0 200 200" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M100 20 Q20 20 20 100 Q20 140 60 170 L100 130 L140 170 Q180 140 180 100 Q180 20 100 20" stroke="#3B9FE8" stroke-width="1.5" fill="none"/>
+            <path d="M100 50 Q55 50 55 100 Q55 120 75 140 L100 115 L125 140 Q145 120 145 100 Q145 50 100 50" stroke="#3B9FE8" stroke-width="1.5" fill="none"/>
+            <path d="M100 70 L130 100 L100 130 L70 100 Z" stroke="#3B9FE8" stroke-width="1.5" fill="none"/>
+            <circle cx="100" cy="100" r="8" stroke="#3B9FE8" stroke-width="1.5" fill="none"/>
+            <path d="M95 130 L100 140 L105 130 L105 125 L95 125 Z" stroke="#3B9FE8" stroke-width="1.5" fill="none"/>
+            <line x1="100" y1="130" x2="40" y2="190" stroke="#3B9FE8" stroke-width="1.5"/>
+            <line x1="100" y1="130" x2="160" y2="190" stroke="#3B9FE8" stroke-width="1.5"/>
+          </svg>
+        </div>
+        
+        <!-- Smaller ghosted diamond - top left -->
+        <div style="position: absolute; top: -60px; left: -60px; width: 250px; height: 250px; opacity: 0.04; pointer-events: none; transform: rotate(15deg);">
+          <svg viewBox="0 0 200 200" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M100 20 Q20 20 20 100 Q20 140 60 170 L100 130 L140 170 Q180 140 180 100 Q180 20 100 20" stroke="#3B9FE8" stroke-width="2" fill="none"/>
+            <path d="M100 70 L130 100 L100 130 L70 100 Z" stroke="#3B9FE8" stroke-width="2" fill="none"/>
+            <circle cx="100" cy="100" r="8" stroke="#3B9FE8" stroke-width="2" fill="none"/>
+          </svg>
+        </div>
+        
+        <!-- Blue diagonal lines pattern overlay -->
+        <div style="position: absolute; top: 0; left: 0; right: 0; bottom: 0; opacity: 0.03; pointer-events: none; background: repeating-linear-gradient(45deg, transparent, transparent 20px, #3B9FE8 20px, #3B9FE8 21px);"></div>
+        
         <!-- Header -->
-        <div style="padding:20px 20px 0;display:flex;align-items:center;justify-content:space-between;">
-          <div>
-            <div style="display:flex;align-items:center;gap:10px;margin-bottom:2px;">
-              <span style="font-size:22px;">🏆</span>
-              <span style="font-size:22px;font-weight:900;color:#ffffff;letter-spacing:-0.02em;">STANDINGS</span>
-            </div>
-            <div style="font-size:13px;color:#6b7280;padding-left:32px;">${leagueName.value}</div>
-          </div>
-          <div style="text-align:right;">
-            ${logoBase64 ? `<img src="${logoBase64}" style="height:40px;width:auto;object-fit:contain;display:block;margin-bottom:2px;margin-left:auto;">` : ''}
-            <div style="font-size:11px;font-weight:700;color:#4b5563;letter-spacing:0.1em;text-transform:uppercase;">Week ${displayWeek.value}</div>
-          </div>
+        <div style="text-align: center; margin-bottom: 12px; position: relative; z-index: 1;">
+          <div style="font-size: 44px; font-weight: 900; color: #ffffff; text-transform: uppercase; letter-spacing: 3px; text-shadow: 0 0 30px rgba(59, 159, 232, 0.5); line-height: 1;">LEAGUE STANDINGS</div>
+          <div style="font-size: 18px; margin-top: 4px; font-weight: 600;"><span style="color: #9ca3af;">${leagueName.value}</span> <span style="color: #9ca3af;">•</span> <span style="color: #3B9FE8; font-weight: 700;">Week ${displayWeek.value}</span></div>
         </div>
-
-        <!-- Column headers -->
-        <div style="display:flex;align-items:center;padding:10px 16px 6px;border-bottom:1px solid rgba(255,255,255,0.07);">
-          <div style="width:28px;flex-shrink:0;"></div>
-          <div style="width:46px;flex-shrink:0;"></div>
-          <div style="flex:1;padding-left:10px;font-size:10px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:#4b5563;">Team</div>
-          <div style="width:64px;text-align:center;flex-shrink:0;font-size:10px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:#4b5563;">W-L</div>
-          <div style="width:72px;text-align:right;flex-shrink:0;padding-right:4px;font-size:10px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:#4b5563;">PF</div>
-          <div style="width:48px;text-align:right;flex-shrink:0;font-size:10px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:#4b5563;">Streak</div>
+        
+        <!-- Table Header -->
+        <div style="display: flex; padding: 0 12px 8px 12px; position: relative; z-index: 1;">
+          <div style="width: 36px; flex-shrink: 0;"></div>
+          <div style="width: 48px; flex-shrink: 0;"></div>
+          <div style="flex: 1; padding-left: 8px; font-size: 10px; color: #6b7280; text-transform: uppercase; letter-spacing: 1px;">Team</div>
+          <div style="width: 70px; text-align: center; font-size: 10px; color: #6b7280; text-transform: uppercase; letter-spacing: 1px; flex-shrink: 0;">Record</div>
+          <div style="width: 50px; text-align: center; font-size: 10px; color: #6b7280; text-transform: uppercase; letter-spacing: 1px; flex-shrink: 0;">Win%</div>
         </div>
-
-        <!-- Standings rows (single column) -->
-        <div style="margin-bottom:4px;">
-          ${allTeams.map((team, idx) => generateStandingsRow(team, idx + 1)).join('')}
+        
+        <!-- Standings (Two Columns) -->
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 16px; position: relative; z-index: 1;">
+          <div>${firstHalf.map((team, idx) => generateStandingsRow(team, idx + 1)).join('')}</div>
+          <div>${secondHalf.map((team, idx) => generateStandingsRow(team, idx + midpoint + 1)).join('')}</div>
         </div>
         
         <!-- Trend Chart -->
-        <div style="margin:16px 16px 0;background:rgba(255,255,255,0.03);border-radius:12px;padding:14px 14px 8px;border:1px solid rgba(255,255,255,0.07);">
-          <div style="font-size:11px;font-weight:700;letter-spacing:0.15em;text-transform:uppercase;color:#4b5563;margin-bottom:10px;">📈 STANDINGS TREND</div>
-          <div id="standings-trend-chart" style="height:200px;position:relative;"></div>
+        <div style="background: rgba(38, 42, 58, 0.3); border-radius: 12px; padding: 16px; margin-bottom: 12px; border: 1px solid rgba(59, 159, 232, 0.2); position: relative; z-index: 1;">
+          <h3 style="color: #3B9FE8; font-size: 14px; margin: 0 0 12px 0; text-align: center; font-weight: 700; text-transform: uppercase; letter-spacing: 1px;">📈 Standings Trend</h3>
+          <div id="standings-trend-chart" style="height: 220px; position: relative;"></div>
         </div>
         
         <!-- Footer -->
-        <div style="padding:14px 16px 16px;text-align:center;">
-          <div style="font-size:13px;font-weight:700;color:#374151;letter-spacing:0.04em;">ultimatefantasydashboard.com</div>
+        <div style="border-top: 1px solid rgba(59, 159, 232, 0.2); padding-top: 8px; padding-bottom: 2px; position: relative; z-index: 1;">
+          <div style="display: flex; align-items: center; justify-content: center; gap: 16px;">
+            ${logoBase64 ? `<img src="${logoBase64}" style="width: 100px; height: 100px; object-fit: contain; flex-shrink: 0;" />` : ''}
+            <div style="text-align: left; padding-bottom: 8px;">
+              <div style="font-size: 12px; color: #9ca3af; margin-bottom: 4px;">Shareable Dashboards, Smart Projections, League History, & So Much More</div>
+              <div style="font-size: 24px; font-weight: bold; color: #3B9FE8; letter-spacing: -0.5px;">ultimatefantasydashboard.com</div>
+            </div>
+          </div>
         </div>
       </div>
     `
