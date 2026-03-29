@@ -43,17 +43,8 @@ export function useFeatureAccess() {
   const leagueSubscription = ref<any>(null)
   const premiumSubscription = ref<any>(null)
 
-  // ── Dev-mode tier override (admin only) ──────────────────────────────────
-  // Stored in localStorage so it persists across page navigations and
-  // affects ALL views — not just the one that called setDevTier().
-  // Key is prefixed so it's easy to find/clear in DevTools.
-  const DEV_PREVIEW_KEY = 'ufd_dev_preview_tier'
-
-  // Read initial value from localStorage (will be null for non-admins too,
-  // but effectiveAccess guards against non-admins using it).
-  const devTierOverride = ref<string | null>(
-    typeof localStorage !== 'undefined' ? localStorage.getItem(DEV_PREVIEW_KEY) : null
-  )
+  // Dev-mode tier override (admin only)
+  const devTierOverride = ref<string | null>(null)
 
   // ── Core access check ──────────────────────────────────────────────────────
   // Called on mount and whenever the active league changes.
@@ -159,9 +150,12 @@ export function useFeatureAccess() {
   )
 
   // Also re-check if the user's profile updates (e.g. after purchase)
+  // immediate: true ensures we catch the case where the profile was already
+  // loaded before this composable was instantiated (timing race on page load)
   watch(
     () => authStore.profile?.subscription_tier,
-    () => checkAllAccess()
+    () => checkAllAccess(),
+    { immediate: true }
   )
 
   // ── Effective access (respects dev-mode override for admins) ──────────────
@@ -194,15 +188,9 @@ export function useFeatureAccess() {
   function setDevTier(tier: string | null) {
     if (!isAdmin.value) return
     devTierOverride.value = tier
-    if (tier) {
-      localStorage.setItem(DEV_PREVIEW_KEY, tier)
-    } else {
-      localStorage.removeItem(DEV_PREVIEW_KEY)
-    }
   }
   function clearDevMode() {
     devTierOverride.value = null
-    localStorage.removeItem(DEV_PREVIEW_KEY)
   }
 
   const currentTierLabel = computed(() => {
