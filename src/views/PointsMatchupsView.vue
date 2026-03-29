@@ -826,6 +826,13 @@ const isCompletedWeek = computed(() => {
 })
 
 // Win probability calculation - uses Monte Carlo for all platforms
+// Clamp win probability: never show 0% or 100% while matchup is still active.
+// 0.1% min / 99.9% max — once the matchup is fully completed, exact 0/100 is allowed.
+function clampWinProb(prob: number, isCompleted: boolean): number {
+  if (isCompleted) return prob  // allow 0/100 only after all games are done
+  return Math.min(99.9, Math.max(0.1, prob))
+}
+
 const winProbability = computed(() => {
   if (!selectedMatchup.value?.team1 || !selectedMatchup.value?.team2) return { team1: 50, team2: 50 }
   
@@ -851,7 +858,10 @@ const winProbability = computed(() => {
     : Math.max(0, 6 - currentDayIndex)
   
   const mcResult = getMonteCarloWinProbability(selectedMatchup.value, currentDayIndex, false, actualDaysRemaining)
-  return { team1: mcResult.team1, team2: mcResult.team2 }
+  return {
+    team1: clampWinProb(mcResult.team1, false),
+    team2: clampWinProb(mcResult.team2, false)
+  }
 })
 
 // Get snapshots for the currently selected matchup
@@ -988,10 +998,12 @@ const probabilityHistory = computed(() => {
       team2Prob = mcResult.team2WinPct
     }
     
+    const clampedT1 = clampWinProb(team1Prob, isCompleted && daysRemainingInMatchup <= 0)
+    const clampedT2 = clampWinProb(team2Prob, isCompleted && daysRemainingInMatchup <= 0)
     history.push({
       day: chartDayLabels[day] || days[day % 7],
-      team1: Math.round(team1Prob * 10) / 10,
-      team2: Math.round(team2Prob * 10) / 10,
+      team1: Math.round(clampedT1 * 10) / 10,
+      team2: Math.round(clampedT2 * 10) / 10,
       isFuture: false,
       isReal: false,
       isMonteCarlo: true,

@@ -1193,6 +1193,13 @@ function calcCatWinProb(v1: number, v2: number, id: string, days: number) {
 }
 
 // Monte Carlo simulation for overall matchup win probability (10,000 simulations)
+// Clamp win probability: 0.1% min, 99.9% max while matchup is still active.
+// Only allow exact 0/100 after the matchup is fully completed.
+function clampWinProb(prob: number, isCompleted: boolean = false): number {
+  if (isCompleted) return prob
+  return Math.min(99.9, Math.max(0.1, prob))
+}
+
 function calcOverallWinProb(
   team1Stats: Record<string, number>,
   team2Stats: Record<string, number>,
@@ -1905,7 +1912,7 @@ async function loadMatchups() {
           team2: { team_key: awayKey, name: awayTeam.name, logo_url: awayTeam.logo_url, is_my_team: awayTeam.is_my_team || false },
           team1Stats: homeStats, team2Stats: awayStats, team1CatWins: w1, team2CatWins: w2, ties, 
           team1Leading: w1 > w2, team2Leading: w2 > w1,
-          team1WinProb: op.team1, team2WinProb: op.team2, 
+          team1WinProb: clampWinProb(op.team1), team2WinProb: clampWinProb(op.team2), 
           projectedTeam1Wins: pj1, projectedTeam2Wins: pj2, projectedTies: pjt, 
           categoryWinProbs: catProbs, stat_winners: statWinners
         })
@@ -1953,7 +1960,7 @@ async function loadMatchups() {
           team1: { team_key: t1.team_key, name: t1.name, logo_url: t1.logo_url, is_my_team: leagueStore.yahooTeams.find(x => x.team_key === t1.team_key)?.is_my_team || false },
           team2: { team_key: t2.team_key, name: t2.name, logo_url: t2.logo_url, is_my_team: leagueStore.yahooTeams.find(x => x.team_key === t2.team_key)?.is_my_team || false },
           team1Stats: t1.stats, team2Stats: t2.stats, team1CatWins: w1, team2CatWins: w2, ties, team1Leading: w1 > w2, team2Leading: w2 > w1,
-          team1WinProb: op.team1, team2WinProb: op.team2, projectedTeam1Wins: pj1, projectedTeam2Wins: pj2, projectedTies: pjt, categoryWinProbs: catProbs, stat_winners: m.stat_winners
+          team1WinProb: clampWinProb(op.team1), team2WinProb: clampWinProb(op.team2), projectedTeam1Wins: pj1, projectedTeam2Wins: pj2, projectedTies: pjt, categoryWinProbs: catProbs, stat_winners: m.stat_winners
         })
       }
     }
@@ -2192,7 +2199,7 @@ async function buildWinProbChart() {
         d2.push(w2 > w1 ? 100 : w1 === w2 ? 50 : 0)
       } else {
         const mcResult = calcOverallWinProb(t1Stats, t2Stats, scoringCatIds, daysRemaining)
-        d1.push(Math.round(mcResult.team1 * 10) / 10)
+        d1.push(Math.round(clampWinProb(mcResult.team1) * 10) / 10)
         d2.push(Math.round(mcResult.team2 * 10) / 10)
       }
     }
@@ -2205,8 +2212,8 @@ async function buildWinProbChart() {
     const todayInChart = chartDates.indexOf(todayStr)
     const lastShownIndex = daysToShowOnChart - 1
     if (!isCompletedWeek && todayInChart > -1 && todayInChart > lastShownIndex) {
-      d1.push(Math.round((matchup.team1WinProb || 50) * 10) / 10)
-      d2.push(Math.round((matchup.team2WinProb || 50) * 10) / 10)
+      d1.push(Math.round(clampWinProb(matchup.team1WinProb || 50) * 10) / 10)
+      d2.push(Math.round(clampWinProb(matchup.team2WinProb || 50) * 10) / 10)
       chartLabels.push(chartDayLabels[todayInChart] || 'Now')
       console.log('[WinProb Chart] Added live point for', chartDayLabels[todayInChart], ':', matchup.team1WinProb, '/', matchup.team2WinProb)
     }
@@ -2305,8 +2312,8 @@ function buildSimpleWinProbChart(matchup: any, daysToShow: number, allDayLabels:
       }
     }
     
-    d1.push(Math.round(team1Prob * 10) / 10)
-    d2.push(Math.round(team2Prob * 10) / 10)
+    d1.push(Math.round(clampWinProb(team1Prob, daysRemainingInMatchup <= 0 && !!isCompletedWeek.value) * 10) / 10)
+    d2.push(Math.round(clampWinProb(team2Prob, daysRemainingInMatchup <= 0 && !!isCompletedWeek.value) * 10) / 10)
   }
   
   // For current week: append today's live point
