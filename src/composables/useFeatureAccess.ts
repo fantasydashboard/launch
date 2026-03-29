@@ -88,14 +88,17 @@ export function useFeatureAccess() {
       if (leagueId && platform) {
         const now = new Date().toISOString()
 
+        // The league_passes table may have the full key (espn_baseball_6416_2026)
+        // OR just the numeric ID (6416) depending on which path created the row.
+        // Extract the short numeric ID as a fallback.
+        const parts = leagueId.split('_')
+        const shortLeagueId = parts.length >= 3 ? parts[2] : leagueId
+
         // Primary: league_passes (what stripe-webhook actually creates)
-        // IMPORTANT: filter by platform to prevent cross-platform ID collisions
-        // (ESPN and Sleeper can share numeric league IDs)
         const { data: passData, error: passError } = await supabase
           .from('league_passes')
           .select('id, expires_at')
-          .eq('league_id', leagueId)
-          .eq('platform', platform)
+          .in('league_id', [leagueId, shortLeagueId])
           .eq('active', true)
           .gt('expires_at', now)
           .limit(1)
@@ -112,8 +115,7 @@ export function useFeatureAccess() {
           const { data: subData, error: subError } = await supabase
             .from('league_subscriptions')
             .select('*')
-            .eq('league_id', leagueId)
-            .eq('platform', platform)
+            .in('league_id', [leagueId, shortLeagueId])
             .eq('status', 'active')
             .maybeSingle()
 
@@ -150,8 +152,8 @@ export function useFeatureAccess() {
   )
 
   // Also re-check if the user's profile updates (e.g. after purchase)
-  // immediate: true ensures we catch the case where the profile was already
-  // loaded before this composable was instantiated (timing race on page load)
+  // immediate: true is critical — catches the case where profile already
+  // loaded before this watcher was registered (page load timing race)
   watch(
     () => authStore.profile?.subscription_tier,
     () => checkAllAccess(),
