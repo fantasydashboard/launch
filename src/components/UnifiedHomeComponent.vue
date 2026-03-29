@@ -3424,107 +3424,124 @@ async function downloadStandings() {
     const topThird = Math.ceil(numTeams / 3)
     const bottomThird = numTeams - Math.ceil(numTeams / 3)
     
-    // Generate standings row - matching power rankings style
+    // Generate standings row — landing page card style
     const generateStandingsRow = (team: any, rank: number) => {
-      // Record (wins-losses-ties)
       const record = `${team.wins || 0}-${team.losses || 0}${(team.ties || 0) > 0 ? `-${team.ties}` : ''}`
-      
-      // For points leagues, show total points; for category leagues, show cat win %
+
+      // Stat column: points for points leagues, cat win % for category
       let statValue: string
-      let statLabel: string
-      
       if (isPointsLeague.value) {
-        statValue = (team.points_for || 0).toFixed(1)
-        statLabel = 'Points'
+        statValue = (team.points_for || 0).toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })
       } else {
         const totalCats = (team.wins || 0) + (team.losses || 0) + (team.ties || 0)
-        statValue = totalCats > 0 ? ((team.wins || 0) / totalCats * 100).toFixed(0) + '%' : '0%'
-        statLabel = 'Cat Win %'
+        statValue = totalCats > 0 ? ((team.wins || 0) / totalCats * 100).toFixed(0) + '%' : '—'
       }
-      
-      // Conditional color: green for top third, yellow for middle, red for bottom third
-      let pctColor = '#f59e0b' // yellow default (middle)
-      if (rank <= topThird) {
-        pctColor = '#10b981' // green for top
-      } else if (rank > bottomThird) {
-        pctColor = '#ef4444' // red for bottom
+
+      // Streak
+      const recentResults: string[] = team.recentResults || []
+      let streakCount = 0, streakType = ''
+      for (let i = recentResults.length - 1; i >= 0; i--) {
+        if (i === recentResults.length - 1) { streakType = recentResults[i]; streakCount = 1 }
+        else if (recentResults[i] === streakType) streakCount++
+        else break
       }
-      
-      // Trophy icon for playoff finishers
-      let trophyIcon = ''
-      if (team.playoffFinish === 1) {
-        trophyIcon = '<span style="margin-left: 6px; font-size: 16px;" title="League Champion">🏆</span>'
-      } else if (team.playoffFinish === 2) {
-        trophyIcon = '<span style="margin-left: 6px; font-size: 14px;" title="Runner-up">🥈</span>'
-      } else if (team.playoffFinish === 3) {
-        trophyIcon = '<span style="margin-left: 6px; font-size: 14px;" title="Third Place">🥉</span>'
-      }
-      
+      const streakText = streakCount > 0 ? `${streakType}${streakCount}` : '—'
+      const streakColor = streakType === 'W' ? '#22c55e' : streakType === 'L' ? '#ef4444' : '#6b7280'
+
+      // Trophy
+      let trophy = ''
+      if (team.playoffFinish === 1) trophy = ' 🏆'
+      else if (team.playoffFinish === 2) trophy = ' 🥈'
+      else if (team.playoffFinish === 3) trophy = ' 🥉'
+
+      // Avatar: team logo or initials fallback
+      const logoSrc = imageMap.get(team.team_key)
+      const words = (team.name || '').trim().split(/\s+/)
+      const initials = words.length >= 2 ? (words[0][0] + words[1][0]).toUpperCase() : (team.name || 'T').slice(0, 2).toUpperCase()
+      const pal = ['#0D8ABC','#3498DB','#9B59B6','#E91E63','#F39C12','#1ABC9C','#E74C3C','#00BCD4','#8E44AD','#F97316','#06B6D4','#84CC16']
+      const avatarBg = pal[(team.name || '').split('').reduce((a: number, c: string) => a + c.charCodeAt(0), 0) % pal.length]
+      const avatarHtml = logoSrc
+        ? `<img src="${logoSrc}" style="width:34px;height:34px;border-radius:9px;object-fit:cover;border:1px solid rgba(255,255,255,0.1);">`
+        : `<div style="width:34px;height:34px;border-radius:9px;background:${avatarBg};display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;color:#fff;letter-spacing:0.02em;">${initials}</div>`
+
+      const rowBg = team.is_my_team ? 'rgba(234,179,8,0.07)' : rank % 2 === 0 ? 'rgba(255,255,255,0.02)' : 'transparent'
+      const dotColor = team.is_my_team ? '#eab308' : 'transparent'
+      const nameColor = team.is_my_team ? '#eab308' : rank === 1 ? '#fff' : '#e5e7eb'
+      const nameFw = rank <= 2 ? '700' : '500'
+      const recColor = rank <= Math.ceil(numTeams / 2) ? '#22c55e' : '#9ca3af'
+
       return `
-      <div style="display: flex; height: 80px; padding: 0 12px; background: rgba(38, 42, 58, 0.4); border-radius: 10px; margin-bottom: 6px; border: 1px solid rgba(58, 61, 82, 0.4); box-sizing: border-box;">
-        <!-- Rank Number - white -->
-        <div style="width: 44px; flex-shrink: 0; padding-top: 8px;">
-          <span style="font-size: 36px; font-weight: 900; color: #ffffff; font-family: 'Impact', 'Arial Black', sans-serif; letter-spacing: -2px; line-height: 1;">${rank}</span>
+      <div style="display:flex;align-items:center;padding:0 16px;height:52px;background:${rowBg};border-bottom:1px solid rgba(255,255,255,0.045);">
+        <div style="width:26px;flex-shrink:0;font-size:13px;font-weight:700;color:${rank<=3?'#9ca3af':'#4b5563'};">${rank}</div>
+        <div style="width:48px;display:flex;align-items:center;gap:5px;flex-shrink:0;">
+          <div style="width:7px;height:7px;border-radius:50%;background:${dotColor};flex-shrink:0;"></div>
+          ${avatarHtml}
         </div>
-        <!-- Team Logo - 48px logo -->
-        <div style="width: 60px; flex-shrink: 0; padding-top: 16px;">
-          <img src="${imageMap.get(team.team_key) || createPlaceholder(team.name)}" style="width: 48px; height: 48px; border-radius: 50%; border: 2px solid #3a3d52; background: #262a3a; object-fit: cover;" />
+        <div style="flex:1;min-width:0;padding-left:10px;overflow:hidden;">
+          <span style="font-size:14px;font-weight:${nameFw};color:${nameColor};white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:block;">${team.name}${trophy}</span>
         </div>
-        <!-- Team Info with trophy -->
-        <div style="flex: 1; min-width: 0; padding-top: 16px;">
-          <div style="font-size: 14px; font-weight: 700; color: #f7f7ff; white-space: nowrap; overflow: visible; line-height: 1.2; display: flex; align-items: center;">${team.name}${trophyIcon}</div>
-          <div style="font-size: 11px; color: #9ca3af; line-height: 1.2; margin-top: 4px;">${record}</div>
+        <div style="width:60px;text-align:center;flex-shrink:0;">
+          <span style="font-size:13px;font-weight:700;color:${recColor};">${record}</span>
         </div>
-        <!-- Stat Value - big and colorful with label -->
-        <div style="width: 65px; flex-shrink: 0; text-align: center; padding-top: 14px;">
-          <div style="font-size: 22px; font-weight: bold; color: ${pctColor}; line-height: 1;">${statValue}</div>
-          <div style="font-size: 9px; color: #6b7280; margin-top: 2px; text-transform: uppercase;">${statLabel}</div>
+        <div style="width:70px;text-align:right;flex-shrink:0;padding-right:4px;">
+          <span style="font-size:13px;color:#9ca3af;">${statValue}</span>
         </div>
-      </div>
-    `}
+        <div style="width:46px;text-align:right;flex-shrink:0;">
+          <span style="font-size:13px;font-weight:800;color:${streakColor};">${streakText}</span>
+        </div>
+      </div>`
+    }
     
+    // All teams in single column
+    const allTeams = sortedTeams.value
+
+    // Column header label
+    const pfLabel = isPointsLeague.value ? 'PF' : 'WIN%'
+
     container.innerHTML = `
-      <div style="background: linear-gradient(160deg, #0f1219 0%, #0a0c14 50%, #0d1117 100%); border-radius: 16px; box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5); position: relative; overflow: hidden;">
-        
-        <!-- Top Yellow Bar with site name -->
-        <div style="background: #facc15; padding: 10px 24px 10px 24px; text-align: center; overflow: visible;">
-          <span style="font-size: 16px; font-weight: 700; color: #0a0c14; text-transform: uppercase; letter-spacing: 3px; display: block; margin-top: -17px;">Ultimate Fantasy Dashboard</span>
-        </div>
-        
-        <!-- HEADER - Logo on left with text next to it -->
-        <div style="display: flex; align-items: center; padding: 16px 24px; border-bottom: 1px solid rgba(250, 204, 21, 0.2); position: relative; z-index: 10;">
-          <!-- Main Logo - maintain aspect ratio -->
-          ${logoBase64 ? `<img src="${logoBase64}" style="height: 70px; width: auto; flex-shrink: 0; margin-right: 24px; display: block;" />` : ''}
-          <!-- Title and League Info - vertically centered -->
-          <div style="flex: 1; margin-top: -14px;">
-            <div style="font-size: 42px; font-weight: 900; color: #ffffff; text-transform: uppercase; letter-spacing: 2px; text-shadow: 0 2px 8px rgba(250, 204, 21, 0.4); line-height: 1;">League Standings</div>
-            <div style="font-size: 20px; margin-top: 8px; font-weight: 600; line-height: 1;">
-              <span style="color: #e5e7eb;">${leagueName.value}</span>
-              <span style="color: #6b7280; margin: 0 8px;">•</span>
-              <span style="color: #facc15; font-weight: 700;">Week ${displayWeek.value}</span>
+      <div style="background:#0f1117;border-radius:20px;overflow:hidden;box-shadow:0 20px 60px rgba(0,0,0,0.65);width:700px;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;">
+        <!-- Gold accent bar -->
+        <div style="height:5px;background:linear-gradient(90deg,#eab308,#ca8a04);"></div>
+
+        <!-- Header -->
+        <div style="padding:18px 20px 0;display:flex;align-items:center;justify-content:space-between;">
+          <div>
+            <div style="display:flex;align-items:center;gap:10px;margin-bottom:1px;">
+              <span style="font-size:22px;">🏆</span>
+              <span style="font-size:22px;font-weight:900;color:#fff;letter-spacing:-0.02em;">STANDINGS</span>
             </div>
+            <div style="font-size:12px;color:#6b7280;padding-left:32px;">${leagueName.value}</div>
+          </div>
+          <div style="text-align:right;">
+            ${logoBase64 ? `<img src="${logoBase64}" style="height:36px;width:auto;object-fit:contain;display:block;margin-bottom:2px;margin-left:auto;">` : ''}
+            <div style="font-size:11px;font-weight:700;color:#4b5563;letter-spacing:0.1em;text-transform:uppercase;">Week ${displayWeek.value}</div>
           </div>
         </div>
-        
-        <!-- Main content area -->
-        <div style="padding: 16px 24px 12px 24px; position: relative;">
-          
-          <!-- Standings (Two Columns) -->
-          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px; position: relative; z-index: 1;">
-            <div>${firstHalf.map((team, idx) => generateStandingsRow(team, idx + 1)).join('')}</div>
-            <div>${secondHalf.map((team, idx) => generateStandingsRow(team, idx + midpoint + 1)).join('')}</div>
-          </div>
-          
-          <!-- Trend Chart -->
-          <div style="background: rgba(38, 42, 58, 0.3); border-radius: 12px; padding: 16px; margin-bottom: 12px; border: 1px solid rgba(250, 204, 21, 0.2); position: relative; z-index: 1;">
-            <h3 style="color: #facc15; font-size: 18px; margin: 0 0 12px 0; text-align: center; font-weight: 700; text-transform: uppercase; letter-spacing: 1px;">Standings Trend</h3>
-            <div id="standings-trend-chart" style="height: 220px; width: 100%; min-width: 400px; position: relative;"></div>
-          </div>
+
+        <!-- Column headers -->
+        <div style="display:flex;align-items:center;padding:10px 16px 6px;border-bottom:1px solid rgba(255,255,255,0.07);margin-top:10px;">
+          <div style="width:26px;flex-shrink:0;"></div>
+          <div style="width:48px;flex-shrink:0;"></div>
+          <div style="flex:1;padding-left:10px;font-size:10px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:#4b5563;">Team</div>
+          <div style="width:60px;text-align:center;flex-shrink:0;font-size:10px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:#4b5563;">W-L</div>
+          <div style="width:70px;text-align:right;flex-shrink:0;padding-right:4px;font-size:10px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:#4b5563;">${pfLabel}</div>
+          <div style="width:46px;text-align:right;flex-shrink:0;font-size:10px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:#4b5563;">Streak</div>
         </div>
-        
+
+        <!-- Rows -->
+        <div style="margin-bottom:4px;">
+          ${allTeams.map((team: any, idx: number) => generateStandingsRow(team, idx + 1)).join('')}
+        </div>
+
+        <!-- Trend Chart -->
+        <div style="margin:12px 16px 0;background:rgba(255,255,255,0.03);border-radius:12px;padding:14px 14px 8px;border:1px solid rgba(255,255,255,0.07);">
+          <div style="font-size:11px;font-weight:700;letter-spacing:0.15em;text-transform:uppercase;color:#4b5563;margin-bottom:8px;">📈 STANDINGS TREND</div>
+          <div id="standings-trend-chart" style="height:200px;width:100%;position:relative;"></div>
+        </div>
+
         <!-- Footer -->
-        <div style="padding: 20px 24px 20px 24px; text-align: center; position: relative; z-index: 1;">
-          <span style="font-size: 24px; font-weight: bold; color: #facc15; letter-spacing: -0.5px; display: block; margin-top: -35px;">ultimatefantasydashboard.com</span>
+        <div style="padding:10px 16px 14px;text-align:center;">
+          <div style="font-size:12px;font-weight:700;color:#374151;letter-spacing:0.04em;">ultimatefantasydashboard.com</div>
         </div>
       </div>
     `
