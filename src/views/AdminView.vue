@@ -374,7 +374,16 @@
 
       <!-- ══════════════════════════════════════ SOCIAL TAB ══ -->
       <template v-if="adminTab === 'social'">
-        <SocialTemplatesView :embed-mode="true" />
+      <section class="section">
+        <div class="section-label">📸 Social Templates</div>
+        <div class="social-iframe-wrap">
+          <iframe
+            src="/socialtemplates?embed=true"
+            class="social-iframe"
+            title="Social Templates"
+          ></iframe>
+        </div>
+      </section>
       </template><!-- end social tab -->
 
     </template>
@@ -387,7 +396,6 @@ import { useAuthStore } from '@/stores/auth'
 import { useFeatureAccess } from '@/composables/useFeatureAccess'
 import { supabase } from '@/lib/supabase'
 import VueApexCharts from 'vue3-apexcharts'
-import SocialTemplatesView from '@/views/SocialTemplatesView.vue'
 
 const apexchart = VueApexCharts
 
@@ -688,16 +696,35 @@ function buildEmailHtml({ subject, previewText, headline, body, cta, ctaUrl }: {
   subject: string, previewText: string, headline: string, body: string, cta: string, ctaUrl: string
 }) {
   return `<!DOCTYPE html>
-<html lang="en">
+<html lang="en" style="background-color:#05060a !important;">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
+<meta name="color-scheme" content="dark">
+<meta name="supported-color-schemes" content="dark">
 <title>${subject}</title>
+<style>
+  :root { color-scheme: dark; }
+  html, body {
+    background-color: #05060a !important;
+    background: #05060a !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+  @media (prefers-color-scheme: dark) {
+    html, body { background-color: #05060a !important; }
+    table { background-color: #05060a !important; }
+  }
+  @media (prefers-color-scheme: light) {
+    html, body { background-color: #05060a !important; }
+    table { background-color: #05060a !important; }
+  }
+</style>
 </head>
-<body style="margin:0;padding:0;background-color:#05060a;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;">
+<body bgcolor="#05060a" style="margin:0;padding:0;background-color:#05060a !important;background:#05060a !important;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;">
 <div style="display:none;max-height:0;overflow:hidden;font-size:1px;color:#05060a;">${previewText}</div>
-<table width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:#05060a;">
-<tr><td align="center" style="padding:24px 16px;">
+<table width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="#05060a" style="background-color:#05060a !important;background:#05060a !important;">
+<tr><td align="center" bgcolor="#05060a" style="padding:24px 16px;background-color:#05060a !important;">
 <table width="600" cellpadding="0" cellspacing="0" border="0" style="max-width:600px;width:100%;">
 
   <!-- Header -->
@@ -1187,5 +1214,9 @@ onMounted(async () => {
 .admin-tab:hover { color: #9ca3af; }
 .admin-tab-active { color: #e5e7eb; border-bottom-color: #eab308; }
 .admin-tab-icon { font-size: 15px; }
-/* social iframe styles removed — now using inline component */
+.social-iframe-wrap {
+  border: 1px solid #1e2130; border-radius: 12px; overflow: hidden;
+  height: calc(100vh - 220px); min-height: 700px;
+}
+.social-iframe { width: 100%; height: 100%; border: none; display: block; }
 </style>
