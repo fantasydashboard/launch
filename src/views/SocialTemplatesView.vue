@@ -617,9 +617,9 @@
     ═══════════════════════════════════════════════════ -->
     <div class="section-label" style="grid-column:1/-1;margin-top:32px;">📱 Phone Mockup Ad Templates</div>
 
-    <!-- ══ TEMPLATE 30: Monarch Style 1 — Phone tilted LEFT, text top-left, cards popping out ══ -->
+    <!-- ══ TEMPLATE 30: Story — Text above, phone centred, cards pop out ══ -->
     <div class="post-wrap" style="grid-column:1/-1;max-width:960px;">
-      <div class="post-label">30 · Phone Ad — Cards Pop-Out (phone tilts left)</div>
+      <div class="post-label">30 · Phone Ad Story — Pop-Out Cards (1080×1920)</div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px;">
         <div>
           <div style="font-size:11px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:0.1em;margin-bottom:5px;">Headline</div>
@@ -635,88 +635,103 @@
         </div>
         <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;">
           <div>
-            <div style="font-size:10px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:4px;">Pop Card 1</div>
-            <select v-model="ad30card1" style="width:100%;background:#1e2130;color:#e5e7eb;border:1px solid #374151;border-radius:8px;padding:5px 8px;font-size:11px;">
+            <div style="font-size:10px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:4px;">Pop Left</div>
+            <select v-model="ad30card1" style="width:100%;background:#1e2130;color:#e5e7eb;border:1px solid #374151;border-radius:8px;padding:5px 6px;font-size:11px;">
               <option v-for="c in adCardOptions" :key="c.id" :value="c.id">{{ c.label }}</option>
             </select>
           </div>
           <div>
-            <div style="font-size:10px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:4px;">Phone Card</div>
-            <select v-model="ad30card2" style="width:100%;background:#1e2130;color:#e5e7eb;border:1px solid #374151;border-radius:8px;padding:5px 8px;font-size:11px;">
+            <div style="font-size:10px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:4px;">Phone Main</div>
+            <select v-model="ad30card2" style="width:100%;background:#1e2130;color:#e5e7eb;border:1px solid #374151;border-radius:8px;padding:5px 6px;font-size:11px;">
               <option v-for="c in adCardOptions" :key="c.id" :value="c.id">{{ c.label }}</option>
             </select>
           </div>
           <div>
-            <div style="font-size:10px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:4px;">Pop Card 2</div>
-            <select v-model="ad30card3" style="width:100%;background:#1e2130;color:#e5e7eb;border:1px solid #374151;border-radius:8px;padding:5px 8px;font-size:11px;">
+            <div style="font-size:10px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:4px;">Pop Right</div>
+            <select v-model="ad30card3" style="width:100%;background:#1e2130;color:#e5e7eb;border:1px solid #374151;border-radius:8px;padding:5px 6px;font-size:11px;">
               <option v-for="c in adCardOptions" :key="c.id" :value="c.id">{{ c.label }}</option>
             </select>
           </div>
         </div>
       </div>
 
-      <!-- 1080×1080 card scaled 50% -->
-      <div style="width:540px;height:540px;overflow:hidden;border-radius:12px;box-shadow:0 8px 40px rgba(0,0,0,0.5);">
-      <div style="width:1080px;height:1080px;background:#080a10;position:relative;font-family:Helvetica Neue,Helvetica,Arial,sans-serif;transform-origin:top left;transform:scale(0.5);">
+      <!-- 1080×1920 story scaled 28.125% → 304×540 display -->
+      <div style="width:304px;height:540px;overflow:hidden;border-radius:12px;box-shadow:0 8px 40px rgba(0,0,0,0.5);">
+      <div style="width:1080px;height:1920px;background:#080a10;position:relative;font-family:Helvetica Neue,Helvetica,Arial,sans-serif;transform-origin:top left;transform:scale(0.28125);">
 
-        <!-- Warm radial BG like Monarch -->
-        <div style="position:absolute;inset:0;background:radial-gradient(ellipse at 60% 70%,rgba(234,179,8,0.13) 0%,transparent 60%);"></div>
-        <div style="position:absolute;inset:0;background:radial-gradient(ellipse at 20% 20%,rgba(255,255,255,0.02) 0%,transparent 40%);"></div>
+        <!-- BG -->
+        <div style="position:absolute;inset:0;background:radial-gradient(ellipse at 50% 80%,rgba(234,179,8,0.15) 0%,transparent 55%);"></div>
+        <div style="position:absolute;inset:0;background:radial-gradient(ellipse at 80% 10%,rgba(6,182,212,0.06) 0%,transparent 40%);"></div>
+        <!-- Gold top bar -->
+        <div style="position:absolute;top:0;left:0;right:0;height:6px;background:linear-gradient(90deg,transparent,#eab308,transparent);"></div>
 
-        <!-- TOP-LEFT: headline + sub + button (Monarch style) -->
-        <div style="position:absolute;top:90px;left:72px;right:580px;display:flex;flex-direction:column;gap:0;">
-          <div style="display:flex;align-items:center;gap:12px;margin-bottom:36px;">
-            <img src="/UFD_V8.png" style="height:52px;width:auto;">
+        <!-- TEXT BLOCK — top area, above phone, clear of IG profile overlay (top 220px safe) -->
+        <div style="position:absolute;top:240px;left:80px;right:80px;">
+          <div style="display:flex;align-items:center;gap:16px;margin-bottom:40px;">
+            <img src="/UFD_V8.png" style="height:56px;width:auto;">
+            <div>
+              <div style="font-size:18px;font-weight:800;color:#eab308;letter-spacing:0.12em;text-transform:uppercase;">Ultimate Fantasy</div>
+              <div style="font-size:18px;font-weight:800;color:#fff;letter-spacing:0.12em;text-transform:uppercase;">Dashboard</div>
+            </div>
           </div>
-          <div style="font-size:64px;font-weight:900;color:#ffffff;line-height:1.0;letter-spacing:-0.025em;margin-bottom:22px;">{{ ad30headline || 'Know your league like never before.' }}</div>
-          <div style="font-size:22px;color:#9ca3af;line-height:1.5;margin-bottom:44px;font-weight:400;">{{ ad30sub || 'Power rankings. Win probability. League history.' }}</div>
+          <div style="font-size:80px;font-weight:900;color:#ffffff;line-height:1.0;letter-spacing:-0.025em;margin-bottom:24px;">{{ ad30headline || 'Know your league like never before.' }}</div>
+          <div style="font-size:32px;color:#9ca3af;line-height:1.5;margin-bottom:56px;">{{ ad30sub || 'Power rankings. Win probability. League history.' }}</div>
           <div style="display:inline-flex;">
-            <div style="background:linear-gradient(135deg,#eab308,#ca8a04);color:#0a0c14;font-size:26px;font-weight:900;padding:22px 44px;border-radius:14px;letter-spacing:0.01em;">
+            <div style="background:linear-gradient(135deg,#eab308,#ca8a04);color:#0a0c14;font-size:36px;font-weight:900;padding:28px 60px;border-radius:18px;letter-spacing:0.01em;">
               {{ ad30btn || 'Get League Pass →' }}
             </div>
           </div>
-          <div style="font-size:14px;color:#374151;margin-top:28px;letter-spacing:0.04em;">ultimatefantasydashboard.com</div>
         </div>
 
-        <!-- CENTER: Phone tilted LEFT (like first Monarch ad) -->
-        <div style="position:absolute;right:80px;top:60px;bottom:60px;width:480px;display:flex;align-items:center;justify-content:center;">
-          <!-- Pop-out card TOP LEFT of phone -->
-          <div style="position:absolute;left:-140px;top:80px;width:280px;z-index:20;filter:drop-shadow(0 16px 40px rgba(0,0,0,0.6));">
-            <div v-html="renderAdCard(ad30card1)" style="border-radius:14px;overflow:hidden;border:1px solid rgba(255,255,255,0.08);box-shadow:0 20px 60px rgba(0,0,0,0.5);"></div>
+        <!-- PHONE — lower half, centred, tilted left -->
+        <div style="position:absolute;bottom:260px;left:50%;transform:translateX(-50%);width:800px;height:900px;display:flex;align-items:center;justify-content:center;">
+          <!-- Pop card LEFT -->
+          <div style="position:absolute;left:0;top:80px;width:300px;z-index:20;filter:drop-shadow(0 20px 50px rgba(0,0,0,0.7));">
+            <div v-html="renderAdCard(ad30card1)" style="border-radius:16px;overflow:hidden;border:1px solid rgba(255,255,255,0.1);box-shadow:0 24px 80px rgba(0,0,0,0.6);"></div>
           </div>
-          <!-- Pop-out card BOTTOM RIGHT of phone -->
-          <div style="position:absolute;right:-120px;bottom:100px;width:280px;z-index:20;filter:drop-shadow(0 16px 40px rgba(0,0,0,0.6));">
-            <div v-html="renderAdCard(ad30card3)" style="border-radius:14px;overflow:hidden;border:1px solid rgba(255,255,255,0.08);box-shadow:0 20px 60px rgba(0,0,0,0.5);"></div>
+          <!-- Pop card RIGHT -->
+          <div style="position:absolute;right:0;bottom:60px;width:300px;z-index:20;filter:drop-shadow(0 20px 50px rgba(0,0,0,0.7));">
+            <div v-html="renderAdCard(ad30card3)" style="border-radius:16px;overflow:hidden;border:1px solid rgba(255,255,255,0.1);box-shadow:0 24px 80px rgba(0,0,0,0.6);"></div>
           </div>
-          <!-- Phone -->
-          <div style="position:relative;z-index:10;transform:perspective(1400px) rotateY(10deg) rotateX(-3deg) rotate(-4deg);filter:drop-shadow(0 60px 120px rgba(0,0,0,0.8));">
-            <div style="width:300px;height:620px;background:#0a0d14;border-radius:42px;border:2px solid rgba(255,255,255,0.14);overflow:hidden;position:relative;">
-              <div style="position:absolute;top:0;left:50%;transform:translateX(-50%);width:100px;height:26px;background:#080a10;border-radius:0 0 16px 16px;z-index:10;"></div>
-              <div style="position:absolute;top:8px;left:18px;right:18px;display:flex;justify-content:space-between;z-index:11;">
-                <span style="font-size:10px;color:#6b7280;font-weight:600;">9:41</span>
-                <div style="width:12px;height:7px;border:1px solid #6b7280;border-radius:2px;margin-top:2px;position:relative;"><div style="position:absolute;inset:1px;right:2px;background:#6b7280;border-radius:1px;"></div></div>
+          <!-- Phone body -->
+          <div style="position:relative;z-index:10;transform:perspective(1600px) rotateY(8deg) rotateX(-2deg) rotate(-3deg);filter:drop-shadow(0 80px 160px rgba(0,0,0,0.9));">
+            <div style="width:320px;height:680px;background:#0a0d14;border-radius:46px;border:2.5px solid rgba(255,255,255,0.14);overflow:hidden;position:relative;">
+              <!-- Notch -->
+              <div style="position:absolute;top:0;left:50%;transform:translateX(-50%);width:110px;height:28px;background:#080a10;border-radius:0 0 18px 18px;z-index:10;"></div>
+              <div style="position:absolute;top:10px;left:20px;right:20px;display:flex;justify-content:space-between;z-index:11;">
+                <span style="font-size:11px;color:#6b7280;font-weight:600;">9:41</span>
+                <div style="width:14px;height:7px;border:1px solid #6b7280;border-radius:2px;margin-top:2px;position:relative;"><div style="position:absolute;inset:1px;right:2px;background:#6b7280;border-radius:1px;"></div></div>
               </div>
-              <div style="position:absolute;top:34px;left:0;right:0;bottom:0;background:#0d1117;padding:8px 10px;display:flex;flex-direction:column;gap:8px;overflow:hidden;">
+              <!-- Screen -->
+              <div style="position:absolute;top:36px;left:0;right:0;bottom:0;background:#0d1117;padding:8px 10px;display:flex;flex-direction:column;gap:7px;overflow:hidden;">
                 <div style="display:flex;align-items:center;justify-content:space-between;padding-bottom:6px;border-bottom:1px solid rgba(255,255,255,0.06);">
-                  <img src="/UFD_V8.png" style="height:16px;width:auto;">
-                  <span style="font-size:8px;color:#eab308;font-weight:700;letter-spacing:0.05em;">FANTASY BASEBALL</span>
+                  <img src="/UFD_V8.png" style="height:15px;width:auto;">
+                  <span style="font-size:8px;color:#eab308;font-weight:700;letter-spacing:0.04em;">FANTASY BASEBALL</span>
                 </div>
-                <div v-html="renderAdCard(ad30card2)" style="border-radius:10px;overflow:hidden;"></div>
+                <!-- Main selected card -->
+                <div v-html="renderAdCard(ad30card2)" style="border-radius:9px;overflow:hidden;"></div>
+                <!-- Always-present filler cards -->
+                <div v-html="renderAdCard(ad30card2==='powerrankings'?'winprob':'powerrankings')" style="border-radius:9px;overflow:hidden;opacity:0.8;"></div>
+                <div v-html="renderAdCard('season')" style="border-radius:9px;overflow:hidden;opacity:0.6;"></div>
               </div>
-              <div style="position:absolute;bottom:5px;left:50%;transform:translateX(-50%);width:70px;height:3px;background:rgba(255,255,255,0.18);border-radius:2px;"></div>
+              <div style="position:absolute;bottom:5px;left:50%;transform:translateX(-50%);width:80px;height:3.5px;background:rgba(255,255,255,0.18);border-radius:2px;"></div>
             </div>
           </div>
         </div>
 
-        <!-- IG safe zone -->
-        <div style="position:absolute;bottom:0;left:0;right:0;height:180px;background:linear-gradient(transparent,rgba(8,10,16,0.5));"></div>
+        <!-- Watermark -->
+        <div style="position:absolute;bottom:240px;left:0;right:0;text-align:center;">
+          <div style="font-size:20px;color:#1e2130;letter-spacing:0.06em;">ultimatefantasydashboard.com</div>
+        </div>
+        <!-- Bottom gold bar -->
+        <div style="position:absolute;bottom:0;left:0;right:0;height:5px;background:linear-gradient(90deg,transparent,#eab308,transparent);"></div>
       </div>
       </div>
     </div>
 
-    <!-- ══ TEMPLATE 31: Monarch Style 2 — Phone tilts RIGHT, huge headline left ══ -->
+    <!-- ══ TEMPLATE 31: Square — Hero headline left, phone right ══ -->
     <div class="post-wrap" style="grid-column:1/-1;max-width:960px;margin-top:32px;">
-      <div class="post-label">31 · Phone Ad — Hero Headline (phone tilts right)</div>
+      <div class="post-label">31 · Phone Ad Square — Hero Headline (1080×1080)</div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px;">
         <div>
           <div style="font-size:11px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:0.1em;margin-bottom:5px;">Big Headline (white)</div>
@@ -748,57 +763,102 @@
         </div>
       </div>
 
-      <!-- 1080×1080 card scaled 50% -->
+      <!-- 1080×1080 scaled 50% -->
       <div style="width:540px;height:540px;overflow:hidden;border-radius:12px;box-shadow:0 8px 40px rgba(0,0,0,0.5);">
       <div style="width:1080px;height:1080px;background:#080a10;position:relative;font-family:Helvetica Neue,Helvetica,Arial,sans-serif;transform-origin:top left;transform:scale(0.5);">
-
-        <!-- BG -->
         <div style="position:absolute;inset:0;background:radial-gradient(ellipse at 30% 60%,rgba(234,179,8,0.1) 0%,transparent 55%);"></div>
-        <div style="position:absolute;inset:0;background:radial-gradient(ellipse at 80% 10%,rgba(6,182,212,0.05) 0%,transparent 40%);"></div>
 
-        <!-- Phone — tilted RIGHT, takes up right half, slightly overflows top/bottom -->
-        <div style="position:absolute;right:-60px;top:-30px;bottom:-30px;width:580px;display:flex;align-items:center;justify-content:center;">
-          <!-- Glow behind phone -->
-          <div style="position:absolute;width:340px;height:720px;border-radius:46px;background:radial-gradient(ellipse,rgba(234,179,8,0.12) 0%,transparent 70%);transform:perspective(1400px) rotateY(-14deg) rotateX(2deg) rotate(4deg);pointer-events:none;"></div>
-          <div style="width:340px;height:720px;background:#0a0d14;border-radius:46px;border:2px solid rgba(255,255,255,0.12);overflow:hidden;position:relative;transform:perspective(1400px) rotateY(-14deg) rotateX(2deg) rotate(4deg);filter:drop-shadow(0 60px 140px rgba(0,0,0,0.9));">
+        <!-- Phone — tilted RIGHT -->
+        <div style="position:absolute;right:-40px;top:-20px;bottom:-20px;width:580px;display:flex;align-items:center;justify-content:center;">
+          <div style="position:absolute;width:340px;height:720px;border-radius:46px;background:radial-gradient(ellipse,rgba(234,179,8,0.1) 0%,transparent 70%);transform:perspective(1400px) rotateY(-12deg) rotateX(2deg) rotate(4deg);pointer-events:none;"></div>
+          <div style="width:340px;height:720px;background:#0a0d14;border-radius:46px;border:2px solid rgba(255,255,255,0.12);overflow:hidden;position:relative;transform:perspective(1400px) rotateY(-12deg) rotateX(2deg) rotate(4deg);filter:drop-shadow(0 60px 140px rgba(0,0,0,0.9));">
             <div style="position:absolute;top:0;left:50%;transform:translateX(-50%);width:120px;height:28px;background:#080a10;border-radius:0 0 18px 18px;z-index:10;"></div>
             <div style="position:absolute;top:10px;left:20px;right:20px;display:flex;justify-content:space-between;z-index:11;">
               <span style="font-size:11px;color:#6b7280;font-weight:600;">9:41</span>
               <div style="width:14px;height:7px;border:1px solid #6b7280;border-radius:2px;margin-top:2px;position:relative;"><div style="position:absolute;inset:1px;right:2px;background:#6b7280;border-radius:1px;"></div></div>
             </div>
-            <div style="position:absolute;top:38px;left:0;right:0;bottom:0;background:#0d1117;padding:10px 12px;display:flex;flex-direction:column;gap:10px;overflow:hidden;">
-              <div style="display:flex;align-items:center;justify-content:space-between;padding-bottom:8px;border-bottom:1px solid rgba(255,255,255,0.06);">
+            <div style="position:absolute;top:38px;left:0;right:0;bottom:0;background:#0d1117;padding:10px 12px;display:flex;flex-direction:column;gap:8px;overflow:hidden;">
+              <div style="display:flex;align-items:center;justify-content:space-between;padding-bottom:7px;border-bottom:1px solid rgba(255,255,255,0.06);">
                 <img src="/UFD_V8.png" style="height:18px;width:auto;">
                 <span style="font-size:9px;color:#eab308;font-weight:700;letter-spacing:0.05em;">FANTASY BASEBALL</span>
               </div>
               <div v-html="renderAdCard(ad31card1)" style="border-radius:10px;overflow:hidden;"></div>
               <div v-html="renderAdCard(ad31card2)" style="border-radius:10px;overflow:hidden;"></div>
+              <!-- filler -->
+              <div v-html="renderAdCard(ad31card1==='season'||ad31card2==='season'?'draft':'season')" style="border-radius:10px;overflow:hidden;opacity:0.5;"></div>
             </div>
             <div style="position:absolute;bottom:6px;left:50%;transform:translateX(-50%);width:90px;height:4px;background:rgba(255,255,255,0.2);border-radius:2px;"></div>
           </div>
         </div>
 
-        <!-- LEFT SIDE: Giant headline like 2nd Monarch ad -->
-        <div style="position:absolute;left:64px;top:80px;width:560px;bottom:200px;display:flex;flex-direction:column;justify-content:center;">
-          <div style="margin-bottom:36px;">
-            <img src="/UFD_V8.png" style="height:56px;width:auto;">
-          </div>
-          <!-- Huge headline -->
-          <div style="font-size:100px;font-weight:900;color:#ffffff;line-height:0.92;letter-spacing:-0.04em;margin-bottom:4px;">{{ ad31headline || 'See your whole league' }}</div>
-          <div style="font-size:100px;font-weight:900;color:#eab308;line-height:0.92;letter-spacing:-0.04em;margin-bottom:36px;">{{ ad31accent || 'in one place.' }}</div>
-          <!-- Body -->
-          <div style="font-size:24px;color:#9ca3af;line-height:1.5;margin-bottom:44px;max-width:460px;font-weight:400;">{{ ad31body || 'and know exactly where you stand.' }}</div>
-          <!-- Button -->
+        <!-- LEFT text -->
+        <div style="position:absolute;left:64px;top:80px;width:520px;bottom:200px;display:flex;flex-direction:column;justify-content:center;">
+          <div style="margin-bottom:32px;"><img src="/UFD_V8.png" style="height:52px;width:auto;"></div>
+          <div style="font-size:88px;font-weight:900;color:#ffffff;line-height:0.92;letter-spacing:-0.04em;margin-bottom:4px;">{{ ad31headline || 'See your whole league' }}</div>
+          <div style="font-size:88px;font-weight:900;color:#eab308;line-height:0.92;letter-spacing:-0.04em;margin-bottom:36px;">{{ ad31accent || 'in one place.' }}</div>
+          <div style="font-size:24px;color:#9ca3af;line-height:1.5;margin-bottom:44px;max-width:420px;">{{ ad31body || 'and know exactly where you stand.' }}</div>
           <div>
-            <div style="display:inline-flex;align-items:center;background:linear-gradient(135deg,#eab308,#ca8a04);color:#0a0c14;font-size:26px;font-weight:900;padding:22px 44px;border-radius:14px;letter-spacing:0.01em;">
+            <div style="display:inline-flex;background:linear-gradient(135deg,#eab308,#ca8a04);color:#0a0c14;font-size:26px;font-weight:900;padding:22px 44px;border-radius:14px;letter-spacing:0.01em;">
               {{ ad31btn || 'Get League Pass →' }}
             </div>
           </div>
           <div style="font-size:14px;color:#374151;margin-top:28px;letter-spacing:0.04em;">ultimatefantasydashboard.com</div>
         </div>
-
-        <!-- IG safe zone -->
         <div style="position:absolute;bottom:0;left:0;right:0;height:180px;background:linear-gradient(transparent,rgba(8,10,16,0.6));"></div>
+      </div>
+      </div>
+    </div>
+
+    <!-- ══ TEMPLATE 31b: Story — Hero headline, phone below ══ -->
+    <div class="post-wrap" style="grid-column:1/-1;max-width:960px;margin-top:32px;">
+      <div class="post-label">31b · Phone Ad Story — Hero Headline (1080×1920) — same inputs as 31 above</div>
+
+      <!-- 1080×1920 scaled 28.125% → 304×540 -->
+      <div style="width:304px;height:540px;overflow:hidden;border-radius:12px;box-shadow:0 8px 40px rgba(0,0,0,0.5);">
+      <div style="width:1080px;height:1920px;background:#080a10;position:relative;font-family:Helvetica Neue,Helvetica,Arial,sans-serif;transform-origin:top left;transform:scale(0.28125);">
+        <div style="position:absolute;inset:0;background:radial-gradient(ellipse at 40% 30%,rgba(234,179,8,0.12) 0%,transparent 50%);"></div>
+        <div style="position:absolute;inset:0;background:radial-gradient(ellipse at 60% 90%,rgba(6,182,212,0.06) 0%,transparent 45%);"></div>
+        <div style="position:absolute;top:0;left:0;right:0;height:6px;background:linear-gradient(90deg,transparent,#eab308,transparent);"></div>
+
+        <!-- TEXT — top section (below 220px IG profile safe zone) -->
+        <div style="position:absolute;top:240px;left:80px;right:80px;">
+          <div style="margin-bottom:40px;"><img src="/UFD_V8.png" style="height:56px;width:auto;"></div>
+          <div style="font-size:120px;font-weight:900;color:#ffffff;line-height:0.9;letter-spacing:-0.04em;margin-bottom:8px;">{{ ad31headline || 'See your whole league' }}</div>
+          <div style="font-size:120px;font-weight:900;color:#eab308;line-height:0.9;letter-spacing:-0.04em;margin-bottom:48px;">{{ ad31accent || 'in one place.' }}</div>
+          <div style="font-size:36px;color:#9ca3af;line-height:1.5;margin-bottom:60px;">{{ ad31body || 'and know exactly where you stand.' }}</div>
+          <div style="display:inline-flex;">
+            <div style="background:linear-gradient(135deg,#eab308,#ca8a04);color:#0a0c14;font-size:40px;font-weight:900;padding:32px 72px;border-radius:20px;letter-spacing:0.01em;">
+              {{ ad31btn || 'Get League Pass →' }}
+            </div>
+          </div>
+        </div>
+
+        <!-- PHONE — bottom half, centred, tilted right -->
+        <div style="position:absolute;bottom:220px;left:50%;transform:translateX(-50%);width:900px;height:800px;display:flex;align-items:center;justify-content:center;">
+          <div style="position:absolute;width:360px;height:740px;border-radius:48px;background:radial-gradient(ellipse,rgba(234,179,8,0.1) 0%,transparent 70%);transform:perspective(1600px) rotateY(-10deg) rotateX(2deg) rotate(3deg);pointer-events:none;"></div>
+          <div style="width:360px;height:740px;background:#0a0d14;border-radius:48px;border:2.5px solid rgba(255,255,255,0.12);overflow:hidden;position:relative;transform:perspective(1600px) rotateY(-10deg) rotateX(2deg) rotate(3deg);filter:drop-shadow(0 80px 180px rgba(0,0,0,0.95));">
+            <div style="position:absolute;top:0;left:50%;transform:translateX(-50%);width:126px;height:30px;background:#080a10;border-radius:0 0 20px 20px;z-index:10;"></div>
+            <div style="position:absolute;top:11px;left:22px;right:22px;display:flex;justify-content:space-between;z-index:11;">
+              <span style="font-size:12px;color:#6b7280;font-weight:600;">9:41</span>
+              <div style="width:15px;height:8px;border:1px solid #6b7280;border-radius:2px;margin-top:2px;position:relative;"><div style="position:absolute;inset:1px;right:2px;background:#6b7280;border-radius:1px;"></div></div>
+            </div>
+            <div style="position:absolute;top:40px;left:0;right:0;bottom:0;background:#0d1117;padding:11px 13px;display:flex;flex-direction:column;gap:9px;overflow:hidden;">
+              <div style="display:flex;align-items:center;justify-content:space-between;padding-bottom:8px;border-bottom:1px solid rgba(255,255,255,0.06);">
+                <img src="/UFD_V8.png" style="height:19px;width:auto;">
+                <span style="font-size:9px;color:#eab308;font-weight:700;letter-spacing:0.05em;">FANTASY BASEBALL</span>
+              </div>
+              <div v-html="renderAdCard(ad31card1)" style="border-radius:10px;overflow:hidden;"></div>
+              <div v-html="renderAdCard(ad31card2)" style="border-radius:10px;overflow:hidden;"></div>
+              <div v-html="renderAdCard(ad31card1==='season'||ad31card2==='season'?'draft':'season')" style="border-radius:10px;overflow:hidden;opacity:0.55;"></div>
+            </div>
+            <div style="position:absolute;bottom:6px;left:50%;transform:translateX(-50%);width:96px;height:4px;background:rgba(255,255,255,0.2);border-radius:2px;"></div>
+          </div>
+        </div>
+
+        <div style="position:absolute;bottom:230px;left:0;right:0;text-align:center;">
+          <div style="font-size:22px;color:#1e2130;letter-spacing:0.06em;">ultimatefantasydashboard.com</div>
+        </div>
+        <div style="position:absolute;bottom:0;left:0;right:0;height:5px;background:linear-gradient(90deg,transparent,#eab308,transparent);"></div>
       </div>
       </div>
     </div>
@@ -2871,35 +2931,45 @@ function renderAdCard(id: string): string {
 
     prtrendchart: `
       <div style="background:#131720;border:1px solid rgba(234,179,8,0.2);border-radius:10px;padding:10px 12px;">
-        <div style="font-size:10px;font-weight:800;color:#fff;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:6px;">📈 Rankings Trend</div>
-        <svg viewBox="0 0 220 80" style="width:100%;display:block;">
-          <text x="4" y="14" font-size="8" fill="rgba(255,255,255,0.2)" font-family="Helvetica Neue,Arial">#1</text>
-          <text x="4" y="42" font-size="8" fill="rgba(255,255,255,0.2)" font-family="Helvetica Neue,Arial">#3</text>
-          <text x="4" y="70" font-size="8" fill="rgba(255,255,255,0.2)" font-family="Helvetica Neue,Arial">#5</text>
-          <line x1="20" y1="10" x2="210" y2="10" stroke="rgba(255,255,255,0.04)" stroke-width="1"/>
-          <line x1="20" y1="38" x2="210" y2="38" stroke="rgba(255,255,255,0.04)" stroke-width="1"/>
-          <line x1="20" y1="66" x2="210" y2="66" stroke="rgba(255,255,255,0.04)" stroke-width="1"/>
-          <!-- Team lines -->
-          <path d="M20,60 C55,52 80,20 115,16 C145,12 175,10 210,10" fill="none" stroke="#eab308" stroke-width="2" stroke-linecap="round"/>
-          <path d="M20,10 C55,14 80,30 115,38 C145,42 175,36 210,32" fill="none" stroke="#22c55e" stroke-width="2" stroke-linecap="round"/>
-          <path d="M20,38 C55,42 80,50 115,55 C145,58 175,50 210,44" fill="none" stroke="#3b82f6" stroke-width="2" stroke-linecap="round" opacity="0.8"/>
-          <path d="M20,26 C55,34 80,44 115,48 C145,52 175,58 210,62" fill="none" stroke="#ef4444" stroke-width="1.5" stroke-linecap="round" opacity="0.7"/>
-          <!-- End dots -->
-          <circle cx="210" cy="10" r="3.5" fill="#eab308"/>
-          <circle cx="210" cy="32" r="3.5" fill="#22c55e"/>
-          <circle cx="210" cy="44" r="3" fill="#3b82f6"/>
-          <circle cx="210" cy="62" r="3" fill="#ef4444"/>
-          <!-- Labels -->
-          <text x="215" y="13" font-size="8" font-weight="700" fill="#eab308" font-family="Helvetica Neue,Arial">Stars</text>
-          <text x="215" y="35" font-size="8" font-weight="700" fill="#22c55e" font-family="Helvetica Neue,Arial">Mallards</text>
-          <text x="215" y="47" font-size="8" font-weight="700" fill="#3b82f6" font-family="Helvetica Neue,Arial">Bucs</text>
-          <text x="215" y="65" font-size="8" font-weight="700" fill="#ef4444" font-family="Helvetica Neue,Arial">Man</text>
-        </svg>
-        <div style="display:flex;gap:8px;margin-top:4px;">
-          <span style="font-size:8px;color:#6b7280;">Wk 1</span>
-          <div style="flex:1;"></div>
-          <span style="font-size:8px;color:#6b7280;">Wk 7</span>
+        <div style="display:flex;align-items:center;gap:5px;margin-bottom:6px;">
+          <span style="font-size:9px;">📈</span>
+          <span style="font-size:10px;font-weight:800;color:#fff;text-transform:uppercase;letter-spacing:0.05em;">Rankings Trend</span>
         </div>
+        <svg viewBox="0 0 260 80" style="width:100%;display:block;">
+          <!-- Grid lines -->
+          <line x1="20" y1="10" x2="205" y2="10" stroke="rgba(255,255,255,0.05)" stroke-width="1"/>
+          <line x1="20" y1="31" x2="205" y2="31" stroke="rgba(255,255,255,0.05)" stroke-width="1"/>
+          <line x1="20" y1="52" x2="205" y2="52" stroke="rgba(255,255,255,0.05)" stroke-width="1"/>
+          <line x1="20" y1="73" x2="205" y2="73" stroke="rgba(255,255,255,0.05)" stroke-width="1"/>
+          <!-- Y labels -->
+          <text x="2" y="13" font-size="7" fill="rgba(255,255,255,0.25)" font-family="Helvetica Neue,Arial">#1</text>
+          <text x="2" y="34" font-size="7" fill="rgba(255,255,255,0.25)" font-family="Helvetica Neue,Arial">#2</text>
+          <text x="2" y="55" font-size="7" fill="rgba(255,255,255,0.25)" font-family="Helvetica Neue,Arial">#3</text>
+          <text x="2" y="76" font-size="7" fill="rgba(255,255,255,0.25)" font-family="Helvetica Neue,Arial">#4</text>
+          <!-- 4 week x-axis ticks -->
+          <text x="22" y="79" font-size="7" fill="rgba(255,255,255,0.2)" font-family="Helvetica Neue,Arial">Wk1</text>
+          <text x="73" y="79" font-size="7" fill="rgba(255,255,255,0.2)" font-family="Helvetica Neue,Arial">Wk2</text>
+          <text x="124" y="79" font-size="7" fill="rgba(255,255,255,0.2)" font-family="Helvetica Neue,Arial">Wk3</text>
+          <text x="175" y="79" font-size="7" fill="rgba(255,255,255,0.2)" font-family="Helvetica Neue,Arial">Wk4</text>
+          <!-- Team 1: Stars — rises from #3 to #1 -->
+          <path d="M22,52 C42,44 62,30 82,22 C110,14 142,10 167,10" fill="none" stroke="#eab308" stroke-width="2.2" stroke-linecap="round"/>
+          <!-- Team 2: Mallards — stays near #2 with slight dip -->
+          <path d="M22,31 C42,36 62,40 82,35 C110,28 142,31 167,31" fill="none" stroke="#22c55e" stroke-width="2.2" stroke-linecap="round"/>
+          <!-- Team 3: Bucs — drops from #1 to #3 -->
+          <path d="M22,10 C42,14 62,22 82,31 C110,40 142,48 167,52" fill="none" stroke="#3b82f6" stroke-width="2" stroke-linecap="round" opacity="0.85"/>
+          <!-- Team 4: Man — flat around #4 -->
+          <path d="M22,73 C42,66 62,62 82,68 C110,72 142,70 167,73" fill="none" stroke="#ef4444" stroke-width="1.8" stroke-linecap="round" opacity="0.8"/>
+          <!-- End dots -->
+          <circle cx="167" cy="10" r="4" fill="#eab308"/>
+          <circle cx="167" cy="31" r="4" fill="#22c55e"/>
+          <circle cx="167" cy="52" r="3.5" fill="#3b82f6"/>
+          <circle cx="167" cy="73" r="3.5" fill="#ef4444"/>
+          <!-- Name labels -->
+          <text x="173" y="13" font-size="8" font-weight="700" fill="#eab308" font-family="Helvetica Neue,Arial">Stars</text>
+          <text x="173" y="34" font-size="8" font-weight="700" fill="#22c55e" font-family="Helvetica Neue,Arial">Mallards</text>
+          <text x="173" y="55" font-size="8" font-weight="700" fill="#3b82f6" font-family="Helvetica Neue,Arial">Bucs</text>
+          <text x="173" y="76" font-size="8" font-weight="700" fill="#ef4444" font-family="Helvetica Neue,Arial">Man</text>
+        </svg>
       </div>`,
 
     matchupgraph: `
