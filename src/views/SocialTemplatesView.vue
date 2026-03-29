@@ -2508,13 +2508,22 @@ async function loadWpLiveMatchups() {
     wpLiveWeek.value=`Week ${week}`
     const ms=await espnService.getMatchups(sport,espnId,season,week)
     wpLiveMatchups.value=ms.filter((m:any)=>m.awayTeamId).map((m:any)=>{
-      // Try to get logos from store first, fall back to ESPN API data
-      const homeT=leagueStore.yahooTeams.find((t:any)=>t.team_id===m.homeTeamId?.toString())
-      const awayT=leagueStore.yahooTeams.find((t:any)=>t.team_id===m.awayTeamId?.toString())
+      // ESPN API provides logos directly via homeTeam/awayTeam objects
+      // Store lookup is secondary — team_id is numeric in ESPN vs string in store
+      const homeT=leagueStore.yahooTeams.find((t:any)=>
+        t.team_id===m.homeTeamId?.toString() || t.team_id===String(m.homeTeamId))
+      const awayT=leagueStore.yahooTeams.find((t:any)=>
+        t.team_id===m.awayTeamId?.toString() || t.team_id===String(m.awayTeamId))
+      const homeLogo = (typeof homeT?.logo_url==='string' && homeT.logo_url)
+        ? homeT.logo_url
+        : (typeof m.homeTeam?.logo==='string' ? m.homeTeam.logo : '')
+      const awayLogo = (typeof awayT?.logo_url==='string' && awayT.logo_url)
+        ? awayT.logo_url
+        : (typeof m.awayTeam?.logo==='string' ? m.awayTeam.logo : '')
       return {
         homeScore:m.homeScore||0, awayScore:m.awayScore||0,
-        homeLogo:homeT?.logo_url||m.homeTeam?.logo||m.homeTeam?.logoUrl||'',
-        awayLogo:awayT?.logo_url||m.awayTeam?.logo||m.awayTeam?.logoUrl||''
+        homeProjected:m.homeProjectedPoints||0, awayProjected:m.awayProjectedPoints||0,
+        homeLogo, awayLogo
       }
     })
     if(wpLiveMatchups.value.length) await computeWplChart()
@@ -2525,16 +2534,54 @@ async function computeWplChart() {
   const m=wpLiveMatchup.value; if(!m) return
   const jsDay=new Date().getDay(); const todayIdx=jsDay===0?6:jsDay-1
   const days=['Mon','Tue','Wed','Thu','Fri','Sat','Sun']
-  const avg=Math.max(m.homeScore,m.awayScore,80)
-  function gr(mean:number,std:number):number { const u1=Math.random(),u2=Math.random(); return mean+std*Math.sqrt(-2*Math.log(u1))*Math.cos(2*Math.PI*u2) }
+  const s1Final=m.homeScore, s2Final=m.awayScore
+  const totalScored=s1Final+s2Final
+
+  function gr(mean:number,std:number):number {
+    const u1=Math.random(),u2=Math.random()
+    return mean+std*Math.sqrt(-2*Math.log(u1))*Math.cos(2*Math.PI*u2)
+  }
+
+  // Estimate full-week average from projected points if available, else use scored total
+  const projAvg = Math.max(m.homeProjected||0, m.awayProjected||0, s1Final, s2Final, 80)
+  // Weekly stdDev: ~20% of avg is realistic for fantasy baseball points leagues
+  const weeklyStd = projAvg * 0.20
+
   const d1:number[]=[],d2:number[]=[],labs:string[]=[]
+
   for(let day=0;day<=todayIdx;day++){
-    const frac=todayIdx>0?(day+1)/(todayIdx+1):1
-    const s1=m.homeScore*frac,s2=m.awayScore*frac
-    const dLeft=Math.max(0,6-day)
-    const rem=dLeft*(avg/7),std=avg*0.25*Math.sqrt(1/7)*Math.sqrt(Math.max(dLeft,1))
-    let w1=0; for(let i=0;i<3000;i++){ const f1=s1+Math.max(0,gr(rem,std)),f2=s2+Math.max(0,gr(rem,std)); if(f1>f2)w1++ }
-    let p1=(w1/3000)*100; if(dLeft>0)p1=Math.min(99.9,Math.max(0.1,p1))
+    // Pro-rate actual current scores back to this day (what scores looked like end of that day)
+    const dayFrac = todayIdx>0 ? (day+1)/(todayIdx+1) : 1
+    const s1atDay = s1Final * dayFrac
+    const s2atDay = s2Final * dayFrac
+
+    const daysLeft=Math.max(0,6-day)
+
+    let p1:number
+    if(daysLeft===0 && day===todayIdx && totalScored===0){
+      // No scores yet at all — show 50/50
+      p1=50
+    } else if(daysLeft===0){
+      // Last data point — use final scores
+      if(s1atDay>s2atDay) p1=Math.min(99.9, 50+(s1atDay-s2atDay)/projAvg*150)
+      else if(s2atDay>s1atDay) p1=Math.max(0.1, 50-(s2atDay-s1atDay)/projAvg*150)
+      else p1=50
+    } else {
+      // Simulate: current pro-rated scores + remaining days
+      const remDays = daysLeft
+      const dailyAvg = projAvg/7
+      const dailyStd = weeklyStd * Math.sqrt(1/7)
+      const remAvg = dailyAvg * remDays
+      const remStd = dailyStd * Math.sqrt(remDays)
+      let w1=0; const SIMS=3000
+      for(let i=0;i<SIMS;i++){
+        const f1=s1atDay+Math.max(0,gr(remAvg,remStd))
+        const f2=s2atDay+Math.max(0,gr(remAvg,remStd))
+        if(f1>f2)w1++
+      }
+      p1=(w1/SIMS)*100
+      p1=Math.min(99.9,Math.max(0.1,p1))
+    }
     d1.push(Math.round(p1*10)/10); d2.push(Math.round((100-p1)*10)/10); labs.push(days[day])
   }
   wplD1.value=d1; wplD2.value=d2; wplLabels.value=labs
