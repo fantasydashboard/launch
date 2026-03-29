@@ -1977,10 +1977,103 @@ async function loadMatchups() {
     team1WinProb: m.team1WinProb || 50,
     team2WinProb: m.team2WinProb || 50,
   })))
+  // Pre-compute and cache chart data for ALL matchups so social graphic has real data
+  // without requiring the user to click each one
+  cacheAllMatchupCharts(processed)
     const my = processed.find(m => m.team1.is_my_team || m.team2.is_my_team)
     if (my) selectMatchup(my); else if (processed.length) selectMatchup(processed[0])
   } catch (e) { console.error('Error loading matchups:', e) }
   finally { isLoading.value = false }
+}
+
+// Compute chart data for all matchups in the background and write to shared cache
+function cacheAllMatchupCharts(allMatchups: any[]) {
+  const isCompletedWeek = !isCurrentWeek.value
+  const sport = currentSport.value
+  const dailyWeights = getDailyWeights(sport)
+  let cumulativeWeight = 0
+  const cumulativeWeights: number[] = []
+  for (let i = 0; i < 7; i++) {
+    cumulativeWeight += dailyWeights[i]
+    cumulativeWeights.push(cumulativeWeight)
+  }
+  const now = new Date()
+  const hourOfDay = now.getHours()
+  const dayOfWeek = now.getDay()
+  const dayMap: Record<number, number> = { 1: 0, 2: 1, 3: 2, 4: 3, 5: 4, 6: 5, 0: 6 }
+  const todayIndex = dayMap[dayOfWeek]
+  const lastCompletedDayIndex = hourOfDay >= 3 ? todayIndex - 1 : todayIndex - 2
+  const daysToShow = isCompletedWeek ? 7 : Math.max(0, lastCompletedDayIndex + 1)
+  const allDays = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
+  const chartLabels = allDays.slice(0, daysToShow)
+
+  for (const matchup of allMatchups) {
+    const team1FinalStats = matchup.team1Stats || {}
+    const team2FinalStats = matchup.team2Stats || {}
+    const categoryIds = Object.keys(team1FinalStats)
+    if (categoryIds.length === 0) continue
+
+    const d1: number[] = []
+    const d2: number[] = []
+
+    for (let day = 0; day < daysToShow; day++) {
+      const team1CumulativeStats: Record<string, number> = {}
+      const team2CumulativeStats: Record<string, number> = {}
+      const refDay = Math.max(0, lastCompletedDayIndex)
+      const dayFraction = !isCompletedWeek
+        ? (day <= refDay ? cumulativeWeights[day] / Math.max(0.01, cumulativeWeights[refDay]) : 1)
+        : cumulativeWeights[day]
+      for (const catId of categoryIds) {
+        const v1 = parseFloat(team1FinalStats[catId]) || 0
+        const v2 = parseFloat(team2FinalStats[catId]) || 0
+        team1CumulativeStats[catId] = isCompletedWeek ? v1 * cumulativeWeights[day] : v1 * dayFraction
+        team2CumulativeStats[catId] = isCompletedWeek ? v2 * cumulativeWeights[day] : v2 * dayFraction
+      }
+      const daysRemaining = 6 - day
+      let team1Prob: number, team2Prob: number
+      if (daysRemaining <= 0) {
+        team1Prob = clampWinProb(matchup.team1WinProb || 50, isCompletedWeek)
+        team2Prob = clampWinProb(matchup.team2WinProb || 50, isCompletedWeek)
+      } else {
+        const remainingFraction = 1 - cumulativeWeights[day]
+        const refDayWeight = isCompletedWeek ? 1.0 : cumulativeWeights[Math.max(0, Math.min(lastCompletedDayIndex, day))]
+        const team1ExpectedRemaining: Record<string, number> = {}
+        const team2ExpectedRemaining: Record<string, number> = {}
+        for (const catId of categoryIds) {
+          const full1 = isCompletedWeek ? (parseFloat(team1FinalStats[catId]) || 0) : (parseFloat(team1FinalStats[catId]) || 0) / Math.max(0.01, refDayWeight)
+          const full2 = isCompletedWeek ? (parseFloat(team2FinalStats[catId]) || 0) : (parseFloat(team2FinalStats[catId]) || 0) / Math.max(0.01, refDayWeight)
+          team1ExpectedRemaining[catId] = full1 * remainingFraction
+          team2ExpectedRemaining[catId] = full2 * remainingFraction
+        }
+        const mcResult = runCategoryMonteCarloWithCumulative(
+          team1CumulativeStats, team2CumulativeStats,
+          team1ExpectedRemaining, team2ExpectedRemaining,
+          categoryIds, daysRemaining
+        )
+        team1Prob = clampWinProb(mcResult.team1, false)
+        team2Prob = clampWinProb(mcResult.team2, false)
+      }
+      d1.push(Math.round(team1Prob * 10) / 10)
+      d2.push(Math.round(team2Prob * 10) / 10)
+    }
+
+    // Add today's live point
+    const todayLabels = [...chartLabels]
+    if (!isCompletedWeek && todayIndex < 7 && todayIndex > lastCompletedDayIndex) {
+      d1.push(Math.round(clampWinProb(matchup.team1WinProb || 50, false) * 10) / 10)
+      d2.push(Math.round(clampWinProb(matchup.team2WinProb || 50, false) * 10) / 10)
+      todayLabels.push(allDays[todayIndex])
+    }
+
+    const logo1 = typeof matchup.team1?.logo_url === 'string' ? matchup.team1.logo_url : ''
+    const logo2 = typeof matchup.team2?.logo_url === 'string' ? matchup.team2.logo_url : ''
+    matchupChartCache.set(
+      matchup.matchup_id, d1, d2, todayLabels,
+      matchup.team1WinProb || 50, matchup.team2WinProb || 50,
+      logo1, logo2
+    )
+  }
+  console.log('[CategoryMatchups] Pre-cached charts for', allMatchups.length, 'matchups')
 }
 
 function selectMatchup(m: any) {
