@@ -1412,57 +1412,103 @@
 
 
 
-    <!-- 29 · LIVE WIN PROBABILITY — from active ESPN league -->
+    <!-- 29 · WIN PROBABILITY CARD — Manual Input -->
     <div class="post-wrap">
-      <div class="post-label">29 · Live Win Probability — Active ESPN League</div>
-      <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;flex-wrap:wrap;">
+      <div class="post-label">29 · Win Probability Card — Manual</div>
 
-        <button @click="loadWpLiveMatchups" :disabled="wpLiveLoading" class="wpi-load-btn">
-          {{ wpLiveLoading ? 'Loading...' : '🔄 Load Matchups' }}
-        </button>
-        <select v-if="wpLiveMatchups.length" v-model="wpLiveSelectedIdx" @change="onWpLiveMatchupChange"
-          style="background:#1e2130;color:#e5e7eb;border:1px solid #374151;border-radius:8px;padding:6px 10px;font-size:13px;">
-          <option v-for="(m, i) in wpLiveMatchups" :key="i" :value="i">
-            Matchup {{ i + 1 }} · {{ WPL_ANON[i % WPL_ANON.length][0] }} ({{ m.team1WinProb?.toFixed(0) }}%) vs {{ WPL_ANON[i % WPL_ANON.length][1] }} ({{ m.team2WinProb?.toFixed(0) }}%)
-          </option>
-        </select>
-        <span v-if="wpLiveError" style="color:#ef4444;font-size:12px;">{{ wpLiveError }}</span>
+      <!-- ── Controls ── -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-bottom:20px;">
+
+        <!-- Team 1 picker -->
+        <div>
+          <div style="font-size:11px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:0.1em;margin-bottom:6px;">Team 1 (Cyan)</div>
+          <select v-model="wplTeam1Idx" style="width:100%;background:#1e2130;color:#e5e7eb;border:1px solid #374151;border-radius:8px;padding:7px 10px;font-size:13px;margin-bottom:6px;">
+            <option v-for="(t,i) in wplPresetTeams" :key="i" :value="i">{{ t.name }}</option>
+          </select>
+          <input v-model="wplPresetTeams[wplTeam1Idx].name" placeholder="Team name"
+            style="width:100%;background:#1e2130;color:#e5e7eb;border:1px solid #374151;border-radius:8px;padding:7px 10px;font-size:13px;margin-bottom:4px;box-sizing:border-box;">
+          <input v-model="wplPresetTeams[wplTeam1Idx].logo" placeholder="Logo URL"
+            style="width:100%;background:#1e2130;color:#e5e7eb;border:1px solid #374151;border-radius:8px;padding:7px 10px;font-size:12px;box-sizing:border-box;">
+        </div>
+
+        <!-- Team 2 picker -->
+        <div>
+          <div style="font-size:11px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:0.1em;margin-bottom:6px;">Team 2 (Orange)</div>
+          <select v-model="wplTeam2Idx" style="width:100%;background:#1e2130;color:#e5e7eb;border:1px solid #374151;border-radius:8px;padding:7px 10px;font-size:13px;margin-bottom:6px;">
+            <option v-for="(t,i) in wplPresetTeams" :key="i" :value="i">{{ t.name }}</option>
+          </select>
+          <input v-model="wplPresetTeams[wplTeam2Idx].name" placeholder="Team name"
+            style="width:100%;background:#1e2130;color:#e5e7eb;border:1px solid #374151;border-radius:8px;padding:7px 10px;font-size:13px;margin-bottom:4px;box-sizing:border-box;">
+          <input v-model="wplPresetTeams[wplTeam2Idx].logo" placeholder="Logo URL"
+            style="width:100%;background:#1e2130;color:#e5e7eb;border:1px solid #374151;border-radius:8px;padding:7px 10px;font-size:12px;box-sizing:border-box;">
+        </div>
       </div>
-      <div v-if="wpLiveMatchup" style="width:540px;background:#0f1117;border-radius:16px;overflow:hidden;font-family:Helvetica Neue,Helvetica,Arial,sans-serif;">
+
+      <!-- Week label -->
+      <div style="margin-bottom:14px;">
+        <div style="font-size:11px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:0.1em;margin-bottom:6px;">Week Label</div>
+        <input v-model="wplWeekLabel" style="background:#1e2130;color:#e5e7eb;border:1px solid #374151;border-radius:8px;padding:7px 10px;font-size:13px;width:160px;">
+      </div>
+
+      <!-- Day inputs — Team 1 win % (team 2 = 100 - team1). 0 = skip day -->
+      <div style="margin-bottom:20px;">
+        <div style="font-size:11px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:0.1em;margin-bottom:8px;">
+          Team 1 Win % per day &nbsp;·&nbsp; <span style="color:#4b5563;font-weight:400;text-transform:none;">Enter 0 to hide a day</span>
+        </div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;">
+          <div v-for="(day, i) in wplDayInputs" :key="i" style="display:flex;flex-direction:column;align-items:center;gap:4px;">
+            <div style="font-size:11px;font-weight:700;color:#9ca3af;">{{ day.label }}</div>
+            <input type="number" v-model.number="day.val" min="0" max="100"
+              style="width:58px;background:#1e2130;color:#e5e7eb;border:1px solid #374151;border-radius:8px;padding:6px;font-size:14px;font-weight:700;text-align:center;">
+            <div style="font-size:10px;color:#4b5563;">{{ day.val > 0 ? (100 - day.val) + '%' : '—' }}</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── The card to screenshot ── -->
+      <div style="width:540px;background:#0f1117;border-radius:16px;overflow:hidden;font-family:Helvetica Neue,Helvetica,Arial,sans-serif;">
         <div style="height:5px;background:linear-gradient(90deg,#eab308,#ca8a04);"></div>
+
+        <!-- Header -->
         <div style="display:flex;align-items:center;justify-content:space-between;padding:14px 18px 0;">
           <div style="display:flex;align-items:center;gap:8px;">
-            <img src="/UFD_V8.png" style="height:36px;width:auto;object-fit:contain;" @error="($event.target as HTMLImageElement).style.display='none'">
+            <img src="/UFD_V8.png" style="height:36px;width:auto;object-fit:contain;">
             <span style="font-size:12px;color:#6b7280;">⚾ Fantasy Baseball</span>
           </div>
-          <span style="font-size:11px;font-weight:700;color:#4b5563;text-transform:uppercase;letter-spacing:0.1em;">{{ wpLiveWeek }}</span>
+          <span style="font-size:11px;font-weight:700;color:#4b5563;text-transform:uppercase;letter-spacing:0.1em;">{{ wplWeekLabel }}</span>
         </div>
+
+        <!-- Title -->
         <div style="text-align:center;padding:18px 18px 10px;">
           <div style="font-size:18px;font-weight:900;color:#fff;">WIN PROBABILITY</div>
-          <div style="font-size:11px;color:#4b5563;margin-top:2px;">Live probability based on current scores</div>
+          <div style="font-size:11px;color:#4b5563;margin-top:2px;">Live probability based on current category performance</div>
         </div>
+
+        <!-- Team cards -->
         <div style="display:flex;gap:10px;padding:0 16px 14px;">
           <div style="flex:1;background:rgba(6,182,212,0.06);border:1px solid rgba(6,182,212,0.25);border-radius:12px;padding:14px;text-align:center;">
-            <img v-if="typeof wpLiveMatchup.homeLogo==='string' && wpLiveMatchup.homeLogo" :src="wpLiveMatchup.homeLogo"
+            <img v-if="wplPresetTeams[wplTeam1Idx].logo" :src="wplPresetTeams[wplTeam1Idx].logo"
               style="width:52px;height:52px;border-radius:50%;border:2px solid #06b6d4;object-fit:cover;margin:0 auto 8px;display:block;"
               @error="($event.target as HTMLImageElement).style.display='none'">
-            <div style="font-size:12px;font-weight:700;color:#06b6d4;margin-bottom:4px;">{{ WPL_ANON[wpLiveSelectedIdx % WPL_ANON.length][0] }}</div>
+            <div style="font-size:12px;font-weight:700;color:#06b6d4;margin-bottom:4px;">{{ wplPresetTeams[wplTeam1Idx].name }}</div>
             <div style="font-size:32px;font-weight:900;color:#06b6d4;line-height:1;">{{ wplProb1.toFixed(1) }}%</div>
-            <div style="font-size:11px;color:#6b7280;margin-top:4px;">based on current stats</div>
           </div>
           <div style="display:flex;align-items:center;font-size:16px;font-weight:900;color:#374151;flex-shrink:0;">VS</div>
           <div style="flex:1;background:rgba(249,115,22,0.06);border:1px solid rgba(249,115,22,0.25);border-radius:12px;padding:14px;text-align:center;">
-            <img v-if="typeof wpLiveMatchup.awayLogo==='string' && wpLiveMatchup.awayLogo" :src="wpLiveMatchup.awayLogo"
+            <img v-if="wplPresetTeams[wplTeam2Idx].logo" :src="wplPresetTeams[wplTeam2Idx].logo"
               style="width:52px;height:52px;border-radius:50%;border:2px solid #f97316;object-fit:cover;margin:0 auto 8px;display:block;"
               @error="($event.target as HTMLImageElement).style.display='none'">
-            <div style="font-size:12px;font-weight:700;color:#f97316;margin-bottom:4px;">{{ WPL_ANON[wpLiveSelectedIdx % WPL_ANON.length][1] }}</div>
+            <div style="font-size:12px;font-weight:700;color:#f97316;margin-bottom:4px;">{{ wplPresetTeams[wplTeam2Idx].name }}</div>
             <div style="font-size:32px;font-weight:900;color:#f97316;line-height:1;">{{ wplProb2.toFixed(1) }}%</div>
-            <div style="font-size:11px;color:#6b7280;margin-top:4px;">based on current stats</div>
           </div>
         </div>
+
+        <!-- Progress bar -->
         <div style="margin:0 16px 14px;height:10px;border-radius:8px;overflow:hidden;background:linear-gradient(90deg,#f97316,#ea580c);position:relative;">
           <div :style="{position:'absolute',left:0,top:0,height:'100%',width:wplProb1+'%',background:'linear-gradient(90deg,#06b6d4,#0891b2)'}"></div>
         </div>
+
+        <!-- Chart -->
         <div style="margin:0 16px 14px;background:rgba(255,255,255,0.03);border-radius:12px;padding:12px 8px 8px;border:1px solid rgba(255,255,255,0.07);">
           <div style="font-size:10px;font-weight:700;letter-spacing:0.15em;text-transform:uppercase;color:#4b5563;margin-bottom:8px;padding-left:4px;">📈 WIN PROBABILITY TREND</div>
           <svg v-if="wplD1.length" viewBox="0 0 540 220" style="display:block;width:100%;height:auto;">
@@ -1482,32 +1528,29 @@
             <path :d="wplFill2Computed" fill="url(#wlg2)"/>
             <path :d="wplPath1Computed" fill="none" stroke="#06b6d4" stroke-width="2.5" stroke-linejoin="round"/>
             <path :d="wplPath2Computed" fill="none" stroke="#f97316" stroke-width="2.5" stroke-linejoin="round"/>
-            <template v-for="(v, i) in wplD1" :key="'d1'+i">
+            <template v-for="(v,i) in wplD1" :key="'d1'+i">
               <rect :x="wplSvgX(i)-17" :y="v>=wplD2[i]?wplSvgY(v)-24:wplSvgY(v)+7" width="34" height="16" rx="4" fill="#06b6d4" opacity="0.9"/>
               <text :x="wplSvgX(i)" :y="v>=wplD2[i]?wplSvgY(v)-12:wplSvgY(v)+19" text-anchor="middle" font-size="10" font-weight="800" fill="#0a0c14" font-family="Helvetica Neue,Arial,sans-serif">{{ v }}</text>
               <circle :cx="wplSvgX(i)" :cy="wplSvgY(v)" r="4.5" fill="#06b6d4" stroke="#0f1117" stroke-width="1.5"/>
             </template>
-            <template v-for="(v, i) in wplD2" :key="'d2'+i">
+            <template v-for="(v,i) in wplD2" :key="'d2'+i">
               <rect :x="wplSvgX(i)-17" :y="v>wplD1[i]?wplSvgY(v)-24:wplSvgY(v)+7" width="34" height="16" rx="4" fill="#f97316" opacity="0.9"/>
               <text :x="wplSvgX(i)" :y="v>wplD1[i]?wplSvgY(v)-12:wplSvgY(v)+19" text-anchor="middle" font-size="10" font-weight="800" fill="#0a0c14" font-family="Helvetica Neue,Arial,sans-serif">{{ v }}</text>
               <circle :cx="wplSvgX(i)" :cy="wplSvgY(v)" r="4.5" fill="#f97316" stroke="#0f1117" stroke-width="1.5"/>
             </template>
-            <template v-for="(label, i) in wplLabels" :key="'xl'+i">
+            <template v-for="(label,i) in wplLabels" :key="'xl'+i">
               <text :x="wplSvgX(i)" y="214" text-anchor="middle" font-size="11" font-weight="700" fill="#6b7280" font-family="Helvetica Neue,Arial,sans-serif">{{ label }}</text>
             </template>
-
           </svg>
-          <div v-else style="height:60px;display:flex;align-items:center;justify-content:center;color:#4b5563;font-size:12px;">
-            {{ wpLiveLoading ? 'Computing...' : 'Load matchups above to see chart' }}
+          <div v-else style="height:80px;display:flex;align-items:center;justify-content:center;color:#4b5563;font-size:13px;">
+            Enter win probabilities above to see the chart
           </div>
         </div>
+
         <div style="padding:0 16px 10px;text-align:center;">
           <div style="font-size:9px;color:#374151;">Win probability · Monte Carlo simulation · ultimatefantasydashboard.com</div>
         </div>
         <div style="height:4px;background:linear-gradient(90deg,#06b6d4,#f97316);"></div>
-      </div>
-      <div v-else style="width:540px;height:200px;background:#0f1117;border-radius:16px;display:flex;align-items:center;justify-content:center;color:#4b5563;font-size:14px;">
-        {{ wpLiveLoading ? '⏳ Loading matchups...' : '👆 Click Load Matchups to get started' }}
       </div>
     </div>
 
@@ -1520,7 +1563,6 @@
 import { ref, computed, defineComponent, h, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 import { useLeagueStore } from '@/stores/league'
-import { matchupChartCache } from '@/stores/matchupChartCache'
 
 // ── Embed detection (hide shell when loaded in admin iframe) ──────────────
 const route = useRoute()
@@ -2460,236 +2502,50 @@ const FanCards = defineComponent({
     }
   }
 })
-// ══ GRAPHIC 29 — Live Win Probability ══════════════════════════════════════
-const WPL_ANON = [
-  ['The Algorithm','Chaos Theory'],['Monte Carlo FC','The Projection'],
-  ['Data Driven','Lucky Guess'],['The Model','The Gut Pick'],
-  ['Probability Zero','Dark Horse'],['Expected Value','Coin Flip'],
-  ['Regression FC','Hot Hand'],['The Simulation','The Upset'],
-]
-const wplLeagueId = ref('6416') // default to No League for Ordinary Gentlemen
-const wpLiveLoading = ref(false)
-const wpLiveError = ref('')
-const wpLiveMatchups = ref<any[]>([])
-const wpLiveSelectedIdx = ref(0)
-const wpLiveWeek = ref('')
-const wpLiveMatchup = computed(() => wpLiveMatchups.value[wpLiveSelectedIdx.value] || null)
-const wplD1 = ref<number[]>([])
-const wplD2 = ref<number[]>([])
-const wplLabels = ref<string[]>([])
-const wplProb1 = computed(() => wplD1.value.length ? wplD1.value[wplD1.value.length-1] : (wpLiveMatchup.value?.team1WinProb ?? 50))
+// ══ GRAPHIC 29 — Manual Win Probability Social Card ═══════════════════════
+
+// 4 preset teams — name + logo URL (editable by user in the UI)
+const wplPresetTeams = ref([
+  { name: 'Swamp Pirates', logo: 'https://g.espncdn.com/lm-static/ffl/images/default_logos/default_black.png' },
+  { name: 'Shohei me the money', logo: 'https://g.espncdn.com/lm-static/ffl/images/default_logos/default_black.png' },
+  { name: 'NC PALE HOSE', logo: 'https://g.espncdn.com/lm-static/ffl/images/default_logos/default_black.png' },
+  { name: 'Dem Bums', logo: 'https://g.espncdn.com/lm-static/ffl/images/default_logos/default_black.png' },
+])
+
+// Which preset is selected for each team slot
+const wplTeam1Idx = ref(0)
+const wplTeam2Idx = ref(1)
+
+// Manual day inputs — enter win probability for team 1 each day (team 2 = 100 - team1)
+// 0 or empty = skip that day
+const wplDayInputs = ref([
+  { label: 'Mon', val: 0 },
+  { label: 'Tue', val: 0 },
+  { label: 'Wed', val: 0 },
+  { label: 'Thu', val: 0 },
+  { label: 'Fri', val: 0 },
+  { label: 'Sat', val: 0 },
+  { label: 'Sun', val: 0 },
+])
+
+const wplWeekLabel = ref('Week 1')
+
+// Derived chart data from inputs (skip days where val === 0)
+const wplD1 = computed(() => wplDayInputs.value.filter(d => d.val > 0).map(d => Math.round(Math.min(99.9,Math.max(0.1,d.val))*10)/10))
+const wplD2 = computed(() => wplD1.value.map(v => Math.round((100-v)*10)/10))
+const wplLabels = computed(() => wplDayInputs.value.filter(d => d.val > 0).map(d => d.label))
+
+const wplProb1 = computed(() => wplD1.value.length ? wplD1.value[wplD1.value.length-1] : 50)
 const wplProb2 = computed(() => 100 - wplProb1.value)
+
+// SVG helpers
 function wplSvgX(i: number): number { const n=wplLabels.value.length; return 48+(n>1?(i/(n-1))*440:220) }
 function wplSvgY(v: number): number { return 36+140-(v/100)*140 }
-const wplPath1Computed = computed(() => wplD1.value.map((v,i)=>`${i===0?'M':'L'}${wplSvgX(i)} ${wplSvgY(v)}`).join(' '))
-const wplPath2Computed = computed(() => wplD2.value.map((v,i)=>`${i===0?'M':'L'}${wplSvgX(i)} ${wplSvgY(v)}`).join(' '))
-const wplFill1Computed = computed(() => { if(!wplD1.value.length) return ''; const n=wplD1.value.length; return wplPath1Computed.value+` L${wplSvgX(n-1)} 176 L48 176 Z` })
-const wplFill2Computed = computed(() => { if(!wplD2.value.length) return ''; const n=wplD2.value.length; return wplPath2Computed.value+` L${wplSvgX(n-1)} 176 L48 176 Z` })
-async function loadWpLiveMatchups() {
-  wpLiveLoading.value = true
-  wpLiveError.value = ''
-  wpLiveMatchups.value = []
-  wplD1.value = []
-  wplD2.value = []
-  wplLabels.value = []
+const wplPath1Computed = computed(()=>wplD1.value.map((v,i)=>`${i===0?'M':'L'}${wplSvgX(i)} ${wplSvgY(v)}`).join(' '))
+const wplPath2Computed = computed(()=>wplD2.value.map((v,i)=>`${i===0?'M':'L'}${wplSvgX(i)} ${wplSvgY(v)}`).join(' '))
+const wplFill1Computed = computed(()=>{ if(!wplD1.value.length) return ''; const n=wplD1.value.length; return wplPath1Computed.value+` L${wplSvgX(n-1)} 176 L48 176 Z` })
+const wplFill2Computed = computed(()=>{ if(!wplD2.value.length) return ''; const n=wplD2.value.length; return wplPath2Computed.value+` L${wplSvgX(n-1)} 176 L48 176 Z` })
 
-  try {
-    // ── Get active ESPN league from store ────────────────────────────────────
-    const activeId = leagueStore.activeLeagueId || ''
-    const parts = activeId.split('_')
-    if (parts[0] !== 'espn') {
-      throw new Error('Please load an ESPN league using the header dropdown first.')
-    }
-    const sport = parts[1] as any
-    const espnLeagueId = parts[2]
-    const season = parseInt(parts[3])
-
-    const { espnService } = await import('@/services/espn')
-
-    // ── Fetch league + current week ──────────────────────────────────────────
-    const league = await espnService.getLeague(sport, espnLeagueId, season)
-    const currentWeek = league?.status?.currentMatchupPeriod || 1
-    wpLiveWeek.value = `Week ${currentWeek}`
-
-    // ── Fetch matchups with full stat data ───────────────────────────────────
-    const espnMatchups = await espnService.getMatchups(sport, espnLeagueId, season, currentWeek, true)
-
-    // ── Daily time math ──────────────────────────────────────────────────────
-    const now = new Date()
-    const hourOfDay = now.getHours()
-    const jsDay = now.getDay()
-    const dayMap: Record<number,number> = { 1:0,2:1,3:2,4:3,5:4,6:5,0:6 }
-    const todayIndex = dayMap[jsDay]
-    const lastCompletedDay = hourOfDay >= 3 ? todayIndex - 1 : todayIndex - 2
-    const daysToShow = Math.max(0, lastCompletedDay + 1)
-    const allDays = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun']
-
-    // ── Daily weights for baseball ───────────────────────────────────────────
-    const dailyWeights = [0.14,0.15,0.15,0.14,0.14,0.14,0.14]
-    let cumWt = 0
-    const cumWeights: number[] = []
-    for (let i = 0; i < 7; i++) { cumWt += dailyWeights[i]; cumWeights.push(cumWt) }
-
-    // ── ESPN inverse stats (lower = better) ──────────────────────────────────
-    const ESPN_INV = ['7','12','14','18','19','21','22','24','33','45']
-
-    function randomNormal(mean: number, std: number): number {
-      const u1 = Math.random(), u2 = Math.random()
-      return mean + std * Math.sqrt(-2 * Math.log(u1)) * Math.cos(2 * Math.PI * u2)
-    }
-
-    function espnMonteCarlo(
-      t1cur: Record<string,number>, t2cur: Record<string,number>,
-      t1rem: Record<string,number>, t2rem: Record<string,number>,
-      catIds: string[], daysLeft: number
-    ): number {
-      const SIMS = 3000
-      const vol: Record<string,number> = { '2':8,'3':3,'4':8,'5':2,'8':0.02,'9':0.02,'10':0.03,'17':0.5,'20':0.5,'34':15,'18':0.5,'19':0.15,'32':0.5,'47':0.5,'48':0.15 }
-      const scale = Math.sqrt(daysLeft / 7)
-      let wins1 = 0, wins2 = 0, ties = 0
-      for (let s = 0; s < SIMS; s++) {
-        let w1 = 0, w2 = 0
-        for (const id of catIds) {
-          const c1 = t1cur[id]||0, c2 = t2cur[id]||0
-          const e1 = t1rem[id]||0, e2 = t2rem[id]||0
-          const dv = vol[id]||5
-          const sd1 = e1*0.3*scale + dv*scale, sd2 = e2*0.3*scale + dv*scale
-          const f1 = c1 + Math.max(0, e1 + randomNormal(0, sd1))
-          const f2 = c2 + Math.max(0, e2 + randomNormal(0, sd2))
-          const inv = ESPN_INV.includes(id)
-          if (inv ? f1<f2 : f1>f2) w1++
-          else if (inv ? f2<f1 : f2>f1) w2++
-        }
-        if (w1>w2) wins1++; else if (w2>w1) wins2++; else ties++
-      }
-      return Math.min(99.9, Math.max(0.1, ((wins1+ties/2)/SIMS)*100))
-    }
-
-    // ── Process each matchup ─────────────────────────────────────────────────
-    const processed: any[] = []
-
-    for (const m of espnMatchups) {
-      if (!m.awayTeamId) continue
-
-      const homeTeam = leagueStore.yahooTeams.find((t:any) => t.team_id === String(m.homeTeamId))
-      const awayTeam = leagueStore.yahooTeams.find((t:any) => t.team_id === String(m.awayTeamId))
-
-      // Get category stats from the matchup
-      // ESPN returns homeScoreByStat / awayScoreByStat with current cumulative values
-      const homeStats: Record<string,number> = {}
-      const awayStats: Record<string,number> = {}
-
-      const hStat = m.homeScoreByStat || m.homeValuesByStat || {}
-      const aStat = m.awayScoreByStat || m.awayValuesByStat || {}
-      const allStatIds = new Set([...Object.keys(hStat), ...Object.keys(aStat)])
-      for (const id of allStatIds) {
-        const hv = hStat[id]
-        const av = aStat[id]
-        if (hv != null && hv !== '--') homeStats[String(id)] = parseFloat(String(hv)) || 0
-        if (av != null && av !== '--') awayStats[String(id)] = parseFloat(String(av)) || 0
-      }
-      const catIds = Object.keys(homeStats).filter(id => homeStats[id] !== undefined || awayStats[id] !== undefined)
-
-      // Compute current overall win prob (today's snapshot)
-      const homeCatW = m.homeCategoryWins || 0
-      const awayCatW = m.awayCategoryWins || 0
-      const totalCats = homeCatW + awayCatW
-      const daysLeftNow = Math.max(0, 6 - todayIndex)
-
-      // Build chart — one probability per completed day + today
-      const d1: number[] = [], d2: number[] = [], labs: string[] = []
-      const refDay = Math.max(0, lastCompletedDay)
-
-      for (let day = 0; day < daysToShow; day++) {
-        const dayFrac = day <= refDay
-          ? cumWeights[day] / Math.max(0.001, cumWeights[refDay])
-          : 1
-        const t1c: Record<string,number> = {}, t2c: Record<string,number> = {}
-        for (const id of catIds) {
-          t1c[id] = (homeStats[id]||0) * dayFrac
-          t2c[id] = (awayStats[id]||0) * dayFrac
-        }
-        const dLeft = 6 - day
-        let p1: number
-        if (catIds.length === 0 || (totalCats === 0 && dLeft > 0)) {
-          p1 = 50
-        } else if (dLeft <= 0) {
-          p1 = homeCatW > awayCatW ? 99.9 : homeCatW < awayCatW ? 0.1 : 50
-        } else {
-          const remFrac = 1 - cumWeights[day]
-          const refWt = cumWeights[Math.max(0, Math.min(refDay, day))]
-          const t1e: Record<string,number> = {}, t2e: Record<string,number> = {}
-          for (const id of catIds) {
-            const f1 = (homeStats[id]||0) / Math.max(0.001, refWt)
-            const f2 = (awayStats[id]||0) / Math.max(0.001, refWt)
-            t1e[id] = f1 * remFrac; t2e[id] = f2 * remFrac
-          }
-          p1 = espnMonteCarlo(t1c, t2c, t1e, t2e, catIds, dLeft)
-        }
-        d1.push(Math.round(p1*10)/10)
-        d2.push(Math.round((100-p1)*10)/10)
-        labs.push(allDays[day])
-      }
-
-      // Append today's live point
-      if (todayIndex < 7 && todayIndex > lastCompletedDay) {
-        const p1live = catIds.length === 0 ? 50
-          : espnMonteCarlo(homeStats, awayStats,
-              Object.fromEntries(catIds.map(id => [id, (homeStats[id]||0)*daysLeftNow/7])),
-              Object.fromEntries(catIds.map(id => [id, (awayStats[id]||0)*daysLeftNow/7])),
-              catIds, daysLeftNow)
-        d1.push(Math.round(Math.min(99.9,Math.max(0.1,p1live))*10)/10)
-        d2.push(Math.round((100-d1[d1.length-1])*10)/10)
-        labs.push(allDays[todayIndex])
-      }
-
-      processed.push({
-        matchupId: m.id || processed.length,
-        team1WinProb: d1.length ? d1[d1.length-1] : 50,
-        team2WinProb: d2.length ? d2[d2.length-1] : 50,
-        homeLogo: homeTeam?.logo_url || (typeof m.homeTeam?.logo==='string' ? m.homeTeam.logo : ''),
-        awayLogo: awayTeam?.logo_url || (typeof m.awayTeam?.logo==='string' ? m.awayTeam.logo : ''),
-        d1, d2, labels: labs,
-        homeScore: homeCatW,
-        awayScore: awayCatW,
-        isCategoryLeague: true
-      })
-    }
-
-    if (!processed.length) throw new Error('No matchups found. Make sure your ESPN league is loaded.')
-    wpLiveMatchups.value = processed
-
-    // Load first matchup chart
-    const first = processed[0]
-    wplD1.value = [...first.d1]
-    wplD2.value = [...first.d2]
-    wplLabels.value = [...first.labels]
-
-  } catch(e: any) {
-    wpLiveError.value = e?.message || 'Failed to load matchups'
-  } finally {
-    wpLiveLoading.value = false
-  }
-}
-
-function onWpLiveMatchupChange() {
-  const m = wpLiveMatchup.value
-  if (!m) return
-  wplD1.value = m.d1?.length ? [...m.d1] : [m.team1WinProb ?? 50]
-  wplD2.value = m.d2?.length ? [...m.d2] : [m.team2WinProb ?? 50]
-  wplLabels.value = m.labels?.length ? [...m.labels] : ['Now']
-  wpLiveError.value = ''
-}
-
-
-
-
-
-
-
-
-
-onMounted(()=>{ if(leagueStore.activeLeagueId?.startsWith('espn')) loadWpLiveMatchups() })
 
 </script>
 
