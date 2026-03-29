@@ -885,300 +885,218 @@
       </div>
     </div>
 
-    <!-- 20 · INTERACTIVE POWER RANKINGS -->
-    <div class="post-wrap pr-post-wrap">
-      <div class="post-label">20 · Power Rankings — Interactive</div>
+    <!-- 20 · POWER RANKINGS CARD — Manual Input -->
+    <div class="post-wrap" style="padding-bottom:60px;">
+      <div class="post-label">20 · Power Rankings Card — Manual</div>
 
-      <!-- ── Controls ── -->
-      <div class="wp-controls">
-        <div class="wp-ctrl-row">
-          <div class="wp-ctrl-group">
-            <label>Sport · League Type</label>
-            <input v-model="prSportLabel" class="wp-input" placeholder="Baseball · H2H Points" />
+      <!-- Controls -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px;">
+        <div>
+          <div style="font-size:11px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:0.1em;margin-bottom:6px;">League Label</div>
+          <input v-model="prSportLabel" placeholder="Fantasy Baseball · H2H" style="width:100%;background:#1e2130;color:#e5e7eb;border:1px solid #374151;border-radius:8px;padding:7px 10px;font-size:13px;box-sizing:border-box;">
+        </div>
+        <div style="display:flex;gap:12px;">
+          <div>
+            <div style="font-size:11px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:0.1em;margin-bottom:6px;">Week</div>
+            <input v-model="prWeek" style="width:80px;background:#1e2130;color:#e5e7eb;border:1px solid #374151;border-radius:8px;padding:7px 10px;font-size:13px;">
           </div>
-          <div class="wp-ctrl-group wp-ctrl-sm">
-            <label>Week</label>
-            <input v-model="prWeek" class="wp-input" style="width:64px" placeholder="14" />
-          </div>
-          <div class="wp-ctrl-group">
-            <label>Number of Teams</label>
-            <div class="wp-pills">
-              <button v-for="n in [4,6,8,10]" :key="n" @click="prTeamCount=n"
-                :class="prTeamCount===n?'wp-pill-on':'wp-pill-off'">{{n}}</button>
-            </div>
-          </div>
-          <div class="wp-ctrl-group">
-            <label>Accent Color</label>
-            <div class="wp-pills">
-              <button @click="prAccent='gold'"   :class="prAccent==='gold'?'wp-pill-on':'wp-pill-off'" style="color:#eab308">⚡ Gold</button>
-              <button @click="prAccent='cyan'"   :class="prAccent==='cyan'?'wp-pill-on':'wp-pill-off'" style="color:#06b6d4">● Cyan</button>
-              <button @click="prAccent='green'"  :class="prAccent==='green'?'wp-pill-on':'wp-pill-off'" style="color:#22c55e">● Green</button>
-              <button @click="prAccent='purple'" :class="prAccent==='purple'?'wp-pill-on':'wp-pill-off'" style="color:#a78bfa">● Purple</button>
+          <div>
+            <div style="font-size:11px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:0.1em;margin-bottom:6px;">Teams</div>
+            <div style="display:flex;gap:4px;">
+              <button v-for="n in [6,8,10]" :key="n" @click="prTeamCount=n"
+                :style="prTeamCount===n?'background:rgba(234,179,8,0.2);border:1px solid #eab308;color:#eab308;':'background:#1e2130;border:1px solid #374151;color:#6b7280;'"
+                style="border-radius:6px;padding:4px 10px;font-size:13px;font-weight:700;cursor:pointer;">{{n}}</button>
             </div>
           </div>
         </div>
+      </div>
 
-        <!-- Team rows -->
-        <div class="pr-team-grid">
-          <div class="pr-team-header">
-            <span class="pr-th">#</span>
-            <span class="pr-th" style="flex:1">Team Name</span>
-            <span class="pr-th" style="width:80px">Score</span>
-            <span class="pr-th" style="width:70px">+/− Rank</span>
-            <span class="pr-th" style="width:90px">Record</span>
+      <!-- Team inputs -->
+      <div style="margin-bottom:20px;">
+        <div style="display:grid;grid-template-columns:2fr 2fr 80px 80px 80px;gap:6px;margin-bottom:6px;padding:0 4px;">
+          <div style="font-size:10px;font-weight:700;color:#4b5563;text-transform:uppercase;letter-spacing:0.1em;"># · Team Name</div>
+          <div style="font-size:10px;font-weight:700;color:#4b5563;text-transform:uppercase;letter-spacing:0.1em;">Logo URL</div>
+          <div style="font-size:10px;font-weight:700;color:#4b5563;text-transform:uppercase;letter-spacing:0.1em;">Score</div>
+          <div style="font-size:10px;font-weight:700;color:#4b5563;text-transform:uppercase;letter-spacing:0.1em;">+/− Rank</div>
+          <div style="font-size:10px;font-weight:700;color:#4b5563;text-transform:uppercase;letter-spacing:0.1em;">Record</div>
+        </div>
+        <div v-for="(team, i) in prTeams.slice(0, prTeamCount)" :key="i"
+          style="display:grid;grid-template-columns:2fr 2fr 80px 80px 80px;gap:6px;margin-bottom:4px;align-items:center;">
+          <div style="display:flex;align-items:center;gap:6px;">
+            <span style="font-size:12px;font-weight:800;color:#4b5563;width:16px;text-align:center;">{{i+1}}</span>
+            <input v-model="team.name" :placeholder="'Team '+(i+1)"
+              style="flex:1;background:#1e2130;color:#e5e7eb;border:1px solid #374151;border-radius:8px;padding:5px 8px;font-size:12px;min-width:0;">
           </div>
-          <div v-for="(team, i) in prTeams.slice(0, prTeamCount)" :key="i" class="pr-team-row">
-            <span class="pr-team-num">{{ i + 1 }}</span>
-            <input v-model="team.name" class="wp-input pr-name-input" :placeholder="'Team ' + (i+1)" />
-            <input v-model.number="team.score" type="number" step="0.1" class="wp-input pr-score-input" placeholder="124.8" />
-            <div class="wp-pills" style="gap:3px">
-              <button @click="team.change = Math.max(-9, team.change - 1)" class="wp-pill-off" style="padding:3px 7px;font-size:13px">−</button>
-              <span class="pr-chg-val" :style="{color: team.change > 0 ? '#22c55e' : team.change < 0 ? '#ef4444' : '#6b7280'}">
-                {{ team.change > 0 ? '▲' + team.change : team.change < 0 ? '▼' + Math.abs(team.change) : '—' }}
-              </span>
-              <button @click="team.change = Math.min(9, team.change + 1)" class="wp-pill-off" style="padding:3px 7px;font-size:13px">+</button>
-            </div>
-            <input v-model="team.record" class="wp-input" style="width:80px" placeholder="8-3" />
+          <input v-model="team.logo" placeholder="Logo URL"
+            style="background:#1e2130;color:#e5e7eb;border:1px solid #374151;border-radius:8px;padding:5px 8px;font-size:11px;min-width:0;">
+          <input v-model.number="team.score" type="number" step="0.1" placeholder="85.0"
+            style="background:#1e2130;color:#e5e7eb;border:1px solid #374151;border-radius:8px;padding:5px 8px;font-size:12px;text-align:center;">
+          <div style="display:flex;align-items:center;gap:3px;">
+            <button @click="team.change=Math.max(-9,team.change-1)"
+              style="background:#1e2130;border:1px solid #374151;color:#e5e7eb;border-radius:6px;padding:3px 7px;cursor:pointer;">−</button>
+            <span style="font-size:12px;font-weight:800;min-width:24px;text-align:center;"
+              :style="{color:team.change>0?'#22c55e':team.change<0?'#ef4444':'#4b5563'}">
+              {{team.change>0?'▲'+team.change:team.change<0?'▼'+Math.abs(team.change):'—'}}
+            </span>
+            <button @click="team.change=Math.min(9,team.change+1)"
+              style="background:#1e2130;border:1px solid #374151;color:#e5e7eb;border-radius:6px;padding:3px 7px;cursor:pointer;">+</button>
           </div>
+          <input v-model="team.record" placeholder="8-3"
+            style="background:#1e2130;color:#e5e7eb;border:1px solid #374151;border-radius:8px;padding:5px 8px;font-size:12px;text-align:center;">
         </div>
       </div>
 
       <!-- ── Screenshottable card ── -->
-      <div class="sq sq-wp-bg">
-        <div class="sq-grain"></div>
-        <svg viewBox="0 0 540 540" xmlns="http://www.w3.org/2000/svg"
-          style="position:absolute;inset:0;width:100%;height:100%;z-index:2">
+      <div style="width:540px;background:#0f1117;border-radius:16px;overflow:hidden;font-family:Helvetica Neue,Helvetica,Arial,sans-serif;">
+        <!-- Gold top bar -->
+        <div style="height:5px;background:linear-gradient(90deg,#eab308,#ca8a04);"></div>
 
-          <defs>
-            <linearGradient id="pr-bar-grad" x1="0" y1="0" x2="1" y2="0">
-              <stop offset="0%" :stop-color="prAccentColor" stop-opacity="0.9"/>
-              <stop offset="100%" :stop-color="prAccentColor" stop-opacity="0.35"/>
-            </linearGradient>
-            <linearGradient id="pr-top-grad" x1="0" y1="0" x2="1" y2="0">
-              <stop offset="0%" stop-color="transparent"/>
-              <stop offset="50%" :stop-color="prAccentColor"/>
-              <stop offset="100%" stop-color="transparent"/>
-            </linearGradient>
-          </defs>
+        <!-- Header -->
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 18px 0;">
+          <div style="display:flex;align-items:center;gap:8px;">
+            <img src="/UFD_V8.png" style="height:36px;width:auto;object-fit:contain;">
+            <span style="font-size:12px;color:#6b7280;">{{ prSportEmoji }} {{ prSportLabel }}</span>
+          </div>
+          <span style="font-size:11px;font-weight:700;color:#4b5563;text-transform:uppercase;letter-spacing:0.1em;">WEEK {{ prWeek }}</span>
+        </div>
 
-          <!-- Top accent line -->
-          <rect x="0" y="0" width="540" height="3" fill="url(#pr-top-grad)"/>
+        <!-- Title -->
+        <div style="display:flex;align-items:center;gap:8px;padding:10px 18px 10px;">
+          <span style="font-size:18px;">⚡</span>
+          <span style="font-size:18px;font-weight:900;color:#fff;letter-spacing:0.04em;">POWER RANKINGS</span>
+        </div>
 
-          <!-- ═══ HEADER BAR ═══ -->
-          <rect x="0" y="3" width="540" height="50" fill="#0d1019"/>
-          <line x1="0" y1="53" x2="540" y2="53" stroke="#1e2130" stroke-width="1"/>
+        <!-- Column headers -->
+        <div style="display:flex;align-items:center;padding:6px 16px;background:rgba(255,255,255,0.025);border-top:1px solid rgba(255,255,255,0.06);border-bottom:1px solid rgba(255,255,255,0.06);">
+          <div style="width:32px;font-size:9px;font-weight:700;color:#4b5563;text-transform:uppercase;letter-spacing:0.1em;">Rank</div>
+          <div style="width:24px;font-size:9px;font-weight:700;color:#4b5563;text-transform:uppercase;letter-spacing:0.1em;">+/−</div>
+          <div style="flex:1;font-size:9px;font-weight:700;color:#4b5563;text-transform:uppercase;letter-spacing:0.1em;padding-left:6px;">Team</div>
+          <div style="width:120px;font-size:9px;font-weight:700;color:#4b5563;text-transform:uppercase;letter-spacing:0.1em;">Score</div>
+          <div style="width:48px;text-align:right;font-size:9px;font-weight:700;color:#4b5563;text-transform:uppercase;letter-spacing:0.1em;">W-L</div>
+        </div>
 
-          <!-- UFD badge -->
-          <rect x="16" y="14" width="46" height="26" rx="5" fill="#09090f" :stroke="prAccentColor" stroke-width="1.5"/>
-          <text x="39" y="32" text-anchor="middle" font-size="12" font-weight="900"
-            :fill="prAccentColor" font-family="Helvetica Neue,Helvetica,Arial,sans-serif">UFD</text>
-
-          <!-- Sport emoji + label -->
-          <text x="72" y="32" font-size="18">{{ prSportEmoji }}</text>
-          <text x="96" y="32" font-size="13" font-weight="600" fill="#e5e7eb"
-            font-family="Helvetica Neue,Helvetica,Arial,sans-serif">{{ prSportLabel }}</text>
-
-          <!-- WK -->
-          <text x="524" y="32" text-anchor="end" font-size="13" font-weight="700" fill="#6b7280"
-            font-family="Helvetica Neue,Helvetica,Arial,sans-serif">WK {{ prWeek }}</text>
-
-          <!-- ═══ TITLE BAR ═══ -->
-          <rect x="0" y="53" width="540" height="48" fill="#0a0c14"/>
-          <line x1="0" y1="101" x2="540" y2="101" stroke="#1e2130" stroke-width="1"/>
-
-          <!-- Lightning icon bg -->
-          <rect x="18" y="64" width="26" height="26" rx="4" :fill="prIconBg"/>
-          <text x="31" y="82" text-anchor="middle" font-size="15">⚡</text>
-
-          <!-- Title -->
-          <text x="52" y="83" font-size="17" font-weight="900" letter-spacing="0.04em"
-            fill="#ffffff" font-family="Helvetica Neue,Helvetica,Arial,sans-serif">POWER RANKINGS</text>
-
-          <!-- Column headers -->
-          <rect x="0" y="101" width="540" height="28" fill="rgba(255,255,255,0.025)"/>
-          <line x1="0" y1="129" x2="540" y2="129" stroke="#1e2130" stroke-width="1"/>
-          <text x="20"  y="119" font-size="9.5" font-weight="700" fill="#4b5563" letter-spacing="0.1em"
-            font-family="Helvetica Neue,Helvetica,Arial,sans-serif">RANK</text>
-          <text x="64"  y="119" font-size="9.5" font-weight="700" fill="#4b5563" letter-spacing="0.1em"
-            font-family="Helvetica Neue,Helvetica,Arial,sans-serif">TEAM</text>
-          <text x="270" y="119" font-size="9.5" font-weight="700" fill="#4b5563" letter-spacing="0.1em"
-            font-family="Helvetica Neue,Helvetica,Arial,sans-serif">SCORE</text>
-          <text x="432" y="119" font-size="9.5" font-weight="700" fill="#4b5563" letter-spacing="0.1em"
-            font-family="Helvetica Neue,Helvetica,Arial,sans-serif">RECORD</text>
-          <text x="500" y="119" font-size="9.5" font-weight="700" fill="#4b5563" letter-spacing="0.1em"
-            font-family="Helvetica Neue,Helvetica,Arial,sans-serif">+/−</text>
-
-          <!-- ═══ TEAM ROWS ═══ -->
-          <g v-for="(team, i) in prTeams.slice(0, prTeamCount)" :key="'row'+i">
-            <!-- Row bg — alt shading + highlight for #1 -->
-            <rect x="0" :y="129 + i * prRowH" width="540" :height="prRowH"
-              :fill="i===0 ? prRowHighlight : i%2===0 ? 'rgba(255,255,255,0.012)' : 'transparent'"/>
-            <line x1="0" :y1="129 + (i+1)*prRowH" x2="540" :y2="129 + (i+1)*prRowH"
-              stroke="#1e2130" stroke-width="0.5" opacity="0.6"/>
-
+        <!-- Team rows -->
+        <div v-for="(team, i) in prTeams.slice(0, prTeamCount)" :key="i"
+          :style="{background:i===0?'rgba(234,179,8,0.06)':i%2===0?'rgba(255,255,255,0.02)':'transparent',borderBottom:'1px solid rgba(255,255,255,0.04)'}">
+          <div style="display:flex;align-items:center;padding:0 16px;height:48px;">
             <!-- Rank pill -->
-            <rect x="12" :y="129 + i*prRowH + prRowH/2 - 13" width="32" height="26" rx="13"
-              :fill="i===0 ? prAccentColor : i===1 ? 'rgba(255,255,255,0.06)' : i===2 ? 'rgba(255,255,255,0.04)' : 'transparent'"
-              :stroke="i===0 ? 'none' : '#262a3a'" stroke-width="1"/>
-            <text x="28" :y="129 + i*prRowH + prRowH/2 + 5" text-anchor="middle"
-              font-size="13" font-weight="900"
-              :fill="i===0 ? '#0a0c14' : i < 3 ? '#e5e7eb' : '#6b7280'"
-              font-family="Helvetica Neue,Helvetica,Arial,sans-serif">{{ i + 1 }}</text>
-
-            <!-- Color dot (unique per team) -->
-            <circle cx="56" :cy="129 + i*prRowH + prRowH/2" r="5" :fill="prTeamColor(i)"/>
-
-            <!-- Team name -->
-            <text x="68" :y="129 + i*prRowH + prRowH/2 - 4" font-size="13" font-weight="700"
-              :fill="i===0 ? '#ffffff' : '#d1d5db'"
-              font-family="Helvetica Neue,Helvetica,Arial,sans-serif">{{ team.name || 'Team ' + (i+1) }}</text>
-
-            <!-- Record -->
-            <text x="68" :y="129 + i*prRowH + prRowH/2 + 11" font-size="10" fill="#4b5563"
-              font-family="Helvetica Neue,Helvetica,Arial,sans-serif">{{ team.record || '' }}</text>
-
-            <!-- Score bar track (x=248..330, 82px) + filled bar — fully separated from score number -->
-            <rect x="248" :y="129 + i*prRowH + prRowH/2 - 4" width="82" height="8" rx="4"
-              fill="rgba(255,255,255,0.05)"/>
-            <rect x="248" :y="129 + i*prRowH + prRowH/2 - 4"
-              :width="prScoreBarWidth(team.score)" height="8" rx="4"
-              fill="url(#pr-bar-grad)" opacity="0.85"/>
-
-            <!-- Score number — starts at x=338, guaranteed 8px gap after bar max end (330) -->
-            <text x="338" :y="129 + i*prRowH + prRowH/2 + 5" text-anchor="start"
-              font-size="13" font-weight="800"
-              :fill="i===0 ? prAccentColor : '#e5e7eb'"
-              font-family="Helvetica Neue,Helvetica,Arial,sans-serif">{{ (team.score||0).toFixed(1) }}</text>
-
-            <!-- Record column -->
-            <text x="432" :y="129 + i*prRowH + prRowH/2 + 5" text-anchor="middle"
-              font-size="11" font-weight="600" fill="#6b7280"
-              font-family="Helvetica Neue,Helvetica,Arial,sans-serif">{{ team.record || '—' }}</text>
-
+            <div style="width:32px;flex-shrink:0;">
+              <div :style="{background:i===0?'#eab308':i===1?'rgba(255,255,255,0.1)':i===2?'rgba(255,255,255,0.07)':'transparent',borderRadius:'50%',width:'24px',height:'24px',display:'flex',alignItems:'center',justifyContent:'center'}">
+                <span :style="{fontSize:'12px',fontWeight:'900',color:i===0?'#0a0c14':i<3?'#e5e7eb':'#6b7280'}">{{i+1}}</span>
+              </div>
+            </div>
             <!-- Change badge -->
-            <g v-if="team.change !== 0">
-              <rect x="476" :y="129 + i*prRowH + prRowH/2 - 10" width="44" height="20" rx="4"
-                :fill="team.change > 0 ? 'rgba(34,197,94,0.12)' : 'rgba(239,68,68,0.12)'"
-                :stroke="team.change > 0 ? 'rgba(34,197,94,0.3)' : 'rgba(239,68,68,0.3)'" stroke-width="1"/>
-              <text x="498" :y="129 + i*prRowH + prRowH/2 + 5" text-anchor="middle"
-                font-size="11" font-weight="800"
-                :fill="team.change > 0 ? '#22c55e' : '#ef4444'"
-                font-family="Helvetica Neue,Helvetica,Arial,sans-serif">
-                {{ team.change > 0 ? '▲' + team.change : '▼' + Math.abs(team.change) }}
-              </text>
-            </g>
-            <text v-if="team.change === 0" x="498" :y="129 + i*prRowH + prRowH/2 + 5"
-              text-anchor="middle" font-size="12" fill="#374151"
-              font-family="Helvetica Neue,Helvetica,Arial,sans-serif">—</text>
-          </g>
+            <div style="width:24px;flex-shrink:0;">
+              <span v-if="team.change!==0" style="font-size:11px;font-weight:800;"
+                :style="{color:team.change>0?'#22c55e':'#ef4444'}">
+                {{team.change>0?'▲'+team.change:'▼'+Math.abs(team.change)}}
+              </span>
+              <span v-else style="font-size:11px;color:#374151;">—</span>
+            </div>
+            <!-- Logo + Name -->
+            <div style="flex:1;display:flex;align-items:center;gap:8px;padding-left:6px;min-width:0;">
+              <img v-if="team.logo" :src="team.logo"
+                style="width:30px;height:30px;border-radius:50%;object-fit:cover;flex-shrink:0;border:1px solid rgba(255,255,255,0.1);"
+                @error="($event.target as HTMLImageElement).style.display='none'">
+              <div v-else :style="{width:'30px',height:'30px',borderRadius:'50%',background:prTeamColor(i),display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}">
+                <span style="font-size:12px;font-weight:800;color:#fff;">{{(team.name||'T').charAt(0)}}</span>
+              </div>
+              <span :style="{fontSize:'13px',fontWeight:i===0?'800':'600',color:i===0?'#fff':'#d1d5db',whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}">
+                {{team.name||'Team '+(i+1)}}
+              </span>
+            </div>
+            <!-- Score bar + number -->
+            <div style="width:120px;flex-shrink:0;display:flex;align-items:center;gap:8px;">
+              <div style="flex:1;height:6px;background:rgba(255,255,255,0.06);border-radius:3px;overflow:hidden;">
+                <div :style="{width:prScoreBarWidth(team.score)+'px',height:'100%',background:'linear-gradient(90deg,'+prTeamColor(i)+','+prTeamColor(i)+'88)',borderRadius:'3px'}"></div>
+              </div>
+              <span :style="{fontSize:'13px',fontWeight:'800',color:i===0?'#eab308':'#e5e7eb',width:'38px',textAlign:'right'}">
+                {{(team.score||0).toFixed(1)}}
+              </span>
+            </div>
+            <!-- Record -->
+            <div style="width:48px;text-align:right;flex-shrink:0;">
+              <span style="font-size:11px;font-weight:600;color:#6b7280;">{{team.record||'—'}}</span>
+            </div>
+          </div>
+        </div>
 
-          <!-- Bottom rule before watermark -->
-          <line x1="0" :y1="129 + prTeamCount*prRowH + 1" x2="540" :y2="129 + prTeamCount*prRowH + 1"
-            stroke="#1e2130" stroke-width="1"/>
-
-          <!-- Powered by tag -->
-          <text x="270" y="528" text-anchor="middle" font-size="10" fill="#1e2130" letter-spacing="0.08em"
-            font-family="Helvetica Neue,Helvetica,Arial,sans-serif">ultimatefantasydashboard.com</text>
-
-        </svg>
+        <!-- Footer -->
+        <div style="padding:8px 16px;text-align:center;">
+          <div style="font-size:9px;color:#374151;letter-spacing:0.04em;">ultimatefantasydashboard.com</div>
+        </div>
+        <div style="height:4px;background:linear-gradient(90deg,#eab308,#ca8a04);"></div>
       </div>
     </div>
 
-    <!-- 20b · POWER RANKINGS TREND CHART (same inputs as #20) -->
-    <div class="post-wrap pr-post-wrap" style="margin-top:32px">
-      <div class="post-label">20b · Ranking Trends — same inputs above · screenshot this card separately</div>
-      <div class="sq sq-wp-bg">
-        <div class="sq-grain"></div>
-        <svg viewBox="0 0 540 540" xmlns="http://www.w3.org/2000/svg"
-          style="position:absolute;inset:0;width:100%;height:100%;z-index:2">
+    <!-- 20b · RANKING TRENDS — same inputs, separate screenshot -->
+    <div class="post-wrap" style="padding-bottom:60px;margin-top:32px;">
+      <div class="post-label">20b · Ranking Trends — uses same inputs above, screenshot separately</div>
 
-          <defs>
-            <linearGradient id="tr-top-grad" x1="0" y1="0" x2="1" y2="0">
-              <stop offset="0%" stop-color="transparent"/>
-              <stop offset="50%" :stop-color="prAccentColor"/>
-              <stop offset="100%" stop-color="transparent"/>
-            </linearGradient>
-          </defs>
+      <div style="width:540px;background:#0f1117;border-radius:16px;overflow:hidden;font-family:Helvetica Neue,Helvetica,Arial,sans-serif;">
+        <div style="height:5px;background:linear-gradient(90deg,#eab308,#ca8a04);"></div>
 
-          <!-- Top accent line -->
-          <rect x="0" y="0" width="540" height="3" fill="url(#tr-top-grad)"/>
+        <!-- Header -->
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 18px 0;">
+          <div style="display:flex;align-items:center;gap:8px;">
+            <img src="/UFD_V8.png" style="height:36px;width:auto;object-fit:contain;">
+            <span style="font-size:12px;color:#6b7280;">{{ prSportEmoji }} {{ prSportLabel }}</span>
+          </div>
+          <span style="font-size:11px;font-weight:700;color:#4b5563;text-transform:uppercase;letter-spacing:0.1em;">WK 1–{{ prWeek }}</span>
+        </div>
 
-          <!-- ═══ HEADER BAR ═══ -->
-          <rect x="0" y="3" width="540" height="50" fill="#0d1019"/>
-          <line x1="0" y1="53" x2="540" y2="53" stroke="#1e2130" stroke-width="1"/>
-          <rect x="16" y="14" width="46" height="26" rx="5" fill="#09090f" :stroke="prAccentColor" stroke-width="1.5"/>
-          <text x="39" y="32" text-anchor="middle" font-size="12" font-weight="900"
-            :fill="prAccentColor" font-family="Helvetica Neue,Helvetica,Arial,sans-serif">UFD</text>
-          <text x="72" y="32" font-size="18">{{ prSportEmoji }}</text>
-          <text x="96" y="32" font-size="13" font-weight="600" fill="#e5e7eb"
-            font-family="Helvetica Neue,Helvetica,Arial,sans-serif">{{ prSportLabel }}</text>
-          <text x="524" y="32" text-anchor="end" font-size="13" font-weight="700" fill="#6b7280"
-            font-family="Helvetica Neue,Helvetica,Arial,sans-serif">WK 1–{{ prWeek }}</text>
+        <!-- Title -->
+        <div style="display:flex;align-items:center;gap:8px;padding:10px 18px 12px;">
+          <span style="font-size:18px;">⚡</span>
+          <span style="font-size:18px;font-weight:900;color:#fff;letter-spacing:0.04em;">RANKING TRENDS</span>
+        </div>
 
-          <!-- ═══ TITLE BAR ═══ -->
-          <rect x="0" y="53" width="540" height="48" fill="#0a0c14"/>
-          <line x1="0" y1="101" x2="540" y2="101" stroke="#1e2130" stroke-width="1"/>
-          <rect x="18" y="64" width="26" height="26" rx="4" :fill="prIconBg"/>
-          <text x="31" y="82" text-anchor="middle" font-size="15">⚡</text>
-          <text x="52" y="83" font-size="17" font-weight="900" letter-spacing="0.04em"
-            fill="#ffffff" font-family="Helvetica Neue,Helvetica,Arial,sans-serif">RANKING TRENDS</text>
+        <!-- SVG chart -->
+        <div style="padding:0 16px 16px;">
+          <svg :viewBox="'0 0 508 '+(prTeamCount*44+80)" style="display:block;width:100%;height:auto;">
+            <!-- Grid lines per rank -->
+            <template v-for="(_,ri) in prTeams.slice(0,prTeamCount)" :key="'gl'+ri">
+              <line x1="38" :x2="442" :y1="prTrendY2(ri+1)" :y2="prTrendY2(ri+1)"
+                stroke="rgba(255,255,255,0.05)" stroke-width="1" stroke-dasharray="4 5"/>
+              <text x="32" :y="prTrendY2(ri+1)+4" text-anchor="end" font-size="11"
+                fill="rgba(255,255,255,0.25)" font-family="Helvetica Neue,Arial,sans-serif">#{{ri+1}}</text>
+            </template>
 
-          <!-- ═══ CHART AREA ═══ -->
-          <!-- Rank grid lines + y-axis labels -->
-          <g v-for="(_,ri) in prTrendTeams" :key="'rl'+ri">
-            <line x1="38" :x2="440" :y1="prTrendY(ri+1)" :y2="prTrendY(ri+1)"
-              stroke="rgba(255,255,255,0.055)" stroke-width="1" stroke-dasharray="4,5"/>
-            <text x="32" :y="prTrendY(ri+1)+4" text-anchor="end"
-              font-size="11" fill="rgba(255,255,255,0.3)"
-              font-family="Helvetica Neue,Helvetica,Arial,sans-serif">{{ ri+1 }}</text>
-          </g>
+            <!-- X-axis labels -->
+            <template v-for="w in prTrendWeekLabels2" :key="'wl'+w">
+              <text :x="prTrendX2(w-1)" :y="prTeamCount*44+68" text-anchor="middle"
+                font-size="10" fill="rgba(255,255,255,0.25)"
+                font-family="Helvetica Neue,Arial,sans-serif">Wk {{w}}</text>
+            </template>
 
-          <!-- X-axis week labels -->
-          <g v-for="(_,wi) in prTrendWeekLabels" :key="'wl'+wi">
-            <text :x="prTrendX(prTrendWeekLabels[wi]-1)" y="497"
-              text-anchor="middle" font-size="10" fill="rgba(255,255,255,0.25)"
-              font-family="Helvetica Neue,Helvetica,Arial,sans-serif">{{ prTrendWeekLabels[wi] }}</text>
-          </g>
-          <text x="240" y="512" text-anchor="middle" font-size="10" fill="rgba(255,255,255,0.2)"
-            letter-spacing="0.1em" font-family="Helvetica Neue,Helvetica,Arial,sans-serif">WEEK</text>
+            <!-- Current week vertical marker -->
+            <line :x1="prTrendX2(prTrendNWeeks2-1)" :x2="prTrendX2(prTrendNWeeks2-1)"
+              y1="4" :y2="prTeamCount*44+56"
+              stroke="rgba(255,255,255,0.06)" stroke-width="1" stroke-dasharray="3 4"/>
 
-          <!-- Current week vertical marker -->
-          <line :x1="prTrendX(prTrendNWeeks-1)" :x2="prTrendX(prTrendNWeeks-1)"
-            y1="108" y2="482"
-            stroke="rgba(255,255,255,0.08)" stroke-width="1" stroke-dasharray="3,4"/>
+            <!-- Trend lines per team -->
+            <template v-for="(tp, ti) in prTrendPaths2" :key="'tp'+ti">
+              <!-- Glow -->
+              <path :d="tp.d" fill="none" :stroke="tp.color" stroke-width="5" opacity="0.12"
+                stroke-linecap="round" stroke-linejoin="round"/>
+              <!-- Line -->
+              <path :d="tp.d" fill="none" :stroke="tp.color" stroke-width="2.2" opacity="0.9"
+                stroke-linecap="round" stroke-linejoin="round"/>
+              <!-- End dot -->
+              <circle :cx="tp.endX" :cy="tp.endY" r="5" :fill="tp.color"/>
+              <circle :cx="tp.endX" :cy="tp.endY" r="2.5" fill="#0f1117"/>
+              <circle :cx="tp.endX" :cy="tp.endY" r="1.2" :fill="tp.color"/>
+              <!-- Name label -->
+              <text :x="tp.endX+10" :y="tp.endY+4" font-size="10.5" font-weight="700"
+                :fill="tp.color" font-family="Helvetica Neue,Arial,sans-serif">{{ tp.name }}</text>
+            </template>
+          </svg>
+        </div>
 
-          <!-- Team trend lines -->
-          <g v-for="(paths, ti) in prTrendPaths" :key="'tl'+ti">
-            <!-- Glow duplicate (thicker, lower opacity) -->
-            <path :d="paths.d" fill="none" :stroke="paths.color"
-              stroke-width="4" opacity="0.15" stroke-linecap="round" stroke-linejoin="round"/>
-            <!-- Main line -->
-            <path :d="paths.d" fill="none" :stroke="paths.color"
-              stroke-width="2" opacity="0.9" stroke-linecap="round" stroke-linejoin="round"/>
-            <!-- End dot -->
-            <circle :cx="paths.endX" :cy="paths.endY" r="5" :fill="paths.color"/>
-            <circle :cx="paths.endX" :cy="paths.endY" r="3" fill="#0d1019"/>
-            <circle :cx="paths.endX" :cy="paths.endY" r="1.5" :fill="paths.color"/>
-            <!-- Team name label -->
-            <text :x="paths.endX + 10" :y="paths.endY + 4"
-              font-size="11" font-weight="600" :fill="paths.color"
-              font-family="Helvetica Neue,Helvetica,Arial,sans-serif">{{ paths.name }}</text>
-          </g>
-
-          <!-- ═══ LEGEND ═══ -->
-          <rect x="0" y="517" width="540" height="23" fill="rgba(0,0,0,0.3)"/>
-          <line x1="0" y1="517" x2="540" y2="517" stroke="#1e2130" stroke-width="1"/>
-          <g v-for="(paths, ti) in prTrendPaths.slice(0,4)" :key="'lg'+ti">
-            <circle :cx="22 + ti*130" cy="529" r="4" :fill="paths.color"/>
-            <text :x="30 + ti*130" y="533" font-size="10" font-weight="600" fill="#9ca3af"
-              font-family="Helvetica Neue,Helvetica,Arial,sans-serif">{{ paths.name }}</text>
-          </g>
-
-          <!-- Watermark -->
-          <text x="270" y="538" text-anchor="middle" font-size="9" fill="#1a1f2e"
-            font-family="Helvetica Neue,Helvetica,Arial,sans-serif">ultimatefantasydashboard.com</text>
-
-        </svg>
+        <div style="padding:6px 16px 10px;text-align:center;">
+          <div style="font-size:9px;color:#374151;">ultimatefantasydashboard.com</div>
+        </div>
+        <div style="height:4px;background:linear-gradient(90deg,#eab308,#ca8a04);"></div>
       </div>
     </div>
 
@@ -2101,16 +2019,16 @@ const prAccent = ref<'gold'|'cyan'|'green'|'purple'>('gold')
 
 // Default team data - 10 slots
 const prTeams = ref([
-  { name: 'Diamond Kings',    score: 124.8, change:  2, record: '9-2' },
-  { name: 'Sign Stealers',    score: 118.4, change:  1, record: '8-3' },
-  { name: 'Roto Renegades',   score: 112.1, change: -1, record: '7-4' },
-  { name: 'The Sluggers',     score: 108.6, change:  3, record: '7-4' },
-  { name: 'Ace Gang',         score: 104.2, change: -2, record: '6-5' },
-  { name: 'Bases Loaded FC',  score:  99.7, change:  0, record: '5-6' },
-  { name: 'No-Hitter Club',   score:  94.3, change:  1, record: '4-7' },
-  { name: 'Launch Angle FC',  score:  89.8, change: -2, record: '4-7' },
-  { name: 'Waiver Wire Kid',  score:  84.1, change:  0, record: '3-8' },
-  { name: 'The Algorithm',    score:  76.5, change: -2, record: '2-9' },
+  { name: '', logo: '', score: 90.0, change:  0, record: '' },
+  { name: '', logo: '', score: 85.0, change:  0, record: '' },
+  { name: '', logo: '', score: 80.0, change:  0, record: '' },
+  { name: '', logo: '', score: 75.0, change:  0, record: '' },
+  { name: '', logo: '', score: 70.0, change:  0, record: '' },
+  { name: '', logo: '', score: 65.0, change:  0, record: '' },
+  { name: '', logo: '', score: 60.0, change:  0, record: '' },
+  { name: '', logo: '', score: 55.0, change:  0, record: '' },
+  { name: '', logo: '', score: 50.0, change:  0, record: '' },
+  { name: '', logo: '', score: 45.0, change:  0, record: '' },
 ])
 
 // Accent color map
@@ -2155,7 +2073,7 @@ const prRowH = computed(() => Math.floor(391 / prTeamCount.value))
 // Score bar width — proportional to top score, max 82px (matches bar track width)
 const prMaxScore = computed(() => Math.max(...prTeams.value.slice(0, prTeamCount.value).map(t => t.score || 0), 1))
 function prScoreBarWidth(score: number): number {
-  return Math.round(((score || 0) / prMaxScore.value) * 82)
+  return Math.round(((score || 0) / prMaxScore.value) * 60)
 }
 
 // ── Ranking Trends chart ──────────────────────────────────────────────────
@@ -2232,7 +2150,88 @@ const prTrendPaths = computed(() => {
   })
 })
 
-// Line paths (only through wpCurrentDay)
+// ── Redesigned trend chart helpers ────────────────────────────────────────
+// Dynamic chart height based on team count
+const prChartH = computed(() => prTeamCount.value * 44 + 80)
+const PR2_TOP = 8   // y of rank #1
+const PR2_LEFT = 38
+const PR2_RIGHT = 442
+
+function prTrendY2(rank: number): number {
+  const n = prTeamCount.value
+  if (n <= 1) return PR2_TOP + (prChartH.value - 80) / 2
+  return PR2_TOP + ((rank - 1) / (n - 1)) * (prTeamCount.value * 44 - 16)
+}
+
+function prTrendX2(weekIdx: number): number {
+  const n = prTrendNWeeks2.value
+  return PR2_LEFT + (n > 1 ? weekIdx / (n - 1) : 0) * (PR2_RIGHT - PR2_LEFT)
+}
+
+const prTrendNWeeks2 = computed(() => Math.max(2, Math.min(16, parseInt(prWeek.value) || 6)))
+
+const prTrendWeekLabels2 = computed((): number[] => {
+  const n = prTrendNWeeks2.value
+  const step = n > 10 ? 2 : 1
+  const labels: number[] = [1]
+  for (let w = 1 + step; w < n; w += step) labels.push(w)
+  if (labels[labels.length - 1] !== n) labels.push(n)
+  return labels
+})
+
+// Generate trend paths where:
+// - Last point = current rank (position i+1)
+// - Second-to-last point = last week's rank (currentRank + change, since ▲2 = was 2 lower = rank+2 last week)
+// - Earlier points: smooth natural oscillation that doesn't swing wildly
+const prTrendPaths2 = computed(() => {
+  const nWeeks = prTrendNWeeks2.value
+  const teams = prTeams.value.slice(0, prTeamCount.value)
+  const nTeams = teams.length
+
+  return teams.map((team, i) => {
+    const currentRank = i + 1
+    // change > 0 = moved UP = last week was at a higher number
+    const lastWeekRank = Math.max(1, Math.min(nTeams, currentRank + team.change))
+    const color = PR_COLORS[i % PR_COLORS.length]
+
+    // Build rank array
+    const ranks: number[] = []
+    for (let w = 0; w < nWeeks; w++) {
+      if (w === nWeeks - 1) {
+        // Current week — must be exact current rank
+        ranks.push(currentRank)
+      } else if (w === nWeeks - 2) {
+        // Last week — must match the change
+        ranks.push(lastWeekRank)
+      } else {
+        // Earlier weeks: gentle oscillation anchored between current and last week
+        const midRank = (currentRank + lastWeekRank) / 2
+        const progress = nWeeks > 2 ? w / (nWeeks - 2) : 0
+        // Amplitude shrinks slightly toward the end, unique phase per team
+        const phase = i * 2.3 + 1.1
+        const freq = 0.45 + (i % 3) * 0.25
+        // Max swing = 1.5 ranks, decays toward middle
+        const amp = 1.4 * (1 - progress * 0.4)
+        const noise = amp * Math.sin(phase + freq * w)
+        ranks.push(Math.max(0.7, Math.min(nTeams + 0.3, midRank + noise)))
+      }
+    }
+
+    // Smooth bezier
+    const pts = ranks.map((r, w) => ({ x: prTrendX2(w), y: prTrendY2(r) }))
+    let d = `M ${pts[0].x.toFixed(1)},${pts[0].y.toFixed(1)}`
+    for (let k = 1; k < pts.length; k++) {
+      const cpx = ((pts[k-1].x + pts[k].x) / 2).toFixed(1)
+      d += ` C ${cpx},${pts[k-1].y.toFixed(1)} ${cpx},${pts[k].y.toFixed(1)} ${pts[k].x.toFixed(1)},${pts[k].y.toFixed(1)}`
+    }
+
+    const name = team.name ? (team.name.length > 10 ? team.name.slice(0, 9) + '…' : team.name) : `Team ${i+1}`
+    return { d, color, name, endX: PR2_RIGHT, endY: prTrendY2(currentRank) }
+  })
+})
+
+// ── Line paths (only through wpCurrentDay) ───────────────────────────────
+
 const wpLine1Path = computed(() => {
   const pts = wpTeam1Points.value.slice(0, wpCurrentDay.value + 1).map(p => ({ x: p.x, y: p.y }))
   return smoothBezier(pts)
