@@ -2312,8 +2312,8 @@ function buildSimpleWinProbChart(matchup: any, daysToShow: number, allDayLabels:
       }
     }
     
-    d1.push(Math.round(clampWinProb(team1Prob, daysRemainingInMatchup <= 0 && !!isCompletedWeek.value) * 10) / 10)
-    d2.push(Math.round(clampWinProb(team2Prob, daysRemainingInMatchup <= 0 && !!isCompletedWeek.value) * 10) / 10)
+    d1.push(Math.round(clampWinProb(team1Prob, isCompletedWeek) * 10) / 10)
+    d2.push(Math.round(clampWinProb(team2Prob, isCompletedWeek) * 10) / 10)
   }
   
   // For current week: append today's live point
@@ -2546,7 +2546,9 @@ async function generateMatchupAnalysisImage(matchup: any, html2canvas: any) {
         }
         img.onerror = () => resolve(createPlaceholder(team.name))
         setTimeout(() => resolve(createPlaceholder(team.name)), 3000)
-        img.src = team.logo_url || ''
+        // Guard: logo_url must be a string, not an object
+        const logoUrl = typeof team.logo_url === 'string' ? team.logo_url : ''
+        img.src = logoUrl
       })
     } catch {
       return createPlaceholder(team.name)
@@ -2920,7 +2922,9 @@ async function generateCategoryBreakdownImage(matchup: any, html2canvas: any) {
         }
         img.onerror = () => resolve(createPlaceholder(team.name))
         setTimeout(() => resolve(createPlaceholder(team.name)), 3000)
-        img.src = team.logo_url || ''
+        // Guard: logo_url must be a string, not an object
+        const logoUrl = typeof team.logo_url === 'string' ? team.logo_url : ''
+        img.src = logoUrl
       })
     } catch {
       return createPlaceholder(team.name)
