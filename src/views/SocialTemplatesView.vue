@@ -1646,52 +1646,62 @@
         </div>
       </div>
 
-      <!-- ── The card to screenshot ── -->
-      <div style="width:540px;background:#0f1117;border-radius:16px;overflow:hidden;font-family:Helvetica Neue,Helvetica,Arial,sans-serif;">
-        <div style="height:5px;background:linear-gradient(90deg,#eab308,#ca8a04);"></div>
+      <!-- ── Version A: Trash-talk hype ── -->
+      <div style="font-size:11px;font-weight:700;color:#4b5563;text-transform:uppercase;letter-spacing:0.1em;margin-bottom:10px;">Version A · Trash Talk / Hype</div>
+      <div style="width:540px;background:#0f1117;overflow:hidden;font-family:Helvetica Neue,Helvetica,Arial,sans-serif;">
 
-        <!-- Header -->
-        <div style="display:flex;align-items:center;justify-content:space-between;padding:14px 18px 0;">
-          <div style="display:flex;align-items:center;gap:8px;">
-            <img src="/UFD_V8.png" style="height:36px;width:auto;object-fit:contain;">
-            <span style="font-size:12px;color:#6b7280;">⚾ Fantasy Baseball</span>
+        <!-- MARKETING HEADER BAND -->
+        <div style="background:linear-gradient(135deg,#0a0c14 0%,#111827 100%);padding:18px 20px 16px;border-bottom:1px solid rgba(255,255,255,0.06);position:relative;overflow:hidden;">
+          <!-- BG glow -->
+          <div style="position:absolute;inset:0;background:radial-gradient(ellipse at 30% 50%,rgba(6,182,212,0.12) 0%,transparent 60%);pointer-events:none;"></div>
+          <div style="position:absolute;inset:0;background:radial-gradient(ellipse at 80% 50%,rgba(249,115,22,0.1) 0%,transparent 60%);pointer-events:none;"></div>
+          <!-- Top gold bar -->
+          <div style="position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,#06b6d4,#eab308,#f97316);"></div>
+          <!-- Content -->
+          <div style="position:relative;display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+            <img src="/UFD_V8.png" style="height:32px;width:auto;object-fit:contain;">
+            <div style="display:flex;align-items:center;gap:6px;">
+              <span style="font-size:10px;color:#4b5563;">⚾ Fantasy Baseball</span>
+              <span style="font-size:10px;font-weight:700;color:#374151;text-transform:uppercase;letter-spacing:0.08em;">· {{ wplWeekLabel }}</span>
+            </div>
           </div>
-          <span style="font-size:11px;font-weight:700;color:#4b5563;text-transform:uppercase;letter-spacing:0.1em;">{{ wplWeekLabel }}</span>
-        </div>
-
-        <!-- Title -->
-        <div style="text-align:center;padding:18px 18px 10px;">
-          <div style="font-size:18px;font-weight:900;color:#fff;">WIN PROBABILITY</div>
-          <div style="font-size:11px;color:#4b5563;margin-top:2px;">Live probability based on current category performance</div>
+          <!-- Hook line -->
+          <div style="position:relative;">
+            <div style="font-size:11px;font-weight:700;color:#eab308;letter-spacing:0.18em;text-transform:uppercase;margin-bottom:4px;">📊 Live Matchup Tracker</div>
+            <div style="font-size:26px;font-weight:900;color:#ffffff;line-height:1.05;letter-spacing:-0.01em;">WHO'S SWEATING TODAY?</div>
+            <div style="font-size:12px;color:#6b7280;margin-top:4px;font-weight:400;">Win probability shifts every day — track it live on UFD</div>
+          </div>
         </div>
 
         <!-- Team cards -->
-        <div style="display:flex;gap:10px;padding:0 16px 14px;">
-          <div style="flex:1;background:rgba(6,182,212,0.06);border:1px solid rgba(6,182,212,0.25);border-radius:12px;padding:14px;text-align:center;">
+        <div style="display:flex;gap:0;border-bottom:1px solid rgba(255,255,255,0.06);">
+          <div style="flex:1;background:rgba(6,182,212,0.05);padding:16px 14px;text-align:center;border-right:1px solid rgba(255,255,255,0.06);">
             <img v-if="wplPresetTeams[0].logo" :src="wplPresetTeams[0].logo"
-              style="width:52px;height:52px;border-radius:50%;border:2px solid #06b6d4;object-fit:cover;margin:0 auto 8px;display:block;"
+              style="width:56px;height:56px;border-radius:50%;border:2px solid #06b6d4;object-fit:cover;margin:0 auto 8px;display:block;"
               @error="($event.target as HTMLImageElement).style.display='none'">
-            <div style="font-size:12px;font-weight:700;color:#06b6d4;margin-bottom:4px;">{{ wplPresetTeams[0].name }}</div>
-            <div style="font-size:32px;font-weight:900;color:#06b6d4;line-height:1;">{{ wplProb1.toFixed(1) }}%</div>
+            <div v-else style="width:56px;height:56px;border-radius:50%;background:rgba(6,182,212,0.15);border:2px solid rgba(6,182,212,0.3);margin:0 auto 8px;"></div>
+            <div style="font-size:12px;font-weight:700;color:#06b6d4;margin-bottom:4px;">{{ wplPresetTeams[0].name || 'Team 1' }}</div>
+            <div style="font-size:36px;font-weight:900;color:#06b6d4;line-height:1;">{{ wplProb1.toFixed(1) }}%</div>
           </div>
-          <div style="display:flex;align-items:center;font-size:16px;font-weight:900;color:#374151;flex-shrink:0;">VS</div>
-          <div style="flex:1;background:rgba(249,115,22,0.06);border:1px solid rgba(249,115,22,0.25);border-radius:12px;padding:14px;text-align:center;">
+          <div style="display:flex;align-items:center;padding:0 10px;font-size:14px;font-weight:900;color:#374151;flex-shrink:0;">VS</div>
+          <div style="flex:1;background:rgba(249,115,22,0.05);padding:16px 14px;text-align:center;border-left:1px solid rgba(255,255,255,0.06);">
             <img v-if="wplPresetTeams[1].logo" :src="wplPresetTeams[1].logo"
-              style="width:52px;height:52px;border-radius:50%;border:2px solid #f97316;object-fit:cover;margin:0 auto 8px;display:block;"
+              style="width:56px;height:56px;border-radius:50%;border:2px solid #f97316;object-fit:cover;margin:0 auto 8px;display:block;"
               @error="($event.target as HTMLImageElement).style.display='none'">
-            <div style="font-size:12px;font-weight:700;color:#f97316;margin-bottom:4px;">{{ wplPresetTeams[1].name }}</div>
-            <div style="font-size:32px;font-weight:900;color:#f97316;line-height:1;">{{ wplProb2.toFixed(1) }}%</div>
+            <div v-else style="width:56px;height:56px;border-radius:50%;background:rgba(249,115,22,0.12);border:2px solid rgba(249,115,22,0.3);margin:0 auto 8px;"></div>
+            <div style="font-size:12px;font-weight:700;color:#f97316;margin-bottom:4px;">{{ wplPresetTeams[1].name || 'Team 2' }}</div>
+            <div style="font-size:36px;font-weight:900;color:#f97316;line-height:1;">{{ wplProb2.toFixed(1) }}%</div>
           </div>
         </div>
 
-        <!-- Progress bar -->
-        <div style="margin:0 16px 14px;height:10px;border-radius:8px;overflow:hidden;background:linear-gradient(90deg,#f97316,#ea580c);position:relative;">
+        <!-- Progress bar — full width, no margin, no radius -->
+        <div style="height:8px;background:linear-gradient(90deg,#ea580c,#f97316);position:relative;">
           <div :style="{position:'absolute',left:0,top:0,height:'100%',width:wplProb1+'%',background:'linear-gradient(90deg,#06b6d4,#0891b2)'}"></div>
         </div>
 
         <!-- Chart -->
-        <div style="margin:0 16px 14px;background:rgba(255,255,255,0.03);border-radius:12px;padding:12px 8px 8px;border:1px solid rgba(255,255,255,0.07);">
-          <div style="font-size:10px;font-weight:700;letter-spacing:0.15em;text-transform:uppercase;color:#4b5563;margin-bottom:8px;padding-left:4px;">📈 WIN PROBABILITY TREND</div>
+        <div style="background:#0a0c14;padding:14px 10px 10px;">
+          <div style="font-size:9px;font-weight:700;letter-spacing:0.15em;text-transform:uppercase;color:#374151;margin-bottom:8px;padding-left:4px;">📈 WIN PROBABILITY TREND</div>
           <svg v-if="wplD1.length" viewBox="0 0 540 220" style="display:block;width:100%;height:auto;">
             <defs>
               <linearGradient id="wlg1" x1="0" y1="0" x2="0" y2="1">
@@ -1728,10 +1738,111 @@
           </div>
         </div>
 
-        <div style="padding:0 16px 10px;text-align:center;">
-          <div style="font-size:9px;color:#374151;">Win probability · Monte Carlo simulation · ultimatefantasydashboard.com</div>
+        <!-- Footer CTA -->
+        <div style="background:#0a0c14;padding:10px 16px 12px;border-top:1px solid rgba(255,255,255,0.04);display:flex;align-items:center;justify-content:space-between;">
+          <div style="font-size:10px;color:#374151;letter-spacing:0.04em;">ultimatefantasydashboard.com</div>
+          <div style="font-size:10px;font-weight:700;color:#eab308;letter-spacing:0.06em;text-transform:uppercase;">Track yours free →</div>
         </div>
-        <div style="height:4px;background:linear-gradient(90deg,#06b6d4,#f97316);"></div>
+      </div>
+
+      <!-- ── VERSION B: Feature showcase tone ── -->
+      <div style="margin-top:24px;">
+        <div style="font-size:11px;font-weight:700;color:#4b5563;text-transform:uppercase;letter-spacing:0.1em;margin-bottom:10px;">Version B · Feature Showcase</div>
+      </div>
+      <div style="width:540px;background:#0f1117;overflow:hidden;font-family:Helvetica Neue,Helvetica,Arial,sans-serif;">
+
+        <!-- FEATURE HEADER BAND -->
+        <div style="background:#0a0c14;padding:18px 20px 16px;border-bottom:1px solid rgba(255,255,255,0.06);position:relative;overflow:hidden;">
+          <div style="position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,#06b6d4,#eab308,#f97316);"></div>
+          <div style="position:absolute;inset:0;background:radial-gradient(ellipse at 80% 50%,rgba(234,179,8,0.08) 0%,transparent 60%);pointer-events:none;"></div>
+          <!-- Top row: logo + week -->
+          <div style="position:relative;display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+            <img src="/UFD_V8.png" style="height:32px;width:auto;object-fit:contain;">
+            <div style="display:flex;align-items:center;gap:6px;">
+              <span style="font-size:10px;color:#4b5563;">⚾ Fantasy Baseball</span>
+              <span style="font-size:10px;font-weight:700;color:#374151;letter-spacing:0.08em;text-transform:uppercase;">· {{ wplWeekLabel }}</span>
+            </div>
+          </div>
+          <!-- Feature hook -->
+          <div style="position:relative;">
+            <div style="font-size:11px;font-weight:700;color:#06b6d4;letter-spacing:0.18em;text-transform:uppercase;margin-bottom:4px;">Ultimate Fantasy Dashboard</div>
+            <div style="font-size:26px;font-weight:900;color:#ffffff;line-height:1.05;letter-spacing:-0.01em;">LIVE WIN PROBABILITY</div>
+            <div style="font-size:12px;color:#6b7280;margin-top:5px;font-weight:400;">See how each day of your matchup shifts the odds — updated daily</div>
+          </div>
+        </div>
+
+        <!-- Team cards -->
+        <div style="display:flex;gap:0;border-bottom:1px solid rgba(255,255,255,0.06);">
+          <div style="flex:1;background:rgba(6,182,212,0.05);padding:16px 14px;text-align:center;border-right:1px solid rgba(255,255,255,0.06);">
+            <img v-if="wplPresetTeams[0].logo" :src="wplPresetTeams[0].logo"
+              style="width:56px;height:56px;border-radius:50%;border:2px solid #06b6d4;object-fit:cover;margin:0 auto 8px;display:block;"
+              @error="($event.target as HTMLImageElement).style.display='none'">
+            <div v-else style="width:56px;height:56px;border-radius:50%;background:rgba(6,182,212,0.15);border:2px solid rgba(6,182,212,0.3);margin:0 auto 8px;"></div>
+            <div style="font-size:12px;font-weight:700;color:#06b6d4;margin-bottom:4px;">{{ wplPresetTeams[0].name || 'Team 1' }}</div>
+            <div style="font-size:36px;font-weight:900;color:#06b6d4;line-height:1;">{{ wplProb1.toFixed(1) }}%</div>
+            <div style="font-size:10px;color:#4b5563;margin-top:4px;">win probability</div>
+          </div>
+          <div style="display:flex;align-items:center;padding:0 10px;font-size:14px;font-weight:900;color:#374151;flex-shrink:0;">VS</div>
+          <div style="flex:1;background:rgba(249,115,22,0.05);padding:16px 14px;text-align:center;border-left:1px solid rgba(255,255,255,0.06);">
+            <img v-if="wplPresetTeams[1].logo" :src="wplPresetTeams[1].logo"
+              style="width:56px;height:56px;border-radius:50%;border:2px solid #f97316;object-fit:cover;margin:0 auto 8px;display:block;"
+              @error="($event.target as HTMLImageElement).style.display='none'">
+            <div v-else style="width:56px;height:56px;border-radius:50%;background:rgba(249,115,22,0.12);border:2px solid rgba(249,115,22,0.3);margin:0 auto 8px;"></div>
+            <div style="font-size:12px;font-weight:700;color:#f97316;margin-bottom:4px;">{{ wplPresetTeams[1].name || 'Team 2' }}</div>
+            <div style="font-size:36px;font-weight:900;color:#f97316;line-height:1;">{{ wplProb2.toFixed(1) }}%</div>
+            <div style="font-size:10px;color:#4b5563;margin-top:4px;">win probability</div>
+          </div>
+        </div>
+
+        <!-- Progress bar -->
+        <div style="height:8px;background:linear-gradient(90deg,#ea580c,#f97316);position:relative;">
+          <div :style="{position:'absolute',left:0,top:0,height:'100%',width:wplProb1+'%',background:'linear-gradient(90deg,#06b6d4,#0891b2)'}"></div>
+        </div>
+
+        <!-- Chart -->
+        <div style="background:#0a0c14;padding:14px 10px 10px;">
+          <div style="font-size:9px;font-weight:700;letter-spacing:0.15em;text-transform:uppercase;color:#374151;margin-bottom:8px;padding-left:4px;">📈 WIN PROBABILITY TREND · {{ wplWeekLabel }}</div>
+          <svg v-if="wplD1.length" viewBox="0 0 540 220" style="display:block;width:100%;height:auto;">
+            <defs>
+              <linearGradient id="wlg1b" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stop-color="#06b6d4" stop-opacity="0.35"/><stop offset="100%" stop-color="#06b6d4" stop-opacity="0.02"/>
+              </linearGradient>
+              <linearGradient id="wlg2b" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stop-color="#f97316" stop-opacity="0.35"/><stop offset="100%" stop-color="#f97316" stop-opacity="0.02"/>
+              </linearGradient>
+            </defs>
+            <template v-for="pct in [0,25,50,75,100]" :key="'b'+pct">
+              <line x1="48" :y1="wplSvgY(pct)" x2="492" :y2="wplSvgY(pct)" :stroke="pct===50?'#374151':'#1e2130'" :stroke-width="pct===50?1.5:1" stroke-dasharray="3 4"/>
+              <text x="42" :y="wplSvgY(pct)+4" text-anchor="end" font-size="10" :fill="pct===50?'#6b7280':'#374151'" font-family="Helvetica Neue,Arial,sans-serif">{{ pct }}%</text>
+            </template>
+            <path :d="wplFill1Computed" fill="url(#wlg1b)"/>
+            <path :d="wplFill2Computed" fill="url(#wlg2b)"/>
+            <path :d="wplPath1Computed" fill="none" stroke="#06b6d4" stroke-width="2.5" stroke-linejoin="round"/>
+            <path :d="wplPath2Computed" fill="none" stroke="#f97316" stroke-width="2.5" stroke-linejoin="round"/>
+            <template v-for="(v,i) in wplD1" :key="'b1'+i">
+              <rect :x="wplSvgX(i)-17" :y="v>=wplD2[i]?wplSvgY(v)-24:wplSvgY(v)+7" width="34" height="16" rx="4" fill="#06b6d4" opacity="0.9"/>
+              <text :x="wplSvgX(i)" :y="v>=wplD2[i]?wplSvgY(v)-12:wplSvgY(v)+19" text-anchor="middle" font-size="10" font-weight="800" fill="#0a0c14" font-family="Helvetica Neue,Arial,sans-serif">{{ v }}</text>
+              <circle :cx="wplSvgX(i)" :cy="wplSvgY(v)" r="4.5" fill="#06b6d4" stroke="#0f1117" stroke-width="1.5"/>
+            </template>
+            <template v-for="(v,i) in wplD2" :key="'b2'+i">
+              <rect :x="wplSvgX(i)-17" :y="v>wplD1[i]?wplSvgY(v)-24:wplSvgY(v)+7" width="34" height="16" rx="4" fill="#f97316" opacity="0.9"/>
+              <text :x="wplSvgX(i)" :y="v>wplD1[i]?wplSvgY(v)-12:wplSvgY(v)+19" text-anchor="middle" font-size="10" font-weight="800" fill="#0a0c14" font-family="Helvetica Neue,Arial,sans-serif">{{ v }}</text>
+              <circle :cx="wplSvgX(i)" :cy="wplSvgY(v)" r="4.5" fill="#f97316" stroke="#0f1117" stroke-width="1.5"/>
+            </template>
+            <template v-for="(label,i) in wplLabels" :key="'bxl'+i">
+              <text :x="wplSvgX(i)" y="214" text-anchor="middle" font-size="11" font-weight="700" fill="#6b7280" font-family="Helvetica Neue,Arial,sans-serif">{{ label }}</text>
+            </template>
+          </svg>
+          <div v-else style="height:80px;display:flex;align-items:center;justify-content:center;color:#4b5563;font-size:13px;">
+            Enter win probabilities above to see the chart
+          </div>
+        </div>
+
+        <!-- Footer -->
+        <div style="background:#0a0c14;padding:10px 16px 12px;border-top:1px solid rgba(255,255,255,0.04);display:flex;align-items:center;justify-content:space-between;">
+          <div style="font-size:10px;color:#374151;letter-spacing:0.04em;">ultimatefantasydashboard.com</div>
+          <div style="font-size:10px;font-weight:700;color:#06b6d4;letter-spacing:0.06em;text-transform:uppercase;">Get your league's data →</div>
+        </div>
       </div>
     </div>
 
