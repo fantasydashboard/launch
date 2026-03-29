@@ -2489,46 +2489,74 @@ async function loadWpLiveMatchups() {
   wpLiveLoading.value=true; wpLiveError.value=''
   wpLiveMatchups.value=[]; wplD1.value=[]; wplD2.value=[]; wplLabels.value=[]
   try {
-    const {espnService}=await import('@/services/espn')
-    // Use manual league ID if entered, else fall back to active league
-    let espnId=wplLeagueId.value.trim()
-    let sport:any='baseball'
-    let season=new Date().getFullYear()
-    if(!espnId) {
-      const leagueId=leagueStore.activeLeagueId||''
-      const parts=leagueId.split('_')
-      if(parts[0]!=='espn') throw new Error('Enter an ESPN League ID above or load an ESPN league first')
-      espnId=parts[2]; sport=parts[1]; season=parseInt(parts[3])
+    // PRIMARY: use already-loaded store data — same data the real site shows
+    const storeMatchups = leagueStore.yahooMatchups
+    const activeId = leagueStore.activeLeagueId || ''
+    const enteredId = wplLeagueId.value.trim()
+    const activeEspnId = activeId.split('_')[2] || ''
+    const useStore = storeMatchups.length > 0 && (!enteredId || activeEspnId === enteredId)
+
+    if (useStore) {
+      const week = leagueStore.currentLeague?.settings?.leg || 1
+      wpLiveWeek.value = `Week ${week}`
+      wpLiveMatchups.value = storeMatchups
+        .filter((m:any) => m.team1 && m.team2)
+        .map((m:any) => {
+          const isCat = m.is_category_league
+          // Category leagues: use category wins as the score proxy
+          // Points leagues: use actual fantasy points
+          const score1 = isCat
+            ? (m.home_category_wins ?? m.team1?.category_wins ?? 0)
+            : (m.team1?.points ?? 0)
+          const score2 = isCat
+            ? (m.away_category_wins ?? m.team2?.category_wins ?? 0)
+            : (m.team2?.points ?? 0)
+          const catTotal = isCat
+            ? ((m.home_category_wins||0)+(m.away_category_wins||0)+(m.home_category_losses||0)+(m.away_category_losses||0))
+            : 0
+          return {
+            homeScore: score1,
+            awayScore: score2,
+            homeProjected: m.team1?.projected_points || 0,
+            awayProjected: m.team2?.projected_points || 0,
+            homeLogo: typeof m.team1?.logo_url === 'string' ? m.team1.logo_url : '',
+            awayLogo: typeof m.team2?.logo_url === 'string' ? m.team2.logo_url : '',
+            isCategoryLeague: isCat,
+            catTotal
+          }
+        })
+      if (wpLiveMatchups.value.length) await computeWplChart()
+      else throw new Error('No matchups in loaded league. Make sure your ESPN league is loaded in the header dropdown first.')
+    } else {
+      // FALLBACK: fetch fresh from ESPN using entered league ID
+      const {espnService} = await import('@/services/espn')
+      const espnId = enteredId || activeEspnId
+      if (!espnId) throw new Error('Enter an ESPN League ID or load your league first')
+      const parts = activeId.split('_')
+      const sport:any = (parts[1] && parts[1] !== 'undefined') ? parts[1] : 'baseball'
+      const season = parseInt(parts[3]) || new Date().getFullYear()
+      const league = await espnService.getLeague(sport, espnId, season)
+      const week = league?.status?.currentMatchupPeriod || 1
+      wpLiveWeek.value = `Week ${week}`
+      const ms = await espnService.getMatchups(sport, espnId, season, week)
+      wpLiveMatchups.value = ms.filter((m:any) => m.awayTeamId).map((m:any) => ({
+        homeScore: m.homeScore||0,
+        awayScore: m.awayScore||0,
+        homeProjected: m.homeProjectedPoints||0,
+        awayProjected: m.awayProjectedPoints||0,
+        homeLogo: typeof m.homeTeam?.logo === 'string' ? m.homeTeam.logo : '',
+        awayLogo: typeof m.awayTeam?.logo === 'string' ? m.awayTeam.logo : '',
+        isCategoryLeague: false,
+        catTotal: 0
+      }))
+      if (wpLiveMatchups.value.length) await computeWplChart()
+      else throw new Error('No matchups found. Make sure your ESPN league is loaded first.')
     }
-    // Get credentials from store if available
-    const creds=leagueStore.espnCredentials
-    if(creds?.espn_s2) espnService.setCredentials(creds.espn_s2, creds.swid||''  )
-    const league=await espnService.getLeague(sport,espnId,season)
-    const week=league?.status?.currentMatchupPeriod||1
-    wpLiveWeek.value=`Week ${week}`
-    const ms=await espnService.getMatchups(sport,espnId,season,week)
-    wpLiveMatchups.value=ms.filter((m:any)=>m.awayTeamId).map((m:any)=>{
-      // ESPN API provides logos directly via homeTeam/awayTeam objects
-      // Store lookup is secondary — team_id is numeric in ESPN vs string in store
-      const homeT=leagueStore.yahooTeams.find((t:any)=>
-        t.team_id===m.homeTeamId?.toString() || t.team_id===String(m.homeTeamId))
-      const awayT=leagueStore.yahooTeams.find((t:any)=>
-        t.team_id===m.awayTeamId?.toString() || t.team_id===String(m.awayTeamId))
-      const homeLogo = (typeof homeT?.logo_url==='string' && homeT.logo_url)
-        ? homeT.logo_url
-        : (typeof m.homeTeam?.logo==='string' ? m.homeTeam.logo : '')
-      const awayLogo = (typeof awayT?.logo_url==='string' && awayT.logo_url)
-        ? awayT.logo_url
-        : (typeof m.awayTeam?.logo==='string' ? m.awayTeam.logo : '')
-      return {
-        homeScore:m.homeScore||0, awayScore:m.awayScore||0,
-        homeProjected:m.homeProjectedPoints||0, awayProjected:m.awayProjectedPoints||0,
-        homeLogo, awayLogo
-      }
-    })
-    if(wpLiveMatchups.value.length) await computeWplChart()
-    else throw new Error('No matchups found — check league ID and make sure the season has started')
-  } catch(e:any){ wpLiveError.value=e?.message||'Failed' } finally { wpLiveLoading.value=false }
+  } catch(e:any) {
+    wpLiveError.value = e?.message || 'Failed to load'
+  } finally {
+    wpLiveLoading.value = false
+  }
 }
 async function computeWplChart() {
   const m=wpLiveMatchup.value; if(!m) return
@@ -2542,47 +2570,79 @@ async function computeWplChart() {
     return mean+std*Math.sqrt(-2*Math.log(u1))*Math.cos(2*Math.PI*u2)
   }
 
-  // Estimate full-week average from projected points if available, else use scored total
-  const projAvg = Math.max(m.homeProjected||0, m.awayProjected||0, s1Final, s2Final, 80)
-  // Weekly stdDev: ~20% of avg is realistic for fantasy baseball points leagues
-  const weeklyStd = projAvg * 0.20
-
   const d1:number[]=[],d2:number[]=[],labs:string[]=[]
 
-  for(let day=0;day<=todayIdx;day++){
-    // Pro-rate actual current scores back to this day (what scores looked like end of that day)
-    const dayFrac = todayIdx>0 ? (day+1)/(todayIdx+1) : 1
-    const s1atDay = s1Final * dayFrac
-    const s2atDay = s2Final * dayFrac
+  if (m.isCategoryLeague) {
+    // Category league: use wins/losses directly to compute probability
+    // catTotal = total categories decided so far (wins+losses across both teams)
+    const totalCats = m.catTotal || (s1Final + s2Final)
+    const catsPerDay = totalCats > 0 && todayIdx > 0 ? totalCats / (todayIdx + 1) : 20
+    const catsRemaining = Math.max(0, 20 * 7 - totalCats) // rough estimate
 
-    const daysLeft=Math.max(0,6-day)
+    for(let day=0;day<=todayIdx;day++){
+      const dayFrac = todayIdx>0 ? (day+1)/(todayIdx+1) : 1
+      const catsThisDay = Math.round(totalCats * dayFrac)
+      const w1atDay = Math.round(s1Final * dayFrac)
+      const w2atDay = catsThisDay - w1atDay
 
-    let p1:number
-    if(daysLeft===0 && day===todayIdx && totalScored===0){
-      // No scores yet at all — show 50/50
-      p1=50
-    } else if(daysLeft===0){
-      // Last data point — use final scores
-      if(s1atDay>s2atDay) p1=Math.min(99.9, 50+(s1atDay-s2atDay)/projAvg*150)
-      else if(s2atDay>s1atDay) p1=Math.max(0.1, 50-(s2atDay-s1atDay)/projAvg*150)
-      else p1=50
-    } else {
-      // Simulate: current pro-rated scores + remaining days
-      const remDays = daysLeft
-      const dailyAvg = projAvg/7
-      const dailyStd = weeklyStd * Math.sqrt(1/7)
-      const remAvg = dailyAvg * remDays
-      const remStd = dailyStd * Math.sqrt(remDays)
-      let w1=0; const SIMS=3000
-      for(let i=0;i<SIMS;i++){
-        const f1=s1atDay+Math.max(0,gr(remAvg,remStd))
-        const f2=s2atDay+Math.max(0,gr(remAvg,remStd))
-        if(f1>f2)w1++
+      const daysLeft = Math.max(0, 6-day)
+      const catsLeft = Math.round(catsPerDay * daysLeft)
+
+      let p1:number
+      if (totalScored===0) {
+        p1=50
+      } else if (daysLeft===0) {
+        if(s1Final>s2Final) p1=Math.min(99.9, 50+(s1Final-s2Final)/(s1Final+s2Final)*100*0.8)
+        else if(s2Final>s1Final) p1=Math.max(0.1, 50-(s2Final-s1Final)/(s1Final+s2Final)*100*0.8)
+        else p1=50
+      } else {
+        // Monte Carlo over remaining categories
+        let wins1=0; const SIMS=3000
+        for(let i=0;i<SIMS;i++){
+          // Each remaining category is a coin flip with slight edge based on current win rate
+          const winRate1 = totalCats>0 ? s1Final/totalCats : 0.5
+          let sim1=w1atDay, sim2=w2atDay
+          for(let c=0;c<catsLeft;c++){
+            if(Math.random()<winRate1) sim1++; else sim2++
+          }
+          if(sim1>sim2) wins1++
+        }
+        p1=(wins1/SIMS)*100
+        p1=Math.min(99.9,Math.max(0.1,p1))
       }
-      p1=(w1/SIMS)*100
-      p1=Math.min(99.9,Math.max(0.1,p1))
+      d1.push(Math.round(p1*10)/10); d2.push(Math.round((100-p1)*10)/10); labs.push(days[day])
     }
-    d1.push(Math.round(p1*10)/10); d2.push(Math.round((100-p1)*10)/10); labs.push(days[day])
+  } else {
+    // Points league
+    const projAvg = Math.max(m.homeProjected||0, m.awayProjected||0, s1Final, s2Final, 80)
+    const weeklyStd = projAvg * 0.20
+
+    for(let day=0;day<=todayIdx;day++){
+      const dayFrac = todayIdx>0 ? (day+1)/(todayIdx+1) : 1
+      const s1atDay = s1Final * dayFrac
+      const s2atDay = s2Final * dayFrac
+      const daysLeft=Math.max(0,6-day)
+
+      let p1:number
+      if(daysLeft===0 && totalScored===0){ p1=50 }
+      else if(daysLeft===0){
+        if(s1atDay>s2atDay) p1=Math.min(99.9, 50+(s1atDay-s2atDay)/projAvg*150)
+        else if(s2atDay>s1atDay) p1=Math.max(0.1, 50-(s2atDay-s1atDay)/projAvg*150)
+        else p1=50
+      } else {
+        const dailyAvg=projAvg/7, dailyStd=weeklyStd*Math.sqrt(1/7)
+        const remAvg=dailyAvg*daysLeft, remStd=dailyStd*Math.sqrt(daysLeft)
+        let w1=0; const SIMS=3000
+        for(let i=0;i<SIMS;i++){
+          const f1=s1atDay+Math.max(0,gr(remAvg,remStd))
+          const f2=s2atDay+Math.max(0,gr(remAvg,remStd))
+          if(f1>f2)w1++
+        }
+        p1=(w1/SIMS)*100
+        p1=Math.min(99.9,Math.max(0.1,p1))
+      }
+      d1.push(Math.round(p1*10)/10); d2.push(Math.round((100-p1)*10)/10); labs.push(days[day])
+    }
   }
   wplD1.value=d1; wplD2.value=d2; wplLabels.value=labs
 }
