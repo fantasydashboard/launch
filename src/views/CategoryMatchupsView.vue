@@ -1967,8 +1967,9 @@ async function loadMatchups() {
     }
     
     matchups.value = processed
-  // Compute real chart data for every matchup and store directly on week list
-  // so the social graphic can read it without any secondary lookup
+  // Compute chart data for social graphic in background (after real chart renders)
+  // Use setTimeout so it doesn't block selectMatchup/buildWinProbChart
+  setTimeout(() => {
   const allDaysForCache = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
   const nowForCache = new Date()
   const hourForCache = nowForCache.getHours()
@@ -2036,6 +2037,7 @@ async function loadMatchups() {
   })
   matchupChartCache.setWeekMatchups(weekMatchupsForCache)
   console.log('[CategoryMatchups] Stored chart data for', weekMatchupsForCache.length, 'matchups in cache')
+  }, 100) // end setTimeout — chart renders first, then cache computes in background
     const my = processed.find(m => m.team1.is_my_team || m.team2.is_my_team)
     if (my) selectMatchup(my); else if (processed.length) selectMatchup(processed[0])
   } catch (e) { console.error('Error loading matchups:', e) }
