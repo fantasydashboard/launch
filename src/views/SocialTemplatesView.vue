@@ -2167,17 +2167,19 @@
               <div style="position:absolute;top:0;left:0;right:0;height:6px;background:linear-gradient(90deg,#eab308,#ca8a04,rgba(234,179,8,0.2));"></div>
               <div style="position:absolute;bottom:0;left:0;right:0;height:6px;background:linear-gradient(90deg,#eab308,#ca8a04,rgba(234,179,8,0.2));"></div>
 
-              <!-- LEFT: text column, Monarch-style, left half of canvas -->
-              <div style="position:absolute;top:200px;left:72px;width:540px;bottom:80px;display:flex;flex-direction:column;justify-content:center;">
-                <div style="display:flex;align-items:center;gap:14px;margin-bottom:36px;">
-                  <img src="/UFD_V8.png" style="height:80px;width:auto;display:block;">
-                  <span style="font-size:38px;color:#9ca3af;font-weight:700;">Fantasy Baseball</span>
-                </div>
+              <!-- HEADER: logo + Fantasy Baseball pinned to top -->
+              <div style="position:absolute;top:72px;left:72px;right:72px;display:flex;align-items:center;gap:24px;">
+                <img src="/UFD_V8.png" style="height:110px;width:auto;display:block;">
+                <span style="font-size:64px;color:#9ca3af;font-weight:700;letter-spacing:-0.01em;">Fantasy Baseball</span>
+              </div>
+
+              <!-- LEFT: text column, starts high, narrow to avoid phone overlap -->
+              <div style="position:absolute;top:260px;left:72px;width:480px;bottom:80px;display:flex;flex-direction:column;justify-content:center;">
                 <div style="font-size:96px;font-weight:900;color:#eab308;line-height:0.86;letter-spacing:-0.03em;margin-bottom:14px;">POWER RANKINGS</div>
                 <div style="font-size:80px;font-weight:900;color:#ffffff;line-height:0.90;letter-spacing:-0.03em;margin-bottom:40px;">HAVE ENTERED THE LEAGUE CHAT.</div>
                 <div style="font-size:34px;color:#9ca3af;line-height:1.4;margin-bottom:44px;font-weight:400;">Automatic weekly rankings so everyone knows who's actually good — and who's just lucky.</div>
-                <div style="display:inline-flex;"><div style="background:#111827;border:1px solid rgba(234,179,8,0.3);color:#fff;font-size:30px;font-weight:900;padding:20px 36px;border-radius:14px;display:flex;align-items:center;gap:14px;">Connect Your League Free<div style="background:#eab308;color:#0a0c14;border-radius:8px;width:46px;height:46px;display:flex;align-items:center;justify-content:center;font-size:30px;font-weight:900;flex-shrink:0;">→</div></div></div>
-                <div style="display:flex;align-items:center;gap:12px;margin-top:28px;"><div style="background:#1a3a6b;border-radius:8px;padding:8px 18px;"><span style="font-size:26px;font-weight:900;color:#fff;font-family:Arial,sans-serif;">ESPN</span></div><span style="font-size:22px;color:rgba(255,255,255,0.3);font-weight:300;">+</span><div style="background:#6001d1;border-radius:8px;padding:8px 18px;"><span style="font-size:26px;font-weight:900;color:#fff;font-family:Arial,sans-serif;">Yahoo</span></div></div>
+                <div style="display:inline-flex;"><div style="background:#111827;border:1px solid rgba(234,179,8,0.3);color:#fff;font-size:30px;font-weight:900;padding:20px 36px;border-radius:14px;display:flex;align-items:center;gap:14px;">Connect Your League<div style="background:#eab308;color:#0a0c14;border-radius:8px;width:46px;height:46px;display:flex;align-items:center;justify-content:center;font-size:30px;font-weight:900;flex-shrink:0;">→</div></div></div>
+                <div style="display:flex;align-items:center;gap:12px;margin-top:28px;"><div style="background:#1a3a6b;border-radius:8px;padding:8px 18px;"><span style="font-size:36px;font-weight:900;color:#fff;font-family:Arial,sans-serif;">ESPN</span></div><span style="font-size:28px;color:rgba(255,255,255,0.3);font-weight:300;">+</span><div style="background:#6001d1;border-radius:8px;padding:8px 18px;"><span style="font-size:36px;font-weight:900;color:#fff;font-family:Arial,sans-serif;">Yahoo</span></div></div>
               </div>
 
               <!-- RIGHT: phone column, right half, fully contained, slight tilt -->
@@ -2235,17 +2237,19 @@
               <div style="position:absolute;top:0;left:0;right:0;height:6px;background:linear-gradient(90deg,#eab308,#ca8a04,rgba(234,179,8,0.2));"></div>
               <div style="position:absolute;bottom:0;left:0;right:0;height:6px;background:linear-gradient(90deg,#eab308,#ca8a04,rgba(234,179,8,0.2));"></div>
 
-              <!-- LEFT: text column, Monarch-style, left half of canvas -->
-              <div style="position:absolute;top:200px;left:72px;width:540px;bottom:80px;display:flex;flex-direction:column;justify-content:center;">
-                <div style="display:flex;align-items:center;gap:14px;margin-bottom:36px;">
-                  <img src="/UFD_V8.png" style="height:80px;width:auto;display:block;">
-                  <span style="font-size:38px;color:#9ca3af;font-weight:700;">Fantasy Baseball</span>
-                </div>
+              <!-- HEADER: logo + Fantasy Baseball pinned to top -->
+              <div style="position:absolute;top:72px;left:72px;right:72px;display:flex;align-items:center;gap:24px;">
+                <img src="/UFD_V8.png" style="height:110px;width:auto;display:block;">
+                <span style="font-size:64px;color:#9ca3af;font-weight:700;letter-spacing:-0.01em;">Fantasy Baseball</span>
+              </div>
+
+              <!-- LEFT: text column, starts high, narrow to avoid phone overlap -->
+              <div style="position:absolute;top:260px;left:72px;width:480px;bottom:80px;display:flex;flex-direction:column;justify-content:center;">
                 <div style="font-size:96px;font-weight:900;color:#eab308;line-height:0.86;letter-spacing:-0.03em;margin-bottom:14px;">WIN PROBABILITY</div>
                 <div style="font-size:80px;font-weight:900;color:#ffffff;line-height:0.90;letter-spacing:-0.03em;margin-bottom:40px;">HAS ENTERED THE LEAGUE CHAT.</div>
                 <div style="font-size:34px;color:#9ca3af;line-height:1.4;margin-bottom:44px;font-weight:400;">Daily odds on who wins your matchup. The drama builds all week.</div>
-                <div style="display:inline-flex;"><div style="background:#111827;border:1px solid rgba(234,179,8,0.3);color:#fff;font-size:30px;font-weight:900;padding:20px 36px;border-radius:14px;display:flex;align-items:center;gap:14px;">Connect Your League Free<div style="background:#eab308;color:#0a0c14;border-radius:8px;width:46px;height:46px;display:flex;align-items:center;justify-content:center;font-size:30px;font-weight:900;flex-shrink:0;">→</div></div></div>
-                <div style="display:flex;align-items:center;gap:12px;margin-top:28px;"><div style="background:#1a3a6b;border-radius:8px;padding:8px 18px;"><span style="font-size:26px;font-weight:900;color:#fff;font-family:Arial,sans-serif;">ESPN</span></div><span style="font-size:22px;color:rgba(255,255,255,0.3);font-weight:300;">+</span><div style="background:#6001d1;border-radius:8px;padding:8px 18px;"><span style="font-size:26px;font-weight:900;color:#fff;font-family:Arial,sans-serif;">Yahoo</span></div></div>
+                <div style="display:inline-flex;"><div style="background:#111827;border:1px solid rgba(234,179,8,0.3);color:#fff;font-size:30px;font-weight:900;padding:20px 36px;border-radius:14px;display:flex;align-items:center;gap:14px;">Connect Your League<div style="background:#eab308;color:#0a0c14;border-radius:8px;width:46px;height:46px;display:flex;align-items:center;justify-content:center;font-size:30px;font-weight:900;flex-shrink:0;">→</div></div></div>
+                <div style="display:flex;align-items:center;gap:12px;margin-top:28px;"><div style="background:#1a3a6b;border-radius:8px;padding:8px 18px;"><span style="font-size:36px;font-weight:900;color:#fff;font-family:Arial,sans-serif;">ESPN</span></div><span style="font-size:28px;color:rgba(255,255,255,0.3);font-weight:300;">+</span><div style="background:#6001d1;border-radius:8px;padding:8px 18px;"><span style="font-size:36px;font-weight:900;color:#fff;font-family:Arial,sans-serif;">Yahoo</span></div></div>
               </div>
 
               <!-- RIGHT: phone column, right half, fully contained, slight tilt -->
@@ -2303,17 +2307,19 @@
               <div style="position:absolute;top:0;left:0;right:0;height:6px;background:linear-gradient(90deg,#eab308,#ca8a04,rgba(234,179,8,0.2));"></div>
               <div style="position:absolute;bottom:0;left:0;right:0;height:6px;background:linear-gradient(90deg,#eab308,#ca8a04,rgba(234,179,8,0.2));"></div>
 
-              <!-- LEFT: text column, Monarch-style, left half of canvas -->
-              <div style="position:absolute;top:200px;left:72px;width:540px;bottom:80px;display:flex;flex-direction:column;justify-content:center;">
-                <div style="display:flex;align-items:center;gap:14px;margin-bottom:36px;">
-                  <img src="/UFD_V8.png" style="height:80px;width:auto;display:block;">
-                  <span style="font-size:38px;color:#9ca3af;font-weight:700;">Fantasy Baseball</span>
-                </div>
+              <!-- HEADER: logo + Fantasy Baseball pinned to top -->
+              <div style="position:absolute;top:72px;left:72px;right:72px;display:flex;align-items:center;gap:24px;">
+                <img src="/UFD_V8.png" style="height:110px;width:auto;display:block;">
+                <span style="font-size:64px;color:#9ca3af;font-weight:700;letter-spacing:-0.01em;">Fantasy Baseball</span>
+              </div>
+
+              <!-- LEFT: text column, starts high, narrow to avoid phone overlap -->
+              <div style="position:absolute;top:260px;left:72px;width:480px;bottom:80px;display:flex;flex-direction:column;justify-content:center;">
                 <div style="font-size:96px;font-weight:900;color:#eab308;line-height:0.86;letter-spacing:-0.03em;margin-bottom:14px;">DRAFT GRADES</div>
                 <div style="font-size:80px;font-weight:900;color:#ffffff;line-height:0.90;letter-spacing:-0.03em;margin-bottom:40px;">HAVE ENTERED THE LEAGUE CHAT.</div>
                 <div style="font-size:34px;color:#9ca3af;line-height:1.4;margin-bottom:44px;font-weight:400;">Every pick in your draft, graded. Find out who built a winner and who reached.</div>
-                <div style="display:inline-flex;"><div style="background:#111827;border:1px solid rgba(234,179,8,0.3);color:#fff;font-size:30px;font-weight:900;padding:20px 36px;border-radius:14px;display:flex;align-items:center;gap:14px;">Connect Your League Free<div style="background:#eab308;color:#0a0c14;border-radius:8px;width:46px;height:46px;display:flex;align-items:center;justify-content:center;font-size:30px;font-weight:900;flex-shrink:0;">→</div></div></div>
-                <div style="display:flex;align-items:center;gap:12px;margin-top:28px;"><div style="background:#1a3a6b;border-radius:8px;padding:8px 18px;"><span style="font-size:26px;font-weight:900;color:#fff;font-family:Arial,sans-serif;">ESPN</span></div><span style="font-size:22px;color:rgba(255,255,255,0.3);font-weight:300;">+</span><div style="background:#6001d1;border-radius:8px;padding:8px 18px;"><span style="font-size:26px;font-weight:900;color:#fff;font-family:Arial,sans-serif;">Yahoo</span></div></div>
+                <div style="display:inline-flex;"><div style="background:#111827;border:1px solid rgba(234,179,8,0.3);color:#fff;font-size:30px;font-weight:900;padding:20px 36px;border-radius:14px;display:flex;align-items:center;gap:14px;">Connect Your League<div style="background:#eab308;color:#0a0c14;border-radius:8px;width:46px;height:46px;display:flex;align-items:center;justify-content:center;font-size:30px;font-weight:900;flex-shrink:0;">→</div></div></div>
+                <div style="display:flex;align-items:center;gap:12px;margin-top:28px;"><div style="background:#1a3a6b;border-radius:8px;padding:8px 18px;"><span style="font-size:36px;font-weight:900;color:#fff;font-family:Arial,sans-serif;">ESPN</span></div><span style="font-size:28px;color:rgba(255,255,255,0.3);font-weight:300;">+</span><div style="background:#6001d1;border-radius:8px;padding:8px 18px;"><span style="font-size:36px;font-weight:900;color:#fff;font-family:Arial,sans-serif;">Yahoo</span></div></div>
               </div>
 
               <!-- RIGHT: phone column, right half, fully contained, slight tilt -->
@@ -2371,17 +2377,19 @@
               <div style="position:absolute;top:0;left:0;right:0;height:6px;background:linear-gradient(90deg,#eab308,#ca8a04,rgba(234,179,8,0.2));"></div>
               <div style="position:absolute;bottom:0;left:0;right:0;height:6px;background:linear-gradient(90deg,#eab308,#ca8a04,rgba(234,179,8,0.2));"></div>
 
-              <!-- LEFT: text column, Monarch-style, left half of canvas -->
-              <div style="position:absolute;top:200px;left:72px;width:540px;bottom:80px;display:flex;flex-direction:column;justify-content:center;">
-                <div style="display:flex;align-items:center;gap:14px;margin-bottom:36px;">
-                  <img src="/UFD_V8.png" style="height:80px;width:auto;display:block;">
-                  <span style="font-size:38px;color:#9ca3af;font-weight:700;">Fantasy Baseball</span>
-                </div>
+              <!-- HEADER: logo + Fantasy Baseball pinned to top -->
+              <div style="position:absolute;top:72px;left:72px;right:72px;display:flex;align-items:center;gap:24px;">
+                <img src="/UFD_V8.png" style="height:110px;width:auto;display:block;">
+                <span style="font-size:64px;color:#9ca3af;font-weight:700;letter-spacing:-0.01em;">Fantasy Baseball</span>
+              </div>
+
+              <!-- LEFT: text column, starts high, narrow to avoid phone overlap -->
+              <div style="position:absolute;top:260px;left:72px;width:480px;bottom:80px;display:flex;flex-direction:column;justify-content:center;">
                 <div style="font-size:96px;font-weight:900;color:#eab308;line-height:0.86;letter-spacing:-0.03em;margin-bottom:14px;">LEAGUE HISTORY</div>
                 <div style="font-size:80px;font-weight:900;color:#ffffff;line-height:0.90;letter-spacing:-0.03em;margin-bottom:40px;">HAS ENTERED THE LEAGUE CHAT.</div>
                 <div style="font-size:34px;color:#9ca3af;line-height:1.4;margin-bottom:44px;font-weight:400;">Every champion, every award, every season — all in one place. The receipts are in.</div>
-                <div style="display:inline-flex;"><div style="background:#111827;border:1px solid rgba(234,179,8,0.3);color:#fff;font-size:30px;font-weight:900;padding:20px 36px;border-radius:14px;display:flex;align-items:center;gap:14px;">Connect Your League Free<div style="background:#eab308;color:#0a0c14;border-radius:8px;width:46px;height:46px;display:flex;align-items:center;justify-content:center;font-size:30px;font-weight:900;flex-shrink:0;">→</div></div></div>
-                <div style="display:flex;align-items:center;gap:12px;margin-top:28px;"><div style="background:#1a3a6b;border-radius:8px;padding:8px 18px;"><span style="font-size:26px;font-weight:900;color:#fff;font-family:Arial,sans-serif;">ESPN</span></div><span style="font-size:22px;color:rgba(255,255,255,0.3);font-weight:300;">+</span><div style="background:#6001d1;border-radius:8px;padding:8px 18px;"><span style="font-size:26px;font-weight:900;color:#fff;font-family:Arial,sans-serif;">Yahoo</span></div></div>
+                <div style="display:inline-flex;"><div style="background:#111827;border:1px solid rgba(234,179,8,0.3);color:#fff;font-size:30px;font-weight:900;padding:20px 36px;border-radius:14px;display:flex;align-items:center;gap:14px;">Connect Your League<div style="background:#eab308;color:#0a0c14;border-radius:8px;width:46px;height:46px;display:flex;align-items:center;justify-content:center;font-size:30px;font-weight:900;flex-shrink:0;">→</div></div></div>
+                <div style="display:flex;align-items:center;gap:12px;margin-top:28px;"><div style="background:#1a3a6b;border-radius:8px;padding:8px 18px;"><span style="font-size:36px;font-weight:900;color:#fff;font-family:Arial,sans-serif;">ESPN</span></div><span style="font-size:28px;color:rgba(255,255,255,0.3);font-weight:300;">+</span><div style="background:#6001d1;border-radius:8px;padding:8px 18px;"><span style="font-size:36px;font-weight:900;color:#fff;font-family:Arial,sans-serif;">Yahoo</span></div></div>
               </div>
 
               <!-- RIGHT: phone column, right half, fully contained, slight tilt -->
@@ -2439,17 +2447,19 @@
               <div style="position:absolute;top:0;left:0;right:0;height:6px;background:linear-gradient(90deg,#eab308,#ca8a04,rgba(234,179,8,0.2));"></div>
               <div style="position:absolute;bottom:0;left:0;right:0;height:6px;background:linear-gradient(90deg,#eab308,#ca8a04,rgba(234,179,8,0.2));"></div>
 
-              <!-- LEFT: text column, Monarch-style, left half of canvas -->
-              <div style="position:absolute;top:200px;left:72px;width:540px;bottom:80px;display:flex;flex-direction:column;justify-content:center;">
-                <div style="display:flex;align-items:center;gap:14px;margin-bottom:36px;">
-                  <img src="/UFD_V8.png" style="height:80px;width:auto;display:block;">
-                  <span style="font-size:38px;color:#9ca3af;font-weight:700;">Fantasy Baseball</span>
-                </div>
+              <!-- HEADER: logo + Fantasy Baseball pinned to top -->
+              <div style="position:absolute;top:72px;left:72px;right:72px;display:flex;align-items:center;gap:24px;">
+                <img src="/UFD_V8.png" style="height:110px;width:auto;display:block;">
+                <span style="font-size:64px;color:#9ca3af;font-weight:700;letter-spacing:-0.01em;">Fantasy Baseball</span>
+              </div>
+
+              <!-- LEFT: text column, starts high, narrow to avoid phone overlap -->
+              <div style="position:absolute;top:260px;left:72px;width:480px;bottom:80px;display:flex;flex-direction:column;justify-content:center;">
                 <div style="font-size:96px;font-weight:900;color:#eab308;line-height:0.86;letter-spacing:-0.03em;margin-bottom:14px;">HEAD-TO-HEAD RECORDS</div>
                 <div style="font-size:80px;font-weight:900;color:#ffffff;line-height:0.90;letter-spacing:-0.03em;margin-bottom:40px;">HAVE ENTERED THE LEAGUE CHAT.</div>
                 <div style="font-size:34px;color:#9ca3af;line-height:1.4;margin-bottom:44px;font-weight:400;">Your all-time record against every team in your league. Some rivalries run deep.</div>
-                <div style="display:inline-flex;"><div style="background:#111827;border:1px solid rgba(234,179,8,0.3);color:#fff;font-size:30px;font-weight:900;padding:20px 36px;border-radius:14px;display:flex;align-items:center;gap:14px;">Connect Your League Free<div style="background:#eab308;color:#0a0c14;border-radius:8px;width:46px;height:46px;display:flex;align-items:center;justify-content:center;font-size:30px;font-weight:900;flex-shrink:0;">→</div></div></div>
-                <div style="display:flex;align-items:center;gap:12px;margin-top:28px;"><div style="background:#1a3a6b;border-radius:8px;padding:8px 18px;"><span style="font-size:26px;font-weight:900;color:#fff;font-family:Arial,sans-serif;">ESPN</span></div><span style="font-size:22px;color:rgba(255,255,255,0.3);font-weight:300;">+</span><div style="background:#6001d1;border-radius:8px;padding:8px 18px;"><span style="font-size:26px;font-weight:900;color:#fff;font-family:Arial,sans-serif;">Yahoo</span></div></div>
+                <div style="display:inline-flex;"><div style="background:#111827;border:1px solid rgba(234,179,8,0.3);color:#fff;font-size:30px;font-weight:900;padding:20px 36px;border-radius:14px;display:flex;align-items:center;gap:14px;">Connect Your League<div style="background:#eab308;color:#0a0c14;border-radius:8px;width:46px;height:46px;display:flex;align-items:center;justify-content:center;font-size:30px;font-weight:900;flex-shrink:0;">→</div></div></div>
+                <div style="display:flex;align-items:center;gap:12px;margin-top:28px;"><div style="background:#1a3a6b;border-radius:8px;padding:8px 18px;"><span style="font-size:36px;font-weight:900;color:#fff;font-family:Arial,sans-serif;">ESPN</span></div><span style="font-size:28px;color:rgba(255,255,255,0.3);font-weight:300;">+</span><div style="background:#6001d1;border-radius:8px;padding:8px 18px;"><span style="font-size:36px;font-weight:900;color:#fff;font-family:Arial,sans-serif;">Yahoo</span></div></div>
               </div>
 
               <!-- RIGHT: phone column, right half, fully contained, slight tilt -->
