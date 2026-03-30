@@ -65,9 +65,57 @@
 
             <!-- League Dropdown -->
             <div class="relative ml-6" ref="leagueDropdownRef">
+              <!-- League Helper Tooltip (Desktop) -->
+              <Transition name="helper-pop">
+                <div
+                  v-if="showLeagueHelper"
+                  class="absolute top-full right-0 mt-4 z-[200] w-64 pointer-events-auto"
+                >
+                  <!-- Arrow pointing up to button -->
+                  <div class="flex justify-end pr-5 -mb-px">
+                    <div class="w-3 h-3 rotate-45 border-t border-l"
+                      style="background: #181b25; border-color: rgba(34,197,94,0.5);"
+                    ></div>
+                  </div>
+                  <div class="rounded-xl p-4 shadow-2xl relative"
+                    style="background: #181b25; border: 1px solid rgba(34,197,94,0.45); box-shadow: 0 0 32px rgba(34,197,94,0.12);"
+                  >
+                    <!-- Dismiss X -->
+                    <button
+                      @click.stop="dismissLeagueHelper"
+                      class="absolute top-2.5 right-2.5 w-5 h-5 flex items-center justify-center rounded-full text-dark-textMuted hover:text-white hover:bg-dark-border/60 transition-colors text-xs"
+                      title="Dismiss"
+                    >✕</button>
+                    <!-- Content -->
+                    <div class="flex items-center gap-2 mb-2">
+                      <span class="text-lg">👋</span>
+                      <span class="text-primary font-bold text-sm">Welcome to UFD!</span>
+                    </div>
+                    <p class="text-dark-textSecondary text-xs leading-relaxed mb-3">
+                      Add your first league here to start tracking stats, matchups, power rankings, and more.
+                    </p>
+                    <button
+                      @click.stop="showAddLeagueModal = true; dismissLeagueHelper()"
+                      class="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-xs font-semibold text-gray-900 transition-colors"
+                      style="background: #22c55e;"
+                    >
+                      <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                      </svg>
+                      Add Your First League
+                    </button>
+                    <!-- Dev test badge -->
+                    <div v-if="forceNoLeaguesTest" class="mt-2 text-center">
+                      <span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-yellow-500/20 text-yellow-400 border border-yellow-500/30">🧪 TEST MODE — ?forceNoLeagues=true</span>
+                    </div>
+                  </div>
+                </div>
+              </Transition>
+
               <button
                 @click="showLeagueDropdown = !showLeagueDropdown"
                 class="flex items-center gap-2 px-2 py-1 rounded-lg bg-dark-card/50 border border-dark-border/50 hover:border-primary/50 transition-colors"
+                :class="showLeagueHelper ? 'border-primary/70 shadow-[0_0_12px_rgba(34,197,94,0.35)]' : ''"
               >
                 <template v-if="leagueStore.currentLeague">
                   <img 
@@ -314,9 +362,52 @@
                 </button>
                 <!-- Mobile League Dropdown -->
                 <div class="relative" ref="mobileLeagueDropdownRef">
+                  <!-- League Helper Tooltip (Mobile) -->
+                  <Transition name="helper-pop">
+                    <div
+                      v-if="showLeagueHelper"
+                      class="absolute top-full right-0 mt-3 z-[200] w-60 pointer-events-auto"
+                    >
+                      <div class="flex justify-end pr-4 -mb-px">
+                        <div class="w-3 h-3 rotate-45 border-t border-l"
+                          style="background: #181b25; border-color: rgba(34,197,94,0.5);"
+                        ></div>
+                      </div>
+                      <div class="rounded-xl p-3.5 shadow-2xl relative"
+                        style="background: #181b25; border: 1px solid rgba(34,197,94,0.45); box-shadow: 0 0 28px rgba(34,197,94,0.12);"
+                      >
+                        <button
+                          @click.stop="dismissLeagueHelper"
+                          class="absolute top-2 right-2 w-5 h-5 flex items-center justify-center rounded-full text-dark-textMuted hover:text-white hover:bg-dark-border/60 transition-colors text-xs"
+                        >✕</button>
+                        <div class="flex items-center gap-2 mb-1.5">
+                          <span class="text-base">👋</span>
+                          <span class="text-primary font-bold text-xs">Welcome to UFD!</span>
+                        </div>
+                        <p class="text-dark-textSecondary text-xs leading-relaxed mb-2.5">
+                          Tap here to add your first league and start tracking your fantasy data.
+                        </p>
+                        <button
+                          @click.stop="showAddLeagueModal = true; dismissLeagueHelper()"
+                          class="w-full flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-gray-900 transition-colors"
+                          style="background: #22c55e;"
+                        >
+                          <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                          </svg>
+                          Add First League
+                        </button>
+                        <div v-if="forceNoLeaguesTest" class="mt-1.5 text-center">
+                          <span class="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-yellow-500/20 text-yellow-400">🧪 TEST MODE</span>
+                        </div>
+                      </div>
+                    </div>
+                  </Transition>
+
                   <button
                     @click="showLeagueDropdown = !showLeagueDropdown"
                     class="flex items-center gap-1.5 px-3 py-2 bg-black/20 rounded-lg text-white text-sm"
+                    :class="showLeagueHelper ? 'ring-1 ring-primary/70 shadow-[0_0_10px_rgba(34,197,94,0.3)]' : ''"
                   >
                     <template v-if="leagueStore.currentLeague">
                       <img 
@@ -1172,6 +1263,7 @@ async function handleAuthSuccess() {
 
 async function handleLeagueAdded(league: any) {
   showAddLeagueModal.value = false
+  dismissLeagueHelper() // User added a league — no need for the helper anymore
   
   if (authStore.user?.id && leagueStore.currentUsername) {
     // Map Sleeper sport codes to our sport types
@@ -1194,6 +1286,7 @@ async function handleLeagueAdded(league: any) {
 
 async function handleYahooLeagueAdded(league: any) {
   showAddLeagueModal.value = false
+  dismissLeagueHelper()
   
   if (!authStore.user?.id) {
     console.error('Not authenticated')
@@ -1218,6 +1311,7 @@ async function handleYahooLeagueAdded(league: any) {
 
 async function handleEspnLeagueAdded(data: { leagueId: string; sport: string; season: number; league: any }) {
   showAddLeagueModal.value = false
+  dismissLeagueHelper()
   
   if (!authStore.user?.id) {
     console.error('Not authenticated')
@@ -1262,6 +1356,36 @@ async function handleSignOut() {
   router.push('/')
 }
 
+// ─── League Helper Tooltip ────────────────────────────────────────────────
+const helperDismissed = ref(false)
+
+// ?forceNoLeagues=true in URL forces the helper to appear regardless of leagues (for testing)
+const forceNoLeaguesTest = computed(() => route.query.forceNoLeagues === 'true')
+
+const showLeagueHelper = computed(() => {
+  if (!authStore.isAuthenticated) return false
+  if (helperDismissed.value && !forceNoLeaguesTest.value) return false
+  const hasNoLeagues = !leagueStore.allLeagues || leagueStore.allLeagues.length === 0
+  return hasNoLeagues || forceNoLeaguesTest.value
+})
+
+function dismissLeagueHelper() {
+  helperDismissed.value = true
+  // Don't persist to localStorage when in test mode so it resets on next visit
+  if (!forceNoLeaguesTest.value) {
+    localStorage.setItem('ufd_league_helper_dismissed', '1')
+  }
+}
+
+// Also dismiss automatically once user opens the league dropdown on their own
+watch(showLeagueDropdown, (isOpen) => {
+  if (isOpen && showLeagueHelper.value && !forceNoLeaguesTest.value) {
+    // They found it themselves — don't auto-dismiss, let them see the empty state
+    // but mark so we don't show both simultaneously
+  }
+})
+// ─────────────────────────────────────────────────────────────────────────
+
 // Handle scroll for header behavior - triggers when top header scrolls away
 function handleScroll() {
   isScrolled.value = window.scrollY > 36
@@ -1296,6 +1420,12 @@ watch(() => route.query.signup, (val) => {
 
 onMounted(async () => {
   darkModeStore.init()
+
+  // Load league helper dismissed state (skip if test mode so it always shows fresh)
+  if (!route.query.forceNoLeagues) {
+    helperDismissed.value = !!localStorage.getItem('ufd_league_helper_dismissed')
+  }
+
   // Open signup modal if ?signup=true in URL
   if (route.query.signup === 'true') {
     showAuthModal.value = true
@@ -1346,3 +1476,21 @@ watch(() => route.path, () => {
   showMobileMenu.value = false
 })
 </script>
+
+<style scoped>
+/* League helper tooltip pop-in animation */
+.helper-pop-enter-active {
+  transition: opacity 0.25s ease, transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.helper-pop-leave-active {
+  transition: opacity 0.15s ease, transform 0.15s ease;
+}
+.helper-pop-enter-from {
+  opacity: 0;
+  transform: translateY(-6px) scale(0.95);
+}
+.helper-pop-leave-to {
+  opacity: 0;
+  transform: translateY(-4px) scale(0.97);
+}
+</style>
