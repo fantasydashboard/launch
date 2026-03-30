@@ -163,5 +163,9 @@ router.beforeEach((to, from, next) => {
   }
   next()
 })
-
+router.afterEach(() => {
+  if (typeof window !== 'undefined' && (window as any).fbq) {
+    (window as any).fbq('track', 'PageView')
+  }
+})
 export default router
