@@ -249,10 +249,12 @@ onMounted(() => {
   contextSport.value = (route.query.sport as string) || leagueStore.activeSport || ''
   if (route.query.success === '1') {
     purchaseSuccess.value = true
-    // Meta Pixel - League Pass Purchase
-    if (typeof window !== 'undefined' && (window as any).fbq) {
-      (window as any).fbq('track', 'Purchase', { value: 19.00, currency: 'USD' })
-    }
+    // Meta Pixel - League Pass Purchase (delay to ensure pixel loads after Stripe redirect)
+    setTimeout(() => {
+      if (typeof window !== 'undefined' && (window as any).fbq) {
+        (window as any).fbq('track', 'Purchase', { value: 19.00, currency: 'USD' })
+      }
+    }, 1500)
     router.replace({ path: '/pricing', query: { ...(contextLeagueId.value ? { league: contextLeagueId.value } : {}), ...(contextPlatform.value ? { platform: contextPlatform.value } : {}) } })
   }
 })
