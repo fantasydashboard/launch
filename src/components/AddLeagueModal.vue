@@ -1377,26 +1377,23 @@ async function selectEspnLeagueFromExtension(league: EspnLeague) {
 async function validateEspnLeagueWithExtensionCreds() {
   if (!espnExtensionCredentials.value || !espnLeagueId.value.trim()) return
 
-  // Pre-fill cookie fields so validateEspnLeague uses them
+  // Set the cookie fields that connectEspnPrivate reads directly.
+  // We intentionally call connectEspnPrivate() here instead of validateEspnLeague().
+  // validateEspnLeague re-reads credentials via platformsStore.getEspnCredentials(),
+  // which can return null if the async storeEspnCredentials hasn't flushed yet —
+  // causing a completely silent early return with no error or loading state shown.
+  // connectEspnPrivate() uses espnS2Cookie / espnSwidCookie directly, which we set below.
   espnS2Cookie.value = espnExtensionCredentials.value.espn_s2
   espnSwidCookie.value = espnExtensionCredentials.value.swid
 
-  // Store credentials in platforms store
+  // Prime espnService so discoverLeague has credentials immediately
   if (authStore.user?.id) {
     await espnService.initialize(authStore.user.id)
   }
   espnService.setCredentials(espnExtensionCredentials.value.espn_s2, espnExtensionCredentials.value.swid)
-  
-  // Save to platforms store so the existing validate flow picks them up
-  await platformsStore.storeEspnCredentials({
-    espn_s2: espnExtensionCredentials.value.espn_s2,
-    swid: espnExtensionCredentials.value.swid,
-    leagueId: espnLeagueId.value,
-    sport: espnSport.value,
-    season: espnSeason.value
-  })
 
-  await validateEspnLeague()
+  // connectEspnPrivate handles: store creds -> discover league -> syncEspnLeague -> emit
+  await connectEspnPrivate()
 }
 
 async function importFromExtension() {
